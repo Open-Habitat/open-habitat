@@ -1,0 +1,30 @@
+title: Native Agent Host — Project View
+template: prose
+
+groups:
+  - label: Start
+    members:
+      - slug: index
+        title: Project View
+        desc: Reading paths and authority map for the architecture work.
+      - slug: status
+        title: Current status
+        desc: The sole reader-facing narrative of where the architecture work stands.
+
+  - label: Architecture
+    members:
+      - slug: architecture
+        title: Architecture
+        desc: The provisional integrated target model and its boundaries.
+      - slug: decisions
+        title: Decisions
+        desc: Accepted ADR register and open architecture decision gates.
+
+  - label: Evidence and delivery
+    members:
+      - slug: evidence
+        title: Evidence
+        desc: Revision-pinned index of canonical research and design evidence.
+      - slug: implementation
+        title: Implementation
+        desc: Architecture milestones, adoption proofs, and completion evidence.

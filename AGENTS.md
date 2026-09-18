@@ -19,6 +19,9 @@ Every directory follows this structure:
 - `AGENTS.md` — all AI-relevant info (consolidated)
 - `AGENTS-<TOPIC>.md` — complex topics split out (optional)
 
+Exception: `docs/site/` is the complete publishable Glasspad space. It contains no
+agent instruction files or symlinks; `docs/AGENTS.md` governs it from one level up.
+
 ## Issues & Planning
 
 Issue tracking is managed by [`issuectl`](https://github.com/example-org/issuectl). Use the `/issue` skill (installed by `issuectl init`) to create, search, update, and close issues.
