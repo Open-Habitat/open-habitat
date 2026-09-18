@@ -3,10 +3,11 @@ created: 2026-09-18
 updated: 2026-09-18
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 epic: native-agent-host-architecture
 lane: unlaned
+closed: 2026-09-18
 ---
 
 # Map Pi extension surfaces to AHP
@@ -45,3 +46,9 @@ Do not implement the adapter or decide the final protocol.
 - Standard AHP and private `x-` behavior are separated.
 - The report identifies any Pi behavior that cannot be represented faithfully or safely.
 - The result is suitable input to the architecture synthesis and protocol decision.
+
+## Resolution
+
+### 2026-09-18T12:40:28Z · @issuectl
+
+Completed source-grounded mapping in issues/native-agent-host-architecture/research/pi-extension-ahp-transport.md, including tested command/input interception, AHP classifications, lifecycle/security analysis, and the smallest viable profile.
