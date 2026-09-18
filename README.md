@@ -1,4 +1,4 @@
-# native-agent-host 🖥️
+# native-agent-host 🤖
 
 Multi-user web platform for hosting native AI agent sessions and application-specific agent interfaces.
 
