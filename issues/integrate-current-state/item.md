@@ -3,11 +3,13 @@ created: 2026-09-18
 updated: 2026-09-18
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 epic: native-agent-host-architecture
 lane: architecture-docs
 lane_seq: 20
+closed: 2026-09-18
+closed_by: pi
 ---
 
 # Integrate current state evidence
