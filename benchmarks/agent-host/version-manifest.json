@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "fixture_version": "0.1.0",
+  "fixture_id": "agent-host-common-v1",
+  "contracts": {
+    "adapter": 1,
+    "candidate_result": 1,
+    "evidence_bundle": 1,
+    "scenario_descriptor": 1
+  },
+  "runtime": {
+    "language": "python",
+    "minimum_version": "3.11",
+    "standard_library_only": true,
+    "external_runtime_dependencies": ["git"]
+  },
+  "candidate_protocols": [],
+  "candidate_execution": false,
+  "network_mode": "none",
+  "generated_samples": {
+    "sample-evidence.json": "bounded synthetic evidence; no benchmark outcome"
+  }
+}

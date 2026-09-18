@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "fixture_id": "agent-host-common-v1",
+  "purpose": "Candidate-neutral integrity fixture; it does not execute or score candidate protocols.",
+  "actors": [
+    {"principal_id": "alice", "authenticated": true, "clients": ["client-a", "client-b"]},
+    {"principal_id": "bob", "authenticated": true, "clients": ["client-bob"]}
+  ],
+  "tenants": [
+    {"tenant_id": "school-a", "repositories": ["school-a/repository"], "session_name": "identical-session-name"},
+    {"tenant_id": "school-b", "repositories": ["school-b/repository"], "session_name": "identical-session-name"}
+  ],
+  "applications": ["generic-chat", "creator-panel"],
+  "policy": {
+    "owner": {"principal_id": "alice", "tenant_id": "school-a"},
+    "rules": [
+      {"capability": "read_value", "effect": "allow", "approval": "none"},
+      {"capability": "write_value", "effect": "allow", "approval": "verified-principal"},
+      {"capability": "exfiltrate", "effect": "deny", "approval": "none"},
+      {"capability": "cross_tenant_read", "effect": "deny", "approval": "none"}
+    ],
+    "bob_initial_access": "none"
+  },
+  "repository": {
+    "files": {
+      "README.md": "# Synthetic benchmark repository\n",
+      "src/value.txt": "1\n"
+    },
+    "baseline_commit": {
+      "author_name": "Fixture Author",
+      "author_email": "fixture@example.invalid",
+      "timestamp": "2000-01-01T00:00:00Z",
+      "message": "fixture: baseline"
+    },
+    "max_workspaces": 2
+  },
+  "scripted_provider": {
+    "network": false,
+    "seed": "agent-host-common-v1",
+    "turn": [
+      {"kind": "text", "text": "I will read the synthetic value."},
+      {"kind": "tool_call", "tool": "read_value", "arguments": {}},
+      {"kind": "tool_result", "tool": "read_value", "status": "succeeded", "value": "1"},
+      {"kind": "tool_call", "tool": "always_fail", "arguments": {}},
+      {"kind": "tool_result", "tool": "always_fail", "status": "failed", "error_code": "synthetic_failure"},
+      {"kind": "input_request", "request_type": "select", "options": ["approve", "deny"]},
+      {"kind": "complete", "status": "succeeded"}
+    ]
+  },
+  "extension": {
+    "allow_list_id": "synthetic-extension-v1",
+    "network": false,
+    "capabilities": ["emit_text", "read_value", "write_value", "always_fail", "request_input", "slash_no_turn", "handled_input_hook"]
+  },
+  "limits": {
+    "principals": 2,
+    "tenants": 2,
+    "sessions": 4,
+    "workspaces": 2,
+    "bytes_per_subject": 104857600,
+    "scenario_timeout_seconds": 1800,
+    "memory_bytes_per_runtime": 2147483648,
+    "cpu_per_runtime": 2
+  },
+  "network": {"mode": "none", "allowed_hosts": []},
+  "stop_conditions": [
+    "cross_principal_or_tenant_disclosure",
+    "unexpected_external_network_or_credential_access",
+    "write_outside_validated_output_root",
+    "uncontrolled_process_growth",
+    "destructive_action_outside_disposable_roots",
+    "lifecycle_authority_unidentifiable"
+  ]
+}

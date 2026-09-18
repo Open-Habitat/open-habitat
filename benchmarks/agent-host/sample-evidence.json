@@ -1,0 +1,81 @@
+{
+  "artifacts": [
+    {
+      "artifact_id": "artifact-563457a6ff5ff73ff202",
+      "attempt_id": "attempt-5f83f01969e56c747deb",
+      "byte_count": 2,
+      "captured_at": "2000-01-01T00:00:00Z",
+      "content_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "media_type": "text/plain",
+      "retained_preview": "1\n"
+    }
+  ],
+  "attempts": [
+    {
+      "accepted_state": "accepted",
+      "attempt_id": "attempt-5f83f01969e56c747deb",
+      "correlation_id": "correlation-0dceaa984d4b611349b7",
+      "observed_state": "running",
+      "principal_id": "alice",
+      "recorded_at": "2000-01-01T00:00:00Z",
+      "requested_state": "running",
+      "scenario_id": "B1",
+      "tenant_id": "school-a",
+      "terminal_state": "succeeded"
+    }
+  ],
+  "events": [
+    {
+      "attempt_id": "attempt-5f83f01969e56c747deb",
+      "event_id": "event-3299fd86a13a572b1eb8",
+      "native": {
+        "kind": "text",
+        "text": "synthetic sample"
+      },
+      "normalized": {
+        "text": "synthetic sample",
+        "type": "message.delta"
+      },
+      "occurred_at": "2000-01-01T00:00:00Z",
+      "previous_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "seq": 1,
+      "sha256": "5948f8a7b9185ba39edf4d66ebc32aa8631410437ca922e2acac0ee2b64b663c"
+    }
+  ],
+  "fixture_id": "agent-host-common-v1",
+  "generated_at": "2000-01-01T00:00:00Z",
+  "integrity": {
+    "algorithm": "sha256",
+    "event_chain_heads": {
+      "attempt-5f83f01969e56c747deb": "5948f8a7b9185ba39edf4d66ebc32aa8631410437ca922e2acac0ee2b64b663c"
+    },
+    "payload_sha256": "b65be6e2c2cc13de396b62012c335943d0bd52efdef0fbf786c7ec51752d7873"
+  },
+  "native_bindings": [
+    {
+      "attempt_id": "attempt-5f83f01969e56c747deb",
+      "available": false,
+      "binding_id": "binding-aeb8d41ca8232cc061a7",
+      "binding_type": "runtime",
+      "native_id": "runtime-synthetic-sample",
+      "recorded_at": "2000-01-01T00:00:00Z"
+    }
+  ],
+  "policy_decisions": [
+    {
+      "approved_by": null,
+      "attempt_id": "attempt-5f83f01969e56c747deb",
+      "capability": "read_value",
+      "decided_at": "2000-01-01T00:00:00Z",
+      "decision": "allow",
+      "decision_id": "decision-14be4931191c7a645824",
+      "operation_sha256": "16febb568c05a488bc152101e44d1e3c8c1d0b03cf7124dd3a5db2588f5edee4",
+      "principal_id": "alice",
+      "reason": "low_risk_fixture_capability",
+      "tenant_id": "school-a"
+    }
+  ],
+  "scenario_id": "B1",
+  "schema_version": 1,
+  "subject": "bounded-synthetic-sample"
+}

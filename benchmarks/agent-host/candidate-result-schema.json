@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/native-agent-host/candidate-result-v1.schema.json",
+  "title": "Candidate-neutral agent-host benchmark result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "subject", "scenario_id", "category_role", "result_state", "native_events", "normalized_observations", "evidence_refs", "limitations"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "subject": {"type": "string", "minLength": 1},
+    "scenario_id": {"enum": ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8"]},
+    "category_role": {"enum": ["protocol", "runtime_host", "control_plane", "complete_platform", "native_baseline"]},
+    "result_state": {"enum": ["observed_as_specified", "observed_with_deviation", "delegated", "not_exercised", "not_applicable"]},
+    "state_reason": {"type": "string", "minLength": 1},
+    "delegated_to": {"type": "string", "minLength": 1},
+    "native_events": {"type": "array", "items": {"type": "object"}},
+    "normalized_observations": {"type": "array", "items": {"type": "object"}},
+    "evidence_refs": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "limitations": {"type": "array", "items": {"type": "string"}},
+    "scores": {
+      "type": "object",
+      "additionalProperties": {"type": "integer", "minimum": 0, "maximum": 3}
+    }
+  },
+  "allOf": [
+    {"if": {"properties": {"result_state": {"const": "delegated"}}}, "then": {"required": ["delegated_to", "state_reason"]}},
+    {"if": {"properties": {"result_state": {"enum": ["not_exercised", "not_applicable"]}}}, "then": {"required": ["state_reason"], "not": {"required": ["scores"]}}}
+  ]
+}

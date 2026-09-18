@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/native-agent-host/evidence-bundle-v1.schema.json",
+  "title": "Sanitized agent-host fixture evidence bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "fixture_id", "scenario_id", "subject", "generated_at", "attempts", "events", "policy_decisions", "artifacts", "native_bindings", "integrity"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "fixture_id": {"const": "agent-host-common-v1"},
+    "scenario_id": {"enum": ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8"]},
+    "subject": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "attempts": {"type": "array", "items": {"$ref": "#/$defs/attempt"}},
+    "events": {"type": "array", "items": {"$ref": "#/$defs/event"}},
+    "policy_decisions": {"type": "array", "items": {"$ref": "#/$defs/policy_decision"}},
+    "artifacts": {"type": "array", "items": {"$ref": "#/$defs/artifact"}},
+    "native_bindings": {"type": "array", "items": {"$ref": "#/$defs/native_binding"}},
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "event_chain_heads", "payload_sha256"],
+      "properties": {
+        "algorithm": {"const": "sha256"},
+        "event_chain_heads": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/sha256"}
+        },
+        "payload_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  },
+  "$defs": {
+    "timestamp": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt_id", "scenario_id", "principal_id", "tenant_id", "requested_state", "accepted_state", "observed_state", "terminal_state", "correlation_id", "recorded_at"],
+      "properties": {
+        "attempt_id": {"type": "string", "minLength": 1},
+        "scenario_id": {"enum": ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8"]},
+        "principal_id": {"enum": ["alice", "bob"]},
+        "tenant_id": {"enum": ["school-a", "school-b"]},
+        "requested_state": {"type": "string", "minLength": 1},
+        "accepted_state": {"type": "string", "minLength": 1},
+        "observed_state": {"type": "string", "minLength": 1},
+        "terminal_state": {"type": "string", "minLength": 1},
+        "correlation_id": {"type": "string", "minLength": 1},
+        "recorded_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "attempt_id", "seq", "occurred_at", "native", "normalized", "previous_sha256", "sha256"],
+      "properties": {
+        "event_id": {"type": "string", "minLength": 1},
+        "attempt_id": {"type": "string", "minLength": 1},
+        "seq": {"type": "integer", "minimum": 1},
+        "occurred_at": {"$ref": "#/$defs/timestamp"},
+        "native": {"type": "object"},
+        "normalized": {"type": "object"},
+        "previous_sha256": {"$ref": "#/$defs/sha256"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "policy_decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision_id", "attempt_id", "principal_id", "tenant_id", "capability", "decision", "reason", "approved_by", "operation_sha256", "decided_at"],
+      "properties": {
+        "decision_id": {"type": "string", "minLength": 1},
+        "attempt_id": {"type": "string", "minLength": 1},
+        "principal_id": {"enum": ["alice", "bob"]},
+        "tenant_id": {"enum": ["school-a", "school-b"]},
+        "capability": {"type": "string", "minLength": 1},
+        "decision": {"enum": ["allow", "deny", "require_approval"]},
+        "reason": {"type": "string", "minLength": 1},
+        "approved_by": {"type": ["string", "null"]},
+        "operation_sha256": {"$ref": "#/$defs/sha256"},
+        "decided_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "attempt_id", "media_type", "content_sha256", "byte_count", "retained_preview", "captured_at"],
+      "properties": {
+        "artifact_id": {"type": "string", "minLength": 1},
+        "attempt_id": {"type": "string", "minLength": 1},
+        "media_type": {"type": "string", "minLength": 1},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "byte_count": {"type": "integer", "minimum": 0, "maximum": 65536},
+        "retained_preview": {"type": "string", "maxLength": 256},
+        "captured_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "native_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["binding_id", "attempt_id", "binding_type", "native_id", "available", "recorded_at"],
+      "properties": {
+        "binding_id": {"type": "string", "minLength": 1},
+        "attempt_id": {"type": "string", "minLength": 1},
+        "binding_type": {"type": "string", "minLength": 1},
+        "native_id": {"type": "string", "minLength": 1},
+        "available": {"type": "boolean"},
+        "recorded_at": {"$ref": "#/$defs/timestamp"}
+      }
+    }
+  }
+}

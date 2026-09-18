@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "specification": "frozen-common-benchmark-v1",
+  "default_result_state": "not_exercised",
+  "allowed_result_states": ["observed_as_specified", "observed_with_deviation", "delegated", "not_exercised", "not_applicable"],
+  "scenarios": [
+    {
+      "id": "B1", "title": "create, interact and converge two clients",
+      "actors": ["alice/client-a", "alice/client-b"], "tenant": "school-a",
+      "operations": ["list sessions", "create session", "send scripted input", "attach client-b", "compare terminal projection"],
+      "expected_observables": ["one platform session and run", "exactly one orchestrator start", "stable native bindings", "ordered text and tool lifecycle", "equivalent current state"],
+      "stop_conditions": ["duplicate lifecycle side effect", "cross-scope catalog data"],
+      "applicability": {"lifecycle_or_catalog": "delegated_allowed", "candidate_stream": "required_if_in_role"}
+    },
+    {
+      "id": "B2", "title": "approval and input hand-off across disconnect",
+      "actors": ["alice/client-a", "alice/client-b"], "tenant": "school-a",
+      "operations": ["request write_value approval", "disconnect client-a", "answer from client-b", "reconnect client-a", "repeat with select input"],
+      "expected_observables": ["durable pending request", "one accepted answer", "verified principal approver", "stale answer rejected", "tool executes once"],
+      "stop_conditions": ["tool executes before approval", "client id treated as principal"]
+    },
+    {
+      "id": "B3", "title": "replay loss, gateway restart and resynchronization",
+      "actors": ["alice/client-a", "alice/client-b"], "tenant": "school-a",
+      "operations": ["disconnect client-a", "exceed replay window", "restart projection gateway only", "resume from last cursor"],
+      "expected_observables": ["explicit replay miss or replay", "authoritative snapshot or state read", "no silent gap", "runtime remains orchestrator-owned"],
+      "stop_conditions": ["silent capture or delivery gap", "gateway assumes lifecycle ownership"]
+    },
+    {
+      "id": "B4", "title": "ambiguous lifecycle and input outcomes",
+      "actors": ["alice/client-a"], "tenant": "school-a",
+      "operations": ["timeout before start side effect", "timeout after start side effect", "lose adapter acknowledgement after accepted input"],
+      "expected_observables": ["requested and observed states differ", "stable attempt ids", "no blind retry", "zero or one process", "uncertainty remains explicit"],
+      "stop_conditions": ["duplicate process", "automatic resend after unknown outcome"]
+    },
+    {
+      "id": "B5", "title": "completed history after runtime and workspace removal",
+      "actors": ["alice/client-a", "alice/client-b"], "tenant": "school-a",
+      "operations": ["complete turn", "capture bounded artifact", "stop runtime", "remove workspace", "restart gateway", "query session"],
+      "expected_observables": ["durable normalized history", "policy evidence retained", "captured artifact retained", "native paths historical or unavailable"],
+      "stop_conditions": ["durable query depends on removed workspace", "uncaptured content claimed retained"]
+    },
+    {
+      "id": "B6", "title": "principal isolation and live revocation",
+      "actors": ["alice/client-a", "bob/client-bob"], "tenant": "school-a",
+      "operations": ["bob guesses alice session", "deny read subscribe input approval stop artifact", "grant view-only", "revoke live", "mirror against school-b"],
+      "expected_observables": ["no pre-grant metadata leakage", "view-only cannot mutate", "live subscription reauthorized", "tenant-scoped cache", "redacted denial audit"],
+      "stop_conditions": ["cross-principal disclosure", "cross-tenant disclosure", "post-revocation unbounded delivery"]
+    },
+    {
+      "id": "B7", "title": "concurrent workspace conflict boundary",
+      "actors": ["alice/client-a", "alice/client-b"], "tenant": "school-a",
+      "operations": ["edit in separate workspaces", "edit in shared disposable workspace", "inspect revision and workspace bindings", "targeted cleanup"],
+      "expected_observables": ["separate workspaces isolated", "shared conflict detected serialized or unsafe", "correct provenance", "targeted cleanup"],
+      "stop_conditions": ["wrong workspace attribution", "cleanup escapes target workspace"]
+    },
+    {
+      "id": "B8", "title": "tenant-scoped application tool",
+      "actors": ["alice/client-a"], "tenant": "school-a",
+      "operations": ["invoke get_course_title in generic chat", "project in creator panel", "substitute school-b resource id"],
+      "expected_observables": ["one typed execution", "same capability in both projections", "credential reference only", "cross-tenant denial", "redacted audit"],
+      "stop_conditions": ["credential in client wire log or model content", "cross-tenant provider access"]
+    }
+  ]
+}

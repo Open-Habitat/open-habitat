@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "contract_id": "agent-host-adapter-v1",
+  "required_operations": [
+    {"name": "capabilities", "side_effect": false},
+    {"name": "validate", "side_effect": false},
+    {"name": "map_native_event", "side_effect": false},
+    {"name": "current_state", "side_effect": false}
+  ],
+  "optional_operations": [
+    {"name": "send_input", "requires_attempt_id": true},
+    {"name": "answer_request", "requires_attempt_id": true},
+    {"name": "cancel", "requires_attempt_id": true},
+    {"name": "subscribe", "requires_cursor": true}
+  ],
+  "constraints": {
+    "may_own_runtime_lifecycle": false,
+    "may_create_workspace": false,
+    "must_preserve_native_event": true,
+    "must_emit_normalized_observation": true,
+    "unknown_outcome_must_not_be_retried": true,
+    "network_default": "deny",
+    "credential_values_allowed": false
+  },
+  "capability_states": ["native", "adapter_required", "delegated", "not_applicable", "not_exercised", "unsupported"]
+}
