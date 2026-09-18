@@ -26,4 +26,4 @@ This six-page view is the architecture front door for Native Agent Host. It poin
 | [Implementation](implementation) | Milestones, adoption proofs, completion evidence | Issue queues, lanes, or current narrative |
 | [Status](status) | Sole reader-facing current-state narrative | Executable task truth or durable decision rationale |
 
-The canonical work tracker is the [`native-agent-host-architecture` epic](https://github.com/maintainer/native-agent-host/blob/2552704579715cba56a289af364e2da4dc2d220b/issues/native-agent-host-architecture/item.md). Use `issuectl` for live task state and scheduling.
+The canonical work tracker is the [`native-agent-host-architecture` epic](https://github.com/maintainer/native-agent-host/blob/e7012c75e759af3a26dcea2ed2fb9d70ef077376/issues/native-agent-host-architecture/item.md). Use `issuectl` for live task state and scheduling.

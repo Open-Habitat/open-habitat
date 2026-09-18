@@ -6,7 +6,7 @@
 
 **Not the source for:** Issue lanes, blockers, spawnability, assignees, task queues, current-state narrative, or architecture decisions.
 
-Use the live [`native-agent-host-architecture` epic](https://github.com/maintainer/native-agent-host/blob/2552704579715cba56a289af364e2da4dc2d220b/issues/native-agent-host-architecture/item.md) and `issuectl` for executable work state. This page stays at architecture-milestone granularity.
+Use the live [`native-agent-host-architecture` epic](https://github.com/maintainer/native-agent-host/blob/e7012c75e759af3a26dcea2ed2fb9d70ef077376/issues/native-agent-host-architecture/item.md) and `issuectl` for executable work state. This page stays at architecture-milestone granularity.
 
 ## Architecture milestones
 
@@ -14,7 +14,7 @@ Use the live [`native-agent-host-architecture` epic](https://github.com/maintain
 |---|---|---|---|
 | M0 — provisional foundation | Reviewable target model, common vocabulary, evidence method, and maintained Project View | Reference architecture v0; dossier template; initial protocol/ecosystem/documentation research; validated six-page view | [Evidence index](evidence) |
 | M1 — source-grounded current state | Factual models of Alder, Northwind, and both Acme implementations | Four complete dossiers with exact revisions, observations, unknowns, and trust/lifecycle/credential boundaries | Not yet landed |
-| M2 — comparative synthesis and architecture v1 | Tested common information model and explicit protocol, identity, policy, durability, isolation, tenancy, and integration choices | Shortlist benchmarks, fit-gap analyses, cross-case synthesis, accepted ADRs, architecture/security review | Not yet landed |
+| M2 — comparative synthesis and architecture v1 | Tested common information model and explicit protocol, identity, policy, durability, isolation, tenancy, and integration choices | Shortlist benchmarks, fit-gap analyses, cross-case synthesis, accepted ADRs, architecture/security review | Protocol/traction research and seven source-grounded candidate dossiers landed; common-scenario behavioral benchmarks, adoption fit-gaps, synthesis, ADRs, and final review remain |
 | M3 — Alder walking skeleton | Two web principals use one durable control plane over orchestrator-owned host-native execution | Negative cross-user authorization tests; declared ambient-power limits; reconnect and ambiguity reconciliation; credential no-leak; durable history after cleanup; audit evidence | Not yet landed |
 | M4 — dedicated Northwind pilot | Organization deployment supports actual developer clone/branch/agent workflows | Workflow acceptance, identity and credential boundaries, concurrency/repository proof, operational ownership, and migration findings | Not yet landed |
 | M5 — Acme integration | Application-specific UI and Moodle/tool flows use shared platform concepts with school tenancy | Both fit-gap reports; selected topology ADR; tenant isolation/deletion/audit tests; one application projection/integration pilot | Not yet landed |

@@ -8,11 +8,11 @@
 
 **Updated:** 2026-09-18
 
-**Source revision:** `0928b3b0529bbdcca88a48a94fc424707667bb4b` (latest landed project-state baseline summarized here; not the self-referential documentation commit)
+**Source revision:** `e7012c75e759af3a26dcea2ed2fb9d70ef077376` (latest landed project-state baseline summarized here; not the self-referential documentation commit)
 
 ## Summary
 
-The architecture effort has a provisional reference model and a common evidence method, but it is not yet architecture v1. The initial AHP analysis, ecosystem screening, documentation-workflow study, and Pi-extension transport mapping have landed, and this Project View now provides one maintained front door. The model deliberately keeps protocol, identity/policy, isolation, data lifecycle, and deployment choices open until source-grounded adoption evidence is available.
+The architecture effort has a provisional reference model and a common evidence method, but it is not yet architecture v1. The initial AHP analysis, Pi-extension mapping, protocol competitor/traction benchmark, and seven shortlist candidate dossiers have now landed alongside the earlier ecosystem and documentation studies. This Project View is the maintained front door, while protocol, identity/policy, isolation, data lifecycle, and deployment choices remain open pending synthesis and adoption-case evidence.
 
 ## Ready to review
 
@@ -24,8 +24,8 @@ No immediate owner decision is requested by this documentation slice. The choice
 
 ## Next proof
 
-The active evidence wave is the AHP competitor/traction comparison and deep shortlist candidate dossiers. Once those land, the initiative needs the four current-state adoption dossiers and a high-capability synthesis/review before locking the MVP protocol or starting broad implementation. Live task status and ordering remain in the [architecture epic](https://github.com/maintainer/native-agent-host/blob/0928b3b0529bbdcca88a48a94fc424707667bb4b/issues/native-agent-host-architecture/item.md) and issuectl.
+The next gate is a high-capability synthesis and architecture review of the completed protocol and candidate evidence. It should freeze shared hands-on benchmark scenarios, resolve what evidence is still needed, and define the four current-state adoption dossiers before they launch. The MVP protocol and broad implementation remain unlocked. Live task status and ordering remain in the [architecture epic](https://github.com/maintainer/native-agent-host/blob/e7012c75e759af3a26dcea2ed2fb9d70ef077376/issues/native-agent-host-architecture/item.md) and issuectl.
 
 ## Notable limitations
 
-No Alder/current-orchestration, Northwind, or Acme implementation dossier has landed. The current architecture therefore states hypotheses about those environments rather than verified implementation facts. Pi extension tools and blocking input can use standard AHP semantics, while command discovery/invocation and Pi-specific UI need a negotiated private profile if required. Multi-user identity, tenancy, durable product history, policy, and credentials remain platform responsibilities, and the protocol choice remains open.
+No Alder/current-orchestration, Northwind, or Acme implementation dossier has landed, and the seven candidate dossiers are source/documentation studies rather than common-scenario behavioral tests. Pi extension tools and blocking input can use standard AHP semantics, while command discovery/invocation and Pi-specific UI need a negotiated private profile if required. ACP has the strongest coding-agent protocol traction, but no reviewed peer matches AHP's complete multi-client synchronized-state model. Multi-user identity, tenancy, durable product history, policy, and credentials remain platform responsibilities.
