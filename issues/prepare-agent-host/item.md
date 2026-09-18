@@ -3,11 +3,13 @@ created: 2026-09-18
 updated: 2026-09-18
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 epic: native-agent-host-architecture
 lane: benchmark-fixture
 lane_seq: 10
+closed: 2026-09-18
+closed_by: pi
 ---
 
 # Prepare agent host benchmark fixture
