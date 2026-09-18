@@ -55,9 +55,20 @@ A durable session can span multiple runtime runs. Browsers reconnect to snapshot
 
 Timeout means **unknown**, not failed. While a non-idempotent outcome is unresolved, only proven-safe reconciliation or emergency actions proceed. Uncorrelated native resources are quarantined rather than adopted under a user or tenant.
 
+## Current-state constraints on the provisional model
+
+The landed dossiers constrain the model without accepting a target design. Their evidence modes differ and remain explicit:
+
+- **Alder — direct host/worker observation plus source:** one trusted Unix security domain was observed. Pi conversations, Taskfleet runs, Git state, tmux processes, and workspaces have separate native identities and stores; the dossier infers that no product record currently joins them. The observed shell/extensions have ambient same-user authority. This does not select a datastore or isolation mechanism.
+- **Northwind development — source/configuration plus one metadata snapshot:** persistent personal clones, local tools and quality gates are the documented workflow. Separate Git worktrees are the documented collision boundary for concurrent agents, while credentials, process space, ports, caches, the object database, and stash can remain shared. Representative interviews and live concurrency observations were unavailable, so this evidence does not authorize replacing personal-clone practice with managed workspaces.
+- **Native Creator — source-only evidence:** the inspected design is a local, single-OS-user TUI with unrestricted local file, shell, and web tools. Its Acme bearer key narrows access to an organization-scoped cloud/model and publish seam, but it is not evidenced as an application user, school, or complete tenant identity. The private fork and deployed package were not directly inspected.
+- **Creator web — source plus safe production metadata observation:** the implementation supplies browser identity, organization memberships and roles, org-scoped workspaces, durable drafts/jobs, and an application-specific agent projection over private REST/SSE. Source shows pooled application/path isolation rather than per-tenant OS isolation. Production metadata showed deployed services lagging inspected source; bounded source inspection found no Moodle launch, mapping, or publish edge in this Creator path.
+
+**Integrated inference:** these differences rule out assuming one universal session/workspace mapping and require later fit-gap work to preserve native authority and vocabulary. They do not select an MVP protocol, normalize an organization into a school, accept pooled or dedicated topology, or make either Creator implementation authoritative for the other.
+
 ## Integration seams under evaluation
 
-Protocol choice is now separated by seam rather than treated as one universal contract: harness adapter, host connector, generic synchronized client projection, and application-specific projection. ACP, AHP, AG-UI, LangChain Agent Protocol/Streaming, and a minimal native API will be exercised against one frozen scenario suite. Any composition must justify its permanent translation, state-ownership, security, and compatibility cost. Until that evidence lands, the platform-owned identity, policy, durability, and audit core is a requirement rather than an implementation selection.
+Protocol choice is separated by seam rather than treated as one universal contract: harness adapter, host connector, generic synchronized client projection, and application-specific projection. ACP, AHP, AG-UI, LangChain Agent Protocol/Streaming, and a minimal native API will be exercised against one frozen scenario suite. The candidate-neutral fixture now pins the common inputs and evidence contracts, but its self-tests prove only fixture integrity. Any composition must justify its permanent translation, state-ownership, security, and compatibility cost. Until behavioral evidence lands, the platform-owned identity, policy, durability, and audit core is a requirement rather than an implementation selection.
 
 The minimum normalized event model must retain source provenance, fidelity/degradation and capture gaps. It must not erase Pi commands/custom entries, ACP version-specific ownership, AG-UI interrupt semantics, or other harness-native distinctions merely to make adapters look equivalent.
 
@@ -69,4 +80,4 @@ The same control-plane concepts must be tested, not assumed, across:
 2. **Northwind:** per-developer identity and repository/workspace strategies that do not impose Alder-specific worktrees on personal-clone workflows.
 3. **Acme Creator:** school tenants, Moodle integrations, richer typed tools, application-specific clients, and evidence-based pooled/dedicated/hybrid deployment choices.
 
-The required source-grounded dossiers and fit-gap work are tracked as [implementation proofs](implementation). Until they land, the adoption mappings remain hypotheses.
+The required source-grounded dossiers have landed and are indexed in [evidence](evidence). Their access gaps and the still-pending fit-gap work are tracked as [implementation proofs](implementation); the adoption mappings therefore remain hypotheses.

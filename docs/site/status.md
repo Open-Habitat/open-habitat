@@ -8,24 +8,28 @@
 
 **Updated:** 2026-09-18
 
-**Source revision:** `3230e1326e2f2280c6d79ff6dc83fd2d60988137` (latest landed project-state baseline summarized here; not the self-referential documentation commit)
+**Source revision:** `04319441e9a3ecce6882d04e0a7614f902afa734` (latest landed project-state baseline summarized here; not the self-referential documentation commit)
 
 ## Summary
 
-The architecture evidence synthesis and adversarial review has landed. It finds that none of the seven candidate designs satisfies the whole Native Agent Host need: each contributes a protocol, UI projection, runtime, control-plane or administration layer rather than a complete fit that also preserves the current orchestrator. The provisional architecture keeps a platform-owned identity, policy, durability and audit core around adapter-isolated host-native execution. It is still v0: no protocol, tenancy topology or architecture v1 has been selected.
+The first current-state evidence wave is complete: source-grounded dossiers now describe Alder/tw/Pi/current orchestration, the Northwind developer workflow, and both Acme Creator implementations. A candidate-neutral benchmark fixture also freezes the synthetic principals, tenants, policy, repository, B1–B8 scenarios, lifecycle outcomes, evidence contracts, and safety guards needed for later comparisons.
+
+The new evidence constrains but does not accept architecture. Alder is one trusted Unix-user domain with separate native stores; Northwind relies on personal clones and worktrees while representative developer observations remain missing; native Creator is a local unrestricted-tool application with an organization-key cloud seam; and Creator web is an existing organization-scoped browser platform with a private SSE/application runtime, deployed-source drift, and no Moodle path. Architecture remains provisional v0. No MVP protocol, school-tenancy topology, isolation profile, or architecture v1 has been selected.
 
 ## Ready to review
 
-Reviewers can inspect the direct candidate verdict, challenged v0 assumptions, frozen five-subject benchmark, four launch-ready dossier scopes and ordered ADR agenda in the [canonical synthesis](https://github.com/maintainer/native-agent-host/blob/3230e1326e2f2280c6d79ff6dc83fd2d60988137/issues/native-agent-host-architecture/synthesis-and-architecture-review.md). The [provisional architecture](architecture), [decision gates](decisions), [evidence index](evidence) and [proof plan](implementation) integrate that gate without promoting recommendations into ADRs.
+The revision-pinned [evidence index](evidence) records each dossier's scope, direct-observation boundary, privacy exclusions, and access gaps. The [provisional architecture](architecture) integrates only the constraints those facts place on the model. The [decision gates](decisions) remain blocked, and the [proof plan](implementation) distinguishes completed current-state evidence from pending behavioral results.
+
+The fixture's deterministic validation proves fixture integrity only. It does not show that any candidate implements a scenario, does not score B1–B8, and does not provide OS-level network confinement.
 
 ## Decisions needed
 
-No architecture choice is ready for acceptance. The [decision gates](decisions) now state the evidence that unlocks the information-model, protocol/profile, identity, capability, durability, isolation, tenancy, application-integration, workspace and deployment ADRs. The MVP protocol and architecture v1 must remain open until those gates close.
+No architecture choice is ready for acceptance. The dossier findings must first be translated through adoption fit-gap analyses and controlled behavior. In particular, an organization must not be assumed to equal a school, application path scoping must not be described as OS isolation, and harness approvals or typed tools must not be described as confinement when ambient same-user powers remain.
 
 ## Next proof
 
-The next evidence wave is the four independent current-state dossiers—Alder/tw/Pi/current orchestration, Northwind, and both Acme Creator implementations—plus preparation of the common benchmark fixture. The minimal native baseline should validate the frozen scenarios before AHP, ACP, AG-UI and LangChain spikes use them. Adoption fit-gaps and evidence-ready ADRs follow. Live task status and ordering remain in the [architecture epic](https://github.com/maintainer/native-agent-host/blob/2552704579715cba56a289af364e2da4dc2d220b/issues/native-agent-host-architecture/item.md) and issuectl.
+Run the minimal custom API baseline against the frozen fixture, then produce three adoption fit-gap analyses: Alder, Northwind, and combined Acme with native/web divergence retained. Carry every unresolved dossier observation into those outputs. Candidate protocol spikes and ADR work follow only when the relevant [decision gate](decisions) has enough evidence.
 
 ## Notable limitations
 
-No current-state adoption dossier or common-scenario behavioral result has landed. Candidate behavior, edition boundaries and operational claims remain bounded by the source/documentation evidence. The synthesis does not establish that AHP, ACP, AG-UI, LangChain or a custom API will win its evaluated seam; it establishes how to test them fairly. Multi-user identity, logical tenancy, durable product history, capability enforcement, credentials, privacy/deletion and orchestrator reconciliation remain unproven platform responsibilities.
+Alder's attached-seat and second-principal behavior, ambiguous lifecycle outcomes, and cleanup remain incompletely observed. The Northwind dossier lacks representative interviews, macOS/live-Claude observation, and a controlled concurrency exercise. Native Creator's private fork, package/deployment correspondence, and live provider/Moodle behavior were unavailable. Creator web lacked an authenticated synthetic account, host/data/log access, restore testing, and a Moodle integration path. These are unresolved access or observation gaps, not proof that the corresponding capabilities do not exist.
