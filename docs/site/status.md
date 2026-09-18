@@ -8,11 +8,11 @@
 
 **Updated:** 2026-09-18
 
-**Source revision:** `2552704579715cba56a289af364e2da4dc2d220b` (latest landed project-state baseline summarized here; not the self-referential documentation commit)
+**Source revision:** `0928b3b0529bbdcca88a48a94fc424707667bb4b` (latest landed project-state baseline summarized here; not the self-referential documentation commit)
 
 ## Summary
 
-The architecture effort has a provisional reference model and a common evidence method, but it is not yet architecture v1. The initial AHP analysis, ecosystem screening, and documentation-workflow study have landed, and this Project View now provides one maintained front door. The model deliberately keeps protocol, identity/policy, isolation, data lifecycle, and deployment choices open until source-grounded adoption evidence is available.
+The architecture effort has a provisional reference model and a common evidence method, but it is not yet architecture v1. The initial AHP analysis, ecosystem screening, documentation-workflow study, and Pi-extension transport mapping have landed, and this Project View now provides one maintained front door. The model deliberately keeps protocol, identity/policy, isolation, data lifecycle, and deployment choices open until source-grounded adoption evidence is available.
 
 ## Ready to review
 
@@ -24,8 +24,8 @@ No immediate owner decision is requested by this documentation slice. The choice
 
 ## Next proof
 
-The next evidence wave is the Pi-extension/AHP mapping and deep shortlist competitor dossiers. After those protocol follow-ups land, the initiative needs the four current-state adoption dossiers and a high-capability synthesis/review before locking the MVP protocol or starting broad implementation. Live task status and ordering remain in the [architecture epic](https://github.com/maintainer/native-agent-host/blob/2552704579715cba56a289af364e2da4dc2d220b/issues/native-agent-host-architecture/item.md) and issuectl.
+The active evidence wave is the AHP competitor/traction comparison and deep shortlist candidate dossiers. Once those land, the initiative needs the four current-state adoption dossiers and a high-capability synthesis/review before locking the MVP protocol or starting broad implementation. Live task status and ordering remain in the [architecture epic](https://github.com/maintainer/native-agent-host/blob/0928b3b0529bbdcca88a48a94fc424707667bb4b/issues/native-agent-host-architecture/item.md) and issuectl.
 
 ## Notable limitations
 
-No Alder/current-orchestration, Northwind, or Acme implementation dossier has landed. The current architecture therefore states hypotheses about those environments rather than verified implementation facts. AHP is a strong candidate for the live browser-session seam, but multi-user identity, tenancy, durable product history, policy, credentials, and orchestration remain platform responsibilities and the protocol choice remains open.
+No Alder/current-orchestration, Northwind, or Acme implementation dossier has landed. The current architecture therefore states hypotheses about those environments rather than verified implementation facts. Pi extension tools and blocking input can use standard AHP semantics, while command discovery/invocation and Pi-specific UI need a negotiated private profile if required. Multi-user identity, tenancy, durable product history, policy, and credentials remain platform responsibilities, and the protocol choice remains open.
