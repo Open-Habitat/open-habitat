@@ -3,13 +3,15 @@ created: 2026-09-18
 updated: 2026-09-18
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 epic: native-agent-host-architecture
 lane: unlaned
 commits:
 - hash: 8d4b1ec8d771ff042daf5c985162bc7f366ae024
   summary: 'docs: prepare initial architecture task'
+closed: 2026-09-18
+closed_by: agent
 ---
 
 # Draft reference architecture v0
@@ -34,10 +36,10 @@ Write an engineer-facing English document to `issues/native-agent-host-architect
 
 Do not implement code, select AHP or another external protocol, finalize ADRs, or call the document architecture v1.
 
-## Acceptance criteria
+## Acceptance Criteria
 
-- A walking-skeleton boundary can be understood without prematurely specifying its wire protocol.
-- Existing orchestration remains the initial lifecycle authority behind an adapter.
-- Durable history is distinct from ephemeral process/worktree state.
-- Identity, authorization, capability policy, tenancy, credentials, and auditability are first-class in the model.
-- Open questions suitable for the later synthesis/review gate are explicit.
+- [x] A walking-skeleton boundary can be understood without prematurely specifying its wire protocol.
+- [x] Existing orchestration remains the initial lifecycle authority behind an adapter.
+- [x] Durable history is distinct from ephemeral process/worktree state.
+- [x] Identity, authorization, capability policy, tenancy, credentials, and auditability are first-class in the model.
+- [x] Open questions suitable for the later synthesis/review gate are explicit.
