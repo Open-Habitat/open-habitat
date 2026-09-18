@@ -10,6 +10,12 @@ lane: unlaned
 commits:
 - hash: 8d4b1ec8d771ff042daf5c985162bc7f366ae024
   summary: 'docs: prepare initial architecture task'
+- hash: cec596a3b322508e494bc2b453436cd37e4c0f95
+  summary: 'chore: close reference architecture v0 issue'
+- hash: 4b5910c9e0482eda8f08edfb270f7bdf6c973900
+  summary: 'docs: draft native agent host reference architecture v0'
+- hash: 20b23624284f3fbf34053b248d6c1e63e52c1cd3
+  summary: 'chore: start reference architecture v0'
 closed: 2026-09-18
 closed_by: agent
 ---
