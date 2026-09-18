@@ -8,24 +8,24 @@
 
 **Updated:** 2026-09-18
 
-**Source revision:** `e7012c75e759af3a26dcea2ed2fb9d70ef077376` (latest landed project-state baseline summarized here; not the self-referential documentation commit)
+**Source revision:** `3230e1326e2f2280c6d79ff6dc83fd2d60988137` (latest landed project-state baseline summarized here; not the self-referential documentation commit)
 
 ## Summary
 
-The architecture effort has a provisional reference model and a common evidence method, but it is not yet architecture v1. The initial AHP analysis, Pi-extension mapping, protocol competitor/traction benchmark, and seven shortlist candidate dossiers have now landed alongside the earlier ecosystem and documentation studies. This Project View is the maintained front door, while protocol, identity/policy, isolation, data lifecycle, and deployment choices remain open pending synthesis and adoption-case evidence.
+The architecture evidence synthesis and adversarial review has landed. It finds that none of the seven candidate designs satisfies the whole Native Agent Host need: each contributes a protocol, UI projection, runtime, control-plane or administration layer rather than a complete fit that also preserves the current orchestrator. The provisional architecture keeps a platform-owned identity, policy, durability and audit core around adapter-isolated host-native execution. It is still v0: no protocol, tenancy topology or architecture v1 has been selected.
 
 ## Ready to review
 
-Reviewers can now inspect the integrated [provisional architecture](architecture), the revision-pinned [evidence index](evidence), the bounded [decision gates](decisions), and the architecture-level [proof plan](implementation). The canonical reports remain linked rather than copied into this site.
+Reviewers can inspect the direct candidate verdict, challenged v0 assumptions, frozen five-subject benchmark, four launch-ready dossier scopes and ordered ADR agenda in the [canonical synthesis](https://github.com/maintainer/native-agent-host/blob/3230e1326e2f2280c6d79ff6dc83fd2d60988137/issues/native-agent-host-architecture/synthesis-and-architecture-review.md). The [provisional architecture](architecture), [decision gates](decisions), [evidence index](evidence) and [proof plan](implementation) integrate that gate without promoting recommendations into ADRs.
 
 ## Decisions needed
 
-No immediate owner decision is requested by this documentation slice. The choices that must be made before protocol lock or architecture v1 are indexed in [decisions](decisions), with their prerequisite evidence. They should not be resolved from v0 assumptions alone.
+No architecture choice is ready for acceptance. The [decision gates](decisions) now state the evidence that unlocks the information-model, protocol/profile, identity, capability, durability, isolation, tenancy, application-integration, workspace and deployment ADRs. The MVP protocol and architecture v1 must remain open until those gates close.
 
 ## Next proof
 
-The next gate is a high-capability synthesis and architecture review of the completed protocol and candidate evidence. It should freeze shared hands-on benchmark scenarios, resolve what evidence is still needed, and define the four current-state adoption dossiers before they launch. The MVP protocol and broad implementation remain unlocked. Live task status and ordering remain in the [architecture epic](https://github.com/maintainer/native-agent-host/blob/e7012c75e759af3a26dcea2ed2fb9d70ef077376/issues/native-agent-host-architecture/item.md) and issuectl.
+The next evidence wave is the four independent current-state dossiers—Alder/tw/Pi/current orchestration, Northwind, and both Acme Creator implementations—plus preparation of the common benchmark fixture. The minimal native baseline should validate the frozen scenarios before AHP, ACP, AG-UI and LangChain spikes use them. Adoption fit-gaps and evidence-ready ADRs follow. Live task status and ordering remain in the [architecture epic](https://github.com/maintainer/native-agent-host/blob/2552704579715cba56a289af364e2da4dc2d220b/issues/native-agent-host-architecture/item.md) and issuectl.
 
 ## Notable limitations
 
-No Alder/current-orchestration, Northwind, or Acme implementation dossier has landed, and the seven candidate dossiers are source/documentation studies rather than common-scenario behavioral tests. Pi extension tools and blocking input can use standard AHP semantics, while command discovery/invocation and Pi-specific UI need a negotiated private profile if required. ACP has the strongest coding-agent protocol traction, but no reviewed peer matches AHP's complete multi-client synchronized-state model. Multi-user identity, tenancy, durable product history, policy, and credentials remain platform responsibilities.
+No current-state adoption dossier or common-scenario behavioral result has landed. Candidate behavior, edition boundaries and operational claims remain bounded by the source/documentation evidence. The synthesis does not establish that AHP, ACP, AG-UI, LangChain or a custom API will win its evaluated seam; it establishes how to test them fairly. Multi-user identity, logical tenancy, durable product history, capability enforcement, credentials, privacy/deletion and orchestrator reconciliation remain unproven platform responsibilities.

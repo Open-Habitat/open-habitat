@@ -6,7 +6,7 @@
 
 **Not the source for:** Research observations, rejected alternatives, ADR rationale, implementation progress, or executable task state.
 
-> **Status:** provisional v0 target model. The complete canonical design, classifications, trust boundaries, flows, risks, and decision backlog remain in [reference architecture v0](https://github.com/maintainer/native-agent-host/blob/2292047fc1a59efb3a22e9373eba46b8599e74ca/issues/native-agent-host-architecture/reference-architecture-v0.md).
+> **Status:** provisional v0 target model, revised by the [architecture evidence synthesis](https://github.com/maintainer/native-agent-host/blob/3230e1326e2f2280c6d79ff6dc83fd2d60988137/issues/native-agent-host-architecture/synthesis-and-architecture-review.md). The complete original design, classifications, trust boundaries, flows, risks, and decision backlog remain in [reference architecture v0](https://github.com/maintainer/native-agent-host/blob/2292047fc1a59efb3a22e9373eba46b8599e74ca/issues/native-agent-host-architecture/reference-architecture-v0.md). No ADR or architecture v1 has been accepted.
 
 ## Purpose and boundary
 
@@ -14,7 +14,7 @@ Native Agent Host is a multi-user control plane for host-native AI agent session
 
 The platform must preserve durable session history beyond any process, terminal, branch, or disposable workspace. It must keep principal, tenant, session, run, resource binding, workspace, and native process identities distinct.
 
-The current model does **not** select a wire protocol, identity provider, tenancy topology, datastore, isolation technology, or final deployment decomposition. Those remain [decision gates](decisions).
+The current model does **not** select a wire protocol, identity provider, tenancy topology, datastore, isolation technology, or final deployment decomposition. Those remain [decision gates](decisions). The synthesis found no reviewed candidate that satisfies the whole need: protocols, UI event layers, runtime hosts, control planes, and complete platforms contribute different pieces and must not be ranked as substitutes.
 
 ## Authority and components
 
@@ -28,9 +28,9 @@ The provisional model separates:
 - independent **lifecycle, harness, tool, model-egress, and integration adapters**;
 - separate durable **product history** and **security/administrative audit evidence**.
 
-Actual runtime and workspace side effects remain with the existing lifecycle authority. The control plane records intent and reconciles observations; it must not infer success from dispatch or manipulate tmux/worktrees directly.
+Actual runtime and workspace side effects remain with the existing lifecycle authority. The control plane records intent and reconciles observations; it must not infer success from dispatch or manipulate tmux/worktrees directly. The named components are logical responsibilities and trust boundaries, not a required microservice decomposition; a pilot may co-locate them while preserving authoritative writers and adapter ports.
 
-Taskfleet is currently invoked by an agent as an ordinary tool inside Pi. Supporting that workflow does not itself require a Taskfleet-specific browser protocol or semantic run/worktree API: generic harness tool-call and terminal state can carry it. A dedicated orchestration surface is added only for a later product requirement for direct human orchestration outside the agent conversation. See the [epic clarification](https://github.com/maintainer/native-agent-host/blob/2552704579715cba56a289af364e2da4dc2d220b/issues/native-agent-host-architecture/item.md#comments).
+Taskfleet is currently invoked by an agent as an ordinary tool inside Pi. Supporting that workflow does not itself require a Taskfleet-specific browser protocol or semantic run/worktree API: generic harness tool-call and terminal state can carry it. The default MVP therefore keeps orchestration semantics behind the lifecycle adapter. A dedicated public orchestration surface is added only for a later named product requirement for direct human orchestration outside the agent conversation. See the [epic clarification](https://github.com/maintainer/native-agent-host/blob/2552704579715cba56a289af364e2da4dc2d220b/issues/native-agent-host-architecture/item.md#comments) and [synthesis correction](https://github.com/maintainer/native-agent-host/blob/3230e1326e2f2280c6d79ff6dc83fd2d60988137/issues/native-agent-host-architecture/synthesis-and-architecture-review.md#43-assumptions-to-revise).
 
 ## Core invariants
 
@@ -54,6 +54,12 @@ Pooled tenants and school workloads require an enforced runtime/OS isolation bou
 A durable session can span multiple runtime runs. Browsers reconnect to snapshots and durable logical positions; a disconnected browser does not determine process lifetime. Commands, input delivery, tool side effects, policy decisions, artifacts, and observations retain correlation and provenance.
 
 Timeout means **unknown**, not failed. While a non-idempotent outcome is unresolved, only proven-safe reconciliation or emergency actions proceed. Uncorrelated native resources are quarantined rather than adopted under a user or tenant.
+
+## Integration seams under evaluation
+
+Protocol choice is now separated by seam rather than treated as one universal contract: harness adapter, host connector, generic synchronized client projection, and application-specific projection. ACP, AHP, AG-UI, LangChain Agent Protocol/Streaming, and a minimal native API will be exercised against one frozen scenario suite. Any composition must justify its permanent translation, state-ownership, security, and compatibility cost. Until that evidence lands, the platform-owned identity, policy, durability, and audit core is a requirement rather than an implementation selection.
+
+The minimum normalized event model must retain source provenance, fidelity/degradation and capture gaps. It must not erase Pi commands/custom entries, ACP version-specific ownership, AG-UI interrupt semantics, or other harness-native distinctions merely to make adapters look equivalent.
 
 ## Adoption overlays
 

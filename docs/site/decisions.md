@@ -22,14 +22,19 @@ These constraints come from the [architecture epic](https://github.com/maintaine
 
 ## Open decision gates
 
-| Gate | What must be established first | Owning source |
-|---|---|---|
-| Browser-facing protocol: adopt AHP, expose an AHP adapter, reuse its information model, or remain independent | Pi/AHP mapping, competitor dossiers, interoperability need, multi-user security, durability, and walking-slice cost | [AHP analysis](https://github.com/maintainer/native-agent-host/blob/19bd88389129b7fdb0b856b10f274620a1b36524/issues/native-agent-host-architecture/research/agent-host-protocol-analysis.md) and [epic](https://github.com/maintainer/native-agent-host/blob/2552704579715cba56a289af364e2da4dc2d220b/issues/native-agent-host-architecture/item.md) |
-| Minimum session/run/event model and adapter contracts | Current-state dossiers and protocol-neutral scenarios across all adoption cases | [reference architecture decision backlog](https://github.com/maintainer/native-agent-host/blob/2292047fc1a59efb3a22e9373eba46b8599e74ca/issues/native-agent-host-architecture/reference-architecture-v0.md#18-decision-backlog-and-gates) |
-| Identity, authorization, capability grants, credential brokerage, and audit policy | Role/resource matrices, data classes, host trust topology, and threat review | [reference architecture decision backlog](https://github.com/maintainer/native-agent-host/blob/2292047fc1a59efb3a22e9373eba46b8599e74ca/issues/native-agent-host-architecture/reference-architecture-v0.md#18-decision-backlog-and-gates) |
-| Durable history, event ordering, retention, export, deletion, backup, and recovery | Harness fidelity, datastore evaluation, privacy requirements, and failure tests | [reference architecture decision backlog](https://github.com/maintainer/native-agent-host/blob/2292047fc1a59efb3a22e9373eba46b8599e74ca/issues/native-agent-host-architecture/reference-architecture-v0.md#18-decision-backlog-and-gates) |
-| Runtime isolation and tool-enforcement profiles | Actual ambient powers, data risks, performance/cost experiments, and bypass analysis | [reference architecture decision backlog](https://github.com/maintainer/native-agent-host/blob/2292047fc1a59efb3a22e9373eba46b8599e74ca/issues/native-agent-host-architecture/reference-architecture-v0.md#18-decision-backlog-and-gates) |
-| Acme tenancy/deployment and application projection | Both Creator dossiers, school requirements, Moodle flows, operations, residency, and cost | [architecture epic](https://github.com/maintainer/native-agent-host/blob/2552704579715cba56a289af364e2da4dc2d220b/issues/native-agent-host-architecture/item.md#tenancy-questions) |
-| Northwind workspace and concurrency strategy | The actual personal-clone, branch, credentials, CI, and multi-agent workflow dossier | [architecture epic](https://github.com/maintainer/native-agent-host/blob/2552704579715cba56a289af364e2da4dc2d220b/issues/native-agent-host-architecture/item.md#discovery-method) |
+The [architecture evidence synthesis](https://github.com/maintainer/native-agent-host/blob/3230e1326e2f2280c6d79ff6dc83fd2d60988137/issues/native-agent-host-architecture/synthesis-and-architecture-review.md#9-ordered-architecture-decision--adr-agenda) orders the gates and names the evidence that unlocks each ADR. Every row remains blocked; the ordering is an evidence dependency, not issue scheduling.
 
-The complete decision inventory remains in the reference architecture. This page intentionally keeps only reader-oriented gates and canonical links.
+| Order | Gate | What must be established first |
+|---:|---|---|
+| 1 | Minimum platform information model and authority map | Four current-state dossiers; common scenarios for session/run/attempt/event/artifact identity and lifecycle authority |
+| 2 | Protocol/profile by seam: harness, host connector, generic projection, and application projection | Five controlled spikes; named interoperability need; actual Pi/Claude surfaces; multi-user security, durability, compatibility, and implementation-cost evidence |
+| 3 | Identity and authorization | Adoption-case role/resource matrices, actual identity providers, cross-user/cross-tenant negative tests, live revocation and threat review |
+| 4 | Capability policy and credential brokerage | Ambient-power and credential inventories, typed-tool/approval tests, provider/model-egress constraints and broker feasibility |
+| 5 | Durable history and event semantics | Harness fidelity, reconnect/restart/workspace-removal tests, privacy/retention requirements, datastore and restore evidence |
+| 6 | Process/workspace isolation profiles | Actual data and tool risks, bypass analysis, Unix/container/VM/server experiments, performance and cost |
+| 7 | Acme tenancy and deployment topology | Both Creator dossiers and fit-gap, school/Moodle requirements, operations, residency, deletion and cost evidence |
+| 8 | Application-specific UI integration | Both Creator domain mappings, generic-versus-structured AG-UI spike, typed-tool contract and one prototype against each implementation |
+| 9 | Northwind repository/workspace strategy | Actual personal-clone, branch, credentials, CI/review and concurrent-agent workflow evidence |
+| 10 | Control-plane decomposition, availability and disaster recovery | Earlier model/protocol/storage decisions, Alder pilot measurements and explicit scale/SLO/cost targets |
+
+The MVP protocol and architecture v1 remain open. No candidate's use of the terms session, client, permission, organization, group, or workspace settles the corresponding platform decision. The complete original inventory remains in the [reference architecture backlog](https://github.com/maintainer/native-agent-host/blob/2292047fc1a59efb3a22e9373eba46b8599e74ca/issues/native-agent-host-architecture/reference-architecture-v0.md#18-decision-backlog-and-gates).
