@@ -3,7 +3,7 @@ created: 2026-09-18
 updated: 2026-09-18
 type: feature
 reporter: jari
-status: open
+status: in-progress
 priority: high
 epic: native-agent-host-architecture
 lane: unlaned
