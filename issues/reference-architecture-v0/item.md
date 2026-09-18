@@ -7,6 +7,9 @@ status: open
 priority: high
 epic: native-agent-host-architecture
 lane: architecture
+commits:
+- hash: 8d4b1ec8d771ff042daf5c985162bc7f366ae024
+  summary: 'docs: prepare initial architecture task'
 ---
 
 # Draft reference architecture v0 and project dossier template
