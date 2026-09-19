@@ -6,30 +6,36 @@
 
 **Not the source for:** Executable task state, scheduling, accepted architecture, research findings, or durable decision rationale.
 
-**Updated:** 2026-09-18
+**Updated:** 2026-09-19
 
-**Source revision:** `04319441e9a3ecce6882d04e0a7614f902afa734` (latest landed project-state baseline summarized here; not the self-referential documentation commit)
+**Source revision:** `04319441e9a3ecce6882d04e0a7614f902afa734` (latest landed evidence baseline considered in the accepted design dialogue; not the self-referential documentation commit)
 
 ## Summary
 
-The first current-state evidence wave is complete: source-grounded dossiers now describe Alder/tw/Pi/current orchestration, the Northwind developer workflow, and both Acme Creator implementations. A candidate-neutral benchmark fixture also freezes the synthetic principals, tenants, policy, repository, B1–B8 scenarios, lifecycle outcomes, evidence contracts, and safety guards needed for later comparisons.
+The first core architecture decision is now accepted. Native Agent Host will be a federated, Unix-native web projection rather than a new universal control plane. A web client connects to one or more independent servers. Each server has a shared authentication gateway and one lightweight daemon per Linux user; an administrator maps each authenticated web identity to exactly one Unix account on that server.
 
-The new evidence constrains but does not accept architecture. Alder is one trusted Unix-user domain with separate native stores; Northwind relies on personal clones and worktrees while representative developer observations remain missing; native Creator is a local unrestricted-tool application with an organization-key cloud seam; and Creator web is an existing organization-scoped browser platform with a private SSE/application runtime, deployed-source drift, and no Moodle path. Architecture remains provisional v0. No MVP protocol, school-tenancy topology, isolation profile, or architecture v1 has been selected.
+Workspaces are discovered from `~/src/*`. Agents use namespaced Pi, Claude Code or Codex resume identities. Native filesystem, Git, harness history/configuration, tmux, processes and Taskfleet remain authoritative. Agent Host discovers and joins their facts instead of duplicating them. An agent receives its Linux user's permissions and credentials; optional extensions may add guardrails but are not automatically a sandbox. The core has no platform session/workstream or tenant abstraction.
+
+The initial client surface will be a small versioned JSON/HTTP API plus one cursor-marked combined SSE feed per server. No AHP, ACP, AG-UI, Taskfleet-specific browser protocol, performance index, platform history database or broad agent taxonomy is required before a concrete need appears. The complete decision is [ADR 0001](adr-0001-unix-native-agent-host), integrated into [architecture](architecture).
 
 ## Ready to review
 
-The revision-pinned [evidence index](evidence) records each dossier's scope, direct-observation boundary, privacy exclusions, and access gaps. The [provisional architecture](architecture) integrates only the constraints those facts place on the model. The [decision gates](decisions) remain blocked, and the [proof plan](implementation) distinguishes completed current-state evidence from pending behavioral results.
+The accepted model now covers server federation, user mapping, workspace and agent identity, authority, discovery, permissions, sparse annotations and the initial browser protocol. The source-grounded current-state dossiers and candidate research remain indexed in [evidence](evidence). They continue to constrain adoption details without overriding the simpler accepted host model.
 
-The fixture's deterministic validation proves fixture integrity only. It does not show that any candidate implements a scenario, does not score B1–B8, and does not provide OS-level network confinement.
+The candidate-neutral fixture remains valid comparative infrastructure, but its own tests prove only fixture integrity. It has not established that any protocol implements B1–B8.
 
-## Decisions needed
+## Decisions still open
 
-No architecture choice is ready for acceptance. The dossier findings must first be translated through adoption fit-gap analyses and controlled behavior. In particular, an organization must not be assumed to equal a school, application path scoping must not be described as OS isolation, and harness approvals or typed tools must not be described as confinement when ambient same-user powers remain.
+Implementation choices remain for gateway authentication technology, gateway-to-daemon transport, daemon packaging, Pi discovery and process-extension contracts, exact HTTP/SSE schemas and cursor bounds, the first demonstrably necessary hierarchy annotations, adapters beyond Pi, stronger isolation if an actual workload needs it, and application-specific Northwind/Acme integration.
+
+Architecture v1 has not been declared. Tenant, credential-broker, platform-history and broad control-plane assumptions from reference architecture v0 are superseded by ADR 0001 unless a later evidence-backed decision reintroduces a narrower capability.
 
 ## Next proof
 
-Run the minimal custom API baseline against the frozen fixture, then produce three adoption fit-gap analyses: Alder, Northwind, and combined Acme with native/web divergence retained. Carry every unresolved dossier observation into those outputs. Candidate protocol spikes and ADR work follow only when the relevant [decision gate](decisions) has enough evidence.
+Build the smallest Alder walking slice: authenticate one web identity, route it to one UID-scoped daemon, list `~/src`, discover and resume one Pi agent through its native identity, return one JSON snapshot, accept one command, and stream a combined cursor-marked SSE feed. Verify that browser disconnect does not affect the agent and that SSH, tmux, Pi, Git and Taskfleet remain usable directly.
+
+Add no cache until measurement identifies a slow path, and store no annotation until a named UI or behavior cannot reconstruct the information from native sources.
 
 ## Notable limitations
 
-Alder's attached-seat and second-principal behavior, ambiguous lifecycle outcomes, and cleanup remain incompletely observed. The Northwind dossier lacks representative interviews, macOS/live-Claude observation, and a controlled concurrency exercise. Native Creator's private fork, package/deployment correspondence, and live provider/Moodle behavior were unavailable. Creator web lacked an authenticated synthetic account, host/data/log access, restore testing, and a Moodle integration path. These are unresolved access or observation gaps, not proof that the corresponding capabilities do not exist.
+Alder's attached-seat and second-principal behavior, ambiguous lifecycle outcomes and cleanup remain incompletely observed. The Northwind dossier lacks representative interviews, macOS/live-Claude observation and a controlled concurrency exercise. Native Creator's private fork, package/deployment correspondence and live provider/Moodle behavior were unavailable. Creator web lacked an authenticated synthetic account, host/data/log access, restore testing and a Moodle integration path. These are unresolved access or observation gaps, not proof that the corresponding capabilities do not exist.

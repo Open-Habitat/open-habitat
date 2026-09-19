@@ -19,6 +19,9 @@ groups:
       - slug: decisions
         title: Decisions
         desc: Accepted ADR register and open architecture decision gates.
+      - slug: adr-0001-unix-native-agent-host
+        title: ADR 0001 — Unix-native host
+        desc: Accepted federated server, Unix-user, workspace, agent discovery, and HTTP/SSE model.
 
   - label: Evidence and delivery
     members:

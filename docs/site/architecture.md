@@ -1,83 +1,101 @@
 # Architecture
 
-**Authority:** Normative integration of the current provisional reference architecture; it governs the Project View until superseded, but it is not architecture v1.
+**Authority:** Normative integration of accepted architecture decisions and remaining provisional boundaries; it governs the Project View until superseded.
 
-**Updates when:** Architecture synthesis or an accepted ADR changes the integrated model, an accepted boundary is clarified, or evidence invalidates a stated assumption.
+**Updates when:** An accepted ADR changes the integrated model, an accepted boundary is clarified, or evidence invalidates a stated assumption.
 
 **Not the source for:** Research observations, rejected alternatives, ADR rationale, implementation progress, or executable task state.
 
-> **Status:** provisional v0 target model, revised by the [architecture evidence synthesis](https://github.com/maintainer/native-agent-host/blob/3230e1326e2f2280c6d79ff6dc83fd2d60988137/issues/native-agent-host-architecture/synthesis-and-architecture-review.md). The complete original design, classifications, trust boundaries, flows, risks, and decision backlog remain in [reference architecture v0](https://github.com/maintainer/native-agent-host/blob/2292047fc1a59efb3a22e9373eba46b8599e74ca/issues/native-agent-host-architecture/reference-architecture-v0.md). No ADR or architecture v1 has been accepted.
+> **Status:** ADR 0001 establishes the core Unix-native host model. Implementation details and application integrations remain provisional; architecture v1 has not been declared. The original [reference architecture v0](https://github.com/maintainer/native-agent-host/blob/2292047fc1a59efb3a22e9373eba46b8599e74ca/issues/native-agent-host-architecture/reference-architecture-v0.md) is retained as historical design input where not superseded.
 
-## Purpose and boundary
+## Purpose
 
-Native Agent Host is a multi-user control plane for host-native AI agent sessions. Authenticated browser and application clients work through stable platform concepts while replaceable adapters isolate harnesses, host connectivity, lifecycle mechanisms, and application integrations.
+Native Agent Host gives a browser access to native AI agents running under ordinary Unix accounts on one or more servers. It adds a web projection without making SSH, tmux, native harness resume, Git, or Taskfleet secondary interfaces.
 
-The platform must preserve durable session history beyond any process, terminal, branch, or disposable workspace. It must keep principal, tenant, session, run, resource binding, workspace, and native process identities distinct.
+The architecture deliberately does not introduce a platform `session` or `workstream`. Those terms would duplicate and obscure the concrete workspace, agent, harness history, process, tmux, Git, and Taskfleet objects that already exist.
 
-The current model does **not** select a wire protocol, identity provider, tenancy topology, datastore, isolation technology, or final deployment decomposition. Those remain [decision gates](decisions). The synthesis found no reviewed candidate that satisfies the whole need: protocols, UI event layers, runtime hosts, control planes, and complete platforms contribute different pieces and must not be ranked as substitutes.
+## Accepted system shape
 
-## Authority and components
+```text
+Web client
+  ├─ Server A authentication gateway
+  │    ├─ Linux user jari → per-user daemon (UID jari)
+  │    │    └─ ~/src/* → workspaces → agents → processes
+  │    └─ Linux user kaisa → per-user daemon (UID kaisa)
+  └─ Server B authentication gateway
+       └─ mapped Linux user → per-user daemon
+```
 
-The provisional model separates:
+The client connects independently to every configured server and may combine their views. Each server remains authoritative for its own users and native state. Client loss does not affect running agents.
 
-- a **client/API boundary** for authenticated commands, queries, subscriptions, and artifacts;
-- **identity and tenant context** for stable principals, memberships, roles, and application scope;
-- a **session coordinator and event service** for durable intent, observed state, timelines, and reconnect;
-- a **policy service and credential broker** for bounded capabilities, approvals, and late secret resolution;
-- an authenticated **host gateway/connector** boundary;
-- independent **lifecycle, harness, tool, model-egress, and integration adapters**;
-- separate durable **product history** and **security/administrative audit evidence**.
+A shared lightweight gateway terminates TLS, authenticates the web identity, applies an administrator-owned mapping to exactly one Linux account on that server, and proxies HTTP and streaming connections to that user's daemon. The client never supplies a trusted Unix username. The gateway does not inspect workspaces or own agent state.
 
-Actual runtime and workspace side effects remain with the existing lifecycle authority. The control plane records intent and reconciles observations; it must not infer success from dispatch or manipulate tmux/worktrees directly. The named components are logical responsibilities and trust boundaries, not a required microservice decomposition; a pilot may co-locate them while preserving authoritative writers and adapter ports.
+One lightweight daemon runs as each Linux user. It lists and controls only what that UID can access. It discovers native state, adapts it to the web API, and launches or resumes agents with the user's ordinary permissions.
 
-Taskfleet is currently invoked by an agent as an ordinary tool inside Pi. Supporting that workflow does not itself require a Taskfleet-specific browser protocol or semantic run/worktree API: generic harness tool-call and terminal state can carry it. The default MVP therefore keeps orchestration semantics behind the lifecycle adapter. A dedicated public orchestration surface is added only for a later named product requirement for direct human orchestration outside the agent conversation. See the [epic clarification](https://github.com/maintainer/native-agent-host/blob/2552704579715cba56a289af364e2da4dc2d220b/issues/native-agent-host-architecture/item.md#comments) and [synthesis correction](https://github.com/maintainer/native-agent-host/blob/3230e1326e2f2280c6d79ff6dc83fd2d60988137/issues/native-agent-host-architecture/synthesis-and-architecture-review.md#43-assumptions-to-revise).
+The complete rationale and consequences are in [ADR 0001](adr-0001-unix-native-agent-host).
 
-## Core invariants
+## Workspaces
 
-- Clients never become lifecycle, identity, policy, or credential authorities.
-- One mutable fact has one authoritative writer; requested and observed lifecycle state stay separate.
-- Non-idempotent intent is durable before dispatch, has a distinct attempt identity, and is not blindly retried after ambiguity.
-- Host observations are authenticated but treated as evidence, not direct writes to control-plane stores.
-- Model and harness output is untrusted input to typed, policy-checked tool operations.
-- Missing tenant or resource scope fails closed.
-- Product history survives ephemeral runtime cleanup; capture gaps and unknown outcomes remain explicit.
-- Logical school tenancy is independent of pooled, dedicated, or hybrid physical deployment.
+A workspace is normally an immediate directory under `~/src`. It may be a Git repository, an ordinary directory, or an application content directory. The directory list is the primary workspace catalog; no separate registry is required to discover it.
 
-## Trust and enforcement boundaries
+An optional `.agent-host/workspace.json` may carry only workspace facts or annotations with a concrete consumer, such as schema version, stable ID, display name, or kind. Harness settings—including Pi model defaults—remain in the harness's own configuration. Runtime state, credentials, process IDs, Git facts, and duplicated native configuration do not belong in the workspace file.
 
-The v0 model distinguishes browser-to-control-plane, identity-provider, tenant-to-tenant, control-plane-to-host, harness/model-to-tool, external-provider, and product-history-to-audit boundaries. It recognizes three tool-enforcement modes: mediated and confined; mediated application tools with declared ambient host access; and observe-only. The UI and audit trail must never present an observe-only path as enforced policy.
+Git repositories, branches, worktrees and cleanup continue to use Git's normal files, paths and conventions. A worktree agent may execute outside the primary workspace directory while remaining logically associated with that workspace.
 
-Pooled tenants and school workloads require an enforced runtime/OS isolation boundary when native shell, filesystem, or network access could bypass policy. A trusted household pilot may accept declared ambient powers, but it cannot claim stronger isolation than it enforces.
+## Agents and hierarchy
 
-## Session and failure model
+An agent is a persistent logical entity whose primary identity is its harness's native resume/continue identity, namespaced by harness—for example `pi:<id>`, `claude-code:<id>`, or `codex:<id>`. The native history file is authoritative for the conversation, model changes and resume state. A process is a temporary incarnation of an agent.
 
-A durable session can span multiple runtime runs. Browsers reconnect to snapshots and durable logical positions; a disconnected browser does not determine process lifetime. Commands, input delivery, tool side effects, policy decisions, artifacts, and observations retain correlation and provenance.
+The daemon joins native history with live process, tmux, Git, Taskfleet and extension observations. Taskfleet run/node IDs, PIDs, panes, branches, worktrees and current model are discovered bindings rather than replacement agent identities.
 
-Timeout means **unknown**, not failed. While a non-idempotent outcome is unresolved, only proven-safe reconciliation or emergency actions proceed. Uncorrelated native resources are quarantined rather than adopted under a user or tenant.
+The UI is expected to grow a workspace-local agent tree: a designated main agent, peer or externally started roots, same-workspace side agents, and worktree children. This taxonomy is intentionally not frozen before concrete UI behavior requires it. Parent or presentation annotations are stored only when they cannot be reconstructed reliably and have a named consumer. A Pi extension can capture parentage when a main agent launches Taskfleet as an ordinary tool even if Taskfleet records that run as top-level.
 
-## Current-state constraints on the provisional model
+## Discover rather than duplicate
 
-The landed dossiers constrain the model without accepting a target design. Their evidence modes differ and remain explicit:
+Native Agent Host is primarily a discoverer, adapter, event forwarder and thin command executor:
 
-- **Alder — direct host/worker observation plus source:** one trusted Unix security domain was observed. Pi conversations, Taskfleet runs, Git state, tmux processes, and workspaces have separate native identities and stores; the dossier infers that no product record currently joins them. The observed shell/extensions have ambient same-user authority. This does not select a datastore or isolation mechanism.
-- **Northwind development — source/configuration plus one metadata snapshot:** persistent personal clones, local tools and quality gates are the documented workflow. Separate Git worktrees are the documented collision boundary for concurrent agents, while credentials, process space, ports, caches, the object database, and stash can remain shared. Representative interviews and live concurrency observations were unavailable, so this evidence does not authorize replacing personal-clone practice with managed workspaces.
-- **Native Creator — source-only evidence:** the inspected design is a local, single-OS-user TUI with unrestricted local file, shell, and web tools. Its Acme bearer key narrows access to an organization-scoped cloud/model and publish seam, but it is not evidenced as an application user, school, or complete tenant identity. The private fork and deployed package were not directly inspected.
-- **Creator web — source plus safe production metadata observation:** the implementation supplies browser identity, organization memberships and roles, org-scoped workspaces, durable drafts/jobs, and an application-specific agent projection over private REST/SSE. Source shows pooled application/path isolation rather than per-tenant OS isolation. Production metadata showed deployed services lagging inspected source; bounded source inspection found no Moodle launch, mapping, or publish edge in this Creator path.
+- `~/src/*` owns the workspace list;
+- Unix owns users, groups, processes and permissions;
+- Git owns repositories, branches and worktrees;
+- Pi, Claude Code and Codex own native histories, model state and resume identities;
+- tmux owns terminal attachment and retained pane output;
+- Taskfleet owns run, node, worktree and lifecycle metadata;
+- harness extensions own any subprocess inventory and output they expose.
 
-**Integrated inference:** these differences rule out assuming one universal session/workspace mapping and require later fit-gap work to preserve native authority and vocabulary. They do not select an MVP protocol, normalize an organization into a school, accept pooled or dedicated topology, or make either Creator implementation authoritative for the other.
+No derived cache is required initially. A performance index may be introduced only after measuring a slow path, and must remain disposable and rebuildable. Agent Host persists only sparse, versioned annotations that cannot be discovered and are required by identified UI or behavior.
 
-## Integration seams under evaluation
+## Permissions and processes
 
-Protocol choice is separated by seam rather than treated as one universal contract: harness adapter, host connector, generic synchronized client projection, and application-specific projection. ACP, AHP, AG-UI, LangChain Agent Protocol/Streaming, and a minimal native API will be exercised against one frozen scenario suite. The candidate-neutral fixture now pins the common inputs and evidence contracts, but its self-tests prove only fixture integrity. Any composition must justify its permanent translation, state-ownership, security, and compatibility cost. Until behavioral evidence lands, the platform-owned identity, policy, durability, and audit core is a requirement rather than an implementation selection.
+An agent has the same permissions and credentials as its Linux user. Unix account and filesystem separation are the security boundary. Native Agent Host does not add a credential broker or claim universal per-tool confinement.
 
-The minimum normalized event model must retain source provenance, fidelity/degradation and capture gaps. It must not erase Pi commands/custom entries, ACP version-specific ownership, AG-UI interrupt semantics, or other harness-native distinctions merely to make adapters look equivalent.
+Users or administrators may install Pi or other harness extensions that add approvals or restrictions. Unless backed by a separate enforcement boundary, these are same-UID guardrails and the UI must describe them honestly.
 
-## Adoption overlays
+Each agent manages the subprocesses it starts. A Pi extension may expose process identity, status, retained output, exit state and stop controls to the daemon. Existing tmux-backed process handling should be reused where it already preserves complete output rather than replaced by a parallel process store.
 
-The same control-plane concepts must be tested, not assumed, across:
+## No core tenant model
 
-1. **Alder:** Jari and Kaisa as distinct principals with declared capability differences and durable history over the existing Pi/tw environment.
-2. **Northwind:** per-developer identity and repository/workspace strategies that do not impose Alder-specific worktrees on personal-clone workflows.
-3. **Acme Creator:** school tenants, Moodle integrations, richer typed tools, application-specific clients, and evidence-based pooled/dedicated/hybrid deployment choices.
+A server contains Unix users, not Native Agent Host tenants. Strong school separation can use separate servers or deployments. Future shared workspaces may use Unix groups and filesystem permissions. Application concepts such as a Acme organization remain application-owned and do not become a core tenant merely by name.
 
-The required source-grounded dossiers have landed and are indexed in [evidence](evidence). Their access gaps and the still-pending fit-gap work are tracked as [implementation proofs](implementation); the adoption mappings therefore remain hypotheses.
+## Client–daemon protocol
+
+The initial public surface is a small versioned JSON/HTTP API:
+
+- snapshots and queries over HTTP GET;
+- commands over HTTP POST;
+- one cursor-marked SSE feed per server, combining workspace, agent, process and output events for that user;
+- reconnect from a retained cursor when possible, otherwise a fresh authoritative snapshot.
+
+The client can maintain one connection per configured server and merge presentation locally without becoming state authority. Feed partitioning, caches and broader protocols are added only after a measured need. AHP, ACP, AG-UI, or a semantic Taskfleet browser protocol is not required for the core path.
+
+## Current-state fit
+
+- **Alder:** already uses one trusted Unix security domain per user, native Pi histories, tmux, Git and Taskfleet. The accepted model exposes these rather than wrapping them in a second control plane.
+- **Northwind:** keeps personal clones and normal Git/worktree practices. A future server can project each developer's Unix account without imposing a central managed-workspace abstraction.
+- **Native Creator:** already behaves as a local single-user harness over a content directory and can fit a non-Git workspace.
+- **Creator web:** remains an application-specific browser platform with its own organization and workspace concepts. Integration is a later application decision, not a reason to add tenants to the core host.
+
+The revision-pinned dossiers and their access limitations remain indexed in [evidence](evidence).
+
+## Open design work
+
+The next architecture work concerns gateway authentication technology, daemon packaging, Pi discovery and process-extension contracts, exact HTTP/SSE schemas and cursor bounds, sparse annotation formats, harness adapters beyond Pi, and application/adoption fit. These gates are tracked in [decisions](decisions) and proved through [implementation](implementation).

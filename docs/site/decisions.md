@@ -8,33 +8,38 @@
 
 ## Accepted ADRs
 
-No architecture ADR has been accepted yet. Do not create placeholder ADRs. When a decision is accepted, its top-level `adr-NNNN-<slug>.md` page owns the choice, rationale, consequences, and rejected alternatives; this register receives one link and [architecture](architecture) integrates the current result.
+| ADR | Decision | Status |
+|---|---|---|
+| [ADR 0001 — Use a federated Unix-native agent host](adr-0001-unix-native-agent-host) | Web clients federate independent servers; one daemon runs per Linux user behind a shared identity gateway; workspaces, agents, permissions and history remain native and discoverable; the first projection is JSON/HTTP plus SSE | Accepted |
 
-## Current v0 boundaries
+## Current accepted boundaries
 
-These constraints come from the [architecture epic](https://github.com/maintainer/native-agent-host/blob/2552704579715cba56a289af364e2da4dc2d220b/issues/native-agent-host-architecture/item.md) and provisional [reference architecture v0](https://github.com/maintainer/native-agent-host/blob/2292047fc1a59efb3a22e9373eba46b8599e74ca/issues/native-agent-host-architecture/reference-architecture-v0.md), not from ADRs:
+ADR 0001 establishes that:
 
-- preserve the existing lifecycle authority behind an adapter initially;
-- keep harness and lifecycle integration independently addressable;
-- keep identity, authorization, tenant scope, policy, credentials, durable history, and audit as platform concerns;
-- do not require a semantic Taskfleet browser protocol merely to display Taskfleet invoked as a Pi tool;
-- treat logical tenancy independently of physical deployment.
+- a Linux account is the server security principal, and one web identity maps to one Unix account per server;
+- the browser projects one or more independent servers and never owns their state;
+- workspaces are discovered primarily from `~/src/*`;
+- agents use namespaced native harness resume identities;
+- native filesystem, Git, harness, tmux, process and Taskfleet facts are discovered rather than duplicated;
+- an agent has its Unix user's ambient permissions and credentials; extensions may add guardrails but are not automatically a sandbox;
+- the core has no platform session/workstream or tenant object;
+- the initial client API is small versioned JSON/HTTP plus a cursor-marked combined SSE feed;
+- Taskfleet normally remains an ordinary Pi tool rather than a dedicated browser protocol.
 
 ## Open decision gates
 
-The [architecture evidence synthesis](https://github.com/maintainer/native-agent-host/blob/3230e1326e2f2280c6d79ff6dc83fd2d60988137/issues/native-agent-host-architecture/synthesis-and-architecture-review.md#9-ordered-architecture-decision--adr-agenda) orders the gates and names the evidence that unlocks each ADR. The four current-state dossiers now supply bounded inputs, and the candidate-neutral fixture supplies common scenarios and evidence contracts. They do not close any gate: each row remains blocked by the behavioral, fit-gap, access, or decision-specific evidence named below. The ordering is an evidence dependency, not issue scheduling.
+ADR 0001 closes the core host information-model and projection direction. The remaining gates are narrower implementation and application decisions. The ordering below is an evidence dependency, not issue scheduling.
 
 | Order | Gate | What must be established first |
 |---:|---|---|
-| 1 | Minimum platform information model and authority map | Apply the four current-state identity/cardinality/authority findings to the common session/run/attempt/event/artifact scenarios; resolve material dossier access gaps |
-| 2 | Protocol/profile by seam: harness, host connector, generic projection, and application projection | Five controlled spikes; named interoperability need; actual Pi/Claude surfaces; multi-user security, durability, compatibility, and implementation-cost evidence |
-| 3 | Identity and authorization | Adoption-case role/resource matrices, actual identity providers, cross-user/cross-tenant negative tests, live revocation and threat review |
-| 4 | Capability policy and credential brokerage | Ambient-power and credential inventories, typed-tool/approval tests, provider/model-egress constraints and broker feasibility |
-| 5 | Durable history and event semantics | Harness fidelity, reconnect/restart/workspace-removal tests, privacy/retention requirements, datastore and restore evidence |
-| 6 | Process/workspace isolation profiles | Actual data and tool risks, bypass analysis, Unix/container/VM/server experiments, performance and cost |
-| 7 | Acme tenancy and deployment topology | Combined fit-gap over both landed Creator dossiers; school/Moodle requirements; operations, residency, deletion, restore and cost evidence; resolution of source/deployment gaps |
-| 8 | Application-specific UI integration | Cross-implementation domain mapping from both landed dossiers, generic-versus-structured AG-UI spike, typed-tool contract and one prototype against each implementation |
-| 9 | Northwind repository/workspace strategy | Representative developer evidence and concurrency exercise extending the landed personal-clone/worktree, credential and CI/review source model |
-| 10 | Control-plane decomposition, availability and disaster recovery | Earlier model/protocol/storage decisions, Alder pilot measurements and explicit scale/SLO/cost targets |
+| 1 | Gateway authentication and per-user daemon transport | Select the authentication mechanism, administrator-owned web-identity→UID mapping, Unix-socket boundary, failure behavior and deployment packaging |
+| 2 | Agent discovery and process-extension contract | Prototype Pi discovery, native resume, live status, subprocess/output exposure, Taskfleet correlation and degraded operation without extensions |
+| 3 | HTTP/SSE API details | Walking slice for snapshot, commands and one combined feed; cursor retention, resnapshot, cancellation, backpressure and schema-version behavior |
+| 4 | Sparse annotation and workspace metadata formats | Demonstrate the first non-discoverable UI need; define `.agent-host/workspace.json` and per-agent annotation ownership without duplicating native facts |
+| 5 | Harness adapters beyond Pi | Establish Claude Code and Codex history, resume, model, process and event surfaces only when required by an adoption slice |
+| 6 | Unix-group collaboration or stronger isolation | Concrete shared-workspace requirement or workload whose risk exceeds the accepted same-UID model |
+| 7 | Acme integration and deployment | Combined fit-gap over both Creator implementations; decide separate-server deployment, application organization mapping, Moodle path and application-specific UI |
+| 8 | Northwind adoption model | Representative developer evidence and a pilot that preserves personal-clone, worktree, credential and CI/review practices |
+| 9 | Availability, backup and recovery | Alder walking-slice measurements plus explicit history, restore, SLO and operational requirements |
 
-The MVP protocol and architecture v1 remain open. No candidate's use of the terms session, client, permission, organization, group, or workspace settles the corresponding platform decision. The complete original inventory remains in the [reference architecture backlog](https://github.com/maintainer/native-agent-host/blob/2292047fc1a59efb3a22e9373eba46b8599e74ca/issues/native-agent-host-architecture/reference-architecture-v0.md#18-decision-backlog-and-gates).
+Architecture v1 remains open until the accepted Unix-native model has a walking implementation and the remaining application/adoption gates are resolved. The original [reference architecture backlog](https://github.com/maintainer/native-agent-host/blob/2292047fc1a59efb3a22e9373eba46b8599e74ca/issues/native-agent-host-architecture/reference-architecture-v0.md#18-decision-backlog-and-gates) is historical input where ADR 0001 has superseded its session, tenant, credential-broker, platform-history and broad-control-plane assumptions.
