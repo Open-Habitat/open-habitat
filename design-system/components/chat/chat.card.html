@@ -1,0 +1,50 @@
+<!-- @dsCard group="Components" viewport="700x300" name="Chat — TopBar, Message, Composer, Banner" subtitle="Keskustelunäkymän rakenne" -->
+<!DOCTYPE html>
+<html lang="fi"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>body{margin:0;padding:16px;background:var(--ah-bg);font-family:var(--ah-font);color:var(--ah-ink)}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:7px;border-radius:var(--ah-r-md);font:500 var(--ah-size-ui) var(--ah-font);padding:8px 16px;cursor:pointer}
+.k{font:400 11px var(--ah-mono);color:var(--ah-muted)}
+.lbl{font:500 11px var(--ah-font);letter-spacing:.07em;text-transform:uppercase;color:var(--ah-muted)}
+.card{background:var(--ah-surface);border:1px solid var(--ah-line);border-radius:var(--ah-r-lg)}
+</style></head><body>
+<div class="col" style="gap:14px">
+  <div class="card" style="display:flex;align-items:flex-start;gap:12px;padding:12px 16px">
+    <div style="flex:1">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font:600 15px var(--ah-font)">Workspace-listauksen toteutus</span>
+        <span style="display:inline-flex;align-items:center;gap:6px;background:var(--ah-accent-soft);color:var(--ah-accent-ink);border:1px solid var(--ah-accent-line);border-radius:var(--ah-r-pill);padding:3px 10px;font:500 12px var(--ah-font)"><span style="width:7px;height:7px;border-radius:99px;background:var(--ah-accent);animation:ah-pulse var(--ah-pulse)"></span>Työskentelee</span>
+      </div>
+      <div style="font:400 11.5px var(--ah-mono);color:var(--ah-muted);margin-top:3px">native-agent-host</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+      <span style="width:8px;height:8px;border-radius:99px;background:var(--ah-ok)"></span>
+      <span style="display:flex;align-items:flex-end;gap:2px;height:11px">
+        <span style="width:3px;height:3px;border-radius:1px;background:var(--ah-ink-2)"></span>
+        <span style="width:3px;height:5px;border-radius:1px;background:var(--ah-ink-2)"></span>
+        <span style="width:3px;height:7px;border-radius:1px;background:var(--ah-line)"></span>
+        <span style="width:3px;height:9px;border-radius:1px;background:var(--ah-line)"></span>
+        <span style="width:3px;height:11px;border-radius:1px;background:var(--ah-line)"></span>
+      </span>
+    </div>
+  </div>
+  <div class="col" style="gap:5px">
+    <div class="row" style="gap:6px"><span class="lbl">Jari · 14.02</span><span style="color:var(--ah-faint)">⧉</span></div>
+    <div class="card" style="padding:10px 14px;font-size:14.5px;max-width:78%">Näytä ~/src-hakemistot workspace-listassa.</div>
+  </div>
+  <div class="card" style="display:flex;align-items:center;gap:9px;background:var(--ah-err-soft);border-color:var(--ah-err-line);padding:9px 11px;font-size:13px;color:var(--ah-err)">
+    <span style="width:8px;height:8px;border-radius:99px;background:var(--ah-err)"></span>Yhteys poikki — tiedot ovat klo 14.03 tilanteesta
+    <span class="btn" style="margin-left:auto;background:var(--ah-surface);color:var(--ah-ink);border:1px solid var(--ah-err-line);padding:4px 10px;font-size:12px">Yhdistä</span>
+  </div>
+  <div class="card" style="padding:12px 14px">
+    <div style="border:1px solid var(--ah-line);border-radius:var(--ah-r-lg);padding:10px 12px;background:var(--ah-surface-2);font-size:14.5px;color:var(--ah-faint)">Kirjoita viesti — Enter lähettää, Shift+Enter rivinvaihto</div>
+    <div class="row" style="margin-top:9px">
+      <span class="btn" style="background:var(--ah-surface);border:1px solid var(--ah-err-line);padding:6px 12px;font-size:13px">Keskeytä <span class="k">Esc Esc</span></span>
+      <span style="color:var(--ah-muted);font-size:12.5px">Enter lähettää jonoon · ⌘+Enter lähettää heti</span>
+      <span class="btn" style="margin-left:auto;background:var(--ah-accent);color:var(--ah-on-accent);border:1px solid var(--ah-accent)">Lähetä jonoon <span class="k" style="color:inherit;opacity:.8">⏎</span></span>
+    </div>
+  </div>
+</div>
+</body></html>

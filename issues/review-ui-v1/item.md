@@ -38,3 +38,17 @@ parallel history store, credential broker, internal tenant model or speculative 
 - [ ] Walk through sending, resume, read-only agents, grouped tools, diffs, copy, supported questions, interruption and uncertain sends/reconnect.
 - [ ] Record requested corrections, their resolution and explicit user acceptance of the implementation target.
 - [ ] Record chosen UI components and unresolved adapter requirements; a mock does not prove Pi integration.
+
+## Comments
+
+### 2026-09-20T08:34:12Z · @pi
+
+Keskustelun v0.1-aineisto on vastaanotettu projektin juuren design-system/-hakemistoon ja alustava arvio tiedostoon ../receive-designer-v1/review.md. Katselmoinnissa päätettävät poikkeamat ovat erityisesti desktop-first ilman mobiilivedoksia, viestijono ja kesken vuoron ohjaus, automaattinen otsikointi sekä komponenttien saavutettavuus ennen tuotantokäyttöä. Paketin 1 päivitetty toimeksianto ja v2-zip käyttävät visuaalista suuntaa, mutta eivät tee näistä avoimista ehdotuksista backend-vaatimuksia.
+
+### 2026-09-20T08:38:03Z · @pi
+
+Design system siirrettiin vastaanotto-issuen alta projektin pysyväksi juuritason hakemistoksi design-system/. Issueen jäi alkuperäinen zip, checksumit ja vastaanottoarvio. Käytä katselmoinnissa ja myöhemmässä UI-työssä juuritason design-system/ polkua.
+
+### 2026-09-20T08:51:55Z · @pi
+
+Jarin palautteen perusteella design system erotettiin ensimmäisen keskusteludesignin aineistosta. Juuritason design-system/ sisältää nyt vain yhteiset tokenit, visuaaliset käyttökortit ja komponenttireferenssit. Vedokset, staattinen keskusteluprototyyppi ja toimituksen toimeksiantokopiot ovat issues/receive-designer-v1/design/-hakemistossa. Design systemin AGENTS.md viittaa arkkitehtuuridokumentteihin ja styles.css:ään eikä enää kopioi tuotteen kuvausta, tokeniarvoja tai näkymäkohtaisia sisältösääntöjä.

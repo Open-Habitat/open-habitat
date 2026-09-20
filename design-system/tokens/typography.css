@@ -1,0 +1,22 @@
+/* Typografia. Instrument Sans käyttöliittymään, JetBrains Mono kaikkeen
+   konekieliseen: polut, komennot, diff, exit-koodit, tunnisteet. */
+
+@import url("https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  --ah-font: "Instrument Sans", system-ui, -apple-system, sans-serif;
+  --ah-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --ah-size-h1: 30px;
+  --ah-size-h2: 16px;
+  --ah-size-title: 15px;
+  --ah-size-body: 14.5px;
+  --ah-size-ui: 13.5px;
+  --ah-size-meta: 12.5px;
+  --ah-size-label: 11px;
+  --ah-size-code: 12.5px;
+
+  --ah-lh-body: 1.6;
+  --ah-lh-ui: 1.55;
+  --ah-measure: 70ch;
+}

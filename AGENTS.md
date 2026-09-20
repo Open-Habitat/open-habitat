@@ -22,6 +22,18 @@ Every directory follows this structure:
 Exception: `docs/site/` is the complete publishable Glasspad space. It contains no
 agent instruction files or symlinks; `docs/AGENTS.md` governs it from one level up.
 
+## UI design
+
+The shared UI tokens, guidelines and component references live under
+`design-system/`; read that directory's `AGENTS.md` before UI work. The first
+conversation design and clickable prototypes live under
+`issues/receive-designer-v1/design/` and remain under Jari's review.
+
+Treat the included JSX as design reference, not chosen production architecture.
+Do not turn prototype behavior into v1 requirements until the review and Pi
+adapter probe explicitly accept it. Current design work is desktop-first; revisit
+mobile after a working desktop version.
+
 ## Issues & Planning
 
 Issue tracking is managed by [`issuectl`](https://github.com/example-org/issuectl). Use the `/issue` skill (installed by `issuectl init`) to create, search, update, and close issues.

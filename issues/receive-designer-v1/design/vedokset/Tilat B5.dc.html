@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#e9ebee; }
+  :root {
+    --bg:#f6f7f8; --surface:#ffffff; --surface-2:#fbfcfd; --line:#e2e6e9; --line-soft:#eef0f3;
+    --ink:#16191d; --ink-2:#3d434b; --muted:#61676f; --faint:#6b7178;
+    --acc:#2b7f8c; --acc-ink:#1d5f69; --acc-soft:#e6f1f3; --acc-line:#cfe3e6; --on-acc:#ffffff;
+    --err:#a3412b; --err-soft:#fdf1ee; --err-line:#f3d7d0;
+    --ok:#2f7a55; --ok-soft:#eef7f1;
+  }
+  [data-theme="dark"] {
+    --bg:#14171a; --surface:#1b1f23; --surface-2:#171a1e; --line:#2a3036; --line-soft:#232830;
+    --ink:#e6e9ec; --ink-2:#c5cad0; --muted:#98a0a8; --faint:#949ca6;
+    --acc:#4fa6b4; --acc-ink:#9fd4dd; --acc-soft:#173137; --acc-line:#2c4a52; --on-acc:#0f1417;
+    --err:#e8a08a; --err-soft:#261c1b; --err-line:#4a2e28;
+    --ok:#8fcfa8; --ok-soft:#1b2721;
+  }
+  @keyframes p { 0%,100%{opacity:1} 50%{opacity:.3} }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important } }
+  a { color:#2b7f8c } a:hover { color:#1d5f69 }
+</style>
+</helmet>
+
+<div data-theme="{{ theme }}" style="font-family:'Instrument Sans',system-ui,sans-serif; color:var(--ink); background:var(--bg); padding:36px 28px 72px; display:flex; flex-direction:column; align-items:center; gap:34px">
+
+  <div style="width:100%; max-width:1080px; display:flex; flex-direction:column; gap:8px">
+    <div style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.09em; text-transform:uppercase; color:var(--muted)">Agent Host · keskustelu v1 · tilavedokset</div>
+    <h1 style="margin:0; font:600 28px 'Instrument Sans',sans-serif; letter-spacing:-.015em">B5a–B5f · työkalujen toiminta</h1>
+    <p style="margin:0; max-width:72ch; font-size:14.5px; line-height:1.6; color:var(--ink-2); text-wrap:pretty">Esitystapa valitaan sisällön mukaan, ei työkalun mukaan. Design system sisältää tätä tuotetta varten laaditut tiiviit työkalurivit ja -ryhmät, koodilohkot sekä käyttäjäpyynnön. Ulkopuolista komponenttikirjastoa tai sen lähdekoodia ei ole sisällytetty.</p>
+  </div>
+
+  <div style="width:100%; max-width:1080px; display:flex; justify-content:flex-end; margin-top:-18px">
+    <button style="border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:8px; padding:6px 12px; font:500 12.5px 'Instrument Sans',sans-serif; cursor:pointer; white-space:nowrap" onClick="{{ toggleTheme }}">{{ themeLabel }}</button>
+  </div>
+
+  <!-- B5a -->
+  <div style="width:100%; max-width:1080px; display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:baseline; gap:12px; border-bottom:1px solid var(--line); padding-bottom:10px">
+      <span style="font:600 12px 'JetBrains Mono',monospace; background:var(--ink); color:var(--bg); padding:3px 7px; border-radius:5px">B5a</span>
+      <span style="font:600 16px 'Instrument Sans',sans-serif">Yksi luku ja 15 luvun ryhmä</span>
+      <span style="font-size:13px; color:var(--muted)">Tool Chips · Task Rows</span>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:14px">
+
+      <div style="flex:1 1 300px; display:flex; flex-direction:column; gap:6px">
+        <div style="font:500 12px 'Instrument Sans',sans-serif; color:var(--muted)">Yksittäinen tiedostoluku</div>
+        <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:9px 12px; display:flex; align-items:center; gap:10px; font-size:13.5px">
+          <span style="color:var(--ok)">✓</span>
+          <span style="font:400 12.5px 'JetBrains Mono',monospace; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">src/workspaces.ts</span>
+          <span style="font-size:12.5px; color:var(--faint)">142 riviä</span>
+        </div>
+        <div style="font-size:12.5px; color:var(--muted); line-height:1.5">Yksi kutsu ei tarvitse korttia — rivi riittää.</div>
+      </div>
+
+      <div style="flex:1 1 300px; display:flex; flex-direction:column; gap:6px">
+        <div style="font:500 12px 'Instrument Sans',sans-serif; color:var(--muted)">Ryhmä suljettuna</div>
+        <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:9px 12px; display:flex; align-items:center; gap:10px; font-size:13.5px">
+          <span style="font:400 11px 'JetBrains Mono',monospace; color:var(--muted)">▸</span>
+          <span style="font-weight:500; flex:1">Luettu 15 tiedostoa</span>
+          <span style="font-size:12.5px; color:var(--ok)">✓ 15/15</span>
+          <span style="font-size:12.5px; color:var(--faint)">2,4 s · rinnakkain</span>
+        </div>
+        <div style="font-size:12.5px; color:var(--muted); line-height:1.5">Yhteenveto kertoo määrän, tilan, keston ja rinnakkaisuuden — vain jos lähde antaa ne.</div>
+      </div>
+
+      <div style="flex:1 1 420px; display:flex; flex-direction:column; gap:6px">
+        <div style="font:500 12px 'Instrument Sans',sans-serif; color:var(--muted)">Ryhmä avattuna</div>
+        <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; overflow:hidden">
+          <div style="display:flex; align-items:center; gap:10px; padding:9px 12px; font-size:13.5px; border-bottom:1px solid var(--line-soft)">
+            <span style="font:400 11px 'JetBrains Mono',monospace; color:var(--muted)">▾</span>
+            <span style="font-weight:500; flex:1">Luettu 15 tiedostoa</span>
+            <span style="font-size:12.5px; color:var(--ok)">✓ 15/15</span>
+          </div>
+          <div style="font:400 12.5px 'JetBrains Mono',monospace; color:var(--ink-2)">
+            <div style="display:flex; gap:10px; padding:5px 12px"><span style="color:var(--ok)">✓</span>src/workspaces.ts<span style="margin-left:auto; color:var(--faint)">142 riviä</span></div>
+            <div style="display:flex; gap:10px; padding:5px 12px"><span style="color:var(--ok)">✓</span>src/routes/workspaces.get.ts<span style="margin-left:auto; color:var(--faint)">88 riviä</span></div>
+            <div style="display:flex; gap:10px; padding:5px 12px"><span style="color:var(--ok)">✓</span>src/fs/scan.ts<span style="margin-left:auto; color:var(--faint)">61 riviä</span></div>
+            <div style="display:flex; gap:10px; padding:5px 12px"><span style="color:var(--ok)">✓</span>src/git/isRepo.ts<span style="margin-left:auto; color:var(--faint)">34 riviä</span></div>
+            <div style="padding:5px 12px 9px; color:var(--faint)">+ 11 muuta — järjestys säilyy tarkasteltavana</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B5b -->
+  <div style="width:100%; max-width:1080px; display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:baseline; gap:12px; border-bottom:1px solid var(--line); padding-bottom:10px">
+      <span style="font:600 12px 'JetBrains Mono',monospace; background:var(--ink); color:var(--bg); padding:3px 7px; border-radius:5px">B5b</span>
+      <span style="font:600 16px 'Instrument Sans',sans-serif">Ryhmä, jossa on eri tiloja</span>
+      <span style="font-size:13px; color:var(--muted)">Virhe näkyy myös suljettuna</span>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:14px">
+      <div style="flex:1 1 340px; display:flex; flex-direction:column; gap:6px">
+        <div style="font:500 12px 'Instrument Sans',sans-serif; color:var(--muted)">Suljettuna — otsikko kantaa poikkeamat</div>
+        <div style="background:var(--surface); border:1px solid var(--err-line); border-radius:10px; padding:9px 12px; display:flex; align-items:center; gap:10px; font-size:13.5px">
+          <span style="font:400 11px 'JetBrains Mono',monospace; color:var(--muted)">▸</span>
+          <span style="font-weight:500; flex:1">Muokataan 3 tiedostoa</span>
+          <span style="display:inline-flex; align-items:center; gap:5px; font-size:12.5px; color:var(--acc-ink)"><span style="width:6px; height:6px; border-radius:99px; background:var(--acc); animation:p 2.4s ease-in-out infinite"></span>1</span>
+          <span style="font-size:12.5px; color:var(--err)">✕ 1</span>
+          <span style="font-size:12.5px; color:var(--muted)">⃠ 1</span>
+        </div>
+      </div>
+      <div style="flex:1 1 480px; display:flex; flex-direction:column; gap:6px">
+        <div style="font:500 12px 'Instrument Sans',sans-serif; color:var(--muted)">Avattuna — jokainen kutsu omana rivinään</div>
+        <div style="background:var(--surface); border:1px solid var(--err-line); border-radius:10px; overflow:hidden">
+          <div style="display:flex; align-items:center; gap:10px; padding:9px 12px; font-size:13.5px; border-bottom:1px solid var(--line-soft)">
+            <span style="font:400 11px 'JetBrains Mono',monospace; color:var(--muted)">▾</span>
+            <span style="font-weight:500; flex:1">Muokataan 3 tiedostoa</span>
+            <span style="font-size:12.5px; color:var(--faint)">rinnakkain</span>
+          </div>
+          <div style="font:400 12.5px 'JetBrains Mono',monospace; color:var(--ink-2)">
+            <div style="display:flex; gap:10px; align-items:center; padding:6px 12px"><span style="width:6px; height:6px; border-radius:99px; background:var(--acc); animation:p 2.4s ease-in-out infinite"></span>src/workspaces.ts<span style="margin-left:auto; font-family:'Instrument Sans',sans-serif; font-size:12.5px; color:var(--acc-ink)">Työskentelee</span></div>
+            <div style="display:flex; gap:10px; align-items:center; padding:6px 12px; background:var(--err-soft)"><span style="color:var(--err)">✕</span>src/fs/scan.ts<span style="margin-left:auto; font-family:'Instrument Sans',sans-serif; font-size:12.5px; color:var(--err)">Virhe · ENOENT</span></div>
+            <div style="display:flex; gap:10px; align-items:center; padding:6px 12px; color:var(--muted)"><span>⃠</span>src/git/isRepo.ts<span style="margin-left:auto; font-family:'Instrument Sans',sans-serif; font-size:12.5px">Keskeytetty</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B5c -->
+  <div style="width:100%; max-width:1080px; display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:baseline; gap:12px; border-bottom:1px solid var(--line); padding-bottom:10px">
+      <span style="font:600 12px 'JetBrains Mono',monospace; background:var(--ink); color:var(--bg); padding:3px 7px; border-radius:5px">B5c</span>
+      <span style="font:600 16px 'Instrument Sans',sans-serif">Haku, shell-komento ja diff</span>
+      <span style="font-size:13px; color:var(--muted)">Code Block · myös muutos ilman diff-tietoa</span>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:14px">
+
+      <div style="flex:1 1 420px; display:flex; flex-direction:column; gap:14px">
+        <div style="display:flex; flex-direction:column; gap:6px">
+          <div style="font:500 12px 'Instrument Sans',sans-serif; color:var(--muted)">Haku</div>
+          <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:9px 12px; display:flex; align-items:center; gap:10px; font-size:13.5px">
+            <span style="font-weight:500">Haku</span>
+            <span style="font:400 12.5px 'JetBrains Mono',monospace; background:var(--surface-2); border:1px solid var(--line-soft); border-radius:5px; padding:1px 6px">readdir(</span>
+            <span style="font-size:12.5px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap">scan.ts:24, workspaces.ts:81 …</span>
+            <span style="margin-left:auto; font-size:12.5px; color:var(--ok)">✓ 7</span>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px">
+          <div style="font:500 12px 'Instrument Sans',sans-serif; color:var(--muted)">Shell-komento, epäonnistunut</div>
+          <div style="background:var(--err-soft); border:1px solid var(--err-line); border-radius:10px; overflow:hidden">
+            <div style="display:flex; align-items:center; gap:10px; padding:9px 12px; font-size:13.5px">
+              <span style="font:400 11px 'JetBrains Mono',monospace; color:var(--muted)">▾</span>
+              <span style="font:400 12.5px 'JetBrains Mono',monospace; flex:1">$ npm run test:workspaces</span>
+              <span style="font:500 12.5px 'Instrument Sans',sans-serif; color:var(--err)">✕ exit 1</span>
+            </div>
+            <pre style="margin:0; border-top:1px solid var(--err-line); padding:10px 12px; background:var(--surface); font:400 12.5px 'JetBrains Mono',monospace; line-height:1.55; color:var(--ink-2); white-space:pre-wrap">FAIL  test/workspaces.spec.ts
+  ● listWorkspaces › palauttaa ~/src-hakemistot
+    TypeError: scanDir is not a function</pre>
+            <div style="display:flex; align-items:center; gap:10px; padding:6px 12px; background:var(--surface); border-top:1px solid var(--line-soft); font-size:12px; color:var(--faint)">
+              <span>Lähteen säilyttämä output, 18 riviä</span>
+              <button style="margin-left:auto; border:0; background:transparent; color:var(--muted); font:500 12px 'Instrument Sans',sans-serif; cursor:pointer" onClick="{{ noop }}">Kopioi koodi</button>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px">
+          <div style="font:500 12px 'Instrument Sans',sans-serif; color:var(--muted)">Muutos ilman diff-tietoa</div>
+          <div style="background:var(--surface); border:1px dashed var(--line); border-radius:10px; padding:10px 12px; display:flex; flex-direction:column; gap:5px; font-size:13px; color:var(--ink-2)">
+            <div style="display:flex; align-items:center; gap:10px"><span style="font-weight:500">Muokattu</span><span style="font:400 12.5px 'JetBrains Mono',monospace">src/types.d.ts</span><span style="margin-left:auto; color:var(--ok); font-size:12.5px">✓ Valmis</span></div>
+            <div style="color:var(--muted); line-height:1.55; font-size:12.5px">Lähde ei toimittanut diffiä. Näytetään mitä saatiin — muutosta ei keksitä.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1 1 480px; display:flex; flex-direction:column; gap:6px">
+        <div style="font:500 12px 'Instrument Sans',sans-serif; color:var(--muted)">Unified diff — merkki ja väri, ei pelkkä väri</div>
+        <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; overflow:hidden">
+          <div style="display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid var(--line-soft); background:var(--surface-2)">
+            <span style="font:400 12.5px 'JetBrains Mono',monospace; flex:1">src/workspaces.ts</span>
+            <span style="font:500 12px 'JetBrains Mono',monospace; color:var(--ok)">+9</span>
+            <span style="font:500 12px 'JetBrains Mono',monospace; color:var(--err)">−2</span>
+            <button style="border:0; background:transparent; color:var(--muted); font:500 12px 'Instrument Sans',sans-serif; cursor:pointer" onClick="{{ noop }}">Kopioi koodi</button>
+          </div>
+          <div style="font:400 12.5px 'JetBrains Mono',monospace; line-height:1.6; color:var(--ink-2)">
+            <div style="padding:2px 12px; background:var(--line-soft); color:var(--muted)">@@ -78,9 +78,16 @@ export async function listWorkspaces()</div>
+            <div style="padding:1px 12px">  const root = path.join(os.homedir(), 'src')</div>
+            <div style="padding:1px 12px; background:var(--err-soft); color:var(--ink)">− const dirs = await readdir(root)</div>
+            <div style="padding:1px 12px; background:var(--err-soft); color:var(--ink)">− return dirs.map(toWorkspace)</div>
+            <div style="padding:1px 12px; background:var(--ok-soft); color:var(--ink)">+ const entries = await readdir(root, { withFileTypes: true })</div>
+            <div style="padding:1px 12px; background:var(--ok-soft); color:var(--ink)">+ const dirs = entries.filter((e) =&gt; e.isDirectory())</div>
+            <div style="padding:1px 12px; background:var(--ok-soft); color:var(--ink)">+ return Promise.all(</div>
+            <div style="padding:1px 12px; background:var(--ok-soft); color:var(--ink)">+   dirs.map(async (d) =&gt; ({ name: d.name, path: … })),</div>
+            <div style="padding:1px 12px; background:var(--ok-soft); color:var(--ink)">+ )</div>
+            <div style="padding:1px 12px">}</div>
+            <div style="padding:6px 12px; border-top:1px solid var(--line-soft); font-family:'Instrument Sans',sans-serif; font-size:12px; color:var(--faint)">Muutos on jo tehty — tämä on tarkastelua varten. Ei Hyväksy-painiketta, koska harness ei odota hyväksyntää.</div>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px">
+          <div style="font:500 12px 'Instrument Sans',sans-serif; color:var(--muted)">Pitkä diff supistettuna</div>
+          <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:8px 12px; display:flex; align-items:center; gap:10px; font-size:13px; color:var(--muted)">
+            <span style="font:400 12.5px 'JetBrains Mono',monospace; color:var(--ink-2)">package-lock.json</span>
+            <span style="font:500 12px 'JetBrains Mono',monospace; color:var(--ok)">+1 204</span>
+            <span style="font:500 12px 'JetBrains Mono',monospace; color:var(--err)">−318</span>
+            <button style="margin-left:auto; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:7px; padding:4px 10px; font:500 12px 'Instrument Sans',sans-serif; cursor:pointer" onClick="{{ noop }}">Avaa diff</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B5d -->
+  <div style="width:100%; max-width:1080px; display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:baseline; gap:12px; border-bottom:1px solid var(--line); padding-bottom:10px">
+      <span style="font:600 12px 'JetBrains Mono',monospace; background:var(--ink); color:var(--bg); padding:3px 7px; border-radius:5px">B5d</span>
+      <span style="font:600 16px 'Instrument Sans',sans-serif">Tuntematon työkalu</span>
+      <span style="font-size:13px; color:var(--muted)">Osittaiset argumentit, pitkä lyhennetty tulos</span>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:14px">
+      <div style="flex:1 1 380px; display:flex; flex-direction:column; gap:6px">
+        <div style="font:500 12px 'Instrument Sans',sans-serif; color:var(--muted)">Argumentit saapuvat kesken</div>
+        <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; overflow:hidden">
+          <div style="display:flex; align-items:center; gap:10px; padding:9px 12px; font-size:13.5px; border-bottom:1px solid var(--line-soft)">
+            <span style="font:400 11px 'JetBrains Mono',monospace; color:var(--muted)">▾</span>
+            <span style="font:400 12.5px 'JetBrains Mono',monospace; flex:1">mcp · taskfleet.query</span>
+            <span style="display:inline-flex; align-items:center; gap:5px; font-size:12.5px; color:var(--acc-ink)"><span style="width:6px; height:6px; border-radius:99px; background:var(--acc); animation:p 2.4s ease-in-out infinite"></span>Käynnissä</span>
+          </div>
+          <pre style="margin:0; padding:9px 12px; font:400 12.5px 'JetBrains Mono',monospace; line-height:1.55; color:var(--ink-2); white-space:pre-wrap">{
+  "scope": "workspace",
+  "filter": { "state": "run<span style="display:inline-block; width:6px; height:12px; background:var(--acc); vertical-align:-2px; animation:p 2.4s ease-in-out infinite"></span></pre>
+          <div style="padding:6px 12px; border-top:1px solid var(--line-soft); font-size:12px; color:var(--faint)">Argumentit näytetään sellaisina kuin ne saapuvat — puuttuvaa ei täydennetä.</div>
+        </div>
+      </div>
+      <div style="flex:1 1 420px; display:flex; flex-direction:column; gap:6px">
+        <div style="font:500 12px 'Instrument Sans',sans-serif; color:var(--muted)">Pitkä tulos lyhennettynä</div>
+        <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; overflow:hidden">
+          <div style="display:flex; align-items:center; gap:10px; padding:9px 12px; font-size:13.5px; border-bottom:1px solid var(--line-soft)">
+            <span style="font:400 12.5px 'JetBrains Mono',monospace; flex:1">mcp · taskfleet.query</span>
+            <span style="font-size:12.5px; color:var(--ok)">✓ Valmis · 480 kB</span>
+          </div>
+          <pre style="margin:0; padding:9px 12px; font:400 12.5px 'JetBrains Mono',monospace; line-height:1.55; color:var(--ink-2); max-height:74px; overflow:hidden">[{"id":"tf-1041","state":"running","started":"14:01"},
+ {"id":"tf-1042","state":"queued","started":null},
+ {"id":"tf-1043","state":"done","started":"13:58"},</pre>
+          <div style="display:flex; align-items:center; gap:10px; padding:7px 12px; border-top:1px solid var(--line-soft); font-size:12px; color:var(--faint)">
+            <span>Näytetään 3 / 1 812 riviä — lähde säilytti koko tuloksen</span>
+            <button style="margin-left:auto; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:7px; padding:4px 10px; font:500 12px 'Instrument Sans',sans-serif; cursor:pointer" onClick="{{ noop }}">Näytä kaikki</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B5e -->
+  <div style="width:100%; max-width:1080px; display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:baseline; gap:12px; border-bottom:1px solid var(--line); padding-bottom:10px">
+      <span style="font:600 12px 'JetBrains Mono',monospace; background:var(--ink); color:var(--bg); padding:3px 7px; border-radius:5px">B5e</span>
+      <span style="font:600 16px 'Instrument Sans',sans-serif">Käyttäjäpyyntö ryhmien välissä</span>
+      <span style="font-size:13px; color:var(--muted)">Approval Card — ei koskaan ryhmän sisään piilotettuna</span>
+    </div>
+    <div style="max-width:660px; display:flex; flex-direction:column; gap:10px">
+      <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:9px 12px; display:flex; align-items:center; gap:10px; font-size:13.5px">
+        <span style="font:400 11px 'JetBrains Mono',monospace; color:var(--muted)">▸</span>
+        <span style="font-weight:500; flex:1">Luettu 15 tiedostoa</span>
+        <span style="font-size:12.5px; color:var(--ok)">✓ 15/15</span>
+      </div>
+
+      <div style="background:var(--surface); border:2px solid var(--acc); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:11px">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--acc-ink)">Pi kysyy</span>
+          <span style="margin-left:auto; font:400 11.5px 'JetBrains Mono',monospace; color:var(--faint)">1 / 2</span>
+        </div>
+        <div style="font-size:14.5px; line-height:1.6">Ohitetaanko piilohakemistot workspace-listassa?</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <button style="background:var(--acc); color:var(--on-acc); border:0; border-radius:8px; padding:8px 14px; font:500 13.5px 'Instrument Sans',sans-serif; cursor:pointer" onClick="{{ noop }}">Kyllä, ohita</button>
+          <button style="border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:8px; padding:8px 14px; font:500 13.5px 'Instrument Sans',sans-serif; cursor:pointer" onClick="{{ noop }}">Näytä kaikki</button>
+          <button style="border:0; background:transparent; color:var(--muted); padding:8px 6px; font:500 13px 'Instrument Sans',sans-serif; cursor:pointer" onClick="{{ noop }}">Vastaa tekstillä</button>
+        </div>
+        <div style="font-size:12px; color:var(--faint)">Ryhmä katkeaa tähän — seuraavat työkalut aloittavat uuden ryhmän.</div>
+      </div>
+
+      <div style="background:var(--surface-2); border:1px dashed var(--line); border-radius:10px; padding:9px 12px; display:flex; align-items:center; gap:10px; font-size:13.5px">
+        <span style="font:400 11px 'JetBrains Mono',monospace; color:var(--muted)">▸</span>
+        <span style="font-weight:500; flex:1; color:var(--ink)">Muokataan 2 tiedostoa</span>
+        <span style="font-size:12.5px; color:var(--muted)">‖ Ei aloitettu — odottaa vastausta</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- B5f -->
+  <div style="width:100%; max-width:1080px; display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:baseline; gap:12px; border-bottom:1px solid var(--line); padding-bottom:10px">
+      <span style="font:600 12px 'JetBrains Mono',monospace; background:var(--ink); color:var(--bg); padding:3px 7px; border-radius:5px">B5f</span>
+      <span style="font:600 16px 'Instrument Sans',sans-serif">Sama sarja streamatessa ja historiaa lukiessa</span>
+      <span style="font-size:13px; color:var(--muted)">Rakenne ei muutu — vain tilamerkit ja kestot täydentyvät</span>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:14px">
+
+      <div style="flex:1 1 440px; display:flex; flex-direction:column; gap:6px">
+        <div style="font:500 12px 'Instrument Sans',sans-serif; color:var(--muted)">Streamatessa · 14.02</div>
+        <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:8px; font-size:13.5px">
+          <div style="display:flex; align-items:center; gap:10px"><span style="font:400 11px 'JetBrains Mono',monospace; color:var(--muted)">▸</span><span style="font-weight:500; flex:1">Luetaan tiedostoja</span><span style="display:inline-flex; align-items:center; gap:5px; font-size:12.5px; color:var(--acc-ink)"><span style="width:6px; height:6px; border-radius:99px; background:var(--acc); animation:p 2.4s ease-in-out infinite"></span>9/15</span></div>
+          <div style="display:flex; align-items:center; gap:10px; color:var(--faint)"><span style="font-weight:500; flex:1">Haku</span><span style="font-size:12.5px">odottaa</span></div>
+          <div style="display:flex; align-items:center; gap:10px; color:var(--faint)"><span style="font:400 12.5px 'JetBrains Mono',monospace; flex:1">$ npm run test:workspaces</span><span style="font-size:12.5px">odottaa</span></div>
+          <div style="border-top:1px solid var(--line-soft); padding-top:7px; font-size:12px; color:var(--faint); line-height:1.55">Avattu ryhmä pysyy avattuna, lukukohta ja fokus säilyvät. Rinnakkaisuus näytetään vain jos lähde kertoo sen.</div>
+        </div>
+      </div>
+
+      <div style="flex:1 1 440px; display:flex; flex-direction:column; gap:6px">
+        <div style="font:500 12px 'Instrument Sans',sans-serif; color:var(--muted)">Historiasta luettuna · myöhemmin</div>
+        <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:8px; font-size:13.5px">
+          <div style="display:flex; align-items:center; gap:10px"><span style="font:400 11px 'JetBrains Mono',monospace; color:var(--muted)">▸</span><span style="font-weight:500; flex:1">Luettu 15 tiedostoa</span><span style="font-size:12.5px; color:var(--ok)">✓ 15/15</span><span style="font-size:12.5px; color:var(--faint)">2,4 s · rinnakkain</span></div>
+          <div style="display:flex; align-items:center; gap:10px"><span style="font-weight:500; flex:1">Haku</span><span style="font-size:12.5px; color:var(--ok)">✓ 7 osumaa</span></div>
+          <div style="display:flex; align-items:center; gap:10px"><span style="font:400 12.5px 'JetBrains Mono',monospace; flex:1">$ npm run test:workspaces</span><span style="font-size:12.5px; color:var(--err)">✕ exit 1</span></div>
+          <div style="border-top:1px solid var(--line-soft); padding-top:7px; font-size:12px; color:var(--faint); line-height:1.55">Sama järjestys, samat rivit. Historia ei saa näyttää eheämmältä kuin elävä sarja.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="width:100%; max-width:1080px; background:var(--acc-soft); border:1px solid var(--acc-line); border-radius:10px; padding:14px 16px; font-size:13.5px; line-height:1.7; color:var(--acc-ink)">
+    <strong style="font-weight:600">Toimituksen tila:</strong> pääpolku on <a href="Keskustelu paapolku.dc.html">Keskustelu paapolku</a>, keskustelutason tilat <a href="Tilat B1-B12.dc.html">Tilat B1-B12</a>, työkalut tässä. Kaikki tapahtumat ovat simuloituja.
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1160,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  state = { theme: "light" };
+  renderVals() {
+    return {
+      theme: this.state.theme,
+      themeLabel: this.state.theme === "dark" ? "Vaalea teema" : "Tumma teema",
+      toggleTheme: () => this.setState((s) => ({ theme: s.theme === "dark" ? "light" : "dark" })),
+      noop: (e) => e && e.preventDefault && e.preventDefault(),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -31,7 +31,13 @@ parallel history store, credential broker, internal tenant model or speculative 
 
 ## Acceptance Criteria
 
-- [ ] Record stable artifact links or place received files under this issue directory, with the brief revision they implement.
+- [x] Record stable artifact links or place received files under this issue directory, with the brief revision they implement.
 - [ ] Collect the conversation first-draft direction and record Jari's feedback before treating the full design as accepted.
 - [ ] Collect the v1 conversation states and the surrounding host/workspace views, including desktop/mobile and any missing states.
 - [ ] Mark delivery complete when artifacts are available for the separate review issue; delivery alone is not design acceptance.
+
+## Comments
+
+### 2026-09-20T08:34:12Z · @pi
+
+Keskustelukäyttöliittymän v0.1-toimitus vastaanotettiin ja purettiin projektin design-system/-hakemistoon. Zipiä ei säilytetä repossa; lähdepolku, SHA-256, vedokset ja alustava arvio ovat review.md:ssä. B1–B10, B12 ja B5a–B5f ovat mukana; B11 on rajattu pois. Toimitus ei sisällä mobiilivedoksia ja se lisää alkuperäisen v1-rajauksen ulkopuolelta viestijonon sekä kesken vuoron ohjauksen. Jarin hyväksyntää tai korjauspyyntöjä ei ole vielä kirjattu, joten issue jätetään in-progress-tilaan.

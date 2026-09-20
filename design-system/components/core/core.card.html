@@ -1,0 +1,29 @@
+<!-- @dsCard group="Components" viewport="700x160" name="Core — Button, Tag, StatusDot" subtitle="Toiminnot, merkinnät ja tilat" -->
+<!DOCTYPE html>
+<html lang="fi"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>body{margin:0;padding:16px;background:var(--ah-bg);font-family:var(--ah-font);color:var(--ah-ink)}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:7px;border-radius:var(--ah-r-md);font:500 var(--ah-size-ui) var(--ah-font);padding:8px 16px;cursor:pointer}
+.k{font:400 11px var(--ah-mono);color:var(--ah-muted)}
+.lbl{font:500 11px var(--ah-font);letter-spacing:.07em;text-transform:uppercase;color:var(--ah-muted)}
+.card{background:var(--ah-surface);border:1px solid var(--ah-line);border-radius:var(--ah-r-lg)}
+</style></head><body>
+<div class="col">
+  <div class="row">
+    <span class="btn" style="background:var(--ah-accent);color:var(--ah-on-accent);border:1px solid var(--ah-accent)">Lähetä <span class="k" style="color:inherit;opacity:.8">⏎</span></span>
+    <span class="btn" style="background:var(--ah-surface);color:var(--ah-ink);border:1px solid var(--ah-line)">Lähetä heti <span class="k">⌘⏎</span></span>
+    <span class="btn" style="background:var(--ah-surface);color:var(--ah-ink);border:1px solid var(--ah-err-line)">Keskeytä <span class="k">Esc Esc</span></span>
+    <span class="btn" style="background:transparent;color:var(--ah-muted);padding:8px 2px">Kopioi koodi</span>
+    <span class="btn" style="background:var(--ah-accent);color:var(--ah-on-accent);border:1px solid var(--ah-accent);opacity:.45">Estetty</span>
+  </div>
+  <div class="row">
+    <span style="display:inline-flex;align-items:center;gap:6px;background:var(--ah-accent-soft);color:var(--ah-accent-ink);border:1px solid var(--ah-accent-line);border-radius:var(--ah-r-pill);padding:3px 10px;font:500 12px var(--ah-font)"><span style="width:7px;height:7px;border-radius:99px;background:var(--ah-accent);animation:ah-pulse var(--ah-pulse)"></span>Työskentelee</span>
+    <span style="color:var(--ah-ok);font:500 12.5px var(--ah-font)">✓ Valmis</span>
+    <span style="color:var(--ah-err);font:500 12.5px var(--ah-font)">✕ Virhe · exit 1</span>
+    <span style="color:var(--ah-muted);font:500 12.5px var(--ah-font)">⃠ Keskeytetty</span>
+    <span style="background:var(--ah-surface-2);color:var(--ah-ink-2);border:1px solid var(--ah-line-soft);border-radius:var(--ah-r-sm);padding:1px 6px;font:400 12px var(--ah-mono)">readdir(</span>
+  </div>
+</div>
+</body></html>

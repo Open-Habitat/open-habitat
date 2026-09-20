@@ -1,0 +1,17 @@
+/* Liike. Hillitty ja aina vähennettävissä. */
+
+:root {
+  --ah-pulse: 2.4s ease-in-out infinite;
+  --ah-expand: 900ms cubic-bezier(.2, .7, .3, 1);
+  --ah-fade: 620ms ease;
+  --ah-appear: 380ms cubic-bezier(.2, .7, .3, 1);
+  --ah-transition: 120ms ease;
+}
+
+@keyframes ah-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .3 } }
+@keyframes ah-appear { from { opacity: 0; transform: translateX(-8px) } to { opacity: 1; transform: none } }
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --ah-pulse: none; --ah-expand: 0ms; --ah-fade: 0ms; --ah-appear: 0ms; --ah-transition: 0ms; }
+  * { animation: none !important; transition: none !important; }
+}
