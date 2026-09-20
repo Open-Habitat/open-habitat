@@ -34,3 +34,12 @@ All planning documents belong under their parent issue directory — not as stan
 ## Conformance
 
 `CONFORMANCE.md` tracks this repo against the AI-first CLI canon — flip each row to `pass` as the surface lands. Verify mechanically with `project-canon doctor`.
+
+## Work-session handoff
+
+`TODO.md` is the root handoff narrative for `/stint-start`: current context,
+external design work, local changes and verification/deployment guidance.
+Detailed plans stay under their parent issue. Issuectl lane/dependency metadata
+is the only execution schedule; do not derive a second queue from TODO.md.
+External designer delivery has no executable lane. Later UI features are deferred
+and unscheduled until selected. See the current handoff before starting a stint.
