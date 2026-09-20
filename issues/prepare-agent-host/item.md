@@ -1,6 +1,6 @@
 ---
 created: 2026-09-18
-updated: 2026-09-18
+updated: 2026-09-20
 type: task
 reporter: jari
 status: done
@@ -36,4 +36,4 @@ Do not implement a real agent-host product, contact providers, install global so
 
 ## Done criteria
 
-Document setup, architecture, safety, extension points and exact commands in `benchmarks/agent-host/README.md`. Provide a version manifest and bounded sample evidence. Run all fixture tests, `python3 docs/validate-project-view.py`, and any new deterministic validation command. Close this issue as done and merge through the owning Taskfleet run. Do not edit the parent epic or Project View; a dedicated integration pass will update shared files after sibling work lands.
+Document setup, architecture, safety, extension points and exact commands in `benchmarks/agent-host/AGENTS.md`. Provide a version manifest and bounded sample evidence. Run all fixture tests, `python3 docs/validate-project-view.py`, and any new deterministic validation command. Close this issue as done and merge through the owning Taskfleet run. Do not edit the parent epic or Project View; a dedicated integration pass will update shared files after sibling work lands.

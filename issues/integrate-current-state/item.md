@@ -1,6 +1,6 @@
 ---
 created: 2026-09-18
-updated: 2026-09-18
+updated: 2026-09-20
 type: task
 reporter: jari
 status: done
@@ -38,4 +38,4 @@ Integrate the completed four current-state dossiers and candidate-neutral benchm
 
 ## Validation
 
-Run the complete benchmark fixture validation commands from `benchmarks/agent-host/README.md`, `python3 docs/validate-project-view.py`, `glasspad build --dry-run --json docs/site /tmp/native-agent-host-project-view`, and `git diff --check`. Close this issue as done with a stamped commit and merge through the owning Taskfleet run. Do not publish Glasspad from the worktree; publication happens after landing.
+Run the complete benchmark fixture validation commands from `benchmarks/agent-host/AGENTS.md`, `python3 docs/validate-project-view.py`, `glasspad build --dry-run --json docs/site /tmp/native-agent-host-project-view`, and `git diff --check`. Close this issue as done with a stamped commit and merge through the owning Taskfleet run. Do not publish Glasspad from the worktree; publication happens after landing.
