@@ -19,7 +19,6 @@ REQUIRED = {
     "implementation",
     "status",
 }
-AUTHORITY_FIELDS = ("Authority", "Updates when", "Not the source for")
 SLUG = re.compile(r"^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$")
 LINK = re.compile(r"!?(?<!\\)\[[^\]]*\]\(([^)]+)\)")
 ADR_FILE = re.compile(r"^adr-(\d{4})-[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.md$")
@@ -124,9 +123,6 @@ def main() -> int:
 
     for page in pages:
         text = page.read_text(encoding="utf-8")
-        for field in AUTHORITY_FIELDS:
-            if not re.search(rf"^\*\*{re.escape(field)}:\*\*\s+\S", text, re.MULTILINE):
-                fail(errors, f"{page.relative_to(ROOT)}: missing '**{field}:**' declaration")
         for target in LINK.findall(text):
             check_link(errors, page, target, stems)
 

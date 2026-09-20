@@ -1,62 +1,73 @@
-# docs/ — Native Agent Host Project View
+# Documentation
 
-`docs/site/` is the maintained Glasspad architecture view. Markdown in that directory is the publishable source; there is no generated content tree. This file owns the site's structure, authority rules, maintenance triggers, and validation procedure.
+`docs/site/` contains the Markdown published to Glasspad. Edit those files directly.
 
-## Layout and publication boundary
+## Writing
 
-```text
-docs/
-  AGENTS.md                     maintenance contract; not published
-  CLAUDE.md -> AGENTS.md
-  validate-project-view.py      deterministic project-specific validator
-  site/                         complete publishable Glasspad space
-    .glasspad.yaml              exactly `space_key: native-agent-host`
-    glasspad.yaml               structure-only grouped navigation
-    index.md
-    architecture.md
-    decisions.md
-    evidence.md
-    implementation.md
-    status.md
-```
+Explain the system to someone who wants to understand or use it. Start with what
+happens: who signs in, what runs, where files live, and how the browser and terminal
+work together. Use ordinary words and concrete examples before abstractions.
 
-`docs/site/` is the explicit exception to the repository's per-directory `AGENTS.md` / `CLAUDE.md` rule. It must contain neither instruction files nor symlinks. Glasspad scans only top-level Markdown/HTML and `assets/`; publishable pages therefore remain flat and use lowercase `[a-z0-9-]` slugs. Accepted ADRs, when real decisions exist, use top-level `adr-NNNN-<slug>.md` names. Do not pre-create ADRs.
+Preserve the reasons behind a choice. The product builds on mature open-source
+Unix/Linux systems: reuse their stable services, compose simple tools, and let
+each component manage its own behavior, data and configuration. This is the
+reason for using native components, not just a shortcut for the first version.
+Add features when a real need appears. Describe tenant separation as one deployment
+per tenant, with ordinary Linux users inside it and no host-level tenant object. A shorter text must
+not lose those reasons, examples, or important limitations.
 
-Repository `.glasspad.yaml` pins only stable space identity. Target, server, and credentials must continue to come from the user's environment; never add them here or modify user/global Glasspad configuration.
+For example:
 
-## Source-of-truth rules
+> Jari signs in through the gateway. It forwards his requests to a daemon running
+> as Linux user jari. That daemon lists his ~/src directories and reads his Pi
+> histories. He can still use the same agents through SSH and tmux.
 
-- Evidence reports own observations, methods, revisions, findings, and limitations.
-- Accepted ADRs own choices, rationale, consequences, and rejected alternatives.
-- `architecture.md` owns the integrated current architecture model. Before architecture v1 it must label provisional material honestly.
-- `decisions.md` is a register and gate index, not a second rationale store.
-- `evidence.md` is a revision-pinned index, not a findings summary.
-- `implementation.md` owns architecture milestones and proof interpretation, never scheduling.
-- `status.md` is the **only** reader-facing current-state narrative.
-- `index.md` owns navigation and reading paths only.
-- issuectl owns executable task state, dependencies, lanes, ordering, and spawnability.
-- Git and closed issues are the default archive. Do not create per-stint pages.
+Write “read Pi's session file” instead of “reconstruct the authoritative native
+projection”. Write “questions still to answer” instead of “open decision gates”.
+Use technical terms where they clarify something; explain them on first use.
+Keep general architecture independent of particular applications. Use component
+examples briefly to illustrate a general principle, without elevating the example
+to a separate rule. Describe the design as it stands: do not imply optional
+features or extension points that have not been chosen. A workspace is always a
+directory, its settings live inside it, and there is no workspace registry.
 
-Every publishable page must declare near its top:
+Do not put documentation-management declarations such as Authority, Updates when,
+or Not the source for on published pages. Keep maintenance instructions here.
+Avoid repeated acceptance labels, version ceremonies, and process vocabulary in
+place of an explanation. Distinguish agreed design from implemented behavior in
+plain language. Examples illustrate decisions; they do not silently add requirements.
 
-- `Authority:` — what the page owns;
-- `Updates when:` — the event that makes an edit necessary;
-- `Not the source for:` — facts owned elsewhere.
+## Pages and updates
 
-Derived/index pages link to owners and avoid long paraphrases. Research does not become accepted architecture merely because `evidence.md` links it.
+- `index.md`: short introduction and links to useful starting points.
+- `architecture.md`: how the system works, with examples and design reasons.
+- `decisions.md`: links to recorded decisions and questions still to answer.
+- `adr-NNNN-<slug>.md`: a decision, why it was made, and its tradeoffs.
+- `evidence.md`: links to research at exact revisions, including limitations.
+- `implementation.md`: what to build and what to check as it becomes usable.
+- `status.md`: what is done, what is next, and known gaps.
 
-## Event-to-document contract
+Update pages affected by a change; do not rewrite the whole site for routine task
+progress. Keep executable tasks in issuectl and research under its parent issue.
+Link to detailed research instead of copying it. Historical research is not the
+current design. Preserve the meaning of accepted decisions when editing their
+language; record a changed decision in a new ADR and link the old one to it.
+Use Git and closed issues for history, without separate handoff pages.
 
-| Event | Required updates | Explicit non-updates |
-|---|---|---|
-| Research report or dossier lands | Add/update one `evidence.md` row with exact revision, scope, limitations, and canonical link. If accepted architecture is challenged, expose the owning gate in `decisions.md`. | Do not turn a research recommendation directly into normative architecture. |
-| Architecture synthesis completes | Update `architecture.md`, affected gates, milestone interpretation, and `status.md` as needed. | Do not copy report bodies or create audience companions. |
-| ADR accepted | Add its page and manifest entry; add one register row; integrate the affected architecture section; update implementation only if proof shape changed. | Do not rewrite evidence reports or create companion pages. |
-| ADR superseded | Add the replacement; mark the old ADR superseded; update register and architecture. | Never rewrite or delete the old rationale. |
-| Implementation slice completes | Update issue/evidence first; update `implementation.md` only for milestone proof; update `status.md` only for a reader-visible change. | Do not copy the issue queue or edit ADRs without a changed decision. |
-| Stint handoff or wrap-up | Make issue state durable; refresh `status.md` only if reader-visible state changed, including its landed project-state baseline revision; run both validations below. | No archive page, home rewrite, or full-site churn by default. |
-| New page proposed | Identify its unique authority, reader, and trigger before adding a top-level page and one manifest entry. | Do not split for symmetry or create generators/placeholders. |
-| Publish | Validate first, then publish the complete `docs/site/` from the intended landed branch while `docs/site` is the working directory so its stable space key is loaded. | Publication never mutates source or proves freshness by itself. |
+## Files and publication
+
+All published pages are directly under `docs/site/`, with lowercase `[a-z0-9-]`
+slugs. Assets go in `assets/`. Keep navigation in `glasspad.yaml` in sync with pages.
+Do not add instruction files or symlinks inside `docs/site/`; this directory is the
+exception to the repository's AGENTS.md/CLAUDE.md convention.
+
+`.glasspad.yaml` contains only `space_key: native-agent-host`. Server, target and
+credentials come from the user's environment. Do not change global configuration.
+
+Keep the date and source revision on `status.md` accurate when updating its account
+of project progress. The revision identifies the landed state being described,
+not the commit containing the status page itself. Pure wording edits do not require
+a new project-state revision.
 
 ## Validation
 
@@ -65,22 +76,15 @@ Run from the repository root:
 ```sh
 python3 docs/validate-project-view.py
 glasspad build --dry-run --json docs/site /tmp/native-agent-host-project-view
+git diff --check
 ```
 
-For a full no-publish render, use an empty temporary output directory:
+The validator checks file layout, navigation, links, ADR registration and status
+metadata. Glasspad checks that the site can be built.
 
-```sh
-out="$(mktemp -d)"
-rm -rf "$out"
-glasspad build --json docs/site "$out"
-rm -rf "$out"
-```
-
-The repository validator checks stable config, flat page names, symlinks, manifest/page parity, duplicate navigation entries, local links, authority declarations, the six required pages, ADR naming/registration, and the status date/source revision. Glasspad remains authoritative for its own scan and rendering constraints.
-
-`status.md`'s source revision means the latest **landed project-state baseline used to write its narrative**, not the commit containing the page itself. Refresh it whenever the narrative is refreshed from newer landed state. This avoids a self-referential commit hash while keeping the summarized evidence auditable.
-
-Do not run `glasspad publish` from an autonomous worktree. Publication is an explicit post-landing action from the complete source branch. Glasspad finds repo-local config by walking upward from the current working directory, so the post-landing command is:
+Publishing is a separate action after changes have landed. Publish the complete
+site from the intended branch, never an autonomous worktree. Run from `docs/site/`
+so Glasspad loads the correct space key:
 
 ```sh
 (cd docs/site && glasspad publish .)

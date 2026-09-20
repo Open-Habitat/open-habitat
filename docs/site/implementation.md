@@ -1,48 +1,55 @@
-# Implementation
+# Building the first working version
 
-**Authority:** Architecture-level milestone and adoption-proof map, including the evidence required to call each milestone complete.
+Start on Alder with one user, one workspace and one Pi agent. Make the complete
+path usable before adding more abstractions.
 
-**Updates when:** A milestone's required capability, proof, or completion evidence changes or a completed slice supplies new acceptance evidence.
+## From login to a running agent
 
-**Not the source for:** Issue lanes, blockers, spawnability, assignees, task queues, current-state narrative, or architecture decisions.
+1. Sign in through the gateway and forward requests to the daemon running as the
+   mapped Linux user.
+2. List directories under `~/src` directly, without a registry or cache.
+3. Find a Pi conversation and read its native history and resume ID.
+4. Launch or resume Pi using its own configuration and the user's permissions.
+5. Return a JSON snapshot, accept a command, and stream updates through one SSE feed.
+6. Disconnect and reconnect the browser. Check that the agent keeps running and
+   that the client catches up or requests a new snapshot.
+7. Use SSH, tmux, Pi, Git and Taskfleet directly alongside the browser. Check that
+   work started outside the browser is discoverable.
+8. Show clearly what is unavailable when an optional extension or native source
+   cannot be read.
 
-Use the live [`native-agent-host-architecture` epic](https://github.com/maintainer/native-agent-host/blob/e7012c75e759af3a26dcea2ed2fb9d70ef077376/issues/native-agent-host-architecture/item.md) and `issuectl` for executable work state. This page stays at architecture-milestone granularity.
+## Add a second user and check failures
 
-## Architecture milestones
+Let Jari and Kaisa use their own accounts on the same server. Check that the
+gateway cannot route one user's requests to the other's daemon. An unknown or
+invalid mapping must fail rather than select another account.
 
-| Milestone | Capability or output | Proof required | State |
-|---|---|---|---|
-| M0 — evidence foundation | Reviewable v0, evidence method, candidate research, maintained Project View and adversarial synthesis | Reference architecture, dossier template, source-grounded protocol/ecosystem research, benchmark scenarios and validated view | Landed; indexed in [evidence](evidence) |
-| M1 — current-state dossiers | Factual models of Alder, Northwind and both Acme implementations | Four revision-pinned dossiers with bounded observations, privacy limits, unknowns and trust/lifecycle/credential boundaries | Landed with explicit access gaps; indexed in [evidence](evidence) |
-| M2 — accepted core model | Simple authority model that preserves native Unix and harness operation | Explicit decision for server federation, user mapping, workspace/agent identity, permissions, discovery and browser projection | Landed as [ADR 0001](adr-0001-unix-native-agent-host) |
-| M3 — Alder walking slice | One browser reaches one user's native Pi workspace and agent through a gateway and per-user daemon | Identity→UID mapping; `~/src` discovery; native Pi session discovery/resume; snapshot; prompt/command; combined SSE feed; disconnect/reconnect; tmux/SSH continuity; no duplicated authoritative state | Not yet landed |
-| M4 — second-user and failure proof | Jari and Kaisa use separate Unix-backed views on the same server | Negative cross-user tests; gateway fail-closed behavior; daemon restart and stale/native-conflict behavior; extension limitation documented honestly | Not yet landed |
-| M5 — agent/process depth | Useful workspace-local agent tree and process visibility | First concrete parent/presentation need; sparse annotation proof; Taskfleet correlation; Pi-extension process/output/stop contract; worktree cleanup and native-history resume | Not yet landed |
-| M6 — adoption pilots | Northwind and Acme paths preserve their real native/application constraints | Representative Northwind workflow pilot; combined Acme fit-gap and deployment decision; application-specific projection only where generic host UI is insufficient | Not yet landed |
-| M7 — architecture v1 | Tested accepted model plus explicit operational boundaries | Walking-slice results, adoption findings, final architecture/security/maintainability/failure review and any required follow-up ADRs | Not yet landed |
+Restart a daemon and check how discovery recovers. Try stale process information
+and conflicting native observations. Describe extension restrictions honestly:
+they do not create a sandbox within the user's UID.
 
-## First walking slice
+## Add depth when it becomes useful
 
-The first implementation should be narrower than the earlier candidate-neutral benchmark. It should prove the accepted architecture end to end:
+The next UI needs may be a main-agent marker, a parent link, Taskfleet worktree
+information, or subprocess output and stop controls. Read existing information
+first and add annotations only for what is missing. Check worktree cleanup and
+native-history resume as these features are introduced.
 
-1. one authentication gateway with a fixed web-identity→Unix-user mapping;
-2. one daemon running as that user;
-3. direct discovery of `~/src/*` with no required registry or cache;
-4. discovery of one native Pi resume identity and its history;
-5. launch or resume through Pi's own configuration and permissions;
-6. one versioned JSON snapshot and HTTP command path;
-7. one cursor-marked SSE feed combining that user's workspace, agent, process and output events;
-8. browser disconnect/reconnect without affecting the agent;
-9. continued direct use through SSH, tmux, Pi, Git and Taskfleet;
-10. clear degraded behavior when an optional Pi extension or native source is unavailable.
+Try the resulting system in a representative Northwind workflow and work out how the
+two Acme Creator applications connect to it. Preserve personal clones and native
+tools; keep application-specific behavior in the application.
 
-Do not add a performance cache, broad agent taxonomy, credential broker, platform history store, tenant object, protocol compatibility layer or event-feed partition until a measured or observed requirement demands it.
+Measure slow paths before adding caches. Split the event feed or evaluate broader
+protocols only when actual use requires it.
 
-## Adoption proofs
+## What the existing research provides
 
-- **Alder:** prove the Unix-native model first. The dossier already establishes one-user trust, separate native stores, ambient tool power and one live Taskfleet correlation; attached-seat behavior, second-user separation, interruption, cleanup and complete correlation remain to be observed.
-- **Northwind:** preserve personal clones and normal Git/worktree conventions. Obtain representative developer evidence and a controlled concurrency pilot before choosing a dedicated-server workflow.
-- **Native Creator:** treat its content directory as a possible non-Git workspace and preserve its unrestricted local-tool reality. Do not infer school identity or Moodle behavior from the unavailable fork/package.
-- **Creator web:** keep its organization, durable drafts/jobs and private application SSE as application-owned concepts. Decide later whether it embeds or complements the generic host projection; do not introduce a core tenant to imitate it.
+[Research](evidence) covers the candidate tools, Alder, Northwind and both Creator
+implementations. Some behavior could not be observed and still needs checking.
+The benchmark fixture is available for later comparisons; its own tests show that
+the fixture works, not that a candidate protocol passes the scenarios.
 
-The frozen fixture remains useful for later comparative claims, but ADR 0001 deliberately avoids requiring a broad protocol benchmark before the minimal native HTTP/SSE slice. Run candidate comparisons only when a concrete interoperability need appears.
+After the first implementation and adoption trials, review the design against
+what worked, what failed and the operational requirements. Keep tasks and their
+progress in the [architecture epic](https://github.com/maintainer/native-agent-host/blob/e7012c75e759af3a26dcea2ed2fb9d70ef077376/issues/native-agent-host-architecture/item.md)
+and issuectl. See [current status](status) for what has been completed.

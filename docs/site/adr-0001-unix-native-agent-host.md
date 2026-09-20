@@ -1,123 +1,96 @@
-# ADR 0001: Use a federated Unix-native agent host
-
-**Authority:** Accepted decision for the Native Agent Host's core server, user, workspace, agent identity, permission, discovery, and client-projection model.
-
-**Updates when:** This decision is superseded or clarified by a later accepted ADR.
-
-**Not the source for:** Current implementation status, research observations, application-specific domain models, or unresolved protocol details.
+# ADR 0001: Keep agents and workspaces native to Unix
 
 **Status:** Accepted
 
 **Date:** 2026-09-19
 
-## Context
+## Why this approach
 
-The initial reference architecture proposed platform-owned sessions, tenant context, policy and credential services, durable product history, and a comparatively broad control plane. Current-state evidence showed that the systems we actually need to expose are already organized around conventional Unix users, source directories, native harness histories, Git, tmux, processes, extensions, and Taskfleet metadata.
+Build on working open-source systems. Unix and Linux offer decades of work on
+users, permissions, files, processes and tools that compose well. Their stable
+foundations are a good basis for AI applications too. Native Agent Host should
+use these services and existing software rather than build them again.
 
-The desired product must remain usable without its web client. A user must still be able to SSH to a server, attach to tmux, enter a directory under `~/src`, resume Pi or another harness, inspect Git worktrees, and use Taskfleet directly. The browser is an additional interface to those native components, not their replacement or the authority for their state.
+This is a product development principle: keep the system simple, give each
+component a clear job, and let it do that job using its own interfaces and
+configuration. Add code where connecting those components makes something useful
+possible. Add new machinery when an actual need calls for it.
 
-The term `session` is already overloaded at every layer. The architecture therefore does not introduce a platform session or workstream abstraction.
+Users already work with Linux accounts, project directories, Pi histories, Git,
+tmux and Taskfleet. They should be able to keep doing so directly after adding a
+browser interface. A user can SSH to the server, enter a project directory, attach
+to tmux and resume a conversation without going through Agent Host.
 
-## Decision
+The earlier design proposed platform sessions, tenants, policy and credential
+services, and a separate durable history. The design discussion chose a smaller
+system that reads the information these native components already maintain.
 
-### Federated client and servers
+## What we decided
 
-A web client connects independently to one or more Agent Host servers known to the user. Each server remains authoritative for its own users, workspaces, agents, processes, and native state. The web client may combine their projections, but it does not own or reconstruct server state.
+Each Linux user has one lightweight daemon running under their own UID. A shared
+gateway handles TLS and authentication, maps the web identity to exactly one Linux
+account on that server, and forwards requests to that user's daemon. The
+administrator owns the mapping. The browser cannot select a Unix account, and the
+gateway does not read workspaces or run agents.
 
-### Unix users and authentication
+The browser may connect independently to several servers. Each server keeps its
+own users and files. Closing the browser does not stop the agents.
 
-A Linux user account is the server's security principal. One lightweight Agent Host daemon runs per Linux user under that user's UID. A shared gateway terminates TLS, authenticates the web identity, maps it through administrator-owned configuration to exactly one Linux user on that server, and proxies HTTP and streaming connections to that user's daemon. The client cannot select or assert a Unix username.
+A workspace is an immediate directory under `~/src`, whether or not it is a Git
+repository. The daemon finds workspaces by listing those directories. There is no
+workspace registry. Workspace-specific settings live inside each workspace in
+`.agent-host/workspace.json`, created when settings such as a stable ID or display
+name need to be saved. A directory without this file is still a workspace.
 
-The gateway does not inspect workspaces, run agents, read histories, or own agent state. A web identity may map differently on different servers, but maps to only one Unix account on each server.
+Each component manages its own configuration; for example, Pi's default model is
+configured in Pi. Agent Host's workspace settings do not duplicate component
+configuration. Credentials, process state and facts already available from Git
+do not belong in the workspace settings file.
 
-### Workspaces
+Agent identity comes from the harness's native resume ID, prefixed with its name,
+such as `pi:<id>`. The harness keeps the conversation history and model changes.
+PIDs, tmux panes and Taskfleet runs help find the running agent; they do not replace
+that identity. A conversation remains available to inspect and resume after its
+process exits.
 
-A workspace is normally an immediate directory below the user's `~/src` directory. It may be a Git repository, an ordinary directory, or an application content directory. The daemon discovers workspaces by listing `~/src`; Git repositories, branches, and worktrees continue to use normal Git conventions.
+Discover information from Linux, files, Git, the harness, tmux, Taskfleet and
+extensions. Store an annotation only when a specific UI or behavior needs it and
+it cannot be reconstructed reliably. Grow agent hierarchy and presentation fields
+as those needs arise. Add a disposable, rebuildable cache only after measuring a
+performance problem.
 
-An optional `.agent-host/workspace.json` may provide a schema version, stable workspace ID, display name, kind, or later workspace-specific annotations. Harness-owned configuration such as Pi's default model does not belong there. Runtime state, credentials, process IDs, and duplicated native facts do not belong there.
+Agents have their Linux user's permissions and credentials. Unix permissions
+separate users. Extensions can add restrictions or approvals, but restrictions
+within the same UID are guardrails, not a sandbox. The UI must make that clear.
+No separate credential broker is required.
 
-### Agents and native identity
+Use a separate deployment for each tenant. Within a deployment, the host has
+Linux users and no internal tenant object. Unix groups may later support shared
+workspaces. Application organizations remain part of their applications.
 
-An agent is a persistent logical entity represented primarily by its harness's native resume/continue identity and history. Agent IDs are namespaced native IDs such as `pi:<id>`, `claude-code:<id>`, or `codex:<id>`. Processes are temporary incarnations of an agent; an agent remains resumable and inspectable after its process exits.
+Use JSON/HTTP for snapshots, queries and commands, with one cursor-marked SSE feed
+per server combining the user's events. Reconnect from the cursor when possible;
+otherwise fetch a new snapshot. Keep the feed combined until measured load gives
+a reason to split it. AHP, ACP or AG-UI is not needed for this first implementation.
 
-The daemon discovers agent facts from native harness history and configuration, live operating-system processes, tmux, Git, Taskfleet, and optional harness extensions. Taskfleet run IDs, process identities, tmux panes, branches, worktrees, and current models are bindings or discovered facts, not replacement agent identities.
+## What this means in practice
 
-Agent hierarchies and presentation categories may be expanded as concrete UI needs emerge. Likely presentations include a workspace main agent, peer or detached roots, same-workspace side agents, and worktree children. No anticipatory taxonomy is made normative. Parent or presentation annotations are stored only when a clear UI or behavior needs them and they cannot be reconstructed reliably from native sources.
+The daemon stays small by reading and controlling existing components. SSH, tmux,
+Git, Taskfleet and native resume remain usable alongside the browser. There is no
+new platform session, workstream or history database that users must go through.
 
-### Discover rather than duplicate
+There is still work to do. Authentication must route requests to the correct user
+and reject them when the mapping cannot be established. Discovery must show
+missing, stale or conflicting information honestly. Each harness needs an adapter
+for its history and resume behavior. Some UI choices may need small annotations.
+Same-UID extensions cannot enforce stronger isolation by themselves.
 
-Native components remain authoritative for every fact they already own:
+## What remains to be worked out
 
-- the filesystem owns the workspace list;
-- Unix owns users, groups, processes, and permissions;
-- Git owns repositories, branches, and worktrees;
-- Pi, Claude Code, and Codex own their native histories, model changes, and resume identities;
-- tmux owns terminal attachment and retained pane output;
-- Taskfleet owns its run, node, hierarchy, worktree, and lifecycle metadata;
-- harness extensions own any process inventory and output they expose.
+Choose the authentication mechanism and daemon packaging, try Pi discovery and
+process controls, and define the HTTP requests and reconnect limits. Decide
+annotation fields when the first UI needs them. Application integrations and
+stronger isolation need their own concrete use cases.
 
-Agent Host stores only non-discoverable annotations with a named consumer. A derived index may be added only after a measured performance need; it must be disposable and rebuildable from authoritative sources.
-
-### Permissions, tools, and credentials
-
-An agent has the same server permissions and credentials as its Linux user. Native filesystem permissions and Unix account separation are the security boundary. Agent Host does not add a credential broker or claim per-tool confinement.
-
-Users or administrators may install harness extensions that add approvals or restrictions. Such extensions are guardrails inside the same Unix account unless backed by an external enforcement boundary. The UI must not present them as stronger isolation than they provide.
-
-### No core tenant abstraction
-
-A server has Linux users, not Native Agent Host tenants. Multiple schools or organizations are not multiplexed through a core tenant object. Strong school separation can use separate servers or deployment instances. Future shared workspaces may use Unix groups and filesystem permissions. Application-specific organizations, such as Acme Creator organizations, remain application concepts unless later evidence justifies a separate decision.
-
-### Client–daemon protocol
-
-The initial protocol is a small versioned JSON/HTTP API:
-
-- HTTP GET for snapshots and queries;
-- HTTP POST for commands;
-- one cursor-marked SSE feed per server for agent, process, workspace, and other server events;
-- reconnect from a retained cursor when available, otherwise a fresh authoritative snapshot.
-
-A combined feed for all of a user's agents on one server is the default. Retention and partitioning are added only when measured load requires them. AHP, ACP, AG-UI, or another broad protocol is not required for this core path.
-
-## Consequences
-
-### Benefits
-
-- The system follows Unix ownership and composition rather than replacing them.
-- SSH, tmux, native harness resume, Git, and Taskfleet remain first-class interfaces.
-- The daemon can stay lightweight because it projects and controls native components instead of copying their state.
-- Browser loss does not affect server-side agents.
-- Multiple servers require no central global control plane.
-- The first API can remain small and product-specific.
-
-### Costs and constraints
-
-- The shared gateway is a trusted security boundary and its identity-to-UID mapping must fail closed.
-- Cross-user collaboration must use explicit Unix permissions, groups, or a later design rather than an implicit tenant layer.
-- Discovery adapters must handle incomplete, stale, and conflicting native evidence honestly.
-- Some UI hierarchy information may require sparse sidecar annotations.
-- Same-UID agents have ambient user authority; extension approvals are not a sandbox.
-- Native history formats and resume mechanisms require harness-specific adapters.
-
-## Rejected alternatives
-
-- A platform-owned session or workstream record as the primary user-visible unit.
-- A central multi-server control plane that owns agent state.
-- A platform tenant abstraction for users sharing one server.
-- A mandatory credential broker and universal typed-tool policy layer.
-- Duplicating harness histories, Git state, Taskfleet state, or process output into a new authoritative database by default.
-- Requiring AHP or another broad agent protocol before the simple HTTP/SSE projection has demonstrated a gap.
-
-## Follow-up decisions
-
-This ADR intentionally leaves open:
-
-- gateway authentication technology and transport deployment;
-- daemon implementation language and packaging;
-- the initial process-extension contract and terminal/output controls;
-- exact agent-tree presentation fields and annotation storage format;
-- SSE cursor retention and resnapshot bounds;
-- application-specific integrations, including Acme Creator and Moodle;
-- optional Unix-group collaboration and stronger isolation profiles.
-
-See the [architecture](architecture), [decision register](decisions), and [implementation proof plan](implementation).
+See [how the system works](architecture), [open questions](decisions) and
+[the first implementation](implementation).
