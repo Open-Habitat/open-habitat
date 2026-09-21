@@ -24,8 +24,11 @@ content into the governing `AGENTS.md`, the relevant issue `item.md`, or another
 canonical owner. A repository-root `README.md` is allowed only as the public
 GitHub front door.
 
-Exception: `docs/site/` is the complete publishable Glasspad space. It contains no
-agent instruction files or symlinks; `docs/AGENTS.md` governs it from one level up.
+Project documentation lives directly in `docs/`, starting at `docs/index.md`.
+Read [docs/AGENTS.md](docs/AGENTS.md) before documentation work. This directory
+follows the normal AGENTS.md/CLAUDE.md convention. Glasspad is a viewer of this
+documentation; its rendering constraints must not determine the source layout.
+Do not maintain a separate site source tree.
 
 ## UI design
 

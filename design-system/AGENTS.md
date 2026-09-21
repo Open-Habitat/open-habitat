@@ -6,7 +6,7 @@ toimintalogiikkaa tai yksittäisen suunnittelukierroksen vedoksia ei määritell
 
 ## Lue ennen UI-työtä
 
-- Tuotteen rakenne ja rajat: [`../docs/site/architecture.md`](../docs/site/architecture.md)
+- Tuotteen rakenne ja rajat: [`../docs/architecture.md`](../docs/architecture.md)
 - Ensimmäisen keskusteludesignin vedokset ja simulaatio:
   [`../issues/receive-designer-v1/design/`](../issues/receive-designer-v1/design/).
 - Katselmoinnin avoimet tuotekysymykset:

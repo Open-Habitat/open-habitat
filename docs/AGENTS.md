@@ -1,6 +1,9 @@
 # Documentation
 
-`docs/site/` contains the Markdown published to Glasspad. Edit those files directly.
+`docs/` contains the project documentation, starting at `index.md`. Edit these
+Markdown files directly. Glasspad displays this same documentation; there is no
+separate website source tree. Keep AGENTS.md and the CLAUDE.md symlink here as in
+other repository directories.
 
 ## Writing
 
@@ -56,10 +59,11 @@ Use Git and closed issues for history, without separate handoff pages.
 
 ## Files and publication
 
-All published pages are directly under `docs/site/`, with lowercase `[a-z0-9-]`
-slugs. Assets go in `assets/`. Keep navigation in `glasspad.yaml` in sync with pages.
-Do not add instruction files or symlinks inside `docs/site/`; this directory is the
-exception to the repository's AGENTS.md/CLAUDE.md convention.
+Organize documentation for its readers and maintainers. The current documents
+live directly under `docs/`, with assets in `assets/`. Keep the reader navigation
+in `glasspad.yaml` in sync with the documents it presents. Agent instructions
+do not need a reader-navigation entry. Adapt the viewer to the documentation
+rather than moving source files to satisfy a rendering restriction.
 
 `.glasspad.yaml` contains only `space_key: native-agent-host`. Server, target and
 credentials come from the user's environment. Do not change global configuration.
@@ -74,18 +78,29 @@ a new project-state revision.
 Run from the repository root:
 
 ```sh
-python3 docs/validate-project-view.py
-glasspad build --dry-run --json docs/site /tmp/native-agent-host-project-view
+python3 scripts/validate-project-view.py
 git diff --check
 ```
 
-The validator checks file layout, navigation, links, ADR registration and status
-metadata. Glasspad checks that the site can be built.
+The validator checks documentation, navigation, links, ADR registration and status
+metadata. AGENTS.md and CLAUDE.md are normal repository instructions, not pages
+that must appear in Glasspad navigation.
 
-Publishing is a separate action after changes have landed. Publish the complete
-site from the intended branch, never an autonomous worktree. Run from `docs/site/`
+The installed Glasspad currently rejects `AGENTS.md` as an invalid page slug and
+also rejects symlinks such as `CLAUDE.md`. Direct rendering of `docs/` therefore
+needs viewer support for ignoring agent instruction files. Keep these files in
+place; do not introduce a second documentation tree to work around this limit.
+After viewer support is available, verify rendering with:
+
+```sh
+glasspad build --dry-run --json docs /tmp/native-agent-host-project-view
+```
+
+Once that viewer limitation is resolved, publishing is a separate action after
+changes have landed. Publish the complete
+site from the intended branch, never an autonomous worktree. Run from `docs/`
 so Glasspad loads the correct space key:
 
 ```sh
-(cd docs/site && glasspad publish .)
+(cd docs && glasspad publish .)
 ```

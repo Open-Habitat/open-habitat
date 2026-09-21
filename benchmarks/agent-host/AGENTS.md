@@ -28,7 +28,7 @@ python3 benchmarks/agent-host/fixture.py --json doctor
 python3 benchmarks/agent-host/fixture.py --json scenario list
 python3 benchmarks/agent-host/fixture.py --json preflight --output-root "$output_root"
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s benchmarks/agent-host -p 'test_*.py' -v
-python3 docs/validate-project-view.py
+python3 scripts/validate-project-view.py
 git diff --check
 ```
 

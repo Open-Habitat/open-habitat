@@ -18,7 +18,7 @@ Start with read-only extension process inventory and one retained/live log. Spli
 
 Explicitly later, per the user's v1-first direction. Covers L1–L5 in [the complete TUI follow-up list](../native-agent-host-architecture/ui-design-later.md). No executable lane: completing v1 does not automatically activate this work. Select and narrow the next useful feature with the user.
 
-Sources: [architecture](../../docs/site/architecture.md),
+Sources: [architecture](../../docs/architecture.md),
 [design package](../native-agent-host-architecture/ui-design-package.md),
 [conversation v1](../native-agent-host-architecture/ui-design-conversation.md).
 Detailed plans and results for this task belong in this issue directory.

@@ -20,7 +20,7 @@ Implement the first end-to-end browser path through the gateway and per-user dae
 
 Follow the current Unix-native architecture and the bounded UI v1 brief.
 
-Sources: [architecture](../../docs/site/architecture.md),
+Sources: [architecture](../../docs/architecture.md),
 [design package](../native-agent-host-architecture/ui-design-package.md),
 [conversation v1](../native-agent-host-architecture/ui-design-conversation.md).
 Detailed plans and results for this task belong in this issue directory.

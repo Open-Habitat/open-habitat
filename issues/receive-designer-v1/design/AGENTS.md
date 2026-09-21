@@ -7,7 +7,7 @@ suunnittelukierroksen referenssiä, ei yhteisen design systemin lähde eikä
 hyväksytty toteutusmäärittely.
 
 - Yhteiset tokenit ja komponentit ovat [`../../../design-system/`](../../../design-system/).
-- Tuotteen arkkitehtuuri on [`../../../docs/site/architecture.md`](../../../docs/site/architecture.md).
+- Tuotteen arkkitehtuuri on [`../../../docs/architecture.md`](../../../docs/architecture.md).
 - Vastaanottoarvio ja avoimet kysymykset ovat [`../review.md`](../review.md).
 - Canonical designer-toimeksiannot ovat arkkitehtuuri-issuen
   `ui-design-*.md`-tiedostoissa. `toimeksianto/` säilyttää toimituksen mukana

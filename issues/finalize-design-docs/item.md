@@ -25,7 +25,7 @@ Review and land the documentation changes already prepared in the working tree, 
 
 The changes are now committed as c7e6e28 (architecture) and c1aa732 (UI packages and issue plan). They have not been pushed or published. The v1 zip files were copied and hash-verified in rowan:/Users/maintainer/Downloads on 2026-09-20. Use the committed files for the next stint; do not recreate the completed documentation work.
 
-Sources: [architecture](../../docs/site/architecture.md),
+Sources: [architecture](../../docs/architecture.md),
 [design package](../native-agent-host-architecture/ui-design-package.md),
 [conversation v1](../native-agent-host-architecture/ui-design-conversation.md).
 Detailed plans and results for this task belong in this issue directory.

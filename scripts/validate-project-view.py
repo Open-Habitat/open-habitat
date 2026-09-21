@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the maintained Glasspad Project View without external dependencies."""
+"""Validate project documentation and navigation without external dependencies."""
 
 from __future__ import annotations
 
@@ -9,8 +9,7 @@ from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DOCS = ROOT / "docs"
-SITE = DOCS / "site"
+SITE = ROOT / "docs"
 REQUIRED = {
     "index",
     "architecture",
@@ -51,16 +50,13 @@ def check_link(errors: list[str], page: Path, raw_target: str, page_slugs: set[s
         fail(errors, f"{page.relative_to(ROOT)}: absolute local link is not portable: {raw_target}")
         return
     site_target = target[2:] if target.startswith("./") else target
-    if "/" not in site_target and site_target.endswith(".md") and site_target[:-3] in page_slugs:
-        fail(errors, f"{page.relative_to(ROOT)}: link to a site page must use its slug, not .md: {raw_target}")
-        return
     if "/" not in site_target and site_target in page_slugs:
         return
     resolved = (page.parent / target).resolve()
     try:
-        resolved.relative_to(SITE)
+        resolved.relative_to(ROOT)
     except ValueError:
-        fail(errors, f"{page.relative_to(ROOT)}: local link leaves the publishable space: {raw_target}")
+        fail(errors, f"{page.relative_to(ROOT)}: local link leaves the repository: {raw_target}")
         return
     if not resolved.exists():
         fail(errors, f"{page.relative_to(ROOT)}: missing local link target: {raw_target}")
@@ -69,26 +65,19 @@ def check_link(errors: list[str], page: Path, raw_target: str, page_slugs: set[s
 def main() -> int:
     errors: list[str] = []
     if not SITE.is_dir():
-        print("ERROR: docs/site is missing", file=sys.stderr)
+        print("ERROR: docs is missing", file=sys.stderr)
         return 1
 
     config = SITE / ".glasspad.yaml"
     expected_config = "space_key: native-agent-host\n"
     if not config.is_file() or config.read_text(encoding="utf-8") != expected_config:
-        fail(errors, "docs/site/.glasspad.yaml must contain only 'space_key: native-agent-host'")
+        fail(errors, "docs/.glasspad.yaml must contain only 'space_key: native-agent-host'")
 
-    for path in SITE.rglob("*"):
-        if path.is_symlink():
-            fail(errors, f"symlink forbidden inside docs/site: {path.relative_to(ROOT)}")
-        if path.parent == SITE and path.is_dir() and path.name != "assets":
-            fail(errors, f"unexpected top-level directory in docs/site: {path.name}")
-        if path.parent == SITE and path.is_file() and path.name not in {
-            ".glasspad.yaml",
-            "glasspad.yaml",
-        } and path.suffix not in {".md", ".html"}:
-            fail(errors, f"unexpected top-level file in docs/site: {path.name}")
-
-    pages = sorted(SITE.glob("*.md"))
+    pages = sorted(
+        page for page in SITE.glob("*.md")
+        if page.name not in {"AGENTS.md", "CLAUDE.md"}
+        and not page.name.startswith("AGENTS-")
+    )
     stems = {page.stem for page in pages}
     missing_required = sorted(REQUIRED - stems)
     if missing_required:
@@ -99,7 +88,7 @@ def main() -> int:
 
     manifest = SITE / "glasspad.yaml"
     if not manifest.is_file():
-        fail(errors, "docs/site/glasspad.yaml is missing")
+        fail(errors, "docs/glasspad.yaml is missing")
         nav_slugs: list[str] = []
     else:
         try:
@@ -130,9 +119,9 @@ def main() -> int:
     if status.is_file():
         status_text = status.read_text(encoding="utf-8")
         if not DATE.search(status_text):
-            fail(errors, "docs/site/status.md: missing ISO Updated date")
+            fail(errors, "docs/status.md: missing ISO Updated date")
         if not HEX40.search(status_text):
-            fail(errors, "docs/site/status.md: missing 40-hex Source revision")
+            fail(errors, "docs/status.md: missing 40-hex Source revision")
 
     adr_ids: dict[str, str] = {}
     decisions_text = (SITE / "decisions.md").read_text(encoding="utf-8") if (SITE / "decisions.md").is_file() else ""
