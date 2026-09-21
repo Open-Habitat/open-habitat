@@ -19,6 +19,11 @@ Every directory follows this structure:
 - `AGENTS.md` — all AI-relevant info (consolidated)
 - `AGENTS-<TOPIC>.md` — complex topics split out (optional)
 
+Do not create `README.md` files in subdirectories. Normalize incoming README
+content into the governing `AGENTS.md`, the relevant issue `item.md`, or another
+canonical owner. A repository-root `README.md` is allowed only as the public
+GitHub front door.
+
 Exception: `docs/site/` is the complete publishable Glasspad space. It contains no
 agent instruction files or symlinks; `docs/AGENTS.md` governs it from one level up.
 
