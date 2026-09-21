@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-21
 type: task
 status: in-progress
 priority: normal
@@ -41,3 +41,7 @@ parallel history store, credential broker, internal tenant model or speculative 
 ### 2026-09-20T08:34:12Z · @pi
 
 Keskustelukäyttöliittymän v0.1-toimitus vastaanotettiin ja purettiin projektin design-system/-hakemistoon. Zipiä ei säilytetä repossa; lähdepolku, SHA-256, vedokset ja alustava arvio ovat review.md:ssä. B1–B10, B12 ja B5a–B5f ovat mukana; B11 on rajattu pois. Toimitus ei sisällä mobiilivedoksia ja se lisää alkuperäisen v1-rajauksen ulkopuolelta viestijonon sekä kesken vuoron ohjauksen. Jarin hyväksyntää tai korjauspyyntöjä ei ole vielä kirjattu, joten issue jätetään in-progress-tilaan.
+
+### 2026-09-21T10:19:32Z · @pi
+
+Päivitetty workspace-/navigointipaketti native-agent-host-ui-01-workspaces-v2.zip on nyt ulkopuolisella designerilla työn alla. Kun toimitus valmistuu, se vastaanotetaan puhtaassa agentti-istunnossa tämän issuen alle ja katselmoidaan yhdessä keskusteludesignin kanssa. Älä käynnistä rinnakkaista design-agenttia odotusaikana.
