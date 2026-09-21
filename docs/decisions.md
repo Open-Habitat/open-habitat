@@ -1,32 +1,28 @@
-# Decisions and open questions
+# Päätökset ja avoimet valinnat
 
-[ADR 0001](adr-0001-unix-native-agent-host) records the agreed approach: one daemon
-per Linux user behind a shared authentication gateway, native workspaces and agent
-histories, discovery before new storage, and JSON/HTTP with one SSE feed.
-[How the system works](architecture) explains these choices with examples.
+[ADR 0001](adr-0001-unix-native-agent-host.md) on hyväksytty: käyttäjäkohtainen
+Unix-daemon gatewayn takana, natiivit workspacet ja historiat sekä HTTP/SSE.
+[Arkkitehtuuri](architecture.md) kuvaa sen käytännössä.
 
-## Questions for the first implementation
+Frontend- tai backend-stackia ei ole vielä valittu. Nykyinen JSX ja
+klikkiprototyyppien simuloidut toiminnot eivät ole teknologiavalintoja tai
+näyttöä taustarajapinnasta.
 
-- How does the gateway authenticate users and connect to each user's daemon?
-- How do we install and run the daemon?
-- How does the daemon discover and resume Pi conversations, including ones started
-  through the terminal?
-- What process status, output and controls can the Pi extension provide? What can
-  we show when it is absent?
-- What are the snapshot and command formats? How long do we keep events for
-  reconnect, and when must the client fetch a new snapshot?
-- Which UI action first needs a workspace metadata file or an agent annotation?
+| Päätettävä kokonaisuus | Valmistelu | Päätöksen aineisto |
+|---|---|---|
+| Toteutettava käyttökokemus | [UI-katselmoinnin valmistelu](../issues/prepare-ui-review/item.md) | Käyttökulut ja Pi-/elinkaarikokeen osoittamat rajat. |
+| Frontend, tilanhallinta, renderöinti ja komponenttipohja | [Frontend-valinta](../issues/choose-frontend-stack/item.md) | Vaihtoehdot, kokeet ja ehdotettu ADR. |
+| Gateway, autentikointi, daemon ja paketointi | [Host-valinta](../issues/choose-host-stack/item.md) | Ehdotettu ADR, käyttäjärajat ja testikohde. |
+| Rajapinnat ja tietojen omistajuus | [Sopimukset](../issues/define-host-contracts/item.md) | Komennot, tapahtumat, kuittaukset, palautuminen ja annotaatiot. |
+| Tuotantodesign ja komponenttisopimukset | [Tuotantodesign](../issues/design-production-ui/item.md) | Yhtenäinen design system ja vuorovaikutus. |
+| Toteutus- ja käyttöönottovalmius | [Toteutuspalat](../issues/plan-v1-implementation/item.md) | Rajatut työt, tarkistuskomennot, kohde ja valtuudet. |
 
-Answer these by building the [first working version](implementation).
+Uudet tekniset päätökset kirjoitetaan ehdotetuiksi ADR:iksi valmistelun aikana
+ja linkitetään tälle sivulle. Niiden perusteet ja kokeiden versiot säilytetään.
+[Toteutusvalmiuden katselmointi](../issues/review-implementation-plan/item.md)
+vahvistaa päätökset ennen tuotantokoodia. Hyväksytty muutos päivitetään myös
+nykyistä arkkitehtuuria ja rajapintaa kuvaaviin sivuihin.
 
-## Later questions
-
-Add Claude Code and Codex adapters when a real use case needs them. Work out shared
-workspaces or stronger isolation when Unix user separation no longer meets a
-specific need. Taskfleet can remain an ordinary Pi tool; it does not need a separate
-browser protocol by default.
-
-Northwind needs a pilot that preserves developers' clones, Git workflow and credentials.
-Acme needs a decision about how its native and web applications use the host,
-including deployment and Moodle integration. Availability, backup and recovery
-requirements need to be established from actual use and operational needs.
+Muut harnessit, sovelluskohtaiset Northwind-/Acme-integraatiot, vahvempi eristys
+ja usean palvelimen käyttöliittymä tarvitsevat myöhemmin oman valintansa.
+Niitä ei ratkaista ensimmäisen MVP:n sivuvaikutuksena.

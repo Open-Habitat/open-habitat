@@ -6,8 +6,9 @@ status: open
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
-lane_seq: 90
+lane_seq: 100
 blocked_by: ['@manage-agent-worktrees']
+collision: [docs/, AGENTS.md, design-system/]
 ---
 
 # Archive native agent conversations
@@ -31,3 +32,10 @@ Do not create a parallel conversation history or Agent Host archive database. Ar
 - [ ] List archived conversations per workspace and continue one through the supported native resume path.
 - [ ] Preserve honest read-only behavior when history exists but control is unavailable.
 - [ ] Verify stop/resume failures, disconnects and stale state without claiming success prematurely.
+
+## Implementation and evidence
+
+Use the [delivery plan](../plan-v1-implementation/plan.md), accepted implementation
+briefs and exact checks verified by @build-app-foundation. Save `result.md` here with
+the tested revision, commands, outcomes and remaining limits. Update the affected
+durable documents and component examples; do not duplicate task state in TODO.md.

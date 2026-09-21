@@ -1,33 +1,48 @@
-title: Native Agent Host — Project View
+title: Native Agent Host — dokumentaatio
 template: prose
 
 groups:
-  - label: Start
+  - label: Tavoite ja eteneminen
     members:
       - slug: index
-        title: Project View
-        desc: Reading paths and authority map for the architecture work.
+        title: Aloita tästä
+        desc: Projektin dokumentaatio ja lukupolut.
+      - slug: product
+        title: Tavoite ja MVP
+        desc: Ensimmäisen käyttökelpoisen järjestelmän sisältö.
       - slug: status
-        title: Current status
-        desc: The sole reader-facing narrative of where the architecture work stands.
+        title: Tilanne
+        desc: Valmistuneet asiat, avoimet kysymykset ja seuraava katselmointi.
+      - slug: implementation
+        title: Vaiheistus
+        desc: Määrittelystä toimivaan ytimeen ja koko MVP:hen.
 
-  - label: Architecture
+  - label: Järjestelmä ja päätökset
     members:
       - slug: architecture
-        title: Architecture
-        desc: The provisional integrated target model and its boundaries.
+        title: Arkkitehtuuri
+        desc: Sovittu Unix-natiivi rakenne ja komponenttien vastuut.
+      - slug: assumptions
+        title: Kriittiset oletukset
+        desc: Todentamista tarvitsevat väitteet ja niiden vaikutukset.
       - slug: decisions
-        title: Decisions
-        desc: Accepted ADR register and open architecture decision gates.
+        title: Päätökset
+        desc: Hyväksytyt ratkaisut ja valmisteltavat tekniset valinnat.
       - slug: adr-0001-unix-native-agent-host
         title: ADR 0001 — Unix-native host
-        desc: Accepted federated server, Unix-user, workspace, agent discovery, and HTTP/SSE model.
-
-  - label: Evidence and delivery
-    members:
+        desc: Hyväksytty natiivien käyttäjien, tiedostojen ja agenttien perusta.
+      - slug: interfaces
+        title: Rajapinnat
+        desc: Yhteyksien merkitys ja vielä määriteltävä käyttäytyminen.
       - slug: evidence
-        title: Evidence
-        desc: Revision-pinned index of canonical research and design evidence.
-      - slug: implementation
-        title: Implementation
-        desc: Architecture milestones, adoption proofs, and completion evidence.
+        title: Tutkimukset
+        desc: Aikaisempi näyttö, sen lähteet ja rajoitukset.
+
+  - label: Käyttöliittymä
+    members:
+      - slug: ui
+        title: Käyttökulut ja katselmointi
+        desc: Design-aineisto ja Jarin katselmointikohdat.
+      - slug: design-system
+        title: Design system
+        desc: Yhteinen perusta ja polku tuotantokomponentteihin.

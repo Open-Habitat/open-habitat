@@ -43,12 +43,21 @@ plain language. Examples illustrate decisions; they do not silently add requirem
 ## Pages and updates
 
 - `index.md`: short introduction and links to useful starting points.
+- `product.md`: current product goal, working-core/full-MVP scope and success scenarios.
+- `assumptions.md`: critical claims, verification criteria, evidence and consequences.
 - `architecture.md`: how the system works, with examples and design reasons.
 - `decisions.md`: links to recorded decisions and questions still to answer.
 - `adr-NNNN-<slug>.md`: a decision, why it was made, and its tradeoffs.
 - `evidence.md`: links to research at exact revisions, including limitations.
 - `implementation.md`: what to build and what to check as it becomes usable.
 - `status.md`: what is done, what is next, and known gaps.
+- `interfaces.md`: component contracts, authority, command/event/error semantics;
+  link machine-readable contracts when the stack supplies them, do not duplicate them.
+- `ui.md`: integrated journeys, design references and review outcomes.
+- `design-system.md`: guide to the canonical design-system sources and the real
+  component catalog when it exists; do not copy token values or component APIs here.
+- `operations.md` (created by the operations task): actual installation, update,
+  rollback, live-version and recovery instructions after they are selected and verified.
 
 Update pages affected by a change; do not rewrite the whole site for routine task
 progress. Keep executable tasks in issuectl and research under its parent issue.
@@ -56,6 +65,23 @@ Link to detailed research instead of copying it. Historical research is not the
 current design. Preserve the meaning of accepted decisions when editing their
 language; record a changed decision in a new ADR and link the old one to it.
 Use Git and closed issues for history, without separate handoff pages.
+
+Detailed work plans belong under their parent issue, including the staged plan
+at `issues/plan-v1-implementation/plan.md`. The implementation page explains
+phase outcomes; issuectl owns executable order. Keep durable product and technical
+decisions on their named pages, and detailed experiments/results in the issue
+that produced them. An issue result links the evidence to the durable conclusion.
+
+Update assumptions with inspected versions/revisions, exact result links and
+explicit scope of the evidence. Unknown is not unsupported, a mock is not an
+integration test, and a completed probe need not confirm its initial hypothesis.
+Proposed ADRs stay proposed until the relevant human review is recorded.
+
+`status.md` presents a dated reader snapshot and concrete review links when ready;
+it must not become a second scheduling queue. Workers update the durable pages
+their issue owns under its collision hold. Probe workers keep results local to
+their issues; the review-preparation task integrates them. See
+`AGENTS-WORKFLOW.md` for the conductor's handoff and review responsibilities.
 
 ## Files and publication
 

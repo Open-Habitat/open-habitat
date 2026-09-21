@@ -6,8 +6,9 @@ status: open
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
-lane_seq: 100
-blocked_by: ['@build-agent-control', '@archive-agent-conversations']
+lane_seq: 120
+blocked_by: ['@archive-agent-conversations', '@complete-conversation-ui', '@prepare-mvp-operations']
+collision: [docs/, AGENTS.md, design-system/]
 ---
 
 # Verify reconnect and two-user separation for v1
@@ -38,4 +39,19 @@ parallel history store, credential broker, internal tenant model or speculative 
 - [ ] Daemon restart, stale observations and missing native sources produce honest recoverable UI states.
 - [ ] Test two distinct Linux accounts and negative cross-user routing/access cases with an agreed test setup.
 - [ ] Verify continued SSH/tmux/native Pi use within the attachment limits established by the probe.
-- [ ] Walk through desktop/mobile v1 with Jari and record remaining defects and the observed need for the next feature.
+- [ ] Walk through desktop v1 with Jari and record remaining defects and the observed need for the next feature.
+
+## Implementation and evidence
+
+Use the [delivery plan](../plan-v1-implementation/plan.md), accepted implementation
+briefs and exact checks verified by @build-app-foundation. Save `result.md` here with
+the tested revision, commands, outcomes and remaining limits. Update the affected
+durable documents and component examples; do not duplicate task state in TODO.md.
+
+Run the approved two-user Alder/disposable-target pilot procedure from
+@prepare-mvp-operations, within recorded deployment authorization. Include all accepted
+workspace/GitHub/worktree/archive flows, partial failures, daemon restart, native history
+recovery and continued SSH/tmux/Pi use. Record workload and long-history/streaming behavior;
+add no cache without measurement. Report exact limitations and any absent optional
+extension. Prepare a linked pilot/demo report for @review-mvp. Complete technical
+verification here; Jari's final acceptance belongs to that separate human gate.

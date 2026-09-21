@@ -5,12 +5,12 @@ type: task
 status: open
 priority: normal
 epic: native-agent-host-architecture
-lane: ui-v1
-lane_seq: 10
-blocked_by: ['@receive-designer-v1', '@finalize-design-docs']
 commits:
 - hash: c2c0be8ba0c62f56144ffaa8132cbc92d27e3332
   summary: 'docs(ui): accept the workspace MVP direction'
+blocked_by: ['@receive-designer-v1', '@finalize-design-docs', '@prepare-ui-review']
+labels: [human-review]
+reviewer: jari
 ---
 
 # Review and agree the designer UI v1
@@ -33,6 +33,16 @@ Detailed plans and results for this task belong in this issue directory.
 Keep native histories, component configuration and subprocess ownership with their
 native components. Use the agreed HTTP/SSE path. Do not add a workspace registry,
 parallel history store, credential broker, internal tenant model or speculative cache.
+
+## Execution and output
+
+This is a human review handled by the main-session conductor after @prepare-ui-review.
+It intentionally has no lane. Present the concrete package to Jari; do not spawn an
+unattended worker and do not infer approval from delivery or elapsed time. Record the
+decision, date and reviewed revision in `review.md` here and update `docs/product.md`
+and `docs/ui.md`. The already accepted workspace MVP direction stays in scope.
+If corrections are required, schedule bounded accepted correction issues as blockers;
+keep this issue open until the target is accepted.
 
 ## Acceptance Criteria
 

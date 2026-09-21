@@ -6,8 +6,9 @@ status: open
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
-lane_seq: 70
+lane_seq: 80
 blocked_by: ['@manage-workspace-lifecycle']
+collision: [docs/, AGENTS.md, design-system/]
 ---
 
 # Connect GitHub workspace flows
@@ -31,3 +32,10 @@ Do not build a new credential broker. Use an explicitly selected native GitHub a
 - [ ] Search or accept an exact GitHub repository reference and clone it under `~/src`.
 - [ ] Keep unavailable and failed GitHub actions visible with actionable reasons.
 - [ ] Verify authorization, duplicate destination, network failure and partial Git/GitHub failure behavior.
+
+## Implementation and evidence
+
+Use the [delivery plan](../plan-v1-implementation/plan.md), accepted implementation
+briefs and exact checks verified by @build-app-foundation. Save `result.md` here with
+the tested revision, commands, outcomes and remaining limits. Update the affected
+durable documents and component examples; do not duplicate task state in TODO.md.

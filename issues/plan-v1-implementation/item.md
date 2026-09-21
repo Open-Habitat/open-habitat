@@ -5,40 +5,51 @@ type: task
 status: open
 priority: normal
 epic: native-agent-host-architecture
-lane: ui-v1
-lane_seq: 20
-blocked_by: ['@review-ui-v1', '@probe-pi-control']
+lane: planning
+lane_seq: 70
+blocked_by: ['@review-ui-v1', '@choose-frontend-stack', '@choose-host-stack', '@define-host-contracts', '@design-production-ui']
 commits:
 - hash: f2c326d23549333032af795b61b163b97040f854
   summary: 'docs(ui): schedule the accepted MVP capabilities'
+collision: [docs/, AGENTS.md]
 ---
 
-# Specify the first implementation slices from the design and Pi probe
+# Specify implementation slices and verification from the agreed design
 
 ## Goal
 
-Turn accepted UI v1 and observed Pi capabilities into small implementation briefs before writing the product.
+Assemble the proposed technical decisions, native evidence, contracts and production UI
+specification into bounded, reviewable implementation briefs. Do not implement the product.
+The staged [delivery plan](plan.md) is the starting point, not a second execution queue.
 
-## Context
+## Inputs
 
-Follow the current Unix-native architecture and the bounded UI v1 brief.
-
-Sources: [architecture](../../docs/architecture.md),
-[design package](../native-agent-host-architecture/ui-design-package.md),
-[conversation v1](../native-agent-host-architecture/ui-design-conversation.md).
-Detailed plans and results for this task belong in this issue directory.
+- @review-ui-v1: accepted product journeys and design direction.
+- @choose-frontend-stack and @choose-host-stack: proposed stack ADRs and trials.
+- @define-host-contracts: commands/events, authority and failure semantics.
+- @design-production-ui: component and integrated interaction specification.
+- [Product](../../docs/product.md), [assumptions](../../docs/assumptions.md),
+  [architecture](../../docs/architecture.md) and [interfaces](../../docs/interfaces.md).
 
 ## Scope
 
-Keep native histories, component configuration and subprocess ownership with their
-native components. Use the agreed HTTP/SSE path. Do not add a workspace registry,
-parallel history store, credential broker, internal tenant model or speculative cache.
+Retain native histories/configuration, filesystem discovery and HTTP/SSE. No registry,
+parallel history, credential broker, speculative cache, mobile or multi-server UI.
+Reuse the existing downstream issues; split only when a concrete brief is too large.
+Changes to scope require a recorded product decision. No worker runs in this task.
 
 ## Acceptance Criteria
 
-- [ ] Choose the minimal implementation stack, gateway authentication method, daemon transport and packaging; justify choices briefly.
-- [ ] Specify snapshot/command/SSE behavior, event identity, send acknowledgement, resume ownership and reconnect/resnapshot semantics.
-- [ ] Try the selected renderer library with representative Pi tool/history events before committing to a runtime; verify copied-code licenses.
-- [ ] Update the downstream workspace, history, control, local workspace lifecycle, GitHub, worktree, archive and resilience issues with exact boundaries and proportionate verification commands.
-- [ ] Document product test/build commands and deployment target/procedure when actually selected; do not invent a working deployment.
-- [ ] Record user-visible deviations from the accepted design for discussion before implementation.
+- [ ] Integrate probe findings and proposed decisions into a consistent implementation plan; each critical assumption has evidence or an explicit accepted limitation awaiting review.
+- [ ] Write `implementation-briefs.md` here with inputs, bounded outputs, file ownership, test scenarios and exact proposed commands for each downstream issue.
+- [ ] Define bootstrap/build/check/test commands for @build-app-foundation; that task must make them runnable and verify them before later product workers depend on them. Mark commands as proposed until then.
+- [ ] Update downstream issue boundaries and dependencies using issuectl; retain a minimal real core before completing the full conversation UI and host operations.
+- [ ] Specify test identities, native fixtures, rollback, target and exact deployment/live-version commands with explicit authorization status; no invented working deployment.
+- [ ] Map every full-MVP success criterion to an implementation owner and an end-to-end/pilot verification owner, including two-user separation from the first authenticated slice.
+- [ ] Prepare `review.md` here linking ADRs, contract examples, design/component specification, expected deviations and exact decisions for @review-implementation-plan.
+- [ ] Update `docs/implementation.md`, `docs/decisions.md`, `docs/interfaces.md` and `docs/status.md` to distinguish proposed, accepted and implemented work. Run documentation checks and validate the issue DAG.
+
+## Delivery
+
+Close this preparation task when its package is complete. It does not accept the ADRs or
+close @review-implementation-plan; production code remains blocked on that human review.

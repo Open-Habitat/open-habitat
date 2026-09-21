@@ -1,43 +1,44 @@
-# Current status
+# Projektin tilanne
 
-**Updated:** 2026-09-19
-**Source revision:** `04319441e9a3ecce6882d04e0a7614f902afa734`
+**Updated:** 2026-09-21
+**Source revision:** `642bd26c7f68009c8c59f284aca04f169ed97598`
 
-## The approach is agreed
+## Sovittu perusta
 
-Native Agent Host will give browser access to agents running under ordinary Linux
-accounts. Each user has a lightweight daemon behind a shared authentication
-gateway. Workspaces come from `~/src`; conversations and configuration stay with
-Pi, Claude Code or Codex. The daemon reads existing information and adds only what
-a concrete use case needs.
+Unix-natiivi arkkitehtuuri on hyväksytty. Keskustelu- ja workspace-designit
+on vastaanotettu. Workspace-/agenttinavigointi sekä workspacejen elinkaari,
+GitHub-kytkentä, worktreet ja arkisto kuuluvat ensimmäisen MVP:n suuntaan.
+Ensimmäinen käyttöliittymä tehdään työpöytäselaimelle, yhdelle palvelimelle ja Pi:lle.
 
-The first API uses JSON/HTTP and one combined SSE event feed per server. The design
-is recorded in [ADR 0001](adr-0001-unix-native-agent-host) and explained in
-[how the system works](architecture).
+Tuotetta, tuotantokomponenttikirjastoa tai sen ajettavaa katalogia ei ole vielä
+rakennettu. Frontend/backend-tekniikka, autentikointi ja tarkat rajapinnat ovat
+vielä päätettäviä. Vanha benchmark-fixture ei todista niiden toimivuutta.
 
-The first working implementation is not built yet. Research covers Alder, Northwind,
-the two Acme Creator implementations and candidate tools. The benchmark fixture
-is in place, but no protocol has been shown to pass its B1–B8 scenarios.
+## Polku on valmisteltu
 
-## Next: one working path on Alder
+[Vaiheistus](implementation.md) kulkee käyttökuluista ja natiivien kykyjen
+kokeista teknisiin päätöksiin, tuotantodesigniin, toimivaan ytimeen ja koko MVP:n
+pilottiin. Tehtävät ja riippuvuudet on kuvattu issuectl:ssä.
 
-Connect one browser through the gateway to one user's daemon. List a workspace,
-find and resume a Pi conversation, accept a command and stream its events. Check
-reconnect and continued use through SSH and tmux. The [implementation page](implementation)
-describes the steps and checks.
+Seuraava työrupeama valmistelee käyttökulut ja aloittaa Pi:n ohjausmahdollisuuksien
+kokeen. Se ei aloita tuotantototeutusta. Tämän polun valmistelu ei käynnistänyt
+Taskfleet-ajoja.
 
-Authentication, daemon packaging, Pi discovery, process controls and exact API
-formats still need to be worked out. No cache is needed until measurement finds a
-slow path, and no annotation is needed until something actually uses it.
+## Katselmoi seuraavaksi
 
-## What remains unverified
+Ensimmäinen katselmointi on [yhteinen käyttöliittymäpolku](../issues/review-ui-v1/item.md).
+Sen valmistelija kokoaa designit, käyttökulut ja natiivikokeiden tulokset ennen
+päätöspyyntöä. Valmis katselmointipaketti ja tarkka päätettävä asia tuodaan tähän,
+kun ne ovat olemassa. Nykyisiä avoimia kysymyksiä voi seurata
+[oletussivulta](assumptions.md).
 
-Alder still needs observation of terminal attachment, second-user separation,
-failure outcomes and cleanup. The Northwind study lacks representative interviews,
-macOS and live Claude observations, and a controlled concurrency trial.
+Sen jälkeen katselmoidaan tekniset päätökset ja tuotantodesign, ja lopulta oikea
+MVP pilotin tuloksineen. [Katselmointisivu](ui.md) linkittää näihin tehtäviin.
+Valmistelu ja toimitus eivät tarkoita Jarin hyväksyntää.
 
-The Native Creator study could not inspect the private fork or installed package,
-or test live provider and Moodle behavior. The Creator web study lacked an
-authenticated test account and host, database and log access; restore and Moodle
-integration were not tested. These gaps mean the behavior is unknown, not absent.
-The [research index](evidence) links to the details.
+## Dokumentaation katselu
+
+Dokumentaatio on suoraan `docs/`-hakemistossa ja sen aloitus on `index.md`.
+Glasspadin nykyversio hylkää hakemiston AGENTS.md/CLAUDE.md-ohjeet. Siksi
+suora näyttäminen tarvitsee Glasspad-korjauksen; dokumentaation rakennetta ei
+muuteta sen vuoksi. Nämä muutokset eivät vielä ole Glasspadissa julkaistuja.

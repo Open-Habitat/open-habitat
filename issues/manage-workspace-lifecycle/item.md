@@ -6,8 +6,9 @@ status: open
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
-lane_seq: 60
-blocked_by: ['@build-agent-control']
+lane_seq: 70
+blocked_by: ['@complete-conversation-ui']
+collision: [docs/, AGENTS.md, design-system/]
 ---
 
 # Manage local workspace lifecycle
@@ -32,3 +33,10 @@ Keep the filesystem and Git authoritative. Do not add a workspace registry. Work
 - [ ] Hide a workspace as a presentation preference without removing its directory.
 - [ ] Delete a workspace only through the accepted explicit confirmation and report all affected agent processes before execution.
 - [ ] Cover success, duplicate-name, permission, disconnect and partial-failure behavior with proportionate automated tests.
+
+## Implementation and evidence
+
+Use the [delivery plan](../plan-v1-implementation/plan.md), accepted implementation
+briefs and exact checks verified by @build-app-foundation. Save `result.md` here with
+the tested revision, commands, outcomes and remaining limits. Update the affected
+durable documents and component examples; do not duplicate task state in TODO.md.

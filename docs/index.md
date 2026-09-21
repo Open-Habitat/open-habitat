@@ -1,18 +1,32 @@
 # Native Agent Host
 
-Native Agent Host brings a browser interface to agents running on a Linux server.
-Users keep their normal accounts, files, credentials and tools. They can use the
-same work through SSH, tmux and the browser.
+Native Agent Host tuo selaimen käyttöliittymäksi Linux-palvelimen workspaceihin
+ja natiiveihin AI-agentteihin. Käyttäjä säilyttää omat tiedostonsa, tunnuksensa ja
+työkalunsa; samoja töitä voi jatkaa SSH:n, tmuxin ja selaimen kautta.
 
-We build on mature open-source Unix/Linux software: use what already works,
-let each component manage its own configuration, and keep the connecting code
-simple. Add new parts when a concrete need appears.
+Aloita [tavoitteesta ja MVP:stä](product.md) ja
+[katso tämänhetkinen tilanne](status.md).
 
-Start with [how the system works](architecture) or [what is done and what comes next](status).
+## Tavoite ja eteneminen
 
-- [Decisions](decisions): the agreed approach and questions still to answer.
-- [First implementation](implementation): what to build and check first.
-- [Research](evidence): the systems examined and what remains unverified.
+- [Tavoite ja MVP](product.md): mitä ensimmäisellä järjestelmällä voi tehdä.
+- [Vaiheistus](implementation.md): miten määrittely ja toteutus johtavat siihen.
+- [Tilanne](status.md): mitä on tehty ja mikä tarvitsee seuraavaksi huomiota.
 
-Research and task links point to the private `native-agent-host` repository and
-require access to it.
+## Järjestelmä ja päätökset
+
+- [Arkkitehtuuri](architecture.md): sovittu Unix-natiivi perusta.
+- [Kriittiset oletukset](assumptions.md): mitä pitää vielä todentaa.
+- [Päätökset](decisions.md): hyväksytyt ratkaisut ja seuraavat päätöstehtävät.
+- [Rajapinnat](interfaces.md): komponenttien vastuut ja tarkennettava käyttäytyminen.
+- [Tutkimukset](evidence.md): aiempi näyttö ja sen rajoitukset.
+
+## Käyttöliittymä
+
+- [Käyttökulut ja katselmointi](ui.md): design-aineisto ja päätöskohdat.
+- [Design system](design-system.md): yhteinen perusta ja polku oikeisiin komponentteihin.
+
+Tarkemmat suunnitelmat, kokeet ja toteutustehtävät löytyvät sivujen linkittämistä
+issueista. Osa tutkimuslinkeistä osoittaa yksityiseen GitHub-repoon ja vaatii
+pääsyoikeuden. Tämä on repon dokumentaatio; Glasspad tarjoaa sille selainkatselun,
+kun sen nykyinen agenttiohjetiedostojen käsittelyrajoitus on korjattu.

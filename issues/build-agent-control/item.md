@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-21
 type: task
 status: open
 priority: normal
@@ -8,6 +8,7 @@ epic: native-agent-host-architecture
 lane: ui-v1
 lane_seq: 50
 blocked_by: ['@build-history-view']
+collision: [docs/, AGENTS.md, design-system/]
 ---
 
 # Connect v1 conversation controls to Pi
@@ -38,3 +39,17 @@ parallel history store, credential broker, internal tenant model or speculative 
 - [ ] Preserve drafts, focus and reading position while tool groups update; match the same history on reopening.
 - [ ] Keep tool execution and configuration in Pi, with no process center or later-feature expansion.
 - [ ] Demonstrate the accepted v1 story against a real test agent and run the checks specified by @plan-v1-implementation.
+
+## Implementation and evidence
+
+Use the [delivery plan](../plan-v1-implementation/plan.md), accepted implementation
+briefs and exact checks verified by @build-app-foundation. Save `result.md` here with
+the tested revision, commands, outcomes and remaining limits. Update the affected
+durable documents and component examples; do not duplicate task state in TODO.md.
+
+This completes the first working core: demonstrate real login → workspace → native
+history → start/resume → prompt → live response → browser disconnect/reconnect.
+An uncertain send must not be automatically resent; closing the browser must not stop
+the agent. Verify ownership against a concurrent resume attempt within the probe's limits.
+Record the demo for Jari; it is an intermediate result, not full-MVP acceptance.
+@complete-conversation-ui owns the remaining rich interaction and presentation work.

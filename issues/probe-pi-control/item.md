@@ -1,11 +1,11 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-21
 type: task
 status: open
 priority: normal
 epic: native-agent-host-architecture
-lane: pi-probe
+lane: probes
 lane_seq: 10
 blocked_by: ['@finalize-design-docs']
 ---
@@ -39,3 +39,7 @@ parallel history store, credential broker, internal tenant model or speculative 
 - [ ] Check stable event/tool IDs, intermediate output, diff availability and user-question response support without inventing missing APIs.
 - [ ] Save a minimal reproducible probe and redacted event examples under this issue; report unsupported capabilities and adjustments for v1.
 - [ ] Preserve the real user's sessions; do not build the production daemon, UI runtime or process registry in this probe.
+
+## Output ownership
+
+Write `result.md`, redacted events and reproducible disposable probes only in this issue directory. @prepare-ui-review integrates the evidence into docs/assumptions.md and the user journeys; do not edit shared docs, root instructions or the epic during the probe. Include queue/steering, competing resume attempts and agent survival limits where relevant; unsupported/unobserved capabilities must remain explicit.

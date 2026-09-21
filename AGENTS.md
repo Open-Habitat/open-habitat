@@ -63,3 +63,9 @@ Detailed plans stay under their parent issue. Issuectl lane/dependency metadata
 is the only execution schedule; do not derive a second queue from TODO.md.
 External designer delivery has no executable lane. Later UI features are deferred
 and unscheduled until selected. See the current handoff before starting a stint.
+
+Read [AGENTS-WORKFLOW.md](AGENTS-WORKFLOW.md) before a work-session round. It
+defines this repo's prepared MVP path, shared-file ownership, human-review
+handling, verification and deployment boundaries. `human-review` issues are
+handled by the conductor with Jari, have no executable lane, and remain blockers
+until the actual review decision is recorded.
