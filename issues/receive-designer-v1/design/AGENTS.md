@@ -1,8 +1,10 @@
 # Keskustelukäyttöliittymän ensimmäinen suunnittelutoimitus
 
-Tämä hakemisto säilyttää 2026-09-20 vastaanotetun keskusteludesignin vedokset,
-klikattavan simulaation ja toimitukseen kuuluneet taustatiedostot. Se on yhden
-suunnittelukierroksen aineistoa, ei yhteisen design systemin lähde.
+Tämä hakemisto säilyttää UI v0.1 -suunnittelutoimitusten vedokset, klikattavat
+simulaatiot ja toimituksiin kuuluneet taustatiedostot. Keskusteludesign
+vastaanotettiin 2026-09-20 ja workspace-/navigointidesign 2026-09-21. Aineisto on
+suunnittelukierroksen referenssiä, ei yhteisen design systemin lähde eikä
+hyväksytty toteutusmäärittely.
 
 - Yhteiset tokenit ja komponentit ovat [`../../../design-system/`](../../../design-system/).
 - Tuotteen arkkitehtuuri on [`../../../docs/site/architecture.md`](../../../docs/site/architecture.md).
@@ -13,13 +15,19 @@ suunnittelukierroksen aineistoa, ei yhteisen design systemin lähde.
 
 ## Sisältö
 
-- `vedokset/`: pääpolku, tilakatalogit, yhteenveto ja ilmemääritys.
-- `toimeksianto/`: toimituksen mukana palautunut toimeksianto ja myöhempien
-  ominaisuuksien liite.
+- `vedokset/`: keskustelun pääpolku, tilakatalogit, yhteenveto ja ilmemääritys.
+- `toimeksianto/`: keskustelutoimituksen mukana palautunut toimeksianto ja
+  myöhempien ominaisuuksien liite.
+- `workspaces/`: palvelin-, workspace- ja agenttinavigoinnin `AGENTS.md`-handoff,
+  päävedos, A1–A9-yhteenveto ja vedosten paikallinen ajoympäristö.
 
-Kaikki vedosten tapahtumat ovat simuloituja. Vedos ei todista Pi-adapterin tukea.
-Älä nosta jonotusta, kesken vuoron ohjausta, automaattista otsikointia tai muita
-toimituskohtaisia ehdotuksia tuotevaatimuksiksi ilman UI-katselmoinnin päätöstä.
+Kaikki vedosten tapahtumat ovat simuloituja. Vedos ei todista Pi-adapterin,
+daemonin, GitHub-kytkennän tai muun taustatoiminnon tukea. Jari hyväksyi
+workspace- ja agenttinavigoinnin handoffissa kuvatut toiminnot ensimmäisen
+funktionaalisen MVP-version suunnaksi 2026-09-21; tarkat päätökset ja tekniset
+rajat ovat [`../review.md`](../review.md)-tiedostossa. Keskustelun jonotus, kesken
+vuoron ohjaus ja muut Pi-rajapinnasta riippuvat ehdotukset odottavat edelleen
+adapterikoetta ja yhteistä UI-katselmointia.
 
 ## Toimitukseen kirjatut näkymäkohtaiset ehdotukset
 

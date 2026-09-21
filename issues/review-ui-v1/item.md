@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-21
 type: task
 status: open
 priority: normal
@@ -52,3 +52,7 @@ Design system siirrettiin vastaanotto-issuen alta projektin pysyväksi juuritaso
 ### 2026-09-20T08:51:55Z · @pi
 
 Jarin palautteen perusteella design system erotettiin ensimmäisen keskusteludesignin aineistosta. Juuritason design-system/ sisältää nyt vain yhteiset tokenit, visuaaliset käyttökortit ja komponenttireferenssit. Vedokset, staattinen keskusteluprototyyppi ja toimituksen toimeksiantokopiot ovat issues/receive-designer-v1/design/-hakemistossa. Design systemin AGENTS.md viittaa arkkitehtuuridokumentteihin ja styles.css:ään eikä enää kopioi tuotteen kuvausta, tokeniarvoja tai näkymäkohtaisia sisältösääntöjä.
+
+### 2026-09-21T10:37:10Z · @pi
+
+Jari hyväksyi 2026-09-21 workspace- ja agenttinavigoinnin yleisen suunnan ensimmäiseen funktionaaliseen MVP-versioon. Yksi palvelin riittää nyt. Workspacejen luonti ja poisto, GitHub-kytkentä, workspace-asetukset, worktree-toiminnot, arkisto ja vedoksen automaattiset sivuvaikutukset ovat tarkoituksellisia MVP-toimintoja. Agenttilistan tilailmaisun visuaalinen parannus siirtyy ensimmäisen toimivan version jälkeiseen katselmointiin. Yhteinen katselmointi keskittyy nyt keskustelupolkuun ja taustakykyjen todentamiseen, ei näiden host-toimintojen uudelleenrajaamiseen ilman teknistä estettä.

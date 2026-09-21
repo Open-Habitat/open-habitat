@@ -2,10 +2,12 @@
 created: 2026-09-20
 updated: 2026-09-21
 type: task
-status: in-progress
+status: done
 priority: normal
 epic: native-agent-host-architecture
 labels: [external-input]
+closed: 2026-09-21
+closed_by: pi
 ---
 
 # Receive the external designer UI v1 artifacts
@@ -32,9 +34,9 @@ parallel history store, credential broker, internal tenant model or speculative 
 ## Acceptance Criteria
 
 - [x] Record stable artifact links or place received files under this issue directory, with the brief revision they implement.
-- [ ] Collect the conversation first-draft direction and record Jari's feedback before treating the full design as accepted.
-- [ ] Collect the v1 conversation states and the surrounding host/workspace views, including desktop/mobile and any missing states.
-- [ ] Mark delivery complete when artifacts are available for the separate review issue; delivery alone is not design acceptance.
+- [x] Collect the conversation first-draft direction and record Jari's feedback before treating the full design as accepted.
+- [x] Collect the v1 conversation states and the surrounding host/workspace views, including desktop/mobile and any missing states.
+- [x] Mark delivery complete when artifacts are available for the separate review issue; delivery alone is not design acceptance.
 
 ## Comments
 
@@ -45,3 +47,17 @@ Keskustelukäyttöliittymän v0.1-toimitus vastaanotettiin ja purettiin projekti
 ### 2026-09-21T10:19:32Z · @pi
 
 Päivitetty workspace-/navigointipaketti native-agent-host-ui-01-workspaces-v2.zip on nyt ulkopuolisella designerilla työn alla. Kun toimitus valmistuu, se vastaanotetaan puhtaassa agentti-istunnossa tämän issuen alle ja katselmoidaan yhdessä keskusteludesignin kanssa. Älä käynnistä rinnakkaista design-agenttia odotusaikana.
+
+### 2026-09-21T10:26:25Z · @pi
+
+Workspace- ja navigointitoimitus vastaanotettiin tiedostosta Palvelimet ja workspace-dokumentaatio.zip (SHA-256 598a9b7e31edf7f67078d60258050ccdb4a85014e4a1f62e4d8f8a49eb871813). Zip testattiin ehjäksi; handoff, päävedos, A1–A9-yhteenveto ja vedosten support.js purettiin design/workspaces/-hakemistoon. Alustava sovitus on review.md:ssä. Toimitus lisää rajauksen ulkopuolisia workspace-, GitHub-, A7-, worktree-, arkisto- ja poistotoimintoja sekä poistaa pyydetyn usean palvelimen tarkistuksen, joten sitä ei ole hyväksytty toteutusmäärittelyksi. Muutokset jätetään Jarin pyynnöstä commitoimatta tarkastusta varten.
+
+### 2026-09-21T10:37:03Z · @pi
+
+Jari hyväksyi workspace- ja agenttinavigoinnin ensimmäisen funktionaalisen MVP-version suunnaksi. Ensimmäisessä versiossa on yksi palvelin; toimituksen workspace-, GitHub-, asetus-, worktree-, arkisto- ja automaattiset toiminnot ovat tärkeitä. Agenttilistan tilailmaisua voidaan parantaa ensimmäisen toimivan version jälkeen. Puuttuva vanha vertailuvedos ei estä työtä. Toimituksen README.md normalisoitiin repo-ohjeen mukaiseksi design/workspaces/AGENTS.md-tiedostoksi ja CLAUDE.md-symlinkiksi. Design systemiä ei muutettu. Muutokset ovat edelleen commitoimatta Jarin tarkastusta varten.
+
+## Resolution
+
+### 2026-09-21T10:37:13Z · @pi
+
+Both external UI deliveries are stored under the issue, Jari's MVP direction is recorded, and the remaining product/adapter review continues in @review-ui-v1 and @probe-pi-control. Delivery completion is not evidence that every mocked backend capability exists.
