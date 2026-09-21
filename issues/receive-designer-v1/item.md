@@ -8,6 +8,9 @@ epic: native-agent-host-architecture
 labels: [external-input]
 closed: 2026-09-21
 closed_by: pi
+commits:
+- hash: c2c0be8ba0c62f56144ffaa8132cbc92d27e3332
+  summary: 'docs(ui): accept the workspace MVP direction'
 ---
 
 # Receive the external designer UI v1 artifacts

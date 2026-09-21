@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-21
 type: task
 status: open
 priority: normal
@@ -8,6 +8,9 @@ epic: native-agent-host-architecture
 lane: ui-v1
 lane_seq: 20
 blocked_by: ['@review-ui-v1', '@probe-pi-control']
+commits:
+- hash: f2c326d23549333032af795b61b163b97040f854
+  summary: 'docs(ui): schedule the accepted MVP capabilities'
 ---
 
 # Specify the first implementation slices from the design and Pi probe
