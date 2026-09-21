@@ -1,7 +1,7 @@
 # Projektin tilanne
 
 **Updated:** 2026-09-21
-**Source revision:** `642bd26c7f68009c8c59f284aca04f169ed97598`
+**Source revision:** `0b0a16419e280aff57f08ce6a747fcb03584488c`
 
 ## Sovittu perusta
 
