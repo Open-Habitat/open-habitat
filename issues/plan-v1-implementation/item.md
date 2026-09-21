@@ -36,6 +36,6 @@ parallel history store, credential broker, internal tenant model or speculative 
 - [ ] Choose the minimal implementation stack, gateway authentication method, daemon transport and packaging; justify choices briefly.
 - [ ] Specify snapshot/command/SSE behavior, event identity, send acknowledgement, resume ownership and reconnect/resnapshot semantics.
 - [ ] Try the selected renderer library with representative Pi tool/history events before committing to a runtime; verify copied-code licenses.
-- [ ] Update the downstream workspace, history, control and resilience issues with exact boundaries and proportionate verification commands.
+- [ ] Update the downstream workspace, history, control, local workspace lifecycle, GitHub, worktree, archive and resilience issues with exact boundaries and proportionate verification commands.
 - [ ] Document product test/build commands and deployment target/procedure when actually selected; do not invent a working deployment.
 - [ ] Record user-visible deviations from the accepted design for discussion before implementation.

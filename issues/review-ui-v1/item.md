@@ -34,7 +34,7 @@ parallel history store, credential broker, internal tenant model or speculative 
 ## Acceptance Criteria
 
 - [ ] Check B1–B10, B12 and B5a–B5f; B11 and L1–L13 must not become v1 requirements.
-- [ ] Check host A1–A6, A8 and basic A9; ensure navigation and conversation form one usable flow.
+- [x] Check host A1–A6, A8 and basic A9; ensure navigation and conversation form one usable flow.
 - [ ] Walk through sending, resume, read-only agents, grouped tools, diffs, copy, supported questions, interruption and uncertain sends/reconnect.
 - [ ] Record requested corrections, their resolution and explicit user acceptance of the implementation target.
 - [ ] Record chosen UI components and unresolved adapter requirements; a mock does not prove Pi integration.

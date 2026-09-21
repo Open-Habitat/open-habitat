@@ -1,13 +1,13 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-21
 type: task
 status: open
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
-lane_seq: 60
-blocked_by: ['@build-agent-control']
+lane_seq: 100
+blocked_by: ['@build-agent-control', '@archive-agent-conversations']
 ---
 
 # Verify reconnect and two-user separation for v1
