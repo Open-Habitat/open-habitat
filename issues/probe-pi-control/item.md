@@ -33,12 +33,12 @@ parallel history store, credential broker, internal tenant model or speculative 
 
 ## Acceptance Criteria
 
-- [ ] Record inspected Pi/extension versions and actual supported control interfaces.
-- [ ] Demonstrate native history discovery, workspace association, resume, prompt, streaming tool events and interruption on a test conversation.
-- [ ] Separate history discovery, live-process detection and actual controllability; verify or explicitly bound terminal-started agent attachment.
-- [ ] Check stable event/tool IDs, intermediate output, diff availability and user-question response support without inventing missing APIs.
-- [ ] Save a minimal reproducible probe and redacted event examples under this issue; report unsupported capabilities and adjustments for v1.
-- [ ] Preserve the real user's sessions; do not build the production daemon, UI runtime or process registry in this probe.
+- [x] Record inspected Pi/extension versions and actual supported control interfaces.
+- [x] Demonstrate native history discovery, workspace association, resume, prompt, streaming tool events and interruption on a test conversation.
+- [x] Separate history discovery, live-process detection and actual controllability; verify or explicitly bound terminal-started agent attachment.
+- [x] Check stable event/tool IDs, intermediate output, diff availability and user-question response support without inventing missing APIs.
+- [x] Save a minimal reproducible probe and redacted event examples under this issue; report unsupported capabilities and adjustments for v1.
+- [x] Preserve the real user's sessions; do not build the production daemon, UI runtime or process registry in this probe.
 
 ## Output ownership
 
