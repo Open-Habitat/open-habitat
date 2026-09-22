@@ -25,6 +25,38 @@ Kahden käyttäjän reititys tarkistetaan ensimmäisestä autentikoidusta palast
 alkaen. Katkokset tarkistetaan ensimmäisestä elävästä keskustelusta lähtien.
 Lopun pilotti kokoaa näytön koko järjestelmästä ja sen käyttöönotosta.
 
+## Ehdotettu hostin toteutus- ja operointiraja
+
+[ADR 0003](adr-0003-host-stack.md) ehdottaa yhtä lukittua Rust-koodipohjaa ja
+julkaisubinaaria gatewaylle ja käyttäjädaemoneille. Systemd käynnistäisi gatewayn
+omalla rajatulla tunnuksellaan ja jokaisen daemonin oikealla käyttäjätunnuksella.
+Gateway reitittäisi ennalta määrättyyn käyttäjäkohtaiseen Unix-socketiin, ja
+daemon tarkistaisi gatewayn UID:n Linuxin peer credential -tiedosta. Staattinen
+React-buildi toimitettaisiin samassa versionoidussa julkaisussa; Nodea ei
+ajettaisi tuotantopalveluna.
+
+Ensimmäinen toteutettava läpileikkaus tarvitsee ennen Aldera disposable-systemd-
+VM:n, jossa kaksi synteettistä käyttäjää todistaa sekä oikeat reitit että väärän
+käyttäjän, väärän peer UID:n, selainotsakkeella tehdyn identiteettihuijauksen,
+katkoksen ja daemon-restartin torjunnat. Selain- tai gateway-katkos ei saa
+pysäyttää Pi:tä. Daemonin kuolema saa pysäyttää sen omistaman Pi-lapsen, mutta
+natiivihistorian pitää säilyä ja resumen olla mahdollista vasta vanhan kirjoittajan
+poistumisen ja historian asettumisen jälkeen. Terminaali-TUI pysyy vain luettavana,
+ja Taskfleet purkaa itse luomansa worktreet.
+
+Aldern pysyvä asennus ei synny paikallisesta source-buildista tai käsin kopioidusta
+unitista. Alderlla ei ollut 2026-09-22 `kaisa`-Unix-tunnusta, joten katselmointi
+hyväksyy ensin sen tarkan Fleetrepo-deklaraation tai pilotti ei käynnisty. Fleetrepoen
+lisätään lisäksi katselmoitu fleet-komponentti, joka omistaa tarkan julkaisuversion
+ja checksumin, gateway-käyttäjän, unitit, kaksi sallittua daemon-socketia,
+identiteettimappauksen, salatun OIDC-syötteen ja Tailscale HTTPS -reitin. Ennen päivitystä tai rollbackia maintenance-preflightin pitää todistaa,
+ettei daemonien omistamia aktiivisia Pi-kirjoittajia ole. Aktivoinnin jälkeen
+varmistetaan version JSON, konfiguraatio, unitit, health/readiness, kummankin
+käyttäjän oma luku, ristiinkäytön torjunta, SSE-paluu ja yksi disposable Pi-vuoro.
+Tarkat ehdotetut build-, Fleetrepo apply-, health-, update- ja rollback-komennot
+ovat ADR:ssä. Ne muuttuvat käyttöohjeiksi vasta, kun
+`review-implementation-plan` hyväksyy ne ja toteutus todentaa ne.
+
 [Agenttien yksityiskohtainen suunnitelma](../issues/plan-v1-implementation/plan.md)
 kuvaa kunkin vaiheen tehtävät, tulokset ja omistajat. Ajantasaiset työtilat ja
 riippuvuudet ovat issuectl:ssä, eivät tässä vaihetaulukossa.

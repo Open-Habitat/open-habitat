@@ -47,6 +47,31 @@ switching user identities. Keep both processes lightweight and straightforward.
 The browser can connect separately to several servers and combine what it shows.
 Each server keeps its own account mapping and native files.
 
+### Proposed first host stack
+
+[ADR 0003](adr-0003-host-stack.md) proposes one Rust release artifact for a
+non-root gateway and the per-user daemons. The browser would sign in with OIDC;
+a root-owned mapping would bind the verified issuer and subject to one fixed
+Unix account. The gateway would then reach only that account's systemd-created
+Unix socket. Linux peer credentials would authenticate the gateway to the daemon,
+without passing a reusable local token or a browser-selected username.
+
+Each daemon would run as its user's real UID and start Pi RPC as its own child.
+The browser or SSE connection would not own that process, so browser loss would
+not stop it. A daemon crash or planned daemon restart would stop its controlled
+Pi children; after restart the daemon would rediscover native history and permit
+a deliberate resume only after proving that the previous writer exited and the
+history settled. This is deliberately smaller than a second persistent process
+supervisor. Terminal-started Pi remains read-only until the separately agreed
+stop-and-transfer boundary is proved.
+
+The proposed artifact would include the static frontend and be installed as an
+immutable, checksum-verified release. Alder's persistent user, units, account
+mapping, encrypted OIDC input, HTTPS route and release pin would all be declared
+in Fleetrepo and converged through its fleet workflow. These details and their
+operator commands remain proposals until `review-implementation-plan`; they do
+not describe an installed service.
+
 ## Workspaces are directories
 
 A workspace is an immediate directory under `~/src`. It may or may not be a Git

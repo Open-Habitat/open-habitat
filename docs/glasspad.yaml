@@ -34,6 +34,9 @@ groups:
       - slug: adr-0002-frontend-stack
         title: ADR 0002 — Frontend-stack
         desc: Ehdotettu selainasiakas, tilanhallinta, renderöinti ja testaus.
+      - slug: adr-0003-host-stack
+        title: ADR 0003 — Host-stack
+        desc: Ehdotettu gateway, daemonit, autentikointi ja operointi.
       - slug: interfaces
         title: Rajapinnat
         desc: Yhteyksien merkitys ja vielä määriteltävä käyttäytyminen.

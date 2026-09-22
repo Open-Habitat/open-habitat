@@ -6,17 +6,19 @@ Unix-daemon gatewayn takana, natiivit workspacet ja historiat sekä HTTP/SSE.
 
 [ADR 0002](adr-0002-frontend-stack.md) ehdottaa React- ja TypeScript-pohjaista
 selainasiakasta, yhtä Redux-tapahtumatilaa, React Aria -komponenttipohjaa sekä
-rajattua Markdown-, koodi- ja diffirenderöintiä. Päätös on ehdotus:
-`review-implementation-plan` hyväksyy tai palauttaa sen ennen tuotantopohjan
-rakentamista. Nykyinen JSX ja klikkiprototyyppien simuloidut toiminnot eivät ole
-teknologiavalintoja tai näyttöä taustarajapinnasta. Backend-stackia ei ole vielä
-valittu.
+rajattua Markdown-, koodi- ja diffirenderöintiä. [ADR 0003](adr-0003-host-stack.md)
+ehdottaa yhtä Rust-binaaria gatewaylle ja käyttäjädaemoneille, OIDC-kirjautumista,
+systemd-palveluita, Unix-socketteja ja Fleetrepon kautta hallittavaa julkaisupakettia.
+Molemmat päätökset ovat ehdotuksia: `review-implementation-plan` hyväksyy tai
+palauttaa ne ennen tuotantopohjan rakentamista. Nykyinen JSX,
+klikkiprototyyppien simuloidut toiminnot ja ehdotetut operointikomennot eivät ole
+näyttöä toimivasta tuotantojärjestelmästä.
 
 | Päätettävä kokonaisuus | Valmistelu | Päätöksen aineisto |
 |---|---|---|
 | Toteutettava käyttökokemus | [UI-katselmoinnin valmistelu](../issues/prepare-ui-review/item.md) | Käyttökulut ja Pi-/elinkaarikokeen osoittamat rajat. |
 | Frontend, tilanhallinta, renderöinti ja komponenttipohja | [Frontend-valinta](../issues/choose-frontend-stack/item.md) | [Ehdotettu ADR 0002](adr-0002-frontend-stack.md), vaihtoehdot ja kokeet. |
-| Gateway, autentikointi, daemon ja paketointi | [Host-valinta](../issues/choose-host-stack/item.md) | Ehdotettu ADR, käyttäjärajat ja testikohde. |
+| Gateway, autentikointi, daemon ja paketointi | [Host-valinta](../issues/choose-host-stack/item.md) | [Ehdotettu ADR 0003](adr-0003-host-stack.md), käyttäjärajat, prosessiomistajuus, operointikomennot ja testikohde. |
 | Rajapinnat ja tietojen omistajuus | [Sopimukset](../issues/define-host-contracts/item.md) | Komennot, tapahtumat, kuittaukset, palautuminen ja annotaatiot. |
 | Tuotantodesign ja komponenttisopimukset | [Tuotantodesign](../issues/design-production-ui/item.md) | Yhtenäinen design system ja vuorovaikutus. |
 | Toteutus- ja käyttöönottovalmius | [Toteutuspalat](../issues/plan-v1-implementation/item.md) | Rajatut työt, tarkistuskomennot, kohde ja valtuudet. |
