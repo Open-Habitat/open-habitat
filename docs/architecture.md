@@ -68,15 +68,27 @@ name. Create it when a workspace setting needs to be saved; a directory without
 it is still a workspace. In a Git repository, prefer a local `.git/info/exclude`
 entry; the user may choose to version the file instead.
 
-Runtime state and credentials do not belong in the workspace file. Read Git
-branches and worktrees from Git. A worktree can be outside `~/src` while belonging
-to a workspace listed there.
+Runtime state and credentials do not belong in the workspace file. Before a Git
+repository can be opened, a blocking integration step must establish that the
+repository and the user's credential environment are ready for agents' ordinary
+`git pull` and `git push` commands. Detecting `gh` authentication alone is not
+that guarantee. The implementation of this integration is still undecided.
+
+Read branches and worktree facts from Git, but expose worktree creation and
+management only as Taskfleet-created dedicated agent environments. The v1 browser
+has no general UI for creating, editing or managing arbitrary manual worktrees.
+A worktree outside `~/src` can still be shown as an observed effect on a listed
+workspace without becoming a supported management target.
 
 ## An agent keeps its native identity and history
 
 Use the harness's own resume ID, prefixed with the harness name: `pi:<id>`,
 `claude-code:<id>` or `codex:<id>`. A running process can exit and a later process
 can resume the same conversation. Its PID is therefore not the agent's identity.
+Pi RPC cannot attach to a currently running terminal TUI. A controlled transfer
+first stops the terminal process safely, waits for native history to settle and
+only then starts another runtime with `pi --mode rpc --session <session>`; this
+valid resume command is not a live-attachment mechanism.
 
 The daemon reads native histories and combines them with observations from the
 operating system, tmux, Git, Taskfleet and optional extensions. Pi's history keeps
@@ -117,7 +129,9 @@ user information.
 
 This keeps terminal use practical. Users can attach to tmux, resume through the
 native harness, inspect `git worktree list`, and use Taskfleet directly. The daemon
-finds and exposes that work without requiring it to have started through the browser.
+can observe native facts without requiring work to have started through the browser.
+Only Taskfleet-created dedicated agent worktrees are supported management objects;
+other discovered worktrees remain read-only facts or operation impacts.
 
 ## Permissions and subprocesses
 
