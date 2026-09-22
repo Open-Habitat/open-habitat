@@ -1,11 +1,14 @@
 ---
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-22
 type: task
-status: deferred
+status: open
 priority: normal
 epic: native-agent-host-architecture
-blocked_by: ['@verify-v1-resilience']
+blocked_by: ['@review-mvp']
+lane: post-mvp-design
+lane_seq: 60
+collision: [docs/, design-system/]
 ---
 
 # Refine agent status visibility
@@ -16,7 +19,7 @@ Revisit the agent-list status treatment after the first functional desktop versi
 
 ## Context
 
-Jari accepted the initial compact status-dot treatment for the first functional MVP and suggested evaluating a whole-row background treatment for waiting and working states afterward.
+Jari accepted the initial compact status-dot treatment for the first functional MVP and scheduled this as post-MVP design work. Begin by designing and reviewing the status treatment against observed use; do not treat the earlier whole-row suggestion as an implementation decision.
 
 ## Scope
 
@@ -24,6 +27,7 @@ This is post-v1 visual refinement. Preserve text or another non-color signal so 
 
 ## Acceptance Criteria
 
+- [ ] Produce and review a concrete visual/interaction design before any implementation issue is activated.
 - [ ] Evaluate the treatment against observed multi-agent use in the first functional version.
 - [ ] Compare whole-row, label and other compact treatments in light and dark themes.
 - [ ] Verify contrast, keyboard focus, reduced motion and non-color status communication.

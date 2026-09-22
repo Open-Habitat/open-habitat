@@ -1,11 +1,14 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-22
 type: task
-status: deferred
+status: open
 priority: normal
 epic: native-agent-host-architecture
-blocked_by: ['@verify-v1-resilience']
+blocked_by: ['@review-mvp']
+lane: post-mvp-design
+lane_seq: 50
+collision: [docs/, design-system/]
 ---
 
 # Extend diffs tool renderers and visual choices after v1
@@ -16,7 +19,7 @@ Use actual v1 experience to choose richer diffs, specialized MCP/web/subtask ren
 
 ## Context
 
-Explicitly later, per the user's v1-first direction. Covers L9–L11 in [the complete TUI follow-up list](../native-agent-host-architecture/ui-design-later.md). No executable lane: completing v1 does not automatically activate this work. Select and narrow the next useful feature with the user.
+This is accepted post-MVP design work covering L9–L11 in [the complete TUI follow-up list](../native-agent-host-architecture/ui-design-later.md). Begin by designing one evidence-backed renderer or visual refinement from observed MVP use; do not activate a bundle of speculative views or implementation before that design is reviewed.
 
 Sources: [architecture](../../docs/architecture.md),
 [design package](../native-agent-host-architecture/ui-design-package.md),
@@ -31,6 +34,7 @@ parallel history store, credential broker, internal tenant model or speculative 
 
 ## Acceptance Criteria
 
+- [ ] Produce and review a concrete visual/interaction design for the selected improvement before any implementation issue is activated.
 - [ ] Select one concrete improvement and split it into a bounded implementation issue before activation.
 - [ ] Use real diff/event data; preserve order, errors and requests when grouping.
 - [ ] Do not add approval of already-applied edits, speculative tool taxonomy or theme settings without a need.

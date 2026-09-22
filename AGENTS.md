@@ -61,8 +61,9 @@ All planning documents belong under their parent issue directory — not as stan
 external design work, local changes and verification/deployment guidance.
 Detailed plans stay under their parent issue. Issuectl lane/dependency metadata
 is the only execution schedule; do not derive a second queue from TODO.md.
-External designer delivery has no executable lane. Later UI features are deferred
-and unscheduled until selected. See the current handoff before starting a stint.
+External designer delivery has no executable lane. Accepted post-MVP UI work is
+scheduled after the MVP review and begins with an explicit design/review task before
+any implementation is activated. See the current handoff before starting a stint.
 
 Read [AGENTS-WORKFLOW.md](AGENTS-WORKFLOW.md) before a work-session round. It
 defines this repo's prepared MVP path, shared-file ownership, human-review

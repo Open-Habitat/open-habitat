@@ -1,11 +1,14 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-22
 type: task
-status: deferred
+status: open
 priority: normal
 epic: native-agent-host-architecture
-blocked_by: ['@verify-v1-resilience']
+blocked_by: ['@review-mvp']
+lane: post-mvp-design
+lane_seq: 10
+collision: [docs/, design-system/]
 ---
 
 # Evaluate manual then automatic conversation recap
@@ -16,7 +19,7 @@ Start with a user-requested recap card if returning to long conversations is dif
 
 ## Context
 
-Explicitly later, per the user's v1-first direction. Covers L7 in [the complete TUI follow-up list](../native-agent-host-architecture/ui-design-later.md). No executable lane: completing v1 does not automatically activate this work. Select and narrow the next useful feature with the user.
+This is accepted post-MVP design work covering L7 in [the complete TUI follow-up list](../native-agent-host-architecture/ui-design-later.md). Begin by designing the manual recap experience from observed MVP use; do not start implementation from the old sketch or treat automatic recap as already selected.
 
 Sources: [architecture](../../docs/architecture.md),
 [design package](../native-agent-host-architecture/ui-design-package.md),
@@ -31,5 +34,6 @@ parallel history store, credential broker, internal tenant model or speculative 
 
 ## Acceptance Criteria
 
+- [ ] Produce and review a concrete interaction design before any implementation issue is activated.
 - [ ] Verify native recap support or explicitly design the missing integration, including cost and model-context separation.
 - [ ] Show generation, age, failure and a suggested next step; do not replace history or automatically execute suggestions.

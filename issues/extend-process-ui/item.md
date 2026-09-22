@@ -1,11 +1,14 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-22
 type: task
-status: deferred
+status: open
 priority: normal
 epic: native-agent-host-architecture
-blocked_by: ['@verify-v1-resilience']
+blocked_by: ['@review-mvp']
+lane: post-mvp-design
+lane_seq: 40
+collision: [docs/, design-system/]
 ---
 
 # Extend process visibility and controls after v1
@@ -16,7 +19,7 @@ Start with read-only extension process inventory and one retained/live log. Spli
 
 ## Context
 
-Explicitly later, per the user's v1-first direction. Covers L1–L5 in [the complete TUI follow-up list](../native-agent-host-architecture/ui-design-later.md). No executable lane: completing v1 does not automatically activate this work. Select and narrow the next useful feature with the user.
+This is accepted post-MVP design work covering L1–L5 in [the complete TUI follow-up list](../native-agent-host-architecture/ui-design-later.md). Begin by designing and reviewing the first useful process experience from observed MVP use; do not activate the broad implementation surface as one feature.
 
 Sources: [architecture](../../docs/architecture.md),
 [design package](../native-agent-host-architecture/ui-design-package.md),
@@ -31,6 +34,7 @@ parallel history store, credential broker, internal tenant model or speculative 
 
 ## Acceptance Criteria
 
+- [ ] Produce and review a concrete design for the first selected process feature before any implementation issue is activated.
 - [ ] Choose the first useful process feature based on v1 use; define and verify its extension contract.
 - [ ] Split L1–L5 into individually reviewable work before activating them.
 - [ ] Cover inventory, logs/search/stream filters, control/stdin/clear, pinning/dock and notification/watch modes only where native support and a real need exist.

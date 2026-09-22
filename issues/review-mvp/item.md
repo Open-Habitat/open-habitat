@@ -30,7 +30,7 @@ workspace registry, credential broker or speculative cache. Desktop first, one s
 - [ ] Review two-user isolation, restart/reconnect, native terminal compatibility and install/update/recovery evidence from @verify-v1-resilience.
 - [ ] Record actual pilot feedback and unresolved defects with affected scenarios; blocking defects remain dependencies until verified fixes land.
 - [ ] Record Jari's acceptance or requested corrections with date, demonstrated revision and known limitations; close only on acceptance.
-- [ ] Update product/status/operations docs to distinguish delivered behavior from remaining limits. Do not activate deferred features merely because MVP is accepted.
+- [ ] Update product/status/operations docs to distinguish delivered behavior from remaining limits. Confirm that accepted post-MVP UI work proceeds as design and review before any implementation is activated.
 
 ## Execution
 

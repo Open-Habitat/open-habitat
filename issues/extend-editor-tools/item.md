@@ -1,11 +1,14 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-22
 type: task
-status: deferred
+status: open
 priority: normal
 epic: native-agent-host-architecture
-blocked_by: ['@verify-v1-resilience']
+blocked_by: ['@review-mvp']
+lane: post-mvp-design
+lane_seq: 30
+collision: [docs/, design-system/]
 ---
 
 # Evaluate command completion and editor shortcuts after v1
@@ -16,7 +19,7 @@ Begin with native command discovery and midline slash completion if useful. Trea
 
 ## Context
 
-Explicitly later, per the user's v1-first direction. Covers L6, L12 in [the complete TUI follow-up list](../native-agent-host-architecture/ui-design-later.md). No executable lane: completing v1 does not automatically activate this work. Select and narrow the next useful feature with the user.
+This is accepted post-MVP design work covering L6 and L12 in [the complete TUI follow-up list](../native-agent-host-architecture/ui-design-later.md). Begin by designing the browser-native command and editor experience from observed MVP use; do not port TUI gestures or start implementation before that design is reviewed.
 
 Sources: [architecture](../../docs/architecture.md),
 [design package](../native-agent-host-architecture/ui-design-package.md),
@@ -31,5 +34,6 @@ parallel history store, credential broker, internal tenant model or speculative 
 
 ## Acceptance Criteria
 
+- [ ] Produce and review a concrete command/editor interaction design before any implementation issue is activated.
 - [ ] Verify command listing and execution support, insertion at cursor, descriptions and source labels.
 - [ ] Preserve selection, IME, undo and browser shortcuts; add copy modes or quick clear only for an observed need.

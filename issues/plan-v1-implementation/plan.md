@@ -26,8 +26,9 @@ GitHub-kytkentä, worktreet, arkistointi/jatkaminen, kahden käyttäjän erottel
 asennus/päivitys/palautuminen ja Jarin käytännön katselmointi.
 
 Työpöytä, suomenkielinen käyttöliittymä, yksi palvelin ja Pi ovat ensimmäinen
-kohde. Mobiili, muut harnessit, usean palvelimen näkymä, prosessikeskus ja muut
-deferred-toiminnot eivät aktivoidu tämän polun valmistumisesta automaattisesti.
+kohde. Hyväksytyt MVP:n jälkeiset UI-laajennukset alkavat omalla designilla ja
+katselmoinnilla vasta MVP-katselmoinnin jälkeen. Mobiili, muut harnessit ja
+usean palvelimen näkymä eivät aktivoidu tämän polun valmistumisesta.
 Northwind ja Acme säilyvät myöhempinä käyttöönottoina, eivät Alder-MVP:n piilevinä
 lisävaatimuksina.
 
@@ -139,8 +140,9 @@ uudelleenkäynnistysten, natiivikäytön ja koko toimintovalikoiman pilotin
 valtuutetussa ympäristössä. Tuloksista syntyy katselmoitava raportti.
 
 @review-mvp on Jarin lopullinen katselmointi. Puutteet kirjataan ja olennaiset
-korjaukset todennetaan ennen hyväksyntää. Hyväksyminen ei muuta deferred-työtä
-ajettavaksi eikä todista muiden sovellusten käyttöönottovalmiutta.
+korjaukset todennetaan ennen hyväksyntää. Sen jälkeen hyväksytty post-MVP-työ
+etenee designiin ja katselmointiin, ei suoraan toteutukseen. MVP:n hyväksyntä ei
+todista muiden sovellusten käyttöönottovalmiutta.
 
 ## Dokumentit ja agentin toimitus
 
