@@ -2,7 +2,7 @@
 created: 2026-09-20
 updated: 2026-09-22
 type: task
-status: open
+status: done
 priority: normal
 epic: native-agent-host-architecture
 commits:
@@ -11,6 +11,8 @@ commits:
 blocked_by: ['@receive-designer-v1', '@finalize-design-docs', '@prepare-ui-review']
 labels: [human-review]
 reviewer: jari
+closed: 2026-09-22
+closed_by: jari
 ---
 
 # Review and agree the designer UI v1
@@ -75,3 +77,9 @@ Jari hyväksyi 2026-09-21 workspace- ja agenttinavigoinnin yleisen suunnan ensim
 ### 2026-09-22T16:09:58Z · @jari
 
 Hyväksytty 2026-09-22 valmistelurevisiosta 6bcabaa451e4b0927548c408622dee5a0e44fe36. Kohdat 1 ja 3–8 hyväksyttiin valmistelijan suosituksen mukaisesti. Kohta 2 muutettiin: keskustelun otsikko generoidaan LLM:llä varmennetulla Pi:n agenttiloopin ulkopuolisella kertakutsulla ja voidaan generoida uudelleen muutaman viestin jälkeen aiheen tarkennuttua; viimeisin onnistunut otsikko säilyy korvattavana esitystietona ja epäonnistuminen ei estä keskustelua. Päätös, rajat ja myöhemmin todennettavat adapterivaatimukset ovat tiedostossa issues/review-ui-v1/review.md.
+
+## Resolution
+
+### 2026-09-22T16:10:19Z · @jari
+
+Jari hyväksyi valmistelurevision 6bcabaa kahdeksan UI v1 -päätöstä; kohta 2 hyväksyttiin muutettuna LLM-generoiduksi ja keskustelun tarkentuessa uudelleengeneroitavaksi otsikoksi. Täsmällinen päätös on issues/review-ui-v1/review.md.
