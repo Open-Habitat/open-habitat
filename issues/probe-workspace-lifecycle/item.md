@@ -2,12 +2,14 @@
 created: 2026-09-21
 updated: 2026-09-22
 type: task
-status: in-progress
+status: done
 priority: normal
 epic: native-agent-host-architecture
 lane: probes
 lane_seq: 20
 blocked_by: ['@probe-pi-control']
+closed: 2026-09-22
+closed_by: pi
 ---
 
 # Verify native workspace GitHub and archive boundaries
@@ -26,12 +28,12 @@ workspace registry, credential broker or speculative cache. Desktop first, one s
 
 ## Acceptance Criteria
 
-- [ ] Record inspected versions and reproducible evidence for local directories, Git init, worktree creation and native identity association.
-- [ ] Inspect the mapped Unix user's GitHub authorization boundary without exposing tokens. Establish a proposed create/clone authorization flow and test approach without creating or deleting real remote repositories.
-- [ ] Determine where hidden state, display name, archive markers, synopsis and parent context could live; distinguish native facts from the smallest justified new annotations.
-- [ ] Specify deletion boundaries, symlink/path escape cases, affected processes/worktrees and partial outcomes to be addressed by the contract.
-- [ ] Document unsupported or untested operations and exact later verification. Do not infer browser control from discovery.
-- [ ] Save `result.md` and disposable probe material here; change no real workspaces, credentials, running user sessions or shared documentation.
+- [x] Record inspected versions and reproducible evidence for local directories, Git init, worktree creation and native identity association.
+- [x] Inspect the mapped Unix user's GitHub authorization boundary without exposing tokens. Establish a proposed create/clone authorization flow and test approach without creating or deleting real remote repositories.
+- [x] Determine where hidden state, display name, archive markers, synopsis and parent context could live; distinguish native facts from the smallest justified new annotations.
+- [x] Specify deletion boundaries, symlink/path escape cases, affected processes/worktrees and partial outcomes to be addressed by the contract.
+- [x] Document unsupported or untested operations and exact later verification. Do not infer browser control from discovery.
+- [x] Save `result.md` and disposable probe material here; change no real workspaces, credentials, running user sessions or shared documentation.
 
 ## Delivery and verification
 
