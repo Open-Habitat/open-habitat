@@ -2,13 +2,15 @@
 created: 2026-09-21
 updated: 2026-09-22
 type: task
-status: in-progress
+status: done
 priority: normal
 epic: native-agent-host-architecture
 lane: planning
 lane_seq: 60
 blocked_by: ['@define-host-contracts']
 collision: [docs/, AGENTS.md, design-system/]
+closed: 2026-09-22
+closed_by: pi
 ---
 
 # Specify the production design system and integrated UI
