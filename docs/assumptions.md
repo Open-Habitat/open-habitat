@@ -51,18 +51,38 @@ hypoteeseina:
   unknown-tilat ovat hyväksytty lähtökohta. Tarkat sopimukset ja retention
   määritellään ennen toteutusta.
 
-## Aidosti avoimet, rakennetta muuttavat oletukset
+## Workspace-, GitHub- ja arkistokokeen tulokset
 
-Workspace-/GitHub-elinkaarikoe on edelleen ajamatta: sen issue
-[probe-workspace-lifecycle](../issues/probe-workspace-lifecycle/item.md) on avoin,
-eikä sillä ole tulosta. Siksi mikään alla oleva workspace-, credential- tai
-GitHub-väite ei ole todennettu Pi-kokeella.
+[Workspace-elinkaarikokeessa](../issues/probe-workspace-lifecycle/result.md)
+tutkittiin 2026-09-22 disposable-fixturellä Linuxia `7.0.0-31-generic`
+(x86-64), Pythonia 3.14.4, Gitiä 2.53.0, GitHub CLI:tä 2.46.0,
+issuectlia 0.18.4 ja Taskfleetia 0.11.0 commitissa
+`fc99e51f44d3e08e03ab80a29318376dcbd7e23d` (state schema 1). Tulos
+toimitettiin revisiossa `c1e06b0af9a2835106b5f27277dd1de31766856a`.
+Paikallinen koe käytti vain synteettisiä hakemistoja ja repoja. GitHubista tehtiin
+Alderlla käyttäjän `jari` ympäristössä vain luku- ja autentikointihavaintoja;
+etärepoa ei luotu, muutettu tai poistettu.
+
+| Aiempi tunnus | Havaittu näyttö | Raja, ehdotus ja vaikutus käyttöliittymään |
+|---|---|---|
+| A5 | `~/src`:n välittömät tavalliset hakemistot löytyivät ilman rekisteriä. Git erotti pää- ja linkitetyn worktreen omilla hallintatiedoillaan. Taskfleet-ajon omistajuus pystyttiin yhdistämään tämän työn worktreehen; branchin lyhyt näyttötunnus ei ole omistajuustieto. Hakemistosymlinkki voitiin tunnistaa ilman seuraamista. | Lista luetaan edelleen levyltä. Symlinkki ja manuaalinen worktree näytetään havaittuna mutta vain luettavana; vain Taskfleetin omistamaa worktreeta hallitaan. Puuttuva liitos jää tuntemattomaksi. Siirretyn workspacen Pi-`cwd`-yhdistys on yhä testaamatta. |
+| A6 | Valitulle nykyiselle private-repolle `gh`-API-auth, SSH-auth, `ADMIN`-oikeus ja `git ls-remote` toimivat samassa käyttäjäympäristössä. Tämä ei todistanut create-, push-, clone- tai delete-oikeutta, organisaation SSO:ta, tiimejä tai muuta transporttia. | Git-portti tarkistaa valitun repon, lopullisen `origin`-transportin, oikeuden ja tavallisen Git-liikenteen erikseen. Create, remote-asetus ja push ovat eri vaiheita ja osatuloksia. Selainpohjainen credential-kytkentä on vielä suunniteltava ja kahden käyttäjän kirjoitustesti tehtävä luvallisilla disposable-repoilla. Uutta credential brokeria ei päätellä näytöstä. |
+| A7 / poisto | Raaka worktree-hakemiston poisto jätti Git-metadatan stale-tilaan. Päätyöhakemiston poisto rikkoi ulkopuolisen linkitetyn worktreen. Prosessi jatkoi poistetussa cwd:ssä, ja symlinkkiä seuraava haavoittuva poistotapa pääsi lähdejuuren ulkopuolelle. | Poisto on vaiheistettu, descriptor-relatiivinen no-follow-operaatio: kohde ja vaikutukset tarkistetaan uudelleen, hallitut prosessit pysäytetään omistajan kautta ja Taskfleetin worktreet puretaan Taskfleetin kautta ennen hakemistopoistoa. Jäljellä oleva Taskfleetin tai manuaalinen linkitetty worktree sekä epävarma vaikutus estävät päätyöhakemiston poiston. Lopuksi lähde havainnoidaan uudelleen. UI näyttää jokaisen onnistuneen ja epäonnistuneen vaiheen; onnistunut hakemistopoisto ei peitä jäljelle jäänyttä prosessia tai Git-metatietoa. Symlinkki ei ole tuettu poistokohde. |
+| A8 | Natiivilähteet eivät sisällä käyttäjän piilotus- tai arkistovalintaa. Kokeessa perusteltiin niille pieni Unix-käyttäjäkohtainen XDG state -annotaatio, avaimena esimerkiksi `pi:<session-id>`. Pi-historia, Git-faktat, PID:t ja output eivät kuulu tiedostoon. Synopsis voidaan johtaa vain myöhemmin hyväksytyllä luotettavalla säännöllä; automaattista synopsista ei todennettu. | `.agent-host/workspace.json` säilyy workspacen asetusten paikkana. Piilotus ja arkistointi ehdotetaan harvaksi `${XDG_STATE_HOME:-~/.local/state}/native-agent-host/`-annotaatioksi, jonka puuttuminen tai vioittuminen hukkaa vain esitystavan. Tarkka skeema, atominen kirjoitus, path-avaimen rename-käytös ja parent-linkin provenance ratkaistaan host-sopimuksessa. Arkisto jatkaa samaa natiivia resume-ID:tä eikä kopioi historiaa. |
+
+Kokeen näyttö tukee hyväksyttyä natiivia rakennetta, mutta ei ole selain- tai
+tuotetesti. Erityisesti mielivaltaisten worktreeiden hallinta pysyy v1:n
+ulkopuolella. GitHubin kirjoitusoperaatiot, selaimesta tehtävä credential-flow,
+prosessihavainnon kattavuus, symlink-race, mountit, crash/power-loss,
+Taskfleetin osittaiset virheet ja workspace-siirto tarvitsevat vielä kokeet.
+Tuntematon havainto estää tuhoavan operaation eikä muutu käyttöliittymässä
+onnistumiseksi.
+
+## Aidosti avoimet, rakennetta muuttavat oletukset
 
 | Tunnus ja väite | Tila ja tarvittava näyttö | Vastuullinen työ | Seuraus, jos väite on väärä |
 |---|---|---|---|
-| A5: Workspacet ja olennaiset Git-/worktree-faktat voidaan löytää ilman workspace-rekisteriä niin, että Taskfleetin hallintakohteet voidaan erottaa muista havaituista worktreeistä. | Todentamatta. Kokeile hakemisto ilman Gitiä, repo, Taskfleet-worktree, ulkopuolinen worktree, puuttuva metadata ja ulkoinen Git-muutos; vertaa levyyn, `git worktree list`iin ja Taskfleetin natiiviin tilaan. | [Elinkaarikoe](../issues/probe-workspace-lifecycle/item.md), [workspace-elinkaari](../issues/manage-workspace-lifecycle/item.md), [agentti-worktreet](../issues/manage-agent-worktrees/item.md). | Jos luotettava erottelu ei onnistu, hallinta rajataan vain todistettuihin Taskfleet-kohteisiin ja muut faktat näytetään read-only/unknown-tilassa. Uusi annotaatio tarvitsee erillisen perustelun; yleistä rekisteriä ei lisätä huomaamatta. |
-| A6: Estävä Git-integrointi voidaan toteuttaa käyttäjän natiivin ympäristön päälle niin, että agentin tavalliset pull/push-komennot todella toimivat ilman uuden credential-arkkitehtuurin valintaa tässä vaiheessa. | Todentamatta. Elinkaarikokeen pitää kirjata `git`/`gh`-versiot, repository-, remote-, transport-, credential-, oikeus- ja verkkorajat sekä puuttuva/vanhentunut tila. Myöhempi luvallinen disposable-remote-koe todentaa clonen, createn, pullin ja pushin. Pelkkä `gh auth status` ei riitä. | [Elinkaarikoe](../issues/probe-workspace-lifecycle/item.md), [GitHub-workspacet](../issues/connect-github-workspaces/item.md). | Repo pysyy estävän dialogin takana. Jos natiivi ympäristö ei riitä, credential-ratkaisu tuodaan Jarin arkkitehtuuripäätökseen; sitä ei valita hiljaisesti tässä dokumentissa. |
-| A8: Arkisto, piilotus, synopsis ja vanhempikonteksti tarvitsevat korkeintaan pienet workspacen sisäiset annotaatiot natiivihistorian rinnalle. | Todentamatta. Inventoi Pi-historian ja workspace-asetuksen kentät, arkistoinnin vaikutus resumeen sekä synopsiksen lähde ja päivitys; nimeä jokainen tieto, jota ei voi rekonstruoida. | [Elinkaarikoe](../issues/probe-workspace-lifecycle/item.md), [host-sopimukset](../issues/define-host-contracts/item.md), [arkisto](../issues/archive-agent-conversations/item.md). | Toimintoa rajataan tai tarkka annotaatio viedään katselmointiin. Rinnakkaista historiaa tai yleistä workspace-rekisteriä ei synny oletuksena. |
+| A6: Molempien pilottikäyttäjien natiivi credential-ympäristö riittää valitun repon create-, clone-, pull- ja push-operaatioihin ilman uutta credential-arkkitehtuuria. | Yhden käyttäjän auth ja read transport vahvistettiin, mutta kirjoitusoperaatiot, toinen käyttäjä, organisaatiopolitiikka ja selain-credential-flow ovat todentamatta. Tarvitaan probe-resultissa kuvattu luvallinen kahden käyttäjän disposable-remote-koe samasta daemon-ympäristöstä. | [GitHub-workspacet](../issues/connect-github-workspaces/item.md), [host-sopimukset](../issues/define-host-contracts/item.md), [häiriötestit](../issues/verify-v1-resilience/item.md). | Repo pysyy estävän dialogin takana. Tarvittava credential-ratkaisu tuodaan Jarin arkkitehtuuripäätökseen; sitä ei valita hiljaisesti toteutuksessa. |
 | A14: Tuleva daemon pystyy omistamaan yhden Pi RPC -runtimen, pitämään sen elossa browser/SSE-katkosten yli ja palauttamaan näkymän ilman kilpailevaa resumea. | Pi-koe osoitti tarvittavan RPC-pinnan mutta ei daemonia. Todennus vaatii yhden ohjaajan lukituksen, browser-disconnectin, daemon-restartin ja host-rebootin rajatut testit sekä natiiviin sessioniin verratun lopputilan. | [Host-sopimukset](../issues/define-host-contracts/item.md), [agenttiohjaus](../issues/build-agent-control/item.md), [häiriötestit](../issues/verify-v1-resilience/item.md). | Prosessiomistajuus tai palautumisratkaisu on suunniteltava uudelleen; tuotetta ei saa esittää selainkatkokset kestävänä pelkän Pi-historian perusteella. |
 
 ## Toteutuksessa ajettavat testit

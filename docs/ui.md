@@ -20,6 +20,15 @@ checksumit ja Jarin jo hyväksymän suunnan. Yhteiset tokenit ja komponenttirefe
 ovat [design systemissä](design-system.md). Tämä määrittely ei muuta tokeneita,
 valitse komponenttikirjastoa eikä valitse frontend-runtimea.
 
+[Pi-koe](../issues/probe-pi-control/result.md) vahvisti historian, resumen,
+promptin, abortin, työkalutapahtumat, extension-dialogin sekä `steer`- ja
+`follow_up`-jonot Pi 0.85.1:ssä. Se myös osoitti, ettei elävään terminaali-TUI:hin
+voi attachata RPC:tä eikä Pi lukitse kilpailevaa resumea. [Workspace-koe](../issues/probe-workspace-lifecycle/result.md)
+vahvisti levy-, Git- ja Taskfleet-lähteiden rajat sekä sen, että poistot ja
+GitHub-operaatiot tarvitsevat vaiheistetun osatuloksen. GitHubin create/push/clone/delete,
+selain-credential-flow ja tuotedaemon ovat yhä todentamatta. Kumpikaan koe ei
+muuta mockin ajastinta tai klikattavaa kontrollia backend-kyvyksi.
+
 ## Yhtenäinen työpöytäpolku
 
 1. **Saapuminen ja kirjautuminen.** URL määrää palvelimen. Käyttäjä käynnistää
@@ -70,15 +79,15 @@ koko MVP:n. Ensimmäinen demo ei saa näyttää koko MVP:tä valmiina.
 | Historia | loading → tapahtumat → pohja | tyhjä, pitkä historia, lukuvirhe, puuttuva/vioittunut historia, tuntematon tapahtumatyyppi, lyhennetty pitkä sisältö, uusi sisältö lukukohdan yläpuolella |
 | Syöte | luonnos → lähetys → hyväksytty | tyhjä/IME, pending, hylätty, tulokseltaan epävarma, katkos, vanhentunut istunto, vain luku, agentti työskentelee, agentin vaihto ja reload |
 | Vastaus | stream → valmis | työkalun pending/onnistui/virhe/keskeytetty, vuoro keskeytetty/virheellinen, käyttäjäpyyntö tuettu/ei tuettu/käsitelty muualla, yhteys katkeaa streamissa |
-| Resume ja terminaalisiirto | historia ilman prosessia → pending → elävä; tai havaittu TUI → vahvistettu turvallinen stop → historia asettunut → uusi RPC-runtime | jo käynnissä, stop epäonnistui, historian asettumista ei voida varmistaa, kilpaileva resume, RPC-käynnistys epäonnistui, historia puuttuu; live-TUI-attachia ei tarjota |
+| Resume ja terminaalisiirto | varmasti päättynyt historia → pending → elävä; tai havaittu TUI → stop tunnetun omistajan kautta tai käyttäjän toimesta terminaalissa → prosessi poistunut ja historia asettunut → uusi RPC-runtime | jo käynnissä, prosessihavainto stale/tuntematon/ei käytettävissä, stop epäonnistui, historian asettumista ei voida varmistaa, kilpaileva resume, RPC-käynnistys epäonnistui, historia puuttuu; tuntematon havainto estää resumen ja live-TUI-attachia ei tarjota |
 | Reconnect | down → reconnecting → cursor tai snapshot → ok | cursor vanhentunut, snapshot epäonnistuu, lähetyshetki jäi epävarmaksi, natiivista lähteestä tullut rinnakkainen päivitys |
 | Workspace-luonti | tyhjä → hakemisto → mahdollinen agentti → fokus; Git → hakemisto/clone → estävä Git-integrointi → mahdollinen agentti → fokus | nimi/permission-konflikti, osittainen `mkdir`/clone/`git init`/integraatio/agent start, peruutus, katkos |
 | Asetukset ja näkyvyys | lue → muuta näyttönimi → tallenna; ota Git käyttöön olemassa olevassa hakemistossa → estävä Git-integrointi ennen seuraavaa avausta; piilota/palauta | tiedoston, `git init`in tai integraation virhe, ulkoinen muutos, Git-faktojen puute; piilotus ei poista levyltä |
 | Git-integrointi ja GitHub | Git-repon valinta → estävä dialogi → tarkista/valmistele repo ja agentin `git pull`/`git push` -credential-ympäristö → avaa workspace; erikseen listaa/valitse tai luo remote, kloonaa/push ja varmista `origin` | toteutustapa ja selainkytkentä ovat avoimia; pelkkä `gh`-auth ei läpäise porttia; repo-, remote-, credential-, oikeus- ja verkkovaiheet voivat onnistua, epäonnistua tai jäädä tuntemattomiksi; dialogi näyttää osatuloksen ja turvallisen korjauksen/uusinnan avaamatta workspacea |
 | Taskfleet-worktree | valitse base/nimi → Taskfleet luo omistetun worktreen ja agentin → fokus | ei Git-repo, nimi/branch/polku käytössä, Taskfleet-ajo onnistuu vain osittain; ulkoiset worktreet näkyvät tarvittaessa vaikutuksina, mutta UI ei luo, muokkaa tai hallitse niitä |
-| Poisto | näytä prosessit ja myös `~/src`:n ulkopuoliset worktreet → täsmävahvistus → stop → poisto → lähteen päivitys | vahvistus väärin, vain havaittu tai muu pysäyttämätön prosessi estää poiston, ulkopuolista worktreeta ei poisteta hiljaa, stop epäonnistui, osittainen tiedostopoisto, katkos; piilota turvallisempana ulospääsynä |
+| Poisto | näytä prosessit ja myös `~/src`:n ulkopuoliset worktreet → täsmävahvistus → stop → pura Taskfleet-worktreet Taskfleetin kautta → varmista ettei linkitettyjä worktreeitä jää → poista hakemisto → päivitä lähde | vahvistus väärin, vain havaittu tai muu pysäyttämätön prosessi estää poiston, jäljellä oleva Taskfleetin tai manuaalinen linkitetty worktree estää päätyöhakemiston poiston, stop/teardown epäonnistui, osittainen tiedostopoisto, katkos; ulkopuolista worktreeta ei poisteta hiljaa ja piilota säilyy turvallisempana ulospääsynä |
 | Arkisto | stop + arkistoi → pois aktiivisista → listaa → jatka | jo päättynyt, vain havaittu, stop tai annotaatio epäonnistuu, historia puuttuu, resume epäonnistuu; ei rinnakkaista historiatietokantaa |
-| Uloskirjautuminen | sulje web-istunto | agentit jatkavat; paikallinen luonnos ja viimeksi saatu tila käsitellään katselmoinnissa sovitulla tavalla |
+| Uloskirjautuminen | tyhjennä paikalliset luonnokset ja luettu sisältö → sulje web-istunto | agentit jatkavat; tyhjennys- tai logout-virhe estää uuden identiteetin sisällön näyttämisen samaan näkymään |
 
 ## Keskustelun sisältöinventaario
 
@@ -100,9 +109,9 @@ Keskustelutoimituksesta säilyvät katselmointiin seuraavat vaatimusehdokkaat:
   lukukohtaa rikkomatta (B10, B12).
 
 Jonotus ja kesken vuoron ohjaus ovat edelleen **ehdotuksia**, eivät hyväksyttyä
-toimintaa. Samoin automaattisen synopsiksen sisältö ja päivitysrytmi, luonnoksen
-säilytys reloadin yli sekä huomiotapa toisen agentin pyytäessä vastausta ovat
-auki. Vedosten toimivatkin selaindemot ovat mockeja eivätkä todiste Pi-tuesta.
+toimintaa. Samoin synopsiksen lähde, luonnoksen tarkka selaintallennus,
+lukukohdan avaimet sekä huomiotapa toisen agentin pyytäessä vastausta odottavat
+Jarin päätöstä alla. Vedosten toimivatkin selaindemot ovat mockeja eivätkä todiste Pi-tuesta.
 
 ## Tarvittavat komponentit ja puuttuvat tilat
 
@@ -132,36 +141,62 @@ osittaisten monivaiheoperaatioiden palautumistoimet, kilpailevat ulkoiset
 muutokset, synopsiksen puuttuminen sekä huomiotapa palkin ollessa piilossa.
 Nämä ovat inventaario tuotantodesignille, eivät uusia design-tokeneita.
 
-## Kysymykset yhteisen UI-katselmoinnin valmisteluun
+## Avoimet valinnat ja valmistelijan suositus
 
-[Valmistelutehtävän](../issues/prepare-ui-review/item.md) tulee tuoda vähintään
-seuraavat päätökset Jarin nähtäväksi Pi- ja elinkaarikokeiden näytön kanssa:
+Nämä kahdeksan valintaa ovat edelleen Jarin päätettäviä. Täsmällinen
+[katselmointipaketti](../issues/prepare-ui-review/review.md) linkittää myös
+vedosruudut ja hyväksymislauseen.
 
-1. **Jono ja steering:** tukeeko Pi useaa odottavaa viestiä, perumista ja viestin
-   toimittamista kesken vuoron? Jos ei, mikä rehellinen rajatumpi syöttötila
-   korvaa kaksi lähetyspainiketta?
-2. **Synopsis:** mistä otsikko tulee, milloin se päivittyy, näkyykö viimeksi saatu
-   arvo katkoksen aikana ja mikä on fallback ilman uutta tallennusrekisteriä?
-3. **Fokus ja luonnokset:** milloin fokus siirtyy automaattisesti, säilyykö
-   luonnos vain agenttia vaihdettaessa vai myös reloadissa, missä se voidaan
-   säilyttää, ja miten ulkoinen päivitys tai resume vaikuttaa siihen?
-4. **Lukukohta:** milloin auto-scroll on sallittu, miten “Uutta sisältöä” toimii
-   pitkällä historialla ja säilyvätkö avatut työkaluryhmät snapshotin vaihtuessa?
-5. **Huomio:** miten käyttäjä huomaa toisen agentin tuetun käyttäjäpyynnön, kun
-   agentti tai vasen palkki ei ole näkyvissä? Riittääkö sovelluksen sisäinen
-   merkki ensimmäiseen selainversioon vai tarvitaanko selaimen/OS:n ilmoitus?
-6. **Ohjattavuus:** millä tekstillä selitetään, ettei käynnissä olevaan
-   terminaali-TUI:hin voi liittyä RPC:llä, ja miten käyttäjä vahvistaa erillisen
-   stop–historian asettuminen–`pi --mode rpc --session` -siirron? Mitkä toiminnot
-   sallitaan elävälle, päättyneelle ja vain havaitulle agentille?
-7. **Epävarma lähetys ja reconnect:** mitä käyttäjä voi turvallisesti tehdä, kun
-   kuittausta ei saatu, ja millä tapahtuma-ID:llä kaksoislähetys estetään?
-8. **Osittaiset host-operaatiot:** mitä palautus- tai jatkotoimia näytetään, kun
-   hakemisto, estävä Git-integrointi, GitHub, Taskfleet-worktree, agent start,
-   stop tai poisto onnistuvat vain osittain?
+1. **Jono ja steering.** Suositus: työskentelyn aikana näytetään erikseen
+   “Ohjaa tämän vuoron jälkeen” (`steer`) ja “Suorita valmistumisen jälkeen”
+   (`follow_up`) ja niiden järjestetty jono. Pi 0.85.1 tukee vain koko jonon
+   tyhjennystä (`clear_queue`), joka palauttaa tekstit editoriin; yksittäisen
+   viestin perumista ei luvata v1:ssä. Teksti ei lupaa keskeyttää käynnissä olevaa
+   työkalua. Tavallinen Enter käyttää viimeksi valittua tapaa; tyhjässä jonossa
+   oletus on follow-up.
+2. **Synopsis.** Suositus: näytä “Uusi keskustelu” tai natiivista historiasta
+   deterministisesti johdettu ensimmäisen käyttäjäviestin yhden rivin alku.
+   Älä generoi tai tallenna automaattista malliyhteenvetoa v1:ssä. Katkoksessa
+   arvo merkitään viimeksi saaduksi.
+3. **Fokus ja luonnokset.** Suositus: fokus siirtyy viestikenttään käyttäjän
+   valinnan, onnistuneen luonnin tai resumen jälkeen, ei taustapäivityksestä.
+   Luonnos säilyy palvelin-, web-identiteetti- ja agenttikohtaisesti selaimen
+   `sessionStorage`ssa reloadin yli mutta ei välilehden sulkemisen yli, eikä sitä
+   tallenneta palvelimelle. Uloskirjautuminen tai käyttäjän vaihto tyhjentää
+   luonnokset ennen uuden sisällön näyttämistä. Ulkoinen päivitys ei ylikirjoita
+   luonnosta; lähetyksen hyväksyntä tyhjentää sen.
+4. **Lukukohta.** Suositus: auto-scroll vain käyttäjän ollessa jo pohjassa.
+   Muulloin näytä saavutettava “Uutta sisältöä” -ohjain. Säilytä lukukohta ja
+   avatut työkaluryhmät UI-avaimilla snapshotin vaihtuessa, jos vastaava
+   natiivitapahtuma on yhä löydettävissä.
+5. **Huomio.** Suositus: v1 käyttää sovelluksen sisäistä saavutettavaa lukumäärää,
+   agenttirivin tekstimerkkiä ja dokumentin otsikon lukua. Selain-/OS-ilmoitukset
+   jätetään myöhemmäksi ja taustavälilehti ei saa olla ainoa ilmoituskanava.
+6. **Ohjattavuus.** Suositus: hallitulle RPC-runtimelle sallitaan lähetys,
+   jonotus ja keskeytys; varmasti päättyneelle historialle resume; havaitulle
+   elävälle TUI:lle vain historia. Stale, tuntematon tai puuttuva prosessihavainto
+   estää resumen: puuttuminen listasta ei todista prosessin päättyneen. Teksti
+   sanoo: “Agentti on havaittu, mutta tähän terminaali-istuntoon ei voi liittyä
+   selaimesta.” Erillinen “Siirrä selaimen ohjaukseen” pyytää käyttäjää
+   lopettamaan TUI:n terminaalissa tai käyttää vain tunnetun omistajan stop-kanavaa;
+   UI odottaa prosessin poistumisen ja historian asettumisen ennen RPC-runtimea.
+   Daemon ei signaloi vain havaittua prosessia.
+7. **Epävarma lähetys ja reconnect.** Suositus: jokainen lähetys saa asiakkaan
+   command ID:n, jonka host-sopimus tekee idempotentiksi. Ennen kuittausta
+   katkennut lähetys näkyy “Tulos epävarma” -tilassa eikä sitä uusita
+   automaattisesti. Reconnectin snapshot kertoo löytyikö ID. Jos ID:tä ei tunneta
+   eikä daemon voi todistaa viestin jääneen toimittamatta, tila pysyy epävarmana;
+   käyttäjä voi kopioida tekstin tai lähettää sen uutena tietoisella vahvistuksella.
+   ID:n säilytys ja retention päätetään host-sopimuksessa.
+8. **Osittaiset host-operaatiot.** Suositus: yhteinen vaihelista näyttää
+   vahvistetun, käynnissä olevan, epäonnistuneen, tuntemattoman ja ohitetun
+   vaiheen. Uusinta alkaa vain turvallisesta epäonnistuneesta vaiheesta tuoreen
+   Git-/levy-/Taskfleet-/prosessihavainnon jälkeen. Peruuta ei väitä rollbackia.
+   Poisto merkitään valmiiksi vasta kun uusi `~/src`-listaus osoittaa kohteen
+   puuttuvan; jäljelle jääneet vaikutukset pysyvät näkyvinä.
 
-Valmistelija suosittelee vastaukset, mutta [Jarin UI-katselmointi](../issues/review-ui-v1/item.md)
-hyväksyy toteutettavan toiminnan. Sen jälkeen erilliset
-[toteutusvalmiuden katselmointi](../issues/review-implementation-plan/item.md) ja
-[koko MVP:n katselmointi](../issues/review-mvp/item.md) hyväksyvät omat rajatut
+Nämä ovat suosituksia, eivät hyväksyttyjä päätöksiä tai valmiita
+rajapintasopimuksia. [Jarin UI-katselmointi](../issues/review-ui-v1/item.md)
+hyväksyy tai korjaa ne. Sen jälkeen erilliset [toteutusvalmiuden katselmointi](../issues/review-implementation-plan/item.md)
+ja [koko MVP:n katselmointi](../issues/review-mvp/item.md) hyväksyvät omat rajatut
 tuloksensa. Hiljaisuus tai mockin olemassaolo ei ole päätös.

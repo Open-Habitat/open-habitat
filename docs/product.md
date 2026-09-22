@@ -9,7 +9,17 @@ Ensimmäinen kohde on Alder, Pi ja työpöytäselaimella työskentelevät Jari j
 Kaisa omilla Linux-tunnuksillaan. Yksi palvelin riittää käyttöliittymään.
 Arkkitehtuurin lähtökohta on [sovittu Unix-natiivi malli](architecture.md).
 Tuotetta ei ole vielä toteutettu. Alla olevat skenaariot ovat toteutuksen ja
-testauksen tavoite, eivät näyttö toimivasta järjestelmästä.
+testauksen tavoite, eivät näyttö toimivasta järjestelmästä. Nykyiset klikattavat
+vedokset ovat käyttöliittymäreferenssejä; Pi- ja workspace-kokeet kertovat vain
+niissä erikseen tutkitusta natiivista kyvystä.
+
+Yksi pääpolku kulkee kirjautumisesta käyttäjän oman daemonin kautta `~/src`-
+listaan, workspaceen, Pi:n natiivihistoriaan ja erillisellä toiminnolla hallittuun
+startiin tai resumeen. Vasta ohjattava runtime hyväksyy viestin. Selain näyttää
+kuittauksen, elävät tapahtumat ja lopputilan; katkoksen jälkeen se hakee puuttuvat
+tapahtumat tai uuden snapshotin. Sama näkymä tarjoaa koko MVP:ssä alla määritellyt
+workspace-, GitHub-, Taskfleet-worktree- ja arkistotoiminnot ilman rinnakkaista
+rekisteriä tai historiaa.
 
 ## Kaksi näkyvää valmistumispistettä
 
@@ -25,17 +35,18 @@ lähteen oikeaan tilaan. Tämä on välitulos, ei koko MVP.
 |---|---|---|
 | Y1 Kirjautuminen | Jari kirjautuu Alderan, gateway mapittaa web-identiteetin ennalta määrättyyn `jari`-tunnukseen ja vain tämän tunnuksen daemon vastaa. Kaisan vastaava koe päätyy hänen omaan tunnukseensa. | Puuttuva, ristiriitainen tai väärä mappaus torjutaan. Selain ei tarjoa Unix-käyttäjän valintaa eikä näytä toisen käyttäjän workspaceja tai historiaa. Vanhentunut web-istunto säilyttää luettavan sisällön ja luonnoksen, estää kirjoittavat toiminnot ja ohjaa uuteen kirjautumiseen. |
 | Y2 Löytäminen ja Git-integrointi | Daemon listaa välittömät hakemistot käyttäjän `~/src`-hakemistosta myös silloin, kun workspace-asetustiedostoa tai Git-repoa ei ole. Tavallinen hakemisto voidaan avata suoraan. Git-repo avataan vasta, kun estävä integrointivaihe on varmistanut repokohtaisen ympäristön, jossa myös agentin tavalliset `git pull`- ja `git push` -komennot ovat käyttövalmiita. | Puuttuva `~/src`, lukuvirhe, vanhentunut tieto ja osittain löytynyt metadata erotetaan tyhjästä listasta. Integrointidialogi pysyy estävänä ja kertoo erikseen, mikä repository-, remote-, oikeus-, credential- tai verkkotarkistus onnistui, epäonnistui tai jäi tuntemattomaksi. Puuttuva Git-, tmux- tai Taskfleet-tieto on “ei tiedossa”, ei keksitty arvo. |
-| Y3 Keskustelun avaaminen | Historia luetaan Pi:n tiedostosta natiivilla resume-ID:llä. Elävä prosessi, päättynyt mutta jatkettava keskustelu ja vain havaittu prosessi näkyvät eri tiloina; pelkkä avaaminen ei resumoi. Käynnissä olevaan terminaali-TUI:hin ei liitetä RPC:tä. | Puuttuva tai vioittunut historia ei luo korvaavaa historiaa. Jos selaimesta ohjaamista ei ole todennettu, historia on luettavissa mutta lähetys, keskeytys ja lopetus on estetty syineen. |
-| Y4 Käynnistys, resume ja viesti | Käyttäjä käynnistää rajatussa testiworkspacessa Pi-agentin tai valitsee erillisen “Resumoi”-toiminnon, lähettää yhden viestin, saa hyväksymiskuittauksen ja näkee vastauksen tapahtumat järjestyksessä lopputilaan asti. Hallittu siirto terminaalista selaimeen pysäyttää ensin TUI-prosessin turvallisesti, varmistaa natiivihistorian asettuneen ja käynnistää vasta sitten uuden runtimen komennolla `pi --mode rpc --session <session>`. | Käynnistyksen, pysäytyksen, historian asettumisen tai resumen virhe jättää natiivihistorian ehjäksi eikä käynnistä kilpailevaa runtimea. Lähetysvirhe kertoo, hylättiinkö viesti vai jäikö tulos epävarmaksi; epävarmaa viestiä ei lähetetä automaattisesti uudelleen. |
+| Y3 Keskustelun avaaminen | Historia luetaan Pi:n tiedostosta natiivilla resume-ID:llä. Elävä prosessi, varmasti päättynyt mutta jatkettava keskustelu, vain havaittu prosessi ja prosessihavainnoltaan tuntematon historia näkyvät eri tiloina; pelkkä avaaminen ei resumoi. Käynnissä olevaan terminaali-TUI:hin ei liitetä RPC:tä. | Puuttuva tai vioittunut historia ei luo korvaavaa historiaa. Jos selaimesta ohjaamista tai prosessin päättymistä ei ole todennettu, historia on luettavissa mutta resume, lähetys, keskeytys ja lopetus on estetty syineen. Puuttuminen havainnosta ei yksin todista prosessin päättyneen. |
+| Y4 Käynnistys, resume ja viesti | Käyttäjä käynnistää rajatussa testiworkspacessa Pi-agentin tai valitsee erillisen “Resumoi”-toiminnon varmasti päättyneelle historialle, lähettää yhden viestin, saa hyväksymiskuittauksen ja näkee vastauksen tapahtumat järjestyksessä lopputilaan asti. Hallittu siirto terminaalista selaimeen pyytää stopin vain tunnetulta omistajalta tai käyttäjältä terminaalissa, varmistaa prosessin poistuneen ja natiivihistorian asettuneen ja käynnistää vasta sitten uuden runtimen komennolla `pi --mode rpc --session <session>`. | Käynnistyksen, pysäytyksen, historian asettumisen tai resumen virhe jättää natiivihistorian ehjäksi eikä käynnistä kilpailevaa runtimea. Daemon ei signaloi vain havaittua vierasta prosessia. Lähetysvirhe kertoo, hylättiinkö viesti vai jäikö tulos epävarmaksi; epävarmaa viestiä ei lähetetä automaattisesti uudelleen. |
 | Y5 Katkos ja itsenäinen työ | Selaimen sulkeminen tai SSE-yhteyden katkeaminen ei lopeta agenttia. Palatessa cursor jatkaa puuttuvista tapahtumista tai selain hakee uuden snapshotin, ja näkymä vastaa natiivia lähdettä ilman kaksoisviestejä. | Katkoksen aikana tila merkitään viimeksi saaduksi ja kirjoittavat toiminnot estetään. Vanhentunut cursor johtaa uuteen snapshotiin, ei arvattuun tapahtumaketjuun. |
 
 Toimivan ytimen demo hyväksyy Y1–Y5:n yhden oikean Pi-keskustelun
-käynnistys–päättyminen–resume-elinkaarella, kahden Linux-käyttäjän
-reititystestillä ja, jos Pi-koe osoittaa sen löydettäväksi, yhdellä terminaalissa
-aloitetulla vain luku -prosessilla. Todentamattoman liittymisen tilaa ei hyväksytä
-pelkällä mockilla; jos prosessia ei voi löytää luotettavasti, raja kirjataan
-demoon näkyvästi. Demo ei vielä hyväksy alla olevia workspace-, GitHub-,
-worktree-, arkisto- tai operointitoimintoja.
+käynnistys–päättyminen–resume-elinkaarella ja kahden Linux-käyttäjän
+reititystestillä. Pi ei tarjoa luotettavaa natiivia live-prosessihavaintoa, joten
+demo näyttää erikseen OS-/tmux-havaintoon perustuvan terminaalissa aloitetun vain
+luku -prosessin sekä “ei havaittavissa” -tilan, joka estää resumen.
+Todentamattoman liittymisen tilaa ei hyväksytä pelkällä mockilla. Demo ei vielä
+hyväksy alla olevia workspace-, GitHub-, worktree-, arkisto- tai
+operointitoimintoja.
 
 ### Koko MVP
 
@@ -46,7 +57,7 @@ katselmoidun keskustelukokemuksen:
 |---|---|---|
 | M1 Keskustelu | Markdown, koodi, pitkät tulokset, ryhmitellyt työkalut, kopiointi ja adapterin tukemat käyttäjäpyynnöt ovat käytettäviä. Pi:n tuetun `edit`-työkalun rakenteinen diff näytetään diffina. Muut työkalut saavat käyttää tarjoamaansa yleistä tulosesitystä; esimerkiksi bashilla tehty tiedostomuutos ei lupaa synteettistä diffiä. Keskeytys pysäyttää vuoron, ei koko prosessia. Luonnos, fokus ja lukukohta säilyvät päivityksissä. | Tuntematon tapahtuma ja työkalutulos säilytetään turvallisessa yleisesityksessä. Työkalun, käyttäjäpyynnön tai keskeytyksen virheellä on oma tila. Jonotus ja kesken vuoron ohjaus toteutetaan vain Pi-kokeen ja UI-katselmoinnin hyväksymässä muodossa. |
 | M2 Workspacen luonti ja asetukset | Käyttäjä luo `~/src`:n alle tyhjän tai paikallisen Git-workspacen. Olemassa olevassa ei-Git-workspacessa Gitin voi ottaa käyttöön asetuksista. Hyväksytty automaatio voi avata tavallisen workspacen, käynnistää ensimmäisen agentin ja siirtää fokuksen viestikenttään; Gitiksi muuttunut tai luotu repo kulkee ensin M4:n estävän integroinnin läpi. Näyttönimi ja tarvittava pysyvä ID tallentuvat workspacen omaan `.agent-host/workspace.json`-tiedostoon. | Virhe hakemiston, `git init`in, integraation, asetuksen tai agentin luonnissa näyttää toteutuneet ja toteutumattomat vaiheet. Hakemiston tai `git init`in onnistumista ei väitetä perutuksi, jos integraatio tai myöhempi agentin käynnistys epäonnistuu. |
-| M3 Näkyvyys ja poisto | Workspacen voi piilottaa listasta ilman levymuutosta ja palauttaa näkyviin. Poisto vaatii täsmällisen vahvistuksen, lopettaa sovitusti hallittavat agentit ja poistaa oikean hakemiston. | Katkos estää toiminnot. Vain havaittu tai muu pysäyttämätön prosessi estää poiston ja kertoo syyn. Workspaceen liittyvät `~/src`:n ulkopuoliset worktreet näytetään vaikutuksina eikä niitä poisteta hiljaa. Epäonnistunut tai osittainen poisto kertoo, mitä levylle, worktreehin ja prosesseille jäi; käyttöliittymä ei merkitse workspacea poistetuksi ennen lähteen vahvistusta. |
+| M3 Näkyvyys ja poisto | Workspacen voi piilottaa listasta ilman levymuutosta ja palauttaa näkyviin. Poisto vaatii täsmällisen vahvistuksen, lopettaa sovitusti hallittavat agentit ja poistaa oikean hakemiston. | Katkos estää toiminnot. Vain havaittu tai muu pysäyttämätön prosessi estää poiston ja kertoo syyn. Taskfleetin worktreet puretaan Taskfleetin kautta ennen hakemistopoistoa; mikä tahansa jäljellä oleva linkitetty worktree estää päätyöhakemiston poiston. Workspaceen liittyvät `~/src`:n ulkopuoliset worktreet näytetään vaikutuksina eikä niitä poisteta hiljaa. Epäonnistunut tai osittainen poisto kertoo, mitä levylle, worktreehin ja prosesseille jäi; käyttöliittymä ei merkitse workspacea poistetuksi ennen lähteen vahvistusta. |
 | M4 GitHub | Ennen Git-repon ensimmäistä avaamista estävä integrointidialogi tarkistaa ja tarvittaessa valmistelee sekä repon että Unix-käyttäjän credential-ympäristön agenttien tavallisia `git pull`- ja `git push` -komentoja varten. Pelkkä `gh`-kirjautumisen havaitseminen ei riitä. Samassa rajassa käyttäjä voi myöhemmin luoda paikalliselle repolle etärepon tai hakea/valita repon ja kloonata siitä workspacen. Näkyvyys ja lopullinen `origin` luetaan Gitistä/GitHubista. Integroinnin tekninen toteutustapa on vielä avoin. | Dialogi ei päästä repo-workspaceen ennen onnistumista. Se näyttää repositoryn, remoten, oikeuksien, credentialien ja verkon onnistuneet, epäonnistuneet ja tuntemattomat vaiheet peittämättä paikallisesti onnistunutta mutta etänä epäonnistunutta operaatiota. Korjaus ja uudelleenyritys ovat mahdollisia samasta rajasta; credential-toteutusta tai tuotantopinoa ei päätetä tässä. |
 | M5 Taskfleet-worktree | Käyttäjä käynnistää Git-workspacesta uuden omistetun agenttiympäristön valitsemalla lähtökohdan ja vapaan branch-nimen. Taskfleet yksin luo ja hallitsee worktreen, käynnistää Pi:n sen oikeassa execution rootissa ja avaa agentin. UI ei luo, muokkaa eikä hallitse mielivaltaisia manuaalisia Git-worktreeitä. | Ei-Git-workspacessa toiminto on perustellusti estetty. Branch-/polkukonflikti tai Taskfleet-ajon osittainen tulos raportoidaan sen natiivin tilan mukaan; Gitin tilaa ei arvata. Muualta löydetty worktree voidaan näyttää vaikutuksena tai tuntemattomana faktana, mutta siitä ei tehdä tuettua hallintakohdetta. |
 | M6 Lopetus, arkisto ja jatkaminen | “Lopeta ja arkistoi” lopettaa hallittavan prosessin ja piilottaa keskustelun aktiivisesta listasta. Arkisto listaa natiivista historiasta ja välttämättömistä annotaatioista johdetut keskustelut. “Jatka” käyttää samaa resume-ID:tä, palauttaa keskustelun listaan ja fokusoi viestikentän. | Arkistointi ei poista tai kopioi Pi-historiaa omaan tietokantaan. Jo päättynyt, vain havaittu tai jatkamiskelvoton keskustelu saa rehellisen tilan. Osittainen stop/archive/resume kertoo säilyneen natiivin tilan. |
@@ -90,6 +101,12 @@ olevaan terminaali-TUI:hin ole RPC-attachia. Jonon tarkka UI, synopsis,
 stop–history–RPC-siirron esitys, luonnoksen pysyvyys ja huomiotapa toisen agentin
 odottaessa ratkaistaan [UI-katselmoinnissa](../issues/review-ui-v1/item.md).
 Historiasta löytyminen, prosessin käynnissäolo ja ohjattavuus ovat eri asioita.
+Workspace-kokeen perusteella myös hakemiston löytyminen, Git-/Taskfleet-omistajuus
+ja turvallinen muutosoikeus ovat eri asioita. Pitkä operaatio ei saa palauttaa
+vain yhtä onnistui/epäonnistui-arvoa: käyttöliittymä säilyttää jo toteutuneet
+vaiheet, kertoo jäljelle jäävän natiivin tilan ja tarjoaa uusinnan vain tuoreeseen
+havaintoon perustuen. Symlinkit ja mielivaltaiset worktreet pysyvät näkyvinä,
+mutta v1:n kirjoittavat toiminnot ovat niille estettyjä.
 
 ## Ensimmäisen version ulkopuolella
 
