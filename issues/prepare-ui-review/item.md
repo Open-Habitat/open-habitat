@@ -2,13 +2,15 @@
 created: 2026-09-21
 updated: 2026-09-22
 type: task
-status: in-progress
+status: done
 priority: normal
 epic: native-agent-host-architecture
 lane: planning
 lane_seq: 20
 blocked_by: ['@define-mvp-scope', '@probe-pi-control', '@probe-workspace-lifecycle']
 collision: [docs/, AGENTS.md]
+closed: 2026-09-22
+closed_by: pi
 ---
 
 # Prepare the combined MVP and UI review
@@ -27,12 +29,12 @@ workspace registry, credential broker or speculative cache. Desktop first, one s
 
 ## Acceptance Criteria
 
-- [ ] Integrate both probes into `docs/assumptions.md`, preserving version, evidence, limits and effects on the design.
-- [ ] Update `docs/product.md` and `docs/ui.md` with one login-to-conversation flow and the accepted full-MVP host operations.
-- [ ] Walk through disabled/read-only, pending, failed, uncertain-send and reconnect states; no mock may become evidence of backend support.
-- [ ] Prepare a concise `review.md` here with direct links, exact unresolved decisions, recommended answers and visual references.
-- [ ] Explain any technically necessary deviation from the accepted direction; do not silently drop GitHub, worktree, archive or workspace operations.
-- [ ] Hand the package to @review-ui-v1. No product code, replacement designer, or autonomous design acceptance.
+- [x] Integrate both probes into `docs/assumptions.md`, preserving version, evidence, limits and effects on the design.
+- [x] Update `docs/product.md` and `docs/ui.md` with one login-to-conversation flow and the accepted full-MVP host operations.
+- [x] Walk through disabled/read-only, pending, failed, uncertain-send and reconnect states; no mock may become evidence of backend support.
+- [x] Prepare a concise `review.md` here with direct links, exact unresolved decisions, recommended answers and visual references.
+- [x] Explain any technically necessary deviation from the accepted direction; do not silently drop GitHub, worktree, archive or workspace operations.
+- [x] Hand the package to @review-ui-v1. No product code, replacement designer, or autonomous design acceptance.
 
 ## Delivery and verification
 
