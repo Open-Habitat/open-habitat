@@ -55,3 +55,7 @@ recovery and continued SSH/tmux/Pi use. Record workload and long-history/streami
 add no cache without measurement. Report exact limitations and any absent optional
 extension. Prepare a linked pilot/demo report for @review-mvp. Complete technical
 verification here; Jari's final acceptance belongs to that separate human gate.
+
+## Bounded planning handoff
+
+This issue is the sole end-to-end/pilot verifier for Y1–Y5 and M1–M7. Run CT-001–CT-033, both actual identities, full accepted operations, long-history/accessibility/security load, browser/SSE/gateway/daemon failures, packaging update/rollback and native SSH/tmux/Pi continuity. Require zero cross-user disclosure, native-data loss and silent duplicate sends. Use only reviewed Fleetrepo convergence and manifest-owned pilot teardown; this issue does not accept `review-mvp`. See [the implementation briefs](../plan-v1-implementation/implementation-briefs.md).

@@ -42,3 +42,7 @@ Run the applicable repository documentation checks. Product workers also run the
 checks established by @plan-v1-implementation and verified by @build-app-foundation.
 A failed or unavailable check is not a pass. Never close a human-review issue on the user's behalf.
 Do not expand into the next issue after delivering this bounded task.
+
+## Bounded planning handoff
+
+Before scaffolding product slices, implement CG-01–CG-04 and CT-030–CT-033 from [the implementation briefs](../plan-v1-implementation/implementation-briefs.md). Establish the locked Rust workspace, `web/`, deterministic contract generation, AI-first operator CLI, full green gate, package scripts and bare-CI approximation exactly described there. Record the accepted `review-implementation-plan` revision and make every proposed command executable; no later worker may depend on an unproved command. This issue owns root manifests, runtime scaffolding, generated-type families, CI/scripts and root/local command guidance, but does not claim a real user journey.

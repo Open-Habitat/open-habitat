@@ -53,3 +53,7 @@ An uncertain send must not be automatically resent; closing the browser must not
 the agent. Verify ownership against a concurrent resume attempt within the probe's limits.
 Record the demo for Jari; it is an intermediate result, not full-MVP acceptance.
 @complete-conversation-ui owns the remaining rich interaction and presentation work.
+
+## Bounded planning handoff
+
+This issue owns Y4–Y5 and completes the walking core. Prove one writer, start/ended-session resume, known-owner terminal transfer, accepted/rejected/uncertain send, SSE replay/resnapshot/backpressure, browser disconnect survival and daemon-crash child/history settlement. Implement CG-04 question cancellation only when adapter-proved; no hidden retry or live TUI attach. Exact CT/commands are in [the implementation briefs](../plan-v1-implementation/implementation-briefs.md).

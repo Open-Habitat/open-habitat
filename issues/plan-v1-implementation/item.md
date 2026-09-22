@@ -40,14 +40,14 @@ Changes to scope require a recorded product decision. No worker runs in this tas
 
 ## Acceptance Criteria
 
-- [ ] Integrate probe findings and proposed decisions into a consistent implementation plan; each critical assumption has evidence or an explicit accepted limitation awaiting review.
-- [ ] Write `implementation-briefs.md` here with inputs, bounded outputs, file ownership, test scenarios and exact proposed commands for each downstream issue.
-- [ ] Define bootstrap/build/check/test commands for @build-app-foundation; that task must make them runnable and verify them before later product workers depend on them. Mark commands as proposed until then.
-- [ ] Update downstream issue boundaries and dependencies using issuectl; retain a minimal real core before completing the full conversation UI and host operations.
-- [ ] Specify test identities, native fixtures, rollback, target and exact deployment/live-version commands with explicit authorization status; no invented working deployment.
-- [ ] Map every full-MVP success criterion to an implementation owner and an end-to-end/pilot verification owner, including two-user separation from the first authenticated slice.
-- [ ] Prepare `review.md` here linking ADRs, contract examples, design/component specification, expected deviations and exact decisions for @review-implementation-plan.
-- [ ] Update `docs/implementation.md`, `docs/decisions.md`, `docs/interfaces.md` and `docs/status.md` to distinguish proposed, accepted and implemented work. Run documentation checks and validate the issue DAG.
+- [x] Integrate probe findings and proposed decisions into a consistent implementation plan; each critical assumption has evidence or an explicit accepted limitation awaiting review.
+- [x] Write `implementation-briefs.md` here with inputs, bounded outputs, file ownership, test scenarios and exact proposed commands for each downstream issue.
+- [x] Define bootstrap/build/check/test commands for @build-app-foundation; that task must make them runnable and verify them before later product workers depend on them. Mark commands as proposed until then.
+- [x] Update downstream issue boundaries and dependencies using issuectl; retain a minimal real core before completing the full conversation UI and host operations.
+- [x] Specify test identities, native fixtures, rollback, target and exact deployment/live-version commands with explicit authorization status; no invented working deployment.
+- [x] Map every full-MVP success criterion to an implementation owner and an end-to-end/pilot verification owner, including two-user separation from the first authenticated slice.
+- [x] Prepare `review.md` here linking ADRs, contract examples, design/component specification, expected deviations and exact decisions for @review-implementation-plan.
+- [x] Update `docs/implementation.md`, `docs/decisions.md`, `docs/interfaces.md` and `docs/status.md` to distinguish proposed, accepted and implemented work. Run documentation checks and validate the issue DAG.
 
 ## Delivery
 

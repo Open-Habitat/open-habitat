@@ -42,3 +42,7 @@ Run the applicable repository documentation checks. Product workers also run the
 checks established by @plan-v1-implementation and verified by @build-app-foundation.
 A failed or unavailable check is not a pass. Never close a human-review issue on the user's behalf.
 Do not expand into the next issue after delivering this bounded task.
+
+## Bounded planning handoff
+
+This issue owns M1. Complete the accepted rich conversation, queue/steering and accessibility behavior against real adapter capabilities. Queue clear remains unavailable until CG-02 returns exact removed texts/group/order; operation deep links use CG-01; question cancellation uses CG-04. Prove long-history virtualization plus paged accessible fallback, safe Markdown/code/diff/CSP, focus/drafts/reading/attention and real Pi queue races. See [the implementation briefs](../plan-v1-implementation/implementation-briefs.md).

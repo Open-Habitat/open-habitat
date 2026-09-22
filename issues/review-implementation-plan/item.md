@@ -36,3 +36,7 @@ workspace registry, credential broker or speculative cache. Desktop first, one s
 ## Execution
 
 This issue deliberately has no lane and carries `human-review`. The stint conductor handles it with Jari after its blockers deliver; never spawn it as a worker. If changes are requested, schedule bounded correction work and add it as a blocker. Keep this gate open until the actual decision is recorded.
+
+## Prepared decision package
+
+Review [the implementation package](../plan-v1-implementation/review.md) and its exact linked revisions. Decide ADR 0002, ADR 0003 with the canon-conformant CLI correction, production design, CG-01–CG-04, retention/history budgets, title-adapter policy, OIDC/session/socket policy, GitHub two-user credential/write boundary and Fleetrepo/Alder release plan. Alder authorization is already granted after these decisions and executable gates; the review records limits rather than asking for a second deployment go/no-go.

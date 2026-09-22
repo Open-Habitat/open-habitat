@@ -2,7 +2,11 @@
 
 Tavoitteena on ensin oikealla Pi-agentilla toimiva ydin ja sen jälkeen koko
 [hyväksytty MVP](product.md). Vaiheistus on hyväksytty suunnaksi; tekniset
-valinnat ja toteutus ovat vielä edessä.
+valinnat ovat Proposed-tilassa ja toteutus odottaa
+[`review-implementation-plan`](../issues/review-implementation-plan/item.md)-katselmointia.
+[Katselmoitava toteutuspaketti](../issues/plan-v1-implementation/implementation-briefs.md)
+rajaa jokaisen työn tuotoksen, omistajuuden, testit, palautumisen ja ehdotetut
+komennot. Issuectl yksin määrää ajettavuuden ja järjestyksen.
 
 | Vaihe | Tulos, jota voi katselmoida tai kokeilla |
 |---|---|
@@ -23,7 +27,17 @@ ennen ensimmäistä yhteistä käyttökulkua.
 
 Kahden käyttäjän reititys tarkistetaan ensimmäisestä autentikoidusta palasta
 alkaen. Katkokset tarkistetaan ensimmäisestä elävästä keskustelusta lähtien.
-Lopun pilotti kokoaa näytön koko järjestelmästä ja sen käyttöönotosta.
+Kävely-ydin säilyy järjestyksessä sovelluspohja → design system → autentikoitu
+kahden käyttäjän workspace → natiivi Pi-historia → Pi-ohjaus. Sen jälkeen
+rakennetaan koko keskustelu ja kaikki hyväksytyt workspace-, GitHub-, Taskfleet-
+ja arkistotoiminnot. Lopun pilotti kokoaa näytön koko järjestelmästä ja sen
+käyttöönotosta.
+
+Sovelluspohja tekee ensimmäisenä lukitut Rust- ja `web/`-rakenteet, tyypit,
+formatointi-, lint-, typecheck-, yksikkö-, integraatio-, selain-, saavutettavuus-,
+sopimus-, paketointi- ja bare-CI-tarkistukset ajettaviksi. Myöhemmät workerit
+eivät saa nojata ehdotettuun komentoon ennen kuin tämä työ on suorittanut sen
+puhtaasta checkoutista ja kirjannut sen root/local `AGENTS.md` -ohjeisiin.
 
 ## Ehdotettu hostin toteutus- ja operointiraja
 
@@ -54,8 +68,13 @@ ettei daemonien omistamia aktiivisia Pi-kirjoittajia ole. Aktivoinnin jälkeen
 varmistetaan version JSON, konfiguraatio, unitit, health/readiness, kummankin
 käyttäjän oma luku, ristiinkäytön torjunta, SSE-paluu ja yksi disposable Pi-vuoro.
 Tarkat ehdotetut build-, Fleetrepo apply-, health-, update- ja rollback-komennot
-ovat ADR:ssä. Ne muuttuvat käyttöohjeiksi vasta, kun
-`review-implementation-plan` hyväksyy ne ja toteutus todentaa ne.
+sekä VM-/pilottifixturet ovat ADR:ssä ja
+[toteutuspaketissa](../issues/plan-v1-implementation/implementation-briefs.md).
+Ne muuttuvat käyttöohjeiksi vasta, kun `review-implementation-plan` hyväksyy ne
+ja toteutus todentaa ne. Alder on tämän jälkeen jo valtuutettu testikohde, mutta
+pysyvät käyttäjät, gateway-tili, julkaisut, paketit, unitit/socketit, mappaukset,
+salattu OIDC-syöte ja Tailscale-reitti toteutetaan aina erillisessä, katselmoidussa
+Fleetrepo-issuen worktreessä ja konvergoidaan Fleetrepon fleet-rajapinnalla.
 
 [Agenttien yksityiskohtainen suunnitelma](../issues/plan-v1-implementation/plan.md)
 kuvaa kunkin vaiheen tehtävät, tulokset ja omistajat. Ajantasaiset työtilat ja

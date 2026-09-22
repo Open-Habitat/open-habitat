@@ -42,3 +42,7 @@ as the next UI task's responsibility; do not silently drop its features.
 
 Save `result.md` here with demonstrated revision, commands and outcomes. Update affected
 current docs and use the repository's shared validation/ownership rules.
+
+## Bounded planning handoff
+
+This issue owns Y3. Bind `pi:<sessionId>` and stable native keys to the real Pi JSONL source; distinguish history, process observation and control. Prove paging/chunk/live-tail limits, malformed and unknown content, missing/corrupt/moved-cwd cases and reopen identity against redacted plus disposable native histories. Opening never starts or resumes. See [the implementation briefs](../plan-v1-implementation/implementation-briefs.md).

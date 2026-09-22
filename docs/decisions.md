@@ -10,9 +10,12 @@ rajattua Markdown-, koodi- ja diffirenderöintiä. [ADR 0003](adr-0003-host-stac
 ehdottaa yhtä Rust-binaaria gatewaylle ja käyttäjädaemoneille, OIDC-kirjautumista,
 systemd-palveluita, Unix-socketteja ja Fleetrepon kautta hallittavaa julkaisupakettia.
 Molemmat päätökset ovat ehdotuksia: `review-implementation-plan` hyväksyy tai
-palauttaa ne ennen tuotantopohjan rakentamista. Nykyinen JSX,
-klikkiprototyyppien simuloidut toiminnot ja ehdotetut operointikomennot eivät ole
-näyttöä toimivasta tuotantojärjestelmästä.
+palauttaa ne ennen tuotantopohjan rakentamista. Katselmoinnin suositus on hyväksyä
+ADR 0002 ja ADR 0003 sillä täsmennyksellä, että operaattori-CLI noudattaa AI-first
+CLI -kanonia (`config path/show`, `doctor`, noun–verb-rajat, globaali `--json`,
+rakenteiset virheet ja JSONL-lokit). Nykyinen JSX, klikkiprototyyppien simuloidut
+toiminnot ja ehdotetut operointikomennot eivät ole näyttöä toimivasta
+tuotantojärjestelmästä.
 
 | Päätettävä kokonaisuus | Valmistelu | Päätöksen aineisto |
 |---|---|---|
@@ -26,8 +29,13 @@ näyttöä toimivasta tuotantojärjestelmästä.
 Uudet tekniset päätökset kirjoitetaan ehdotetuiksi ADR:iksi valmistelun aikana
 ja linkitetään tälle sivulle. Niiden perusteet ja kokeiden versiot säilytetään.
 [Toteutusvalmiuden katselmointi](../issues/review-implementation-plan/item.md)
-vahvistaa päätökset ennen tuotantokoodia. Hyväksytty muutos päivitetään myös
-nykyistä arkkitehtuuria ja rajapintaa kuvaaviin sivuihin.
+vahvistaa päätökset ennen tuotantokoodia. Sen
+[katselmointipaketti](../issues/plan-v1-implementation/review.md) pyytää lisäksi
+täsmälliset päätökset SSE-/ledger-/historiarajoista, neljästä lisättävästä
+v1-sopimustäsmennyksestä, Pi:n kertakutsuotsikosta, OIDC-/session-/socket-
+politiikasta, kahden käyttäjän GitHub-kokeesta ja Fleetrepo-omistetusta Alder-
+käyttöönotosta. Hyväksytty muutos päivitetään myös nykyistä arkkitehtuuria ja
+rajapintaa kuvaaviin sivuihin.
 
 Muut harnessit, sovelluskohtaiset Northwind-/Acme-integraatiot, vahvempi eristys
 ja usean palvelimen käyttöliittymä tarvitsevat myöhemmin oman valintansa.

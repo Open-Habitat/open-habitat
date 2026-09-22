@@ -39,3 +39,7 @@ Use the [delivery plan](../plan-v1-implementation/plan.md), accepted implementat
 briefs and exact checks verified by @build-app-foundation. Save `result.md` here with
 the tested revision, commands, outcomes and remaining limits. Update the affected
 durable documents and component examples; do not duplicate task state in TODO.md.
+
+## Bounded planning handoff
+
+This issue owns M4 and the A6 proof. Use CG-03's exact `owner/repository` confirmation bound to a fresh observation. Run the authorized private disposable create→origin→ordinary Git push→clone→second push/pull→verified delete sequence separately for both pilot users from the daemon environment, including denied/partial cases. No browser secret upload or gateway credential broker. See [the implementation briefs](../plan-v1-implementation/implementation-briefs.md).

@@ -39,3 +39,7 @@ Use the [delivery plan](../plan-v1-implementation/plan.md), accepted implementat
 briefs and exact checks verified by @build-app-foundation. Save `result.md` here with
 the tested revision, commands, outcomes and remaining limits. Update the affected
 durable documents and component examples; do not duplicate task state in TODO.md.
+
+## Bounded planning handoff
+
+This issue owns M5. Invoke Taskfleet's supported source-branch/title/task create lifecycle and join only full run/node ownership to Git/Pi facts. Induce branch/path conflict, interrupted creation and partial teardown in a disposable repo; cleanup only through Taskfleet. Manual or unjoined worktrees remain read-only impacts. See [the implementation briefs](../plan-v1-implementation/implementation-briefs.md).

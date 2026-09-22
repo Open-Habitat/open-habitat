@@ -42,3 +42,7 @@ Run the applicable repository documentation checks. Product workers also run the
 checks established by @plan-v1-implementation and verified by @build-app-foundation.
 A failed or unavailable check is not a pass. Never close a human-review issue on the user's behalf.
 Do not expand into the next issue after delivering this bounded task.
+
+## Bounded planning handoff
+
+This issue owns release packaging and the implementation half of M7. Native Agent Host owns immutable artifacts, manifests, checksums, service templates and product runbooks. Alder's users, gateway account, release pin, packages, units/sockets, mappings, encrypted OIDC input, Tailscale route and convergence are owned only by a separate reviewed issue/worktree in `/home/maintainer/Sources/fleetrepo`; do not edit Fleetrepo as a side effect. Prove install/no-op/update/failed-update/rollback/reset in the VM before using the already authorized Alder target. Exact proposed command shapes are in [the implementation briefs](../plan-v1-implementation/implementation-briefs.md).

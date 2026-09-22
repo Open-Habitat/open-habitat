@@ -49,3 +49,7 @@ Use the [delivery plan](../plan-v1-implementation/plan.md), accepted implementat
 briefs and exact checks verified by @build-app-foundation. Save `result.md` here with
 the tested revision, commands, outcomes and remaining limits. Update the affected
 durable documents and component examples; do not duplicate task state in TODO.md.
+
+## Bounded planning handoff
+
+This issue owns Y1 and the discovery/Git-gate portion of Y2. Use the two synthetic identities/UIDs and real gateway→systemd socket→daemon route; test OIDC state/nonce/PKCE/session/CSRF/origin, immutable subject mapping, wrong peer/socket/header, gateway home denial, symlink/path escape and credential/log absence. Stop before history or lifecycle writes. Exact CT IDs, commands and evidence are in [the implementation briefs](../plan-v1-implementation/implementation-briefs.md).

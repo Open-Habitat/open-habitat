@@ -407,6 +407,32 @@ käyttävät disposable filesystemiä. GitHub-write vaatii erikseen valtuutetun
 disposable-remoten. Testi vertaa lopputulosta aina natiiviin lähteeseen, ei vain
 HTTP-vastaukseen.
 
+## Toteutussuunnitelman ehdottamat sopimustäsmennykset
+
+Tuotantodesign löysi neljä kohtaa, joita nykyinen koneellinen v1-sopimus ei vielä
+pysty ilmaisemaan turvallisesti. `review-implementation-plan` päättää seuraavan
+käyttäytymisen; `build-app-foundation` lisää sen skeemoihin, esimerkkeihin ja
+CT-030–CT-033-testeihin ennen kuin tuotekoodi käyttää generoituja tyyppejä:
+
+1. `GET /api/v1/operations/<operation-id>` palauttaa terminal-operaation tuloksen
+   saman daemon-epochin enintään 10 000 uusimman / 24 tunnin muistirajassa.
+   Snapshot kuljettaa ei-terminaaliset operaatiot. Puuttuva, vanhentunut tai
+   edellisen epochin tulos on `operation_outcome_unknown`, ei onnistuminen.
+2. Onnistunut `agent.queue.clear` palauttaa todella poistetut tekstit erikseen
+   steering- ja follow-up-ryhmissä, alkuperäisillä indekseillä ja Pi:n
+   lähdejärjestyksessä sekä tyhjennyksen jälkeisen queue-revision. UI palauttaa
+   editoriin vain nämä arvot; stale, failed tai uncertain ei palauta mitään.
+3. GitHub-create-preflight antaa tuoreeseen observation-tokeniin sidotun
+   `exact_repository`-haasteen ja odotetun `owner/repository`-arvon. Käyttäjän
+   confirmation vastaa sitä täsmälleen ilman trimmausta tai kirjainkoon muutosta.
+4. `agent.question.respond`-komennon `response:null` lähetetään vain pyynnölle,
+   jonka adapteri on todistanut tukevan natiivia cancellationia. Muuten capability
+   on unknown/unsupported; onnistunut cancel tuottaa `question.resolved`-eventin
+   outcome-arvolla `cancelled`.
+
+Nämä ovat ehdotuksia eivätkä vielä muuta `contracts/v1/`-tiedostoja tai väitä
+runtimea toimivaksi.
+
 ## Katselmoinnissa vielä päätettävät politiikat
 
 `review-implementation-plan` hyväksyy tai muuttaa seuraavat ehdotukset ennen
@@ -420,8 +446,12 @@ runtime-toteutusta:
 3. History-sivun 200 entryn ja 65 536 merkin content-chunkin rajat sekä pilotin
    todelliset memory/backpressure-budjetit.
 4. Otsikkoadapterin oikea Pi one-off -mekanismi, malli, kustannusraja,
-   automaattisen uudelleengeneroinnin triggeri ja sen todentaminen. Siihen asti
-   capability on unknown.
+   automaattisen uudelleengeneroinnin triggeri ja sen todentaminen. Suunnitelman
+   suositus on `openai-codex/gpt-5.6-luna`, low thinking, enintään 8 ensimmäistä
+   käyttäjäviestiä / 16 KiB syötettä, 120 Unicode-merkin tulos ja 0,02 USD:n
+   kustannuskatto: ensimmäinen yritys ensimmäisen hyväksytyn viestin jälkeen ja
+   enintään yksi automaattinen uudelleengenerointi kolmannen käyttäjäviestin
+   asetuttua. Siihen asti capability on unknown.
 5. Proposed ADR 0003:n täsmällinen OIDC-, socket-, peer credential-, CSRF- ja
    daemon-epoch-toteutus sekä Proposed ADR 0002:n boundary-validation.
 6. GitHub credential -integraatio ja luvallinen kahden käyttäjän write-probe;

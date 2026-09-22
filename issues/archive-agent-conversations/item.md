@@ -39,3 +39,7 @@ Use the [delivery plan](../plan-v1-implementation/plan.md), accepted implementat
 briefs and exact checks verified by @build-app-foundation. Save `result.md` here with
 the tested revision, commands, outcomes and remaining limits. Update the affected
 durable documents and component examples; do not duplicate task state in TODO.md.
+
+## Bounded planning handoff
+
+This issue owns M6. Stop, archive annotation, unarchive and resume are separate observable operations. Prove active-writer conflict, annotation crash/corruption, missing history, stale/disconnect and same native resume ID; never copy or delete Pi history. See [the implementation briefs](../plan-v1-implementation/implementation-briefs.md).

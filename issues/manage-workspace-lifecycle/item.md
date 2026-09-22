@@ -40,3 +40,7 @@ Use the [delivery plan](../plan-v1-implementation/plan.md), accepted implementat
 briefs and exact checks verified by @build-app-foundation. Save `result.md` here with
 the tested revision, commands, outcomes and remaining limits. Update the affected
 durable documents and component examples; do not duplicate task state in TODO.md.
+
+## Bounded planning handoff
+
+This issue owns M2–M3. Use descriptor-relative no-follow filesystem operations, atomic workspace/XDG metadata and staged effects. Test symlink/replacement/mount/process/worktree races and crash at each stage; delete succeeds only after fresh source absence. Taskfleet owns its worktrees, manual worktrees block mutation, and partial never means rollback. See [the implementation briefs](../plan-v1-implementation/implementation-briefs.md).

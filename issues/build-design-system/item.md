@@ -42,3 +42,7 @@ Run the applicable repository documentation checks. Product workers also run the
 checks established by @plan-v1-implementation and verified by @build-app-foundation.
 A failed or unavailable check is not a pass. Never close a human-review issue on the user's behalf.
 Do not expand into the next issue after delivering this bounded task.
+
+## Bounded planning handoff
+
+Implement the bounded catalog at production-design revision `62c0ae6833301bcdd0901053ea08ef514a929153`. `web/src/components` is the single implementation imported by the app and Storybook. Cover both themes, keyboard/focus, 200% zoom, reduced motion, hostile/long Finnish fixtures and all relevant unknown/stale/partial/read-only states. Do not place HTTP/SSE, command IDs, retries or native reconciliation in components. Exact tests and rollback are in [the implementation briefs](../plan-v1-implementation/implementation-briefs.md).
