@@ -2,13 +2,15 @@
 created: 2026-09-21
 updated: 2026-09-22
 type: task
-status: in-progress
+status: done
 priority: normal
 epic: native-agent-host-architecture
 lane: planning
 lane_seq: 50
 blocked_by: ['@choose-frontend-stack', '@choose-host-stack']
 collision: [docs/, AGENTS.md]
+closed: 2026-09-22
+closed_by: pi
 ---
 
 # Specify browser daemon and native adapter contracts
@@ -27,13 +29,13 @@ workspace registry, credential broker or speculative cache. Desktop first, one s
 
 ## Acceptance Criteria
 
-- [ ] Complete `docs/interfaces.md` for identity, source ownership, discovery/status/control capability, history and operation results; place machine-readable schemas in the location chosen for the stack.
-- [ ] Define HTTP snapshot/query/command/error shapes and combined SSE events: cursor identity, snapshot/stream race, ordering, replay bounds, duplicate handling and resnapshot.
-- [ ] Specify send acceptance vs execution, uncertain acknowledgement, retry policy, command identity and concurrent browser/terminal resume ownership.
-- [ ] Define start/resume/interrupt/stop/question/queue support from evidence; unsupported operations have explicit capability/error behavior.
-- [ ] Define filesystem/path validation, authenticated routing, rendered-content trust and partial-failure semantics for workspace/GitHub/worktree/archive actions.
-- [ ] Decide minimal annotation fields/locations and lifetimes for genuinely missing facts; retain native history and Git as authoritative.
-- [ ] Supply redacted example exchanges and contract-test scenarios for implementation; record outstanding policy choices for @review-implementation-plan.
+- [x] Complete `docs/interfaces.md` for identity, source ownership, discovery/status/control capability, history and operation results; place machine-readable schemas in the location chosen for the stack.
+- [x] Define HTTP snapshot/query/command/error shapes and combined SSE events: cursor identity, snapshot/stream race, ordering, replay bounds, duplicate handling and resnapshot.
+- [x] Specify send acceptance vs execution, uncertain acknowledgement, retry policy, command identity and concurrent browser/terminal resume ownership.
+- [x] Define start/resume/interrupt/stop/question/queue support from evidence; unsupported operations have explicit capability/error behavior.
+- [x] Define filesystem/path validation, authenticated routing, rendered-content trust and partial-failure semantics for workspace/GitHub/worktree/archive actions.
+- [x] Decide minimal annotation fields/locations and lifetimes for genuinely missing facts; retain native history and Git as authoritative.
+- [x] Supply redacted example exchanges and contract-test scenarios for implementation; record outstanding policy choices for @review-implementation-plan.
 
 ## Delivery and verification
 
