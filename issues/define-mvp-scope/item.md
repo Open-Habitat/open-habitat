@@ -26,13 +26,13 @@ workspace registry, credential broker or speculative cache. Desktop first, one s
 
 ## Acceptance Criteria
 
-- [ ] Refine `docs/product.md` with concrete success/failure scenarios for login, discovery, conversation, workspace lifecycle, GitHub, worktrees and archive.
-- [ ] Distinguish the working-core demonstration from full-MVP acceptance; retain all already accepted host features.
-- [ ] Refine `docs/ui.md` with a journey/state inventory and references to the two received designs; mark pending choices and mocked behavior explicitly.
-- [ ] Inventory needed components and missing states without changing design tokens or choosing a frontend runtime.
-- [ ] Refine `docs/assumptions.md` with claims, evidence needed, responsible issues and consequences if false; initial claims remain unverified.
-- [ ] Prepare questions for @prepare-ui-review, including queue/steering, synopsis, focus/drafts, and attention when another agent needs a response.
-- [ ] State measurable pilot acceptance criteria and initial representative workload; a proposed criterion is not Jari's approval.
+- [x] Refine `docs/product.md` with concrete success/failure scenarios for login, discovery, conversation, workspace lifecycle, GitHub, worktrees and archive.
+- [x] Distinguish the working-core demonstration from full-MVP acceptance; retain all already accepted host features.
+- [x] Refine `docs/ui.md` with a journey/state inventory and references to the two received designs; mark pending choices and mocked behavior explicitly.
+- [x] Inventory needed components and missing states without changing design tokens or choosing a frontend runtime.
+- [x] Refine `docs/assumptions.md` with claims, evidence needed, responsible issues and consequences if false; initial claims remain unverified.
+- [x] Prepare questions for @prepare-ui-review, including queue/steering, synopsis, focus/drafts, and attention when another agent needs a response.
+- [x] State measurable pilot acceptance criteria and initial representative workload; a proposed criterion is not Jari's approval.
 
 ## Delivery and verification
 
