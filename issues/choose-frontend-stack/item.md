@@ -2,13 +2,15 @@
 created: 2026-09-21
 updated: 2026-09-22
 type: task
-status: in-progress
+status: done
 priority: normal
 epic: native-agent-host-architecture
 lane: planning
 lane_seq: 30
 blocked_by: ['@review-ui-v1']
 collision: [docs/, AGENTS.md]
+closed: 2026-09-22
+closed_by: pi
 ---
 
 # Propose the frontend and rendering stack
@@ -27,12 +29,12 @@ workspace registry, credential broker or speculative cache. Desktop first, one s
 
 ## Acceptance Criteria
 
-- [ ] Compare a small relevant set of options for language/view layer, routing, build, rendering mode and deployment fit; JSX references do not choose the stack.
-- [ ] Decide state ownership for snapshots/SSE, local drafts, route selection and command acknowledgements; avoid overlapping state mechanisms.
-- [ ] Evaluate accessible UI primitives, styling, component catalog, Markdown/code/tool/diff rendering and test tools as one maintainable whole.
-- [ ] Try representative real redacted Pi history, a streaming tool event, long output and keyboard/focus behavior in disposable experiments; record versions and licenses.
-- [ ] Write the recommendation and tradeoffs as a proposed ADR in `docs/`, register it in `docs/decisions.md`, and save experiment evidence here.
-- [ ] Define the production component reuse boundary and exact proposed development/build/test commands without claiming a product runtime exists.
+- [x] Compare a small relevant set of options for language/view layer, routing, build, rendering mode and deployment fit; JSX references do not choose the stack.
+- [x] Decide state ownership for snapshots/SSE, local drafts, route selection and command acknowledgements; avoid overlapping state mechanisms.
+- [x] Evaluate accessible UI primitives, styling, component catalog, Markdown/code/tool/diff rendering and test tools as one maintainable whole.
+- [x] Try representative real redacted Pi history, a streaming tool event, long output and keyboard/focus behavior in disposable experiments; record versions and licenses.
+- [x] Write the recommendation and tradeoffs as a proposed ADR in `docs/`, register it in `docs/decisions.md`, and save experiment evidence here.
+- [x] Define the production component reuse boundary and exact proposed development/build/test commands without claiming a product runtime exists.
 
 ## Delivery and verification
 
