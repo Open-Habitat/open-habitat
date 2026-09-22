@@ -141,11 +141,12 @@ osittaisten monivaiheoperaatioiden palautumistoimet, kilpailevat ulkoiset
 muutokset, synopsiksen puuttuminen sekä huomiotapa palkin ollessa piilossa.
 Nämä ovat inventaario tuotantodesignille, eivät uusia design-tokeneita.
 
-## Avoimet valinnat ja valmistelijan suositus
+## Hyväksytyt UI v1 -valinnat
 
-Nämä kahdeksan valintaa ovat edelleen Jarin päätettäviä. Täsmällinen
-[katselmointipaketti](../issues/prepare-ui-review/review.md) linkittää myös
-vedosruudut ja hyväksymislauseen.
+Jari hyväksyi nämä kahdeksan valintaa 2026-09-22
+[UI-katselmoinnissa](../issues/review-ui-v1/review.md). Täsmällinen
+[valmistelupaketti](../issues/prepare-ui-review/review.md) linkittää myös
+vedosruudut ja alkuperäiset suositukset.
 
 1. **Jono ja steering.** Suositus: työskentelyn aikana näytetään erikseen
    “Ohjaa tämän vuoron jälkeen” (`steer`) ja “Suorita valmistumisen jälkeen”
@@ -154,10 +155,15 @@ vedosruudut ja hyväksymislauseen.
    viestin perumista ei luvata v1:ssä. Teksti ei lupaa keskeyttää käynnissä olevaa
    työkalua. Tavallinen Enter käyttää viimeksi valittua tapaa; tyhjässä jonossa
    oletus on follow-up.
-2. **Synopsis.** Suositus: näytä “Uusi keskustelu” tai natiivista historiasta
-   deterministisesti johdettu ensimmäisen käyttäjäviestin yhden rivin alku.
-   Älä generoi tai tallenna automaattista malliyhteenvetoa v1:ssä. Katkoksessa
-   arvo merkitään viimeksi saaduksi.
+2. **Synopsis.** Näytä ensin “Uusi keskustelu”. Generoi keskustelun otsikko
+   LLM:llä Pi:n agenttiloopin ulkopuolisella kertakutsulla ja salli otsikon
+   uudelleengenerointi muutaman viestin jälkeen, kun aihe on tarkentunut. Säilytä
+   viimeisin onnistunut otsikko esitystietona, mutta älä lukitse sitä pysyvästi
+   äläkä kopioi keskusteluhistoriaa. Otsikko ei vaihdu jokaisen viestin jälkeen.
+   Epäonnistunut generointi ei estä keskustelua eikä poista edellistä otsikkoa;
+   ennen ensimmäistä onnistumista käytetään ensimmäisen viestin lyhennettyä
+   alkua. Tarkka Pi-mekanismi, uudelleengeneroinnin hetki, malli ja kustannusraja
+   todennetaan host- ja adapterisuunnittelussa.
 3. **Fokus ja luonnokset.** Suositus: fokus siirtyy viestikenttään käyttäjän
    valinnan, onnistuneen luonnin tai resumen jälkeen, ei taustapäivityksestä.
    Luonnos säilyy palvelin-, web-identiteetti- ja agenttikohtaisesti selaimen
@@ -195,8 +201,8 @@ vedosruudut ja hyväksymislauseen.
    Poisto merkitään valmiiksi vasta kun uusi `~/src`-listaus osoittaa kohteen
    puuttuvan; jäljelle jääneet vaikutukset pysyvät näkyvinä.
 
-Nämä ovat suosituksia, eivät hyväksyttyjä päätöksiä tai valmiita
-rajapintasopimuksia. [Jarin UI-katselmointi](../issues/review-ui-v1/item.md)
-hyväksyy tai korjaa ne. Sen jälkeen erilliset [toteutusvalmiuden katselmointi](../issues/review-implementation-plan/item.md)
-ja [koko MVP:n katselmointi](../issues/review-mvp/item.md) hyväksyvät omat rajatut
-tuloksensa. Hiljaisuus tai mockin olemassaolo ei ole päätös.
+Nämä ovat hyväksyttyjä tuotepäätöksiä, eivät vielä valmiita
+rajapintasopimuksia tai näyttöä toteutuksesta. Erilliset
+[toteutusvalmiuden katselmointi](../issues/review-implementation-plan/item.md) ja
+[koko MVP:n katselmointi](../issues/review-mvp/item.md) hyväksyvät omat rajatut
+tuloksensa. Mockin olemassaolo ei ole backend- tai integraationäyttöä.

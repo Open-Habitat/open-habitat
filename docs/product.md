@@ -97,9 +97,12 @@ koko MVP:hen. Niitä ei saa hiljaisesti pudottaa
 teknisen hankaluuden vuoksi. Tarvittava poikkeama tuodaan Jarin päätettäväksi.
 
 Pi-koe vahvisti jonon ja steeringin rajatun kyvyn sekä sen, ettei käynnissä
-olevaan terminaali-TUI:hin ole RPC-attachia. Jonon tarkka UI, synopsis,
-stop–history–RPC-siirron esitys, luonnoksen pysyvyys ja huomiotapa toisen agentin
-odottaessa ratkaistaan [UI-katselmoinnissa](../issues/review-ui-v1/item.md).
+olevaan terminaali-TUI:hin ole RPC-attachia. Jari hyväksyi 2026-09-22
+[UI-katselmoinnissa](../issues/review-ui-v1/review.md) Pi:n natiivin jono- ja
+steering-mallin, agenttiloopin ulkopuolisella LLM-kutsulla luotavan ja keskustelun
+myötä uudelleengeneroitavan otsikon, hallitun fokuksen ja välilehtiluonnokset,
+lukukohdan, sovelluksen sisäisen huomion, turvallisen stop–history–RPC-siirron,
+idempotentin epävarman lähetyksen sekä vaiheistetut host-operaatiot.
 Historiasta löytyminen, prosessin käynnissäolo ja ohjattavuus ovat eri asioita.
 Workspace-kokeen perusteella myös hakemiston löytyminen, Git-/Taskfleet-omistajuus
 ja turvallinen muutosoikeus ovat eri asioita. Pitkä operaatio ei saa palauttaa
