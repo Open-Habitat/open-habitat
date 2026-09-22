@@ -1,44 +1,63 @@
 # Projektin tilanne
 
-**Updated:** 2026-09-21
-**Source revision:** `0b0a16419e280aff57f08ce6a747fcb03584488c`
+**Updated:** 2026-09-22
+**Source revision:** `0dd5226ba18d410f22eade7fa4500310cf8e9924`
 
 ## Sovittu perusta
 
-Unix-natiivi arkkitehtuuri on hyväksytty. Keskustelu- ja workspace-designit
-on vastaanotettu. Workspace-/agenttinavigointi sekä workspacejen elinkaari,
-GitHub-kytkentä, worktreet ja arkisto kuuluvat ensimmäisen MVP:n suuntaan.
-Ensimmäinen käyttöliittymä tehdään työpöytäselaimelle, yhdelle palvelimelle ja Pi:lle.
+ADR 0001:n Unix-natiivi arkkitehtuuri ja UI v1:n tuotekäyttäytyminen on
+hyväksytty. Workspace-/agenttinavigointi, koko keskustelukokemus, workspacejen
+elinkaari, GitHub, Taskfleetin hallitsemat worktreet, arkisto, kahden käyttäjän
+erottelu ja operointi kuuluvat koko MVP:hen. Tuotetta ei ole vielä toteutettu.
 
-Tuotetta, tuotantokomponenttikirjastoa tai sen ajettavaa katalogia ei ole vielä
-rakennettu. Frontend/backend-tekniikka, autentikointi ja tarkat rajapinnat ovat
-vielä päätettäviä. Vanha benchmark-fixture ei todista niiden toimivuutta.
+## Toteutusvalmiuden paketti on valmis
 
-## Polku on valmisteltu
+[`plan-v1-implementation`](../issues/plan-v1-implementation/result.md) on
+koonnut pinotut lähderevisiot, 12 rajattua toteutusbriefiä, Y1–Y5/M1–M7- ja
+CT-001–CT-033-omistajuuden, foundationin ehdotetun green gaten, neljä
+sopimustäsmennystä sekä Fleetrepo/Alder-käyttöönoton ja palautumisen ehdotetut
+komennot. Komennot eivät ole vielä ajettavaa tuotenäyttöä: ensimmäinen
+`build-app-foundation`-työ toteuttaa ja todentaa ne.
 
-[Vaiheistus](implementation.md) kulkee käyttökuluista ja natiivien kykyjen
-kokeista teknisiin päätöksiin, tuotantodesigniin, toimivaan ytimeen ja koko MVP:n
-pilottiin. Tehtävät ja riippuvuudet on kuvattu issuectl:ssä.
-
-Seuraava työrupeama valmistelee käyttökulut ja aloittaa Pi:n ohjausmahdollisuuksien
-kokeen. Se ei aloita tuotantototeutusta. Tämän polun valmistelu ei käynnistänyt
-Taskfleet-ajoja.
+Kävely-ydin säilyy järjestyksessä sovelluspohja → design system → autentikoitu
+kahden käyttäjän workspace → natiivi Pi-historia → Pi-ohjaus. Sen jälkeen
+rakennetaan koko hyväksytty keskustelu sekä workspace-, GitHub-, Taskfleet- ja
+arkistotoiminnot. Lopun tekninen pilotti todentaa kaikki kriteerit; Jari hyväksyy
+MVP:n erillisessä katselmoinnissa.
 
 ## Katselmoi seuraavaksi
 
-Ensimmäinen katselmointi on [yhteinen käyttöliittymäpolku](../issues/review-ui-v1/item.md).
-Sen valmistelija kokoaa designit, käyttökulut ja natiivikokeiden tulokset ennen
-päätöspyyntöä. Valmis katselmointipaketti ja tarkka päätettävä asia tuodaan tähän,
-kun ne ovat olemassa. Nykyisiä avoimia kysymyksiä voi seurata
-[oletussivulta](assumptions.md).
+Seuraava toiminto on Jarin kanssa käytävä
+[`review-implementation-plan`](../issues/review-implementation-plan/item.md).
+Sen [päätöspaketti](../issues/plan-v1-implementation/review.md) suosittelee
+Proposed ADR 0002:n ja 0003:n hyväksymistä kirjatuin CLI-täsmennyksin,
+tuotantodesignin hyväksymistä sekä täsmällisiä retention-, otsikko-, OIDC-,
+GitHub- ja Fleetrepo-politiikkoja. ADR:t 0002/0003, tuotantodesign ja ehdotetut
+komennot eivät muutu hyväksytyiksi ennen Jarin kirjattua päätöstä.
 
-Sen jälkeen katselmoidaan tekniset päätökset ja tuotantodesign, ja lopulta oikea
-MVP pilotin tuloksineen. [Katselmointisivu](ui.md) linkittää näihin tehtäviin.
-Valmistelu ja toimitus eivät tarkoita Jarin hyväksyntää.
+Alder on jo valtuutettu myöhemmäksi testi-/pilottikohteeksi katselmoinnin ja
+ajettavien green gatejen jälkeen. Nykyistä deploymentia ei ole. Pysyvä tila
+luodaan vain erillisessä katselmoidussa Fleetrepo-issuen worktreessä ja
+konvergoidaan Fleetrepon omalla fleet-/Alder-hook-rajalla; Native Agent Host ei
+muuta käyttäjiä, unitteja, OIDC-salaisuuksia tai Tailscale-reittiä sivuvaikutuksena.
+
+## Todennetut rajat ja avoin näyttö
+
+Pi 0.85.1:n historia/RPC/jono/steering/diffi/dialogi-rajat ja paikallisen
+workspace/Git/Taskfleet/GitHub-read-proben rajat on todennettu. Host-sopimuksen
+29 nykyistä skenaariota validoituvat. Tuotantodesign ja staattinen kierros ovat
+katselmointiaineistoa, eivät runtime-näyttöä.
+
+Vielä toteutuksessa todistettavia ovat QEMU-systemd-fixture, oikea OIDC/session/
+CSRF/socket/peer-UID-polku, Pi:n otsikkokutsu, SSE-/ledger-/pitkän historian
+budjetit, daemon-crash ja history settlement, kahden käyttäjän GitHub-kirjoitukset,
+Taskfleetin osittaiset elinkaaret, path/mount/process-racet, saavutettavuus,
+paketointi, päivitys, rollback ja pilottiteardown. Tuntematon tila pysyy
+fail-closed-tilana eikä poista hyväksyttyä ominaisuutta.
 
 ## Dokumentaation katselu
 
 Dokumentaatio on suoraan `docs/`-hakemistossa ja sen aloitus on `index.md`.
-Glasspadin nykyversio hylkää hakemiston AGENTS.md/CLAUDE.md-ohjeet. Siksi
-suora näyttäminen tarvitsee Glasspad-korjauksen; dokumentaation rakennetta ei
-muuteta sen vuoksi. Nämä muutokset eivät vielä ole Glasspadissa julkaistuja.
+Glasspadin nykyversio hylkää hakemiston AGENTS.md/CLAUDE.md-ohjeet. Siksi suora
+näyttäminen tarvitsee Glasspad-korjauksen; dokumentaation rakennetta ei muuteta
+sen vuoksi. Näitä muutoksia ei ole julkaistu Glasspadissa.
