@@ -2,13 +2,15 @@
 created: 2026-09-21
 updated: 2026-09-22
 type: task
-status: in-progress
+status: done
 priority: normal
 epic: native-agent-host-architecture
 lane: planning
 lane_seq: 40
 blocked_by: ['@review-ui-v1', '@choose-frontend-stack', '@probe-workspace-lifecycle']
 collision: [docs/, AGENTS.md]
+closed: 2026-09-22
+closed_by: pi
 ---
 
 # Propose the gateway daemon and deployment stack
@@ -27,12 +29,12 @@ workspace registry, credential broker or speculative cache. Desktop first, one s
 
 ## Acceptance Criteria
 
-- [ ] Recommend daemon language/runtime, Pi adapter/process ownership, gateway authentication, Unix account mapping, daemon transport and service packaging.
-- [ ] Define native tool/credential prerequisites, sign-in/out/session expiry, routing trust and failure behavior; credentials stay out of the browser.
-- [ ] Describe process survival across browser loss and daemon restart, supported terminal attachment, and testable limits.
-- [ ] Propose a disposable test environment and Alder pilot target, installation/update/rollback approach and Fleetrepo-owned persistent CLI installation where applicable.
-- [ ] Record deployment commands, required permissions and what needs approval in @review-implementation-plan; do not treat a host name as deployment permission.
-- [ ] Write a proposed ADR and operational recommendation, with verification strategy for two Unix users and safe negative tests; register in `docs/decisions.md`.
+- [x] Recommend daemon language/runtime, Pi adapter/process ownership, gateway authentication, Unix account mapping, daemon transport and service packaging.
+- [x] Define native tool/credential prerequisites, sign-in/out/session expiry, routing trust and failure behavior; credentials stay out of the browser.
+- [x] Describe process survival across browser loss and daemon restart, supported terminal attachment, and testable limits.
+- [x] Propose a disposable test environment and Alder pilot target, installation/update/rollback approach and Fleetrepo-owned persistent CLI installation where applicable.
+- [x] Record deployment commands, required permissions and what needs approval in @review-implementation-plan; do not treat a host name as deployment permission.
+- [x] Write a proposed ADR and operational recommendation, with verification strategy for two Unix users and safe negative tests; register in `docs/decisions.md`.
 
 ## Delivery and verification
 
