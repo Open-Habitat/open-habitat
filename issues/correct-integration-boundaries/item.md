@@ -3,12 +3,14 @@ created: 2026-09-22
 updated: 2026-09-22
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 epic: native-agent-host-architecture
 lane: planning
 lane_seq: 15
 collision: [docs/]
+closed: 2026-09-22
+closed_by: agent
 ---
 
 # Correct MVP integration boundaries
