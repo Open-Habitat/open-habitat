@@ -2,7 +2,7 @@
 created: 2026-09-20
 updated: 2026-09-22
 type: task
-status: in-progress
+status: done
 priority: normal
 epic: native-agent-host-architecture
 lane: planning
@@ -12,6 +12,8 @@ commits:
 - hash: f2c326d23549333032af795b61b163b97040f854
   summary: 'docs(ui): schedule the accepted MVP capabilities'
 collision: [docs/, AGENTS.md]
+closed: 2026-09-22
+closed_by: pi
 ---
 
 # Specify implementation slices and verification from the agreed design
