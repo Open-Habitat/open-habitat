@@ -1,0 +1,524 @@
+[
+  {
+    "id": "CT-001",
+    "covers": [
+      "two users",
+      "cross-user denial"
+    ],
+    "given": [
+      "subject A maps only to synthetic UID A; subject B maps only to synthetic UID B"
+    ],
+    "when": [
+      "A supplies B-like headers, resource IDs, socket hints, and cursors"
+    ],
+    "then": [
+      "gateway ignores browser routing hints",
+      "every A request reaches only A's configured socket",
+      "B snapshot and SSE bytes are absent",
+      "unknown or duplicate mapping returns identity_mapping_denied"
+    ]
+  },
+  {
+    "id": "CT-002",
+    "covers": [
+      "gateway-daemon peer"
+    ],
+    "given": [
+      "daemon socket belongs to user A"
+    ],
+    "when": [
+      "a peer other than the configured gateway UID connects"
+    ],
+    "then": [
+      "daemon returns peer_not_authorized without reading native state",
+      "a mapping/socket mismatch never falls back to another daemon"
+    ]
+  },
+  {
+    "id": "CT-003",
+    "covers": [
+      "snapshot/SSE race"
+    ],
+    "given": [
+      "snapshot watermark is sequence 41"
+    ],
+    "when": [
+      "native changes occur during snapshot serialization and the client opens events after cursor 41"
+    ],
+    "then": [
+      "snapshot is an atomic view at 41",
+      "the stream starts at 42",
+      "no change is lost or applied twice"
+    ],
+    "fixtures": [
+      "examples/snapshot.json",
+      "examples/events.json"
+    ]
+  },
+  {
+    "id": "CT-004",
+    "covers": [
+      "duplicates",
+      "ordering"
+    ],
+    "given": [
+      "client last applied sequence 42"
+    ],
+    "when": [
+      "event 42 is replayed then 43 arrives"
+    ],
+    "then": [
+      "42 is ignored by event_id/cursor",
+      "43 applies once",
+      "an out-of-order sequence greater than one marks writes disabled and starts resnapshot"
+    ]
+  },
+  {
+    "id": "CT-005",
+    "covers": [
+      "replay expiry",
+      "gap",
+      "resnapshot"
+    ],
+    "given": [
+      "requested cursor is older than oldest_replay_cursor or names another server instance"
+    ],
+    "when": [
+      "events endpoint is opened"
+    ],
+    "then": [
+      "HTTP 409 cursor_expired or cursor_instance_mismatch is returned before SSE starts",
+      "client disables writes and atomically replaces state with a fresh snapshot"
+    ]
+  },
+  {
+    "id": "CT-006",
+    "covers": [
+      "backpressure",
+      "long output"
+    ],
+    "given": [
+      "one SSE client exceeds 1000 queued events or 1 MiB queued encoded bytes"
+    ],
+    "when": [
+      "the daemon cannot flush within 30 seconds"
+    ],
+    "then": [
+      "that connection closes without dropping global events",
+      "reconnect uses replay or resnapshot",
+      "one event payload never exceeds 64 KiB of text; remaining native content is queried by content_id"
+    ]
+  },
+  {
+    "id": "CT-007",
+    "covers": [
+      "duplicate command",
+      "idempotency"
+    ],
+    "given": [
+      "an accepted command remains in the same ledger epoch"
+    ],
+    "when": [
+      "the identical body and client_command_id are submitted again"
+    ],
+    "then": [
+      "the original result is returned and execution is not repeated",
+      "the same ID with another body returns command_id_conflict"
+    ]
+  },
+  {
+    "id": "CT-008",
+    "covers": [
+      "uncertain command",
+      "retry policy"
+    ],
+    "given": [
+      "the connection ends before acceptance response"
+    ],
+    "when": [
+      "client fetches a fresh snapshot and command status"
+    ],
+    "then": [
+      "a matching retained result reconciles it",
+      "absence never proves non-delivery after ledger epoch change or eviction",
+      "there is no automatic resend",
+      "a deliberate resend uses a new ID and explicit confirmation"
+    ]
+  },
+  {
+    "id": "CT-009",
+    "covers": [
+      "browser loss"
+    ],
+    "given": [
+      "a daemon-owned RPC turn is running"
+    ],
+    "when": [
+      "tab and SSE close"
+    ],
+    "then": [
+      "Pi child continues",
+      "later cursor replay or snapshot shows native progress",
+      "browser connection is never process owner"
+    ]
+  },
+  {
+    "id": "CT-010",
+    "covers": [
+      "daemon loss"
+    ],
+    "given": [
+      "a daemon-owned RPC turn is running"
+    ],
+    "when": [
+      "daemon crashes and its cgroup stops the child"
+    ],
+    "then": [
+      "native completed history remains",
+      "new epoch makes unresolved commands uncertain",
+      "resume remains disabled until fresh process-exit and history-settlement proof"
+    ]
+  },
+  {
+    "id": "CT-011",
+    "covers": [
+      "TUI read-only",
+      "transfer"
+    ],
+    "given": [
+      "history is readable and a terminal TUI is observed live"
+    ],
+    "when": [
+      "browser opens it or requests transfer"
+    ],
+    "then": [
+      "opening stays read-only",
+      "daemon never signals an observed PID without an owner path",
+      "RPC starts only after known-owner/user stop, confirmed exit, settled history, and single-writer lock"
+    ]
+  },
+  {
+    "id": "CT-012",
+    "covers": [
+      "native capabilities",
+      "queue",
+      "questions"
+    ],
+    "given": [
+      "owned Pi 0.85.1 RPC advertises verified capabilities"
+    ],
+    "when": [
+      "message, steer, follow_up, clear_queue, interrupt, or extension question response is sent"
+    ],
+    "then": [
+      "adapter maps only verified Pi operations",
+      "clear_queue clears the whole queue",
+      "interrupt stops the turn not an arbitrary process tree",
+      "ordinary chat does not invent question support",
+      "unsupported or unknown capability returns capability_unsupported or capability_unknown"
+    ]
+  },
+  {
+    "id": "CT-013",
+    "covers": [
+      "malformed/untrusted content"
+    ],
+    "given": [
+      "history contains raw HTML, javascript URLs, malformed Markdown/diff, unknown event and control characters"
+    ],
+    "when": [
+      "snapshot, query, and SSE are decoded"
+    ],
+    "then": [
+      "schema-invalid envelopes are rejected",
+      "valid unknown native payload is escaped generic text",
+      "no supplied HTML or URL executes",
+      "malformed renderer input retains a plain-text fallback"
+    ]
+  },
+  {
+    "id": "CT-014",
+    "covers": [
+      "title failure",
+      "regeneration"
+    ],
+    "given": [
+      "title adapter capability is verified supported and an earlier successful title exists"
+    ],
+    "when": [
+      "daemon-owned one-off Pi model call fails then a user requests regeneration with a new command ID"
+    ],
+    "then": [
+      "failure preserves prior title and conversation progress",
+      "pending/succeeded/failed are observable",
+      "success atomically replaces only title annotation",
+      "browser never performs the model call"
+    ],
+    "fixtures": [
+      "examples/title-failure.json"
+    ]
+  },
+  {
+    "id": "CT-015",
+    "covers": [
+      "title unverified adapter"
+    ],
+    "given": [
+      "one-off Pi model-call adapter has not been verified"
+    ],
+    "when": [
+      "snapshot is read or title command is attempted"
+    ],
+    "then": [
+      "capability is unknown with adapter_not_verified",
+      "command fails capability_unknown",
+      "display remains Uusi keskustelu or daemon-derived first-message fallback"
+    ]
+  },
+  {
+    "id": "CT-016",
+    "covers": [
+      "path escape",
+      "symlink",
+      "no-follow"
+    ],
+    "given": [
+      "target is a symlink, is replaced after preflight, contains descendant symlinks, or escapes the opened src descriptor"
+    ],
+    "when": [
+      "create, clone, settings, or delete is requested"
+    ],
+    "then": [
+      "descriptor-relative no-follow resolution rejects it",
+      "outside sentinel is unchanged",
+      "error names path_unsupported, path_replaced, or path_escape without disclosing another user's path"
+    ]
+  },
+  {
+    "id": "CT-017",
+    "covers": [
+      "partial host operation",
+      "fresh retry"
+    ],
+    "given": [
+      "managed process stop succeeds and manual linked worktree blocks deletion"
+    ],
+    "when": [
+      "deletion proceeds"
+    ],
+    "then": [
+      "confirmed stop remains confirmed",
+      "workspace removal is skipped",
+      "fresh source observation reports directory present",
+      "retry requires a new observation token and never claims rollback"
+    ]
+  },
+  {
+    "id": "CT-018",
+    "covers": [
+      "GitHub partial result"
+    ],
+    "given": [
+      "remote repository creation succeeds but origin setup or plain git push fails"
+    ],
+    "when": [
+      "operation settles"
+    ],
+    "then": [
+      "remote creation remains a confirmed effect",
+      "failure stage and local Git state remain visible",
+      "retry starts only after fresh Git/GitHub/transport observation",
+      "no credential is returned to browser"
+    ]
+  },
+  {
+    "id": "CT-019",
+    "covers": [
+      "Taskfleet ownership",
+      "manual worktree"
+    ],
+    "given": [
+      "one worktree is Taskfleet-owned and another is manual or ownership is unknown"
+    ],
+    "when": [
+      "teardown or deletion is requested"
+    ],
+    "then": [
+      "owned teardown uses Taskfleet's exact run identity",
+      "manual/unknown worktree is read-only and blocks destructive cleanup",
+      "branch display fragment is never treated as ownership"
+    ]
+  },
+  {
+    "id": "CT-020",
+    "covers": [
+      "annotation corruption"
+    ],
+    "given": [
+      "user state annotation is missing, invalid, truncated, or has unknown version"
+    ],
+    "when": [
+      "snapshot is built"
+    ],
+    "then": [
+      "Pi history, Git, filesystem and Taskfleet facts remain available",
+      "only hidden/archive/title/annotated-parent presentation is lost or unknown",
+      "source warning is emitted and corrupt bytes are not silently overwritten"
+    ]
+  },
+  {
+    "id": "CT-021",
+    "covers": [
+      "archive",
+      "same native identity"
+    ],
+    "given": [
+      "controlled process is settled and pi history is readable"
+    ],
+    "when": [
+      "archive then unarchive/resume commands complete"
+    ],
+    "then": [
+      "archive changes only annotation",
+      "resume uses the same pi session ID",
+      "no transcript copy or new platform conversation is created"
+    ]
+  },
+  {
+    "id": "CT-022",
+    "covers": [
+      "stale precondition",
+      "concurrent browsers"
+    ],
+    "given": [
+      "two browsers or a terminal mutate the same native session/workspace"
+    ],
+    "when": [
+      "one submits a command with an old snapshot cursor or observation token"
+    ],
+    "then": [
+      "host returns stale_precondition with fresh_snapshot_required",
+      "daemon single-writer ownership decides control, not browser focus",
+      "read-only native changes may still arrive through snapshot/SSE"
+    ]
+  },
+  {
+    "id": "CT-023",
+    "covers": [
+      "CSRF",
+      "origin denial"
+    ],
+    "given": [
+      "an authenticated cookie exists"
+    ],
+    "when": [
+      "a write has missing/wrong Origin or missing/wrong session-bound CSRF header"
+    ],
+    "then": [
+      "gateway returns origin_denied or csrf_denied before daemon routing",
+      "no command ledger entry or native effect exists"
+    ]
+  },
+  {
+    "id": "CT-024",
+    "covers": [
+      "confirmation mismatch"
+    ],
+    "given": [
+      "delete preflight returns workspace name and observation token"
+    ],
+    "when": [
+      "confirmation differs by any code point or token no longer matches filesystem identity"
+    ],
+    "then": [
+      "confirmation_mismatch or stale_precondition is retained as a rejected command",
+      "no process, worktree, or directory mutation starts"
+    ]
+  },
+  {
+    "id": "CT-025",
+    "covers": [
+      "question resolution",
+      "two tabs"
+    ],
+    "given": [
+      "an extension question is pending in both tab snapshots"
+    ],
+    "when": [
+      "one tab answers and daemon emits question.resolved"
+    ],
+    "then": [
+      "both tabs remove the request by request_id",
+      "a duplicate response returns a retained rejection",
+      "resnapshot shows pending_question null"
+    ]
+  },
+  {
+    "id": "CT-026",
+    "covers": [
+      "session expiry during SSE"
+    ],
+    "given": [
+      "a session has an open SSE connection"
+    ],
+    "when": [
+      "logout, idle expiry, absolute expiry, or gateway session restart invalidates it"
+    ],
+    "then": [
+      "gateway closes that session's SSE connections",
+      "reconnect returns authentication_required or session_expired",
+      "daemon-owned Pi work continues"
+    ]
+  },
+  {
+    "id": "CT-027",
+    "covers": [
+      "schema version rejection"
+    ],
+    "given": [
+      "request declares an unsupported schema version or extra forbidden field"
+    ],
+    "when": [
+      "gateway/daemon validates it"
+    ],
+    "then": [
+      "schema_version_unsupported or invalid_request is returned",
+      "nothing is entered in the ledger or executed"
+    ]
+  },
+  {
+    "id": "CT-028",
+    "covers": [
+      "Last-Event-ID reconnect"
+    ],
+    "given": [
+      "URL after is 41 but client last applied SSE id is cursor 57"
+    ],
+    "when": [
+      "EventSource reconnects with Last-Event-ID 57"
+    ],
+    "then": [
+      "server prefers 57 and begins at 58",
+      "sequences at or below client last-applied are duplicate replays",
+      "only a sequence above last+1 causes a gap"
+    ]
+  },
+  {
+    "id": "CT-029",
+    "covers": [
+      "empty account create",
+      "user observation token"
+    ],
+    "given": [
+      "an authenticated user's src listing is empty and snapshot supplies user_observation_token"
+    ],
+    "when": [
+      "workspace.create or workspace.github.clone uses target.scope user and that token"
+    ],
+    "then": [
+      "daemon binds the token to web identity and opened src descriptor",
+      "a changed/missing/replaced src root yields stale_precondition",
+      "the first workspace can be created without inventing an existing resource ID"
+    ]
+  }
+]

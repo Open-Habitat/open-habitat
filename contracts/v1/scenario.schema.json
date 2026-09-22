@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://native-agent-host.invalid/contracts/v1/scenario.schema.json",
+  "title": "Deterministic implementation contract scenarios",
+  "type": "array", "minItems": 1,
+  "items": {
+    "type": "object", "additionalProperties": false,
+    "required": ["id", "covers", "given", "when", "then"],
+    "properties": {
+      "id": {"type": "string", "pattern": "^CT-[0-9]{3}$"},
+      "covers": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 2}},
+      "given": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 2}},
+      "when": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 2}},
+      "then": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 2}},
+      "fixtures": {"type": "array", "items": {"type": "string", "pattern": "^examples/"}}
+    }
+  }
+}

@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://native-agent-host.invalid/contracts/v1/annotations.schema.json",
+  "title": "Minimal presentation annotations",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/workspaceSettings"
+    },
+    {
+      "$ref": "#/$defs/userState"
+    }
+  ],
+  "$defs": {
+    "parentContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "captured_at"
+      ],
+      "properties": {
+        "parent_agent_id": {
+          "$ref": "common.schema.json#/$defs/agentId"
+        },
+        "taskfleet_run_id": {
+          "type": "string",
+          "pattern": "^[0-9a-z]{26}$"
+        },
+        "taskfleet_node_id": {
+          "type": "string",
+          "pattern": "^n-[0-9]{4}$"
+        },
+        "source": {
+          "enum": [
+            "taskfleet",
+            "pi_extension",
+            "user_explicit"
+          ]
+        },
+        "captured_at": {
+          "$ref": "common.schema.json#/$defs/timestamp"
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "parent_agent_id"
+          ]
+        },
+        {
+          "required": [
+            "taskfleet_run_id",
+            "taskfleet_node_id"
+          ]
+        }
+      ]
+    },
+    "workspaceSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "workspace_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schemaVersion"
+        },
+        "workspace_id": {
+          "$ref": "common.schema.json#/$defs/workspaceId"
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        }
+      }
+    },
+    "userState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "workspaces",
+        "conversations"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schemaVersion"
+        },
+        "workspaces": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "hidden",
+              "updated_at"
+            ],
+            "properties": {
+              "hidden": {
+                "type": "boolean"
+              },
+              "updated_at": {
+                "$ref": "common.schema.json#/$defs/timestamp"
+              }
+            }
+          },
+          "propertyNames": {
+            "pattern": "^ws_[A-Za-z0-9_-]{8,64}$"
+          }
+        },
+        "conversations": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^pi:"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "archived_at": {
+                "$ref": "common.schema.json#/$defs/timestamp"
+              },
+              "title": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "text",
+                  "generated_at",
+                  "generator"
+                ],
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "generated_at": {
+                    "$ref": "common.schema.json#/$defs/timestamp"
+                  },
+                  "generator": {
+                    "const": "pi_one_off"
+                  }
+                }
+              },
+              "parent": {
+                "$ref": "#/$defs/parentContext"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

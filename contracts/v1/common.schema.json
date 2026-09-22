@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://native-agent-host.invalid/contracts/v1/common.schema.json",
+  "title": "Native Agent Host common v1 types",
+  "$defs": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "agentId": {
+      "type": "string",
+      "pattern": "^pi:[0-9a-fA-F-]{36}$"
+    },
+    "workspaceId": {
+      "type": "string",
+      "pattern": "^ws_[A-Za-z0-9_-]{8,64}$"
+    },
+    "cursor": {
+      "type": "string",
+      "pattern": "^ev1:[0-9a-fA-F-]{36}:[0-9]+$"
+    },
+    "sourceFact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "state",
+        "observed_at"
+      ],
+      "properties": {
+        "source": {
+          "enum": [
+            "filesystem",
+            "pi_history",
+            "daemon_owner",
+            "proc",
+            "tmux",
+            "git",
+            "github",
+            "taskfleet",
+            "annotation"
+          ]
+        },
+        "state": {
+          "enum": [
+            "confirmed",
+            "absent",
+            "unknown",
+            "unavailable",
+            "conflicting"
+          ]
+        },
+        "observed_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "detail": {
+          "type": "string",
+          "maxLength": 500
+        }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "reason_code"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "supported",
+            "unsupported",
+            "unknown",
+            "temporarily_unavailable"
+          ]
+        },
+        "reason_code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{2,63}$"
+        },
+        "observed_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "requires_fresh_observation": {
+          "type": "boolean"
+        }
+      }
+    },
+    "content": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "media_type",
+        "text",
+        "complete"
+      ],
+      "properties": {
+        "media_type": {
+          "enum": [
+            "text/plain",
+            "text/markdown",
+            "text/x-diff"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 65536
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "content_id": {
+          "type": "string",
+          "pattern": "^ct_[A-Za-z0-9_-]{8,80}$"
+        },
+        "next_offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "complete": {
+                "const": false
+              }
+            },
+            "required": [
+              "complete"
+            ]
+          },
+          "then": {
+            "oneOf": [
+              {
+                "required": [
+                  "content_id",
+                  "next_offset"
+                ]
+              },
+              {
+                "properties": {
+                  "truncated": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "truncated"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "problem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "retryable",
+        "correlation_id"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{2,63}$"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "correlation_id": {
+          "type": "string",
+          "pattern": "^req_[A-Za-z0-9_-]{8,80}$"
+        },
+        "details": {
+          "type": "object"
+        },
+        "fresh_snapshot_required": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,18 @@
+[
+  {
+    "schema_version": 1, "event_id": "evt_example0042",
+    "cursor": "ev1:22222222-2222-4222-8222-222222222222:42",
+    "server_instance_id": "22222222-2222-4222-8222-222222222222", "sequence": 42,
+    "emitted_at": "2026-09-22T14:00:01Z", "kind": "command.changed",
+    "resource": {"agent_id": "pi:33333333-3333-4333-8333-333333333333", "client_command_id": "55555555-5555-4555-8555-555555555555"},
+    "payload": {"acceptance": "accepted", "execution": "running"}
+  },
+  {
+    "schema_version": 1, "event_id": "evt_example0043",
+    "cursor": "ev1:22222222-2222-4222-8222-222222222222:43",
+    "server_instance_id": "22222222-2222-4222-8222-222222222222", "sequence": 43,
+    "emitted_at": "2026-09-22T14:00:02Z", "kind": "assistant.delta",
+    "resource": {"agent_id": "pi:33333333-3333-4333-8333-333333333333"},
+    "native_key": "entry-redacted:block-0:delta-1", "payload": {"text": "Synthetic response."}
+  }
+]

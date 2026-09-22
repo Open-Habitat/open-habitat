@@ -1,0 +1,19 @@
+{
+  "operation_id": "op_delete001", "kind": "workspace_delete", "state": "partial",
+  "started_at": "2026-09-22T14:10:00Z", "finished_at": "2026-09-22T14:10:08Z",
+  "observation_token": "obs_delete_final_88",
+  "stages": [
+    {"stage_id": "validated", "state": "confirmed", "finished_at": "2026-09-22T14:10:01Z"},
+    {"stage_id": "effects_observed", "state": "confirmed", "finished_at": "2026-09-22T14:10:02Z"},
+    {"stage_id": "managed_processes_stopped", "state": "confirmed", "finished_at": "2026-09-22T14:10:04Z"},
+    {"stage_id": "native_worktrees_removed", "state": "failed", "finished_at": "2026-09-22T14:10:08Z", "error": {"code": "manual_worktree_blocks_delete", "message": "A linked worktree is not owned by Taskfleet.", "retryable": false, "correlation_id": "req_delete001"}},
+    {"stage_id": "workspace_removal_attempted", "state": "skipped"},
+    {"stage_id": "source_reobserved", "state": "confirmed", "facts": [{"source": "filesystem", "state": "confirmed", "observed_at": "2026-09-22T14:10:08Z", "detail": "workspace still present"}]}
+  ],
+  "effects": [
+    {"kind": "process", "state": "removed", "description": "Managed Pi process stopped.", "owner": "pi"},
+    {"kind": "git_worktree", "state": "present", "description": "Manual linked worktree remains.", "owner": "git"},
+    {"kind": "directory", "state": "present", "description": "Workspace remains on disk.", "owner": "filesystem"}
+  ],
+  "error": {"code": "operation_partial", "message": "Deletion stopped after a confirmed process stop.", "retryable": false, "correlation_id": "req_delete001", "fresh_snapshot_required": true}
+}

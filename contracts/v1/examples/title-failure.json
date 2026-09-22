@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "client_command_id": "66666666-6666-4666-8666-666666666666",
+  "kind": "conversation.title.generate",
+  "acceptance": "accepted",
+  "execution": "failed",
+  "ledger_epoch": "44444444-4444-4444-8444-444444444444",
+  "recorded_at": "2026-09-22T14:20:00Z",
+  "expires_at": "2026-09-23T14:20:00Z",
+  "operation_id": "op_title001",
+  "error": {"code": "title_generation_failed", "message": "The one-off title call failed; the prior display title remains.", "retryable": true, "correlation_id": "req_title001"}
+}

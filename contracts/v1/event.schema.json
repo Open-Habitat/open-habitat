@@ -1,0 +1,587 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://native-agent-host.invalid/contracts/v1/event.schema.json",
+  "title": "Combined SSE event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "cursor",
+    "server_instance_id",
+    "sequence",
+    "emitted_at",
+    "kind",
+    "resource",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.schema.json#/$defs/schemaVersion"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^evt_[A-Za-z0-9_-]{8,80}$"
+    },
+    "cursor": {
+      "$ref": "common.schema.json#/$defs/cursor"
+    },
+    "server_instance_id": {
+      "$ref": "common.schema.json#/$defs/uuid"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "emitted_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "kind": {
+      "enum": [
+        "snapshot.invalidated",
+        "workspace.changed",
+        "agent.changed",
+        "history.entry",
+        "assistant.delta",
+        "tool.started",
+        "tool.updated",
+        "tool.finished",
+        "queue.changed",
+        "question.requested",
+        "question.resolved",
+        "turn.settled",
+        "command.changed",
+        "operation.changed",
+        "title.changed",
+        "source.warning",
+        "unknown.native"
+      ]
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "workspace_id": {
+          "$ref": "common.schema.json#/$defs/workspaceId"
+        },
+        "agent_id": {
+          "$ref": "common.schema.json#/$defs/agentId"
+        },
+        "operation_id": {
+          "type": "string",
+          "pattern": "^op_[A-Za-z0-9_-]{8,80}$"
+        },
+        "client_command_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "scope": {
+          "const": "user"
+        }
+      },
+      "minProperties": 1
+    },
+    "native_key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "snapshot.invalidated"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "reason"
+            ],
+            "properties": {
+              "reason": {
+                "enum": [
+                  "source_changed",
+                  "ring_truncated"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "workspace.changed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "snapshot.schema.json#/$defs/workspace"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "agent.changed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "snapshot.schema.json#/$defs/agent"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "history.entry"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "native_key"
+        ],
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "entry_key",
+              "entry_kind",
+              "content"
+            ],
+            "properties": {
+              "entry_key": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "entry_kind": {
+                "enum": [
+                  "user",
+                  "assistant",
+                  "tool",
+                  "model_change",
+                  "unknown"
+                ]
+              },
+              "content": {
+                "$ref": "common.schema.json#/$defs/content"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "assistant.delta"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "text"
+            ],
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 65536
+              },
+              "content_index": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "tool.started",
+              "tool.updated",
+              "tool.finished"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tool_call_id",
+              "tool_name",
+              "state"
+            ],
+            "properties": {
+              "tool_call_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "tool_name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "state": {
+                "enum": [
+                  "running",
+                  "succeeded",
+                  "failed",
+                  "cancelled"
+                ]
+              },
+              "content": {
+                "$ref": "common.schema.json#/$defs/content"
+              },
+              "structured_diff": {
+                "$ref": "common.schema.json#/$defs/content"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "queue.changed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "steering",
+              "follow_up"
+            ],
+            "properties": {
+              "steering": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 65536
+                }
+              },
+              "follow_up": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 65536
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "question.requested"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/question"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "question.resolved"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "request_id",
+              "outcome"
+            ],
+            "properties": {
+              "request_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "outcome": {
+                "enum": [
+                  "answered",
+                  "cancelled",
+                  "expired"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "turn.settled"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "state"
+            ],
+            "properties": {
+              "state": {
+                "enum": [
+                  "succeeded",
+                  "failed",
+                  "interrupted"
+                ]
+              },
+              "error_code": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{2,63}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "command.changed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "acceptance",
+              "execution"
+            ],
+            "properties": {
+              "acceptance": {
+                "enum": [
+                  "accepted",
+                  "rejected",
+                  "uncertain"
+                ]
+              },
+              "execution": {
+                "enum": [
+                  "not_started",
+                  "running",
+                  "succeeded",
+                  "failed",
+                  "partial",
+                  "unknown"
+                ]
+              },
+              "error_code": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{2,63}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "operation.changed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "operation.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "title.changed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "snapshot.schema.json#/$defs/title"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "source.warning"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source",
+              "code"
+            ],
+            "properties": {
+              "source": {
+                "enum": [
+                  "filesystem",
+                  "pi_history",
+                  "daemon_owner",
+                  "proc",
+                  "tmux",
+                  "git",
+                  "github",
+                  "taskfleet",
+                  "annotation"
+                ]
+              },
+              "code": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{2,63}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "unknown.native"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "native_type",
+              "content"
+            ],
+            "properties": {
+              "native_type": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "content": {
+                "$ref": "common.schema.json#/$defs/content"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_id",
+        "question_kind",
+        "prompt"
+      ],
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "question_kind": {
+          "enum": [
+            "input",
+            "confirm",
+            "select"
+          ]
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "choices": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      }
+    }
+  }
+}

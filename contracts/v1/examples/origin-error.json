@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "error": {
+    "code": "origin_denied",
+    "message": "The request origin is not allowed.",
+    "retryable": false,
+    "correlation_id": "req_origin001"
+  }
+}

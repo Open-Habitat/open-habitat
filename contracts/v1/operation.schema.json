@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://native-agent-host.invalid/contracts/v1/operation.schema.json",
+  "title": "Staged host operation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "operation_id",
+    "kind",
+    "state",
+    "started_at",
+    "stages",
+    "effects"
+  ],
+  "properties": {
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[A-Za-z0-9_-]{8,80}$"
+    },
+    "kind": {
+      "enum": [
+        "workspace_create",
+        "git_integrate",
+        "git_init",
+        "github_create",
+        "github_clone",
+        "taskfleet_worktree_create",
+        "workspace_delete",
+        "conversation_archive",
+        "conversation_resume",
+        "terminal_transfer",
+        "title_generate"
+      ]
+    },
+    "state": {
+      "enum": [
+        "accepted",
+        "running",
+        "succeeded",
+        "failed",
+        "partial",
+        "unknown"
+      ]
+    },
+    "started_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "finished_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "observation_token": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 200
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/stage"
+      }
+    },
+    "effects": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/effect"
+      }
+    },
+    "error": {
+      "$ref": "common.schema.json#/$defs/problem"
+    }
+  },
+  "$defs": {
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage_id",
+        "state"
+      ],
+      "properties": {
+        "stage_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{2,63}$"
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "running",
+            "confirmed",
+            "failed",
+            "unknown",
+            "skipped"
+          ]
+        },
+        "started_at": {
+          "$ref": "common.schema.json#/$defs/timestamp"
+        },
+        "finished_at": {
+          "$ref": "common.schema.json#/$defs/timestamp"
+        },
+        "error": {
+          "$ref": "common.schema.json#/$defs/problem"
+        },
+        "facts": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/sourceFact"
+          }
+        }
+      }
+    },
+    "effect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "state",
+        "description"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "directory",
+            "git_repository",
+            "github_repository",
+            "git_worktree",
+            "taskfleet_run",
+            "process",
+            "annotation"
+          ]
+        },
+        "state": {
+          "enum": [
+            "created",
+            "changed",
+            "removed",
+            "present",
+            "absent",
+            "unknown",
+            "residual"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "owner": {
+          "enum": [
+            "filesystem",
+            "git",
+            "github",
+            "taskfleet",
+            "pi",
+            "native_agent_host"
+          ]
+        }
+      }
+    }
+  }
+}

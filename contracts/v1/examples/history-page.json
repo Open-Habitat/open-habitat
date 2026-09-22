@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "agent_id": "pi:33333333-3333-4333-8333-333333333333",
+  "native_revision": "pi-jsonl:redacted-size-mtime-entry",
+  "entries": [
+    {"entry_key": "entry-redacted-1", "kind": "user", "content": {"media_type": "text/plain", "text": "Synthetic user text.", "complete": true}},
+    {"entry_key": "entry-redacted-2", "kind": "tool", "content": {"media_type": "text/plain", "text": "First 64 KiB maximum chunk …", "complete": false, "content_id": "ct_redactedlong001", "next_offset": 65536}}
+  ],
+  "complete": false,
+  "next_after": "entry-redacted-2"
+}

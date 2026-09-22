@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "snapshot_id": "11111111-1111-4111-8111-111111111111",
+  "captured_at": "2026-09-22T14:00:00Z",
+  "server_instance_id": "22222222-2222-4222-8222-222222222222",
+  "event_cursor": "ev1:22222222-2222-4222-8222-222222222222:41",
+  "oldest_replay_cursor": "ev1:22222222-2222-4222-8222-222222222222:10",
+  "write_state": "enabled",
+  "identity": {
+    "web_identity_id": "wid_example-a",
+    "display_name": "Example A"
+  },
+  "sources": [
+    {
+      "source": "filesystem",
+      "state": "confirmed",
+      "observed_at": "2026-09-22T14:00:00Z"
+    }
+  ],
+  "workspaces": [
+    {
+      "workspace_id": "ws_example123",
+      "name": "sample-project",
+      "display_name": "Sample project",
+      "kind": "git_main_worktree",
+      "visibility": "visible",
+      "mutation_state": "allowed",
+      "facts": [
+        {
+          "source": "git",
+          "state": "confirmed",
+          "observed_at": "2026-09-22T13:59:59Z"
+        }
+      ],
+      "observation_token": "obs_workspace_41",
+      "presence": "present"
+    }
+  ],
+  "agents": [
+    {
+      "agent_id": "pi:33333333-3333-4333-8333-333333333333",
+      "workspace_id": "ws_example123",
+      "history": "readable",
+      "process": "daemon_managed_live",
+      "control": "owned",
+      "capabilities": {
+        "message": {
+          "state": "supported",
+          "reason_code": "rpc_owned",
+          "observed_at": "2026-09-22T14:00:00Z"
+        },
+        "title_generate": {
+          "state": "unknown",
+          "reason_code": "adapter_not_verified",
+          "requires_fresh_observation": true
+        }
+      },
+      "title": {
+        "display": "Uusi keskustelu",
+        "source": "new_conversation",
+        "generation_state": "not_requested",
+        "replaceable": true
+      },
+      "queue": {
+        "steering": [],
+        "follow_up": []
+      },
+      "history_query": "/api/v1/agents/pi%3A33333333-3333-4333-8333-333333333333/history",
+      "observation_token": "obs_agent_owned_41",
+      "presence": "present",
+      "activity": "idle",
+      "pending_question": null,
+      "live_tail": []
+    }
+  ],
+  "operations": [],
+  "command_ledger": {
+    "epoch": "44444444-4444-4444-8444-444444444444",
+    "max_entries": 10000,
+    "max_age_seconds": 86400,
+    "entries": []
+  },
+  "user_observation_token": "obs_user_src_41"
+}

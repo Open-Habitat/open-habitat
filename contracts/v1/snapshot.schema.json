@@ -1,0 +1,369 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://native-agent-host.invalid/contracts/v1/snapshot.schema.json",
+  "title": "Authenticated user snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "snapshot_id",
+    "captured_at",
+    "server_instance_id",
+    "event_cursor",
+    "user_observation_token",
+    "write_state",
+    "identity",
+    "sources",
+    "workspaces",
+    "agents",
+    "operations",
+    "command_ledger"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.schema.json#/$defs/schemaVersion"
+    },
+    "snapshot_id": {
+      "$ref": "common.schema.json#/$defs/uuid"
+    },
+    "captured_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "server_instance_id": {
+      "$ref": "common.schema.json#/$defs/uuid"
+    },
+    "event_cursor": {
+      "$ref": "common.schema.json#/$defs/cursor"
+    },
+    "oldest_replay_cursor": {
+      "$ref": "common.schema.json#/$defs/cursor"
+    },
+    "write_state": {
+      "enum": [
+        "enabled",
+        "read_only"
+      ]
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "web_identity_id",
+        "display_name"
+      ],
+      "properties": {
+        "web_identity_id": {
+          "type": "string",
+          "pattern": "^wid_[A-Za-z0-9_-]{8,80}$"
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/sourceFact"
+      }
+    },
+    "workspaces": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/workspace"
+      }
+    },
+    "agents": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/agent"
+      }
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "$ref": "operation.schema.json"
+      }
+    },
+    "command_ledger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "epoch",
+        "max_entries",
+        "max_age_seconds",
+        "entries"
+      ],
+      "properties": {
+        "epoch": {
+          "$ref": "common.schema.json#/$defs/uuid"
+        },
+        "max_entries": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_age_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "command.schema.json#/$defs/commandResult"
+          },
+          "maxItems": 1000
+        }
+      }
+    },
+    "user_observation_token": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 200
+    }
+  },
+  "$defs": {
+    "workspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workspace_id",
+        "observation_token",
+        "presence",
+        "name",
+        "kind",
+        "visibility",
+        "mutation_state",
+        "facts"
+      ],
+      "properties": {
+        "workspace_id": {
+          "$ref": "common.schema.json#/$defs/workspaceId"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "kind": {
+          "enum": [
+            "directory",
+            "git_main_worktree",
+            "git_linked_worktree",
+            "symlink",
+            "unknown"
+          ]
+        },
+        "visibility": {
+          "enum": [
+            "visible",
+            "hidden"
+          ]
+        },
+        "mutation_state": {
+          "enum": [
+            "allowed",
+            "read_only",
+            "blocked_unknown"
+          ]
+        },
+        "facts": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/sourceFact"
+          }
+        },
+        "observation_token": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "presence": {
+          "enum": [
+            "present",
+            "absent"
+          ]
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "agent_id",
+        "workspace_id",
+        "observation_token",
+        "presence",
+        "history",
+        "process",
+        "control",
+        "activity",
+        "capabilities",
+        "title",
+        "queue",
+        "live_tail"
+      ],
+      "properties": {
+        "agent_id": {
+          "$ref": "common.schema.json#/$defs/agentId"
+        },
+        "workspace_id": {
+          "$ref": "common.schema.json#/$defs/workspaceId"
+        },
+        "history": {
+          "enum": [
+            "readable",
+            "missing",
+            "corrupt",
+            "unavailable"
+          ]
+        },
+        "process": {
+          "enum": [
+            "daemon_managed_live",
+            "terminal_observed_live",
+            "confirmed_exited",
+            "not_observed",
+            "unknown",
+            "stale"
+          ]
+        },
+        "control": {
+          "enum": [
+            "owned",
+            "read_only",
+            "transfer_possible",
+            "unavailable",
+            "unknown"
+          ]
+        },
+        "capabilities": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "$ref": "common.schema.json#/$defs/capability"
+          }
+        },
+        "title": {
+          "$ref": "#/$defs/title"
+        },
+        "parent": {
+          "$ref": "annotations.schema.json#/$defs/parentContext"
+        },
+        "queue": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "steering",
+            "follow_up"
+          ],
+          "properties": {
+            "steering": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 65536
+              }
+            },
+            "follow_up": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 65536
+              }
+            }
+          }
+        },
+        "history_query": {
+          "type": "string",
+          "pattern": "^/api/v1/agents/.+/history"
+        },
+        "observation_token": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "presence": {
+          "enum": [
+            "present",
+            "absent"
+          ]
+        },
+        "activity": {
+          "enum": [
+            "idle",
+            "running",
+            "settling",
+            "unknown"
+          ]
+        },
+        "pending_question": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "event.schema.json#/$defs/question"
+            }
+          ]
+        },
+        "live_tail": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "$ref": "event.schema.json"
+          }
+        }
+      }
+    },
+    "title": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "display",
+        "source",
+        "generation_state",
+        "replaceable"
+      ],
+      "properties": {
+        "display": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "source": {
+          "enum": [
+            "new_conversation",
+            "first_message_fallback",
+            "generated"
+          ]
+        },
+        "generation_state": {
+          "enum": [
+            "not_requested",
+            "pending",
+            "succeeded",
+            "failed",
+            "unknown"
+          ]
+        },
+        "replaceable": {
+          "const": true
+        },
+        "last_success_at": {
+          "$ref": "common.schema.json#/$defs/timestamp"
+        },
+        "last_error_code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{2,63}$"
+        }
+      }
+    }
+  }
+}

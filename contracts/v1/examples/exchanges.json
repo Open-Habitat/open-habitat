@@ -1,0 +1,91 @@
+[
+  {
+    "id": "EX-001",
+    "request": {
+      "method": "GET",
+      "path": "/api/v1/snapshot",
+      "headers": {
+        "Cookie": "<REDACTED_SERVER_SESSION>"
+      }
+    },
+    "response": {
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "snapshot.json"
+    },
+    "note": "The browser receives no Unix username, socket path, credential, or absolute home path."
+  },
+  {
+    "id": "EX-002",
+    "request": {
+      "method": "GET",
+      "path": "/api/v1/events?after=ev1%3A22222222-2222-4222-8222-222222222222%3A41",
+      "headers": {
+        "Cookie": "<REDACTED_SERVER_SESSION>",
+        "Last-Event-ID": "ev1:22222222-2222-4222-8222-222222222222:41"
+      }
+    },
+    "response": {
+      "status": 200,
+      "content_type": "text/event-stream",
+      "body_file": "events.json"
+    },
+    "note": "Each array item represents one SSE data envelope; wire id equals its cursor."
+  },
+  {
+    "id": "EX-003",
+    "request": {
+      "method": "POST",
+      "path": "/api/v1/commands",
+      "headers": {
+        "Cookie": "<REDACTED_SERVER_SESSION>",
+        "Origin": "https://host.example.invalid",
+        "X-Agent-Host-CSRF": "<REDACTED_SESSION_BOUND_TOKEN>",
+        "Content-Type": "application/json"
+      },
+      "body_file": "command-request.json"
+    },
+    "response": {
+      "status": 202,
+      "content_type": "application/json",
+      "body_file": "command-result.json"
+    },
+    "note": "Accepted means owned for execution, not completed."
+  },
+  {
+    "id": "EX-004",
+    "request": {
+      "method": "POST",
+      "path": "/api/v1/commands",
+      "headers": {
+        "Cookie": "<REDACTED_SERVER_SESSION>",
+        "Origin": "https://wrong.example.invalid",
+        "X-Agent-Host-CSRF": "<REDACTED_SESSION_BOUND_TOKEN>",
+        "Content-Type": "application/json"
+      },
+      "body_file": "command-request.json"
+    },
+    "response": {
+      "status": 403,
+      "content_type": "application/json",
+      "body_file": "origin-error.json"
+    },
+    "note": "Origin validation fails before daemon routing or command-ledger insertion."
+  },
+  {
+    "id": "EX-005",
+    "request": {
+      "method": "GET",
+      "path": "/api/v1/agents/pi%3A33333333-3333-4333-8333-333333333333/history?limit=200",
+      "headers": {
+        "Cookie": "<REDACTED_SERVER_SESSION>"
+      }
+    },
+    "response": {
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "history-page.json"
+    },
+    "note": "Long content remains native and is paged without a copied history database."
+  }
+]

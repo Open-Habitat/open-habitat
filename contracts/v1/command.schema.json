@@ -1,0 +1,695 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://native-agent-host.invalid/contracts/v1/command.schema.json",
+  "title": "Command request and result",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/commandRequest"
+    },
+    {
+      "$ref": "#/$defs/commandResult"
+    }
+  ],
+  "$defs": {
+    "commandKind": {
+      "enum": [
+        "agent.start",
+        "agent.resume",
+        "agent.message",
+        "agent.steer",
+        "agent.follow_up",
+        "agent.queue.clear",
+        "agent.turn.interrupt",
+        "agent.process.stop",
+        "agent.question.respond",
+        "conversation.title.generate",
+        "conversation.archive",
+        "conversation.unarchive",
+        "workspace.create",
+        "workspace.settings.update",
+        "workspace.visibility.update",
+        "workspace.git.init",
+        "workspace.git.integrate",
+        "workspace.github.create",
+        "workspace.github.clone",
+        "workspace.taskfleet_worktree.create",
+        "workspace.delete"
+      ]
+    },
+    "emptyArguments": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "textArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 65536
+        }
+      }
+    },
+    "commandRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "client_command_id",
+        "kind",
+        "target",
+        "precondition",
+        "arguments"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schemaVersion"
+        },
+        "client_command_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "kind": {
+          "$ref": "#/$defs/commandKind"
+        },
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "workspace_id": {
+              "$ref": "common.schema.json#/$defs/workspaceId"
+            },
+            "agent_id": {
+              "$ref": "common.schema.json#/$defs/agentId"
+            },
+            "scope": {
+              "const": "user"
+            }
+          },
+          "minProperties": 1
+        },
+        "precondition": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "snapshot_id",
+            "event_cursor",
+            "observation_token"
+          ],
+          "properties": {
+            "snapshot_id": {
+              "$ref": "common.schema.json#/$defs/uuid"
+            },
+            "event_cursor": {
+              "$ref": "common.schema.json#/$defs/cursor"
+            },
+            "observation_token": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 200
+            }
+          }
+        },
+        "arguments": {
+          "type": "object"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "agent.message",
+                  "agent.steer",
+                  "agent.follow_up"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "arguments": {
+                "$ref": "#/$defs/textArguments"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "agent.start",
+                  "agent.resume",
+                  "agent.queue.clear",
+                  "agent.turn.interrupt",
+                  "agent.process.stop",
+                  "conversation.archive",
+                  "conversation.unarchive"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "arguments": {
+                "$ref": "#/$defs/emptyArguments"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "agent.question.respond"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "request_id",
+                  "response"
+                ],
+                "properties": {
+                  "request_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "response": {
+                    "type": [
+                      "string",
+                      "boolean",
+                      "null"
+                    ],
+                    "maxLength": 65536
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "conversation.title.generate"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "trigger"
+                ],
+                "properties": {
+                  "trigger": {
+                    "enum": [
+                      "first_message",
+                      "manual_regeneration",
+                      "milestone_regeneration"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "workspace.create"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "git"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "pattern": "^(?![.-])[^/\\u0000-\\u001F\\u007F]{1,255}$"
+                  },
+                  "display_name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "git": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "workspace.settings.update"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "minProperties": 1,
+                "properties": {
+                  "display_name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 255
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "workspace.visibility.update"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "hidden"
+                ],
+                "properties": {
+                  "hidden": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "workspace.git.init",
+                  "workspace.git.integrate"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "arguments": {
+                "$ref": "#/$defs/emptyArguments"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "workspace.github.create"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "owner",
+                  "repository",
+                  "visibility",
+                  "confirmation"
+                ],
+                "properties": {
+                  "owner": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$"
+                  },
+                  "repository": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "pattern": "^(?!\\.{1,2}$)[A-Za-z0-9_][A-Za-z0-9._-]{0,99}$"
+                  },
+                  "visibility": {
+                    "enum": [
+                      "private",
+                      "public",
+                      "internal"
+                    ]
+                  },
+                  "confirmation": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 300
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "workspace.github.clone"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "repository",
+                  "target_name",
+                  "transport"
+                ],
+                "properties": {
+                  "repository": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/(?!\\.{1,2}$)[A-Za-z0-9_][A-Za-z0-9._-]{0,99}$",
+                    "maxLength": 201
+                  },
+                  "target_name": {
+                    "type": "string",
+                    "pattern": "^(?![.-])[^/\\u0000-\\u001F\\u007F]{1,255}$"
+                  },
+                  "transport": {
+                    "enum": [
+                      "ssh",
+                      "https"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "workspace.taskfleet_worktree.create"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "source_branch",
+                  "title",
+                  "task"
+                ],
+                "properties": {
+                  "source_branch": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "task": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 10000
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "workspace.delete"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "confirmation"
+                ],
+                "properties": {
+                  "confirmation": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "workspace.create",
+                  "workspace.github.clone"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "target": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "scope"
+                ],
+                "properties": {
+                  "scope": {
+                    "const": "user"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "agent.start",
+                  "agent.resume",
+                  "agent.message",
+                  "agent.steer",
+                  "agent.follow_up",
+                  "agent.queue.clear",
+                  "agent.turn.interrupt",
+                  "agent.process.stop",
+                  "agent.question.respond",
+                  "conversation.title.generate",
+                  "conversation.archive",
+                  "conversation.unarchive"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "target": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "agent_id"
+                ],
+                "properties": {
+                  "agent_id": {
+                    "$ref": "common.schema.json#/$defs/agentId"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "workspace.settings.update",
+                  "workspace.visibility.update",
+                  "workspace.git.init",
+                  "workspace.git.integrate",
+                  "workspace.github.create",
+                  "workspace.taskfleet_worktree.create",
+                  "workspace.delete"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "target": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "workspace_id"
+                ],
+                "properties": {
+                  "workspace_id": {
+                    "$ref": "common.schema.json#/$defs/workspaceId"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "commandResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "client_command_id",
+        "kind",
+        "acceptance",
+        "execution",
+        "ledger_epoch",
+        "recorded_at"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schemaVersion"
+        },
+        "client_command_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "kind": {
+          "$ref": "#/$defs/commandKind"
+        },
+        "acceptance": {
+          "enum": [
+            "accepted",
+            "rejected",
+            "uncertain"
+          ]
+        },
+        "execution": {
+          "enum": [
+            "not_started",
+            "running",
+            "succeeded",
+            "failed",
+            "partial",
+            "unknown"
+          ]
+        },
+        "ledger_epoch": {
+          "$ref": "common.schema.json#/$defs/uuid"
+        },
+        "recorded_at": {
+          "$ref": "common.schema.json#/$defs/timestamp"
+        },
+        "expires_at": {
+          "$ref": "common.schema.json#/$defs/timestamp"
+        },
+        "operation_id": {
+          "type": "string",
+          "pattern": "^op_[A-Za-z0-9_-]{8,80}$"
+        },
+        "error": {
+          "$ref": "common.schema.json#/$defs/problem"
+        },
+        "created": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "workspace_id": {
+              "$ref": "common.schema.json#/$defs/workspaceId"
+            },
+            "agent_id": {
+              "$ref": "common.schema.json#/$defs/agentId"
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "acceptance": {
+                "const": "rejected"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "error"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "acceptance": {
+                "const": "accepted"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "expires_at"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

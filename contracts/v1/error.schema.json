@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://native-agent-host.invalid/contracts/v1/error.schema.json",
+  "title": "HTTP error envelope",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "error"],
+  "properties": {"schema_version": {"$ref": "common.schema.json#/$defs/schemaVersion"}, "error": {"$ref": "common.schema.json#/$defs/problem"}}
+}

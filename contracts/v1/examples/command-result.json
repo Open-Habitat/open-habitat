@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "client_command_id": "55555555-5555-4555-8555-555555555555",
+  "kind": "agent.message",
+  "acceptance": "accepted",
+  "execution": "running",
+  "ledger_epoch": "44444444-4444-4444-8444-444444444444",
+  "recorded_at": "2026-09-22T14:00:01Z",
+  "expires_at": "2026-09-23T14:00:01Z",
+  "operation_id": "op_message001"
+}

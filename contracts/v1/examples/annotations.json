@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "workspaces": {
+    "ws_example123": {
+      "hidden": true,
+      "updated_at": "2026-09-22T13:00:00Z"
+    }
+  },
+  "conversations": {
+    "pi:33333333-3333-4333-8333-333333333333": {
+      "archived_at": "2026-09-22T13:30:00Z",
+      "title": {
+        "text": "Synthetic contract discussion",
+        "generated_at": "2026-09-22T13:20:00Z",
+        "generator": "pi_one_off"
+      },
+      "parent": {
+        "taskfleet_run_id": "01m352g7dwva9x52egnvr3n5s6",
+        "taskfleet_node_id": "n-0001",
+        "source": "taskfleet",
+        "captured_at": "2026-09-22T13:10:00Z"
+      }
+    }
+  }
+}
