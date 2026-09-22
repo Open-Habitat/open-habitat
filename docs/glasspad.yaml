@@ -31,6 +31,9 @@ groups:
       - slug: adr-0001-unix-native-agent-host
         title: ADR 0001 — Unix-native host
         desc: Hyväksytty natiivien käyttäjien, tiedostojen ja agenttien perusta.
+      - slug: adr-0002-frontend-stack
+        title: ADR 0002 — Frontend-stack
+        desc: Ehdotettu selainasiakas, tilanhallinta, renderöinti ja testaus.
       - slug: interfaces
         title: Rajapinnat
         desc: Yhteyksien merkitys ja vielä määriteltävä käyttäytyminen.
