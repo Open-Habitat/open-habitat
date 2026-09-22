@@ -2,9 +2,13 @@
 
 Ensimmäinen käyttöliittymä on suomenkielinen työpöytänäkymä yhdelle palvelimelle.
 Se yhdistää kirjautumisen, workspacet, agenttilistan ja yhden valitun keskustelun.
-Tämä sivu inventoi toteutettavan polun ja sen puuttuvat päätökset. Tuotetta ei ole
-vielä toteutettu, ja kaikki nykyisten klikattavien vedosten data, ajastimet,
-taustatoiminnot ja virheet ovat simuloituja.
+Tämä sivu kuvaa toteutettavan polun ja sen nykyiset rajat. Tuotetta ei ole
+vielä toteutettu, ja kaikki vastaanotettujen klikattavien vedosten data, ajastimet,
+taustatoiminnot ja virheet ovat simuloituja. Niistä korjattu yhtenäinen
+[tuotantodesign](../design-system/production-v1.md),
+[komponenttikatalogi](../design-system/component-catalog-v1.md) ja
+[staattinen katseluesimerkki](../design-system/ui_kits/production-v1/index.html)
+ovat v1-toteutuksen design-syöte.
 
 ## Kaksi vastaanotettua designia
 
@@ -17,8 +21,9 @@ taustatoiminnot ja virheet ovat simuloituja.
 
 [Vastaanottoarvio](../issues/receive-designer-v1/review.md) kirjaa alkuperät,
 checksumit ja Jarin jo hyväksymän suunnan. Yhteiset tokenit ja komponenttireferenssit
-ovat [design systemissä](design-system.md). Tämä määrittely ei muuta tokeneita,
-valitse komponenttikirjastoa eikä valitse frontend-runtimea.
+ovat [design systemissä](design-system.md). Tuotantodesign päättää vaalean ja
+tumman teeman v1-laajuuden ja korjaa interaction-rajat, mutta ei valitse tai
+hyväksy frontend-runtimea. Vastaanotettuja lähteitä ei muuteta.
 
 [Pi-koe](../issues/probe-pi-control/result.md) vahvisti historian, resumen,
 promptin, abortin, työkalutapahtumat, extension-dialogin sekä `steer`- ja
@@ -89,6 +94,60 @@ koko MVP:n. Ensimmäinen demo ei saa näyttää koko MVP:tä valmiina.
 | Arkisto | stop + arkistoi → pois aktiivisista → listaa → jatka | jo päättynyt, vain havaittu, stop tai annotaatio epäonnistuu, historia puuttuu, resume epäonnistuu; ei rinnakkaista historiatietokantaa |
 | Uloskirjautuminen | tyhjennä paikalliset luonnokset ja luettu sisältö → sulje web-istunto | agentit jatkavat; tyhjennys- tai logout-virhe estää uuden identiteetin sisällön näyttämisen samaan näkymään |
 
+## Tuotantodesignin yhtenäinen toiminta
+
+Kanoninen desktop-reitti on `/workspaces/:workspaceId/agents/:agentId`.
+`/workspaces`, workspace-reitti, arkisto ja `/operations/:operationId` antavat
+reloadin kestävät paluupisteet. Reitti käyttää opaqueja workspace-/agentti-ID:itä,
+ei nimeä, polkua tai Unix-käyttäjää. Deep link odottaa autentikointia ja tuoretta
+snapshotia: vahvistettu poissaolo näyttää “Kohdetta ei enää löydy”, mutta
+unknown/unavailable säilyttää reitin eikä väitä kohdetta poistetuksi.
+
+Vasen rail ja oikean puolen keskustelu ovat yksi näkymä. Agentin linkin valinta,
+onnistunut create/start/resume tai luodun Taskfleet-agentin vahvistus voi
+siirtää fokuksen viestikenttään. Unarchive on erillinen vaihe eikä siirrä fokusta
+ennen onnistunutta resumea. Taustatapahtuma, title-muutos, reconnect tai
+listan uudelleenjärjestys ei siirrä fokusta. Back palauttaa edellisen agentin.
+Workspaceen palaaminen ei käynnistä eikä resumoi mitään.
+
+Luonnos on `(server origin, web identity, agent ID)` -avaimella yhden tabin
+`sessionStorage`ssa. Hyväksytty lähetys tyhjentää vain lähetetyn version;
+rejected ja uncertain säilyttävät sen. Uloskirjautuminen tai identiteetin vaihto
+tyhjentää luonnokset ja vanhan sisällön ennen uuden identiteetin näyttämistä.
+Otsikko tulee aina hostin `title`-objektista: pending/failed/unknown eivät vaihda
+edellistä onnistunutta display-arvoa. UI ei kovakoodaa uudelleengeneroinnin
+viestimääriä.
+
+Timeline auto-scrollaa vain, jos käyttäjä oli jo pohjassa. Muuten näkyy
+“Uutta sisältöä (N)”. Lukukohta ja avoimet tool-ryhmät palautetaan pysyvällä
+native keyllä, jos se löytyy korvaavasta historiasta; transientti delta-ID ei ole
+pysyvä ankkuri. Virtualisoitu pitkä historia tarjoaa myös saavutettavan enintään
+200 entryn sivutetun tilan. Fokusoitua riviä ei unmountata, selection/copy pysyy
+natiivina ja raw HTML ei suoritu. Streaming-live-region ilmoittaa enintään noin
+viiden sekunnin välein yleisen etenemisen ja heti vain kysymyksen, katkoksen,
+virheen, keskeytyksen tai settled-rajan; token-deltaa ei lueta ääneen.
+
+Composer näyttää idle-agentille viestin ja working-agentille Pi:n omat steer- ja
+follow-up-toiminnot. Jono säilyttää nämä ryhmät ja järjestyksen. Vain koko jonon
+tyhjennys kuuluu toimintaan, mutta kontrolli pysyy estettynä, kunnes host voi
+palauttaa täsmälleen todella poistetut tekstit; nykyinen result-schema ei niitä
+kuljeta. Epävarma lähetys tarjoaa tilan tarkistuksen, tekstin
+kopioinnin ja erikseen vahvistettavan uuden lähetyksen; mikään niistä ei ole
+hidden retry. TUI on read-only, ja siirtodialogi näyttää stop/terminal-ohjeen,
+process exitin, history settlementin, lockin ja uuden RPC-startin erillisinä
+vaiheina.
+
+Workspace-, Git-, GitHub-, Taskfleet-, archive- ja delete-flowt käyttävät samaa
+vaihelistaa. Confirmed-vaihe säilyy, failed/unknown/skipped erotellaan ja partial
+luettelee jäljelle jääneet vaikutukset. GitHub-toiminto näyttää adapterin unknown-
+tai unsupported-tilan eikä keksi selaincredential-flow'ta. Delete vaatii täsmälleen
+native `workspace.name` -arvon, näyttää prosessi-/worktree-/mount-vaikutukset ja
+valmistuu vasta tuoreen source-absent-havainnon jälkeen.
+
+Tarkat fokuksen entry/return-säännöt, keyboard-komennot, live-region-cadence,
+kontrasti, reduced motion, pitkät sisällöt, dialogien kentät ja jokaisen
+komponentin states ovat [tuotantodesignissa](../design-system/production-v1.md).
+
 ## Keskustelun sisältöinventaario
 
 Keskustelutoimituksesta säilyvät katselmointiin seuraavat vaatimusehdokkaat:
@@ -108,15 +167,16 @@ Keskustelutoimituksesta säilyvät katselmointiin seuraavat vaatimusehdokkaat:
 - reconnect ja natiivista lähteestä tuleva viesti tai mallinvaihto luonnosta ja
   lukukohtaa rikkomatta (B10, B12).
 
-Jonotus ja kesken vuoron ohjaus ovat edelleen **ehdotuksia**, eivät hyväksyttyä
-toimintaa. Samoin synopsiksen lähde, luonnoksen tarkka selaintallennus,
-lukukohdan avaimet sekä huomiotapa toisen agentin pyytäessä vastausta odottavat
-Jarin päätöstä alla. Vedosten toimivatkin selaindemot ovat mockeja eivätkä todiste Pi-tuesta.
+Jonotus, kesken vuoron ohjaus, otsikko, luonnoksen selaintallennus, lukukohdan
+avaimet ja sovelluksen sisäinen huomio hyväksyttiin 2026-09-22 alla kuvatulla
+tavalla. Tuotantodesign sovittaa ne v1-host-sopimukseen. Vedosten toimivatkin
+selaindemot ovat mockeja eivätkä todiste Pi- tai host-tuesta.
 
-## Tarvittavat komponentit ja puuttuvat tilat
+## Tuotantokomponenttien laajuus
 
-Tuotantodesign tarvitsee vähintään seuraavat komponenttiperheet. Niiden API:t,
-kirjasto ja runtime päätetään myöhemmissä tehtävissä.
+[Komponenttikatalogi](../design-system/component-catalog-v1.md) määrittää näiden
+perheiden public propsit, intent-eventit, koostamisen, state-matriisin ja pakolliset
+katalogiesimerkit. Framework ja runtime päätetään myöhemmässä katselmoinnissa.
 
 - kirjautumiskortti, koko sovelluksen tilapalkki ja yhteystilan ilmaisin;
 - avattava workspace-/agenttipalkki, suodatus, laskurit, workspace-lohko,

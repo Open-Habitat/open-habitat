@@ -27,13 +27,13 @@ workspace registry, credential broker or speculative cache. Desktop first, one s
 
 ## Acceptance Criteria
 
-- [ ] Reconcile workspace and conversation token/interaction differences, including the intended theme scope, using the shared design-system sources.
-- [ ] Define general primitives and product-specific components, public props/events, variants and loading/disabled/error/empty states in `design-system/`; do not duplicate Pi/network logic in visual components.
-- [ ] Cover missing dialogs, menus, form fields and navigation patterns needed by the accepted MVP; do not build speculative library breadth.
-- [ ] Define semantics, keyboard/focus, contrast/non-color information, reduced motion and accessible streaming announcements; agree which existing primitives to reuse.
-- [ ] Specify route/deep-link behavior, drafts, scrolling, selection/copy and combined navigation/conversation behavior against the real capability contract.
-- [ ] Update `docs/design-system.md` and `docs/ui.md` with reviewable examples and links; preserve received deliveries as references.
-- [ ] Prepare a design correction round for @review-implementation-plan, including deviations and component catalog acceptance. No production app implementation.
+- [x] Reconcile workspace and conversation token/interaction differences, including the intended theme scope, using the shared design-system sources.
+- [x] Define general primitives and product-specific components, public props/events, variants and loading/disabled/error/empty states in `design-system/`; do not duplicate Pi/network logic in visual components.
+- [x] Cover missing dialogs, menus, form fields and navigation patterns needed by the accepted MVP; do not build speculative library breadth.
+- [x] Define semantics, keyboard/focus, contrast/non-color information, reduced motion and accessible streaming announcements; agree which existing primitives to reuse.
+- [x] Specify route/deep-link behavior, drafts, scrolling, selection/copy and combined navigation/conversation behavior against the real capability contract.
+- [x] Update `docs/design-system.md` and `docs/ui.md` with reviewable examples and links; preserve received deliveries as references.
+- [x] Prepare a design correction round for @review-implementation-plan, including deviations and component catalog acceptance. No production app implementation.
 
 ## Delivery and verification
 

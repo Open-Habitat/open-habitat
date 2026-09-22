@@ -7,10 +7,15 @@ toimintalogiikkaa tai yksittäisen suunnittelukierroksen vedoksia ei määritell
 ## Lue ennen UI-työtä
 
 - Tuotteen rakenne ja rajat: [`../docs/architecture.md`](../docs/architecture.md)
+- Tuotantodesignin kanoninen määrittely: [`production-v1.md`](production-v1.md)
+- Tuotantokomponenttien rajattu katalogisopimus:
+  [`component-catalog-v1.md`](component-catalog-v1.md)
+- Katseluesimerkit: [`ui_kits/production-v1/index.html`](ui_kits/production-v1/index.html)
 - Ensimmäisen keskusteludesignin vedokset ja simulaatio:
   [`../issues/receive-designer-v1/design/`](../issues/receive-designer-v1/design/).
-- Katselmoinnin avoimet tuotekysymykset:
-  [`../issues/receive-designer-v1/review.md`](../issues/receive-designer-v1/review.md).
+- Vastaanotto ja hyväksytyt UI-päätökset:
+  [`../issues/receive-designer-v1/review.md`](../issues/receive-designer-v1/review.md) ja
+  [`../issues/review-ui-v1/review.md`](../issues/review-ui-v1/review.md).
 
 ## Pysyvät päätökset
 
@@ -18,7 +23,11 @@ toimintalogiikkaa tai yksittäisen suunnittelukierroksen vedoksia ei määritell
   ennen toimivaa ensimmäistä työpöytäversiota.
 - Käyttöliittymätekstit ovat suomeksi. Polut, komennot, exit-koodit, resume-ID:t
   ja muut tekniset tunnisteet esitetään sellaisinaan.
+- Vaalea ja tumma teema ovat molemmat v1:n tuotantolaajuutta; järjestelmäasetus
+  on oletus. Teema ei ole hostin synkronoitu fakta.
 - Komponenttikirjastoa kasvatetaan todetun käyttötarpeen perusteella, ei varalta.
+- Visuaalinen komponentti ei omista Pi-, HTTP/SSE-, command ledger-, draft- tai
+  natiivilähteiden reconciliation-logiikkaa.
 
 ## Visuaalinen lähde
 
@@ -48,17 +57,21 @@ eivät design systemin yleisiksi sisältösäännöiksi.
 
 ## Komponentit
 
+[`component-catalog-v1.md`](component-catalog-v1.md) on tuotannon komponenttien,
+propsien, tapahtumien, tilojen ja esimerkkien sopimus. Se sisältää vain hyväksyttyjen
+journeyjen tarvitsemat yleiset primitiivit ja tuoteosat.
+
+Nykyiset hakemistot ovat vastaanotetun v0.1-kierroksen referenssejä:
+
 - `components/core/`: Button, Tag, StatusDot.
 - `components/agent/`: ToolRow, ToolGroup, CodeBlock, DiffView, ApprovalCard.
 - `components/chat/`: TopBar, Message, Composer, Banner.
 
-Jokaisella komponentilla on `.jsx`, propsit ja säännöt kuvaava `.d.ts` sekä
-käyttötarkoituksen kertova `.prompt.md`. Kortti-HTML näyttää komponentit yhteisillä
-tokeneilla.
-
-Komponentit ovat tällä hetkellä suunnittelureferenssejä, eivät päätös tuotannon
-frontend-stackista. Kun niitä toteutetaan tuotantoon, käytä semanttisia kontrolleja,
-näppäimistökäyttöä, näkyvää fokusta ja `prefers-reduced-motion`-asetusta.
+Niiden `.jsx`, `.d.ts`, `.prompt.md` ja kortti-HTML säilyvät lähdeprovenienssin
+vuoksi. Ne eivät ole tuotanto-API: esimerkiksi yksittäisen queue-itemin cancel,
+hard-coded otsikkorytmi tai hoveriin jäävä tieto on korjattu tuotantosopimuksessa.
+Proposed ADR 0002:n stack ja oikeat komponentit hyväksytään ja rakennetaan vasta
+myöhemmissä porteissa. Tuote ja katalogi käyttävät silloin samaa toteutusta.
 
 ## Hakemistot
 
@@ -68,4 +81,6 @@ näppäimistökäyttöä, näkyvää fokusta ja `prefers-reduced-motion`-asetust
 | `tokens/` | Värit, typografia, välit ja liike |
 | `guidelines/` | Tokenien ja yhteisten tilojen visuaaliset käyttökortit |
 | `components/` | Uudelleenkäytettävät komponenttireferenssit |
-| `ui_kits/` | Komponenteista kootut staattiset käyttöesimerkit, eivät tuotevaatimukset |
+| `ui_kits/` | Staattiset katseluesimerkit; `production-v1` havainnollistaa kanonista specia, muut eivät lisää tuotevaatimuksia |
+| `production-v1.md` | Yhdistetty visuaalinen, reitti-, fokus-, streaming- ja journey-määrittely |
+| `component-catalog-v1.md` | Tuotantokomponenttien julkinen sopimus ja state/story-matriisi |

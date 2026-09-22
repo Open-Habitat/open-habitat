@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="fi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Agent Host — tuotantodesign v1</title>
+  <link rel="stylesheet" href="../../styles.css">
+  <style>
+    *{box-sizing:border-box} body{margin:0;background:var(--ah-bg);color:var(--ah-ink);font:var(--ah-size-ui)/var(--ah-lh-ui) var(--ah-font)} .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    button,input,textarea{font:inherit;color:inherit} button{border:1px solid var(--ah-line);border-radius:var(--ah-r-md);padding:8px 12px;background:var(--ah-surface)}
+    button.primary{background:var(--ah-accent);color:var(--ah-on-accent);border-color:var(--ah-accent)} button.danger{color:var(--ah-err);border-color:var(--ah-err-line)}
+    button:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--ah-accent);outline-offset:2px}
+    .page{max-width:1320px;margin:auto;padding:24px}.intro{max-width:78ch;margin-bottom:24px}.intro h1{font-size:var(--ah-size-h1);margin:0 0 8px}.intro p{color:var(--ah-ink-2)}
+    .board{border:1px solid var(--ah-line);border-radius:var(--ah-r-xl);overflow:hidden;background:var(--ah-surface);box-shadow:var(--ah-shadow-app);margin:20px 0 36px}
+    .caption{padding:10px 16px;background:var(--ah-surface-2);border-bottom:1px solid var(--ah-line);font-weight:600}.banner{padding:9px 16px;background:var(--ah-err-soft);border-bottom:1px solid var(--ah-err-line);display:flex;gap:10px;align-items:center}.banner strong{color:var(--ah-err)}
+    .app{display:grid;grid-template-columns:296px minmax(0,1fr);min-height:640px}.rail{background:var(--ah-rail);border-right:1px solid var(--ah-line);padding:14px}.railhead,.row,.actions,.meta,.statusline{display:flex;align-items:center;gap:8px}.railhead{justify-content:space-between;margin-bottom:12px}.status{font-size:var(--ah-size-meta);color:var(--ah-muted)}
+    .filter{width:100%;padding:8px 10px;border:1px solid var(--ah-line);border-radius:var(--ah-r-md);background:var(--ah-surface);margin:7px 0 14px}.ws{border-top:1px solid var(--ah-line);padding-top:12px;margin-top:12px}.ws h2{font-size:var(--ah-size-ui);margin:0 0 8px}.agent{display:block;color:inherit;text-decoration:none;border:1px solid var(--ah-line-soft);background:var(--ah-surface);border-radius:9px;padding:9px 10px;margin:5px 0}.agent.current{border-color:var(--ah-accent);background:var(--ah-accent-soft)}.agent .row{justify-content:space-between}.agent small{display:block;color:var(--ah-muted);margin:3px 0 0 16px}.dot{width:8px;height:8px;border-radius:50%;background:var(--ah-accent);flex:none}.dot.muted{background:var(--ah-muted)}.count{border:1px solid var(--ah-accent-line);background:var(--ah-accent-soft);color:var(--ah-accent-ink);border-radius:99px;padding:1px 7px}
+    .main{min-width:0;display:grid;grid-template-rows:auto 1fr auto}.top{padding:14px 22px;border-bottom:1px solid var(--ah-line)}.top h2{font-size:var(--ah-size-h2);margin:0}.meta{color:var(--ah-muted);margin-top:5px;flex-wrap:wrap}.notice{margin:14px 22px 0;border:1px solid var(--ah-accent-line);background:var(--ah-accent-soft);border-radius:var(--ah-r-md);padding:10px 12px}.notice.error{border-color:var(--ah-err-line);background:var(--ah-err-soft)}
+    .timeline{padding:18px 22px;overflow:auto}.message{max-width:70ch;margin:0 auto 20px}.who{font-size:var(--ah-size-label);text-transform:uppercase;letter-spacing:.07em;color:var(--ah-muted);margin-bottom:5px}.userbody{border:1px solid var(--ah-line);border-radius:var(--ah-r-md);padding:10px 12px;background:var(--ah-surface-2)}.message p{font-size:var(--ah-size-body);line-height:var(--ah-lh-body)}
+    .tool{border:1px solid var(--ah-line);border-radius:var(--ah-r-md);margin:10px 0;overflow:hidden}.toolhead{padding:8px 10px;display:flex;justify-content:space-between}.toolbody{border-top:1px solid var(--ah-line);padding:10px;background:var(--ah-surface-2);font:var(--ah-size-code)/1.55 var(--ah-mono);white-space:pre-wrap}.bad{color:var(--ah-err);font-weight:600}.composer{border-top:1px solid var(--ah-line);padding:12px 22px}.composer textarea{width:100%;min-height:72px;border:1px solid var(--ah-line);border-radius:var(--ah-r-md);padding:10px;background:var(--ah-surface)}.actions{justify-content:space-between;margin-top:8px}.help{color:var(--ah-muted);font-size:var(--ah-size-meta)}
+    .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;padding:18px}.card{border:1px solid var(--ah-line);border-radius:var(--ah-r-lg);padding:14px;background:var(--ah-surface)}.card h3{margin:0 0 8px;font-size:var(--ah-size-title)}.card p{color:var(--ah-ink-2)}.steps{list-style:none;padding:0;margin:12px 0}.steps li{padding:7px 0;border-top:1px solid var(--ah-line-soft)}.mark{display:inline-block;width:24px;font-weight:600}.ok{color:var(--ah-ok)}.unknown{color:var(--ah-muted)}
+    .mono{font-family:var(--ah-mono);overflow-wrap:anywhere}.queue{border-left:3px solid var(--ah-accent);padding-left:10px;margin:10px 0}.theme-pair{display:grid;grid-template-columns:1fr 1fr}.theme-sample{padding:22px;background:var(--ah-bg);color:var(--ah-ink)}.theme-sample h3{margin-top:0}.swatch{display:flex;gap:8px;flex-wrap:wrap}.swatch span{padding:8px;border:1px solid var(--ah-line);border-radius:var(--ah-r-md);background:var(--ah-surface)}
+    @media(max-width:900px){.app{grid-template-columns:240px minmax(0,1fr)}.cards{grid-template-columns:1fr}.theme-pair{grid-template-columns:1fr}} @media(prefers-reduced-motion:no-preference){.running{animation:ah-pulse 1.6s ease-in-out infinite}}
+  </style>
+</head>
+<body>
+<main class="page">
+  <header class="intro">
+    <h1>Tuotantodesign v1 — korjauskierros</h1>
+    <p>Staattinen katselunäkymä yhdistää A1–A9-työtilan ja B1–B10/B12-keskustelun. Se korjaa pisteeseen jääneen tilan tekstiksi, näyttää host-sopimuksen unknown/partial/uncertain-tilat ja säilyttää Pi:n oman jonon. Painikkeet eivät käynnistä mock-toimintoja.</p>
+  </header>
+
+  <section class="board" aria-labelledby="integrated-title">
+    <div class="caption" id="integrated-title">1. Yhdistetty desktop-näkymä · stale sisältö ja read-only TUI</div>
+    <div class="banner" role="status"><strong>Yhteys katkesi</strong><span>Tilat ovat viimeksi saatuja klo 14.32. Kirjoittavat toiminnot eivät ole käytettävissä.</span><button>Yritä yhdistää</button></div>
+    <div class="app">
+      <nav class="rail" aria-label="Workspacet ja agentit">
+        <div class="railhead"><strong>Alder</strong><span class="status">● Ei yhteyttä</span></div>
+        <label for="filter">Suodata</label><input class="filter" id="filter" value="">
+        <div class="statusline"><span>3 agenttia · 2 workspacea</span><span class="count">1<span class="sr-only"> agentti odottaa vastaustasi</span></span></div>
+        <section class="ws"><h2>native-agent-host</h2>
+          <a class="agent current" aria-current="page" href="#conversation"><span class="row"><span><span class="dot"></span> Tuotantodesign</span><span>2 min</span></span><small>Odottaa vastaustasi · viimeksi saatu</small></a>
+          <a class="agent" href="#conversation"><span class="row"><span><span class="dot muted"></span> Terminaalissa aloitettu</span><span>8 min</span></span><small>Vain luku · TUI havaittu</small></a>
+        </section>
+        <section class="ws"><h2>Pitkä suomalainen workspacen näyttönimi, joka lyhenee hallitusti</h2>
+          <a class="agent" href="#conversation"><span class="row"><span><span class="dot muted"></span> Uusi keskustelu</span></span><small>Tila ei tiedossa</small></a>
+        </section>
+      </nav>
+      <section class="main" id="conversation">
+        <header class="top"><h2>Tuotantodesign ja saavutettavat tilat</h2><div class="meta"><strong>native-agent-host</strong><span>Pi työskentelee</span><span>Ohjaus vain luku -tilassa yhteyskatkon ajan</span></div></header>
+        <div class="notice"><strong>Ohjaus ei ole käytettävissä.</strong> Näet viimeksi saadun historian. Yhdistä uudelleen ennen lähettämistä, jonon muuttamista tai keskeytystä.</div>
+        <div class="timeline">
+          <article class="message"><div class="who">Sinä</div><div class="userbody">Tee tuotantodesignista sopimuksen mukainen ja säilytä lukukohta.</div></article>
+          <article class="message"><div class="who">Pi</div><p>Yhdistän navigaation ja keskustelun. Tila ei perustu pelkkään väriin, eikä katkos muuta havaittua agenttia pysähtyneeksi.</p>
+            <div class="tool"><div class="toolhead"><strong>Luettu 3 tiedostoa</strong><span>✓ 3/3</span></div><div class="toolbody">docs/ui.md
+contracts/v1/snapshot.schema.json
+design-system/production-v1.md</div></div>
+            <div class="tool"><div class="toolhead"><strong>Työkaluryhmä</strong><span class="bad">1 virhe · 2 valmis</span></div><div class="toolbody">Virhe säilyy otsikossa myös suljettuna. Pitkä output jatkuu hostin sisältörajapinnasta, eikä UI keksi puuttuvaa diffiä.</div></div>
+          </article>
+        </div>
+        <div class="composer"><label for="draft"><strong>Viesti Pi:lle</strong></label><textarea id="draft">Luonnos säilyy tässä välilehdessä.</textarea><div class="actions"><span class="help">Lähettäminen ei ole käytettävissä · yhteys poikki</span><button disabled>Lähetä</button></div></div>
+      </section>
+    </div>
+  </section>
+
+  <section class="board" aria-labelledby="states-title">
+    <div class="caption" id="states-title">2. Korjatut command- ja operaatiotilat</div>
+    <div class="cards">
+      <article class="card"><h3>Tulos epävarma</h3><p>Yhteys katkesi ennen hyväksynnän todistamista. Viestiä ei lähetetä automaattisesti uudelleen.</p><p class="mono">command 66666666…</p><div class="actions"><button>Tarkista tila</button><button>Kopioi teksti</button></div><button class="danger">Lähetä uutena…</button></article>
+      <article class="card"><h3>Pi:n oma jono</h3><div class="queue"><strong>Ohjaa tämän vuoron jälkeen</strong><br>Huomioi myös tumma teema.</div><div class="queue"><strong>Suorita valmistumisen jälkeen</strong><br>Kirjaa tarkistuskomennot tulokseen.</div><p>Steer ei keskeytä käynnissä olevaa työkalua. Yksittäistä perumista tai järjestämistä ei tueta.</p><button>Tyhjennä koko jono…</button></article>
+      <article class="card"><h3>Otsikko-operaation tulos</h3><p><strong>Tuotantodesign ja saavutettavat tilat</strong></p><p class="status">Otsikon luonti epäonnistui. Edellinen onnistunut otsikko säilyi.</p><button>Luo otsikko uudelleen</button><p class="help">Capability: tuettu · uusi yritys on erillinen komento</p></article>
+    </div>
+    <div class="cards">
+      <article class="card" style="grid-column:span 2"><h3>Workspacen poisto jäi osittaiseksi</h3><p>Hallittu Pi-prosessi pysäytettiin. Workspace ja manuaalinen linked worktree ovat edelleen levyllä. Mitään ei väitetä palautetuksi.</p><ul class="steps"><li><span class="mark ok">✓</span>Kohde ja vahvistus tarkistettu</li><li><span class="mark ok">✓</span>Vaikutukset havaittu</li><li><span class="mark ok">✓</span>Hallittu prosessi pysäytetty</li><li><span class="mark bad">×</span>Manuaalinen linked worktree estää poiston</li><li><span class="mark">↷</span>Hakemiston poisto ohitettiin</li><li><span class="mark ok">✓</span>Tuore havainto: workspace on edelleen olemassa</li></ul><div class="actions"><button>Sulje</button><button>Havaitse tila uudelleen</button></div></article>
+      <article class="card"><h3>Terminaali-TUI</h3><p><strong>Historia on luettavissa.</strong> Agentti on havaittu, mutta tähän terminaali-istuntoon ei voi liittyä selaimesta.</p><ol><li>Lopeta TUI terminaalissa</li><li>Odota prosessin poistuminen</li><li>Odota historian asettuminen</li><li>Hanki kirjoittajalukko</li><li>Käynnistä uusi RPC-runtime</li></ol><button>Siirrä selaimen ohjaukseen…</button></article>
+    </div>
+  </section>
+
+  <section class="board" aria-labelledby="themes-title">
+    <div class="caption" id="themes-title">3. V1-teemat · molemmat tuotantolaajuisia</div>
+    <div class="theme-pair">
+      <div class="theme-sample" data-theme="light"><h3>Vaalea</h3><p>Järjestelmäteema on oletus. Teksti, fokus ja virhe täyttävät AA-tavoitteen.</p><div class="swatch"><span>Odottaa viestiä</span><span style="color:var(--ah-accent-ink);background:var(--ah-accent-soft)">Valittu</span><span style="color:var(--ah-err);background:var(--ah-err-soft)">Virhe</span></div></div>
+      <div class="theme-sample" data-theme="dark"><h3>Tumma</h3><p>Sama semantiikka, järjestys ja komponentit; teema ei muuta host-tilaa.</p><div class="swatch"><span>Odottaa viestiä</span><span style="color:var(--ah-accent-ink);background:var(--ah-accent-soft)">Valittu</span><span style="color:var(--ah-err);background:var(--ah-err-soft)">Virhe</span></div></div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

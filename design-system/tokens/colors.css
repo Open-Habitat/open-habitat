@@ -6,6 +6,7 @@
   --ah-bg: #f6f7f8;
   --ah-surface: #ffffff;
   --ah-surface-2: #fbfcfd;
+  --ah-rail: #f1f3f5;
   --ah-line: #e2e6e9;
   --ah-line-soft: #eef0f3;
 
@@ -25,12 +26,14 @@
   --ah-err: #a3412b;
   --ah-err-soft: #fdf1ee;
   --ah-err-line: #f3d7d0;
+  --ah-scrim: rgba(16, 24, 40, .32);
 }
 
 [data-theme="dark"] {
   --ah-bg: #14171a;
   --ah-surface: #1b1f23;
   --ah-surface-2: #171a1e;
+  --ah-rail: #171a1e;
   --ah-line: #2a3036;
   --ah-line-soft: #232830;
 
@@ -50,4 +53,5 @@
   --ah-err: #e8a08a;
   --ah-err-soft: #261c1b;
   --ah-err-line: #4a2e28;
+  --ah-scrim: rgba(0, 0, 0, .5);
 }
