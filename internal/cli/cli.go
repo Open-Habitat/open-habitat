@@ -50,6 +50,10 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	if rest[0] == "--version" {
 		rest = []string{"version"}
 	}
+	if !opts.json && len(rest) == 3 && rest[0] == "skill" && rest[1] == "print" && rest[2] == "operator" {
+		fmt.Fprint(stdout, operatorSkillContent())
+		return 0
+	}
 	var out any
 	switch rest[0] {
 	case "version":
@@ -314,8 +318,14 @@ schema_version: 1
 ---
 # Native Agent Host operator
 
-Inspect configuration before starting a role. Prefer structured output: native-agent-host --json doctor --component gateway. Never infer readiness from process liveness alone.
+Inspect configuration before starting a role. Prefer structured output:
+    native-agent-host --json doctor --component gateway
+Never infer readiness from process liveness alone.
 `
+
+func operatorSkillContent() string {
+	return strings.Replace(operatorSkill, "0.0.0-dev", version, 1)
+}
 
 func skillCommand(args []string) (any, error) {
 	if len(args) == 0 {
@@ -326,12 +336,25 @@ func skillCommand(args []string) (any, error) {
 		if len(args) != 1 {
 			return nil, usage("skill list takes no arguments")
 		}
-		return envelope(map[string]any{"supported_agents": []string{"claude", "pi", "codex"}, "skills": []any{map[string]any{"name": "operator", "description": "Operate and diagnose Native Agent Host"}}}), nil
+		return envelope(map[string]any{
+			"supported_agents": []string{"claude", "pi", "codex"},
+			"install": map[string]any{
+				"selection_flag": "--agent", "default": "all", "accepted_values": []string{"claude", "pi", "codex", "all"},
+				"target_flag": "--target", "dry_run_flag": "--dry-run", "force_flag": "--force", "interactive": false,
+				"no_clobber_default": true, "overwrite_requires_force": true,
+				"layouts": []any{
+					map[string]string{"agent": "claude", "path": ".claude/skills/<name>/...", "form": "agent-skill-tree"},
+					map[string]string{"agent": "pi", "path": ".pi/agent/skills/<name>/...", "form": "agent-skill-tree"},
+					map[string]string{"agent": "codex", "path": ".codex/skills/<name>/...", "form": "agent-skill-tree"},
+				},
+			},
+			"skills": []any{map[string]any{"name": "operator", "description": "Operate and diagnose Native Agent Host"}},
+		}), nil
 	case "print":
 		if len(args) != 2 || args[1] != "operator" {
 			return nil, usage("expected skill print operator")
 		}
-		return envelope(map[string]any{"name": "operator", "cli_version": version, "schema_version_skill": 1, "content": strings.Replace(operatorSkill, "0.0.0-dev", version, 1), "path_in_repo": "internal/cli/operator/SKILL.md"}), nil
+		return envelope(map[string]any{"name": "operator", "cli_version": version, "schema_version_skill": 1, "content": operatorSkillContent(), "path_in_repo": "internal/cli/operator/SKILL.md"}), nil
 	case "install":
 		return skillInstall(args[1:])
 	default:
@@ -340,11 +363,12 @@ func skillCommand(args []string) (any, error) {
 }
 func skillInstall(args []string) (any, error) {
 	if len(args) < 1 || args[0] != "operator" {
-		return nil, usage("expected skill install operator --agent claude|pi|codex|all [--target PATH] [--dry-run]")
+		return nil, usage("expected skill install operator --agent claude|pi|codex|all [--target PATH] [--dry-run] [--force]")
 	}
 	agent := "all"
 	target := "."
 	dry := false
+	force := false
 	for i := 1; i < len(args); i++ {
 		switch args[i] {
 		case "--agent":
@@ -361,6 +385,8 @@ func skillInstall(args []string) (any, error) {
 			target = args[i]
 		case "--dry-run":
 			dry = true
+		case "--force":
+			force = true
 		default:
 			return nil, usage(fmt.Sprintf("unknown skill install option %q", args[i]))
 		}
@@ -377,15 +403,19 @@ func skillInstall(args []string) (any, error) {
 	would := []any{}
 	for _, a := range selected {
 		p := filepath.Join(target, layouts[a])
-		would = append(would, map[string]any{"action": "create", "resource": "skill", "path": p})
-		if !dry {
-			if _, err := os.Stat(p); err == nil {
-				return nil, usage(fmt.Sprintf("refusing to overwrite existing skill %q", p))
+		action := "create"
+		if _, err := os.Stat(p); err == nil {
+			action = "update"
+			if !force {
+				return nil, usage(fmt.Sprintf("refusing to overwrite existing skill %q without --force", p))
 			}
+		}
+		would = append(would, map[string]any{"action": action, "resource": "skill", "path": p})
+		if !dry {
 			if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
 				return nil, system("io_create_skill", err.Error())
 			}
-			if err := os.WriteFile(p, []byte(strings.Replace(operatorSkill, "0.0.0-dev", version, 1)), 0644); err != nil {
+			if err := os.WriteFile(p, []byte(operatorSkillContent()), 0644); err != nil {
 				return nil, system("io_write_skill", err.Error())
 			}
 		}

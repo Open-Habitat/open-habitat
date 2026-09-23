@@ -72,3 +72,29 @@ func TestReadinessHonest(t *testing.T) {
 		t.Fatal(out)
 	}
 }
+
+func TestSkillPrintAndForceInstall(t *testing.T) {
+	var output, stderr bytes.Buffer
+	if code := Run([]string{"skill", "print", "operator"}, &output, &stderr); code != 0 {
+		t.Fatalf("print: %d %s", code, stderr.String())
+	}
+	if output.String() != operatorSkillContent() {
+		t.Fatal("skill print was not byte-identical to bundled content")
+	}
+	target := t.TempDir()
+	args := []string{"--json", "skill", "install", "operator", "--agent", "pi", "--target", target}
+	if code, _, message := call(t, args...); code != 0 {
+		t.Fatalf("install: %s", message)
+	}
+	if code, _, _ := call(t, args...); code != 1 {
+		t.Fatalf("overwrite without force returned %d", code)
+	}
+	args = append(args, "--force")
+	if code, _, message := call(t, args...); code != 0 {
+		t.Fatalf("force install: %s", message)
+	}
+	installed, err := os.ReadFile(filepath.Join(target, ".pi/agent/skills/operator/SKILL.md"))
+	if err != nil || string(installed) != operatorSkillContent() {
+		t.Fatalf("installed content drift: %v", err)
+	}
+}
