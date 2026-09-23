@@ -15,13 +15,14 @@ import (
 )
 
 type metadataBus struct {
-	t      *testing.T
-	calls  int
-	paths  []dbus.ObjectPath
-	attrs  map[string]string
-	locked bool
-	fail   int
-	wrong  bool
+	t          *testing.T
+	calls      int
+	paths      []dbus.ObjectPath
+	attrs      map[string]string
+	locked     bool
+	itemLocked bool
+	fail       int
+	wrong      bool
 }
 
 func (b *metadataBus) Close() error { return nil }
@@ -62,7 +63,7 @@ func (b *metadataBus) Call(ctx context.Context, path dbus.ObjectPath, method str
 		if b.wrong {
 			return []any{"wrong-type"}, nil
 		}
-		return []any{dbus.MakeVariant(false)}, nil
+		return []any{dbus.MakeVariant(b.itemLocked)}, nil
 	case 5:
 		if method != propertiesGet || path != b.paths[0] {
 			b.t.Fatal("attributes")
@@ -86,7 +87,7 @@ func TestMetadataOnlyAttestation(t *testing.T) {
 		{"wrong-login", func(b *metadataBus) { b.attrs["username"] = "bob" }, false},
 		{"extra-attribute", func(b *metadataBus) { b.attrs["extra"] = "value" }, false},
 		{"locked-collection", func(b *metadataBus) { b.locked = true }, false},
-		{"locked-item", func(b *metadataBus) { b.fail = 4 }, false},
+		{"locked-item", func(b *metadataBus) { b.itemLocked = true }, false},
 		{"bad-path", func(b *metadataBus) { b.paths = []dbus.ObjectPath{"/"} }, false},
 		{"foreign-collection", func(b *metadataBus) { b.paths = []dbus.ObjectPath{"/org/freedesktop/secrets/collection/other/1"} }, false},
 		{"bad-property", func(b *metadataBus) { b.wrong = true }, false},

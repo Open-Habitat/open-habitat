@@ -166,7 +166,9 @@ func dialUserBus(ctx context.Context) (keyringBus, error) {
 		closeEarly()
 		return nil, denied
 	}
-	if err = bus.Auth(nil); err == nil {
+	// EXTERNAL authenticates using the effective UID; never fall back to
+	// COOKIE_SHA1 (which would read a file in the user's home).
+	if err = bus.Auth([]dbus.Auth{dbus.AuthExternal(strconv.Itoa(os.Geteuid()))}); err == nil {
 		err = bus.Hello()
 	}
 	if err != nil || ctx.Err() != nil {
