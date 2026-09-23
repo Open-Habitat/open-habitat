@@ -88,6 +88,7 @@ func TestMetadataOnlyAttestation(t *testing.T) {
 		{"locked-collection", func(b *metadataBus) { b.locked = true }, false},
 		{"locked-item", func(b *metadataBus) { b.fail = 4 }, false},
 		{"bad-path", func(b *metadataBus) { b.paths = []dbus.ObjectPath{"/"} }, false},
+		{"foreign-collection", func(b *metadataBus) { b.paths = []dbus.ObjectPath{"/org/freedesktop/secrets/collection/other/1"} }, false},
 		{"bad-property", func(b *metadataBus) { b.wrong = true }, false},
 		{"bus-error", func(b *metadataBus) { b.fail = 3 }, false},
 	} {

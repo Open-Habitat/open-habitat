@@ -84,7 +84,7 @@ func (s secretServiceEvidence) Keyring(ctx context.Context, login string) bool {
 		return false
 	}
 	paths, ok := values[0].([]dbus.ObjectPath)
-	if !ok || len(paths) != 1 || !paths[0].IsValid() || paths[0] == "/" || paths[0] == collection || !strings.HasPrefix(string(paths[0]), "/org/freedesktop/secrets/collection/") {
+	if !ok || len(paths) != 1 || !paths[0].IsValid() || paths[0] == "/" || paths[0] == collection || !strings.HasPrefix(string(paths[0]), "/org/freedesktop/secrets/collection/") || (collection == "/org/freedesktop/secrets/collection/login" && !strings.HasPrefix(string(paths[0]), string(collection)+"/")) {
 		return false
 	}
 	item := paths[0]
