@@ -2,13 +2,20 @@
 created: 2026-09-21
 updated: 2026-09-23
 type: task
-status: testing
+status: done
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
 lane_seq: 10
 blocked_by: ['@review-implementation-plan']
 collision: [docs/, AGENTS.md, design-system/]
+closed: 2026-09-23
+closed_by: jari
+commits:
+- hash: 079694adf0f9cdabddf6cc7289672d1d813a521f
+  summary: Complete application foundation
+- hash: c73f14aa7950a3b2e2822f171028eef6f549c6d9
+  summary: Move application foundation to visual testing
 ---
 
 # Build the selected application and validation foundation
@@ -53,3 +60,15 @@ Before scaffolding product slices, make the accepted CG-01–CG-04 and CT-030–
 This issue is both the executable delivery and its serial human checkpoint. The worker must leave it in `testing`, not close it. While a `ui-v1` issue is in `testing`, it is a non-launchable human-acceptance hold: no round may spawn, resume or close a worker for it. Before any later `ui-v1` lane member may treat its user-visible behavior as delivered, `issues/build-app-foundation/visual-acceptance.md` must record the exact product revision, browser/OS/environment, deterministic test fixtures, happy path and every relevant unhappy state, exact Playwright/test commands and results, and links to the essential Playwright screenshots. Screenshots are evidence, not a replacement for assertions. The conductor presents that report to Jari and records his explicit dated accept/change decision in this issue. Only the conductor may then close it; lane serialization keeps the next product slice behind this checkpoint without assigning a lane to a `human-review` issue or letting a worker self-accept.
 
 Interactive and repeated behavior must use the shared production component implementation. Local composition may arrange one-off content but may not invent controls, state semantics, focus rules or styling. When this production slice replaces a canonical/root mock or static reference, remove the superseded root/canonical reference in the same accepted change; an original may remain only in its receiving issue as historical evidence.
+
+## Decisions
+
+### 2026-09-23T12:08:47Z · @jari
+
+Accepted on 2026-09-23: Jari reviewed the screenshots directly from the repository and approved all three foundation states for product revision 079694adf0f9cdabddf6cc7289672d1d813a521f. The conductor independently reran `./scripts/ci-local.sh --clean --json` with repository-local Go; the complete gate passed. This accepts the bounded scaffold only, not later production UI behavior.
+
+## Resolution
+
+### 2026-09-23T12:08:47Z · @jari
+
+Jari explicitly accepted the ready, authentication-required and daemon-unavailable screenshots. All deterministic assertions, Axe checks and the complete clean-checkout gate pass. Release the next ui-v1 slice.
