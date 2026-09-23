@@ -1,7 +1,7 @@
 # Projektin tilanne
 
 **Updated:** 2026-09-23
-**Source revision:** `709b6080de4ca01e19a37ed666cdfd9916e365d7`
+**Source revision:** `7779c064aa99713e200fa35a9d75b2a905769d14`
 
 ## Valmis toteutus ja katselmointi
 
