@@ -121,7 +121,7 @@ type Result struct {
 }
 
 // Evidence supplies positive keyring attestation only from a trusted OS-specific
-// inspector. The default inspector fails closed on keyring storage.
+// inspector. An unconfigured inspector fails closed on keyring storage.
 type Evidence interface {
 	Keyring(context.Context, string) bool
 }
@@ -177,7 +177,7 @@ func (a *Adapter) identity(ctx context.Context) (string, bool) {
 	id, e := strconv.ParseUint(string(v.ID), 10, 64)
 	return v.Login, e == nil && id > 0 && strconv.FormatUint(id, 10) == a.subject
 }
-func (a *Adapter) storage(ctx context.Context) (Storage, bool) {
+func (a *Adapter) storage(ctx context.Context, login string) (Storage, bool) {
 	// Resolve parent components first; the final path is opened with O_NOFOLLOW.
 	// A later pathname swap cannot change the already-open file descriptor.
 	home, err := filepath.EvalSymlinks(a.home)
@@ -212,16 +212,24 @@ func (a *Adapter) storage(ctx context.Context) (Storage, bool) {
 		}
 	}
 	// Never turn an insecure file into a keyring success.
-	if _, e := os.Lstat(file); e == nil {
+	if _, e := os.Lstat(file); !errors.Is(e, os.ErrNotExist) {
 		return Unknown, false
 	}
-	if _, e := os.Lstat(filepath.Join(dir, "gh")); e == nil && !secureDir(filepath.Join(dir, "gh"), 0700) {
+	if _, e := os.Lstat(filepath.Join(dir, "gh")); e == nil {
+		if !secureDir(filepath.Join(dir, "gh"), 0700) {
+			return Unknown, false
+		}
+	} else if !errors.Is(e, os.ErrNotExist) {
 		return Unknown, false
 	}
-	if _, e := os.Lstat(dir); e == nil && !secureDir(dir, 0700) {
+	if _, e := os.Lstat(dir); e == nil {
+		if !secureDir(dir, 0700) {
+			return Unknown, false
+		}
+	} else if !errors.Is(e, os.ErrNotExist) {
 		return Unknown, false
 	}
-	if a.evidence != nil && a.evidence.Keyring(ctx, a.subject) {
+	if a.evidence != nil && loginPattern.MatchString(login) && a.evidence.Keyring(ctx, login) {
 		return Keyring, true
 	}
 	return Unknown, false
@@ -276,7 +284,7 @@ func (a *Adapter) observe(ctx context.Context) (string, Storage, bool) {
 	if _, e = a.git(ctx, false, strings.NewReader("protocol=https\nhost=github.com\n\n"), "credential", "fill"); e != nil {
 		return login, Unknown, false
 	}
-	storage, ok := a.storage(ctx)
+	storage, ok := a.storage(ctx, login)
 	return login, storage, ok
 }
 func (a *Adapter) cleanup(ctx context.Context, login string) bool {
