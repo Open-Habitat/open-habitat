@@ -1,11 +1,10 @@
 # Vaiheet toimivaan järjestelmään
 
 Tavoitteena on ensin oikealla Pi-agentilla toimiva ydin ja sen jälkeen koko
-[hyväksytty MVP](product.md). Vaiheistus on hyväksytty suunnaksi; tekniset
-valinnat ovat Proposed-tilassa ja toteutus odottaa
-[`review-implementation-plan`](../issues/review-implementation-plan/item.md)-katselmointia.
-[Katselmoitava toteutuspaketti](../issues/plan-v1-implementation/implementation-briefs.md)
-rajaa jokaisen työn tuotoksen, omistajuuden, testit, palautumisen ja ehdotetut
+[hyväksytty MVP](product.md). Vaiheistus ja tekniset valinnat hyväksyttiin
+[`review-implementation-plan`](../issues/review-implementation-plan/review.md)-katselmoinnissa revision `b87b1aae5d6fefcd914d4f06c0e510b5ca124f60`
+mukaisina. [Toteutuspaketti](../issues/plan-v1-implementation/implementation-briefs.md)
+rajaa jokaisen työn tuotoksen, omistajuuden, testit, palautumisen ja alustavat
 komennot. Issuectl yksin määrää ajettavuuden ja järjestyksen.
 
 | Vaihe | Tulos, jota voi katselmoida tai kokeilla |
@@ -37,15 +36,15 @@ Sovelluspohja tekee ensimmäisenä lukitut Go- ja `web/`-rakenteet, TypeScript 7
 eivät saa nojata ehdotettuun komentoon ennen kuin tämä työ on suorittanut sen
 puhtaasta checkoutista ja kirjannut sen root/local `AGENTS.md` -ohjeisiin.
 
-## Ehdotettu hostin toteutus- ja operointiraja
+## Hyväksytty hostin toteutus- ja operointiraja
 
-[ADR 0003](adr-0003-host-stack.md) ehdottaa yhtä lukittua Go-koodipohjaa ja
-julkaisubinaaria gatewaylle ja käyttäjädaemoneille. Systemd käynnistäisi gatewayn
+[ADR 0003](adr-0003-host-stack.md) valitsee yhden lukitun Go-koodipohjan ja
+julkaisubinaarin gatewaylle ja käyttäjädaemoneille. Systemd käynnistää gatewayn
 omalla rajatulla tunnuksellaan ja jokaisen daemonin oikealla käyttäjätunnuksella.
-Gateway reitittäisi ennalta määrättyyn käyttäjäkohtaiseen Unix-socketiin, ja
-daemon tarkistaisi gatewayn UID:n Linuxin peer credential -tiedosta. Staattinen
-React-buildi toimitettaisiin samassa versionoidussa julkaisussa; Nodea ei
-ajettaisi tuotantopalveluna.
+Gateway reitittää ennalta määrättyyn käyttäjäkohtaiseen Unix-socketiin, ja
+daemon tarkistaa gatewayn UID:n Linuxin peer credential -tiedosta. Staattinen
+React-buildi toimitetaan samassa versionoidussa julkaisussa; Nodea ei ajeta
+tuotantopalveluna.
 
 Ensimmäinen toteutettava läpileikkaus tarvitsee ennen Aldera disposable-systemd-
 VM:n, jossa kaksi synteettistä käyttäjää todistaa sekä oikeat reitit että väärän
@@ -67,11 +66,10 @@ GitHubin numeerisen identiteettimappauksen, salatun provider-syötteen ja Tailsc
 ettei daemonien omistamia aktiivisia Pi-kirjoittajia ole. Aktivoinnin jälkeen
 varmistetaan version JSON, konfiguraatio, unitit, health/readiness, kummankin
 käyttäjän oma luku, ristiinkäytön torjunta, SSE-paluu ja yksi disposable Pi-vuoro.
-Tarkat ehdotetut build-, Fleetrepo apply-, health-, update- ja rollback-komennot
+Tarkat alustavat build-, Fleetrepo apply-, health-, update- ja rollback-komennot
 sekä VM-/pilottifixturet ovat ADR:ssä ja
 [toteutuspaketissa](../issues/plan-v1-implementation/implementation-briefs.md).
-Ne muuttuvat käyttöohjeiksi vasta, kun `review-implementation-plan` hyväksyy ne
-ja toteutus todentaa ne. Alder on tämän jälkeen jo valtuutettu testikohde, mutta
+Ne muuttuvat käyttöohjeiksi vasta, kun toteutus todentaa ne. Alder on tämän jälkeen jo valtuutettu testikohde, mutta
 pysyvät käyttäjät, gateway-tili, julkaisut, paketit, unitit/socketit, mappaukset,
 salattu provider-auth-syöte ja Tailscale-reitti toteutetaan aina erillisessä, katselmoidussa
 Fleetrepo-issuen worktreessä ja konvergoidaan Fleetrepon fleet-rajapinnalla.

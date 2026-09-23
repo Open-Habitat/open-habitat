@@ -47,9 +47,9 @@ switching user identities. Keep both processes lightweight and straightforward.
 The browser can connect separately to several servers and combine what it shows.
 Each server keeps its own account mapping and native files.
 
-### Proposed first host stack
+### Accepted first host stack
 
-[ADR 0003](adr-0003-host-stack.md) proposes one Go release artifact for a
+[ADR 0003](adr-0003-host-stack.md) selects one Go release artifact for a
 non-root gateway and the per-user daemons. Alder's primary browser path is one
 GitHub OAuth authorization: GitHub's stable numeric user ID maps to one fixed
 Unix account, while the callback token is forwarded once over that authenticated
@@ -60,22 +60,22 @@ user explicitly selects it. The gateway reaches only the mapped account's
 systemd-created Unix socket; Linux peer credentials authenticate it without a
 reusable local token or browser-selected username.
 
-Each daemon would run as its user's real UID and start Pi RPC as its own child.
-The browser or SSE connection would not own that process, so browser loss would
-not stop it. A daemon crash or planned daemon restart would stop its controlled
-Pi children; after restart the daemon would rediscover native history and permit
+Each daemon runs as its user's real UID and starts Pi RPC as its own child.
+The browser or SSE connection does not own that process, so browser loss does
+not stop it. A daemon crash or planned daemon restart stops its controlled Pi
+children; after restart the daemon rediscovers native history and permits
 a deliberate resume only after proving that the previous writer exited and the
 history settled. This is deliberately smaller than a second persistent process
 supervisor. Terminal-started Pi remains read-only until the separately agreed
 stop-and-transfer boundary is proved.
 
-The proposed artifact would include the static frontend and be installed as an
-immutable, checksum-verified release. Native Agent Host owns generic install,
+The artifact includes the static frontend and is installed as an immutable,
+checksum-verified release. Native Agent Host owns generic install,
 configuration, test-host, update, rollback and operator documentation. Fleetrepo
 owns only Jari's concrete Alder users, units, identity/provider input, HTTPS
-route and release pin and converges those through its fleet workflow. These
-details and their operator commands remain proposals until
-`review-implementation-plan`; they do not describe an installed service. When
+route and release pin and converges those through its fleet workflow. This is
+the accepted implementation boundary; it does not describe an installed
+service until the implementation and deployment gates pass. When
 0.1 is ready to publish, the conductor files a then-current issue to remove
 Alder-specific references from Git HEAD while preserving generic self-hosting
 documentation and issue-local history.

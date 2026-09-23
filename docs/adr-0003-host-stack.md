@@ -1,10 +1,12 @@
 # ADR 0003: Use one Go host binary, systemd services and Unix sockets
 
-**Status:** Proposed
+**Status:** Accepted
 
 **Date:** 2026-09-23
 
-**Authors:** Pi, for review by Jari Mustonen
+**Accepted:** 2026-09-23 at artifact revision `b87b1aae5d6fefcd914d4f06c0e510b5ca124f60`
+
+**Authors:** Pi; accepted by Jari Mustonen
 
 ## Context
 
@@ -25,8 +27,8 @@ reviewed release and Fleetrepo contracts.
 
 ### One Go codebase and binary
 
-Subject to `review-implementation-plan`, implement gateway and daemon in one Go
-module and ship one statically linked `native-agent-host` binary. Pin Go 1.27.1
+Implement gateway and daemon in one Go module and ship one statically linked
+`native-agent-host` binary. Pin Go 1.27.1
 for the first scaffold. It was the stable release reported by `go.dev/VERSION`
 on 2026-09-23; its official Linux amd64 archive SHA-256 is
 `63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445`.
@@ -260,5 +262,6 @@ The corrected evidence, primary links, exact commands and disposable Go slice
 are in [`../issues/apply-review-corrections/result.md`](../issues/apply-review-corrections/result.md).
 Implementation must still prove real GitHub OAuth/PKCE behavior, actual supported
 `gh` version/storage on the target, two-UID systemd routing, production
-backpressure, Pi shutdown settlement, release lifecycle and Alder pilot. This ADR
-remains Proposed until Jari records acceptance in `review-implementation-plan`.
+backpressure, Pi shutdown settlement, release lifecycle and Alder pilot. These
+are implementation gates under this accepted decision, not evidence that a
+production service already exists.

@@ -10,7 +10,7 @@ hyväksytty. Workspace-/agenttinavigointi, koko keskustelukokemus, workspacejen
 elinkaari, GitHub, Taskfleetin hallitsemat worktreet, arkisto, kahden käyttäjän
 erottelu ja operointi kuuluvat koko MVP:hen. Tuotetta ei ole vielä toteutettu.
 
-## Toteutusvalmiuden paketti on valmis
+## Toteutusvalmiuden paketti on hyväksytty
 
 [`plan-v1-implementation`](../issues/plan-v1-implementation/result.md) on
 koonnut pinotut lähderevisiot, 12 rajattua toteutusbriefiä, Y1–Y5/M1–M7- ja
@@ -25,13 +25,18 @@ rakennetaan koko hyväksytty keskustelu sekä workspace-, GitHub-, Taskfleet- ja
 arkistotoiminnot. Lopun tekninen pilotti todentaa kaikki kriteerit; Jari hyväksyy
 MVP:n erillisessä katselmoinnissa.
 
-## Katselmoi seuraavaksi
+## Toteuta seuraavaksi
 
-Seuraava toiminto on Jarin kanssa käytävä
-[`review-implementation-plan`](../issues/review-implementation-plan/item.md).
-Sen [päätöspaketti](../issues/plan-v1-implementation/review.md) suosittelee
-korjattujen Proposed ADR 0002:n (TypeScript 7 + Biome) ja 0003:n (Go + yksi GitHub OAuth→web/native `gh` -polku) hyväksymistä, tuotantodesignin per-slice screenshot-katselmointia sekä täsmällisiä retention-, otsikko-, auth-, GitHub-smoke- ja self-hosting/Fleetrepo-politiikkoja. ADR:t 0002/0003, tuotantodesign ja ehdotetut
-komennot eivät muutu hyväksytyiksi ennen Jarin kirjattua päätöstä.
+Jari hyväksyi [`review-implementation-plan`](../issues/review-implementation-plan/review.md)-katselmoinnissa
+2026-09-23 koko kahdeksanosaisen päätöspaketin revision
+`b87b1aae5d6fefcd914d4f06c0e510b5ca124f60` mukaisena. ADR 0002 valitsee
+TypeScript 7:n ja Biomen; ADR 0003 valitsee Go:n ja yhden GitHub
+OAuth→web/native `gh` -polun. Tuotantodesignin per-slice screenshot-katselmointi
+sekä retention-, otsikko-, auth-, GitHub-smoke- ja self-hosting/Fleetrepo-rajat
+ovat hyväksyttyjä toteutusvaatimuksia.
+
+Seuraava ajettava työ on `build-app-foundation`. Alustavat komennot muuttuvat
+todennetuiksi green gateiksi vasta, kun foundation ajaa ne puhtaasta checkoutista.
 
 Alder on jo valtuutettu myöhemmäksi testi-/pilottikohteeksi katselmoinnin ja
 ajettavien green gatejen jälkeen. Nykyistä deploymentia ei ole. Pysyvä tila

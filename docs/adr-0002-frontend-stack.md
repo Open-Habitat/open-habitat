@@ -1,10 +1,12 @@
 # ADR 0002: Use a React and TypeScript single-page client
 
-**Status:** Proposed
+**Status:** Accepted
 
 **Date:** 2026-09-22
 
-**Authors:** Pi, for review by Jari Mustonen
+**Accepted:** 2026-09-23 at artifact revision `b87b1aae5d6fefcd914d4f06c0e510b5ca124f60`
+
+**Authors:** Pi; accepted by Jari Mustonen
 
 ## Context
 
@@ -14,7 +16,7 @@ The existing JSX and HTML are visual references only. This decision compares a R
 
 ## Decision
 
-Subject to `review-implementation-plan`, build the browser as a client-rendered React 19.3.0 single-page application in strict TypeScript 7.0.2. Use Vite 8.3.0 for development and static production builds and React Router 8.4.0 for route matching. TypeScript 7 is accepted only while the complete locked graph installs and every build, type, lint, test, Storybook, Playwright and Axe gate passes without forced peers, disabled checks or nightly packages; incompatibility returns to human review rather than silently pinning TypeScript 6. Do not use server-side rendering or React Server Components in v1. The host serves the immutable Vite output and an `index.html` fallback under the authenticated, same-origin gateway; JSON/HTTP and SSE remain the backend boundary from ADR 0001.
+Build the browser as a client-rendered React 19.3.0 single-page application in strict TypeScript 7.0.2. Use Vite 8.3.0 for development and static production builds and React Router 8.4.0 for route matching. TypeScript 7 is accepted only while the complete locked graph installs and every build, type, lint, test, Storybook, Playwright and Axe gate passes without forced peers, disabled checks or nightly packages; incompatibility returns to human review rather than silently pinning TypeScript 6. Do not use server-side rendering or React Server Components in v1. The host serves the immutable Vite output and an `index.html` fallback under the authenticated, same-origin gateway; JSON/HTTP and SSE remain the backend boundary from ADR 0001.
 
 Use Redux Toolkit 2.12.0 and React Redux 9.3.0 for the synchronized application model. Do not add RTK Query, TanStack Query, a second event store or component-level copies of server entities. The SSE adapter and HTTP command adapter dispatch typed actions into the same store. Use TanStack React Virtual 3.14.13 for measured timeline virtualization. Load rich renderers and infrequently used host-operation dialogs as separate chunks rather than reproducing the disposable experiment's eager bundle.
 
@@ -58,7 +60,7 @@ The disposable trial confirmed that raw HTML and `javascript:` links stay inert,
 
 Use native HTML when it already supplies the right behavior. Use React Aria for composite controls, overlays, collections and focus management. The initial catalog contains only components needed by accepted journeys, including timeline rows, grouped tools, code, diff, supported user requests, composer, connection state, staged operations and accessible attention. React Aria is a behavior foundation, not a visual theme; the accepted tokens and Finnish content remain ours.
 
-## Proposed commands
+## Foundation commands
 
 `build-app-foundation` should create one locked frontend package at `web/`, pin the tested Node `22.23.2` in `web/.node-version`, and declare `engines.node` as `>=22.23 <23` (the direct toolchain does not support every Node major). CI must use that pin. Then record these exact commands as verified only after they run there:
 
@@ -95,7 +97,7 @@ The costs are more client code and a larger baseline than a small Svelte or HTML
 
 ## Assumptions requiring later proof
 
-Before accepting this ADR or calling the frontend foundation complete, verify:
+Before calling the frontend foundation complete, verify:
 
 1. the final host contract can drive the reducer without parallel cached entities, especially resnapshot, cursor expiry and command-ID retention;
 2. production React Aria wrappers match the accepted design and Finnish keyboard behavior, including dialogs, menus, collections, toasts and reduced motion;
@@ -106,7 +108,7 @@ Before accepting this ADR or calling the frontend foundation complete, verify:
 7. the later verified Pi one-off-call adapter can update the replaceable conversation title without putting model calls or title authority in the browser; and
 8. every user-visible slice supplies deterministic happy and relevant unhappy-path browser tests plus a Markdown visual-acceptance report with essential screenshots, exact revision, environment, scenarios and commands, followed by Jari's explicit issuectl-recorded acceptance before a dependent product slice treats that UI behavior as delivered.
 
-A failed proof returns the affected choice to `review-implementation-plan`; it must not be hidden by narrowing the accepted UI.
+A failed proof blocks the affected slice and requires an explicit correction and renewed human decision; it must not be hidden by narrowing the accepted UI.
 
 ## Rejected alternatives
 
