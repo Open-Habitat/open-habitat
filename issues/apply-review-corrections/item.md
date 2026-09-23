@@ -46,3 +46,9 @@ Apply Jari's 2026-09-22 implementation-readiness decisions to the proposed ADRs,
 ## Delivery
 
 Record exact changed artifacts, commands, evidence and remaining implementation proofs in `result.md`. No runtime scaffold, machine installation, Fleetrepo edit or deployment. Close this correction only when the review gate can safely record acceptance against the corrected landed revision.
+
+## Decisions
+
+### 2026-09-23T06:23:41Z · @jari
+
+TypeScript 7 compatibility amendment, 2026-09-23: replace the incompatible ESLint/typescript-eslint proposal with a Biome-based formatting and linting stack if and only if stable TypeScript 7 plus Vite, React, Storybook, Vitest, Playwright, Axe, Biome and `tsc --noEmit` install and pass cleanly without forced peers, disabled checks or nightly TypeScript. Verify adequate React Hooks and JSX accessibility rule coverage; any unresolved gap blocks rather than silently downgrades.
