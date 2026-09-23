@@ -1,0 +1,21 @@
+# Phase 2A: bounded native token transport (not workspace delivery)
+
+The parent stays `in-progress`, with acceptance criteria unchanged. This phase provides a production Linux one-attempt gateway sink and a daemon UDS handoff server **injected with a token consumer**. The daemon CLI deliberately refuses handoff configuration until phase 2B supplies the native `gh` consumer; it cannot falsely acknowledge an uninstalled credential. Gateway CLI OAuth opt-in uses the real sink and a direct TLS listener, never forwarded TLS headers. No test uses a real token, systemd instance or user home.
+
+## Boundary and protocol
+
+`internal/transport` accepts only `/run/native-agent-host/users/<configured-username>/daemon.sock` production socket names (under 108 bytes). A request is a four-byte big-endian length, at most 8192 bytes, followed by one JSON object with exactly seven fields: version=1, random 128-bit nonce, provider, decimal numeric subject, UID, username and token. Token is at most 4096 bytes, subject/username/provider at most 128 bytes; each client half-closes its write side after the frame. Server requires EOF immediately after the declared body; extra/truncated/duplicate/unknown keys are rejected. Each response is one success byte (`01`) then EOF, or an empty close; no native error text crosses the socket. Client performs exactly one dial, write and read, with a five-second deadline capped by context, and returns one generic error. No retry or persistent token record exists. A bounded 4096-nonce per-server replay set rejects repeated handoffs (also after consumer failure); once full, it fails closed. Up to 64 concurrent connections are admitted. Restarts do not preserve nonce state; the gateway callback state is already one-use.
+
+Server checks Linux `SO_PEERCRED` before reading a body, requires exact configured gateway UID, verifies daemon effective UID against its configured numeric UID, OS username/home lookup, socket path/ownership/mode, and exact provider/subject/UID/username mapping before invoking its consumer at most once. Gateway verifies the connected peer UID equals the mapped UID. Local config is strict JSON and root-owned regular file beneath non-writable/non-symlink parent directories; gateway auth opt-in requires exact configured effective gateway UID and TLS cert/key paths. Only package-internal tests may inject a temp socket or bypass the production socket-path gate. Browser input has no path or UID selection.
+
+## Focused security review
+
+Reviewed frame allocation/EOF and duplicate-key handling, partial writes, socket symlink and wrong-target risk, connected peer checks, UID/home binding, context cancellation, replay bounds, concurrent admission and redaction. Hardened the decoder against duplicate keys, added connected-peer UID check and Lstat socket check, bounded admissions, prevented context callback retention after request, and checked trusted config parent directories. No sensitive error is returned from transport; native consumer errors are discarded. This review establishes only this transport boundary, not the complete security of the eventual native `gh` path.
+
+## CT scope and limits
+
+CT-001: immutable gateway identity mapping and route selection from phase 1; transport rejects a mismatched subject, UID and socket; **no two-user product snapshot/SSE proof**. CT-002: kernel peer check before frame and rejection of wrong UID/target; **not a full systemd product VM proof**. CT-023: phase-1 origin/CSRF assertions continue to run; no product writes yet. CT-026: phase-1 session expiry/logout checks continue to run; no SSE yet. Phase 2B still owns native `gh` install/status/partial state, discovery, and daemon CLI activation; phase 2C owns two-UID VM product-route proof. Phase 3 owns browser integration, screenshots, acceptance and final review. Neither Fleetrepo nor real users/homes/systemd nor credentials were changed.
+
+## Verification
+
+Tested revision and full command outcomes are recorded after the clean gate.

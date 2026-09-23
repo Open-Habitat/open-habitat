@@ -99,7 +99,7 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	}
 	for _, m := range cfg.Identities {
 		id, e := strconv.ParseUint(m.Subject, 10, 64)
-		if m.Provider != "github" || e != nil || id == 0 || strconv.FormatUint(id, 10) != m.Subject || m.UID <= 0 || m.Username == "" || strings.ContainsAny(m.Username, "/\\ \t\n") || !strings.HasPrefix(m.Socket, "/run/native-agent-host/") || strings.ContainsAny(strings.TrimPrefix(m.Socket, "/run/native-agent-host/"), "/\\\n\r") || strings.Contains(m.Socket, "..") || strings.HasSuffix(m.Socket, "/") {
+		if m.Provider != "github" || e != nil || id == 0 || strconv.FormatUint(id, 10) != m.Subject || m.UID <= 0 || m.Username == "" || strings.ContainsAny(m.Username, "/\\ \t\n") || m.Socket != "/run/native-agent-host/users/"+m.Username+"/daemon.sock" || len(m.Socket) >= 108 {
 			return nil, errors.New("invalid identity mapping")
 		}
 		key := m.Provider + ":" + m.Subject

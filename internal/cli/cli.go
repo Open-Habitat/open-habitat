@@ -9,6 +9,7 @@ import (
 	"github.com/maintainer/native-agent-host/internal/core"
 	"github.com/maintainer/native-agent-host/internal/daemon"
 	"github.com/maintainer/native-agent-host/internal/gateway"
+	"github.com/maintainer/native-agent-host/internal/transport"
 	"io"
 	"net"
 	"net/http"
@@ -227,8 +228,19 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 	}
 	var h http.Handler
 	if c == core.Gateway {
-		h = gateway.New(cfg.StaticDir)
+		if cfg.OAuth != nil {
+			a, e := gateway.NewAuth(*cfg.OAuth, gateway.AuthOptions{Provider: gateway.GitHubProvider{ClientID: cfg.OAuth.ClientID, ClientSecret: cfg.OAuth.ClientSecret, CallbackURL: cfg.OAuth.CallbackURL}, Sink: transport.NewSink()})
+			if e != nil {
+				return nil, system("invalid_auth_config", "invalid gateway authentication configuration")
+			}
+			h = gateway.NewWithAuth(cfg.StaticDir, a)
+		} else {
+			h = gateway.New(cfg.StaticDir)
+		}
 	} else {
+		if cfg.Handoff != nil {
+			return nil, system("native_adapter_unavailable", "native credential consumer is not installed; daemon handoff cannot start")
+		}
 		h = daemon.New()
 	}
 	ln, err := net.Listen("tcp", cfg.Listen)
@@ -242,7 +254,13 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	go func() { <-ctx.Done(); srv.Shutdown(context.Background()) }()
-	if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
+	var serveErr error
+	if cfg.OAuth != nil {
+		serveErr = srv.ServeTLS(ln, cfg.TLSCert, cfg.TLSKey)
+	} else {
+		serveErr = srv.Serve(ln)
+	}
+	if err := serveErr; err != nil && err != http.ErrServerClosed {
 		return nil, system("server_failed", err.Error())
 	}
 	return nil, nil

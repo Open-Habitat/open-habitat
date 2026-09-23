@@ -52,7 +52,7 @@ func fixture(t *testing.T) (http.Handler, *Auth, *fakeProvider, *fakeSink, *time
 	now := time.Date(2026, 9, 23, 0, 0, 0, 0, time.UTC)
 	p := &fakeProvider{token: strings.Repeat("Z", 64), id: "42"}
 	s := &fakeSink{}
-	a, e := NewAuth(OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: "https://host.test", CallbackURL: "https://host.test/auth/github/callback", Identities: []Identity{{"github", "42", 1001, "alice", "/run/native-agent-host/alice.sock"}, {"github", "43", 1002, "bob", "/run/native-agent-host/bob.sock"}}}, AuthOptions{Provider: p, Sink: s, Now: func() time.Time { return now }})
+	a, e := NewAuth(OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: "https://host.test", CallbackURL: "https://host.test/auth/github/callback", Identities: []Identity{{"github", "42", 1001, "alice", "/run/native-agent-host/users/alice/daemon.sock"}, {"github", "43", 1002, "bob", "/run/native-agent-host/users/bob/daemon.sock"}}}, AuthOptions{Provider: p, Sink: s, Now: func() time.Time { return now }})
 	if e != nil {
 		t.Fatal(e)
 	}

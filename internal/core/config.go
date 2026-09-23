@@ -6,8 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/maintainer/native-agent-host/internal/gateway"
+	"github.com/maintainer/native-agent-host/internal/transport"
 	"io"
 	"os"
+	"path/filepath"
+	"syscall"
 )
 
 // Component identifies one runtime role. The gateway never reads user homes;
@@ -21,9 +25,14 @@ const (
 
 // Config is intentionally small until a product slice proves another setting.
 type Config struct {
-	Component Component `json:"component"`
-	Listen    string    `json:"listen"`
-	StaticDir string    `json:"static_dir,omitempty"`
+	Component  Component            `json:"component"`
+	Listen     string               `json:"listen"`
+	StaticDir  string               `json:"static_dir,omitempty"`
+	OAuth      *gateway.OAuthConfig `json:"oauth,omitempty"`
+	GatewayUID *int                 `json:"gateway_uid,omitempty"`
+	TLSCert    string               `json:"tls_cert,omitempty"`
+	TLSKey     string               `json:"tls_key,omitempty"`
+	Handoff    *transport.Config    `json:"handoff,omitempty"`
 }
 
 func LoadConfig(path string, expected Component) (Config, error) {
@@ -50,8 +59,33 @@ func LoadConfig(path string, expected Component) (Config, error) {
 	if cfg.Component != expected {
 		return Config{}, fmt.Errorf("config component %q does not match %q", cfg.Component, expected)
 	}
-	if cfg.Listen == "" {
+	if cfg.Listen == "" && cfg.Handoff == nil {
 		return Config{}, errors.New("config listen must not be empty")
+	}
+	if cfg.OAuth != nil || cfg.Handoff != nil {
+		info, e := os.Lstat(path)
+		if e == nil && (info.Mode()&os.ModeSymlink != 0 || !filepath.IsAbs(path) || filepath.Clean(path) != path) {
+			return Config{}, errors.New("invalid trusted config")
+		}
+		for dir := filepath.Dir(path); e == nil && dir != "/"; dir = filepath.Dir(dir) {
+			parent, pe := os.Lstat(dir)
+			if pe != nil || !parent.IsDir() || parent.Mode()&os.ModeSymlink != 0 || parent.Mode().Perm()&0022 != 0 {
+				return Config{}, errors.New("invalid trusted config")
+			}
+		}
+		if e != nil {
+			return Config{}, errors.New("invalid trusted config")
+		}
+		stat, ok := info.Sys().(*syscall.Stat_t)
+		if !ok || stat.Uid != 0 || info.Mode().Perm()&0022 != 0 || !info.Mode().IsRegular() {
+			return Config{}, errors.New("invalid trusted config")
+		}
+	}
+	if cfg.OAuth != nil && (expected != Gateway || cfg.TLSCert == "" || cfg.TLSKey == "" || cfg.Handoff != nil || cfg.GatewayUID == nil || *cfg.GatewayUID <= 0 || *cfg.GatewayUID != os.Geteuid()) {
+		return Config{}, errors.New("invalid gateway auth config")
+	}
+	if cfg.Handoff != nil && (expected != Daemon || cfg.OAuth != nil || cfg.Listen != "" || cfg.GatewayUID != nil) {
+		return Config{}, errors.New("invalid daemon handoff config")
 	}
 	return cfg, nil
 }
