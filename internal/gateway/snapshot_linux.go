@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"io"
 	"net"
 	"net/http"
@@ -121,6 +122,21 @@ func (a *Auth) snapshot(w http.ResponseWriter, r *http.Request) {
 	}
 	b, err := io.ReadAll(io.LimitReader(res.Body, snapshotLimit+1))
 	if err != nil || int64(len(b)) != res.ContentLength || len(b) > snapshotLimit {
+		safe(w, 503, "daemon_unavailable")
+		return
+	}
+	// Bind the response identity to the authenticated fixed mapping before any
+	// bytes reach the browser. Full v1 contract validation remains at the browser.
+	var binding struct {
+		Identity struct {
+			WebIdentityID string `json:"web_identity_id"`
+		} `json:"identity"`
+		Auth struct {
+			Provider          string `json:"provider"`
+			ProviderAccountID string `json:"provider_account_id"`
+		} `json:"auth"`
+	}
+	if json.Unmarshal(b, &binding) != nil || binding.Identity.WebIdentityID != identityID(target) || binding.Auth.Provider != target.Provider || binding.Auth.ProviderAccountID != target.Subject {
 		safe(w, 503, "daemon_unavailable")
 		return
 	}

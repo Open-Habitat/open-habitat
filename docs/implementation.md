@@ -22,7 +22,10 @@ Käyttökulkujen valmistelu ja natiivien kykyjen kokeet voivat edetä rinnakkain
 Tuotantototeutus alkaa, kun sitä ohjaavat päätökset, rajapinnat ja design on
 katselmoitu. Jokainen toteutuspala yhdistää tarvittavan käyttöliittymän ja
 natiivin toiminnan; koko backendia ja koko frontendia ei rakenneta irrallisina
-ennen ensimmäistä yhteistä käyttökulkua.
+ennen ensimmäistä yhteistä käyttökulkua. Kirjautuminen ja vain luettava
+workspace-navigointi kulkevat nyt tuotanto-Reactista Go-gatewayn ja
+käyttäjädaemonin tilannekuvaan. [Selain- ja VM-näyttö](../issues/build-workspace-slice/result.md)
+on koottu erikseen; Jarin katselmointipäätös on vielä tekemättä.
 
 Kahden käyttäjän reititys tarkistetaan ensimmäisestä autentikoidusta palasta
 alkaen. Katkokset tarkistetaan ensimmäisestä elävästä keskustelusta lähtien.

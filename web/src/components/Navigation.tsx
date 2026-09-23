@@ -19,8 +19,13 @@ export function AppShell({
 }) {
   return (
     <div className="ah-app-shell">
-      <a className="ah-skip" href="#main">
-        Siirry keskusteluun
+      {/* biome-ignore lint/a11y/useValidAnchor: same-page skip link also focuses the tabIndex=-1 target. */}
+      <a
+        className="ah-skip"
+        href="#main"
+        onClick={() => document.getElementById("main")?.focus()}
+      >
+        Siirry sisältöön
       </a>
       {connection}
       <div className="ah-shell-body">
@@ -177,6 +182,7 @@ export function WorkspaceRail({
   listState,
   children,
   createAvailability,
+  sessionActions,
   onToggle,
   onFilter,
   onRefresh,
@@ -191,6 +197,7 @@ export function WorkspaceRail({
   listState: AsyncState | "source-absent" | "filtered-empty";
   children?: ReactNode;
   createAvailability?: Availability;
+  sessionActions?: ReactNode;
   onToggle: () => void;
   onFilter: (value: string) => void;
   onRefresh: () => void;
@@ -211,6 +218,7 @@ export function WorkspaceRail({
           onPress={onToggle}
         />
       </header>
+      {sessionActions}
       <StatusMark
         label={connectionLabel}
         tone={listState === "stale" ? "warning" : "neutral"}
@@ -233,6 +241,14 @@ export function WorkspaceRail({
             onChange={onFilter}
             onClear={() => onFilter("")}
           />
+          <div className="ah-actions ah-rail-actions">
+            <Button
+              label="Uusi workspace"
+              availability={createAvailability}
+              onPress={onCreate}
+            />
+            <Button label="Päivitä" variant="secondary" onPress={onRefresh} />
+          </div>
           <div className="ah-rail-content">
             {listState === "loading" ? <p>Ladataan workspaceja…</p> : null}
             {listState === "empty" ? <p>Workspaceja ei ole.</p> : null}
@@ -247,14 +263,6 @@ export function WorkspaceRail({
             ) : (
               children
             )}
-          </div>
-          <div className="ah-actions">
-            <Button
-              label="Uusi workspace"
-              availability={createAvailability}
-              onPress={onCreate}
-            />
-            <Button label="Päivitä" variant="secondary" onPress={onRefresh} />
           </div>
         </>
       )}

@@ -23,6 +23,8 @@
   "dependencies": {
     "@reduxjs/toolkit": "2.12.0",
     "@tanstack/react-virtual": "3.14.13",
+    "ajv": "8.17.1",
+    "ajv-formats": "3.0.1",
     "react": "19.3.0",
     "react-aria-components": "1.21.1",
     "react-dom": "19.3.0",

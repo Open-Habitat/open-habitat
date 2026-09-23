@@ -2,9 +2,13 @@
 
 Ensimmäinen käyttöliittymä on suomenkielinen työpöytänäkymä yhdelle palvelimelle.
 Se yhdistää kirjautumisen, workspacet, agenttilistan ja yhden valitun keskustelun.
-Tämä sivu kuvaa toteutettavan polun ja sen nykyiset rajat. Tuotetta ei ole
-vielä toteutettu, ja kaikki vastaanotettujen klikattavien vedosten data, ajastimet,
-taustatoiminnot ja virheet ovat simuloituja. Niistä korjattu yhtenäinen
+Tämä sivu kuvaa toteutettavan polun ja sen nykyiset rajat. Ensimmäinen
+kirjautumisesta read-only workspaceihin ulottuva selainpolku on toteutettu
+ja odottaa Jarin visuaalista hyväksyntää
+([testit ja kuvat](../issues/build-workspace-slice/visual-acceptance.md)).
+Pi-historiaa, agentin ohjausta eikä kirjoitustoimintoja ole vielä toteutettu.
+Vastaanotettujen klikattavien vedosten data, ajastimet, taustatoiminnot ja
+virheet olivat simuloituja; ne eivät ole tuotetoteutuksen näyttöä. Niistä korjattu yhtenäinen
 [tuotantodesign](../design-system/production-v1.md),
 [komponenttikatalogi](../design-system/component-catalog-v1.md) ja
 [ajettava tuotantokatalogi](design-system.md)

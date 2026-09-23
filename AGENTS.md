@@ -76,9 +76,9 @@ until the actual review decision is recorded.
 The production scaffold is one Go 1.27.1 module/binary plus one locked browser
 package in `web/`. Runtime authority is explicit:
 
-- `internal/gateway` owns same-origin HTTP, future OAuth/session/CSRF and mapped
+- `internal/gateway` owns same-origin HTTP, OAuth/session/CSRF and mapped
   daemon routing; it must not read user homes or run agents.
-- `internal/daemon` runs as one Unix UID and owns future native discovery and
+- `internal/daemon` runs as one Unix UID and owns native discovery and
   agent children; it never chooses a web identity.
 - `contracts/v1/` is authoritative. `internal/contracts/` and
   `web/src/contracts/` are deterministic derivatives.

@@ -56,8 +56,8 @@ type AuthOptions struct {
 	SnapshotPeerUID func(*net.UnixConn) int                         // test seam; production reads SO_PEERCRED
 }
 type pending struct {
-	verifier, browser string
-	until             time.Time
+	verifier, browser, returnTo string
+	until                       time.Time
 }
 type session struct {
 	identity       Identity
@@ -158,8 +158,31 @@ func safe(w http.ResponseWriter, status int, code string) {
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "error": map[string]any{"code": code, "message": "Request could not be completed", "retryable": false, "correlation_id": "req_00000000"}})
 }
+
+// uiReturn accepts only known same-origin selection routes; never API/auth/events or external URLs.
+func uiReturn(path string) bool {
+	if path == "/" || path == "/workspaces" {
+		return true
+	}
+	if !strings.HasPrefix(path, "/workspaces/") {
+		return false
+	}
+	id := strings.TrimPrefix(path, "/workspaces/")
+	if len(id) < 11 || len(id) > 83 || !strings.HasPrefix(id, "ws_") {
+		return false
+	}
+	for _, c := range id[3:] {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-') {
+			return false
+		}
+	}
+	return true
+}
 func (a *Auth) start(w http.ResponseWriter, r *http.Request) {
-	if !a.exact(r, "/auth/github/start") {
+	returnTo := "/workspaces"
+	if a.exact(r, "/auth/github/start", "return_to") && uiReturn(r.URL.Query().Get("return_to")) {
+		returnTo = r.URL.Query().Get("return_to")
+	} else if !a.exact(r, "/auth/github/start") {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -222,11 +245,21 @@ func (a *Auth) start(w http.ResponseWriter, r *http.Request) {
 		safe(w, 503, "authentication_required")
 		return
 	}
-	a.pending[state] = pending{verifier, browser, now.Add(5 * time.Minute)}
+	a.pending[state] = pending{verifier: verifier, browser: browser, returnTo: returnTo, until: now.Add(5 * time.Minute)}
 	a.mu.Unlock()
 	http.SetCookie(w, &http.Cookie{Name: flowCookie, Value: browser, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: 300})
 	w.Header().Set("Cache-Control", "no-store")
 	http.Redirect(w, r, a.provider.AuthorizationURL(state, challenge), http.StatusFound)
+}
+func (a *Auth) callbackFailure(w http.ResponseWriter, r *http.Request, status int, code string) {
+	// A browser can recover at the login card; API callers retain typed errors.
+	// Codes below are fixed internal constants, never provider-controlled strings.
+	if r.TLS != nil && r.Host == strings.TrimPrefix(a.cfg.Origin, "https://") && strings.Contains(r.Header.Get("Accept"), "text/html") {
+		w.Header().Set("Cache-Control", "no-store")
+		http.Redirect(w, r, "/workspaces?auth_error="+code, http.StatusSeeOther)
+		return
+	}
+	safe(w, status, code)
 }
 func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
@@ -239,25 +272,25 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{Name: flowCookie, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: -1})
 	c, e := r.Cookie(flowCookie)
 	if !a.exact(r, "/auth/github/callback", "state", "code") && !a.exact(r, "/auth/github/callback", "state", "error") {
-		safe(w, 400, "invalid_request")
+		a.callbackFailure(w, r, 400, "invalid_request")
 		return
 	}
 	if !exists || !a.now().Before(p.until) || e != nil || subtle.ConstantTimeCompare([]byte(c.Value), []byte(p.browser)) != 1 {
-		safe(w, 403, "authentication_required")
+		a.callbackFailure(w, r, 403, "authentication_required")
 		return
 	}
 	if r.URL.Query().Has("error") {
-		safe(w, 403, "authentication_required")
+		a.callbackFailure(w, r, 403, "authentication_required")
 		return
 	}
 	token, id, e := a.provider.Exchange(r.Context(), r.URL.Query().Get("code"), p.verifier)
 	if e != nil || token == "" {
-		safe(w, 403, "authentication_required")
+		a.callbackFailure(w, r, 403, "authentication_required")
 		return
 	}
 	n, e := strconv.ParseUint(id, 10, 64)
 	if e != nil || n == 0 || strconv.FormatUint(n, 10) != id {
-		safe(w, 403, "identity_mapping_denied")
+		a.callbackFailure(w, r, 403, "identity_mapping_denied")
 		return
 	}
 	var target Identity
@@ -269,22 +302,22 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if count != 1 {
-		safe(w, 403, "identity_mapping_denied")
+		a.callbackFailure(w, r, 403, "identity_mapping_denied")
 		return
 	}
 	// Never store token; do not retry or expose sink/provider errors.
 	if a.sink.Deliver(r.Context(), target, id, token) != nil {
-		safe(w, 503, "native_adapter_error")
+		a.callbackFailure(w, r, 503, "native_adapter_error")
 		return
 	}
 	sid, e := a.secret()
 	if e != nil {
-		safe(w, 503, "authentication_required")
+		a.callbackFailure(w, r, 503, "authentication_required")
 		return
 	}
 	csrf, e := a.secret()
 	if e != nil {
-		safe(w, 503, "authentication_required")
+		a.callbackFailure(w, r, 503, "authentication_required")
 		return
 	}
 	a.mu.Lock()
@@ -300,7 +333,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	a.sessions[sid] = session{target, csrf, now.Add(8 * time.Hour), now.Add(24 * time.Hour)}
 	a.mu.Unlock()
 	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: sid, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})
-	http.Redirect(w, r, "/workspaces", http.StatusSeeOther)
+	http.Redirect(w, r, p.returnTo, http.StatusSeeOther)
 }
 func (a *Auth) authenticated(r *http.Request) (session, bool) {
 	c, e := r.Cookie(cookieName)

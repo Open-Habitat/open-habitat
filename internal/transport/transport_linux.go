@@ -103,6 +103,13 @@ func (s Sink) Deliver(ctx context.Context, m gateway.Identity, subject, token st
 	if e != nil || len(body) > maxBody {
 		return denied
 	}
+	// The disposable test-path seam must not silently follow a symlink either.
+	if s.testPath && s.dial == nil {
+		info, err := os.Lstat(m.Socket)
+		if err != nil || info.Mode()&os.ModeSymlink != 0 || info.Mode()&os.ModeSocket == 0 {
+			return denied
+		}
+	}
 	if s.dial == nil && !s.testPath && udssecure.Mapped(m.Socket, m.UID) != nil {
 		return denied
 	}

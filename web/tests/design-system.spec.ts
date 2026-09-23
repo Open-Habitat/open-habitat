@@ -53,7 +53,7 @@ test("@visual keyboard focus follows visible controls", async ({ page }) => {
   ).toBeVisible();
   await page.keyboard.press("Tab");
   await expect(
-    page.getByRole("link", { name: "Siirry keskusteluun" }).last(),
+    page.getByRole("link", { name: "Siirry sisältöön" }).last(),
   ).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.locator("main#main")).toBeFocused();

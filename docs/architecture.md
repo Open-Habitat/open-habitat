@@ -10,7 +10,7 @@ it in the browser or enter that directory over SSH and use Pi there. Pi keeps th
 conversation history in its own files. Closing the browser does not stop the agent.
 
 The core design below is agreed in [ADR 0001](adr-0001-unix-native-agent-host).
-The first working implementation is still to be built.
+The first read-only login-to-workspace slice is implemented and awaiting visual acceptance. Pi histories, agent control, and workspace writes are not implemented yet; see [browser evidence](../issues/build-workspace-slice/visual-acceptance.md).
 
 ## Build on what already works
 

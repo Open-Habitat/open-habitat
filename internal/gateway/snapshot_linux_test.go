@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -24,6 +25,7 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 	// reuse; the separate two-UID systemd proof belongs to phase 2C.
 	listeners := map[string]string{}
 	servers := []*http.Server{}
+	var foreign atomic.Bool
 	for i, m := range mappings {
 		dir, e := os.MkdirTemp("/tmp", "nah-snap-")
 		if e != nil {
@@ -43,7 +45,11 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 				w.WriteHeader(403)
 				return
 			}
-			b := `{"workspace":"` + label + `"}`
+			account := want.Subject
+			if foreign.Load() {
+				account = "99"
+			}
+			b := `{"identity":{"web_identity_id":"` + identityID(want) + `"},"auth":{"provider":"github","provider_account_id":"` + account + `"},"workspace":"` + label + `"}`
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Content-Length", strconv.Itoa(len(b)))
 			_, _ = io.WriteString(w, b)
@@ -74,10 +80,15 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 	for i := range mappings {
 		id := strconv.Itoa(i)
 		w := send(id, "/api/v1/snapshot", map[string]string{"X-Agent-Host-Identity": identityID(mappings[1-i]), "X-Agent-Host-Socket": "/tmp/attacker", "X-Agent-Host-CSRF": "sentinel-token", "X-Forwarded-For": "attacker"})
-		if w.Code != 200 || w.Body.String() != `{"workspace":"`+id+`"}` {
+		if w.Code != 200 || !strings.Contains(w.Body.String(), `"workspace":"`+id+`"`) || !strings.Contains(w.Body.String(), `"provider_account_id":"`+mappings[i].Subject+`"`) {
 			t.Fatalf("route %s: %d %s", id, w.Code, w.Body.String())
 		}
 	}
+	foreign.Store(true)
+	if w := send("1", "/api/v1/snapshot", nil); w.Code != 503 || strings.Contains(w.Body.String(), "99") {
+		t.Fatalf("foreign identity: %d %s", w.Code, w.Body.String())
+	}
+	foreign.Store(false)
 	if w := send("unknown", "/api/v1/snapshot", nil); w.Code != 401 {
 		t.Fatal(w.Code)
 	}
