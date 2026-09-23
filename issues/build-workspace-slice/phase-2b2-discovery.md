@@ -15,7 +15,7 @@ Reviewed trusted config versus request data, descriptor roots and openat2 flags,
 Product code revision: `1457b6960f4699623b9b6772d0e5e2a596b825ed` (following evidence-only commit changes no Go code). Commands below were run with repository-local Go 1.27.1 and `TMPDIR="$PWD/.cache/ci-tmp"`:
 
 - `go test -race ./internal/daemon ./internal/transport -count=1`: passed; focused synthetic tests include source missing/empty/denied, sorted ordinary/main/linked/malformed entries, replacement and mount injections, unsafe names and paths, metadata FIFO/symlinks and count/name limits.
-- `./scripts/ci-local.sh --clean --json`: TO_BE_RECORDED
+- `./scripts/ci-local.sh --clean --json`: passed on clean committed revision `97d9400` with `{"schema_version":1,"data":{"status":"passed","clean":true},"warnings":[]}`. This includes Go race suite, browser gates, generated checks, offline VM self-test and reproducible packaging, not a two-UID product guest run.
 - `python3 issues/define-host-contracts/validate_contracts.py`; `python3 issues/plan-v1-implementation/validate_plan.py`; `python3 scripts/validate-project-view.py`; `issuectl doctor --json`; `git diff --check`: passed (10 schemas/34 scenarios, 12 briefs, 14 pages, no doctor findings, clean diff check).
 
 Phase 2B3 still owns credible live keyring evidence and daemon CLI/systemd activation and actual mapped socket composition. Phase 2C owns two-UID real product VM routing; phase 3 owns browser composition, visual evidence and final product security review. No Fleetrepo/systemd or real home changed; no acceptance toggle, final result or VM boot in this phase.
