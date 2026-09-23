@@ -251,6 +251,11 @@ func newServer(cfg Config, consume Consumer, testPath bool) (*Server, error) {
 
 type peerKey struct{}
 
+// TrustedPeer is set only by the guarded Unix listener after SO_PEERCRED.
+func (s *Server) TrustedPeer(r *http.Request) bool {
+	return r.Context().Value(peerKey{}) == s.cfg.GatewayUID && validate(s.cfg, s.testPath) == nil
+}
+
 // Handler can be mounted on the same daemon ServeMux as future workspace routes.
 // Its peer context is installed by Serve, not derived from HTTP headers.
 func (s *Server) Handler() http.Handler {

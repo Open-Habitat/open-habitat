@@ -48,10 +48,11 @@ type TokenSink interface {
 	Deliver(context.Context, Identity, string, string) error
 }
 type AuthOptions struct {
-	Provider Provider
-	Sink     TokenSink
-	Now      func() time.Time
-	Random   io.Reader
+	Provider     Provider
+	Sink         TokenSink
+	Now          func() time.Time
+	Random       io.Reader
+	SnapshotDial func(context.Context, string) (net.Conn, error) // test seam; production uses one Unix dial
 }
 type pending struct {
 	verifier, browser string
@@ -63,15 +64,16 @@ type session struct {
 	idle, absolute time.Time
 }
 type Auth struct {
-	cfg       OAuthConfig
-	provider  Provider
-	sink      TokenSink
-	now       func() time.Time
-	random    io.Reader
-	mu        sync.Mutex
-	pending   map[string]pending
-	sessions  map[string]session
-	admission map[string]admission
+	cfg          OAuthConfig
+	provider     Provider
+	sink         TokenSink
+	now          func() time.Time
+	random       io.Reader
+	mu           sync.Mutex
+	pending      map[string]pending
+	sessions     map[string]session
+	admission    map[string]admission
+	snapshotDial func(context.Context, string) (net.Conn, error)
 }
 type admission struct {
 	tokens float64
@@ -118,7 +120,7 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	if opts.Random == nil {
 		opts.Random = rand.Reader
 	}
-	return &Auth{cfg: cfg, provider: opts.Provider, sink: opts.Sink, now: opts.Now, random: opts.Random, pending: map[string]pending{}, sessions: map[string]session{}, admission: map[string]admission{}}, nil
+	return &Auth{cfg: cfg, provider: opts.Provider, sink: opts.Sink, now: opts.Now, random: opts.Random, pending: map[string]pending{}, sessions: map[string]session{}, admission: map[string]admission{}, snapshotDial: opts.SnapshotDial}, nil
 }
 func (a *Auth) secret() (string, error) {
 	b := make([]byte, 32)

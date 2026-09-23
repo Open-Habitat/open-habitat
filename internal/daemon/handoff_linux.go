@@ -28,5 +28,9 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	if err != nil {
 		return err
 	}
+	if mux == nil {
+		mux = http.NewServeMux()
+	}
+	mux.Handle(SnapshotPath, SnapshotHandler(cfg, server.TrustedPeer, Discover))
 	return server.ServeMux(ctx, listener, mux)
 }

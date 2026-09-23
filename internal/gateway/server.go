@@ -36,6 +36,7 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("/auth/", func(w http.ResponseWriter, _ *http.Request) { http.NotFound(w, nil) })
 	if s.auth != nil {
 		s.auth.routes(mux)
+		mux.HandleFunc("/api/v1/snapshot", s.auth.snapshot)
 	}
 	mux.HandleFunc("/", s.ui)
 	return mux
