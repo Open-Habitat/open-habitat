@@ -7,6 +7,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 BRIEF = ROOT / "issues/plan-v1-implementation/implementation-briefs.md"
 REVIEW = ROOT / "issues/plan-v1-implementation/review.md"
+CORRECTION_RESULT = ROOT / "issues/apply-review-corrections/result.md"
 
 owners = [
     "build-app-foundation", "build-design-system", "build-workspace-slice",
@@ -20,6 +21,10 @@ errors: list[str] = []
 
 brief = BRIEF.read_text()
 review = REVIEW.read_text()
+correction_result = CORRECTION_RESULT.read_text()
+if "CORRECTION_ARTIFACT_REVISION" in correction_result:
+    errors.append("correction artifact revision is not stamped")
+
 for slug in owners:
     if f"### `{slug}`" not in brief:
         errors.append(f"missing brief section: {slug}")

@@ -2,7 +2,7 @@
 
 ## Outcome and revisions
 
-The corrected specification/planning package is complete. The exact substantive artifact revision is `CORRECTION_ARTIFACT_REVISION`; the follow-up evidence/issue-closure commit is recorded in issue metadata. `review-implementation-plan` remains open and must record Jari's explicit decision against that artifact revision.
+The corrected specification/planning package is complete. The exact substantive artifact revision is `b87b1aae5d6fefcd914d4f06c0e510b5ca124f60`; the follow-up evidence/issue-closure commit is recorded in issue metadata. `review-implementation-plan` remains open and must record Jari's explicit decision against that artifact revision.
 
 No product scaffold, machine package, Fleetrepo file, user, credential, service or deployment was created or changed.
 
@@ -88,7 +88,7 @@ git diff --check
 issuectl dag --json --reservations '[]'
 ```
 
-Final pre-stamp results were `Project View valid: 14 pages, 14 navigation entries`, clean `issuectl doctor --json`, clean `git diff --check`, and `DAG valid: 3 lanes, 19 lane members; foundation blocked by review-implementation-plan`. They are rerun after stamping. The DAG has no missing blockers/cycles, no deferred/untriaged lane member, no lane-assigned human review, and no product head ahead of the human implementation review.
+Final post-stamp and post-close results were `Project View valid: 14 pages, 14 navigation entries`, clean `issuectl doctor --json`, clean `git diff --check`, and `DAG valid: 2 lanes, 18 lane members; review-implementation-plan open; foundation blocked`. The DAG has no missing blockers/cycles, no deferred/untriaged lane member, no lane-assigned human review, and no product head ahead of the human implementation review.
 
 ## Limits and remaining implementation proofs
 
@@ -96,4 +96,6 @@ Still unproved: successful production GitHub OAuth/PKCE and stable numeric mappi
 
 ## Tool/sub-workflow inventory
 
-All required trials, validators and final review must complete before closure. Resolved trial/probe failures and their impact are listed in [`tool-failures.log`](tool-failures.log); none is silently counted as passing. The final independent `/llm-review` and `/assess-findings` outcome is appended below after review.
+All required trials, validators and final review completed before closure. Resolved trial/probe failures and their impact are listed in [`tool-failures.log`](tool-failures.log); none is silently counted as passing.
+
+The critical independent `/llm-review` used `claude-fable-5-1` as finder and `gpt-6-astra` as verifier. It found ten concrete candidates. Local evidence and correction resolved nine; the verifier independently refuted those fixes, found and triggered correction of one remaining stale two-user GitHub requirement, and retained only the planned SHA-stamping merge blocker. `/assess-findings` classified that blocker as confirmed/regular/high-confidence `FIX`; this result and `docs/status.md` apply it. Reports are in gitignored `history/review-apply-review-corrections.md` and `history/assessment-apply-review-corrections.{json,md}`. Model performance was committed and pushed to the central corpus at Fleetrepo commit `88f6ae2d`.

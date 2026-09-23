@@ -2,12 +2,17 @@
 created: 2026-09-23
 updated: 2026-09-23
 type: task
-status: in-progress
+status: done
 priority: high
 epic: native-agent-host-architecture
 lane: planning
 lane_seq: 80
 collision: [docs/, AGENTS.md, design-system/]
+closed: 2026-09-23
+closed_by: jari
+commits:
+- hash: b87b1aae5d6fefcd914d4f06c0e510b5ca124f60
+  summary: applied implementation review corrections
 ---
 
 # Apply implementation review corrections
@@ -32,16 +37,16 @@ Apply Jari's 2026-09-22 implementation-readiness decisions to the proposed ADRs,
 
 ## Acceptance Criteria
 
-- [ ] Rewrite ADR 0003, architecture, decisions, implementation and review material to select Go consistently; add focused primary evidence and a disposable Go socket/process walking slice; remove Rust as the proposed product runtime without falsifying historical issue evidence.
-- [ ] Update ADR 0002 and foundation/downstream briefs for stable TypeScript 7 compatibility gating and Jari's screenshot-based UI acceptance workflow.
-- [ ] Define and schedule human acceptance gates for each user-visible UI slice without duplicating issuectl's DAG or leaving non-executable statuses in lanes.
-- [ ] Update production-design/component guidance and downstream ownership for component-only interactive/repeated behavior and retirement of superseded root/canonical mock references after replacement.
-- [ ] Update contracts, examples, scenarios and design for first-four/last-four title input and the accessible manual regenerate control.
-- [ ] Update identity, auth, secret, session and native credential contracts for the one-step GitHub OAuth→web session→native `gh` HTTPS helper flow, optional Google provider, transient gateway token boundary and explicit disconnect semantics.
-- [ ] Replace the large GitHub proof campaign with the accepted focused test/smoke/visual evidence boundary while preserving cross-user security tests.
-- [ ] Add generic self-hosting documentation ownership, MVP cross-repo Fleetrepo coordination and the future 0.1 Alder-reference-cleanup trigger without filing that future issue early.
-- [ ] Update `review-implementation-plan`'s decision record/package with Jari's eight actual decisions and exact corrected revisions; keep the human gate open until this correction lands and validates.
-- [ ] Run all repository, contract, plan and reservation-aware DAG validators; leave no missing blockers/cycles, non-executable lane members or lane-assigned human review.
+- [x] Rewrite ADR 0003, architecture, decisions, implementation and review material to select Go consistently; add focused primary evidence and a disposable Go socket/process walking slice; remove Rust as the proposed product runtime without falsifying historical issue evidence.
+- [x] Update ADR 0002 and foundation/downstream briefs for stable TypeScript 7 compatibility gating and Jari's screenshot-based UI acceptance workflow.
+- [x] Define and schedule human acceptance gates for each user-visible UI slice without duplicating issuectl's DAG or leaving non-executable statuses in lanes.
+- [x] Update production-design/component guidance and downstream ownership for component-only interactive/repeated behavior and retirement of superseded root/canonical mock references after replacement.
+- [x] Update contracts, examples, scenarios and design for first-four/last-four title input and the accessible manual regenerate control.
+- [x] Update identity, auth, secret, session and native credential contracts for the one-step GitHub OAuth→web session→native `gh` HTTPS helper flow, optional Google provider, transient gateway token boundary and explicit disconnect semantics.
+- [x] Replace the large GitHub proof campaign with the accepted focused test/smoke/visual evidence boundary while preserving cross-user security tests.
+- [x] Add generic self-hosting documentation ownership, MVP cross-repo Fleetrepo coordination and the future 0.1 Alder-reference-cleanup trigger without filing that future issue early.
+- [x] Update `review-implementation-plan`'s decision record/package with Jari's eight actual decisions and exact corrected revisions; keep the human gate open until this correction lands and validates.
+- [x] Run all repository, contract, plan and reservation-aware DAG validators; leave no missing blockers/cycles, non-executable lane members or lane-assigned human review.
 
 ## Delivery
 
@@ -52,3 +57,9 @@ Record exact changed artifacts, commands, evidence and remaining implementation 
 ### 2026-09-23T06:23:41Z · @jari
 
 TypeScript 7 compatibility amendment, 2026-09-23: replace the incompatible ESLint/typescript-eslint proposal with a Biome-based formatting and linting stack if and only if stable TypeScript 7 plus Vite, React, Storybook, Vitest, Playwright, Axe, Biome and `tsc --noEmit` install and pass cleanly without forced peers, disabled checks or nightly TypeScript. Verify adequate React Hooks and JSX accessibility rule coverage; any unresolved gap blocks rather than silently downgrades.
+
+## Resolution
+
+### 2026-09-23T07:19:33Z · @jari
+
+Applied all accepted review corrections at the stamped artifact revision. Contract, plan, project, doctor, reservation-aware DAG, diff and disposable compatibility gates pass. Independent review findings were corrected or explicitly bounded. review-implementation-plan remains open for Jari’s acceptance.
