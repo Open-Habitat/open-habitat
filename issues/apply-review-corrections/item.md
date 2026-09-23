@@ -2,7 +2,7 @@
 created: 2026-09-23
 updated: 2026-09-23
 type: task
-status: open
+status: in-progress
 priority: high
 epic: native-agent-host-architecture
 lane: planning
