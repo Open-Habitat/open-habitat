@@ -2,7 +2,7 @@
 
 ## Product and environment
 
-- Product revision: `63fa7a15e6b14e8b85ba234cd49fc8690a6c9c77`.
+- Product revision: `079694adf0f9cdabddf6cc7289672d1d813a521f`.
 - Accepted implementation input: `b87b1aae5d6fefcd914d4f06c0e510b5ca124f60`.
 - Browser: Playwright 1.63.0, Google Chrome for Testing 153.0.8010.12, headless Chromium project.
 - OS: Linux 7.0.0-31-generic x86_64 GNU/Linux on the disposable development host context.

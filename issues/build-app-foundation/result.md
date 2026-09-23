@@ -3,7 +3,7 @@
 ## Revisions and scope
 
 - Accepted implementation-readiness artifact: `b87b1aae5d6fefcd914d4f06c0e510b5ca124f60`.
-- Foundation product revision: `63fa7a15e6b14e8b85ba234cd49fc8690a6c9c77`.
+- Foundation product revision: `079694adf0f9cdabddf6cc7289672d1d813a521f`.
 - Toolchain: Go 1.27.1, Node 22.23.2, npm 10.9.8, stable TypeScript 7.0.2 and Biome 2.5.14.
 - Canonical host contracts remained in `contracts/v1/`. Their accepted CG-01–CG-04 forms and CT-030–CT-034 catalogue are executable through the offline contract validator. Deterministic generation emits all ten opaque Go and TypeScript wire families plus one schema fingerprint; callers must validate wire input before narrowing an opaque family.
 
@@ -52,7 +52,7 @@ It provisions disposable HOME/Go/npm/Python/issuectl state, performs locked Go a
 - deterministic contract generation/drift, contract/plan/project validators and direct dependency license policy;
 - synthetic native and immutable VM-recipe self-tests;
 - two byte-identical package builds, checksum/manifest/provenance verification, relocated archive verification and tamper rejection;
-- `issuectl doctor --json`, `git diff --check` and final tracked-tree cleanliness.
+- `issuectl doctor --json`, `project-canon doctor`, `git diff --check` and final tree cleanliness. Project-canon was mechanically conformant; its two advisory warnings are the intentionally absent public root README and a Rust-specific `crates/` layout heuristic that does not recognize this Go module's tested `internal/core`/`internal/cli` split.
 
 The individual required package command was also run:
 
