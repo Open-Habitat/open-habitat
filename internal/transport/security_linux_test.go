@@ -64,6 +64,21 @@ func TestPeerBeforeBodyAndWrongTarget(t *testing.T) {
 		t.Fatal("wrong home accepted")
 	}
 }
+func TestSymlinkTargetRejected(t *testing.T) {
+	_, _, m, calls := fixture(t)
+	alias := filepath.Join(t.TempDir(), "alias")
+	if e := os.Symlink(m.Socket, alias); e != nil {
+		t.Fatal(e)
+	}
+	m.Socket = alias
+	if e := (Sink{testPath: true}).Deliver(context.Background(), m, "42", "sentinel-secret"); e == nil {
+		t.Fatal("symlink accepted")
+	}
+	if calls.Load() != 0 {
+		t.Fatal("symlink consumed")
+	}
+}
+
 func TestCanceledContextCannotConsume(t *testing.T) {
 	_, _, m, calls := fixture(t)
 	ctx, cancel := context.WithCancel(context.Background())
