@@ -1,13 +1,13 @@
 ---
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-23
 type: task
 status: open
 priority: normal
 epic: native-agent-host-architecture
 labels: [human-review]
 reviewer: jari
-blocked_by: ['@plan-v1-implementation']
+blocked_by: ['@plan-v1-implementation', '@apply-review-corrections']
 ---
 
 # Review technical decisions and implementation readiness with Jari
