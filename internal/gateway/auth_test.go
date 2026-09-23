@@ -1,0 +1,228 @@
+package gateway
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
+	"testing"
+	"time"
+)
+
+type fakeProvider struct {
+	calls          int
+	code, verifier string
+	token, id      string
+	err            error
+	authorization  string
+}
+
+func (f *fakeProvider) AuthorizationURL(state, challenge string) string {
+	f.authorization = "https://github.com/login/oauth/authorize?" + url.Values{"state": {state}, "code_challenge": {challenge}, "code_challenge_method": {"S256"}}.Encode()
+	return f.authorization
+}
+func (f *fakeProvider) Exchange(_ context.Context, code, verifier string) (string, string, error) {
+	f.calls++
+	f.code = code
+	f.verifier = verifier
+	return f.token, f.id, f.err
+}
+
+type fakeSink struct {
+	calls     int
+	identity  Identity
+	id, token string
+	err       error
+}
+
+func (f *fakeSink) Deliver(_ context.Context, m Identity, id, token string) error {
+	f.calls++
+	f.identity = m
+	f.id = id
+	f.token = token
+	return f.err
+}
+func fixture(t *testing.T) (http.Handler, *Auth, *fakeProvider, *fakeSink, *time.Time) {
+	t.Helper()
+	now := time.Date(2026, 9, 23, 0, 0, 0, 0, time.UTC)
+	p := &fakeProvider{token: strings.Repeat("Z", 64), id: "42"}
+	s := &fakeSink{}
+	a, e := NewAuth(OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: "https://host.test", CallbackURL: "https://host.test/auth/github/callback", Identities: []Identity{{"github", "42", 1001, "alice", "/run/native-agent-host/alice.sock"}, {"github", "43", 1002, "bob", "/run/native-agent-host/bob.sock"}}}, AuthOptions{Provider: p, Sink: s, Now: func() time.Time { return now }})
+	if e != nil {
+		t.Fatal(e)
+	}
+	return NewWithAuth("", a), a, p, s, &now
+}
+func request(h http.Handler, method, path string, cookies ...*http.Cookie) *httptest.ResponseRecorder {
+	r := httptest.NewRequest(method, "https://host.test"+path, nil)
+	for _, c := range cookies {
+		r.AddCookie(c)
+	}
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	return w
+}
+func start(t *testing.T, h http.Handler) (string, *http.Cookie) {
+	t.Helper()
+	w := request(h, "GET", "/auth/github/start")
+	if w.Code != 302 {
+		t.Fatalf("start: %d", w.Code)
+	}
+	u, e := url.Parse(w.Header().Get("Location"))
+	if e != nil {
+		t.Fatal(e)
+	}
+	return u.Query().Get("state"), w.Result().Cookies()[0]
+}
+func callback(h http.Handler, state string, c *http.Cookie) *httptest.ResponseRecorder {
+	return request(h, "GET", "/auth/github/callback?state="+url.QueryEscape(state)+"&code=synthetic-code", c)
+}
+func TestOAuthSession(t *testing.T) {
+	t.Run("PKCE, mapping, rotation, logout and redaction", func(t *testing.T) {
+		h, _, p, s, now := fixture(t)
+		state, flow := start(t, h)
+		u, _ := url.Parse(p.authorization)
+		if len(state) < 40 || u.Query().Get("code_challenge_method") != "S256" {
+			t.Fatal("PKCE/state absent")
+		}
+		w := callback(h, state, flow)
+		if w.Code != 303 || s.calls != 1 || s.identity.UID != 1001 || s.id != "42" || p.code != "synthetic-code" {
+			t.Fatalf("callback %d calls %d", w.Code, s.calls)
+		}
+		sum := sha256.Sum256([]byte(p.verifier))
+		if u.Query().Get("code_challenge") != base64.RawURLEncoding.EncodeToString(sum[:]) {
+			t.Fatal("PKCE mismatch")
+		}
+		sessionCookie := w.Result().Cookies()[1]
+		if sessionCookie.Name != cookieName || !sessionCookie.Secure || !sessionCookie.HttpOnly || sessionCookie.SameSite != http.SameSiteLaxMode || sessionCookie.Path != "/" || sessionCookie.Value == s.token {
+			t.Fatal("cookie policy")
+		}
+		for _, body := range []string{w.Body.String(), w.Header().Get("Location"), sessionCookie.Value} {
+			if strings.Contains(body, s.token) {
+				t.Fatal("token leaked")
+			}
+		}
+		if callback(h, state, flow).Code == 303 || s.calls != 1 {
+			t.Fatal("state replay")
+		}
+		info := request(h, "GET", "/auth/session", sessionCookie)
+		if info.Code != 200 {
+			t.Fatal("session missing")
+		}
+		csrf := info.Body.String()
+		if strings.Contains(csrf, s.token) || strings.Contains(csrf, s.identity.Socket) {
+			t.Fatal("session leaked")
+		}
+		r := httptest.NewRequest("POST", "https://host.test/auth/logout", nil)
+		r.AddCookie(sessionCookie)
+		r.Header.Set("Origin", "https://host.test")
+		r.Header.Set("X-Agent-Host-CSRF", extractCSRF(t, csrf))
+		logout := httptest.NewRecorder()
+		h.ServeHTTP(logout, r)
+		if logout.Code != 204 || request(h, "GET", "/auth/session", sessionCookie).Code != 401 {
+			t.Fatal("logout failed")
+		}
+		_ = now
+	})
+	t.Run("single use mismatch expiry provider error unknown mapping and partial handoff", func(t *testing.T) {
+		for _, tc := range []string{"wrong-browser", "expired", "provider-error", "unknown", "handoff-error", "error-parameter", "duplicate-code"} {
+			t.Run(tc, func(t *testing.T) {
+				h, _, p, s, now := fixture(t)
+				state, c := start(t, h)
+				switch tc {
+				case "wrong-browser":
+					c.Value = "attacker"
+				case "expired":
+					*now = now.Add(6 * time.Minute)
+				case "provider-error":
+					p.err = errors.New(strings.Repeat("Z", 64))
+				case "unknown":
+					p.id = "44"
+				case "handoff-error":
+					s.err = errors.New(strings.Repeat("Z", 64))
+				}
+				var w *httptest.ResponseRecorder
+				if tc == "error-parameter" {
+					w = request(h, "GET", "/auth/github/callback?state="+state+"&error=denied", c)
+				} else if tc == "duplicate-code" {
+					w = request(h, "GET", "/auth/github/callback?state="+state+"&code=x&code=y", c)
+				} else {
+					w = callback(h, state, c)
+				}
+				if w.Code == 303 || request(h, "GET", "/auth/session", w.Result().Cookies()...).Code == 200 || strings.Contains(w.Body.String(), strings.Repeat("Z", 64)) {
+					t.Fatal("fail open or secret leaked")
+				}
+				if callback(h, state, c).Code == 303 || s.calls > 1 {
+					t.Fatal("retried after failure")
+				}
+				if tc == "wrong-browser" || tc == "expired" || tc == "error-parameter" || tc == "duplicate-code" {
+					if p.calls != 0 {
+						t.Fatal("exchange after invalid callback")
+					}
+				}
+			})
+		}
+	})
+	t.Run("cross mapping hints ignored", func(t *testing.T) {
+		h, _, _, s, _ := fixture(t)
+		state, c := start(t, h)
+		w := request(h, "GET", "/auth/github/callback?state="+state+"&code=x&uid=1002", c)
+		if w.Code == 303 || s.calls != 0 {
+			t.Fatal("accepted browser UID")
+		}
+	})
+	t.Run("csrf origin and expiry", func(t *testing.T) {
+		h, a, _, _, now := fixture(t)
+		state, c := start(t, h)
+		w := callback(h, state, c)
+		sid := w.Result().Cookies()[1]
+		sess := request(h, "GET", "/auth/session", sid)
+		csrf := extractCSRF(t, sess.Body.String())
+		for _, tc := range []struct {
+			origin, csrf string
+			want         int
+		}{{"", csrf, 403}, {"https://evil.test", csrf, 403}, {"https://host.test", "wrong", 403}, {"https://host.test", csrf, 204}} {
+			r := httptest.NewRequest("POST", "https://host.test/auth/logout", nil)
+			r.AddCookie(sid)
+			if tc.origin != "" {
+				r.Header.Set("Origin", tc.origin)
+			}
+			r.Header.Set("X-Agent-Host-CSRF", tc.csrf)
+			out := httptest.NewRecorder()
+			h.ServeHTTP(out, r)
+			if out.Code != tc.want {
+				t.Fatalf("logout %d want %d", out.Code, tc.want)
+			}
+		}
+		state, c = start(t, h)
+		w = callback(h, state, c)
+		sid = w.Result().Cookies()[1]
+		*now = now.Add(8 * time.Hour)
+		if request(h, "GET", "/auth/session", sid).Code != 401 {
+			t.Fatal("idle expiry")
+		}
+		_ = a
+	})
+	t.Run("no optional provider request without selection", func(t *testing.T) {
+		h, _, p, _, _ := fixture(t)
+		w := request(h, "GET", "/auth/google/start")
+		if w.Code != 404 || p.calls != 0 || p.authorization != "" {
+			t.Fatal("implicit provider contact")
+		}
+	})
+}
+func extractCSRF(t *testing.T, body string) string {
+	t.Helper()
+	var v struct {
+		CSRF string `json:"csrf"`
+	}
+	if e := json.Unmarshal([]byte(body), &v); e != nil || v.CSRF == "" {
+		t.Fatal("no csrf")
+	}
+	return v.CSRF
+}

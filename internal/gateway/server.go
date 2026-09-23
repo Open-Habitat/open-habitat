@@ -10,9 +10,17 @@ import (
 	"strings"
 )
 
-type Server struct{ staticDir string }
+type Server struct {
+	staticDir string
+	auth      *Auth
+}
 
 func New(staticDir string) http.Handler { return (&Server{staticDir: staticDir}).routes() }
+
+// NewWithAuth enables the gateway auth core; nil keeps the foundation fail-closed.
+func NewWithAuth(staticDir string, auth *Auth) http.Handler {
+	return (&Server{staticDir: staticDir, auth: auth}).routes()
+}
 func (s *Server) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
@@ -26,6 +34,9 @@ func (s *Server) routes() http.Handler {
 	})
 	mux.HandleFunc("/events", func(w http.ResponseWriter, _ *http.Request) { http.NotFound(w, nil) })
 	mux.HandleFunc("/auth/", func(w http.ResponseWriter, _ *http.Request) { http.NotFound(w, nil) })
+	if s.auth != nil {
+		s.auth.routes(mux)
+	}
 	mux.HandleFunc("/", s.ui)
 	return mux
 }
