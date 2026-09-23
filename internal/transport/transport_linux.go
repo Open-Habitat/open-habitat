@@ -1,19 +1,20 @@
 //go:build linux
 
-// Package transport implements the single-use, local gateway-to-daemon token handoff.
-// It is not a general HTTP API or a credential store.
+// Package transport implements the bounded HTTP/1.1 native credential handoff
+// on the daemon's systemd-created per-user Unix socket.
 package transport
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/rand"
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -27,10 +28,12 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const maxFrame = 8192
+const Path = "/internal/v1/native-credentials/github"
+const maxBody = 8192
 const maxToken = 4096
 const maxField = 128
 const deadline = 5 * time.Second
+const maxHeaders = 2048
 
 var denied = errors.New("native token handoff failed")
 
@@ -44,7 +47,7 @@ type request struct {
 	Token    string `json:"token"`
 }
 
-// Config comes only from the daemon's trusted local configuration, never the socket.
+// Config comes only from trusted local configuration, never the socket.
 type Config struct {
 	GatewayUID int    `json:"gateway_uid"`
 	UID        int    `json:"uid"`
@@ -75,8 +78,6 @@ func validate(c Config, testPath bool) error {
 	}
 	return nil
 }
-
-// NewSink only accepts a production socket from the fixed gateway mapping.
 func NewSink() gateway.TokenSink { return Sink{} }
 
 type Sink struct {
@@ -92,13 +93,10 @@ func (s Sink) Deliver(ctx context.Context, m gateway.Identity, subject, token st
 	if _, e := rand.Read(nonce[:]); e != nil {
 		return denied
 	}
-	r := request{Version: 1, Nonce: hex.EncodeToString(nonce[:]), Provider: m.Provider, Subject: subject, UID: m.UID, Username: m.Username, Token: token}
-	body, e := json.Marshal(r)
-	if e != nil || len(body) > maxFrame {
+	body, e := json.Marshal(request{1, hex.EncodeToString(nonce[:]), m.Provider, subject, m.UID, m.Username, token})
+	if e != nil || len(body) > maxBody {
 		return denied
 	}
-	// Reject a changed or symlinked target before dialing; the peer UID is
-	// checked again on the connected descriptor, not inferred from the path.
 	if s.dial == nil {
 		info, e := os.Lstat(m.Socket)
 		if e != nil || info.Mode()&os.ModeSocket == 0 || info.Mode()&os.ModeSymlink != 0 {
@@ -110,6 +108,9 @@ func (s Sink) Deliver(ctx context.Context, m gateway.Identity, subject, token st
 		dial = func(ctx context.Context, p string) (net.Conn, error) {
 			return (&net.Dialer{Timeout: deadline}).DialContext(ctx, "unix", p)
 		}
+	}
+	if ctx.Err() != nil {
+		return denied
 	}
 	conn, e := dial(ctx, m.Socket)
 	if e != nil {
@@ -125,18 +126,29 @@ func (s Sink) Deliver(ctx context.Context, m gateway.Identity, subject, token st
 		return denied
 	}
 	defer stop()
-	if e = writeFrame(conn, body); e != nil {
+	req, e := http.NewRequestWithContext(ctx, http.MethodPost, "http://unix"+Path, bytes.NewReader(body))
+	if e != nil {
 		return denied
 	}
-	if uc.CloseWrite() != nil {
+	req.Header.Set("Content-Type", "application/json")
+	req.Close = true
+	if req.Write(conn) != nil {
 		return denied
 	}
-	var response [1]byte
-	if _, e = io.ReadFull(conn, response[:]); e != nil || response[0] != 1 {
+	bounded := &io.LimitedReader{R: conn, N: maxHeaders + 1024}
+	reader := bufio.NewReader(bounded)
+	res, e := http.ReadResponse(reader, req)
+	if e != nil {
+		return denied
+	}
+	defer res.Body.Close()
+	// A 204 is the only success. HTTP forbids a body on 204; reject framing
+	// that attempts to disguise one rather than consuming untrusted text.
+	if res.ProtoMajor != 1 || res.ProtoMinor != 1 || res.StatusCode != http.StatusNoContent || res.ContentLength != 0 || len(res.TransferEncoding) != 0 || len(res.Header.Values("Content-Length")) != 0 {
 		return denied
 	}
 	var tail [1]byte
-	if n, e := conn.Read(tail[:]); n != 0 || e != io.EOF {
+	if n, err := reader.Read(tail[:]); n != 0 || err != io.EOF || bounded.N == 0 {
 		return denied
 	}
 	return nil
@@ -167,41 +179,7 @@ func setDeadline(ctx context.Context, c net.Conn) (func() bool, error) {
 	stop := context.AfterFunc(ctx, func() { _ = c.SetDeadline(time.Now()) })
 	return stop, ctx.Err()
 }
-func writeFrame(w io.Writer, b []byte) error {
-	var length [4]byte
-	binary.BigEndian.PutUint32(length[:], uint32(len(b)))
-	for _, part := range [][]byte{length[:], b} {
-		for len(part) > 0 {
-			n, e := w.Write(part)
-			if e != nil {
-				return e
-			}
-			if n <= 0 {
-				return io.ErrShortWrite
-			}
-			part = part[n:]
-		}
-	}
-	return nil
-}
-func readFrame(r io.Reader) (request, error) {
-	var length [4]byte
-	if _, e := io.ReadFull(r, length[:]); e != nil {
-		return request{}, denied
-	}
-	n := binary.BigEndian.Uint32(length[:])
-	if n == 0 || n > maxFrame {
-		return request{}, denied
-	}
-	body := make([]byte, int(n))
-	if _, e := io.ReadFull(r, body); e != nil {
-		return request{}, denied
-	}
-	var tail [1]byte
-	if count, e := r.Read(tail[:]); count != 0 || e != io.EOF {
-		return request{}, denied
-	}
-	// Inspect keys before decoding: encoding/json otherwise accepts duplicate keys.
+func decode(body []byte) (request, error) {
 	keys := json.NewDecoder(bytes.NewReader(body))
 	t, e := keys.Token()
 	if e != nil || t != json.Delim('{') {
@@ -239,7 +217,7 @@ func readFrame(r io.Reader) (request, error) {
 	if d.Decode(&v) != nil || d.Decode(new(any)) != io.EOF {
 		return request{}, denied
 	}
-	if v.Version != 1 || len(v.Nonce) != 32 || len(v.Provider) > maxField || len(v.Username) > maxField || !validSubject(v.Subject) || len(v.Token) == 0 || len(v.Token) > maxToken {
+	if v.Version != 1 || len(v.Nonce) != 32 || v.Provider != "github" || len(v.Username) > maxField || !validSubject(v.Subject) || len(v.Token) == 0 || len(v.Token) > maxToken {
 		return request{}, denied
 	}
 	if b, e := hex.DecodeString(v.Nonce); e != nil || len(b) != 16 {
@@ -248,8 +226,7 @@ func readFrame(r io.Reader) (request, error) {
 	return v, nil
 }
 
-// Consumer receives the token only after peer, local identity, frame and mapping checks.
-// It must not retain or log the token. There is no native gh consumer in phase 2A.
+// Consumer receives the token only after peer, identity, framing and mapping checks.
 type Consumer func(context.Context, string) error
 type Server struct {
 	cfg      Config
@@ -257,7 +234,6 @@ type Server struct {
 	mu       sync.Mutex
 	seen     map[string]struct{}
 	testPath bool
-	slots    chan struct{}
 }
 
 func NewServer(cfg Config, consume Consumer) (*Server, error) { return newServer(cfg, consume, false) }
@@ -265,11 +241,63 @@ func newServer(cfg Config, consume Consumer, testPath bool) (*Server, error) {
 	if consume == nil || validate(cfg, testPath) != nil {
 		return nil, denied
 	}
-	return &Server{cfg: cfg, consume: consume, seen: make(map[string]struct{}), testPath: testPath, slots: make(chan struct{}, 64)}, nil
+	return &Server{cfg: cfg, consume: consume, seen: make(map[string]struct{}), testPath: testPath}, nil
 }
 
-// Serve accepts a pre-opened systemd socket. It never creates or unlinks a socket.
+type peerKey struct{}
+
+// Handler can be mounted on the same daemon ServeMux as future workspace routes.
+// Its peer context is installed by Serve, not derived from HTTP headers.
+func (s *Server) Handler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Content-Type", "application/json")
+		reject := func() {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = io.WriteString(w, `{"schema_version":1,"error":"handoff_denied"}`)
+		}
+		if r.Context().Value(peerKey{}) != s.cfg.GatewayUID || validate(s.cfg, s.testPath) != nil {
+			reject()
+			return
+		}
+		if r.ProtoMajor != 1 || r.ProtoMinor != 1 || r.Method != http.MethodPost || r.RequestURI != Path || r.URL.Path != Path || r.URL.RawQuery != "" || r.Header.Get("Content-Type") != "application/json" || len(r.Header.Values("Content-Type")) != 1 || len(r.TransferEncoding) != 0 || r.ContentLength <= 0 || r.ContentLength > maxBody || len(r.Header.Values("Content-Length")) != 1 {
+			reject()
+			return
+		}
+		body, e := io.ReadAll(io.LimitReader(r.Body, maxBody+1))
+		if e != nil || int64(len(body)) != r.ContentLength || len(body) > maxBody {
+			reject()
+			return
+		}
+		v, e := decode(body)
+		if e != nil || v.Provider != s.cfg.Provider || v.Subject != s.cfg.Subject || v.UID != s.cfg.UID || v.Username != s.cfg.Username {
+			reject()
+			return
+		}
+		s.mu.Lock()
+		_, found := s.seen[v.Nonce]
+		if found || len(s.seen) >= 4096 {
+			s.mu.Unlock()
+			reject()
+			return
+		}
+		s.seen[v.Nonce] = struct{}{}
+		s.mu.Unlock()
+		if s.consume(r.Context(), v.Token) != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+}
+
+// Serve accepts only a pre-opened listener; no bind or unlink occurs here.
 func (s *Server) Serve(ctx context.Context, ln *net.UnixListener) error {
+	return s.ServeMux(ctx, ln, nil)
+}
+
+// ServeMux mounts the handoff on a caller-supplied mux, allowing later routes.
+func (s *Server) ServeMux(ctx context.Context, ln *net.UnixListener, mux *http.ServeMux) error {
 	if ln == nil {
 		return denied
 	}
@@ -287,62 +315,109 @@ func (s *Server) Serve(ctx context.Context, ln *net.UnixListener) error {
 			return denied
 		}
 	}
-	// Never trust a listener at a different target, even if supplied by the caller.
+	if mux == nil {
+		mux = http.NewServeMux()
+	}
+	mux.Handle(Path, s.Handler())
+	srv := &http.Server{Handler: mux, MaxHeaderBytes: maxHeaders, ReadHeaderTimeout: deadline, ReadTimeout: deadline, WriteTimeout: deadline, IdleTimeout: deadline, ConnContext: func(c context.Context, n net.Conn) context.Context {
+		if u, ok := n.(*slotConn); ok {
+			return context.WithValue(c, peerKey{}, peerUID(u.UnixConn))
+		}
+		return c
+	}}
+	srv.SetKeepAlivesEnabled(false)
+	stop := context.AfterFunc(ctx, func() { _ = srv.Close() })
+	defer stop()
+	err := srv.Serve(&guardListener{UnixListener: ln, cfg: s.cfg, ctx: ctx, slots: make(chan struct{}, 64)})
+	if ctx.Err() != nil {
+		return nil
+	}
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+	return denied
+}
+
+type guardListener struct {
+	*net.UnixListener
+	cfg   Config
+	ctx   context.Context
+	slots chan struct{}
+}
+
+func (l *guardListener) Accept() (net.Conn, error) {
 	for {
-		_ = ln.SetDeadline(time.Now().Add(time.Second))
-		conn, e := ln.AcceptUnix()
+		if l.ctx.Err() != nil {
+			return nil, net.ErrClosed
+		}
+		_ = l.UnixListener.SetDeadline(time.Now().Add(time.Second))
+		c, e := l.UnixListener.AcceptUnix()
 		if e != nil {
-			if ctx.Err() != nil {
-				return nil
-			}
 			if ne, ok := e.(net.Error); ok && ne.Timeout() {
 				continue
 			}
-			return denied
+			return nil, e
+		}
+		if peerUID(c) != l.cfg.GatewayUID {
+			_ = c.Close()
+			continue
 		}
 		select {
-		case s.slots <- struct{}{}:
-			go func() { defer func() { <-s.slots }(); s.handle(ctx, conn) }()
+		case l.slots <- struct{}{}:
+			return &slotConn{UnixConn: c, release: func() { <-l.slots }}, nil
 		default:
-			_ = conn.Close()
+			_ = c.Close()
 		}
 	}
 }
-func (s *Server) handle(ctx context.Context, c *net.UnixConn) {
-	defer c.Close()
-	raw, e := c.SyscallConn()
-	if e != nil {
-		return
-	}
-	var peer *unix.Ucred
-	var pe error
-	if raw.Control(func(fd uintptr) { peer, pe = unix.GetsockoptUcred(int(fd), unix.SOL_SOCKET, unix.SO_PEERCRED) }) != nil || pe != nil || peer == nil || int(peer.Uid) != s.cfg.GatewayUID {
-		return
-	}
-	if validate(s.cfg, s.testPath) != nil {
-		return
-	}
-	stop, e := setDeadline(ctx, c)
-	if e != nil {
-		return
-	}
-	defer stop()
-	v, e := readFrame(c)
-	if e != nil {
-		return
-	}
-	if v.Provider != s.cfg.Provider || v.Subject != s.cfg.Subject || v.UID != s.cfg.UID || v.Username != s.cfg.Username {
-		return
-	}
-	s.mu.Lock()
-	if _, found := s.seen[v.Nonce]; found || len(s.seen) >= 4096 {
-		s.mu.Unlock()
-		return
-	}
-	s.seen[v.Nonce] = struct{}{}
-	s.mu.Unlock()
-	if s.consume(ctx, v.Token) != nil {
-		return
-	}
-	_, _ = io.Copy(c, bytes.NewReader([]byte{1}))
+
+type slotConn struct {
+	*net.UnixConn
+	once    sync.Once
+	release func()
+	reader  io.Reader
 }
+
+// net/http coalesces duplicate equal Content-Length fields before a handler
+// can inspect them. Inspect the bounded wire header first, on the HTTP reader
+// goroutine, and replay its exact bytes to net/http's parser.
+func (c *slotConn) Read(p []byte) (int, error) {
+	if c.reader == nil {
+		br := bufio.NewReaderSize(c.UnixConn, maxHeaders)
+		header := make([]byte, 0, 512)
+		for !bytes.HasSuffix(header, []byte("\r\n\r\n")) {
+			if len(header) >= maxHeaders {
+				return 0, denied
+			}
+			b, e := br.ReadByte()
+			if e != nil {
+				return 0, e
+			}
+			header = append(header, b)
+		}
+		lines := bytes.Split(header, []byte("\r\n"))
+		cl := 0
+		te := 0
+		for _, line := range lines[1 : len(lines)-2] {
+			if len(line) == 0 || line[0] == ' ' || line[0] == '\t' {
+				return 0, denied
+			}
+			name, _, ok := bytes.Cut(line, []byte(":"))
+			if !ok {
+				return 0, denied
+			}
+			if bytes.EqualFold(name, []byte("Content-Length")) {
+				cl++
+			}
+			if bytes.EqualFold(name, []byte("Transfer-Encoding")) {
+				te++
+			}
+		}
+		if cl > 1 || te > 1 || cl > 0 && te > 0 {
+			return 0, denied
+		}
+		c.reader = io.MultiReader(bytes.NewReader(header), br)
+	}
+	return c.reader.Read(p)
+}
+func (c *slotConn) Close() error { e := c.UnixConn.Close(); c.once.Do(c.release); return e }
