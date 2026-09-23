@@ -2,7 +2,7 @@
 created: 2026-09-21
 updated: 2026-09-23
 type: task
-status: in-progress
+status: testing
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
@@ -27,12 +27,12 @@ workspace registry, credential broker or speculative cache. Desktop first, one s
 
 ## Acceptance Criteria
 
-- [ ] Implement accepted tokens/styles and the primitives needed by navigation and conversation: controls, inputs, menus/dialogs, banners/status, with typed interfaces.
-- [ ] Implement the initial product components needed by the next slices; keep native/network behavior in the application layer.
-- [ ] Build an executable catalog from those same components, covering representative content and all relevant interaction states.
-- [ ] Verify semantic controls, keyboard/focus handling, non-color state, contrast and reduced motion with proportionate interaction/accessibility checks.
-- [ ] Make representative visual review available through the accepted preview method; document changes against the approved specification.
-- [ ] Clearly distinguish production components from retained delivery references and update `docs/design-system.md`; later features extend this same library.
+- [x] Implement accepted tokens/styles and the primitives needed by navigation and conversation: controls, inputs, menus/dialogs, banners/status, with typed interfaces.
+- [x] Implement the initial product components needed by the next slices; keep native/network behavior in the application layer.
+- [x] Build an executable catalog from those same components, covering representative content and all relevant interaction states.
+- [x] Verify semantic controls, keyboard/focus handling, non-color state, contrast and reduced motion with proportionate interaction/accessibility checks.
+- [x] Make representative visual review available through the accepted preview method; document changes against the approved specification.
+- [x] Clearly distinguish production components from retained delivery references and update `docs/design-system.md`; later features extend this same library.
 
 ## Delivery and verification
 
