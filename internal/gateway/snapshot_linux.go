@@ -10,10 +10,10 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
+	"github.com/maintainer/native-agent-host/internal/udssecure"
 	"golang.org/x/sys/unix"
 )
 
@@ -60,8 +60,7 @@ func (a *Auth) snapshot(w http.ResponseWriter, r *http.Request) {
 	}
 	dial := a.snapshotDial
 	if dial == nil {
-		info, err := os.Lstat(target.Socket)
-		if err != nil || info.Mode()&os.ModeSocket == 0 || info.Mode()&os.ModeSymlink != 0 {
+		if udssecure.Mapped(target.Socket, target.UID) != nil {
 			safe(w, 503, "daemon_unavailable")
 			return
 		}
@@ -80,7 +79,7 @@ func (a *Auth) snapshot(w http.ResponseWriter, r *http.Request) {
 	if peer == nil {
 		peer = daemonUID
 	}
-	if !ok || peer(uc) != target.UID {
+	if !ok || (a.snapshotPeerUID == nil && a.snapshotDial == nil && (peer(uc) != 0 || udssecure.Mapped(target.Socket, target.UID) != nil)) || ((a.snapshotPeerUID != nil || a.snapshotDial != nil) && peer(uc) != target.UID) {
 		safe(w, 503, "daemon_unavailable")
 		return
 	}

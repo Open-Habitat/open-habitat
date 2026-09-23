@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/maintainer/native-agent-host/internal/gateway"
+	"github.com/maintainer/native-agent-host/internal/udssecure"
 	"golang.org/x/sys/unix"
 )
 
@@ -102,11 +103,8 @@ func (s Sink) Deliver(ctx context.Context, m gateway.Identity, subject, token st
 	if e != nil || len(body) > maxBody {
 		return denied
 	}
-	if s.dial == nil {
-		info, e := os.Lstat(m.Socket)
-		if e != nil || info.Mode()&os.ModeSocket == 0 || info.Mode()&os.ModeSymlink != 0 {
-			return denied
-		}
+	if s.dial == nil && !s.testPath && udssecure.Mapped(m.Socket, m.UID) != nil {
+		return denied
 	}
 	dial := s.dial
 	if dial == nil {
@@ -123,7 +121,10 @@ func (s Sink) Deliver(ctx context.Context, m gateway.Identity, subject, token st
 	}
 	defer conn.Close()
 	uc, ok := conn.(*net.UnixConn)
-	if !ok || peerUID(uc) != m.UID {
+	// PID 1 created this systemd listener as root. The daemon UID is
+	// attested by the root-controlled pathname and socket owner, not by the
+	// listener's SO_PEERCRED (which remains 0 after fd handoff).
+	if !ok || (s.dial == nil && !s.testPath && (peerUID(uc) != 0 || udssecure.Mapped(m.Socket, m.UID) != nil)) || ((s.dial != nil || s.testPath) && peerUID(uc) != m.UID) {
 		return denied
 	}
 	stop, e := setDeadline(ctx, conn)
@@ -316,6 +317,11 @@ func (s *Server) ServeMux(ctx context.Context, ln *net.UnixListener, mux *http.S
 		return denied
 	}
 	if checkListener(s.cfg, ln, s.testPath, false) != nil {
+		if queued, ok := startupConnections.LoadAndDelete(ln); ok {
+			for _, c := range queued.([]*net.UnixConn) {
+				_ = c.Close()
+			}
+		}
 		return denied
 	}
 	if mux == nil {
@@ -341,7 +347,17 @@ func (s *Server) ServeMux(ctx context.Context, ln *net.UnixListener, mux *http.S
 			<-shutdownDone
 		}
 	}()
-	err := srv.Serve(&guardListener{UnixListener: ln, cfg: s.cfg, ctx: ctx, slots: make(chan struct{}, 64)})
+	pending, _ := startupConnections.LoadAndDelete(ln)
+	guard := &guardListener{UnixListener: ln, cfg: s.cfg, ctx: ctx, slots: make(chan struct{}, 64)}
+	if pending != nil {
+		guard.pending = pending.([]*net.UnixConn)
+		defer func() {
+			for _, c := range guard.pending {
+				_ = c.Close()
+			}
+		}()
+	}
+	err := srv.Serve(guard)
 	if ctx.Err() != nil {
 		return nil
 	}
@@ -350,6 +366,11 @@ func (s *Server) ServeMux(ctx context.Context, ln *net.UnixListener, mux *http.S
 	}
 	return denied
 }
+
+// A real socket activation starts with a gateway connection already queued.
+// Preserve those verified peers until ServeMux takes over the listener; the
+// startup challenge must never consume the triggering request.
+var startupConnections sync.Map // *net.UnixListener -> []*net.UnixConn
 
 // ValidateListener probes that the configured pathname reaches the supplied
 // listener and verifies its ownership and mode before serving.
@@ -372,11 +393,20 @@ func checkListener(cfg Config, ln *net.UnixListener, testPath, probePath bool) e
 		return denied
 	}
 	if probePath {
+		var queued []*net.UnixConn
+		verified := false
+		defer func() {
+			if !verified {
+				for _, c := range queued {
+					_ = c.Close()
+				}
+			}
+		}()
 		// Socket fd inode differs from pathname inode on Linux. Prove this
 		// pathname reaches the supplied listener by a bounded connect/accept.
-		_ = ln.SetDeadline(time.Now().Add(250 * time.Millisecond))
+		_ = ln.SetDeadline(time.Now().Add(time.Second))
 		defer ln.SetDeadline(time.Time{})
-		probe, e := net.DialTimeout("unix", cfg.Socket, 250*time.Millisecond)
+		probe, e := net.DialTimeout("unix", cfg.Socket, time.Second)
 		if e != nil {
 			return denied
 		}
@@ -385,20 +415,48 @@ func checkListener(cfg Config, ln *net.UnixListener, testPath, probePath bool) e
 		if _, e = rand.Read(challenge[:]); e != nil {
 			return denied
 		}
-		_ = probe.SetDeadline(time.Now().Add(250 * time.Millisecond))
+		_ = probe.SetDeadline(time.Now().Add(time.Second))
 		if _, e = probe.Write(challenge[:]); e != nil {
 			return denied
 		}
-		accepted, e := ln.AcceptUnix()
-		if e != nil {
-			return denied
+		for {
+			accepted, e := ln.AcceptUnix()
+			if e != nil {
+				return denied
+			}
+			peer := peerUID(accepted)
+			if peer == cfg.GatewayUID && peer != cfg.UID {
+				if len(queued) == 64 {
+					_ = accepted.Close()
+					return denied
+				}
+				queued = append(queued, accepted)
+				continue
+			}
+			if peer != cfg.UID {
+				_ = accepted.Close()
+				return denied
+			}
+			_ = accepted.SetReadDeadline(time.Now().Add(time.Second))
+			var response [16]byte
+			_, e = io.ReadFull(accepted, response[:])
+			_ = accepted.Close()
+			if e != nil || response != challenge {
+				return denied
+			}
+			break
 		}
-		defer accepted.Close()
-		_ = accepted.SetReadDeadline(time.Now().Add(250 * time.Millisecond))
-		var response [16]byte
-		if _, e = io.ReadFull(accepted, response[:]); e != nil || response != challenge {
-			return denied
+		if !testPath {
+			stat, ok := path.Sys().(*syscall.Stat_t)
+			if !ok || int(stat.Uid) != cfg.UID || path.Mode().Perm() != 0660 {
+				return denied
+			}
 		}
+		if len(queued) > 0 {
+			startupConnections.Store(ln, queued)
+		}
+		verified = true
+		return nil
 	}
 	if !testPath {
 		stat, ok := path.Sys().(*syscall.Stat_t)
@@ -411,9 +469,10 @@ func checkListener(cfg Config, ln *net.UnixListener, testPath, probePath bool) e
 
 type guardListener struct {
 	*net.UnixListener
-	cfg   Config
-	ctx   context.Context
-	slots chan struct{}
+	cfg     Config
+	ctx     context.Context
+	slots   chan struct{}
+	pending []*net.UnixConn
 }
 
 func (l *guardListener) Accept() (net.Conn, error) {
@@ -421,8 +480,15 @@ func (l *guardListener) Accept() (net.Conn, error) {
 		if l.ctx.Err() != nil {
 			return nil, net.ErrClosed
 		}
-		_ = l.UnixListener.SetDeadline(time.Now().Add(time.Second))
-		c, e := l.UnixListener.AcceptUnix()
+		var c *net.UnixConn
+		var e error
+		if len(l.pending) > 0 {
+			c = l.pending[0]
+			l.pending = l.pending[1:]
+		} else {
+			_ = l.UnixListener.SetDeadline(time.Now().Add(time.Second))
+			c, e = l.UnixListener.AcceptUnix()
+		}
 		if e != nil {
 			if ne, ok := e.(net.Error); ok && ne.Timeout() {
 				continue

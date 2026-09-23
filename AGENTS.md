@@ -132,6 +132,9 @@ including locked/offline-after-fetch npm installation, generated drift,
 reproducible packaging and a clean-tree assertion. For focused development use
 `npm run dev --prefix web -- --host 127.0.0.1`,
 `npm run storybook --prefix web -- --no-open`, or the package-level test commands
-above. A passing foundation demonstrates only the shell, boundaries and fixtures;
-it does not demonstrate real OAuth, Unix-user routing, Pi control, histories,
-systemd isolation or deployment.
+above. The clean gate's offline VM self-test demonstrates only recipe validity.
+The explicit `./scripts/vm-test.sh two-user-routing --json` boots a private guest
+and proves actual product OAuth/session, per-UID systemd UDS routing, native-gh
+adapter and workspace snapshots against guest-local synthetic fixtures. It does
+not prove real GitHub credentials, Pi control, histories, browser visuals,
+live-host isolation or deployment.

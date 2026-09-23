@@ -11,9 +11,9 @@ PY
   else printf 'error: %s\n' "$2" >&2; fi
   exit "$3"
 }
-[[ $# -eq 1 || ( $# -eq 2 && ${2:-} == --json ) ]] || fail invalid_arguments 'Expected self-test|systemd-self-test [--json]' 1
+[[ $# -eq 1 || ( $# -eq 2 && ${2:-} == --json ) ]] || fail invalid_arguments 'Expected self-test|systemd-self-test|two-user-routing [--json]' 1
 [[ ${2:-} == --json ]] && json=true
-[[ $scenario == self-test || $scenario == systemd-self-test ]] || fail invalid_scenario 'Expected self-test or systemd-self-test' 1
+[[ $scenario == self-test || $scenario == systemd-self-test || $scenario == two-user-routing ]] || fail invalid_scenario 'Expected self-test, systemd-self-test or two-user-routing' 1
 # Treat the recipe as data, never source executable text.
 image_url= image_sha= image_arch=
 while IFS= read -r line || [[ -n $line ]]; do
@@ -75,20 +75,73 @@ fi
 [[ $(stat -c %s "$image") -le 2147483648 ]] || fail invalid_image_cache 'Cached image exceeds 2 GiB' 1
 echo "$image_sha  $image" | sha256sum -c --status || fail image_checksum_mismatch 'Cached image does not match pinned SHA-256' 1
 printf 'instance-id: synthetic-systemd-fixture\nlocal-hostname: fixture-vm\n' > "$run/meta-data"
+seed_file=/fixture/cloud-init.yaml
+binary_sha= product_commit=
+if [[ $scenario == two-user-routing ]]; then
+  command -v go >/dev/null || fail missing_go 'Go is required to build product fixture' 2
+  command -v openssl >/dev/null || fail missing_openssl 'OpenSSL is required for fixture TLS' 2
+  product_commit=$(git -C "$repo" rev-parse HEAD)
+  (cd "$repo" && CGO_ENABLED=0 go build -trimpath -o "$run/native-agent-host" ./cmd/native-agent-host) || fail product_build_failed 'Could not build product binary' 2
+  binary_sha=$(sha256sum "$run/native-agent-host" | cut -d' ' -f1)
+  python3 "$repo/test/vm/product-fixture.py" "$run" "$run/native-agent-host" || fail invalid_product_fixture 'Could not render private product seed' 2
+  seed_file=/run-data/product-cloud-init.yaml
+  if ! timeout -k 5s 60s podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --tmpfs /tmp:rw,size=64m --mount "type=bind,src=$run,dst=/run-data" "$image_id" genisoimage -quiet -R -V PRODUCT -o /run-data/product.iso /run-data/native-agent-host; then fail product_iso_failed 'Could not seal read-only product ISO' 2; fi
+  if ! podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --tmpfs /tmp:rw,size=32m --mount "type=bind,src=$run,dst=/run-data,ro=true" "$image_id" cloud-init schema --config-file "$seed_file" >/dev/null 2>&1; then fail invalid_product_fixture 'Product cloud-init schema invalid' 1; fi
+fi
 # Seed and writable overlay are private to this invocation.
-if ! timeout -k 5s 60s podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --tmpfs /tmp:rw,size=32m --mount "type=bind,src=$repo/test/vm,dst=/fixture,ro=true" --mount "type=bind,src=$run,dst=/run-data" "$image_id" cloud-localds /run-data/seed.img /fixture/cloud-init.yaml /run-data/meta-data; then fail seed_failed 'cloud-localds failed' 2; fi
+if ! timeout -k 5s 60s podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --tmpfs /tmp:rw,size=128m --mount "type=bind,src=$repo/test/vm,dst=/fixture,ro=true" --mount "type=bind,src=$run,dst=/run-data" "$image_id" cloud-localds /run-data/seed.img "$seed_file" /run-data/meta-data; then fail seed_failed 'cloud-localds failed' 2; fi
 start=$(date +%s)
 # All VM devices are emulated; no KVM, USB or guest/host shared filesystem.
 # QEMU user-mode DHCP is required by cloud-init, but the container has --network=none
 # and restrict=on prevents guest forwarding beyond the emulated subnet.
 # Serial is capped at 2 MiB; bounded process lifetime and overlay allocation.
 set +e
-timeout -k 10s 600s podman run --rm --name "vm-fixture-$$" --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --pids-limit=256 --memory=4g --cpus=2 --mount "type=bind,src=$cache,dst=/cache,ro=true" --mount "type=bind,src=$run,dst=/run-data" "$image_id" sh -c 'qemu-img create -q -f qcow2 -F qcow2 -b /cache/noble-server-cloudimg-amd64.img /run-data/overlay.qcow2 && exec qemu-system-x86_64 -accel tcg -machine q35 -m 2048 -smp 2 -display none -monitor none -serial stdio -no-reboot -nic user,model=virtio-net-pci,restrict=on -drive file=/run-data/overlay.qcow2,if=virtio,format=qcow2 -drive file=/run-data/seed.img,if=virtio,format=raw,readonly=on' 2>&1 | head -c 2097152 > "$run/serial.log"
+timeout -k 10s 600s podman run --rm --name "vm-fixture-$$" --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --pids-limit=256 --memory=4g --cpus=2 --mount "type=bind,src=$cache,dst=/cache,ro=true" --mount "type=bind,src=$run,dst=/run-data" "$image_id" sh -c 'qemu-img create -q -f qcow2 -F qcow2 -b /cache/noble-server-cloudimg-amd64.img /run-data/overlay.qcow2 && { set --; if test -f /run-data/product.iso; then set -- -drive file=/run-data/product.iso,media=cdrom,readonly=on; fi; exec qemu-system-x86_64 -accel tcg -machine q35 -m 2048 -smp 2 -display none -monitor none -serial stdio -no-reboot -nic user,model=virtio-net-pci,restrict=on -drive file=/run-data/overlay.qcow2,if=virtio,format=qcow2 -drive file=/run-data/seed.img,if=virtio,format=raw,readonly=on "$@"; }' 2>&1 | head -c 2097152 > "$run/serial.log"
 vm_status=${PIPESTATUS[0]}
 set -e
 duration=$(($(date +%s)-start))
 # Require clean guest poweroff and an exact proof; a timeout is always failure.
 proof=$(tr -d '\r' < "$run/serial.log" | grep -a 'VM_PROOF=' | tail -n 1 | sed 's/.*VM_PROOF=//' || :)
+if [[ $scenario == two-user-routing ]]; then
+  if [[ $vm_status -ne 0 || -z $proof ]] || ! python3 - "$proof" <<'PRODUCT_CHECK'
+import json,sys
+try:
+ p=json.loads(sys.argv[1]); assert p['status']=='passed' and p['scope']=='product-two-user-routing' and p['pid1']=='systemd'
+ assert p['uids']==[21001,21002,21003] and p['socket_mode']=='0660' and p['socket_activation'] is True
+ assert len(p['routes'])==2 and [r['uid'] for r in p['routes']]==[21001,21002]
+ assert all(v is True for v in p['native_gh'].values()) and all(v is True for v in p['denials'].values()) and p['token_scan']['passed'] is True
+except (ValueError,KeyError,AssertionError,TypeError): sys.exit(1)
+PRODUCT_CHECK
+  then
+    reason=$(python3 - "$proof" <<'REASON'
+import json,re,sys
+try:
+ v=json.loads(sys.argv[1]).get('reason','unknown')
+ if not isinstance(v,str):v='unknown'
+ for n in ('agent_a','agent_b','UNKNOWN'):
+  v=v.replace('PRODUCT_VM_TOKEN_'+n+'_FIXTURE_ONLY_92764','[redacted]')
+ print(re.sub('[^A-Za-z0-9 _-]',' ',v)[:220])
+except (ValueError,TypeError): print('unknown')
+REASON
+)
+    fail boot_proof_failed "Product guest failed closed (VM exit $vm_status, ${duration}s; check=$reason)" 2
+  fi
+  if ! python3 - "$repo" "$run/serial.log" "$run/native-agent-host" <<'TOKEN_SCAN'
+import pathlib,sys
+repo=pathlib.Path(sys.argv[1]); tokens=[('PRODUCT_VM_TOKEN_'+n+'_FIXTURE_ONLY_92764').encode() for n in ('agent_a','agent_b')]
+files=[pathlib.Path(sys.argv[2]),pathlib.Path(sys.argv[3]),repo/'scripts/vm-test.sh',*list((repo/'test/vm').glob('*.py'))]
+for f in files:
+ data=f.read_bytes()
+ if any(t in data for t in tokens):sys.exit(1)
+TOKEN_SCAN
+  then fail token_scan_failed 'Token found in host source, binary or serial output' 2; fi
+  cleanup
+  trap - EXIT
+  [[ ! -e $run ]] || fail cleanup_failed 'Private guest run directory remains' 2
+  if podman ps -a --format '{{.Names}}' | grep -Fxq "vm-fixture-$$"; then fail cleanup_failed 'VM container remains' 2; fi
+  if $json; then printf '{"schema_version":1,"data":{"status":"passed","launched":true,"scope":"product-two-user-routing","product_commit":"%s","binary_sha256":"%s","image_sha256":"%s","tool_image_id":"%s","duration_seconds":%d,"boot_limit_seconds":600,"serial_limit_bytes":2097152,"guest":%s},"warnings":[]}\n' "$product_commit" "$binary_sha" "$image_sha" "$image_id" "$duration" "$proof"; else echo "Product two-user VM proof passed (${duration}s)"; fi
+  exit 0
+fi
 if [[ $vm_status -ne 0 || -z $proof ]] || ! python3 - "$proof" <<'PY'
 import json,sys
 try:

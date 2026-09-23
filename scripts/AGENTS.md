@@ -15,8 +15,13 @@ version provenance. These scripts do not install or activate a release.
 rootless Podman tool image in `test/vm/Containerfile`, downloads the checksum-pinned
 Ubuntu cloud image to `.cache/vm/`, and boots a private QEMU TCG overlay. It
 proves only synthetic systemd/two-user socket/permission fixtures, not the product
-route. Run `bash test/vm/test-vm-test.sh` for focused offline parser and failure
-checks; see `issues/build-workspace-slice/phase-2-vm-prereq.md` for scope and
-measured boot evidence.
+route. `vm-test.sh two-user-routing --json` additionally builds the current
+CGO-free binary, injects it on a private read-only ISO, and exercises the real
+HTTPS OAuth callback and per-user systemd daemon routes inside the guest with
+synthetic identities and fake native `gh`/`git`. It is an explicit VM product
+proof, not a clean-CI or browser-visual test. Run `bash test/vm/test-vm-test.sh`
+for offline parser, seed/ISO and failure checks; see
+`issues/build-workspace-slice/phase-2-native.md` for exact product evidence and
+`phase-2-vm-prereq.md` for environment-only scope.
 
 Documentation validation remains `python3 scripts/validate-project-view.py`.

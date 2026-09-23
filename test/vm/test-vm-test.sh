@@ -25,6 +25,8 @@ cp "$repo/test/vm/image.env" "$tmp/repo/test/vm/image.env"
 sed -i 's/^IMAGE_SHA256=.*/IMAGE_SHA256=invalid/' "$tmp/repo/test/vm/image.env"
 if run self-test --json > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
 grep -q 'invalid_image_checksum' "$tmp/err"
+if run two-user-routing --json > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
+grep -q 'invalid_image_checksum' "$tmp/err"
 cp "$repo/test/vm/image.env" "$tmp/repo/test/vm/image.env"
 sed -i 's|/home/agent-b/SYNTHETIC-IDENTITY|/home/agent-b/INVALID|' "$tmp/repo/test/vm/cloud-init.yaml"
 if run self-test --json > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
@@ -43,8 +45,32 @@ if command -v podman >/dev/null && podman image exists localhost/native-agent-ho
   grep -q 'image_checksum_mismatch' "$tmp/err"
   [[ $(find "$tmp/repo/.cache/vm" -maxdepth 1 -type d -name 'run.*' | wc -l) -eq 0 ]]
 fi
+# Validate product seed rendering offline with a known injection payload (no boot).
+mkdir -p "$tmp/product"
+printf 'binary-fixture-bytes' > "$tmp/product/bin"
+python3 "$repo/test/vm/product-fixture.py" "$tmp/product" "$tmp/product/bin"
+if command -v podman >/dev/null && podman image exists localhost/native-agent-host-vm-tools:prereq; then
+  cp "$tmp/product/bin" "$tmp/product/native-agent-host"
+  podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --tmpfs /tmp:rw,size=16m --mount "type=bind,src=$tmp/product,dst=/run-data" localhost/native-agent-host-vm-tools:prereq genisoimage -quiet -R -V PRODUCT -o /run-data/product.iso /run-data/native-agent-host
+  podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --mount "type=bind,src=$tmp/product,dst=/run-data,ro=true" localhost/native-agent-host-vm-tools:prereq isoinfo -R -i /run-data/product.iso -x /native-agent-host > "$tmp/extracted"
+  cmp "$tmp/product/bin" "$tmp/extracted"
+fi
+python3 - "$tmp/product/product-cloud-init.yaml" <<'PY'
+import base64,json,sys
+c=json.loads(open(sys.argv[1]).read().split('\n',1)[1]); files={f['path']:f for f in c['write_files']}
+assert '/opt/native-agent-host/native-agent-host' not in files
+assert base64.b64decode(files['/etc/native-agent-host/binary.sha256']['content']).decode().strip()==__import__('hashlib').sha256(b'binary-fixture-bytes').hexdigest()
+assert any('/dev/disk/by-label/PRODUCT' in ' '.join(cmd) for cmd in c['runcmd'])
+assert any(cmd[:2]==['install','-m'] and cmd[-1]=='/opt/native-agent-host/native-agent-host' for cmd in c['runcmd'])
+assert len([p for p in files if p.endswith('daemon.sock')])==0
+assert all(base64.b64decode(f['content']).find(b'PRODUCT_VM_TOKEN')==-1 for p,f in files.items() if p.startswith('/etc/native-agent-host/'))
+assert c['runcmd'][-1]==['/usr/bin/python3','/usr/local/sbin/product-proof']
+PY
+[[ ! -e "$tmp/product/tls.key" && ! -e "$tmp/product/tls.crt" ]]
+grep -Fq "'scope':'product-two-user-routing'" "$repo/test/vm/product-proof.py"
 # Guard the explicit timeout and kill/cleanup wiring against accidental removal.
 grep -Fq 'timeout -k 10s 600s podman run' "$tmp/repo/scripts/vm-test.sh"
+grep -Fq 'genisoimage -quiet -R -V PRODUCT' "$tmp/repo/scripts/vm-test.sh"
 grep -Fq 'timeout -k 5s 360s podman run' "$tmp/repo/scripts/vm-test.sh"
 grep -Fq 'trap cleanup EXIT' "$tmp/repo/scripts/vm-test.sh"
 grep -Fq 'podman rm -f "vm-fixture-$$" "vm-download-$$"' "$tmp/repo/scripts/vm-test.sh"
