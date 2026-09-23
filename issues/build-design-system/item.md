@@ -2,13 +2,20 @@
 created: 2026-09-21
 updated: 2026-09-23
 type: task
-status: testing
+status: done
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
 lane_seq: 20
 blocked_by: ['@build-app-foundation']
 collision: [docs/, AGENTS.md, design-system/]
+closed: 2026-09-23
+closed_by: jari
+commits:
+- hash: 9fc0840
+  summary: Complete production design system and catalog
+- hash: b7d8fb0043b5f251b7d8bd0eda31bbb6018276dd
+  summary: Prepare design system visual acceptance
 ---
 
 # Implement reusable production UI components and catalog
@@ -53,3 +60,15 @@ Implement the bounded catalog at production-design revision `62c0ae6833301bcdd09
 This issue is both the executable delivery and its serial human checkpoint. The worker must leave it in `testing`, not close it. While a `ui-v1` issue is in `testing`, it is a non-launchable human-acceptance hold: no round may spawn, resume or close a worker for it. Before any later `ui-v1` lane member may treat its user-visible behavior as delivered, `issues/build-design-system/visual-acceptance.md` must record the exact product revision, browser/OS/environment, deterministic test fixtures, happy path and every relevant unhappy state, exact Playwright/test commands and results, and links to the essential Playwright screenshots. Screenshots are evidence, not a replacement for assertions. The conductor presents that report to Jari and records his explicit dated accept/change decision in this issue. Only the conductor may then close it; lane serialization keeps the next product slice behind this checkpoint without assigning a lane to a `human-review` issue or letting a worker self-accept.
 
 Interactive and repeated behavior must use the shared production component implementation. Local composition may arrange one-off content but may not invent controls, state semantics, focus rules or styling. When this production slice replaces a canonical/root mock or static reference, remove the superseded root/canonical reference in the same accepted change; an original may remain only in its receiving issue as historical evidence.
+
+## Decisions
+
+### 2026-09-23T15:02:22Z · @jari
+
+Accepted on 2026-09-23: Jari reviewed the inline light, dark and stale/read-only/uncertain/partial-state screenshots and approved the production design system at product revision 9fc0840. The conductor independently reran the complete clean-checkout gate with repository-local Go/TMPDIR; it passed. This acceptance releases build-workspace-slice but does not pre-accept later journey behavior.
+
+## Resolution
+
+### 2026-09-23T15:02:22Z · @jari
+
+Jari explicitly accepted the representative light, dark and unhappy-state evidence. Deterministic component, keyboard/focus, Playwright, Axe and complete repository gates pass; release the next ui-v1 slice.
