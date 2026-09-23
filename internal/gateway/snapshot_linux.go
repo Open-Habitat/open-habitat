@@ -76,7 +76,11 @@ func (a *Auth) snapshot(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 	uc, ok := conn.(*net.UnixConn)
-	if !ok || daemonUID(uc) != target.UID {
+	peer := a.snapshotPeerUID
+	if peer == nil {
+		peer = daemonUID
+	}
+	if !ok || peer(uc) != target.UID {
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
