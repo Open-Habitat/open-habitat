@@ -52,7 +52,9 @@ It provisions disposable HOME/Go/npm/Python/issuectl state, performs locked Go a
 - deterministic contract generation/drift, contract/plan/project validators and direct dependency license policy;
 - synthetic native and immutable VM-recipe self-tests;
 - two byte-identical package builds, checksum/manifest/provenance verification, relocated archive verification and tamper rejection;
-- `issuectl doctor --json`, `project-canon doctor`, `git diff --check` and final tree cleanliness. Project-canon was mechanically conformant; its two advisory warnings are the intentionally absent public root README and a Rust-specific `crates/` layout heuristic that does not recognize this Go module's tested `internal/core`/`internal/cli` split.
+- `issuectl doctor --json`, `git diff --check` and final tree cleanliness.
+
+`project-canon doctor` was run separately and was mechanically conformant; its two advisory warnings are the intentionally absent public root README and a Rust-specific `crates/` layout heuristic that does not recognize this Go module's tested `internal/core`/`internal/cli` split.
 
 The individual required package command was also run:
 
@@ -61,7 +63,7 @@ The individual required package command was also run:
 ./scripts/verify-release.sh --archive dist/native-agent-host-0.0.0-test-linux-amd64.tar.gz --json
 ```
 
-The verifier observed a checksum-valid archive, complete internal manifest, required binary/web/unit/declaration/license files and a full 40-character build commit. The initial npm fetch timed out once; a bounded retry succeeded. The final review's first Claude invocation failed without output; Gemini's noisy candidates were checked locally, and gpt-6-astra found an absolute-path checksum-sidecar defect. The package now uses an exact basename-only sidecar and regression-checks relocated and tampered copies. Model-performance logging was attempted but its SSH write failed with `Permission denied`; that advisory corpus write did not affect source review or deterministic validation.
+The verifier observed a checksum-valid archive, complete internal manifest, required binary/web/unit/declaration/license files and a full 40-character build commit. The workflow is committed, but no hosted CI URL exists before this branch lands; local clean-checkout parity is the available foundation evidence. The initial npm fetch timed out once; a bounded retry succeeded. The final review's first Claude invocation failed without output; Gemini's noisy candidates were checked locally, and gpt-6-astra found an absolute-path checksum-sidecar defect. The package now uses an exact basename-only sidecar and regression-checks relocated and tampered copies. Model-performance logging was attempted but its SSH write failed with `Permission denied`; that advisory corpus write did not affect source review or deterministic validation.
 
 ## Remaining limits and successor handoff
 
