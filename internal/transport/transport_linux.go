@@ -78,6 +78,11 @@ func validate(c Config, testPath bool) error {
 	}
 	return nil
 }
+
+// ValidateConfig checks the trusted local daemon identity against the effective
+// UID and OS account. It must never be called on request-derived configuration.
+func ValidateConfig(c Config) error { return validate(c, false) }
+
 func NewSink() gateway.TokenSink { return Sink{} }
 
 type Sink struct {
