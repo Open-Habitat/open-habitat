@@ -50,6 +50,14 @@ func TestOAuthSessionRejectsUnsafeMapping(t *testing.T) {
 		}
 	}
 }
+func TestOAuthSessionRejectsMalformedQuery(t *testing.T) {
+	h, _, p, s, _ := fixture(t)
+	state, flow := start(t, h)
+	w := request(h, "GET", "/auth/github/callback?state="+state+"&code=x&%zz", flow)
+	if w.Code != 400 || p.calls != 0 || s.calls != 0 || callback(h, state, flow).Code == 303 {
+		t.Fatal("malformed callback bypassed exact validation")
+	}
+}
 func TestOAuthSessionRotation(t *testing.T) {
 	h, _, _, _, _ := fixture(t)
 	state, flow := start(t, h)

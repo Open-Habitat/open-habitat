@@ -137,11 +137,12 @@ func (a *Auth) exact(r *http.Request, path string, params ...string) bool {
 	if r.URL.Path != path || r.URL.Fragment != "" || r.Host != strings.TrimPrefix(a.cfg.Origin, "https://") || r.TLS == nil {
 		return false
 	}
-	if len(r.URL.Query()) != len(params) {
+	q, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil || len(q) != len(params) {
 		return false
 	}
 	for _, p := range params {
-		if len(r.URL.Query()[p]) != 1 || r.URL.Query().Get(p) == "" {
+		if len(q[p]) != 1 || q.Get(p) == "" {
 			return false
 		}
 	}
