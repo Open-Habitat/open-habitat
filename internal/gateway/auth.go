@@ -318,8 +318,14 @@ func (a *Auth) authenticated(r *http.Request) (session, bool) {
 	a.sessions[c.Value] = s
 	return s, true
 }
-func (a *Auth) authorizeWrite(r *http.Request, s session) bool {
-	return r.Header.Get("Origin") == a.cfg.Origin && len(r.Header.Values("Origin")) == 1 && subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Agent-Host-CSRF")), []byte(s.csrf)) == 1
+func (a *Auth) authorizeWrite(r *http.Request, s session) string {
+	if r.Header.Get("Origin") != a.cfg.Origin || len(r.Header.Values("Origin")) != 1 {
+		return "origin_denied"
+	}
+	if len(r.Header.Values("X-Agent-Host-CSRF")) != 1 || subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Agent-Host-CSRF")), []byte(s.csrf)) != 1 {
+		return "csrf_denied"
+	}
+	return ""
 }
 func (a *Auth) current(w http.ResponseWriter, r *http.Request) {
 	if !a.exact(r, "/auth/session") {
@@ -345,8 +351,8 @@ func (a *Auth) logout(w http.ResponseWriter, r *http.Request) {
 		safe(w, 400, "invalid_request")
 		return
 	}
-	if !a.authorizeWrite(r, s) {
-		safe(w, 403, "csrf_denied")
+	if denied := a.authorizeWrite(r, s); denied != "" {
+		safe(w, 403, denied)
 		return
 	}
 	c, _ := r.Cookie(cookieName)

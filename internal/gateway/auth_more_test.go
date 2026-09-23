@@ -50,6 +50,20 @@ func TestOAuthSessionRejectsUnsafeMapping(t *testing.T) {
 		}
 	}
 }
+func TestOAuthSessionRotation(t *testing.T) {
+	h, _, _, _, _ := fixture(t)
+	state, flow := start(t, h)
+	first := callback(h, state, flow).Result().Cookies()[1]
+	state, flow = start(t, h)
+	second := request(h, "GET", "/auth/github/callback?state="+state+"&code=second", flow, first)
+	if second.Code != 303 {
+		t.Fatal("second authorization failed")
+	}
+	next := second.Result().Cookies()[1]
+	if first.Value == next.Value || request(h, "GET", "/auth/session", first).Code != 401 || request(h, "GET", "/auth/session", next).Code != 200 {
+		t.Fatal("session fixation/rotation")
+	}
+}
 func TestOAuthSessionPlainTransportDenied(t *testing.T) {
 	h, _, _, _, _ := fixture(t)
 	r := httptest.NewRequest("GET", "http://host.test/auth/github/start", nil)
