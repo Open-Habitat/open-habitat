@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-21
+updated: 2026-09-23
 type: task
 status: open
 priority: normal
@@ -60,3 +60,9 @@ This issue owns Y1 and the discovery/Git-gate portion of Y2. Use two synthetic i
 This issue is both the executable delivery and its serial human checkpoint. The worker must leave it in `testing`, not close it. While a `ui-v1` issue is in `testing`, it is a non-launchable human-acceptance hold: no round may spawn, resume or close a worker for it. Before any later `ui-v1` lane member may treat its user-visible behavior as delivered, `issues/build-workspace-slice/visual-acceptance.md` must record the exact product revision, browser/OS/environment, deterministic test fixtures, happy path and every relevant unhappy state, exact Playwright/test commands and results, and links to the essential Playwright screenshots. Screenshots are evidence, not a replacement for assertions. The conductor presents that report to Jari and records his explicit dated accept/change decision in this issue. Only the conductor may then close it; lane serialization keeps the next product slice behind this checkpoint without assigning a lane to a `human-review` issue or letting a worker self-accept.
 
 Interactive and repeated behavior must use the shared production component implementation. Local composition may arrange one-off content but may not invent controls, state semantics, focus rules or styling. When this production slice replaces a canonical/root mock or static reference, remove the superseded root/canonical reference in the same accepted change; an original may remain only in its receiving issue as historical evidence.
+
+## Agent Runs
+
+### 2026-09-23T15:12:19Z · @agent
+
+Run 01m37cpk857mh2fgwmfyyttz3a stopped correctly: it implemented only isolated directory discovery and explicitly prohibited merging the incomplete branch. The branch was discarded through audited Taskfleet cleanup. Continue this broad security slice as serial mergeable phases while the parent issue remains in-progress: (1) gateway OAuth/session/identity security core; (2) per-UID UDS, workspace discovery and native gh adapter plus two-user fixture; (3) host-backed browser integration, visual evidence, final focused security review and full gate. No phase may claim or close the complete slice before phase 3.
