@@ -4,8 +4,10 @@ repo=$(cd "$(dirname "$0")/.." && pwd)
 clean=false;json=false
 while (($#));do case "$1" in --clean)clean=true;shift;;--json)json=true;shift;;*)echo "error: unknown argument $1" >&2;exit 1;;esac;done
 cd "$repo"
-if $clean && [[ -n $(git status --short --untracked-files=no) ]];then echo 'error: --clean requires no tracked changes at entry' >&2;exit 1;fi
-tmp=$(mktemp -d);trap 'rm -rf "$tmp"' EXIT
+if $clean && [[ -n $(git status --short) ]];then echo 'error: --clean requires a clean tree at entry' >&2;exit 1;fi
+tmp=$(mktemp -d)
+cleanup(){ chmod -R u+w "$tmp" 2>/dev/null || true;rm -rf "$tmp"; }
+trap cleanup EXIT
 export HOME="$tmp/home" GOCACHE="$tmp/go-build" GOMODCACHE="$tmp/go-mod" NPM_CONFIG_CACHE="$tmp/npm" PLAYWRIGHT_BROWSERS_PATH="$repo/.cache/ms-playwright" CI=1
 mkdir -p "$HOME" "$GOCACHE" "$GOMODCACHE" "$NPM_CONFIG_CACHE" "$PLAYWRIGHT_BROWSERS_PATH" "$tmp/bin"
 # Every non-system tool is fetched into disposable storage and checksum/version checked.
@@ -46,6 +48,7 @@ go fmt ./...
 go vet ./...
 go test -race ./...
 CGO_ENABLED=0 go build -trimpath ./cmd/native-agent-host
+rm -f native-agent-host
 go generate ./internal/contracts
 ./scripts/check-generated.sh
 "$PYTHON" issues/define-host-contracts/validate_contracts.py
@@ -66,5 +69,5 @@ printf 'tampered' >> "$tmp/relocated/native-agent-host-0.0.0-test-linux-amd64.ta
 if ./scripts/verify-release.sh --archive "$tmp/relocated/native-agent-host-0.0.0-test-linux-amd64.tar.gz" --json >/dev/null 2>&1;then echo 'error: tampered relocated archive verified' >&2;exit 1;fi
 issuectl doctor --json
 git diff --check
-if $clean && [[ -n $(git status --short --untracked-files=no) ]];then git status --short >&2;echo 'error: green gate changed tracked files' >&2;exit 1;fi
+if $clean && [[ -n $(git status --short) ]];then git status --short >&2;echo 'error: green gate changed the clean tree' >&2;exit 1;fi
 if $json;then printf '{"schema_version":1,"data":{"status":"passed","clean":%s},"warnings":[]}\n' "$clean";else echo 'CI-local gate passed';fi
