@@ -64,6 +64,18 @@ func TestPeerBeforeBodyAndWrongTarget(t *testing.T) {
 		t.Fatal("wrong home accepted")
 	}
 }
+func TestCanceledContextCannotConsume(t *testing.T) {
+	_, _, m, calls := fixture(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if e := (Sink{testPath: true}).Deliver(ctx, m, "42", "sentinel-secret"); e == nil || strings.Contains(e.Error(), "sentinel-secret") {
+		t.Fatal("canceled request accepted or leaked")
+	}
+	if calls.Load() != 0 {
+		t.Fatal("canceled request consumed")
+	}
+}
+
 func TestConsumerFailureAndOversize(t *testing.T) {
 	u, e := user.Current()
 	if e != nil {

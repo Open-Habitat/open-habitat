@@ -69,7 +69,11 @@ func LoadConfig(path string, expected Component) (Config, error) {
 		}
 		for dir := filepath.Dir(path); e == nil && dir != "/"; dir = filepath.Dir(dir) {
 			parent, pe := os.Lstat(dir)
-			if pe != nil || !parent.IsDir() || parent.Mode()&os.ModeSymlink != 0 || parent.Mode().Perm()&0022 != 0 {
+			if pe != nil {
+				return Config{}, errors.New("invalid trusted config")
+			}
+			owner, ownerOK := parent.Sys().(*syscall.Stat_t)
+			if !ownerOK || owner.Uid != 0 || !parent.IsDir() || parent.Mode()&os.ModeSymlink != 0 || parent.Mode().Perm()&0022 != 0 {
 				return Config{}, errors.New("invalid trusted config")
 			}
 		}

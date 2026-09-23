@@ -1,6 +1,6 @@
 # Phase 2A: bounded native token transport (not workspace delivery)
 
-The parent stays `in-progress`, with acceptance criteria unchanged. This phase provides a production Linux one-attempt gateway sink and a daemon UDS handoff server **injected with a token consumer**. The daemon CLI deliberately refuses handoff configuration until phase 2B supplies the native `gh` consumer; it cannot falsely acknowledge an uninstalled credential. Gateway CLI OAuth opt-in uses the real sink and a direct TLS listener, never forwarded TLS headers. No test uses a real token, systemd instance or user home.
+The parent stays `in-progress`, with acceptance criteria unchanged. This phase provides a production Linux one-attempt gateway sink and a daemon UDS handoff server **injected with a token consumer**. `daemon.ServeHandoff` is the injected, pre-opened Unix-listener entry point. The daemon CLI deliberately refuses handoff configuration until phase 2B supplies the native `gh` consumer and activation plumbing; it cannot falsely acknowledge an uninstalled credential. Gateway CLI OAuth opt-in uses the real sink and a direct TLS listener, never forwarded TLS headers. No test uses a real token, systemd instance or user home.
 
 ## Boundary and protocol
 

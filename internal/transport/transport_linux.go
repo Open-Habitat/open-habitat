@@ -66,7 +66,7 @@ func validSubject(s string) bool {
 	return e == nil && n > 0 && strconv.FormatUint(n, 10) == s && len(s) <= maxField
 }
 func validate(c Config, testPath bool) error {
-	if c.GatewayUID < 0 || c.UID <= 0 || c.UID != os.Geteuid() || c.Provider != "github" || !validSubject(c.Subject) || c.Username == "" || len(c.Username) > maxField || c.Home == "" || !filepath.IsAbs(c.Home) || filepath.Clean(c.Home) != c.Home || (socketOK(c.Socket) && c.Socket != "/run/native-agent-host/users/"+c.Username+"/daemon.sock") || (!socketOK(c.Socket) && !(testPath && filepath.IsAbs(c.Socket))) {
+	if c.GatewayUID <= 0 || c.UID <= 0 || c.UID != os.Geteuid() || c.Provider != "github" || !validSubject(c.Subject) || c.Username == "" || len(c.Username) > maxField || c.Home == "" || !filepath.IsAbs(c.Home) || filepath.Clean(c.Home) != c.Home || (socketOK(c.Socket) && c.Socket != "/run/native-agent-host/users/"+c.Username+"/daemon.sock") || (!socketOK(c.Socket) && !(testPath && filepath.IsAbs(c.Socket))) {
 		return denied
 	}
 	u, e := user.LookupId(strconv.Itoa(c.UID))
@@ -154,6 +154,9 @@ func peerUID(c *net.UnixConn) int {
 	return int(peer.Uid)
 }
 func setDeadline(ctx context.Context, c net.Conn) (func() bool, error) {
+	if e := ctx.Err(); e != nil {
+		return nil, e
+	}
 	limit := time.Now().Add(deadline)
 	if d, ok := ctx.Deadline(); ok && d.Before(limit) {
 		limit = d
@@ -341,5 +344,5 @@ func (s *Server) handle(ctx context.Context, c *net.UnixConn) {
 	if s.consume(ctx, v.Token) != nil {
 		return
 	}
-	_, _ = c.Write([]byte{1})
+	_, _ = io.Copy(c, bytes.NewReader([]byte{1}))
 }
