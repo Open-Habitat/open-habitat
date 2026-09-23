@@ -21,13 +21,22 @@ import (
 	"github.com/maintainer/native-agent-host/internal/gateway"
 )
 
+func shortDir(t *testing.T) string {
+	t.Helper()
+	d, e := os.MkdirTemp("/tmp", "nah-uds-")
+	if e != nil {
+		t.Fatal(e)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(d) })
+	return d
+}
 func fixture(t *testing.T) (*Server, *net.UnixListener, gateway.Identity, *atomic.Int32) {
 	t.Helper()
 	u, e := user.Current()
 	if e != nil {
 		t.Fatal(e)
 	}
-	path := filepath.Join(t.TempDir(), "sock")
+	path := filepath.Join(shortDir(t), "sock")
 	ln, e := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
 	if e != nil {
 		t.Fatal(e)

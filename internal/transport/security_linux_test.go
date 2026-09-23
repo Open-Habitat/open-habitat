@@ -21,7 +21,7 @@ func TestPeerBeforeBodyAndWrongTarget(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	path := filepath.Join(t.TempDir(), "sock")
+	path := filepath.Join(shortDir(t), "sock")
 	ln, e := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
 	if e != nil {
 		t.Fatal(e)
@@ -36,7 +36,7 @@ func TestPeerBeforeBodyAndWrongTarget(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// A listener at another path must not be accepted even with a valid config.
-	other, e := net.ListenUnix("unix", &net.UnixAddr{Name: filepath.Join(t.TempDir(), "other"), Net: "unix"})
+	other, e := net.ListenUnix("unix", &net.UnixAddr{Name: filepath.Join(shortDir(t), "other"), Net: "unix"})
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -96,7 +96,7 @@ func TestConsumerFailureAndOversize(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	path := filepath.Join(t.TempDir(), "sock")
+	path := filepath.Join(shortDir(t), "sock")
 	ln, e := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
 	if e != nil {
 		t.Fatal(e)
