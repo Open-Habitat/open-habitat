@@ -2,7 +2,7 @@
 created: 2026-09-21
 updated: 2026-09-23
 type: task
-status: in-progress
+status: testing
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
@@ -27,12 +27,12 @@ workspace registry, credential broker or speculative cache. Desktop first, one s
 
 ## Acceptance Criteria
 
-- [ ] Establish the chosen UI, daemon/adapter and gateway integration boundaries, shared contract generation and dependency/license policy.
-- [ ] Make documented development, build, check and focused test commands executable from a clean checkout; configure CI to run the same required checks.
-- [ ] Supply disposable native fixtures and browser/API test setup without global binary installation or access to real user histories.
-- [ ] Establish application routes, token loading and connection/auth error boundaries sufficient for the next slice; mock data stays explicitly test-only.
-- [ ] Validate the accepted package/test-target launch method within its authorization; record limitations instead of fabricating live-version results.
-- [ ] Update root/local AGENTS.md with exact commands and ownership. Demonstrate the skeleton runs, without claiming the real agent journey is implemented.
+- [x] Establish the chosen UI, daemon/adapter and gateway integration boundaries, shared contract generation and dependency/license policy.
+- [x] Make documented development, build, check and focused test commands executable from a clean checkout; configure CI to run the same required checks.
+- [x] Supply disposable native fixtures and browser/API test setup without global binary installation or access to real user histories.
+- [x] Establish application routes, token loading and connection/auth error boundaries sufficient for the next slice; mock data stays explicitly test-only.
+- [x] Validate the accepted package/test-target launch method within its authorization; record limitations instead of fabricating live-version results.
+- [x] Update root/local AGENTS.md with exact commands and ownership. Demonstrate the skeleton runs, without claiming the real agent journey is implemented.
 
 ## Delivery and verification
 
