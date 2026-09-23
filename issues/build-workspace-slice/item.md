@@ -2,13 +2,14 @@
 created: 2026-09-20
 updated: 2026-09-23
 type: task
-status: in-progress
+status: testing
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
 lane_seq: 30
 blocked_by: ['@build-design-system']
 collision: [docs/, AGENTS.md, design-system/]
+review_status: requested
 ---
 
 # Build login to workspace navigation
@@ -34,14 +35,14 @@ parallel history store, credential broker, internal tenant model or speculative 
 
 ## Acceptance Criteria
 
-- [ ] Exercise two distinct mapped test identities and reject unknown mappings, cross-user daemon routing and path escapes from this first authenticated slice; final verification expands these checks.
-- [ ] Use the real gateway/daemon path and reusable production navigation components, not a separately implemented mock UI.
+- [x] Exercise two distinct mapped test identities and reject unknown mappings, cross-user daemon routing and path escapes from this first authenticated slice; final verification expands these checks.
+- [x] Use the real gateway/daemon path and reusable production navigation components, not a separately implemented mock UI.
 
-- [ ] Use the implementation choices and test commands established by @plan-v1-implementation.
-- [ ] Authenticate a web identity, map it to one fixed Unix user and route to that user's daemon.
-- [ ] List immediate ~/src directories including non-Git directories and directories without workspace metadata.
-- [ ] Implement the accepted navigation and loading/empty/error views with no workspace registry or separate harness settings.
-- [ ] Demonstrate the real end-to-end path and automated checks appropriate to routing and directory access.
+- [x] Use the implementation choices and test commands established by @plan-v1-implementation.
+- [x] Authenticate a web identity, map it to one fixed Unix user and route to that user's daemon.
+- [x] List immediate ~/src directories including non-Git directories and directories without workspace metadata.
+- [x] Implement the accepted navigation and loading/empty/error views with no workspace registry or separate harness settings.
+- [x] Demonstrate the real end-to-end path and automated checks appropriate to routing and directory access.
 
 ## Implementation and evidence
 
