@@ -12,7 +12,7 @@ describe("Button", () => {
     const view = render(
       <Button
         label="Lähetä"
-        disabledReason="Yhteys puuttuu"
+        availability={{ state: "disabled", reason: "Yhteys puuttuu" }}
         onPress={() => {}}
       />,
     );

@@ -1,0 +1,209 @@
+import type { ReactNode } from "react";
+import { Button } from "./Primitives";
+import type { Action, ProblemView, Tone } from "./types";
+
+export function StatusMark({
+  label,
+  tone = "neutral",
+  animated = false,
+}: {
+  label: string;
+  tone?: Tone;
+  animated?: false | "running";
+}) {
+  return (
+    <span className={`ah-status ah-tone-${tone}`}>
+      <span
+        aria-hidden="true"
+        className={
+          animated === "running" ? "ah-status-dot ah-running" : "ah-status-dot"
+        }
+      />
+      {label}
+    </span>
+  );
+}
+export function Badge({
+  label,
+  tone = "neutral",
+  count,
+}: {
+  label: string;
+  tone?: Tone;
+  count?: number;
+}) {
+  return (
+    <span className={`ah-badge ah-tone-${tone}`}>
+      {label}
+      {count === undefined ? null : ` ${count}`}
+    </span>
+  );
+}
+export function ProgressIndicator({
+  label,
+  kind,
+  value,
+}: {
+  label: string;
+  kind: "indeterminate" | "determinate";
+  value?: number;
+}) {
+  return (
+    <div className="ah-progress">
+      <span>{label}</span>
+      <progress
+        aria-label={label}
+        max={100}
+        value={kind === "determinate" ? value : undefined}
+      />
+    </div>
+  );
+}
+function Problem({ problem }: { problem?: ProblemView }) {
+  return problem ? (
+    <div className="ah-problem">
+      <strong>{problem.title}</strong>
+      {problem.description ? <p>{problem.description}</p> : null}
+      {problem.code ? <code>{problem.code}</code> : null}
+      {problem.correlationId ? (
+        <code className="ah-correlation">{problem.correlationId}</code>
+      ) : null}
+    </div>
+  ) : null;
+}
+export function InlineNotice({
+  title,
+  description,
+  tone = "info",
+  problem,
+  actions = [],
+}: {
+  title: string;
+  description?: string;
+  tone?: Tone;
+  problem?: ProblemView;
+  actions?: Action[];
+}) {
+  return (
+    <aside className={`ah-notice ah-tone-${tone}`}>
+      <strong>{title}</strong>
+      {description ? <p>{description}</p> : null}
+      <Problem problem={problem} />
+      {actions.length ? (
+        <div className="ah-actions">
+          {actions.map((action) => (
+            <Button
+              key={action.label}
+              label={action.label}
+              variant="secondary"
+              availability={action.availability}
+              onPress={action.onPress}
+            />
+          ))}
+        </div>
+      ) : null}
+    </aside>
+  );
+}
+export type ConnectionState =
+  | "loading"
+  | "online"
+  | "reconnecting"
+  | "stale"
+  | "resnapshot-required"
+  | "authentication-required"
+  | "daemon-unavailable"
+  | "host-read-only";
+export function ConnectionBanner({
+  state,
+  lastConfirmedAt,
+  problem,
+  onRetry,
+}: {
+  state: ConnectionState;
+  lastConfirmedAt?: string;
+  problem?: ProblemView;
+  onRetry?: () => void;
+}) {
+  if (state === "online") return null;
+  const copy: Record<
+    Exclude<ConnectionState, "online">,
+    { title: string; detail: string; tone: Tone }
+  > = {
+    loading: {
+      title: "Ladataan palvelimen tilaa",
+      detail: "Ensimmäistä havaintoa odotetaan.",
+      tone: "neutral",
+    },
+    reconnecting: {
+      title: "Yhteys katkesi",
+      detail: "Yhdistetään uudelleen. Viime komentoa ei lähetetä uudelleen.",
+      tone: "warning",
+    },
+    stale: {
+      title: "Näytettävä tieto on vanhentunut",
+      detail: `Viimeksi saatu ${lastConfirmedAt ?? "ei tiedossa"}. Kirjoittaminen on estetty.`,
+      tone: "warning",
+    },
+    "resnapshot-required": {
+      title: "Uusi tilannekuva tarvitaan",
+      detail: "Tapahtumavirran jatkokohta vanheni.",
+      tone: "warning",
+    },
+    "authentication-required": {
+      title: "Istunto puuttuu tai on vanhentunut",
+      detail: "Kirjaudu uudelleen jatkaaksesi.",
+      tone: "danger",
+    },
+    "daemon-unavailable": {
+      title: "Käyttäjän agenttipalveluun ei saada yhteyttä",
+      detail: "Sisältöä ei päätellä tyhjäksi.",
+      tone: "danger",
+    },
+    "host-read-only": {
+      title: "Palvelin on vain luku -tilassa",
+      detail: "Yhteys toimii, mutta muutokset on estetty.",
+      tone: "warning",
+    },
+  };
+  const value = copy[state];
+  const urgent =
+    state === "authentication-required" || state === "daemon-unavailable";
+  return (
+    <div
+      className={`ah-connection ah-tone-${value.tone}`}
+      role={urgent ? "alert" : "status"}
+    >
+      <strong>{value.title}</strong>
+      <span>{value.detail}</span>
+      <Problem problem={problem} />
+      {onRetry ? (
+        <Button
+          label="Yritä uudelleen"
+          variant="secondary"
+          size="compact"
+          onPress={onRetry}
+        />
+      ) : null}
+    </div>
+  );
+}
+export function ToastRegion({ message }: { message?: ReactNode }) {
+  return (
+    <div
+      aria-atomic="true"
+      aria-live="polite"
+      className="ah-toast"
+      role="status"
+    >
+      {message}
+    </div>
+  );
+}
+export function StreamAnnouncer({ summaryText }: { summaryText: string }) {
+  return (
+    <p aria-atomic="true" aria-live="polite" className="ah-visually-hidden">
+      {summaryText}
+    </p>
+  );
+}

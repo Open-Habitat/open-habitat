@@ -2,9 +2,9 @@
 
 Tämä on yhden palvelimen, Pi:n ja työpöytäselaimen tuotantodesignin kanoninen
 visuaalinen ja vuorovaikutuksellinen määrittely. [Komponenttikatalogi](component-catalog-v1.md)
-määrittää julkiset komponenttisopimukset. [Staattinen korjauskierros](ui_kits/production-v1/index.html)
-näyttää niiden olennaiset yhdistelmät. Nämä ovat toteutuksen syötteitä, eivät
-ajettava tuote.
+määrittää julkiset komponenttisopimukset. Ajettava Storybook `web/src/components/`-hakemiston tuotantomoduuleista näyttää
+niiden olennaiset yhdistelmät. Tämä määrittely säilyy toteutuksen kanonisena
+visuaalisena ja vuorovaikutuksellisena syötteenä; katalogi ei ole backend-journey.
 
 Alkuperäiset [keskusteluvedokset](../issues/receive-designer-v1/design/vedokset/)
 ja [workspace-vedokset](../issues/receive-designer-v1/design/workspaces/) säilyvät
@@ -443,7 +443,7 @@ Tämä design ei ratkaise seuraavia avoimia adapteri-/proof-kohtia:
 - variable-height-virtualisoinnin ankkuri ja saavutettava fallback oikealla
   ruudunlukijalla;
 - pitkän historian, outputin ja event-ring/ledger-rajojen pilotin budjetit;
-- Proposed ADR 0002:n komponenttikirjasto ja Proposed ADR 0003:n host-stack.
+- hyväksytyn ADR 0002:n komponenttikirjaston myöhempien journeyjen integraatiot ja hyväksytyn ADR 0003:n host-stack.
 
 Unknown/unsupported-tila on näissä valmis design-tulos. Se ei ole lupa muuttaa
-sopimusta, piilottaa hyväksyttyä MVP-toimintoa tai hyväksyä Proposed ADR:ää.
+sopimusta tai piilottaa hyväksyttyä MVP-toimintoa.

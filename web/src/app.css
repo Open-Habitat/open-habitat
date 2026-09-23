@@ -1,3 +1,5 @@
+@import "./components/components.css";
+
 * {
   box-sizing: border-box;
 }
@@ -37,7 +39,7 @@ a {
 .banner-daemon_unavailable {
   border-left: 6px solid var(--ah-err);
 }
-nav {
+.app > nav {
   position: fixed;
   inset: 0 auto 0 0;
   width: 17rem;
@@ -48,7 +50,7 @@ nav {
   background: var(--ah-rail);
   border-right: 1px solid var(--ah-line);
 }
-main {
+.app > main {
   max-width: 60rem;
   margin-left: 17rem;
   padding: clamp(2rem, 7vw, 7rem);
@@ -107,11 +109,11 @@ code {
   overflow-wrap: anywhere;
 }
 @media (max-width: 800px) {
-  nav {
+  .app > nav {
     position: static;
     width: auto;
   }
-  main {
+  .app > main {
     margin-left: 0;
     padding: var(--ah-s6);
   }

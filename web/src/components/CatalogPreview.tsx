@@ -1,0 +1,259 @@
+import { useState } from "react";
+import {
+  Composer,
+  ConversationTimeline,
+  DiffView,
+  QueuePanel,
+  UncertainCommandCard,
+  UserMessage,
+  AssistantMessage,
+} from "./Conversation";
+import {
+  AgentFacts,
+  AgentHeader,
+  AppShell,
+  WorkspaceRail,
+  WorkspaceSection,
+} from "./Navigation";
+import { OperationProgress } from "./Operations";
+import { ConnectionBanner } from "./Status";
+
+const noop = () => {};
+export function CatalogPreview({
+  scenario = "happy",
+}: {
+  scenario?: "happy" | "unhappy";
+}) {
+  const [filter, setFilter] = useState("");
+  const [value, setValue] = useState(
+    "Tarkista vielä saavutettavuus ja pitkät suomenkieliset arvot.",
+  );
+  const [expanded, setExpanded] = useState(true);
+  const rail = (
+    <WorkspaceRail
+      collapsed={false}
+      serverLabel="alder.example"
+      connectionLabel={
+        scenario === "unhappy" ? "Tieto vanhentunut" : "Yhteys toimii"
+      }
+      attentionCount={scenario === "unhappy" ? 2 : 0}
+      filterValue={filter}
+      resultSummary="2 agenttia"
+      listState={scenario === "unhappy" ? "stale" : "ready"}
+      onToggle={noop}
+      onFilter={setFilter}
+      onRefresh={noop}
+      onCreate={noop}
+    >
+      <WorkspaceSection
+        workspaceId="workspace-1"
+        name="erittäin-pitkä-suomenkielinen-asiakasworkspace-joka-ei-saa-rikkoa-asettelua"
+        href="/workspaces/workspace-1"
+        expanded={expanded}
+        summary="Git-workspace"
+        agents={[
+          {
+            agentId: "agent-1",
+            href: "/workspaces/workspace-1/agents/agent-1",
+            title: "Rakenna saavutettava komponenttikirjasto",
+            activityLabel:
+              scenario === "unhappy" ? "Tila ei tiedossa" : "Työskentelee",
+            controlLabel: scenario === "unhappy" ? "Vain luku" : "Selain ohjaa",
+            attentionLabel:
+              scenario === "unhappy" ? "Odottaa vastaustasi" : undefined,
+            selected: true,
+          },
+          {
+            agentId: "agent-2",
+            href: "/workspaces/workspace-1/agents/agent-2",
+            title: "Selvitä hyvin pitkän historian suorituskyky",
+            activityLabel: "Ei käynnissä",
+            controlLabel: "Vain luku",
+            stale: scenario === "unhappy",
+          },
+        ]}
+        onToggle={() => setExpanded(!expanded)}
+      />
+    </WorkspaceRail>
+  );
+  const items = [
+    {
+      id: "user",
+      content: (
+        <UserMessage
+          sourceText="Näytä miten tuntematon tila ja pitkä sisältö toimivat ilman pelkkää värikoodausta."
+          deliveryState="Hyväksytty"
+          onCopy={noop}
+        />
+      ),
+    },
+    {
+      id: "assistant",
+      content: (
+        <AssistantMessage
+          streamState={scenario === "unhappy" ? "interrupted" : "complete"}
+          modelLabel="Pi"
+          onCopy={noop}
+        >
+          <p>
+            Jokainen tila näkyy tekstinä, ja tekniset tunnisteet säilyvät
+            muuttumattomina.
+          </p>
+          <DiffView
+            pathLabel="web/src/components/components.css"
+            unifiedText={
+              "--- a/components.css\n+++ b/components.css\n-color: red;\n+color: var(--ah-err);"
+            }
+            parseState="ready"
+            view="unifiedAccessible"
+            onCopy={noop}
+            onViewChange={noop}
+          />
+        </AssistantMessage>
+      ),
+    },
+  ];
+  return (
+    <AppShell
+      connection={
+        <ConnectionBanner
+          state={scenario === "unhappy" ? "stale" : "online"}
+          lastConfirmedAt="10.42"
+          onRetry={noop}
+        />
+      }
+      rail={rail}
+      toast={null}
+      main={
+        <>
+          <AgentHeader
+            title="Rakenna saavutettava komponenttikirjasto"
+            titleState={
+              scenario === "unhappy"
+                ? "Otsikon tila ei tiedossa"
+                : "Hostin otsikko"
+            }
+            activityLabel={
+              scenario === "unhappy" ? "Tila ei tiedossa" : "Työskentelee"
+            }
+            controlLabel={scenario === "unhappy" ? "Vain luku" : "Selain ohjaa"}
+            workspaceLabel="erittäin-pitkä-suomenkielinen-asiakasworkspace"
+            workspaceHref="/workspaces/workspace-1"
+            detailsExpanded
+            onToggleDetails={noop}
+            titleAction={{
+              label: "Luo otsikko uudelleen",
+              availability:
+                scenario === "unhappy"
+                  ? {
+                      state: "unknown",
+                      reason: "Capabilityä ei ole vahvistettu.",
+                    }
+                  : { state: "enabled" },
+              onPress: noop,
+            }}
+          />
+          <AgentFacts
+            facts={[
+              {
+                label: "Historia",
+                value: scenario === "unhappy" ? "Ei saatavilla" : "Saatavilla",
+                state: scenario === "unhappy" ? "unavailable" : "confirmed",
+              },
+              {
+                label: "Prosessi",
+                value: scenario === "unhappy" ? "Ei tiedossa" : "running",
+                state: scenario === "unhappy" ? "unknown" : "confirmed",
+              },
+            ]}
+          />
+          {scenario === "unhappy" ? (
+            <>
+              <UncertainCommandCard
+                commandLabel="Lähetä viesti"
+                textPreview="Tämä teksti säilyy, eikä sitä lähetetä automaattisesti uudelleen."
+                commandIdLabel="cmd_01JARIKORRELAATIO"
+                explanation="Hyväksyntää ei voitu vahvistaa yhteyskatkoksen jälkeen."
+                availability={{ state: "enabled" }}
+                onReconcile={noop}
+                onCopyText={noop}
+                onSendAsNew={noop}
+              />
+              <QueuePanel
+                steeringTexts={["Tarkista tila"]}
+                followUpTexts={["Kirjoita yhteenveto"]}
+                state="stale"
+                clearAvailability={{
+                  state: "disabled",
+                  reason: "Tuore queue revision puuttuu.",
+                }}
+                onClearAll={noop}
+              />
+              <OperationProgress
+                operationId="op_01PARTIAL"
+                kindLabel="Workspacen poisto"
+                state="partial"
+                stages={[
+                  {
+                    id: "check",
+                    label: "Ennakkotarkistus",
+                    state: "succeeded",
+                  },
+                  {
+                    id: "remove",
+                    label: "Hakemiston poisto",
+                    state: "unknown",
+                    detail: "Vaikutusta ei voitu vahvistaa.",
+                  },
+                ]}
+                effects={[
+                  {
+                    kindLabel: "Annotaatio",
+                    stateLabel: "Poistettu",
+                    description: "Näyttönimi poistui.",
+                  },
+                  {
+                    kindLabel: "Hakemisto",
+                    stateLabel: "Ei tiedossa",
+                    description: "Tarkista tuoreesta havainnosta.",
+                  },
+                ]}
+                onClose={noop}
+              />
+            </>
+          ) : (
+            <ConversationTimeline
+              state="ready"
+              items={items}
+              historyMode="virtualized"
+              newContentCount={2}
+              onJumpToLatest={noop}
+              onHistoryModeChange={noop}
+            />
+          )}
+          <Composer
+            value={value}
+            availability={
+              scenario === "unhappy"
+                ? {
+                    state: "read_only",
+                    reason: "Vanhentuneeseen tilaan ei voi kirjoittaa.",
+                  }
+                : { state: "enabled" }
+            }
+            activity="working"
+            selectedWorkingMode="follow_up"
+            queueSummary="Jonossa 2"
+            onChange={setValue}
+            onSendNow={noop}
+            onSteer={noop}
+            onFollowUp={noop}
+            onModeChange={noop}
+            onInterrupt={scenario === "happy" ? noop : undefined}
+            onOpenQueue={noop}
+          />
+        </>
+      }
+    />
+  );
+}

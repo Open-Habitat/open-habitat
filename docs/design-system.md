@@ -1,9 +1,30 @@
 # Design system
 
 V1:n tuotantodesign, yhteinen visuaalinen perusta ja komponenttien rajat ovat
-[design-system-hakemistossa](../design-system/AGENTS.md). Tämä sivu opastaa
-kokonaisuuteen; tokeniarvot ja propsit määritellään vain omissa lähteissään.
-Tuotetta tai ajettavaa komponenttikirjastoa ei ole vielä toteutettu.
+[design-system-hakemistossa](../design-system/AGENTS.md). Tokeniarvot ja propsit
+määritellään vain omissa lähteissään.
+
+## Ajettava tuotantokatalogi
+
+Tuotantokomponentit ovat [`web/src/components/`](../web/src/components/)-hakemistossa.
+Sekä sovellus että Storybook tuovat nämä samat TypeScript-moduulit. Storyt sisältävät
+vain valmiita näyttömalleja ja tapahtumakäsittelijöitä; niissä ei ole rinnakkaisia
+kontrolleja, verkkokutsuja tai natiivin tilan päättelyä.
+
+Katalogin voi avata kehityspalvelimena tai rakentaa staattiseksi:
+
+```sh
+npm ci --prefix web
+npm run storybook --prefix web -- --no-open
+npm run build-storybook --prefix web
+```
+
+Katalogin pääryhmät ovat yleiset kontrollit, valikot ja dialogit, workspace-/agentti-
+navigaatio, keskustelu ja sen sisältötyypit sekä tuntemattomat, vanhentuneet,
+vain luku- ja osittaiset tilat. Vaalean ja tumman teeman voi vaihtaa Storybookin
+työkaluriviltä. Erilliset storyt näyttävät pitkän suomalaisen sisällön 200 % koossa
+ja vähennetyn liikkeen tilamerkin. Playwrightin deterministinen preview käyttää
+samoja tuotantomoduuleja happy- ja unhappy-state-kuvissa.
 
 ## Tuotantodesign v1
 
@@ -11,53 +32,42 @@ Tuotetta tai ajettavaa komponenttikirjastoa ei ole vielä toteutettu.
   workspace- ja keskustelutoimitusten erot, teemat, reitit, luonnokset,
   lukukohdan, fokuksen, keyboardin, streamingin ja saavutettavuuden.
 - [Komponenttikatalogin sopimus](../design-system/component-catalog-v1.md)
-  määrittää vain hyväksyttyjen journeyjen tarvitsemat primitiivit ja tuoteosat,
+  määrittää hyväksyttyjen journeyjen tarvitsemat primitiivit ja tuoteosat,
   julkiset tuotetermiset propsit/tapahtumat sekä pakolliset tilaesimerkit.
-- [Staattinen korjauskierros](../design-system/ui_kits/production-v1/index.html)
-  näyttää integroidun desktop-näkymän, stale/read-only-tilan, Pi:n jonon,
-  epävarman lähetyksen, osittaisen poiston ja molemmat teemat. Se ei simuloi
-  backendia eikä ole runtime-toteutus.
+- Historialliset keskustelu- ja workspace-vedokset ovat
+  [`issues/receive-designer-v1/design/`](../issues/receive-designer-v1/design/)-hakemistossa.
+  Ne eivät ole tuotantokoodia tai näyttö backend-kyvystä.
 
 Vaalea ja tumma teema kuuluvat molemmat v1:een. Järjestelmäteema on oletus ja
 laitteen paikallinen valinta on esitystila, ei host-snapshotin fakta. UI on
 suomenkielinen; tekniset tunnisteet säilyvät muuttumattomina. `styles.css` on
-tokenien ainoa sisääntulo. Normaaleille teksteille tarkistettujen nykyisten
-väriparien heikoin kontrasti on 4,65:1, ja jokainen tila saa värin lisäksi
-tekstin tai muun ei-värillisen merkin.
+tokenien ainoa sisääntulo. Jokainen tila saa värin lisäksi tekstin tai muun
+ei-värillisen merkin.
 
 ## Kerrokset ja omistajuus
 
-1. `tokens/`: värit, typografia, välit, muodot ja vähennettävä liike.
-2. Yleiset primitiivit: semanttiset painikkeet, kentät, valikot, dialogit,
-   välilehdet, ilmoitukset ja fokus.
-3. Tuotekomponentit: workspace-/agenttinavigaatio, timeline, viestit,
-   työkaluryhmät, koodi/diffi, tuettu kysymys, composer/jono, connection ja
-   vaiheistettu operaatio.
-4. Journey-koostaminen: [UI-käyttökulut](ui.md) ja sovelluksen route-/domain-tila.
+1. `design-system/tokens/`: värit, typografia, välit, muodot ja vähennettävä liike.
+2. `web/src/components/Primitives.tsx` ja `Overlays.tsx`: semanttiset painikkeet,
+   kentät, valikot, dialogit, välilehdet ja fokus.
+3. `Navigation.tsx`, `Conversation.tsx`, `Status.tsx` ja `Operations.tsx`:
+   hyväksytyissä näkymissä toistuvat tuoteosat.
+4. `web/src/app/`: route-, verkko- ja domain-tila sekä journey-koostaminen.
 
 Visuaalinen komponentti saa valmiin näyttömallin ja lähettää käyttäjän intentin.
 Se ei avaa verkkoa, rakenna command ID:tä, sovita snapshotia ja SSE:tä, päättele
-Pi-capabilityä, tallenna draftia tai tee retry/resume/rollback-päätöstä.
-`build-design-system` toteuttaa hyväksytyn katalogin myöhemmin samalla koodilla,
-jota tuote ja katalogi käyttävät.
+Pi-capabilityä, tallenna draftia tai tee retry-, resume- tai rollback-päätöstä.
+Myöhemmät slicet laajentavat tätä samaa kirjastoa todetun tarpeen mukaan.
 
-## Referenssien asema
+## Tarkistukset
 
-Nykyiset `components/`-hakemiston JSX-, `.d.ts`-, prompt- ja card-tiedostot sekä
-vastaanotetut HTML-vedokset säilyvät v0.1-visuaalireferensseinä. Ne eivät ole
-production API tai näyttö backend-kyvystä. Tuotantospec korjaa niistä muun muassa
-pelkkään tilapisteeseen jääneen tiedon, yksittäisen queue-itemin cancelin,
-hard-coded title-cadencen, automaattisen fokussiirron, GitHub-linkityksen mockin
-ja yhdistetyn stop+archive-toiminnon.
+Komponentti- ja selaintestit tarkistavat muun muassa näkyvät estosyyt,
+näppäimistön, dialogin fokuspalautuksen, valikon liikkumisen, IME-lähetyksen,
+ei-värilliset tilat, 200 % zoomin, reduced motionin sekä Axen molemmissa teemoissa.
+Kuvat täydentävät näitä väitteitä, mutta eivät korvaa assertioita.
 
-Alkuperäiset lähteet:
-
-- [keskusteluvedokset](../issues/receive-designer-v1/design/vedokset/);
-- [workspace- ja agenttinavigointi](../issues/receive-designer-v1/design/workspaces/);
-- [vastaanotto](../issues/receive-designer-v1/review.md) ja
-  [kahdeksan hyväksyttyä UI-päätöstä](../issues/review-ui-v1/review.md).
-
-React/TypeScript, React Aria ja Storybook ovat edelleen
-[Proposed ADR 0002:n](adr-0002-frontend-stack.md) ehdotuksia. Tuotantodesign ei
-hyväksy stackia. Ajettavan katalogin URL ja käyttöohje lisätään vasta, kun
-`build-design-system` on rakentanut ja todentanut saman tuotantokoodin.
+```sh
+npm run test:component --prefix web
+npm run storybook:test --prefix web
+PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" npm run test:visual --prefix web
+PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" npm run test:a11y --prefix web
+```

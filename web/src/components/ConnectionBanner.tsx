@@ -1,22 +1,19 @@
 import type { Bootstrap } from "../app/bootstrap";
+import {
+  ConnectionBanner as ProductionConnectionBanner,
+  type ConnectionState,
+} from "./Status";
+
 export function ConnectionBanner({
   state,
 }: {
   state: "loading" | Bootstrap["state"];
 }) {
-  if (state === "authenticated") return null;
-  const labels = {
-    loading: "Ladataan palvelimen tilaa…",
-    authentication_required: "Istunto puuttuu tai on vanhentunut.",
-    daemon_unavailable: "Käyttäjän agenttipalveluun ei saada yhteyttä.",
-  } as const;
-  const urgent = state !== "loading";
-  return (
-    <div
-      className={`banner banner-${state}`}
-      role={urgent ? "alert" : "status"}
-    >
-      {labels[state]}
-    </div>
-  );
+  const mapped: Record<typeof state, ConnectionState> = {
+    loading: "loading",
+    authenticated: "online",
+    authentication_required: "authentication-required",
+    daemon_unavailable: "daemon-unavailable",
+  };
+  return <ProductionConnectionBanner state={mapped[state]} />;
 }

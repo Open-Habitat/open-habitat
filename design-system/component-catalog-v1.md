@@ -1,16 +1,16 @@
 # Komponenttikatalogin sopimus v1
 
-Tämä katalogi määrittää `build-design-system`-työn tarvitseman rajatun
-komponenttijoukon. Propsit ovat tuotetermejä ja framework-riippumattomia;
-[Proposed ADR 0002](../docs/adr-0002-frontend-stack.md) ehdottaa niiden myöhempää
-React-toteutusta ja React Aria -pohjaa. Tässä ei hyväksytä kyseistä ADR:ää eikä
-luoda runtime-koodia.
+Tämä katalogi määrittää tuotannon rajatun komponenttijoukon. Propsit ovat
+tuotetermejä ja framework-riippumattomia. [ADR 0002](../docs/adr-0002-frontend-stack.md)
+on hyväksytty, ja ensimmäinen React/React Aria -toteutus on
+`web/src/components/`-hakemistossa.
 
-Jokaisesta tuotantokomponentista tehdään myöhemmin samasta toteutusmoduulista
-catalog-storyt: default, pitkä suomenkielinen sisältö, keyboard/focus, dark,
-200 % zoom, reduced motion sekä alla nimetyt state-esimerkit. Fixture antaa
+Tuotantokomponenttien catalog-storyt tuovat samat toteutusmoduulit kuin sovellus.
+Ne kattavat pitkän suomenkielisen sisällön, keyboard/focus-, dark-, 200 % zoom-
+ja reduced motion -esimerkit sekä alla nimetyt tämän slicen tilat. Fixture antaa
 valmiin näyttömallin; story ei sisällä omaa Pi-, verkko- tai reconciliation-
-logiikkaa.
+logiikkaa. Myöhemmät journey-slicet täydentävät samassa katalogissa ne komponentit
+ja integraatiot, jotka tarvitsevat oikean host-sopimuksen näyttömallin.
 
 ## Sopimusmuodot
 
@@ -593,7 +593,7 @@ Ensimmäisten storyjen vähimmäisjoukko:
 | OperationProgress | pending/running/succeeded/failed/unknown/skipped stages, partial residuals |
 | Host dialogs | create partial, blocking Git unknown, GitHub unsupported, Taskfleet unknown, archive conflict, transfer blocked, delete blocked/partial |
 
-[Staattinen tuotantokierros](ui_kits/production-v1/index.html) näyttää integroidun
-perusnäkymän, stale/read-only-tilan, epävarman lähetyksen, osittaisen poiston ja
-teemaparit. Storybook korvaa staattisen kierroksen vasta, kun sama tuotantokoodi
-on toteutettu ja Proposed ADR 0002 hyväksytty.
+Ajettava Storybook korvaa aiemman staattisen tuotantokierroksen. Se näyttää
+integroidun perusnäkymän, stale/read-only-tilan, epävarman lähetyksen, osittaisen
+operaation ja teemaparit samasta tuotantokoodista. Alkuperäiset toimitusvedokset
+säilyvät vastaanottoissuessa historiallisena evidenssinä.

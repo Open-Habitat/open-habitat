@@ -16,7 +16,9 @@
     "test:a11y": "playwright test --grep @a11y",
     "build": "vite build",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build --quiet"
+    "build-storybook": "storybook build --quiet",
+    "storybook:test": "storybook build --quiet",
+    "test:visual": "playwright test --grep @visual"
   },
   "dependencies": {
     "@reduxjs/toolkit": "2.12.0",

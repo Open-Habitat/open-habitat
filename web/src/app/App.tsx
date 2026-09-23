@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useLocation } from "react-router";
+import { CatalogPreview } from "../components/CatalogPreview";
 import { ConnectionBanner } from "../components/ConnectionBanner";
 import { EmptyWorkspace } from "../components/EmptyWorkspace";
 import { LoginCard } from "../components/LoginCard";
@@ -12,6 +13,7 @@ export function App() {
   const location = useLocation();
   const phase = useSelector((s: RootState) => s.connection.phase);
   const bootstrap = useSelector((s: RootState) => s.connection.bootstrap);
+  const fixtureName = new URLSearchParams(location.search).get("fixture");
   useEffect(() => {
     const fixture = fixtureBootstrap();
     if (fixture) {
@@ -53,9 +55,11 @@ export function App() {
   }, [dispatch]);
   return (
     <div className="app">
-      <a className="skip" href="#main">
-        Siirry sisältöön
-      </a>
+      {!fixtureName?.startsWith("design") ? (
+        <a className="skip" href="#main">
+          Siirry sisältöön
+        </a>
+      ) : null}
       <ConnectionBanner state={phase} />
       {phase === "loading" ? (
         <main id="main">
@@ -78,7 +82,12 @@ export function App() {
           <p>Viime komentoa ei lähetetä automaattisesti uudelleen.</p>
         </main>
       ) : null}
-      {phase === "authenticated" ? (
+      {phase === "authenticated" && fixtureName?.startsWith("design") ? (
+        <CatalogPreview
+          scenario={fixtureName === "design-unhappy" ? "unhappy" : "happy"}
+        />
+      ) : null}
+      {phase === "authenticated" && !fixtureName?.startsWith("design") ? (
         <>
           <nav aria-label="Workspacet ja agentit">
             <strong>Native Agent Host</strong>

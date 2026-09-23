@@ -10,7 +10,7 @@ toimintalogiikkaa tai yksittäisen suunnittelukierroksen vedoksia ei määritell
 - Tuotantodesignin kanoninen määrittely: [`production-v1.md`](production-v1.md)
 - Tuotantokomponenttien rajattu katalogisopimus:
   [`component-catalog-v1.md`](component-catalog-v1.md)
-- Katseluesimerkit: [`ui_kits/production-v1/index.html`](ui_kits/production-v1/index.html)
+- Ajettava tuotantokatalogi: `npm run storybook --prefix ../web -- --no-open`
 - Ensimmäisen keskusteludesignin vedokset ja simulaatio:
   [`../issues/receive-designer-v1/design/`](../issues/receive-designer-v1/design/).
 - Vastaanotto ja hyväksytyt UI-päätökset:
@@ -61,17 +61,18 @@ eivät design systemin yleisiksi sisältösäännöiksi.
 propsien, tapahtumien, tilojen ja esimerkkien sopimus. Se sisältää vain hyväksyttyjen
 journeyjen tarvitsemat yleiset primitiivit ja tuoteosat.
 
-Nykyiset hakemistot ovat vastaanotetun v0.1-kierroksen referenssejä:
+Tuotantototeutus on `web/src/components/`-hakemistossa. Sovellus, Storybook ja
+testien deterministinen preview tuovat samat TypeScript-moduulit; storyihin ei
+rakenneta vaihtoehtoisia kontrolleja. Komponentit saavat valmiit näyttömallit ja
+palauttavat intentit. Verkko, reititysvalinta, command ID:t, retry ja natiivin
+tilan sovitus jäävät sovelluskerrokseen.
 
-- `components/core/`: Button, Tag, StatusDot.
-- `components/agent/`: ToolRow, ToolGroup, CodeBlock, DiffView, ApprovalCard.
-- `components/chat/`: TopBar, Message, Composer, Banner.
-
-Niiden `.jsx`, `.d.ts`, `.prompt.md` ja kortti-HTML säilyvät lähdeprovenienssin
-vuoksi. Ne eivät ole tuotanto-API: esimerkiksi yksittäisen queue-itemin cancel,
-hard-coded otsikkorytmi tai hoveriin jäävä tieto on korjattu tuotantosopimuksessa.
-Proposed ADR 0002:n stack ja oikeat komponentit hyväksytään ja rakennetaan vasta
-myöhemmissä porteissa. Tuote ja katalogi käyttävät silloin samaa toteutusta.
+Vastaanotetun v0.1-kierroksen alkuperäiset vedokset säilyvät vain
+`issues/receive-designer-v1/design/`-hakemistossa historiallisena evidenssinä.
+Aiemmat `design-system/components/`-mockit ja staattinen `ui_kits/production-v1`
+poistettiin, kun ajettava katalogi korvasi ne. Ne eivät olleet tuotanto-API: niiden
+yksittäisen queue-itemin cancel, hard-coded otsikkorytmi ja hoveriin jäävä tieto
+ovat ristiriidassa tuotantosopimuksen kanssa.
 
 ## Hakemistot
 
@@ -80,7 +81,7 @@ myöhemmissä porteissa. Tuote ja katalogi käyttävät silloin samaa toteutusta
 | `styles.css` | Ainoa linkitettävä tyylien sisääntulo |
 | `tokens/` | Värit, typografia, välit ja liike |
 | `guidelines/` | Tokenien ja yhteisten tilojen visuaaliset käyttökortit |
-| `components/` | Uudelleenkäytettävät komponenttireferenssit |
-| `ui_kits/` | Staattiset katseluesimerkit; `production-v1` havainnollistaa kanonista specia, muut eivät lisää tuotevaatimuksia |
+| `../web/src/components/` | Tuotannon komponentit ja Storybook-storyt samasta toteutuksesta |
+| `ui_kits/` | Historialliset staattiset katseluesimerkit; ne eivät lisää tuotevaatimuksia |
 | `production-v1.md` | Yhdistetty visuaalinen, reitti-, fokus-, streaming- ja journey-määrittely |
 | `component-catalog-v1.md` | Tuotantokomponenttien julkinen sopimus ja state/story-matriisi |
