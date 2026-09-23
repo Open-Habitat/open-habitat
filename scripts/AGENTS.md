@@ -10,9 +10,13 @@ contract drift and release reproducibility, and rejects tracked-tree changes.
 `verify-release.sh` checks archive checksum, file manifest, required contents and
 version provenance. These scripts do not install or activate a release.
 
-`vm-test.sh self-test --json` validates the immutable Ubuntu image recipe and
-synthetic two-UID cloud-init input. It deliberately does not claim that QEMU or
-systemd isolation ran; full VM scenarios belong to their later implementation
-owners.
+`vm-test.sh self-test --json` remains a fast offline recipe check, not boot evidence.
+`vm-test.sh systemd-self-test --json` explicitly builds/uses the digest-based
+rootless Podman tool image in `test/vm/Containerfile`, downloads the checksum-pinned
+Ubuntu cloud image to `.cache/vm/`, and boots a private QEMU TCG overlay. It
+proves only synthetic systemd/two-user socket/permission fixtures, not the product
+route. Run `bash test/vm/test-vm-test.sh` for focused offline parser and failure
+checks; see `issues/build-workspace-slice/phase-2-vm-prereq.md` for scope and
+measured boot evidence.
 
 Documentation validation remains `python3 scripts/validate-project-view.py`.

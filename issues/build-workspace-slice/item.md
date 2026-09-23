@@ -66,3 +66,7 @@ Interactive and repeated behavior must use the shared production component imple
 ### 2026-09-23T15:12:19Z · @agent
 
 Run 01m37cpk857mh2fgwmfyyttz3a stopped correctly: it implemented only isolated directory discovery and explicitly prohibited merging the incomplete branch. The branch was discarded through audited Taskfleet cleanup. Continue this broad security slice as serial mergeable phases while the parent issue remains in-progress: (1) gateway OAuth/session/identity security core; (2) per-UID UDS, workspace discovery and native gh adapter plus two-user fixture; (3) host-backed browser integration, visual evidence, final focused security review and full gate. No phase may claim or close the complete slice before phase 3.
+
+### 2026-09-23T16:00:08Z · @agent
+
+Run 01m37ejvvmavh2x6bhbftyqewy delivered only the disposable systemd/two-UID VM prerequisite. Synthetic boot/UID/socket/permission proof and commands are in phase-2-vm-prereq.md. Parent stays in-progress with all acceptance boxes unchanged. Phase 2 still must implement and exercise the actual mapped gateway→daemon route; phase 3 owns host-backed browser/visual acceptance.

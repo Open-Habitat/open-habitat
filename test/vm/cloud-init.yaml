@@ -1,14 +1,19 @@
 #cloud-config
 users:
+  - default
   - name: agent-a
     uid: 21001
     shell: /bin/bash
+    homedir: /home/agent-a
   - name: agent-b
     uid: 21002
     shell: /bin/bash
+    homedir: /home/agent-b
   - name: native-agent-host-gateway
     uid: 21003
     shell: /usr/sbin/nologin
+    homedir: /var/empty/native-agent-host-gateway
+    no_create_home: true
 write_files:
   - path: /home/agent-a/SYNTHETIC-IDENTITY
     permissions: '0600'
@@ -16,3 +21,96 @@ write_files:
   - path: /home/agent-b/SYNTHETIC-IDENTITY
     permissions: '0600'
     content: 'agent-b-only'
+  - path: /etc/systemd/system/fixture-route@.socket
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Synthetic route socket for %i (not product code)
+      [Socket]
+      ListenStream=/run/fixture-route/%i.sock
+      SocketUser=%i
+      SocketGroup=%i
+      SocketMode=0600
+      DirectoryMode=0755
+      Accept=no
+      [Install]
+      WantedBy=sockets.target
+  - path: /etc/systemd/system/fixture-route@.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Synthetic route responder (not product code)
+      [Service]
+      User=%i
+      Group=%i
+      ExecStart=/usr/bin/python3 /usr/local/sbin/fixture-route
+  - path: /usr/local/sbin/fixture-route
+    permissions: '0755'
+    content: |
+      #!/usr/bin/python3
+      import os, socket
+      # With Accept=no systemd passes the listening socket as fd 3.
+      assert int(os.environ['LISTEN_FDS']) == 1
+      server = socket.fromfd(3, socket.AF_UNIX, socket.SOCK_STREAM)
+      while True:
+          client, _ = server.accept()
+          with client:
+              client.recv(64)
+              client.sendall((str(os.getuid()) + '\n').encode())
+  - path: /usr/local/sbin/fixture-proof
+    permissions: '0755'
+    content: |
+      #!/usr/bin/python3
+      import json, os, pwd, socket, stat, subprocess, sys
+      def check(ok, message):
+          if not ok:
+              raise RuntimeError(message)
+      try:
+          check(open('/proc/1/comm').read().strip() == 'systemd', 'PID 1 is not systemd')
+          for name, uid in [('agent-a', 21001), ('agent-b', 21002), ('native-agent-host-gateway', 21003)]:
+              check(pwd.getpwnam(name).pw_uid == uid, name + ' UID')
+          for name, uid in [('agent-a', 21001), ('agent-b', 21002)]:
+              home = '/home/' + name
+              marker = home + '/SYNTHETIC-IDENTITY'
+              check(os.stat(home).st_uid == uid and stat.S_IMODE(os.stat(home).st_mode) == 0o700, name + ' home ownership/mode')
+              check(os.stat(marker).st_uid == uid and stat.S_IMODE(os.stat(marker).st_mode) == 0o600, name + ' marker ownership/mode')
+              subprocess.run(['systemctl', 'enable', '--now', 'fixture-route@' + name + '.socket'], check=True, stdout=subprocess.DEVNULL)
+              path = '/run/fixture-route/' + name + '.sock'
+              check(os.stat(path).st_uid == uid and os.stat(path).st_gid == pwd.getpwnam(name).pw_gid and stat.S_IMODE(os.stat(path).st_mode) == 0o600, name + ' socket ownership/mode')
+              s = socket.socket(socket.AF_UNIX)
+              s.settimeout(10)
+              s.connect(path)
+              s.sendall(b'probe\n')
+              check(s.recv(64) == (str(uid)+'\n').encode(), name + ' activation response')
+              s.close()
+          for name, uid in [('agent-a', 21001), ('agent-b', 21002)]:
+              other = 'agent-b' if name == 'agent-a' else 'agent-a'
+              script = "import os; os.setgroups([]); os.setgid(%d); os.setuid(%d); open('/home/%s/SYNTHETIC-IDENTITY').read()" % (pwd.getpwnam(name).pw_gid, uid, other)
+              denied = subprocess.run(['/usr/bin/python3', '-c', script], capture_output=True)
+              check(denied.returncode != 0 and b'PermissionError' in denied.stderr, name + ' cross-user read denial')
+              script = "import os,socket; os.setgroups([]); os.setgid(%d); os.setuid(%d); s=socket.socket(socket.AF_UNIX); s.connect('/run/fixture-route/%s.sock')" % (pwd.getpwnam(name).pw_gid, uid, other)
+              denied = subprocess.run(['/usr/bin/python3', '-c', script], capture_output=True)
+              check(denied.returncode != 0 and b'PermissionError' in denied.stderr, name + ' cross-user route denial')
+          check(not os.path.exists('/var/empty/native-agent-host-gateway'), 'gateway home created')
+          print('VM_PROOF=' + json.dumps({'status':'passed','pid1':'systemd','uids':[21001,21002,21003],'socket_activation':True,'socket_mode':'0600','cross_user_marker_denied':True,'cross_user_route_denied':True,'scope':'synthetic-environment-only'}), flush=True)
+          # Let cloud-final complete before shutting down this disposable guest.
+          subprocess.run(['systemd-run', '--on-active=15s', '--unit=fixture-shutdown', '/usr/bin/systemctl', 'poweroff', '--no-block'], check=True, stdout=subprocess.DEVNULL)
+      except Exception as e:
+          print('VM_PROOF=' + json.dumps({'status':'failed','reason':str(e)}), flush=True)
+          sys.exit(1)
+  - path: /etc/systemd/system/fixture-proof.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Verify synthetic systemd environment
+      [Service]
+      Type=oneshot
+      StandardOutput=tty
+      TTYPath=/dev/ttyS0
+      ExecStart=/usr/local/sbin/fixture-proof
+runcmd:
+  - [chown, '-R', '21001:21001', /home/agent-a]
+  - [chown, '-R', '21002:21002', /home/agent-b]
+  - [chmod, '0700', /home/agent-a, /home/agent-b]
+  - [systemctl, daemon-reload]
+  - [systemctl, start, fixture-proof.service]
