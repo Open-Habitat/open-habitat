@@ -1,8 +1,8 @@
 ---
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-23
 type: task
-status: open
+status: in-progress
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
