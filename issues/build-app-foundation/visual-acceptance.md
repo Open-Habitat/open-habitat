@@ -19,17 +19,23 @@ The checked-in test is `web/tests/foundation.spec.ts`.
    - Fixture: `ready` (`schema_version:1`, authenticated, synthetic server label).
    - Route: `/workspaces?fixture=ready`.
    - Assertions: visible `Native Agent Host` heading; displayed route is exactly `/workspaces`; visible text says write operations are not implemented.
-   - Evidence: [foundation-ready.avif](foundation-ready.avif).
+   - Evidence:
+
+     ![Valmis foundation-näkymä](./assets/foundation-ready.avif)
 2. **Authentication required**
    - Fixture: `auth`.
    - Route: `/?fixture=auth`.
    - Assertions: persistent alert says the session is missing/stale; the GitHub provider control is visible; explanatory text says the browser does not choose a Linux user.
-   - Evidence: [foundation-auth.avif](foundation-auth.avif).
+   - Evidence:
+
+     ![GitHub-kirjautuminen, kun istunto puuttuu](./assets/foundation-auth.avif)
 3. **Mapped daemon unavailable**
    - Fixture: `daemon`, with a synthetic safe problem.
    - Route: `/workspaces?fixture=daemon`.
    - Assertions: `Yhteyttä ei saatu` heading is visible; the page says the last command will not be resent automatically.
-   - Evidence: [foundation-daemon-error.avif](foundation-daemon-error.avif).
+   - Evidence:
+
+     ![Daemon-yhteysvirhe](./assets/foundation-daemon-error.avif)
 4. **Accessibility across all three states**
    - Axe runs against `ready`, `auth` and `daemon` after the main region is visible.
    - Assertion: zero Axe violations for every state. Browser assertions, not screenshots, determine pass/fail.
