@@ -2,12 +2,17 @@
 created: 2026-09-21
 updated: 2026-09-23
 type: task
-status: open
+status: done
 priority: normal
 epic: native-agent-host-architecture
 labels: [human-review]
 reviewer: jari
 blocked_by: ['@plan-v1-implementation', '@apply-review-corrections']
+closed: 2026-09-23
+closed_by: jari
+commits:
+- hash: 0fa42590c40b3ed5184c9b7dcecb3fd66f78ac14
+  summary: Accept corrected implementation-readiness package
 ---
 
 # Review technical decisions and implementation readiness with Jari
@@ -46,3 +51,9 @@ Review the [corrected implementation package](../plan-v1-implementation/review.m
 ### 2026-09-23T07:27:44Z · @jari
 
 Accepted on 2026-09-23 against artifact revision b87b1aae5d6fefcd914d4f06c0e510b5ca124f60 (evidence/closure 2fa1ef36df832af441816b6dcd1ecb15f55f0f22): all eight corrected implementation-readiness decisions are approved. The later Biome amendment is explicitly approved because the complete stable TypeScript 7 graph passed without forced peers, disabled checks or nightly packages. Alder remains authorized for the bounded pilot after executable green gates; concrete persistent state belongs to a separate reviewed Fleetrepo issue/worktree. Continue autonomously through work not blocked by later human UI/MVP review.
+
+## Resolution
+
+### 2026-09-23T07:28:19Z · @jari
+
+All eight decisions were explicitly accepted against b87b1aa; requested corrections are resolved and validated. The bounded MVP implementation is authorized. Later per-slice screenshot reviews and the final MVP review remain human gates.
