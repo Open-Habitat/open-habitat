@@ -239,7 +239,22 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 		}
 	} else {
 		if cfg.Handoff != nil {
-			return nil, system("native_adapter_unavailable", "native credential consumer is not installed; daemon handoff cannot start")
+			// No TCP fallback: activation and adapter preparation complete before Serve.
+			ln, activationErr := activatedSocket(*cfg.Handoff)
+			if activationErr != nil {
+				return nil, system("activation_failed", "invalid daemon socket activation")
+			}
+			defer ln.Close()
+			_, adapter, adapterErr := daemon.NewNativeHandoff(*cfg.Handoff)
+			if adapterErr != nil {
+				return nil, system("native_adapter_unavailable", "native credential adapter unavailable")
+			}
+			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+			defer stop()
+			if err := daemon.ServeHTTP(ctx, ln, *cfg.Handoff, adapter.Consumer(), daemonHealthMux()); err != nil {
+				return nil, system("server_failed", "daemon socket service failed")
+			}
+			return nil, nil
 		}
 		h = daemon.New()
 	}
@@ -264,6 +279,11 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 		return nil, system("server_failed", err.Error())
 	}
 	return nil, nil
+}
+func daemonHealthMux() *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.Handle("GET /healthz", daemon.New())
+	return mux
 }
 func adminCommand(args []string) (any, error) {
 	if len(args) != 2 || args[0] != "readiness" || args[1] != "show" {

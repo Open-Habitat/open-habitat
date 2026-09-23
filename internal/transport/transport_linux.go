@@ -310,15 +310,8 @@ func (s *Server) ServeMux(ctx context.Context, ln *net.UnixListener, mux *http.S
 	if !ok || addr.Name != s.cfg.Socket {
 		return denied
 	}
-	info, e := os.Lstat(s.cfg.Socket)
-	if e != nil || info.Mode()&os.ModeSocket == 0 || info.Mode()&os.ModeSymlink != 0 {
+	if checkListener(s.cfg, ln, s.testPath, false) != nil {
 		return denied
-	}
-	if !s.testPath {
-		st, ok := info.Sys().(*syscall.Stat_t)
-		if !ok || int(st.Uid) != s.cfg.UID || info.Mode().Perm()&^os.FileMode(0660) != 0 {
-			return denied
-		}
 	}
 	if mux == nil {
 		mux = http.NewServeMux()
@@ -331,8 +324,18 @@ func (s *Server) ServeMux(ctx context.Context, ln *net.UnixListener, mux *http.S
 		return c
 	}}
 	srv.SetKeepAlivesEnabled(false)
-	stop := context.AfterFunc(ctx, func() { _ = srv.Close() })
-	defer stop()
+	shutdownDone := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() {
+		defer close(shutdownDone)
+		grace, cancel := context.WithTimeout(context.Background(), deadline)
+		defer cancel()
+		_ = srv.Shutdown(grace)
+	})
+	defer func() {
+		if !stop() {
+			<-shutdownDone
+		}
+	}()
 	err := srv.Serve(&guardListener{UnixListener: ln, cfg: s.cfg, ctx: ctx, slots: make(chan struct{}, 64)})
 	if ctx.Err() != nil {
 		return nil
@@ -341,6 +344,64 @@ func (s *Server) ServeMux(ctx context.Context, ln *net.UnixListener, mux *http.S
 		return nil
 	}
 	return denied
+}
+
+// ValidateListener probes that the configured pathname reaches the supplied
+// listener and verifies its ownership and mode before serving.
+func ValidateListener(cfg Config, ln *net.UnixListener) error {
+	return validateListener(cfg, ln, false)
+}
+func validateListener(cfg Config, ln *net.UnixListener, testPath bool) error {
+	return checkListener(cfg, ln, testPath, !testPath)
+}
+func checkListener(cfg Config, ln *net.UnixListener, testPath, probePath bool) error {
+	if ln == nil || validate(cfg, testPath) != nil {
+		return denied
+	}
+	addr, ok := ln.Addr().(*net.UnixAddr)
+	if !ok || addr.Name != cfg.Socket {
+		return denied
+	}
+	path, e := os.Lstat(cfg.Socket)
+	if e != nil || path.Mode()&os.ModeSocket == 0 || path.Mode()&os.ModeSymlink != 0 {
+		return denied
+	}
+	if probePath {
+		// Socket fd inode differs from pathname inode on Linux. Prove this
+		// pathname reaches the supplied listener by a bounded connect/accept.
+		_ = ln.SetDeadline(time.Now().Add(250 * time.Millisecond))
+		defer ln.SetDeadline(time.Time{})
+		probe, e := net.DialTimeout("unix", cfg.Socket, 250*time.Millisecond)
+		if e != nil {
+			return denied
+		}
+		defer probe.Close()
+		var challenge [16]byte
+		if _, e = rand.Read(challenge[:]); e != nil {
+			return denied
+		}
+		_ = probe.SetDeadline(time.Now().Add(250 * time.Millisecond))
+		if _, e = probe.Write(challenge[:]); e != nil {
+			return denied
+		}
+		accepted, e := ln.AcceptUnix()
+		if e != nil {
+			return denied
+		}
+		defer accepted.Close()
+		_ = accepted.SetReadDeadline(time.Now().Add(250 * time.Millisecond))
+		var response [16]byte
+		if _, e = io.ReadFull(accepted, response[:]); e != nil || response != challenge {
+			return denied
+		}
+	}
+	if !testPath {
+		stat, ok := path.Sys().(*syscall.Stat_t)
+		if !ok || int(stat.Uid) != cfg.UID || path.Mode().Perm() != 0660 {
+			return denied
+		}
+	}
+	return nil
 }
 
 type guardListener struct {
