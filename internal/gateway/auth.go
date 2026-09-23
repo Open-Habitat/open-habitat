@@ -93,7 +93,7 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	if cfg.ClientID == "" || cfg.ClientSecret == "" || opts.Provider == nil || opts.Sink == nil {
 		return nil, errors.New("auth dependencies missing")
 	}
-	keys, targets := map[string]bool{}, map[string]bool{}
+	keys, targets, users, sockets := map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]bool{}
 	if len(cfg.Identities) == 0 {
 		return nil, errors.New("no identity mappings")
 	}
@@ -104,11 +104,13 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 		}
 		key := m.Provider + ":" + m.Subject
 		target := strconv.Itoa(m.UID)
-		if keys[key] || targets[target] {
+		if keys[key] || targets[target] || users[m.Username] || sockets[m.Socket] {
 			return nil, errors.New("duplicate identity mapping")
 		}
 		keys[key] = true
 		targets[target] = true
+		users[m.Username] = true
+		sockets[m.Socket] = true
 	}
 	if opts.Now == nil {
 		opts.Now = time.Now
