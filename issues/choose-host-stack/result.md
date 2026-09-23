@@ -1,5 +1,7 @@
 # Host stack decision result
 
+> Historical evidence (2026-09-22): this result truthfully records the original Rust recommendation and experiment. Jari's later decision supersedes the product recommendation with Go; current design and evidence are in `docs/adr-0003-host-stack.md` and `issues/apply-review-corrections/result.md`. Do not derive current build, operator or Fleetrepo requirements from this historical result.
+
 ## Outcome
 
 The proposed smallest secure stack is one locked Rust codebase and one static

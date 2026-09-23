@@ -22,13 +22,13 @@ Every worker also consumes the accepted review revision produced by `review-impl
 ### Bootstrap layout owned by `build-app-foundation`
 
 ```text
-Cargo.toml / Cargo.lock / rust-toolchain.toml
-crates/
-  host-contracts/       # generated/validated wire types only
-  host-core/            # source facts, command ledger, operations, adapters
-  host-gateway/         # OIDC/session/CSRF, static files, UDS routing
-  host-daemon/          # per-UID HTTP/SSE and native process ownership
-  native-agent-host/    # thin AI-first operator/runtime CLI
+go.mod / go.sum
+cmd/native-agent-host/  # thin AI-first operator/runtime CLI
+internal/
+  contracts/            # generated/validated wire types only
+  core/                 # source facts, command ledger, operations, adapters
+  gateway/              # OAuth/OIDC/session/CSRF, static files, UDS routing
+  daemon/               # per-UID HTTP/SSE and native process ownership
 web/
   package.json / package-lock.json / .node-version
   src/app/              # routes, store, connection controller
@@ -40,7 +40,7 @@ scripts/
 systemd/ sysusers.d/ tmpfiles.d/
 ```
 
-Rust is locked to 1.98.1 and Node to 22.23.2 unless the review records a changed pin. Generated Rust/TypeScript types are derivatives; `contracts/v1/` remains authoritative. `cargo xtask contracts generate` must be deterministic, and `--check` must fail on drift without rewriting.
+Go is locked to 1.27.1, stable TypeScript to 7.0.2 and Node to 22.23.2 unless the review records a changed pin. Generated Go/TypeScript types are derivatives; `contracts/v1/` remains authoritative. `go generate ./internal/contracts` must be deterministic, and the repository drift check must fail without rewriting.
 
 ### AI-first operator CLI
 
@@ -63,35 +63,37 @@ native-agent-host maintenance leave --json
 ### Foundation green gate — all commands PROPOSED
 
 ```sh
-rustup show active-toolchain
+go version
+go fmt ./...
+go vet ./...
+go test -race ./...
+CGO_ENABLED=0 go build -trimpath ./cmd/native-agent-host
 node --version
 npm --version
-cargo fmt --all -- --check
-cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
-cargo test --locked --workspace --lib
-cargo test --locked --workspace --doc
-cargo test --locked --workspace --tests
 npm ci --prefix web
-npm run format:check --prefix web
-npm run lint --prefix web
-npm run typecheck --prefix web
+npm run format:check --prefix web        # Biome
+npm run lint --prefix web                # Biome Hooks + JSX a11y
+npm run typecheck --prefix web           # tsc --noEmit
 npm run test:unit --prefix web
 npm run test:component --prefix web
 npm run test:e2e --prefix web
 npm run test:a11y --prefix web
 npm run build --prefix web
 npm run build-storybook --prefix web
-cargo xtask contracts generate --check
+go generate ./internal/contracts
+./scripts/check-generated.sh
 python3 issues/define-host-contracts/validate_contracts.py
-./scripts/package-release.sh --version 0.0.0-test --target x86_64-unknown-linux-musl --web-dir web/dist --output dist/
-./scripts/verify-release.sh --archive dist/native-agent-host-0.0.0-test-x86_64-unknown-linux-musl.tar.xz --json
+./scripts/package-release.sh --version 0.0.0-test --target linux-amd64 --web-dir web/dist --output dist/
+./scripts/verify-release.sh --archive dist/native-agent-host-0.0.0-test-linux-amd64.tar.gz --json
 ./scripts/ci-local.sh --clean --json
 python3 scripts/validate-project-view.py
 issuectl doctor --json
 git diff --check
 ```
 
-`ci-local.sh` is the bare-CI approximation: a disposable HOME/CARGO_HOME/npm cache, no repository-external credentials, `CI=1`, locked/offline-after-fetch dependency use, generated-type drift, all Rust/frontend/contract checks, package reproducibility and clean-tree assertion. CI invokes the same script after explicit dependency/browser provisioning. A failed, skipped or unavailable command is not green.
+Biome 2.5.14 is the formatter/linter; `tsc --noEmit` remains the type checker. The lint config makes recommended accessibility plus `noNoninteractiveElementInteractions`, `useKeyWithClickEvents`, `useHookAtTopLevel` and `useExhaustiveDependencies` errors. A missing required rule blocks unless one focused TS7-compatible lint tool is supported by primary evidence. Never retry or force the rejected `typescript-eslint` 8.70.1 graph, whose peer range excludes TS7.
+
+`ci-local.sh` is the bare-CI approximation: disposable HOME, Go/npm/browser caches, no repository-external credentials, `CI=1`, locked/offline-after-fetch dependencies, generated-type drift, Go/frontend/contract checks, package reproducibility and clean-tree assertion. CI invokes the same script after explicit dependency/browser provisioning. A failed, skipped or unavailable command is not green.
 
 ## Contract corrections accepted as plan recommendations
 
@@ -102,27 +104,33 @@ git diff --check
 3. **GitHub-create confirmation (CG-03).** The fresh capability/preflight view supplies `confirmation_challenge:{kind:"exact_repository",expected:"owner/repository"}`. Request supplies `confirmation` byte-for-byte equal to `expected`, without trim/case folding. It is bound to the target observation token; mismatch is `confirmation_mismatch`, stale observation is `stale_precondition`. Foundation changes the existing confirmation constraint to `minLength:3` and a maximum derived from the owner plus slash plus repository bounds. Add CT-032.
 4. **Native question cancellation (CG-04).** `response:null` is supported only when the Pi adapter has proved that the specific extension request accepts native cancellation. The capability is per request. Adapter cancellation must yield `question.resolved` with outcome `cancelled`; otherwise the action is `capability_unknown`/`unsupported` and no null is sent. Add CT-033 for supported, unsupported and resolved-elsewhere races.
 
-These corrections do not select Rust/React or change native authority. They close design/contract ambiguity before implementation code depends on it.
+These corrections do not select Go/React or change native authority. They close design/contract ambiguity before implementation code depends on it.
 
 ## Shared fixtures and evidence rules
 
-- **VM identities and executor:** `agent-a` and `agent-b`, distinct synthetic UIDs/homes/sentinels, plus fixed `native-agent-host-gateway`; deterministic fake OIDC subjects `sub-agent-a` and `sub-agent-b`. `build-app-foundation` owns `scripts/vm-test.sh`, a pinned QEMU cloud-image/checksum recipe, cloud-init fake OIDC fixture and GitHub-hosted Ubuntu CI job. It uses KVM when the runner exposes it and deterministic QEMU TCG otherwise. The guest runs systemd as PID 1, binds no host home, SSH agent or credentials, and reset destroys the VM.
+- **VM identities and executor:** `agent-a` and `agent-b`, distinct synthetic UIDs/homes/sentinels, plus fixed `native-agent-host-gateway`; deterministic fake GitHub numeric IDs plus optional OIDC subjects. `build-app-foundation` owns `scripts/vm-test.sh`, a pinned QEMU cloud-image/checksum recipe, cloud-init fake OIDC fixture and GitHub-hosted Ubuntu CI job. It uses KVM when the runner exposes it and deterministic QEMU TCG otherwise. The guest runs systemd as PID 1, binds no host home, SSH agent or credentials, and reset destroys the VM.
 - **Native fixtures:** one non-Git directory, one local Git repo, one linked manual worktree, one Taskfleet-owned disposable worktree, Pi 0.85.1 redacted JSONL plus one disposable live session per identity, long 2,500-entry history, malformed/unknown event, long output, `edit` diff and extension question.
-- **Pilot identities:** actual Jari and Kaisa OIDC subjects mapped by reviewed Fleetrepo config to Unix users `jari` and `kaisa`. The second account does not yet exist and must be created only by the accepted Fleetrepo change. Each owner provisions native Pi/GitHub credentials separately; the product never copies them.
-- **Remote GitHub boundary:** one unique private disposable repository per identity in an explicitly authorized owner. Create/delete authorization is already granted for this bounded pilot after review and gates. Marker commits, exact owner/name/visibility and cleanup verification are mandatory; no valuable repo or organization policy mutation.
+- **Pilot identities:** actual Jari and Kaisa stable GitHub numeric IDs mapped by reviewed Fleetrepo config to Unix users `jari` and `kaisa`. The second account does not yet exist and must be created only by the accepted Fleetrepo change. Pi credentials remain native. One GitHub authorization establishes web identity and forwards its token once to the mapped daemon for supported `gh auth login --with-token --git-protocol https` plus `gh auth setup-git`; the gateway never stores it.
+- **Remote GitHub boundary:** deterministic fixtures cover ordinary behavior; one uniquely named private disposable repository with a synthetic marker supplies the feature-acceptance smoke and screenshots. Exact owner/name/visibility and verified cleanup are mandatory. There is no broad per-user permission campaign or valuable/org policy mutation.
 - **Evidence:** every `result.md` records input/review SHA, tested product SHA, exact commands/exit codes, CT IDs, browser screenshots or traces where relevant, native-source comparison, known limits and successor handoff. Static design and mocks never count as native/runtime proof.
 - **Test tiers:** the credential-free bare gate runs all deterministic tests; native/network/systemd suites are feature-gated out of the bare Cargo invocation and have explicit per-issue commands that must run in the VM or authorized remote fixture. They are not `#[ignore]`d and may not be reported green from a skip.
 - **Contract evolution:** any later slice may make an additive v1 schema change only with matching examples, a new CT ID, regenerated types and a `result.md` compatibility note. Removal, rename, nullability/ordering change or weaker security semantics require a correction issue and human review.
+
+## User-visible slice acceptance
+
+Every user-visible implementation issue is an executable `ui-v1` lane checkpoint. Its worker leaves it in `testing` and writes `issues/<slug>/visual-acceptance.md` with exact product revision, browser/OS/environment, deterministic happy and relevant unhappy scenarios, exact commands/results, and links to essential Playwright screenshots. The conductor presents it to Jari and records explicit dated acceptance in that issue before closing it. Lane serialization blocks the dependent slice meanwhile. These executable checkpoints are not labelled `human-review`; dedicated human reviews remain unlaned. Workers never self-accept UI.
+
+All repeated or interactive behavior is owned by shared production primitives/product components. Local composition may arrange one-off content but may not invent controls, state semantics, focus rules or styling. A slice that replaces a canonical/root mock removes that superseded reference after acceptance; originals remain only issue-local historical evidence.
 
 ## Downstream briefs
 
 ### `build-app-foundation` — foundation and contract gate
 
-- **Inputs/IDs:** frozen inputs; CG-01–CG-04; CT-001–CT-033; Proposed ADR 0002/0003 only after review acceptance.
+- **Inputs/IDs:** frozen inputs; CG-01–CG-04; CT-001–CT-034; Proposed ADR 0002/0003 only after review acceptance.
 - **Visible output:** authenticated shell route skeleton, Finnish loading/auth/daemon error boundaries, token-loaded empty app and explicit test-fixture mode; no claimed real journey.
 - **Non-goals:** no live OIDC provider, native workspace/history, Pi control, production deploy or accepted design-system completion.
-- **Ownership:** root manifests/lockfiles, `crates/`, `web/` scaffolding, `scripts/`, `.github/workflows/`, `systemd/`, generated type families, root and local `AGENTS.md`; may update `contracts/v1/` for CG-01–04. It also owns the QEMU systemd-VM harness, pinned image recipe/checksum, cloud-init fake IdP and CI executor.
-- **Tests:** deterministic contract generation/negative validation; Rust CLI/error/config/version units; gateway/daemon smoke over disposable sockets; QEMU boot/systemd/two-UID/fake-OIDC harness self-test; frontend route/error/component harness; package contents/checksum/reproducibility; clean-environment CI script.
+- **Ownership:** root Go manifests, `cmd/`, `internal/`, `web/` scaffolding, `scripts/`, `.github/workflows/`, `systemd/`, generated type families, root and local `AGENTS.md`; may update `contracts/v1/` for CG-01–04. It also owns the QEMU systemd-VM harness, pinned image recipe/checksum, fake provider and CI executor.
+- **Tests:** deterministic contract generation/negative validation; Go CLI/error/config/version units; gateway/daemon smoke over disposable sockets; QEMU boot/systemd/two-UID/fake-GitHub-OAuth harness self-test; frontend route/error/component harness; package contents/checksum/reproducibility; clean-environment CI script.
 - **Commands/green gate:** implement and pass every command in “Foundation green gate”; zero drift, zero skipped required checks, committed lockfiles, package verified.
 - **Evidence/rollback:** `result.md`, CI URL/artifacts, generated-type clean diff and test package manifest. Roll back by reverting scaffold commit; no machine state exists. Unblocks `build-design-system`.
 
@@ -139,11 +147,11 @@ These corrections do not select Rust/React or change native authority. They clos
 ### `build-workspace-slice` — authenticated two-user walking slice
 
 - **Inputs/IDs:** Y1 and Y2 discovery/gate-blocked prerequisite; ADR 0003 identity/socket rules. The CT ownership table below is authoritative.
-- **Visible output:** login → fixed identity → correct daemon → real immediate `~/src` directories, including non-Git/no metadata, with loading/empty/missing/error/stale views.
+- **Visible output:** explicit provider selection → primary GitHub OAuth or optional Google identity → fixed identity → correct daemon → real immediate `~/src` directories, including non-Git/no metadata, with loading/empty/missing/error/stale views. The one GitHub authorization also configures native `gh` HTTPS through the one-time UDS token handoff.
 - **Non-goals:** opening Git repo past integration gate, history/control, host lifecycle writes or Alder deployment.
-- **Ownership:** gateway OIDC/session/CSRF/mapping modules, daemon UDS/auth/workspace-read modules, app login/rail routes and integration tests. No shared component redesign.
-- **Tests:** two synthetic identities/UIDs, unknown/duplicate mapping, wrong peer UID/socket/mode, forged headers, origin/CSRF/session expiry/logout, source path escape/symlink, gateway home denial and credential/log scans.
-- **PROPOSED commands:** foundation gate; `cargo test --locked -p host-gateway --test oidc_session`; `cargo test --locked -p host-daemon --test systemd_two_user`; `npm run test:e2e --prefix web -- --grep @workspace-slice`; `./scripts/vm-test.sh two-user-routing --json`.
+- **Ownership:** gateway OAuth/OIDC/session/CSRF/mapping modules, daemon UDS/auth/workspace-read/native-credential setup modules, app login/rail routes and integration tests. No shared component redesign.
+- **Tests:** two synthetic identities/UIDs, stable GitHub numeric-ID mapping, state and PKCE S256, optional Google no-request-before-selection, unknown/duplicate mapping, wrong peer UID/socket/mode, forged headers, origin/CSRF/session expiry/web logout, transient token one-time forwarding, `gh` stdin login/setup-git, protected-storage/fallback modes, partial login, explicit disconnect, source path escape/symlink, gateway home denial and token/credential/log scans.
+- **PROPOSED commands:** foundation gate; `go test ./internal/gateway -run OAuthSession`; `go test ./internal/daemon -run SystemdTwoUser`; `npm run test:e2e --prefix web -- --grep @workspace-slice`; `./scripts/vm-test.sh two-user-routing --json`.
 - **Green/evidence/rollback:** real UDS routes under distinct UIDs, zero cross-user sentinel reads, Y1 and discovery portion of Y2 recorded. Destroy VM to roll back. Unblocks `build-history-view`.
 
 ### `build-history-view` — native Pi history
@@ -153,7 +161,7 @@ These corrections do not select Rust/React or change native authority. They clos
 - **Non-goals:** start/resume/send, rich final tool grouping/diff polish or title model call.
 - **Ownership:** Pi history adapter/read endpoints, history/content generated types, timeline baseline and history browser tests.
 - **Tests:** redacted fixture and disposable native Pi history; missing/corrupt/moved-cwd/unknown event; 200-entry pages, 65,536-byte UTF-8 chunks, 1,000-event live-tail rejection; reopen gives same native keys and no copied DB.
-- **PROPOSED commands:** foundation gate; `cargo test --locked -p host-daemon --test pi_history`; `node issues/probe-pi-control/probe.mjs --verify --output issues/probe-pi-control/events.redacted.jsonl`; `npm run test:e2e --prefix web -- --grep @native-history`.
+- **PROPOSED commands:** foundation gate; `go test ./internal/daemon -run PiHistory`; `node issues/probe-pi-control/probe.mjs --verify --output issues/probe-pi-control/events.redacted.jsonl`; `npm run test:e2e --prefix web -- --grep @native-history`.
 - **Green/evidence/rollback:** HTTP output matches source JSONL keys/content, no write/resume on open. Revert adapter/UI; native fixture is disposable. Unblocks `build-agent-control`.
 
 ### `build-agent-control` — complete walking core
@@ -163,7 +171,7 @@ These corrections do not select Rust/React or change native authority. They clos
 - **Non-goals:** complete M1 presentation, queue clear until CG-02 passes, host lifecycle features, daemon-crash survival claim.
 - **Ownership:** Pi RPC controller/single-writer lock, event ring/command ledger, command/SSE web state and core browser journey.
 - **Tests:** browser/SSE disconnect leaves Pi child alive; replay/resnapshot, backpressure 10k/15m and 1k/1MiB/30s; ledger 10k/24h/epoch; concurrent resume denied; TUI read-only and stop→exit→history settle→lock→RPC; daemon crash kills child and permits deliberate recovery only; null question only per CG-04.
-- **PROPOSED commands:** foundation gate; `cargo test --locked -p host-daemon --test pi_control`; `cargo test --locked -p host-core --test replay_ledger`; `npm run test:e2e --prefix web -- --grep @working-core`; `./scripts/vm-test.sh daemon-crash --json`.
+- **PROPOSED commands:** foundation gate; `go test ./internal/daemon -run PiControl`; `go test ./internal/core -run ReplayLedger`; `npm run test:e2e --prefix web -- --grep @working-core`; `./scripts/vm-test.sh daemon-crash --json`.
 - **Green/evidence/rollback:** Y1–Y5 one real disposable session lifecycle plus two-user routing, no duplicate writer/message. Kill fixture processes and destroy VM; never delete native user histories. Unblocks `complete-conversation-ui`.
 
 ### `complete-conversation-ui` — accepted M1 experience
@@ -172,7 +180,7 @@ These corrections do not select Rust/React or change native authority. They clos
 - **Visible output:** sanitized Markdown, code, Pi edit diff, grouped tools, long content, unknown fallback, questions, interrupt, steer/follow-up and safe whole-queue clear; durable draft/focus/route/reading/attention behavior.
 - **Non-goals:** process center, mobile, OS notifications, synthetic bash diffs, arbitrary queue reorder/cancel or host operations.
 - **Ownership:** conversation components/view models, Shiki worker, Markdown/diff policy, virtualization/paged mode, catalog stories/browser/a11y tests.
-- **Tests:** malformed Markdown/URLs/diff/CSP; replacement vs append tool output; real queue order and clear race; variable-height anchor, focused row retention, copy/selection, screen-reader cadence, keyboard/IME, dark/light/zoom/reduced motion, title failed/pending.
+- **Tests:** malformed Markdown/URLs/diff/CSP; replacement vs append tool output; real queue order and clear race; variable-height anchor, focused row retention, copy/selection, screen-reader cadence, keyboard/IME, dark/light/zoom/reduced motion; title input is the source-ordered unique union of at most first four and last four user messages; title-adjacent manual regeneration covers capability, pending concurrency exclusion, success and nonblocking failure.
 - **PROPOSED commands:** foundation gate; `npm run test:e2e --prefix web -- --grep @conversation`; `npm run test:a11y --prefix web -- --grep @conversation`; `npm run test:performance --prefix web -- --scenario long-history`.
 - **Green/evidence/rollback:** M1 and budget report pass on pilot desktop; no unbounded initial/lazy chunk regression. UI rollback is release rollback; no native data migration. Unblocks `manage-workspace-lifecycle`.
 
@@ -183,18 +191,18 @@ These corrections do not select Rust/React or change native authority. They clos
 - **Non-goals:** GitHub remote operations, manual worktree management, hidden rollback claim or registry.
 - **Ownership:** descriptor-relative filesystem/Git adapter, workspace settings/XDG annotation writes, create/settings/integration/delete UI and tests.
 - **Tests:** duplicate/permission/race/symlink/rename/owner-mode/mount/unreadable entries; process cwd/open file/PID reuse; external/manual linked worktree; Taskfleet-owned teardown delegation; kill at every stage and atomic annotation recovery; fresh absence required.
-- **PROPOSED commands:** foundation gate; `cargo test --locked -p host-daemon --test workspace_lifecycle`; `npm run test:e2e --prefix web -- --grep @workspace-lifecycle`; `./scripts/vm-test.sh path-races --json`.
+- **PROPOSED commands:** foundation gate; `go test ./internal/daemon -run WorkspaceLifecycle`; `npm run test:e2e --prefix web -- --grep @workspace-lifecycle`; `./scripts/vm-test.sh path-races --json`.
 - **Green/evidence/rollback:** M2/M3 compare every stage to filesystem/Git/Taskfleet facts; no outside sentinel changed. Recovery uses fresh observation and native owners, never blind reverse actions. Unblocks `connect-github-workspaces`.
 
 ### `connect-github-workspaces` — M4
 
-- **Inputs/IDs:** M4; CG-03; CT-018/032; A6; probe's authorized write sequence.
+- **Inputs/IDs:** M4; CG-03; CT-018/032; A6; the accepted focused private-repository smoke.
 - **Visible output:** blocking integration facts and exact create/clone flows; create, origin, transport and push remain separate stages.
 - **Non-goals:** gateway credential broker, browser secret upload, valuable/org repo mutation or inferred permission.
-- **Ownership:** same-user `gh`/Git argv adapter, GitHub dialogs/operations and two-user remote fixtures.
-- **Tests:** each VM identity creates a unique private marked repo, verifies API/SSH/ordinary Git push, clone, second push/pull and object IDs; denied owner, collision, network loss after create, push denial, target collision, confirmation mismatch/stale token; exact separately confirmed delete and 404. Actual Jari/Kaisa repetition belongs to `verify-v1-resilience` after Fleetrepo deployment.
-- **PROPOSED commands:** foundation gate; `cargo test --locked -p host-daemon --features native-fixtures --test github`; `npm run test:e2e --prefix web -- --grep @github`; `./scripts/vm-test.sh github-two-user --json`.
-- **Green/evidence/rollback:** both synthetic users pass from the guest daemon service environment, no credential reaches gateway/browser/log; reset verifies exact synthetic marker and remote absence while retaining local fixture until confirmed. Unblocks `manage-agent-worktrees`.
+- **Ownership:** same-user `gh`/Git argv adapter, GitHub dialogs/operations and deterministic fixtures plus one remote smoke.
+- **Tests:** deterministic fixtures cover identity/path/stage failures, denied owner, collision, network loss after create, push denial, target collision, confirmation mismatch/stale token and cross-user routing. One mapped identity creates one unique private marked repo, verifies API/HTTPS helper/ordinary Git push, clone/pull and object IDs, and performs exact separately confirmed delete plus 404. The acceptance report includes essential screenshots. No second broad user/repository campaign is required.
+- **PROPOSED commands:** foundation gate; `go test -tags=nativefixtures ./internal/daemon -run GitHub`; `npm run test:e2e --prefix web -- --grep @github`; `./scripts/vm-test.sh github-private-smoke --json`.
+- **Green/evidence/rollback:** cross-user fixture tests pass and one private remote smoke passes from the mapped daemon service environment, no credential reaches gateway/browser/log; reset verifies exact synthetic marker and remote absence while retaining local fixture until confirmed. Unblocks `manage-agent-worktrees`.
 
 ### `manage-agent-worktrees` — M5
 
@@ -203,7 +211,7 @@ These corrections do not select Rust/React or change native authority. They clos
 - **Non-goals:** generic Taskfleet protocol, guessed final branch/path, raw `git worktree` creation or teardown.
 - **Ownership:** Taskfleet adapter/ownership join, worktree dialog/navigation and disposable repo tests.
 - **Tests:** non-Git disabled; duplicate branch/path, dirty source policy, create interruption before/after publication, partial teardown, missing owner join, disconnect; compare full run/node identity with Git porcelain and Pi cwd.
-- **PROPOSED commands:** foundation gate; `cargo test --locked -p host-daemon --test taskfleet`; `npm run test:e2e --prefix web -- --grep @taskfleet`; `./scripts/vm-test.sh taskfleet-partial --json`.
+- **PROPOSED commands:** foundation gate; `go test ./internal/daemon -run Taskfleet`; `npm run test:e2e --prefix web -- --grep @taskfleet`; `./scripts/vm-test.sh taskfleet-partial --json`.
 - **Green/evidence/rollback:** M5 passes with Taskfleet as sole mutator and complete cleanup through its lifecycle. Unblocks `archive-agent-conversations`.
 
 ### `archive-agent-conversations` — M6
@@ -213,17 +221,17 @@ These corrections do not select Rust/React or change native authority. They clos
 - **Non-goals:** copied transcript/archive DB, combined hidden stop+archive, deleting history or signalling observed PID.
 - **Ownership:** sparse XDG conversation annotation, archive commands/read models/dialog and native resume tests.
 - **Tests:** active writer conflict, stop failure, annotation corruption/power loss, missing history, unarchive without focus, resume failure, disconnect/stale command and same `pi:<id>` after continue.
-- **PROPOSED commands:** foundation gate; `cargo test --locked -p host-daemon --test archive`; `npm run test:e2e --prefix web -- --grep @archive`.
+- **PROPOSED commands:** foundation gate; `go test ./internal/daemon -run Archive`; `npm run test:e2e --prefix web -- --grep @archive`.
 - **Green/evidence/rollback:** M6 with no second history and presentation-only annotation loss semantics. Rollback leaves Pi JSONL untouched; restore only atomic annotation backup if proven. Unblocks `prepare-mvp-operations`.
 
 ### `prepare-mvp-operations` — release and Fleetrepo handoff
 
-- **Inputs/IDs:** M7 packaging half; accepted ADR 0003, Fleetrepo policy, all prior result SHAs.
+- **Inputs/IDs:** M7 packaging half; accepted ADR 0003, Fleetrepo policy, all prior result SHAs. Native Agent Host owns generic self-hosting docs; Fleetrepo receives only a coordinated Alder-specific declaration.
 - **Visible output:** verified release archive and `docs/operations.md`; disposable install/update/failed-update/rollback/reset evidence. Alder deployment is permitted after gates, but not before the separate Fleetrepo change lands.
 - **Non-goals:** editing Fleetrepo from this repo worker, source-installing, ad-hoc root changes, final pilot acceptance or deleting user-native state.
-- **Ownership:** this repo owns archive/manifest/checksum, release CI, service templates/defaults and product operator docs. `/home/maintainer/Sources/fleetrepo` owns Alder account/gateway user/groups, packages/releases, sysusers/tmpfiles, systemd units/sockets, identity mappings, encrypted OIDC input, Tailscale route, release pin/check and convergence.
+- **Ownership:** this repo owns archive/manifest/checksum, release CI, service templates/defaults and generic install/configure/test-host/update/rollback/live-version/operator docs usable to build any Alder-like host. `/home/maintainer/Sources/fleetrepo` owns only Alder account/gateway user/groups, packages/releases, sysusers/tmpfiles, systemd units/sockets, identity mappings, encrypted provider input, Tailscale route, release pin/check and convergence. At 0.1 release readiness, the conductor files a new repo issue—not before—to remove Alder-specific references from Git HEAD while preserving generic docs and issue-local history.
 - **Coordination and completion gate:** the conductor files and runs a separate Fleetrepo issue/worktree from the Fleetrepo checkout with this release/version/SHA and accepted unit/config bytes; review/commit/push there, then use Fleetrepo's documented Alder root-hook plus unprivileged fleet check workflow. This issue remains open until the Fleetrepo issue/commit SHA and converged check are recorded in its `result.md`, so the existing DAG edge to `verify-v1-resilience` cannot release early. Never make Fleetrepo mutation an undocumented side effect here. Jari's implementation-plan acceptance authorizes this reviewed change and apply without another human ack; material deviation returns to review.
-- **PROPOSED package commands:** foundation package/verify commands, `cargo build --locked --profile dist --target x86_64-unknown-linux-musl`, and `./scripts/vm-test.sh release-lifecycle --json`.
+- **PROPOSED package commands:** foundation package/verify commands, `CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" ./cmd/native-agent-host`, and `./scripts/vm-test.sh release-lifecycle --json`.
 - **Green/evidence/rollback:** immutable release N installs, second apply is no-op, N+1 update and intentionally failed activation preserve N, rollback selects N and repeats smoke; `docs/operations.md` matches executable commands. Unblocks `verify-v1-resilience`.
 
 ### `verify-v1-resilience` — full M7 and pilot verifier
@@ -232,7 +240,7 @@ These corrections do not select Rust/React or change native authority. They clos
 - **Visible output:** pilot report and authenticated demonstration for Jari; no automatic `review-mvp` acceptance.
 - **Non-goals:** new features, cache/supervisor addition without measurements, changing accepted design or post-MVP work.
 - **Ownership:** issue-local pilot scripts/results/traces and durable status/operations corrections; Fleetrepo worker remains owner of persistent target declarations.
-- **Tests:** both actual identities; wrong subject/socket/header/peer/path; all accepted journeys; two concurrent agents plus Taskfleet worktree; terminal read-only transfer; long history/output/diff/question/unknown event; browser/SSE/gateway/daemon crash/restart, update, rollback; SSH/tmux/native Pi continuity; zero cross-user leak/data loss/silent duplicate. Jari and Kaisa each complete one normal browser OIDC login before automation; scripts consume a mode-0600 exported session artifact, destroy it at teardown and fail if any admin/test session-mint endpoint exists.
+- **Tests:** both actual web identities and Unix routes; wrong numeric identity/socket/header/peer/path; all accepted journeys; two concurrent agents plus Taskfleet worktree; terminal read-only transfer; long history/output/diff/question/unknown event; browser/SSE/gateway/daemon crash/restart, update, rollback; SSH/tmux/native Pi continuity; zero cross-user leak/data loss/silent duplicate. Jari and Kaisa each complete one normal provider login before automation; scripts consume a mode-0600 exported session artifact, destroy it at teardown and fail if any admin/test session-mint endpoint exists.
 - **PROPOSED commands:** foundation gate plus the exact Alder sequence below and `./scripts/pilot-smoke.sh --origin "$ORIGIN" --identity <id> --json`, `./scripts/pilot-negative-cross-user.sh --json`, `./scripts/pilot-resilience.sh --json`, `./scripts/pilot-reset.sh --manifest <run.json> --json`.
 - **Green/evidence/rollback:** all mapped Y/M criteria pass; zero-tolerance observations are zero; defects are linked before Jari review. Pilot reset removes only manifest-owned workspaces/remotes/processes; Fleetrepo rollback restores prior release/declaration, never histories/credentials.
 
@@ -303,7 +311,7 @@ Each contract scenario has exactly one implementation-test owner before the fina
 | CT-003, CT-004, CT-005, CT-006, CT-007, CT-008, CT-009, CT-010, CT-011, CT-012, CT-014, CT-015, CT-022, CT-028, CT-030 | `build-agent-control` |
 | CT-025, CT-031, CT-033 | `complete-conversation-ui` |
 | CT-016, CT-017, CT-020, CT-024, CT-029 | `manage-workspace-lifecycle` |
-| CT-018, CT-032 | `connect-github-workspaces` |
+| CT-018, CT-032, CT-034 | `connect-github-workspaces` |
 | CT-019 | `manage-agent-worktrees` |
 | CT-021 | `archive-agent-conversations` |
 

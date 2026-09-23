@@ -12,7 +12,8 @@
       "title": {
         "text": "Synthetic contract discussion",
         "generated_at": "2026-09-22T13:20:00Z",
-        "generator": "pi_one_off"
+        "generator": "pi_one_off",
+        "input_policy": "unique_first_four_last_four_user_messages"
       },
       "parent": {
         "taskfleet_run_id": "01m352g7dwva9x52egnvr3n5s6",

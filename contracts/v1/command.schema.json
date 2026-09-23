@@ -33,7 +33,8 @@
         "workspace.github.create",
         "workspace.github.clone",
         "workspace.taskfleet_worktree.create",
-        "workspace.delete"
+        "workspace.delete",
+        "identity.github.disconnect"
       ]
     },
     "emptyArguments": {
@@ -150,7 +151,8 @@
                   "agent.turn.interrupt",
                   "agent.process.stop",
                   "conversation.archive",
-                  "conversation.unarchive"
+                  "conversation.unarchive",
+                  "identity.github.disconnect"
                 ]
               }
             }
@@ -376,8 +378,8 @@
                   },
                   "confirmation": {
                     "type": "string",
-                    "minLength": 8,
-                    "maxLength": 300
+                    "minLength": 3,
+                    "maxLength": 201
                   }
                 }
               }
@@ -587,6 +589,31 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "identity.github.disconnect"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "target": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "scope"
+                ],
+                "properties": {
+                  "scope": {
+                    "const": "user"
+                  }
+                }
+              }
+            }
+          }
         }
       ]
     },
@@ -658,6 +685,34 @@
               "$ref": "common.schema.json#/$defs/agentId"
             }
           }
+        },
+        "removed_queue": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "steering",
+            "follow_up",
+            "queue_revision"
+          ],
+          "properties": {
+            "steering": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/removedQueueItem"
+              }
+            },
+            "follow_up": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/removedQueueItem"
+              }
+            },
+            "queue_revision": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 200
+            }
+          }
         }
       },
       "allOf": [
@@ -688,8 +743,51 @@
               "expires_at"
             ]
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "agent.queue.clear"
+              },
+              "acceptance": {
+                "const": "accepted"
+              },
+              "execution": {
+                "const": "succeeded"
+              }
+            },
+            "required": [
+              "kind",
+              "acceptance",
+              "execution"
+            ]
+          },
+          "then": {
+            "required": [
+              "removed_queue"
+            ]
+          }
         }
       ]
+    },
+    "removedQueueItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "original_index"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "maxLength": 65536
+        },
+        "original_index": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
     }
   }
 }

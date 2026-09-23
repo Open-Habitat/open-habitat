@@ -91,6 +91,24 @@
         },
         "requires_fresh_observation": {
           "type": "boolean"
+        },
+        "confirmation_challenge": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "expected"
+          ],
+          "properties": {
+            "kind": {
+              "const": "exact_repository"
+            },
+            "expected": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/(?!\\.{1,2}$)[A-Za-z0-9_][A-Za-z0-9._-]{0,99}$",
+              "maxLength": 201
+            }
+          }
         }
       }
     },

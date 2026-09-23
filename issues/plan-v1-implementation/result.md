@@ -1,5 +1,7 @@
 # Implementation planning result
 
+> The package described below was the 2026-09-22 delivery. Jari's eight 2026-09-23 corrections supersede its Rust, TypeScript 6/ESLint, Google-primary, broad GitHub-proof and acceptance-workflow recommendations. The current review package is `review.md`; exact corrected evidence is in `issues/apply-review-corrections/result.md`. Historical command/evidence statements below remain as delivered, not current requirements.
+
 ## Outcome
 
 Prepared a decision-ready v1 implementation package at revision `0dd5226ba18d410f22eade7fa4500310cf8e9924` (short `0dd5226`). It preserves the required walking core and all accepted M1–M7 work without implementing product code, accepting Proposed ADR 0002/0003 or deploying anything.

@@ -1,88 +1,57 @@
-# Implementation-readiness review package
+# Corrected implementation-readiness review package
 
-**Recommendation:** accept the bounded v1 plan, Proposed ADR 0002 and Proposed ADR 0003 with the explicit operator-CLI naming correction, accept the production design, and accept the contract policies below. Then let `build-app-foundation` make the proposed commands and four additive contract corrections executable before any product slice.
+**Recommendation:** accept the bounded v1 plan with Proposed ADR 0002 corrected to stable TypeScript 7 + Biome, Proposed ADR 0003 corrected to Go and provider-based authentication, and the production design plus contract policies below. This is a decision package, not acceptance. `review-implementation-plan` stays open until Jari records the decision against the landed correction revision.
 
-This is a decision package, not acceptance. Record Jari's actual decision and the exact landed revision in `review-implementation-plan`.
+## Corrected inputs
 
-## Review these exact inputs
+The original frozen evidence revisions remain in [`implementation-briefs.md`](implementation-briefs.md). The correction revision is recorded in [`../apply-review-corrections/result.md`](../apply-review-corrections/result.md) after landing and is the revision Jari must review. Historical Rust and TypeScript 6 experiment results remain truthful evidence; they are not current recommendations.
 
-- [Accepted UI v1](../review-ui-v1/review.md) — revision `9732ffbd3ff0af37911b84b86f321808e482c13b`
-- [Proposed ADR 0002](../../docs/adr-0002-frontend-stack.md) — revision `ffdf0e6eeb46aa44055b52569775d20956db1a01`
-- [Proposed ADR 0003](../../docs/adr-0003-host-stack.md) — revision `958f974f1c9f1ac47af48b69a738bed7bfb1128b`
-- [Host contract meaning](../../docs/interfaces.md), [schemas/examples/scenarios](../../contracts/v1/AGENTS.md) — revision `311a354a3aaf222c3d9261468d379f8c0788599b`
-- [Production design](../../design-system/production-v1.md), [catalog](../../design-system/component-catalog-v1.md), [static reference](../../design-system/ui_kits/production-v1/index.html) — revision `62c0ae6833301bcdd0901053ea08ef514a929153`
-- [Pi native probe](../probe-pi-control/result.md) — revision `4187da0ec40079ec09d98539c03f840102cde616`
-- [Workspace/GitHub/Taskfleet probe](../probe-workspace-lifecycle/result.md) — revision `c1e06b0af9a2835106b5f27277dd1de31766856a`
-- [Bounded implementation briefs](implementation-briefs.md) and [criterion map](implementation-briefs.md#success-criterion-ownership-map) — this delivery's landed revision
+Review:
 
-## Decisions requested
+- [Proposed ADR 0002](../../docs/adr-0002-frontend-stack.md): React 19.3, stable TypeScript 7.0.2, Vite/React Router/Redux/React Aria, Biome 2.5.14 and `tsc --noEmit`;
+- [Proposed ADR 0003](../../docs/adr-0003-host-stack.md): one Go 1.27.1 codebase/binary, systemd UDS routing and direct Pi child ownership;
+- [Host interfaces](../../docs/interfaces.md), [schemas/examples/scenarios](../../contracts/v1/AGENTS.md): executable additive CG-01–CG-04 and CT-001–CT-034;
+- [Production design](../../design-system/production-v1.md) and [component catalog](../../design-system/component-catalog-v1.md);
+- [Corrected implementation briefs](implementation-briefs.md), downstream issues and acceptance workflow.
 
-### 1. ADR 0002
+## Jari's eight decisions to record
 
-**Recommend accept.** React 19.3, strict TypeScript 6.0, Vite, React Router, one Redux event model, React Aria wrappers, sanitized Markdown, lazy Shiki, parsed Pi-edit diffs, bounded virtualization plus a paged accessible mode, Storybook/Vitest/Playwright/Axe. Keep the lockfile and tested Node 22.23.2 pin. Recheck the ESLint peer graph at scaffold time rather than forcing an unsupported combination.
+### 1. Frontend and TypeScript
 
-Acceptance is conditional on the foundation and later browser proofs in the brief; the static JSX/HTML does not prove runtime behavior.
+Keep React, React Router, Redux, React Aria, sanitized Markdown, lazy Shiki, parsed Pi-edit diffs, bounded virtualization, Storybook, Vitest, Playwright and Axe. Select stable TypeScript 7.0.2 only behind the complete clean graph. Use Biome 2.5.14 for formatting/linting and `tsc --noEmit` for types. Hooks and JSX accessibility rules are explicit errors. Never force peers, disable checks, use a nightly package, silently fall back to TypeScript 6, or retry `typescript-eslint` 8.70.1, whose declared TypeScript range is `<6.1.0`.
 
-### 2. ADR 0003
+### 2. Go host and restart semantics
 
-**Recommend accept with one naming correction.** Keep one locked Rust workspace/artifact, fixed non-root gateway, OIDC Authorization Code + PKCE, server-side sessions, exact issuer/subject mapping, same-origin CSRF, systemd-created per-user sockets, `SO_PEERCRED`, direct daemon-owned Pi children, native history, immutable releases and Fleetrepo-owned Alder state.
+Replace Rust with one Go 1.27.1 module and one CGO-free binary providing gateway and daemon roles. Preserve fixed non-root gateway, systemd-created per-user sockets, `SO_PEERCRED`, per-UID daemons, direct daemon-owned Pi children, native history, immutable releases and the AI-first operator CLI. Browser/gateway loss does not stop Pi. Daemon/host loss stops active computation; native history is resumable only after writer-exit/history-settlement proof.
 
-Use the AI-first CLI surface in `implementation-briefs.md`: `config path/show`, `doctor --component`, `gateway exec`, `daemon exec`, `admin readiness show`, `maintenance enter/leave`, global `--json`, structured errors and JSONL diagnostics. This supersedes the ADR's provisional `check-config`/`admin readiness` spelling without changing architecture.
+### 3. Production design and visual acceptance
 
-Accept the documented limitation: browser/gateway loss does not stop Pi, but daemon crash/restart and host reboot stop active Pi computation; history survives and deliberate resume requires writer-exit/history-settlement proof.
+Accept the production design with shared production ownership for every interactive or repeated behavior. Local composition may not invent controls, state semantics, focus rules or styling. Retire superseded root/canonical mocks when production replaces them; originals may remain issue-local historical evidence. Every user-visible executable issue remains in `testing` until deterministic happy/relevant unhappy tests and a Markdown screenshot report identify exact revision, environment, scenarios and commands and Jari explicitly accepts it. The worker never self-accepts; lane serialization blocks dependents.
 
-### 3. Production design
+### 4. Contract and retention policy
 
-**Recommend accept** revision `62c0…` as v1's production design and component contract: both themes, routes/deep links, identity-scoped local state, focus/drafts/reading/attention, uncertain commands, truthful unknown/partial states, terminal transfer, native queue model and full accepted host-operation presentation. References remain provenance assets, not runtime evidence.
-
-### 4. Contract policy
-
-**Recommend accept:** SSE ring 10,000 events/15 minutes; slow-client disconnect at 1,000 queued events, 1 MiB or 30 seconds; command ledger 10,000 outcomes/24 hours/daemon epoch; history page 200 entries; content chunk 65,536 UTF-8 bytes; active live tail at most 1,000 events. Foundation tests enforce boundaries; pilot measurements may return a bound for review but may not silently remove an accepted feature.
-
-Accept additive CG-01–CG-04 as specified in the briefs:
-
-- terminal-operation query with 10,000/24-hour/epoch retention and explicit unknown after eviction/restart;
-- queue-clear result returns exact removed texts, source groups and indexes/order;
-- GitHub create requires exact fresh `owner/repository` confirmation challenge;
-- `response:null` means native question cancellation only for a request whose adapter mapping is proved.
+Accept SSE ring 10,000/15 minutes; slow client 1,000 queued events, 1 MiB or 30 seconds; command and operation terminal retention newest 10,000/24 hours/current daemon epoch; history pages 200; content chunks 65,536 UTF-8 bytes; active live tail 1,000. Accept additive CG-01 operation query, CG-02 exact queue-clear removed values, CG-03 exact fresh `owner/repository` challenge and CG-04 request-specific native cancellation. Missing/evicted outcomes remain unknown.
 
 ### 5. Title adapter
 
-**Recommend:** foundation exposes capability unknown until `build-agent-control` proves a Pi one-off model call outside the agent loop. Use `openai-codex/gpt-5.6-luna` with low thinking, cap input at the first 8 user messages/16 KiB, output at 120 Unicode characters and reported cost at 0.02 USD per call. The local Pi 0.85.1 catalogue was checked with `pi --list-models luna` on 2026-09-22 and reported this exact provider/model with thinking support. Generate after the first accepted user message and allow at most one automatic regeneration when the third user message settles. A manual supported regeneration remains available. Record model ID and per-call usage/cost in redacted structured diagnostics, but never in browser authority state. A failure keeps fallback/prior title and never blocks conversation.
+Use `openai-codex/gpt-5.6-luna`, low thinking, 16 KiB input, 120 Unicode-character output and 0.02 USD reported cost limit. Input is the source-ordered unique union of at most the first four and last four user messages. Generate after the first accepted user message, allow at most one automatic regeneration after the third settles, and expose an accessible title-adjacent manual control only when supported. Pending excludes concurrent title commands; failure preserves prior/fallback title and never blocks conversation.
 
-If Jari wants a different model or milestone, record it now; implementation must not choose silently.
+### 6. Authentication, session and native credentials
 
-### 6. Identity, credentials and security proof order
+Alder's primary path is one GitHub OAuth Authorization Code grant with single-use state and PKCE S256. Route by stable numeric GitHub user ID. Request the `repo`, `read:org`, and `gist` scopes required by the supported `gh auth login --with-token` path. The gateway handles the token transiently, never logs/persists/browser-exposes it, and forwards it once over the authenticated mapped-user UDS. The daemon uses stdin with `gh auth login --hostname github.com --with-token --git-protocol https`, runs `gh auth setup-git`, verifies identity/helper/storage and reports partial states. Optional Google establishes web identity only and makes no request before explicit selection. Web logout preserves native Git continuity; explicit disconnect removes local `gh` auth and explains that `gh auth logout` does not revoke the GitHub token.
 
-**Recommend** Google OpenID Connect (`issuer=https://accounts.google.com`) for the pilot at exact origin `https://alder.example-tailnet.ts.net`, with callback `https://alder.example-tailnet.ts.net/auth/callback`, 8-hour idle/24-hour absolute web sessions, root-owned immutable subject mapping, gateway fixed UID, systemd socket mode/ownership and peer checks, no gateway home access and no credential broker. Jari registers the confidential OIDC client, records the client ID/secret and both verified subject IDs into the Fleetrepo issue's encrypted input (never this repository), and confirms the redirect before that issue can converge. `build-workspace-slice` must first pass the disposable two-UID fake-issuer security fixture. Each actual account owner configures Pi/Git/`gh` credentials natively.
+### 7. Security and GitHub proof
 
-GitHub writes are authorized only against uniquely named private disposable repositories with synthetic marker commits. Both users must pass create/origin/plain-Git push/clone/pull and exact verified delete from the daemon environment. Unknown organization/SSO policy remains fail-closed.
+Keep deterministic two-UID and cross-user denial tests. Replace the broad two-user GitHub write campaign with deterministic fixtures plus one private disposable-repository feature smoke: exact create/origin, ordinary HTTPS push, clone/pull, verified deletion and essential screenshots. Product ownership is safe target/path, mapped Unix identity, staged truth and secret handling; GitHub/`gh` own ordinary permission semantics.
 
-### 7. Alder/Fleetrepo and deployment
+### 8. Self-hosting, Fleetrepo and release trigger
 
-Alder is already authorized as test/pilot target after this review and executable green gates; no second go/no-go is needed. The privileged route `ssh rowan ssh alder-root` is authorized. This does **not** authorize present deployment or guessed commands.
+Native Agent Host owns generic install, configuration, test-host, update, rollback, live-version and operator docs. Fleetrepo owns only Jari's concrete Alder declaration. `prepare-mvp-operations` coordinates a separate reviewed Fleetrepo issue/worktree and records its commit/convergence; no hidden edit. Do not file the public-cleanup issue now. At 0.1 release readiness, the conductor files an issue to remove Alder-specific references from Git HEAD while preserving generic docs and issue-local history. Alder remains pre-authorized after accepted decisions and executable gates; material deviations return to Jari.
 
-Native Agent Host owns release bytes/contracts. Fleetrepo exclusively owns persistent Alder users (including the currently absent `kaisa` account), fixed gateway account/groups, packages/releases, systemd units/sockets, mappings, encrypted OIDC input, Tailscale HTTPS route, release pin, convergence and rollback. `prepare-mvp-operations` coordinates a separate Fleetrepo issue/worktree and remains open until that reviewed commit and converged check are recorded, so the existing DAG blocks the pilot. This repository never edits Fleetrepo as a hidden side effect. Acceptance here authorizes the conductor to review, commit, push and apply the exact later Fleetrepo change without a second human ack; any material account, origin, mapping or exposure deviation returns to Jari.
+## Remaining implementation proofs
 
-Approve two synthetic VM identities, actual Jari/Kaisa pilot identities, manifest-owned test workspaces/sessions/remotes, maintenance preflight, package verification, apply/no-op, live version, aggregate health, service-context readiness, authenticated smoke, negative cross-user, update, rollback and teardown command shapes in the briefs. Commands remain proposed until foundation/operations makes and verifies them.
+The correction proves only language/package compatibility, machine-contract consistency and planning/DAG coherence. Product implementation must still prove real GitHub OAuth/PKCE and target `gh` storage behavior, systemd two-UID sockets, gateway home denial, SSE/ledger memory, Pi title call and shutdown settlement, accessibility with assistive technology, path/process races, Taskfleet partial lifecycle, package update/rollback and Alder pilot. Unknown remains fail-closed.
 
-## Proof limits retained
+## Exact action
 
-Not yet proved: production SSE/backpressure and ledger memory, final React Aria wrappers, long-history screen-reader/anchor behavior, deployed CSP, OIDC callback/session implementation, real systemd socket/peer behavior with two UIDs, daemon-crash history settlement, Pi title call, two-user GitHub writes, Taskfleet partial create/teardown, process/path/mount race coverage, package update/rollback and Alder pilot. Each has one implementation owner and the final pilot verifier in the briefs.
-
-Static assets, schema validation, probe results and stack experiments prove only their named boundaries. Unknown stays fail-closed; it does not authorize feature deferral.
-
-## Exact decision to record
-
-Record accept/change/reject for:
-
-1. ADR 0002;
-2. ADR 0003 plus the CLI naming correction and restart limitation;
-3. production-design revision `62c0…`;
-4. retention/history bounds and CG-01–CG-04;
-5. title model/input/output/milestones;
-6. OIDC provider/origin/session/mapping/socket/peer policy;
-7. two-user disposable GitHub-write boundary; and
-8. Google OIDC registration/subjects, Fleetrepo ownership, Alder identities/reset scope and autonomous deployment after gates.
-
-Do not ask Jari to decide implementation trivia that is already safely bounded in the briefs. Any changed product behavior or weaker security boundary requires a correction issue blocking this human review.
+Record accept/change/reject for the eight sections above, with the correction revision from `issues/apply-review-corrections/result.md`. Do not close this human gate merely because the package exists.

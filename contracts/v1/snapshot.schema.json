@@ -121,6 +121,66 @@
       "type": "string",
       "minLength": 8,
       "maxLength": 200
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "provider_account_id",
+        "native_github"
+      ],
+      "properties": {
+        "provider": {
+          "enum": [
+            "github",
+            "google"
+          ]
+        },
+        "provider_account_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "native_github": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state"
+          ],
+          "properties": {
+            "state": {
+              "enum": [
+                "connected",
+                "disconnected",
+                "pending",
+                "partial",
+                "unknown"
+              ]
+            },
+            "login": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "git_protocol": {
+              "const": "https"
+            },
+            "storage": {
+              "enum": [
+                "credential_store",
+                "user_config_protected",
+                "unavailable",
+                "unknown"
+              ]
+            },
+            "last_error_code": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{2,63}$"
+            }
+          }
+        }
+      }
     }
   },
   "$defs": {
@@ -189,6 +249,12 @@
             "present",
             "absent"
           ]
+        },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "common.schema.json#/$defs/capability"
+          }
         }
       }
     },
@@ -260,10 +326,16 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
+            "revision",
             "steering",
             "follow_up"
           ],
           "properties": {
+            "revision": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 200
+            },
             "steering": {
               "type": "array",
               "items": {
@@ -362,6 +434,12 @@
         "last_error_code": {
           "type": "string",
           "pattern": "^[a-z][a-z0-9_]{2,63}$"
+        },
+        "manual_regeneration": {
+          "$ref": "common.schema.json#/$defs/capability"
+        },
+        "input_policy": {
+          "const": "unique_first_four_last_four_user_messages"
         }
       }
     }

@@ -176,13 +176,12 @@ authentication-required ja daemon-unavailable; sisältö annetaan lapsina.
 ### LoginCard
 
 ```text
-LoginCard { serverName, serverAddress, state: idle|pending|error,
-            problem?, onLogin, onRetry }
+LoginCard { serverName, serverAddress, state: idle|pending|partial|error,
+            providers[{id,label,availability}], problem?,
+            onSelectProvider, onRetry }
 ```
 
-Ei Unix-käyttäjän valintaa. Pending ilmoittaa gatewayn ja daemonin odotuksen.
-Virheessä turvallinen sanallinen syy ja correlation-ID. Auth-menetelmän tekniikka
-ei vuoda komponenttiin.
+Ei Unix-käyttäjän valintaa. Ensisijainen valinta on “Kirjaudu GitHubilla”; valinnainen Google näkyy vain konfiguroituna eikä tee verkkopyyntöä ennen eksplisiittistä valintaa. Pending kattaa OAuth-callbackin, web-istunnon ja GitHub-polulla natiivin `gh` HTTPS -asennuksen. Partial/virhe kertoo turvallisesti, kumpi vaihe jäi kesken, ilman tokenia. Correlation-ID säilyy. Komponentti ei käsittele OAuth-koodia, tokenia tai Unix-reititystä.
 
 ### WorkspaceRail
 
@@ -232,14 +231,14 @@ visuaalinen ja listarakenteen semantiikka, ei branchista päätelty tieto.
 ```text
 AgentHeader {
   title, titleState, activityLabel, controlLabel, workspaceLink,
-  parentContext?, timestamp?, detailsExpanded, titleAction?,
+  parentContext?, timestamp?, detailsExpanded,
+  titleAction?: { label, availability, pending, failureNotice? },
   onToggleDetails, onTitleAction
 }
 AgentFacts { facts[{label,value,state,observedAt?,source?}] }
 ```
 
-AgentHeader on h1 ja tuotteen status. TitleAction on regenerate vain supported-
-tilassa, disabled syy muuten. AgentFacts on `dl`; “Ei tiedossa”, “Ei saatavilla”
+AgentHeader on h1 ja tuotteen status. TitleAction on otsikon vieressä oleva saavutettavasti nimetty manuaalinen regenerate-kontrolli vain supported-tilassa, disabled syy muuten. Pending estää rinnakkaisen title-komennon muuttamatta display-arvoa; failureNotice on ei-estävä eikä siirrä fokusta tai estä keskustelua. AgentFacts on `dl`; “Ei tiedossa”, “Ei saatavilla”
 ja “Ristiriita” ovat eri arvot. Polku saa näkyä vain redaktoidussa display-faktassa,
 ei routing-proppina.
 

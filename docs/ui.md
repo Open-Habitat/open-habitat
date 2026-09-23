@@ -36,9 +36,7 @@ muuta mockin ajastinta tai klikattavaa kontrollia backend-kyvyksi.
 
 ## Yhtenäinen työpöytäpolku
 
-1. **Saapuminen ja kirjautuminen.** URL määrää palvelimen. Käyttäjä käynnistää
-   kirjautumisen, gateway mapittaa identiteetin Linux-käyttäjään ja näkymä odottaa
-   myös käyttäjädaemonin tilaa. Unix-tunnusta ei valita selaimessa.
+1. **Saapuminen ja kirjautuminen.** URL määrää palvelimen. Käyttäjä valitsee ensisijaisen “Kirjaudu GitHubilla” -toiminnon; yksi authorization luo web-istunnon ja konfiguroi mapped Unix -käyttäjän native `gh` HTTPS -helperin tokenia selaimelle näyttämättä. Valinnainen Google näkyy vain konfiguroituna eikä tee pyyntöä ennen valintaa. Gateway mapittaa vakaan provider-identiteetin Linux-käyttäjään ja näkymä odottaa myös käyttäjädaemonin ja credential-asennuksen tilaa. Unix-tunnusta ei valita selaimessa.
 2. **Workspacejen löytäminen.** Vasen palkki näyttää `~/src`:stä löydetyt
    workspacet ja niiden agentit. Lataus, tyhjä tai puuttuva `~/src`, lukuvirhe ja
    viimeksi saatu katkostila eivät saa näyttää samalta.
@@ -78,7 +76,7 @@ koko MVP:n. Ensimmäinen demo ei saa näyttää koko MVP:tä valmiina.
 
 | Alue | Tavallinen polku | Tarvittavat vaihtoehtoiset tilat |
 |---|---|---|
-| Kirjautuminen | idle → pending → kirjautunut | puuttuva/väärä mappaus, auth hylätty tai vanhentunut, gateway ei vastaa, daemon ei vastaa, uudelleenyritys |
+| Kirjautuminen | provider-valinta → GitHub OAuth pending → web identity → kertakäyttöinen native `gh` HTTPS -asennus → kirjautunut | state/PKCE, puuttuva/väärä mappaus, token-handoff, insecure/unknown storage, partial native install, auth hylätty/vanhentunut, gateway/daemon ei vastaa; Googlea ei kontaktoida ennen valintaa |
 | Workspace-lista | loading → ready → valinta | tyhjä `~/src`, puuttuva `~/src`, lukuvirhe, osittainen metadata, päivitys, suodatus ilman osumia, piilotetut, yhteys poikki / viimeksi saatu |
 | Agenttilista | ready/work/ask/off ja valittu agentti | vain havaittu, ohjattavuus tuntematon, stale, epäonnistunut käynnistys, emoagentin odottava lapsi, lista muuttuu muualta |
 | Historia | loading → tapahtumat → pohja | tyhjä, pitkä historia, lukuvirhe, puuttuva/vioittunut historia, tuntematon tapahtumatyyppi, lyhennetty pitkä sisältö, uusi sisältö lukukohdan yläpuolella |
@@ -92,7 +90,7 @@ koko MVP:n. Ensimmäinen demo ei saa näyttää koko MVP:tä valmiina.
 | Taskfleet-worktree | valitse base/nimi → Taskfleet luo omistetun worktreen ja agentin → fokus | ei Git-repo, nimi/branch/polku käytössä, Taskfleet-ajo onnistuu vain osittain; ulkoiset worktreet näkyvät tarvittaessa vaikutuksina, mutta UI ei luo, muokkaa tai hallitse niitä |
 | Poisto | näytä prosessit ja myös `~/src`:n ulkopuoliset worktreet → täsmävahvistus → stop → pura Taskfleet-worktreet Taskfleetin kautta → varmista ettei linkitettyjä worktreeitä jää → poista hakemisto → päivitä lähde | vahvistus väärin, vain havaittu tai muu pysäyttämätön prosessi estää poiston, jäljellä oleva Taskfleetin tai manuaalinen linkitetty worktree estää päätyöhakemiston poiston, stop/teardown epäonnistui, osittainen tiedostopoisto, katkos; ulkopuolista worktreeta ei poisteta hiljaa ja piilota säilyy turvallisempana ulospääsynä |
 | Arkisto | stop + arkistoi → pois aktiivisista → listaa → jatka | jo päättynyt, vain havaittu, stop tai annotaatio epäonnistuu, historia puuttuu, resume epäonnistuu; ei rinnakkaista historiatietokantaa |
-| Uloskirjautuminen | tyhjennä paikalliset luonnokset ja luettu sisältö → sulje web-istunto | agentit jatkavat; tyhjennys- tai logout-virhe estää uuden identiteetin sisällön näyttämisen samaan näkymään |
+| Uloskirjautuminen | tyhjennä paikalliset luonnokset ja luettu sisältö → sulje web-istunto; native `gh` säilyy | agentit ja tavallinen Git jatkuvat; erillinen vahvistettu “Disconnect GitHub” poistaa paikallisen `gh`-authin ja näyttää partial/revocation-rajan |
 
 ## Tuotantodesignin yhtenäinen toiminta
 

@@ -520,5 +520,93 @@
       "a changed/missing/replaced src root yields stale_precondition",
       "the first workspace can be created without inventing an existing resource ID"
     ]
+  },
+  {
+    "id": "CT-030",
+    "covers": [
+      "terminal operation query",
+      "operation retention"
+    ],
+    "given": [
+      "a terminal operation remains in the current daemon epoch store of newest 10000 or 24 hours"
+    ],
+    "when": [
+      "the browser reloads or deep-links to its operation ID"
+    ],
+    "then": [
+      "query returns the staged terminal result with ledger epoch and expiry",
+      "eviction or daemon restart returns operation_outcome_unknown",
+      "absence never means success"
+    ]
+  },
+  {
+    "id": "CT-031",
+    "covers": [
+      "queue clear exact result"
+    ],
+    "given": [
+      "steering and follow-up items race with delivery while clear is accepted"
+    ],
+    "when": [
+      "agent.queue.clear succeeds"
+    ],
+    "then": [
+      "result contains only actually removed texts with source groups and original indexes",
+      "post-clear queue revision is returned",
+      "stale failed or uncertain results contain no removed queue"
+    ]
+  },
+  {
+    "id": "CT-032",
+    "covers": [
+      "GitHub create exact confirmation"
+    ],
+    "given": [
+      "a fresh GitHub create capability carries an exact_repository owner/repository challenge"
+    ],
+    "when": [
+      "confirmation differs by any byte or its observation token is stale"
+    ],
+    "then": [
+      "confirmation_mismatch or stale_precondition is returned",
+      "no GitHub or Git mutation starts"
+    ]
+  },
+  {
+    "id": "CT-033",
+    "covers": [
+      "native question cancellation"
+    ],
+    "given": [
+      "one native request proves cancellation support and another does not"
+    ],
+    "when": [
+      "response null is requested"
+    ],
+    "then": [
+      "null reaches Pi only for the proved request",
+      "unsupported or unknown requests reject without sending null",
+      "successful cancellation emits question.resolved cancelled"
+    ]
+  },
+  {
+    "id": "CT-034",
+    "covers": [
+      "native GitHub disconnect"
+    ],
+    "fixtures": [
+      "examples/github-disconnect-request.json"
+    ],
+    "given": [
+      "a freshly reauthenticated mapped user has connected native GitHub state"
+    ],
+    "when": [
+      "identity.github.disconnect targets user scope with a fresh user observation token"
+    ],
+    "then": [
+      "the daemon removes local GitHub CLI authentication without claiming server-side revocation",
+      "success is reported only after local auth absence is observed",
+      "partial cleanup remains partial and web logout alone preserves native GitHub state"
+    ]
   }
 ]

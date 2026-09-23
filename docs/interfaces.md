@@ -3,7 +3,7 @@
 Tämä sivu määrittelee ensimmäisen version selaimen, gatewayn, käyttäjädaemonin
 ja natiivien adapterien välisen havaittavan sopimuksen. Se ei väitä, että
 sopimus olisi toteutettu. [ADR 0001](adr-0001-unix-native-agent-host.md) on
-hyväksytty perusta. React- ja Rust-ratkaisut ovat edelleen
+hyväksytty perusta. React/TypeScript 7/Biome- ja Go-ratkaisut ovat edelleen
 [ADR 0002:n](adr-0002-frontend-stack.md) ja
 [ADR 0003:n](adr-0003-host-stack.md) ehdotuksia. Sopimus rajaa toteutusta, mutta
 ei hyväksy näitä ehdotuksia.
@@ -32,7 +32,7 @@ oikeuksilla. Adapteri kääntää vain todistetut Pi-toiminnot hostin sopimuksee
 | Keskustelu, malli ja resume-ID | Pi:n natiivi JSONL | säilytä `pi:<sessionId>`; älä tee rinnakkaista historiaa |
 | Prosessin olemassaolo | daemonin lapsi/cgroup, Linux, tmux ja Taskfleet | ilmoita lähde ja havaintohetki; puuttuva havainto ei todista exit-tilaa |
 | Ohjauskelpoisuus | daemonin omistama RPC-kanava ja yhden kirjoittajan lukko | pidä erillään historiasta ja prosessihavainnosta |
-| Credentialit | Unix-käyttäjän Pi/Git/SSH/`gh`-ympäristö | älä siirrä gatewaylle tai selaimeen; Git-portti todentaa käytettävän transportin |
+| Credentialit | Unix-käyttäjän Pi/Git/SSH/`gh`-ympäristö | GitHub OAuth -callback-token saa olla gatewaylla vain transientisti ja siirtyä kerran todennetulle daemonille; älä persistoi/lokita/näytä sitä selaimelle; Git-portti todentaa HTTPS-helperin ja transportin |
 | Piilotus, arkisto, generoitu otsikko ja puuttuva parent-linkki | pieni käyttäjäkohtainen annotaatio | annotaatio on korvattavaa esitystietoa, ei lähdefakta |
 
 Lähdefakta sisältää aina tilan `confirmed`, `absent`, `unknown`, `unavailable`
@@ -44,11 +44,7 @@ Snapshot voi siis näyttää historian luettavana samalla kun prosessi on
 
 ### Selain → gateway
 
-Toteutuksen on käytettävä OIDC Authorization Code -virtaa PKCE:llä, state- ja
-nonce-tarkistuksilla, jos Proposed ADR 0003 hyväksytään. Reititysavaimet ovat
-varmennettu muuttumaton `(issuer, subject)`-pari. Sähköposti, näyttönimi,
-HTTP-header, URL-parametri, body-kenttä tai selaimen lähettämä Unix-käyttäjä ei
-saa valita daemonia.
+Toteutuksen ensisijainen Alder-polku käyttää GitHub OAuth Authorization Code -virtaa kertakäyttöisellä `state`lla ja PKCE S256:lla, jos Proposed ADR 0003 hyväksytään. Reititysavain on GitHubin varmennettu vakaa numeerinen käyttäjä-ID. Sama yksi authorization pyytää `gh auth login --with-token` -polun vaatimat `repo`, `read:org` ja `gist` -scopet, muodostaa web-istunnon ja toimittaa callback-tokenin kerran todennetun paikallisen hopin kautta mapped daemonille native `gh` HTTPS helperin asennusta varten. Token ei mene cookieen, selaimeen, lokiin, argviin, ympäristöön tai gatewayn levylle. Valinnainen Google OIDC käyttää exact `(issuer, subject)` -avainta web-identiteettiin eikä konfiguroi GitHubia; siihen ei oteta yhteyttä ennen eksplisiittistä valintaa. Sähköposti, login-nimi, näyttönimi, HTTP-header, URL-parametri, body-kenttä tai selaimen lähettämä Unix-käyttäjä ei saa valita daemonia.
 
 Gatewayn web-istunto on opaque, palvelinpuoleinen ja cookie on
 `__Host-agent-host; Secure; HttpOnly; SameSite=Lax; Path=/`. Kaikki kirjoittavat
@@ -61,7 +57,7 @@ salli credential-pyyntöjä toisesta originista.
 Vanhentunut istunto tekee jo renderöidystä sisällöstä stalea: selain saa pitää
 sen luettavana, mutta kaikki uudet luku- ja kirjoituspyynnöt vaativat uuden
 kirjautumisen. Identiteetin vaihto tyhjentää edellisen identiteetin näkymän ja
-`sessionStorage`-luonnokset ennen uuden sisällön näyttämistä.
+`sessionStorage`-luonnokset ennen uuden sisällön näyttämistä. Web-logout säilyttää native `gh` -jatkuvuuden. Erillinen tuoretta autentikointia ja vahvistusta vaativa disconnect poistaa paikallisen `gh`-authin mapped Unix -käyttäjältä, näyttää osittaiset virheet ja kertoo, ettei `gh auth logout` GitHub CLI:n mukaan revokoi OAuth-tokenia GitHubista.
 
 ### Gateway → daemon
 
@@ -80,6 +76,11 @@ Peer credential -tarkistuksen jälkeen gateway asettaa sisäiselle hopille
 `X-Agent-Host-Identity: wid_…`- ja redaktoidun display-name-headerin omasta
 istunnostaan. Daemon hylkää nämä headerit muulta peeriltä. Näin daemon voi sitoa
 snapshotin ja idempotencyavaimen web-identiteettiin luottamatta selaimen kenttään.
+GitHub-tokenin kertakäyttöinen handoff kuljettaa lisäksi gatewayn juuri GitHubilta
+varmentaman numeerisen `expected_numeric_id`-arvon. Daemonin root-owned käyttäjämappaus
+sisältää saman odotetun providerin ja numeerisen ID:n. Daemon hyväksyy asennuksen vain,
+jos handoff, oma mappaus ja `gh api user --jq .id` täsmäävät; ristiriidassa se poistaa
+juuri asennetun paikallisen authin, raportoi osatuloksen eikä avaa normaalia web-istuntoa.
 Tarkka socket- ja peer-toteutus on edelleen stack-ehdotus, mutta nämä fail-closed-
 ominaisuudet ovat rajapintasopimus riippumatta hyväksyttävästä kuljetuksesta.
 
@@ -219,6 +220,17 @@ kertoo retained-tuloksen ylärajan. Snapshot kuljettaa vain ei-terminaaliset
 ledger-entryt; muut haetaan command querystä. Ledger ei ole historia tai
 prosessirekisteri.
 
+Snapshotin `auth` erottaa web-providerin ja vakaan provider-account-ID:n native GitHubin
+tilasta. `native_github.state` on `connected`, `disconnected`, `pending`, `partial` tai
+`unknown`; `partial` ei anna GitHub-kirjoituskykyä. Workspace-capability voi sisältää
+tuoreeseen observation-tokeniin sidotun exact GitHub repository -haasteen. Fresh-authia
+ja vahvistusta vaativa `identity.github.disconnect` käyttää `target.scope:user`-kohdetta,
+poistaa vain mapped Unix -käyttäjän paikallisen `gh`-authin ja palauttaa successin vasta
+kun poissaolo on havaittu. Se ei väitä OAuth-tokenia revokoiduksi. `agent.queue.clear`-
+tulos sisältää todella poistetut source-ryhmitellyt arvot ja `queue_revision`-arvon;
+saman revision pitää näkyä snapshotin `agent.queue.revision`-kentässä ja
+`queue.changed.payload.revision`-kentässä ennen kuin client pitää näkymää ajan tasalla.
+
 Ledgerin `epoch` vaihtuu daemonin käynnistyessä. Daemon-restartin tai evictionin
 jälkeen ID:n puuttuminen ei todista, ettei komento mennyt Pi:lle tai levylle.
 Siksi epävarmaa komentoa ei lähetetä automaattisesti uudelleen. Client hakee
@@ -268,7 +280,7 @@ havainnosta löytynyttä PID:tä.
 
 Otsikko alkaa arvolla “Uusi keskustelu”. Ensimmäisen viestin jälkeen daemon voi
 näyttää itse muodostamansa rajatun alun `first_message_fallback`-lähteenä. Selain
-ei generoi eikä omista otsikkoa.
+ei generoi eikä omista otsikkoa. Mallikutsun syöte on enintään ensimmäisten neljän ja viimeisten neljän käyttäjäviestin uniikki unioni keskustelujärjestyksessä; alle kahdeksan viestin keskustelussa samaa viestiä ei toisteta.
 
 Hyväksytty toiminta vaatii daemonin omistaman `conversation.title.generate`-
 komennon, joka tekee yhden Pi-mallikutsun agenttiloopin ulkopuolella. Tätä
@@ -276,10 +288,7 @@ adapteria ei ole vielä todennettu: capability on siihen asti `unknown` syyllä
 `adapter_not_verified`, eikä sopimus väitä mallikutsua toimivaksi. Kun adapteri
 on todennettu, komento näyttää erikseen pending-, succeeded- ja failed-tilan.
 Onnistuminen korvaa atomisesti vain annotaation otsikon. Epäonnistuminen säilyttää
-edellisen onnistuneen otsikon tai fallbackin eikä estä keskustelua. Uudelleen-
-generointi on käyttäjän tai myöhemmin katselmoitavan muutaman viestin triggerin
-uusi komento; otsikko ei vaihdu jokaisella viestillä. Malli, triggeri ja
-kustannusraja ovat `review-implementation-plan`-katselmoinnin avoimia valintoja.
+edellisen onnistuneen otsikon tai fallbackin eikä estä keskustelua. Otsikon vieressä oleva saavutettava manuaalinen regenerate lähettää uuden command ID:n vain capabilityn ollessa supported; pending estää rinnakkaisen auto/manual-kutsun ja failure on ei-estävä. Automaattinen ensimmäinen yritys tapahtuu ensimmäisen hyväksytyn viestin jälkeen ja enintään yksi automaattinen uudelleengenerointi kolmannen viestin asetuttua. Selain ei kovakoodaa triggeriä.
 
 ## Vaiheistetut host-operaatiot
 
@@ -407,12 +416,13 @@ käyttävät disposable filesystemiä. GitHub-write vaatii erikseen valtuutetun
 disposable-remoten. Testi vertaa lopputulosta aina natiiviin lähteeseen, ei vain
 HTTP-vastaukseen.
 
-## Toteutussuunnitelman ehdottamat sopimustäsmennykset
+## Katselmointiin lisätyt sopimustäsmennykset
 
-Tuotantodesign löysi neljä kohtaa, joita nykyinen koneellinen v1-sopimus ei vielä
-pysty ilmaisemaan turvallisesti. `review-implementation-plan` päättää seuraavan
-käyttäytymisen; `build-app-foundation` lisää sen skeemoihin, esimerkkeihin ja
-CT-030–CT-033-testeihin ennen kuin tuotekoodi käyttää generoituja tyyppejä:
+Tuotantodesign löysi neljä kohtaa, jotka korjauskierros on lisännyt additiivisesti
+koneelliseen v1-sopimukseen ja CT-030–CT-034-skenaarioihin. CT-034:n
+positiivinen fixture todistaa native GitHub disconnect -komennon esitettävyyden.
+`review-implementation-plan` hyväksyy tai muuttaa käyttäytymisen ennen kuin
+`build-app-foundation` generoi tyypit ja toteuttaa testit:
 
 1. `GET /api/v1/operations/<operation-id>` palauttaa terminal-operaation tuloksen
    saman daemon-epochin enintään 10 000 uusimman / 24 tunnin muistirajassa.
@@ -430,8 +440,8 @@ CT-030–CT-033-testeihin ennen kuin tuotekoodi käyttää generoituja tyyppejä
    on unknown/unsupported; onnistunut cancel tuottaa `question.resolved`-eventin
    outcome-arvolla `cancelled`.
 
-Nämä ovat ehdotuksia eivätkä vielä muuta `contracts/v1/`-tiedostoja tai väitä
-runtimea toimivaksi.
+Nämä ovat edelleen katselmoitavia ehdotuksia eivätkä väitä runtimea toimivaksi,
+mutta niiden koneellinen sopimusmuoto on nyt mukana `contracts/v1/`-tiedostoissa.
 
 ## Katselmoinnissa vielä päätettävät politiikat
 
@@ -445,17 +455,12 @@ runtime-toteutusta:
    päätöksen.
 3. History-sivun 200 entryn ja 65 536 merkin content-chunkin rajat sekä pilotin
    todelliset memory/backpressure-budjetit.
-4. Otsikkoadapterin oikea Pi one-off -mekanismi, malli, kustannusraja,
-   automaattisen uudelleengeneroinnin triggeri ja sen todentaminen. Suunnitelman
-   suositus on `openai-codex/gpt-5.6-luna`, low thinking, enintään 8 ensimmäistä
-   käyttäjäviestiä / 16 KiB syötettä, 120 Unicode-merkin tulos ja 0,02 USD:n
-   kustannuskatto: ensimmäinen yritys ensimmäisen hyväksytyn viestin jälkeen ja
-   enintään yksi automaattinen uudelleengenerointi kolmannen käyttäjäviestin
-   asetuttua. Siihen asti capability on unknown.
-5. Proposed ADR 0003:n täsmällinen OIDC-, socket-, peer credential-, CSRF- ja
-   daemon-epoch-toteutus sekä Proposed ADR 0002:n boundary-validation.
-6. GitHub credential -integraatio ja luvallinen kahden käyttäjän write-probe;
-   nykyinen sopimus ei luo credential brokeria.
+4. Otsikkoadapterin oikea Pi one-off -mekanismi ja sen todentaminen. Valittu suositus on `openai-codex/gpt-5.6-luna`, low thinking, ensimmäisten neljän ja viimeisten neljän käyttäjäviestin uniikki unioni / enintään 16 KiB syötettä, 120 Unicode-merkin tulos ja 0,02 USD:n kustannuskatto: ensimmäinen yritys ensimmäisen hyväksytyn viestin jälkeen, enintään yksi automaattinen uudelleengenerointi kolmannen viestin asetuttua sekä title-adjacent manuaalinen supported-kontrolli. Siihen asti capability on unknown.
+5. Proposed ADR 0003:n täsmällinen GitHub OAuth state/PKCE-, token-handoff-, session-,
+   CSRF-, socket-, peer credential- ja daemon-epoch-toteutus sekä Proposed ADR 0002:n
+   boundary-validation.
+6. Yksi luvallinen private disposable-repository -smoke mapped daemon -ympäristöstä;
+   erillistä laajaa kahden käyttäjän GitHub write -kampanjaa tai credential brokeria ei ole.
 
 Natiivista stderristä tai lähteestä tuleva vapaa teksti redaktoidaan ennen
 `message`, `detail` ja `description` -kenttiä: home-polku muuttuu `<HOME>`-muotoon,

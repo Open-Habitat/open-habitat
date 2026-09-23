@@ -4,14 +4,10 @@
 Unix-daemon gatewayn takana, natiivit workspacet ja historiat sekä HTTP/SSE.
 [Arkkitehtuuri](architecture.md) kuvaa sen käytännössä.
 
-[ADR 0002](adr-0002-frontend-stack.md) ehdottaa React- ja TypeScript-pohjaista
-selainasiakasta, yhtä Redux-tapahtumatilaa, React Aria -komponenttipohjaa sekä
-rajattua Markdown-, koodi- ja diffirenderöintiä. [ADR 0003](adr-0003-host-stack.md)
-ehdottaa yhtä Rust-binaaria gatewaylle ja käyttäjädaemoneille, OIDC-kirjautumista,
-systemd-palveluita, Unix-socketteja ja Fleetrepon kautta hallittavaa julkaisupakettia.
+[ADR 0002](adr-0002-frontend-stack.md) ehdottaa React- ja stable TypeScript 7 -selainasiakasta, Biome-lint/format-rajaa, `tsc --noEmit` -typecheckia, yhtä Redux-tapahtumatilaa, React Aria -komponenttipohjaa sekä rajattua Markdown-, koodi- ja diffirenderöintiä. [ADR 0003](adr-0003-host-stack.md) ehdottaa yhtä Go-binaaria gatewaylle ja käyttäjädaemoneille, ensisijaista GitHub OAuth -kirjautumista ja natiivin `gh` HTTPS-helperin asennusta samalla authorizationilla, valinnaista Google-provideria, systemd-palveluita, Unix-socketteja ja Fleetrepon kautta hallittavaa Alder-deklaraatiota.
 Molemmat päätökset ovat ehdotuksia: `review-implementation-plan` hyväksyy tai
 palauttaa ne ennen tuotantopohjan rakentamista. Katselmoinnin suositus on hyväksyä
-ADR 0002 ja ADR 0003 sillä täsmennyksellä, että operaattori-CLI noudattaa AI-first
+korjatut ADR 0002 ja ADR 0003 sekä se, että operaattori-CLI noudattaa AI-first
 CLI -kanonia (`config path/show`, `doctor`, noun–verb-rajat, globaali `--json`,
 rakenteiset virheet ja JSONL-lokit). Nykyinen JSX, klikkiprototyyppien simuloidut
 toiminnot ja ehdotetut operointikomennot eivät ole näyttöä toimivasta
@@ -32,9 +28,7 @@ ja linkitetään tälle sivulle. Niiden perusteet ja kokeiden versiot säilytet�
 vahvistaa päätökset ennen tuotantokoodia. Sen
 [katselmointipaketti](../issues/plan-v1-implementation/review.md) pyytää lisäksi
 täsmälliset päätökset SSE-/ledger-/historiarajoista, neljästä lisättävästä
-v1-sopimustäsmennyksestä, Pi:n kertakutsuotsikosta, OIDC-/session-/socket-
-politiikasta, kahden käyttäjän GitHub-kokeesta ja Fleetrepo-omistetusta Alder-
-käyttöönotosta. Hyväksytty muutos päivitetään myös nykyistä arkkitehtuuria ja
+v1-sopimustäsmennyksestä, Pi:n ensimmäiset/viimeiset neljä viestiä käyttävästä kertakutsuotsikosta, GitHub OAuth-/session-/socket-/native `gh` -politiikasta, yhdestä focused private-repo -smokesta ja generic self-hosting/Fleetrepo-rajasta. Hyväksytty muutos päivitetään myös nykyistä arkkitehtuuria ja
 rajapintaa kuvaaviin sivuihin.
 
 Muut harnessit, sovelluskohtaiset Northwind-/Acme-integraatiot, vahvempi eristys

@@ -46,3 +46,10 @@ Do not expand into the next issue after delivering this bounded task.
 ## Bounded planning handoff
 
 This issue owns M1. Complete the accepted rich conversation, queue/steering and accessibility behavior against real adapter capabilities. Queue clear remains unavailable until CG-02 returns exact removed texts/group/order; operation deep links use CG-01; question cancellation uses CG-04. Prove long-history virtualization plus paged accessible fallback, safe Markdown/code/diff/CSP, focus/drafts/reading/attention and real Pi queue races. See [the implementation briefs](../plan-v1-implementation/implementation-briefs.md).
+
+
+## Jari visual acceptance gate
+
+This issue is both the executable delivery and its serial human checkpoint. The worker must leave it in `testing`, not close it. While a `ui-v1` issue is in `testing`, it is a non-launchable human-acceptance hold: no round may spawn, resume or close a worker for it. Before any later `ui-v1` lane member may treat its user-visible behavior as delivered, `issues/complete-conversation-ui/visual-acceptance.md` must record the exact product revision, browser/OS/environment, deterministic test fixtures, happy path and every relevant unhappy state, exact Playwright/test commands and results, and links to the essential Playwright screenshots. Screenshots are evidence, not a replacement for assertions. The conductor presents that report to Jari and records his explicit dated accept/change decision in this issue. Only the conductor may then close it; lane serialization keeps the next product slice behind this checkpoint without assigning a lane to a `human-review` issue or letting a worker self-accept.
+
+Interactive and repeated behavior must use the shared production component implementation. Local composition may arrange one-off content but may not invent controls, state semantics, focus rules or styling. When this production slice replaces a canonical/root mock or static reference, remove the superseded root/canonical reference in the same accepted change; an original may remain only in its receiving issue as historical evidence.

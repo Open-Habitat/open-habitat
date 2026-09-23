@@ -1,5 +1,7 @@
 # Frontend stack decision result
 
+> Historical evidence (2026-09-22): this result truthfully records the TypeScript 6/ESLint trial. Jari's later decision selects stable TypeScript 7 with Biome and `tsc --noEmit`; current evidence is in `issues/apply-review-corrections/result.md`. In particular, `typescript-eslint` 8.70.1 declares TypeScript `<6.1.0`; that rejected graph must not be forced or retried.
+
 ## Outcome
 
 Propose [ADR 0002](../../docs/adr-0002-frontend-stack.md): a client-rendered React 19.3.0 and strict TypeScript 6.0.3 application, built by Vite 8.3.0, with React Router for URL selection, one Redux Toolkit store for snapshots/SSE/command reconciliation, React Aria Components as the accessible primitive layer, existing CSS tokens plus CSS Modules, a sanitized React Markdown pipeline, Shiki token highlighting, an escaped parsed-diff renderer, virtualized long histories, Storybook, Vitest/Testing Library and Playwright/Axe.

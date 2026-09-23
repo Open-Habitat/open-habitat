@@ -141,6 +141,9 @@
                   },
                   "generator": {
                     "const": "pi_one_off"
+                  },
+                  "input_policy": {
+                    "const": "unique_first_four_last_four_user_messages"
                   }
                 }
               },

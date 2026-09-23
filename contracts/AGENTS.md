@@ -1,7 +1,7 @@
 # Host contracts
 
 `v1/` is the canonical machine-readable browser/host boundary. JSON Schemas use
-JSON Schema 2020-12. They describe observable messages, not Rust or React
+JSON Schema 2020-12. They describe observable messages, not language- or framework-specific
 implementation types. Keep the reader-facing meaning in `docs/interfaces.md`.
 
 A breaking semantic or shape change creates a new version directory. Additive

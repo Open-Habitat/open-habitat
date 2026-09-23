@@ -49,12 +49,16 @@ Each server keeps its own account mapping and native files.
 
 ### Proposed first host stack
 
-[ADR 0003](adr-0003-host-stack.md) proposes one Rust release artifact for a
-non-root gateway and the per-user daemons. The browser would sign in with OIDC;
-a root-owned mapping would bind the verified issuer and subject to one fixed
-Unix account. The gateway would then reach only that account's systemd-created
-Unix socket. Linux peer credentials would authenticate the gateway to the daemon,
-without passing a reusable local token or a browser-selected username.
+[ADR 0003](adr-0003-host-stack.md) proposes one Go release artifact for a
+non-root gateway and the per-user daemons. Alder's primary browser path is one
+GitHub OAuth authorization: GitHub's stable numeric user ID maps to one fixed
+Unix account, while the callback token is forwarded once over that authenticated
+local route so the user's daemon can configure native `gh` HTTPS credentials.
+The gateway never persists, logs or sends that token to the browser. An optional
+Google provider establishes web identity only and is contacted only after the
+user explicitly selects it. The gateway reaches only the mapped account's
+systemd-created Unix socket; Linux peer credentials authenticate it without a
+reusable local token or browser-selected username.
 
 Each daemon would run as its user's real UID and start Pi RPC as its own child.
 The browser or SSE connection would not own that process, so browser loss would
@@ -66,11 +70,15 @@ supervisor. Terminal-started Pi remains read-only until the separately agreed
 stop-and-transfer boundary is proved.
 
 The proposed artifact would include the static frontend and be installed as an
-immutable, checksum-verified release. Alder's persistent user, units, account
-mapping, encrypted OIDC input, HTTPS route and release pin would all be declared
-in Fleetrepo and converged through its fleet workflow. These details and their
-operator commands remain proposals until `review-implementation-plan`; they do
-not describe an installed service.
+immutable, checksum-verified release. Native Agent Host owns generic install,
+configuration, test-host, update, rollback and operator documentation. Fleetrepo
+owns only Jari's concrete Alder users, units, identity/provider input, HTTPS
+route and release pin and converges those through its fleet workflow. These
+details and their operator commands remain proposals until
+`review-implementation-plan`; they do not describe an installed service. When
+0.1 is ready to publish, the conductor files a then-current issue to remove
+Alder-specific references from Git HEAD while preserving generic self-hosting
+documentation and issue-local history.
 
 ## Workspaces are directories
 

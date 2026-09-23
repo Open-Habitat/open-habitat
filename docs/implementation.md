@@ -33,15 +33,13 @@ rakennetaan koko keskustelu ja kaikki hyväksytyt workspace-, GitHub-, Taskfleet
 ja arkistotoiminnot. Lopun pilotti kokoaa näytön koko järjestelmästä ja sen
 käyttöönotosta.
 
-Sovelluspohja tekee ensimmäisenä lukitut Rust- ja `web/`-rakenteet, tyypit,
-formatointi-, lint-, typecheck-, yksikkö-, integraatio-, selain-, saavutettavuus-,
-sopimus-, paketointi- ja bare-CI-tarkistukset ajettaviksi. Myöhemmät workerit
+Sovelluspohja tekee ensimmäisenä lukitut Go- ja `web/`-rakenteet, TypeScript 7/Biome -formatointi- ja lint-gatet, `tsc --noEmit` -typecheckin sekä yksikkö-, integraatio-, selain-, saavutettavuus-, sopimus-, paketointi- ja bare-CI-tarkistukset ajettaviksi. Myöhemmät workerit
 eivät saa nojata ehdotettuun komentoon ennen kuin tämä työ on suorittanut sen
 puhtaasta checkoutista ja kirjannut sen root/local `AGENTS.md` -ohjeisiin.
 
 ## Ehdotettu hostin toteutus- ja operointiraja
 
-[ADR 0003](adr-0003-host-stack.md) ehdottaa yhtä lukittua Rust-koodipohjaa ja
+[ADR 0003](adr-0003-host-stack.md) ehdottaa yhtä lukittua Go-koodipohjaa ja
 julkaisubinaaria gatewaylle ja käyttäjädaemoneille. Systemd käynnistäisi gatewayn
 omalla rajatulla tunnuksellaan ja jokaisen daemonin oikealla käyttäjätunnuksella.
 Gateway reitittäisi ennalta määrättyyn käyttäjäkohtaiseen Unix-socketiin, ja
@@ -58,12 +56,14 @@ natiivihistorian pitää säilyä ja resumen olla mahdollista vasta vanhan kirjo
 poistumisen ja historian asettumisen jälkeen. Terminaali-TUI pysyy vain luettavana,
 ja Taskfleet purkaa itse luomansa worktreet.
 
+Jokainen käyttäjälle näkyvä slice jää `testing`-tilaan, kunnes sen Markdown-acceptance-raportti sisältää deterministic happy/unhappy Playwright-testit, olennaiset screenshotit, revision, ympäristön ja komennot ja Jari on eksplisiittisesti hyväksynyt sen. Serial lane estää seuraavan slicen siihen asti; worker ei hyväksy omaa UI:taan.
+
 Aldern pysyvä asennus ei synny paikallisesta source-buildista tai käsin kopioidusta
 unitista. Alderlla ei ollut 2026-09-22 `kaisa`-Unix-tunnusta, joten katselmointi
 hyväksyy ensin sen tarkan Fleetrepo-deklaraation tai pilotti ei käynnisty. Fleetrepoen
 lisätään lisäksi katselmoitu fleet-komponentti, joka omistaa tarkan julkaisuversion
 ja checksumin, gateway-käyttäjän, unitit, kaksi sallittua daemon-socketia,
-identiteettimappauksen, salatun OIDC-syötteen ja Tailscale HTTPS -reitin. Ennen päivitystä tai rollbackia maintenance-preflightin pitää todistaa,
+GitHubin numeerisen identiteettimappauksen, salatun provider-syötteen ja Tailscale HTTPS -reitin. Ennen päivitystä tai rollbackia maintenance-preflightin pitää todistaa,
 ettei daemonien omistamia aktiivisia Pi-kirjoittajia ole. Aktivoinnin jälkeen
 varmistetaan version JSON, konfiguraatio, unitit, health/readiness, kummankin
 käyttäjän oma luku, ristiinkäytön torjunta, SSE-paluu ja yksi disposable Pi-vuoro.
@@ -73,7 +73,7 @@ sekä VM-/pilottifixturet ovat ADR:ssä ja
 Ne muuttuvat käyttöohjeiksi vasta, kun `review-implementation-plan` hyväksyy ne
 ja toteutus todentaa ne. Alder on tämän jälkeen jo valtuutettu testikohde, mutta
 pysyvät käyttäjät, gateway-tili, julkaisut, paketit, unitit/socketit, mappaukset,
-salattu OIDC-syöte ja Tailscale-reitti toteutetaan aina erillisessä, katselmoidussa
+salattu provider-auth-syöte ja Tailscale-reitti toteutetaan aina erillisessä, katselmoidussa
 Fleetrepo-issuen worktreessä ja konvergoidaan Fleetrepon fleet-rajapinnalla.
 
 [Agenttien yksityiskohtainen suunnitelma](../issues/plan-v1-implementation/plan.md)

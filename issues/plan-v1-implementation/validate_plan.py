@@ -34,9 +34,13 @@ for criterion in criteria:
     if len(rows) != 1:
         errors.append(f"{criterion} has {len(rows)} ownership-map rows, expected 1")
 
-for gap in ("CG-01", "CG-02", "CG-03", "CG-04", "CT-030", "CT-031", "CT-032", "CT-033"):
+for gap in ("CG-01", "CG-02", "CG-03", "CG-04", "CT-030", "CT-031", "CT-032", "CT-033", "CT-034"):
     if gap not in brief:
         errors.append(f"missing contract-gap mapping: {gap}")
+
+for required in ("Go is locked to 1.27.1", "TypeScript to 7.0.2", "Biome 2.5.14", "tsc --noEmit", "unique union of at most first four and last four", "one private remote smoke"):
+    if required not in brief:
+        errors.append(f"corrected implementation invariant missing: {required}")
 
 ct_section = brief.split("## Contract-scenario implementation ownership", 1)[1].split("## Success-criterion ownership map", 1)[0]
 for number in range(1, 34):
@@ -61,10 +65,20 @@ human = (ROOT / "issues/review-implementation-plan/item.md").read_text().split("
 if "labels: [human-review]" not in human or re.search(r"^lane:", human, re.MULTILINE):
     errors.append("review-implementation-plan must remain an unlaned human review")
 
+for slug in owners[:10]:
+    text = (ROOT / "issues" / slug / "item.md").read_text()
+    if "## Jari visual acceptance gate" not in text or f"issues/{slug}/visual-acceptance.md" not in text:
+        errors.append(f"missing serial visual acceptance checkpoint: {slug}")
+
+foundation = (ROOT / "issues/build-app-foundation/item.md").read_text().split("---", 2)[1]
+if "'@review-implementation-plan'" not in foundation:
+    errors.append("product implementation head must remain blocked by review-implementation-plan")
+
 for required in (
-    "ADR 0002", "ADR 0003", "Production design", "Contract policy",
-    "Title adapter", "Identity, credentials and security proof order",
-    "Alder/Fleetrepo and deployment",
+    "Frontend and TypeScript", "Go host and restart semantics",
+    "Production design and visual acceptance", "Contract and retention policy",
+    "Title adapter", "Authentication, session and native credentials",
+    "Security and GitHub proof", "Self-hosting, Fleetrepo and release trigger",
 ):
     if required not in review:
         errors.append(f"review package missing decision section: {required}")
@@ -73,4 +87,4 @@ if errors:
     for error in errors:
         print(f"ERROR: {error}", file=sys.stderr)
     sys.exit(1)
-print(f"Implementation plan valid: {len(owners)} briefs, {len(criteria)} criterion mappings, 33 contract scenarios, 4 contract corrections.")
+print(f"Implementation plan valid: {len(owners)} briefs, {len(criteria)} criterion mappings, 34 contract scenarios, 4 contract corrections plus native disconnect.")

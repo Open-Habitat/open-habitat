@@ -33,7 +33,17 @@
         }
       ],
       "observation_token": "obs_workspace_41",
-      "presence": "present"
+      "presence": "present",
+      "capabilities": {
+        "github_create": {
+          "state": "supported",
+          "reason_code": "github_connected",
+          "confirmation_challenge": {
+            "kind": "exact_repository",
+            "expected": "example-a/sample-project"
+          }
+        }
+      }
     }
   ],
   "agents": [
@@ -59,9 +69,15 @@
         "display": "Uusi keskustelu",
         "source": "new_conversation",
         "generation_state": "not_requested",
-        "replaceable": true
+        "replaceable": true,
+        "input_policy": "unique_first_four_last_four_user_messages",
+        "manual_regeneration": {
+          "state": "unknown",
+          "reason_code": "adapter_not_verified"
+        }
       },
       "queue": {
+        "revision": "queue_rev_41",
         "steering": [],
         "follow_up": []
       },
@@ -80,5 +96,15 @@
     "max_age_seconds": 86400,
     "entries": []
   },
-  "user_observation_token": "obs_user_src_41"
+  "user_observation_token": "obs_user_src_41",
+  "auth": {
+    "provider": "github",
+    "provider_account_id": "12345678",
+    "native_github": {
+      "state": "connected",
+      "login": "example-a",
+      "git_protocol": "https",
+      "storage": "credential_store"
+    }
+  }
 }

@@ -46,16 +46,14 @@ malliin, ei Composer-komponentin sisäiseksi tai hostiin synkronoitavaksi tilaks
 | Välistys | 4–36 px nimetty asteikko | 4 px ruudukko, myös 9/14 px | Nykyinen `--ah-s1…s8` on yhteinen asteikko. Uudet komponentit käyttävät nimettyjä tokeneita; vedoksen yksittäiset mitat ovat sommittelureferenssejä, eivät uusia tokeneita. |
 | Liike | 380–900 ms ja vaakasiirtymä | 160–200 ms ja pieni pystysiirtymä | Yhteiset tokenit on korjattu 160–180 ms tilanvaihtoihin ja pieneen pystysiirtymään; jatkuva pulssi vain aidosti running/reconnecting-tilassa. Sisältö ei liu'u lukusuunnassa. Reduced motion poistaa pulssin ja siirtymän mutta säilyttää tekstin ja tilamerkin. |
 | Agenttirivi | ei määritelty | tila saattoi jäädä pisteeseen/hoveriin | Rivi näyttää aina tekstin “Odottaa vastaustasi”, “Työskentelee”, “Odottaa viestiä”, “Ei käynnissä”, “Vain luku” tai “Tila ei tiedossa”. Piste on toisteinen. Huomiomerkki on tekstinä ja määränä. |
-| Otsikko | ehdotti ennalta määrättyjä uudelleengenerointikohtia | “Uusi keskustelu”, sitten synopsis | Hostin `title.display/source/generation_state` ratkaisee näytön. UI ei kovakoodaa viestinumeroita. Manuaalinen “Luo otsikko uudelleen” näkyy vain tuetulla capabilityllä. Epäonnistuminen säilyttää edellisen otsikon/fallbackin. |
+| Otsikko | ehdotti ennalta määrättyjä uudelleengenerointikohtia | “Uusi keskustelu”, sitten synopsis | Hostin `title.display/source/generation_state` ratkaisee näytön. Generoinnin syöte on enintään ensimmäisten neljän ja viimeisten neljän käyttäjäviestin uniikki unioni lähdejärjestyksessä. Manuaalinen otsikon viereinen “Luo otsikko uudelleen” näkyy vain tuetulla capabilityllä. Epäonnistuminen säilyttää edellisen otsikon/fallbackin. |
 | Jono | luonnos-API ehdotti yksittäisen rivin perumista | ei määritelty | Näytetään erilliset steer- ja follow-up-jonot lähdejärjestyksessä. Vain “Tyhjennä koko jono” on toiminto; yksittäistä perumista tai reorderia ei näytetä. Editorille palautetaan vain hostin todistamat todella poistetut tekstit. |
 | Fokus | vaihtui jokaisesta agenttipäivityksestä | fokus aina agentin vaihtuessa | Fokus editoriin vain käyttäjän valinnasta tai onnistuneesta create/start/resume-toiminnosta. Taustatapahtuma, unarchive yksin, title-event, reconnect tai listan uudelleenjärjestys ei siirrä fokusta. |
 | Yhteys | keskustelubanneri | app-tason palkki | Yksi `ConnectionBanner` koko sovelluskehyksen yläreunassa. Keskustelun `ControlNotice` selittää agenttikohtaisen eston. Sama virhe ei toistu toastina. |
 | Host-operaatio | ei kata | simuloitu onnistui/epäonnistui | `OperationProgress` näyttää sopimuksen vaiheet ja vaikutukset. Peruuta sulkee dialogin vain ennen hyväksyntää; hyväksynnän jälkeen se ei lupaa perua natiivioperaatiota. |
 | GitHub | yksinkertainen linked-boolean | selainkytkentä ja yhdistetty create/push | UI näyttää capabilityn tuntemattomana tai estettynä, kun adapteria/credential-flow'ta ei ole todennettu. Remote create, origin, transport ja push ovat eri vaiheita; mitään selainkytkentää ei keksitä. |
 
-Nykyiset `.jsx`, `.d.ts`, `.prompt.md` ja kortti-HTML:t säilyvät v0.1-referensseinä.
-Niiden `onCancelQueued`, hoveriin sidottu tieto, hard-coded title cadence tai muu
-yllä korjattu rajapinta ei ole tuotantosopimus.
+Nykyiset `.jsx`, `.d.ts`, `.prompt.md` ja kortti-HTML:t ovat vain vastaanottoissueiden historiallista evidenssiä. Kun tuotantokomponentti tai journey korvaa vastaavan mockin, sama hyväksytty slice poistaa superseded root-/canonical-viittauksen ja siirtää tarvittaessa alkuperäisen vain vastaanottaneen issuen alle. Niiden `onCancelQueued`, hoveriin sidottu tieto, hard-coded title cadence tai muu yllä korjattu rajapinta ei ole tuotantosopimus. Kaikki interaktiivinen tai toistuva käytös toteutetaan shared primitive- tai product-komponentissa; paikallinen yhden kerran kompositio ei saa luoda ad hoc -kontrollia, state-semantiikkaa, fokussääntöä tai tyyliä.
 
 ## Visuaalinen perusta
 
@@ -138,7 +136,7 @@ operation-ID voi valmistua myöhemmin, ovat reititettyjä. Pienet valikot ja
 lisätiedot eivät ole.
 
 Deep link odottaa autentikointia ja ensimmäistä snapshotia ennen “puuttuu”-päätöstä.
-Ennen kirjautumista pyydetty same-origin UI-polku säilytetään OIDC-paluukohteena
+Ennen kirjautumista pyydetty same-origin UI-polku säilytetään OAuth/OIDC-providerin paluukohteena
 hostin hyväksymällä tavalla ja voittaa viimeksi käytetyn reitin; API-, auth- ja
 events-polku ei kelpaa paluukohteeksi. Viime reitti tallennetaan vasta tunnistetulle
 `(origin, web_identity_id)`-parille eikä sitä näytetä toiselle identiteetille.
@@ -175,11 +173,9 @@ sisällön näyttämisen, kunnes vanha tila on varmasti poistettu. Tabin sulkemi
 jälkeistä palautusta ei luvata; silloin server-ledger ja natiivi snapshot ovat
 ainoat lähteet, eikä UI saa väittää vanhan command ID:n tulosta.
 
-Otsikko näyttää aina hostin `title.display`-arvon. `pending` lisää tekstin
-“Luodaan otsikkoa”; `failed` näyttää ei-estävän selitteen vain valikossa tai
-operaatiotuloksessa ja säilyttää displayn; `unknown` ei näytä spinneriä.
-“Luo otsikko uudelleen” lähettää uuden komennon vain capabilityn ollessa
-`supported`; unknown/unsupported-syy näkyy valikossa.
+Otsikko näyttää aina hostin `title.display`-arvon. Generointiadapteri muodostaa syötteen käyttäjäviesteistä ottamalla enintään neljä ensimmäistä ja neljä viimeistä, poistamalla päällekkäiset viestit ja säilyttämällä keskustelujärjestyksen. Muut sovitut 16 KiB:n syöte-, 120 Unicode-merkin tulos- ja 0,02 USD:n kutsurajat säilyvät. Ensimmäinen automaattinen yritys tapahtuu ensimmäisen hyväksytyn käyttäjäviestin jälkeen ja enintään yksi automaattinen uudelleengenerointi kolmannen viestin asetuttua.
+
+Otsikon vieressä on saavutettavasti nimetty “Luo otsikko uudelleen” -painike. Se näkyy toimivana vain `manual_regeneration.state:supported`-tilassa; unknown-, unsupported- ja temporarily-unavailable-syy näkyy tekstinä. `pending` lisää tekstin “Luodaan otsikkoa”, estää samanaikaisen automaattisen tai manuaalisen toisen title-komennon ja säilyttää edellisen display-arvon. `failed` näyttää ei-estävän inline-selitteen ja säilyttää displayn/fallbackin; keskustelun lähetys ja lukeminen jatkuvat. Uusi yritys vaatii uuden command ID:n eikä synny hidden retrystä. Title-event, onnistuminen tai virhe ei siirrä fokusta.
 
 Lukupaikan ankkuri on ensimmäinen kokonaan tai osittain näkyvä pysyvä
 `native_key` + sen pixel-offset. Live-deltan transientti event-ID ei ole pysyvä
@@ -440,8 +436,8 @@ Tämä design ei ratkaise seuraavia avoimia adapteri-/proof-kohtia:
 - `agent.queue.clear`-tuloksen täsmälliset todella poistetut tekstit ja järjestys;
   ennen tätä clear ei saa palauttaa pre-snapshotista arvattuja rivejä editoriin;
 - GitHub-create confirmation challenge ja question-cancelin null→native-mapping;
-- GitHub credential UX sekä luvallinen create/push/clone/delete-koe molemmille
-  käyttäjille;
+- GitHub credential UX, deterministiset cross-user denial -fixturet sekä yksi
+  luvallinen private disposable-repository create/push/clone/delete-smoke mapped daemonilta;
 - Taskfleet create/partial teardown -adapteri ja capability;
 - prosessi-, tmux-, mount- ja worktree-havaintojen kattavuus;
 - variable-height-virtualisoinnin ankkuri ja saavutettava fallback oikealla

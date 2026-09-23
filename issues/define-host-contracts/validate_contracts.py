@@ -46,6 +46,7 @@ checks = {
     "snapshot.json": "snapshot.schema.json",
     "command-request.json": "command.schema.json",
     "command-result.json": "command.schema.json",
+    "github-disconnect-request.json": "command.schema.json",
     "error.json": "error.schema.json",
     "origin-error.json": "error.schema.json",
     "operation-partial.json": "operation.schema.json",
@@ -91,7 +92,7 @@ required_coverage = {
     "partial host operation", "annotation corruption", "CSRF", "origin denial",
     "confirmation mismatch", "question resolution", "session expiry during SSE",
     "schema version rejection", "Last-Event-ID reconnect", "empty account create",
-    "user observation token"
+    "user observation token", "native GitHub disconnect"
 }
 covered = {label for scenario in scenarios for label in scenario["covers"]}
 missing = required_coverage - covered

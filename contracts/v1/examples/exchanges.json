@@ -87,5 +87,21 @@
       "body_file": "history-page.json"
     },
     "note": "Long content remains native and is paged without a copied history database."
+  },
+  {
+    "id": "EX-006",
+    "request": {
+      "method": "GET",
+      "path": "/api/v1/operations/op_delete123",
+      "headers": {
+        "Cookie": "<REDACTED_SERVER_SESSION>"
+      }
+    },
+    "response": {
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "operation-partial.json"
+    },
+    "note": "Terminal operation results are queryable only inside the current daemon epoch retention window; absence is unknown, never success."
   }
 ]

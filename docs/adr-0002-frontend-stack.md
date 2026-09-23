@@ -14,7 +14,7 @@ The existing JSX and HTML are visual references only. This decision compares a R
 
 ## Decision
 
-Subject to `review-implementation-plan`, build the browser as a client-rendered React 19.3.0 single-page application in strict TypeScript 6.0.3. Use Vite 8.3.0 for development and static production builds and React Router 8.4.0 for route matching. Do not use server-side rendering or React Server Components in v1. The host serves the immutable Vite output and an `index.html` fallback under the authenticated, same-origin gateway; JSON/HTTP and SSE remain the backend boundary from ADR 0001.
+Subject to `review-implementation-plan`, build the browser as a client-rendered React 19.3.0 single-page application in strict TypeScript 7.0.2. Use Vite 8.3.0 for development and static production builds and React Router 8.4.0 for route matching. TypeScript 7 is accepted only while the complete locked graph installs and every build, type, lint, test, Storybook, Playwright and Axe gate passes without forced peers, disabled checks or nightly packages; incompatibility returns to human review rather than silently pinning TypeScript 6. Do not use server-side rendering or React Server Components in v1. The host serves the immutable Vite output and an `index.html` fallback under the authenticated, same-origin gateway; JSON/HTTP and SSE remain the backend boundary from ADR 0001.
 
 Use Redux Toolkit 2.12.0 and React Redux 9.3.0 for the synchronized application model. Do not add RTK Query, TanStack Query, a second event store or component-level copies of server entities. The SSE adapter and HTTP command adapter dispatch typed actions into the same store. Use TanStack React Virtual 3.14.13 for measured timeline virtualization. Load rich renderers and infrequently used host-operation dialogs as separate chunks rather than reproducing the disposable experiment's eager bundle.
 
@@ -68,13 +68,16 @@ npm run dev --prefix web -- --host 127.0.0.1
 npm run build --prefix web
 npm run typecheck --prefix web
 npm run lint --prefix web
+npm run typecheck --prefix web  # tsc --noEmit
 npm run test --prefix web
 npm run test:e2e --prefix web
 npm run storybook --prefix web -- --no-open
 npm run build-storybook --prefix web
 ```
 
-`test` means Vitest 5.0.1 plus React Testing Library 16.3.3 and User Event 14.6.7. `test:e2e` means Playwright 1.63.0 in Chromium, initially covering keyboard/focus, reconnection, drafts, reading anchors, uncertain sends, streaming/grouped tools, long output and route restoration. Run Axe 4.13.0 through `@axe-core/playwright` in critical journeys and Storybook's accessibility addon in catalog checks. ESLint 9.39.5 with TypeScript, React Hooks and JSX accessibility rules is the tested lint baseline, but npm already marks ESLint 9 unsupported because the tested JSX plugin has not declared ESLint 10 compatibility. Recheck that pair at the acceptance/scaffold gate and move to a maintained ESLint 10-compatible rule set when available; never force an invalid peer graph. Automated axe checks supplement, not replace, keyboard and screen-reader testing.
+`test` means Vitest 5.0.1 plus React Testing Library 16.3.3 and User Event 14.6.7. `test:e2e` means Playwright 1.63.0 in Chromium, initially covering keyboard/focus, reconnection, drafts, reading anchors, uncertain sends, streaming/grouped tools, long output and route restoration. Run Axe 4.13.0 through `@axe-core/playwright` in critical journeys and Storybook's accessibility addon in catalog checks.
+
+Use Biome 2.5.14 as the only formatter and primary linter, with its recommended rules plus explicit errors for React Hook placement/dependencies and interactive JSX accessibility (`useHookAtTopLevel`, `useExhaustiveDependencies`, the recommended a11y group, `noNoninteractiveElementInteractions`, and `useKeyWithClickEvents`). Keep `tsc --noEmit` as the type checker; Biome is not a type checker. The disposable locked TS7 graph proved that these rules reject a click-only noninteractive element and that the complete Vite/React/Storybook/Vitest/Playwright/Axe graph passes. If implementation discovers a required Hooks or JSX accessibility rule that Biome cannot provide, add one focused TS7-compatible lint tool with primary compatibility evidence, or block and return to review; do not weaken or disable the gate. Preserve the historical result that `typescript-eslint` 8.70.1 declares TypeScript `<6.1.0`; do not retry or force that rejected TS7 graph. Automated lint and Axe supplement, not replace, keyboard and screen-reader testing.
 
 CI installs the pinned Playwright browser separately using Playwright's documented cache. Production deployment needs only the static `web/dist/` output; Node and npm are build-time dependencies, not Alder services.
 
@@ -100,7 +103,8 @@ Before accepting this ADR or calling the frontend foundation complete, verify:
 4. variable-height virtualization preserves a stable reading anchor through stream updates and replacement snapshots and remains understandable with the chosen screen reader;
 5. the sanitized Markdown, URL policy, code worker and diff parser withstand malformed and adversarial fixtures under the deployed CSP;
 6. the gateway/daemon host can serve versioned static assets, UI-route fallback, cache headers and SSE correctly on Alder; and
-7. the later verified Pi one-off-call adapter can update the replaceable conversation title without putting model calls or title authority in the browser.
+7. the later verified Pi one-off-call adapter can update the replaceable conversation title without putting model calls or title authority in the browser; and
+8. every user-visible slice supplies deterministic happy and relevant unhappy-path browser tests plus a Markdown visual-acceptance report with essential screenshots, exact revision, environment, scenarios and commands, followed by Jari's explicit issuectl-recorded acceptance before a dependent product slice treats that UI behavior as delivered.
 
 A failed proof returns the affected choice to `review-implementation-plan`; it must not be hidden by narrowing the accepted UI.
 

@@ -291,10 +291,16 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
+              "revision",
               "steering",
               "follow_up"
             ],
             "properties": {
+              "revision": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 200
+              },
               "steering": {
                 "type": "array",
                 "items": {
@@ -580,6 +586,9 @@
             "type": "string",
             "maxLength": 500
           }
+        },
+        "cancellation": {
+          "$ref": "common.schema.json#/$defs/capability"
         }
       }
     }
