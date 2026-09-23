@@ -211,7 +211,7 @@ export function App() {
         ? "error"
         : source === "absent"
           ? "source-absent"
-          : source !== "confirmed"
+          : source !== "confirmed" && visible.length === 0
             ? "unknown"
             : visible.length === 0
               ? "empty"
@@ -259,7 +259,16 @@ export function App() {
         />
       </>
     ) : selected ? (
-      <WorkspaceDetails workspace={selected} />
+      <>
+        <WorkspaceDetails workspace={selected} />
+        {source !== "confirmed" ? (
+          <InlineNotice
+            title="Lähteen havainto on osittainen"
+            description="Näytetään vain havaittuja kohteita. Kokonaismäärä ja muut lähdetiedot ovat tuntemattomia."
+            tone="warning"
+          />
+        ) : null}
+      </>
     ) : selectedId ? (
       <>
         <h1>
@@ -353,7 +362,7 @@ export function App() {
           <WorkspaceRail
             collapsed={collapsed}
             serverLabel={window.location.host}
-            connectionLabel={`${snapshot.identity.display_name} · ${window.location.host}`}
+            connectionLabel={`${snapshot.identity.display_name} · ${window.location.host}${source === "confirmed" ? "" : " · Lähde osittainen"}`}
             sessionActions={
               <div className="ah-session-actions">
                 <Button
@@ -367,7 +376,7 @@ export function App() {
               </div>
             }
             filterValue={filter}
-            resultSummary={`${matches.length} workspacea`}
+            resultSummary={`${matches.length} ${source === "confirmed" ? "workspacea" : "havaittua workspacea · määrä voi olla puutteellinen"}`}
             listState={railState}
             onToggle={() => setCollapsed(!collapsed)}
             onFilter={(v) => dispatch(filterChanged(v))}

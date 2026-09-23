@@ -113,7 +113,13 @@ test("@workspace-slice confirmed empty, missing, failure, partial and deep link 
   await expect(
     page.getByText("Lähteen tilaa ei voitu vahvistaa"),
   ).toBeVisible();
+  await expect(page.getByRole("link", { name: "uncertain" })).toBeVisible();
+  await expect(page.getByText(/määrä voi olla puutteellinen/)).toBeVisible();
   await shot(page, "partial");
+  await page.getByRole("link", { name: "uncertain" }).click();
+  await expect(page.locator("main")).toContainText(
+    "Lähteen havainto on osittainen",
+  );
   await scenario(page, "foreign");
   await page.goto("/workspaces");
   await expect(page.locator("main h1")).toHaveText("Yhteyttä ei saatu");
