@@ -65,19 +65,54 @@ checking the challenge, with no fallback endpoint or skipped check.
 
 ## Verification and remaining limits
 
-Record the final committed product revision, binary digest and full JSON result
-here after the last rerun on committed code. A preliminary end-to-end boot
-returned `status=passed`, `scope=product-two-user-routing`, `launched=true`,
-`pid1=systemd`, UIDs `[21001,21002,21003]`, both three-directory route results,
-all reported denial and native-gh booleans true, and token scan passed (189 s,
-600 s boot cap, 2 MiB serial cap, pinned image SHA
-`612b2c0cc1bc413a6cb8c38fd611794caf0f2b436c50013d8b3794db12ad7354`).
-That boot preceded the additional guest-side binary digest, source symlink and
-real credential-fill-output checks and is **not** the final revision proof.
+Committed product/fixture revision `da413270c3cb149373415908d1d3cb02db2eb461`:
+`./scripts/vm-test.sh two-user-routing --json` exited 0 in 162 s with
+`status=passed`, `scope=product-two-user-routing`, `launched=true`,
+`pid1=systemd`, UIDs `[21001,21002,21003]`, socket mode `0660`, routes
+`31001→21001` and `31002→21002` with three workspaces each, all native-gh
+and denial flags true, and `token_scan.passed=true`. The guest checked the
+binary SHA-256 against the host-created digest
+`1efe3f4bfdd421499265185b1f679e884a102a94c12266c945f11f3edc4d189e`.
+The pinned cloud image SHA-256 was
+`612b2c0cc1bc413a6cb8c38fd611794caf0f2b436c50013d8b3794db12ad7354`;
+the digest-labelled tool image ID was
+`1fcba77437f7aa1094f784c23d5e9197d6a7d532bcac860ee311aa94f77775f2`.
+The download limit is 2 GiB/360 s, boot limit 600 s, serial limit 2 MiB,
+container 4 GiB/2 CPUs, and the base virtual disk 3.5 GiB. No VM/container or
+private run directory remained after completion. This was an on-demand
+socket-activated boot; no daemon was prestarted. Exact JSON is reproducible
+with the command above; the success output carries no token value.
 
-The offline recipe test checks parser and invalid cases, private ISO byte-for-byte
-injection, seed layout, binary digest rendering and teardown/timeout wiring.
-Clean CI calls only `self-test` and does not boot. Phase 3 still owns the real
-browser UI composition and screenshots, host-backed visual acceptance, final
-issue checks and conductor-mediated Jari decision; this document does not set
-`testing`, toggle acceptance or claim live GitHub/Pi credentials.
+Focused phase-2 security review checked root-owned config and root-traversal
+permissions, systemd socket owner/group/mode and activation envelope, daemon
+and gateway effective UIDs, peer checks in both directions, fixture-only TLS
+CA/hosts against fixed production GitHub URLs, callback state/PKCE and numeric
+mapping, cross-home and forged-header denials, protected native credential
+storage, source/child symlinks, no alternate route after A is stopped, and
+bounded token scans. The two confirmed product findings (client-side
+`SO_PEERCRED` reporting PID 1 and queued activation request consumed by the
+startup challenge) were corrected before the successful boot. Final review
+also found the shipped socket template lacked the explicit descriptor name;
+`FileDescriptorName=daemon` and `DirectoryMode=0711` now match the successful
+fixture and are checked offline. This template-only correction does not change
+the binary or the exercised guest recipe. The review did not prove an actual
+production GitHub consent, installed OS keyring, or protection from a hostile
+process already running under the same Unix UID or root.
+
+`bash test/vm/test-vm-test.sh` passed (offline parser, schema fixture, rendered
+unit/config syntax, byte-for-byte ISO injection, binary digest, error envelope,
+checksum and teardown/timeout wiring). `go test -race ./... -count=1`, `go vet
+./...`, both contract/plan validators, project-view validator,
+`issuectl doctor --json` and `git diff --check` passed with repository-local
+Go/TMPDIR. `./scripts/ci-local.sh --clean --json` passed on clean `da41327`
+with `{"schema_version":1,"data":{"status":"passed","clean":true},"warnings":[]}`;
+it covers full Go/browser/package checks but boots only the offline `self-test`.
+The guest-local source files contain sentinel construction instructions, not
+the completed per-user token values; exact-token `git grep` on committed source
+returned no matches. Transient guest input/credential files were removed with
+the private overlay and ISO; only the checked public image/tool cache remain.
+
+Phase 3 still owns the real browser UI composition and screenshots, host-backed
+visual acceptance, final issue checks and conductor-mediated Jari decision;
+this document does not set `testing`, toggle acceptance or claim live
+GitHub/Pi credentials.

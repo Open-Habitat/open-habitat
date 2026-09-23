@@ -55,7 +55,7 @@ if command -v podman >/dev/null && podman image exists localhost/native-agent-ho
   podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --mount "type=bind,src=$tmp/product,dst=/run-data,ro=true" localhost/native-agent-host-vm-tools:prereq isoinfo -R -i /run-data/product.iso -x /native-agent-host > "$tmp/extracted"
   cmp "$tmp/product/bin" "$tmp/extracted"
 fi
-python3 - "$tmp/product/product-cloud-init.yaml" <<'PY'
+python3 - "$tmp/product/product-cloud-init.yaml" "$repo" <<'PY'
 import base64,json,sys
 c=json.loads(open(sys.argv[1]).read().split('\n',1)[1]); files={f['path']:f for f in c['write_files']}
 assert '/opt/native-agent-host/native-agent-host' not in files
@@ -65,6 +65,18 @@ assert any(cmd[:2]==['install','-m'] and cmd[-1]=='/opt/native-agent-host/native
 assert len([p for p in files if p.endswith('daemon.sock')])==0
 assert all(base64.b64decode(f['content']).find(b'PRODUCT_VM_TOKEN')==-1 for p,f in files.items() if p.startswith('/etc/native-agent-host/'))
 assert c['runcmd'][-1]==['/usr/bin/python3','/usr/local/sbin/product-proof']
+for name,uid in [('agent-a',21001),('agent-b',21002)]:
+    sock=base64.b64decode(files[f'/etc/systemd/system/product-{name}.socket']['content']).decode()
+    service=base64.b64decode(files[f'/etc/systemd/system/product-{name}.service']['content']).decode()
+    assert sock.startswith('[Socket]\n') and sock.count('ListenStream=')==1
+    assert f'ListenStream=/run/native-agent-host/users/{name}/daemon.sock\n' in sock
+    assert all(x in sock for x in [f'SocketUser={name}\n','SocketGroup=native-agent-host-gateway\n','SocketMode=0660\n','DirectoryMode=0711\n','FileDescriptorName=daemon\n','Accept=no\n'])
+    assert service.startswith('[Unit]\n') and f'User={name}\n' in service and f'Group={name}\n' in service
+    assert f'ExecStart=/usr/bin/python3 /usr/local/sbin/product-daemon-launch daemon exec --config /etc/native-agent-host/daemon-{name}.json\n' in service
+    cfg=json.loads(base64.b64decode(files[f'/etc/native-agent-host/daemon-{name}.json']['content']))
+    assert (cfg['handoff']['uid'],cfg['handoff']['username'],cfg['handoff']['home'],cfg['handoff']['subject'])==(uid,name,'/home/'+name,str(31001+uid-21001))
+unit=open(sys.argv[2]+'/systemd/native-agent-host-daemon@.socket').read()
+assert all(x in unit for x in ['SocketMode=0660\n','DirectoryMode=0711\n','FileDescriptorName=daemon\n','SocketGroup=native-agent-host-gateway\n'])
 PY
 [[ ! -e "$tmp/product/tls.key" && ! -e "$tmp/product/tls.crt" ]]
 grep -Fq "'scope':'product-two-user-routing'" "$repo/test/vm/product-proof.py"
