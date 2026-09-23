@@ -7,7 +7,7 @@ vielä toteutettu, ja kaikki vastaanotettujen klikattavien vedosten data, ajasti
 taustatoiminnot ja virheet ovat simuloituja. Niistä korjattu yhtenäinen
 [tuotantodesign](../design-system/production-v1.md),
 [komponenttikatalogi](../design-system/component-catalog-v1.md) ja
-[staattinen katseluesimerkki](../design-system/ui_kits/production-v1/index.html)
+[ajettava tuotantokatalogi](design-system.md)
 ovat v1-toteutuksen design-syöte.
 
 ## Kaksi vastaanotettua designia
