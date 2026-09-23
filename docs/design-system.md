@@ -64,6 +64,9 @@ Komponentti- ja selaintestit tarkistavat muun muassa näkyvät estosyyt,
 näppäimistön, dialogin fokuspalautuksen, valikon liikkumisen, IME-lähetyksen,
 ei-värilliset tilat, 200 % zoomin, reduced motionin sekä Axen molemmissa teemoissa.
 Kuvat täydentävät näitä väitteitä, mutta eivät korvaa assertioita.
+`storybook:test` on tässä vaiheessa katalogin build-check: Storybookin addon näyttää
+Axen tulokset interaktiivisessa katalogissa, mutta deterministiset Axe-assertiot
+ajetaan `test:a11y`-komennolla tuotantomoduulien preview-fixturejä vasten.
 
 ```sh
 npm run test:component --prefix web

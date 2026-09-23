@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
 import { Button, RadioGroup, TextArea, TextField } from "./Primitives";
 import { Disclosure } from "./Overlays";
 import { InlineNotice, StatusMark } from "./Status";
-import type { Availability, ProblemView, TimelineItem } from "./types";
+import type { Availability, ProblemView, TimelineItem, Tone } from "./types";
 import { enabled } from "./types";
 
 export function ConversationTimeline({
@@ -77,12 +76,16 @@ function Message({
   children,
   time,
   state,
+  stateTone = "neutral",
+  stateAnimated = false,
   onCopy,
 }: {
   speaker: string;
   children: ReactNode;
   time?: string;
   state?: string;
+  stateTone?: Tone;
+  stateAnimated?: boolean;
   onCopy: () => void;
 }) {
   return (
@@ -93,8 +96,8 @@ function Message({
         {state ? (
           <StatusMark
             label={state}
-            tone={state === "Epäonnistui" ? "danger" : "neutral"}
-            animated={state === "Vastaa" ? "running" : false}
+            tone={stateTone}
+            animated={stateAnimated ? "running" : false}
           />
         ) : null}
       </header>
@@ -113,15 +116,23 @@ export function UserMessage({
   sourceText,
   time,
   deliveryState,
+  deliveryTone = "neutral",
   onCopy,
 }: {
   sourceText: string;
   time?: string;
   deliveryState?: string;
+  deliveryTone?: Tone;
   onCopy: () => void;
 }) {
   return (
-    <Message speaker="Sinä" time={time} state={deliveryState} onCopy={onCopy}>
+    <Message
+      speaker="Sinä"
+      time={time}
+      state={deliveryState}
+      stateTone={deliveryTone}
+      onCopy={onCopy}
+    >
       <p>{sourceText}</p>
     </Message>
   );
@@ -152,6 +163,14 @@ export function AssistantMessage({
       speaker={modelLabel ? `Pi · ${modelLabel}` : "Pi"}
       time={time}
       state={labels[streamState]}
+      stateTone={
+        streamState === "failed"
+          ? "danger"
+          : streamState === "unknown" || streamState === "interrupted"
+            ? "warning"
+            : "neutral"
+      }
+      stateAnimated={streamState === "streaming"}
       onCopy={onCopy}
     >
       {children}
@@ -249,6 +268,13 @@ function keyedText(values: string[]) {
   });
 }
 
+function diffLineKind(line: string) {
+  if (line.startsWith("+++ ") || line.startsWith("--- ")) return "meta";
+  if (line.startsWith("+")) return "add";
+  if (line.startsWith("-")) return "delete";
+  return "context";
+}
+
 export function DiffView({
   pathLabel,
   unifiedText,
@@ -291,18 +317,18 @@ export function DiffView({
           {keyedText(unifiedText.split("\n")).map(({ key, value: line }) => (
             <span
               className={
-                line.startsWith("+")
+                diffLineKind(line) === "add"
                   ? "ah-diff-add"
-                  : line.startsWith("-")
+                  : diffLineKind(line) === "delete"
                     ? "ah-diff-del"
                     : undefined
               }
               key={key}
             >
               <span className="ah-visually-hidden">
-                {line.startsWith("+")
+                {diffLineKind(line) === "add"
                   ? "Lisätty rivi: "
-                  : line.startsWith("-")
+                  : diffLineKind(line) === "delete"
                     ? "Poistettu rivi: "
                     : ""}
               </span>
@@ -386,10 +412,13 @@ export function ToolGroup({
     >
       <Disclosure
         label={title}
-        summary={summary}
+        summary={containsException ? `${summary} · Sisältää virheen` : summary}
         expanded={expanded}
         onToggle={onToggle}
       >
+        {containsException ? (
+          <StatusMark label="Sisältää virheen" tone="danger" />
+        ) : null}
         {children}
       </Disclosure>
     </section>
@@ -607,7 +636,11 @@ export function Composer({
         onChange={onChange}
         availability={availability}
         hint="Enter lähettää. Shift+Enter tekee rivinvaihdon."
-        onCommit={send}
+        onCommit={
+          sendState === "pending" || availability.state !== "enabled"
+            ? undefined
+            : send
+        }
       />
       {activity === "working" ? (
         <RadioGroup
@@ -681,8 +714,19 @@ export function QueuePanel({
       {state === "stale" ? (
         <InlineNotice title="Jono on vanhentunut" tone="warning" />
       ) : null}
-      <Queue title="Ohjaukset tämän vuoron jälkeen" texts={steeringTexts} />
-      <Queue title="Valmistumisen jälkeen" texts={followUpTexts} />
+      {state === "error" ? (
+        <InlineNotice
+          title="Jonoa ei saatu"
+          description="Jonon sisältöä ei tulkita tyhjäksi."
+          tone="danger"
+        />
+      ) : null}
+      {state !== "error" ? (
+        <>
+          <Queue title="Ohjaukset tämän vuoron jälkeen" texts={steeringTexts} />
+          <Queue title="Valmistumisen jälkeen" texts={followUpTexts} />
+        </>
+      ) : null}
       <Button
         label="Tyhjennä koko jono"
         variant="secondary"
@@ -787,26 +831,5 @@ export function UncertainCommandCard({
         />
       </div>
     </section>
-  );
-}
-export function DemoConversation() {
-  const [value, setValue] = useState(
-    "Voisitko tarkistaa tämän muutoksen ja kertoa, mitä vielä puuttuu?",
-  );
-  return (
-    <Composer
-      value={value}
-      activity="working"
-      selectedWorkingMode="follow_up"
-      sendState="idle"
-      queueSummary="Jonossa 2"
-      onChange={setValue}
-      onSendNow={() => {}}
-      onSteer={() => {}}
-      onFollowUp={() => {}}
-      onModeChange={() => {}}
-      onInterrupt={() => {}}
-      onOpenQueue={() => {}}
-    />
   );
 }

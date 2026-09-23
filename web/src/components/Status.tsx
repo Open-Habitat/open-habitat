@@ -117,15 +117,21 @@ export type ConnectionState =
 export function ConnectionBanner({
   state,
   lastConfirmedAt,
+  hostWriteState = "writable",
   problem,
   onRetry,
 }: {
   state: ConnectionState;
   lastConfirmedAt?: string;
+  hostWriteState?: "writable" | "read_only";
   problem?: ProblemView;
   onRetry?: () => void;
 }) {
-  if (state === "online") return null;
+  if (state === "online" && hostWriteState === "writable") return null;
+  const visibleState =
+    state === "online" && hostWriteState === "read_only"
+      ? "host-read-only"
+      : state;
   const copy: Record<
     Exclude<ConnectionState, "online">,
     { title: string; detail: string; tone: Tone }
@@ -166,16 +172,22 @@ export function ConnectionBanner({
       tone: "warning",
     },
   };
-  const value = copy[state];
+  const value = copy[visibleState as Exclude<ConnectionState, "online">];
   const urgent =
-    state === "authentication-required" || state === "daemon-unavailable";
+    visibleState === "authentication-required" ||
+    visibleState === "daemon-unavailable";
   return (
     <div
       className={`ah-connection ah-tone-${value.tone}`}
       role={urgent ? "alert" : "status"}
     >
       <strong>{value.title}</strong>
-      <span>{value.detail}</span>
+      <span>
+        {value.detail}
+        {hostWriteState === "read_only" && visibleState !== "host-read-only"
+          ? " Palvelin on lisäksi vain luku -tilassa."
+          : ""}
+      </span>
       <Problem problem={problem} />
       {onRetry ? (
         <Button

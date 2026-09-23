@@ -45,6 +45,9 @@
   background: var(--ah-rail);
   border-right: 1px solid var(--ah-line);
 }
+.ah-shell-body:has(.ah-rail-collapsed) {
+  grid-template-columns: 46px minmax(0, 1fr);
+}
 .ah-rail-collapsed {
   width: 46px;
   padding: var(--ah-s1);
@@ -156,7 +159,7 @@ pre {
   overflow-wrap: anywhere;
 }
 .ah-checkbox,
-[role="radio"] {
+.ah-radio-group label {
   display: flex;
   gap: var(--ah-s3);
   align-items: flex-start;
@@ -174,7 +177,7 @@ pre {
 .ah-radio-dot {
   border-radius: 50%;
 }
-[role="radio"][data-selected] .ah-radio-dot {
+.ah-radio-group label[data-selected] .ah-radio-dot {
   box-shadow: inset 0 0 0 4px var(--ah-surface);
   background: var(--ah-accent);
 }
@@ -184,8 +187,8 @@ input:focus-visible,
 textarea:focus-visible,
 select:focus-visible,
 [role="menuitem"]:focus-visible,
-[role="radio"]:focus-visible,
-[role="checkbox"]:focus-visible,
+.ah-radio-group label[data-focus-visible],
+.ah-checkbox[data-focus-visible],
 [role="dialog"]:focus-visible {
   outline: 2px solid var(--ah-accent-ink);
   outline-offset: 2px;
@@ -377,6 +380,8 @@ select:focus-visible,
   gap: var(--ah-s2);
 }
 .ah-workspace header button {
+  min-width: var(--ah-touch);
+  min-height: var(--ah-touch);
   border: 0;
   background: transparent;
   color: inherit;
@@ -484,6 +489,8 @@ select:focus-visible,
 .ah-composer {
   position: sticky;
   bottom: 0;
+  max-height: min(40rem, 60vh);
+  overflow: auto;
   padding: var(--ah-s5);
   border-top: 1px solid var(--ah-line);
   background: var(--ah-bg);

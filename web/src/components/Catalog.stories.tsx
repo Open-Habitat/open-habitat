@@ -109,13 +109,16 @@ export const PrimitivesDark: Story = {
   render: () => <PrimitiveFixture />,
   globals: { theme: "dark" },
 };
-export const LongContentAtTwoHundredPercent: Story = {
-  render: () => (
-    <div style={{ fontSize: "200%" }}>
-      <PrimitiveFixture />
-    </div>
-  ),
-  parameters: { viewport: { defaultViewport: "responsive" } },
+export const LongContentForZoomReview: Story = {
+  render: () => <PrimitiveFixture />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Käytä selaimen 200 % zoomia; automaattinen 1280 px / 200 % overflow-tarkistus ajetaan Playwrightilla.",
+      },
+    },
+  },
 };
 export const ReducedMotion: Story = {
   render: () => (
@@ -128,7 +131,6 @@ export const ReducedMotion: Story = {
       <StatusMark label="Työskentelee" tone="info" animated="running" />
     </main>
   ),
-  parameters: { reducedMotion: "reduce" },
 };
 
 function OverlayFixture() {
@@ -259,6 +261,7 @@ function NavigationFixture() {
             title="Korjaa kirjautumisen epävarma paluu"
             titleState="Hostin otsikko"
             activityLabel="Työskentelee"
+            activityAnimated
             controlLabel="Selain ohjaa"
             workspaceLabel="asiakkaan-projekti"
             workspaceHref="/workspaces/w-1"

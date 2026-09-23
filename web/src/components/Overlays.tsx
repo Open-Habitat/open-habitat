@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useCallback, useRef } from "react";
 import type { ReactNode, RefObject } from "react";
 import {
   Button as AriaButton,
@@ -11,6 +11,10 @@ import {
   Modal,
   ModalOverlay,
   Popover,
+  Tab,
+  TabList,
+  TabPanel,
+  Tabs as AriaTabs,
 } from "react-aria-components";
 import { Button } from "./Primitives";
 import type { Availability } from "./types";
@@ -23,6 +27,8 @@ export function Dialog({
   children,
   closeAvailability = enabled,
   returnFocusRef,
+  isOpen,
+  onOpenChange,
 }: {
   triggerLabel: string;
   title: string;
@@ -30,22 +36,37 @@ export function Dialog({
   children: ReactNode;
   closeAvailability?: Availability;
   returnFocusRef?: RefObject<HTMLElement | null>;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const reason = unavailableReason(closeAvailability);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const focusHeading = useCallback(
+    (node: HTMLHeadingElement | null) => node?.focus(),
+    [],
+  );
   return (
     <DialogTrigger
+      isOpen={isOpen}
       onOpenChange={(open) => {
-        if (!open) queueMicrotask(() => triggerRef.current?.focus());
+        onOpenChange?.(open);
+        if (!open)
+          queueMicrotask(() =>
+            (returnFocusRef?.current ?? triggerRef.current)?.focus(),
+          );
       }}
     >
       <AriaButton ref={triggerRef} className="ah-button ah-button-secondary">
         {triggerLabel}
       </AriaButton>
-      <ModalOverlay className="ah-overlay" isDismissable={!reason}>
+      <ModalOverlay
+        className="ah-overlay"
+        isDismissable={!reason}
+        isKeyboardDismissDisabled={Boolean(reason)}
+      >
         <Modal className="ah-modal">
           <AriaDialog className="ah-dialog" aria-label={title}>
-            <Heading slot="title" tabIndex={-1}>
+            <Heading ref={focusHeading} slot="title" tabIndex={-1}>
               {title}
             </Heading>
             {description ? <p>{description}</p> : null}
@@ -55,7 +76,6 @@ export function Dialog({
                 className="ah-button ah-button-secondary"
                 slot="close"
                 isDisabled={Boolean(reason)}
-                onPress={() => returnFocusRef?.current?.focus()}
               >
                 Sulje
               </AriaButton>
@@ -74,6 +94,7 @@ export function AlertDialog({
   confirmationControl,
   actionLabel,
   actionAvailability = enabled,
+  closeAvailability = enabled,
   onConfirm,
 }: {
   triggerLabel: string;
@@ -82,15 +103,21 @@ export function AlertDialog({
   confirmationControl?: ReactNode;
   actionLabel: string;
   actionAvailability?: Availability;
+  closeAvailability?: Availability;
   onConfirm: () => void;
 }) {
   const reason = unavailableReason(actionAvailability);
+  const closeReason = unavailableReason(closeAvailability);
   return (
     <DialogTrigger>
       <AriaButton className="ah-button ah-button-danger">
         {triggerLabel}
       </AriaButton>
-      <ModalOverlay className="ah-overlay">
+      <ModalOverlay
+        className="ah-overlay"
+        isDismissable={!closeReason}
+        isKeyboardDismissDisabled={Boolean(closeReason)}
+      >
         <Modal className="ah-modal">
           <AriaDialog
             className="ah-dialog"
@@ -104,6 +131,7 @@ export function AlertDialog({
               <AriaButton
                 autoFocus
                 className="ah-button ah-button-secondary"
+                isDisabled={Boolean(closeReason)}
                 slot="close"
               >
                 Peruuta
@@ -116,6 +144,9 @@ export function AlertDialog({
               />
             </div>
             {reason ? <p className="ah-control-reason">{reason}</p> : null}
+            {closeReason ? (
+              <p className="ah-control-reason">{closeReason}</p>
+            ) : null}
           </AriaDialog>
         </Modal>
       </ModalOverlay>
@@ -159,10 +190,9 @@ export function Menu({
               textValue={item.label}
             >
               <span>{item.label}</span>
-              {item.description || unavailableReason(item.availability) ? (
-                <small>
-                  {item.description ?? unavailableReason(item.availability)}
-                </small>
+              {item.description ? <small>{item.description}</small> : null}
+              {unavailableReason(item.availability) ? (
+                <small>{unavailableReason(item.availability)}</small>
               ) : null}
             </MenuItem>
           ))}
@@ -212,32 +242,14 @@ export function Tabs<T extends string>({
 }) {
   const active = tabs.find((tab) => tab.id === selected) ?? tabs[0];
   return (
-    <div>
-      <div aria-label={label} className="ah-tabs" role="tablist">
-        {tabs.map((tab) => (
-          <button
-            aria-controls={`panel-${tab.id}`}
-            aria-selected={tab.id === selected}
-            id={`tab-${tab.id}`}
-            key={tab.id}
-            role="tab"
-            tabIndex={tab.id === selected ? 0 : -1}
-            type="button"
-            onClick={() => onChange(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-      {active ? (
-        <div
-          aria-labelledby={`tab-${active.id}`}
-          id={`panel-${active.id}`}
-          role="tabpanel"
-        >
-          {active.panel}
-        </div>
-      ) : null}
-    </div>
+    <AriaTabs
+      selectedKey={selected}
+      onSelectionChange={(key) => onChange(String(key) as T)}
+    >
+      <TabList aria-label={label} className="ah-tabs" items={tabs}>
+        {(tab) => <Tab id={tab.id}>{tab.label}</Tab>}
+      </TabList>
+      {active ? <TabPanel id={active.id}>{active.panel}</TabPanel> : null}
+    </AriaTabs>
   );
 }

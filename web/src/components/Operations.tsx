@@ -34,6 +34,23 @@ export function CapabilityNotice({
     />
   );
 }
+const operationStateLabel = {
+  pending: "Odottaa",
+  running: "Käynnissä",
+  succeeded: "Onnistui",
+  failed: "Epäonnistui",
+  partial: "Osittainen",
+  unknown: "Tila ei tiedossa",
+} as const;
+const stageStateLabel = {
+  pending: "Odottaa",
+  running: "Käynnissä",
+  succeeded: "Onnistui",
+  failed: "Epäonnistui",
+  unknown: "Ei tiedossa",
+  skipped: "Ohitettu",
+} as const;
+
 export function OperationProgress({
   operationId,
   kindLabel,
@@ -72,13 +89,7 @@ export function OperationProgress({
           <h2>Operaation eteneminen</h2>
         </div>
         <StatusMark
-          label={
-            state === "partial"
-              ? "Osittainen"
-              : state === "unknown"
-                ? "Tila ei tiedossa"
-                : state
-          }
+          label={operationStateLabel[state]}
           tone={
             state === "failed"
               ? "danger"
@@ -97,7 +108,7 @@ export function OperationProgress({
         {stages.map((stage) => (
           <li key={stage.id}>
             <StatusMark
-              label={stage.label}
+              label={`${stage.label}: ${stageStateLabel[stage.state]}`}
               tone={
                 stage.state === "failed"
                   ? "danger"

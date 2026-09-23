@@ -38,7 +38,7 @@ test("@visual unhappy states remain explicit", async ({ page }) => {
   await expect(page.getByText("Capabilityä ei ole vahvistettu.")).toBeVisible();
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-  ).toBeDisabled();
+  ).toHaveAttribute("readonly");
   await page.screenshot({
     path: `${evidence}/design-unhappy-light.png`,
     fullPage: true,
@@ -46,6 +46,11 @@ test("@visual unhappy states remain explicit", async ({ page }) => {
 });
 test("@visual keyboard focus follows visible controls", async ({ page }) => {
   await page.goto("/?fixture=design");
+  await expect(
+    page.getByRole("heading", {
+      name: "Rakenna saavutettava komponenttikirjasto",
+    }),
+  ).toBeVisible();
   await page.keyboard.press("Tab");
   await expect(
     page.getByRole("link", { name: "Siirry keskusteluun" }).last(),

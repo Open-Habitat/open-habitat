@@ -7,6 +7,7 @@ import {
   Label,
   Radio,
   RadioGroup as AriaRadioGroup,
+  Text,
   TextArea as AriaTextArea,
   TextField as AriaTextField,
 } from "react-aria-components";
@@ -39,7 +40,8 @@ export function Button({
       <AriaButton
         aria-label={ariaLabel}
         className={`ah-button ah-button-${variant} ah-button-${size}`}
-        isDisabled={pending || Boolean(reason)}
+        isDisabled={Boolean(reason)}
+        isPending={pending}
         onPress={onPress}
       >
         {pending ? `${label}…` : label}
@@ -73,10 +75,12 @@ export function TextField({
   name,
 }: FieldProps) {
   const reason = unavailableReason(availability);
+  const readOnly = availability.state === "read_only";
   return (
     <AriaTextField
       className="ah-field"
-      isDisabled={Boolean(reason)}
+      isDisabled={Boolean(reason) && !readOnly}
+      isReadOnly={readOnly}
       isInvalid={Boolean(error)}
       isRequired={required}
       name={name}
@@ -85,9 +89,13 @@ export function TextField({
     >
       <Label>{label}</Label>
       <Input className={mono ? "ah-mono" : undefined} />
-      {hint ? <span className="ah-hint">{hint}</span> : null}
+      {hint || reason ? (
+        <Text slot="description">
+          {hint ? <span className="ah-hint">{hint}</span> : null}
+          {reason ? <span className="ah-control-reason">{reason}</span> : null}
+        </Text>
+      ) : null}
       <FieldError>{error}</FieldError>
-      {reason ? <span className="ah-control-reason">{reason}</span> : null}
     </AriaTextField>
   );
 }
@@ -104,10 +112,12 @@ export function TextArea({
   onCommit,
 }: FieldProps & { rows?: number; onCommit?: () => void }) {
   const reason = unavailableReason(availability);
+  const readOnly = availability.state === "read_only";
   return (
     <AriaTextField
       className="ah-field"
-      isDisabled={Boolean(reason)}
+      isDisabled={Boolean(reason) && !readOnly}
+      isReadOnly={readOnly}
       isInvalid={Boolean(error)}
       isRequired={required}
       value={value}
@@ -129,9 +139,13 @@ export function TextArea({
           }
         }}
       />
-      {hint ? <span className="ah-hint">{hint}</span> : null}
+      {hint || reason ? (
+        <Text slot="description">
+          {hint ? <span className="ah-hint">{hint}</span> : null}
+          {reason ? <span className="ah-control-reason">{reason}</span> : null}
+        </Text>
+      ) : null}
       <FieldError>{error}</FieldError>
-      {reason ? <span className="ah-control-reason">{reason}</span> : null}
     </AriaTextField>
   );
 }

@@ -7,19 +7,19 @@ import {
   UncertainCommandCard,
   UserMessage,
   AssistantMessage,
-} from "./Conversation";
+} from "../components/Conversation";
 import {
   AgentFacts,
   AgentHeader,
   AppShell,
   WorkspaceRail,
   WorkspaceSection,
-} from "./Navigation";
-import { OperationProgress } from "./Operations";
-import { ConnectionBanner } from "./Status";
+} from "../components/Navigation";
+import { OperationProgress } from "../components/Operations";
+import { ConnectionBanner } from "../components/Status";
 
 const noop = () => {};
-export function CatalogPreview({
+export default function CatalogPreview({
   scenario = "happy",
 }: {
   scenario?: "happy" | "unhappy";
@@ -136,6 +136,7 @@ export function CatalogPreview({
             activityLabel={
               scenario === "unhappy" ? "Tila ei tiedossa" : "Työskentelee"
             }
+            activityAnimated={scenario === "happy"}
             controlLabel={scenario === "unhappy" ? "Vain luku" : "Selain ohjaa"}
             workspaceLabel="erittäin-pitkä-suomenkielinen-asiakasworkspace"
             workspaceHref="/workspaces/workspace-1"

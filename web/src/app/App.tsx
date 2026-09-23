@@ -1,19 +1,26 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useLocation } from "react-router";
-import { CatalogPreview } from "../components/CatalogPreview";
 import { ConnectionBanner } from "../components/ConnectionBanner";
 import { EmptyWorkspace } from "../components/EmptyWorkspace";
 import { LoginCard } from "../components/LoginCard";
 import type { Bootstrap } from "./bootstrap";
 import { fixtureBootstrap } from "./fixture";
 import { loaded, type RootState } from "./store";
+const CatalogPreview =
+  import.meta.env.VITE_ENABLE_TEST_FIXTURES === "true"
+    ? lazy(() => import("../test/CatalogPreview"))
+    : null;
+
 export function App() {
   const dispatch = useDispatch();
   const location = useLocation();
   const phase = useSelector((s: RootState) => s.connection.phase);
   const bootstrap = useSelector((s: RootState) => s.connection.bootstrap);
-  const fixtureName = new URLSearchParams(location.search).get("fixture");
+  const fixtureName =
+    import.meta.env.VITE_ENABLE_TEST_FIXTURES === "true"
+      ? new URLSearchParams(location.search).get("fixture")
+      : null;
   useEffect(() => {
     const fixture = fixtureBootstrap();
     if (fixture) {
@@ -82,10 +89,20 @@ export function App() {
           <p>Viime komentoa ei lähetetä automaattisesti uudelleen.</p>
         </main>
       ) : null}
-      {phase === "authenticated" && fixtureName?.startsWith("design") ? (
-        <CatalogPreview
-          scenario={fixtureName === "design-unhappy" ? "unhappy" : "happy"}
-        />
+      {phase === "authenticated" &&
+      fixtureName?.startsWith("design") &&
+      CatalogPreview ? (
+        <Suspense
+          fallback={
+            <main id="main">
+              <h1>Ladataan katalogia</h1>
+            </main>
+          }
+        >
+          <CatalogPreview
+            scenario={fixtureName === "design-unhappy" ? "unhappy" : "happy"}
+          />
+        </Suspense>
       ) : null}
       {phase === "authenticated" && !fixtureName?.startsWith("design") ? (
         <>

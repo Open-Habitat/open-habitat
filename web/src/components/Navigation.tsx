@@ -265,6 +265,7 @@ export function AgentHeader({
   title,
   titleState,
   activityLabel,
+  activityAnimated = false,
   controlLabel,
   workspaceLabel,
   workspaceHref,
@@ -275,6 +276,7 @@ export function AgentHeader({
   title: string;
   titleState?: string;
   activityLabel: string;
+  activityAnimated?: boolean;
   controlLabel: string;
   workspaceLabel: string;
   workspaceHref: string;
@@ -312,7 +314,7 @@ export function AgentHeader({
         <StatusMark
           label={activityLabel}
           tone="info"
-          animated={activityLabel === "Työskentelee" ? "running" : false}
+          animated={activityAnimated ? "running" : false}
         />
         <StatusMark label={controlLabel} tone="neutral" />
       </p>
