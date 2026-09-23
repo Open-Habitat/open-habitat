@@ -21,7 +21,7 @@ fi
 export PATH="$tmp/bin:$PATH"
 python3 -m venv "$tmp/venv"
 "$tmp/venv/bin/pip" install --disable-pip-version-check --no-input -r requirements-ci.txt
-PYTHON="$tmp/venv/bin/python"
+export PYTHON="$tmp/venv/bin/python"
 go version
 node --version
 npm --version
