@@ -1,2 +1,13 @@
 # agent scratchpad and ephemeral planning docs
 history/
+
+# repository-local disposable build/tool caches
+.cache/
+.tools/
+dist/
+web/node_modules/
+web/dist/
+web/storybook-static/
+web/test-results/
+web/playwright-report/
+*.test

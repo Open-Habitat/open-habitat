@@ -1,0 +1,3 @@
+Synthetic fixture inventory: non-Git workspace, Git/worktree shapes, malformed
+Pi event and long-history/output generators are created at test runtime. No file
+in this directory was copied from a user history.

@@ -1,0 +1,15 @@
+[Unit]
+Description=Native Agent Host daemon for %i
+Requires=native-agent-host-daemon@%i.socket
+
+[Service]
+User=%i
+Group=%i
+ExecStart=/opt/native-agent-host/current/native-agent-host daemon exec --config /etc/native-agent-host/daemon-%i.json
+NoNewPrivileges=yes
+ProtectSystem=full
+ProtectHome=no
+PrivateTmp=yes
+UMask=0077
+KillMode=mixed
+Restart=on-failure

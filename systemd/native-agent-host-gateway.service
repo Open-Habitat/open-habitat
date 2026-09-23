@@ -1,0 +1,18 @@
+[Unit]
+Description=Native Agent Host gateway
+After=network-online.target
+
+[Service]
+User=native-agent-host-gateway
+Group=native-agent-host-gateway
+ExecStart=/opt/native-agent-host/current/native-agent-host gateway exec --config /etc/native-agent-host/gateway.json
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+UMask=0077
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

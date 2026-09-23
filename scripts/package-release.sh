@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+repo=$(cd "$(dirname "$0")/.." && pwd)
+version= target= web_dir= output=
+while (($#)); do case "$1" in --version) version=$2;shift 2;;--target) target=$2;shift 2;;--web-dir) web_dir=$2;shift 2;;--output) output=$2;shift 2;;*) echo "error: unknown argument $1" >&2;exit 1;;esac;done
+[[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$ ]] || { echo "error: invalid --version '$version'" >&2;exit 1; }
+[[ $target == linux-amd64 ]] || { echo "error: unsupported --target '$target'; expected linux-amd64" >&2;exit 1; }
+[[ -f $web_dir/index.html ]] || { echo "error: --web-dir '$web_dir' is not a Vite build" >&2;exit 1; }
+if grep -R -E 'Alder-testifixture|Deterministinen testi: daemon' "$web_dir" >/dev/null;then echo "error: test fixture content found in --web-dir '$web_dir'" >&2;exit 1;fi
+mkdir -p "$output"; output=$(cd "$output"&&pwd); stage=$(mktemp -d); trap 'rm -rf "$stage"' EXIT
+name="native-agent-host-$version-$target"; root="$stage/$name"; mkdir -p "$root/bin" "$root/web" "$root/systemd" "$root/sysusers.d" "$root/tmpfiles.d" "$root/licenses"
+commit=$(git -C "$repo" rev-parse HEAD)
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags "-s -w -buildid= -X github.com/maintainer/native-agent-host/internal/cli.version=$version -X github.com/maintainer/native-agent-host/internal/cli.buildCommit=$commit" -o "$root/bin/native-agent-host" "$repo/cmd/native-agent-host"
+cp -a "$web_dir"/. "$root/web/"; cp "$repo"/systemd/* "$root/systemd/"; cp "$repo"/sysusers.d/* "$root/sysusers.d/"; cp "$repo"/tmpfiles.d/* "$root/tmpfiles.d/"; cp "$repo/licenses/DEPENDENCIES.md" "$root/licenses/"
+( cd "$root"; find . -type f ! -name MANIFEST.sha256 -print0 | sort -z | xargs -0 sha256sum > MANIFEST.sha256 )
+archive="$output/$name.tar.gz"; tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -C "$stage" -cf - "$name" | gzip -n > "$archive"
+(cd "$output"; sha256sum "$(basename "$archive")" > "$(basename "$archive").sha256")
+printf '%s\n' "$archive"

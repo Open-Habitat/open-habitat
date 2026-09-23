@@ -70,3 +70,68 @@ defines this repo's prepared MVP path, shared-file ownership, human-review
 handling, verification and deployment boundaries. `human-review` issues are
 handled by the conductor with Jari, have no executable lane, and remain blockers
 until the actual review decision is recorded.
+
+## Application foundation
+
+The production scaffold is one Go 1.27.1 module/binary plus one locked browser
+package in `web/`. Runtime authority is explicit:
+
+- `internal/gateway` owns same-origin HTTP, future OAuth/session/CSRF and mapped
+  daemon routing; it must not read user homes or run agents.
+- `internal/daemon` runs as one Unix UID and owns future native discovery and
+  agent children; it never chooses a web identity.
+- `contracts/v1/` is authoritative. `internal/contracts/` and
+  `web/src/contracts/` are deterministic derivatives.
+- `web/src/components/` contains production components imported by both the app
+  and Storybook. Test fixtures are enabled only by the explicit Vite test env.
+- `systemd/`, `sysusers.d/` and `tmpfiles.d/` are package templates, not evidence
+  of a deployed host. No Fleetrepo or machine state is changed here.
+
+A clean environment must provide Node 22.23.2 and Go 1.27.1. CI reads
+`web/.node-version` and pins Go explicitly. A developer without Go may run
+`./scripts/bootstrap-tools.sh` and then use the printed repository-local PATH;
+it never installs a machine binary.
+
+Required commands from the repository root:
+
+```sh
+export PATH="$PWD/.tools/go/bin:$PATH" # only after optional local bootstrap
+go version
+node --version
+npm --version
+npm ci --prefix web
+npm run format:check --prefix web
+npm run lint --prefix web
+npm run typecheck --prefix web
+npm run test:unit --prefix web
+npm run test:component --prefix web
+PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" npm exec --prefix web playwright install chromium
+PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" npm run test:e2e --prefix web
+PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" npm run test:a11y --prefix web
+npm run build --prefix web
+npm run build-storybook --prefix web
+go fmt ./...
+go vet ./...
+go test -race ./...
+CGO_ENABLED=0 go build -trimpath ./cmd/native-agent-host
+go generate ./internal/contracts
+./scripts/check-generated.sh
+python3 issues/define-host-contracts/validate_contracts.py
+python3 issues/plan-v1-implementation/validate_plan.py
+python3 scripts/validate-project-view.py
+python3 scripts/check-licenses.py
+./scripts/vm-test.sh self-test --json
+./scripts/package-release.sh --version 0.0.0-test --target linux-amd64 --web-dir web/dist --output dist/
+./scripts/verify-release.sh --archive dist/native-agent-host-0.0.0-test-linux-amd64.tar.gz --json
+issuectl doctor --json
+git diff --check
+```
+
+`./scripts/ci-local.sh --clean --json` runs the complete bare-CI approximation,
+including locked/offline-after-fetch npm installation, generated drift,
+reproducible packaging and a clean-tree assertion. For focused development use
+`npm run dev --prefix web -- --host 127.0.0.1`,
+`npm run storybook --prefix web -- --no-open`, or the package-level test commands
+above. A passing foundation demonstrates only the shell, boundaries and fixtures;
+it does not demonstrate real OAuth, Unix-user routing, Pi control, histories,
+systemd isolation or deployment.

@@ -1,0 +1,12 @@
+[Unit]
+Description=Native Agent Host daemon socket for %i
+
+[Socket]
+ListenStream=/run/native-agent-host/users/%i/daemon.sock
+SocketMode=0660
+SocketUser=%i
+SocketGroup=native-agent-host-gateway
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

@@ -1,0 +1,18 @@
+#cloud-config
+users:
+  - name: agent-a
+    uid: 21001
+    shell: /bin/bash
+  - name: agent-b
+    uid: 21002
+    shell: /bin/bash
+  - name: native-agent-host-gateway
+    uid: 21003
+    shell: /usr/sbin/nologin
+write_files:
+  - path: /home/agent-a/SYNTHETIC-IDENTITY
+    permissions: '0600'
+    content: 'agent-a-only'
+  - path: /home/agent-b/SYNTHETIC-IDENTITY
+    permissions: '0600'
+    content: 'agent-b-only'

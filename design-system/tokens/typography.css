@@ -1,11 +1,10 @@
-/* Typografia. Instrument Sans käyttöliittymään, JetBrains Mono kaikkeen
-   konekieliseen: polut, komennot, diff, exit-koodit, tunnisteet. */
-
-@import url("https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
+/* Typografia. Tuotanto ei lataa fontteja kolmannen osapuolen URL:sta.
+   Foundation käyttää järjestelmäfontteja; myöhempi design-system-slice voi
+   paketoida arvioidut fonttitiedostot samaan releaseen. */
 
 :root {
-  --ah-font: "Instrument Sans", system-ui, -apple-system, sans-serif;
-  --ah-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --ah-font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ah-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
 
   --ah-size-h1: 30px;
   --ah-size-h2: 16px;

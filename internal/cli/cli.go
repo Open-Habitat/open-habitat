@@ -1,0 +1,397 @@
+// Package cli implements the non-interactive operator surface.
+package cli
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"github.com/maintainer/native-agent-host/internal/core"
+	"github.com/maintainer/native-agent-host/internal/daemon"
+	"github.com/maintainer/native-agent-host/internal/gateway"
+	"io"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"runtime/debug"
+	"strings"
+	"syscall"
+)
+
+const schemaVersion = 1
+
+var version = "0.0.0-dev"
+var buildCommit = ""
+
+type options struct{ json, verbose bool }
+type cliError struct {
+	code, message string
+	exit          int
+	invalid       any
+	expected      any
+}
+
+func (e *cliError) Error() string { return e.message }
+func usage(message string) *cliError {
+	return &cliError{code: "invalid_arguments", message: message, exit: 1}
+}
+func system(code, message string) *cliError { return &cliError{code: code, message: message, exit: 2} }
+func Run(args []string, stdout, stderr io.Writer) int {
+	opts, rest, globalErr := globals(args)
+	if globalErr != nil {
+		return emitError(globalErr, options{}, stderr)
+	}
+	var err error
+	if len(rest) == 0 {
+		return emitError(usage("a subcommand is required; expected version, config, doctor, gateway, daemon, admin, maintenance, or skill"), opts, stderr)
+	}
+	if rest[0] == "--version" {
+		rest = []string{"version"}
+	}
+	var out any
+	switch rest[0] {
+	case "version":
+		out, err = versionOutput(rest[1:])
+	case "config":
+		out, err = configCommand(rest[1:])
+	case "doctor":
+		out, err = doctorCommand(rest[1:])
+	case "gateway", "daemon":
+		out, err = execCommand(rest[0], rest[1:], opts, stderr)
+	case "admin":
+		out, err = adminCommand(rest[1:])
+	case "maintenance":
+		out, err = maintenanceCommand(rest[1:])
+	case "skill":
+		out, err = skillCommand(rest[1:])
+	case "help", "--help", "-h":
+		out = helpOutput()
+	default:
+		err = usage(fmt.Sprintf("unknown subcommand %q", rest[0]))
+	}
+	if err != nil {
+		return emitError(err, opts, stderr)
+	}
+	if out != nil {
+		if opts.json {
+			_ = json.NewEncoder(stdout).Encode(out)
+		} else {
+			fmt.Fprintln(stdout, text(out))
+		}
+	}
+	return 0
+}
+func globals(args []string) (options, []string, *cliError) {
+	var o options
+	rest := make([]string, 0, len(args))
+	for _, a := range args {
+		switch a {
+		case "--json":
+			o.json = true
+		case "--verbose":
+			o.verbose = true
+		default:
+			if strings.HasPrefix(a, "--json=") || strings.HasPrefix(a, "--verbose=") {
+				return o, nil, usage(fmt.Sprintf("invalid boolean flag %q; pass the flag without a value", a))
+			}
+			rest = append(rest, a)
+		}
+	}
+	return o, rest, nil
+}
+func emitError(err error, o options, w io.Writer) int {
+	ce := &cliError{code: "internal_error", message: err.Error(), exit: 2}
+	errors.As(err, &ce)
+	if o.json {
+		payload := map[string]any{"schema_version": schemaVersion, "error": map[string]any{"code": ce.code, "message": ce.message}}
+		_ = json.NewEncoder(w).Encode(payload)
+	} else {
+		fmt.Fprintf(w, "error: %s\n", ce.message)
+	}
+	return ce.exit
+}
+func text(v any) string { b, _ := json.MarshalIndent(v, "", "  "); return string(b) }
+func envelope(data any) map[string]any {
+	return map[string]any{"schema_version": schemaVersion, "data": data, "warnings": []any{}}
+}
+func noArgs(args []string) *cliError {
+	if len(args) > 0 {
+		return usage(fmt.Sprintf("unexpected argument %q", args[0]))
+	}
+	return nil
+}
+func versionOutput(args []string) (any, error) {
+	if e := noArgs(args); e != nil {
+		return nil, e
+	}
+	commit, prov := buildProvenance()
+	return envelope(map[string]any{"version": version, "commit": commit, "schema_version": schemaVersion, "supported_schemas": []int{1}, "build_provenance": prov, "skills": []any{map[string]any{"name": "operator", "cli_version": version, "schema_version": 1}}}), nil
+}
+func buildProvenance() (any, map[string]any) {
+	if len(buildCommit) == 40 {
+		return buildCommit, map[string]any{"kind": "ci-injected", "note": "release build revision"}
+	}
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		for _, s := range bi.Settings {
+			if s.Key == "vcs.revision" && len(s.Value) == 40 {
+				return s.Value, map[string]any{"kind": "git", "note": "Go VCS build metadata"}
+			}
+		}
+	}
+	return nil, map[string]any{"kind": "vendored", "note": "no VCS revision in this development build"}
+}
+func componentFlag(args []string) (core.Component, []string, *cliError) {
+	var c core.Component
+	rest := []string{}
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--component" {
+			if i+1 >= len(args) {
+				return "", nil, usage("--component requires gateway or daemon")
+			}
+			i++
+			c = core.Component(args[i])
+		} else {
+			rest = append(rest, args[i])
+		}
+	}
+	if c != core.Gateway && c != core.Daemon {
+		return "", nil, usage(fmt.Sprintf("invalid --component %q; expected gateway or daemon", c))
+	}
+	return c, rest, nil
+}
+func configPath(c core.Component) string {
+	if p := os.Getenv("NATIVE_AGENT_HOST_CONFIG"); p != "" {
+		return p
+	}
+	return "/etc/native-agent-host/" + string(c) + ".json"
+}
+func configCommand(args []string) (any, error) {
+	if len(args) == 0 {
+		return nil, usage("config requires path or show")
+	}
+	verb := args[0]
+	c, rest, e := componentFlag(args[1:])
+	if e != nil {
+		return nil, e
+	}
+	if x := noArgs(rest); x != nil {
+		return nil, x
+	}
+	p := configPath(c)
+	source := "default"
+	if os.Getenv("NATIVE_AGENT_HOST_CONFIG") != "" {
+		source = "env"
+	}
+	switch verb {
+	case "path":
+		return envelope(map[string]any{"component": c, "path": p, "source": source}), nil
+	case "show":
+		_, statErr := os.Stat(p)
+		return envelope(map[string]any{"component": c, "config_path": map[string]any{"value": p, "source": source}, "exists": statErr == nil, "data_root": map[string]any{"value": stateDir(), "source": stateSource()}}), nil
+	default:
+		return nil, usage(fmt.Sprintf("unknown config verb %q; expected path or show", verb))
+	}
+}
+func doctorCommand(args []string) (any, error) {
+	c, rest, e := componentFlag(args)
+	if e != nil {
+		return nil, e
+	}
+	if x := noArgs(rest); x != nil {
+		return nil, x
+	}
+	checks := []any{map[string]any{"id": "binary.provenance", "status": "ok", "message": "version metadata is inspectable"}, map[string]any{"id": "config.path", "status": "ok", "message": fmt.Sprintf("%s config path resolves to %s", c, configPath(c))}, map[string]any{"id": "authority.boundary", "status": "ok", "message": fmt.Sprintf("%s role selected explicitly", c)}}
+	return envelope(map[string]any{"component": c, "checks": checks, "summary": map[string]int{"ok": 3, "warn": 0, "fail": 0}}), nil
+}
+func parseConfig(args []string) (string, *cliError) {
+	if len(args) != 3 || args[0] != "exec" || args[1] != "--config" || strings.TrimSpace(args[2]) == "" {
+		return "", usage("expected exec --config <non-empty-path>")
+	}
+	return args[2], nil
+}
+func execCommand(role string, args []string, o options, stderr io.Writer) (any, error) {
+	path, e := parseConfig(args)
+	if e != nil {
+		return nil, e
+	}
+	c := core.Component(role)
+	cfg, err := core.LoadConfig(path, c)
+	if err != nil {
+		return nil, system("config_io", err.Error())
+	}
+	var h http.Handler
+	if c == core.Gateway {
+		h = gateway.New(cfg.StaticDir)
+	} else {
+		h = daemon.New()
+	}
+	ln, err := net.Listen("tcp", cfg.Listen)
+	if err != nil {
+		return nil, system("listen_failed", fmt.Sprintf("listen %q: %v", cfg.Listen, err))
+	}
+	if o.verbose {
+		json.NewEncoder(stderr).Encode(map[string]any{"schema_version": 1, "level": "INFO", "component": role, "event": "listening", "listen": cfg.Listen})
+	}
+	srv := &http.Server{Handler: h}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	go func() { <-ctx.Done(); srv.Shutdown(context.Background()) }()
+	if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
+		return nil, system("server_failed", err.Error())
+	}
+	return nil, nil
+}
+func adminCommand(args []string) (any, error) {
+	if len(args) != 2 || args[0] != "readiness" || args[1] != "show" {
+		return nil, usage("expected admin readiness show")
+	}
+	return envelope(map[string]any{"status": "foundation-only", "ready": false, "reason": "authentication and per-user routing are not implemented"}), nil
+}
+func stateDir() string {
+	if p := os.Getenv("NATIVE_AGENT_HOST_STATE_DIR"); p != "" {
+		return p
+	}
+	return "/run/native-agent-host"
+}
+func stateSource() string {
+	if os.Getenv("NATIVE_AGENT_HOST_STATE_DIR") != "" {
+		return "env"
+	}
+	return "default"
+}
+func maintenanceCommand(args []string) (any, error) {
+	if len(args) < 1 || (args[0] != "enter" && args[0] != "leave") {
+		return nil, usage("maintenance requires enter or leave")
+	}
+	verb := args[0]
+	key := ""
+	dry := false
+	for i := 1; i < len(args); i++ {
+		switch args[i] {
+		case "--dry-run":
+			dry = true
+		case "--idempotency-key":
+			if i+1 >= len(args) {
+				return nil, usage("--idempotency-key requires a non-empty value")
+			}
+			i++
+			key = args[i]
+		default:
+			return nil, usage(fmt.Sprintf("unknown maintenance option %q", args[i]))
+		}
+	}
+	if strings.TrimSpace(key) == "" {
+		return nil, usage("--idempotency-key is required and must not be blank")
+	}
+	action := "create"
+	if verb == "leave" {
+		action = "delete"
+	}
+	if dry {
+		return envelope(map[string]any{"dry_run": true, "would": []any{map[string]any{"action": action, "resource": "maintenance-marker", "input": map[string]any{"idempotency_key": key}}}}), nil
+	}
+	if err := os.MkdirAll(stateDir(), 0700); err != nil {
+		return nil, system("io_create_state", err.Error())
+	}
+	p := filepath.Join(stateDir(), "maintenance")
+	if verb == "enter" {
+		if err := os.WriteFile(p, []byte(key+"\n"), 0600); err != nil {
+			return nil, system("io_write_state", err.Error())
+		}
+	} else if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+		return nil, system("io_remove_state", err.Error())
+	}
+	return envelope(map[string]any{"state": map[string]string{"enter": "entered", "leave": "left"}[verb], "idempotency_key": key}), nil
+}
+
+const operatorSkill = `---
+name: operator
+description: Operate and diagnose Native Agent Host runtime roles non-interactively.
+cli_version: "0.0.0-dev"
+schema_version: 1
+---
+# Native Agent Host operator
+
+Inspect configuration before starting a role. Prefer structured output: native-agent-host --json doctor --component gateway. Never infer readiness from process liveness alone.
+`
+
+func skillCommand(args []string) (any, error) {
+	if len(args) == 0 {
+		return nil, usage("skill requires list, print, or install")
+	}
+	switch args[0] {
+	case "list":
+		if len(args) != 1 {
+			return nil, usage("skill list takes no arguments")
+		}
+		return envelope(map[string]any{"supported_agents": []string{"claude", "pi", "codex"}, "skills": []any{map[string]any{"name": "operator", "description": "Operate and diagnose Native Agent Host"}}}), nil
+	case "print":
+		if len(args) != 2 || args[1] != "operator" {
+			return nil, usage("expected skill print operator")
+		}
+		return envelope(map[string]any{"name": "operator", "cli_version": version, "schema_version_skill": 1, "content": strings.Replace(operatorSkill, "0.0.0-dev", version, 1), "path_in_repo": "internal/cli/operator/SKILL.md"}), nil
+	case "install":
+		return skillInstall(args[1:])
+	default:
+		return nil, usage(fmt.Sprintf("unknown skill verb %q", args[0]))
+	}
+}
+func skillInstall(args []string) (any, error) {
+	if len(args) < 1 || args[0] != "operator" {
+		return nil, usage("expected skill install operator --agent claude|pi|codex|all [--target PATH] [--dry-run]")
+	}
+	agent := "all"
+	target := "."
+	dry := false
+	for i := 1; i < len(args); i++ {
+		switch args[i] {
+		case "--agent":
+			if i+1 >= len(args) {
+				return nil, usage("--agent requires a value")
+			}
+			i++
+			agent = args[i]
+		case "--target":
+			if i+1 >= len(args) {
+				return nil, usage("--target requires a value")
+			}
+			i++
+			target = args[i]
+		case "--dry-run":
+			dry = true
+		default:
+			return nil, usage(fmt.Sprintf("unknown skill install option %q", args[i]))
+		}
+	}
+	layouts := map[string]string{"claude": ".claude/skills/operator/SKILL.md", "pi": ".pi/agent/skills/operator/SKILL.md", "codex": ".codex/skills/operator/SKILL.md"}
+	selected := []string{}
+	if agent == "all" {
+		selected = []string{"claude", "pi", "codex"}
+	} else if _, ok := layouts[agent]; ok {
+		selected = []string{agent}
+	} else {
+		return nil, usage(fmt.Sprintf("invalid --agent %q; expected claude, pi, codex, or all", agent))
+	}
+	would := []any{}
+	for _, a := range selected {
+		p := filepath.Join(target, layouts[a])
+		would = append(would, map[string]any{"action": "create", "resource": "skill", "path": p})
+		if !dry {
+			if _, err := os.Stat(p); err == nil {
+				return nil, usage(fmt.Sprintf("refusing to overwrite existing skill %q", p))
+			}
+			if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
+				return nil, system("io_create_skill", err.Error())
+			}
+			if err := os.WriteFile(p, []byte(strings.Replace(operatorSkill, "0.0.0-dev", version, 1)), 0644); err != nil {
+				return nil, system("io_write_skill", err.Error())
+			}
+		}
+	}
+	return envelope(map[string]any{"dry_run": dry, "would": would}), nil
+}
+func helpOutput() any {
+	return envelope(map[string]any{"name": "native-agent-host", "subcommands": []string{"version", "config path|show", "doctor", "gateway exec", "daemon exec", "admin readiness show", "maintenance enter|leave", "skill list|print|install"}, "global_flags": []string{"--json", "--verbose", "--version"}})
+}

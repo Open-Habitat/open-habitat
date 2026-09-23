@@ -1,0 +1,3 @@
+{"type":"session","session_id":"fixture-pi-0001","cwd":"/home/agent-a/src/example"}
+{"type":"message","role":"user","text":"Deterministinen testiviesti"}
+{"type":"unknown.fixture","safe_text":"<script>not executable</script>"}
