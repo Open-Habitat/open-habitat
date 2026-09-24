@@ -198,7 +198,21 @@ try:
         result={'status':'passed','scope':'product-two-user-routing','pid1':'systemd','uids':[21001,21002,21003],'socket_mode':'0660','socket_activation':True,'routes':routes,'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'cross_user_broker':True,'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, bounded journal, process argv/environ, configs, child argv logs'}}
     finally:provider.terminate();provider.wait(timeout=5)
 except Exception as e:
-    result['reason']=str(e).split(':')[0][:220]
+    # FileNotFoundError retains the missing executable/path; no fixture token
+    # is printed. Keep a bounded, redacted journal-code receipt for PID1 boots.
+    missing=getattr(e,'filename',None)
+    result['reason']=(type(e).__name__+' '+str(missing or str(e)).split(':')[0])[:220]
+    codes={}
+    for unit in ('product-gateway','native-agent-host-broker','native-agent-host-daemon@agent-a','native-agent-host-daemon@agent-b'):
+        journal=subprocess.run(['journalctl','-u',unit,'-n','12','--no-pager','-o','cat'],capture_output=True).stdout
+        codes[unit]=[]
+        for line in journal.decode('utf-8','replace').splitlines():
+            if line.startswith('{'):
+                try:
+                    code=json.loads(line).get('error',{}).get('code')
+                    if code:codes[unit].append(code)
+                except ValueError:pass
+    result['journal_codes']=codes
 print('VM_PROOF='+json.dumps(result,separators=(',',':')),flush=True)
 subprocess.run(['systemd-run','--on-active=15s','--unit=fixture-shutdown','/usr/bin/systemctl','poweroff','--no-block'],stdout=subprocess.DEVNULL)
 if result['status']!='passed':sys.exit(1)
