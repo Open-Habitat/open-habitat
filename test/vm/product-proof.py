@@ -219,6 +219,21 @@ except Exception as e:
                     if code:codes[unit].append(code)
                 except ValueError:pass
     result['journal_codes']=codes
+    if 'broker authorize' in result['reason']:
+        # Guest-local, synthetic-only drift inventory; omit raw logs and token
+        # files. These are the checks the root broker makes at startup.
+        diag={}
+        for name in names:
+            for args in (['getent','passwd',name],['getent','group',name],['getent','initgroups',name]):
+                p=subprocess.run(args,capture_output=True,text=True)
+                diag[' '.join(args)]=p.stdout.strip()[:120] if p.returncode==0 else 'exit '+str(p.returncode)
+        for path in ('/run/native-agent-host','/run/native-agent-host/users',str(root/names[0]),str(root/names[1])):
+            p=subprocess.run(['getfacl','-cpn',path],capture_output=True,text=True)
+            diag[path]=p.stdout.strip().replace('\n',';')[:220] if p.returncode==0 else 'exit '+str(p.returncode)
+        for unit in ('native-agent-host-broker.service','native-agent-host-daemon@agent-a.service','native-agent-host-daemon@agent-a.socket'):
+            p=subprocess.run(['systemctl','show',unit,'--property=ActiveState,ExecMainStatus,SocketMode,DirectoryMode,Listen,ExecStart','--no-pager'],capture_output=True,text=True)
+            diag[unit]=p.stdout.strip().replace('\n',';')[:300]
+        result['diagnostic']=diag
     if codes.get('native-agent-host-broker'):
         result['reason']=(result['reason']+' broker '+','.join(codes['native-agent-host-broker']))[:220]
 print('VM_PROOF='+json.dumps(result,separators=(',',':')),flush=True)

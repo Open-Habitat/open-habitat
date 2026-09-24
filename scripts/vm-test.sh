@@ -162,11 +162,12 @@ PRODUCT_CHECK
     reason=$(python3 - "$proof" <<'REASON'
 import json,re,sys
 try:
- v=json.loads(sys.argv[1]).get('reason','unknown')
+ p=json.loads(sys.argv[1]); v=p.get('reason','unknown')
  if not isinstance(v,str):v='unknown'
+ if isinstance(p.get('diagnostic'),dict): v+=' diagnostic '+json.dumps(p['diagnostic'],sort_keys=True)
  for n in ('agent_a','agent_b','UNKNOWN'):
   v=v.replace('PRODUCT_VM_TOKEN_'+n+'_FIXTURE_ONLY_92764','[redacted]')
- print(re.sub('[^A-Za-z0-9 _-]',' ',v)[:220])
+ print(re.sub('[^A-Za-z0-9 _=./;:-]',' ',v)[:2000])
 except (ValueError,TypeError): print('unknown')
 REASON
 )
