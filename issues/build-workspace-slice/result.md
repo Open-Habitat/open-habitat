@@ -1,6 +1,6 @@
 # Read-only login-to-workspace slice — implementation evidence
 
-Current corrected product revision: `f34463b3c150f7ba3e5ea486852d1eff89e27c4a`. Status: **testing**, review requested, not approved or closed. The initial `7779c064aa99713e200fa35a9d75b2a905769d14` revision was visually rejected by Jari; the original implementation/verification narrative below is retained as historical evidence, not as the current screenshot revision. This is the first browser-visible slice, not the full Pi/agent MVP.
+Current corrected product revision: `f34463b3c150f7ba3e5ea486852d1eff89e27c4a` (tested worktree commit; rebased landing on main: `f0efc294b8f76c701965fd1dd7ae0023bd7352e6`). Status: **testing**, review requested, not approved or closed. The initial `7779c064aa99713e200fa35a9d75b2a905769d14` revision was visually rejected by Jari; the original implementation/verification narrative below is retained as historical evidence, not as the current screenshot revision. This is the first browser-visible slice, not the full Pi/agent MVP.
 
 ## Visual parity correction after Jari's changes request
 

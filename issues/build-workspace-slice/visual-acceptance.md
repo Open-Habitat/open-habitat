@@ -1,6 +1,6 @@
 # Browser visual acceptance — corrected revision, Jari review requested
 
-**Product revision:** `f34463b3c150f7ba3e5ea486852d1eff89e27c4a`. This revision replaces Jari's visually rejected `7779c064` captures; it is **not** acceptance or closure. The source-ground diagnosis was saved [before the CSS/component edits](./visual-divergences.md). Browser: Playwright Chromium 153.0.8010.12 (headless), Linux x86_64, 1280×720 viewport, light theme; captures are full-page AVIF at color quality 75 and may exceed 720px vertically. No original designer file was modified.
+**Product revision:** `f34463b3c150f7ba3e5ea486852d1eff89e27c4a` (tested worktree commit; rebased landing on main: `f0efc294b8f76c701965fd1dd7ae0023bd7352e6`). This revision replaces Jari's visually rejected `7779c064` captures; it is **not** acceptance or closure. The source-ground diagnosis was saved [before the CSS/component edits](./visual-divergences.md). Browser: Playwright Chromium 153.0.8010.12 (headless), Linux x86_64, 1280×720 viewport, light theme; captures are full-page AVIF at color quality 75 and may exceed 720px vertically. No original designer file was modified.
 
 ## What changed visually
 
@@ -24,9 +24,9 @@ Playwright builds `web/dist` without `VITE_ENABLE_TEST_FIXTURES` and starts a st
 
 **Exact focused commands/results**, from repository root with `export TMPDIR="$PWD/.cache/ci-tmp" PATH="$PWD/.tools/go/bin:$PATH" PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright"`: `go test ./internal/gateway/... ./internal/daemon/...` passed; `npm run format:check --prefix web`, `npm run lint --prefix web`, `npm run typecheck --prefix web`, `npm run test:unit --prefix web` (1 passed), `npm run test:component --prefix web` (15 passed), `npm run test:e2e --prefix web` (12 passed), `npm run test:a11y --prefix web` (2 passed) passed. Essential screenshots were encoded with `avifenc -q 75 --speed 6` from that last E2E run. See [result.md](./result.md) for the full clean gate and validators.
 
-## Interactive review without a live deployment
+## Interactive review boundary
 
-In this checkout, run `npm run build --prefix web`, then `PATH="$PWD/.tools/go/bin:$PATH" go build -o .cache/browser-host ./test/browser-host` and `.cache/browser-host web/dist` from repo root; open `https://127.0.0.1:4174/` in a browser (trust this **ephemeral local test** certificate only for that session). Click GitHub login and choose synthetic Alice/Bob in the fixture provider. Change simulated source states with `curl -k 'https://127.0.0.1:4174/fixture/scenario?value=empty'` (also `ready`, `missing`, `error`, `partial`), then reload. The server binds loopback only, cleans its temporary fixture on termination, and never calls GitHub. If the browser is on another machine, forward only port 4174 through a temporary SSH tunnel; do not publish or deploy this fixture. Test automation remains the definitive browser evidence.
+The loopback TLS fixture is for **automated Playwright tests only**, where trust is scoped to the test browser. Do not ask Jari to bypass a self-signed-certificate warning or present it as a manual review URL. Plain HTTP is appropriate for local visual previews but cannot be substituted for the authenticated gateway: its HTTPS Origin/session checks intentionally reject that arrangement. If a manual interactive authenticated review is needed, prepare a separately reviewed HTTPS test endpoint through the Fleetrepo-owned Cloudflare/`example.test` pattern, without changing gateway security or persistent machine state in this slice. Until then the six captures and deterministic host-backed assertions above are the available evidence, not a live app for Jari to use.
 
 ## Review boundary
 
