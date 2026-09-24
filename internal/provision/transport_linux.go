@@ -21,6 +21,9 @@ import (
 // neither this package nor its default handler creates accounts or routes.
 const exchangeTimeout = 2 * time.Second
 
+// Hard cap applies even when the permitted gateway UID is compromised.
+const maxActiveExchanges = 8
+
 var ErrTransport = errors.New("broker transport unavailable")
 
 type Handler func(Request) Reply
@@ -103,7 +106,10 @@ func peerUID(c *net.UnixConn) (uint32, error) {
 
 // Serve stops accepting on cancellation. Every accepted connection has an
 // independent deadline; malformed exchanges are dropped without invoking the
-// handler. A nil handler returns state_unavailable even for committed entries.
+// handler. Admission is capped and excess clients are closed immediately.
+// Cancellation closes admitted sockets and waits for handlers to return;
+// handlers must not block indefinitely (socket deadlines cannot interrupt
+// arbitrary handler code). A nil handler returns state_unavailable.
 func (s Server) Serve(ctx context.Context, files []*os.File) error {
 	if ctx == nil || s.GatewayUID == 0 {
 		return ErrTransport
@@ -113,8 +119,11 @@ func (s Server) Serve(ctx context.Context, files []*os.File) error {
 		return err
 	}
 	defer ln.Close()
+	stopAccept := context.AfterFunc(ctx, func() { _ = ln.Close() })
+	defer stopAccept()
 	var wg sync.WaitGroup
 	defer wg.Wait()
+	active := make(chan struct{}, maxActiveExchanges)
 	for {
 		if ctx.Err() != nil {
 			return nil
@@ -132,8 +141,28 @@ func (s Server) Serve(ctx context.Context, files []*os.File) error {
 			}
 			return ErrTransport
 		}
-		wg.Add(1)
-		go func() { defer wg.Done(); defer conn.Close(); s.exchange(conn) }()
+		// Never queue an accepted client waiting for capacity: a peer that
+		// holds the permitted UID must not create unbounded workers or FDs.
+		if ctx.Err() != nil {
+			conn.Close()
+			return nil
+		}
+		select {
+		case active <- struct{}{}:
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				defer func() { <-active }()
+				defer conn.Close()
+				stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
+				defer stop()
+				if ctx.Err() == nil {
+					s.exchange(conn)
+				}
+			}()
+		default:
+			conn.Close()
+		}
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -61,7 +62,10 @@ func failure(f Failure) Reply { return Reply{Version: 1, Failure: f} }
 // lockedDir checks each directory component and takes an exclusive advisory
 // lock on the private state directory inode. Fleetrepo must require every
 // operator allowlist/ledger writer to take the same lock.
-func lockedDir(path string, owner uint32) (int, error) {
+func lockedDir(ctx context.Context, path string, owner uint32) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return -1, err
+	}
 	if !filepath.IsAbs(path) || filepath.Clean(path) != path || path == "/" {
 		return -1, ErrInvalid
 	}
@@ -87,11 +91,36 @@ func lockedDir(path string, owner uint32) (int, error) {
 		}
 	}
 	var st unix.Stat_t
-	if unix.Fstat(fd, &st) != nil || st.Uid != owner || st.Mode&0077 != 0 || unix.Flock(fd, unix.LOCK_EX) != nil {
+	if unix.Fstat(fd, &st) != nil || st.Uid != owner || st.Mode&0077 != 0 {
 		unix.Close(fd)
 		return -1, ErrInvalid
 	}
-	return fd, nil
+	// Nonblocking flock keeps cancellation and the exchange deadline effective.
+	for {
+		if err := ctx.Err(); err != nil {
+			unix.Close(fd)
+			return -1, err
+		}
+		err := unix.Flock(fd, unix.LOCK_EX|unix.LOCK_NB)
+		if err == nil {
+			if err = ctx.Err(); err == nil {
+				return fd, nil
+			}
+			unix.Flock(fd, unix.LOCK_UN)
+			unix.Close(fd)
+			return -1, err
+		}
+		if err != unix.EWOULDBLOCK && err != unix.EAGAIN {
+			unix.Close(fd)
+			return -1, err
+		}
+		select {
+		case <-ctx.Done():
+			unix.Close(fd)
+			return -1, ctx.Err()
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
 }
 func readAt(fd int, name string, owner uint32) ([]byte, error) {
 	f, e := unix.Openat(fd, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC|unix.O_NONBLOCK, 0)
@@ -157,14 +186,20 @@ func replace(fd int, name string, b []byte) error {
 	return durable(fd)
 }
 func marshal(v any) []byte { b, _ := json.Marshal(v); return b }
-func stateAt(fd int, owner uint32) (allowFile, ledgerFile, []byte, []byte, error) {
+func stateAt(ctx context.Context, fd int, owner uint32) (allowFile, ledgerFile, []byte, []byte, error) {
 	var a allowFile
 	var l ledgerFile
 	// Reuse the strict parser without reopening a possibly replaced directory:
 	// parse via the same validation rules below.
+	if err := ctx.Err(); err != nil {
+		return a, l, nil, nil, err
+	}
 	ab, e := readAt(fd, "allowlist.json", owner)
 	if e != nil {
 		return a, l, nil, nil, e
+	}
+	if err := ctx.Err(); err != nil {
+		return a, l, nil, nil, err
 	}
 	lb, e := readAt(fd, "bindings.json", owner)
 	if e != nil {
@@ -228,19 +263,25 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 	if _, e := EncodeRequest(r); e != nil {
 		return failure(Invalid)
 	}
-	fd, e := lockedDir(w.Dir, w.owner)
+	fd, e := lockedDir(ctx, w.Dir, w.owner)
 	if e != nil {
 		return failure(StateUnavailable)
 	}
 	defer unix.Close(fd)
 	defer unix.Flock(fd, unix.LOCK_UN)
+	if ctx.Err() != nil {
+		return failure(StateUnavailable)
+	}
 	for _, n := range []string{"pending.json", "pending.json.next", "bindings.json.next", "head.json.next"} {
 		if !absent(fd, n) {
 			return failure(StateUnavailable)
 		}
 	}
-	a, l, ab, lb, e := stateAt(fd, w.owner)
+	a, l, ab, lb, e := stateAt(ctx, fd, w.owner)
 	if e != nil {
+		return failure(StateUnavailable)
+	}
+	if ctx.Err() != nil {
 		return failure(StateUnavailable)
 	}
 	hb, e := readAt(fd, "head.json", w.owner)
@@ -249,6 +290,9 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 	}
 	var h head
 	if decode(hb, &h, "version", "epoch", "generation") != nil || h.Version != 1 || h.Epoch == 0 || h.Generation == 0 || a.Epoch < h.Epoch || l.Generation != h.Generation {
+		return failure(StateUnavailable)
+	}
+	if ctx.Err() != nil {
 		return failure(StateUnavailable)
 	}
 	// Record the highest observed epoch before any route or mutation. Rollbacks
@@ -274,12 +318,15 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 			if b.UID < w.UIDMin || b.UID > w.UIDMax {
 				return failure(Drift)
 			}
+			if ctx.Err() != nil {
+				return failure(StateUnavailable)
+			}
 			if e := w.Executor.Verify(ctx, b.Username, b.UID); e != nil {
 				return failure(Drift)
 			}
 			// Do not return a route after a concurrent operator rewrite, even when
 			// the executor's verification was in flight.
-			if !sameState(fd, w.owner, ab, lb, a.Epoch) {
+			if ctx.Err() != nil || !sameState(ctx, fd, w.owner, ab, lb, a.Epoch) {
 				return failure(StateUnavailable)
 			}
 			return Reply{Version: 1, Route: &Route{UID: b.UID, Username: b.Username, Socket: socketFor(b.Username)}, Generation: l.Generation, Epoch: a.Epoch}
@@ -315,6 +362,9 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 			}
 		}
 		if !used {
+			if ctx.Err() != nil {
+				return failure(StateUnavailable)
+			}
 			ok, err := w.Executor.Available(ctx, name, n)
 			if err != nil {
 				return failure(Drift)
@@ -331,7 +381,7 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 	if uid == 0 {
 		return failure(NameCollision)
 	}
-	if !sameState(fd, w.owner, ab, lb, a.Epoch) {
+	if ctx.Err() != nil || !sameState(ctx, fd, w.owner, ab, lb, a.Epoch) {
 		return failure(StateUnavailable)
 	}
 	j := journal{Version: 1, ID: r.ID, Username: name, UID: uid, Epoch: a.Epoch, Generation: l.Generation, Phase: "reserved"}
@@ -344,7 +394,10 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 			return failure(StateUnavailable)
 		}
 		// Recheck external policy before each irreversible host operation.
-		if !sameState(fd, w.owner, ab, lb, a.Epoch) {
+		if ctx.Err() != nil || !sameState(ctx, fd, w.owner, ab, lb, a.Epoch) {
+			return failure(StateUnavailable)
+		}
+		if ctx.Err() != nil {
 			return failure(StateUnavailable)
 		}
 		if e := w.Executor.Step(ctx, phase, name, uid); e != nil {
@@ -355,10 +408,13 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 	if replace(fd, "pending.json", marshal(j)) != nil {
 		return failure(StateUnavailable)
 	}
+	if ctx.Err() != nil {
+		return failure(StateUnavailable)
+	}
 	if e := w.Executor.Verify(ctx, name, uid); e != nil {
 		return failure(Drift)
 	}
-	if !sameState(fd, w.owner, ab, lb, a.Epoch) {
+	if ctx.Err() != nil || !sameState(ctx, fd, w.owner, ab, lb, a.Epoch) {
 		return failure(StateUnavailable)
 	}
 	l.Generation++
@@ -377,7 +433,7 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 	if replace(fd, "head.json", marshal(h)) != nil {
 		return failure(StateUnavailable)
 	}
-	if !sameAllow(fd, w.owner, ab) {
+	if ctx.Err() != nil || !sameAllow(ctx, fd, w.owner, ab) {
 		return failure(StateUnavailable)
 	}
 	if unix.Unlinkat(fd, "pending.json", 0) != nil || durable(fd) != nil {
@@ -385,12 +441,18 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 	}
 	return Reply{Version: 1, Route: &Route{UID: uid, Username: name, Socket: socketFor(name)}, Generation: l.Generation, Epoch: a.Epoch}
 }
-func sameAllow(fd int, owner uint32, ab []byte) bool {
+func sameAllow(ctx context.Context, fd int, owner uint32, ab []byte) bool {
+	if ctx.Err() != nil {
+		return false
+	}
 	now, e := readAt(fd, "allowlist.json", owner)
 	return e == nil && bytes.Equal(now, ab)
 }
-func sameState(fd int, owner uint32, ab, lb []byte, epoch uint64) bool {
-	if !sameAllow(fd, owner, ab) {
+func sameState(ctx context.Context, fd int, owner uint32, ab, lb []byte, epoch uint64) bool {
+	if !sameAllow(ctx, fd, owner, ab) {
+		return false
+	}
+	if ctx.Err() != nil {
 		return false
 	}
 	now, e := readAt(fd, "bindings.json", owner)

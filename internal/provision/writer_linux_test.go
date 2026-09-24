@@ -10,6 +10,9 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 type fakeHost struct {
@@ -279,5 +282,50 @@ func TestWriterRestartAtEveryJournalPhase(t *testing.T) {
 				t.Fatal(r)
 			}
 		})
+	}
+}
+
+func TestWriterLockWaitCancellationAndDeadline(t *testing.T) {
+	w, h := writerFixture(t)
+	holder, err := unix.Open(w.Dir, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unix.Close(holder)
+	if err := unix.Flock(holder, unix.LOCK_EX|unix.LOCK_NB); err != nil {
+		t.Fatal(err)
+	}
+	defer unix.Flock(holder, unix.LOCK_UN)
+	for _, tc := range []struct {
+		name string
+		ctx  func() (context.Context, context.CancelFunc)
+	}{
+		{"deadline", func() (context.Context, context.CancelFunc) {
+			return context.WithTimeout(context.Background(), 40*time.Millisecond)
+		}},
+		{"canceled", func() (context.Context, context.CancelFunc) {
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+			return ctx, cancel
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := tc.ctx()
+			defer cancel()
+			start := time.Now()
+			if r := w.Handle(ctx, request("ensure", "42", "carol")); r.Failure != StateUnavailable {
+				t.Fatal(r)
+			}
+			if time.Since(start) > time.Second {
+				t.Fatal("lock wait ignored cancellation")
+			}
+			if len(h.steps) != 0 || !fileAbsent(filepath.Join(w.Dir, "pending.json")) {
+				t.Fatal("mutated while waiting")
+			}
+		})
+	}
+	unix.Flock(holder, unix.LOCK_UN)
+	if r := handle(w, "ensure", "42", "carol"); r.Route == nil {
+		t.Fatal("lock not reusable", r)
 	}
 }

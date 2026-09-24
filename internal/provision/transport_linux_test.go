@@ -266,3 +266,123 @@ func TestCorruptStateNeverBecomesDefaultRoute(t *testing.T) {
 		t.Fatalf("%+v %v", got, err)
 	}
 }
+
+// All admitted handlers are paused; the next permitted client must be closed
+// without running handler work. Releasing one restores admission, and cancel
+// drains all in-flight exchanges (including a silent permitted peer).
+func TestServerCapsAcceptedClientsAndDrains(t *testing.T) {
+	entered := make(chan struct{}, maxActiveExchanges+1)
+	release := make(chan struct{})
+	var calls atomic.Int32
+	c, path := socketFixture(t, Server{GatewayUID: uint32(os.Getuid()), Handler: func(Request) Reply {
+		calls.Add(1)
+		entered <- struct{}{}
+		<-release
+		return Reply{Version: 1, Failure: Denied}
+	}})
+	clients := make([]*net.UnixConn, 0, maxActiveExchanges)
+	released := false
+	defer func() {
+		if !released {
+			close(release)
+		}
+		for _, conn := range clients {
+			conn.Close()
+		}
+	}()
+	payload, _ := EncodeRequest(request("authorize", "42", ""))
+	for i := 0; i < maxActiveExchanges; i++ {
+		conn, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: path, Net: "unix"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		clients = append(clients, conn)
+		conn.SetDeadline(time.Now().Add(time.Second))
+		if err := writeFrame(conn, payload); err != nil {
+			t.Fatal(err)
+		}
+		if err := conn.CloseWrite(); err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case <-entered:
+		case <-time.After(time.Second):
+			t.Fatal("handler not admitted")
+		}
+	}
+	extra, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: path, Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer extra.Close()
+	extra.SetDeadline(time.Now().Add(time.Second))
+	_ = writeFrame(extra, payload)
+	_ = extra.CloseWrite()
+	var b [1]byte
+	n, err := extra.Read(b[:])
+	if n != 0 || !(errors.Is(err, io.EOF) || errors.Is(err, syscall.ECONNRESET)) {
+		t.Fatalf("excess not rejected: %d %v", n, err)
+	}
+	if calls.Load() != maxActiveExchanges {
+		t.Fatal("excess reached handler")
+	}
+	close(release)
+	released = true
+	for _, conn := range clients {
+		if _, err := readFrame(conn); err != nil {
+			t.Fatal(err)
+		}
+	}
+	deadline := time.After(time.Second)
+	for {
+		r, err := c.Exchange(context.Background(), request("authorize", "42", ""))
+		if err == nil && r.Failure == Denied {
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("reconnect: %+v %v", r, err)
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+}
+
+func TestServerCancelClosesStalledPeerAndDrains(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "broker.sock")
+	ln, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0660); err != nil {
+		t.Fatal(err)
+	}
+	f, err := ln.File()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	ln.SetUnlinkOnClose(false)
+	ln.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		done <- (Server{SocketPath: path, SocketOwnerUID: uint32(os.Getuid()), GatewayUID: uint32(os.Getuid())}).Serve(ctx, []*os.File{f})
+	}()
+	conn, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: path, Net: "unix"})
+	if err != nil {
+		cancel()
+		<-done
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	conn.Write([]byte{0}) // permitted peer, incomplete frame
+	cancel()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("cancel did not drain")
+	}
+}
