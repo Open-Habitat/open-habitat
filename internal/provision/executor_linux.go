@@ -532,6 +532,9 @@ func properties(output []byte, expected map[string]string) bool {
 	}
 	return len(seen) == len(expected)
 }
+func singleUnixListener(output []byte, path string) bool {
+	return string(output) == "Listen="+path+" (Stream)\n"
+}
 func (e *LinuxHostExecutor) unit(ctx context.Context, i ExecutorIdentity) error {
 	// No start or enable: merely ensure both templates are installed and
 	// inactive, and explicitly verify the socket's restrictive DirectoryMode.
@@ -561,7 +564,14 @@ func (e *LinuxHostExecutor) unit(ctx context.Context, i ExecutorIdentity) error 
 	if len(gp) != 4 || gp[0] != "native-agent-host-gateway" || gp[2] != number(e.GatewayGID) {
 		return ErrInvalid
 	}
-	b, err := e.command(ctx, systemctl, "cat", "native-agent-host-daemon@"+i.username+".socket", "--no-pager")
+	// Listen is an effective, repeatable systemd socket property. Textual
+	// template checks alone miss drop-ins with whitespace around '=' that
+	// reset ListenStream and replace the Unix socket with a TCP listener.
+	listen, err := e.command(ctx, systemctl, "show", socketUnit, "--property=Listen", "--no-pager")
+	if err != nil || !singleUnixListener(listen, socketFor(i.username)) {
+		return ErrInvalid
+	}
+	b, err := e.command(ctx, systemctl, "cat", socketUnit, "--no-pager")
 	if err != nil {
 		return ErrInvalid
 	}

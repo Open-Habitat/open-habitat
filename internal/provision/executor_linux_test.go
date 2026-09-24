@@ -142,6 +142,22 @@ func TestCommandOutputIsBounded(t *testing.T) {
 		t.Fatal(n, err, out.Len(), out.truncated)
 	}
 }
+func TestEffectiveListenerRejectsWhitespaceDropInOverride(t *testing.T) {
+	path := socketFor("carol")
+	if !singleUnixListener([]byte("Listen="+path+" (Stream)\n"), path) {
+		t.Fatal("expected single Unix listener rejected")
+	}
+	for _, output := range []string{
+		"Listen=" + path + " (Stream)\nListen=0.0.0.0:9999 (Stream)\n",
+		"Listen=0.0.0.0:9999 (Stream)\n",
+		"Listen=" + path + " (Datagram)\n",
+		"Listen=\n",
+	} {
+		if singleUnixListener([]byte(output), path) {
+			t.Fatal("accepted overridden listener", output)
+		}
+	}
+}
 func TestEffectivePropertiesRejectOverrides(t *testing.T) {
 	want := map[string]string{"SocketMode": "0660", "DirectoryMode": "0710"}
 	if !properties([]byte("SocketMode=0660\nDirectoryMode=0710\n"), want) {

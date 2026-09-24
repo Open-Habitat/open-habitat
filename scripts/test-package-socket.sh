@@ -44,7 +44,7 @@ for mode in broker-listen broker-user; do
   grep -q 'differs or duplicates' "$tmp/$mode/err" || { cat "$tmp/$mode/err" >&2; exit 1; }
 done
 # Re-signed malicious inventories and continuation lines must also fail.
-for mode in extra-file omitted-manifest broker-continuation broker-prestart; do
+for mode in extra-file omitted-manifest broker-continuation broker-prestart broker-failure-action; do
   mkdir -p "$tmp/$mode/stage"
   tar -xzf "$archive" -C "$tmp/$mode/stage"
   root=$(find "$tmp/$mode/stage" -mindepth 1 -maxdepth 1 -type d)
@@ -53,6 +53,7 @@ for mode in extra-file omitted-manifest broker-continuation broker-prestart; do
     omitted-manifest) sed -i '/systemd\/native-agent-host-broker.service$/d' "$root/MANIFEST.sha256" ;;
     broker-continuation) printf 'ExecStartPost=\\\n/bin/true\n' >> "$root/systemd/native-agent-host-broker.service" ;;
     broker-prestart) printf 'ExecStartPre=/bin/true\n' >> "$root/systemd/native-agent-host-broker.service" ;;
+    broker-failure-action) sed -i '/^\[Unit\]$/a FailureAction=poweroff' "$root/systemd/native-agent-host-broker.service" ;;
   esac
   if [[ $mode != omitted-manifest ]]; then
     (cd "$root"; find . -type f ! -name MANIFEST.sha256 -print0 | sort -z | xargs -0 sha256sum > MANIFEST.sha256)

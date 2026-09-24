@@ -82,7 +82,7 @@ PY
 python3 - "$root/systemd/native-agent-host-broker.socket" "$root/systemd/native-agent-host-broker.service" <<'PY'
 import pathlib, sys
 
-def directives(path, section):
+def directives(path):
     active = None
     found = {}
     seen_sections = set()
@@ -104,12 +104,25 @@ def directives(path, section):
         key, value = line.split('=', 1)
         if active is None:
             sys.exit('error: broker directive outside section')
-        if active == section:
-            found.setdefault(key.strip(), []).append(value.strip())
+        found.setdefault(active, {}).setdefault(key.strip(), []).append(value.strip())
     return found
 
-socket = directives(sys.argv[1], '[Socket]')
-service = directives(sys.argv[2], '[Service]')
+def require_section(unit, section, expected):
+    if unit.get(section) != {key: [value] for key, value in expected.items()}:
+        sys.exit(f'error: broker {section} directive inventory differs')
+
+socket_unit = directives(sys.argv[1])
+service_unit = directives(sys.argv[2])
+require_section(socket_unit, '[Unit]', {'Description':'Native Agent Host restricted root broker socket'})
+require_section(socket_unit, '[Install]', {'WantedBy':'sockets.target'})
+require_section(service_unit, '[Unit]', {
+    'Description':'Native Agent Host root account broker',
+    'Requires':'native-agent-host-broker.socket',
+    'After':'native-agent-host-broker.socket'})
+if set(socket_unit) != {'[Unit]', '[Socket]', '[Install]'} or set(service_unit) != {'[Unit]', '[Service]'}:
+    sys.exit('error: broker unit section inventory differs')
+socket = socket_unit['[Socket]']
+service = service_unit['[Service]']
 for values, key, expected in [
     (socket, 'ListenStream', '/run/native-agent-host/broker.sock'),
     (socket, 'SocketUser', 'root'),
