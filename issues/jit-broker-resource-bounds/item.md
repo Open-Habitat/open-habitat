@@ -2,12 +2,14 @@
 created: 2026-09-24
 updated: 2026-09-24
 type: bug
-status: in-progress
+status: fixed
 priority: high
 lane: auth-jit
 lane_seq: 45
 collision: [internal/provision/]
 blocked_by: ['@implement-jit-broker-writer']
+closed: 2026-09-24
+closed_by: agent
 ---
 
 # Bound broker lock wait and accepted socket exchanges
@@ -25,3 +27,9 @@ Read-only review of landed ADR0004 app broker slices found two pre-service resou
 ### 2026-09-24T10:14:59Z · @agent
 
 Implemented nonblocking context-aware directory flock with 10ms contention backoff and cancellation checks before state reads/executor operations. Server caps admitted exchanges at 8, immediately closes excess peers, and closes listener/active sockets on cancellation; nil handler still returns state_unavailable. Tests cover held-lock cancellation/deadline, same-ID serialization, saturated permitted peer, wrong peer, reconnect, stalled peer cancellation and drain. Validation: go fmt ./..., go vet ./..., go test -race ./..., go generate ./internal/contracts, ./scripts/check-generated.sh, issuectl doctor --json, git diff --check all passed. No privileged service, guest/root account or host configuration changed. Caveat: arbitrary custom handlers must return for graceful Serve drain; socket deadlines cannot preempt handler code.
+
+## Resolution
+
+### 2026-09-24T10:15:13Z · @agent
+
+Validated bounded lock contention and socket admission with race tests; no privileged deployment.
