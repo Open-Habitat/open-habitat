@@ -2,12 +2,14 @@
 created: 2026-09-24
 updated: 2026-09-24
 type: feature
-status: in-progress
+status: done
 priority: high
 lane: auth-jit
 lane_seq: 40
 collision: [internal/provision/]
 blocked_by: ['@implement-jit-broker-uds']
+closed: 2026-09-24
+closed_by: agent
 ---
 
 # Implement serialized first-login provisioning journal core
