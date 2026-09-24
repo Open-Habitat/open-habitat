@@ -1,13 +1,13 @@
 ---
 created: 2026-09-20
-updated: 2026-09-21
+updated: 2026-09-24
 type: task
 status: open
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
 lane_seq: 40
-blocked_by: ['@build-workspace-slice']
+blocked_by: ['@build-workspace-slice', '@deliver-login-pilot']
 collision: [docs/, AGENTS.md, design-system/]
 ---
 
