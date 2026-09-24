@@ -81,3 +81,9 @@ Visual review changes requested on 2026-09-23. The browser implementation does n
 ### 2026-09-24T04:06:09Z · @jari
 
 Visual review feedback, 2026-09-24: the corrected "Login before provider selection" looks good. The "Authenticated workspace details and navigation" still does not resemble the accepted design draft; in particular the left-hand rail is unacceptable. This is a changes request, not acceptance of the workspace slice. Jari proposes giving the designer a ZIP containing the accepted design draft and the relevant production UI source so the designer can implement the visual match. The packaging/transfer is a proposal pending agreement; do not close this issue or advance dependent ui-v1 work.
+
+## Decisions
+
+### 2026-09-24T05:11:16Z · @jari
+
+Visual decision 2026-09-24: Jari approves the external designer correction to the left navigation rail, shown in the new ready capture at issues/build-workspace-slice/assets/ready.avif. Approved artifact: corrected product implementation c7f27394d39291d753a50b656becaa1b4a93885c (landed in main as c7f2739 or rebased equivalent; evidence in visual-acceptance.md). Jari previously said the corrected login looked good. This decision accepts the rail correction, not yet the full login-to-workspace slice or an interactive pilot; keep this parent in testing pending the separate full-slice decision after a safe test environment exists.
