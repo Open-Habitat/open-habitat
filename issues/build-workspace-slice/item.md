@@ -7,7 +7,7 @@ priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
 lane_seq: 30
-blocked_by: ['@build-design-system']
+blocked_by: ['@build-design-system', '@integrate-designer-rail']
 collision: [docs/, AGENTS.md, design-system/]
 review_status: requested
 ---
