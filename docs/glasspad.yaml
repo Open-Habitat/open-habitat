@@ -37,6 +37,9 @@ groups:
       - slug: adr-0003-host-stack
         title: ADR 0003 — Host-stack
         desc: Ehdotettu gateway, daemonit, autentikointi ja operointi.
+      - slug: adr-0004-first-login-user-provisioning
+        title: ADR 0004 — Ensikirjautumisen Unix-käyttäjä
+        desc: Hyväksytty GitHub-kirjautumisen käyttäjäprovisioinnin raja.
       - slug: interfaces
         title: Rajapinnat
         desc: Yhteyksien merkitys ja vielä määriteltävä käyttäytyminen.

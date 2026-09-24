@@ -74,6 +74,8 @@ GitHub CLI token contract, not product authorization to mutate arbitrary repos;
 product operations remain target- and confirmation-scoped. No email scope is
 needed for routing.
 
+**Superseded first-login prerequisite (ADR 0004, accepted 2026-09-24):** the requirement above for an already existing Unix user and static startup mapping before GitHub login is replaced by a root-owned, allowlist-gated local provisioning broker. It creates and verifies a new account/binding on the first approved callback, before token handoff. The gateway remains non-root; its remaining token, daemon verification and session rules below still apply. See [ADR 0004](adr-0004-first-login-user-provisioning.md).
+
 The callback token exists in gateway memory only long enough to call `/user` and
 forward it once over the already authenticated mapped-user UDS connection. The
 handoff also carries the exact numeric GitHub ID just returned by `/user`. It is
