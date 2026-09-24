@@ -19,4 +19,10 @@ Privileged NSS/systemd authority makes the security risk high. One independent f
 
 ## Landing revision receipts
 
-_Pending clean committed-tree validation of this branch._
+Clean committed-tree product revision: `2e3a63e72b73c859e714b187cd2737467e8edeb5`. The imported product/test files are byte-identical to the reviewed, post-fix `c66185c` tree (only issue metadata and handoff text differ). On 2026-09-24 UTC:
+
+- `PATH="$PWD/.tools/go/bin:$PATH" go test -race ./internal/provision ./internal/cli`: passed (both packages); `git diff --check`: passed.
+- `PATH="$PWD/.tools/go/bin:$PATH" ./scripts/vm-test.sh broker-guest --json`: passed, launched=true, scope `broker-private-guest`, PID 1 systemd, guest UIDs `[0,21003,21005]`; wrong UID, wrong peer, pending/head symlink and restart drift each denied. Duration 125s; binary SHA-256 `2fc3b406050e1f1f6e4e11fa52bf6d4273c98d89704c71691abae60b2415abb1`, pinned image SHA-256 `612b2c0cc1bc413a6cb8c38fd611794caf0f2b436c50013d8b3794db12ad7354`. Full structured receipt (gitignored): `history/broker-guest-landing.json`.
+- First `PATH="$PWD/.tools/go/bin:$PATH" ./scripts/ci-local.sh --clean --json` attempt stopped during initial network fetch at `npm ci` (`ETIMEDOUT`, exit 146), **before tests**. Retry of the exact command from the same clean revision passed with `{"status":"passed","clean":true}`. Includes Go race, locked/offline-after-fetch browser tests, generated drift, project doctor, deterministic release packaging and the re-signed unsafe-unit regression. Archive SHA-256 `a8c616ea26c1f571fe407676c4b79ccd940b2481c2ae2f29d36dab08b05dcd7a`; verifier passed for original and relocated archive. Full logs (gitignored): `history/broker-ci-landing.log` (failed first attempt), `history/broker-ci-landing-retry.log` (pass).
+
+The guest exercises only negative transport/startup behavior against synthetic empty state; it does not prove account mutation or the private Fleetrepo pool/ACLs. No real credentials, live-person login, ingress, host deployment, or complete JIT isolation were tested. The issue's closure metadata is committed separately after this result.
