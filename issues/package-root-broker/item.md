@@ -2,12 +2,14 @@
 created: 2026-09-24
 updated: 2026-09-24
 type: task
-status: in-progress
+status: done
 priority: high
 lane: auth-jit
 lane_seq: 60
 collision: [internal/provision/]
 blocked_by: ['@implement-linux-executor']
+closed: 2026-09-24
+closed_by: agent
 ---
 
 # Package restricted root broker service
