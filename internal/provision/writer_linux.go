@@ -15,19 +15,38 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// ExecutorIdentity is a value snapshot of the authorized root-owned binding.
+// Its fields cannot be changed by an injected executor; the provider is fixed
+// by the validated broker protocol, the ID comes from the allowlist or committed
+// ledger, and the name/UID are assigned by the writer, never the browser.
+// It is not an independent attestation of the remote GitHub user.
+type ExecutorIdentity struct {
+	provider string
+	id       string
+	username string
+	uid      uint32
+}
+
+func (i ExecutorIdentity) Provider() string { return i.provider }
+func (i ExecutorIdentity) ID() string       { return i.id }
+func (i ExecutorIdentity) Username() string { return i.username }
+func (i ExecutorIdentity) UID() uint32      { return i.uid }
+
 // HostExecutor is deliberately not implemented by this package. Available must
 // inspect NSS (user AND group), home, socket, config and unit instance for both
 // the name and UID/GID; Verify must check the committed account's NSS identity,
 // home, socket ACL, config and unit, without repairing any of them. Operators
 // must reserve the configured UID range from independent account creation.
 // Each Step must perform only its named operation, and fail on existing state.
+// Step and Verify receive the same authorized subject as the journal/ledger;
+// Verify on an existing binding uses the committed ID even after login rename.
 // An injected executor must honor ctx while waiting and between irreversible
 // steps. Cancellation cannot undo a host syscall already in progress; an
 // interrupted mutation may leave its journal for operator reconciliation.
 type HostExecutor interface {
 	Available(context.Context, string, uint32) (bool, error)
-	Step(context.Context, string, string, uint32) error
-	Verify(context.Context, string, uint32) error
+	Step(context.Context, string, ExecutorIdentity) error
+	Verify(context.Context, ExecutorIdentity) error
 }
 
 var phases = []string{"account", "home", "config", "socket", "unit"}
@@ -325,7 +344,8 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 			if ctx.Err() != nil {
 				return failure(StateUnavailable)
 			}
-			if e := w.Executor.Verify(ctx, b.Username, b.UID); e != nil {
+			identity := ExecutorIdentity{provider: "github", id: b.ID, username: b.Username, uid: b.UID}
+			if e := w.Executor.Verify(ctx, identity); e != nil {
 				return failure(Drift)
 			}
 			// Do not return a route after a concurrent operator rewrite, even when
@@ -388,7 +408,8 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 	if ctx.Err() != nil || !sameState(ctx, fd, w.owner, ab, lb, a.Epoch) {
 		return failure(StateUnavailable)
 	}
-	j := journal{Version: 1, ID: r.ID, Username: name, UID: uid, Epoch: a.Epoch, Generation: l.Generation, Phase: "reserved"}
+	identity := ExecutorIdentity{provider: "github", id: entry.ID, username: name, uid: uid}
+	j := journal{Version: 1, ID: identity.ID(), Username: identity.Username(), UID: identity.UID(), Epoch: a.Epoch, Generation: l.Generation, Phase: "reserved"}
 	if e := writeNew(fd, "pending.json", marshal(j)); e != nil {
 		return failure(StateUnavailable)
 	}
@@ -404,7 +425,7 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 		if ctx.Err() != nil {
 			return failure(StateUnavailable)
 		}
-		if e := w.Executor.Step(ctx, phase, name, uid); e != nil {
+		if e := w.Executor.Step(ctx, phase, identity); e != nil {
 			return failure(Drift)
 		}
 	}
@@ -415,7 +436,7 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 	if ctx.Err() != nil {
 		return failure(StateUnavailable)
 	}
-	if e := w.Executor.Verify(ctx, name, uid); e != nil {
+	if e := w.Executor.Verify(ctx, identity); e != nil {
 		return failure(Drift)
 	}
 	if ctx.Err() != nil || !sameState(ctx, fd, w.owner, ab, lb, a.Epoch) {
@@ -425,7 +446,7 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 	if l.Generation == 0 {
 		return failure(StateUnavailable)
 	}
-	l.Bindings = append(l.Bindings, binding{ID: r.ID, UID: uid, Username: name})
+	l.Bindings = append(l.Bindings, binding{ID: identity.ID(), UID: identity.UID(), Username: identity.Username()})
 	j.Phase = "publish"
 	if replace(fd, "pending.json", marshal(j)) != nil {
 		return failure(StateUnavailable)

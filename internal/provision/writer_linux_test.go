@@ -8,6 +8,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -15,11 +16,41 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+type hostCall struct {
+	phase    string
+	provider string
+	id       string
+	username string
+	uid      uint32
+}
+
+func call(phase string, i ExecutorIdentity) hostCall {
+	return hostCall{phase, i.Provider(), i.ID(), i.Username(), i.UID()}
+}
+
+func assertCalls(t *testing.T, h *fakeHost, want ...hostCall) {
+	t.Helper()
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if !reflect.DeepEqual(h.calls, want) {
+		t.Fatalf("executor calls: got %+v, want %+v", h.calls, want)
+	}
+}
+
+func provisionCalls(id, name string, uid uint32) []hostCall {
+	calls := make([]hostCall, 0, len(phases)+1)
+	for _, phase := range phases {
+		calls = append(calls, hostCall{phase, "github", id, name, uid})
+	}
+	return append(calls, hostCall{"verify", "github", id, name, uid})
+}
+
 type fakeHost struct {
 	mu        sync.Mutex
 	occupied  map[string]bool
 	uids      map[uint32]bool
 	steps     []string
+	calls     []hostCall
 	fail      string
 	verifyErr bool
 	onStep    func(string)
@@ -33,9 +64,10 @@ func (h *fakeHost) Available(_ context.Context, n string, u uint32) (bool, error
 	}
 	return !h.occupied[n] && !h.uids[u], nil
 }
-func (h *fakeHost) Step(_ context.Context, p, n string, u uint32) error {
+func (h *fakeHost) Step(_ context.Context, p string, i ExecutorIdentity) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	h.calls = append(h.calls, call(p, i))
 	if h.fail == p {
 		return errors.New("injected")
 	}
@@ -44,15 +76,16 @@ func (h *fakeHost) Step(_ context.Context, p, n string, u uint32) error {
 		h.onStep(p)
 	}
 	if p == "account" {
-		h.occupied[n] = true
-		h.uids[u] = true
+		h.occupied[i.Username()] = true
+		h.uids[i.UID()] = true
 	}
 	return nil
 }
-func (h *fakeHost) Verify(_ context.Context, n string, u uint32) error {
+func (h *fakeHost) Verify(_ context.Context, i ExecutorIdentity) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.fail == "verify" || h.verifyErr || !h.occupied[n] || !h.uids[u] {
+	h.calls = append(h.calls, call("verify", i))
+	if h.fail == "verify" || h.verifyErr || !h.occupied[i.Username()] || !h.uids[i.UID()] {
 		return errors.New("drift")
 	}
 	return nil
@@ -79,25 +112,35 @@ func TestWriterPhasesAndCommittedVerification(t *testing.T) {
 	if len(h.steps) != 5 || !fileAbsent(filepath.Join(w.Dir, "pending.json")) {
 		t.Fatal(h.steps)
 	}
+	want := provisionCalls("42", "carol", 2100)
+	assertCalls(t, h, want...)
 	if r = handle(w, "ensure", "42", "renamed"); r.Route == nil || r.Route.Username != "carol" || len(h.steps) != 5 {
 		t.Fatal(r, h.steps)
 	}
+	want = append(want, hostCall{"verify", "github", "42", "carol", 2100})
+	assertCalls(t, h, want...)
 	if r = handle(w, "authorize", "42", ""); r.Route == nil {
 		t.Fatal(r)
 	}
+	want = append(want, hostCall{"verify", "github", "42", "carol", 2100})
+	assertCalls(t, h, want...)
 	h.verifyErr = true
 	if r = handle(w, "authorize", "42", ""); r.Failure != Drift {
 		t.Fatal(r)
 	}
+	want = append(want, hostCall{"verify", "github", "42", "carol", 2100})
+	assertCalls(t, h, want...)
 	h.verifyErr = false
 	put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":5,"ids":[]}`)
 	if r = handle(w, "ensure", "42", "carol"); r.Failure != Denied {
 		t.Fatal(r)
 	}
+	assertCalls(t, h, want...)
 	put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":4,"ids":[{"id":"42"}]}`)
 	if r = handle(w, "authorize", "42", ""); r.Failure != StateUnavailable {
 		t.Fatal("epoch rollback", r)
 	}
+	assertCalls(t, h, want...)
 }
 func fileAbsent(p string) bool { _, e := os.Lstat(p); return os.IsNotExist(e) }
 func TestWriterFailuresRemainPending(t *testing.T) {
@@ -110,6 +153,7 @@ func TestWriterFailuresRemainPending(t *testing.T) {
 				t.Fatal(r)
 			}
 			if phase == "available" {
+				assertCalls(t, h)
 				if !fileAbsent(filepath.Join(w.Dir, "pending.json")) {
 					t.Fatal("journal before occupancy")
 				}
@@ -123,6 +167,14 @@ func TestWriterFailuresRemainPending(t *testing.T) {
 			if json.Unmarshal(b, &j) != nil || j.ID != "42" || j.UID != 2100 || j.Username != "carol" || j.Phase != phase {
 				t.Fatal(string(b))
 			}
+			want := provisionCalls("42", "carol", 2100)
+			for i, c := range want {
+				if c.phase == phase {
+					want = want[:i+1]
+					break
+				}
+			}
+			assertCalls(t, h, want...)
 			h.fail = ""
 			if r = handle(w, "ensure", "42", "carol"); r.Failure != StateUnavailable {
 				t.Fatal("retried pending", r)
@@ -130,6 +182,7 @@ func TestWriterFailuresRemainPending(t *testing.T) {
 			if r = handle(w, "authorize", "42", ""); r.Failure != StateUnavailable {
 				t.Fatal(r)
 			}
+			assertCalls(t, h, want...)
 		})
 	}
 }
@@ -166,13 +219,15 @@ func TestWriterCollisionsAndCorruption(t *testing.T) {
 			if r := handle(w, "ensure", "42", candidate); r.Failure != tc.want {
 				t.Fatal(r)
 			}
+			assertCalls(t, h)
 		})
 	}
-	w, _ := writerFixture(t)
+	w, h := writerFixture(t)
 	put(t, w.Dir, "head.json", `{"version":1,"epoch":4,"generation":7,"generation":8}`)
 	if r := handle(w, "authorize", "42", ""); r.Failure != StateUnavailable {
 		t.Fatal(r)
 	}
+	assertCalls(t, h)
 }
 func TestWriterSerializesAcrossInstances(t *testing.T) {
 	w, h := writerFixture(t)
@@ -201,10 +256,50 @@ func TestWriterSerializesAcrossInstances(t *testing.T) {
 	if len(h.steps) != 10 {
 		t.Fatal(h.steps)
 	}
+	// Regardless of interleaving, each ID is paired only with its own name/UID.
+	h.mu.Lock()
+	calls := append([]hostCall(nil), h.calls...)
+	h.mu.Unlock()
+	if len(calls) != 6*2+28 { // first provisions, remaining callbacks verify
+		t.Fatalf("unexpected call count: %d", len(calls))
+	}
+	for _, c := range calls {
+		if c.provider != "github" || c.id == "42" && (c.username != "carol" || c.uid != out[0].Route.UID) || c.id == "43" && (c.username != "dave" || c.uid != out[1].Route.UID) || c.id != "42" && c.id != "43" {
+			t.Fatalf("crossed executor identity: %+v", c)
+		}
+	}
 	if out[0].Route.UID == out[1].Route.UID {
 		t.Fatal("uid collision")
 	}
 }
+func TestWriterRenamedAndRevokedSubjectsNeverCross(t *testing.T) {
+	w, h := writerFixture(t)
+	put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":4,"ids":[{"id":"42"},{"id":"43"}]}`)
+	if r := handle(w, "ensure", "42", "carol"); r.Route == nil {
+		t.Fatal(r)
+	}
+	if r := handle(w, "ensure", "43", "dave"); r.Route == nil {
+		t.Fatal(r)
+	}
+	want := append(provisionCalls("42", "carol", 2100), provisionCalls("43", "dave", 2101)...)
+	// A changed login, including one matching another binding, is not authority.
+	if r := handle(w, "ensure", "42", "dave"); r.Route == nil || r.Route.Username != "carol" {
+		t.Fatal(r)
+	}
+	want = append(want, hostCall{"verify", "github", "42", "carol", 2100})
+	assertCalls(t, h, want...)
+	put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":5,"ids":[{"id":"43"}]}`)
+	if r := handle(w, "authorize", "42", ""); r.Failure != Denied {
+		t.Fatal(r)
+	}
+	assertCalls(t, h, want...)
+	if r := handle(w, "authorize", "43", ""); r.Route == nil || r.Route.UID != 2101 {
+		t.Fatal(r)
+	}
+	want = append(want, hostCall{"verify", "github", "43", "dave", 2101})
+	assertCalls(t, h, want...)
+}
+
 func TestWriterNoImplicitProductionOwnerOverride(t *testing.T) {
 	w, _ := writerFixture(t)
 	w.owner = 0
@@ -231,6 +326,7 @@ func TestWriterRevocationDuringMutationLeavesJournal(t *testing.T) {
 	if r.Failure != StateUnavailable || fileAbsent(filepath.Join(w.Dir, "pending.json")) {
 		t.Fatal(r)
 	}
+	assertCalls(t, h, hostCall{"account", "github", "42", "carol", 2100})
 	b, e := os.ReadFile(filepath.Join(w.Dir, "bindings.json"))
 	if e != nil {
 		t.Fatal(e)
@@ -250,6 +346,7 @@ func TestWriterAlternateAndUIDPool(t *testing.T) {
 	if r.Route == nil || r.Route.Username != "safe_name" || r.Route.UID != 2101 {
 		t.Fatal(r)
 	}
+	assertCalls(t, h, provisionCalls("42", "safe_name", 2101)...)
 }
 func TestWriterUnsafeStateAndInterruptedPublication(t *testing.T) {
 	for _, name := range []string{"pending.json", "pending.json.next", "bindings.json.next", "head.json.next"} {
