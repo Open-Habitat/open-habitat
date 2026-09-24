@@ -2,7 +2,7 @@
 created: 2026-09-24
 updated: 2026-09-24
 type: task
-status: open
+status: in-progress
 priority: high
 lane: auth-jit
 lane_seq: 60
