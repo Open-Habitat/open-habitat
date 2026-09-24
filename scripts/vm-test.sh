@@ -3,6 +3,8 @@ set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd -P)
 scenario=${1:-}
 json=false
+# Preserve the requested error envelope even when argv validation fails.
+[[ ${2:-} == --json ]] && json=true
 fail(){
   if $json; then python3 - "$1" "$2" <<'PY' >&2
 import json,sys
@@ -12,7 +14,6 @@ PY
   exit "$3"
 }
 [[ $# -eq 1 || ( $# -eq 2 && ${2:-} == --json ) ]] || fail invalid_arguments 'Expected self-test|systemd-self-test|two-user-routing|broker-guest [--json]' 1
-[[ ${2:-} == --json ]] && json=true
 [[ $scenario == self-test || $scenario == systemd-self-test || $scenario == two-user-routing || $scenario == broker-guest ]] || fail invalid_scenario 'Expected self-test, systemd-self-test, two-user-routing or broker-guest' 1
 # Treat the recipe as data, never source executable text.
 image_url= image_sha= image_arch=

@@ -61,20 +61,18 @@ c=json.loads(open(sys.argv[1]).read().split('\n',1)[1]); files={f['path']:f for 
 assert '/opt/native-agent-host/native-agent-host' not in files
 assert base64.b64decode(files['/etc/native-agent-host/binary.sha256']['content']).decode().strip()==__import__('hashlib').sha256(b'binary-fixture-bytes').hexdigest()
 assert any('/dev/disk/by-label/PRODUCT' in ' '.join(cmd) for cmd in c['runcmd'])
-assert any(cmd[:2]==['install','-m'] and cmd[-1]=='/opt/native-agent-host/native-agent-host' for cmd in c['runcmd'])
+assert any(cmd[:2]==['install','-m'] and cmd[-1]=='/opt/native-agent-host/current/native-agent-host' for cmd in c['runcmd'])
 assert len([p for p in files if p.endswith('daemon.sock')])==0
 assert all(base64.b64decode(f['content']).find(b'PRODUCT_VM_TOKEN')==-1 for p,f in files.items() if p.startswith('/etc/native-agent-host/'))
+assert '/etc/systemd/system/native-agent-host-broker.socket' in files
+assert '/etc/systemd/system/native-agent-host-daemon@.socket' in files
+assert '/var/lib/native-agent-host/broker/bindings.json' in files
+assert 'identities' not in json.loads(base64.b64decode(files['/etc/native-agent-host/gateway.json']['content']))['oauth']
 assert c['runcmd'][-1]==['/usr/bin/python3','/usr/local/sbin/product-proof']
 for name,uid in [('agent-a',21001),('agent-b',21002)]:
-    sock=base64.b64decode(files[f'/etc/systemd/system/product-{name}.socket']['content']).decode()
-    service=base64.b64decode(files[f'/etc/systemd/system/product-{name}.service']['content']).decode()
-    assert sock.startswith('[Socket]\n') and sock.count('ListenStream=')==1
-    assert f'ListenStream=/run/native-agent-host/users/{name}/daemon.sock\n' in sock
-    assert all(x in sock for x in [f'SocketUser={name}\n','SocketGroup=native-agent-host-gateway\n','SocketMode=0660\n','DirectoryMode=0711\n','FileDescriptorName=daemon\n','Accept=no\n'])
-    assert service.startswith('[Unit]\n') and f'User={name}\n' in service and f'Group={name}\n' in service
-    assert f'ExecStart=/usr/bin/python3 /usr/local/sbin/product-daemon-launch daemon exec --config /etc/native-agent-host/daemon-{name}.json\n' in service
     cfg=json.loads(base64.b64decode(files[f'/etc/native-agent-host/daemon-{name}.json']['content']))
     assert (cfg['handoff']['uid'],cfg['handoff']['username'],cfg['handoff']['home'],cfg['handoff']['subject'])==(uid,name,'/home/'+name,str(31001+uid-21001))
+    assert cfg['handoff']['binding_file']==f'/etc/native-agent-host/daemon-{name}.json'
 # The separately generated VM fixture above is not the shipped package unit.
 unit=open(sys.argv[2]+'/systemd/native-agent-host-daemon@.socket').read()
 assert all(x in unit for x in ['SocketMode=0660\n','DirectoryMode=0710\n','FileDescriptorName=daemon\n','SocketGroup=native-agent-host-gateway\n'])

@@ -15,7 +15,7 @@ def denied(name, script):
 try:
     check(pathlib.Path('/proc/1/comm').read_text().strip()=='systemd','pid1')
     expected=pathlib.Path('/etc/native-agent-host/binary.sha256').read_text().strip()
-    check(hashlib.sha256(pathlib.Path('/opt/native-agent-host/native-agent-host').read_bytes()).hexdigest()==expected,'product binary digest')
+    check(hashlib.sha256(pathlib.Path('/opt/native-agent-host/current/native-agent-host').read_bytes()).hexdigest()==expected,'product binary digest')
     for name,uid in zip(names,uids):
         home=pathlib.Path('/home')/name
         check(pwd.getpwnam(name).pw_uid==uid and home.stat().st_uid==uid and stat.S_IMODE(home.stat().st_mode)==0o700,'home identity')
@@ -29,10 +29,23 @@ try:
         subprocess.run(['chown',str(uid)+':'+str(uid),str(home/'SYNTHETIC-IDENTITY')],check=True)
         (home/'SYNTHETIC-IDENTITY').chmod(0o600)
     check(pwd.getpwnam('native-agent-host-gateway').pw_uid==gateway_uid,'gateway UID')
-    root=pathlib.Path('/run/native-agent-host/users');root.mkdir(parents=True,exist_ok=True)
-    os.chown(root,0,gateway_uid);root.chmod(0o711)
-    for name in names:
-        p=root/name;p.mkdir();os.chown(p,0,gateway_uid);p.chmod(0o711)
+    # These are PRE-PROVISIONED static bindings, not a browser-driven JIT test.
+    runtime=pathlib.Path('/run/native-agent-host');runtime.mkdir(exist_ok=True)
+    os.chown(runtime,0,gateway_uid);runtime.chmod(0o750)
+    root=runtime/'users';root.mkdir(exist_ok=True)
+    os.chown(root,0,gateway_uid);root.chmod(0o710)
+    for uid in uids:
+        subprocess.run(['setfacl','-n','-m',f'u:{uid}:--x,m::r-x',str(runtime)],check=True)
+        subprocess.run(['setfacl','-m',f'u:{uid}:--x',str(root)],check=True)
+    for name,uid in zip(names,uids):
+        p=root/name;p.mkdir();os.chown(p,0,0);p.chmod(0o710)
+        for allowed_uid in (gateway_uid,uid):
+            subprocess.run(['setfacl','-m',f'u:{allowed_uid}:--x',str(p)],check=True)
+    subprocess.run(['systemctl','daemon-reload'],check=True,stdout=subprocess.DEVNULL)
+    subprocess.run(['systemctl','start','native-agent-host-broker.socket'],check=True,stdout=subprocess.DEVNULL)
+    broker=runtime/'broker.sock';st=broker.stat()
+    check(stat.S_ISSOCK(st.st_mode) and st.st_uid==0 and st.st_gid==gateway_uid and stat.S_IMODE(st.st_mode)==0o660,'broker socket ACL')
+    check(denied('agent-a',"import socket;s=socket.socket(socket.AF_UNIX);s.connect('/run/native-agent-host/broker.sock')"),'cross user broker socket')
     for name in names+['gateway']:
         config=pathlib.Path('/etc/native-agent-host')/('gateway.json' if name=='gateway' else 'daemon-'+name+'.json')
         gid=pwd.getpwnam('native-agent-host-gateway' if name=='gateway' else name).pw_gid
@@ -40,7 +53,7 @@ try:
         check(config.stat().st_uid==0 and config.stat().st_gid==gid and stat.S_IMODE(config.stat().st_mode)==0o640,'trusted config owner/mode')
     with open('/etc/hosts','a') as f:f.write('\n127.0.0.1 github.com api.github.com host.fixture\n')
     for name in names:
-        subprocess.run(['systemctl','start','product-'+name+'.socket'],check=True,stdout=subprocess.DEVNULL)
+        subprocess.run(['systemctl','start','native-agent-host-daemon@'+name+'.socket'],check=True,stdout=subprocess.DEVNULL)
         p=root/name/'daemon.sock';st=p.stat()
         check(st.st_uid==pwd.getpwnam(name).pw_uid and st.st_gid==gateway_uid and stat.S_IMODE(st.st_mode)==0o660,'socket ownership')
     key=pathlib.Path('/etc/native-agent-host/tls.key')
@@ -68,18 +81,25 @@ try:
             try:
                 status,_,_=get(browser()[0],'/auth/session');break
             except OSError:time.sleep(.25)
-        else:raise RuntimeError('gateway not ready')
+        else:
+            journal=subprocess.run(['journalctl','-u','product-gateway.service','-n','20','--no-pager','-o','cat'],capture_output=True).stdout
+            codes=[]
+            for line in journal.decode('utf-8','replace').splitlines():
+                if line.strip().startswith('{'):
+                    try:codes.append(json.loads(line).get('error',{}).get('code',''))
+                    except ValueError:pass
+            raise RuntimeError('gateway not ready '+','.join(codes))
         check(status==401,'gateway session guard')
         gateway_pid=int(subprocess.check_output(['systemctl','show','-P','MainPID','product-gateway.service']).strip())
         check(gateway_pid>1 and ('Uid:\t'+str(gateway_uid)+'\t') in pathlib.Path('/proc/%d/status'%gateway_pid).read_text(),'gateway effective UID')
         for name in names:
             probe=as_user('native-agent-host-gateway',"import socket;s=socket.socket(socket.AF_UNIX);s.settimeout(5);s.connect(%r);s.sendall(b'GET /healthz HTTP/1.1\\r\\nHost: unix\\r\\nConnection: close\\r\\n\\r\\n');print(s.recv(1024).split(b'\\r\\n')[0].decode())"%str(root/name/'daemon.sock'))
             if probe.returncode!=0 or b'200' not in probe.stdout:
-                state=subprocess.check_output(['systemctl','show','-P','SubState','product-'+name+'.service']).decode().strip()
-                journal=subprocess.run(['journalctl','-u','product-'+name+'.service','-n','20','--no-pager','-o','cat'],capture_output=True).stdout
+                state=subprocess.check_output(['systemctl','show','-P','SubState','native-agent-host-daemon@'+name+'.service']).decode().strip()
+                journal=subprocess.run(['journalctl','-u','native-agent-host-daemon@'+name+'.service','-n','20','--no-pager','-o','cat'],capture_output=True).stdout
                 codes=[c.decode() for c in (b'activation_failed',b'invalid daemon socket activation',b'native_adapter_unavailable',b'native credential adapter unavailable',b'config_io',b'server_failed',b'permission denied') if c in journal]
                 errors=[c.decode() for c in (b'PermissionError',b'ConnectionResetError',b'ConnectionRefusedError',b'TimeoutError',b'FileNotFoundError') if c in probe.stderr]
-                exitcode=subprocess.check_output(['systemctl','show','-P','ExecMainStatus','product-'+name+'.service']).decode().strip()
+                exitcode=subprocess.check_output(['systemctl','show','-P','ExecMainStatus','native-agent-host-daemon@'+name+'.service']).decode().strip()
                 detail=''
                 for line in journal.decode('utf-8','replace').splitlines():
                     if line.strip().startswith('{'):
@@ -104,9 +124,9 @@ try:
                 code=json.loads(body).get('error',{}).get('code','unknown')
                 log=pathlib.Path('/home')/name/'gh-argv.jsonl'
                 count=len(log.read_text().splitlines()) if log.exists() else 0
-                pid=subprocess.check_output(['systemctl','show','-P','MainPID','product-'+name+'.service']).decode().strip()
-                state=subprocess.check_output(['systemctl','show','-P','SubState','product-'+name+'.service']).decode().strip()
-                journal=subprocess.run(['journalctl','-u','product-'+name+'.service','-n','20','--no-pager','-o','cat'],capture_output=True).stdout
+                pid=subprocess.check_output(['systemctl','show','-P','MainPID','native-agent-host-daemon@'+name+'.service']).decode().strip()
+                state=subprocess.check_output(['systemctl','show','-P','SubState','native-agent-host-daemon@'+name+'.service']).decode().strip()
+                journal=subprocess.run(['journalctl','-u','native-agent-host-daemon@'+name+'.service','-n','20','--no-pager','-o','cat'],capture_output=True).stdout
                 codes=[c.decode() for c in (b'activation_failed',b'invalid daemon socket activation',b'native_adapter_unavailable',b'native credential adapter unavailable',b'config_io',b'server_failed',b'permission denied') if c in journal]
                 diagnostic="import json,os,socket,sys,struct;b=json.dumps(dict(version=1,nonce=os.urandom(16).hex(),provider='github',subject=%r,uid=%d,username=%r,token=sys.stdin.read())).encode();s=socket.socket(socket.AF_UNIX);s.settimeout(7);s.connect(%r);print('PEERUID',struct.unpack('3i',s.getsockopt(socket.SOL_SOCKET,socket.SO_PEERCRED,12))[1]);s.sendall(b'POST /internal/v1/native-credentials/github HTTP/1.1\\r\\nHost: unix\\r\\nContent-Type: application/json\\r\\nContent-Length: '+str(len(b)).encode()+b'\\r\\nConnection: close\\r\\n\\r\\n'+b);print(s.recv(1024).split(b'\\r\\n')[0].decode())"%(str(31001+index),uids[index],name,str(root/name/'daemon.sock'))
                 direct=as_user('native-agent-host-gateway',diagnostic,(pathlib.Path('/usr/local/lib/fixture/tokens')/name).read_bytes())
@@ -134,10 +154,10 @@ try:
         finally:
             source.unlink();held.rename(source)
         for name in names:
-            pid=int(subprocess.check_output(['systemctl','show','-P','MainPID','product-'+name+'.service']).strip())
+            pid=int(subprocess.check_output(['systemctl','show','-P','MainPID','native-agent-host-daemon@'+name+'.service']).strip())
             check(pid>1 and ('Uid:\t'+str(pwd.getpwnam(name).pw_uid)+'\t') in pathlib.Path('/proc/%d/status'%pid).read_text(),'daemon effective UID')
             args=[a for a in pathlib.Path('/proc/%d/cmdline'%pid).read_bytes().split(b'\0') if a]
-            check(args[:3]==[b'/opt/native-agent-host/native-agent-host',b'daemon',b'exec'] and args[-1]==('/etc/native-agent-host/daemon-'+name+'.json').encode(),'daemon config argv')
+            check(args[:3]==[b'/opt/native-agent-host/current/native-agent-host',b'daemon',b'exec'] and args[-1]==('/etc/native-agent-host/daemon-'+name+'.json').encode(),'daemon config argv')
             other=names[1-names.index(name)]
             sock=str(root/other/'daemon.sock')
             check(denied(name,"import socket;s=socket.socket(socket.AF_UNIX);s.connect(%r)"%sock),'cross user route')
@@ -156,10 +176,10 @@ try:
             try: reply=s.recv(1024)
             except ConnectionResetError: reply=b''
             check(reply==b'','root peer rejection');s.close()
-        subprocess.run(['systemctl','stop','product-agent-a.socket','product-agent-a.service'],check=True,stdout=subprocess.DEVNULL)
+        subprocess.run(['systemctl','stop','native-agent-host-daemon@agent-a.socket','native-agent-host-daemon@agent-a.service'],check=True,stdout=subprocess.DEVNULL)
         check(get(browsers[0],'/api/v1/snapshot')[0]==503,'stopped A has no fallback')
         check(get(browsers[1],'/api/v1/snapshot')[0]==200,'stopped A does not affect B')
-        subprocess.run(['systemctl','start','product-agent-a.socket'],check=True,stdout=subprocess.DEVNULL)
+        subprocess.run(['systemctl','start','native-agent-host-daemon@agent-a.socket'],check=True,stdout=subprocess.DEVNULL)
         check(get(browsers[0],'/api/v1/snapshot')[0]==200,'A socket reactivates its own daemon')
         for token_name in names:
             token=pathlib.Path('/usr/local/lib/fixture/tokens')/token_name
@@ -170,12 +190,12 @@ try:
                 for suffix in ('cmdline','environ'):
                     try:check(value not in (p/suffix).read_bytes(),'process token scan')
                     except (FileNotFoundError,ProcessLookupError):continue
-            for unit in ['product-gateway','product-agent-a','product-agent-b']:
+            for unit in ['product-gateway','native-agent-host-daemon@agent-a','native-agent-host-daemon@agent-b','native-agent-host-broker']:
                 logs=subprocess.run(['journalctl','-u',unit,'-n','100','--no-pager','-o','cat'],capture_output=True,timeout=10).stdout[:65536]
                 check(value not in logs,'journal token scan')
             for p in ['/etc/native-agent-host/gateway.json','/etc/native-agent-host/daemon-agent-a.json','/etc/native-agent-host/daemon-agent-b.json']:
                 check(value not in pathlib.Path(p).read_bytes(),'config token scan')
-        result={'status':'passed','scope':'product-two-user-routing','pid1':'systemd','uids':[21001,21002,21003],'socket_mode':'0660','socket_activation':True,'routes':routes,'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, bounded journal, process argv/environ, configs, child argv logs'}}
+        result={'status':'passed','scope':'product-two-user-routing','pid1':'systemd','uids':[21001,21002,21003],'socket_mode':'0660','socket_activation':True,'routes':routes,'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'cross_user_broker':True,'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, bounded journal, process argv/environ, configs, child argv logs'}}
     finally:provider.terminate();provider.wait(timeout=5)
 except Exception as e:
     result['reason']=str(e).split(':')[0][:220]
