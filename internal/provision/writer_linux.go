@@ -21,6 +21,9 @@ import (
 // home, socket ACL, config and unit, without repairing any of them. Operators
 // must reserve the configured UID range from independent account creation.
 // Each Step must perform only its named operation, and fail on existing state.
+// An injected executor must honor ctx while waiting and between irreversible
+// steps. Cancellation cannot undo a host syscall already in progress; an
+// interrupted mutation may leave its journal for operator reconciliation.
 type HostExecutor interface {
 	Available(context.Context, string, uint32) (bool, error)
 	Step(context.Context, string, string, uint32) error
@@ -256,6 +259,7 @@ func (w Writer) valid() bool {
 
 // Handle serializes every authorize and ensure. A pending journal or interrupted
 // staging write denies ALL routes, including previously committed bindings.
+// Broker callers must pass the per-exchange context through without replacing it.
 func (w Writer) Handle(ctx context.Context, r Request) Reply {
 	if ctx == nil || !w.valid() {
 		return failure(StateUnavailable)

@@ -26,7 +26,9 @@ const maxActiveExchanges = 8
 
 var ErrTransport = errors.New("broker transport unavailable")
 
-type Handler func(Request) Reply
+// Handler must honor ctx while waiting for locks or host operations. Closing
+// the socket cannot interrupt a handler that ignores cancellation.
+type Handler func(context.Context, Request) Reply
 
 type Server struct {
 	GatewayUID uint32
@@ -107,9 +109,10 @@ func peerUID(c *net.UnixConn) (uint32, error) {
 // Serve stops accepting on cancellation. Every accepted connection has an
 // independent deadline; malformed exchanges are dropped without invoking the
 // handler. Admission is capped and excess clients are closed immediately.
-// Cancellation closes admitted sockets and waits for handlers to return;
-// handlers must not block indefinitely (socket deadlines cannot interrupt
-// arbitrary handler code). A nil handler returns state_unavailable.
+// Each admitted exchange has a context bounded by the exchange timeout and
+// Serve's parent context. Cancellation closes its socket and waits for the
+// handler to honor ctx; a socket deadline cannot interrupt arbitrary handler
+// code. A nil handler returns state_unavailable.
 func (s Server) Serve(ctx context.Context, files []*os.File) error {
 	if ctx == nil || s.GatewayUID == 0 {
 		return ErrTransport
@@ -149,15 +152,18 @@ func (s Server) Serve(ctx context.Context, files []*os.File) error {
 		}
 		select {
 		case active <- struct{}{}:
+			// Start the budget at admission, not after peer validation or framing.
+			exchangeCtx, cancel := context.WithTimeout(ctx, exchangeTimeout)
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
 				defer func() { <-active }()
 				defer conn.Close()
-				stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
+				defer cancel()
+				stop := context.AfterFunc(exchangeCtx, func() { _ = conn.Close() })
 				defer stop()
-				if ctx.Err() == nil {
-					s.exchange(conn)
+				if exchangeCtx.Err() == nil {
+					s.exchange(exchangeCtx, conn)
 				}
 			}()
 		default:
@@ -166,12 +172,13 @@ func (s Server) Serve(ctx context.Context, files []*os.File) error {
 	}
 }
 
-func (s Server) exchange(conn *net.UnixConn) {
-	uid, err := peerUID(conn)
-	if err != nil || uid != s.GatewayUID {
+func (s Server) exchange(ctx context.Context, conn *net.UnixConn) {
+	deadline, _ := ctx.Deadline() // every exchange is created with WithTimeout
+	if conn.SetDeadline(deadline) != nil {
 		return
 	}
-	if conn.SetDeadline(time.Now().Add(exchangeTimeout)) != nil {
+	uid, err := peerUID(conn)
+	if err != nil || uid != s.GatewayUID {
 		return
 	}
 	b, err := readFrame(conn)
@@ -179,12 +186,15 @@ func (s Server) exchange(conn *net.UnixConn) {
 		return
 	}
 	r, err := ParseRequest(b)
-	if err != nil {
+	if err != nil || ctx.Err() != nil {
 		return
 	}
 	reply := Reply{Version: 1, Failure: StateUnavailable}
 	if s.Handler != nil {
-		reply = s.Handler(r)
+		reply = s.Handler(ctx, r)
+	}
+	if ctx.Err() != nil {
+		return
 	}
 	b, err = EncodeReply(reply)
 	if err != nil {

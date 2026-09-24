@@ -18,6 +18,19 @@ import (
 
 func socketFixture(t *testing.T, s Server) (Client, string) {
 	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	c, path, done := serveFixture(t, s, ctx)
+	t.Cleanup(func() {
+		cancel()
+		if err := <-done; err != nil {
+			t.Errorf("serve: %v", err)
+		}
+	})
+	return c, path
+}
+
+func serveFixture(t *testing.T, s Server, ctx context.Context) (Client, string, <-chan error) {
+	t.Helper()
 	path := filepath.Join(t.TempDir(), "broker.sock")
 	ln, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
 	if err != nil {
@@ -35,16 +48,9 @@ func socketFixture(t *testing.T, s Server) (Client, string) {
 	t.Cleanup(func() { file.Close() })
 	s.SocketPath = path
 	s.SocketOwnerUID = uint32(os.Getuid())
-	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() { done <- s.Serve(ctx, []*os.File{file}) }()
-	t.Cleanup(func() {
-		cancel()
-		if err := <-done; err != nil {
-			t.Errorf("serve: %v", err)
-		}
-	})
-	return Client{SocketPath: path, SocketOwnerUID: uint32(os.Getuid())}, path
+	return Client{SocketPath: path, SocketOwnerUID: uint32(os.Getuid())}, path, done
 }
 
 func TestInheritedSocketValidation(t *testing.T) {
@@ -105,7 +111,13 @@ func TestInheritedSocketValidation(t *testing.T) {
 
 func TestPeerAndFailClosedDefault(t *testing.T) {
 	var called atomic.Int32
-	c, _ := socketFixture(t, Server{GatewayUID: uint32(os.Getuid()), Handler: func(Request) Reply { called.Add(1); return Reply{Version: 1, Failure: Denied} }})
+	c, _ := socketFixture(t, Server{GatewayUID: uint32(os.Getuid()), Handler: func(ctx context.Context, _ Request) Reply {
+		if deadline, ok := ctx.Deadline(); !ok || time.Until(deadline) > exchangeTimeout || ctx.Err() != nil {
+			t.Errorf("missing live exchange budget: %v", deadline)
+		}
+		called.Add(1)
+		return failure(Denied)
+	}})
 	r := request("authorize", "42", "")
 	got, err := c.Exchange(context.Background(), r)
 	if err != nil || got.Failure != Denied || called.Load() != 1 {
@@ -116,7 +128,7 @@ func TestPeerAndFailClosedDefault(t *testing.T) {
 	if _, err = wrong.Exchange(context.Background(), r); err == nil {
 		t.Fatal("accepted incorrect broker peer")
 	}
-	c2, _ := socketFixture(t, Server{GatewayUID: uint32(os.Getuid() + 1), Handler: func(Request) Reply { called.Add(1); return Reply{Version: 1, Failure: Denied} }})
+	c2, _ := socketFixture(t, Server{GatewayUID: uint32(os.Getuid() + 1), Handler: func(context.Context, Request) Reply { called.Add(1); return Reply{Version: 1, Failure: Denied} }})
 	if _, err = c2.Exchange(context.Background(), r); err == nil {
 		t.Fatal("accepted incorrect gateway peer")
 	}
@@ -132,7 +144,7 @@ func TestPeerAndFailClosedDefault(t *testing.T) {
 
 func TestMalformedFraming(t *testing.T) {
 	var calls atomic.Int32
-	_, path := socketFixture(t, Server{GatewayUID: uint32(os.Getuid()), Handler: func(Request) Reply { calls.Add(1); return Reply{Version: 1, Failure: Denied} }})
+	_, path := socketFixture(t, Server{GatewayUID: uint32(os.Getuid()), Handler: func(context.Context, Request) Reply { calls.Add(1); return Reply{Version: 1, Failure: Denied} }})
 	good, _ := EncodeRequest(request("authorize", "42", ""))
 	cases := []struct {
 		name string
@@ -180,7 +192,7 @@ func frame(b []byte, n uint32) []byte {
 
 func TestTimeoutCancelReconnectAndBadReply(t *testing.T) {
 	var calls atomic.Int32
-	c, path := socketFixture(t, Server{GatewayUID: uint32(os.Getuid()), Handler: func(Request) Reply { calls.Add(1); return Reply{Version: 1, Failure: Denied} }})
+	c, path := socketFixture(t, Server{GatewayUID: uint32(os.Getuid()), Handler: func(context.Context, Request) Reply { calls.Add(1); return Reply{Version: 1, Failure: Denied} }})
 	conn, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: path, Net: "unix"})
 	if err != nil {
 		t.Fatal(err)
@@ -202,9 +214,9 @@ func TestTimeoutCancelReconnectAndBadReply(t *testing.T) {
 		t.Fatalf("reconnect: %+v %v", r, err)
 	}
 	// Cancellation of a live exchange interrupts the blocked response read.
-	blocking, _ := socketFixture(t, Server{GatewayUID: uint32(os.Getuid()), Handler: func(Request) Reply {
-		time.Sleep(300 * time.Millisecond)
-		return Reply{Version: 1, Failure: Denied}
+	blocking, _ := socketFixture(t, Server{GatewayUID: uint32(os.Getuid()), Handler: func(ctx context.Context, _ Request) Reply {
+		<-ctx.Done()
+		return failure(StateUnavailable)
 	}})
 	live, abort := context.WithCancel(context.Background())
 	returned := make(chan error, 1)
@@ -274,7 +286,7 @@ func TestServerCapsAcceptedClientsAndDrains(t *testing.T) {
 	entered := make(chan struct{}, maxActiveExchanges+1)
 	release := make(chan struct{})
 	var calls atomic.Int32
-	c, path := socketFixture(t, Server{GatewayUID: uint32(os.Getuid()), Handler: func(Request) Reply {
+	c, path := socketFixture(t, Server{GatewayUID: uint32(os.Getuid()), Handler: func(context.Context, Request) Reply {
 		calls.Add(1)
 		entered <- struct{}{}
 		<-release
@@ -344,6 +356,105 @@ func TestServerCapsAcceptedClientsAndDrains(t *testing.T) {
 			t.Fatalf("reconnect: %+v %v", r, err)
 		case <-time.After(10 * time.Millisecond):
 		}
+	}
+}
+
+// CloseWrite is required framing and yields EOF even for a live client. The
+// handler is instead bounded by the admitted exchange context.
+func TestHandlerDeadlineAndParallelDrain(t *testing.T) {
+	entered := make(chan context.Context, maxActiveExchanges)
+	finished := make(chan error, maxActiveExchanges)
+	var active atomic.Int32
+	c, _ := socketFixture(t, Server{GatewayUID: uint32(os.Getuid()), Handler: func(ctx context.Context, _ Request) Reply {
+		active.Add(1)
+		entered <- ctx
+		<-ctx.Done()
+		active.Add(-1)
+		finished <- ctx.Err()
+		return failure(StateUnavailable)
+	}})
+	results := make(chan error, maxActiveExchanges)
+	for i := 0; i < maxActiveExchanges; i++ {
+		go func() {
+			_, err := c.Exchange(context.Background(), request("authorize", "42", ""))
+			results <- err
+		}()
+		// Ensure each request was admitted before filling the next slot.
+		select {
+		case ctx := <-entered:
+			deadline, ok := ctx.Deadline()
+			if !ok || time.Until(deadline) > exchangeTimeout || ctx.Err() != nil {
+				t.Fatalf("unexpected handler deadline: %v", deadline)
+			}
+		case <-time.After(time.Second):
+			t.Fatal("handler not entered")
+		}
+	}
+	for i := 0; i < maxActiveExchanges; i++ {
+		select {
+		case err := <-finished:
+			if !errors.Is(err, context.DeadlineExceeded) {
+				t.Fatalf("handler context: %v", err)
+			}
+		case <-time.After(4 * time.Second):
+			t.Fatal("handler exceeded exchange deadline")
+		}
+		select {
+		case err := <-results:
+			if err == nil {
+				t.Fatal("timed out request succeeded")
+			}
+		case <-time.After(time.Second):
+			t.Fatal("client not released")
+		}
+	}
+	if n := active.Load(); n != 0 {
+		t.Fatalf("handlers still active: %d", n)
+	}
+}
+
+func TestParentCancelDrainsBlockedHandler(t *testing.T) {
+	parent, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	entered := make(chan struct{})
+	finished := make(chan error, 1)
+	c, _, done := serveFixture(t, Server{GatewayUID: uint32(os.Getuid()), Handler: func(ctx context.Context, _ Request) Reply {
+		close(entered)
+		<-ctx.Done()
+		finished <- ctx.Err()
+		return failure(StateUnavailable)
+	}}, parent)
+	result := make(chan error, 1)
+	go func() {
+		_, err := c.Exchange(context.Background(), request("authorize", "42", ""))
+		result <- err
+	}()
+	select {
+	case <-entered:
+	case <-time.After(time.Second):
+		cancel()
+		<-done
+		t.Fatal("handler not entered")
+	}
+	cancel()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("server did not drain handler")
+	}
+	if err := <-finished; !errors.Is(err, context.Canceled) {
+		t.Fatalf("handler context: %v", err)
+	}
+	select {
+	case err := <-result:
+		if err == nil {
+			t.Fatal("cancelled server returned reply")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("client remained connected")
 	}
 }
 
