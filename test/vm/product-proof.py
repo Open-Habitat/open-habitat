@@ -56,6 +56,12 @@ try:
         subprocess.run(['systemctl','start','native-agent-host-daemon@'+name+'.socket'],check=True,stdout=subprocess.DEVNULL)
         p=root/name/'daemon.sock';st=p.stat()
         check(st.st_uid==pwd.getpwnam(name).pw_uid and st.st_gid==gateway_uid and stat.S_IMODE(st.st_mode)==0o660,'socket ownership')
+    # Exercise the real root broker handler through the gateway UID before
+    # OAuth, not a fixture route returned directly by the browser.
+    broker_probe=as_user('native-agent-host-gateway',"import json,socket,struct;s=socket.socket(socket.AF_UNIX);s.settimeout(8);s.connect('/run/native-agent-host/broker.sock');b=json.dumps({'version':1,'operation':'authorize','provider':'github','id':'31001'}).encode();s.sendall(struct.pack('>I',len(b))+b);h=s.recv(4);print(s.recv(struct.unpack('>I',h)[0]).decode())")
+    broker_state=subprocess.check_output(['systemctl','show','-P','SubState','native-agent-host-broker.service']).decode().strip()
+    broker_reply=json.loads(broker_probe.stdout) if broker_probe.returncode==0 else {}
+    check(broker_reply.get('route',{}).get('uid')==21001,'broker authorize '+broker_state+' failure '+str(broker_reply.get('failure','transport'))+' error '+broker_probe.stderr.decode('ascii','replace').splitlines()[-1:][0:1].__str__()[:90])
     key=pathlib.Path('/etc/native-agent-host/tls.key')
     os.chown(key,0,gateway_uid);key.chmod(0o640)
     provider=subprocess.Popen(['/usr/bin/python3','/usr/local/sbin/product-fake-provider'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
@@ -213,6 +219,8 @@ except Exception as e:
                     if code:codes[unit].append(code)
                 except ValueError:pass
     result['journal_codes']=codes
+    if codes.get('native-agent-host-broker'):
+        result['reason']=(result['reason']+' broker '+','.join(codes['native-agent-host-broker']))[:220]
 print('VM_PROOF='+json.dumps(result,separators=(',',':')),flush=True)
 subprocess.run(['systemd-run','--on-active=15s','--unit=fixture-shutdown','/usr/bin/systemctl','poweroff','--no-block'],stdout=subprocess.DEVNULL)
 if result['status']!='passed':sys.exit(1)
