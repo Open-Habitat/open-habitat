@@ -1,15 +1,15 @@
 ---
 created: 2026-09-20
-updated: 2026-09-23
+updated: 2026-09-24
 type: task
-status: testing
+status: in-progress
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
 lane_seq: 30
 blocked_by: ['@build-design-system']
 collision: [docs/, AGENTS.md, design-system/]
-review_status: requested
+review_status: changes-requested
 ---
 
 # Build login to workspace navigation
@@ -71,3 +71,9 @@ Run 01m37cpk857mh2fgwmfyyttz3a stopped correctly: it implemented only isolated d
 ### 2026-09-23T16:00:08Z · @agent
 
 Run 01m37ejvvmavh2x6bhbftyqewy delivered only the disposable systemd/two-UID VM prerequisite. Synthetic boot/UID/socket/permission proof and commands are in phase-2-vm-prereq.md. Parent stays in-progress with all acceptance boxes unchanged. Phase 2 still must implement and exercise the actual mapped gateway→daemon route; phase 3 owns host-backed browser/visual acceptance.
+
+## Comments
+
+### 2026-09-24T03:21:36Z · @jari
+
+Visual review changes requested on 2026-09-23. The browser implementation does not match the accepted design-tool compositions. In the “Login before provider selection” view, “Kirjaudu jatkaaksesi” is much too large, the general typeface is not the agreed one, and the card is excessively narrow and aligned at the far left. Similar typography, sizing, width, alignment, and composition problems recur in the other views. Provide an interactive review environment and bring the production UI back into visual parity before requesting acceptance again.
