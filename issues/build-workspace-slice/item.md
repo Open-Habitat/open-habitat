@@ -9,7 +9,7 @@ lane: ui-v1
 lane_seq: 30
 blocked_by: ['@build-design-system', '@integrate-designer-rail']
 collision: [docs/, AGENTS.md, design-system/]
-review_status: requested
+review_status: approved
 ---
 
 # Build login to workspace navigation
@@ -87,3 +87,11 @@ Visual review feedback, 2026-09-24: the corrected "Login before provider selecti
 ### 2026-09-24T05:11:16Z · @jari
 
 Visual decision 2026-09-24: Jari approves the external designer correction to the left navigation rail, shown in the new ready capture at issues/build-workspace-slice/assets/ready.avif. Approved artifact: corrected product implementation c7f27394d39291d753a50b656becaa1b4a93885c (landed in main as c7f2739 or rebased equivalent; evidence in visual-acceptance.md). Jari previously said the corrected login looked good. This decision accepts the rail correction, not yet the full login-to-workspace slice or an interactive pilot; keep this parent in testing pending the separate full-slice decision after a safe test environment exists.
+
+### 2026-09-24T10:41:12Z · @jari
+
+2026-09-24: Jari reviewed the corrected six-image workspace visual package in Glasspad and explicitly replied “kuvat ovat ok. Jatketaan devaamista” after seeing the corrected asset links. Accepted visual presentation at product revision c7f27394d39291d753a50b656becaa1b4a93885c (landed correction run 01m38q0xn2q7qm6n7cyxhy8046); this approves the pictured login/workspace and empty/error/partial states for this UI checkpoint only. It does not approve live OAuth, a manual authenticated product URL, Pi control, or deployment; those remain subject to their own gates. Evidence: visual-acceptance.md and its six assets.
+
+### 2026-09-24T10:41:30Z · @agent
+
+2026-09-24 clarification: the preceding screenshot acceptance approves the corrected visuals only. The earlier Jari decision (2026-09-24T05:11:16Z) explicitly withheld acceptance of the full login-to-workspace slice until a safe interactive review environment and a separate full-slice decision. The brief close was reversed before commit or any dependent worker was spawned. Keep testing until Jari explicitly resolves that remaining condition.
