@@ -2,12 +2,14 @@
 created: 2026-09-24
 updated: 2026-09-24
 type: task
-status: in-progress
+status: done
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-correction
 lane_seq: 10
 collision: [docs/, AGENTS.md, design-system/]
+closed: 2026-09-24
+closed_by: agent
 ---
 
 # Integrate designer rail correction
