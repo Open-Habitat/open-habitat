@@ -2,12 +2,14 @@
 created: 2026-09-24
 updated: 2026-09-24
 type: bug
-status: in-progress
+status: fixed
 priority: high
 lane: auth-jit
 lane_seq: 47
 collision: [internal/provision/]
 blocked_by: ['@jit-broker-handler-context']
+closed: 2026-09-24
+closed_by: agent
 ---
 
 # Bind broker executor steps to verified GitHub subject
@@ -19,3 +21,9 @@ Review of landed broker `Writer.Handle` found the future Linux executor cannot s
 - [x] Pass a typed immutable provider identity (provider `github`, canonical positive numeric ID, Unix name and assigned UID) from the writer's already-authorized allowlist/ledger into `HostExecutor.Step` and `Verify`. Existing-binding Verify must use ledger ID even if the GitHub handle changed. No unverified caller path/UID may be substituted; ledger writes use this same subject. Keep `Available` host collision checks intact.
 - [x] Hermetic tests capture every Step and Verify identity for new/existing/revoked/renamed user and prove no phase receives a different ID, failed/corrupt state denies. Do not write the Linux executor yet or change service/gateway/deploy.
 - [x] Full Go fmt/vet/race/gen drift checks; no guest/Fleetrepo/cloud changes.
+
+## Resolution
+
+### 2026-09-24T10:25:08Z · @agent
+
+Executor phases and verification now receive the authorized canonical GitHub ID with assigned Unix identity; hermetic and full Go checks pass. No host executor or deployment.
