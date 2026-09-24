@@ -77,3 +77,7 @@ Run 01m37ejvvmavh2x6bhbftyqewy delivered only the disposable systemd/two-UID VM 
 ### 2026-09-24T03:21:36Z · @jari
 
 Visual review changes requested on 2026-09-23. The browser implementation does not match the accepted design-tool compositions. In the “Login before provider selection” view, “Kirjaudu jatkaaksesi” is much too large, the general typeface is not the agreed one, and the card is excessively narrow and aligned at the far left. Similar typography, sizing, width, alignment, and composition problems recur in the other views. Provide an interactive review environment and bring the production UI back into visual parity before requesting acceptance again.
+
+### 2026-09-24T04:06:09Z · @jari
+
+Visual review feedback, 2026-09-24: the corrected "Login before provider selection" looks good. The "Authenticated workspace details and navigation" still does not resemble the accepted design draft; in particular the left-hand rail is unacceptable. This is a changes request, not acceptance of the workspace slice. Jari proposes giving the designer a ZIP containing the accepted design draft and the relevant production UI source so the designer can implement the visual match. The packaging/transfer is a proposal pending agreement; do not close this issue or advance dependent ui-v1 work.
