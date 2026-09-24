@@ -13,7 +13,9 @@ ExecStart=/opt/native-agent-host/current/native-agent-host broker exec
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=no
-ReadWritePaths=/etc/passwd /etc/shadow /etc/group /etc/gshadow /etc/native-agent-host /var/lib/native-agent-host /home /run/native-agent-host
+# Account tools create /etc locks and atomically replace passwd/group/shadow;
+# read-write exceptions for individual files would strand pending.json.
+ReadWritePaths=/etc /var/lib/native-agent-host /home /run/native-agent-host
 PrivateTmp=yes
 PrivateDevices=yes
 UMask=0077

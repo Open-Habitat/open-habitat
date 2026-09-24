@@ -24,4 +24,23 @@ for mode in 0711 0755 duplicate; do
   fi
   grep -q 'exactly one DirectoryMode=0710' "$tmp/$mode/err" || { cat "$tmp/$mode/err" >&2; exit 1; }
 done
-echo 'Package socket mode regression passed (re-signed world-searchable and duplicate-mode archives rejected)'
+# Even a re-signed archive must not hide a second effective systemd directive
+# behind whitespace around '=' (accepted by systemd.syntax).
+for mode in broker-listen broker-user; do
+  mkdir -p "$tmp/$mode/stage"
+  tar -xzf "$archive" -C "$tmp/$mode/stage"
+  root=$(find "$tmp/$mode/stage" -mindepth 1 -maxdepth 1 -type d)
+  if [[ $mode == broker-listen ]]; then
+    sed -i '/^ListenStream=\/run\/native-agent-host\/broker.sock$/a ListenStream = 0.0.0.0:9999' "$root/systemd/native-agent-host-broker.socket"
+  else
+    sed -i '/^User=root$/a User = nobody' "$root/systemd/native-agent-host-broker.service"
+  fi
+  (cd "$root"; find . -type f ! -name MANIFEST.sha256 -print0 | sort -z | xargs -0 sha256sum > MANIFEST.sha256)
+  tar -czf "$tmp/$mode/unsafe.tar.gz" -C "$tmp/$mode/stage" "$(basename "$root")"
+  (cd "$tmp/$mode"; sha256sum unsafe.tar.gz > unsafe.tar.gz.sha256)
+  if "$repo/scripts/verify-release.sh" --archive "$tmp/$mode/unsafe.tar.gz" --json >"$tmp/$mode/out" 2>"$tmp/$mode/err"; then
+    echo "error: verifier accepted $mode" >&2; exit 1
+  fi
+  grep -q 'differs or duplicates' "$tmp/$mode/err" || { cat "$tmp/$mode/err" >&2; exit 1; }
+done
+echo 'Package socket regression passed (re-signed unsafe daemon and broker units rejected)'

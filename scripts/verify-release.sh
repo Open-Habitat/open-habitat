@@ -42,7 +42,7 @@ def directives(path, section):
         if line.startswith('['): active = line; continue
         if active == section and '=' in line:
             key, value = line.split('=', 1)
-            found.setdefault(key, []).append(value)
+            found.setdefault(key.strip(), []).append(value.strip())
     return found
 
 socket = directives(sys.argv[1], '[Socket]')
