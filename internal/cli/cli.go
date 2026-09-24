@@ -46,7 +46,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	}
 	var err error
 	if len(rest) == 0 {
-		return emitError(usage("a subcommand is required; expected version, config, doctor, gateway, daemon, admin, maintenance, or skill"), opts, stderr)
+		return emitError(usage("a subcommand is required; expected version, config, doctor, gateway, daemon, broker, admin, maintenance, or skill"), opts, stderr)
 	}
 	if rest[0] == "--version" {
 		rest = []string{"version"}
@@ -65,6 +65,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		out, err = doctorCommand(rest[1:])
 	case "gateway", "daemon":
 		out, err = execCommand(rest[0], rest[1:], opts, stderr)
+	case "broker":
+		out, err = brokerCommand(rest[1:])
 	case "admin":
 		out, err = adminCommand(rest[1:])
 	case "maintenance":
@@ -461,5 +463,5 @@ func skillInstall(args []string) (any, error) {
 	return envelope(map[string]any{"dry_run": dry, "would": would}), nil
 }
 func helpOutput() any {
-	return envelope(map[string]any{"name": "native-agent-host", "subcommands": []string{"version", "config path|show", "doctor", "gateway exec", "daemon exec", "admin readiness show", "maintenance enter|leave", "skill list|print|install"}, "global_flags": []string{"--json", "--verbose", "--version"}})
+	return envelope(map[string]any{"name": "native-agent-host", "subcommands": []string{"version", "config path|show", "doctor", "gateway exec", "daemon exec", "broker exec", "admin readiness show", "maintenance enter|leave", "skill list|print|install"}, "global_flags": []string{"--json", "--verbose", "--version"}})
 }

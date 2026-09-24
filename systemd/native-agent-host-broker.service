@@ -1,0 +1,22 @@
+[Unit]
+Description=Native Agent Host root account broker
+Requires=native-agent-host-broker.socket
+After=native-agent-host-broker.socket
+# Fleetrepo owns state creation, UID pool reservation, ACL and reboot ordering.
+# This neutral template does not install a preparation/repair unit.
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/opt/native-agent-host/current/native-agent-host broker exec
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=no
+ReadWritePaths=/etc/passwd /etc/shadow /etc/group /etc/gshadow /etc/native-agent-host /var/lib/native-agent-host /home /run/native-agent-host
+PrivateTmp=yes
+PrivateDevices=yes
+UMask=0077
+# Account/ACL/unit operations require access to NSS, home, /etc, /run and
+# systemd. Do not add blanket CapabilityBoundingSet without guest validation.
+Restart=no

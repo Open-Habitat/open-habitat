@@ -1,0 +1,18 @@
+[Unit]
+Description=Native Agent Host restricted root broker socket
+# Fleetrepo must prepare and verify root:gateway /run/native-agent-host 0750
+# before this socket starts, including after reboot; DirectoryMode is NOT
+# an ACL/boot policy. Do not enable until that policy has landed.
+
+[Socket]
+ListenStream=/run/native-agent-host/broker.sock
+SocketMode=0660
+SocketUser=root
+SocketGroup=native-agent-host-gateway
+DirectoryMode=0750
+FileDescriptorName=broker
+RemoveOnStop=yes
+Service=native-agent-host-broker.service
+
+[Install]
+WantedBy=sockets.target
