@@ -1,9 +1,12 @@
 import { Button } from "./Primitives";
 export function LoginCard({ onLogin }: { onLogin?: () => void }) {
   return (
-    <section className="card" aria-labelledby="login-title">
-      <p className="eyebrow">NATIVE AGENT HOST · {window.location.host}</p>
-      <h1 id="login-title">Kirjaudu jatkaaksesi</h1>
+    <section className="ah-login-card" aria-labelledby="login-title">
+      <header>
+        <p className="eyebrow">Native Agent Host</p>
+        <h1 id="login-title">Kirjaudu jatkaaksesi</h1>
+        <p className="ah-technical ah-login-host">{window.location.host}</p>
+      </header>
       <p>
         Selain ei valitse Unix-käyttäjää. Palvelin reitittää hyväksytyn
         verkkoidentiteetin sille määritettyyn tiliin.

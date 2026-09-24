@@ -41,13 +41,71 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
     page.getByRole("heading", { name: "Kirjaudu jatkaaksesi" }),
   ).toBeVisible();
   expect(providerRequests).toHaveLength(0);
+  await page.evaluate(() => document.fonts.ready);
+  const loginLayout = await page.evaluate(() => {
+    const cardNode = document.querySelector(".ah-login-card");
+    const title = document.querySelector(".ah-login-card h1");
+    const hostNode = document.querySelector(".ah-login-host");
+    if (!cardNode || !title || !hostNode)
+      throw new Error("login layout missing");
+    const card = cardNode.getBoundingClientRect();
+    return {
+      width: card.width,
+      midpoint: card.left + card.width / 2,
+      verticalMidpoint: card.top + card.height / 2,
+      size: parseFloat(getComputedStyle(title).fontSize),
+      face: getComputedStyle(title).fontFamily,
+      mono: getComputedStyle(hostNode).fontFamily,
+      loaded: document.fonts.check('600 20px "Instrument Sans"'),
+    };
+  });
+  expect(loginLayout.width).toBeGreaterThanOrEqual(400);
+  expect(loginLayout.width).toBeLessThanOrEqual(460);
+  expect(Math.abs(loginLayout.midpoint - 640)).toBeLessThan(12);
+  expect(Math.abs(loginLayout.verticalMidpoint - 360)).toBeLessThan(40);
+  expect(loginLayout.size).toBeGreaterThanOrEqual(19);
+  expect(loginLayout.size).toBeLessThanOrEqual(22);
+  expect(loginLayout.face).toContain("Instrument Sans");
+  expect(loginLayout.mono).toContain("JetBrains Mono");
+  expect(loginLayout.loaded).toBe(true);
+  const fontResources = await page.evaluate(() =>
+    performance
+      .getEntriesByType("resource")
+      .filter((entry) => entry.name.endsWith(".woff2"))
+      .map((entry) => entry.name),
+  );
+  expect(fontResources.some((url) => url.includes("instrument-sans"))).toBe(
+    true,
+  );
+  expect(fontResources.some((url) => url.includes("jetbrains-mono"))).toBe(
+    true,
+  );
+  expect(
+    fontResources.every(
+      (url) => new URL(url).origin === new URL(page.url()).origin,
+    ),
+  ).toBe(true);
   await shot(page, "login");
   await login(page);
   expect(providerRequests).toHaveLength(1);
   await page.goto("/");
   await expect(page).toHaveURL(/\/workspaces\/ws_/);
   await expect(page.locator("main h1")).toContainText("git-project");
+  expect(
+    await page
+      .locator("main h1")
+      .evaluate((el) => parseFloat(getComputedStyle(el).fontSize)),
+  ).toBeLessThanOrEqual(32);
+  expect(
+    await page
+      .locator(".ah-shell-body")
+      .evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ")[0]),
+  ).toBe("296px");
   await expect(page.locator("main")).toContainText("Annotaatio");
+  await expect(page.getByRole("link", { name: "git-project" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
   await shot(page, "ready");
   await page.getByRole("link", { name: "ordinary-dir" }).click();
   await expect(page.locator("main h1")).toHaveText("ordinary-dir");
@@ -214,4 +272,27 @@ test("@workspace-slice @a11y built host: zoom, accessible states, no serious axe
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+  for (const theme of ["light", "dark"]) {
+    await page
+      .locator("html")
+      .evaluate((el, value) => el.setAttribute("data-theme", value), theme);
+    expect(
+      await page
+        .locator("main h1")
+        .evaluate((el) => getComputedStyle(el).fontFamily),
+    ).toContain("Instrument Sans");
+    const violations = (
+      await new AxeBuilder({ page }).analyze()
+    ).violations.filter(
+      (v) => v.impact === "serious" || v.impact === "critical",
+    );
+    expect(violations, theme).toEqual([]);
+  }
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  expect(
+    await page
+      .locator(".ah-button")
+      .first()
+      .evaluate((el) => getComputedStyle(el).transitionDuration),
+  ).toBe("0s");
 });

@@ -28,7 +28,7 @@ export function AppShell({
         Siirry sisältöön
       </a>
       {connection}
-      <div className="ah-shell-body">
+      <div className={`ah-shell-body${rail ? "" : " ah-shell-no-rail"}`}>
         {rail}
         <main id="main" tabIndex={-1}>
           {main}
@@ -113,6 +113,7 @@ export function WorkspaceSection({
   name,
   href,
   expanded,
+  selected = false,
   summary,
   mutationState,
   agents,
@@ -123,6 +124,7 @@ export function WorkspaceSection({
   name: string;
   href: string;
   expanded: boolean;
+  selected?: boolean;
   summary?: string;
   mutationState?: string;
   agents: AgentNavModel[];
@@ -138,9 +140,15 @@ export function WorkspaceSection({
           type="button"
           onClick={onToggle}
         >
-          {expanded ? "▾" : "▸"}
+          <span aria-hidden="true" className="ah-disclosure-chevron" />
         </button>
-        <Link to={href}>{name}</Link>
+        <Link
+          aria-current={selected ? "page" : undefined}
+          className="ah-workspace-link"
+          to={href}
+        >
+          {name}
+        </Link>
       </header>
       {summary ? <p>{summary}</p> : null}
       {mutationState ? (

@@ -34,7 +34,48 @@
   max-width: var(--ah-app-max);
   width: 100%;
   margin: 0 auto;
-  padding: var(--ah-s8);
+  padding: clamp(var(--ah-s7), 4vw, 64px);
+}
+.ah-shell-no-rail {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ah-shell-no-rail > main:has(.ah-login-view) {
+  max-width: none;
+  display: grid;
+  place-items: center;
+  padding: var(--ah-s7);
+}
+.ah-login-view {
+  width: min(100%, 440px);
+}
+.ah-login-card {
+  display: grid;
+  gap: var(--ah-s6);
+  padding: 26px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-xl);
+  background: var(--ah-surface);
+}
+.ah-login-card header {
+  display: grid;
+  gap: var(--ah-s2);
+}
+.ah-login-card header > * {
+  margin: 0;
+}
+.ah-login-card h1 {
+  font-size: 20px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+.ah-login-card p {
+  margin: 0;
+  font-size: var(--ah-size-ui);
+  color: var(--ah-ink-2);
+}
+.ah-login-card .ah-login-host {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
 }
 .ah-rail {
   position: sticky;
@@ -44,6 +85,12 @@
   padding: var(--ah-s5);
   background: var(--ah-rail);
   border-right: 1px solid var(--ah-line);
+  font-size: var(--ah-size-ui);
+  line-height: var(--ah-lh-ui);
+}
+.ah-rail p {
+  margin-block: var(--ah-s3);
+  overflow-wrap: anywhere;
 }
 .ah-shell-body:has(.ah-rail-collapsed) {
   grid-template-columns: 46px minmax(0, 1fr);
@@ -340,6 +387,18 @@ select:focus-visible,
   border-radius: var(--ah-r-md);
   background: var(--ah-surface);
 }
+.ah-notice.ah-tone-info {
+  border-color: var(--ah-accent-line);
+  background: var(--ah-accent-soft);
+}
+.ah-notice.ah-tone-warning {
+  border-color: var(--ah-line);
+  background: var(--ah-surface-2);
+}
+.ah-notice.ah-tone-danger {
+  border-color: var(--ah-err-line);
+  background: var(--ah-err-soft);
+}
 .ah-connection {
   display: flex;
   flex-wrap: wrap;
@@ -400,6 +459,14 @@ select:focus-visible,
   border: 0;
   background: transparent;
   color: inherit;
+}
+.ah-disclosure-chevron {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
 }
 .ah-workspace ul {
   padding: 0;
@@ -542,6 +609,50 @@ select:focus-visible,
   justify-content: flex-start;
   margin-block: var(--ah-s4);
 }
+.ah-login-card .ah-button {
+  font-weight: 500;
+  justify-self: start;
+}
+.ah-login-view > .ah-notice {
+  margin-top: var(--ah-s6);
+}
+.ah-rail .ah-field {
+  margin-block: var(--ah-s4);
+}
+.ah-rail .ah-button {
+  font-weight: 500;
+}
+.ah-rail .ah-rail-actions .ah-button {
+  min-height: 36px;
+}
+.ah-rail .ah-workspace {
+  border-top: 1px solid var(--ah-line);
+  padding-top: var(--ah-s3);
+}
+.ah-rail .ah-workspace header button {
+  flex: none;
+}
+.ah-rail .ah-workspace .ah-status {
+  margin-bottom: var(--ah-s2);
+}
+.ah-rail .ah-nav-link {
+  padding-block: var(--ah-s2);
+}
+[aria-expanded="true"] > .ah-disclosure-chevron {
+  transform: rotate(45deg);
+}
+.ah-rail .ah-workspace header a {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+.ah-rail .ah-workspace-link[aria-current="page"] {
+  padding: var(--ah-s2);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+  text-decoration: none;
+}
 @media (max-width: 800px) {
   .ah-shell-body {
     display: block;
@@ -553,6 +664,9 @@ select:focus-visible,
   }
   .ah-shell-body > main {
     padding: var(--ah-s6);
+  }
+  .ah-shell-no-rail > main:has(.ah-login-view) {
+    min-height: 100vh;
   }
 }
 @media (prefers-reduced-motion: reduce) {

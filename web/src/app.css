@@ -7,114 +7,79 @@ body {
   margin: 0;
   background: var(--ah-bg);
   color: var(--ah-ink);
-  font-family: var(--ah-font);
+  font: 400 var(--ah-size-body) / var(--ah-lh-body) var(--ah-font);
 }
 button,
-a {
+input,
+select,
+textarea {
   font: inherit;
 }
 a {
   color: var(--ah-accent-ink);
 }
-.app {
-  min-height: 100vh;
+main {
+  min-width: 0;
 }
-.skip {
-  position: fixed;
-  left: var(--ah-s3);
-  top: -5rem;
-  z-index: 10;
-  padding: var(--ah-s2);
-  background: var(--ah-surface);
-}
-.skip:focus {
-  top: var(--ah-s3);
-}
-.banner {
-  padding: var(--ah-s3) var(--ah-s5);
-  border-bottom: 1px solid var(--ah-line);
-  font-weight: 650;
-}
-.banner-authentication_required,
-.banner-daemon_unavailable {
-  border-left: 6px solid var(--ah-err);
-}
-.app > nav {
-  position: fixed;
-  inset: 0 auto 0 0;
-  width: 17rem;
-  display: flex;
-  flex-direction: column;
-  gap: var(--ah-s4);
-  padding: var(--ah-s6) var(--ah-s5);
-  background: var(--ah-rail);
-  border-right: 1px solid var(--ah-line);
-}
-.app > main {
-  max-width: 60rem;
-  margin-left: 17rem;
-  padding: clamp(2rem, 7vw, 7rem);
-}
-h1 {
-  font-size: clamp(2rem, 4vw, 3.75rem);
-  letter-spacing: -0.04em;
-  margin: var(--ah-s2) 0 var(--ah-s5);
-}
-.lead {
-  max-width: 56ch;
-  font-size: 1.2rem;
-  line-height: 1.65;
-}
-.eyebrow {
-  font-size: var(--ah-size-meta);
+main h1 {
+  margin: 0 0 var(--ah-s6);
+  color: var(--ah-ink);
+  font-size: var(--ah-size-h1);
   font-weight: 600;
-  letter-spacing: 0.12em;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+main p {
+  margin: 0 0 var(--ah-s5);
+}
+main .eyebrow {
+  margin: 0 0 var(--ah-s2);
+  font-size: var(--ah-size-label);
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
   color: var(--ah-muted);
 }
-.boundary,
-.card {
-  max-width: 40rem;
-  margin: var(--ah-s7) 0;
-  padding: var(--ah-s6);
-  background: var(--ah-surface);
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-lg);
-}
-.control {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--ah-s2);
-}
-.control button {
-  min-height: 2.75rem;
-  padding: 0 var(--ah-s4);
-  color: white;
-  background: var(--ah-accent);
-  border: 0;
-  border-radius: var(--ah-r-md);
-  font-weight: 700;
-}
-.control button:focus-visible,
-a:focus-visible {
-  outline: 2px solid var(--ah-accent-ink);
-  outline-offset: 2px;
-}
-.muted,
-small {
+main .muted,
+main small {
   color: var(--ah-muted);
 }
-code {
+main code,
+main .ah-technical {
   font-family: var(--ah-mono);
   overflow-wrap: anywhere;
 }
-@media (max-width: 800px) {
-  .app > nav {
-    position: static;
-    width: auto;
-  }
-  .app > main {
-    margin-left: 0;
-    padding: var(--ah-s6);
-  }
+.ah-workspace-detail {
+  max-width: 720px;
+}
+.ah-workspace-detail h1,
+.ah-state > h1 {
+  font-size: 20px;
+}
+.ah-workspace-detail > p:not(.eyebrow) {
+  color: var(--ah-ink-2);
+}
+.ah-workspace-detail .ah-facts {
+  margin: var(--ah-s7) 0;
+  padding: var(--ah-s4) var(--ah-s6);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+}
+.ah-workspace-detail .ah-facts > div:last-child {
+  border-bottom: 0;
+}
+.ah-state {
+  max-width: 720px;
+  margin-inline: auto;
+}
+.ah-login-view .ah-notice {
+  font-size: var(--ah-size-ui);
+}
+.ah-state > p {
+  color: var(--ah-ink-2);
+}
+.ah-state .ah-notice {
+  margin-top: var(--ah-s7);
 }

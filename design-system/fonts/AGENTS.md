@@ -1,0 +1,3 @@
+# Bundled UI fonts
+
+Instrument Sans (400–600) and JetBrains Mono (400–500), Latin and Latin-ext WOFF2 subsets, are bundled for the accepted production UI. Both use the SIL Open Font License 1.1; the original license texts are in `instrument-sans-OFL.txt` and `jetbrains-mono-OFL.txt`. Retrieved from Google Fonts CSS/font delivery (`fonts.googleapis.com`, `fonts.gstatic.com`) at the font revisions indicated by those URLs on 2026-09-24; license originals from `google/fonts` under `ofl/instrumentsans/` and `ofl/jetbrainsmono/`. Runtime CSS references these files locally; it never requests Google Fonts.

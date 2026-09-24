@@ -55,7 +55,9 @@ function WorkspaceDetails({ workspace }: { workspace: Workspace }) {
     <section className="ah-workspace-detail">
       <p className="eyebrow">WORKSPACE · VAIN LUKU</p>
       <h1>{workspace.display_name ?? workspace.name}</h1>
-      <p>Hakemisto: {workspace.name}</p>
+      <p>
+        Hakemisto: <code>{workspace.name}</code>
+      </p>
       <dl className="ah-facts">
         <div>
           <dt>Lähde</dt>
@@ -326,36 +328,20 @@ export function App() {
   return (
     <AppShell
       connection={
-        <>
+        phase === "authentication_required" ? null : (
           <ConnectionBanner
             state={
               phase === "authenticated"
                 ? "online"
-                : phase === "authentication_required"
-                  ? "authentication-required"
-                  : phase === "daemon_unavailable"
-                    ? "daemon-unavailable"
-                    : "loading"
+                : phase === "daemon_unavailable"
+                  ? "daemon-unavailable"
+                  : "loading"
             }
             hostWriteState={
               snapshot?.write_state === "read_only" ? "read_only" : "writable"
             }
           />
-          {snapshot?.auth?.native_github.state === "partial" ||
-          snapshot?.auth?.native_github.state === "pending" ? (
-            <InlineNotice
-              title="Natiivi GitHub-yhteys on kesken"
-              description="Verkkoistunto on voimassa, mutta natiivin yhteyden tila on osittainen. Älä oleta Git-toimintojen olevan valmiita."
-              tone="warning"
-            />
-          ) : snapshot?.auth?.native_github.state === "unknown" ? (
-            <InlineNotice
-              title="Natiivin GitHub-yhteyden tila ei ole tiedossa"
-              description="Istunto on voimassa, mutta natiivia tilaa ei ole vahvistettu tässä havainnossa."
-              tone="warning"
-            />
-          ) : null}
-        </>
+        )
       }
       rail={
         phase === "authenticated" && snapshot ? (
@@ -399,6 +385,7 @@ export function App() {
                 name={w.display_name ?? w.name}
                 href={`/workspaces/${w.workspace_id}`}
                 expanded={expanded[w.workspace_id] ?? false}
+                selected={selectedId === w.workspace_id}
                 summary={`${w.kind === "git_main_worktree" ? "Git" : "Hakemisto"} · ${sourceLabel(w.facts.find((f) => f.source === "filesystem")?.state ?? "unknown")}`}
                 mutationState="Vain luku"
                 agents={[]}
@@ -413,7 +400,29 @@ export function App() {
           </WorkspaceRail>
         ) : undefined
       }
-      main={main}
+      main={
+        <div
+          className={
+            phase === "authentication_required" ? "ah-login-view" : "ah-state"
+          }
+        >
+          {main}
+          {snapshot?.auth?.native_github.state === "partial" ||
+          snapshot?.auth?.native_github.state === "pending" ? (
+            <InlineNotice
+              title="Natiivi GitHub-yhteys on kesken"
+              description="Verkkoistunto on voimassa, mutta natiivin yhteyden tila on osittainen. Älä oleta Git-toimintojen olevan valmiita."
+              tone="warning"
+            />
+          ) : snapshot?.auth?.native_github.state === "unknown" ? (
+            <InlineNotice
+              title="Natiivin GitHub-yhteyden tila ei ole tiedossa"
+              description="Istunto on voimassa, mutta natiivia tilaa ei ole vahvistettu tässä havainnossa."
+              tone="warning"
+            />
+          ) : null}
+        </div>
+      }
     />
   );
 }
