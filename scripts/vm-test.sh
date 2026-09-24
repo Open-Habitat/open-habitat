@@ -91,7 +91,20 @@ if [[ $scenario == two-user-routing || $scenario == broker-guest ]]; then
     python3 "$repo/test/vm/product-fixture.py" "$run" "$run/native-agent-host" || fail invalid_product_fixture 'Could not render private product seed' 2
     seed_file=/run-data/product-cloud-init.yaml
   fi
-  if ! timeout -k 5s 60s podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --tmpfs /tmp:rw,size=64m --mount "type=bind,src=$run,dst=/run-data" "$image_id" genisoimage -quiet -R -V PRODUCT -o /run-data/product.iso /run-data/native-agent-host; then fail product_iso_failed 'Could not seal read-only product ISO' 2; fi
+  if [[ $scenario == two-user-routing ]]; then
+    # The pinned noble cloud image lacks the ACL utilities required by the
+    # broker's existing-binding verifier. Carry guest-local tools from the
+    # disposable pinned image; never install a host package or relax ACLs.
+    if ! podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --mount "type=bind,src=$run,dst=/run-data" "$image_id" sh -c 'cp /usr/bin/setfacl /usr/bin/getfacl /lib/x86_64-linux-gnu/libacl.so.1 /run-data/'; then fail product_iso_failed 'Could not stage guest ACL utilities' 2; fi
+    for entry in 'setfacl 8c6e90b674671cd3b9d0e61d9177cbd022e1eb9380a2241a189c3d9a51d15922' 'getfacl 91e889370c104d40a4f812c1a4527cfae01a6ab6b6ffa1f8f8a52cdeff7ef96f' 'libacl.so.1 1f5247285409ec89990e9fe384d78dfb2ae6ec8e210a2657073babc8d6b7e54f'; do
+      read -r filename digest <<< "$entry"
+      echo "$digest  $run/$filename" | sha256sum -c --status || fail product_iso_failed 'Pinned guest ACL utility digest mismatch' 2
+    done
+    iso_files=(/native-agent-host=/run-data/native-agent-host /setfacl=/run-data/setfacl /getfacl=/run-data/getfacl /libacl.so.1=/run-data/libacl.so.1)
+  else
+    iso_files=(/native-agent-host=/run-data/native-agent-host)
+  fi
+  if ! timeout -k 5s 60s podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --tmpfs /tmp:rw,size=64m --mount "type=bind,src=$run,dst=/run-data" "$image_id" genisoimage -quiet -R -graft-points -V PRODUCT -o /run-data/product.iso "${iso_files[@]}"; then fail product_iso_failed 'Could not seal read-only product ISO' 2; fi
   if ! podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --tmpfs /tmp:rw,size=32m --mount "type=bind,src=$run,dst=/run-data,ro=true" "$image_id" cloud-init schema --config-file "$seed_file" >/dev/null 2>&1; then fail invalid_product_fixture 'Product cloud-init schema invalid' 1; fi
 fi
 # Seed and writable overlay are private to this invocation.

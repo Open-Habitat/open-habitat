@@ -51,7 +51,7 @@ printf 'binary-fixture-bytes' > "$tmp/product/bin"
 python3 "$repo/test/vm/product-fixture.py" "$tmp/product" "$tmp/product/bin"
 if command -v podman >/dev/null && podman image exists localhost/native-agent-host-vm-tools:prereq; then
   cp "$tmp/product/bin" "$tmp/product/native-agent-host"
-  podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --tmpfs /tmp:rw,size=16m --mount "type=bind,src=$tmp/product,dst=/run-data" localhost/native-agent-host-vm-tools:prereq genisoimage -quiet -R -V PRODUCT -o /run-data/product.iso /run-data/native-agent-host
+  podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --tmpfs /tmp:rw,size=16m --mount "type=bind,src=$tmp/product,dst=/run-data" localhost/native-agent-host-vm-tools:prereq genisoimage -quiet -R -graft-points -V PRODUCT -o /run-data/product.iso /native-agent-host=/run-data/native-agent-host
   podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --mount "type=bind,src=$tmp/product,dst=/run-data,ro=true" localhost/native-agent-host-vm-tools:prereq isoinfo -R -i /run-data/product.iso -x /native-agent-host > "$tmp/extracted"
   cmp "$tmp/product/bin" "$tmp/extracted"
 fi
@@ -62,6 +62,7 @@ assert '/opt/native-agent-host/native-agent-host' not in files
 assert base64.b64decode(files['/etc/native-agent-host/binary.sha256']['content']).decode().strip()==__import__('hashlib').sha256(b'binary-fixture-bytes').hexdigest()
 assert any('/dev/disk/by-label/PRODUCT' in ' '.join(cmd) for cmd in c['runcmd'])
 assert any(cmd[:2]==['install','-m'] and cmd[-1]=='/opt/native-agent-host/current/native-agent-host' for cmd in c['runcmd'])
+assert all(any(cmd[:2]==['install','-m'] and cmd[-1]=='/usr/bin/'+tool for cmd in c['runcmd']) for tool in ('setfacl','getfacl'))
 assert len([p for p in files if p.endswith('daemon.sock')])==0
 assert all(base64.b64decode(f['content']).find(b'PRODUCT_VM_TOKEN')==-1 for p,f in files.items() if p.startswith('/etc/native-agent-host/'))
 assert '/etc/systemd/system/native-agent-host-broker.socket' in files
@@ -81,7 +82,7 @@ PY
 grep -Fq "'scope':'product-two-user-routing'" "$repo/test/vm/product-proof.py"
 # Guard the explicit timeout and kill/cleanup wiring against accidental removal.
 grep -Fq 'timeout -k 10s 600s podman run' "$tmp/repo/scripts/vm-test.sh"
-grep -Fq 'genisoimage -quiet -R -V PRODUCT' "$tmp/repo/scripts/vm-test.sh"
+grep -Fq 'genisoimage -quiet -R -graft-points -V PRODUCT' "$tmp/repo/scripts/vm-test.sh"
 grep -Fq 'timeout -k 5s 360s podman run' "$tmp/repo/scripts/vm-test.sh"
 grep -Fq 'trap cleanup EXIT' "$tmp/repo/scripts/vm-test.sh"
 grep -Fq 'podman rm -f "vm-fixture-$$" "vm-download-$$"' "$tmp/repo/scripts/vm-test.sh"
