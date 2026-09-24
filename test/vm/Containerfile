@@ -1,4 +1,4 @@
 # amd64 Ubuntu 24.04 manifest, not a moving tag. Disposable rootless build only.
 FROM docker.io/library/ubuntu@sha256:496754492fb28b4d3049432f2ca787449331e23fb14f0dd3fffea86bf5a93eb4
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y --no-install-recommends qemu-system-x86=1:8.2.2+ds-0ubuntu1.18 qemu-utils=1:8.2.2+ds-0ubuntu1.18 cloud-image-utils=0.33-1 cloud-init=26.1-0ubuntu1~24.04.1 python3-yaml=6.0.1-2build2 curl=8.5.0-2ubuntu10.13 ca-certificates acl=2.3.2-1build1.1 libacl1=2.3.2-1build1.1 && apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends qemu-system-x86=1:8.2.2+ds-0ubuntu1.18 qemu-utils=1:8.2.2+ds-0ubuntu1.18 cloud-image-utils=0.33-1 cloud-init=26.1-0ubuntu1~24.04.1 python3-yaml=6.0.1-2build2 curl=8.5.0-2ubuntu10.13 ca-certificates && apt-get clean && rm -rf /var/lib/apt/lists/*
