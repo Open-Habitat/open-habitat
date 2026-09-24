@@ -106,7 +106,23 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
     "aria-current",
     "page",
   );
+  const selectedRow = page.locator(".ah-workspace-row[data-selected]");
+  await expect(selectedRow).toContainText("git-project");
+  expect(
+    await selectedRow.evaluate((el) => el.getBoundingClientRect().height),
+  ).toBeLessThanOrEqual(36);
+  await expect(
+    page.getByRole("button", { name: "Uusi workspace" }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText("Tämä näkymä on vain luku -tilassa."),
+  ).toBeVisible();
   await shot(page, "ready");
+  await page.getByRole("button", { name: "Sulje navigaatio" }).click();
+  await expect(
+    page.getByRole("button", { name: "Kirjaudu ulos" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Avaa navigaatio" }).click();
   await page.getByRole("link", { name: "ordinary-dir" }).click();
   await expect(page.locator("main h1")).toHaveText("ordinary-dir");
   await page.getByRole("link", { name: "without-metadata" }).click();

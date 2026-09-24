@@ -1,3 +1,4 @@
+/* biome-ignore-all lint/style/noDescendingSpecificity: Scoped rail overrides intentionally supersede shared component styles. */
 .ah-visually-hidden {
   position: absolute;
   width: 1px;
@@ -35,6 +36,22 @@
   width: 100%;
   margin: 0 auto;
   padding: clamp(var(--ah-s7), 4vw, 64px);
+}
+.ah-app-shell:has(.ah-rail) {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+.ah-app-shell:has(.ah-rail) > .ah-shell-body {
+  flex: 1;
+  min-height: 0;
+}
+.ah-app-shell:has(.ah-rail) > .ah-shell-body > main {
+  max-width: none;
+  overflow: auto;
+}
+.ah-app-shell:has(.ah-rail) .ah-state {
+  max-width: 720px;
 }
 .ah-shell-no-rail {
   grid-template-columns: minmax(0, 1fr);
@@ -78,28 +95,147 @@
   font-size: var(--ah-size-meta);
 }
 .ah-rail {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  overflow: auto;
-  padding: var(--ah-s5);
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--ah-rail);
   border-right: 1px solid var(--ah-line);
   font-size: var(--ah-size-ui);
   line-height: var(--ah-lh-ui);
-}
-.ah-rail p {
-  margin-block: var(--ah-s3);
-  overflow-wrap: anywhere;
 }
 .ah-shell-body:has(.ah-rail-collapsed) {
   grid-template-columns: 46px minmax(0, 1fr);
 }
 .ah-rail-collapsed {
   width: 46px;
-  padding: var(--ah-s1);
 }
-.ah-rail header,
+.ah-rail-head {
+  display: grid;
+  gap: var(--ah-s3);
+  padding: 11px 10px var(--ah-s3);
+  border-bottom: 1px solid var(--ah-line-soft);
+}
+.ah-rail-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.ah-rail-title > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.ah-rail-title > span {
+  min-width: 0;
+  overflow: hidden;
+}
+.ah-rail-title .ah-status {
+  max-width: 100%;
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.ah-rail-title .ah-status-dot {
+  width: 8px;
+  height: 8px;
+  border: 0;
+  background: currentColor;
+}
+.ah-rail-title .ah-control {
+  flex-shrink: 0;
+  margin-inline-start: auto;
+}
+.ah-rail-collapsed .ah-rail-head {
+  padding: 10px 0;
+  border: 0;
+}
+.ah-rail-collapsed .ah-rail-title {
+  flex-direction: column;
+  gap: 10px;
+}
+.ah-rail-collapsed .ah-rail-title > strong {
+  font-size: 11px;
+}
+.ah-rail-collapsed .ah-rail-title .ah-status {
+  font-size: 0;
+  gap: 0;
+}
+.ah-rail-collapsed .ah-rail-title .ah-control {
+  margin: 0;
+}
+.ah-rail .ah-button {
+  font-weight: 500;
+}
+.ah-rail .ah-button-compact {
+  min-height: 30px;
+  padding-inline: 9px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  line-height: 1;
+}
+.ah-rail-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+}
+.ah-rail-search {
+  flex: 1;
+  min-width: 0;
+}
+.ah-rail-search input {
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font: 400 12.5px / 1 var(--ah-font);
+}
+.ah-rail-search input::placeholder {
+  color: var(--ah-muted);
+}
+.ah-rail-filter .ah-button {
+  width: 30px;
+  padding: 0;
+  font-size: 13px;
+}
+.ah-rail-refresh .ah-button {
+  width: auto;
+  padding-inline: 7px;
+  font-size: 11px;
+}
+.ah-rail-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  color: var(--ah-muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.ah-rail-summary > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ah-rail-summary .ah-nav-link {
+  flex-shrink: 0;
+  padding: 2px 5px;
+  border-radius: var(--ah-r-sm);
+  color: var(--ah-muted);
+  font-weight: 500;
+}
+.ah-rail-summary .ah-nav-link:hover,
+.ah-rail-summary .ah-nav-link[aria-current="page"] {
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+  font-weight: 500;
+}
 .ah-title-row,
 .ah-message header,
 .ah-operation > header,
@@ -110,25 +246,103 @@
   gap: var(--ah-s4);
   justify-content: space-between;
 }
-.ah-rail-actions {
-  flex-wrap: wrap;
-  gap: var(--ah-s2);
-  margin-block: var(--ah-s3);
+.ah-rail-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 8px var(--ah-s5);
+}
+.ah-rail-content > p {
+  margin: var(--ah-s2) 8px;
+  color: var(--ah-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.ah-rail-create {
+  margin-top: var(--ah-s1);
+}
+.ah-rail-create .ah-control {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+}
+.ah-rail-create .ah-button {
+  min-height: 34px;
+  padding: 8px 10px;
+  border: 1px dashed var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: transparent;
+  color: var(--ah-muted);
+  font-size: 12px;
+  text-align: left;
+}
+.ah-rail-create .ah-button:not(:disabled):hover {
+  border-color: var(--ah-accent-line);
+  color: var(--ah-accent-ink);
+}
+.ah-rail-create .ah-control-reason {
+  padding: 4px 10px 0;
+  font-size: 11.5px;
+}
+.ah-rail-foot {
+  margin-top: auto;
+  padding: 8px 10px;
+  border-top: 1px solid var(--ah-line-soft);
+}
+.ah-rail-collapsed .ah-rail-foot {
+  padding: 4px 1px;
+}
+.ah-rail-collapsed .ah-rail-identity {
+  display: none;
+}
+.ah-rail-collapsed .ah-session-actions .ah-button {
+  max-width: 42px;
+  padding: 3px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+  font-size: 9px;
 }
 .ah-session-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--ah-s2);
-  margin-block: var(--ah-s3);
+  gap: 4px 8px;
+  min-width: 0;
 }
-.ah-session-actions small {
-  overflow-wrap: anywhere;
+.ah-logout-note {
+  flex-basis: 100%;
+  color: var(--ah-muted);
+  font-size: 10px;
+  line-height: 1.35;
 }
-.ah-rail-content {
-  display: grid;
-  gap: var(--ah-s5);
-  margin-block: var(--ah-s5);
+.ah-rail-collapsed .ah-logout-note {
+  display: none;
+}
+.ah-rail-identity {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ah-muted);
+  font: 400 11.5px var(--ah-mono);
+}
+.ah-session-actions .ah-control {
+  flex-shrink: 0;
+  margin-inline-start: auto;
+}
+.ah-rail .ah-session-actions .ah-button {
+  min-height: 28px;
+  padding-inline: 7px;
+  color: var(--ah-muted);
+  font-size: 11.5px;
+}
+.ah-rail .ah-session-actions .ah-button:hover {
+  background: var(--ah-surface-2);
+  color: var(--ah-ink);
 }
 .ah-control {
   display: inline-flex;
@@ -143,7 +357,7 @@
   border: 1px solid transparent;
   border-radius: var(--ah-r-md);
   font: inherit;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   transition:
     background var(--ah-transition),
@@ -195,7 +409,7 @@
 }
 .ah-field label,
 .ah-field-label {
-  font-weight: 700;
+  font-weight: 600;
 }
 .ah-field input,
 .ah-field textarea,
@@ -315,7 +529,7 @@ select:focus-visible,
   color: inherit;
   text-align: left;
   font: inherit;
-  font-weight: 700;
+  font-weight: 600;
 }
 .ah-disclosure-button small {
   margin-inline-start: auto;
@@ -337,7 +551,7 @@ select:focus-visible,
 }
 .ah-tabs button[aria-selected="true"] {
   border-bottom-color: var(--ah-accent);
-  font-weight: 700;
+  font-weight: 600;
 }
 .ah-status,
 .ah-badge {
@@ -345,7 +559,7 @@ select:focus-visible,
   align-items: center;
   gap: var(--ah-s2);
   font-size: var(--ah-size-meta);
-  font-weight: 650;
+  font-weight: 600;
 }
 .ah-status-dot {
   width: 0.65rem;
@@ -402,10 +616,36 @@ select:focus-visible,
 .ah-connection {
   display: flex;
   flex-wrap: wrap;
+  flex-shrink: 0;
   align-items: center;
   gap: var(--ah-s4);
-  border-width: 0 0 1px 5px;
+  padding: var(--ah-s3) 16px;
+  border-width: 0 0 1px;
+  border-color: var(--ah-accent-line);
   border-radius: 0;
+  background: var(--ah-accent-soft);
+  font-size: 13px;
+}
+.ah-connection strong {
+  font-weight: 500;
+  color: var(--ah-accent-ink);
+}
+.ah-connection > span {
+  color: var(--ah-ink-2);
+}
+.ah-connection.ah-tone-danger {
+  border-color: var(--ah-err-line);
+  background: var(--ah-err-soft);
+}
+.ah-connection.ah-tone-danger strong {
+  color: var(--ah-err);
+}
+.ah-connection.ah-tone-neutral {
+  border-color: var(--ah-line);
+  background: var(--ah-surface);
+}
+.ah-connection.ah-tone-neutral strong {
+  color: var(--ah-ink);
 }
 .ah-connection > span {
   flex: 1;
@@ -441,36 +681,92 @@ select:focus-visible,
 }
 .ah-nav-link[aria-current="page"] {
   background: var(--ah-accent-soft);
-  font-weight: 700;
+  font-weight: 600;
 }
 .ah-nav-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ah-workspace header {
+.ah-workspace {
+  display: grid;
+  gap: var(--ah-s1);
+  margin-bottom: 10px;
+  min-width: 0;
+}
+.ah-workspace-row {
   display: flex;
   align-items: center;
-  gap: var(--ah-s2);
+  gap: 1px;
+  min-width: 0;
+  border-radius: 7px;
 }
-.ah-workspace header button {
-  min-width: var(--ah-touch);
-  min-height: var(--ah-touch);
+.ah-workspace-row:hover {
+  background: var(--ah-surface-2);
+}
+.ah-workspace-row[data-selected] {
+  background: var(--ah-accent-soft);
+}
+.ah-workspace-toggle {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 30px;
+  padding: 0;
   border: 0;
+  border-radius: 7px;
   background: transparent;
-  color: inherit;
+  color: var(--ah-muted);
+  cursor: pointer;
 }
 .ah-disclosure-chevron {
   display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-right: 2px solid currentColor;
-  border-bottom: 2px solid currentColor;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
   transform: rotate(-45deg);
 }
+.ah-workspace-link {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 6px 5px 2px;
+  overflow: hidden;
+  color: var(--ah-ink);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-workspace-link[aria-current="page"] {
+  color: var(--ah-accent-ink);
+}
+.ah-workspace-row .ah-status {
+  flex: none;
+  padding-inline-end: 8px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.ah-workspace-row .ah-status-dot {
+  width: 6px;
+  height: 6px;
+  border-width: 1.5px;
+}
 .ah-workspace ul {
-  padding: 0;
+  display: grid;
+  gap: var(--ah-s1);
+  margin: 0;
+  padding: 0 0 0 6px;
   list-style: none;
+}
+.ah-workspace-empty {
+  margin: 0;
+  padding: 2px 8px 4px 28px;
+  color: var(--ah-muted);
+  font-size: 12px;
 }
 .ah-agent-item {
   padding-inline-start: calc(var(--ah-depth, 0) * var(--ah-s4));
@@ -489,7 +785,7 @@ select:focus-visible,
 }
 .ah-facts dt,
 .ah-receipt dt {
-  font-weight: 700;
+  font-weight: 600;
 }
 .ah-facts dd,
 .ah-receipt dd {
@@ -539,7 +835,7 @@ select:focus-visible,
 .ah-diff figcaption {
   padding: var(--ah-s3);
   background: var(--ah-surface-2);
-  font-weight: 700;
+  font-weight: 600;
 }
 .ah-code pre,
 .ah-diff pre,
@@ -590,12 +886,12 @@ select:focus-visible,
   padding-left: 1.5rem;
 }
 .ah-stages li::marker {
-  font-weight: 700;
+  font-weight: 600;
 }
 .ah-eyebrow {
   color: var(--ah-muted);
   font-size: var(--ah-size-meta);
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -616,42 +912,11 @@ select:focus-visible,
 .ah-login-view > .ah-notice {
   margin-top: var(--ah-s6);
 }
-.ah-rail .ah-field {
-  margin-block: var(--ah-s4);
-}
-.ah-rail .ah-button {
-  font-weight: 500;
-}
-.ah-rail .ah-rail-actions .ah-button {
-  min-height: 36px;
-}
-.ah-rail .ah-workspace {
-  border-top: 1px solid var(--ah-line);
-  padding-top: var(--ah-s3);
-}
-.ah-rail .ah-workspace header button {
-  flex: none;
-}
-.ah-rail .ah-workspace .ah-status {
-  margin-bottom: var(--ah-s2);
-}
-.ah-rail .ah-nav-link {
-  padding-block: var(--ah-s2);
+.ah-rail .ah-agent-item .ah-nav-link {
+  padding: var(--ah-s2) var(--ah-s3);
 }
 [aria-expanded="true"] > .ah-disclosure-chevron {
   transform: rotate(45deg);
-}
-.ah-rail .ah-workspace header a {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  font-weight: 600;
-}
-.ah-rail .ah-workspace-link[aria-current="page"] {
-  padding: var(--ah-s2);
-  border-radius: var(--ah-r-md);
-  background: var(--ah-accent-soft);
-  color: var(--ah-accent-ink);
-  text-decoration: none;
 }
 @media (max-width: 800px) {
   .ah-shell-body {
@@ -661,6 +926,15 @@ select:focus-visible,
     position: static;
     width: auto;
     height: auto;
+  }
+  .ah-rail-content {
+    overflow: visible;
+  }
+  .ah-app-shell:has(.ah-rail) {
+    height: auto;
+  }
+  .ah-app-shell:has(.ah-rail) > .ah-shell-body > main {
+    overflow: visible;
   }
   .ah-shell-body > main {
     padding: var(--ah-s6);

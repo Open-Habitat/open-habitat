@@ -348,21 +348,38 @@ export function App() {
           <WorkspaceRail
             collapsed={collapsed}
             serverLabel={window.location.host}
-            connectionLabel={`${snapshot.identity.display_name} · ${window.location.host}${source === "confirmed" ? "" : " · Lähde osittainen"}`}
+            connectionLabel={
+              source === "confirmed" ? "Yhdistetty" : "Lähde osittainen"
+            }
+            connectionTone={source === "confirmed" ? "success" : "warning"}
             sessionActions={
-              <div className="ah-session-actions">
+              <div
+                className="ah-session-actions"
+                title="Web-uloskirjautuminen ei katkaise natiiveja GitHub-tunnuksia."
+              >
+                <span className="ah-rail-identity">
+                  {snapshot.identity.display_name}
+                </span>
                 <Button
                   label="Kirjaudu ulos"
-                  variant="secondary"
+                  variant="quiet"
+                  size="compact"
                   onPress={logout}
                 />
-                <small>
+                <small className="ah-logout-note">
                   Web-uloskirjautuminen ei katkaise natiiveja GitHub-tunnuksia.
                 </small>
               </div>
             }
             filterValue={filter}
             resultSummary={`${matches.length} ${source === "confirmed" ? "workspacea" : "havaittua workspacea · määrä voi olla puutteellinen"}`}
+            summaryAction={
+              <NavLink
+                label="Kaikki workspacet"
+                href="/workspaces"
+                current={location.pathname === "/workspaces" ? "page" : false}
+              />
+            }
             listState={railState}
             onToggle={() => setCollapsed(!collapsed)}
             onFilter={(v) => dispatch(filterChanged(v))}
@@ -373,11 +390,6 @@ export function App() {
               reason: "Tämä näkymä on vain luku -tilassa.",
             }}
           >
-            <NavLink
-              label="Kaikki workspacet"
-              href="/workspaces"
-              current={location.pathname === "/workspaces" ? "page" : false}
-            />
             {matches.map((w) => (
               <WorkspaceSection
                 key={w.workspace_id}
@@ -387,7 +399,13 @@ export function App() {
                 expanded={expanded[w.workspace_id] ?? false}
                 selected={selectedId === w.workspace_id}
                 summary={`${w.kind === "git_main_worktree" ? "Git" : "Hakemisto"} · ${sourceLabel(w.facts.find((f) => f.source === "filesystem")?.state ?? "unknown")}`}
-                mutationState="Vain luku"
+                mutationState={
+                  snapshot.write_state === "read_only"
+                    ? undefined
+                    : w.mutation_state === "read_only"
+                      ? "Vain luku"
+                      : undefined
+                }
                 agents={[]}
                 onToggle={() =>
                   setExpanded({

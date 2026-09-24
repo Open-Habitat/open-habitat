@@ -1,8 +1,9 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
+import { Input, Label, TextField } from "react-aria-components";
 import { Link } from "react-router";
-import { Button, SearchField } from "./Primitives";
+import { Button } from "./Primitives";
 import { Badge, StatusMark } from "./Status";
-import type { Action, AsyncState, Availability } from "./types";
+import type { Action, AsyncState, Availability, Tone } from "./types";
 
 export function AppShell({
   connection,
@@ -131,12 +132,14 @@ export function WorkspaceSection({
   actions?: Action[];
   onToggle: () => void;
 }) {
+  const summaryId = useId();
   return (
     <section className="ah-workspace">
-      <header>
+      <div className="ah-workspace-row" data-selected={selected || undefined}>
         <button
           aria-expanded={expanded}
           aria-label={`${expanded ? "Sulje" : "Avaa"} ${name}`}
+          className="ah-workspace-toggle"
           type="button"
           onClick={onToggle}
         >
@@ -144,23 +147,33 @@ export function WorkspaceSection({
         </button>
         <Link
           aria-current={selected ? "page" : undefined}
+          aria-describedby={summary ? summaryId : undefined}
           className="ah-workspace-link"
+          title={summary ? `${name} · ${summary}` : name}
           to={href}
         >
           {name}
         </Link>
-      </header>
-      {summary ? <p>{summary}</p> : null}
-      {mutationState ? (
-        <StatusMark label={mutationState} tone="warning" />
-      ) : null}
+        {mutationState ? (
+          <StatusMark label={mutationState} tone="warning" />
+        ) : null}
+        {summary ? (
+          <span className="ah-visually-hidden" id={summaryId}>
+            {summary}
+          </span>
+        ) : null}
+      </div>
       {expanded ? (
         <>
-          <ul>
-            {agents.map((agent) => (
-              <AgentNavItem key={agent.agentId} {...agent} />
-            ))}
-          </ul>
+          {agents.length ? (
+            <ul>
+              {agents.map((agent) => (
+                <AgentNavItem key={agent.agentId} {...agent} />
+              ))}
+            </ul>
+          ) : (
+            <p className="ah-workspace-empty">Agentteja ei vielä näytetä.</p>
+          )}
           {actions.length ? (
             <div className="ah-actions">
               {actions.map((action) => (
@@ -184,9 +197,11 @@ export function WorkspaceRail({
   collapsed,
   serverLabel,
   connectionLabel,
+  connectionTone,
   attentionCount,
   filterValue,
   resultSummary,
+  summaryAction,
   listState,
   children,
   createAvailability,
@@ -199,9 +214,11 @@ export function WorkspaceRail({
   collapsed: boolean;
   serverLabel: string;
   connectionLabel: string;
+  connectionTone?: Tone;
   attentionCount?: number;
   filterValue: string;
   resultSummary: string;
+  summaryAction?: ReactNode;
   listState: AsyncState | "source-absent" | "filtered-empty";
   children?: ReactNode;
   createAvailability?: Availability;
@@ -216,64 +233,101 @@ export function WorkspaceRail({
       aria-label="Workspacet ja agentit"
       className={collapsed ? "ah-rail ah-rail-collapsed" : "ah-rail"}
     >
-      <header>
-        <strong>{collapsed ? "NAH" : serverLabel}</strong>
-        <Button
-          ariaLabel={collapsed ? "Avaa navigaatio" : "Sulje navigaatio"}
-          label={collapsed ? "Avaa" : "Sulje"}
-          variant="quiet"
-          size="compact"
-          onPress={onToggle}
-        />
-      </header>
-      {sessionActions}
-      <StatusMark
-        label={connectionLabel}
-        tone={listState === "stale" ? "warning" : "neutral"}
-      />
-      {attentionCount ? (
-        <p>
+      <header className="ah-rail-head">
+        <div className="ah-rail-title">
+          <strong title={serverLabel}>{collapsed ? "NAH" : serverLabel}</strong>
+          <span title={connectionLabel}>
+            <StatusMark
+              label={connectionLabel}
+              tone={
+                connectionTone ??
+                (listState === "stale" ? "warning" : "neutral")
+              }
+            />
+          </span>
+          <Button
+            ariaLabel={collapsed ? "Avaa navigaatio" : "Sulje navigaatio"}
+            label={collapsed ? "›" : "‹"}
+            variant="secondary"
+            size="compact"
+            onPress={onToggle}
+          />
+        </div>
+        {attentionCount ? (
           <Badge
             label="Odottaa vastaustasi"
             tone="warning"
             count={attentionCount}
           />
-        </p>
-      ) : null}
+        ) : null}
+        {collapsed ? null : (
+          <>
+            <div className="ah-rail-filter">
+              <TextField
+                className="ah-rail-search"
+                value={filterValue}
+                onChange={onFilter}
+              >
+                <Label className="ah-visually-hidden">
+                  Suodata workspaceja ja agentteja
+                </Label>
+                <Input placeholder="Suodata" />
+              </TextField>
+              {filterValue ? (
+                <Button
+                  label="×"
+                  ariaLabel="Tyhjennä haku"
+                  variant="quiet"
+                  size="compact"
+                  onPress={() => onFilter("")}
+                />
+              ) : null}
+              <span className="ah-rail-refresh">
+                <Button
+                  label="Päivitä"
+                  variant="secondary"
+                  size="compact"
+                  onPress={onRefresh}
+                />
+              </span>
+            </div>
+            <div className="ah-rail-summary">
+              <span role="status">{resultSummary}</span>
+              {summaryAction}
+            </div>
+          </>
+        )}
+      </header>
       {collapsed ? null : (
-        <>
-          <SearchField
-            label="Suodata workspaceja ja agentteja"
-            value={filterValue}
-            resultSummary={resultSummary}
-            onChange={onFilter}
-            onClear={() => onFilter("")}
-          />
-          <div className="ah-actions ah-rail-actions">
+        <div className="ah-rail-content">
+          {listState === "loading" ? <p>Ladataan workspaceja…</p> : null}
+          {listState === "empty" ? <p>Workspaceja ei ole.</p> : null}
+          {listState === "filtered-empty" ? (
+            <p>Hakua vastaavia kohteita ei ole.</p>
+          ) : null}
+          {listState === "source-absent" ? (
+            <p>Lähdettä ei löydy. Tätä ei tulkita tyhjäksi listaksi.</p>
+          ) : null}
+          {listState === "error" || listState === "unknown" ? (
+            <p>Workspacejen tilaa ei saatu.</p>
+          ) : (
+            children
+          )}
+          <div className="ah-rail-create">
             <Button
-              label="Uusi workspace"
+              label="+ Uusi workspace"
+              ariaLabel="Uusi workspace"
+              variant="quiet"
+              size="compact"
               availability={createAvailability}
               onPress={onCreate}
             />
-            <Button label="Päivitä" variant="secondary" onPress={onRefresh} />
           </div>
-          <div className="ah-rail-content">
-            {listState === "loading" ? <p>Ladataan workspaceja…</p> : null}
-            {listState === "empty" ? <p>Workspaceja ei ole.</p> : null}
-            {listState === "filtered-empty" ? (
-              <p>Hakua vastaavia kohteita ei ole.</p>
-            ) : null}
-            {listState === "source-absent" ? (
-              <p>Lähdettä ei löydy. Tätä ei tulkita tyhjäksi listaksi.</p>
-            ) : null}
-            {listState === "error" || listState === "unknown" ? (
-              <p>Workspacejen tilaa ei saatu.</p>
-            ) : (
-              children
-            )}
-          </div>
-        </>
+        </div>
       )}
+      {sessionActions ? (
+        <footer className="ah-rail-foot">{sessionActions}</footer>
+      ) : null}
     </nav>
   );
 }
