@@ -123,6 +123,10 @@ func verifyBinding(c Config) error {
 	if n, err := io.ReadFull(f, b); err != nil || n != len(b) {
 		return denied
 	}
+	return bindingMatches(b, c)
+}
+
+func bindingMatches(b []byte, c Config) error {
 	var v struct {
 		Component string `json:"component"`
 		Handoff   Config `json:"handoff"`

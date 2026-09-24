@@ -109,6 +109,33 @@ func TestJITBindingFailsClosedWithoutRootOwnedConfig(t *testing.T) {
 	}
 }
 
+func TestJITBindingNumericIdentityAndStrictDecode(t *testing.T) {
+	cfg := Config{GatewayUID: 21003, UID: 22010, Username: "pilot", Home: "/home/pilot", Socket: "/run/native-agent-host/users/pilot/daemon.sock", Provider: "github", Subject: "42", BindingFile: "/etc/native-agent-host/daemon-pilot.json"}
+	encode := func(c Config) []byte {
+		b, err := json.Marshal(struct {
+			Component string `json:"component"`
+			Handoff   Config `json:"handoff"`
+		}{"daemon", c})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	if bindingMatches(encode(cfg), cfg) != nil {
+		t.Fatal("valid numeric binding rejected")
+	}
+	for name, changed := range map[string]Config{"numeric-id": func() Config { v := cfg; v.Subject = "43"; return v }(), "uid": func() Config { v := cfg; v.UID++; return v }(), "username": func() Config { v := cfg; v.Username = "other"; return v }(), "gateway-peer": func() Config { v := cfg; v.GatewayUID++; return v }()} {
+		t.Run(name, func(t *testing.T) {
+			if bindingMatches(encode(changed), cfg) == nil {
+				t.Fatal("accepted mismatched binding")
+			}
+		})
+	}
+	if bindingMatches(append(encode(cfg), []byte(`{"component":"daemon"}`)...), cfg) == nil {
+		t.Fatal("accepted trailing binding")
+	}
+}
+
 func TestHandoffAndRejections(t *testing.T) {
 	_, _, m, calls := fixture(t)
 	sink := Sink{testPath: true}
