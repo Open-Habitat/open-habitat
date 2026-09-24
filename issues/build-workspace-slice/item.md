@@ -2,7 +2,7 @@
 created: 2026-09-20
 updated: 2026-09-24
 type: task
-status: testing
+status: done
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
@@ -10,6 +10,8 @@ lane_seq: 30
 blocked_by: ['@build-design-system', '@integrate-designer-rail']
 collision: [docs/, AGENTS.md, design-system/]
 review_status: approved
+closed: 2026-09-24
+closed_by: jari
 ---
 
 # Build login to workspace navigation
@@ -95,3 +97,13 @@ Visual decision 2026-09-24: Jari approves the external designer correction to th
 ### 2026-09-24T10:41:30Z · @agent
 
 2026-09-24 clarification: the preceding screenshot acceptance approves the corrected visuals only. The earlier Jari decision (2026-09-24T05:11:16Z) explicitly withheld acceptance of the full login-to-workspace slice until a safe interactive review environment and a separate full-slice decision. The brief close was reversed before commit or any dependent worker was spawned. Keep testing until Jari explicitly resolves that remaining condition.
+
+### 2026-09-24T10:46:59Z · @jari
+
+2026-09-24: After being told that the earlier full-slice review condition called for a safe interactive review environment and that no such environment exists, Jari explicitly replied “Joo. Hyväksyn” to the question whether he accepts the complete build-workspace-slice implementation on the corrected images and automated tests without that interactive review. This supersedes the outstanding full-slice manual-review condition for this slice only. Accepted evidence: visual-acceptance.md at product revision c7f27394d39291d753a50b656becaa1b4a93885c and the recorded gateway/daemon/two-UID VM test results. Limits remain: no real GitHub consent, live deployment, manual product URL, Pi history or agent control was demonstrated; those require their own gates.
+
+## Resolution
+
+### 2026-09-24T10:46:59Z · @jari
+
+Jari explicitly accepted the complete first workspace slice without a manual interactive test environment on 2026-09-24; evidence and limits are recorded in the decision and visual-acceptance.md.
