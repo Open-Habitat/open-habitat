@@ -2,14 +2,14 @@
 created: 2026-09-20
 updated: 2026-09-24
 type: task
-status: in-progress
+status: testing
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
 lane_seq: 30
 blocked_by: ['@build-design-system']
 collision: [docs/, AGENTS.md, design-system/]
-review_status: changes-requested
+review_status: requested
 ---
 
 # Build login to workspace navigation

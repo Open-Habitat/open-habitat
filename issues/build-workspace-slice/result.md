@@ -1,6 +1,13 @@
 # Read-only login-to-workspace slice — implementation evidence
 
-Product revision: `7779c064aa99713e200fa35a9d75b2a905769d14` (later evidence-only commit changes no product behavior). Status: **testing**, review requested, not approved or closed. This is the first browser-visible slice, not the full Pi/agent MVP.
+Current corrected product revision: `f34463b3c150f7ba3e5ea486852d1eff89e27c4a`. Status: **testing**, review requested, not approved or closed. The initial `7779c064aa99713e200fa35a9d75b2a905769d14` revision was visually rejected by Jari; the original implementation/verification narrative below is retained as historical evidence, not as the current screenshot revision. This is the first browser-visible slice, not the full Pi/agent MVP.
+
+## Visual parity correction after Jari's changes request
+
+The [pre-edit divergence diagnosis](./visual-divergences.md) identified system fallback type, an oversized 51px login heading, left-positioned narrow card and repeated main/rail hierarchy mismatches against the accepted Instrument Sans/JetBrains Mono desktop compositions. `f34463b` bundles OFL fonts locally, centers a 440px login card with 20px title, replaces the global display heading in workspace/state views with a compact type scale, bounds and centers details/uncertainty panels, moves native GitHub uncertainty to the main content, refines rail density/selection and replaces an unsupported disclosure glyph. The same shared production modules remain imported by the app and catalog. No gateway, daemon, contract, authentication, session, UDS, source observation or fixture response semantics were changed; no provider call was added. The fresh six-state AVIF set and source-ground comparison are in [visual-acceptance.md](./visual-acceptance.md).
+
+Focused verification on the corrected tree: `go test ./internal/gateway/... ./internal/daemon/...`, web format/lint/typecheck/unit/component and production host-backed Playwright E2E (12 passed), Axe (2 passed, all six production states plus dark at 200% and catalog light/dark/reduced motion) passed. Browser assertions now cover local font network requests, login centering/card width/type, rail width and selected route. The original VM proof remains unchanged; no live host or machine credentials touched. Full clean gate and validator results follow in the latest verification addendum below.
+
 
 ## Delivered
 
