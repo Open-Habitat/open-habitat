@@ -41,6 +41,9 @@ try:
         p=root/name;p.mkdir();os.chown(p,0,0);p.chmod(0o710)
         for allowed_uid in (gateway_uid,uid):
             subprocess.run(['setfacl','-m',f'u:{allowed_uid}:--x',str(p)],check=True)
+        # Only the two named principals may search this directory. The mask
+        # still supplies the effective 0710 mode; the group entry grants none.
+        subprocess.run(['setfacl','-m','g::---',str(p)],check=True)
     subprocess.run(['systemctl','daemon-reload'],check=True,stdout=subprocess.DEVNULL)
     subprocess.run(['systemctl','start','native-agent-host-broker.socket'],check=True,stdout=subprocess.DEVNULL)
     broker=runtime/'broker.sock';st=broker.stat()
