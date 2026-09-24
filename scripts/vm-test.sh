@@ -117,7 +117,19 @@ try:
 except (ValueError,KeyError,AssertionError,TypeError): sys.exit(1)
 BROKER_CHECK
   then
-    fail boot_proof_failed "Broker guest failed closed (VM exit $vm_status, ${duration}s; check serial proof)" 2
+    # Broker seed contains no credentials; preserve the bounded serial tail so
+    # a failed proof is diagnosable instead of waiting for a blind retry.
+    tail -c 4096 "$run/serial.log" >&2
+    reason=$(python3 - "$proof" <<'REASON'
+import json, re, sys
+try:
+    value = json.loads(sys.argv[1]).get('reason', 'missing proof')
+    print(re.sub('[^A-Za-z0-9 _-]', ' ', str(value))[:220])
+except (ValueError, TypeError):
+    print('missing proof')
+REASON
+)
+    fail boot_proof_failed "Broker guest failed closed (VM exit $vm_status, ${duration}s; check=$reason)" 2
   fi
   if $json; then printf '{"schema_version":1,"data":{"status":"passed","launched":true,"scope":"broker-private-guest","product_commit":"%s","binary_sha256":"%s","image_sha256":"%s","duration_seconds":%d,"guest":%s},"warnings":[]}\n' "$product_commit" "$binary_sha" "$image_sha" "$duration" "$proof"; else echo "Broker guest passed (${duration}s)"; fi
   exit 0
