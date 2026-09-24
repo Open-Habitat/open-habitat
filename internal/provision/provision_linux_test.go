@@ -5,6 +5,7 @@ package provision
 import (
 	"encoding/json"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -45,7 +46,13 @@ func TestProtocolRejectsUntrustedInput(t *testing.T) {
 }
 func fixture(t *testing.T) string {
 	t.Helper()
-	dir, err := os.MkdirTemp(os.Getenv("HOME"), "state-test-")
+	// Keep fixture ancestors private: a world-writable /tmp parent must not
+	// be treated as trusted root state even when the leaf itself is 0700.
+	account, err := user.Current()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir, err := os.MkdirTemp(account.HomeDir, "state-test-")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -11,13 +11,13 @@ trap cleanup EXIT
 export HOME="$tmp/home" GOCACHE="$tmp/go-build" GOMODCACHE="$tmp/go-mod" NPM_CONFIG_CACHE="$tmp/npm" PLAYWRIGHT_BROWSERS_PATH="$repo/.cache/ms-playwright" CI=1
 mkdir -p "$HOME" "$GOCACHE" "$GOMODCACHE" "$NPM_CONFIG_CACHE" "$PLAYWRIGHT_BROWSERS_PATH" "$tmp/bin"
 # Every non-system tool is fetched into disposable storage and checksum/version checked.
-if ! command -v issuectl >/dev/null;then
+# CI requires the pinned issuectl even when a newer machine CLI is present.
+# Never install into a persistent machine path.
   issue_archive="$tmp/issuectl.tar.xz"
   curl -fsSL --retry 3 --retry-all-errors https://github.com/jarimustonen/issuectl/releases/download/v0.18.4/issuectl-x86_64-unknown-linux-musl.tar.xz -o "$issue_archive"
   echo '3bd0a15a389754f52514dda4b5071caaa0d9f692f193d101d79cc5718bfac8c6  '"$issue_archive" | sha256sum -c -
   tar -xJf "$issue_archive" -C "$tmp"
   cp "$tmp/issuectl-x86_64-unknown-linux-musl/issuectl" "$tmp/bin/issuectl"
-fi
 export PATH="$tmp/bin:$PATH"
 python3 -m venv "$tmp/venv"
 "$tmp/venv/bin/pip" install --disable-pip-version-check --no-input -r requirements-ci.txt

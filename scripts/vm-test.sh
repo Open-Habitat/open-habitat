@@ -11,9 +11,9 @@ PY
   else printf 'error: %s\n' "$2" >&2; fi
   exit "$3"
 }
-[[ $# -eq 1 || ( $# -eq 2 && ${2:-} == --json ) ]] || fail invalid_arguments 'Expected self-test|systemd-self-test|two-user-routing [--json]' 1
+[[ $# -eq 1 || ( $# -eq 2 && ${2:-} == --json ) ]] || fail invalid_arguments 'Expected self-test|systemd-self-test|two-user-routing|broker-guest [--json]' 1
 [[ ${2:-} == --json ]] && json=true
-[[ $scenario == self-test || $scenario == systemd-self-test || $scenario == two-user-routing ]] || fail invalid_scenario 'Expected self-test, systemd-self-test or two-user-routing' 1
+[[ $scenario == self-test || $scenario == systemd-self-test || $scenario == two-user-routing || $scenario == broker-guest ]] || fail invalid_scenario 'Expected self-test, systemd-self-test, two-user-routing or broker-guest' 1
 # Treat the recipe as data, never source executable text.
 image_url= image_sha= image_arch=
 while IFS= read -r line || [[ -n $line ]]; do
@@ -77,14 +77,19 @@ echo "$image_sha  $image" | sha256sum -c --status || fail image_checksum_mismatc
 printf 'instance-id: synthetic-systemd-fixture\nlocal-hostname: fixture-vm\n' > "$run/meta-data"
 seed_file=/fixture/cloud-init.yaml
 binary_sha= product_commit=
-if [[ $scenario == two-user-routing ]]; then
+if [[ $scenario == two-user-routing || $scenario == broker-guest ]]; then
   command -v go >/dev/null || fail missing_go 'Go is required to build product fixture' 2
   command -v openssl >/dev/null || fail missing_openssl 'OpenSSL is required for fixture TLS' 2
   product_commit=$(git -C "$repo" rev-parse HEAD)
   (cd "$repo" && CGO_ENABLED=0 go build -trimpath -o "$run/native-agent-host" ./cmd/native-agent-host) || fail product_build_failed 'Could not build product binary' 2
   binary_sha=$(sha256sum "$run/native-agent-host" | cut -d' ' -f1)
-  python3 "$repo/test/vm/product-fixture.py" "$run" "$run/native-agent-host" || fail invalid_product_fixture 'Could not render private product seed' 2
-  seed_file=/run-data/product-cloud-init.yaml
+  if [[ $scenario == broker-guest ]]; then
+    python3 "$repo/test/vm/broker-fixture.py" "$run" "$run/native-agent-host" || fail invalid_product_fixture 'Could not render broker seed' 2
+    seed_file=/run-data/broker-cloud-init.yaml
+  else
+    python3 "$repo/test/vm/product-fixture.py" "$run" "$run/native-agent-host" || fail invalid_product_fixture 'Could not render private product seed' 2
+    seed_file=/run-data/product-cloud-init.yaml
+  fi
   if ! timeout -k 5s 60s podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --tmpfs /tmp:rw,size=64m --mount "type=bind,src=$run,dst=/run-data" "$image_id" genisoimage -quiet -R -V PRODUCT -o /run-data/product.iso /run-data/native-agent-host; then fail product_iso_failed 'Could not seal read-only product ISO' 2; fi
   if ! podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --tmpfs /tmp:rw,size=32m --mount "type=bind,src=$run,dst=/run-data,ro=true" "$image_id" cloud-init schema --config-file "$seed_file" >/dev/null 2>&1; then fail invalid_product_fixture 'Product cloud-init schema invalid' 1; fi
 fi
@@ -102,6 +107,21 @@ set -e
 duration=$(($(date +%s)-start))
 # Require clean guest poweroff and an exact proof; a timeout is always failure.
 proof=$(tr -d '\r' < "$run/serial.log" | grep -a 'VM_PROOF=' | tail -n 1 | sed 's/.*VM_PROOF=//' || :)
+if [[ $scenario == broker-guest ]]; then
+  if [[ $vm_status -ne 0 || -z $proof ]] || ! python3 - "$proof" <<'BROKER_CHECK'
+import json,sys
+try:
+ p=json.loads(sys.argv[1]); assert p['status']=='passed' and p['scope']=='broker-private-guest' and p['pid1']=='systemd'
+ assert p['uids']==[0,21003,21005]
+ assert all(p[k] is True for k in ('wrong_uid_denied','wrong_peer_denied','pending_symlink_denied','head_symlink_denied','restart_drift_denied'))
+except (ValueError,KeyError,AssertionError,TypeError): sys.exit(1)
+BROKER_CHECK
+  then
+    fail boot_proof_failed "Broker guest failed closed (VM exit $vm_status, ${duration}s; check serial proof)" 2
+  fi
+  if $json; then printf '{"schema_version":1,"data":{"status":"passed","launched":true,"scope":"broker-private-guest","product_commit":"%s","binary_sha256":"%s","image_sha256":"%s","duration_seconds":%d,"guest":%s},"warnings":[]}\n' "$product_commit" "$binary_sha" "$image_sha" "$duration" "$proof"; else echo "Broker guest passed (${duration}s)"; fi
+  exit 0
+fi
 if [[ $scenario == two-user-routing ]]; then
   if [[ $vm_status -ne 0 || -z $proof ]] || ! python3 - "$proof" <<'PRODUCT_CHECK'
 import json,sys
