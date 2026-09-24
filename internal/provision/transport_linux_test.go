@@ -1,0 +1,268 @@
+//go:build linux
+
+package provision
+
+import (
+	"context"
+	"encoding/binary"
+	"errors"
+	"io"
+	"net"
+	"os"
+	"path/filepath"
+	"sync/atomic"
+	"syscall"
+	"testing"
+	"time"
+)
+
+func socketFixture(t *testing.T, s Server) (Client, string) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "broker.sock")
+	ln, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0660); err != nil {
+		t.Fatal(err)
+	}
+	file, err := ln.File()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ln.SetUnlinkOnClose(false)
+	ln.Close()
+	t.Cleanup(func() { file.Close() })
+	s.SocketPath = path
+	s.SocketOwnerUID = uint32(os.Getuid())
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- s.Serve(ctx, []*os.File{file}) }()
+	t.Cleanup(func() {
+		cancel()
+		if err := <-done; err != nil {
+			t.Errorf("serve: %v", err)
+		}
+	})
+	return Client{SocketPath: path, SocketOwnerUID: uint32(os.Getuid())}, path
+}
+
+func TestInheritedSocketValidation(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "sock")
+	ln, err := net.ListenUnix("unix", &net.UnixAddr{Name: p, Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	f, err := ln.File()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	for _, tc := range []struct {
+		name  string
+		files []*os.File
+		path  string
+	}{
+		{"none", nil, p}, {"two", []*os.File{f, f}, p}, {"wrong path", []*os.File{f}, p + "x"},
+		{"abstract", []*os.File{f}, "@bad"}, {"directory", []*os.File{f}, "/tmp/../tmp/broker"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if l, e := listener(tc.files, tc.path, uint32(os.Getuid())); e == nil {
+				l.Close()
+				t.Fatal("accepted")
+			}
+		})
+	}
+	regular, err := os.CreateTemp(t.TempDir(), "regular")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer regular.Close()
+	if l, e := listener([]*os.File{regular}, p, uint32(os.Getuid())); e == nil {
+		l.Close()
+		t.Fatal("accepted regular file")
+	}
+	connected, err := net.Dial("unix", p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer connected.Close()
+	cf, err := connected.(*net.UnixConn).File()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cf.Close()
+	if l, e := listener([]*os.File{cf}, p, uint32(os.Getuid())); e == nil {
+		l.Close()
+		t.Fatal("accepted connected socket")
+	}
+	if l, e := listener([]*os.File{f}, p, uint32(os.Getuid()+1)); e == nil {
+		l.Close()
+		t.Fatal("accepted wrong owner")
+	}
+}
+
+func TestPeerAndFailClosedDefault(t *testing.T) {
+	var called atomic.Int32
+	c, _ := socketFixture(t, Server{GatewayUID: uint32(os.Getuid()), Handler: func(Request) Reply { called.Add(1); return Reply{Version: 1, Failure: Denied} }})
+	r := request("authorize", "42", "")
+	got, err := c.Exchange(context.Background(), r)
+	if err != nil || got.Failure != Denied || called.Load() != 1 {
+		t.Fatalf("%+v %v", got, err)
+	}
+	wrong := c
+	wrong.SocketOwnerUID = uint32(os.Getuid() + 1)
+	if _, err = wrong.Exchange(context.Background(), r); err == nil {
+		t.Fatal("accepted incorrect broker peer")
+	}
+	c2, _ := socketFixture(t, Server{GatewayUID: uint32(os.Getuid() + 1), Handler: func(Request) Reply { called.Add(1); return Reply{Version: 1, Failure: Denied} }})
+	if _, err = c2.Exchange(context.Background(), r); err == nil {
+		t.Fatal("accepted incorrect gateway peer")
+	}
+	if called.Load() != 1 {
+		t.Fatal("wrong peer reached handler")
+	}
+	c3, _ := socketFixture(t, Server{GatewayUID: uint32(os.Getuid())})
+	got, err = c3.Exchange(context.Background(), r)
+	if err != nil || got.Failure != StateUnavailable || got.Route != nil {
+		t.Fatalf("default: %+v %v", got, err)
+	}
+}
+
+func TestMalformedFraming(t *testing.T) {
+	var calls atomic.Int32
+	_, path := socketFixture(t, Server{GatewayUID: uint32(os.Getuid()), Handler: func(Request) Reply { calls.Add(1); return Reply{Version: 1, Failure: Denied} }})
+	good, _ := EncodeRequest(request("authorize", "42", ""))
+	cases := []struct {
+		name string
+		data []byte
+	}{
+		{"empty", nil}, {"short header", []byte{0, 0}}, {"zero", []byte{0, 0, 0, 0}},
+		{"oversize", []byte{0, 0, 16, 1}}, {"short body", frame(good[:len(good)-1], uint32(len(good)))},
+		{"trailing byte", append(frame(good, uint32(len(good))), 0)},
+		{"duplicate", append(frame(good, uint32(len(good))), frame(good, uint32(len(good)))...)},
+		{"unknown version", wire(`{"version":2,"operation":"authorize","provider":"github","id":"42"}`)},
+		{"extra field", wire(`{"version":1,"operation":"authorize","provider":"github","id":"42","uid":1}`)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			conn, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: path, Net: "unix"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer conn.Close()
+			conn.SetDeadline(time.Now().Add(time.Second))
+			if len(tc.data) > 0 {
+				if _, err = conn.Write(tc.data); err != nil {
+					t.Fatal(err)
+				}
+			}
+			conn.CloseWrite()
+			var b [1]byte
+			n, err := conn.Read(b[:])
+			if n != 0 || !(errors.Is(err, io.EOF) || errors.Is(err, syscall.ECONNRESET)) {
+				t.Fatalf("unexpected reply: %d %v", n, err)
+			}
+		})
+	}
+	if calls.Load() != 0 {
+		t.Fatal("malformed request reached handler")
+	}
+}
+func wire(s string) []byte { return frame([]byte(s), uint32(len(s))) }
+func frame(b []byte, n uint32) []byte {
+	out := make([]byte, 4+len(b))
+	binary.BigEndian.PutUint32(out, n)
+	copy(out[4:], b)
+	return out
+}
+
+func TestTimeoutCancelReconnectAndBadReply(t *testing.T) {
+	var calls atomic.Int32
+	c, path := socketFixture(t, Server{GatewayUID: uint32(os.Getuid()), Handler: func(Request) Reply { calls.Add(1); return Reply{Version: 1, Failure: Denied} }})
+	conn, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: path, Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn.Write([]byte{0, 0})
+	conn.CloseWrite()
+	conn.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err = c.Exchange(ctx, request("authorize", "42", "")); err == nil {
+		t.Fatal("cancel accepted")
+	}
+	ctx, stop := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer stop()
+	if _, err = c.Exchange(ctx, request("authorize", "42", "")); err == nil {
+		t.Fatal("expired deadline accepted")
+	}
+	if r, err := c.Exchange(context.Background(), request("authorize", "42", "")); err != nil || r.Failure != Denied {
+		t.Fatalf("reconnect: %+v %v", r, err)
+	}
+	// Cancellation of a live exchange interrupts the blocked response read.
+	blocking, _ := socketFixture(t, Server{GatewayUID: uint32(os.Getuid()), Handler: func(Request) Reply {
+		time.Sleep(300 * time.Millisecond)
+		return Reply{Version: 1, Failure: Denied}
+	}})
+	live, abort := context.WithCancel(context.Background())
+	returned := make(chan error, 1)
+	go func() { _, e := blocking.Exchange(live, request("authorize", "42", "")); returned <- e }()
+	time.Sleep(50 * time.Millisecond)
+	abort()
+	select {
+	case e := <-returned:
+		if e == nil {
+			t.Fatal("cancelled exchange succeeded")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("cancellation did not interrupt exchange")
+	}
+	// A stalled request times out server-side, without calling the handler.
+	stalled, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: path, Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stalled.Write([]byte{0})
+	stalled.SetReadDeadline(time.Now().Add(3 * time.Second))
+	var b [1]byte
+	n, err := stalled.Read(b[:])
+	stalled.Close()
+	if n != 0 || err != io.EOF {
+		t.Fatalf("stalled: %d %v", n, err)
+	}
+	if calls.Load() != 1 {
+		t.Fatal("stalled request reached handler")
+	}
+	// A client cannot accept extra bytes even if the reply itself was valid.
+	reply, _ := EncodeReply(Reply{Version: 1, Failure: Denied})
+	if _, err := readFrameFromBytes(append(frame(reply, uint32(len(reply))), 0)); err == nil {
+		t.Fatal("extra reply accepted")
+	}
+}
+func readFrameFromBytes(b []byte) ([]byte, error) { return readFrame(&byteReader{b: b}) }
+
+type byteReader struct{ b []byte }
+
+func (r *byteReader) Read(p []byte) (int, error) {
+	if len(r.b) == 0 {
+		return 0, io.EOF
+	}
+	n := copy(p, r.b)
+	r.b = r.b[n:]
+	return n, nil
+}
+
+func TestCorruptStateNeverBecomesDefaultRoute(t *testing.T) {
+	d := fixture(t)
+	put(t, d, "allowlist.json", `{"version":1,"epoch":0,"ids":[]}`)
+	if got := result(t, d, request("authorize", "42", "")); got.Failure != StateUnavailable {
+		t.Fatal(got)
+	}
+	c, _ := socketFixture(t, Server{GatewayUID: uint32(os.Getuid())})
+	got, err := c.Exchange(context.Background(), request("authorize", "42", ""))
+	if err != nil || got.Route != nil || got.Failure != StateUnavailable {
+		t.Fatalf("%+v %v", got, err)
+	}
+}
