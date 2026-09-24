@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -126,6 +127,7 @@ type Evidence interface {
 	Keyring(context.Context, string) bool
 }
 type Adapter struct {
+	mu       sync.Mutex // one daemon UID: serialize observation, login and disconnect
 	home     string
 	subject  string
 	run      Runner
@@ -299,13 +301,21 @@ func (a *Adapter) cleanup(ctx context.Context, login string) bool {
 	return e != nil
 }
 func (a *Adapter) Install(ctx context.Context, token string) (Result, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	result := Result{Phase: Partial, Storage: Unknown}
 	if token == "" || len(token) > 4096 {
 		return result, denied
 	}
-	// Always reobserve identity, helper, protocol and storage, including retries.
-	if _, storage, ok := a.observe(ctx); ok {
-		return Result{Phase: Reobserved, Storage: storage}, nil
+	// A pre-existing gh login may belong to someone else or be partial.
+	// Never overwrite or clean up credentials we did not just install.
+	if _, err := a.gh(ctx, false, nil, "auth", "status", "--hostname", "github.com"); err == nil {
+		if _, storage, ok := a.observe(ctx); ok {
+			return Result{Phase: Reobserved, Storage: storage}, nil
+		}
+		return result, denied
+	} else if ctx.Err() != nil {
+		return result, denied
 	}
 	_, err := a.gh(ctx, false, strings.NewReader(token), "auth", "login", "--hostname", "github.com", "--with-token", "--git-protocol", "https")
 	token = "" // drop reference before subsequent commands
@@ -327,6 +337,8 @@ func (a *Adapter) Install(ctx context.Context, token string) (Result, error) {
 // fresh authentication AND explicit confirmation; local logout never revokes
 // the GitHub OAuth grant.
 func (a *Adapter) Disconnect(ctx context.Context, fresh, confirmed bool) (Result, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	r := Result{Phase: Partial, Storage: Unknown, HelperInert: false, RevokesOAuthToken: false}
 	if !fresh || !confirmed {
 		return r, denied

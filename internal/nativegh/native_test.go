@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -123,6 +124,73 @@ func TestInstallReobserveAndDisconnect(t *testing.T) {
 		})
 	}
 }
+func TestConcurrentSameIDSerializes(t *testing.T) {
+	a, f, _ := fixture(t, true)
+	var wg sync.WaitGroup
+	results := make(chan Result, 16)
+	for range 16 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			r, err := a.Install(context.Background(), f.token)
+			if err != nil {
+				t.Errorf("install: %v", err)
+			}
+			results <- r
+		}()
+	}
+	wg.Wait()
+	close(results)
+	installed := 0
+	for r := range results {
+		if r.Phase == Installed {
+			installed++
+		} else if r.Phase != Reobserved {
+			t.Errorf("phase: %s", r.Phase)
+		}
+	}
+	if installed != 1 {
+		t.Fatalf("installed %d times", installed)
+	}
+	logins := 0
+	for _, cmd := range f.log {
+		if strings.HasPrefix(cmd, "gh auth login ") {
+			logins++
+		}
+	}
+	if logins != 1 {
+		t.Fatalf("gh login %d times", logins)
+	}
+}
+
+func TestExistingWrongOrPartialAuthIsNeverOverwritten(t *testing.T) {
+	for _, tc := range []string{"wrong-id", "partial-helper", "api-unavailable"} {
+		t.Run(tc, func(t *testing.T) {
+			a, f, _ := fixture(t, true)
+			f.logged = true
+			switch tc {
+			case "wrong-id":
+				f.id = "43"
+			case "partial-helper":
+				f.fail = "git config --global --get credential.https://github.com.helper"
+			case "api-unavailable":
+				f.fail = "gh api user --jq {id: .id, login: .login}"
+			}
+			if _, err := a.Install(context.Background(), f.token); err == nil {
+				t.Fatal("accepted existing invalid login")
+			}
+			if !f.logged {
+				t.Fatal("removed existing account")
+			}
+			for _, cmd := range f.log {
+				if strings.Contains(cmd, "auth login") || strings.Contains(cmd, "auth logout") {
+					t.Fatal("mutated existing account", f.log)
+				}
+			}
+		})
+	}
+}
+
 func TestFailures(t *testing.T) {
 	for _, failed := range []string{"gh auth login --hostname github.com --with-token --git-protocol https", "gh auth setup-git --hostname github.com", "gh auth status --hostname github.com", "gh api user --jq {id: .id, login: .login}", "gh config get git_protocol --host github.com", "git config --global --get credential.https://github.com.helper", "git credential fill"} {
 		t.Run(failed, func(t *testing.T) {

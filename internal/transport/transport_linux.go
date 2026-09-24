@@ -57,6 +57,9 @@ type Config struct {
 	Socket     string `json:"socket"`
 	Provider   string `json:"provider"`
 	Subject    string `json:"subject"`
+	// BindingFile is the root-owned per-UID numeric binding produced by the broker.
+	// Legacy static handoffs without this field keep their existing contract.
+	BindingFile string `json:"binding_file,omitempty"`
 }
 
 func socketOK(path string) bool {
@@ -70,11 +73,63 @@ func validSubject(s string) bool {
 	return e == nil && n > 0 && strconv.FormatUint(n, 10) == s && len(s) <= maxField
 }
 func validate(c Config, testPath bool) error {
+	if c.BindingFile != "" && c.BindingFile != "/etc/native-agent-host/daemon-"+c.Username+".json" {
+		return denied
+	}
 	if c.GatewayUID <= 0 || c.UID <= 0 || c.UID != os.Geteuid() || c.Provider != "github" || !validSubject(c.Subject) || c.Username == "" || len(c.Username) > maxField || c.Home == "" || !filepath.IsAbs(c.Home) || filepath.Clean(c.Home) != c.Home || (socketOK(c.Socket) && c.Socket != "/run/native-agent-host/users/"+c.Username+"/daemon.sock") || (!socketOK(c.Socket) && !(testPath && filepath.IsAbs(c.Socket))) {
 		return denied
 	}
 	u, e := user.LookupId(strconv.Itoa(c.UID))
 	if e != nil || u.Username != c.Username || u.HomeDir != c.Home {
+		return denied
+	}
+	return verifyBinding(c)
+}
+
+// verifyBinding independently rereads the broker-created root binding before
+// accepting each handoff, not a subject or UID asserted by the gateway.
+// It is deliberately unavailable for unprivileged replacement or symlinks.
+func verifyBinding(c Config) error {
+	if c.BindingFile == "" {
+		return nil
+	}
+	etc, err := unix.Open("/etc", unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return denied
+	}
+	defer unix.Close(etc)
+	var st unix.Stat_t
+	if unix.Fstat(etc, &st) != nil || st.Uid != 0 || st.Mode&unix.S_IFMT != unix.S_IFDIR || st.Mode&0022 != 0 {
+		return denied
+	}
+	dir, err := unix.Openat(etc, "native-agent-host", unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return denied
+	}
+	defer unix.Close(dir)
+	if unix.Fstat(dir, &st) != nil || st.Uid != 0 || st.Mode&unix.S_IFMT != unix.S_IFDIR || st.Mode&0022 != 0 {
+		return denied
+	}
+	fd, err := unix.Openat(dir, "daemon-"+c.Username+".json", unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return denied
+	}
+	f := os.NewFile(uintptr(fd), "binding")
+	defer f.Close()
+	if unix.Fstat(fd, &st) != nil || st.Uid != 0 || int(st.Gid) != c.UID || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&0777 != 0640 || st.Nlink != 1 || st.Size < 1 || st.Size > 4096 {
+		return denied
+	}
+	b := make([]byte, st.Size)
+	if n, err := io.ReadFull(f, b); err != nil || n != len(b) {
+		return denied
+	}
+	var v struct {
+		Component string `json:"component"`
+		Handoff   Config `json:"handoff"`
+	}
+	d := json.NewDecoder(bytes.NewReader(b))
+	d.DisallowUnknownFields()
+	if d.Decode(&v) != nil || d.Decode(new(any)) != io.EOF || v.Component != "daemon" || v.Handoff != c {
 		return denied
 	}
 	return nil

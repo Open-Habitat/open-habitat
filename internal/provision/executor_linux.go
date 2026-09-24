@@ -281,7 +281,7 @@ func (e *LinuxHostExecutor) config(i ExecutorIdentity) ([]byte, error) {
 	return json.Marshal(struct {
 		Component string           `json:"component"`
 		Handoff   transport.Config `json:"handoff"`
-	}{"daemon", transport.Config{GatewayUID: int(e.GatewayUID), UID: int(i.uid), Username: i.username, Home: filepath.Join(homeBase, i.username), Socket: socketFor(i.username), Provider: i.provider, Subject: i.id}})
+	}{"daemon", transport.Config{GatewayUID: int(e.GatewayUID), UID: int(i.uid), Username: i.username, Home: filepath.Join(homeBase, i.username), Socket: socketFor(i.username), Provider: i.provider, Subject: i.id, BindingFile: filepath.Join(configBase, "daemon-"+i.username+".json")}})
 }
 func (e *LinuxHostExecutor) Step(ctx context.Context, phase string, i ExecutorIdentity) error {
 	if ctx == nil || ctx.Err() != nil || e == nil || !username(i.username) || !numericID(i.id) || i.provider != "github" || i.uid < 1000 || i.uid > 60000 || e.GatewayUID == 0 || e.GatewayGID == 0 || i.uid == e.GatewayUID || i.uid == e.GatewayGID || os.Geteuid() != 0 {

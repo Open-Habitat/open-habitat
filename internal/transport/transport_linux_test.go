@@ -90,6 +90,25 @@ func send(t *testing.T, m gateway.Identity, b []byte) int {
 	t.Helper()
 	return raw(t, m.Socket, "POST", Path, fmt.Sprintf("Content-Type: application/json\r\nContent-Length: %d\r\n", len(b)), b)
 }
+func TestJITBindingFailsClosedWithoutRootOwnedConfig(t *testing.T) {
+	u, err := user.Current()
+	if err != nil {
+		t.Fatal(err)
+	}
+	uid, err := strconv.Atoi(u.Uid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := Config{GatewayUID: uid, UID: os.Geteuid(), Username: u.Username, Home: u.HomeDir, Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: "42", BindingFile: "/etc/native-agent-host/daemon-" + u.Username + ".json"}
+	if validate(cfg, false) == nil {
+		t.Fatal("accepted absent or untrusted binding")
+	}
+	cfg.BindingFile = "/tmp/daemon-" + u.Username + ".json"
+	if validate(cfg, false) == nil {
+		t.Fatal("accepted untrusted binding path")
+	}
+}
+
 func TestHandoffAndRejections(t *testing.T) {
 	_, _, m, calls := fixture(t)
 	sink := Sink{testPath: true}
