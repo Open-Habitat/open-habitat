@@ -6,7 +6,14 @@ ListenStream=/run/native-agent-host/users/%i/daemon.sock
 SocketMode=0660
 SocketUser=%i
 SocketGroup=native-agent-host-gateway
-DirectoryMode=0711
+# Fallback only: 0710 removes world traversal but does not grant a dynamic
+# daemon UID access to its per-user directory. Before enabling/starting any
+# instance (including after reboot), a reviewed root broker/operator must
+# pre-create and verify the root-owned private parent and per-UID directory,
+# with a named search ACL for that daemon UID and gateway access. Fail closed
+# if the directory/ACL preflight has not completed; never rely on this fallback
+# as an isolation proof.
+DirectoryMode=0710
 FileDescriptorName=daemon
 RemoveOnStop=yes
 

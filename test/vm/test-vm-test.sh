@@ -75,8 +75,9 @@ for name,uid in [('agent-a',21001),('agent-b',21002)]:
     assert f'ExecStart=/usr/bin/python3 /usr/local/sbin/product-daemon-launch daemon exec --config /etc/native-agent-host/daemon-{name}.json\n' in service
     cfg=json.loads(base64.b64decode(files[f'/etc/native-agent-host/daemon-{name}.json']['content']))
     assert (cfg['handoff']['uid'],cfg['handoff']['username'],cfg['handoff']['home'],cfg['handoff']['subject'])==(uid,name,'/home/'+name,str(31001+uid-21001))
+# The separately generated VM fixture above is not the shipped package unit.
 unit=open(sys.argv[2]+'/systemd/native-agent-host-daemon@.socket').read()
-assert all(x in unit for x in ['SocketMode=0660\n','DirectoryMode=0711\n','FileDescriptorName=daemon\n','SocketGroup=native-agent-host-gateway\n'])
+assert all(x in unit for x in ['SocketMode=0660\n','DirectoryMode=0710\n','FileDescriptorName=daemon\n','SocketGroup=native-agent-host-gateway\n'])
 PY
 [[ ! -e "$tmp/product/tls.key" && ! -e "$tmp/product/tls.crt" ]]
 grep -Fq "'scope':'product-two-user-routing'" "$repo/test/vm/product-proof.py"

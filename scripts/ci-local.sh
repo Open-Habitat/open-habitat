@@ -63,6 +63,7 @@ rm -rf dist;mkdir -p dist/one dist/two
 ./scripts/package-release.sh --version 0.0.0-test --target linux-amd64 --web-dir web/dist --output dist/two
 cmp dist/one/native-agent-host-0.0.0-test-linux-amd64.tar.gz dist/two/native-agent-host-0.0.0-test-linux-amd64.tar.gz
 ./scripts/verify-release.sh --archive dist/one/native-agent-host-0.0.0-test-linux-amd64.tar.gz --json
+bash scripts/test-package-socket.sh dist/one/native-agent-host-0.0.0-test-linux-amd64.tar.gz
 mkdir -p "$tmp/relocated";cp dist/one/native-agent-host-0.0.0-test-linux-amd64.tar.gz* "$tmp/relocated/"
 ./scripts/verify-release.sh --archive "$tmp/relocated/native-agent-host-0.0.0-test-linux-amd64.tar.gz" --json
 printf 'tampered' >> "$tmp/relocated/native-agent-host-0.0.0-test-linux-amd64.tar.gz"
