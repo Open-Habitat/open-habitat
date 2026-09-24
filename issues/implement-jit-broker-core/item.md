@@ -2,7 +2,7 @@
 created: 2026-09-24
 updated: 2026-09-24
 type: feature
-status: open
+status: in-progress
 priority: high
 lane: auth-jit
 lane_seq: 20
