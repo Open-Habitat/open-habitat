@@ -46,19 +46,8 @@ func (a *Auth) snapshot(w http.ResponseWriter, r *http.Request) {
 		safe(w, 401, "authentication_required")
 		return
 	}
-	// Rebind to configured mapping, not a cookie, header, username, or path.
-	var target Identity
-	count := 0
-	for _, m := range a.cfg.Identities {
-		if m.Provider == s.identity.Provider && m.Subject == s.identity.Subject && m == s.identity {
-			target = m
-			count++
-		}
-	}
-	if count != 1 {
-		safe(w, 403, "identity_mapping_denied")
-		return
-	}
+	// authenticated has revalidated the immutable broker binding.
+	target := s.identity
 	dial := a.snapshotDial
 	if dial == nil {
 		if udssecure.Mapped(target.Socket, target.UID) != nil {

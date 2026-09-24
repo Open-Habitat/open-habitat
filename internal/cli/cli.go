@@ -9,6 +9,7 @@ import (
 	"github.com/maintainer/native-agent-host/internal/core"
 	"github.com/maintainer/native-agent-host/internal/daemon"
 	"github.com/maintainer/native-agent-host/internal/gateway"
+	"github.com/maintainer/native-agent-host/internal/provision"
 	"github.com/maintainer/native-agent-host/internal/transport"
 	"io"
 	"net"
@@ -231,7 +232,7 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 	var h http.Handler
 	if c == core.Gateway {
 		if cfg.OAuth != nil {
-			a, e := gateway.NewAuth(*cfg.OAuth, gateway.AuthOptions{Provider: gateway.GitHubProvider{ClientID: cfg.OAuth.ClientID, ClientSecret: cfg.OAuth.ClientSecret, CallbackURL: cfg.OAuth.CallbackURL}, Sink: transport.NewSink()})
+			a, e := gateway.NewAuth(*cfg.OAuth, gateway.AuthOptions{Provider: gateway.GitHubProvider{ClientID: cfg.OAuth.ClientID, ClientSecret: cfg.OAuth.ClientSecret, CallbackURL: cfg.OAuth.CallbackURL}, Sink: transport.NewSink(), Broker: gatewayBroker{}})
 			if e != nil {
 				return nil, system("invalid_auth_config", "invalid gateway authentication configuration")
 			}
@@ -464,4 +465,14 @@ func skillInstall(args []string) (any, error) {
 }
 func helpOutput() any {
 	return envelope(map[string]any{"name": "native-agent-host", "subcommands": []string{"version", "config path|show", "doctor", "gateway exec", "daemon exec", "broker exec", "admin readiness show", "maintenance enter|leave", "skill list|print|install"}, "global_flags": []string{"--json", "--verbose", "--version"}})
+}
+
+type gatewayBroker struct{}
+
+func (gatewayBroker) Exchange(ctx context.Context, r gateway.BrokerRequest) (gateway.BrokerReply, error) {
+	reply, err := (provision.Client{SocketPath: "/run/native-agent-host/broker.sock", SocketOwnerUID: 0}).Exchange(ctx, provision.Request{Version: 1, Operation: r.Operation, Provider: "github", ID: r.ID, Candidate: r.Candidate})
+	if err != nil || reply.Failure != "" || reply.Route == nil {
+		return gateway.BrokerReply{}, provision.ErrTransport
+	}
+	return gateway.BrokerReply{Route: &gateway.BrokerRoute{UID: reply.Route.UID, Username: reply.Route.Username, Socket: reply.Route.Socket}, Generation: reply.Generation, Epoch: reply.Epoch}, nil
 }

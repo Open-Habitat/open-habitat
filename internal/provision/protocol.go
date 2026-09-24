@@ -61,6 +61,21 @@ func username(s string) bool {
 	}
 	return true
 }
+
+// A GitHub handle is candidate data, not a Unix name. Permit the provider's
+// bounded ASCII syntax; the writer decides whether it is a safe local name or
+// requires an operator-approved alternate. Existing bindings ignore renames.
+func githubLogin(s string) bool {
+	if len(s) < 1 || len(s) > 39 {
+		return false
+	}
+	for _, c := range s {
+		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-') {
+			return false
+		}
+	}
+	return true
+}
 func socketFor(name string) string { return "/run/native-agent-host/users/" + name + "/daemon.sock" }
 
 // object rejects duplicate and unknown fields before any typed decode.
@@ -133,7 +148,7 @@ func ParseRequest(b []byte) (Request, error) {
 	if r.Operation == "ensure" && (!candidatePresent || string(raw["candidate"]) == "null") || r.Operation == "authorize" && candidatePresent {
 		return Request{}, ErrInvalid
 	}
-	if r.Version != 1 || r.Provider != "github" || !numericID(r.ID) || (r.Operation != "ensure" && r.Operation != "authorize") || (r.Operation == "ensure" && !username(r.Candidate)) {
+	if r.Version != 1 || r.Provider != "github" || !numericID(r.ID) || (r.Operation != "ensure" && r.Operation != "authorize") || (r.Operation == "ensure" && !githubLogin(r.Candidate)) {
 		return Request{}, ErrInvalid
 	}
 	return r, nil

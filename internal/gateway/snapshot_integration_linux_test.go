@@ -17,6 +17,7 @@ import (
 
 	"github.com/maintainer/native-agent-host/internal/daemon"
 	"github.com/maintainer/native-agent-host/internal/gateway"
+
 	"github.com/maintainer/native-agent-host/internal/transport"
 )
 
@@ -25,8 +26,12 @@ type routeProvider struct{}
 func (routeProvider) AuthorizationURL(state, _ string) string {
 	return "https://provider.invalid/?state=" + url.QueryEscape(state)
 }
-func (routeProvider) Exchange(_ context.Context, code, _ string) (string, string, error) {
-	return "fixture-token", code, nil
+func (routeProvider) Exchange(_ context.Context, code, _ string) (string, string, string, error) {
+	login := "alice"
+	if code == "43" {
+		login = "bob"
+	}
+	return "fixture-token", code, login, nil
 }
 
 type routeSink struct{}
@@ -82,7 +87,7 @@ func TestAuthenticatedGatewayToTwoDaemonSnapshotHandlers(t *testing.T) {
 		go srv.Serve(ln)
 		t.Cleanup(func() { _ = srv.Close(); _ = ln.Close() })
 	}
-	a, e := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: "https://host.test", CallbackURL: "https://host.test/auth/github/callback", Identities: identities}, gateway.AuthOptions{Provider: routeProvider{}, Sink: routeSink{}, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
+	a, e := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: "https://host.test", CallbackURL: "https://host.test/auth/github/callback"}, gateway.AuthOptions{Provider: routeProvider{}, Sink: routeSink{}, Broker: routeBroker{identities}, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, "unix", paths[p])
 	}, SnapshotPeerUID: func(c *net.UnixConn) int { return peers[c.RemoteAddr().String()] }})
 	if e != nil {
@@ -130,4 +135,15 @@ func TestAuthenticatedGatewayToTwoDaemonSnapshotHandlers(t *testing.T) {
 	if w := send("/api/v1/snapshot", nil); w.Code != 401 {
 		t.Fatal(w.Code)
 	}
+}
+
+type routeBroker struct{ identities []gateway.Identity }
+
+func (b routeBroker) Exchange(_ context.Context, r gateway.BrokerRequest) (gateway.BrokerReply, error) {
+	for _, m := range b.identities {
+		if m.Subject == r.ID {
+			return gateway.BrokerReply{Route: &gateway.BrokerRoute{UID: uint32(m.UID), Username: m.Username, Socket: m.Socket}, Epoch: 1, Generation: 1}, nil
+		}
+	}
+	return gateway.BrokerReply{}, nil
 }

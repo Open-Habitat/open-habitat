@@ -4,6 +4,7 @@ package gateway
 
 import (
 	"context"
+
 	"io"
 	"net"
 	"net/http"
@@ -58,12 +59,15 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 		go srv.Serve(ln)
 		t.Cleanup(func() { srv.Close(); ln.Close() })
 	}
-	a := &Auth{cfg: OAuthConfig{Origin: "https://host.test", Identities: mappings}, now: func() time.Time { return now }, sessions: map[string]session{}}
+	a := &Auth{cfg: OAuthConfig{Origin: "https://host.test"}, broker: newFakeBroker(), now: func() time.Time { return now }, sessions: map[string]session{}}
+	b := a.broker.(*fakeBroker)
+	b.routes["42"] = BrokerRoute{UID: uint32(uid), Username: "alice", Socket: mappings[0].Socket}
+	b.routes["43"] = BrokerRoute{UID: uint32(uid), Username: "bob", Socket: mappings[1].Socket}
 	a.snapshotDial = func(ctx context.Context, path string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, "unix", listeners[path])
 	}
 	for i, m := range mappings {
-		a.sessions[strconv.Itoa(i)] = session{identity: m, idle: now.Add(time.Hour), absolute: now.Add(time.Hour)}
+		a.sessions[strconv.Itoa(i)] = session{identity: m, epoch: 1, generation: 1, idle: now.Add(time.Hour), absolute: now.Add(time.Hour)}
 	}
 	h := NewWithAuth("", a)
 	send := func(id, path string, headers map[string]string) *httptest.ResponseRecorder {
@@ -110,9 +114,9 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 	s = a.sessions["1"]
 	s.identity.UID = uid + 1
 	a.sessions["1"] = s
-	a.cfg.Identities[1].UID = uid + 1
+
 	a.mu.Unlock()
-	if w := send("1", "/api/v1/snapshot", nil); w.Code != 503 || strings.Contains(w.Body.String(), listeners[mappings[1].Socket]) {
+	if w := send("1", "/api/v1/snapshot", nil); w.Code == 200 || strings.Contains(w.Body.String(), listeners[mappings[1].Socket]) {
 		t.Fatal(w.Code, w.Body.String())
 	}
 

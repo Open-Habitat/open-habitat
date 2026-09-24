@@ -6,31 +6,33 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
 
 type fakeProvider struct {
-	calls          int
-	code, verifier string
-	token, id      string
-	err            error
-	authorization  string
+	calls            int
+	code, verifier   string
+	token, id, login string
+	err              error
+	authorization    string
 }
 
 func (f *fakeProvider) AuthorizationURL(state, challenge string) string {
 	f.authorization = "https://github.com/login/oauth/authorize?" + url.Values{"state": {state}, "code_challenge": {challenge}, "code_challenge_method": {"S256"}}.Encode()
 	return f.authorization
 }
-func (f *fakeProvider) Exchange(_ context.Context, code, verifier string) (string, string, error) {
+func (f *fakeProvider) Exchange(_ context.Context, code, verifier string) (string, string, string, error) {
 	f.calls++
 	f.code = code
 	f.verifier = verifier
-	return f.token, f.id, f.err
+	return f.token, f.id, f.login, f.err
 }
 
 type fakeSink struct {
@@ -50,9 +52,9 @@ func (f *fakeSink) Deliver(_ context.Context, m Identity, id, token string) erro
 func fixture(t *testing.T) (http.Handler, *Auth, *fakeProvider, *fakeSink, *time.Time) {
 	t.Helper()
 	now := time.Date(2026, 9, 23, 0, 0, 0, 0, time.UTC)
-	p := &fakeProvider{token: strings.Repeat("Z", 64), id: "42"}
+	p := &fakeProvider{token: strings.Repeat("Z", 64), id: "42", login: "alice"}
 	s := &fakeSink{}
-	a, e := NewAuth(OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: "https://host.test", CallbackURL: "https://host.test/auth/github/callback", Identities: []Identity{{"github", "42", 1001, "alice", "/run/native-agent-host/users/alice/daemon.sock"}, {"github", "43", 1002, "bob", "/run/native-agent-host/users/bob/daemon.sock"}}}, AuthOptions{Provider: p, Sink: s, Now: func() time.Time { return now }})
+	a, e := NewAuth(OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: "https://host.test", CallbackURL: "https://host.test/auth/github/callback"}, AuthOptions{Provider: p, Sink: s, Broker: newFakeBroker(), Now: func() time.Time { return now }})
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -225,4 +227,31 @@ func extractCSRF(t *testing.T, body string) string {
 		t.Fatal("no csrf")
 	}
 	return v.CSRF
+}
+
+type fakeBroker struct {
+	mu                sync.Mutex
+	routes            map[string]BrokerRoute
+	epoch, generation uint64
+	fail              bool
+	hook              func(BrokerRequest)
+}
+
+func newFakeBroker() *fakeBroker {
+	return &fakeBroker{routes: map[string]BrokerRoute{"42": {UID: 1001, Username: "alice", Socket: "/run/native-agent-host/users/alice/daemon.sock"}, "43": {UID: 1002, Username: "bob", Socket: "/run/native-agent-host/users/bob/daemon.sock"}}, epoch: 1, generation: 1}
+}
+func (b *fakeBroker) Exchange(_ context.Context, r BrokerRequest) (BrokerReply, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.hook != nil {
+		b.hook(r)
+	}
+	if b.fail {
+		return BrokerReply{}, errors.New("broker down")
+	}
+	route, ok := b.routes[r.ID]
+	if !ok {
+		return BrokerReply{}, nil
+	}
+	return BrokerReply{Route: &route, Epoch: b.epoch, Generation: b.generation}, nil
 }

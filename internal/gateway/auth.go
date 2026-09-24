@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
 	"time"
 )
 
@@ -39,7 +40,7 @@ type OAuthConfig struct {
 // Token is transient: implementations must not log request/response bodies.
 type Provider interface {
 	AuthorizationURL(state, challenge string) string
-	Exchange(context.Context, string, string) (token string, numericID string, err error)
+	Exchange(context.Context, string, string) (token string, numericID string, login string, err error)
 }
 
 // TokenSink consumes a token in one attempt; a failure is terminal for this login.
@@ -47,7 +48,20 @@ type Provider interface {
 type TokenSink interface {
 	Deliver(context.Context, Identity, string, string) error
 }
+type BrokerRequest struct{ Operation, ID, Candidate string }
+type BrokerRoute struct {
+	UID              uint32
+	Username, Socket string
+}
+type BrokerReply struct {
+	Route             *BrokerRoute
+	Generation, Epoch uint64
+}
+type Broker interface {
+	Exchange(context.Context, BrokerRequest) (BrokerReply, error)
+}
 type AuthOptions struct {
+	Broker          Broker
 	Provider        Provider
 	Sink            TokenSink
 	Now             func() time.Time
@@ -60,14 +74,16 @@ type pending struct {
 	until                       time.Time
 }
 type session struct {
-	identity       Identity
-	csrf           string
-	idle, absolute time.Time
+	identity          Identity
+	epoch, generation uint64
+	csrf              string
+	idle, absolute    time.Time
 }
 type Auth struct {
 	cfg             OAuthConfig
 	provider        Provider
 	sink            TokenSink
+	broker          Broker
 	now             func() time.Time
 	random          io.Reader
 	mu              sync.Mutex
@@ -97,24 +113,11 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	if cfg.ClientID == "" || cfg.ClientSecret == "" || opts.Provider == nil || opts.Sink == nil {
 		return nil, errors.New("auth dependencies missing")
 	}
-	keys, targets, users, sockets := map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]bool{}
-	if len(cfg.Identities) == 0 {
-		return nil, errors.New("no identity mappings")
+	if len(cfg.Identities) != 0 {
+		return nil, errors.New("fixed identity mappings are not supported")
 	}
-	for _, m := range cfg.Identities {
-		id, e := strconv.ParseUint(m.Subject, 10, 64)
-		if m.Provider != "github" || e != nil || id == 0 || strconv.FormatUint(id, 10) != m.Subject || m.UID <= 0 || m.Username == "" || strings.ContainsAny(m.Username, "/\\ \t\n") || m.Socket != "/run/native-agent-host/users/"+m.Username+"/daemon.sock" || len(m.Socket) >= 108 {
-			return nil, errors.New("invalid identity mapping")
-		}
-		key := m.Provider + ":" + m.Subject
-		target := strconv.Itoa(m.UID)
-		if keys[key] || targets[target] || users[m.Username] || sockets[m.Socket] {
-			return nil, errors.New("duplicate identity mapping")
-		}
-		keys[key] = true
-		targets[target] = true
-		users[m.Username] = true
-		sockets[m.Socket] = true
+	if opts.Broker == nil {
+		return nil, errors.New("broker dependency missing")
 	}
 	if opts.Now == nil {
 		opts.Now = time.Now
@@ -122,7 +125,7 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	if opts.Random == nil {
 		opts.Random = rand.Reader
 	}
-	return &Auth{cfg: cfg, provider: opts.Provider, sink: opts.Sink, now: opts.Now, random: opts.Random, pending: map[string]pending{}, sessions: map[string]session{}, admission: map[string]admission{}, snapshotDial: opts.SnapshotDial, snapshotPeerUID: opts.SnapshotPeerUID}, nil
+	return &Auth{cfg: cfg, provider: opts.Provider, sink: opts.Sink, broker: opts.Broker, now: opts.Now, random: opts.Random, pending: map[string]pending{}, sessions: map[string]session{}, admission: map[string]admission{}, snapshotDial: opts.SnapshotDial, snapshotPeerUID: opts.SnapshotPeerUID}, nil
 }
 func (a *Auth) secret() (string, error) {
 	b := make([]byte, 32)
@@ -283,29 +286,23 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		a.callbackFailure(w, r, 403, "authentication_required")
 		return
 	}
-	token, id, e := a.provider.Exchange(r.Context(), r.URL.Query().Get("code"), p.verifier)
+	token, id, login, e := a.provider.Exchange(r.Context(), r.URL.Query().Get("code"), p.verifier)
 	if e != nil || token == "" {
 		a.callbackFailure(w, r, 403, "authentication_required")
 		return
 	}
 	n, e := strconv.ParseUint(id, 10, 64)
-	if e != nil || n == 0 || strconv.FormatUint(n, 10) != id {
+	if e != nil || n == 0 || strconv.FormatUint(n, 10) != id || login == "" {
 		a.callbackFailure(w, r, 403, "identity_mapping_denied")
 		return
 	}
-	var target Identity
-	count := 0
-	for _, m := range a.cfg.Identities {
-		if m.Provider == "github" && m.Subject == id {
-			target = m
-			count++
-		}
-	}
-	if count != 1 {
+	ensured, err := a.broker.Exchange(r.Context(), BrokerRequest{Operation: "ensure", ID: id, Candidate: login})
+	target, valid := brokerIdentity(id, ensured)
+	if err != nil || !valid {
 		a.callbackFailure(w, r, 403, "identity_mapping_denied")
 		return
 	}
-	// Never store token; do not retry or expose sink/provider errors.
+	// The token is handed off exactly once. A lost acknowledgement is terminal.
 	if a.sink.Deliver(r.Context(), target, id, token) != nil {
 		a.callbackFailure(w, r, 503, "native_adapter_error")
 		return
@@ -320,6 +317,14 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		a.callbackFailure(w, r, 503, "authentication_required")
 		return
 	}
+	// Recheck after handoff. Epoch and immutable binding must still match the
+	// ensure response; no session is issued based on stale authorization.
+	checked, err := a.broker.Exchange(r.Context(), BrokerRequest{Operation: "authorize", ID: id})
+	rebound, valid := brokerIdentity(id, checked)
+	if err != nil || !valid || checked.Epoch != ensured.Epoch || checked.Generation < ensured.Generation || rebound != target {
+		a.callbackFailure(w, r, 403, "identity_mapping_denied")
+		return
+	}
 	a.mu.Lock()
 	now := a.now()
 	for k, v := range a.sessions {
@@ -330,23 +335,47 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	if old, err := r.Cookie(cookieName); err == nil {
 		delete(a.sessions, old.Value)
 	}
-	a.sessions[sid] = session{target, csrf, now.Add(8 * time.Hour), now.Add(24 * time.Hour)}
+	a.sessions[sid] = session{target, checked.Epoch, checked.Generation, csrf, now.Add(8 * time.Hour), now.Add(24 * time.Hour)}
 	a.mu.Unlock()
 	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: sid, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})
 	http.Redirect(w, r, p.returnTo, http.StatusSeeOther)
 }
+
+// authenticated rechecks the broker for every session-backed request before any
+// daemon operation or session disclosure. Never cache a positive decision.
 func (a *Auth) authenticated(r *http.Request) (session, bool) {
 	c, e := r.Cookie(cookieName)
 	if e != nil {
 		return session{}, false
 	}
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	s, ok := a.sessions[c.Value]
 	now := a.now()
+	if ok && (!now.Before(s.idle) || !now.Before(s.absolute)) {
+		delete(a.sessions, c.Value)
+		ok = false
+	}
+	a.mu.Unlock()
 	if !ok {
 		return session{}, false
 	}
+	reply, err := a.broker.Exchange(r.Context(), BrokerRequest{Operation: "authorize", ID: s.identity.Subject})
+	target, valid := brokerIdentity(s.identity.Subject, reply)
+	if err != nil || !valid || target != s.identity || reply.Generation < s.generation || reply.Epoch != s.epoch {
+		a.mu.Lock()
+		delete(a.sessions, c.Value)
+		a.mu.Unlock()
+		return session{}, false
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	// A concurrent logout or rotation cannot resurrect a removed session.
+	current, ok := a.sessions[c.Value]
+	if !ok || current.csrf != s.csrf || current.identity != s.identity || current.epoch != s.epoch || current.generation != s.generation || current.absolute != s.absolute {
+		return session{}, false
+	}
+	s = current
+	now = a.now()
 	if !now.Before(s.idle) || !now.Before(s.absolute) {
 		delete(a.sessions, c.Value)
 		return session{}, false
@@ -357,6 +386,21 @@ func (a *Auth) authenticated(r *http.Request) (session, bool) {
 	}
 	a.sessions[c.Value] = s
 	return s, true
+}
+func brokerIdentity(id string, reply BrokerReply) (Identity, bool) {
+	if reply.Route == nil || reply.Epoch == 0 || reply.Generation == 0 {
+		return Identity{}, false
+	}
+	route := reply.Route
+	if route.UID == 0 || route.UID > uint32(math.MaxInt32) || route.Username == "" || len(route.Username) > 32 || route.Socket != "/run/native-agent-host/users/"+route.Username+"/daemon.sock" {
+		return Identity{}, false
+	}
+	for i, c := range route.Username {
+		if i == 0 && (c < 'a' || c > 'z') || !(c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '_' || c == '-') {
+			return Identity{}, false
+		}
+	}
+	return Identity{Provider: "github", Subject: id, UID: int(route.UID), Username: route.Username, Socket: route.Socket}, true
 }
 func (a *Auth) authorizeWrite(r *http.Request, s session) string {
 	if r.Header.Get("Origin") != a.cfg.Origin || len(r.Header.Values("Origin")) != 1 {

@@ -43,16 +43,20 @@ func (p *provider) AuthorizationURL(state, challenge string) string {
 	p.challenges.Store("challenge:"+challenge, true)
 	return p.origin + "/fixture/provider?state=" + url.QueryEscape(state) + "&challenge=" + url.QueryEscape(challenge)
 }
-func (p *provider) Exchange(_ context.Context, code, verifier string) (string, string, error) {
+func (p *provider) Exchange(_ context.Context, code, verifier string) (string, string, string, error) {
 	sum := sha256.Sum256([]byte(verifier))
 	challenge := base64.RawURLEncoding.EncodeToString(sum[:])
 	if _, found := p.challenges.LoadAndDelete("challenge:" + challenge); !found {
-		return "", "", errors.New("PKCE mismatch")
+		return "", "", "", errors.New("PKCE mismatch")
 	}
 	if code != "42" && code != "43" && code != "99" {
-		return "", "", errors.New("unknown identity")
+		return "", "", "", errors.New("unknown identity")
 	}
-	return "synthetic-token", code, nil
+	login := "alice"
+	if code == "43" {
+		login = "bob"
+	}
+	return "synthetic-token", code, login, nil
 }
 
 type sink struct{ scenario *atomic.Value }
@@ -198,7 +202,7 @@ func main() {
 	}
 	origin := "https://" + ts.Listener.Addr().String()
 	fixtureProvider := &provider{origin: origin}
-	auth, e := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: origin, CallbackURL: origin + "/auth/github/callback", Identities: identities}, gateway.AuthOptions{Provider: fixtureProvider, Sink: sink{&scenario}, Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Hour) }, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
+	auth, e := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: origin, CallbackURL: origin + "/auth/github/callback"}, gateway.AuthOptions{Provider: fixtureProvider, Sink: sink{&scenario}, Broker: fixtureBroker{identities}, Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Hour) }, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, "unix", paths[p])
 	}, SnapshotPeerUID: func(c *net.UnixConn) int { return peers[c.RemoteAddr().String()] }})
 	if e != nil {
@@ -245,4 +249,15 @@ func main() {
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
 	signal.Stop(stop)
+}
+
+type fixtureBroker struct{ identities []gateway.Identity }
+
+func (b fixtureBroker) Exchange(_ context.Context, r gateway.BrokerRequest) (gateway.BrokerReply, error) {
+	for _, m := range b.identities {
+		if m.Subject == r.ID {
+			return gateway.BrokerReply{Route: &gateway.BrokerRoute{UID: uint32(m.UID), Username: m.Username, Socket: m.Socket}, Epoch: 1, Generation: 1}, nil
+		}
+	}
+	return gateway.BrokerReply{}, errors.New("not allowlisted")
 }
