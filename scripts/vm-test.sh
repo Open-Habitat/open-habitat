@@ -120,12 +120,32 @@ start=$(date +%s)
 # All VM devices are emulated; no KVM, USB or guest/host shared filesystem.
 # QEMU user-mode DHCP is required by cloud-init, but the container has --network=none
 # and restrict=on prevents guest forwarding beyond the emulated subnet.
-# Serial is capped at 2 MiB; bounded process lifetime and overlay allocation.
+# Serial is drained to EOF even after its private 2 MiB capture fills. A capped
+# or incompletely scanned stream never proves success.
 set +e
-timeout -k 10s 600s podman run --rm --name "vm-fixture-$$" --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --pids-limit=256 --memory=4g --cpus=2 --mount "type=bind,src=$cache,dst=/cache,ro=true" --mount "type=bind,src=$run,dst=/run-data" "$image_id" sh -c 'qemu-img create -q -f qcow2 -F qcow2 -b /cache/noble-server-cloudimg-amd64.img /run-data/overlay.qcow2 && { set --; if test -f /run-data/product.iso; then set -- -drive file=/run-data/product.iso,media=cdrom,readonly=on; fi; exec qemu-system-x86_64 -accel tcg -machine q35 -m 2048 -smp 2 -display none -monitor none -serial stdio -no-reboot -nic user,model=virtio-net-pci,restrict=on -drive file=/run-data/overlay.qcow2,if=virtio,format=qcow2 -drive file=/run-data/seed.img,if=virtio,format=raw,readonly=on "$@"; }' 2>&1 | head -c 2097152 > "$run/serial.log"
-vm_status=${PIPESTATUS[0]}
+timeout -k 10s 600s podman run --rm --name "vm-fixture-$$" --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --pids-limit=256 --memory=4g --cpus=2 --mount "type=bind,src=$cache,dst=/cache,ro=true" --mount "type=bind,src=$run,dst=/run-data" "$image_id" sh -c 'qemu-img create -q -f qcow2 -F qcow2 -b /cache/noble-server-cloudimg-amd64.img /run-data/overlay.qcow2 && { set --; if test -f /run-data/product.iso; then set -- -drive file=/run-data/product.iso,media=cdrom,readonly=on; fi; exec qemu-system-x86_64 -accel tcg -machine q35 -m 2048 -smp 2 -display none -monitor none -serial stdio -no-reboot -nic user,model=virtio-net-pci,restrict=on -drive file=/run-data/overlay.qcow2,if=virtio,format=qcow2 -drive file=/run-data/seed.img,if=virtio,format=raw,readonly=on "$@"; }' 2>&1 | python3 "$repo/scripts/vm-serial-drain.py" "$run/serial.log" "$run/serial-receipt.json"
+vm_status=${PIPESTATUS[0]} drain_status=${PIPESTATUS[1]}
 set -e
 duration=$(($(date +%s)-start))
+# A missing receipt means the drainer died or could not flush. Never evaluate
+# a prefix proof in that case, nor when bytes beyond the cap went unretained.
+if [[ $drain_status -ne 0 || ! -f $run/serial-receipt.json ]] || ! python3 - "$run/serial-receipt.json" <<'SERIAL_CHECK'
+import json,sys
+try:
+ r=json.load(open(sys.argv[1]))
+ if r['capped'] or r['token_leaked'] or r['bytes']<0: sys.exit(1)
+except (ValueError,KeyError,TypeError,OSError): sys.exit(1)
+SERIAL_CHECK
+then
+  markers=$(python3 - "$run/serial-receipt.json" <<'MARKERS'
+import json,sys
+try:
+ r=json.load(open(sys.argv[1]));print(','.join(r['markers']))
+except (ValueError,KeyError,OSError): print('unavailable')
+MARKERS
+)
+  fail serial_incomplete "Guest serial invalid (VM exit $vm_status, drainer exit $drain_status, ${duration}s; allowlisted_markers=${markers:-none}); capped, leaked or unscanned bytes cannot prove success" 2
+fi
 # Require clean guest poweroff and an exact proof; a timeout is always failure.
 proof=$(tr -d '\r' < "$run/serial.log" | grep -a 'VM_PROOF=' | tail -n 1 | sed 's/.*VM_PROOF=//' || :)
 if [[ $scenario == jit-login ]]; then

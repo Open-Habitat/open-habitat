@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+"""Drain VM serial to EOF; retain only a private bounded prefix and safe markers.
+
+The receipt is written only at EOF. Missing receipt, a capped stream, or a
+credential in any byte (including bytes after the cap) invalidates the proof.
+"""
+import json
+import os
+import pathlib
+import re
+import sys
+
+LIMIT = 2097152
+# These are fixture-only credentials; scan the entire stream, across reads.
+TOKENS = [f"PRODUCT_VM_TOKEN_{name}_FIXTURE_ONLY_92764".encode() for name in
+          ("agent_a", "agent_b", "guestone", "guesttwo", "UNKNOWN")]
+MARKER = re.compile(rb"^(VM_PHASE=(?:lost_ack_callback_start|lost_ack_callback_returned|lost_ack_assertions_passed|reboot_[a-z_]{1,64})|VM_REBOOT_DIAG=[a-z0-9_-]{1,80})\r?$")
+
+
+def drain(source, log, receipt):
+    total = 0
+    leaked = False
+    overlap = b""
+    line = bytearray()
+    markers = []
+    with open(log, "xb") as output:
+        os.chmod(log, 0o600)
+        while chunk := source.read(65536):
+            if not isinstance(chunk, bytes):
+                raise ValueError("serial source must be binary")
+            scanned = overlap + chunk
+            leaked |= any(token in scanned for token in TOKENS)
+            overlap = scanned[-(max(map(len, TOKENS)) - 1):]
+            if total < LIMIT:
+                output.write(chunk[:LIMIT - total])
+            total += len(chunk)
+            # Split in C; retain at most 129 bytes of an unfinished line.
+            parts = chunk.split(b"\n")
+            for index, part in enumerate(parts):
+                remaining = max(0, 129 - len(line))
+                line.extend(part[:remaining])
+                if len(part) > remaining and len(line) <= 128:
+                    line.append(32)  # overflow sentinel
+                if index != len(parts) - 1:
+                    if len(line) <= 128:
+                        match = MARKER.fullmatch(line)
+                        if match and len(markers) < 64:
+                            markers.append(match.group().decode("ascii"))
+                    line.clear()
+    with open(receipt, "x", encoding="utf-8") as out:
+        os.chmod(receipt, 0o600)
+        json.dump({"bytes": total, "capped": total > LIMIT, "token_leaked": leaked,
+                   "markers": markers}, out)
+        out.write("\n")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        sys.exit("usage: vm-serial-drain.py LOG RECEIPT")
+    drain(sys.stdin.buffer, pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]))
