@@ -156,7 +156,10 @@ LOGIN_CHECK
 import json,re,sys
 try:
  p=json.loads(sys.argv[1]); diagnostic=p.get('diagnostic',{})
- print(re.sub('[^A-Za-z0-9 _=./;:-]',' ',str(p.get('reason','missing proof'))+' diagnostic='+json.dumps(diagnostic,sort_keys=True))[:500])
+ if p.get('status')=='passed':
+  print('guest receipt rejected revocation.new_denied_status='+str(p.get('revocation',{}).get('new_denied_status'))+' lost_ack_keys='+','.join(sorted(p.get('lost_ack',{}))))
+ else:
+  print(re.sub('[^A-Za-z0-9 _=./;:-]',' ',str(p.get('reason','failed proof'))+' diagnostic='+json.dumps(diagnostic,sort_keys=True))[:500])
 except (ValueError,TypeError):print('missing proof')
 REASON
 )
