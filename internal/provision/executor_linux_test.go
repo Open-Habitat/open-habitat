@@ -235,3 +235,18 @@ func TestRouteReadyDoesNotStartOrAdoptMissingSocket(t *testing.T) {
 		}
 	}
 }
+
+func TestGateExecutionIsBlockingAndHasNoOtherRootCommands(t *testing.T) {
+	want := map[string]string{"LoadState": "loaded", "User": "root", "Type": "oneshot", "RemainAfterExit": "no", "ExecStartPre": "", "ExecStartPost": "", "ExecCondition": "", "ExecReload": "", "ExecStopPost": ""}
+	good := "LoadState=loaded\nUser=root\nType=oneshot\nRemainAfterExit=no\nExecStartPre=\nExecStartPost=\nExecCondition=\nExecReload=\nExecStopPost=\n"
+	if !properties([]byte(good), want) {
+		t.Fatal("valid gate rejected")
+	}
+	for _, modification := range []string{"Type=simple", "ExecStartPre=/bin/true", "ExecCondition=/bin/true", "RemainAfterExit=yes", "ExecStartPost=/bin/true"} {
+		key := strings.SplitN(modification, "=", 2)[0]
+		bad := strings.Replace(good, key+"=", modification, 1)
+		if properties([]byte(bad), want) {
+			t.Fatal("unsafe gate accepted", modification)
+		}
+	}
+}

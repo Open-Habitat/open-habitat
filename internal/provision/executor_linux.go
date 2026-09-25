@@ -622,8 +622,11 @@ func (e *LinuxHostExecutor) Ready(ctx context.Context, i ExecutorIdentity) error
 	if err != nil || !unitDependency(b, "Requires", gate) || !unitDependency(b, "After", gate) {
 		return ErrInvalid
 	}
-	b, err = e.command(ctx, systemctl, "show", gate, "--property=LoadState,ExecStart,User", "--no-pager")
-	if err != nil || !properties(b, map[string]string{"LoadState": "loaded", "User": "root"}) || !exactGateExec(b, i.username) {
+	b, err = e.command(ctx, systemctl, "show", gate, "--property=LoadState,ExecStart,User,Type,RemainAfterExit,ExecStartPre,ExecStartPost,ExecCondition,ExecReload,ExecStopPost", "--no-pager")
+	if err != nil || !properties(b, map[string]string{
+		"LoadState": "loaded", "User": "root", "Type": "oneshot", "RemainAfterExit": "no",
+		"ExecStartPre": "", "ExecStartPost": "", "ExecCondition": "", "ExecReload": "", "ExecStopPost": "",
+	}) || !exactGateExec(b, i.username) {
 		return ErrInvalid
 	}
 	b, err = e.command(ctx, systemctl, "show", unit, "--property=ActiveState", "--no-pager")

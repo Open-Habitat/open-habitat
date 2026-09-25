@@ -47,17 +47,19 @@ func provisionCalls(id, name string, uid uint32) []hostCall {
 }
 
 type fakeHost struct {
-	mu        sync.Mutex
-	occupied  map[string]bool
-	uids      map[uint32]bool
-	steps     []string
-	calls     []hostCall
-	fail      string
-	verifyErr bool
-	readyErr  bool
-	routeErr  bool
-	onReady   func()
-	onStep    func(string)
+	mu         sync.Mutex
+	occupied   map[string]bool
+	uids       map[uint32]bool
+	steps      []string
+	calls      []hostCall
+	fail       string
+	verifyErr  bool
+	readyErr   bool
+	routeErr   bool
+	readyCalls []hostCall
+	routeCalls []hostCall
+	onReady    func()
+	onStep     func(string)
 }
 
 func (h *fakeHost) Available(_ context.Context, n string, u uint32) (bool, error) {
@@ -85,16 +87,18 @@ func (h *fakeHost) Step(_ context.Context, p string, i ExecutorIdentity) error {
 	}
 	return nil
 }
-func (h *fakeHost) RouteReady(_ context.Context, _ ExecutorIdentity) error {
+func (h *fakeHost) RouteReady(_ context.Context, i ExecutorIdentity) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	h.routeCalls = append(h.routeCalls, call("route-ready", i))
 	if h.routeErr {
 		return errors.New("inactive")
 	}
 	return nil
 }
-func (h *fakeHost) Ready(ctx context.Context, _ ExecutorIdentity) error {
+func (h *fakeHost) Ready(ctx context.Context, i ExecutorIdentity) error {
 	h.mu.Lock()
+	h.readyCalls = append(h.readyCalls, call("ready", i))
 	fail, callback := h.readyErr, h.onReady
 	h.mu.Unlock()
 	if callback != nil {
@@ -472,6 +476,13 @@ func TestEnsureActivationFailsClosedAndExplicitRetry(t *testing.T) {
 	h.routeErr = false
 	if r := handle(w, "ensure", "42", "renamed"); r.Route == nil || r.Route.UID != 2100 {
 		t.Fatal("explicit retry refused", r)
+	}
+	want := hostCall{"ready", "github", "42", "carol", 2100}
+	if !reflect.DeepEqual(h.readyCalls, []hostCall{want, want}) {
+		t.Fatal("ensure activation identity", h.readyCalls)
+	}
+	if !reflect.DeepEqual(h.routeCalls, []hostCall{{"route-ready", "github", "42", "carol", 2100}, {"route-ready", "github", "42", "carol", 2100}}) {
+		t.Fatal("authorize route identity", h.routeCalls)
 	}
 }
 func TestEnsureActivationRevocationRace(t *testing.T) {
