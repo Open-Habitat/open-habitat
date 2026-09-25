@@ -115,6 +115,21 @@ print('UNEXPECTED_REPLY')
         gateway_pid=int(subprocess.check_output(['systemctl','show','-P','MainPID','product-gateway.service']).strip())
         check(gateway_pid>1 and ('Uid:\t'+str(gateway_uid)+'\t') in pathlib.Path('/proc/%d/status'%gateway_pid).read_text(),'gateway effective UID')
         routes=[]; captures=[]; browsers=[]
+        fault=pathlib.Path('/run/fixture-gh-fault')
+        fault_results={}
+        for mode,index in (('fail-login',0),('wrong-id',1)):
+            fault.write_text(mode)
+            op,jar=browser()
+            start_status,h,_=get(op,'/auth/github/start');check(start_status==302,'fault start')
+            state=urllib.parse.parse_qs(urllib.parse.urlparse(h['Location']).query)['state'][0]
+            failure_status,h,body=get(op,'/auth/github/callback?'+urllib.parse.urlencode({'state':state,'code':'a' if index==0 else 'b'}))
+            captures.extend([str(h).encode(),body,repr([(c.name,c.value) for c in jar]).encode()])
+            check(failure_status==503 and json.loads(body)['error']['code']=='native_adapter_error','gh fault callback issued session')
+            check(get(op,'/auth/session')[0]==401 and get(op,'/api/v1/snapshot')[0]==401,'gh fault normal session')
+            check(get(op,'/auth/github/callback?'+urllib.parse.urlencode({'state':state,'code':'a' if index==0 else 'b'}))[0]==403,'gh fault replay')
+            check(not (pathlib.Path('/home')/names[index]/'.config/gh/hosts.yml').exists(),'gh fault retained credential')
+            fault_results[mode]={'callback_status':failure_status,'session_status':401,'replay_status':403,'credential_absent':True}
+            fault.unlink()
         for index,name in enumerate(names):
             op,jar=browser();browsers.append(op)
             status,h,body=get(op,'/auth/github/start')
@@ -260,7 +275,7 @@ print('UNEXPECTED_REPLY')
                 check(value not in logs,'journal token scan')
             for p in ['/etc/native-agent-host/gateway.json','/etc/native-agent-host/daemon-guestone.json','/etc/native-agent-host/daemon-guesttwo.json']:
                 check(value not in pathlib.Path(p).read_bytes(),'config token scan')
-        result={'status':'passed','scope':'jit-login-slice','revocation':{'atomic_fsynced':True,'existing_denied_statuses':revoked,'new_denied_status':status,'other_uid_unaffected':True,'ledger_account_credential_preserved':True},'rename':{'same_uid':True,'no_second_gh_login':True},'pid1':'systemd','uids':[21032,21033,21003],'socket_mode':'0660','socket_activation':True,'pool_vacant_before_login':True,'new_accounts':True,'committed_bindings':True,'root_ledger':True,'pinned_policy_gate':True,'routes':routes,'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'cross_user_broker':True,'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'gateway_credential':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, bounded journal, process argv/environ, configs, child argv logs'}}
+        result={'status':'passed','scope':'jit-login-slice','revocation':{'atomic_fsynced':True,'existing_denied_statuses':revoked,'new_denied_status':status,'other_uid_unaffected':True,'ledger_account_credential_preserved':True},'rename':{'same_uid':True,'no_second_gh_login':True},'gh_failures':fault_results,'pid1':'systemd','uids':[21032,21033,21003],'socket_mode':'0660','socket_activation':True,'pool_vacant_before_login':True,'new_accounts':True,'committed_bindings':True,'root_ledger':True,'pinned_policy_gate':True,'routes':routes,'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'cross_user_broker':True,'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'gateway_credential':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, bounded journal, process argv/environ, configs, child argv logs'}}
     finally:provider.terminate();provider.wait(timeout=5)
 except Exception as e:
     # FileNotFoundError retains the missing executable/path; no fixture token

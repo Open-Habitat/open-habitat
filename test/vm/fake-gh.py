@@ -10,10 +10,15 @@ assert 'PRODUCT_VM_TOKEN' not in repr(args) and all('PRODUCT_VM_TOKEN' not in v 
 log=home/'gh-argv.jsonl'
 with log.open('a') as f: f.write(json.dumps({'argv':args,'stdin':args[:2]==['auth','login'],'uid':os.getuid()})+'\n')
 cred=home/'.config/gh/hosts.yml'
+# Guest-only fault switch; no production executable reads this path. The root
+# proof sets it before a fresh synthetic callback, then removes it.
+fault=pathlib.Path('/run/fixture-gh-fault')
+mode=fault.read_text().strip() if fault.is_file() else ''
 if args==['auth','status','--hostname','github.com']:
     sys.exit(0 if cred.is_file() else 1)
 if args==['auth','login','--hostname','github.com','--with-token','--git-protocol','https']:
     token=sys.stdin.read(4097)
+    if mode=='fail-login': sys.exit(2)
     assert token == 'PRODUCT_VM_TOKEN_'+home.name.replace('-','_')+'_FIXTURE_ONLY_92764'
     cred.parent.parent.mkdir(mode=0o700, exist_ok=True)
     cred.parent.mkdir(mode=0o700, exist_ok=True)
@@ -25,7 +30,7 @@ if args==['auth','setup-git','--hostname','github.com']:
     sys.exit(0)
 if args==['api','user','--jq','{id: .id, login: .login}']:
     assert cred.is_file()
-    print(json.dumps({'id':31001 if home.name=='agent-a' else 31002,'login':home.name.replace('-','')}))
+    print(json.dumps({'id':39999 if mode=='wrong-id' else (31001 if home.name=='agent-a' else 31002),'login':home.name.replace('-','')}))
     sys.exit(0)
 if args==['config','get','git_protocol','--host','github.com']:
     print('https');sys.exit(0)
