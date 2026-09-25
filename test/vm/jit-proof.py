@@ -53,7 +53,11 @@ assert not s.recv(1),'trailing reply';print(b.decode())
 def route(result,uid,name):
     check(result.returncode==0,'broker exchange: '+result.stderr[-300:])
     data=json.loads(result.stdout)
-    check(data.get('route')=={'uid':uid,'username':name,'socket':str(run/'users'/name/'daemon.sock')},'wrong route: '+str(data))
+    if data.get('route')!={'uid':uid,'username':name,'socket':str(run/'users'/name/'daemon.sock')}:
+        gate='native-agent-host-jit-policy-gate@'+name+'.service'
+        # Safe diagnostic: unit metadata/argv only, never OAuth/provider bytes.
+        props=unit('show',gate,'--property=LoadState,ExecStart,User,Type,RemainAfterExit,ExecStartPre,ExecStartPost,ExecCondition,ExecReload,ExecStopPost','--no-pager').stdout
+        raise RuntimeError('wrong route: '+str(data)+' gate_properties='+repr(props[:1600]))
     return data
 def denied_start():
     reset()
