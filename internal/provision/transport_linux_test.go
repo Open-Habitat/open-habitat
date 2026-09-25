@@ -497,3 +497,152 @@ func TestServerCancelClosesStalledPeerAndDrains(t *testing.T) {
 		t.Fatal("cancel did not drain")
 	}
 }
+
+// Slow, valid first provisioning has a separate handler budget; ordinary
+// authorization never inherits it. The client must wait beyond old 2s limit.
+func TestFirstEnsureBudgetAndFastAuthorize(t *testing.T) {
+	entered := make(chan struct{})
+	c, _ := socketFixture(t, Server{GatewayUID: uint32(os.Getuid()), Handler: func(ctx context.Context, r Request) Reply {
+		if r.Operation == "authorize" {
+			if d, ok := ctx.Deadline(); !ok || time.Until(d) > exchangeTimeout {
+				t.Errorf("authorize budget: %v", d)
+			}
+			return failure(Denied)
+		}
+		if d, ok := ctx.Deadline(); !ok || time.Until(d) < ensureTimeout-time.Second {
+			t.Errorf("ensure budget: %v", d)
+		}
+		close(entered)
+		select {
+		case <-time.After(2200 * time.Millisecond):
+		case <-ctx.Done():
+			return failure(StateUnavailable)
+		}
+		return failure(NameCollision)
+	}})
+	result := make(chan error, 1)
+	go func() {
+		r, err := c.Exchange(context.Background(), request("ensure", "42", "carol"))
+		if err == nil && r.Failure != NameCollision {
+			err = errors.New("wrong ensure reply")
+		}
+		result <- err
+	}()
+	<-entered
+	if r, err := c.Exchange(context.Background(), request("authorize", "42", "")); err != nil || r.Failure != Denied {
+		t.Fatalf("fast authorization: %+v %v", r, err)
+	}
+	if err := <-result; err != nil {
+		t.Fatal(err)
+	}
+}
+
+// A canceled or expired first operation must never publish a route or remove
+// the journal, even if a host step returned after its caller went away.
+func TestInterruptedEnsureKeepsJournal(t *testing.T) {
+	w, h := writerFixture(t)
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	h.onStep = func(phase string) {
+		if phase == "account" {
+			close(entered)
+			<-release
+		}
+	}
+	parent, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	c, _, done := serveFixture(t, Server{GatewayUID: uint32(os.Getuid()), Handler: w.Handle}, parent)
+	result := make(chan error, 1)
+	go func() { _, err := c.Exchange(context.Background(), request("ensure", "42", "carol")); result <- err }()
+	select {
+	case <-entered:
+	case <-time.After(time.Second):
+		close(release)
+		t.Fatal("account not entered")
+	}
+	cancel()
+	select {
+	case err := <-result:
+		if err == nil {
+			t.Fatal("aborted client got route")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("client not released")
+	}
+	close(release)
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("handler not drained")
+	}
+	if fileAbsent(filepath.Join(w.Dir, "pending.json")) {
+		t.Fatal("lost interrupted marker")
+	}
+	if r := w.Handle(context.Background(), request("authorize", "42", "")); r.Failure != StateUnavailable || r.Route != nil {
+		t.Fatal(r)
+	}
+}
+
+func TestInsufficientRemainingBudgetBeforeJournal(t *testing.T) {
+	w, _ := writerFixture(t)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if r := w.Handle(ctx, request("ensure", "42", "carol")); r.Route != nil || r.Failure != StateUnavailable {
+		t.Fatal(r)
+	}
+	if !fileAbsent(filepath.Join(w.Dir, "pending.json")) {
+		t.Fatal("short waiter began mutation")
+	}
+}
+
+func TestParallelEnsureSerializationAndRevocation(t *testing.T) {
+	for _, otherID := range []bool{false, true} {
+		t.Run(map[bool]string{false: "same-id", true: "different-id"}[otherID], func(t *testing.T) {
+			w, h := writerFixture(t)
+			if otherID {
+				put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":4,"ids":[{"id":"42"},{"id":"43"}]}`)
+			}
+			entered := make(chan struct{})
+			release := make(chan struct{})
+			h.onStep = func(p string) {
+				if p == "account" && len(h.steps) == 1 {
+					close(entered)
+					<-release
+				}
+			}
+			c, _ := socketFixture(t, Server{GatewayUID: uint32(os.Getuid()), Handler: w.Handle})
+			first := make(chan Reply, 1)
+			go func() { r, _ := c.Exchange(context.Background(), request("ensure", "42", "carol")); first <- r }()
+			select {
+			case <-entered:
+			case <-time.After(time.Second):
+				close(release)
+				t.Fatal("first ensure not entered")
+			}
+			id, name := "42", "renamed"
+			if otherID {
+				id, name = "43", "david"
+			}
+			second := make(chan Reply, 1)
+			go func() { r, _ := c.Exchange(context.Background(), request("ensure", id, name)); second <- r }()
+			close(release)
+			a, b := <-first, <-second
+			if a.Route == nil || b.Route == nil {
+				t.Fatalf("parallel: %+v %+v", a, b)
+			}
+			if otherID && (a.Route.UID == b.Route.UID || a.Route.Username == b.Route.Username) {
+				t.Fatalf("collision: %+v %+v", a, b)
+			}
+			if !otherID && (a.Route.UID != b.Route.UID || a.Route.Username != b.Route.Username || len(h.steps) != 5) {
+				t.Fatalf("duplicate mutation: %+v %+v, %v", a, b, h.steps)
+			}
+			put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":5,"ids":[]}`)
+			if r, err := c.Exchange(context.Background(), request("authorize", "42", "")); err != nil || r.Failure != Denied || r.Route != nil {
+				t.Fatalf("revoked route: %+v %v", r, err)
+			}
+		})
+	}
+}

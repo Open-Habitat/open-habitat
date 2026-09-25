@@ -19,7 +19,13 @@ import (
 // The broker transport accepts only an inherited, already bound and listening
 // AF_UNIX stream socket. The caller must pass exactly the systemd socket FD;
 // neither this package nor its default handler creates accounts or routes.
-const exchangeTimeout = 2 * time.Second
+const exchangeTimeout = 2 * time.Second // admission, framing and authorize
+// A first ensure runs several journal fsyncs and individually bounded (3s)
+// NSS, ACL and systemd commands. This is a separate finite mutation budget,
+// never granted before a complete, validated frame from the permitted UID.
+const ensureTimeout = 90 * time.Second
+const ensureClientTimeout = ensureTimeout + exchangeTimeout + 3*time.Second
+const maxActiveEnsures = 2 // includes lock waiters; the writer itself serializes mutations
 
 // Hard cap applies even when the permitted gateway UID is compromised.
 const maxActiveExchanges = 8
@@ -127,6 +133,7 @@ func (s Server) Serve(ctx context.Context, files []*os.File) error {
 	var wg sync.WaitGroup
 	defer wg.Wait()
 	active := make(chan struct{}, maxActiveExchanges)
+	ensures := make(chan struct{}, maxActiveEnsures)
 	for {
 		if ctx.Err() != nil {
 			return nil
@@ -160,10 +167,8 @@ func (s Server) Serve(ctx context.Context, files []*os.File) error {
 				defer func() { <-active }()
 				defer conn.Close()
 				defer cancel()
-				stop := context.AfterFunc(exchangeCtx, func() { _ = conn.Close() })
-				defer stop()
 				if exchangeCtx.Err() == nil {
-					s.exchange(exchangeCtx, conn)
+					s.exchange(ctx, exchangeCtx, conn, ensures)
 				}
 			}()
 		default:
@@ -172,7 +177,10 @@ func (s Server) Serve(ctx context.Context, files []*os.File) error {
 	}
 }
 
-func (s Server) exchange(ctx context.Context, conn *net.UnixConn) {
+func (s Server) exchange(parent, admission context.Context, conn *net.UnixConn, ensures chan struct{}) {
+	stopAdmission := context.AfterFunc(admission, func() { _ = conn.Close() })
+	defer stopAdmission()
+	ctx := admission
 	deadline, _ := ctx.Deadline() // every exchange is created with WithTimeout
 	if conn.SetDeadline(deadline) != nil {
 		return
@@ -188,6 +196,31 @@ func (s Server) exchange(ctx context.Context, conn *net.UnixConn) {
 	r, err := ParseRequest(b)
 	if err != nil || ctx.Err() != nil {
 		return
+	}
+	if r.Operation == "ensure" {
+		// Never allow slow framing to buy a long-lived worker or FD. Reject
+		// excess valid ensures instead of queueing behind a stalled mutation.
+		select {
+		case ensures <- struct{}{}:
+			defer func() { <-ensures }()
+		default:
+			return
+		}
+		if admission.Err() != nil {
+			return
+		}
+		if !stopAdmission() || admission.Err() != nil {
+			return
+		}
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(parent, ensureTimeout)
+		defer cancel()
+		stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
+		defer stop()
+		deadline, _ = ctx.Deadline()
+		if conn.SetDeadline(deadline) != nil {
+			return
+		}
 	}
 	reply := Reply{Version: 1, Failure: StateUnavailable}
 	if s.Handler != nil {
@@ -214,7 +247,11 @@ func (c Client) Exchange(ctx context.Context, r Request) (Reply, error) {
 	if err != nil {
 		return Reply{}, ErrInvalid
 	}
-	deadline := time.Now().Add(exchangeTimeout)
+	budget := exchangeTimeout
+	if r.Operation == "ensure" {
+		budget = ensureClientTimeout
+	}
+	deadline := time.Now().Add(budget)
 	if d, ok := ctx.Deadline(); ok && d.Before(deadline) {
 		deadline = d
 	}

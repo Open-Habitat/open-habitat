@@ -471,7 +471,10 @@ type gatewayBroker struct{}
 
 func (gatewayBroker) Exchange(ctx context.Context, r gateway.BrokerRequest) (gateway.BrokerReply, error) {
 	reply, err := (provision.Client{SocketPath: "/run/native-agent-host/broker.sock", SocketOwnerUID: 0}).Exchange(ctx, provision.Request{Version: 1, Operation: r.Operation, Provider: "github", ID: r.ID, Candidate: r.Candidate})
-	if err != nil || reply.Failure != "" || reply.Route == nil {
+	if err != nil || reply.Failure == provision.StateUnavailable {
+		return gateway.BrokerReply{}, gateway.ErrBrokerUnavailable
+	}
+	if reply.Failure != "" || reply.Route == nil {
 		return gateway.BrokerReply{}, provision.ErrTransport
 	}
 	return gateway.BrokerReply{Route: &gateway.BrokerRoute{UID: reply.Route.UID, Username: reply.Route.Username, Socket: reply.Route.Socket}, Generation: reply.Generation, Epoch: reply.Epoch}, nil

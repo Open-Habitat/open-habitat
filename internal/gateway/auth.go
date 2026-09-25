@@ -48,6 +48,11 @@ type Provider interface {
 type TokenSink interface {
 	Deliver(context.Context, Identity, string, string) error
 }
+
+// ErrBrokerUnavailable denies this request without invalidating an otherwise
+// valid session. Authorization is still rechecked on every subsequent request.
+var ErrBrokerUnavailable = errors.New("broker temporarily unavailable")
+
 type BrokerRequest struct{ Operation, ID, Candidate string }
 type BrokerRoute struct {
 	UID              uint32
@@ -362,9 +367,11 @@ func (a *Auth) authenticated(r *http.Request) (session, bool) {
 	reply, err := a.broker.Exchange(r.Context(), BrokerRequest{Operation: "authorize", ID: s.identity.Subject})
 	target, valid := brokerIdentity(s.identity.Subject, reply)
 	if err != nil || !valid || target != s.identity || reply.Generation < s.generation || reply.Epoch != s.epoch {
-		a.mu.Lock()
-		delete(a.sessions, c.Value)
-		a.mu.Unlock()
+		if !errors.Is(err, ErrBrokerUnavailable) {
+			a.mu.Lock()
+			delete(a.sessions, c.Value)
+			a.mu.Unlock()
+		}
 		return session{}, false
 	}
 	a.mu.Lock()

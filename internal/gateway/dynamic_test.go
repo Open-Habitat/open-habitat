@@ -212,3 +212,46 @@ func TestSimultaneousBrokerSessionRechecks(t *testing.T) {
 		}
 	}
 }
+
+type intermittentBroker struct {
+	base        Broker
+	unavailable bool
+}
+
+func (b *intermittentBroker) Exchange(ctx context.Context, r BrokerRequest) (BrokerReply, error) {
+	if b.unavailable {
+		return BrokerReply{}, ErrBrokerUnavailable
+	}
+	return b.base.Exchange(ctx, r)
+}
+func TestUnavailableBrokerDeniesWithoutLosingSession(t *testing.T) {
+	h, a, _, _, _ := fixture(t)
+	state, flow := start(t, h)
+	cb := callback(h, state, flow)
+	if cb.Code != http.StatusSeeOther {
+		t.Fatal(cb.Code)
+	}
+	cookie := cb.Result().Cookies()[1]
+	b := &intermittentBroker{base: a.broker, unavailable: true}
+	a.broker = b
+	if got := request(h, "GET", "/auth/session", cookie).Code; got != 401 {
+		t.Fatal(got)
+	}
+	b.unavailable = false
+	if got := request(h, "GET", "/auth/session", cookie).Code; got != 200 {
+		t.Fatal("transient outage deleted session", got)
+	}
+	base := b.base.(*fakeBroker)
+	base.mu.Lock()
+	delete(base.routes, "42")
+	base.mu.Unlock()
+	if got := request(h, "GET", "/auth/session", cookie).Code; got != 401 {
+		t.Fatal("revoked route", got)
+	}
+	base.mu.Lock()
+	base.routes["42"] = BrokerRoute{UID: 1001, Username: "alice", Socket: "/run/native-agent-host/users/alice/daemon.sock"}
+	base.mu.Unlock()
+	if got := request(h, "GET", "/auth/session", cookie).Code; got != 401 {
+		t.Fatal("revoked session resurrected", got)
+	}
+}

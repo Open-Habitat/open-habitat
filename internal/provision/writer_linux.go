@@ -408,6 +408,12 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 	if ctx.Err() != nil || !sameState(ctx, fd, w.owner, ab, lb, a.Epoch) {
 		return failure(StateUnavailable)
 	}
+	// A queued ensure must not begin irreversible work with its whole
+	// mutation budget already spent waiting for the global lock. This is
+	// admission only, not a promise that host commands will finish in time.
+	if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) < 60*time.Second {
+		return failure(StateUnavailable)
+	}
 	identity := ExecutorIdentity{provider: "github", id: entry.ID, username: name, uid: uid}
 	j := journal{Version: 1, ID: identity.ID(), Username: identity.Username(), UID: identity.UID(), Epoch: a.Epoch, Generation: l.Generation, Phase: "reserved"}
 	if e := writeNew(fd, "pending.json", marshal(j)); e != nil {
