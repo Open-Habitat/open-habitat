@@ -144,7 +144,8 @@ LOGIN_CHECK
     reason=$(python3 - "$proof" <<'REASON'
 import json,re,sys
 try:
- p=json.loads(sys.argv[1]);print(re.sub('[^A-Za-z0-9 _=./;:-]',' ',str(p.get('reason','missing proof')))[:300])
+ p=json.loads(sys.argv[1]); diagnostic=p.get('diagnostic',{})
+ print(re.sub('[^A-Za-z0-9 _=./;:-]',' ',str(p.get('reason','missing proof'))+' diagnostic='+json.dumps(diagnostic,sort_keys=True))[:500])
 except (ValueError,TypeError):print('missing proof')
 REASON
 )

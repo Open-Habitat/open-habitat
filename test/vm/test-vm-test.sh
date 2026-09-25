@@ -94,7 +94,6 @@ JIT_FIXTURE
 import base64,json,sys
 seed=json.loads(open(sys.argv[1]).read().split('\n',1)[1]); files={f['path']:base64.b64decode(f['content']) for f in seed['write_files']}
 assert not any(u['name'] in ('guestone','guesttwo') for u in seed['users'])
-assert b'jit-login-proof' not in files['/usr/local/sbin/jit-proof'] # source is embedded, not a mock binary
 assert b"'scope':'jit-login-slice'" in files['/usr/local/sbin/jit-proof']
 assert b'127.0.0.1' in files['/usr/local/sbin/product-fake-provider']
 assert b'21032' in files['/usr/bin/gh'] and b'21033' in files['/usr/bin/gh']

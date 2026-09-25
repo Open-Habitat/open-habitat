@@ -105,6 +105,12 @@ try:
             if status!=303:
                 try: code=json.loads(body).get('error',{}).get('code','unknown')
                 except ValueError: code='non_json'
+                bindings=json.loads((state/'bindings.json').read_text()).get('bindings',[])
+                socket_unit='native-agent-host-daemon@'+name+'.socket'
+                active=subprocess.run(['systemctl','is-active',socket_unit],capture_output=True,text=True).stdout.strip()
+                result['diagnostic']={'binding_committed':any(b.get('id')==str(100000001+index) and b.get('uid')==uids[index] for b in bindings),
+                    'socket_unit_state':active,'socket_inode_present':(root/name/'daemon.sock').is_socket(),
+                    'credential_present':(pathlib.Path('/home')/name/'.config/gh/hosts.yml').is_file()}
                 raise RuntimeError('OAuth callback status '+str(status)+' code '+str(code))
             uid=uids[index];home=pathlib.Path('/home')/name
             check(pwd.getpwnam(name).pw_uid==uid and pwd.getpwnam(name).pw_gid==uid,'new NSS account')
