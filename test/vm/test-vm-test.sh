@@ -94,7 +94,9 @@ p={'status':'passed','scope':'jit-login-slice','pid1':'systemd','uids':[21032,21
    'rename':{'same_uid':True,'no_second_gh_login':True},
    'gh_failures':{mode:{'callback_status':503,'session_status':401,'replay_status':403,'credential_absent':True} for mode in ('fail-login','wrong-id')},
    'lost_ack':{'callback_status':503,'session_status':401,'snapshot_status':401,'replay_status':403,'one_daemon_gh_call_observed':True,'daemon_killed_before_ack':True,'credential_preserved':True},
-   'post_install_lost_ack':{'callback_status':503,'session_status':401,'snapshot_status':401,'replay_status':403,'one_shot_child_calls':2,'daemon_pid_changed':True,'protected_credential_retained':True,'other_uid_reauthenticated':True}}
+   'post_install_lost_ack':{'callback_status':503,'session_status':401,'snapshot_status':401,'replay_status':403,'one_shot_child_calls':2,'daemon_pid_changed':True,'protected_credential_retained':True,'other_uid_reauthenticated':True},
+   'revoked_sibling_stopped_before_c':True,
+   'post_install_units':{'start_ok':True,'before_service':{'ActiveState':'activating','SubState':'auto-restart','Result':'signal','MainPID':0},'after_service':{'ActiveState':'active','SubState':'running','Result':'success','MainPID':2345},'after_socket':{'ActiveState':'active','SubState':'listening','Result':'success'}}}
 for key in ('pool_vacant_before_login','new_accounts','committed_bindings','root_ledger','pinned_policy_gate','socket_activation'):p[key]=True
 def accepted(proof):return subprocess.run(['python3','-c',sys.argv[1],json.dumps(proof)]).returncode==0
 assert accepted(p),'valid guest proof rejected'
@@ -114,6 +116,11 @@ for key,bad in [('one_shot_child_calls',3),('protected_credential_retained',Fals
  old=p['post_install_lost_ack'][key];p['post_install_lost_ack'][key]=bad
  assert not accepted(p),f'post-install {key} accepted'
  p['post_install_lost_ack'][key]=old
+p['post_install_units']['after_service']['MainPID']=0
+assert not accepted(p),'zero generation PID accepted'
+p['post_install_units']['after_service']['MainPID']=2345
+p['revoked_sibling_stopped_before_c']=False
+assert not accepted(p),'revoked sibling precondition omitted'
 LOGIN_ORACLE
 reboot_validator=$(sed -n "/<<'REBOOT_CHECK'/,/^REBOOT_CHECK$/p" "$repo/scripts/vm-test.sh" | sed '1d;$d')
 python3 - "$reboot_validator" <<'REBOOT_ORACLE'
@@ -216,6 +223,7 @@ assert all(x in unit for x in ['SocketMode=0660\n','DirectoryMode=0710\n','FileD
 PY
 [[ ! -e "$tmp/product/tls.key" && ! -e "$tmp/product/tls.crt" ]]
 grep -Fq "'scope':'product-two-user-routing'" "$repo/test/vm/product-proof.py"
+python3 "$repo/test/vm/test-jit-render.py"
 python3 "$repo/test/vm/test-guest-command.py"
 # Guard the explicit timeout and kill/cleanup wiring against accidental removal.
 grep -Fq 'timeout -k 10s "${vm_limit}s" podman run' "$tmp/repo/scripts/vm-test.sh"

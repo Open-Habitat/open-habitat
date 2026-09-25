@@ -243,6 +243,10 @@ try:
  if set(failures)!= {'fail-login','wrong-id'} or any(v != {'callback_status':503,'session_status':401,'replay_status':403,'credential_absent':True} for v in failures.values()): sys.exit(1)
  if p.get('lost_ack') != {'callback_status':503,'session_status':401,'snapshot_status':401,'replay_status':403,'one_daemon_gh_call_observed':True,'daemon_killed_before_ack':True,'credential_preserved':True}: sys.exit(1)
  if p.get('post_install_lost_ack') != {'callback_status':503,'session_status':401,'snapshot_status':401,'replay_status':403,'one_shot_child_calls':2,'daemon_pid_changed':True,'protected_credential_retained':True,'other_uid_reauthenticated':True}: sys.exit(1)
+ if p.get('revoked_sibling_stopped_before_c') is not True: sys.exit(1)
+ units=p.get('post_install_units',{})
+ if units.get('start_ok') is not True or units.get('after_service',{}).get('ActiveState')!='active' or units.get('after_socket',{}).get('ActiveState')!='active': sys.exit(1)
+ if not isinstance(units.get('after_service',{}).get('MainPID'),int) or units['after_service']['MainPID']<=1: sys.exit(1)
 except (ValueError,TypeError,AttributeError): sys.exit(1)
 LOGIN_CHECK
   then
@@ -261,7 +265,7 @@ REASON
     # Only literal fixture phase markers are surfaced; never echo serial logs
     # or guest diagnostics that could contain an OAuth token.
     if [[ -z $proof ]]; then
-      phases=$(grep -aEo 'VM_PHASE=(lost_ack_callback_start|lost_ack_callback_returned|lost_ack_assertions_passed)' "$run/serial.log" | sort -u | tr '\n' ',' || :)
+      phases=$(grep -aEo 'VM_PHASE=(lost_ack_callback_start|lost_ack_callback_returned|lost_ack_assertions_passed|post_install_callback_start|post_install_callback_returned|post_install_assertions_passed)' "$run/serial.log" | sort -u | tr '\n' ',' || :)
       reason="missing proof serial_bytes=$(wc -c < "$run/serial.log") phases=${phases:-none}"
     fi
     fail boot_proof_failed "JIT login guest failed closed (VM exit $vm_status, ${duration}s; check=$reason)" 2

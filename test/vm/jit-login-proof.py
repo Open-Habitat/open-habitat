@@ -347,6 +347,7 @@ print('UNEXPECTED_REPLY')
             nxt.replace(ledger_dir/'allowlist.json');os.fsync(fd)
         finally:os.close(fd)
         c_name='guestthree';c_uid=21034;c_home=pathlib.Path('/home')/c_name
+        post_install_started=True
         check(not c_home.exists() and not any(u.pw_uid==c_uid for u in pwd.getpwall()),'C was not fresh')
         c,c_jar=browser();status,h,_=get(c,'/auth/github/start');check(status==302,'post-install start')
         c_state=urllib.parse.parse_qs(urllib.parse.urlparse(h['Location']).query)['state'][0]
@@ -358,7 +359,11 @@ print('UNEXPECTED_REPLY')
         finally:fault.unlink()
         print('VM_PHASE=post_install_callback_returned',flush=True)
         captures.extend([str(c_headers).encode(),c_body,repr([(v.name,v.value) for v in c_jar]).encode()])
-        check(c_status==503 and json.loads(c_body).get('error',{}).get('code')=='native_adapter_error','post-install callback status '+str(c_status)+' code '+str(json.loads(c_body).get('error',{}).get('code','none')))
+        try:
+            parsed=json.loads(c_body)
+            c_code=parsed.get('error',{}).get('code') if isinstance(parsed,dict) and isinstance(parsed.get('error'),dict) else None
+        except (ValueError,UnicodeError):c_code=None
+        check(c_status==503 and c_code=='native_adapter_error','post-install callback status '+str(c_status)+' code '+(c_code if c_code in ('native_adapter_error','identity_mapping_denied') else 'other'))
         c_session,headers,body=get(c,'/auth/session');captures.extend([str(headers).encode(),body])
         c_snapshot,headers,body=get(c,'/api/v1/snapshot');captures.extend([str(headers).encode(),body])
         c_replay,headers,body=get(c,'/auth/github/callback?'+urllib.parse.urlencode({'state':c_state,'code':'c'}));captures.extend([str(headers).encode(),body])
@@ -420,7 +425,7 @@ print('UNEXPECTED_REPLY')
                 check(value not in logs,'journal token scan')
             for p in ['/etc/native-agent-host/gateway.json','/etc/native-agent-host/daemon-guestone.json','/etc/native-agent-host/daemon-guesttwo.json','/etc/native-agent-host/daemon-guestthree.json']:
                 check(value not in pathlib.Path(p).read_bytes(),'config token scan')
-        result={'status':'passed','scope':'jit-login-slice','revocation':{'atomic_fsynced':True,'existing_denied_statuses':revoked,'new_denied_status':revoked_new_status,'other_uid_reauthorized':True,'ledger_account_credential_preserved':True},'rename':{'same_uid':True,'no_second_gh_login':True},'gh_failures':fault_results,'lost_ack':{'callback_status':lost_status,'session_status':lost_session,'snapshot_status':lost_snapshot,'replay_status':403,'one_daemon_gh_call_observed':True,'daemon_killed_before_ack':True,'credential_preserved':True},'post_install_lost_ack':{'callback_status':c_status,'session_status':c_session,'snapshot_status':c_snapshot,'replay_status':c_replay,'one_shot_child_calls':len(c_records),'daemon_pid_changed':c_after!=c_pid,'protected_credential_retained':True,'other_uid_reauthenticated':True},'pid1':'systemd','uids':[21032,21033,21003],'socket_mode':'0660','socket_activation':True,'pool_vacant_before_login':True,'new_accounts':True,'committed_bindings':True,'root_ledger':True,'pinned_policy_gate':True,'routes':routes,'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'cross_user_broker':True,'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'gateway_credential':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, full boot journal capped at 1 MiB per unit, process argv/environ, configs, child argv logs'}}
+        result.update({'status':'passed','scope':'jit-login-slice','revocation':{'atomic_fsynced':True,'existing_denied_statuses':revoked,'new_denied_status':revoked_new_status,'other_uid_reauthorized':True,'ledger_account_credential_preserved':True},'rename':{'same_uid':True,'no_second_gh_login':True},'gh_failures':fault_results,'lost_ack':{'callback_status':lost_status,'session_status':lost_session,'snapshot_status':lost_snapshot,'replay_status':403,'one_daemon_gh_call_observed':True,'daemon_killed_before_ack':True,'credential_preserved':True},'post_install_lost_ack':{'callback_status':c_status,'session_status':c_session,'snapshot_status':c_snapshot,'replay_status':c_replay,'one_shot_child_calls':len(c_records),'daemon_pid_changed':c_after!=c_pid,'protected_credential_retained':True,'other_uid_reauthenticated':True},'pid1':'systemd','uids':[21032,21033,21003],'socket_mode':'0660','socket_activation':True,'pool_vacant_before_login':True,'new_accounts':True,'committed_bindings':True,'root_ledger':True,'pinned_policy_gate':True,'routes':routes,'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'cross_user_broker':True,'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'gateway_credential':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, full boot journal capped at 1 MiB per unit, process argv/environ, configs, child argv logs'},'revoked_sibling_stopped_before_c':True})
     finally:provider.terminate();provider.wait(timeout=5)
 except Exception as e:
     # FileNotFoundError retains the missing executable/path; no fixture token
@@ -429,11 +434,13 @@ except Exception as e:
     result['reason']=(type(e).__name__+' '+str(missing or str(e)).split(':')[0])[:220]
     # Preserve only whitelisted systemd state, including when the failure
     # precedes the explicit restart. Never include show ExecStart or journal.
-    if 'post_install_units' not in result and 'c_pid' in locals():
-        result['post_install_units']={'after_service':unit_state('native-agent-host-daemon@guestthree.service',UNIT_KEYS),
-                                      'after_socket':unit_state('native-agent-host-daemon@guestthree.socket',SOCKET_KEYS)}
+    if 'post_install_units' not in result and 'post_install_started' in locals():
+        try:
+            result['post_install_units']={'after_service':unit_state('native-agent-host-daemon@guestthree.service',UNIT_KEYS),
+                                          'after_socket':unit_state('native-agent-host-daemon@guestthree.socket',SOCKET_KEYS)}
+        except (OSError,subprocess.TimeoutExpired):result['post_install_units']={'unavailable':True}
     codes={}
-    for unit in ('product-gateway','native-agent-host-broker','native-agent-host-daemon@guestone','native-agent-host-daemon@guesttwo'):
+    for unit in ('product-gateway','native-agent-host-broker','native-agent-host-daemon@guestone','native-agent-host-daemon@guesttwo','native-agent-host-daemon@guestthree'):
         journal=subprocess.run(['journalctl','-u',unit,'-n','12','--no-pager','-o','cat'],capture_output=True).stdout
         codes[unit]=[]
         for line in journal.decode('utf-8','replace').splitlines():
