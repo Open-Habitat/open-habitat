@@ -144,7 +144,7 @@ try:
  if not isinstance(p.get('token_scan'),dict) or p['token_scan'].get('passed') is not True: sys.exit(1)
  rev=p.get('revocation',{}); rename=p.get('rename',{})
  if rev.get('existing_denied_statuses') != [401]*4 or rev.get('new_denied_status') != 403: sys.exit(1)
- if not all(rev.get(k) is True for k in ('atomic_fsynced','other_uid_unaffected','ledger_account_credential_preserved')): sys.exit(1)
+ if not all(rev.get(k) is True for k in ('atomic_fsynced','other_uid_reauthorized','ledger_account_credential_preserved')): sys.exit(1)
  if rename != {'same_uid':True,'no_second_gh_login':True}: sys.exit(1)
  failures=p.get('gh_failures',{})
  if set(failures)!= {'fail-login','wrong-id'} or any(v != {'callback_status':503,'session_status':401,'replay_status':403,'credential_absent':True} for v in failures.values()): sys.exit(1)

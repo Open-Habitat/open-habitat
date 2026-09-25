@@ -90,7 +90,7 @@ p={'status':'passed','scope':'jit-login-slice','pid1':'systemd','uids':[21032,21
    'native_gh':dict.fromkeys(('stdin_only','exact_argv','protected_file','credential_isolated'),True),
    'denials':dict.fromkeys(('cross_user_broker','unknown_identity','unknown_session','state_replay','root_peer','cross_user_home','cross_user_socket','gateway_home','gateway_credential','forged_headers','symlink_excluded'),True),
    'token_scan':{'passed':True,'allowed':'protected credential','scanned':'captures'},
-   'revocation':{'atomic_fsynced':True,'existing_denied_statuses':[401]*4,'new_denied_status':403,'other_uid_unaffected':True,'ledger_account_credential_preserved':True},
+   'revocation':{'atomic_fsynced':True,'existing_denied_statuses':[401]*4,'new_denied_status':403,'other_uid_reauthorized':True,'ledger_account_credential_preserved':True},
    'rename':{'same_uid':True,'no_second_gh_login':True},
    'gh_failures':{mode:{'callback_status':503,'session_status':401,'replay_status':403,'credential_absent':True} for mode in ('fail-login','wrong-id')}}
 for key in ('pool_vacant_before_login','new_accounts','committed_bindings','root_ledger','pinned_policy_gate','socket_activation'):p[key]=True

@@ -201,6 +201,20 @@ print('UNEXPECTED_REPLY')
             cred=pathlib.Path('/home')/name/'.config/gh/hosts.yml';check(cred.stat().st_uid==pwd.getpwnam(name).pw_uid and stat.S_IMODE(cred.stat().st_mode)==0o600 and stat.S_IMODE(cred.parent.stat().st_mode)==0o700,'protected credential')
             check(denied(other,"open(%r).read()"%str(cred)),'cross user credential')
             check('PRODUCT_VM_TOKEN' not in log and 'PRODUCT_VM_TOKEN' not in (pathlib.Path('/home')/name/'git-argv.log').read_text(),'child argv logs')
+        # Root can connect by DAC, but kernel peer gate must immediately close it.
+        for name in names:
+            s=socket.socket(socket.AF_UNIX);s.settimeout(3);s.connect(str(root/name/'daemon.sock'));s.sendall(b'GET /healthz HTTP/1.1\r\nHost: unix\r\n\r\n')
+            try: reply=s.recv(1024)
+            except ConnectionResetError: reply=b''
+            check(reply==b'','root peer rejection');s.close()
+        subprocess.run(['systemctl','stop','native-agent-host-daemon@guestone.socket','native-agent-host-daemon@guestone.service'],check=True,stdout=subprocess.DEVNULL)
+        # Broker denies an inactive route before handoff. This can surface as
+        # 401 (session authorization unavailable), not only daemon HTTP 503;
+        # either way no data or cross-user fallback may be returned.
+        check(get(browsers[0],'/api/v1/snapshot')[0] in (401,503),'stopped A has no fallback')
+        check(get(browsers[1],'/api/v1/snapshot')[0]==200,'stopped A does not affect B')
+        subprocess.run(['systemctl','start','native-agent-host-daemon@guestone.socket'],check=True,stdout=subprocess.DEVNULL)
+        check(get(browsers[0],'/api/v1/snapshot')[0]==200,'A socket reactivates its own daemon')
         # A second callback for the same numeric ID after a provider handle
         # change must retain the committed UID and not install a second token.
         before=json.loads((ledger_dir/'bindings.json').read_text())['bindings']
@@ -241,27 +255,22 @@ print('UNEXPECTED_REPLY')
                 captures.extend([str(h).encode(),body])
                 check(status==401 and b'guestone-only' not in body,'revoked established route')
                 revoked.append(status)
-        check(get(browsers[1],'/api/v1/snapshot')[0]==200,'revocation affected other UID')
+        check(get(browsers[1],'/api/v1/snapshot')[0]==401,'changed epoch did not invalidate B session')
+        # Epoch is global: B's old session is invalidated too, but B remains
+        # allowlisted and can explicitly obtain a new B-only session.
+        surviving,surviving_jar=browser();status,h,_=get(surviving,'/auth/github/start');check(status==302,'B reauth start')
+        state=urllib.parse.parse_qs(urllib.parse.urlparse(h['Location']).query)['state'][0]
+        status,h,body=get(surviving,'/auth/github/callback?'+urllib.parse.urlencode({'state':state,'code':'b'}))
+        captures.extend([str(h).encode(),body,repr([(c.name,c.value) for c in surviving_jar]).encode()])
+        surviving_status,surviving_headers,surviving_body=get(surviving,'/api/v1/snapshot')
+        captures.extend([str(surviving_headers).encode(),surviving_body])
+        check(status==303 and surviving_status==200 and b'guesttwo-only' in surviving_body and b'guestone-only' not in surviving_body,'allowed B route not restored')
         fresh,fresh_jar=browser();status,h,_=get(fresh,'/auth/github/start');check(status==302,'revoked start')
         state=urllib.parse.parse_qs(urllib.parse.urlparse(h['Location']).query)['state'][0]
         status,h,body=get(fresh,'/auth/github/callback?'+urllib.parse.urlencode({'state':state,'code':'a'}))
         captures.extend([str(h).encode(),body,repr([(c.name,c.value) for c in fresh_jar]).encode()])
         check(status==403 and get(fresh,'/auth/session')[0]==401 and get(fresh,'/api/v1/snapshot')[0]==401,'revoked new session')
         check(count(pathlib.Path('/home/guestone/gh-argv.jsonl').read_text())==1,'revoked token handed off')
-        # Root can connect by DAC, but kernel peer gate must immediately close it.
-        for name in names:
-            s=socket.socket(socket.AF_UNIX);s.settimeout(3);s.connect(str(root/name/'daemon.sock'));s.sendall(b'GET /healthz HTTP/1.1\r\nHost: unix\r\n\r\n')
-            try: reply=s.recv(1024)
-            except ConnectionResetError: reply=b''
-            check(reply==b'','root peer rejection');s.close()
-        subprocess.run(['systemctl','stop','native-agent-host-daemon@guestone.socket','native-agent-host-daemon@guestone.service'],check=True,stdout=subprocess.DEVNULL)
-        # Broker denies an inactive route before handoff. This can surface as
-        # 401 (session authorization unavailable), not only daemon HTTP 503;
-        # either way no data or cross-user fallback may be returned.
-        check(get(browsers[0],'/api/v1/snapshot')[0] in (401,503),'stopped A has no fallback')
-        check(get(browsers[1],'/api/v1/snapshot')[0]==200,'stopped A does not affect B')
-        subprocess.run(['systemctl','start','native-agent-host-daemon@guestone.socket'],check=True,stdout=subprocess.DEVNULL)
-        check(get(browsers[0],'/api/v1/snapshot')[0]==200,'A socket reactivates its own daemon')
         for token_name in names+['UNKNOWN']:
             value=(pathlib.Path('/usr/local/lib/fixture/tokens')/token_name).read_bytes() if token_name in names else b'PRODUCT_VM_TOKEN_'+b'UNKNOWN_FIXTURE_ONLY_92764'
             check(value and all(value not in b for b in captures),'browser capture token scan')
@@ -271,11 +280,12 @@ print('UNEXPECTED_REPLY')
                     try:check(value not in (p/suffix).read_bytes(),'process token scan')
                     except (FileNotFoundError,ProcessLookupError):continue
             for unit in ['product-gateway','native-agent-host-daemon@guestone','native-agent-host-daemon@guesttwo','native-agent-host-broker']:
-                logs=subprocess.run(['journalctl','-u',unit,'-n','100','--no-pager','-o','cat'],capture_output=True,timeout=10).stdout[:65536]
+                logs=subprocess.run(['journalctl','-u',unit,'-b','--no-pager','-o','cat'],capture_output=True,timeout=10).stdout
+                check(len(logs)<=1048576,'journal scan exceeds 1 MiB')
                 check(value not in logs,'journal token scan')
             for p in ['/etc/native-agent-host/gateway.json','/etc/native-agent-host/daemon-guestone.json','/etc/native-agent-host/daemon-guesttwo.json']:
                 check(value not in pathlib.Path(p).read_bytes(),'config token scan')
-        result={'status':'passed','scope':'jit-login-slice','revocation':{'atomic_fsynced':True,'existing_denied_statuses':revoked,'new_denied_status':status,'other_uid_unaffected':True,'ledger_account_credential_preserved':True},'rename':{'same_uid':True,'no_second_gh_login':True},'gh_failures':fault_results,'pid1':'systemd','uids':[21032,21033,21003],'socket_mode':'0660','socket_activation':True,'pool_vacant_before_login':True,'new_accounts':True,'committed_bindings':True,'root_ledger':True,'pinned_policy_gate':True,'routes':routes,'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'cross_user_broker':True,'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'gateway_credential':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, bounded journal, process argv/environ, configs, child argv logs'}}
+        result={'status':'passed','scope':'jit-login-slice','revocation':{'atomic_fsynced':True,'existing_denied_statuses':revoked,'new_denied_status':status,'other_uid_reauthorized':True,'ledger_account_credential_preserved':True},'rename':{'same_uid':True,'no_second_gh_login':True},'gh_failures':fault_results,'pid1':'systemd','uids':[21032,21033,21003],'socket_mode':'0660','socket_activation':True,'pool_vacant_before_login':True,'new_accounts':True,'committed_bindings':True,'root_ledger':True,'pinned_policy_gate':True,'routes':routes,'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'cross_user_broker':True,'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'gateway_credential':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, full boot journal capped at 1 MiB per unit, process argv/environ, configs, child argv logs'}}
     finally:provider.terminate();provider.wait(timeout=5)
 except Exception as e:
     # FileNotFoundError retains the missing executable/path; no fixture token
