@@ -14,7 +14,20 @@ LIMIT = 2097152
 # These are fixture-only credentials; scan the entire stream, across reads.
 TOKENS = [f"PRODUCT_VM_TOKEN_{name}_FIXTURE_ONLY_92764".encode() for name in
           ("agent_a", "agent_b", "guestone", "guesttwo", "UNKNOWN")]
-MARKER = re.compile(rb"^(VM_PHASE=(?:lost_ack_callback_start|lost_ack_callback_returned|lost_ack_assertions_passed|reboot_[a-z_]{1,64})|VM_REBOOT_DIAG=[a-z0-9_-]{1,80})\r?$")
+# Fixed fixture vocabulary, not arbitrary serial text with a plausible prefix.
+MARKER = re.compile(
+    rb"^(?:VM_PHASE=(?:lost_ack_callback_start|lost_ack_callback_returned|"
+    rb"lost_ack_assertions_passed|real_reboot_requested)|"
+    rb"VM_REBOOT_DIAG=(?:entry|pid1-and-origin-start|kernel-boot-changed|"
+    rb"ledger-read-start|credentials-start|credential-(?:guestone|guesttwo)"
+    rb"(?:-foreign-probe)?-start|persistent-ledger-and-homes|socket-status-start|"
+    rb"socket-(?:guestone|guesttwo)-status-start|broker-socket-status-start|"
+    rb"disabled-sockets|policy-(?:preflight|verify)-start|unprepared-boot-acl|"
+    rb"cmd-[0-9]{1,3}-(?:start|timeout|exit-[0-9]{1,3})|"
+    rb"unit-(?:activestate|substate|result|execmainstatus)-[a-z0-9_-]{1,32}|"
+    rb"unit-status-timeout)|"
+    rb"VM_REBOOT_UNIT_EXIT=(?:success|exit-code|timeout):(?:exited|killed|dead):[0-9]{1,3})\r?$"
+)
 
 
 def drain(source, log, receipt):

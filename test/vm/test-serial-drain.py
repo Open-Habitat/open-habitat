@@ -40,11 +40,17 @@ class SerialDrainTest(unittest.TestCase):
         self.assertEqual(mode, 0o600)
 
     def test_stream_token_after_cap_even_when_split_across_writes(self):
-        token = b"PRODUCT_VM_TOKEN_guestone_FIXTURE_ONLY_92764"
+        token = b"PRODUCT_VM_TOKEN_" + b"guestone_FIXTURE_ONLY_92764"
         data, log, _ = self.capture([b"X" * CAP, token[:20], token[20:], b"\n"])
         self.assertTrue(data['capped'])
         self.assertTrue(data['token_leaked'])
         self.assertNotIn(token, log)
+
+    def test_token_spanning_reader_boundary(self):
+        token = b"PRODUCT_VM_TOKEN_" + b"guesttwo_FIXTURE_ONLY_92764"
+        data, _, _ = self.capture([b"X" * (65536 - 9), token, b"\n"])
+        self.assertFalse(data['capped'])
+        self.assertTrue(data['token_leaked'])
 
     def test_uncapped_proof_and_no_raw_token_to_stdout(self):
         data, log, _ = self.capture([b'VM_PROOF={"status":"passed"}\n'])

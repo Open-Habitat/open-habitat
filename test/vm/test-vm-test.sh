@@ -178,6 +178,17 @@ PY
 grep -Fq "'scope':'product-two-user-routing'" "$repo/test/vm/product-proof.py"
 # Guard the explicit timeout and kill/cleanup wiring against accidental removal.
 grep -Fq 'timeout -k 10s 600s podman run' "$tmp/repo/scripts/vm-test.sh"
+grep -Fq '| python3 "$repo/scripts/vm-serial-drain.py"' "$tmp/repo/scripts/vm-test.sh"
+python3 "$repo/test/vm/test-serial-drain.py"
+# The actual host acceptance guard rejects a capped or leaked receipt, even
+# when a late, superficially valid VM_PROOF follows the retained prefix.
+serial_guard=$(sed -n "/<<'SERIAL_CHECK'/,/^SERIAL_CHECK$/p" "$repo/scripts/vm-test.sh" | sed '1d;$d')
+printf '{"bytes":2097153,"capped":true,"token_leaked":false,"markers":[]}\n' > "$tmp/serial-receipt.json"
+if python3 -c "$serial_guard" "$tmp/serial-receipt.json"; then echo 'capped serial accepted' >&2; exit 1; fi
+printf '{"bytes":10,"capped":false,"token_leaked":true,"markers":[]}\n' > "$tmp/serial-receipt.json"
+if python3 -c "$serial_guard" "$tmp/serial-receipt.json"; then echo 'leaked serial accepted' >&2; exit 1; fi
+rm "$tmp/serial-receipt.json"
+if python3 -c "$serial_guard" "$tmp/serial-receipt.json"; then echo 'missing receipt accepted' >&2; exit 1; fi
 grep -Fq 'genisoimage -quiet -R -graft-points -V PRODUCT' "$tmp/repo/scripts/vm-test.sh"
 grep -Fq 'timeout -k 5s 360s podman run' "$tmp/repo/scripts/vm-test.sh"
 grep -Fq 'trap cleanup EXIT' "$tmp/repo/scripts/vm-test.sh"

@@ -1,0 +1,14 @@
+# Bounded second-boot diagnostic — still red
+
+This is a diagnostic of the disposable synthetic guest, **not** a reboot ACL, gate, or cross-UID proof. The parent issue remains open. The attempted reboot-only CLI/fixture/proof changes from the preserved branches were deliberately not landed.
+
+## Observation (2026-09-25)
+
+- Source base `ba9577d`; this worktree first committed the bounded serial drainer at `20d0a8c`. Offline tests sent more than 2 MiB followed by a late `VM_PROOF`, and sent a synthetic token across a read boundary and beyond the cap. The producer completed, retention stayed at 2 MiB, token detection covered the entire stream, and capped/leaked/missing receipts were rejected. `bash test/vm/test-vm-test.sh` passed.
+- A prerequisite attempt stopped before boot with `missing_go`. With the existing repository-local Go 1.27.1 on PATH, **one** reboot guest was launched. It timed out after the 430-second QEMU limit (VM status 124, host command exit 2). The private redacted marker receipt is `history/jit-reboot-diagnostics/20260925T100915Z-1206336.log` (gitignored, mode 0600). The private failure envelope is `history/jit-reboot-actual-error.json`.
+- The first boot requested a real reboot. The second boot reported a changed kernel boot ID and persistent ledger/credentials. It reached `VM_REBOOT_DIAG=socket-guestone-status-start` then `VM_REBOOT_DIAG=cmd-0-start` (the first `systemctl is-enabled`); there was no `cmd-0-exit-*`, `cmd-0-timeout`, `VM_REBOOT_UNIT_EXIT`, or `VM_PROOF`. The host's complete-stream drainer finished and did not reject a cap or token leak, so this run did **not** establish the previous `head`-at-2-MiB backpressure hypothesis. It also did not determine why the subprocess or guest failed to return a final receipt. No bounded guest journal survived cleanup; do not infer a unit exit code for this run from the earlier branch's exit 120.
+- The private overlay and guest container were removed by the harness. No Fleetrepo, host credentials, ingress or persistent machine state changed. The diagnostic-only reboot CLI and fixture were removed rather than claiming success from an unverified scenario.
+
+## Remaining proof / next experiment
+
+Before another guest attempt, capture the drainer's byte-count/cap receipt and *sanitized bounded* unit status **and journal** in ignored private history even on timeout; distinguish a killed `systemctl` process from a blocked `communicate()` on inherited output pipes, a guest watchdog, and the host QEMU timeout. Keep phase checkpoints around every subprocess and preserve the exact failure phase without emitting credential-bearing output. After identifying the hang, run at most one separately authorized bounded guest with the **same guest's** actual root ACL prepare/verify, fail-closed gate activation and both cross-UID socket/home denials. Neither ACL restoration nor reboot isolation has been demonstrated by this run.
