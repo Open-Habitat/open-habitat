@@ -400,11 +400,37 @@ func TestWriterRestartAtEveryJournalPhase(t *testing.T) {
 		t.Run(phase, func(t *testing.T) {
 			w, _ := writerFixture(t)
 			put(t, w.Dir, "pending.json", string(marshal(journal{Version: 1, ID: "42", Username: "carol", UID: 2100, Epoch: 4, Generation: 7, Phase: phase})))
-			if r := handle(w, "ensure", "42", "carol"); r.Failure != StateUnavailable {
-				t.Fatal(r)
+			paths := []string{"pending.json", "bindings.json", "head.json"}
+			original := make(map[string][]byte, len(paths))
+			for _, path := range paths {
+				var err error
+				original[path], err = os.ReadFile(filepath.Join(w.Dir, path))
+				if err != nil {
+					t.Fatal(err)
+				}
 			}
-			if r := handle(w, "authorize", "42", ""); r.Failure != StateUnavailable {
-				t.Fatal(r)
+			// A new broker process constructs a new Writer against the same durable
+			// directory. Neither authorization nor a fresh ensure repairs a partial
+			// journal, even when the executor would otherwise be available.
+			restarted := NewWriter(w.Dir, 2100, 2102, w.Executor)
+			restarted.owner = w.owner
+			for _, op := range []string{"authorize", "ensure"} {
+				name := "carol"
+				if op == "authorize" {
+					name = ""
+				}
+				if r := handle(restarted, op, "42", name); r.Failure != StateUnavailable || r.Route != nil {
+					t.Fatal(op, r)
+				}
+			}
+			for _, path := range paths {
+				got, err := os.ReadFile(filepath.Join(w.Dir, path))
+				if err != nil || !bytes.Equal(got, original[path]) {
+					t.Fatal("mutated on restart", path, err)
+				}
+			}
+			if len(w.Executor.(*fakeHost).calls) != 0 {
+				t.Fatal("executor called with pending journal")
 			}
 		})
 	}
