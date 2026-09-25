@@ -31,10 +31,11 @@ staged = {name: subprocess.check_output(['git','-C',str(source),'show',
 for name, digest in receipts.items():
     if hashlib.sha256(staged[name]).hexdigest() != digest:
         raise ValueError(f'Fleetrepo JIT policy hash mismatch: {name}')
-if len(sys.argv) != 3 or not Path(sys.argv[2]).is_file():
+if len(sys.argv) not in (3,4) or (len(sys.argv)==4 and sys.argv[3]!='login') or not Path(sys.argv[2]).is_file():
     raise ValueError('Expected output directory and regular product binary')
 run = Path(sys.argv[1]); binary = Path(sys.argv[2])
 (run/'jit-receipt.json').write_text(json.dumps({'commit':head,'sha256':receipts},sort_keys=True))
+login = len(sys.argv)==4
 seed = {'users':[{'name':'ubuntu','uid':22000,'shell':'/bin/bash'},
  {'name':'native-agent-host-gateway','uid':21003,'shell':'/usr/sbin/nologin','no_create_home':True},
  {'name':'alice','uid':21001,'shell':'/usr/sbin/nologin'},
@@ -51,11 +52,26 @@ for name in ('native-agent-host-jit-policy-gate.service','native-agent-host-jit-
     add('/etc/systemd/system/'+name,staged[name])
 for name in ('native-agent-host-broker.socket','native-agent-host-daemon@.socket'):
     add('/etc/systemd/system/'+name+'.d/10-fleetrepo-jit-gate.conf',staged[name+'.d/10-fleetrepo-jit-gate.conf'])
-add('/usr/local/sbin/jit-proof',(repo/'test/vm/jit-proof.py').read_bytes(),'0755')
+add('/usr/local/sbin/jit-proof',(repo/'test/vm/jit-login-proof.py' if login else repo/'test/vm/jit-proof.py').read_bytes(),'0755')
 add('/etc/systemd/system/jit-proof.service','[Service]\nType=oneshot\nStandardOutput=tty\nTTYPath=/dev/ttyS0\nExecStart=/usr/local/sbin/jit-proof\n')
 state='/var/lib/native-agent-host/broker'
 for name, obj in {'broker.json':{'version':1,'gateway_uid':21003,'gateway_gid':21003,'uid_min':21032,'uid_max':21047,'state_dir':state},'allowlist.json':{'version':1,'epoch':1,'ids':[]},'bindings.json':{'version':1,'generation':1,'bindings':[]},'head.json':{'version':1,'epoch':1,'generation':1}}.items():
     add(state+'/'+name,json.dumps(obj,separators=(',',':')),'0600')
+if login:
+    subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-days','1','-subj','/CN=github.com','-addext','subjectAltName=DNS:github.com,DNS:api.github.com,DNS:host.fixture','-keyout',str(run/'tls.key'),'-out',str(run/'tls.crt')],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    add('/etc/native-agent-host/binary.sha256',hashlib.sha256(binary.read_bytes()).hexdigest()+'\n')
+    add('/etc/native-agent-host/tls.crt',(run/'tls.crt').read_bytes())
+    add('/etc/native-agent-host/tls.key',(run/'tls.key').read_bytes(),'0600')
+    add('/etc/native-agent-host/fixture-ca.crt',(run/'tls.crt').read_bytes())
+    add('/etc/native-agent-host/gateway.json',json.dumps({'component':'gateway','listen':'127.0.0.1:8443','tls_cert':'/etc/native-agent-host/tls.crt','tls_key':'/etc/native-agent-host/tls.key','gateway_uid':21003,'oauth':{'client_id':'fixture-client','client_secret':'fixture-secret','callback_url':'https://host.fixture:8443/auth/github/callback','origin':'https://host.fixture:8443'}}))
+    add('/etc/systemd/system/product-gateway.service','[Service]\nUser=native-agent-host-gateway\nGroup=native-agent-host-gateway\nEnvironment=SSL_CERT_FILE=/etc/native-agent-host/fixture-ca.crt\nExecStart=/opt/native-agent-host/current/native-agent-host gateway exec --config /etc/native-agent-host/gateway.json\nNoNewPrivileges=yes\nUMask=0077\n')
+    for script, target in [('fake-provider.py','product-fake-provider'),('fake-gh.py','gh'),('fake-git.py','git')]:
+        data=(repo/'test/vm'/script).read_text()
+        data=data.replace('agent-a','guestone').replace('agent-b','guesttwo').replace('agent_a','guestone').replace('agent_b','guesttwo').replace('21001','21032').replace('21002','21033').replace('31001','100000001').replace('31002','100000002')
+        add(('/usr/bin/' if target in ('gh','git') else '/usr/local/sbin/')+target,data,'0755')
+    for name in ('guestone','guesttwo'):
+        add('/usr/local/lib/fixture/tokens/'+name,'PRODUCT_VM_TOKEN_'+name+'_FIXTURE_ONLY_92764','0600')
+    (run/'tls.key').unlink();(run/'tls.crt').unlink()
 seed['runcmd'] = [
  ['mkdir','-p','/mnt/product','/opt/native-agent-host/current','/etc/native-agent-host'],
  ['mount','-o','ro','/dev/disk/by-label/PRODUCT','/mnt/product'],

@@ -29,6 +29,8 @@ if run two-user-routing --json > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
 grep -q 'invalid_image_checksum' "$tmp/err"
 if run jit-provision --json > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
 grep -q 'invalid_image_checksum' "$tmp/err"
+if run jit-login --json > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
+grep -q 'invalid_image_checksum' "$tmp/err"
 cp "$repo/test/vm/image.env" "$tmp/repo/test/vm/image.env"
 sed -i 's|/home/agent-b/SYNTHETIC-IDENTITY|/home/agent-b/INVALID|' "$tmp/repo/test/vm/cloud-init.yaml"
 if run self-test --json > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
@@ -87,6 +89,18 @@ assert json.loads(base64.b64decode(files['/var/lib/native-agent-host/broker/bind
 assert b'/opt/native-agent-host/current/native-agent-host' in base64.b64decode(files['/etc/systemd/system/native-agent-host-daemon@.service']['content'])
 assert seed['runcmd'][-1]==['systemctl','start','jit-proof.service']
 JIT_FIXTURE
+  FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/native-agent-host" login
+  python3 - "$tmp/jit/jit-cloud-init.yaml" <<'JIT_LOGIN'
+import base64,json,sys
+seed=json.loads(open(sys.argv[1]).read().split('\n',1)[1]); files={f['path']:base64.b64decode(f['content']) for f in seed['write_files']}
+assert not any(u['name'] in ('guestone','guesttwo') for u in seed['users'])
+assert b'jit-login-proof' not in files['/usr/local/sbin/jit-proof'] # source is embedded, not a mock binary
+assert b"'scope':'jit-login-slice'" in files['/usr/local/sbin/jit-proof']
+assert b'127.0.0.1' in files['/usr/local/sbin/product-fake-provider']
+assert b'21032' in files['/usr/bin/gh'] and b'21033' in files['/usr/bin/gh']
+assert files['/var/lib/native-agent-host/broker/bindings.json'].find(b'"bindings":[]')!=-1
+assert seed['runcmd'][-1]==['systemctl','start','jit-proof.service']
+JIT_LOGIN
 fi
 # Validate product seed rendering offline with a known injection payload (no boot).
 mkdir -p "$tmp/product"
