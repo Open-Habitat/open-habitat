@@ -290,10 +290,12 @@ print('UNEXPECTED_REPLY')
         b_cred=pathlib.Path('/home/guesttwo/.config/gh/hosts.yml').stat().st_ino
         lost,lost_jar=browser();status,h,_=get(lost,'/auth/github/start');check(status==302,'lost-ack start')
         lost_state=urllib.parse.parse_qs(urllib.parse.urlparse(h['Location']).query)['state'][0]
+        print('VM_PHASE=lost_ack_callback_start',flush=True)
         fault.write_text('lost-ack')
         try:
             lost_status,lost_headers,lost_body=get(lost,'/auth/github/callback?'+urllib.parse.urlencode({'state':lost_state,'code':'b'}))
         finally:fault.unlink()
+        print('VM_PHASE=lost_ack_callback_returned',flush=True)
         captures.extend([str(lost_headers).encode(),lost_body,repr([(c.name,c.value) for c in lost_jar]).encode()])
         check(lost_status==503 and json.loads(lost_body)['error']['code']=='native_adapter_error','lost ack issued session')
         lost_session,session_headers,session_body=get(lost,'/auth/session')
@@ -307,6 +309,7 @@ print('UNEXPECTED_REPLY')
         b_after=int(subprocess.check_output(['systemctl','show','-P','MainPID','native-agent-host-daemon@guesttwo.service']).strip())
         check(b_after!=b_daemon and pathlib.Path('/home/guesttwo/.config/gh/hosts.yml').stat().st_ino==b_cred,
               'B daemon did not die or credential replaced after lost ack')
+        print('VM_PHASE=lost_ack_assertions_passed',flush=True)
         for token_name in names+['UNKNOWN']:
             value=(pathlib.Path('/usr/local/lib/fixture/tokens')/token_name).read_bytes() if token_name in names else b'PRODUCT_VM_TOKEN_'+b'UNKNOWN_FIXTURE_ONLY_92764'
             check(value and all(value not in b for b in captures),'browser capture token scan')

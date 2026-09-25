@@ -160,6 +160,12 @@ try:
 except (ValueError,TypeError):print('missing proof')
 REASON
 )
+    # Only literal fixture phase markers are surfaced; never echo serial logs
+    # or guest diagnostics that could contain an OAuth token.
+    if [[ -z $proof ]]; then
+      phases=$(grep -aEo 'VM_PHASE=(lost_ack_callback_start|lost_ack_callback_returned|lost_ack_assertions_passed)' "$run/serial.log" | sort -u | tr '\n' ',' || :)
+      reason="missing proof serial_bytes=$(wc -c < "$run/serial.log") phases=${phases:-none}"
+    fi
     fail boot_proof_failed "JIT login guest failed closed (VM exit $vm_status, ${duration}s; check=$reason)" 2
   fi
   if ! python3 - "$repo" "$run/serial.log" "$run/native-agent-host" <<'TOKEN_SCAN'
