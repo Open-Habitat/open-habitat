@@ -26,4 +26,12 @@ Full two-UID allocation, first login, committed bindings, rerun/rename/concurren
 
 ## Harvest verification
 
-Source revision and exact command results for this harvested worktree are recorded below after clean-tree gate execution; source-run attempts above are historical evidence only, not a passing current run.
+Harness commit `0890d443351cd69fa2e5c314cb37262eacfafc52`, optimized-Python acceptance correction `cd7157888fc88005cc888ea95ae58fa3cc8d8c93`. Source-run attempts above are historical evidence only, not a passing current run. On the committed tree at `cd71578`:
+
+- `bash test/vm/test-vm-test.sh`: exit 0 (offline argv, schema, immutable-source/hash rejection, optional pinned Fleetrepo seed, cleanup wiring and optimized-Python failed-proof rejection).
+- `PATH=/home/maintainer/Sources/native-agent-host/.tools/go/bin:$PATH go test -race ./internal/provision ./internal/gateway ./internal/daemon`: exit 0.
+- `./scripts/vm-test.sh two-user-routing --json`: first attempt exit **2**, `boot_proof_failed` (`BrokenPipeError` in baseline proof); retry exit **0**, `product-two-user-routing`, 189s. This is the historical **static** scenario, not JIT. The first failure is not concealed by the retry.
+- `./scripts/ci-local.sh --clean --json`: exit **0**, `{"status":"passed","clean":true}`. `issuectl doctor --json`: exit 0, no warnings/violations; `git diff --check`: exit 0. Go comes from a repository-local preexisting tool cache, not an installation.
+- One targeted independent final-diff review (`gpt-6-astra`) found that Python `assert` statements in the outer JIT proof validator could be stripped by `PYTHONOPTIMIZE=1`, falsely accepting failed proof JSON if the VM powered off cleanly. Replaced acceptance assertions with explicit checks; offline regression rejects a failed proof both normally and under `python3 -O`. No review finding was left to file. The review did not establish another privilege-boundary defect.
+
+The opt-in run, started on clean committed harness revision `0890d44` (before the parser fix), returned exit **2**, canonical JSON `boot_proof_failed`, VM exit 0, 212s. First ensure returned no reply after **4.429s**; broker was active; `pending_phase=null`. This **differs** from the preserved guest's `account` journal. The guest proof records only a snapshot after the exchange, so we cannot infer whether the writer reached its journal and recovered, never started handling, or whether guest timing delayed admission. The two-second exchange deadline can close the socket before the client receives a reply; this alone does not explain the missing journal. This is an unresolved diagnostic difference, not a green allocation test. No guest journal was cleared; only the entire disposable guest was torn down on poweroff.
