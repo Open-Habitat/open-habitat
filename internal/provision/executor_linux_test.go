@@ -219,3 +219,19 @@ func TestExactGateExec(t *testing.T) {
 		}
 	}
 }
+
+func TestRouteReadyDoesNotStartOrAdoptMissingSocket(t *testing.T) {
+	e := NewLinuxHostExecutor(21003, 21003)
+	i := ExecutorIdentity{provider: "github", id: "42", username: "uncreated_guest_foo", uid: 21032}
+	for _, state := range []string{"inactive", "active"} {
+		e.run = func(_ context.Context, path string, args ...string) ([]byte, error) {
+			if path != systemctl || len(args) != 2 || args[0] != "is-active" {
+				t.Fatalf("unexpected mutation: %s %v", path, args)
+			}
+			return []byte(state + "\n"), nil
+		}
+		if e.RouteReady(context.Background(), i) == nil {
+			t.Fatal("accepted missing socket", state)
+		}
+	}
+}
