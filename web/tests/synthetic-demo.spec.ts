@@ -76,6 +76,16 @@ test("no authentication, fixture routes, production build fixture, or external h
   expect((await request.get(`${base}/auth/github/start`)).status()).toBe(404);
   expect((await request.get(`${base}/fixture/provider`)).status()).toBe(404);
   expect(
+    (await request.get(`${base}/__open-in-editor?file=/etc/hostname`)).status(),
+  ).toBe(404);
+  expect(
+    (
+      await request.get(`${base}/api/v1/snapshot`, {
+        headers: { "Sec-Fetch-Site": "cross-site" },
+      })
+    ).status(),
+  ).toBe(404);
+  expect(
     (
       await request.get(`${base}/workspaces`, {
         headers: { Host: "example.org" },

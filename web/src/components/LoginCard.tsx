@@ -1,11 +1,6 @@
 import { Button } from "./Primitives";
-export function LoginCard({
-  onLogin,
-  demo = false,
-}: {
-  onLogin?: () => void;
-  demo?: boolean;
-}) {
+export function LoginCard({ onLogin }: { onLogin?: () => void }) {
+  const demo = import.meta.env.VITE_SYNTHETIC_DEMO === "true";
   return (
     <section className="ah-login-card" aria-labelledby="login-title">
       <header>

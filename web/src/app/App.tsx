@@ -240,7 +240,6 @@ export function App() {
     ) : phase === "authentication_required" ? (
       <>
         <LoginCard
-          demo={syntheticDemo}
           onLogin={() => {
             if (syntheticDemo) return;
             window.location.assign(

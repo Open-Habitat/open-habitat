@@ -21,6 +21,16 @@ const server = await createServer({
             return;
           }
           const url = new URL(req.url ?? "/", `http://${host}:${port}`);
+          // Vite's editor endpoint launches a subprocess. Never expose it, or
+          // permit cross-site requests to the rehearsal listener.
+          if (
+            url.pathname === "/__open-in-editor" ||
+            url.pathname.startsWith("/__open-in-editor/") ||
+            req.headers["sec-fetch-site"] === "cross-site"
+          ) {
+            res.writeHead(404).end("Not available in the synthetic demo");
+            return;
+          }
           if (url.pathname === "/api/v1/snapshot") {
             const requested = url.searchParams.get("scenario");
             const cookie =

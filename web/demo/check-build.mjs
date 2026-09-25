@@ -8,7 +8,7 @@ async function inspect(dir) {
     else if (/\.(?:html|js|css|map)$/.test(entry.name)) {
       const text = await readFile(path, "utf8");
       if (
-        /SYNTEETTINEN DEMO|Demo-käyttäjä|synthetic-observation|demo_scenario|VITE_SYNTHETIC_DEMO|\/fixture\//.test(
+        /SYNTEETTINEN DEMO|Demo-käyttäjä|synthetic-observation|demo_scenario|VITE_SYNTHETIC_DEMO|\/fixture\/|Simuloidussa demossa|kirjautumisnäkymän simulaatio|scenario=ready/.test(
           text,
         )
       )
