@@ -17,10 +17,10 @@ try:
     expected=pathlib.Path('/etc/native-agent-host/binary.sha256').read_text().strip()
     check(hashlib.sha256(pathlib.Path('/opt/native-agent-host/current/native-agent-host').read_bytes()).hexdigest()==expected,'product binary digest')
     check(pwd.getpwnam('native-agent-host-gateway').pw_uid==gateway_uid,'gateway UID')
-    state=pathlib.Path('/var/lib/native-agent-host/broker')
-    check(json.loads((state/'bindings.json').read_text())['bindings']==[],'bindings precreated')
-    check(json.loads((state/'allowlist.json').read_text())['ids']==[],'allowlist precreated')
-    check(state.stat().st_uid==0 and stat.S_IMODE(state.stat().st_mode)==0o700,'root ledger directory')
+    ledger_dir=pathlib.Path('/var/lib/native-agent-host/broker')
+    check(json.loads((ledger_dir/'bindings.json').read_text())['bindings']==[],'bindings precreated')
+    check(json.loads((ledger_dir/'allowlist.json').read_text())['ids']==[],'allowlist precreated')
+    check(ledger_dir.stat().st_uid==0 and stat.S_IMODE(ledger_dir.stat().st_mode)==0o700,'root ledger directory')
     for name,uid in zip(names,uids):
         check(not any(u.pw_name==name or u.pw_uid==uid for u in pwd.getpwall()),'precreated account')
         check(not (pathlib.Path('/home')/name).exists(),'precreated home')
@@ -30,14 +30,14 @@ try:
     prep='/usr/local/libexec/native-agent-host-test-jit/jit_acl_prepare.py'
     check(subprocess.run(['/usr/bin/python3',prep,'preflight','--json'],capture_output=True).returncode==0,'policy preflight')
     import fcntl
-    fd=os.open(state,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+    fd=os.open(ledger_dir,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
     try:
         fcntl.flock(fd,fcntl.LOCK_EX)
         nxt=state/'allowlist.json.next'
         with os.fdopen(os.open(nxt,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600),'w') as f:
             json.dump({'version':1,'epoch':2,'ids':[{'id':'100000001','alternate':names[0]},{'id':'100000002','alternate':names[1]}]},f)
             f.flush();os.fsync(f.fileno())
-        nxt.replace(state/'allowlist.json');os.fsync(fd)
+        nxt.replace(ledger_dir/'allowlist.json');os.fsync(fd)
     finally: os.close(fd)
     check(subprocess.run(['/usr/bin/python3',prep,'prepare','--json'],capture_output=True).returncode==0,'policy prepare')
     check(subprocess.run(['/usr/bin/python3',prep,'verify','--json'],capture_output=True).returncode==0,'policy verify')
@@ -105,7 +105,7 @@ try:
             if status!=303:
                 try: code=json.loads(body).get('error',{}).get('code','unknown')
                 except ValueError: code='non_json'
-                bindings=json.loads((state/'bindings.json').read_text()).get('bindings',[])
+                bindings=json.loads((ledger_dir/'bindings.json').read_text()).get('bindings',[])
                 socket_unit='native-agent-host-daemon@'+name+'.socket'
                 active=subprocess.run(['systemctl','is-active',socket_unit],capture_output=True,text=True).stdout.strip()
                 result['diagnostic']={'binding_committed':any(b.get('id')==str(100000001+index) and b.get('uid')==uids[index] for b in bindings),
@@ -115,7 +115,7 @@ try:
             uid=uids[index];home=pathlib.Path('/home')/name
             check(pwd.getpwnam(name).pw_uid==uid and pwd.getpwnam(name).pw_gid==uid,'new NSS account')
             check(home.stat().st_uid==uid and stat.S_IMODE(home.stat().st_mode)==0o700,'new home')
-            binding=json.loads((state/'bindings.json').read_text())['bindings']
+            binding=json.loads((ledger_dir/'bindings.json').read_text())['bindings']
             check(any(b['id']==str(100000001+index) and b['uid']==uid and b['username']==name for b in binding),'broker binding')
             config=pathlib.Path('/etc/native-agent-host')/('daemon-'+name+'.json')
             check(config.stat().st_uid==0 and config.stat().st_gid==uid and stat.S_IMODE(config.stat().st_mode)==0o640,'executor config')
