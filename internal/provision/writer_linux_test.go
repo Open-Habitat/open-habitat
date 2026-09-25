@@ -432,6 +432,15 @@ func TestWriterRestartAtEveryJournalPhase(t *testing.T) {
 			if len(w.Executor.(*fakeHost).calls) != 0 {
 				t.Fatal("executor called with pending journal")
 			}
+			// Only the isolated test fixture removes its synthetic marker. With
+			// identical state and writer, a normal ensure must now succeed; this
+			// rules out a vacuous unavailable result from an invalid fixture.
+			if err := os.Remove(filepath.Join(w.Dir, "pending.json")); err != nil {
+				t.Fatal(err)
+			}
+			if r := handle(restarted, "ensure", "42", "carol"); r.Route == nil || r.Route.UID != 2100 {
+				t.Fatal("control ensure unavailable", r)
+			}
 		})
 	}
 }
