@@ -8,7 +8,7 @@ home=pathlib.Path(os.environ['HOME'])
 assert str(home) in ('/home/agent-a','/home/agent-b') and os.getuid() in (21001,21002)
 assert 'PRODUCT_VM_TOKEN' not in repr(args) and all('PRODUCT_VM_TOKEN' not in v for v in os.environ.values())
 log=home/'gh-argv.jsonl'
-with log.open('a') as f: f.write(json.dumps({'argv':args,'stdin':args[:2]==['auth','login'],'uid':os.getuid()})+'\n')
+with log.open('a') as f: f.write(json.dumps({'argv':args,'stdin':args[:2]==['auth','login'],'uid':os.getuid(),'parent_pid':os.getppid()})+'\n')
 cred=home/'.config/gh/hosts.yml'
 # Guest-only fault switch; no production executable reads this path. The root
 # proof sets it before a fresh synthetic callback, then removes it.

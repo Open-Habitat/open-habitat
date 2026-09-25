@@ -93,7 +93,7 @@ p={'status':'passed','scope':'jit-login-slice','pid1':'systemd','uids':[21032,21
    'revocation':{'atomic_fsynced':True,'existing_denied_statuses':[401]*4,'new_denied_status':403,'other_uid_reauthorized':True,'ledger_account_credential_preserved':True},
    'rename':{'same_uid':True,'no_second_gh_login':True},
    'gh_failures':{mode:{'callback_status':503,'session_status':401,'replay_status':403,'credential_absent':True} for mode in ('fail-login','wrong-id')},
-   'lost_ack':{'callback_status':503,'session_status':401,'snapshot_status':401,'replay_status':403,'no_second_login_attempt':True,'credential_preserved':True}}
+   'lost_ack':{'callback_status':503,'session_status':401,'snapshot_status':401,'replay_status':403,'one_daemon_gh_call_observed':True,'daemon_killed_before_ack':True,'credential_preserved':True}}
 for key in ('pool_vacant_before_login','new_accounts','committed_bindings','root_ledger','pinned_policy_gate','socket_activation'):p[key]=True
 def accepted(proof):return subprocess.run(['python3','-c',sys.argv[1],json.dumps(proof)]).returncode==0
 assert accepted(p),'valid guest proof rejected'
@@ -105,7 +105,7 @@ p['revocation']['existing_denied_statuses']=[200]*4;assert not accepted(p),'fals
 p['revocation']['existing_denied_statuses']=[401]*4
 p['gh_failures']['wrong-id']['credential_absent']=False;assert not accepted(p),'wrong-ID credential accepted'
 p['gh_failures']['wrong-id']['credential_absent']=True
-p['lost_ack']['no_second_login_attempt']=False;assert not accepted(p),'lost-ack retry accepted'
+p['lost_ack']['one_daemon_gh_call_observed']=False;assert not accepted(p),'lost-ack repeat accepted'
 LOGIN_ORACLE
 # Host leak scanner must accept the intentional UNKNOWN fixture literal in the
 # fake provider, yet reject emitted tokens and accidental full JIT tokens.
