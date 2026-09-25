@@ -16,16 +16,13 @@ class SerialDrainTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             log = pathlib.Path(directory) / "serial"
             receipt = pathlib.Path(directory) / "receipt"
-            proc = subprocess.Popen([sys.executable, str(DRAIN), str(log), str(receipt)],
-                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            for chunk in chunks:
-                proc.stdin.write(chunk)
-                proc.stdin.flush()
-            proc.stdin.close()
-            self.assertEqual(proc.wait(timeout=8), 0, proc.stderr.read())
-            self.assertEqual(proc.stdout.read(), b"")
-            proc.stderr.close()
-            proc.stdout.close()
+            # communicate() bounds both the producer write and the consumer
+            # exit; wait(timeout=...) alone would not bound a blocked write.
+            proc = subprocess.run([sys.executable, str(DRAIN), str(log), str(receipt)],
+                                  input=b"".join(chunks), capture_output=True, timeout=8,
+                                  check=False)
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            self.assertEqual(proc.stdout, b"")
             record = json.loads(receipt.read_text())
             return record, log.read_bytes(), log.stat().st_mode & 0o777
 
