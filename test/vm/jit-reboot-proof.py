@@ -24,31 +24,45 @@ def checkpoint(label):
     print('VM_REBOOT_DIAG='+label,flush=True)
 def need(value,label):
     if not value: raise RuntimeError(label)
-def command(*args, timeout=12):
+def command(*args, timeout=12, uid=None, output=False):
     """Bound execution AND output; never wait for a descendant's inherited pipe.
 
     A regular anonymous file replaces capture_output pipes. A private process
     session lets the parent kill descendants even if they inherited stdout.
     """
-    def limits():
-        resource.setrlimit(resource.RLIMIT_FSIZE, (4096, 4096))
-    with tempfile.TemporaryFile() as output:
-        child = subprocess.Popen(args, stdout=output, stderr=subprocess.DEVNULL,
-                                 start_new_session=True, preexec_fn=limits)
+    def prepare():
+        if output:
+            # Only the status command uses a captured file. Do not constrain
+            # policy/fixture writes with a process-wide file-size limit.
+            resource.setrlimit(resource.RLIMIT_FSIZE, (4096, 4096))
+        if uid is not None:
+            os.setgroups([])
+            os.setresgid(uid, uid, uid)
+            os.setresuid(uid, uid, uid)
+    with tempfile.TemporaryFile() as captured:
+        child = subprocess.Popen(args, stdout=captured if output else subprocess.DEVNULL,
+                                 stderr=subprocess.DEVNULL, start_new_session=True,
+                                 preexec_fn=prepare if output or uid is not None else None)
         try:
             child.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
-            os.killpg(child.pid, signal.SIGKILL)
-            child.wait(timeout=3)
+            try:
+                os.killpg(child.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            try:
+                child.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                pass  # systemd's independent TimeoutStartSec remains the backstop
             raise TimeoutError('command deadline')
         # The leader can exit while a descendant still holds the session alive.
         try:
             os.killpg(child.pid, signal.SIGKILL)
         except ProcessLookupError:
             pass
-        output.seek(0)
+        captured.seek(0)
         return subprocess.CompletedProcess(args, child.returncode,
-                                           output.read(4096).decode('utf-8', 'replace'))
+                                           captured.read(4096).decode('utf-8', 'replace'))
 command_index=0
 def unit(*args):
     global command_index
@@ -56,29 +70,16 @@ def unit(*args):
     command_index+=1
     checkpoint(f'cmd-{index}-start')
     try:
-        result=command('systemctl',*args)
+        result=command('systemctl',*args, output=True)
     except TimeoutError:
         checkpoint(f'cmd-{index}-timeout')
         raise
-    checkpoint(f'cmd-{index}-exit-{max(0,min(255,result.returncode))}')
+    code=128-result.returncode if result.returncode<0 else min(255,result.returncode)
+    checkpoint(f'cmd-{index}-exit-{code}')
     return result
 def probe(uid,path,connect=False):
     code=('import socket,sys;s=socket.socket(socket.AF_UNIX);s.connect(sys.argv[1])' if connect else 'import os,sys;os.stat(sys.argv[1]+"/.")')
-    def drop(): os.setgroups([]);os.setresgid(uid,uid,uid);os.setresuid(uid,uid,uid)
-    return subprocess.run(['/usr/bin/python3','-c',code,str(path)],preexec_fn=drop,capture_output=True,timeout=8).returncode==0
-def exchange(subject):
-    code='''import json,socket,struct,sys
-s=socket.socket(socket.AF_UNIX);s.settimeout(20);s.connect('/run/native-agent-host/broker.sock')
-b=json.dumps({'version':1,'operation':'ensure','provider':'github','id':sys.argv[1],'candidate':'ignored'}).encode()
-s.sendall(struct.pack('>I',len(b))+b);s.shutdown(socket.SHUT_WR)
-h=s.recv(4);assert len(h)==4;n=struct.unpack('>I',h)[0];b=b''
-while len(b)<n:
- p=s.recv(n-len(b));assert p;b+=p
-print(b.decode())'''
-    def drop():os.setgroups([]);os.setresgid(21003,21003,21003);os.setresuid(21003,21003,21003)
-    p=subprocess.run(['/usr/bin/python3','-c',code,subject],preexec_fn=drop,capture_output=True,timeout=28)
-    need(p.returncode==0,'broker exchange failed')
-    return json.loads(p.stdout)
+    return command('/usr/bin/python3','-c',code,str(path),uid=uid,timeout=15).returncode==0
 try:
     need(Path('/proc/1/comm').read_text().strip()=='systemd','PID1 not systemd')
     before=json.loads((state.parent/'reboot-fixture.json').read_text())
@@ -119,7 +120,8 @@ try:
              'sockets_disabled_before_prepare':True,'preflight_ready':True,
              'boot_acl_unprepared':True,'no_pending':True}
 except Exception as exc:
-    receipt['reason']=(type(exc).__name__+' '+str(exc))[:180]
+    # Never echo argv or private paths supplied by a subprocess exception.
+    receipt['reason']=type(exc).__name__[:60]
 print('VM_PROOF='+json.dumps(receipt,separators=(',',':')),flush=True)
 command('systemd-run','--on-active=15s','--unit=jit-shutdown','/usr/bin/systemctl','poweroff','--no-block',timeout=5)
 if receipt['status']!='passed':sys.exit(1)

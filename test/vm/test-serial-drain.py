@@ -49,6 +49,14 @@ class SerialDrainTest(unittest.TestCase):
         self.assertFalse(data['capped'])
         self.assertTrue(data['token_leaked'])
 
+    def test_watchdog_failure_categories_survive_sanitized_receipt(self):
+        data, _, _ = self.capture([b'VM_REBOOT_UNIT_EXIT=signal:killed:9\n',
+                                   b'VM_REBOOT_UNIT_EXIT=unknown:unknown:0\n',
+                                   b'VM_REBOOT_JOURNAL=exited,failed\n'])
+        self.assertEqual(data['markers'], ['VM_REBOOT_UNIT_EXIT=signal:killed:9',
+                                           'VM_REBOOT_UNIT_EXIT=unknown:unknown:0',
+                                           'VM_REBOOT_JOURNAL=exited,failed'])
+
     def test_uncapped_proof_and_no_raw_token_to_stdout(self):
         data, log, _ = self.capture([b'VM_PROOF={"status":"passed"}\n'])
         self.assertFalse(data['capped'])

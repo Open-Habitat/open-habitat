@@ -21,7 +21,7 @@ command = namespace['command']
 
 class GuestCommandTest(unittest.TestCase):
     def test_output_and_exit(self):
-        p = command(sys.executable, '-c', 'print("disabled")')
+        p = command(sys.executable, '-c', 'print("disabled")', output=True)
         self.assertEqual((p.returncode, p.stdout.strip()), (0, 'disabled'))
 
     def test_descendant_holding_output_does_not_block_parent(self):
@@ -29,7 +29,7 @@ class GuestCommandTest(unittest.TestCase):
         start = time.monotonic()
         p = command(sys.executable, '-c',
                     'import subprocess,sys;subprocess.Popen([sys.executable,"-c","import time;time.sleep(4)"]);print("disabled")',
-                    timeout=0.5)
+                    timeout=0.5, output=True)
         self.assertEqual(p.stdout.strip(), 'disabled')
         self.assertLess(time.monotonic()-start, 2)
 
@@ -45,7 +45,7 @@ class GuestCommandTest(unittest.TestCase):
                 os.kill(pid, 0)
 
     def test_output_is_bounded(self):
-        p = command(sys.executable, '-c', 'print("x"*100000)')
+        p = command(sys.executable, '-c', 'print("x"*100000)', output=True)
         self.assertLessEqual(len(p.stdout), 4096)
 
 

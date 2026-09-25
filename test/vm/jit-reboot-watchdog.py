@@ -15,8 +15,14 @@ def bounded(argv):
         try:
             p.wait(timeout=5)
         except subprocess.TimeoutExpired:
-            os.killpg(p.pid, signal.SIGKILL)
-            p.wait(timeout=2)
+            try:
+                os.killpg(p.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            try:
+                p.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                pass
             return b""
         out.seek(0)
         return out.read(16384)
@@ -27,8 +33,11 @@ parts = [os.environ.get(k, '') for k in ('SERVICE_RESULT', 'EXIT_CODE', 'EXIT_ST
 if not all(re.fullmatch(r'[a-z0-9-]{1,16}', x) for x in parts):
     parts = ['unknown', 'unknown', '0']
 print('VM_REBOOT_UNIT_EXIT=' + ':'.join(parts), flush=True)
-raw = bounded(['journalctl', '-b', '-u', 'jit-reboot-proof.service', '-n', '12',
-               '--no-pager', '-o', 'json'])
+try:
+    raw = bounded(['journalctl', '-b', '-u', 'jit-reboot-proof.service', '-n', '12',
+                   '--no-pager', '-o', 'json'])
+except OSError:
+    raw = b''
 codes = set()
 for line in raw.splitlines():
     try:
