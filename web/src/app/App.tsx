@@ -105,6 +105,7 @@ export function App() {
   const [collapsed, setCollapsed] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [logoutError, setLogoutError] = useState(false);
+  const syntheticDemo = import.meta.env.VITE_SYNTHETIC_DEMO === "true";
   const fixtureName =
     import.meta.env.VITE_ENABLE_TEST_FIXTURES === "true"
       ? new URLSearchParams(location.search).get("fixture")
@@ -115,11 +116,16 @@ export function App() {
     if (fixtureName?.startsWith("design") && CatalogPreview) return;
     const controller = new AbortController();
     dispatch(loading());
-    fetch("/api/v1/snapshot", {
-      credentials: "same-origin",
-      cache: "no-store",
-      signal: controller.signal,
-    })
+    fetch(
+      syntheticDemo
+        ? `/api/v1/snapshot?scenario=${new URLSearchParams(location.search).get("scenario") ?? "ready"}`
+        : "/api/v1/snapshot",
+      {
+        credentials: "same-origin",
+        cache: "no-store",
+        signal: controller.signal,
+      },
+    )
       .then(async (response) => {
         if (response.status === 401) {
           if (!controller.signal.aborted) dispatch(authenticationRequired());
@@ -138,9 +144,14 @@ export function App() {
         if (!controller.signal.aborted) dispatch(unavailable());
       });
     return () => controller.abort();
-  }, [dispatch, refreshKey, fixtureName]);
+  }, [dispatch, refreshKey, fixtureName, location.search, syntheticDemo]);
   const logout = async () => {
     setLogoutError(false);
+    if (syntheticDemo) {
+      dispatch(clearIdentity());
+      navigate("/workspaces?scenario=login", { replace: true });
+      return;
+    }
     // Hide every identity-scoped fact before the first write or new login.
     dispatch(clearIdentity());
     try {
@@ -229,7 +240,9 @@ export function App() {
     ) : phase === "authentication_required" ? (
       <>
         <LoginCard
+          demo={syntheticDemo}
           onLogin={() => {
+            if (syntheticDemo) return;
             window.location.assign(
               `/auth/github/start?return_to=${encodeURIComponent(safeRoute(location.pathname))}`,
             );
@@ -328,20 +341,28 @@ export function App() {
   return (
     <AppShell
       connection={
-        phase === "authentication_required" ? null : (
-          <ConnectionBanner
-            state={
-              phase === "authenticated"
-                ? "online"
-                : phase === "daemon_unavailable"
-                  ? "daemon-unavailable"
-                  : "loading"
-            }
-            hostWriteState={
-              snapshot?.write_state === "read_only" ? "read_only" : "writable"
-            }
-          />
-        )
+        <>
+          {syntheticDemo ? (
+            <div className="ah-demo-banner" role="status">
+              SYNTEETTINEN DEMO · Simuloitu identiteetti ja workspace-data · Ei
+              oikeaa kirjautumista, agentteja eikä host-yhteyttä
+            </div>
+          ) : null}
+          {phase === "authentication_required" ? null : (
+            <ConnectionBanner
+              state={
+                phase === "authenticated"
+                  ? "online"
+                  : phase === "daemon_unavailable"
+                    ? "daemon-unavailable"
+                    : "loading"
+              }
+              hostWriteState={
+                snapshot?.write_state === "read_only" ? "read_only" : "writable"
+              }
+            />
+          )}
+        </>
       }
       rail={
         phase === "authenticated" && snapshot ? (

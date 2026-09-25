@@ -1,5 +1,11 @@
 import { Button } from "./Primitives";
-export function LoginCard({ onLogin }: { onLogin?: () => void }) {
+export function LoginCard({
+  onLogin,
+  demo = false,
+}: {
+  onLogin?: () => void;
+  demo?: boolean;
+}) {
   return (
     <section className="ah-login-card" aria-labelledby="login-title">
       <header>
@@ -8,11 +14,20 @@ export function LoginCard({ onLogin }: { onLogin?: () => void }) {
         <p className="ah-technical ah-login-host">{window.location.host}</p>
       </header>
       <p>
-        Selain ei valitse Unix-käyttäjää. Palvelin reitittää hyväksytyn
-        verkkoidentiteetin sille määritettyyn tiliin.
+        {demo
+          ? "Tämä on vain kirjautumisnäkymän simulaatio. Istuntoa tai Unix-käyttäjää ei luoda."
+          : "Selain ei valitse Unix-käyttäjää. Palvelin reitittää hyväksytyn verkkoidentiteetin sille määritettyyn tiliin."}
       </p>
       <Button
         label="Kirjaudu GitHubilla"
+        availability={
+          demo
+            ? {
+                state: "unsupported",
+                reason: "Simuloidussa demossa ei voi kirjautua.",
+              }
+            : undefined
+        }
         onPress={
           onLogin ??
           (() => {
@@ -21,8 +36,9 @@ export function LoginCard({ onLogin }: { onLogin?: () => void }) {
         }
       />
       <p className="muted">
-        Kirjautuminen jatkuu GitHubissa. Istunto alkaa vasta onnistuneen paluun
-        ja natiivin yhteyden vahvistuksen jälkeen.
+        {demo
+          ? "Valitse valmis tila avaamalla ?scenario=ready osoitteessa /workspaces."
+          : "Kirjautuminen jatkuu GitHubissa. Istunto alkaa vasta onnistuneen paluun ja natiivin yhteyden vahvistuksen jälkeen."}
       </p>
     </section>
   );

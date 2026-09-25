@@ -1,5 +1,14 @@
 @import "./components/components.css";
 
+.ah-demo-banner {
+  padding: var(--ah-s2) var(--ah-s6);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  border-bottom: 2px solid var(--ah-line);
+  text-align: center;
+  font-weight: 600;
+}
+
 * {
   box-sizing: border-box;
 }

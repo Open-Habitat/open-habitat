@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "demo": "node demo/start.mjs",
+    "test:demo": "npm run build && playwright test --config playwright.demo.config.ts",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome lint --error-on-warnings .",
@@ -14,7 +16,7 @@
     "test:component": "vitest run src/components",
     "test:e2e": "playwright test --grep-invert @a11y",
     "test:a11y": "playwright test --grep @a11y",
-    "build": "vite build",
+    "build": "vite build && node demo/check-build.mjs",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build --quiet",
     "storybook:test": "storybook build --quiet",
