@@ -77,6 +77,12 @@ for mode in normal optimized; do
   [[ $mode == optimized ]] && python_flags=(-O)
   if python3 "${python_flags[@]}" -c "$validator" "$failed"; then echo 'failed JIT proof accepted' >&2; exit 1; fi
 done
+login_validator=$(sed -n "/<<'LOGIN_CHECK'/,/^LOGIN_CHECK$/p" "$repo/scripts/vm-test.sh" | sed '1d;$d')
+for mode in normal optimized; do
+  python_flags=()
+  [[ $mode == optimized ]] && python_flags=(-O)
+  if python3 "${python_flags[@]}" -c "$login_validator" '{"status":"failed","scope":"jit-login-slice","routes":[]}'; then echo 'failed login proof accepted' >&2; exit 1; fi
+done
 # Optional positive seed render from read-only historical committed blobs.
 if git -C /home/maintainer/Sources/fleetrepo cat-file -e e044c031^{commit} 2>/dev/null; then
 FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/native-agent-host"
