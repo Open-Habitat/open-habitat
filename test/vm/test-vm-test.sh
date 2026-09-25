@@ -66,6 +66,15 @@ chmod +x "$tmp/shim/git"
 if FLEETREPO_JIT_SOURCE="$tmp/fake-fleetrepo" PATH="$tmp/shim:$PATH" python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/native-agent-host" > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
 grep -q 'Fleetrepo JIT policy hash mismatch' "$tmp/err"
 [[ ! -e "$tmp/jit/jit-cloud-init.yaml" && ! -e "$tmp/jit/jit-receipt.json" ]]
+# The guest proof acceptance parser must never turn a failed JSON proof into a
+# success when a caller has PYTHONOPTIMIZE=1 (Python strips assert statements).
+validator=$(sed -n "/<<'JIT_CHECK'/,/^JIT_CHECK$/p" "$repo/scripts/vm-test.sh" | sed '1d;$d')
+failed='{"status":"failed","scope":"jit-provision","pending_phase":"account"}'
+for mode in normal optimized; do
+  python_flags=()
+  [[ $mode == optimized ]] && python_flags=(-O)
+  if python3 "${python_flags[@]}" -c "$validator" "$failed"; then echo 'failed JIT proof accepted' >&2; exit 1; fi
+done
 # Optional positive seed render from read-only historical committed blobs.
 if git -C /home/maintainer/Sources/fleetrepo cat-file -e e044c031^{commit} 2>/dev/null; then
 FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/native-agent-host"

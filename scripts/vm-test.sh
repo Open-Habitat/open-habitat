@@ -131,10 +131,10 @@ if [[ $scenario == jit-provision ]]; then
 import json,sys
 try:
  p=json.loads(sys.argv[1])
- assert p['status']=='passed' and p['scope']=='jit-provision' and p['pid1']=='systemd'
- assert p['uids']==[21032,21033,21003] and p['binary_path']=='/opt/native-agent-host/current/native-agent-host'
- assert all(p[k] is True for k in ('pool_vacant_before_seed','new_accounts','committed_bindings','rerun_idempotent','wrong_peer_denied','wrong_uid_denied','pending_denied','boot_acl_denied','prepared_socket_started','cross_uid_denied'))
-except (ValueError,KeyError,AssertionError,TypeError): sys.exit(1)
+ if not isinstance(p,dict) or p.get('status')!='passed' or p.get('scope')!='jit-provision' or p.get('pid1')!='systemd': sys.exit(1)
+ if p.get('uids')!=[21032,21033,21003] or p.get('binary_path')!='/opt/native-agent-host/current/native-agent-host': sys.exit(1)
+ if not all(p.get(k) is True for k in ('pool_vacant_before_seed','new_accounts','committed_bindings','rerun_idempotent','wrong_peer_denied','wrong_uid_denied','pending_denied','boot_acl_denied','prepared_socket_started','cross_uid_denied')): sys.exit(1)
+except (ValueError,TypeError): sys.exit(1)
 JIT_CHECK
   then
     reason=$(python3 - "$proof" <<'PY'
