@@ -186,7 +186,9 @@ try:
             except ConnectionResetError: reply=b''
             check(reply==b'','root peer rejection');s.close()
         subprocess.run(['systemctl','stop','native-agent-host-daemon@agent-a.socket','native-agent-host-daemon@agent-a.service'],check=True,stdout=subprocess.DEVNULL)
-        check(get(browsers[0],'/api/v1/snapshot')[0]==503,'stopped A has no fallback')
+        # Broker refuses a stopped route before daemon routing (401), while
+        # older sink-only failure returned 503. Both must deny without data.
+        check(get(browsers[0],'/api/v1/snapshot')[0] in (401,503),'stopped A has no fallback')
         check(get(browsers[1],'/api/v1/snapshot')[0]==200,'stopped A does not affect B')
         subprocess.run(['systemctl','start','native-agent-host-daemon@agent-a.socket'],check=True,stdout=subprocess.DEVNULL)
         check(get(browsers[0],'/api/v1/snapshot')[0]==200,'A socket reactivates its own daemon')
