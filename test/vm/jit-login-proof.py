@@ -269,7 +269,8 @@ print('UNEXPECTED_REPLY')
         captures.extend([str(h).encode(),body,repr([(c.name,c.value) for c in surviving_jar]).encode()])
         surviving_status,surviving_headers,surviving_body=get(surviving,'/api/v1/snapshot')
         captures.extend([str(surviving_headers).encode(),surviving_body])
-        check(status==303 and surviving_status==200 and b'guesttwo-only' in surviving_body and b'guestone-only' not in surviving_body,'allowed B route not restored')
+        check(status==303 and surviving_status==200 and all(('guesttwo-'+k).encode() in surviving_body for k in ('ordinary','git-hint','no-metadata')) and b'guestone-' not in surviving_body,
+              'allowed B route not restored callback=%d snapshot=%d'%(status,surviving_status))
         fresh,fresh_jar=browser();status,h,_=get(fresh,'/auth/github/start');check(status==302,'revoked start')
         state=urllib.parse.parse_qs(urllib.parse.urlparse(h['Location']).query)['state'][0]
         status,h,body=get(fresh,'/auth/github/callback?'+urllib.parse.urlencode({'state':state,'code':'a'}))
