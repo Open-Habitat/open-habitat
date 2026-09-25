@@ -33,7 +33,7 @@ try:
     fd=os.open(ledger_dir,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
     try:
         fcntl.flock(fd,fcntl.LOCK_EX)
-        nxt=state/'allowlist.json.next'
+        nxt=ledger_dir/'allowlist.json.next'
         with os.fdopen(os.open(nxt,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600),'w') as f:
             json.dump({'version':1,'epoch':2,'ids':[{'id':'100000001','alternate':names[0]},{'id':'100000002','alternate':names[1]}]},f)
             f.flush();os.fsync(f.fileno())
