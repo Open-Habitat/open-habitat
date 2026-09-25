@@ -190,3 +190,15 @@ func TestLinuxCommandBoundsAndCancellation(t *testing.T) {
 		t.Fatal(ok, err)
 	}
 }
+
+func TestSocketActivationDependencyIsExact(t *testing.T) {
+	gate := "native-agent-host-jit-policy-gate@carol.service"
+	if !unitDependency([]byte("Requires="+gate+" other.service\nAfter=other.service "+gate+"\n"), "Requires", gate) || !unitDependency([]byte("Requires="+gate+"\nAfter="+gate+"\n"), "After", gate) {
+		t.Fatal("valid gate rejected")
+	}
+	for _, got := range []string{"", "native-agent-host-jit-policy-gate@bob.service", "fake" + gate} {
+		if unitDependency([]byte("Requires="+got+"\n"), "Requires", gate) {
+			t.Fatal("wrong gate accepted", got)
+		}
+	}
+}

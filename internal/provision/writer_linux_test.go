@@ -3,6 +3,7 @@
 package provision
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -42,7 +43,7 @@ func provisionCalls(id, name string, uid uint32) []hostCall {
 	for _, phase := range phases {
 		calls = append(calls, hostCall{phase, "github", id, name, uid})
 	}
-	return append(calls, hostCall{"verify", "github", id, name, uid})
+	return append(calls, hostCall{"verify", "github", id, name, uid}, hostCall{"verify", "github", id, name, uid})
 }
 
 type fakeHost struct {
@@ -53,6 +54,9 @@ type fakeHost struct {
 	calls     []hostCall
 	fail      string
 	verifyErr bool
+	readyErr  bool
+	routeErr  bool
+	onReady   func()
 	onStep    func(string)
 }
 
@@ -80,6 +84,26 @@ func (h *fakeHost) Step(_ context.Context, p string, i ExecutorIdentity) error {
 		h.uids[i.UID()] = true
 	}
 	return nil
+}
+func (h *fakeHost) RouteReady(_ context.Context, _ ExecutorIdentity) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.routeErr {
+		return errors.New("inactive")
+	}
+	return nil
+}
+func (h *fakeHost) Ready(ctx context.Context, _ ExecutorIdentity) error {
+	h.mu.Lock()
+	fail, callback := h.readyErr, h.onReady
+	h.mu.Unlock()
+	if callback != nil {
+		callback()
+	}
+	if fail {
+		return errors.New("socket start failed")
+	}
+	return ctx.Err()
 }
 func (h *fakeHost) Verify(_ context.Context, i ExecutorIdentity) error {
 	h.mu.Lock()
@@ -117,7 +141,7 @@ func TestWriterPhasesAndCommittedVerification(t *testing.T) {
 	if r = handle(w, "ensure", "42", "renamed"); r.Route == nil || r.Route.Username != "carol" || len(h.steps) != 5 {
 		t.Fatal(r, h.steps)
 	}
-	want = append(want, hostCall{"verify", "github", "42", "carol", 2100})
+	want = append(want, hostCall{"verify", "github", "42", "carol", 2100}, hostCall{"verify", "github", "42", "carol", 2100})
 	assertCalls(t, h, want...)
 	if r = handle(w, "authorize", "42", ""); r.Route == nil {
 		t.Fatal(r)
@@ -260,7 +284,7 @@ func TestWriterSerializesAcrossInstances(t *testing.T) {
 	h.mu.Lock()
 	calls := append([]hostCall(nil), h.calls...)
 	h.mu.Unlock()
-	if len(calls) != 6*2+28 { // first provisions, remaining callbacks verify
+	if len(calls) != 7*2+28*2 { // each ensure rechecks under the ledger lock
 		t.Fatalf("unexpected call count: %d", len(calls))
 	}
 	for _, c := range calls {
@@ -286,7 +310,7 @@ func TestWriterRenamedAndRevokedSubjectsNeverCross(t *testing.T) {
 	if r := handle(w, "ensure", "42", "dave"); r.Route == nil || r.Route.Username != "carol" {
 		t.Fatal(r)
 	}
-	want = append(want, hostCall{"verify", "github", "42", "carol", 2100})
+	want = append(want, hostCall{"verify", "github", "42", "carol", 2100}, hostCall{"verify", "github", "42", "carol", 2100})
 	assertCalls(t, h, want...)
 	put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":5,"ids":[{"id":"43"}]}`)
 	if r := handle(w, "authorize", "42", ""); r.Failure != Denied {
@@ -424,5 +448,37 @@ func TestWriterLockWaitCancellationAndDeadline(t *testing.T) {
 	unix.Flock(holder, unix.LOCK_UN)
 	if r := handle(w, "ensure", "42", "carol"); r.Route == nil {
 		t.Fatal("lock not reusable", r)
+	}
+}
+
+func TestEnsureActivationFailsClosedAndExplicitRetry(t *testing.T) {
+	w, h := writerFixture(t)
+	h.readyErr = true
+	if r := handle(w, "ensure", "42", "carol"); r.Route != nil || r.Failure != Drift {
+		t.Fatal(r)
+	}
+	if !fileAbsent(filepath.Join(w.Dir, "pending.json")) {
+		t.Fatal("committed binding left pending")
+	}
+	b, err := os.ReadFile(filepath.Join(w.Dir, "bindings.json"))
+	if err != nil || !bytes.Contains(b, []byte(`"username":"carol"`)) {
+		t.Fatal("binding lost", err)
+	}
+	if r := handle(w, "authorize", "42", ""); r.Route == nil {
+		t.Fatal("authorize must not activate or modify ledger", r)
+	}
+	h.readyErr = false
+	if r := handle(w, "ensure", "42", "renamed"); r.Route == nil || r.Route.UID != 2100 {
+		t.Fatal("explicit retry refused", r)
+	}
+}
+func TestEnsureActivationRevocationRace(t *testing.T) {
+	w, h := writerFixture(t)
+	h.onReady = func() { put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":5,"ids":[]}`) }
+	if r := handle(w, "ensure", "42", "carol"); r.Route != nil {
+		t.Fatal("revoked route returned", r)
+	}
+	if r := handle(w, "authorize", "42", ""); r.Failure != Denied {
+		t.Fatal(r)
 	}
 }

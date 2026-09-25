@@ -22,6 +22,8 @@ func (e *startupExecutor) Available(context.Context, string, uint32) (bool, erro
 func (e *startupExecutor) Step(context.Context, string, ExecutorIdentity) error {
 	panic("startup must not mutate")
 }
+func (e *startupExecutor) Ready(context.Context, ExecutorIdentity) error      { return nil }
+func (e *startupExecutor) RouteReady(context.Context, ExecutorIdentity) error { return nil }
 func (e *startupExecutor) Verify(ctx context.Context, _ ExecutorIdentity) error {
 	e.calls++
 	if e.fail || ctx.Err() != nil {

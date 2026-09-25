@@ -21,8 +21,8 @@ import (
 )
 
 // LinuxHostExecutor is a root-only executor for a reserved, operator-controlled
-// UID pool. Construct it with the deployment's fixed gateway UID/GID. It does
-// not start units: the socket must be prepared before an operator activates it.
+// UID pool. Construct it with the deployment's fixed gateway UID/GID.
+// Socket activation is restricted to a committed, verified ensure route.
 // Its paths are fixed; no request data can select a command or directory root.
 type LinuxHostExecutor struct {
 	GatewayUID, GatewayGID uint32
@@ -352,7 +352,7 @@ func (e *LinuxHostExecutor) Step(ctx context.Context, phase string, i ExecutorId
 	case "socket":
 		return e.prepareSocket(ctx, i)
 	case "unit":
-		return e.unit(ctx, i)
+		return e.unit(ctx, i, false)
 	default:
 		return ErrInvalid
 	}
@@ -535,12 +535,13 @@ func properties(output []byte, expected map[string]string) bool {
 func singleUnixListener(output []byte, path string) bool {
 	return string(output) == "Listen="+path+" (Stream)\n"
 }
-func (e *LinuxHostExecutor) unit(ctx context.Context, i ExecutorIdentity) error {
+func (e *LinuxHostExecutor) unit(ctx context.Context, i ExecutorIdentity, retry bool) error {
 	// No start or enable: merely ensure both templates are installed and
 	// inactive, and explicitly verify the socket's restrictive DirectoryMode.
 	for _, unit := range []string{"native-agent-host-daemon@" + i.username + ".socket", "native-agent-host-daemon@" + i.username + ".service"} {
 		b, err := e.command(ctx, systemctl, "show", unit, "--property=LoadState,ActiveState,FragmentPath", "--no-pager")
-		if err != nil || !strings.Contains(string(b), "LoadState=loaded\n") || (!strings.Contains(string(b), "ActiveState=inactive\n") && !strings.Contains(string(b), "ActiveState=active\n")) || !strings.Contains(string(b), "FragmentPath=/") {
+		failedSocket := retry && strings.HasSuffix(unit, ".socket") && strings.Contains(string(b), "ActiveState=failed\n")
+		if err != nil || !strings.Contains(string(b), "LoadState=loaded\n") || (!strings.Contains(string(b), "ActiveState=inactive\n") && !strings.Contains(string(b), "ActiveState=active\n") && !failedSocket) || !strings.Contains(string(b), "FragmentPath=/") {
 			return ErrInvalid
 		}
 	}
@@ -601,6 +602,90 @@ func (e *LinuxHostExecutor) unit(ctx context.Context, i ExecutorIdentity) error 
 	}
 	return ctx.Err()
 }
+
+// Ready is broker-only. Fleetrepo's systemd dependency performs its own
+// activation-phase policy check; the broker must not bypass that gate with a
+// direct daemon service start or an enable operation. Never repair drift.
+func (e *LinuxHostExecutor) Ready(ctx context.Context, i ExecutorIdentity) error {
+	if os.Geteuid() != 0 || ctx == nil || ctx.Err() != nil || e.Verify(ctx, i) != nil {
+		return ErrInvalid
+	}
+	unit := "native-agent-host-daemon@" + i.username + ".socket"
+	gate := "native-agent-host-jit-policy-gate@" + i.username + ".service"
+	b, err := e.command(ctx, systemctl, "show", unit, "--property=Requires,After", "--no-pager")
+	if err != nil || !unitDependency(b, "Requires", gate) || !unitDependency(b, "After", gate) {
+		return ErrInvalid
+	}
+	b, err = e.command(ctx, systemctl, "show", gate, "--property=LoadState,ExecStart,User", "--no-pager")
+	if err != nil || !properties(b, map[string]string{"LoadState": "loaded", "User": "root"}) || !exactGateExec(b, i.username) {
+		return ErrInvalid
+	}
+	b, err = e.command(ctx, systemctl, "show", unit, "--property=ActiveState", "--no-pager")
+	if err != nil {
+		return ErrInvalid
+	}
+	if string(b) != "ActiveState=active\n" {
+		// A failed gate can leave a failed socket unit. A later explicit
+		// ensure may retry it, but no route is returned until it is active.
+		if string(b) != "ActiveState=inactive\n" && string(b) != "ActiveState=failed\n" && string(b) != "ActiveState=activating\n" {
+			return ErrInvalid
+		}
+		if _, err := e.command(ctx, systemctl, "start", unit); err != nil {
+			return ErrInvalid
+		}
+	}
+	if e.Verify(ctx, i) != nil {
+		return ErrInvalid
+	}
+	return e.RouteReady(ctx, i)
+}
+
+// RouteReady does not start a unit: authorize must fit the short exchange
+// budget and cannot mutate host state. Verify checks the directory ACLs.
+func (e *LinuxHostExecutor) RouteReady(ctx context.Context, i ExecutorIdentity) error {
+	if ctx == nil || ctx.Err() != nil || e == nil || !username(i.username) || i.uid < 1000 || i.uid > 60000 {
+		return ErrInvalid
+	}
+	b, err := e.command(ctx, systemctl, "is-active", "native-agent-host-daemon@"+i.username+".socket")
+	if err != nil || strings.TrimSpace(string(b)) != "active" {
+		return ErrInvalid
+	}
+	var st unix.Stat_t
+	if unix.Lstat(socketFor(i.username), &st) != nil || st.Mode&unix.S_IFMT != unix.S_IFSOCK || st.Uid != i.uid || st.Gid != e.GatewayGID || st.Mode&07777 != 0660 {
+		return ErrInvalid
+	}
+	return ctx.Err()
+}
+
+func unitDependency(b []byte, key, name string) bool {
+	for _, line := range strings.Split(strings.TrimSpace(string(b)), "\n") {
+		if value, ok := strings.CutPrefix(line, key+"="); ok {
+			for _, field := range strings.Fields(value) {
+				if field == name {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// systemctl show renders ExecStart as a single structured line. Do not accept
+// extra arguments (especially --root), extra commands or an alternate binary.
+func exactGateExec(b []byte, name string) bool {
+	want := "ExecStart={ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 /usr/local/libexec/native-agent-host-test-jit/jit_policy.py verify --phase activation --target daemon:" + name + " --json ;"
+	count := 0
+	for _, line := range strings.Split(string(b), "\n") {
+		if strings.HasPrefix(line, "ExecStart=") {
+			count++
+			if !strings.HasPrefix(line, want) {
+				return false
+			}
+		}
+	}
+	return count == 1
+}
+
 func (e *LinuxHostExecutor) Verify(ctx context.Context, i ExecutorIdentity) error {
 	if ctx == nil || ctx.Err() != nil || e == nil || e.GatewayUID == 0 || e.GatewayGID == 0 {
 		return ErrInvalid
@@ -629,5 +714,5 @@ func (e *LinuxHostExecutor) Verify(ctx context.Context, i ExecutorIdentity) erro
 	if err := e.socket(ctx, i); err != nil {
 		return err
 	}
-	return e.unit(ctx, i)
+	return e.unit(ctx, i, true)
 }

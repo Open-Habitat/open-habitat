@@ -47,6 +47,10 @@ type HostExecutor interface {
 	Available(context.Context, string, uint32) (bool, error)
 	Step(context.Context, string, ExecutorIdentity) error
 	Verify(context.Context, ExecutorIdentity) error
+	// Ready is called only by ensure, outside the ledger lock: the systemd
+	// pre-start policy takes a shared lock and must observe a committed binding.
+	Ready(context.Context, ExecutorIdentity) error
+	RouteReady(context.Context, ExecutorIdentity) error
 }
 
 var phases = []string{"account", "home", "config", "socket", "unit"}
@@ -280,6 +284,30 @@ func (w Writer) valid() bool {
 // staging write denies ALL routes, including previously committed bindings.
 // Broker callers must pass the per-exchange context through without replacing it.
 func (w Writer) Handle(ctx context.Context, r Request) Reply {
+	// Authorize remains a read-only, short-deadline check. Ensure may start
+	// a socket, but only after the durable publish and release of the ledger
+	// lock (the Fleetrepo pre-start gate itself reads that lock).
+	if r.Operation != "ensure" {
+		return w.handleLocked(ctx, r)
+	}
+	result := w.handleLocked(ctx, r)
+	if result.Route == nil || ctx.Err() != nil {
+		return result
+	}
+	identity := ExecutorIdentity{provider: "github", id: r.ID, username: result.Route.Username, uid: result.Route.UID}
+	if w.Executor.Ready(ctx, identity) != nil {
+		return failure(Drift)
+	}
+	// Recheck the complete policy and binding under lock after activation.
+	// Never return a route based on a stale pre-start allowlist snapshot.
+	checked := w.handleLocked(ctx, Request{Version: 1, Operation: "authorize", Provider: "github", ID: r.ID})
+	if checked.Route == nil || checked.Route.UID != result.Route.UID || checked.Route.Username != result.Route.Username || checked.Generation < result.Generation || checked.Epoch != result.Epoch {
+		return failure(StateUnavailable)
+	}
+	return checked
+}
+
+func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 	if ctx == nil || !w.valid() {
 		return failure(StateUnavailable)
 	}
@@ -346,6 +374,9 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 			}
 			identity := ExecutorIdentity{provider: "github", id: b.ID, username: b.Username, uid: b.UID}
 			if e := w.Executor.Verify(ctx, identity); e != nil {
+				return failure(Drift)
+			}
+			if r.Operation == "authorize" && w.Executor.RouteReady(ctx, identity) != nil {
 				return failure(Drift)
 			}
 			// Do not return a route after a concurrent operator rewrite, even when
