@@ -72,9 +72,9 @@ if login:
     add('/etc/systemd/system/product-gateway.service','[Service]\nUser=native-agent-host-gateway\nGroup=native-agent-host-gateway\nEnvironment=SSL_CERT_FILE=/etc/native-agent-host/fixture-ca.crt\nExecStart=/opt/native-agent-host/current/native-agent-host gateway exec --config /etc/native-agent-host/gateway.json\nNoNewPrivileges=yes\nUMask=0077\n')
     for script, target in [('fake-provider.py','product-fake-provider'),('fake-gh.py','gh'),('fake-git.py','git')]:
         data=(repo/'test/vm'/script).read_text()
-        data=data.replace('agent-a','guestone').replace('agent-b','guesttwo').replace('agent_a','guestone').replace('agent_b','guesttwo').replace('21001','21032').replace('21002','21033').replace('31001','100000001').replace('31002','100000002')
+        data=data.replace('agent-a','guestone').replace('agent-b','guesttwo').replace('agent-c','guestthree').replace('agent_a','guestone').replace('agent_b','guesttwo').replace('agent_c','guestthree').replace('31003','100000003').replace('21001','21032').replace('21002','21033').replace('31001','100000001').replace('31002','100000002')
         add(('/usr/bin/' if target in ('gh','git') else '/usr/local/sbin/')+target,data,'0755')
-    for name in ('guestone','guesttwo'):
+    for name in ('guestone','guesttwo','guestthree'):
         add('/usr/local/lib/fixture/tokens/'+name,'PRODUCT_VM_TOKEN_'+name+'_FIXTURE_ONLY_92764','0600')
     (run/'tls.key').unlink();(run/'tls.crt').unlink()
 seed['runcmd'] = [

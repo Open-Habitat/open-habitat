@@ -4,6 +4,24 @@ import grp, http.cookiejar, hashlib, http.client, json, os, pathlib, pwd, socket
 names=['guestone','guesttwo']; uids=[21032,21033]; gateway_uid=21003
 base='https://host.fixture:8443'
 result={'status':'failed','scope':'jit-login-slice'}
+# Systemd show is a control-plane observation, not a journal dump. Permit only
+# fixed keys and bounded scalar values in either success or failure receipts.
+UNIT_KEYS=('ActiveState','SubState','Result','MainPID')
+SOCKET_KEYS=('ActiveState','SubState','Result')
+def unit_state(unit, keys):
+    p=subprocess.run(['systemctl','show',unit,'--property='+','.join(keys),'--no-pager'],capture_output=True,timeout=5)
+    if p.returncode: return {'unavailable':True}
+    raw=p.stdout.decode('ascii','replace')
+    lines=dict(line.split('=',1) for line in raw.splitlines() if line.count('=')==1)
+    state={}
+    for key in keys:
+        value=lines.get(key,'')
+        if key=='MainPID':
+            state[key]=int(value) if value.isdecimal() and len(value)<=10 else None
+        else:
+            state[key]=value if 0<len(value)<=32 and all(c.isascii() and (c.isalnum() or c in '-_') for c in value) else 'unavailable'
+    return state
+
 def check(v, label):
     if not v: raise RuntimeError(label)
 def as_user(name, script, stdin=None):
@@ -311,29 +329,109 @@ print('UNEXPECTED_REPLY')
         check(b_after!=b_daemon and pathlib.Path('/home/guesttwo/.config/gh/hosts.yml').stat().st_ino==b_cred,
               'B daemon did not die or credential replaced after lost ack')
         print('VM_PHASE=lost_ack_assertions_passed',flush=True)
-        for token_name in names+['UNKNOWN']:
-            value=(pathlib.Path('/usr/local/lib/fixture/tokens')/token_name).read_bytes() if token_name in names else b'PRODUCT_VM_TOKEN_'+b'UNKNOWN_FIXTURE_ONLY_92764'
+        # The pinned Fleetrepo policy refuses a new daemon gate while a
+        # revoked sibling socket remains active. Stop A's socket and service
+        # before C's first ensure; keep its account, binding and credential.
+        subprocess.run(['systemctl','stop','native-agent-host-daemon@guestone.socket','native-agent-host-daemon@guestone.service'],check=True,capture_output=True)
+        check(not (root/'guestone'/'daemon.sock').exists() and (pathlib.Path('/home/guestone/.config/gh/hosts.yml').stat().st_ino==old_cred),'revoked A socket or credential changed')
+        # Fresh C is provisioned only for this independent post-install case.
+        # Never remove, replace, or retry a protected credential after an
+        # uncertain delivery. B remains allowed after the epoch change.
+        fd=os.open(ledger_dir,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+        try:
+            fcntl.flock(fd,fcntl.LOCK_EX)
+            nxt=ledger_dir/'allowlist.json.next'
+            with os.fdopen(os.open(nxt,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600),'w') as f:
+                json.dump({'version':1,'epoch':4,'ids':[{'id':'100000002','alternate':'guesttwo'},{'id':'100000003','alternate':'guestthree'}]},f)
+                f.flush();os.fsync(f.fileno())
+            nxt.replace(ledger_dir/'allowlist.json');os.fsync(fd)
+        finally:os.close(fd)
+        c_name='guestthree';c_uid=21034;c_home=pathlib.Path('/home')/c_name
+        check(not c_home.exists() and not any(u.pw_uid==c_uid for u in pwd.getpwall()),'C was not fresh')
+        c,c_jar=browser();status,h,_=get(c,'/auth/github/start');check(status==302,'post-install start')
+        c_state=urllib.parse.parse_qs(urllib.parse.urlparse(h['Location']).query)['state'][0]
+        c_log=c_home/'gh-argv.jsonl';c_cred=c_home/'.config/gh/hosts.yml'
+        print('VM_PHASE=post_install_callback_start',flush=True)
+        fault.write_text('post-install-lost-ack')
+        try:
+            c_status,c_headers,c_body=get(c,'/auth/github/callback?'+urllib.parse.urlencode({'state':c_state,'code':'c'}))
+        finally:fault.unlink()
+        print('VM_PHASE=post_install_callback_returned',flush=True)
+        captures.extend([str(c_headers).encode(),c_body,repr([(v.name,v.value) for v in c_jar]).encode()])
+        check(c_status==503 and json.loads(c_body).get('error',{}).get('code')=='native_adapter_error','post-install callback status '+str(c_status)+' code '+str(json.loads(c_body).get('error',{}).get('code','none')))
+        c_session,headers,body=get(c,'/auth/session');captures.extend([str(headers).encode(),body])
+        c_snapshot,headers,body=get(c,'/api/v1/snapshot');captures.extend([str(headers).encode(),body])
+        c_replay,headers,body=get(c,'/auth/github/callback?'+urllib.parse.urlencode({'state':c_state,'code':'c'}));captures.extend([str(headers).encode(),body])
+        check((c_session,c_snapshot,c_replay)==(401,401,403),'post-install session or replay')
+        c_token=(pathlib.Path('/usr/local/lib/fixture/tokens')/c_name).read_bytes()
+        c_expected=b'github.com:\n    oauth_token: '+c_token+b'\n'
+        check(c_cred.is_file() and c_cred.stat().st_uid==c_uid and stat.S_IMODE(c_cred.stat().st_mode)==0o600 and stat.S_IMODE(c_cred.parent.stat().st_mode)==0o700 and c_cred.read_bytes()==c_expected,'post-install protected write absent')
+        c_inode=(c_cred.stat().st_dev,c_cred.stat().st_ino)
+        c_records=[json.loads(line) for line in c_log.read_text().splitlines()]
+        check(len(c_records)==2 and [r['argv'][:2] for r in c_records]==[['auth','status'],['auth','login']] and all(r['uid']==c_uid for r in c_records) and c_records[1]['stdin'] and c_records[0]['parent_pid']==c_records[1]['parent_pid']>1,'post-install one-shot child calls')
+        c_pid=c_records[1]['parent_pid']
+        check(not pathlib.Path('/proc/%d'%c_pid).exists(),'post-install original daemon alive')
+        c_service='native-agent-host-daemon@guestthree.service'
+        c_socket='native-agent-host-daemon@guestthree.socket'
+        # Restart=on-failure is asynchronous after SIGKILL. A successful
+        # systemctl start is not itself evidence of a stable new MainPID.
+        result['post_install_units']={'before_service':unit_state(c_service,UNIT_KEYS),
+                                      'before_socket':unit_state(c_socket,SOCKET_KEYS)}
+        start=subprocess.run(['systemctl','start',c_service],capture_output=True,timeout=10)
+        deadline=time.monotonic()+5
+        while True:
+            service=unit_state(c_service,UNIT_KEYS)
+            c_after=service.get('MainPID')
+            if c_after and c_after>1 and c_after!=c_pid and service['ActiveState']=='active':break
+            if time.monotonic()>=deadline:break
+            time.sleep(.2)
+        result['post_install_units'].update({'start_ok':start.returncode==0,'after_service':service,
+                                             'after_socket':unit_state(c_socket,SOCKET_KEYS)})
+        check(start.returncode==0 and c_after and c_after>1 and c_after!=c_pid and service['ActiveState']=='active',
+              'post-install daemon generation not active')
+        check(('Uid:\t'+str(c_uid)+'\t') in pathlib.Path('/proc/%d/status'%c_after).read_text(),
+              'post-install daemon UID mismatch')
+        check('PRODUCT_VM_TOKEN' not in c_log.read_text() and denied('guesttwo',"open(%r).read()"%str(c_cred)),'post-install credential or argv exposure')
+        check('PRODUCT_VM_TOKEN' not in (c_home/'git-argv.log').read_text() if (c_home/'git-argv.log').exists() else True,'post-install git argv exposure')
+        # Existing B's session may be invalidated by epoch 4, but an explicit
+        # fresh callback still routes B, without touching the uncertain C.
+        b_again,b_again_jar=browser();status,h,_=get(b_again,'/auth/github/start');check(status==302,'B after C start')
+        b_state=urllib.parse.parse_qs(urllib.parse.urlparse(h['Location']).query)['state'][0]
+        status,h,body=get(b_again,'/auth/github/callback?'+urllib.parse.urlencode({'state':b_state,'code':'b'}))
+        captures.extend([str(h).encode(),body,repr([(v.name,v.value) for v in b_again_jar]).encode()])
+        b_snap_status,b_snap_headers,b_snap_body=get(b_again,'/api/v1/snapshot')
+        captures.extend([str(b_snap_headers).encode(),b_snap_body])
+        check(status==303 and b_snap_status==200 and all(('guesttwo-'+k).encode() in b_snap_body for k in ('ordinary','git-hint','no-metadata')) and b'guestone-' not in b_snap_body and b'guestthree-' not in b_snap_body,'other UID after post-install crash')
+        check(len(c_log.read_text().splitlines())==2 and c_cred.is_file() and (c_cred.stat().st_dev,c_cred.stat().st_ino)==c_inode and c_cred.stat().st_uid==c_uid and stat.S_IMODE(c_cred.stat().st_mode)==0o600 and c_cred.read_bytes()==c_expected,'post-install uncertain C retried or replaced')
+        print('VM_PHASE=post_install_assertions_passed',flush=True)
+        for token_name in names+[c_name,'UNKNOWN']:
+            value=(pathlib.Path('/usr/local/lib/fixture/tokens')/token_name).read_bytes() if token_name!='UNKNOWN' else b'PRODUCT_VM_TOKEN_'+b'UNKNOWN_FIXTURE_ONLY_92764'
             check(value and all(value not in b for b in captures),'browser capture token scan')
             for p in pathlib.Path('/proc').iterdir():
                 if not p.name.isdigit():continue
                 for suffix in ('cmdline','environ'):
                     try:check(value not in (p/suffix).read_bytes(),'process token scan')
                     except (FileNotFoundError,ProcessLookupError):continue
-            for unit in ['product-gateway','native-agent-host-daemon@guestone','native-agent-host-daemon@guesttwo','native-agent-host-broker']:
+            for unit in ['product-gateway','native-agent-host-daemon@guestone','native-agent-host-daemon@guesttwo','native-agent-host-daemon@guestthree','native-agent-host-broker']:
                 journal_read=subprocess.run(['journalctl','-u',unit,'-b','--no-pager','-o','cat'],capture_output=True,timeout=10)
                 logs=journal_read.stdout
                 check(journal_read.returncode==0 and len(logs)>0,'journal scan unavailable')
                 check(len(logs)<=1048576,'journal scan exceeds 1 MiB')
                 check(value not in logs,'journal token scan')
-            for p in ['/etc/native-agent-host/gateway.json','/etc/native-agent-host/daemon-guestone.json','/etc/native-agent-host/daemon-guesttwo.json']:
+            for p in ['/etc/native-agent-host/gateway.json','/etc/native-agent-host/daemon-guestone.json','/etc/native-agent-host/daemon-guesttwo.json','/etc/native-agent-host/daemon-guestthree.json']:
                 check(value not in pathlib.Path(p).read_bytes(),'config token scan')
-        result={'status':'passed','scope':'jit-login-slice','revocation':{'atomic_fsynced':True,'existing_denied_statuses':revoked,'new_denied_status':revoked_new_status,'other_uid_reauthorized':True,'ledger_account_credential_preserved':True},'rename':{'same_uid':True,'no_second_gh_login':True},'gh_failures':fault_results,'lost_ack':{'callback_status':lost_status,'session_status':lost_session,'snapshot_status':lost_snapshot,'replay_status':403,'one_daemon_gh_call_observed':True,'daemon_killed_before_ack':True,'credential_preserved':True},'pid1':'systemd','uids':[21032,21033,21003],'socket_mode':'0660','socket_activation':True,'pool_vacant_before_login':True,'new_accounts':True,'committed_bindings':True,'root_ledger':True,'pinned_policy_gate':True,'routes':routes,'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'cross_user_broker':True,'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'gateway_credential':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, full boot journal capped at 1 MiB per unit, process argv/environ, configs, child argv logs'}}
+        result={'status':'passed','scope':'jit-login-slice','revocation':{'atomic_fsynced':True,'existing_denied_statuses':revoked,'new_denied_status':revoked_new_status,'other_uid_reauthorized':True,'ledger_account_credential_preserved':True},'rename':{'same_uid':True,'no_second_gh_login':True},'gh_failures':fault_results,'lost_ack':{'callback_status':lost_status,'session_status':lost_session,'snapshot_status':lost_snapshot,'replay_status':403,'one_daemon_gh_call_observed':True,'daemon_killed_before_ack':True,'credential_preserved':True},'post_install_lost_ack':{'callback_status':c_status,'session_status':c_session,'snapshot_status':c_snapshot,'replay_status':c_replay,'one_shot_child_calls':len(c_records),'daemon_pid_changed':c_after!=c_pid,'protected_credential_retained':True,'other_uid_reauthenticated':True},'pid1':'systemd','uids':[21032,21033,21003],'socket_mode':'0660','socket_activation':True,'pool_vacant_before_login':True,'new_accounts':True,'committed_bindings':True,'root_ledger':True,'pinned_policy_gate':True,'routes':routes,'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'cross_user_broker':True,'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'gateway_credential':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, full boot journal capped at 1 MiB per unit, process argv/environ, configs, child argv logs'}}
     finally:provider.terminate();provider.wait(timeout=5)
 except Exception as e:
     # FileNotFoundError retains the missing executable/path; no fixture token
     # is printed. Keep a bounded, redacted journal-code receipt for PID1 boots.
     missing=getattr(e,'filename',None)
     result['reason']=(type(e).__name__+' '+str(missing or str(e)).split(':')[0])[:220]
+    # Preserve only whitelisted systemd state, including when the failure
+    # precedes the explicit restart. Never include show ExecStart or journal.
+    if 'post_install_units' not in result and 'c_pid' in locals():
+        result['post_install_units']={'after_service':unit_state('native-agent-host-daemon@guestthree.service',UNIT_KEYS),
+                                      'after_socket':unit_state('native-agent-host-daemon@guestthree.socket',SOCKET_KEYS)}
     codes={}
     for unit in ('product-gateway','native-agent-host-broker','native-agent-host-daemon@guestone','native-agent-host-daemon@guesttwo'):
         journal=subprocess.run(['journalctl','-u',unit,'-n','12','--no-pager','-o','cat'],capture_output=True).stdout

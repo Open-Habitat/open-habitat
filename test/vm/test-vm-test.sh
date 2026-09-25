@@ -93,7 +93,8 @@ p={'status':'passed','scope':'jit-login-slice','pid1':'systemd','uids':[21032,21
    'revocation':{'atomic_fsynced':True,'existing_denied_statuses':[401]*4,'new_denied_status':403,'other_uid_reauthorized':True,'ledger_account_credential_preserved':True},
    'rename':{'same_uid':True,'no_second_gh_login':True},
    'gh_failures':{mode:{'callback_status':503,'session_status':401,'replay_status':403,'credential_absent':True} for mode in ('fail-login','wrong-id')},
-   'lost_ack':{'callback_status':503,'session_status':401,'snapshot_status':401,'replay_status':403,'one_daemon_gh_call_observed':True,'daemon_killed_before_ack':True,'credential_preserved':True}}
+   'lost_ack':{'callback_status':503,'session_status':401,'snapshot_status':401,'replay_status':403,'one_daemon_gh_call_observed':True,'daemon_killed_before_ack':True,'credential_preserved':True},
+   'post_install_lost_ack':{'callback_status':503,'session_status':401,'snapshot_status':401,'replay_status':403,'one_shot_child_calls':2,'daemon_pid_changed':True,'protected_credential_retained':True,'other_uid_reauthenticated':True}}
 for key in ('pool_vacant_before_login','new_accounts','committed_bindings','root_ledger','pinned_policy_gate','socket_activation'):p[key]=True
 def accepted(proof):return subprocess.run(['python3','-c',sys.argv[1],json.dumps(proof)]).returncode==0
 assert accepted(p),'valid guest proof rejected'
@@ -108,6 +109,11 @@ p['revocation']['new_denied_status']=403
 p['gh_failures']['wrong-id']['credential_absent']=False;assert not accepted(p),'wrong-ID credential accepted'
 p['gh_failures']['wrong-id']['credential_absent']=True
 p['lost_ack']['one_daemon_gh_call_observed']=False;assert not accepted(p),'lost-ack repeat accepted'
+p['lost_ack']['one_daemon_gh_call_observed']=True
+for key,bad in [('one_shot_child_calls',3),('protected_credential_retained',False),('daemon_pid_changed',False),('other_uid_reauthenticated',False)]:
+ old=p['post_install_lost_ack'][key];p['post_install_lost_ack'][key]=bad
+ assert not accepted(p),f'post-install {key} accepted'
+ p['post_install_lost_ack'][key]=old
 LOGIN_ORACLE
 reboot_validator=$(sed -n "/<<'REBOOT_CHECK'/,/^REBOOT_CHECK$/p" "$repo/scripts/vm-test.sh" | sed '1d;$d')
 python3 - "$reboot_validator" <<'REBOOT_ORACLE'

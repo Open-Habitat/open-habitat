@@ -5,7 +5,7 @@ args=sys.argv[1:]
 with open('/tmp/native-gh-entry-'+str(os.getuid()),'a') as entry:
     entry.write(json.dumps({'uid':os.getuid(),'home':os.environ.get('HOME',''),'argc':len(args)})+'\n')
 home=pathlib.Path(os.environ['HOME'])
-assert str(home) in ('/home/agent-a','/home/agent-b') and os.getuid() in (21001,21002)
+assert str(home) in ('/home/agent-a','/home/agent-b','/home/agent-c') and os.getuid() in (21001,21002,21034)
 assert 'PRODUCT_VM_TOKEN' not in repr(args) and all('PRODUCT_VM_TOKEN' not in v for v in os.environ.values())
 log=home/'gh-argv.jsonl'
 with log.open('a') as f: f.write(json.dumps({'argv':args,'stdin':args[:2]==['auth','login'],'uid':os.getuid(),'parent_pid':os.getppid()})+'\n')
@@ -29,13 +29,18 @@ if args==['auth','login','--hostname','github.com','--with-token','--git-protoco
     cred.parent.mkdir(mode=0o700, exist_ok=True)
     cred.write_text('github.com:\n    oauth_token: '+token+'\n')
     cred.chmod(0o600)
+    if mode=='post-install-lost-ack' and home.name=='agent-c':
+        # Only the disposable guest has this switch. The write and chmod have
+        # completed under the assigned UID; the daemon has not received a reply.
+        os.kill(os.getppid(),signal.SIGKILL)
+        sys.exit(6)
     sys.exit(0)
 if args==['auth','setup-git','--hostname','github.com']:
     assert cred.is_file()
     sys.exit(0)
 if args==['api','user','--jq','{id: .id, login: .login}']:
     assert cred.is_file()
-    print(json.dumps({'id':39999 if mode=='wrong-id' else (31001 if home.name=='agent-a' else 31002),'login':home.name.replace('-','')}))
+    print(json.dumps({'id':39999 if mode=='wrong-id' else (31001 if home.name=='agent-a' else 31002 if home.name=='agent-b' else 31003),'login':home.name.replace('-','')}))
     sys.exit(0)
 if args==['config','get','git_protocol','--host','github.com']:
     print('https');sys.exit(0)

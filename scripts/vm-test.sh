@@ -242,6 +242,7 @@ try:
  failures=p.get('gh_failures',{})
  if set(failures)!= {'fail-login','wrong-id'} or any(v != {'callback_status':503,'session_status':401,'replay_status':403,'credential_absent':True} for v in failures.values()): sys.exit(1)
  if p.get('lost_ack') != {'callback_status':503,'session_status':401,'snapshot_status':401,'replay_status':403,'one_daemon_gh_call_observed':True,'daemon_killed_before_ack':True,'credential_preserved':True}: sys.exit(1)
+ if p.get('post_install_lost_ack') != {'callback_status':503,'session_status':401,'snapshot_status':401,'replay_status':403,'one_shot_child_calls':2,'daemon_pid_changed':True,'protected_credential_retained':True,'other_uid_reauthenticated':True}: sys.exit(1)
 except (ValueError,TypeError,AttributeError): sys.exit(1)
 LOGIN_CHECK
   then
@@ -249,6 +250,7 @@ LOGIN_CHECK
 import json,re,sys
 try:
  p=json.loads(sys.argv[1]); diagnostic=p.get('diagnostic',{})
+ if 'post_install_units' in p: diagnostic={'post_install_units':p['post_install_units']}
  if p.get('status')=='passed':
   print('guest receipt rejected revocation.new_denied_status='+str(p.get('revocation',{}).get('new_denied_status'))+' lost_ack_keys='+','.join(sorted(p.get('lost_ack',{}))))
  else:
@@ -266,12 +268,12 @@ REASON
   fi
   if ! python3 - "$repo" "$run/serial.log" "$run/native-agent-host" <<'TOKEN_SCAN'
 import pathlib,sys
-repo=pathlib.Path(sys.argv[1]);tokens=[('PRODUCT_VM_TOKEN_'+n+'_FIXTURE_ONLY_92764').encode() for n in ('guestone','guesttwo','UNKNOWN')]
+repo=pathlib.Path(sys.argv[1]);tokens=[('PRODUCT_VM_TOKEN_'+n+'_FIXTURE_ONLY_92764').encode() for n in ('guestone','guesttwo','guestthree','UNKNOWN')]
 output=[pathlib.Path(sys.argv[2]),pathlib.Path(sys.argv[3])]
 source=[repo/'scripts/vm-test.sh',*list((repo/'test/vm').glob('*.py'))]
 # UNKNOWN is intentionally a literal in the historical fake provider's source.
 if any(t in f.read_bytes() for f in output for t in tokens):sys.exit(1)
-if any(t in f.read_bytes() for f in source for t in tokens[:2]):sys.exit(1)
+if any(t in f.read_bytes() for f in source for t in tokens[:3]):sys.exit(1)
 TOKEN_SCAN
   then fail token_scan_failed 'Token found in host source, binary or serial output' 2; fi
   fleetrepo_receipt=$(cat "$run/jit-receipt.json")
