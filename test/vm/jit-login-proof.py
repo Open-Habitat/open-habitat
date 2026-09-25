@@ -362,6 +362,35 @@ except Exception as e:
         result['diagnostic']=diag
     if codes.get('native-agent-host-broker'):
         result['reason']=(result['reason']+' broker '+','.join(codes['native-agent-host-broker']))[:220]
+if result['status']=='passed' and pathlib.Path('/etc/native-agent-host/reboot-fixture').exists():
+    try:
+        # Restore both explicit permissions; retain the binding generation and
+        # head high-water. This is root-owned operator input, not a broker repair.
+        fd=os.open(ledger_dir,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+        try:
+            fcntl.flock(fd,fcntl.LOCK_EX)
+            nxt=ledger_dir/'allowlist.json.next'
+            with os.fdopen(os.open(nxt,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600),'w') as f:
+                json.dump({'version':1,'epoch':4,'ids':[{'id':str(100000001+i),'alternate':n} for i,n in enumerate(names)]},f)
+                f.flush();os.fsync(f.fileno())
+            nxt.replace(ledger_dir/'allowlist.json');os.fsync(fd)
+            marker=ledger_dir.parent/'reboot-fixture.json'
+            with os.fdopen(os.open(marker,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600),'w') as f:
+                json.dump({'boot_id':pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
+                           'pid1_start':pathlib.Path('/proc/1/stat').read_text().split(') ')[1].split()[19],
+                           'bindings':json.loads((ledger_dir/'bindings.json').read_text()),
+                           'head':json.loads((ledger_dir/'head.json').read_text()),
+                           'credentials':{n:hashlib.sha256((pathlib.Path('/home')/n/'.config/gh/hosts.yml').read_bytes()).hexdigest() for n in names}},f)
+                f.flush();os.fsync(f.fileno())
+            os.fsync(fd)
+        finally:os.close(fd)
+        subprocess.run(['systemctl','enable','jit-reboot-proof.service'],check=True,capture_output=True)
+        print('VM_REBOOT_ORIGIN='+hashlib.sha256(pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip().encode()).hexdigest(),flush=True)
+        print('VM_PHASE=real_reboot_requested',flush=True)
+        subprocess.run(['systemd-run','--on-active=10s','--unit=jit-real-reboot','/usr/bin/systemctl','reboot','--no-block'],check=True,capture_output=True)
+        sys.exit(0)
+    except Exception as e:
+        result={'status':'failed','scope':'jit-reboot','reason':'reboot setup '+type(e).__name__+' '+str(e)[:100]}
 print('VM_PROOF='+json.dumps(result,separators=(',',':')),flush=True)
 subprocess.run(['systemd-run','--on-active=15s','--unit=fixture-shutdown','/usr/bin/systemctl','poweroff','--no-block'],stdout=subprocess.DEVNULL)
 if result['status']!='passed':sys.exit(1)

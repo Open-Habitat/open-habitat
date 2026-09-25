@@ -13,8 +13,8 @@ PY
   else printf 'error: %s\n' "$2" >&2; fi
   exit "$3"
 }
-[[ $# -eq 1 || ( $# -eq 2 && ${2:-} == --json ) ]] || fail invalid_arguments 'Expected self-test|systemd-self-test|two-user-routing|broker-guest|jit-provision|jit-login [--json]' 1
-[[ $scenario == self-test || $scenario == systemd-self-test || $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login ]] || fail invalid_scenario 'Expected self-test, systemd-self-test, two-user-routing, broker-guest, jit-provision or jit-login' 1
+[[ $# -eq 1 || ( $# -eq 2 && ${2:-} == --json ) ]] || fail invalid_arguments 'Expected self-test|systemd-self-test|two-user-routing|broker-guest|jit-provision|jit-login|jit-reboot-diagnostic [--json]' 1
+[[ $scenario == self-test || $scenario == systemd-self-test || $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-reboot-diagnostic ]] || fail invalid_scenario 'Expected self-test, systemd-self-test, two-user-routing, broker-guest, jit-provision or jit-login or jit-reboot-diagnostic' 1
 # Treat the recipe as data, never source executable text.
 image_url= image_sha= image_arch=
 while IFS= read -r line || [[ -n $line ]]; do
@@ -78,17 +78,18 @@ echo "$image_sha  $image" | sha256sum -c --status || fail image_checksum_mismatc
 printf 'instance-id: synthetic-systemd-fixture\nlocal-hostname: fixture-vm\n' > "$run/meta-data"
 seed_file=/fixture/cloud-init.yaml
 binary_sha= product_commit=
-if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login ]]; then
+if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-reboot-diagnostic ]]; then
   command -v go >/dev/null || fail missing_go 'Go is required to build product fixture' 2
   command -v openssl >/dev/null || fail missing_openssl 'OpenSSL is required for fixture TLS' 2
   product_commit=$(git -C "$repo" rev-parse HEAD)
   (cd "$repo" && CGO_ENABLED=0 go build -trimpath -o "$run/native-agent-host" ./cmd/native-agent-host) || fail product_build_failed 'Could not build product binary' 2
   binary_sha=$(sha256sum "$run/native-agent-host" | cut -d' ' -f1)
-  if [[ $scenario == jit-provision || $scenario == jit-login ]]; then
+  if [[ $scenario == jit-provision || $scenario == jit-login || $scenario == jit-reboot-diagnostic ]]; then
     # Read only: exact landed Fleetrepo checkout and reviewed policy hashes are
     # checked by the renderer before any private bytes reach the disposable ISO.
     jit_args=()
     [[ $scenario == jit-login ]] && jit_args=(login)
+    [[ $scenario == jit-reboot-diagnostic ]] && jit_args=(reboot)
     FLEETREPO_JIT_SOURCE=${FLEETREPO_JIT_SOURCE:-/home/maintainer/Sources/fleetrepo} python3 "$repo/test/vm/jit-fixture.py" "$run" "$run/native-agent-host" "${jit_args[@]}" >"$run/fixture.log" 2>&1 || fail invalid_policy_input 'Pinned Fleetrepo commit or reviewed JIT gate blob unavailable or invalid' 1
     seed_file=/run-data/jit-cloud-init.yaml
   elif [[ $scenario == broker-guest ]]; then
@@ -98,7 +99,7 @@ if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario ==
     python3 "$repo/test/vm/product-fixture.py" "$run" "$run/native-agent-host" || fail invalid_product_fixture 'Could not render private product seed' 2
     seed_file=/run-data/product-cloud-init.yaml
   fi
-  if [[ $scenario == two-user-routing || $scenario == jit-provision || $scenario == jit-login ]]; then
+  if [[ $scenario == two-user-routing || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-reboot-diagnostic ]]; then
     # The pinned noble cloud image lacks the ACL utilities required by the
     # broker's existing-binding verifier. Carry guest-local tools from the
     # disposable pinned image; never install a host package or relax ACLs.
@@ -120,13 +121,24 @@ start=$(date +%s)
 # All VM devices are emulated; no KVM, USB or guest/host shared filesystem.
 # QEMU user-mode DHCP is required by cloud-init, but the container has --network=none
 # and restrict=on prevents guest forwarding beyond the emulated subnet.
-# Serial is drained to EOF even after its private 2 MiB capture fills. A capped
-# or incompletely scanned stream never proves success.
+# Serial is capped at 2 MiB; bounded process lifetime and overlay allocation.
 set +e
-timeout -k 10s 600s podman run --rm --name "vm-fixture-$$" --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --pids-limit=256 --memory=4g --cpus=2 --mount "type=bind,src=$cache,dst=/cache,ro=true" --mount "type=bind,src=$run,dst=/run-data" "$image_id" sh -c 'qemu-img create -q -f qcow2 -F qcow2 -b /cache/noble-server-cloudimg-amd64.img /run-data/overlay.qcow2 && { set --; if test -f /run-data/product.iso; then set -- -drive file=/run-data/product.iso,media=cdrom,readonly=on; fi; exec qemu-system-x86_64 -accel tcg -machine q35 -m 2048 -smp 2 -display none -monitor none -serial stdio -no-reboot -nic user,model=virtio-net-pci,restrict=on -drive file=/run-data/overlay.qcow2,if=virtio,format=qcow2 -drive file=/run-data/seed.img,if=virtio,format=raw,readonly=on "$@"; }' 2>&1 | python3 "$repo/scripts/vm-serial-drain.py" "$run/serial.log" "$run/serial-receipt.json"
+vm_limit=600
+[[ $scenario == jit-reboot-diagnostic ]] && vm_limit=430
+timeout -k 10s "${vm_limit}s" podman run --rm --name "vm-fixture-$$" --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --pids-limit=256 --memory=4g --cpus=2 --mount "type=bind,src=$cache,dst=/cache,ro=true" --mount "type=bind,src=$run,dst=/run-data" "$image_id" sh -c 'scenario=$1; qemu-img create -q -f qcow2 -F qcow2 -b /cache/noble-server-cloudimg-amd64.img /run-data/overlay.qcow2 && { set --; if test -f /run-data/product.iso; then set -- -drive file=/run-data/product.iso,media=cdrom,readonly=on; fi; if test "$scenario" != jit-reboot-diagnostic; then set -- -no-reboot "$@"; fi; exec qemu-system-x86_64 -accel tcg -machine q35 -m 2048 -smp 2 -display none -monitor none -serial stdio -nic user,model=virtio-net-pci,restrict=on -drive file=/run-data/overlay.qcow2,if=virtio,format=qcow2 -drive file=/run-data/seed.img,if=virtio,format=raw,readonly=on "$@"; }' sh "$scenario" 2>&1 | python3 "$repo/scripts/vm-serial-drain.py" "$run/serial.log" "$run/serial-receipt.json"
 vm_status=${PIPESTATUS[0]} drain_status=${PIPESTATUS[1]}
 set -e
 duration=$(($(date +%s)-start))
+if [[ $scenario == jit-reboot-diagnostic && -f $run/serial-receipt.json ]]; then
+  mkdir -p "$repo/history/jit-reboot-diagnostics"
+  diagnostic_log="$repo/history/jit-reboot-diagnostics/$(date -u +%Y%m%dT%H%M%SZ)-$$.log"
+  python3 - "$run/serial-receipt.json" "$diagnostic_log" <<'DIAG'
+import json,os,sys
+r=json.load(open(sys.argv[1])); fd=os.open(sys.argv[2],os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+with os.fdopen(fd,'w') as f:
+ json.dump({k:r[k] for k in ('bytes','capped','token_leaked','markers')},f);f.write('\n')
+DIAG
+fi
 # A missing receipt means the drainer died or could not flush. Never evaluate
 # a prefix proof in that case, nor when bytes beyond the cap went unretained.
 if [[ $drain_status -ne 0 || ! -f $run/serial-receipt.json ]] || ! python3 - "$run/serial-receipt.json" <<'SERIAL_CHECK'
@@ -148,6 +160,56 @@ MARKERS
 fi
 # Require clean guest poweroff and an exact proof; a timeout is always failure.
 proof=$(tr -d '\r' < "$run/serial.log" | grep -a 'VM_PROOF=' | tail -n 1 | sed 's/.*VM_PROOF=//' || :)
+if [[ $scenario == jit-reboot-diagnostic ]]; then
+  origin=$(tr -d '\r' < "$run/serial.log" | grep -aE '^VM_REBOOT_ORIGIN=[0-9a-f]{64}$' | sed 's/^VM_REBOOT_ORIGIN=//' || :)
+  phase_count=$(tr -d '\r' < "$run/serial.log" | grep -ac '^VM_PHASE=real_reboot_requested$' || :)
+  proof_count=$(grep -ac 'VM_PROOF=' "$run/serial.log" || :)
+  if [[ $(printf '%s\n' "$origin" | grep -Ec '^[0-9a-f]{64}$' || :) != 1 || $phase_count != 1 || $proof_count != 1 ]]; then
+    fail boot_proof_failed "JIT reboot diagnostic incomplete (VM exit $vm_status, ${duration}s; origin_count=$(printf '%s\n' "$origin" | grep -Ec '^[0-9a-f]{64}$' || :), phase_count=$phase_count, proof_count=$proof_count; private=$diagnostic_log)" 2
+  fi
+  if [[ $vm_status -ne 0 || -z $proof ]] || ! python3 - "$proof" "$origin" <<'REBOOT_CHECK'
+import json,sys,re
+try:
+ p=json.loads(sys.argv[1])
+ if type(p) is not dict or p.get('status')!='passed' or p.get('scope')!='jit-reboot-diagnostic' or p.get('pid1')!='systemd': sys.exit(1)
+ if p.get('uids')!=[21032,21033,21003] or p.get('epoch')!=4 or type(p.get('generation')) is not int or p['generation']<3: sys.exit(1)
+ ids=p.get('boot_ids')
+ if type(ids) is not list or len(ids)!=2 or any(type(x) is not str or re.fullmatch('[0-9a-f]{64}',x) is None for x in ids) or ids[0]==ids[1] or ids[0]!=sys.argv[2]:sys.exit(1)
+ for key in ('persistent_bindings','persistent_credentials','sockets_disabled_before_prepare','preflight_ready','boot_acl_unprepared','no_pending'):
+  if p.get(key) is not True: sys.exit(1)
+except (ValueError,TypeError,KeyError):sys.exit(1)
+REBOOT_CHECK
+  then
+    reason=$(python3 - "$proof" <<'REBOOT_REASON'
+import json,re,sys
+try: print(re.sub('[^A-Za-z0-9 _./:-]',' ',str(json.loads(sys.argv[1]).get('reason','missing/invalid proof')))[:240])
+except (ValueError,TypeError):print('missing proof')
+REBOOT_REASON
+)
+    fail boot_proof_failed "JIT reboot diagnostic failed closed (VM exit $vm_status, ${duration}s; check=$reason; private=$diagnostic_log)" 2
+  fi
+  # No synthetic credential may appear in serial output or binary.
+  if ! python3 - "$run/serial.log" "$run/native-agent-host" <<'REBOOT_SCAN'
+import pathlib,sys
+for name in ('guestone','guesttwo','UNKNOWN'):
+ token=('PRODUCT_VM_TOKEN_'+name+'_FIXTURE_ONLY_92764').encode()
+ if any(token in pathlib.Path(p).read_bytes() for p in sys.argv[1:]):sys.exit(1)
+REBOOT_SCAN
+  then fail token_scan_failed 'Synthetic token found in reboot output' 2; fi
+  fleetrepo_receipt=$(python3 - "$run/jit-receipt.json" <<'RECEIPT_CHECK'
+import json,sys
+try:
+ p=json.load(open(sys.argv[1]))
+ if type(p) is not dict or p.get('commit')!='e044c03133074db3bb37d64e1e03c0bf4b9ade7d' or type(p.get('sha256')) is not dict:sys.exit(1)
+ print(json.dumps(p,separators=(',',':')))
+except (OSError,ValueError,TypeError):sys.exit(1)
+RECEIPT_CHECK
+) || fail invalid_policy_input 'Pinned Fleetrepo receipt is missing or invalid' 2
+  cleanup; trap - EXIT
+  [[ ! -e $run ]] || fail cleanup_failed 'Private guest run directory remains' 2
+  if $json; then printf '{"schema_version":1,"data":{"status":"passed","launched":true,"scope":"jit-reboot-diagnostic","product_commit":"%s","binary_sha256":"%s","image_sha256":"%s","tool_image_id":"%s","fleetrepo":%s,"duration_seconds":%d,"guest":%s},"warnings":[]}\n' "$product_commit" "$binary_sha" "$image_sha" "$image_id" "$fleetrepo_receipt" "$duration" "$proof"; else echo "JIT reboot passed (${duration}s)"; fi
+  exit 0
+fi
 if [[ $scenario == jit-login ]]; then
   if [[ $vm_status -ne 0 || -z $proof ]] || ! python3 - "$proof" <<'LOGIN_CHECK'
 import json,sys

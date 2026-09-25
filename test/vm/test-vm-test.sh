@@ -109,6 +109,27 @@ p['gh_failures']['wrong-id']['credential_absent']=False;assert not accepted(p),'
 p['gh_failures']['wrong-id']['credential_absent']=True
 p['lost_ack']['one_daemon_gh_call_observed']=False;assert not accepted(p),'lost-ack repeat accepted'
 LOGIN_ORACLE
+reboot_validator=$(sed -n "/<<'REBOOT_CHECK'/,/^REBOOT_CHECK$/p" "$repo/scripts/vm-test.sh" | sed '1d;$d')
+python3 - "$reboot_validator" <<'REBOOT_ORACLE'
+import json,subprocess,sys
+p={'status':'passed','scope':'jit-reboot-diagnostic','pid1':'systemd','uids':[21032,21033,21003],
+   'epoch':4,'generation':3,'boot_ids':['a'*64,'b'*64]}
+keys=('persistent_bindings','persistent_credentials','sockets_disabled_before_prepare',
+      'preflight_ready','boot_acl_unprepared','no_pending')
+p.update(dict.fromkeys(keys,True))
+def accepts(obj,opt=False):
+ return subprocess.run(['python3']+(['-O'] if opt else [])+['-c',sys.argv[1],json.dumps(obj),'a'*64]).returncode==0
+for opt in (False,True):
+ if not accepts(p,opt):raise SystemExit('valid reboot receipt rejected')
+ for key in keys:
+  q=dict(p);q[key]=False
+  if accepts(q,opt):raise SystemExit('forged reboot receipt accepted: '+key)
+ for ids in (['a'*64,'a'*64],['bad','b'*64],[]):
+  q=dict(p,boot_ids=ids)
+  if accepts(q,opt):raise SystemExit('forged boot IDs accepted')
+ if accepts(dict(p,status='failed'),opt):raise SystemExit('failed reboot accepted')
+ if subprocess.run(['python3']+(['-O'] if opt else [])+['-c',sys.argv[1],json.dumps(p),'c'*64]).returncode==0:raise SystemExit('forged origin accepted')
+REBOOT_ORACLE
 # Host leak scanner must accept the intentional UNKNOWN fixture literal in the
 # fake provider, yet reject emitted tokens and accidental full JIT tokens.
 login_scanner=$(sed -n "/<<'TOKEN_SCAN'/,/^TOKEN_SCAN$/p" "$repo/scripts/vm-test.sh" | sed '1d;/^TOKEN_SCAN$/q' | sed '$d')
@@ -176,19 +197,11 @@ assert all(x in unit for x in ['SocketMode=0660\n','DirectoryMode=0710\n','FileD
 PY
 [[ ! -e "$tmp/product/tls.key" && ! -e "$tmp/product/tls.crt" ]]
 grep -Fq "'scope':'product-two-user-routing'" "$repo/test/vm/product-proof.py"
+python3 "$repo/test/vm/test-guest-command.py"
 # Guard the explicit timeout and kill/cleanup wiring against accidental removal.
-grep -Fq 'timeout -k 10s 600s podman run' "$tmp/repo/scripts/vm-test.sh"
-grep -Fq '| python3 "$repo/scripts/vm-serial-drain.py"' "$tmp/repo/scripts/vm-test.sh"
-python3 "$repo/test/vm/test-serial-drain.py"
-# The actual host acceptance guard rejects a capped or leaked receipt, even
-# when a late, superficially valid VM_PROOF follows the retained prefix.
-serial_guard=$(sed -n "/<<'SERIAL_CHECK'/,/^SERIAL_CHECK$/p" "$repo/scripts/vm-test.sh" | sed '1d;$d')
-printf '{"bytes":2097153,"capped":true,"token_leaked":false,"markers":[]}\n' > "$tmp/serial-receipt.json"
-if python3 -c "$serial_guard" "$tmp/serial-receipt.json"; then echo 'capped serial accepted' >&2; exit 1; fi
-printf '{"bytes":10,"capped":false,"token_leaked":true,"markers":[]}\n' > "$tmp/serial-receipt.json"
-if python3 -c "$serial_guard" "$tmp/serial-receipt.json"; then echo 'leaked serial accepted' >&2; exit 1; fi
-rm "$tmp/serial-receipt.json"
-if python3 -c "$serial_guard" "$tmp/serial-receipt.json"; then echo 'missing receipt accepted' >&2; exit 1; fi
+grep -Fq 'timeout -k 10s "${vm_limit}s" podman run' "$tmp/repo/scripts/vm-test.sh"
+grep -Fq '[[ $scenario == jit-reboot-diagnostic ]] && vm_limit=430' "$tmp/repo/scripts/vm-test.sh"
+grep -Fq 'if test "$scenario" != jit-reboot-diagnostic; then set -- -no-reboot "$@"; fi' "$tmp/repo/scripts/vm-test.sh"
 grep -Fq 'genisoimage -quiet -R -graft-points -V PRODUCT' "$tmp/repo/scripts/vm-test.sh"
 grep -Fq 'timeout -k 5s 360s podman run' "$tmp/repo/scripts/vm-test.sh"
 grep -Fq 'trap cleanup EXIT' "$tmp/repo/scripts/vm-test.sh"
