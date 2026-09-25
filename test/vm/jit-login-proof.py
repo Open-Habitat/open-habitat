@@ -186,6 +186,53 @@ print('UNEXPECTED_REPLY')
             cred=pathlib.Path('/home')/name/'.config/gh/hosts.yml';check(cred.stat().st_uid==pwd.getpwnam(name).pw_uid and stat.S_IMODE(cred.stat().st_mode)==0o600 and stat.S_IMODE(cred.parent.stat().st_mode)==0o700,'protected credential')
             check(denied(other,"open(%r).read()"%str(cred)),'cross user credential')
             check('PRODUCT_VM_TOKEN' not in log and 'PRODUCT_VM_TOKEN' not in (pathlib.Path('/home')/name/'git-argv.log').read_text(),'child argv logs')
+        # A second callback for the same numeric ID after a provider handle
+        # change must retain the committed UID and not install a second token.
+        before=json.loads((ledger_dir/'bindings.json').read_text())['bindings']
+        before_log=(pathlib.Path('/home/guestone/gh-argv.jsonl').read_text())
+        pathlib.Path('/run/fixture-rename').write_text('1')
+        rerun,rerun_jar=browser()
+        status,h,_=get(rerun,'/auth/github/start');check(status==302,'rerun start')
+        state=urllib.parse.parse_qs(urllib.parse.urlparse(h['Location']).query)['state'][0]
+        status,h,body=get(rerun,'/auth/github/callback?'+urllib.parse.urlencode({'state':state,'code':'a'}))
+        captures.extend([str(h).encode(),body,repr([(c.name,c.value) for c in rerun_jar]).encode()])
+        check(status==303 and get(rerun,'/auth/session')[0]==200,'same ID renamed callback')
+        check(json.loads((ledger_dir/'bindings.json').read_text())['bindings']==before,'rename changed immutable bindings')
+        new_log=pathlib.Path('/home/guestone/gh-argv.jsonl').read_text()
+        login_argv=['auth','login','--hostname','github.com','--with-token','--git-protocol','https']
+        count=lambda text:sum(json.loads(line)['argv']==login_argv for line in text.splitlines())
+        check(count(before_log)==count(new_log)==1,'rerun installed token again')
+        # Root operator atomically replaces the allowlist under the same ledger
+        # lock, fsyncs file and directory, and leaves accounts/credentials intact.
+        old_cred=(pathlib.Path('/home/guestone/.config/gh/hosts.yml').stat().st_ino)
+        old_bindings=(ledger_dir/'bindings.json').read_bytes()
+        old_head=(ledger_dir/'head.json').read_bytes()
+        old_journal=sorted(p.name for p in ledger_dir.iterdir() if 'journal' in p.name)
+        fd=os.open(ledger_dir,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+        try:
+            fcntl.flock(fd,fcntl.LOCK_EX)
+            nxt=ledger_dir/'allowlist.json.next'
+            with os.fdopen(os.open(nxt,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600),'w') as f:
+                json.dump({'version':1,'epoch':3,'ids':[{'id':'100000002','alternate':names[1]}]},f)
+                f.flush();os.fsync(f.fileno())
+            nxt.replace(ledger_dir/'allowlist.json');os.fsync(fd)
+        finally:os.close(fd)
+        check((ledger_dir/'bindings.json').read_bytes()==old_bindings and (ledger_dir/'head.json').read_bytes()==old_head and sorted(p.name for p in ledger_dir.iterdir() if 'journal' in p.name)==old_journal,'revocation changed ledger or journal')
+        check(pathlib.Path('/home/guestone/.config/gh/hosts.yml').stat().st_ino==old_cred and pwd.getpwnam('guestone').pw_uid==uids[0],'revocation removed account or credential')
+        revoked=[]
+        for op in (browsers[0],rerun):
+            for path in ('/auth/session','/api/v1/snapshot'):
+                status,h,body=get(op,path)
+                captures.extend([str(h).encode(),body])
+                check(status==401 and b'guestone-only' not in body,'revoked established route')
+                revoked.append(status)
+        check(get(browsers[1],'/api/v1/snapshot')[0]==200,'revocation affected other UID')
+        fresh,fresh_jar=browser();status,h,_=get(fresh,'/auth/github/start');check(status==302,'revoked start')
+        state=urllib.parse.parse_qs(urllib.parse.urlparse(h['Location']).query)['state'][0]
+        status,h,body=get(fresh,'/auth/github/callback?'+urllib.parse.urlencode({'state':state,'code':'a'}))
+        captures.extend([str(h).encode(),body,repr([(c.name,c.value) for c in fresh_jar]).encode()])
+        check(status==403 and get(fresh,'/auth/session')[0]==401 and get(fresh,'/api/v1/snapshot')[0]==401,'revoked new session')
+        check(count(pathlib.Path('/home/guestone/gh-argv.jsonl').read_text())==1,'revoked token handed off')
         # Root can connect by DAC, but kernel peer gate must immediately close it.
         for name in names:
             s=socket.socket(socket.AF_UNIX);s.settimeout(3);s.connect(str(root/name/'daemon.sock'));s.sendall(b'GET /healthz HTTP/1.1\r\nHost: unix\r\n\r\n')
@@ -213,7 +260,7 @@ print('UNEXPECTED_REPLY')
                 check(value not in logs,'journal token scan')
             for p in ['/etc/native-agent-host/gateway.json','/etc/native-agent-host/daemon-guestone.json','/etc/native-agent-host/daemon-guesttwo.json']:
                 check(value not in pathlib.Path(p).read_bytes(),'config token scan')
-        result={'status':'passed','scope':'jit-login-slice','pid1':'systemd','uids':[21032,21033,21003],'socket_mode':'0660','socket_activation':True,'pool_vacant_before_login':True,'new_accounts':True,'committed_bindings':True,'root_ledger':True,'pinned_policy_gate':True,'routes':routes,'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'cross_user_broker':True,'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'gateway_credential':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, bounded journal, process argv/environ, configs, child argv logs'}}
+        result={'status':'passed','scope':'jit-login-slice','revocation':{'atomic_fsynced':True,'existing_denied_statuses':revoked,'new_denied_status':status,'other_uid_unaffected':True,'ledger_account_credential_preserved':True},'rename':{'same_uid':True,'no_second_gh_login':True},'pid1':'systemd','uids':[21032,21033,21003],'socket_mode':'0660','socket_activation':True,'pool_vacant_before_login':True,'new_accounts':True,'committed_bindings':True,'root_ledger':True,'pinned_policy_gate':True,'routes':routes,'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'cross_user_broker':True,'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'gateway_credential':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, bounded journal, process argv/environ, configs, child argv logs'}}
     finally:provider.terminate();provider.wait(timeout=5)
 except Exception as e:
     # FileNotFoundError retains the missing executable/path; no fixture token

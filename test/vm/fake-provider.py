@@ -15,7 +15,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         key='PRODUCT_VM_TOKEN_'
         ident={'Bearer '+key+'agent_a_FIXTURE_ONLY_92764':31001,'Bearer '+key+'agent_b_FIXTURE_ONLY_92764':31002,'Bearer '+key+'UNKNOWN_FIXTURE_ONLY_92764':39999}.get(token)
         if ident is None:return self.send_error(403)
-        self.send_json({'id':ident,'login':{31001:'agent-a',31002:'agent-b',39999:'unknown'}[ident]})
+        login={31001:'agent-a',31002:'agent-b',39999:'unknown'}[ident]
+        # Guest-only provider rename; the product never sees this control file.
+        if ident==31001 and pathlib.Path('/run/fixture-rename').is_file(): login='renamed-fixture'
+        self.send_json({'id':ident,'login':login})
     def send_json(self,data):
         body=json.dumps(data).encode();self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
 server=http.server.HTTPServer(('127.0.0.1',443),Handler)

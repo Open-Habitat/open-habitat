@@ -142,6 +142,10 @@ try:
   values=p.get(key)
   if not isinstance(values,dict) or set(values)!=expected or not all(v is True for v in values.values()): sys.exit(1)
  if not isinstance(p.get('token_scan'),dict) or p['token_scan'].get('passed') is not True: sys.exit(1)
+ rev=p.get('revocation',{}); rename=p.get('rename',{})
+ if rev.get('existing_denied_statuses') != [401]*4 or rev.get('new_denied_status') != 403: sys.exit(1)
+ if not all(rev.get(k) is True for k in ('atomic_fsynced','other_uid_unaffected','ledger_account_credential_preserved')): sys.exit(1)
+ if rename != {'same_uid':True,'no_second_gh_login':True}: sys.exit(1)
 except (ValueError,TypeError,AttributeError): sys.exit(1)
 LOGIN_CHECK
   then
