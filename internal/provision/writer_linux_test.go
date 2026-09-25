@@ -454,7 +454,8 @@ func TestWriterLockWaitCancellationAndDeadline(t *testing.T) {
 func TestEnsureActivationFailsClosedAndExplicitRetry(t *testing.T) {
 	w, h := writerFixture(t)
 	h.readyErr = true
-	if r := handle(w, "ensure", "42", "carol"); r.Route != nil || r.Failure != Drift {
+	h.routeErr = true
+	if r := handle(w, "ensure", "42", "carol"); r.Route != nil || r.Failure != StateUnavailable {
 		t.Fatal(r)
 	}
 	if !fileAbsent(filepath.Join(w.Dir, "pending.json")) {
@@ -464,10 +465,11 @@ func TestEnsureActivationFailsClosedAndExplicitRetry(t *testing.T) {
 	if err != nil || !bytes.Contains(b, []byte(`"username":"carol"`)) {
 		t.Fatal("binding lost", err)
 	}
-	if r := handle(w, "authorize", "42", ""); r.Route == nil {
-		t.Fatal("authorize must not activate or modify ledger", r)
+	if r := handle(w, "authorize", "42", ""); r.Route != nil || r.Failure != StateUnavailable {
+		t.Fatal("inactive socket routable", r)
 	}
 	h.readyErr = false
+	h.routeErr = false
 	if r := handle(w, "ensure", "42", "renamed"); r.Route == nil || r.Route.UID != 2100 {
 		t.Fatal("explicit retry refused", r)
 	}

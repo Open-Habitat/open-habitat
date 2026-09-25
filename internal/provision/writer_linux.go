@@ -299,7 +299,9 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 	}
 	identity := ExecutorIdentity{provider: "github", id: r.ID, username: result.Route.Username, uid: result.Route.UID}
 	if w.Executor.Ready(ctx, identity) != nil {
-		return failure(Drift)
+		// No token has crossed the boundary. Keep the committed binding and
+		// require another explicit ensure; never retry an OAuth handoff.
+		return failure(StateUnavailable)
 	}
 	// Recheck the complete policy and binding under lock after activation.
 	// Never return a route based on a stale pre-start allowlist snapshot.
@@ -380,7 +382,9 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 				return failure(Drift)
 			}
 			if r.Operation == "authorize" && w.Executor.RouteReady(ctx, identity) != nil {
-				return failure(Drift)
+				// An inactive socket is not mapping drift. Deny this request but
+				// retain the session for an operator-gated restart or new ensure.
+				return failure(StateUnavailable)
 			}
 			// Do not return a route after a concurrent operator rewrite, even when
 			// the executor's verification was in flight.

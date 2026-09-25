@@ -193,7 +193,10 @@ print('UNEXPECTED_REPLY')
             except ConnectionResetError: reply=b''
             check(reply==b'','root peer rejection');s.close()
         subprocess.run(['systemctl','stop','native-agent-host-daemon@guestone.socket','native-agent-host-daemon@guestone.service'],check=True,stdout=subprocess.DEVNULL)
-        check(get(browsers[0],'/api/v1/snapshot')[0]==503,'stopped A has no fallback')
+        # Broker denies an inactive route before handoff. This can surface as
+        # 401 (session authorization unavailable), not only daemon HTTP 503;
+        # either way no data or cross-user fallback may be returned.
+        check(get(browsers[0],'/api/v1/snapshot')[0] in (401,503),'stopped A has no fallback')
         check(get(browsers[1],'/api/v1/snapshot')[0]==200,'stopped A does not affect B')
         subprocess.run(['systemctl','start','native-agent-host-daemon@guestone.socket'],check=True,stdout=subprocess.DEVNULL)
         check(get(browsers[0],'/api/v1/snapshot')[0]==200,'A socket reactivates its own daemon')
