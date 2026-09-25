@@ -617,8 +617,21 @@ func (e *LinuxHostExecutor) Ready(ctx context.Context, i ExecutorIdentity) error
 		return ErrInvalid
 	}
 	unit := "native-agent-host-daemon@" + i.username + ".socket"
+	b, err := e.command(ctx, systemctl, "show", unit, "--property=ActiveState", "--no-pager")
+	if err != nil {
+		return ErrInvalid
+	}
+	if string(b) == "ActiveState=active\n" {
+		// Existing manually prepared static bindings and already-gated JIT
+		// sockets do not need a second start. Never accept an active unit
+		// unless its actual inode, UID and ACL still match the binding.
+		return e.RouteReady(ctx, i)
+	}
+	if string(b) != "ActiveState=inactive\n" && string(b) != "ActiveState=failed\n" && string(b) != "ActiveState=activating\n" {
+		return ErrInvalid
+	}
 	gate := "native-agent-host-jit-policy-gate@" + i.username + ".service"
-	b, err := e.command(ctx, systemctl, "show", unit, "--property=Requires,After", "--no-pager")
+	b, err = e.command(ctx, systemctl, "show", unit, "--property=Requires,After", "--no-pager")
 	if err != nil || !unitDependency(b, "Requires", gate) || !unitDependency(b, "After", gate) {
 		return ErrInvalid
 	}
@@ -626,19 +639,10 @@ func (e *LinuxHostExecutor) Ready(ctx context.Context, i ExecutorIdentity) error
 	if err != nil || !gateProperties(b) || !exactGateExec(b, i.username) {
 		return ErrInvalid
 	}
-	b, err = e.command(ctx, systemctl, "show", unit, "--property=ActiveState", "--no-pager")
-	if err != nil {
+	// A failed gate can leave a failed socket unit. A later explicit
+	// ensure may retry it, but no route is returned until it is active.
+	if _, err := e.command(ctx, systemctl, "start", unit); err != nil {
 		return ErrInvalid
-	}
-	if string(b) != "ActiveState=active\n" {
-		// A failed gate can leave a failed socket unit. A later explicit
-		// ensure may retry it, but no route is returned until it is active.
-		if string(b) != "ActiveState=inactive\n" && string(b) != "ActiveState=failed\n" && string(b) != "ActiveState=activating\n" {
-			return ErrInvalid
-		}
-		if _, err := e.command(ctx, systemctl, "start", unit); err != nil {
-			return ErrInvalid
-		}
 	}
 	if e.Verify(ctx, i) != nil {
 		return ErrInvalid
