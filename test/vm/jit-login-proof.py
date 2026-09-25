@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """Fail-closed product proof inside the disposable guest. Never print secrets."""
-import http.cookiejar, hashlib, http.client, json, os, pathlib, pwd, socket, ssl, stat, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
+import grp, http.cookiejar, hashlib, http.client, json, os, pathlib, pwd, socket, ssl, stat, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
 names=['guestone','guesttwo']; uids=[21032,21033]; gateway_uid=21003
 base='https://host.fixture:8443'
 result={'status':'failed','scope':'jit-login-slice'}
@@ -25,7 +25,16 @@ try:
         check(not any(u.pw_name==name or u.pw_uid==uid for u in pwd.getpwall()),'precreated account')
         check(not (pathlib.Path('/home')/name).exists(),'precreated home')
     for n in range(21032,21048):
-        check(not any(u.pw_uid==n or u.pw_gid==n for u in pwd.getpwall()),'occupied pool')
+        check(not any(u.pw_uid==n or u.pw_gid==n for u in pwd.getpwall()),'occupied passwd pool')
+        check(not any(g.gr_gid==n for g in grp.getgrall()),'occupied group pool')
+        for lookup in (pwd.getpwuid,grp.getgrgid):
+            try: lookup(n)
+            except KeyError: pass
+            else: raise RuntimeError('direct NSS pool occupant')
+    for name in names:
+        check(not any(g.gr_name==name or name in g.gr_mem for g in grp.getgrall()),'group alias')
+        check(not (pathlib.Path('/etc/native-agent-host')/('daemon-'+name+'.json')).exists(),'precreated config')
+        check(not (pathlib.Path('/run/native-agent-host/users')/name).exists(),'precreated socket directory')
     # Prepare the pinned private Fleetrepo boot gate before any broker socket.
     prep='/usr/local/libexec/native-agent-host-test-jit/jit_acl_prepare.py'
     check(subprocess.run(['/usr/bin/python3',prep,'preflight','--json'],capture_output=True).returncode==0,'policy preflight')
@@ -48,13 +57,27 @@ try:
     config=pathlib.Path('/etc/native-agent-host/gateway.json')
     os.chown(config,0,gateway_uid);config.chmod(0o640)
     with open('/etc/hosts','a') as f:f.write('\n127.0.0.1 github.com api.github.com host.fixture\n')
-    # Root peer can connect by DAC but Writer.Handle must reject its kernel peer.
+    # Root peer can connect by DAC but the broker transport must reject its kernel peer.
     def exchange(uid,subject):
-        code="import json,socket,struct;s=socket.socket(socket.AF_UNIX);s.settimeout(98);s.connect('/run/native-agent-host/broker.sock');b=json.dumps({'version':1,'operation':'authorize','provider':'github','id':%r}).encode();s.sendall(struct.pack('>I',len(b))+b);s.shutdown(socket.SHUT_WR);h=s.recv(4);print(s.recv(struct.unpack('>I',h)[0]).decode())"%subject
+        code='''import json,socket,struct,sys
+s=socket.socket(socket.AF_UNIX);s.settimeout(5)
+try: s.connect('/run/native-agent-host/broker.sock')
+except PermissionError as e:
+ if e.errno==13: print('DAC_DENIED');sys.exit(0)
+ raise
+b=json.dumps({'version':1,'operation':'authorize','provider':'github','id':sys.argv[1]}).encode()
+s.sendall(struct.pack('>I',len(b))+b);s.shutdown(socket.SHUT_WR)
+try: h=s.recv(4)
+except ConnectionResetError: h=b''
+if not h: print('PEER_REJECTED');sys.exit(0)
+print('UNEXPECTED_REPLY')
+'''
         def drop():os.setgroups([]);os.setresgid(uid,uid,uid);os.setresuid(uid,uid,uid)
-        return subprocess.run(['/usr/bin/python3','-c',code],preexec_fn=drop,capture_output=True,timeout=100)
-    check(exchange(0,'100000001').returncode!=0,'root broker peer accepted')
-    check(exchange(21032,'100000001').returncode!=0,'non-gateway broker peer accepted')
+        return subprocess.run(['/usr/bin/python3','-c',code,subject],preexec_fn=drop,capture_output=True,timeout=8)
+    root_peer=exchange(0,'100000001')
+    check(root_peer.returncode==0 and root_peer.stdout.strip()==b'PEER_REJECTED','root broker peer not rejected')
+    foreign_peer=exchange(21032,'100000001')
+    check(foreign_peer.returncode==0 and foreign_peer.stdout.strip()==b'DAC_DENIED','non-gateway broker DAC not denied')
     key=pathlib.Path('/etc/native-agent-host/tls.key')
     os.chown(key,0,gateway_uid);key.chmod(0o640)
     provider=subprocess.Popen(['/usr/bin/python3','/usr/local/sbin/product-fake-provider'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
@@ -134,8 +157,10 @@ try:
             routes.append({'uid':uids[index],'subject':str(100000001+index),'workspace_count':3,'forged_headers_ignored':True})
             captures.extend([body,session,snap,repr([(c.name,c.value) for c in jar]).encode()])
             check(get(op,'/auth/github/callback?'+urllib.parse.urlencode({'state':state,'code':'a'}))[0]==403,'state replay')
-        op,_=browser();status,h,_=get(op,'/auth/github/start');state=urllib.parse.parse_qs(urllib.parse.urlparse(h['Location']).query)['state'][0]
-        check(get(op,'/auth/github/callback?'+urllib.parse.urlencode({'state':state,'code':'unknown'}))[0]==403,'unmapped numeric ID')
+        op,unknown_jar=browser();status,h,_=get(op,'/auth/github/start');state=urllib.parse.parse_qs(urllib.parse.urlparse(h['Location']).query)['state'][0]
+        unknown_status,unknown_headers,unknown_body=get(op,'/auth/github/callback?'+urllib.parse.urlencode({'state':state,'code':'unknown'}))
+        captures.extend([str(unknown_headers).encode(),unknown_body,repr([(c.name,c.value) for c in unknown_jar]).encode()])
+        check(unknown_status==403,'unmapped numeric ID')
         check(get(op,'/api/v1/snapshot')[0]==401,'unknown session')
         source=pathlib.Path('/home/guestone/src'); held=pathlib.Path('/home/guestone/src-held')
         source.rename(held)
@@ -152,8 +177,8 @@ try:
             other=names[1-names.index(name)]
             sock=str(root/other/'daemon.sock')
             check(denied(name,"import socket;s=socket.socket(socket.AF_UNIX);s.connect(%r)"%sock),'cross user route')
-            check(denied(name,"open(%r).read()"%('/home/'+other+'/.config/gh/hosts.yml')),'cross user home')
-            check(denied('native-agent-host-gateway',"open(%r).read()"%('/home/'+name+'/.config/gh/hosts.yml')),'gateway home')
+            check(denied(name,"import os;os.listdir(%r)"%('/home/'+other)),'cross user home')
+            check(denied('native-agent-host-gateway',"import os;os.listdir(%r)"%('/home/'+name)),'gateway home')
             check(denied('native-agent-host-gateway',"open(%r).read()"%('/home/'+name+'/.config/gh/hosts.yml')),'gateway credential')
             log=(pathlib.Path('/home')/name/'gh-argv.jsonl').read_text();records=[json.loads(l) for l in log.splitlines()]
             check(any(r['argv']==['auth','login','--hostname','github.com','--with-token','--git-protocol','https'] and r['stdin'] and r['uid']==pwd.getpwnam(name).pw_uid for r in records),'gh login argv/stdin')
@@ -172,9 +197,8 @@ try:
         check(get(browsers[1],'/api/v1/snapshot')[0]==200,'stopped A does not affect B')
         subprocess.run(['systemctl','start','native-agent-host-daemon@guestone.socket'],check=True,stdout=subprocess.DEVNULL)
         check(get(browsers[0],'/api/v1/snapshot')[0]==200,'A socket reactivates its own daemon')
-        for token_name in names:
-            token=pathlib.Path('/usr/local/lib/fixture/tokens')/token_name
-            value=token.read_bytes()
+        for token_name in names+['UNKNOWN']:
+            value=(pathlib.Path('/usr/local/lib/fixture/tokens')/token_name).read_bytes() if token_name in names else b'PRODUCT_VM_TOKEN_'+b'UNKNOWN_FIXTURE_ONLY_92764'
             check(value and all(value not in b for b in captures),'browser capture token scan')
             for p in pathlib.Path('/proc').iterdir():
                 if not p.name.isdigit():continue
@@ -186,7 +210,7 @@ try:
                 check(value not in logs,'journal token scan')
             for p in ['/etc/native-agent-host/gateway.json','/etc/native-agent-host/daemon-guestone.json','/etc/native-agent-host/daemon-guesttwo.json']:
                 check(value not in pathlib.Path(p).read_bytes(),'config token scan')
-        result={'status':'passed','scope':'jit-login-slice','pid1':'systemd','uids':[21032,21033,21003],'socket_mode':'0660','socket_activation':True,'pool_vacant_before_login':True,'new_accounts':True,'committed_bindings':True,'root_ledger':True,'pinned_policy_gate':True,'routes':routes,'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'cross_user_broker':True,'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, bounded journal, process argv/environ, configs, child argv logs'}}
+        result={'status':'passed','scope':'jit-login-slice','pid1':'systemd','uids':[21032,21033,21003],'socket_mode':'0660','socket_activation':True,'pool_vacant_before_login':True,'new_accounts':True,'committed_bindings':True,'root_ledger':True,'pinned_policy_gate':True,'routes':routes,'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'cross_user_broker':True,'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'gateway_credential':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, bounded journal, process argv/environ, configs, child argv logs'}}
     finally:provider.terminate();provider.wait(timeout=5)
 except Exception as e:
     # FileNotFoundError retains the missing executable/path; no fixture token

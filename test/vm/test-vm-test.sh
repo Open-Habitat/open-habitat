@@ -83,6 +83,28 @@ for mode in normal optimized; do
   [[ $mode == optimized ]] && python_flags=(-O)
   if python3 "${python_flags[@]}" -c "$login_validator" '{"status":"failed","scope":"jit-login-slice","routes":[]}'; then echo 'failed login proof accepted' >&2; exit 1; fi
 done
+python3 - "$login_validator" <<'LOGIN_ORACLE'
+import json,subprocess,sys
+p={'status':'passed','scope':'jit-login-slice','pid1':'systemd','uids':[21032,21033,21003],
+   'routes':[{'uid':21032},{'uid':21033}],
+   'native_gh':dict.fromkeys(('stdin_only','exact_argv','protected_file','credential_isolated'),True),
+   'denials':dict.fromkeys(('cross_user_broker','unknown_identity','unknown_session','state_replay','root_peer','cross_user_home','cross_user_socket','gateway_home','gateway_credential','forged_headers','symlink_excluded'),True),
+   'token_scan':{'passed':True,'allowed':'protected credential','scanned':'captures'}}
+for key in ('pool_vacant_before_login','new_accounts','committed_bindings','root_ledger','pinned_policy_gate','socket_activation'):p[key]=True
+def accepted(proof):return subprocess.run(['python3','-c',sys.argv[1],json.dumps(proof)]).returncode==0
+assert accepted(p),'valid guest proof rejected'
+for key in ('native_gh','denials'):
+ v=p.pop(key);assert not accepted(p),f'missing {key} accepted';p[key]={};assert not accepted(p),f'empty {key} accepted';p[key]=v
+p['denials']['root_peer']=False;assert not accepted(p),'false peer denial accepted'
+LOGIN_ORACLE
+# Host leak scanner must accept the intentional UNKNOWN fixture literal in the
+# fake provider, yet reject emitted tokens and accidental full JIT tokens.
+login_scanner=$(sed -n "/<<'TOKEN_SCAN'/,/^TOKEN_SCAN$/p" "$repo/scripts/vm-test.sh" | sed '1d;/^TOKEN_SCAN$/q' | sed '$d')
+printf '' > "$tmp/jit/serial.log"
+python3 -c "$login_scanner" "$repo" "$tmp/jit/serial.log" "$tmp/jit/native-agent-host"
+printf 'PRODUCT_VM_TOKEN_UNKNOWN_FIXTURE_ONLY_92764' > "$tmp/jit/serial.log"
+if python3 -c "$login_scanner" "$repo" "$tmp/jit/serial.log" "$tmp/jit/native-agent-host"; then echo 'unknown token leaked to serial' >&2; exit 1; fi
+printf '' > "$tmp/jit/serial.log"
 # Optional positive seed render from read-only historical committed blobs.
 if git -C /home/maintainer/Sources/fleetrepo cat-file -e e044c031^{commit} 2>/dev/null; then
 FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/native-agent-host"

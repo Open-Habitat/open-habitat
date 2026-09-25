@@ -136,8 +136,12 @@ try:
  if not isinstance(p,dict) or p.get('status')!='passed' or p.get('scope')!='jit-login-slice' or p.get('pid1')!='systemd': sys.exit(1)
  if p.get('uids')!=[21032,21033,21003] or [r.get('uid') for r in p.get('routes',[])]!=[21032,21033]: sys.exit(1)
  if not all(p.get(k) is True for k in ('pool_vacant_before_login','new_accounts','committed_bindings','root_ledger','pinned_policy_gate','socket_activation')): sys.exit(1)
- if not all(v is True for key in ('native_gh','denials','token_scan') for v in (p.get(key) or {}).values()): sys.exit(1)
- if p.get('token_scan',{}).get('passed') is not True: sys.exit(1)
+ keys={'native_gh':{'stdin_only','exact_argv','protected_file','credential_isolated'},
+       'denials':{'cross_user_broker','unknown_identity','unknown_session','state_replay','root_peer','cross_user_home','cross_user_socket','gateway_home','gateway_credential','forged_headers','symlink_excluded'}}
+ for key, expected in keys.items():
+  values=p.get(key)
+  if not isinstance(values,dict) or set(values)!=expected or not all(v is True for v in values.values()): sys.exit(1)
+ if not isinstance(p.get('token_scan'),dict) or p['token_scan'].get('passed') is not True: sys.exit(1)
 except (ValueError,TypeError,AttributeError): sys.exit(1)
 LOGIN_CHECK
   then
@@ -153,9 +157,12 @@ REASON
   fi
   if ! python3 - "$repo" "$run/serial.log" "$run/native-agent-host" <<'TOKEN_SCAN'
 import pathlib,sys
-repo=pathlib.Path(sys.argv[1]);tokens=[('PRODUCT_VM_TOKEN_'+n+'_FIXTURE_ONLY_92764').encode() for n in ('guestone','guesttwo')]
-files=[pathlib.Path(sys.argv[2]),pathlib.Path(sys.argv[3]),repo/'scripts/vm-test.sh',*list((repo/'test/vm').glob('*.py'))]
-if any(t in f.read_bytes() for f in files for t in tokens):sys.exit(1)
+repo=pathlib.Path(sys.argv[1]);tokens=[('PRODUCT_VM_TOKEN_'+n+'_FIXTURE_ONLY_92764').encode() for n in ('guestone','guesttwo','UNKNOWN')]
+output=[pathlib.Path(sys.argv[2]),pathlib.Path(sys.argv[3])]
+source=[repo/'scripts/vm-test.sh',*list((repo/'test/vm').glob('*.py'))]
+# UNKNOWN is intentionally a literal in the historical fake provider's source.
+if any(t in f.read_bytes() for f in output for t in tokens):sys.exit(1)
+if any(t in f.read_bytes() for f in source for t in tokens[:2]):sys.exit(1)
 TOKEN_SCAN
   then fail token_scan_failed 'Token found in host source, binary or serial output' 2; fi
   fleetrepo_receipt=$(cat "$run/jit-receipt.json")
