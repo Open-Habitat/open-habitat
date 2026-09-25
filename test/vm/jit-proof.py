@@ -117,14 +117,21 @@ try:
         check((Path('/etc/native-agent-host')/('daemon-'+name+'.json')).is_file(),'executor config missing')
         check(route(exchange(21003,'ensure',subject,'changedname'),uid,name)==first,'rerun not idempotent')
         if index==0:
-            check(unit('start','native-agent-host-daemon@guestone.socket').returncode==0,'first daemon socket start')
+            # Broker ensure now starts the reviewed socket itself after durable
+            # commit. Starting an already active socket may requeue its
+            # one-shot gate (which correctly refuses a present target).
+            check(unit('is-active','native-agent-host-daemon@guestone.socket').stdout.strip()=='active','first daemon socket not broker-activated')
     ledger=json.loads((state/'bindings.json').read_text())
     check(ledger=={'version':1,'generation':3,'bindings':[{'id':ids[0],'uid':21032,'username':names[0]},{'id':ids[1],'uid':21033,'username':names[1]}]},'not two new committed bindings')
     check(not (state/'pending.json').exists(),'writer left pending journal')
+    # Exercise gate denial on a *stopped* instance: an active socket has no
+    # new activation job to gate, and broker authorize is separately checked.
+    check(unit('stop','native-agent-host-daemon@guesttwo.socket').returncode==0,'stop second socket for pending gate')
     marker=state/'pending.json';marker.write_text('{"version":1}');marker.chmod(0o600)
     check(json.loads(exchange(21003,'authorize',ids[0]).stdout).get('failure')=='state_unavailable','pending did not block writer')
     check(unit('start','native-agent-host-daemon@guesttwo.socket').returncode!=0,'pending allowed gate')
     marker.unlink() # disposable fault injection only; not recovery guidance
+    reset()
     check(unit('start','native-agent-host-daemon@guesttwo.socket').returncode==0,'second daemon socket start')
     for uid,own,sibling in ((21032,names[0],names[1]),(21033,names[1],names[0])):
         check(probe(uid,run/'users'/own),'own socket directory denied')
