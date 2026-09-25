@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """Guest-only native gh stand-in. No network or real credential store."""
-import json, os, pathlib, sys
+import json, os, pathlib, signal, sys
 args=sys.argv[1:]
 with open('/tmp/native-gh-entry-'+str(os.getuid()),'a') as entry:
     entry.write(json.dumps({'uid':os.getuid(),'home':os.environ.get('HOME',''),'argc':len(args)})+'\n')
@@ -15,6 +15,11 @@ cred=home/'.config/gh/hosts.yml'
 fault=pathlib.Path('/run/fixture-gh-fault')
 mode=fault.read_text().strip() if fault.is_file() else ''
 if args==['auth','status','--hostname','github.com']:
+    if mode=='lost-ack':
+        # Guest-only process loss after accepting the one-shot handoff. The
+        # daemon cannot acknowledge the request; the gateway must not retry.
+        os.kill(os.getppid(),signal.SIGKILL)
+        sys.exit(6)
     sys.exit(0 if cred.is_file() else 1)
 if args==['auth','login','--hostname','github.com','--with-token','--git-protocol','https']:
     token=sys.stdin.read(4097)

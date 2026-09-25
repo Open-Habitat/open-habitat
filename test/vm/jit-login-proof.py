@@ -280,6 +280,26 @@ print('UNEXPECTED_REPLY')
         captures.extend([str(fresh_headers).encode(),fresh_body,str(snapshot_headers).encode(),snapshot_body])
         check(status==403 and fresh_session==401 and fresh_snapshot==401,'revoked new session')
         check(count(pathlib.Path('/home/guestone/gh-argv.jsonl').read_text())==2,'revoked token handed off')
+        # Simulate a lost daemon acknowledgement after it receives B's token.
+        # This synthetic fault lives solely in the guest gh executable. Never
+        # repeat the uncertain callback or offer its token to another sink.
+        b_log=pathlib.Path('/home/guesttwo/gh-argv.jsonl')
+        b_attempts=count(b_log.read_text())
+        b_cred=pathlib.Path('/home/guesttwo/.config/gh/hosts.yml').stat().st_ino
+        lost,lost_jar=browser();status,h,_=get(lost,'/auth/github/start');check(status==302,'lost-ack start')
+        lost_state=urllib.parse.parse_qs(urllib.parse.urlparse(h['Location']).query)['state'][0]
+        fault.write_text('lost-ack')
+        try:
+            lost_status,lost_headers,lost_body=get(lost,'/auth/github/callback?'+urllib.parse.urlencode({'state':lost_state,'code':'b'}))
+        finally:fault.unlink()
+        captures.extend([str(lost_headers).encode(),lost_body,repr([(c.name,c.value) for c in lost_jar]).encode()])
+        check(lost_status==503 and json.loads(lost_body)['error']['code']=='native_adapter_error','lost ack issued session')
+        lost_session,session_headers,session_body=get(lost,'/auth/session')
+        lost_snapshot,snapshot_headers,snapshot_body=get(lost,'/api/v1/snapshot')
+        captures.extend([str(session_headers).encode(),session_body,str(snapshot_headers).encode(),snapshot_body])
+        check(lost_session==401 and lost_snapshot==401,'lost ack created normal session')
+        check(get(lost,'/auth/github/callback?'+urllib.parse.urlencode({'state':lost_state,'code':'b'}))[0]==403,'lost ack replay')
+        check(count(b_log.read_text())==b_attempts and pathlib.Path('/home/guesttwo/.config/gh/hosts.yml').stat().st_ino==b_cred,'uncertain token retried or credential replaced')
         for token_name in names+['UNKNOWN']:
             value=(pathlib.Path('/usr/local/lib/fixture/tokens')/token_name).read_bytes() if token_name in names else b'PRODUCT_VM_TOKEN_'+b'UNKNOWN_FIXTURE_ONLY_92764'
             check(value and all(value not in b for b in captures),'browser capture token scan')
@@ -296,7 +316,7 @@ print('UNEXPECTED_REPLY')
                 check(value not in logs,'journal token scan')
             for p in ['/etc/native-agent-host/gateway.json','/etc/native-agent-host/daemon-guestone.json','/etc/native-agent-host/daemon-guesttwo.json']:
                 check(value not in pathlib.Path(p).read_bytes(),'config token scan')
-        result={'status':'passed','scope':'jit-login-slice','revocation':{'atomic_fsynced':True,'existing_denied_statuses':revoked,'new_denied_status':status,'other_uid_reauthorized':True,'ledger_account_credential_preserved':True},'rename':{'same_uid':True,'no_second_gh_login':True},'gh_failures':fault_results,'pid1':'systemd','uids':[21032,21033,21003],'socket_mode':'0660','socket_activation':True,'pool_vacant_before_login':True,'new_accounts':True,'committed_bindings':True,'root_ledger':True,'pinned_policy_gate':True,'routes':routes,'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'cross_user_broker':True,'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'gateway_credential':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, full boot journal capped at 1 MiB per unit, process argv/environ, configs, child argv logs'}}
+        result={'status':'passed','scope':'jit-login-slice','revocation':{'atomic_fsynced':True,'existing_denied_statuses':revoked,'new_denied_status':status,'other_uid_reauthorized':True,'ledger_account_credential_preserved':True},'rename':{'same_uid':True,'no_second_gh_login':True},'gh_failures':fault_results,'lost_ack':{'callback_status':lost_status,'session_status':lost_session,'snapshot_status':lost_snapshot,'replay_status':403,'no_second_login_attempt':True,'credential_preserved':True},'pid1':'systemd','uids':[21032,21033,21003],'socket_mode':'0660','socket_activation':True,'pool_vacant_before_login':True,'new_accounts':True,'committed_bindings':True,'root_ledger':True,'pinned_policy_gate':True,'routes':routes,'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'cross_user_broker':True,'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'gateway_credential':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, full boot journal capped at 1 MiB per unit, process argv/environ, configs, child argv logs'}}
     finally:provider.terminate();provider.wait(timeout=5)
 except Exception as e:
     # FileNotFoundError retains the missing executable/path; no fixture token

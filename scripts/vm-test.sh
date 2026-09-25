@@ -148,6 +148,7 @@ try:
  if rename != {'same_uid':True,'no_second_gh_login':True}: sys.exit(1)
  failures=p.get('gh_failures',{})
  if set(failures)!= {'fail-login','wrong-id'} or any(v != {'callback_status':503,'session_status':401,'replay_status':403,'credential_absent':True} for v in failures.values()): sys.exit(1)
+ if p.get('lost_ack') != {'callback_status':503,'session_status':401,'snapshot_status':401,'replay_status':403,'no_second_login_attempt':True,'credential_preserved':True}: sys.exit(1)
 except (ValueError,TypeError,AttributeError): sys.exit(1)
 LOGIN_CHECK
   then
