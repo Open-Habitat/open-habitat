@@ -58,7 +58,7 @@ if len(sys.argv)==4 and sys.argv[3]=='reboot':
     add('/usr/local/sbin/jit-reboot-proof',(repo/'test/vm/jit-reboot-proof.py').read_bytes(),'0755')
     add('/usr/local/sbin/jit-reboot-watchdog',(repo/'test/vm/jit-reboot-watchdog.py').read_bytes(),'0755')
     add('/etc/systemd/system/jit-reboot-proof.service','[Unit]\nDescription=Disposable post-JIT reboot verification\nConditionPathExists=/var/lib/native-agent-host/reboot-fixture.json\n[Service]\nType=oneshot\nStandardOutput=tty\nTTYPath=/dev/ttyS0\nTimeoutStartSec=100\nExecStart=/usr/local/sbin/jit-reboot-proof\nExecStopPost=/usr/local/sbin/jit-reboot-watchdog\n[Install]\nWantedBy=multi-user.target\n')
-add('/etc/systemd/system/jit-proof.service','[Service]\nType=oneshot\nStandardOutput=tty\nTTYPath=/dev/ttyS0\nTimeoutStartSec=240\nExecStart=/usr/local/sbin/jit-proof\n')
+add('/etc/systemd/system/jit-proof.service','[Service]\nType=oneshot\nStandardOutput=tty\nTTYPath=/dev/ttyS0\nExecStart=/usr/local/sbin/jit-proof\n')
 state='/var/lib/native-agent-host/broker'
 for name, obj in {'broker.json':{'version':1,'gateway_uid':21003,'gateway_gid':21003,'uid_min':21032,'uid_max':21047,'state_dir':state},'allowlist.json':{'version':1,'epoch':1,'ids':[]},'bindings.json':{'version':1,'generation':1,'bindings':[]},'head.json':{'version':1,'epoch':1,'generation':1}}.items():
     add(state+'/'+name,json.dumps(obj,separators=(',',':')),'0600')

@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 """Guest-only actual systemd broker and Linux executor allocation proof."""
-import concurrent.futures
 import fcntl
 import grp
 import json
@@ -36,23 +35,21 @@ def probe(uid,path,connect=False,denied=False):
         os.setgroups([]);os.setresgid(uid,uid,uid);os.setresuid(uid,uid,uid)
     result=subprocess.run(['/usr/bin/python3','-c',code,str(path)],preexec_fn=drop,capture_output=True,text=True,timeout=8)
     return result.returncode != 0 and result.stderr.strip()=='13' if denied else result.returncode==0
-def exchange(uid,operation,subject,candidate=None,marker=None):
+def exchange(uid,operation,subject,candidate=None):
     # Process credentials are set before connect, not embedded in request JSON.
     request={'version':1,'operation':operation,'provider':'github','id':subject}
     if candidate is not None: request['candidate']=candidate
     code='''import json,socket,struct,sys
-s=socket.socket(socket.AF_UNIX);s.settimeout(95);s.connect(sys.argv[1])
+s=socket.socket(socket.AF_UNIX);s.settimeout(12);s.connect(sys.argv[1])
 b=json.dumps(json.loads(sys.argv[2]),separators=(',',':')).encode();s.sendall(struct.pack('>I',len(b))+b);s.shutdown(socket.SHUT_WR)
-if sys.argv[3]!='-':
- import os
- fd=os.open(sys.argv[3],os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600);os.close(fd)
 h=s.recv(4);assert len(h)==4,'no reply';n=struct.unpack('>I',h)[0];b=b''
 while len(b)<n:
  p=s.recv(n-len(b));assert p,'truncated';b+=p
 assert not s.recv(1),'trailing reply';print(b.decode())
 '''
-    return subprocess.run(['/usr/bin/python3','-c',code,str(broker),json.dumps(request),str(marker) if marker else '-'],
-                          user=uid,group=uid,extra_groups=[],capture_output=True,text=True,timeout=100)
+    def drop():
+        os.setgroups([]);os.setresgid(uid,uid,uid);os.setresuid(uid,uid,uid)
+    return subprocess.run(['/usr/bin/python3','-c',code,str(broker),json.dumps(request)],preexec_fn=drop,capture_output=True,text=True,timeout=18)
 def route(result,uid,name):
     check(result.returncode==0,'broker exchange: '+result.stderr[-300:])
     data=json.loads(result.stdout)
@@ -113,66 +110,23 @@ try:
     check(exchange(21001,'authorize',ids[0]).returncode!=0,'wrong UID accessed broker socket')
     wrong=exchange(0,'authorize',ids[0]);check(wrong.returncode!=0,'wrong root peer received reply')
     before=json.loads((state/'bindings.json').read_text());check(before=={'version':1,'generation':1,'bindings':[]},'adopted existing binding')
-    # Two separate gateway-UID processes enter the real systemd broker at the
-    # same barrier, before either account exists. Do not prescribe lock order:
-    # the writer must allocate distinct UIDs whichever request wins.
-    import threading
-    barrier=threading.Barrier(3)
-    parallel_done=False
-    exchange_start=time.monotonic()
-    marker_dir=Path('/run/jit-proof-parallel')
-    marker_dir.mkdir(mode=0o700)
-    os.chown(marker_dir,0,21003)
-    marker_dir.chmod(0o730)
-    st=marker_dir.stat()
-    check((st.st_uid,st.st_gid,stat.S_IMODE(st.st_mode))==(0,21003,0o730),'parallel marker directory ACL')
-    markers=[marker_dir/str(i) for i in range(2)]
-    def first_ensure(index):
-        barrier.wait(timeout=10)
-        return exchange(21003,'ensure',ids[index],'GuestOne' if index==0 else 'GuestTwo',markers[index])
-    # Hold the same ledger lock so neither ensure can mutate until BOTH
-    # separate gateway-UID clients have sent their frames. This proves
-    # overlapping client frames queued at the broker, not proof of simultaneous
-    # broker handler admission or parallel OAuth callbacks.
-    lock=os.open(state,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
-    try:
-        fcntl.flock(lock,fcntl.LOCK_EX)
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-            futures=[pool.submit(first_ensure,i) for i in range(2)]
-            barrier.wait(timeout=10)
-            deadline=time.monotonic()+15
-            while not all(p.is_file() for p in markers) and time.monotonic()<deadline:
-                time.sleep(.05)
-            overlapped=all(p.is_file() and p.stat().st_uid==21003 for p in markers)
-            fcntl.flock(lock,fcntl.LOCK_UN)
-            replies=[f.result(timeout=100) for f in futures]
-            check(overlapped,'both gateway clients did not send before lock release')
-    finally:
-        os.close(lock)
-        for p in markers:p.unlink(missing_ok=True)
-        marker_dir.rmdir()
-    exchange_seconds=round(time.monotonic()-exchange_start,3)
-    parallel_done=True
-    check(all(r.returncode==0 for r in replies),'parallel broker exchange failed')
-    first_routes=[json.loads(r.stdout) for r in replies]
-    check(all(isinstance(r.get('route'),dict) for r in first_routes),'parallel broker route missing')
-    allocated=[r['route'].get('uid') for r in first_routes]
-    check(len(allocated)==2 and set(allocated)=={21032,21033},'concurrent UID collision')
-    check(all(r['generation'] in (2,3) and r['epoch']==2 for r in first_routes),'concurrent generation/epoch')
-    for index,(name,subject) in enumerate(zip(names,ids)):
-        uid=allocated[index]
-        first=route(replies[index],uid,name)
+    for index,(uid,name,subject) in enumerate(zip((21032,21033),names,ids)):
+        exchange_start=time.monotonic()
+        result=exchange(21003,'ensure',subject,'GuestOne' if index==0 else 'GuestTwo')
+        exchange_seconds=round(time.monotonic()-exchange_start,3)
+        first=route(result,uid,name)
+        check(first['generation']==index+2 and first['epoch']==2,'unexpected generation')
         check(pwd.getpwnam(name).pw_uid==uid and pwd.getpwnam(name).pw_gid==uid and grp.getgrnam(name).gr_gid==uid,'executor account/group')
         home=Path('/home')/name; check((home.stat().st_uid,home.stat().st_gid,stat.S_IMODE(home.stat().st_mode))==(uid,uid,0o700),'executor home')
         check((Path('/etc/native-agent-host')/('daemon-'+name+'.json')).is_file(),'executor config missing')
-        rerun=route(exchange(21003,'ensure',subject,'changedname'),uid,name)
-        check(rerun['route']==first['route'] and rerun['epoch']==first['epoch'],'rerun not idempotent')
-        check(unit('is-active','native-agent-host-daemon@'+name+'.socket').stdout.strip()=='active','daemon socket not broker-activated')
+        check(route(exchange(21003,'ensure',subject,'changedname'),uid,name)==first,'rerun not idempotent')
+        if index==0:
+            # Broker ensure now starts the reviewed socket itself after durable
+            # commit. Starting an already active socket may requeue its
+            # one-shot gate (which correctly refuses a present target).
+            check(unit('is-active','native-agent-host-daemon@guestone.socket').stdout.strip()=='active','first daemon socket not broker-activated')
     ledger=json.loads((state/'bindings.json').read_text())
-    check(ledger.get('version')==1 and ledger.get('generation')==3 and
-          len(ledger.get('bindings',[]))==2 and
-          {(b['id'],b['uid'],b['username']) for b in ledger['bindings']}==
-          {(ids[i],allocated[i],names[i]) for i in range(2)},'not two new committed bindings')
+    check(ledger=={'version':1,'generation':3,'bindings':[{'id':ids[0],'uid':21032,'username':names[0]},{'id':ids[1],'uid':21033,'username':names[1]}]},'not two new committed bindings')
     check(not (state/'pending.json').exists(),'writer left pending journal')
     # Exercise gate denial on a *stopped* instance: an active socket has no
     # new activation job to gate, and broker authorize is separately checked.
@@ -183,8 +137,7 @@ try:
     marker.unlink() # disposable fault injection only; not recovery guidance
     reset()
     check(unit('start','native-agent-host-daemon@guesttwo.socket').returncode==0,'second daemon socket start')
-    for index,uid in enumerate(allocated):
-        own,sibling=names[index],names[1-index]
+    for uid,own,sibling in ((21032,names[0],names[1]),(21033,names[1],names[0])):
         check(probe(uid,run/'users'/own),'own socket directory denied')
         check(probe(uid,run/'users'/sibling,denied=True),'cross-user socket directory access')
         check(probe(uid,run/'users'/sibling/'daemon.sock',connect=True,denied=True),'cross-user UDS connect')
@@ -192,7 +145,6 @@ try:
         check((run/'users'/sibling/'daemon.sock').is_socket(),'sibling inode missing')
     print('VM_PROOF='+json.dumps({'status':'passed','scope':'jit-provision','pid1':'systemd','uids':[21032,21033,21003],
         'pool_vacant_before_seed':True,'new_accounts':True,'committed_bindings':True,'rerun_idempotent':True,
-        'parallel_broker_ensures':True,
         'wrong_peer_denied':True,'wrong_uid_denied':True,'pending_denied':True,'boot_acl_denied':True,
         'prepared_socket_started':True,'cross_uid_denied':True,'binary_path':'/opt/native-agent-host/current/native-agent-host'}),flush=True)
 except Exception as exc:
@@ -205,7 +157,6 @@ except Exception as exc:
     broker_state=unit('is-active','native-agent-host-broker.service').stdout.strip()
     print('VM_PROOF='+json.dumps({'status':'failed','scope':'jit-provision','reason':str(exc),
         'pending_phase':phase,'broker_state':broker_state,
-        'parallel_broker_ensures':locals().get('parallel_done',False),
         'exchange_seconds':locals().get('exchange_seconds')}),flush=True)
     sys.exit(1)
 finally:

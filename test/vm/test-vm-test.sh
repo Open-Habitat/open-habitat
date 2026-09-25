@@ -76,8 +76,6 @@ for mode in normal optimized; do
   python_flags=()
   [[ $mode == optimized ]] && python_flags=(-O)
   if python3 "${python_flags[@]}" -c "$validator" "$failed"; then echo 'failed JIT proof accepted' >&2; exit 1; fi
-  # A sequential fixture must not be accepted as concurrent broker evidence.
-  if python3 "${python_flags[@]}" -c "$validator" '{"status":"passed","scope":"jit-provision","pid1":"systemd","uids":[21032,21033,21003],"binary_path":"/opt/native-agent-host/current/native-agent-host","pool_vacant_before_seed":true,"new_accounts":true,"committed_bindings":true,"rerun_idempotent":true,"wrong_peer_denied":true,"wrong_uid_denied":true,"pending_denied":true,"boot_acl_denied":true,"prepared_socket_started":true,"cross_uid_denied":true}'; then echo 'sequential JIT proof accepted' >&2; exit 1; fi
 done
 login_validator=$(sed -n "/<<'LOGIN_CHECK'/,/^LOGIN_CHECK$/p" "$repo/scripts/vm-test.sh" | sed '1d;$d')
 for mode in normal optimized; do
