@@ -623,10 +623,7 @@ func (e *LinuxHostExecutor) Ready(ctx context.Context, i ExecutorIdentity) error
 		return ErrInvalid
 	}
 	b, err = e.command(ctx, systemctl, "show", gate, "--property=LoadState,ExecStart,User,Type,RemainAfterExit,ExecStartPre,ExecStartPost,ExecCondition,ExecReload,ExecStopPost", "--no-pager")
-	if err != nil || !properties(b, map[string]string{
-		"LoadState": "loaded", "User": "root", "Type": "oneshot", "RemainAfterExit": "no",
-		"ExecStartPre": "", "ExecStartPost": "", "ExecCondition": "", "ExecReload": "", "ExecStopPost": "",
-	}) || !exactGateExec(b, i.username) {
+	if err != nil || !gateProperties(b) || !exactGateExec(b, i.username) {
 		return ErrInvalid
 	}
 	b, err = e.command(ctx, systemctl, "show", unit, "--property=ActiveState", "--no-pager")
@@ -677,6 +674,22 @@ func unitDependency(b []byte, key, name string) bool {
 		}
 	}
 	return false
+}
+
+// systemctl show omits empty Exec* properties on the pinned guest systemd.
+// A nonempty extra command or a non-blocking gate type must fail closed.
+func gateProperties(b []byte) bool {
+	if !properties(b, map[string]string{"LoadState": "loaded", "User": "root", "Type": "oneshot", "RemainAfterExit": "no"}) {
+		return false
+	}
+	for _, line := range strings.Split(strings.TrimSpace(string(b)), "\n") {
+		for _, key := range []string{"ExecStartPre", "ExecStartPost", "ExecCondition", "ExecReload", "ExecStopPost"} {
+			if value, ok := strings.CutPrefix(line, key+"="); ok && value != "" {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // systemctl show renders ExecStart as a single structured line. Do not accept

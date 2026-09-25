@@ -237,16 +237,18 @@ func TestRouteReadyDoesNotStartOrAdoptMissingSocket(t *testing.T) {
 }
 
 func TestGateExecutionIsBlockingAndHasNoOtherRootCommands(t *testing.T) {
-	want := map[string]string{"LoadState": "loaded", "User": "root", "Type": "oneshot", "RemainAfterExit": "no", "ExecStartPre": "", "ExecStartPost": "", "ExecCondition": "", "ExecReload": "", "ExecStopPost": ""}
-	good := "LoadState=loaded\nUser=root\nType=oneshot\nRemainAfterExit=no\nExecStartPre=\nExecStartPost=\nExecCondition=\nExecReload=\nExecStopPost=\n"
-	if !properties([]byte(good), want) {
+	good := "LoadState=loaded\nUser=root\nType=oneshot\nRemainAfterExit=no\n"
+	if !gateProperties([]byte(good)) || !gateProperties([]byte(good+"ExecStartPre=\n")) {
 		t.Fatal("valid gate rejected")
 	}
-	for _, modification := range []string{"Type=simple", "ExecStartPre=/bin/true", "ExecCondition=/bin/true", "RemainAfterExit=yes", "ExecStartPost=/bin/true"} {
-		key := strings.SplitN(modification, "=", 2)[0]
-		bad := strings.Replace(good, key+"=", modification, 1)
-		if properties([]byte(bad), want) {
-			t.Fatal("unsafe gate accepted", modification)
+	for _, bad := range []string{
+		strings.Replace(good, "Type=oneshot", "Type=simple", 1),
+		strings.Replace(good, "RemainAfterExit=no", "RemainAfterExit=yes", 1),
+		good + "ExecStartPre=/bin/true\n", good + "ExecCondition=/bin/true\n",
+		good + "ExecStartPost=/bin/true\n", good + "ExecReload=/bin/true\n", good + "ExecStopPost=/bin/true\n",
+	} {
+		if gateProperties([]byte(bad)) {
+			t.Fatal("unsafe gate accepted", bad)
 		}
 	}
 }
