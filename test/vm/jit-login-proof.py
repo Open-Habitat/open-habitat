@@ -125,7 +125,10 @@ print('UNEXPECTED_REPLY')
             failure_status,h,body=get(op,'/auth/github/callback?'+urllib.parse.urlencode({'state':state,'code':'a' if index==0 else 'b'}))
             captures.extend([str(h).encode(),body,repr([(c.name,c.value) for c in jar]).encode()])
             check(failure_status==503 and json.loads(body)['error']['code']=='native_adapter_error','gh fault callback issued session')
-            check(get(op,'/auth/session')[0]==401 and get(op,'/api/v1/snapshot')[0]==401,'gh fault normal session')
+            session_status,session_headers,session_body=get(op,'/auth/session')
+            snapshot_status,snapshot_headers,snapshot_body=get(op,'/api/v1/snapshot')
+            captures.extend([str(session_headers).encode(),session_body,str(snapshot_headers).encode(),snapshot_body])
+            check(session_status==401 and snapshot_status==401,'gh fault normal session')
             check(get(op,'/auth/github/callback?'+urllib.parse.urlencode({'state':state,'code':'a' if index==0 else 'b'}))[0]==403,'gh fault replay')
             check(not (pathlib.Path('/home')/names[index]/'.config/gh/hosts.yml').exists(),'gh fault retained credential')
             fault_results[mode]={'callback_status':failure_status,'session_status':401,'replay_status':403,'credential_absent':True}
@@ -230,7 +233,7 @@ print('UNEXPECTED_REPLY')
         new_log=pathlib.Path('/home/guestone/gh-argv.jsonl').read_text()
         login_argv=['auth','login','--hostname','github.com','--with-token','--git-protocol','https']
         count=lambda text:sum(json.loads(line)['argv']==login_argv for line in text.splitlines())
-        check(count(before_log)==count(new_log)==1,'rerun installed token again')
+        check(count(before_log)==count(new_log)==2,'rerun installed token again')
         # Root operator atomically replaces the allowlist under the same ledger
         # lock, fsyncs file and directory, and leaves accounts/credentials intact.
         old_cred=(pathlib.Path('/home/guestone/.config/gh/hosts.yml').stat().st_ino)
@@ -255,7 +258,9 @@ print('UNEXPECTED_REPLY')
                 captures.extend([str(h).encode(),body])
                 check(status==401 and b'guestone-only' not in body,'revoked established route')
                 revoked.append(status)
-        check(get(browsers[1],'/api/v1/snapshot')[0]==401,'changed epoch did not invalidate B session')
+        b_status,b_headers,b_body=get(browsers[1],'/api/v1/snapshot')
+        captures.extend([str(b_headers).encode(),b_body])
+        check(b_status==401,'changed epoch did not invalidate B session')
         # Epoch is global: B's old session is invalidated too, but B remains
         # allowlisted and can explicitly obtain a new B-only session.
         surviving,surviving_jar=browser();status,h,_=get(surviving,'/auth/github/start');check(status==302,'B reauth start')
@@ -269,8 +274,11 @@ print('UNEXPECTED_REPLY')
         state=urllib.parse.parse_qs(urllib.parse.urlparse(h['Location']).query)['state'][0]
         status,h,body=get(fresh,'/auth/github/callback?'+urllib.parse.urlencode({'state':state,'code':'a'}))
         captures.extend([str(h).encode(),body,repr([(c.name,c.value) for c in fresh_jar]).encode()])
-        check(status==403 and get(fresh,'/auth/session')[0]==401 and get(fresh,'/api/v1/snapshot')[0]==401,'revoked new session')
-        check(count(pathlib.Path('/home/guestone/gh-argv.jsonl').read_text())==1,'revoked token handed off')
+        fresh_session,fresh_headers,fresh_body=get(fresh,'/auth/session')
+        fresh_snapshot,snapshot_headers,snapshot_body=get(fresh,'/api/v1/snapshot')
+        captures.extend([str(fresh_headers).encode(),fresh_body,str(snapshot_headers).encode(),snapshot_body])
+        check(status==403 and fresh_session==401 and fresh_snapshot==401,'revoked new session')
+        check(count(pathlib.Path('/home/guestone/gh-argv.jsonl').read_text())==2,'revoked token handed off')
         for token_name in names+['UNKNOWN']:
             value=(pathlib.Path('/usr/local/lib/fixture/tokens')/token_name).read_bytes() if token_name in names else b'PRODUCT_VM_TOKEN_'+b'UNKNOWN_FIXTURE_ONLY_92764'
             check(value and all(value not in b for b in captures),'browser capture token scan')
@@ -280,7 +288,9 @@ print('UNEXPECTED_REPLY')
                     try:check(value not in (p/suffix).read_bytes(),'process token scan')
                     except (FileNotFoundError,ProcessLookupError):continue
             for unit in ['product-gateway','native-agent-host-daemon@guestone','native-agent-host-daemon@guesttwo','native-agent-host-broker']:
-                logs=subprocess.run(['journalctl','-u',unit,'-b','--no-pager','-o','cat'],capture_output=True,timeout=10).stdout
+                journal_read=subprocess.run(['journalctl','-u',unit,'-b','--no-pager','-o','cat'],capture_output=True,timeout=10)
+                logs=journal_read.stdout
+                check(journal_read.returncode==0 and len(logs)>0,'journal scan unavailable')
                 check(len(logs)<=1048576,'journal scan exceeds 1 MiB')
                 check(value not in logs,'journal token scan')
             for p in ['/etc/native-agent-host/gateway.json','/etc/native-agent-host/daemon-guestone.json','/etc/native-agent-host/daemon-guesttwo.json']:
