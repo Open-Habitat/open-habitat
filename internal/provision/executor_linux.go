@@ -622,7 +622,7 @@ func (e *LinuxHostExecutor) Ready(ctx context.Context, i ExecutorIdentity) error
 	if err != nil || !unitDependency(b, "Requires", gate) || !unitDependency(b, "After", gate) {
 		return ErrInvalid
 	}
-	b, err = e.command(ctx, systemctl, "show", gate, "--property=LoadState,ExecStart,User,Type,RemainAfterExit,ExecStartPre,ExecStartPost,ExecCondition,ExecReload,ExecStopPost", "--no-pager")
+	b, err = e.command(ctx, systemctl, "show", gate, "--property=LoadState,ExecStart,User,Type,RemainAfterExit,ExecStartPre,ExecStartPost,ExecCondition,ExecReload,ExecStop,ExecStopPost", "--no-pager")
 	if err != nil || !gateProperties(b) || !exactGateExec(b, i.username) {
 		return ErrInvalid
 	}
@@ -682,9 +682,16 @@ func gateProperties(b []byte) bool {
 	if !properties(b, map[string]string{"LoadState": "loaded", "User": "root", "Type": "oneshot", "RemainAfterExit": "no"}) {
 		return false
 	}
+	allowed := map[string]bool{"LoadState": true, "User": true, "Type": true, "RemainAfterExit": true, "ExecStart": true,
+		"ExecStartPre": true, "ExecStartPost": true, "ExecCondition": true, "ExecReload": true, "ExecStop": true, "ExecStopPost": true}
 	for _, line := range strings.Split(strings.TrimSpace(string(b)), "\n") {
-		for _, key := range []string{"ExecStartPre", "ExecStartPost", "ExecCondition", "ExecReload", "ExecStopPost"} {
-			if value, ok := strings.CutPrefix(line, key+"="); ok && value != "" {
+		key, value, ok := strings.Cut(line, "=")
+		if !ok || !allowed[key] {
+			return false
+		} // no hidden continuation lines
+		switch key {
+		case "ExecStartPre", "ExecStartPost", "ExecCondition", "ExecReload", "ExecStop", "ExecStopPost":
+			if value != "" {
 				return false
 			}
 		}

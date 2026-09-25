@@ -245,7 +245,8 @@ func TestGateExecutionIsBlockingAndHasNoOtherRootCommands(t *testing.T) {
 		strings.Replace(good, "Type=oneshot", "Type=simple", 1),
 		strings.Replace(good, "RemainAfterExit=no", "RemainAfterExit=yes", 1),
 		good + "ExecStartPre=/bin/true\n", good + "ExecCondition=/bin/true\n",
-		good + "ExecStartPost=/bin/true\n", good + "ExecReload=/bin/true\n", good + "ExecStopPost=/bin/true\n",
+		good + "ExecStartPost=/bin/true\n", good + "ExecReload=/bin/true\n", good + "ExecStop=/bin/true\n", good + "ExecStopPost=/bin/true\n",
+		good + "ExecStartPre=\n path=/bin/true\n",
 	} {
 		if gateProperties([]byte(bad)) {
 			t.Fatal("unsafe gate accepted", bad)
