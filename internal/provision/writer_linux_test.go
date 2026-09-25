@@ -409,8 +409,8 @@ func TestWriterRestartAtEveryJournalPhase(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			// A new broker process constructs a new Writer against the same durable
-			// directory. Neither authorization nor a fresh ensure repairs a partial
+			// Model a broker restart with a new Writer over the same test directory.
+			// Neither authorization nor a fresh ensure repairs a partial
 			// journal, even when the executor would otherwise be available.
 			restarted := NewWriter(w.Dir, 2100, 2102, w.Executor)
 			restarted.owner = w.owner
