@@ -27,6 +27,8 @@ if run self-test --json > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
 grep -q 'invalid_image_checksum' "$tmp/err"
 if run two-user-routing --json > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
 grep -q 'invalid_image_checksum' "$tmp/err"
+if run jit-provision --json > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
+grep -q 'invalid_image_checksum' "$tmp/err"
 cp "$repo/test/vm/image.env" "$tmp/repo/test/vm/image.env"
 sed -i 's|/home/agent-b/SYNTHETIC-IDENTITY|/home/agent-b/INVALID|' "$tmp/repo/test/vm/cloud-init.yaml"
 if run self-test --json > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
@@ -44,6 +46,38 @@ if command -v podman >/dev/null && podman image exists localhost/native-agent-ho
   if run systemd-self-test --json > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
   grep -q 'image_checksum_mismatch' "$tmp/err"
   [[ $(find "$tmp/repo/.cache/vm" -maxdepth 1 -type d -name 'run.*' | wc -l) -eq 0 ]]
+fi
+# Negative hash/source test runs offline even in CI without Fleetrepo.
+mkdir -p "$tmp/jit" "$tmp/fake-fleetrepo"
+printf 'binary-fixture-bytes' > "$tmp/jit/native-agent-host"
+git -C "$tmp/fake-fleetrepo" init -q
+if FLEETREPO_JIT_SOURCE="$tmp/fake-fleetrepo" python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/native-agent-host" > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
+[[ ! -e "$tmp/jit/jit-cloud-init.yaml" && ! -e "$tmp/jit/jit-receipt.json" ]]
+mkdir -p "$tmp/shim"
+cat > "$tmp/shim/git" <<'GIT'
+#!/bin/sh
+case "$3" in
+  rev-parse) echo e044c03133074db3bb37d64e1e03c0bf4b9ade7d ;;
+  show) printf 'corrupt pinned policy bytes' ;;
+  *) exit 1 ;;
+esac
+GIT
+chmod +x "$tmp/shim/git"
+if FLEETREPO_JIT_SOURCE="$tmp/fake-fleetrepo" PATH="$tmp/shim:$PATH" python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/native-agent-host" > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
+grep -q 'Fleetrepo JIT policy hash mismatch' "$tmp/err"
+[[ ! -e "$tmp/jit/jit-cloud-init.yaml" && ! -e "$tmp/jit/jit-receipt.json" ]]
+# Optional positive seed render from read-only historical committed blobs.
+if git -C /home/maintainer/Sources/fleetrepo cat-file -e e044c031^{commit} 2>/dev/null; then
+FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/native-agent-host"
+python3 - "$tmp/jit/jit-cloud-init.yaml" <<'JIT_FIXTURE'
+import base64,json,sys
+seed=json.loads(open(sys.argv[1]).read().split('\n',1)[1])
+files={row['path']:row for row in seed['write_files']}
+assert json.loads(base64.b64decode(files['/var/lib/native-agent-host/broker/allowlist.json']['content']))['ids']==[]
+assert json.loads(base64.b64decode(files['/var/lib/native-agent-host/broker/bindings.json']['content']))['bindings']==[]
+assert b'/opt/native-agent-host/current/native-agent-host' in base64.b64decode(files['/etc/systemd/system/native-agent-host-daemon@.service']['content'])
+assert seed['runcmd'][-1]==['systemctl','start','jit-proof.service']
+JIT_FIXTURE
 fi
 # Validate product seed rendering offline with a known injection payload (no boot).
 mkdir -p "$tmp/product"

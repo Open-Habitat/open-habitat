@@ -13,8 +13,8 @@ PY
   else printf 'error: %s\n' "$2" >&2; fi
   exit "$3"
 }
-[[ $# -eq 1 || ( $# -eq 2 && ${2:-} == --json ) ]] || fail invalid_arguments 'Expected self-test|systemd-self-test|two-user-routing|broker-guest [--json]' 1
-[[ $scenario == self-test || $scenario == systemd-self-test || $scenario == two-user-routing || $scenario == broker-guest ]] || fail invalid_scenario 'Expected self-test, systemd-self-test, two-user-routing or broker-guest' 1
+[[ $# -eq 1 || ( $# -eq 2 && ${2:-} == --json ) ]] || fail invalid_arguments 'Expected self-test|systemd-self-test|two-user-routing|broker-guest|jit-provision [--json]' 1
+[[ $scenario == self-test || $scenario == systemd-self-test || $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision ]] || fail invalid_scenario 'Expected self-test, systemd-self-test, two-user-routing, broker-guest or jit-provision' 1
 # Treat the recipe as data, never source executable text.
 image_url= image_sha= image_arch=
 while IFS= read -r line || [[ -n $line ]]; do
@@ -78,20 +78,25 @@ echo "$image_sha  $image" | sha256sum -c --status || fail image_checksum_mismatc
 printf 'instance-id: synthetic-systemd-fixture\nlocal-hostname: fixture-vm\n' > "$run/meta-data"
 seed_file=/fixture/cloud-init.yaml
 binary_sha= product_commit=
-if [[ $scenario == two-user-routing || $scenario == broker-guest ]]; then
+if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision ]]; then
   command -v go >/dev/null || fail missing_go 'Go is required to build product fixture' 2
   command -v openssl >/dev/null || fail missing_openssl 'OpenSSL is required for fixture TLS' 2
   product_commit=$(git -C "$repo" rev-parse HEAD)
   (cd "$repo" && CGO_ENABLED=0 go build -trimpath -o "$run/native-agent-host" ./cmd/native-agent-host) || fail product_build_failed 'Could not build product binary' 2
   binary_sha=$(sha256sum "$run/native-agent-host" | cut -d' ' -f1)
-  if [[ $scenario == broker-guest ]]; then
+  if [[ $scenario == jit-provision ]]; then
+    # Read only: exact landed Fleetrepo checkout and reviewed policy hashes are
+    # checked by the renderer before any private bytes reach the disposable ISO.
+    FLEETREPO_JIT_SOURCE=${FLEETREPO_JIT_SOURCE:-/home/maintainer/Sources/fleetrepo} python3 "$repo/test/vm/jit-fixture.py" "$run" "$run/native-agent-host" >"$run/fixture.log" 2>&1 || fail invalid_policy_input 'Pinned Fleetrepo commit or reviewed JIT gate blob unavailable or invalid' 1
+    seed_file=/run-data/jit-cloud-init.yaml
+  elif [[ $scenario == broker-guest ]]; then
     python3 "$repo/test/vm/broker-fixture.py" "$run" "$run/native-agent-host" || fail invalid_product_fixture 'Could not render broker seed' 2
     seed_file=/run-data/broker-cloud-init.yaml
   else
     python3 "$repo/test/vm/product-fixture.py" "$run" "$run/native-agent-host" || fail invalid_product_fixture 'Could not render private product seed' 2
     seed_file=/run-data/product-cloud-init.yaml
   fi
-  if [[ $scenario == two-user-routing ]]; then
+  if [[ $scenario == two-user-routing || $scenario == jit-provision ]]; then
     # The pinned noble cloud image lacks the ACL utilities required by the
     # broker's existing-binding verifier. Carry guest-local tools from the
     # disposable pinned image; never install a host package or relax ACLs.
@@ -121,6 +126,33 @@ set -e
 duration=$(($(date +%s)-start))
 # Require clean guest poweroff and an exact proof; a timeout is always failure.
 proof=$(tr -d '\r' < "$run/serial.log" | grep -a 'VM_PROOF=' | tail -n 1 | sed 's/.*VM_PROOF=//' || :)
+if [[ $scenario == jit-provision ]]; then
+  if [[ $vm_status -ne 0 || -z $proof ]] || ! python3 - "$proof" <<'JIT_CHECK'
+import json,sys
+try:
+ p=json.loads(sys.argv[1])
+ assert p['status']=='passed' and p['scope']=='jit-provision' and p['pid1']=='systemd'
+ assert p['uids']==[21032,21033,21003] and p['binary_path']=='/opt/native-agent-host/current/native-agent-host'
+ assert all(p[k] is True for k in ('pool_vacant_before_seed','new_accounts','committed_bindings','rerun_idempotent','wrong_peer_denied','wrong_uid_denied','pending_denied','boot_acl_denied','prepared_socket_started','cross_uid_denied'))
+except (ValueError,KeyError,AssertionError,TypeError): sys.exit(1)
+JIT_CHECK
+  then
+    reason=$(python3 - "$proof" <<'PY'
+import json,re,sys
+try:
+ p=json.loads(sys.argv[1]); print(re.sub('[^A-Za-z0-9 _=./;:-]',' ',str(p.get('reason','missing proof'))+' pending_phase='+str(p.get('pending_phase'))+' broker_state='+str(p.get('broker_state'))+' exchange_seconds='+str(p.get('exchange_seconds')))[:500])
+except (ValueError,TypeError): print('missing proof')
+PY
+)
+    fail boot_proof_failed "JIT guest failed closed (VM exit $vm_status, ${duration}s; check=$reason)" 2
+  fi
+  fleetrepo_receipt=$(cat "$run/jit-receipt.json")
+  cleanup
+  trap - EXIT
+  [[ ! -e $run ]] || fail cleanup_failed 'Private guest run directory remains' 2
+  if $json; then printf '{"schema_version":1,"data":{"status":"passed","launched":true,"scope":"jit-provision","product_commit":"%s","binary_sha256":"%s","image_sha256":"%s","tool_image_id":"%s","fleetrepo":%s,"duration_seconds":%d,"guest":%s},"warnings":[]}\n' "$product_commit" "$binary_sha" "$image_sha" "$image_id" "$fleetrepo_receipt" "$duration" "$proof"; else echo "JIT guest passed (${duration}s)"; fi
+  exit 0
+fi
 if [[ $scenario == broker-guest ]]; then
   if [[ $vm_status -ne 0 || -z $proof ]] || ! python3 - "$proof" <<'BROKER_CHECK'
 import json,sys

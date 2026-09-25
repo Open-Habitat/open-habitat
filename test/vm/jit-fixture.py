@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+"""Disposable JIT broker seed; only hash-verified public Fleetrepo gate bytes."""
+import base64
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+repo = Path(__file__).resolve().parents[2]
+# Read exact committed blobs, not a mutable checkout (Fleetrepo need not be at
+# the historical commit). No git checkout/worktree or host write is performed.
+source = Path(os.environ['FLEETREPO_JIT_SOURCE'])
+head = 'e044c03133074db3bb37d64e1e03c0bf4b9ade7d'
+if subprocess.check_output(['git','-C',str(source),'rev-parse',head],text=True).strip() != head:
+    raise ValueError('Reviewed Fleetrepo JIT commit unavailable')
+receipts = {
+ 'jit_policy.py':'1333a57d2fc00e3e015e4d6800683ba4f50cdbf3ebacaea72a9d6328cfff23e8',
+ 'jit_acl_prepare.py':'20af327b7d64fe3546c166fb6c74b6cf54d77c471f871a1e22d4d8bb95bc9122',
+ 'native-agent-host-jit-policy-gate.service':'4f5c2cd4fb1050c18729bc89c68f688b63d673a0c81bf112b51bf28c0edd4a87',
+ 'native-agent-host-jit-policy-gate@.service':'5943cb8a58a0136fcb07858774faa39ee2ad91361ee3ebf24cb62778effee22b',
+ 'native-agent-host-broker.socket.d/10-fleetrepo-jit-gate.conf':'7ebe6f363cc8c87d2c114c01c5cdf2b05715104478224ade3074b46794d66191',
+ 'native-agent-host-daemon@.socket.d/10-fleetrepo-jit-gate.conf':'118f129b5169c753a8096bea6f935a94d32afe77db86b813fe8356338f561e7e',
+ 'jit_guest_fixture.py':'4f4f21e9e04637368f38b3044b8ab23c9ef7e2309c09aaeb3f72dc19cb99be6c',
+ 'jit_guest_proof.py':'8e596a613ae45cafa0a89ca342adb37022a83efd0826850e218c8da8573e3e51',
+ 'test-jit-guest.sh':'90a05994b174a1767a28dcd691aac03e6ef9ee9cca2d9ef21ad5687981c4c480',
+}
+staged = {name: subprocess.check_output(['git','-C',str(source),'show',
+    f'{head}:infra/native-agent-host-test/{name}']) for name in receipts}
+for name, digest in receipts.items():
+    if hashlib.sha256(staged[name]).hexdigest() != digest:
+        raise ValueError(f'Fleetrepo JIT policy hash mismatch: {name}')
+if len(sys.argv) != 3 or not Path(sys.argv[2]).is_file():
+    raise ValueError('Expected output directory and regular product binary')
+run = Path(sys.argv[1]); binary = Path(sys.argv[2])
+(run/'jit-receipt.json').write_text(json.dumps({'commit':head,'sha256':receipts},sort_keys=True))
+seed = {'users':[{'name':'ubuntu','uid':22000,'shell':'/bin/bash'},
+ {'name':'native-agent-host-gateway','uid':21003,'shell':'/usr/sbin/nologin','no_create_home':True},
+ {'name':'alice','uid':21001,'shell':'/usr/sbin/nologin'},
+ {'name':'bob','uid':21002,'shell':'/usr/sbin/nologin'}], 'write_files': [], 'runcmd': []}
+def add(path, data, mode='0644'):
+    if isinstance(data,str): data=data.encode()
+    seed['write_files'].append({'path':path,'permissions':mode,'encoding':'b64','content':base64.b64encode(data).decode()})
+for name in ('native-agent-host-broker.socket','native-agent-host-broker.service','native-agent-host-daemon@.socket','native-agent-host-daemon@.service',
+             'native-agent-host-gateway.service'):
+    add('/etc/systemd/system/'+name,(repo/'systemd'/name).read_bytes())
+for name in ('jit_policy.py','jit_acl_prepare.py'):
+    add('/usr/local/libexec/native-agent-host-test-jit/'+name,staged[name],'0755')
+for name in ('native-agent-host-jit-policy-gate.service','native-agent-host-jit-policy-gate@.service'):
+    add('/etc/systemd/system/'+name,staged[name])
+for name in ('native-agent-host-broker.socket','native-agent-host-daemon@.socket'):
+    add('/etc/systemd/system/'+name+'.d/10-fleetrepo-jit-gate.conf',staged[name+'.d/10-fleetrepo-jit-gate.conf'])
+add('/usr/local/sbin/jit-proof',(repo/'test/vm/jit-proof.py').read_bytes(),'0755')
+add('/etc/systemd/system/jit-proof.service','[Service]\nType=oneshot\nStandardOutput=tty\nTTYPath=/dev/ttyS0\nExecStart=/usr/local/sbin/jit-proof\n')
+state='/var/lib/native-agent-host/broker'
+for name, obj in {'broker.json':{'version':1,'gateway_uid':21003,'gateway_gid':21003,'uid_min':21032,'uid_max':21047,'state_dir':state},'allowlist.json':{'version':1,'epoch':1,'ids':[]},'bindings.json':{'version':1,'generation':1,'bindings':[]},'head.json':{'version':1,'epoch':1,'generation':1}}.items():
+    add(state+'/'+name,json.dumps(obj,separators=(',',':')),'0600')
+seed['runcmd'] = [
+ ['mkdir','-p','/mnt/product','/opt/native-agent-host/current','/etc/native-agent-host'],
+ ['mount','-o','ro','/dev/disk/by-label/PRODUCT','/mnt/product'],
+ ['install','-m','0755','/mnt/product/native-agent-host','/opt/native-agent-host/current/native-agent-host'],
+ ['install','-m','0755','/mnt/product/setfacl','/usr/bin/setfacl'],
+ ['install','-m','0755','/mnt/product/getfacl','/usr/bin/getfacl'],
+ ['install','-m','0644','/mnt/product/libacl.so.1','/lib/x86_64-linux-gnu/libacl.so.1'],
+ ['umount','/mnt/product'],
+ ['chown','-R','root:root',state],['chmod','0700',state],
+ ['systemctl','daemon-reload'],['systemctl','start','jit-proof.service']]
+(run/'jit-cloud-init.yaml').write_text('#cloud-config\n'+json.dumps(seed,separators=(',',':'))+'\n')
+(run/'jit-cloud-init.yaml').chmod(0o600)
