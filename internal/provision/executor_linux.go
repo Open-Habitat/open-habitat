@@ -33,7 +33,13 @@ func NewLinuxHostExecutor(gatewayUID, gatewayGID uint32) *LinuxHostExecutor {
 	return &LinuxHostExecutor{GatewayUID: gatewayUID, GatewayGID: gatewayGID, run: linuxCommand}
 }
 func linuxCommand(ctx context.Context, path string, args ...string) ([]byte, error) {
-	bounded, cancel := context.WithTimeout(ctx, 3*time.Second)
+	budget := 3 * time.Second
+	// Starting a socket waits for Fleetrepo's ordered root policy gate, which
+	// may itself wait briefly for a concurrent broker authorize lock holder.
+	if path == systemctl && len(args) == 2 && args[0] == "start" && strings.HasPrefix(args[1], "native-agent-host-daemon@") && strings.HasSuffix(args[1], ".socket") {
+		budget = 15 * time.Second
+	}
+	bounded, cancel := context.WithTimeout(ctx, budget)
 	defer cancel()
 	cmd := exec.CommandContext(bounded, path, args...)
 	cmd.Stdin = nil
@@ -643,7 +649,7 @@ func (e *LinuxHostExecutor) Ready(ctx context.Context, i ExecutorIdentity) error
 // RouteReady does not start a unit: authorize must fit the short exchange
 // budget and cannot mutate host state. Verify checks the directory ACLs.
 func (e *LinuxHostExecutor) RouteReady(ctx context.Context, i ExecutorIdentity) error {
-	if ctx == nil || ctx.Err() != nil || e == nil || !username(i.username) || i.uid < 1000 || i.uid > 60000 {
+	if ctx == nil || ctx.Err() != nil || e == nil || e.GatewayUID == 0 || e.GatewayGID == 0 || !username(i.username) || i.uid < 1000 || i.uid > 60000 {
 		return ErrInvalid
 	}
 	b, err := e.command(ctx, systemctl, "is-active", "native-agent-host-daemon@"+i.username+".socket")
@@ -678,7 +684,7 @@ func exactGateExec(b []byte, name string) bool {
 	for _, line := range strings.Split(string(b), "\n") {
 		if strings.HasPrefix(line, "ExecStart=") {
 			count++
-			if !strings.HasPrefix(line, want) {
+			if !strings.HasPrefix(line, want) || strings.Count(line, "argv[]=") != 1 || !strings.Contains(line, "ignore_errors=no") || strings.Count(line, "{ path=") != 1 {
 				return false
 			}
 		}

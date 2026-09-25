@@ -291,7 +291,10 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 		return w.handleLocked(ctx, r)
 	}
 	result := w.handleLocked(ctx, r)
-	if result.Route == nil || ctx.Err() != nil {
+	if ctx.Err() != nil {
+		return failure(StateUnavailable)
+	}
+	if result.Route == nil {
 		return result
 	}
 	identity := ExecutorIdentity{provider: "github", id: r.ID, username: result.Route.Username, uid: result.Route.UID}

@@ -202,3 +202,20 @@ func TestSocketActivationDependencyIsExact(t *testing.T) {
 		}
 	}
 }
+
+func TestExactGateExec(t *testing.T) {
+	good := "ExecStart={ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 /usr/local/libexec/native-agent-host-test-jit/jit_policy.py verify --phase activation --target daemon:carol --json ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }\n"
+	if !exactGateExec([]byte(good), "carol") {
+		t.Fatal("valid gate rejected")
+	}
+	for _, bad := range []string{
+		strings.Replace(good, "daemon:carol", "daemon:bob", 1),
+		strings.Replace(good, " --json ;", " --json --root /tmp ;", 1),
+		strings.Replace(good, "ignore_errors=no", "ignore_errors=yes", 1),
+		strings.Replace(good, " }", " } { path=/bin/true ; argv[]=/bin/true ; ignore_errors=no }", 1),
+	} {
+		if exactGateExec([]byte(bad), "carol") {
+			t.Fatal("unsafe gate accepted", bad)
+		}
+	}
+}
