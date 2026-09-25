@@ -20,7 +20,7 @@ Provide Jari a locally launchable, interactive **synthetic UI rehearsal** of the
 ## Acceptance Criteria
 - [x] Exact reproducible commands for Jari to start/open/stop the loopback-only HTTP review, with visible synthetic label and clear description of what is simulated versus real; no global install or persistent service.
 - [x] Usable desktop workspace flows and at least ready, empty, partial, unavailable and login-looking states from the same production components, without real credentials or certificate bypass; keyboard and basic accessibility checks.
-- [ ] Automated assertions for fixture exclusion from production build and loopback-only binding; relevant browser/component tests and clean `./scripts/ci-local.sh --clean --json` on committed tree.
+- [x] Automated assertions for fixture exclusion from production build and loopback-only binding; relevant browser/component tests and clean `./scripts/ci-local.sh --clean --json` on committed tree.
 - [x] `visual-acceptance.md` with revision, commands, states, evidence screenshots and limitations. Leave issue in `testing` for Jari's dated visual decision; a worker must not self-accept or close this user-visible UI work.
 
 ## Decision
