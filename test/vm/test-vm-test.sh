@@ -130,6 +130,19 @@ for opt in (False,True):
  if accepts(dict(p,status='failed'),opt):raise SystemExit('failed reboot accepted')
  if subprocess.run(['python3']+(['-O'] if opt else [])+['-c',sys.argv[1],json.dumps(p),'c'*64]).returncode==0:raise SystemExit('forged origin accepted')
 REBOOT_ORACLE
+reboot_unit_validator=$(sed -n "/<<'REBOOT_UNIT_CHECK'/,/^REBOOT_UNIT_CHECK$/p" "$repo/scripts/vm-test.sh" | sed '1d;$d')
+python3 - "$reboot_unit_validator" "$tmp/jit/serial.log" <<'UNIT_ORACLE'
+import pathlib,subprocess,sys
+path=pathlib.Path(sys.argv[2]);proof=b'VM_PROOF={"status":"passed"}\n'
+def accepts(lines):
+ path.write_bytes(b''.join(lines))
+ return subprocess.run(['python3','-c',sys.argv[1],str(path)]).returncode==0
+assert accepts([proof,b'VM_REBOOT_UNIT_EXIT=success:exited:0\n'])
+for lines in ([proof], [proof,b'VM_REBOOT_UNIT_EXIT=exit-code:exited:1\n'],
+              [b'VM_REBOOT_UNIT_EXIT=success:exited:0\n',proof],
+              [proof,b'VM_REBOOT_UNIT_EXIT=success:exited:0\n',b'VM_REBOOT_UNIT_EXIT=success:exited:0\n']):
+ assert not accepts(lines), 'invalid unit completion accepted'
+UNIT_ORACLE
 # Host leak scanner must accept the intentional UNKNOWN fixture literal in the
 # fake provider, yet reject emitted tokens and accidental full JIT tokens.
 login_scanner=$(sed -n "/<<'TOKEN_SCAN'/,/^TOKEN_SCAN$/p" "$repo/scripts/vm-test.sh" | sed '1d;/^TOKEN_SCAN$/q' | sed '$d')

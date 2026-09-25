@@ -77,24 +77,31 @@ def unit(*args):
     code=128-result.returncode if result.returncode<0 else min(255,result.returncode)
     checkpoint(f'cmd-{index}-exit-{code}')
     return result
-def probe(uid,path,connect=False):
-    code=('import socket,sys;s=socket.socket(socket.AF_UNIX);s.connect(sys.argv[1])' if connect else 'import os,sys;os.stat(sys.argv[1]+"/.")')
-    return command('/usr/bin/python3','-c',code,str(path),uid=uid,timeout=15).returncode==0
+def probe_denied(uid,path):
+    code='''import errno,os,sys
+try: os.stat(sys.argv[1]+"/.")
+except OSError as e: sys.exit(13 if e.errno in (errno.EACCES,errno.EPERM) else 2)
+sys.exit(0)'''
+    return command('/usr/bin/python3','-c',code,str(path),uid=uid,timeout=15).returncode==13
 try:
     need(Path('/proc/1/comm').read_text().strip()=='systemd','PID1 not systemd')
     before=json.loads((state.parent/'reboot-fixture.json').read_text())
     boot=Path('/proc/sys/kernel/random/boot_id').read_text().strip()
     need(len(boot)==36 and boot!=before['boot_id'],'no real kernel reboot')
     print('VM_REBOOT_DIAG=kernel-boot-changed',flush=True)
+    checkpoint('ledger-read-start')
     need(json.loads((state/'bindings.json').read_text())==before['bindings'],'binding changed across reboot')
     need(json.loads((state/'head.json').read_text())==before['head'],'high-water changed across reboot')
     need(json.loads((state/'allowlist.json').read_text())=={'version':1,'epoch':4,'ids':[{'id':str(100000001+i),'alternate':n} for i,n in enumerate(names)]},'allowlist epoch changed')
     need(sorted(p.name for p in state.iterdir())==['allowlist.json','bindings.json','broker.json','head.json'],'unexpected or pending ledger state')
+    checkpoint('credentials-start')
     for name,uid in zip(names,uids):
+        checkpoint('credential-'+name+'-start')
         need(pwd.getpwnam(name).pw_uid==uid and (Path('/home')/name).stat().st_uid==uid,'account/home lost')
         credential=Path('/home')/name/'.config/gh/hosts.yml'
         need(credential.stat().st_uid==uid and stat.S_IMODE(credential.stat().st_mode)==0o600 and hashlib.sha256(credential.read_bytes()).hexdigest()==before['credentials'][name],'credential changed')
-        need(not probe(uids[1-names.index(name)],credential.parent),'foreign credential directory traversable')
+        checkpoint('credential-'+name+'-foreign-probe-start')
+        need(probe_denied(uids[1-names.index(name)],credential.parent),'foreign credential directory not denied')
     print('VM_REBOOT_DIAG=persistent-ledger-and-homes',flush=True)
     for name in names:
         checkpoint('socket-'+name+'-status-start')
@@ -109,7 +116,7 @@ try:
     checkpoint('policy-preflight-start')
     need(command('/usr/bin/python3',prep,'preflight','--json').returncode==0,'persistent policy preflight failed')
     checkpoint('policy-verify-start')
-    need(command('/usr/bin/python3',prep,'verify','--json').returncode!=0,'boot ACL already prepared')
+    need(command('/usr/bin/python3',prep,'verify','--json').returncode==1,'boot ACL verification did not refuse')
     print('VM_REBOOT_DIAG=unprepared-boot-acl',flush=True)
     # Diagnostic stops before activation: the root-owned boot ACL preparation
     # and fail-closed gate ordering are NOT proven by this receipt.

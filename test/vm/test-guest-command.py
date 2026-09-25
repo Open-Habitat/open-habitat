@@ -12,10 +12,11 @@ import time
 import unittest
 
 source = ast.parse((Path(__file__).parent / 'jit-reboot-proof.py').read_text())
-function = next(node for node in source.body if isinstance(node, ast.FunctionDef) and node.name == 'command')
+functions = [node for node in source.body if isinstance(node, ast.FunctionDef) and
+             node.name in ('command', 'probe_denied')]
 namespace = dict(os=os, resource=resource, signal=signal, subprocess=subprocess,
                  tempfile=tempfile)
-exec(compile(ast.Module(body=[function], type_ignores=[]), '<guest-command>', 'exec'), namespace)
+exec(compile(ast.Module(body=functions, type_ignores=[]), '<guest-command>', 'exec'), namespace)
 command = namespace['command']
 
 
@@ -43,6 +44,15 @@ class GuestCommandTest(unittest.TestCase):
             pid = int(pidfile.read_text())
             with self.assertRaises(ProcessLookupError):
                 os.kill(pid, 0)
+
+    def test_denial_requires_explicit_permission_error(self):
+        original = namespace['command']
+        try:
+            for code, expected in ((0, False), (2, False), (-9, False), (13, True)):
+                namespace['command'] = lambda *args, **kwargs: subprocess.CompletedProcess(args, code)
+                self.assertIs(namespace['probe_denied'](123, '/private'), expected)
+        finally:
+            namespace['command'] = original
 
     def test_output_is_bounded(self):
         p = command(sys.executable, '-c', 'print("x"*100000)', output=True)

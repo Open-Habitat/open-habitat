@@ -26,7 +26,7 @@ MARKER = re.compile(
     rb"cmd-[0-9]{1,3}-(?:start|timeout|exit-[0-9]{1,3})|"
     rb"unit-(?:activestate|substate|result|execmainstatus)-[a-z0-9_-]{1,32}|"
     rb"unit-status-timeout)|VM_REBOOT_JOURNAL=(?:none|(?:exited|failed|killed|timeout)(?:,(?:exited|failed|killed|timeout)){0,3})|"
-    rb"VM_REBOOT_UNIT_EXIT=(?:success|exit-code|timeout|signal|core-dump|oom-killer|watchdog|resources|protocol|unknown):(?:exited|killed|dumped|dead|unknown):[0-9]{1,3})\r?$"
+    rb"VM_REBOOT_UNIT_EXIT=(?:success|exit-code|timeout|signal|core-dump|oom-kill|watchdog|resources|protocol|unknown):(?:exited|killed|dumped|dead|unknown):(?:[0-9]{1,3}|unknown))\r?$"
 )
 
 

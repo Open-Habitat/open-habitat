@@ -167,6 +167,17 @@ if [[ $scenario == jit-reboot-diagnostic ]]; then
   if [[ $(printf '%s\n' "$origin" | grep -Ec '^[0-9a-f]{64}$' || :) != 1 || $phase_count != 1 || $proof_count != 1 ]]; then
     fail boot_proof_failed "JIT reboot diagnostic incomplete (VM exit $vm_status, ${duration}s; origin_count=$(printf '%s\n' "$origin" | grep -Ec '^[0-9a-f]{64}$' || :), phase_count=$phase_count, proof_count=$proof_count; private=$diagnostic_log)" 2
   fi
+  # A proof printed before shutdown scheduling is not a completed unit. Accept
+  # only one clean ExecStopPost receipt, strictly after the unique proof.
+  if ! python3 - "$run/serial.log" <<'REBOOT_UNIT_CHECK'
+import pathlib,sys
+lines=pathlib.Path(sys.argv[1]).read_bytes().replace(b'\r',b'').splitlines()
+proof=[i for i,line in enumerate(lines) if b'VM_PROOF=' in line]
+exit_lines=[(i,line) for i,line in enumerate(lines) if line.startswith(b'VM_REBOOT_UNIT_EXIT=')]
+if len(proof)!=1 or len(exit_lines)!=1: sys.exit(1)
+if exit_lines[0][1]!=b'VM_REBOOT_UNIT_EXIT=success:exited:0' or exit_lines[0][0]<=proof[0]: sys.exit(1)
+REBOOT_UNIT_CHECK
+  then fail boot_proof_failed "JIT reboot unit completion missing or failed (VM exit $vm_status, ${duration}s; private=$diagnostic_log)" 2; fi
   if [[ $vm_status -ne 0 || -z $proof ]] || ! python3 - "$proof" "$origin" <<'REBOOT_CHECK'
 import json,sys,re
 try:
