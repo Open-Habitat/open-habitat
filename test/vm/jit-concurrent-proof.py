@@ -39,6 +39,16 @@ def callback(flow,code):
 
 def binding():return json.loads((ledger/'bindings.json').read_text())['bindings']
 
+def allocated_identities(identities,bound):
+    # The broker's next-free UID follows admission order, not provider ID.
+    allocated={id:[b['uid'] for b in bound if b['id']==id and b['username']==name]
+               for _,name,_,id in identities[1:]}
+    if not (all(len(v)==1 and type(v[0]) is int for v in allocated.values()) and
+            {v[0] for v in allocated.values()}=={21033,21034}):
+        raise ValueError('distinct UID allocation')
+    return [(code,name,allocated[id][0] if code!='a' else uid,id)
+            for code,name,uid,id in identities]
+
 def route(flow):
     op,_,_=flow
     status,_,body=get(op,'/auth/session');check(status==200,'session not authorized')
@@ -93,11 +103,15 @@ try:
         flows=[start(),start()]
         receipt=pathlib.Path('/run/fixture-rendezvous');receipt.unlink(missing_ok=True)
         marker=pathlib.Path('/run/fixture-concurrent');marker.write_text('1')
+        reverse=pathlib.Path('/run/fixture-c-first')
+        if codes==('b','c'): reverse.write_text('1')
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
                 futures=[pool.submit(callback,flow,code) for flow,code in zip(flows,codes)]
                 replies=[f.result(timeout=90) for f in futures]
-        finally:marker.unlink()
+        finally:
+            marker.unlink()
+            reverse.unlink(missing_ok=True)
         check(receipt.is_file() and receipt.read_bytes()==b'passed\npassed\n','provider rendezvous not observed twice')
         receipt.unlink();observed_rendezvous+=1
         statuses=[s for s,_,_ in replies]
@@ -130,6 +144,10 @@ try:
             route(flow);successful[code]=flow
             check(callback(flow,code)[0]==403,'callback state replay')
         bound=binding()
+        if codes==('b','c'):
+            # Use broker-backed UIDs in all subsequent NSS, route and DAC checks.
+            identities=allocated_identities(identities,bound)
+            check((identities[1][2],identities[2][2])==(21034,21033),'C-first fixture allocation not observed')
         for code in set(codes):
             _,name,uid,id=next(i for i in identities if i[0]==code)
             check(sum(b['id']==id and b['uid']==uid and b['username']==name for b in bound)==1,'duplicate/wrong binding')

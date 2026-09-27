@@ -228,7 +228,9 @@ assert b"'scope':'jit-concurrent'" in files['/usr/local/sbin/jit-proof']
 provider=files['/usr/local/sbin/product-fake-provider']
 assert b"threading.Barrier(2)" in provider and b"barrier.wait(timeout=15)" in provider
 assert b"/run/fixture-concurrent" in provider and b"/run/fixture-rendezvous" in provider
-assert b"'/home/guestthree'" in files['/usr/bin/git'] and b'21034' in files['/usr/bin/git']
+assert b"/run/fixture-c-first" in provider and b"time.sleep(3)" in provider
+assert b"reverse.write_text('1')" in files['/usr/local/sbin/jit-proof']
+assert b'pwd.getpwuid' in files['/usr/bin/git'] and b'mapped_home(os.getuid(),home)' in files['/usr/bin/git'] and b'21033' in files['/usr/bin/git'] and b'21034' in files['/usr/bin/git']
 JIT_CONCURRENT
   FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/native-agent-host" login
   python3 - "$tmp/jit/jit-cloud-init.yaml" <<'JIT_LOGIN'

@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """Fixed GitHub TLS fixture, bound only to guest loopback."""
-import http.server, json, os, ssl, pathlib, threading, urllib.parse
+import http.server, json, os, ssl, pathlib, threading, time, urllib.parse
 # Only the disposable concurrent guest enables this rendezvous. Both gateway
 # callbacks must reach /user before either receives an identity.
 barrier=threading.Barrier(2)
@@ -26,6 +26,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         key='PRODUCT_VM_TOKEN_'
         ident={'Bearer '+key+'agent_a_FIXTURE_ONLY_92764':31001,'Bearer '+key+'agent_b_FIXTURE_ONLY_92764':31002,'Bearer '+key+'agent_c_FIXTURE_ONLY_92764':31003,'Bearer '+key+'UNKNOWN_FIXTURE_ONLY_92764':39999}.get(token)
         if ident is None:return self.send_error(403)
+        # After both callbacks rendezvous, release C first to exercise the
+        # broker's legitimate reversed UID allocation in the disposable guest.
+        if ident==31002 and pathlib.Path('/run/fixture-c-first').is_file(): time.sleep(3)
         login={31001:'agent-a',31002:'agent-b',31003:'agent-c',39999:'unknown'}[ident]
         # Guest-only provider rename; the product never sees this control file.
         if ident==31001 and pathlib.Path('/run/fixture-rename').is_file(): login='renamed-fixture'
