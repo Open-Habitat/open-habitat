@@ -84,7 +84,8 @@ if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario ==
   product_commit=$(git -C "$repo" rev-parse HEAD)
   if [[ $scenario == jit-concurrent ]]; then
     [[ -z $(git -C "$repo" status --porcelain) ]] || fail dirty_tree 'Exact release archive requires a clean committed tree' 1
-    [[ -f $repo/web/dist/index.html ]] || fail missing_web_build 'Build production web assets before packaging the guest archive' 2
+    (cd "$repo" && npm run build --prefix web >"$run/web-build.log" 2>&1) || fail product_build_failed 'Could not build production web assets' 2
+    [[ -f $repo/web/dist/index.html && -z $(git -C "$repo" status --porcelain) ]] || fail dirty_tree 'Production web build changed committed source' 1
     mkdir -p "$run/release"
     archive=$("$repo/scripts/package-release.sh" --version 0.0.0-test --target linux-amd64 --web-dir "$repo/web/dist" --output "$run/release") || fail product_build_failed 'Could not package release' 2
     "$repo/scripts/verify-release.sh" --archive "$archive" --json > "$run/verify.json" || fail invalid_release 'Packaged archive failed release verification' 2

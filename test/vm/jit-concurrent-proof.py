@@ -89,7 +89,7 @@ try:
         except OSError:pass
         time.sleep(.2)
     else:raise RuntimeError('gateway unavailable')
-    rounds=[]
+    rounds=[];successful={}
     for codes in (('a','a'),('b','c')):
         flows=[start(),start()]
         marker=pathlib.Path('/run/fixture-concurrent');marker.write_text('1')
@@ -109,8 +109,9 @@ try:
                 # A consumed OAuth state cannot be replayed; a new flow can retry.
                 check(callback(flow,code)[0]==403,'failed callback state replay')
                 retry=start();check(callback(retry,code)[0]==303,'loser fresh retry')
-                route(retry,code,[])
-            else:route(flow,code,[])
+                route(retry,code,[]);successful[code]=retry
+            else:
+                route(flow,code,[]);successful[code]=flow
         bound=binding()
         for code in set(codes):
             _,name,uid,id=next(i for i in identities if i[0]==code)
@@ -118,7 +119,15 @@ try:
             check(sum(u.pw_uid==uid and u.pw_name==name for u in pwd.getpwall())==1,'duplicate NSS account')
         check(len(bound)==(1 if codes[0]=='a' else 3),'unexpected binding count')
         rounds.append({'statuses':statuses,'ids':list(codes)})
-    for _,name,uid,_ in identities:
+    for code,name,uid,_ in identities:
+        home=pathlib.Path('/home')/name
+        src=home/'src';src.mkdir(mode=0o700)
+        workspace=src/(name+'-only');workspace.mkdir(mode=0o700)
+        subprocess.run(['chown','-R',str(uid)+':'+str(uid),str(src)],check=True,capture_output=True)
+    for code,name,uid,_ in identities:
+        op,_,_=successful[code]
+        status,_,body=get(op,'/api/v1/snapshot')
+        check(status==200 and (name+'-only').encode() in body and all((other+'-only').encode() not in body for _,other,_,_ in identities if other!=name),'mapped browser route crossed UID')
         home=pathlib.Path('/home')/name
         check(home.stat().st_uid==uid and stat.S_IMODE(home.stat().st_mode)==0o700,'home ACL')
         cred=home/'.config/gh/hosts.yml'
