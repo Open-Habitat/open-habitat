@@ -181,10 +181,14 @@ func (s Sink) Deliver(ctx context.Context, m gateway.Identity, subject, token st
 			return (&net.Dialer{Timeout: deadline}).DialContext(ctx, "unix", p)
 		}
 	}
-	if ctx.Err() != nil {
+	// One budget across socket activation, dial and native observation; a
+	// stalled backlog must not receive a fresh deadline after it connects.
+	handoffCtx, cancel := context.WithTimeout(ctx, deadline)
+	defer cancel()
+	if handoffCtx.Err() != nil {
 		return denied
 	}
-	conn, e := dial(ctx, m.Socket)
+	conn, e := dial(handoffCtx, m.Socket)
 	if e != nil {
 		return denied
 	}
@@ -196,12 +200,12 @@ func (s Sink) Deliver(ctx context.Context, m gateway.Identity, subject, token st
 	if !ok || (s.dial == nil && !s.testPath && (peerUID(uc) != 0 || udssecure.Mapped(m.Socket, m.UID) != nil)) || ((s.dial != nil || s.testPath) && peerUID(uc) != m.UID) {
 		return denied
 	}
-	stop, e := setDeadline(ctx, conn)
+	stop, e := setDeadline(handoffCtx, conn)
 	if e != nil {
 		return denied
 	}
 	defer stop()
-	req, e := http.NewRequestWithContext(ctx, http.MethodPost, "http://unix"+Path, bytes.NewReader(body))
+	req, e := http.NewRequestWithContext(handoffCtx, http.MethodPost, "http://unix"+Path, bytes.NewReader(body))
 	if e != nil {
 		return denied
 	}
