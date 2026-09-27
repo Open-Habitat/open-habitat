@@ -2,10 +2,12 @@
 created: 2026-09-27
 updated: 2026-09-27
 type: task
-status: in-progress
+status: done
 priority: normal
 lane: logging-design
 collision: [docs/]
+closed: 2026-09-27
+closed_by: pi
 ---
 
 # Define Omega Habitat logging philosophy
