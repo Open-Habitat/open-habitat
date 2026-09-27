@@ -15,7 +15,7 @@ test("@workspace-slice production bundle contains no fixture controls", async ({
   }
   await page.goto("/?fixture=design");
   await expect(
-    page.getByRole("heading", { name: "Kirjaudu jatkaaksesi" }),
+    page.getByRole("heading", { name: "Tervetuloa Omega Habitatiin" }),
   ).toBeVisible();
   await expect(
     page.getByText("Rakenna saavutettava komponenttikirjasto"),
@@ -61,8 +61,20 @@ test("@workspace-slice unknown mapping is denied before session", async ({
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Unknown" }).click();
   await expect(page).toHaveURL(/auth_error=identity_mapping_denied$/);
-  await expect(page.getByText("Kirjautuminen ei valmistunut")).toBeVisible();
+  await expect(page.getByText("Kirjautumisessa tapahtui virhe")).toBeVisible();
+  await expect(page.locator(".ah-notice.ah-tone-danger")).toBeVisible();
   expect((await page.request.get("/api/v1/snapshot")).status()).toBe(401);
+});
+test("@workspace-slice untrusted auth error stays generic and retryable", async ({
+  page,
+}) => {
+  await page.goto("/workspaces?auth_error=%3Cscript%3Esteal%3C%2Fscript%3E");
+  await expect(page.getByText("Kirjautumisessa tapahtui virhe")).toBeVisible();
+  await expect(page.locator(".ah-notice.ah-tone-danger")).toBeVisible();
+  await expect(page.getByText(/steal|script/)).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
+  ).toBeEnabled();
 });
 test("@workspace-slice callback errors never claim a session and preserve safe deep links", async ({
   page,
@@ -70,7 +82,7 @@ test("@workspace-slice callback errors never claim a session and preserve safe d
   await page.request.get("/fixture/scenario?value=native-error");
   await page.goto("/workspaces/ws_abcdefgh");
   await expect(
-    page.getByRole("heading", { name: "Kirjaudu jatkaaksesi" }),
+    page.getByRole("heading", { name: "Tervetuloa Omega Habitatiin" }),
   ).toBeVisible();
   await expect((await page.request.get("/api/v1/snapshot")).status()).toBe(401);
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
@@ -81,7 +93,7 @@ test("@workspace-slice callback errors never claim a session and preserve safe d
   await expect(page).toHaveURL(
     /\/workspaces\?auth_error=native_adapter_error$/,
   );
-  await expect(page.getByText("Kirjautuminen ei valmistunut")).toBeVisible();
+  await expect(page.getByText("Kirjautumisessa tapahtui virhe")).toBeVisible();
   await expect((await page.request.get("/auth/session")).status()).toBe(401);
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces/ws_abcdefgh");

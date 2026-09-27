@@ -9,7 +9,7 @@ for (const [scenario, heading] of [
   ["partial", "Workspacet"],
   ["missing", "Workspacet"],
   ["unavailable", "Yhteyttä ei saatu"],
-  ["login", "Kirjaudu jatkaaksesi"],
+  ["login", "Tervetuloa Omega Habitatiin"],
 ] as const) {
   test(`synthetic ${scenario} scenario and a11y`, async ({ page }) => {
     await page.goto(`/workspaces?scenario=${scenario}`);
@@ -68,6 +68,23 @@ for (const [scenario, heading] of [
     });
   });
 }
+test("synthetic login error is visually distinct and never echoes query detail", async ({
+  page,
+}) => {
+  await page.goto(
+    "/workspaces?scenario=login&auth_error=%3Cscript%3Eunsafe%3C%2Fscript%3E",
+  );
+  await expect(
+    page.getByRole("heading", { name: "Tervetuloa Omega Habitatiin" }),
+  ).toBeVisible();
+  await expect(page.getByText("Kirjautumisessa tapahtui virhe")).toBeVisible();
+  await expect(page.locator(".ah-notice.ah-tone-danger")).toBeVisible();
+  await expect(page.getByText(/unsafe|script/)).toHaveCount(0);
+  await page.screenshot({
+    path: "test-results/evidence/demo-login-error.png",
+    fullPage: true,
+  });
+});
 test("no authentication, fixture routes, production build fixture, or external host", async ({
   page,
   request,

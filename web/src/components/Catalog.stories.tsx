@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { AlertDialog, Dialog, Menu, Tabs } from "./Overlays";
+import { LoginCard, LoginErrorNotice } from "./LoginCard";
 import {
   Button,
   Checkbox,
@@ -45,6 +46,22 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 const noop = () => {};
+export const Login: Story = {
+  render: () => (
+    <main className="ah-login-view">
+      <LoginCard onLogin={noop} />
+    </main>
+  ),
+};
+export const LoginError: Story = {
+  render: () => (
+    <main className="ah-login-view">
+      <LoginCard onLogin={noop} />
+      <LoginErrorNotice />
+    </main>
+  ),
+};
+
 const hostile =
   "Erittäinpitkäyhdyssana_ilman_turvallista_katkaisukohtaa_1234567890 <script>alert('ei suoriteta')</script>";
 

@@ -1,18 +1,15 @@
 import { Button } from "./Primitives";
+import { InlineNotice } from "./Status";
+
 export function LoginCard({ onLogin }: { onLogin?: () => void }) {
   const demo = import.meta.env.VITE_SYNTHETIC_DEMO === "true";
   return (
     <section className="ah-login-card" aria-labelledby="login-title">
       <header>
-        <p className="eyebrow">Native Agent Host</p>
-        <h1 id="login-title">Kirjaudu jatkaaksesi</h1>
-        <p className="ah-technical ah-login-host">{window.location.host}</p>
+        <p className="eyebrow">Omega Habitat</p>
+        <h1 id="login-title">Tervetuloa Omega Habitatiin</h1>
       </header>
-      <p>
-        {demo
-          ? "Tämä on vain kirjautumisnäkymän simulaatio. Istuntoa tai Unix-käyttäjää ei luoda."
-          : "Selain ei valitse Unix-käyttäjää. Palvelin reitittää hyväksytyn verkkoidentiteetin sille määritettyyn tiliin."}
-      </p>
+      <p>Kirjaudu sisään päästäksesi työtiloihisi.</p>
       <Button
         label="Kirjaudu GitHubilla"
         availability={
@@ -30,11 +27,19 @@ export function LoginCard({ onLogin }: { onLogin?: () => void }) {
           })
         }
       />
-      <p className="muted">
-        {demo
-          ? "Valitse valmis tila avaamalla ?scenario=ready osoitteessa /workspaces."
-          : "Kirjautuminen jatkuu GitHubissa. Istunto alkaa vasta onnistuneen paluun ja natiivin yhteyden vahvistuksen jälkeen."}
-      </p>
+      {demo ? <p className="muted">Tämä näkymä on simulaatio.</p> : null}
     </section>
+  );
+}
+
+// The callback currently supplies only a URL error code, not an authenticated,
+// user-safe support reference. Never echo that query value as a diagnostic.
+export function LoginErrorNotice() {
+  return (
+    <InlineNotice
+      title="Kirjautumisessa tapahtui virhe"
+      description="Yritä kirjautua uudelleen. Jos virhe toistuu, ota yhteyttä palvelun ylläpitäjään. Älä lähetä tunnuksia tai kirjautumislinkkejä."
+      tone="danger"
+    />
   );
 }

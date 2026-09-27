@@ -10,7 +10,7 @@ import {
   WorkspaceRail,
   WorkspaceSection,
 } from "../components";
-import { LoginCard } from "../components/LoginCard";
+import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import { HistoryView } from "./HistoryView";
 import {
   authenticated,
@@ -261,11 +261,7 @@ export function App() {
           }}
         />
         {new URLSearchParams(location.search).has("auth_error") ? (
-          <InlineNotice
-            title="Kirjautuminen ei valmistunut"
-            description="Istuntoa ei luotu. Valtuutus, käyttäjätilin kytkentä tai natiivin GitHub-yhteyden asennus epäonnistui. Voit aloittaa uuden kirjautumisen; aikaisempaa pyyntöä ei toisteta automaattisesti."
-            tone="warning"
-          />
+          <LoginErrorNotice />
         ) : null}
         {logoutError ? (
           <InlineNotice
