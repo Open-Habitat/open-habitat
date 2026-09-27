@@ -12,11 +12,11 @@ repo = Path(__file__).resolve().parents[2]
 # Read exact committed blobs, not a mutable checkout (Fleetrepo need not be at
 # the historical commit). No git checkout/worktree or host write is performed.
 source = Path(os.environ['FLEETREPO_JIT_SOURCE'])
-head = 'e044c03133074db3bb37d64e1e03c0bf4b9ade7d'
+head = '85ac4588c9de4c1ceb1fccf58d57753ca58a7688'
 if subprocess.check_output(['git','-C',str(source),'rev-parse',head],text=True).strip() != head:
     raise ValueError('Reviewed Fleetrepo JIT commit unavailable')
 receipts = {
- 'jit_policy.py':'1333a57d2fc00e3e015e4d6800683ba4f50cdbf3ebacaea72a9d6328cfff23e8',
+ 'jit_policy.py':'4dc927a15fe7a2bc30cd05a5f04961f67d14a30866acd6f65a363fb53b2aa2a7',
  'jit_acl_prepare.py':'20af327b7d64fe3546c166fb6c74b6cf54d77c471f871a1e22d4d8bb95bc9122',
  'native-agent-host-jit-policy-gate.service':'4f5c2cd4fb1050c18729bc89c68f688b63d673a0c81bf112b51bf28c0edd4a87',
  'native-agent-host-jit-policy-gate@.service':'5943cb8a58a0136fcb07858774faa39ee2ad91361ee3ebf24cb62778effee22b',

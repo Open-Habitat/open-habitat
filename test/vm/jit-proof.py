@@ -35,12 +35,15 @@ def probe(uid,path,connect=False,denied=False):
         os.setgroups([]);os.setresgid(uid,uid,uid);os.setresuid(uid,uid,uid)
     result=subprocess.run(['/usr/bin/python3','-c',code,str(path)],preexec_fn=drop,capture_output=True,text=True,timeout=8)
     return result.returncode != 0 and result.stderr.strip()=='13' if denied else result.returncode==0
-def exchange(uid,operation,subject,candidate=None):
+def launch_exchange(uid,operation,subject,candidate=None,synchronized=False):
     # Process credentials are set before connect, not embedded in request JSON.
     request={'version':1,'operation':operation,'provider':'github','id':subject}
     if candidate is not None: request['candidate']=candidate
     code='''import json,socket,struct,sys
-s=socket.socket(socket.AF_UNIX);s.settimeout(12);s.connect(sys.argv[1])
+s=socket.socket(socket.AF_UNIX);s.settimeout(40);s.connect(sys.argv[1])
+if len(sys.argv)>3:
+ print('CONNECTED',file=sys.stderr,flush=True)
+ assert sys.stdin.buffer.read(1)==b'1','release missing'
 b=json.dumps(json.loads(sys.argv[2]),separators=(',',':')).encode();s.sendall(struct.pack('>I',len(b))+b);s.shutdown(socket.SHUT_WR)
 h=s.recv(4);assert len(h)==4,'no reply';n=struct.unpack('>I',h)[0];b=b''
 while len(b)<n:
@@ -49,7 +52,16 @@ assert not s.recv(1),'trailing reply';print(b.decode())
 '''
     def drop():
         os.setgroups([]);os.setresgid(uid,uid,uid);os.setresuid(uid,uid,uid)
-    return subprocess.run(['/usr/bin/python3','-c',code,str(broker),json.dumps(request)],preexec_fn=drop,capture_output=True,text=True,timeout=18)
+    return subprocess.Popen(['/usr/bin/python3','-c',code,str(broker),json.dumps(request),*(['synchronized'] if synchronized else [])],preexec_fn=drop,stdout=subprocess.PIPE,stderr=subprocess.PIPE,stdin=subprocess.PIPE,text=True)
+
+def collect(process):
+    from subprocess import CompletedProcess
+    if process.stdin and not process.stdin.closed: process.stdin.close()
+    process.wait(timeout=45)
+    return CompletedProcess(process.args,process.returncode,process.stdout.read(),process.stderr.read())
+
+def exchange(uid,operation,subject,candidate=None):
+    return collect(launch_exchange(uid,operation,subject,candidate))
 def route(result,uid,name):
     check(result.returncode==0,'broker exchange: '+result.stderr[-300:])
     data=json.loads(result.stdout)
@@ -110,23 +122,47 @@ try:
     check(exchange(21001,'authorize',ids[0]).returncode!=0,'wrong UID accessed broker socket')
     wrong=exchange(0,'authorize',ids[0]);check(wrong.returncode!=0,'wrong root peer received reply')
     before=json.loads((state/'bindings.json').read_text());check(before=={'version':1,'generation':1,'bindings':[]},'adopted existing binding')
-    for index,(uid,name,subject) in enumerate(zip((21032,21033),names,ids)):
-        exchange_start=time.monotonic()
-        result=exchange(21003,'ensure',subject,'GuestOne' if index==0 else 'GuestTwo')
-        exchange_seconds=round(time.monotonic()-exchange_start,3)
-        first=route(result,uid,name)
-        check(first['generation']==index+2 and first['epoch']==2,'unexpected generation')
+    # Both fresh identities enter the same broker in this single PID1 guest.
+    # Children drop credentials before connect; neither response is collected
+    # before both have been launched. Generations may publish in either order.
+    exchange_start=time.monotonic()
+    children=[launch_exchange(21003,'ensure',subject,candidate,synchronized=True) for subject,candidate in
+              zip(ids,('GuestOne','GuestTwo'))]
+    # Both numeric gateway-UID peers must connect before either sends its
+    # ensure. This proves overlapping clients, not simultaneous OAuth or
+    # an observed gate/writer lock collision.
+    import select
+    waiting={child.stderr for child in children}
+    deadline=time.monotonic()+10
+    while waiting:
+        ready,_,_=select.select(list(waiting),[],[],max(0,deadline-time.monotonic()))
+        check(bool(ready),'peers did not connect concurrently')
+        for stream in ready:
+            check(stream.readline().strip()=='CONNECTED','peer did not connect')
+            waiting.remove(stream)
+    for child in children:
+        child.stdin.write('1');child.stdin.close()
+    results=[collect(child) for child in children]
+    exchange_seconds=round(time.monotonic()-exchange_start,3)
+    # The first lock winner takes the first numeric slot; names must stay
+    # attached to subjects, but UID order is intentionally unspecified.
+    replies=[json.loads(result.stdout) if result.returncode==0 else {} for result in results]
+    assigned=[reply.get('route',{}).get('uid') for reply in replies]
+    check(set(assigned)=={21032,21033},'concurrent UID allocation or route missing: '+repr([(reply.get('failure'),result.returncode,result.stderr[-120:]) for reply,result in zip(replies,results)]))
+    firsts=[route(result,uid,name) for result,uid,name in zip(results,assigned,names)]
+    check(all(first['generation'] in (2,3) and first['epoch']==2 for first in firsts),'unexpected concurrent generation')
+    for uid,name,subject,first in zip(assigned,names,ids,firsts):
         check(pwd.getpwnam(name).pw_uid==uid and pwd.getpwnam(name).pw_gid==uid and grp.getgrnam(name).gr_gid==uid,'executor account/group')
         home=Path('/home')/name; check((home.stat().st_uid,home.stat().st_gid,stat.S_IMODE(home.stat().st_mode))==(uid,uid,0o700),'executor home')
         check((Path('/etc/native-agent-host')/('daemon-'+name+'.json')).is_file(),'executor config missing')
-        check(route(exchange(21003,'ensure',subject,'changedname'),uid,name)==first,'rerun not idempotent')
-        if index==0:
-            # Broker ensure now starts the reviewed socket itself after durable
-            # commit. Starting an already active socket may requeue its
-            # one-shot gate (which correctly refuses a present target).
-            check(unit('is-active','native-agent-host-daemon@guestone.socket').stdout.strip()=='active','first daemon socket not broker-activated')
+        rerun=route(exchange(21003,'ensure',subject,'changedname'),uid,name)
+        check(rerun['route']==first['route'] and rerun['epoch']==first['epoch'] and rerun['generation']==3,'rerun not idempotent')
+        check(unit('is-active','native-agent-host-daemon@'+name+'.socket').stdout.strip()=='active','daemon socket not broker-activated')
     ledger=json.loads((state/'bindings.json').read_text())
-    check(ledger=={'version':1,'generation':3,'bindings':[{'id':ids[0],'uid':21032,'username':names[0]},{'id':ids[1],'uid':21033,'username':names[1]}]},'not two new committed bindings')
+    check(ledger.get('version')==1 and ledger.get('generation')==3 and
+          sorted(ledger.get('bindings',[]),key=lambda row:row['id'])==
+          [{'id':subject,'uid':uid,'username':name} for subject,uid,name in zip(ids,assigned,names)],
+          'not two new committed bindings')
     check(not (state/'pending.json').exists(),'writer left pending journal')
     # Exercise gate denial on a *stopped* instance: an active socket has no
     # new activation job to gate, and broker authorize is separately checked.
@@ -137,14 +173,14 @@ try:
     marker.unlink() # disposable fault injection only; not recovery guidance
     reset()
     check(unit('start','native-agent-host-daemon@guesttwo.socket').returncode==0,'second daemon socket start')
-    for uid,own,sibling in ((21032,names[0],names[1]),(21033,names[1],names[0])):
+    for uid,own,sibling in ((assigned[0],names[0],names[1]),(assigned[1],names[1],names[0])):
         check(probe(uid,run/'users'/own),'own socket directory denied')
         check(probe(uid,run/'users'/sibling,denied=True),'cross-user socket directory access')
         check(probe(uid,run/'users'/sibling/'daemon.sock',connect=True,denied=True),'cross-user UDS connect')
         check(probe(uid,Path('/home')/sibling,denied=True),'cross-user home access')
         check((run/'users'/sibling/'daemon.sock').is_socket(),'sibling inode missing')
     print('VM_PROOF='+json.dumps({'status':'passed','scope':'jit-provision','pid1':'systemd','uids':[21032,21033,21003],
-        'pool_vacant_before_seed':True,'new_accounts':True,'committed_bindings':True,'rerun_idempotent':True,
+        'pool_vacant_before_seed':True,'new_accounts':True,'committed_bindings':True,'concurrent_clients_released':True,'rerun_idempotent':True,
         'wrong_peer_denied':True,'wrong_uid_denied':True,'pending_denied':True,'boot_acl_denied':True,
         'prepared_socket_started':True,'cross_uid_denied':True,'binary_path':'/opt/native-agent-host/current/native-agent-host'}),flush=True)
 except Exception as exc:

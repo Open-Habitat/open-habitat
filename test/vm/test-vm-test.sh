@@ -59,7 +59,7 @@ mkdir -p "$tmp/shim"
 cat > "$tmp/shim/git" <<'GIT'
 #!/bin/sh
 case "$3" in
-  rev-parse) echo e044c03133074db3bb37d64e1e03c0bf4b9ade7d ;;
+  rev-parse) echo 85ac4588c9de4c1ceb1fccf58d57753ca58a7688 ;;
   show) printf 'corrupt pinned policy bytes' ;;
   *) exit 1 ;;
 esac
@@ -68,6 +68,9 @@ chmod +x "$tmp/shim/git"
 if FLEETREPO_JIT_SOURCE="$tmp/fake-fleetrepo" PATH="$tmp/shim:$PATH" python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/native-agent-host" > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
 grep -q 'Fleetrepo JIT policy hash mismatch' "$tmp/err"
 [[ ! -e "$tmp/jit/jit-cloud-init.yaml" && ! -e "$tmp/jit/jit-receipt.json" ]]
+if git -C /home/maintainer/Sources/fleetrepo cat-file -e 85ac4588c9de4c1ceb1fccf58d57753ca58a7688^{commit} 2>/dev/null; then
+  FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/test-jit-pinned-lock.py"
+fi
 # The guest proof acceptance parser must never turn a failed JSON proof into a
 # success when a caller has PYTHONOPTIMIZE=1 (Python strips assert statements).
 validator=$(sed -n "/<<'JIT_CHECK'/,/^JIT_CHECK$/p" "$repo/scripts/vm-test.sh" | sed '1d;$d')
@@ -77,6 +80,9 @@ for mode in normal optimized; do
   [[ $mode == optimized ]] && python_flags=(-O)
   if python3 "${python_flags[@]}" -c "$validator" "$failed"; then echo 'failed JIT proof accepted' >&2; exit 1; fi
 done
+# An otherwise valid receipt without concurrent new ensures must fail.
+passed='{"status":"passed","scope":"jit-provision","pid1":"systemd","uids":[21032,21033,21003],"binary_path":"/opt/native-agent-host/current/native-agent-host","pool_vacant_before_seed":true,"new_accounts":true,"committed_bindings":true,"rerun_idempotent":true,"wrong_peer_denied":true,"wrong_uid_denied":true,"pending_denied":true,"boot_acl_denied":true,"prepared_socket_started":true,"cross_uid_denied":true}'
+if python3 -c "$validator" "$passed"; then echo 'missing concurrency accepted' >&2; exit 1; fi
 login_validator=$(sed -n "/<<'LOGIN_CHECK'/,/^LOGIN_CHECK$/p" "$repo/scripts/vm-test.sh" | sed '1d;$d')
 for mode in normal optimized; do
   python_flags=()
@@ -164,8 +170,8 @@ python3 -c "$login_scanner" "$repo" "$tmp/jit/serial.log" "$tmp/jit/native-agent
 printf 'PRODUCT_VM_TOKEN_UNKNOWN_FIXTURE_ONLY_92764' > "$tmp/jit/serial.log"
 if python3 -c "$login_scanner" "$repo" "$tmp/jit/serial.log" "$tmp/jit/native-agent-host"; then echo 'unknown token leaked to serial' >&2; exit 1; fi
 printf '' > "$tmp/jit/serial.log"
-# Optional positive seed render from read-only historical committed blobs.
-if git -C /home/maintainer/Sources/fleetrepo cat-file -e e044c031^{commit} 2>/dev/null; then
+# Optional positive seed render from read-only pinned committed blobs.
+if git -C /home/maintainer/Sources/fleetrepo cat-file -e 85ac4588c9de4c1ceb1fccf58d57753ca58a7688^{commit} 2>/dev/null; then
 FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/native-agent-host"
 python3 - "$tmp/jit/jit-cloud-init.yaml" <<'JIT_FIXTURE'
 import base64,json,sys
