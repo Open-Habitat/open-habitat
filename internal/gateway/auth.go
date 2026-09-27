@@ -101,6 +101,7 @@ type Auth struct {
 	pending         map[string]pending
 	sessions        map[string]session
 	admission       map[string]admission
+	unmatchedLog    admission // process-wide budget; never keyed by request input
 	snapshotDial    func(context.Context, string) (net.Conn, error)
 	snapshotPeerUID func(*net.UnixConn) int
 }
@@ -137,7 +138,7 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 		opts.Random = rand.Reader
 	}
 	if opts.Log == nil {
-		opts.Log = slog.New(slog.NewJSONHandler(os.Stderr, nil))
+		opts.Log = CallbackLogger(os.Stderr)
 	}
 	return &Auth{cfg: cfg, provider: opts.Provider, sink: opts.Sink, broker: opts.Broker, now: opts.Now, random: opts.Random, log: opts.Log, pending: map[string]pending{}, sessions: map[string]session{}, admission: map[string]admission{}, snapshotDial: opts.SnapshotDial, snapshotPeerUID: opts.SnapshotPeerUID}, nil
 }
@@ -147,6 +148,18 @@ func (a *Auth) secret() (string, error) {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+// CallbackLogger emits the CLI's JSONL envelope to a caller-owned writer.
+// These security diagnostics are always on, independently of --verbose.
+func CallbackLogger(w io.Writer) *slog.Logger {
+	h := slog.NewJSONHandler(w, &slog.HandlerOptions{ReplaceAttr: func(_ []string, attr slog.Attr) slog.Attr {
+		if attr.Key == slog.MessageKey {
+			attr.Key = "event"
+		}
+		return attr
+	}})
+	return slog.New(h).With("schema_version", 1, "component", "gateway")
 }
 
 // attemptID is independent of OAuth state and of the injectable OAuth random
@@ -335,20 +348,39 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	a.mu.Lock()
 	p, exists := a.pending[state]
 	delete(a.pending, state)
+	logCallback := exists
+	if !exists {
+		// Bound unauthenticated journal emission without changing callback handling.
+		now := a.now()
+		if a.unmatchedLog.at.IsZero() {
+			a.unmatchedLog.tokens = 32
+		} else {
+			a.unmatchedLog.tokens = math.Min(32, a.unmatchedLog.tokens+now.Sub(a.unmatchedLog.at).Seconds())
+		}
+		logCallback = a.unmatchedLog.tokens >= 1
+		if logCallback {
+			a.unmatchedLog.tokens--
+		}
+		a.unmatchedLog.at = now
+	}
 	a.mu.Unlock()
 	http.SetCookie(w, &http.Cookie{Name: flowCookie, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: -1})
 	c, e := r.Cookie(flowCookie)
 	attempt := p.attempt
-	if !exists {
+	if !exists && logCallback {
 		attempt = attemptID() // Never derive correlation from untrusted state.
 	}
 	if !a.exact(r, "/auth/github/callback", "state", "code") && !a.exact(r, "/auth/github/callback", "state", "error") {
-		a.authEvent(attempt, "rejected", a.callbackShapeReason(r))
+		if logCallback {
+			a.authEvent(attempt, "rejected", a.callbackShapeReason(r))
+		}
 		a.callbackFailure(w, r, 400, "invalid_request")
 		return
 	}
 	if !exists || !a.now().Before(p.until) {
-		a.authEvent(attempt, "rejected", "flow_missing_or_expired")
+		if logCallback {
+			a.authEvent(attempt, "rejected", "flow_missing_or_expired")
+		}
 		a.callbackFailure(w, r, 403, "authentication_required")
 		return
 	}

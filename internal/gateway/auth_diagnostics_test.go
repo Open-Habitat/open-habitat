@@ -3,7 +3,7 @@ package gateway
 import (
 	"bytes"
 	"encoding/json"
-	"log/slog"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -17,6 +17,7 @@ func TestCallbackDiagnostics(t *testing.T) {
 		name, query, reason string
 		mutate              func(*http.Request)
 		status              int
+		setup               func(*Auth, *fakeProvider, *fakeSink)
 	}{
 		{name: "accepted", query: "&code=synthetic-code", status: 303},
 		{name: "extra", query: "&code=synthetic-code&unexpected=secret-query", reason: "shape_extra_key", status: 400},
@@ -30,12 +31,19 @@ func TestCallbackDiagnostics(t *testing.T) {
 		{name: "browser", query: "&code=x", reason: "browser_mismatch", status: 403, mutate: func(r *http.Request) { r.Header.Set("Cookie", flowCookie+"=secret-cookie") }},
 		{name: "expired", query: "&code=x", reason: "flow_missing_or_expired", status: 403, mutate: func(r *http.Request) { /* clock moved below */ }},
 		{name: "provider", query: "&error=secret-query", reason: "provider_denied", status: 403},
+		{name: "exchange", query: "&code=x", reason: "exchange_failed", status: 403, setup: func(_ *Auth, p *fakeProvider, _ *fakeSink) { p.err = fmt.Errorf("secret-provider-error") }},
+		{name: "identity", query: "&code=x", reason: "identity_denied", status: 403, setup: func(_ *Auth, p *fakeProvider, _ *fakeSink) { p.login = "" }},
+		{name: "broker", query: "&code=x", reason: "broker_denied", status: 403, setup: func(a *Auth, _ *fakeProvider, _ *fakeSink) { a.broker = &fakeBroker{fail: true} }},
+		{name: "handoff", query: "&code=x", reason: "handoff_failed", status: 503, setup: func(_ *Auth, _ *fakeProvider, s *fakeSink) { s.err = fmt.Errorf("secret-sink-error") }},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			h, a, p, s, clock := fixture(t)
 			var buf bytes.Buffer
-			a.log = slog.New(slog.NewJSONHandler(&buf, nil))
+			a.log = CallbackLogger(&buf)
+			if tc.setup != nil {
+				tc.setup(a, p, s)
+			}
 			state, flow := start(t, h)
 			if tc.name == "expired" {
 				*clock = clock.Add(6 * time.Minute)
@@ -70,12 +78,12 @@ func TestCallbackDiagnostics(t *testing.T) {
 			if !ok || len(id) != 22 || id != result["attempt_id"] || id == state {
 				t.Fatal("invalid server-owned attempt ID")
 			}
-			for _, secret := range []string{state, flow.Value, "secret-query", "secret-cookie", "secret-authorization", "synthetic-code", "alice", p.token, p.authorization, "host.test", "foreign.invalid"} {
+			for _, secret := range []string{state, flow.Value, "secret-query", "secret-cookie", "secret-authorization", "secret-provider-error", "secret-sink-error", "synthetic-code", "alice", p.token, p.authorization, "host.test", "foreign.invalid"} {
 				if secret != "" && strings.Contains(buf.String(), secret) {
 					t.Fatalf("log leaked forbidden value (%s)", tc.name)
 				}
 			}
-			if tc.status != 303 && (p.calls != 0 || s.calls != 0) {
+			if tc.status != 303 && tc.setup == nil && (p.calls != 0 || s.calls != 0) {
 				t.Fatal("failure reached provisioning")
 			}
 			if tc.status != 303 && callback(h, state, flow).Code == 303 {
@@ -88,7 +96,7 @@ func TestCallbackDiagnostics(t *testing.T) {
 func TestCallbackUnmatchedStateGetsIndependentAttempt(t *testing.T) {
 	h, a, p, s, _ := fixture(t)
 	var buf bytes.Buffer
-	a.log = slog.New(slog.NewJSONHandler(&buf, nil))
+	a.log = CallbackLogger(&buf)
 	w := request(h, "GET", "/auth/github/callback?state=attacker-supplied-state&code=attacker-supplied-code")
 	if w.Code != 403 || p.calls != 0 || s.calls != 0 {
 		t.Fatal("unmatched flow accepted")
@@ -99,5 +107,33 @@ func TestCallbackUnmatchedStateGetsIndependentAttempt(t *testing.T) {
 	}
 	if event["reason"] != "flow_missing_or_expired" || event["attempt_id"] == "attacker-supplied-state" || strings.Contains(buf.String(), "attacker-supplied") {
 		t.Fatal("untrusted state logged")
+	}
+}
+
+// Unknown states cannot make the gateway an unlimited diagnostic log emitter.
+// The budget must not suppress a matching flow's event or change any response.
+func TestCallbackUnmatchedLogBudget(t *testing.T) {
+	h, a, p, s, _ := fixture(t)
+	var buf bytes.Buffer
+	a.log = CallbackLogger(&buf)
+	for i := 0; i < 80; i++ {
+		path := "/auth/github/callback?state=unknown&code=x"
+		if i%2 == 0 {
+			path += "&extra=x"
+		}
+		w := request(h, "GET", path)
+		if i%2 == 0 && w.Code != 400 || i%2 != 0 && w.Code != 403 {
+			t.Fatalf("unmatched response %d", w.Code)
+		}
+	}
+	if count := bytes.Count(buf.Bytes(), []byte("\n")); count != 32 {
+		t.Fatalf("unmatched events %d, want 32", count)
+	}
+	if p.calls != 0 || s.calls != 0 {
+		t.Fatal("unmatched callback reached provider or sink")
+	}
+	state, flow := start(t, h)
+	if callback(h, state, flow).Code != 303 || bytes.Count(buf.Bytes(), []byte("\n")) != 34 {
+		t.Fatal("matched callback lost after budget exhaustion")
 	}
 }
