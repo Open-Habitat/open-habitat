@@ -45,9 +45,7 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   const loginLayout = await page.evaluate(() => {
     const cardNode = document.querySelector(".ah-login-card");
     const title = document.querySelector(".ah-login-card h1");
-    const hostNode = document.querySelector(".ah-login-host");
-    if (!cardNode || !title || !hostNode)
-      throw new Error("login layout missing");
+    if (!cardNode || !title) throw new Error("login layout missing");
     const card = cardNode.getBoundingClientRect();
     return {
       width: card.width,
@@ -55,7 +53,6 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
       verticalMidpoint: card.top + card.height / 2,
       size: parseFloat(getComputedStyle(title).fontSize),
       face: getComputedStyle(title).fontFamily,
-      mono: getComputedStyle(hostNode).fontFamily,
       loaded: document.fonts.check('600 20px "Instrument Sans"'),
     };
   });
@@ -66,7 +63,6 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   expect(loginLayout.size).toBeGreaterThanOrEqual(19);
   expect(loginLayout.size).toBeLessThanOrEqual(22);
   expect(loginLayout.face).toContain("Instrument Sans");
-  expect(loginLayout.mono).toContain("JetBrains Mono");
   expect(loginLayout.loaded).toBe(true);
   const fontResources = await page.evaluate(() =>
     performance
@@ -75,9 +71,6 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
       .map((entry) => entry.name),
   );
   expect(fontResources.some((url) => url.includes("instrument-sans"))).toBe(
-    true,
-  );
-  expect(fontResources.some((url) => url.includes("jetbrains-mono"))).toBe(
     true,
   );
   expect(

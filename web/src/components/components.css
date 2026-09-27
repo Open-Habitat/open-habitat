@@ -90,10 +90,6 @@
   font-size: var(--ah-size-ui);
   color: var(--ah-ink-2);
 }
-.ah-login-card .ah-login-host {
-  color: var(--ah-muted);
-  font-size: var(--ah-size-meta);
-}
 .ah-rail {
   min-width: 0;
   min-height: 0;
