@@ -85,12 +85,12 @@ passed='{"status":"passed","scope":"jit-provision","pid1":"systemd","uids":[2103
 if python3 -c "$validator" "$passed"; then echo 'missing concurrency accepted' >&2; exit 1; fi
 passed=$(python3 - "$passed" <<'JIT_ORACLE'
 import json,sys
-p=json.loads(sys.argv[1]);p.update(concurrent_clients_released=True,pending_restart_denied=True,config_drift_denied=True)
+p=json.loads(sys.argv[1]);p.update(concurrent_clients_released=True,pending_restart_refused=True,broker_config_drift_denied=True)
 print(json.dumps(p))
 JIT_ORACLE
 )
 python3 -c "$validator" "$passed"
-for missing in pending_restart_denied config_drift_denied; do
+for missing in pending_restart_refused broker_config_drift_denied; do
   broken=$(python3 - "$passed" "$missing" <<'JIT_NEGATIVE'
 import json,sys
 p=json.loads(sys.argv[1]);p.pop(sys.argv[2]);print(json.dumps(p))
