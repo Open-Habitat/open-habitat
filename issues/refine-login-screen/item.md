@@ -2,7 +2,7 @@
 created: 2026-09-27
 updated: 2026-09-27
 type: task
-status: open
+status: in-progress
 priority: high
 lane: login-ui
 collision: [design-system/]
