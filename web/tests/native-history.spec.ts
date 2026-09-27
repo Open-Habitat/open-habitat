@@ -64,6 +64,20 @@ test("@native-history native page, continuation, unknown, reopen and no writes",
       .getByText("Synteettinen viesti 0", { exact: true }),
   ).toBeVisible();
 });
+test("@native-history empty native session is read-only", async ({ page }) => {
+  await fixture(page, "empty");
+  await login(page);
+  await page.goto(`/agents/${agent}`);
+  await expect(
+    page.getByText("Natiivissa historiassa ei ole vielä viestejä."),
+  ).toBeVisible();
+  await expect(page.locator(".ah-feed li")).toHaveCount(0);
+  await page.screenshot({
+    path: "../issues/build-history-view/assets/empty.png",
+    fullPage: true,
+  });
+  await fixture(page, "ready");
+});
 test("@native-history mapped identity isolates native content", async ({
   page,
 }) => {

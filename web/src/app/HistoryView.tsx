@@ -195,6 +195,7 @@ export function HistoryView({
           content: <Entry key={entry.entry_key} entry={entry} />,
         }))}
         historyMode="pagedAccessible"
+        emptyLabel="Natiivissa historiassa ei ole vielä viestejä."
         onJumpToLatest={() => {}}
         problem={{
           title: "Historiaa ei saada",

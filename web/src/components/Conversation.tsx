@@ -10,6 +10,7 @@ export function ConversationTimeline({
   items,
   newContentCount = 0,
   historyMode,
+  emptyLabel = "Aloita keskustelu.",
   problem,
   onJumpToLatest,
   onHistoryModeChange,
@@ -18,6 +19,7 @@ export function ConversationTimeline({
   items: TimelineItem[];
   newContentCount?: number;
   historyMode: "virtualized" | "pagedAccessible";
+  emptyLabel?: string;
   problem?: ProblemView;
   onJumpToLatest: () => void;
   onHistoryModeChange?: (mode: "virtualized" | "pagedAccessible") => void;
@@ -45,7 +47,7 @@ export function ConversationTimeline({
         </div>
       ) : null}
       {state === "loading" ? <p>Ladataan keskustelua…</p> : null}
-      {state === "empty" ? <p>Aloita keskustelu.</p> : null}
+      {state === "empty" ? <p>{emptyLabel}</p> : null}
       {state === "error" || state === "unavailable" ? (
         <InlineNotice
           title={problem?.title ?? "Historiaa ei saada"}

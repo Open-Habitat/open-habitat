@@ -232,6 +232,11 @@ func main() {
 						http.Error(w, "fixture failed", 500)
 						return
 					}
+				} else if mode == "empty" {
+					if e := os.WriteFile(path, []byte(`{"type":"session","version":3,"id":"11111111-1111-4111-8111-111111111111","cwd":"`+filepath.Join(tmp, "alice", "src", "ordinary-dir")+`"}`+"\n"), 0600); e != nil {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
 				} else if mode == "corrupt" {
 					if e := os.WriteFile(path, []byte(`{"type":"session","version":3,"id":"11111111-1111-4111-8111-111111111111","cwd":"`+filepath.Join(tmp, "alice", "src", "ordinary-dir")+`"}`+"\n"+`{"type":"message","id":"a","message":{`+"\n"), 0600); e != nil {
 						http.Error(w, "fixture failed", 500)
