@@ -2,9 +2,11 @@
 created: 2026-09-27
 updated: 2026-09-27
 type: bug
-status: open
+status: fixed
 priority: high
 lane: auth-incident
+closed: 2026-09-27
+closed_by: pi
 ---
 
 # Investigate first live GitHub login failure
@@ -34,3 +36,13 @@ Jari first attempted live GitHub login on 2026-09-27 around 14:55 local time on 
 ### 2026-09-27T16:37:55Z · @pi
 
 2026-09-27 pilot.6 installed official gh 2.46.0 through hashed Fleetrepo guest installer; native handoff still failed. Root read-only fixed-format probes (no credentials or identities emitted) show helper string produced by actual gh auth setup-git matches exact !/usr/bin/gh auth git-credential, whereas product nativegh.Adapter.observe only accepts exact !gh auth git-credential. Account, broker binding, private file, and active daemon service/socket exist, no pending marker; browser session/native gh still unproved. Product issue @accept-absolute-gh-helper owns narrow validated fix.
+
+### 2026-09-27T16:57:44Z · @pi
+
+2026-09-27 real first login VERIFIED on test guest pilot.7 (product b0ff2f7): Jari-authorized Chrome on rowan returned /workspaces with no auth_error; same-origin browser GET /auth/session returned HTTP 200 and GET /api/v1/snapshot returned HTTP 200 with schema_version 1 and snapshot_id. Bounded gateway logs recorded accepted OAuth callback; root read-only broker state: exactly one binding, one JIT Unix account, one root-controlled private binding file, no pending marker; daemon socket/service active. As mapped UID, native gh auth status succeeded and gh api user numeric ID equaled the root binding subject (boolean equality only, no output). Origin TLS and anonymous Access interception verified after switch. This is a real Chrome/live guest proof for Jari only; no second-user or cross-UID live proof yet.
+
+## Resolution
+
+### 2026-09-27T16:57:44Z · @pi
+
+Live Chrome session, browser snapshot and native mapped gh proved on pilot.7.
