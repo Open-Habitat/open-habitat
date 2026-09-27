@@ -7,6 +7,11 @@ priority: high
 related: ['@design-first-use-onboarding', '@build-history-view']
 lane: account-ui
 collision: [web/src/app/App.tsx, design-system/]
+commits:
+- hash: 4226d06
+  summary: Add account shelf and snapshot-backed GitHub settings
+- hash: 88c314c
+  summary: Exercise web logout through account menu in workspace journey
 ---
 
 # Add account shelf and GitHub settings view
