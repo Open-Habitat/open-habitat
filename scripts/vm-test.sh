@@ -253,7 +253,17 @@ try:
 except (ValueError,TypeError,AttributeError,KeyError):sys.exit(1)
 CONCURRENT_CHECK
   then
-    fail boot_proof_failed "JIT concurrent guest failed closed (VM exit $vm_status, ${duration}s; proof missing or rejected)" 2
+    reason=$(python3 - "$proof" <<'CONCURRENT_REASON'
+import json,re,sys
+try:
+ p=json.loads(sys.argv[1]);print(re.sub('[^A-Za-z0-9 _./:-]',' ',str(p.get('reason','receipt rejected'))[:150]))
+except (ValueError,TypeError):print('missing proof')
+CONCURRENT_REASON
+)
+    # Private diagnostic only; never echo the raw serial (it may contain secrets).
+    debug_log=$(mktemp "$cache/jit-concurrent-debug.XXXXXXXX")
+    chmod 600 "$debug_log"; cp "$run/serial.log" "$debug_log"
+    fail boot_proof_failed "JIT concurrent guest failed closed (VM exit $vm_status, ${duration}s; check=$reason; private=$debug_log)" 2
   fi
   if ! python3 - "$run/serial.log" "$run/native-agent-host" <<'CONCURRENT_TOKEN_SCAN'
 import pathlib,sys
