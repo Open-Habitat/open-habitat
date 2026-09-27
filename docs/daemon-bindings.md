@@ -1,0 +1,7 @@
+# Daemon binding storage
+
+The gateway's secrets remain under `/etc/native-agent-host` (root:gateway 0750). The broker writes each daemon's binding to `/etc/omega-habitat/daemon/user-mappings/daemon-<username>.json` as root:that user's private primary group, mode 0640. The three directories from `omega-habitat` through `user-mappings` are root:root 0711. `/etc` and its ancestors must be root-owned and not group/other writable. Daemons must not join the gateway group or receive ACLs on the gateway secret directory.
+
+A daemon can traverse the binding directory by known pathname but cannot enumerate it; it can read only its own binding through its primary group. Directory entry names can still be probed by stat with a guessed name; they are not secret. The broker checks the directory policy before reservation, creation, and verification. The daemon independently opens each directory using no-follow descriptor-relative traversal (`O_PATH` for execute-only directories), checks owner/group/mode and opens its binding with `O_NOFOLLOW`. A binding with wrong ownership, permissions, link count, size, or contents is refused.
+
+The product's systemd daemon template uses the new path. The gateway template and gateway configuration path are unchanged. Installing the directory hierarchy, updating deployed units and validating host policy are operator/installer responsibilities; these source checks do not constitute live deployment evidence.

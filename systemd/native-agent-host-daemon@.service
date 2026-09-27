@@ -5,7 +5,7 @@ Requires=native-agent-host-daemon@%i.socket
 [Service]
 User=%i
 Group=%i
-ExecStart=/opt/native-agent-host/current/native-agent-host daemon exec --config /etc/native-agent-host/daemon-%i.json
+ExecStart=/opt/native-agent-host/current/native-agent-host daemon exec --config /etc/omega-habitat/daemon/user-mappings/daemon-%i.json
 NoNewPrivileges=yes
 ProtectSystem=full
 ProtectHome=no

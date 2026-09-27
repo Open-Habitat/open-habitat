@@ -73,7 +73,7 @@ func validSubject(s string) bool {
 	return e == nil && n > 0 && strconv.FormatUint(n, 10) == s && len(s) <= maxField
 }
 func validate(c Config, testPath bool) error {
-	if c.BindingFile != "" && c.BindingFile != "/etc/native-agent-host/daemon-"+c.Username+".json" {
+	if c.BindingFile != "" && c.BindingFile != "/etc/omega-habitat/daemon/user-mappings/daemon-"+c.Username+".json" {
 		return denied
 	}
 	if c.GatewayUID <= 0 || c.UID <= 0 || c.UID != os.Geteuid() || c.Provider != "github" || !validSubject(c.Subject) || c.Username == "" || len(c.Username) > maxField || c.Home == "" || !filepath.IsAbs(c.Home) || filepath.Clean(c.Home) != c.Home || (socketOK(c.Socket) && c.Socket != "/run/native-agent-host/users/"+c.Username+"/daemon.sock") || (!socketOK(c.Socket) && !(testPath && filepath.IsAbs(c.Socket))) {
@@ -93,30 +93,44 @@ func verifyBinding(c Config) error {
 	if c.BindingFile == "" {
 		return nil
 	}
-	etc, err := unix.Open("/etc", unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	return verifyBindingUnder("/etc", c, 0, 0, c.UID)
+}
+
+// verifyBindingUnder walks only root-controlled directories via descriptors.
+// The root and expected owners are parameters solely for disposable synthetic tests.
+func verifyBindingUnder(etcPath string, c Config, rootUID, rootGID, privateGID int) error {
+	etc, err := unix.Open(etcPath, unix.O_PATH|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
 	if err != nil {
 		return denied
 	}
 	defer unix.Close(etc)
 	var st unix.Stat_t
-	if unix.Fstat(etc, &st) != nil || st.Uid != 0 || st.Mode&unix.S_IFMT != unix.S_IFDIR || st.Mode&0022 != 0 {
+	if unix.Fstat(etc, &st) != nil || st.Uid != uint32(rootUID) || st.Mode&unix.S_IFMT != unix.S_IFDIR || st.Mode&0022 != 0 {
 		return denied
 	}
-	dir, err := unix.Openat(etc, "native-agent-host", unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
-	if err != nil {
-		return denied
+	parent := etc
+	for _, part := range []string{"omega-habitat", "daemon", "user-mappings"} {
+		dir, err := unix.Openat(parent, part, unix.O_PATH|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+		if err != nil {
+			return denied
+		}
+		if parent != etc {
+			unix.Close(parent)
+		}
+		parent = dir
+		if unix.Fstat(dir, &st) != nil || st.Uid != uint32(rootUID) || st.Gid != uint32(rootGID) || st.Mode&unix.S_IFMT != unix.S_IFDIR || st.Mode&07777 != 0711 {
+			unix.Close(dir)
+			return denied
+		}
 	}
-	defer unix.Close(dir)
-	if unix.Fstat(dir, &st) != nil || st.Uid != 0 || st.Mode&unix.S_IFMT != unix.S_IFDIR || st.Mode&0022 != 0 {
-		return denied
-	}
-	fd, err := unix.Openat(dir, "daemon-"+c.Username+".json", unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK|unix.O_CLOEXEC, 0)
+	defer unix.Close(parent)
+	fd, err := unix.Openat(parent, "daemon-"+c.Username+".json", unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK|unix.O_CLOEXEC, 0)
 	if err != nil {
 		return denied
 	}
 	f := os.NewFile(uintptr(fd), "binding")
 	defer f.Close()
-	if unix.Fstat(fd, &st) != nil || st.Uid != 0 || int(st.Gid) != c.UID || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&0777 != 0640 || st.Nlink != 1 || st.Size < 1 || st.Size > 4096 {
+	if unix.Fstat(fd, &st) != nil || st.Uid != uint32(rootUID) || st.Gid != uint32(privateGID) || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&07777 != 0640 || st.Nlink != 1 || st.Size < 1 || st.Size > 4096 {
 		return denied
 	}
 	b := make([]byte, st.Size)

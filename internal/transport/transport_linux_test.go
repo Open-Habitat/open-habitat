@@ -99,7 +99,7 @@ func TestJITBindingFailsClosedWithoutRootOwnedConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := Config{GatewayUID: uid, UID: os.Geteuid(), Username: u.Username, Home: u.HomeDir, Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: "42", BindingFile: "/etc/native-agent-host/daemon-" + u.Username + ".json"}
+	cfg := Config{GatewayUID: uid, UID: os.Geteuid(), Username: u.Username, Home: u.HomeDir, Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: "42", BindingFile: "/etc/omega-habitat/daemon/user-mappings/daemon-" + u.Username + ".json"}
 	if validate(cfg, false) == nil {
 		t.Fatal("accepted absent or untrusted binding")
 	}
@@ -110,7 +110,7 @@ func TestJITBindingFailsClosedWithoutRootOwnedConfig(t *testing.T) {
 }
 
 func TestJITBindingNumericIdentityAndStrictDecode(t *testing.T) {
-	cfg := Config{GatewayUID: 21003, UID: 22010, Username: "pilot", Home: "/home/pilot", Socket: "/run/native-agent-host/users/pilot/daemon.sock", Provider: "github", Subject: "42", BindingFile: "/etc/native-agent-host/daemon-pilot.json"}
+	cfg := Config{GatewayUID: 21003, UID: 22010, Username: "pilot", Home: "/home/pilot", Socket: "/run/native-agent-host/users/pilot/daemon.sock", Provider: "github", Subject: "42", BindingFile: "/etc/omega-habitat/daemon/user-mappings/daemon-pilot.json"}
 	encode := func(c Config) []byte {
 		b, err := json.Marshal(struct {
 			Component string `json:"component"`
@@ -325,4 +325,87 @@ func TestResponseBoundsAndExactSuccess(t *testing.T) {
 		_ = ln.Close()
 		<-done
 	}
+}
+
+// The binding walk is exercised against a disposable tree, never /etc or a
+// real account. File ownership expectations use this test process's UID/GID.
+func TestBindingTraversalPolicy(t *testing.T) {
+	root := t.TempDir()
+	etc := filepath.Join(root, "etc")
+	if err := os.Mkdir(etc, 0755); err != nil {
+		t.Fatal(err)
+	}
+	parent := etc
+	for _, name := range []string{"omega-habitat", "daemon", "user-mappings"} {
+		parent = filepath.Join(parent, name)
+		if err := os.Mkdir(parent, 0711); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(parent, 0711); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cfg := Config{GatewayUID: 21003, UID: 22010, Username: "pilot", Home: "/home/pilot", Socket: "/run/native-agent-host/users/pilot/daemon.sock", Provider: "github", Subject: "42", BindingFile: "/etc/omega-habitat/daemon/user-mappings/daemon-pilot.json"}
+	body, err := json.Marshal(struct {
+		Component string `json:"component"`
+		Handoff   Config `json:"handoff"`
+	}{"daemon", cfg})
+	if err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(parent, "daemon-pilot.json")
+	if err := os.WriteFile(file, body, 0640); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(file, 0640); err != nil {
+		t.Fatal(err)
+	}
+	check := func(want bool) {
+		t.Helper()
+		if ok := verifyBindingUnder(etc, cfg, os.Getuid(), os.Getgid(), os.Getgid()) == nil; ok != want {
+			t.Fatalf("binding accepted=%v, want %v", ok, want)
+		}
+	}
+	check(true)
+	if verifyBindingUnder(etc, cfg, os.Getuid()+1, os.Getgid(), os.Getgid()) == nil || verifyBindingUnder(etc, cfg, os.Getuid(), os.Getgid()+1, os.Getgid()) == nil || verifyBindingUnder(etc, cfg, os.Getuid(), os.Getgid(), os.Getgid()+1) == nil {
+		t.Fatal("accepted wrong owner or private group")
+	}
+	for _, p := range []string{filepath.Join(etc, "omega-habitat"), filepath.Join(etc, "omega-habitat", "daemon"), parent} {
+		for _, mode := range []os.FileMode{0755, 0700, 0731} {
+			if err := os.Chmod(p, mode); err != nil {
+				t.Fatal(err)
+			}
+			check(false)
+			if err := os.Chmod(p, 0711); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	for _, mode := range []os.FileMode{0600, 0660, 0644} {
+		if err := os.Chmod(file, mode); err != nil {
+			t.Fatal(err)
+		}
+		check(false)
+	}
+	if err := os.Chmod(file, 0640); err != nil {
+		t.Fatal(err)
+	}
+	check(true)
+	if err := os.Remove(file); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(root, "other"), file); err != nil {
+		t.Fatal(err)
+	}
+	check(false)
+	if err := os.Remove(file); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(parent); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(root, "other"), parent); err != nil {
+		t.Fatal(err)
+	}
+	check(false)
 }

@@ -89,7 +89,7 @@ const (
 	getfacl    = "/usr/bin/getfacl"
 	systemctl  = "/usr/bin/systemctl"
 	homeBase   = "/home"
-	configBase = "/etc/native-agent-host"
+	configBase = "/etc/omega-habitat/daemon/user-mappings"
 	socketBase = "/run/native-agent-host/users"
 )
 
@@ -182,9 +182,14 @@ func safeParentsWithStat(path string, stat func(string) (unix.Stat_t, error)) er
 // configParentPolicy checks the protected installation directory as well as
 // every ancestor. In particular, safeParents alone does not constrain group
 // identity or world-readable/searchable mode on the final directory.
-func configParentPolicy(base string, gatewayGID uint32, stat func(string) (unix.Stat_t, error)) error {
-	if safeParentsWithStat(base, stat) != nil || ownerWithStat(base, 0, gatewayGID, 0750, true, stat) != nil {
+func configParentPolicy(base string, stat func(string) (unix.Stat_t, error)) error {
+	if safeParentsWithStat(base, stat) != nil {
 		return ErrInvalid
+	}
+	for _, p := range []string{filepath.Dir(filepath.Dir(base)), filepath.Dir(base), base} {
+		if ownerWithStat(p, 0, 0, 0711, true, stat) != nil {
+			return ErrInvalid
+		}
 	}
 	return nil
 }
@@ -216,7 +221,7 @@ func (e *LinuxHostExecutor) available(ctx context.Context, name string, uid uint
 			return false, availabilityGuard("parent_policy")
 		}
 	}
-	if owner(socketBase, 0, e.GatewayGID, 0710, true) != nil || configParentPolicy(configBase, e.GatewayGID, statNoFollow) != nil {
+	if owner(socketBase, 0, e.GatewayGID, 0710, true) != nil || configParentPolicy(configBase, statNoFollow) != nil {
 		return false, availabilityGuard("parent_policy")
 	}
 	if e.parentACL(ctx, 0) != nil {
@@ -352,7 +357,7 @@ func (e *LinuxHostExecutor) Step(ctx context.Context, phase string, i ExecutorId
 		return owner(p, i.uid, i.uid, 0700, true)
 	case "config":
 		p := filepath.Join(configBase, "daemon-"+i.username+".json")
-		if configParentPolicy(configBase, e.GatewayGID, statNoFollow) != nil || owner(filepath.Join(homeBase, i.username), i.uid, i.uid, 0700, true) != nil {
+		if configParentPolicy(configBase, statNoFollow) != nil || owner(filepath.Join(homeBase, i.username), i.uid, i.uid, 0700, true) != nil {
 			return ErrInvalid
 		}
 		b, err := e.config(i)
@@ -382,7 +387,7 @@ func (e *LinuxHostExecutor) Step(ctx context.Context, phase string, i ExecutorId
 		if closeErr != nil {
 			return closeErr
 		}
-		d, err := os.Open(configBase)
+		d, err := os.OpenFile(configBase, os.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW, 0)
 		if err != nil {
 			return err
 		}
@@ -587,7 +592,7 @@ func (e *LinuxHostExecutor) unit(ctx context.Context, i ExecutorIdentity, retry 
 	}
 	service := "native-agent-host-daemon@" + i.username + ".service"
 	effective, err := e.command(ctx, systemctl, "show", service, "--property=User,Group,NoNewPrivileges,ExecStart", "--no-pager")
-	if err != nil || !properties(effective, map[string]string{"User": i.username, "Group": i.username, "NoNewPrivileges": "yes"}) || !strings.Contains(string(effective), "/opt/native-agent-host/current/native-agent-host") || !strings.Contains(string(effective), "--config /etc/native-agent-host/daemon-"+i.username+".json") {
+	if err != nil || !properties(effective, map[string]string{"User": i.username, "Group": i.username, "NoNewPrivileges": "yes"}) || !strings.Contains(string(effective), "/opt/native-agent-host/current/native-agent-host") || !strings.Contains(string(effective), "--config "+filepath.Join(configBase, "daemon-"+i.username+".json")) {
 		return ErrInvalid
 	}
 	// Inspect effective socket properties too: systemctl cat includes the base
@@ -767,7 +772,7 @@ func (e *LinuxHostExecutor) Verify(ctx context.Context, i ExecutorIdentity) erro
 		return err
 	}
 	p := filepath.Join(configBase, "daemon-"+i.username+".json")
-	if configParentPolicy(configBase, e.GatewayGID, statNoFollow) != nil || owner(p, 0, i.uid, 0640, false) != nil {
+	if configParentPolicy(configBase, statNoFollow) != nil || owner(p, 0, i.uid, 0640, false) != nil {
 		return ErrInvalid
 	}
 	want, err := e.config(i)
