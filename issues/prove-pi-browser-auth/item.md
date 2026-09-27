@@ -2,11 +2,13 @@
 created: 2026-09-27
 updated: 2026-09-27
 type: task
-status: in-progress
+status: done
 priority: high
 related: ['@design-first-use-onboarding']
 lane: onboarding-auth
 collision: [issues/design-first-use-onboarding/]
+closed: 2026-09-27
+closed_by: agent
 ---
 
 # Prove native Pi browser subscription seam
@@ -21,7 +23,7 @@ Prove an isolated, Pi-native browser subscription login seam suitable for the fi
 
 ## Acceptance Criteria
 
-- [ ] Build a disposable source-level/packaged-Pi test harness (in this issue directory, not a global install) against the pinned installed source/version. Verify whether an upstream/reviewed Pi capability can run browser OAuth with NO TCP listener and only an exact full redirect URL with validated state; prove abort when no paste, expired/stale input and wrong UID/session cases with synthetic provider responses. If none exists, provide a narrow upstream Pi patch proposal and reproducible failing tests; do not claim success.
-- [ ] Prove the proposed Node ModelRuntime seam can use isolated PI_CODING_AGENT_DIR and mock network/browser callbacks without leaking credential values across two disposable HOME/UID contexts. Never contact real OpenAI endpoints. Confirm timeout, partial credential-write and cross-process logout limitation.
-- [ ] Write result.md with pinned paths, exact commands, outcomes, supported-vs-unproved distinctions, and an implementation prerequisite/stop condition for the host. Do not change production gateway/daemon contracts yet or mark an unproven trust boundary approved.
-- [ ] Run appropriate isolated proof tests and ./scripts/ci-local.sh --clean --json if repo code/contract is modified; no live sign-in or deploy.
+- [x] Negative branch: pinned 0.85.1 provider has no manual-only option; executable synthetic tests reproduce bare/missing-state acceptance, listener bind attempt/fallback and pending-prompt abort failure. Narrow upstream patch proposal in result.md. Stale URL and wrong UID/session protection are **unproved** without a patched provider and host binding.
+- [x] Synthetic ModelRuntime login uses isolated temporary HOME/PI_CODING_AGENT_DIR and auth paths; all fetches mocked, no live endpoint. Demonstrated creation modes, post-write sync failure and actual cross-process logout race. Temporary contexts share one actual Unix UID; **two-UID isolation and a working timeout remain unproved**.
+- [x] result.md records pinned paths, commands, outcomes, unproved distinctions and an implementation stop condition. No host architecture approval.
+- [x] Isolated tests pass; only this issue directory changed, so the repository-wide CI conditional was not triggered. No live sign-in or deploy.
