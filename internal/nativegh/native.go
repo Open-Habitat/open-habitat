@@ -27,6 +27,7 @@ import (
 const timeout = 4 * time.Second
 
 var denied = errors.New("native GitHub credentials unavailable")
+var noAuth = errors.New("gh reports no known GitHub hosts")
 var loginPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{0,38}$`)
 
 type Command struct {
@@ -58,7 +59,15 @@ func (e Executor) Run(ctx context.Context, c Command) ([]byte, error) {
 	} else {
 		cmd.Stdout = io.Discard
 	}
-	cmd.Stderr = io.Discard
+	// Capture only auth-status diagnostics, returning solely a recognized
+	// absence signal. Never return or log raw child output.
+	statusProbe := c.Program == "gh" && len(c.Args) == 4 && c.Args[0] == "auth" && c.Args[1] == "status" && c.Args[2] == "--hostname" && c.Args[3] == "github.com"
+	var diagnostic bounded
+	if statusProbe {
+		cmd.Stderr = &diagnostic
+	} else {
+		cmd.Stderr = io.Discard
+	}
 	if cmd.Start() != nil {
 		return nil, denied
 	}
@@ -75,10 +84,19 @@ func (e Executor) Run(ctx context.Context, c Command) ([]byte, error) {
 	close(done)
 	// Kill surviving helper descendants while the process group still exists.
 	_ = syscall.Kill(-pid, syscall.SIGKILL)
-	if err != nil || out.overflow {
+	if err != nil || out.overflow || diagnostic.overflow {
+		if statusProbe && err != nil && ctx.Err() == nil && !diagnostic.overflow && absentDiagnostic(diagnostic.Bytes()) {
+			return nil, noAuth
+		}
 		return nil, denied
 	}
 	return out.Bytes(), nil
+}
+
+func absentDiagnostic(b []byte) bool {
+	// gh 2.46's complete no-hosts diagnostic. Unknown/new wording fails
+	// closed; never infer absence merely from a nonzero exit code.
+	return strings.TrimSpace(string(b)) == "You are not logged into any GitHub hosts. To log in, run: gh auth login"
 }
 
 type bounded struct {
@@ -162,16 +180,16 @@ func (a *Adapter) git(ctx context.Context, output bool, in io.Reader, args ...st
 	return a.call(ctx, "git", output, in, args...)
 }
 func (a *Adapter) identity(ctx context.Context) (string, bool) {
-	login, match, _ := a.identityDetail(ctx)
+	login, match, _, _ := a.identityDetail(ctx)
 	return login, match
 }
-func (a *Adapter) identityDetail(ctx context.Context) (string, bool, bool) {
+func (a *Adapter) identityDetail(ctx context.Context) (string, bool, bool, bool) {
 	if _, e := a.gh(ctx, false, nil, "auth", "status", "--hostname", "github.com"); e != nil {
-		return "", false, false
+		return "", false, false, errors.Is(e, noAuth)
 	}
 	b, e := a.gh(ctx, true, nil, "api", "user", "--jq", "{id: .id, login: .login}")
 	if e != nil {
-		return "", false, false
+		return "", false, false, false
 	}
 	var v struct {
 		ID    json.Number `json:"id"`
@@ -180,14 +198,14 @@ func (a *Adapter) identityDetail(ctx context.Context) (string, bool, bool) {
 	d := json.NewDecoder(strings.NewReader(string(b)))
 	d.UseNumber()
 	if d.Decode(&v) != nil || d.Decode(new(any)) != io.EOF || !loginPattern.MatchString(v.Login) {
-		return "", false, false
+		return "", false, false, false
 	}
 	id, e := strconv.ParseUint(string(v.ID), 10, 64)
 	if e != nil || id == 0 || strconv.FormatUint(id, 10) != string(v.ID) {
-		return "", false, false
+		return "", false, false, false
 	}
 	match := string(v.ID) == a.subject
-	return v.Login, match, !match
+	return v.Login, match, !match, false
 }
 
 type statusFlight struct {
@@ -196,8 +214,8 @@ type statusFlight struct {
 }
 
 // Status makes a fresh, bounded observation; overlapping readers share only
-// the in-flight result (never a stale cached state). A failed auth command
-// alone cannot prove absence: it may be a broken CLI, keyring, or network.
+// the in-flight result (never a stale cached state). Only gh's explicit
+// no-hosts diagnostic proves absence; other failures remain unknown.
 func (a *Adapter) Status(ctx context.Context) string {
 	if ctx.Err() != nil {
 		return "unknown"
@@ -234,11 +252,11 @@ func (a *Adapter) checkStatus(ctx context.Context) string {
 		return "unknown" // mutation in progress; cannot infer its eventual outcome
 	}
 	defer a.mu.Unlock()
-	login, match, mismatch := a.identityDetail(ctx)
+	login, match, mismatch, absent := a.identityDetail(ctx)
 	if ctx.Err() != nil {
 		return "unknown"
 	}
-	if mismatch {
+	if absent || mismatch {
 		return "disconnected"
 	}
 	if !match {

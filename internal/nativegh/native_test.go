@@ -50,7 +50,7 @@ func (f *fake) Run(_ context.Context, c Command) ([]byte, error) {
 	switch key {
 	case "gh auth status --hostname github.com":
 		if !f.logged {
-			return nil, denied
+			return nil, noAuth
 		}
 	case "gh api user --jq {id: .id, login: .login}":
 		return []byte(fmt.Sprintf(`{"id":%s,"login":"alice"}`, f.id)), nil
@@ -102,6 +102,22 @@ func fixture(t *testing.T, keyring bool) (*Adapter, *fake, string) {
 	}
 	return a, f, home
 }
+func TestAbsentDiagnosticStrict(t *testing.T) {
+	for _, tc := range []struct {
+		text   string
+		absent bool
+	}{
+		{"You are not logged into any GitHub hosts. To log in, run: gh auth login\n", true},
+		{"authentication failed", false},
+		{"You are not logged into any GitHub hosts. To log in, run: gh auth login\nsecret", false},
+		{"You are not logged into any GitHub hosts. To log in, run: gh auth login\nnetwork error", false},
+	} {
+		if got := absentDiagnostic([]byte(tc.text)); got != tc.absent {
+			t.Fatalf("unexpected absence signal: %q", tc.text)
+		}
+	}
+}
+
 func TestStatusFreshSyntheticIdentityAndErrors(t *testing.T) {
 	a, f, _ := fixture(t, true)
 	f.logged = true
@@ -127,10 +143,10 @@ func TestStatusFreshSyntheticIdentityAndErrors(t *testing.T) {
 	}
 	f.fail = ""
 	f.logged = false
-	if got := a.Status(context.Background()); got != "unknown" {
+	if got := a.Status(context.Background()); got != "disconnected" {
 		t.Fatal(got)
 	}
-	// An auth-status error cannot prove there is no usable keyring credential.
+	// Only explicit native absence, not an arbitrary error, proves no login.
 	for _, cmd := range f.log {
 		if strings.Contains(cmd, f.token) || strings.Contains(cmd, "auth login") || strings.Contains(cmd, "auth logout") {
 			t.Fatal("unsafe status command", cmd)
