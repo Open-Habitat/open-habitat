@@ -2,10 +2,12 @@
 created: 2026-09-27
 updated: 2026-09-27
 type: task
-status: in-progress
+status: done
 priority: normal
 lane: brand-brief
 collision: [docs/]
+closed: 2026-09-27
+closed_by: pi
 ---
 
 # Prepare Omega Habitat design AI brief
