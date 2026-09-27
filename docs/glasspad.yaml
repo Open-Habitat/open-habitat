@@ -40,6 +40,9 @@ groups:
       - slug: adr-0004-first-login-user-provisioning
         title: ADR 0004 — Ensikirjautumisen Unix-käyttäjä
         desc: Hyväksytty GitHub-kirjautumisen käyttäjäprovisioinnin raja.
+      - slug: daemon-bindings
+        title: Daemonien yksityiset sidonnat
+        desc: Juuren hallitsema hakemistopolku ja käyttäjäkohtaiset käyttöoikeudet.
       - slug: interfaces
         title: Rajapinnat
         desc: Yhteyksien merkitys ja vielä määriteltävä käyttäytyminen.
