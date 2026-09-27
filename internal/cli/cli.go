@@ -254,7 +254,7 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 			}
 			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 			defer stop()
-			if err := daemon.ServeHTTP(ctx, ln, *cfg.Handoff, adapter.Consumer(), daemonHealthMux()); err != nil {
+			if err := daemon.ServeHTTP(ctx, ln, *cfg.Handoff, adapter.Consumer(), adapter.Status, daemonHealthMux()); err != nil {
 				return nil, system("server_failed", "daemon socket service failed")
 			}
 			return nil, nil

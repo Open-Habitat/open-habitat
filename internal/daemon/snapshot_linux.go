@@ -3,6 +3,7 @@
 package daemon
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/maintainer/native-agent-host/internal/nativegh"
 	"github.com/maintainer/native-agent-host/internal/transport"
 )
 
@@ -43,15 +45,25 @@ func snapshotError(w http.ResponseWriter, status int, code string) {
 // SnapshotHandler uses the same guarded socket and trusted configuration as the
 // native handoff. discover is injectable only at construction, never per request.
 func SnapshotHandler(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery) http.Handler {
-	return snapshotHandlerWithHistory(cfg, trusted, discover, nativeSessions, cfg.Home)
+	status := func(context.Context) string { return "unknown" }
+	if adapter, err := nativegh.New(cfg.Home, cfg.Subject, nil, nativegh.LinuxSecretService()); err == nil {
+		status = adapter.Status
+	}
+	return SnapshotHandlerWithStatus(cfg, trusted, discover, status)
+}
+
+// SnapshotHandlerWithStatus shares the daemon's native adapter with the handoff
+// so a snapshot cannot observe credentials midway through a mutation.
+func SnapshotHandlerWithStatus(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, status func(context.Context) string) http.Handler {
+	return snapshotHandlerWithStatus(cfg, trusted, discover, nativeSessions, cfg.Home, status)
 }
 
 // SnapshotHandlerWithNativeRoot is a disposable fixture seam for cross-package
 // transport tests; the production constructor always reads the mapped home.
 func SnapshotHandlerWithNativeRoot(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, root string) http.Handler {
-	return snapshotHandlerWithHistory(cfg, trusted, discover, func(c transport.Config) ([]nativeSession, error) { c.Home = root; return nativeSessions(c) }, root)
+	return snapshotHandlerWithStatus(cfg, trusted, discover, func(c transport.Config) ([]nativeSession, error) { c.Home = root; return nativeSessions(c) }, root, func(context.Context) string { return "unknown" })
 }
-func snapshotHandlerWithHistory(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string) http.Handler {
+func snapshotHandlerWithStatus(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) string) http.Handler {
 	instance, ok := uuid()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !ok || trusted == nil || !trusted(r) || r.ProtoMajor != 1 || r.ProtoMinor != 1 || r.Method != http.MethodGet || r.RequestURI != SnapshotPath || r.URL.Path != SnapshotPath || r.URL.RawQuery != "" || r.Host != "unix" || transport.ValidateConfig(cfg) != nil {
@@ -163,6 +175,10 @@ func snapshotHandlerWithHistory(cfg transport.Config, trusted func(*http.Request
 				}
 			}
 		}
+		ghState := nativeStatus(r.Context())
+		if ghState != "connected" && ghState != "disconnected" && ghState != "partial" && ghState != "pending" {
+			ghState = "unknown"
+		}
 		// No event stream or command consumer exists yet. The watermark is at zero
 		// for this daemon incarnation; writes remain disabled.
 		body := map[string]any{"schema_version": 1, "snapshot_id": snapID, "captured_at": at, "server_instance_id": instance, "event_cursor": "ev1:" + instance + ":0", "oldest_replay_cursor": "ev1:" + instance + ":0", "user_observation_token": opaque("obs_", snapID+":user"), "write_state": "read_only", "identity": map[string]string{"web_identity_id": expected, "display_name": display}, "sources": []any{fact("filesystem", state), fact("pi_history", func() string {
@@ -170,7 +186,7 @@ func snapshotHandlerWithHistory(cfg transport.Config, trusted func(*http.Request
 				return "unavailable"
 			}
 			return "confirmed"
-		}()), fact("daemon_owner", "unknown")}, "workspaces": workspaces, "agents": agents, "operations": []any{}, "command_ledger": map[string]any{"epoch": instance, "max_entries": 10000, "max_age_seconds": 86400, "entries": []any{}}, "auth": map[string]any{"provider": cfg.Provider, "provider_account_id": cfg.Subject, "native_github": map[string]string{"state": "unknown"}}}
+		}()), fact("daemon_owner", "unknown")}, "workspaces": workspaces, "agents": agents, "operations": []any{}, "command_ledger": map[string]any{"epoch": instance, "max_entries": 10000, "max_age_seconds": 86400, "entries": []any{}}, "auth": map[string]any{"provider": cfg.Provider, "provider_account_id": cfg.Subject, "native_github": map[string]string{"state": ghState}}}
 		b, err := json.Marshal(body)
 		if err != nil || len(b) > MaxSnapshotBytes {
 			snapshotError(w, 503, "native_source_unavailable")

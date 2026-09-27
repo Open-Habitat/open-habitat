@@ -23,7 +23,7 @@ func ServeHandoff(ctx context.Context, listener *net.UnixListener, cfg transport
 
 // ServeHTTP accepts a pre-opened per-user listener and mounts internal handoff
 // alongside future daemon workspace routes on a shared HTTP/1.1 ServeMux.
-func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Config, consume transport.Consumer, mux *http.ServeMux) error {
+func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Config, consume transport.Consumer, nativeStatus func(context.Context) string, mux *http.ServeMux) error {
 	server, err := transport.NewServer(cfg, consume)
 	if err != nil {
 		return err
@@ -31,7 +31,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	if mux == nil {
 		mux = http.NewServeMux()
 	}
-	mux.Handle(SnapshotPath, SnapshotHandler(cfg, server.TrustedPeer, Discover))
+	mux.Handle(SnapshotPath, SnapshotHandlerWithStatus(cfg, server.TrustedPeer, Discover, nativeStatus))
 	mux.Handle("/api/v1/agents/", HistoryHandler(cfg, server.TrustedPeer))
 	mux.Handle("/api/v1/content/", HistoryHandler(cfg, server.TrustedPeer))
 	return server.ServeMux(ctx, listener, mux)

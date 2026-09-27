@@ -128,6 +128,8 @@ type Evidence interface {
 }
 type Adapter struct {
 	mu       sync.Mutex // one daemon UID: serialize observation, login and disconnect
+	flightMu sync.Mutex
+	flight   *statusFlight
 	home     string
 	subject  string
 	run      Runner
@@ -160,12 +162,16 @@ func (a *Adapter) git(ctx context.Context, output bool, in io.Reader, args ...st
 	return a.call(ctx, "git", output, in, args...)
 }
 func (a *Adapter) identity(ctx context.Context) (string, bool) {
+	login, match, _ := a.identityDetail(ctx)
+	return login, match
+}
+func (a *Adapter) identityDetail(ctx context.Context) (string, bool, bool) {
 	if _, e := a.gh(ctx, false, nil, "auth", "status", "--hostname", "github.com"); e != nil {
-		return "", false
+		return "", false, false
 	}
 	b, e := a.gh(ctx, true, nil, "api", "user", "--jq", "{id: .id, login: .login}")
 	if e != nil {
-		return "", false
+		return "", false, false
 	}
 	var v struct {
 		ID    json.Number `json:"id"`
@@ -174,11 +180,80 @@ func (a *Adapter) identity(ctx context.Context) (string, bool) {
 	d := json.NewDecoder(strings.NewReader(string(b)))
 	d.UseNumber()
 	if d.Decode(&v) != nil || d.Decode(new(any)) != io.EOF || !loginPattern.MatchString(v.Login) {
-		return "", false
+		return "", false, false
 	}
 	id, e := strconv.ParseUint(string(v.ID), 10, 64)
-	return v.Login, e == nil && id > 0 && strconv.FormatUint(id, 10) == a.subject
+	if e != nil || id == 0 || strconv.FormatUint(id, 10) != string(v.ID) {
+		return "", false, false
+	}
+	match := string(v.ID) == a.subject
+	return v.Login, match, !match
 }
+
+type statusFlight struct {
+	done  chan struct{}
+	state string
+}
+
+// Status makes a fresh, bounded observation; overlapping readers share only
+// the in-flight result (never a stale cached state). A failed auth command
+// alone cannot prove absence: it may be a broken CLI, keyring, or network.
+func (a *Adapter) Status(ctx context.Context) string {
+	if ctx.Err() != nil {
+		return "unknown"
+	}
+	a.flightMu.Lock()
+	f := a.flight
+	if f == nil {
+		f = &statusFlight{done: make(chan struct{})}
+		a.flight = f
+		// One independent bounded observation serves concurrent callers: a
+		// canceled tab cannot cancel another tab's status check.
+		go func() {
+			budget, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+			defer cancel()
+			f.state = a.checkStatus(budget)
+			a.flightMu.Lock()
+			a.flight = nil
+			close(f.done)
+			a.flightMu.Unlock()
+		}()
+	}
+	a.flightMu.Unlock()
+	select {
+	case <-f.done:
+		if ctx.Err() == nil {
+			return f.state
+		}
+	case <-ctx.Done():
+	}
+	return "unknown"
+}
+func (a *Adapter) checkStatus(ctx context.Context) string {
+	if !a.mu.TryLock() {
+		return "unknown" // mutation in progress; cannot infer its eventual outcome
+	}
+	defer a.mu.Unlock()
+	login, match, mismatch := a.identityDetail(ctx)
+	if ctx.Err() != nil {
+		return "unknown"
+	}
+	if mismatch {
+		return "disconnected"
+	}
+	if !match {
+		return "unknown"
+	}
+	_, _, ok := a.observeWithLogin(ctx, login)
+	if ctx.Err() != nil {
+		return "unknown"
+	}
+	if !ok {
+		return "partial"
+	}
+	return "connected"
+}
+
 func (a *Adapter) storage(ctx context.Context, login string) (Storage, bool) {
 	// Resolve parent components first; the final path is opened with O_NOFOLLOW.
 	// A later pathname swap cannot change the already-open file descriptor.
@@ -282,6 +357,9 @@ func (a *Adapter) observe(ctx context.Context) (string, Storage, bool) {
 	if !ok {
 		return login, Unknown, false
 	}
+	return a.observeWithLogin(ctx, login)
+}
+func (a *Adapter) observeWithLogin(ctx context.Context, login string) (string, Storage, bool) {
 	protocol, e := a.gh(ctx, true, nil, "config", "get", "git_protocol", "--host", "github.com")
 	if e != nil || strings.TrimSpace(string(protocol)) != "https" {
 		return login, Unknown, false

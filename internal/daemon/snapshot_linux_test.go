@@ -4,6 +4,7 @@ package daemon
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"github.com/maintainer/native-agent-host/internal/transport"
 	"golang.org/x/sys/unix"
@@ -16,6 +17,57 @@ import (
 	"strconv"
 	"testing"
 )
+
+func TestSnapshotNativeStatusOnlyAfterTrust(t *testing.T) {
+	u, err := user.Current()
+	if err != nil {
+		t.Fatal(err)
+	}
+	uid, _ := strconv.Atoi(u.Uid)
+	cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Provider: "github", Subject: "42", Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock"}
+	calls := 0
+	status := "connected"
+	h := snapshotHandlerWithStatus(cfg, func(*http.Request) bool { return true }, func(transport.Config) Discovery { return Discovery{State: "empty"} }, func(transport.Config) ([]nativeSession, error) { return nil, nil }, t.TempDir(), func(context.Context) string { calls++; return status })
+	request := func(id string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest("GET", "http://unix/api/v1/snapshot", nil)
+		r.RequestURI = SnapshotPath
+		r.Header.Set("X-Agent-Host-Identity", id)
+		r.Header.Set("X-Agent-Host-Display-Name", "GitHub user 42")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w
+	}
+	if w := request(opaque("wid_", "github:99")); w.Code != 403 || calls != 0 {
+		t.Fatalf("untrusted probe: %d calls=%d", w.Code, calls)
+	}
+	for _, state := range []string{"connected", "disconnected", "partial", "unknown", "invalid"} {
+		status = state
+		w := request(opaque("wid_", "github:42"))
+		if w.Code != 200 {
+			t.Fatalf("%s: %d", state, w.Code)
+		}
+		var doc struct {
+			Auth struct {
+				NativeGitHub struct {
+					State string `json:"state"`
+				} `json:"native_github"`
+			} `json:"auth"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &doc); err != nil {
+			t.Fatal(err)
+		}
+		want := state
+		if state == "invalid" {
+			want = "unknown"
+		}
+		if doc.Auth.NativeGitHub.State != want || bytes.Contains(w.Body.Bytes(), []byte("oauth_token")) {
+			t.Fatalf("state=%s body=%s", state, w.Body.String())
+		}
+	}
+	if calls != 5 {
+		t.Fatal(calls)
+	}
+}
 
 func TestSnapshotDiscoveryAndSchema(t *testing.T) {
 	u, err := user.Current()

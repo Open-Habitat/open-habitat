@@ -102,6 +102,161 @@ func fixture(t *testing.T, keyring bool) (*Adapter, *fake, string) {
 	}
 	return a, f, home
 }
+func TestStatusFreshSyntheticIdentityAndErrors(t *testing.T) {
+	a, f, _ := fixture(t, true)
+	f.logged = true
+	if got := a.Status(context.Background()); got != "connected" {
+		t.Fatal(got)
+	}
+	f.id = "43"
+	if got := a.Status(context.Background()); got != "disconnected" {
+		t.Fatal(got)
+	}
+	f.id = "not-json"
+	if got := a.Status(context.Background()); got != "unknown" {
+		t.Fatal(got)
+	}
+	f.id = "42"
+	f.fail = "gh api user --jq {id: .id, login: .login}"
+	if got := a.Status(context.Background()); got != "unknown" {
+		t.Fatal(got)
+	}
+	f.fail = "gh config get git_protocol --host github.com"
+	if got := a.Status(context.Background()); got != "partial" {
+		t.Fatal(got)
+	}
+	f.fail = ""
+	f.logged = false
+	if got := a.Status(context.Background()); got != "unknown" {
+		t.Fatal(got)
+	}
+	// An auth-status error cannot prove there is no usable keyring credential.
+	for _, cmd := range f.log {
+		if strings.Contains(cmd, f.token) || strings.Contains(cmd, "auth login") || strings.Contains(cmd, "auth logout") {
+			t.Fatal("unsafe status command", cmd)
+		}
+	}
+}
+
+func TestStatusStorageAndUIDIsolation(t *testing.T) {
+	a, f, home := fixture(t, false)
+	f.logged = true
+	if got := a.Status(context.Background()); got != "connected" {
+		t.Fatal(got)
+	}
+	other, otherFake, otherHome := fixture(t, false)
+	otherFake.logged = true
+	otherFake.id = "99"
+	if got := other.Status(context.Background()); got != "disconnected" {
+		t.Fatal(got)
+	}
+	if home == otherHome {
+		t.Fatal("shared home")
+	}
+	// Alter only the second home. A status check must not borrow the first
+	// home's valid credential storage even with identical subject and UID.
+	otherFake.id = "42"
+	if err := os.Chmod(filepath.Join(otherHome, ".config"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if got := other.Status(context.Background()); got != "partial" {
+		t.Fatal(got)
+	}
+	if got := a.Status(context.Background()); got != "connected" {
+		t.Fatal(got)
+	}
+}
+
+func TestStatusTimeout(t *testing.T) {
+	home := t.TempDir()
+	a, err := New(home, "42", stalledRunner{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := time.Now()
+	if got := a.Status(context.Background()); got != "unknown" || time.Since(start) > 3*time.Second {
+		t.Fatalf("timeout: %s (%v)", got, time.Since(start))
+	}
+}
+
+func TestStatusCanceledLeaderDoesNotCancelWaiter(t *testing.T) {
+	a, f, home := fixture(t, true)
+	f.logged = true
+	r := &blockingStatus{fake: f, entered: make(chan struct{}), release: make(chan struct{})}
+	a, err := New(home, "42", r, attest(true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	leaderCtx, cancel := context.WithCancel(context.Background())
+	leader := make(chan string, 1)
+	go func() { leader <- a.Status(leaderCtx) }()
+	<-r.entered
+	waiter := make(chan string, 1)
+	go func() { waiter <- a.Status(context.Background()) }()
+	// Both requests have joined the flight before the leader is canceled.
+	a.flightMu.Lock()
+	if a.flight == nil {
+		t.Fatal("no flight")
+	}
+	a.flightMu.Unlock()
+	cancel()
+	if got := <-leader; got != "unknown" {
+		t.Fatal(got)
+	}
+	close(r.release)
+	if got := <-waiter; got != "connected" {
+		t.Fatal(got)
+	}
+}
+
+type blockingStatus struct {
+	fake             *fake
+	entered, release chan struct{}
+	once             sync.Once
+}
+
+func (s *blockingStatus) Run(ctx context.Context, c Command) ([]byte, error) {
+	if c.Program == "gh" && len(c.Args) > 1 && c.Args[0] == "auth" && c.Args[1] == "status" {
+		s.once.Do(func() { close(s.entered) })
+		select {
+		case <-s.release:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	return s.fake.Run(ctx, c)
+}
+
+func TestStatusTimeoutAfterIdentity(t *testing.T) {
+	a, f, home := fixture(t, true)
+	f.logged = true
+	r := &stallAfterIdentity{fake: f}
+	a, err := New(home, "42", r, attest(true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := a.Status(context.Background()); got != "unknown" {
+		t.Fatal(got)
+	}
+}
+
+type stallAfterIdentity struct{ fake *fake }
+
+func (s *stallAfterIdentity) Run(ctx context.Context, c Command) ([]byte, error) {
+	if c.Program == "gh" && len(c.Args) > 1 && c.Args[0] == "config" {
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}
+	return s.fake.Run(ctx, c)
+}
+
+type stalledRunner struct{}
+
+func (stalledRunner) Run(ctx context.Context, _ Command) ([]byte, error) {
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+
 func TestInstallReobserveAndDisconnect(t *testing.T) {
 	for _, keyring := range []bool{true, false} {
 		t.Run(fmt.Sprint(keyring), func(t *testing.T) {
