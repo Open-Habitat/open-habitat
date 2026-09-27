@@ -33,7 +33,10 @@ const Path = "/internal/v1/native-credentials/github"
 const maxBody = 8192
 const maxToken = 4096
 const maxField = 128
-const deadline = 5 * time.Second
+// The one-shot budget covers socket activation of a cold per-UID daemon as
+// well as native gh/git observation. Keep it bounded: a timeout remains an
+// uncertain handoff and must never issue a browser session or retry the token.
+const deadline = 12 * time.Second
 const maxHeaders = 2048
 
 var denied = errors.New("native token handoff failed")
