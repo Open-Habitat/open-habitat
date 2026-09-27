@@ -245,18 +245,18 @@ try:
  p=json.loads(sys.argv[1])
  if p.get('status')!='passed' or p.get('scope')!='jit-concurrent' or p.get('pid1')!='systemd':sys.exit(1)
  if p.get('uids')!=[21032,21033,21034,21003]:sys.exit(1)
- if not all(p.get(k) is True for k in ('unique_bindings','cross_uid_denied','retryable_loser','provider_rendezvous','binary_digest_verified')):sys.exit(1)
+ if not all(p.get(k) is True for k in ('unique_bindings','cross_uid_denied','same_id_idempotent','provider_rendezvous','binary_digest_verified')):sys.exit(1)
  rounds=p.get('rounds')
  if not isinstance(rounds,list) or len(rounds)!=2 or [r.get('ids') for r in rounds]!=[['a','a'],['b','c']]:sys.exit(1)
- if any(len(r.get('statuses',[]))!=2 or not all(s in (303,503) for s in r['statuses']) for r in rounds):sys.exit(1)
- if 303 not in rounds[0]['statuses'] or rounds[1]['statuses']!=[303,303]:sys.exit(1)
+ if any(r.get('statuses')!=[303,303] for r in rounds):sys.exit(1)
 except (ValueError,TypeError,AttributeError,KeyError):sys.exit(1)
 CONCURRENT_CHECK
   then
     reason=$(python3 - "$proof" <<'CONCURRENT_REASON'
 import json,re,sys
 try:
- p=json.loads(sys.argv[1]);print(re.sub('[^A-Za-z0-9 _./:-]',' ',str(p.get('reason','receipt rejected'))[:150]))
+ p=json.loads(sys.argv[1]);d=p.get('diagnostic_round',{})
+ print(re.sub('[^A-Za-z0-9 _./:;,=-]',' ',str(p.get('reason','receipt rejected'))[:150]+' ids='+str(d.get('ids','?'))+' statuses='+str(d.get('statuses','?'))+' bindings='+str(d.get('binding_count','?'))))
 except (ValueError,TypeError):print('missing proof')
 CONCURRENT_REASON
 )

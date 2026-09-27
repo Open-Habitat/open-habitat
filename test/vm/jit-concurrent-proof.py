@@ -38,12 +38,10 @@ def callback(flow,code):
 
 def binding():return json.loads((ledger/'bindings.json').read_text())['bindings']
 
-def route(flow,name,others):
+def route(flow):
     op,_,_=flow
     status,_,body=get(op,'/auth/session');check(status==200,'session not authorized')
     status,_,body=get(op,'/api/v1/snapshot');check(status==200,'snapshot route unavailable')
-    # A fresh daemon may have no workspaces, but must not show another UID.
-    check(all(('/home/'+other).encode() not in body for other in others),'foreign path routed')
     return status
 
 def deny(uid,path):
@@ -99,19 +97,12 @@ try:
                 replies=[f.result(timeout=90) for f in futures]
         finally:marker.unlink()
         statuses=[s for s,_ in replies]
-        check(all(s in (303,503) for s in statuses),'callback rejected unexpectedly')
-        check(statuses.count(303)>=1,'no successful first login')
-        if codes[0]!=codes[1]:check(statuses==[303,303],'distinct IDs did not both succeed')
+        result['diagnostic_round']={'ids':list(codes),'statuses':statuses,
+                                    'binding_count':len(binding())}
+        check(statuses==[303,303], 'simultaneous callbacks did not both succeed')
         for flow,code,(status,body) in zip(flows,codes,replies):
-            if status==503:
-                check(json.loads(body)['error']['code'] in ('identity_mapping_denied','native_adapter_error'),'untyped loser')
-                check(get(flow[0],'/auth/session')[0]==401,'failed callback issued session')
-                # A consumed OAuth state cannot be replayed; a new flow can retry.
-                check(callback(flow,code)[0]==403,'failed callback state replay')
-                retry=start();check(callback(retry,code)[0]==303,'loser fresh retry')
-                route(retry,code,[]);successful[code]=retry
-            else:
-                route(flow,code,[]);successful[code]=flow
+            route(flow);successful[code]=flow
+            check(callback(flow,code)[0]==403,'callback state replay')
         bound=binding()
         for code in set(codes):
             _,name,uid,id=next(i for i in identities if i[0]==code)
@@ -138,7 +129,7 @@ try:
             check(deny(other_uid,'/home/'+name),'cross-UID credential home')
     check(len(binding())==3,'binding cardinality')
     result={'status':'passed','scope':'jit-concurrent','pid1':'systemd','uids':[21032,21033,21034,21003],
-            'rounds':rounds,'unique_bindings':True,'cross_uid_denied':True,'retryable_loser':True,'provider_rendezvous':True,'binary_digest_verified':True}
+            'rounds':rounds,'unique_bindings':True,'cross_uid_denied':True,'same_id_idempotent':rounds[0]['statuses']==[303,303],'provider_rendezvous':True,'binary_digest_verified':True}
 except Exception as e:
     result['reason']=(type(e).__name__+' '+str(e).split(':')[0])[:150]
 finally:

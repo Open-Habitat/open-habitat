@@ -104,13 +104,13 @@ concurrent_validator=$(sed -n "/<<'CONCURRENT_CHECK'/,/^CONCURRENT_CHECK$/p" "$r
 python3 - "$concurrent_validator" <<'CONCURRENT_ORACLE'
 import json,subprocess,sys
 p={'status':'passed','scope':'jit-concurrent','pid1':'systemd','uids':[21032,21033,21034,21003],
-   'rounds':[{'ids':['a','a'],'statuses':[303,503]},{'ids':['b','c'],'statuses':[303,303]}]}
-p.update(dict.fromkeys(('unique_bindings','cross_uid_denied','retryable_loser','provider_rendezvous','binary_digest_verified'),True))
+   'rounds':[{'ids':['a','a'],'statuses':[303,303]},{'ids':['b','c'],'statuses':[303,303]}]}
+p.update(dict.fromkeys(('unique_bindings','cross_uid_denied','same_id_idempotent','provider_rendezvous','binary_digest_verified'),True))
 def accepts(x,optimized=False):
  return subprocess.run(['python3']+(['-O'] if optimized else [])+['-c',sys.argv[1],json.dumps(x)]).returncode==0
 for optimized in (False,True):
  assert accepts(p,optimized)
- for key in ('unique_bindings','cross_uid_denied','retryable_loser','provider_rendezvous','binary_digest_verified'):
+ for key in ('unique_bindings','cross_uid_denied','same_id_idempotent','provider_rendezvous','binary_digest_verified'):
   q=dict(p);q.pop(key);assert not accepts(q,optimized),key
  assert not accepts(dict(p,rounds=[{'ids':['a','a'],'statuses':[303,303]}]),optimized)
  assert not accepts(dict(p,rounds=[{'ids':['a','a'],'statuses':[503,503]},p['rounds'][1]]),optimized)

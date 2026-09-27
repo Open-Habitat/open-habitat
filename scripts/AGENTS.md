@@ -28,10 +28,13 @@ verification cannot check host ACLs; activation must fail closed without them.
 - `two-user-routing --json` also injects the current binary and exercises the
   real HTTPS OAuth callback and per-user daemon routes with synthetic
   identities and fake native `gh`/`git`.
-- `broker-guest`, `jit-provision`, `jit-login` and `jit-reboot-diagnostic`
-  exercise the root broker and first-login account creation in a private guest.
-  What each has and has not proved is recorded in
-  `issues/prove-jit-guest-isolation/`.
+- `broker-guest`, `jit-provision`, `jit-login`, `jit-concurrent` and
+  `jit-reboot-diagnostic` exercise the root broker and first-login account
+  creation in a private guest. `jit-concurrent` builds and verifies a release
+  archive from a clean committed tree, then seeds the guest with its binary and
+  systemd templates (not a locally compiled binary). Its web assets are
+  packaged and verified, but not served by this guest. What each scenario has
+  and has not proved is recorded in `issues/prove-jit-guest-isolation/`.
 
 `bash test/vm/test-vm-test.sh` runs the offline parser, seed/ISO and failure
 checks. Documentation validation is `python3 scripts/validate-project-view.py`.
