@@ -22,3 +22,7 @@ Jari first attempted live GitHub login on 2026-09-27 around 14:55 local time on 
 ### 2026-09-27T14:25:25Z · @pi
 
 2026-09-27 pilot.4 deployed after guarded pilot.3 switch-back to pilot.2, then stage/switch. Live Chrome retest from existing authenticated browser: auth_error=identity_mapping_denied; bounded gateway event rejected broker_denied. This proves GitHub code exchange and identity parsing proceeded past prior issuer mismatch, but broker ensure or later authorize failed (source has two broker_denied branches). Guest read-only aggregate: allowlist one entry, bindings zero, generation/epoch 1, no pending or ACL markers, no JIT UID user; Alder gh api user ID equals guest allowlist entry. Therefore no JIT binding/account created as of snapshot. Investigate exact broker refusal under authenticated root boundary before retry; do not infer allowlist mismatch or delete state.
+
+### 2026-09-27T14:55:11Z · @pi
+
+2026-09-27 pilot.5 live evidence: gateway ensure rejected broker drift; bounded root event parent_policy. Read-only stat shows installed config dir root:gateway 0750 but product executor expects root:root 0755. Probable pre-provision guard mismatch; no binding/user claimed. Fix expected mode rather than relaxing host permissions.
