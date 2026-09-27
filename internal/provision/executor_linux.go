@@ -376,7 +376,10 @@ func (e *LinuxHostExecutor) Step(ctx context.Context, phase string, i ExecutorId
 		if err = os.Chown(p, int(i.uid), int(i.uid)); err != nil {
 			return err
 		}
-		return owner(p, i.uid, i.uid, 0700, true)
+		if err := owner(p, i.uid, i.uid, 0700, true); err != nil {
+			return err
+		}
+		return ensureSource(p, i.uid)
 	case "config":
 		p := filepath.Join(configBase, "daemon-"+i.username+".json")
 		if configParentPolicy(configBase, statNoFollow) != nil || bindingDirACL(configBase) != nil || owner(filepath.Join(homeBase, i.username), i.uid, i.uid, 0700, true) != nil {
@@ -799,6 +802,9 @@ func (e *LinuxHostExecutor) Verify(ctx context.Context, i ExecutorIdentity) erro
 	if err := safeParents(filepath.Join(homeBase, i.username)); err != nil {
 		return err
 	}
+	// src belongs to the user's workspace after provisioning. Rechecking it
+	// here would block authorization before the daemon can report a later
+	// disappearance or permissions error as a source error.
 	if err := owner(filepath.Join(homeBase, i.username), i.uid, i.uid, 0700, true); err != nil {
 		return err
 	}
