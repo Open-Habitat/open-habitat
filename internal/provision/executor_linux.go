@@ -124,9 +124,19 @@ func (e *LinuxHostExecutor) vacant(ctx context.Context, db, key string) (bool, e
 	_, found, err := e.lookup(ctx, db, key)
 	return !found && err == nil, err
 }
-func owner(path string, uid, gid uint32, mode uint32, directory bool) error {
+func statNoFollow(path string) (unix.Stat_t, error) {
 	var st unix.Stat_t
-	if err := unix.Fstatat(unix.AT_FDCWD, path, &st, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+	err := unix.Fstatat(unix.AT_FDCWD, path, &st, unix.AT_SYMLINK_NOFOLLOW)
+	return st, err
+}
+
+func owner(path string, uid, gid uint32, mode uint32, directory bool) error {
+	return ownerWithStat(path, uid, gid, mode, directory, statNoFollow)
+}
+
+func ownerWithStat(path string, uid, gid uint32, mode uint32, directory bool, stat func(string) (unix.Stat_t, error)) error {
+	st, err := stat(path)
+	if err != nil {
 		return err
 	}
 	kind := uint32(unix.S_IFREG)
@@ -150,17 +160,31 @@ func missing(path string) (bool, error) {
 	return false, nil
 }
 func safeParents(path string) error {
+	return safeParentsWithStat(path, statNoFollow)
+}
+
+func safeParentsWithStat(path string, stat func(string) (unix.Stat_t, error)) error {
 	if !filepath.IsAbs(path) || filepath.Clean(path) != path {
 		return ErrInvalid
 	}
 	for p := filepath.Dir(path); ; p = filepath.Dir(p) {
-		var st unix.Stat_t
-		if unix.Fstatat(unix.AT_FDCWD, p, &st, unix.AT_SYMLINK_NOFOLLOW) != nil || st.Mode&unix.S_IFMT != unix.S_IFDIR || st.Uid != 0 || st.Mode&0022 != 0 {
+		st, err := stat(p)
+		if err != nil || st.Mode&unix.S_IFMT != unix.S_IFDIR || st.Uid != 0 || st.Mode&0022 != 0 {
 			return ErrInvalid
 		}
 		if p == "/" {
 			break
 		}
+	}
+	return nil
+}
+
+// configParentPolicy checks the protected installation directory as well as
+// every ancestor. In particular, safeParents alone does not constrain group
+// identity or world-readable/searchable mode on the final directory.
+func configParentPolicy(base string, gatewayGID uint32, stat func(string) (unix.Stat_t, error)) error {
+	if safeParentsWithStat(base, stat) != nil || ownerWithStat(base, 0, gatewayGID, 0750, true, stat) != nil {
+		return ErrInvalid
 	}
 	return nil
 }
@@ -192,7 +216,7 @@ func (e *LinuxHostExecutor) available(ctx context.Context, name string, uid uint
 			return false, availabilityGuard("parent_policy")
 		}
 	}
-	if owner(socketBase, 0, e.GatewayGID, 0710, true) != nil || owner(configBase, 0, 0, 0755, true) != nil {
+	if owner(socketBase, 0, e.GatewayGID, 0710, true) != nil || configParentPolicy(configBase, e.GatewayGID, statNoFollow) != nil {
 		return false, availabilityGuard("parent_policy")
 	}
 	if e.parentACL(ctx, 0) != nil {
@@ -328,7 +352,7 @@ func (e *LinuxHostExecutor) Step(ctx context.Context, phase string, i ExecutorId
 		return owner(p, i.uid, i.uid, 0700, true)
 	case "config":
 		p := filepath.Join(configBase, "daemon-"+i.username+".json")
-		if safeParents(p) != nil || owner(filepath.Join(homeBase, i.username), i.uid, i.uid, 0700, true) != nil {
+		if configParentPolicy(configBase, e.GatewayGID, statNoFollow) != nil || owner(filepath.Join(homeBase, i.username), i.uid, i.uid, 0700, true) != nil {
 			return ErrInvalid
 		}
 		b, err := e.config(i)
@@ -743,7 +767,7 @@ func (e *LinuxHostExecutor) Verify(ctx context.Context, i ExecutorIdentity) erro
 		return err
 	}
 	p := filepath.Join(configBase, "daemon-"+i.username+".json")
-	if safeParents(p) != nil || owner(p, 0, i.uid, 0640, false) != nil {
+	if configParentPolicy(configBase, e.GatewayGID, statNoFollow) != nil || owner(p, 0, i.uid, 0640, false) != nil {
 		return ErrInvalid
 	}
 	want, err := e.config(i)
