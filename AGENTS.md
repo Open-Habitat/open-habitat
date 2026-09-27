@@ -21,8 +21,15 @@ Two ideas shape everything here:
 
 The project is in pre-release and moves fast. Implementation is carried as far
 as the task allows, problems found along the way are fixed, and releases are
-cut and installed on the test server as part of normal work. There are no users
-to stay compatible with, so formats, interfaces and data change freely without
+cut and installed on the test server as part of normal work. Jari authorizes
+agents to build and deploy green, reviewed changes to the **test server** without
+a separate go/no-go question; this does not authorize production deployment,
+credential exposure, bypassing Access, or testing with another person's identity.
+Use Fleetrepo's `infra/native-agent-host-test/RELEASE-UPGRADE.md` for the exact
+stage/switch/rollback and live verification procedure, with deployment receipts
+and host-specific details kept in Fleetrepo. A failed preflight or uncertain
+rollback is a stop, not permission to improvise. There are no users to stay
+compatible with, so formats, interfaces and data change freely without
 compatibility code.
 
 Architecture is decided together with Jari: which component has which
