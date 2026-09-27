@@ -112,10 +112,11 @@ try:
         # Only fixed command categories are exposed in the failure receipt.
         def stages(code):
             home=pathlib.Path('/home')/next(i[1] for i in identities if i[0]==code)
-            gh=home/'gh-argv.jsonl';git=home/'git-argv.log';done=home/'gh-completed.jsonl'
+            gh=home/'gh-argv.jsonl';git=home/'git-argv.log';done=home/'gh-completed.jsonl';entry=home/'git-entry.jsonl'
             try:
                 return {'gh':[json.loads(line)['argv'][:2] for line in gh.read_text().splitlines()] if gh.is_file() else [],
                         'completed':[json.loads(line) for line in done.read_text().splitlines()] if done.is_file() else [],
+                        'git_entry':[json.loads(line) for line in entry.read_text().splitlines()] if entry.is_file() else [],
                         'git_count':len(git.read_text().splitlines()) if git.is_file() else 0}
             except (OSError,ValueError,KeyError,TypeError):
                 return {'unavailable':True} # Diagnostic must never turn a passing proof red.

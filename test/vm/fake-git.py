@@ -3,6 +3,11 @@ import os, pathlib, sys
 args=sys.argv[1:]
 assert 'PRODUCT_VM_TOKEN' not in repr(args) and all('PRODUCT_VM_TOKEN' not in v for v in os.environ.values())
 home=pathlib.Path(os.environ['HOME'])
+# Record only synthetic execution identity and command category before the
+# guard, so a failed guest can distinguish a wrong UID/home from no exec.
+with (home/'git-entry.jsonl').open('a') as f:
+    import json
+    f.write(json.dumps({'uid':os.getuid(),'home_matches':{21001:'/home/agent-a',21002:'/home/agent-b',21034:'/home/agent-c'}.get(os.getuid())==str(home),'command':args[:2]})+'\n')
 assert {21001:'/home/agent-a',21002:'/home/agent-b',21034:'/home/agent-c'}.get(os.getuid())==str(home)
 with (home/'git-argv.log').open('a') as f: f.write(repr(args)+'\n')
 if args==['config','--global','--get','credential.https://github.com.helper']:
