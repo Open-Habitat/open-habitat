@@ -10,12 +10,24 @@ originating_run: 01m3h4wk5gzvn6hyhf9f4z9vmt
 originating_run_kind: spinoff
 ---
 
-# Reconcile interrupted JIT account provisioning safely
+# Assess safe idempotent retry of interrupted JIT provisioning
 
-## Description
+## Decision and scope
 
-The root broker's writer leaves `pending.json` (and potentially a `.next` file) if it dies after journaling a new binding. On startup and on every request, the product intentionally refuses this state. `docs/adr-0004-first-login-user-provisioning.md` calls for operator reconciliation, but no reviewed procedure for distinguishing each pending phase, reconciling the Linux account/home/config/socket/unit and bindings/head, updating the high-water receipt, and safely removing the marker is documented. Fleetrepo's `infra/native-agent-host-test/JIT-POLICY.md` explicitly says its high-water receipt is initial-only and a separately reviewed update procedure is needed before recovery. `activation_install.py stop/revert` does not reconcile an interrupted account.
+Jari's 2026-09-27 direction: this crash is unlikely and does **not** justify a separate operator-reconciliation project. Consider only one approach: make each provisioning phase safe to retry when already completed, then resume an interrupted operation on a later attempt. If safe idempotent retry cannot be demonstrated, **do not implement recovery**; retain the current fail-closed behavior. A crashing server cannot return a useful error for the request that lost its connection. This is a conditional investigation, not approval to remove a pending marker or to provision again blindly.
 
-A broker SIGKILL after account creation can strand a reserved UID, permanently denying broker activation and subsequent logins. Merely removing the marker or reseeding could reassign another person's UID or accept a rolled-back ledger. The operator procedure and high-water update belong in Fleetrepo, which owns the concrete host's root state, account commands, backup receipts and installation runbook; the product should continue failing closed, not silently repair root-owned state. Implement a root-only, lock-taking, read-only diagnostic and a reviewed phase-specific recovery/abandon procedure with snapshot/high-water attestation, explicit operator approval, and disposable-guest crash evidence before enabling its use on a real host. No real guest was modified by this report.
+Today the writer writes `pending.json` **before** each host step and refuses any pending marker on startup and on every request. A marker names the intended phase, not proof whether a host command completed before the crash. An account, home, binding file, runtime ACL, systemd unit or ledger publication could be partly present. Retrying `groupadd`/`useradd` by accepting any existing name or UID would risk adopting another person's account; removing the marker or lowering the ledger/high-water mark could reassign a UID. The existing behavior stays in place unless an exact, lock-held, identity- and phase-verified retry is shown safe across every crash boundary, including already-written `bindings.json` versus `head.json` and Fleetrepo's initial-only high-water receipt.
 
-Related parent: @prove-jit-guest-isolation. This report is about a missing recovery path, not proof of a successful recovery or permission to run one on the live server.
+## Conditional acceptance criteria
+
+- Show, with disposable guest crash injection before and after **each** journaled phase and publication, that an already-completed phase is recognized by exact expected ownership/content/identity rather than by mere existence, and that incomplete/foreign state still fails closed.
+- Prove a restart or subsequent request can resume without granting another subject the reserved UID, changing a committed binding, losing monotonic epoch/generation, or bypassing socket policy. No OAuth token is replayed after a lost acknowledgement; the browser may initiate a new login attempt.
+- If any phase cannot meet these conditions at proportionate cost, record why and close this conditional task without implementing a manual recovery path. Never clear `pending.json` on the live test server merely to make a retry proceed.
+
+Related parent: @prove-jit-guest-isolation. The original review proposed a root-only operator recovery runbook; Jari explicitly chose the idempotent-or-no-recovery policy instead.
+
+## Decisions
+
+### 2026-09-27T18:06:13Z · @jari
+
+2026-09-27: Interrupted first-user provisioning is too unlikely to warrant an operator recovery procedure. Only consider phases that can safely be recognized as already done and retried/resumed; if that is not feasible, do not implement recovery. A crashed server need not report an error to the disconnected request. Keep fail-closed behavior rather than blindly accepting existing account paths or clearing the pending marker.
