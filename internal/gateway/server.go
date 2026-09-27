@@ -70,5 +70,5 @@ func (s *Server) ui(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filepath.Join(s.staticDir, "index.html"))
 }
 func knownUIRoute(path string) bool {
-	return path == "/" || path == "/workspaces" || strings.HasPrefix(path, "/workspaces/") || strings.HasPrefix(path, "/agents/pi:") || strings.HasPrefix(path, "/operations/")
+	return path == "/" || path == "/settings" || path == "/workspaces" || strings.HasPrefix(path, "/workspaces/") || strings.HasPrefix(path, "/agents/pi:") || strings.HasPrefix(path, "/operations/")
 }

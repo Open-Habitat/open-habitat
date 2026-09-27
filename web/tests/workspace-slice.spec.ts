@@ -19,7 +19,7 @@ async function login(page: Page, user: "Alice" | "Bob" = "Alice") {
   await page.getByRole("link", { name: user }).click();
   await expect(
     page.getByRole("navigation", { name: "Workspacet ja agentit" }),
-  ).toContainText(user === "Alice" ? "GitHub user 42" : "GitHub user 43");
+  ).toContainText("Oma tili");
 }
 async function shot(page: Page, name: string) {
   await page.screenshot({

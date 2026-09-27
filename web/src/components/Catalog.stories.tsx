@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { AlertDialog, Dialog, Menu, Tabs } from "./Overlays";
+import { AccountShelf, AccountSettings } from "./Account";
 import { LoginCard, LoginErrorNotice } from "./LoginCard";
 import {
   Button,
@@ -303,6 +304,21 @@ function NavigationFixture() {
   );
 }
 export const Navigation: Story = { render: () => <NavigationFixture /> };
+export const Account: Story = {
+  render: () => (
+    <main>
+      <AccountShelf name="Oma tili" onSettings={noop} onLogout={noop} />
+      <AccountSettings name="Oma tili" nativeState="connected" onBack={noop} />
+    </main>
+  ),
+};
+export const AccountPartial: Story = {
+  render: () => (
+    <main>
+      <AccountSettings name="Oma tili" nativeState="partial" onBack={noop} />
+    </main>
+  ),
+};
 
 function ConversationFixture() {
   const [mode, setMode] = useState<"virtualized" | "pagedAccessible">(

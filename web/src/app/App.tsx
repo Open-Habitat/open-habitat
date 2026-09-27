@@ -1,15 +1,24 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation, useNavigate } from "react-router";
 import {
   AppShell,
-  Button,
+  AccountShelf,
+  AccountSettings,
   ConnectionBanner,
   InlineNotice,
   NavLink,
   WorkspaceRail,
   WorkspaceSection,
 } from "../components";
+import { accountLabel } from "../components/Account";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import { HistoryView } from "./HistoryView";
 import {
@@ -30,6 +39,7 @@ const CatalogPreview =
 function safeRoute(path: string) {
   return path === "/" ||
     path === "/workspaces" ||
+    path === "/settings" ||
     /^\/workspaces\/ws_[A-Za-z0-9_-]{8,80}$/.test(path) ||
     /^\/agents\/pi:[0-9a-fA-F-]{36}$/.test(path)
     ? path
@@ -107,6 +117,32 @@ export function App() {
   const [collapsed, setCollapsed] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [logoutError, setLogoutError] = useState(false);
+  const [settingsReturn, setSettingsReturn] = useState("/workspaces");
+  const returningFromSettings = useRef(false);
+  useEffect(() => {
+    if (location.pathname !== "/settings" && returningFromSettings.current) {
+      returningFromSettings.current = false;
+      document.querySelector<HTMLElement>(".ah-account-shelf button")?.focus();
+    }
+  }, [location.pathname]);
+  const identity = snapshot?.identity.web_identity_id;
+  const priorIdentity = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (priorIdentity.current && identity !== priorIdentity.current) {
+      setSettingsReturn("/workspaces");
+      returningFromSettings.current = false;
+      setExpanded({});
+    }
+    if (identity) priorIdentity.current = identity;
+  }, [identity]);
+  const openSettings = () => {
+    setSettingsReturn(
+      safeRoute(location.pathname) === "/settings"
+        ? "/workspaces"
+        : safeRoute(location.pathname),
+    );
+    navigate("/settings");
+  };
   const syntheticDemo = import.meta.env.VITE_SYNTHETIC_DEMO === "true";
   const fixtureName =
     import.meta.env.VITE_ENABLE_TEST_FIXTURES === "true"
@@ -149,6 +185,7 @@ export function App() {
   }, [dispatch, refreshKey, fixtureName, location.search, syntheticDemo]);
   const logout = async () => {
     setLogoutError(false);
+    setSettingsReturn("/workspaces");
     if (syntheticDemo) {
       dispatch(clearIdentity());
       navigate("/workspaces?scenario=login", { replace: true });
@@ -156,6 +193,7 @@ export function App() {
     }
     // Hide every identity-scoped fact before the first write or new login.
     dispatch(clearIdentity());
+    navigate("/workspaces", { replace: true });
     try {
       const response = await fetch("/auth/session", {
         credentials: "same-origin",
@@ -281,6 +319,15 @@ export function App() {
           actions={[{ label: "Päivitä", onPress: refresh }]}
         />
       </>
+    ) : location.pathname === "/settings" ? (
+      <AccountSettings
+        name={accountLabel(snapshot?.identity.display_name ?? "")}
+        nativeState={snapshot?.auth?.native_github.state}
+        onBack={() => {
+          returningFromSettings.current = true;
+          navigate(settingsReturn);
+        }}
+      />
     ) : selectedAgent && agentWorkspace ? (
       <HistoryView
         agent={selectedAgent}
@@ -394,23 +441,11 @@ export function App() {
             }
             connectionTone={source === "confirmed" ? "success" : "warning"}
             sessionActions={
-              <div
-                className="ah-session-actions"
-                title="Web-uloskirjautuminen ei katkaise natiiveja GitHub-tunnuksia."
-              >
-                <span className="ah-rail-identity">
-                  {snapshot.identity.display_name}
-                </span>
-                <Button
-                  label="Kirjaudu ulos"
-                  variant="quiet"
-                  size="compact"
-                  onPress={logout}
-                />
-                <small className="ah-logout-note">
-                  Web-uloskirjautuminen ei katkaise natiiveja GitHub-tunnuksia.
-                </small>
-              </div>
+              <AccountShelf
+                name={accountLabel(snapshot.identity.display_name)}
+                onSettings={openSettings}
+                onLogout={logout}
+              />
             }
             filterValue={filter}
             resultSummary={`${matches.length} ${source === "confirmed" ? "workspacea" : "havaittua workspacea · määrä voi olla puutteellinen"}`}
@@ -475,20 +510,6 @@ export function App() {
           }
         >
           {main}
-          {snapshot?.auth?.native_github.state === "partial" ||
-          snapshot?.auth?.native_github.state === "pending" ? (
-            <InlineNotice
-              title="Natiivi GitHub-yhteys on kesken"
-              description="Verkkoistunto on voimassa, mutta natiivin yhteyden tila on osittainen. Älä oleta Git-toimintojen olevan valmiita."
-              tone="warning"
-            />
-          ) : snapshot?.auth?.native_github.state === "unknown" ? (
-            <InlineNotice
-              title="Natiivin GitHub-yhteyden tila ei ole tiedossa"
-              description="Istunto on voimassa, mutta natiivia tilaa ei ole vahvistettu tässä havainnossa."
-              tone="warning"
-            />
-          ) : null}
         </div>
       }
     />

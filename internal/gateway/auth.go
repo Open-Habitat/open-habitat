@@ -305,7 +305,7 @@ func safe(w http.ResponseWriter, status int, code string) {
 
 // uiReturn accepts only known same-origin selection routes; never API/auth/events or external URLs.
 func uiReturn(path string) bool {
-	if path == "/" || path == "/workspaces" {
+	if path == "/" || path == "/workspaces" || path == "/settings" {
 		return true
 	}
 	if !strings.HasPrefix(path, "/workspaces/") {

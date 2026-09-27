@@ -291,55 +291,47 @@
 .ah-rail-collapsed .ah-rail-foot {
   padding: 4px 1px;
 }
-.ah-rail-collapsed .ah-rail-identity {
-  display: none;
-}
-.ah-rail-collapsed .ah-session-actions .ah-button {
-  max-width: 42px;
-  padding: 3px;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  text-align: center;
-  font-size: 9px;
-}
-.ah-session-actions {
+.ah-account-shelf {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 4px 8px;
+  justify-content: space-between;
+  gap: var(--ah-s2);
   min-width: 0;
-}
-.ah-logout-note {
-  flex-basis: 100%;
-  color: var(--ah-muted);
-  font-size: 10px;
-  line-height: 1.35;
-}
-.ah-rail-collapsed .ah-logout-note {
-  display: none;
 }
 .ah-rail-identity {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--ah-muted);
-  font: 400 11.5px var(--ah-mono);
+  font-size: 12px;
+  font-weight: 600;
 }
-.ah-session-actions .ah-control {
-  flex-shrink: 0;
-  margin-inline-start: auto;
-}
-.ah-rail .ah-session-actions .ah-button {
-  min-height: 28px;
+.ah-rail .ah-account-shelf .ah-button {
+  min-height: 30px;
   padding-inline: 7px;
-  color: var(--ah-muted);
-  font-size: 11.5px;
+  font-size: 12px;
 }
-.ah-rail .ah-session-actions .ah-button:hover {
-  background: var(--ah-surface-2);
-  color: var(--ah-ink);
+.ah-rail-collapsed .ah-rail-identity { display: none; }
+.ah-rail-collapsed .ah-account-shelf { justify-content: center; }
+.ah-rail-collapsed .ah-account-shelf .ah-button {
+  max-width: 42px;
+  padding-inline: 2px;
+  font-size: 0;
 }
+.ah-rail-collapsed .ah-account-shelf .ah-button span { font-size: 16px; }
+.ah-account-settings { display: grid; gap: var(--ah-s4); }
+.ah-account-settings > .ah-control { justify-self: start; }
+.ah-account-settings h1, .ah-account-settings p { margin: 0; }
+.ah-account-panel {
+  display: grid;
+  gap: var(--ah-s4);
+  padding: var(--ah-s6);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+}
+.ah-account-panel h2 { margin: 0; }
+.ah-account-panel > .ah-control { justify-self: start; }
 .ah-control {
   display: inline-flex;
   flex-direction: column;

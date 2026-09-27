@@ -17,7 +17,7 @@ async function login(page: import("@playwright/test").Page) {
   await page.getByRole("link", { name: "Alice" }).click();
   await expect(
     page.getByRole("navigation", { name: "Workspacet ja agentit" }),
-  ).toContainText("GitHub user 42");
+  ).toContainText("Oma tili");
 }
 test("@native-history native page, continuation, unknown, reopen and no writes", async ({
   page,
