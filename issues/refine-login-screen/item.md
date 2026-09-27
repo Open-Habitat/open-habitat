@@ -2,10 +2,12 @@
 created: 2026-09-27
 updated: 2026-09-27
 type: task
-status: in-progress
+status: done
 priority: high
 lane: login-ui
 collision: [design-system/]
+closed: 2026-09-27
+closed_by: pi
 ---
 
 # Refine Omega Habitat login and error screen
