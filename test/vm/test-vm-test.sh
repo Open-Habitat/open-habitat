@@ -31,6 +31,8 @@ if run jit-provision --json > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
 grep -q 'invalid_image_checksum' "$tmp/err"
 if run jit-login --json > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
 grep -q 'invalid_image_checksum' "$tmp/err"
+if run jit-concurrent --json > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
+grep -q 'invalid_image_checksum' "$tmp/err"
 cp "$repo/test/vm/image.env" "$tmp/repo/test/vm/image.env"
 sed -i 's|/home/agent-b/SYNTHETIC-IDENTITY|/home/agent-b/INVALID|' "$tmp/repo/test/vm/cloud-init.yaml"
 if run self-test --json > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
@@ -98,6 +100,22 @@ JIT_NEGATIVE
 )
   if python3 -c "$validator" "$broken"; then echo "missing $missing accepted" >&2; exit 1; fi
 done
+concurrent_validator=$(sed -n "/<<'CONCURRENT_CHECK'/,/^CONCURRENT_CHECK$/p" "$repo/scripts/vm-test.sh" | sed '1d;$d')
+python3 - "$concurrent_validator" <<'CONCURRENT_ORACLE'
+import json,subprocess,sys
+p={'status':'passed','scope':'jit-concurrent','pid1':'systemd','uids':[21032,21033,21034,21003],
+   'rounds':[{'ids':['a','a'],'statuses':[303,503]},{'ids':['b','c'],'statuses':[303,303]}]}
+p.update(dict.fromkeys(('unique_bindings','cross_uid_denied','retryable_loser','provider_rendezvous','binary_digest_verified'),True))
+def accepts(x,optimized=False):
+ return subprocess.run(['python3']+(['-O'] if optimized else [])+['-c',sys.argv[1],json.dumps(x)]).returncode==0
+for optimized in (False,True):
+ assert accepts(p,optimized)
+ for key in ('unique_bindings','cross_uid_denied','retryable_loser','provider_rendezvous','binary_digest_verified'):
+  q=dict(p);q.pop(key);assert not accepts(q,optimized),key
+ assert not accepts(dict(p,rounds=[{'ids':['a','a'],'statuses':[303,303]}]),optimized)
+ assert not accepts(dict(p,rounds=[{'ids':['a','a'],'statuses':[503,503]},p['rounds'][1]]),optimized)
+ assert not accepts(dict(p,status='failed'),optimized)
+CONCURRENT_ORACLE
 login_validator=$(sed -n "/<<'LOGIN_CHECK'/,/^LOGIN_CHECK$/p" "$repo/scripts/vm-test.sh" | sed '1d;$d')
 for mode in normal optimized; do
   python_flags=()

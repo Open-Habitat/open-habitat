@@ -13,8 +13,8 @@ PY
   else printf 'error: %s\n' "$2" >&2; fi
   exit "$3"
 }
-[[ $# -eq 1 || ( $# -eq 2 && ${2:-} == --json ) ]] || fail invalid_arguments 'Expected self-test|systemd-self-test|two-user-routing|broker-guest|jit-provision|jit-login|jit-reboot-diagnostic [--json]' 1
-[[ $scenario == self-test || $scenario == systemd-self-test || $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-reboot-diagnostic ]] || fail invalid_scenario 'Expected self-test, systemd-self-test, two-user-routing, broker-guest, jit-provision or jit-login or jit-reboot-diagnostic' 1
+[[ $# -eq 1 || ( $# -eq 2 && ${2:-} == --json ) ]] || fail invalid_arguments 'Expected self-test|systemd-self-test|two-user-routing|broker-guest|jit-provision|jit-login|jit-concurrent|jit-reboot-diagnostic [--json]' 1
+[[ $scenario == self-test || $scenario == systemd-self-test || $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-reboot-diagnostic ]] || fail invalid_scenario 'Expected self-test, systemd-self-test, two-user-routing, broker-guest, jit-provision or jit-login or jit-concurrent or jit-reboot-diagnostic' 1
 # Treat the recipe as data, never source executable text.
 image_url= image_sha= image_arch=
 while IFS= read -r line || [[ -n $line ]]; do
@@ -77,18 +77,33 @@ fi
 echo "$image_sha  $image" | sha256sum -c --status || fail image_checksum_mismatch 'Cached image does not match pinned SHA-256' 1
 printf 'instance-id: synthetic-systemd-fixture\nlocal-hostname: fixture-vm\n' > "$run/meta-data"
 seed_file=/fixture/cloud-init.yaml
-binary_sha= product_commit=
-if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-reboot-diagnostic ]]; then
+binary_sha= product_commit= archive_sha= embedded_commit=
+if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-reboot-diagnostic ]]; then
   command -v go >/dev/null || fail missing_go 'Go is required to build product fixture' 2
   command -v openssl >/dev/null || fail missing_openssl 'OpenSSL is required for fixture TLS' 2
   product_commit=$(git -C "$repo" rev-parse HEAD)
-  (cd "$repo" && CGO_ENABLED=0 go build -trimpath -o "$run/native-agent-host" ./cmd/native-agent-host) || fail product_build_failed 'Could not build product binary' 2
+  if [[ $scenario == jit-concurrent ]]; then
+    [[ -z $(git -C "$repo" status --porcelain) ]] || fail dirty_tree 'Exact release archive requires a clean committed tree' 1
+    [[ -f $repo/web/dist/index.html ]] || fail missing_web_build 'Build production web assets before packaging the guest archive' 2
+    mkdir -p "$run/release"
+    archive=$("$repo/scripts/package-release.sh" --version 0.0.0-test --target linux-amd64 --web-dir "$repo/web/dist" --output "$run/release") || fail product_build_failed 'Could not package release' 2
+    "$repo/scripts/verify-release.sh" --archive "$archive" --json > "$run/verify.json" || fail invalid_release 'Packaged archive failed release verification' 2
+    archive_sha=$(sha256sum "$archive" | cut -d' ' -f1)
+    # verify-release validates entry types, inventory and checksums before extraction.
+    tar -xzf "$archive" -C "$run/release" || fail invalid_release 'Verified release extraction failed' 2
+    cp "$run/release/native-agent-host-0.0.0-test-linux-amd64/bin/native-agent-host" "$run/native-agent-host"
+    embedded_commit=$("$run/native-agent-host" --json version | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["commit"])') || fail invalid_release 'Embedded commit unavailable' 2
+    [[ $embedded_commit == "$product_commit" ]] || fail invalid_release 'Embedded release commit differs from committed tree' 2
+  else
+    (cd "$repo" && CGO_ENABLED=0 go build -trimpath -o "$run/native-agent-host" ./cmd/native-agent-host) || fail product_build_failed 'Could not build product binary' 2
+  fi
   binary_sha=$(sha256sum "$run/native-agent-host" | cut -d' ' -f1)
-  if [[ $scenario == jit-provision || $scenario == jit-login || $scenario == jit-reboot-diagnostic ]]; then
+  if [[ $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-reboot-diagnostic ]]; then
     # Read only: exact landed Fleetrepo checkout and reviewed policy hashes are
     # checked by the renderer before any private bytes reach the disposable ISO.
     jit_args=()
     [[ $scenario == jit-login ]] && jit_args=(login)
+    [[ $scenario == jit-concurrent ]] && jit_args=(concurrent)
     [[ $scenario == jit-reboot-diagnostic ]] && jit_args=(reboot)
     FLEETREPO_JIT_SOURCE=${FLEETREPO_JIT_SOURCE:-/home/maintainer/Sources/fleetrepo} python3 "$repo/test/vm/jit-fixture.py" "$run" "$run/native-agent-host" "${jit_args[@]}" >"$run/fixture.log" 2>&1 || fail invalid_policy_input 'Pinned Fleetrepo commit or reviewed JIT gate blob unavailable or invalid' 1
     seed_file=/run-data/jit-cloud-init.yaml
@@ -99,7 +114,7 @@ if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario ==
     python3 "$repo/test/vm/product-fixture.py" "$run" "$run/native-agent-host" || fail invalid_product_fixture 'Could not render private product seed' 2
     seed_file=/run-data/product-cloud-init.yaml
   fi
-  if [[ $scenario == two-user-routing || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-reboot-diagnostic ]]; then
+  if [[ $scenario == two-user-routing || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-reboot-diagnostic ]]; then
     # The pinned noble cloud image lacks the ACL utilities required by the
     # broker's existing-binding verifier. Carry guest-local tools from the
     # disposable pinned image; never install a host package or relax ACLs.
@@ -219,6 +234,36 @@ RECEIPT_CHECK
   cleanup; trap - EXIT
   [[ ! -e $run ]] || fail cleanup_failed 'Private guest run directory remains' 2
   if $json; then printf '{"schema_version":1,"data":{"status":"passed","launched":true,"scope":"jit-reboot-diagnostic","product_commit":"%s","binary_sha256":"%s","image_sha256":"%s","tool_image_id":"%s","fleetrepo":%s,"duration_seconds":%d,"guest":%s},"warnings":[]}\n' "$product_commit" "$binary_sha" "$image_sha" "$image_id" "$fleetrepo_receipt" "$duration" "$proof"; else echo "JIT reboot passed (${duration}s)"; fi
+  exit 0
+fi
+if [[ $scenario == jit-concurrent ]]; then
+  if [[ $vm_status -ne 0 || -z $proof ]] || ! python3 - "$proof" <<'CONCURRENT_CHECK'
+import json,sys
+try:
+ p=json.loads(sys.argv[1])
+ if p.get('status')!='passed' or p.get('scope')!='jit-concurrent' or p.get('pid1')!='systemd':sys.exit(1)
+ if p.get('uids')!=[21032,21033,21034,21003]:sys.exit(1)
+ if not all(p.get(k) is True for k in ('unique_bindings','cross_uid_denied','retryable_loser','provider_rendezvous','binary_digest_verified')):sys.exit(1)
+ rounds=p.get('rounds')
+ if not isinstance(rounds,list) or len(rounds)!=2 or [r.get('ids') for r in rounds]!=[['a','a'],['b','c']]:sys.exit(1)
+ if any(len(r.get('statuses',[]))!=2 or not all(s in (303,503) for s in r['statuses']) for r in rounds):sys.exit(1)
+ if 303 not in rounds[0]['statuses'] or rounds[1]['statuses']!=[303,303]:sys.exit(1)
+except (ValueError,TypeError,AttributeError,KeyError):sys.exit(1)
+CONCURRENT_CHECK
+  then
+    fail boot_proof_failed "JIT concurrent guest failed closed (VM exit $vm_status, ${duration}s; proof missing or rejected)" 2
+  fi
+  if ! python3 - "$run/serial.log" "$run/native-agent-host" <<'CONCURRENT_TOKEN_SCAN'
+import pathlib,sys
+for name in ('guestone','guesttwo','guestthree','UNKNOWN'):
+ token=('PRODUCT_VM_TOKEN_'+name+'_FIXTURE_ONLY_92764').encode()
+ if any(token in pathlib.Path(p).read_bytes() for p in sys.argv[1:]):sys.exit(1)
+CONCURRENT_TOKEN_SCAN
+  then fail token_scan_failed 'Synthetic token found in concurrent output or binary' 2; fi
+  fleetrepo_receipt=$(cat "$run/jit-receipt.json")
+  cleanup; trap - EXIT
+  [[ ! -e $run ]] || fail cleanup_failed 'Private guest run directory remains' 2
+  if $json; then printf '{"schema_version":1,"data":{"status":"passed","scope":"jit-concurrent","product_commit":"%s","embedded_commit":"%s","archive_sha256":"%s","binary_sha256":"%s","image_sha256":"%s","tool_image_id":"%s","fleetrepo":%s,"duration_seconds":%d,"guest":%s},"warnings":[]}\n' "$product_commit" "$embedded_commit" "$archive_sha" "$binary_sha" "$image_sha" "$image_id" "$fleetrepo_receipt" "$duration" "$proof"; else echo "JIT concurrent guest passed (${duration}s)"; fi
   exit 0
 fi
 if [[ $scenario == jit-login ]]; then

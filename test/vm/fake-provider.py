@@ -1,6 +1,9 @@
 #!/usr/bin/python3
 """Fixed GitHub TLS fixture, bound only to guest loopback."""
-import http.server, json, ssl, pathlib, urllib.parse
+import http.server, json, ssl, pathlib, threading, urllib.parse
+# Only the disposable concurrent guest enables this rendezvous. Both gateway
+# callbacks must reach /user before either receives an identity.
+barrier=threading.Barrier(2)
 class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self,*args): pass
     def do_POST(self):
@@ -11,6 +14,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_json({'access_token':pathlib.Path('/usr/local/lib/fixture/tokens/'+('agent-a' if code=='a' else 'agent-b' if code=='b' else 'agent-c')).read_text() if code!='unknown' else 'PRODUCT_VM_TOKEN_UNKNOWN_FIXTURE_ONLY_92764','token_type':'bearer'})
     def do_GET(self):
         if self.path!='/user':return self.send_error(404)
+        if pathlib.Path('/run/fixture-concurrent').is_file():
+            try: barrier.wait(timeout=15)
+            except threading.BrokenBarrierError: return self.send_error(503)
         token=self.headers.get('Authorization','')
         key='PRODUCT_VM_TOKEN_'
         ident={'Bearer '+key+'agent_a_FIXTURE_ONLY_92764':31001,'Bearer '+key+'agent_b_FIXTURE_ONLY_92764':31002,'Bearer '+key+'agent_c_FIXTURE_ONLY_92764':31003,'Bearer '+key+'UNKNOWN_FIXTURE_ONLY_92764':39999}.get(token)
@@ -21,7 +27,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_json({'id':ident,'login':login})
     def send_json(self,data):
         body=json.dumps(data).encode();self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
-server=http.server.HTTPServer(('127.0.0.1',443),Handler)
+server=http.server.ThreadingHTTPServer(('127.0.0.1',443),Handler)
 ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 ctx.load_cert_chain('/etc/native-agent-host/tls.crt','/etc/native-agent-host/tls.key')
 server.socket=ctx.wrap_socket(server.socket,server_side=True)

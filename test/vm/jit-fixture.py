@@ -31,7 +31,7 @@ staged = {name: subprocess.check_output(['git','-C',str(source),'show',
 for name, digest in receipts.items():
     if hashlib.sha256(staged[name]).hexdigest() != digest:
         raise ValueError(f'Fleetrepo JIT policy hash mismatch: {name}')
-if len(sys.argv) not in (3,4) or (len(sys.argv)==4 and sys.argv[3] not in ('login','reboot')) or not Path(sys.argv[2]).is_file():
+if len(sys.argv) not in (3,4) or (len(sys.argv)==4 and sys.argv[3] not in ('login','reboot','concurrent')) or not Path(sys.argv[2]).is_file():
     raise ValueError('Expected output directory and regular product binary')
 run = Path(sys.argv[1]); binary = Path(sys.argv[2])
 (run/'jit-receipt.json').write_text(json.dumps({'commit':head,'sha256':receipts},sort_keys=True))
@@ -52,7 +52,8 @@ for name in ('native-agent-host-jit-policy-gate.service','native-agent-host-jit-
     add('/etc/systemd/system/'+name,staged[name])
 for name in ('native-agent-host-broker.socket','native-agent-host-daemon@.socket'):
     add('/etc/systemd/system/'+name+'.d/10-fleetrepo-jit-gate.conf',staged[name+'.d/10-fleetrepo-jit-gate.conf'])
-add('/usr/local/sbin/jit-proof',(repo/'test/vm/jit-login-proof.py' if login else repo/'test/vm/jit-proof.py').read_bytes(),'0755')
+proof='jit-concurrent-proof.py' if len(sys.argv)==4 and sys.argv[3]=='concurrent' else 'jit-login-proof.py' if login else 'jit-proof.py'
+add('/usr/local/sbin/jit-proof',(repo/'test/vm'/proof).read_bytes(),'0755')
 if len(sys.argv)==4 and sys.argv[3]=='reboot':
     add('/etc/native-agent-host/reboot-fixture','reboot\n')
     add('/usr/local/sbin/jit-reboot-proof',(repo/'test/vm/jit-reboot-proof.py').read_bytes(),'0755')
