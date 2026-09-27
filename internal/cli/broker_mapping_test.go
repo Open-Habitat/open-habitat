@@ -21,7 +21,7 @@ func TestMapBrokerReply(t *testing.T) {
 		{"denied", provision.Reply{Failure: provision.Denied}, nil, gateway.BrokerDenied, false},
 		{"name", provision.Reply{Failure: provision.NameCollision}, nil, gateway.BrokerNameCollision, false},
 		{"drift", provision.Reply{Failure: provision.Drift}, nil, gateway.BrokerDrift, false},
-		{"invalid", provision.Reply{Failure: provision.Invalid}, nil, gateway.BrokerInvalidRequest, false},
+		{"invalid", provision.Reply{Failure: provision.Invalid}, nil, gateway.BrokerInvalidReply, false},
 		{"missing route", provision.Reply{}, nil, gateway.BrokerInvalidReply, false},
 		{"unknown", provision.Reply{Failure: provision.Failure("private reply text")}, nil, gateway.BrokerInvalidReply, false},
 	} {

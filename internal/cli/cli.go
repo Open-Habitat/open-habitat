@@ -484,7 +484,9 @@ func mapBrokerReply(reply provision.Reply, err error) (gateway.BrokerReply, erro
 	case provision.Drift:
 		return gateway.BrokerReply{}, gateway.BrokerDrift
 	case provision.Invalid:
-		return gateway.BrokerReply{}, gateway.BrokerInvalidRequest
+		// The requested diagnostic vocabulary has no invalid_request class.
+		// Treat a rejected request as invalid_reply, never as transport.
+		return gateway.BrokerReply{}, gateway.BrokerInvalidReply
 	case "":
 		if reply.Route == nil {
 			return gateway.BrokerReply{}, gateway.BrokerInvalidReply

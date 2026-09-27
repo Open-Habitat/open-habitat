@@ -65,7 +65,6 @@ const (
 	BrokerNameCollision    BrokerFailure = "name_collision"
 	BrokerDrift            BrokerFailure = "drift"
 	BrokerInvalidReply     BrokerFailure = "invalid_reply"
-	BrokerInvalidRequest   BrokerFailure = "invalid_request"
 	BrokerBindingChanged   BrokerFailure = "binding_changed"
 )
 
@@ -78,7 +77,7 @@ func brokerReason(err error, valid bool) BrokerFailure {
 		var f BrokerFailure
 		if errors.As(err, &f) {
 			switch f {
-			case BrokerTransport, BrokerStateUnavailable, BrokerDenied, BrokerNameCollision, BrokerDrift, BrokerInvalidReply, BrokerInvalidRequest:
+			case BrokerTransport, BrokerStateUnavailable, BrokerDenied, BrokerNameCollision, BrokerDrift, BrokerInvalidReply:
 				return f
 			}
 		}
@@ -212,7 +211,7 @@ func (a *Auth) brokerEvent(attempt, operation string, reason BrokerFailure) {
 		return
 	}
 	switch reason {
-	case BrokerTransport, BrokerStateUnavailable, BrokerDenied, BrokerNameCollision, BrokerDrift, BrokerInvalidReply, BrokerInvalidRequest, BrokerBindingChanged:
+	case BrokerTransport, BrokerStateUnavailable, BrokerDenied, BrokerNameCollision, BrokerDrift, BrokerInvalidReply, BrokerBindingChanged:
 	default:
 		reason = BrokerInvalidReply
 	}
