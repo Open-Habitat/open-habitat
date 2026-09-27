@@ -44,6 +44,13 @@ test("@account-settings verified native state, route return and disabled disconn
   await expect(page.getByRole("navigation")).not.toContainText(
     "GitHub user 42",
   );
+  await page.getByRole("button", { name: "Tilivalikko" }).click();
+  await expect(page.getByRole("menuitem", { name: "Asetukset" })).toBeVisible();
+  await page.screenshot({
+    path: "test-results/evidence/account-menu.png",
+    fullPage: true,
+  });
+  await page.keyboard.press("Escape");
   await page.locator(".ah-workspace-link").first().click();
   const returnPath = new URL(page.url()).pathname;
   await settings(page);

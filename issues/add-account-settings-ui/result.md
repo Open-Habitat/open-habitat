@@ -4,4 +4,6 @@ Shared `web/src/components/Account.tsx` provides a bottom-left account menu and 
 
 Verification: component tests cover numeric-label fallback, unknown/missing/disconnected/partial states and disabled disconnect; Playwright fixture tests cover keyboard entry and Escape focus, navigation/deep-link reload, connected/partial/unknown/unavailable states, logout and synthetic user switch. See [visual acceptance and screenshots](visual-acceptance.md). Full `./scripts/ci-local.sh --clean --json` result to be recorded after clean gate.
 
+Focused diff review checked frontend scope, focus transitions and identity leakage: no native mutation request was introduced; state labels use only the validated snapshot and the account shelf does not print numeric provider subjects. Browser focus checks cover menu Escape, Settings entry and Back; unavailable snapshot hides old identity. Residual limitation: no screen-reader/manual visual assessment yet.
+
 Limits: no native disconnect endpoint or fresh-auth confirmation is available, so no disconnect is attempted. Browser-fixture snapshot state overrides are synthetic, not native GitHub integration evidence. No real users, credentials, native homes, live Pi or two-UID isolation exercised. Jari's visual approval remains pending and @build-history-view is unaffected.

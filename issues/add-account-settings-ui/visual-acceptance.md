@@ -4,6 +4,7 @@ These are **synthetic browser-fixture screenshots**, not Jari's visual acceptanc
 
 | State | Screenshot | Browser assertion |
 |---|---|---|
+| Account menu | [Open account menu](assets/menu.avif) | Compact bottom-left shelf, Settings and web logout. |
 | Connected | [Connected settings](assets/connected.avif) | Native connected state shown, provider numeric ID hidden, disconnect disabled with reason; keyboard menu Escape restores trigger, Enter opens Settings and focuses heading. |
 | Partial | [Partial settings](assets/partial.avif) | Snapshot partial state warns Git operations cannot be assumed ready. |
 | Unknown | [Unknown settings](assets/unknown.avif) | Reloaded unknown state is not presented as connected. |
