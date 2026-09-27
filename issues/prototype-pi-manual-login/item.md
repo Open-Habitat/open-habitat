@@ -8,7 +8,7 @@ related: ['@prove-pi-browser-auth', '@design-first-use-onboarding']
 lane: pi-native-patch
 collision: [issues/design-first-use-onboarding/]
 commits:
-- hash: 96ccd9f1c89ff36138ad800cbd2d2b1607d27494
+- hash: e0d9fcee054fd46b991ca0967f49ecda5e660388
   summary: Prototype pinned Pi manual-only Codex OAuth patch
 closed: 2026-09-27
 closed_by: agent
