@@ -30,3 +30,7 @@ Jari first attempted live GitHub login on 2026-09-27 around 14:55 local time on 
 ### 2026-09-27T15:04:02Z · @pi
 
 2026-09-27 security review of config parent fix flagged next boundary: intended /etc/native-agent-host root:gateway 0750 blocks a new daemon UID from traversing to its private binding file unless it gets an exact per-user grant. Live read-only getfacl -cpn /etc/native-agent-host shows only owner/group/other, no per-user ACL. Do not deploy and trigger first provisioning until config delivery/traversal architecture is approved; recommend bounded per-daemon execute-only ACL with Fleetrepo policy and product verifier, no gateway-group membership.
+
+### 2026-09-27T16:37:55Z · @pi
+
+2026-09-27 pilot.6 installed official gh 2.46.0 through hashed Fleetrepo guest installer; native handoff still failed. Root read-only fixed-format probes (no credentials or identities emitted) show helper string produced by actual gh auth setup-git matches exact !/usr/bin/gh auth git-credential, whereas product nativegh.Adapter.observe only accepts exact !gh auth git-credential. Account, broker binding, private file, and active daemon service/socket exist, no pending marker; browser session/native gh still unproved. Product issue @accept-absolute-gh-helper owns narrow validated fix.
