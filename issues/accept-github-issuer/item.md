@@ -2,10 +2,12 @@
 created: 2026-09-27
 updated: 2026-09-27
 type: bug
-status: in-progress
+status: fixed
 priority: high
 lane: auth-incident
 collision: [internal/gateway/auth.go]
+closed: 2026-09-27
+closed_by: pi
 ---
 
 # Accept pinned GitHub issuer in OAuth callback

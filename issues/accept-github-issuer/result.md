@@ -1,0 +1,9 @@
+# Pinned GitHub issuer callback result
+
+The gateway accepts the original two-key `state` + `code` or `state` + `error` callback and the same shapes with one `iss` value **only** when it equals `https://github.com/login/oauth` after query decoding. All other keys, duplicates, empty or different issuer values remain invalid. Issuer mismatch has its own fixed diagnostic reason without logging request values. State remains single-use before validation, and the existing browser cookie, host/TLS, PKCE, broker and token handoff checks are unchanged.
+
+Synthetic gateway tests cover issuer-bearing successful progression through provider exchange, broker ensure and authorize, token handoff and session creation; PKCE binding and replay rejection; legacy issuer absence; error handling; wrong scheme/host/path/encoded issuer, empty/duplicate issuer, fourth key and simultaneous code/error. Invalid callback tests assert zero provider, broker and token-sink calls and redacted logs.
+
+Validation: targeted `go test ./internal/gateway -run 'TestGitHubIssuerCallbackProgression|TestCallbackDiagnostics|TestOAuthSession' -count=1` passed using disposable Go 1.27.1. Full `./scripts/ci-local.sh --clean --json` passed with `clean: true` on the committed fix. An independent focused security review of the final diff (Claude Fable 5.1 finder, GPT-6 Astra false-negative check) found no actionable issue within the required contract. The finder suggested accepting additional GitHub denial-description keys; this was declined because the specified contract rejects every fourth key and the current behavior fails closed.
+
+No live OAuth, browser history, host, Fleetrepo or credentials were accessed in this worker. This does not demonstrate live JIT provisioning or native `gh`; `investigate-first-login` remains open for a separately authorized live retest.
