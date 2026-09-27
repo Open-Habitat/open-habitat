@@ -108,8 +108,8 @@ try:
             try:code=json.loads(body).get('error',{}).get('code')
             except (ValueError,UnicodeError,AttributeError):code=None
             errors.append(code if code in allowed_errors else 'other')
-        # Synthetic tool argv is recorded under each guest UID; emit only the
-        # fixed command categories, never token-bearing files or child output.
+        # The synthetic children store token-free argv under their own homes.
+        # Only fixed command categories are exposed in the failure receipt.
         def stages(code):
             home=pathlib.Path('/home')/next(i[1] for i in identities if i[0]==code)
             gh=home/'gh-argv.jsonl';git=home/'git-argv.log'
@@ -130,7 +130,7 @@ try:
             check(sum(b['id']==id and b['uid']==uid and b['username']==name for b in bound)==1,'duplicate/wrong binding')
             check(sum(u.pw_uid==uid and u.pw_name==name for u in pwd.getpwall())==1,'duplicate NSS account')
         check(len(bound)==(1 if codes[0]=='a' else 3),'unexpected binding count')
-        rounds.append({'statuses':statuses,'ids':list(codes)})
+        rounds.append({'statuses':statuses,'ids':list(codes),'duration_seconds':[elapsed for _,_,elapsed in replies]})
     for code,name,uid,_ in identities:
         home=pathlib.Path('/home')/name
         src=home/'src';src.mkdir(mode=0o700)
@@ -149,8 +149,55 @@ try:
             check(deny(uid,'/home/'+other) and deny(uid,'/run/native-agent-host/users/'+other+'/daemon.sock'),'cross-UID DAC')
             check(deny(other_uid,'/home/'+name),'cross-UID credential home')
     check(len(binding())==3,'binding cardinality')
+    # Faults are made only in the disposable guest, after all successful browser
+    # flows. Keep the broker running so these are request-time denials, not an
+    # inference from a socket-activation race. Restore exact ledger bytes.
+    head=ledger/'head.json';allow=ledger/'allowlist.json';bindings=ledger/'bindings.json'
+    original={p:p.read_bytes() for p in (head,allow,bindings)}
+    def refused(label, expected, changed=None):
+        status,_,_=get(successful['a'][0],'/api/v1/snapshot')
+        check(status!=200,label+' browser route accepted')
+        # A direct gateway-UID peer gets a typed reply from the active broker.
+        request=json.dumps({'version':1,'operation':'authorize','provider':'github','id':identities[0][3]}).encode()
+        def drop():os.setgroups([]);os.setresgid(21003,21003,21003);os.setresuid(21003,21003,21003)
+        code='''import socket,struct,sys
+s=socket.socket(socket.AF_UNIX);s.settimeout(12);s.connect(sys.argv[1]);b=sys.argv[2].encode();s.sendall(struct.pack('>I',len(b))+b);s.shutdown(socket.SHUT_WR);n=struct.unpack('>I',s.recv(4))[0];out=b''
+while len(out)<n:out+=s.recv(n-len(out))
+print(out.decode())'''
+        p=subprocess.run(['/usr/bin/python3','-c',code,'/run/native-agent-host/broker.sock',request.decode()],preexec_fn=drop,capture_output=True,text=True,timeout=18)
+        check(p.returncode==0 and json.loads(p.stdout).get('failure')==expected,label+' broker did not deny')
+        expected_bytes=dict(original)
+        if changed is not None:
+            expected_bytes[changed[0]]=changed[1]
+        check(all(p.read_bytes()==b for p,b in expected_bytes.items()),label+' mutated ledger')
+    # Change a committed NSS account's name without changing its UID. The
+    # binding still points at the old name, which must never be adopted anew.
+    passwd=pathlib.Path('/etc/passwd');passwd_bytes=passwd.read_bytes()
+    lines=passwd_bytes.split(b'\n')
+    hits=[i for i,line in enumerate(lines) if line.startswith(b'guestone:')]
+    check(len(hits)==1,'NSS fixture name not unique')
+    lines[hits[0]]=b'driftalias'+lines[hits[0]][len(b'guestone'):]
+    passwd.write_bytes(b'\n'.join(lines))
+    try:
+        refused('NSS name drift','drift')
+    finally:
+        passwd.write_bytes(passwd_bytes)
+    check(all(p.read_bytes()==b for p,b in original.items()),'NSS drift changed ledger')
+    check(get(successful['a'][0],'/auth/session')[0]==401,'drifted session not revoked')
+    recovered=start();check(callback(recovered,'a')[0]==303,'fresh login after NSS restore failed')
+    successful['a']=recovered
+    check(len(binding())==3 and get(recovered[0],'/api/v1/snapshot')[0]==200,'NSS restore changed mapping')
+    for label,path,payload in (
+        ('corrupt head',head,b'{invalid'),
+        ('head generation mismatch',head,json.dumps(dict(json.loads(original[head]),generation=1)).encode()),
+        ('rolled-back epoch',allow,json.dumps(dict(json.loads(original[allow]),epoch=1)).encode())):
+        path.write_bytes(payload)
+        try:refused(label,'state_unavailable',(path,payload))
+        finally:path.write_bytes(original[path])
+        check(all(p.read_bytes()==b for p,b in original.items()),label+' altered ledger after restore')
+        check(get(successful['a'][0],'/api/v1/snapshot')[0]==200,label+' recovery failed')
     result={'status':'passed','scope':'jit-concurrent','pid1':'systemd','uids':[21032,21033,21034,21003],
-            'rounds':rounds,'unique_bindings':True,'cross_uid_denied':True,'same_id_idempotent':rounds[0]['statuses']==[303,303],'provider_rendezvous':observed_rendezvous==2,'binary_digest_verified':True}
+            'rounds':rounds,'unique_bindings':True,'cross_uid_denied':True,'same_id_idempotent':rounds[0]['statuses']==[303,303],'provider_rendezvous':observed_rendezvous==2,'binary_digest_verified':True,'nss_drift_denied':True,'head_corrupt_denied':True,'head_generation_mismatch_denied':True,'epoch_rollback_denied':True}
 except Exception as e:
     result['reason']=(type(e).__name__+' '+str(e).split(':')[0])[:150]
 finally:

@@ -105,16 +105,17 @@ python3 - "$concurrent_validator" <<'CONCURRENT_ORACLE'
 import json,subprocess,sys
 p={'status':'passed','scope':'jit-concurrent','pid1':'systemd','uids':[21032,21033,21034,21003],
    'rounds':[{'ids':['a','a'],'statuses':[303,303]},{'ids':['b','c'],'statuses':[303,303]}]}
-p.update(dict.fromkeys(('unique_bindings','cross_uid_denied','same_id_idempotent','provider_rendezvous','binary_digest_verified'),True))
+p.update(dict.fromkeys(('unique_bindings','cross_uid_denied','same_id_idempotent','provider_rendezvous','binary_digest_verified','nss_drift_denied','head_corrupt_denied','head_generation_mismatch_denied','epoch_rollback_denied'),True))
 def accepts(x,optimized=False):
  return subprocess.run(['python3']+(['-O'] if optimized else [])+['-c',sys.argv[1],json.dumps(x)]).returncode==0
 for optimized in (False,True):
- assert accepts(p,optimized)
- for key in ('unique_bindings','cross_uid_denied','same_id_idempotent','provider_rendezvous','binary_digest_verified'):
-  q=dict(p);q.pop(key);assert not accepts(q,optimized),key
- assert not accepts(dict(p,rounds=[{'ids':['a','a'],'statuses':[303,303]}]),optimized)
- assert not accepts(dict(p,rounds=[{'ids':['a','a'],'statuses':[503,503]},p['rounds'][1]]),optimized)
- assert not accepts(dict(p,status='failed'),optimized)
+ if not accepts(p,optimized): raise RuntimeError('valid concurrent proof rejected')
+ for key in ('unique_bindings','cross_uid_denied','same_id_idempotent','provider_rendezvous','binary_digest_verified','nss_drift_denied','head_corrupt_denied','head_generation_mismatch_denied','epoch_rollback_denied'):
+  q=dict(p);q.pop(key)
+  if accepts(q,optimized): raise RuntimeError('missing '+key+' accepted')
+ if accepts(dict(p,rounds=[{'ids':['a','a'],'statuses':[303,303]}]),optimized): raise RuntimeError('missing round accepted')
+ if accepts(dict(p,rounds=[{'ids':['a','a'],'statuses':[503,503]},p['rounds'][1]]),optimized): raise RuntimeError('failed callbacks accepted')
+ if accepts(dict(p,status='failed'),optimized): raise RuntimeError('failed proof accepted')
 CONCURRENT_ORACLE
 login_validator=$(sed -n "/<<'LOGIN_CHECK'/,/^LOGIN_CHECK$/p" "$repo/scripts/vm-test.sh" | sed '1d;$d')
 for mode in normal optimized; do

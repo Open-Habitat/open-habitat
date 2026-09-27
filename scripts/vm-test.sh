@@ -245,7 +245,7 @@ try:
  p=json.loads(sys.argv[1])
  if p.get('status')!='passed' or p.get('scope')!='jit-concurrent' or p.get('pid1')!='systemd':sys.exit(1)
  if p.get('uids')!=[21032,21033,21034,21003]:sys.exit(1)
- if not all(p.get(k) is True for k in ('unique_bindings','cross_uid_denied','same_id_idempotent','provider_rendezvous','binary_digest_verified')):sys.exit(1)
+ if not all(p.get(k) is True for k in ('unique_bindings','cross_uid_denied','same_id_idempotent','provider_rendezvous','binary_digest_verified','nss_drift_denied','head_corrupt_denied','head_generation_mismatch_denied','epoch_rollback_denied')):sys.exit(1)
  rounds=p.get('rounds')
  if not isinstance(rounds,list) or len(rounds)!=2 or [r.get('ids') for r in rounds]!=[['a','a'],['b','c']]:sys.exit(1)
  if any(r.get('statuses')!=[303,303] for r in rounds):sys.exit(1)
