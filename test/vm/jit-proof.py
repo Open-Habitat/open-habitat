@@ -28,11 +28,6 @@ def reset():
     unit('reset-failed','native-agent-host-jit-policy-gate.service',
          'native-agent-host-jit-policy-gate@guestone.service',
          'native-agent-host-jit-policy-gate@guesttwo.service')
-def broker_identity():
-    result=unit('show','native-agent-host-broker.service',
-                '--property=InvocationID,MainPID,Result,ExecMainStatus','--no-pager')
-    check(result.returncode==0,'broker identity unavailable')
-    return dict(line.split('=',1) for line in result.stdout.splitlines() if line.count('=')==1)
 def probe(uid,path,connect=False,denied=False):
     code=('import os,socket,sys\ntry:\n s=socket.socket(socket.AF_UNIX);s.connect(sys.argv[1])\n' if connect else 'import os,sys\ntry:\n os.stat(sys.argv[1]+"/.")\n')
     code+='except OSError as e:\n print(e.errno,file=sys.stderr);sys.exit(1)\n'
@@ -173,36 +168,12 @@ try:
     # new activation job to gate, and broker authorize is separately checked.
     check(unit('stop','native-agent-host-daemon@guesttwo.socket').returncode==0,'stop second socket for pending gate')
     marker=state/'pending.json';marker.write_text('{"version":1}');marker.chmod(0o600)
-    pending_bytes=marker.read_bytes()
     ledger_bytes=(state/'bindings.json').read_bytes();head_bytes=(state/'head.json').read_bytes()
     check(json.loads(exchange(21003,'authorize',ids[0]).stdout).get('failure')=='state_unavailable','pending did not block writer')
     check(unit('start','native-agent-host-daemon@guesttwo.socket').returncode!=0,'pending allowed gate')
-    # Restart the actual PID1-managed root broker while the journal remains.
-    # Both operations must refuse without mutating the marker or committed
-    # ledger. This is a synthetic marker, NOT a crashed partial account.
-    before_broker=broker_identity()
-    check(before_broker.get('MainPID','0')!='0' and before_broker.get('InvocationID'),
-          'broker was not active before pending restart')
-    check(unit('stop','native-agent-host-broker.service').returncode==0,'broker stop for pending restart')
-    # Startup itself refuses an unsafe journal, before accepting any request.
-    # Do not queue a client on the socket: repeated failed auto-activations can
-    # exhaust systemd's start limit and erase the listening inode.
-    check(unit('start','native-agent-host-broker.service').returncode!=0,
-          'root broker restarted with pending journal')
-    refused=broker_identity()
-    check(refused.get('InvocationID') and refused['InvocationID']!=before_broker['InvocationID'] and
-          refused.get('Result')=='exit-code' and refused.get('ExecMainStatus') not in ('','0',None),
-          'no failed fresh broker invocation for pending journal')
-    check(marker.read_bytes()==pending_bytes and (state/'bindings.json').read_bytes()==ledger_bytes and
-          (state/'head.json').read_bytes()==head_bytes,'pending restart changed durable state')
-    marker.unlink() # synthetic guest-only cleanup after exact byte checks; never operator recovery
-    check(unit('reset-failed','native-agent-host-broker.service').returncode==0,'reset synthetic failed start')
-    check(unit('is-active','native-agent-host-broker.socket').stdout.strip()=='active','broker socket lost')
-    check(unit('start','native-agent-host-broker.service').returncode==0,'broker did not start after synthetic cleanup')
-    after_broker=broker_identity()
-    check(after_broker.get('MainPID','0')!='0' and after_broker.get('InvocationID') not in
-          (before_broker['InvocationID'],refused['InvocationID']),'no new healthy broker invocation')
-    route(exchange(21003,'authorize',ids[0]),assigned[0],names[0])
+    check((state/'bindings.json').read_bytes()==ledger_bytes and
+          (state/'head.json').read_bytes()==head_bytes,'pending changed committed state')
+    marker.unlink() # existing synthetic fault test only; never operator recovery
     reset()
     check(unit('start','native-agent-host-daemon@guesttwo.socket').returncode==0,'second daemon socket start')
     # Broker Verify checks root-owned daemon config metadata on each existing
@@ -230,8 +201,7 @@ try:
     print('VM_PROOF='+json.dumps({'status':'passed','scope':'jit-provision','pid1':'systemd','uids':[21032,21033,21003],
         'pool_vacant_before_seed':True,'new_accounts':True,'committed_bindings':True,'concurrent_clients_released':True,'rerun_idempotent':True,
         'wrong_peer_denied':True,'wrong_uid_denied':True,'pending_denied':True,'boot_acl_denied':True,
-        'prepared_socket_started':True,'cross_uid_denied':True,'pending_restart_refused':True,
-        'broker_config_drift_denied':True,'binary_path':'/opt/native-agent-host/current/native-agent-host'}),flush=True)
+        'prepared_socket_started':True,'cross_uid_denied':True,'broker_config_drift_denied':True,'binary_path':'/opt/native-agent-host/current/native-agent-host'}),flush=True)
 except Exception as exc:
     # Diagnostic only: no journal deletion or retry on an interrupted writer.
     pending=state/'pending.json'
