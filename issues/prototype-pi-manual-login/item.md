@@ -2,11 +2,16 @@
 created: 2026-09-27
 updated: 2026-09-27
 type: task
-status: in-progress
+status: done
 priority: high
 related: ['@prove-pi-browser-auth', '@design-first-use-onboarding']
 lane: pi-native-patch
 collision: [issues/design-first-use-onboarding/]
+commits:
+- hash: 96ccd9f1c89ff36138ad800cbd2d2b1607d27494
+  summary: Prototype pinned Pi manual-only Codex OAuth patch
+closed: 2026-09-27
+closed_by: agent
 ---
 
 # Prototype secure Pi manual browser login
