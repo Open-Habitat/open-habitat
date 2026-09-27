@@ -3,41 +3,56 @@
 package provision
 
 import (
-	"context"
-	"errors"
-	"strings"
+	"encoding/binary"
+	"os"
+	"path/filepath"
 	"testing"
+
+	"golang.org/x/sys/unix"
 )
 
-func TestParentACLExactNumericAndDrift(t *testing.T) {
-	e := NewLinuxHostExecutor(21003, 21003)
-	acl := "user::rwx\nuser:21001:--x\ngroup::--x\nmask::--x\nother::---\n"
-	calls := 0
-	e.run = func(_ context.Context, path string, args ...string) ([]byte, error) {
-		calls++
-		if path != getfacl || len(args) != 2 || args[0] != "-cpn" || args[1] != socketBase {
-			t.Fatalf("unexpected ACL command: %s %v", path, args)
-		}
-		return []byte(acl), nil
+// Model a policy-drifted installer directory in disposable storage. A named
+// default ACL can grant read access after chmod even when stat reports 0711.
+func TestBindingDirectoryInheritedACLRejectedBeforeWrite(t *testing.T) {
+	d := t.TempDir()
+	// Linux POSIX ACL xattr: version 2, owner rwx, named user r--,
+	// group --x, mask r-x, other --x. The named UID is synthetic.
+	b := make([]byte, 4+5*8)
+	binary.LittleEndian.PutUint32(b, 2)
+	for n, e := range []struct {
+		tag, perm uint16
+		id        uint32
+	}{
+		{1, 7, ^uint32(0)}, {2, 4, 22002}, {4, 1, ^uint32(0)}, {16, 5, ^uint32(0)}, {32, 1, ^uint32(0)},
+	} {
+		o := 4 + n*8
+		binary.LittleEndian.PutUint16(b[o:], e.tag)
+		binary.LittleEndian.PutUint16(b[o+2:], e.perm)
+		binary.LittleEndian.PutUint32(b[o+4:], e.id)
 	}
-	if err := e.parentACL(context.Background(), 21001); err != nil {
+	if err := unix.Setxattr(d, "system.posix_acl_default", b, 0); err != nil {
+		if err == unix.EOPNOTSUPP || err == unix.EPERM {
+			t.Skipf("fixture filesystem lacks POSIX ACL support: %v", err)
+		}
 		t.Fatal(err)
 	}
-	for _, bad := range []string{
-		strings.Replace(acl, "user:21001", "user:carol", 1),
-		strings.Replace(acl, "other::---", "other::--x", 1),
-		acl + "user:21001:--x\n", acl + "user:99999:--x\n",
-	} {
-		acl = bad
-		if err := e.parentACL(context.Background(), 21001); err == nil {
-			t.Fatal("accepted", bad)
-		}
+	if bindingDirACL(d) == nil {
+		t.Fatal("inherited default ACL accepted")
 	}
-	e.run = func(context.Context, string, ...string) ([]byte, error) { return nil, errors.New("ACL unavailable") }
-	if err := e.parentACL(context.Background(), 21001); err == nil {
-		t.Fatal("accepted unavailable ACL")
+	p := filepath.Join(d, "daemon-pilot.json")
+	f, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if calls == 0 {
-		t.Fatal("no ACL lookup")
+	defer f.Close()
+	if _, err := unix.Fgetxattr(int(f.Fd()), "system.posix_acl_access", nil); err == unix.ENODATA {
+		t.Fatal("new file's inherited access ACL went unnoticed")
+	}
+	st, err := f.Stat()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Size() != 0 {
+		t.Fatal("fixture binding was written before ACL rejection")
 	}
 }

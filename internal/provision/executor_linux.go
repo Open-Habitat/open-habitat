@@ -148,6 +148,19 @@ func ownerWithStat(path string, uid, gid uint32, mode uint32, directory bool, st
 	}
 	return nil
 }
+
+// A default ACL on the binding directory can be inherited by a new file.
+// chmod(0640) would then make named read grants effective before any later
+// verifier gets to reject the binding. Reject it before creation or writing.
+func bindingDirACL(path string) error {
+	for _, name := range []string{"system.posix_acl_default", "system.posix_acl_access"} {
+		if _, err := unix.Getxattr(path, name, nil); err != unix.ENODATA {
+			return ErrInvalid
+		}
+	}
+	return nil
+}
+
 func bindingOwner(path string, gid uint32) error {
 	if owner(path, 0, gid, 0640, false) != nil {
 		return ErrInvalid
@@ -230,7 +243,7 @@ func (e *LinuxHostExecutor) available(ctx context.Context, name string, uid uint
 			return false, availabilityGuard("parent_policy")
 		}
 	}
-	if owner(socketBase, 0, e.GatewayGID, 0710, true) != nil || configParentPolicy(configBase, statNoFollow) != nil {
+	if owner(socketBase, 0, e.GatewayGID, 0710, true) != nil || configParentPolicy(configBase, statNoFollow) != nil || bindingDirACL(configBase) != nil {
 		return false, availabilityGuard("parent_policy")
 	}
 	if e.parentACL(ctx, 0) != nil {
@@ -366,7 +379,7 @@ func (e *LinuxHostExecutor) Step(ctx context.Context, phase string, i ExecutorId
 		return owner(p, i.uid, i.uid, 0700, true)
 	case "config":
 		p := filepath.Join(configBase, "daemon-"+i.username+".json")
-		if configParentPolicy(configBase, statNoFollow) != nil || owner(filepath.Join(homeBase, i.username), i.uid, i.uid, 0700, true) != nil {
+		if configParentPolicy(configBase, statNoFollow) != nil || bindingDirACL(configBase) != nil || owner(filepath.Join(homeBase, i.username), i.uid, i.uid, 0700, true) != nil {
 			return ErrInvalid
 		}
 		b, err := e.config(i)
@@ -376,6 +389,12 @@ func (e *LinuxHostExecutor) Step(ctx context.Context, phase string, i ExecutorId
 		f, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_EXCL|syscall.O_NOFOLLOW, 0600)
 		if err != nil {
 			return err
+		}
+		// Even if the directory changed since preflight, no inherited ACL may
+		// become readable when chmod widens the group/mask bit below.
+		if _, aclErr := unix.Fgetxattr(int(f.Fd()), "system.posix_acl_access", nil); aclErr != unix.ENODATA {
+			_ = f.Close()
+			return ErrInvalid
 		}
 		if err = f.Chown(0, int(i.uid)); err != nil {
 			_ = f.Close()
@@ -784,7 +803,7 @@ func (e *LinuxHostExecutor) Verify(ctx context.Context, i ExecutorIdentity) erro
 		return err
 	}
 	p := filepath.Join(configBase, "daemon-"+i.username+".json")
-	if configParentPolicy(configBase, statNoFollow) != nil || bindingOwner(p, i.uid) != nil {
+	if configParentPolicy(configBase, statNoFollow) != nil || bindingDirACL(configBase) != nil || bindingOwner(p, i.uid) != nil {
 		return ErrInvalid
 	}
 	want, err := e.config(i)
