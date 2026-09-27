@@ -80,9 +80,9 @@ for mode in normal optimized; do
   [[ $mode == optimized ]] && python_flags=(-O)
   if python3 "${python_flags[@]}" -c "$validator" "$failed"; then echo 'failed JIT proof accepted' >&2; exit 1; fi
 done
-# An otherwise valid receipt without concurrent new ensures must fail.
+# Build a complete valid receipt first; test each required assertion by
+# removing only that one field (not by relying on another missing field).
 passed='{"status":"passed","scope":"jit-provision","pid1":"systemd","uids":[21032,21033,21003],"binary_path":"/opt/native-agent-host/current/native-agent-host","pool_vacant_before_seed":true,"new_accounts":true,"committed_bindings":true,"rerun_idempotent":true,"wrong_peer_denied":true,"wrong_uid_denied":true,"pending_denied":true,"boot_acl_denied":true,"prepared_socket_started":true,"cross_uid_denied":true}'
-if python3 -c "$validator" "$passed"; then echo 'missing concurrency accepted' >&2; exit 1; fi
 passed=$(python3 - "$passed" <<'JIT_ORACLE'
 import json,sys
 p=json.loads(sys.argv[1]);p.update(concurrent_clients_released=True,broker_config_drift_denied=True)
@@ -90,7 +90,7 @@ print(json.dumps(p))
 JIT_ORACLE
 )
 python3 -c "$validator" "$passed"
-for missing in broker_config_drift_denied; do
+for missing in concurrent_clients_released broker_config_drift_denied; do
   broken=$(python3 - "$passed" "$missing" <<'JIT_NEGATIVE'
 import json,sys
 p=json.loads(sys.argv[1]);p.pop(sys.argv[2]);print(json.dumps(p))
