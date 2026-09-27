@@ -215,6 +215,16 @@ assert json.loads(base64.b64decode(files['/var/lib/native-agent-host/broker/bind
 assert b'/opt/native-agent-host/current/native-agent-host' in base64.b64decode(files['/etc/systemd/system/native-agent-host-daemon@.service']['content'])
 assert seed['runcmd'][-1]==['systemctl','start','jit-proof.service']
 JIT_FIXTURE
+  mkdir -p "$tmp/release-root/systemd"
+  cp "$repo/systemd/"* "$tmp/release-root/systemd/"
+  printf '\n# package-root-origin\n' >> "$tmp/release-root/systemd/native-agent-host-broker.socket"
+  PRODUCT_RELEASE_ROOT="$tmp/release-root" FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/native-agent-host" concurrent
+  python3 - "$tmp/jit/jit-cloud-init.yaml" <<'JIT_CONCURRENT'
+import base64,json,sys
+seed=json.loads(open(sys.argv[1]).read().split('\n',1)[1]);files={f['path']:base64.b64decode(f['content']) for f in seed['write_files']}
+assert b'package-root-origin' in files['/etc/systemd/system/native-agent-host-broker.socket']
+assert b"'scope':'jit-concurrent'" in files['/usr/local/sbin/jit-proof']
+JIT_CONCURRENT
   FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/native-agent-host" login
   python3 - "$tmp/jit/jit-cloud-init.yaml" <<'JIT_LOGIN'
 import base64,json,sys

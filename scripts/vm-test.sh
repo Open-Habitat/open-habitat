@@ -92,7 +92,8 @@ if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario ==
     archive_sha=$(sha256sum "$archive" | cut -d' ' -f1)
     # verify-release validates entry types, inventory and checksums before extraction.
     tar -xzf "$archive" -C "$run/release" || fail invalid_release 'Verified release extraction failed' 2
-    cp "$run/release/native-agent-host-0.0.0-test-linux-amd64/bin/native-agent-host" "$run/native-agent-host"
+    release_root="$run/release/native-agent-host-0.0.0-test-linux-amd64"
+    cp "$release_root/bin/native-agent-host" "$run/native-agent-host"
     embedded_commit=$("$run/native-agent-host" --json version | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["commit"])') || fail invalid_release 'Embedded commit unavailable' 2
     [[ $embedded_commit == "$product_commit" ]] || fail invalid_release 'Embedded release commit differs from committed tree' 2
   else
@@ -106,7 +107,7 @@ if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario ==
     [[ $scenario == jit-login ]] && jit_args=(login)
     [[ $scenario == jit-concurrent ]] && jit_args=(concurrent)
     [[ $scenario == jit-reboot-diagnostic ]] && jit_args=(reboot)
-    FLEETREPO_JIT_SOURCE=${FLEETREPO_JIT_SOURCE:-/home/maintainer/Sources/fleetrepo} python3 "$repo/test/vm/jit-fixture.py" "$run" "$run/native-agent-host" "${jit_args[@]}" >"$run/fixture.log" 2>&1 || fail invalid_policy_input 'Pinned Fleetrepo commit or reviewed JIT gate blob unavailable or invalid' 1
+    PRODUCT_RELEASE_ROOT=${release_root:-} FLEETREPO_JIT_SOURCE=${FLEETREPO_JIT_SOURCE:-/home/maintainer/Sources/fleetrepo} python3 "$repo/test/vm/jit-fixture.py" "$run" "$run/native-agent-host" "${jit_args[@]}" >"$run/fixture.log" 2>&1 || fail invalid_policy_input 'Pinned Fleetrepo commit or reviewed JIT gate blob unavailable or invalid' 1
     seed_file=/run-data/jit-cloud-init.yaml
   elif [[ $scenario == broker-guest ]]; then
     python3 "$repo/test/vm/broker-fixture.py" "$run" "$run/native-agent-host" || fail invalid_product_fixture 'Could not render broker seed' 2

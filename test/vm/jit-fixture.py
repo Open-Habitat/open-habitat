@@ -43,9 +43,10 @@ seed = {'users':[{'name':'ubuntu','uid':22000,'shell':'/bin/bash'},
 def add(path, data, mode='0644'):
     if isinstance(data,str): data=data.encode()
     seed['write_files'].append({'path':path,'permissions':mode,'encoding':'b64','content':base64.b64encode(data).decode()})
+release_root = Path(os.environ['PRODUCT_RELEASE_ROOT']) if os.environ.get('PRODUCT_RELEASE_ROOT') else repo
 for name in ('native-agent-host-broker.socket','native-agent-host-broker.service','native-agent-host-daemon@.socket','native-agent-host-daemon@.service',
              'native-agent-host-gateway.service'):
-    add('/etc/systemd/system/'+name,(repo/'systemd'/name).read_bytes())
+    add('/etc/systemd/system/'+name,(release_root/'systemd'/name).read_bytes())
 for name in ('jit_policy.py','jit_acl_prepare.py'):
     add('/usr/local/libexec/native-agent-host-test-jit/'+name,staged[name],'0755')
 for name in ('native-agent-host-jit-policy-gate.service','native-agent-host-jit-policy-gate@.service'):
