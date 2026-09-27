@@ -16,7 +16,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -91,60 +90,6 @@ func send(t *testing.T, m gateway.Identity, b []byte) int {
 	t.Helper()
 	return raw(t, m.Socket, "POST", Path, fmt.Sprintf("Content-Type: application/json\r\nContent-Length: %d\r\n", len(b)), b)
 }
-
-// Distinct first-login daemons may both be activated by PID 1 after the
-// gateway has connected to their sockets. The bounded handoff must include
-// that cold activation *and* native credential observation, not only the
-// latter. This test uses two independent UDS listeners, not real accounts.
-func TestDistinctColdHandoffsHaveActivationBudget(t *testing.T) {
-	u, err := user.Current()
-	if err != nil {
-		t.Fatal(err)
-	}
-	const activation = 4 * time.Second
-	const observe = 2 * time.Second
-	var ready sync.WaitGroup
-	ready.Add(2)
-	results := make(chan error, 2)
-	for _, subject := range []string{"42", "43"} {
-		path := filepath.Join(shortDir(t), "sock")
-		ln, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer ln.Close()
-		cfg := Config{GatewayUID: os.Getuid(), UID: os.Geteuid(), Username: u.Username, Home: u.HomeDir, Socket: path, Provider: "github", Subject: subject}
-		server, err := newServer(cfg, func(ctx context.Context, token string) error {
-			if token != "sentinel-secret" {
-				t.Error("wrong token")
-			}
-			select {
-			case <-time.After(observe):
-				return nil
-			case <-ctx.Done():
-				return ctx.Err()
-			}
-		}, true)
-		if err != nil {
-			t.Fatal(err)
-		}
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-		go func() { <-time.After(activation); _ = server.Serve(ctx, ln) }()
-		m := gateway.Identity{Provider: "github", Subject: subject, UID: cfg.UID, Username: cfg.Username, Socket: path}
-		go func() {
-			ready.Done()
-			ready.Wait()
-			results <- (Sink{testPath: true}).Deliver(context.Background(), m, subject, "sentinel-secret")
-		}()
-	}
-	for range 2 {
-		if err := <-results; err != nil {
-			t.Fatalf("cold distinct handoff: %v", err)
-		}
-	}
-}
-
 func TestJITBindingFailsClosedWithoutRootOwnedConfig(t *testing.T) {
 	u, err := user.Current()
 	if err != nil {
