@@ -26,3 +26,7 @@ Jari first attempted live GitHub login on 2026-09-27 around 14:55 local time on 
 ### 2026-09-27T14:55:11Z · @pi
 
 2026-09-27 pilot.5 live evidence: gateway ensure rejected broker drift; bounded root event parent_policy. Read-only stat shows installed config dir root:gateway 0750 but product executor expects root:root 0755. Probable pre-provision guard mismatch; no binding/user claimed. Fix expected mode rather than relaxing host permissions.
+
+### 2026-09-27T15:04:02Z · @pi
+
+2026-09-27 security review of config parent fix flagged next boundary: intended /etc/native-agent-host root:gateway 0750 blocks a new daemon UID from traversing to its private binding file unless it gets an exact per-user grant. Live read-only getfacl -cpn /etc/native-agent-host shows only owner/group/other, no per-user ACL. Do not deploy and trigger first provisioning until config delivery/traversal architecture is approved; recommend bounded per-daemon execute-only ACL with Fleetrepo policy and product verifier, no gateway-group membership.
