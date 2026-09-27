@@ -39,7 +39,7 @@ test("@native-history native page, continuation, unknown, reopen and no writes",
   ).toBeVisible();
   await expect(page.getByText("Vain luku · Ohjausta ei ole")).toBeVisible();
   await page.screenshot({
-    path: "../issues/build-history-view/assets/happy.png",
+    path: "test-results/evidence/history-happy.png",
     fullPage: true,
   });
   for (let i = 1; i < 11; i++)
@@ -47,7 +47,7 @@ test("@native-history native page, continuation, unknown, reopen and no writes",
   await expect(page.locator(".ah-feed li")).toHaveCount(251);
   await expect(page.getByText("Tuntematon tapahtuma")).toBeVisible();
   await page.screenshot({
-    path: "../issues/build-history-view/assets/long-unknown.png",
+    path: "test-results/evidence/history-long-unknown.png",
     fullPage: false,
   });
   await page.getByRole("button", { name: "Lataa lisää sisältöä" }).click();
@@ -73,7 +73,7 @@ test("@native-history empty native session is read-only", async ({ page }) => {
   ).toBeVisible();
   await expect(page.locator(".ah-feed li")).toHaveCount(0);
   await page.screenshot({
-    path: "../issues/build-history-view/assets/empty.png",
+    path: "test-results/evidence/history-empty.png",
     fullPage: true,
   });
   await fixture(page, "ready");
@@ -121,14 +121,14 @@ test("@native-history missing, corrupt and read-only states", async ({
   await page.getByRole("button", { name: "Päivitä" }).click();
   await expect(page.getByText("Historiaa ei saada")).toBeVisible();
   await page.screenshot({
-    path: "../issues/build-history-view/assets/corrupt.png",
+    path: "test-results/evidence/history-corrupt.png",
     fullPage: true,
   });
   await fixture(page, "missing");
   await page.getByRole("button", { name: "Päivitä" }).click();
   await expect(page.getByText("Keskustelua ei löydy")).toBeVisible();
   await page.screenshot({
-    path: "../issues/build-history-view/assets/missing.png",
+    path: "test-results/evidence/history-missing.png",
     fullPage: true,
   });
   await fixture(page, "ready");
