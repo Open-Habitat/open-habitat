@@ -20,6 +20,16 @@ func TestCallbackDiagnostics(t *testing.T) {
 		setup               func(*Auth, *fakeProvider, *fakeSink)
 	}{
 		{name: "accepted", query: "&code=synthetic-code", status: 303},
+		{name: "issuer accepted", query: "&code=synthetic-code&iss=" + url.QueryEscape(githubOAuthIssuer), status: 303},
+		{name: "issuer error", query: "&error=denied&iss=" + url.QueryEscape(githubOAuthIssuer), reason: "provider_denied", status: 403},
+		{name: "wrong issuer host", query: "&code=synthetic-code&iss=" + url.QueryEscape("https://github.example/login/oauth"), reason: "shape_issuer_mismatch", status: 400},
+		{name: "wrong issuer path", query: "&code=synthetic-code&iss=" + url.QueryEscape("https://github.com/login/oauth/"), reason: "shape_issuer_mismatch", status: 400},
+		{name: "wrong issuer scheme", query: "&code=synthetic-code&iss=" + url.QueryEscape("http://github.com/login/oauth"), reason: "shape_issuer_mismatch", status: 400},
+		{name: "wrong issuer encoding", query: "&code=synthetic-code&iss=https%3A%2F%2Fgithub.com%2Flogin%2F%256Fauth", reason: "shape_issuer_mismatch", status: 400},
+		{name: "empty issuer", query: "&code=synthetic-code&iss=", reason: "shape_issuer_mismatch", status: 400},
+		{name: "duplicate issuer", query: "&code=synthetic-code&iss=" + url.QueryEscape(githubOAuthIssuer) + "&iss=" + url.QueryEscape(githubOAuthIssuer), reason: "shape_duplicate_key", status: 400},
+		{name: "issuer with extra", query: "&code=synthetic-code&iss=" + url.QueryEscape(githubOAuthIssuer) + "&extra=x", reason: "shape_extra_key", status: 400},
+		{name: "issuer with both outcomes", query: "&code=synthetic-code&error=denied&iss=" + url.QueryEscape(githubOAuthIssuer), reason: "shape_extra_key", status: 400},
 		{name: "extra", query: "&code=synthetic-code&unexpected=secret-query", reason: "shape_extra_key", status: 400},
 		{name: "both", query: "&code=synthetic-code&error=denied", reason: "shape_extra_key", status: 400},
 		{name: "duplicate", query: "&code=synthetic-code&code=secret-query", reason: "shape_duplicate_key", status: 400},
@@ -39,6 +49,10 @@ func TestCallbackDiagnostics(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			h, a, p, s, clock := fixture(t)
+			broker := newFakeBroker()
+			brokerCalls := 0
+			broker.hook = func(BrokerRequest) { brokerCalls++ }
+			a.broker = broker
 			var buf bytes.Buffer
 			a.log = CallbackLogger(&buf)
 			if tc.setup != nil {
@@ -78,13 +92,13 @@ func TestCallbackDiagnostics(t *testing.T) {
 			if !ok || len(id) != 22 || id != result["attempt_id"] || id == state {
 				t.Fatal("invalid server-owned attempt ID")
 			}
-			for _, secret := range []string{state, flow.Value, "secret-query", "secret-cookie", "secret-authorization", "secret-provider-error", "secret-sink-error", "synthetic-code", "alice", p.token, p.authorization, "host.test", "foreign.invalid"} {
+			for _, secret := range []string{state, flow.Value, "github.example", "%256Fauth", "secret-query", "secret-cookie", "secret-authorization", "secret-provider-error", "secret-sink-error", "synthetic-code", "alice", p.token, p.authorization, "host.test", "foreign.invalid"} {
 				if secret != "" && strings.Contains(buf.String(), secret) {
 					t.Fatalf("log leaked forbidden value (%s)", tc.name)
 				}
 			}
-			if tc.status != 303 && tc.setup == nil && (p.calls != 0 || s.calls != 0) {
-				t.Fatal("failure reached provisioning")
+			if tc.status != 303 && tc.setup == nil && (p.calls != 0 || s.calls != 0 || brokerCalls != 0) {
+				t.Fatal("failure reached provider or provisioning")
 			}
 			if tc.status != 303 && callback(h, state, flow).Code == 303 {
 				t.Fatal("replay accepted")

@@ -112,6 +112,7 @@ type admission struct {
 
 const cookieName = "__Host-agent-host"
 const flowCookie = "__Host-agent-host-flow"
+const githubOAuthIssuer = "https://github.com/login/oauth"
 
 func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	origin, err := url.Parse(cfg.Origin)
@@ -207,6 +208,9 @@ func (a *Auth) callbackShapeReason(r *http.Request) string {
 		(len(q["error"]) == 1 && q.Get("error") == "") {
 		return "shape_missing_or_empty"
 	}
+	if len(q["iss"]) == 1 && q.Get("iss") != githubOAuthIssuer {
+		return "shape_issuer_mismatch"
+	}
 	return "shape_extra_key"
 }
 func (a *Auth) routes(mux *http.ServeMux) {
@@ -229,6 +233,19 @@ func (a *Auth) exact(r *http.Request, path string, params ...string) bool {
 		}
 	}
 	return true
+}
+
+// callbackExact admits the historical two-key shape and the three-key GitHub
+// response only when its issuer is exactly the pinned OAuth issuer. Keep the
+// generic exact validator strict for all other gateway routes.
+func (a *Auth) callbackExact(r *http.Request) bool {
+	for _, outcome := range []string{"code", "error"} {
+		if a.exact(r, "/auth/github/callback", "state", outcome) ||
+			a.exact(r, "/auth/github/callback", "state", outcome, "iss") && r.URL.Query().Get("iss") == githubOAuthIssuer {
+			return true
+		}
+	}
+	return false
 }
 func safe(w http.ResponseWriter, status int, code string) {
 	w.Header().Set("Content-Type", "application/json")
@@ -370,7 +387,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	if !exists && logCallback {
 		attempt = attemptID() // Never derive correlation from untrusted state.
 	}
-	if !a.exact(r, "/auth/github/callback", "state", "code") && !a.exact(r, "/auth/github/callback", "state", "error") {
+	if !a.callbackExact(r) {
 		if logCallback {
 			a.authEvent(attempt, "rejected", a.callbackShapeReason(r))
 		}

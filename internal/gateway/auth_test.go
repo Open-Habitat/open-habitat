@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -217,6 +218,40 @@ func TestOAuthSession(t *testing.T) {
 			t.Fatal("implicit provider contact")
 		}
 	})
+}
+
+// The issuer-bearing GitHub callback must traverse the same PKCE, broker,
+// token handoff and session path as the original issuer-less callback.
+func TestGitHubIssuerCallbackProgression(t *testing.T) {
+	h, a, p, sink, _ := fixture(t)
+	broker := newFakeBroker()
+	var operations []string
+	broker.hook = func(r BrokerRequest) { operations = append(operations, r.Operation) }
+	a.broker = broker
+	state, flow := start(t, h)
+	startURL, err := url.Parse(p.authorization)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := request(h, "GET", "/auth/github/callback?"+url.Values{
+		"state": {state}, "code": {"synthetic-code"}, "iss": {githubOAuthIssuer},
+	}.Encode(), flow)
+	if w.Code != http.StatusSeeOther || p.calls != 1 || p.code != "synthetic-code" ||
+		!reflect.DeepEqual(operations, []string{"ensure", "authorize"}) || sink.calls != 1 ||
+		sink.id != "42" || sink.token != p.token || sink.identity.UID != 1001 {
+		t.Fatalf("issuer callback did not complete: status=%d provider=%d broker=%v sink=%d", w.Code, p.calls, operations, sink.calls)
+	}
+	sum := sha256.Sum256([]byte(p.verifier))
+	if startURL.Query().Get("code_challenge_method") != "S256" || startURL.Query().Get("code_challenge") != base64.RawURLEncoding.EncodeToString(sum[:]) {
+		t.Fatal("issuer callback lost PKCE binding")
+	}
+	cookies := w.Result().Cookies()
+	if len(cookies) != 2 || cookies[1].Name != cookieName || request(h, "GET", "/auth/session", cookies[1]).Code != 200 {
+		t.Fatal("issuer callback did not create session")
+	}
+	if request(h, "GET", "/auth/github/callback?"+url.Values{"state": {state}, "code": {"synthetic-code"}, "iss": {githubOAuthIssuer}}.Encode(), flow).Code == 303 || p.calls != 1 || sink.calls != 1 {
+		t.Fatal("issuer callback replay reached provider")
+	}
 }
 func extractCSRF(t *testing.T, body string) string {
 	t.Helper()
