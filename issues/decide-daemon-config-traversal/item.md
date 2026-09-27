@@ -3,12 +3,14 @@ created: 2026-09-27
 updated: 2026-09-27
 type: task
 reporter: pi
-status: in-progress
+status: done
 priority: high
 provenance: chat
 source_ref: chat:2026-09-27/config-parent-review
 lane: auth-incident
 collision: [internal/provision/]
+closed: 2026-09-27
+closed_by: pi
 ---
 
 # Decide private daemon config traversal
@@ -22,3 +24,9 @@ First-login security review and live read-only ACL check: configuration parent i
 ### 2026-09-27T15:54:19Z · @pi
 
 Jari approved Unix per-user private group binding, separate root-controlled config storage. Implement per-user root:private-group 0640 binding files in /etc/omega-habitat/daemon/user-mappings (root-owned traversal-only parents), keeping gateway secrets in existing protected /etc/native-agent-host. No daemon joining gateway group; no per-UID ACL. Fail closed against symlinks, wrong owner/mode, supplementary group confusion. Apply matching Fleetrepo installer and guest policy; prove with synthetic tests, then authorized live login.
+
+## Resolution
+
+### 2026-09-27T16:12:20Z · @pi
+
+Product daemon binding split implemented and clean CI passed. Synthetic guest fixtures and Fleetrepo installer/policy still need separate scoped updates before guest boot proof or live login; no guest or live host changes in this worker.
