@@ -33,8 +33,9 @@ def start():
 
 def callback(flow,code):
     op,jar,state=flow
+    started=time.monotonic()
     status,headers,body=get(op,'/auth/github/callback?'+urllib.parse.urlencode({'state':state,'code':code}))
-    return status,body
+    return status,body,round(time.monotonic()-started,2)
 
 def binding():return json.loads((ledger/'bindings.json').read_text())['bindings']
 
@@ -99,19 +100,28 @@ try:
         finally:marker.unlink()
         check(receipt.is_file() and receipt.read_bytes()==b'passed\npassed\n','provider rendezvous not observed twice')
         receipt.unlink();observed_rendezvous+=1
-        statuses=[s for s,_ in replies]
+        statuses=[s for s,_,_ in replies]
         allowed_errors={'identity_mapping_denied','native_adapter_error','authentication_required'}
         errors=[]
-        for status,body in replies:
+        for status,body,_ in replies:
             if status==303:errors.append('none');continue
             try:code=json.loads(body).get('error',{}).get('code')
             except (ValueError,UnicodeError,AttributeError):code=None
             errors.append(code if code in allowed_errors else 'other')
+        # Synthetic tool argv is recorded under each guest UID; emit only the
+        # fixed command categories, never token-bearing files or child output.
+        def stages(code):
+            home=pathlib.Path('/home')/next(i[1] for i in identities if i[0]==code)
+            gh=home/'gh-argv.jsonl';git=home/'git-argv.log'
+            return {'gh':[json.loads(line)['argv'][:2] for line in gh.read_text().splitlines()] if gh.is_file() else [],
+                    'git_count':len(git.read_text().splitlines()) if git.is_file() else 0}
         result['diagnostic_round']={'ids':list(codes),'statuses':statuses,'errors':errors,
+                                    'duration_seconds':[elapsed for _,_,elapsed in replies],
+                                    'stages':{code:stages(code) for code in set(codes)},
                                     'binding_count':len(binding()),
                                     'credentials_present':[(pathlib.Path('/home')/next(i[1] for i in identities if i[0]==code)/'.config/gh/hosts.yml').is_file() for code in codes]}
         check(statuses==[303,303], 'simultaneous callbacks did not both succeed')
-        for flow,code,(status,body) in zip(flows,codes,replies):
+        for flow,code,(status,body,_) in zip(flows,codes,replies):
             route(flow);successful[code]=flow
             check(callback(flow,code)[0]==403,'callback state replay')
         bound=binding()
