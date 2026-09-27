@@ -2,11 +2,13 @@
 created: 2026-09-27
 updated: 2026-09-27
 type: bug
-status: in-progress
+status: fixed
 priority: high
 related: ['@design-first-use-onboarding']
 lane: native-gh-status
 collision: [internal/daemon/snapshot_linux.go]
+closed: 2026-09-27
+closed_by: agent
 ---
 
 # Verify native GitHub status in user snapshot
