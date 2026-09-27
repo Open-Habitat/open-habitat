@@ -168,11 +168,40 @@ try:
     # new activation job to gate, and broker authorize is separately checked.
     check(unit('stop','native-agent-host-daemon@guesttwo.socket').returncode==0,'stop second socket for pending gate')
     marker=state/'pending.json';marker.write_text('{"version":1}');marker.chmod(0o600)
+    pending_bytes=marker.read_bytes()
+    ledger_bytes=(state/'bindings.json').read_bytes();head_bytes=(state/'head.json').read_bytes()
     check(json.loads(exchange(21003,'authorize',ids[0]).stdout).get('failure')=='state_unavailable','pending did not block writer')
     check(unit('start','native-agent-host-daemon@guesttwo.socket').returncode!=0,'pending allowed gate')
-    marker.unlink() # disposable fault injection only; not recovery guidance
+    # Restart the actual PID1-managed root broker while the journal remains.
+    # Both operations must refuse without mutating the marker or committed
+    # ledger. This is a synthetic marker, NOT a crashed partial account.
+    check(unit('stop','native-agent-host-broker.service').returncode==0,'broker stop for pending restart')
+    for operation,candidate in (('authorize',None),('ensure','GuestOne')):
+        response=exchange(21003,operation,ids[0],candidate)
+        check(response.returncode==0 and json.loads(response.stdout).get('failure')=='state_unavailable',
+              'restarted broker routed pending '+operation)
+        check(marker.read_bytes()==pending_bytes and (state/'bindings.json').read_bytes()==ledger_bytes and
+              (state/'head.json').read_bytes()==head_bytes,'pending restart changed durable state')
+    marker.unlink() # synthetic guest-only cleanup after exact byte checks; never operator recovery
     reset()
     check(unit('start','native-agent-host-daemon@guesttwo.socket').returncode==0,'second daemon socket start')
+    # Bound a root-owned config drift check to a stopped instance; deny both
+    # broker authorization and gate activation without falling back to A.
+    config=Path('/etc/native-agent-host/daemon-guesttwo.json')
+    original_mode=stat.S_IMODE(config.stat().st_mode)
+    check(unit('stop','native-agent-host-daemon@guesttwo.socket').returncode==0,'stop second socket for drift')
+    config.chmod(0o600)
+    try:
+        drift=exchange(21003,'authorize',ids[1])
+        check(drift.returncode==0 and json.loads(drift.stdout).get('failure')=='state_unavailable',
+              'broker routed drifted config')
+        check(unit('start','native-agent-host-daemon@guesttwo.socket').returncode!=0,'drift allowed gate')
+        check((state/'bindings.json').read_bytes()==ledger_bytes and (state/'head.json').read_bytes()==head_bytes,
+              'drift changed committed state')
+    finally:
+        config.chmod(original_mode) # disposable guest only; no live-state repair advice
+    reset()
+    check(unit('start','native-agent-host-daemon@guesttwo.socket').returncode==0,'second daemon socket after drift')
     for uid,own,sibling in ((assigned[0],names[0],names[1]),(assigned[1],names[1],names[0])):
         check(probe(uid,run/'users'/own),'own socket directory denied')
         check(probe(uid,run/'users'/sibling,denied=True),'cross-user socket directory access')
@@ -182,7 +211,8 @@ try:
     print('VM_PROOF='+json.dumps({'status':'passed','scope':'jit-provision','pid1':'systemd','uids':[21032,21033,21003],
         'pool_vacant_before_seed':True,'new_accounts':True,'committed_bindings':True,'concurrent_clients_released':True,'rerun_idempotent':True,
         'wrong_peer_denied':True,'wrong_uid_denied':True,'pending_denied':True,'boot_acl_denied':True,
-        'prepared_socket_started':True,'cross_uid_denied':True,'binary_path':'/opt/native-agent-host/current/native-agent-host'}),flush=True)
+        'prepared_socket_started':True,'cross_uid_denied':True,'pending_restart_denied':True,
+        'config_drift_denied':True,'binary_path':'/opt/native-agent-host/current/native-agent-host'}),flush=True)
 except Exception as exc:
     # Diagnostic only: no journal deletion or retry on an interrupted writer.
     pending=state/'pending.json'

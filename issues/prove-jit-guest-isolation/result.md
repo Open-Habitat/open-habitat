@@ -1,0 +1,17 @@
+# JIT isolation acceptance ledger — in progress
+
+**Status: OPEN.** Evidence below is synthetic, disposable PID1 guest evidence, not live-host installation or consent. Historical static `two-user-routing` is a separate precreated-account baseline. No host deployment or reboot automation is authorized by this issue.
+
+| Acceptance item | State | Receipt / limit |
+| --- | --- | --- |
+| Root broker, systemd/kernel peer checks, two newly allocated UIDs, cross-UID home/socket denial and mapped browser routes | Proven in disposable guest | `jit-socket-activation-result.md`, `jit-revocation-result.md`: `jit-login` success, UIDs 21032/21033, root and foreign peer denied; snapshot routes checked. Not live-host evidence. |
+| First login, sequential rerun/handle rename, native gh failure and uncertain handoff | Proven in bounded synthetic cases | `jit-revocation-result.md` and `jit-post-install-daemon-diagnostic-result.md`; post-install credential retained but final diagnostic change was not rerun in PID1. No real GitHub identities or token revocation. |
+| Truly simultaneous first-login *gateway callbacks* (same and distinct ID) | **Not proven** | `jit-repin-concurrent-result.md` proves two broker ensures released together, not callbacks. |
+| Revocation of existing and new browser sessions | Proven for requests in guest | `jit-revocation-result.md`: old A sessions 401, new A callback 403, global epoch cuts B's old session too. |
+| Active SSE revocation | **Not proven / applicability pending** | No claim of a live SSE endpoint from these fixtures; if implemented, a connected stream must be tested. |
+| Journal interruption, crash restart and safe operator reconciliation | **Not proven in guest** | `jit-journal-intermediate-result.md` covers synthetic writer restart at every journal phase *in-process* only. No actual crashed root broker with a partially completed account or operator repair proved. |
+| Drift refusal against integrated JIT binding | **Not proven in this guest** | Fleetrepo immutable checker has separate negative fixtures; see `jit-repin-concurrent-result.md`. |
+| Post-reboot ACL restoration | **Delegated, not proven** | Jari's 2026-09-25 decision requires a later operator-observed smoke **after authorized safe installation on the real test server**. `jit-reboot-result.md` is red diagnostic only. No reboot harness expansion here. |
+| Reviewed Fleetrepo input and app revision | Pinned, guest-local only | `test/vm/jit-fixture.py` checks nine immutable Fleetrepo blobs at `85ac4588c9de4c1ceb1fccf58d57753ca58a7688` before rendering; Fleetrepo main currently `1e54afa2bec94a1518c19d54da0aa565ad51d8bc` and all nine pinned blobs remain byte-identical. Product binary is compiled from committed revision by `scripts/vm-test.sh` and SHA-checked inside login guest. Fixture provider listens on loopback *inside* network-isolated disposable guest; never shipped as production service. |
+
+Further tests, review and exact committed revision receipts follow when this slice is complete. Closure is not justified while guest parallel callbacks, actual journal crash/reconciliation and drift remain unproved; reboot is a separate deferred operator smoke, not a synthetic pass.

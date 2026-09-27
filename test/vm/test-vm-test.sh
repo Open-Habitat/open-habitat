@@ -83,6 +83,21 @@ done
 # An otherwise valid receipt without concurrent new ensures must fail.
 passed='{"status":"passed","scope":"jit-provision","pid1":"systemd","uids":[21032,21033,21003],"binary_path":"/opt/native-agent-host/current/native-agent-host","pool_vacant_before_seed":true,"new_accounts":true,"committed_bindings":true,"rerun_idempotent":true,"wrong_peer_denied":true,"wrong_uid_denied":true,"pending_denied":true,"boot_acl_denied":true,"prepared_socket_started":true,"cross_uid_denied":true}'
 if python3 -c "$validator" "$passed"; then echo 'missing concurrency accepted' >&2; exit 1; fi
+passed=$(python3 - "$passed" <<'JIT_ORACLE'
+import json,sys
+p=json.loads(sys.argv[1]);p.update(concurrent_clients_released=True,pending_restart_denied=True,config_drift_denied=True)
+print(json.dumps(p))
+JIT_ORACLE
+)
+python3 -c "$validator" "$passed"
+for missing in pending_restart_denied config_drift_denied; do
+  broken=$(python3 - "$passed" "$missing" <<'JIT_NEGATIVE'
+import json,sys
+p=json.loads(sys.argv[1]);p.pop(sys.argv[2]);print(json.dumps(p))
+JIT_NEGATIVE
+)
+  if python3 -c "$validator" "$broken"; then echo "missing $missing accepted" >&2; exit 1; fi
+done
 login_validator=$(sed -n "/<<'LOGIN_CHECK'/,/^LOGIN_CHECK$/p" "$repo/scripts/vm-test.sh" | sed '1d;$d')
 for mode in normal optimized; do
   python_flags=()
