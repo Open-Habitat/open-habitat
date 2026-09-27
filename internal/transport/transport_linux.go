@@ -109,6 +109,11 @@ func verifyBindingUnder(etcPath string, c Config, rootUID, rootGID, privateGID i
 		return denied
 	}
 	parent := etc
+	defer func() {
+		if parent != etc {
+			unix.Close(parent)
+		}
+	}()
 	for _, part := range []string{"omega-habitat", "daemon", "user-mappings"} {
 		dir, err := unix.Openat(parent, part, unix.O_PATH|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
 		if err != nil {
@@ -119,11 +124,9 @@ func verifyBindingUnder(etcPath string, c Config, rootUID, rootGID, privateGID i
 		}
 		parent = dir
 		if unix.Fstat(dir, &st) != nil || st.Uid != uint32(rootUID) || st.Gid != uint32(rootGID) || st.Mode&unix.S_IFMT != unix.S_IFDIR || st.Mode&07777 != 0711 {
-			unix.Close(dir)
 			return denied
 		}
 	}
-	defer unix.Close(parent)
 	fd, err := unix.Openat(parent, "daemon-"+c.Username+".json", unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK|unix.O_CLOEXEC, 0)
 	if err != nil {
 		return denied
@@ -131,6 +134,11 @@ func verifyBindingUnder(etcPath string, c Config, rootUID, rootGID, privateGID i
 	f := os.NewFile(uintptr(fd), "binding")
 	defer f.Close()
 	if unix.Fstat(fd, &st) != nil || st.Uid != uint32(rootUID) || st.Gid != uint32(privateGID) || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&07777 != 0640 || st.Nlink != 1 || st.Size < 1 || st.Size > 4096 {
+		return denied
+	}
+	// An extended ACL can give another UID read access while retaining 0640.
+	// No ACL is part of the binding contract; refuse an unreadable ACL state too.
+	if _, err := unix.Fgetxattr(fd, "system.posix_acl_access", nil); err != unix.ENODATA {
 		return denied
 	}
 	b := make([]byte, st.Size)

@@ -148,6 +148,15 @@ func ownerWithStat(path string, uid, gid uint32, mode uint32, directory bool, st
 	}
 	return nil
 }
+func bindingOwner(path string, gid uint32) error {
+	if owner(path, 0, gid, 0640, false) != nil {
+		return ErrInvalid
+	}
+	if _, err := unix.Getxattr(path, "system.posix_acl_access", nil); err != unix.ENODATA {
+		return ErrInvalid
+	}
+	return nil
+}
 func missing(path string) (bool, error) {
 	var st unix.Stat_t
 	err := unix.Fstatat(unix.AT_FDCWD, path, &st, unix.AT_SYMLINK_NOFOLLOW)
@@ -387,6 +396,9 @@ func (e *LinuxHostExecutor) Step(ctx context.Context, phase string, i ExecutorId
 		if closeErr != nil {
 			return closeErr
 		}
+		if bindingOwner(p, i.uid) != nil {
+			return ErrInvalid
+		}
 		d, err := os.OpenFile(configBase, os.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW, 0)
 		if err != nil {
 			return err
@@ -591,8 +603,8 @@ func (e *LinuxHostExecutor) unit(ctx context.Context, i ExecutorIdentity, retry 
 		}
 	}
 	service := "native-agent-host-daemon@" + i.username + ".service"
-	effective, err := e.command(ctx, systemctl, "show", service, "--property=User,Group,NoNewPrivileges,ExecStart", "--no-pager")
-	if err != nil || !properties(effective, map[string]string{"User": i.username, "Group": i.username, "NoNewPrivileges": "yes"}) || !strings.Contains(string(effective), "/opt/native-agent-host/current/native-agent-host") || !strings.Contains(string(effective), "--config "+filepath.Join(configBase, "daemon-"+i.username+".json")) {
+	effective, err := e.command(ctx, systemctl, "show", service, "--property=User,Group,SupplementaryGroups,NoNewPrivileges,ExecStart", "--no-pager")
+	if err != nil || !properties(effective, map[string]string{"User": i.username, "Group": i.username, "SupplementaryGroups": "", "NoNewPrivileges": "yes"}) || !strings.Contains(string(effective), "/opt/native-agent-host/current/native-agent-host") || !strings.Contains(string(effective), "--config "+filepath.Join(configBase, "daemon-"+i.username+".json")) {
 		return ErrInvalid
 	}
 	// Inspect effective socket properties too: systemctl cat includes the base
@@ -772,7 +784,7 @@ func (e *LinuxHostExecutor) Verify(ctx context.Context, i ExecutorIdentity) erro
 		return err
 	}
 	p := filepath.Join(configBase, "daemon-"+i.username+".json")
-	if configParentPolicy(configBase, statNoFollow) != nil || owner(p, 0, i.uid, 0640, false) != nil {
+	if configParentPolicy(configBase, statNoFollow) != nil || bindingOwner(p, i.uid) != nil {
 		return ErrInvalid
 	}
 	want, err := e.config(i)

@@ -67,3 +67,14 @@ func TestProtectedConfigParentPolicy(t *testing.T) {
 		t.Fatal("accepted noncanonical path")
 	}
 }
+
+func TestDaemonUnitRejectsSupplementaryGroup(t *testing.T) {
+	want := map[string]string{"User": "pilot", "Group": "pilot", "SupplementaryGroups": "", "NoNewPrivileges": "yes"}
+	base := "User=pilot\nGroup=pilot\nSupplementaryGroups=\nNoNewPrivileges=yes\n"
+	if !properties([]byte(base), want) {
+		t.Fatal("safe service rejected")
+	}
+	if properties([]byte(base+"SupplementaryGroups=native-agent-host-gateway\n"), want) || properties([]byte("User=pilot\nGroup=pilot\nSupplementaryGroups=native-agent-host-gateway\nNoNewPrivileges=yes\n"), want) || properties([]byte("User=pilot\nGroup=pilot\nNoNewPrivileges=yes\n"), want) {
+		t.Fatal("missing or gateway supplementary group accepted")
+	}
+}
