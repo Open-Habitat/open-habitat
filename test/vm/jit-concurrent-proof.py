@@ -87,15 +87,18 @@ try:
         except OSError:pass
         time.sleep(.2)
     else:raise RuntimeError('gateway unavailable')
-    rounds=[];successful={}
+    rounds=[];successful={};observed_rendezvous=0
     for codes in (('a','a'),('b','c')):
         flows=[start(),start()]
+        receipt=pathlib.Path('/run/fixture-rendezvous');receipt.unlink(missing_ok=True)
         marker=pathlib.Path('/run/fixture-concurrent');marker.write_text('1')
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
                 futures=[pool.submit(callback,flow,code) for flow,code in zip(flows,codes)]
                 replies=[f.result(timeout=90) for f in futures]
         finally:marker.unlink()
+        check(receipt.is_file() and receipt.read_bytes()==b'passed\npassed\n','provider rendezvous not observed twice')
+        receipt.unlink();observed_rendezvous+=1
         statuses=[s for s,_ in replies]
         allowed_errors={'identity_mapping_denied','native_adapter_error','authentication_required'}
         errors=[]
@@ -137,7 +140,7 @@ try:
             check(deny(other_uid,'/home/'+name),'cross-UID credential home')
     check(len(binding())==3,'binding cardinality')
     result={'status':'passed','scope':'jit-concurrent','pid1':'systemd','uids':[21032,21033,21034,21003],
-            'rounds':rounds,'unique_bindings':True,'cross_uid_denied':True,'same_id_idempotent':rounds[0]['statuses']==[303,303],'provider_rendezvous':True,'binary_digest_verified':True}
+            'rounds':rounds,'unique_bindings':True,'cross_uid_denied':True,'same_id_idempotent':rounds[0]['statuses']==[303,303],'provider_rendezvous':observed_rendezvous==2,'binary_digest_verified':True}
 except Exception as e:
     result['reason']=(type(e).__name__+' '+str(e).split(':')[0])[:150]
 finally:

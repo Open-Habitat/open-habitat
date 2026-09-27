@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """Fixed GitHub TLS fixture, bound only to guest loopback."""
-import http.server, json, ssl, pathlib, threading, urllib.parse
+import http.server, json, os, ssl, pathlib, threading, urllib.parse
 # Only the disposable concurrent guest enables this rendezvous. Both gateway
 # callbacks must reach /user before either receives an identity.
 barrier=threading.Barrier(2)
@@ -17,6 +17,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if pathlib.Path('/run/fixture-concurrent').is_file():
             try: barrier.wait(timeout=15)
             except threading.BrokenBarrierError: return self.send_error(503)
+            # Two atomic, token-free receipts per round make the rendezvous
+            # observable by the guest proof, not just an asserted fixture fact.
+            fd=os.open('/run/fixture-rendezvous',os.O_WRONLY|os.O_APPEND|os.O_CREAT,0o600)
+            try: os.write(fd,b'passed\n')
+            finally: os.close(fd)
         token=self.headers.get('Authorization','')
         key='PRODUCT_VM_TOKEN_'
         ident={'Bearer '+key+'agent_a_FIXTURE_ONLY_92764':31001,'Bearer '+key+'agent_b_FIXTURE_ONLY_92764':31002,'Bearer '+key+'agent_c_FIXTURE_ONLY_92764':31003,'Bearer '+key+'UNKNOWN_FIXTURE_ONLY_92764':39999}.get(token)

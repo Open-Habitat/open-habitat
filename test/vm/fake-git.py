@@ -3,7 +3,7 @@ import os, pathlib, sys
 args=sys.argv[1:]
 assert 'PRODUCT_VM_TOKEN' not in repr(args) and all('PRODUCT_VM_TOKEN' not in v for v in os.environ.values())
 home=pathlib.Path(os.environ['HOME'])
-assert str(home) in ('/home/agent-a','/home/agent-b','/home/agent-c') and os.getuid() in (21001,21002,21034)
+assert {21001:'/home/agent-a',21002:'/home/agent-b',21034:'/home/agent-c'}.get(os.getuid())==str(home)
 with (home/'git-argv.log').open('a') as f: f.write(repr(args)+'\n')
 if args==['config','--global','--get','credential.https://github.com.helper']:
     print('!gh auth git-credential');sys.exit(0)
