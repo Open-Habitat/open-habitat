@@ -50,6 +50,9 @@ func (s *Server) ui(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "static client unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	// Indexing metadata applies only to the UI static surface, never to API,
+	// session, or OAuth handlers. It is not an authentication boundary.
+	w.Header().Set("X-Robots-Tag", "noindex, nofollow, noarchive")
 	// Serve only regular files beneath the immutable static root. API, event and
 	// auth prefixes are registered on more-specific patterns and never reach here.
 	relative := strings.TrimPrefix(filepath.Clean("/"+r.URL.Path), "/")

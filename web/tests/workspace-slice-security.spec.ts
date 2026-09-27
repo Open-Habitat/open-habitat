@@ -21,6 +21,38 @@ test("@workspace-slice production bundle contains no fixture controls", async ({
     page.getByText("Rakenna saavutettava komponenttikirjasto"),
   ).toHaveCount(0);
 });
+test("@workspace-slice production UI carries noindex signals without granting API access", async ({
+  request,
+}) => {
+  for (const path of ["/", "/workspaces/ws_abcdefgh", "/robots.txt"]) {
+    const response = await request.get(path);
+    expect(response.status()).toBe(200);
+    expect(response.headers()["x-robots-tag"]).toBe(
+      "noindex, nofollow, noarchive",
+    );
+    if (path === "/robots.txt")
+      expect(await response.text()).toBe("User-agent: *\nDisallow: /\n");
+    else
+      expect(await response.text()).toContain(
+        '<meta name="robots" content="noindex, nofollow, noarchive">',
+      );
+  }
+  const asset = readdirSync(join(process.cwd(), "dist/assets")).find((name) =>
+    name.endsWith(".js"),
+  );
+  expect(asset).toBeDefined();
+  const response = await request.get(`/assets/${asset}`);
+  expect(response.status()).toBe(200);
+  expect(response.headers()["x-robots-tag"]).toBe(
+    "noindex, nofollow, noarchive",
+  );
+  const api = await request.get("/api/v1/snapshot");
+  expect(api.status()).toBe(401);
+  expect(api.headers()["x-robots-tag"]).toBeUndefined();
+  const session = await request.get("/auth/session");
+  expect(session.status()).toBe(401);
+  expect(session.headers()["x-robots-tag"]).toBeUndefined();
+});
 test("@workspace-slice unknown mapping is denied before session", async ({
   page,
 }) => {
