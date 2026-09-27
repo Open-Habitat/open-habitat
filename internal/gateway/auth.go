@@ -9,10 +9,12 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"math"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -66,17 +68,20 @@ type Broker interface {
 	Exchange(context.Context, BrokerRequest) (BrokerReply, error)
 }
 type AuthOptions struct {
-	Broker          Broker
-	Provider        Provider
-	Sink            TokenSink
-	Now             func() time.Time
-	Random          io.Reader
+	Broker   Broker
+	Provider Provider
+	Sink     TokenSink
+	Now      func() time.Time
+	Random   io.Reader
+	// Log receives only fixed event fields and server-generated attempt IDs.
+	// Production defaults to JSONL on stderr.
+	Log             *slog.Logger
 	SnapshotDial    func(context.Context, string) (net.Conn, error) // test seam; production uses one Unix dial
 	SnapshotPeerUID func(*net.UnixConn) int                         // test seam; production reads SO_PEERCRED
 }
 type pending struct {
-	verifier, browser, returnTo string
-	until                       time.Time
+	verifier, browser, returnTo, attempt string
+	until                                time.Time
 }
 type session struct {
 	identity          Identity
@@ -91,6 +96,7 @@ type Auth struct {
 	broker          Broker
 	now             func() time.Time
 	random          io.Reader
+	log             *slog.Logger
 	mu              sync.Mutex
 	pending         map[string]pending
 	sessions        map[string]session
@@ -130,7 +136,10 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	if opts.Random == nil {
 		opts.Random = rand.Reader
 	}
-	return &Auth{cfg: cfg, provider: opts.Provider, sink: opts.Sink, broker: opts.Broker, now: opts.Now, random: opts.Random, pending: map[string]pending{}, sessions: map[string]session{}, admission: map[string]admission{}, snapshotDial: opts.SnapshotDial, snapshotPeerUID: opts.SnapshotPeerUID}, nil
+	if opts.Log == nil {
+		opts.Log = slog.New(slog.NewJSONHandler(os.Stderr, nil))
+	}
+	return &Auth{cfg: cfg, provider: opts.Provider, sink: opts.Sink, broker: opts.Broker, now: opts.Now, random: opts.Random, log: opts.Log, pending: map[string]pending{}, sessions: map[string]session{}, admission: map[string]admission{}, snapshotDial: opts.SnapshotDial, snapshotPeerUID: opts.SnapshotPeerUID}, nil
 }
 func (a *Auth) secret() (string, error) {
 	b := make([]byte, 32)
@@ -138,6 +147,54 @@ func (a *Auth) secret() (string, error) {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+// attemptID is independent of OAuth state and of the injectable OAuth random
+// source. It is never sent to a browser, provider, broker or untrusted header.
+func attemptID() string {
+	b := make([]byte, 16)
+	if _, err := io.ReadFull(rand.Reader, b); err != nil {
+		return "" // Diagnostics must not change the authentication outcome.
+	}
+	return base64.RawURLEncoding.EncodeToString(b)
+}
+func (a *Auth) authEvent(attempt, outcome, reason string) {
+	// Only these internally chosen literals may enter the structured log.
+	if attempt == "" {
+		a.log.Info("oauth_callback", "outcome", outcome, "reason", reason)
+		return
+	}
+	a.log.Info("oauth_callback", "outcome", outcome, "reason", reason, "attempt_id", attempt)
+}
+
+// callbackShapeReason is diagnostic only. exact() remains the acceptance
+// authority; classification runs only after exact has rejected the request.
+func (a *Auth) callbackShapeReason(r *http.Request) string {
+	if r.URL.Path != "/auth/github/callback" || r.URL.Fragment != "" {
+		return "shape_malformed"
+	}
+	if r.Host != strings.TrimPrefix(a.cfg.Origin, "https://") {
+		return "host_mismatch"
+	}
+	if r.TLS == nil {
+		return "tls_missing"
+	}
+	q, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		return "shape_malformed"
+	}
+	for _, values := range q {
+		if len(values) > 1 {
+			return "shape_duplicate_key"
+		}
+	}
+	if len(q["state"]) != 1 || q.Get("state") == "" ||
+		(len(q["code"]) == 0 && len(q["error"]) == 0) ||
+		(len(q["code"]) == 1 && q.Get("code") == "") ||
+		(len(q["error"]) == 1 && q.Get("error") == "") {
+		return "shape_missing_or_empty"
+	}
+	return "shape_extra_key"
 }
 func (a *Auth) routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/github/start", a.start)
@@ -253,8 +310,10 @@ func (a *Auth) start(w http.ResponseWriter, r *http.Request) {
 		safe(w, 503, "authentication_required")
 		return
 	}
-	a.pending[state] = pending{verifier: verifier, browser: browser, returnTo: returnTo, until: now.Add(5 * time.Minute)}
+	attempt := attemptID()
+	a.pending[state] = pending{verifier: verifier, browser: browser, returnTo: returnTo, attempt: attempt, until: now.Add(5 * time.Minute)}
 	a.mu.Unlock()
+	a.authEvent(attempt, "started", "none")
 	http.SetCookie(w, &http.Cookie{Name: flowCookie, Value: browser, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: 300})
 	w.Header().Set("Cache-Control", "no-store")
 	http.Redirect(w, r, a.provider.AuthorizationURL(state, challenge), http.StatusFound)
@@ -279,46 +338,64 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	a.mu.Unlock()
 	http.SetCookie(w, &http.Cookie{Name: flowCookie, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: -1})
 	c, e := r.Cookie(flowCookie)
+	attempt := p.attempt
+	if !exists {
+		attempt = attemptID() // Never derive correlation from untrusted state.
+	}
 	if !a.exact(r, "/auth/github/callback", "state", "code") && !a.exact(r, "/auth/github/callback", "state", "error") {
+		a.authEvent(attempt, "rejected", a.callbackShapeReason(r))
 		a.callbackFailure(w, r, 400, "invalid_request")
 		return
 	}
-	if !exists || !a.now().Before(p.until) || e != nil || subtle.ConstantTimeCompare([]byte(c.Value), []byte(p.browser)) != 1 {
+	if !exists || !a.now().Before(p.until) {
+		a.authEvent(attempt, "rejected", "flow_missing_or_expired")
+		a.callbackFailure(w, r, 403, "authentication_required")
+		return
+	}
+	if e != nil || subtle.ConstantTimeCompare([]byte(c.Value), []byte(p.browser)) != 1 {
+		a.authEvent(attempt, "rejected", "browser_mismatch")
 		a.callbackFailure(w, r, 403, "authentication_required")
 		return
 	}
 	if r.URL.Query().Has("error") {
+		a.authEvent(attempt, "rejected", "provider_denied")
 		a.callbackFailure(w, r, 403, "authentication_required")
 		return
 	}
 	token, id, login, e := a.provider.Exchange(r.Context(), r.URL.Query().Get("code"), p.verifier)
 	if e != nil || token == "" {
+		a.authEvent(attempt, "rejected", "exchange_failed")
 		a.callbackFailure(w, r, 403, "authentication_required")
 		return
 	}
 	n, e := strconv.ParseUint(id, 10, 64)
 	if e != nil || n == 0 || strconv.FormatUint(n, 10) != id || login == "" {
+		a.authEvent(attempt, "rejected", "identity_denied")
 		a.callbackFailure(w, r, 403, "identity_mapping_denied")
 		return
 	}
 	ensured, err := a.broker.Exchange(r.Context(), BrokerRequest{Operation: "ensure", ID: id, Candidate: login})
 	target, valid := brokerIdentity(id, ensured)
 	if err != nil || !valid {
+		a.authEvent(attempt, "rejected", "broker_denied")
 		a.callbackFailure(w, r, 403, "identity_mapping_denied")
 		return
 	}
 	// The token is handed off exactly once. A lost acknowledgement is terminal.
 	if a.sink.Deliver(r.Context(), target, id, token) != nil {
+		a.authEvent(attempt, "rejected", "handoff_failed")
 		a.callbackFailure(w, r, 503, "native_adapter_error")
 		return
 	}
 	sid, e := a.secret()
 	if e != nil {
+		a.authEvent(attempt, "rejected", "session_failed")
 		a.callbackFailure(w, r, 503, "authentication_required")
 		return
 	}
 	csrf, e := a.secret()
 	if e != nil {
+		a.authEvent(attempt, "rejected", "session_failed")
 		a.callbackFailure(w, r, 503, "authentication_required")
 		return
 	}
@@ -327,6 +404,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	checked, err := a.broker.Exchange(r.Context(), BrokerRequest{Operation: "authorize", ID: id})
 	rebound, valid := brokerIdentity(id, checked)
 	if err != nil || !valid || checked.Epoch != ensured.Epoch || checked.Generation < ensured.Generation || rebound != target {
+		a.authEvent(attempt, "rejected", "broker_denied")
 		a.callbackFailure(w, r, 403, "identity_mapping_denied")
 		return
 	}
@@ -343,6 +421,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	a.sessions[sid] = session{target, checked.Epoch, checked.Generation, csrf, now.Add(8 * time.Hour), now.Add(24 * time.Hour)}
 	a.mu.Unlock()
 	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: sid, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})
+	a.authEvent(attempt, "accepted", "none")
 	http.Redirect(w, r, p.returnTo, http.StatusSeeOther)
 }
 
