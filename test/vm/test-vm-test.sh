@@ -224,6 +224,7 @@ import base64,json,sys
 seed=json.loads(open(sys.argv[1]).read().split('\n',1)[1]);files={f['path']:base64.b64decode(f['content']) for f in seed['write_files']}
 assert b'package-root-origin' in files['/etc/systemd/system/native-agent-host-broker.socket']
 assert b"'scope':'jit-concurrent'" in files['/usr/local/sbin/jit-proof']
+assert b"'/home/guestthree'" in files['/usr/bin/git'] and b'21034' in files['/usr/bin/git']
 JIT_CONCURRENT
   FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/native-agent-host" login
   python3 - "$tmp/jit/jit-cloud-init.yaml" <<'JIT_LOGIN'
