@@ -3,7 +3,7 @@ created: 2026-09-27
 updated: 2026-09-27
 type: task
 reporter: pi
-status: open
+status: in-progress
 priority: high
 provenance: chat
 source_ref: chat:2026-09-27/config-parent-review
