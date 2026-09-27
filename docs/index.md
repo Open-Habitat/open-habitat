@@ -19,6 +19,7 @@ Aloita [tavoitteesta ja MVP:stä](product.md) ja
 - [Kriittiset oletukset](assumptions.md): mitä pitää vielä todentaa.
 - [Päätökset](decisions.md): hyväksytyt ratkaisut ja seuraavat päätöstehtävät.
 - [Rajapinnat](interfaces.md): komponenttien vastuut ja tarkennettava käyttäytyminen.
+- [Lokituksen ehdotus](logging.md): turvalliset diagnostiikkajäljet ja Jarin päätettävät rajat.
 - [Tutkimukset](evidence.md): aiempi näyttö ja sen rajoitukset.
 
 ## Käyttöliittymä

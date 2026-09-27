@@ -43,6 +43,9 @@ groups:
       - slug: interfaces
         title: Rajapinnat
         desc: Yhteyksien merkitys ja vielä määriteltävä käyttäytyminen.
+      - slug: logging
+        title: Lokituksen ehdotus
+        desc: Turvallinen diagnostiikka ja Jarin päätettävät rajat.
       - slug: evidence
         title: Tutkimukset
         desc: Aikaisempi näyttö, sen lähteet ja rajoitukset.
