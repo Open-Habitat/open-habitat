@@ -22,6 +22,7 @@ type fake struct {
 	token  string
 	logged bool
 	id     string
+	helper string
 	fail   string
 	huge   bool
 }
@@ -56,6 +57,9 @@ func (f *fake) Run(_ context.Context, c Command) ([]byte, error) {
 	case "gh config get git_protocol --host github.com":
 		return []byte("https\n"), nil
 	case "git config --global --get credential.https://github.com.helper":
+		if f.helper != "" {
+			return []byte(f.helper), nil
+		}
 		return []byte("!gh auth git-credential\n"), nil
 	case "git credential fill":
 		if !f.logged {
@@ -124,6 +128,78 @@ func TestInstallReobserveAndDisconnect(t *testing.T) {
 		})
 	}
 }
+func TestFreshInstallWithAbsoluteHelper(t *testing.T) {
+	a, f, _ := fixture(t, false)
+	f.helper = "!/usr/bin/gh auth git-credential\n"
+	r, err := a.Install(context.Background(), f.token)
+	if err != nil || r.Phase != Installed || r.Storage != ProtectedFile ||
+		!containsCommand(f.log, "git credential fill") {
+		t.Fatalf("absolute helper install: %+v %v", r, err)
+	}
+}
+
+func TestGitHelperExactFormsAcrossObservationAndDisconnect(t *testing.T) {
+	cases := []struct {
+		name   string
+		helper string
+		accept bool
+	}{
+		{"relative", "!gh auth git-credential\n", true},
+		{"absolute", "!/usr/bin/gh auth git-credential\n", true},
+		{"other-path", "!/tmp/gh auth git-credential\n", false},
+		{"other-bin", "!/bin/gh auth git-credential\n", false},
+		{"path-prefix", "!prefix/usr/bin/gh auth git-credential\n", false},
+		{"extra-argument", "!/usr/bin/gh auth git-credential --extra\n", false},
+		{"shell-substitution", "!/usr/bin/gh auth git-credential $(id)\n", false},
+		{"shell-chain", "!/usr/bin/gh auth git-credential; id\n", false},
+		{"leading-space", " !/usr/bin/gh auth git-credential\n", false},
+		{"trailing-space", "!/usr/bin/gh auth git-credential \n", false},
+		{"extra-line", "!/usr/bin/gh auth git-credential\n!other\n", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			a, f, _ := fixture(t, true)
+			f.helper = tc.helper
+			f.logged = true
+			_, storage, ok := a.observe(context.Background())
+			if ok != tc.accept || (tc.accept && storage != Keyring) {
+				t.Fatalf("observation: storage=%s ok=%v", storage, ok)
+			}
+			// A rejected helper must not reach Git credential fill, which
+			// would execute the shell command stored in Git config.
+			if !tc.accept && containsCommand(f.log, "git credential fill") {
+				t.Fatal("executed untrusted credential helper")
+			}
+			f.log = nil
+			installed, installErr := a.Install(context.Background(), f.token)
+			if (installErr == nil) != tc.accept || (tc.accept && installed.Phase != Reobserved) {
+				t.Fatalf("reobserve: %+v %v", installed, installErr)
+			}
+			if !f.logged || containsCommand(f.log, "gh auth logout --hostname github.com --user alice") ||
+				containsCommand(f.log, "git credential fill") != tc.accept {
+				t.Fatal("unexpected reobserve commands", f.log)
+			}
+			f.log = nil
+			r, err := a.Disconnect(context.Background(), true, true)
+			if (err == nil) != tc.accept || r.HelperInert != tc.accept {
+				t.Fatalf("disconnect: %+v %v", r, err)
+			}
+			if containsCommand(f.log, "git credential fill") != tc.accept {
+				t.Fatal("unexpected credential fill after disconnect", f.log)
+			}
+		})
+	}
+}
+
+func containsCommand(log []string, command string) bool {
+	for _, c := range log {
+		if c == command {
+			return true
+		}
+	}
+	return false
+}
+
 func TestConcurrentSameIDSerializes(t *testing.T) {
 	a, f, _ := fixture(t, true)
 	var wg sync.WaitGroup

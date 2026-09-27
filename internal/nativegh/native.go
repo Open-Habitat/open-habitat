@@ -268,6 +268,15 @@ func secureDir(p string, m os.FileMode) bool {
 	st, ok := f.Sys().(*syscall.Stat_t)
 	return ok && int(st.Uid) == os.Geteuid()
 }
+
+// Git config emits one trailing newline. Compare the command itself exactly:
+// Git executes ! helpers through a shell, so accepting an arbitrary path or
+// appended shell syntax here would trust a different executable.
+func trustedGitHelper(output []byte) bool {
+	helper := strings.TrimSuffix(string(output), "\n")
+	return helper == "!gh auth git-credential" || helper == "!/usr/bin/gh auth git-credential"
+}
+
 func (a *Adapter) observe(ctx context.Context) (string, Storage, bool) {
 	login, ok := a.identity(ctx)
 	if !ok {
@@ -278,7 +287,7 @@ func (a *Adapter) observe(ctx context.Context) (string, Storage, bool) {
 		return login, Unknown, false
 	}
 	helper, e := a.git(ctx, true, nil, "config", "--global", "--get", "credential.https://github.com.helper")
-	if e != nil || strings.TrimSpace(string(helper)) != "!gh auth git-credential" {
+	if e != nil || !trustedGitHelper(helper) {
 		return login, Unknown, false
 	}
 	// Ordinary Git credential protocol; stdout contains a credential and must
@@ -351,7 +360,7 @@ func (a *Adapter) Disconnect(ctx context.Context, fresh, confirmed bool) (Result
 		return r, denied
 	}
 	helper, e := a.git(ctx, true, nil, "config", "--global", "--get", "credential.https://github.com.helper")
-	if e != nil || strings.TrimSpace(string(helper)) != "!gh auth git-credential" {
+	if e != nil || !trustedGitHelper(helper) {
 		return r, denied
 	}
 	// A helper is inert only when it cannot return a credential.
