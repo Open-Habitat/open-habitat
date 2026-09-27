@@ -2,7 +2,7 @@
 created: 2026-09-27
 updated: 2026-09-27
 type: task
-status: open
+status: in-progress
 priority: high
 related: ['@prove-pi-browser-auth', '@design-first-use-onboarding']
 lane: pi-native-patch
@@ -21,6 +21,12 @@ Develop and test a narrow native Pi patch candidate for secure, listener-free Op
 
 ## Acceptance Criteria
 
-- [ ] Prepare a minimal source-level patch against a precisely pinned public Pi upstream revision corresponding to the inspected installed release. Only add an opt-in manual-only browser interaction: no listener call, exact redirect scheme/host/port/path and exactly one nonempty `code`+`state` equal to generated state, reject bare/fragment/duplicate/error, abort settles pending prompt, preserve existing TUI flow by default.
-- [ ] Keep all credential exchange/store/refresh in native Pi code. Implement or supply executable deterministic tests proving listener was never invoked, strict URL/state parsing, state mismatch, abort without paste, unknown result after credential write, cross-process/logout limitations, credential non-disclosure and no real provider requests. Never read or mutate real `~/.pi/agent/auth.json`, live browser, user credentials or installed Pi.
-- [ ] Provide patch file and a reproducible application/test runbook under this issue, with upstream repo URL/revision/hash, exact test commands and honest limits; independently review security-relevant diff. Do not modify product gateway/daemon contracts, publish upstream PR or mark architecture accepted. A working patch artifact is not a deployed login and must not be represented as live consent proof.
+- [x] Prepare a minimal source-level patch against a precisely pinned public Pi upstream revision corresponding to the inspected installed release. Only add an opt-in manual-only browser interaction: no listener call, exact redirect scheme/host/port/path and exactly one nonempty `code`+`state` equal to generated state, reject bare/fragment/duplicate/error, abort settles pending prompt, preserve existing TUI flow by default.
+- [x] Keep all credential exchange/store/refresh in native Pi code. Implement or supply executable deterministic tests proving listener was never invoked, strict URL/state parsing, state mismatch, abort without paste, unknown result after credential write, cross-process/logout limitations, credential non-disclosure and no real provider requests. Never read or mutate real `~/.pi/agent/auth.json`, live browser, user credentials or installed Pi.
+- [x] Provide patch file and a reproducible application/test runbook under this issue, with upstream repo URL/revision/hash, exact test commands and honest limits; independently review security-relevant diff. Do not modify product gateway/daemon contracts, publish upstream PR or mark architecture accepted. A working patch artifact is not a deployed login and must not be represented as live consent proof.
+
+## Agent Runs
+
+### 2026-09-27T19:36:43Z · @agent
+
+Candidate patch, test-patch.sh and result.md: pinned 0.85.1 provenance, 28 synthetic tests, independent gpt-6-astra review. No live login or product CI. See result.md.
