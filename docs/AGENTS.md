@@ -59,74 +59,40 @@ plain language. Examples illustrate decisions; they do not silently add requirem
 - `operations.md` (created by the operations task): actual installation, update,
   rollback, live-version and recovery instructions after they are selected and verified.
 
-Update pages affected by a change; do not rewrite the whole site for routine task
-progress. Keep executable tasks in issuectl and research under its parent issue.
-Link to detailed research instead of copying it. Historical research is not the
-current design. Preserve the meaning of accepted decisions when editing their
-language; record a changed decision in a new ADR and link the old one to it.
-Use Git and closed issues for history, without separate handoff pages.
+Update the pages a change affects; do not rewrite the whole site for routine
+progress. Link to detailed research in its issue instead of copying it.
+Historical research is not the current design. Preserve the meaning of accepted
+decisions when editing their language; a changed decision gets a new ADR that
+the old one links to. Proposed ADRs stay proposed until the relevant human
+review is recorded. Use Git and closed issues for history.
 
-Detailed work plans belong under their parent issue, including the staged plan
-at `issues/plan-v1-implementation/plan.md`. The implementation page explains
-phase outcomes; issuectl owns executable order. Keep durable product and technical
-decisions on their named pages, and detailed experiments/results in the issue
-that produced them. An issue result links the evidence to the durable conclusion.
+When updating `assumptions.md`, cite inspected versions, exact result links and
+the scope of the evidence. Unknown is not unsupported, a mock is not an
+integration test, and a completed probe need not confirm its hypothesis.
 
-Update assumptions with inspected versions/revisions, exact result links and
-explicit scope of the evidence. Unknown is not unsupported, a mock is not an
-integration test, and a completed probe need not confirm its initial hypothesis.
-Proposed ADRs stay proposed until the relevant human review is recorded.
+`status.md` is a dated reader snapshot with the source revision it describes
+(not the commit that edits the page). It must not become a second schedule;
+issuectl owns executable order.
 
-`status.md` presents a dated reader snapshot and concrete review links when ready;
-it must not become a second scheduling queue. Workers update the durable pages
-their issue owns under its collision hold. Probe workers keep results local to
-their issues; the review-preparation task integrates them. See
-`AGENTS-WORKFLOW.md` for the conductor's handoff and review responsibilities.
+## Files and validation
 
-## Files and publication
+Documents live directly under `docs/` with assets in `assets/`. Keep the reader
+navigation in `glasspad.yaml` in sync with the pages; agent instruction files
+are not pages. `.glasspad.yaml` contains only `space_key: native-agent-host`.
 
-Organize documentation for its readers and maintainers. The current documents
-live directly under `docs/`, with assets in `assets/`. Keep the reader navigation
-in `glasspad.yaml` in sync with the documents it presents. Agent instructions
-do not need a reader-navigation entry. Adapt the viewer to the documentation
-rather than moving source files to satisfy a rendering restriction.
-
-`.glasspad.yaml` contains only `space_key: native-agent-host`. Server, target and
-credentials come from the user's environment. Do not change global configuration.
-
-Keep the date and source revision on `status.md` accurate when updating its account
-of project progress. The revision identifies the landed state being described,
-not the commit containing the status page itself. Pure wording edits do not require
-a new project-state revision.
-
-## Validation
-
-Run from the repository root:
+From the repository root:
 
 ```sh
 python3 scripts/validate-project-view.py
 git diff --check
 ```
 
-The validator checks documentation, navigation, links, ADR registration and status
-metadata. AGENTS.md and CLAUDE.md are normal repository instructions, not pages
-that must appear in Glasspad navigation.
+The validator checks pages, navigation, links, ADR registration and status
+metadata.
 
-The installed Glasspad currently rejects `AGENTS.md` as an invalid page slug and
-also rejects symlinks such as `CLAUDE.md`. Direct rendering of `docs/` therefore
-needs viewer support for ignoring agent instruction files. Keep these files in
-place; do not introduce a second documentation tree to work around this limit.
-After viewer support is available, verify rendering with:
-
-```sh
-glasspad build --dry-run --json docs /tmp/native-agent-host-project-view
-```
-
-Once that viewer limitation is resolved, publishing is a separate action after
-changes have landed. Publish the complete
-site from the intended branch, never an autonomous worktree. Run from `docs/`
-so Glasspad loads the correct space key:
-
-```sh
-(cd docs && glasspad publish .)
-```
+Publishing to Glasspad is a separate action from landed `main`, run as
+`(cd docs && glasspad publish .)`. The installed Glasspad currently rejects
+`AGENTS.md` and the `CLAUDE.md` symlink in the source tree, so publishing needs
+viewer support for ignoring them first. Keep the files where they are; do not
+create a second documentation tree to work around the viewer, and do not claim
+a publication that did not happen.
