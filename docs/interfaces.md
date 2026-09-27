@@ -15,6 +15,17 @@ ja toteutuksen deterministiset skenaariot
 [`contracts/v1/scenarios.json`](../contracts/v1/scenarios.json). Tämä sivu
 määrittää merkityksen silloin, kun pelkkä skeema ei voi sitä ilmaista.
 
+**Toteutustilanne:** Snapshot sekä historia-/sisältö-GET-polut ovat nyt vain
+luku -tilassa. Pi:n v3 JSONL luetaan käyttäjädaemonissa suoraan mapped
+käyttäjän kotihakemistosta. `pi:<sessionId>` perustuu natiiviin otsakkeeseen,
+workspace-kytkentä vain otsakkeen täsmälliseen `cwd`-arvoon. Sivu on enintään
+200 entryä, inline-teksti enintään 65 536 UTF-8-tavua ja jatko sidottu
+lähteen revisioniin. Prosessi jää `unknown`-tilaan ja ohjaus `read_only`-tilaan.
+Snapshotin 1 MiB katto voi estää erittäin suuren agenttilistan: se ei oikeuta
+hiljaista rajausta. Yhden natiivin JSONL-tiedoston luku on rajattu 32 MiB:iin;
+suurempi historia näkyy saavuttamattomana, ei katkaistuna keskusteluna. POST-ohjausta, SSE:tä ja Pi:n käynnistystä/jatkoa ei ole
+vielä toteutettu. Katso [historian toteutusevidenssi](../issues/build-history-view/result.md).
+
 ## Omistajuus ennen viestimuotoa
 
 Selain ei omista historiaa, prosessia, Unix-käyttäjää eikä komentojen toteutusta.

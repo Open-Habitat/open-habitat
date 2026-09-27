@@ -34,11 +34,20 @@ export interface Workspace {
   presence: string;
   facts: Fact[];
 }
+export interface Agent {
+  agent_id: string;
+  workspace_id: string;
+  history: "readable" | "missing" | "corrupt" | "unavailable";
+  process: string;
+  control: string;
+  title: { display: string };
+}
 export interface Snapshot {
   schema_version: 1;
   identity: { web_identity_id: string; display_name: string };
   sources: Fact[];
   workspaces: Workspace[];
+  agents: Agent[];
   write_state: string;
   auth?: {
     native_github: {
@@ -61,7 +70,7 @@ export async function readSnapshot(response: Response): Promise<Snapshot> {
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > 65536) throw new Error("oversize snapshot");
+      if (size > 1024 * 1024) throw new Error("oversize snapshot");
       parts.push(value);
     }
   } finally {

@@ -11,6 +11,7 @@ import {
   WorkspaceSection,
 } from "../components";
 import { LoginCard } from "../components/LoginCard";
+import { HistoryView } from "./HistoryView";
 import {
   authenticated,
   authenticationRequired,
@@ -29,7 +30,8 @@ const CatalogPreview =
 function safeRoute(path: string) {
   return path === "/" ||
     path === "/workspaces" ||
-    /^\/workspaces\/ws_[A-Za-z0-9_-]{8,80}$/.test(path)
+    /^\/workspaces\/ws_[A-Za-z0-9_-]{8,80}$/.test(path) ||
+    /^\/agents\/pi:[0-9a-fA-F-]{36}$/.test(path)
     ? path
     : "/workspaces";
 }
@@ -212,6 +214,17 @@ export function App() {
       w.presence === "present" &&
       w.visibility === "visible",
   );
+  const selectedAgentId = /^\/agents\/(pi:[0-9a-fA-F-]{36})$/.exec(
+    location.pathname,
+  )?.[1];
+  const selectedAgent = snapshot?.agents.find(
+    (a) => a.agent_id === selectedAgentId,
+  );
+  const agentWorkspace = snapshot?.workspaces.find(
+    (w) =>
+      w.workspace_id === selectedAgent?.workspace_id &&
+      w.presence === "present",
+  );
   const uncertain =
     source !== "confirmed" ||
     snapshot?.workspaces.some((w) =>
@@ -272,6 +285,18 @@ export function App() {
           actions={[{ label: "Päivitä", onPress: refresh }]}
         />
       </>
+    ) : selectedAgent && agentWorkspace ? (
+      <HistoryView
+        agent={selectedAgent}
+        workspaceName={agentWorkspace.display_name ?? agentWorkspace.name}
+        workspaceId={agentWorkspace.workspace_id}
+      />
+    ) : selectedAgentId ? (
+      <InlineNotice
+        title="Keskustelua ei löydy"
+        description="Natiivia historiaa tai sen workspace-yhteyttä ei voida vahvistaa. Toista agenttia ei valita."
+        tone="warning"
+      />
     ) : selected ? (
       <>
         <WorkspaceDetails workspace={selected} />
@@ -426,7 +451,16 @@ export function App() {
                       ? "Vain luku"
                       : undefined
                 }
-                agents={[]}
+                agents={snapshot.agents
+                  .filter((a) => a.workspace_id === w.workspace_id)
+                  .map((a) => ({
+                    agentId: a.agent_id,
+                    href: `/agents/${a.agent_id}`,
+                    title: a.title.display,
+                    activityLabel: "Prosessi ei tiedossa",
+                    controlLabel: "Vain luku",
+                    selected: a.agent_id === selectedAgentId,
+                  }))}
                 onToggle={() =>
                   setExpanded({
                     ...expanded,

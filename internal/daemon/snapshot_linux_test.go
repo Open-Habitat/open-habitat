@@ -46,7 +46,7 @@ func TestSnapshotDiscoveryAndSchema(t *testing.T) {
 	cfg.Socket = "/run/native-agent-host/users/" + u.Username + "/daemon.sock"
 	// The discovery seam uses a disposable root; production always calls Discover(cfg).
 	state := func(_ transport.Config) Discovery { return scan(home, uid, unix.Openat2) }
-	h := SnapshotHandler(cfg, func(*http.Request) bool { return true }, state)
+	h := SnapshotHandlerWithNativeRoot(cfg, func(*http.Request) bool { return true }, state, home)
 	request := func() *httptest.ResponseRecorder {
 		r := httptest.NewRequest("GET", "http://unix/api/v1/snapshot", nil)
 		r.RequestURI = SnapshotPath
@@ -111,13 +111,13 @@ func TestSnapshotDiscoveryAndSchema(t *testing.T) {
 	state = func(_ transport.Config) Discovery {
 		return Discovery{State: "partial", Entries: []Workspace{{Name: "ordinary", Kind: "unknown", Metadata: "error"}}}
 	}
-	h = SnapshotHandler(cfg, func(*http.Request) bool { return true }, state)
+	h = SnapshotHandlerWithNativeRoot(cfg, func(*http.Request) bool { return true }, state, home)
 	partial := check(request(), 200)
 	if partial["sources"].([]any)[0].(map[string]any)["state"] != "unknown" || partial["workspaces"].([]any)[0].(map[string]any)["kind"] != "unknown" {
 		t.Fatal(partial)
 	}
 	state = func(_ transport.Config) Discovery { return scan(home, uid, unix.Openat2) }
-	h = SnapshotHandler(cfg, func(*http.Request) bool { return true }, state)
+	h = SnapshotHandlerWithNativeRoot(cfg, func(*http.Request) bool { return true }, state, home)
 	for _, name := range []string{"ordinary", "repository", "annotated"} {
 		if err := os.RemoveAll(filepath.Join(src, name)); err != nil {
 			t.Fatal(err)
@@ -134,6 +134,6 @@ func TestSnapshotDiscoveryAndSchema(t *testing.T) {
 	}
 	state = func(transport.Config) Discovery { return Discovery{State: "error"} }
 	// Closure replacement requires a fresh handler, never a request field.
-	h = SnapshotHandler(cfg, func(*http.Request) bool { return true }, state)
+	h = SnapshotHandlerWithNativeRoot(cfg, func(*http.Request) bool { return true }, state, home)
 	check(request(), 503)
 }

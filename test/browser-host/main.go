@@ -98,6 +98,7 @@ func main() {
 	scenario.Store("ready")
 	var clock atomic.Int64
 	paths := map[string]string{}
+	histories := map[string]string{}
 	peers := map[string]int{}
 	var servers []*http.Server
 	defer func() {
@@ -116,6 +117,15 @@ func main() {
 			}
 		}
 		_ = os.Mkdir(filepath.Join(home, "src", "git-project", ".git"), 0700)
+		sessionRoot := filepath.Join(home, ".pi", "agent", "sessions")
+		if e := os.MkdirAll(sessionRoot, 0700); e != nil {
+			log.Fatal(e)
+		}
+		historyPath := filepath.Join(sessionRoot, "synthetic.jsonl")
+		histories[m.Username] = historyPath
+		if e := seedBrowserHistory(historyPath, filepath.Join(home, "src", "ordinary-dir")); e != nil {
+			log.Fatal(e)
+		}
 		path := filepath.Join(tmp, m.Username+".sock")
 		ln, e := net.Listen("unix", path)
 		if e != nil {
@@ -125,7 +135,7 @@ func main() {
 		paths[m.Socket] = path
 		peers[path] = m.UID
 		cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: m.Subject}
-		handler := daemon.SnapshotHandler(cfg, func(r *http.Request) bool { return r.Context().Value("peer") == uid }, func(transport.Config) daemon.Discovery {
+		handler := daemon.SnapshotHandlerWithNativeRoot(cfg, func(r *http.Request) bool { return r.Context().Value("peer") == uid }, func(transport.Config) daemon.Discovery {
 			switch scenario.Load().(string) {
 			case "empty":
 				return daemon.Discovery{State: "empty"}
@@ -148,8 +158,10 @@ func main() {
 				}
 			}
 			return daemon.Discovery{State: "present", Entries: entries}
-		})
+		}, home)
 		mux := http.NewServeMux()
+		mux.Handle("/api/v1/agents/", daemon.HistoryHandlerWithNativeRoot(cfg, func(r *http.Request) bool { return r.Context().Value("peer") == uid }, home))
+		mux.Handle("/api/v1/content/", daemon.HistoryHandlerWithNativeRoot(cfg, func(r *http.Request) bool { return r.Context().Value("peer") == uid }, home))
 		mux.Handle(daemon.SnapshotPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch scenario.Load().(string) {
 			case "malformed":
@@ -212,6 +224,30 @@ func main() {
 	ts.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/fixture/") {
 			switch r.URL.Path {
+			case "/fixture/history":
+				mode := r.URL.Query().Get("mode")
+				path := histories["alice"]
+				if mode == "missing" {
+					if e := os.Remove(path); e != nil && !os.IsNotExist(e) {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
+				} else if mode == "corrupt" {
+					if e := os.WriteFile(path, []byte(`{"type":"session","version":3,"id":"11111111-1111-4111-8111-111111111111","cwd":"`+filepath.Join(tmp, "alice", "src", "ordinary-dir")+`"}`+"\n"+`{"type":"message","id":"a","message":{`+"\n"), 0600); e != nil {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
+				} else if mode == "ready" {
+					if e := seedBrowserHistory(path, filepath.Join(tmp, "alice", "src", "ordinary-dir")); e != nil {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
+				} else {
+					http.Error(w, "unknown fixture", 400)
+					return
+				}
+				w.WriteHeader(204)
+				return
 			case "/fixture/provider":
 				state := r.URL.Query().Get("state")
 				challenge := r.URL.Query().Get("challenge")
@@ -260,4 +296,33 @@ func (b fixtureBroker) Exchange(_ context.Context, r gateway.BrokerRequest) (gat
 		}
 	}
 	return gateway.BrokerReply{}, errors.New("not allowlisted")
+}
+
+func seedBrowserHistory(path, cwd string) error {
+	f, e := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
+	if e != nil {
+		return e
+	}
+	defer f.Close()
+	encode := json.NewEncoder(f)
+	if e := encode.Encode(map[string]any{"type": "session", "version": 3, "id": "11111111-1111-4111-8111-111111111111", "cwd": cwd}); e != nil {
+		return e
+	}
+	for i := 0; i < 251; i++ {
+		content := fmt.Sprintf("Synteettinen viesti %d", i)
+		if strings.Contains(cwd, "/bob/") {
+			content = fmt.Sprintf("Bobin synteettinen viesti %d", i)
+		}
+		if i == 248 {
+			content = strings.Repeat("ä", 40000) + "<script>alert('bad')</script>"
+		}
+		row := map[string]any{"type": "message", "id": fmt.Sprintf("native%04d", i), "message": map[string]any{"role": "user", "content": content}}
+		if i == 250 {
+			row["type"] = "unknown_fixture"
+		}
+		if e := encode.Encode(row); e != nil {
+			return e
+		}
+	}
+	return f.Sync()
 }

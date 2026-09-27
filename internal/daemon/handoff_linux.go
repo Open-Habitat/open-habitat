@@ -32,5 +32,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 		mux = http.NewServeMux()
 	}
 	mux.Handle(SnapshotPath, SnapshotHandler(cfg, server.TrustedPeer, Discover))
+	mux.Handle("/api/v1/agents/", HistoryHandler(cfg, server.TrustedPeer))
+	mux.Handle("/api/v1/content/", HistoryHandler(cfg, server.TrustedPeer))
 	return server.ServeMux(ctx, listener, mux)
 }

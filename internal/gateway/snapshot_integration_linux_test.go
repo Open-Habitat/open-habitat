@@ -65,12 +65,12 @@ func TestAuthenticatedGatewayToTwoDaemonSnapshotHandlers(t *testing.T) {
 		peers[path] = m.UID
 		cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: m.Subject}
 		label := strconv.Itoa(i)
-		snapshot := daemon.SnapshotHandler(cfg, func(r *http.Request) bool {
+		snapshot := daemon.SnapshotHandlerWithNativeRoot(cfg, func(r *http.Request) bool {
 			// Synthetic listener still checks the real connecting process's kernel UID.
 			return r.Context().Value("peer") == uid
 		}, func(transport.Config) daemon.Discovery {
 			return daemon.Discovery{State: "present", Entries: []daemon.Workspace{{Name: "isolation-" + label, Kind: "directory", Metadata: "absent"}}}
-		})
+		}, dir)
 		mux := http.NewServeMux()
 		mux.Handle(daemon.SnapshotPath, snapshot)
 		srv := &http.Server{Handler: mux, ConnContext: func(ctx context.Context, c net.Conn) context.Context {

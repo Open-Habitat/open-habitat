@@ -20,26 +20,30 @@ export function ConversationTimeline({
   historyMode: "virtualized" | "pagedAccessible";
   problem?: ProblemView;
   onJumpToLatest: () => void;
-  onHistoryModeChange: (mode: "virtualized" | "pagedAccessible") => void;
+  onHistoryModeChange?: (mode: "virtualized" | "pagedAccessible") => void;
 }) {
   return (
     <section aria-label="Keskusteluhistoria" className="ah-timeline">
-      <div className="ah-timeline-tools">
-        <Button
-          label={
-            historyMode === "virtualized"
-              ? "Näytä saavutettava sivutettu historia"
-              : "Käytä virtuaalista historiaa"
-          }
-          variant="quiet"
-          size="compact"
-          onPress={() =>
-            onHistoryModeChange(
-              historyMode === "virtualized" ? "pagedAccessible" : "virtualized",
-            )
-          }
-        />
-      </div>
+      {onHistoryModeChange ? (
+        <div className="ah-timeline-tools">
+          <Button
+            label={
+              historyMode === "virtualized"
+                ? "Näytä saavutettava sivutettu historia"
+                : "Käytä virtuaalista historiaa"
+            }
+            variant="quiet"
+            size="compact"
+            onPress={() =>
+              onHistoryModeChange(
+                historyMode === "virtualized"
+                  ? "pagedAccessible"
+                  : "virtualized",
+              )
+            }
+          />
+        </div>
+      ) : null}
       {state === "loading" ? <p>Ladataan keskustelua…</p> : null}
       {state === "empty" ? <p>Aloita keskustelu.</p> : null}
       {state === "error" || state === "unavailable" ? (

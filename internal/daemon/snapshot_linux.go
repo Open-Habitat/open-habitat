@@ -17,7 +17,7 @@ import (
 )
 
 const SnapshotPath = "/api/v1/snapshot"
-const MaxSnapshotBytes = 65536
+const MaxSnapshotBytes = 1 << 20
 
 func uuid() (string, bool) {
 	var b [16]byte
@@ -43,6 +43,15 @@ func snapshotError(w http.ResponseWriter, status int, code string) {
 // SnapshotHandler uses the same guarded socket and trusted configuration as the
 // native handoff. discover is injectable only at construction, never per request.
 func SnapshotHandler(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery) http.Handler {
+	return snapshotHandlerWithHistory(cfg, trusted, discover, nativeSessions, cfg.Home)
+}
+
+// SnapshotHandlerWithNativeRoot is a disposable fixture seam for cross-package
+// transport tests; the production constructor always reads the mapped home.
+func SnapshotHandlerWithNativeRoot(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, root string) http.Handler {
+	return snapshotHandlerWithHistory(cfg, trusted, discover, func(c transport.Config) ([]nativeSession, error) { c.Home = root; return nativeSessions(c) }, root)
+}
+func snapshotHandlerWithHistory(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string) http.Handler {
 	instance, ok := uuid()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !ok || trusted == nil || !trusted(r) || r.ProtoMajor != 1 || r.ProtoMinor != 1 || r.Method != http.MethodGet || r.RequestURI != SnapshotPath || r.URL.Path != SnapshotPath || r.URL.RawQuery != "" || r.Host != "unix" || transport.ValidateConfig(cfg) != nil {
@@ -135,9 +144,33 @@ func SnapshotHandler(cfg transport.Config, trusted func(*http.Request) bool, dis
 			}
 			workspaces = append(workspaces, map[string]any{"workspace_id": id, "observation_token": opaque("obs_", snapID+":"+id), "presence": "present", "name": entry.Name, "display_name": displayName, "kind": kind, "visibility": "visible", "mutation_state": "read_only", "facts": []any{fact("filesystem", fs), fact("annotation", annotation), fact("git", git)}, "capabilities": map[string]any{"agent_start": map[string]string{"state": "unknown", "reason_code": "adapter_not_verified"}, "workspace_delete": map[string]string{"state": "unsupported", "reason_code": "read_only_slice"}}})
 		}
+		// Associate only the native header's exact cwd with a freshly confirmed
+		// immediate workspace. History is independent of process observation.
+		agents := make([]any, 0)
+		sessions, historyErr := sessionsReader(cfg)
+		if historyErr == nil {
+			for _, session := range sessions {
+				for _, entry := range observation.Entries {
+					if entry.Error != "" || session.cwd != nativeHome+"/src/"+entry.Name {
+						continue
+					}
+					id := entry.WorkspaceID
+					if id == "" {
+						id = opaque("ws_", cfg.Provider+":"+cfg.Subject+":"+entry.Name)
+					}
+					agents = append(agents, sessionFact(session, id))
+					break
+				}
+			}
+		}
 		// No event stream or command consumer exists yet. The watermark is at zero
 		// for this daemon incarnation; writes remain disabled.
-		body := map[string]any{"schema_version": 1, "snapshot_id": snapID, "captured_at": at, "server_instance_id": instance, "event_cursor": "ev1:" + instance + ":0", "oldest_replay_cursor": "ev1:" + instance + ":0", "user_observation_token": opaque("obs_", snapID+":user"), "write_state": "read_only", "identity": map[string]string{"web_identity_id": expected, "display_name": display}, "sources": []any{fact("filesystem", state), fact("pi_history", "unknown"), fact("daemon_owner", "unknown")}, "workspaces": workspaces, "agents": []any{}, "operations": []any{}, "command_ledger": map[string]any{"epoch": instance, "max_entries": 10000, "max_age_seconds": 86400, "entries": []any{}}, "auth": map[string]any{"provider": cfg.Provider, "provider_account_id": cfg.Subject, "native_github": map[string]string{"state": "unknown"}}}
+		body := map[string]any{"schema_version": 1, "snapshot_id": snapID, "captured_at": at, "server_instance_id": instance, "event_cursor": "ev1:" + instance + ":0", "oldest_replay_cursor": "ev1:" + instance + ":0", "user_observation_token": opaque("obs_", snapID+":user"), "write_state": "read_only", "identity": map[string]string{"web_identity_id": expected, "display_name": display}, "sources": []any{fact("filesystem", state), fact("pi_history", func() string {
+			if historyErr != nil {
+				return "unavailable"
+			}
+			return "confirmed"
+		}()), fact("daemon_owner", "unknown")}, "workspaces": workspaces, "agents": agents, "operations": []any{}, "command_ledger": map[string]any{"epoch": instance, "max_entries": 10000, "max_age_seconds": 86400, "entries": []any{}}, "auth": map[string]any{"provider": cfg.Provider, "provider_account_id": cfg.Subject, "native_github": map[string]string{"state": "unknown"}}}
 		b, err := json.Marshal(body)
 		if err != nil || len(b) > MaxSnapshotBytes {
 			snapshotError(w, 503, "native_source_unavailable")
