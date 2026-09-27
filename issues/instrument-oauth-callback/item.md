@@ -2,10 +2,12 @@
 created: 2026-09-27
 updated: 2026-09-27
 type: task
-status: in-progress
+status: done
 priority: high
 lane: auth-incident
 collision: [internal/gateway/auth.go]
+closed: 2026-09-27
+closed_by: pi
 ---
 
 # Instrument OAuth callback rejection safely
