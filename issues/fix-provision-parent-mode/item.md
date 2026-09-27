@@ -2,7 +2,7 @@
 created: 2026-09-27
 updated: 2026-09-27
 type: bug
-status: open
+status: in-progress
 priority: high
 lane: auth-incident
 collision: [internal/provision/]
