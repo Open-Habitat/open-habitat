@@ -256,7 +256,7 @@ CONCURRENT_CHECK
 import json,re,sys
 try:
  p=json.loads(sys.argv[1]);d=p.get('diagnostic_round',{})
- print(re.sub('[^A-Za-z0-9 _./:;,=-]',' ',str(p.get('reason','receipt rejected'))[:150]+' ids='+str(d.get('ids','?'))+' statuses='+str(d.get('statuses','?'))+' bindings='+str(d.get('binding_count','?'))))
+ print(re.sub('[^A-Za-z0-9 _./:;,=-]',' ',str(p.get('reason','receipt rejected'))[:150]+' ids='+str(d.get('ids','?'))+' statuses='+str(d.get('statuses','?'))+' errors='+str(d.get('errors','?'))+' credentials='+str(d.get('credentials_present','?'))+' bindings='+str(d.get('binding_count','?'))))
 except (ValueError,TypeError):print('missing proof')
 CONCURRENT_REASON
 )

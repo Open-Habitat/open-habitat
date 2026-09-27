@@ -97,8 +97,16 @@ try:
                 replies=[f.result(timeout=90) for f in futures]
         finally:marker.unlink()
         statuses=[s for s,_ in replies]
-        result['diagnostic_round']={'ids':list(codes),'statuses':statuses,
-                                    'binding_count':len(binding())}
+        allowed_errors={'identity_mapping_denied','native_adapter_error','authentication_required'}
+        errors=[]
+        for status,body in replies:
+            if status==303:errors.append('none');continue
+            try:code=json.loads(body).get('error',{}).get('code')
+            except (ValueError,UnicodeError,AttributeError):code=None
+            errors.append(code if code in allowed_errors else 'other')
+        result['diagnostic_round']={'ids':list(codes),'statuses':statuses,'errors':errors,
+                                    'binding_count':len(binding()),
+                                    'credentials_present':[(pathlib.Path('/home')/next(i[1] for i in identities if i[0]==code)/'.config/gh/hosts.yml').is_file() for code in codes]}
         check(statuses==[303,303], 'simultaneous callbacks did not both succeed')
         for flow,code,(status,body) in zip(flows,codes,replies):
             route(flow);successful[code]=flow
