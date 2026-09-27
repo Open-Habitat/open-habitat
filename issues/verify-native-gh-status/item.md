@@ -21,7 +21,7 @@ The first real pilot login verified `gh auth status` and numeric identity under 
 
 ## Acceptance Criteria
 
-- [ ] Define an honest bounded status check under the mapped daemon UID, using existing native gh integration and verifying that the observed GitHub numeric identity matches the authenticated binding (not merely that some token exists). No gateway home read or token exposure. Prevent slow/hung gh from blocking the snapshot indefinitely.
-- [ ] Return connected only on a fresh positive check; distinguish not connected from unverified/error without a false green state. Avoid spuriously invalidating web sessions when gh is unavailable.
-- [ ] Synthetic per-UID tests cover correct identity, wrong identity, missing auth, tool failure/timeout, no credential/log leak and no cross-user data. Retain UI warning only for genuine unknown/partial state; no made-up success for a missing check.
-- [ ] Run ./scripts/ci-local.sh --clean --json and focused tests; record exact evidence in result.md. Do not test with live Jari credentials or alter host state.
+- [x] Define an honest bounded status check under the mapped daemon UID, using existing native gh integration and verifying that the observed GitHub numeric identity matches the authenticated binding (not merely that some token exists). No gateway home read or token exposure. Prevent slow/hung gh from blocking the snapshot indefinitely.
+- [x] Return connected only on a fresh positive check; distinguish not connected from unverified/error without a false green state. Avoid spuriously invalidating web sessions when gh is unavailable.
+- [x] Synthetic per-UID tests cover correct identity, wrong identity, missing auth, tool failure/timeout, no credential/log leak and no cross-user data. Retain UI warning only for genuine unknown/partial state; no made-up success for a missing check.
+- [x] Run ./scripts/ci-local.sh --clean --json and focused tests; record exact evidence in result.md. Do not test with live Jari credentials or alter host state.
