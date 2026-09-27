@@ -112,9 +112,7 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   ).toBeVisible();
   await shot(page, "ready");
   await page.getByRole("button", { name: "Sulje navigaatio" }).click();
-  await expect(
-    page.getByRole("button", { name: "Kirjaudu ulos" }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Tilivalikko" })).toBeVisible();
   await page.getByRole("button", { name: "Avaa navigaatio" }).click();
   await page.getByRole("link", { name: "ordinary-dir" }).click();
   await expect(page.locator("main h1")).toHaveText("ordinary-dir");
@@ -139,7 +137,10 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   await expect(page.locator("main")).toBeFocused();
   const [logoutResponse] = await Promise.all([
     page.waitForResponse((response) => response.url().endsWith("/auth/logout")),
-    page.getByRole("button", { name: "Kirjaudu ulos" }).click(),
+    (async () => {
+      await page.getByRole("button", { name: "Tilivalikko" }).click();
+      await page.getByRole("menuitem", { name: "Kirjaudu ulos" }).click();
+    })(),
   ]);
   expect(logoutResponse.status()).toBe(204);
   await expect(
