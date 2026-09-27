@@ -55,6 +55,41 @@ type TokenSink interface {
 // valid session. Authorization is still rechecked on every subsequent request.
 var ErrBrokerUnavailable = errors.New("broker temporarily unavailable")
 
+// BrokerFailure is a closed diagnostic vocabulary; no broker error text is logged.
+type BrokerFailure string
+
+const (
+	BrokerTransport        BrokerFailure = "transport"
+	BrokerStateUnavailable BrokerFailure = "state_unavailable"
+	BrokerDenied           BrokerFailure = "denied"
+	BrokerNameCollision    BrokerFailure = "name_collision"
+	BrokerDrift            BrokerFailure = "drift"
+	BrokerInvalidReply     BrokerFailure = "invalid_reply"
+	BrokerInvalidRequest   BrokerFailure = "invalid_request"
+	BrokerBindingChanged   BrokerFailure = "binding_changed"
+)
+
+func (f BrokerFailure) Error() string { return "broker refused" }
+func (f BrokerFailure) Is(target error) bool {
+	return target == ErrBrokerUnavailable && (f == BrokerTransport || f == BrokerStateUnavailable)
+}
+func brokerReason(err error, valid bool) BrokerFailure {
+	if err != nil {
+		var f BrokerFailure
+		if errors.As(err, &f) {
+			switch f {
+			case BrokerTransport, BrokerStateUnavailable, BrokerDenied, BrokerNameCollision, BrokerDrift, BrokerInvalidReply, BrokerInvalidRequest:
+				return f
+			}
+		}
+		return BrokerTransport
+	}
+	if !valid {
+		return BrokerInvalidReply
+	}
+	return BrokerBindingChanged
+}
+
 type BrokerRequest struct{ Operation, ID, Candidate string }
 type BrokerRoute struct {
 	UID              uint32
@@ -171,6 +206,21 @@ func attemptID() string {
 		return "" // Diagnostics must not change the authentication outcome.
 	}
 	return base64.RawURLEncoding.EncodeToString(b)
+}
+func (a *Auth) brokerEvent(attempt, operation string, reason BrokerFailure) {
+	if operation != "ensure" && operation != "authorize" {
+		return
+	}
+	switch reason {
+	case BrokerTransport, BrokerStateUnavailable, BrokerDenied, BrokerNameCollision, BrokerDrift, BrokerInvalidReply, BrokerInvalidRequest, BrokerBindingChanged:
+	default:
+		reason = BrokerInvalidReply
+	}
+	fields := []any{"outcome", "rejected", "reason", "broker_denied", "broker_operation", operation, "broker_reason", string(reason)}
+	if attempt != "" {
+		fields = append(fields, "attempt_id", attempt)
+	}
+	a.log.Info("oauth_callback", fields...)
 }
 func (a *Auth) authEvent(attempt, outcome, reason string) {
 	// Only these internally chosen literals may enter the structured log.
@@ -426,7 +476,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	ensured, err := a.broker.Exchange(r.Context(), BrokerRequest{Operation: "ensure", ID: id, Candidate: login})
 	target, valid := brokerIdentity(id, ensured)
 	if err != nil || !valid {
-		a.authEvent(attempt, "rejected", "broker_denied")
+		a.brokerEvent(attempt, "ensure", brokerReason(err, valid))
 		a.callbackFailure(w, r, 403, "identity_mapping_denied")
 		return
 	}
@@ -453,7 +503,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	checked, err := a.broker.Exchange(r.Context(), BrokerRequest{Operation: "authorize", ID: id})
 	rebound, valid := brokerIdentity(id, checked)
 	if err != nil || !valid || checked.Epoch != ensured.Epoch || checked.Generation < ensured.Generation || rebound != target {
-		a.authEvent(attempt, "rejected", "broker_denied")
+		a.brokerEvent(attempt, "authorize", brokerReason(err, valid))
 		a.callbackFailure(w, r, 403, "identity_mapping_denied")
 		return
 	}

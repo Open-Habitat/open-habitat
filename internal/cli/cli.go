@@ -469,13 +469,32 @@ func helpOutput() any {
 
 type gatewayBroker struct{}
 
+// mapBrokerReply translates only validated protocol enums, never wire text.
+func mapBrokerReply(reply provision.Reply, err error) (gateway.BrokerReply, error) {
+	if err != nil {
+		return gateway.BrokerReply{}, gateway.BrokerTransport
+	}
+	switch reply.Failure {
+	case provision.StateUnavailable:
+		return gateway.BrokerReply{}, gateway.BrokerStateUnavailable
+	case provision.Denied:
+		return gateway.BrokerReply{}, gateway.BrokerDenied
+	case provision.NameCollision:
+		return gateway.BrokerReply{}, gateway.BrokerNameCollision
+	case provision.Drift:
+		return gateway.BrokerReply{}, gateway.BrokerDrift
+	case provision.Invalid:
+		return gateway.BrokerReply{}, gateway.BrokerInvalidRequest
+	case "":
+		if reply.Route == nil {
+			return gateway.BrokerReply{}, gateway.BrokerInvalidReply
+		}
+		return gateway.BrokerReply{Route: &gateway.BrokerRoute{UID: reply.Route.UID, Username: reply.Route.Username, Socket: reply.Route.Socket}, Generation: reply.Generation, Epoch: reply.Epoch}, nil
+	default:
+		return gateway.BrokerReply{}, gateway.BrokerInvalidReply
+	}
+}
 func (gatewayBroker) Exchange(ctx context.Context, r gateway.BrokerRequest) (gateway.BrokerReply, error) {
 	reply, err := (provision.Client{SocketPath: "/run/native-agent-host/broker.sock", SocketOwnerUID: 0}).Exchange(ctx, provision.Request{Version: 1, Operation: r.Operation, Provider: "github", ID: r.ID, Candidate: r.Candidate})
-	if err != nil || reply.Failure == provision.StateUnavailable {
-		return gateway.BrokerReply{}, gateway.ErrBrokerUnavailable
-	}
-	if reply.Failure != "" || reply.Route == nil {
-		return gateway.BrokerReply{}, provision.ErrTransport
-	}
-	return gateway.BrokerReply{Route: &gateway.BrokerRoute{UID: reply.Route.UID, Username: reply.Route.Username, Socket: reply.Route.Socket}, Generation: reply.Generation, Epoch: reply.Epoch}, nil
+	return mapBrokerReply(reply, err)
 }

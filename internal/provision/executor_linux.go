@@ -164,34 +164,44 @@ func safeParents(path string) error {
 	}
 	return nil
 }
+
+// availabilityGuard is root-local; its closed stage is never put on the wire.
+// Underlying host errors and command output are deliberately discarded.
+type availabilityGuard string
+
+func (g availabilityGuard) Error() string { return "host availability refused" }
+
 func (e *LinuxHostExecutor) available(ctx context.Context, name string, uid uint32) (bool, error) {
 	if !username(name) || uid < 1000 || uid > 60000 || e == nil || e.GatewayUID == 0 || e.GatewayGID == 0 || uid == e.GatewayUID || uid == e.GatewayGID || ctx == nil || ctx.Err() != nil {
-		return false, ErrInvalid
+		return false, availabilityGuard("invalid_executor")
 	}
 	for _, pair := range [][2]string{{"passwd", name}, {"passwd", number(uid)}, {"group", name}, {"group", number(uid)}} {
 		ok, err := e.vacant(ctx, pair[0], pair[1])
 		if err != nil {
-			return false, err
+			return false, availabilityGuard("nss_probe")
 		}
 		if !ok {
 			return false, nil
 		}
 	}
 	if e.noSupplementaryGroups(ctx, name) != nil {
-		return false, ErrInvalid
+		return false, availabilityGuard("group_probe")
 	}
 	for _, p := range []string{filepath.Join(homeBase, name), filepath.Join(configBase, "daemon-"+name+".json"), filepath.Join(socketBase, name)} {
 		if safeParents(p) != nil {
-			return false, ErrInvalid
+			return false, availabilityGuard("parent_policy")
 		}
 	}
-	if owner(socketBase, 0, e.GatewayGID, 0710, true) != nil || e.parentACL(ctx, 0) != nil || owner(configBase, 0, 0, 0755, true) != nil {
-		return false, ErrInvalid
+	if owner(socketBase, 0, e.GatewayGID, 0710, true) != nil || owner(configBase, 0, 0, 0755, true) != nil {
+		return false, availabilityGuard("parent_policy")
+	}
+	if e.parentACL(ctx, 0) != nil {
+		return false, availabilityGuard("acl_policy")
 	}
 	for _, p := range []string{filepath.Join(homeBase, name), filepath.Join(configBase, "daemon-"+name+".json"), filepath.Join(socketBase, name), socketFor(name)} {
 		ok, err := missing(p)
 		if err != nil {
-			return false, err
+			return false, availabilityGuard("path_probe")
 		}
 		if !ok {
 			return false, nil
@@ -201,7 +211,7 @@ func (e *LinuxHostExecutor) available(ctx context.Context, name string, uid uint
 	// and per-user directory are currently absent after a reboot.
 	for _, spec := range [][2]string{{"native-agent-host-daemon@" + name + ".socket", "disabled"}, {"native-agent-host-daemon@" + name + ".service", "static"}} {
 		if err := e.inactiveUnit(ctx, spec[0], spec[1]); err != nil {
-			return false, err
+			return false, availabilityGuard("unit_probe")
 		}
 	}
 	return true, nil

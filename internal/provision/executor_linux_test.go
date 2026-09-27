@@ -59,7 +59,7 @@ func TestLinuxExecutorNSSCollisionAndFailure(t *testing.T) {
 		t.Fatal(ok, err, calls)
 	}
 	e.run = func(context.Context, string, ...string) ([]byte, error) { return nil, errors.New("NSS unavailable") }
-	if ok, err = e.Available(context.Background(), "carol", 21000); ok || err == nil {
+	if ok, err = e.Available(context.Background(), "carol", 21000); ok || err != availabilityGuard("nss_probe") {
 		t.Fatal(ok, err)
 	}
 }

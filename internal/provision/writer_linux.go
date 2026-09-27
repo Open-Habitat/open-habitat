@@ -77,7 +77,10 @@ type Writer struct {
 	Dir            string
 	UIDMin, UIDMax uint32
 	Executor       HostExecutor
-	owner          uint32
+	// GuardEvent is root-local diagnostic output, never included in a reply.
+	// Only internally selected fixed literals are passed to it.
+	GuardEvent func(string)
+	owner      uint32
 }
 
 func NewWriter(dir string, min, max uint32, executor HostExecutor) Writer {
@@ -429,6 +432,13 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 			}
 			ok, err := w.Executor.Available(ctx, name, n)
 			if err != nil {
+				if w.GuardEvent != nil {
+					stage := "availability_error"
+					if guard, ok := err.(availabilityGuard); ok {
+						stage = string(guard)
+					}
+					w.GuardEvent(stage)
+				}
 				return failure(Drift)
 			}
 			if ok {
@@ -441,6 +451,9 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 		}
 	}
 	if uid == 0 {
+		if w.GuardEvent != nil {
+			w.GuardEvent("no_available_binding")
+		}
 		return failure(NameCollision)
 	}
 	if ctx.Err() != nil || !sameState(ctx, fd, w.owner, ab, lb, a.Epoch) {

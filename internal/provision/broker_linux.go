@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"os"
 	"strconv"
 
@@ -99,6 +100,14 @@ func ServeBroker(ctx context.Context) error {
 	// Refuse unsafe state, including pending writes, rollback, NSS/ACL/unit
 	// drift, even when there are no incoming clients. Restart is not repair.
 	writer := NewWriter(cfg.StateDir, cfg.UIDMin, cfg.UIDMax, NewLinuxHostExecutor(cfg.GatewayUID, cfg.GatewayGID))
+	writer.GuardEvent = func(stage string) {
+		// Writer supplies fixed literals only. Never log request, candidate,
+		// UID, route, path, command output or raw host errors.
+		if stage != "availability_error" && stage != "no_available_binding" && stage != "invalid_executor" && stage != "nss_probe" && stage != "group_probe" && stage != "parent_policy" && stage != "acl_policy" && stage != "path_probe" && stage != "unit_probe" {
+			return
+		}
+		slog.New(slog.NewJSONHandler(os.Stderr, nil)).Info("broker_guard", "stage", stage)
+	}
 	if writer.Startup(ctx) != nil {
 		return ErrBrokerStartup
 	}
