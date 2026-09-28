@@ -37,9 +37,11 @@ func (p *PiDevice) validateRuntime() error {
 			return errors.New("runtime tree unavailable")
 		}
 		owner, ok := info.Sys().(*syscall.Stat_t)
-		if !ok || owner.Uid != 0 || info.Mode().Perm()&0022 != 0 {
+		if !ok || owner.Uid != 0 {
 			return errors.New("unsafe runtime tree")
 		}
+		// Symlink permission bits are always 0777 on Linux; only the
+		// target's permissions have meaning and it is visited below.
 		if info.Mode()&os.ModeSymlink != 0 {
 			resolved, err := filepath.EvalSymlinks(path)
 			if err != nil {
@@ -50,6 +52,9 @@ func (p *PiDevice) validateRuntime() error {
 				return errors.New("runtime link escapes release")
 			}
 			return nil // target is also visited in this release tree
+		}
+		if info.Mode().Perm()&0022 != 0 {
+			return errors.New("unsafe runtime tree")
 		}
 		if !info.IsDir() && !info.Mode().IsRegular() {
 			return errors.New("invalid runtime file type")

@@ -39,6 +39,14 @@ func TestTrustedPiRuntime(t *testing.T) {
 	if err := p.validateRuntime(); err != nil {
 		t.Fatal(err)
 	}
+	// The pinned npm bundle includes internal symlinks (e.g. .bin/pi).
+	link := filepath.Join(pkg, "valid.link")
+	if err := os.Symlink("package.json", link); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.validateRuntime(); err != nil {
+		t.Fatalf("safe internal link rejected: %v", err)
+	}
 	for name, mutate := range map[string]func(){
 		"wrong version":            func() { write(p.Manifest, strings.Replace(good, "0.85.1", "0.85.2", 1), 0644) },
 		"wrong export":             func() { write(p.Manifest, strings.Replace(good, "./dist/index.js", "./dist/other.js", 1), 0644) },
