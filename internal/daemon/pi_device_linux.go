@@ -51,11 +51,8 @@ func (p *PiDevice) validate() error {
 	if p.Home == "" || !filepath.IsAbs(p.Home) || !filepath.IsAbs(p.Node) || !filepath.IsAbs(p.Entry) || !filepath.IsAbs(p.Manifest) || os.Geteuid() == 0 {
 		return errors.New("invalid Pi device configuration or UID")
 	}
-	if p.SharedSelector {
-		selected, err := core.LoadSharedPiRuntime()
-		if err != nil || selected.Node != p.Node || selected.Entry != p.Entry || selected.Manifest != p.Manifest {
-			return errors.New("native Pi selector unavailable")
-		}
+	if err := p.checkSharedSelector(); err != nil {
+		return err
 	}
 	if p.TrustedRuntime {
 		if err := p.validateRuntime(); err != nil {
@@ -83,6 +80,16 @@ func (p *PiDevice) validate() error {
 		}
 		if i == 3 && (!st.Mode().IsRegular() || st.Mode().Perm()&0077 != 0) {
 			return errors.New("unsafe Pi credential file")
+		}
+	}
+	return nil
+}
+
+func (p *PiDevice) checkSharedSelector() error {
+	if p.SharedSelector {
+		selected, err := core.LoadSharedPiRuntime()
+		if err != nil || selected.Node != p.Node || selected.Entry != p.Entry || selected.Manifest != p.Manifest {
+			return errors.New("native Pi selector unavailable")
 		}
 	}
 	return nil
@@ -173,6 +180,11 @@ func (p *PiDevice) status(parent context.Context) (string, error) {
 	return result.State, nil
 }
 func (p *PiDevice) run(ctx context.Context, action string, emit func(PiDeviceEvent)) (PiDeviceEvent, error) {
+	// Device login can remain in flight after its initial validation. Recheck
+	// before every helper spawn, including its follow-up status process.
+	if err := p.checkSharedSelector(); err != nil {
+		return PiDeviceEvent{}, err
+	}
 	// -e contains only static helper code. Pi module paths are operator-controlled.
 	cmd := exec.CommandContext(ctx, p.Node, "--input-type=module", "--eval", piDeviceHelper, p.Entry, p.Manifest, action)
 	// Do not let ambient Pi directory or Node preloads redirect native credentials.
