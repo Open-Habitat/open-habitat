@@ -22,10 +22,12 @@ import (
 type piRPC struct {
 	cmd      *exec.Cmd
 	in, out  *os.File
-	mu       sync.Mutex // serializes requests; does not guard close
-	frames   chan json.RawMessage
-	done     chan struct{} // reader done, NOT process exit proof
-	exited   chan struct{} // direct child reaped independently of pipe EOF
+	mu       sync.Mutex           // serializes requests; does not guard close
+	frames   chan json.RawMessage // correlated responses only
+	events   chan json.RawMessage // bounded native events, consumed separately
+	overflow atomic.Bool          // an event was lost: never report acceptance as certain
+	done     chan struct{}        // reader done, NOT process exit proof
+	exited   chan struct{}        // direct child reaped independently of pipe EOF
 	closing  atomic.Bool
 	poisoned bool // guarded by mu
 }
@@ -72,7 +74,7 @@ func launchPiRPCWithOwnership(binary, home, cwd, sessionFile string, env []strin
 		return nil, err
 	}
 	cmd.Stdout, cmd.Stdin = outW, inR
-	p := &piRPC{cmd: cmd, in: inW, out: outR, frames: make(chan json.RawMessage, 128), done: make(chan struct{}), exited: make(chan struct{})}
+	p := &piRPC{cmd: cmd, in: inW, out: outR, frames: make(chan json.RawMessage, 8), events: make(chan json.RawMessage, 128), done: make(chan struct{}), exited: make(chan struct{})}
 	if err = cmd.Start(); err != nil {
 		inR.Close()
 		inW.Close()
@@ -92,19 +94,39 @@ func launchPiRPCWithOwnership(binary, home, cwd, sessionFile string, env []strin
 func (p *piRPC) read() {
 	defer close(p.done)
 	defer close(p.frames)
+	defer close(p.events)
 	scanner := bufio.NewScanner(p.out)
 	scanner.Buffer(make([]byte, 4096), 1<<20)
 	for scanner.Scan() {
 		line := bytes.TrimSuffix(scanner.Bytes(), []byte{'\r'})
 		if !json.Valid(line) {
+			p.overflow.Store(true)
 			break
 		}
 		frame := append(json.RawMessage(nil), line...)
+		var envelope struct {
+			Type string `json:"type"`
+		}
+		if json.Unmarshal(frame, &envelope) != nil || envelope.Type == "" {
+			p.overflow.Store(true)
+			break
+		}
+		queue := p.events
+		if envelope.Type == "response" {
+			queue = p.frames
+		}
 		select {
-		case p.frames <- frame:
+		case queue <- frame:
 		default:
+			// Dropping a frame may lose the only evidence of prompt acceptance
+			// or settlement. Poison the channel rather than claiming success.
+			p.overflow.Store(true)
+			_ = p.in.Close()
 			return
 		}
+	}
+	if scanner.Err() != nil {
+		p.overflow.Store(true)
 	}
 	// Even a clean EOF is not proof of a completed prompt. A concurrent request
 	// sees a closed channel and reports uncertainty.
@@ -113,9 +135,9 @@ func (p *piRPC) read() {
 
 // request serializes writes and waits for Pi's correlated acknowledgement.
 // A timeout or broken pipe is uncertain, not a rejection: callers must never
-// retry the prompt automatically. Frames other than this response remain on
-// the bounded channel for a future event consumer; this probe deliberately
-// refuses a request if an event appears while waiting instead of discarding it.
+// retry the prompt automatically. The reader routes native events to a separate
+// bounded queue. A future controller must drain it continuously: overflow
+// poisons the transport rather than silently losing agent activity.
 func (p *piRPC) request(kind, message string, timeout time.Duration) (bool, error) {
 	if kind != "get_state" && kind != "prompt" {
 		return false, errors.New("unsupported Pi RPC request")
@@ -128,7 +150,7 @@ func (p *piRPC) request(kind, message string, timeout time.Duration) (bool, erro
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if p.poisoned || p.closing.Load() {
+	if p.poisoned || p.closing.Load() || p.overflow.Load() {
 		return false, errors.New("Pi acceptance uncertain: channel closed")
 	}
 	id, ok := uuid()
@@ -173,7 +195,7 @@ func (p *piRPC) request(kind, message string, timeout time.Duration) (bool, erro
 				Command string `json:"command"`
 				Success *bool  `json:"success"`
 			}
-			if json.Unmarshal(frame, &response) != nil || response.Type != "response" || response.ID != id || response.Command != kind || response.Success == nil || p.closing.Load() {
+			if json.Unmarshal(frame, &response) != nil || response.Type != "response" || response.ID != id || response.Command != kind || response.Success == nil || p.closing.Load() || p.overflow.Load() {
 				p.poisoned = true
 				_ = p.in.Close()
 				return false, errors.New("Pi acceptance uncertain: unexpected frame")

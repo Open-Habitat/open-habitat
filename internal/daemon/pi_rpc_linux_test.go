@@ -41,6 +41,74 @@ done
 	}
 }
 
+func TestPiRPCEventsBeforeAndAfterAcknowledgement(t *testing.T) {
+	home := t.TempDir()
+	script := filepath.Join(home, "pi")
+	body := `#!/bin/sh
+while IFS= read -r line; do
+ id=$(printf '%s' "$line" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')
+ type=$(printf '%s' "$line" | sed -n 's/.*"type":"\([^"]*\)".*/\1/p')
+ printf '{"type":"agent_start"}\n'
+ printf '{"id":"%s","type":"response","command":"%s","success":true}\n' "$id" "$type"
+ printf '{"type":"agent_end"}\n'
+done
+`
+	if err := os.WriteFile(script, []byte(body), 0700); err != nil {
+		t.Fatal(err)
+	}
+	p, err := launchPiRPC(script, home, home, "", []string{"PATH=/usr/bin:/bin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.close()
+	for i := 0; i < 2; i++ {
+		ok, err := p.request("prompt", "once", time.Second)
+		if err != nil || !ok {
+			t.Fatalf("request %d: %v %v", i, ok, err)
+		}
+		for _, want := range []string{`"agent_start"`, `"agent_end"`} {
+			select {
+			case event := <-p.events:
+				if !strings.Contains(string(event), want) {
+					t.Fatalf("event %d: %s, want %s", i, event, want)
+				}
+			case <-time.After(time.Second):
+				t.Fatalf("event %d missing: %s", i, want)
+			}
+		}
+	}
+}
+
+func TestPiRPCEventOverflowPoisonsAcknowledgement(t *testing.T) {
+	home := t.TempDir()
+	script := filepath.Join(home, "pi")
+	body := `#!/bin/sh
+read line
+id=$(printf '%s' "$line" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')
+i=0
+while [ "$i" -lt 129 ]; do
+ printf '{"type":"agent_start"}\n'
+ i=$((i+1))
+done
+printf '{"id":"%s","type":"response","command":"prompt","success":true}\n' "$id"
+read line
+`
+	if err := os.WriteFile(script, []byte(body), 0700); err != nil {
+		t.Fatal(err)
+	}
+	p, err := launchPiRPC(script, home, home, "", []string{"PATH=/usr/bin:/bin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.close()
+	if ok, err := p.request("prompt", "once", time.Second); ok || err == nil || !strings.Contains(err.Error(), "uncertain") {
+		t.Fatalf("overflow accepted: %v %v", ok, err)
+	}
+	if _, err := p.request("prompt", "retry", time.Second); err == nil {
+		t.Fatal("channel reused after overflow")
+	}
+}
+
 func TestPiRPCUncertain(t *testing.T) {
 	home := t.TempDir()
 	script := filepath.Join(home, "pi")
