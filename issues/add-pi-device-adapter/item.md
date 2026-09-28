@@ -2,13 +2,15 @@
 created: 2026-09-28
 updated: 2026-09-28
 type: feature
-status: in-progress
+status: done
 priority: high
 related: ['@design-first-use-onboarding']
 lane: pi-auth-adapter
 collision: [internal/daemon/, web/package.json]
 originating_run: 01m3k7ak85b90d2gb3ry7xbg5m
 originating_run_kind: spinoff
+closed: 2026-09-28
+closed_by: agent
 ---
 
 # Add native Pi device-code daemon adapter
@@ -37,3 +39,9 @@ This is a walking slice for daemon/Node native Pi adapter; gateway server-side g
 ### 2026-09-28T12:29:49Z · @jari
 
 2026-09-28 scope decision: deliver the daemon-coordinated Pi-native device-code login under the mapped UID. Pi owns auth.json and OAuth; no host-managed credential file writes or Pi-in-Go substitution for this slice. Independent terminal Pi sign-in/logout during web onboarding is not a v1 workflow; its last-writer-wins race is not a blocking acceptance criterion. Do not promise cross-process revocation. Keep bounded operation lifetime and ordinary process cleanup so daemon restart/disconnect cannot yield a false connected state; rely on Pi-native status recheck. Protect Unix UID separation and do not leak credentials into IPC/logs. Prior review findings about the experimental helper remain evidence to avoid concrete leaks and stuck children, not a mandate for a new credential framework.
+
+## Resolution
+
+### 2026-09-28T12:54:50Z · @agent
+
+Daemon/Node native Pi device-code walking slice verified at 31101a4; clean CI passed, synthetic two-UID/container proof and independent final-diff assessment recorded in result.md. Gateway/browser wiring and live-host verification remain separate work.
