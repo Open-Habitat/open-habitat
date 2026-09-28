@@ -193,3 +193,11 @@ status deadline and remains a **failed** QEMU proof; this new faster container
 proof does not make that guest pass. No test-host deployment. Keep this issue
 **open**, pending Jari's visual review and a consented real-provider walking
 story; do not mark full acceptance from this synthetic proof.
+
+At committed fixture revision `2ae11ec3a54b313e3308628245a2b89abcb00041`,
+`TMPDIR=/var/tmp PATH=/home/maintainer/Sources/native-agent-host/.tools/go/bin:$PATH
+./scripts/ci-local.sh --clean --json` exited 0 (`status:passed`,
+`clean:true`), including release packaging and verification. This receipt-only
+addition changes no executable code or tests. There was no production-code
+diff to security-review, and neither the gate nor package verification proves
+the host-specific broker/systemd/live-host boundaries above.
