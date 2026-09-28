@@ -1,22 +1,70 @@
 # Web client
 
-`web/` owns the browser-only React application. The route is selection authority;
-Redux owns synchronized host facts; production components in `src/components/`
-are shared with Storybook. The browser never selects a Unix user and never owns
-native history or credentials. `VITE_ENABLE_TEST_FIXTURES=true` is test-only and
-must not be set for a production build.
+`web/` is the browser application: a React and TypeScript single-page client
+built with Vite, with Redux Toolkit for the synchronized model and React Router
+for the route. The stack and the reasons for it are in
+`docs/adr-0002-frontend-stack.md`. Its state-ownership table and its
+"Rendering and security boundary" section are the design this code implements,
+so read them before changing how state flows or how host content is rendered.
+In short: the route is the only record of which workspace or agent is selected,
+and selectors resolve it against the current snapshot rather than a second
+field; Redux holds the facts the host synchronizes; ephemeral things such as
+focus and open menus stay in the owning component. The UI is in Finnish and
+desktop-first. `design-system/AGENTS.md` holds the visual decisions and the
+token source, and `src/components/` holds the production components that both
+the app and Storybook import, so a story shows states of the real component
+rather than a copy of it.
 
-`src/app/snapshot.ts` validates a bounded response against the canonical v1
-JSON schemas before Redux receives it. The browser never keeps an invalid or
-previous identity snapshot across a failed fetch. `test/browser-host/` is a
-standalone Go test-only TLS host, not part of `cmd/native-agent-host` or the web
-bundle. It mounts the real gateway and daemon snapshot handler with synthetic
-same-UID UDS and OAuth seams; the separate two-UID systemd VM proves actual
-UID/socket isolation. Playwright starts this host against a fresh production
-`web/dist` build with fixture flags unset. Test scenarios are controlled only
-under the host's `/fixture/` prefix, never in the production binary.
+The browser is a viewer of native state, not an owner. It never chooses a Unix
+user; the gateway does that from the authenticated identity. It never keeps
+native history or credentials. Everything that arrives from the host is treated
+as untrusted text even though it came from the person's own processes, because
+Pi history and tool output can contain anything. `src/app/snapshot.ts` and
+`src/app/history.ts` validate responses against the schemas in `contracts/v1/`
+before Redux sees them, read the body under a size cap even when Content-Length
+is missing or wrong, and fail with generic messages so that response text never
+reaches the UI or the console. The store drops the snapshot whenever a fetch
+fails or the session ends, and resets filter state when the identity in a new
+snapshot differs from the previous one. A tab can outlive a session: if one
+person's session expires and another signs in on the same tab, nothing from the
+first identity may remain visible. Showing one identity's facts under another
+is a product defect, not a UI glitch.
 
-From the repository root, use the exact locked commands documented in the root
-`AGENTS.md`. `npm ci --prefix web` is the only dependency installation path.
-Biome formats and lints; `tsc --noEmit` type-checks. Browser tests use a
-repository-local `PLAYWRIGHT_BROWSERS_PATH`.
+Three ways to run the client prove different things, and the difference matters
+when reporting evidence. `npm run dev` serves the source with Vite.
+`npm run demo` is a loopback-only rehearsal on port 4184 with in-process
+fixture snapshots, selected by `VITE_SYNTHETIC_DEMO`; it exercises the UI, not
+the host. `test/browser-host/` is a standalone Go TLS host on port 4174 that
+Playwright builds and starts against a fresh production `web/dist`. It mounts
+the real gateway and daemon handlers with synthetic seams: two invented
+identities on same-UID Unix sockets under a private `/tmp/nah-browser-*`
+directory, a fake OAuth provider, and a `/fixture/` prefix through which tests
+switch scenarios and history modes and expire sessions. That switch is
+process-wide, which is why Playwright runs with one worker. The host is
+test-only code, never imported by `cmd/native-agent-host`. It proves routing
+and the browser/host contract but not UID isolation; the two-UID systemd VM
+scenarios in `scripts/vm-test.sh` prove that. A browser test passing here is
+host-backed synthetic evidence and should be described as such.
+
+Fixture code and the production bundle are kept apart by construction.
+`VITE_ENABLE_TEST_FIXTURES=true` makes the app lazy-load
+`src/test/CatalogPreview.tsx` behind `?fixture=design`, which the design-system
+Playwright tests reach through a second Vite dev server on port 4183. The
+production build is made with neither flag, `vite.config.ts` refuses to build
+with the demo flag set, `demo/check-build.mjs` and `scripts/ci-local.sh` grep
+`dist/` for fixture markers, and `tests/workspace-slice-security.spec.ts` checks
+that the served bundle ignores `?fixture=`. A fixture flag on a build meant for
+the host would ship test seams to the internet, so a new fixture with new
+marker text belongs in those checks too.
+
+Dependencies are pinned in the committed lockfile and installed with
+`npm ci --prefix web`; `npm install` rewrites the lock, and `scripts/ci-local.sh`
+proves the lock complete by reinstalling offline. That script is also where the
+required checks live: Biome formatting and linting with accessibility rules as
+errors, `tsc --noEmit`, Vitest unit and component tests, Playwright end-to-end
+and accessibility suites, the production build and Storybook. The `scripts`
+block in `package.json` names each one. Run them from the repository root with
+`--prefix web`, and set `PLAYWRIGHT_BROWSERS_PATH` to the repository's
+`.cache/ms-playwright`, where the CI script installs Chromium; without it
+Playwright looks in your home and either fails or installs a second copy there.
+The full gate before landing is `./scripts/ci-local.sh --clean --json`.
