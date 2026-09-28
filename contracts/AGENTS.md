@@ -21,8 +21,9 @@ rejected, so a v1 client and server are entitled to assume v1 shapes. New
 optional fields fit within v1. Removing or renaming a field, or changing a type,
 nullability or an ordering guarantee, is a new version directory; the policy is
 in `docs/interfaces.md` under the versioned HTTP surface. Objects set
-`additionalProperties: false` throughout, so an unknown field is a rejection,
-not a warning. There is no extension escape hatch. The boundary is part of the
+`additionalProperties: false` throughout, the one open object being the error
+`details` bag in `common.schema.json`, so an unknown field is a rejection, not
+a warning. There is no extension escape hatch. The boundary is part of the
 architecture decided with Jari, so adding one is a recommendation to him rather
 than a schema edit.
 
@@ -38,8 +39,8 @@ against its schema, cross-file references, scenario coverage, and a few negative
 cases that prove rejections still reject. Two things it will not discover by
 itself: a new example file is validated only once it is added to the fixture map
 inside the script, and the required scenario coverage labels are a fixed set in
-the same script, so a renamed or removed scenario fails the run until that list
-is updated. Any byte change to a schema also changes the fingerprint embedded in
-the generated packages; `go generate ./internal/contracts` regenerates them and
-`scripts/check-generated.sh` fails on drift. `./scripts/ci-local.sh` runs all of
-this.
+the same script, so a renamed or removed coverage label fails the run until that
+list is updated. Any byte change to a schema also changes the fingerprint
+embedded in the generated packages; `go generate ./internal/contracts`
+regenerates them and `scripts/check-generated.sh` fails on drift.
+`./scripts/ci-local.sh` runs all of this.
