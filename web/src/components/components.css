@@ -882,6 +882,15 @@ select:focus-visible,
 .ah-composer .ah-field {
   max-width: none;
 }
+.ah-agent-controls {
+  max-width: 70ch;
+  padding: var(--ah-s5);
+  border-top: 1px solid var(--ah-line);
+  background: var(--ah-bg);
+}
+.ah-agent-controls .ah-field {
+  max-width: none;
+}
 .ah-queue ol {
   display: grid;
   gap: var(--ah-s2);

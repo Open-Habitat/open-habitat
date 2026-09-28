@@ -5,4 +5,5 @@ export * from "./Status";
 export * from "./Navigation";
 export * from "./Account";
 export * from "./Conversation";
+export * from "./AgentInteractionControls";
 export * from "./Operations";
