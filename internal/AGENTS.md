@@ -28,9 +28,9 @@ and for the broker in ADR 0004.
   process quietly fixing its own environment would hide deployment drift.
 - `transport/` is the bounded HTTP/1.1 handoff that carries one transient
   GitHub token from the gateway to the daemon's socket, and `nativegh/`
-  installs it into the person's own `gh` as their UID. `transport` is imported
-  by both sides and implements the `gateway.TokenSink` interface, so the
-  gateway imports nothing from the daemon side.
+  installs it into the person's own `gh` as their UID. `transport` imports
+  `gateway` and implements the `gateway.TokenSink` interface, which `cli/`
+  wires in, so the gateway imports nothing from the daemon side.
 - `udssecure/` decides, from the file system, whether a socket path is the
   daemon it claims to be (see below).
 - `core/` holds the component configuration and its trust checks; the
@@ -53,12 +53,13 @@ the peer is the gateway UID. A test-mode dial to a locally bound socket sees
 the daemon UID as peer, which is why `transport` has two branches there; they
 look redundant and are not.
 
-Almost everything here is `//go:build linux`, and `transport/` and
-`udssecure/` have no portable files at all, so on a Mac `go vet` and `go test`
-compile very little of this tree. Sessions normally run on `alder`, which is
-Linux, so this bites when checking elsewhere. Several tests also skip when the
-runner is not root, the filesystem lacks POSIX ACLs, or no nonroot mapped UID
-exists; their `t.Skip` messages say which. The disposable QEMU guests in
+Almost everything here is `//go:build linux`; `nativegh/`, `transport/` and
+`udssecure/` have no portable files at all, and `cli/`, `core/` and `gateway/`
+do not build without them, so on a Mac `go vet ./...` and `go test ./...` fail
+outright rather than run. Sessions normally run on `alder`, which is Linux, so
+this bites when checking elsewhere. Several tests also skip when the runner is
+not root, the filesystem lacks POSIX ACLs, or no nonroot mapped UID exists;
+their `t.Skip` messages say which. The disposable QEMU guests in
 `scripts/vm-test.sh` are where those paths are actually proven, so a green
 `go test` on the dev box covers less than it looks, and after provisioning or
 ACL changes it is worth running with `-v` to see what was skipped.
