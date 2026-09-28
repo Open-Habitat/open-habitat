@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Podman/QEMU subprocesses may allocate large host-side scratch files.
+export TMPDIR=/var/tmp
 repo=$(cd "$(dirname "$0")/.." && pwd -P)
 scenario=${1:-}
 json=false

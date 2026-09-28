@@ -5,6 +5,8 @@ clean=false;json=false
 while (($#));do case "$1" in --clean)clean=true;shift;;--json)json=true;shift;;*)echo "error: unknown argument $1" >&2;exit 1;;esac;done
 cd "$repo"
 if $clean && [[ -n $(git status --short) ]];then echo 'error: --clean requires a clean tree at entry' >&2;exit 1;fi
+# Build caches, npm installs and test children must not exhaust the /tmp tmpfs.
+export TMPDIR=/var/tmp
 tmp=$(mktemp -d)
 cleanup(){ chmod -R u+w "$tmp" 2>/dev/null || true;rm -rf "$tmp"; }
 trap cleanup EXIT

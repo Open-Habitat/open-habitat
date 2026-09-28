@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Offline regression: re-signed unsafe packages must still fail verification.
 set -euo pipefail
+export TMPDIR=/var/tmp
 [[ $# -eq 1 && -f $1 ]] || { echo 'usage: test-package-socket.sh <release.tar.gz>' >&2; exit 1; }
 repo=$(cd "$(dirname "$0")/.." && pwd)
 tmp=$(mktemp -d)

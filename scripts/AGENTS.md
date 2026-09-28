@@ -19,6 +19,9 @@ things about it are easy to misread from the outside:
   therefore fails it; the ledger in `issues/prove-jit-guest-isolation/` records
   that happening. Start it from a committed tree and leave the tree alone until
   it finishes.
+- It pins `TMPDIR=/var/tmp` for its entire process tree: npm, Go, Python,
+  Playwright and release staging must not fill the host's `/tmp` tmpfs.
+  Standalone package/verification scripts use the same disk-backed directory.
 - It fetches its own pinned `issuectl` and requires that exact version even
   when a newer one is on the machine, and it reinstalls the web dependencies
   offline after a locked online fetch so that an incomplete lockfile fails
