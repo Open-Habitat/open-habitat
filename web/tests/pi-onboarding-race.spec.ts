@@ -55,3 +55,45 @@ test("@pi-onboarding delayed old-session response cannot restore code after focu
     await a.request.get("/fixture/scenario?value=ready");
   }
 });
+
+test("@pi-onboarding does not offer an action before its session is bound", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/scenario?value=pi-onboarding");
+  await page.request.get("/fixture/pi-state?value=missing");
+  try {
+    let release!: () => void;
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let captured!: () => void;
+    const capturedPromise = new Promise<void>((resolve) => {
+      captured = resolve;
+    });
+    let once = false;
+    await page.route("**/auth/session", async (route) => {
+      if (once) {
+        await route.continue();
+        return;
+      }
+      once = true;
+      const response = await route.fetch();
+      captured();
+      await blocked;
+      await route.fulfill({ response });
+    });
+    await page.goto("/workspaces");
+    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+    await page.getByRole("link", { name: "Alice" }).click();
+    await capturedPromise;
+    await expect(
+      page.getByRole("button", { name: "Aloita kirjautuminen" }),
+    ).toHaveCount(0);
+    release();
+    await expect(
+      page.getByRole("button", { name: "Aloita kirjautuminen" }),
+    ).toBeVisible();
+  } finally {
+    await page.request.get("/fixture/scenario?value=ready");
+  }
+});

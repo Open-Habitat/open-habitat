@@ -30,7 +30,7 @@ export function PiOnboarding({
   onLogin: () => void;
   onLogout: () => Promise<void>;
 }) {
-  const [view, setView] = useState<PiDeviceSignInView>({ phase: "start" });
+  const [view, setView] = useState<PiDeviceSignInView>({ phase: "waiting" });
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const bound = useRef<string | undefined>(undefined);
@@ -140,7 +140,7 @@ export function PiOnboarding({
     };
   }, [check]);
   const action = (method: "POST" | "DELETE") => {
-    if (busyRef.current || ending.current) return;
+    if (busyRef.current || ending.current || !bound.current) return;
     busyRef.current = true;
     setBusy(true);
     hadCode.current = false;
@@ -169,7 +169,7 @@ export function PiOnboarding({
             ? () => action("DELETE")
             : undefined
         }
-        onRetry={!busy ? () => action("POST") : undefined}
+        onRetry={!busy && bound.current ? () => action("POST") : undefined}
       />
       <p>
         Kirjautumisen tila tarkistetaan Pi:ltä. Vahvistussivun avaaminen ei
