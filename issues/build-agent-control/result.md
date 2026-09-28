@@ -62,3 +62,25 @@ is read-only and outstanding sends remain uncertain. No cross-terminal/two
 independent-writer support, automatic retry, generic cgroup, or confirmed native
 tool termination is claimed. No real home/credentials, OAuth, live host, or
 root service was touched. No acceptance criterion checked; issue stays open.
+
+At implementation revision `ec3fd75`,
+`TMPDIR=/var/tmp PATH=/home/maintainer/Sources/native-agent-host/.tools/go/bin:$PATH go test -race ./internal/daemon -count=1`
+passed (including the pinned Pi 0.85.1 synthetic-provider prompt through the
+production CLI bundle, a replaced workspace inode, a disconnected send and
+duplicate command ID, spontaneous direct-child exit while a detached synthetic
+stdout holder remained, private identity denial and revocation). A preceding
+five-repeat focused run passed after fixing a flaky synthetic holder fixture.
+Existing crash-lock tests use a synthetic helper process, **not** the real
+systemd mapped-user service. No cross-UID controller guest, actual service
+crash/systemd cleanup, browser gateway, OAuth, or live host was tested in this
+increment. The independent security/runtime review used gemini-3.8-flash
+(incomplete response, no final verdict) and gpt-6-astra (three concrete
+findings). The latter's SDK-module launch error, discovery-to-open inode race
+and spontaneous-exit FD leak were reproduced or validated against source and
+corrected before the final test. No residual review finding met the filing bar;
+no issue was filed.
+
+At committed revision `ec3fd75`, clean-tree gate
+`TMPDIR=/var/tmp PATH=/home/maintainer/Sources/native-agent-host/.tools/go/bin:$PATH ./scripts/ci-local.sh --clean --json`
+passed (`status:passed`, `clean:true`), including package release verification.
+The receipt paragraph is documentation only; it does not change runtime code.
