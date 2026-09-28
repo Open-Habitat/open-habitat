@@ -161,15 +161,22 @@ never source shell text. Only configured socket instances are enabled.
 The daemon starts Pi RPC directly under its UID and workspace cwd, consumes
 strict JSONL, and stores no parallel history. It owns an in-memory controller and
 a mode-0700 runtime advisory lock for each `pi:<sessionId>`. Before writes it
-reobserves Pi history, direct child/cgroup ownership, `/proc`, tmux and Taskfleet.
+reobserves Pi history, known direct-child ownership, `/proc`, tmux and Taskfleet.
 Unknown fails closed. A terminal TUI remains history-only until a known owner or
 the user stops it and process exit plus history settlement are proved.
 
 Browser and gateway loss leave the daemon and Pi child running. On graceful
 daemon stop, reject new writes, ask owned Pi children to abort/settle, signal the
-direct process group, wait a bounded period, and let systemd kill leftovers.
-Daemon crash or host loss stops active computation. On restart, rediscover native
-history and offer deliberate resume only after old-writer absence and settlement.
+direct process group, wait a bounded period, and let systemd clean up remaining
+service processes. An individually detached native tool may outlive a controller
+cancel or process-group signal: interruption is best effort, never confirmed
+stopped until native state is reconciled. Systemd service-level cleanup applies
+to daemon stop/crash, not to one controller cancellation; a detached tool that
+escapes service membership cannot be claimed stopped without native evidence.
+On restart, rediscover native history and offer deliberate resume only after
+old-writer absence and settlement are positively established. Unknown writer
+or history state forbids another writer; uncertain commands are never retried
+automatically. No per-controller delegated cgroup is a v1 prerequisite.
 Do not add a persistent sidecar supervisor without a new measured decision.
 Taskfleet alone creates and tears down its worktrees.
 
