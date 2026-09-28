@@ -43,9 +43,11 @@ test("@browser-conversation create, send once, reconnect and old history stays r
   await expect(
     page.getByText("Viesti odottaa natiivia hyväksyntää"),
   ).toHaveCount(0);
+  await page.locator("main").evaluate((main) => {
+    main.scrollTop = main.scrollHeight;
+  });
   await page.screenshot({
     path: "test-results/evidence/browser-conversation-reconnect.png",
-    fullPage: true,
   });
   await page.getByRole("button", { name: "Pyydä pysäytystä" }).click();
   await expect(
@@ -111,8 +113,38 @@ test("@browser-conversation uncertain send survives reload without duplicate", a
     page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toBeDisabled();
   expect(attempts).toBe(1);
+  await page
+    .getByText("Aiemman pyynnön tulos epävarma")
+    .scrollIntoViewIfNeeded();
   await page.screenshot({
     path: "test-results/evidence/browser-conversation-uncertain.png",
-    fullPage: true,
   });
+});
+
+test("@browser-conversation malformed host status fails closed without rendering HTML", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
+  await page.route("**/api/v1/conversations/*/status", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        schema_version: 1,
+        agent_id: "<script>alert(1)</script>",
+      }),
+    }),
+  );
+  await page.getByRole("button", { name: "Tarkista tila ja historia" }).click();
+  await expect(
+    page.getByText(/Yhteys katkesi tai istunto muuttui/),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toHaveCount(0);
+  await expect(page.locator("main script")).toHaveCount(0);
 });

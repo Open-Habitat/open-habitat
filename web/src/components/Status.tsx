@@ -167,8 +167,9 @@ export function ConnectionBanner({
       tone: "danger",
     },
     "host-read-only": {
-      title: "Palvelin on vain luku -tilassa",
-      detail: "Yhteys toimii, mutta muutokset on estetty.",
+      title: "Workspace-muutokset ovat vain luku -tilassa",
+      detail:
+        "Yhteys toimii. Uuden Pi-keskustelun ohjausoikeus tarkistetaan erikseen.",
       tone: "warning",
     },
   };

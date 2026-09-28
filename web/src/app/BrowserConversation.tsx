@@ -126,6 +126,14 @@ export function BrowserConversation({
       if (nextStatus.workspace_id !== workspace.workspace_id)
         throw new Error("invalid workspace");
       setCurrent(nextStatus);
+      if (nextStatus.command_id && nextStatus.ack === "rejected")
+        setReceipt(
+          "Viesti hylättiin. Luonnosta ei lähetetä automaattisesti uudelleen.",
+        );
+      if (nextStatus.command_id && nextStatus.ack === "uncertain")
+        setReceipt(
+          "Viestin hyväksyntä jäi epävarmaksi. Tarkista natiivi historia, älä lähetä automaattisesti uudelleen.",
+        );
       const unresolved = sessionStorage.getItem(
         `nah:ambiguous:${identity}:${csrf}:${id}`,
       );
