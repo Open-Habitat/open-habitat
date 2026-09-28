@@ -98,7 +98,15 @@ func main() {
 	}
 	// Disposable native helper; never uses a real Pi runtime, home or provider.
 	fakeNode := filepath.Join(tmp, "fake-node")
-	if e := os.WriteFile(fakeNode, []byte("#!/bin/sh\ncase \"$6\" in\n status) printf '%s\\n' '{\"type\":\"status\",\"state\":\"missing\"}' ;;\n login) printf '%s\\n' '{\"type\":\"device_code\",\"verificationUri\":\"https://auth.openai.com/codex/device\",\"userCode\":\"ABCD-1234\"}'; sleep 2; printf '%s\\n' '{\"type\":\"unknown\"}' ;;\nesac\n"), 0700); e != nil {
+	piStateFile := filepath.Join(tmp, "pi-state")
+	_ = os.WriteFile(piStateFile, []byte("missing"), 0600)
+	fakeScript := `#!/bin/sh
+case "$6" in
+ status) state=$(cat "` + piStateFile + `"); printf '{"type":"status","state":"%s"}\n' "$state" ;;
+ login) printf '%s\n' '{"type":"device_code","verificationUri":"https://auth.openai.com/codex/device","userCode":"ABCD-1234"}'; sleep 2; if [ "$(cat "` + piStateFile + `")" = usable ]; then printf '%s\n' '{"type":"completed"}'; else printf '%s\n' '{"type":"unknown"}'; fi ;;
+esac
+`
+	if e := os.WriteFile(fakeNode, []byte(fakeScript), 0700); e != nil {
 		log.Fatal(e)
 	}
 	identities := []gateway.Identity{{Provider: "github", Subject: "42", UID: 1001, Username: "alice", Socket: "/run/native-agent-host/users/alice/daemon.sock"}, {Provider: "github", Subject: "43", UID: 1002, Username: "bob", Socket: "/run/native-agent-host/users/bob/daemon.sock"}}
@@ -109,6 +117,10 @@ func main() {
 	histories := map[string]string{}
 	peers := map[string]int{}
 	var servers []*http.Server
+	var attempts []*atomic.Value
+	var devices []*daemon.PiDevice
+	var configs []transport.Config
+	var trusters []func(*http.Request) bool
 	defer func() {
 		for _, srv := range servers {
 			_ = srv.Close()
@@ -170,10 +182,18 @@ func main() {
 		mux := http.NewServeMux()
 		trusted := func(r *http.Request) bool { return r.Context().Value("peer") == uid }
 		device := &daemon.PiDevice{Home: tmp, Node: fakeNode, Entry: "/synthetic/entry", Manifest: "/synthetic/manifest"}
-		status := func(ctx context.Context) string { return "missing" }
+		status := func(ctx context.Context) string {
+			if scenario.Load() == "pi-onboarding" {
+				return device.StatusContext(ctx)
+			}
+			if scenario.Load() == "pi-blocked" {
+				return "missing"
+			}
+			return "usable"
+		}
 		gate := func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if scenario.Load() == "pi-blocked" {
+				if scenario.Load() == "pi-blocked" || scenario.Load() == "pi-onboarding" {
 					daemon.PiGateHandler(cfg, trusted, status, next).ServeHTTP(w, r)
 					return
 				}
@@ -181,7 +201,15 @@ func main() {
 			})
 		}
 		mux.Handle("GET /api/v1/onboarding/pi/status", daemon.PiStatusHandler(cfg, trusted, status))
-		mux.Handle("/api/v1/onboarding/pi/attempt", daemon.PiAttemptHandler(cfg, trusted, device))
+		attempt := &atomic.Value{}
+		attempt.Store(daemon.PiAttemptHandler(cfg, trusted, device))
+		attempts = append(attempts, attempt)
+		devices = append(devices, device)
+		configs = append(configs, cfg)
+		trusters = append(trusters, trusted)
+		mux.HandleFunc("/api/v1/onboarding/pi/attempt", func(w http.ResponseWriter, r *http.Request) {
+			attempt.Load().(http.Handler).ServeHTTP(w, r)
+		})
 		mux.Handle("/api/v1/agents/", gate(daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home)))
 		mux.Handle("/api/v1/content/", gate(daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home)))
 		mux.Handle(daemon.SnapshotPath, gate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -287,10 +315,33 @@ func main() {
 			case "/fixture/scenario":
 				name := r.URL.Query().Get("value")
 				switch name {
-				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "foreign", "pi-blocked":
+				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "foreign", "pi-blocked", "pi-onboarding":
 					scenario.Store(name)
+					if name == "pi-onboarding" {
+						// Disposable fixture: a fresh daemon attempt lease for each browser case.
+						for i, attempt := range attempts {
+							attempt.Store(daemon.PiAttemptHandler(configs[i], trusters[i], devices[i]))
+						}
+					}
 				default:
 					http.Error(w, "unknown scenario", 400)
+					return
+				}
+				w.WriteHeader(204)
+			case "/fixture/pi-restart":
+				// Replace ephemeral leases as if each synthetic daemon restarted.
+				for i, attempt := range attempts {
+					attempt.Store(daemon.PiAttemptHandler(configs[i], trusters[i], devices[i]))
+				}
+				w.WriteHeader(204)
+			case "/fixture/pi-state":
+				state := r.URL.Query().Get("value")
+				if state != "missing" && state != "usable" && state != "unknown" {
+					http.Error(w, "unknown state", 400)
+					return
+				}
+				if e := os.WriteFile(piStateFile, []byte(state), 0600); e != nil {
+					http.Error(w, "fixture failed", 500)
 					return
 				}
 				w.WriteHeader(204)

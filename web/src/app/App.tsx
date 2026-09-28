@@ -17,13 +17,17 @@ import {
   NavLink,
   WorkspaceRail,
   WorkspaceSection,
+  Button,
 } from "../components";
 import { accountLabel } from "../components/Account";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import { HistoryView } from "./HistoryView";
+import { PiOnboarding } from "./PiOnboarding";
+import { piAttempt, piStatus } from "./pi";
 import {
   authenticated,
   authenticationRequired,
+  piRequired,
   clearIdentity,
   filterChanged,
   loading,
@@ -149,22 +153,59 @@ export function App() {
       ? new URLSearchParams(location.search).get("fixture")
       : null;
   const refresh = useCallback(() => setRefreshKey((n) => n + 1), []);
+  const requireLogin = useCallback(
+    () => dispatch(authenticationRequired()),
+    [dispatch],
+  );
+  // A tab can survive logout, remapping and native credential removal. Invalidate
+  // the old snapshot before each revalidation, rather than displaying it under
+  // a new cookie while a request is in flight.
+  useEffect(() => {
+    if (syntheticDemo || fixtureName || phase !== "authenticated") return;
+    const revalidate = () => {
+      dispatch(loading());
+      refresh();
+    };
+    const interval = window.setInterval(revalidate, 30000);
+    window.addEventListener("focus", revalidate);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", revalidate);
+    };
+  }, [dispatch, refresh, fixtureName, phase]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is the explicit refresh trigger, not read inside the effect.
   useEffect(() => {
     if (fixtureName?.startsWith("design") && CatalogPreview) return;
     const controller = new AbortController();
     dispatch(loading());
-    fetch(
-      syntheticDemo
-        ? `/api/v1/snapshot?scenario=${new URLSearchParams(location.search).get("scenario") ?? "ready"}`
-        : "/api/v1/snapshot",
-      {
-        credentials: "same-origin",
-        cache: "no-store",
-        signal: controller.signal,
-      },
-    )
-      .then(async (response) => {
+    const load = async () => {
+      try {
+        if (!syntheticDemo) {
+          const status = await piStatus(controller.signal);
+          if (controller.signal.aborted) return;
+          if (status === "login") {
+            dispatch(authenticationRequired());
+            return;
+          }
+          if (status !== "usable") {
+            dispatch(piRequired());
+            return;
+          }
+        }
+        const response = await fetch(
+          syntheticDemo
+            ? `/api/v1/snapshot?scenario=${new URLSearchParams(location.search).get("scenario") ?? "ready"}`
+            : "/api/v1/snapshot",
+          {
+            credentials: "same-origin",
+            cache: "no-store",
+            signal: controller.signal,
+          },
+        );
+        if (response.status === 428) {
+          if (!controller.signal.aborted) dispatch(piRequired());
+          return;
+        }
         if (response.status === 401) {
           if (!controller.signal.aborted) dispatch(authenticationRequired());
           return;
@@ -177,10 +218,11 @@ export function App() {
           throw new Error("unavailable");
         const next = await readSnapshot(response);
         if (!controller.signal.aborted) dispatch(authenticated(next));
-      })
-      .catch(() => {
+      } catch {
         if (!controller.signal.aborted) dispatch(unavailable());
-      });
+      }
+    };
+    void load();
     return () => controller.abort();
   }, [dispatch, refreshKey, fixtureName, location.search, syntheticDemo]);
   const logout = async () => {
@@ -195,6 +237,14 @@ export function App() {
     dispatch(clearIdentity());
     navigate("/workspaces", { replace: true });
     try {
+      if (phase === "pi_required") {
+        // Best effort only: cancellation cannot undo a completed native exchange.
+        try {
+          await piAttempt("DELETE");
+        } catch {
+          /* logout still proceeds */
+        }
+      }
       const response = await fetch("/auth/session", {
         credentials: "same-origin",
         cache: "no-store",
@@ -308,6 +358,17 @@ export function App() {
             tone="danger"
           />
         ) : null}
+      </>
+    ) : phase === "pi_required" ? (
+      <>
+        <PiOnboarding onUsable={refresh} onLogin={requireLogin} />
+        <Button
+          label="Kirjaudu ulos"
+          variant="secondary"
+          onPress={() => {
+            void logout();
+          }}
+        />
       </>
     ) : phase === "daemon_unavailable" ? (
       <>

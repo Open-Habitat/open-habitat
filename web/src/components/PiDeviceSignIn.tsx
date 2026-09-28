@@ -6,6 +6,7 @@ import styles from "./PiDeviceSignIn.module.css";
 /** Display facts only. The caller owns the attempt, session binding, polling and native status. */
 export type PiDeviceSignInView =
   | { phase: "ready" | "pending"; verificationUri: string; userCode: string }
+  | { phase: "waiting" | "start" }
   | {
       phase: "connected" | "expired" | "interrupted" | "failed" | "unavailable";
     };
@@ -23,6 +24,16 @@ function safeVerificationUri(value: string): string | undefined {
 }
 
 const outcomes = {
+  waiting: {
+    label: "Valmistellaan kirjautumista",
+    tone: "info",
+    detail: "Pi valmistelee vahvistuskoodia. Odota hetki.",
+  },
+  start: {
+    label: "Pi-kirjautuminen tarvitaan",
+    tone: "warning",
+    detail: "Aloita Pi-kirjautuminen, jotta voit avata workspacet.",
+  },
   connected: {
     label: "Pi-yhteys vahvistettu",
     tone: "success",
@@ -154,8 +165,8 @@ export function PiDeviceSignIn({
         ) : view.phase !== "connected" && onRetry ? (
           <Button
             label={
-              view.phase === "interrupted" || view.phase === "unavailable"
-                ? "Tarkista tila uudelleen"
+              view.phase === "start"
+                ? "Aloita kirjautuminen"
                 : "Aloita uusi yritys"
             }
             variant="secondary"

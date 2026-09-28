@@ -125,10 +125,7 @@ describe("Pi device sign-in presentation", () => {
         />,
       );
       const button = view.getByRole("button", {
-        name:
-          phase === "interrupted" || phase === "unavailable"
-            ? "Tarkista tila uudelleen"
-            : "Aloita uusi yritys",
+        name: "Aloita uusi yritys",
       });
       button.focus();
       await user.keyboard(" ");

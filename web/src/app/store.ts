@@ -9,6 +9,7 @@ type State = {
     | "loading"
     | "authenticated"
     | "authentication_required"
+    | "pi_required"
     | "daemon_unavailable";
   snapshot?: Snapshot;
   lastIdentity?: string;
@@ -35,6 +36,13 @@ const connection = createSlice({
       state.snapshot = action.payload;
       state.lastIdentity = action.payload.identity.web_identity_id;
       state.phase = "authenticated";
+    },
+    piRequired(state) {
+      state.phase = "pi_required";
+      state.snapshot = undefined;
+      state.filter = "";
+      state.lastIdentity = undefined;
+      state.generation++;
     },
     authenticationRequired(state) {
       state.phase = "authentication_required";
@@ -63,6 +71,7 @@ export const {
   loading,
   authenticated,
   authenticationRequired,
+  piRequired,
   unavailable,
   filterChanged,
   clearIdentity,
