@@ -27,6 +27,14 @@ real Pi conversation controller. `test-vm-test.sh` and the
 `test-*.py` files here are offline checks of the host script and the fixture
 contracts; they boot nothing and run in seconds.
 
+`scripts/test-real-pi-controller.sh` runs an opt-in rootless networkless
+container proof using actual pinned Pi and product CLI under three distinct
+mapped UIDs, with a static root-owned broker protocol responder and synthetic
+TLS OAuth/provider/native gh/git. Unlike the QEMU routing guest, it exercises
+fresh Pi JSONL and gateway control/history, but not systemd, Chromium, a real
+provider or a live host. Artifacts are checksum-pinned at script preflight;
+the binary and fixtures are never installed outside the disposable container.
+
 `scripts/test-pi-attempt-uids.sh` runs a focused Go integration test inside a
 networkless rootless Podman container with three actual synthetic UIDs. The
 rootless namespace and its homes/sockets are disposable; it tests Pi attempt

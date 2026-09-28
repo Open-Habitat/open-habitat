@@ -150,3 +150,46 @@ At baseline revision `00dd7db`, `PATH=/home/maintainer/Sources/native-agent-host
 At final implementation revision `1a296f7dc87d38f6efae1a606aeb26452f91717b`, the same clean-tree gate exited 0 with `status:passed`, `clean:true`, including four synthetic browser conversation cases, all existing browser suites, Go race tests and release verification. This does not prove the remaining real-Pi, separate-UID or focus/anchor acceptance listed above. This receipt-only paragraph changes no runtime behavior.
 
 The static two-UID routing fixture was selectively harvested from preserved `wt/xpckyhjkv5-real-mapped-pi-browser-proof` (fixture repairs `428c8c4`, `dd57fc0`, `af1ede1`; no raw merge or controller harness). At committed `4d3dd30640a91f3d99a4858d3c28528923fa6186`, `TMPDIR=/var/tmp bash test/vm/test-vm-test.sh` passed, `TMPDIR=/var/tmp PATH=/home/maintainer/Sources/native-agent-host/.tools/go/bin:$PATH ./scripts/vm-test.sh two-user-routing --json` passed in disposable PID1 QEMU (223 guest seconds; UIDs 21001/21002 plus gateway 21003, isolated snapshots, socket/peer and cross-home denials), and the same environment's `./scripts/ci-local.sh --clean --json` passed (`status:passed`, `clean:true`, including package verification). The guest's root-owned selector points only to a synthetic Pi *status* stub; it neither executes pinned Pi nor creates native JSONL, and no selector or fixture assets were added to the production package. No real home, credential, provider account or live host was touched. Routing alone does not prove browser-to-mapped-Pi control; the issue remains open with its acceptance boxes unchecked.
+
+## Rootless real-Pi controller proof (taskfleet 01m3n2hdjn06tgf4w62kygcz11)
+
+On baseline main `307e55b`, the opt-in `TMPDIR=/var/tmp
+./scripts/test-real-pi-controller.sh` passed in a disposable rootless Podman
+container with `--network none`. Offline preflight verified Node 22.21.1
+archive SHA-256 `680d3f30b24a7ff24b98db5e96f294c0070f8f9078df658da1bce1b9c9873c88`
+and Pi 0.85.1 archive SHA-256
+`396b0d8490b427dec858162977ca2ef202da87ed5415a85840a6553fad2d4306`
+from `/var/tmp/nah-pi-release.3aWTlikb`; the prerequisite rootless Podman
+image was already cached and is required offline. The script built the **product
+CLI**, not a fixture-enabled product build. No machine install or production
+change was made; all root changes happened inside the disposable user namespace.
+
+Two product daemons ran as distinct mapped kernel UIDs 21001/21002, the product
+TLS gateway as UID 21003; their root-owned pre-provisioned bindings, private
+homes, socket ACLs, file ownership and peer checks were exercised. A root-owned
+**static broker protocol fixture**, not the real provisioning broker, answered
+canonical synthetic identity routes; real gateway OAuth/PKCE/state/session/CSRF,
+identity mapping and UDS forwarding ran against a synthetic HTTPS loopback
+GitHub fixture with invented tokens and fake native gh/git. Pinned Node ran
+Pi's real status helper and Pi's real RPC CLI with per-UID synthetic OAuth and
+an offline OpenAI-compatible loopback model. Both UIDs created fresh browser-
+owned controllers, sent one UUID-correlated prompt each, observed `accepted`
+ack and `agent_settled`, and read each new Pi JSONL reply via the authenticated
+gateway history route. The first browser dropped its send response over TLS;
+status/history reconciled without resending (two model requests total). Tests
+also denied bad CSRF, anonymous and cross-browser handles/history, forged
+identity headers, cross-UID homes/sockets, root peer and OAuth state replay.
+A direct daemon-A restart lost its controller handle but retained read-only
+native history; no prompt was resent. This is a request-level disconnect
+fixture, not a rendered browser reconnect test. The container proof was run
+twice after final fixture changes and passed both times.
+
+**Limits:** No Chromium/visual review, consented real provider, real OAuth
+identity, real root broker JIT/verification, systemd socket activation/service
+stop/crash or live test-host behavior was exercised. A rootless container
+restart does not prove systemd KillMode cleanup or in-flight daemon-crash
+settlement. The old QEMU TCG attempt exceeded the 3-second production Pi
+status deadline and remains a **failed** QEMU proof; this new faster container
+proof does not make that guest pass. No test-host deployment. Keep this issue
+**open**, pending Jari's visual review and a consented real-provider walking
+story; do not mark full acceptance from this synthetic proof.

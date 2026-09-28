@@ -90,6 +90,19 @@ bounded; when a scenario or proof changes, that ledger changes with it, since a
 guest pass without an honest entry there is the kind of evidence this project
 refuses to produce.
 
+## Rootless real-Pi controller proof
+
+`test-real-pi-controller.sh` is opt-in and offline. It checks exact cached
+Node/Pi archive hashes, builds the product CLI and starts it as two mapped UID
+daemons plus a separate gateway UID in a disposable networkless rootless Podman
+container. `test/real-pi-controller.py` supplies a root-owned static broker
+protocol fixture, loopback TLS synthetic OAuth, per-user synthetic Pi auth/model
+and fake native gh/git; the real pinned Pi CLI sends prompts and writes JSONL.
+The prerequisite image and archives are not part of the clean gate. This does
+not prove systemd lifecycle, Chromium interaction, real OAuth/provider, or a
+live host. The tested revision and limits belong in
+`issues/build-agent-control/result.md`.
+
 ## The rest
 
 `bootstrap-tools.sh` fetches a checksum-pinned Go into `.tools/` and prints the
