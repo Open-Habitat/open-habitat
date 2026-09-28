@@ -25,6 +25,39 @@ func (p *PiDevice) validateRuntime() error {
 		p.Entry != filepath.Join(root, pkg, "dist/index.js") {
 		return errors.New("invalid runtime layout")
 	}
+	// The public entry imports many other SDK and dependency files. Checking
+	// only the entry leaves a writable transitive module executable as every UID.
+	// The entire release must be safe, including files not imported today.
+	if err := filepath.WalkDir(root, func(path string, _ os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return errors.New("runtime tree unavailable")
+		}
+		info, err := os.Lstat(path)
+		if err != nil {
+			return errors.New("runtime tree unavailable")
+		}
+		owner, ok := info.Sys().(*syscall.Stat_t)
+		if !ok || owner.Uid != 0 || info.Mode().Perm()&0022 != 0 {
+			return errors.New("unsafe runtime tree")
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			resolved, err := filepath.EvalSymlinks(path)
+			if err != nil {
+				return errors.New("invalid runtime link")
+			}
+			rel, err := filepath.Rel(root, resolved)
+			if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+				return errors.New("runtime link escapes release")
+			}
+			return nil // target is also visited in this release tree
+		}
+		if !info.IsDir() && !info.Mode().IsRegular() {
+			return errors.New("invalid runtime file type")
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
 	for _, path := range []string{p.Node, p.Entry, p.Manifest} {
 		for current := path; ; current = filepath.Dir(current) {
 			info, err := os.Lstat(current)
