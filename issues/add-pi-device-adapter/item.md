@@ -31,3 +31,9 @@ Jari approved Pi's built-in ChatGPT subscription device-code browser login for v
 ## Boundaries
 
 This is a walking slice for daemon/Node native Pi adapter; gateway server-side gate, generated browser contract and wizard are separate dependent issues. Jari's approved device-code UX does not approve any alternate credential store or a gateway token broker. If official Pi API cannot be used safely without an unapproved architecture change, stop and report rather than improvise.
+
+## Decisions
+
+### 2026-09-28T12:29:49Z · @jari
+
+2026-09-28 scope decision: deliver the daemon-coordinated Pi-native device-code login under the mapped UID. Pi owns auth.json and OAuth; no host-managed credential file writes or Pi-in-Go substitution for this slice. Independent terminal Pi sign-in/logout during web onboarding is not a v1 workflow; its last-writer-wins race is not a blocking acceptance criterion. Do not promise cross-process revocation. Keep bounded operation lifetime and ordinary process cleanup so daemon restart/disconnect cannot yield a false connected state; rely on Pi-native status recheck. Protect Unix UID separation and do not leak credentials into IPC/logs. Prior review findings about the experimental helper remain evidence to avoid concrete leaks and stuck children, not a mandate for a new credential framework.
