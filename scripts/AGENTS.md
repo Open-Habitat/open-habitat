@@ -1,40 +1,99 @@
 # Repository scripts
 
-`ci-local.sh --clean --json` is the clean-checkout CI approximation and the
-source of truth for required checks. It uses a disposable HOME and caches, a
-locked online fetch followed by an offline npm reinstall, repository-local
-Playwright browsers, generated-contract drift and release reproducibility
-checks, and fails on any tracked-tree change.
+Everything in this directory checks or packages the repository without changing
+the machine it runs on. Tools are fetched into disposable homes, caches and
+`.tools/`, guests are thrown away, and nothing here installs, enables or
+activates a service. That is deliberate: Jari's machines are converged by
+Fleetrepo, so a script that left a binary or a package behind would create drift
+nobody declared. Keep new scripts on the same side of that line.
 
-`package-release.sh` builds `linux-amd64` release archives, and
-`verify-release.sh` checks the checksum, file manifest, required contents,
-socket directory mode and version provenance. `test-package-socket.sh <archive>`
-checks that world-searchable socket templates are rejected. None of these
-install or activate anything.
+## The gate
 
-The packaged socket `DirectoryMode=0710` is only a fallback, not isolation.
-Before any socket activation, including after every reboot, the root operator
-must create and verify the root-owned parent, the per-UID directory and the
-named ACL that lets only that daemon UID and the gateway traverse it. Package
-verification cannot check host ACLs; activation must fail closed without them.
+`ci-local.sh --clean --json` is what "green" means in this repository. It is
+the closest approximation of a clean-checkout CI we have, and a change is ready
+to land when it passes. Read the script itself for the exact sequence. A few
+things about it are easy to misread from the outside:
 
-`vm-test.sh` runs disposable QEMU guests:
+- It refuses to start on a dirty tree and fails at the end if anything tracked
+  changed during the run. Editing files while it runs therefore fails it; the
+  ledger in `issues/prove-jit-guest-isolation/` records that happening. Start
+  it from a committed tree and leave the tree alone until it finishes.
+- It fetches its own pinned `issuectl` and requires that exact version even
+  when a newer one is on the machine, and it reinstalls the web dependencies
+  offline after a locked online fetch so that an incomplete lockfile fails
+  here rather than on the release machine.
+- It packages the release twice and compares the archives byte for byte, then
+  verifies the archive in place, relocated, and tampered. Anything
+  non-deterministic in the build breaks this on purpose.
+- Playwright needs its port; a failure at "port already in use" is the
+  environment, not the change, and a rerun is the right answer.
 
-- `self-test --json` is a fast offline recipe check and part of the clean gate.
-  It boots nothing.
-- `systemd-self-test --json` boots a checksum-pinned Ubuntu image with a
-  digest-pinned rootless Podman tool image (`test/vm/Containerfile`) and proves
-  synthetic systemd, two-user socket and permission fixtures only.
-- `two-user-routing --json` also injects the current binary and exercises the
-  real HTTPS OAuth callback and per-user daemon routes with synthetic
-  identities and fake native `gh`/`git`.
+`check-licenses.py` fails the gate on any direct web dependency without license
+metadata or under a GPL-family license, because the repository will be public
+and the license boundary is decided here rather than at release time. Adding
+such a dependency is a decision to raise, not a check to relax.
+
+## Release archives
+
+`package-release.sh` builds the `linux-amd64` archive and `verify-release.sh`
+checks it. The archive is what a root operator unpacks onto the test server
+through Fleetrepo's `RELEASE-UPGRADE.md`, so the systemd templates it carries are
+the effective unit files there. That is why the verifier is exact rather than
+lenient: it accepts only the reviewed set of directives in the daemon and broker
+units, rejects duplicates and whitespace variants that systemd itself would
+accept, rejects source maps and any trace of test fixtures in the web assets,
+and rejects files it has not been told about. `test-package-socket.sh` is the
+negative side of the same check, re-signing deliberately unsafe archives and
+proving they still fail. Changing a template in `systemd/` therefore means
+changing the verifier's expectations, and usually a negative case, in the same
+commit.
+
+A verified archive says nothing about a host. The daemon socket template's
+`DirectoryMode=0710` only removes world traversal; the real isolation is a
+root-owned directory and named ACL that Fleetrepo prepares and checks on the
+host before any socket is activated, and that no script here can see. Do not
+present package verification, or a passing guest, as evidence of host
+isolation. Fleetrepo's `SOCKETS.md` and its activation preflight own that side.
+
+## Disposable guests
+
+`vm-test.sh` boots disposable QEMU guests inside rootless Podman. `test/AGENTS.md`
+describes the fixture material, the image cache, the Fleetrepo pinning and the
+fixture-token scanning; this file records what each scenario is for.
+
+- `self-test` checks the recipe offline and boots nothing. It is the only
+  scenario the gate runs.
+- `systemd-self-test` boots the pinned image with socket responders from the
+  cloud-init seed. It proves the systemd, two-user socket and permission
+  fixtures, not the product.
+- `two-user-routing` injects a locally compiled binary into a guest with
+  precreated accounts and exercises the real HTTPS OAuth callback and per-user
+  daemon routes with synthetic identities and fake `gh` and `git`. It is the
+  static baseline and does not cover first-login provisioning.
 - `broker-guest`, `jit-provision`, `jit-login`, `jit-concurrent` and
-  `jit-reboot-diagnostic` exercise the root broker and first-login account
-  creation in a private guest. `jit-concurrent` builds and verifies a release
-  archive from a clean committed tree, then seeds the guest with its binary and
-  systemd templates (not a locally compiled binary). Its web assets are
-  packaged and verified, but not served by this guest. What each scenario has
-  and has not proved is recorded in `issues/prove-jit-guest-isolation/`.
+  `jit-reboot-diagnostic` cover the root broker and first-login account
+  creation. `jit-concurrent` alone needs a clean committed tree, because it
+  packages and verifies a release and refuses to run unless the embedded commit
+  is HEAD; the guest gets the archive's binary and templates, and its web
+  assets are verified but never served. `jit-reboot-diagnostic` is a diagnostic
+  that writes a bounded receipt under the ignored `history/`; it has not been a
+  passing proof.
 
-`bash test/vm/test-vm-test.sh` runs the offline parser, seed/ISO and failure
-checks. Documentation validation is `python3 scripts/validate-project-view.py`.
+Every guest result is synthetic evidence from a private guest, never live host
+evidence. What each scenario has and has not proved lives in
+`issues/prove-jit-guest-isolation/`, which is where claims are made and
+bounded; when a scenario or proof changes, that ledger changes with it, since a
+guest pass without an honest entry there is the kind of evidence this project
+refuses to produce.
+
+## The rest
+
+`bootstrap-tools.sh` fetches a checksum-pinned Go into `.tools/` and prints the
+`PATH` export to use, for machines whose Go is missing or too old.
+`check-generated.sh` fails when `internal/contracts/` and `web/src/contracts/`
+have drifted from `contracts/v1/`. `validate-project-view.py` checks the
+structure and links of `docs/`. `native-fixture.sh` builds the synthetic native
+workspace that `test/AGENTS.md` describes. `vm-serial-drain.py` is the guest's
+only channel back to the host: it caps the serial stream, retains only markers
+and a bounded prefix, and voids the proof if a fixture token appears anywhere,
+so a proof script that prints a secret fails rather than leaks.
