@@ -1,6 +1,6 @@
 ---
 created: 2026-09-27
-updated: 2026-09-27
+updated: 2026-09-28
 type: feature
 status: open
 priority: high
@@ -45,3 +45,7 @@ No live credentials or second-person identity may be used for testing without ex
 ### 2026-09-27T19:57:44Z · @agent
 
 2026-09-27 source-grounded refinement pending Jari approval: Pi 0.85.1 openai-codex /login already offers native Device code login (headless) for ChatGPT subscription in a browser. Unlike the default browser PKCE callback, it needs no fixed localhost:1455 listener or pasted failed redirect; daemon can show Pi-notified verification URI/user code and let Pi poll/store/refresh under mapped UID. The user chose subscription browser sign-in, but has NOT explicitly accepted device-code interaction as the first-version UX; this is a proposed architectural simplification, not approval or implementation. A strict manual-only browser patch was prototyped in @prototype-pi-manual-login (28 synthetic tests) as fallback; neither live OpenAI flow nor same-origin host gate is proven. Ask Jari whether native device-code experience satisfies first version before binding host auth APIs to either flow.
+
+### 2026-09-28T05:19:21Z · @jari
+
+2026-09-27 Jari approved using Pi native OpenAI ChatGPT subscription device-code browser sign-in for the first version, for now. The user must not have to open a Pi terminal: mapped user daemon drives Pi native login, web shows verification URL and user code, user confirms in their browser; Pi owns credential storage/refresh. The approval is for this first-version product interaction, not a license for an unreviewed gateway credential broker or a live real-user test without consent. API keys and other methods remain later. The earlier manual-only default-browser patch is prototype/fallback, not required for this approved first version.
