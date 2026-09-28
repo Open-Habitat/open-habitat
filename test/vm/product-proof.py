@@ -50,7 +50,8 @@ try:
     check(stat.S_ISSOCK(st.st_mode) and st.st_uid==0 and st.st_gid==gateway_uid and stat.S_IMODE(st.st_mode)==0o660,'broker socket ACL')
     check(denied('agent-a',"import socket;s=socket.socket(socket.AF_UNIX);s.connect('/run/native-agent-host/broker.sock')"),'cross user broker socket')
     for name in names+['gateway']:
-        config=pathlib.Path('/etc/native-agent-host')/('gateway.json' if name=='gateway' else 'daemon-'+name+'.json')
+        config=(pathlib.Path('/etc/native-agent-host/gateway.json') if name=='gateway'
+                else pathlib.Path('/etc/omega-habitat/daemon/user-mappings')/('daemon-'+name+'.json'))
         gid=pwd.getpwnam('native-agent-host-gateway' if name=='gateway' else name).pw_gid
         os.chown(config,0,gid);config.chmod(0o640)
         check(config.stat().st_uid==0 and config.stat().st_gid==gid and stat.S_IMODE(config.stat().st_mode)==0o640,'trusted config owner/mode')
@@ -146,7 +147,10 @@ try:
             check(b'PRODUCT_VM_TOKEN' not in body,'OAuth callback token')
             status,_,session=get(op,'/auth/session');check(status==200 and json.loads(session)['provider']=='github','authenticated session')
             status,_,snap=get(op,'/api/v1/snapshot',{'X-Agent-Host-UID':str(uids[1-index]),'X-Agent-Host-Username':names[1-index],'X-Agent-Host-Socket':'/run/native-agent-host/users/'+names[1-index]+'/daemon.sock','X-Agent-Host-Identity':'forged'})
-            check(status==200,'snapshot')
+            if status!=200:
+                try: snap_code=json.loads(snap).get('error',{}).get('code','unknown')
+                except (ValueError,TypeError,AttributeError): snap_code='invalid_response'
+                raise RuntimeError('snapshot status '+str(status)+' code '+str(snap_code)[:48])
             text=snap.decode();other=names[1-index]
             check(all(name+'-'+k in text for k in ('ordinary','git-hint','no-metadata')) and other+'-' not in text and '/home/' not in text and 'escape' not in text,'snapshot isolation')
             routes.append({'uid':uids[index],'subject':str(31001+index),'workspace_count':3,'forged_headers_ignored':True})
@@ -166,7 +170,7 @@ try:
             pid=int(subprocess.check_output(['systemctl','show','-P','MainPID','native-agent-host-daemon@'+name+'.service']).strip())
             check(pid>1 and ('Uid:\t'+str(pwd.getpwnam(name).pw_uid)+'\t') in pathlib.Path('/proc/%d/status'%pid).read_text(),'daemon effective UID')
             args=[a for a in pathlib.Path('/proc/%d/cmdline'%pid).read_bytes().split(b'\0') if a]
-            check(args[:3]==[b'/opt/native-agent-host/current/native-agent-host',b'daemon',b'exec'] and args[-1]==('/etc/native-agent-host/daemon-'+name+'.json').encode(),'daemon config argv')
+            check(args[:3]==[b'/opt/native-agent-host/current/native-agent-host',b'daemon',b'exec'] and args[-1]==('/etc/omega-habitat/daemon/user-mappings/daemon-'+name+'.json').encode(),'daemon config argv')
             other=names[1-names.index(name)]
             sock=str(root/other/'daemon.sock')
             check(denied(name,"import socket;s=socket.socket(socket.AF_UNIX);s.connect(%r)"%sock),'cross user route')
@@ -204,7 +208,7 @@ try:
             for unit in ['product-gateway','native-agent-host-daemon@agent-a','native-agent-host-daemon@agent-b','native-agent-host-broker']:
                 logs=subprocess.run(['journalctl','-u',unit,'-n','100','--no-pager','-o','cat'],capture_output=True,timeout=10).stdout[:65536]
                 check(value not in logs,'journal token scan')
-            for p in ['/etc/native-agent-host/gateway.json','/etc/native-agent-host/daemon-agent-a.json','/etc/native-agent-host/daemon-agent-b.json']:
+            for p in ['/etc/native-agent-host/gateway.json','/etc/omega-habitat/daemon/user-mappings/daemon-agent-a.json','/etc/omega-habitat/daemon/user-mappings/daemon-agent-b.json']:
                 check(value not in pathlib.Path(p).read_bytes(),'config token scan')
         result={'status':'passed','scope':'product-two-user-routing','pid1':'systemd','uids':[21001,21002,21003],'socket_mode':'0660','socket_activation':True,'routes':routes,'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'cross_user_broker':True,'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, bounded journal, process argv/environ, configs, child argv logs'}}
     finally:provider.terminate();provider.wait(timeout=5)

@@ -265,14 +265,20 @@ assert all(any(cmd[:2]==['install','-m'] and cmd[-1]=='/usr/bin/'+tool for cmd i
 assert len([p for p in files if p.endswith('daemon.sock')])==0
 assert all(base64.b64decode(f['content']).find(b'PRODUCT_VM_TOKEN')==-1 for p,f in files.items() if p.startswith('/etc/native-agent-host/'))
 assert '/etc/systemd/system/native-agent-host-broker.socket' in files
+# The routing guest explicitly uses a synthetic status adapter, not real Pi.
+selector=json.loads(base64.b64decode(files['/etc/native-agent-host/pi-runtime.json']['content']))
+assert selector['node']=='/opt/native-agent-host/fixture-pi/bin/node'
+assert b'"state":"usable"' in base64.b64decode(files[selector['node']]['content'])
+assert selector['entry'] in files and selector['manifest'] in files
 assert '/etc/systemd/system/native-agent-host-daemon@.socket' in files
 assert '/var/lib/native-agent-host/broker/bindings.json' in files
 assert 'identities' not in json.loads(base64.b64decode(files['/etc/native-agent-host/gateway.json']['content']))['oauth']
 assert c['runcmd'][-1]==['/usr/bin/python3','/usr/local/sbin/product-proof']
 for name,uid in [('agent-a',21001),('agent-b',21002)]:
-    cfg=json.loads(base64.b64decode(files[f'/etc/native-agent-host/daemon-{name}.json']['content']))
+    path=f'/etc/omega-habitat/daemon/user-mappings/daemon-{name}.json'
+    cfg=json.loads(base64.b64decode(files[path]['content']))
     assert (cfg['handoff']['uid'],cfg['handoff']['username'],cfg['handoff']['home'],cfg['handoff']['subject'])==(uid,name,'/home/'+name,str(31001+uid-21001))
-    assert cfg['handoff']['binding_file']==f'/etc/native-agent-host/daemon-{name}.json'
+    assert cfg['handoff']['binding_file']==path
 # The separately generated VM fixture above is not the shipped package unit.
 unit=open(sys.argv[2]+'/systemd/native-agent-host-daemon@.socket').read()
 assert all(x in unit for x in ['SocketMode=0660\n','DirectoryMode=0710\n','FileDescriptorName=daemon\n','SocketGroup=native-agent-host-gateway\n'])

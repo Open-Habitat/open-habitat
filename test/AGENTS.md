@@ -19,7 +19,11 @@ proof scripts that are copied into a QEMU guest. The host-side script and the
 proofs each scenario makes are described in `scripts/AGENTS.md` and the
 per-scenario records under `issues/prove-jit-guest-isolation/`. The socket
 responders in the cloud-init seed are stand-ins for the systemd-only scenario;
-the later scenarios inject the real binary. `test-vm-test.sh` and the
+the later scenarios inject the real binary. `two-user-routing` uses that real
+binary and separate mapped UIDs, but its root-owned Pi *status* adapter is a
+synthetic stub so snapshot reads can pass the onboarding gate. It never runs
+Pi prompts or creates native JSONL. Do not use this scenario as evidence of a
+real Pi conversation controller. `test-vm-test.sh` and the
 `test-*.py` files here are offline checks of the host script and the fixture
 contracts; they boot nothing and run in seconds.
 

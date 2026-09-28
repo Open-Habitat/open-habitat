@@ -28,9 +28,19 @@ add('/etc/native-agent-host/binary.sha256', hashlib.sha256(binary.read_bytes()).
 add('/etc/native-agent-host/tls.crt', (run/'tls.crt').read_bytes())
 add('/etc/native-agent-host/tls.key', (run/'tls.key').read_bytes(), '0600')
 add('/etc/native-agent-host/fixture-ca.crt', (run/'tls.crt').read_bytes())
+# Routing-only guest: a root-owned synthetic Pi status adapter unlocks snapshot
+# reads. This is NOT the pinned Pi CLI and must not count as controller proof.
+pi_root='/opt/native-agent-host/fixture-pi'
+pi_pkg=pi_root+'/node_modules/@earendil-works/pi-coding-agent'
+add(pi_root+'/bin/node', '#!/bin/sh\nif [ "$1" = "--version" ]; then echo v22.21.1; else echo \'{"type":"status","state":"usable"}\'; fi\n', '0755')
+add(pi_pkg+'/package.json', json.dumps({'name':'@earendil-works/pi-coding-agent','version':'0.85.1','exports':{'.':{'import':'./dist/index.js'}},'bin':{'pi':'dist/bundle/cli.js'}}))
+add(pi_pkg+'/dist/index.js', '// routing fixture; never runs a prompt\n')
+add(pi_pkg+'/dist/bundle/cli.js', '// routing fixture; never runs a prompt\n')
+add('/etc/native-agent-host/pi-runtime.json',json.dumps({'node':pi_root+'/bin/node','entry':pi_pkg+'/dist/index.js','manifest':pi_pkg+'/package.json'}))
 for name, uid, subject in [('agent-a',21001,'31001'),('agent-b',21002,'31002')]:
     sock = '/run/native-agent-host/users/'+name+'/daemon.sock'
-    add('/etc/native-agent-host/daemon-'+name+'.json', json.dumps({'component':'daemon','handoff':{'gateway_uid':21003,'uid':uid,'username':name,'home':'/home/'+name,'socket':sock,'provider':'github','subject':subject,'binding_file':'/etc/native-agent-host/daemon-'+name+'.json'}},separators=(',',':')))
+    binding='/etc/omega-habitat/daemon/user-mappings/daemon-'+name+'.json'
+    add(binding, json.dumps({'component':'daemon','handoff':{'gateway_uid':21003,'uid':uid,'username':name,'home':'/home/'+name,'socket':sock,'provider':'github','subject':subject,'binding_file':binding}},separators=(',',':')))
     add('/usr/local/lib/fixture/tokens/'+name, 'PRODUCT_VM_TOKEN_'+name.replace('-','_')+'_FIXTURE_ONLY_92764', '0600')
 # Historical pre-provisioned fixture: committed bindings and account/ACL/unit
 # material exist BEFORE browser OAuth. This does not exercise first-login JIT.
@@ -62,6 +72,8 @@ seed={'users':users,'write_files':files,'runcmd':[
     ['chmod','0700','/home/agent-a','/home/agent-b'],
     ['chown','-R','root:root',state],
     ['chmod','0700',state],
+    ['chown','root:root','/etc/omega-habitat','/etc/omega-habitat/daemon','/etc/omega-habitat/daemon/user-mappings'],
+    ['chmod','0711','/etc/omega-habitat','/etc/omega-habitat/daemon','/etc/omega-habitat/daemon/user-mappings'],
     ['/usr/bin/python3','/usr/local/sbin/product-proof']]}
 (run/'product-cloud-init.yaml').write_text('#cloud-config\n'+json.dumps(seed, separators=(',',':'))+'\n')
 (run/'product-cloud-init.yaml').chmod(0o600)
