@@ -1,87 +1,115 @@
 # Agent Host UI
 
-Tämä hakemisto on käyttöliittymän yhteinen design system: tokenit, visuaaliset
-ohjeet ja uudelleenkäytettävät komponentit. Tuotteen arkkitehtuuria, yhden näkymän
-toimintalogiikkaa tai yksittäisen suunnittelukierroksen vedoksia ei määritellä täällä.
+Tämä hakemisto on käyttöliittymän yhteinen visuaalinen perusta: tokenit, niiden
+käyttöä näyttävät ohjekortit, paketoidut fontit sekä tuotantodesignin ja
+komponenttikatalogin määrittelyt. Tuotantokomponentit itse ovat
+`web/src/components/`-hakemistossa; tämä hakemisto kertoo, miltä niiden pitää
+näyttää ja mitä ne saavat omistaa. Tuotteen arkkitehtuuri on `docs/architecture.md`:ssä
+ja selainsovelluksen tila- ja turvarajat `web/AGENTS.md`:ssä.
 
-## Lue ennen UI-työtä
+## Mistä tieto löytyy
 
-- Tuotteen rakenne ja rajat: [`../docs/architecture.md`](../docs/architecture.md)
-- Tuotantodesignin kanoninen määrittely: [`production-v1.md`](production-v1.md)
-- Tuotantokomponenttien rajattu katalogisopimus:
-  [`component-catalog-v1.md`](component-catalog-v1.md)
-- Ajettava tuotantokatalogi: `npm run storybook --prefix ../web -- --no-open`
-- Ensimmäisen keskusteludesignin vedokset ja simulaatio:
-  [`../issues/receive-designer-v1/design/`](../issues/receive-designer-v1/design/).
-- Vastaanotto ja hyväksytyt UI-päätökset:
-  [`../issues/receive-designer-v1/review.md`](../issues/receive-designer-v1/review.md) ja
-  [`../issues/review-ui-v1/review.md`](../issues/review-ui-v1/review.md).
+[`production-v1.md`](production-v1.md) on tuotantodesignin kanoninen määrittely.
+Se sovittaa kaksi vastaanotettua designtoimitusta yhdeksi ratkaisuksi ja päättää
+teemat, reitit, fokuksen, streamingin, tilojen sanaston ja journeyt.
+[`component-catalog-v1.md`](component-catalog-v1.md) on tuotantokomponenttien
+julkinen sopimus: propsit, tapahtumat, tilat ja pakolliset story-esimerkit. Kun
+nämä ja koneellinen host-sopimus `contracts/v1/` ovat eri mieltä, tuotantodesign
+ratkaisee ulkoasun ja vuorovaikutuksen ja host-sopimus sen, mitä tietoa ja
+komentoja on saatavilla. Ajettava katalogi käynnistyy komennolla
+`npm run storybook --prefix ../web -- --no-open`; `docs/design-system.md` kuvaa
+sen ryhmät ja tarkistuskomennot.
 
-## Pysyvät päätökset
+Päätösten perustelut ovat issueissa. [`issues/receive-designer-v1/review.md`](../issues/receive-designer-v1/review.md)
+kirjaa toimitusten alkuperät ja Jarin hyväksymän suunnan,
+[`issues/review-ui-v1/review.md`](../issues/review-ui-v1/review.md) hyväksytyt
+UI-päätökset. Alkuperäiset vedokset ja klikattavat simulaatiot ovat
+[`issues/receive-designer-v1/design/`](../issues/receive-designer-v1/design/)-hakemistossa
+muuttumattomana evidenssinä, jonka checksumit on kirjattu. Ne ovat hyviä
+sommittelureferenssejä, mutta niiden ehdottamat rajapinnat eivät ole sopimus:
+yksittäisen jonorivin peruminen, kiinteä otsikon uudelleengenerointirytmi ja vain
+hoverissa näkyvä tieto korjattiin tuotantodesignissa tietoisesti. Samasta syystä
+vanhat `design-system/components/`-mockit poistettiin, kun ajettava katalogi
+korvasi ne.
 
-- Työpöytäsovellus tehdään ensin. Mobiilinäkymiä ei suunnitella eikä toteuteta
-  ennen toimivaa ensimmäistä työpöytäversiota.
-- Käyttöliittymätekstit ovat suomeksi. Polut, komennot, exit-koodit, resume-ID:t
-  ja muut tekniset tunnisteet esitetään sellaisinaan.
-- Vaalea ja tumma teema ovat molemmat v1:n tuotantolaajuutta; järjestelmäasetus
-  on oletus. Teema ei ole hostin synkronoitu fakta.
-- Komponenttikirjastoa kasvatetaan todetun käyttötarpeen perusteella, ei varalta.
-- Visuaalinen komponentti ei omista Pi-, HTTP/SSE-, command ledger-, draft- tai
-  natiivilähteiden reconciliation-logiikkaa.
+## Päätökset, joita ei tehdä uudestaan koodissa
 
-## Visuaalinen lähde
+Nämä on päätetty Jarin kanssa katselmoinneissa. Niiden muuttaminen on hänen
+päätöksensä, ei toteutuksen sivutuote.
 
-Linkitä käyttöliittymään vain [`styles.css`](styles.css). Se tuo design-tokenit
-`tokens/`-hakemistosta. Värit, typografia, välit, pyöristykset ja liike määritellään
-niissä tiedostoissa; älä toista arvoja agenttiohjeissa tai näkymäkohtaisessa
-lähdekoodissa.
+Ensimmäinen versio on työpöytäsovellus. Mobiilinäkymiä ei suunnitella eikä
+toteuteta ennen kuin työpöytäversio toimii, koska ne kaksinkertaistaisivat joka
+näkymän työn ennen kuin yksikään on valmis.
 
-`guidelines/` näyttää tokenien tarkoitetun käytön, tilojen esityksen ja
-saavutettavuuden perustason. Jos ohjeteksti ja token ovat ristiriidassa, korjaa
-ristiriita design systemissä sen sijaan, että lisäät näkymäkohtaisen poikkeuksen.
+Käyttöliittymä on suomeksi. Tekniset tunnisteet, kuten polut, komennot,
+exit-koodit, resume-ID:t sekä workspacejen ja agenttien nimet, näytetään
+sellaisinaan monospacella. Käyttäjä kopioi ne terminaaliin ja vertaa niitä
+natiivilähteisiin, joten käännetty tai toiseksi muutettu tunniste katkaisee
+yhteyden siihen, mitä host oikeasti tietää.
 
-## Sisältö
+Vaalea ja tumma teema ovat yhtä tuettuja. Oletus seuraa `prefers-color-scheme`a,
+ja `tokens/colors.css` toteuttaa tumman `data-theme="dark"`-attribuutilla. Teema on
+laitteen esitysvalinta eikä kuulu host-snapshotiin, koska snapshot kuvaa natiivia
+tilaa eikä selaimen asetuksia.
 
-Nämä säännöt koskevat yhteisesti kaikkia näkymiä:
+Komponenttikirjastoa kasvatetaan, kun hyväksytty journey tarvitsee jotakin, ei
+varalta. Sama periaate koskee koko tuotetta: varalta tehty layout-, tooltip- tai
+taulukkokirjasto on ylläpidettävää pintaa ilman käyttäjää.
 
-- Kerro tuntematon, vanhentunut ja epävarma tila rehellisesti; älä päättele sitä
-  valmiiksi tai pysähtyneeksi.
-- Estetyn toiminnon yhteydessä näkyy syy. Olennainen tieto ei saa olla vain
-  tooltipissä, hoverissa tai värissä.
-- Teknistä tunnistetta ei käännetä eikä muuteta toiseksi tunnisteeksi.
-- Käytä rauhallista, suoraa kieltä ilman huutomerkkejä, emojia tai kehumista.
+Visuaalinen komponentti saa valmiin näyttömallin ja palauttaa käyttäjän intentin.
+Se ei avaa verkkoa, muodosta command ID:tä, sovita snapshotia ja SSE-tapahtumia,
+päättele Pi-capabilityä eikä tallenna luonnosta; nämä omistaa sovelluskerros ADR
+0002:n tilanomistustaulukon mukaan. Jos komponentti päättelisi host-tilaa itse,
+sovelluksessa olisi kaksi käsitystä siitä, mitä agentti tekee, ja ne eroaisivat
+juuri katkosten aikana, kun rehellisyys on tärkeintä. Tarkka lista komponentin
+paikallisesta tilasta on tuotantodesignin osiossa "Rajaus ja omistajuus".
 
-Näkymäkohtainen nimeäminen, otsikointi, polkujen lyhentäminen, agentin tunnisteet,
-jonotus ja ohjaustoiminnot kuuluvat kyseisen näkymän hyväksyttyyn suunnitelmaan,
-eivät design systemin yleisiksi sisältösäännöiksi.
+## Tokenit, ohjekortit ja fontit
 
-## Komponentit
+`styles.css` on ainoa linkitettävä sisääntulo, ja se tuo `tokens/`-hakemiston
+värit, typografian, välit ja liikkeen. Sovellus (`web/src/main.tsx`) ja Storybook
+(`web/.storybook/preview.ts`) tuovat sen jo. Arvoja ei toisteta näkymäkohtaisessa
+koodissa eikä ohjeteksteissä: kova väriarvo ei seuraa teeman vaihtoa, ja kopio
+ohjeessa vanhenee ensimmäisellä tokenimuutoksella. Kun näkymä tarvitsee jotain,
+mitä tokeneista ei löydy, lisää tai korjaa token sen sijaan, että teet näkymään
+poikkeuksen; poikkeukset kertyvät ja design system lakkaa olemasta lähde. Sama
+pätee, jos `guidelines/`-kortti ja token ovat ristiriidassa.
 
-[`component-catalog-v1.md`](component-catalog-v1.md) on tuotannon komponenttien,
-propsien, tapahtumien, tilojen ja esimerkkien sopimus. Se sisältää vain hyväksyttyjen
-journeyjen tarvitsemat yleiset primitiivit ja tuoteosat.
+`guidelines/` on staattisia HTML-kortteja, jotka linkittävät `styles.css`-tiedoston
+ja näyttävät tokenien tarkoitetun käytön, tilamerkinnät ja saavutettavuuden
+perustason; ne avautuvat suoraan selaimessa. `fonts/` sisältää paketoidut
+Instrument Sans- ja JetBrains Mono -fontit, ja `fonts/AGENTS.md` kertoo niiden
+lisenssit ja alkuperän. Tuotanto ei lataa fontteja kolmannen osapuolen
+palvelimelta. `ui_kits/conversation/` on yksi staattinen koostamisesimerkki, ei
+tuotevaatimus.
 
-Tuotantototeutus on `web/src/components/`-hakemistossa. Sovellus, Storybook ja
-testien deterministinen preview tuovat samat TypeScript-moduulit; storyihin ei
-rakenneta vaihtoehtoisia kontrolleja. Komponentit saavat valmiit näyttömallit ja
-palauttavat intentit. Verkko, reititysvalinta, command ID:t, retry ja natiivin
-tilan sovitus jäävät sovelluskerrokseen.
+## Mitä kaikki näkymät sanovat käyttäjälle
 
-Vastaanotetun v0.1-kierroksen alkuperäiset vedokset säilyvät vain
-`issues/receive-designer-v1/design/`-hakemistossa historiallisena evidenssinä.
-Aiemmat `design-system/components/`-mockit ja staattinen `ui_kits/production-v1`
-poistettiin, kun ajettava katalogi korvasi ne. Ne eivät olleet tuotanto-API: niiden
-yksittäisen queue-itemin cancel, hard-coded otsikkorytmi ja hoveriin jäävä tieto
-ovat ristiriidassa tuotantosopimuksen kanssa.
+Selain on natiivin tilan katselija, ei sen omistaja, ja moni tila on aidosti
+epävarma: yhteys katkeaa, lähde puuttuu, adapteri ei kerro. Tuntematon,
+vanhentunut tai osittainen tila kerrotaan sellaisenaan eikä päätellä valmiiksi tai
+pysähtyneeksi, koska käyttäjä tekee sen perusteella päätöksiä oikeista
+prosesseista. Estetyn toiminnon yhteydessä näkyy syy, jotta käyttäjä tietää,
+odottaako hän vai korjaako jotain. Olennainen tieto ei ole pelkästään värissä,
+tooltipissä tai hoverissa, koska näppäimistö, ruudunlukija, 200 %:n zoom ja
+värinäön puutteet eivät tavoita niitä; `guidelines/states.html` näyttää
+järjestyksen merkki, sana, väri. Kieli on rauhallista ja suoraa ilman
+huutomerkkejä, emojeja tai kehumista. Tilojen tarkka sanasto ja siirtymäsäännöt
+ovat tuotantodesignissa.
 
-## Hakemistot
+Näkymäkohtaiset ratkaisut, kuten otsikoiden generointi, polkujen lyhentäminen,
+puhujatunnisteet, jonon esitys ja ohjaustoiminnot, kuuluvat kyseisen näkymän
+hyväksyttyyn suunnitelmaan eivätkä tänne yleisiksi säännöiksi. Ensimmäinen
+designtoimitus ehdotti useita tällaisia, ja osa hylättiin katselmoinnissa. Design
+systemin yleissääntönä hylätty päätös tulisi takaoven kautta voimaan kaikissa
+näkymissä.
 
-| Polku | Sisältö |
-|---|---|
-| `styles.css` | Ainoa linkitettävä tyylien sisääntulo |
-| `tokens/` | Värit, typografia, välit ja liike |
-| `guidelines/` | Tokenien ja yhteisten tilojen visuaaliset käyttökortit |
-| `../web/src/components/` | Tuotannon komponentit ja Storybook-storyt samasta toteutuksesta |
-| `ui_kits/` | Historialliset staattiset katseluesimerkit; ne eivät lisää tuotevaatimuksia |
-| `production-v1.md` | Yhdistetty visuaalinen, reitti-, fokus-, streaming- ja journey-määrittely |
-| `component-catalog-v1.md` | Tuotantokomponenttien julkinen sopimus ja state/story-matriisi |
+## Komponentit ja Storybook
+
+Sovellus, Storybook ja testien deterministinen preview tuovat samat
+TypeScript-moduulit `web/src/components/`-hakemistosta. Story näyttää oikean
+komponentin tilat valmiilla fixturella; jos storyyn rakennetaan oma kontrolli tai
+logiikka, katalogi todistaa jonkin muun kuin tuotannon toimivuuden. Katalogin
+sopimus kertoo, mitä komponentin pitää tukea (pitkä suomenkielinen sisältö,
+näppäimistö, tumma teema, 200 %:n zoom, reduced motion), ja `web/AGENTS.md` sekä
+`docs/design-system.md` kertovat, millä komennoilla se tarkistetaan.
