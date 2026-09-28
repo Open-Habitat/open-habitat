@@ -4,7 +4,7 @@ updated: 2026-09-28
 type: feature
 status: open
 priority: high
-related: ['@connect-github-workspaces', '@build-history-view']
+related: ['@connect-github-workspaces', '@manage-workspace-lifecycle', '@provision-first-src', '@add-pi-device-adapter', '@add-account-settings-ui', '@build-history-view']
 lane: onboarding-design
 collision: [docs/]
 ---
@@ -20,7 +20,7 @@ Design and deliver a first-use journey between successful browser login and the 
 - After first login, show the user's GitHub repositories as a tidy, selectable list. The user selects repos to import; clone selected repos as their own workspaces under `~/src`. This is a guided first-use screen, not a replacement for the normal workspace view.
 - `~/src` must exist as part of provisioning/onboarding. Its absence is a setup failure, not an acceptable first-use empty state. Preserve safe handling for later deletion or read failure.
 - Verify usable native GitHub authorization during onboarding; never present a successful setup based only on the browser session. The pilot showed the generic unknown-state warning despite native `gh` being verified independently.
-- During onboarding, require native Pi authentication before entering the normal workspace or repository browsing UI. **First version: OpenAI ChatGPT subscription browser login only**, mirroring Pi's supported `/login` (`openai-codex`) flow and persisting credentials under the mapped Unix UID using Pi's native mechanisms. Other methods, including API keys, are later work. Investigate Pi's real API/CLI and credential storage first; do not put tokens or callback codes in browser logs, URLs beyond the provider's own required redirect, or persistent gateway state. The exact web-to-native handoff and trust/ownership boundary require a recorded design before implementation.
+- During onboarding, require native Pi authentication before entering the normal workspace or repository browsing UI. **First version: OpenAI ChatGPT subscription device-code browser sign-in**, driven by the mapped UID daemon through Pi's native `openai-codex` runtime; Pi persists and refreshes its credentials. Other methods, including API keys, are later work. Never expose tokens in browser logs or persistent gateway state. The exact gateway/daemon contract still requires security review before implementation.
 - Normal users should not see the numeric `GitHub user 1272053` identity fallback or the message `Web-uloskirjautuminen ei katkaise natiiveja GitHub-tunnuksia.` on the everyday workspace screen. Replace numeric fallback with a humane display name or neutral fallback; keep precise identity for secure internal binding. Explain the distinction between web logout and native disconnect only at the relevant settings/action confirmation.
 - Add a small bottom-left sidebar shelf with an account/context menu including Settings. Include a GitHub integration settings page that shows the verified native connection and provides an explicit GitHub disconnect/logout action. Keep web logout separate from native `gh` logout; account for subsequent web sessions and native Git access after disconnect.
 
@@ -35,6 +35,10 @@ No live credentials or second-person identity may be used for testing without ex
 - [ ] Record and review a concrete Pi subscription browser-auth handoff and its credential ownership boundary before implementing that boundary; Jari has approved the first-version product behavior, not a specific security implementation.
 - [ ] The approved design specifies first-run vs returning-user behavior, a usable-path guarantee or honest recovery on failure, and retry semantics for native auth and partially imported repos.
 - [ ] Implementation slices and dependencies are linked to the existing GitHub workspace/lifecycle issues and have dedicated evidence, tests, and UI screenshots.
+
+## Design evidence (2026-09-28)
+
+[plan.md](plan.md) now reflects the approved Pi-native device-code interaction and Jari's scope clarification in `c657202`. The manual callback/paste plan is superseded, not a delivery prerequisite. The adapter remains in progress; no gateway gate, onboarding wire contract, wizard or end-to-end recovery is implemented by this design edit. The plan names four small **candidate** delivery boundaries and existing workspace/settings dependencies without creating a second schedule; they are not accepted/laned issues. No live sign-in or credential was used. Acceptance checkboxes remain open pending security-contract review, implementation and synthetic/visual evidence.
 
 ## Decisions
 
