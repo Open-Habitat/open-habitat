@@ -60,28 +60,46 @@ export async function piStatus(
   if (!statusValid(value)) throw new Error("invalid Pi status");
   return (value as { pi: { state: PiState } }).pi.state;
 }
+export async function sessionCSRF(
+  signal?: AbortSignal,
+): Promise<string | "login"> {
+  const session = await fetch("/auth/session", {
+    credentials: "same-origin",
+    cache: "no-store",
+    signal,
+  });
+  if (session.status === 401) return "login";
+  const value = await boundedJSON(session);
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value) ||
+    Object.keys(value).sort().join(",") !== "csrf,provider,schema_version" ||
+    !("schema_version" in value) ||
+    value.schema_version !== 1 ||
+    !("provider" in value) ||
+    value.provider !== "github" ||
+    !("csrf" in value) ||
+    typeof value.csrf !== "string" ||
+    !/^[A-Za-z0-9_-]{43}$/.test(value.csrf)
+  )
+    throw new Error("invalid session");
+  return value.csrf;
+}
 export async function piAttempt(
   method: "GET" | "POST" | "DELETE",
+  boundCSRF?: string,
   signal?: AbortSignal,
 ): Promise<Attempt | "absent" | "login" | "busy"> {
   const headers: Record<string, string> = {};
   if (method !== "GET") {
-    const session = await fetch("/auth/session", {
-      credentials: "same-origin",
-      cache: "no-store",
-      signal,
-    });
-    const value = await boundedJSON(session);
-    if (
-      typeof value !== "object" ||
-      value === null ||
-      !("csrf" in value) ||
-      typeof value.csrf !== "string" ||
-      !/^[A-Za-z0-9_-]{43}$/.test(value.csrf)
-    )
-      throw new Error("invalid session");
+    if (!boundCSRF || !/^[A-Za-z0-9_-]{43}$/.test(boundCSRF))
+      throw new Error("missing session binding");
+    const current = await sessionCSRF(signal);
+    if (current === "login") return "login";
+    if (current !== boundCSRF) throw new Error("session changed");
     headers.Origin = window.location.origin;
-    headers["X-Agent-Host-CSRF"] = value.csrf;
+    headers["X-Agent-Host-CSRF"] = boundCSRF;
   }
   const response = await fetch("/api/v1/onboarding/pi/attempt", {
     method,

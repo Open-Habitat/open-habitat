@@ -25,3 +25,31 @@ test("@pi-onboarding daemon restart invalidates old code, status stays authorita
     await page.request.get("/fixture/scenario?value=ready");
   }
 });
+
+test("@pi-onboarding expired lease drops code and offers retry", async ({
+  page,
+}, testInfo) => {
+  await page.request.get("/fixture/scenario?value=pi-onboarding");
+  await page.waitForTimeout(2200);
+  await page.request.get("/fixture/pi-state?value=missing");
+  try {
+    await page.goto("/workspaces");
+    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+    await page.getByRole("link", { name: "Alice" }).click();
+    await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
+    await expect(page.getByText("ABCD-1234")).toBeVisible();
+    // A lost lease returns the same 404 as a real five-minute expiry.
+    await page.request.get("/fixture/pi-restart");
+    await expect(page.getByText("Koodi vanheni")).toBeVisible({
+      timeout: 9000,
+    });
+    await expect(page.getByText("ABCD-1234")).toHaveCount(0);
+    await page.screenshot({
+      path: testInfo.outputPath("pi-expired-code.png"),
+      fullPage: true,
+    });
+  } finally {
+    await page.request.get("/fixture/pi-state?value=missing");
+    await page.request.get("/fixture/scenario?value=ready");
+  }
+});

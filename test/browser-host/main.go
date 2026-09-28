@@ -318,7 +318,9 @@ esac
 				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "foreign", "pi-blocked", "pi-onboarding":
 					scenario.Store(name)
 					if name == "pi-onboarding" {
-						// Disposable fixture: a fresh daemon attempt lease for each browser case.
+						// A new synthetic case has a fresh admission window and daemon lease.
+						// Monotonic fixture time also avoids reviving an expired session.
+						clock.Add(1)
 						for i, attempt := range attempts {
 							attempt.Store(daemon.PiAttemptHandler(configs[i], trusters[i], devices[i]))
 						}
@@ -349,7 +351,7 @@ esac
 				clock.Add(25)
 				w.WriteHeader(204)
 			case "/fixture/reset-clock":
-				clock.Store(0)
+				clock.Add(1)
 				w.WriteHeader(204)
 			default:
 				http.NotFound(w, r)

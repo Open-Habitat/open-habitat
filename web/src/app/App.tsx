@@ -17,13 +17,12 @@ import {
   NavLink,
   WorkspaceRail,
   WorkspaceSection,
-  Button,
 } from "../components";
 import { accountLabel } from "../components/Account";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import { HistoryView } from "./HistoryView";
 import { PiOnboarding } from "./PiOnboarding";
-import { piAttempt, piStatus } from "./pi";
+import { piStatus } from "./pi";
 import {
   authenticated,
   authenticationRequired,
@@ -237,14 +236,6 @@ export function App() {
     dispatch(clearIdentity());
     navigate("/workspaces", { replace: true });
     try {
-      if (phase === "pi_required") {
-        // Best effort only: cancellation cannot undo a completed native exchange.
-        try {
-          await piAttempt("DELETE");
-        } catch {
-          /* logout still proceeds */
-        }
-      }
       const response = await fetch("/auth/session", {
         credentials: "same-origin",
         cache: "no-store",
@@ -360,16 +351,11 @@ export function App() {
         ) : null}
       </>
     ) : phase === "pi_required" ? (
-      <>
-        <PiOnboarding onUsable={refresh} onLogin={requireLogin} />
-        <Button
-          label="Kirjaudu ulos"
-          variant="secondary"
-          onPress={() => {
-            void logout();
-          }}
-        />
-      </>
+      <PiOnboarding
+        onUsable={refresh}
+        onLogin={requireLogin}
+        onLogout={logout}
+      />
     ) : phase === "daemon_unavailable" ? (
       <>
         <h1>Yhteyttä ei saatu</h1>
