@@ -20,9 +20,9 @@ Make the daemon consume a trusted, version-pinned Pi/Node runtime location suppl
 Keep product portable and authority boundaries unchanged: root-owned deployment configuration (or a documented neutral package path) selects Node executable, Pi public SDK entry and manifest; never accept browser or gateway fields as paths and never install Pi from source/global npm. The daemon as the mapped UID runs Pi native API against its own HOME, validates availability and pinned version and fails closed on missing/unsafe runtime. Coordinate exact declared artifact paths with Fleetrepo infra/native-agent-host-test/GUEST-PI-RUNTIME.md; Fleetrepo deployment script itself is separate. Preserve fixture/packaging exclusion and ability to test with disposable homes.
 
 ## Acceptance Criteria
-- [ ] A packaged daemon can find an operator-installed pinned Pi/Node without modifying global /usr/bin, and cannot silently use an untrusted user-writable runtime or version.
-- [ ] Missing or mismatched package returns redacted unknown/unavailable, not a gate bypass or token disclosure; test synthetic runtime paths and malicious substitutions.
-- [ ] ./scripts/ci-local.sh --clean --json, focused daemon runtime tests and release archive verifier pass on clean committed revision. Record exact limits in result.md; no host deployment or real OAuth.
+- [x] A packaged daemon can find an operator-installed pinned Pi/Node without modifying global /usr/bin, and cannot silently use an untrusted user-writable runtime or version.
+- [x] Missing or mismatched package returns redacted unknown/unavailable, not a gate bypass or token disclosure; test synthetic runtime paths and malicious substitutions.
+- [x] ./scripts/ci-local.sh --clean --json, focused daemon runtime tests and release archive verifier pass on clean committed revision. Record exact limits in result.md; no host deployment or real OAuth.
 
 ## Related
 The installed runtime and upgrade preflight belong in private Fleetrepo; @wire-first-use-pi-journey provides browser flow, @gate-native-routes-on-pi provides server gate.

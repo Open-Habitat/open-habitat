@@ -48,13 +48,19 @@ func TestTrustedPiRuntime(t *testing.T) {
 		t.Fatalf("safe internal link rejected: %v", err)
 	}
 	for name, mutate := range map[string]func(){
-		"wrong version":            func() { write(p.Manifest, strings.Replace(good, "0.85.1", "0.85.2", 1), 0644) },
-		"wrong export":             func() { write(p.Manifest, strings.Replace(good, "./dist/index.js", "./dist/other.js", 1), 0644) },
-		"wrong node":               func() { write(p.Node, "#!/bin/sh\necho v23.0.0\n", 0755) },
-		"writable parent":          func() { os.Chmod(filepath.Join(root, "bin"), 0777) },
-		"missing entry":            func() { os.Remove(p.Entry) },
-		"symlink entry":            func() { os.Remove(p.Entry); os.Symlink(p.Manifest, p.Entry) },
-		"writable imported module": func() { write(filepath.Join(pkg, "dist", "imported.js"), "export {};", 0666) },
+		"wrong version":   func() { write(p.Manifest, strings.Replace(good, "0.85.1", "0.85.2", 1), 0644) },
+		"wrong export":    func() { write(p.Manifest, strings.Replace(good, "./dist/index.js", "./dist/other.js", 1), 0644) },
+		"wrong node":      func() { write(p.Node, "#!/bin/sh\necho v23.0.0\n", 0755) },
+		"writable parent": func() { os.Chmod(filepath.Join(root, "bin"), 0777) },
+		"missing entry":   func() { os.Remove(p.Entry) },
+		"symlink entry":   func() { os.Remove(p.Entry); os.Symlink(p.Manifest, p.Entry) },
+		"writable imported module": func() {
+			path := filepath.Join(pkg, "dist", "imported.js")
+			write(path, "export {};", 0644)
+			if err := os.Chmod(path, 0666); err != nil {
+				t.Fatal(err)
+			}
+		},
 		"escaping dependency link": func() { os.Symlink("/var/tmp", filepath.Join(pkg, "external")) },
 		"external round trip": func() {
 			alias := filepath.Join(t.TempDir(), "alias")
