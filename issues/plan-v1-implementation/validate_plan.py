@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Offline consistency checks for the v1 implementation planning package."""
+import json
 from pathlib import Path
 import re
+import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -59,25 +61,52 @@ chain = [
     ("build-design-system", "build-app-foundation"),
     ("build-workspace-slice", "build-design-system"),
     ("build-history-view", "build-workspace-slice"),
-    ("build-agent-control", "build-history-view"),
 ]
+# The first four edges remain technical/accepted-plan prerequisites. History's
+# pending visual verdict is NOT an agent-control prerequisite (c0d4300).
+# Read scheduling metadata through issuectl rather than searching YAML spelling.
+def issue_metadata(slug: str) -> dict:
+    try:
+        output = subprocess.run(
+            ["issuectl", "--root", str(ROOT), "show", slug, "--json"],
+            capture_output=True, text=True, check=True,
+        )
+        data = json.loads(output.stdout)["data"]
+        if not isinstance(data, dict):
+            raise ValueError("issue data is not an object")
+        return data
+    except (OSError, subprocess.CalledProcessError, ValueError, KeyError, TypeError) as exc:
+        errors.append(f"cannot read issuectl scheduling metadata for {slug}: {exc}")
+        return {}
+
 for slug, blocker in chain:
-    text = (ROOT / "issues" / slug / "item.md").read_text()
-    if f"'@{blocker}'" not in text:
+    if f"@{blocker}" not in issue_metadata(slug).get("blocked_by", []):
         errors.append(f"walking-core dependency missing: {slug} <- {blocker}")
 
-human = (ROOT / "issues/review-implementation-plan/item.md").read_text().split("---", 2)[1]
-if "labels: [human-review]" not in human or re.search(r"^lane:", human, re.MULTILINE):
-    errors.append("review-implementation-plan must remain an unlaned human review")
+history = issue_metadata("build-history-view")
+control = issue_metadata("build-agent-control")
+if history.get("lane") != "ui-v1" or control.get("lane") != "agent-control":
+    errors.append("history and agent control must have independent scheduling lanes")
+if "@build-history-view" in control.get("blocked_by", []):
+    errors.append("history visual review must not block agent control")
 
+human = issue_metadata("review-implementation-plan")
+if "human-review" not in human.get("labels", []) or human.get("lane") is not None:
+    errors.append("review-implementation-plan must remain an unlaned human review")
+if "@review-implementation-plan" not in issue_metadata("build-app-foundation").get("blocked_by", []):
+    errors.append("product implementation head must remain blocked by review-implementation-plan")
+
+# An issue promises reviewable evidence, not a particular section heading or a
+# verdict before work can proceed. Future slices have no screenshots yet.
 for slug in owners[:10]:
     text = (ROOT / "issues" / slug / "item.md").read_text()
-    if "## Jari visual acceptance gate" not in text or f"issues/{slug}/visual-acceptance.md" not in text:
-        errors.append(f"missing serial visual acceptance checkpoint: {slug}")
-
-foundation = (ROOT / "issues/build-app-foundation/item.md").read_text().split("---", 2)[1]
-if "'@review-implementation-plan'" not in foundation:
-    errors.append("product implementation head must remain blocked by review-implementation-plan")
+    # Only the declared review policy counts; a historical decision in Comments
+    # cannot substitute for a missing policy for this slice.
+    policy = next((section for section in re.split(r"^## ", text, flags=re.MULTILINE)
+                   if "visual-acceptance.md" in section), "")
+    if (not re.search(r"screenshots?", policy, re.IGNORECASE)
+            or not re.search(r"(?:Jari|conductor)[^\n]{0,180}(?:decision|verdict)", policy, re.IGNORECASE)):
+        errors.append(f"missing visual evidence and explicit human decision policy: {slug}")
 
 for required in (
     "Frontend and TypeScript", "Go host and restart semantics",
