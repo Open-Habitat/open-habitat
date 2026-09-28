@@ -1,25 +1,70 @@
-# Go runtime boundaries
+# Go runtime packages
 
-Each package has one authority. Keep it that way: a change that makes one
-component act on behalf of another is a design change and needs an issue.
+The security model is that each package here holds one authority and none acts
+on another's behalf. The gateway authenticates a browser and decides which Unix
+user it is talking to; a daemon runs as that user and touches only that user's
+files and processes; root work is confined to the provisioning broker. If any
+of these could do another's job, a bug in the gateway would be a bug with access
+to homes, and a bug in a daemon would be one with access to other people's
+identities. Moving an authority between packages, however convenient for the
+task at hand, is therefore an architecture change: bring it to Jari as a
+recommendation and record the decision in an issue, rather than settling it in
+code. The reasoning behind the split is in `docs/architecture.md`, boundary by
+boundary in `docs/interfaces.md` (Finnish, under identity and trust boundaries),
+and for the broker in ADR 0004.
 
-- `gateway/` owns same-origin HTTP, OAuth/session/CSRF, static assets and
-  routing to the mapped daemon. It never inspects user homes.
-- `daemon/` runs as one mapped Unix UID and owns native discovery and child
-  processes. It never authenticates browser identities.
-- `provision/` is the root broker and Linux executor that create a person's
-  Unix account on first approved login (ADR 0004), with its wire protocol and
-  crash-safe journal.
-- `nativegh/` and `transport/` hand the person's GitHub credential to their own
-  native `gh`, running as their UID.
-- `udssecure/` validates socket path ownership and root-controlled directory
-  traversal at the client boundary. `SO_PEERCRED` on a socket bound by systemd
-  identifies root, not the daemon UID, so the daemon separately checks that the
-  connecting peer is the gateway UID.
-- `core/` is authority-neutral domain code.
-- `contracts/` is generated from `contracts/v1/`; never edit it by hand.
-- `cli/` is the non-interactive operator surface and follows the AI-first CLI
-  canon.
+- `gateway/` owns same-origin HTTP, OAuth, sessions and CSRF, serves the static
+  UI and routes each request to the mapped daemon over its per-user socket. It
+  runs as a fixed unprivileged UID, never reads a home, and never passes
+  browser headers on as identity.
+- `daemon/` runs as one mapped UID and owns native discovery, Pi history and
+  child processes. The only identity it trusts is its own root-owned binding
+  and the kernel's peer credentials; nothing the browser or the gateway asserts
+  about who is calling is used.
+- `provision/` is the root-only broker and Linux executor that create a
+  person's Unix account on first approved login, with the wire protocol and a
+  crash-safe journal. Fleetrepo owns the broker's directory, socket ACL, state
+  and boot ordering, and this code refuses to create or repair them: a root
+  process quietly fixing its own environment would hide deployment drift.
+- `transport/` is the bounded HTTP/1.1 handoff that carries one transient
+  GitHub token from the gateway to the daemon's socket, and `nativegh/`
+  installs it into the person's own `gh` as their UID. `transport` is imported
+  by both sides and implements the `gateway.TokenSink` interface, so the
+  gateway imports nothing from the daemon side.
+- `udssecure/` decides, from the file system, whether a socket path is the
+  daemon it claims to be (see below).
+- `core/` holds the component configuration and its trust checks; the
+  config file and every directory above it have to be root-owned and not
+  group- or world-writable before OAuth or handoff settings are believed.
+- `contracts/` is generated from `contracts/v1/`; `contracts/AGENTS.md` explains
+  the boundary and how drift is caught.
+- `cli/` composes the roles into the one binary and is the operator surface,
+  following the AI-first CLI canon (`CONFORMANCE.md`, `/ai-first-cli-canon`).
 
-After changes run `go generate ./internal/contracts`,
-`./scripts/check-generated.sh`, `go vet ./...` and `go test -race ./...`.
+One trap is worth knowing before touching either end of a socket. When the
+gateway connects to a daemon socket that systemd created and handed over,
+`SO_PEERCRED` reports the process that called `listen()`, which is PID 1 as
+root, not the daemon UID that later accepts. The gateway cannot learn from the
+connection whom it reached, so `udssecure.Mapped` establishes it from the file
+system instead: root-controlled traversal, a socket owned by the mapped UID in
+the gateway's group, mode 0660. The daemon side has no such problem, because on
+an accepted connection `SO_PEERCRED` names the real client, so it checks that
+the peer is the gateway UID. A test-mode dial to a locally bound socket sees
+the daemon UID as peer, which is why `transport` has two branches there; they
+look redundant and are not.
+
+Almost everything here is `//go:build linux`, and `transport/` and
+`udssecure/` have no portable files at all, so on a Mac `go vet` and `go test`
+compile very little of this tree. Sessions normally run on `alder`, which is
+Linux, so this bites when checking elsewhere. Several tests also skip when the
+runner is not root, the filesystem lacks POSIX ACLs, or no nonroot mapped UID
+exists; their `t.Skip` messages say which. The disposable QEMU guests in
+`scripts/vm-test.sh` are where those paths are actually proven, so a green
+`go test` on the dev box covers less than it looks, and after provisioning or
+ACL changes it is worth running with `-v` to see what was skipped.
+
+`go vet ./...` and `go test -race ./...` are the fast loop. Generated-contract
+drift only arises when `contracts/v1/` or `cmd/contractgen` changed;
+`go generate ./internal/contracts` and `scripts/check-generated.sh` catch it.
+`./scripts/ci-local.sh --clean --json` runs all of this and is what has to be
+green to land.
