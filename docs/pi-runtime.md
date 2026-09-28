@@ -1,15 +1,17 @@
-# Mapped daemon Pi runtime binding
+# Mapped daemon Pi runtime selector
 
-The operator installs the pinned Node 22.21.1 and `@earendil-works/pi-coding-agent@0.85.1` bundle as a root-owned, non-writable release directory. No global Node or npm installation is needed. Each mapped daemon's root-owned daemon JSON config may contain:
+The operator installs the pinned Node 22.21.1 and `@earendil-works/pi-coding-agent@0.85.1` release as a root-owned, non-writable tree. No global Node/npm installation is needed. Separately, install `/etc/native-agent-host/pi-runtime.json` as a root-owned regular file readable by mapped daemon UIDs (for example mode 0644), beneath root-owned directories with no group/world write access:
 
 ```json
-"pi_runtime": {
+{
   "node": "/opt/example/runtime-release/bin/node",
   "entry": "/opt/example/runtime-release/node_modules/@earendil-works/pi-coding-agent/dist/index.js",
   "manifest": "/opt/example/runtime-release/node_modules/@earendil-works/pi-coding-agent/package.json"
 }
 ```
 
-These three paths must share one release root. The entry is the package's public `.` ESM export (`dist/index.js`), **not** its `bin.pi` CLI (`dist/bundle/cli.js`). The config and its ancestors must be root-owned and non-writable by other users; the daemon additionally checks each runtime path and ancestor for root ownership, no symlinks, and no group/world writes, checks manifest name, version and export, then invokes the selected Node to check its exact version before each operation. Missing binding or failed validation yields only `unknown` / `native_source_unavailable` through the HTTP contract. The operator should verify the installed artifact's complete contents against its own receipt before activation; runtime validation is not a replacement for that verification.
+This is an installation-wide program selector, **not** a per-user binding. It carries no identity, credential, UID or home. The root provisioning broker creates and byte-verifies each `daemon-USERNAME.json` as before; do not edit those files or add `pi_runtime` to them. The gateway and browser cannot select executable paths. Existing and newly provisioned mapped daemons use the same selector after restart. The daemon rechecks selector trust and equality with the startup selection on every native Pi operation; switching releases requires restarting mapped daemons. Missing, changed, malformed or unsafe selector disables Pi (`unknown` / `native_source_unavailable`); it never unlocks workspace or history routes.
 
-The daemon does not install packages or read credentials from this shared tree. It runs the Pi SDK as the mapped UID with that UID's HOME, and Pi continues to own its own auth state. This config does not change the broker mapping or require a gateway credential. A future upgrade requires a new release and reviewed version pins; changing the config to an arbitrary Pi version does not enable it.
+The entry is the package's public `.` ESM export (`dist/index.js`), **not** its `bin.pi` CLI (`dist/bundle/cli.js`). The paths must share one release root. The daemon checks the selected runtime tree and ancestors for root ownership, safe modes and paths, checks manifest name/version/export and invokes Node for an exact version check on each operation. The operator must independently verify the complete installed artifact against its own receipt before activation; runtime validation is not a substitute for that verification.
+
+The daemon runs Pi as the mapped UID with that UID's HOME and Pi's own auth state. No shared credentials or new credential store are involved. A future upgrade requires a reviewed release and updated version pins; pointing the selector at an arbitrary version does not enable it. The neutral systemd service template already starts every daemon through the same binary and its unchanged per-user binding; no new unit or broker privilege is required.

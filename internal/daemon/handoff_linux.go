@@ -39,6 +39,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	if runtime != nil {
 		pi.Node, pi.Entry, pi.Manifest = runtime.Node, runtime.Entry, runtime.Manifest
 		pi.TrustedRuntime = true
+		pi.SharedSelector = true
 	}
 	piStatus := func(parent context.Context) string {
 		ctx, cancel := context.WithTimeout(parent, 3*time.Second)

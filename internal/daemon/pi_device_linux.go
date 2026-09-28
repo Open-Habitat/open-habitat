@@ -20,6 +20,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/maintainer/native-agent-host/internal/core"
 )
 
 //go:embed pi_device_helper.mjs
@@ -29,6 +31,8 @@ var piDeviceHelper string
 // Entry and Manifest are trusted deployment paths, never browser-supplied.
 type PiDevice struct {
 	Home, Node, Entry, Manifest string
+	// SharedSelector rechecks the installation selector before every native call.
+	SharedSelector bool
 	// TrustedRuntime enables root-owned package validation for deployment paths.
 	// Direct synthetic PiDevice tests can supply a mock instead.
 	TrustedRuntime bool
@@ -46,6 +50,12 @@ type PiDeviceEvent struct {
 func (p *PiDevice) validate() error {
 	if p.Home == "" || !filepath.IsAbs(p.Home) || !filepath.IsAbs(p.Node) || !filepath.IsAbs(p.Entry) || !filepath.IsAbs(p.Manifest) || os.Geteuid() == 0 {
 		return errors.New("invalid Pi device configuration or UID")
+	}
+	if p.SharedSelector {
+		selected, err := core.LoadSharedPiRuntime()
+		if err != nil || selected.Node != p.Node || selected.Entry != p.Entry || selected.Manifest != p.Manifest {
+			return errors.New("native Pi selector unavailable")
+		}
 	}
 	if p.TrustedRuntime {
 		if err := p.validateRuntime(); err != nil {

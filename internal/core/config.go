@@ -36,8 +36,9 @@ type Config struct {
 	PiRuntime  *PiRuntimeConfig     `json:"pi_runtime,omitempty"`
 }
 
-// PiRuntimeConfig is supplied by the root-owned daemon config, never by a browser.
-// Paths identify an immutable, root-owned installation of the pinned runtime.
+// PiRuntimeConfig identifies an immutable root-owned installation. Mapped
+// daemons take it from the separate installation-wide selector, not their
+// broker-verified identity binding or a browser request.
 type PiRuntimeConfig struct {
 	Node     string `json:"node"`
 	Entry    string `json:"entry"`

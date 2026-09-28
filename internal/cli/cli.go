@@ -254,7 +254,10 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 			}
 			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 			defer stop()
-			if err := daemon.ServeHTTP(ctx, ln, *cfg.Handoff, adapter.Consumer(), adapter.Status, daemonHealthMux(), cfg.PiRuntime); err != nil {
+			// The JIT binding is byte-verified by the root broker. Pi's separate
+			// installation selector is never taken from that per-user binding.
+			runtime, _ := core.LoadSharedPiRuntime() // absence or distrust disables Pi
+			if err := daemon.ServeHTTP(ctx, ln, *cfg.Handoff, adapter.Consumer(), adapter.Status, daemonHealthMux(), runtime); err != nil {
 				return nil, system("server_failed", "daemon socket service failed")
 			}
 			return nil, nil
