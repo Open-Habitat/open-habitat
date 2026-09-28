@@ -33,6 +33,15 @@ type Config struct {
 	TLSCert    string               `json:"tls_cert,omitempty"`
 	TLSKey     string               `json:"tls_key,omitempty"`
 	Handoff    *transport.Config    `json:"handoff,omitempty"`
+	PiRuntime  *PiRuntimeConfig     `json:"pi_runtime,omitempty"`
+}
+
+// PiRuntimeConfig is supplied by the root-owned daemon config, never by a browser.
+// Paths identify an immutable, root-owned installation of the pinned runtime.
+type PiRuntimeConfig struct {
+	Node     string `json:"node"`
+	Entry    string `json:"entry"`
+	Manifest string `json:"manifest"`
 }
 
 func LoadConfig(path string, expected Component) (Config, error) {
@@ -62,7 +71,7 @@ func LoadConfig(path string, expected Component) (Config, error) {
 	if cfg.Listen == "" && cfg.Handoff == nil {
 		return Config{}, errors.New("config listen must not be empty")
 	}
-	if cfg.OAuth != nil || cfg.Handoff != nil {
+	if cfg.OAuth != nil || cfg.Handoff != nil || cfg.PiRuntime != nil {
 		info, e := os.Lstat(path)
 		if e == nil && (info.Mode()&os.ModeSymlink != 0 || !filepath.IsAbs(path) || filepath.Clean(path) != path) {
 			return Config{}, errors.New("invalid trusted config")
@@ -90,6 +99,9 @@ func LoadConfig(path string, expected Component) (Config, error) {
 	}
 	if cfg.Handoff != nil && (expected != Daemon || cfg.OAuth != nil || cfg.Listen != "" || cfg.GatewayUID != nil) {
 		return Config{}, errors.New("invalid daemon handoff config")
+	}
+	if cfg.PiRuntime != nil && (expected != Daemon || cfg.Handoff == nil || cfg.PiRuntime.Node == "" || cfg.PiRuntime.Entry == "" || cfg.PiRuntime.Manifest == "") {
+		return Config{}, errors.New("invalid daemon Pi runtime config")
 	}
 	return cfg, nil
 }

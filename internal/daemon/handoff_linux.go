@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/maintainer/native-agent-host/internal/core"
 	"github.com/maintainer/native-agent-host/internal/transport"
 )
 
@@ -24,7 +25,7 @@ func ServeHandoff(ctx context.Context, listener *net.UnixListener, cfg transport
 
 // ServeHTTP accepts a pre-opened per-user listener and mounts internal handoff
 // alongside future daemon workspace routes on a shared HTTP/1.1 ServeMux.
-func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Config, consume transport.Consumer, nativeStatus func(context.Context) string, mux *http.ServeMux) error {
+func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Config, consume transport.Consumer, nativeStatus func(context.Context) string, mux *http.ServeMux, runtime *core.PiRuntimeConfig) error {
 	server, err := transport.NewServer(cfg, consume)
 	if err != nil {
 		return err
@@ -34,7 +35,11 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	}
 	// The native Pi status is checked before any native workspace or history read.
 	// No positive result is retained across requests, refreshes or daemon restarts.
-	pi := &PiDevice{Home: cfg.Home, Node: "/usr/bin/node", Entry: "/opt/native-agent-host/pi/node_modules/@earendil-works/pi-coding-agent/dist/index.js", Manifest: "/opt/native-agent-host/pi/node_modules/@earendil-works/pi-coding-agent/package.json"}
+	pi := &PiDevice{Home: cfg.Home}
+	if runtime != nil {
+		pi.Node, pi.Entry, pi.Manifest = runtime.Node, runtime.Entry, runtime.Manifest
+		pi.TrustedRuntime = true
+	}
 	piStatus := func(parent context.Context) string {
 		ctx, cancel := context.WithTimeout(parent, 3*time.Second)
 		defer cancel()

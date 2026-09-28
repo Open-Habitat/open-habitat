@@ -43,6 +43,9 @@ groups:
       - slug: daemon-bindings
         title: Daemonien yksityiset sidonnat
         desc: Juuren hallitsema hakemistopolku ja käyttäjäkohtaiset käyttöoikeudet.
+      - slug: pi-runtime
+        title: Pi runtime binding
+        desc: Root-owned native Pi and Node installation selected for each mapped daemon.
       - slug: interfaces
         title: Rajapinnat
         desc: Yhteyksien merkitys ja vielä määriteltävä käyttäytyminen.

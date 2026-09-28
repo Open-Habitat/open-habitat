@@ -29,9 +29,12 @@ var piDeviceHelper string
 // Entry and Manifest are trusted deployment paths, never browser-supplied.
 type PiDevice struct {
 	Home, Node, Entry, Manifest string
-	mu                          sync.Mutex
-	active                      string
-	cancel                      context.CancelFunc
+	// TrustedRuntime enables root-owned package validation for deployment paths.
+	// Direct synthetic PiDevice tests can supply a mock instead.
+	TrustedRuntime bool
+	mu             sync.Mutex
+	active         string
+	cancel         context.CancelFunc
 }
 type PiDeviceEvent struct {
 	Type            string `json:"type"`
@@ -43,6 +46,11 @@ type PiDeviceEvent struct {
 func (p *PiDevice) validate() error {
 	if p.Home == "" || !filepath.IsAbs(p.Home) || !filepath.IsAbs(p.Node) || !filepath.IsAbs(p.Entry) || !filepath.IsAbs(p.Manifest) || os.Geteuid() == 0 {
 		return errors.New("invalid Pi device configuration or UID")
+	}
+	if p.TrustedRuntime {
+		if err := p.validateRuntime(); err != nil {
+			return errors.New("native Pi runtime unavailable")
+		}
 	}
 	if os.Getenv("HOME") != p.Home {
 		return errors.New("daemon HOME mismatch")

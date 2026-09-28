@@ -19,6 +19,7 @@ Aloita [tavoitteesta ja MVP:stä](product.md) ja
 - [Kriittiset oletukset](assumptions.md): mitä pitää vielä todentaa.
 - [Päätökset](decisions.md): hyväksytyt ratkaisut ja seuraavat päätöstehtävät.
 - [Daemonien sidonnat](daemon-bindings.md): käyttäjäkohtaiset asetukset ja niiden hakemistopolun suojaus.
+- [Pi-runtime](pi-runtime.md): rootin asentaman Node/Pi-julkaisun daemon-kohtainen sidonta.
 - [Rajapinnat](interfaces.md): komponenttien vastuut ja tarkennettava käyttäytyminen.
 - [Lokituksen ehdotus](logging.md): turvalliset diagnostiikkajäljet ja Jarin päätettävät rajat.
 - [Tutkimukset](evidence.md): aiempi näyttö ja sen rajoitukset.
