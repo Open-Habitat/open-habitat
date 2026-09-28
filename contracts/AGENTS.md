@@ -1,15 +1,45 @@
 # Host contracts
 
-`v1/` is the canonical machine-readable browser/host boundary. JSON Schemas use
-JSON Schema 2020-12. They describe observable messages, not language- or framework-specific
-implementation types. Keep the reader-facing meaning in `docs/interfaces.md`.
+`v1/` is the browser/host boundary as both sides have to see it: a JSON Schema
+2020-12 file for each message family, redacted examples under `examples/`, and
+`scenarios.json`, the catalogue of situations an implementation must handle.
+These files are the authority. The Go and TypeScript packages under
+`internal/contracts/` and `web/src/contracts/` are generated from them and
+deliberately carry only a fingerprint and opaque types, so nothing is trusted
+until it has been validated against the schema at the HTTP/SSE boundary. Write
+schemas for what travels over the wire, not for how either side represents it
+internally; an implementation type that leaks into a schema makes the boundary
+follow the code instead of the other way round.
 
-A breaking semantic or shape change creates a new version directory. Additive
-optional fields may remain in v1. Unknown object fields are rejected unless a
-schema explicitly provides an `extensions` object; extension keys must be
-namespaced. Never add credentials, raw Unix usernames, absolute home paths, or
-unredacted user content to examples.
+What the messages mean, who owns which fact, and the HTTP surface with its
+versioning policy are written for people in `docs/interfaces.md` (in Finnish).
+The schema says what is valid; that page says what it means. Change them
+together and do not copy one into the other.
 
-Run `python3 issues/define-host-contracts/validate_contracts.py` from the
-repository root after changes. It validates every schema, fixture, cross-file
-reference, and scenario catalogue without network access.
+Every response carries `schema_version: 1` and an unknown major version is
+rejected, so a v1 client and server are entitled to assume v1 shapes. New
+optional fields fit within v1. Removing or renaming a field, or changing a type,
+nullability or an ordering guarantee, is a new version directory; the policy is
+in `docs/interfaces.md` under the versioned HTTP surface. Objects set
+`additionalProperties: false` throughout, so an unknown field is a rejection,
+not a warning. There is no extension escape hatch. The boundary is part of the
+architecture decided with Jari, so adding one is a recommendation to him rather
+than a schema edit.
+
+The repository will be public and its history is permanent. Examples and
+fixtures use placeholder identities (`wid_example-a`, `ws_example123`, fixed
+UUIDs) and contain no credentials, Unix usernames, home paths or real user
+content; the wire itself carries no Unix username or absolute home path either.
+A real value pasted here once stays in the history for good.
+
+`python3 issues/define-host-contracts/validate_contracts.py` from the
+repository root is the offline check: schema well-formedness, each fixture
+against its schema, cross-file references, scenario coverage, and a few negative
+cases that prove rejections still reject. Two things it will not discover by
+itself: a new example file is validated only once it is added to the fixture map
+inside the script, and the required scenario coverage labels are a fixed set in
+the same script, so a renamed or removed scenario fails the run until that list
+is updated. Any byte change to a schema also changes the fingerprint embedded in
+the generated packages; `go generate ./internal/contracts` regenerates them and
+`scripts/check-generated.sh` fails on drift. `./scripts/ci-local.sh` runs all of
+this.
