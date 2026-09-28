@@ -2,7 +2,7 @@
 created: 2026-09-28
 updated: 2026-09-28
 type: task
-status: open
+status: in-progress
 priority: normal
 related: ['@build-agent-control']
 lane: agent-ui-prep
