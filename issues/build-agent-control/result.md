@@ -130,3 +130,11 @@ gemini-3.8-flash returned only incomplete reasoning (no verdict). No residual
 review finding met the filing bar. No acceptance box is checked; issue remains
 open until UI, reconnect/disconnect, actual mapped-UID guest and real-agent
 browser evidence are available.
+
+At committed revision `f99fff0`,
+`PATH=/home/maintainer/Sources/native-agent-host/.tools/go/bin:$PATH TMPDIR=/var/tmp ./scripts/ci-local.sh --clean --json`
+exited 0 (`status:passed`, `clean:true`) on its third attempt, including package
+verification. The first two attempts stopped at transient npm download
+`ETIMEDOUT`, before reaching project checks. This receipt-only paragraph changes
+no runtime behavior; neither the gate nor the synthetic tests establish a
+real mapped-UID guest, browser proof or live-host behavior.
