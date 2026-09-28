@@ -41,6 +41,9 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc("/api/v1/content/", s.auth.history)
 	}
 	mux.HandleFunc("/", s.ui)
+	if s.auth != nil {
+		return s.auth.accessIngress(mux)
+	}
 	return mux
 }
 func (s *Server) ui(w http.ResponseWriter, r *http.Request) {

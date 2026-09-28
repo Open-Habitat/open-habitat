@@ -31,11 +31,12 @@ type Identity struct {
 	Socket   string `json:"socket"`
 }
 type OAuthConfig struct {
-	ClientID     string     `json:"client_id"`
-	ClientSecret string     `json:"client_secret"`
-	CallbackURL  string     `json:"callback_url"`
-	Origin       string     `json:"origin"`
-	Identities   []Identity `json:"identities"`
+	ClientID     string        `json:"client_id"`
+	ClientSecret string        `json:"client_secret"`
+	CallbackURL  string        `json:"callback_url"`
+	Origin       string        `json:"origin"`
+	Identities   []Identity    `json:"identities"`
+	Access       *AccessConfig `json:"access,omitempty"`
 }
 
 // Provider must validate the authorization code and obtain an authenticated account ID.
@@ -114,11 +115,12 @@ type AuthOptions struct {
 	SnapshotPeerUID func(*net.UnixConn) int                         // test seam; production reads SO_PEERCRED
 }
 type pending struct {
-	verifier, browser, returnTo, attempt string
-	until                                time.Time
+	verifier, browser, returnTo, attempt, accessEmail string
+	until                                             time.Time
 }
 type session struct {
 	identity          Identity
+	accessEmail       string
 	epoch, generation uint64
 	csrf              string
 	idle, absolute    time.Time
@@ -138,6 +140,7 @@ type Auth struct {
 	unmatchedLog    admission // process-wide budget; never keyed by request input
 	snapshotDial    func(context.Context, string) (net.Conn, error)
 	snapshotPeerUID func(*net.UnixConn) int
+	access          *accessVerifier
 }
 type admission struct {
 	tokens float64
@@ -175,7 +178,11 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	if opts.Log == nil {
 		opts.Log = CallbackLogger(os.Stderr)
 	}
-	return &Auth{cfg: cfg, provider: opts.Provider, sink: opts.Sink, broker: opts.Broker, now: opts.Now, random: opts.Random, log: opts.Log, pending: map[string]pending{}, sessions: map[string]session{}, admission: map[string]admission{}, snapshotDial: opts.SnapshotDial, snapshotPeerUID: opts.SnapshotPeerUID}, nil
+	access, err := newAccessVerifier(cfg.Access, opts.Now)
+	if err != nil {
+		return nil, err
+	}
+	return &Auth{cfg: cfg, provider: opts.Provider, sink: opts.Sink, broker: opts.Broker, now: opts.Now, random: opts.Random, log: opts.Log, pending: map[string]pending{}, sessions: map[string]session{}, admission: map[string]admission{}, snapshotDial: opts.SnapshotDial, snapshotPeerUID: opts.SnapshotPeerUID, access: access}, nil
 }
 func (a *Auth) secret() (string, error) {
 	b := make([]byte, 32)
@@ -390,7 +397,7 @@ func (a *Auth) start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	attempt := attemptID()
-	a.pending[state] = pending{verifier: verifier, browser: browser, returnTo: returnTo, attempt: attempt, until: now.Add(5 * time.Minute)}
+	a.pending[state] = pending{verifier: verifier, browser: browser, returnTo: returnTo, attempt: attempt, accessEmail: accessEmail(r), until: now.Add(5 * time.Minute)}
 	a.mu.Unlock()
 	a.authEvent(attempt, "started", "none")
 	http.SetCookie(w, &http.Cookie{Name: flowCookie, Value: browser, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: 300})
@@ -450,7 +457,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		a.callbackFailure(w, r, 403, "authentication_required")
 		return
 	}
-	if e != nil || subtle.ConstantTimeCompare([]byte(c.Value), []byte(p.browser)) != 1 {
+	if e != nil || subtle.ConstantTimeCompare([]byte(c.Value), []byte(p.browser)) != 1 || p.accessEmail != accessEmail(r) {
 		a.authEvent(attempt, "rejected", "browser_mismatch")
 		a.callbackFailure(w, r, 403, "authentication_required")
 		return
@@ -516,7 +523,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	if old, err := r.Cookie(cookieName); err == nil {
 		delete(a.sessions, old.Value)
 	}
-	a.sessions[sid] = session{target, checked.Epoch, checked.Generation, csrf, now.Add(8 * time.Hour), now.Add(24 * time.Hour)}
+	a.sessions[sid] = session{identity: target, accessEmail: accessEmail(r), epoch: checked.Epoch, generation: checked.Generation, csrf: csrf, idle: now.Add(8 * time.Hour), absolute: now.Add(24 * time.Hour)}
 	a.mu.Unlock()
 	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: sid, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})
 	a.authEvent(attempt, "accepted", "none")
@@ -538,7 +545,7 @@ func (a *Auth) authenticated(r *http.Request) (session, bool) {
 		ok = false
 	}
 	a.mu.Unlock()
-	if !ok {
+	if !ok || s.accessEmail != accessEmail(r) {
 		return session{}, false
 	}
 	reply, err := a.broker.Exchange(r.Context(), BrokerRequest{Operation: "authorize", ID: s.identity.Subject})
@@ -555,7 +562,7 @@ func (a *Auth) authenticated(r *http.Request) (session, bool) {
 	defer a.mu.Unlock()
 	// A concurrent logout or rotation cannot resurrect a removed session.
 	current, ok := a.sessions[c.Value]
-	if !ok || current.csrf != s.csrf || current.identity != s.identity || current.epoch != s.epoch || current.generation != s.generation || current.absolute != s.absolute {
+	if !ok || current.csrf != s.csrf || current.identity != s.identity || current.accessEmail != s.accessEmail || current.epoch != s.epoch || current.generation != s.generation || current.absolute != s.absolute {
 		return session{}, false
 	}
 	s = current
