@@ -69,3 +69,7 @@ Interactive and repeated behavior must use the shared production component imple
 ### 2026-09-28T12:42:36Z · @jari
 
 2026-09-28: Proceed with agent functionality now; make the visual-review condition a principle of proportionate evidence rather than a blocking checkpoint. This does not approve the history view or waive functional tests.
+
+### 2026-09-28T16:32:45Z · @jari
+
+2026-09-28: First test-version process/interruption scope approved. The mapped UID daemon owns the direct Pi RPC child and bounds input writes, acknowledgements and shutdown waits; service-level systemd cleanup applies on daemon stop/crash. A native tool detached by Pi may outlive a single-controller cancel, so browser interruption is best-effort, never represented as confirmed until native state is reconciled. An uncertain send or termination is shown as uncertain and never retried automatically; do not launch another writer into unresolved work. A per-controller delegated cgroup or general supervisor is NOT a prerequisite for v1. Preserve ordinary UID isolation and honest restart/reconnect status. Update ADR 0003 and relevant tests in implementation; reconsider stronger containment only on observed need.
