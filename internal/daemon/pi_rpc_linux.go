@@ -34,6 +34,13 @@ type piRPC struct {
 // and native-history reconciliation exist. Resume is refused entirely; a
 // native path alone never establishes old-writer absence or settlement.
 func launchPiRPC(binary, home, cwd, sessionFile string, env []string) (*piRPC, error) {
+	return launchPiRPCWithOwnership(binary, home, cwd, sessionFile, env, nil)
+}
+
+// launchPiRPCWithOwnership is an internal fixture-level bridge. The caller
+// must bind the lock's session ID to the native session before using it for
+// control. No production caller does so yet; this is not restart resume.
+func launchPiRPCWithOwnership(binary, home, cwd, sessionFile string, env []string, owner *piOwnership) (*piRPC, error) {
 	if home == "" || cwd == "" || binary == "" || !filepath.IsAbs(binary) || !filepath.IsAbs(home) || !filepath.IsAbs(cwd) || os.Geteuid() == 0 {
 		return nil, errors.New("invalid Pi launch context or UID")
 	}
@@ -43,6 +50,13 @@ func launchPiRPC(binary, home, cwd, sessionFile string, env []string) (*piRPC, e
 	args := []string{"--mode", "rpc"}
 	cmd := exec.Command(binary, args...)
 	cmd.Dir = cwd
+	if owner != nil {
+		if owner.file == nil {
+			return nil, errors.New("Pi owner lock unavailable")
+		}
+		// ExtraFiles preserves the lock across daemon crash for the child lifetime.
+		cmd.ExtraFiles = []*os.File{owner.file}
+	}
 	cmd.Env = append(append([]string(nil), env...), "HOME="+home)
 	// nil stderr sends Pi output to the null device without an os/exec
 	// copy goroutine that detached tools could keep open indefinitely.
