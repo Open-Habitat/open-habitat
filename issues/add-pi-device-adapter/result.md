@@ -26,3 +26,7 @@ The review is **not** independent confirmation of live OpenAI entitlement or hos
 ## Next safe step
 
 Agree the external Pi terminal-writer concurrency semantics with Jari. If last-writer-wins is unacceptable, obtain a reviewed Pi-native conditional-credential-commit facility before implementing the host adapter; do not substitute a host-side unlocked comparison or a second credential store. Then implement credential-path containment, parent-death cleanup, bounded IPC supervision and owner/session lifecycle with mandatory synthetic tests and a real disposable two-UID VM proof. Only after that run the full `./scripts/ci-local.sh --clean --json` and an independent review on the *final* diff; the candidate's passing focused tests do not clear this gate.
+
+## Required CI attempt
+
+Full `./scripts/ci-local.sh --clean --json` was attempted twice with the worktree-local Go 1.27.1 on a clean tree. Neither reached project tests: first failed during `npm ci --prefix web` in esbuild `install.js` with `spawnSync .../esbuild/bin/esbuild ETXTBSY` (exit 1); the retry failed during npm install with `Unknown system error -122, write` (exit 134). Logs: `/tmp/pi-adapter-ci-01m3k7ak85b90d2gb3ry7xbg5m.log` and `/tmp/pi-adapter-ci-retry-01m3k7ak85b90d2gb3ry7xbg5m.log` (local scratch). At inspection `/` had 239 GiB free and `/tmp` had 1.6 GiB free; the `-122` root cause was not established. Full CI is **not green**. These infrastructure errors do not diminish the independent security blockers or make this slice mergeable.
