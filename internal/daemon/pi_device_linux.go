@@ -131,11 +131,15 @@ func (p *PiDevice) Cancel(id string) bool {
 }
 
 // Status checks Pi's own stored OAuth status; never returns credentials.
-func (p *PiDevice) Status() string {
-	if err := p.validate(); err != nil {
+func (p *PiDevice) Status() string { return p.StatusContext(context.Background()) }
+
+// StatusContext lets an HTTP caller end native refresh when its response budget
+// expires. The helper is killed and reaped before the status call returns.
+func (p *PiDevice) StatusContext(ctx context.Context) string {
+	if err := p.validate(); err != nil || ctx.Err() != nil {
 		return "unknown"
 	}
-	state, err := p.status(context.Background())
+	state, err := p.status(ctx)
 	if err != nil {
 		return "unknown"
 	}

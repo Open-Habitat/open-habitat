@@ -3,6 +3,7 @@
 package daemon
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -12,13 +13,13 @@ import (
 
 // piGate checks the authenticated hop before querying Pi, then fails closed
 // before invoking any native read. A fresh native check is made for each request.
-func piGate(cfg transport.Config, trusted func(*http.Request) bool, status func() string, next http.Handler) http.Handler {
+func piGate(cfg transport.Config, trusted func(*http.Request) bool, status func(context.Context) string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !historyAuthorized(cfg, trusted, r) {
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
-		if status() != "usable" {
+		if status(r.Context()) != "usable" || r.Context().Err() != nil {
 			snapshotError(w, 428, "pi_onboarding_required")
 			return
 		}
@@ -28,13 +29,13 @@ func piGate(cfg transport.Config, trusted func(*http.Request) bool, status func(
 
 // PiStatusHandler discloses only the mapped daemon's native credential state.
 // It never reads workspaces, history or the credential value into the response.
-func PiStatusHandler(cfg transport.Config, trusted func(*http.Request) bool, status func() string) http.Handler {
+func PiStatusHandler(cfg transport.Config, trusted func(*http.Request) bool, status func(context.Context) string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet || r.RequestURI != "/api/v1/onboarding/pi/status" || r.URL.RawQuery != "" || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || !historyAuthorized(cfg, trusted, r) {
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
-		state := status()
+		state := status(r.Context())
 		if state != "usable" && state != "missing" {
 			state = "unknown"
 		}

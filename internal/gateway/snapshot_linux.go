@@ -124,6 +124,11 @@ func (a *Auth) snapshotOrPiStatus(w http.ResponseWriter, r *http.Request, path s
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
+	var tail [1]byte
+	if n, e := reader.Read(tail[:]); n != 0 || e != io.EOF || limited.N == 0 {
+		safe(w, 503, "daemon_unavailable")
+		return
+	}
 	// Bind the response identity to the authenticated fixed mapping before any
 	// bytes reach the browser. Full v1 contract validation remains at the browser.
 	var binding struct {
@@ -152,15 +157,16 @@ func (a *Auth) snapshotOrPiStatus(w http.ResponseWriter, r *http.Request, path s
 				State string `json:"state"`
 			} `json:"pi"`
 		}
-		if json.Unmarshal(b, &status) != nil || status.SchemaVersion != 1 || (status.Pi.State != "usable" && status.Pi.State != "missing" && status.Pi.State != "unknown") {
+		decoder := json.NewDecoder(strings.NewReader(string(b)))
+		decoder.DisallowUnknownFields()
+		var extra any
+		if decoder.Decode(&status) != nil || decoder.Decode(&extra) != io.EOF || status.SchemaVersion != 1 || (status.Pi.State != "usable" && status.Pi.State != "missing" && status.Pi.State != "unknown") {
 			safe(w, 503, "daemon_unavailable")
 			return
 		}
-	}
-	var tail [1]byte
-	if n, e := reader.Read(tail[:]); n != 0 || e != io.EOF || limited.N == 0 {
-		safe(w, 503, "daemon_unavailable")
-		return
+		// Reconstruct only the closed public vocabulary; never forward raw
+		// native bytes even when the shape was otherwise valid.
+		b, _ = json.Marshal(status)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")

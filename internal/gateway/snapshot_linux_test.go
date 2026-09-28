@@ -28,6 +28,7 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 	servers := []*http.Server{}
 	var foreign atomic.Bool
 	var piBlocked atomic.Bool
+	var piStatusLeaked atomic.Bool
 	for i, m := range mappings {
 		dir, e := os.MkdirTemp("/tmp", "nah-snap-")
 		if e != nil {
@@ -49,6 +50,9 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 			}
 			if r.URL.RequestURI() == "/api/v1/onboarding/pi/status" {
 				b := `{"schema_version":1,"pi":{"state":"missing"}}`
+				if piStatusLeaked.Load() {
+					b = `{"schema_version":1,"pi":{"state":"missing","token":"private-secret"}}`
+				}
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("Content-Length", strconv.Itoa(len(b)))
 				_, _ = io.WriteString(w, b)
@@ -114,6 +118,11 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 			t.Fatalf("status %s: %d %s", id, w.Code, w.Body.String())
 		}
 	}
+	piStatusLeaked.Store(true)
+	if w := send("1", "/api/v1/onboarding/pi/status", nil); w.Code != 503 || strings.Contains(w.Body.String(), "private-secret") {
+		t.Fatalf("status leak: %d %s", w.Code, w.Body.String())
+	}
+	piStatusLeaked.Store(false)
 	piBlocked.Store(false)
 	foreign.Store(true)
 	if w := send("1", "/api/v1/snapshot", nil); w.Code != 503 || strings.Contains(w.Body.String(), "99") {

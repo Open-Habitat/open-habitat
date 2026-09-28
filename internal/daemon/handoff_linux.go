@@ -6,6 +6,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/maintainer/native-agent-host/internal/transport"
 )
@@ -34,7 +35,11 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	// The native Pi status is checked before any native workspace or history read.
 	// No positive result is retained across requests, refreshes or daemon restarts.
 	pi := &PiDevice{Home: cfg.Home, Node: "/usr/bin/node", Entry: "/opt/native-agent-host/pi/node_modules/@earendil-works/pi-coding-agent/dist/index.js", Manifest: "/opt/native-agent-host/pi/node_modules/@earendil-works/pi-coding-agent/package.json"}
-	piStatus := func() string { return pi.Status() }
+	piStatus := func(parent context.Context) string {
+		ctx, cancel := context.WithTimeout(parent, 3*time.Second)
+		defer cancel()
+		return pi.StatusContext(ctx)
+	}
 	mux.Handle("GET /api/v1/onboarding/pi/status", PiStatusHandler(cfg, server.TrustedPeer, piStatus))
 	mux.Handle(SnapshotPath, piGate(cfg, server.TrustedPeer, piStatus, SnapshotHandlerWithStatus(cfg, server.TrustedPeer, Discover, nativeStatus)))
 	mux.Handle("/api/v1/agents/", piGate(cfg, server.TrustedPeer, piStatus, HistoryHandler(cfg, server.TrustedPeer)))
