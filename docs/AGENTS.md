@@ -1,98 +1,99 @@
 # Documentation
 
-`docs/` contains the project documentation, starting at `index.md`. Edit these
-Markdown files directly. Glasspad displays this same documentation; there is no
-separate website source tree. Keep AGENTS.md and the CLAUDE.md symlink here as in
-other repository directories.
+`docs/` is the project documentation, starting at `index.md`. It is written for
+someone who wants to understand or use the system, and it is also what Glasspad
+publishes: the Markdown here is the site, there is no separate source tree. The
+pages are mostly in Finnish for Jari, with the ADRs and `evidence.md` in
+English; keep a page in the language it already has.
 
-## Writing
+## What good documentation looks like here
 
-Explain the system to someone who wants to understand or use it. Start with what
-happens: who signs in, what runs, where files live, and how the browser and terminal
-work together. Use ordinary words and concrete examples before abstractions.
-
-Preserve the reasons behind a choice. The product builds on mature open-source
-Unix/Linux systems: reuse their stable services, compose simple tools, and let
-each component manage its own behavior, data and configuration. This is the
-reason for using native components, not just a shortcut for the first version.
-Add features when a real need appears. Describe tenant separation as one deployment
-per tenant, with ordinary Linux users inside it and no host-level tenant object. A shorter text must
-not lose those reasons, examples, or important limitations.
-
-For example:
+Start with what happens: who signs in, what runs, where files live, how the
+browser and the terminal reach the same sessions. Ordinary words and a concrete
+example carry more than an abstraction:
 
 > Jari signs in through the gateway. It forwards his requests to a daemon running
 > as Linux user jari. That daemon lists his ~/src directories and reads his Pi
 > histories. He can still use the same agents through SSH and tmux.
 
-Write “read Pi's session file” instead of “reconstruct the authoritative native
-projection”. Write “questions still to answer” instead of “open decision gates”.
-Use technical terms where they clarify something; explain them on first use.
-Keep general architecture independent of particular applications. Use component
-examples briefly to illustrate a general principle, without elevating the example
-to a separate rule. Describe the design as it stands: do not imply optional
-features or extension points that have not been chosen. A workspace is always a
-directory, its settings live inside it, and there is no workspace registry.
+Write "read Pi's session file" rather than "reconstruct the authoritative native
+projection", and "questions still to answer" rather than "open decision gates".
+Process vocabulary, acceptance labels and version ceremonies displace the
+explanation the reader came for. Technical terms are fine where they clarify;
+explain them on first use.
 
-Do not put documentation-management declarations such as Authority, Updates when,
-or Not the source for on published pages. Keep maintenance instructions here.
-Avoid repeated acceptance labels, version ceremonies, and process vocabulary in
-place of an explanation. Distinguish agreed design from implemented behavior in
-plain language. Examples illustrate decisions; they do not silently add requirements.
+Keep the reasons. The product builds on mature Unix/Linux components because
+each one already manages its own behaviour, data and configuration, and
+composing them is the design, not a shortcut for a first version. Features are
+added when a real need appears. Tenant separation is one deployment per tenant
+with ordinary Linux users inside it; there is no host-level tenant object. A
+workspace is a directory whose settings live inside it; there is no workspace
+registry. Text that gets shorter but loses these reasons, or the limitations
+that go with them, has lost the wrong thing. For the same reason, describe the
+design as it stands rather than implying extension points or options nobody has
+chosen, and use a component such as Pi to illustrate a general principle
+without turning the example into a rule about that component.
 
-## Pages and updates
+The project is pre-release, and much of what the pages describe is agreed but
+not yet built. Say in plain language which is which. A mock is not an
+integration, an unverified claim is not a refuted one, and a probe that
+completed need not have confirmed its hypothesis. When you cite evidence, give
+the inspected version, the exact result link and the scope it covers, so the
+next reader can tell what was actually shown. Detailed research stays in its
+issue and is linked at an exact revision; older research is background, not the
+current design.
 
-- `index.md`: short introduction and links to useful starting points.
-- `product.md`: current product goal, working-core/full-MVP scope and success scenarios.
-- `assumptions.md`: critical claims, verification criteria, evidence and consequences.
-- `architecture.md`: how the system works, with examples and design reasons.
-- `decisions.md`: links to recorded decisions and questions still to answer.
-- `adr-NNNN-<slug>.md`: a decision, why it was made, and its tradeoffs.
-- `evidence.md`: links to research at exact revisions, including limitations.
-- `implementation.md`: what to build and what to check as it becomes usable.
-- `status.md`: what is done, what is next, and known gaps.
-- `interfaces.md`: component contracts, authority, command/event/error semantics;
-  link machine-readable contracts when the stack supplies them, do not duplicate them.
-- `ui.md`: integrated journeys, design references and review outcomes.
-- `design-system.md`: guide to the canonical design-system sources and the real
-  component catalog when it exists; do not copy token values or component APIs here.
-- `operations.md` (created by the operations task): actual installation, update,
-  rollback, live-version and recovery instructions after they are selected and verified.
+Pages are for readers, so maintenance notes such as who owns a page or when it
+is updated belong in this file, not on the published pages.
 
-Update the pages a change affects; do not rewrite the whole site for routine
-progress. Link to detailed research in its issue instead of copying it.
-Historical research is not the current design. Preserve the meaning of accepted
-decisions when editing their language; a changed decision gets a new ADR that
-the old one links to. Proposed ADRs stay proposed until the relevant human
-review is recorded. Use Git and closed issues for history.
+## The pages
 
-When updating `assumptions.md`, cite inspected versions, exact result links and
-the scope of the evidence. Unknown is not unsupported, a mock is not an
-integration test, and a completed probe need not confirm its hypothesis.
+`glasspad.yaml` lists every page with a one-line description and is the current
+map of the site. A few pages carry conventions that are not obvious from their
+names:
 
-`status.md` is a dated reader snapshot with the source revision it describes
-(not the commit that edits the page). It must not become a second schedule;
-issuectl owns executable order.
+- `decisions.md` and the `adr-NNNN-<slug>.md` pages record what Jari has agreed
+  to. An ADR stays proposed until his review is recorded. A decision that
+  changes gets a new ADR that the old one links to, rather than an edit that
+  quietly changes what was accepted. The validator requires every ADR to be
+  linked from `decisions.md`.
+- `status.md` is a dated snapshot for a reader, stamped with the source
+  revision it describes, not the commit that edits it. It is not a second
+  schedule; `issuectl` owns executable order, and a status page that tries to
+  own it drifts from the DAG.
+- `interfaces.md` and `design-system.md` explain and point at the machine
+  contracts in `contracts/v1/` and the design-system sources. Copied token
+  values or component APIs go stale the moment the source changes.
+- `logging.md` is a proposal awaiting Jari's decision, not an accepted policy.
+- `operations.md` does not exist yet. It is written when the install, update,
+  rollback and recovery procedures have been selected and verified, by the
+  `prepare-mvp-operations` issue. Host-specific facts stay in Fleetrepo because
+  this repository will be public.
+- `brand/` holds the identity brief. It is not a page and the validator does
+  not look at it.
 
-## Files and validation
+Update the pages a change actually affects; routine progress does not warrant
+rewriting the site. History lives in Git and closed issues.
 
-Documents live directly under `docs/` with assets in `assets/`. Keep the reader
-navigation in `glasspad.yaml` in sync with the pages; agent instruction files
-are not pages. `.glasspad.yaml` contains only `space_key: native-agent-host`.
+## Files, validation and publishing
 
-From the repository root:
+Pages live directly under `docs/`. `.glasspad.yaml` contains only
+`space_key: native-agent-host`; the stable key is what lets a re-publish update
+the hosted space in place instead of minting a new URL. The reader navigation in
+`glasspad.yaml` has to name exactly the pages that exist, and agent instruction
+files are not pages.
 
-```sh
-python3 scripts/validate-project-view.py
-git diff --check
-```
+From the repository root, `python3 scripts/validate-project-view.py` checks the
+required pages, navigation, local links, ADR registration and the status
+metadata, and `git diff --check` catches whitespace. Both run inside
+`scripts/ci-local.sh`.
 
-The validator checks pages, navigation, links, ADR registration and status
-metadata.
-
-Publishing to Glasspad is a separate action from landed `main`, run as
-`(cd docs && glasspad publish .)`. The installed Glasspad currently rejects
-`AGENTS.md` and the `CLAUDE.md` symlink in the source tree, so publishing needs
-viewer support for ignoring them first. Keep the files where they are; do not
-create a second documentation tree to work around the viewer, and do not claim
-a publication that did not happen.
+Publishing is a separate act from landing on `main`, run as
+`(cd docs && glasspad publish .)`. The configured target is hosted, so the
+result is a shareable link, and the pages link into issue directories that a
+reader of the link may not be able to open. Glasspad has ignored top-level
+`AGENTS.md` and the `CLAUDE.md` symlink since 0.17.5, so the earlier blocker is
+gone; the documentation has still never been published, and `index.md` and
+`status.md` still say the blocker exists. Keep the instruction files where they
+are rather than building a second tree for the viewer, and never describe a
+publication that did not happen.
