@@ -14,10 +14,11 @@ the closest approximation of a clean-checkout CI we have, and a change is ready
 to land when it passes. Read the script itself for the exact sequence. A few
 things about it are easy to misread from the outside:
 
-- It refuses to start on a dirty tree and fails at the end if anything tracked
-  changed during the run. Editing files while it runs therefore fails it; the
-  ledger in `issues/prove-jit-guest-isolation/` records that happening. Start
-  it from a committed tree and leave the tree alone until it finishes.
+- It refuses to start on a dirty tree and fails at the end if the tree is no
+  longer clean, a new untracked file included. Editing files while it runs
+  therefore fails it; the ledger in `issues/prove-jit-guest-isolation/` records
+  that happening. Start it from a committed tree and leave the tree alone until
+  it finishes.
 - It fetches its own pinned `issuectl` and requires that exact version even
   when a newer one is on the machine, and it reinstalls the web dependencies
   offline after a locked online fetch so that an incomplete lockfile fails
@@ -25,7 +26,7 @@ things about it are easy to misread from the outside:
 - It packages the release twice and compares the archives byte for byte, then
   verifies the archive in place, relocated, and tampered. Anything
   non-deterministic in the build breaks this on purpose.
-- Playwright needs its port; a failure at "port already in use" is the
+- Playwright needs its two ports; a failure at "port already in use" is the
   environment, not the change, and a rerun is the right answer.
 
 `check-licenses.py` fails the gate on any direct web dependency without license
@@ -39,14 +40,14 @@ such a dependency is a decision to raise, not a check to relax.
 checks it. The archive is what a root operator unpacks onto the test server
 through Fleetrepo's `RELEASE-UPGRADE.md`, so the systemd templates it carries are
 the effective unit files there. That is why the verifier is exact rather than
-lenient: it accepts only the reviewed set of directives in the daemon and broker
-units, rejects duplicates and whitespace variants that systemd itself would
-accept, rejects source maps and any trace of test fixtures in the web assets,
-and rejects files it has not been told about. `test-package-socket.sh` is the
-negative side of the same check, re-signing deliberately unsafe archives and
-proving they still fail. Changing a template in `systemd/` therefore means
-changing the verifier's expectations, and usually a negative case, in the same
-commit.
+lenient: it accepts only the reviewed set of directives in the broker units and
+exactly one `DirectoryMode=0710` in the daemon socket, rejects duplicates and
+whitespace variants that systemd itself would accept, rejects source maps and
+any trace of test fixtures in the web assets, and rejects files it has not been
+told about. `test-package-socket.sh` is the negative side of the same check,
+re-signing deliberately unsafe archives and proving they still fail. Changing a
+broker unit, or the daemon socket's `DirectoryMode`, therefore means changing
+the verifier's expectations, and usually a negative case, in the same commit.
 
 A verified archive says nothing about a host. The daemon socket template's
 `DirectoryMode=0710` only removes world traversal; the real isolation is a
