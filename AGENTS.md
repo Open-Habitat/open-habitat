@@ -97,7 +97,8 @@ Four things here are precious enough to state as limits, each with its reason.
   SSH agent, browser profile or credentials, for the same reason and so that
   they run on any machine. Test fixture mode (`VITE_ENABLE_TEST_FIXTURES`) never
   reaches a production build, because a fixture flag on a build meant for the
-  host would ship test seams to the internet; the gate greps `dist/` for it.
+  host would ship test seams to the internet; the gate greps `web/dist/` and
+  the packaged release for it.
 
 Worktrees, guests, release archives and temporary files are disposable and
 need nobody's permission.
