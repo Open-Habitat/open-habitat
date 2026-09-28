@@ -84,3 +84,49 @@ At committed revision `ec3fd75`, clean-tree gate
 `TMPDIR=/var/tmp PATH=/home/maintainer/Sources/native-agent-host/.tools/go/bin:$PATH ./scripts/ci-local.sh --clean --json`
 passed (`status:passed`, `clean:true`), including package release verification.
 The receipt paragraph is documentation only; it does not change runtime code.
+
+## Gateway-only conversation forwarding (taskfleet 01m3mx0v8f9pf50geysy8d21ss)
+
+Gateway routes are mounted for authenticated browser sessions: `GET/POST
+/api/v1/conversations`, `POST /api/v1/conversations/{uuid}/send`, `GET
+/api/v1/conversations/{uuid}/status`, and `POST /api/v1/conversations/{uuid}/stop`.
+This remains a **private provisional protocol**, not a published `contracts/v1/`
+browser capability or completed UI. Requests have no query parameters or alternate
+paths; create takes exactly `{"workspace_id":"ws_..."}` (bounded 1 KiB), send
+takes exactly `{"message":"...","command_id":"<fresh UUID>"}` (bounded 66
+KiB, message <= 65,536 bytes), and list/status/stop take no body. Writes require
+the current `/auth/session` CSRF value and exact origin; a CSRF token from another
+session cannot be replayed. Only server-synthesized identity, display name and a
+one-way session digest reach the daemon; browser cookies/identity headers do not.
+A broker authorize recheck precedes every socket dial; socket path/mode and peer
+are checked under the same rules as the other gateway forwarders. Replies are
+bounded, parsed and reduced to validated JSON; error text is never reflected.
+
+The gateway keeps a transient browser-session-to-conversation-ID lease table so
+one browser login cannot operate another's daemon controller. Its loss on
+restart, logout, expiry or a lost *create* acknowledgement **does not confer a
+claim to the orphan**: list hides it and a new session cannot control it. The
+lost create returns `503 control_uncertain`, not permission to retry; a UI must
+recheck the list, and if it cannot find the handle, tell the user that control
+is unknown rather than creating again. A lost *send* acknowledgement on an
+already known handle returns `503 control_uncertain`; poll that handle's status
+and native history, and **never automatically resend**. Stop returns
+`termination_unknown`, not proof that detached native tools stopped. The daemon
+still owns the process and may continue after browser disconnect. The list is
+filtered to current-session known handles, not a recovery registry. A gateway
+restart intentionally sacrifices control of in-flight children, pending a
+future explicitly designed durable/recoverable ownership protocol; native
+history remains read-only. Multiple gateway replicas are not supported by this
+in-memory lease mechanism. The daemon ignores the session digest, so the
+browser-session boundary resides in the gateway, not in the per-UID daemon.
+
+Tests use synthetic Unix listeners, browser sessions and broker mappings;
+no real credential/home, installation, browser proof or live host was used.
+Focused race tests cover forged identity headers, second-session ownership,
+wrong peer, CSRF, anonymous requests, malformed paths, lost create ack and
+status/send/stop. Independent review by gpt-6-astra found a slow-body logout
+race and HTTP/2 ingress rejection; both were corrected before the gate.
+gemini-3.8-flash returned only incomplete reasoning (no verdict). No residual
+review finding met the filing bar. No acceptance box is checked; issue remains
+open until UI, reconnect/disconnect, actual mapped-UID guest and real-agent
+browser evidence are available.
