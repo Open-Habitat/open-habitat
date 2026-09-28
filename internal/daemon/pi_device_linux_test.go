@@ -82,7 +82,9 @@ func TestPiDeviceNativeAndOwnership(t *testing.T) {
 func TestPiDeviceUnsafePaths(t *testing.T) {
 	p, home := piFixture(t)
 	p.Home = t.TempDir()
-	if _, _, err := p.Start(); err == nil { t.Fatal("mismatched HOME accepted") }
+	if _, _, err := p.Start(); err == nil {
+		t.Fatal("mismatched HOME accepted")
+	}
 	p.Home = home
 	outside := t.TempDir()
 	if err := os.Mkdir(filepath.Join(home, ".pi"), 0700); err != nil {
