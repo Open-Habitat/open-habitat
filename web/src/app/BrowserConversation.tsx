@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { useNavigate } from "react-router";
 import {
   AgentHeader,
@@ -22,15 +29,34 @@ import {
 import { piStatus, sessionCSRF } from "./pi";
 import type { Workspace } from "./snapshot";
 
+// Only ephemeral presentation state, never authority to control a session.
+export type ConversationPlace = {
+  identity: string;
+  csrf: string;
+  workspaceId: string;
+  id: string;
+  entries: HistoryEntry[];
+  next?: string;
+  unseen: number;
+  scrollTop: number;
+  focus?: {
+    start: number;
+    end: number;
+    direction: "forward" | "backward" | "none";
+  };
+};
+
 // Kept only for this browser login. An ambiguous create/send is never retried.
 export function BrowserConversation({
   workspace,
   id,
   identity,
+  place,
 }: {
   workspace: Workspace;
   id?: string;
   identity: string;
+  place: RefObject<ConversationPlace | undefined>;
 }) {
   const navigate = useNavigate();
   const [csrf, setCSRF] = useState<string>();
@@ -50,6 +76,44 @@ export function BrowserConversation({
   const alive = useRef(true);
   const generation = useRef(0);
   const feed = useRef<HTMLElement>(null);
+  const section = useRef<HTMLElement>(null);
+  const restored = useRef(false);
+  const latest = useRef({ entries, next, unseen, csrf });
+  latest.current = { entries, next, unseen, csrf };
+  // Capture before React removes the DOM, including the actual textarea selection.
+  useLayoutEffect(() => {
+    return () => {
+      const {
+        csrf: token,
+        entries: pages,
+        next: cursor,
+        unseen: count,
+      } = latest.current;
+      if (!id || !token) return;
+      const editor = section.current?.querySelector("textarea");
+      const focused = editor && document.activeElement === editor;
+      place.current = {
+        identity,
+        csrf: token,
+        workspaceId: workspace.workspace_id,
+        id,
+        entries: pages,
+        next: cursor,
+        unseen: count,
+        scrollTop: feed.current?.scrollTop ?? 0,
+        focus: focused
+          ? {
+              start: editor.selectionStart,
+              end: editor.selectionEnd,
+              direction: editor.selectionDirection as
+                | "forward"
+                | "backward"
+                | "none",
+            }
+          : undefined,
+      };
+    };
+  }, [id, identity, workspace.workspace_id, place]);
   const draftKey = csrf && id ? `nah:draft:${identity}:${csrf}:${id}` : "";
   const ambiguousKey = csrf
     ? `nah:ambiguous:${identity}:${csrf}:${id ?? workspace.workspace_id}`
@@ -72,6 +136,23 @@ export function BrowserConversation({
         if (token === "login") throw new Error("identity_lost");
         const found = await list(controller.signal);
         if (controller.signal.aborted) return;
+        const saved = place.current;
+        if (
+          saved &&
+          saved.identity === identity &&
+          saved.csrf === token &&
+          saved.workspaceId === workspace.workspace_id &&
+          saved.id === id &&
+          found.some(
+            (s) =>
+              s.agent_id === id && s.workspace_id === workspace.workspace_id,
+          )
+        ) {
+          setEntries(saved.entries);
+          setNext(saved.next);
+          setUnseen(saved.unseen);
+          restored.current = true;
+        } else place.current = undefined;
         setCSRF(token);
         setSessions(found);
         if (
@@ -96,7 +177,7 @@ export function BrowserConversation({
       ++generation.current;
       controller.abort();
     };
-  }, [id, workspace.workspace_id]);
+  }, [id, workspace.workspace_id, identity, place]);
   useEffect(() => {
     setDraft(draftKey ? (sessionStorage.getItem(draftKey) ?? "") : "");
   }, [draftKey]);
@@ -152,25 +233,27 @@ export function BrowserConversation({
       if (nextStatus.native_history === "readable") {
         const page = await readHistoryFetch(id);
         if (!alive.current || version !== generation.current) return;
-        setEntries((old) => {
-          if (page.entries.length > old.length) {
-            const scroller = feed.current;
-            if (
-              scroller &&
-              scroller.scrollHeight -
-                scroller.scrollTop -
-                scroller.clientHeight >
-                60
-            )
-              setUnseen((n) => n + page.entries.length - old.length);
-          }
-          // Keep previously loaded pages while the first page still shares its native keys.
-          return old.length > page.entries.length &&
+        const old = latest.current.entries;
+        if (page.entries.length > old.length) {
+          const scroller = feed.current;
+          if (
+            scroller &&
+            scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight >
+              60
+          )
+            setUnseen((n) => n + page.entries.length - old.length);
+        }
+        // Keep loaded pages and their cursor when the refreshed first page
+        // still shares its native keys. A new event tail must not reset pagination.
+        if (
+          !(
+            old.length > page.entries.length &&
             page.entries.every((e, i) => old[i]?.entry_key === e.entry_key)
-            ? old
-            : page.entries;
-        });
-        setNext(page.next_after);
+          )
+        ) {
+          setEntries(page.entries);
+          setNext(page.next_after);
+        }
         setHistoryError(false);
       } else {
         setHistoryError(nextStatus.native_history === "unavailable");
@@ -305,11 +388,37 @@ export function BrowserConversation({
       (s) => s.agent_id === id && s.workspace_id === workspace.workspace_id,
     );
   const canSend = controlled && !busy && !ambiguous && current.state === "idle";
+  useLayoutEffect(() => {
+    if (!restored.current) return;
+    const saved = place.current;
+    if (
+      !saved ||
+      saved.id !== id ||
+      saved.identity !== identity ||
+      saved.csrf !== csrf
+    )
+      return;
+    if (feed.current) feed.current.scrollTop = saved.scrollTop;
+    if (saved.focus && !controlled) return;
+    restored.current = false;
+    if (saved.focus) {
+      const editor = section.current?.querySelector("textarea");
+      if (editor && !editor.disabled) {
+        editor.focus({ preventScroll: true });
+        editor.setSelectionRange(
+          saved.focus.start,
+          saved.focus.end,
+          saved.focus.direction,
+        );
+      }
+    }
+    place.current = undefined;
+  }, [csrf, id, identity, controlled, place]);
   const selected = sessions.filter(
     (s) => s.workspace_id === workspace.workspace_id,
   );
   return (
-    <section>
+    <section ref={section}>
       {!id ? (
         <>
           <h2>Pi-keskustelut</h2>

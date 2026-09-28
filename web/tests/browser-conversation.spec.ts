@@ -121,6 +121,118 @@ test("@browser-conversation uncertain send survives reload without duplicate", a
   });
 });
 
+test("@browser-conversation revalidation restores editor selection, paged reading place and live tail", async ({
+  page,
+}) => {
+  await page.clock.install();
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await expect(editor).toBeVisible();
+  const agent = new URL(page.url()).searchParams.get("conversation");
+  expect(agent).toMatch(/^pi:/);
+  let tail = 0;
+  let count = 25;
+  let statusRequests = 0;
+  await page.route("**/api/v1/conversations/*/status", async (route) => {
+    statusRequests++;
+    const response = await route.fetch();
+    const data = await response.json();
+    await route.fulfill({
+      response,
+      json: {
+        ...data,
+        native_history: "readable",
+        native_revision: "synthetic-1",
+        event_cursor: tail,
+        events: tail ? [{ kind: "synthetic-update" }] : [],
+      },
+    });
+  });
+  await page.route("**/api/v1/agents/*/history?*", async (route) => {
+    const after = new URL(route.request().url()).searchParams.get("after");
+    const start = after ? 25 : 0;
+    const limit = count === 51 && !after ? 51 : 25;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        schema_version: 1,
+        agent_id: agent,
+        native_revision: "synthetic-1",
+        entries: Array.from(
+          { length: Math.max(0, Math.min(count, start + limit) - start) },
+          (_, offset) => ({
+            entry_key: `item-${start + offset}`,
+            kind: "user",
+            content: {
+              media_type: "text/plain",
+              text: `Viesti ${start + offset} · ${"teksti ".repeat(30)}`,
+              complete: true,
+            },
+          }),
+        ),
+        complete: count <= start + limit,
+        ...(count > start + limit ? { next_after: "page-2" } : {}),
+      }),
+    });
+  });
+  count = 50;
+  await page.getByRole("button", { name: "Tarkista tila ja historia" }).click();
+  await expect(page.locator(".ah-feed li")).toHaveCount(25);
+  await page
+    .getByRole("button", { name: "Lataa seuraava historiasivu" })
+    .click();
+  await expect(page.locator(".ah-feed li")).toHaveCount(50);
+  const feed = page.locator("section:has(> .ah-timeline)").last();
+  await feed.evaluate((node) => {
+    node.scrollTop = Math.min(350, node.scrollHeight - node.clientHeight);
+  });
+  const before = await feed.evaluate((node) => node.scrollTop);
+  expect(before).toBeGreaterThan(0);
+  await editor.fill("kesken oleva viesti");
+  await editor.evaluate((node: HTMLTextAreaElement) => {
+    node.focus();
+    node.setSelectionRange(4, 9);
+  });
+  // Cross the real App 30-second interval without waiting in wall time.
+  tail = 1;
+  await page.clock.fastForward(30_000);
+  await expect(page.locator(".ah-feed li")).toHaveCount(50);
+  await expect(
+    page.getByText("Viimeisimmät live-tapahtumat (1)"),
+  ).toBeVisible();
+  await expect(editor).toBeFocused();
+  await expect(editor).toHaveValue("kesken oleva viesti");
+  expect(
+    await editor.evaluate((node: HTMLTextAreaElement) => [
+      node.selectionStart,
+      node.selectionEnd,
+    ]),
+  ).toEqual([4, 9]);
+  expect(await feed.evaluate((node) => node.scrollTop)).toBeCloseTo(before, 0);
+  expect(
+    await page
+      .getByRole("button", { name: "Lataa seuraava historiasivu" })
+      .count(),
+  ).toBe(0);
+  // An incoming native entry while reading must be signalled, not jump to the bottom.
+  count = 51;
+  await page.getByRole("button", { name: "Tarkista tila ja historia" }).click();
+  await expect(
+    page.getByRole("button", { name: "Uutta sisältöä (1)" }),
+  ).toBeVisible();
+  expect(await feed.evaluate((node) => node.scrollTop)).toBeCloseTo(before, 0);
+  await page.getByRole("button", { name: "Tilivalikko" }).click();
+  await page.getByRole("menuitem", { name: "Asetukset" }).click();
+  await expect(page).toHaveURL(/\/settings/);
+  const stoppedAt = statusRequests;
+  await page.clock.fastForward(30_000);
+  expect(statusRequests).toBe(stoppedAt);
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toHaveCount(0);
+});
+
 test("@browser-conversation malformed host status fails closed without rendering HTML", async ({
   page,
 }) => {

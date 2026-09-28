@@ -21,7 +21,10 @@ import {
 import { accountLabel } from "../components/Account";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import { HistoryView } from "./HistoryView";
-import { BrowserConversation } from "./BrowserConversation";
+import {
+  BrowserConversation,
+  type ConversationPlace,
+} from "./BrowserConversation";
 import { PiOnboarding } from "./PiOnboarding";
 import { piStatus } from "./pi";
 import {
@@ -123,6 +126,9 @@ export function App() {
   const [logoutError, setLogoutError] = useState(false);
   const [settingsReturn, setSettingsReturn] = useState("/workspaces");
   const returningFromSettings = useRef(false);
+  // Memory-only reading place. The authenticated snapshot is still removed during
+  // revalidation; only the same browser login may restore this ephemeral UI state.
+  const conversationPlace = useRef<ConversationPlace | undefined>(undefined);
   useEffect(() => {
     if (location.pathname !== "/settings" && returningFromSettings.current) {
       returningFromSettings.current = false;
@@ -143,6 +149,7 @@ export function App() {
       setSettingsReturn("/workspaces");
       returningFromSettings.current = false;
       setExpanded({});
+      conversationPlace.current = undefined;
     }
     if (identity) priorIdentity.current = identity;
   }, [identity, phase]);
@@ -243,6 +250,7 @@ export function App() {
     // Hide every identity-scoped fact before the first write or new login.
     for (const key of Object.keys(sessionStorage))
       if (key.startsWith(`nah:`)) sessionStorage.removeItem(key);
+    conversationPlace.current = undefined;
     dispatch(clearIdentity());
     navigate("/workspaces", { replace: true });
     try {
@@ -417,6 +425,7 @@ export function App() {
                 : undefined
             }
             identity={identity}
+            place={conversationPlace}
           />
         ) : null}
         {source !== "confirmed" ? (
