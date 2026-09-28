@@ -2,11 +2,13 @@
 created: 2026-09-28
 updated: 2026-09-28
 type: feature
-status: open
+status: in-progress
 priority: high
 related: ['@design-first-use-onboarding']
 lane: pi-auth-adapter
 collision: [internal/daemon/, web/package.json]
+originating_run: 01m3k7ak85b90d2gb3ry7xbg5m
+originating_run_kind: spinoff
 ---
 
 # Add native Pi device-code daemon adapter
