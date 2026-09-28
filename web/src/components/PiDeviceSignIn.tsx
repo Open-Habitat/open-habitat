@@ -72,6 +72,7 @@ export function PiDeviceSignIn({
   // The feedback is associated with the code, so a replaced attempt never shows stale copy success.
   const [copy, setCopy] = useState<{ code: string; message: string }>();
   const active = view.phase === "ready" || view.phase === "pending";
+  const cancellable = active || view.phase === "waiting";
   const uri = active ? safeVerificationUri(view.verificationUri) : undefined;
   const usable = active && Boolean(uri && view.userCode);
   const outcome =
@@ -154,7 +155,7 @@ export function PiDeviceSignIn({
         <p>{outcome?.detail}</p>
       )}
       <div className={styles.actions}>
-        {active ? (
+        {cancellable ? (
           onCancel ? (
             <Button
               label="Peruuta kirjautumisyritys"

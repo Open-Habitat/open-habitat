@@ -165,11 +165,18 @@ export function PiOnboarding({
       <PiDeviceSignIn
         view={view}
         onCancel={
-          view.phase === "ready" || view.phase === "pending"
+          bound.current &&
+          (view.phase === "ready" ||
+            view.phase === "pending" ||
+            view.phase === "waiting")
             ? () => action("DELETE")
             : undefined
         }
-        onRetry={!busy && bound.current ? () => action("POST") : undefined}
+        onRetry={
+          !busy && bound.current && view.phase !== "waiting"
+            ? () => action("POST")
+            : undefined
+        }
       />
       <p>
         Kirjautumisen tila tarkistetaan Pi:ltä. Vahvistussivun avaaminen ei

@@ -97,6 +97,25 @@ describe("Pi device sign-in presentation", () => {
     }
   });
 
+  it("permits cancellation while the native helper prepares a code, without offering a duplicate start", async () => {
+    const user = userEvent.setup();
+    const cancel = vi.fn();
+    const view = render(
+      <PiDeviceSignIn
+        view={{ phase: "waiting" }}
+        onCancel={cancel}
+        onRetry={() => {}}
+      />,
+    );
+    expect(
+      view.queryByRole("button", { name: "Aloita uusi yritys" }),
+    ).toBeNull();
+    await user.click(
+      view.getByRole("button", { name: "Peruuta kirjautumisyritys" }),
+    );
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
   it("supports keyboard cancel and retry without changing server-owned state", async () => {
     const user = userEvent.setup();
     const cancel = vi.fn();
