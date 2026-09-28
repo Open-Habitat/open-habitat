@@ -24,8 +24,9 @@ the same actors, policy and expected observables. `scenarios.json` and
 that a particular candidate fares better silently destroys the comparison, and
 the result states in `candidate-result-schema.json` exist so that gaps are
 reported as `delegated`, `not_exercised` or `not_applicable` instead of being
-filled with success. Those three states carry no score; a delegated operation
-names the component that supplied it.
+filled with success. `not_exercised` and `not_applicable` carry no score; a
+delegated operation names the component that supplied it and, per §7.6, scores
+at most 2.
 
 **Honest failure semantics.** `FakeOrchestrator` is the only thing that
 creates, stops or removes a runtime or workspace, and its timeout modes leave
@@ -53,8 +54,9 @@ Remove the directory afterwards.
 **Evidence that can be trusted later.** `EvidenceStore` keeps native events
 and normalized observations side by side, hash-chains events per attempt, and
 `verify_bundle` rejects tampering. Bundles are sanitized before writing, but
-`sanitize` works by key name (keys ending in token, secret, password or
-credential) and by an absolute-path regex; it does not inspect values. That is
+`sanitize` works by key name (keys in which token, secret, password or
+credential is followed by `_` or ends the key) and by an absolute-path regex;
+it does not inspect values. That is
 adequate for synthetic data and would not be adequate for evidence from a real
 candidate. Timestamps are caller-supplied so tests never read the clock, and
 `version-manifest.json` records the contract versions a later subject manifest
@@ -63,9 +65,10 @@ tests together, or old bundles stop being interpretable.
 
 ## Things the code does not say out loud
 
-- The self-tests are not part of `scripts/ci-local.sh`. The only way they run
-  is this command from the repository root, and the environment variable keeps
-  `__pycache__` out of a tree that does not ignore it:
+- The self-tests are not part of `scripts/ci-local.sh`. They run only when
+  invoked by hand, with this command from the repository root, and the
+  environment variable keeps `__pycache__` out of a tree that does not ignore
+  it:
 
   ```sh
   PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s benchmarks/agent-host -p 'test_*.py' -v
