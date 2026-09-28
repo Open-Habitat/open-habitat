@@ -105,12 +105,16 @@ func (p *PiDevice) Start() (string, <-chan PiDeviceEvent, error) {
 			emit(PiDeviceEvent{Type: "unknown"})
 			return
 		}
-		state, err := p.status()
-		if err != nil || state != "usable" {
+		state, err := p.status(ctx)
+		p.mu.Lock()
+		// Serialize the final decision with Cancel: an accepted cancellation
+		// cannot be followed by an attempt-success event.
+		if err != nil || state != "usable" || ctx.Err() != nil {
 			emit(PiDeviceEvent{Type: "unknown"})
-			return
+		} else {
+			emit(PiDeviceEvent{Type: "status", State: "usable"})
 		}
-		emit(PiDeviceEvent{Type: "status", State: "usable"})
+		p.mu.Unlock()
 	}()
 	return id, events, nil
 }
@@ -131,14 +135,14 @@ func (p *PiDevice) Status() string {
 	if err := p.validate(); err != nil {
 		return "unknown"
 	}
-	state, err := p.status()
+	state, err := p.status(context.Background())
 	if err != nil {
 		return "unknown"
 	}
 	return state
 }
-func (p *PiDevice) status() (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+func (p *PiDevice) status(parent context.Context) (string, error) {
+	ctx, cancel := context.WithTimeout(parent, 15*time.Second)
 	defer cancel()
 	result, err := p.run(ctx, "status", func(PiDeviceEvent) {})
 	if err != nil || result.Type != "status" {

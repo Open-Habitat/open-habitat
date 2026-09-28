@@ -17,7 +17,9 @@ try {
   if (action !== 'login' && action !== 'status') throw new Error('invalid action');
   if (JSON.parse(readFileSync(manifest, 'utf8')).version !== '0.85.1') throw new Error('unsupported Pi version');
   const { ModelRuntime } = await import(pathToFileURL(entry).href);
-  const runtime = await ModelRuntime.create({ allowModelNetwork: false, modelsPath: null });
+  // Avoid Pi's create-time scan of unrelated providers (which can execute
+  // configured API-key shell resolvers). Login synchronizes its own provider.
+  const runtime = await ModelRuntime.create({ allowModelNetwork: false, refreshOnCreate: false, modelsPath: null, signal: abort.signal });
   if (action === 'status') {
     const credentials = await runtime.listCredentials({ signal: abort.signal });
     if (!credentials.some(c => c.providerId === 'openai-codex' && c.type === 'oauth')) {
@@ -25,7 +27,7 @@ try {
     } else {
       // checkAuth only checks the stored type; getAuth resolves/refreshes expiry.
       const resolved = await runtime.getAuth('openai-codex', {signal: abort.signal});
-      send({type: 'status', state: resolved ? 'usable' : 'unknown'});
+      send({type: 'status', state: typeof resolved?.auth?.apiKey === 'string' && resolved.auth.apiKey.length > 0 ? 'usable' : 'unknown'});
     }
   } else {
     await runtime.login('openai-codex', 'oauth', {

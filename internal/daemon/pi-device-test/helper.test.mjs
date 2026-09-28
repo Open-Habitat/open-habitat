@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
-import {mkdtemp, readFile, stat, symlink, mkdir, rm} from 'node:fs/promises';
+import {mkdtemp, readFile, writeFile, stat, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {resolve,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -33,6 +33,10 @@ test('native device-code exchange, native file and redacted frames under disposa
     assert.ok(!login.stdout.includes('SYNTHETIC-REFRESH-SECRET'));
     assert.ok(!login.stdout.includes('synthetic-code'));
     assert.deepEqual((await run(home,'status')).frames,[{type:'status',state:'usable'}]);
+    const malformed=JSON.parse(auth);
+    malformed['openai-codex'].access='';
+    await writeFile(join(home,'.pi/agent/auth.json'),JSON.stringify(malformed),{mode:0o600});
+    assert.deepEqual((await run(home,'status')).frames,[{type:'status',state:'unknown'}]);
   } finally { await rm(home,{recursive:true,force:true}); }
 });
 test('loss of parent lifetime pipe aborts a pending poll without writing auth',async()=>{
