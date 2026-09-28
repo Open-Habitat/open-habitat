@@ -78,10 +78,10 @@ rewriting the site. History lives in Git and closed issues.
 ## Files, validation and publishing
 
 Pages live directly under `docs/`. `.glasspad.yaml` contains only
-`space_key: native-agent-host`; the stable key is what lets a re-publish update
-the hosted space in place instead of minting a new URL. The reader navigation in
-`glasspad.yaml` has to name exactly the pages that exist, and agent instruction
-files are not pages.
+`space_key: native-agent-host`; the stable key is what lets a re-publish from
+any checkout update the hosted space in place instead of minting a new URL. The
+reader navigation in `glasspad.yaml` has to name exactly the pages that exist,
+and agent instruction files are not pages.
 
 From the repository root, `python3 scripts/validate-project-view.py` checks the
 required pages, navigation, local links, ADR registration and the status
