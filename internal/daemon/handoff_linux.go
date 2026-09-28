@@ -51,5 +51,9 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(SnapshotPath, piGate(cfg, server.TrustedPeer, piStatus, SnapshotHandlerWithStatus(cfg, server.TrustedPeer, Discover, nativeStatus)))
 	mux.Handle("/api/v1/agents/", piGate(cfg, server.TrustedPeer, piStatus, HistoryHandler(cfg, server.TrustedPeer)))
 	mux.Handle("/api/v1/content/", piGate(cfg, server.TrustedPeer, piStatus, HistoryHandler(cfg, server.TrustedPeer)))
+	controller := newConversationController(ctx, cfg, runtime, server.TrustedPeer, piStatus)
+	mux.Handle("/api/v1/conversations", controller)
+	mux.Handle("/api/v1/conversations/", controller)
+	defer controller.shutdown()
 	return server.ServeMux(ctx, listener, mux)
 }

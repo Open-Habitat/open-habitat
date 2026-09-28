@@ -252,7 +252,13 @@ The result is one fast-building static host artifact with an explicit
 least-privilege split and direct child ownership. Go's GC and runtime must be
 measured under long histories and concurrent agents. OAuth scope breadth and
 headless `gh` storage must be shown honestly. Active turns survive browser and
-gateway loss, not daemon or host loss.
+gateway loss, not daemon or host loss. The mapped daemon now has a private,
+TrustedPeer-only fresh Pi controller, keyed by native session ID. Its in-memory
+handles and bounded event tail survive HTTP disconnect but not daemon restart;
+Pi JSONL is the only history authority after a crash. An uncertain send or stop
+is never retried or described as terminated. The controller does not resume an
+old session or transfer a terminal TUI writer. The gateway must explicitly add
+an authenticated CSRF-protected route before any browser can use it.
 
 ## Rejected alternatives
 

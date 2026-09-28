@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,8 +17,8 @@ import (
 	"time"
 )
 
-// piRPC is a private, bounded native-protocol probe. It is not yet a web
-// controller: in particular its in-process ownership does not fence a TUI.
+// piRPC is a private, bounded native-protocol transport. The daemon's fresh
+// browser-owned controller uses it; it does not fence a terminal TUI.
 // A caller must not expose it as an agent capability until that fence exists.
 type piRPC struct {
 	cmd      *exec.Cmd
@@ -32,16 +33,14 @@ type piRPC struct {
 	poisoned bool // guarded by mu
 }
 
-// launchPiRPC is private: no caller may expose it before a known-owner fence
-// and native-history reconciliation exist. Resume is refused entirely; a
-// native path alone never establishes old-writer absence or settlement.
+// launchPiRPC is a fixture bridge. The production controller requires a fresh
+// ownership ID and workspace descriptor. Resume is refused entirely.
 func launchPiRPC(binary, home, cwd, sessionFile string, env []string) (*piRPC, error) {
 	return launchPiRPCWithOwnership(binary, home, cwd, sessionFile, env, nil)
 }
 
-// launchPiRPCWithOwnership is an internal fixture-level bridge. The caller
-// must bind the lock's session ID to the native session before using it for
-// control. No production caller does so yet; this is not restart resume.
+// launchPiRPCWithOwnership is an internal fixture-level bridge. Production
+// uses launchPiRPCCommand with a checked workspace descriptor.
 func launchPiRPCWithOwnership(binary, home, cwd, sessionFile string, env []string, owner *piOwnership) (*piRPC, error) {
 	if home == "" || cwd == "" || binary == "" || !filepath.IsAbs(binary) || !filepath.IsAbs(home) || !filepath.IsAbs(cwd) || os.Geteuid() == 0 {
 		return nil, errors.New("invalid Pi launch context or UID")
@@ -49,10 +48,32 @@ func launchPiRPCWithOwnership(binary, home, cwd, sessionFile string, env []strin
 	if sessionFile != "" {
 		return nil, errors.New("resume requires native owner reconciliation")
 	}
-	args := []string{"--mode", "rpc"}
-	cmd := exec.Command(binary, args...)
-	cmd.Dir = cwd
+	return launchPiRPCCommand(binary, nil, home, cwd, env, owner, nil)
+}
+
+// launchPiRPCCommand only creates a fresh session. The generated ID is passed
+// to Pi's --session-id (not --session, which can reopen an existing writer).
+func launchPiRPCCommand(binary string, prefix []string, home, cwd string, env []string, owner *piOwnership, workspace *os.File) (*piRPC, error) {
+	args := append(append([]string{}, prefix...), "--mode", "rpc")
 	if owner != nil {
+		if owner.file == nil || !sessionIDPattern.MatchString(owner.id) {
+			return nil, errors.New("Pi owner unavailable")
+		}
+		args = append(args, "--session-id", owner.id)
+	}
+	cmd := exec.Command(binary, args...)
+	if workspace != nil {
+		if owner == nil {
+			return nil, errors.New("workspace requires ownership")
+		}
+		cmd.ExtraFiles = []*os.File{owner.file, workspace}
+		// os/exec chdirs before installing ExtraFiles in the child. Resolve
+		// the parent's held descriptor while Start is in progress instead.
+		cmd.Dir = fmt.Sprintf("/proc/%d/fd/%d", os.Getpid(), workspace.Fd())
+	} else {
+		cmd.Dir = cwd
+	}
+	if owner != nil && workspace == nil {
 		if owner.file == nil {
 			return nil, errors.New("Pi owner lock unavailable")
 		}
@@ -135,9 +156,8 @@ func (p *piRPC) read() {
 
 // request serializes writes and waits for Pi's correlated acknowledgement.
 // A timeout or broken pipe is uncertain, not a rejection: callers must never
-// retry the prompt automatically. The reader routes native events to a separate
-// bounded queue. A future controller must drain it continuously: overflow
-// poisons the transport rather than silently losing agent activity.
+// retry the prompt automatically. The controller drains native events from a
+// separate bounded queue; overflow poisons the transport.
 func (p *piRPC) request(kind, message string, timeout time.Duration) (bool, error) {
 	if kind != "get_state" && kind != "prompt" {
 		return false, errors.New("unsupported Pi RPC request")

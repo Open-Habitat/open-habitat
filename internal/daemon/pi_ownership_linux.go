@@ -13,7 +13,10 @@ import (
 // piOwnership is a private per-UID/session advisory writer fence. The lock FD
 // must be inherited by the direct child: daemon death must not free the fence
 // while Pi is still running. It is NOT a census of terminal Pi or detached tools.
-type piOwnership struct{ file *os.File }
+type piOwnership struct {
+	file *os.File
+	id   string
+}
 
 func acquirePiOwnership(runtime, id string) (*piOwnership, error) {
 	if !sessionIDPattern.MatchString(id) || !filepath.IsAbs(runtime) || os.Geteuid() == 0 {
@@ -66,7 +69,7 @@ func acquirePiOwnership(runtime, id string) (*piOwnership, error) {
 		f.Close()
 		return nil, errors.New("Pi owner lock changed")
 	}
-	return &piOwnership{file: f}, nil
+	return &piOwnership{file: f, id: id}, nil
 }
 
 func (o *piOwnership) release() error { return o.file.Close() }

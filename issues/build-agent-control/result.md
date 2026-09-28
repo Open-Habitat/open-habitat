@@ -31,3 +31,34 @@ Independent focused security/runtime review of the diff: Claude Fable 5.1 invoca
 **Next exact walking slice:** bind a fresh Pi session to one verified mapped workspace and daemon-owned controller, enforce Pi onboarding and per-UID capacity, and expose a bounded authenticated/CSRF-protected create/send/status route through the gateway; read Pi's native history on reconnect without retrying uncertain sends. Add SSE or bounded resnapshot of live events, production UI interaction, cross-UID synthetic browser tests and disconnect/crash evidence before calling it a usable browser conversation. Visual evidence and Jari's verdict belong after this path exists, not in this private-transport increment.
 
 Clean committed-tree gate at `3a68d3d`: `PATH=/home/maintainer/Sources/native-agent-host/.tools/go/bin:$PATH TMPDIR=/var/tmp ./scripts/ci-local.sh --clean --json` exited 0 (`status:passed`, `clean:true`). This gate includes the private transport code and its tests, not a browser controller; this receipt-only addition makes no runtime change.
+
+## Mapped-UID private conversation controller increment (2026-09-28)
+
+A new daemon-only `/api/v1/conversations` handler is mounted on the existing
+pre-opened per-UID Unix listener, behind `TrustedPeer` and the same-user Pi
+onboarding check. It has **no gateway forwarder, public route, contract or UI**.
+It creates only fresh Pi `--session-id` sessions in a freshly discovered,
+openat2-verified workspace; it rejects stale/replaced workspace inodes. It
+launches the pinned Pi CLI bundle (not the SDK export), owns one native RPC
+child per conversation independently of HTTP requests, uses correlated native
+acknowledgements, records pending/accepted/rejected/uncertain, and rejects
+repeated command IDs without retry. GET list recovers in-memory handles after
+lost create responses; GET status gives a capped live event tail, loss marker,
+and freshly read native Pi JSONL revision/history query. Stop and exit report
+uncertain termination, never confirmed tool cleanup. Limits: four live children,
+128 lifetime session handles, 128 command IDs per handle, 64 retained events
+per handle and truncated large event views. Revocation/shutdown closes handles;
+terminal history remains read-only and restart never authorizes takeover.
+
+The next gateway slice must add explicit `/api/v1/conversations` create/list,
+`/{id}/send`, `/{id}/status`, `/{id}/stop` authenticated+CSRF-checked forwarders
+that synthesize daemon identity headers (never forward browser identity), bound
+request/response bodies, and map lost requests to uncertainty; then add the
+browser interaction and browser disconnect/reconnect evidence. The controller's
+wire shape is deliberately private and **not** a published v1 browser contract.
+The live event tail is a bounded status resnapshot, not SSE replay. Command IDs
+are unique only for this daemon lifetime, so after a crash the native history
+is read-only and outstanding sends remain uncertain. No cross-terminal/two
+independent-writer support, automatic retry, generic cgroup, or confirmed native
+tool termination is claimed. No real home/credentials, OAuth, live host, or
+root service was touched. No acceptance criterion checked; issue stays open.

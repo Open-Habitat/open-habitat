@@ -56,11 +56,28 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(home, ".pi", "agent", "models.json"), data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	wrapper := filepath.Join(home, "pi-fixture")
-	if err := os.WriteFile(wrapper, []byte("#!/bin/sh\nexec '"+binary+"' --provider fixture --model fake \"$@\"\n"), 0700); err != nil {
+	// Invoke the same Node CLI bundle as production, not the SDK export module.
+	cli := filepath.Join("pi-device-test", "node_modules", "@earendil-works", "pi-coding-agent", "dist", "bundle", "cli.js")
+	cli, err = filepath.Abs(cli)
+	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := launchPiRPC(wrapper, home, cwd, "", []string{"PATH=/usr/bin:/bin"})
+	runtime := filepath.Join(home, "run")
+	if err := os.Mkdir(runtime, 0700); err != nil {
+		t.Fatal(err)
+	}
+	id, _ := uuid()
+	owner, err := acquirePiOwnership(runtime, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.release()
+	ws, err := os.Open(cwd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ws.Close()
+	p, err := launchPiRPCCommand("/usr/bin/node", []string{cli, "--provider", "fixture", "--model", "fake"}, home, cwd, []string{"PATH=/usr/bin:/bin"}, owner, ws)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,8 +106,8 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 	}
 	// Pi nests histories by cwd; scan through the same native reader as production.
 	sessions, err := nativeSessions(transport.Config{Home: home, UID: os.Geteuid()})
-	if err != nil || len(sessions) != 1 {
-		t.Fatalf("native history: %d sessions, %v", len(sessions), err)
+	if err != nil || len(sessions) != 1 || sessions[0].id != id || sessions[0].cwd != cwd {
+		t.Fatalf("native history: %+v, %v", sessions, err)
 	}
 	session := readNativeSettled(sessions[0].path, os.Geteuid())
 	if session.state != "readable" {

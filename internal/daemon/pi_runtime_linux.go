@@ -105,13 +105,14 @@ func (p *PiDevice) validateRuntime() error {
 		return errors.New("invalid runtime manifest")
 	}
 	var manifest struct {
-		Name    string `json:"name"`
-		Version string `json:"version"`
+		Name    string            `json:"name"`
+		Version string            `json:"version"`
+		Bin     map[string]string `json:"bin"`
 		Exports map[string]struct {
 			Import string `json:"import"`
 		} `json:"exports"`
 	}
-	if json.Unmarshal(data, &manifest) != nil || manifest.Name != "@earendil-works/pi-coding-agent" || manifest.Version != "0.85.1" || manifest.Exports["."].Import != "./dist/index.js" {
+	if json.Unmarshal(data, &manifest) != nil || manifest.Name != "@earendil-works/pi-coding-agent" || manifest.Version != "0.85.1" || manifest.Exports["."].Import != "./dist/index.js" || manifest.Bin["pi"] != "dist/bundle/cli.js" {
 		return errors.New("unsupported Pi SDK")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)

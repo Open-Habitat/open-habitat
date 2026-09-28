@@ -31,6 +31,7 @@ type Workspace struct {
 	WorkspaceID string
 	DisplayName string
 	Error       string // generic reason only
+	dev, ino    uint64 // private observation, never serialized as a browser identity
 }
 
 const maxEntries = 512
@@ -170,6 +171,7 @@ func scan(home string, uid int, op openFunction) Discovery {
 			result.Entries = append(result.Entries, w)
 			continue
 		}
+		w.dev, w.ino = uint64(initial.Dev), initial.Ino
 		w.Metadata, w.WorkspaceID, w.DisplayName = metadata(op, child)
 		w.Kind = gitKind(op, src, child, home, name)
 		after, err := dir(op, src, name, true)
