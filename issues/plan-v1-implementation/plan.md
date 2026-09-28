@@ -1,9 +1,12 @@
 # Polku ensimmäiseen toimivaan MVP:hen
 
 Jari hyväksyi tämän vaiheistuksen suunnan 2026-09-21 ja pyysi valmistelemaan
-polun muiden agenttien kuljettavaksi. Tässä kuvataan vaiheiden tarkoitus ja
-tulokset. Issuectl omistaa tehtävien ajantasaiset tilat, lanet, riippuvuudet ja
-ajettavuuden. Tämä dokumentti ei ole toinen työjono.
+polun muiden agenttien kuljettavaksi. **2026-09-28 hän poisti lopullisen MVP-
+hyväksyntäportin**: tuotetta viedään eteenpäin havainto ja rajattu katselmointi
+kerrallaan, ilman selkeää lopullista MVP-rajaa. Alla olevat vaiheet ovat
+historiallinen suunnitelma, eivät nykyinen hyväksyntäehto. Issuectl omistaa
+tehtävien ajantasaiset tilat, lanet, riippuvuudet ja ajettavuuden. Tämä
+dokumentti ei ole toinen työjono.
 
 Suunnitelman hyväksyminen ei tarkoita vielä teknologiavalintojen, keskustelun
 avoimien toimintojen tai tuotantodeploymentin hyväksymistä. Työntekijä toteuttaa

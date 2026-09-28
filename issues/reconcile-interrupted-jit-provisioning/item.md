@@ -1,13 +1,16 @@
 ---
 created: 2026-09-27
-updated: 2026-09-27
+updated: 2026-09-28
 type: task
-status: untriaged
+status: wontfix
 priority: normal
 provenance: other
 source_ref: taskfleet:01m3h4wk5gzvn6hyhf9f4z9vmt/operator-reconciliation
 originating_run: 01m3h4wk5gzvn6hyhf9f4z9vmt
 originating_run_kind: spinoff
+closed: 2026-09-28
+disposition_note: Jari decided the unlikely interrupted first-user provision does not justify a separate recovery project. Keep pending-state fail-closed; do not clear its marker or retry ambiguous host phases. Reopen only after an observed interruption or a concrete availability requirement warrants exact phase/identity-verified idempotent recovery.
+disposition_reason: wontfix
 ---
 
 # Assess safe idempotent retry of interrupted JIT provisioning
@@ -31,3 +34,9 @@ Related parent: @prove-jit-guest-isolation. The original review proposed a root-
 ### 2026-09-27T18:06:13Z · @jari
 
 2026-09-27: Interrupted first-user provisioning is too unlikely to warrant an operator recovery procedure. Only consider phases that can safely be recognized as already done and retried/resumed; if that is not feasible, do not implement recovery. A crashed server need not report an error to the disconnected request. Keep fail-closed behavior rather than blindly accepting existing account paths or clearing the pending marker.
+
+## Comments
+
+### 2026-09-28T12:10:54Z · @intake
+
+Rejected (wontfix): Jari decided the unlikely interrupted first-user provision does not justify a separate recovery project. Keep pending-state fail-closed; do not clear its marker or retry ambiguous host phases. Reopen only after an observed interruption or a concrete availability requirement warrants exact phase/identity-verified idempotent recovery.

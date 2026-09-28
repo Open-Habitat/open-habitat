@@ -1,13 +1,15 @@
 ---
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-28
 type: task
-status: open
+status: obsolete
 priority: normal
 epic: native-agent-host-architecture
 labels: [human-review]
 reviewer: jari
 blocked_by: ['@verify-v1-resilience']
+closed: 2026-09-28
+closed_by: jari
 ---
 
 # Review the complete desktop MVP and pilot results with Jari
@@ -35,3 +37,9 @@ workspace registry, credential broker or speculative cache. Desktop first, one s
 ## Execution
 
 This issue deliberately has no lane and carries `human-review`. The stint conductor handles it with Jari after its blockers deliver; never spawn it as a worker. If changes are requested, schedule bounded correction work and add it as a blocker. Keep this gate open until the actual decision is recorded.
+
+## Resolution
+
+### 2026-09-28T12:10:54Z · @jari
+
+Jari no longer wants a fixed MVP completion boundary or a final whole-system acceptance gate. Continue the product through observation-by-observation review and corrections, including specific UI and safety checks in their own issues; do not treat closure as acceptance of unfinished functionality.
