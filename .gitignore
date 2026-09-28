@@ -6,6 +6,7 @@ history/
 .tools/
 dist/
 web/node_modules/
+internal/daemon/pi-device-test/node_modules/
 web/dist/
 web/storybook-static/
 web/test-results/

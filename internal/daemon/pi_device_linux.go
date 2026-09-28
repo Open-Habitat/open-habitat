@@ -1,0 +1,241 @@
+//go:build linux
+
+package daemon
+
+import (
+	"bufio"
+	"context"
+	"crypto/rand"
+	_ "embed"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
+	"syscall"
+	"time"
+)
+
+//go:embed pi_device_helper.mjs
+var piDeviceHelper string
+
+// PiDevice runs the pinned native Pi SDK as the daemon's own Unix UID.
+// Entry and Manifest are trusted deployment paths, never browser-supplied.
+type PiDevice struct {
+	Home, Node, Entry, Manifest string
+	mu                          sync.Mutex
+	active                      string
+	cancel                      context.CancelFunc
+}
+type PiDeviceEvent struct {
+	Type            string `json:"type"`
+	State           string `json:"state,omitempty"`
+	VerificationURI string `json:"verificationUri,omitempty"`
+	UserCode        string `json:"userCode,omitempty"`
+}
+
+func (p *PiDevice) validate() error {
+	if p.Home == "" || !filepath.IsAbs(p.Home) || !filepath.IsAbs(p.Node) || !filepath.IsAbs(p.Entry) || !filepath.IsAbs(p.Manifest) || os.Geteuid() == 0 {
+		return errors.New("invalid Pi device configuration or UID")
+	}
+	if os.Getenv("HOME") != p.Home {
+		return errors.New("daemon HOME mismatch")
+	}
+	// Pi's native auth storage follows symlinks and does not repair old file modes.
+	// Refuse unsafe existing paths rather than modifying another provider's credentials.
+	for i, path := range []string{p.Home, filepath.Join(p.Home, ".pi"), filepath.Join(p.Home, ".pi", "agent"), filepath.Join(p.Home, ".pi", "agent", "auth.json")} {
+		st, err := os.Lstat(path)
+		if errors.Is(err, os.ErrNotExist) && i > 0 {
+			continue
+		}
+		if err != nil {
+			return errors.New("unsafe Pi credential path")
+		}
+		if st.Mode()&os.ModeSymlink != 0 || st.Sys().(*syscall.Stat_t).Uid != uint32(os.Geteuid()) {
+			return errors.New("unsafe Pi credential path")
+		}
+		if i < 3 && (!st.IsDir() || st.Mode().Perm()&0022 != 0) {
+			return errors.New("unsafe Pi credential directory")
+		}
+		if i == 3 && (!st.Mode().IsRegular() || st.Mode().Perm()&0077 != 0) {
+			return errors.New("unsafe Pi credential file")
+		}
+	}
+	return nil
+}
+
+// Start creates one operation, with a daemon-generated, unguessable ownership ID.
+// The bounded channel never blocks process reaping on a disconnected browser.
+// A dropped event is an unknown outcome: the caller must recheck Status.
+func (p *PiDevice) Start() (string, <-chan PiDeviceEvent, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.active != "" {
+		return "", nil, errors.New("Pi sign-in already active")
+	}
+	if err := p.validate(); err != nil {
+		return "", nil, err
+	}
+	var token [16]byte
+	if _, err := rand.Read(token[:]); err != nil {
+		return "", nil, errors.New("attempt creation failed")
+	}
+	id := hex.EncodeToString(token[:])
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	p.active, p.cancel = id, cancel
+	events := make(chan PiDeviceEvent, 3)
+	go func() {
+		defer cancel()
+		defer close(events)
+		defer func() { p.mu.Lock(); p.active = ""; p.cancel = nil; p.mu.Unlock() }()
+		emit := func(e PiDeviceEvent) {
+			select {
+			case events <- e:
+			default:
+			}
+		}
+		frames, err := p.run(ctx, "login", emit)
+		if err != nil || frames.Type != "completed" {
+			emit(PiDeviceEvent{Type: "unknown"})
+			return
+		}
+		state, err := p.status()
+		if err != nil || state != "usable" {
+			emit(PiDeviceEvent{Type: "unknown"})
+			return
+		}
+		emit(PiDeviceEvent{Type: "status", State: "usable"})
+	}()
+	return id, events, nil
+}
+
+// Cancel accepts only the currently active attempt ID. Cancellation never asserts logout.
+func (p *PiDevice) Cancel(id string) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if id == "" || id != p.active {
+		return false
+	}
+	p.cancel()
+	return true
+}
+
+// Status checks Pi's own stored OAuth status; never returns credentials.
+func (p *PiDevice) Status() string {
+	if err := p.validate(); err != nil {
+		return "unknown"
+	}
+	state, err := p.status()
+	if err != nil {
+		return "unknown"
+	}
+	return state
+}
+func (p *PiDevice) status() (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	result, err := p.run(ctx, "status", func(PiDeviceEvent) {})
+	if err != nil || result.Type != "status" {
+		return "unknown", errors.New("native status unavailable")
+	}
+	return result.State, nil
+}
+func (p *PiDevice) run(ctx context.Context, action string, emit func(PiDeviceEvent)) (PiDeviceEvent, error) {
+	// -e contains only static helper code. Pi module paths are operator-controlled.
+	cmd := exec.CommandContext(ctx, p.Node, "--input-type=module", "--eval", piDeviceHelper, p.Entry, p.Manifest, action)
+	// Do not let ambient Pi directory or Node preloads redirect native credentials.
+	var env []string
+	for _, item := range os.Environ() {
+		if strings.HasPrefix(item, "PI_CODING_AGENT_DIR=") || strings.HasPrefix(item, "NODE_OPTIONS=") || strings.HasPrefix(item, "HOME=") {
+			continue
+		}
+		env = append(env, item)
+	}
+	cmd.Env = append(env, "HOME="+p.Home, "PI_OFFLINE=1")
+	cmd.Dir = p.Home
+	cmd.Stderr = io.Discard // Native errors may contain secrets.
+	cmd.WaitDelay = time.Second
+	in, err := cmd.StdinPipe()
+	if err != nil {
+		return PiDeviceEvent{}, errors.New("native child unavailable")
+	}
+	out, err := cmd.StdoutPipe()
+	if err != nil {
+		return PiDeviceEvent{}, errors.New("native child unavailable")
+	}
+	if err := cmd.Start(); err != nil {
+		return PiDeviceEvent{}, errors.New("native child unavailable")
+	}
+	// Parent pipe stays open for the life of the child; EOF on parent death aborts Pi.
+	defer in.Close()
+	scanner := bufio.NewScanner(out)
+	scanner.Buffer(make([]byte, 1024), 1024)
+	var terminal PiDeviceEvent
+	count := 0
+	deviceSeen := false
+	valid := true
+	for scanner.Scan() {
+		count++
+		var e PiDeviceEvent
+		line := scanner.Bytes()
+		if count > 2 || json.Unmarshal(line, &e) != nil {
+			valid = false
+			break
+		}
+		switch e.Type {
+		case "device_code":
+			if action != "login" || terminal.Type != "" || e.VerificationURI != "https://auth.openai.com/codex/device" || len(e.UserCode) < 4 || len(e.UserCode) > 24 || !safeCode(e.UserCode) {
+				valid = false
+			} else {
+				deviceSeen = true
+				emit(e)
+			}
+		case "completed":
+			if action != "login" || terminal.Type != "" {
+				valid = false
+			} else {
+				terminal = e
+			}
+		case "status":
+			if action != "status" || terminal.Type != "" || (e.State != "usable" && e.State != "missing" && e.State != "unknown") {
+				valid = false
+			} else {
+				terminal = e
+			}
+		case "unknown":
+			if terminal.Type != "" {
+				valid = false
+			} else {
+				terminal = e
+			}
+		default:
+			valid = false
+		}
+		if !valid {
+			break
+		}
+	}
+	if !valid {
+		_ = cmd.Process.Kill()
+	}
+	scanErr := scanner.Err()
+	waitErr := cmd.Wait()
+	if !valid || scanErr != nil || waitErr != nil || ctx.Err() != nil || terminal.Type == "" || (action == "login" && terminal.Type == "completed" && !deviceSeen) {
+		return PiDeviceEvent{}, fmt.Errorf("native operation unknown (%s)", strconv.FormatBool(valid))
+	}
+	return terminal, nil
+}
+func safeCode(s string) bool {
+	for _, r := range s {
+		if !strings.ContainsRune("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-", r) {
+			return false
+		}
+	}
+	return true
+}
