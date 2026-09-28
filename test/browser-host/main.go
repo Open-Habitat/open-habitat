@@ -210,6 +210,9 @@ esac
 		mux.HandleFunc("/api/v1/onboarding/pi/attempt", func(w http.ResponseWriter, r *http.Request) {
 			attempt.Load().(http.Handler).ServeHTTP(w, r)
 		})
+		conversations := fakeConversations(trusted)
+		mux.Handle("/api/v1/conversations", conversations)
+		mux.Handle("/api/v1/conversations/", conversations)
 		mux.Handle("/api/v1/agents/", gate(daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home)))
 		mux.Handle("/api/v1/content/", gate(daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home)))
 		mux.Handle(daemon.SnapshotPath, gate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -408,4 +411,73 @@ func seedBrowserHistory(path, cwd string) error {
 		}
 	}
 	return f.Sync()
+}
+
+// Fake controller is only mounted in the synthetic browser host. It exercises
+// the real gateway forwarding and lease boundary, not the Pi child lifecycle.
+func fakeConversations(trusted func(*http.Request) bool) http.Handler {
+	var mu sync.Mutex
+	var serial uint64
+	type handle struct{ Workspace, State, Command, Ack string }
+	items := make(map[string]*handle)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !trusted(r) {
+			http.Error(w, "denied", 403)
+			return
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Connection", "close")
+		path := strings.TrimPrefix(r.URL.Path, "/api/v1/conversations")
+		if path == "" && r.Method == "GET" {
+			list := make([]map[string]any, 0, len(items))
+			for id, h := range items {
+				list = append(list, map[string]any{"agent_id": "pi:" + id, "workspace_id": h.Workspace, "state": h.State})
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "sessions": list})
+			return
+		}
+		if path == "" && r.Method == "POST" {
+			var input struct {
+				Workspace string `json:"workspace_id"`
+			}
+			if json.NewDecoder(r.Body).Decode(&input) != nil {
+				http.Error(w, "bad", 400)
+				return
+			}
+			serial++
+			id := fmt.Sprintf("%08x-1111-4111-8111-%012x", serial, serial)
+			items[id] = &handle{Workspace: input.Workspace, State: "idle"}
+			_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": input.Workspace, "state": "idle"})
+			return
+		}
+		parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
+		if len(parts) != 2 || items[parts[0]] == nil {
+			http.NotFound(w, r)
+			return
+		}
+		id, h := parts[0], items[parts[0]]
+		switch parts[1] {
+		case "send":
+			var input struct {
+				Command string `json:"command_id"`
+			}
+			if json.NewDecoder(r.Body).Decode(&input) != nil {
+				http.Error(w, "bad", 400)
+				return
+			}
+			h.Command = input.Command
+			h.Ack = "accepted"
+			h.State = "idle"
+			_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "command_id": input.Command, "state": "pending"})
+		case "status":
+			_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": h.Workspace, "state": h.State, "command_id": h.Command, "ack": h.Ack, "event_cursor": 0, "events": []any{}, "event_loss": false, "native_history": "missing", "native_revision": "", "history_query": "/api/v1/agents/pi:" + id + "/history"})
+		case "stop":
+			h.State = "uncertain"
+			_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "state": "termination_unknown"})
+		default:
+			http.NotFound(w, r)
+		}
+	})
 }

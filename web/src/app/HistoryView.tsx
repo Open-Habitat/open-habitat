@@ -19,7 +19,7 @@ import {
   type HistoryPage,
 } from "./history";
 
-function Entry({ entry }: { entry: HistoryEntry }) {
+export function Entry({ entry }: { entry: HistoryEntry }) {
   const [content, setContent] = useState(entry.content);
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -224,7 +224,7 @@ export function HistoryView({
     </section>
   );
 }
-async function readHistoryFetch(
+export async function readHistoryFetch(
   agentId: string,
   after?: string,
   signal?: AbortSignal,

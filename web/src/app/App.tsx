@@ -21,6 +21,7 @@ import {
 import { accountLabel } from "../components/Account";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import { HistoryView } from "./HistoryView";
+import { BrowserConversation } from "./BrowserConversation";
 import { PiOnboarding } from "./PiOnboarding";
 import { piStatus } from "./pi";
 import {
@@ -103,8 +104,8 @@ function WorkspaceDetails({ workspace }: { workspace: Workspace }) {
         </div>
       </dl>
       <InlineNotice
-        title="Agentteja ei vielä näytetä"
-        description="Natiivin historian ja ohjauksen tila on tässä näkymässä tuntematon. Workspacen avaaminen ei käynnistä tai jatka agenttia."
+        title="Vanhat Pi-historiat ovat vain luettavissa"
+        description="Workspacen avaaminen ei käynnistä agenttia. Uusi selainkeskustelu luodaan erillisellä vahvistetulla toiminnolla; vanhoja pääteistuntoja ei voi ohjata."
       />
     </section>
   );
@@ -131,13 +132,20 @@ export function App() {
   const identity = snapshot?.identity.web_identity_id;
   const priorIdentity = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (priorIdentity.current && identity !== priorIdentity.current) {
+    if (
+      priorIdentity.current &&
+      ((identity && identity !== priorIdentity.current) ||
+        phase === "authentication_required" ||
+        phase === "pi_required")
+    ) {
+      for (const key of Object.keys(sessionStorage))
+        if (key.startsWith(`nah:`)) sessionStorage.removeItem(key);
       setSettingsReturn("/workspaces");
       returningFromSettings.current = false;
       setExpanded({});
     }
     if (identity) priorIdentity.current = identity;
-  }, [identity]);
+  }, [identity, phase]);
   const openSettings = () => {
     setSettingsReturn(
       safeRoute(location.pathname) === "/settings"
@@ -233,6 +241,8 @@ export function App() {
       return;
     }
     // Hide every identity-scoped fact before the first write or new login.
+    for (const key of Object.keys(sessionStorage))
+      if (key.startsWith(`nah:`)) sessionStorage.removeItem(key);
     dispatch(clearIdentity());
     navigate("/workspaces", { replace: true });
     try {
@@ -390,6 +400,25 @@ export function App() {
     ) : selected ? (
       <>
         <WorkspaceDetails workspace={selected} />
+        {!syntheticDemo &&
+        identity &&
+        selected.facts.some(
+          (f) => f.source === "filesystem" && f.state === "confirmed",
+        ) ? (
+          <BrowserConversation
+            key={`${identity}:${selected.workspace_id}:${location.search}`}
+            workspace={selected}
+            id={
+              /^pi:[0-9a-fA-F-]{36}$/.test(
+                new URLSearchParams(location.search).get("conversation") ?? "",
+              )
+                ? (new URLSearchParams(location.search).get("conversation") ??
+                  undefined)
+                : undefined
+            }
+            identity={identity}
+          />
+        ) : null}
         {source !== "confirmed" ? (
           <InlineNotice
             title="Lähteen havainto on osittainen"
