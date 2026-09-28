@@ -38,19 +38,24 @@ Taskfleet integration.
 
 A few things about the VM scenarios are easy to get wrong from the outside.
 `self-test` is the only scenario the CI gate runs, and it boots nothing. Every
-other scenario needs rootless Podman, downloads a roughly two-gigabyte image
+other scenario needs rootless Podman, downloads a roughly 600-megabyte image
 into the git-ignored `.cache/vm/` on first run and keeps it there, and takes
-minutes. Each run's private directory is removed by the script's exit trap. The
-image URL is checked against a literal in `vm-test.sh` as well as the checksum
-in `image.env`, so repinning the image means changing both. The JIT scenarios
-read Fleetrepo's guest gate files from `FLEETREPO_JIT_SOURCE`, defaulting to
-`/home/maintainer/Sources/fleetrepo`, and verify them against hashes in
-`jit-fixture.py`; a change to those files in Fleetrepo has to be repinned here.
-The guest-only fixture tokens are constructed at runtime and the scenarios scan
-the host script, every `test/vm/*.py` and the serial log for them, so a token
-pasted as a literal into a proof script fails the run. Proof scripts report a
-single `VM_PROOF=` JSON line on serial, and the serial log is what the host
-reads, so nothing secret goes to stdout or stderr inside the guest.
+minutes. Each run's private directory is removed by the script's exit trap; a
+failed `jit-concurrent` run additionally leaves a private copy of the serial
+log in `.cache/vm/` for diagnosis. The image URL is checked against a literal
+in `vm-test.sh` as well as the checksum in `image.env`, so repinning the image
+means changing both. The JIT scenarios read Fleetrepo's guest gate files with
+`git show` from the commit pinned in `jit-fixture.py`, using the checkout at
+`FLEETREPO_JIT_SOURCE`, defaulting to `/home/maintainer/Sources/fleetrepo`, only as the
+object store, and verify them against hashes in the same file; a newer version
+of those files in Fleetrepo is not exercised until the commit and hashes are
+repinned here. The guest-only fixture tokens are constructed at runtime. The
+scenarios that use them scan the serial log and the built binary for them, and
+`two-user-routing` and `jit-login` also scan the host script and every
+`test/vm/*.py`, so a token pasted as a literal into a proof script fails those
+runs. Proof scripts report a single `VM_PROOF=` JSON line on serial, and the
+serial log is what the host reads, so nothing secret goes to stdout or stderr
+inside the guest.
 
 When a machine has no rootless Podman, a guest scenario has simply not been
 run. Report it as unverified, not as passed, and say which scenario would have
