@@ -11,8 +11,13 @@ import (
 	"github.com/maintainer/native-agent-host/internal/transport"
 )
 
-// piGate checks the authenticated hop before querying Pi, then fails closed
+// PiGateHandler is the native-read boundary for a mapped daemon socket.
+// It checks the authenticated hop before querying Pi, then fails closed
 // before invoking any native read. A fresh native check is made for each request.
+func PiGateHandler(cfg transport.Config, trusted func(*http.Request) bool, status func(context.Context) string, next http.Handler) http.Handler {
+	return piGate(cfg, trusted, status, next)
+}
+
 func piGate(cfg transport.Config, trusted func(*http.Request) bool, status func(context.Context) string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !historyAuthorized(cfg, trusted, r) {

@@ -23,6 +23,12 @@ the later scenarios inject the real binary. `test-vm-test.sh` and the
 `test-*.py` files here are offline checks of the host script and the fixture
 contracts; they boot nothing and run in seconds.
 
+`scripts/test-pi-attempt-uids.sh` runs a focused Go integration test inside a
+networkless rootless Podman container with three actual synthetic UIDs. The
+rootless namespace and its homes/sockets are disposable; it tests Pi attempt
+peer/UID/socket and native-read denials, not systemd or a live host. It skips
+under ordinary `go test` without the container marker.
+
 `test/browser-host/` is a standalone Go TLS host that Playwright starts against
 a production `web/dist` build. It mounts the real gateway and daemon handlers
 with synthetic seams and is never imported by the product binary.

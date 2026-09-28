@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://native-agent-host.invalid/contracts/v1/pi-attempt.schema.json",
+  "title": "Ephemeral mapped Pi device-code attempt",
+  "type": "object",
+  "required": ["schema_version", "attempt"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "attempt": {
+      "type": "object",
+      "required": ["state", "pi_state"],
+      "properties": {
+        "state": {"enum": ["pending", "device_code", "completed", "unknown"]},
+        "pi_state": {"enum": ["usable", "missing", "unknown"]},
+        "verification_uri": {"const": "https://auth.openai.com/codex/device"},
+        "user_code": {"type": "string", "pattern": "^[A-Z0-9-]{4,24}$"}
+      },
+      "allOf": [
+        {"if": {"properties": {"state": {"const": "device_code"}}}, "then": {"required": ["verification_uri", "user_code"]}, "else": {"not": {"anyOf": [{"required": ["verification_uri"]}, {"required": ["user_code"]}]}}}
+      ],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

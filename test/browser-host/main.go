@@ -84,6 +84,9 @@ func main() {
 		log.Fatal(e)
 	}
 	defer os.RemoveAll(tmp)
+	// The synthetic helper validates HOME as a daemon would; this process uses
+	// one UID, so this is not distinct-UID evidence.
+	os.Setenv("HOME", tmp)
 	if marker := os.Getenv("BROWSER_HOST_MARKER"); marker != "" {
 		if e := os.MkdirAll(filepath.Dir(marker), 0700); e != nil {
 			log.Fatal(e)
@@ -92,6 +95,11 @@ func main() {
 			log.Fatal(e)
 		}
 		defer os.Remove(marker)
+	}
+	// Disposable native helper; never uses a real Pi runtime, home or provider.
+	fakeNode := filepath.Join(tmp, "fake-node")
+	if e := os.WriteFile(fakeNode, []byte("#!/bin/sh\ncase \"$6\" in\n status) printf '%s\\n' '{\"type\":\"status\",\"state\":\"missing\"}' ;;\n login) printf '%s\\n' '{\"type\":\"device_code\",\"verificationUri\":\"https://auth.openai.com/codex/device\",\"userCode\":\"ABCD-1234\"}'; sleep 2; printf '%s\\n' '{\"type\":\"unknown\"}' ;;\nesac\n"), 0700); e != nil {
+		log.Fatal(e)
 	}
 	identities := []gateway.Identity{{Provider: "github", Subject: "42", UID: 1001, Username: "alice", Socket: "/run/native-agent-host/users/alice/daemon.sock"}, {Provider: "github", Subject: "43", UID: 1002, Username: "bob", Socket: "/run/native-agent-host/users/bob/daemon.sock"}}
 	var scenario atomic.Value
@@ -160,9 +168,23 @@ func main() {
 			return daemon.Discovery{State: "present", Entries: entries}
 		}, home)
 		mux := http.NewServeMux()
-		mux.Handle("/api/v1/agents/", daemon.HistoryHandlerWithNativeRoot(cfg, func(r *http.Request) bool { return r.Context().Value("peer") == uid }, home))
-		mux.Handle("/api/v1/content/", daemon.HistoryHandlerWithNativeRoot(cfg, func(r *http.Request) bool { return r.Context().Value("peer") == uid }, home))
-		mux.Handle(daemon.SnapshotPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		trusted := func(r *http.Request) bool { return r.Context().Value("peer") == uid }
+		device := &daemon.PiDevice{Home: tmp, Node: fakeNode, Entry: "/synthetic/entry", Manifest: "/synthetic/manifest"}
+		status := func(ctx context.Context) string { return "missing" }
+		gate := func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if scenario.Load() == "pi-blocked" {
+					daemon.PiGateHandler(cfg, trusted, status, next).ServeHTTP(w, r)
+					return
+				}
+				next.ServeHTTP(w, r)
+			})
+		}
+		mux.Handle("GET /api/v1/onboarding/pi/status", daemon.PiStatusHandler(cfg, trusted, status))
+		mux.Handle("/api/v1/onboarding/pi/attempt", daemon.PiAttemptHandler(cfg, trusted, device))
+		mux.Handle("/api/v1/agents/", gate(daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home)))
+		mux.Handle("/api/v1/content/", gate(daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home)))
+		mux.Handle(daemon.SnapshotPath, gate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch scenario.Load().(string) {
 			case "malformed":
 				w.Header().Set("Content-Type", "application/json")
@@ -190,7 +212,7 @@ func main() {
 				return
 			}
 			handler.ServeHTTP(w, r)
-		}))
+		})))
 		srv := &http.Server{Handler: mux, ConnContext: func(ctx context.Context, c net.Conn) context.Context {
 			uc, ok := c.(*net.UnixConn)
 			if !ok {
@@ -265,7 +287,7 @@ func main() {
 			case "/fixture/scenario":
 				name := r.URL.Query().Get("value")
 				switch name {
-				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "foreign":
+				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "foreign", "pi-blocked":
 					scenario.Store(name)
 				default:
 					http.Error(w, "unknown scenario", 400)
@@ -274,6 +296,9 @@ func main() {
 				w.WriteHeader(204)
 			case "/fixture/expire":
 				clock.Add(25)
+				w.WriteHeader(204)
+			case "/fixture/reset-clock":
+				clock.Store(0)
 				w.WriteHeader(204)
 			default:
 				http.NotFound(w, r)
