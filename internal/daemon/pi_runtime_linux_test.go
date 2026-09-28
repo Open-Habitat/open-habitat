@@ -56,6 +56,15 @@ func TestTrustedPiRuntime(t *testing.T) {
 		"symlink entry":            func() { os.Remove(p.Entry); os.Symlink(p.Manifest, p.Entry) },
 		"writable imported module": func() { write(filepath.Join(pkg, "dist", "imported.js"), "export {};", 0666) },
 		"escaping dependency link": func() { os.Symlink("/var/tmp", filepath.Join(pkg, "external")) },
+		"external round trip": func() {
+			alias := filepath.Join(t.TempDir(), "alias")
+			if err := os.Symlink(pkg, alias); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(alias, filepath.Join(pkg, "external")); err != nil {
+				t.Fatal(err)
+			}
+		},
 	} {
 		// Restore each fixture before the next substitution.
 		write(p.Manifest, good, 0644)

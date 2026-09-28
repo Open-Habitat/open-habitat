@@ -43,6 +43,21 @@ func (p *PiDevice) validateRuntime() error {
 		// Symlink permission bits are always 0777 on Linux; only the
 		// target's permissions have meaning and it is visited below.
 		if info.Mode()&os.ModeSymlink != 0 {
+			target, err := os.Readlink(path)
+			if err != nil {
+				return errors.New("invalid runtime link")
+			}
+			first := target
+			if !filepath.IsAbs(first) {
+				first = filepath.Join(filepath.Dir(path), first)
+			}
+			firstRel, err := filepath.Rel(root, filepath.Clean(first))
+			if err != nil || firstRel == ".." || strings.HasPrefix(firstRel, ".."+string(os.PathSeparator)) {
+				return errors.New("runtime link escapes release")
+			}
+			// Check both the first hop and final destination. A link through
+			// a writable outside directory could otherwise re-enter the tree
+			// during validation and change target before the SDK import.
 			resolved, err := filepath.EvalSymlinks(path)
 			if err != nil {
 				return errors.New("invalid runtime link")
