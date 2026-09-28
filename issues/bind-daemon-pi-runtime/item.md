@@ -2,11 +2,12 @@
 created: 2026-09-28
 updated: 2026-09-28
 type: task
-status: open
+status: done
 priority: normal
 related: ['@gate-native-routes-on-pi']
 lane: pi-runtime-wiring
 collision: [internal/daemon/, internal/cli/, systemd/]
+closed: 2026-09-28
 ---
 
 # Bind daemon Pi runtime to packaged installation
