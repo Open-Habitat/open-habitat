@@ -6,7 +6,7 @@
 
 ## Evidence
 
-The original worker's focused component suite (5 files, 26 tests), typecheck, lint, format, and diff check passed at `87bb2ae`. Its clean gate failed on obsolete plan assertions before reaching the remaining checks. Those assertions were corrected on main at `e67f61f`, where the clean gate passed. On this adoption branch at `622e3c1`, `PATH="$PWD/.tools/go/bin:$PATH" TMPDIR=/var/tmp/nah-agent-ui-harvest ./scripts/ci-local.sh --clean --json` exited 0 and reported `{"status":"passed","clean":true}`. That gate includes web component/unit/browser E2E/a11y, production build/Storybook, Go race/vet, plan validation, packaging and clean-tree checks. The gate is synthetic/local evidence, not a live host or native Pi integration proof.
+The original worker's focused component suite (5 files, 26 tests), typecheck, lint, format, and diff check passed at `87bb2ae`. Its clean gate failed on obsolete plan assertions before reaching the remaining checks. Those assertions were corrected on main at `e67f61f`, where the clean gate passed. On this adoption branch at `622e3c1`, and again at `a999dda` (rewritten message-only to `0e4a8b6` by issue closure stamping, same tree), `PATH="$PWD/.tools/go/bin:$PATH" TMPDIR=/var/tmp/nah-agent-ui-harvest ./scripts/ci-local.sh --clean --json` exited 0 and reported `{"status":"passed","clean":true}`. That gate includes web component/unit/browser E2E/a11y, production build/Storybook, Go race/vet, plan validation, packaging and clean-tree checks. The gate is synthetic/local evidence, not a live host or native Pi integration proof.
 
 ## Limits
 
