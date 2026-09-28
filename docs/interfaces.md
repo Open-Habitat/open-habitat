@@ -134,6 +134,12 @@ tavu-offsetteja. Persistoidun sisällön `complete:false`, `content_id` ja
 `complete:false,truncated:true` ilman jatko-ID:tä; kokonainen sisältö tulee
 history-querystä vasta Pi:n persistoinnin jälkeen.
 
+## Pi-onboardingin rajattu server-portti
+
+`GET /api/v1/onboarding/pi/status` vaatii web-istunnon ja brokerin joka pyynnöllä vahvistaman mappauksen. Gateway muodostaa uuden pyynnön vain mapped daemonin socketiin; daemon tarkistaa peerin ja `X-Agent-Host-Identity`-sidoksen ennen kuin kysyy Pi:n natiivia OAuth-tilaa. Vastauksen `pi.state` on `usable`, `missing` tai `unknown` (`pi-status.schema.json`); se ei sisällä tokenia, account ID:tä eikä home-polkua. Vastaukset eivät tallennu välimuistiin.
+
+Daemon estää snapshot-, history- ja content-lukemisen ennen natiivilähteiden avaamista, kun tuore Pi-tila ei ole `usable`. `428 pi_onboarding_required` on palautuva estotila; tuntematon tila ei avaa porttia. Gateway palauttaa tästä vain oman vakionmuotoisen virheen eikä luota daemonin vapaaseen virhetekstiin. Muita natiivireittejä ei ole vielä toteutettu: kun niitä lisätään, sama portti on liitettävä ennen niiden natiivilukua tai kirjoitusta. Tässä välivaiheessa device-code start/cancel **ei ole tarjolla**, eikä status yksin väitä onboardingin valmistuneen: runtime-asennuspolun tuotantokonfigurointi, per-session aloitus ja selaintestit ovat vielä avoinna. SSH/tmux ja vanhan TUI:n read-only-historia eivät saa kirjoituskykyä portista.
+
 ## Snapshot ja yhdistetty SSE
 
 Snapshotin `snapshot_id` tunnistaa yhden atomisen kuvan. `server_instance_id`

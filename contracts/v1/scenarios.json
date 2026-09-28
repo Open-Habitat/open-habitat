@@ -608,5 +608,27 @@
       "success is reported only after local auth absence is observed",
       "partial cleanup remains partial and web logout alone preserves native GitHub state"
     ]
+  },
+  {
+    "id": "CT-035",
+    "covers": [
+      "Pi onboarding gate",
+      "cross-user denial"
+    ],
+    "fixtures": [
+      "examples/pi-status.json"
+    ],
+    "given": [
+      "browser session is broker-mapped to synthetic UID A and Pi OAuth is absent or unavailable"
+    ],
+    "when": [
+      "direct snapshot/history/content URLs are requested after sign-in and after native status changes"
+    ],
+    "then": [
+      "daemon verifies peer and mapped identity before querying Pi",
+      "native reads do not run unless a fresh Pi OAuth status is usable",
+      "status returns only missing, usable or unknown and no credential bytes",
+      "a different identity or an unavailable daemon never exposes native names"
+    ]
   }
 ]

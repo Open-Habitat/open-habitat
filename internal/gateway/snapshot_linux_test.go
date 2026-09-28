@@ -27,6 +27,7 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 	listeners := map[string]string{}
 	servers := []*http.Server{}
 	var foreign atomic.Bool
+	var piBlocked atomic.Bool
 	for i, m := range mappings {
 		dir, e := os.MkdirTemp("/tmp", "nah-snap-")
 		if e != nil {
@@ -42,8 +43,23 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 		want := m
 		label := strconv.Itoa(i)
 		srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != "GET" || r.URL.RequestURI() != "/api/v1/snapshot" || r.Host != "unix" || r.Header.Get("X-Agent-Host-Identity") != identityID(want) || r.Header.Get("X-Agent-Host-Display-Name") != "GitHub user "+want.Subject || r.Header.Get("X-Agent-Host-Socket") != "" || r.Header.Get("X-Agent-Host-CSRF") != "" || r.Header.Get("Cookie") != "" || r.Header.Get("X-Forwarded-For") != "" {
+			if r.Method != "GET" || (r.URL.RequestURI() != "/api/v1/snapshot" && r.URL.RequestURI() != "/api/v1/onboarding/pi/status") || r.Host != "unix" || r.Header.Get("X-Agent-Host-Identity") != identityID(want) || r.Header.Get("X-Agent-Host-Display-Name") != "GitHub user "+want.Subject || r.Header.Get("X-Agent-Host-Socket") != "" || r.Header.Get("X-Agent-Host-CSRF") != "" || r.Header.Get("Cookie") != "" || r.Header.Get("X-Forwarded-For") != "" {
 				w.WriteHeader(403)
+				return
+			}
+			if r.URL.RequestURI() == "/api/v1/onboarding/pi/status" {
+				b := `{"schema_version":1,"pi":{"state":"missing"}}`
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Content-Length", strconv.Itoa(len(b)))
+				_, _ = io.WriteString(w, b)
+				return
+			}
+			if piBlocked.Load() {
+				b := `{"schema_version":1,"error":{"code":"pi_onboarding_required"}}`
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Content-Length", strconv.Itoa(len(b)))
+				w.WriteHeader(428)
+				_, _ = io.WriteString(w, b)
 				return
 			}
 			account := want.Subject
@@ -88,6 +104,17 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 			t.Fatalf("route %s: %d %s", id, w.Code, w.Body.String())
 		}
 	}
+	piBlocked.Store(true)
+	for i := range mappings {
+		id := strconv.Itoa(i)
+		if w := send(id, "/api/v1/snapshot", nil); w.Code != 428 || strings.Contains(w.Body.String(), "workspace") {
+			t.Fatalf("blocked %s: %d %s", id, w.Code, w.Body.String())
+		}
+		if w := send(id, "/api/v1/onboarding/pi/status", map[string]string{"X-Agent-Host-Socket": mappings[1-i].Socket}); w.Code != 200 || w.Body.String() != `{"schema_version":1,"pi":{"state":"missing"}}` {
+			t.Fatalf("status %s: %d %s", id, w.Code, w.Body.String())
+		}
+	}
+	piBlocked.Store(false)
 	foreign.Store(true)
 	if w := send("1", "/api/v1/snapshot", nil); w.Code != 503 || strings.Contains(w.Body.String(), "99") {
 		t.Fatalf("foreign identity: %d %s", w.Code, w.Body.String())

@@ -53,6 +53,7 @@ checks = {
     "annotations.json": "annotations.schema.json",
     "history-page.json": "history.schema.json",
     "title-failure.json": "command.schema.json",
+    "pi-status.json": "pi-status.schema.json",
 }
 for fixture, schema in checks.items():
     instance = json.loads((BASE / "examples" / fixture).read_text())

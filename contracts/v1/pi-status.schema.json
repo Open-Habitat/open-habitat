@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://native-agent-host.invalid/contracts/v1/pi-status.schema.json",
+  "title": "Native Pi OAuth status (read-only onboarding slice)",
+  "type": "object",
+  "required": ["schema_version", "pi"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "pi": {
+      "type": "object",
+      "required": ["state"],
+      "properties": {"state": {"enum": ["usable", "missing", "unknown"]}},
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

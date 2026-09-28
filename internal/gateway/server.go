@@ -37,6 +37,7 @@ func (s *Server) routes() http.Handler {
 	if s.auth != nil {
 		s.auth.routes(mux)
 		mux.HandleFunc("/api/v1/snapshot", s.auth.snapshot)
+		mux.HandleFunc("/api/v1/onboarding/pi/status", s.auth.piStatus)
 		mux.HandleFunc("/api/v1/agents/", s.auth.history)
 		mux.HandleFunc("/api/v1/content/", s.auth.history)
 	}

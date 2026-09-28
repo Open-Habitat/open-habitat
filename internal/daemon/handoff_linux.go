@@ -31,8 +31,13 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	if mux == nil {
 		mux = http.NewServeMux()
 	}
-	mux.Handle(SnapshotPath, SnapshotHandlerWithStatus(cfg, server.TrustedPeer, Discover, nativeStatus))
-	mux.Handle("/api/v1/agents/", HistoryHandler(cfg, server.TrustedPeer))
-	mux.Handle("/api/v1/content/", HistoryHandler(cfg, server.TrustedPeer))
+	// The native Pi status is checked before any native workspace or history read.
+	// No positive result is retained across requests, refreshes or daemon restarts.
+	pi := &PiDevice{Home: cfg.Home, Node: "/usr/bin/node", Entry: "/opt/native-agent-host/pi/node_modules/@earendil-works/pi-coding-agent/dist/index.js", Manifest: "/opt/native-agent-host/pi/node_modules/@earendil-works/pi-coding-agent/package.json"}
+	piStatus := func() string { return pi.Status() }
+	mux.Handle("GET /api/v1/onboarding/pi/status", PiStatusHandler(cfg, server.TrustedPeer, piStatus))
+	mux.Handle(SnapshotPath, piGate(cfg, server.TrustedPeer, piStatus, SnapshotHandlerWithStatus(cfg, server.TrustedPeer, Discover, nativeStatus)))
+	mux.Handle("/api/v1/agents/", piGate(cfg, server.TrustedPeer, piStatus, HistoryHandler(cfg, server.TrustedPeer)))
+	mux.Handle("/api/v1/content/", piGate(cfg, server.TrustedPeer, piStatus, HistoryHandler(cfg, server.TrustedPeer)))
 	return server.ServeMux(ctx, listener, mux)
 }

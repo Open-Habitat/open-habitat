@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "474820991fc8d6f995397187b16d26c1d7733a39e47397b4ba7008bcc83a10af"
+const V1SchemaFingerprint = "faf20eea4db20d98d69807707bf53d3b56f7f115c730d685122e8e19087fa3d5"
 
 var V1SchemaFiles = []string{
 	"annotations.schema.json",
@@ -14,6 +14,7 @@ var V1SchemaFiles = []string{
 	"exchange.schema.json",
 	"history.schema.json",
 	"operation.schema.json",
+	"pi-status.schema.json",
 	"scenario.schema.json",
 	"snapshot.schema.json",
 }
@@ -27,5 +28,6 @@ type Event = json.RawMessage
 type Exchange = json.RawMessage
 type History = json.RawMessage
 type Operation = json.RawMessage
+type PiStatus = json.RawMessage
 type Scenario = json.RawMessage
 type Snapshot = json.RawMessage
