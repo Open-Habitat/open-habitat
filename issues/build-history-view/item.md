@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-27
+updated: 2026-09-28
 type: task
 status: testing
 priority: normal
@@ -48,9 +48,9 @@ current docs and use the repository's shared validation/ownership rules.
 This issue owns Y3. Bind `pi:<sessionId>` and stable native keys to the real Pi JSONL source; distinguish history, process observation and control. Prove paging/chunk/live-tail limits, malformed and unknown content, missing/corrupt/moved-cwd cases and reopen identity against redacted plus disposable native histories. Opening never starts or resumes. See [the implementation briefs](../plan-v1-implementation/implementation-briefs.md).
 
 
-## Jari visual acceptance gate
+## Visual review, without blocking useful work
 
-This issue is both the executable delivery and its serial human checkpoint. The worker must leave it in `testing`, not close it. While a `ui-v1` issue is in `testing`, it is a non-launchable human-acceptance hold: no round may spawn, resume or close a worker for it. Before any later `ui-v1` lane member may treat its user-visible behavior as delivered, `issues/build-history-view/visual-acceptance.md` must record the exact product revision, browser/OS/environment, deterministic test fixtures, happy path and every relevant unhappy state, exact Playwright/test commands and results, and links to the essential Playwright screenshots. Screenshots are evidence, not a replacement for assertions. The conductor presents that report to Jari and records his explicit dated accept/change decision in this issue. Only the conductor may then close it; lane serialization keeps the next product slice behind this checkpoint without assigning a lane to a `human-review` issue or letting a worker self-accept.
+Leave this issue in `testing` until Jari has seen its visual evidence and given an explicit accept/change decision; do not record silence as acceptance. Keep the revision, browser/fixture context, tested happy and important failure states, commands and representative screenshots in `visual-acceptance.md`, proportionate to what changed. This is evidence for Jari's review, not a reason to stop independent development of agent controls. Technical dependencies and real file collisions still determine what can run in parallel; do not claim the history view was visually approved when it was not. The conductor records Jari's decision here and closes this issue when accepted.
 
 Interactive and repeated behavior must use the shared production component implementation. Local composition may arrange one-off content but may not invent controls, state semantics, focus rules or styling. When this production slice replaces a canonical/root mock or static reference, remove the superseded root/canonical reference in the same accepted change; an original may remain only in its receiving issue as historical evidence.
 
@@ -58,4 +58,10 @@ Interactive and repeated behavior must use the shared production component imple
 
 ### 2026-09-27T08:32:43Z · @claude
 
-2026-09-27 conductor scheduling change: Jari asked this stint to advance the test environment and the UIs in parallel while he is away. The 2026-09-24 pilot-first ordering was a priority choice; deliver-login-pilot now waits on Jari's human-review readiness gate and Fleetrepo host activation, which this UI slice does not depend on technically. deliver-login-pilot moved to its own 'pilot' lane and its blocker edge was removed here. The visual acceptance gate for this issue is unchanged. Reversible with issuectl update.
+2026-09-27 conductor scheduling change: Jari asked this stint to advance the test environment and the UIs in parallel while he is away. The 2026-09-24 pilot-first ordering was a priority choice; deliver-login-pilot now waits on Jari's human-review readiness gate and Fleetrepo host activation, which this UI slice does not depend on technically. deliver-login-pilot moved to its own 'pilot' lane and its blocker edge was removed here. The visual acceptance gate was later relaxed by Jari's 2026-09-28 direction: continue agent functionality without waiting for this screenshot verdict; visual acceptance itself remains pending.
+
+## Decisions
+
+### 2026-09-28T12:42:36Z · @jari
+
+2026-09-28: Do not block agent-functionality implementation on my history-view screenshot review. Keep this visual verdict pending and work pragmatically; technical dependencies and actual file collisions still matter.
