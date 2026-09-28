@@ -1,18 +1,57 @@
-# Disposable fixtures
+# Test fixtures
 
-Everything below this directory is synthetic and safe to delete. Fixtures must
-never read a real home, Pi history, SSH agent, browser profile, or credentials.
-VM launch is bounded to `scripts/vm-test.sh`; reset removes only its temporary
-run directory.
+Everything under `test/` is synthetic and disposable. The repository's rule that
+tests never touch a real home, Pi history, SSH agent, browser profile or
+credential is enforced here by construction: identities are `agent-a`,
+`agent-b` and similar invented names, marker files carry invented strings, and
+fixture trees are created at test time under a temporary path. Nothing in this
+directory is a copy of anyone's data, and `test/fixtures/native/README.fixture`
+records that provenance for the checked-in samples. If a fixture ever needs
+something that looks like a real credential or history, that is a signal the
+design is wrong, not a reason to redact a real one.
 
-`test/vm/` holds the cloud-init-only systemd environment fixture and a digest-
-pinned disposable tool-container recipe. Its marker files contain synthetic
-strings; the socket responders are not product daemons. The explicit VM proof is
-`scripts/vm-test.sh systemd-self-test --json`; the normal CI gate uses only the
-offline `self-test`.
+Three things live here.
 
-`./scripts/native-fixture.sh create --output <new-temp-path>` creates the long
-2,500-event Pi-shaped JSONL, malformed event, long output, edit, question,
-non-Git directory, local Git repository and linked manual worktree. The manifest
-explicitly says that the foundation does not claim a Taskfleet-owned lifecycle;
-that live fixture belongs to its later adapter slice.
+`test/vm/` is the material for `scripts/vm-test.sh`: the cloud-init seed, the
+checksum-pinned Ubuntu image recipe in `image.env`, the digest-pinned
+Containerfile for the rootless Podman tool image, and the Python fixture and
+proof scripts that are copied into a QEMU guest. The host-side script and the
+proofs each scenario makes are described in `scripts/AGENTS.md` and the
+per-scenario records under `issues/prove-jit-guest-isolation/`. The socket
+responders in the cloud-init seed are stand-ins for the systemd-only scenario;
+the later scenarios inject the real binary. `test-vm-test.sh` and the
+`test-*.py` files here are offline checks of the host script and the fixture
+contracts; they boot nothing and run in seconds.
+
+`test/browser-host/` is a standalone Go TLS host that Playwright starts against
+a production `web/dist` build. It mounts the real gateway and daemon handlers
+with synthetic seams and is never imported by the product binary.
+`web/AGENTS.md` explains its role and its `/fixture/` control prefix.
+
+`scripts/native-fixture.sh create --output <new path>` builds the native
+workspace fixture: a 2,500-event Pi-shaped JSONL history including a malformed
+file, a long output, an edit and a question, plus a non-Git directory, a Git
+repository and a linked worktree. The linked worktree is a plain `git worktree`,
+and the manifest says so, because the fixture deliberately does not imitate a
+Taskfleet-owned lifecycle. A test built on it cannot claim to have covered
+Taskfleet integration.
+
+A few things about the VM scenarios are easy to get wrong from the outside.
+`self-test` is the only scenario the CI gate runs, and it boots nothing. Every
+other scenario needs rootless Podman, downloads a roughly two-gigabyte image
+into the git-ignored `.cache/vm/` on first run and keeps it there, and takes
+minutes. Each run's private directory is removed by the script's exit trap. The
+image URL is checked against a literal in `vm-test.sh` as well as the checksum
+in `image.env`, so repinning the image means changing both. The JIT scenarios
+read Fleetrepo's guest gate files from `FLEETREPO_JIT_SOURCE`, defaulting to
+`/home/maintainer/Sources/fleetrepo`, and verify them against hashes in
+`jit-fixture.py`; a change to those files in Fleetrepo has to be repinned here.
+The guest-only fixture tokens are constructed at runtime and the scenarios scan
+the host script, every `test/vm/*.py` and the serial log for them, so a token
+pasted as a literal into a proof script fails the run. Proof scripts report a
+single `VM_PROOF=` JSON line on serial, and the serial log is what the host
+reads, so nothing secret goes to stdout or stderr inside the guest.
+
+When a machine has no rootless Podman, a guest scenario has simply not been
+run. Report it as unverified, not as passed, and say which scenario would have
+covered the change.
