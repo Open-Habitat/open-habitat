@@ -30,6 +30,15 @@ type cloneRunner func(context.Context, string, string, string, ...string) ([]byt
 func RepoCloneHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
 	return repoCloneHandler(cfg, trusted, cfg.Home, "/usr/bin/gh", "/usr/bin/git", cloneCommand)
 }
+
+// RepoCloneHandlerWithFixturePrograms is an offline integration seam. All
+// filesystem and command homes belong to the disposable fixture, never cfg.Home.
+func RepoCloneHandlerWithFixturePrograms(cfg transport.Config, trusted func(*http.Request) bool, sourceHome, fixtureHome, gh, git string) http.Handler {
+	return repoCloneHandler(cfg, trusted, sourceHome, gh, git, func(ctx context.Context, program, _, fd string, args ...string) ([]byte, error) {
+		return cloneCommand(ctx, program, fixtureHome, fd, args...)
+	})
+}
+
 func repoCloneHandler(cfg transport.Config, trusted func(*http.Request) bool, sourceHome, gh, git string, run cloneRunner) http.Handler {
 	var mu sync.Mutex // serialize per-UID case-insensitive collision checks
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -4,11 +4,13 @@ package gateway_test
 
 import (
 	"context"
+	"encoding/json"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strconv"
@@ -48,6 +50,10 @@ func TestAuthenticatedGatewayToTwoDaemonSnapshotHandlers(t *testing.T) {
 		t.Fatal(e)
 	}
 	identities := []gateway.Identity{{Provider: "github", Subject: "42", UID: 1001, Username: "alice", Socket: "/run/native-agent-host/users/alice/daemon.sock"}, {Provider: "github", Subject: "43", UID: 1002, Username: "bob", Socket: "/run/native-agent-host/users/bob/daemon.sock"}}
+	bare := filepath.Join(t.TempDir(), "bare.git")
+	if out, e := exec.Command("/usr/bin/git", "init", "--bare", bare).CombinedOutput(); e != nil {
+		t.Fatalf("bare: %s %v", out, e)
+	}
 	paths := map[string]string{}
 	peers := map[string]int{}
 	for i, m := range identities {
@@ -81,6 +87,7 @@ func TestAuthenticatedGatewayToTwoDaemonSnapshotHandlers(t *testing.T) {
 id=$(cat "$HOME/fixture-id") || exit 9
 case "$4" in
 /user) printf '{"id":%s}\n' "$id" ;;
+/repos/fixture/repo*) printf '{"name":"repo%s","full_name":"fixture/repo%s","owner":{"login":"fixture"},"clone_url":"https://github.com/fixture/repo%s.git"}\n' "$id" "$id" "$id" ;;
 /user/repos?*) printf '[{"owner":{"login":"fixture"},"name":"repo%s","full_name":"fixture/repo%s","html_url":"https://github.com/fixture/repo%s","private":true,"description":null}]\n' "$id" "$id" "$id" ;;
 *) exit 9 ;;
 esac
@@ -88,9 +95,16 @@ esac
 		if err := os.WriteFile(gh, []byte(script), 0700); err != nil {
 			t.Fatal(err)
 		}
+		gitFixture := filepath.Join(fixtureHome, "git")
+		scriptGit := "#!/bin/sh\nif [ \"$1\" = clone ]; then\n /usr/bin/git clone -- '" + bare + "' . || exit 1\n exec /usr/bin/git remote set-url origin https://github.com/fixture/repo" + m.Subject + ".git\nfi\nexec /usr/bin/git \"$@\"\n"
+		if err := os.WriteFile(gitFixture, []byte(scriptGit), 0700); err != nil {
+			t.Fatal(err)
+		}
+		cloneHome := t.TempDir()
 		mux := http.NewServeMux()
 		mux.Handle(daemon.SnapshotPath, snapshot)
 		mux.Handle(daemon.RepoCatalogPath, daemon.RepoCatalogHandlerWithFixtureGH(cfg, func(r *http.Request) bool { return r.Context().Value("peer") == uid }, gh, fixtureHome))
+		mux.Handle(daemon.RepoClonePath, daemon.RepoCloneHandlerWithFixturePrograms(cfg, func(r *http.Request) bool { return r.Context().Value("peer") == uid }, cloneHome, fixtureHome, gh, gitFixture))
 		srv := &http.Server{Handler: mux, ConnContext: func(ctx context.Context, c net.Conn) context.Context {
 			unixConn, ok := c.(*net.UnixConn)
 			if !ok {
@@ -148,6 +162,34 @@ esac
 		catalog := send("/api/v1/onboarding/github/repos?page=1&limit=2", cookie)
 		if catalog.Code != 200 || !strings.Contains(catalog.Body.String(), "fixture/repo"+m.Subject) || strings.Contains(catalog.Body.String(), "fixture/repo"+identities[1-i].Subject) || catalog.Header().Get("Cache-Control") != "no-store" {
 			t.Fatalf("catalog %d: %d %s", i, catalog.Code, catalog.Body.String())
+		}
+		session := send("/auth/session", cookie)
+		var auth struct {
+			CSRF string `json:"csrf"`
+		}
+		if session.Code != 200 || json.Unmarshal(session.Body.Bytes(), &auth) != nil || auth.CSRF == "" {
+			t.Fatalf("session: %d %s", session.Code, session.Body.String())
+		}
+		post := func(csrf string) *httptest.ResponseRecorder {
+			r := httptest.NewRequest("POST", "https://host.test/api/v1/onboarding/github/clone", strings.NewReader(`{"full_name":"fixture/repo`+m.Subject+`"}`))
+			r.RequestURI = r.URL.RequestURI()
+			r.AddCookie(cookie)
+			r.Header.Set("Origin", "https://host.test")
+			r.Header.Set("X-Agent-Host-CSRF", csrf)
+			r.Header.Set("Content-Type", "application/json")
+			r.Header.Set("Authorization", "Bearer forged")
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, r)
+			return w
+		}
+		if w := post("invalid"); w.Code != 403 {
+			t.Fatalf("csrf: %d", w.Code)
+		}
+		if w := post(auth.CSRF); w.Code != 200 || !strings.Contains(w.Body.String(), `"state":"cloned"`) {
+			t.Fatalf("import %d: %d %s", i, w.Code, w.Body.String())
+		}
+		if w := post(auth.CSRF); w.Code != 409 || !strings.Contains(w.Body.String(), "checkout_exists") {
+			t.Fatalf("repeat %d: %d %s", i, w.Code, w.Body.String())
 		}
 		// The daemon, not the gateway, constructs the v1 observation.
 		if !strings.Contains(got.Body.String(), `"write_state":"read_only"`) {
