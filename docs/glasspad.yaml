@@ -40,6 +40,9 @@ groups:
       - slug: adr-0004-first-login-user-provisioning
         title: ADR 0004 — Ensikirjautumisen Unix-käyttäjä
         desc: Hyväksytty GitHub-kirjautumisen käyttäjäprovisioinnin raja.
+      - slug: adr-0005-clone-progress-stream
+        title: ADR 0005 — Rajattu kloonauksen vaihevirta
+        desc: Hyväksytty per-UID Git-edistyminen, keskeytys ja natiivi palautumishavainto.
       - slug: daemon-bindings
         title: Daemonien yksityiset sidonnat
         desc: Juuren hallitsema hakemistopolku ja käyttäjäkohtaiset käyttöoikeudet.
