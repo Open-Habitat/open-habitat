@@ -22,10 +22,10 @@ ehdokas ajan tasalla, ei rakenneta erillistä katselmointiprosessia.
 
 | Dokumentti | Lopputulos | Commit |
 |---|---|---|
-| [Agenttiohjauksen issue](../build-agent-control/item.md) | Tulevan toteutuksen käyttäjälle näkyvät lopputulokset, ei päätöshistoriaa. SSE ja päättyneen selainkeskustelun jatkaminen kuuluvat työhön; Pi:n kysymysdialogit ja terminaaliohjauksen haltuunotto eivät. | `8925a89` |
+| [Agenttiohjauksen issue](../build-agent-control/item.md) | Tulevan toteutuksen käyttäjälle näkyvät lopputulokset, ei päätöshistoriaa. SSE ja päättyneen selainkeskustelun jatkaminen kuuluvat työhön; Pi:n kysymysdialogien vastausohjaus ja terminaaliohjauksen haltuunotto eivät; saapuneet kysymykset näytetään. | `8925a89` |
 | [Toteutusbriefit](../plan-v1-implementation/implementation-briefs.md) | Lyhyt toteutuksen omistajuuskartta. Rajapintatiedot omalle sivulleen; vanhat portit ja perusteettomasti sitovat numerot pois. | `b54636a` |
 | [ADR 0003: host stack](../../docs/adr-0003-host-stack.md) | Teknologiavalinta, vastuurajat ja perustelut. OAuth/OIDC-kirjaston valinta jää toteuttajalle; protokolla- ja käyttödetaljit muualle. | `4f50e89`, `855223a` |
-| [Rajapinnat](../../docs/interfaces.md) | Nykyiset reitit erillään sovitusta tulevasta pinnasta; viestien merkitys, katkoista palautuminen ja vastuurajat säilyvät. Palveluasetukset asennusissuen liitteeseen. | `296e4a9` |
+| [Rajapinnat](../../docs/interfaces.md) | Nykyiset reitit erillään sovitusta tulevasta pinnasta; viestien merkitys, katkoista palautuminen ja vastuurajat säilyvät. Palveluasetukset asennusissuen liitteeseen. | `296e4a9`, `1c1e8f8`; viimeiset tarkennukset tämän päivityksen commitissa |
 
 Samalla on tehty kohdennettuja korjauksia arkkitehtuuri- ja toteutussivuihin,
 ADR 0004:ään, CLI-konformanssiin ja liittyviin issueihin. Näitä ei ole vielä
@@ -58,6 +58,19 @@ Dokumentaatio- ja toteutuskartan tarkistukset sekä `git diff --check` läpäisi
 `./scripts/ci-local.sh --clean --json` läpäisi revisiolla
 `296e4a9` (`status: passed`, `clean: true`). Tämä on paikallisen portin
 synteettinen testi- ja pakettinäyttö; live-palvelinta ei muutettu eikä testattu.
+
+Jarin lukukierroksen tarkennukset: yhden kirjoittajan käyttötapa koskee myös
+tuotantoa. Kaikki saapuvat viestit, kysymykset ja sisältölohkot esitetään
+käyttäjälle vähintään turvallisena tekstinä; pelkkä tuntemattoman lohkon ilmoitus
+ei riitä. Kysymysdialogien vastaus- ja perumisohjaus pysyy erillisenä asiana.
+Nämä täsmennettiin rajapintasivulle ja agenttiohjauksen sekä keskustelun UI:n
+issueihin. Rajapintasivun lukukierros on valmis; seuraavana on arkkitehtuurisivu.
+
+Sanamuotocommitin `1c1e8f8` puhdas portti läpäisi uusinnalla toisen testiajon
+vapautettua Playwright-portin. Viimeiset dokumentti- ja issuetarkennukset
+varmennetaan dokumentaatio- ja toteutuskartan validaattoreilla, issue doctorilla
+sekä `git diff --check` -tarkistuksella. Täyttä porttia ei ajeta niille uudelleen:
+nykyinen `TESTING.md` rajaa nämä dokumentaatiotarkistuksiin.
 
 ## Lyhyt briefi jatkajalle
 

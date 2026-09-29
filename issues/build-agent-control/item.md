@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-28
+updated: 2026-09-29
 type: task
 status: open
 priority: normal
@@ -25,9 +25,9 @@ The mapped user's daemon owns the Pi process. Pi executes tools, uses its native
 configuration and writes its own history. The browser sends commands over HTTP
 and receives live updates through Server-Sent Events (SSE).
 
-Browser conversations have one writer. The test system is operated so the same
-conversation is not controlled simultaneously from the browser and SSH/tmux or
-independent clients. Prior terminal histories are read-only; terminal takeover
+Browser conversations have one writer. The same conversation is not controlled
+simultaneously from the browser, SSH/tmux or independent clients. This operating
+rule applies to both test and production systems. Prior terminal histories are read-only; terminal takeover
 and cross-process writer coordination are outside this task.
 
 Interruption is best effort. The daemon owns the direct Pi child and bounds its
@@ -36,8 +36,11 @@ crash. A detached native tool may outlive an individual interruption. Show
 uncertain termination honestly and do not start another writer into unresolved
 work. A per-conversation cgroup or separate supervisor is not required.
 
-Pi-specific interactive question dialogs and their response/cancellation protocol
-are outside this task. Ordinary conversation continues through user messages.
+Deliver every incoming agent message to the browser, including question requests
+and unfamiliar message types, so the UI can show them at least as safe text.
+An unsupported dialog must not hide the question. Pi-specific dialog response
+and cancellation controls remain outside this task. Ordinary conversation
+continues through user messages.
 @complete-conversation-ui owns the remaining rich presentation and queue controls.
 
 ## Acceptance Criteria

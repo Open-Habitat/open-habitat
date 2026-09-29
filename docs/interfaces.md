@@ -311,11 +311,18 @@ Sovittu selainohjaus kattaa daemonin omistaman Pi:n käynnistyksen, viestit,
 steering- ja follow-up-jonot, jonojen tyhjennyksen, vuoron keskeytyksen ja
 prosessin pysäytyksen. Päättynyt selainkeskustelu jatkuu samalla natiivilla
 ID:llä, kun aiempi työ tiedetään päättyneeksi. Yhdellä keskustelulla on yksi
-kirjoittaja; testijärjestelmässä samaa keskustelua ei ohjata samanaikaisesti
-selaimesta ja SSH/tmuxista. Terminaalihistoria säilyy vain luettavana.
-Pi:n kysymysdialogit ja terminaalin ohjauksen haltuunotto eivät kuulu tuotteeseen.
-Niiden vanhat skeemakentät, kuten `pending_question`, eivät avaa kykyä;
-`pending_question` jää tyhjäksi.
+kirjoittaja. Samaa keskustelua ei ohjata samanaikaisesti selaimesta,
+SSH/tmuxista tai toisesta itsenäisestä clientista. Terminaalihistoria säilyy
+vain luettavana.
+
+Kaikki agentilta saapuvat viestit näytetään käyttäjälle. Myös kysymys näytetään,
+vähintään tekstinä, vaikka sen dialogityypille ei olisi omaa käyttöliittymää.
+`pending_question` kertoo odottavasta kysymyksestä, kun tämä tieto saadaan
+Pi:ltä. Viestityypin tai sisältölohkon oman esitystavan puuttuessa sen
+sisältö näytetään turvallisena tekstinä; pelkkä ilmoitus tuntemattomasta
+lohkosta ei riitä.
+Pi:n erillisten kysymysdialogien vastaus- ja perumisohjaus sekä terminaalin
+ohjauksen haltuunotto ovat nykyisen toteutustyön ulkopuolella.
 
 Vuoron keskeytys on Pi:n `abort`, ei lupaus koko prosessipuun päättymisestä.
 Steering toimitetaan Pi:n mukaisesti tool callien jälkeen. `agent_settled`
@@ -428,7 +435,7 @@ kirjoittamista; lukeminen säilyttää historian ja näyttää lähdevaroituksen
 
 Natiivisisältö on epäluotettua tekstiä myös saman käyttäjän prosessilta.
 Selain ei suorita raakaa HTML:ää; URL-skeemat rajataan ja teksti escapetaan.
-Tuntematon validi natiivitapahtuma voidaan näyttää tekstinä, mutta skeeman
+Tuntemattoman validin natiivitapahtuman sisältö näytetään tekstinä. Skeeman
 vastainen host-viesti hylätään. Virheiden ja metadatan vapaa teksti
 redaktoidaan: home-polut, muiden käyttäjien polut ja URL-credentialit eivät
 päädy viesteihin. Kloonivirta käyttää tätä tiukempaa ADR 0005:n kenttäallowlistiä.
