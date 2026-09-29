@@ -1,10 +1,10 @@
 import {
+  type RefObject,
   useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
-  type RefObject,
 } from "react";
 import { useNavigate } from "react-router";
 import {
@@ -15,17 +15,17 @@ import {
   InlineNotice,
   UnknownEvent,
 } from "../components";
-import { Entry, readHistoryFetch } from "./HistoryView";
-import type { HistoryEntry } from "./history";
 import {
   create,
   list,
+  type Session,
+  type Status,
   send,
   status,
   stop,
-  type Session,
-  type Status,
 } from "./conversations";
+import { Entry, readHistoryFetch } from "./HistoryView";
+import type { HistoryEntry } from "./history";
 import { piStatus, sessionCSRF } from "./pi";
 import type { Workspace } from "./snapshot";
 
@@ -422,22 +422,33 @@ export function BrowserConversation({
       {!id ? (
         <>
           <h2>Pi-keskustelut</h2>
-          <Button
-            label="Aloita uusi Pi-keskustelu"
-            availability={
-              csrf && !ambiguous && !busy
-                ? { state: "enabled" }
-                : {
-                    state: "unknown",
-                    reason: "Istunto tai edellinen luonti on epävarma.",
-                  }
-            }
-            onPress={() => void start()}
-          />
-          <Button
-            label="Tarkista keskustelulista"
-            onPress={() => void recheckList()}
-          />
+          <div className="ah-actions">
+            <Button
+              label="Aloita uusi Pi-keskustelu"
+              availability={
+                !csrf
+                  ? {
+                      state: "unknown",
+                      reason: problem
+                        ? "Istuntoa ei voitu vahvistaa."
+                        : "Varmistetaan istuntoa.",
+                    }
+                  : ambiguous
+                    ? {
+                        state: "unknown",
+                        reason: "Edellisen luonnin tulos on epävarma.",
+                      }
+                    : busy
+                      ? { state: "unknown", reason: "Luonti on käynnissä." }
+                      : { state: "enabled" }
+              }
+              onPress={() => void start()}
+            />
+            <Button
+              label="Tarkista keskustelulista"
+              onPress={() => void recheckList()}
+            />
+          </div>
           <ul>
             {selected.map((s) => (
               <li key={s.agent_id}>

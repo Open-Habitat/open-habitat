@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+
 const host = "https://127.0.0.1:4174";
 test.use({
   baseURL: host,
@@ -19,6 +20,16 @@ test("@browser-conversation create, send once, reconnect and old history stays r
   page,
 }) => {
   await open(page);
+  const create = page.getByRole("button", {
+    name: "Aloita uusi Pi-keskustelu",
+  });
+  const recheck = page.getByRole("button", {
+    name: "Tarkista keskustelulista",
+  });
+  const first = await create.boundingBox();
+  const second = await recheck.boundingBox();
+  if (!first || !second) throw new Error("Conversation actions missing");
+  expect(second.x - (first.x + first.width)).toBeGreaterThan(8);
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await expect(page).toHaveURL(/conversation=pi%3A|conversation=pi:/);
   await expect(
@@ -59,6 +70,33 @@ test("@browser-conversation create, send once, reconnect and old history stays r
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toHaveCount(0);
 });
+test("@browser-conversation ordinary session loading is not an uncertain create", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/auth/session", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.getByRole("link", { name: "ordinary-dir" }).click();
+  await expect(page.getByText("Varmistetaan istuntoa.")).toBeVisible();
+  await expect(
+    page.getByText(/edellisen luonnin tulos on epävarma/i),
+  ).toHaveCount(0);
+  release();
+  await expect(
+    page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+  ).toBeEnabled();
+  await expect(page.getByText("Varmistetaan istuntoa.")).toHaveCount(0);
+});
+
 test("@browser-conversation lost create acknowledgement blocks duplicate creation", async ({
   page,
 }) => {
@@ -194,9 +232,23 @@ test("@browser-conversation revalidation restores editor selection, paged readin
     node.focus();
     node.setSelectionRange(4, 9);
   });
-  // Cross the real App 30-second interval without waiting in wall time.
+  // Idle viewing must not replace the editor with a full-screen loading page.
+  // The conversation's own 3-second native status poll is separate from the
+  // top-level snapshot revalidation which used to unmount the whole page.
+  let snapshotReads = 0;
+  await page.route("**/api/v1/snapshot", async (route) => {
+    snapshotReads++;
+    await route.continue();
+  });
+  await page.clock.fastForward(60_000);
+  expect(snapshotReads).toBe(0);
+  await expect(editor).toBeVisible();
+  await expect(editor).toHaveValue("kesken oleva viesti");
+  await expect(page.getByRole("heading", { name: "Ladataan" })).toHaveCount(0);
+  // Coming back to the tab still revalidates identity before restoring the view.
   tail = 1;
-  await page.clock.fastForward(30_000);
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect.poll(() => snapshotReads).toBeGreaterThan(0);
   await expect(page.locator(".ah-feed li")).toHaveCount(50);
   await expect(
     page.getByText("Viimeisimmät live-tapahtumat (1)"),

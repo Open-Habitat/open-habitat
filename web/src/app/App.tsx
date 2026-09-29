@@ -9,9 +9,9 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation, useNavigate } from "react-router";
 import {
-  AppShell,
-  AccountShelf,
   AccountSettings,
+  AccountShelf,
+  AppShell,
   ConnectionBanner,
   InlineNotice,
   NavLink,
@@ -20,24 +20,25 @@ import {
 } from "../components";
 import { accountLabel } from "../components/Account";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
-import { HistoryView } from "./HistoryView";
 import {
   BrowserConversation,
   type ConversationPlace,
 } from "./BrowserConversation";
 import { GitHubOnboarding } from "./GitHubOnboarding";
+import { HistoryView } from "./HistoryView";
 import { piStatus } from "./pi";
+import { readSnapshot, sourceState, type Workspace } from "./snapshot";
 import {
   authenticated,
   authenticationRequired,
-  piRequired,
   clearIdentity,
   filterChanged,
   loading,
+  piRequired,
   type RootState,
   unavailable,
 } from "./store";
-import { readSnapshot, sourceState, type Workspace } from "./snapshot";
+
 const CatalogPreview =
   import.meta.env.VITE_ENABLE_TEST_FIXTURES === "true"
     ? lazy(() => import("../test/CatalogPreview"))
@@ -171,21 +172,18 @@ export function App() {
     () => dispatch(authenticationRequired()),
     [dispatch],
   );
-  // A tab can survive logout, remapping and native credential removal. Invalidate
-  // the old snapshot before each revalidation, rather than displaying it under
-  // a new cookie while a request is in flight.
+  // Revalidate when the browser returns to this tab, not on a timer while the
+  // person is using it. Native reads and writes remain gated by the server.
+  // Invalidate the old snapshot before revalidation so a changed cookie cannot
+  // briefly display another identity's workspaces.
   useEffect(() => {
     if (syntheticDemo || fixtureName || phase !== "authenticated") return;
     const revalidate = () => {
       dispatch(loading());
       refresh();
     };
-    const interval = window.setInterval(revalidate, 30000);
     window.addEventListener("focus", revalidate);
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener("focus", revalidate);
-    };
+    return () => window.removeEventListener("focus", revalidate);
   }, [dispatch, refresh, fixtureName, phase]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is the explicit refresh trigger, not read inside the effect.
   useEffect(() => {
