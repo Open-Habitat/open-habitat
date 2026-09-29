@@ -481,7 +481,9 @@ export function App() {
             title="Uloskirjautumista ei voitu vahvistaa"
             description="Istunto voi olla edelleen voimassa. Kun yhteys toimii, yritä uloskirjautumista uudelleen."
             tone="danger"
-            actions={[{ label: "Yritä uloskirjautumista uudelleen", onPress: logout }]}
+            actions={[
+              { label: "Yritä uloskirjautumista uudelleen", onPress: logout },
+            ]}
           />
         ) : null}
       </>
@@ -568,9 +570,7 @@ export function App() {
         </p>
         <InlineNotice
           title="Mitä voit tehdä?"
-          actions={[
-            { label: "Yritä uudelleen", onPress: refresh },
-          ]}
+          actions={[{ label: "Yritä uudelleen", onPress: refresh }]}
         />
         <Link to="/workspaces">Kaikki työtilat</Link>
       </>
