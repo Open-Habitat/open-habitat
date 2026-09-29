@@ -27,7 +27,8 @@ ehdokas ajan tasalla, ei rakenneta erillistä katselmointiprosessia.
 | [ADR 0003: host stack](../../docs/adr-0003-host-stack.md) | Teknologiavalinta, vastuurajat ja perustelut. OAuth/OIDC-kirjaston valinta jää toteuttajalle; protokolla- ja käyttödetaljit muualle. | `4f50e89`, `855223a` |
 | [Arkkitehtuuri](../../docs/architecture.md) | Käyttäjän kulku ja kolme auktoriteettia, natiivien tietojen omistajuus ja katkoista palautuminen. Kloonivirran poikkeus erotettu yleisestä tapahtumavirrasta; yksityiskohdat linkitetty omiin dokumentteihinsa. | `e78a084` |
 | [Rajapinnat](../../docs/interfaces.md) | Nykyiset reitit erillään sovitusta tulevasta pinnasta; viestien merkitys, katkoista palautuminen ja vastuurajat säilyvät. Palveluasetukset asennusissuen liitteeseen. | `296e4a9`, `1c1e8f8`, `742197c` |
-| [Tuotteen tavoite](../../docs/product.md) | Käyttäjän työ ja sovitut toiminnot. Nykytila erotettu tavoitteesta; vanhat MVP-portit, terminaalinsiirto ja testimatriisit poistettu tuotekuvauksesta. | Tämän päivityksen commit |
+| [Tuotteen tavoite](../../docs/product.md) | Käyttäjän työ ja sovitut toiminnot. Nykytila erotettu tavoitteesta; vanhat MVP-portit, terminaalinsiirto ja testimatriisit poistettu tuotekuvauksesta. | `fae13b8` |
+| [Todennettava näyttö](../../docs/assumptions.md) | Alkuperäisten kokeiden havainnot ja rajat sekä GitHub-käytön ja keskusteluun palaamisen puuttuva kokonaisnäyttö. Sovitut ratkaisut ja testien vastuut linkitetty omiin lähteisiinsä. UI-sivun terminaalisiirto korjattu samaan rajaan. | Tämän päivityksen commit |
 
 Samalla on tehty kohdennettuja korjauksia toteutussivuun, ADR 0004:ään,
 CLI-konformanssiin ja liittyviin issueihin. Näitä ei ole vielä kokonaisuudessaan
@@ -35,14 +36,12 @@ käyty läpi tällä skillillä.
 
 ## Seuraavaksi
 
-Ehdotus: [docs/assumptions.md](../../docs/assumptions.md). Sivulla vanhat
-kokeet, hyväksytyt rajat ja tulevat testivaatimukset sekoittuvat. Se vaatii
-edelleen terminaali→RPC-siirron testaamista, kuvaa hyväksytyn host-stackin
-ehdotuksena ja jättää jo valitun credential-ratkaisun avoimeksi. Vertaa
-alkuperäisiä koetuloksia myöhempiin päätöksiin ennen uudelleenkirjoitusta.
-Myös UI-sivulla on vanhoja ohjaus- ja katselmointirajauksia; tällä kierroksella
-korjattiin vain tuotesivun muuttuneeseen rakenteeseen liittyvä kappale.
-Tuotesivun uusi teksti on valmis Jarin lukukierrokselle.
+Ehdotus: [docs/ui.md](../../docs/ui.md). Sivu kuvaa jo valittua frontendia
+avoimena, väittää historiaa ja ohjausta kokonaan toteuttamattomiksi ja sisältää
+vanhoja katselmointiportteja sekä kysymysdialogien vastausohjaimia. Tällä
+kierroksella korjattiin vain terminaalisiirron ristiriita. Vertaa UI-päätöksiä
+myöhempiin rajauksiin ennen koko sivun uudelleenkirjoitusta.
+Oletussivun uusi teksti on valmis Jarin lukukierrokselle.
 
 ## Rajapintasivun läpikäynti 2026-09-29
 
@@ -143,3 +142,30 @@ Issue doctorissa ei ollut skeema- tai linkkivirheitä; samat neljä muiden
 issueiden PNG-kuvahavaintoa säilyvät. Täyttä CI-porttia ei ajettu uudelleen,
 koska muutos koskee vain dokumentaatiota (`TESTING.md`). Live-palvelinta ei
 muutettu eikä testattu.
+
+## Oletussivun läpikäynti 2026-09-29
+
+Jari hyväksyi rajauksen: sivu kertoo, mikä ratkaisussa tarvitsee vielä näyttöä
+ja mitä epäonnistuminen merkitsisi. Pi- ja työtilakokeiden havainnot erotetaan
+hyväksytyistä ratkaisuista. Testien yksityiskohdat jäävät niitä omistaviin
+toteutusissueihin. Samalla korjataan UI-sivun terminaalisiirron ristiriita.
+
+Lähtörevisio oli `fae13b8`. Lähteinä olivat alkuperäiset Pi- ja työtilakokeet,
+ADR 0003, toteutusvalmiuden päätös sekä nykyiset agenttiohjauksen ja
+GitHub-työtilojen issuet. Credential-ratkaisu ja daemonin lapsiprosessi ovat
+hyväksyttyjä valintoja, eivät avoimia ehdotuksia. Vanha terminaali→RPC-siirron
+vaatimus poistettiin; päättyneen selainkeskustelun jatkaminen säilyy. UI-sivun
+alkuperäisen ohjattavuusvalinnan kohdalla kerrotaan myöhempi rajaus ja linkitetään
+nykyinen toteutusissue.
+
+Kokeiden tarkat versiot ja tulokset jäävät alkuperäisiin raportteihin, joihin
+sivu linkittää täsmällisillä revisioilla. Testiluetteloa, protokollan detaljeja,
+otsikon syöterajoja ja poiston algoritmia ei kopioitu uuteen liitteeseen:
+niiden nykyiset lähteet ovat rajapintasivu, toteutuskartta ja toteutusissuet.
+Sivu ei enää aseta omaa toteutusta edeltävää hyväksyntäporttia. GitHub-polun
+ja keskusteluun palaamisen keskeneräinen kokonaisnäyttö pysyy näkyvissä.
+
+`python3 scripts/validate-project-view.py`, toteutuskartan validaattori ja
+`git diff --check` läpäisivät. Täyttä CI-porttia ei ajettu uudelleen, koska
+muutos koskee vain dokumentaatiota (`TESTING.md`). Live-palvelinta ei muutettu
+eikä testattu.

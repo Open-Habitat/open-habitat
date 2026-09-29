@@ -48,13 +48,11 @@ muuta mockin ajastinta tai klikattavaa kontrollia backend-kyvyksi.
    saadut lisätiedot. Agentin avaaminen ei resumoi sitä. Löydetty mutta
    ohjauskyvyltään todentamaton agentti on luettavissa erillisessä tilassa.
    Käynnissä olevaan terminaali-TUI:hin ei yritetä liittää RPC:tä.
-4. **Historia, resume ja siirto.** Natiivi Pi-historia ladataan. Päättynyt
-   keskustelu jatketaan erillisellä toiminnolla käyttäen samaa resume-ID:tä;
-   puuttuva tai vioittunut historia ei muutu tyhjäksi uudeksi keskusteluksi.
-   Hallittu siirto terminaalista selaimeen on eri toiminto kuin live-liittyminen:
-   käyttäjä vahvistaa TUI:n turvallisen pysäytyksen, UI odottaa historian
-   asettumisen ja käynnistää sitten uuden runtimen muodossa
-   `pi --mode rpc --session <session>`.
+4. **Historia ja jatkaminen.** Natiivi Pi-historia ladataan. Päättynyt
+   selainkeskustelu jatketaan erillisellä toiminnolla käyttäen samaa natiivia
+   keskustelutunnusta; puuttuva tai vioittunut historia ei muutu tyhjäksi uudeksi
+   keskusteluksi. Terminaalihistoriat ovat vain luettavia. Samaa keskustelua
+   ohjataan yhdestä paikasta kerrallaan.
 5. **Viesti ja vastaus.** Valmis agentti vastaanottaa viestin, käyttöliittymä
    erottaa hyväksytyn, hylätyn ja tulokseltaan epävarman lähetyksen ja näyttää
    tapahtumat elävänä. Pi:n tuetun `edit`-työkalun rakenteinen tulos näytetään
@@ -85,7 +83,7 @@ korjausten kautta; yksittäinen demo osoittaa vain siinä todennetut toiminnot.
 | Historia | loading → tapahtumat → pohja | tyhjä, pitkä historia, lukuvirhe, puuttuva/vioittunut historia, tuntematon tapahtumatyyppi, lyhennetty pitkä sisältö, uusi sisältö lukukohdan yläpuolella |
 | Syöte | luonnos → lähetys → hyväksytty | tyhjä/IME, pending, hylätty, tulokseltaan epävarma, katkos, vanhentunut istunto, vain luku, agentti työskentelee, agentin vaihto ja reload |
 | Vastaus | stream → valmis | työkalun pending/onnistui/virhe/keskeytetty, vuoro keskeytetty/virheellinen, käyttäjäpyyntö tuettu/ei tuettu/käsitelty muualla, yhteys katkeaa streamissa |
-| Resume ja terminaalisiirto | varmasti päättynyt historia → pending → elävä; tai havaittu TUI → stop tunnetun omistajan kautta tai käyttäjän toimesta terminaalissa → prosessi poistunut ja historia asettunut → uusi RPC-runtime | jo käynnissä, prosessihavainto stale/tuntematon/ei käytettävissä, stop epäonnistui, historian asettumista ei voida varmistaa, kilpaileva resume, RPC-käynnistys epäonnistui, historia puuttuu; tuntematon havainto estää resumen ja live-TUI-attachia ei tarjota |
+| Selainkeskustelun jatkaminen | varmasti päättynyt selainkeskustelu → pending → elävä, sama natiivi historia | aiemman työn päättyminen epävarma, käynnistys epäonnistuu, historia puuttuu tai on vioittunut; terminaalihistoria pysyy vain luettavana |
 | Reconnect | down → reconnecting → cursor tai snapshot → ok | cursor vanhentunut, snapshot epäonnistuu, lähetyshetki jäi epävarmaksi, natiivista lähteestä tullut rinnakkainen päivitys |
 | Workspace-luonti | tyhjä → hakemisto → mahdollinen agentti → fokus; Git → hakemisto/clone → estävä Git-integrointi → mahdollinen agentti → fokus | nimi/permission-konflikti, osittainen `mkdir`/clone/`git init`/integraatio/agent start, peruutus, katkos |
 | Asetukset ja näkyvyys | lue → muuta näyttönimi → tallenna; ota Git käyttöön olemassa olevassa hakemistossa → estävä Git-integrointi ennen seuraavaa avausta; piilota/palauta | tiedoston, `git init`in tai integraation virhe, ulkoinen muutos, Git-faktojen puute; piilotus ei poista levyltä |
@@ -134,9 +132,8 @@ tyhjennys kuuluu toimintaan, mutta kontrolli pysyy estettynä, kunnes host voi
 palauttaa täsmälleen todella poistetut tekstit; nykyinen result-schema ei niitä
 kuljeta. Epävarma lähetys tarjoaa tilan tarkistuksen, tekstin
 kopioinnin ja erikseen vahvistettavan uuden lähetyksen; mikään niistä ei ole
-hidden retry. TUI on read-only, ja siirtodialogi näyttää stop/terminal-ohjeen,
-process exitin, history settlementin, lockin ja uuden RPC-startin erillisinä
-vaiheina.
+hidden retry. Terminaalihistoriat ovat vain luettavia. Päättyneen
+selainkeskustelun jatkaminen edellyttää, että aiemman työn tiedetään päättyneen.
 
 Workspace-, Git-, GitHub-, Taskfleet-, archive- ja delete-flowt käyttävät samaa
 vaihelistaa. Confirmed-vaihe säilyy, failed/unknown/skipped erotellaan ja partial
@@ -239,15 +236,12 @@ vedosruudut ja alkuperäiset suositukset.
 5. **Huomio.** Suositus: v1 käyttää sovelluksen sisäistä saavutettavaa lukumäärää,
    agenttirivin tekstimerkkiä ja dokumentin otsikon lukua. Selain-/OS-ilmoitukset
    jätetään myöhemmäksi ja taustavälilehti ei saa olla ainoa ilmoituskanava.
-6. **Ohjattavuus.** Suositus: hallitulle RPC-runtimelle sallitaan lähetys,
-   jonotus ja keskeytys; varmasti päättyneelle historialle resume; havaitulle
-   elävälle TUI:lle vain historia. Stale, tuntematon tai puuttuva prosessihavainto
-   estää resumen: puuttuminen listasta ei todista prosessin päättyneen. Teksti
-   sanoo: “Agentti on havaittu, mutta tähän terminaali-istuntoon ei voi liittyä
-   selaimesta.” Erillinen “Siirrä selaimen ohjaukseen” pyytää käyttäjää
-   lopettamaan TUI:n terminaalissa tai käyttää vain tunnetun omistajan stop-kanavaa;
-   UI odottaa prosessin poistumisen ja historian asettumisen ennen RPC-runtimea.
-   Daemon ei signaloi vain havaittua prosessia.
+6. **Ohjattavuus.** Nykyinen, 2026-09-29 täsmennetty rajaus sallii hallitulle
+   RPC-prosessille lähetyksen, jonotuksen ja keskeytyksen sekä päättyneelle
+   selainkeskustelulle jatkamisen. Aiemman työn epävarma tila estää jatkamisen.
+   Terminaalihistoriat ovat vain luettavia. Alkuperäiseen 2026-09-22
+   valintaan sisältynyt terminaalisiirto on rajattu pois nykyisestä
+   [agenttiohjauksen työstä](../issues/build-agent-control/item.md).
 7. **Epävarma lähetys ja reconnect.** Suositus: jokainen lähetys saa asiakkaan
    command ID:n, jonka host-sopimus tekee idempotentiksi. Ennen kuittausta
    katkennut lähetys näkyy “Tulos epävarma” -tilassa eikä sitä uusita
