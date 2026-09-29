@@ -200,8 +200,8 @@ test("@resilience active conversation stays readable but cannot send during outa
     page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toBeDisabled();
   await expect(
-    page.getByRole("button", { name: "Pyydä pysäytystä" }),
-  ).toBeDisabled();
+    page.getByRole("button", { name: "Keskeytä Pi:n vuoro" }),
+  ).toHaveCount(0);
   await page.screenshot({
     path: "test-results/evidence/stale-conversation.png",
   });
