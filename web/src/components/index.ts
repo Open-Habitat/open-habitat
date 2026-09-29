@@ -7,4 +7,5 @@ export * from "./Account";
 export * from "./Conversation";
 export * from "./AgentInteractionControls";
 export * from "./PiDeviceSignIn";
+export * from "./GitHubRepoChooser";
 export * from "./Operations";

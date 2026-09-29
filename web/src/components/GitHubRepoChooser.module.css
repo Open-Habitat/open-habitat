@@ -1,0 +1,69 @@
+.card {
+  display: grid;
+  gap: var(--ah-s5);
+  max-width: 48rem;
+  padding: var(--ah-s7);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-xl);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+}
+.header {
+  display: grid;
+  gap: var(--ah-s2);
+}
+.header > * {
+  margin: 0;
+}
+.header p {
+  line-height: var(--ah-lh-ui);
+}
+.list {
+  display: grid;
+  gap: var(--ah-s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.row {
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+}
+.choice {
+  display: flex;
+  align-items: start;
+  gap: var(--ah-s3);
+  padding: var(--ah-s4);
+  cursor: pointer;
+}
+.choice input {
+  margin-top: 0.25em;
+  accent-color: var(--ah-accent-ink);
+}
+.choice input:focus-visible {
+  outline: 2px solid var(--ah-accent-ink);
+  outline-offset: 2px;
+}
+.details {
+  display: grid;
+  gap: var(--ah-s2);
+  min-width: 0;
+}
+.name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ah-s2);
+  overflow-wrap: anywhere;
+}
+.description {
+  color: var(--ah-ink-2);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s3);
+}
