@@ -15,6 +15,11 @@ const repos: GitHubRepoChoice[] = [
   },
 ];
 const onIntent = () => {};
+const catalog = {
+  phase: "catalog" as const,
+  repositories: repos,
+  hasMore: false,
+};
 const meta = {
   title: "Production/GitHub first-use chooser",
   component: GitHubRepoChooser,
@@ -30,17 +35,17 @@ const meta = {
     selectedNames: [],
     checkout: { phase: "idle" },
     onToggle: onIntent,
-    onCheckout: onIntent,
-    onSkip: onIntent,
-    onContinue: onIntent,
+    onProceed: onIntent,
+    onRecheck: onIntent,
   },
 } satisfies Meta<typeof GitHubRepoChooser>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Loading: Story = { args: { view: { phase: "loading" } } };
-export const Choices: Story = {
+export const NoSelection: Story = { args: { view: catalog } };
+export const Selected: Story = {
   args: {
-    view: { phase: "catalog", repositories: repos, hasMore: true },
+    view: { ...catalog, hasMore: true },
     selectedNames: [repos[0].full_name],
     onMore: onIntent,
   },
@@ -54,18 +59,13 @@ export const Unavailable: Story = {
 };
 export const LoadingMore: Story = {
   args: {
-    view: {
-      phase: "catalog",
-      repositories: repos,
-      hasMore: true,
-      loadingMore: true,
-    },
+    view: { ...catalog, hasMore: true, loadingMore: true },
     onMore: onIntent,
   },
 };
 export const Progress: Story = {
   args: {
-    view: { phase: "catalog", repositories: repos, hasMore: false },
+    view: catalog,
     selectedNames: repos.map((repo) => repo.full_name),
     checkout: { phase: "progress", completed: 1, total: 2 },
   },

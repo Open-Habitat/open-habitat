@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Button } from "./Primitives";
 import { Badge, InlineNotice, ProgressIndicator } from "./Status";
 import styles from "./GitHubRepoChooser.module.css";
@@ -30,11 +31,12 @@ export interface GitHubRepoChooserProps {
   selectedNames: string[];
   checkout: GitHubCheckoutView;
   onToggle: (fullName: string, selected: boolean) => void;
-  onCheckout: (fullNames: string[]) => void;
+  /** One user-authorized attempt; [] advances without checkout. Parent advances to Pi after verified success. */
+  onProceed: (fullNames: string[]) => void;
   onMore?: () => void;
   onRefresh?: () => void;
-  onSkip: () => void;
-  onContinue: () => void;
+  /** Read-only server-side status reconciliation; must never start a new checkout. */
+  onRecheck?: () => void;
 }
 
 export function GitHubRepoChooser({
@@ -42,27 +44,37 @@ export function GitHubRepoChooser({
   selectedNames,
   checkout,
   onToggle,
-  onCheckout,
+  onProceed,
   onMore,
   onRefresh,
-  onSkip,
-  onContinue,
+  onRecheck,
 }: GitHubRepoChooserProps) {
-  const busy = checkout.phase !== "idle" && checkout.phase !== "confirmed";
+  // Lock synchronously: a second click must not POST again before the parent rerenders.
+  const started = useRef(false);
+  const [waiting, setWaiting] = useState(false);
+  const previousPhase = useRef(checkout.phase);
+  useEffect(() => {
+    if (checkout.phase === "idle" && previousPhase.current !== "idle") {
+      started.current = false;
+      setWaiting(false);
+    }
+    previousPhase.current = checkout.phase;
+  }, [checkout.phase]);
+
+  const idle = checkout.phase === "idle";
+  const selection = new Set(selectedNames);
   const confirmed =
     checkout.phase === "confirmed" &&
-    selectedNames.length > 0 &&
     checkout.names.length === selectedNames.length &&
     selectedNames.every((name) => checkout.names.includes(name));
-  const selection = new Set(selectedNames);
   return (
     <section className={styles.card} aria-labelledby="github-chooser-title">
       <header className={styles.header}>
         <p className="ah-eyebrow">Käyttöönotto</p>
         <h2 id="github-chooser-title">Valitse GitHub-repot haettaviksi</h2>
-        <p>
-          Valinta ei vielä hae mitään. Vahvista haettavat repot erikseen ennen
-          Pi-kirjautumista.
+        <p id="github-chooser-instructions">
+          Valitse haluamasi repot ja paina Jatka. Silloin valitut repot haetaan
+          koneelle ennen Pi-kirjautumista. Ilman valintoja jatkat ilman repoja.
         </p>
       </header>
 
@@ -79,7 +91,7 @@ export function GitHubRepoChooser({
       {view.phase === "unavailable" ? (
         <InlineNotice
           title="Repoja ei voitu hakea"
-          description="Tilaa ei tunneta. Tarkista yhteys ennen uutta yritystä tai jatka ilman repoja."
+          description="Tilaa ei tunneta. Tarkista yhteys ennen jatkamista."
           tone="danger"
           actions={
             onRefresh
@@ -99,11 +111,14 @@ export function GitHubRepoChooser({
                   <label className={styles.choice}>
                     <input
                       type="checkbox"
+                      aria-describedby="github-chooser-instructions"
                       checked={selection.has(repo.full_name)}
-                      disabled={busy || confirmed}
-                      onChange={(event) =>
-                        onToggle(repo.full_name, event.target.checked)
-                      }
+                      disabled={!idle || waiting}
+                      onChange={(event) => {
+                        if (idle && !started.current) {
+                          onToggle(repo.full_name, event.target.checked);
+                        }
+                      }}
                     />
                     <span className={styles.details}>
                       <span className={styles.name}>
@@ -127,7 +142,7 @@ export function GitHubRepoChooser({
               variant="secondary"
               pending={view.loadingMore}
               availability={
-                busy || confirmed || view.loadingMore || !onMore
+                !idle || waiting || view.loadingMore || !onMore
                   ? {
                       state: "disabled",
                       reason: "Odota nykyisen vaiheen valmistumista.",
@@ -159,6 +174,11 @@ export function GitHubRepoChooser({
               title="Vain osa repoista vahvistettu"
               description="Tarkista palvelimen tila ennen jatkamista. Valintaa ei lähetetä automaattisesti uudelleen."
               tone="warning"
+              actions={
+                onRecheck
+                  ? [{ label: "Tarkista haun tila", onPress: onRecheck }]
+                  : []
+              }
             />
           ) : null}
         </>
@@ -168,11 +188,16 @@ export function GitHubRepoChooser({
           title="Haun tulosta ei tunneta"
           description="Tarkista palvelimen tila. Älä aloita samaa hakua uudelleen ennen kuin tulos on vahvistettu."
           tone="warning"
+          actions={
+            onRecheck
+              ? [{ label: "Tarkista haun tila", onPress: onRecheck }]
+              : []
+          }
         />
       ) : null}
       {confirmed ? (
         <p role="status">
-          Valitut repot on vahvistettu haetuiksi. Voit jatkaa Pi-kirjautumiseen.
+          Valitut repot on vahvistettu haetuiksi. Siirrytään Pi-kirjautumiseen.
         </p>
       ) : null}
       {checkout.phase === "confirmed" && !confirmed ? (
@@ -180,31 +205,33 @@ export function GitHubRepoChooser({
           title="Valintaa ei ole vahvistettu"
           description="Nykyinen valinta eroaa vahvistetuista repoista. Tarkista tila ennen jatkamista."
           tone="warning"
+          actions={
+            onRecheck
+              ? [{ label: "Tarkista haun tila", onPress: onRecheck }]
+              : []
+          }
         />
       ) : null}
-      <div className={styles.actions}>
-        {view.phase === "catalog" && checkout.phase === "idle" ? (
+      {(view.phase === "catalog" ||
+        (view.phase === "no-auth" && selectedNames.length === 0)) &&
+      idle ? (
+        <div className={styles.actions}>
           <Button
-            label={`Hae valitut repot (${selectedNames.length})`}
-            onPress={() => onCheckout([...selectedNames])}
+            label="Jatka"
             availability={
-              selectedNames.length === 0
-                ? { state: "disabled", reason: "Valitse vähintään yksi repo." }
+              waiting
+                ? { state: "disabled", reason: "Odotetaan haun tulosta." }
                 : undefined
             }
+            onPress={() => {
+              if (started.current) return;
+              started.current = true;
+              setWaiting(true);
+              onProceed(view.phase === "catalog" ? [...selectedNames] : []);
+            }}
           />
-        ) : null}
-        {confirmed ? (
-          <Button label="Jatka Pi-kirjautumiseen" onPress={onContinue} />
-        ) : null}
-        {checkout.phase === "idle" ? (
-          <Button
-            label="Jatka ilman repoja"
-            variant="secondary"
-            onPress={onSkip}
-          />
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </section>
   );
 }
