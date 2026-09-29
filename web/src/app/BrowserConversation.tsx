@@ -11,6 +11,7 @@ import {
   AgentHeader,
   Button,
   Composer,
+  QueuePanel,
   ConversationTimeline,
   InlineNotice,
   WorkingProgress,
@@ -21,6 +22,9 @@ import {
   type Session,
   type Status,
   send,
+  queueMessage,
+  clearQueue,
+  NotAdmitted,
   status,
   stop,
 } from "./conversations";
@@ -82,6 +86,10 @@ export function BrowserConversation({
   const [startedAt, setStartedAt] = useState<number>();
   const [elapsed, setElapsed] = useState(0);
   const [confirmStop, setConfirmStop] = useState(false);
+  const [queueOpen, setQueueOpen] = useState(false);
+  const [workingMode, setWorkingMode] = useState<"steer" | "follow_up">(
+    "follow_up",
+  );
   const [finishedInBackground, setFinishedInBackground] = useState(false);
   const wasWorking = useRef(false);
   const wasAtBottom = useRef(true);
@@ -149,6 +157,7 @@ export function BrowserConversation({
     setStartedAt(undefined);
     setElapsed(0);
     setConfirmStop(false);
+    setWorkingMode("follow_up");
     setFinishedInBackground(false);
     wasWorking.current = false;
     wasAtBottom.current = true;
@@ -244,6 +253,7 @@ export function BrowserConversation({
         setFinishedInBackground(true);
       wasWorking.current = working;
       setCurrent(nextStatus);
+      if (nextStatus.state === "idle") setWorkingMode("follow_up");
       if (nextStatus.command_id && nextStatus.ack === "rejected") {
         const unresolvedKey = `nah:ambiguous:${identity}:${csrf}:${id}`;
         if (sessionStorage.getItem(unresolvedKey) === nextStatus.command_id) {
@@ -503,6 +513,93 @@ export function BrowserConversation({
       if (alive.current) setBusy(false);
     }
   };
+  const submitQueue = async (kind: "steer" | "follow_up") => {
+    if (
+      stale ||
+      busy ||
+      !current ||
+      current.state !== "accepted" ||
+      !draft.trim() ||
+      ambiguous ||
+      !csrf
+    )
+      return;
+    const text = draft,
+      command = crypto.randomUUID();
+    setBusy(true);
+    try {
+      const token = await verify();
+      if (!alive.current) return;
+      sessionStorage.setItem(submittedKey, text);
+      sessionStorage.setItem(ambiguousKey, command);
+      setReceipt("Viesti odottaa kuittausta");
+      await queueMessage(current.agent_id, text, command, token, kind);
+      if (alive.current) await refresh();
+    } catch (error) {
+      if (error instanceof NotAdmitted) {
+        sessionStorage.removeItem(ambiguousKey);
+        sessionStorage.removeItem(submittedKey);
+        if (alive.current) {
+          setReceipt(
+            "Tila muuttui. Viestiä ei lähetetty. Tarkista keskustelun tila.",
+          );
+          void refresh();
+        }
+      } else if (alive.current)
+        setReceipt(
+          sessionStorage.getItem(ambiguousKey)
+            ? "Lähetyksen tulos epävarma. Älä lähetä automaattisesti uudelleen."
+            : "Istuntoa ei voitu vahvistaa.",
+        );
+    } finally {
+      if (alive.current) setBusy(false);
+    }
+  };
+  const clearNativeQueue = async () => {
+    if (
+      stale ||
+      busy ||
+      !current ||
+      !csrf ||
+      ambiguous ||
+      current.state === "pending" ||
+      current.state === "uncertain" ||
+      current.state === "stopping"
+    )
+      return;
+    setBusy(true);
+    let sent = false;
+    try {
+      const token = await verify();
+      if (!alive.current) return;
+      sent = true;
+      const removed = await clearQueue(
+        current.agent_id,
+        crypto.randomUUID(),
+        token,
+      );
+      if (!alive.current) return;
+      // The two groups are restored in Pi's reported order, never from an
+      // earlier observation of the queue. Do not overwrite an edited draft.
+      const restored = [...removed.steering, ...removed.follow_up].join("\n\n");
+      if (restored) changeDraft(draft ? `${draft}\n\n${restored}` : restored);
+      setReceipt(
+        restored
+          ? "Jonosta poistetut viestit palautettiin kirjoituskenttään."
+          : "Jono oli jo tyhjä.",
+      );
+      void refresh();
+    } catch {
+      if (alive.current)
+        setReceipt(
+          sent
+            ? "Jonon tyhjennyksen tulos epävarma. Tarkista tila; viestejä ei palautettu ilman kuittausta."
+            : "Istuntoa ei voitu vahvistaa.",
+        );
+    } finally {
+      if (alive.current) setBusy(false);
+    }
+  };
   const stopNow = async () => {
     if (stale || busy || !current || !csrf) return;
     setBusy(true);
@@ -544,7 +641,9 @@ export function BrowserConversation({
     !stale &&
     !busy &&
     !ambiguous &&
-    (current.state === "idle" || current.state === "rejected");
+    (current.state === "idle" ||
+      current.state === "rejected" ||
+      current.state === "accepted");
   useLayoutEffect(() => {
     if (!restored.current) return;
     const saved = place.current;
@@ -794,8 +893,9 @@ export function BrowserConversation({
             <Composer
               value={draft}
               onChange={changeDraft}
-              activity="idle"
-              selectedWorkingMode="follow_up"
+              activity={current?.state === "accepted" ? "working" : "idle"}
+              selectedWorkingMode={workingMode}
+              queueSummary={`Jonossa ${(current?.queue?.steering.length ?? 0) + (current?.queue?.follow_up.length ?? 0)}`}
               sendState={busy ? "pending" : ambiguous ? "uncertain" : "idle"}
               availability={
                 canSend
@@ -807,9 +907,29 @@ export function BrowserConversation({
                     }
               }
               onSendNow={() => void submit()}
-              onSteer={() => {}}
-              onFollowUp={() => {}}
-              onModeChange={() => {}}
+              onSteer={() => void submitQueue("steer")}
+              onFollowUp={() => void submitQueue("follow_up")}
+              onModeChange={setWorkingMode}
+              onOpenQueue={() => setQueueOpen(!queueOpen)}
+            />
+          ) : null}
+          {controlled && queueOpen ? (
+            <QueuePanel
+              steeringTexts={current?.queue?.steering ?? []}
+              followUpTexts={current?.queue?.follow_up ?? []}
+              state={stale ? "stale" : current?.queue ? "ready" : "error"}
+              clearAvailability={
+                !stale &&
+                !busy &&
+                !ambiguous &&
+                current?.queue &&
+                current.state !== "pending" &&
+                current.state !== "uncertain" &&
+                current.state !== "stopping"
+                  ? { state: "enabled" }
+                  : { state: "unknown", reason: "Odota vahvistettua tilaa." }
+              }
+              onClearAll={() => void clearNativeQueue()}
             />
           ) : null}
           <Button

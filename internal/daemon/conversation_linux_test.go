@@ -224,3 +224,105 @@ func TestConversationPrivateBoundary(t *testing.T) {
 		t.Fatal("revocation did not close controller")
 	}
 }
+
+func TestConversationQueueClearCorrelatedAndDeduplicated(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("requires nonroot")
+	}
+	home := t.TempDir()
+	script := filepath.Join(home, "pi")
+	code := `#!/usr/bin/env python3
+import json,sys,time
+q={"steering":[],"followUp":[]}
+for line in sys.stdin:
+ r=json.loads(line)
+ if r["type"] in ("steer","follow_up"):
+  q["steering" if r["type"]=="steer" else "followUp"].append(r["message"])
+  print(json.dumps(dict(type="queue_update",**q)),flush=True)
+ if r["type"]=="clear_queue":
+  result=q
+  q={"steering":[],"followUp":[]}
+  print(json.dumps(dict(type="queue_update",**q)),flush=True)
+  print(json.dumps(dict(type="response",id=r["id"],command=r["type"],success=True,data=result)),flush=True)
+ else:
+  print(json.dumps(dict(type="response",id=r["id"],command=r["type"],success=True)),flush=True)
+`
+	if err := os.WriteFile(script, []byte(code), 0700); err != nil {
+		t.Fatal(err)
+	}
+	p, err := launchPiRPC(script, home, home, "", []string{"PATH=/usr/bin:/bin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.close()
+	id := ownershipTestID
+	s := &conversation{id: id, rpc: p, state: "accepted", commands: map[string]bool{}}
+	c := &ConversationController{sessions: map[string]*conversation{id: s}}
+	go c.drain(s)
+	for i, kind := range []string{"steer", "follow_up", "steer"} {
+		cid := fmt.Sprintf("12345678-1234-4123-8123-%012d", i)
+		body := fmt.Sprintf(`{"message":%q,"command_id":%q}`, fmt.Sprintf("text %d", i), cid)
+		req := httptest.NewRequest("POST", "http://unix/"+kind, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		c.sendKind(w, req, id, kind)
+		if w.Code != 200 {
+			t.Fatalf("%s: %d %s", kind, w.Code, w.Body.String())
+		}
+		deadline := time.Now().Add(time.Second)
+		for time.Now().Before(deadline) {
+			c.mu.Lock()
+			ack := s.ack
+			c.mu.Unlock()
+			if ack == "accepted" {
+				break
+			}
+			time.Sleep(time.Millisecond)
+		}
+	}
+	body := fmt.Sprintf(`{"command_id":%q}`, "12345678-1234-4123-8123-999999999999")
+	clear := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest("POST", "http://unix/clear_queue", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		c.clearQueue(w, req, id)
+		return w
+	}
+	result := clear()
+	if result.Code != 200 || !strings.Contains(result.Body.String(), `"steering":["text 0","text 2"]`) || !strings.Contains(result.Body.String(), `"follow_up":["text 1"]`) {
+		t.Fatalf("clear result: %d %s", result.Code, result.Body.String())
+	}
+	if again := clear(); again.Code != 409 {
+		t.Fatalf("duplicate clear: %d", again.Code)
+	}
+	// A long native queue_update exceeds the presentation event cap, but it
+	// must still update the authoritative queue without poisoning Pi transport.
+	long := strings.Repeat("x", 9000)
+	req := httptest.NewRequest("POST", "http://unix/steer", strings.NewReader(fmt.Sprintf(`{"message":%q,"command_id":%q}`, long, "12345678-1234-4123-8123-888888888888")))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	c.sendKind(w, req, id, "steer")
+	if w.Code != 200 {
+		t.Fatalf("long steer %d", w.Code)
+	}
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		c.mu.Lock()
+		got := len(s.queueSteering)
+		state := s.state
+		c.mu.Unlock()
+		if got == 1 {
+			if state != "accepted" || p.overflow.Load() {
+				t.Fatalf("long queue poisoned: %s", state)
+			}
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	c.mu.Lock()
+	got := len(s.queueSteering)
+	c.mu.Unlock()
+	if got != 1 {
+		t.Fatal("long queue event not observed")
+	}
+}

@@ -36,17 +36,19 @@ type ConversationController struct {
 	fixture  bool // untrusted synthetic runtime: never set in production
 }
 type conversation struct {
-	id, workspace, cwd string
-	rpc                *piRPC
-	owner              *piOwnership
-	state              string // idle, pending, accepted, rejected, uncertain, stopping
-	ack                string // last command: pending, accepted, rejected, uncertain
-	settled            bool
-	commands           map[string]bool
-	command            string
-	events             []json.RawMessage
-	cursor             uint64
-	lost               bool
+	id, workspace, cwd           string
+	rpc                          *piRPC
+	owner                        *piOwnership
+	state                        string // idle, pending, accepted, rejected, uncertain, stopping
+	ack                          string // last command: pending, accepted, rejected, uncertain
+	settled                      bool
+	queueSteering, queueFollowUp []string
+	queueRevision                uint64
+	commands                     map[string]bool
+	command                      string
+	events                       []json.RawMessage
+	cursor                       uint64
+	lost                         bool
 }
 
 func newConversationController(ctx context.Context, cfg transport.Config, runtime *core.PiRuntimeConfig, trusted func(*http.Request) bool, status func(context.Context) string) *ConversationController {
@@ -188,8 +190,12 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	switch {
 	case r.Method == http.MethodGet && parts[1] == "status":
 		c.observe(w, r, parts[0])
-	case r.Method == http.MethodPost && parts[1] == "send":
-		c.send(w, r, parts[0])
+	case r.Method == http.MethodPost && (parts[1] == "send" || parts[1] == "steer" || parts[1] == "follow_up" || parts[1] == "clear_queue"):
+		if parts[1] == "clear_queue" {
+			c.clearQueue(w, r, parts[0])
+		} else {
+			c.sendKind(w, r, parts[0], parts[1])
+		}
 	case r.Method == http.MethodPost && parts[1] == "stop":
 		c.stop(w, r, parts[0])
 	default:
@@ -323,11 +329,34 @@ func (c *ConversationController) drain(s *conversation) {
 			Type string `json:"type"`
 		}
 		_ = json.Unmarshal(e, &frame)
+		raw := e
 		if len(e) > 8192 {
 			e, _ = json.Marshal(map[string]any{"type": frame.Type, "truncated": true})
 			s.lost = true
 		}
 		s.events = append(s.events, e)
+		if frame.Type == "queue_update" {
+			var q struct {
+				Steering []string `json:"steering"`
+				FollowUp []string `json:"followUp"`
+			}
+			if json.Unmarshal(raw, &q) == nil && q.Steering != nil && q.FollowUp != nil && len(q.Steering)+len(q.FollowUp) <= 128 {
+				valid := true
+				for _, text := range append(append([]string{}, q.Steering...), q.FollowUp...) {
+					if len(text) > 65536 {
+						valid = false
+					}
+				}
+				if valid {
+					s.queueSteering, s.queueFollowUp = q.Steering, q.FollowUp
+					s.queueRevision++
+				} else {
+					s.rpc.overflow.Store(true)
+				}
+			} else {
+				s.rpc.overflow.Store(true)
+			}
+		}
 		if frame.Type == "agent_settled" {
 			s.settled = true
 			if s.state == "accepted" {
@@ -353,6 +382,9 @@ func (c *ConversationController) lookup(w http.ResponseWriter, id string) *conve
 	return s
 }
 func (c *ConversationController) send(w http.ResponseWriter, r *http.Request, id string) {
+	c.sendKind(w, r, id, "send")
+}
+func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request, id, kind string) {
 	var body struct {
 		Message   string `json:"message"`
 		CommandID string `json:"command_id"`
@@ -368,20 +400,27 @@ func (c *ConversationController) send(w http.ResponseWriter, r *http.Request, id
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}
-	if c.closed || (s.state != "idle" && s.state != "rejected") || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= 128 {
+	if c.closed || (kind == "send" && s.state != "idle" && s.state != "rejected") || (kind != "send" && s.state != "accepted") || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= 128 {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}
+	oldState := s.state
 	s.state = "pending"
 	s.ack = "pending"
 	s.commands[body.CommandID] = true
-	s.settled = false
+	if kind == "send" {
+		s.settled = false
+	}
 	s.command = body.CommandID
 	c.mu.Unlock()
 	// A disconnect must not cancel the native request. Never retry ambiguous writes.
 	go func() {
-		accepted, err := s.rpc.request("prompt", body.Message, 15*time.Second)
+		rpcKind := kind
+		if rpcKind == "send" {
+			rpcKind = "prompt"
+		}
+		accepted, err := s.rpc.request(rpcKind, body.Message, 15*time.Second)
 		c.mu.Lock()
 		defer c.mu.Unlock()
 		if s.state != "pending" {
@@ -393,6 +432,12 @@ func (c *ConversationController) send(w http.ResponseWriter, r *http.Request, id
 			s.ack = "uncertain"
 		case !accepted:
 			s.state = "rejected"
+			if kind != "send" {
+				s.state = oldState
+				if s.settled {
+					s.state = "idle"
+				}
+			}
 			s.ack = "rejected"
 		default:
 			s.state = "accepted"
@@ -415,6 +460,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 	}
 	c.mu.Lock()
 	state, command, ack, cursor, lost := s.state, s.command, s.ack, s.cursor, s.lost
+	queueSteering, queueFollowUp, queueRevision := append([]string{}, s.queueSteering...), append([]string{}, s.queueFollowUp...), s.queueRevision
 	events := append([]json.RawMessage{}, s.events...)
 	cwd := s.cwd
 	if s.rpc.overflow.Load() {
@@ -447,7 +493,63 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 			}
 		}
 	}
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "command_id": command, "ack": ack, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history"})
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "command_id": command, "ack": ack, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}})
+}
+
+// clearQueue returns only Pi's correlated clear_queue response. No local queue
+// snapshot is interpreted as proof of removal: delivery may race the clear.
+func (c *ConversationController) clearQueue(w http.ResponseWriter, r *http.Request, id string) {
+	var body struct {
+		CommandID string `json:"command_id"`
+	}
+	if decodeControl(r, &body, 1024) != nil || !sessionIDPattern.MatchString(body.CommandID) {
+		snapshotError(w, 400, "invalid_request")
+		return
+	}
+	c.mu.Lock()
+	s := c.sessions[id]
+	if s == nil {
+		c.mu.Unlock()
+		snapshotError(w, 404, "resource_not_found")
+		return
+	}
+	if c.closed || s.state == "pending" || s.state == "uncertain" || s.state == "stopping" || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= 128 {
+		c.mu.Unlock()
+		snapshotError(w, 409, "control_uncertain")
+		return
+	}
+	s.commands[body.CommandID] = true
+	oldState := s.state
+	s.state = "pending"
+	s.ack = "pending"
+	s.command = body.CommandID
+	c.mu.Unlock()
+	reply, err := s.rpc.requestQueue("clear_queue", "", 4*time.Second)
+	c.mu.Lock()
+	if s.state == "pending" {
+		if err != nil {
+			s.state = "uncertain"
+			s.ack = "uncertain"
+		} else if !reply.Accepted {
+			s.state = oldState
+			s.ack = "rejected"
+		} else {
+			s.state = oldState
+			if s.settled && oldState == "accepted" {
+				s.state = "idle"
+			}
+			s.ack = "accepted"
+		}
+	}
+	accepted := err == nil && reply.Accepted
+	// A correlated clear receipt remains valid even if Pi exits or a stop races
+	// after the native removal. Never discard the only copy of these texts.
+	c.mu.Unlock()
+	if !accepted {
+		snapshotError(w, 409, "control_uncertain")
+		return
+	}
+	historyJSON(w, map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": "accepted", "removed_queue": map[string]any{"steering": reply.Steering, "follow_up": reply.FollowUp}})
 }
 func (c *ConversationController) stop(w http.ResponseWriter, r *http.Request, id string) {
 	if r.ContentLength > 0 || len(r.TransferEncoding) != 0 {

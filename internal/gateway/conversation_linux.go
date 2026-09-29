@@ -23,7 +23,7 @@ import (
 // This private gateway protocol deliberately does not add a browser v1 contract.
 // The lease table is fail-closed on gateway restart: an orphan cannot be claimed
 // by another browser session. Native histories remain accessible read-only.
-var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/([0-9a-fA-F-]{36})/(send|status|stop))?$`)
+var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|status|stop))?$`)
 var conversationUUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 var conversationWorkspace = regexp.MustCompile(`^ws_[A-Za-z0-9_-]{8,64}$`)
 
@@ -66,9 +66,9 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var body []byte
-	if kind == "create" || kind == "send" {
+	if kind == "create" || kind == "send" || kind == "steer" || kind == "follow_up" || kind == "clear_queue" {
 		limit := int64(1024)
-		if kind == "send" {
+		if kind == "send" || kind == "steer" || kind == "follow_up" {
 			limit = 66000
 		}
 		if r.Header.Get("Content-Type") != "application/json" || len(r.Header.Values("Content-Type")) != 1 || r.ContentLength <= 0 || r.ContentLength > limit {
@@ -145,7 +145,7 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	req.Header.Set("X-Agent-Host-Session", base64.RawURLEncoding.EncodeToString(hash[:]))
 	req.Close = true
 	// The socket may have accepted a write even when no acknowledgement arrives.
-	ambiguous := kind == "create" || kind == "send" || kind == "stop"
+	ambiguous := kind == "create" || kind == "send" || kind == "steer" || kind == "follow_up" || kind == "clear_queue" || kind == "stop"
 	failure := func() {
 		if ambiguous {
 			safe(w, 503, "control_uncertain")
@@ -198,7 +198,7 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 		_ = json.Unmarshal(clean, &reply)
 		ok = str(reply, "workspace_id") == input["workspace_id"]
 	}
-	if ok && kind == "send" {
+	if ok && (kind == "send" || kind == "steer" || kind == "follow_up" || kind == "clear_queue") {
 		var input map[string]string
 		_ = json.Unmarshal(body, &input)
 		var reply map[string]json.RawMessage
@@ -347,6 +347,10 @@ func validConversationInput(kind string, b []byte) bool {
 		m, ok := strictObject(b, []string{"workspace_id"})
 		return ok && conversationWorkspace.MatchString(str(m, "workspace_id"))
 	}
+	if kind == "clear_queue" {
+		m, ok := strictObject(b, []string{"command_id"})
+		return ok && conversationUUID.MatchString(str(m, "command_id"))
+	}
 	m, ok := strictObject(b, []string{"message", "command_id"})
 	message := str(m, "message")
 	return ok && message != "" && len(message) <= 65536 && conversationUUID.MatchString(str(m, "command_id"))
@@ -374,11 +378,14 @@ func validatedConversationReply(kind string, b []byte, requestedID string) ([]by
 		required = []string{"schema_version", "agent_id", "workspace_id", "state"}
 	case "list":
 		required = []string{"schema_version", "sessions"}
-	case "send":
+	case "send", "steer", "follow_up":
 		required = []string{"schema_version", "command_id", "state"}
+	case "clear_queue":
+		required = []string{"schema_version", "command_id", "state", "removed_queue"}
 	case "stop":
 		required = []string{"schema_version", "state"}
 	case "status":
+		optional = []string{"queue"}
 		required = []string{"schema_version", "agent_id", "workspace_id", "state", "command_id", "ack", "event_cursor", "events", "event_loss", "native_history", "native_revision", "history_query"}
 	default:
 		return nil, "", false
@@ -405,8 +412,17 @@ func validatedConversationReply(kind string, b []byte, requestedID string) ([]by
 				break
 			}
 		}
-	case "send":
+	case "send", "steer", "follow_up":
 		ok = conversationUUID.MatchString(str(m, "command_id")) && str(m, "state") == "pending"
+	case "clear_queue":
+		q, valid := strictObject(m["removed_queue"], []string{"steering", "follow_up"})
+		var a, b []string
+		ok = valid && conversationUUID.MatchString(str(m, "command_id")) && str(m, "state") == "accepted" && json.Unmarshal(q["steering"], &a) == nil && a != nil && json.Unmarshal(q["follow_up"], &b) == nil && b != nil && len(a)+len(b) <= 128
+		for _, text := range append(a, b...) {
+			if len(text) > 65536 {
+				ok = false
+			}
+		}
 	case "stop":
 		ok = str(m, "state") == "termination_unknown"
 	case "status":
@@ -416,6 +432,19 @@ func validatedConversationReply(kind string, b []byte, requestedID string) ([]by
 		ack := str(m, "ack")
 		history := str(m, "native_history")
 		ok = id == requestedID && validAgent(str(m, "agent_id")) && validWS(str(m, "workspace_id")) && stateOK(str(m, "state")) && (str(m, "command_id") == "" || conversationUUID.MatchString(str(m, "command_id"))) && (ack == "" || ack == "pending" || ack == "accepted" || ack == "rejected" || ack == "uncertain") && json.Unmarshal(m["event_cursor"], &cursor) == nil && json.Unmarshal(m["event_loss"], &lost) == nil && json.Unmarshal(m["events"], &events) == nil && events != nil && len(events) <= 64 && (history == "missing" || history == "unavailable" || history == "readable") && str(m, "history_query") == "/api/v1/agents/pi:"+id+"/history" && len(str(m, "native_revision")) <= 256
+		if raw, present := m["queue"]; present {
+			q, valid := strictObject(raw, []string{"revision", "steering", "follow_up"})
+			var rev uint64
+			var a, b []string
+			if !valid || json.Unmarshal(q["revision"], &rev) != nil || json.Unmarshal(q["steering"], &a) != nil || a == nil || json.Unmarshal(q["follow_up"], &b) != nil || b == nil || len(a)+len(b) > 128 {
+				ok = false
+			}
+			for _, text := range append(a, b...) {
+				if len(text) > 65536 {
+					ok = false
+				}
+			}
+		}
 		for _, event := range events {
 			var object map[string]json.RawMessage
 			if json.Unmarshal(event, &object) != nil || object == nil || len(event) > 8192 {

@@ -10,6 +10,7 @@ export type Status = Session & {
   native_history: string;
   native_revision: string;
   history_query: string;
+  queue?: { revision: number; steering: string[]; follow_up: string[] };
 };
 const uuid = /^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$/;
 const agent = /^pi:[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$/;
@@ -36,7 +37,9 @@ function session(v: unknown): v is Session & Record<string, unknown> {
     states.includes(v.state)
   );
 }
+export class NotAdmitted extends Error {}
 async function json(response: Response): Promise<unknown> {
+  if (response.status === 409) throw new NotAdmitted("state changed");
   if (
     !response.ok ||
     response.headers.get("content-type")?.split(";")[0] !== "application/json"
@@ -154,6 +157,18 @@ export async function status(
     ) ||
     typeof v.native_revision !== "string" ||
     v.native_revision.length > 256 ||
+    (v.queue !== undefined &&
+      (!object(v.queue) ||
+        !Number.isSafeInteger(v.queue.revision) ||
+        (v.queue.revision as number) < 0 ||
+        !Array.isArray(v.queue.steering) ||
+        !Array.isArray(v.queue.follow_up) ||
+        v.queue.steering.length + v.queue.follow_up.length > 128 ||
+        ![...v.queue.steering, ...v.queue.follow_up].every(
+          (t: unknown) =>
+            typeof t === "string" &&
+            new TextEncoder().encode(t).length <= 65536,
+        ))) ||
     v.history_query !== `/api/v1/agents/${id}/history`
   )
     throw new Error("invalid status");
@@ -189,4 +204,68 @@ export async function stop(id: string, csrf: string) {
   const v = await request(`${path(id)}/stop`, undefined, undefined, csrf);
   if (!object(v) || v.schema_version !== 1 || v.state !== "termination_unknown")
     throw new Error("invalid stop");
+}
+
+export async function queueMessage(
+  id: string,
+  message: string,
+  commandId: string,
+  csrf: string,
+  kind: "steer" | "follow_up",
+) {
+  if (
+    !message ||
+    new TextEncoder().encode(message).length > 65536 ||
+    !uuid.test(commandId)
+  )
+    throw new Error("invalid message");
+  const v = await request(
+    `${path(id)}/${kind}`,
+    undefined,
+    { message, command_id: commandId },
+    csrf,
+  );
+  if (
+    !object(v) ||
+    v.schema_version !== 1 ||
+    v.command_id !== commandId ||
+    v.state !== "pending"
+  )
+    throw new Error("invalid queue send");
+}
+export async function clearQueue(
+  id: string,
+  commandId: string,
+  csrf: string,
+): Promise<{ steering: string[]; follow_up: string[] }> {
+  if (!uuid.test(commandId)) throw new Error("invalid command");
+  const v = await request(
+    `${path(id)}/clear_queue`,
+    undefined,
+    { command_id: commandId },
+    csrf,
+  );
+  if (
+    !object(v) ||
+    v.schema_version !== 1 ||
+    v.command_id !== commandId ||
+    v.state !== "accepted" ||
+    !object(v.removed_queue)
+  )
+    throw new Error("invalid clear");
+  const q = v.removed_queue;
+  if (
+    !Array.isArray(q.steering) ||
+    !Array.isArray(q.follow_up) ||
+    q.steering.length + q.follow_up.length > 128 ||
+    ![...q.steering, ...q.follow_up].every(
+      (t: unknown) =>
+        typeof t === "string" && new TextEncoder().encode(t).length <= 65536,
+    )
+  )
+    throw new Error("invalid clear");
+  return {
+    steering: q.steering as string[],
+    follow_up: q.follow_up as string[],
+  };
 }

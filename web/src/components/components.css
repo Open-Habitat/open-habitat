@@ -479,6 +479,9 @@ pre {
 .ah-radio-dot {
   border-radius: 50%;
 }
+.ah-radio-group label small {
+  display: block;
+}
 .ah-radio-group label[data-selected] .ah-radio-dot {
   box-shadow: inset 0 0 0 4px var(--ah-surface);
   background: var(--ah-accent);

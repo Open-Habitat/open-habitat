@@ -49,7 +49,9 @@ func runFakePi(args []string) {
 	}
 	s := &fakeSession{id: id, cwd: cwd, dir: dir, path: path}
 	busy := false
+	steering, followUp := []string{}, []string{}
 	var mu sync.Mutex
+	queueUpdate := func() { emit(map[string]any{"type": "queue_update", "steering": steering, "followUp": followUp}) }
 	in := bufio.NewScanner(os.Stdin)
 	in.Buffer(make([]byte, 4096), 1<<20)
 	for in.Scan() {
@@ -60,6 +62,26 @@ func runFakePi(args []string) {
 		switch req.Type {
 		case "get_state":
 			emit(map[string]any{"type": "response", "id": req.ID, "command": "get_state", "success": true})
+		case "steer", "follow_up":
+			mu.Lock()
+			reject := req.Message == "" || strings.Contains(req.Message, "hylkää")
+			if !reject {
+				if req.Type == "steer" {
+					steering = append(steering, req.Message)
+				} else {
+					followUp = append(followUp, req.Message)
+				}
+				queueUpdate()
+			}
+			mu.Unlock()
+			emit(map[string]any{"type": "response", "id": req.ID, "command": req.Type, "success": !reject})
+		case "clear_queue":
+			mu.Lock()
+			removedSteering, removedFollowUp := steering, followUp
+			steering, followUp = []string{}, []string{}
+			queueUpdate()
+			mu.Unlock()
+			emit(map[string]any{"type": "response", "id": req.ID, "command": "clear_queue", "success": true, "data": map[string]any{"steering": removedSteering, "followUp": removedFollowUp}})
 		case "prompt":
 			mu.Lock()
 			reject := busy || strings.Contains(req.Message, "hylkää")
@@ -73,9 +95,30 @@ func runFakePi(args []string) {
 			}
 			go func(message string) {
 				s.turn(message, emit)
-				mu.Lock()
-				busy = false
-				mu.Unlock()
+				// Deliver steering at a turn boundary, then follow-ups after completion.
+				// Keep the synthetic work slow enough to exercise queue clear races.
+				for {
+					mu.Lock()
+					var next string
+					if len(steering) > 0 {
+						next = steering[0]
+						steering = steering[1:]
+					} else if len(followUp) > 0 {
+						next = followUp[0]
+						followUp = followUp[1:]
+					}
+					if next != "" {
+						queueUpdate()
+					} else {
+						busy = false
+					}
+					mu.Unlock()
+					if next == "" {
+						emit(map[string]any{"type": "agent_settled"})
+						break
+					}
+					s.turn(next, emit)
+				}
 			}(req.Message)
 		}
 	}
@@ -159,5 +202,4 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	s.append(message("assistant", []map[string]any{{"type": "text", "text": answer}}, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "stop"}))
 	emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant"}})
 	emit(map[string]any{"type": "agent_end"})
-	emit(map[string]any{"type": "agent_settled"})
 }

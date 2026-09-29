@@ -154,31 +154,37 @@ func (p *piRPC) read() {
 	_ = p.in.Close()
 }
 
+type piReply struct {
+	Accepted bool
+	Steering []string
+	FollowUp []string
+}
+
 // request serializes writes and waits for Pi's correlated acknowledgement.
 // A timeout or broken pipe is uncertain, not a rejection: callers must never
 // retry the prompt automatically. The controller drains native events from a
 // separate bounded queue; overflow poisons the transport.
-func (p *piRPC) request(kind, message string, timeout time.Duration) (bool, error) {
-	if kind != "get_state" && kind != "prompt" {
-		return false, errors.New("unsupported Pi RPC request")
+func (p *piRPC) requestQueue(kind, message string, timeout time.Duration) (piReply, error) {
+	if kind != "get_state" && kind != "prompt" && kind != "steer" && kind != "follow_up" && kind != "clear_queue" {
+		return piReply{}, errors.New("unsupported Pi RPC request")
 	}
-	if kind == "prompt" && (message == "" || len(message) > 65536) {
-		return false, errors.New("invalid prompt")
+	if (kind == "prompt" || kind == "steer" || kind == "follow_up") && (message == "" || len(message) > 65536) {
+		return piReply{}, errors.New("invalid prompt")
 	}
 	if timeout <= 0 || timeout > 30*time.Second {
-		return false, errors.New("invalid timeout")
+		return piReply{}, errors.New("invalid timeout")
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.poisoned || p.closing.Load() || p.overflow.Load() {
-		return false, errors.New("Pi acceptance uncertain: channel closed")
+		return piReply{}, errors.New("Pi acceptance uncertain: channel closed")
 	}
 	id, ok := uuid()
 	if !ok {
-		return false, errors.New("request ID unavailable")
+		return piReply{}, errors.New("request ID unavailable")
 	}
 	wire := map[string]string{"id": id, "type": kind}
-	if kind == "prompt" {
+	if kind == "prompt" || kind == "steer" || kind == "follow_up" {
 		wire["message"] = message
 	}
 	b, _ := json.Marshal(wire)
@@ -186,19 +192,19 @@ func (p *piRPC) request(kind, message string, timeout time.Duration) (bool, erro
 	deadline := time.Now().Add(timeout) // includes write AND acknowledgement
 	if err := p.in.SetWriteDeadline(deadline); err != nil {
 		p.poisoned = true
-		return false, errors.New("Pi acceptance uncertain: write deadline unavailable")
+		return piReply{}, errors.New("Pi acceptance uncertain: write deadline unavailable")
 	}
 	select {
 	case <-p.done:
 		p.poisoned = true
-		return false, errors.New("Pi acceptance uncertain: output closed")
+		return piReply{}, errors.New("Pi acceptance uncertain: output closed")
 	default:
 	}
 	n, err := p.in.Write(b)
 	if err != nil || n != len(b) || p.closing.Load() {
 		p.poisoned = true
 		_ = p.in.Close()
-		return false, errors.New("Pi acceptance uncertain: incomplete write")
+		return piReply{}, errors.New("Pi acceptance uncertain: incomplete write")
 	}
 	timer := time.NewTimer(time.Until(deadline))
 	defer timer.Stop()
@@ -207,24 +213,46 @@ func (p *piRPC) request(kind, message string, timeout time.Duration) (bool, erro
 		case frame, open := <-p.frames:
 			if !open {
 				p.poisoned = true
-				return false, errors.New("Pi acceptance uncertain: output closed")
+				return piReply{}, errors.New("Pi acceptance uncertain: output closed")
 			}
 			var response struct {
-				ID      string `json:"id"`
-				Type    string `json:"type"`
-				Command string `json:"command"`
-				Success *bool  `json:"success"`
+				ID      string          `json:"id"`
+				Type    string          `json:"type"`
+				Command string          `json:"command"`
+				Success *bool           `json:"success"`
+				Data    json.RawMessage `json:"data"`
 			}
 			if json.Unmarshal(frame, &response) != nil || response.Type != "response" || response.ID != id || response.Command != kind || response.Success == nil || p.closing.Load() || p.overflow.Load() {
 				p.poisoned = true
 				_ = p.in.Close()
-				return false, errors.New("Pi acceptance uncertain: unexpected frame")
+				return piReply{}, errors.New("Pi acceptance uncertain: unexpected frame")
 			}
-			return *response.Success, nil
+			if !*response.Success {
+				return piReply{}, nil
+			}
+			result := piReply{Accepted: true}
+			if kind == "clear_queue" {
+				var data struct {
+					Steering []string `json:"steering"`
+					FollowUp []string `json:"followUp"`
+				}
+				if json.Unmarshal(response.Data, &data) != nil || data.Steering == nil || data.FollowUp == nil || len(data.Steering)+len(data.FollowUp) > 128 {
+					p.poisoned = true
+					return piReply{}, errors.New("Pi clear result uncertain: invalid queue")
+				}
+				for _, text := range append(append([]string{}, data.Steering...), data.FollowUp...) {
+					if len(text) > 65536 {
+						p.poisoned = true
+						return piReply{}, errors.New("Pi clear result uncertain: oversized text")
+					}
+				}
+				result.Steering, result.FollowUp = data.Steering, data.FollowUp
+			}
+			return result, nil
 		case <-timer.C:
 			p.poisoned = true
 			_ = p.in.Close()
-			return false, errors.New("Pi acceptance uncertain: timeout")
+			return piReply{}, errors.New("Pi acceptance uncertain: timeout")
 		}
 	}
 }
@@ -259,4 +287,10 @@ func (p *piRPC) close() error {
 		return errors.New("Pi termination unknown: output reader not stopped")
 	}
 	return errors.New("Pi termination unknown: native tools and history not reconciled")
+}
+
+// request preserves the original prompt/get_state caller interface.
+func (p *piRPC) request(kind, message string, timeout time.Duration) (bool, error) {
+	reply, err := p.requestQueue(kind, message, timeout)
+	return reply.Accepted, err
 }

@@ -658,3 +658,102 @@ test("@browser-conversation slow snapshot validation keeps the same editor mount
     release();
   }
 });
+
+test("@browser-conversation steer, follow-up and clear return only removed texts", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await editor.fill("hidas päätyö");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Suorita valmistumisen jälkeen" }),
+  ).toBeVisible();
+  await editor.fill("jonoon yksi");
+  await page
+    .getByRole("button", { name: "Suorita valmistumisen jälkeen" })
+    .click();
+  await expect(editor).toHaveValue("");
+  await page.locator(".ah-radio-group label").first().click();
+  await editor.fill("ohjaus kaksi");
+  await page
+    .getByRole("button", { name: "Ohjaa tämän vuoron jälkeen" })
+    .click();
+  await expect(editor).toHaveValue("");
+  await page.getByRole("button", { name: /Jonossa/ }).click();
+  await expect(page.getByText("jonoon yksi", { exact: true })).toBeVisible();
+  await expect(page.getByText("ohjaus kaksi", { exact: true })).toBeVisible();
+  await page
+    .getByRole("heading", { name: "Työskentelyjono" })
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: "../issues/complete-conversation-ui/queue-before-clear.png",
+  });
+  await page.getByRole("button", { name: "Tyhjennä koko jono" }).click();
+  await expect(editor).toHaveValue("ohjaus kaksi\n\njonoon yksi");
+  await page
+    .getByRole("heading", { name: "Työskentelyjono" })
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: "../issues/complete-conversation-ui/queue-after-clear.png",
+  });
+  await expect(page.getByText("jonoon yksi", { exact: true })).toHaveCount(0);
+});
+
+test("@browser-conversation a stale working view cannot strand an unsent queued draft", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await editor.fill("hidas päätyö");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Suorita valmistumisen jälkeen" }),
+  ).toBeVisible();
+  await editor.fill("ei jonoon");
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let started!: () => void;
+  const intercepted = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  await page.route("**/conversations/*/follow_up", async (route) => {
+    started();
+    await held;
+    await route.continue();
+  });
+  try {
+    await page
+      .getByRole("button", { name: "Suorita valmistumisen jälkeen" })
+      .click();
+    await intercepted;
+    // The original turn settles while the browser request is held. The daemon
+    // rejects this new command before native delivery; it is NOT ambiguous.
+    const agentId = new URL(page.url()).searchParams.get("conversation");
+    if (!agentId) throw new Error("missing controlled agent");
+    await expect
+      .poll(
+        async () => {
+          const response = await page.request.get(
+            `/api/v1/conversations/${agentId.slice(3)}/status`,
+          );
+          return (await response.json()).state;
+        },
+        { timeout: 25000 },
+      )
+      .toBe("idle");
+    release();
+    await expect(
+      page.getByText(/Tila muuttui. Viestiä ei lähetetty/),
+    ).toBeVisible();
+    await expect(editor).toHaveValue("ei jonoon");
+    await expect(page.getByText(/Lähetyksen tulos epävarma/)).toHaveCount(0);
+  } finally {
+    release();
+  }
+});
