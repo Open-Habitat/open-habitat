@@ -1,6 +1,7 @@
 [Unit]
 Description=Native Agent Host gateway
-After=network-online.target
+After=network-online.target native-agent-host-revoke.socket
+Requires=native-agent-host-revoke.socket
 
 [Service]
 User=native-agent-host-gateway

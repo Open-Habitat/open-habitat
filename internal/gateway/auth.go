@@ -117,6 +117,7 @@ type AuthOptions struct {
 type pending struct {
 	verifier, browser, returnTo, attempt, accessEmail string
 	until                                             time.Time
+	serial                                            uint64
 }
 type session struct {
 	identity          Identity
@@ -135,6 +136,8 @@ type Auth struct {
 	log             *slog.Logger
 	mu              sync.Mutex
 	pending         map[string]pending
+	serial          uint64
+	revoked         map[string]uint64
 	sessions        map[string]session
 	conversations   map[string]map[string]bool
 	admission       map[string]admission
@@ -398,7 +401,8 @@ func (a *Auth) start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	attempt := attemptID()
-	a.pending[state] = pending{verifier: verifier, browser: browser, returnTo: returnTo, attempt: attempt, accessEmail: accessEmail(r), until: now.Add(5 * time.Minute)}
+	a.serial++
+	a.pending[state] = pending{verifier: verifier, browser: browser, returnTo: returnTo, attempt: attempt, accessEmail: accessEmail(r), until: now.Add(5 * time.Minute), serial: a.serial}
 	a.mu.Unlock()
 	a.authEvent(attempt, "started", "none")
 	http.SetCookie(w, &http.Cookie{Name: flowCookie, Value: browser, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: 300})
@@ -487,6 +491,14 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		a.callbackFailure(w, r, 403, "identity_mapping_denied")
 		return
 	}
+	// Old anonymous flows are identified only after the provider exchange.
+	a.mu.Lock()
+	revoked := p.serial <= a.revoked[id]
+	a.mu.Unlock()
+	if revoked {
+		a.callbackFailure(w, r, 403, "authentication_required")
+		return
+	}
 	// The token is handed off exactly once. A lost acknowledgement is terminal.
 	if a.sink.Deliver(r.Context(), target, id, token) != nil {
 		a.authEvent(attempt, "rejected", "handoff_failed")
@@ -515,6 +527,11 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.mu.Lock()
+	if p.serial <= a.revoked[id] {
+		a.mu.Unlock()
+		a.callbackFailure(w, r, 403, "authentication_required")
+		return
+	}
 	now := a.now()
 	for k, v := range a.sessions {
 		if !now.Before(v.idle) || !now.Before(v.absolute) {

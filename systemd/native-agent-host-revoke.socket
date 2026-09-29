@@ -1,0 +1,12 @@
+[Unit]
+Description=Root-only gateway subject revocation control
+
+[Socket]
+ListenStream=/run/native-agent-host/revoke.sock
+SocketUser=root
+SocketGroup=root
+SocketMode=0600
+Service=native-agent-host-gateway.service
+
+[Install]
+WantedBy=sockets.target

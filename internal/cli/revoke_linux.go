@@ -1,0 +1,111 @@
+//go:build linux
+
+package cli
+
+import (
+	"bufio"
+	"context"
+	"errors"
+	"io"
+	"net"
+	"os"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
+
+	"github.com/maintainer/native-agent-host/internal/gateway"
+)
+
+const revokeSocket = "/run/native-agent-host/revoke.sock"
+
+// The socket is created by systemd, root:root 0600; the gateway cannot
+// create it or change its permissions. SO_PEERCRED independently checks root.
+func revokeListener() (net.Listener, error) {
+	if os.Getenv("LISTEN_PID") != strconv.Itoa(os.Getpid()) || os.Getenv("LISTEN_FDS") != "1" {
+		return nil, errors.New("revoke socket activation missing")
+	}
+	f := os.NewFile(3, "revoke-socket")
+	if f == nil {
+		return nil, errors.New("missing descriptor")
+	}
+	defer f.Close()
+	ln, err := net.FileListener(f)
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := ln.(*net.UnixListener); !ok {
+		ln.Close()
+		return nil, errors.New("not a unix listener")
+	}
+	return ln, nil
+}
+
+func serveRevocations(ctx context.Context, ln net.Listener, auth *gateway.Auth) {
+	go func() { <-ctx.Done(); ln.Close() }()
+	for {
+		c, err := ln.Accept()
+		if err != nil {
+			return
+		}
+		go func() {
+			defer c.Close()
+			_ = c.SetDeadline(time.Now().Add(5 * time.Second))
+			uc, ok := c.(*net.UnixConn)
+			if !ok {
+				return
+			}
+			raw, err := uc.SyscallConn()
+			if err != nil {
+				return
+			}
+			var uid uint32 = ^uint32(0)
+			err = raw.Control(func(fd uintptr) {
+				cred, e := syscall.GetsockoptUcred(int(fd), syscall.SOL_SOCKET, syscall.SO_PEERCRED)
+				if e == nil {
+					uid = cred.Uid
+				}
+			})
+			if err != nil || uid != 0 {
+				return
+			}
+			line, err := bufio.NewReader(io.LimitReader(c, 33)).ReadString('\n')
+			if err != nil || len(line) > 32 {
+				return
+			}
+			if auth.RevokeSubject(ctx, strings.TrimSuffix(line, "\n")) != nil {
+				c.Write([]byte("DENIED\n"))
+				return
+			}
+			c.Write([]byte("OK\n"))
+		}()
+	}
+}
+
+func revokeCommand(args []string) (any, error) {
+	if len(args) != 2 || args[0] != "subject" {
+		return nil, usage("expected revoke subject <canonical numeric GitHub ID> (root only)")
+	}
+	if os.Geteuid() != 0 {
+		return nil, system("permission_denied", "root required")
+	}
+	id := args[1]
+	n, e := strconv.ParseUint(id, 10, 64)
+	if e != nil || n == 0 || strconv.FormatUint(n, 10) != id {
+		return nil, usage("invalid subject")
+	}
+	c, e := net.DialTimeout("unix", revokeSocket, 3*time.Second)
+	if e != nil {
+		return nil, system("control_unavailable", "private gateway control socket unavailable")
+	}
+	defer c.Close()
+	c.SetDeadline(time.Now().Add(5 * time.Second))
+	if _, e = c.Write([]byte(id + "\n")); e != nil {
+		return nil, system("control_unavailable", "revoke request failed")
+	}
+	line, e := bufio.NewReader(c).ReadString('\n')
+	if e != nil || line != "OK\n" {
+		return nil, system("revoke_denied", "broker binding or control channel denied revocation")
+	}
+	return envelope(map[string]any{"revoked": true}), nil
+}

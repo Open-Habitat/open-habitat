@@ -72,6 +72,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		out, err = adminCommand(rest[1:])
 	case "maintenance":
 		out, err = maintenanceCommand(rest[1:])
+	case "revoke":
+		out, err = revokeCommand(rest[1:])
 	case "skill":
 		out, err = skillCommand(rest[1:])
 	case "help", "--help", "-h":
@@ -236,6 +238,14 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 			if e != nil {
 				return nil, system("invalid_auth_config", "invalid gateway authentication configuration")
 			}
+			control, controlErr := revokeListener()
+			if controlErr != nil {
+				return nil, system("activation_failed", "private revocation socket activation required")
+			}
+			defer control.Close()
+			controlCtx, controlStop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+			defer controlStop()
+			go serveRevocations(controlCtx, control, a)
 			h = gateway.NewWithAuth(cfg.StaticDir, a)
 		} else {
 			h = gateway.New(cfg.StaticDir)
@@ -467,7 +477,7 @@ func skillInstall(args []string) (any, error) {
 	return envelope(map[string]any{"dry_run": dry, "would": would}), nil
 }
 func helpOutput() any {
-	return envelope(map[string]any{"name": "native-agent-host", "subcommands": []string{"version", "config path|show", "doctor", "gateway exec", "daemon exec", "broker exec", "admin readiness show", "maintenance enter|leave", "skill list|print|install"}, "global_flags": []string{"--json", "--verbose", "--version"}})
+	return envelope(map[string]any{"name": "native-agent-host", "subcommands": []string{"version", "config path|show", "doctor", "gateway exec", "daemon exec", "broker exec", "admin readiness show", "maintenance enter|leave", "revoke subject", "skill list|print|install"}, "global_flags": []string{"--json", "--verbose", "--version"}})
 }
 
 type gatewayBroker struct{}
