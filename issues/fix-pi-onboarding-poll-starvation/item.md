@@ -22,9 +22,9 @@ On pilot.9, the first authenticated browser visit displayed an indefinite loadin
 - Replace the persistent “Ladataan palvelimen tilaa” connection banner while authenticated but Pi is required with a truthful state.
 
 ## Acceptance
-- [ ] Browser recovers a real in-flight `device_code` after native status/attempt responses exceed the 3-second interval, without polling cancel starvation, duplicate POST or leaking code to other sessions.
-- [ ] Focus/revalidation, logout, lost request, actual interrupted/unknown, pending, expiry and retry states are distinguishable and accessible, with the requested Finnish copy and red error presentation in the shared production component/Storybook.
-- [ ] Host-backed synthetic Playwright coverage using slow replies reproduces pre-fix starvation and passes after fix; native login still owned by Pi, no fixture seam in production bundle. Full clean CI on committed tree and a release verifier pass. Record synthetic vs live evidence honestly. No provider login without Jari.
+- [x] Browser recovers a real in-flight `device_code` after native status/attempt responses exceed the 3-second interval, without polling cancel starvation, duplicate POST or leaking code to other sessions.
+- [x] Focus/revalidation, logout, lost request, actual interrupted/unknown, pending, expiry and retry states are distinguishable and accessible, with the requested Finnish copy and red error presentation in the shared production component/Storybook.
+- [x] Host-backed synthetic Playwright coverage using slow replies reproduces pre-fix starvation and passes after fix; native login still owned by Pi, no fixture seam in production bundle. Full clean CI on committed tree and a release verifier pass. Record synthetic vs live evidence honestly. No provider login without Jari.
 
 ## Scope
 This bug is separate from the newly requested *repo choice before Pi* feature. Do not remove Pi credential gate on existing workspace/history/control routes as an incidental UI fix. The next pilot release requires a separate guarded upgrade from live pilot.9.
