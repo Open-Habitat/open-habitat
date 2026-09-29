@@ -1,20 +1,37 @@
-# Keskustelunäkymän UI-kit
+# Keskustelunäkymän staattinen koostamisesimerkki
 
-Tämä hakemisto näyttää, miten design systemin keskustelu- ja agenttikomponentit
-voidaan koota yhdeksi staattiseksi näkymäksi. Se on komponenttien käyttöesimerkki,
-ei hyväksytty tuotevaatimus eikä tuotannon frontend-toteutus.
+Tämä hakemisto on ensimmäisen keskusteludesignin (20.9.2026) mukana tullut
+staattinen HTML-sivu, joka kokoaa design systemin tokenit yhdeksi työskentelyn
+aikaiseksi keskustelunäkymäksi: yläpalkki, viesti- ja työkalusyöte sekä
+composer jonoineen. Se on säilytetty, koska se on ainoa ilman buildia
+selaimessa avautuva sivu, jolla tokenit näkyvät realistisessa sommittelussa
+yhtä aikaa; `guidelines/`-kortit näyttävät ne yksi kerrallaan. Kun muutat
+tokeneita tai `styles.css`-tiedostoa, tämä sivu on nopea tapa nähdä muutoksen
+vaikutus kokonaisuuteen molemmissa teemoissa.
 
-`index.html` näyttää yhden agentin keskustelun yhdessä workspacessa yhdellä
-palvelimella. Rakenne on:
+Muuta se ei ole. Sivu on tehty ennen tuotantodesignia ja näyttää ratkaisuja,
+jotka katselmoinnissa hylättiin tai muutettiin: yksittäisen jonorivin
+perumisen sekä lähetyksen jaon "heti" ja "jonoon", joka ei vastaa
+tuotantodesignin steer/follow-up-valikkoa. Miten keskustelunäkymä oikeasti
+toimii, kertoo [`production-v1.md`](../../production-v1.md), erityisesti osio
+"Composer, jono ja epävarma komento"; oikeat komponentit ovat
+`web/src/components/`-hakemistossa ja Storybookin `Production/Catalog`-tarinassa
+`Conversation`. Kun tämä sivu ja ne ovat eri mieltä, ne ovat oikeassa.
+Alkuperäinen klikattava pääpolku ja tilavedokset ovat
+[`issues/receive-designer-v1/design/vedokset/`](../../../issues/receive-designer-v1/design/vedokset/)-hakemistossa
+muuttumattomana evidenssinä.
 
-1. **TopBar** — otsikko, projekti, havaittu tila, yhteys ja malli.
-2. **Feed** — viestit ja työkalutapahtumat yhtenä luettavana palstana.
-3. **Composer** — syöte, keskeytys ja toimituksessa ehdotetut lähetyskohteet.
+Sivu linkittää tyylit vain `../../styles.css`:n kautta, ja siinä on sen koko
+käyttöarvo: näin se seuraa tokenimuutoksia ja teeman vaihtoa ilman omaa
+ylläpitoa, kun taas kova arvo täällä näyttäisi tokenimuutoksen jälkeen jotain,
+mitä design system ei enää sano. Tiedoston alun `@dsCard`- ja
+`@startingPoint`-kommentit ovat suunnittelijan työkalun merkintöjä, joita
+mikään tässä repossa ei lue.
 
-Ensimmäisen keskusteludesignin klikattava pääpolku ja tilavedokset ovat tämän
-hakemiston ulkopuolella vastaanottoissuen design-aineistossa. Paketoidussa
-suunnittelutoimeksiannossa ne ovat `CONVERSATION-DESIGN/`-hakemistossa.
-
-Käytä tyylejä vain hakemiston yläpuolisen design systemin `styles.css`-tiedoston
-kautta. Älä siirrä esimerkin jonoa, ohjausta, nimiä tai muuta näkymäkohtaista
-toimintaa yleiseksi komponenttisäännöksi ilman UI-katselmoinnin päätöstä.
+Sivua saa muokata, kunhan se pysyy tokenien koosteena eikä ala esittää uutta
+tuotevaatimusta. Sen jono, painikkeet, nimet ja muut näkymäkohtaiset valinnat
+ovat yhden vedoksen ratkaisuja; syy, miksi sellaisia ei nosteta design systemin
+yleisiksi säännöiksi, on hakemiston yläpuolisessa [`AGENTS.md`](../../AGENTS.md):ssä.
+Jos sivu ei enää vastaa tokeneita eikä sitä kannata korjata, poistaminen on
+parempi kuin vanhentunut kopio: `ui_kits/production-v1/` poistettiin samasta
+syystä, kun ajettava katalogi korvasi sen.
