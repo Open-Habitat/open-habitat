@@ -204,6 +204,13 @@ export function App() {
     setHistoryRefreshKey((n) => n + 1);
     refresh();
   };
+  // A disconnected tab can recover without a page reload when the browser
+  // announces a restored network. Do not retry writes or repeat on a timer.
+  useEffect(() => {
+    if (phase !== "daemon_unavailable") return;
+    window.addEventListener("online", refresh);
+    return () => window.removeEventListener("online", refresh);
+  }, [phase, refresh]);
   const requireLogin = useCallback(
     () => dispatch(authenticationRequired()),
     [dispatch],
@@ -280,7 +287,10 @@ export function App() {
           )
             return;
           if (status === "login" || session === "login") return fail("login");
-          if (status !== "usable") return fail("pi");
+          if (status === "missing") return fail("pi");
+          // An unreadable Pi status is not evidence that the user needs to
+          // authorize Pi again. Keep the recovery path available instead.
+          if (status !== "usable") return fail("unavailable");
           token = session ?? (await sessionCSRF(controller.signal));
         }
         if (
@@ -469,8 +479,9 @@ export function App() {
         {logoutError ? (
           <InlineNotice
             title="Uloskirjautumista ei voitu vahvistaa"
-            description="Istunto voi olla edelleen voimassa. Lataa sivu ja yritä uudelleen."
+            description="Istunto voi olla edelleen voimassa. Kun yhteys toimii, yritä uloskirjautumista uudelleen."
             tone="danger"
+            actions={[{ label: "Yritä uloskirjautumista uudelleen", onPress: logout }]}
           />
         ) : null}
       </>
@@ -485,9 +496,9 @@ export function App() {
         <h1>Yhteyttä ei saatu</h1>
         <InlineNotice
           title="Työtiloja ei voitu näyttää"
-          description="Yhteys ei juuri nyt toimi. Yritä uudelleen."
+          description="Tietoja ei voitu tarkistaa. Tämä ei tarkoita, että työtilasi olisivat kadonneet. Tarkista yhteys ja yritä uudelleen."
           tone="danger"
-          actions={[{ label: "Päivitä", onPress: refresh }]}
+          actions={[{ label: "Yritä uudelleen", onPress: refresh }]}
         />
       </>
     ) : location.pathname === "/settings" ? (
@@ -509,7 +520,7 @@ export function App() {
     ) : selectedAgentId ? (
       <InlineNotice
         title="Keskustelua ei löydy"
-        description="Natiivia historiaa tai sen workspace-yhteyttä ei voida vahvistaa. Toista agenttia ei valita."
+        description="Keskustelua ei löydy työtiloistasi. Palaa työtiloihin tai tarkista tiedot uudelleen."
         tone="warning"
       />
     ) : selected ? (
@@ -537,8 +548,8 @@ export function App() {
         ) : null}
         {source !== "confirmed" ? (
           <InlineNotice
-            title="Lähteen havainto on osittainen"
-            description="Näytetään vain havaittuja kohteita. Kokonaismäärä ja muut lähdetiedot ovat tuntemattomia."
+            title="Kaikkia työtiloja ei voitu tarkistaa"
+            description="Kaikkia työtiloja ei voitu tarkistaa. Näet vain löytyneet työtilat; kokeile päivittää tiedot myöhemmin."
             tone="warning"
           />
         ) : null}
@@ -552,9 +563,16 @@ export function App() {
         </h1>
         <p>
           {uncertain
-            ? "Lähde tai sen havainto on osittainen tai tavoittamattomissa. Linkki säilyy; toista workspacea ei valita."
-            : "Tuoreessa vahvistetussa listassa tätä workspacea ei ole."}
+            ? "Kaikkia työtiloja ei voitu tarkistaa. Tätä työtilaa ei löytynyt saaduista tiedoista. Yritä uudelleen."
+            : "Tätä työtilaa ei enää löydy. Voit valita toisen työtilan."}
         </p>
+        <InlineNotice
+          title="Mitä voit tehdä?"
+          actions={[
+            { label: "Yritä uudelleen", onPress: refresh },
+          ]}
+        />
+        <Link to="/workspaces">Kaikki työtilat</Link>
       </>
     ) : (
       <>
@@ -599,20 +617,23 @@ export function App() {
         ) : null}
         {source === "absent" ? (
           <InlineNotice
-            title="Lähdettä ei löydy"
-            description="Työtilakansiota ei löydy."
+            title="Työtilakansiota ei löydy"
+            description="Työtilakansiota ei löydy. Jos loit sen juuri, kokeile päivittää tiedot."
+            actions={[{ label: "Yritä uudelleen", onPress: refresh }]}
             tone="warning"
           />
         ) : source !== "confirmed" ? (
           <InlineNotice
             title="Työtiloja ei voitu vahvistaa"
-            description="Näytetään vain ne työtilat, jotka löytyivät."
+            description="Kaikkia työtiloja ei voitu tarkistaa. Näet vain löytyneet työtilat."
+            actions={[{ label: "Yritä uudelleen", onPress: refresh }]}
             tone="warning"
           />
         ) : visible.length === 0 ? (
           <InlineNotice
             title="Työtiloja ei vielä ole"
-            description="Työtilakansiossa ei ole näkyviä työtiloja."
+            description="Työtilakansiossa ei ole vielä näkyviä työtiloja. Jos loit sellaisen juuri, päivitä tiedot."
+            actions={[{ label: "Päivitä tiedot", onPress: refresh }]}
           />
         ) : null}
       </>
@@ -659,15 +680,10 @@ export function App() {
                 </div>
               ) : null}
               {phase === "authentication_required" ||
-              phase === "pi_required" ? null : (
+              phase === "pi_required" ||
+              phase === "daemon_unavailable" ? null : (
                 <ConnectionBanner
-                  state={
-                    phase === "authenticated"
-                      ? "online"
-                      : phase === "daemon_unavailable"
-                        ? "daemon-unavailable"
-                        : "loading"
-                  }
+                  state={phase === "authenticated" ? "online" : "loading"}
                   hostWriteState={
                     snapshot?.write_state === "read_only"
                       ? "read_only"

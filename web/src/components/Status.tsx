@@ -137,22 +137,22 @@ export function ConnectionBanner({
   > = {
     loading: {
       title: "Ladataan palvelimen tilaa",
-      detail: "Ensimmäistä havaintoa odotetaan.",
+      detail: "Haetaan tuoreita tietoja…",
       tone: "neutral",
     },
     reconnecting: {
       title: "Yhteys katkesi",
-      detail: "Yhdistetään uudelleen. Viime komentoa ei lähetetä uudelleen.",
+      detail: "Yritetään yhdistää uudelleen. Viimeisintä viestiä ei lähetetä toistamiseen.",
       tone: "warning",
     },
     stale: {
       title: "Näytettävä tieto on vanhentunut",
-      detail: `Viimeksi saatu ${lastConfirmedAt ?? "ei tiedossa"}. Kirjoittaminen on estetty.`,
+      detail: `Viimeksi tarkistettu ${lastConfirmedAt ?? "ei tiedossa"}. Uusia muutoksia ei voi tehdä ennen yhteyden palaamista.`,
       tone: "warning",
     },
     "resnapshot-required": {
-      title: "Uusi tilannekuva tarvitaan",
-      detail: "Tapahtumavirran jatkokohta vanheni.",
+      title: "Tiedot on tarkistettava uudelleen",
+      detail: "Yhteys oli poikki liian pitkään, jotta päivityksiä voisi jatkaa suoraan.",
       tone: "warning",
     },
     "authentication-required": {
@@ -161,14 +161,13 @@ export function ConnectionBanner({
       tone: "danger",
     },
     "daemon-unavailable": {
-      title: "Käyttäjän agenttipalveluun ei saada yhteyttä",
-      detail: "Sisältöä ei päätellä tyhjäksi.",
+      title: "Yhteyttä ei saatu",
+      detail: "Tietoja ei voitu tarkistaa. Tämä ei tarkoita, että työsi olisi kadonnut.",
       tone: "danger",
     },
     "host-read-only": {
-      title: "Workspace-muutokset ovat vain luku -tilassa",
-      detail:
-        "Yhteys toimii. Uuden Pi-keskustelun ohjausoikeus tarkistetaan erikseen.",
+      title: "Työtiloja ei voi nyt muuttaa",
+      detail: "Yhteys toimii, mutta työtilojen muokkaus ei ole käytettävissä.",
       tone: "warning",
     },
   };
@@ -185,7 +184,7 @@ export function ConnectionBanner({
       <span>
         {value.detail}
         {hostWriteState === "read_only" && visibleState !== "host-read-only"
-          ? " Palvelin on lisäksi vain luku -tilassa."
+          ? " Työtilojen muokkaus ei myöskään ole käytettävissä."
           : ""}
       </span>
       <Problem problem={problem} />

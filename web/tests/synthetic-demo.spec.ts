@@ -47,7 +47,7 @@ for (const [scenario, heading] of [
       ).toBeVisible();
     if (scenario === "missing")
       await expect(
-        page.getByText("Lähdettä ei löydy", { exact: true }),
+        page.getByText("Työtilakansiota ei löydy", { exact: true }),
       ).toBeVisible();
     if (scenario === "login") {
       await expect(

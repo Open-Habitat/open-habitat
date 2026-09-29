@@ -185,7 +185,7 @@ test("@workspace-slice confirmed empty, missing, failure, partial and deep link 
     .getByRole("link", { name: "uncertain" })
     .click();
   await expect(page.locator("main")).toContainText(
-    "Lähteen havainto on osittainen",
+    "Kaikkia työtiloja ei voitu tarkistaa",
   );
   await scenario(page, "foreign");
   await page.goto("/workspaces");
@@ -195,7 +195,7 @@ test("@workspace-slice confirmed empty, missing, failure, partial and deep link 
   await page.goto("/workspaces");
   await expect(page.locator("main h1")).toHaveText("Yhteyttä ei saatu");
   await scenario(page, "oversize");
-  await page.getByRole("button", { name: "Päivitä" }).click();
+  await page.getByRole("button", { name: "Yritä uudelleen" }).click();
   await expect(page.locator("main h1")).toHaveText("Yhteyttä ei saatu");
 });
 test("@workspace-slice identity isolation, forged headers, expiry and loading", async ({
