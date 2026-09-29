@@ -2,7 +2,7 @@
 created: 2026-09-29
 updated: 2026-09-29
 type: feature
-status: open
+status: testing
 priority: high
 lane: github-first-onboarding
 collision: [internal/gateway/, internal/daemon/, web/src/app/App.tsx, web/src/app/PiOnboarding.tsx]
