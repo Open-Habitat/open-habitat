@@ -30,8 +30,8 @@ test("@native-history native page, continuation, unknown, reopen and no writes",
   });
   await login(page);
   await page
-    .getByRole("navigation")
-    .getByRole("link", { name: /Uusi keskustelu/ })
+    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
+    .getByRole("link", { name: /Synteettinen viesti 0/ })
     .click();
   await expect(page).toHaveURL(`/agents/${agent}`);
   await expect(page.locator(".ah-feed li")).toHaveCount(25);

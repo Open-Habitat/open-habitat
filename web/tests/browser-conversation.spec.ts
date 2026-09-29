@@ -263,9 +263,10 @@ test("@browser-conversation revalidation restores editor selection, paged readin
   });
   await expect.poll(() => snapshotReads).toBeGreaterThan(0);
   await expect(page.locator(".ah-feed li")).toHaveCount(50);
-  await expect(
-    page.getByText("Viimeisimmät live-tapahtumat (1)"),
-  ).toBeVisible();
+  // The live tail is not repeated as raw JSON under a readable native feed.
+  await expect(page.getByText("Viimeisimmät live-tapahtumat (1)")).toHaveCount(
+    0,
+  );
   await expect(editor).toBeFocused();
   await expect(editor).toHaveValue("kesken oleva viesti");
   expect(
