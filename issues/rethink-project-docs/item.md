@@ -24,10 +24,8 @@ ehdokas ajan tasalla, ei rakenneta erillistä katselmointiprosessia.
 |---|---|---|
 | [Agenttiohjauksen issue](../build-agent-control/item.md) | Tulevan toteutuksen käyttäjälle näkyvät lopputulokset, ei päätöshistoriaa. SSE ja päättyneen selainkeskustelun jatkaminen kuuluvat työhön; Pi:n kysymysdialogit ja terminaaliohjauksen haltuunotto eivät. | `8925a89` |
 | [Toteutusbriefit](../plan-v1-implementation/implementation-briefs.md) | Lyhyt toteutuksen omistajuuskartta. Rajapintatiedot omalle sivulleen; vanhat portit ja perusteettomasti sitovat numerot pois. | `b54636a` |
-| [ADR 0003: host stack](../../docs/adr-0003-host-stack.md) | Teknologiavalinta, vastuurajat ja perustelut. OAuth/OIDC-kirjaston valinta jää toteuttajalle; protokolla- ja käyttödetaljit muualle. | `4f50e89` |
-
-ADR 0003:n hyväksyntämetatietojen täsmennys sekä historia- ja socket-detaljien
-viimeinen siivous ovat tätä issueta luotaessa vielä työpuussa ilman committia.
+| [ADR 0003: host stack](../../docs/adr-0003-host-stack.md) | Teknologiavalinta, vastuurajat ja perustelut. OAuth/OIDC-kirjaston valinta jää toteuttajalle; protokolla- ja käyttödetaljit muualle. | `4f50e89`, `855223a` |
+| [Rajapinnat](../../docs/interfaces.md) | Nykyiset reitit erillään sovitusta tulevasta pinnasta; viestien merkitys, katkoista palautuminen ja vastuurajat säilyvät. Palveluasetukset asennusissuen liitteeseen. | Tämän päivityksen commit (`Refs-Issue: @rethink-project-docs`) |
 
 Samalla on tehty kohdennettuja korjauksia muun muassa rajapintakuvaukseen,
 arkkitehtuuri- ja toteutussivuihin, ADR 0004:ään, CLI-konformanssiin ja liittyviin
@@ -35,10 +33,29 @@ issueihin. Näitä ei ole vielä kokonaisuudessaan käyty läpi tällä skillill
 
 ## Seuraavaksi
 
-Ehdotus: [docs/interfaces.md](../../docs/interfaces.md). Sivulle on siirretty
-yksityiskohtia kahdesta edellisestä dokumentista. Selvitetään, mikä on varsinainen
-rajapintasopimus, mikä nykyisen toteutuksen kuvausta ja mikä toteuttajan harkintaa.
-Tämän sivun varsinainen läpikäynti on vielä aloittamatta.
+Ehdotus: [docs/architecture.md](../../docs/architecture.md). Rajapinnat on nyt
+käyty läpi; arkkitehtuurisivulta tarkistetaan seuraavaksi vastuiden ja
+perusteluiden selkeys suhteessa selkeytettyihin ADR:ään ja rajapintoihin.
+
+## Rajapintasivun läpikäynti 2026-09-29
+
+Jari hyväksyi tässä keskustelussa rajauksen: nykyinen toteutus ja sovittu tuleva
+pinta erotetaan, skeemien muodot linkitetään ja palveluasetusten sekä testien
+kuvaukset kuuluvat niitä toteuttavaan työhön. Aiempi linjaus toteutuksen
+rajojen säätämisestä käytön perusteella säilyy. Otsikoinnin hyväksytyt
+valinnat sekä ADR 0005:n erillinen kloonivirta säilyvät.
+
+Lähdekoodi tarkistettiin revisiosta `35dccfc49b3cae505df75a8909aec276ce009580`.
+Pi-kirjautumisen käyttöliittymä ja väliaikaiset keskustelureitit olivat olemassa,
+vaikka vanha sivu kuvasi ne puuttuviksi tai jätti reitit taulukosta pois.
+Gatewayn sisältöä koskeva lause täsmennettiin erottamaan liikenteen välitys
+lokeista ja diagnostiikasta. Hyväksyttyjen päätösten välisiä ristiriitoja ei
+läpikäynnissä havaittu. Sivu ei muuta protokollaa eikä väitä live-todennusta.
+
+Palveluvaatimukset säilyvät [asennusissuen liitteessä](../prepare-mvp-operations/service-requirements.md).
+Testien vastuut ja suunnitelmat ovat ennestään toteutuskartassa ja toteutusissueissa.
+Dokumentaatiotarkistus ja `git diff --check` läpäisivät ennen committia;
+puhdas CI-portti ajetaan tämän muutoksen commitista.
 
 ## Lyhyt briefi jatkajalle
 

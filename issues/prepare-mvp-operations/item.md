@@ -1,6 +1,6 @@
 ---
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-29
 type: task
 status: open
 priority: normal
@@ -29,7 +29,7 @@ workspace registry, credential broker or speculative cache. Desktop first, one s
 ## Acceptance Criteria
 
 - [ ] Implement and verify the accepted package/service lifecycle and gateway-to-daemon account mapping without ad hoc persistent source installs.
-- [ ] Compare the neutral units and effective service configuration with the [service restrictions](../../docs/interfaces.md#palveluiden-rajoitukset-ja-diagnostiikka); verify required protections rather than treating current templates as proof of conformance.
+- [ ] Compare the neutral units and effective service configuration with the [service restrictions](service-requirements.md); verify required protections rather than treating current templates as proof of conformance.
 - [ ] Document prerequisites, exact install/update/start/stop/rollback and live-version commands in `docs/operations.md`; make CI/package checks reproducible.
 - [ ] Define ownership and backup/restore of native histories, workspace annotations and host configuration; show logs/health sufficient to diagnose failures without leaking credentials.
 - [ ] Exercise installation and rollback in a disposable environment with synthetic identities and representative workspaces.
