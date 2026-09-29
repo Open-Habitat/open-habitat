@@ -21,3 +21,9 @@ After he selected and checked out three repos and completed OpenAI device-code l
 - [ ] Keep any unsent draft, editor focus/selection and reading position through a successful revalidation, or explicitly explain why preserving them would leak identity data. If the status is actually unusable, hide prior identity and return to the correct gate.
 - [ ] Ordinary CSRF/session loading never claims a previous create is uncertain; reserve the warning for a genuinely ambiguous write, and state ordinary loading accurately. Conversation actions have visible spacing, keyboard focus order and accessible grouping across refresh/viewport changes.
 - [ ] Synthetic production-bundle browser tests cover delayed 30s/focus checks, stable page vs actual credential loss, slow/error responses, and CSS action spacing; no real accounts in tests. A clean committed-tree gate before release. Live evidence only establishes Pi `usable`, not successful native conversation exchange.
+
+## Comments
+
+### 2026-09-29T13:52:12Z · @jari
+
+2026-09-29 pilot.11 live retest: after an initially usable authenticated workspace view, clicking any visible control repeatedly leaves the app at full-screen “Ladataan / Varmistetaan istunto ja workspacejen lähde.” This is not merely a brief flash; no usable view returns in the reported attempt. Screenshot was inspected from Jari’s seat but contains real workspace names/host facts and is intentionally NOT committed to this public repository. Diagnose whether click-induced window focus revalidation is aborting/restarting status/snapshot, or a live endpoint hangs. Previous accepted issue already owns stable revalidation; do not create a duplicate.
