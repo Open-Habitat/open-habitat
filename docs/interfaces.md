@@ -134,6 +134,10 @@ tavu-offsetteja. Persistoidun sisällön `complete:false`, `content_id` ja
 `complete:false,truncated:true` ilman jatko-ID:tä; kokonainen sisältö tulee
 history-querystä vasta Pi:n persistoinnin jälkeen.
 
+## GitHub-luettelo ennen Pi-kirjautumista
+
+`GET /api/v1/onboarding/github/repos?page=<1..100>&limit=<1..50>` on ainoa pre-Pi-natiivilistaus. Kirjautunut istunto ja brokerin tuore vahvistus valitsevat UID:n ja socketin; selaimelta ei oteta omistajaa, tokenia eikä muita reittivihjeitä. Daemon varmistaa peerin ja sidotun identiteetin, kysyy oman UID:n `gh api --method GET /user` -identiteetin ja sivuttaa `/user/repos`-listaa affiliaatioilla owner, collaborator ja organization_member. Vastauksen [`github-repos.schema.json`](../contracts/v1/github-repos.schema.json) sallii vain nimen, private-tiedon, kuvauksen ja GitHub-osoitteen; `has_more` on tosi täydellä sivulla, joten viimeinen sivu voi olla tyhjä. Listaa ei tallenneta, ja vastauksissa on `no-store`. Puuttuva tai väärän käyttäjän gh-autentikointi antaa `409 github_auth_unavailable`, muu natiivilähteen virhe `503 native_source_unavailable`; raakaa gh-virhettä ei palauteta. Tämä ei avaa työtiloja, Pi-historiaa eikä agentteja ennen Pi-porttia, eikä tee kloonausta.
+
 ## Pi-onboardingin rajattu server-portti
 
 `GET /api/v1/onboarding/pi/status` vaatii web-istunnon ja brokerin joka pyynnöllä vahvistaman mappauksen. Gateway muodostaa uuden pyynnön vain mapped daemonin socketiin; daemon tarkistaa peerin ja `X-Agent-Host-Identity`-sidoksen ennen kuin kysyy Pi:n natiivia OAuth-tilaa. Vastauksen `pi.state` on `usable`, `missing` tai `unknown` (`pi-status.schema.json`); se ei sisällä tokenia, account ID:tä eikä home-polkua. Vastaukset eivät tallennu välimuistiin.
