@@ -96,7 +96,10 @@ test("@lab fake-Pi crash leaves the turn readable but blocks another send", asyn
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
-  await page.getByRole("link", { name: "aurinkokello" }).click();
+  await page
+    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
+    .getByRole("link", { name: "aurinkokello" })
+    .click();
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
   await editor.fill("kaadu nyt");
