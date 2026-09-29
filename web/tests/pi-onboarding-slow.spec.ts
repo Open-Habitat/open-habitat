@@ -14,7 +14,7 @@ test("@pi-onboarding slow native reads finish across multiple poll intervals wit
     await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await page.getByRole("link", { name: "Alice" }).click();
     await expect(page.getByText("Ladataan palvelimen tilaa")).toHaveCount(0);
-    await expect(page.getByText("Käyttöönotto")).toBeVisible();
+    await expect(page.getByText("Käyttöönotto", { exact: true })).toBeVisible();
     // Each reply is from the real synthetic gateway/daemon. Only delivery to
     // this browser is slow; no code or provider credential enters test output.
     await page.route("**/api/v1/onboarding/pi/status", async (route) => {
