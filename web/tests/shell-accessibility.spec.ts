@@ -23,10 +23,9 @@ test("@a11y keyboard navigation places focus on destination and restores account
   await page.keyboard.press("Enter");
   await expect(page.locator("main#main")).toBeFocused();
   const workspace = page
-    .getByRole("main")
-    .getByRole("heading", { level: 2 })
-    .first()
-    .getByRole("link");
+    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
+    .locator(".ah-workspace-link")
+    .first();
   const name = await workspace.innerText();
   await workspace.focus();
   await page.keyboard.press("Enter");
