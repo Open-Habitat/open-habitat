@@ -38,6 +38,18 @@ func piFixture(t *testing.T) (*PiDevice, string) {
 	}
 	return &PiDevice{Home: home, Node: wrapper, Entry: filepath.Join(abs, "dist/index.js"), Manifest: filepath.Join(abs, "package.json")}, home
 }
+func TestPiDeviceFixtureHomeOnly(t *testing.T) {
+	p, _ := piFixture(t)
+	t.Setenv("HOME", t.TempDir()) // Browser host shares one UID across synthetic homes.
+	if err := p.validate(); err == nil || !strings.Contains(err.Error(), "HOME mismatch") {
+		t.Fatalf("production HOME mismatch accepted: %v", err)
+	}
+	p.FixtureHome = true
+	if err := p.validate(); err != nil {
+		t.Fatalf("fixture HOME rejected: %v", err)
+	}
+}
+
 func TestPiDeviceNativeAndOwnership(t *testing.T) {
 	p, home := piFixture(t)
 	if got := p.Status(); got != "missing" {

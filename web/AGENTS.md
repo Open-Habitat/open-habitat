@@ -46,6 +46,8 @@ and the browser/host contract but not UID isolation; the two-UID systemd VM
 scenarios in `scripts/vm-test.sh` prove that. A browser test passing here is
 host-backed synthetic evidence and should be described as such.
 
+For extended synthetic UI exploration, `scripts/lab.sh start|stop|status|url` builds a production bundle and starts the lab on port 4175. Sign in through the fake provider as Alice or Bob. From the repository root, `PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" node web/lab/shoot.mjs /workspaces .cache/lab/shots/workspaces.png` captures a desktop view (`--narrow` for 390px, `--bob` for Bob); `web/lab/session.mjs` is reusable for scripted Chromium exploration. Screenshots and lab logs live under ignored `.cache/lab/`. The lab scans invented homes and histories, runs the real conversation controller with a fake Pi child and synthetic gh/git/OAuth, and supports `/fixture/scenario?value=pi-onboarding`. It does not establish separate-UID isolation, real Pi/provider behavior or live-host behavior. Never use a personal Chrome profile or real home for exploration.
+
 Fixture code and the production bundle are kept apart by construction.
 `VITE_ENABLE_TEST_FIXTURES=true` makes the app lazy-load
 `src/test/CatalogPreview.tsx` behind `?fixture=design`, which the design-system

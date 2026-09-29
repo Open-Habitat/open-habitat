@@ -36,6 +36,9 @@ type PiDevice struct {
 	// TrustedRuntime enables root-owned package validation for deployment paths.
 	// Direct synthetic PiDevice tests can supply a mock instead.
 	TrustedRuntime bool
+	// FixtureHome permits the same-UID browser host's per-identity synthetic root.
+	// Production constructors never set this; the process HOME must match there.
+	FixtureHome bool
 	mu             sync.Mutex
 	active         string
 	cancel         context.CancelFunc
@@ -59,7 +62,7 @@ func (p *PiDevice) validate() error {
 			return errors.New("native Pi runtime unavailable")
 		}
 	}
-	if os.Getenv("HOME") != p.Home {
+	if !p.FixtureHome && os.Getenv("HOME") != p.Home {
 		return errors.New("daemon HOME mismatch")
 	}
 	// Pi's native auth storage follows symlinks and does not repair old file modes.

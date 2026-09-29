@@ -69,6 +69,7 @@ if grep -R -E 'Alder-testifixture|Deterministinen testi: daemon' web/dist/assets
 fi
 phase browser
 NAH_WEB_PREBUILT=1 npm run test:browser --prefix web
+(cd web && NAH_WEB_PREBUILT=1 npx playwright test --config playwright.lab.config.ts)
 phase go-and-contracts
 npm run build-storybook --prefix web
 go fmt ./...

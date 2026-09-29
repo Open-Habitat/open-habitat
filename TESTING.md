@@ -45,7 +45,9 @@ the PATH export. The clean gate requires a committed tree with no untracked
 files and checks cleanliness again at exit. Leave that worktree untouched
 during the run; ignored build caches may remain.
 
-Browser suites use ports 4183 and 4174, so coordinate runs across worktrees.
+The clean gate also runs the port-4175 synthetic lab create→send→answer browser test against the real controller and fake Pi; `scripts/lab.sh` provides manual exploration.
+
+Browser suites use ports 4183, 4174 and 4175, so coordinate runs across worktrees.
 Wait for another worker's server to finish. For standalone browser checks:
 
 ```sh

@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
-  testIgnore: "synthetic-demo.spec.ts",
+  testIgnore: ["synthetic-demo.spec.ts", "lab-*.spec.ts"],
   globalTeardown: "./tests/host-teardown.ts",
   fullyParallel: false,
   workers: 1, // Standalone host scenario switch is shared by tests; never run it concurrently.
