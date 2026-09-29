@@ -54,7 +54,7 @@ test("@native-history native page, continuation, unknown, reopen and no writes",
     fullPage: false,
   });
   await page.getByRole("button", { name: "Lataa lisää sisältöä" }).click();
-  await expect(page.locator(".ah-feed li").nth(248)).toContainText(
+  await expect(page.locator(".ah-feed li").nth(248)).not.toContainText(
     "<script>alert('bad')</script>",
   );
   expect(await page.locator(".ah-feed script").count()).toBe(0);

@@ -923,6 +923,10 @@ select:focus-visible,
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.ah-message .ah-prose .ah-markdown-code pre {
+  white-space: pre;
+  overflow-wrap: normal;
+}
 .ah-prose a,
 .ah-markdown a {
   text-decoration: underline;
