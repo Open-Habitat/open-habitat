@@ -21,7 +21,11 @@ const preview: Preview = {
           "div",
           {
             "data-theme": context.globals.theme,
-            style: { minHeight: "100vh" },
+            style: {
+              minHeight: "100vh",
+              background: "var(--ah-bg)",
+              color: "var(--ah-ink)",
+            },
           },
           React.createElement(Story),
         ),
