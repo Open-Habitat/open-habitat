@@ -40,6 +40,10 @@ Pilot.9 sends authenticated users straight to Pi first-use. No repository picker
 
 2026-09-29: Keep first-use UI as simple as possible. Repository selection must actually result in native checkout, not only a list or pending choice. One explicit Jatka action after choosing repos performs selected checkouts, shows progress and advances to Pi after confirmed success; with zero selected it advances without checkout. Do not add separate Hae valitut, skip and then another Jatka sequence. An uncertain write is reconciled by read-only native observation, not auto-retried.
 
+### 2026-09-29T07:24:32Z · @jari
+
+2026-09-29: Jari wants the next fresh agent to run an end-to-end test from a genuinely reset TEST server and reset his mapped TEST account, including GitHub integration/consent and Pi again. He explicitly declines backups of the test-server/account data: "Ei tarvist mitään varmuuskopioita. olemme testipavlelimella." This supersedes the earlier test-account preservation preference for this particular reset only, not any other person, machine or production host. Execute only after establishing exact host/account scope, technical reset preflight and the currently deployed/recoverable release; consent for GitHub/Pi must still involve Jari. Prefer fixing the observed chooser/status/refresh bugs and installing the tested release before asking him to retest the unchanged pilot.10 UI. Live read-only mapped-UID GitHub API already saw 40 owned personal repos including 14 private: missing private repos in the chooser were not proven to be an OAuth-scope failure (browser paged two at a time). The real Pi gate reached usable after Jari confirmed a device code; conversation send remains unverified. No reset or credential revocation has been performed in this session.
+
 ## Comments
 
 ### 2026-09-29T06:51:44Z · @agent
