@@ -47,8 +47,10 @@ test("@browser-conversation create, send once, reconnect and old history stays r
     if (r.url().endsWith("/send")) sends++;
   });
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  // The native acknowledgement may arrive before the browser observes the
+  // intermediate waiting label; either is a valid outcome of this one send.
   await expect(
-    page.getByText("Viesti odottaa natiivia hyväksyntää"),
+    page.getByText(/Viesti odottaa natiivia hyväksyntää|Viesti hyväksyttiin\./),
   ).toBeVisible();
   expect(sends).toBe(1);
   await page.reload();
