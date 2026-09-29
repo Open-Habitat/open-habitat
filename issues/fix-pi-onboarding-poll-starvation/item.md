@@ -2,10 +2,16 @@
 created: 2026-09-29
 updated: 2026-09-29
 type: bug
-status: open
+status: fixed
 priority: high
 lane: pi-onboarding-live-fix
 collision: [web/src/app/PiOnboarding.tsx, web/src/components/PiDeviceSignIn.tsx, web/src/app/App.tsx]
+closed: 2026-09-29
+commits:
+- hash: 9810e6b
+  summary: Prevent Pi onboarding poll starvation and make uncertain states recoverable
+- hash: 207a593
+  summary: Make onboarding eyebrow assertion exact
 ---
 
 # Pi onboarding poll starves device code on live host
@@ -21,7 +27,7 @@ On pilot.9, the first authenticated browser visit displayed an indefinite loadin
 - Logout action says `Keskeytä käyttöönotto ja kirjaudu ulos`.
 - Replace the persistent “Ladataan palvelimen tilaa” connection banner while authenticated but Pi is required with a truthful state.
 
-## Acceptance
+## Acceptance Criteria
 - [x] Browser recovers a real in-flight `device_code` after native status/attempt responses exceed the 3-second interval, without polling cancel starvation, duplicate POST or leaking code to other sessions.
 - [x] Focus/revalidation, logout, lost request, actual interrupted/unknown, pending, expiry and retry states are distinguishable and accessible, with the requested Finnish copy and red error presentation in the shared production component/Storybook.
 - [x] Host-backed synthetic Playwright coverage using slow replies reproduces pre-fix starvation and passes after fix; native login still owned by Pi, no fixture seam in production bundle. Full clean CI on committed tree and a release verifier pass. Record synthetic vs live evidence honestly. No provider login without Jari.
