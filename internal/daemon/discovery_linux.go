@@ -48,6 +48,10 @@ func Discover(cfg transport.Config) Discovery {
 	return scan(cfg.Home, cfg.UID, unix.Openat2)
 }
 
+// DiscoverFixtureRoot is only for test/browser-host: it scans a synthetic
+// native root that is not the account's passwd home.
+func DiscoverFixtureRoot(root string, uid int) Discovery { return scan(root, uid, unix.Openat2) }
+
 type openFunction func(int, string, *unix.OpenHow) (int, error)
 
 const resolve = unix.RESOLVE_BENEATH | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS | unix.RESOLVE_NO_XDEV

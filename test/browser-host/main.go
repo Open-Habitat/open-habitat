@@ -28,6 +28,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/maintainer/native-agent-host/internal/core"
 	"github.com/maintainer/native-agent-host/internal/daemon"
 	"github.com/maintainer/native-agent-host/internal/gateway"
 	"github.com/maintainer/native-agent-host/internal/transport"
@@ -68,6 +69,10 @@ func (s sink) Deliver(context.Context, gateway.Identity, string, string) error {
 	return nil
 }
 func main() {
+	if isFakePi(os.Args) {
+		runFakePi(os.Args)
+		return
+	}
 	if len(os.Args) != 2 {
 		log.Fatal("usage: browser-host <built web/dist>")
 	}
@@ -84,6 +89,17 @@ func main() {
 		log.Fatal(e)
 	}
 	defer os.RemoveAll(tmp)
+	// Lab mode is for exploratory UI work: the real conversation controller
+	// runs a fake Pi, discovery scans the synthetic home, and data is richer.
+	lab := os.Getenv("BROWSER_HOST_LAB") == "1"
+	listen := "127.0.0.1:4174"
+	if lab {
+		listen = "127.0.0.1:4175"
+	}
+	self, e := os.Executable()
+	if e != nil {
+		log.Fatal(e)
+	}
 	// The synthetic helper validates HOME as a daemon would; this process uses
 	// one UID, so this is not distinct-UID evidence.
 	os.Setenv("HOME", tmp)
@@ -166,6 +182,11 @@ esac
 		if e := seedBrowserHistory(historyPath, filepath.Join(home, "src", "ordinary-dir")); e != nil {
 			log.Fatal(e)
 		}
+		if lab {
+			if e := seedLab(home); e != nil {
+				log.Fatal(e)
+			}
+		}
 		path := filepath.Join(tmp, m.Username+".sock")
 		ln, e := net.Listen("unix", path)
 		if e != nil {
@@ -185,6 +206,9 @@ esac
 				return daemon.Discovery{State: "error"}
 			case "partial":
 				return daemon.Discovery{State: "partial", Entries: []daemon.Workspace{{Name: "git-project", Kind: "git_main_worktree", Metadata: "error"}, {Name: "uncertain", Kind: "unknown", Metadata: "error"}}}
+			}
+			if lab {
+				return daemon.DiscoverFixtureRoot(home, uid)
 			}
 			names := []string{"git-project", "ordinary-dir", "without-metadata"}
 			entries := []daemon.Workspace{}
@@ -266,7 +290,11 @@ esac
 		mux.HandleFunc("/api/v1/onboarding/pi/attempt", func(w http.ResponseWriter, r *http.Request) {
 			attempt.Load().(http.Handler).ServeHTTP(w, r)
 		})
-		conversations := fakeConversations(trusted)
+		var conversations http.Handler = fakeConversations(trusted)
+		if lab {
+			// The real controller launches this binary as its Pi child.
+			conversations = daemon.ConversationHandlerWithFixtureRuntime(context.Background(), cfg, trusted, status, home, &core.PiRuntimeConfig{Node: self, Entry: "/synthetic/pi/dist/index.js", Manifest: "/synthetic/pi/package.json"})
+		}
 		mux.Handle("/api/v1/conversations", conversations)
 		mux.Handle("/api/v1/conversations/", conversations)
 		mux.Handle("/api/v1/agents/", gate(daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home)))
@@ -317,7 +345,7 @@ esac
 	// TLS is real at the gateway. Browser trusts only this ephemeral local certificate.
 	ts := httptest.NewUnstartedServer(nil)
 	_ = ts.Listener.Close()
-	ts.Listener, e = net.Listen("tcp", "127.0.0.1:4174")
+	ts.Listener, e = net.Listen("tcp", listen)
 	if e != nil {
 		log.Fatal(e)
 	}

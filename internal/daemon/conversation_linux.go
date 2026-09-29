@@ -29,6 +29,11 @@ type ConversationController struct {
 	status   func(context.Context) string
 	trusted  func(*http.Request) bool
 	closed   bool
+	// home is the native root; discover resolves workspaces beneath it.
+	// Only the synthetic browser host sets them apart from cfg.Home.
+	home     string
+	discover func(transport.Config) Discovery
+	fixture  bool // untrusted synthetic runtime: never set in production
 }
 type conversation struct {
 	id, workspace, cwd string
@@ -45,10 +50,30 @@ type conversation struct {
 }
 
 func newConversationController(ctx context.Context, cfg transport.Config, runtime *core.PiRuntimeConfig, trusted func(*http.Request) bool, status func(context.Context) string) *ConversationController {
-	c := &ConversationController{cfg: cfg, runtime: runtime, trusted: trusted, status: status, sessions: make(map[string]*conversation)}
+	c := &ConversationController{cfg: cfg, runtime: runtime, trusted: trusted, status: status, sessions: make(map[string]*conversation), home: cfg.Home, discover: Discover}
 	go func() { <-ctx.Done(); c.shutdown() }()
 	return c
 }
+
+// ConversationHandlerWithFixtureRuntime is only for test/browser-host. It
+// runs the real controller against a synthetic native root and an untrusted
+// fake Pi program, which production must never accept.
+func ConversationHandlerWithFixtureRuntime(ctx context.Context, cfg transport.Config, trusted func(*http.Request) bool, status func(context.Context) string, root string, runtime *core.PiRuntimeConfig) *ConversationController {
+	c := newConversationController(ctx, cfg, runtime, trusted, status)
+	c.home = root
+	c.discover = func(transport.Config) Discovery { return scan(root, cfg.UID, unix.Openat2) }
+	c.fixture = true
+	return c
+}
+
+// nativeCfg names the native root for history reads without changing the
+// identity that authorizes requests.
+func (c *ConversationController) nativeCfg() transport.Config {
+	n := c.cfg
+	n.Home = c.home
+	return n
+}
+
 func (c *ConversationController) shutdown() {
 	c.mu.Lock()
 	if c.closed {
@@ -76,7 +101,7 @@ func (c *ConversationController) revoke() { c.shutdown() }
 // kernel's beneath/no-symlink/no-mount constraints. The open descriptor is
 // carried into the child for chdir, so rename cannot redirect execution.
 func (c *ConversationController) workspaceFD(id string) (*os.File, string, error) {
-	observation := Discover(c.cfg)
+	observation := c.discover(c.cfg)
 	if observation.State != "present" {
 		return nil, "", errors.New("workspace unavailable")
 	}
@@ -103,7 +128,7 @@ func (c *ConversationController) workspaceFD(id string) (*os.File, string, error
 		return nil, "", err
 	}
 	defer unix.Close(root)
-	home, err := dir(unix.Openat2, root, strings.TrimPrefix(c.cfg.Home, "/"), false)
+	home, err := dir(unix.Openat2, root, strings.TrimPrefix(c.home, "/"), false)
 	if err != nil {
 		return nil, "", err
 	}
@@ -125,7 +150,7 @@ func (c *ConversationController) workspaceFD(id string) (*os.File, string, error
 		unix.Close(fd)
 		return nil, "", errors.New("workspace changed after discovery")
 	}
-	return os.NewFile(uintptr(fd), "workspace"), filepath.Join(c.cfg.Home, "src", name), nil
+	return os.NewFile(uintptr(fd), "workspace"), filepath.Join(c.home, "src", name), nil
 }
 func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !historyAuthorized(c.cfg, c.trusted, r) {
@@ -226,7 +251,7 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		snapshotError(w, 429, "capacity_exceeded")
 		return
 	}
-	device := &PiDevice{Home: c.cfg.Home, Node: c.runtime.Node, Entry: c.runtime.Entry, Manifest: c.runtime.Manifest, TrustedRuntime: true, SharedSelector: true}
+	device := &PiDevice{Home: c.home, Node: c.runtime.Node, Entry: c.runtime.Entry, Manifest: c.runtime.Manifest, TrustedRuntime: !c.fixture, SharedSelector: !c.fixture}
 	if device.validate() != nil {
 		snapshotError(w, 503, "native_source_unavailable")
 		return
@@ -237,7 +262,7 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	defer ws.Close()
-	histories, err := nativeSessions(c.cfg)
+	histories, err := nativeSessions(c.nativeCfg())
 	if err != nil {
 		snapshotError(w, 503, "native_source_unavailable")
 		return
@@ -253,13 +278,13 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	}
-	owner, err := acquirePiOwnership(c.cfg.Home, id)
+	owner, err := acquirePiOwnership(c.home, id)
 	if err != nil {
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
 	// Inherit only a bounded, explicit environment. Pi reads credentials itself.
-	p, err := launchPiRPCCommand(c.runtime.Node, []string{filepath.Join(filepath.Dir(c.runtime.Entry), "bundle", "cli.js")}, c.cfg.Home, cwd, []string{"PATH=/usr/bin:/bin", "USER=" + c.cfg.Username}, owner, ws)
+	p, err := launchPiRPCCommand(c.runtime.Node, []string{filepath.Join(filepath.Dir(c.runtime.Entry), "bundle", "cli.js")}, c.home, cwd, []string{"PATH=/usr/bin:/bin", "USER=" + c.cfg.Username}, owner, ws)
 	if err != nil {
 		_ = owner.release()
 		snapshotError(w, 503, "native_source_unavailable")
@@ -404,7 +429,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 	c.mu.Unlock()
 	revision := ""
 	history := "missing"
-	sessions, err := nativeSessions(c.cfg)
+	sessions, err := nativeSessions(c.nativeCfg())
 	if err != nil {
 		history = "unavailable"
 	} else {
