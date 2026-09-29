@@ -42,6 +42,13 @@ export function GitHubOnboarding({
   onLogout: () => Promise<void>;
 }) {
   const [step, setStep] = useState<"loading" | "github" | "pi">("loading");
+  useEffect(() => {
+    if (step === "loading") return;
+    const heading = document.getElementById(
+      step === "github" ? "github-chooser-title" : "pi-device-title",
+    );
+    heading?.focus({ preventScroll: true });
+  }, [step]);
   const [view, setView] = useState<GitHubRepoChooserView>({ phase: "loading" });
   const [checkout, setCheckout] = useState<GitHubCheckoutView>({
     phase: "idle",

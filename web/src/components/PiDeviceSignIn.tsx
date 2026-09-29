@@ -101,7 +101,9 @@ export function PiDeviceSignIn({
     <section className={styles.card} aria-labelledby="pi-device-title">
       <header>
         <p className="ah-eyebrow">Käyttöönotto</p>
-        <h2 id="pi-device-title">ChatGPT-kirjautuminen</h2>
+        <h1 id="pi-device-title" tabIndex={-1}>
+          ChatGPT-kirjautuminen
+        </h1>
       </header>
       <div role="status" aria-live="polite" aria-atomic="true">
         {active ? (

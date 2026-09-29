@@ -448,6 +448,27 @@ export function App() {
   const selectedAgentId = /^\/agents\/(pi:[0-9a-fA-F-]{36})$/.exec(
     location.pathname,
   )?.[1];
+  const previousView = useRef({ path: location.pathname, phase });
+  // Focus only on navigation or a new sign-in state, never on a snapshot refresh.
+  // Settings owns its own entry focus and the conversation owns its editor focus.
+  useLayoutEffect(() => {
+    if (verifying) return;
+    const previous = previousView.current;
+    previousView.current = { path: location.pathname, phase };
+    if (previous.path === location.pathname && previous.phase === phase) return;
+    if (
+      location.pathname === "/settings" ||
+      phase === "loading" ||
+      phase === "pi_required"
+    )
+      return;
+    if (returningFromSettings.current) return;
+    if (phase === "authenticated" && selectedAgentId) return;
+    const main = document.getElementById("main");
+    const heading = main?.querySelector<HTMLElement>("h1");
+    if (heading) heading.tabIndex = -1;
+    (heading ?? main)?.focus({ preventScroll: true });
+  }, [location.pathname, phase, verifying, selectedAgentId]);
   const selectedAgent = snapshot?.agents.find(
     (a) => a.agent_id === selectedAgentId,
   );
@@ -538,11 +559,14 @@ export function App() {
         workspaceId={agentWorkspace.workspace_id}
       />
     ) : selectedAgentId ? (
-      <InlineNotice
-        title="Keskustelua ei löydy"
-        description="Se ei näy työtiloissasi. Palaa työtiloihin tai tarkista tiedot uudelleen."
-        tone="warning"
-      />
+      <>
+        <h1>Keskustelua ei löydy</h1>
+        <InlineNotice
+          title="Valitse toinen keskustelu"
+          description="Se ei näy työtiloissasi. Palaa työtiloihin tai tarkista tiedot uudelleen."
+          tone="warning"
+        />
+      </>
     ) : selected ? (
       <>
         {!new URLSearchParams(location.search).has("conversation") ? (

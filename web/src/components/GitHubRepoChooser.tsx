@@ -80,7 +80,9 @@ export function GitHubRepoChooser({
     <section className={styles.card} aria-labelledby="github-chooser-title">
       <header className={styles.header}>
         <p className="ah-eyebrow">Käyttöönotto</p>
-        <h2 id="github-chooser-title">Valitse GitHub-repot haettaviksi</h2>
+        <h1 id="github-chooser-title" tabIndex={-1}>
+          Valitse GitHub-repot haettaviksi
+        </h1>
         <p id="github-chooser-instructions">
           Valitse repot, joita haluat käyttää täällä. Jatka-painike hakee ne
           työtiloiksi ennen ChatGPT-kirjautumista. Voit myös jatkaa ilman
@@ -121,9 +123,9 @@ export function GitHubRepoChooser({
             />
           </label>
           {view.repositories.length === 0 ? (
-            <p>Repoja ei löytynyt. Voit jatkaa ilman repoja.</p>
+            <p role="status">Repoja ei löytynyt. Voit jatkaa ilman repoja.</p>
           ) : visible.length === 0 ? (
-            <p>Hakua vastaavia repoja ei löytynyt.</p>
+            <p role="status">Hakua vastaavia repoja ei löytynyt.</p>
           ) : (
             <ul className={styles.list} aria-label="GitHub-repot">
               {visible.map((repo) => (
