@@ -196,3 +196,43 @@ func TestCloneCancellationAndMetadataRefusal(t *testing.T) {
 		})
 	}
 }
+
+func TestCloneRenameDuringVerificationNeverSucceeds(t *testing.T) {
+	cfg, home := cloneFixture(t)
+	renamed := false
+	run := func(_ context.Context, program, cwd, fd string, args ...string) ([]byte, error) {
+		if program == "gh" {
+			if args[len(args)-1] == "/user" {
+				return []byte(`{"id":42}`), nil
+			}
+			return []byte(`{"name":"repo","full_name":"org/repo","owner":{"login":"org"},"clone_url":"https://github.com/org/repo.git"}`), nil
+		}
+		if args[0] == "clone" {
+			if e := os.Mkdir(filepath.Join(home, "src", "repo", ".git"), 0700); e != nil {
+				t.Fatal(e)
+			}
+			return nil, nil
+		}
+		if args[0] == "rev-parse" {
+			return []byte("true\n"), nil
+		}
+		if args[0] == "remote" {
+			return []byte("https://github.com/org/repo.git\n"), nil
+		}
+		if args[0] == "status" {
+			if e := os.Rename(filepath.Join(home, "src"), filepath.Join(home, "moved")); e != nil {
+				t.Fatal(e)
+			}
+			renamed = true
+			return nil, nil
+		}
+		t.Fatalf("unexpected %q", args)
+		return nil, errors.New("unexpected")
+	}
+	h := repoCloneHandler(cfg, func(*http.Request) bool { return true }, home, "gh", "git", run)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, cloneRequest(`{"full_name":"org/repo"}`))
+	if !renamed || w.Code != 409 || !strings.Contains(w.Body.String(), "checkout_uncertain") {
+		t.Fatalf("rename %d %s", w.Code, w.Body.String())
+	}
+}
