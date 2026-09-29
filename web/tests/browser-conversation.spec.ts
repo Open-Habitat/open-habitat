@@ -311,6 +311,10 @@ test("@browser-conversation revalidation restores editor selection, paged readin
   expect(await feed.evaluate((node) => node.scrollTop)).toBeCloseTo(before, 0);
   // Returning to this agent restores its own reading anchor and editor focus.
   await page.getByRole("link", { name: "ordinary-dir" }).last().click();
+  // The URL can change before React commits the route. Returning earlier
+  // leaves the conversation mounted and the link holding focus, so wait for
+  // the workspace view before testing restoration from a different view.
+  await expect(editor).toHaveCount(0);
   await page.goBack();
   await expect(editor).toHaveValue("kesken oleva viesti");
   await expect(editor).toBeFocused();
