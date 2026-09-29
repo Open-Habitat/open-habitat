@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { Menu } from "./Overlays";
 import { Button } from "./Primitives";
 import { InlineNotice, StatusMark } from "./Status";
@@ -20,6 +21,12 @@ export function AccountShelf({
   onSettings: () => void;
   onLogout: () => void;
 }) {
+  const [theme, setTheme] = useState(getThemeChoice);
+  const themes: { id: ThemeChoice; label: string }[] = [
+    { id: "system", label: "Järjestelmä" },
+    { id: "light", label: "Vaalea" },
+    { id: "dark", label: "Tumma" },
+  ];
   return (
     <div className="ah-account-shelf">
       <span className="ah-rail-identity" title={name}>
@@ -29,9 +36,18 @@ export function AccountShelf({
         label="Tilivalikko"
         items={[
           { id: "settings", label: "Asetukset" },
+          ...themes.map(({ id, label }) => ({
+            id: `theme-${id}`,
+            label: `Teema: ${label}${theme === id ? " (valittu)" : ""}`,
+          })),
           { id: "logout", label: "Kirjaudu ulos" },
         ]}
         onAction={(id) => {
+          if (id.startsWith("theme-")) {
+            const choice = id.slice(6) as ThemeChoice;
+            setThemeChoice(choice);
+            setTheme(choice);
+          }
           if (id === "settings") onSettings();
           if (id === "logout") onLogout();
         }}
