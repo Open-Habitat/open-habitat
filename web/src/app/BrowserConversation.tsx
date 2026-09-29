@@ -78,6 +78,8 @@ export function BrowserConversation({
   const [events, setEvents] = useState<unknown[]>([]);
   const [details, setDetails] = useState(false);
   const pending = useRef(false);
+  const staleRef = useRef(stale);
+  staleRef.current = stale;
   const submittedKey =
     csrf && id ? `nah:submitted:${identity}:${csrf}:${id}` : "";
   const alive = useRef(true);
@@ -641,7 +643,7 @@ export function BrowserConversation({
               }
               items={entries.map((e) => ({
                 id: e.entry_key,
-                content: <Entry key={e.entry_key} entry={e} />,
+                content: <Entry key={e.entry_key} entry={e} stale={stale} />,
               }))}
               historyMode="pagedAccessible"
               newContentCount={unseen}
@@ -657,6 +659,7 @@ export function BrowserConversation({
               onPress={() =>
                 void readHistoryFetch(id, next)
                   .then((p) => {
+                    if (staleRef.current) return;
                     setEntries((old) => [
                       ...old,
                       ...p.entries.filter(
@@ -665,7 +668,9 @@ export function BrowserConversation({
                     ]);
                     setNext(p.next_after);
                   })
-                  .catch(() => setHistoryError(true))
+                  .catch(() => {
+                    if (!staleRef.current) setHistoryError(true);
+                  })
               }
             />
           ) : null}

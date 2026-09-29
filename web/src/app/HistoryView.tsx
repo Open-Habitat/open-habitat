@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AgentFacts,
   AgentHeader,
@@ -21,7 +21,15 @@ import {
   type HistoryPage,
 } from "./history";
 
-export function Entry({ entry }: { entry: HistoryEntry }) {
+export function Entry({
+  entry,
+  stale = false,
+}: {
+  entry: HistoryEntry;
+  stale?: boolean;
+}) {
+  const staleRef = useRef(stale);
+  staleRef.current = stale;
   const [content, setContent] = useState(entry.content);
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -32,7 +40,12 @@ export function Entry({ entry }: { entry: HistoryEntry }) {
   }, [entry]);
   const copy = () => void navigator.clipboard?.writeText(content.text);
   const more = async () => {
-    if (!content.content_id || content.next_offset === undefined || pending)
+    if (
+      staleRef.current ||
+      !content.content_id ||
+      content.next_offset === undefined ||
+      pending
+    )
       return;
     setPending(true);
     setFailed(false);
@@ -42,6 +55,7 @@ export function Entry({ entry }: { entry: HistoryEntry }) {
         { credentials: "same-origin", cache: "no-store" },
       );
       const chunk = (await readHistory(response)) as ContentChunk;
+      if (staleRef.current) return;
       if (
         chunk.content_id !== content.content_id ||
         chunk.offset !== content.next_offset ||
@@ -50,18 +64,19 @@ export function Entry({ entry }: { entry: HistoryEntry }) {
         throw new Error("invalid chunk");
       setContent({ ...chunk.content, text: content.text + chunk.content.text });
     } catch {
-      setFailed(true);
+      if (!staleRef.current) setFailed(true);
     } finally {
       setPending(false);
     }
   };
-  const continuation = !content.complete ? (
-    <Button
-      label={pending ? "Ladataan…" : "Lataa lisää sisältöä"}
-      onPress={more}
-      pending={pending}
-    />
-  ) : null;
+  const continuation =
+    !stale && !content.complete ? (
+      <Button
+        label={pending ? "Ladataan…" : "Lataa lisää sisältöä"}
+        onPress={more}
+        pending={pending}
+      />
+    ) : null;
   return (
     <>
       {entry.kind === "user" ? (
@@ -85,7 +100,7 @@ export function Entry({ entry }: { entry: HistoryEntry }) {
             streamSemantics="unknown"
             sourceState={content.complete ? "complete" : "continued"}
             onCopy={copy}
-            onLoadMore={more}
+            onLoadMore={stale ? undefined : more}
           />
         </ToolRow>
       ) : null}
@@ -126,6 +141,8 @@ export function HistoryView({
   workspaceName: string;
   workspaceId: string;
 }) {
+  const staleRef = useRef(stale);
+  staleRef.current = stale;
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [state, setState] = useState<"loading" | "ready" | "empty" | "error">(
     "loading",
@@ -167,6 +184,7 @@ export function HistoryView({
     setBusy(true);
     try {
       const page = await readHistoryFetch(agent.agent_id, next);
+      if (staleRef.current) return;
       if (
         page.entries.some((e) =>
           entries.some((old) => old.entry_key === e.entry_key),
@@ -178,7 +196,7 @@ export function HistoryView({
       setEntries([...entries, ...page.entries]);
       setNext(page.next_after);
     } catch {
-      setState("error");
+      if (!staleRef.current) setState("error");
     } finally {
       setBusy(false);
     }
@@ -208,7 +226,7 @@ export function HistoryView({
         state={state}
         items={entries.map((entry) => ({
           id: entry.entry_key,
-          content: <Entry key={entry.entry_key} entry={entry} />,
+          content: <Entry key={entry.entry_key} entry={entry} stale={stale} />,
         }))}
         historyMode="pagedAccessible"
         emptyLabel="Natiivissa historiassa ei ole vielä viestejä."
