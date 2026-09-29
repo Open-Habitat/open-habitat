@@ -6,44 +6,136 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 )
 
 func TestSharedPiRuntimeAcrossUIDs(t *testing.T) {
 	if os.Getenv("PI_SELECTOR_CHILD") == "1" {
-		cfg, err := loadSharedPiRuntime(os.Getenv("PI_SELECTOR_PATH"))
-		if err != nil || cfg.Node != "/opt/runtime/bin/node" || os.Getenv("HOME") != os.Getenv("PI_EXPECT_HOME") {
-			t.Fatalf("UID %d cannot select pinned runtime with own HOME: %v", os.Geteuid(), err)
+		if _, err := os.Stat("/etc/native-agent-host/gateway.json"); !os.IsPermission(err) {
+			t.Fatalf("UID %d reached gateway secrets: %v", os.Geteuid(), err)
+		}
+		cfg, err := LoadSharedPiRuntime()
+		if os.Getenv("PI_SELECTOR_REJECT") == "1" {
+			if err == nil {
+				t.Fatal("unsafe shared selector accepted")
+			}
+		} else if err != nil || cfg.Node != "/opt/runtime/bin/node" || os.Getenv("HOME") != os.Getenv("PI_EXPECT_HOME") {
+			t.Fatalf("UID %d cannot select runtime with own HOME: %v", os.Geteuid(), err)
 		}
 		return
 	}
-	if os.Geteuid() != 0 {
-		t.Skip("disposable root container required")
+	// The fixed deployment paths must never be created on the host by go test.
+	if os.Getenv("PI_SELECTOR_CONTAINER") != "1" || os.Geteuid() != 0 {
+		t.Skip("requires disposable rootless container")
 	}
-	dir, err := os.MkdirTemp("/opt", "pi-selector-")
-	if err != nil {
+	uidMap, err := os.ReadFile("/proc/self/uid_map")
+	fields := strings.Fields(string(uidMap))
+	if err != nil || len(fields) < 2 || fields[1] == "0" {
+		t.Fatal("requires mapped container root")
+	}
+	if _, err := os.Stat("/home/maintainer"); !os.IsNotExist(err) {
+		t.Fatal("real home must not be mounted")
+	}
+	if err := os.MkdirAll(filepath.Dir(SharedPiRuntimePath), 0755); err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
-	os.Chmod(dir, 0755)
-	path := filepath.Join(dir, "runtime.json")
-	if err := os.WriteFile(path, []byte(`{"node":"/opt/runtime/bin/node","entry":"/opt/runtime/sdk/dist/index.js","manifest":"/opt/runtime/sdk/package.json"}`), 0644); err != nil {
+	if err := os.MkdirAll("/etc/native-agent-host", 0750); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.Chown("/etc/native-agent-host", 0, 21003); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod("/etc/native-agent-host", 0750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile("/etc/native-agent-host/gateway.json", []byte("synthetic secret"), 0640); err != nil {
+		t.Fatal(err)
+	}
+	good := []byte(`{"node":"/opt/runtime/bin/node","entry":"/opt/runtime/sdk/dist/index.js","manifest":"/opt/runtime/sdk/package.json"}`)
+	path := SharedPiRuntimePath
 	for _, uid := range []uint32{21001, 21002} {
-		home := filepath.Join(dir, "home-"+string(rune('a'+uid-21001)))
-		if err := os.Mkdir(home, 0700); err != nil {
+		home := filepath.Join("/home", "agent-"+string(rune('a'+uid-21001)))
+		if err := os.MkdirAll(home, 0700); err != nil {
 			t.Fatal(err)
 		}
 		if err := os.Chown(home, int(uid), int(uid)); err != nil {
 			t.Fatal(err)
 		}
-		cmd := exec.Command(os.Args[0], "-test.run=^TestSharedPiRuntimeAcrossUIDs$")
-		cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uid, Gid: uid}}
-		cmd.Env = append(os.Environ(), "PI_SELECTOR_CHILD=1", "PI_SELECTOR_PATH="+path, "PI_EXPECT_HOME="+home, "HOME="+home)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("UID %d: %v %s", uid, err, out)
+		child := func(reject bool) {
+			t.Helper()
+			cmd := exec.Command(os.Args[0], "-test.run=^TestSharedPiRuntimeAcrossUIDs$")
+			cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uid, Gid: uid}}
+			cmd.Env = append(os.Environ(), "PI_SELECTOR_CHILD=1", "PI_EXPECT_HOME="+home, "HOME="+home)
+			if reject {
+				cmd.Env = append(cmd.Env, "PI_SELECTOR_REJECT=1")
+			}
+			if out, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("UID %d: %v %s", uid, err, out)
+			}
+		}
+		if err := os.WriteFile(path, good, 0644); err != nil {
+			t.Fatal(err)
+		}
+		child(false)
+		// Each negative begins with a readable, trusted selector. A missing file
+		// must not accidentally satisfy a named unsafe-mode test.
+		target := "/opt/pi-selector-symlink-target.json"
+		if err := os.WriteFile(target, good, 0644); err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range []string{"world writable file", "wrong owner", "symlink file", "writable parent", "symlink parent"} {
+			t.Run(name, func(t *testing.T) {
+				if err := os.WriteFile(path, good, 0644); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Chown(path, 0, 0); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Chmod(path, 0644); err != nil {
+					t.Fatal(err)
+				}
+				child(false)
+				var err error
+				switch name {
+				case "world writable file":
+					err = os.Chmod(path, 0666)
+				case "wrong owner":
+					err = os.Chown(path, int(uid), int(uid))
+				case "symlink file":
+					if err = os.Remove(path); err == nil {
+						err = os.Symlink(target, path)
+					}
+				case "writable parent":
+					err = os.Chmod(filepath.Dir(path), 0777)
+				case "symlink parent":
+					if err = os.Rename(filepath.Dir(path), "/opt/native-agent-host-real"); err == nil {
+						err = os.Symlink("/opt/native-agent-host-real", filepath.Dir(path))
+					}
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				child(true)
+				if name == "symlink parent" {
+					if err := os.Remove(filepath.Dir(path)); err != nil {
+						t.Fatal(err)
+					}
+					if err := os.Rename("/opt/native-agent-host-real", filepath.Dir(path)); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if err := os.Chmod(filepath.Dir(path), 0755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Remove(path); err != nil {
+					t.Fatal(err)
+				}
+			})
+		}
+		if err := os.Remove(target); err != nil {
+			t.Fatal(err)
 		}
 	}
 }

@@ -90,6 +90,10 @@ bounded; when a scenario or proof changes, that ledger changes with it, since a
 guest pass without an honest entry there is the kind of evidence this project
 refuses to produce.
 
+## Rootless shared-selector proof
+
+`test-shared-pi-selector.sh` compiles the core test into `.cache/` and runs it in a networkless rootless container. It uses the fixed `/opt/native-agent-host/pi-runtime.json` path as two separate UIDs with separate HOME directories while `/etc/native-agent-host` is root:gateway 0750. Each UID must accept the root-owned readable selector and reject wrong owner, writable file or parent, and symlink file or parent. Ordinary `go test` skips the fixed-path test; this is a disposable container proof, not live host evidence. The gate does not run it.
+
 ## Rootless real-Pi controller proof
 
 `test-real-pi-controller.sh` is opt-in and offline. It checks exact cached

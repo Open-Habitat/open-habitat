@@ -266,7 +266,7 @@ assert len([p for p in files if p.endswith('daemon.sock')])==0
 assert all(base64.b64decode(f['content']).find(b'PRODUCT_VM_TOKEN')==-1 for p,f in files.items() if p.startswith('/etc/native-agent-host/'))
 assert '/etc/systemd/system/native-agent-host-broker.socket' in files
 # The routing guest explicitly uses a synthetic status adapter, not real Pi.
-selector=json.loads(base64.b64decode(files['/etc/native-agent-host/pi-runtime.json']['content']))
+selector=json.loads(base64.b64decode(files['/opt/native-agent-host/pi-runtime.json']['content']))
 assert selector['node']=='/opt/native-agent-host/fixture-pi/bin/node'
 assert b'"state":"usable"' in base64.b64decode(files[selector['node']]['content'])
 assert selector['entry'] in files and selector['manifest'] in files

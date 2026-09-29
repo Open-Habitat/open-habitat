@@ -1,6 +1,6 @@
 # Mapped daemon Pi runtime selector
 
-The operator installs the pinned Node 22.21.1 and `@earendil-works/pi-coding-agent@0.85.1` release as a root-owned, non-writable tree. No global Node/npm installation is needed. Separately, install `/etc/native-agent-host/pi-runtime.json` as a root-owned regular file readable by mapped daemon UIDs (for example mode 0644), beneath root-owned directories with no group/world write access:
+The operator installs the pinned Node 22.21.1 and `@earendil-works/pi-coding-agent@0.85.1` release as a root-owned, non-writable tree. No global Node/npm installation is needed. Separately, install `/opt/native-agent-host/pi-runtime.json` as a root-owned regular file readable by mapped daemon UIDs (for example mode 0644), beneath root-owned, traversable directories with no group/world write access (for example `/opt/native-agent-host` mode 0755). Keep `/etc/native-agent-host` root:gateway 0750 for gateway secrets; never open it to mapped UIDs or place this selector there:
 
 ```json
 {

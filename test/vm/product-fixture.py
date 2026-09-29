@@ -36,7 +36,7 @@ add(pi_root+'/bin/node', '#!/bin/sh\nif [ "$1" = "--version" ]; then echo v22.21
 add(pi_pkg+'/package.json', json.dumps({'name':'@earendil-works/pi-coding-agent','version':'0.85.1','exports':{'.':{'import':'./dist/index.js'}},'bin':{'pi':'dist/bundle/cli.js'}}))
 add(pi_pkg+'/dist/index.js', '// routing fixture; never runs a prompt\n')
 add(pi_pkg+'/dist/bundle/cli.js', '// routing fixture; never runs a prompt\n')
-add('/etc/native-agent-host/pi-runtime.json',json.dumps({'node':pi_root+'/bin/node','entry':pi_pkg+'/dist/index.js','manifest':pi_pkg+'/package.json'}))
+add('/opt/native-agent-host/pi-runtime.json',json.dumps({'node':pi_root+'/bin/node','entry':pi_pkg+'/dist/index.js','manifest':pi_pkg+'/package.json'}))
 for name, uid, subject in [('agent-a',21001,'31001'),('agent-b',21002,'31002')]:
     sock = '/run/native-agent-host/users/'+name+'/daemon.sock'
     binding='/etc/omega-habitat/daemon/user-mappings/daemon-'+name+'.json'
@@ -74,6 +74,8 @@ seed={'users':users,'write_files':files,'runcmd':[
     ['chmod','0700',state],
     ['chown','root:root','/etc/omega-habitat','/etc/omega-habitat/daemon','/etc/omega-habitat/daemon/user-mappings'],
     ['chmod','0711','/etc/omega-habitat','/etc/omega-habitat/daemon','/etc/omega-habitat/daemon/user-mappings'],
+    ['chown','root:native-agent-host-gateway','/etc/native-agent-host'],
+    ['chmod','0750','/etc/native-agent-host'],
     ['/usr/bin/python3','/usr/local/sbin/product-proof']]}
 (run/'product-cloud-init.yaml').write_text('#cloud-config\n'+json.dumps(seed, separators=(',',':'))+'\n')
 (run/'product-cloud-init.yaml').chmod(0o600)

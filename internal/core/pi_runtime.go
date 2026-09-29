@@ -15,7 +15,7 @@ import (
 
 // SharedPiRuntimePath is an installation-wide operator selector, not a user
 // binding. A missing or invalid selector disables Pi without disabling the daemon.
-const SharedPiRuntimePath = "/etc/native-agent-host/pi-runtime.json"
+const SharedPiRuntimePath = "/opt/native-agent-host/pi-runtime.json"
 
 func LoadSharedPiRuntime() (*PiRuntimeConfig, error) {
 	return loadSharedPiRuntime(SharedPiRuntimePath)
