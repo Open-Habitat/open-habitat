@@ -119,7 +119,9 @@ export function HistoryView({
   agent,
   workspaceName,
   workspaceId,
+  stale = false,
 }: {
+  stale?: boolean;
   agent: Agent;
   workspaceName: string;
   workspaceId: string;
@@ -134,6 +136,9 @@ export function HistoryView({
   const [busy, setBusy] = useState(false);
   const [details, setDetails] = useState(false);
   useEffect(() => {
+    // Do not load a new history from an unverified connection. A mounted
+    // history remains readable, but a newly selected one waits for retry.
+    if (stale) return;
     const controller = new AbortController();
     setEntries([]);
     setNext(undefined);
@@ -156,9 +161,9 @@ export function HistoryView({
         if (!controller.signal.aborted) setState("error");
       });
     return () => controller.abort();
-  }, [agent.agent_id, agent.history]);
+  }, [agent.agent_id, agent.history, stale]);
   const loadMore = async () => {
-    if (!next || busy) return;
+    if (stale || !next || busy) return;
     setBusy(true);
     try {
       const page = await readHistoryFetch(agent.agent_id, next);
@@ -221,7 +226,7 @@ export function HistoryView({
           tone="warning"
         />
       ) : null}
-      {next && state !== "error" ? (
+      {next && state !== "error" && !stale ? (
         <Button
           label={busy ? "Ladataan…" : "Lataa seuraava sivu"}
           pending={busy}

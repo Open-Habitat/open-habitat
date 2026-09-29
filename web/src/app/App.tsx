@@ -38,6 +38,7 @@ import {
   loading,
   piRequired,
   type RootState,
+  stale,
   unavailable,
 } from "./store";
 
@@ -209,7 +210,7 @@ export function App() {
   // A disconnected tab can recover without a page reload when the browser
   // announces a restored network. Do not retry writes or repeat on a timer.
   useEffect(() => {
-    if (phase !== "daemon_unavailable") return;
+    if (phase !== "daemon_unavailable" && phase !== "stale") return;
     window.addEventListener("online", refresh);
     return () => window.removeEventListener("online", refresh);
   }, [phase, refresh]);
@@ -221,7 +222,12 @@ export function App() {
   // Mask identity-scoped DOM on a real return until the cookie and snapshot
   // have both been verified. Keep it mounted to preserve the editor and scroll.
   useEffect(() => {
-    if (syntheticDemo || fixtureName || phase !== "authenticated") return;
+    if (
+      syntheticDemo ||
+      fixtureName ||
+      (phase !== "authenticated" && phase !== "stale")
+    )
+      return;
     // The first authenticated render may happen in a background tab; there
     // need not have been a blur event for this listener to observe.
     let away = document.visibilityState === "hidden" || !document.hasFocus();
@@ -256,14 +262,38 @@ export function App() {
     if (fixtureName?.startsWith("design") && CatalogPreview) return;
     const controller = new AbortController();
     // A pending endpoint must not leave the identity mask up forever.
-    const timeout = window.setTimeout(() => controller.abort(), 10000);
     let active = true;
+    let authorityVerified = false;
+    const timeout = window.setTimeout(() => {
+      controller.abort();
+      if (active) {
+        active = false;
+        if (authorityVerified && snapshot) {
+          dispatch(stale());
+          setVerifying(false);
+        } else {
+          sessionBinding.current = undefined;
+          for (const key of Object.keys(sessionStorage))
+            if (key.startsWith("nah:")) sessionStorage.removeItem(key);
+          conversationPlace.current = undefined;
+          setBrowserSessions([]);
+          setIdentityEpoch((n) => n + 1);
+          dispatch(unavailable());
+          setVerifying(false);
+        }
+      }
+    }, 10000);
     const generation = loginGeneration.current;
     if (!snapshot) dispatch(loading());
     const fail = (gate: "login" | "pi" | "unavailable") => {
       if (!active || generation !== loginGeneration.current) return;
+      window.clearTimeout(timeout);
       sessionBinding.current = undefined;
+      for (const key of Object.keys(sessionStorage))
+        if (key.startsWith("nah:")) sessionStorage.removeItem(key);
+      conversationPlace.current = undefined;
       setBrowserSessions([]);
+      setIdentityEpoch((n) => n + 1);
       if (gate === "login") dispatch(authenticationRequired());
       else if (gate === "pi") dispatch(piRequired());
       else dispatch(unavailable());
@@ -295,6 +325,21 @@ export function App() {
           // authorize Pi again. Keep the recovery path available instead.
           if (status !== "usable") return fail("unavailable");
           token = session ?? (await sessionCSRF(controller.signal));
+          // A failed authority check is not a transport outage. A different
+          // session must never inherit the previous user's mounted content.
+          if (snapshot && sessionBinding.current !== token) {
+            for (const key of Object.keys(sessionStorage))
+              if (key.startsWith("nah:")) sessionStorage.removeItem(key);
+            conversationPlace.current = undefined;
+            setBrowserSessions([]);
+            setIdentityEpoch((n) => n + 1);
+            sessionBinding.current = undefined;
+            dispatch(clearIdentity());
+            window.clearTimeout(timeout);
+            setVerifying(false);
+            return;
+          }
+          authorityVerified = true;
         }
         if (
           !active ||
@@ -303,18 +348,43 @@ export function App() {
         )
           return;
         if (token === "login") return fail("login");
-        const response = await fetch(
-          syntheticDemo
-            ? `/api/v1/snapshot?scenario=${new URLSearchParams(location.search).get("scenario") ?? "ready"}`
-            : "/api/v1/snapshot",
-          {
-            credentials: "same-origin",
-            cache: "no-store",
-            signal: controller.signal,
-          },
-        );
+        let response: Response;
+        try {
+          response = await fetch(
+            syntheticDemo
+              ? `/api/v1/snapshot?scenario=${new URLSearchParams(location.search).get("scenario") ?? "ready"}`
+              : "/api/v1/snapshot",
+            {
+              credentials: "same-origin",
+              cache: "no-store",
+              signal: controller.signal,
+            },
+          );
+        } catch {
+          // Only the snapshot transport may fail while authority is verified.
+          if (snapshot && authorityVerified && !controller.signal.aborted) {
+            dispatch(stale());
+            window.clearTimeout(timeout);
+            setVerifying(false);
+            return;
+          }
+          throw new Error("snapshot transport");
+        }
+        if (response.status === 401 || response.status === 403)
+          return fail("login");
         if (response.status === 428) return fail("pi");
-        if (response.status === 401) return fail("login");
+        // The gateway also maps invalid/foreign daemon responses to 503.
+        // That status cannot prove this is the same identity: fail closed.
+        if (!active || generation !== loginGeneration.current) return;
+        if (response.status === 503) return fail("unavailable");
+        if (response.status >= 500) {
+          if (snapshot) {
+            dispatch(stale());
+            window.clearTimeout(timeout);
+            setVerifying(false);
+          } else fail("unavailable");
+          return;
+        }
         if (
           !response.ok ||
           response.headers.get("content-type")?.split(";")[0] !==
@@ -330,20 +400,15 @@ export function App() {
           return;
         if (
           snapshot &&
-          (snapshot.identity.web_identity_id !==
-            next.identity.web_identity_id ||
-            sessionBinding.current !== token)
+          snapshot.identity.web_identity_id !== next.identity.web_identity_id
         ) {
-          for (const key of Object.keys(sessionStorage))
-            if (key.startsWith("nah:")) sessionStorage.removeItem(key);
-          conversationPlace.current = undefined;
-          setBrowserSessions([]);
-          editorPlace.current = undefined;
-          // A new cookie, even for the same subject, must remount local state.
-          setIdentityEpoch((n) => n + 1);
+          // A mismatched snapshot is not proof that this browser belongs to
+          // the new identity. Clear rather than rendering either identity.
+          return fail("login");
         }
         sessionBinding.current = token;
         dispatch(authenticated(next));
+        window.clearTimeout(timeout);
         setVerifying(false);
         if (!syntheticDemo) {
           try {
@@ -432,10 +497,11 @@ export function App() {
       snapshot &&
       location.pathname === "/" &&
       source === "confirmed" &&
+      phase === "authenticated" &&
       firstVisible
     )
       navigate(`/workspaces/${firstVisible}`, { replace: true });
-  }, [snapshot, source, firstVisible, location.pathname, navigate]);
+  }, [snapshot, source, firstVisible, location.pathname, navigate, phase]);
   const selectedId = /^\/workspaces\/(ws_[A-Za-z0-9_-]{8,80})$/.exec(
     location.pathname,
   )?.[1];
@@ -485,7 +551,7 @@ export function App() {
   const railState =
     phase === "loading"
       ? "loading"
-      : phase !== "authenticated"
+      : phase !== "authenticated" && phase !== "stale"
         ? "error"
         : source === "absent"
           ? "source-absent"
@@ -553,6 +619,7 @@ export function App() {
       />
     ) : selectedAgent && agentWorkspace ? (
       <HistoryView
+        stale={phase === "stale"}
         key={`${selectedAgent.agent_id}:${historyRefreshKey}`}
         agent={selectedAgent}
         workspaceName={agentWorkspace.display_name ?? agentWorkspace.name}
@@ -578,6 +645,7 @@ export function App() {
           (f) => f.source === "filesystem" && f.state === "confirmed",
         ) ? (
           <BrowserConversation
+            stale={phase === "stale"}
             key={`${identity}:${selected.workspace_id}:${location.search}`}
             workspace={selected}
             id={
@@ -756,7 +824,7 @@ export function App() {
                 <ConnectionBanner
                   state={phase === "authenticated" ? "online" : "loading"}
                   hostWriteState={
-                    snapshot?.write_state === "read_only"
+                    phase === "stale" || snapshot?.write_state === "read_only"
                       ? "read_only"
                       : "writable"
                   }
@@ -765,14 +833,24 @@ export function App() {
             </>
           }
           rail={
-            phase === "authenticated" && snapshot ? (
+            (phase === "authenticated" || phase === "stale") && snapshot ? (
               <WorkspaceRail
                 collapsed={collapsed}
                 serverLabel={window.location.host}
                 connectionLabel={
-                  source === "confirmed" ? "Yhdistetty" : "Tietoja puuttuu"
+                  phase === "stale"
+                    ? "Tiedot voivat olla vanhoja"
+                    : source === "confirmed"
+                      ? "Yhdistetty"
+                      : "Tietoja puuttuu"
                 }
-                connectionTone={source === "confirmed" ? "success" : "warning"}
+                connectionTone={
+                  phase === "stale"
+                    ? "warning"
+                    : source === "confirmed"
+                      ? "success"
+                      : "warning"
+                }
                 sessionActions={
                   <AccountShelf
                     name={accountLabel(snapshot.identity.display_name)}
@@ -866,6 +944,14 @@ export function App() {
                   : "ah-state"
               }
             >
+              {phase === "stale" ? (
+                <InlineNotice
+                  title="Yhteys katkesi · tiedot voivat olla vanhoja"
+                  description="Näet viimeksi vahvistetut tiedot. Toiminnot odottavat yhteyden palautumista."
+                  tone="warning"
+                  actions={[{ label: "Yritä uudelleen", onPress: refresh }]}
+                />
+              ) : null}
               {main}
             </div>
           }

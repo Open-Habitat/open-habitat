@@ -23,9 +23,15 @@ Pi history and tool output can contain anything. `src/app/snapshot.ts` and
 `src/app/history.ts` validate responses against the schemas in `contracts/v1/`
 before Redux sees them, read the body under a size cap even when Content-Length
 is missing or wrong, and fail with generic messages so that response text never
-reaches the UI or the console. The store drops the snapshot whenever a fetch
-fails or the session ends, and resets filter state when the identity in a new
-snapshot differs from the previous one. A tab can outlive a session: if one
+reaches the UI or the console. The store retains the last verified snapshot only when the session and Pi gate
+have been positively rechecked with the same session binding and the snapshot
+transport then fails (network, timeout or a 5xx other than 503). The gateway
+also returns 503 for invalid or foreign daemon responses, so 503 is ambiguous
+and clears the view rather than risking cross-identity content. It marks that snapshot stale,
+keeps reading available and disables writes until a fresh snapshot arrives.
+Failed authority checks, 401/403, malformed responses, session expiry, logout
+and identity or session changes clear the old view instead. The store resets
+filter state when the identity in a new snapshot differs from the previous one. A tab can outlive a session: if one
 person's session expires and another signs in on the same tab, nothing from the
 first identity may remain visible. Showing one identity's facts under another
 is a product defect, not a UI glitch.

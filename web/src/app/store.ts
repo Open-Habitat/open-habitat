@@ -8,6 +8,7 @@ type State = {
   phase:
     | "loading"
     | "authenticated"
+    | "stale"
     | "authentication_required"
     | "pi_required"
     | "daemon_unavailable";
@@ -54,6 +55,13 @@ const connection = createSlice({
     unavailable(state) {
       state.phase = "daemon_unavailable";
       state.snapshot = undefined;
+      state.lastIdentity = undefined;
+      state.filter = "";
+      state.generation++;
+    },
+    stale(state) {
+      if (state.phase === "authenticated" && state.snapshot)
+        state.phase = "stale";
     },
     filterChanged(state, action: PayloadAction<string>) {
       state.filter = action.payload;
@@ -73,6 +81,7 @@ export const {
   authenticationRequired,
   piRequired,
   unavailable,
+  stale,
   filterChanged,
   clearIdentity,
 } = connection.actions;

@@ -53,7 +53,9 @@ export function BrowserConversation({
   identity,
   place,
   onSessionCreated,
+  stale = false,
 }: {
+  stale?: boolean;
   workspace: Workspace;
   id?: string;
   title?: string;
@@ -126,6 +128,7 @@ export function BrowserConversation({
     : "";
   const ambiguous = ambiguousKey ? sessionStorage.getItem(ambiguousKey) : null;
   useEffect(() => {
+    if (stale) return;
     alive.current = true;
     const controller = new AbortController();
     setCSRF(undefined);
@@ -183,7 +186,7 @@ export function BrowserConversation({
       ++generation.current;
       controller.abort();
     };
-  }, [id, workspace.workspace_id, identity, place]);
+  }, [id, workspace.workspace_id, identity, place, stale]);
   useEffect(() => {
     setDraft(draftKey ? (sessionStorage.getItem(draftKey) ?? "") : "");
   }, [draftKey]);
@@ -193,6 +196,7 @@ export function BrowserConversation({
   };
   const refresh = useCallback(async () => {
     if (
+      stale ||
       !id ||
       !csrf ||
       pending.current ||
@@ -344,9 +348,17 @@ export function BrowserConversation({
     } finally {
       pending.current = false;
     }
-  }, [id, csrf, sessions, workspace.workspace_id, identity, submittedKey]);
+  }, [
+    id,
+    csrf,
+    sessions,
+    workspace.workspace_id,
+    identity,
+    submittedKey,
+    stale,
+  ]);
   useEffect(() => {
-    if (!id || !csrf) return;
+    if (!id || !csrf || stale) return;
     void refresh();
     const timer = window.setInterval(() => void refresh(), 3000);
     const focus = () => void refresh();
@@ -357,7 +369,7 @@ export function BrowserConversation({
       window.removeEventListener("focus", focus);
       document.removeEventListener("visibilitychange", focus);
     };
-  }, [id, csrf, refresh]);
+  }, [id, csrf, refresh, stale]);
   const verify = async () => {
     const token = await sessionCSRF();
     if (!csrf || token !== csrf || (await piStatus()) !== "usable")
@@ -380,7 +392,7 @@ export function BrowserConversation({
     }
   };
   const start = async () => {
-    if (busy || !csrf || ambiguous) return;
+    if (stale || busy || !csrf || ambiguous) return;
     setBusy(true);
     setReceipt("Varmistetaan istuntoa.");
     try {
@@ -410,6 +422,7 @@ export function BrowserConversation({
   };
   const submit = async () => {
     if (
+      stale ||
       busy ||
       !current ||
       (current.state !== "idle" && current.state !== "rejected") ||
@@ -444,7 +457,7 @@ export function BrowserConversation({
     }
   };
   const stopNow = async () => {
-    if (busy || !current || !csrf) return;
+    if (stale || busy || !current || !csrf) return;
     setBusy(true);
     setReceipt("Varmistetaan istuntoa.");
     let sent = false;
@@ -477,6 +490,7 @@ export function BrowserConversation({
     );
   const canSend =
     controlled &&
+    !stale &&
     !busy &&
     !ambiguous &&
     (current.state === "idle" || current.state === "rejected");
@@ -529,26 +543,33 @@ export function BrowserConversation({
             <Button
               label="Aloita uusi Pi-keskustelu"
               availability={
-                !csrf
-                  ? {
-                      state: "unknown",
-                      reason: problem
-                        ? "Istuntoa ei voitu vahvistaa."
-                        : "Varmistetaan istuntoa.",
-                    }
-                  : ambiguous
+                stale
+                  ? { state: "unknown", reason: "Yhteys on katkennut." }
+                  : !csrf
                     ? {
                         state: "unknown",
-                        reason: "Edellisen luonnin tulos on epävarma.",
+                        reason: problem
+                          ? "Istuntoa ei voitu vahvistaa."
+                          : "Varmistetaan istuntoa.",
                       }
-                    : busy
-                      ? { state: "unknown", reason: "Luonti on käynnissä." }
-                      : { state: "enabled" }
+                    : ambiguous
+                      ? {
+                          state: "unknown",
+                          reason: "Edellisen luonnin tulos on epävarma.",
+                        }
+                      : busy
+                        ? { state: "unknown", reason: "Luonti on käynnissä." }
+                        : { state: "enabled" }
               }
               onPress={() => void start()}
             />
             <Button
               label="Tarkista keskustelulista"
+              availability={
+                stale
+                  ? { state: "unknown", reason: "Yhteys on katkennut." }
+                  : { state: "enabled" }
+              }
               onPress={() => void recheckList()}
             />
           </fieldset>
@@ -630,7 +651,7 @@ export function BrowserConversation({
               }}
             />
           </section>
-          {next ? (
+          {next && !stale ? (
             <Button
               label="Lataa seuraava historiasivu"
               onPress={() =>
@@ -690,17 +711,21 @@ export function BrowserConversation({
               label="Pyydä pysäytystä"
               variant="secondary"
               availability={
-                busy
-                  ? { state: "unknown", reason: "Pyyntö kesken" }
-                  : { state: "enabled" }
+                stale
+                  ? { state: "unknown", reason: "Yhteys on katkennut." }
+                  : busy
+                    ? { state: "unknown", reason: "Pyyntö kesken" }
+                    : { state: "enabled" }
               }
               onPress={() => void stopNow()}
             />
           ) : null}
-          <Button
-            label="Tarkista tila ja historia"
-            onPress={() => void refresh()}
-          />
+          {!stale ? (
+            <Button
+              label="Tarkista tila ja historia"
+              onPress={() => void refresh()}
+            />
+          ) : null}
         </>
       )}
       {receipt ? <InlineNotice title={receipt} tone="warning" /> : null}
