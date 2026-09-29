@@ -6,7 +6,7 @@ status: open
 priority: high
 lane: github-first-onboarding
 collision: [internal/gateway/, internal/daemon/, web/src/app/App.tsx, web/src/app/PiOnboarding.tsx]
-blocked_by: ['@pre-pi-github-clone', '@github-chooser-component']
+blocked_by: ['@pre-pi-github-clone', '@github-chooser-component', '@single-action-github-onboarding']
 ---
 
 # Choose GitHub repositories before Pi sign-in
@@ -35,3 +35,7 @@ Pilot.9 sends authenticated users straight to Pi first-use. No repository picker
 ### 2026-09-29T05:26:48Z · @jari
 
 2026-09-29: Jari explicitly authorizes the agent to clone his existing GitHub repositories in live integration testing and, when useful, create private disposable GitHub test repositories to verify the workflow. The agent may exercise the mapped native account with full permissions and need not ask separately for these routine tests. Keep automated synthetic fixtures separate from real accounts; record exact live outcomes without secrets or host-specific values in this public repository (concrete host receipts belong in Fleetrepo).
+
+### 2026-09-29T05:31:09Z · @jari
+
+2026-09-29: Keep first-use UI as simple as possible. Repository selection must actually result in native checkout, not only a list or pending choice. One explicit Jatka action after choosing repos performs selected checkouts, shows progress and advances to Pi after confirmed success; with zero selected it advances without checkout. Do not add separate Hae valitut, skip and then another Jatka sequence. An uncertain write is reconciled by read-only native observation, not auto-retried.
