@@ -28,8 +28,9 @@ import {
   status,
   stop,
 } from "./conversations";
-import { Entry, readHistoryFetch } from "./HistoryView";
+import { readHistoryFetch, timelineItems } from "./HistoryView";
 import type { HistoryEntry } from "./history";
+import { UnpresentedEvents } from "../components/WorkingProgress";
 import { piStatus, sessionCSRF } from "./pi";
 import type { Workspace } from "./snapshot";
 
@@ -831,6 +832,7 @@ export function BrowserConversation({
             events={events}
             elapsed={elapsed}
           />
+          <UnpresentedEvents events={events} />
           {controlled &&
           !stale &&
           ["pending", "accepted", "stopping"].includes(current?.state ?? "") ? (
@@ -897,11 +899,7 @@ export function BrowserConversation({
                     ? "ready"
                     : "empty"
               }
-              items={entries.map((e) => ({
-                id: e.entry_key,
-                kind: e.kind,
-                content: <Entry key={e.entry_key} entry={e} stale={stale} />,
-              }))}
+              items={timelineItems(entries, stale)}
               historyMode="pagedAccessible"
               newContentCount={unseen}
               onJumpToLatest={() => {

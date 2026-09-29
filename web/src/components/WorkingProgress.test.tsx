@@ -1,8 +1,26 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { WorkingProgress, progressLabel } from "./WorkingProgress";
+import {
+  UnpresentedEvents,
+  WorkingProgress,
+  progressLabel,
+} from "./WorkingProgress";
 
 describe("working progress", () => {
+  it("shows pending questions and unknown events as inert text", () => {
+    render(
+      <UnpresentedEvents
+        events={[
+          { type: "question.requested", prompt: "Jatketaanko?" },
+          { type: "future_event", payload: "<img src=x onerror=alert(1)>" },
+        ]}
+      />,
+    );
+    expect(screen.getByText("Pi odottaa vastausta")).toBeTruthy();
+    expect(screen.getByText("Muu Pi:n viesti")).toBeTruthy();
+    expect(document.querySelector("img")).toBeNull();
+    expect(screen.getByText(/Jatketaanko/)).toBeTruthy();
+  });
   it("shows allowlisted work without exposing host arguments or unknown payload", () => {
     expect(
       progressLabel([

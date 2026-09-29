@@ -10,6 +10,7 @@ import {
   Markdown,
   ToolOutput,
   ToolRow,
+  ToolGroup,
   UnknownEvent,
   UserMessage,
 } from "../components";
@@ -34,6 +35,7 @@ export function Entry({
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
   const [toolExpanded, setToolExpanded] = useState(false);
+  const [longExpanded, setLongExpanded] = useState(false);
   useEffect(() => {
     setContent(entry.content);
     setFailed(false);
@@ -98,12 +100,20 @@ export function Entry({
           onToggle={() => setToolExpanded(!toolExpanded)}
         >
           <ToolOutput
-            text={content.text}
+            text={longExpanded ? content.text : content.text.slice(0, 12000)}
             streamSemantics="unknown"
             sourceState={content.complete ? "complete" : "continued"}
             onCopy={copy}
             onLoadMore={stale ? undefined : more}
           />
+          {content.text.length > 12000 ? (
+            <Button
+              label={
+                longExpanded ? "Supista tuloste" : "Näytä koko ladattu tuloste"
+              }
+              onPress={() => setLongExpanded(!longExpanded)}
+            />
+          ) : null}
         </ToolRow>
       ) : null}
       {entry.kind === "model_change" ? (
@@ -126,6 +136,56 @@ export function Entry({
         />
       ) : null}
     </>
+  );
+}
+// Group only adjacent native tool results. Keys belong to the first entry so
+// disclosure state survives refreshes that preserve the native event order.
+export function timelineItems(entries: HistoryEntry[], stale: boolean) {
+  const items: { id: string; kind: string; content: React.ReactNode }[] = [];
+  for (let i = 0; i < entries.length; ) {
+    const first = entries[i];
+    if (first.kind !== "tool") {
+      items.push({
+        id: first.entry_key,
+        kind: first.kind,
+        content: <Entry key={first.entry_key} entry={first} stale={stale} />,
+      });
+      i++;
+      continue;
+    }
+    const group: HistoryEntry[] = [];
+    while (i < entries.length && entries[i].kind === "tool")
+      group.push(entries[i++]);
+    items.push({
+      id: first.entry_key,
+      kind: "tool",
+      content: (
+        <HistoryToolGroup key={first.entry_key} entries={group} stale={stale} />
+      ),
+    });
+  }
+  return items;
+}
+function HistoryToolGroup({
+  entries,
+  stale,
+}: {
+  entries: HistoryEntry[];
+  stale: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  if (entries.length === 1) return <Entry entry={entries[0]} stale={stale} />;
+  return (
+    <ToolGroup
+      title="Työkalut"
+      summary={`${entries.length} tulosta`}
+      expanded={expanded}
+      onToggle={() => setExpanded(!expanded)}
+    >
+      {entries.map((entry) => (
+        <Entry key={entry.entry_key} entry={entry} stale={stale} />
+      ))}
+    </ToolGroup>
   );
 }
 export function HistoryView({
@@ -222,11 +282,7 @@ export function HistoryView({
       ) : null}
       <ConversationTimeline
         state={state}
-        items={entries.map((entry) => ({
-          id: entry.entry_key,
-          kind: entry.kind,
-          content: <Entry key={entry.entry_key} entry={entry} stale={stale} />,
-        }))}
+        items={timelineItems(entries, stale)}
         historyMode="pagedAccessible"
         emptyLabel="Natiivissa historiassa ei ole vielä viestejä."
         onJumpToLatest={() => {}}

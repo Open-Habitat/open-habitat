@@ -35,6 +35,7 @@ type nativeEntry struct {
 	Provider string          `json:"provider"`
 	ModelID  string          `json:"modelId"`
 	ParentID *string         `json:"parentId"`
+	Raw      json.RawMessage `json:"-"`
 }
 type nativeHeader struct {
 	Type    string `json:"type"`
@@ -227,6 +228,7 @@ func readNative(path string, uid int) nativeSession {
 			result.state = "corrupt"
 			break
 		}
+		e.Raw = append([]byte(nil), scanner.Bytes()...)
 		seen[e.ID] = true
 		parents[e.ID] = e.ParentID
 		leaf = e.ID
@@ -280,7 +282,7 @@ func nativeText(e nativeEntry) (string, string) {
 			ToolName string          `json:"toolName"`
 		}
 		if json.Unmarshal(e.Message, &m) != nil {
-			return "unknown", "Tuntematon viesti"
+			return "unknown", "Tuntematon viesti: " + string(e.Message)
 		}
 		kind := m.Role
 		if kind == "toolResult" {
@@ -299,24 +301,28 @@ func nativeText(e nativeEntry) (string, string) {
 			Name string `json:"name"`
 		}
 		if json.Unmarshal(m.Content, &blocks) != nil {
-			return "unknown", "Sisältömuotoa ei tueta"
+			return "unknown", "Sisältömuotoa ei tueta: " + string(m.Content)
 		}
 		parts := []string{}
 		if kind == "tool" && m.ToolName != "" {
 			parts = append(parts, m.ToolName)
 		}
-		for _, b := range blocks {
+		for i, b := range blocks {
 			if b.Type == "text" {
 				parts = append(parts, b.Text)
 			} else if b.Type == "toolCall" {
 				parts = append(parts, "Työkalu: "+b.Name)
 			} else {
-				parts = append(parts, "[Sisältöä ei tueta: "+b.Type+"]")
+				// Keep the complete unknown block, not just its type. Rendered as
+				// text by the browser; no native content is interpreted as markup.
+				var raw []json.RawMessage
+				_ = json.Unmarshal(m.Content, &raw)
+				parts = append(parts, "[Sisältöä ei tueta: "+b.Type+"] "+string(raw[i]))
 			}
 		}
 		return kind, strings.Join(parts, "\n")
 	default:
-		return "unknown", "Tuntematon Pi-tapahtuma: " + e.Type
+		return "unknown", "Tuntematon Pi-tapahtuma: " + e.Type + "\n" + string(e.Raw)
 	}
 }
 func contentID(s *nativeSession, key string) string {

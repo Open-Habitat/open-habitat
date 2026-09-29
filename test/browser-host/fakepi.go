@@ -194,6 +194,13 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	}
 	s.append(message("toolResult", []map[string]any{{"type": "text", "text": listing}}, map[string]any{"toolCallId": "call_1", "toolName": "bash", "isError": false}))
 	emit(map[string]any{"type": "tool_execution_end", "toolName": "bash"})
+	if strings.Contains(prompt, "työkalut") {
+		s.append(message("assistant", []map[string]any{{"type": "toolCall", "name": "edit", "id": "call_2"}}, nil))
+		s.append(message("toolResult", []map[string]any{{"type": "text", "text": "--- a/example.txt\n+++ b/example.txt\n@@ -1 +1 @@\n-old\n+new"}}, map[string]any{"toolCallId": "call_2", "toolName": "edit"}))
+		s.append(message("toolResult", []map[string]any{{"type": "text", "text": strings.Repeat("synthetic output\n", 5000)}}, map[string]any{"toolName": "future_tool"}))
+		s.append(message("assistant", []map[string]any{{"type": "futureQuestion", "prompt": "Mitä seuraavaksi?"}}, nil))
+		s.append(map[string]any{"type": "futureEntry", "payload": "synthetic unknown event"})
+	}
 	time.Sleep(step)
 	answer := fmt.Sprintf("Selvä. Kysyit: %q.\n\nTyötilassa on %d kohdetta. Tämä vastaus on synteettisen Pi-korvikkeen tuottama, eikä mitään mallia kutsuttu.", prompt, strings.Count(listing, "\n")+1)
 	if strings.Contains(prompt, "pitkä") {

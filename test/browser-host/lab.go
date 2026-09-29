@@ -111,6 +111,18 @@ func seedLab(home string) error {
 			write("toolResult", []map[string]any{{"type": "text", "text": "synteettinen sisältö"}}, map[string]any{"toolCallId": "c", "toolName": "read", "isError": false})
 			write("assistant", []map[string]any{{"type": "text", "text": t[1]}}, map[string]any{"stopReason": "stop"})
 		}
+		if s.id == "a1a1a1a1-0000-4000-8000-000000000001" {
+			write("assistant", []map[string]any{{"type": "toolCall", "name": "read", "id": "r2"}, {"type": "toolCall", "name": "edit", "id": "e2"}}, nil)
+			write("toolResult", []map[string]any{{"type": "text", "text": "synteettinen lukutulos"}}, map[string]any{"toolName": "read", "toolCallId": "r2"})
+			write("toolResult", []map[string]any{{"type": "text", "text": "--- a/main.go\n+++ b/main.go\n@@ -1 +1 @@\n-vanha\n+uusi"}}, map[string]any{"toolName": "edit", "toolCallId": "e2"})
+			write("toolResult", []map[string]any{{"type": "text", "text": strings.Repeat("synteettinen tulos\n", 5000)}}, map[string]any{"toolName": "bash", "toolCallId": "b2"})
+			write("assistant", []map[string]any{{"type": "futureBlock", "prompt": "Valitse seuraava vaihe", "choices": []string{"Jatka", "Lopeta"}}}, nil)
+			n++
+			id := fmt.Sprintf("e%07d", n)
+			_ = enc.Encode(map[string]any{"type": "futureEntry", "id": id, "parentId": parent, "payload": "synteettinen uusi tapahtuma"})
+			parent = id
+			write("assistant", []map[string]any{{"type": "text", "text": "Odotan vastausta."}}, map[string]any{"stopReason": "toolUse"})
+		}
 		if e := f.Close(); e != nil {
 			return e
 		}

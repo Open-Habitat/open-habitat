@@ -21,6 +21,46 @@ export function progressLabel(events: unknown[]): string {
   return "Odottaa Pi:n seuraavaa vaihetta";
 }
 
+// Live Pi events are not a substitute for native history, but a pending
+// question may not have been persisted there yet. Keep unsupported events
+// visible as inert text rather than silently discarding them.
+export function UnpresentedEvents({ events }: { events: unknown[] }) {
+  const occurrences = new Map<string, number>();
+  return (
+    <section aria-label="Muut Pi:n viestit">
+      {events.map((event) => {
+        if (!event || typeof event !== "object" || Array.isArray(event))
+          return null;
+        const record = event as Record<string, unknown>;
+        if (
+          typeof record.type !== "string" ||
+          [
+            "agent_start",
+            "agent_end",
+            "message_end",
+            "tool_execution_start",
+            "tool_execution_end",
+          ].includes(record.type)
+        )
+          return null;
+        const text = JSON.stringify(event);
+        const count = (occurrences.get(text) ?? 0) + 1;
+        occurrences.set(text, count);
+        return (
+          <details key={`${text}:${count}`}>
+            <summary>
+              {record.type === "question.requested"
+                ? "Pi odottaa vastausta"
+                : "Muu Pi:n viesti"}
+            </summary>
+            <pre>{text}</pre>
+          </details>
+        );
+      })}
+    </section>
+  );
+}
+
 export function WorkingProgress({
   state,
   events,

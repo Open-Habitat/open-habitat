@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { Entry } from "./HistoryView";
+import { Entry, timelineItems } from "./HistoryView";
 import type { HistoryEntry } from "./history";
 
 const entry: HistoryEntry = {
@@ -35,6 +35,43 @@ it("does not claim a projected assistant message completed the Pi turn", () => {
   expect(
     screen.getByRole("button", { name: "Kopioi viesti: Pi" }),
   ).toBeTruthy();
+});
+
+it("groups adjacent results, leaves unknown entries as readable text and bounds large output", () => {
+  const tool: HistoryEntry = {
+    ...entry,
+    kind: "tool",
+    content: {
+      media_type: "text/plain",
+      text: `bash\n${"x".repeat(14000)}`,
+      complete: true,
+    },
+  };
+  const items = timelineItems(
+    [
+      tool,
+      { ...tool, entry_key: "second" },
+      {
+        ...entry,
+        entry_key: "future",
+        kind: "unknown",
+        content: {
+          media_type: "text/plain",
+          text: "<script>unsafe</script> question",
+          complete: true,
+        },
+      },
+    ],
+    false,
+  );
+  expect(items).toHaveLength(2);
+  render(items.map((item) => <div key={item.id}>{item.content}</div>));
+  fireEvent.click(screen.getByRole("button", { name: /Työkalut/ }));
+  const rows = screen.getAllByRole("button", { name: /bash/ });
+  for (const row of rows) fireEvent.click(row);
+  expect(screen.getAllByText("Näytä koko ladattu tuloste")).toHaveLength(2);
+  expect(document.querySelector("script")).toBeNull();
+  expect(screen.getByText(/question/)).toBeTruthy();
 });
 
 it("shows an exact model ID as copyable timeline metadata, not code", () => {
