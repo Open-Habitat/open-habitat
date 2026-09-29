@@ -39,3 +39,9 @@ Pilot.9 sends authenticated users straight to Pi first-use. No repository picker
 ### 2026-09-29T05:31:09Z · @jari
 
 2026-09-29: Keep first-use UI as simple as possible. Repository selection must actually result in native checkout, not only a list or pending choice. One explicit Jatka action after choosing repos performs selected checkouts, shows progress and advances to Pi after confirmed success; with zero selected it advances without checkout. Do not add separate Hae valitut, skip and then another Jatka sequence. An uncertain write is reconciled by read-only native observation, not auto-retried.
+
+## Comments
+
+### 2026-09-29T06:51:44Z · @agent
+
+2026-09-29 live pilot.10 smoke at product 43bc79f: after browser GitHub login the real repo chooser appeared before Pi, one explicit Jatka checked out one private empty repository as the mapped UID, independent native Git/origin/ownership readback confirmed it, and the browser advanced to ChatGPT login. One native Pi device-code attempt displayed the verified link and code in Jari’s Chrome; code contents were not read or recorded. Jari has not confirmed provider sign-in; no agent conversation or full visual verdict. Synthetic browser evidence remains in result.md; host-specific receipt in private Fleetrepo @deploy-pilot10-github-first. Live UX gap: adapter fetches only 2 repos/page; follow-up required before calling chooser simple or fully accepted.
