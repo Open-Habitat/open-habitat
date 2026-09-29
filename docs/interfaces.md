@@ -6,7 +6,9 @@ kertoa, mitä natiiveista lähteistä tiedetään, voiko keskustelua ohjata ja
 onnistuiko käyttäjän pyytämä työ. Katkennut yhteys ei yksin vastaa yhteenkään
 näistä kysymyksistä.
 
-Tämä sivu kuvaa rajapintojen merkityksen. Viestien muodot ovat
+Tämä sivu kuvaa järjestelmän rajapinnat ja niiden sovitun toiminnan.
+Toteutetut rajapinnat ja vielä toteutettavat osat kuvataan erikseen.
+Viestien muodot ovat
 [JSON-skeemoissa](../contracts/v1/AGENTS.md) ja
 [esimerkeissä](../contracts/v1/examples/). Vastuurajat perustuvat
 [arkkitehtuuriin](architecture.md), [host-päätökseen](adr-0003-host-stack.md)
@@ -14,9 +16,9 @@ ja [ensikirjautumisen päätökseen](adr-0004-first-login-user-provisioning.md).
 
 ## Nykyiset selainreitit
 
-Alla on koodin tilanne revisiossa `35dccfc`. Reitit ovat toteutettuja;
-se ei tarkoita, että kaikki niiden käyttötapaukset olisi todennettu
-live-palvelimella. Reititys löytyy [gatewaysta](../internal/gateway/server.go)
+Alla ovat toteutetut reitit, tarkistettuina revisiosta `35dccfc`.
+Käyttötapausten testitulokset ja live-todennukset löytyvät toteutusissueista.
+Reititys löytyy [gatewaysta](../internal/gateway/server.go)
 ja [daemonista](../internal/daemon/handoff_linux.go).
 
 | Metodi ja polku | Mitä selain saa tai pyytää |
@@ -182,12 +184,16 @@ ADR määrittää sen hyväksytyt aika- ja levyrajat sekä epävarman lopputulok
 | Prosessi ja ohjauskyky | daemonin omistama Pi-lapsi, natiivi havainto ja RPC-kanava |
 | Piilotus, arkistointi ja generoitu otsikko | pieni käyttäjäkohtainen annotaatio |
 
-Lähteen tila, havaintohetki ja alkuperä kertovat, mihin väite perustuu.
-`confirmed` ja `absent` erottavat vahvistetun havainnon ja poissaolon.
-`unknown`, `unavailable` ja `conflicting` eivät tarkoita poissaoloa.
-Luettava historia ei todista, että prosessi käy tai että selain voi ohjata sitä.
-Nykyinen historianlukija jättää prosessin tilan tuntemattomaksi ja ohjauksen
-vain luettavaksi; erillinen selainohjain tuntee omat lapsensa.
+Daemon kertoo tiedon mukana, mistä ja milloin se on luettu sekä onnistuiko
+lukeminen. Esimerkiksi prosessin tila on `confirmed`, kun sen käynnissäolo
+on havaittu, ja `absent`, kun sen poissaolo on vahvistettu. `unknown`
+tarkoittaa, ettei tilaa tiedetä, `unavailable` ettei lähdettä voitu lukea ja
+`conflicting` että havainnot ovat ristiriidassa.
+
+Pi:n historiatiedostosta voi lukea keskustelun myös sen päätyttyä. Prosessin
+käynnissäolo ja selaimen ohjausmahdollisuus selvitetään erikseen. Nykyinen
+historianlukija näyttää keskustelut vain luettavina ja prosessin tilan
+tuntemattomana; erillinen selainohjain seuraa itse käynnistämiään Pi-prosesseja.
 
 Pi-keskustelun ID on `pi:<sessionId>` natiivista otsakkeesta. Workspace-yhteys
 perustuu otsakkeen täsmälliseen `cwd`:hen. Historia sivutetaan natiivilla
@@ -224,11 +230,20 @@ Seuraavat yleiset reitit ovat sovittu, vielä toteuttamaton pinta:
 
 ### Snapshot ja yhdistetty SSE
 
-Sovittu [snapshot](../contracts/v1/snapshot.schema.json) on daemonin muodostama
-yhtenäinen tilannekuva. Sen `event_cursor` on watermark eli kohta, josta selain
-jatkaa muutosten lukemista. Muutos kuuluu joko kuvaan tai sitä seuraavaan
-virtaan, jotta kuvan haun ja virran avaamisen väliin ei jää aukkoa.
-Selain ottaa kuvan käyttöön kerralla ja avaa virran sen cursorista.
+SSE-yhteys välittää Pi:n vastauksen ja työn etenemisen selaimeen sitä mukaa
+kuin Pi työskentelee. Jos selainyhteys katkeaa, Pi jatkaa työtään. Yhteyden
+palattua selain hakee katkon aikana syntyneet tapahtumat. Jos niitä ei enää
+ole saatavilla, selain hakee uuden tilannekuvan ja keskustelun Pi:n historiasta.
+
+Viestin lähetys ja etenemisen seuraaminen ovat eri asioita. Jos lähetyksen
+kuittaus katoaa, selain selvittää viestin tilanteen palvelimelta. Jos tilanne
+jää epäselväksi, käyttäjä näkee sen epävarmana. Automaattinen uudelleenlähetys
+voisi teettää saman työn kahdesti, joten päätös uudesta yrityksestä jää käyttäjälle.
+
+[Snapshot](../contracts/v1/snapshot.schema.json) on daemonin muodostama
+tilannekuva. Sen `event_cursor` kertoo, mihin asti tapahtumat ovat mukana
+kuvassa. Selain näyttää kuvan ja alkaa vastaanottaa sitä seuraavia tapahtumia.
+Näin myös tilannekuvan haun aikana syntyvät muutokset tulevat selaimeen.
 
 Cursor on `ev1:<server-instance-uuid>:<sequence>`. Daemonin `server_instance_id`
 erottaa virran eri elinkaaret; `snapshot_id` tunnistaa yksittäisen kuvan. SSE:n `id` vastaa bodyn cursoria, `event` sen
@@ -377,8 +392,8 @@ Käyttäjän esitystila on
 [Annotaatioskeema](../contracts/v1/annotations.schema.json) kattaa työtilan
 piilotuksen, keskustelun arkistoinnin ja viimeisimmän onnistuneen generoidun
 otsikon alkuperineen. Parent-yhteys tallennetaan vain, jos sitä ei saada
-luotettavasti natiivista Taskfleet- tai Pi-tiedosta. Natiivifakta voittaa
-annotaation; ristiriita näytetään. Esitystiedon vioittuminen ei kadota
+luotettavasti natiivista Taskfleet- tai Pi-tiedosta. Jos tallennettu parent-yhteys on ristiriidassa Taskfleetista luetun
+yhteyden kanssa, käytetään Taskfleetin tietoa ja ristiriita näytetään. Esitystiedon vioittuminen ei kadota
 historiaa, vaan tuottaa lähdevaroituksen. Vioittunutta tai tuntemattoman
 version tiedostoa ei kirjoiteta hiljaa yli, eikä orpoa merkintää poisteta
 ilman turvallista siivousta.
