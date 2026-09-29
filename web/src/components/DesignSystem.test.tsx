@@ -236,6 +236,8 @@ describe("production component semantics", () => {
   it("separates healthy read-only state from stale state", () => {
     const view = routed(<ConnectionBanner state="host-read-only" />);
     expect(view.getByRole("status").textContent).toContain("Yhteys toimii");
-    expect(view.getByRole("status").textContent).toContain("Työtiloja ei voi nyt muuttaa");
+    expect(view.getByRole("status").textContent).toContain(
+      "Työtiloja ei voi nyt muuttaa",
+    );
   });
 });

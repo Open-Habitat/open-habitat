@@ -142,7 +142,8 @@ export function ConnectionBanner({
     },
     reconnecting: {
       title: "Yhteys katkesi",
-      detail: "Yritetään yhdistää uudelleen. Viimeisintä viestiä ei lähetetä toistamiseen.",
+      detail:
+        "Yritetään yhdistää uudelleen. Viimeisintä viestiä ei lähetetä toistamiseen.",
       tone: "warning",
     },
     stale: {
@@ -152,7 +153,8 @@ export function ConnectionBanner({
     },
     "resnapshot-required": {
       title: "Tiedot on tarkistettava uudelleen",
-      detail: "Yhteys oli poikki liian pitkään, jotta päivityksiä voisi jatkaa suoraan.",
+      detail:
+        "Yhteys oli poikki liian pitkään, jotta päivityksiä voisi jatkaa suoraan.",
       tone: "warning",
     },
     "authentication-required": {
@@ -162,7 +164,8 @@ export function ConnectionBanner({
     },
     "daemon-unavailable": {
       title: "Yhteyttä ei saatu",
-      detail: "Tietoja ei voitu tarkistaa. Tämä ei tarkoita, että työsi olisi kadonnut.",
+      detail:
+        "Tietoja ei voitu tarkistaa. Tämä ei tarkoita, että työsi olisi kadonnut.",
       tone: "danger",
     },
     "host-read-only": {
