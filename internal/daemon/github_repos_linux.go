@@ -22,16 +22,20 @@ import (
 )
 
 const RepoCatalogPath = "/api/v1/onboarding/github/repos"
-const repoOutputLimit = 256 << 10
+
+// GitHub sends full repository objects (~7 KiB each), even though we expose a
+// small projection. One bounded 50-item page must fit before projection.
+const repoOutputLimit = 1 << 20
 
 var repoName = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,100}$`)
 var repoOwner = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{0,38}$`)
 
 type repoItem struct {
-	FullName    string `json:"full_name"`
-	Private     bool   `json:"private"`
-	Description string `json:"description"`
-	HTMLURL     string `json:"html_url"`
+	FullName    string  `json:"full_name"`
+	Private     bool    `json:"private"`
+	Description string  `json:"description"`
+	HTMLURL     string  `json:"html_url"`
+	PushedAt    *string `json:"pushed_at"`
 }
 type repoReply struct {
 	SchemaVersion int        `json:"schema_version"`
@@ -94,6 +98,7 @@ func repoCatalogHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 			Private     *bool   `json:"private"`
 			Description *string `json:"description"`
 			HTMLURL     string  `json:"html_url"`
+			PushedAt    *string `json:"pushed_at"`
 			Owner       struct {
 				Login string `json:"login"`
 			} `json:"owner"`
@@ -119,7 +124,14 @@ func repoCatalogHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 				snapshotError(w, 503, "native_source_unavailable")
 				return
 			}
-			result.Repositories = append(result.Repositories, repoItem{v.FullName, *v.Private, desc, v.HTMLURL})
+			if v.PushedAt != nil {
+				stamp, err := time.Parse(time.RFC3339, *v.PushedAt)
+				if err != nil || stamp.Format(time.RFC3339) != *v.PushedAt {
+					snapshotError(w, 503, "native_source_unavailable")
+					return
+				}
+			}
+			result.Repositories = append(result.Repositories, repoItem{v.FullName, *v.Private, desc, v.HTMLURL, v.PushedAt})
 		}
 		sort.Slice(result.Repositories, func(i, j int) bool {
 			return strings.ToLower(result.Repositories[i].FullName) < strings.ToLower(result.Repositories[j].FullName)

@@ -67,3 +67,20 @@
   flex-wrap: wrap;
   gap: var(--ah-s3);
 }
+
+.filter {
+  display: grid;
+  gap: var(--ah-s2);
+}
+.filter input {
+  font: inherit;
+  padding: var(--ah-s2);
+  color: var(--ah-ink);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+}
+.filter input:focus-visible {
+  outline: 2px solid var(--ah-accent-ink);
+  outline-offset: 2px;
+}

@@ -48,13 +48,11 @@ export function GitHubOnboarding({
   });
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState("");
-  const [page, setPage] = useState(0);
   const [_receipts, setReceipts] = useState<string[]>([]);
   const bound = useRef("");
   const key = useRef("");
   const generation = useRef(0);
   const reads = useRef<AbortController | undefined>(undefined);
-  const readingPage = useRef(0);
   const writing = useRef(false);
   const rechecking = useRef(false);
   const pending = useRef<string[]>([]);
@@ -74,45 +72,52 @@ export function GitHubOnboarding({
     setCheckout({ phase: "idle" });
     setView({ phase: "loading" });
     setError("");
-    setPage(0);
     setStep("loading");
   }, []);
   const load = useCallback(
-    async (number: number, n: number) => {
+    async (n: number) => {
       reads.current?.abort();
       const controller = new AbortController();
       reads.current = controller;
-      readingPage.current = number;
+      setView({ phase: "loading" }); // No incomplete catalog is selectable.
+      setSelected([]); // A refreshed catalog may no longer contain old choices.
+      let completedPages = 0;
       try {
-        const result = await catalog(number, controller.signal);
-        if (!current(n)) return;
-        const csrf = await sessionCSRF(controller.signal);
-        if (!current(n)) return;
-        if (csrf === "login" || csrf !== bound.current) {
-          reset();
-          onLogin();
-          return;
+        const repositories: import("./github").Repo[] = [];
+        const seen = new Set<string>();
+        for (let page = 1; page <= 100; page++) {
+          const result = await catalog(page, controller.signal);
+          if (!current(n) || controller.signal.aborted) return;
+          const csrf = await sessionCSRF(controller.signal);
+          if (!current(n) || controller.signal.aborted) return;
+          if (csrf === "login" || csrf !== bound.current) {
+            reset();
+            onLogin();
+            return;
+          }
+          for (const repo of result.repositories) {
+            const name = repo.full_name.toLowerCase();
+            if (seen.has(name)) throw new GitHubError("unavailable");
+            seen.add(name);
+            repositories.push(repo);
+          }
+          completedPages++;
+          if (!result.has_more) {
+            repositories.sort(
+              (a, b) =>
+                (b.pushed_at ?? "").localeCompare(a.pushed_at ?? "") ||
+                a.full_name
+                  .toLowerCase()
+                  .localeCompare(b.full_name.toLowerCase()) ||
+                a.full_name.localeCompare(b.full_name),
+            );
+            setView({ phase: "catalog", repositories });
+            setError("");
+            return;
+          }
         }
-        setPage(number);
-        setView((old) => ({
-          phase: "catalog",
-          repositories:
-            number === 1 || old.phase !== "catalog"
-              ? result.repositories
-              : [
-                  ...old.repositories,
-                  ...result.repositories.filter(
-                    (r) =>
-                      !old.repositories.some(
-                        (v) =>
-                          v.full_name.toLowerCase() ===
-                          r.full_name.toLowerCase(),
-                      ),
-                  ),
-                ],
-          hasMore: result.has_more && number < 100,
-        }));
-        setError("");
+        // Page 100 was full: a successor might exist. Never publish a partial list.
+        throw new GitHubError("unavailable");
       } catch (e) {
         if (!current(n) || controller.signal.aborted) return;
         if (e instanceof GitHubError && e.code === "login") {
@@ -120,17 +125,14 @@ export function GitHubOnboarding({
           onLogin();
           return;
         }
-        if (number === 1)
-          setView({
-            phase:
-              e instanceof GitHubError && e.code === "auth"
-                ? "no-auth"
-                : "unavailable",
-          });
-        else
-          setView((old) =>
-            old.phase === "catalog" ? { ...old, loadingMore: false } : old,
-          );
+        setView({
+          phase:
+            completedPages === 0 &&
+            e instanceof GitHubError &&
+            e.code === "auth"
+              ? "no-auth"
+              : "unavailable",
+        });
         setError(message(e));
       } finally {
         if (reads.current === controller) reads.current = undefined;
@@ -171,7 +173,7 @@ export function GitHubOnboarding({
         }
         sessionStorage.removeItem(marker);
         setStep("github");
-        void load(1, n);
+        void load(n);
       } catch {
         if (alive) {
           reset();
@@ -184,15 +186,11 @@ export function GitHubOnboarding({
       void check();
     }, 3000);
     const focus = () => {
-      const inFlight = reads.current;
-      const requested = readingPage.current;
-      inFlight?.abort();
+      // Hide old identity data until the binding check finishes. An in-flight
+      // catalog already verifies that binding per page; do not restart it.
       if (bound.current && sessionStorage.getItem(marker) !== key.current)
         setStep("loading");
-      void check().then(() => {
-        if (alive && inFlight && bound.current)
-          void load(requested, generation.current);
-      });
+      void check();
     };
     window.addEventListener("focus", focus);
     return () => {
@@ -327,7 +325,12 @@ export function GitHubOnboarding({
     if (!uncertain) setError("");
   };
   const proceed = (names: string[]) => {
-    if (locked.current || !bound.current || view.phase === "loading") return;
+    if (
+      locked.current ||
+      !bound.current ||
+      (view.phase !== "catalog" && view.phase !== "no-auth")
+    )
+      return;
     locked.current = true;
     const n = generation.current;
     if (!names.length) {
@@ -372,8 +375,25 @@ export function GitHubOnboarding({
     setCheckout({ phase: "idle" });
     setError("");
   };
+  const backToPicker = () => {
+    if (!bound.current) return;
+    // Pi unmounts and cancels its reads. Do not cancel an active device attempt
+    // or repeat any previous checkout. The marker remains session-bound.
+    setSelected([]);
+    pending.current = [];
+    locked.current = false;
+    setCheckout({ phase: "idle" });
+    sessionStorage.removeItem(marker);
+    setStep("github");
+    void load(generation.current);
+  };
   return step === "pi" ? (
-    <PiOnboarding onUsable={onUsable} onLogin={onLogin} onLogout={onLogout} />
+    <PiOnboarding
+      onUsable={onUsable}
+      onLogin={onLogin}
+      onLogout={onLogout}
+      onBack={backToPicker}
+    />
   ) : step === "loading" && !error ? (
     <p role="status">Varmistetaan istunto…</p>
   ) : (
@@ -388,19 +408,8 @@ export function GitHubOnboarding({
           )
         }
         onProceed={proceed}
-        onMore={() => {
-          if (
-            view.phase === "catalog" &&
-            view.hasMore &&
-            !view.loadingMore &&
-            page < 100
-          ) {
-            setView({ ...view, loadingMore: true });
-            void load(page + 1, generation.current);
-          }
-        }}
         onRefresh={() => {
-          if (bound.current) void load(1, generation.current);
+          if (bound.current) void load(generation.current);
         }}
         onRecheck={recheck}
         onEditSelection={editSelection}

@@ -12,6 +12,7 @@ export type Repo = {
   private: boolean;
   description: string;
   html_url: string;
+  pushed_at: string | null;
 };
 export type Page = {
   schema_version: 1;
@@ -99,7 +100,7 @@ export async function catalog(
   signal?: AbortSignal,
 ): Promise<Page> {
   const data = await response(
-    await fetch(`/api/v1/onboarding/github/repos?page=${page}&limit=2`, {
+    await fetch(`/api/v1/onboarding/github/repos?page=${page}&limit=50`, {
       credentials: "same-origin",
       cache: "no-store",
       signal,
@@ -109,7 +110,7 @@ export async function catalog(
   if (
     !reposValid(data) ||
     (data as Page).page !== page ||
-    (data as Page).limit !== 2
+    (data as Page).limit !== 50
   )
     throw new GitHubError("unavailable");
   return data as Page;

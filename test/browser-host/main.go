@@ -205,7 +205,17 @@ case "$4" in
  /user) printf '{"id":` + m.Subject + `}\n' ;;
  /user/repos*)
    case "$4" in
-    *page=1*) printf '%s\n' '[{"name":"first","full_name":"fixture/first","private":false,"description":"Synthetic first","html_url":"https://github.com/fixture/first","owner":{"login":"fixture"}},{"name":"second","full_name":"fixture/second","private":true,"description":"Synthetic second","html_url":"https://github.com/fixture/second","owner":{"login":"fixture"}}]' ;;
+    *page=1*)
+      printf '['
+      printf '{"name":"first","full_name":"fixture/first","private":false,"description":"Synthetic first","pushed_at":"2026-09-28T12:00:00Z","html_url":"https://github.com/fixture/first","owner":{"login":"fixture"}}'
+      printf ',{"name":"second","full_name":"fixture/second","private":true,"description":"Synthetic second","pushed_at":null,"html_url":"https://github.com/fixture/second","owner":{"login":"fixture"}}'
+      i=1
+      while [ "$i" -le 48 ]; do
+        printf ',{"name":"repo%03d","full_name":"fixture/repo%03d","private":false,"description":null,"pushed_at":null,"html_url":"https://github.com/fixture/repo%03d","owner":{"login":"fixture"}}' "$i" "$i" "$i"
+        i=$((i+1))
+      done
+      printf ']\n' ;;
+    *page=2*) printf '%s\n' '[{"name":"last","full_name":"fixture/last","private":false,"description":null,"pushed_at":"2025-01-01T00:00:00Z","html_url":"https://github.com/fixture/last","owner":{"login":"fixture"}},{"name":"older","full_name":"fixture/older","private":false,"description":null,"pushed_at":null,"html_url":"https://github.com/fixture/older","owner":{"login":"fixture"}}]' ;;
     *) printf '[]\n' ;;
    esac ;;
  /repos/fixture/*) name="${4##*/}"; printf '{"name":"%s","full_name":"fixture/%s","clone_url":"https://github.com/fixture/%s.git","owner":{"login":"fixture"}}\n' "$name" "$name" "$name" ;;

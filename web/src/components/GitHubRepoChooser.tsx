@@ -8,6 +8,7 @@ export interface GitHubRepoChoice {
   full_name: string;
   private: boolean;
   description: string;
+  pushed_at: string | null;
 }
 
 export type GitHubRepoChooserView =
@@ -15,8 +16,6 @@ export type GitHubRepoChooserView =
   | {
       phase: "catalog";
       repositories: GitHubRepoChoice[];
-      hasMore: boolean;
-      loadingMore?: boolean;
     };
 
 export type GitHubCheckoutView =
@@ -33,7 +32,6 @@ export interface GitHubRepoChooserProps {
   onToggle: (fullName: string, selected: boolean) => void;
   /** One user-authorized attempt; [] advances without checkout. Parent advances to Pi after verified success. */
   onProceed: (fullNames: string[]) => void;
-  onMore?: () => void;
   onRefresh?: () => void;
   /** Read-only server-side status reconciliation; must never start a new checkout. */
   onRecheck?: () => void;
@@ -47,7 +45,6 @@ export function GitHubRepoChooser({
   checkout,
   onToggle,
   onProceed,
-  onMore,
   onRefresh,
   onRecheck,
   onEditSelection,
@@ -55,6 +52,7 @@ export function GitHubRepoChooser({
   // Lock synchronously: a second click must not POST again before the parent rerenders.
   const started = useRef(false);
   const [waiting, setWaiting] = useState(false);
+  const [filter, setFilter] = useState("");
   const previousPhase = useRef(checkout.phase);
   useEffect(() => {
     if (checkout.phase === "idle" && previousPhase.current !== "idle") {
@@ -66,6 +64,14 @@ export function GitHubRepoChooser({
 
   const idle = checkout.phase === "idle";
   const selection = new Set(selectedNames);
+  const visible =
+    view.phase === "catalog"
+      ? view.repositories.filter((repo) =>
+          repo.full_name
+            .toLocaleLowerCase()
+            .includes(filter.trim().toLocaleLowerCase()),
+        )
+      : [];
   const confirmed =
     checkout.phase === "confirmed" &&
     checkout.names.length === selectedNames.length &&
@@ -105,11 +111,21 @@ export function GitHubRepoChooser({
       ) : null}
       {view.phase === "catalog" ? (
         <>
+          <label className={styles.filter}>
+            Rajaa repoja nimen perusteella
+            <input
+              type="search"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+            />
+          </label>
           {view.repositories.length === 0 ? (
             <p>Repoja ei löytynyt. Voit jatkaa ilman repoja.</p>
+          ) : visible.length === 0 ? (
+            <p>Hakua vastaavia repoja ei löytynyt.</p>
           ) : (
             <ul className={styles.list} aria-label="GitHub-repot">
-              {view.repositories.map((repo) => (
+              {visible.map((repo) => (
                 <li key={repo.full_name} className={styles.row}>
                   <label className={styles.choice}>
                     <input
@@ -128,6 +144,17 @@ export function GitHubRepoChooser({
                         <code>{repo.full_name}</code>
                         {repo.private ? <Badge label="Yksityinen" /> : null}
                       </span>
+                      <span className={styles.description}>
+                        Viimeisin push:{" "}
+                        {repo.pushed_at
+                          ? new Intl.DateTimeFormat("fi-FI", {
+                              timeZone: "UTC",
+                              year: "numeric",
+                              month: "numeric",
+                              day: "numeric",
+                            }).format(new Date(repo.pushed_at))
+                          : "Ei tiedossa"}
+                      </span>
                       {repo.description ? (
                         <span className={styles.description}>
                           {repo.description}
@@ -139,22 +166,6 @@ export function GitHubRepoChooser({
               ))}
             </ul>
           )}
-          {view.hasMore ? (
-            <Button
-              label="Näytä lisää repoja"
-              variant="secondary"
-              pending={view.loadingMore}
-              availability={
-                !idle || waiting || view.loadingMore || !onMore
-                  ? {
-                      state: "disabled",
-                      reason: "Odota nykyisen vaiheen valmistumista.",
-                    }
-                  : undefined
-              }
-              onPress={() => onMore?.()}
-            />
-          ) : null}
           <p role="status" aria-live="polite">
             Valittu {selectedNames.length} repoa.
           </p>

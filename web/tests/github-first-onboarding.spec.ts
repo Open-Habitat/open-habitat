@@ -10,7 +10,7 @@ async function login(page: import("@playwright/test").Page) {
     page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
   ).toBeVisible();
 }
-test("@github-first native synthetic checkout before Pi, page continuation and existing checkout", async ({
+test("@github-first native synthetic checkout before Pi, complete catalog and existing checkout", async ({
   page,
 }, testInfo) => {
   await page.request.get("/fixture/scenario?value=pi-onboarding");
@@ -25,10 +25,14 @@ test("@github-first native synthetic checkout before Pi, page continuation and e
     ).status(),
   ).toBe(428);
   await expect(page.getByText("fixture/first")).toBeVisible();
-  await page.getByRole("button", { name: "Näytä lisää repoja" }).click();
+  await expect(page.getByRole("checkbox")).toHaveCount(52);
+  await expect(page.getByText("Viimeisin push: 28.9.2026")).toBeVisible();
+  await page.getByRole("searchbox").fill("fixture/last");
+  await expect(page.getByRole("checkbox")).toHaveCount(1);
+  await page.getByRole("searchbox").clear();
   await expect(
-    page.getByRole("button", { name: "Näytä lisää repoja" }),
-  ).toHaveCount(0);
+    page.getByText("Viimeisin push: Ei tiedossa").first(),
+  ).toBeVisible();
   await page.getByRole("checkbox").first().check();
   await page.screenshot({
     path: testInfo.outputPath("github-happy.png"),
@@ -43,6 +47,22 @@ test("@github-first native synthetic checkout before Pi, page continuation and e
   );
   expect((await observation.json()).state).toBe("confirmed");
   await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Takaisin valitsemaan GitHub-repoja" })
+    .click();
+  await expect(page.getByRole("checkbox")).toHaveCount(52);
+  await expect(page.getByText("Valittu 0 repoa.")).toBeVisible();
+  await expect(
+    (
+      await page.request.get(
+        "/api/v1/onboarding/github/checkout?full_name=fixture%2Ffirst",
+      )
+    ).json(),
+  ).resolves.toMatchObject({ state: "confirmed" });
+  await page.getByRole("button", { name: "Jatka" }).click();
   await expect(
     page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
   ).toBeVisible();
@@ -67,4 +87,34 @@ test("@github-first empty selection goes directly to Pi", async ({ page }) => {
   ).toBeVisible();
   await page.request.get("/fixture/scenario?value=ready");
   await page.request.get("/fixture/pi-state?value=usable");
+});
+
+test("@github-first incomplete catalog never permits selection or checkout", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/scenario?value=pi-onboarding");
+  await page.request.get("/fixture/pi-state?value=missing");
+  try {
+    await page.route(
+      "**/api/v1/onboarding/github/repos?page=2&limit=50",
+      (route) =>
+        route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: '{"error":"native_source_unavailable"}',
+        }),
+    );
+    await page.goto("/workspaces");
+    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+    await page.getByRole("link", { name: "Alice" }).click();
+    await expect(page.getByText("Repoja ei voitu hakea")).toBeVisible();
+    await expect(page.getByRole("checkbox")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Jatka" })).toHaveCount(0);
+    await page.unrouteAll();
+    await page.getByRole("button", { name: "Tarkista uudelleen" }).click();
+    await expect(page.getByRole("checkbox")).toHaveCount(52);
+  } finally {
+    await page.request.get("/fixture/scenario?value=ready");
+    await page.request.get("/fixture/pi-state?value=usable");
+  }
 });

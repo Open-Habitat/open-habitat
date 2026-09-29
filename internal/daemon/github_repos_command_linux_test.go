@@ -35,7 +35,7 @@ func TestRepoCatalogSyntheticGHProcess(t *testing.T) {
 id=$(cat "$HOME/fixture-id") || exit 9
 case "$4" in
 /user) printf '{"id":%s,"login":"synthetic"}\n' "$id" ;;
-/user/repos?*) printf '[{"owner":{"login":"org"},"name":"fixture%s","full_name":"org/fixture%s","html_url":"https://github.com/org/fixture%s","private":true,"description":null}]\n' "$id" "$id" "$id" ;;
+/user/repos?*) printf '[{"owner":{"login":"org"},"name":"fixture%s","full_name":"org/fixture%s","html_url":"https://github.com/org/fixture%s","private":true,"pushed_at":null,"description":null}]\n' "$id" "$id" "$id" ;;
 *) exit 9 ;;
 esac
 `

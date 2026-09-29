@@ -5,12 +5,14 @@ const repos: GitHubRepoChoice[] = [
   {
     full_name: "sample-lab/aurora",
     private: true,
+    pushed_at: "2026-09-28T12:00:00Z",
     description:
       "Pitkä esimerkkikuvaus: käyttöliittymän luonnokset ja paikalliset kokeilut.",
   },
   {
     full_name: "sample-lab/harbor",
     private: false,
+    pushed_at: null,
     description: "<script>alert('text only')</script>",
   },
 ];
@@ -18,7 +20,6 @@ const onIntent = () => {};
 const catalog = {
   phase: "catalog" as const,
   repositories: repos,
-  hasMore: false,
 };
 const meta = {
   title: "Production/GitHub first-use chooser",
@@ -45,23 +46,16 @@ export const Loading: Story = { args: { view: { phase: "loading" } } };
 export const NoSelection: Story = { args: { view: catalog } };
 export const Selected: Story = {
   args: {
-    view: { ...catalog, hasMore: true },
+    view: catalog,
     selectedNames: [repos[0].full_name],
-    onMore: onIntent,
   },
 };
 export const Empty: Story = {
-  args: { view: { phase: "catalog", repositories: [], hasMore: false } },
+  args: { view: { phase: "catalog", repositories: [] } },
 };
 export const NoAuth: Story = { args: { view: { phase: "no-auth" } } };
 export const Unavailable: Story = {
   args: { view: { phase: "unavailable" }, onRefresh: onIntent },
-};
-export const LoadingMore: Story = {
-  args: {
-    view: { ...catalog, hasMore: true, loadingMore: true },
-    onMore: onIntent,
-  },
 };
 export const Progress: Story = {
   args: {

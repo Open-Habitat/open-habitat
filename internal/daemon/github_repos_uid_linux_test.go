@@ -60,7 +60,7 @@ id=$(cat "$HOME/fixture-id") || exit 9
 case "$4" in
 /user) printf '{"id":%s}\n' "$id" ;;
 /repos/fixture/repo*) printf '{"owner":{"login":"fixture"},"name":"repo%s","full_name":"fixture/repo%s","clone_url":"https://github.com/fixture/repo%s.git"}\n' "$id" "$id" "$id" ;;
-/user/repos?*) printf '[{"owner":{"login":"fixture"},"name":"repo%s","full_name":"fixture/repo%s","html_url":"https://github.com/fixture/repo%s","private":true,"description":null}]\n' "$id" "$id" "$id" ;;
+/user/repos?*) printf '[{"owner":{"login":"fixture"},"name":"repo%s","full_name":"fixture/repo%s","html_url":"https://github.com/fixture/repo%s","private":true,"pushed_at":null,"description":null}]\n' "$id" "$id" "$id" ;;
 *) exit 9 ;;
 esac
 `

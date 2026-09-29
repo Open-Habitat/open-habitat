@@ -11,26 +11,27 @@ const repos = [
     full_name: "sample-lab/aurora",
     private: true,
     description: "<img src=x onerror=alert(1)>",
+    pushed_at: "2026-09-28T12:00:00Z",
   },
   {
     full_name: "sample-lab/harbor",
     private: false,
     description: "Julkaisun luonnos",
+    pushed_at: null,
   },
 ];
 function props(): GitHubRepoChooserProps {
   return {
-    view: { phase: "catalog", repositories: repos, hasMore: true },
+    view: { phase: "catalog", repositories: repos },
     selectedNames: [],
     checkout: { phase: "idle" },
     onToggle: vi.fn(),
     onProceed: vi.fn(),
-    onMore: vi.fn(),
     onRecheck: vi.fn(),
   };
 }
 describe("GitHub first-use chooser", () => {
-  it("selects without writing, navigates pages, then sends exactly the controlled names once", async () => {
+  it("filters names without writing, then sends exactly the controlled names once", async () => {
     const user = userEvent.setup();
     const initial = props();
     const view = render(<GitHubRepoChooser {...initial} />);
@@ -51,14 +52,24 @@ describe("GitHub first-use chooser", () => {
     expect((checkbox as HTMLInputElement).checked).toBe(false);
     const selected = { ...initial, selectedNames: [repos[0].full_name] };
     view.rerender(<GitHubRepoChooser {...selected} />);
-    await user.click(view.getByRole("button", { name: "Näytä lisää repoja" }));
-    expect(initial.onMore).toHaveBeenCalledOnce();
+    await user.type(view.getByRole("searchbox"), "HARBOR");
+    expect(view.queryByText("sample-lab/aurora")).toBeNull();
+    expect(view.getByText("sample-lab/harbor")).toBeTruthy();
+    expect(view.getByText("Viimeisin push: Ei tiedossa")).toBeTruthy();
+    await user.clear(view.getByRole("searchbox"));
+    expect(view.getByText(/Viimeisin push: 28.9.2026/)).toBeTruthy();
     expect(initial.onProceed).not.toHaveBeenCalled();
     await user.click(view.getByRole("button", { name: "Jatka" }));
     expect(initial.onProceed).toHaveBeenCalledExactlyOnceWith([
       repos[0].full_name,
     ]);
-    expect((checkbox as HTMLInputElement).disabled).toBe(true);
+    expect(
+      (
+        view.getByRole("checkbox", {
+          name: /sample-lab\/aurora/,
+        }) as HTMLInputElement
+      ).disabled,
+    ).toBe(true);
     expect(
       view.getByRole("button", { name: "Jatka" }).hasAttribute("disabled"),
     ).toBe(true);
@@ -74,7 +85,7 @@ describe("GitHub first-use chooser", () => {
     const view = render(
       <GitHubRepoChooser
         {...initial}
-        view={{ phase: "catalog", repositories: [], hasMore: false }}
+        view={{ phase: "catalog", repositories: [] }}
       />,
     );
     await user.click(view.getByRole("button", { name: "Jatka" }));
@@ -86,31 +97,6 @@ describe("GitHub first-use chooser", () => {
     await user.click(noAuth.getByRole("button", { name: "Jatka" }));
     expect(initial.onProceed).toHaveBeenCalledTimes(2);
     expect(initial.onProceed).toHaveBeenLastCalledWith([]);
-  });
-
-  it("keeps Jatka and selection available during read-only pagination", async () => {
-    const user = userEvent.setup();
-    const initial = props();
-    const view = render(
-      <GitHubRepoChooser
-        {...initial}
-        view={{
-          phase: "catalog",
-          repositories: repos,
-          hasMore: true,
-          loadingMore: true,
-        }}
-      />,
-    );
-    expect(
-      (
-        view.getByRole("checkbox", {
-          name: /sample-lab\/aurora/,
-        }) as HTMLInputElement
-      ).disabled,
-    ).toBe(false);
-    await user.click(view.getByRole("button", { name: "Jatka" }));
-    expect(initial.onProceed).toHaveBeenCalledExactlyOnceWith([]);
   });
 
   it("shows progress, partial and uncertain outcomes without another write; recheck is read-only", async () => {

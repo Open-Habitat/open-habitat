@@ -112,6 +112,7 @@ func (a *Auth) githubRepos(w http.ResponseWriter, r *http.Request) {
 			Private     *bool   `json:"private"`
 			Description *string `json:"description"`
 			HTMLURL     string  `json:"html_url"`
+			PushedAt    *string `json:"pushed_at"`
 		} `json:"repositories"`
 	}
 	d := json.NewDecoder(strings.NewReader(string(b)))
@@ -127,6 +128,10 @@ func (a *Auth) githubRepos(w http.ResponseWriter, r *http.Request) {
 			safe(w, 503, "daemon_unavailable")
 			return
 		}
+		if item.PushedAt != nil && !catalogTimestamp(*item.PushedAt) {
+			safe(w, 503, "daemon_unavailable")
+			return
+		}
 	}
 	// Only validated, reconstructed fields are returned; no daemon bytes are copied.
 	output, _ := json.Marshal(reply)
@@ -134,6 +139,10 @@ func (a *Auth) githubRepos(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Length", strconv.Itoa(len(output)))
 	_, _ = w.Write(output)
+}
+func catalogTimestamp(s string) bool {
+	stamp, err := time.Parse(time.RFC3339, s)
+	return err == nil && stamp.Format(time.RFC3339) == s
 }
 func catalogOwner(s string) bool {
 	if len(s) < 1 || len(s) > 39 || s[0] == '-' {

@@ -25,10 +25,12 @@ export function PiOnboarding({
   onUsable,
   onLogin,
   onLogout,
+  onBack,
 }: {
   onUsable: () => void;
   onLogin: () => void;
   onLogout: () => Promise<void>;
+  onBack?: () => void;
 }) {
   const [view, setView] = useState<PiDeviceSignInView>({ phase: "waiting" });
   const [busy, setBusy] = useState(false);
@@ -218,6 +220,13 @@ export function PiOnboarding({
             : undefined
         }
       />
+      {onBack ? (
+        <Button
+          label="Takaisin valitsemaan GitHub-repoja"
+          variant="secondary"
+          onPress={onBack}
+        />
+      ) : null}
       <Button
         label="Keskeytä käyttöönotto ja kirjaudu ulos"
         variant="secondary"
