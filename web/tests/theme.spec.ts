@@ -14,7 +14,9 @@ async function select(page: import("@playwright/test").Page, name: string) {
   await page.getByRole("menuitem", { name: `Teema: ${name}` }).click();
 }
 
-test("production theme follows the system, persists an explicit device choice, and responds live", async ({ page }) => {
+test("production theme follows the system, persists an explicit device choice, and responds live", async ({
+  page,
+}) => {
   await login(page);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await select(page, "Vaalea");
@@ -32,9 +34,13 @@ test("production theme follows the system, persists an explicit device choice, a
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
 
-test("theme is applied before the application bundle executes", async ({ page }) => {
+test("theme is applied before the application bundle executes", async ({
+  page,
+}) => {
   await page.addInitScript(() => localStorage.setItem("nah:theme", "light"));
-  await page.route("**/assets/*.js", (route) => route.fulfill({ status: 200, contentType: "text/javascript", body: "" }));
+  await page.route("**/assets/*.js", (route) =>
+    route.fulfill({ status: 200, contentType: "text/javascript", body: "" }),
+  );
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expect(page.locator("#root")).toBeEmpty();
@@ -42,7 +48,11 @@ test("theme is applied before the application bundle executes", async ({ page })
 
 test("theme remains usable if localStorage is denied", async ({ page }) => {
   await page.addInitScript(() => {
-    Object.defineProperty(window, "localStorage", { get() { throw new Error("denied"); } });
+    Object.defineProperty(window, "localStorage", {
+      get() {
+        throw new Error("denied");
+      },
+    });
   });
   await login(page);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
