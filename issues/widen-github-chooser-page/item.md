@@ -6,14 +6,16 @@ status: open
 priority: high
 related: ['@github-repos-first-onboarding']
 lane: github-picker-ui
-collision: [web/src/app/github.ts, test/browser-host/main.go]
+collision: [web/src/app/github.ts, web/src/app/GitHubOnboarding.tsx, web/src/components/GitHubRepoChooser.tsx, internal/daemon/github_repos_linux.go, contracts/v1, test/browser-host/main.go]
 ---
 
 # Show a useful GitHub repository page during first use
 
 ## Description
 
-Live pilot.10 first-use UI currently fetches only two GitHub repositories per page (`web/src/app/github.ts` hard-codes limit=2), forcing repeated “Näytä lisää repoja” clicks to reach most of the mapped user’s repositories. Jari requests the simplest possible UI. Widen to a normal bounded page size (recommend 50, the existing daemon/gateway contract maximum), retaining the current explicit selection→one Jatka checkout, verified outcomes and Pi order. Adapt the production-bundle synthetic gh/browser fixture to prove a full page and page continuation; no runtime test fixture seams, no credential output, no new store. Confirm accessible scroll/read position and Finnish empty/error/partial states. Clean committed-tree CI and package verification; deployment requires a *new* guarded successor of active pilot.10, not replay of the one-shot pilot.9 successor operator. Live visual acceptance remains with @github-repos-first-onboarding.
+Live pilot.10 first-use UI fetches only two GitHub repositories per page (`web/src/app/github.ts` hard-codes limit=2). Jari explicitly rejects repeated “Näytä lisää repoja” clicks and wants to see when a repository last received code. Read-only live mapped-UID GitHub API confirmed 40 owned personal repositories and 52 total accessible repositories, including 38 personal in the first 50. The existing OAuth permission is sufficient; no reauthorization.
+
+Automatically collect all bounded pages through the existing per-UID catalog (50/page, up to the contract's safe page ceiling), with no “Näytä lisää” button and no silent truncation: show a clear error if the complete catalog cannot be loaded. Present all repositories with a client-side name filter and a truthful nullable **Viimeisin push** date derived from GitHub's `pushed_at` metadata (not `updated_at`, which may reflect metadata), ideally recent-first with stable name tiebreak; show unknown when absent. Preserve explicit selection→one Jatka checkout, verified outcomes and Pi order. Add a way back from Pi onboarding to select additional repos, without logging out, changing credentials or automatically repeating checkout; clear prior selection before a new checkout. Keep pages private to the mapped UID and bound identity. Adapt strict neutral browser/host contract, native GH and production-bundle synthetic browser fixtures; prove >50 results, filtering, date/null, progress/partial failure, and focus. No fixture seams in the production bundle or new registry. Clean committed-tree CI and package verification before release; don't replay the one-shot pilot.9 successor. Live visual acceptance stays with @github-repos-first-onboarding.
 
 ## Decisions
 
