@@ -14,66 +14,61 @@ collision: [docs/, AGENTS.md, design-system/, internal/daemon/, web/src/componen
 
 ## Goal
 
-Resume or launch Pi, send a prompt and display live work through the agreed HTTP/SSE interface.
-
-## Context
-
-Follow the current Unix-native architecture and the bounded UI v1 brief.
-
-Sources: [architecture](../../docs/architecture.md),
-[design package](../native-agent-host-architecture/ui-design-package.md),
-[conversation v1](../native-agent-host-architecture/ui-design-conversation.md).
-Detailed plans and results for this task belong in this issue directory.
+A user can work with Pi from the browser: start a conversation in a workspace,
+send a message, watch the response and tool activity as they happen, and return
+after a browser disconnect. They can also continue an ended browser conversation
+with its existing native history.
 
 ## Scope
 
-Keep native histories, component configuration and subprocess ownership with their
-native components. Use the agreed HTTP/SSE path. Do not add a workspace registry,
-parallel history store, credential broker, internal tenant model or speculative cache.
+The mapped user's daemon owns the Pi process. Pi executes tools, uses its native
+configuration and writes its own history. The browser sends commands over HTTP
+and receives live updates through Server-Sent Events (SSE).
+
+Browser conversations have one writer. The test system is operated so the same
+conversation is not controlled simultaneously from the browser and SSH/tmux or
+independent clients. Prior terminal histories are read-only; terminal takeover
+and cross-process writer coordination are outside this task.
+
+Interruption is best effort. The daemon owns the direct Pi child and bounds its
+writes and shutdown waits; systemd handles service cleanup on daemon stop or
+crash. A detached native tool may outlive an individual interruption. Show
+uncertain termination honestly and do not start another writer into unresolved
+work. A per-conversation cgroup or separate supervisor is not required.
+
+Pi-specific interactive question dialogs and their response/cancellation protocol
+are outside this task. Ordinary conversation continues through user messages.
+@complete-conversation-ui owns the remaining rich presentation and queue controls.
 
 ## Acceptance Criteria
 
-- [ ] Implement acknowledged send, streaming updates, supported simple user requests and interruption with explicit pending/failure states.
-- [ ] Do not duplicate a conversation already running elsewhere; show unsupported control honestly.
-- [ ] Preserve drafts, focus and reading position while tool groups update; match the same history on reopening.
-- [ ] Keep tool execution and configuration in Pi, with no process center or later-feature expansion.
-- [ ] Demonstrate the accepted v1 story against a real test agent and run the checks specified by @plan-v1-implementation.
+- [ ] The user starts a Pi conversation in a selected workspace, sends a message and sees whether it is pending, accepted, rejected or uncertain.
+- [ ] Response text and tool activity arrive through SSE while Pi works. A slow or disconnected browser can recover the current state without silently losing track of the work.
+- [ ] Closing the browser leaves Pi running. On return, the user sees the conversation's current state and native history; an uncertain message is never sent again automatically.
+- [ ] The user deliberately continues an ended browser conversation with the same native history. After a daemon restart, the UI distinguishes readable history from available control and does not claim unresolved work has stopped.
+- [ ] The user can request interruption and see its actual outcome or remaining uncertainty.
+- [ ] Drafts, editor focus and reading position survive live updates and session revalidation. Reopening a conversation shows Pi's native history.
+- [ ] Each authenticated user can control only their own conversations; browser input cannot select another Unix user's processes, sockets or history.
+- [ ] The browser journey is demonstrated against real Pi, including send, live response, interruption, ended-conversation continuation and disconnect/reconnect.
 
-## Implementation and evidence
+## Planning handoff
 
-Use the [delivery plan](../plan-v1-implementation/plan.md), accepted implementation
-briefs and exact checks verified by @build-app-foundation. Save `result.md` here with
-the tested revision, commands, outcomes and remaining limits. Update the affected
-durable documents and component examples; do not duplicate task state in TODO.md.
+Build on the existing daemon controller, gateway routes and production browser
+components. Complete SSE and ended-conversation continuation, and verify the
+whole browser journey. Keep the browser/host contract and its generated types
+in sync with the implementation.
 
-This completes the first working core: demonstrate real login → workspace → native
-history → start/resume → prompt → live response → browser disconnect/reconnect.
-An uncertain send must not be automatically resent; closing the browser must not stop
-the agent. Verify ownership against a concurrent resume attempt within the probe's limits.
-Record the demo for Jari; it is an intermediate result, not full-MVP acceptance.
-@complete-conversation-ui owns the remaining rich interaction and presentation work.
+The [implementation briefs](../plan-v1-implementation/implementation-briefs.md)
+map this work to Y4–Y5. Use this issue's scope for agent control; older numeric
+buffer limits and test-command proposals are not additional acceptance criteria.
 
-## Bounded planning handoff
+Verify browser behavior, real Pi behavior and Unix-user isolation at the layers
+that exercise them. Record the tested revision and limits of each result,
+including whether the provider was synthetic or real. Use disposable fixtures;
+a real provider login requires the person's participation.
+Run `./scripts/ci-local.sh --clean --json` before landing.
 
-This issue owns Y4–Y5 and completes the walking core. Prove one writer, start/ended-session resume, known-owner terminal transfer, accepted/rejected/uncertain send, SSE replay/resnapshot/backpressure, browser disconnect survival and daemon-crash child/history settlement. Implement CG-04 question cancellation only when adapter-proved; no hidden retry or live TUI attach. Exact CT/commands are in [the implementation briefs](../plan-v1-implementation/implementation-briefs.md).
-
-
-## Visual review, without blocking useful work
-
-Implement and verify working agent controls without waiting for Jari's separate history-view screenshot verdict. Preserve the production-component, native-session and browser evidence in `visual-acceptance.md`: exact revision, environment and commands, representative happy and important failure states, and screenshots. Leave this issue in `testing` for Jari's visual verdict after the functional slice lands; do not treat its unreviewed appearance as accepted. Continue independent downstream work where technical dependencies and file collisions permit. The conductor records Jari's decision here and closes this issue when accepted.
-
-Interactive and repeated behavior must use the shared production component implementation. Local composition may arrange one-off content but may not invent controls, state semantics, focus rules or styling. When this production slice replaces a canonical/root mock or static reference, remove the superseded root/canonical reference in the same accepted change; an original may remain only in its receiving issue as historical evidence.
-
-## Decisions
-
-### 2026-09-28T12:42:36Z · @jari
-
-2026-09-28: Proceed with agent functionality now; make the visual-review condition a principle of proportionate evidence rather than a blocking checkpoint. This does not approve the history view or waive functional tests.
-
-### 2026-09-28T16:32:45Z · @jari
-
-2026-09-28: First test-version process/interruption scope approved. The mapped UID daemon owns the direct Pi RPC child and bounds input writes, acknowledgements and shutdown waits; service-level systemd cleanup applies on daemon stop/crash. A native tool detached by Pi may outlive a single-controller cancel, so browser interruption is best-effort, never represented as confirmed until native state is reconciled. An uncertain send or termination is shown as uncertain and never retried automatically; do not launch another writer into unresolved work. A per-controller delegated cgroup or general supervisor is NOT a prerequisite for v1. Preserve ordinary UID isolation and honest restart/reconnect status. Update ADR 0003 and relevant tests in implementation; reconsider stronger containment only on observed need.
-
-### 2026-09-28T18:08:53Z · @jari
-
-2026-09-28 first-version scope clarification: do not design or test simultaneous sending to the same Pi conversation from browser and SSH/tmux or two independent clients. We operate the test system so this does not occur; new browser conversations are browser-owned, prior terminal histories may be viewed read-only. No cross-process writer takeover/conditional commit/distributed lock proof is required for this hypothetical case. Keep ordinary session/UID authorization, single browser-request acknowledgement, uncertainty/no automatic retry, and native history truth; these are real boundaries, not a concurrency campaign. Prior result.md lists broader old-writer fencing as future scope, not a blocker to first browser walking slice.
+Provide proportionate screenshots and browser evidence in `visual-acceptance.md`.
+Record Jari's visual verdict when given; unreviewed appearance stays unreviewed,
+but a screenshot verdict is not a prerequisite for completing functional work
+or proceeding with independent work.

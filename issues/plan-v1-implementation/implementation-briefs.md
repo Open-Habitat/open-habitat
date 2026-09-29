@@ -118,7 +118,7 @@ These corrections do not select Go/React or change native authority. They close 
 
 ## User-visible slice acceptance
 
-Every user-visible implementation issue is an executable `ui-v1` lane checkpoint. Its worker leaves it in `testing` and writes `issues/<slug>/visual-acceptance.md` with exact product revision, browser/OS/environment, deterministic happy and relevant unhappy scenarios, exact commands/results, and links to essential Playwright screenshots. The conductor presents it to Jari and records explicit dated acceptance in that issue before closing it. Lane serialization blocks the dependent slice meanwhile. These executable checkpoints are not labelled `human-review`; dedicated human reviews remain unlaned. Workers never self-accept UI.
+User-visible implementation work provides proportionate browser evidence and screenshots in `issues/<slug>/visual-acceptance.md`, identifying the tested revision, environment and relevant outcomes. Record Jari's visual verdict when given and keep unreviewed appearance marked as such. A pending screenshot verdict does not block functional completion or independent downstream work; technical dependencies and file collisions still govern scheduling.
 
 All repeated or interactive behavior is owned by shared production primitives/product components. Local composition may arrange one-off content but may not invent controls, state semantics, focus rules or styling. A slice that replaces a canonical/root mock removes that superseded reference after acceptance; originals remain only issue-local historical evidence.
 
@@ -167,11 +167,11 @@ All repeated or interactive behavior is owned by shared production primitives/pr
 ### `build-agent-control` — complete walking core
 
 - **Inputs/IDs:** Y4–Y5, the CT ownership table below and A14 proof.
-- **Visible output:** separate start/resume/known-owner transfer, accepted prompt, live response/tool events, supported question response, interrupt, uncertain-send reconciliation and browser reconnect.
-- **Non-goals:** complete M1 presentation, queue clear until CG-02 passes, host lifecycle features, daemon-crash survival claim.
-- **Ownership:** Pi RPC controller/single-writer lock, event ring/command ledger, command/SSE web state and core browser journey.
-- **Tests:** browser/SSE disconnect leaves Pi child alive; replay/resnapshot, backpressure 10k/15m and 1k/1MiB/30s; ledger 10k/24h/epoch; concurrent resume denied; TUI read-only and stop→exit→history settle→lock→RPC; daemon crash kills child and permits deliberate recovery only; null question only per CG-04.
-- **PROPOSED commands:** foundation gate; `go test ./internal/daemon -run PiControl`; `go test ./internal/core -run ReplayLedger`; `npm run test:e2e --prefix web -- --grep @working-core`; `./scripts/vm-test.sh daemon-crash --json`.
+- **Visible output:** start a browser conversation, continue an ended browser conversation with its native history, acknowledged send, live response/tool events over SSE, best-effort interruption and browser reconnect.
+- **Non-goals:** terminal takeover, simultaneous independent writers, Pi-specific question dialogs, complete M1 presentation, queue clear until CG-02 passes, host lifecycle features or daemon-crash survival.
+- **Ownership:** mapped-UID Pi RPC controller, HTTP commands, SSE updates and the core browser journey. Pi retains tool execution, configuration and history.
+- **Tests:** browser disconnect leaves Pi running; SSE reconnect and slow-reader recovery; accepted/rejected/uncertain send without automatic resend; ended browser conversation continuation; honest interruption and daemon-restart status; session/UID authorization. Terminal histories stay read-only. No cross-process writer takeover or per-controller cgroup proof is required.
+- **Checks:** the clean local gate plus focused browser, native Pi and UID-isolation evidence for the current implementation. Earlier numeric retention limits and command names are proposals, not extra acceptance conditions; the current scope is in [the issue](../build-agent-control/item.md).
 - **Green/evidence/rollback:** Y1–Y5 one real disposable session lifecycle plus two-user routing, no duplicate writer/message. Kill fixture processes and destroy VM; never delete native user histories. Unblocks `complete-conversation-ui`.
 
 ### `complete-conversation-ui` — accepted M1 experience

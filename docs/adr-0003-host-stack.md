@@ -15,8 +15,8 @@ Linux user's UID. The gateway must not read user homes. Daemons must use native
 Pi history, Git, `gh`, tmux and Taskfleet under the mapped Unix identity. Browser
 state uses JSON/HTTP and one cursor-based SSE stream. Closing the browser or
 restarting the gateway must not stop Pi; daemon or host loss does stop active
-computation, while settled native history remains resumable after writer-exit
-and history-settlement proof.
+computation. Ended browser conversations can be deliberately continued from
+native history once their previous work is known to have ended.
 
 The implementation should be easy to inspect and change at the Linux process,
 socket and HTTP boundary. Current packages on Alder are not a language-selection
@@ -159,11 +159,16 @@ never source shell text. Only configured socket instances are enabled.
 ### Direct Pi child ownership
 
 The daemon starts Pi RPC directly under its UID and workspace cwd, consumes
-strict JSONL, and stores no parallel history. It owns an in-memory controller and
-a mode-0700 runtime advisory lock for each `pi:<sessionId>`. Before writes it
-reobserves Pi history, known direct-child ownership, `/proc`, tmux and Taskfleet.
-Unknown fails closed. A terminal TUI remains history-only until a known owner or
-the user stops it and process exit plus history settlement are proved.
+strict JSONL, and stores no parallel history. It owns the browser conversation's
+controller and direct Pi child. Browser conversations have one writer; the test
+system is operated so that SSH/tmux and independent clients do not also control
+the same conversation. Prior terminal histories remain read-only. Terminal
+takeover, cross-process writer coordination and scanning tmux or Taskfleet for
+competing writers are not prerequisites for this first version.
+
+This scope reflects Jari's 2026-09-28 single-writer decision and his 2026-09-29
+clarification in [build-agent-control](../issues/build-agent-control/item.md):
+SSE updates and continuing ended browser conversations remain required.
 
 Browser and gateway loss leave the daemon and Pi child running. On graceful
 daemon stop, reject new writes, ask owned Pi children to abort/settle, signal the
@@ -173,10 +178,11 @@ cancel or process-group signal: interruption is best effort, never confirmed
 stopped until native state is reconciled. Systemd service-level cleanup applies
 to daemon stop/crash, not to one controller cancellation; a detached tool that
 escapes service membership cannot be claimed stopped without native evidence.
-On restart, rediscover native history and offer deliberate resume only after
-old-writer absence and settlement are positively established. Unknown writer
-or history state forbids another writer; uncertain commands are never retried
-automatically. No per-controller delegated cgroup is a v1 prerequisite.
+On restart, rediscover native history and distinguish readable history from
+available control. Continue an ended browser conversation only when its previous
+work is known to have ended; unresolved work must not gain another writer.
+Uncertain commands are never retried automatically. No per-controller delegated
+cgroup is a v1 prerequisite.
 Do not add a persistent sidecar supervisor without a new measured decision.
 Taskfleet alone creates and tears down its worktrees.
 
@@ -252,13 +258,12 @@ The result is one fast-building static host artifact with an explicit
 least-privilege split and direct child ownership. Go's GC and runtime must be
 measured under long histories and concurrent agents. OAuth scope breadth and
 headless `gh` storage must be shown honestly. Active turns survive browser and
-gateway loss, not daemon or host loss. The mapped daemon now has a private,
-TrustedPeer-only fresh Pi controller, keyed by native session ID. Its in-memory
-handles and bounded event tail survive HTTP disconnect but not daemon restart;
-Pi JSONL is the only history authority after a crash. An uncertain send or stop
-is never retried or described as terminated. The controller does not resume an
-old session or transfer a terminal TUI writer. The gateway must explicitly add
-an authenticated CSRF-protected route before any browser can use it.
+gateway loss, not daemon or host loss. Pi JSONL remains the history authority
+after a crash. Browser control passes through authenticated, CSRF-protected
+gateway routes to the mapped daemon. An uncertain send or stop remains uncertain
+until reconciled against native state and is never retried automatically.
+SSE updates and deliberate continuation of ended browser conversations are
+implementation requirements under [build-agent-control](../issues/build-agent-control/item.md).
 
 ## Rejected alternatives
 
