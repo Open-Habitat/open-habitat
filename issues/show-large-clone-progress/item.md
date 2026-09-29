@@ -21,3 +21,9 @@ Current `internal/daemon/github_clone_linux.go` synchronously waits for `git clo
 - [ ] Allow legitimately large checkouts to complete within a reviewed extended bounded duration and disk budget; propagate only allowlisted structured progress, never raw stderr, origin credentials or source paths to browser/gateway logs. Revalidate user/UID and prevent cross-user observations on every progress route.
 - [ ] Browser disconnect, tab refresh, uncertain writes, interrupted download, native exit and a pre-existing partial directory remain explicit uncertain/conflict states; no automatic retry, overwrite or cleanup. Read-only native observation is the recovery authority; design reconnection or clear safe interruption semantics before extending the deadline.
 - [ ] Synthetic separate-UID and production-bundle browser tests drive a slow chunked Git fixture, stages, disconnect, provider failure and read-only recovery. Prove no real home or GitHub identity used in tests. Clean committed-tree gate and guarded test-host deployment. Record protocol/authority implications as an ADR before implementation if streaming/reconnection requires a new store or responsibility boundary.
+
+## Decisions
+
+### 2026-09-29T08:32:48Z · @jari
+
+2026-09-29: Approved the recommendation to design a bounded authenticated clone-progress stream, cancel native write on disconnect, and use read-only native Git observation on refresh; no persistent progress store and no automatic retry. Record contract and trade-offs in @decide-clone-progress-contract ADR before implementation. Approval is for design and implementation within this scope, not a live GitHub test or deployment.
