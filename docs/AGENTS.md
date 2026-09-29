@@ -85,8 +85,7 @@ and agent instruction files are not pages.
 
 From the repository root, `python3 scripts/validate-project-view.py` checks the
 required pages, navigation, local links, ADR registration and the status
-metadata, and `git diff --check` catches whitespace. Both run inside
-`scripts/ci-local.sh`.
+metadata, and `git diff --check` catches whitespace. The root `TESTING.md` describes when the full gate is needed.
 
 Publishing is a separate act from landing on `main`, run as
 `(cd docs && glasspad publish .)`. The configured target is hosted, so the

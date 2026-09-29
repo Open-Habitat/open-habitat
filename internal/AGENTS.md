@@ -64,8 +64,6 @@ their `t.Skip` messages say which. The disposable QEMU guests in
 `go test` on the dev box covers less than it looks, and after provisioning or
 ACL changes it is worth running with `-v` to see what was skipped.
 
-`go vet ./...` and `go test -race ./...` are the fast loop. Generated-contract
-drift only arises when `contracts/v1/` or `cmd/contractgen` changed;
-`go generate ./internal/contracts` and `scripts/check-generated.sh` catch it.
-`./scripts/ci-local.sh --clean --json` runs all of this and is what has to be
-green to land.
+Generated-contract drift only arises when `contracts/v1/` or
+`cmd/contractgen` changed; the generated check catches it. Test selection and
+the full-gate policy are in the root `TESTING.md`.

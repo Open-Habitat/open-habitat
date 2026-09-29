@@ -59,12 +59,5 @@ marker text belongs in those checks too.
 
 Dependencies are pinned in the committed lockfile and installed with
 `npm ci --prefix web`; `npm install` rewrites the lock, and `scripts/ci-local.sh`
-proves the lock complete by reinstalling offline. That script is also where the
-required checks live: Biome formatting and linting with accessibility rules as
-errors, `tsc --noEmit`, Vitest unit and component tests, Playwright end-to-end
-and accessibility suites, the production build and Storybook. The `scripts`
-block in `package.json` names each one. Run them from the repository root with
-`--prefix web`, and set `PLAYWRIGHT_BROWSERS_PATH` to the repository's
-`.cache/ms-playwright`, where the CI script installs Chromium; without it
-Playwright looks in your home and either fails or installs a second copy there.
-The full gate before landing is `./scripts/ci-local.sh --clean --json`.
+proves the lock complete by reinstalling offline. The root `TESTING.md` gives the commands, scope and full-gate policy; the
+`scripts` block in `package.json` names the individual checks.
