@@ -42,7 +42,7 @@ test("@pi-onboarding expired lease drops code and offers retry", async ({
     await expect(page.getByText("ABCD-1234")).toBeVisible();
     // A lost lease returns the same 404 as a real five-minute expiry.
     await page.request.get("/fixture/pi-restart");
-    await expect(page.getByText("Koodi vanheni")).toBeVisible({
+    await expect(page.getByText("Kirjautumisyritys päättyi")).toBeVisible({
       timeout: 9000,
     });
     await expect(page.getByText("ABCD-1234")).toHaveCount(0);

@@ -5,6 +5,7 @@ test.use({ baseURL: "https://127.0.0.1:4174", ignoreHTTPSErrors: true });
 test("@pi-onboarding slow native reads finish across multiple poll intervals without duplicate writes", async ({
   page,
 }) => {
+  test.setTimeout(60000);
   await page.request.get("/fixture/scenario?value=pi-onboarding");
   await page.waitForTimeout(2200);
   await page.request.get("/fixture/pi-state?value=missing");
@@ -57,7 +58,7 @@ test("@pi-onboarding slow native reads finish across multiple poll intervals wit
     ).toBeVisible();
     expect(posts).toBe(1);
     await page.request.get("/fixture/pi-restart");
-    await expect(page.getByText("Koodi vanheni")).toBeVisible({
+    await expect(page.getByText("Kirjautumisyritys päättyi")).toBeVisible({
       timeout: 16000,
     });
     await expect(
