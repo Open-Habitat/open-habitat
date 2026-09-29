@@ -1,211 +1,149 @@
 # How Native Agent Host works
 
-Native Agent Host gives users a browser interface to the agents and workspaces on
-their Linux servers. A user can SSH to the server, work in tmux, and resume a Pi
-conversation directly. The browser gives another way to work with those same
-files, conversations and processes.
+A person opens a project in the browser and works with an agent running under
+their Linux account. The project is an ordinary directory, and the conversation
+is the agent harness's own history. The same files and native tools remain
+available over SSH and tmux. Closing the browser leaves the agent running.
 
-For example, Jari has a project at `/home/maintainer/src/native-agent-host`. He can open
-it in the browser or enter that directory over SSH and use Pi there. Pi keeps the
-conversation history in its own files. Closing the browser does not stop the agent.
+The design builds on mature Unix and Linux components: accounts separate users,
+Git manages repositories, and Pi manages its configuration, tools and history.
+Each component keeps the job it already does well. New storage or services need
+a concrete need, because duplicating native information creates another place
+where information about a person's work can drift.
 
-The core design below is agreed in [ADR 0001](adr-0001-unix-native-agent-host).
-The read-only login-to-workspace slice is implemented and awaiting visual acceptance. Native Pi history discovery and bounded read-only paging now run in the mapped per-UID daemon, with browser history evidence pending Jari's visual acceptance. Agent control and workspace writes are not implemented; see [workspace evidence](../issues/build-workspace-slice/visual-acceptance.md) and [history evidence](../issues/build-history-view/visual-acceptance.md).
+This page explains the agreed architecture. The [implementation map](implementation.md)
+links to the work and its evidence; [interfaces](interfaces.md) distinguishes
+existing browser routes from the remaining contract. The first implementation
+uses Pi and one server. Other harnesses and a browser spanning several servers
+need their own product decisions.
 
-## Build on what already works
+## Sign in to one Linux account
 
-The product follows the Unix idea of simple tools working together. Open-source
-Unix and Linux systems provide mature services for accounts, permissions, files
-and processes, developed over decades. We use that foundation for AI applications
-and reuse existing software wherever it already does the job well.
-
-Each component keeps responsibility for its own behavior, data and configuration.
-For example, Pi uses its own configuration, Git manages branches and worktrees,
-and tmux keeps terminal sessions available. Agent Host connects these components to
-the browser. New storage, configuration or services need a concrete reason to exist.
-
-## One daemon per Linux user
+Three roles run in separate processes, shipped in one Go binary:
 
 ```text
-Web client
-  └─ Server's authentication gateway
-       ├─ Linux user jari → daemon running as jari
-       │    └─ ~/src → workspaces and agents
-       └─ Linux user kaisa → daemon running as kaisa
-            └─ ~/src → workspaces and agents
+Browser
+  └─ Gateway (fixed non-root account)
+       ├─ Provisioning broker (root): approve binding, create/verify account
+       ├─ A's authenticated socket → A's daemon (UID A) → A's workspaces
+       └─ B's authenticated socket → B's daemon (UID B) → B's workspaces
 ```
 
-The gateway handles TLS, signs the user in, and forwards HTTP and streaming
-connections to that user's daemon. The administrator configures which web
-identity maps to which Linux account. On each server, one web identity maps to
-exactly one Linux account; the browser cannot choose a different username.
+The gateway authenticates the browser and maps its identity to exactly one Linux
+account on that server. On an approved first GitHub login, the root broker
+creates and verifies the account and its binding to the stable numeric GitHub ID.
+The administrator controls admission; the browser cannot choose a Unix user.
 
-The gateway does not read home directories, list workspaces or run agents. Each
-user's daemon does that user's work under their UID, without needing root or
-switching user identities. Keep both processes lightweight and straightforward.
+The gateway forwards requests to that account's systemd-created Unix socket.
+It verifies the trusted filesystem route, and the daemon authenticates the
+connecting gateway through Linux peer credentials and independently checks its
+own identity. The gateway cannot read homes or run agents. The broker's root
+authority is confined to account provisioning; native work belongs to the daemon
+running under that user's UID.
 
-The browser can connect separately to several servers and combine what it shows.
-Each server keeps its own account mapping and native files.
+One GitHub authorization also supplies the user's native `gh` HTTPS credentials.
+The gateway forwards the callback token once over the authenticated local route;
+the daemon verifies and installs it. The gateway does not persist or log the
+token or return it to the browser. Optional Google login establishes web identity
+only. [ADR 0003](adr-0003-host-stack.md) explains the stack and credential flow;
+[ADR 0004](adr-0004-first-login-user-provisioning.md) defines first-login provisioning.
 
-### Accepted first host stack
+## Open an ordinary directory
 
-[ADR 0003](adr-0003-host-stack.md) selects one Go release artifact for a
-non-root gateway and the per-user daemons. The primary browser path is one
-GitHub OAuth authorization: GitHub's stable numeric user ID maps to one Unix
-account, created and verified by the separate broker under
-[ADR 0004](adr-0004-first-login-user-provisioning.md). The callback token is
-forwarded once over the authenticated
-local route so the user's daemon can configure native `gh` HTTPS credentials.
-The gateway never persists, logs or sends that token to the browser. An optional
-Google provider establishes web identity only and is contacted only after the
-user explicitly selects it. The gateway reaches only the mapped account's
-systemd-created Unix socket. The gateway verifies the trusted filesystem route;
-the daemon authenticates the gateway UID using Linux peer credentials. There is
-no reusable local token or browser-selected username. A gateway-side peer check
-on a systemd-created listener identifies PID 1/root, not the mapped daemon UID.
+A workspace is an immediate directory under `~/src`, with or without Git. The
+daemon finds it by listing that directory. A workspace needs no registry entry
+or settings file to exist.
 
-Each daemon runs as its user's real UID and starts Pi RPC as its own child.
-The browser or SSE connection does not own that process, so browser loss does
-not stop it. On daemon stop or crash, systemd cleans up service processes;
-detached native tools are not claimed stopped without evidence. After restart
-the daemon reads native history and allows deliberate continuation of an ended
-browser conversation only when previous work is known to have ended. Unresolved
-work must not gain another writer. A second persistent supervisor needs a
-separate justification. Terminal-started Pi histories remain read-only.
+When a stable ID or display name needs saving, its settings live in
+`.agent-host/workspace.json` inside the workspace. In a Git repository, prefer
+a local `.git/info/exclude` entry unless the user chooses to version the file.
+Credentials, process state and Git facts stay with their native owners.
 
-The artifact includes the static frontend and is installed as an immutable,
-checksum-verified release. Native Agent Host owns generic install,
-configuration, test-host, update, rollback and operator documentation. Fleetrepo
-owns only Jari's concrete Alder users, units, identity/provider input, HTTPS
-route and release pin and converges those through its fleet workflow. This is
-the accepted implementation boundary; it does not describe an installed
-service until the implementation and deployment gates pass. When
-0.1 is ready to publish, the conductor files a then-current issue to remove
-Alder-specific references from Git HEAD while preserving generic self-hosting
-documentation and issue-local history.
+Before opening a Git workspace, repository integration must establish that the
+repository and credentials are ready for the agent's ordinary `git pull` and
+`git push`. Successful web login or `gh` authentication alone cannot establish
+that. The [GitHub integration work](../issues/plan-v1-implementation/implementation-briefs.md)
+owns the implementation and evidence for this behavior.
 
-## Workspaces are directories
+Git supplies branches and worktree facts. Taskfleet owns creation and management
+of dedicated agent worktrees. Other worktrees, including ones outside `~/src`,
+can appear as observations or as effects to consider before changing a workspace;
+they do not become browser-managed environments merely because they were found.
 
-A workspace is an immediate directory under `~/src`. It may or may not be a Git
-repository:
+## Work with a native conversation
 
-```text
-/home/maintainer/src/
-  native-agent-host/
-  northwind-monorepo/
-  ensihoitokurssi/
-```
+The daemon starts Pi RPC as its child in the workspace. Pi executes tools and
+writes its own history. The conversation's identity is its native resume ID,
+prefixed with the harness name, such as `pi:<id>`. A PID identifies one running
+process; the conversation can survive that process and continue later.
 
-The daemon finds workspaces by listing the directories under `~/src`. There is no
-workspace registry.
+A conversation has one writer. Independent clients do not control it
+simultaneously through the browser, SSH or tmux. Terminal histories are readable
+in the browser, but Pi RPC cannot attach to a running terminal TUI. An ended
+browser conversation can be deliberately continued with the same native ID once
+its previous work is known to have ended.
 
-Workspace-specific settings live inside each workspace, in
-`.agent-host/workspace.json`. This file can hold a stable workspace ID and display
-name. Create it when a workspace setting needs to be saved; a directory without
-it is still a workspace. In a Git repository, prefer a local `.git/info/exclude`
-entry; the user may choose to version the file instead.
+The browser shows incoming messages, questions and tool content. Content without
+a dedicated renderer still appears as safe text. Answering or cancelling Pi's
+separate question dialogs and taking over terminal conversations are outside
+the current agent-control work.
 
-Runtime state and credentials do not belong in the workspace file. Before a Git
-repository can be opened, a blocking integration step must establish that the
-repository and the user's credential environment are ready for agents' ordinary
-`git pull` and `git push` commands. Detecting `gh` authentication alone is not
-that guarantee. The implementation of this integration is still undecided.
+Discovery reads the tools that already own the facts:
 
-Read branches and worktree facts from Git, but expose worktree creation and
-management only as Taskfleet-created dedicated agent environments. The v1 browser
-has no general UI for creating, editing or managing arbitrary manual worktrees.
-A worktree outside `~/src` can still be shown as an observed effect on a listed
-workspace without becoming a supported management target.
-
-## An agent keeps its native identity and history
-
-Use the harness's own resume ID, prefixed with the harness name: `pi:<id>`,
-`claude-code:<id>` or `codex:<id>`. A running process can exit and a later process
-can resume the same conversation. Its PID is therefore not the agent's identity.
-Pi RPC cannot attach to a currently running terminal TUI. The browser reads
-terminal histories but does not take over their processes. Continuing an ended
-browser conversation uses its native session ID and requires its previous work
-to be known ended.
-
-The daemon reads native histories and combines them with observations from the
-operating system, tmux, Git, Taskfleet and optional extensions. Pi's history keeps
-the conversation and model changes. Pi, Claude Code and Codex each retain their
-own resume mechanism and configuration.
-
-Start with a simple agent list. Add a main-agent marker, parent links or other
-presentation details when the UI actually needs them. Store a detail only if it
-cannot be found reliably in the native sources. A conversation branch does not
-by itself mean that a child agent was started.
-
-For example, Taskfleet can report a worktree run as top-level even when a Pi agent
-started it as a tool call. If the UI needs that parent link, an extension could
-capture it. We can address this when that use case appears; it does not require
-a complete agent classification now.
-
-## Discover, don't duplicate
-
-Read facts from the component that already keeps them:
-
-| Information | Where to read it |
+| Information | Source |
 |---|---|
 | Workspaces | Directories under `~/src` |
-| Users, permissions and running processes | Linux |
+| Users, permissions and processes | Linux |
 | Repositories, branches and worktrees | Git |
-| Conversations, models and resume IDs | The agent harness |
-| Terminal attachment and retained pane output | tmux |
-| Runs, nodes and lifecycle information | Taskfleet |
-| Agent subprocesses and their output | The extension managing them |
+| Conversations, models and resume IDs | The agent harness (initially Pi) |
+| Terminal sessions and retained output | tmux |
+| Worktree runs and their lifecycle | Taskfleet |
+| Extension-managed subprocesses and output | The owning extension |
 
-Keep new information only when something specific needs it and it cannot be
-reconstructed reliably. For example, a user's choice of main agent may need a
-small annotation. A branch name already available from Git does not.
+Small annotations hold presentation choices that native sources cannot supply,
+such as hiding a workspace or archiving a conversation in the UI. Archiving
+leaves native history in place. Parent links are added only when needed and not
+reliably available from native sources; a conversation branch alone does not
+prove that a child agent was started. A cache needs a measured performance
+problem and must be rebuildable without losing user information.
 
-Read these sources directly at first. Add an index or cache only after measurement
-shows what is slow. Such a cache must be disposable: deleting it must not lose
-user information.
+## Recover the view after a disconnection
 
-This keeps terminal use practical. Users can attach to tmux, resume through the
-native harness, inspect `git worktree list`, and use Taskfleet directly. The daemon
-can observe native facts without requiring work to have started through the browser.
-Only Taskfleet-created dedicated agent worktrees are supported management objects;
-other discovered worktrees remain read-only facts or operation impacts.
+The general browser contract uses JSON/HTTP for snapshots and commands, and one
+SSE (Server-Sent Events) feed per server for the user's updates. A cursor lets
+the browser request missed events; when replay is no longer possible, it fetches
+a fresh snapshot. A command's acceptance and its eventual effect are separate:
+a lost response leaves an uncertain result, not permission to repeat the write.
+The [interface contract](interfaces.md) defines recovery and operation results.
 
-## Permissions and subprocesses
+Browser or gateway loss leaves the daemon's Pi process running. Daemon failure
+is different: systemd cleans up the service's processes, and an active turn is
+not promised to survive. A detached tool may outlive that cleanup. After restart,
+the daemon reconciles native history and process evidence before allowing another
+writer; unresolved work stays uncertain. A second persistent supervisor would
+need its own justification.
 
-An agent runs with its Linux user's permissions, SSH keys, credentials and network
-access. Unix accounts and file permissions separate users. There is no separate
-credential broker. Each tenant has its own deployment; within that deployment,
-the host works with Linux users and has no internal tenant object.
-Future shared directories may use Unix groups.
+Onboarding clone progress has a separate stream under
+[ADR 0005](adr-0005-clone-progress-stream.md). Losing that connection cancels the
+write. It has no replay or persisted progress job: a refresh inspects native Git
+state and whether the writer has stopped. This exception serves the bounded
+onboarding operation, while the general feed follows ongoing agent work.
 
-Pi extensions can add restrictions and approval prompts, including ones required
-by the administrator. These are guardrails within the same Unix account. An agent
-with shell access under that UID can bypass a tool-only restriction. The UI must
-explain this honestly and must not call it a sandbox.
+## Keep access within the user's authority
 
-Each agent manages the subprocesses it starts. A process extension can expose
-status, retained output, exit information and stop controls. If it already uses
-tmux to keep processes and output, the daemon displays that information instead
-of building another process registry.
+An agent has its Linux user's permissions, credentials and network access.
+Accounts, filesystem permissions and authenticated per-user sockets separate
+people. Each tenant has a separate deployment; within it, the host works with
+Linux accounts and has no internal tenant object. Future shared directories may use Unix groups.
 
-## HTTP requests and one event feed
+Pi extensions can add restrictions and approval prompts, including administrator
+requirements. An agent with shell access under that same UID can bypass a
+restriction enforced only by a tool. These are guardrails, not a security sandbox.
+Subprocess controls come from the component that owns the process; observing a
+process does not by itself give the daemon authority to stop it.
 
-The browser first requests a JSON snapshot. It sends commands with HTTP POST and
-follows updates through one SSE (Server-Sent Events) connection per server.
-That feed combines the user's workspace, agent, process and output events.
-
-Events carry a cursor so a reconnecting client can request what it missed. When
-the server no longer has those events, the client fetches a fresh snapshot. Exact
-request formats and retention limits still need to be worked out.
-
-Start with the combined feed. Split it only if actual use shows a need. The same
-rule applies to caches and broader protocols: simple JSON/HTTP and SSE are enough
-for the first version; AHP or another agent protocol is not a prerequisite.
-
-## What to build next
-
-The [first implementation](implementation) connects one browser to one user's Pi
-agent on Alder. It will clarify authentication, daemon packaging, discovery,
-commands and reconnect behavior through working code.
-
-See [research](evidence) for the systems and workflows inspected so far.
+The [native design decision](adr-0001-unix-native-agent-host.md) records these
+principles. The host ships the binary, static browser assets and neutral systemd
+templates as an immutable release, with native history and settings outside it.
+[Installation and recovery](implementation.md#julkaisu-ja-asennus) separates
+portable product packaging from Fleetrepo's concrete test deployment and receipts.
