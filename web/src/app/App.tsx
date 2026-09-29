@@ -123,6 +123,7 @@ export function App() {
     (s: RootState) => s.connection,
   );
   const [refreshKey, setRefreshKey] = useState(0);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const [verifying, setVerifying] = useState(false);
   const [identityEpoch, setIdentityEpoch] = useState(0);
   const sessionBinding = useRef<string | undefined>(undefined);
@@ -198,6 +199,10 @@ export function App() {
     setVerifying(true);
     setRefreshKey((n) => n + 1);
   }, [captureEditor]);
+  const manualRefresh = () => {
+    setHistoryRefreshKey((n) => n + 1);
+    refresh();
+  };
   const requireLogin = useCallback(
     () => dispatch(authenticationRequired()),
     [dispatch],
@@ -258,10 +263,15 @@ export function App() {
       try {
         let token: string | "login" | undefined;
         if (!syntheticDemo) {
-          const [status, session] = await Promise.all([
-            piStatus(controller.signal),
-            sessionCSRF(controller.signal),
-          ]);
+          // On the initial unauthenticated load, avoid requesting a session
+          // before the Pi gate: onboarding owns its own session binding.
+          // Only the authenticated tab-return path overlaps these reads.
+          const [status, session] = snapshot
+            ? await Promise.all([
+                piStatus(controller.signal),
+                sessionCSRF(controller.signal),
+              ])
+            : [await piStatus(controller.signal), undefined];
           if (
             !active ||
             controller.signal.aborted ||
@@ -270,7 +280,7 @@ export function App() {
             return;
           if (status === "login" || session === "login") return fail("login");
           if (status !== "usable") return fail("pi");
-          token = session;
+          token = session ?? (await sessionCSRF(controller.signal));
         }
         if (
           !active ||
@@ -278,6 +288,7 @@ export function App() {
           generation !== loginGeneration.current
         )
           return;
+        if (token === "login") return fail("login");
         const response = await fetch(
           syntheticDemo
             ? `/api/v1/snapshot?scenario=${new URLSearchParams(location.search).get("scenario") ?? "ready"}`
@@ -489,7 +500,7 @@ export function App() {
       />
     ) : selectedAgent && agentWorkspace ? (
       <HistoryView
-        key={selectedAgent.agent_id}
+        key={`${selectedAgent.agent_id}:${historyRefreshKey}`}
         agent={selectedAgent}
         workspaceName={agentWorkspace.display_name ?? agentWorkspace.name}
         workspaceId={agentWorkspace.workspace_id}
@@ -661,7 +672,7 @@ export function App() {
                 listState={railState}
                 onToggle={() => setCollapsed(!collapsed)}
                 onFilter={(v) => dispatch(filterChanged(v))}
-                onRefresh={refresh}
+                onRefresh={manualRefresh}
                 onCreate={() => {}}
                 createAvailability={{
                   state: "read_only",
