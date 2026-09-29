@@ -2,13 +2,15 @@
 created: 2026-09-29
 updated: 2026-09-29
 type: bug
-status: in-progress
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: Observed in synthetic lab during spinoff
 source_ref: taskfleet:01m3qgrasv8s7mfnb12dbz20jv/observed:intermediate-assistant-finished-label
 originating_run: 01m3qgrasv8s7mfnb12dbz20jv
 originating_run_kind: spinoff
+closed: 2026-09-29
+closed_by: claude
 ---
 
 # Intermediate Pi messages say Valmis while a tool is still running
@@ -22,3 +24,8 @@ During a synthetic slow Pi turn, the history card for Pi's intermediate assistan
 ## Follow-up recommendation
 
 The native Pi history records `stopReason` (including `toolUse`), but the projected browser history entry does not expose it. If a future design needs per-message completion labels, first decide and document a host/browser contract change carrying that fact; do not infer it from `content.complete` (which describes byte pagination) or from the current process state. For now, the conversation header and progress panel report the turn's current activity and history cards make no per-message completion claim.
+
+## Acceptance Criteria
+
+- [x] Intermediate Pi history card no longer says “Valmis” while the turn is active; synthetic browser and component regressions pass.
+- [x] Full clean gate passes on the final implementation tree.
