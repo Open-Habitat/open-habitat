@@ -79,6 +79,12 @@ Snapshot voi siis näyttää historian luettavana samalla kun prosessi on
 
 Ensisijainen kirjautumispolku käyttää GitHub OAuth Authorization Code -virtaa kertakäyttöisellä `state`lla ja PKCE S256:lla. Reititysavain on GitHubin varmennettu vakaa numeerinen käyttäjä-ID. Sama yksi authorization pyytää `gh auth login --with-token` -polun vaatimat `repo`, `read:org` ja `gist` -scopet, muodostaa web-istunnon ja toimittaa callback-tokenin kerran todennetun paikallisen hopin kautta mapped daemonille native `gh` HTTPS helperin asennusta varten. Token ei mene cookieen, selaimeen, lokiin, argviin, ympäristöön tai gatewayn levylle. Valinnainen Google OIDC käyttää exact `(issuer, subject)` -avainta web-identiteettiin eikä konfiguroi GitHubia; siihen ei oteta yhteyttä ennen eksplisiittistä valintaa. Sähköposti, login-nimi, näyttönimi, HTTP-header, URL-parametri, body-kenttä tai selaimen lähettämä Unix-käyttäjä ei saa valita daemonia.
 
+OAuth-kirjaston valinta on toteuttajan harkinnassa. Riippumatta kirjastosta
+kirjautumisvirran pitää todentaa selainkohtainen, arvaamaton ja kertakäyttöinen state,
+PKCE S256, täsmällinen konfiguroitu callback-URI ja GitHubilta saatu identiteetti.
+State tarkistetaan ennen koodin vaihtamista tokeniksi. Toimiva kirjautuminen ja
+virhepolut todennetaan; kirjasto tai sen puuttuminen ei yksin ole näyttö niistä.
+
 Gatewayn web-istunto on opaque, palvelinpuoleinen ja cookie on
 `__Host-agent-host; Secure; HttpOnly; SameSite=Lax; Path=/`. Kaikki kirjoittavat
 POST-pyynnöt vaativat sekä voimassa olevan istunnon, täsmälleen sallitun
@@ -86,6 +92,10 @@ same-origin `Origin`-headerin että istuntoon sidotun CSRF-tokenin
 `X-Agent-Host-CSRF`-headerissa. Puuttuva `Origin` ei ole sama kuin hyväksytty
 origin. JSON-endpointit eivät ota vastaan form-enkoodattua kirjoitusta. CORS ei
 salli credential-pyyntöjä toisesta originista.
+
+Istuntotunniste vaihtuu kirjautumisessa. Nykyiset aikarajat ovat kahdeksan
+tuntia toimettomuutta ja 24 tuntia absoluuttista kestoa. Logout mitätöi
+palvelinpuoleisen istunnon ja sulkee sen SSE-yhteydet.
 
 Vanhentunut istunto tekee jo renderöidystä sisällöstä stalea: selain saa pitää
 sen luettavana, mutta kaikki uudet luku- ja kirjoituspyynnöt vaativat uuden
@@ -102,6 +112,16 @@ konfiguroidun gateway-UID:n Linuxin `SO_PEERCRED`-tiedosta ja tarkistaa oman
 käyttäjänsä, UID:nsä, home-hakemistonsa ja socket-instanssinsa yhteensopivuuden.
 Väärä peer, socket tai daemon torjutaan; toiseen käyttäjään ei fallbackata.
 
+Socket on mapped käyttäjän omistama, gatewayn ryhmälle kuuluva ja moodissa
+0660. Polun kulku ja hakemistojen käyttöoikeudet ovat rootin hallinnassa,
+ja käyttäjäkohtainen hakemisto valmistellaan ennen socketin aktivointia.
+Gatewayn yhteyden `SO_PEERCRED` kertoo systemd:n luoman kuuntelijan omistajan,
+PID 1/rootin, ei yhteyden hyväksyvän daemonin UID:tä. Gateway varmistaa siksi
+kohteen rootin hallitsemasta polusta, socketin omistajuudesta ja oikeuksista.
+Daemonin hyväksymällä yhteydellä vertais-UID sen sijaan kertoo oikean clientin,
+joten daemon tarkistaa gatewayn UID:n. Paikallinen reitti ei käytä yhteistä
+bearer-tokenia. Toteutus on [udssecure-paketissa](../internal/udssecure/socket_linux.go).
+
 Gateway saa nähdä reitityksen, statuskoodin ja redaktoidun audit-korrelaation,
 mutta ei käyttäjän promptia, mallivastausta, tool-outputia, tiedoston sisältöä
 tai native credential -metadataa. Julkiset health-endpointit ovat aggregaatteja.
@@ -116,6 +136,42 @@ jos handoff, oma mappaus ja `gh api user --jq .id` täsmäävät; ristiriidassa 
 juuri asennetun paikallisen authin, raportoi osatuloksen eikä avaa normaalia web-istuntoa.
 Socket- ja peer-tarkistukset kuuluvat hyväksyttyyn luottamusrajaan.
 
+### Natiivin GitHub-tunnuksen asennus ja tallennus
+
+Daemon vastaanottaa tokenin vain callbackiin sidotusta, todennetusta gatewayn
+pyynnöstä ja syöttää sen stdinillä saman Unix-käyttäjän `gh`:lle:
+
+```sh
+gh auth login --hostname github.com --with-token --git-protocol https
+gh auth setup-git --hostname github.com
+```
+
+Tokenin väliaikainen käsittely päättyy luovutukseen; sitä ei säilytetä jonossa
+uudelleenyritystä varten. Daemon tarkistaa `gh auth status` -tilan, `gh api user`
+-vastauksen numeerisen ID:n, HTTPS-protokollan ja tavallisen Git-credential-helperin
+toiminnan tulostamatta tokenia. ID:n pitää vastata sekä handoffia että daemonin
+root-omisteista sidosta. Ristiriidassa juuri asennettu paikallinen auth poistetaan
+ja kirjautuminen jää osittaiseksi.
+
+Todellinen tallennuspaikka tarkistetaan ja näytetään rehellisesti. Järjestelmän
+credential store on ensisijainen; palvelimella sallittu tiedostovaihtoehto on
+käyttäjän omistama tavallinen `gh`-konfiguraatiotiedosto moodissa 0600 käyttäjän
+0700-hakemiston alla. Symlinkki, ryhmälle tai muille luettava tiedosto,
+tuntematon tallennuspaikka ja `--insecure-storage` torjutaan. Tiedostotallennusta
+ei kutsuta avainnipuksi.
+
+Jos natiiviasennus epäonnistuu tai sen tulos jää epävarmaksi, normaalia
+web-istuntoa ei luoda. Token hylätään ja uusi kirjautuminen tarkistaa identiteetin
+ja jo olemassa olevan natiivin authin ennen mahdollista asennusta. Jos asennus
+onnistui mutta vastaus katosi, tätä ei tulkita asennuksen peruuntumiseksi.
+
+Eksplisiittinen native disconnect käyttää varmennetun käyttäjän
+`gh auth logout --hostname github.com --user <verified-login>` -komentoa ja
+varmistaa paikallisen authin poissaolon. Jäljelle jäävän Git-helperin tila
+raportoidaan. Paikallinen logout ei väitä GitHub-tokenia revokoiduksi;
+tarvittaessa käyttäjä ohjataan GitHubin valtuutettujen sovellusten asetuksiin.
+Osittainen tulos näytetään osittaisena.
+
 ### Daemon → natiivit lähteet
 
 Daemonilla on käyttäjän UID:n laaja toimivalta. Tämä ei ole sandbox. Sen pitää
@@ -125,6 +181,46 @@ Renderöity sisältö on epäluotettua tekstiä, vaikka sen tuotti saman käytt�
 prosessi: raakaa HTML:ää ei suoriteta, URL-skeemat rajataan, ja tool-output,
 tiedostonimet sekä diffi escapetaan. Tuntematon validi tapahtuma näytetään
 geneerisenä tekstinä; skeematon host-viesti hylätään.
+
+## Palveluiden rajoitukset ja diagnostiikka
+
+Gateway käyttää kiinteää ei-root-UID:tä ilman käyttäjien kotihakemistojen
+pääsyä tai heidän lisäryhmiään. Palvelun vaatimukset ovat `NoNewPrivileges`,
+tyhjä capability-joukko, `ProtectSystem=strict`, `ProtectHome=yes`, yksityiset
+device- ja temp-näkymät, rajatut address family- ja namespace-oikeudet,
+kernel-suojaukset sekä `UMask=0077`. Sallitut resurssit ovat julkaisun staattiset
+tiedostot, rootin hallitsema ei-salainen konfiguraatio, systemd-credentialit,
+palvelun runtime-hakemisto, määritellyt socketit ja todennuksen tarvitsemat
+HTTPS/DNS-yhteydet.
+
+Daemon-palvelu käyttää `User=%i`, `Group=%i`, `NoNewPrivileges`, ei capability-
+tai setuid-korotusta, `KillMode=mixed`, `Restart=on-failure`,
+`ProtectSystem=full` ja `ProtectHome=no`. Sen `HOME`, `USER`, `LOGNAME`,
+`XDG_RUNTIME_DIR` ja PATH asetetaan natiiveille työkaluille. Valinnainen
+käyttäjän 0600-environment-tiedosto saa sisältää vakaita ympäristöarvoja;
+shell-aloitustiedostoja ei suoriteta. Vain määritellyt socket-instanssit aktivoidaan.
+
+Daemonin hallittu sammutus estää uudet kirjoitukset, pyytää omistamiaan Pi-lapsia
+keskeyttämään ja asettumaan, signaloi suoraa prosessiryhmää ja odottaa rajatun
+ajan. Systemd huolehtii palveluun jääneistä prosesseista. Palvelusta irronneen
+työkalun päättymistä ei väitetä ilman natiivia näyttöä.
+
+[Palvelumallit](../systemd/) ovat toteutuksen lähtökohta. Kaikki yllä luetellut
+suojaukset eivät vielä näy nykyisissä malleissa. Niiden puuttuminen ei kumoa
+vaatimusta eikä kerro yksin todellisen asennuksen tilaa;
+[asennus- ja palautumistyö](../issues/prepare-mvp-operations/item.md) todentaa
+mallit ja asennuksen erikseen.
+
+`/healthz` ja `/readyz` palauttavat vain aggregoidun tilan. Tarkka readiness on
+rajatun mode-0660 admin-UDS:n takana. Lokit eivät sisällä cookieita,
+OAuth-koodeja tai tokeneita, CSRF-arvoja, prompteja, mallivastauksia,
+tool-payloadia, tiedostosisältöä, täyttä argv:tä tai natiivien credentialien
+metadataa. Nämä ovat nykyinen tietosuojaraja;
+[logging.md](logging.md) on erillinen ehdotus.
+
+Staattisen frontendin `index.html`-fallback koskee vain tunnettuja UI-reittejä,
+ei API-, event-, auth- tai health-polkuja. CLI:n vaadittu komentopinta ja
+tulostussopimus kuvataan [CONFORMANCE.md:ssä](../CONFORMANCE.md#operator-contract).
 
 ## Versioitu HTTP-pinta
 

@@ -50,24 +50,28 @@ Each server keeps its own account mapping and native files.
 ### Accepted first host stack
 
 [ADR 0003](adr-0003-host-stack.md) selects one Go release artifact for a
-non-root gateway and the per-user daemons. Alder's primary browser path is one
-GitHub OAuth authorization: GitHub's stable numeric user ID maps to one fixed
-Unix account, while the callback token is forwarded once over that authenticated
+non-root gateway and the per-user daemons. The primary browser path is one
+GitHub OAuth authorization: GitHub's stable numeric user ID maps to one Unix
+account, created and verified by the separate broker under
+[ADR 0004](adr-0004-first-login-user-provisioning.md). The callback token is
+forwarded once over the authenticated
 local route so the user's daemon can configure native `gh` HTTPS credentials.
 The gateway never persists, logs or sends that token to the browser. An optional
 Google provider establishes web identity only and is contacted only after the
 user explicitly selects it. The gateway reaches only the mapped account's
-systemd-created Unix socket; Linux peer credentials authenticate it without a
-reusable local token or browser-selected username.
+systemd-created Unix socket. The gateway verifies the trusted filesystem route;
+the daemon authenticates the gateway UID using Linux peer credentials. There is
+no reusable local token or browser-selected username. A gateway-side peer check
+on a systemd-created listener identifies PID 1/root, not the mapped daemon UID.
 
 Each daemon runs as its user's real UID and starts Pi RPC as its own child.
 The browser or SSE connection does not own that process, so browser loss does
-not stop it. A daemon crash or planned daemon restart stops its controlled Pi
-children; after restart the daemon rediscovers native history and permits
-a deliberate resume only after proving that the previous writer exited and the
-history settled. This is deliberately smaller than a second persistent process
-supervisor. Terminal-started Pi remains read-only until the separately agreed
-stop-and-transfer boundary is proved.
+not stop it. On daemon stop or crash, systemd cleans up service processes;
+detached native tools are not claimed stopped without evidence. After restart
+the daemon reads native history and allows deliberate continuation of an ended
+browser conversation only when previous work is known to have ended. Unresolved
+work must not gain another writer. A second persistent supervisor needs a
+separate justification. Terminal-started Pi histories remain read-only.
 
 The artifact includes the static frontend and is installed as an immutable,
 checksum-verified release. Native Agent Host owns generic install,
@@ -118,10 +122,10 @@ workspace without becoming a supported management target.
 Use the harness's own resume ID, prefixed with the harness name: `pi:<id>`,
 `claude-code:<id>` or `codex:<id>`. A running process can exit and a later process
 can resume the same conversation. Its PID is therefore not the agent's identity.
-Pi RPC cannot attach to a currently running terminal TUI. A controlled transfer
-first stops the terminal process safely, waits for native history to settle and
-only then starts another runtime with `pi --mode rpc --session <session>`; this
-valid resume command is not a live-attachment mechanism.
+Pi RPC cannot attach to a currently running terminal TUI. The browser reads
+terminal histories but does not take over their processes. Continuing an ended
+browser conversation uses its native session ID and requires its previous work
+to be known ended.
 
 The daemon reads native histories and combines them with observations from the
 operating system, tmux, Git, Taskfleet and optional extensions. Pi's history keeps

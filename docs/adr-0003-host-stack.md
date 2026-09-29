@@ -10,278 +10,116 @@
 
 ## Context
 
-ADR 0001 requires an authenticated gateway and one daemon under each supported
-Linux user's UID. The gateway must not read user homes. Daemons must use native
-Pi history, Git, `gh`, tmux and Taskfleet under the mapped Unix identity. Browser
-state uses JSON/HTTP and one cursor-based SSE stream. Closing the browser or
-restarting the gateway must not stop Pi; daemon or host loss does stop active
-computation. Ended browser conversations can be deliberately continued from
-native history once their previous work is known to have ended.
-
-The implementation should be easy to inspect and change at the Linux process,
-socket and HTTP boundary. Current packages on Alder are not a language-selection
-criterion: persistent build and runtime prerequisites are established later by
-reviewed release and Fleetrepo contracts.
+A person reaches their native workspaces and Pi conversations through a browser.
+Their agents must keep working when the browser closes, and one person's login
+must never grant access to another person's files or processes. The host needs
+clear Linux process and account boundaries that are straightforward to inspect,
+test and operate.
 
 ## Decision
 
-### One Go codebase and binary
+### One codebase, separate authorities
 
-Implement gateway and daemon in one Go module and ship one statically linked
-`native-agent-host` binary. Pin Go 1.27.1
-for the first scaffold. It was the stable release reported by `go.dev/VERSION`
-on 2026-09-23; its official Linux amd64 archive SHA-256 is
-`63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445`.
-Commit `go.mod` and `go.sum`; dependency updates rerun the complete gate.
+Ship one statically linked Go host binary with separately run gateway and
+per-user daemon roles. Shared code keeps protocol handling, diagnostics and
+release provenance together; separate Unix accounts keep their authority apart.
 
-Use the standard `net/http`, `net`, `os/exec`, `syscall`/`x/sys/unix` and
-`log/slog` boundaries wherever they suffice. Add a small reviewed OIDC/OAuth
-library rather than implementing protocol validation by hand. One codebase keeps
-wire types, redaction, process ownership and release provenance together; two
-runtime roles still run with different UIDs and authority.
+The gateway runs under a fixed non-root UID, authenticates the browser and
+routes requests. It cannot read user homes or run their agents. Each daemon
+runs as its mapped Unix user and performs that user's native work.
+[ADR 0004](adr-0004-first-login-user-provisioning.md) supersedes the original
+pre-existing-account requirement: a separate root-only broker creates and
+verifies the account and binding on first approved login. That authority does
+not move into the gateway.
 
-Go is selected over Rust because this service is dominated by HTTP, OAuth,
-JSON, Unix sockets and supervised child processes, where Go's standard library,
-small explicit interfaces, fast builds and race-tested concurrency make review
-and maintenance simpler. A disposable Go 1.27.1 slice built a CGO-free static
-binary and repeatedly tested `SO_PEERCRED`, mode-0660 Unix sockets and direct
-child/process-group shutdown. This technical and developer-feedback fit outweighs
-whether Go happens to be installed on today's target. The earlier Rust slice in
-`issues/choose-host-stack/result.md` remains truthful historical evidence, not
-the current product recommendation.
+Go's standard HTTP, process and Unix support, fast builds and concurrency tests
+make this service easier to maintain. The Rust probe established feasibility,
+but its added ownership complexity did not improve the chosen boundary.
+A Node host would add a JavaScript dependency tree to the host itself. The
+frontend is shipped as static assets; native Pi still needs its own
+[Node runtime](pi-runtime.md). Toolchain pins belong in the build configuration.
+OAuth/OIDC library choice is implementation judgment; the authentication behavior
+and security properties must be verified whichever implementation is used.
 
-The React client is built separately and its immutable `web/dist/` accompanies
-the binary. Node is build-time only. The gateway returns `index.html` only for
-known UI routes, never for API, event, auth or health paths.
+### Authenticated routing and native GitHub credentials
 
-### One GitHub authorization, two outcomes
+Use HTTP over systemd-created per-user Unix sockets. The gateway selects a route
+from a trusted identity binding, never browser-supplied user or socket fields.
+It verifies the filesystem route; the daemon authenticates the gateway UID using
+kernel peer credentials and checks its own account and binding. On a listener
+created by systemd, the gateway sees PID 1/root as its peer, not the accepting
+daemon UID. That observation alone does not authenticate the target account.
 
-The primary Alder login is **Sign in with GitHub**. One GitHub OAuth App
-Authorization Code grant does both of the following after one consent:
+One GitHub authorization establishes web identity from the stable numeric
+GitHub ID and installs native `gh` HTTPS credentials under the mapped UID.
+The gateway holds the callback token transiently and forwards it once over the
+authenticated local route. It never persists it, logs it or returns it to the
+browser. The daemon independently verifies identity, Git helper behavior and
+the actual credential-storage location. Keyring and protected-file storage must
+be reported honestly; unsafe or unknown storage cannot complete login.
+The broad scopes needed by native `gh` do not authorize arbitrary repository
+mutations by the product.
 
-1. establishes web identity from the authenticated `GET /user` response, keyed
-   by GitHub's stable numeric user `id`, never login or email; and
-2. configures the mapped Unix user's native GitHub CLI HTTPS credential path.
+A partial or uncertain native installation does not create a normal web session.
+A later login reobserves native state rather than replaying a retained token.
+Web sessions and writes are protected by authenticated cookies, exact-origin
+checks and session-bound CSRF. Web logout ends web access while leaving native
+Git credentials available. Explicit native disconnect removes local credentials;
+provider-token revocation is a separate action. Optional Google login establishes
+web identity only and makes no request before explicit user selection.
 
-The authorization request uses exact configured callback URI, unpredictable
-single-use `state`, and PKCE S256 (`code_challenge` and callback-held
-`code_verifier`). The gateway validates state before exchanging the code and
-validates the returned account against a root-owned mapping from
-`(provider=github, numeric_id)` to one existing Unix user. Request the minimum
-classic OAuth scopes required by the supported `gh auth login --with-token`
-path: `repo`, `read:org`, and `gist`. These broad GitHub scopes are the current
-GitHub CLI token contract, not product authorization to mutate arbitrary repos;
-product operations remain target- and confirmation-scoped. No email scope is
-needed for routing.
+Exact authentication, storage and routing requirements are in
+[interfaces](interfaces.md#identiteetti-ja-luottamusrajat).
 
-**Superseded first-login prerequisite (ADR 0004, accepted 2026-09-24):** the requirement above for an already existing Unix user and static startup mapping before GitHub login is replaced by a root-owned, allowlist-gated local provisioning broker. It creates and verifies a new account/binding on the first approved callback, before token handoff. The gateway remains non-root; its remaining token, daemon verification and session rules below still apply. See [ADR 0004](adr-0004-first-login-user-provisioning.md).
+### Native work belongs to the user's daemon
 
-The callback token exists in gateway memory only long enough to call `/user` and
-forward it once over the already authenticated mapped-user UDS connection. The
-handoff also carries the exact numeric GitHub ID just returned by `/user`. It is
-never logged, persisted by the gateway, placed in a cookie, returned to the
-browser, put in argv/environment, or retried from a queue. The daemon accepts the
-one-time handoff only on that callback-bound local request from the verified
-gateway peer and only when its own root-owned user mapping names the same provider
-and numeric GitHub ID. It consumes the token on stdin to:
+The daemon starts Pi RPC directly as its child in the user's workspace. Pi owns
+tool execution, configuration and history; Taskfleet owns its worktree lifecycle.
+Browser conversations have one writer. Terminal histories are read-only, and
+independent clients are not used to control the same conversation simultaneously.
 
-```sh
-gh auth login --hostname github.com --with-token --git-protocol https
-gh auth setup-git --hostname github.com
-```
+Browser or gateway loss leaves Pi running. SSE lets the browser recover an
+up-to-date view without silent gaps. Daemon stop or crash invokes systemd service
+cleanup; it does not promise survival of an active turn. An individually detached
+tool may outlive interruption, and work outside the service cannot be claimed
+stopped without native evidence. Show unresolved sends and termination as
+uncertain, never retry them automatically, and never start another writer into
+unresolved work.
 
-and then zeroes/discards its transient buffer. It verifies `gh auth status`, the
-reported numeric identity through `gh api user`, HTTPS protocol and an ordinary
-credential-helper probe without printing the token. The observed ID must equal
-both the handoff ID and daemon's root-owned mapped ID; mismatch triggers immediate
-local `gh auth logout`, a partial result and no normal web session. The daemon must
-detect and report where `gh` stored authentication. A system credential store is preferred;
-a user-owned, mode-0600 regular `gh` config below a mode-0700 config directory is
-a visible protected-file fallback for a headless host. Symlinks, group/world
-readability, an unknown location or `--insecure-storage` are rejected. Never
-claim OS-keyring storage when `gh` used its documented plaintext fallback.
+After restart, native history remains the source. An ended browser conversation
+can be deliberately continued once its previous work is known to have ended.
+This does not require a per-conversation cgroup or a second persistent supervisor;
+stronger containment needs a concrete reason and a separate decision.
+[Agent control](../issues/build-agent-control/item.md) owns the implementation.
 
-Login is partial until both web session creation and native installation are
-observed. If identity succeeds but native installation fails, create no normal
-product session: show a correlation-safe recovery page and allow a new complete
-authorization; do not retain the token. If native installation succeeds but the
-response is lost, the next login reobserves the exact GitHub numeric identity and
-native `gh` state before deciding whether another install is needed.
+### Restricted services and recoverable releases
 
-An optional configured Google OIDC provider may establish web identity only. It
-makes no discovery or network request before explicit user selection and does
-not configure GitHub credentials. Provider choice is explicit on the login page;
-there is no automatic Google request or fallback. Google mapping uses exact
-issuer and subject.
+Systemd runs the gateway without home access and each daemon with only its user's
+authority. Service restrictions, environment setup and authenticated socket paths
+enforce that separation. Public health is aggregate; detailed readiness is
+restricted. Logs exclude credentials and user content. The
+[service and diagnostic requirements](interfaces.md#palveluiden-rajoitukset-ja-diagnostiikka)
+preserve the detailed protections; the operator CLI follows the
+[AI-first canon](../CONFORMANCE.md).
 
-The opaque server-side web session uses a rotated
-`__Host-agent-host; Secure; HttpOnly; SameSite=Lax; Path=/` cookie, 8-hour idle
-and 24-hour absolute limits. Writes require exact same-origin `Origin` and a
-session-bound CSRF header. Web logout invalidates only the web session and closes
-its SSE connections; native `gh` continuity intentionally remains for agents and
-ordinary Git. A separate explicit **Disconnect GitHub from this Unix account**
-action explains that effect, requires fresh authentication and confirmation,
-runs non-interactively as the mapped user:
+Ship the binary, static frontend and neutral service templates as a
+checksum-verified immutable release. Activation selects it atomically and keeps
+a known-good predecessor for rollback. Native histories, credentials and user
+settings remain outside the release. The product owns portable packaging and
+generic self-hosting guidance; Fleetrepo owns the concrete test installation,
+secrets, ingress and deployment receipts.
+[Installation and recovery](../issues/prepare-mvp-operations/item.md) owns the
+procedures and their verification.
 
-```sh
-gh auth logout --hostname github.com --user <verified-login>
-```
+## Consequences and evidence
 
-then verifies auth absence and reports the still-installed Git helper as inert.
-GitHub CLI documents that logout removes local authentication but does not revoke
-the OAuth token; where revocation is required, the UI links to GitHub's authorized
-application settings and says so rather than claiming revocation. Partial logout
-or helper cleanup is shown as partial, never success.
+The deployment has one host artifact without combining users' authority.
+Native work survives browser loss, while daemon failure requires honest
+reconciliation against native history. GitHub scope breadth and credential
+storage remain visible trade-offs.
 
-### Gateway-to-daemon routing
-
-Use HTTP/1.1 over one systemd-created Unix socket per configured user, mode 0660,
-owned by that user and the fixed gateway group. The gateway selects the path only
-from the immutable identity mapping. Daemons run as the real user and accept only
-the fixed gateway UID from Linux `SO_PEERCRED`; they also verify configured user,
-UID, home, socket instance and the root-owned provider/numeric-account mapping used
-for credential handoff. Browser usernames, headers and socket hints are
-ignored. No reusable local bearer token is added.
-
-The fixed non-root gateway account has no home access or human supplementary
-groups. Apply `NoNewPrivileges`, empty capabilities, `ProtectSystem=strict`,
-`ProtectHome=yes`, private devices/temp, restricted address families, namespace
-and kernel protections, and `UMask=0077`. It can access only release assets,
-root-owned non-secret config, systemd credentials, its runtime directory, the
-configured sockets and outbound GitHub/optional-Google HTTPS/DNS.
-
-Daemon template services use `User=%i`, `Group=%i`, no capability or setuid path,
-`KillMode=mixed`, `Restart=on-failure`, `ProtectSystem=full` and
-`ProtectHome=no`. Set `HOME`, `USER`, `LOGNAME`, `XDG_RUNTIME_DIR` and an explicit
-PATH. A mode-0600 user environment file may supply stable native-tool variables;
-never source shell text. Only configured socket instances are enabled.
-
-### Direct Pi child ownership
-
-The daemon starts Pi RPC directly under its UID and workspace cwd, consumes
-strict JSONL, and stores no parallel history. It owns the browser conversation's
-controller and direct Pi child. Browser conversations have one writer; the test
-system is operated so that SSH/tmux and independent clients do not also control
-the same conversation. Prior terminal histories remain read-only. Terminal
-takeover, cross-process writer coordination and scanning tmux or Taskfleet for
-competing writers are not prerequisites for this first version.
-
-This scope reflects Jari's 2026-09-28 single-writer decision and his 2026-09-29
-clarification in [build-agent-control](../issues/build-agent-control/item.md):
-SSE updates and continuing ended browser conversations remain required.
-
-Browser and gateway loss leave the daemon and Pi child running. On graceful
-daemon stop, reject new writes, ask owned Pi children to abort/settle, signal the
-direct process group, wait a bounded period, and let systemd clean up remaining
-service processes. An individually detached native tool may outlive a controller
-cancel or process-group signal: interruption is best effort, never confirmed
-stopped until native state is reconciled. Systemd service-level cleanup applies
-to daemon stop/crash, not to one controller cancellation; a detached tool that
-escapes service membership cannot be claimed stopped without native evidence.
-On restart, rediscover native history and distinguish readable history from
-available control. Continue an ended browser conversation only when its previous
-work is known to have ended; unresolved work must not gain another writer.
-Uncertain commands are never retried automatically. No per-controller delegated
-cgroup is a v1 prerequisite.
-Do not add a persistent sidecar supervisor without a new measured decision.
-Taskfleet alone creates and tears down its worktrees.
-
-### AI-first operator CLI and diagnostics
-
-The Go binary follows AI-first CLI canon v4. Inputs are strict; operation is
-non-interactive and never TTY-shaped. The global `--json` works everywhere;
-structured stdout and stderr envelopes carry schema versions; `--verbose` adds
-redacted JSONL diagnostics to stderr. Errors use actionable/system exit 1/2 and
-signals 130/143. Config and data roots report their source; mutation dry-runs are
-truthful or return `dry_run_unsupported`; long work uses JSONL events.
-
-Initial public surface:
-
-```text
-native-agent-host version --json
-native-agent-host config path --component gateway|daemon --json
-native-agent-host config show --component gateway|daemon --json
-native-agent-host doctor --component gateway|daemon --json
-native-agent-host gateway exec --config <path> --verbose
-native-agent-host daemon exec --config <path> --verbose
-native-agent-host admin readiness show --json
-native-agent-host maintenance enter --idempotency-key <key> --dry-run --json
-native-agent-host maintenance leave --idempotency-key <key> --dry-run --json
-native-agent-host skill list --json
-native-agent-host skill print operator --json
-native-agent-host skill install operator --agent claude|pi|codex|all --dry-run
-```
-
-`gateway exec` and `daemon exec` are systemd entry points. Version output has
-real build provenance or explicit null plus provenance object, never `unknown`.
-Public `/healthz` and `/readyz` are aggregate only. Detailed readiness uses a
-mode-0660 admin UDS. Logs exclude cookies, OAuth codes/tokens, CSRF, prompts,
-responses, tool payloads, file content, full argv and native credential metadata.
-
-### Packaging and ownership
-
-CI emits a checksum-verified CGO-free Linux amd64 binary plus frontend assets,
-service/socket templates, sysusers/tmpfiles declarations, defaults, licenses and
-manifest. Immutable releases live below `/opt/native-agent-host/releases/`, with
-an atomic `current` selector and one known-good predecessor. Mutable host mapping
-and provider configuration live under `/etc/native-agent-host`; user annotation
-and native credentials remain under the user.
-
-Native Agent Host owns generic installation, configuration, test-environment,
-update, rollback, live-version, diagnostics and operator documentation for any
-self-hosted deployment. Fleetrepo owns only Jari's concrete Alder users, packages,
-release pin, units/sockets, mappings, encrypted provider input, Tailscale route
-and convergence. During MVP, `prepare-mvp-operations` coordinates a separate
-reviewed Fleetrepo issue/worktree and records its commit and checks; this repo
-never edits Fleetrepo as a hidden side effect.
-
-When 0.1 is ready to publish, the conductor must file (not before then) a repo
-issue to remove Alder-specific references from Git HEAD while retaining generic
-self-hosting guidance and issue-local historical evidence.
-
-### Verification boundary
-
-Before Alder, a disposable systemd VM proves two synthetic UIDs, cross-user
-denials, real socket activation/peer credentials, gateway home denial, OAuth
-fixtures, direct-child restart behavior, SSE/ledger limits, update and rollback.
-GitHub behavior uses deterministic fixtures plus **one** authorized private
-disposable-repository smoke during the GitHub feature acceptance: create, exact
-origin, ordinary HTTPS push, clone/pull and verified delete, with screenshots.
-There is no separate broad two-user GitHub permission campaign. GitHub and `gh`
-own ordinary permission semantics; the product proves safe targets, correct Unix
-identity, staged truth and token secrecy. Cross-user security tests remain
-mandatory and credential-free.
-
-## Consequences
-
-The result is one fast-building static host artifact with an explicit
-least-privilege split and direct child ownership. Go's GC and runtime must be
-measured under long histories and concurrent agents. OAuth scope breadth and
-headless `gh` storage must be shown honestly. Active turns survive browser and
-gateway loss, not daemon or host loss. Pi JSONL remains the history authority
-after a crash. Browser control passes through authenticated, CSRF-protected
-gateway routes to the mapped daemon. An uncertain send or stop remains uncertain
-until reconciled against native state and is never retried automatically.
-SSE updates and deliberate continuation of ended browser conversations are
-implementation requirements under [build-agent-control](../issues/build-agent-control/item.md).
-
-## Rejected alternatives
-
-- **Rust gateway and daemon:** the previous probe proved feasibility, but Rust's
-  ownership complexity and slower feedback do not improve this service's
-  reviewed boundary enough to justify it. Its historical evidence is retained.
-- **Node host:** shares frontend syntax but adds a production JS runtime/package
-  tree and a less direct Unix/process edge.
-- **Split languages/root gateway/shared TCP tokens/containers/persistent Pi
-  sidecar:** each adds authority, release or protocol boundaries without an
-  accepted requirement.
-
-## Evidence and remaining proof
-
-The corrected evidence, primary links, exact commands and disposable Go slice
-are in [`../issues/apply-review-corrections/result.md`](../issues/apply-review-corrections/result.md).
-Implementation must still prove real GitHub OAuth/PKCE behavior, actual supported
-`gh` version/storage on the target, two-UID systemd routing, production
-backpressure, Pi shutdown settlement, release lifecycle and Alder pilot. These
-are implementation gates under this accepted decision, not evidence that a
-production service already exists.
+The [Go experiment and original review evidence](../issues/apply-review-corrections/result.md)
+support the stack choice. Cross-user denial, authenticated credential handoff,
+native process behavior and release recovery must be demonstrated by the
+implementing issues. Synthetic, systemd-guest and live-host evidence have
+different reach; this decision is not a claim that every requirement is implemented.
