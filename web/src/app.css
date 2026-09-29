@@ -1,5 +1,22 @@
 @import "./components/components.css";
 
+.ah-conversation-actions {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.ah-identity-check {
+  position: fixed;
+  z-index: 10;
+  top: var(--ah-s6);
+  left: var(--ah-s6);
+  padding: var(--ah-s3) var(--ah-s4);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-sm);
+}
+
 .ah-demo-banner {
   padding: var(--ah-s2) var(--ah-s6);
   background: var(--ah-surface);

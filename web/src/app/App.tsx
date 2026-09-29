@@ -3,6 +3,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -26,7 +27,7 @@ import {
 } from "./BrowserConversation";
 import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
-import { piStatus } from "./pi";
+import { piStatus, sessionCSRF } from "./pi";
 import { readSnapshot, sourceState, type Workspace } from "./snapshot";
 import {
   authenticated,
@@ -122,13 +123,38 @@ export function App() {
     (s: RootState) => s.connection,
   );
   const [refreshKey, setRefreshKey] = useState(0);
+  const [verifying, setVerifying] = useState(false);
+  const [identityEpoch, setIdentityEpoch] = useState(0);
+  const sessionBinding = useRef<string | undefined>(undefined);
+  const loginGeneration = useRef(0);
+  const editorPlace = useRef<
+    { editor: HTMLTextAreaElement; start: number; end: number } | undefined
+  >(undefined);
+  const captureEditor = useCallback(() => {
+    const editor = document.activeElement;
+    if (editor instanceof HTMLTextAreaElement)
+      editorPlace.current = {
+        editor,
+        start: editor.selectionStart,
+        end: editor.selectionEnd,
+      };
+  }, []);
+  useLayoutEffect(() => {
+    if (verifying || !editorPlace.current) return;
+    const { editor, start, end } = editorPlace.current;
+    editorPlace.current = undefined;
+    if (editor.isConnected && !editor.disabled) {
+      editor.focus({ preventScroll: true });
+      editor.setSelectionRange(start, end);
+    }
+  }, [verifying]);
   const [collapsed, setCollapsed] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [logoutError, setLogoutError] = useState(false);
   const [settingsReturn, setSettingsReturn] = useState("/workspaces");
   const returningFromSettings = useRef(false);
-  // Memory-only reading place. The authenticated snapshot is still removed during
-  // revalidation; only the same browser login may restore this ephemeral UI state.
+  // Memory-only reading place. Revalidation masks the mounted view; a changed
+  // login or a failed check drops both the snapshot and ephemeral UI state.
   const conversationPlace = useRef<ConversationPlace | undefined>(undefined);
   useEffect(() => {
     if (location.pathname !== "/settings" && returningFromSettings.current) {
@@ -167,43 +193,90 @@ export function App() {
     import.meta.env.VITE_ENABLE_TEST_FIXTURES === "true"
       ? new URLSearchParams(location.search).get("fixture")
       : null;
-  const refresh = useCallback(() => setRefreshKey((n) => n + 1), []);
+  const refresh = useCallback(() => {
+    captureEditor();
+    setVerifying(true);
+    setRefreshKey((n) => n + 1);
+  }, [captureEditor]);
   const requireLogin = useCallback(
     () => dispatch(authenticationRequired()),
     [dispatch],
   );
-  // Revalidate when the browser returns to this tab, not on a timer while the
-  // person is using it. Native reads and writes remain gated by the server.
-  // Invalidate the old snapshot before revalidation so a changed cookie cannot
-  // briefly display another identity's workspaces.
+  // A click in an already foreground window is not a return to the tab.
+  // Mask identity-scoped DOM on a real return until the cookie and snapshot
+  // have both been verified. Keep it mounted to preserve the editor and scroll.
   useEffect(() => {
     if (syntheticDemo || fixtureName || phase !== "authenticated") return;
-    const revalidate = () => {
-      dispatch(loading());
-      refresh();
+    // The first authenticated render may happen in a background tab; there
+    // need not have been a blur event for this listener to observe.
+    let away = document.visibilityState === "hidden" || !document.hasFocus();
+    const blur = () => {
+      captureEditor();
+      away = true;
     };
-    window.addEventListener("focus", revalidate);
-    return () => window.removeEventListener("focus", revalidate);
-  }, [dispatch, refresh, fixtureName, phase]);
+    const visibility = () => {
+      if (document.visibilityState === "hidden") away = true;
+      else if (away) {
+        away = false;
+        refresh();
+      }
+    };
+    const focus = () => {
+      if (document.visibilityState === "visible" && away) {
+        away = false;
+        refresh();
+      }
+    };
+    window.addEventListener("blur", blur);
+    window.addEventListener("focus", focus);
+    document.addEventListener("visibilitychange", visibility);
+    return () => {
+      window.removeEventListener("blur", blur);
+      window.removeEventListener("focus", focus);
+      document.removeEventListener("visibilitychange", visibility);
+    };
+  }, [refresh, captureEditor, fixtureName, phase]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is the explicit refresh trigger, not read inside the effect.
   useEffect(() => {
     if (fixtureName?.startsWith("design") && CatalogPreview) return;
     const controller = new AbortController();
-    dispatch(loading());
+    // A pending endpoint must not leave the identity mask up forever.
+    const timeout = window.setTimeout(() => controller.abort(), 10000);
+    let active = true;
+    const generation = loginGeneration.current;
+    if (!snapshot) dispatch(loading());
+    const fail = (gate: "login" | "pi" | "unavailable") => {
+      if (!active || generation !== loginGeneration.current) return;
+      sessionBinding.current = undefined;
+      if (gate === "login") dispatch(authenticationRequired());
+      else if (gate === "pi") dispatch(piRequired());
+      else dispatch(unavailable());
+      editorPlace.current = undefined;
+      setVerifying(false);
+    };
     const load = async () => {
       try {
         if (!syntheticDemo) {
           const status = await piStatus(controller.signal);
-          if (controller.signal.aborted) return;
-          if (status === "login") {
-            dispatch(authenticationRequired());
+          if (
+            !active ||
+            controller.signal.aborted ||
+            generation !== loginGeneration.current
+          )
             return;
-          }
-          if (status !== "usable") {
-            dispatch(piRequired());
-            return;
-          }
+          if (status === "login") return fail("login");
+          if (status !== "usable") return fail("pi");
         }
+        const token = syntheticDemo
+          ? undefined
+          : await sessionCSRF(controller.signal);
+        if (
+          !active ||
+          controller.signal.aborted ||
+          generation !== loginGeneration.current
+        )
+          return;
+        if (token === "login") return fail("login");
         const response = await fetch(
           syntheticDemo
             ? `/api/v1/snapshot?scenario=${new URLSearchParams(location.search).get("scenario") ?? "ready"}`
@@ -214,14 +287,8 @@ export function App() {
             signal: controller.signal,
           },
         );
-        if (response.status === 428) {
-          if (!controller.signal.aborted) dispatch(piRequired());
-          return;
-        }
-        if (response.status === 401) {
-          if (!controller.signal.aborted) dispatch(authenticationRequired());
-          return;
-        }
+        if (response.status === 428) return fail("pi");
+        if (response.status === 401) return fail("login");
         if (
           !response.ok ||
           response.headers.get("content-type")?.split(";")[0] !==
@@ -229,14 +296,39 @@ export function App() {
         )
           throw new Error("unavailable");
         const next = await readSnapshot(response);
-        if (!controller.signal.aborted) dispatch(authenticated(next));
+        if (
+          !active ||
+          controller.signal.aborted ||
+          generation !== loginGeneration.current
+        )
+          return;
+        if (
+          snapshot &&
+          (snapshot.identity.web_identity_id !==
+            next.identity.web_identity_id ||
+            sessionBinding.current !== token)
+        ) {
+          for (const key of Object.keys(sessionStorage))
+            if (key.startsWith("nah:")) sessionStorage.removeItem(key);
+          conversationPlace.current = undefined;
+          editorPlace.current = undefined;
+          // A new cookie, even for the same subject, must remount local state.
+          setIdentityEpoch((n) => n + 1);
+        }
+        sessionBinding.current = token;
+        dispatch(authenticated(next));
+        setVerifying(false);
       } catch {
-        if (!controller.signal.aborted) dispatch(unavailable());
+        fail("unavailable");
       }
     };
     void load();
-    return () => controller.abort();
-  }, [dispatch, refreshKey, fixtureName, location.search, syntheticDemo]);
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [dispatch, refreshKey, fixtureName, syntheticDemo]);
   const logout = async () => {
     setLogoutError(false);
     setSettingsReturn("/workspaces");
@@ -249,6 +341,9 @@ export function App() {
     for (const key of Object.keys(sessionStorage))
       if (key.startsWith(`nah:`)) sessionStorage.removeItem(key);
     conversationPlace.current = undefined;
+    editorPlace.current = undefined;
+    loginGeneration.current++;
+    sessionBinding.current = undefined;
     dispatch(clearIdentity());
     navigate("/workspaces", { replace: true });
     try {
@@ -489,113 +584,137 @@ export function App() {
       </Suspense>
     );
   return (
-    <AppShell
-      connection={
-        <>
-          {syntheticDemo ? (
-            <div className="ah-demo-banner" role="status">
-              SYNTEETTINEN DEMO · Simuloitu identiteetti ja workspace-data · Ei
-              oikeaa kirjautumista, agentteja eikä host-yhteyttä
-            </div>
-          ) : null}
-          {phase === "authentication_required" ||
-          phase === "pi_required" ? null : (
-            <ConnectionBanner
-              state={
-                phase === "authenticated"
-                  ? "online"
-                  : phase === "daemon_unavailable"
-                    ? "daemon-unavailable"
-                    : "loading"
-              }
-              hostWriteState={
-                snapshot?.write_state === "read_only" ? "read_only" : "writable"
-              }
-            />
-          )}
-        </>
-      }
-      rail={
-        phase === "authenticated" && snapshot ? (
-          <WorkspaceRail
-            collapsed={collapsed}
-            serverLabel={window.location.host}
-            connectionLabel={
-              source === "confirmed" ? "Yhdistetty" : "Lähde osittainen"
-            }
-            connectionTone={source === "confirmed" ? "success" : "warning"}
-            sessionActions={
-              <AccountShelf
-                name={accountLabel(snapshot.identity.display_name)}
-                onSettings={openSettings}
-                onLogout={logout}
-              />
-            }
-            filterValue={filter}
-            resultSummary={`${matches.length} ${source === "confirmed" ? "workspacea" : "havaittua workspacea · määrä voi olla puutteellinen"}`}
-            summaryAction={
-              <NavLink
-                label="Kaikki workspacet"
-                href="/workspaces"
-                current={location.pathname === "/workspaces" ? "page" : false}
-              />
-            }
-            listState={railState}
-            onToggle={() => setCollapsed(!collapsed)}
-            onFilter={(v) => dispatch(filterChanged(v))}
-            onRefresh={refresh}
-            onCreate={() => {}}
-            createAvailability={{
-              state: "read_only",
-              reason: "Tämä näkymä on vain luku -tilassa.",
-            }}
-          >
-            {matches.map((w) => (
-              <WorkspaceSection
-                key={w.workspace_id}
-                workspaceId={w.workspace_id}
-                name={w.display_name ?? w.name}
-                href={`/workspaces/${w.workspace_id}`}
-                expanded={expanded[w.workspace_id] ?? false}
-                selected={selectedId === w.workspace_id}
-                summary={`${w.kind === "git_main_worktree" ? "Git" : "Hakemisto"} · ${sourceLabel(w.facts.find((f) => f.source === "filesystem")?.state ?? "unknown")}`}
-                mutationState={
-                  snapshot.write_state === "read_only"
-                    ? undefined
-                    : w.mutation_state === "read_only"
-                      ? "Vain luku"
-                      : undefined
-                }
-                agents={snapshot.agents
-                  .filter((a) => a.workspace_id === w.workspace_id)
-                  .map((a) => ({
-                    agentId: a.agent_id,
-                    href: `/agents/${a.agent_id}`,
-                    title: a.title.display,
-                    activityLabel: "Prosessi ei tiedossa",
-                    controlLabel: "Vain luku",
-                    selected: a.agent_id === selectedAgentId,
-                  }))}
-                onToggle={() =>
-                  setExpanded({
-                    ...expanded,
-                    [w.workspace_id]: !(expanded[w.workspace_id] ?? false),
-                  })
-                }
-              />
-            ))}
-          </WorkspaceRail>
-        ) : undefined
-      }
-      main={
-        <div
-          className={
-            phase === "authentication_required" ? "ah-login-view" : "ah-state"
+    <>
+      {verifying && snapshot ? (
+        <p role="status" className="ah-identity-check">
+          Varmistetaan istuntoa…
+        </p>
+      ) : null}
+      <div
+        key={identityEpoch}
+        style={
+          verifying && snapshot
+            ? { visibility: "hidden", pointerEvents: "none" }
+            : undefined
+        }
+        aria-hidden={verifying && snapshot ? true : undefined}
+        inert={verifying && snapshot ? true : undefined}
+      >
+        <AppShell
+          connection={
+            <>
+              {syntheticDemo ? (
+                <div className="ah-demo-banner" role="status">
+                  SYNTEETTINEN DEMO · Simuloitu identiteetti ja workspace-data ·
+                  Ei oikeaa kirjautumista, agentteja eikä host-yhteyttä
+                </div>
+              ) : null}
+              {phase === "authentication_required" ||
+              phase === "pi_required" ? null : (
+                <ConnectionBanner
+                  state={
+                    phase === "authenticated"
+                      ? "online"
+                      : phase === "daemon_unavailable"
+                        ? "daemon-unavailable"
+                        : "loading"
+                  }
+                  hostWriteState={
+                    snapshot?.write_state === "read_only"
+                      ? "read_only"
+                      : "writable"
+                  }
+                />
+              )}
+            </>
           }
-        >
-          {main}
-        </div>
-      }
-    />
+          rail={
+            phase === "authenticated" && snapshot ? (
+              <WorkspaceRail
+                collapsed={collapsed}
+                serverLabel={window.location.host}
+                connectionLabel={
+                  source === "confirmed" ? "Yhdistetty" : "Lähde osittainen"
+                }
+                connectionTone={source === "confirmed" ? "success" : "warning"}
+                sessionActions={
+                  <AccountShelf
+                    name={accountLabel(snapshot.identity.display_name)}
+                    onSettings={openSettings}
+                    onLogout={logout}
+                  />
+                }
+                filterValue={filter}
+                resultSummary={`${matches.length} ${source === "confirmed" ? "workspacea" : "havaittua workspacea · määrä voi olla puutteellinen"}`}
+                summaryAction={
+                  <NavLink
+                    label="Kaikki workspacet"
+                    href="/workspaces"
+                    current={
+                      location.pathname === "/workspaces" ? "page" : false
+                    }
+                  />
+                }
+                listState={railState}
+                onToggle={() => setCollapsed(!collapsed)}
+                onFilter={(v) => dispatch(filterChanged(v))}
+                onRefresh={refresh}
+                onCreate={() => {}}
+                createAvailability={{
+                  state: "read_only",
+                  reason: "Tämä näkymä on vain luku -tilassa.",
+                }}
+              >
+                {matches.map((w) => (
+                  <WorkspaceSection
+                    key={w.workspace_id}
+                    workspaceId={w.workspace_id}
+                    name={w.display_name ?? w.name}
+                    href={`/workspaces/${w.workspace_id}`}
+                    expanded={expanded[w.workspace_id] ?? false}
+                    selected={selectedId === w.workspace_id}
+                    summary={`${w.kind === "git_main_worktree" ? "Git" : "Hakemisto"} · ${sourceLabel(w.facts.find((f) => f.source === "filesystem")?.state ?? "unknown")}`}
+                    mutationState={
+                      snapshot.write_state === "read_only"
+                        ? undefined
+                        : w.mutation_state === "read_only"
+                          ? "Vain luku"
+                          : undefined
+                    }
+                    agents={snapshot.agents
+                      .filter((a) => a.workspace_id === w.workspace_id)
+                      .map((a) => ({
+                        agentId: a.agent_id,
+                        href: `/agents/${a.agent_id}`,
+                        title: a.title.display,
+                        activityLabel: "Prosessi ei tiedossa",
+                        controlLabel: "Vain luku",
+                        selected: a.agent_id === selectedAgentId,
+                      }))}
+                    onToggle={() =>
+                      setExpanded({
+                        ...expanded,
+                        [w.workspace_id]: !(expanded[w.workspace_id] ?? false),
+                      })
+                    }
+                  />
+                ))}
+              </WorkspaceRail>
+            ) : undefined
+          }
+          main={
+            <div
+              className={
+                phase === "authentication_required"
+                  ? "ah-login-view"
+                  : "ah-state"
+              }
+            >
+              {main}
+            </div>
+          }
+        />
+      </div>
+    </>
   );
 }

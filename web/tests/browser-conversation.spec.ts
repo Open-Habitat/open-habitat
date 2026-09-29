@@ -77,6 +77,7 @@ test("@browser-conversation ordinary session loading is not an uncertain create"
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
+  await expect(page.getByRole("link", { name: "ordinary-dir" })).toBeVisible();
   let release!: () => void;
   const held = new Promise<void>((resolve) => {
     release = resolve;
@@ -247,7 +248,10 @@ test("@browser-conversation revalidation restores editor selection, paged readin
   await expect(page.getByRole("heading", { name: "Ladataan" })).toHaveCount(0);
   // Coming back to the tab still revalidates identity before restoring the view.
   tail = 1;
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("blur"));
+    window.dispatchEvent(new Event("focus"));
+  });
   await expect.poll(() => snapshotReads).toBeGreaterThan(0);
   await expect(page.locator(".ah-feed li")).toHaveCount(50);
   await expect(
@@ -311,4 +315,269 @@ test("@browser-conversation malformed host status fails closed without rendering
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toHaveCount(0);
   await expect(page.locator("main script")).toHaveCount(0);
+});
+
+test("@browser-conversation foreground clicks and route changes do not revalidate", async ({
+  page,
+}) => {
+  await open(page);
+  let checks = 0;
+  page.on("request", (r) => {
+    if (r.url().includes("/onboarding/pi/status")) checks++;
+  });
+  await page.getByRole("button", { name: "Tilivalikko" }).click();
+  await page.getByRole("menuitem", { name: "Asetukset" }).click();
+  await expect(page.getByRole("heading", { name: "Asetukset" })).toBeVisible();
+  await page.getByRole("button", { name: "Takaisin" }).click();
+  await page.getByRole("button", { name: "Tarkista keskustelulista" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Pi-keskustelut" }),
+  ).toBeVisible();
+  expect(checks).toBe(0);
+  await expect(
+    page.getByRole("group", { name: "Pi-keskustelun toiminnot" }),
+  ).toBeVisible();
+  await page.setViewportSize({ width: 750, height: 720 });
+  const first = await page
+    .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+    .boundingBox();
+  const second = await page
+    .getByRole("button", { name: "Tarkista keskustelulista" })
+    .boundingBox();
+  if (!first || !second) throw new Error("actions missing");
+  expect(second.y > first.y || second.x - first.x - first.width > 8).toBe(true);
+  await page.screenshot({
+    path: "test-results/evidence/conversation-actions-compact.png",
+  });
+});
+
+test("@browser-conversation slow tab return masks old facts without unmounting and recovers", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await expect(editor).toBeVisible();
+  await editor.fill("unfinished synthetic draft");
+  await editor.focus();
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let started!: () => void;
+  const requested = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  await page.route("**/api/v1/onboarding/pi/status", async (route) => {
+    started();
+    await held;
+    await route.continue().catch(() => {});
+  });
+  try {
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event("blur"));
+      window.dispatchEvent(new Event("focus"));
+    });
+    await requested;
+    await expect(page.getByText("Varmistetaan istuntoa…")).toBeVisible();
+    await expect(editor).toBeHidden();
+    expect(await page.locator("textarea").count()).toBe(1); // mounted but inert and hidden
+    release();
+    await expect(editor).toBeVisible();
+    await expect(editor).toHaveValue("unfinished synthetic draft");
+    await expect(editor).toBeFocused();
+    await expect(page.getByRole("heading", { name: "Ladataan" })).toHaveCount(
+      0,
+    );
+  } finally {
+    release();
+  }
+});
+
+test("@browser-conversation stalled and failed revalidation never reveals old identity", async ({
+  page,
+}) => {
+  await page.clock.install();
+  await open(page);
+  let started!: () => void;
+  const requested = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  await page.route("**/api/v1/onboarding/pi/status", async (route) => {
+    started();
+    await new Promise<void>(() => {});
+    await route.continue().catch(() => {});
+  });
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("blur"));
+    window.dispatchEvent(new Event("focus"));
+  });
+  await requested;
+  await expect(
+    page.getByRole("heading", { name: "ordinary-dir" }),
+  ).toBeHidden();
+  await page.clock.fastForward(10_001);
+  await expect(
+    page.getByRole("heading", { name: "Yhteyttä ei saatu" }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "ordinary-dir" })).toHaveCount(
+    0,
+  );
+});
+
+test("@browser-conversation reauth on tab return drops old identity", async ({
+  page,
+}) => {
+  await open(page);
+  await page.request.get("/fixture/expire");
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("blur"));
+    window.dispatchEvent(new Event("focus"));
+  });
+  await expect(
+    page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "ordinary-dir" })).toHaveCount(
+    0,
+  );
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Bob" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Kohdetta ei enää löydy" }),
+  ).toBeVisible();
+  expect(
+    (await (await page.request.get("/api/v1/snapshot")).json()).auth
+      .provider_account_id,
+  ).toBe("43");
+  await expect(
+    page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+  ).toHaveCount(0);
+});
+
+test("@browser-conversation failed pre-write verification does not claim ambiguous create", async ({
+  page,
+}) => {
+  await open(page);
+  await page.route("**/auth/session", (route) =>
+    route.fulfill({ status: 503, body: "unavailable" }),
+  );
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(
+    page.getByText("Istuntoa ei voitu vahvistaa. Luontia ei lähetetty."),
+  ).toBeVisible();
+  await expect(page.getByText("Aiemman pyynnön tulos epävarma")).toHaveCount(0);
+});
+
+test("@browser-conversation new subject during pending tab check never restores old workspace", async ({
+  page,
+  context,
+}) => {
+  await open(page);
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let started!: () => void;
+  const requested = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  await page.route("**/api/v1/onboarding/pi/status", async (route) => {
+    started();
+    await held;
+    await route.continue().catch(() => {});
+  });
+  const other = await context.newPage();
+  try {
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event("blur"));
+      window.dispatchEvent(new Event("focus"));
+    });
+    await requested;
+    await expect(
+      page.getByRole("heading", { name: "ordinary-dir" }),
+    ).toBeHidden();
+    await other.goto("/workspaces");
+    await other.getByRole("button", { name: "Tilivalikko" }).click();
+    await other.getByRole("menuitem", { name: "Kirjaudu ulos" }).click();
+    await other.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+    await other.getByRole("link", { name: "Bob" }).click();
+    release();
+    await expect(
+      page.getByRole("heading", { name: "Kohdetta ei enää löydy" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "ordinary-dir" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+    ).toHaveCount(0);
+  } finally {
+    release();
+    await other.close();
+  }
+});
+
+test("@browser-conversation failed snapshot after tab return clears authenticated facts", async ({
+  page,
+}) => {
+  await open(page);
+  await page.route("**/api/v1/snapshot", (route) =>
+    route.fulfill({ status: 503, body: "unavailable" }),
+  );
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("blur"));
+    window.dispatchEvent(new Event("focus"));
+  });
+  await expect(
+    page.getByRole("heading", { name: "Yhteyttä ei saatu" }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "ordinary-dir" })).toHaveCount(
+    0,
+  );
+});
+
+test("@browser-conversation first reveal of background authenticated tab validates changed subject", async ({
+  page,
+  context,
+}) => {
+  await page.addInitScript(() => {
+    let visible = false;
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => (visible ? "visible" : "hidden"),
+    });
+    Object.defineProperty(document, "hasFocus", {
+      configurable: true,
+      value: () => visible,
+    });
+    Object.defineProperty(window, "revealFixtureTab", {
+      value: () => {
+        visible = true;
+        document.dispatchEvent(new Event("visibilitychange"));
+        window.dispatchEvent(new Event("focus"));
+      },
+    });
+  });
+  await open(page);
+  const other = await context.newPage();
+  try {
+    await other.goto("/workspaces");
+    await other.getByRole("button", { name: "Tilivalikko" }).click();
+    await other.getByRole("menuitem", { name: "Kirjaudu ulos" }).click();
+    await other.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+    await other.getByRole("link", { name: "Bob" }).click();
+    await page.evaluate(() =>
+      (
+        window as unknown as { revealFixtureTab: () => void }
+      ).revealFixtureTab(),
+    );
+    await expect(
+      page.getByRole("heading", { name: "Kohdetta ei enää löydy" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "ordinary-dir" }),
+    ).toHaveCount(0);
+  } finally {
+    await other.close();
+  }
 });

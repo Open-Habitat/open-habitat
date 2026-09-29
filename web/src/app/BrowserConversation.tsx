@@ -306,11 +306,12 @@ export function BrowserConversation({
   const start = async () => {
     if (busy || !csrf || ambiguous) return;
     setBusy(true);
-    setReceipt("Luodaan · tulos odottaa");
-    sessionStorage.setItem(ambiguousKey, "create");
+    setReceipt("Varmistetaan istuntoa.");
     try {
       const token = await verify();
       if (!alive.current) return;
+      sessionStorage.setItem(ambiguousKey, "create");
+      setReceipt("Luodaan · tulos odottaa");
       const result = await create(workspace.workspace_id, token);
       sessionStorage.removeItem(ambiguousKey);
       if (!alive.current) return;
@@ -321,7 +322,9 @@ export function BrowserConversation({
     } catch {
       if (alive.current) {
         setReceipt(
-          "Luonnin tulos epävarma. Älä luo uudelleen tässä istunnossa. Tarkista lista ja natiivi historia.",
+          sessionStorage.getItem(ambiguousKey)
+            ? "Luonnin tulos epävarma. Älä luo uudelleen tässä istunnossa. Tarkista lista ja natiivi historia."
+            : "Istuntoa ei voitu vahvistaa. Luontia ei lähetetty.",
         );
       }
     } finally {
@@ -341,11 +344,12 @@ export function BrowserConversation({
     const text = draft;
     const command = crypto.randomUUID();
     setBusy(true);
-    setReceipt("Viesti odottaa kuittausta");
-    sessionStorage.setItem(ambiguousKey, command);
+    setReceipt("Varmistetaan istuntoa.");
     try {
       const token = await verify();
       if (!alive.current) return;
+      sessionStorage.setItem(ambiguousKey, command);
+      setReceipt("Viesti odottaa kuittausta");
       await send(current.agent_id, text, command, token);
       if (!alive.current) return;
       setReceipt("Viesti odottaa natiivia hyväksyntää");
@@ -354,7 +358,9 @@ export function BrowserConversation({
     } catch {
       if (alive.current)
         setReceipt(
-          "Lähetyksen tulos epävarma. Viestiä ei lähetetä automaattisesti uudelleen. Tarkista tila ja natiivi historia.",
+          sessionStorage.getItem(ambiguousKey)
+            ? "Lähetyksen tulos epävarma. Viestiä ei lähetetä automaattisesti uudelleen. Tarkista tila ja natiivi historia."
+            : "Istuntoa ei voitu vahvistaa. Viestiä ei lähetetty.",
         );
     } finally {
       if (alive.current) setBusy(false);
@@ -363,10 +369,13 @@ export function BrowserConversation({
   const stopNow = async () => {
     if (busy || !current || !csrf) return;
     setBusy(true);
-    setReceipt("Pysäytystä pyydetään");
+    setReceipt("Varmistetaan istuntoa.");
+    let sent = false;
     try {
       const token = await verify();
       if (!alive.current) return;
+      sent = true;
+      setReceipt("Pysäytystä pyydetään");
       await stop(current.agent_id, token);
       if (alive.current)
         setReceipt(
@@ -375,7 +384,9 @@ export function BrowserConversation({
     } catch {
       if (alive.current)
         setReceipt(
-          "Pysäytyksen tulos epävarma. Työkaluja voi yhä olla käynnissä.",
+          sent
+            ? "Pysäytyksen tulos epävarma. Työkaluja voi yhä olla käynnissä."
+            : "Istuntoa ei voitu vahvistaa. Pysäytystä ei pyydetty.",
         );
     } finally {
       if (alive.current) setBusy(false);
@@ -422,7 +433,10 @@ export function BrowserConversation({
       {!id ? (
         <>
           <h2>Pi-keskustelut</h2>
-          <div className="ah-actions">
+          <fieldset className="ah-actions ah-conversation-actions">
+            <legend className="ah-visually-hidden">
+              Pi-keskustelun toiminnot
+            </legend>
             <Button
               label="Aloita uusi Pi-keskustelu"
               availability={
@@ -448,7 +462,7 @@ export function BrowserConversation({
               label="Tarkista keskustelulista"
               onPress={() => void recheckList()}
             />
-          </div>
+          </fieldset>
           <ul>
             {selected.map((s) => (
               <li key={s.agent_id}>

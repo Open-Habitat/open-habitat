@@ -2,7 +2,7 @@
 created: 2026-09-29
 updated: 2026-09-29
 type: bug
-status: open
+status: in-progress
 priority: high
 lane: conversation-live-fix
 collision: [web/src/app/App.tsx, web/src/app/BrowserConversation.tsx]
@@ -27,3 +27,7 @@ After he selected and checked out three repos and completed OpenAI device-code l
 ### 2026-09-29T13:52:12Z · @jari
 
 2026-09-29 pilot.11 live retest: after an initially usable authenticated workspace view, clicking any visible control repeatedly leaves the app at full-screen “Ladataan / Varmistetaan istunto ja workspacejen lähde.” This is not merely a brief flash; no usable view returns in the reported attempt. Screenshot was inspected from Jari’s seat but contains real workspace names/host facts and is intentionally NOT committed to this public repository. Diagnose whether click-induced window focus revalidation is aborting/restarting status/snapshot, or a live endpoint hangs. Previous accepted issue already owns stable revalidation; do not create a duplicate.
+
+### 2026-09-29T14:03:55Z · @agent
+
+Synthetic production-bundle browser host: foreground controls and route changes produced no top-level Pi recheck; genuine tab return masks identity DOM, retains editor/selection and reading position on same cookie, and drops facts on 401, new subject, failed snapshot or a 10-second stalled Pi-status timeout. Focus regression coverage also exercises ambiguous write only after pre-write verification and compact action grouping/spacing. 13 focused browser tests passed before independent review found a first-background-reveal gap; adding a regression test for that. Full clean committed-tree gate pending. No guest/live account/provider read or deployment was performed.
