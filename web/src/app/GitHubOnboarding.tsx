@@ -186,10 +186,9 @@ export function GitHubOnboarding({
       void check();
     }, 3000);
     const focus = () => {
-      // Hide old identity data until the binding check finishes. An in-flight
-      // catalog already verifies that binding per page; do not restart it.
-      if (bound.current && sessionStorage.getItem(marker) !== key.current)
-        setStep("loading");
+      // The parent masks identity-scoped content on a real tab return.
+      // Do not unmount the chooser on focus: a click in a newly focused
+      // window otherwise lands on a disappearing button and needs repeating.
       void check();
     };
     window.addEventListener("focus", focus);
@@ -423,7 +422,7 @@ export function GitHubOnboarding({
       ) : null}
       <Button
         label="Keskeytä käyttöönotto ja kirjaudu ulos"
-        variant="secondary"
+        variant="danger"
         onPress={() => {
           reset();
           void onLogout();

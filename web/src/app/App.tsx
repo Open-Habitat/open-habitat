@@ -256,27 +256,28 @@ export function App() {
     };
     const load = async () => {
       try {
+        let token: string | "login" | undefined;
         if (!syntheticDemo) {
-          const status = await piStatus(controller.signal);
+          const [status, session] = await Promise.all([
+            piStatus(controller.signal),
+            sessionCSRF(controller.signal),
+          ]);
           if (
             !active ||
             controller.signal.aborted ||
             generation !== loginGeneration.current
           )
             return;
-          if (status === "login") return fail("login");
+          if (status === "login" || session === "login") return fail("login");
           if (status !== "usable") return fail("pi");
+          token = session;
         }
-        const token = syntheticDemo
-          ? undefined
-          : await sessionCSRF(controller.signal);
         if (
           !active ||
           controller.signal.aborted ||
           generation !== loginGeneration.current
         )
           return;
-        if (token === "login") return fail("login");
         const response = await fetch(
           syntheticDemo
             ? `/api/v1/snapshot?scenario=${new URLSearchParams(location.search).get("scenario") ?? "ready"}`
@@ -488,7 +489,7 @@ export function App() {
       />
     ) : selectedAgent && agentWorkspace ? (
       <HistoryView
-        key={`${selectedAgent.agent_id}:${refreshKey}`}
+        key={selectedAgent.agent_id}
         agent={selectedAgent}
         workspaceName={agentWorkspace.display_name ?? agentWorkspace.name}
         workspaceId={agentWorkspace.workspace_id}
@@ -587,9 +588,10 @@ export function App() {
   return (
     <>
       {verifying && snapshot ? (
-        <p role="status" className="ah-identity-check">
-          Varmistetaan istuntoa…
-        </p>
+        <div role="status" className="ah-identity-check">
+          <span className="ah-identity-check-title">Agent Host</span>
+          <span>Varmistetaan istuntoa…</span>
+        </div>
       ) : null}
       <div
         key={identityEpoch}

@@ -38,6 +38,7 @@ export function PiOnboarding({
   const busyRef = useRef(false);
   const bound = useRef<string | undefined>(undefined);
   const hadCode = useRef(false);
+  const preparingCode = useRef(false);
   const generation = useRef(0);
   const active = useRef<AbortController | undefined>(undefined);
   const reading = useRef(false);
@@ -81,16 +82,21 @@ export function PiOnboarding({
       };
       try {
         if (!(await session())) return;
-        const status = await piStatus(controller.signal);
-        if (!current() || !(await session())) return;
-        if (status === "login") {
-          onLogin();
-          return;
-        }
-        if (status === "usable") {
-          setView({ phase: "connected" });
-          onUsable();
-          return;
+        // A write already checks its session binding in piAttempt. Reading
+        // native status before a POST can exhaust the response budget while
+        // the helper has started and is preparing a code.
+        if (method === "GET" && !preparingCode.current) {
+          const status = await piStatus(controller.signal);
+          if (!current() || !(await session())) return;
+          if (status === "login") {
+            onLogin();
+            return;
+          }
+          if (status === "usable") {
+            setView({ phase: "connected" });
+            onUsable();
+            return;
+          }
         }
         const attempt = await piAttempt(
           method,
@@ -107,6 +113,7 @@ export function PiOnboarding({
           return;
         }
         if (attempt === "absent") {
+          preparingCode.current = false;
           // Remember a code until an explicit new attempt. An absent native
           // attempt is not evidence that the provider accepted or rejected it.
           setView({ phase: hadCode.current ? "expired" : "start" });
@@ -121,6 +128,8 @@ export function PiOnboarding({
             return;
           }
         }
+        if (method === "POST" && attempt.state === "pending") preparingCode.current = true;
+        if (attempt.state !== "pending") preparingCode.current = false;
         if (attempt.state === "device_code") hadCode.current = true;
         setView(viewOf(attempt));
       } catch {
@@ -151,9 +160,11 @@ export function PiOnboarding({
   useEffect(() => {
     alive.current = true;
     void check();
+    let tick = 0;
     const timer = window.setInterval(() => {
-      if (!ending.current) void check();
-    }, 3000);
+      if (!ending.current && (preparingCode.current || ++tick % 3 === 0))
+        void check();
+    }, 300);
     const focus = () => {
       if (!ending.current) void check();
     };
@@ -173,6 +184,7 @@ export function PiOnboarding({
     busyRef.current = true;
     setBusy(true);
     hadCode.current = false;
+    preparingCode.current = false;
     setView({ phase: "interrupted" }); // Hide instructions before a write or cancel.
     void check(method); // Supersedes any pending read; one click means one write.
   };
@@ -231,7 +243,7 @@ export function PiOnboarding({
       ) : null}
       <Button
         label="Keskeytä käyttöönotto ja kirjaudu ulos"
-        variant="secondary"
+        variant="danger"
         onPress={() => {
           void logout();
         }}

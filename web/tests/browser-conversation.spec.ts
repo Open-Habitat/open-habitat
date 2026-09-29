@@ -384,6 +384,8 @@ test("@browser-conversation slow tab return masks old facts without unmounting a
     });
     await requested;
     await expect(page.getByText("Varmistetaan istuntoa…")).toBeVisible();
+    await expect(page.locator(".ah-identity-check-title")).toHaveText("Agent Host");
+    await expect(page.locator(".ah-identity-check")).toHaveCSS("inset", "0px");
     await expect(editor).toBeHidden();
     expect(await page.locator("textarea").count()).toBe(1); // mounted but inert and hidden
     release();

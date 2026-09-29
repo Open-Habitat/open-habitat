@@ -83,11 +83,19 @@ func (a *piAttempt) handler(cfg transport.Config, trusted func(*http.Request) bo
 		}
 		id := a.id
 		a.mu.Unlock()
-		// Recheck Pi after interruption or completion; never infer success from the
-		// child event or cancellation alone. Bounded by the caller's HTTP deadline.
-		state := a.device.StatusContext(r.Context())
-		if r.Context().Err() != nil {
-			state = "unknown"
+		// The active helper may need the whole HTTP deadline to prepare its code.
+		// Do not block a start (or a code read) on a second native status helper.
+		// Only a terminal attempt needs credential evidence; the separate status
+		// endpoint remains the authority for onboarding completion.
+		state := "unknown"
+		a.mu.Lock()
+		terminal := a.owner == owner && a.id == id && (a.progress == "completed" || a.progress == "unknown")
+		a.mu.Unlock()
+		if terminal {
+			state = a.device.StatusContext(r.Context())
+			if r.Context().Err() != nil {
+				state = "unknown"
+			}
 		}
 		result := struct {
 			SchemaVersion int `json:"schema_version"`

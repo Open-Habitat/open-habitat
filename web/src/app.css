@@ -9,12 +9,18 @@
 .ah-identity-check {
   position: fixed;
   z-index: 10;
-  top: var(--ah-s6);
-  left: var(--ah-s6);
-  padding: var(--ah-s3) var(--ah-s4);
-  background: var(--ah-surface);
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-sm);
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--ah-s4);
+  background: var(--ah-bg);
+  color: var(--ah-ink-2);
+}
+.ah-identity-check-title {
+  color: var(--ah-ink);
+  font-weight: 700;
+  font-size: var(--ah-size-title);
 }
 
 .ah-demo-banner {

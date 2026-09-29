@@ -3,6 +3,7 @@
 package daemon
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -28,7 +29,7 @@ func TestPiAttemptSessionOwnershipAndRestart(t *testing.T) {
 	node := filepath.Join(home, "fake-node")
 	script := `#!/bin/sh
 case "$6" in
- status) printf '%s\n' '{"type":"status","state":"missing"}' ;;
+ status) sleep 1; printf '%s\n' '{"type":"status","state":"missing"}' ;;
  login) printf '%s\n' '{"type":"device_code","verificationUri":"https://auth.openai.com/codex/device","userCode":"ABCD-1234"}'; sleep 1; printf '%s\n' '{"type":"unknown"}' ;;
 esac
 `
@@ -54,8 +55,22 @@ esac
 	token := strings.Repeat("A", 43)
 	other := strings.Repeat("B", 43)
 	h := a.handler(cfg, func(*http.Request) bool { return true })
+	started := time.Now()
 	if w := request(h, "POST", token); w.Code != 200 || w.Header().Get("Cache-Control") != "no-store" {
 		t.Fatalf("start: %d %s", w.Code, w.Body.String())
+	} else {
+		var reply struct {
+			Attempt struct {
+				State   string `json:"state"`
+				PiState string `json:"pi_state"`
+			} `json:"attempt"`
+		}
+		if json.Unmarshal(w.Body.Bytes(), &reply) != nil || reply.Attempt.State != "pending" || reply.Attempt.PiState != "unknown" {
+			t.Fatalf("start must not wait for a native status read: %s", w.Body.String())
+		}
+	}
+	if time.Since(started) > 500*time.Millisecond {
+		t.Fatal("start blocked on native status")
 	}
 	if w := request(h, "GET", other); w.Code != 404 {
 		t.Fatalf("foreign status: %d", w.Code)
