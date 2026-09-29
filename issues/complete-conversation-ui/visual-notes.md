@@ -1,5 +1,9 @@
 # Synthetic conversation lab — visual notes
 
+## Reading-density follow-up
+
+`reading-before-desktop.png` (from the round-3 audit) and `reading-desktop.png` compare the read-only native history before and after the compact transcript pass. `reading-narrow.png` (390px) and `reading-zoom.png` (800px viewport at 200% browser zoom) show the finished layout: no document-level horizontal overflow in these captures, model ID remains exact and copyable, actual fenced code retains its own code-copy action, and tool rows remain separate. `check-before.png` (round-3 audit) and `check-after.png` compare the primary-looking manual status check with the quiet idle control; uncertain/stale promotion is also asserted in synthetic browser tests. The before captures and after captures used the production bundle on the synthetic TLS lab, fake Pi and invented Alice, not real accounts. The zoom capture uses browser CSS zoom at 2× (equivalent layout width 400 CSS pixels), not OS-level display magnification. **Not yet reviewed by Jari.** Screenshots do not prove native Pi behavior, UID isolation or the live host.
+
 Before/final screenshots (`start`, `answered`, `rejected`, `narrow`) were captured with the standalone lab: production web bundle, real conversation controller, fake Pi, Alice's invented home. Desktop is 1440×900; narrow is 390px. **Not yet reviewed by Jari.** The lab cannot prove real Pi/provider behavior, separate Unix UIDs or behavior on the internet-facing host.
 
 Before: opening a conversation left workspace read-only facts above the feed; every new history in navigation said “Uusi keskustelu”. Rejected send cleared the draft and blocked further sends. Tool results were expanded and raw live events appeared beneath the feed. Narrow-width assistant text clipped horizontally.

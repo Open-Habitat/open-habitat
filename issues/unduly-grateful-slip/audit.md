@@ -14,17 +14,23 @@ Built a fresh production bundle with `npm ci --prefix web` and `scripts/lab.sh s
 
 ### 1 · Medium · Long-history reading spends more space on controls and framing than content
 
+**Status (reading-density pass): implemented, synthetic desktop/390px/200% zoom checked; awaiting Jari's visual review.** A compact reading header and continuous feed reduce routine card padding; exceptional message states and tool rows retain their frame. See [visual notes](../complete-conversation-ui/visual-notes.md#reading-density-follow-up).
+
 **Where / experience.** On desktop, the native history begins with a large title, two state badges, a details button and a standalone full-size model-switch card before the first user message ([history](screenshots/history.png)). Each ordinary message is a separate padded card with its own *Kopioi* control and *Valmis* badge; a short two-turn history extends far below the 900px viewport. At 390px ([history narrow](screenshots/history-narrow.png)) the document fits the viewport, but the chrome takes an even greater share. Nine successive turns still produced matching replies and no horizontal document overflow at 390px ([ninth turn](screenshots/nine-turns-narrow.png); measured `scrollWidth=innerWidth=390` each turn), so this is not the old pagination/overflow defect.
 
 **Why / fix.** The [agreed primary journey](../../docs/ui.md#käyttöliittymän-käyttökulut) is to read and continue a conversation, and [readability/attention](../../docs/ui.md#luonnokset-lukukohta-ja-huomio) protects the reading position. Keep semantic status and copy actions, but make routine settled-turn metadata visually secondary, group adjacent messages without repeating large padding, and place a compact title/status line above the feed. Do not collapse errors, unconfirmed work or tool output into an indistinguishable stream. Verify at 200% zoom before calling the layout accepted.
 
 ### 2 · Low · A model change is presented as a code artifact
 
+**Status (reading-density pass): implemented, synthetic desktop/390px/200% zoom checked; awaiting Jari's visual review.** Model ID is shown verbatim with its own copy action, not a code block.
+
 **Where / experience.** The first line of the native history is *Mallin vaihto · Kokonainen*, followed by the model ID in a large framed block with a *Kopioi koodi* action ([history](screenshots/history.png)). The ID is useful native information, but it is not code, and it visually outranks the conversation it annotates.
 
 **Why / fix.** [Agreed history rendering](../../docs/ui.md#viesti-vastaus-ja-työn-ohjaus) asks for readable Markdown, code and grouped tool output; model metadata should not masquerade as source code. Render model changes as compact timeline metadata with the exact, copyable model identifier; reserve *Kopioi koodi* for actual code. This is a presentation change, not a request to rewrite native events.
 
 ### 3 · Low · The manual check looks like a second primary chat action
+
+**Status (reading-density pass): implemented, synthetic idle chat checked; awaiting Jari's visual review.** The check is quiet in normal states, prominent when receipt/history is uncertain or snapshot stale, and scoped to the conversation. Synthetic browser tests cover the style transitions.
 
 **Where / experience.** A fresh writable chat shows both teal *Lähetä* and teal *Tarkista tila ja historia*, with the check placed immediately beneath the composer even before any message exists ([new conversation](screenshots/chat-new.png)). On a rejected message the explicit preserved draft and failure explanation are good, but the check still carries equal visual weight to deliberate resend ([rejected](screenshots/send-hylkää.png)).
 
