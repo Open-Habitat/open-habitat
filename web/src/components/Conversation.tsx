@@ -158,7 +158,7 @@ export function AssistantMessage({
   sourceText?: string;
   children: ReactNode;
   time?: string;
-  streamState: "streaming" | "complete" | "interrupted" | "failed" | "unknown";
+  streamState?: "streaming" | "complete" | "interrupted" | "failed" | "unknown";
   modelLabel?: string;
   onCopy: () => void;
 }) {
@@ -173,7 +173,7 @@ export function AssistantMessage({
     <Message
       speaker={modelLabel ? `Pi · ${modelLabel}` : "Pi"}
       time={time}
-      state={labels[streamState]}
+      state={streamState ? labels[streamState] : undefined}
       stateTone={
         streamState === "failed"
           ? "danger"

@@ -148,6 +148,31 @@ test("@lab fake-Pi crash leaves the turn readable but blocks another send", asyn
   ).toBeDisabled();
 });
 
+test("@lab intermediate assistant message does not claim turn completion", async ({
+  page,
+}) => {
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
+    .getByRole("link", { name: "aurinkokello" })
+    .click();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .fill("hidas tarkistus");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  const intermediate = page.locator(".ah-message").filter({
+    hasText: "Katson ensin, mitä työtilassa on.",
+  });
+  await expect(intermediate).toBeVisible({ timeout: 20000 });
+  await expect(
+    page.getByRole("region", { name: "Pi:n työn eteneminen" }),
+  ).toContainText("Pi työskentelee");
+  await expect(intermediate.locator("header")).toHaveText("Pi");
+});
+
 test("@lab slow turn explains work and stop requires an explicit confirmation", async ({
   page,
 }) => {

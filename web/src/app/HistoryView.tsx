@@ -82,8 +82,10 @@ export function Entry({
       {entry.kind === "user" ? (
         <UserMessage sourceText={content.text} onCopy={copy} />
       ) : null}
+      {/* Native history omits the stop reason; a saved tool-use message may
+          precede the rest of a still-running turn. */}
       {entry.kind === "assistant" ? (
-        <AssistantMessage streamState="complete" onCopy={copy}>
+        <AssistantMessage onCopy={copy}>
           <Markdown text={content.text} />
         </AssistantMessage>
       ) : null}

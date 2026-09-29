@@ -17,6 +17,26 @@ const entry: HistoryEntry = {
 
 afterEach(() => vi.unstubAllGlobals());
 
+it("does not claim a projected assistant message completed the Pi turn", () => {
+  const assistant: HistoryEntry = {
+    ...entry,
+    kind: "assistant",
+    content: {
+      media_type: "text/markdown",
+      text: "Katson ensin, mitä työtilassa on.",
+      complete: true,
+    },
+  };
+  const { container } = render(<Entry entry={assistant} />);
+  const card = container.querySelector(".ah-message");
+  expect(card?.textContent).toContain(assistant.content.text);
+  expect(card?.querySelector("header")?.textContent).toBe("Pi");
+  expect(screen.queryByText("Valmis")).toBeNull();
+  expect(
+    screen.getByRole("button", { name: "Kopioi viesti: Pi" }),
+  ).toBeTruthy();
+});
+
 it("shows an exact model ID as copyable timeline metadata, not code", () => {
   const copy = vi.fn().mockResolvedValue(undefined);
   vi.stubGlobal("navigator", { clipboard: { writeText: copy } });

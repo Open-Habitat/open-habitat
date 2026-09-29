@@ -274,9 +274,11 @@ vain readable empty -historialle. Stale pitää itemsit näkyvissä.
 
 ```text
 UserMessage { sourceText, renderedContent, time?, deliveryState?, onCopy }
-AssistantMessage { sourceText, sanitizedMarkdown, time?, streamState,
+AssistantMessage { sourceText, sanitizedMarkdown, time?, streamState?,
                    modelLabel?, onCopy }
 streamState = streaming | complete | interrupted | failed | unknown
+Puuttuva streamState jättää viestikohtaisen tilamerkin pois, kun historia ei
+kerro, päättyikö Pi:n vuoro tähän viestiin.
 ```
 
 User/assistant erotetaan tekstilabeleilla. AssistantMessage ei näytä raakaa HTML:ää.
