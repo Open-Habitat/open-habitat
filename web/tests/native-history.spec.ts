@@ -136,3 +136,22 @@ test("@native-history missing, corrupt and read-only states", async ({
   });
   await fixture(page, "ready");
 });
+
+test("@native-history narrow history keeps actions visible without page overflow", async ({
+  page,
+}) => {
+  await fixture(page, "ready");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page);
+  await page.goto(`/agents/${agent}`);
+  await expect(page.locator(".ah-feed li").first()).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
+    .toBeLessThanOrEqual(390);
+  await expect(
+    page
+      .locator(".ah-feed")
+      .getByRole("button", { name: /Kopioi/ })
+      .first(),
+  ).toBeVisible();
+});

@@ -5,6 +5,7 @@ export * from "./Status";
 export * from "./Navigation";
 export * from "./Account";
 export * from "./Conversation";
+export * from "./Markdown";
 export * from "./AgentInteractionControls";
 export * from "./PiDeviceSignIn";
 export * from "./GitHubRepoChooser";

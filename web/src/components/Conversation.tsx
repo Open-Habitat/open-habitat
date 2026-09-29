@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Button, RadioGroup, TextArea, TextField } from "./Primitives";
+import { Markdown } from "./Markdown";
 import { Disclosure } from "./Overlays";
 import { InlineNotice, StatusMark } from "./Status";
 import type { Availability, ProblemView, TimelineItem, Tone } from "./types";
@@ -139,7 +140,7 @@ export function UserMessage({
       stateTone={deliveryTone}
       onCopy={onCopy}
     >
-      <p>{sourceText}</p>
+      <Markdown text={sourceText} />
     </Message>
   );
 }

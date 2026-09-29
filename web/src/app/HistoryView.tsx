@@ -7,6 +7,7 @@ import {
   CodeBlock,
   ConversationTimeline,
   InlineNotice,
+  Markdown,
   ToolOutput,
   ToolRow,
   UnknownEvent,
@@ -68,7 +69,7 @@ export function Entry({ entry }: { entry: HistoryEntry }) {
       ) : null}
       {entry.kind === "assistant" ? (
         <AssistantMessage streamState="complete" onCopy={copy}>
-          <pre>{content.text}</pre>
+          <Markdown text={content.text} />
         </AssistantMessage>
       ) : null}
       {entry.kind === "tool" ? (

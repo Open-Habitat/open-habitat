@@ -28,11 +28,15 @@
 
 ### 3. Medium · History cannot fit a narrow/zoomed reading viewport
 
+**Implementation update (Markdown-rendering worker):** Feed/grid/card min-content widths are constrained; the synthetic seeded history at 390 CSS px now has document width 390px. Code and tables scroll inside their own panes. A narrow synthetic browser regression was added; Jari's 200% zoom and visual acceptance are still outstanding. See `../complete-conversation-ui/markdown-visual-notes.md`.
+
 **Where/experience.** At 390 CSS px, `/agents/pi:a1a1a1a1-0000-4000-8000-000000000001` reports `documentElement.scrollWidth = 1032` vs `clientWidth = 390`, while `/workspaces` and `/settings` both fit 390. The rendered history/feed is at least 700px wide, so messages/actions are clipped and require horizontal panning. Screenshot: [history at 390px](screenshots/history-narrow.png). Keyboard Tab still traverses the rail and focus outlines are solid (not an overall keyboard failure).
 
 **Why it matters.** Mobile is out of scope, but the [design's 200% zoom requirement](../../design-system/production-v1.md#tiheys-leveys-ja-pitkä-sisältö) and [UI accessibility requirement](../../docs/ui.md#designin-lähteet-ja-toteutuksen-arviointi) disallow horizontal coverage loss when zoomed. **Fix:** remove feed/min-content minimum width, give content cards `min-width:0`, contain only code/long lines in a scrollable code pane, keep controls inside viewport. Check 1280px at 200% zoom as the normative acceptance case, then 390px as stress evidence.
 
 ### 4. Medium · Native conversation history displays Markdown source instead of formatted Markdown/code
+
+**Implementation update (Markdown-rendering worker):** Shared user/history-assistant Markdown rendering now uses pinned React Markdown, Remark GFM and Rehype Sanitize, without raw HTML; fenced code has a copy control and long code is expandable. Synthetic screenshots and adversarial component tests are in `../complete-conversation-ui/markdown-visual-notes.md`. Human visual acceptance and the remaining ADR rendering work (Shiki worker and parsed Pi edit diffs) are not claimed.
 
 **Where/experience.** The seeded terminal answer shows literal backticks, ` ```json ` fences, JSON and inline command delimiters inside a plain text card rather than a readable formatted code block with code-copy affordance. Screenshot: [history rendering](screenshots/history.png). Tool output itself has a copy control; this finding concerns assistant message content.
 
