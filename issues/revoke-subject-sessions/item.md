@@ -3,10 +3,12 @@ created: 2026-09-29
 updated: 2026-09-29
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 lane: gateway-revocation
 collision: [internal/gateway/, docs/]
+closed: 2026-09-29
+closed_by: agent
 ---
 
 # Revoke one subject browser sessions safely
