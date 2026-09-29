@@ -27,12 +27,20 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
   ).toBe(428);
   await expect(page.getByText("fixture/first")).toBeVisible();
   await expect(page.getByRole("checkbox")).toHaveCount(52);
-  await expect(page.getByText("Viimeisin push: 28.9.2026")).toBeVisible();
+  // Large catalogs scroll inside the chooser, so the selected count and
+  // Continue action remain reachable without a five-screen-long page.
+  expect(
+    await page
+      .getByRole("list", { name: "GitHub-repot" })
+      .evaluate((list) => list.scrollHeight > list.clientHeight),
+  ).toBe(true);
+  await expect(page.getByRole("button", { name: "Jatka" })).toBeVisible();
+  await expect(page.getByText("Viimeksi päivitetty: 28.9.2026")).toBeVisible();
   await page.getByRole("searchbox").fill("fixture/last");
   await expect(page.getByRole("checkbox")).toHaveCount(1);
   await page.getByRole("searchbox").clear();
   await expect(
-    page.getByText("Viimeisin push: Ei tiedossa").first(),
+    page.getByText("Viimeksi päivitetty: Ei tiedossa").first(),
   ).toBeVisible();
   await page.getByRole("checkbox").first().check();
   await page.screenshot({

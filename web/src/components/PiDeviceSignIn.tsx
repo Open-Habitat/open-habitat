@@ -29,24 +29,23 @@ const outcomes = {
   waiting: {
     label: "Valmistellaan kirjautumista",
     tone: "info",
-    detail: "Pi valmistelee vahvistuskoodia. Odota hetki.",
+    detail: "Valmistellaan vahvistuskoodia. Odota hetki.",
   },
   start: {
-    label: "Pi-kirjautuminen tarvitaan",
+    label: "ChatGPT-kirjautuminen tarvitaan",
     tone: "warning",
-    detail: "Aloita Pi-kirjautuminen, jotta voit avata workspacet.",
+    detail: "Kirjaudu ChatGPT-tilillesi, niin voit aloittaa työtiloissa.",
   },
   connected: {
-    label: "Pi-yhteys vahvistettu",
+    label: "ChatGPT-kirjautuminen vahvistettu",
     tone: "success",
-    detail:
-      "Palvelin vahvisti Pi-kirjautumisen. Jatka vasta, kun palvelin näyttää seuraavan vaiheen.",
+    detail: "Voit nyt siirtyä työtiloihin.",
   },
   expired: {
     label: "Kirjautumisyritys päättyi",
     tone: "warning",
     detail:
-      "Koodin näyttänyt Pi-yritys ei ole enää käynnissä. Vahvistuksen tulosta ei tiedetä. Voit aloittaa uuden yrityksen.",
+      "Tämä koodi ei ole enää käytössä. Kirjautumisen tulosta ei tiedetä. Voit aloittaa uudella koodilla.",
   },
   interrupted: {
     label: "Kirjautuminen keskeytyi",
@@ -130,11 +129,11 @@ export function PiDeviceSignIn({
       {active ? (
         usable ? (
           <div className={styles.steps}>
-            <p>1. Avaa palveluntarjoajan kirjautumissivu uuteen välilehteen.</p>
+            <p>1. Avaa OpenAI:n kirjautumissivu uuteen välilehteen.</p>
             <a href={uri} target="_blank" rel="noopener noreferrer">
               Avaa OpenAI:n vahvistussivu (uusi välilehti)
             </a>
-            <p>2. Syötä sivulla tämä Pi:n antama koodi:</p>
+            <p>2. Syötä siellä tämä koodi:</p>
             <div className={styles.code}>
               <code>{view.userCode}</code>
               <Button
@@ -149,8 +148,8 @@ export function PiDeviceSignIn({
               <p role="status">{copy.message}</p>
             ) : null}
             <p>
-              3. Palaa tähän välilehteen. Pi tarkistaa vahvistuksen; tämän sivun
-              avaaminen ei vielä yhdistä tiliä.
+              3. Palaa tänne vahvistuksen jälkeen. Kirjautumisen tila päivittyy
+              automaattisesti. Pelkkä linkin avaaminen ei vielä kirjaa sisään.
             </p>
           </div>
         ) : (

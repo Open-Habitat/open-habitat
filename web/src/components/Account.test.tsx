@@ -30,11 +30,8 @@ describe("account presentation", () => {
     );
     expect(screen.getByText("Osittainen yhteys")).toBeTruthy();
     expect(
-      (
-        screen.getByRole("button", {
-          name: "Katkaise natiivi GitHub-yhteys",
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
+      screen.getByText("Yhteyttä ei voi vielä katkaista täällä"),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Katkaise/ })).toBeNull();
   });
 });

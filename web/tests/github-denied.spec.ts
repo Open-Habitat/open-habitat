@@ -23,7 +23,7 @@ test("@github-first denied write stays uncertain until explicit read-only rechec
     }),
   );
   await page.getByRole("button", { name: "Jatka" }).click();
-  await expect(page.getByText("Haun tulosta ei tunneta")).toBeVisible();
+  await expect(page.getByText("Haun tulos on epäselvä")).toBeVisible();
   await expect(page.getByRole("button", { name: "Jatka" })).toHaveCount(0);
   await page.screenshot({
     path: testInfo.outputPath("github-denied.png"),

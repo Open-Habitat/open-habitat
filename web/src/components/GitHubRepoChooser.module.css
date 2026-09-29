@@ -24,6 +24,9 @@
   margin: 0;
   padding: 0;
   list-style: none;
+  max-height: min(32rem, 55vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .row {
   border: 1px solid var(--ah-line);
@@ -61,6 +64,11 @@
   color: var(--ah-ink-2);
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+.current {
+  margin: 0;
+  color: var(--ah-ink-2);
+  overflow-wrap: anywhere;
 }
 .actions {
   display: flex;

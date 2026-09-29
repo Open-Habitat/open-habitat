@@ -43,9 +43,7 @@ describe("GitHub first-use chooser", () => {
     expect(checkbox.getAttribute("aria-describedby")).toBe(
       "github-chooser-instructions",
     );
-    expect(
-      view.getByText(/Silloin valitut repot haetaan koneelle/),
-    ).toBeTruthy();
+    expect(view.getByText(/hakee ne työtiloiksi/)).toBeTruthy();
     await user.click(checkbox);
     expect(initial.onToggle).toHaveBeenCalledWith(repos[0].full_name, true);
     expect(initial.onProceed).not.toHaveBeenCalled();
@@ -55,9 +53,9 @@ describe("GitHub first-use chooser", () => {
     await user.type(view.getByRole("searchbox"), "HARBOR");
     expect(view.queryByText("sample-lab/aurora")).toBeNull();
     expect(view.getByText("sample-lab/harbor")).toBeTruthy();
-    expect(view.getByText("Viimeisin push: Ei tiedossa")).toBeTruthy();
+    expect(view.getByText("Viimeksi päivitetty: Ei tiedossa")).toBeTruthy();
     await user.clear(view.getByRole("searchbox"));
-    expect(view.getByText(/Viimeisin push: 28.9.2026/)).toBeTruthy();
+    expect(view.getByText(/Viimeksi päivitetty: 28.9.2026/)).toBeTruthy();
     expect(initial.onProceed).not.toHaveBeenCalled();
     await user.click(view.getByRole("button", { name: "Jatka" }));
     expect(initial.onProceed).toHaveBeenCalledExactlyOnceWith([
@@ -111,6 +109,10 @@ describe("GitHub first-use chooser", () => {
     expect(
       view.getByRole("progressbar", { name: "Haettu 0/1 repoa" }),
     ).toBeTruthy();
+    expect(view.getByText(/Suuren repon haku voi kestää/)).toBeTruthy();
+    expect(
+      view.getByText(repos[0].full_name, { selector: "p code" }),
+    ).toBeTruthy();
     expect(view.queryByRole("button", { name: "Jatka" })).toBeNull();
     expect(
       (
@@ -138,8 +140,8 @@ describe("GitHub first-use chooser", () => {
         checkout={{ phase: "confirmed", names: [repos[0].full_name] }}
       />,
     );
-    expect(view.getByText("Valittu 1 repoa.")).toBeTruthy();
-    expect(view.getByText(/Siirrytään Pi-kirjautumiseen/)).toBeTruthy();
+    expect(view.getByText("Valittu 1 repo.")).toBeTruthy();
+    expect(view.getByText(/Siirrytään ChatGPT-kirjautumiseen/)).toBeTruthy();
     expect(view.queryByRole("button", { name: "Jatka" })).toBeNull();
   });
 

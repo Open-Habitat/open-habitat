@@ -39,7 +39,7 @@ test("@github-first conflict and partial do not invent confirmation", async ({
   await page.getByRole("checkbox").first().check();
   await page.getByRole("checkbox", { name: /fixture\/second/ }).check();
   await page.getByRole("button", { name: "Jatka" }).click();
-  await expect(page.getByText("Vain osa repoista vahvistettu")).toBeVisible();
+  await expect(page.getByText("Osa repoista haettiin")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
   ).toHaveCount(0);
@@ -49,7 +49,7 @@ test("@github-first conflict and partial do not invent confirmation", async ({
     fullPage: true,
   });
   await page.getByRole("button", { name: "Tarkista haun tila" }).click();
-  await expect(page.getByText("Vain osa repoista vahvistettu")).toBeVisible();
+  await expect(page.getByText("Osa repoista haettiin")).toBeVisible();
   expect(await count(page)).toBe(before + 1);
   await page.getByRole("button", { name: "Muuta valintaa" }).click();
   await page.getByRole("checkbox", { name: /fixture\/second/ }).uncheck();

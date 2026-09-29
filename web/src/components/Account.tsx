@@ -49,26 +49,26 @@ type NativeState =
 const states: Record<NativeState, { label: string; description: string }> = {
   connected: {
     label: "Yhdistetty",
-    description: "Natiivi GitHub-yhteys on vahvistettu tässä tilannekuvassa.",
+    description: "GitHub-yhteys toimii tällä hetkellä.",
   },
   disconnected: {
     label: "Ei yhdistetty",
-    description: "Natiivia GitHub-yhteyttä ei havaittu.",
+    description:
+      "GitHub-yhteyttä ei löytynyt. Git-toiminnot voivat vaatia uuden kirjautumisen.",
   },
   pending: {
     label: "Yhdistäminen kesken",
     description:
-      "Natiivin GitHub-yhteyden asennus on kesken. Git-toimintoja ei voi vielä olettaa valmiiksi.",
+      "GitHub-yhteyttä valmistellaan. Odota ennen Git-toimintojen käyttöä.",
   },
   partial: {
     label: "Osittainen yhteys",
     description:
-      "Asennus onnistui vain osittain. Git-toimintoja ei voi olettaa valmiiksi.",
+      "GitHub-yhteys ei ole vielä kokonaan valmis. Git-toiminnot eivät välttämättä onnistu.",
   },
   unknown: {
     label: "Tilaa ei tiedetä",
-    description:
-      "Natiivin GitHub-yhteyden tilaa ei ole vahvistettu tässä havainnossa.",
+    description: "GitHub-yhteyden tilaa ei juuri nyt voitu vahvistaa.",
   },
 };
 export function AccountSettings({
@@ -98,25 +98,16 @@ export function AccountSettings({
       <section aria-labelledby="ah-github-heading" className="ah-account-panel">
         <h2 id="ah-github-heading">GitHub</h2>
         <p>
-          Natiivi yhteys{" "}
+          Yhteys tällä palvelimella{" "}
           <StatusMark
             label={state.label}
             tone={nativeState === "connected" ? "success" : "warning"}
           />
         </p>
         <p>{state.description}</p>
-        <Button
-          label="Katkaise natiivi GitHub-yhteys"
-          availability={{
-            state: "disabled",
-            reason:
-              "Katkaisu ei ole käytettävissä: vahvistettu palvelintoiminto ja uudelleentunnistautuminen puuttuvat.",
-          }}
-          onPress={() => {}}
-        />
         <InlineNotice
-          title="Web-istunto ja natiivi yhteys ovat erillisiä"
-          description="Web-uloskirjautuminen ei katkaise natiivia GitHub-yhteyttä. Katkaisua ei voi vielä tehdä täällä."
+          title="Yhteyttä ei voi vielä katkaista täällä"
+          description="Uloskirjautuminen sulkee selaimen istunnon, mutta ei poista tämän palvelimen GitHub-kirjautumista."
         />
       </section>
     </section>

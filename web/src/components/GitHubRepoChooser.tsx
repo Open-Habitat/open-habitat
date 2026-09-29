@@ -82,8 +82,9 @@ export function GitHubRepoChooser({
         <p className="ah-eyebrow">Käyttöönotto</p>
         <h2 id="github-chooser-title">Valitse GitHub-repot haettaviksi</h2>
         <p id="github-chooser-instructions">
-          Valitse haluamasi repot ja paina Jatka. Silloin valitut repot haetaan
-          koneelle ennen Pi-kirjautumista. Ilman valintoja jatkat ilman repoja.
+          Valitse repot, joita haluat käyttää täällä. Jatka-painike hakee ne
+          työtiloiksi ennen ChatGPT-kirjautumista. Voit myös jatkaa ilman
+          valintoja.
         </p>
       </header>
 
@@ -112,7 +113,7 @@ export function GitHubRepoChooser({
       {view.phase === "catalog" ? (
         <>
           <label className={styles.filter}>
-            Rajaa repoja nimen perusteella
+            Etsi repoa nimellä
             <input
               type="search"
               value={filter}
@@ -145,7 +146,7 @@ export function GitHubRepoChooser({
                         {repo.private ? <Badge label="Yksityinen" /> : null}
                       </span>
                       <span className={styles.description}>
-                        Viimeisin push:{" "}
+                        Viimeksi päivitetty:{" "}
                         {repo.pushed_at
                           ? new Intl.DateTimeFormat("fi-FI", {
                               timeZone: "UTC",
@@ -167,7 +168,8 @@ export function GitHubRepoChooser({
             </ul>
           )}
           <p role="status" aria-live="polite">
-            Valittu {selectedNames.length} repoa.
+            Valittu {selectedNames.length}{" "}
+            {selectedNames.length === 1 ? "repo" : "repoa"}.
           </p>
         </>
       ) : null}
@@ -183,10 +185,18 @@ export function GitHubRepoChooser({
                 : 0
             }
           />
+          {checkout.phase === "progress" &&
+          checkout.completed < selectedNames.length ? (
+            <p role="status" className={styles.current}>
+              Haetaan nyt: <code>{selectedNames[checkout.completed]}</code>.
+              Suuren repon haku voi kestää. Valmiiden määrä muuttuu vasta, kun
+              haku on tarkistettu.
+            </p>
+          ) : null}
           {checkout.phase === "partial" ? (
             <InlineNotice
-              title="Vain osa repoista vahvistettu"
-              description="Tarkista palvelimen tila ennen jatkamista. Valintaa ei lähetetä automaattisesti uudelleen."
+              title="Osa repoista haettiin"
+              description="Kaikkien hakujen tulosta ei voitu vahvistaa. Tarkista tilanne ennen kuin jatkat. Haku ei käynnisty uudelleen itsestään."
               tone="warning"
               actions={
                 onRecheck
@@ -199,8 +209,8 @@ export function GitHubRepoChooser({
       ) : null}
       {checkout.phase === "uncertain" ? (
         <InlineNotice
-          title="Haun tulosta ei tunneta"
-          description="Tarkista palvelimen tila. Älä aloita samaa hakua uudelleen ennen kuin tulos on vahvistettu."
+          title="Haun tulos on epäselvä"
+          description="Tarkista, ehtikö repo tulla työtiloihin. Haku ei käynnisty uudelleen itsestään."
           tone="warning"
           actions={
             onRecheck
@@ -218,9 +228,7 @@ export function GitHubRepoChooser({
         />
       ) : null}
       {confirmed ? (
-        <p role="status">
-          Valitut repot on vahvistettu haetuiksi. Siirrytään Pi-kirjautumiseen.
-        </p>
+        <p role="status">Repot on haettu. Siirrytään ChatGPT-kirjautumiseen.</p>
       ) : null}
       {checkout.phase === "confirmed" && !confirmed ? (
         <InlineNotice

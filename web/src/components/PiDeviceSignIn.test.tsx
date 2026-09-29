@@ -23,7 +23,7 @@ describe("Pi device sign-in presentation", () => {
     view.rerender(<PiDeviceSignIn view={{ phase: "connected" }} />);
     expect(view.queryByText(instructions.userCode)).toBeNull();
     expect(view.queryByRole("link")).toBeNull();
-    expect(view.getByText("Pi-yhteys vahvistettu")).toBeTruthy();
+    expect(view.getByText("ChatGPT-kirjautuminen vahvistettu")).toBeTruthy();
   });
 
   it.each([
@@ -104,9 +104,9 @@ describe("Pi device sign-in presentation", () => {
       <PiDeviceSignIn view={{ phase: "expired" }} checking onRetry={retry} />,
     );
     expect(view.getByText("Kirjautumisyritys päättyi")).toBeTruthy();
-    expect(view.getByText(/Vahvistuksen tulosta ei tiedetä/)).toBeTruthy();
+    expect(view.getByText(/Kirjautumisen tulosta ei tiedetä/)).toBeTruthy();
     expect(view.queryByText("Tarkistetaan tilaa")).toBeNull();
-    expect(view.queryByText("Pi-kirjautuminen tarvitaan")).toBeNull();
+    expect(view.queryByText("ChatGPT-kirjautuminen tarvitaan")).toBeNull();
     view.rerender(
       <PiDeviceSignIn view={{ phase: "expired" }} onRetry={retry} />,
     );

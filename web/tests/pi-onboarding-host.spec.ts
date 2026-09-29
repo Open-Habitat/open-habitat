@@ -166,7 +166,7 @@ test("@pi-onboarding code disappearance stays uncertain through polling, focus a
       new MutationObserver(() => {
         const text = document.body.innerText;
         for (const label of [
-          "Pi-kirjautuminen tarvitaan",
+          "ChatGPT-kirjautuminen tarvitaan",
           "Tarkistetaan tilaa",
         ]) {
           if (text.includes(label))
