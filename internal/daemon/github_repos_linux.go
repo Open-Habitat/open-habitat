@@ -46,6 +46,14 @@ type repoReply struct {
 func RepoCatalogHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
 	return repoCatalogHandler(cfg, trusted, func(ctx context.Context, args ...string) ([]byte, error) { return runRepoGH(ctx, cfg.Home, args...) })
 }
+
+// RepoCatalogHandlerWithFixtureGH permits an offline cross-package integration
+// fixture to invoke its own synthetic gh binary; production never uses it.
+func RepoCatalogHandlerWithFixtureGH(cfg transport.Config, trusted func(*http.Request) bool, program, home string) http.Handler {
+	return repoCatalogHandler(cfg, trusted, func(ctx context.Context, args ...string) ([]byte, error) {
+		return runRepoGHProgram(ctx, home, program, args...)
+	})
+}
 func repoCatalogHandler(cfg transport.Config, trusted func(*http.Request) bool, run func(context.Context, ...string) ([]byte, error)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		page, limit, ok := repoQuery(r)

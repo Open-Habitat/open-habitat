@@ -94,6 +94,8 @@ refuses to produce.
 
 `test-shared-pi-selector.sh` compiles the core test into `.cache/` and runs it in a networkless rootless container. It uses the fixed `/opt/native-agent-host/pi-runtime.json` path as two separate UIDs with separate HOME directories while `/etc/native-agent-host` is root:gateway 0750. Each UID must accept the root-owned readable selector and reject wrong owner, writable file or parent, and symlink file or parent. Ordinary `go test` skips the fixed-path test; this is a disposable container proof, not live host evidence. The gate does not run it.
 
+`test-repo-catalog-uids.sh` is an opt-in offline three-kernel-UID catalog test. It compiles the daemon tests into `.cache/` and runs a disposable networkless container with separate synthetic gh credential homes, two daemon UIDs and a gateway UID. It proves socket owner isolation and native gh execution under each UID, not the browser or live provider.
+
 ## Rootless real-Pi controller proof
 
 `test-real-pi-controller.sh` is opt-in and offline. It checks exact cached

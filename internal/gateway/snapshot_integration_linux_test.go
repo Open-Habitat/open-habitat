@@ -71,8 +71,26 @@ func TestAuthenticatedGatewayToTwoDaemonSnapshotHandlers(t *testing.T) {
 		}, func(transport.Config) daemon.Discovery {
 			return daemon.Discovery{State: "present", Entries: []daemon.Workspace{{Name: "isolation-" + label, Kind: "directory", Metadata: "absent"}}}
 		}, dir)
+		fixtureHome := t.TempDir()
+		if err := os.WriteFile(filepath.Join(fixtureHome, "fixture-id"), []byte(m.Subject), 0600); err != nil {
+			t.Fatal(err)
+		}
+		gh := filepath.Join(fixtureHome, "gh")
+		script := `#!/bin/sh
+[ "$GH_PROMPT_DISABLED" = 1 ] && [ -z "$GH_TOKEN" ] || exit 9
+id=$(cat "$HOME/fixture-id") || exit 9
+case "$4" in
+/user) printf '{"id":%s}\n' "$id" ;;
+/user/repos?*) printf '[{"owner":{"login":"fixture"},"name":"repo%s","full_name":"fixture/repo%s","html_url":"https://github.com/fixture/repo%s","private":true,"description":null}]\n' "$id" "$id" "$id" ;;
+*) exit 9 ;;
+esac
+`
+		if err := os.WriteFile(gh, []byte(script), 0700); err != nil {
+			t.Fatal(err)
+		}
 		mux := http.NewServeMux()
 		mux.Handle(daemon.SnapshotPath, snapshot)
+		mux.Handle(daemon.RepoCatalogPath, daemon.RepoCatalogHandlerWithFixtureGH(cfg, func(r *http.Request) bool { return r.Context().Value("peer") == uid }, gh, fixtureHome))
 		srv := &http.Server{Handler: mux, ConnContext: func(ctx context.Context, c net.Conn) context.Context {
 			unixConn, ok := c.(*net.UnixConn)
 			if !ok {
@@ -126,6 +144,10 @@ func TestAuthenticatedGatewayToTwoDaemonSnapshotHandlers(t *testing.T) {
 		got := send("/api/v1/snapshot", cookie)
 		if got.Code != 200 || !strings.Contains(got.Body.String(), "isolation-"+strconv.Itoa(i)) || strings.Contains(got.Body.String(), "isolation-"+strconv.Itoa(1-i)) || strings.Contains(got.Body.String(), "sentinel-token") || strings.Contains(got.Body.String(), paths[m.Socket]) || strings.Contains(got.Body.String(), u.HomeDir) {
 			t.Fatalf("snapshot %d: %d %s", i, got.Code, got.Body.String())
+		}
+		catalog := send("/api/v1/onboarding/github/repos?page=1&limit=2", cookie)
+		if catalog.Code != 200 || !strings.Contains(catalog.Body.String(), "fixture/repo"+m.Subject) || strings.Contains(catalog.Body.String(), "fixture/repo"+identities[1-i].Subject) || catalog.Header().Get("Cache-Control") != "no-store" {
+			t.Fatalf("catalog %d: %d %s", i, catalog.Code, catalog.Body.String())
 		}
 		// The daemon, not the gateway, constructs the v1 observation.
 		if !strings.Contains(got.Body.String(), `"write_state":"read_only"`) {
