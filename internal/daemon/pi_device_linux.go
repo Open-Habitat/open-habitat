@@ -39,9 +39,9 @@ type PiDevice struct {
 	// FixtureHome permits the same-UID browser host's per-identity synthetic root.
 	// Production constructors never set this; the process HOME must match there.
 	FixtureHome bool
-	mu             sync.Mutex
-	active         string
-	cancel         context.CancelFunc
+	mu          sync.Mutex
+	active      string
+	cancel      context.CancelFunc
 }
 type PiDeviceEvent struct {
 	Type            string `json:"type"`
