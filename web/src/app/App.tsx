@@ -263,25 +263,13 @@ export function App() {
     const controller = new AbortController();
     // A pending endpoint must not leave the identity mask up forever.
     let active = true;
-    let authorityVerified = false;
+    let verifiedToken: string | undefined;
+    let timedOut = false;
+    let retaining = false;
     const timeout = window.setTimeout(() => {
+      timedOut = true;
       controller.abort();
-      if (active) {
-        active = false;
-        if (authorityVerified && snapshot) {
-          dispatch(stale());
-          setVerifying(false);
-        } else {
-          sessionBinding.current = undefined;
-          for (const key of Object.keys(sessionStorage))
-            if (key.startsWith("nah:")) sessionStorage.removeItem(key);
-          conversationPlace.current = undefined;
-          setBrowserSessions([]);
-          setIdentityEpoch((n) => n + 1);
-          dispatch(unavailable());
-          setVerifying(false);
-        }
-      }
+      if (active && !retaining) void retain(verifiedToken);
     }, 10000);
     const generation = loginGeneration.current;
     if (!snapshot) dispatch(loading());
@@ -299,6 +287,27 @@ export function App() {
       else dispatch(unavailable());
       editorPlace.current = undefined;
       setVerifying(false);
+    };
+    const retain = async (token?: string) => {
+      if (retaining) return;
+      retaining = true;
+      if (!active || !snapshot || !token || sessionBinding.current !== token) {
+        fail("unavailable");
+        return;
+      }
+      try {
+        // The cookie can change after the first check and before a failed
+        // snapshot. Verify once more before leaving old facts on screen.
+        const current = await sessionCSRF(AbortSignal.timeout(3000));
+        if (!active || generation !== loginGeneration.current) return;
+        if (current !== token)
+          return fail(current === "login" ? "login" : "unavailable");
+        dispatch(stale());
+        window.clearTimeout(timeout);
+        setVerifying(false);
+      } catch {
+        fail("unavailable");
+      }
     };
     const load = async () => {
       try {
@@ -321,9 +330,6 @@ export function App() {
             return;
           if (status === "login" || session === "login") return fail("login");
           if (status === "missing") return fail("pi");
-          // An unreadable Pi status is not evidence that the user needs to
-          // authorize Pi again. Keep the recovery path available instead.
-          if (status !== "usable") return fail("unavailable");
           token = session ?? (await sessionCSRF(controller.signal));
           // A failed authority check is not a transport outage. A different
           // session must never inherit the previous user's mounted content.
@@ -339,7 +345,15 @@ export function App() {
             setVerifying(false);
             return;
           }
-          authorityVerified = true;
+          verifiedToken = token;
+          if (status === "unavailable") {
+            // The daemon can be down while the browser session is still
+            // authenticated. A second cookie check gates stale retention.
+            await retain(token);
+            return;
+          }
+          // Unknown or malformed Pi status is not permission to retain.
+          if (status !== "usable") return fail("unavailable");
         }
         if (
           !active ||
@@ -362,27 +376,23 @@ export function App() {
           );
         } catch {
           // Only the snapshot transport may fail while authority is verified.
-          if (snapshot && authorityVerified && !controller.signal.aborted) {
-            dispatch(stale());
-            window.clearTimeout(timeout);
-            setVerifying(false);
+          if (timedOut) return;
+          if (snapshot && verifiedToken && !controller.signal.aborted) {
+            await retain(verifiedToken);
             return;
           }
           throw new Error("snapshot transport");
         }
-        if (response.status === 401 || response.status === 403)
-          return fail("login");
+        if (response.status === 401) return fail("login");
+        if (response.status === 403) return fail("unavailable");
         if (response.status === 428) return fail("pi");
         // The gateway rejects malformed daemon snapshots as 502 and foreign
         // identities as 403. A 503 is now a transient native/host outage.
         if (!active || generation !== loginGeneration.current) return;
         if (response.status === 502) return fail("unavailable");
         if (response.status >= 500) {
-          if (snapshot) {
-            dispatch(stale());
-            window.clearTimeout(timeout);
-            setVerifying(false);
-          } else fail("unavailable");
+          if (snapshot) await retain(verifiedToken);
+          else fail("unavailable");
           return;
         }
         if (
@@ -424,7 +434,7 @@ export function App() {
           }
         }
       } catch {
-        fail("unavailable");
+        if (!timedOut) fail("unavailable");
       }
     };
     void load();

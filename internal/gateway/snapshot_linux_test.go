@@ -29,6 +29,8 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 	var foreign atomic.Bool
 	var piBlocked atomic.Bool
 	var piStatusLeaked atomic.Bool
+	var snapshotMode atomic.Value
+	snapshotMode.Store("")
 	for i, m := range mappings {
 		dir, e := os.MkdirTemp("/tmp", "nah-snap-")
 		if e != nil {
@@ -53,6 +55,28 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 				if piStatusLeaked.Load() {
 					b = `{"schema_version":1,"pi":{"state":"missing","token":"private-secret"}}`
 				}
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Content-Length", strconv.Itoa(len(b)))
+				_, _ = io.WriteString(w, b)
+				return
+			}
+			switch snapshotMode.Load().(string) {
+			case "native-source":
+				b := `{"schema_version":1,"error":{"code":"native_source_unavailable"}}`
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Content-Length", strconv.Itoa(len(b)))
+				w.WriteHeader(503)
+				_, _ = io.WriteString(w, b)
+				return
+			case "foreign-error":
+				b := `{"schema_version":1,"error":{"code":"daemon_unavailable"},"private":"99"}`
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Content-Length", strconv.Itoa(len(b)))
+				w.WriteHeader(503)
+				_, _ = io.WriteString(w, b)
+				return
+			case "malformed":
+				b := "<html>private 99</html>"
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("Content-Length", strconv.Itoa(len(b)))
 				_, _ = io.WriteString(w, b)
@@ -119,7 +143,7 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 		}
 	}
 	piStatusLeaked.Store(true)
-	if w := send("1", "/api/v1/onboarding/pi/status", nil); w.Code != 503 || strings.Contains(w.Body.String(), "private-secret") {
+	if w := send("1", "/api/v1/onboarding/pi/status", nil); w.Code != 502 || strings.Contains(w.Body.String(), "private-secret") {
 		t.Fatalf("status leak: %d %s", w.Code, w.Body.String())
 	}
 	piStatusLeaked.Store(false)
@@ -129,6 +153,17 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 		t.Fatalf("foreign identity: %d %s", w.Code, w.Body.String())
 	}
 	foreign.Store(false)
+	for _, tc := range []struct {
+		mode string
+		want int
+	}{{"native-source", 503}, {"foreign-error", 502}, {"malformed", 502}} {
+		snapshotMode.Store(tc.mode)
+		w := send("1", "/api/v1/snapshot", nil)
+		if w.Code != tc.want || strings.Contains(w.Body.String(), "99") {
+			t.Fatalf("%s: %d %s", tc.mode, w.Code, w.Body.String())
+		}
+	}
+	snapshotMode.Store("")
 	if w := send("unknown", "/api/v1/snapshot", nil); w.Code != 401 {
 		t.Fatal(w.Code)
 	}

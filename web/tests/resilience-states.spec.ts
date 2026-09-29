@@ -96,6 +96,17 @@ test("@resilience verified session retains workspaces during a host outage, disa
     page.getByRole("navigation").getByRole("link", { name: "ordinary-dir" }),
   ).toBeVisible();
   await page.unroute("**/api/v1/snapshot");
+  await page.route("**/api/v1/onboarding/pi/status", (route) =>
+    route.fulfill({ status: 503, body: "daemon stopped" }),
+  );
+  await page.getByRole("button", { name: "Yritä uudelleen" }).click();
+  await expect(
+    page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("navigation").getByRole("link", { name: "ordinary-dir" }),
+  ).toBeVisible();
+  await page.unroute("**/api/v1/onboarding/pi/status");
   await page.request.get("/fixture/scenario?value=delay");
   await page.getByRole("button", { name: "Yritä uudelleen" }).click();
   await expect(

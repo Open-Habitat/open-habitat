@@ -26,8 +26,10 @@ is missing or wrong, and fail with generic messages so that response text never
 reaches the UI or the console. The store retains the last verified snapshot only when the session and Pi gate
 have been positively rechecked with the same session binding and the snapshot
 transport then fails (network, timeout, 500/503/504). The gateway rejects
-invalid daemon envelopes as 502 and foreign identity as 403; these clear the
-view rather than risking cross-identity content. It marks that snapshot stale,
+invalid daemon envelopes (including Pi status) as 502 and foreign snapshot
+identity as 403; these clear the view rather than risking cross-identity
+content. If Pi status itself cannot be reached (503), the unchanged browser
+session binding is checked before keeping old facts. It marks that snapshot stale,
 keeps reading available and disables writes until a fresh snapshot arrives.
 Failed authority checks, 401/403, malformed responses, session expiry, logout
 and identity or session changes clear the old view instead. The store resets

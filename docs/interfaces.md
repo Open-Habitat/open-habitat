@@ -421,11 +421,12 @@ Yleisen v1-sopimuksen virhekoodit ja HTTP-statukset ovat:
 |---:|---|---|
 | 400 | `invalid_request`, `schema_version_unsupported` | muotoa ei hyväksytty; mitään ei aloitettu |
 | 401 | `authentication_required`, `session_expired` | uudet luvut ja kirjoitukset estetty |
-| 403 | `origin_denied`, `csrf_denied`, `identity_mapping_denied`, `peer_not_authorized`, `cross_user_denied` | luottamusraja torjui pyynnön |
+| 403 | `origin_denied`, `csrf_denied`, `identity_mapping_denied`, `identity_mismatch`, `peer_not_authorized`, `cross_user_denied` | luottamusraja torjui pyynnön; gateway ei luovuta vierasta snapshotia |
 | 404 | `resource_not_found`, `command_outcome_unknown`, `content_revision_gone` | ei saa tulkita toisen käyttäjän olemassaoloa |
 | 409 | `stale_precondition`, `command_id_conflict`, `cursor_expired`, `cursor_instance_mismatch`, `writer_conflict`, `path_replaced`, `manual_worktree_blocks_delete` | nykytila estää turvallisen etenemisen |
 | 422 | `capability_unsupported`, `capability_unknown`, `path_unsupported`, `path_escape`, `confirmation_mismatch` | pyyntö on ymmärretty mutta sitä ei voi toteuttaa |
-| 503 | `daemon_unavailable`, `native_source_unavailable`, `capability_temporarily_unavailable` | tila on tilapäisesti saavuttamaton; kirjoituksia ei arvata |
+| 502 | `daemon_unavailable` | daemonin vastaus ei läpäissyt muodon tai identiteetin tarkistusta; selaimen vanhat tiedot poistetaan |
+| 503 | `daemon_unavailable`, `native_source_unavailable`, `capability_temporarily_unavailable` | tila on tilapäisesti saavuttamaton; vahvistetun saman istunnon sisältö voi jäädä vanhentuneena luettavaksi ilman kirjoituksia |
 | 500 | `native_adapter_error`, `operation_partial`, `annotation_corrupt` | tarkka osatulos/fakta säilyy ja näytetään; `annotation_corrupt` koskee vain annotaatiota kirjoittavaa komentoa, ei snapshot/history-lukua |
 
 

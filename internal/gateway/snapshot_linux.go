@@ -115,11 +115,9 @@ func (a *Auth) snapshotOrPiStatus(w http.ResponseWriter, r *http.Request, path s
 		return
 	}
 	defer res.Body.Close()
-	// Invalid upstream envelopes are not transport outages.
-	invalidStatus := 503
-	if path == "/api/v1/snapshot" {
-		invalidStatus = 502
-	}
+	// Invalid upstream envelopes are not transport outages, for either
+	// snapshot or Pi status. A 503 means the mapped daemon could not answer.
+	invalidStatus := 502
 	if res.ProtoMajor != 1 || res.ProtoMinor != 1 || (res.StatusCode != 200 && !(path == "/api/v1/snapshot" && (res.StatusCode == 428 || res.StatusCode == 503))) || res.Header.Get("Content-Type") != "application/json" || len(res.Header.Values("Content-Type")) != 1 || res.ContentLength <= 0 || res.ContentLength > snapshotLimit || len(res.TransferEncoding) != 0 || len(res.Header.Values("Content-Length")) != 1 {
 		safe(w, invalidStatus, "daemon_unavailable")
 		return
@@ -184,7 +182,7 @@ func (a *Auth) snapshotOrPiStatus(w http.ResponseWriter, r *http.Request, path s
 		decoder.DisallowUnknownFields()
 		var extra any
 		if decoder.Decode(&status) != nil || decoder.Decode(&extra) != io.EOF || status.SchemaVersion != 1 || (status.Pi.State != "usable" && status.Pi.State != "missing" && status.Pi.State != "unknown") {
-			safe(w, 503, "daemon_unavailable")
+			safe(w, invalidStatus, "daemon_unavailable")
 			return
 		}
 		// Reconstruct only the closed public vocabulary; never forward raw

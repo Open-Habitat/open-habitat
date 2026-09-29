@@ -57,6 +57,10 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
   expect((await observation.json()).state).toBe("confirmed");
   await page.reload();
   await expect(
+    page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /jatka/i }).click();
+  await expect(
     page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
   ).toBeVisible();
   await page
@@ -80,6 +84,10 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
   await expect(page.getByRole("heading", { name: "Työtilat" })).toBeVisible();
   await page.request.get("/fixture/pi-state?value=missing");
   await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /jatka/i }).click();
   await expect(
     page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
   ).toBeVisible();

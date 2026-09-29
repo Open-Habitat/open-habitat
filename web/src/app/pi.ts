@@ -49,13 +49,16 @@ async function boundedJSON(response: Response): Promise<unknown> {
 }
 export async function piStatus(
   signal?: AbortSignal,
-): Promise<PiState | "login"> {
+): Promise<PiState | "login" | "unavailable"> {
   const response = await fetch("/api/v1/onboarding/pi/status", {
     credentials: "same-origin",
     cache: "no-store",
     signal,
   });
   if (response.status === 401) return "login";
+  // The gateway reserves 503 for a mapped daemon that cannot answer;
+  // malformed Pi-status replies are rejected separately as 502.
+  if (response.status === 503) return "unavailable";
   const value = await boundedJSON(response);
   if (!statusValid(value)) throw new Error("invalid Pi status");
   return (value as { pi: { state: PiState } }).pi.state;

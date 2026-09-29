@@ -525,7 +525,7 @@ test("@browser-conversation new subject during pending tab check never restores 
     await other.getByRole("link", { name: "Bob" }).click();
     release();
     await expect(
-      page.getByRole("heading", { name: "Kohdetta ei enää löydy" }),
+      page.getByRole("heading", { name: "Tervetuloa Omega Habitatiin" }),
     ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "ordinary-dir" }),
@@ -539,7 +539,7 @@ test("@browser-conversation new subject during pending tab check never restores 
   }
 });
 
-test("@browser-conversation failed snapshot after tab return clears authenticated facts", async ({
+test("@browser-conversation transient snapshot failure after tab return keeps verified facts stale", async ({
   page,
 }) => {
   await open(page);
@@ -551,11 +551,11 @@ test("@browser-conversation failed snapshot after tab return clears authenticate
     window.dispatchEvent(new Event("focus"));
   });
   await expect(
-    page.getByRole("heading", { name: "Yhteyttä ei saatu" }),
+    page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
   ).toBeVisible();
-  await expect(page.getByRole("heading", { name: "ordinary-dir" })).toHaveCount(
-    0,
-  );
+  await expect(
+    page.getByRole("heading", { name: "ordinary-dir" }),
+  ).toBeVisible();
 });
 
 test("@browser-conversation first reveal of background authenticated tab validates changed subject", async ({
@@ -594,7 +594,7 @@ test("@browser-conversation first reveal of background authenticated tab validat
       ).revealFixtureTab(),
     );
     await expect(
-      page.getByRole("heading", { name: "Kohdetta ei enää löydy" }),
+      page.getByRole("heading", { name: "Tervetuloa Omega Habitatiin" }),
     ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "ordinary-dir" }),
