@@ -25,11 +25,11 @@ ehdokas ajan tasalla, ei rakenneta erillistä katselmointiprosessia.
 | [Agenttiohjauksen issue](../build-agent-control/item.md) | Tulevan toteutuksen käyttäjälle näkyvät lopputulokset, ei päätöshistoriaa. SSE ja päättyneen selainkeskustelun jatkaminen kuuluvat työhön; Pi:n kysymysdialogit ja terminaaliohjauksen haltuunotto eivät. | `8925a89` |
 | [Toteutusbriefit](../plan-v1-implementation/implementation-briefs.md) | Lyhyt toteutuksen omistajuuskartta. Rajapintatiedot omalle sivulleen; vanhat portit ja perusteettomasti sitovat numerot pois. | `b54636a` |
 | [ADR 0003: host stack](../../docs/adr-0003-host-stack.md) | Teknologiavalinta, vastuurajat ja perustelut. OAuth/OIDC-kirjaston valinta jää toteuttajalle; protokolla- ja käyttödetaljit muualle. | `4f50e89`, `855223a` |
-| [Rajapinnat](../../docs/interfaces.md) | Nykyiset reitit erillään sovitusta tulevasta pinnasta; viestien merkitys, katkoista palautuminen ja vastuurajat säilyvät. Palveluasetukset asennusissuen liitteeseen. | Tämän päivityksen commit (`Refs-Issue: @rethink-project-docs`) |
+| [Rajapinnat](../../docs/interfaces.md) | Nykyiset reitit erillään sovitusta tulevasta pinnasta; viestien merkitys, katkoista palautuminen ja vastuurajat säilyvät. Palveluasetukset asennusissuen liitteeseen. | `296e4a9` |
 
-Samalla on tehty kohdennettuja korjauksia muun muassa rajapintakuvaukseen,
-arkkitehtuuri- ja toteutussivuihin, ADR 0004:ään, CLI-konformanssiin ja liittyviin
-issueihin. Näitä ei ole vielä kokonaisuudessaan käyty läpi tällä skillillä.
+Samalla on tehty kohdennettuja korjauksia arkkitehtuuri- ja toteutussivuihin,
+ADR 0004:ään, CLI-konformanssiin ja liittyviin issueihin. Näitä ei ole vielä
+kokonaisuudessaan käyty läpi tällä skillillä.
 
 ## Seuraavaksi
 
@@ -54,8 +54,10 @@ läpikäynnissä havaittu. Sivu ei muuta protokollaa eikä väitä live-todennus
 
 Palveluvaatimukset säilyvät [asennusissuen liitteessä](../prepare-mvp-operations/service-requirements.md).
 Testien vastuut ja suunnitelmat ovat ennestään toteutuskartassa ja toteutusissueissa.
-Dokumentaatiotarkistus ja `git diff --check` läpäisivät ennen committia;
-puhdas CI-portti ajetaan tämän muutoksen commitista.
+Dokumentaatio- ja toteutuskartan tarkistukset sekä `git diff --check` läpäisivät.
+`./scripts/ci-local.sh --clean --json` läpäisi revisiolla
+`296e4a9` (`status: passed`, `clean: true`). Tämä on paikallisen portin
+synteettinen testi- ja pakettinäyttö; live-palvelinta ei muutettu eikä testattu.
 
 ## Lyhyt briefi jatkajalle
 
