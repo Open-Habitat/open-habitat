@@ -35,6 +35,32 @@ test("@resilience failed reads recover in place without claiming an empty catalo
   await expect(page.getByText("ordinary-dir")).toHaveCount(0);
 });
 
+test("@resilience native discovery error retains previously verified content", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await expect(
+    page.getByRole("navigation").getByRole("link", { name: "ordinary-dir" }),
+  ).toBeVisible();
+  await page.request.get("/fixture/scenario?value=error");
+  await page.getByRole("button", { name: "Päivitä", exact: true }).click();
+  await expect(
+    page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("navigation").getByRole("link", { name: "ordinary-dir" }),
+  ).toBeVisible();
+  await page.screenshot({ path: "test-results/evidence/stale-discovery.png" });
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.getByRole("button", { name: "Yritä uudelleen" }).click();
+  await expect(
+    page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
+  ).toHaveCount(0);
+});
+
 test("@resilience verified session retains workspaces during a host outage, disables writes and retries", async ({
   page,
 }) => {
@@ -60,6 +86,24 @@ test("@resilience verified session retains workspaces during a host outage, disa
   await expect(
     page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
   ).toHaveCount(0);
+  // A stopped host drops the transport rather than returning a 5xx.
+  await page.route("**/api/v1/snapshot", (route) => route.abort());
+  await page.getByRole("button", { name: "Päivitä", exact: true }).click();
+  await expect(
+    page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("navigation").getByRole("link", { name: "ordinary-dir" }),
+  ).toBeVisible();
+  await page.unroute("**/api/v1/snapshot");
+  await page.request.get("/fixture/scenario?value=delay");
+  await page.getByRole("button", { name: "Yritä uudelleen" }).click();
+  await expect(
+    page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("navigation").getByRole("link", { name: "ordinary-dir" }),
+  ).toBeVisible();
 });
 
 test("@resilience stale tab clears old identity when its session expires while away", async ({
@@ -88,20 +132,31 @@ test("@resilience stale tab clears old identity when its session expires while a
   await expect(page.getByText("ordinary-dir")).toHaveCount(0);
 });
 
-test("@resilience populated native history remains readable during outage", async ({ page }) => {
+test("@resilience populated native history remains readable during outage", async ({
+  page,
+}) => {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice", exact: true }).click();
-  await page.getByRole("navigation").getByRole("link", { name: "Synteettinen viesti 0" }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "Synteettinen viesti 0" })
+    .click();
   await expect(page.getByText("Synteettinen viesti 0").last()).toBeVisible();
-  await page.route("**/api/v1/snapshot", (route) => route.fulfill({ status: 500, body: "unavailable" }));
+  await page.route("**/api/v1/snapshot", (route) =>
+    route.fulfill({ status: 500, body: "unavailable" }),
+  );
   await page.getByRole("button", { name: "Päivitä", exact: true }).click();
-  await expect(page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja")).toBeVisible();
+  await expect(
+    page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
+  ).toBeVisible();
   await expect(page.getByText("Synteettinen viesti 0").last()).toBeVisible();
   await page.unroute("**/api/v1/snapshot");
   await page.getByRole("button", { name: "Yritä uudelleen" }).click();
-  await expect(page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja")).toHaveCount(0);
+  await expect(
+    page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
+  ).toHaveCount(0);
 });
 
 test("@resilience active conversation stays readable but cannot send during outage", async ({

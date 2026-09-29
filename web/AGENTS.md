@@ -25,9 +25,9 @@ before Redux sees them, read the body under a size cap even when Content-Length
 is missing or wrong, and fail with generic messages so that response text never
 reaches the UI or the console. The store retains the last verified snapshot only when the session and Pi gate
 have been positively rechecked with the same session binding and the snapshot
-transport then fails (network, timeout or a 5xx other than 503). The gateway
-also returns 503 for invalid or foreign daemon responses, so 503 is ambiguous
-and clears the view rather than risking cross-identity content. It marks that snapshot stale,
+transport then fails (network, timeout, 500/503/504). The gateway rejects
+invalid daemon envelopes as 502 and foreign identity as 403; these clear the
+view rather than risking cross-identity content. It marks that snapshot stale,
 keeps reading available and disables writes until a fresh snapshot arrives.
 Failed authority checks, 401/403, malformed responses, session expiry, logout
 and identity or session changes clear the old view instead. The store resets

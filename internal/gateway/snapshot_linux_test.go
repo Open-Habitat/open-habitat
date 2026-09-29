@@ -125,7 +125,7 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 	piStatusLeaked.Store(false)
 	piBlocked.Store(false)
 	foreign.Store(true)
-	if w := send("1", "/api/v1/snapshot", nil); w.Code != 503 || strings.Contains(w.Body.String(), "99") {
+	if w := send("1", "/api/v1/snapshot", nil); w.Code != 403 || strings.Contains(w.Body.String(), "99") {
 		t.Fatalf("foreign identity: %d %s", w.Code, w.Body.String())
 	}
 	foreign.Store(false)

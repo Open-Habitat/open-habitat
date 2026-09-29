@@ -115,18 +115,23 @@ func (a *Auth) snapshotOrPiStatus(w http.ResponseWriter, r *http.Request, path s
 		return
 	}
 	defer res.Body.Close()
-	if res.ProtoMajor != 1 || res.ProtoMinor != 1 || (res.StatusCode != 200 && !(path == "/api/v1/snapshot" && res.StatusCode == 428)) || res.Header.Get("Content-Type") != "application/json" || len(res.Header.Values("Content-Type")) != 1 || res.ContentLength <= 0 || res.ContentLength > snapshotLimit || len(res.TransferEncoding) != 0 || len(res.Header.Values("Content-Length")) != 1 {
-		safe(w, 503, "daemon_unavailable")
+	// Invalid upstream envelopes are not transport outages.
+	invalidStatus := 503
+	if path == "/api/v1/snapshot" {
+		invalidStatus = 502
+	}
+	if res.ProtoMajor != 1 || res.ProtoMinor != 1 || (res.StatusCode != 200 && !(path == "/api/v1/snapshot" && (res.StatusCode == 428 || res.StatusCode == 503))) || res.Header.Get("Content-Type") != "application/json" || len(res.Header.Values("Content-Type")) != 1 || res.ContentLength <= 0 || res.ContentLength > snapshotLimit || len(res.TransferEncoding) != 0 || len(res.Header.Values("Content-Length")) != 1 {
+		safe(w, invalidStatus, "daemon_unavailable")
 		return
 	}
 	b, err := io.ReadAll(io.LimitReader(res.Body, snapshotLimit+1))
 	if err != nil || int64(len(b)) != res.ContentLength || len(b) > snapshotLimit {
-		safe(w, 503, "daemon_unavailable")
+		safe(w, invalidStatus, "daemon_unavailable")
 		return
 	}
 	var tail [1]byte
 	if n, e := reader.Read(tail[:]); n != 0 || e != io.EOF || limited.N == 0 {
-		safe(w, 503, "daemon_unavailable")
+		safe(w, invalidStatus, "daemon_unavailable")
 		return
 	}
 	// Bind the response identity to the authenticated fixed mapping before any
@@ -146,8 +151,26 @@ func (a *Auth) snapshotOrPiStatus(w http.ResponseWriter, r *http.Request, path s
 		return
 	}
 	if path == "/api/v1/snapshot" {
-		if json.Unmarshal(b, &binding) != nil || binding.Identity.WebIdentityID != identityID(target) || binding.Auth.Provider != target.Provider || binding.Auth.ProviderAccountID != target.Subject {
-			safe(w, 503, "daemon_unavailable")
+		if res.StatusCode == 503 {
+			var sourceError struct {
+				SchemaVersion int `json:"schema_version"`
+				Error         struct {
+					Code string `json:"code"`
+				} `json:"error"`
+			}
+			if json.Unmarshal(b, &sourceError) != nil || sourceError.SchemaVersion != 1 || sourceError.Error.Code != "native_source_unavailable" {
+				safe(w, 502, "daemon_unavailable")
+				return
+			}
+			safe(w, 503, "native_source_unavailable")
+			return
+		}
+		if json.Unmarshal(b, &binding) != nil {
+			safe(w, 502, "daemon_unavailable")
+			return
+		}
+		if binding.Identity.WebIdentityID != identityID(target) || binding.Auth.Provider != target.Provider || binding.Auth.ProviderAccountID != target.Subject {
+			safe(w, 403, "identity_mismatch")
 			return
 		}
 	} else {

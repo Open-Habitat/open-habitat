@@ -373,10 +373,10 @@ export function App() {
         if (response.status === 401 || response.status === 403)
           return fail("login");
         if (response.status === 428) return fail("pi");
-        // The gateway also maps invalid/foreign daemon responses to 503.
-        // That status cannot prove this is the same identity: fail closed.
+        // The gateway rejects malformed daemon snapshots as 502 and foreign
+        // identities as 403. A 503 is now a transient native/host outage.
         if (!active || generation !== loginGeneration.current) return;
-        if (response.status === 503) return fail("unavailable");
+        if (response.status === 502) return fail("unavailable");
         if (response.status >= 500) {
           if (snapshot) {
             dispatch(stale());
