@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Offline, disposable three-UID repository catalog proof; never touches host gh.
+# Offline, disposable three-UID repository catalog and clone proof; never touches host gh or git.
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
 export TMPDIR=/var/tmp

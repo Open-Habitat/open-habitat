@@ -4,6 +4,7 @@ package daemon
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -58,6 +59,7 @@ func TestRepoCatalogDistinctUIDs(t *testing.T) {
 id=$(cat "$HOME/fixture-id") || exit 9
 case "$4" in
 /user) printf '{"id":%s}\n' "$id" ;;
+/repos/fixture/repo*) printf '{"owner":{"login":"fixture"},"name":"repo%s","full_name":"fixture/repo%s","clone_url":"https://github.com/fixture/repo%s.git"}\n' "$id" "$id" "$id" ;;
 /user/repos?*) printf '[{"owner":{"login":"fixture"},"name":"repo%s","full_name":"fixture/repo%s","html_url":"https://github.com/fixture/repo%s","private":true,"description":null}]\n' "$id" "$id" "$id" ;;
 *) exit 9 ;;
 esac
@@ -65,7 +67,20 @@ esac
 		if e = os.WriteFile(filepath.Join(home, "gh"), []byte(script), 0700); e != nil {
 			t.Fatal(e)
 		}
-		for _, file := range []string{"gh", "fixture-id"} {
+		gitScript := `#!/bin/sh
+case "$1" in
+clone) [ "$2" = -- ] && [ "$3" = "https://github.com/fixture/repo$(cat "$HOME/fixture-id").git" ] && [ "$4" = . ] || exit 9
+ mkdir .git || exit 9 ;;
+rev-parse) printf 'true\n' ;;
+remote) printf 'https://github.com/fixture/repo%s.git\n' "$(cat "$HOME/fixture-id")" ;;
+status) : ;;
+*) exit 9 ;;
+esac
+`
+		if e = os.WriteFile(filepath.Join(home, "git"), []byte(gitScript), 0700); e != nil {
+			t.Fatal(e)
+		}
+		for _, file := range []string{"gh", "git", "fixture-id"} {
 			if e = os.Chown(filepath.Join(home, file), uid, uid); e != nil {
 				t.Fatal(e)
 			}
@@ -148,6 +163,32 @@ esac
 		if subject == "42" {
 			foreignUID = 21002
 		}
+		// The same gateway UID may request a clone only from the mapped daemon.
+		cloneProbe := func(identity string) (int, string, error) {
+			cmd := exec.Command(os.Args[0], "-test.run=^TestRepoCatalogUIDProbe$")
+			cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: 21003, Gid: 21003}}
+			cmd.Env = append(os.Environ(), "REPO_UID_PROBE=1", "REPO_CLONE=1", "REPO_EXPECTED="+subject, "REPO_SOCKET="+socket, "REPO_SUBJECT="+identity)
+			b, err := cmd.CombinedOutput()
+			if err != nil {
+				return 0, string(b), err
+			}
+			var status int
+			var body string
+			_, err = fmt.Sscanf(string(b), "%d %s", &status, &body)
+			return status, body, err
+		}
+		status, body, e = cloneProbe(foreign)
+		if e != nil || status != 403 {
+			t.Fatalf("forged clone %s: %d %s %v", subject, status, body, e)
+		}
+		status, body, e = cloneProbe(subject)
+		if e != nil || status != 200 || !strings.Contains(body, "cloned") {
+			t.Fatalf("clone %s: %d %s %v", subject, status, body, e)
+		}
+		status, body, e = cloneProbe(subject)
+		if e != nil || status != 409 || !strings.Contains(body, "checkout_exists") {
+			t.Fatalf("repeat %s: %d %s %v", subject, status, body, e)
+		}
 		_, _, e = probe(foreignUID, subject)
 		if e == nil {
 			t.Fatal("foreign daemon UID connected to mapped socket")
@@ -171,6 +212,7 @@ func serveCatalogUID(t *testing.T) {
 	}
 	mux := http.NewServeMux()
 	mux.Handle(RepoCatalogPath, repoCatalogHandler(cfg, trusted, run))
+	mux.Handle(RepoClonePath, RepoCloneHandlerWithFixturePrograms(cfg, trusted, home, home, filepath.Join(home, "gh"), filepath.Join(home, "git")))
 	srv := &http.Server{Handler: mux, ConnContext: func(ctx context.Context, c net.Conn) context.Context {
 		if uc, ok := c.(*net.UnixConn); ok {
 			v, e := PeerUID(uc)
@@ -195,7 +237,13 @@ func TestRepoCatalogUIDProbe(t *testing.T) {
 	defer conn.Close()
 	_ = conn.SetDeadline(time.Now().Add(3 * time.Second))
 	subject := os.Getenv("REPO_SUBJECT")
-	req, e := http.NewRequest("GET", "http://unix"+RepoCatalogPath+"?page=1&limit=2", nil)
+	method, path := "GET", RepoCatalogPath+"?page=1&limit=2"
+	var bodyReader io.Reader
+	if os.Getenv("REPO_CLONE") == "1" {
+		method, path = "POST", RepoClonePath
+		bodyReader = bytes.NewBufferString(`{"full_name":"fixture/repo` + os.Getenv("REPO_EXPECTED") + `"}`)
+	}
+	req, e := http.NewRequest(method, "http://unix"+path, bodyReader)
 	if e != nil {
 		t.Fatal(e)
 	}
