@@ -6,8 +6,13 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
-  await expect(page.getByRole("link", { name: "aurinkokello" })).toBeVisible();
-  await page.getByRole("link", { name: "aurinkokello" }).click();
+  await expect(
+    page.getByRole("navigation").getByRole("link", { name: "aurinkokello" }),
+  ).toBeVisible();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "aurinkokello" })
+    .click();
   await page.goto("/agents/pi:a1a1a1a1-0000-4000-8000-000000000001");
   await expect(
     page.getByText("Lisää komentoriville --json-lippu", { exact: false }),
@@ -39,7 +44,6 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   await expect(
     page.getByText("Selvä. Kysyit:", { exact: false }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Avaa aurinkokello" }).click();
   await expect(
     page
       .getByRole("navigation", { name: "Työtilat ja keskustelut" })
