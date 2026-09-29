@@ -66,10 +66,11 @@ test("@browser-conversation create, send once, reconnect and old history stays r
   await page.screenshot({
     path: "test-results/evidence/browser-conversation-reconnect.png",
   });
-  await page.getByRole("button", { name: "Pyydä pysäytystä" }).click();
+  // The short synthetic turn may already have settled after reload. An idle
+  // conversation must not offer a meaningless interruption request.
   await expect(
-    page.getByText(/Työkalujen päättymistä ei ole vahvistettu/),
-  ).toBeVisible();
+    page.getByRole("button", { name: "Keskeytä Pi:n vuoro" }),
+  ).toHaveCount(0);
   await page.goto("/agents/pi:11111111-1111-4111-8111-111111111111");
   await expect(page.getByText("Vain luku · Ohjausta ei ole")).toBeVisible();
   await expect(
