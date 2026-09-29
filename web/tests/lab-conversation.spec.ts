@@ -90,6 +90,34 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   ).toBe(true);
 });
 
+test("@lab fresh replies remain visible across native history pages", async ({
+  page,
+}) => {
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
+    .getByRole("link", { name: "aurinkokello" })
+    .click();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  for (let i = 1; i <= 8; i++) {
+    await editor.fill(`Kierros ${i}`);
+    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+    await expect(page.getByText(`Kierros ${i}`, { exact: true })).toBeVisible({
+      timeout: 20000,
+    });
+    await expect(
+      page.getByText(`Selvä. Kysyit: "Kierros ${i}".`, { exact: false }),
+    ).toBeVisible({ timeout: 30000 });
+    await expect(
+      page.getByRole("button", { name: "Lähetä", exact: true }),
+    ).toBeEnabled({ timeout: 30000 });
+  }
+  await expect(page.getByText("Kierros 8", { exact: true })).toBeVisible();
+});
+
 test("@lab fake-Pi crash leaves the turn readable but blocks another send", async ({
   page,
 }) => {

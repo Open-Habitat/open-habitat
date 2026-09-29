@@ -10,11 +10,15 @@
 
 ### 1. High · A rejected send loses the user's draft and locks retry
 
+**Status (conversation robustness follow-up):** Rejected sends now retain their draft and release the retry lock on confirmed rejection; accepted sends clear only the submitted text after the matching native acknowledgement. Uncertain sends retain their text and never retry automatically. Synthetic regression evidence is in `web/tests/lab-conversation.spec.ts` and `web/tests/browser-conversation.spec.ts`.
+
 **Where/experience.** Create a conversation in `aurinkokello`, type `hylkää`, press **Lähetä**. The fake Pi returns `rejected`. The editor becomes empty (`inputValue() === ""`); the UI says *Viesti hylättiin. Luonnosta ei lähetetä automaattisesti uudelleen* but also *Aiemman pyynnön tulos epävarma* and disables sending until the native state is resolved. The same premature clearing is visible while `hidas`/`kaadu` are only `accepted` with acknowledgement still pending. Evidence: [rejected editor](screenshots/keyword-hylkää.png), [pending result](screenshots/keyword-kaadu.png); Playwright output captured `EDITOR hylkää` as empty and the rejected/uncertain status text. Source corroboration: `BrowserConversation.tsx` calls `changeDraft("")` immediately after HTTP `send()`, before `refresh()` determines the native acknowledgement, and the ambiguous receipt only clears on accepted + idle + readable.
 
 **Why it matters.** Work is lost precisely when a send fails, and a contradictory uncertain status prevents a deliberate corrected retry. [Agreed UI: message/acknowledgement](../../docs/ui.md#viesti-vastaus-ja-työn-ohjaus) says rejected and uncertain sends retain their text and distinguishes pending, accepted, rejected. [Recovery](../../docs/ui.md#katkos-ja-epävarma-tulos) forbids automatic duplicates, not an informed manual retry. **Fix:** retain a command-specific submitted text/version until the status confirms accepted; clear only that version on acceptance, restore/reveal rejected text, distinguish rejection from unresolved outcome and unblock on confirmed idle state. Regression-test `hylkää`, `hidas`, `kaadu` and reload.
 
 ### 1b. High · Fresh replies disappear when a conversation crosses a history page boundary
+
+**Status (conversation robustness follow-up):** The writable feed now walks forward from its last native entry instead of treating the oldest page as the live tail. The paged browser regression checks that new content beyond page one is visible without a manual load and does not displace the reader.
 
 **Where/experience.** In a fresh controlled chat, send eight short messages sequentially, waiting for each send button to become enabled. Messages 1–6 and their Pi replies appeared. After message 7, the user's message appeared but its answer did not; after message 8, neither message nor reply appeared even after waiting another 3.5 seconds. The UI offered **Lataa seuraava historiasivu**. Clicking it revealed the missing answer and message 8. The live controller still reported the turn complete. Screenshot: [before manual pagination](screenshots/pagination-after-8.png) and [after manual pagination](screenshots/pagination-confirm.png); exact observation in synthetic console log `.cache/lab/audit-pagination-confirm.log` (`turn 7 … answer visible=0`, `turn 8 user visible=0`, then answer shown after pagination). This repeats the first timed-out seven-turn attempt; it is not merely the `pitkä` response still generating.
 
@@ -44,11 +48,15 @@
 
 ### 5. Medium · Newly started chat is buried below a read-only workspace report
 
+**Status (reverified on current main):** The conversation-experience work already hides workspace details when a conversation is selected (`App.tsx`), puts the editor in the primary pane and scopes the read-only notice to terminal history. The query-param route remains: route convergence is the separately listed design question, not changed here.
+
 **Where/experience.** After **Aloita uusi Pi-keskustelu**, the main pane still begins with a four-row filesystem/Git status card and a prominent blue notice *Vanhat Pi-historiat ovat vain luettavissa*; the *Pi-keskustelu* and editor are below them. First send may be below the fold. Screenshot: [new chat](screenshots/conversation-new.png). URL is `/workspaces/:id?conversation=pi:…` rather than a conversation path, while terminal histories use `/agents/:id`.
 
 **Why it matters.** The primary action is displaced and the read-only message appears to apply to the new writable chat. [Agreed UI: navigation](../../docs/ui.md#kirjautuminen-ja-työtilan-valinta) separates read-only native histories from new writable conversations and requires durable deep links; [production routes](../../design-system/production-v1.md#reitit-valinta-ja-deep-linkit) specify a conversation route. **Fix:** make a selected browser conversation the primary pane, move workspace facts behind details, scope the read-only warning to terminal history, and converge on the agreed route after deciding how controller session IDs map to native IDs. Coordinate with the shell and conversation workers.
 
 ### 6. Low · State labels in writable chat leak protocol words
+
+**Status (reverified on current main):** The conversation header already translates each state to Finnish. The remaining raw state in the conversation picker is now translated too; no protocol enum is displayed in this flow.
 
 **Where/experience.** A new chat shows `idle`; after sending, `accepted` or `rejected` is used as the dominant header state. See [new chat](screenshots/conversation-new.png) and [rejected send](screenshots/keyword-hylkää.png). The neighboring labels are Finnish.
 

@@ -216,11 +216,16 @@ export function BrowserConversation({
         if (sessionStorage.getItem(unresolvedKey) === nextStatus.command_id) {
           const rejectedText = sessionStorage.getItem(submittedKey);
           if (rejectedText !== null) {
-            setDraft(rejectedText);
-            sessionStorage.setItem(
-              `nah:draft:${identity}:${csrf}:${id}`,
-              rejectedText,
-            );
+            // Do not overwrite edits made while the acknowledgement was pending.
+            if (
+              !sessionStorage.getItem(`nah:draft:${identity}:${csrf}:${id}`)
+            ) {
+              setDraft(rejectedText);
+              sessionStorage.setItem(
+                `nah:draft:${identity}:${csrf}:${id}`,
+                rejectedText,
+              );
+            }
           }
           sessionStorage.removeItem(submittedKey);
           sessionStorage.removeItem(unresolvedKey);
@@ -239,41 +244,90 @@ export function BrowserConversation({
       if (
         unresolved &&
         unresolved === nextStatus.command_id &&
-        nextStatus.ack === "accepted" &&
-        nextStatus.state === "idle" &&
-        nextStatus.native_history === "readable"
+        nextStatus.ack === "accepted"
       ) {
-        sessionStorage.removeItem(`nah:ambiguous:${identity}:${csrf}:${id}`);
+        const sentText = sessionStorage.getItem(submittedKey);
+        const key = `nah:draft:${identity}:${csrf}:${id}`;
+        if (sentText !== null && sessionStorage.getItem(key) === sentText) {
+          setDraft("");
+          sessionStorage.setItem(key, "");
+        }
         sessionStorage.removeItem(submittedKey);
-        setReceipt("Viesti hyväksyttiin ja natiivi historia on luettavissa.");
+        sessionStorage.removeItem(`nah:ambiguous:${identity}:${csrf}:${id}`);
+        setReceipt("Viesti hyväksyttiin.");
       }
       setEvents(nextStatus.events); // bounded tail, never concatenate snapshots
       setProblem("");
       if (nextStatus.native_history === "readable") {
-        const page = await readHistoryFetch(id);
-        if (!alive.current || version !== generation.current) return;
-        const old = latest.current.entries;
-        if (page.entries.length > old.length) {
-          const scroller = feed.current;
+        try {
+          const page = await readHistoryFetch(id);
+          if (!alive.current || version !== generation.current) return;
+          const old = latest.current.entries;
+          // The native history is oldest-first. The first page is NOT a live
+          // tail: after 25 entries a fresh reply is only reachable via `after`.
+          // Walk forward from the last known key, keeping the reading position.
+          // Bound each poll so very large histories cannot monopolize the tab.
+          const prefixMatches =
+            old.length > 0 &&
+            page.entries.every((e, i) => old[i]?.entry_key === e.entry_key);
+          let merged = prefixMatches ? [...old] : [...page.entries];
+          let cursor = prefixMatches
+            ? (old.at(-1)?.entry_key ?? page.next_after)
+            : page.next_after;
           if (
-            scroller &&
-            scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight >
-              60
+            prefixMatches &&
+            !page.next_after &&
+            old.length === page.entries.length
           )
-            setUnseen((n) => n + page.entries.length - old.length);
-        }
-        // Keep loaded pages and their cursor when the refreshed first page
-        // still shares its native keys. A new event tail must not reset pagination.
-        if (
-          !(
-            old.length > page.entries.length &&
-            page.entries.every((e, i) => old[i]?.entry_key === e.entry_key)
+            cursor = undefined;
+          for (let n = 0; cursor && n < 16; n++) {
+            const additional = await readHistoryFetch(id, cursor);
+            if (!alive.current || version !== generation.current) return;
+            // Native history can change while walking: retry at the next poll
+            // rather than claiming a discontinuous feed is up to date.
+            if (!additional.entries.length && additional.complete) {
+              cursor = undefined;
+              break;
+            }
+            if (
+              !additional.entries.length ||
+              additional.entries.some((e) =>
+                merged.some((m) => m.entry_key === e.entry_key),
+              )
+            ) {
+              setHistoryError(true);
+              return;
+            }
+            merged = [...merged, ...additional.entries];
+            cursor = additional.next_after;
+          }
+          if (merged.length > old.length) {
+            const scroller = feed.current;
+            if (
+              scroller &&
+              scroller.scrollHeight -
+                scroller.scrollTop -
+                scroller.clientHeight >
+                60
+            )
+              setUnseen((n) => n + merged.length - old.length);
+          }
+          if (
+            merged.length !== old.length ||
+            merged.some(
+              (e, i) =>
+                e.entry_key !== old[i]?.entry_key ||
+                e.content.text !== old[i]?.content.text ||
+                e.content.complete !== old[i]?.content.complete,
+            )
           )
-        ) {
-          setEntries(page.entries);
-          setNext(page.next_after);
+            setEntries(merged);
+          setNext(cursor);
+          setHistoryError(false);
+        } catch {
+          if (alive.current && version === generation.current)
+            setHistoryError(true);
         }
-        setHistoryError(false);
       } else {
         // A temporary native read failure must not erase already-read messages.
         setHistoryError(nextStatus.native_history === "unavailable");
@@ -375,7 +429,6 @@ export function BrowserConversation({
       await send(current.agent_id, text, command, token);
       if (!alive.current) return;
       setReceipt("Viesti odottaa natiivia hyväksyntää");
-      changeDraft("");
       await refresh();
     } catch {
       if (alive.current)
@@ -505,7 +558,17 @@ export function BrowserConversation({
                 >
                   {s.agent_id}
                 </a>{" "}
-                · {s.state}
+                ·{" "}
+                {(
+                  {
+                    idle: "Valmis",
+                    pending: "Odottaa kuittausta",
+                    accepted: "Pi työskentelee",
+                    rejected: "Viesti hylättiin",
+                    uncertain: "Tila epävarma",
+                    stopping: "Pysäytetään",
+                  } as Record<string, string>
+                )[s.state] ?? "Tila ei tiedossa"}
               </li>
             ))}
           </ul>
@@ -535,7 +598,14 @@ export function BrowserConversation({
             onToggleDetails={() => setDetails(!details)}
           />
           {details ? <p>Natiivi tunniste: {id}</p> : null}
-          <section ref={feed} style={{ maxHeight: "60vh", overflow: "auto" }}>
+          <section
+            ref={feed}
+            style={{
+              maxHeight: "60vh",
+              overflow: "auto",
+              overflowAnchor: "none",
+            }}
+          >
             <ConversationTimeline
               state={
                 historyError

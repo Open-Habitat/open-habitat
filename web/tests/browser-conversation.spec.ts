@@ -199,8 +199,8 @@ test("@browser-conversation revalidation restores editor selection, paged readin
   });
   await page.route("**/api/v1/agents/*/history?*", async (route) => {
     const after = new URL(route.request().url()).searchParams.get("after");
-    const start = after ? 25 : 0;
-    const limit = count === 51 && !after ? 51 : 25;
+    const start = after ? Number(after.replace("item-", "")) + 1 : 0;
+    const limit = 25;
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
@@ -220,28 +220,28 @@ test("@browser-conversation revalidation restores editor selection, paged readin
           }),
         ),
         complete: count <= start + limit,
-        ...(count > start + limit ? { next_after: "page-2" } : {}),
+        ...(count > start + limit
+          ? { next_after: `item-${start + limit - 1}` }
+          : {}),
       }),
     });
   });
   count = 50;
   await page.getByRole("button", { name: "Tarkista tila ja historia" }).click();
-  await expect(page.locator(".ah-feed li")).toHaveCount(25);
-  await page
-    .getByRole("button", { name: "Lataa seuraava historiasivu" })
-    .click();
   await expect(page.locator(".ah-feed li")).toHaveCount(50);
   const feed = page.locator("section:has(> .ah-timeline)").last();
-  await feed.evaluate((node) => {
-    node.scrollTop = Math.min(350, node.scrollHeight - node.clientHeight);
-  });
-  const before = await feed.evaluate((node) => node.scrollTop);
-  expect(before).toBeGreaterThan(0);
   await editor.fill("kesken oleva viesti");
   await editor.evaluate((node: HTMLTextAreaElement) => {
     node.focus();
     node.setSelectionRange(4, 9);
   });
+  // Focusing the editor can move the scrollable feed; measure the reading
+  // position only after focus has settled.
+  await feed.evaluate((node) => {
+    node.scrollTop = Math.min(350, node.scrollHeight - node.clientHeight);
+  });
+  const before = await feed.evaluate((node) => node.scrollTop);
+  expect(before).toBeGreaterThan(0);
   // Idle viewing must not replace the editor with a full-screen loading page.
   // The conversation's own 3-second native status poll is separate from the
   // top-level snapshot revalidation which used to unmount the whole page.
@@ -252,6 +252,7 @@ test("@browser-conversation revalidation restores editor selection, paged readin
   });
   await page.clock.fastForward(60_000);
   expect(snapshotReads).toBe(0);
+  expect(await feed.evaluate((node) => node.scrollTop)).toBeCloseTo(before, 0);
   await expect(editor).toBeVisible();
   await expect(editor).toHaveValue("kesken oleva viesti");
   await expect(page.getByRole("heading", { name: "Ladataan" })).toHaveCount(0);
@@ -281,7 +282,8 @@ test("@browser-conversation revalidation restores editor selection, paged readin
       .getByRole("button", { name: "Lataa seuraava historiasivu" })
       .count(),
   ).toBe(0);
-  // An incoming native entry while reading must be signalled, not jump to the bottom.
+  // An incoming native entry beyond the first page must be signalled without
+  // waiting for a manual history-page click or jumping away from the reader.
   count = 51;
   await page.getByRole("button", { name: "Tarkista tila ja historia" }).click();
   await expect(
