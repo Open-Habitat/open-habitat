@@ -27,22 +27,22 @@ several changes into one transaction.
 
 ## The schedule
 
-There is no backlog. An open issue is either scheduled by its `lane`, ordered
-within the lane by `lane_seq` and across lanes by `blocked_by`, or it is an
-anomaly that `/wrap-up` reports. Labels classify content, not lifecycle: a
-`deferred` label once meant "not now", it has been retired in favour of the
-`deferred` status with `deferred_until`, and `doctor` removes the label if it
-reappears.
+There is no backlog. An open non-epic issue is either scheduled by its `lane`,
+ordered within the lane by `blocked_by`, then priority, then `lane_seq`, and
+across lanes by `blocked_by`, or it is an anomaly that `/wrap-up` reports.
+Labels classify content, not lifecycle: a `deferred` label once meant "not
+now", it has been retired in favour of the `deferred` status with
+`deferred_until`, and `doctor --fix` removes the label if it reappears.
 
 ## Status transitions
 
 `.issuectl/transitions.yaml` lists the allowed transitions and its comments
 give the reason for each: `untriaged` is unreachable from in-flight work
-because that would silently un-work an issue, and closing statuses come only
-from the development flow so that an untriaged report cannot quietly become
-`fixed`. When the tool rejects a transition, the error names the rule, and the
-answer is usually a different disposition through `issuectl intake` rather
-than the same transition again.
+because that would silently un-work an issue, and the completion statuses
+`fixed` and `done` come only from the development flow so that an untriaged
+report cannot quietly become `fixed`. When the tool rejects a transition, the
+error names the rule, and the answer is usually a different disposition
+through `issuectl intake` rather than the same transition again.
 
 ## Commits and results
 
@@ -60,8 +60,8 @@ beside `item.md`.
 pinned issuectl that may be older than the one installed on the machine. A
 critical finding therefore fails everyone's gate, not only the run that caused
 it, which is why it is worth fixing as soon as it appears. Doctor also
-maintains the block below; `agents_md_drift` in its report means the schema
-changed and the block is stale.
+maintains the block below; `agents_md_drift` in its report means the schema or
+the transition rules changed and the block is stale.
 
 <!-- issuectl-managed:start -->
 
