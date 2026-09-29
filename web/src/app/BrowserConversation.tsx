@@ -43,6 +43,7 @@ export type ConversationPlace = {
   next?: string;
   unseen: number;
   scrollTop: number;
+  anchor?: { key: string; offset: number };
   focus?: {
     start: number;
     end: number;
@@ -67,7 +68,7 @@ export function BrowserConversation({
   id?: string;
   title?: string;
   identity: string;
-  place: RefObject<ConversationPlace | undefined>;
+  place: RefObject<Map<string, ConversationPlace>>;
   onSessionCreated: (session: Session) => void;
 }) {
   const navigate = useNavigate();
@@ -107,6 +108,40 @@ export function BrowserConversation({
   const focusedOnOpen = useRef(false);
   const latest = useRef({ entries, next, unseen, csrf });
   latest.current = { entries, next, unseen, csrf };
+  const placeKey = `${identity}:${workspace.workspace_id}:${id}`;
+  const readingAnchor = useRef<ConversationPlace["anchor"]>(undefined);
+  const captureAnchor = useCallback(() => {
+    const viewport = feed.current;
+    if (!viewport || wasAtBottom.current) return;
+    const rows = viewport.querySelectorAll<HTMLElement>(".ah-feed > li");
+    const top = viewport.getBoundingClientRect().top;
+    for (let i = 0; i < rows.length; i++) {
+      const rect = rows[i].getBoundingClientRect();
+      if (rect.bottom > top && latest.current.entries[i]) {
+        readingAnchor.current = {
+          key: latest.current.entries[i].entry_key,
+          offset: rect.top - top,
+        };
+        return;
+      }
+    }
+  }, []);
+  const restoreAnchor = useCallback(
+    (anchor: ConversationPlace["anchor"], pages: HistoryEntry[]) => {
+      const viewport = feed.current;
+      if (!viewport || !anchor) return false;
+      const index = pages.findIndex((e) => e.entry_key === anchor.key);
+      const row =
+        viewport.querySelectorAll<HTMLElement>(".ah-feed > li")[index];
+      if (!row) return false;
+      viewport.scrollTop +=
+        row.getBoundingClientRect().top -
+        viewport.getBoundingClientRect().top -
+        anchor.offset;
+      return true;
+    },
+    [],
+  );
   // Capture before React removes the DOM, including the actual textarea selection.
   useLayoutEffect(() => {
     return () => {
@@ -119,7 +154,8 @@ export function BrowserConversation({
       if (!id || !token) return;
       const editor = section.current?.querySelector("textarea");
       const focused = editor && document.activeElement === editor;
-      place.current = {
+      captureAnchor();
+      place.current.set(placeKey, {
         identity,
         csrf: token,
         workspaceId: workspace.workspace_id,
@@ -128,6 +164,7 @@ export function BrowserConversation({
         next: cursor,
         unseen: count,
         scrollTop: feed.current?.scrollTop ?? 0,
+        anchor: readingAnchor.current,
         focus: focused
           ? {
               start: editor.selectionStart,
@@ -138,9 +175,9 @@ export function BrowserConversation({
                 | "none",
             }
           : undefined,
-      };
+      });
     };
-  }, [id, identity, workspace.workspace_id, place]);
+  }, [id, identity, workspace.workspace_id, place, placeKey, captureAnchor]);
   const draftKey = csrf && id ? `nah:draft:${identity}:${csrf}:${id}` : "";
   const ambiguousKey = csrf
     ? `nah:ambiguous:${identity}:${csrf}:${id ?? workspace.workspace_id}`
@@ -171,7 +208,7 @@ export function BrowserConversation({
         if (token === "login") throw new Error("identity_lost");
         const found = await list(controller.signal);
         if (controller.signal.aborted) return;
-        const saved = place.current;
+        const saved = place.current.get(placeKey);
         if (
           saved &&
           saved.identity === identity &&
@@ -187,7 +224,7 @@ export function BrowserConversation({
           setNext(saved.next);
           setUnseen(saved.unseen);
           restored.current = true;
-        } else place.current = undefined;
+        } else place.current.delete(placeKey);
         setCSRF(token);
         setSessions(found);
         if (
@@ -212,7 +249,7 @@ export function BrowserConversation({
       ++generation.current;
       controller.abort();
     };
-  }, [id, workspace.workspace_id, identity, place, stale]);
+  }, [id, workspace.workspace_id, identity, place, placeKey, stale]);
   useEffect(() => {
     setDraft(draftKey ? (sessionStorage.getItem(draftKey) ?? "") : "");
   }, [draftKey]);
@@ -354,8 +391,10 @@ export function BrowserConversation({
                 e.content.text !== old[i]?.content.text ||
                 e.content.complete !== old[i]?.content.complete,
             )
-          )
+          ) {
+            captureAnchor();
             setEntries(merged);
+          }
           setNext(cursor);
           setHistoryError(false);
         } catch {
@@ -384,6 +423,7 @@ export function BrowserConversation({
     identity,
     submittedKey,
     stale,
+    captureAnchor,
   ]);
   useEffect(() => {
     if (!id || !csrf || stale) return;
@@ -417,8 +457,10 @@ export function BrowserConversation({
     if (wasAtBottom.current && feed.current) {
       feed.current.scrollTop = feed.current.scrollHeight;
       setUnseen(0);
+    } else {
+      restoreAnchor(readingAnchor.current, entries);
     }
-  });
+  }, [entries, restoreAnchor]);
   useEffect(() => {
     if (!finishedInBackground) return;
     const old = document.title;
@@ -646,7 +688,7 @@ export function BrowserConversation({
       current.state === "accepted");
   useLayoutEffect(() => {
     if (!restored.current) return;
-    const saved = place.current;
+    const saved = place.current.get(placeKey);
     if (
       !saved ||
       saved.id !== id ||
@@ -654,7 +696,17 @@ export function BrowserConversation({
       saved.csrf !== csrf
     )
       return;
-    if (feed.current) feed.current.scrollTop = saved.scrollTop;
+    if (feed.current) {
+      feed.current.scrollTop = saved.scrollTop;
+      readingAnchor.current = saved.anchor;
+      if (!restoreAnchor(saved.anchor, entries))
+        feed.current.scrollTop = saved.scrollTop;
+      wasAtBottom.current =
+        feed.current.scrollHeight -
+          feed.current.scrollTop -
+          feed.current.clientHeight <
+        60;
+    }
     if (saved.focus && !controlled) return;
     restored.current = false;
     if (saved.focus) {
@@ -668,8 +720,8 @@ export function BrowserConversation({
         );
       }
     }
-    place.current = undefined;
-  }, [csrf, id, identity, controlled, place]);
+    place.current.delete(placeKey);
+  }, [csrf, id, identity, controlled, place, placeKey, entries, restoreAnchor]);
   useEffect(() => {
     if (!id || !controlled || focusedOnOpen.current) return;
     focusedOnOpen.current = true;
@@ -824,7 +876,10 @@ export function BrowserConversation({
               if (!el) return;
               wasAtBottom.current =
                 el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-              if (wasAtBottom.current) setUnseen(0);
+              if (wasAtBottom.current) {
+                readingAnchor.current = undefined;
+                setUnseen(0);
+              } else captureAnchor();
             }}
             style={{
               maxHeight: "60vh",
@@ -863,6 +918,7 @@ export function BrowserConversation({
                 void readHistoryFetch(id, next)
                   .then((p) => {
                     if (staleRef.current) return;
+                    captureAnchor();
                     setEntries((old) => [
                       ...old,
                       ...p.entries.filter(

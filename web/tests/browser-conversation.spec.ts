@@ -309,6 +309,12 @@ test("@browser-conversation revalidation restores editor selection, paged readin
     page.getByRole("button", { name: "Uutta sisältöä (1)" }),
   ).toBeVisible();
   expect(await feed.evaluate((node) => node.scrollTop)).toBeCloseTo(before, 0);
+  // Returning to this agent restores its own reading anchor and editor focus.
+  await page.getByRole("link", { name: "ordinary-dir" }).last().click();
+  await page.goBack();
+  await expect(editor).toHaveValue("kesken oleva viesti");
+  await expect(editor).toBeFocused();
+  expect(await feed.evaluate((node) => node.scrollTop)).toBeCloseTo(before, 0);
   await page.getByRole("button", { name: "Tilivalikko" }).click();
   await page.getByRole("menuitem", { name: "Asetukset" }).click();
   await expect(page).toHaveURL(/\/settings/);
@@ -756,4 +762,47 @@ test("@browser-conversation a stale working view cannot strand an unsent queued 
   } finally {
     release();
   }
+});
+
+test("@browser-conversation separate streaming drafts survive agent switches and vanish on identity change", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(page).toHaveURL(/conversation=pi/);
+  const firstURL = page.url();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await expect(editor).toBeVisible();
+  await editor.fill("hidas ensimmäinen vuoro");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(
+    page.getByText(/Viesti hyväksyttiin|Viesti odottaa natiivia hyväksyntää/),
+  ).toBeVisible();
+  await editor.fill("ensimmäisen oma luonnos");
+  await page.getByRole("link", { name: "ordinary-dir" }).last().click();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(page).toHaveURL(/conversation=pi/);
+  const secondURL = page.url();
+  expect(secondURL).not.toBe(firstURL);
+  await expect(editor).toHaveValue("");
+  await editor.fill("toisen oma luonnos");
+  await page.goBack(); // workspace
+  await page.goBack(); // first agent, without a document reload
+  await expect(page).toHaveURL(firstURL);
+  await expect(editor).toHaveValue("ensimmäisen oma luonnos");
+  await page.goForward();
+  await page.goForward();
+  await expect(editor).toHaveValue("toisen oma luonnos");
+  await page.reload();
+  await expect(editor).toHaveValue("toisen oma luonnos");
+  await page.getByRole("button", { name: "Tilivalikko" }).click();
+  await page.getByRole("menuitem", { name: "Kirjaudu ulos" }).click();
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Bob" }).click();
+  expect(
+    await page.evaluate(() =>
+      Object.keys(sessionStorage).filter((key) => key.startsWith("nah:draft:")),
+    ),
+  ).toEqual([]);
+  await expect(page.getByText("toisen oma luonnos")).toHaveCount(0);
 });

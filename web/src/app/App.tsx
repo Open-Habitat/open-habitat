@@ -160,7 +160,7 @@ export function App() {
   const returningFromSettings = useRef(false);
   // Memory-only reading place. Revalidation masks the mounted view; a changed
   // login or a failed check drops both the snapshot and ephemeral UI state.
-  const conversationPlace = useRef<ConversationPlace | undefined>(undefined);
+  const conversationPlace = useRef(new Map<string, ConversationPlace>());
   useEffect(() => {
     if (location.pathname !== "/settings" && returningFromSettings.current) {
       returningFromSettings.current = false;
@@ -181,7 +181,7 @@ export function App() {
       setSettingsReturn("/workspaces");
       returningFromSettings.current = false;
       setExpanded({});
-      conversationPlace.current = undefined;
+      conversationPlace.current.clear();
     }
     if (identity) priorIdentity.current = identity;
   }, [identity, phase]);
@@ -279,7 +279,7 @@ export function App() {
       sessionBinding.current = undefined;
       for (const key of Object.keys(sessionStorage))
         if (key.startsWith("nah:")) sessionStorage.removeItem(key);
-      conversationPlace.current = undefined;
+      conversationPlace.current.clear();
       setBrowserSessions([]);
       setIdentityEpoch((n) => n + 1);
       if (gate === "login") dispatch(authenticationRequired());
@@ -336,7 +336,7 @@ export function App() {
           if (snapshot && sessionBinding.current !== token) {
             for (const key of Object.keys(sessionStorage))
               if (key.startsWith("nah:")) sessionStorage.removeItem(key);
-            conversationPlace.current = undefined;
+            conversationPlace.current.clear();
             setBrowserSessions([]);
             setIdentityEpoch((n) => n + 1);
             sessionBinding.current = undefined;
@@ -455,7 +455,7 @@ export function App() {
     // Hide every identity-scoped fact before the first write or new login.
     for (const key of Object.keys(sessionStorage))
       if (key.startsWith(`nah:`)) sessionStorage.removeItem(key);
-    conversationPlace.current = undefined;
+    conversationPlace.current.clear();
     setBrowserSessions([]);
     editorPlace.current = undefined;
     loginGeneration.current++;
