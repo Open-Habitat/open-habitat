@@ -5,6 +5,8 @@ import {
   type GitHubRepoChooserView,
 } from "../components/GitHubRepoChooser";
 import { PiOnboarding } from "./PiOnboarding";
+import { Button } from "../components/Primitives";
+import { InlineNotice } from "../components/Status";
 import { sessionCSRF } from "./pi";
 import { catalog, clone, GitHubError, observe } from "./github";
 
@@ -200,13 +202,15 @@ export function GitHubOnboarding({
     };
   }, [load, onLogin, reset, current]);
   const verifySession = async (n: number) => {
-    const csrf = await sessionCSRF();
-    if (!current(n) || csrf === "login" || csrf !== bound.current) {
-      reset();
-      onLogin();
-      return false;
+    try {
+      const csrf = await sessionCSRF();
+      if (current(n) && csrf !== "login" && csrf === bound.current) return true;
+    } catch {
+      // An unavailable binding is not permission to show or write old identity data.
     }
-    return true;
+    reset();
+    onLogin();
+    return false;
   };
   const advance = () => {
     sessionStorage.setItem(marker, key.current);
@@ -232,6 +236,11 @@ export function GitHubOnboarding({
         state = (await observe(name)).state;
       } catch (e) {
         if (!current(n)) return;
+        if (e instanceof GitHubError && e.code === "login") {
+          reset();
+          onLogin();
+          return;
+        }
         setError(message(e));
         uncertain = true;
         break;
@@ -378,16 +387,21 @@ export function GitHubOnboarding({
         }}
         onRecheck={recheck}
       />
-      {error ? <p role="alert">{error}</p> : null}
-      <button
-        type="button"
-        onClick={() => {
+      {error ? (
+        <InlineNotice
+          title="Haun tila vaatii tarkistusta"
+          description={error}
+          tone="warning"
+        />
+      ) : null}
+      <Button
+        label="Keskeytä käyttöönotto ja kirjaudu ulos"
+        variant="secondary"
+        onPress={() => {
           reset();
           void onLogout();
         }}
-      >
-        Keskeytä käyttöönotto ja kirjaudu ulos
-      </button>
+      />
     </>
   );
 }

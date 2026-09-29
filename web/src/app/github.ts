@@ -72,7 +72,25 @@ async function bounded(response: Response, max: number): Promise<unknown> {
 async function response(r: Response, max: number): Promise<unknown> {
   if (r.status === 401) throw new GitHubError("login");
   if (r.status === 403) throw new GitHubError("denied");
-  if (r.status === 409) throw new GitHubError("auth");
+  if (r.status === 409) {
+    const failure = await bounded(r, 4096);
+    const code =
+      typeof failure === "object" &&
+      failure !== null &&
+      "error" in failure &&
+      typeof failure.error === "object" &&
+      failure.error !== null &&
+      "code" in failure.error
+        ? failure.error.code
+        : undefined;
+    throw new GitHubError(
+      code === "github_auth_unavailable"
+        ? "auth"
+        : code === "checkout_exists"
+          ? "conflict"
+          : "unavailable",
+    );
+  }
   if (!r.ok) throw new GitHubError("unavailable");
   return bounded(r, max);
 }
