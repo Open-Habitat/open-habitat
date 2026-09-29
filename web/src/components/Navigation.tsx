@@ -1,4 +1,4 @@
-import { type ReactNode, useId } from "react";
+import { type ReactNode, useId, useState } from "react";
 import { Input, Label, TextField } from "react-aria-components";
 import { Link } from "react-router";
 import { Button } from "./Primitives";
@@ -347,13 +347,24 @@ export function AgentHeader({
     onPress: () => void;
   };
 }) {
+  const [expandedTitle, setExpandedTitle] = useState(false);
+  const [previousTitle, setPreviousTitle] = useState(title);
+  if (previousTitle !== title) {
+    setPreviousTitle(title);
+    setExpandedTitle(false);
+  }
   return (
     <header className="ah-agent-header">
       <p>
         <Link to={workspaceHref}>{workspaceLabel}</Link>
       </p>
       <div className="ah-title-row">
-        <h1>{title}</h1>
+        <h1
+          className={expandedTitle ? "ah-title-expanded" : undefined}
+          title={title}
+        >
+          {title}
+        </h1>
         {titleAction ? (
           <Button
             label={titleAction.label}
@@ -366,6 +377,16 @@ export function AgentHeader({
           />
         ) : null}
       </div>
+      {title.length > 65 ? (
+        <button
+          className="ah-title-toggle"
+          type="button"
+          aria-expanded={expandedTitle}
+          onClick={() => setExpandedTitle(!expandedTitle)}
+        >
+          {expandedTitle ? "Tiivistä otsikko" : "Näytä koko otsikko"}
+        </button>
+      ) : null}
       {titleState ? <StatusMark label={titleState} tone="info" /> : null}
       <p className="ah-actions">
         <StatusMark

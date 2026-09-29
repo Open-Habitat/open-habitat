@@ -589,6 +589,14 @@ export function App() {
                 : undefined
             }
             identity={identity}
+            title={
+              snapshot?.agents.find(
+                (a) =>
+                  a.agent_id ===
+                    new URLSearchParams(location.search).get("conversation") &&
+                  a.workspace_id === selected.workspace_id,
+              )?.title.display
+            }
             place={conversationPlace}
             onSessionCreated={(session) =>
               setBrowserSessions((old) => [...old, session])
@@ -627,39 +635,55 @@ export function App() {
         {visible.length > 0 ? (
           <>
             <p>
-              Jatka keskustelua tai avaa työtila. Historian lukeminen ei
-              käynnistä agenttia.
+              Työtilasi ja niiden keskustelut löydät vasemmalta. Voit jatkaa
+              lukemista avaamalla keskustelun.
             </p>
-            <div className="ah-workspace-cards">
-              {visible.map((w) => {
-                const conversations =
-                  snapshot?.agents.filter(
-                    (a) => a.workspace_id === w.workspace_id,
-                  ) ?? [];
-                return (
-                  <section className="ah-workspace-card" key={w.workspace_id}>
-                    <h2>
-                      <Link to={`/workspaces/${w.workspace_id}`}>
-                        {w.display_name ?? w.name}
-                      </Link>
-                    </h2>
-                    {conversations.length ? (
-                      <ul>
-                        {conversations.map((a) => (
-                          <li key={a.agent_id}>
-                            <Link to={`/agents/${a.agent_id}`}>
-                              {a.title.display}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p>Ei keskusteluja.</p>
-                    )}
-                  </section>
-                );
-              })}
-            </div>
+            <section className="ah-continue" aria-labelledby="continue-heading">
+              <h2 id="continue-heading">Jatka keskustelua</h2>
+              {snapshot?.agents.some(
+                (a) =>
+                  a.history === "readable" &&
+                  visible.some((w) => w.workspace_id === a.workspace_id),
+              ) ? (
+                <ul className="ah-continue-list">
+                  {snapshot.agents
+                    .filter(
+                      (a) =>
+                        a.history === "readable" &&
+                        visible.some((w) => w.workspace_id === a.workspace_id),
+                    )
+                    .slice(0, 3)
+                    .map((a) => {
+                      const workspace = visible.find(
+                        (w) => w.workspace_id === a.workspace_id,
+                      );
+                      const browserSession = browserSessions.some(
+                        (s) =>
+                          s.agent_id === a.agent_id &&
+                          s.workspace_id === a.workspace_id,
+                      );
+                      return (
+                        <li key={a.agent_id}>
+                          <Link
+                            to={
+                              browserSession
+                                ? `/workspaces/${a.workspace_id}?conversation=${a.agent_id}`
+                                : `/agents/${a.agent_id}`
+                            }
+                          >
+                            {a.title.display}
+                            <small>
+                              {workspace?.display_name ?? workspace?.name}
+                            </small>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                </ul>
+              ) : (
+                <p>Keskusteluja ei vielä näy. Valitse työtila vasemmalta.</p>
+              )}
+            </section>
           </>
         ) : null}
         {source === "absent" ? (

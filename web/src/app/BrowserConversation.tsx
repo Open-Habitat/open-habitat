@@ -49,12 +49,14 @@ export type ConversationPlace = {
 export function BrowserConversation({
   workspace,
   id,
+  title,
   identity,
   place,
   onSessionCreated,
 }: {
   workspace: Workspace;
   id?: string;
+  title?: string;
   identity: string;
   place: RefObject<ConversationPlace | undefined>;
   onSessionCreated: (session: Session) => void;
@@ -576,7 +578,7 @@ export function BrowserConversation({
       ) : (
         <>
           <AgentHeader
-            title="Pi-keskustelu"
+            title={title ?? "Uusi keskustelu"}
             activityLabel={
               current
                 ? ({
