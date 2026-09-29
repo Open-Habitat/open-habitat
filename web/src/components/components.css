@@ -889,6 +889,11 @@ select:focus-visible,
   line-height: 1.65;
   overflow-wrap: anywhere;
 }
+.ah-message .ah-prose pre {
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .ah-prose a,
 .ah-markdown a {
   text-decoration: underline;

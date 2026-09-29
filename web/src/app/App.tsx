@@ -27,6 +27,7 @@ import {
 } from "./BrowserConversation";
 import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
+import { list as listConversations, type Session } from "./conversations";
 import { piStatus, sessionCSRF } from "./pi";
 import { readSnapshot, sourceState, type Workspace } from "./snapshot";
 import {
@@ -118,6 +119,7 @@ export function App() {
   );
   const [refreshKey, setRefreshKey] = useState(0);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const [browserSessions, setBrowserSessions] = useState<Session[]>([]);
   const [verifying, setVerifying] = useState(false);
   const [identityEpoch, setIdentityEpoch] = useState(0);
   const sessionBinding = useRef<string | undefined>(undefined);
@@ -261,6 +263,7 @@ export function App() {
     const fail = (gate: "login" | "pi" | "unavailable") => {
       if (!active || generation !== loginGeneration.current) return;
       sessionBinding.current = undefined;
+      setBrowserSessions([]);
       if (gate === "login") dispatch(authenticationRequired());
       else if (gate === "pi") dispatch(piRequired());
       else dispatch(unavailable());
@@ -334,6 +337,7 @@ export function App() {
           for (const key of Object.keys(sessionStorage))
             if (key.startsWith("nah:")) sessionStorage.removeItem(key);
           conversationPlace.current = undefined;
+          setBrowserSessions([]);
           editorPlace.current = undefined;
           // A new cookie, even for the same subject, must remount local state.
           setIdentityEpoch((n) => n + 1);
@@ -341,6 +345,19 @@ export function App() {
         sessionBinding.current = token;
         dispatch(authenticated(next));
         setVerifying(false);
+        if (!syntheticDemo) {
+          try {
+            const controlled = await listConversations(controller.signal);
+            if (
+              active &&
+              !controller.signal.aborted &&
+              sessionBinding.current === token
+            )
+              setBrowserSessions(controlled);
+          } catch {
+            if (active && !controller.signal.aborted) setBrowserSessions([]);
+          }
+        }
       } catch {
         fail("unavailable");
       }
@@ -364,6 +381,7 @@ export function App() {
     for (const key of Object.keys(sessionStorage))
       if (key.startsWith(`nah:`)) sessionStorage.removeItem(key);
     conversationPlace.current = undefined;
+    setBrowserSessions([]);
     editorPlace.current = undefined;
     loginGeneration.current++;
     sessionBinding.current = undefined;
@@ -527,7 +545,9 @@ export function App() {
       />
     ) : selected ? (
       <>
-        <WorkspaceDetails workspace={selected} />
+        {!new URLSearchParams(location.search).has("conversation") ? (
+          <WorkspaceDetails workspace={selected} />
+        ) : null}
         {!syntheticDemo &&
         identity &&
         selected.facts.some(
@@ -546,6 +566,9 @@ export function App() {
             }
             identity={identity}
             place={conversationPlace}
+            onSessionCreated={(session) =>
+              setBrowserSessions((old) => [...old, session])
+            }
           />
         ) : null}
         {source !== "confirmed" ? (
@@ -752,11 +775,22 @@ export function App() {
                       .filter((a) => a.workspace_id === w.workspace_id)
                       .map((a) => ({
                         agentId: a.agent_id,
-                        href: `/agents/${a.agent_id}`,
+                        href: browserSessions.some(
+                          (s) =>
+                            s.agent_id === a.agent_id &&
+                            s.workspace_id === w.workspace_id,
+                        )
+                          ? `/workspaces/${w.workspace_id}?conversation=${a.agent_id}`
+                          : `/agents/${a.agent_id}`,
                         title: a.title.display,
                         activityLabel: "",
                         controlLabel: "",
-                        selected: a.agent_id === selectedAgentId,
+                        selected:
+                          a.agent_id === selectedAgentId ||
+                          (selectedId === w.workspace_id &&
+                            new URLSearchParams(location.search).get(
+                              "conversation",
+                            ) === a.agent_id),
                       }))}
                     onToggle={() =>
                       setExpanded({

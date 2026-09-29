@@ -524,18 +524,59 @@ func historyHandlerWithReader(cfg transport.Config, trusted func(*http.Request) 
 		snapshotError(w, 404, "resource_not_found")
 	})
 }
-func sessionFact(s nativeSession, wsid string) map[string]any {
+
+// Snapshot discovery reads headers only. Read a bounded prefix for the first
+// prompt so navigation does not label every untitled native session alike.
+func firstPrompt(s nativeSession, uid int) string {
+	if s.state != "readable" {
+		return ""
+	}
+	before, err := os.Lstat(s.path)
+	if err != nil || !before.Mode().IsRegular() || before.Size() > maxHistoryFile {
+		return ""
+	}
+	if uid >= 0 {
+		owner, ok := fileOwner(before)
+		if !ok || owner != uid {
+			return ""
+		}
+	}
+	f, err := os.Open(s.path)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil || !os.SameFile(before, info) {
+		return ""
+	}
+	scanner := bufio.NewScanner(io.LimitReader(f, 128<<10))
+	scanner.Buffer(make([]byte, 4096), 128<<10)
+	if !scanner.Scan() {
+		return ""
+	} // header
+	for scanner.Scan() {
+		var entry nativeEntry
+		if json.Unmarshal(scanner.Bytes(), &entry) != nil {
+			return ""
+		}
+		kind, text := nativeText(entry)
+		if kind == "user" && strings.TrimSpace(text) != "" {
+			runes := []rune(strings.TrimSpace(text))
+			if len(runes) > 80 {
+				runes = runes[:80]
+			}
+			return string(runes)
+		}
+	}
+	return ""
+}
+func sessionFact(s nativeSession, wsid string, uid int) map[string]any {
 	title := "Uusi keskustelu"
 	source := "new_conversation"
-	for _, e := range s.entries {
-		if e.Kind == "user" && e.full != "" {
-			title = e.full
-			if len([]rune(title)) > 80 {
-				title = string([]rune(title)[:80])
-			}
-			source = "first_message_fallback"
-			break
-		}
+	if prompt := firstPrompt(s, uid); prompt != "" {
+		title = prompt
+		source = "first_message_fallback"
 	}
 	return map[string]any{"agent_id": "pi:" + s.id, "workspace_id": wsid, "observation_token": opaque("obs_", s.id+":"+s.revision), "presence": "present", "history": s.state, "process": "unknown", "control": "read_only", "activity": "unknown", "capabilities": map[string]any{"agent_resume": map[string]string{"state": "unsupported", "reason_code": "read_only_slice"}}, "title": map[string]any{"display": title, "source": source, "generation_state": "not_requested", "replaceable": true}, "queue": map[string]any{"revision": opaque("qr_", s.id), "steering": []string{}, "follow_up": []string{}}, "live_tail": []any{}, "history_query": "/api/v1/agents/pi:" + s.id + "/history"}
 }

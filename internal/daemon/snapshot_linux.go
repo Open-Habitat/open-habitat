@@ -172,7 +172,7 @@ func snapshotHandlerWithStatus(cfg transport.Config, trusted func(*http.Request)
 					if id == "" {
 						id = opaque("ws_", cfg.Provider+":"+cfg.Subject+":"+entry.Name)
 					}
-					agents = append(agents, sessionFact(session, id))
+					agents = append(agents, sessionFact(session, id, cfg.UID))
 					break
 				}
 			}

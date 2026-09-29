@@ -37,23 +37,77 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   await expect(page.getByText("Selvä. Kysyit:", { exact: false })).toBeVisible({
     timeout: 20000,
   });
+  await page.getByRole("button", { name: /bash.*Tulos valmis/ }).click();
   await expect(
     page.getByText("README.md", { exact: false }).last(),
   ).toBeVisible();
+  await expect(page.getByText("Viimeisimmät live-tapahtumat")).toHaveCount(0);
+  await editor.fill("hylkää");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(
+    page.getByText("Viesti hylättiin.", { exact: false }),
+  ).toBeVisible({ timeout: 20000 });
+  await expect(editor).toHaveValue("hylkää");
+  await expect(
+    page.getByRole("button", { name: "Lähetä", exact: true }),
+  ).toBeEnabled();
+  await editor.fill("hidas toinen viesti");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(page.getByText("Pi työskentelee…", { exact: true })).toBeVisible(
+    { timeout: 20000 },
+  );
+  await expect(
+    page.getByText('Selvä. Kysyit: "hidas toinen viesti".', { exact: false }),
+  ).toBeVisible({ timeout: 30000 });
   await page.reload();
   await expect(
-    page.getByText("Selvä. Kysyit:", { exact: false }),
+    page.getByText('Selvä. Kysyit: "hidas toinen viesti".', { exact: false }),
   ).toBeVisible();
-  await expect(
-    page
-      .getByRole("navigation", { name: "Työtilat ja keskustelut" })
-      .getByRole("link", { name: /Tutki synteettinen työtila|Uusi keskustelu/ })
-      .last(),
-  ).toBeVisible();
+  const navLink = page
+    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
+    .getByRole("link", { name: /Tutki synteettinen työtila/ })
+    .last();
+  await expect(navLink).toBeVisible();
+  await expect(navLink).toHaveAttribute(
+    "href",
+    new RegExp(`conversation=${agent}`),
+  );
+  await page.getByRole("button", { name: "Avaa aurinkokello" }).click();
+  await page
+    .getByRole("link", { name: "aurinkokello", exact: true })
+    .last()
+    .click();
+  await navLink.click();
+  await expect(page.getByRole("textbox", { name: "Viesti Pi:lle" })).toBeVisible();
   const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
   expect(
     snapshot.agents.some(
       (entry: { agent_id: string }) => entry.agent_id === agent,
     ),
   ).toBe(true);
+});
+
+test("@lab fake-Pi crash leaves the turn readable but blocks another send", async ({
+  page,
+}) => {
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByRole("link", { name: "aurinkokello" }).click();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await editor.fill("kaadu nyt");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(page.getByText("kaadu nyt", { exact: true })).toBeVisible({
+    timeout: 20000,
+  });
+  await expect(page.getByText("Tila epävarma")).toBeVisible({ timeout: 20000 });
+  await expect(
+    page.getByRole("button", { name: "Lähetä", exact: true }),
+  ).toBeDisabled();
+  await page.reload();
+  await expect(page.getByText("kaadu nyt", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Lähetä", exact: true }),
+  ).toBeDisabled();
 });

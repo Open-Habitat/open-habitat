@@ -8,6 +8,7 @@ import {
   ConversationTimeline,
   InlineNotice,
   ToolOutput,
+  ToolRow,
   UnknownEvent,
   UserMessage,
 } from "../components";
@@ -23,6 +24,7 @@ export function Entry({ entry }: { entry: HistoryEntry }) {
   const [content, setContent] = useState(entry.content);
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [toolExpanded, setToolExpanded] = useState(false);
   useEffect(() => {
     setContent(entry.content);
     setFailed(false);
@@ -65,18 +67,26 @@ export function Entry({ entry }: { entry: HistoryEntry }) {
         <UserMessage sourceText={content.text} onCopy={copy} />
       ) : null}
       {entry.kind === "assistant" ? (
-        <AssistantMessage streamState="unknown" onCopy={copy}>
+        <AssistantMessage streamState="complete" onCopy={copy}>
           <pre>{content.text}</pre>
         </AssistantMessage>
       ) : null}
       {entry.kind === "tool" ? (
-        <ToolOutput
-          text={content.text}
-          streamSemantics="unknown"
-          sourceState={content.complete ? "complete" : "continued"}
-          onCopy={copy}
-          onLoadMore={more}
-        />
+        <ToolRow
+          name={content.text.split("\n", 1)[0] || "Työkalu"}
+          statusLabel={content.complete ? "Tulos valmis" : "Tulosta lisää"}
+          state={content.complete ? "Valmis" : "Jatkuu"}
+          expanded={toolExpanded}
+          onToggle={() => setToolExpanded(!toolExpanded)}
+        >
+          <ToolOutput
+            text={content.text}
+            streamSemantics="unknown"
+            sourceState={content.complete ? "complete" : "continued"}
+            onCopy={copy}
+            onLoadMore={more}
+          />
+        </ToolRow>
       ) : null}
       {entry.kind === "model_change" ? (
         <CodeBlock

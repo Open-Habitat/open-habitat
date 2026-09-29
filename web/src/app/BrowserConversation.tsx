@@ -13,7 +13,6 @@ import {
   Composer,
   ConversationTimeline,
   InlineNotice,
-  UnknownEvent,
 } from "../components";
 import {
   create,
@@ -52,11 +51,13 @@ export function BrowserConversation({
   id,
   identity,
   place,
+  onSessionCreated,
 }: {
   workspace: Workspace;
   id?: string;
   identity: string;
   place: RefObject<ConversationPlace | undefined>;
+  onSessionCreated: (session: Session) => void;
 }) {
   const navigate = useNavigate();
   const [csrf, setCSRF] = useState<string>();
@@ -73,11 +74,14 @@ export function BrowserConversation({
   const [events, setEvents] = useState<unknown[]>([]);
   const [details, setDetails] = useState(false);
   const pending = useRef(false);
+  const submittedKey =
+    csrf && id ? `nah:submitted:${identity}:${csrf}:${id}` : "";
   const alive = useRef(true);
   const generation = useRef(0);
   const feed = useRef<HTMLElement>(null);
   const section = useRef<HTMLElement>(null);
   const restored = useRef(false);
+  const focusedOnOpen = useRef(false);
   const latest = useRef({ entries, next, unseen, csrf });
   latest.current = { entries, next, unseen, csrf };
   // Capture before React removes the DOM, including the actual textarea selection.
@@ -207,10 +211,24 @@ export function BrowserConversation({
       if (nextStatus.workspace_id !== workspace.workspace_id)
         throw new Error("invalid workspace");
       setCurrent(nextStatus);
-      if (nextStatus.command_id && nextStatus.ack === "rejected")
+      if (nextStatus.command_id && nextStatus.ack === "rejected") {
+        const unresolvedKey = `nah:ambiguous:${identity}:${csrf}:${id}`;
+        if (sessionStorage.getItem(unresolvedKey) === nextStatus.command_id) {
+          const rejectedText = sessionStorage.getItem(submittedKey);
+          if (rejectedText !== null) {
+            setDraft(rejectedText);
+            sessionStorage.setItem(
+              `nah:draft:${identity}:${csrf}:${id}`,
+              rejectedText,
+            );
+          }
+          sessionStorage.removeItem(submittedKey);
+          sessionStorage.removeItem(unresolvedKey);
+        }
         setReceipt(
-          "Viesti hylättiin. Luonnosta ei lähetetä automaattisesti uudelleen.",
+          "Viesti hylättiin. Teksti säilytettiin; voit lähettää sen uudelleen tarkoituksella.",
         );
+      }
       if (nextStatus.command_id && nextStatus.ack === "uncertain")
         setReceipt(
           "Viestin hyväksyntä jäi epävarmaksi. Tarkista natiivi historia, älä lähetä automaattisesti uudelleen.",
@@ -226,6 +244,7 @@ export function BrowserConversation({
         nextStatus.native_history === "readable"
       ) {
         sessionStorage.removeItem(`nah:ambiguous:${identity}:${csrf}:${id}`);
+        sessionStorage.removeItem(submittedKey);
         setReceipt("Viesti hyväksyttiin ja natiivi historia on luettavissa.");
       }
       setEvents(nextStatus.events); // bounded tail, never concatenate snapshots
@@ -256,9 +275,8 @@ export function BrowserConversation({
         }
         setHistoryError(false);
       } else {
+        // A temporary native read failure must not erase already-read messages.
         setHistoryError(nextStatus.native_history === "unavailable");
-        setEntries([]);
-        setNext(undefined);
       }
     } catch {
       if (alive.current && version === generation.current) {
@@ -270,7 +288,7 @@ export function BrowserConversation({
     } finally {
       pending.current = false;
     }
-  }, [id, csrf, sessions, workspace.workspace_id, identity]);
+  }, [id, csrf, sessions, workspace.workspace_id, identity, submittedKey]);
   useEffect(() => {
     if (!id || !csrf) return;
     void refresh();
@@ -318,6 +336,7 @@ export function BrowserConversation({
       sessionStorage.removeItem(ambiguousKey);
       if (!alive.current) return;
       setSessions((old) => [...old, result]);
+      onSessionCreated(result);
       navigate(
         `/workspaces/${workspace.workspace_id}?conversation=${result.agent_id}`,
       );
@@ -337,7 +356,7 @@ export function BrowserConversation({
     if (
       busy ||
       !current ||
-      current.state !== "idle" ||
+      (current.state !== "idle" && current.state !== "rejected") ||
       !draft.trim() ||
       ambiguous ||
       !csrf
@@ -350,6 +369,7 @@ export function BrowserConversation({
     try {
       const token = await verify();
       if (!alive.current) return;
+      sessionStorage.setItem(submittedKey, text);
       sessionStorage.setItem(ambiguousKey, command);
       setReceipt("Viesti odottaa kuittausta");
       await send(current.agent_id, text, command, token);
@@ -400,7 +420,11 @@ export function BrowserConversation({
     sessions.some(
       (s) => s.agent_id === id && s.workspace_id === workspace.workspace_id,
     );
-  const canSend = controlled && !busy && !ambiguous && current.state === "idle";
+  const canSend =
+    controlled &&
+    !busy &&
+    !ambiguous &&
+    (current.state === "idle" || current.state === "rejected");
   useLayoutEffect(() => {
     if (!restored.current) return;
     const saved = place.current;
@@ -427,6 +451,14 @@ export function BrowserConversation({
     }
     place.current = undefined;
   }, [csrf, id, identity, controlled, place]);
+  useEffect(() => {
+    if (!id || !controlled || focusedOnOpen.current) return;
+    focusedOnOpen.current = true;
+    if (document.activeElement === document.body)
+      section.current
+        ?.querySelector("textarea")
+        ?.focus({ preventScroll: true });
+  }, [id, controlled]);
   const selected = sessions.filter(
     (s) => s.workspace_id === workspace.workspace_id,
   );
@@ -482,7 +514,18 @@ export function BrowserConversation({
         <>
           <AgentHeader
             title="Pi-keskustelu"
-            activityLabel={current?.state ?? "Tila ei tiedossa"}
+            activityLabel={
+              current
+                ? ({
+                    idle: "Valmis",
+                    pending: "Odottaa kuittausta",
+                    accepted: "Pi työskentelee",
+                    rejected: "Viesti hylättiin",
+                    uncertain: "Tila epävarma",
+                    stopping: "Pysäytetään",
+                  }[current.state] ?? "Tila ei tiedossa")
+                : "Tila ei tiedossa"
+            }
             controlLabel={
               controlled ? "Selainohjaus" : "Ohjaus ei ole käytettävissä"
             }
@@ -495,7 +538,13 @@ export function BrowserConversation({
           <section ref={feed} style={{ maxHeight: "60vh", overflow: "auto" }}>
             <ConversationTimeline
               state={
-                historyError ? "error" : entries.length ? "ready" : "empty"
+                historyError
+                  ? entries.length
+                    ? "stale"
+                    : "error"
+                  : entries.length
+                    ? "ready"
+                    : "empty"
               }
               items={entries.map((e) => ({
                 id: e.entry_key,
@@ -534,25 +583,13 @@ export function BrowserConversation({
               tone="warning"
             />
           ) : null}
-          {events.length ? (
-            <details>
-              <summary>Viimeisimmät live-tapahtumat ({events.length})</summary>
-              {events.map((e, index) => (
-                <UnknownEvent
-                  key={
-                    current
-                      ? current.event_cursor - events.length + index + 1
-                      : JSON.stringify(e)
-                  }
-                  kindLabel="Pi-tapahtuma"
-                  safeSummary="Raaka tapahtuma (rajattu)"
-                  safePayloadText={JSON.stringify(e)}
-                  onCopy={() =>
-                    void navigator.clipboard?.writeText(JSON.stringify(e))
-                  }
-                />
-              ))}
-            </details>
+          {current?.state === "accepted" || current?.state === "pending" ? (
+            <p role="status">Pi työskentelee…</p>
+          ) : null}
+          {events.length && current?.native_history !== "readable" ? (
+            <p role="status">
+              Pi:n tapahtumia vastaanotettu; historiaa odotetaan.
+            </p>
           ) : null}
           {controlled ? (
             <Composer

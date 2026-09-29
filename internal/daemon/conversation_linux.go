@@ -368,7 +368,7 @@ func (c *ConversationController) send(w http.ResponseWriter, r *http.Request, id
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}
-	if c.closed || s.state != "idle" || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= 128 {
+	if c.closed || (s.state != "idle" && s.state != "rejected") || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= 128 {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return

@@ -77,6 +77,15 @@ func TestPiHistoryNativePagesChunksAndReopen(t *testing.T) {
 	if status != 200 || len(page["entries"].([]any)) != 200 || page["complete"] != false {
 		t.Fatal(status, page)
 	}
+	sessions, err := reader(cfg)
+	if err != nil || len(sessions) != 1 {
+		t.Fatal(sessions, err)
+	}
+	fact := sessionFact(sessions[0], "ws_fixture123", uid)
+	title := fact["title"].(map[string]any)
+	if title["display"] != "fixture 0" || title["source"] != "first_message_fallback" {
+		t.Fatal(title)
+	}
 	firstRevision := page["native_revision"]
 	seen := map[string]bool{}
 	for {
@@ -122,7 +131,7 @@ func TestPiHistoryNativePagesChunksAndReopen(t *testing.T) {
 	if err := os.WriteFile(path, []byte(`{"type":"session","version":3,"id":"`+id+`","cwd":"`+src+`"}`+"\n"+`{"type":"message","id":"a","message":{`+"\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	sessions, err := reader(cfg)
+	sessions, err = reader(cfg)
 	if err != nil || len(sessions) != 1 || readNative(sessions[0].path, cfg.UID).state != "corrupt" {
 		t.Fatal(sessions, err)
 	}
