@@ -522,7 +522,7 @@ export function App() {
     ) : selectedAgentId ? (
       <InlineNotice
         title="Keskustelua ei löydy"
-        description="Keskustelua ei löydy työtiloistasi. Palaa työtiloihin tai tarkista tiedot uudelleen."
+        description="Se ei näy työtiloissasi. Palaa työtiloihin tai tarkista tiedot uudelleen."
         tone="warning"
       />
     ) : selected ? (
