@@ -2,7 +2,7 @@
 created: 2026-09-29
 updated: 2026-09-29
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Observed in synthetic lab during spinoff
