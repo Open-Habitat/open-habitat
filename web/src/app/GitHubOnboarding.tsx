@@ -204,10 +204,12 @@ export function GitHubOnboarding({
   const verifySession = async (n: number) => {
     try {
       const csrf = await sessionCSRF();
-      if (current(n) && csrf !== "login" && csrf === bound.current) return true;
+      if (!current(n)) return false;
+      if (csrf !== "login" && csrf === bound.current) return true;
     } catch {
       // An unavailable binding is not permission to show or write old identity data.
     }
+    if (!current(n)) return false;
     reset();
     onLogin();
     return false;
