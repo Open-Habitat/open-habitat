@@ -29,7 +29,7 @@ test("@first-use abort is a danger action on both onboarding steps; first choose
     await expect(
       page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "Jatka" }).click();
+    await page.getByRole("button", { name: /jatka/i }).click();
     await expect(
       page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
     ).toBeVisible();
@@ -49,7 +49,7 @@ test("@first-use a slow status read does not delay the device-code start, and co
 }) => {
   try {
     await picker(page);
-    await page.getByRole("button", { name: "Jatka" }).click();
+    await page.getByRole("button", { name: /jatka/i }).click();
     await expect(
       page.getByRole("button", { name: "Aloita kirjautuminen" }),
     ).toBeVisible();

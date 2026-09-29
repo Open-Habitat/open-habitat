@@ -50,7 +50,7 @@ test("@lab GitHub chooser, synthetic clone and Pi onboarding", async ({
       page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
     ).toBeVisible();
     await page.getByRole("checkbox").first().check();
-    await page.getByRole("button", { name: "Jatka" }).click();
+    await page.getByRole("button", { name: /jatka/i }).click();
     await expect(
       page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
     ).toBeVisible();

@@ -12,7 +12,7 @@ test("@pi-onboarding switching sessions drops device instructions and native fac
     await page.goto("/workspaces");
     await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await page.getByRole("link", { name: "Alice" }).click();
-    await page.getByRole("button", { name: "Jatka" }).click();
+    await page.getByRole("button", { name: /jatka/i }).click();
     await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
     await expect(page.getByText("ABCD-1234")).toBeVisible();
     await page
@@ -21,7 +21,7 @@ test("@pi-onboarding switching sessions drops device instructions and native fac
     await expect(page.getByText("ABCD-1234")).toHaveCount(0);
     await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await page.getByRole("link", { name: "Bob" }).click();
-    await page.getByRole("button", { name: "Jatka" }).click();
+    await page.getByRole("button", { name: /jatka/i }).click();
     await expect(
       page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
     ).toBeVisible();

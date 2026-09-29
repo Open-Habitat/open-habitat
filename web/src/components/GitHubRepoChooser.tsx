@@ -167,10 +167,6 @@ export function GitHubRepoChooser({
               ))}
             </ul>
           )}
-          <p role="status" aria-live="polite">
-            Valittu {selectedNames.length}{" "}
-            {selectedNames.length === 1 ? "repo" : "repoa"}.
-          </p>
         </>
       ) : null}
 
@@ -245,22 +241,39 @@ export function GitHubRepoChooser({
       {(view.phase === "catalog" ||
         (view.phase === "no-auth" && selectedNames.length === 0)) &&
       idle ? (
-        <div className={styles.actions}>
-          <Button
-            label="Jatka"
-            availability={
-              waiting
-                ? { state: "disabled", reason: "Odotetaan haun tulosta." }
-                : undefined
-            }
-            onPress={() => {
-              if (started.current) return;
-              started.current = true;
-              setWaiting(true);
-              onProceed(view.phase === "catalog" ? [...selectedNames] : []);
-            }}
-          />
+        <div className={styles.footer}>
+          {view.phase === "catalog" ? (
+            <p role="status" aria-live="polite" className={styles.count}>
+              Valittu {selectedNames.length}{" "}
+              {selectedNames.length === 1 ? "repo" : "repoa"}.
+            </p>
+          ) : null}
+          <div className={styles.actions}>
+            <Button
+              label={
+                selectedNames.length
+                  ? "Hae valitut ja jatka"
+                  : "Jatka ilman repoja"
+              }
+              availability={
+                waiting
+                  ? { state: "disabled", reason: "Odotetaan haun tulosta." }
+                  : undefined
+              }
+              onPress={() => {
+                if (started.current) return;
+                started.current = true;
+                setWaiting(true);
+                onProceed(view.phase === "catalog" ? [...selectedNames] : []);
+              }}
+            />
+          </div>
         </div>
+      ) : view.phase === "catalog" ? (
+        <p role="status" aria-live="polite" className={styles.count}>
+          Valittu {selectedNames.length}{" "}
+          {selectedNames.length === 1 ? "repo" : "repoa"}.
+        </p>
       ) : null}
     </section>
   );

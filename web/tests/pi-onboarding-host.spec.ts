@@ -7,7 +7,7 @@ async function login(page: Page, name: "Alice" | "Bob" = "Alice") {
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name }).click();
-  await page.getByRole("button", { name: "Jatka" }).click();
+  await page.getByRole("button", { name: /jatka/i }).click();
 }
 async function scenario(page: Page, value: string) {
   expect(

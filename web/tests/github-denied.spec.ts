@@ -22,15 +22,15 @@ test("@github-first denied write stays uncertain until explicit read-only rechec
       body: '{"error":"access_denied"}',
     }),
   );
-  await page.getByRole("button", { name: "Jatka" }).click();
+  await page.getByRole("button", { name: /jatka/i }).click();
   await expect(page.getByText("Haun tulos on epäselvä")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Jatka" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /jatka/i })).toHaveCount(0);
   await page.screenshot({
     path: testInfo.outputPath("github-denied.png"),
     fullPage: true,
   });
   await page.getByRole("button", { name: "Tarkista haun tila" }).click();
-  await expect(page.getByRole("button", { name: "Jatka" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /jatka/i })).toBeVisible();
   expect(
     Number(await (await page.request.get("/fixture/clone-count")).text()),
   ).toBe(before);

@@ -34,7 +34,7 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
       .getByRole("list", { name: "GitHub-repot" })
       .evaluate((list) => list.scrollHeight > list.clientHeight),
   ).toBe(true);
-  await expect(page.getByRole("button", { name: "Jatka" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /jatka/i })).toBeVisible();
   await expect(page.getByText("Viimeksi päivitetty: 28.9.2026")).toBeVisible();
   await page.getByRole("searchbox").fill("fixture/last");
   await expect(page.getByRole("checkbox")).toHaveCount(1);
@@ -47,7 +47,7 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
     path: testInfo.outputPath("github-happy.png"),
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Jatka" }).click();
+  await page.getByRole("button", { name: /jatka/i }).click();
   await expect(
     page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
   ).toBeVisible();
@@ -71,7 +71,7 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
       )
     ).json(),
   ).resolves.toMatchObject({ state: "confirmed" });
-  await page.getByRole("button", { name: "Jatka" }).click();
+  await page.getByRole("button", { name: /jatka/i }).click();
   await expect(
     page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
   ).toBeVisible();
@@ -86,11 +86,48 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
   await page.request.get("/fixture/scenario?value=ready");
 });
 
+test("@github-first narrow catalog keeps count and action reachable by keyboard after scrolling", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.request.get("/fixture/scenario?value=pi-onboarding");
+  await page.request.get("/fixture/pi-state?value=missing");
+  try {
+    await login(page);
+    const list = page.getByRole("list", { name: "GitHub-repot" });
+    const action = page.getByRole("button", { name: "Jatka ilman repoja" });
+    await expect(page.getByText("Valittu 0 repoa.")).toBeInViewport();
+    await expect(action).toBeInViewport();
+    await list.evaluate((node) => {
+      node.scrollTop = node.scrollHeight;
+    });
+    await expect(action).toBeInViewport();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(390);
+    await page.getByRole("checkbox").last().focus();
+    await page.keyboard.press("Space");
+    await expect(page.getByText("Valittu 1 repo.")).toBeInViewport();
+    await expect(
+      page.getByRole("button", { name: "Hae valitut ja jatka" }),
+    ).toBeInViewport();
+    await page.getByRole("searchbox").fill("no-such-repo");
+    await expect(page.getByText("Valittu 1 repo.")).toBeVisible();
+    await page.getByRole("button", { name: "Hae valitut ja jatka" }).click();
+    await expect(
+      page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+    ).toBeVisible();
+  } finally {
+    await page.request.get("/fixture/scenario?value=ready");
+    await page.request.get("/fixture/pi-state?value=usable");
+  }
+});
+
 test("@github-first empty selection goes directly to Pi", async ({ page }) => {
   await page.request.get("/fixture/scenario?value=pi-onboarding");
   await page.request.get("/fixture/pi-state?value=missing");
   await login(page);
-  await page.getByRole("button", { name: "Jatka" }).click();
+  await page.getByRole("button", { name: /jatka/i }).click();
   await expect(
     page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
   ).toBeVisible();
@@ -118,7 +155,7 @@ test("@github-first incomplete catalog never permits selection or checkout", asy
     await page.getByRole("link", { name: "Alice" }).click();
     await expect(page.getByText("Repoja ei voitu hakea")).toBeVisible();
     await expect(page.getByRole("checkbox")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Jatka" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /jatka/i })).toHaveCount(0);
     await page.unrouteAll();
     await page.getByRole("button", { name: "Tarkista uudelleen" }).click();
     await expect(page.getByRole("checkbox")).toHaveCount(52);

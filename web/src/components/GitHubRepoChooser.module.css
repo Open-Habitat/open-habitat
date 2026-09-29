@@ -2,6 +2,7 @@
   display: grid;
   gap: var(--ah-s5);
   max-width: 48rem;
+  min-width: 0;
   padding: var(--ah-s7);
   border: 1px solid var(--ah-line);
   border-radius: var(--ah-r-xl);
@@ -24,7 +25,8 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  max-height: min(32rem, 55vh);
+  max-height: min(32rem, 42dvh);
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -70,10 +72,47 @@
   color: var(--ah-ink-2);
   overflow-wrap: anywhere;
 }
+.footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ah-s3);
+  margin: 0 calc(-1 * var(--ah-s7)) calc(-1 * var(--ah-s7));
+  padding: var(--ah-s4) var(--ah-s7);
+  border-top: 1px solid var(--ah-line);
+  border-radius: 0 0 var(--ah-r-xl) var(--ah-r-xl);
+  background: var(--ah-surface);
+}
+.count {
+  margin: 0;
+}
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--ah-s3);
+}
+
+@media (max-width: 40rem) {
+  .card {
+    padding: var(--ah-s4);
+  }
+  .footer {
+    margin: 0 calc(-1 * var(--ah-s4)) calc(-1 * var(--ah-s4));
+    padding: var(--ah-s3) var(--ah-s4);
+  }
+  .list {
+    max-height: min(26rem, 36dvh);
+  }
+  .actions {
+    width: 100%;
+  }
+  .actions > * {
+    width: 100%;
+  }
 }
 
 .filter {

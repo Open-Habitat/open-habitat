@@ -14,7 +14,7 @@ test("@pi-onboarding delayed old-session response cannot restore code after focu
     await a.goto("/workspaces");
     await a.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await a.getByRole("link", { name: "Alice" }).click();
-    await a.getByRole("button", { name: "Jatka" }).click();
+    await a.getByRole("button", { name: /jatka/i }).click();
     await a.getByRole("button", { name: "Aloita kirjautuminen" }).click();
     await expect(a.getByText("ABCD-1234")).toBeVisible();
     let release!: () => void;
@@ -43,14 +43,14 @@ test("@pi-onboarding delayed old-session response cannot restore code after focu
     await b.getByRole("button", { name: "Kirjaudu ulos" }).click();
     await b.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await b.getByRole("link", { name: "Bob" }).click();
-    await b.getByRole("button", { name: "Jatka" }).click();
+    await b.getByRole("button", { name: /jatka/i }).click();
     await a.bringToFront();
     release();
     await expect(a.getByText("ABCD-1234")).toHaveCount(0);
     await expect(
       a.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
     ).toBeVisible();
-    await a.getByRole("button", { name: "Jatka" }).click();
+    await a.getByRole("button", { name: /jatka/i }).click();
     await expect(
       a.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
     ).toBeVisible();
@@ -97,7 +97,7 @@ test("@pi-onboarding does not offer an action before its session is bound", asyn
       page.getByRole("button", { name: "Aloita kirjautuminen" }),
     ).toHaveCount(0);
     release();
-    await page.getByRole("button", { name: "Jatka" }).click();
+    await page.getByRole("button", { name: /jatka/i }).click();
     await expect(
       page.getByRole("button", { name: "Aloita kirjautuminen" }),
     ).toBeVisible();

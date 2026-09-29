@@ -30,7 +30,7 @@ test("@github-first slow reply and focus never start another checkout", async ({
       await delayed;
       await route.fulfill({ response: reply }).catch(() => {});
     });
-    await page.getByRole("button", { name: "Jatka" }).click();
+    await page.getByRole("button", { name: /jatka/i }).click();
     await reached;
     try {
       await page.evaluate(() => window.dispatchEvent(new Event("focus")));

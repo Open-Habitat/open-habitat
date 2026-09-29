@@ -15,7 +15,7 @@ test("@pi-onboarding slow native reads finish across multiple poll intervals wit
     await page.goto("/workspaces");
     await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await page.getByRole("link", { name: "Alice" }).click();
-    await page.getByRole("button", { name: "Jatka" }).click();
+    await page.getByRole("button", { name: /jatka/i }).click();
     await expect(page.getByText("Ladataan palvelimen tilaa")).toHaveCount(0);
     await expect(page.getByText("Käyttöönotto", { exact: true })).toBeVisible();
     // Each reply is from the real synthetic gateway/daemon. Only delivery to
@@ -84,7 +84,7 @@ test("@pi-onboarding lost write reply is uncertain and read-only recheck recover
     await page.goto("/workspaces");
     await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await page.getByRole("link", { name: "Alice" }).click();
-    await page.getByRole("button", { name: "Jatka" }).click();
+    await page.getByRole("button", { name: /jatka/i }).click();
     await expect(
       page.getByRole("button", { name: "Aloita kirjautuminen" }),
     ).toBeVisible();

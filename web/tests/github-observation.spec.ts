@@ -21,7 +21,7 @@ test("@github-first existing checkout advances without duplicate POST", async ({
   await enter(page);
   const before = await count(page);
   await page.getByRole("checkbox").first().check();
-  await page.getByRole("button", { name: "Jatka" }).click();
+  await page.getByRole("button", { name: /jatka/i }).click();
   await expect(
     page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
   ).toBeVisible();
@@ -38,7 +38,7 @@ test("@github-first conflict and partial do not invent confirmation", async ({
   const before = await count(page);
   await page.getByRole("checkbox").first().check();
   await page.getByRole("checkbox", { name: /fixture\/second/ }).check();
-  await page.getByRole("button", { name: "Jatka" }).click();
+  await page.getByRole("button", { name: /jatka/i }).click();
   await expect(page.getByText("Osa repoista haettiin")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
@@ -53,7 +53,7 @@ test("@github-first conflict and partial do not invent confirmation", async ({
   expect(await count(page)).toBe(before + 1);
   await page.getByRole("button", { name: "Muuta valintaa" }).click();
   await page.getByRole("checkbox", { name: /fixture\/second/ }).uncheck();
-  await page.getByRole("button", { name: "Jatka" }).click();
+  await page.getByRole("button", { name: /jatka/i }).click();
   await expect(
     page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
   ).toBeVisible();
@@ -73,7 +73,7 @@ test("@github-first lost response reconciles by read without another POST", asyn
     await route.abort();
   });
   await page.getByRole("checkbox").first().check();
-  await page.getByRole("button", { name: "Jatka" }).click();
+  await page.getByRole("button", { name: /jatka/i }).click();
   await expect(
     page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
   ).toBeVisible();

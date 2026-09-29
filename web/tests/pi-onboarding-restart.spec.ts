@@ -12,7 +12,7 @@ test("@pi-onboarding daemon restart invalidates old code, status stays authorita
     await page.goto("/workspaces");
     await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await page.getByRole("link", { name: "Alice" }).click();
-    await page.getByRole("button", { name: "Jatka" }).click();
+    await page.getByRole("button", { name: /jatka/i }).click();
     await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
     await expect(page.getByText("ABCD-1234")).toBeVisible();
     expect((await page.request.get("/fixture/pi-restart")).status()).toBe(204);
@@ -38,7 +38,7 @@ test("@pi-onboarding expired lease drops code and offers retry", async ({
     await page.goto("/workspaces");
     await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await page.getByRole("link", { name: "Alice" }).click();
-    await page.getByRole("button", { name: "Jatka" }).click();
+    await page.getByRole("button", { name: /jatka/i }).click();
     await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
     await expect(page.getByText("ABCD-1234")).toBeVisible();
     // A lost lease returns the same 404 as a real five-minute expiry.

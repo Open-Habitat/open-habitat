@@ -57,7 +57,9 @@ describe("GitHub first-use chooser", () => {
     await user.clear(view.getByRole("searchbox"));
     expect(view.getByText(/Viimeksi päivitetty: 28.9.2026/)).toBeTruthy();
     expect(initial.onProceed).not.toHaveBeenCalled();
-    await user.click(view.getByRole("button", { name: "Jatka" }));
+    await user.click(
+      view.getByRole("button", { name: "Hae valitut ja jatka" }),
+    );
     expect(initial.onProceed).toHaveBeenCalledExactlyOnceWith([
       repos[0].full_name,
     ]);
@@ -69,7 +71,9 @@ describe("GitHub first-use chooser", () => {
       ).disabled,
     ).toBe(true);
     expect(
-      view.getByRole("button", { name: "Jatka" }).hasAttribute("disabled"),
+      view
+        .getByRole("button", { name: "Hae valitut ja jatka" })
+        .hasAttribute("disabled"),
     ).toBe(true);
     view.rerender(
       <GitHubRepoChooser {...selected} selectedNames={[repos[1].full_name]} />,
@@ -86,13 +90,15 @@ describe("GitHub first-use chooser", () => {
         view={{ phase: "catalog", repositories: [] }}
       />,
     );
-    await user.click(view.getByRole("button", { name: "Jatka" }));
+    await user.click(view.getByRole("button", { name: "Jatka ilman repoja" }));
     expect(initial.onProceed).toHaveBeenCalledExactlyOnceWith([]);
     view.unmount();
     const noAuth = render(
       <GitHubRepoChooser {...initial} view={{ phase: "no-auth" }} />,
     );
-    await user.click(noAuth.getByRole("button", { name: "Jatka" }));
+    await user.click(
+      noAuth.getByRole("button", { name: "Jatka ilman repoja" }),
+    );
     expect(initial.onProceed).toHaveBeenCalledTimes(2);
     expect(initial.onProceed).toHaveBeenLastCalledWith([]);
   });
@@ -113,7 +119,7 @@ describe("GitHub first-use chooser", () => {
     expect(
       view.getByText(repos[0].full_name, { selector: "p code" }),
     ).toBeTruthy();
-    expect(view.queryByRole("button", { name: "Jatka" })).toBeNull();
+    expect(view.queryByRole("button", { name: /jatka/i })).toBeNull();
     expect(
       (
         view.getByRole("checkbox", {
@@ -127,7 +133,7 @@ describe("GitHub first-use chooser", () => {
       { phase: "confirmed", names: [repos[1].full_name] },
     ] as const) {
       view.rerender(<GitHubRepoChooser {...initial} checkout={checkout} />);
-      expect(view.queryByRole("button", { name: "Jatka" })).toBeNull();
+      expect(view.queryByRole("button", { name: /jatka/i })).toBeNull();
       await user.click(
         view.getByRole("button", { name: "Tarkista haun tila" }),
       );
@@ -142,7 +148,7 @@ describe("GitHub first-use chooser", () => {
     );
     expect(view.getByText("Valittu 1 repo.")).toBeTruthy();
     expect(view.getByText(/Siirrytään ChatGPT-kirjautumiseen/)).toBeTruthy();
-    expect(view.queryByRole("button", { name: "Jatka" })).toBeNull();
+    expect(view.queryByRole("button", { name: /jatka/i })).toBeNull();
   });
 
   it("offers catalog refresh on failure, but no write without a known catalog", async () => {
@@ -152,7 +158,7 @@ describe("GitHub first-use chooser", () => {
       <GitHubRepoChooser {...initial} view={{ phase: "loading" }} />,
     );
     expect(view.getByText(/Haetaan GitHub-repoja/)).toBeTruthy();
-    expect(view.queryByRole("button", { name: "Jatka" })).toBeNull();
+    expect(view.queryByRole("button", { name: /jatka/i })).toBeNull();
     view.rerender(
       <GitHubRepoChooser {...initial} view={{ phase: "unavailable" }} />,
     );
