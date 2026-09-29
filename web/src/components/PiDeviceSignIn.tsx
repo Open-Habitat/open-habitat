@@ -43,9 +43,10 @@ const outcomes = {
       "Palvelin vahvisti Pi-kirjautumisen. Jatka vasta, kun palvelin näyttää seuraavan vaiheen.",
   },
   expired: {
-    label: "Koodi vanheni",
+    label: "Kirjautumisyritys päättyi",
     tone: "warning",
-    detail: "Tätä koodia ei voi enää käyttää. Aloita uusi kirjautumisyritys.",
+    detail:
+      "Koodin näyttänyt Pi-yritys ei ole enää käynnissä. Vahvistuksen tulosta ei tiedetä. Voit aloittaa uuden yrityksen.",
   },
   interrupted: {
     label: "Kirjautuminen keskeytyi",
@@ -114,16 +115,16 @@ export function PiDeviceSignIn({
             tone="info"
             animated={view.phase === "pending" ? "running" : false}
           />
+        ) : outcome &&
+          view.phase !== "interrupted" &&
+          view.phase !== "unavailable" ? (
+          <StatusMark label={outcome.label} tone={outcome.tone} />
         ) : checking ? (
           <StatusMark
             label="Tarkistetaan tilaa"
             tone="info"
             animated="running"
           />
-        ) : outcome &&
-          view.phase !== "interrupted" &&
-          view.phase !== "unavailable" ? (
-          <StatusMark label={outcome.label} tone={outcome.tone} />
         ) : null}
       </div>
       {active ? (

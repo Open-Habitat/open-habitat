@@ -97,6 +97,25 @@ describe("Pi device sign-in presentation", () => {
     }
   });
 
+  it("keeps a settled missing-attempt outcome while checking and offers only an explicit retry", async () => {
+    const retry = vi.fn();
+    const user = userEvent.setup();
+    const view = render(
+      <PiDeviceSignIn view={{ phase: "expired" }} checking onRetry={retry} />,
+    );
+    expect(view.getByText("Kirjautumisyritys päättyi")).toBeTruthy();
+    expect(view.getByText(/Vahvistuksen tulosta ei tiedetä/)).toBeTruthy();
+    expect(view.queryByText("Tarkistetaan tilaa")).toBeNull();
+    expect(view.queryByText("Pi-kirjautuminen tarvitaan")).toBeNull();
+    view.rerender(
+      <PiDeviceSignIn view={{ phase: "expired" }} onRetry={retry} />,
+    );
+    expect(view.getByText("Kirjautumisyritys päättyi")).toBeTruthy();
+    expect(retry).not.toHaveBeenCalled();
+    await user.click(view.getByRole("button", { name: "Aloita uusi yritys" }));
+    expect(retry).toHaveBeenCalledOnce();
+  });
+
   it("permits cancellation while the native helper prepares a code, without offering a duplicate start", async () => {
     const user = userEvent.setup();
     const cancel = vi.fn();

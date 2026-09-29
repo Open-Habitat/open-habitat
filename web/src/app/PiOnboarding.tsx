@@ -107,8 +107,9 @@ export function PiOnboarding({
           return;
         }
         if (attempt === "absent") {
+          // Remember a code until an explicit new attempt. An absent native
+          // attempt is not evidence that the provider accepted or rejected it.
           setView({ phase: hadCode.current ? "expired" : "start" });
-          hadCode.current = false;
           return;
         }
         if (attempt.pi_state === "usable") {
@@ -127,7 +128,8 @@ export function PiOnboarding({
           // A lost write response is uncertain, not proof that Pi failed.
           // A failed read must not erase still-visible device instructions.
           setView((previous) =>
-            method === "GET" && previous.phase === "pending"
+            method === "GET" &&
+            (previous.phase === "pending" || previous.phase === "expired")
               ? previous
               : { phase: "interrupted" },
           );
