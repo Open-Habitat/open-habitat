@@ -7,7 +7,8 @@ composer jonoineen. Se on säilytetty, koska se on ainoa ilman buildia
 selaimessa avautuva sivu, jolla tokenit näkyvät realistisessa sommittelussa
 yhtä aikaa; `guidelines/`-kortit näyttävät ne yksi kerrallaan. Kun muutat
 tokeneita tai `styles.css`-tiedostoa, tämä sivu on nopea tapa nähdä muutoksen
-vaikutus kokonaisuuteen molemmissa teemoissa.
+vaikutus kokonaisuuteen molemmissa teemoissa. Sivu avautuu vaaleana; tumman
+teeman näet asettamalla `<html>`-elementille `data-theme="dark"`.
 
 Muuta se ei ole. Sivu on tehty ennen tuotantodesignia ja näyttää ratkaisuja,
 jotka katselmoinnissa hylättiin tai muutettiin: yksittäisen jonorivin
