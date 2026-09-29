@@ -26,7 +26,7 @@ Aloita [tavoitteesta ja MVP:stä](product.md) ja
 
 ## Käyttöliittymä
 
-- [Käyttökulut ja katselmointi](ui.md): design-aineisto ja päätöskohdat.
+- [Käyttökulut](ui.md): keskustelu, navigointi ja toiminta katkoissa.
 - [Design system](design-system.md): yhteinen perusta ja polku oikeisiin komponentteihin.
 
 Tarkemmat suunnitelmat, kokeet ja toteutustehtävät löytyvät sivujen linkittämistä

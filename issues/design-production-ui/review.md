@@ -9,7 +9,7 @@ landauksen jälkeen; työn sisältävä commit on tämän tiedoston Git-historia
 1. [Yhdistetty tuotantodesign](../../design-system/production-v1.md)
 2. [Komponenttikatalogin sopimus](../../design-system/component-catalog-v1.md)
 3. [Staattinen korjauskierros](../../design-system/ui_kits/production-v1/index.html)
-4. [Käyttökulujen yhteenveto](../../docs/ui.md#tuotantodesignin-yhtenäinen-toiminta)
+4. [Käyttökulujen yhteenveto](../../docs/ui.md)
 5. [Design systemin opas](../../docs/design-system.md)
 6. [V1-host-sopimuksen merkitys](../../docs/interfaces.md) ja
    [koneellinen sopimus](../../contracts/v1/AGENTS.md)

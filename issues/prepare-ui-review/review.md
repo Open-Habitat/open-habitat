@@ -6,7 +6,7 @@ ei valita frontend-tekniikkaa tai arvioida mockeja backend-testinä.
 
 ## Katso nämä
 
-1. [Yhtenäinen kirjautumisesta keskusteluun kulkeva polku](../../docs/ui.md#yhtenäinen-työpöytäpolku)
+1. [Yhtenäinen kirjautumisesta keskusteluun kulkeva polku](../../docs/ui.md#kirjautuminen-ja-työtilan-valinta)
 2. [Tuotteen tavoite ja sovitut toiminnot](../../docs/product.md)
 3. [Pi 0.85.1:n todellinen ohjausnäyttö](../probe-pi-control/result.md#capability-matrix)
 4. [Workspace-, GitHub-, Taskfleet- ja poistokokeen näyttö](../probe-workspace-lifecycle/result.md#outcome)
@@ -51,7 +51,7 @@ selain-credential-flow tarvitsevat edelleen myöhemmän luvallisen testin.
 ## Päätä nämä kahdeksan kohtaa
 
 Hyväksy suositus sellaisenaan tai kirjaa korjaus jokaiseen poikkeavaan kohtaan.
-Tarkempi käyttäytyminen on [UI-dokumentissa](../../docs/ui.md#avoimet-valinnat-ja-valmistelijan-suositus).
+Tarkempi käyttäytyminen on [alkuperäisessä UI-dokumentissa](https://github.com/maintainer/native-agent-host/blob/6bcabaa451e4b0927548c408622dee5a0e44fe36/docs/ui.md#avoimet-valinnat-ja-valmistelijan-suositus).
 
 1. **Jono ja steering.** Hyväksytäänkö kaksi lähteen mukaista toimintoa:
    `steer` = “Ohjaa tämän vuoron jälkeen” ja `follow_up` = “Suorita valmistumisen

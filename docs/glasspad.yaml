@@ -68,8 +68,8 @@ groups:
   - label: Käyttöliittymä
     members:
       - slug: ui
-        title: Käyttökulut ja katselmointi
-        desc: Design-aineisto ja Jarin katselmointikohdat.
+        title: Käyttökulut
+        desc: Keskustelu, navigointi ja toiminta katkoissa.
       - slug: design-system
         title: Design system
         desc: Yhteinen perusta ja polku tuotantokomponentteihin.

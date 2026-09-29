@@ -28,7 +28,8 @@ ehdokas ajan tasalla, ei rakenneta erillistä katselmointiprosessia.
 | [Arkkitehtuuri](../../docs/architecture.md) | Käyttäjän kulku ja kolme auktoriteettia, natiivien tietojen omistajuus ja katkoista palautuminen. Kloonivirran poikkeus erotettu yleisestä tapahtumavirrasta; yksityiskohdat linkitetty omiin dokumentteihinsa. | `e78a084` |
 | [Rajapinnat](../../docs/interfaces.md) | Nykyiset reitit erillään sovitusta tulevasta pinnasta; viestien merkitys, katkoista palautuminen ja vastuurajat säilyvät. Palveluasetukset asennusissuen liitteeseen. | `296e4a9`, `1c1e8f8`, `742197c` |
 | [Tuotteen tavoite](../../docs/product.md) | Käyttäjän työ ja sovitut toiminnot. Nykytila erotettu tavoitteesta; vanhat MVP-portit, terminaalinsiirto ja testimatriisit poistettu tuotekuvauksesta. | `fae13b8` |
-| [Todennettava näyttö](../../docs/assumptions.md) | Alkuperäisten kokeiden havainnot ja rajat sekä GitHub-käytön ja keskusteluun palaamisen puuttuva kokonaisnäyttö. Sovitut ratkaisut ja testien vastuut linkitetty omiin lähteisiinsä. UI-sivun terminaalisiirto korjattu samaan rajaan. | Tämän päivityksen commit |
+| [Todennettava näyttö](../../docs/assumptions.md) | Alkuperäisten kokeiden havainnot ja rajat sekä GitHub-käytön ja keskusteluun palaamisen puuttuva kokonaisnäyttö. Sovitut ratkaisut ja testien vastuut linkitetty omiin lähteisiinsä. UI-sivun terminaalisiirto korjattu samaan rajaan. | `75d4fa5` |
+| [Käyttökulut](../../docs/ui.md) | Käyttäjän kulku ja sovittu keskustelukokemus. Nykytila erotettu tavoitteesta, vanhat dialogiohjaimet ja katselmointiportit poistettu; protokolla- ja komponenttidetaljit linkitetty omiin lähteisiin. | Tämän päivityksen commit |
 
 Samalla on tehty kohdennettuja korjauksia toteutussivuun, ADR 0004:ään,
 CLI-konformanssiin ja liittyviin issueihin. Näitä ei ole vielä kokonaisuudessaan
@@ -36,12 +37,13 @@ käyty läpi tällä skillillä.
 
 ## Seuraavaksi
 
-Ehdotus: [docs/ui.md](../../docs/ui.md). Sivu kuvaa jo valittua frontendia
-avoimena, väittää historiaa ja ohjausta kokonaan toteuttamattomiksi ja sisältää
-vanhoja katselmointiportteja sekä kysymysdialogien vastausohjaimia. Tällä
-kierroksella korjattiin vain terminaalisiirron ristiriita. Vertaa UI-päätöksiä
-myöhempiin rajauksiin ennen koko sivun uudelleenkirjoitusta.
-Oletussivun uusi teksti on valmis Jarin lukukierrokselle.
+Ehdotus: [tuotantodesign](../../design-system/production-v1.md) ja siihen
+liittyvä [komponenttikatalogi](../../design-system/component-catalog-v1.md).
+Niissä on edelleen terminaalin siirtodialogi ja Pi-kysymysten vastausohjaimia,
+vaikka nykyinen agenttiohjauksen rajaus jättää ne pois. UI-sivun linkit näihin
+lähteisiin säilyvät reittien, fokuksen, näppäinten ja komponenttien osalta;
+vanhojen ohjainten ristiriita pitää korjata lähteisiin seuraavassa läpikäynnissä.
+UI-sivun uusi teksti on valmis Jarin luettavaksi.
 
 ## Rajapintasivun läpikäynti 2026-09-29
 
@@ -169,3 +171,32 @@ ja keskusteluun palaamisen keskeneräinen kokonaisnäyttö pysyy näkyvissä.
 `git diff --check` läpäisivät. Täyttä CI-porttia ei ajettu uudelleen, koska
 muutos koskee vain dokumentaatiota (`TESTING.md`). Live-palvelinta ei muutettu
 eikä testattu.
+
+## UI-sivun läpikäynti 2026-09-29
+
+Jari pyysi tekemään kokonaisläpikäynnin suoraan. Lähtörevisio oli `75d4fa5`.
+Lähteinä olivat UI-päätös 2026-09-22, ADR 0002, nykyiset tuote- ja
+rajapintasivut, agenttiohjauksen ja keskustelun UI:n issuet sekä Jarin
+2026-09-28 poistama lopullinen MVP-portti. Sovelluksen App-, HistoryView-,
+BrowserConversation- ja onboarding-lähteet tukevat eroa osittaisen toteutuksen
+ja sovitun kokonaisuuden välillä.
+
+Sivu kuvaa nyt kirjautumisen, navigoinnin, keskustelun, jonotuksen, otsikoinnin,
+luonnosten ja lukukohdan säilymisen sekä katkosten ja osatulosten käytöksen.
+Kysymykset ja tuntematon sisältö näytetään; erillisiä vastausdialogeja ei luvata.
+React/TypeScript on valittu eikä historiaa tai ohjausta väitetä kokonaan
+puuttuviksi. Odottava visuaalinen palaute ei ole riippumattoman työn portti.
+Alkuperäiset päätöspöytäkirjat säilyvät lähteinä.
+
+Reittitaulukko, komponenttilista, tilamatriisit ja tarkat saavutettavuusluvut
+poistuivat tältä sivulta niiden omiin lähteisiin osoittavien linkkien tieltä.
+Uutta liitettä tai tuotevaatimusta ei lisätty. Navigaation nimi ja poistuneisiin
+otsikoihin johtaneet linkit korjattiin; alkuperäisiin suosituksiin viittaava
+katselmointilinkki sidottiin sen valmistelurevisioon.
+Tuotantodesignin ja komponenttikatalogin vanhat ohjaimet kirjattiin seuraavan
+läpikäynnin kohteeksi.
+
+`python3 scripts/validate-project-view.py`, toteutuskartan validaattori ja
+`git diff --check` läpäisivät. Täyttä CI-porttia ei ajettu uudelleen:
+muutokset koskevat vain dokumentaatiota ja linkkejä (`TESTING.md`).
+Live-palvelinta ei muutettu eikä testattu.
