@@ -2,11 +2,13 @@
 
 **Status:** Accepted
 
-**Date:** 2026-09-23
+**Decision date:** 2026-09-23
 
-**Accepted:** 2026-09-23 at artifact revision `b87b1aae5d6fefcd914d4f06c0e510b5ca124f60`
+**Original acceptance:** 2026-09-23 at artifact revision `b87b1aae5d6fefcd914d4f06c0e510b5ca124f60`
 
-**Authors:** Pi; accepted by Jari Mustonen
+**Authors:** Pi (original); Codex (revision)
+
+**Revised:** 2026-09-29; based on Jari's agreed rewrite scope, OAuth/OIDC library-choice clarification and editorial corrections. The original acceptance identifies the earlier wording.
 
 ## Context
 
@@ -27,10 +29,9 @@ release provenance together; separate Unix accounts keep their authority apart.
 The gateway runs under a fixed non-root UID, authenticates the browser and
 routes requests. It cannot read user homes or run their agents. Each daemon
 runs as its mapped Unix user and performs that user's native work.
-[ADR 0004](adr-0004-first-login-user-provisioning.md) supersedes the original
-pre-existing-account requirement: a separate root-only broker creates and
-verifies the account and binding on first approved login. That authority does
-not move into the gateway.
+A separate root-only broker creates and verifies the account and binding on
+first approved login, as defined in
+[ADR 0004](adr-0004-first-login-user-provisioning.md).
 
 Go's standard HTTP, process and Unix support, fast builds and concurrency tests
 make this service easier to maintain. The Rust probe established feasibility,
@@ -43,12 +44,9 @@ and security properties must be verified whichever implementation is used.
 
 ### Authenticated routing and native GitHub credentials
 
-Use HTTP over systemd-created per-user Unix sockets. The gateway selects a route
-from a trusted identity binding, never browser-supplied user or socket fields.
-It verifies the filesystem route; the daemon authenticates the gateway UID using
-kernel peer credentials and checks its own account and binding. On a listener
-created by systemd, the gateway sees PID 1/root as its peer, not the accepting
-daemon UID. That observation alone does not authenticate the target account.
+Use HTTP over systemd-created per-user Unix sockets. The gateway verifies that
+it reaches the mapped user's daemon, and the daemon authenticates the gateway.
+Browser-supplied identity or routing fields cannot select another user's account.
 
 One GitHub authorization establishes web identity from the stable numeric
 GitHub ID and installs native `gh` HTTPS credentials under the mapped UID.
