@@ -18,17 +18,23 @@ Lähtörevisio `e2f2be7138e97e1119838a63ddde2eca15b6a7c6`, 2026-09-29. `npm ci -
 
 ### 2 · Keskitaso · Aloitusnäkymän ”Jatka keskustelua” on osin vain lukemista
 
+**Tila: korjattu tässä työpuussa.** Otsikko on *Palaa keskusteluihin*. Linkki kertoo *Vain luettavissa* tai jo olemassa olevan selainkeskustelun kohdalla *Jatka työtä*. Historiaan avaaminen ei käynnistä Pi:tä. Synteettinen paluunäkymä ja selaintesti tarkistettu; kuvapari ja rajoitukset [visual-notes.md](visual-notes.md).
+
 **Missä ja miltä tuntuu.** Palatessa [aloitusnäkymä](screenshots/return-home.avif) tarjoaa kolme linkkiä otsikon *Jatka keskustelua* alla. Synteettinen *Miksi CI epäonnistuu macOS:llä?* avaa [historian](screenshots/return-history.avif), jossa lukee *Vain luku · Ohjausta ei ole* ja *Historian avaaminen ei käynnistä eikä jatka Pi:tä*. Lukemista voi jatkaa, mutta työn jatkamista ei; etusivun ingressi sanoo tarkemmin *jatkaa lukemista*, mikä lieventää ristiriitaa mutta ei poista otsikon lupausta. `web/src/app/App.tsx` valitsee kolme ensimmäistä luettavaa agenttia; vain jo tuttu browserSession-linkki vie ohjattavaan keskusteluun.
 
 **Miksi / korjaus.** [UI:n historia- ja jatkamissopimus](../../docs/ui.md#kirjautuminen-ja-työtilan-valinta) erottaa natiivihistorian lukemisen uuden tai päättyneen selainkeskustelun ohjaamisesta. Nimeä osio esim. *Palaa keskusteluihin* ja merkitse linkissä/kuvauksessa *Vain luku*, jos jatkamistoimintoa ei ole vahvistettu. Näytä *Jatka työtä* vain niille, joissa jatko on oikeasti mahdollinen; älä käynnistä Pi:tä pelkällä historiaklikkauksella. Ei ehdotusta keskustelureittien yhdistämisestä tässä.
 
 ### 3 · Matala · Ensikäytön keskeytys ohittaa päätehtävän visuaalisesti
 
+**Tila: korjattu tässä työpuussa.** Pi-kirjautumisen aloitus on ensisijainen, uloskirjautuminen erillinen hillitty vaarapainike sekä Pi- että GitHub-vaiheessa. Koodia odottaessa yrityksen peruuttaminen pysyy erillisenä. Synteettiset kuvaparit ja selaintestit [visual-notes.md](visual-notes.md).
+
 **Missä ja miltä tuntuu.** [Repojen valinnassa](screenshots/first-chooser.avif) sinivihreä *Jatka ilman repoja* toimii. Seuraavassa [Pi-kirjautumisen aloituksessa](screenshots/first-pi-gate.avif) *Aloita kirjautuminen* on hillitty ääriviivapainike, mutta suuri täytetty punainen *Keskeytä käyttöönotto ja kirjaudu ulos* on heti alla katseen vetävin toiminto. Ensikertalaisen tehtävä kääntyy visuaalisesti päinvastaiseksi, vaikka molemmat ohjaimet toimivat. Lähdekoodissa aloitus käyttää `variant="secondary"` (`web/src/components/PiDeviceSignIn.tsx`).
 
 **Miksi / korjaus.** [Ensikäytön polku](../../docs/ui.md#kirjautuminen-ja-työtilan-valinta) johtaa agentin kirjautumiseen, ja [designin kontrollihierarkian](../../design-system/production-v1.md) tulee ilmaista se. Tee *Aloita kirjautuminen* ensisijaiseksi start-tilassa; pidä keskeytys löydettävänä, mutta toissijaisena ja erillään etenemistoiminnosta. Punainen säästetään vaaran/virheen merkkiin; tarkista tila myös koodia odottaessa, jolloin peruuttaminen on eri toiminto kuin keskeytys ja uloskirjautuminen.
 
 ### 4 · Matala · Ohjelmallinen reittifokus näyttää otsikon mustana laatikkona
+
+**Tila: korjattu tässä työpuussa.** Reittiotsikko ottaa edelleen ohjelmallisen fokuksen ruudunlukijalle, mutta `tabindex=-1`-otsikon kehys poistetaan. Näppäimistöllä tabuloitavien ohjainten design-tokenin mukainen näkyvä kehys tarkistetaan selaintestissä. Synteettiset kuvaparit [visual-notes.md](visual-notes.md).
 
 **Missä ja miltä tuntuu.** [Repohaun otsikko](screenshots/first-chooser.avif) ja [työtilan aloitusotsikko](screenshots/return-home.avif) ympäröityvät ohuella, mustalla selaimen oletusfokuskehyksellä myös hiiren kautta navigoitaessa. Sama näkyi kirjautumisessa ja asetuksissa. Historiassa, viestikentässä ja tavallisissa kontrollifokuksissa käytetään sovelluksen pehmeämpää ilmettä. `App.tsx` kohdistaa fokuksen `h1`:een navigoinnissa; `components.css` antaa kontrollien `:focus-visible`-kehykset muttei otsikolle, joten natiivi outline jää näkyviin.
 
