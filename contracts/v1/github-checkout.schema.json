@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://native-agent-host.invalid/contracts/v1/github-checkout.schema.json",
+  "title": "Read-only selected native GitHub checkout observation",
+  "description": "GET /api/v1/onboarding/github/checkout?full_name=owner%2Frepo. Confirmed means the mapped user's own ~/src/repo has a valid .git work tree and canonical HTTPS origin. Conflict forbids automatic retry; unavailable means no conclusion can be drawn. No path, UID, or credentials are accepted or returned.",
+  "type": "object",
+  "required": ["schema_version", "full_name", "state"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "full_name": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}$"},
+    "state": {"enum": ["absent", "confirmed", "conflict", "unavailable"]}
+  },
+  "additionalProperties": false
+}

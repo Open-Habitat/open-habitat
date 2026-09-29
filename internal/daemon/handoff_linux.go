@@ -49,6 +49,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle("GET /api/v1/onboarding/pi/status", PiStatusHandler(cfg, server.TrustedPeer, piStatus))
 	mux.Handle(RepoCatalogPath, RepoCatalogHandler(cfg, server.TrustedPeer))
 	mux.Handle(RepoClonePath, RepoCloneHandler(cfg, server.TrustedPeer))
+	mux.Handle(RepoObservePath, RepoObserveHandler(cfg, server.TrustedPeer))
 	mux.Handle("/api/v1/onboarding/pi/attempt", PiAttemptHandler(cfg, server.TrustedPeer, pi))
 	mux.Handle(SnapshotPath, piGate(cfg, server.TrustedPeer, piStatus, SnapshotHandlerWithStatus(cfg, server.TrustedPeer, Discover, nativeStatus)))
 	mux.Handle("/api/v1/agents/", piGate(cfg, server.TrustedPeer, piStatus, HistoryHandler(cfg, server.TrustedPeer)))
