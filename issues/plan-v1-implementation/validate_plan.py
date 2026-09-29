@@ -8,8 +8,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 BRIEF = ROOT / "issues/plan-v1-implementation/implementation-briefs.md"
-REVIEW = ROOT / "issues/plan-v1-implementation/review.md"
-CORRECTION_RESULT = ROOT / "issues/apply-review-corrections/result.md"
+SCENARIOS = ROOT / "contracts/v1/scenarios.json"
 
 owners = [
     "build-app-foundation", "build-design-system", "build-workspace-slice",
@@ -18,14 +17,10 @@ owners = [
     "manage-agent-worktrees", "archive-agent-conversations",
     "prepare-mvp-operations", "verify-v1-resilience",
 ]
-criteria = [f"Y{i}" for i in range(1, 6)] + [f"M{i}" for i in range(1, 8)]
 errors: list[str] = []
 
 brief = BRIEF.read_text()
-review = REVIEW.read_text()
-correction_result = CORRECTION_RESULT.read_text()
-if "CORRECTION_ARTIFACT_REVISION" in correction_result:
-    errors.append("correction artifact revision is not stamped")
+scenarios = json.loads(SCENARIOS.read_text())
 
 for slug in owners:
     if f"### `{slug}`" not in brief:
@@ -33,28 +28,24 @@ for slug in owners:
     item = ROOT / "issues" / slug / "item.md"
     if not item.exists():
         errors.append(f"missing issue: {slug}")
-    elif "planning handoff" not in item.read_text().lower():
-        errors.append(f"missing planning handoff: {slug}")
 
-for criterion in criteria:
-    rows = re.findall(rf"^\| {criterion}(?:\s|\|)", brief, re.MULTILINE)
-    if len(rows) != 1:
-        errors.append(f"{criterion} has {len(rows)} ownership-map rows, expected 1")
+assigned = []
+for row in brief.splitlines():
+    if not row.startswith("| CT-"):
+        continue
+    scenario_ids = re.findall(r"\bCT-\d{3}\b", row)
+    owner_links = re.findall(r"\]\(\.\./([a-z0-9-]+)/item\.md\)", row)
+    if len(owner_links) != 1 or not (ROOT / "issues" / owner_links[0] / "item.md").is_file():
+        errors.append(f"invalid scenario owner: {row}")
+    assigned.extend(scenario_ids)
 
-for gap in ("CG-01", "CG-02", "CG-03", "CG-04", "CT-030", "CT-031", "CT-032", "CT-033", "CT-034"):
-    if gap not in brief:
-        errors.append(f"missing contract-gap mapping: {gap}")
-
-for required in ("Go is locked to 1.27.1", "TypeScript to 7.0.2", "Biome 2.5.14", "tsc --noEmit", "unique union of at most first four and last four", "one private remote smoke"):
-    if required not in brief:
-        errors.append(f"corrected implementation invariant missing: {required}")
-
-ct_section = brief.split("## Contract-scenario implementation ownership", 1)[1].split("## Success-criterion ownership map", 1)[0]
-for number in range(1, 34):
-    scenario = f"CT-{number:03d}"
-    count = len(re.findall(rf"\b{scenario}\b", ct_section))
+catalogue_ids = {scenario["id"] for scenario in scenarios}
+for scenario in sorted(catalogue_ids):
+    count = assigned.count(scenario)
     if count != 1:
         errors.append(f"{scenario} has {count} implementation-owner rows, expected 1")
+for scenario in sorted(set(assigned) - catalogue_ids):
+    errors.append(f"unknown or retired scenario in ownership map: {scenario}")
 
 chain = [
     ("build-app-foundation", "review-implementation-plan"),
@@ -108,17 +99,8 @@ for slug in owners[:10]:
             or not re.search(r"(?:Jari|conductor)[^\n]{0,180}(?:decision|verdict)", policy, re.IGNORECASE)):
         errors.append(f"missing visual evidence and explicit human decision policy: {slug}")
 
-for required in (
-    "Frontend and TypeScript", "Go host and restart semantics",
-    "Production design and visual acceptance", "Contract and retention policy",
-    "Title adapter", "Authentication, session and native credentials",
-    "Security and GitHub proof", "Self-hosting, Fleetrepo and release trigger",
-):
-    if required not in review:
-        errors.append(f"review package missing decision section: {required}")
-
 if errors:
     for error in errors:
         print(f"ERROR: {error}", file=sys.stderr)
     sys.exit(1)
-print(f"Implementation plan valid: {len(owners)} briefs, {len(criteria)} criterion mappings, 34 contract scenarios, 4 contract corrections plus native disconnect.")
+print(f"Implementation map valid: {len(owners)} product areas, {len(scenarios)} assigned contract scenarios.")

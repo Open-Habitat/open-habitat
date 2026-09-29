@@ -8,10 +8,9 @@ historiallinen suunnitelma, eivät nykyinen hyväksyntäehto. Issuectl omistaa
 tehtävien ajantasaiset tilat, lanet, riippuvuudet ja ajettavuuden. Tämä
 dokumentti ei ole toinen työjono.
 
-Suunnitelman hyväksyminen ei tarkoita vielä teknologiavalintojen, keskustelun
-avoimien toimintojen tai tuotantodeploymentin hyväksymistä. Työntekijä toteuttaa
-yhden issuen rajauksen kerrallaan. Tätä polkua valmisteltaessa ei käynnistetä
-työntekijöitä eikä toteuteta tuotetta.
+Nykyinen [toteutuskartta](implementation-briefs.md) osoittaa toimintojen
+vastuuissuet. Teknologiavalinnat hyväksyttiin 23.9.; tarkat rajapinnat ja
+toteutettavien issueiden rajaukset elävät niiden omissa dokumenteissa.
 
 ## Lähtökohta ja valmistuminen
 
@@ -29,8 +28,8 @@ GitHub-kytkentä, worktreet, arkistointi/jatkaminen, kahden käyttäjän erottel
 asennus/päivitys/palautuminen ja Jarin käytännön katselmointi.
 
 Työpöytä, suomenkielinen käyttöliittymä, yksi palvelin ja Pi ovat ensimmäinen
-kohde. Hyväksytyt MVP:n jälkeiset UI-laajennukset alkavat omalla designilla ja
-katselmoinnilla vasta MVP-katselmoinnin jälkeen. Mobiili, muut harnessit ja
+kohde. Uudet UI-laajennukset alkavat omalla designilla ja
+katselmoinnilla havaittuun tarpeeseen. Mobiili, muut harnessit ja
 usean palvelimen näkymä eivät aktivoidu tämän polun valmistumisesta.
 Northwind ja Acme säilyvät myöhempinä käyttöönottoina, eivät Alder-MVP:n piilevinä
 lisävaatimuksina.
@@ -72,7 +71,7 @@ autentikoinnista, prosessiomistajuudesta ja paketoinnista. Päätökset kirjataa
 ehdotetuiksi ADR:iksi. Uusia ADR-numeroita varataan vasta tehtävää tehdessä.
 
 @define-host-contracts kuvaa snapshotit, komennot, tapahtumat ja virheet sekä
-niiden merkityksen: viestin hyväksyntä, epävarma lähetys, samanaikainen resume,
+niiden merkityksen: viestin hyväksyntä, epävarma lähetys, päättyneen keskustelun jatkaminen,
 SSE:n toisto/resnapshot, tiedostopolut ja osittaiset epäonnistumiset.
 Lähdetietojen ja uusien annotaatioiden omistajuus ratkaistaan tässä.
 
@@ -111,13 +110,12 @@ reitityksen torjuminen. @build-history-view tuo natiivihistorian luettavaksi.
 
 Tuloksena esitellään toimiva ydin oikealla, turvallisesti rajatulla testiagentilla.
 Selaimen sulkeminen ei pysäytä työtä; epävarmaa viestiä ei lähetetä automaattisesti
-uudelleen. Terminaalissa aloitetun agentin ohjaus noudattaa kokeessa havaittuja
-rajoja. Tämä on välitulos, ei koko MVP:n hyväksyntä.
+uudelleen. Terminaalissa aloitetun agentin historia on selaimessa vain luettava.
 
 ## 6. Käyttöliittymän täydentäminen
 
 @complete-conversation-ui viimeistelee hyväksytyn keskustelun ja navigoinnin
-kokonaisuuden: työkaluryhmät, koodi/diffit, kopiointi, käyttäjäpyynnöt,
+kokonaisuuden: työkaluryhmät, koodi/diffit, kopiointi,
 keskeytys sekä sovitut jonotus-/ohjaustoiminnot. Luonnokset, fokus, lukupaikka,
 pitkä historia ja kaikki olennaiset yhteys-/virhetilat todennetaan.
 
@@ -142,10 +140,9 @@ päivityksen, palautumisen, lokit sekä natiivien tietojen säilymisen.
 uudelleenkäynnistysten, natiivikäytön ja koko toimintovalikoiman pilotin
 valtuutetussa ympäristössä. Tuloksista syntyy katselmoitava raportti.
 
-@review-mvp on Jarin lopullinen katselmointi. Puutteet kirjataan ja olennaiset
-korjaukset todennetaan ennen hyväksyntää. Sen jälkeen hyväksytty post-MVP-työ
-etenee designiin ja katselmointiin, ei suoraan toteutukseen. MVP:n hyväksyntä ei
-todista muiden sovellusten käyttöönottovalmiutta.
+Tulokset käsitellään havainto ja rajattu korjaus kerrallaan. Lopullinen
+@review-mvp-katselmointi on poistettu käytöstä. Uudet toiminnallisuudet
+suunnitellaan ja katselmoidaan oman tarpeensa perusteella.
 
 ## Dokumentit ja agentin toimitus
 

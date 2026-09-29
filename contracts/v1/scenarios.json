@@ -98,15 +98,15 @@
       "long output"
     ],
     "given": [
-      "one SSE client exceeds 1000 queued events or 1 MiB queued encoded bytes"
+      "one SSE client cannot keep up with native output"
     ],
     "when": [
-      "the daemon cannot flush within 30 seconds"
+      "the implementation's measured resource or delivery limit is reached"
     ],
     "then": [
-      "that connection closes without dropping global events",
-      "reconnect uses replay or resnapshot",
-      "one event payload never exceeds 64 KiB of text; remaining native content is queried by content_id"
+      "that connection closes without stopping Pi or silently losing the current state",
+      "reconnect uses replay where available or a fresh snapshot",
+      "large native content remains readable through content pagination under the current wire limits"
     ]
   },
   {
@@ -171,50 +171,47 @@
       "a daemon-owned RPC turn is running"
     ],
     "when": [
-      "daemon crashes and its cgroup stops the child"
+      "daemon crashes and systemd performs service-level child cleanup"
     ],
     "then": [
       "native completed history remains",
       "new epoch makes unresolved commands uncertain",
-      "resume remains disabled until fresh process-exit and history-settlement proof"
+      "an ended browser conversation can be deliberately continued once its previous work is known to have ended; unresolved work cannot gain another writer"
     ]
   },
   {
     "id": "CT-011",
     "covers": [
-      "TUI read-only",
-      "transfer"
+      "TUI read-only"
     ],
     "given": [
       "history is readable and a terminal TUI is observed live"
     ],
     "when": [
-      "browser opens it or requests transfer"
+      "browser opens the terminal history or attempts to control it"
     ],
     "then": [
-      "opening stays read-only",
-      "daemon never signals an observed PID without an owner path",
-      "RPC starts only after known-owner/user stop, confirmed exit, settled history, and single-writer lock"
+      "history remains readable without starting a writer",
+      "terminal control and takeover are unavailable",
+      "daemon does not signal a terminal process"
     ]
   },
   {
     "id": "CT-012",
     "covers": [
       "native capabilities",
-      "queue",
-      "questions"
+      "queue"
     ],
     "given": [
       "owned Pi 0.85.1 RPC advertises verified capabilities"
     ],
     "when": [
-      "message, steer, follow_up, clear_queue, interrupt, or extension question response is sent"
+      "message, steer, follow_up, clear_queue or interrupt is sent"
     ],
     "then": [
       "adapter maps only verified Pi operations",
       "clear_queue clears the whole queue",
-      "interrupt stops the turn not an arbitrary process tree",
-      "ordinary chat does not invent question support",
+      "interruption is best effort and does not claim detached native tools stopped",
       "unsupported or unknown capability returns capability_unsupported or capability_unknown"
     ]
   },
@@ -387,19 +384,18 @@
   {
     "id": "CT-022",
     "covers": [
-      "stale precondition",
-      "concurrent browsers"
+      "stale precondition"
     ],
     "given": [
-      "two browsers or a terminal mutate the same native session/workspace"
+      "the target native resource has changed since the browser observation"
     ],
     "when": [
-      "one submits a command with an old snapshot cursor or observation token"
+      "the browser submits a command with the stale target observation token"
     ],
     "then": [
       "host returns stale_precondition with fresh_snapshot_required",
-      "daemon single-writer ownership decides control, not browser focus",
-      "read-only native changes may still arrive through snapshot/SSE"
+      "no mutation starts from the stale target observation",
+      "unrelated streamed output alone does not invalidate a command"
     ]
   },
   {
@@ -433,24 +429,6 @@
     "then": [
       "confirmation_mismatch or stale_precondition is retained as a rejected command",
       "no process, worktree, or directory mutation starts"
-    ]
-  },
-  {
-    "id": "CT-025",
-    "covers": [
-      "question resolution",
-      "two tabs"
-    ],
-    "given": [
-      "an extension question is pending in both tab snapshots"
-    ],
-    "when": [
-      "one tab answers and daemon emits question.resolved"
-    ],
-    "then": [
-      "both tabs remove the request by request_id",
-      "a duplicate response returns a retained rejection",
-      "resnapshot shows pending_question null"
     ]
   },
   {
@@ -528,7 +506,7 @@
       "operation retention"
     ],
     "given": [
-      "a terminal operation remains in the current daemon epoch store of newest 10000 or 24 hours"
+      "a terminal operation result is available in the current daemon epoch"
     ],
     "when": [
       "the browser reloads or deep-links to its operation ID"
@@ -570,23 +548,6 @@
     "then": [
       "confirmation_mismatch or stale_precondition is returned",
       "no GitHub or Git mutation starts"
-    ]
-  },
-  {
-    "id": "CT-033",
-    "covers": [
-      "native question cancellation"
-    ],
-    "given": [
-      "one native request proves cancellation support and another does not"
-    ],
-    "when": [
-      "response null is requested"
-    ],
-    "then": [
-      "null reaches Pi only for the proved request",
-      "unsupported or unknown requests reject without sending null",
-      "successful cancellation emits question.resolved cancelled"
     ]
   },
   {

@@ -28,7 +28,7 @@ workspace registry, credential broker or speculative cache. Desktop first, one s
 ## Acceptance Criteria
 
 - [ ] Complete compact tool groups, code copying, supported simple diffs, unknown-tool fallback and bounded long-output/history behavior.
-- [ ] Complete supported user questions, interruption and queue/steering behavior only as accepted in the contract; expose unsupported controls honestly.
+- [ ] Complete interruption and queue/steering behavior against verified Pi capabilities; Pi-specific question dialogs are outside this task.
 - [ ] Preserve per-agent drafts, focus, reading position and route selection while events stream and agents change.
 - [ ] Complete loading/empty/error/read-only, expired-login, stale status and uncertain-send/reconnect interactions across both design packages.
 - [ ] Verify the agreed desktop/theme scope and component accessibility against real redacted Pi samples and a live disposable agent.
@@ -45,11 +45,28 @@ Do not expand into the next issue after delivering this bounded task.
 
 ## Bounded planning handoff
 
-This issue owns M1. Complete the accepted rich conversation, queue/steering and accessibility behavior against real adapter capabilities. Queue clear remains unavailable until CG-02 returns exact removed texts/group/order; operation deep links use CG-01; question cancellation uses CG-04. Prove long-history virtualization plus paged accessible fallback, safe Markdown/code/diff/CSP, focus/drafts/reading/attention and real Pi queue races. See [the implementation briefs](../plan-v1-implementation/implementation-briefs.md).
+Complete conversation, queue/steering and accessibility behavior against real
+adapter capabilities. Queue clear returns only the texts actually removed, in
+their original groups and order. Test native queue races, safe Markdown/code/diff
+rendering, keyboard and screen-reader use, themes, zoom and reduced motion.
+Keep long histories usable without losing focus, selection or reading position;
+introduce buffering or virtualization only where the observed workload needs it.
+
+Implement the title behavior specified in [the interface](../../docs/interfaces.md):
+the source-ordered unique union of at most the first four and last four user
+messages, automatic generation and title-adjacent manual regeneration. Test
+unavailable capability, exclusion of concurrent title requests and failure that
+preserves the previous title without blocking conversation.
+The [implementation map](../plan-v1-implementation/implementation-briefs.md)
+assigns the contract scenarios.
 
 
-## Jari visual acceptance gate
+## Visual evidence
 
-This issue is both the executable delivery and its serial human checkpoint. The worker must leave it in `testing`, not close it. While a `ui-v1` issue is in `testing`, it is a non-launchable human-acceptance hold: no round may spawn, resume or close a worker for it. Before any later `ui-v1` lane member may treat its user-visible behavior as delivered, `issues/complete-conversation-ui/visual-acceptance.md` must record the exact product revision, browser/OS/environment, deterministic test fixtures, happy path and every relevant unhappy state, exact Playwright/test commands and results, and links to the essential Playwright screenshots. Screenshots are evidence, not a replacement for assertions. The conductor presents that report to Jari and records his explicit dated accept/change decision in this issue. Only the conductor may then close it; lane serialization keeps the next product slice behind this checkpoint without assigning a lane to a `human-review` issue or letting a worker self-accept.
+Provide proportionate browser evidence and screenshots in
+`issues/complete-conversation-ui/visual-acceptance.md`, with the tested revision,
+environment and relevant outcomes. Record Jari's visual verdict when given;
+unreviewed appearance remains unreviewed. A pending screenshot verdict does not
+block functional completion or independent downstream work.
 
 Interactive and repeated behavior must use the shared production component implementation. Local composition may arrange one-off content but may not invent controls, state semantics, focus rules or styling. When this production slice replaces a canonical/root mock or static reference, remove the superseded root/canonical reference in the same accepted change; an original may remain only in its receiving issue as historical evidence.

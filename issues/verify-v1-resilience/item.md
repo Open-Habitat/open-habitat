@@ -38,7 +38,7 @@ parallel history store, credential broker, internal tenant model or speculative 
 - [ ] A send interrupted before acknowledgement remains uncertain until reconciled; it is not automatically resent.
 - [ ] Daemon restart, stale observations and missing native sources produce honest recoverable UI states.
 - [ ] Test two distinct Linux accounts and negative cross-user routing/access cases with an agreed test setup.
-- [ ] Verify continued SSH/tmux/native Pi use within the attachment limits established by the probe.
+- [ ] Verify independent SSH/tmux/native Pi use and read-only terminal histories; do not require browser takeover or simultaneous writers to one conversation.
 - [ ] Walk through desktop v1 with Jari and record remaining defects and the observed need for the next feature.
 
 ## Implementation and evidence
@@ -48,14 +48,20 @@ briefs and exact checks verified by @build-app-foundation. Save `result.md` here
 the tested revision, commands, outcomes and remaining limits. Update the affected
 durable documents and component examples; do not duplicate task state in TODO.md.
 
-Run the approved two-user Alder/disposable-target pilot procedure from
-@prepare-mvp-operations, within recorded deployment authorization. Include all accepted
-workspace/GitHub/worktree/archive flows, partial failures, daemon restart, native history
-recovery and continued SSH/tmux/Pi use. Record workload and long-history/streaming behavior;
-add no cache without measurement. Report exact limitations and any absent optional
-extension. Prepare a linked pilot/demo report for @review-mvp. Complete technical
-verification here; Jari's final acceptance belongs to that separate human gate.
+Exercise delivered workspace/GitHub/worktree/archive flows, partial failures,
+daemon restart, native history recovery and independent SSH/tmux/Pi use. Use two
+synthetic Unix users for automated isolation tests. Live participants choose to
+sign in themselves; a second person's participation is not a prerequisite for
+technical verification. Follow Fleetrepo's current test-installation procedure
+for live checks and record their limits separately from synthetic evidence.
+Report findings for focused fixes and review as they arise.
 
 ## Bounded planning handoff
 
-This issue is the sole end-to-end/pilot verifier for Y1–Y5 and M1–M7. Run CT-001–CT-033, both actual identities, full accepted operations, long-history/accessibility/security load, browser/SSE/gateway/daemon failures, packaging update/rollback and native SSH/tmux/Pi continuity. Require zero cross-user disclosure, native-data loss and silent duplicate sends. Use only reviewed Fleetrepo convergence and manifest-owned pilot teardown; this issue does not accept `review-mvp`. See [the implementation briefs](../plan-v1-implementation/implementation-briefs.md).
+Use the current [contract scenarios](../../contracts/v1/scenarios.json) and
+feature results to select integration tests. Exercise browser/SSE/gateway/daemon
+failure and package update/rollback where the environment can prove them.
+Check cross-user denial, preserved native data and absence of silent duplicate
+sends. Measure realistic long-history and streaming workloads; adjust useful
+limits instead of building machinery to meet arbitrary numbers. This work
+produces evidence and fixes, not a final MVP acceptance checkpoint.

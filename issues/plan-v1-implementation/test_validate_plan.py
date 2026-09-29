@@ -15,6 +15,7 @@ class PlanValidatorTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = pathlib.Path(self.temp.name)
         shutil.copytree(SOURCE / "issues", self.root / "issues")
+        shutil.copytree(SOURCE / "contracts", self.root / "contracts")
         self.validator = self.root / "issues/plan-v1-implementation/validate_plan.py"
 
     def run_validator(self, *expected):
@@ -49,9 +50,32 @@ class PlanValidatorTests(unittest.TestCase):
         self.run_validator("missing visual evidence and explicit human decision policy: build-agent-control")
 
     def test_missing_human_decision_fails(self):
-        self.change("build-history-view", "until Jari has seen its visual evidence and given an explicit accept/change decision", "until screenshots have been saved")
-        self.change("build-history-view", "The conductor records Jari's decision here", "The conductor files the screenshots here")
+        self.change("build-history-view", "Record Jari's visual verdict when given", "File the screenshots when ready")
         self.run_validator("missing visual evidence and explicit human decision policy: build-history-view")
+
+    def change_map(self, old, new):
+        path = self.root / "issues/plan-v1-implementation/implementation-briefs.md"
+        content = path.read_text()
+        self.assertIn(old, content)
+        path.write_text(content.replace(old, new, 1))
+
+    def test_missing_scenario_assignment_fails(self):
+        self.change_map("| CT-035 |", "| CT-036 |")
+        self.run_validator("CT-035 has 0 implementation-owner rows",
+                           "unknown or retired scenario in ownership map: CT-036")
+
+    def test_duplicate_scenario_assignment_fails(self):
+        self.change_map("| CT-027 |", "| CT-027, CT-027 |")
+        self.run_validator("CT-027 has 2 implementation-owner rows")
+
+    def test_nonexistent_owner_fails(self):
+        self.change_map("[gate-native-routes-on-pi](../gate-native-routes-on-pi/item.md)",
+                        "[missing-owner](../missing-owner/item.md)")
+        self.run_validator("invalid scenario owner")
+
+    def test_retired_question_scenario_cannot_return_as_requirement(self):
+        self.change_map("| CT-027 |", "| CT-027, CT-033 |")
+        self.run_validator("unknown or retired scenario in ownership map: CT-033")
 
 
 if __name__ == "__main__":

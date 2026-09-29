@@ -89,10 +89,10 @@ for scenario in scenarios:
 
 required_coverage = {
     "two users", "cross-user denial", "snapshot/SSE race", "replay expiry", "gap", "resnapshot",
-    "duplicate command", "uncertain command", "browser loss", "daemon loss", "TUI read-only", "transfer",
+    "duplicate command", "uncertain command", "browser loss", "daemon loss", "TUI read-only",
     "malformed/untrusted content", "long output", "title failure", "regeneration", "path escape",
     "partial host operation", "annotation corruption", "CSRF", "origin denial",
-    "confirmation mismatch", "question resolution", "session expiry during SSE",
+    "confirmation mismatch", "session expiry during SSE",
     "schema version rejection", "Last-Event-ID reconnect", "empty account create",
     "user observation token", "native GitHub disconnect"
 }

@@ -58,9 +58,10 @@ components. Complete SSE and ended-conversation continuation, and verify the
 whole browser journey. Keep the browser/host contract and its generated types
 in sync with the implementation.
 
-The [implementation briefs](../plan-v1-implementation/implementation-briefs.md)
-map this work to Y4–Y5. Use this issue's scope for agent control; older numeric
-buffer limits and test-command proposals are not additional acceptance criteria.
+The [implementation map](../plan-v1-implementation/implementation-briefs.md)
+assigns the related contract scenarios. Add buffering or limits only for a
+concrete need, keep the implementation simple, and adjust values from measured
+behavior so they do not obstruct normal conversation use.
 
 Verify browser behavior, real Pi behavior and Unix-user isolation at the layers
 that exercise them. Record the tested revision and limits of each result,

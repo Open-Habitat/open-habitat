@@ -15,7 +15,8 @@ collision: [docs/, AGENTS.md]
 
 ## Goal
 
-Make the functional MVP installable and recoverable on the approved target before final resilience verification and pilot acceptance.
+Make releases installable and recoverable, with generic self-hosting guidance
+and a verified procedure for the test installation.
 
 ## Context
 
@@ -30,8 +31,8 @@ workspace registry, credential broker or speculative cache. Desktop first, one s
 - [ ] Implement and verify the accepted package/service lifecycle and gateway-to-daemon account mapping without ad hoc persistent source installs.
 - [ ] Document prerequisites, exact install/update/start/stop/rollback and live-version commands in `docs/operations.md`; make CI/package checks reproducible.
 - [ ] Define ownership and backup/restore of native histories, workspace annotations and host configuration; show logs/health sufficient to diagnose failures without leaking credentials.
-- [ ] Exercise installation and rollback in a disposable environment and prepare two test identities plus representative workspaces for the pilot.
-- [ ] Confirm target, command and deployment authorization from the recorded decision before touching Alder; missing authorization goes to the main conversation with a prepared reviewable change.
+- [ ] Exercise installation and rollback in a disposable environment with synthetic identities and representative workspaces.
+- [ ] Use Fleetrepo's current test-installation upgrade procedure and verified rollback path for the authorized test server; stop if its preflight fails.
 - [ ] Prepare the pilot procedure and cleanup/recovery instructions for @verify-v1-resilience; no production availability claim from packaging alone.
 
 ## Delivery and verification
@@ -45,4 +46,15 @@ Do not expand into the next issue after delivering this bounded task.
 
 ## Bounded planning handoff
 
-This issue owns release packaging and the implementation half of M7. Native Agent Host owns immutable artifacts, manifests, checksums, service templates and generic install/configuration/test-host/update/rollback/live-version/operator runbooks usable for any Alder-like host. Alder's users, gateway account, release pin, packages, units/sockets, mappings, encrypted provider input, Tailscale route and convergence are owned only by a separate reviewed issue/worktree in `/home/maintainer/Sources/fleetrepo`; do not edit Fleetrepo as a side effect. Do not file public cleanup now: when 0.1 becomes release-ready, the conductor files a repo issue to remove Alder-specific references from Git HEAD while preserving generic docs and issue-local history. Prove install/no-op/update/failed-update/rollback/reset in the VM before using the already authorized Alder target. Exact proposed command shapes are in [the implementation briefs](../plan-v1-implementation/implementation-briefs.md).
+Build on the existing reproducible release packaging and neutral service
+templates. Native Agent Host owns generic installation, configuration, update,
+rollback, live-version and operator documentation. Fleetrepo owns the concrete
+accounts, bindings, secrets, ingress and release selection for the test host.
+Coordinate that work there and record its revision and observed outcome.
+
+Verify install, repeated apply, update, failed activation and rollback in a
+disposable environment. Preserve native history and credentials; test cleanup
+removes only fixture-owned state. Exact live commands and receipts belong to
+Fleetrepo's `infra/native-agent-host-test/RELEASE-UPGRADE.md`, not a copied shell
+recipe in this repository. Test releases proceed under that procedure; a
+production installation is a separate decision by Jari.

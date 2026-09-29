@@ -3,10 +3,10 @@
 Tämä sivu määrittelee ensimmäisen version selaimen, gatewayn, käyttäjädaemonin
 ja natiivien adapterien välisen havaittavan sopimuksen. Se ei väitä, että
 sopimus olisi toteutettu. [ADR 0001](adr-0001-unix-native-agent-host.md) on
-hyväksytty perusta. React/TypeScript 7/Biome- ja Go-ratkaisut ovat edelleen
+hyväksytty perusta. React/TypeScript 7/Biome- ja Go-ratkaisut on hyväksytty
 [ADR 0002:n](adr-0002-frontend-stack.md) ja
-[ADR 0003:n](adr-0003-host-stack.md) ehdotuksia. Sopimus rajaa toteutusta, mutta
-ei hyväksy näitä ehdotuksia.
+[ADR 0003:n](adr-0003-host-stack.md) mukaisina. Ensikirjautumisen tilinluonti
+noudattaa [ADR 0004:ää](adr-0004-first-login-user-provisioning.md).
 
 Koneelliset JSON Schema 2020-12 -sopimukset ovat
 [`contracts/v1/`](../contracts/v1/AGENTS.md)-hakemistossa. Niiden validoidut,
@@ -15,7 +15,7 @@ ja toteutuksen deterministiset skenaariot
 [`contracts/v1/scenarios.json`](../contracts/v1/scenarios.json). Tämä sivu
 määrittää merkityksen silloin, kun pelkkä skeema ei voi sitä ilmaista.
 
-**Toteutustilanne:** Snapshot sekä historia-/sisältö-GET-polut ovat nyt vain
+**Historian toteutus:** Snapshot sekä historia-/sisältö-GET-polut ovat
 luku -tilassa. Pi:n v3 JSONL luetaan käyttäjädaemonissa suoraan mapped
 käyttäjän kotihakemistosta. `pi:<sessionId>` perustuu natiiviin otsakkeeseen,
 workspace-kytkentä vain otsakkeen täsmälliseen `cwd`-arvoon. Sivu on enintään
@@ -23,8 +23,30 @@ workspace-kytkentä vain otsakkeen täsmälliseen `cwd`-arvoon. Sivu on enintä�
 lähteen revisioniin. Prosessi jää `unknown`-tilaan ja ohjaus `read_only`-tilaan.
 Snapshotin 1 MiB katto voi estää erittäin suuren agenttilistan: se ei oikeuta
 hiljaista rajausta. Yhden natiivin JSONL-tiedoston luku on rajattu 32 MiB:iin;
-suurempi historia näkyy saavuttamattomana, ei katkaistuna keskusteluna. POST-ohjausta, SSE:tä ja Pi:n käynnistystä/jatkoa ei ole
-vielä toteutettu. Katso [historian toteutusevidenssi](../issues/build-history-view/result.md).
+suurempi historia näkyy saavuttamattomana, ei katkaistuna keskusteluna.
+Nämä ovat nykyisen toteutuksen rajoja, joita pitää muuttaa, jos ne haittaavat
+tavallista käyttöä. Erillinen väliaikainen selainohjaus tukee jo uuden Pi:n
+käynnistystä ja viestejä tilakyselyillä; SSE ja päättyneen selainkeskustelun
+jatkaminen ovat [agenttiohjauksen](../issues/build-agent-control/item.md) työtä.
+Katso [historian toteutusevidenssi](../issues/build-history-view/result.md).
+
+## Rajat ja puskurit
+
+Raja tai puskuri lisätään konkreettiseen tarpeeseen, mahdollisimman yksinkertaisena.
+Tarkat luvut eivät ole tuotevaatimuksia. Valitse mielekkäät arvot ja säädä niitä
+mittausten ja käyttöhavaintojen perusteella niin, etteivät ne estä normaalia
+keskustelua tai historian lukemista. Pelkkä vanha suunnitelma ei perustele
+erillistä tapahtumarengasta, säilytysrekisteriä tai välimuistia.
+
+SSE välittää työn etenemisen. Katkoksesta pitää päästä ajantasaiseen näkymään
+ilman hiljaisia aukkoja tai automaattista viestin uusintaa. Alla kuvattu cursor-
+ja snapshot-sopimus sallii uuden tilannekuvan hakemisen, kun tapahtumia ei enää
+ole toistettavissa; se ei vaadi tiettyä muistirakennetta tai säilytysaikaa.
+Puuttuva komennon tulos jää tuntemattomaksi. Pi:n natiivihistoria säilyy lähteenä.
+
+Skeeman ja toteutuksen nykyiset koko- ja sivutusrajat pysyvät keskenään samoina.
+Niitä muutettaessa päivitetään rajapintakuvaus, skeemat, generoidut tyypit ja
+testit yhdessä; tämä periaate ei itsessään muuta nykyisiä HTTP-vastauksia.
 
 ## Omistajuus ennen viestimuotoa
 
@@ -41,8 +63,8 @@ oikeuksilla. Adapteri kääntää vain todistetut Pi-toiminnot hostin sopimuksee
 | Git-repo, branch ja worktreet | Git | lue aina uudelleen ennen mutaatiota; älä kopioi faktoja annotaatioon |
 | Taskfleet-worktreen omistajuus | Taskfleetin täysi run/node-identiteetti | käytä vain Taskfleetin omaa lifecyclea; älä päättele omistajaa branchin lyhenteestä |
 | Keskustelu, malli ja resume-ID | Pi:n natiivi JSONL | säilytä `pi:<sessionId>`; älä tee rinnakkaista historiaa |
-| Prosessin olemassaolo | daemonin lapsi/cgroup, Linux, tmux ja Taskfleet | ilmoita lähde ja havaintohetki; puuttuva havainto ei todista exit-tilaa |
-| Ohjauskelpoisuus | daemonin omistama RPC-kanava ja yhden kirjoittajan lukko | pidä erillään historiasta ja prosessihavainnosta |
+| Prosessin olemassaolo | daemonin omistama Pi-lapsi ja natiivi tila | ilmoita lähde ja havaintohetki; puuttuva havainto ei todista exit-tilaa |
+| Ohjauskelpoisuus | daemonin omistama RPC-kanava | pidä erillään historiasta ja prosessihavainnosta |
 | Credentialit | Unix-käyttäjän Pi/Git/SSH/`gh`-ympäristö | GitHub OAuth -callback-token saa olla gatewaylla vain transientisti ja siirtyä kerran todennetulle daemonille; älä persistoi/lokita/näytä sitä selaimelle; Git-portti todentaa HTTPS-helperin ja transportin |
 | Piilotus, arkisto, generoitu otsikko ja puuttuva parent-linkki | pieni käyttäjäkohtainen annotaatio | annotaatio on korvattavaa esitystietoa, ei lähdefakta |
 
@@ -55,7 +77,7 @@ Snapshot voi siis näyttää historian luettavana samalla kun prosessi on
 
 ### Selain → gateway
 
-Toteutuksen ensisijainen Alder-polku käyttää GitHub OAuth Authorization Code -virtaa kertakäyttöisellä `state`lla ja PKCE S256:lla, jos Proposed ADR 0003 hyväksytään. Reititysavain on GitHubin varmennettu vakaa numeerinen käyttäjä-ID. Sama yksi authorization pyytää `gh auth login --with-token` -polun vaatimat `repo`, `read:org` ja `gist` -scopet, muodostaa web-istunnon ja toimittaa callback-tokenin kerran todennetun paikallisen hopin kautta mapped daemonille native `gh` HTTPS helperin asennusta varten. Token ei mene cookieen, selaimeen, lokiin, argviin, ympäristöön tai gatewayn levylle. Valinnainen Google OIDC käyttää exact `(issuer, subject)` -avainta web-identiteettiin eikä konfiguroi GitHubia; siihen ei oteta yhteyttä ennen eksplisiittistä valintaa. Sähköposti, login-nimi, näyttönimi, HTTP-header, URL-parametri, body-kenttä tai selaimen lähettämä Unix-käyttäjä ei saa valita daemonia.
+Ensisijainen kirjautumispolku käyttää GitHub OAuth Authorization Code -virtaa kertakäyttöisellä `state`lla ja PKCE S256:lla. Reititysavain on GitHubin varmennettu vakaa numeerinen käyttäjä-ID. Sama yksi authorization pyytää `gh auth login --with-token` -polun vaatimat `repo`, `read:org` ja `gist` -scopet, muodostaa web-istunnon ja toimittaa callback-tokenin kerran todennetun paikallisen hopin kautta mapped daemonille native `gh` HTTPS helperin asennusta varten. Token ei mene cookieen, selaimeen, lokiin, argviin, ympäristöön tai gatewayn levylle. Valinnainen Google OIDC käyttää exact `(issuer, subject)` -avainta web-identiteettiin eikä konfiguroi GitHubia; siihen ei oteta yhteyttä ennen eksplisiittistä valintaa. Sähköposti, login-nimi, näyttönimi, HTTP-header, URL-parametri, body-kenttä tai selaimen lähettämä Unix-käyttäjä ei saa valita daemonia.
 
 Gatewayn web-istunto on opaque, palvelinpuoleinen ja cookie on
 `__Host-agent-host; Secure; HttpOnly; SameSite=Lax; Path=/`. Kaikki kirjoittavat
@@ -72,9 +94,9 @@ kirjautumisen. Identiteetin vaihto tyhjentää edellisen identiteetin näkymän 
 
 ### Gateway → daemon
 
-Proposed ADR 0003:n mukainen odotus on HTTP/1.1 käyttäjäkohtaisessa
-systemd-created Unix-socketissa. Socket valitaan vain gatewayn staattisesta
-mappauksesta. Gateway poistaa mahdolliset selaimen identiteetti-, UID-, käyttäjä-
+[ADR 0003:n](adr-0003-host-stack.md) kuljetus on HTTP/1.1 käyttäjäkohtaisessa
+systemd-created Unix-socketissa. Socket valitaan brokerin vahvistamasta
+identiteetin ja Unix-käyttäjän sidoksesta. Gateway poistaa selaimen identiteetti-, UID-, käyttäjä-
 ja socket-headerit eikä lisää niiden perusteella reititystä. Daemon hyväksyy vain
 konfiguroidun gateway-UID:n Linuxin `SO_PEERCRED`-tiedosta ja tarkistaa oman
 käyttäjänsä, UID:nsä, home-hakemistonsa ja socket-instanssinsa yhteensopivuuden.
@@ -92,8 +114,7 @@ varmentaman numeerisen `expected_numeric_id`-arvon. Daemonin root-owned käyttä
 sisältää saman odotetun providerin ja numeerisen ID:n. Daemon hyväksyy asennuksen vain,
 jos handoff, oma mappaus ja `gh api user --jq .id` täsmäävät; ristiriidassa se poistaa
 juuri asennetun paikallisen authin, raportoi osatuloksen eikä avaa normaalia web-istuntoa.
-Tarkka socket- ja peer-toteutus on edelleen stack-ehdotus, mutta nämä fail-closed-
-ominaisuudet ovat rajapintasopimus riippumatta hyväksyttävästä kuljetuksesta.
+Socket- ja peer-tarkistukset kuuluvat hyväksyttyyn luottamusrajaan.
 
 ### Daemon → natiivit lähteet
 
@@ -175,17 +196,17 @@ ohitetaan. Seuraava arvo on täsmälleen `last+1`; vain sitä suurempi arvo on a
 Sama sequence eri event-ID:llä on ristiriita. Aukko tai ristiriita tekee näkymästä
 stale-kirjoituskyvyttömän ja käynnistää resnapshotin; selain ei järjestä aukkoa itse.
 
-V1:n retention-ehdotus katselmointiin on enintään 10 000 eventtiä ja enintään
-15 minuuttia. Kumpi raja täyttyy ensin, voi vanhentaa cursorin. Snapshot kertoo
+Toistettavien tapahtumien säilytys määräytyy toteutuksen tarpeen ja mitatun
+käytön mukaan. Cursor voi vanhentua. Snapshot kertoo
 `oldest_replay_cursor`in. Toisen instance-ID:n cursor tuottaa
 `409 cursor_instance_mismatch`; liian vanha cursor `409 cursor_expired`.
 Virhe palautetaan ennen SSE-headerien aloittamista. Molemmat vaativat uuden
 snapshotin.
 
-Yhden hitaan SSE-clientin jono katkaistaan, jos siinä on yli 1 000 eventtiä,
-yli 1 MiB enkoodattuja eventtejä tai vanhin lähettämätön eventti on odottanut 30
-sekuntia. Katkaisu ei pudota globaaleja eventtejä eikä pysäytä Pi:tä. Client
-jatkaa cursorista, jos ring vielä sisältää sen, muuten resnapshottaa. Selain
+Hitaan SSE-clientin yhteys voidaan katkaista, jos lähetys haittaisi palvelimen
+toimintaa. Raja valitaan havaittuun tarpeeseen eikä normaalin käytön tielle.
+Katkaisu ei pysäytä Pi:tä. Client jatkaa cursorista, jos tapahtumat ovat vielä
+saatavilla, muuten resnapshottaa. Selain
 estää kirjoitukset yhteyden ollessa stale, reconnecting tai resnapshot-required.
 
 `history.entry` käyttää Pi:n pysyvää entry-avainta `native_key`-kentässä.
@@ -241,9 +262,9 @@ käyttäjädaemonissa, ei vain yhdessä tabissa. Sama ID ja rakenteellisesti sam
 tiukan JSON-parsinnan läpäissyt request palauttaa alkuperäisen tuloksen: objektien
 avainjärjestys ja whitespace eivät merkitse, mutta array-järjestys, stringin
 koodipisteet ja kaikki precondition-kentät merkitsevät. Sama ID eri bodyllä
-torjutaan `command_id_conflict`-virheellä. V1:n bounded in-memory ledger -ehdotus
-on 10 000 uusinta tulosta ja 24 tuntia, kumpi raja täyttyy ensin; `expires_at`
-kertoo retained-tuloksen ylärajan. Snapshot kuljettaa vain ei-terminaaliset
+torjutaan `command_id_conflict`-virheellä. Komentotulosten säilytyksen pitää
+palvella tavallista katkoista palautumista ilman tarpeetonta säilytysrakennetta.
+`expires_at` kertoo säilytetyn tuloksen ylärajan. Snapshot kuljettaa vain ei-terminaaliset
 ledger-entryt; muut haetaan command querystä. Ledger ei ole historia tai
 prosessirekisteri.
 
@@ -267,10 +288,9 @@ pitää näyttää kaksoisvaikutuksen mahdollisuus. Vain ennen lähetystä paika
 epäonnistunut validointi on turvallisesti lähettämättä jäänyt.
 
 Stale snapshot, cursor, observation token tai muuttunut native revision tuottaa
-`409 stale_precondition`, `fresh_snapshot_required:true`. Kahdessa selaimessa
-oleminen ei luo kahta omistajaa: daemonin RPC-controller ja yhden kirjoittajan
-lukko omistavat ohjauksen. Terminaalissa tehty native muutos voi mitätöidä
-molempien tabien preconditionit.
+`409 stale_precondition`, `fresh_snapshot_required:true`. Selainkeskustelulla
+on yksi daemonin omistama kirjoittaja. Testijärjestelmää käytetään niin, etteivät
+SSH/tmux tai itsenäiset clientit ohjaa samaa keskustelua samanaikaisesti.
 
 ## Adapterin kyvyt ja agentin tilat
 
@@ -287,7 +307,6 @@ omistamalleen RPC-prosessille:
 - `agent.message`, `agent.steer`, `agent.follow_up` ja koko jonon
   `agent.queue.clear`;
 - nykyisen vuoron `agent.turn.interrupt` (`abort`), ei yleistä prosessipuun killia;
-- adapterin extension-dialogiin sidottu `agent.question.respond` request-ID:llä;
 - tunnetun daemon-ownerin `agent.process.stop`.
 
 `clear_queue` tyhjentää kokonaiset steer- ja follow-up-jonot; per-message cancelia
@@ -295,15 +314,21 @@ tai mielivaltaista reorderia ei ole. Steering toimitetaan Pi:n mukaisesti tool
 callien jälkeen, ei kesken työkalun. Tavallinen chat ei lupaa geneeristä
 kysymysskeemaa. `agent_settled` on idle-raja, ei pelkkä `agent_end`.
 
-Elävä terminaali-TUI on history-only. Pi:n RPC:hen ei voi attachata.
-`transfer_possible` tarkoittaa vain, että tunnettu omistajapolku tai käyttäjän
-terminaalitoiminta voi lopettaa TUI:n. Uusi `pi --mode rpc --session <session>`
-käynnistyy vasta, kun tuore havainto vahvistaa prosessin poistuneen, historia on
-asettunut ja yhden kirjoittajan lukko on saatu. `not_observed`, stale ja unknown
-eivät ole confirmed-exited. Daemon ei signaloi pelkästä `/proc`- tai tmux-
-havainnosta löytynyttä PID:tä.
+Terminaalin historia on vain luettava; selain ei siirrä sen ohjausta itselleen
+eikä pysäytä terminaalin prosessia. Päättynyttä selainkeskustelua jatketaan sen
+omasta natiivihistoriasta, kun aiempi työ tiedetään päättyneeksi.
+
+Pi:n erillisiä kysymysdialogeja, niihin vastaamista tai niiden perumista ei
+toteuteta nykyiseen tuotteeseen. Skeemoissa ennestään olevat
+`agent.question.respond`, `pending_question` ja `transfer_possible` eivät
+velvoita toteuttamaan näitä kykyjä: kysymys- ja haltuunottokyvyt eivät ole
+tuettuja, eikä niitä tarjota selaimessa.
 
 ### Keskustelun generoitu otsikko
+
+Otsikkoadapterin valittu malli on `openai-codex/gpt-5.6-luna`, low thinking,
+enintään 16 KiB syötettä, 120 Unicode-merkin tulos ja 0,02 USD:n kustannuskatto.
+Pi:n kertakutsumekanismi pitää todentaa ennen kyvyn tarjoamista käyttäjälle.
 
 Otsikko alkaa arvolla “Uusi keskustelu”. Ensimmäisen viestin jälkeen daemon voi
 näyttää itse muodostamansa rajatun alun `first_message_fallback`-lähteenä. Selain
@@ -319,7 +344,7 @@ edellisen onnistuneen otsikon tai fallbackin eikä estä keskustelua. Otsikon vi
 
 ## Vaiheistetut host-operaatiot
 
-Workspace-, Git-, GitHub-, Taskfleet-, arkisto- ja siirto-operaatio palauttaa
+Workspace-, Git-, GitHub-, Taskfleet- ja arkisto-operaatio palauttaa
 vaiheet. Vaiheen tila on `pending`, `running`, `confirmed`, `failed`, `unknown`
 tai `skipped`. Aikaisempi confirmed ei muutu failediksi myöhemmän virheen vuoksi.
 Operaation lopputila `partial` tarkoittaa toteutuneita vaikutuksia ja keskeneräistä
@@ -432,7 +457,7 @@ katkeamisesta eikä piilota osittaisia vaikutuksia.
 [`scenarios.json`](../contracts/v1/scenarios.json) on toteutuksen yhteinen,
 tekniikkariippumaton skenaarioluettelo. Se kattaa kaksi käyttäjää ja ristiinpääsyn
 torjunnan, snapshot/SSE-racen, replayn, aukot, backpressuren, duplikaatti- ja
-epävarmat komennot, browser/daemon-katkokset, TUI-siirron, pitkän ja epäluotetun
+epävarmat komennot, browser/daemon-katkokset, terminaalihistorian lukemisen, pitkän ja epäluotetun
 sisällön, otsikon epäonnistumisen/uusinnan, path escapet, osittaiset operaatiot,
 Taskfleet-omistajuuden sekä annotaatiokorruption.
 
@@ -443,51 +468,24 @@ käyttävät disposable filesystemiä. GitHub-write vaatii erikseen valtuutetun
 disposable-remoten. Testi vertaa lopputulosta aina natiiviin lähteeseen, ei vain
 HTTP-vastaukseen.
 
-## Katselmointiin lisätyt sopimustäsmennykset
+## Operaatioiden tulokset ja vahvistukset
 
-Tuotantodesign löysi neljä kohtaa, jotka korjauskierros on lisännyt additiivisesti
-koneelliseen v1-sopimukseen ja CT-030–CT-034-skenaarioihin. CT-034:n
-positiivinen fixture todistaa native GitHub disconnect -komennon esitettävyyden.
-`review-implementation-plan` hyväksyy tai muuttaa käyttäytymisen ennen kuin
-`build-app-foundation` generoi tyypit ja toteuttaa testit:
+`GET /api/v1/operations/<operation-id>` palauttaa saatavilla olevan
+terminaalisen operaation tuloksen nykyisessä daemon-epochissa. Snapshot
+kuljettaa ei-terminaaliset operaatiot. Puuttuva, vanhentunut tai edellisen
+epochin tulos on `operation_outcome_unknown`, ei onnistuminen.
 
-1. `GET /api/v1/operations/<operation-id>` palauttaa terminal-operaation tuloksen
-   saman daemon-epochin enintään 10 000 uusimman / 24 tunnin muistirajassa.
-   Snapshot kuljettaa ei-terminaaliset operaatiot. Puuttuva, vanhentunut tai
-   edellisen epochin tulos on `operation_outcome_unknown`, ei onnistuminen.
-2. Onnistunut `agent.queue.clear` palauttaa todella poistetut tekstit erikseen
-   steering- ja follow-up-ryhmissä, alkuperäisillä indekseillä ja Pi:n
-   lähdejärjestyksessä sekä tyhjennyksen jälkeisen queue-revision. UI palauttaa
-   editoriin vain nämä arvot; stale, failed tai uncertain ei palauta mitään.
-3. GitHub-create-preflight antaa tuoreeseen observation-tokeniin sidotun
-   `exact_repository`-haasteen ja odotetun `owner/repository`-arvon. Käyttäjän
-   confirmation vastaa sitä täsmälleen ilman trimmausta tai kirjainkoon muutosta.
-4. `agent.question.respond`-komennon `response:null` lähetetään vain pyynnölle,
-   jonka adapteri on todistanut tukevan natiivia cancellationia. Muuten capability
-   on unknown/unsupported; onnistunut cancel tuottaa `question.resolved`-eventin
-   outcome-arvolla `cancelled`.
+Onnistunut `agent.queue.clear` palauttaa todella poistetut tekstit erikseen
+steering- ja follow-up-ryhmissä, alkuperäisillä indekseillä ja Pi:n
+lähdejärjestyksessä sekä tyhjennyksen jälkeisen queue-revision. UI palauttaa
+editoriin vain nämä arvot; stale, failed tai uncertain ei palauta mitään.
 
-Nämä ovat edelleen katselmoitavia ehdotuksia eivätkä väitä runtimea toimivaksi,
-mutta niiden koneellinen sopimusmuoto on nyt mukana `contracts/v1/`-tiedostoissa.
-
-## Katselmoinnissa vielä päätettävät politiikat
-
-`review-implementation-plan` hyväksyy tai muuttaa seuraavat ehdotukset ennen
-runtime-toteutusta:
-
-1. SSE-ring: 10 000 eventtiä / 15 minuuttia, hitaan clientin rajat 1 000 eventtiä,
-   1 MiB ja 30 sekuntia.
-2. In-memory command ledger: 10 000 tulosta / 24 tuntia / daemon epoch; ei
-   durablea komentorekisteriä. Pidempi idempotency vaatisi uuden perustellun
-   päätöksen.
-3. History-sivun 200 entryn ja 65 536 merkin content-chunkin rajat sekä pilotin
-   todelliset memory/backpressure-budjetit.
-4. Otsikkoadapterin oikea Pi one-off -mekanismi ja sen todentaminen. Valittu suositus on `openai-codex/gpt-5.6-luna`, low thinking, ensimmäisten neljän ja viimeisten neljän käyttäjäviestin uniikki unioni / enintään 16 KiB syötettä, 120 Unicode-merkin tulos ja 0,02 USD:n kustannuskatto: ensimmäinen yritys ensimmäisen hyväksytyn viestin jälkeen, enintään yksi automaattinen uudelleengenerointi kolmannen viestin asetuttua sekä title-adjacent manuaalinen supported-kontrolli. Siihen asti capability on unknown.
-5. Proposed ADR 0003:n täsmällinen GitHub OAuth state/PKCE-, token-handoff-, session-,
-   CSRF-, socket-, peer credential- ja daemon-epoch-toteutus sekä Proposed ADR 0002:n
-   boundary-validation.
-6. Yksi luvallinen private disposable-repository -smoke mapped daemon -ympäristöstä;
-   erillistä laajaa kahden käyttäjän GitHub write -kampanjaa tai credential brokeria ei ole.
+GitHub-create-preflight antaa tuoreeseen observation-tokeniin sidotun
+`exact_repository`-haasteen ja odotetun `owner/repository`-arvon. Käyttäjän
+confirmation vastaa sitä täsmälleen ilman trimmausta tai kirjainkoon muutosta.
+GitHub-toiminnon näyttöön kuuluu yksi luvallinen yksityisen testirepositorion
+create/push/clone/delete-koe mapped daemon -ympäristöstä; laajaa kahden ihmisen
+kirjoituskampanjaa ei tarvita.
 
 Natiivista stderristä tai lähteestä tuleva vapaa teksti redaktoidaan ennen
 `message`, `detail` ja `description` -kenttiä: home-polku muuttuu `<HOME>`-muotoon,
@@ -495,21 +493,19 @@ muun käyttäjän absoluuttista polkua ei palauteta ja URL-userinfo/credential p
 Git/gh-kutsut käyttävät argv:ta, lisäävät `--` ennen positionaaleja ja validoivat
 owner/repository/workspace/branch-arvot skeeman mukaan.
 
-`workspace.git.init` tuottaa `git_init`-operaation. `agent.resume` kohteelle,
-jonka control on `transfer_possible`, tuottaa `terminal_transfer`-operaation ja
-noudattaa stop–exit–history settlement–lock -vaiheita. Command resultin
-valinnainen `created` ja operation-efektit sitovat onnistuneen create/startin
-uuteen workspace-/agentti-ID:hen. Snapshotin `presence` ja täydet changed-eventit
-välittävät myös vahvistetun poiston. Agentin `activity`, `pending_question` ja enintään 1 000 eventin `live_tail`
-kuvaavat watermarkissa auki olevan vuoron/dialogin. Live-tail käyttää samoja
-event-ID/cursor-envelopeja ja client deduplikoi ne ennen watermarkia seuraavaa
-streamia; näin ennen snapshotia tullut, vielä Pi-historiaan persistymätön delta
-tai tool-tila ei katoa. Jos aktiivinen tail ei mahdu rajaan, snapshot merkitsee
-lähteen unavailableksi ja kirjoitukset estetään uuden adapterihavainnon ajan;
-se ei tarjoa vajaata aktiivista vuoroa. `question.resolved` poistaa kysymyksen
-myös toisista tabeista.
+`workspace.git.init` tuottaa `git_init`-operaation. Command resultin valinnainen
+`created` ja operation-efektit sitovat onnistuneen create/startin uuteen
+workspace-/agentti-ID:hen. Snapshotin `presence` ja täydet changed-eventit
+välittävät myös vahvistetun poiston.
 
-Muita avoimia näyttörajoja ovat workspace-renamen vaikutus Pi:n cwd-yhdistykseen,
-prosessihavainnon kattavuus, mount/symlink-racet, daemon-crashin history
-settlement ja Taskfleetin osittaiset virheet. Niiden unknown-tila on tässä
-sopimuksessa toimiva turvallinen tulos, ei lupa ohittaa testiä.
+Agentin `activity` ja `live_tail` kuvaavat watermarkissa auki olevaa vuoroa.
+Live-tail käyttää samoja event-ID/cursor-envelopeja ja client deduplikoi ne
+ennen watermarkia seuraavaa streamia. Käyttäjän pitää voida palautua ajantasaiseen
+näkymään myös pitkän vuoron aikana. Tarvittavan tailin koko ja toteutustapa
+valitaan havaitusta tarpeesta; vanha tapahtumamäärä ei ole hyväksymisraja.
+Nykyisen skeeman `pending_question` jää tyhjäksi, koska kysymysdialogeja ei tueta.
+
+Workspace-renamen vaikutus Pi:n cwd-yhdistykseen, mount/symlink-racet,
+daemon-crashin jälkeinen natiivitila ja Taskfleetin osittaiset virheet
+todennetaan niitä toteuttavissa issueissa. Tuntematon tila näytetään
+tuntemattomana.

@@ -48,9 +48,13 @@ current docs and use the repository's shared validation/ownership rules.
 This issue owns Y3. Bind `pi:<sessionId>` and stable native keys to the real Pi JSONL source; distinguish history, process observation and control. Prove paging/chunk/live-tail limits, malformed and unknown content, missing/corrupt/moved-cwd cases and reopen identity against redacted plus disposable native histories. Opening never starts or resumes. See [the implementation briefs](../plan-v1-implementation/implementation-briefs.md).
 
 
-## Visual review, without blocking useful work
+## Visual evidence
 
-Leave this issue in `testing` until Jari has seen its visual evidence and given an explicit accept/change decision; do not record silence as acceptance. Keep the revision, browser/fixture context, tested happy and important failure states, commands and representative screenshots in `visual-acceptance.md`, proportionate to what changed. This is evidence for Jari's review, not a reason to stop independent development of agent controls. Technical dependencies and real file collisions still determine what can run in parallel; do not claim the history view was visually approved when it was not. The conductor records Jari's decision here and closes this issue when accepted.
+Provide proportionate browser evidence and screenshots in
+`issues/build-history-view/visual-acceptance.md`, with the tested revision,
+environment and relevant outcomes. Record Jari's visual verdict when given;
+unreviewed appearance remains unreviewed. A pending screenshot verdict does not
+block functional completion or independent downstream work.
 
 Interactive and repeated behavior must use the shared production component implementation. Local composition may arrange one-off content but may not invent controls, state semantics, focus rules or styling. When this production slice replaces a canonical/root mock or static reference, remove the superseded root/canonical reference in the same accepted change; an original may remain only in its receiving issue as historical evidence.
 

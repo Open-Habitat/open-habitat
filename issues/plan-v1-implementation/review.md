@@ -1,6 +1,14 @@
 # Corrected implementation-readiness review package
 
-**Recommendation:** accept the bounded v1 plan with Proposed ADR 0002 corrected to stable TypeScript 7 + Biome, Proposed ADR 0003 corrected to Go and provider-based authentication, and the production design plus contract policies below. This is a decision package, not acceptance. `review-implementation-plan` stays open until Jari records the decision against the landed correction revision.
+This is the historical package accepted on 2026-09-23 in
+[review-implementation-plan](../review-implementation-plan/item.md). Current
+implementation ownership is in [the implementation map](implementation-briefs.md).
+Later decisions removed the final MVP and blocking screenshot gates, terminal
+takeover and Pi-specific question dialogs. On 2026-09-29 Jari clarified that
+buffering and limits need a concrete purpose, should remain simple and must be
+adjusted from measurements and ordinary use; the numeric values below are not
+binding requirements. Current behavior is specified in
+[interfaces](../../docs/interfaces.md) and the implementing issues.
 
 ## Corrected inputs
 
