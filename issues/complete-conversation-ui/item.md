@@ -28,7 +28,7 @@ workspace registry, credential broker or speculative cache. Desktop first, one s
 ## Acceptance Criteria
 
 - [ ] Complete compact tool groups, code copying, supported simple diffs, unknown-tool fallback and bounded long-output/history behavior.
-- [ ] Show every incoming agent message, including pending questions and unfamiliar message types, at least as safe text when no dedicated presentation exists.
+- [x] Show every incoming agent message, including pending questions and unfamiliar message types, at least as safe text when no dedicated presentation exists.
 - [ ] Complete interruption and queue/steering behavior against verified Pi capabilities; Pi-specific question dialogs are outside this task.
 - [x] Preserve per-agent drafts, focus, reading position and route selection while events stream and agents change.
 - [ ] Complete loading/empty/error/read-only, expired-login, stale status and uncertain-send/reconnect interactions across both design packages.
