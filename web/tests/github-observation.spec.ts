@@ -50,6 +50,13 @@ test("@github-first conflict and partial do not invent confirmation", async ({
   await page.getByRole("button", { name: "Tarkista haun tila" }).click();
   await expect(page.getByText("Vain osa repoista vahvistettu")).toBeVisible();
   expect(await count(page)).toBe(before + 1);
+  await page.getByRole("button", { name: "Muuta valintaa" }).click();
+  await page.getByRole("checkbox").nth(1).uncheck();
+  await page.getByRole("button", { name: "Jatka" }).click();
+  await expect(
+    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+  ).toBeVisible();
+  expect(await count(page)).toBe(before + 1); // Already confirmed first checkout is not repeated.
   await page.request.get("/fixture/checkout?name=second&mode=absent");
   await page.request.get("/fixture/checkout?name=first&mode=absent");
   await page.request.get("/fixture/scenario?value=ready");

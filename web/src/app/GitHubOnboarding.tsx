@@ -56,6 +56,7 @@ export function GitHubOnboarding({
   const reads = useRef<AbortController | undefined>(undefined);
   const readingPage = useRef(0);
   const writing = useRef(false);
+  const rechecking = useRef(false);
   const pending = useRef<string[]>([]);
   const locked = useRef(false);
   const current = useCallback((n: number) => generation.current === n, []);
@@ -66,6 +67,7 @@ export function GitHubOnboarding({
     key.current = "";
     pending.current = [];
     writing.current = false;
+    rechecking.current = false;
     locked.current = false;
     setSelected([]);
     setReceipts([]);
@@ -352,10 +354,23 @@ export function GitHubOnboarding({
     });
   };
   const recheck = () => {
-    if (writing.current || !pending.current.length) return;
+    if (writing.current || rechecking.current || !pending.current.length)
+      return;
     const n = generation.current;
+    rechecking.current = true;
     setError("");
-    void reconcile(pending.current, n, false);
+    void reconcile([...pending.current], n, false).finally(() => {
+      if (current(n)) rechecking.current = false;
+    });
+  };
+  const editSelection = () => {
+    if (writing.current) return;
+    ++generation.current; // Discard any stale observation before changing the selection.
+    rechecking.current = false;
+    pending.current = [];
+    locked.current = false;
+    setCheckout({ phase: "idle" });
+    setError("");
   };
   return step === "pi" ? (
     <PiOnboarding onUsable={onUsable} onLogin={onLogin} onLogout={onLogout} />
@@ -388,6 +403,7 @@ export function GitHubOnboarding({
           if (bound.current) void load(1, generation.current);
         }}
         onRecheck={recheck}
+        onEditSelection={editSelection}
       />
       {error ? (
         <InlineNotice

@@ -37,6 +37,8 @@ export interface GitHubRepoChooserProps {
   onRefresh?: () => void;
   /** Read-only server-side status reconciliation; must never start a new checkout. */
   onRecheck?: () => void;
+  /** Leave a failed selection to choose other repos; never retry the write. */
+  onEditSelection?: () => void;
 }
 
 export function GitHubRepoChooser({
@@ -48,6 +50,7 @@ export function GitHubRepoChooser({
   onMore,
   onRefresh,
   onRecheck,
+  onEditSelection,
 }: GitHubRepoChooserProps) {
   // Lock synchronously: a second click must not POST again before the parent rerenders.
   const started = useRef(false);
@@ -193,6 +196,14 @@ export function GitHubRepoChooser({
               ? [{ label: "Tarkista haun tila", onPress: onRecheck }]
               : []
           }
+        />
+      ) : null}
+      {(checkout.phase === "partial" || checkout.phase === "uncertain") &&
+      onEditSelection ? (
+        <Button
+          label="Muuta valintaa"
+          variant="secondary"
+          onPress={onEditSelection}
         />
       ) : null}
       {confirmed ? (
