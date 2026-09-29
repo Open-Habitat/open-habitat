@@ -1,0 +1,13 @@
+# Result — GitHub first-use chooser
+
+Implemented in `4dffe125f8239a2f892a542bc62992e3393896e4` (message-only stamp of the tested `e91ea235572190ad69c3f237b2622eb7c5af10b8`; the tree is unchanged).
+
+- Per-mapped-UID daemon still checks the installed GitHub identity before each page. The gateway checks the authenticated daemon socket/UID and projects only validated fields. The contract now includes nullable `pushed_at`, validated and carried without substituting `updated_at`. Raised the bounded native raw-response cap to fit 50 unprojected GitHub objects; a synthetic 50-item realistic-size page tests it.
+- Browser collects 50-item pages up to the 100-page ceiling, rejects duplicate names across pages, and publishes no partial catalog on failure or a full page 100. Name filtering is client-side, newest pushes appear first with name tiebreak, and unknown dates read “Ei tiedossa”. Refresh clears old selection. An explicit button returns from Pi to the chooser, clears selection and loads read-only; only a new Jatka can initiate checkout. Existing observation/uncertain-result reconciliation is unchanged.
+- Synthetic production-bundle Playwright fixtures cover 52 repositories, the name filter, date/null, return from Pi, no write on an incomplete page, cross-session in-flight catalog, focus, lost responses, conflict and partial checkout. No live identity, browser, native home, or credential was used.
+
+## Verification
+
+`./scripts/ci-local.sh --clean --json` passed on the clean committed `e91ea235` tree (2026-09-29, disk-backed `/var/tmp`). It includes Go race tests, 47 synthetic browser tests, contract checks, production bundle fixture-leak checks, deterministic double packaging, verified original and relocated archives (SHA-256 `033d6769dd534ccbd1781bfcc6d1285e6d1e523edd0ad941ee25c03cb5152612`), and tamper/unsafe-package rejection. Focused Go, TS component and `@github-first` browser tests also passed before the gate. An independent Claude Fable 5.1 review of the final implementation identified the real 256 KiB native cap at 50 repositories; that was fixed and regression-tested before the clean gate. It also identified focus restarts of a multi-page load; those were removed. Filtered-out selected repositories remain counted and selected by design; the visible total is the consent for Jatka.
+
+No live GitHub/OAuth path, two-kernel-UID guest, real Pi, live visual acceptance, or test-host installation was performed by this worker. Those claims remain outside this synthetic proof; live visual acceptance belongs to @github-repos-first-onboarding. No pilot checkout was replayed.
