@@ -8,32 +8,50 @@ async function picker(page: import("@playwright/test").Page) {
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
-  await expect(page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
+  ).toBeVisible();
 }
 
-test("@first-use abort is a danger action on both onboarding steps; first chooser click advances after focus", async ({ page }) => {
+test("@first-use abort is a danger action on both onboarding steps; first chooser click advances after focus", async ({
+  page,
+}) => {
   try {
     await picker(page);
-    const abort = page.getByRole("button", { name: "Keskeytä käyttöönotto ja kirjaudu ulos" });
+    const abort = page.getByRole("button", {
+      name: "Keskeytä käyttöönotto ja kirjaudu ulos",
+    });
     await expect(abort).toHaveClass(/ah-button-danger/);
     // Focusing the window during a click must not replace the chooser before
     // the click reaches its action.
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-    await expect(page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
+    ).toBeVisible();
     await page.getByRole("button", { name: "Jatka" }).click();
-    await expect(page.getByRole("heading", { name: "ChatGPT-kirjautuminen" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Keskeytä käyttöönotto ja kirjaudu ulos" })).toHaveClass(/ah-button-danger/);
+    await expect(
+      page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", {
+        name: "Keskeytä käyttöönotto ja kirjaudu ulos",
+      }),
+    ).toHaveClass(/ah-button-danger/);
   } finally {
     await page.request.get("/fixture/pi-state?value=missing");
     await page.request.get("/fixture/scenario?value=ready");
   }
 });
 
-test("@first-use a slow status read does not delay the device-code start, and completion is noticed promptly", async ({ page }) => {
+test("@first-use a slow status read does not delay the device-code start, and completion is noticed promptly", async ({
+  page,
+}) => {
   try {
     await picker(page);
     await page.getByRole("button", { name: "Jatka" }).click();
-    await expect(page.getByRole("button", { name: "Aloita kirjautuminen" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Aloita kirjautuminen" }),
+    ).toBeVisible();
     let statusReads = 0;
     await page.route("**/api/v1/onboarding/pi/status", async (route) => {
       statusReads++;
@@ -46,7 +64,9 @@ test("@first-use a slow status read does not delay the device-code start, and co
     await page.unrouteAll({ behavior: "ignoreErrors" });
     const started = Date.now();
     await page.request.get("/fixture/pi-state?value=usable");
-    await expect(page.getByRole("heading", { name: "Workspacet" })).toBeVisible({ timeout: 4500 });
+    await expect(page.getByRole("heading", { name: "Workspacet" })).toBeVisible(
+      { timeout: 4500 },
+    );
     expect(Date.now() - started).toBeLessThan(4500);
   } finally {
     await page.unrouteAll({ behavior: "ignoreErrors" });

@@ -128,7 +128,8 @@ export function PiOnboarding({
             return;
           }
         }
-        if (method === "POST" && attempt.state === "pending") preparingCode.current = true;
+        if (method === "POST" && attempt.state === "pending")
+          preparingCode.current = true;
         if (attempt.state !== "pending") preparingCode.current = false;
         if (attempt.state === "device_code") hadCode.current = true;
         setView(viewOf(attempt));
