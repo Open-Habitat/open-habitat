@@ -140,7 +140,9 @@ test("@lab fake-Pi crash leaves the turn readable but blocks another send", asyn
     page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toBeDisabled();
   await page.reload();
-  await expect(page.getByRole("heading", { level: 1, name: "kaadu nyt" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "kaadu nyt" }),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toBeDisabled();
