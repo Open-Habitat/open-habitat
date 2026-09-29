@@ -938,7 +938,10 @@ select:focus-visible,
   border-radius: var(--ah-r-md);
   background: transparent;
 }
-.ah-reading-view .ah-feed li[data-kind="user"] .ah-message:not(.ah-message-alert) {
+.ah-reading-view
+  .ah-feed
+  li[data-kind="user"]
+  .ah-message:not(.ah-message-alert) {
   background: var(--ah-surface-2);
 }
 .ah-reading-view .ah-feed .ah-message:not(.ah-message-alert) {
