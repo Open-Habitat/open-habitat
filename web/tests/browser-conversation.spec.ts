@@ -689,7 +689,7 @@ test("@browser-conversation steer, follow-up and clear return only removed texts
     .getByRole("heading", { name: "Työskentelyjono" })
     .scrollIntoViewIfNeeded();
   await page.screenshot({
-    path: "../issues/complete-conversation-ui/queue-before-clear.png",
+    path: "test-results/queue-before-clear.png",
   });
   await page.getByRole("button", { name: "Tyhjennä koko jono" }).click();
   await expect(editor).toHaveValue("ohjaus kaksi\n\njonoon yksi");
@@ -697,7 +697,7 @@ test("@browser-conversation steer, follow-up and clear return only removed texts
     .getByRole("heading", { name: "Työskentelyjono" })
     .scrollIntoViewIfNeeded();
   await page.screenshot({
-    path: "../issues/complete-conversation-ui/queue-after-clear.png",
+    path: "test-results/queue-after-clear.png",
   });
   await expect(page.getByText("jonoon yksi", { exact: true })).toHaveCount(0);
 });

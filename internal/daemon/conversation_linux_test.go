@@ -311,10 +311,7 @@ for line in sys.stdin:
 		got := len(s.queueSteering)
 		state := s.state
 		c.mu.Unlock()
-		if got == 1 {
-			if state != "accepted" || p.overflow.Load() {
-				t.Fatalf("long queue poisoned: %s", state)
-			}
+		if got == 1 && state == "accepted" {
 			break
 		}
 		time.Sleep(time.Millisecond)
@@ -322,7 +319,13 @@ for line in sys.stdin:
 	c.mu.Lock()
 	got := len(s.queueSteering)
 	c.mu.Unlock()
-	if got != 1 {
-		t.Fatal("long queue event not observed")
+	if got != 1 || p.overflow.Load() {
+		t.Fatal("long queue event poisoned or missing")
+	}
+	c.mu.Lock()
+	state := s.state
+	c.mu.Unlock()
+	if state != "accepted" {
+		t.Fatalf("long queue state %s", state)
 	}
 }
