@@ -1,6 +1,6 @@
 ---
 created: 2026-09-27
-updated: 2026-09-28
+updated: 2026-09-29
 type: feature
 status: open
 priority: high
@@ -57,3 +57,7 @@ No live credentials or second-person identity may be used for testing without ex
 ### 2026-09-28T12:29:49Z · @jari
 
 2026-09-28 first-version scope clarification: the mapped user daemon coordinates Pi sign-in by starting one Pi-native operation as that UID and relaying device-code instructions to the browser; Pi owns token exchange, auth.json writes and refresh. Do not build a host credential writer or broker, switch to Pi-in-Go solely for login, or scrape the TUI. The expected user flow has no independent terminal Pi login/logout while web onboarding is in progress; do not block v1 on a speculative cross-process conditional-commit protocol. Daemon normally stays up; on restart during an attempt, report an interrupted/unknown attempt and recheck Pi-native status rather than showing false success. Preserve ordinary Unix UID isolation and basic safe child cleanup. The earlier manual callback design in plan.md is superseded by the approved native device-code flow.
+
+### 2026-09-29T04:53:16Z · @jari
+
+2026-09-29: The first onboarding step after browser/GitHub login is choosing which GitHub repositories to check out. Pi device-code login follows this selection/checkout, before normal workspace browsing, native history or agent controls. This supersedes the earlier Pi-before-repository-browsing order only for the narrow first-use GitHub chooser/import path. See @github-repos-first-onboarding.
