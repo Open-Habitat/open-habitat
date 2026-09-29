@@ -13,12 +13,14 @@ test("@pi-onboarding switching sessions drops device instructions and native fac
     await page.getByRole("link", { name: "Alice" }).click();
     await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
     await expect(page.getByText("ABCD-1234")).toBeVisible();
-    await page.getByRole("button", { name: "Kirjaudu ulos" }).click();
+    await page
+      .getByRole("button", { name: "Keskeytä käyttöönotto ja kirjaudu ulos" })
+      .click();
     await expect(page.getByText("ABCD-1234")).toHaveCount(0);
     await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await page.getByRole("link", { name: "Bob" }).click();
     await expect(
-      page.getByRole("heading", { name: "Yhdistä Pi ChatGPT-tilaukseen" }),
+      page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
     ).toBeVisible();
     await expect(page.getByText("ABCD-1234")).toHaveCount(0);
     expect(

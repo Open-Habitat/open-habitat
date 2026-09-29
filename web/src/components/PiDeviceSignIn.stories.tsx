@@ -33,11 +33,11 @@ export const Expired: Story = {
   args: { view: { phase: "expired" }, onRetry: onIntent },
 };
 export const Interrupted: Story = {
-  args: { view: { phase: "interrupted" }, onRetry: onIntent },
+  args: { view: { phase: "interrupted" }, onRefresh: onIntent },
 };
 export const Failed: Story = {
   args: { view: { phase: "failed" }, onRetry: onIntent },
 };
 export const Unavailable: Story = {
-  args: { view: { phase: "unavailable" }, onRetry: onIntent },
+  args: { view: { phase: "unavailable" }, onRefresh: onIntent },
 };

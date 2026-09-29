@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "./Primitives";
-import { StatusMark } from "./Status";
+import { InlineNotice, StatusMark } from "./Status";
 import styles from "./PiDeviceSignIn.module.css";
 
 /** Display facts only. The caller owns the attempt, session binding, polling and native status. */
@@ -13,8 +13,10 @@ export type PiDeviceSignInView =
 
 export interface PiDeviceSignInProps {
   view: PiDeviceSignInView;
+  checking?: boolean;
   onCancel?: () => void;
   onRetry?: () => void;
+  onRefresh?: () => void;
 }
 
 // Match the native Pi adapter's verified device page, not an arbitrary URL or
@@ -47,9 +49,8 @@ const outcomes = {
   },
   interrupted: {
     label: "Kirjautuminen keskeytyi",
-    tone: "warning",
-    detail:
-      "Yhteyden tilaa ei voida vahvistaa. Tarkista tilanne ennen uuden yrityksen aloittamista.",
+    tone: "danger",
+    detail: "Tarkista kirjautumisen tila ennen uutta yritystä.",
   },
   failed: {
     label: "Kirjautuminen epäonnistui",
@@ -58,16 +59,18 @@ const outcomes = {
       "Yritä uudelleen uudella koodilla. Jos virhe toistuu, ota yhteyttä ylläpitäjään.",
   },
   unavailable: {
-    label: "Pi-kirjautuminen ei ole saatavilla",
+    label: "Kirjautuminen keskeytyi",
     tone: "danger",
-    detail: "Tilaa ei voida tarkistaa juuri nyt. Yritä myöhemmin uudelleen.",
+    detail: "Tilaa ei voitu tarkistaa. Yritä tarkistaa se uudelleen.",
   },
 } as const;
 
 export function PiDeviceSignIn({
   view,
+  checking = false,
   onCancel,
   onRetry,
+  onRefresh,
 }: PiDeviceSignInProps) {
   // The feedback is associated with the code, so a replaced attempt never shows stale copy success.
   const [copy, setCopy] = useState<{ code: string; message: string }>();
@@ -97,13 +100,9 @@ export function PiDeviceSignIn({
   return (
     <section className={styles.card} aria-labelledby="pi-device-title">
       <header>
-        <p className="ah-eyebrow">Ensimmäinen käyttökerta · Pi</p>
-        <h2 id="pi-device-title">Yhdistä Pi ChatGPT-tilaukseen</h2>
+        <p className="ah-eyebrow">Käyttöönotto</p>
+        <h2 id="pi-device-title">ChatGPT-kirjautuminen</h2>
       </header>
-      <p>
-        Vahvista kirjautuminen palveluntarjoajan sivulla. Älä syötä tunnusta tai
-        salasanaa tähän sovellukseen.
-      </p>
       <div role="status" aria-live="polite" aria-atomic="true">
         {active ? (
           <StatusMark
@@ -115,7 +114,15 @@ export function PiDeviceSignIn({
             tone="info"
             animated={view.phase === "pending" ? "running" : false}
           />
-        ) : outcome ? (
+        ) : checking ? (
+          <StatusMark
+            label="Tarkistetaan tilaa"
+            tone="info"
+            animated="running"
+          />
+        ) : outcome &&
+          view.phase !== "interrupted" &&
+          view.phase !== "unavailable" ? (
           <StatusMark label={outcome.label} tone={outcome.tone} />
         ) : null}
       </div>
@@ -151,6 +158,22 @@ export function PiDeviceSignIn({
             kirjautumisyritys.
           </p>
         )
+      ) : view.phase === "interrupted" || view.phase === "unavailable" ? (
+        <>
+          <h3>Kirjautuminen keskeytyi</h3>
+          <InlineNotice
+            title="Tilaa ei voitu vahvistaa"
+            description={
+              checking ? "Tarkistetaan palvelimen tilaa." : outcome?.detail
+            }
+            tone="danger"
+            actions={
+              onRefresh && !checking
+                ? [{ label: "Tarkista tila", onPress: onRefresh }]
+                : []
+            }
+          />
+        </>
       ) : (
         <p>{outcome?.detail}</p>
       )}

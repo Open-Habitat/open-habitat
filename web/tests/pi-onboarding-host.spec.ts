@@ -36,7 +36,7 @@ test("@pi-onboarding native attempt drives the production browser, never a callb
     await page.request.get("/fixture/pi-state?value=missing");
     await login(page);
     await expect(
-      page.getByRole("heading", { name: "Yhdistä Pi ChatGPT-tilaukseen" }),
+      page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
     ).toBeVisible();
     await expect(page.getByText("git-project")).toHaveCount(0);
     expect((await page.request.get("/api/v1/snapshot")).status()).toBe(428);
@@ -97,7 +97,10 @@ test("@pi-onboarding cancel, unknown, expiry and stale session fail closed", asy
       .click();
     await expect(page.getByText("ABCD-1234")).toHaveCount(0);
     await page.request.get("/fixture/pi-state?value=unknown");
-    await page.getByRole("button", { name: "Aloita uusi yritys" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Kirjautuminen keskeytyi" }),
+    ).toBeVisible({ timeout: 9000 });
+    await page.getByRole("button", { name: "Tarkista tila" }).click();
     await expect(page.getByText("Workspacet", { exact: true })).toHaveCount(0);
     await page.request.get("/fixture/expire");
     await page.reload();

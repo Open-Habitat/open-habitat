@@ -45,7 +45,7 @@ test("@pi-onboarding delayed old-session response cannot restore code after focu
     release();
     await expect(a.getByText("ABCD-1234")).toHaveCount(0);
     await expect(
-      a.getByRole("heading", { name: "Yhdistä Pi ChatGPT-tilaukseen" }),
+      a.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
     ).toBeVisible();
     expect(
       (await a.request.get("/api/v1/onboarding/pi/attempt")).status(),

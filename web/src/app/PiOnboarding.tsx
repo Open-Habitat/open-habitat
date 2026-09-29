@@ -32,16 +32,28 @@ export function PiOnboarding({
 }) {
   const [view, setView] = useState<PiDeviceSignInView>({ phase: "waiting" });
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(false);
   const busyRef = useRef(false);
   const bound = useRef<string | undefined>(undefined);
   const hadCode = useRef(false);
   const generation = useRef(0);
   const active = useRef<AbortController | undefined>(undefined);
+  const reading = useRef(false);
   const alive = useRef(false);
   const ending = useRef(false);
   const check = useCallback(
     async (method: "GET" | "POST" | "DELETE" = "GET") => {
-      active.current?.abort();
+      // Reads are single-flight: a slow native status + attempt may take longer
+      // than the poll interval. Only an explicit write supersedes a read.
+      if (method === "GET") {
+        if (reading.current || busyRef.current || ending.current) return;
+        reading.current = true;
+        setChecking(true);
+      } else {
+        active.current?.abort();
+        reading.current = false;
+        setChecking(false);
+      }
       const controller = new AbortController();
       active.current = controller;
       const version = ++generation.current;
@@ -109,9 +121,22 @@ export function PiOnboarding({
         if (attempt.state === "device_code") hadCode.current = true;
         setView(viewOf(attempt));
       } catch {
-        if (current()) setView({ phase: "unavailable" });
-      } finally {
         if (current()) {
+          // A lost write response is uncertain, not proof that Pi failed.
+          // A failed read must not erase still-visible device instructions.
+          setView((previous) =>
+            method === "GET" && previous.phase === "pending"
+              ? previous
+              : { phase: "interrupted" },
+          );
+        }
+      } finally {
+        if (active.current === controller) active.current = undefined;
+        if (method === "GET" && generation.current === version) {
+          reading.current = false;
+          if (alive.current) setChecking(false);
+        }
+        if (current() && method !== "GET") {
           busyRef.current = false;
           setBusy(false);
         }
@@ -123,10 +148,9 @@ export function PiOnboarding({
     alive.current = true;
     void check();
     const timer = window.setInterval(() => {
-      if (!busyRef.current && !ending.current) void check();
+      if (!ending.current) void check();
     }, 3000);
     const focus = () => {
-      setView({ phase: "interrupted" });
       if (!ending.current) void check();
     };
     window.addEventListener("focus", focus);
@@ -135,6 +159,7 @@ export function PiOnboarding({
       ++generation.current;
       active.current?.abort();
       bound.current = undefined;
+      reading.current = false;
       window.clearInterval(timer);
       window.removeEventListener("focus", focus);
     };
@@ -151,6 +176,7 @@ export function PiOnboarding({
     if (ending.current) return;
     ending.current = true;
     active.current?.abort();
+    reading.current = false;
     ++generation.current;
     setView({ phase: "interrupted" });
     try {
@@ -164,6 +190,7 @@ export function PiOnboarding({
     <>
       <PiDeviceSignIn
         view={view}
+        checking={checking}
         onCancel={
           bound.current &&
           (view.phase === "ready" ||
@@ -173,17 +200,26 @@ export function PiOnboarding({
             : undefined
         }
         onRetry={
-          !busy && bound.current && view.phase !== "waiting"
+          !busy &&
+          bound.current &&
+          (view.phase === "start" ||
+            view.phase === "expired" ||
+            view.phase === "failed")
             ? () => action("POST")
             : undefined
         }
+        onRefresh={
+          !busy &&
+          bound.current &&
+          (view.phase === "interrupted" || view.phase === "unavailable")
+            ? () => {
+                void check();
+              }
+            : undefined
+        }
       />
-      <p>
-        Kirjautumisen tila tarkistetaan Pi:ltä. Vahvistussivun avaaminen ei
-        yksin avaa workspaceja.
-      </p>
       <Button
-        label="Kirjaudu ulos"
+        label="Keskeytä käyttöönotto ja kirjaudu ulos"
         variant="secondary"
         onPress={() => {
           void logout();

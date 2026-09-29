@@ -16,7 +16,7 @@ test("@pi-onboarding daemon restart invalidates old code, status stays authorita
     expect((await page.request.get("/fixture/pi-restart")).status()).toBe(204);
     await page.reload();
     await expect(
-      page.getByRole("heading", { name: "Yhdistä Pi ChatGPT-tilaukseen" }),
+      page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
     ).toBeVisible();
     await expect(page.getByText("ABCD-1234")).toHaveCount(0);
     expect((await page.request.get("/api/v1/snapshot")).status()).toBe(428);

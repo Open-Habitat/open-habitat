@@ -500,7 +500,8 @@ export function App() {
               oikeaa kirjautumista, agentteja eikä host-yhteyttä
             </div>
           ) : null}
-          {phase === "authentication_required" ? null : (
+          {phase === "authentication_required" ||
+          phase === "pi_required" ? null : (
             <ConnectionBanner
               state={
                 phase === "authenticated"

@@ -13,6 +13,7 @@
   gap: var(--ah-s2);
 }
 .card h2,
+.card h3,
 .card p {
   margin: 0;
 }

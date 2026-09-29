@@ -131,12 +131,7 @@ describe("Pi device sign-in presentation", () => {
     await user.keyboard("{Enter}");
     expect(cancel).toHaveBeenCalledOnce();
     expect(view.getByText("Odotetaan vahvistusta")).toBeTruthy();
-    for (const phase of [
-      "expired",
-      "interrupted",
-      "failed",
-      "unavailable",
-    ] as const) {
+    for (const phase of ["expired", "failed"] as const) {
       view.rerender(
         <PiDeviceSignIn
           view={{ phase } satisfies PiDeviceSignInView}
@@ -149,7 +144,22 @@ describe("Pi device sign-in presentation", () => {
       button.focus();
       await user.keyboard(" ");
     }
-    expect(retry).toHaveBeenCalledTimes(4);
+    expect(retry).toHaveBeenCalledTimes(2);
+    const refresh = vi.fn();
+    for (const phase of ["interrupted", "unavailable"] as const) {
+      view.rerender(<PiDeviceSignIn view={{ phase }} onRefresh={refresh} />);
+      expect(
+        view.getByRole("heading", { name: "Kirjautuminen keskeytyi" }),
+      ).toBeTruthy();
+      expect(
+        view.getByText("Tilaa ei voitu vahvistaa").closest("aside")?.className,
+      ).toContain("danger");
+      expect(
+        view.queryByRole("button", { name: "Aloita uusi yritys" }),
+      ).toBeNull();
+      await user.click(view.getByRole("button", { name: "Tarkista tila" }));
+    }
+    expect(refresh).toHaveBeenCalledTimes(2);
     view.rerender(
       <PiDeviceSignIn view={{ phase: "connected" }} onRetry={retry} />,
     );
