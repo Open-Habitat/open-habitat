@@ -6,7 +6,7 @@ status: open
 priority: high
 lane: github-first-onboarding
 collision: [internal/gateway/, internal/daemon/, web/src/app/App.tsx, web/src/app/PiOnboarding.tsx]
-blocked_by: ['@pre-pi-github-clone']
+blocked_by: ['@pre-pi-github-clone', '@github-chooser-component']
 ---
 
 # Choose GitHub repositories before Pi sign-in
