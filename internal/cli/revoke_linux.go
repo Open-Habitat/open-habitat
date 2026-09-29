@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/maintainer/native-agent-host/internal/gateway"
+	"golang.org/x/sys/unix"
 )
 
 const revokeSocket = "/run/native-agent-host/revoke.sock"
@@ -22,8 +23,31 @@ const revokeSocket = "/run/native-agent-host/revoke.sock"
 // The socket is created by systemd, root:root 0600; the gateway cannot
 // create it or change its permissions. SO_PEERCRED independently checks root.
 func revokeListener() (net.Listener, error) {
-	if os.Getenv("LISTEN_PID") != strconv.Itoa(os.Getpid()) || os.Getenv("LISTEN_FDS") != "1" {
+	defer func() {
+		for _, k := range []string{"LISTEN_PID", "LISTEN_FDS", "LISTEN_FDNAMES"} {
+			_ = os.Unsetenv(k)
+		}
+	}()
+	if os.Getenv("LISTEN_PID") != strconv.Itoa(os.Getpid()) || os.Getenv("LISTEN_FDS") != "1" || os.Getenv("LISTEN_FDNAMES") != "revoke" {
 		return nil, errors.New("revoke socket activation missing")
+	}
+	unix.CloseOnExec(3)
+	domain, e := unix.GetsockoptInt(3, unix.SOL_SOCKET, unix.SO_DOMAIN)
+	if e != nil || domain != unix.AF_UNIX {
+		return nil, errors.New("invalid revoke descriptor")
+	}
+	kind, e := unix.GetsockoptInt(3, unix.SOL_SOCKET, unix.SO_TYPE)
+	if e != nil || kind != unix.SOCK_STREAM {
+		return nil, errors.New("invalid revoke descriptor")
+	}
+	accepting, e := unix.GetsockoptInt(3, unix.SOL_SOCKET, unix.SO_ACCEPTCONN)
+	if e != nil || accepting != 1 {
+		return nil, errors.New("invalid revoke descriptor")
+	}
+	address, e := unix.Getsockname(3)
+	ua, ok := address.(*unix.SockaddrUnix)
+	if e != nil || !ok || ua.Name != revokeSocket {
+		return nil, errors.New("invalid revoke socket address")
 	}
 	f := os.NewFile(3, "revoke-socket")
 	if f == nil {
@@ -38,6 +62,7 @@ func revokeListener() (net.Listener, error) {
 		ln.Close()
 		return nil, errors.New("not a unix listener")
 	}
+	ln.(*net.UnixListener).SetUnlinkOnClose(false)
 	return ln, nil
 }
 

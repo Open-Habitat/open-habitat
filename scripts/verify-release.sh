@@ -33,7 +33,7 @@ with tarfile.open(archive, 'r:gz') as tar:
     tar.extractall(dest, filter='data')
 PY
 root=$(find "$tmp" -mindepth 1 -maxdepth 1 -type d);[[ -n $root ]]
-for p in bin/native-agent-host web/index.html systemd/native-agent-host-gateway.service systemd/native-agent-host-broker.service systemd/native-agent-host-broker.socket systemd/native-agent-host-daemon@.service systemd/native-agent-host-daemon@.socket sysusers.d/native-agent-host.conf tmpfiles.d/native-agent-host.conf MANIFEST.sha256 licenses/DEPENDENCIES.md;do [[ -f "$root/$p" ]]||{ echo "error: package missing $p" >&2;exit 1;};done
+for p in bin/native-agent-host web/index.html systemd/native-agent-host-gateway.service systemd/native-agent-host-broker.service systemd/native-agent-host-broker.socket systemd/native-agent-host-revoke.socket systemd/native-agent-host-daemon@.service systemd/native-agent-host-daemon@.socket sysusers.d/native-agent-host.conf tmpfiles.d/native-agent-host.conf MANIFEST.sha256 licenses/DEPENDENCIES.md;do [[ -f "$root/$p" ]]||{ echo "error: package missing $p" >&2;exit 1;};done
 python3 - "$root" <<'PY'
 import hashlib, pathlib, re, sys
 root = pathlib.Path(sys.argv[1])
@@ -52,7 +52,7 @@ for line in manifest.read_text().splitlines():
 if actual != set(expected) | {'MANIFEST.sha256'}:
     sys.exit('error: package inventory differs from manifest')
 allowed = {'bin/native-agent-host', 'MANIFEST.sha256', 'licenses/DEPENDENCIES.md',
-           'systemd/native-agent-host-gateway.service',
+           'systemd/native-agent-host-gateway.service', 'systemd/native-agent-host-revoke.socket',
            'systemd/native-agent-host-daemon@.service', 'systemd/native-agent-host-daemon@.socket',
            'systemd/native-agent-host-broker.service', 'systemd/native-agent-host-broker.socket',
            'sysusers.d/native-agent-host.conf', 'tmpfiles.d/native-agent-host.conf'}
@@ -61,6 +61,41 @@ if any(not (name in allowed or name.startswith('web/')) for name in actual):
 for name, digest in expected.items():
     if hashlib.sha256((root / name).read_bytes()).hexdigest() != digest:
         sys.exit('error: package checksum mismatch: ' + name)
+PY
+# Pin the root-only control socket and gateway dependency as one authority change.
+python3 - "$root/systemd/native-agent-host-revoke.socket" "$root/systemd/native-agent-host-gateway.service" <<'PY'
+import pathlib, sys
+
+def sections(path):
+    result = {}
+    current = None
+    for raw in pathlib.Path(path).read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith(('#',';')): continue
+        if line.startswith('[') and line.endswith(']'):
+            if line in result: sys.exit('error: duplicate control unit section')
+            current = line
+            result[current] = {}
+            continue
+        if current is None or '=' not in line or line.endswith('\\'):
+            sys.exit('error: invalid control unit syntax')
+        key, value = line.split('=',1)
+        if key in result[current]: sys.exit('error: duplicate control unit directive')
+        result[current][key] = value
+    return result
+
+socket = sections(sys.argv[1])
+if socket != {
+    '[Unit]':{'Description':'Root-only gateway subject revocation control'},
+    '[Socket]':{'ListenStream':'/run/native-agent-host/revoke.sock', 'SocketUser':'root',
+        'SocketGroup':'root', 'SocketMode':'0600', 'FileDescriptorName':'revoke',
+        'RemoveOnStop':'yes', 'Service':'native-agent-host-gateway.service'},
+    '[Install]':{'WantedBy':'sockets.target'}
+}: sys.exit('error: packaged revoke socket directive inventory differs')
+gateway = sections(sys.argv[2])
+if gateway.get('[Unit]',{}).get('Requires') != 'native-agent-host-revoke.socket' or \
+   gateway.get('[Unit]',{}).get('After') != 'network-online.target native-agent-host-revoke.socket':
+    sys.exit('error: packaged gateway control socket dependency differs')
 PY
 # A valid checksum is not a security policy: reject world-searchable fallback
 # directories even when a package has a matching, freshly generated manifest.

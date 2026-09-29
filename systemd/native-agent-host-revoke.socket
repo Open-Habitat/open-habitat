@@ -6,6 +6,8 @@ ListenStream=/run/native-agent-host/revoke.sock
 SocketUser=root
 SocketGroup=root
 SocketMode=0600
+FileDescriptorName=revoke
+RemoveOnStop=yes
 Service=native-agent-host-gateway.service
 
 [Install]

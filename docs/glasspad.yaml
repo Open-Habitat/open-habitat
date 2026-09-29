@@ -43,6 +43,9 @@ groups:
       - slug: adr-0005-clone-progress-stream
         title: ADR 0005 — Rajattu kloonauksen vaihevirta
         desc: Hyväksytty per-UID Git-edistyminen, keskeytys ja natiivi palautumishavainto.
+      - slug: adr-0006-subject-revocation
+        title: ADR 0006 — Subjektin istuntojen mitätöinti
+        desc: Rootin paikallinen gateway-ohjauspolku ja OAuth-virtojen rajat.
       - slug: daemon-bindings
         title: Daemonien yksityiset sidonnat
         desc: Juuren hallitsema hakemistopolku ja käyttäjäkohtaiset käyttöoikeudet.

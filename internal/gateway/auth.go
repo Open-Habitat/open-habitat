@@ -484,6 +484,13 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		a.callbackFailure(w, r, 403, "identity_mapping_denied")
 		return
 	}
+	a.mu.Lock()
+	revoked := p.serial <= a.revoked[id]
+	a.mu.Unlock()
+	if revoked {
+		a.callbackFailure(w, r, 403, "authentication_required")
+		return
+	}
 	ensured, err := a.broker.Exchange(r.Context(), BrokerRequest{Operation: "ensure", ID: id, Candidate: login})
 	target, valid := brokerIdentity(id, ensured)
 	if err != nil || !valid {
@@ -493,7 +500,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	}
 	// Old anonymous flows are identified only after the provider exchange.
 	a.mu.Lock()
-	revoked := p.serial <= a.revoked[id]
+	revoked = p.serial <= a.revoked[id]
 	a.mu.Unlock()
 	if revoked {
 		a.callbackFailure(w, r, 403, "authentication_required")

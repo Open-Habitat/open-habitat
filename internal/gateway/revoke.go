@@ -18,7 +18,7 @@ func (a *Auth) RevokeSubject(ctx context.Context, subject string) error {
 	if err != nil {
 		return errors.New("broker unavailable or denied")
 	}
-	target, ok := brokerIdentity(subject, reply)
+	_, ok := brokerIdentity(subject, reply)
 	if !ok {
 		return errors.New("binding unavailable")
 	}
@@ -26,7 +26,6 @@ func (a *Auth) RevokeSubject(ctx context.Context, subject string) error {
 	defer a.mu.Unlock()
 	// The broker verification precedes the lock. No broker rebind is accepted:
 	// subsequent requests reauthorize, and this operation never routes to a UID.
-	_ = target
 	if a.revoked == nil {
 		a.revoked = make(map[string]uint64)
 	}
