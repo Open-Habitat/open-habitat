@@ -8,8 +8,8 @@ groups:
         title: Aloita tästä
         desc: Projektin dokumentaatio ja lukupolut.
       - slug: product
-        title: Tavoite ja MVP
-        desc: Ensimmäisen käyttökelpoisen järjestelmän sisältö.
+        title: Tavoite ja toiminnot
+        desc: Tuotteen tavoite ja sovittu toiminnallinen laajuus.
       - slug: status
         title: Tilanne
         desc: Valmistuneet asiat, avoimet kysymykset ja seuraava katselmointi.

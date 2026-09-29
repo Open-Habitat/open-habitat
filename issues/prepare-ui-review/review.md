@@ -7,7 +7,7 @@ ei valita frontend-tekniikkaa tai arvioida mockeja backend-testinä.
 ## Katso nämä
 
 1. [Yhtenäinen kirjautumisesta keskusteluun kulkeva polku](../../docs/ui.md#yhtenäinen-työpöytäpolku)
-2. [Toimiva ydin ja koko MVP](../../docs/product.md#kaksi-näkyvää-valmistumispistettä)
+2. [Tuotteen tavoite ja sovitut toiminnot](../../docs/product.md)
 3. [Pi 0.85.1:n todellinen ohjausnäyttö](../probe-pi-control/result.md#capability-matrix)
 4. [Workspace-, GitHub-, Taskfleet- ja poistokokeen näyttö](../probe-workspace-lifecycle/result.md#outcome)
 5. [Kriittisten oletusten yhteenveto](../../docs/assumptions.md)

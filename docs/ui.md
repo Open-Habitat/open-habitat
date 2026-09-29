@@ -71,10 +71,9 @@ muuta mockin ajastinta tai klikattavaa kontrollia backend-kyvyksi.
    automaattiset sivuvaikutukset avaavat luodun kohteen ja fokusoivat
    viestikentän.
 
-Kohdat 1–6 rajattuna yhteen oikeaan workspaceen ja Pi-agenttiin muodostavat
-[toimivan ytimen](product.md#toimiva-ydin). Katselmoitu keskustelukokemus,
-kaikki kohdan 7 host-toiminnot, kahden käyttäjän erottelu ja operointi muodostavat
-koko MVP:n. Ensimmäinen demo ei saa näyttää koko MVP:tä valmiina.
+Keskustelukokemus, kohdan 7 host-toiminnot, käyttäjien erottelu ja operointi
+kuuluvat [sovittuun tuotesuuntaan](product.md). Työ etenee käyttöhavaintojen ja
+korjausten kautta; yksittäinen demo osoittaa vain siinä todennetut toiminnot.
 
 ## Journey- ja tilainventaario
 

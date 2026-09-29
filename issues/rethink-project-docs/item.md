@@ -25,8 +25,9 @@ ehdokas ajan tasalla, ei rakenneta erillistä katselmointiprosessia.
 | [Agenttiohjauksen issue](../build-agent-control/item.md) | Tulevan toteutuksen käyttäjälle näkyvät lopputulokset, ei päätöshistoriaa. SSE ja päättyneen selainkeskustelun jatkaminen kuuluvat työhön; Pi:n kysymysdialogien vastausohjaus ja terminaaliohjauksen haltuunotto eivät; saapuneet kysymykset näytetään. | `8925a89` |
 | [Toteutusbriefit](../plan-v1-implementation/implementation-briefs.md) | Lyhyt toteutuksen omistajuuskartta. Rajapintatiedot omalle sivulleen; vanhat portit ja perusteettomasti sitovat numerot pois. | `b54636a` |
 | [ADR 0003: host stack](../../docs/adr-0003-host-stack.md) | Teknologiavalinta, vastuurajat ja perustelut. OAuth/OIDC-kirjaston valinta jää toteuttajalle; protokolla- ja käyttödetaljit muualle. | `4f50e89`, `855223a` |
-| [Arkkitehtuuri](../../docs/architecture.md) | Käyttäjän kulku ja kolme auktoriteettia, natiivien tietojen omistajuus ja katkoista palautuminen. Kloonivirran poikkeus erotettu yleisestä tapahtumavirrasta; yksityiskohdat linkitetty omiin dokumentteihinsa. | Tämän päivityksen commit |
+| [Arkkitehtuuri](../../docs/architecture.md) | Käyttäjän kulku ja kolme auktoriteettia, natiivien tietojen omistajuus ja katkoista palautuminen. Kloonivirran poikkeus erotettu yleisestä tapahtumavirrasta; yksityiskohdat linkitetty omiin dokumentteihinsa. | `e78a084` |
 | [Rajapinnat](../../docs/interfaces.md) | Nykyiset reitit erillään sovitusta tulevasta pinnasta; viestien merkitys, katkoista palautuminen ja vastuurajat säilyvät. Palveluasetukset asennusissuen liitteeseen. | `296e4a9`, `1c1e8f8`, `742197c` |
+| [Tuotteen tavoite](../../docs/product.md) | Käyttäjän työ ja sovitut toiminnot. Nykytila erotettu tavoitteesta; vanhat MVP-portit, terminaalinsiirto ja testimatriisit poistettu tuotekuvauksesta. | Tämän päivityksen commit |
 
 Samalla on tehty kohdennettuja korjauksia toteutussivuun, ADR 0004:ään,
 CLI-konformanssiin ja liittyviin issueihin. Näitä ei ole vielä kokonaisuudessaan
@@ -34,11 +35,14 @@ käyty läpi tällä skillillä.
 
 ## Seuraavaksi
 
-Ehdotus: [docs/product.md](../../docs/product.md). Sivulla on vanhentunut väite,
-ettei tuotetta ole toteutettu, sekä terminaaliohjauksen haltuunottoa ja yhtä
-MVP-hyväksyntäporttia koskevaa tekstiä. Vertaa nämä nykyiseen rajapintasivuun,
-agenttiohjauksen rajaukseen ja toteutussivuun ennen uudelleenkirjoitusta.
-Arkkitehtuurisivun uusi teksti on valmis Jarin lukukierrokselle.
+Ehdotus: [docs/assumptions.md](../../docs/assumptions.md). Sivulla vanhat
+kokeet, hyväksytyt rajat ja tulevat testivaatimukset sekoittuvat. Se vaatii
+edelleen terminaali→RPC-siirron testaamista, kuvaa hyväksytyn host-stackin
+ehdotuksena ja jättää jo valitun credential-ratkaisun avoimeksi. Vertaa
+alkuperäisiä koetuloksia myöhempiin päätöksiin ennen uudelleenkirjoitusta.
+Myös UI-sivulla on vanhoja ohjaus- ja katselmointirajauksia; tällä kierroksella
+korjattiin vain tuotesivun muuttuneeseen rakenteeseen liittyvä kappale.
+Tuotesivun uusi teksti on valmis Jarin lukukierrokselle.
 
 ## Rajapintasivun läpikäynti 2026-09-29
 
@@ -111,3 +115,31 @@ Issue doctorissa ei ollut skeema- tai linkkivirheitä; sen neljä aiempaa
 PNG-kuvahavaintoa ovat muissa issueissa. Täyttä porttia ei ajettu uudelleen,
 koska muutos koskee vain dokumentaatiota ja issuen tekstiä (`TESTING.md`).
 Live-palvelinta ei muutettu eikä testattu.
+
+## Tuotesivun läpikäynti 2026-09-29
+
+Jari hyväksyi rajauksen: sivu kertoo tuotteen tavoitteen ja sovitun
+toiminnallisen laajuuden. Hyväksytyt toiminnot säilyvät; protokollan mekanismit
+ja testimatriisit korvataan linkeillä niiden nykyisiin lähteisiin. Alder ja
+nimettyjen ihmisten pakolliset kokeet poistuvat yleisestä tuotekuvauksesta.
+
+Lähteinä olivat rajapinta- ja arkkitehtuurisivut lähtörevisiossa `e78a084`,
+UI-päätös 2026-09-22, Jarin `review-mvp`-issuessa 2026-09-28 tekemä
+loppuportin poisto sekä 2026-09-29 täsmennetty agenttiohjauksen rajaus.
+Terminaalihistoriat jäävät luettaviksi, päättyneen selainkeskustelun jatkaminen
+säilyy tavoitteena ja saapuvat kysymykset näytetään ilman erillisten
+dialogiohjainten toteutuslupausta. Kirjautumisen, historian ja selainohjauksen
+osittainen toteutus erotetaan sovitusta tavoitteesta.
+
+Y1–Y5- ja M1–M7-taulukoiden yksityiskohtia ei kopioitu uuteen liitteeseen:
+rajapinnat, toteutuskartta ja vastuulliset issuet kantavat jo niiden sisällön.
+Pilotin ehdotettu kuormituslista ja lopullinen hyväksyntäportti poistettiin
+Jarin päätöksen mukaisesti. GitHub, työtilojen elinkaari, Taskfleet-worktreet,
+arkistointi, keskustelukokemus ja operointi säilyvät. Navigaation nimi ja kaksi
+vanhoihin otsikoihin johtanutta linkkiä päivitettiin.
+
+`python3 scripts/validate-project-view.py` ja `git diff --check` läpäisivät.
+Issue doctorissa ei ollut skeema- tai linkkivirheitä; samat neljä muiden
+issueiden PNG-kuvahavaintoa säilyvät. Täyttä CI-porttia ei ajettu uudelleen,
+koska muutos koskee vain dokumentaatiota (`TESTING.md`). Live-palvelinta ei
+muutettu eikä testattu.
