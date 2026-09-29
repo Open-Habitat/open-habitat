@@ -35,6 +35,8 @@ test("@browser-conversation create, send once, reconnect and old history stays r
   const recheck = page.getByRole("button", {
     name: "Tarkista keskustelulista",
   });
+  await expect(create).toHaveClass(/ah-button-primary/);
+  await expect(recheck).toHaveClass(/ah-button-quiet/);
   const first = await create.boundingBox();
   const second = await recheck.boundingBox();
   if (!first || !second) throw new Error("Conversation actions missing");
@@ -138,6 +140,9 @@ test("@browser-conversation lost create acknowledgement blocks duplicate creatio
   await expect(
     page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
   ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Tarkista keskustelulista" }),
+  ).toHaveClass(/ah-button-secondary/);
   await page.getByRole("button", { name: "Tarkista keskustelulista" }).click();
   expect(attempts).toBe(1);
 });

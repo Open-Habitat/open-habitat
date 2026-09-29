@@ -14,6 +14,8 @@ Lähtörevisio `b132481` (2026-09-29). `npm ci --prefix web` ja `scripts/lab.sh 
 
 ### 1 · Matala · Työtilan tarkistuspainike kilpailee uuden keskustelun kanssa
 
+**Tila (toteutettu tässä työpuussa):** Uuden keskustelun painike on ensisijainen, listan tarkistus tavallisesti hiljainen ja epävarman luonnin jälkeen toissijainen. Synteettiset ennen/jälkeen-kuvat ja tarkistukset: [visual-notes.md](visual-notes.md). Jarin visuaalinen katselmointi odottaa.
+
 **Missä / kokemus.** Työtilan pääsisällössä *Aloita uusi Pi-keskustelu* ja *Tarkista keskustelulista* ovat vierekkäisiä samanvärisiä täytettyjä painikkeita ([työtila](screenshots/workspace.avif)). Paluukäyttäjän tavoite on aloittaa tai avata keskustelu; tavallinen listan tarkistus on toipumis-/päivitystoiminto. Otsikko *Pi-keskustelut* ei vielä näytä listaa pääsisällössä (keskustelut ovat sivupalkissa), joten tarkistustoiminto saa suhteettoman suuren visuaalisen painon. Vertailuksi keskustelun *Tarkista keskustelun tila* on jo rauhallinen tavallisessa tilassa ([uusi keskustelu](screenshots/new.avif)).
 
 **Miksi / konkreettinen korjaus.** [UI:n työtilan ja keskustelun aloitus](../../docs/ui.md#kirjautuminen-ja-työtilan-valinta) erottaa uuden keskustelun natiivin historian lukemisesta; [design-systemin kontrollit](../../docs/design-system.md#kerrokset-ja-omistajuus) antavat yhteisen painikehierarkian. Jätä uusi keskustelu ensisijaiseksi. Muuta normaali listan tarkistus hiljaiseksi/toissijaiseksi kontrolliksi ja korosta sitä vain silloin, kun listan tila on epävarma ja käsin tehtävä tarkistus auttaa. Säilytä eston syy ja fokustoiminta. Tämä on paikallinen esitysmuutos; pelkkä napin piilottaminen ei ole ehdotus.

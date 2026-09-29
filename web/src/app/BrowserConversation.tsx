@@ -616,6 +616,7 @@ export function BrowserConversation({
             />
             <Button
               label="Tarkista keskustelulista"
+              variant={ambiguous ? "secondary" : "quiet"}
               availability={
                 stale
                   ? { state: "unknown", reason: "Yhteys on katkennut." }
