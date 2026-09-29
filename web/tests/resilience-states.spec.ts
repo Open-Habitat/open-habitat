@@ -236,6 +236,41 @@ test("@resilience restored network retries a failed read without resending work"
   ).toBeVisible();
 });
 
+test("@resilience an incomplete catalog does not claim a deep-linked conversation was deleted", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  const agentLink = page
+    .getByRole("navigation")
+    .getByRole("link", { name: "Synteettinen viesti 0" });
+  await expect(agentLink).toBeVisible();
+  const href = await agentLink.getAttribute("href");
+  if (!href || !/^\/agents\/pi:/.test(href))
+    throw new Error("missing synthetic history link");
+  await page.request.get("/fixture/scenario?value=partial");
+  await page.goto(href);
+  await expect(page.locator("main h1")).toHaveText(
+    "Keskustelun tilaa ei voitu tarkistaa",
+  );
+  await expect(
+    page.getByText("Keskustelua ei voi vielä todeta poistuneeksi.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("main").getByRole("button", { name: "Yritä uudelleen" }),
+  ).toBeVisible();
+  await page.request.get("/fixture/scenario?value=ready");
+  await page
+    .getByRole("main")
+    .getByRole("button", { name: "Yritä uudelleen" })
+    .click();
+  await expect(page.getByText("Synteettinen viesti 0").last()).toBeVisible();
+});
+
 test("@resilience missing and partial observations can be refreshed without a reload", async ({
   page,
 }) => {

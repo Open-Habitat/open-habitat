@@ -637,12 +637,26 @@ export function App() {
       />
     ) : selectedAgentId ? (
       <>
-        <h1>Keskustelua ei löydy</h1>
+        <h1>
+          {uncertain
+            ? "Keskustelun tilaa ei voitu tarkistaa"
+            : "Keskustelua ei löydy"}
+        </h1>
         <InlineNotice
-          title="Valitse toinen keskustelu"
-          description="Se ei näy työtiloissasi. Palaa työtiloihin tai tarkista tiedot uudelleen."
+          title={
+            uncertain
+              ? "Tarkista tiedot uudelleen"
+              : "Valitse toinen keskustelu"
+          }
+          description={
+            uncertain
+              ? "Kaikkia tietoja ei saatu. Keskustelua ei voi vielä todeta poistuneeksi."
+              : "Se ei näy työtiloissasi. Palaa työtiloihin tai tarkista tiedot uudelleen."
+          }
           tone="warning"
+          actions={[{ label: "Yritä uudelleen", onPress: refresh }]}
         />
+        <Link to="/workspaces">Kaikki työtilat</Link>
       </>
     ) : selected ? (
       <>
