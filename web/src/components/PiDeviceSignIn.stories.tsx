@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { PiDeviceSignIn } from "./PiDeviceSignIn";
+import { Button } from "./Primitives";
 
 const meta = {
   title: "Production/Pi first-use presentation",
@@ -40,4 +41,28 @@ export const Failed: Story = {
 };
 export const Unavailable: Story = {
   args: { view: { phase: "unavailable" }, onRefresh: onIntent },
+};
+export const FirstUseExitDanger: Story = {
+  args: Ready.args,
+  render: (args) => (
+    <main>
+      <PiDeviceSignIn {...args} />
+      <Button
+        label="Keskeytä käyttöönotto ja kirjaudu ulos"
+        variant="danger"
+        onPress={onIntent}
+      />
+    </main>
+  ),
+};
+export const FirstUseExitDangerNarrow: Story = {
+  ...FirstUseExitDanger,
+  decorators: [
+    (Story) => (
+      <div style={{ maxWidth: 390 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  parameters: { viewport: { defaultViewport: "mobile1" } },
 };

@@ -26,6 +26,15 @@ työkaluriviltä. Erilliset storyt näyttävät pitkän suomalaisen sisällön 2
 ja vähennetyn liikkeen tilamerkin. Playwrightin deterministinen preview käyttää
 samoja tuotantomoduuleja happy- ja unhappy-state-kuvissa.
 
+### Uudet tilatarinat
+
+- **Production/Journey states**: työtilan aloitus ja paluulinkit, pitkä otsikko, kapea navigaatio, tyhjä ja puuttuva lähde, lukuvirhe, vanhentunut näkymä, istunnon tarkistuksen peitetty sisältö sekä vanhentuminen ilman vanhan sisällön näyttämistä.
+- **Production/GitHub first-use chooser** ja **Production/Pi first-use presentation**: valinta kapealla ruudulla ja käyttöönoton vaaratoiminto molemmilla leveyksillä; osittaisen haun valinnan muutos.
+- **Production/Conversation recovery**: tyhjä, latautuva, epäonnistunut ja vanhentunut historia, keskeytetty vastaus, Pi:n työn eteneminen sekä säilyneet hylätyt ja epävarmat luonnokset (myös kapeana).
+- **Production/Agent interaction preparation**: kuitattu, hylätty ja epävarma lähetys sekä hylätty/epävarma luonnos kapeana; **Production/Markdown / HostileAndNarrow** näyttää epäluotetun sisällön.
+
+Storyt näyttävät komponenttien näyttötilat synteettisillä tiedoilla; ne eivät simuloi sessiosidontaa, reititystä tai Pi:n kuittauksia.
+
 ## Tuotantodesign v1
 
 - [Yhdistetty tuotantodesign](../design-system/production-v1.md) ratkaisee

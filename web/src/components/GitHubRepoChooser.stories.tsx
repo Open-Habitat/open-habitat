@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { GitHubRepoChooser, type GitHubRepoChoice } from "./GitHubRepoChooser";
+import { Button } from "./Primitives";
 
 const repos: GitHubRepoChoice[] = [
   {
@@ -68,10 +69,46 @@ export const Partial: Story = {
   args: {
     ...Progress.args,
     checkout: { phase: "partial", completed: 1, total: 2 },
+    onEditSelection: onIntent,
   },
 };
 export const Uncertain: Story = {
   args: { ...Progress.args, checkout: { phase: "uncertain" } },
+};
+export const SelectedNarrow: Story = {
+  args: { ...Selected.args },
+  decorators: [
+    (Story) => (
+      <div style={{ maxWidth: 390 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  parameters: { viewport: { defaultViewport: "mobile1" } },
+};
+export const FirstUseExitDanger: Story = {
+  args: { ...Selected.args },
+  render: (args) => (
+    <main>
+      <GitHubRepoChooser {...args} />
+      <Button
+        label="Keskeytä käyttöönotto ja kirjaudu ulos"
+        variant="danger"
+        onPress={onIntent}
+      />
+    </main>
+  ),
+};
+export const FirstUseExitDangerNarrow: Story = {
+  ...FirstUseExitDanger,
+  decorators: [
+    (Story) => (
+      <div style={{ maxWidth: 390 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  parameters: { viewport: { defaultViewport: "mobile1" } },
 };
 export const Confirmed: Story = {
   args: {

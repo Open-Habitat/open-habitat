@@ -45,6 +45,8 @@ function StatePreview({
         sendResult={state}
         interruptAvailability={availability}
         interruptResult={state}
+        onSend={() => {}}
+        onInterrupt={() => {}}
       />
     </main>
   );
@@ -64,4 +66,20 @@ export const Rejected: Story = {
 };
 export const Uncertain: Story = {
   render: () => <StatePreview state="uncertain" />,
+};
+export const RejectedDraftNarrow: Story = {
+  render: () => (
+    <div style={{ maxWidth: 390 }}>
+      <StatePreview state="rejected" />
+    </div>
+  ),
+  parameters: { viewport: { defaultViewport: "mobile1" } },
+};
+export const UncertainDraftNarrow: Story = {
+  render: () => (
+    <div style={{ maxWidth: 390 }}>
+      <StatePreview state="uncertain" />
+    </div>
+  ),
+  parameters: { viewport: { defaultViewport: "mobile1" } },
 };
