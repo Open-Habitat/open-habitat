@@ -2,10 +2,12 @@
 created: 2026-09-29
 updated: 2026-09-29
 type: task
-status: open
+status: done
 priority: high
 lane: clone-protocol-decision
 collision: [docs/]
+closed: 2026-09-29
+closed_by: pi
 ---
 
 # Record bounded clone progress streaming contract
