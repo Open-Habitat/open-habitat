@@ -2,11 +2,15 @@
 created: 2026-09-29
 updated: 2026-09-29
 type: bug
-status: open
+status: fixed
 priority: normal
 related: ['@share-trusted-pi-runtime']
 lane: pi-runtime-wiring
 collision: [internal/core/, docs/pi-runtime.md]
+closed: 2026-09-29
+commits:
+- hash: c0ddbfcc42e8394c9c76e3ca13091df30446cf4c
+  summary: Move selector to root-owned deployment tree
 ---
 
 # Shared Pi selector conflicts with protected gateway configuration directory
