@@ -13,6 +13,7 @@ import {
   Composer,
   ConversationTimeline,
   InlineNotice,
+  WorkingProgress,
 } from "../components";
 import {
   create,
@@ -76,6 +77,12 @@ export function BrowserConversation({
   const [historyError, setHistoryError] = useState(false);
   const [unseen, setUnseen] = useState(0);
   const [events, setEvents] = useState<unknown[]>([]);
+  const [startedAt, setStartedAt] = useState<number>();
+  const [elapsed, setElapsed] = useState(0);
+  const [confirmStop, setConfirmStop] = useState(false);
+  const [finishedInBackground, setFinishedInBackground] = useState(false);
+  const wasWorking = useRef(false);
+  const wasAtBottom = useRef(true);
   const [details, setDetails] = useState(false);
   const pending = useRef(false);
   const staleRef = useRef(stale);
@@ -137,6 +144,12 @@ export function BrowserConversation({
     setCurrent(undefined);
     setEntries([]);
     setEvents([]);
+    setStartedAt(undefined);
+    setElapsed(0);
+    setConfirmStop(false);
+    setFinishedInBackground(false);
+    wasWorking.current = false;
+    wasAtBottom.current = true;
     setSessions([]);
     setProblem("");
     setReceipt("");
@@ -202,7 +215,6 @@ export function BrowserConversation({
       !id ||
       !csrf ||
       pending.current ||
-      document.visibilityState !== "visible" ||
       !sessions.some(
         (s) => s.agent_id === id && s.workspace_id === workspace.workspace_id,
       )
@@ -218,6 +230,17 @@ export function BrowserConversation({
       if (!alive.current || version !== generation.current) return;
       if (nextStatus.workspace_id !== workspace.workspace_id)
         throw new Error("invalid workspace");
+      const working = ["pending", "accepted", "stopping"].includes(
+        nextStatus.state,
+      );
+      if (working && !wasWorking.current) setStartedAt(Date.now());
+      if (
+        !working &&
+        wasWorking.current &&
+        document.visibilityState === "hidden"
+      )
+        setFinishedInBackground(true);
+      wasWorking.current = working;
       setCurrent(nextStatus);
       if (nextStatus.command_id && nextStatus.ack === "rejected") {
         const unresolvedKey = `nah:ambiguous:${identity}:${csrf}:${id}`;
@@ -309,17 +332,8 @@ export function BrowserConversation({
             merged = [...merged, ...additional.entries];
             cursor = additional.next_after;
           }
-          if (merged.length > old.length) {
-            const scroller = feed.current;
-            if (
-              scroller &&
-              scroller.scrollHeight -
-                scroller.scrollTop -
-                scroller.clientHeight >
-                60
-            )
-              setUnseen((n) => n + merged.length - old.length);
-          }
+          if (merged.length > old.length && !wasAtBottom.current)
+            setUnseen((n) => n + merged.length - old.length);
           if (
             merged.length !== old.length ||
             merged.some(
@@ -363,7 +377,11 @@ export function BrowserConversation({
     if (!id || !csrf || stale) return;
     void refresh();
     const timer = window.setInterval(() => void refresh(), 3000);
-    const focus = () => void refresh();
+    const focus = () => {
+      if (document.visibilityState === "visible")
+        setFinishedInBackground(false);
+      void refresh();
+    };
     window.addEventListener("focus", focus);
     document.addEventListener("visibilitychange", focus);
     return () => {
@@ -372,6 +390,31 @@ export function BrowserConversation({
       document.removeEventListener("visibilitychange", focus);
     };
   }, [id, csrf, refresh, stale]);
+  useEffect(() => {
+    if (
+      !startedAt ||
+      !["pending", "accepted", "stopping"].includes(current?.state ?? "")
+    )
+      return;
+    const tick = () => setElapsed(Math.floor((Date.now() - startedAt) / 1000));
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, [startedAt, current?.state]);
+  useLayoutEffect(() => {
+    if (wasAtBottom.current && feed.current) {
+      feed.current.scrollTop = feed.current.scrollHeight;
+      setUnseen(0);
+    }
+  });
+  useEffect(() => {
+    if (!finishedInBackground) return;
+    const old = document.title;
+    document.title = `Pi tarvitsee huomiota · ${old}`;
+    return () => {
+      document.title = old;
+    };
+  }, [finishedInBackground]);
   const verify = async () => {
     const token = await sessionCSRF();
     if (!csrf || token !== csrf || (await piStatus()) !== "usable")
@@ -481,7 +524,11 @@ export function BrowserConversation({
             : "Istuntoa ei voitu vahvistaa. Pysäytystä ei pyydetty.",
         );
     } finally {
-      if (alive.current) setBusy(false);
+      if (alive.current) {
+        setBusy(false);
+        setConfirmStop(false);
+        void refresh();
+      }
     }
   };
   const controlled =
@@ -603,16 +650,18 @@ export function BrowserConversation({
           <AgentHeader
             title={title ?? "Uusi keskustelu"}
             activityLabel={
-              current
-                ? ({
-                    idle: "Valmis",
-                    pending: "Odottaa kuittausta",
-                    accepted: "Pi työskentelee",
-                    rejected: "Viesti hylättiin",
-                    uncertain: "Tila epävarma",
-                    stopping: "Pysäytetään",
-                  }[current.state] ?? "Tila ei tiedossa")
-                : "Tila ei tiedossa"
+              stale
+                ? "Tila ei tiedossa"
+                : current
+                  ? ({
+                      idle: "Valmis",
+                      pending: "Odottaa kuittausta",
+                      accepted: "Pi työskentelee",
+                      rejected: "Viesti hylättiin",
+                      uncertain: "Tila epävarma",
+                      stopping: "Pysäytetään",
+                    }[current.state] ?? "Tila ei tiedossa")
+                  : "Tila ei tiedossa"
             }
             controlLabel={
               controlled ? "Selainohjaus" : "Ohjaus ei ole käytettävissä"
@@ -623,8 +672,58 @@ export function BrowserConversation({
             onToggleDetails={() => setDetails(!details)}
           />
           {details ? <p>Natiivi tunniste: {id}</p> : null}
+          <WorkingProgress
+            state={stale ? undefined : current?.state}
+            events={events}
+            elapsed={elapsed}
+          />
+          {controlled &&
+          !stale &&
+          ["pending", "accepted", "stopping"].includes(current?.state ?? "") ? (
+            <Button
+              label="Keskeytä Pi:n vuoro"
+              variant="secondary"
+              availability={
+                busy
+                  ? { state: "unknown", reason: "Pyyntö kesken" }
+                  : { state: "enabled" }
+              }
+              onPress={() => setConfirmStop(true)}
+            />
+          ) : null}
+          {confirmStop &&
+          !stale &&
+          ["pending", "accepted", "stopping"].includes(current?.state ?? "") ? (
+            <fieldset aria-label="Vahvista keskeytys">
+              <p>
+                Keskeytetäänkö Pi:n vuoro? Jo käynnistyneiden työkalujen
+                päättymistä ei voida vahvistaa.
+              </p>
+              <Button
+                label="Kyllä, keskeytä vuoro"
+                onPress={() => void stopNow()}
+                availability={
+                  busy
+                    ? { state: "unknown", reason: "Pyyntö kesken" }
+                    : { state: "enabled" }
+                }
+              />
+              <Button
+                label="Jatka työskentelyä"
+                variant="quiet"
+                onPress={() => setConfirmStop(false)}
+              />
+            </fieldset>
+          ) : null}
           <section
             ref={feed}
+            onScroll={() => {
+              const el = feed.current;
+              if (!el) return;
+              wasAtBottom.current =
+                el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+              if (wasAtBottom.current) setUnseen(0);
+            }}
             style={{
               maxHeight: "60vh",
               overflow: "auto",
@@ -648,6 +747,7 @@ export function BrowserConversation({
               historyMode="pagedAccessible"
               newContentCount={unseen}
               onJumpToLatest={() => {
+                wasAtBottom.current = true;
                 feed.current?.scrollTo({ top: feed.current.scrollHeight });
                 setUnseen(0);
               }}
@@ -681,9 +781,6 @@ export function BrowserConversation({
               tone="warning"
             />
           ) : null}
-          {current?.state === "accepted" || current?.state === "pending" ? (
-            <p role="status">Pi työskentelee…</p>
-          ) : null}
           {events.length && current?.native_history !== "readable" ? (
             <p role="status">
               Pi:n tapahtumia vastaanotettu; historiaa odotetaan.
@@ -709,20 +806,6 @@ export function BrowserConversation({
               onSteer={() => {}}
               onFollowUp={() => {}}
               onModeChange={() => {}}
-            />
-          ) : null}
-          {controlled ? (
-            <Button
-              label="Pyydä pysäytystä"
-              variant="secondary"
-              availability={
-                stale
-                  ? { state: "unknown", reason: "Yhteys on katkennut." }
-                  : busy
-                    ? { state: "unknown", reason: "Pyyntö kesken" }
-                    : { state: "enabled" }
-              }
-              onPress={() => void stopNow()}
             />
           ) : null}
           {!stale ? (

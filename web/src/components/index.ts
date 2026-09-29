@@ -10,3 +10,4 @@ export * from "./AgentInteractionControls";
 export * from "./PiDeviceSignIn";
 export * from "./GitHubRepoChooser";
 export * from "./Operations";
+export * from "./WorkingProgress";

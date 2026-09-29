@@ -147,3 +147,37 @@ test("@lab fake-Pi crash leaves the turn readable but blocks another send", asyn
     page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toBeDisabled();
 });
+
+test("@lab slow turn explains work and stop requires an explicit confirmation", async ({
+  page,
+}) => {
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
+    .getByRole("link", { name: "aurinkokello" })
+    .click();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .fill("hidas kaadu");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  const progress = page.getByRole("region", { name: "Pi:n työn eteneminen" });
+  await expect(progress).toContainText("Pi työskentelee", { timeout: 20000 });
+  await expect(progress).toContainText(/min \d+ s/);
+  await expect(progress).toContainText("Käyttää työkalua: bash", {
+    timeout: 12000,
+  });
+  await page.getByRole("button", { name: "Keskeytä Pi:n vuoro" }).click();
+  await expect(
+    page.getByRole("group", { name: "Vahvista keskeytys" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Jatka työskentelyä" }).click();
+  await expect(
+    page.getByRole("group", { name: "Vahvista keskeytys" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText(/työn päättymistä ei voida vahvistaa/),
+  ).toBeVisible({ timeout: 20000 });
+});
