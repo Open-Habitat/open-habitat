@@ -2,13 +2,14 @@
 created: 2026-09-29
 updated: 2026-09-29
 type: improvement
-status: untriaged
+status: done
 priority: normal
 provenance: other
 provenance_detail: synthetic UX audit, taskfleet research
 source_ref: taskfleet:01m3qnnrwjyhgcgt4wbtzffs2f/ux-audit-round-5
 originating_run: 01m3qnnrwjyhgcgt4wbtzffs2f
 originating_run_kind: research
+closed: 2026-09-29
 ---
 
 # UX-katselmus 5: työtilan toimintojen hierarkia ja nykyisen käyttöpolun rajat

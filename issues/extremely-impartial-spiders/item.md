@@ -2,7 +2,7 @@
 created: 2026-09-29
 updated: 2026-09-29
 type: improvement
-status: untriaged
+status: done
 priority: normal
 provenance: ai-review
 source_ref: taskfleet:01m3qktyewbnsjx22arn0qcgwa/review-finding:ux-audit-round-4
@@ -14,6 +14,7 @@ assessment_outcome: SPIN_OFF
 review_confidence: high
 review_severity: medium
 review_target: browser UI at e2f2be7138e97e1119838a63ddde2eca15b6a7c6
+closed: 2026-09-29
 ---
 
 # Honor dark system theme and clarify return-to-work cues
