@@ -29,7 +29,7 @@ ehdokas ajan tasalla, ei rakenneta erillistä katselmointiprosessia.
 | [Rajapinnat](../../docs/interfaces.md) | Nykyiset reitit erillään sovitusta tulevasta pinnasta; viestien merkitys, katkoista palautuminen ja vastuurajat säilyvät. Palveluasetukset asennusissuen liitteeseen. | `296e4a9`, `1c1e8f8`, `742197c` |
 | [Tuotteen tavoite](../../docs/product.md) | Käyttäjän työ ja sovitut toiminnot. Nykytila erotettu tavoitteesta; vanhat MVP-portit, terminaalinsiirto ja testimatriisit poistettu tuotekuvauksesta. | `fae13b8` |
 | [Todennettava näyttö](../../docs/assumptions.md) | Alkuperäisten kokeiden havainnot ja rajat sekä GitHub-käytön ja keskusteluun palaamisen puuttuva kokonaisnäyttö. Sovitut ratkaisut ja testien vastuut linkitetty omiin lähteisiinsä. UI-sivun terminaalisiirto korjattu samaan rajaan. | `75d4fa5` |
-| [Käyttökulut](../../docs/ui.md) | Käyttäjän kulku ja sovittu keskustelukokemus. Nykytila erotettu tavoitteesta, vanhat dialogiohjaimet ja katselmointiportit poistettu; protokolla- ja komponenttidetaljit linkitetty omiin lähteisiin. | Tämän päivityksen commit |
+| [Käyttökulut](../../docs/ui.md) | Käyttäjän kulku ja sovittu keskustelukokemus. Nykytila erotettu tavoitteesta, vanhat dialogiohjaimet ja katselmointiportit poistettu; protokolla- ja komponenttidetaljit linkitetty omiin lähteisiin. | `925bdb1` |
 
 Samalla on tehty kohdennettuja korjauksia toteutussivuun, ADR 0004:ään,
 CLI-konformanssiin ja liittyviin issueihin. Näitä ei ole vielä kokonaisuudessaan
@@ -37,13 +37,29 @@ käyty läpi tällä skillillä.
 
 ## Seuraavaksi
 
-Ehdotus: [tuotantodesign](../../design-system/production-v1.md) ja siihen
-liittyvä [komponenttikatalogi](../../design-system/component-catalog-v1.md).
-Niissä on edelleen terminaalin siirtodialogi ja Pi-kysymysten vastausohjaimia,
-vaikka nykyinen agenttiohjauksen rajaus jättää ne pois. UI-sivun linkit näihin
-lähteisiin säilyvät reittien, fokuksen, näppäinten ja komponenttien osalta;
-vanhojen ohjainten ristiriita pitää korjata lähteisiin seuraavassa läpikäynnissä.
-UI-sivun uusi teksti on valmis Jarin luettavaksi.
+Seuraava kokonaisuus on [tuotantodesign](../../design-system/production-v1.md)
+ja [komponenttikatalogi](../../design-system/component-catalog-v1.md) yhdessä.
+Ne ohjaavat toteuttajaa suoraan, joten niiden ristiriidat korjataan ennen muiden
+dokumenttien läpikäyntiä.
+
+- Korjaa terminaalin siirtodialogi ja Pi-kysymysten vastausohjaimet vastaamaan
+  nykyistä agenttiohjauksen rajausta. Terminaalihistoriat ovat vain luettavia;
+  päättynyttä selainkeskustelua voi jatkaa. Saapuvat kysymykset ja muu sisältö
+  näytetään vähintään turvallisena tekstinä.
+- Erota sovittu käyttökokemus agentin lisäämistä tarkoista mekanismeista ja
+  lukurajoista. Selvitä niiden alkuperä päätöksistä ennen muuttamista;
+  toteutuksen yksityiskohta ei sellaisenaan ole tuotevaatimus.
+- Säilytä ulkoasun, saavutettavuuden ja komponenttien vastuiden perustelut.
+  Reitit, fokus, näppäimet ja komponenttisopimukset tarvitsevat edelleen omat
+  lähteensä; niitä ei kopioida takaisin UI-sivulle.
+
+Lähteiksi nykyinen [UI-sivu](../../docs/ui.md),
+[rajapintasivu](../../docs/interfaces.md), alkuperäinen
+[UI-päätös](../review-ui-v1/review.md), ADR 0002 sekä
+[agenttiohjauksen](../build-agent-control/item.md) ja
+[keskustelun UI:n](../complete-conversation-ui/item.md) nykyiset rajaukset.
+Tämä jatkamiskohta päivitettiin Jarin pyynnöstä; tuotantodesignin ja
+komponenttikatalogin kokonaisläpikäyntiä ei ole vielä tehty.
 
 ## Rajapintasivun läpikäynti 2026-09-29
 
