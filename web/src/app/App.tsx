@@ -718,7 +718,7 @@ export function App() {
               lukemista avaamalla keskustelun.
             </p>
             <section className="ah-continue" aria-labelledby="continue-heading">
-              <h2 id="continue-heading">Jatka keskustelua</h2>
+              <h2 id="continue-heading">Palaa keskusteluihin</h2>
               {snapshot?.agents.some(
                 (a) =>
                   a.history === "readable" &&
@@ -753,6 +753,9 @@ export function App() {
                             {a.title.display}
                             <small>
                               {workspace?.display_name ?? workspace?.name}
+                              {browserSession
+                                ? " · Jatka työtä"
+                                : " · Vain luettavissa"}
                             </small>
                           </Link>
                         </li>

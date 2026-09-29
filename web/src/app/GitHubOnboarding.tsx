@@ -427,14 +427,16 @@ export function GitHubOnboarding({
           tone="warning"
         />
       ) : null}
-      <Button
-        label="Keskeytä käyttöönotto ja kirjaudu ulos"
-        variant="danger"
-        onPress={() => {
-          reset();
-          void onLogout();
-        }}
-      />
+      <div className="ah-onboarding-exit">
+        <Button
+          label="Keskeytä käyttöönotto ja kirjaudu ulos"
+          variant="danger-subtle"
+          onPress={() => {
+            reset();
+            void onLogout();
+          }}
+        />
+      </div>
     </>
   );
 }

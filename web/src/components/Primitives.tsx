@@ -17,7 +17,7 @@ import { enabled, unavailableReason } from "./types";
 export interface ButtonProps {
   label: string;
   onPress: () => void;
-  variant?: "primary" | "secondary" | "quiet" | "danger";
+  variant?: "primary" | "secondary" | "quiet" | "danger" | "danger-subtle";
   size?: "compact" | "normal";
   availability?: Availability;
   pending?: boolean;

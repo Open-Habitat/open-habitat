@@ -242,13 +242,15 @@ export function PiOnboarding({
           onPress={onBack}
         />
       ) : null}
-      <Button
-        label="Keskeytä käyttöönotto ja kirjaudu ulos"
-        variant="danger"
-        onPress={() => {
-          void logout();
-        }}
-      />
+      <div className="ah-onboarding-exit">
+        <Button
+          label="Keskeytä käyttöönotto ja kirjaudu ulos"
+          variant="danger-subtle"
+          onPress={() => {
+            void logout();
+          }}
+        />
+      </div>
     </>
   );
 }

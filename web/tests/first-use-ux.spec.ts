@@ -22,7 +22,7 @@ test("@first-use abort is a danger action on both onboarding steps; first choose
     const abort = page.getByRole("button", {
       name: "Keskeytä käyttöönotto ja kirjaudu ulos",
     });
-    await expect(abort).toHaveClass(/ah-button-danger/);
+    await expect(abort).toHaveClass(/ah-button-danger-subtle/);
     // Focusing the window during a click must not replace the chooser before
     // the click reaches its action.
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
@@ -37,7 +37,19 @@ test("@first-use abort is a danger action on both onboarding steps; first choose
       page.getByRole("button", {
         name: "Keskeytä käyttöönotto ja kirjaudu ulos",
       }),
-    ).toHaveClass(/ah-button-danger/);
+    ).toHaveClass(/ah-button-danger-subtle/);
+    const start = page.getByRole("button", { name: "Aloita kirjautuminen" });
+    await expect(start).toHaveClass(/ah-button-primary/);
+    await expect(start).toBeVisible();
+    const startBox = await start.boundingBox();
+    const abortBox = await page
+      .getByRole("button", {
+        name: "Keskeytä käyttöönotto ja kirjaudu ulos",
+      })
+      .boundingBox();
+    expect(
+      startBox && abortBox && abortBox.y > startBox.y + startBox.height,
+    ).toBe(true);
   } finally {
     await page.request.get("/fixture/pi-state?value=missing");
     await page.request.get("/fixture/scenario?value=ready");

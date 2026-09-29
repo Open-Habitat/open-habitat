@@ -195,7 +195,7 @@ export function PiDeviceSignIn({
                 ? "Aloita kirjautuminen"
                 : "Aloita uusi yritys"
             }
-            variant="secondary"
+            variant={view.phase === "start" ? "primary" : "secondary"}
             onPress={onRetry}
           />
         ) : null}

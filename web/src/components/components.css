@@ -398,6 +398,14 @@
   background: var(--ah-err);
   color: var(--ah-surface);
 }
+.ah-button-danger-subtle {
+  background: var(--ah-err-soft);
+  border-color: var(--ah-err-line);
+  color: var(--ah-err);
+}
+.ah-onboarding-exit {
+  margin-top: var(--ah-s7);
+}
 .ah-button-compact {
   min-height: 36px;
   padding-inline: var(--ah-s3);
@@ -486,6 +494,11 @@ select:focus-visible,
 [role="dialog"]:focus-visible {
   outline: 2px solid var(--ah-accent-ink);
   outline-offset: 2px;
+}
+/* Route headings receive focus for screen readers but cannot be tabbed to.
+   Chromium can classify initial programmatic focus as :focus-visible. */
+h1[tabindex="-1"]:focus {
+  outline: none;
 }
 .ah-overlay {
   position: fixed;
