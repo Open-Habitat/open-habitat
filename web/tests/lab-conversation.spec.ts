@@ -15,7 +15,9 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
     .click();
   await page.goto("/agents/pi:a1a1a1a1-0000-4000-8000-000000000001");
   await expect(
-    page.getByText("Lisää komentoriville --json-lippu", { exact: false }),
+    page
+      .locator("main")
+      .getByRole("heading", { name: /Lisää komentoriville --json-lippu/ }),
   ).toBeVisible();
   await page
     .locator("main")
@@ -72,13 +74,14 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
     "href",
     new RegExp(`conversation=${agent}`),
   );
-  await page.getByRole("button", { name: "Avaa aurinkokello" }).click();
   await page
     .getByRole("link", { name: "aurinkokello", exact: true })
     .last()
     .click();
   await navLink.click();
-  await expect(page.getByRole("textbox", { name: "Viesti Pi:lle" })).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
   const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
   expect(
     snapshot.agents.some(
