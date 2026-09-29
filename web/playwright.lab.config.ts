@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { labOrigin } from "./test-ports.mjs";
 
 export default defineConfig({
   testDir: "./tests",
@@ -6,13 +7,13 @@ export default defineConfig({
   workers: 1,
   reporter: [["line"]],
   use: {
-    baseURL: "https://127.0.0.1:4175",
+    baseURL: labOrigin,
     ignoreHTTPSErrors: true,
     ...devices["Desktop Chrome"],
   },
   webServer: {
     command: `${process.env.NAH_WEB_PREBUILT === "1" ? "" : "npm run build && "}cd .. && PATH="$PWD/.tools/go/bin:$PATH" go build -o .cache/browser-host ./test/browser-host && BROWSER_HOST_LAB=1 exec .cache/browser-host web/dist`,
-    url: "https://127.0.0.1:4175/healthz",
+    url: `${labOrigin}/healthz`,
     ignoreHTTPSErrors: true,
     reuseExistingServer: false,
     timeout: 120000,

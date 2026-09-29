@@ -1,6 +1,7 @@
+import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "@playwright/test";
 
-test.use({ baseURL: "https://127.0.0.1:4174", ignoreHTTPSErrors: true });
+test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 test("@pi-onboarding switching sessions drops device instructions and native facts", async ({
   page,
 }) => {

@@ -1,7 +1,21 @@
 // Synthetic lab only. Never reuse a personal browser profile or real Chrome.
 import { chromium } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { labOrigin } from "../test-ports.mjs";
 
-export const origin = "https://127.0.0.1:4175";
+const portFile = fileURLToPath(
+  new URL("../../.cache/lab/port", import.meta.url),
+);
+let port;
+try {
+  port = readFileSync(portFile, "utf8").trim();
+} catch (error) {
+  if (error.code !== "ENOENT") throw error;
+}
+if (port && (!/^[0-9]+$/.test(port) || +port < 1024 || +port > 65535))
+  throw new Error("Invalid lab port in .cache/lab/port");
+export const origin = port ? `https://127.0.0.1:${port}` : labOrigin;
 export async function openLab({
   identity = "alice",
   width = 1440,

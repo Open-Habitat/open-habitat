@@ -1,7 +1,8 @@
+import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "@playwright/test";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-const host = "https://127.0.0.1:4174";
+const host = hostOrigin;
 test.use({ baseURL: host, ignoreHTTPSErrors: true });
 test("@workspace-slice production bundle contains no fixture controls", async ({
   page,

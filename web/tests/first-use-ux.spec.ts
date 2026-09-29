@@ -1,6 +1,7 @@
+import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "@playwright/test";
 
-test.use({ baseURL: "https://127.0.0.1:4174", ignoreHTTPSErrors: true });
+test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
 async function picker(page: import("@playwright/test").Page) {
   await page.request.get("/fixture/scenario?value=pi-onboarding");

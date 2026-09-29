@@ -1,6 +1,7 @@
+import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "@playwright/test";
 
-const host = "https://127.0.0.1:4174";
+const host = hostOrigin;
 test.use({
   baseURL: host,
   ignoreHTTPSErrors: true,

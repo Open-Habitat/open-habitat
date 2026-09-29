@@ -1,7 +1,8 @@
+import { demoOrigin, ports } from "../test-ports.mjs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-const base = "http://127.0.0.1:4184";
+const base = demoOrigin;
 test.use({ baseURL: base, viewport: { width: 1280, height: 720 } });
 for (const [scenario, heading] of [
   ["ready", "Workspacet"],
@@ -112,7 +113,7 @@ test("no authentication, fixture routes, production build fixture, or external h
   expect(
     (
       await request.get(`${base}/workspaces`, {
-        headers: { Host: "localhost:4184" },
+        headers: { Host: `localhost:${ports.demo}` },
       })
     ).status(),
   ).toBe(403);

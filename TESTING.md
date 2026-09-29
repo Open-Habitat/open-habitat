@@ -45,10 +45,9 @@ the PATH export. The clean gate requires a committed tree with no untracked
 files and checks cleanliness again at exit. Leave that worktree untouched
 during the run; ignored build caches may remain.
 
-The clean gate also runs the port-4175 synthetic lab create→send→answer browser test against the real controller and fake Pi; `scripts/lab.sh` provides manual exploration.
+The clean gate also runs the synthetic lab create→send→answer browser test against the real controller and fake Pi; `scripts/lab.sh` provides manual exploration.
 
-Browser suites use ports 4183, 4174 and 4175, so coordinate runs across worktrees.
-Wait for another worker's server to finish. For standalone browser checks:
+Browser listeners default to host 4174, lab 4175, Vite 4183 and demo 4184; set `NAH_PORT_BASE` to a distinct value (e.g. `NAH_PORT_BASE=14000 ./scripts/ci-local.sh --clean --json`) to run another worktree concurrently. `scripts/lab.sh start` selects a free port if its preferred lab port is busy and records it in `.cache/lab/port` for `url` and `web/lab/session.mjs`; for standalone browser checks:
 
 ```sh
 npm ci --prefix web

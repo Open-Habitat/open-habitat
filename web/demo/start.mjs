@@ -1,10 +1,11 @@
 import { createServer } from "vite";
 import { responseFor } from "./fixtures.mjs";
+import { ports } from "../test-ports.mjs";
 
 // No CLI flags: do not allow Vite's --host/--https overrides on this entrypoint.
 process.env.VITE_SYNTHETIC_DEMO = "true";
 const host = "127.0.0.1";
-const port = 4184;
+const port = ports.demo;
 const server = await createServer({
   configFile: new URL("../vite.config.ts", import.meta.url).pathname,
   server: { host, port, strictPort: true, https: false },

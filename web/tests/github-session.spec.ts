@@ -1,6 +1,7 @@
+import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "@playwright/test";
 
-test.use({ baseURL: "https://127.0.0.1:4174", ignoreHTTPSErrors: true });
+test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 test("@github-first logout and new cookie erase in-flight catalog", async ({
   context,
   page,

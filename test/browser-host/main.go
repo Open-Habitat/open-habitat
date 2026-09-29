@@ -92,10 +92,24 @@ func main() {
 	// Lab mode is for exploratory UI work: the real conversation controller
 	// runs a fake Pi, discovery scans the synthetic home, and data is richer.
 	lab := os.Getenv("BROWSER_HOST_LAB") == "1"
-	listen := "127.0.0.1:4174"
-	if lab {
-		listen = "127.0.0.1:4175"
+	base := 4174
+	if raw, set := os.LookupEnv("NAH_PORT_BASE"); set {
+		base, e = strconv.Atoi(raw)
+		if e != nil || strings.Trim(raw, "0123456789") != "" || base < 1024 || base > 65525 {
+			log.Fatal("NAH_PORT_BASE must be an integer from 1024 to 65525")
+		}
 	}
+	port := base
+	if lab {
+		port++
+	}
+	if raw := os.Getenv("BROWSER_HOST_PORT"); raw != "" {
+		port, e = strconv.Atoi(raw)
+		if !lab || e != nil || port < 1024 || port > 65535 {
+			log.Fatal("BROWSER_HOST_PORT must be a lab port from 1024 to 65535")
+		}
+	}
+	listen := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
 	self, e := os.Executable()
 	if e != nil {
 		log.Fatal(e)
