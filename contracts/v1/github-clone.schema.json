@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://native-agent-host.invalid/contracts/v1/github-clone.schema.json",
+  "title": "Authenticated pre-Pi single repository import",
+  "description": "POST /api/v1/onboarding/github/clone accepts only full_name. A non-success response is not evidence that no clone occurred; reconcile with fresh native facts before any new POST.",
+  "type": "object",
+  "required": ["schema_version", "full_name", "state"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "full_name": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}$"},
+    "state": {"const": "cloned"}
+  },
+  "additionalProperties": false
+}
