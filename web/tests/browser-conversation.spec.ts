@@ -12,7 +12,10 @@ async function open(page: import("@playwright/test").Page) {
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
-  await page.getByRole("link", { name: "ordinary-dir" }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "ordinary-dir" })
+    .click();
   await expect(
     page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
   ).toBeEnabled();
@@ -78,7 +81,9 @@ test("@browser-conversation ordinary session loading is not an uncertain create"
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
-  await expect(page.getByRole("link", { name: "ordinary-dir" })).toBeVisible();
+  await expect(
+    page.getByRole("navigation").getByRole("link", { name: "ordinary-dir" }),
+  ).toBeVisible();
   let release!: () => void;
   const held = new Promise<void>((resolve) => {
     release = resolve;
@@ -87,7 +92,10 @@ test("@browser-conversation ordinary session loading is not an uncertain create"
     await held;
     await route.continue();
   });
-  await page.getByRole("link", { name: "ordinary-dir" }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "ordinary-dir" })
+    .click();
   await expect(page.getByText("Varmistetaan istuntoa.")).toBeVisible();
   await expect(
     page.getByText(/edellisen luonnin tulos on epävarma/i),

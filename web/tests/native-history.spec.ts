@@ -29,8 +29,10 @@ test("@native-history native page, continuation, unknown, reopen and no writes",
     if (r.method() !== "GET") writes.push(r.url());
   });
   await login(page);
-  await page.getByRole("button", { name: "Avaa ordinary-dir" }).click();
-  await page.getByRole("link", { name: /Uusi keskustelu/ }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: /Uusi keskustelu/ })
+    .click();
   await expect(page).toHaveURL(`/agents/${agent}`);
   await expect(page.locator(".ah-feed li")).toHaveCount(25);
   await expect(
