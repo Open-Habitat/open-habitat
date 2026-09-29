@@ -127,11 +127,10 @@ export function ConnectionBanner({
   problem?: ProblemView;
   onRetry?: () => void;
 }) {
-  if (state === "online" && hostWriteState === "writable") return null;
-  const visibleState =
-    state === "online" && hostWriteState === "read_only"
-      ? "host-read-only"
-      : state;
+  // Snapshot write_state describes workspace mutations, not conversation control.
+  // It is not a connectivity failure and does not need a page-wide warning.
+  if (state === "online") return null;
+  const visibleState = state;
   const copy: Record<
     Exclude<ConnectionState, "online">,
     { title: string; detail: string; tone: Tone }

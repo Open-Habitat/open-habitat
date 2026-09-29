@@ -104,7 +104,7 @@ export function AgentNavItem({
         label={title}
         current={selected ? "page" : false}
         badgeText={attentionLabel}
-        statusText={status}
+        statusText={status || undefined}
       />
       {relativeTime ? <time>{relativeTime}</time> : null}
     </li>
@@ -172,7 +172,7 @@ export function WorkspaceSection({
               ))}
             </ul>
           ) : (
-            <p className="ah-workspace-empty">Agentteja ei vielä näytetä.</p>
+            <p className="ah-workspace-empty">Ei keskusteluja.</p>
           )}
           {actions.length ? (
             <div className="ah-actions">
@@ -204,12 +204,10 @@ export function WorkspaceRail({
   summaryAction,
   listState,
   children,
-  createAvailability,
   sessionActions,
   onToggle,
   onFilter,
   onRefresh,
-  onCreate,
 }: {
   collapsed: boolean;
   serverLabel: string;
@@ -221,21 +219,22 @@ export function WorkspaceRail({
   summaryAction?: ReactNode;
   listState: AsyncState | "source-absent" | "filtered-empty";
   children?: ReactNode;
-  createAvailability?: Availability;
   sessionActions?: ReactNode;
   onToggle: () => void;
   onFilter: (value: string) => void;
   onRefresh: () => void;
-  onCreate: () => void;
 }) {
   return (
     <nav
-      aria-label="Workspacet ja agentit"
+      aria-label="Työtilat ja keskustelut"
       className={collapsed ? "ah-rail ah-rail-collapsed" : "ah-rail"}
     >
       <header className="ah-rail-head">
         <div className="ah-rail-title">
           <strong title={serverLabel}>{collapsed ? "NAH" : serverLabel}</strong>
+          {collapsed ? (
+            <span className="ah-rail-mobile-label">Työtilat</span>
+          ) : null}
           <span title={connectionLabel}>
             <StatusMark
               label={connectionLabel}
@@ -268,9 +267,7 @@ export function WorkspaceRail({
                 value={filterValue}
                 onChange={onFilter}
               >
-                <Label className="ah-visually-hidden">
-                  Suodata workspaceja ja agentteja
-                </Label>
+                <Label className="ah-visually-hidden">Suodata työtiloja</Label>
                 <Input placeholder="Suodata" />
               </TextField>
               {filterValue ? (
@@ -300,29 +297,19 @@ export function WorkspaceRail({
       </header>
       {collapsed ? null : (
         <div className="ah-rail-content">
-          {listState === "loading" ? <p>Ladataan workspaceja…</p> : null}
-          {listState === "empty" ? <p>Workspaceja ei ole.</p> : null}
+          {listState === "loading" ? <p>Ladataan työtiloja…</p> : null}
+          {listState === "empty" ? <p>Työtiloja ei ole.</p> : null}
           {listState === "filtered-empty" ? (
             <p>Hakua vastaavia kohteita ei ole.</p>
           ) : null}
           {listState === "source-absent" ? (
-            <p>Lähdettä ei löydy. Tätä ei tulkita tyhjäksi listaksi.</p>
+            <p>Työtilakansiota ei löydy.</p>
           ) : null}
           {listState === "error" || listState === "unknown" ? (
-            <p>Workspacejen tilaa ei saatu.</p>
+            <p>Työtiloja ei voitu näyttää.</p>
           ) : (
             children
           )}
-          <div className="ah-rail-create">
-            <Button
-              label="+ Uusi workspace"
-              ariaLabel="Uusi workspace"
-              variant="quiet"
-              size="compact"
-              availability={createAvailability}
-              onPress={onCreate}
-            />
-          </div>
         </div>
       )}
       {sessionActions ? (

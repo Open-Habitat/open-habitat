@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useLocation, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import {
   AccountSettings,
   AccountShelf,
@@ -73,46 +73,40 @@ function WorkspaceDetails({ workspace }: { workspace: Workspace }) {
       workspace.facts.find((f) => f.source === source)?.state ?? "unknown",
     );
   return (
-    <section className="ah-workspace-detail">
-      <p className="eyebrow">WORKSPACE · VAIN LUKU</p>
+    <header className="ah-workspace-detail">
+      <Link to="/workspaces" className="ah-back-link">
+        Työtilat
+      </Link>
       <h1>{workspace.display_name ?? workspace.name}</h1>
       <p>
-        Hakemisto: <code>{workspace.name}</code>
+        Hakemisto <code>{workspace.name}</code>
       </p>
-      <dl className="ah-facts">
-        <div>
-          <dt>Lähde</dt>
-          <dd>{fact("filesystem")}</dd>
-        </div>
-        <div>
-          <dt>Git</dt>
-          <dd>
-            {fact("git")} ·{" "}
-            {workspace.kind === "git_main_worktree"
-              ? "Git-päätyöhakemisto"
-              : workspace.kind === "git_linked_worktree"
-                ? "Git-linkitetty työhakemisto"
-                : "Ei vahvistettua Git-työhakemistoa"}
-          </dd>
-        </div>
-        <div>
-          <dt>Annotaatio</dt>
-          <dd>{fact("annotation")}</dd>
-        </div>
-        <div>
-          <dt>Muutokset</dt>
-          <dd>
-            {workspace.mutation_state === "read_only"
-              ? "Vain luku"
-              : "Muutosten tila ei ole tiedossa"}
-          </dd>
-        </div>
-      </dl>
-      <InlineNotice
-        title="Vanhat Pi-historiat ovat vain luettavissa"
-        description="Workspacen avaaminen ei käynnistä agenttia. Uusi selainkeskustelu luodaan erillisellä vahvistetulla toiminnolla; vanhoja pääteistuntoja ei voi ohjata."
-      />
-    </section>
+      <details className="ah-workspace-facts">
+        <summary>Työtilan tiedot</summary>
+        <dl className="ah-facts">
+          <div>
+            <dt>Hakemisto</dt>
+            <dd>{fact("filesystem")}</dd>
+          </div>
+          <div>
+            <dt>Git</dt>
+            <dd>{fact("git")}</dd>
+          </div>
+          <div>
+            <dt>Asetukset</dt>
+            <dd>{fact("annotation")}</dd>
+          </div>
+          <div>
+            <dt>Muutokset</dt>
+            <dd>
+              {workspace.mutation_state === "read_only"
+                ? "Ei käytettävissä"
+                : "Tila ei tiedossa"}
+            </dd>
+          </div>
+        </dl>
+      </details>
+    </header>
   );
 }
 export function App() {
@@ -149,8 +143,15 @@ export function App() {
       editor.setSelectionRange(start, end);
     }
   }, [verifying]);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(
+    () => window.matchMedia?.("(max-width: 800px)").matches ?? false,
+  );
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  // Close the narrow rail after a route change, not when the user opens it.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the pathname is the route-change signal.
+  useEffect(() => {
+    if (window.matchMedia?.("(max-width: 800px)").matches) setCollapsed(true);
+  }, [location.pathname]);
   const [logoutError, setLogoutError] = useState(false);
   const [settingsReturn, setSettingsReturn] = useState("/workspaces");
   const returningFromSettings = useRef(false);
@@ -450,7 +451,7 @@ export function App() {
     phase === "loading" ? (
       <>
         <h1>Ladataan</h1>
-        <p>Varmistetaan istunto ja workspacejen lähde.</p>
+        <p>Haetaan työtiloja…</p>
       </>
     ) : phase === "authentication_required" ? (
       <>
@@ -483,8 +484,8 @@ export function App() {
       <>
         <h1>Yhteyttä ei saatu</h1>
         <InlineNotice
-          title="Workspacejen tilaa ei saatu"
-          description="Daemon ei vastaa tai tilannekuva on virheellinen. Aiemman käyttäjän tietoja ei näytetä. Yritä uudelleen."
+          title="Työtiloja ei voitu näyttää"
+          description="Yhteys ei juuri nyt toimi. Yritä uudelleen."
           tone="danger"
           actions={[{ label: "Päivitä", onPress: refresh }]}
         />
@@ -557,27 +558,61 @@ export function App() {
       </>
     ) : (
       <>
-        <h1>Workspacet</h1>
-        <p>
-          Valitse workspace vasemmalta. Valinta ei käynnistä eikä jatka
-          agenttia.
-        </p>
+        <h1>Työtilat</h1>
+        {visible.length > 0 ? (
+          <>
+            <p>
+              Jatka keskustelua tai avaa työtila. Historian lukeminen ei
+              käynnistä agenttia.
+            </p>
+            <div className="ah-workspace-cards">
+              {visible.map((w) => {
+                const conversations =
+                  snapshot?.agents.filter(
+                    (a) => a.workspace_id === w.workspace_id,
+                  ) ?? [];
+                return (
+                  <section className="ah-workspace-card" key={w.workspace_id}>
+                    <h2>
+                      <Link to={`/workspaces/${w.workspace_id}`}>
+                        {w.display_name ?? w.name}
+                      </Link>
+                    </h2>
+                    {conversations.length ? (
+                      <ul>
+                        {conversations.map((a) => (
+                          <li key={a.agent_id}>
+                            <Link to={`/agents/${a.agent_id}`}>
+                              {a.title.display}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>Ei keskusteluja.</p>
+                    )}
+                  </section>
+                );
+              })}
+            </div>
+          </>
+        ) : null}
         {source === "absent" ? (
           <InlineNotice
             title="Lähdettä ei löydy"
-            description="~/src puuttuu. Tämä ei tarkoita tyhjää listaa."
+            description="Työtilakansiota ei löydy."
             tone="warning"
           />
         ) : source !== "confirmed" ? (
           <InlineNotice
-            title="Lähteen tilaa ei voitu vahvistaa"
-            description="Workspacejen määrä ei ole tiedossa."
+            title="Työtiloja ei voitu vahvistaa"
+            description="Näytetään vain ne työtilat, jotka löytyivät."
             tone="warning"
           />
         ) : visible.length === 0 ? (
           <InlineNotice
-            title="Workspaceja ei ole"
-            description="~/src on olemassa mutta siellä ei ole näkyviä workspaceja."
+            title="Työtiloja ei vielä ole"
+            description="Työtilakansiossa ei ole näkyviä työtiloja."
           />
         ) : null}
       </>
@@ -648,7 +683,7 @@ export function App() {
                 collapsed={collapsed}
                 serverLabel={window.location.host}
                 connectionLabel={
-                  source === "confirmed" ? "Yhdistetty" : "Lähde osittainen"
+                  source === "confirmed" ? "Yhdistetty" : "Tietoja puuttuu"
                 }
                 connectionTone={source === "confirmed" ? "success" : "warning"}
                 sessionActions={
@@ -659,10 +694,10 @@ export function App() {
                   />
                 }
                 filterValue={filter}
-                resultSummary={`${matches.length} ${source === "confirmed" ? "workspacea" : "havaittua workspacea · määrä voi olla puutteellinen"}`}
+                resultSummary={`${matches.length} ${source === "confirmed" ? "työtilaa" : "löydettyä työtilaa"}`}
                 summaryAction={
                   <NavLink
-                    label="Kaikki workspacet"
+                    label="Kaikki työtilat"
                     href="/workspaces"
                     current={
                       location.pathname === "/workspaces" ? "page" : false
@@ -673,11 +708,6 @@ export function App() {
                 onToggle={() => setCollapsed(!collapsed)}
                 onFilter={(v) => dispatch(filterChanged(v))}
                 onRefresh={manualRefresh}
-                onCreate={() => {}}
-                createAvailability={{
-                  state: "read_only",
-                  reason: "Tämä näkymä on vain luku -tilassa.",
-                }}
               >
                 {matches.map((w) => (
                   <WorkspaceSection
@@ -685,7 +715,14 @@ export function App() {
                     workspaceId={w.workspace_id}
                     name={w.display_name ?? w.name}
                     href={`/workspaces/${w.workspace_id}`}
-                    expanded={expanded[w.workspace_id] ?? false}
+                    expanded={
+                      expanded[w.workspace_id] ??
+                      Boolean(
+                        snapshot.agents.some(
+                          (a) => a.workspace_id === w.workspace_id,
+                        ),
+                      )
+                    }
                     selected={selectedId === w.workspace_id}
                     summary={`${w.kind === "git_main_worktree" ? "Git" : "Hakemisto"} · ${sourceLabel(w.facts.find((f) => f.source === "filesystem")?.state ?? "unknown")}`}
                     mutationState={
@@ -701,14 +738,21 @@ export function App() {
                         agentId: a.agent_id,
                         href: `/agents/${a.agent_id}`,
                         title: a.title.display,
-                        activityLabel: "Prosessi ei tiedossa",
-                        controlLabel: "Vain luku",
+                        activityLabel: "",
+                        controlLabel: "",
                         selected: a.agent_id === selectedAgentId,
                       }))}
                     onToggle={() =>
                       setExpanded({
                         ...expanded,
-                        [w.workspace_id]: !(expanded[w.workspace_id] ?? false),
+                        [w.workspace_id]: !(
+                          expanded[w.workspace_id] ??
+                          Boolean(
+                            snapshot.agents.some(
+                              (a) => a.workspace_id === w.workspace_id,
+                            ),
+                          )
+                        ),
                       })
                     }
                   />

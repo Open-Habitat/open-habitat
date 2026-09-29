@@ -177,7 +177,7 @@ export function Menu({
     >
       <AriaButton ref={triggerRef} className="ah-button ah-button-secondary">
         {label}
-        <span aria-hidden="true"> ▾</span>
+        <span aria-hidden="true" className="ah-menu-chevron" />
       </AriaButton>
       <Popover className="ah-popover">
         <AriaMenu aria-label={label} onAction={(key) => onAction(String(key))}>

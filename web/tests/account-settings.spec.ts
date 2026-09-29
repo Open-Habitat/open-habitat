@@ -125,7 +125,7 @@ test("@account-settings unavailable snapshot does not display previous identity"
     page.getByRole("heading", { name: "Yhteyttä ei saatu" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("navigation", { name: "Workspacet ja agentit" }),
+    page.getByRole("navigation", { name: "Työtilat ja keskustelut" }),
   ).toHaveCount(0);
   await expect(page.getByText("Oma tili")).toHaveCount(0);
   await page.screenshot({

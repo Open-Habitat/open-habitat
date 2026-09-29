@@ -237,7 +237,6 @@ function NavigationFixture() {
       onToggle={noop}
       onFilter={setFilter}
       onRefresh={noop}
-      onCreate={noop}
     >
       <WorkspaceSection
         workspaceId="w-1"

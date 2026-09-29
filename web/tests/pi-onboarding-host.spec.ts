@@ -62,9 +62,9 @@ test("@pi-onboarding native attempt drives the production browser, never a callb
       (await foreign.request.get("/api/v1/onboarding/pi/attempt")).status(),
     ).toBe(404);
     await page.request.get("/fixture/pi-state?value=usable");
-    await expect(page.getByRole("heading", { name: "Workspacet" })).toBeVisible(
-      { timeout: 12000 },
-    );
+    await expect(page.getByRole("heading", { name: "Työtilat" })).toBeVisible({
+      timeout: 12000,
+    });
     await expect(page.getByText("ABCD-1234")).toHaveCount(0);
     await page.screenshot({
       path: testInfo.outputPath("pi-workspaces.png"),
@@ -103,7 +103,7 @@ test("@pi-onboarding cancel, unknown, expiry and stale session fail closed", asy
       page.getByRole("heading", { name: "Kirjautuminen keskeytyi" }),
     ).toBeVisible({ timeout: 9000 });
     await page.getByRole("button", { name: "Tarkista tila" }).click();
-    await expect(page.getByText("Workspacet", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Työtilat", { exact: true })).toHaveCount(0);
     await page.request.get("/fixture/expire");
     await page.reload();
     await expect(

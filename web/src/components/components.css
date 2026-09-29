@@ -145,6 +145,18 @@
   flex-shrink: 0;
   margin-inline-start: auto;
 }
+.ah-rail-mobile-label {
+  display: none;
+}
+.ah-menu-chevron {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 2px 2px 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+}
 .ah-rail-collapsed .ah-rail-head {
   padding: 10px 0;
   border: 0;
@@ -694,6 +706,58 @@ select:focus-visible,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.ah-workspace-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: var(--ah-s4);
+  margin-top: var(--ah-s6);
+}
+.ah-workspace-card {
+  min-width: 0;
+  padding: var(--ah-s5);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+}
+.ah-workspace-card h2 {
+  margin: 0 0 var(--ah-s3);
+  font-size: 1rem;
+}
+.ah-workspace-card ul {
+  display: grid;
+  gap: var(--ah-s2);
+  margin: 0;
+  padding-left: var(--ah-s5);
+}
+.ah-workspace-card p {
+  margin: 0;
+  color: var(--ah-muted);
+}
+.ah-workspace-card a,
+.ah-back-link {
+  color: var(--ah-accent-ink);
+  overflow-wrap: anywhere;
+}
+.ah-workspace-detail {
+  margin-bottom: var(--ah-s6);
+}
+.ah-workspace-detail h1 {
+  margin-bottom: var(--ah-s2);
+}
+.ah-workspace-detail p {
+  margin: 0;
+  color: var(--ah-ink-2);
+}
+.ah-workspace-facts {
+  margin-top: var(--ah-s4);
+}
+.ah-workspace-facts summary {
+  color: var(--ah-accent-ink);
+  cursor: pointer;
+}
+.ah-workspace-facts .ah-facts {
+  margin-bottom: 0;
+}
 .ah-workspace {
   display: grid;
   gap: var(--ah-s1);
@@ -944,6 +1008,43 @@ select:focus-visible,
   }
   .ah-rail-content {
     overflow: visible;
+  }
+  .ah-rail-collapsed {
+    width: 100%;
+  }
+  .ah-rail-collapsed .ah-rail-head {
+    padding: 10px;
+    border-bottom: 0;
+  }
+  .ah-rail-collapsed .ah-rail-title {
+    flex-direction: row;
+  }
+  .ah-rail-collapsed .ah-rail-title > strong,
+  .ah-rail-collapsed
+    .ah-rail-title
+    > span:not(.ah-rail-mobile-label):not(.ah-control) {
+    display: none;
+  }
+  .ah-rail-collapsed .ah-rail-mobile-label {
+    display: inline;
+    font-weight: 600;
+  }
+  .ah-rail-collapsed .ah-rail-title .ah-control {
+    margin-inline-start: auto;
+  }
+  .ah-rail-collapsed .ah-rail-foot {
+    padding: 8px 10px;
+  }
+  .ah-rail-collapsed .ah-rail-identity {
+    display: inline;
+  }
+  .ah-rail-collapsed .ah-account-shelf {
+    justify-content: space-between;
+  }
+  .ah-rail-collapsed .ah-account-shelf .ah-button {
+    max-width: none;
+    padding-inline: 7px;
+    font-size: 12px;
   }
   .ah-app-shell:has(.ah-rail) {
     height: auto;

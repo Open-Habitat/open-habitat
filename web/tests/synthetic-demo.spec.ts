@@ -5,10 +5,10 @@ import { expect, test } from "@playwright/test";
 const base = demoOrigin;
 test.use({ baseURL: base, viewport: { width: 1280, height: 720 } });
 for (const [scenario, heading] of [
-  ["ready", "Workspacet"],
-  ["empty", "Workspacet"],
-  ["partial", "Workspacet"],
-  ["missing", "Workspacet"],
+  ["ready", "Työtilat"],
+  ["empty", "Työtilat"],
+  ["partial", "Työtilat"],
+  ["missing", "Työtilat"],
   ["unavailable", "Yhteyttä ei saatu"],
   ["login", "Tervetuloa Omega Habitatiin"],
 ] as const) {
@@ -25,7 +25,7 @@ for (const [scenario, heading] of [
       await page.getByRole("link", { name: "git-project" }).click();
       await expect(page.locator("main h1")).toHaveText("git-project");
       await page
-        .getByRole("textbox", { name: "Suodata workspaceja ja agentteja" })
+        .getByRole("textbox", { name: "Suodata työtiloja" })
         .fill("nonsense");
       await expect(
         page.getByText("Hakua vastaavia kohteita ei ole."),
@@ -43,7 +43,7 @@ for (const [scenario, heading] of [
     }
     if (scenario === "empty")
       await expect(
-        page.getByText("Workspaceja ei ole", { exact: true }).first(),
+        page.getByText("Työtiloja ei vielä ole", { exact: true }).first(),
       ).toBeVisible();
     if (scenario === "missing")
       await expect(

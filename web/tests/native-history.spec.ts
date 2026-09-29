@@ -17,7 +17,7 @@ async function login(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
   await expect(
-    page.getByRole("navigation", { name: "Workspacet ja agentit" }),
+    page.getByRole("navigation", { name: "Työtilat ja keskustelut" }),
   ).toContainText("Oma tili");
 }
 test("@native-history native page, continuation, unknown, reopen and no writes", async ({

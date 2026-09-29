@@ -43,7 +43,6 @@ export default function CatalogPreview({
       onToggle={noop}
       onFilter={setFilter}
       onRefresh={noop}
-      onCreate={noop}
     >
       <WorkspaceSection
         workspaceId="workspace-1"

@@ -42,7 +42,7 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   await page.getByRole("button", { name: "Avaa aurinkokello" }).click();
   await expect(
     page
-      .getByRole("navigation", { name: "Workspacet ja agentit" })
+      .getByRole("navigation", { name: "Työtilat ja keskustelut" })
       .getByRole("link", { name: /Tutki synteettinen työtila|Uusi keskustelu/ })
       .last(),
   ).toBeVisible();

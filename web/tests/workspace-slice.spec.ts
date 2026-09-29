@@ -19,7 +19,7 @@ async function login(page: Page, user: "Alice" | "Bob" = "Alice") {
   ).toBeVisible();
   await page.getByRole("link", { name: user }).click();
   await expect(
-    page.getByRole("navigation", { name: "Workspacet ja agentit" }),
+    page.getByRole("navigation", { name: "Työtilat ja keskustelut" }),
   ).toContainText("Oma tili");
 }
 async function shot(page: Page, name: string) {
@@ -95,7 +95,7 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
       .locator(".ah-shell-body")
       .evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ")[0]),
   ).toBe("296px");
-  await expect(page.locator("main")).toContainText("Annotaatio");
+  await expect(page.locator("main")).toContainText("Hakemisto");
   await expect(page.getByRole("link", { name: "git-project" })).toHaveAttribute(
     "aria-current",
     "page",
@@ -105,12 +105,9 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   expect(
     await selectedRow.evaluate((el) => el.getBoundingClientRect().height),
   ).toBeLessThanOrEqual(36);
-  await expect(
-    page.getByRole("button", { name: "Uusi workspace" }),
-  ).toBeDisabled();
-  await expect(
-    page.getByText("Tämä näkymä on vain luku -tilassa."),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Uusi työtila" })).toHaveCount(
+    0,
+  );
   await shot(page, "ready");
   await page.getByRole("button", { name: "Sulje navigaatio" }).click();
   await expect(page.getByRole("button", { name: "Tilivalikko" })).toBeVisible();
@@ -118,11 +115,9 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   await page.getByRole("link", { name: "ordinary-dir" }).click();
   await expect(page.locator("main h1")).toHaveText("ordinary-dir");
   await page.getByRole("link", { name: "without-metadata" }).click();
-  await expect(page.locator("main")).toContainText(
-    "Ei vahvistettua Git-työhakemistoa",
-  );
+  await expect(page.locator("main")).toContainText("Hakemisto");
   await page
-    .getByRole("textbox", { name: "Suodata workspaceja ja agentteja" })
+    .getByRole("textbox", { name: "Suodata työtiloja" })
     .fill("not-found");
   await expect(
     page.getByText("Hakua vastaavia kohteita ei ole."),
@@ -130,8 +125,8 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   await page.getByRole("button", { name: "Tyhjennä haku" }).click();
   await page.getByRole("button", { name: "Päivitä" }).click();
   await expect(page.getByRole("link", { name: "ordinary-dir" })).toBeVisible();
-  await page.getByRole("link", { name: "Kaikki workspacet" }).click();
-  await expect(page.locator("main h1")).toHaveText("Workspacet");
+  await page.getByRole("link", { name: "Kaikki työtilat" }).click();
+  await expect(page.locator("main h1")).toHaveText("Työtilat");
   await page.keyboard.press("Tab");
   await page.getByRole("link", { name: "Siirry sisältöön" }).focus();
   await page.keyboard.press("Enter");
@@ -162,7 +157,7 @@ test("@workspace-slice confirmed empty, missing, failure, partial and deep link 
   await scenario(page, "empty");
   await page.goto("/workspaces");
   await expect(
-    page.getByText("Workspaceja ei ole", { exact: true }).first(),
+    page.getByText("Työtiloja ei vielä ole", { exact: true }).first(),
   ).toBeVisible();
   await shot(page, "empty");
   await page.goto(deep);
@@ -179,13 +174,16 @@ test("@workspace-slice confirmed empty, missing, failure, partial and deep link 
   await shot(page, "error");
   await scenario(page, "partial");
   await page.goto("/workspaces");
+  await expect(page.getByText("Työtiloja ei voitu vahvistaa")).toBeVisible();
   await expect(
-    page.getByText("Lähteen tilaa ei voitu vahvistaa"),
+    page.getByRole("navigation").getByRole("link", { name: "uncertain" }),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "uncertain" })).toBeVisible();
-  await expect(page.getByText(/määrä voi olla puutteellinen/)).toBeVisible();
+  await expect(page.getByText(/löydettyä työtilaa/)).toBeVisible();
   await shot(page, "partial");
-  await page.getByRole("link", { name: "uncertain" }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "uncertain" })
+    .click();
   await expect(page.locator("main")).toContainText(
     "Lähteen havainto on osittainen",
   );
@@ -235,7 +233,9 @@ test("@workspace-slice identity isolation, forged headers, expiry and loading", 
     await scenario(pa, "delay");
     await pa.goto("/workspaces");
     await expect(pa.locator("main h1")).toHaveText("Ladataan");
-    await expect(pa.getByRole("link", { name: "ordinary-dir" })).toBeVisible();
+    await expect(
+      pa.getByRole("navigation").getByRole("link", { name: "ordinary-dir" }),
+    ).toBeVisible();
     await pa.request.get("/fixture/expire");
     await pa.reload();
     await expect(
