@@ -3,7 +3,7 @@ created: 2026-09-29
 updated: 2026-09-29
 type: task
 reporter: jari
-status: open
+status: in-progress
 priority: high
 lane: gateway-revocation
 collision: [internal/gateway/, docs/]
