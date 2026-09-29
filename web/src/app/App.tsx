@@ -25,7 +25,7 @@ import {
   BrowserConversation,
   type ConversationPlace,
 } from "./BrowserConversation";
-import { PiOnboarding } from "./PiOnboarding";
+import { GitHubOnboarding } from "./GitHubOnboarding";
 import { piStatus } from "./pi";
 import {
   authenticated,
@@ -369,7 +369,7 @@ export function App() {
         ) : null}
       </>
     ) : phase === "pi_required" ? (
-      <PiOnboarding
+      <GitHubOnboarding
         onUsable={refresh}
         onLogin={requireLogin}
         onLogout={logout}

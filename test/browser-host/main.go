@@ -121,11 +121,31 @@ esac
 	var devices []*daemon.PiDevice
 	var configs []transport.Config
 	var trusters []func(*http.Request) bool
+	var cloneCalls atomic.Int64
 	defer func() {
 		for _, srv := range servers {
 			_ = srv.Close()
 		}
 	}()
+	gitProgram := filepath.Join(tmp, "synthetic-git")
+	gitScript := `#!/bin/sh
+if [ "$1" = clone ]; then
+  mkdir -p .git || exit 1
+  printf '%s\n' "$3" > .git/origin
+  exit 0
+fi
+if [ "$1" = -c ]; then shift 2; fi
+case "$1" in
+ rev-parse) test -d .git && printf 'true\n' ;;
+ remote) cat .git/origin ;;
+ config) cat .git/origin ;;
+ status) test -d .git ;;
+ *) exit 1 ;;
+esac
+`
+	if e := os.WriteFile(gitProgram, []byte(gitScript), 0700); e != nil {
+		log.Fatal(e)
+	}
 	for _, m := range identities {
 		home := filepath.Join(tmp, m.Username)
 		if e := os.MkdirAll(filepath.Join(home, "src"), 0700); e != nil {
@@ -179,6 +199,25 @@ esac
 			}
 			return daemon.Discovery{State: "present", Entries: entries}
 		}, home)
+		ghProgram := filepath.Join(tmp, "synthetic-gh-"+m.Username)
+		ghScript := `#!/bin/sh
+case "$4" in
+ /user) printf '{"id":` + m.Subject + `}\n' ;;
+ /user/repos*)
+   case "$4" in
+    *page=1*) printf '%s\n' '[{"name":"first","full_name":"fixture/first","private":false,"description":"Synthetic first","html_url":"https://github.com/fixture/first","owner":{"login":"fixture"}},{"name":"second","full_name":"fixture/second","private":true,"description":"Synthetic second","html_url":"https://github.com/fixture/second","owner":{"login":"fixture"}}]' ;;
+    *) printf '[]\n' ;;
+   esac ;;
+ /repos/fixture/*) name="${4##*/}"; printf '{"name":"%s","full_name":"fixture/%s","clone_url":"https://github.com/fixture/%s.git","owner":{"login":"fixture"}}\n' "$name" "$name" "$name" ;;
+ *) exit 1 ;;
+esac
+`
+		if m.Username == "bob" {
+			ghScript = strings.ReplaceAll(ghScript, "first", "bob-only")
+		}
+		if e := os.WriteFile(ghProgram, []byte(ghScript), 0700); e != nil {
+			log.Fatal(e)
+		}
 		mux := http.NewServeMux()
 		trusted := func(r *http.Request) bool { return r.Context().Value("peer") == uid }
 		device := &daemon.PiDevice{Home: tmp, Node: fakeNode, Entry: "/synthetic/entry", Manifest: "/synthetic/manifest"}
@@ -200,6 +239,13 @@ esac
 				next.ServeHTTP(w, r)
 			})
 		}
+		mux.Handle(daemon.RepoCatalogPath, daemon.RepoCatalogHandlerWithFixtureGH(cfg, trusted, ghProgram, home))
+		cloneHandler := daemon.RepoCloneHandlerWithFixturePrograms(cfg, trusted, home, home, ghProgram, gitProgram)
+		mux.Handle(daemon.RepoClonePath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			cloneCalls.Add(1)
+			cloneHandler.ServeHTTP(w, r)
+		}))
+		mux.Handle(daemon.RepoObservePath, daemon.RepoObserveHandlerWithFixtureGit(cfg, trusted, home, gitProgram))
 		mux.Handle("GET /api/v1/onboarding/pi/status", daemon.PiStatusHandler(cfg, trusted, status))
 		attempt := &atomic.Value{}
 		attempt.Store(daemon.PiAttemptHandler(cfg, trusted, device))
@@ -277,6 +323,46 @@ esac
 	ts.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/fixture/") {
 			switch r.URL.Path {
+			case "/fixture/clone-count":
+				fmt.Fprint(w, cloneCalls.Load())
+				return
+			case "/fixture/checkout":
+				// An existing native checkout or conflicting directory, never a real home.
+				name := r.URL.Query().Get("name")
+				mode := r.URL.Query().Get("mode")
+				if (name != "first" && name != "second") || (mode != "existing" && mode != "conflict" && mode != "absent") {
+					http.Error(w, "invalid fixture", 400)
+					return
+				}
+				destination := filepath.Join(tmp, "alice", "src", name)
+				if mode == "absent" {
+					if e := os.RemoveAll(destination); e != nil {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
+					w.WriteHeader(204)
+					return
+				}
+				if e := os.RemoveAll(destination); e != nil {
+					http.Error(w, "fixture failed", 500)
+					return
+				}
+				if e := os.MkdirAll(destination, 0700); e != nil {
+					http.Error(w, "fixture failed", 500)
+					return
+				}
+				if mode == "existing" {
+					if e := os.MkdirAll(filepath.Join(destination, ".git"), 0700); e != nil {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
+					if e := os.WriteFile(filepath.Join(destination, ".git", "origin"), []byte("https://github.com/fixture/"+name+".git\n"), 0600); e != nil {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
+				}
+				w.WriteHeader(204)
+				return
 			case "/fixture/history":
 				mode := r.URL.Query().Get("mode")
 				path := histories["alice"]
