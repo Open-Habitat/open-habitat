@@ -2,7 +2,7 @@
 created: 2026-09-29
 updated: 2026-09-29
 type: bug
-status: open
+status: in-progress
 priority: high
 lane: pi-onboarding-live-fix
 collision: [web/src/app/PiOnboarding.tsx, web/src/components/PiDeviceSignIn.tsx]
