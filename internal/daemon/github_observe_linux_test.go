@@ -54,6 +54,33 @@ func TestObserveCheckoutReadOnly(t *testing.T) {
 	os.Symlink(home, filepath.Join(home, "src"))
 	check("unavailable")
 }
+func TestObserveSeparateMappedHomes(t *testing.T) {
+	cfg, first := cloneFixture(t)
+	second := t.TempDir()
+	for _, home := range []string{first, second} {
+		if err := os.MkdirAll(filepath.Join(home, "src", "repo", ".git"), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run := func(_ context.Context, _, cwd, _ string, args ...string) ([]byte, error) {
+		if args[len(args)-1] == "--is-inside-work-tree" {
+			return []byte("true\n"), nil
+		}
+		if cwd == first {
+			return []byte("https://github.com/alice/repo.git\n"), nil
+		}
+		return []byte("https://github.com/bob/repo.git\n"), nil
+	}
+	if got := observeCheckout(context.Background(), cfg, first, "git", run, "alice/repo"); got != "confirmed" {
+		t.Fatal(got)
+	}
+	if got := observeCheckout(context.Background(), cfg, second, "git", run, "alice/repo"); got != "conflict" {
+		t.Fatal(got)
+	}
+	if got := observeCheckout(context.Background(), cfg, first, "git", run, "bob/repo"); got != "conflict" {
+		t.Fatal(got)
+	}
+}
 func TestObserveWithNativeGit(t *testing.T) {
 	cfg, home := cloneFixture(t)
 	git, err := exec.LookPath("git")
