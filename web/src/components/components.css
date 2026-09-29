@@ -903,6 +903,88 @@ select:focus-visible,
 .ah-feed > li {
   min-width: 0;
 }
+/* Reading views use a continuous transcript; exceptional events keep their own frame. */
+.ah-reading-view .ah-agent-header {
+  border-bottom: 1px solid var(--ah-line-soft);
+  padding-bottom: var(--ah-s2);
+}
+.ah-reading-view .ah-agent-header > p:first-child {
+  margin-block: 0;
+  font-size: 0.85rem;
+}
+.ah-reading-view .ah-agent-header h1 {
+  margin-block: 0;
+  font-size: 1.25rem;
+}
+.ah-reading-view .ah-agent-header .ah-actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-block: var(--ah-s2);
+}
+.ah-reading-view .ah-feed {
+  gap: var(--ah-s3);
+}
+.ah-reading-view .ah-feed > li[data-kind="user"],
+.ah-reading-view .ah-feed > li[data-kind="assistant"] {
+  margin: 0;
+}
+.ah-reading-view .ah-feed > li[data-kind="user"] + li[data-kind="assistant"] {
+  margin-top: calc(-1 * var(--ah-s2));
+}
+.ah-reading-view .ah-feed .ah-message:not(.ah-message-alert) {
+  max-width: min(76ch, 100%);
+  padding: var(--ah-s2) var(--ah-s3);
+  border: 0;
+  border-radius: var(--ah-r-md);
+  background: transparent;
+}
+.ah-reading-view .ah-feed li[data-kind="user"] .ah-message:not(.ah-message-alert) {
+  background: var(--ah-surface-2);
+}
+.ah-reading-view .ah-feed .ah-message:not(.ah-message-alert) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--ah-s2);
+  align-items: start;
+}
+.ah-reading-view .ah-feed .ah-message:not(.ah-message-alert) > header {
+  grid-column: 1;
+  grid-row: 1;
+}
+.ah-reading-view .ah-feed .ah-message:not(.ah-message-alert) > .ah-prose {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+.ah-reading-view .ah-feed .ah-message:not(.ah-message-alert) > .ah-control {
+  grid-column: 2;
+  grid-row: 1;
+}
+.ah-reading-view .ah-feed .ah-message header {
+  gap: var(--ah-s2);
+  font-size: 0.85rem;
+}
+.ah-reading-view .ah-feed .ah-message:not(.ah-message-alert) header .ah-status {
+  color: var(--ah-muted);
+}
+.ah-reading-view .ah-feed .ah-message .ah-prose :first-child {
+  margin-top: 0;
+}
+.ah-reading-view .ah-feed .ah-message .ah-prose :last-child {
+  margin-bottom: 0;
+}
+.ah-model-change {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--ah-s2);
+  color: var(--ah-muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.ah-model-change code {
+  color: var(--ah-ink);
+  overflow-wrap: anywhere;
+}
 .ah-message {
   min-width: 0;
   max-width: min(70ch, 100%);

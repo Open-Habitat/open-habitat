@@ -17,6 +17,24 @@ const entry: HistoryEntry = {
 
 afterEach(() => vi.unstubAllGlobals());
 
+it("shows an exact model ID as copyable timeline metadata, not code", () => {
+  const copy = vi.fn().mockResolvedValue(undefined);
+  vi.stubGlobal("navigator", { clipboard: { writeText: copy } });
+  const model = {
+    ...entry,
+    kind: "model_change" as const,
+    content: { ...entry.content, text: "openai/gpt-5-codex", complete: true },
+  };
+  const { container } = render(<Entry entry={model} />);
+  expect(screen.getByText("openai/gpt-5-codex").tagName).toBe("CODE");
+  expect(container.querySelector(".ah-model-change")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Kopioi koodi" })).toBeNull();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Kopioi mallin tunniste" }),
+  );
+  expect(copy).toHaveBeenCalledWith("openai/gpt-5-codex");
+});
+
 it("does not add a late content chunk after the view becomes stale", async () => {
   let finish!: (response: Response) => void;
   const pending = new Promise<Response>((resolve) => {

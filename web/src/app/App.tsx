@@ -656,6 +656,7 @@ export function App() {
         ) ? (
           <BrowserConversation
             stale={phase === "stale"}
+            onRefreshStale={refresh}
             key={`${identity}:${selected.workspace_id}:${location.search}`}
             workspace={selected}
             id={

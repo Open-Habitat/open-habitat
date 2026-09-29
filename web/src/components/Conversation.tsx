@@ -17,7 +17,7 @@ export function ConversationTimeline({
   onHistoryModeChange,
 }: {
   state: "loading" | "ready" | "empty" | "error" | "stale" | "unavailable";
-  items: TimelineItem[];
+  items: (TimelineItem & { kind?: string })[];
   newContentCount?: number;
   historyMode: "virtualized" | "pagedAccessible";
   emptyLabel?: string;
@@ -65,7 +65,9 @@ export function ConversationTimeline({
       ) : null}
       <ol className="ah-feed">
         {items.map((item) => (
-          <li key={item.id}>{item.content}</li>
+          <li key={item.id} data-kind={item.kind}>
+            {item.content}
+          </li>
         ))}
       </ol>
       {newContentCount > 0 ? (
@@ -96,7 +98,9 @@ function Message({
   onCopy: () => void;
 }) {
   return (
-    <article className="ah-message">
+    <article
+      className={`ah-message${stateTone === "danger" || stateTone === "warning" || stateAnimated ? " ah-message-alert" : ""}`}
+    >
       <header>
         <strong>{speaker}</strong>
         {time ? <time>{time}</time> : null}
@@ -182,6 +186,27 @@ export function AssistantMessage({
     >
       {children}
     </Message>
+  );
+}
+export function ModelChange({
+  modelId,
+  onCopy,
+}: {
+  modelId: string;
+  onCopy: () => void;
+}) {
+  return (
+    <aside className="ah-model-change" aria-label="Mallin vaihto">
+      <span>
+        Malli vaihtui · <code>{modelId}</code>
+      </span>
+      <Button
+        label="Kopioi mallin tunniste"
+        variant="quiet"
+        size="compact"
+        onPress={onCopy}
+      />
+    </aside>
   );
 }
 export function MarkdownContent({

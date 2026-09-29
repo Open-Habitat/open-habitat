@@ -4,6 +4,35 @@ import { Markdown } from "./Markdown";
 import { ConversationTimeline, UserMessage } from "./Conversation";
 
 describe("untrusted conversation Markdown", () => {
+  it("marks transcript rows by kind without erasing exceptional or tool content", () => {
+    const { container } = render(
+      <ConversationTimeline
+        state="ready"
+        items={[
+          {
+            id: "u",
+            kind: "user",
+            content: <UserMessage sourceText="Hei" onCopy={() => {}} />,
+          },
+          { id: "tool", kind: "tool", content: <pre>Työkalun tulos</pre> },
+          {
+            id: "unknown",
+            kind: "unknown",
+            content: <p>Tuntematon tapahtuma</p>,
+          },
+        ]}
+        historyMode="pagedAccessible"
+        onJumpToLatest={() => {}}
+      />,
+    );
+    expect(
+      Array.from(container.querySelectorAll(".ah-feed > li"), (row) =>
+        row.getAttribute("data-kind"),
+      ),
+    ).toEqual(["user", "tool", "unknown"]);
+    expect(screen.getByText("Työkalun tulos")).toBeTruthy();
+    expect(screen.getByText("Tuntematon tapahtuma")).toBeTruthy();
+  });
   it("formats GFM, code and copy controls without interpreting raw HTML", async () => {
     const { container } = render(
       <Markdown

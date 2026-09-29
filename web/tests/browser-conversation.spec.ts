@@ -44,6 +44,9 @@ test("@browser-conversation create, send once, reconnect and old history stays r
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Tarkista keskustelun tila" }),
+  ).toHaveClass(/ah-button-quiet/);
   await page
     .getByRole("textbox", { name: "Viesti Pi:lle" })
     .fill("Synteettinen testipyyntö");
@@ -160,6 +163,9 @@ test("@browser-conversation uncertain send survives reload without duplicate", a
   });
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(page.getByText(/Lähetyksen tulos epävarma/)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Tarkista keskustelun tila" }),
+  ).toHaveClass(/ah-button-primary/);
   await page.reload();
   await expect(page.getByText("Aiemman pyynnön tulos epävarma")).toBeVisible();
   await expect(
@@ -235,7 +241,7 @@ test("@browser-conversation revalidation restores editor selection, paged readin
     });
   });
   count = 50;
-  await page.getByRole("button", { name: "Tarkista tila ja historia" }).click();
+  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
   await expect(page.locator(".ah-feed li")).toHaveCount(50);
   const feed = page.locator("section:has(> .ah-timeline)").last();
   await editor.fill("kesken oleva viesti");
@@ -293,7 +299,7 @@ test("@browser-conversation revalidation restores editor selection, paged readin
   // An incoming native entry beyond the first page must be signalled without
   // waiting for a manual history-page click or jumping away from the reader.
   count = 51;
-  await page.getByRole("button", { name: "Tarkista tila ja historia" }).click();
+  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
   await expect(
     page.getByRole("button", { name: "Uutta sisältöä (1)" }),
   ).toBeVisible();
@@ -327,7 +333,7 @@ test("@browser-conversation malformed host status fails closed without rendering
       }),
     }),
   );
-  await page.getByRole("button", { name: "Tarkista tila ja historia" }).click();
+  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
   await expect(
     page.getByText(/Yhteys katkesi tai istunto muuttui/),
   ).toBeVisible();

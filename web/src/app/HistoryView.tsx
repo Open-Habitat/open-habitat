@@ -4,7 +4,7 @@ import {
   AgentHeader,
   AssistantMessage,
   Button,
-  CodeBlock,
+  ModelChange,
   ConversationTimeline,
   InlineNotice,
   Markdown,
@@ -105,11 +105,7 @@ export function Entry({
         </ToolRow>
       ) : null}
       {entry.kind === "model_change" ? (
-        <CodeBlock
-          text={content.text}
-          languageLabel="Mallin vaihto"
-          onCopy={copy}
-        />
+        <ModelChange modelId={content.text} onCopy={copy} />
       ) : null}
       {entry.kind === "unknown" ? (
         <UnknownEvent
@@ -202,7 +198,7 @@ export function HistoryView({
     }
   };
   return (
-    <section>
+    <section className="ah-reading-view">
       <AgentHeader
         title={agent.title.display}
         activityLabel="Prosessin tila ei tiedossa"
@@ -226,6 +222,7 @@ export function HistoryView({
         state={state}
         items={entries.map((entry) => ({
           id: entry.entry_key,
+          kind: entry.kind,
           content: <Entry key={entry.entry_key} entry={entry} stale={stale} />,
         }))}
         historyMode="pagedAccessible"

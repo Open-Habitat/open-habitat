@@ -55,8 +55,10 @@ export function BrowserConversation({
   place,
   onSessionCreated,
   stale = false,
+  onRefreshStale,
 }: {
   stale?: boolean;
+  onRefreshStale?: () => void;
   workspace: Workspace;
   id?: string;
   title?: string;
@@ -581,7 +583,7 @@ export function BrowserConversation({
     (s) => s.workspace_id === workspace.workspace_id,
   );
   return (
-    <section ref={section}>
+    <section ref={section} className="ah-reading-view">
       {!id ? (
         <>
           <h2>Pi-keskustelut</h2>
@@ -742,6 +744,7 @@ export function BrowserConversation({
               }
               items={entries.map((e) => ({
                 id: e.entry_key,
+                kind: e.kind,
                 content: <Entry key={e.entry_key} entry={e} stale={stale} />,
               }))}
               historyMode="pagedAccessible"
@@ -808,12 +811,18 @@ export function BrowserConversation({
               onModeChange={() => {}}
             />
           ) : null}
-          {!stale ? (
-            <Button
-              label="Tarkista tila ja historia"
-              onPress={() => void refresh()}
-            />
-          ) : null}
+          <Button
+            label="Tarkista keskustelun tila"
+            variant={
+              stale ||
+              ambiguous ||
+              current?.state === "uncertain" ||
+              historyError
+                ? "primary"
+                : "quiet"
+            }
+            onPress={() => (stale ? onRefreshStale?.() : void refresh())}
+          />
         </>
       )}
       {receipt ? <InlineNotice title={receipt} tone="warning" /> : null}
