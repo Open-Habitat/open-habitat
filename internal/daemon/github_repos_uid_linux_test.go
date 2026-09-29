@@ -68,11 +68,12 @@ esac
 			t.Fatal(e)
 		}
 		gitScript := `#!/bin/sh
+if [ "$1" = -c ]; then shift 2; fi
 case "$1" in
 clone) [ "$2" = -- ] && [ "$3" = "https://github.com/fixture/repo$(cat "$HOME/fixture-id").git" ] && [ "$4" = . ] || exit 9
  mkdir .git || exit 9 ;;
 rev-parse) printf 'true\n' ;;
-remote) printf 'https://github.com/fixture/repo%s.git\n' "$(cat "$HOME/fixture-id")" ;;
+remote|config) printf 'https://github.com/fixture/repo%s.git\n' "$(cat "$HOME/fixture-id")" ;;
 status) : ;;
 *) exit 9 ;;
 esac
@@ -177,6 +178,27 @@ esac
 			_, err = fmt.Sscanf(string(b), "%d %s", &status, &body)
 			return status, body, err
 		}
+		observeProbe := func(identity string) (int, string, error) {
+			cmd := exec.Command(os.Args[0], "-test.run=^TestRepoCatalogUIDProbe$")
+			cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: 21003, Gid: 21003}}
+			cmd.Env = append(os.Environ(), "REPO_UID_PROBE=1", "REPO_OBSERVE=1", "REPO_EXPECTED="+subject, "REPO_SOCKET="+socket, "REPO_SUBJECT="+identity)
+			b, err := cmd.CombinedOutput()
+			if err != nil {
+				return 0, string(b), err
+			}
+			var status int
+			var body string
+			_, err = fmt.Sscanf(string(b), "%d %s", &status, &body)
+			return status, body, err
+		}
+		status, body, e = observeProbe(foreign)
+		if e != nil || status != 403 || strings.Contains(body, "repo") {
+			t.Fatalf("forged observation %s: %d %s %v", subject, status, body, e)
+		}
+		status, body, e = observeProbe(subject)
+		if e != nil || status != 200 || !strings.Contains(body, "absent") {
+			t.Fatalf("observation before clone %s: %d %s %v", subject, status, body, e)
+		}
 		status, body, e = cloneProbe(foreign)
 		if e != nil || status != 403 {
 			t.Fatalf("forged clone %s: %d %s %v", subject, status, body, e)
@@ -184,6 +206,10 @@ esac
 		status, body, e = cloneProbe(subject)
 		if e != nil || status != 200 || !strings.Contains(body, "cloned") {
 			t.Fatalf("clone %s: %d %s %v", subject, status, body, e)
+		}
+		status, body, e = observeProbe(subject)
+		if e != nil || status != 200 || !strings.Contains(body, "confirmed") {
+			t.Fatalf("observation after clone %s: %d %s %v", subject, status, body, e)
 		}
 		status, body, e = cloneProbe(subject)
 		if e != nil || status != 409 || !strings.Contains(body, "checkout_exists") {
@@ -213,6 +239,7 @@ func serveCatalogUID(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.Handle(RepoCatalogPath, repoCatalogHandler(cfg, trusted, run))
 	mux.Handle(RepoClonePath, RepoCloneHandlerWithFixturePrograms(cfg, trusted, home, home, filepath.Join(home, "gh"), filepath.Join(home, "git")))
+	mux.Handle(RepoObservePath, RepoObserveHandlerWithFixtureGit(cfg, trusted, home, filepath.Join(home, "git")))
 	srv := &http.Server{Handler: mux, ConnContext: func(ctx context.Context, c net.Conn) context.Context {
 		if uc, ok := c.(*net.UnixConn); ok {
 			v, e := PeerUID(uc)
@@ -242,6 +269,8 @@ func TestRepoCatalogUIDProbe(t *testing.T) {
 	if os.Getenv("REPO_CLONE") == "1" {
 		method, path = "POST", RepoClonePath
 		bodyReader = bytes.NewBufferString(`{"full_name":"fixture/repo` + os.Getenv("REPO_EXPECTED") + `"}`)
+	} else if os.Getenv("REPO_OBSERVE") == "1" {
+		path = RepoObservePath + "?full_name=fixture%2Frepo" + os.Getenv("REPO_EXPECTED")
 	}
 	req, e := http.NewRequest(method, "http://unix"+path, bodyReader)
 	if e != nil {
