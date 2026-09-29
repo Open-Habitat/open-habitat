@@ -29,3 +29,9 @@ Pilot.9 sends authenticated users straight to Pi first-use. No repository picker
 
 ## Related
 @design-first-use-onboarding, @connect-github-workspaces, @manage-workspace-lifecycle, @fix-pi-onboarding-poll-starvation
+
+## Decisions
+
+### 2026-09-29T05:26:48Z · @jari
+
+2026-09-29: Jari explicitly authorizes the agent to clone his existing GitHub repositories in live integration testing and, when useful, create private disposable GitHub test repositories to verify the workflow. The agent may exercise the mapped native account with full permissions and need not ask separately for these routine tests. Keep automated synthetic fixtures separate from real accounts; record exact live outcomes without secrets or host-specific values in this public repository (concrete host receipts belong in Fleetrepo).
