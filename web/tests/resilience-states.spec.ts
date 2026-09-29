@@ -173,6 +173,7 @@ test("@resilience populated native history remains readable during outage", asyn
 test("@resilience active conversation stays readable but cannot send during outage", async ({
   page,
 }) => {
+  await page.request.get("/fixture/conversations-reset");
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();

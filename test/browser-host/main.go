@@ -89,8 +89,8 @@ func main() {
 		log.Fatal(e)
 	}
 	defer os.RemoveAll(tmp)
-	// Lab mode is for exploratory UI work: the real conversation controller
-	// runs a fake Pi, discovery scans the synthetic home, and data is richer.
+	// Lab mode adds richer synthetic history and workspaces; both modes run
+	// the real conversation controller against the fake Pi child.
 	lab := os.Getenv("BROWSER_HOST_LAB") == "1"
 	base := 4174
 	if raw, set := os.LookupEnv("NAH_PORT_BASE"); set {
@@ -151,6 +151,14 @@ esac
 	var devices []*daemon.PiDevice
 	var configs []transport.Config
 	var trusters []func(*http.Request) bool
+	var conversationHandlers []*atomic.Value
+	var conversationFactories []func() (http.Handler, context.CancelFunc)
+	var conversationCancels []context.CancelFunc
+	defer func() {
+		for _, cancel := range conversationCancels {
+			cancel()
+		}
+	}()
 	var cloneCalls atomic.Int64
 	defer func() {
 		for _, srv := range servers {
@@ -304,13 +312,23 @@ esac
 		mux.HandleFunc("/api/v1/onboarding/pi/attempt", func(w http.ResponseWriter, r *http.Request) {
 			attempt.Load().(http.Handler).ServeHTTP(w, r)
 		})
-		var conversations http.Handler = fakeConversations(trusted)
-		if lab {
-			// The real controller launches this binary as its Pi child.
-			conversations = daemon.ConversationHandlerWithFixtureRuntime(context.Background(), cfg, trusted, status, home, &core.PiRuntimeConfig{Node: self, Entry: "/synthetic/pi/dist/index.js", Manifest: "/synthetic/pi/package.json"})
+		// The fixture can replace the daemon incarnation between browser cases;
+		// each incarnation still runs the real controller and fake Pi child.
+		newConversations := func() (http.Handler, context.CancelFunc) {
+			ctx, cancel := context.WithCancel(context.Background())
+			return daemon.ConversationHandlerWithFixtureRuntime(ctx, cfg, trusted, status, home, &core.PiRuntimeConfig{Node: self, Entry: "/synthetic/pi/dist/index.js", Manifest: "/synthetic/pi/package.json"}), cancel
 		}
-		mux.Handle("/api/v1/conversations", conversations)
-		mux.Handle("/api/v1/conversations/", conversations)
+		conversations, cancel := newConversations()
+		current := &atomic.Value{}
+		current.Store(conversations)
+		conversationHandlers = append(conversationHandlers, current)
+		conversationCancels = append(conversationCancels, cancel)
+		conversationFactories = append(conversationFactories, newConversations)
+		serveConversation := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			current.Load().(http.Handler).ServeHTTP(w, r)
+		})
+		mux.Handle("/api/v1/conversations", serveConversation)
+		mux.Handle("/api/v1/conversations/", serveConversation)
 		mux.Handle("/api/v1/agents/", gate(daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home)))
 		mux.Handle("/api/v1/content/", gate(daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home)))
 		mux.Handle(daemon.SnapshotPath, gate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -375,6 +393,17 @@ esac
 	ts.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/fixture/") {
 			switch r.URL.Path {
+			case "/fixture/conversations-reset":
+				// Tests explicitly discard the previous synthetic daemon incarnation.
+				for i, current := range conversationHandlers {
+					conversations, cancel := conversationFactories[i]()
+					previous := conversationCancels[i]
+					current.Store(conversations)
+					conversationCancels[i] = cancel
+					previous()
+				}
+				w.WriteHeader(204)
+				return
 			case "/fixture/clone-count":
 				fmt.Fprint(w, cloneCalls.Load())
 				return
@@ -549,73 +578,4 @@ func seedBrowserHistory(path, cwd string) error {
 		}
 	}
 	return f.Sync()
-}
-
-// Fake controller is only mounted in the synthetic browser host. It exercises
-// the real gateway forwarding and lease boundary, not the Pi child lifecycle.
-func fakeConversations(trusted func(*http.Request) bool) http.Handler {
-	var mu sync.Mutex
-	var serial uint64
-	type handle struct{ Workspace, State, Command, Ack string }
-	items := make(map[string]*handle)
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !trusted(r) {
-			http.Error(w, "denied", 403)
-			return
-		}
-		mu.Lock()
-		defer mu.Unlock()
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Connection", "close")
-		path := strings.TrimPrefix(r.URL.Path, "/api/v1/conversations")
-		if path == "" && r.Method == "GET" {
-			list := make([]map[string]any, 0, len(items))
-			for id, h := range items {
-				list = append(list, map[string]any{"agent_id": "pi:" + id, "workspace_id": h.Workspace, "state": h.State})
-			}
-			_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "sessions": list})
-			return
-		}
-		if path == "" && r.Method == "POST" {
-			var input struct {
-				Workspace string `json:"workspace_id"`
-			}
-			if json.NewDecoder(r.Body).Decode(&input) != nil {
-				http.Error(w, "bad", 400)
-				return
-			}
-			serial++
-			id := fmt.Sprintf("%08x-1111-4111-8111-%012x", serial, serial)
-			items[id] = &handle{Workspace: input.Workspace, State: "idle"}
-			_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": input.Workspace, "state": "idle"})
-			return
-		}
-		parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
-		if len(parts) != 2 || items[parts[0]] == nil {
-			http.NotFound(w, r)
-			return
-		}
-		id, h := parts[0], items[parts[0]]
-		switch parts[1] {
-		case "send":
-			var input struct {
-				Command string `json:"command_id"`
-			}
-			if json.NewDecoder(r.Body).Decode(&input) != nil {
-				http.Error(w, "bad", 400)
-				return
-			}
-			h.Command = input.Command
-			h.Ack = "accepted"
-			h.State = "idle"
-			_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "command_id": input.Command, "state": "pending"})
-		case "status":
-			_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": h.Workspace, "state": h.State, "command_id": h.Command, "ack": h.Ack, "event_cursor": 0, "events": []any{}, "event_loss": false, "native_history": "missing", "native_revision": "", "history_query": "/api/v1/agents/pi:" + id + "/history"})
-		case "stop":
-			h.State = "uncertain"
-			_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "state": "termination_unknown"})
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }

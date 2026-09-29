@@ -2,6 +2,11 @@ import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "@playwright/test";
 
 const host = hostOrigin;
+// The real controller has a four-child capacity. Each case gets a fresh
+// synthetic daemon incarnation, not a fake conversation handle.
+test.beforeEach(async ({ page }) => {
+  await page.request.get("/fixture/conversations-reset");
+});
 test.use({
   baseURL: host,
   ignoreHTTPSErrors: true,
