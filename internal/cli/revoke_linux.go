@@ -71,7 +71,16 @@ func serveRevocations(ctx context.Context, ln net.Listener, auth *gateway.Auth) 
 	for {
 		c, err := ln.Accept()
 		if err != nil {
-			return
+			if ctx.Err() != nil {
+				return
+			}
+			auth.LogControlFailure() // private control failure must not be silent while HTTP still serves
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(100 * time.Millisecond):
+				continue
+			}
 		}
 		go func() {
 			defer c.Close()
@@ -129,7 +138,10 @@ func revokeCommand(args []string) (any, error) {
 		return nil, system("control_unavailable", "revoke request failed")
 	}
 	line, e := bufio.NewReader(c).ReadString('\n')
-	if e != nil || line != "OK\n" {
+	if e != nil {
+		return nil, system("control_unavailable", "revocation acknowledgement missing; status unknown, inspect gateway before retry")
+	}
+	if line != "OK\n" {
 		return nil, system("revoke_denied", "broker binding or control channel denied revocation")
 	}
 	return envelope(map[string]any{"revoked": true}), nil

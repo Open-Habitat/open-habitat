@@ -488,6 +488,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	revoked := p.serial <= a.revoked[id]
 	a.mu.Unlock()
 	if revoked {
+		a.authEvent(attempt, "rejected", "subject_revoked")
 		a.callbackFailure(w, r, 403, "authentication_required")
 		return
 	}
@@ -503,6 +504,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	revoked = p.serial <= a.revoked[id]
 	a.mu.Unlock()
 	if revoked {
+		a.authEvent(attempt, "rejected", "subject_revoked")
 		a.callbackFailure(w, r, 403, "authentication_required")
 		return
 	}
@@ -536,6 +538,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	a.mu.Lock()
 	if p.serial <= a.revoked[id] {
 		a.mu.Unlock()
+		a.authEvent(attempt, "rejected", "subject_revoked")
 		a.callbackFailure(w, r, 403, "authentication_required")
 		return
 	}

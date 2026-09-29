@@ -6,6 +6,9 @@ import (
 	"strconv"
 )
 
+// LogControlFailure records a fixed diagnostic when the private listener fails.
+func (a *Auth) LogControlFailure() { a.log.Error("revoke_accept_failed") }
+
 // RevokeSubject is callable only by the local privileged control listener, never HTTP.
 // The binding is checked against the broker before touching memory. A flow has no
 // known subject until Exchange; its start serial is compared at callback issuance.
@@ -30,11 +33,14 @@ func (a *Auth) RevokeSubject(ctx context.Context, subject string) error {
 		a.revoked = make(map[string]uint64)
 	}
 	a.revoked[subject] = a.serial
+	removed := 0
 	for key, s := range a.sessions {
 		if s.identity.Subject == subject {
 			delete(a.sessions, key)
 			delete(a.conversations, key)
+			removed++
 		}
 	}
+	a.log.Info("subject_revoked", "subject", subject, "sessions_removed", removed)
 	return nil
 }

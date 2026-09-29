@@ -88,7 +88,7 @@ socket = sections(sys.argv[1])
 if socket != {
     '[Unit]':{'Description':'Root-only gateway subject revocation control'},
     '[Socket]':{'ListenStream':'/run/native-agent-host/revoke.sock', 'SocketUser':'root',
-        'SocketGroup':'root', 'SocketMode':'0600', 'FileDescriptorName':'revoke',
+        'SocketGroup':'root', 'SocketMode':'0600', 'DirectoryMode':'0750', 'FileDescriptorName':'revoke',
         'RemoveOnStop':'yes', 'Service':'native-agent-host-gateway.service'},
     '[Install]':{'WantedBy':'sockets.target'}
 }: sys.exit('error: packaged revoke socket directive inventory differs')
