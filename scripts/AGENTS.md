@@ -7,30 +7,9 @@ activates a service. That is deliberate: Jari's machines are converged by
 Fleetrepo, so a script that left a binary or a package behind would create drift
 nobody declared. Keep new scripts on the same side of that line.
 
-## The gate
-
-`ci-local.sh --clean --json` is what "green" means in this repository. It is
-the closest approximation of a clean-checkout CI we have, and a change is ready
-to land when it passes. Read the script itself for the exact sequence. A few
-things about it are easy to misread from the outside:
-
-- It refuses to start on a dirty tree and fails at the end if the tree is no
-  longer clean, a new untracked file included. Editing files while it runs
-  therefore fails it; the ledger in `issues/prove-jit-guest-isolation/` records
-  that happening. Start it from a committed tree and leave the tree alone until
-  it finishes.
-- It pins `TMPDIR=/var/tmp` for its entire process tree: npm, Go, Python,
-  Playwright and release staging must not fill the host's `/tmp` tmpfs.
-  Standalone package/verification scripts use the same disk-backed directory.
-- It fetches its own pinned `issuectl` and requires that exact version even
-  when a newer one is on the machine, and it reinstalls the web dependencies
-  offline after a locked online fetch so that an incomplete lockfile fails
-  here rather than on the release machine.
-- It packages the release twice and compares the archives byte for byte, then
-  verifies the archive in place, relocated, and tampered. Anything
-  non-deterministic in the build breaks this on purpose.
-- Playwright needs its two ports; a failure at "port already in use" is the
-  environment, not the change, and a rerun is the right answer.
+Testing policy, gate invocation and evidence limits live in the root
+`TESTING.md`; this file records the packaging and fixture constraints behind
+these scripts.
 
 `check-licenses.py` fails the gate on any direct web dependency without license
 metadata or under a GPL-family license, because the repository will be public

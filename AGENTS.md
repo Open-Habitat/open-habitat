@@ -40,9 +40,9 @@ both the app and Storybook import, so a story shows the real component rather
 than a copy. `systemd/`, `sysusers.d/` and `tmpfiles.d/` are neutral package
 templates; the concrete installation is Fleetrepo's.
 
-`./scripts/ci-local.sh --clean --json` is what "green" means, and a change is
-ready to land when it passes. `scripts/AGENTS.md` says what it runs and, as
-importantly, what a pass does not prove.
+[TESTING.md](TESTING.md) is the single guide to choosing focused tests, when to
+run the full clean gate, and what each result does and does not prove. Keep
+validation proportional to the change without weakening the release proof.
 
 ## How work proceeds
 

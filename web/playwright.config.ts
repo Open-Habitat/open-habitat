@@ -17,8 +17,7 @@ export default defineConfig({
       env: { VITE_ENABLE_TEST_FIXTURES: "true" },
     },
     {
-      command:
-        'npm run build && cd .. && PATH="$PWD/.tools/go/bin:$PATH" go build -o .cache/browser-host ./test/browser-host && BROWSER_HOST_MARKER=web/test-results/browser-host-path exec .cache/browser-host web/dist',
+      command: `${process.env.NAH_WEB_PREBUILT === "1" ? "" : "npm run build && "}cd .. && PATH="$PWD/.tools/go/bin:$PATH" go build -o .cache/browser-host ./test/browser-host && BROWSER_HOST_MARKER=web/test-results/browser-host-path exec .cache/browser-host web/dist`,
       url: "https://127.0.0.1:4174/healthz",
       ignoreHTTPSErrors: true,
       reuseExistingServer: false,

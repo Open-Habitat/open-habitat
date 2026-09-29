@@ -8,10 +8,27 @@ if $clean && [[ -n $(git status --short) ]];then echo 'error: --clean requires a
 # Build caches, npm installs and test children must not exhaust the /tmp tmpfs.
 export TMPDIR=/var/tmp
 tmp=$(mktemp -d)
-cleanup(){ chmod -R u+w "$tmp" 2>/dev/null || true;rm -rf "$tmp"; }
-trap cleanup EXIT
-export HOME="$tmp/home" GOCACHE="$tmp/go-build" GOMODCACHE="$tmp/go-mod" NPM_CONFIG_CACHE="$tmp/npm" PLAYWRIGHT_BROWSERS_PATH="$repo/.cache/ms-playwright" CI=1
+# Content-addressed build/download caches are disposable, but survive consecutive
+# runs in this checkout. HOME and the Python/tool installs remain private per run.
+export HOME="$tmp/home" GOCACHE="$repo/.cache/ci-local/go-build" GOMODCACHE="$repo/.cache/ci-local/go-mod" NPM_CONFIG_CACHE="$repo/.cache/ci-local/npm" PLAYWRIGHT_BROWSERS_PATH="$repo/.cache/ms-playwright" CI=1
 mkdir -p "$HOME" "$GOCACHE" "$GOMODCACHE" "$NPM_CONFIG_CACHE" "$PLAYWRIGHT_BROWSERS_PATH" "$tmp/bin"
+phase_name=setup
+phase_start=$(date +%s)
+phase(){
+  local now
+  now=$(date +%s)
+  printf 'ci-local phase %s: %ss\n' "$phase_name" "$((now-phase_start))" >&2
+  phase_name=$1
+  phase_start=$now
+}
+cleanup(){
+  local rc=$? now
+  now=$(date +%s)
+  printf 'ci-local phase %s: %ss (exit %s)\n' "$phase_name" "$((now-phase_start))" "$rc" >&2
+  chmod -R u+w "$tmp" 2>/dev/null || true
+  rm -rf "$tmp"
+}
+trap cleanup EXIT
 # Every non-system tool is fetched into disposable storage and checksum/version checked.
 # CI requires the pinned issuectl even when a newer machine CLI is present.
 # Never install into a persistent machine path.
@@ -28,6 +45,7 @@ go version
 node --version
 npm --version
 issuectl --version | grep -Fx 'issuectl 0.18.4'
+phase dependencies
 go mod download
 export GOPROXY=off
 npm ci --prefix web
@@ -37,17 +55,21 @@ npm ci --offline --prefix web
 npm ci --prefix internal/daemon/pi-device-test --ignore-scripts --no-audit --no-fund
 node --test internal/daemon/pi-device-test/helper.test.mjs
 npm exec --prefix web playwright install chromium
+phase web-checks
 npm run format:check --prefix web
 npm run lint --prefix web
 npm run typecheck --prefix web
 npm run test:unit --prefix web
 npm run test:component --prefix web
-npm run test:e2e --prefix web
-npm run test:a11y --prefix web
+# Build once before Playwright: the same fresh production assets are served by
+# the synthetic host and later packaged. Standalone Playwright still builds.
 npm run build --prefix web
 if grep -R -E 'Alder-testifixture|Deterministinen testi: daemon' web/dist/assets;then
   echo 'error: test fixture content leaked into production bundle' >&2;exit 1
 fi
+phase browser
+NAH_WEB_PREBUILT=1 npm run test:browser --prefix web
+phase go-and-contracts
 npm run build-storybook --prefix web
 go fmt ./...
 go vet ./...
@@ -62,6 +84,7 @@ go generate ./internal/contracts
 "$PYTHON" scripts/validate-project-view.py
 "$PYTHON" scripts/check-licenses.py
 ./scripts/vm-test.sh self-test --json
+phase packaging
 ./scripts/native-fixture.sh create --output "$tmp/native-fixture"
 test "$(wc -l < "$tmp/native-fixture/home/.pi/agent/sessions/fixture.jsonl")" -eq 2500
 rm -rf dist;mkdir -p dist/one dist/two
@@ -74,6 +97,7 @@ mkdir -p "$tmp/relocated";cp dist/one/native-agent-host-0.0.0-test-linux-amd64.t
 ./scripts/verify-release.sh --archive "$tmp/relocated/native-agent-host-0.0.0-test-linux-amd64.tar.gz" --json
 printf 'tampered' >> "$tmp/relocated/native-agent-host-0.0.0-test-linux-amd64.tar.gz"
 if ./scripts/verify-release.sh --archive "$tmp/relocated/native-agent-host-0.0.0-test-linux-amd64.tar.gz" --json >/dev/null 2>&1;then echo 'error: tampered relocated archive verified' >&2;exit 1;fi
+phase final-checks
 issuectl doctor --json
 git diff --check
 if $clean && [[ -n $(git status --short) ]];then git status --short >&2;echo 'error: green gate changed the clean tree' >&2;exit 1;fi

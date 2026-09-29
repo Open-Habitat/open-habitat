@@ -43,4 +43,4 @@ the same script, so a renamed or removed coverage label fails the run until that
 list is updated. Any byte change to a schema also changes the fingerprint
 embedded in the generated packages; `go generate ./internal/contracts`
 regenerates them and `scripts/check-generated.sh` fails on drift.
-`./scripts/ci-local.sh` runs all of this.
+The root `TESTING.md` explains when to run the full gate.
