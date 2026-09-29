@@ -297,7 +297,9 @@ export function BrowserConversation({
       setSessions(await list());
       setProblem("");
       setReceipt(
-        "Lista tarkistettu. Jos luonti ei näy, sen tulos on edelleen epävarma.",
+        ambiguous
+          ? "Lista tarkistettu. Jos luonti ei näy, sen tulos on edelleen epävarma."
+          : "Keskustelulista tarkistettu.",
       );
     } catch {
       setProblem("Ohjauslistaa ei voitu tarkistaa.");

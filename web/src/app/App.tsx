@@ -488,6 +488,7 @@ export function App() {
       />
     ) : selectedAgent && agentWorkspace ? (
       <HistoryView
+        key={`${selectedAgent.agent_id}:${refreshKey}`}
         agent={selectedAgent}
         workspaceName={agentWorkspace.display_name ?? agentWorkspace.name}
         workspaceId={agentWorkspace.workspace_id}

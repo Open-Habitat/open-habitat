@@ -330,6 +330,7 @@ test("@browser-conversation foreground clicks and route changes do not revalidat
   await expect(page.getByRole("heading", { name: "Asetukset" })).toBeVisible();
   await page.getByRole("button", { name: "Takaisin" }).click();
   await page.getByRole("button", { name: "Tarkista keskustelulista" }).click();
+  await expect(page.getByText("Keskustelulista tarkistettu.")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Pi-keskustelut" }),
   ).toBeVisible();
@@ -346,6 +347,9 @@ test("@browser-conversation foreground clicks and route changes do not revalidat
     .boundingBox();
   if (!first || !second) throw new Error("actions missing");
   expect(second.y > first.y || second.x - first.x - first.width > 8).toBe(true);
+  await page
+    .getByRole("group", { name: "Pi-keskustelun toiminnot" })
+    .scrollIntoViewIfNeeded();
   await page.screenshot({
     path: "test-results/evidence/conversation-actions-compact.png",
   });
@@ -579,5 +583,43 @@ test("@browser-conversation first reveal of background authenticated tab validat
     ).toHaveCount(0);
   } finally {
     await other.close();
+  }
+});
+
+test("@browser-conversation slow snapshot validation keeps the same editor mounted", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await expect(editor).toBeVisible();
+  await editor.fill("synthetic work in progress");
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let started!: () => void;
+  const requested = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  await page.route("**/api/v1/snapshot", async (route) => {
+    started();
+    await held;
+    await route.continue().catch(() => {});
+  });
+  try {
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event("blur"));
+      window.dispatchEvent(new Event("focus"));
+    });
+    await requested;
+    await expect(page.getByText("Varmistetaan istuntoa…")).toBeVisible();
+    expect(await page.locator("textarea").count()).toBe(1);
+    await expect(editor).toBeHidden();
+    release();
+    await expect(editor).toBeVisible();
+    await expect(editor).toHaveValue("synthetic work in progress");
+  } finally {
+    release();
   }
 });
