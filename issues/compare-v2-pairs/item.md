@@ -24,9 +24,16 @@ no image baselines until Jari accepts the views.
 
 ## Acceptance Criteria
 
-- [ ] A pair exists for each draft state covered by the fit slices, in both
+- [x] A pair exists for each draft state covered by the fit slices, in both
   themes and scoped widths, with a short index of remaining differences.
-- [ ] The capture is reproducible from a documented command.
+- [x] The capture is reproducible from a documented command.
+
+[Pair index, classified differences and reproduction command](index.md). Onboarding
+is excluded as agreed; the designer supplied no phone settings/rejected-only
+state or desktop drawer frame, so those are not fabricated as draft pairs. The
+index records intentional deviations and the host/contract requests owned by
+the fitted slices; the remaining presentation gaps are proposed as follow-ups,
+not changed in this run.
 ## Shared context for every design-v2 slice
 
 - Benchmark: [handoff](../review-browser-design-v2/design/handoff.md) and the
