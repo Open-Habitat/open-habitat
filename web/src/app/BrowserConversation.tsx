@@ -751,6 +751,7 @@ export function BrowserConversation({
     const timer = window.setInterval(tick, 1000);
     return () => window.clearInterval(timer);
   }, [startedAt, current?.state]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a live fragment changes the feed height without changing native entries.
   useLayoutEffect(() => {
     if (wasAtBottom.current && feed.current) {
       feed.current.scrollTop = feed.current.scrollHeight;
@@ -758,7 +759,7 @@ export function BrowserConversation({
     } else {
       restoreAnchor(readingAnchor.current, entries);
     }
-  }, [entries, restoreAnchor]);
+  }, [entries, live, restoreAnchor]);
   // Footer controls can change the stream height without changing history.
   // Keep the native reading anchor for readers, or follow the latest turn.
   // biome-ignore lint/correctness/useExhaustiveDependencies: footer state changes are the layout-only trigger.

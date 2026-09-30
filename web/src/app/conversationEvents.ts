@@ -109,26 +109,30 @@ export function applyTurnEvent(
       "tool.finished",
       "tool.updated",
     ].includes(event.kind)
-  )
-    return {
-      turn: { ...next, fragments: [...turn.fragments, event].slice(-128) },
-    };
+  ) {
+    if (turn.fragments.length >= 128) return { turn: next, recover: "history" };
+    return { turn: { ...next, fragments: [...turn.fragments, event] } };
+  }
   return { turn: next };
 }
 export function provisionalItems(turn: LiveTurn, native: HistoryEntry[]) {
   if (turn.truncated) return [];
   const text = new Map<number, string>();
   const tools = new Map<string, { name: string; state: string }>();
+  const order: { id: string; kind: string }[] = [];
   for (const event of turn.fragments) {
     if (event.kind === "assistant.delta") {
       const index =
         typeof event.payload.content_index === "number"
           ? event.payload.content_index
           : 0;
+      if (!text.has(index))
+        order.push({ id: `live-text-${index}`, kind: "assistant" });
       text.set(index, (text.get(index) ?? "") + event.payload.text);
     }
     if (event.kind.startsWith("tool.")) {
       const id = event.payload.tool_call_id as string;
+      if (!tools.has(id)) order.push({ id: `live-tool-${id}`, kind: "tool" });
       tools.set(id, {
         name: event.payload.tool_name as string,
         state: event.payload.state as string,
@@ -145,18 +149,14 @@ export function provisionalItems(turn: LiveTurn, native: HistoryEntry[]) {
     native.at(-1)?.content.text.includes([...text.values()].join(""))
   )
     return [];
-  return [
-    ...[...text.entries()]
-      .filter(([, value]) => value)
-      .map(([index, value]) => ({
-        id: `live-text-${index}`,
-        kind: "assistant",
-        text: value,
-      })),
-    ...[...tools.entries()].map(([id, tool]) => ({
-      id: `live-tool-${id}`,
-      kind: "tool",
-      text: `${tool.name} · ${tool.state}`,
-    })),
-  ];
+  return order
+    .map(({ id, kind }) => ({
+      id,
+      kind,
+      text:
+        kind === "assistant"
+          ? (text.get(Number(id.slice("live-text-".length))) ?? "")
+          : `${tools.get(id.slice("live-tool-".length))?.name} · ${tools.get(id.slice("live-tool-".length))?.state}`,
+    }))
+    .filter((item) => item.text);
 }
