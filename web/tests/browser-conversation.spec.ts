@@ -2,10 +2,14 @@ import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "@playwright/test";
 
 const host = hostOrigin;
-// The real controller has a four-child capacity. Each case gets a fresh
-// synthetic daemon incarnation, not a fake conversation handle.
+// The host shares both controller capacity and the OAuth peer admission bucket
+// across tests. Advance fixture time between cases (never within a session),
+// so earlier logins cannot exhaust a later case's real gateway rate limit.
 test.beforeEach(async ({ page }) => {
-  await page.request.get("/fixture/conversations-reset");
+  expect((await page.request.get("/fixture/reset-clock")).status()).toBe(204);
+  expect(
+    (await page.request.get("/fixture/conversations-reset")).status(),
+  ).toBe(204);
 });
 test.use({
   baseURL: host,
