@@ -33,8 +33,9 @@ between them is an architecture change; `internal/AGENTS.md`,
 `web/src/contracts/` are generated from it, and the gate fails on drift.
 `web/src/components/` holds the production components that Storybook also
 imports. `systemd/`, `sysusers.d/` and `tmpfiles.d/` are neutral templates; the
-concrete installation is Fleetrepo's. [TESTING.md](TESTING.md) says which tests
-to run and what each result proves.
+concrete installation is Fleetrepo's.
+
+[TESTING.md](TESTING.md) says which tests to run and what each result proves.
 
 ## How work proceeds
 
@@ -53,9 +54,10 @@ Architecture is decided together with Jari: which component has which
 authority, the security model and major dependencies. These come to him as a
 recommendation with the reasoning, and the decision is recorded in an issue or
 ADR so it survives the conversation. Otherwise he wants the work to proceed
-without him. Ready work in the DAG gets done; a question is worth his attention
-when the outcomes differ in a way he would care about and you cannot tell which
-he would choose.
+without him. Ready work in the DAG gets done.
+
+A question is worth his attention when the outcomes differ in a way he would
+care about and you cannot tell which he would choose.
 
 ## Issues and documentation
 
