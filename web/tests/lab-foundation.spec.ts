@@ -76,10 +76,21 @@ test("@lab v2 shared conversation metrics in both themes and at phone width", as
     }
   }
   await page.setViewportSize({ width: 1440, height: 900 });
+  const focusTarget = page.locator(".ah-conversation-frame .ah-button").first();
+  await focusTarget.focus();
+  await expect
+    .poll(() =>
+      focusTarget.evaluate((node) => getComputedStyle(node).outlineWidth),
+    )
+    .toBe("2px");
+  await expect
+    .poll(() =>
+      focusTarget.evaluate((node) => getComputedStyle(node).outlineOffset),
+    )
+    .toBe("2px");
   await page.getByRole("button", { name: "Sulje navigaatio" }).click();
   await expect(page.locator(".ah-rail")).toHaveCSS("width", "52px");
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.reload();
   const trigger = page.getByRole("button", { name: "Avaa navigaatio" });
   await trigger.click();
   await expect(
@@ -92,6 +103,30 @@ test("@lab v2 shared conversation metrics in both themes and at phone width", as
   await expect(page.locator(".ah-rail")).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(trigger).toBeFocused();
+  await trigger.click();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(page.locator("main")).not.toHaveAttribute("inert");
+  await page.setViewportSize({ width: 390, height: 390 });
+  await trigger.click();
+  const content = page.locator(".ah-rail-content");
+  await expect
+    .poll(() =>
+      content.evaluate((node) => node.scrollHeight > node.clientHeight),
+    )
+    .toBe(true);
+  await content.evaluate((node) => {
+    node.scrollTop = node.scrollHeight;
+  });
+  expect(await content.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+  await page
+    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
+    .getByRole("link", { name: "aurinkokello", exact: true })
+    .click();
+  await expect(page.locator("main")).not.toHaveAttribute("inert");
+  await expect(
+    page.getByRole("heading", { name: "aurinkokello", exact: true }),
+  ).toBeFocused();
+  await page.setViewportSize({ width: 390, height: 844 });
   expect(
     await page.evaluate(() => document.documentElement.scrollHeight),
   ).toBeLessThanOrEqual(844);

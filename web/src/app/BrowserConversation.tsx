@@ -554,6 +554,23 @@ export function BrowserConversation({
       restoreAnchor(readingAnchor.current, entries);
     }
   }, [entries, restoreAnchor]);
+  // Footer controls can change the stream height without changing history.
+  // Keep the native reading anchor for readers, or follow the latest turn.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: footer state changes are the layout-only trigger.
+  useLayoutEffect(() => {
+    const viewport = feed.current;
+    if (!viewport) return;
+    if (wasAtBottom.current) viewport.scrollTop = viewport.scrollHeight;
+    else restoreAnchor(readingAnchor.current, entries);
+  }, [
+    queueOpen,
+    receipt,
+    problem,
+    details,
+    confirmStop,
+    restoreAnchor,
+    entries,
+  ]);
   useEffect(() => {
     if (!finishedInBackground) return;
     const old = document.title;
@@ -933,10 +950,10 @@ export function BrowserConversation({
                   : "Tila ei tiedossa"
             }
             activityKind={
-              current?.state === "accepted"
-                ? "working"
-                : stale || !current || current.state === "uncertain"
-                  ? "unknown"
+              stale || !current || current.state === "uncertain"
+                ? "unknown"
+                : current.state === "accepted"
+                  ? "working"
                   : "neutral"
             }
             controlKind={controlled ? "neutral" : "read-only"}

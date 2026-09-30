@@ -148,6 +148,16 @@ export function App() {
     }
   }, [verifying]);
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileLayout, setMobileLayout] = useState(
+    () => window.matchMedia?.("(max-width: 800px)").matches ?? false,
+  );
+  useEffect(() => {
+    const query = window.matchMedia?.("(max-width: 800px)");
+    if (!query) return;
+    const change = () => setMobileLayout(query.matches);
+    query.addEventListener("change", change);
+    return () => query.removeEventListener("change", change);
+  }, []);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [logoutError, setLogoutError] = useState(false);
   const [settingsReturn, setSettingsReturn] = useState("/workspaces");
@@ -872,7 +882,7 @@ export function App() {
           rail={
             (phase === "authenticated" || phase === "stale") && snapshot ? (
               <WorkspaceRail
-                collapsed={collapsed}
+                collapsed={collapsed && !mobileLayout}
                 serverLabel={window.location.host}
                 connectionLabel={
                   phase === "stale"

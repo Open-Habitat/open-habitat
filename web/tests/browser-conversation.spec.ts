@@ -280,6 +280,17 @@ test("@browser-conversation revalidation restores editor selection, paged readin
   await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
   await expect(page.locator(".ah-feed li")).toHaveCount(50);
   const feed = page.locator("section:has(> .ah-timeline)").last();
+  const bottomGap = () =>
+    feed.evaluate(
+      (node) => node.scrollHeight - node.scrollTop - node.clientHeight,
+    );
+  await feed.evaluate((node) => {
+    node.scrollTop = node.scrollHeight;
+  });
+  await expect.poll(bottomGap).toBeLessThanOrEqual(1);
+  await page.getByRole("button", { name: /Jonossa 0/ }).click();
+  await expect.poll(bottomGap).toBeLessThanOrEqual(1);
+  await page.getByRole("button", { name: /Jonossa 0/ }).click();
   await editor.fill("kesken oleva viesti");
   await editor.evaluate((node: HTMLTextAreaElement) => {
     node.focus();

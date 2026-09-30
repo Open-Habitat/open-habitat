@@ -1097,9 +1097,6 @@ h1[tabindex="-1"]:focus {
     width: auto;
     height: auto;
   }
-  .ah-rail-content {
-    overflow: visible;
-  }
   .ah-rail-collapsed {
     width: 100%;
   }
@@ -1279,6 +1276,7 @@ h1[tabindex="-1"]:focus {
   }
   .ah-mobile-open .ah-rail {
     width: 100%;
+    height: 100%;
   }
   .ah-mobile-open .ah-rail-title > .ah-control {
     display: none;

@@ -21,12 +21,28 @@ export function AppShell({
   toast?: ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [openedAtKey, setOpenedAtKey] = useState("");
+  const [mobileLayout, setMobileLayout] = useState(
+    () => window.matchMedia?.("(max-width: 800px)").matches ?? false,
+  );
   const location = useLocation();
+  const drawerActive =
+    mobileOpen && mobileLayout && openedAtKey === location.key;
+  useEffect(() => {
+    const query = window.matchMedia?.("(max-width: 800px)");
+    if (!query) return;
+    const change = () => {
+      setMobileLayout(query.matches);
+      if (!query.matches) setMobileOpen(false);
+    };
+    query.addEventListener("change", change);
+    return () => query.removeEventListener("change", change);
+  }, []);
   useEffect(() => {
     if (location.key) setMobileOpen(false);
   }, [location.key]);
   useEffect(() => {
-    if (!mobileOpen) return;
+    if (!drawerActive) return;
     const onEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setMobileOpen(false);
@@ -35,13 +51,13 @@ export function AppShell({
     };
     window.addEventListener("keydown", onEscape);
     return () => window.removeEventListener("keydown", onEscape);
-  }, [mobileOpen]);
+  }, [drawerActive]);
   const mobileTrigger = useRef<HTMLButtonElement>(null);
   const mobileNav = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (mobileOpen)
+    if (drawerActive)
       mobileNav.current?.querySelector<HTMLElement>("nav")?.focus();
-  }, [mobileOpen]);
+  }, [drawerActive]);
   const closeMobile = () => {
     setMobileOpen(false);
     requestAnimationFrame(() => mobileTrigger.current?.focus());
@@ -58,9 +74,9 @@ export function AppShell({
       </a>
       {connection}
       <div
-        className={`ah-shell-body${rail ? "" : " ah-shell-no-rail"}${mobileOpen ? " ah-mobile-open" : ""}`}
+        className={`ah-shell-body${rail ? "" : " ah-shell-no-rail"}${drawerActive ? " ah-mobile-open" : ""}`}
       >
-        {mobileOpen ? (
+        {drawerActive ? (
           <button
             type="button"
             className="ah-mobile-scrim"
@@ -71,7 +87,7 @@ export function AppShell({
         {rail ? (
           <div className="ah-rail-slot" ref={mobileNav}>
             {rail}
-            {mobileOpen ? (
+            {drawerActive ? (
               <button
                 type="button"
                 className="ah-mobile-close"
@@ -83,15 +99,18 @@ export function AppShell({
             ) : null}
           </div>
         ) : null}
-        <main id="main" tabIndex={-1} inert={mobileOpen}>
+        <main id="main" tabIndex={-1} inert={drawerActive}>
           {rail ? (
             <div className="ah-mobile-toolbar">
               <button
                 type="button"
                 ref={mobileTrigger}
                 aria-label="Avaa navigaatio"
-                aria-expanded={mobileOpen}
-                onClick={() => setMobileOpen(true)}
+                aria-expanded={drawerActive}
+                onClick={() => {
+                  setOpenedAtKey(location.key);
+                  setMobileOpen(true);
+                }}
               >
                 <Icon name="menu" />
               </button>
