@@ -22,6 +22,38 @@ import {
   type HistoryPage,
 } from "./history";
 
+// Only the daemon's explicit fallback marker is interpreted here. Unknown data
+// stays text, including malformed JSON and fields we do not recognize.
+function unfamiliar(
+  text: string,
+): {
+  type: string;
+  summary: { key: string; text: string }[];
+  raw: string;
+} | null {
+  const block = /^\[Sisältöä ei tueta: ([^\n]+?)\] (\{[\s\S]*\})$/.exec(text);
+  const event = /^Tuntematon Pi-tapahtuma: ([^\n]+)\n(\{[\s\S]*\})$/.exec(text);
+  const match = block ?? event;
+  if (!match) return null;
+  let value: unknown;
+  try {
+    value = JSON.parse(match[2]);
+  } catch {
+    return null;
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const fields = value as Record<string, unknown>;
+  return {
+    type: match[1],
+    summary: ["prompt", "text", "message", "description", "payload"].flatMap((key) =>
+      typeof fields[key] === "string" && fields[key]
+        ? [{ key, text: fields[key] as string }]
+        : [],
+    ),
+    raw: match[2],
+  };
+}
+
 export function Entry({
   entry,
   stale = false,
@@ -71,6 +103,10 @@ export function Entry({
       setPending(false);
     }
   };
+  const fallback =
+    entry.kind === "assistant" || entry.kind === "unknown"
+      ? unfamiliar(content.text)
+      : null;
   const continuation =
     !stale && !content.complete ? (
       <Button
@@ -88,7 +124,22 @@ export function Entry({
           precede the rest of a still-running turn. */}
       {entry.kind === "assistant" ? (
         <AssistantMessage onCopy={copy}>
-          <Markdown text={content.text} />
+          {fallback ? (
+            <section className="ah-unknown">
+              <p>Tuntematon sisältö · {fallback.type}</p>
+              {fallback.summary.length ? (
+                fallback.summary.map(({ key, text }) => <p key={key}>{text}</p>)
+              ) : (
+                <p>{fallback.raw}</p>
+              )}
+              <details>
+                <summary>Näytä alkuperäinen sisältö</summary>
+                <pre>{fallback.raw}</pre>
+              </details>
+            </section>
+          ) : (
+            <Markdown text={content.text} />
+          )}
         </AssistantMessage>
       ) : null}
       {entry.kind === "tool" ? (
@@ -122,8 +173,12 @@ export function Entry({
       {entry.kind === "unknown" ? (
         <UnknownEvent
           kindLabel="Pi-tapahtuma"
-          safeSummary="Tapahtuman muotoa ei tueta."
-          safePayloadText={content.text}
+          safeSummary={
+            fallback
+              ? `Tapahtuman muotoa ei tueta · ${fallback.type} · ${fallback.summary.map(({ text }) => text).join(" · ") || fallback.raw}`
+              : `Tapahtuman muotoa ei tueta. ${content.text}`
+          }
+          safePayloadText={fallback?.raw ?? content.text}
           onCopy={copy}
         />
       ) : null}

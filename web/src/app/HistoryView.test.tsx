@@ -71,7 +71,47 @@ it("groups adjacent results, leaves unknown entries as readable text and bounds 
   for (const row of rows) fireEvent.click(row);
   expect(screen.getAllByText("Näytä koko ladattu tuloste")).toHaveLength(2);
   expect(document.querySelector("script")).toBeNull();
-  expect(screen.getByText(/question/)).toBeTruthy();
+  expect(screen.getAllByText(/question/).length).toBeGreaterThan(0);
+});
+
+it("puts unfamiliar question text ahead of inert, collapsed JSON", () => {
+  const raw =
+    '{"type":"futureQuestion","prompt":"Mitä seuraavaksi?","description":"<img src=x onerror=alert(1)>"}';
+  const view = render(
+    <Entry
+      entry={{
+        ...entry,
+        kind: "assistant",
+        content: {
+          media_type: "text/plain",
+          text: `[Sisältöä ei tueta: futureQuestion] ${raw}`,
+          complete: true,
+        },
+      }}
+    />,
+  );
+  expect(screen.getByText("Mitä seuraavaksi?")).toBeTruthy();
+  expect(screen.getByText("<img src=x onerror=alert(1)>")).toBeTruthy();
+  expect(view.container.querySelector("img")).toBeNull();
+  const details = view.container.querySelector("details");
+  expect(details?.open).toBe(false);
+  expect(details?.textContent).toContain(raw);
+  expect(screen.queryByRole("button", { name: "Kyllä" })).toBeNull();
+  const malformed = render(
+    <Entry
+      entry={{
+        ...entry,
+        entry_key: "bad",
+        kind: "assistant",
+        content: {
+          media_type: "text/plain",
+          text: "[Sisältöä ei tueta: future] {broken",
+          complete: true,
+        },
+      }}
+    />,
+  );
+  expect(malformed.container.textContent).toContain("{broken");
 });
 
 it("shows an exact model ID as copyable timeline metadata, not code", () => {

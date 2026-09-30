@@ -1,0 +1,3 @@
+# Tuntemattoman sisällön esitys — synteettinen vertailu
+
+**Ei vielä Jarin arvioima.** Ennen: [kierroksen 7 työkalukuva](screenshots/r7-tools-dark.png), jossa `futureQuestion`-kysymys hautautui JSONiin (tumma 1440 × 900, auditin lähtörevisio `bcf3dbb`). Jälkeen: [uusi kuvakaappaus](after-unknown.avif), jossa kysymys on luettavissa ensin ja raaka sisältö avattavissa (vaalea 1440 × 900, tämän työpuun tuotantobundle). Eri teema ja kuvakulma rajoittavat värivertailua; vertailu koskee tekstin järjestystä, ei kontrastia. Käytössä vain keksitty Alice ja vale-Pi paikallisessa labissa; ei live-hostin tai oikean Pi:n todistetta.

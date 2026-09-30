@@ -512,7 +512,12 @@ export function UnknownEvent({
       <StatusMark label="Tuntematon tapahtuma" tone="warning" />
       <h3>{kindLabel}</h3>
       <p>{safeSummary}</p>
-      {safePayloadText ? <pre>{safePayloadText}</pre> : null}
+      {safePayloadText ? (
+        <details>
+          <summary>Näytä alkuperäinen sisältö</summary>
+          <pre>{safePayloadText}</pre>
+        </details>
+      ) : null}
       <Button
         label="Kopioi tiedot"
         variant="quiet"

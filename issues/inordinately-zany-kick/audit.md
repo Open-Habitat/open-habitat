@@ -8,13 +8,15 @@ Lähtörevisio `bcf3dbb` (2026-09-30), tuotantobundle `scripts/lab.sh start` -ko
 
 ## Defektit — tärkein ensin
 
-**Ei uutta varmennettua toiminnallista defektiä tutkitussa matkassa.** Ensikäytön [repo-valinta](screenshots/chooser-dark.png) sekä palaajan [aloitus](screenshots/landing-dark.png) ja [vain luettava historia](screenshots/history-dark.png) ovat ymmärrettävät. Työnaikainen [valitsin](screenshots/working-dark.png) kertoo, milloin ohje suoritetaan; kuvassa työ on vielä kesken, eikä se todista jonotuksen toimivuutta.
+**Ei uutta varmennettua toiminnallista defektiä tutkitussa matkassa.** Ensikäytön [repo-valinta](screenshots/r7-chooser-dark.png) sekä palaajan [aloitus](screenshots/r7-landing-dark.png) ja [vain luettava historia](screenshots/r7-history-dark.png) ovat ymmärrettävät. Työnaikainen [valitsin](screenshots/r7-working-dark.png) kertoo, milloin ohje suoritetaan; kuvassa työ on vielä kesken, eikä se todista jonotuksen toimivuutta.
 
 ## Viimeistely — tärkein ensin
 
-### 1 · Matala · Tuntematon kysymys näyttäytyy ensisijaisesti JSONina
+### 1 · Matala · Tuntematon kysymys näyttäytyy ensisijaisesti JSONina — korjattu
 
-**Missä / kokemus.** Fake Pi:n `työkalut`-vuoro lisää tarkoituksella tulevan sisältömuodon `futureQuestion`, jossa on kysymys *Mitä seuraavaksi?*. Valmiissa keskustelussa se näkyy Pi:n puheena `[Sisältöä ei tueta: futureQuestion] {"prompt":"Mitä seuraavaksi?",…}`; seuraava `futureEntry` saa vielä oman suuren *Tuntematon tapahtuma / Pi-tapahtuma* -korttinsa teknisine tunnisteineen. [Synteettinen kuva](screenshots/tools-dark.png). Sisältö ei katoa eikä HTML:ää suoriteta; tämä on **varautumisnäkymän esityshavainto**, ei väite että tuotanto-Pi nykyisin tuottaisi tätä tuntematonta tyyppiä. Kun tällainen sisältö joskus tulee, lukija etsii kysymystä JSONin seasta ja epäilee virhettä vaikka muu vuoro valmistui normaalisti. Kahden varsinaisen työkalutuloksen ryhmä näkyi samassa vuorossa; sitä ei pidä purkaa tämän vuoksi.
+Korjattu: tuttuja tekstikenttiä sisältävä tuntematon kysymys näyttää ensin tyypin ja kysymyksen turvallisena tekstinä; alkuperäinen JSON on avattavissa. Tuntemattomat Pi-tapahtumat käyttävät samaa varovaista esitystä. Jos sisältöä ei voida tunnistaa, alkuperäinen teksti pysyy näkyvissä. `HistoryView.test.tsx` tarkistaa esityksen, HTML:n inerttiyden ja vioittuneen sisällön näkyvyyden. Kuvallinen aamukatselmus: [review.md](../overnight-ui-review/review.md).
+
+**Missä / kokemus.** Fake Pi:n `työkalut`-vuoro lisää tarkoituksella tulevan sisältömuodon `futureQuestion`, jossa on kysymys *Mitä seuraavaksi?*. Valmiissa keskustelussa se näkyy Pi:n puheena `[Sisältöä ei tueta: futureQuestion] {"prompt":"Mitä seuraavaksi?",…}`; seuraava `futureEntry` saa vielä oman suuren *Tuntematon tapahtuma / Pi-tapahtuma* -korttinsa teknisine tunnisteineen. [Synteettinen kuva](screenshots/r7-tools-dark.png). Sisältö ei katoa eikä HTML:ää suoriteta; tämä on **varautumisnäkymän esityshavainto**, ei väite että tuotanto-Pi nykyisin tuottaisi tätä tuntematonta tyyppiä. Kun tällainen sisältö joskus tulee, lukija etsii kysymystä JSONin seasta ja epäilee virhettä vaikka muu vuoro valmistui normaalisti. Kahden varsinaisen työkalutuloksen ryhmä näkyi samassa vuorossa; sitä ei pidä purkaa tämän vuoksi.
 
 **Miksi / konkreettinen korjaus.** [UI:n tuntemattoman sisällön sopimus](../../docs/ui.md#viesti-vastaus-ja-työn-ohjaus) vaatii kaiken saapuvan sisällön turvallisesti luettavaksi, ei teknisen JSONin hallitsemaan keskustelua; [design-systemin tilasanasto](../../design-system/AGENTS.md#mitä-kaikki-näkymät-sanovat-käyttäjälle) kehottaa sanomaan epävarmuuden suoraan. Näytä tuetun tekstikentän arvo turvallisena tekstinä silloin kun se voidaan tunnistaa ilman sisällön ajamista; anna lyhyt *Tuntematon sisältö* -merkki ja koko alkuperäinen payload avattavaksi/kopioitavaksi. Älä piilota tuntematonta kysymystä tai keksi sille vastaustoimintoa. Tarkista myös tumma teema ja pitkä/erikoinen payload. Tällä hetkellä vain synteettinen esimerkkityyppi antaa näytön, joten tämä on paikallinen viimeistelyehdotus, ei kiireellinen turvallisuusvika.
 
@@ -24,9 +26,9 @@ Ei uutta sopimus- tai arkkitehtuuripäätöstä. Tilin todennettu näyttönimi j
 
 ## Muut havainnot
 
-- Vaaleaan vaihtaminen samassa keskustelussa säilytti sisällön; tumma aloitus, historia ja työskentelyn säätimet käyttivät yhtenäisiä kontrasteja ([aloitus](screenshots/landing-dark.png), [työ](screenshots/working-dark.png)). Tämä on visuaalinen pistokoe eikä kontrastimittaus.
+- Vaaleaan vaihtaminen samassa keskustelussa säilytti sisällön; tumma aloitus, historia ja työskentelyn säätimet käyttivät yhtenäisiä kontrasteja ([aloitus](screenshots/r7-landing-dark.png), [työ](screenshots/r7-working-dark.png)). Tämä on visuaalinen pistokoe eikä kontrastimittaus.
 - `hidas työkalut` näytti ensin työtilan ja sitten työkalut sekä lopullisen fake-Pi-vastauksen. Työnaikaiset kaksi ajoitusvaihtoehtoa näkyivät, mutta toisessa tutkimusskriptissä toimintoon siirtyminen epäonnistui, joten jonon tuloksesta ei esitetä onnistumisväitettä.
-- Kahden uuden keskustelun luonnokset eivät sekoittuneet; ensimmäisen *ensimmäisen luonnos* näkyi palatessa ja reloadissa ([vaalea synteettinen kuva](screenshots/draft-light.png)). Lukukohdan säilymistä tämä ei todista.
+- Kahden uuden keskustelun luonnokset eivät sekoittuneet; ensimmäisen *ensimmäisen luonnos* näkyi palatessa ja reloadissa ([vaalea synteettinen kuva](screenshots/r7-draft-light.png)). Lukukohdan säilymistä tämä ei todista.
 
 ## Työkalujen ja alityönkulkujen häiriöt
 
