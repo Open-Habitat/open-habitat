@@ -134,7 +134,10 @@ export async function status(
   id: string,
   signal?: AbortSignal,
 ): Promise<Status> {
-  const v = await request(`${path(id)}/status`, signal);
+  return parseStatus(await request(`${path(id)}/status`, signal), id);
+}
+export function parseStatus(v: unknown, id: string): Status {
+  if (!agent.test(id)) throw new Error("invalid agent");
   if (
     !session(v) ||
     !object(v) ||

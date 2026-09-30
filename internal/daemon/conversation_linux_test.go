@@ -3,8 +3,11 @@
 package daemon
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -389,4 +392,65 @@ for line in sys.stdin:
 		time.Sleep(time.Millisecond)
 	}
 	t.Fatal("no Pi abort acknowledgement")
+}
+
+func TestConversationStreamCursorAndNativeRecovery(t *testing.T) {
+	const id = "12345678-1234-4123-8123-123456789abc"
+	const instance = "aaaaaaaa-1234-4123-8123-123456789abc"
+	home := t.TempDir()
+	s := &conversation{id: id, workspace: "ws_12345678", cwd: home, rpc: &piRPC{}, state: "idle", events: []json.RawMessage{}}
+	c := &ConversationController{instance: instance, sessions: map[string]*conversation{id: s}, home: home, cfg: transport.Config{Home: home, UID: os.Geteuid()}, status: func(context.Context) string { return "usable" }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { c.stream(w, r, id) }))
+	defer server.Close()
+	request := func(cursor string) (int, string) {
+		req, _ := http.NewRequest("GET", server.URL, nil)
+		if cursor != "" {
+			req.Header.Set("Last-Event-ID", cursor)
+		}
+		client := &http.Client{Timeout: 3 * time.Second}
+		res, err := client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		if res.StatusCode != 200 {
+			b, _ := io.ReadAll(res.Body)
+			return res.StatusCode, string(b)
+		}
+		reader := bufio.NewReader(res.Body)
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res.StatusCode, line
+	}
+	if code, first := request(""); code != 200 || !strings.Contains(first, "ev1:"+instance+":1") {
+		t.Fatalf("initial: %d %s", code, first)
+	}
+	if code, _ := request("ev1:" + instance + ":9"); code != 409 || s.streamSeq != 1 {
+		t.Fatalf("future cursor admitted: %d seq=%d", code, s.streamSeq)
+	}
+	if code, _ := request("ev1:bbbbbbbb-1234-4123-8123-123456789abc:1"); code != 409 {
+		t.Fatalf("previous incarnation admitted: %d", code)
+	}
+	if code, next := request("ev1:" + instance + ":1"); code != 200 || !strings.Contains(next, ":2") {
+		t.Fatalf("reconnect: %d %s", code, next)
+	}
+}
+
+func TestConversationStreamUnknownProbeDoesNotRevoke(t *testing.T) {
+	const id = "12345678-1234-4123-8123-123456789abc"
+	home := t.TempDir()
+	s := &conversation{id: id, workspace: "ws_12345678", cwd: home, rpc: &piRPC{}, state: "idle", events: []json.RawMessage{}}
+	c := &ConversationController{instance: id, sessions: map[string]*conversation{id: s}, home: home, cfg: transport.Config{Home: home, UID: os.Geteuid()}, status: func(context.Context) string { return "unknown" }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { c.stream(w, r, id) }))
+	defer server.Close()
+	res, err := http.Get(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if c.closed || s.state != "idle" {
+		t.Fatal("transient status failure killed Pi controller")
+	}
 }

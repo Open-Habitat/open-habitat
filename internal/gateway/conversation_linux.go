@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -23,7 +24,8 @@ import (
 // This private gateway protocol deliberately does not add a browser v1 contract.
 // The lease table is fail-closed on gateway restart: an orphan cannot be claimed
 // by another browser session. Native histories remain accessible read-only.
-var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|abort|status|stop))?$`)
+var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|abort|status|stream|stop))?$`)
+var conversationStreamCursor = regexp.MustCompile(`^ev1:[0-9a-fA-F-]{36}:[0-9]{1,20}$`)
 var conversationUUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 var conversationWorkspace = regexp.MustCompile(`^ws_[A-Za-z0-9_-]{8,64}$`)
 
@@ -32,7 +34,7 @@ const conversationBase = "/api/v1/conversations"
 func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.EscapedPath()
 	match := conversationPath.FindStringSubmatch(path)
-	if match == nil || path != r.URL.Path || r.URL.RawQuery != "" || r.RequestURI != path || !a.exact(r, path) || (r.ProtoMajor != 1 || r.ProtoMinor != 1) && r.ProtoMajor != 2 || len(r.TransferEncoding) != 0 || (r.Method != "GET" && r.Method != "POST") || (match[1] != "" && ((match[2] == "status") != (r.Method == "GET"))) {
+	if match == nil || path != r.URL.Path || r.URL.RawQuery != "" || r.RequestURI != path || !a.exact(r, path) || (r.ProtoMajor != 1 || r.ProtoMinor != 1) && r.ProtoMajor != 2 || len(r.TransferEncoding) != 0 || (r.Method != "GET" && r.Method != "POST") || (match[1] != "" && ((match[2] == "status" || match[2] == "stream") != (r.Method == "GET"))) {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -122,6 +124,9 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	deadline := time.Now().Add(5 * time.Second)
+	if kind == "stream" {
+		deadline = time.Now().Add(27 * time.Second)
+	}
 	if d, ok := r.Context().Deadline(); ok && d.Before(deadline) {
 		deadline = d
 	}
@@ -144,6 +149,16 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	hash := sha256.Sum256([]byte("conversation-owner\x00" + owner))
 	req.Header.Set("X-Agent-Host-Session", base64.RawURLEncoding.EncodeToString(hash[:]))
 	req.Close = true
+	if kind == "stream" {
+		last := r.Header.Get("Last-Event-ID")
+		if len(r.Header.Values("Last-Event-ID")) > 1 || len(last) > 100 || (last != "" && !conversationStreamCursor.MatchString(last)) {
+			safe(w, 400, "invalid_request")
+			return
+		}
+		if last != "" {
+			req.Header.Set("Last-Event-ID", last)
+		}
+	}
 	// The socket may have accepted a write even when no acknowledgement arrives.
 	ambiguous := kind == "create" || kind == "send" || kind == "steer" || kind == "follow_up" || kind == "clear_queue" || kind == "abort" || kind == "stop"
 	failure := func() {
@@ -155,6 +170,10 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Write(conn) != nil {
 		failure()
+		return
+	}
+	if kind == "stream" {
+		a.forwardConversationStream(w, r, conn, req, owner, s, match[1])
 		return
 	}
 	limited := &io.LimitedReader{R: conn, N: conversationReplyLimit + 4096}
@@ -458,4 +477,113 @@ func validatedConversationReply(kind string, b []byte, requestedID string) ([]by
 	}
 	clean, err := json.Marshal(m)
 	return clean, id, err == nil
+}
+
+// streamHeaderReader budgets response headers without capping the following
+// body. Reading one byte at a time only until CRLFCRLF also avoids losing
+// buffered body bytes when the header limit is reached.
+type streamHeaderReader struct {
+	source io.Reader
+	count  int
+	last   [4]byte
+	body   bool
+}
+
+func (h *streamHeaderReader) Read(p []byte) (int, error) {
+	if h.body {
+		return h.source.Read(p)
+	}
+	if h.count >= 8192 {
+		return 0, errors.New("stream response headers too large")
+	}
+	var b [1]byte
+	n, err := h.source.Read(b[:])
+	if n > 0 {
+		p[0] = b[0]
+		h.count++
+		copy(h.last[:3], h.last[1:])
+		h.last[3] = b[0]
+		h.body = string(h.last[:]) == "\r\n\r\n"
+	}
+	return n, err
+}
+
+// A stream is deliberately finite. The gateway validates each daemon status
+// frame and rechecks the broker/session before releasing it to the browser;
+// the daemon, not the gateway, produces cursors and native observations.
+func (a *Auth) forwardConversationStream(w http.ResponseWriter, r *http.Request, conn net.Conn, req *http.Request, owner string, initial session, id string) {
+	// ReadResponse does not impose a header byte budget of its own. Limit
+	// daemon-controlled headers before accepting any streaming response.
+	reader := bufio.NewReader(&streamHeaderReader{source: conn})
+	res, err := http.ReadResponse(reader, req)
+	if err != nil {
+		safe(w, 503, "daemon_unavailable")
+		return
+	}
+	defer res.Body.Close()
+	if res.ProtoMajor != 1 || res.ProtoMinor != 1 || res.ContentLength > 0 || len(res.TransferEncoding) > 1 || (len(res.TransferEncoding) == 1 && res.TransferEncoding[0] != "chunked") {
+		safe(w, 503, "daemon_unavailable")
+		return
+	}
+	if res.StatusCode == 409 {
+		safe(w, 409, "control_uncertain")
+		return
+	}
+	if res.StatusCode != 200 || res.Header.Get("Content-Type") != "text/event-stream" || len(res.Header.Values("Content-Type")) != 1 {
+		safe(w, 503, "daemon_unavailable")
+		return
+	}
+	flusher, ok := w.(http.Flusher)
+	if !ok || http.NewResponseController(w).SetWriteDeadline(time.Now().Add(26*time.Second)) != nil {
+		safe(w, 503, "daemon_unavailable")
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	// Scanner enforces one bounded JSON status per frame; never proxy arbitrary
+	// daemon text, headers or a frame referring to another conversation.
+	scanner := bufio.NewScanner(res.Body)
+	scanner.Buffer(make([]byte, 4096), conversationReplyLimit+256)
+	var previous uint64
+	var instance string
+	for count := 0; count < 20; count++ {
+		if !scanner.Scan() {
+			return
+		}
+		cursor := strings.TrimPrefix(scanner.Text(), "id: ")
+		if !conversationStreamCursor.MatchString(cursor) || !strings.HasPrefix(scanner.Text(), "id: ") {
+			return
+		}
+		parts := strings.Split(cursor, ":")
+		sequence, err := strconv.ParseUint(parts[2], 10, 64)
+		if err != nil || sequence == 0 || (instance != "" && (instance != parts[1] || sequence <= previous)) {
+			return
+		}
+		instance, previous = parts[1], sequence
+		if !scanner.Scan() || scanner.Text() != "event: status" {
+			return
+		}
+		if !scanner.Scan() || !strings.HasPrefix(scanner.Text(), "data: ") {
+			return
+		}
+		payload := strings.TrimPrefix(scanner.Text(), "data: ")
+		if len(payload) > conversationReplyLimit {
+			return
+		}
+		if _, _, ok := validatedConversationReply("status", []byte(payload), id); !ok {
+			return
+		}
+		if !scanner.Scan() || scanner.Text() != "" {
+			return
+		}
+		latest, valid := a.authenticated(r)
+		if !valid || latest.identity != initial.identity || latest.csrf != initial.csrf || latest.epoch != initial.epoch || latest.generation != initial.generation || !a.ownsConversation(owner, id) {
+			return
+		}
+		if _, err := io.WriteString(w, "id: "+cursor+"\nevent: status\ndata: "+payload+"\n\n"); err != nil {
+			return
+		}
+		flusher.Flush()
+	}
 }

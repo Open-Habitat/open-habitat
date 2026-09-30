@@ -45,7 +45,11 @@ test("@browser-conversation create, send once, reconnect and old history stays r
   const second = await recheck.boundingBox();
   if (!first || !second) throw new Error("Conversation actions missing");
   expect(second.x - (first.x + first.width)).toBeGreaterThan(8);
+  const stream = page.waitForResponse(
+    (r) => r.url().endsWith("/stream") && r.status() === 200,
+  );
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  expect((await stream).headers()["content-type"]).toBe("text/event-stream");
   await expect(page).toHaveURL(/conversation=pi%3A|conversation=pi:/);
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
@@ -91,6 +95,29 @@ test("@browser-conversation create, send once, reconnect and old history stays r
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toHaveCount(0);
 });
+test("@browser-conversation polling survives an unavailable stream without resending", async ({
+  page,
+}) => {
+  await open(page);
+  await page.route("**/api/v1/conversations/*/stream", (route) =>
+    route.fulfill({ status: 503, body: "unavailable" }),
+  );
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
+  let sends = 0;
+  page.on("request", (request) => {
+    if (request.url().endsWith("/send")) sends++;
+  });
+  await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("Fallback");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(
+    page.getByText(/Viesti hyväksyttiin\.|Viesti odottaa natiivia hyväksyntää/),
+  ).toBeVisible();
+  expect(sends).toBe(1);
+});
+
 test("@browser-conversation ordinary session loading is not an uncertain create", async ({
   page,
 }) => {

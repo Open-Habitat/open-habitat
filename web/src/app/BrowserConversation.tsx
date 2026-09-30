@@ -21,6 +21,7 @@ import {
   list,
   type Session,
   type Status,
+  parseStatus,
   send,
   queueMessage,
   clearQueue,
@@ -261,218 +262,262 @@ export function BrowserConversation({
     setDraft(value);
     if (draftKey) sessionStorage.setItem(draftKey, value);
   };
-  const refresh = useCallback(async () => {
-    if (
-      stale ||
-      !id ||
-      !csrf ||
-      pending.current ||
-      !sessions.some(
-        (s) => s.agent_id === id && s.workspace_id === workspace.workspace_id,
-      )
-    )
-      return;
-    pending.current = true;
-    const version = generation.current;
-    try {
-      const token = await sessionCSRF();
-      if (token !== csrf || (await piStatus()) !== "usable")
-        throw new Error("identity_lost");
-      const nextStatus = await status(id);
-      if (!alive.current || version !== generation.current) return;
-      if (nextStatus.workspace_id !== workspace.workspace_id)
-        throw new Error("invalid workspace");
-      const working = ["pending", "accepted", "stopping"].includes(
-        nextStatus.state,
-      );
-      if (working && !wasWorking.current) setStartedAt(Date.now());
+  const refresh = useCallback(
+    async (streamStatus?: Status) => {
       if (
-        !working &&
-        wasWorking.current &&
-        document.visibilityState === "hidden"
+        stale ||
+        !id ||
+        !csrf ||
+        pending.current ||
+        !sessions.some(
+          (s) => s.agent_id === id && s.workspace_id === workspace.workspace_id,
+        )
       )
-        setFinishedInBackground(true);
-      wasWorking.current = working;
-      setCurrent(nextStatus);
-      if (nextStatus.state === "idle") setWorkingMode("follow_up");
-      const abortId = sessionStorage.getItem(
-        `nah:abort:${identity}:${csrf}:${id}`,
-      );
-      const abortReceipt =
-        !!abortId && nextStatus.command_id === abortId.replace(/^done:/, "");
-      if (
-        abortReceipt &&
-        nextStatus.ack !== "pending" &&
-        !abortId.startsWith("done:")
-      ) {
-        sessionStorage.setItem(
+        return;
+      pending.current = true;
+      const version = generation.current;
+      try {
+        // The gateway rechecks broker and browser session on every stream frame;
+        // the daemon rechecks Pi. Fallback HTTP reads perform their own checks.
+        if (!streamStatus) {
+          const token = await sessionCSRF();
+          if (token !== csrf || (await piStatus()) !== "usable")
+            throw new Error("identity_lost");
+        }
+        const nextStatus = streamStatus ?? (await status(id));
+        if (!alive.current || version !== generation.current) return;
+        if (nextStatus.workspace_id !== workspace.workspace_id)
+          throw new Error("invalid workspace");
+        const working = ["pending", "accepted", "stopping"].includes(
+          nextStatus.state,
+        );
+        if (working && !wasWorking.current) setStartedAt(Date.now());
+        if (
+          !working &&
+          wasWorking.current &&
+          document.visibilityState === "hidden"
+        )
+          setFinishedInBackground(true);
+        wasWorking.current = working;
+        setCurrent(nextStatus);
+        if (nextStatus.state === "idle") setWorkingMode("follow_up");
+        const abortId = sessionStorage.getItem(
           `nah:abort:${identity}:${csrf}:${id}`,
-          `done:${abortId}`,
         );
-        setReceipt(
-          nextStatus.ack === "accepted"
-            ? "Pi kuittasi keskeytyksen. Työkalujen päättymistä ei ole vahvistettu."
-            : nextStatus.ack === "rejected"
-              ? "Pi hylkäsi keskeytyksen."
-              : "Keskeytyksen tulos jäi epävarmaksi; istunto voi olla päättynyt.",
-        );
-      }
-      if (
-        !abortReceipt &&
-        nextStatus.command_id &&
-        nextStatus.ack === "rejected"
-      ) {
-        const unresolvedKey = `nah:ambiguous:${identity}:${csrf}:${id}`;
-        if (sessionStorage.getItem(unresolvedKey) === nextStatus.command_id) {
-          const rejectedText = sessionStorage.getItem(submittedKey);
-          if (rejectedText !== null) {
-            // Do not overwrite edits made while the acknowledgement was pending.
-            if (
-              !sessionStorage.getItem(`nah:draft:${identity}:${csrf}:${id}`)
-            ) {
-              setDraft(rejectedText);
-              sessionStorage.setItem(
-                `nah:draft:${identity}:${csrf}:${id}`,
-                rejectedText,
-              );
+        const abortReceipt =
+          !!abortId && nextStatus.command_id === abortId.replace(/^done:/, "");
+        if (
+          abortReceipt &&
+          nextStatus.ack !== "pending" &&
+          !abortId.startsWith("done:")
+        ) {
+          sessionStorage.setItem(
+            `nah:abort:${identity}:${csrf}:${id}`,
+            `done:${abortId}`,
+          );
+          setReceipt(
+            nextStatus.ack === "accepted"
+              ? "Pi kuittasi keskeytyksen. Työkalujen päättymistä ei ole vahvistettu."
+              : nextStatus.ack === "rejected"
+                ? "Pi hylkäsi keskeytyksen."
+                : "Keskeytyksen tulos jäi epävarmaksi; istunto voi olla päättynyt.",
+          );
+        }
+        if (
+          !abortReceipt &&
+          nextStatus.command_id &&
+          nextStatus.ack === "rejected"
+        ) {
+          const unresolvedKey = `nah:ambiguous:${identity}:${csrf}:${id}`;
+          if (sessionStorage.getItem(unresolvedKey) === nextStatus.command_id) {
+            const rejectedText = sessionStorage.getItem(submittedKey);
+            if (rejectedText !== null) {
+              // Do not overwrite edits made while the acknowledgement was pending.
+              if (
+                !sessionStorage.getItem(`nah:draft:${identity}:${csrf}:${id}`)
+              ) {
+                setDraft(rejectedText);
+                sessionStorage.setItem(
+                  `nah:draft:${identity}:${csrf}:${id}`,
+                  rejectedText,
+                );
+              }
             }
+            sessionStorage.removeItem(submittedKey);
+            sessionStorage.removeItem(unresolvedKey);
+          }
+          setReceipt(
+            "Viesti hylättiin. Teksti säilytettiin; voit lähettää sen uudelleen tarkoituksella.",
+          );
+        }
+        if (
+          !abortReceipt &&
+          nextStatus.command_id &&
+          nextStatus.ack === "uncertain"
+        )
+          setReceipt(
+            "Viestin hyväksyntä jäi epävarmaksi. Tarkista natiivi historia, älä lähetä automaattisesti uudelleen.",
+          );
+        const unresolved = sessionStorage.getItem(
+          `nah:ambiguous:${identity}:${csrf}:${id}`,
+        );
+        if (
+          unresolved &&
+          unresolved === nextStatus.command_id &&
+          !abortReceipt &&
+          nextStatus.ack === "accepted"
+        ) {
+          const sentText = sessionStorage.getItem(submittedKey);
+          const key = `nah:draft:${identity}:${csrf}:${id}`;
+          if (sentText !== null && sessionStorage.getItem(key) === sentText) {
+            setDraft("");
+            sessionStorage.setItem(key, "");
           }
           sessionStorage.removeItem(submittedKey);
-          sessionStorage.removeItem(unresolvedKey);
+          sessionStorage.removeItem(`nah:ambiguous:${identity}:${csrf}:${id}`);
+          setReceipt("Viesti hyväksyttiin.");
         }
-        setReceipt(
-          "Viesti hylättiin. Teksti säilytettiin; voit lähettää sen uudelleen tarkoituksella.",
-        );
-      }
-      if (
-        !abortReceipt &&
-        nextStatus.command_id &&
-        nextStatus.ack === "uncertain"
-      )
-        setReceipt(
-          "Viestin hyväksyntä jäi epävarmaksi. Tarkista natiivi historia, älä lähetä automaattisesti uudelleen.",
-        );
-      const unresolved = sessionStorage.getItem(
-        `nah:ambiguous:${identity}:${csrf}:${id}`,
-      );
-      if (
-        unresolved &&
-        unresolved === nextStatus.command_id &&
-        !abortReceipt &&
-        nextStatus.ack === "accepted"
-      ) {
-        const sentText = sessionStorage.getItem(submittedKey);
-        const key = `nah:draft:${identity}:${csrf}:${id}`;
-        if (sentText !== null && sessionStorage.getItem(key) === sentText) {
-          setDraft("");
-          sessionStorage.setItem(key, "");
-        }
-        sessionStorage.removeItem(submittedKey);
-        sessionStorage.removeItem(`nah:ambiguous:${identity}:${csrf}:${id}`);
-        setReceipt("Viesti hyväksyttiin.");
-      }
-      setEvents(nextStatus.events); // bounded tail, never concatenate snapshots
-      setProblem("");
-      if (nextStatus.native_history === "readable") {
-        try {
-          const page = await readHistoryFetch(id);
-          if (!alive.current || version !== generation.current) return;
-          const old = latest.current.entries;
-          // The native history is oldest-first. The first page is NOT a live
-          // tail: after 25 entries a fresh reply is only reachable via `after`.
-          // Walk forward from the last known key, keeping the reading position.
-          // Bound each poll so very large histories cannot monopolize the tab.
-          const prefixMatches =
-            old.length > 0 &&
-            page.entries.every((e, i) => old[i]?.entry_key === e.entry_key);
-          let merged = prefixMatches ? [...old] : [...page.entries];
-          let cursor = prefixMatches
-            ? (old.at(-1)?.entry_key ?? page.next_after)
-            : page.next_after;
-          if (
-            prefixMatches &&
-            !page.next_after &&
-            old.length === page.entries.length
-          )
-            cursor = undefined;
-          for (let n = 0; cursor && n < 16; n++) {
-            const additional = await readHistoryFetch(id, cursor);
+        setEvents(nextStatus.events); // bounded tail, never concatenate snapshots
+        setProblem("");
+        if (nextStatus.native_history === "readable") {
+          try {
+            const page = await readHistoryFetch(id);
             if (!alive.current || version !== generation.current) return;
-            // Native history can change while walking: retry at the next poll
-            // rather than claiming a discontinuous feed is up to date.
-            if (!additional.entries.length && additional.complete) {
-              cursor = undefined;
-              break;
-            }
+            const old = latest.current.entries;
+            // The native history is oldest-first. The first page is NOT a live
+            // tail: after 25 entries a fresh reply is only reachable via `after`.
+            // Walk forward from the last known key, keeping the reading position.
+            // Bound each poll so very large histories cannot monopolize the tab.
+            const prefixMatches =
+              old.length > 0 &&
+              page.entries.every((e, i) => old[i]?.entry_key === e.entry_key);
+            let merged = prefixMatches ? [...old] : [...page.entries];
+            let cursor = prefixMatches
+              ? (old.at(-1)?.entry_key ?? page.next_after)
+              : page.next_after;
             if (
-              !additional.entries.length ||
-              additional.entries.some((e) =>
-                merged.some((m) => m.entry_key === e.entry_key),
+              prefixMatches &&
+              !page.next_after &&
+              old.length === page.entries.length
+            )
+              cursor = undefined;
+            for (let n = 0; cursor && n < 16; n++) {
+              const additional = await readHistoryFetch(id, cursor);
+              if (!alive.current || version !== generation.current) return;
+              // Native history can change while walking: retry at the next poll
+              // rather than claiming a discontinuous feed is up to date.
+              if (!additional.entries.length && additional.complete) {
+                cursor = undefined;
+                break;
+              }
+              if (
+                !additional.entries.length ||
+                additional.entries.some((e) =>
+                  merged.some((m) => m.entry_key === e.entry_key),
+                )
+              ) {
+                setHistoryError(true);
+                return;
+              }
+              merged = [...merged, ...additional.entries];
+              cursor = additional.next_after;
+            }
+            if (merged.length > old.length && !wasAtBottom.current)
+              setUnseen((n) => n + merged.length - old.length);
+            if (
+              merged.length !== old.length ||
+              merged.some(
+                (e, i) =>
+                  e.entry_key !== old[i]?.entry_key ||
+                  e.content.text !== old[i]?.content.text ||
+                  e.content.complete !== old[i]?.content.complete,
               )
             ) {
-              setHistoryError(true);
-              return;
+              captureAnchor();
+              setEntries(merged);
             }
-            merged = [...merged, ...additional.entries];
-            cursor = additional.next_after;
+            setNext(cursor);
+            setHistoryError(false);
+          } catch {
+            if (alive.current && version === generation.current)
+              setHistoryError(true);
           }
-          if (merged.length > old.length && !wasAtBottom.current)
-            setUnseen((n) => n + merged.length - old.length);
-          if (
-            merged.length !== old.length ||
-            merged.some(
-              (e, i) =>
-                e.entry_key !== old[i]?.entry_key ||
-                e.content.text !== old[i]?.content.text ||
-                e.content.complete !== old[i]?.content.complete,
-            )
-          ) {
-            captureAnchor();
-            setEntries(merged);
-          }
-          setNext(cursor);
-          setHistoryError(false);
-        } catch {
-          if (alive.current && version === generation.current)
-            setHistoryError(true);
+        } else {
+          // A temporary native read failure must not erase already-read messages.
+          setHistoryError(nextStatus.native_history === "unavailable");
         }
-      } else {
-        // A temporary native read failure must not erase already-read messages.
-        setHistoryError(nextStatus.native_history === "unavailable");
+      } catch {
+        if (alive.current && version === generation.current) {
+          setProblem(
+            "Yhteys katkesi tai istunto muuttui. Ohjaus on estetty kunnes tila varmistuu.",
+          );
+          setCurrent(undefined);
+        }
+      } finally {
+        pending.current = false;
       }
-    } catch {
-      if (alive.current && version === generation.current) {
-        setProblem(
-          "Yhteys katkesi tai istunto muuttui. Ohjaus on estetty kunnes tila varmistuu.",
-        );
-        setCurrent(undefined);
-      }
-    } finally {
-      pending.current = false;
-    }
-  }, [
-    id,
-    csrf,
-    sessions,
-    workspace.workspace_id,
-    identity,
-    submittedKey,
-    stale,
-    captureAnchor,
-  ]);
+    },
+    [
+      id,
+      csrf,
+      sessions,
+      workspace.workspace_id,
+      identity,
+      submittedKey,
+      stale,
+      captureAnchor,
+    ],
+  );
   useEffect(() => {
     if (!id || !csrf || stale) return;
     void refresh();
     const timer = window.setInterval(() => void refresh(), 3000);
+    // Stream frames are bounded status resnapshots, not a second history.
+    // The verified HTTP status/native-history read remains authoritative and
+    // also recovers when the stream is unavailable or a cursor expires.
+    let stream: EventSource | undefined;
+    let retry: number | undefined;
+    let removed = false;
+    const connect = () => {
+      if (removed || document.visibilityState === "hidden") return;
+      stream = new EventSource(`/api/v1/conversations/${id.slice(3)}/stream`);
+      stream.addEventListener("status", (event) => {
+        try {
+          const snapshot = parseStatus(
+            JSON.parse((event as MessageEvent).data),
+            id,
+          );
+          void refresh(snapshot);
+        } catch {
+          stream?.close();
+          stream = undefined;
+          void refresh();
+        }
+      });
+      stream.onerror = () => {
+        stream?.close();
+        stream = undefined;
+        if (!removed)
+          retry = window.setTimeout(() => {
+            retry = undefined;
+            connect();
+          }, 3000);
+      };
+    };
+    connect();
     const focus = () => {
       if (document.visibilityState === "visible")
         setFinishedInBackground(false);
       void refresh();
+      if (!stream && retry === undefined) connect();
     };
     window.addEventListener("focus", focus);
     document.addEventListener("visibilitychange", focus);
     return () => {
+      removed = true;
       window.clearInterval(timer);
+      if (retry !== undefined) window.clearTimeout(retry);
+      stream?.close();
       window.removeEventListener("focus", focus);
       document.removeEventListener("visibilitychange", focus);
     };

@@ -8,8 +8,10 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -33,7 +35,8 @@ type ConversationController struct {
 	// Only the synthetic browser host sets them apart from cfg.Home.
 	home     string
 	discover func(transport.Config) Discovery
-	fixture  bool // untrusted synthetic runtime: never set in production
+	fixture  bool   // untrusted synthetic runtime: never set in production
+	instance string // ephemeral stream cursor scope; never a history store
 }
 type conversation struct {
 	id, workspace, cwd           string
@@ -48,12 +51,14 @@ type conversation struct {
 	command                      string
 	events                       []json.RawMessage
 	cursor                       uint64
+	streamSeq                    uint64
 	lost                         bool
 	aborting                     bool
 }
 
 func newConversationController(ctx context.Context, cfg transport.Config, runtime *core.PiRuntimeConfig, trusted func(*http.Request) bool, status func(context.Context) string) *ConversationController {
-	c := &ConversationController{cfg: cfg, runtime: runtime, trusted: trusted, status: status, sessions: make(map[string]*conversation), home: cfg.Home, discover: Discover}
+	instance, _ := uuid() // stream refuses to start if the instance ID is unavailable
+	c := &ConversationController{cfg: cfg, runtime: runtime, trusted: trusted, status: status, sessions: make(map[string]*conversation), home: cfg.Home, discover: Discover, instance: instance}
 	go func() { <-ctx.Done(); c.shutdown() }()
 	return c
 }
@@ -191,6 +196,8 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	switch {
 	case r.Method == http.MethodGet && parts[1] == "status":
 		c.observe(w, r, parts[0])
+	case r.Method == http.MethodGet && parts[1] == "stream":
+		c.stream(w, r, parts[0])
 	case r.Method == http.MethodPost && (parts[1] == "send" || parts[1] == "steer" || parts[1] == "follow_up" || parts[1] == "clear_queue"):
 		if parts[1] == "clear_queue" {
 			c.clearQueue(w, r, parts[0])
@@ -624,3 +631,104 @@ func (c *ConversationController) stop(w http.ResponseWriter, r *http.Request, id
 	c.mu.Unlock()
 	historyJSON(w, map[string]any{"schema_version": 1, "state": "termination_unknown"})
 }
+
+// stream is a bounded, provisional SSE status-resnapshot stream. Its cursor is
+// transport-only: lost frames are recovered from the native history and current
+// status, never from a parallel history store. A stream cannot write to Pi.
+func (c *ConversationController) stream(w http.ResponseWriter, r *http.Request, id string) {
+	if r.ContentLength > 0 || len(r.TransferEncoding) != 0 || c.instance == "" {
+		snapshotError(w, 400, "invalid_request")
+		return
+	}
+	if c.lookup(w, id) == nil {
+		return
+	}
+	// One finite connection costs at most twenty native status reads. The
+	// gateway checks the browser login again before forwarding every frame.
+	prefix := "ev1:" + c.instance + ":"
+	last := r.Header.Get("Last-Event-ID")
+	if last != "" {
+		if len(last) > 100 || !strings.HasPrefix(last, prefix) {
+			snapshotError(w, 409, "control_uncertain")
+			return
+		}
+		seq, err := strconv.ParseUint(strings.TrimPrefix(last, prefix), 10, 64)
+		c.mu.Lock()
+		current := c.sessions[id].streamSeq
+		c.mu.Unlock()
+		// Concurrent viewers can advance this cursor independently. An old
+		// cursor receives a full native-backed resnapshot, never a false
+		// claim of replay. Future or invented cursors fail closed.
+		if err != nil || seq == 0 || seq > current {
+			snapshotError(w, 409, "control_uncertain")
+			return
+		}
+	}
+	// The UDS transport has a five-second request deadline. Remove it only
+	// for this finite read-only stream; keep an absolute write bound.
+	control := http.NewResponseController(w)
+	if control.SetReadDeadline(time.Time{}) != nil || control.SetWriteDeadline(time.Now().Add(24*time.Second)) != nil {
+		snapshotError(w, 503, "native_source_unavailable")
+		return
+	}
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		snapshotError(w, 503, "native_source_unavailable")
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(200)
+	tick := time.NewTicker(time.Second)
+	defer tick.Stop()
+	end := time.Now().Add(20 * time.Second)
+	for n := 0; n < 20 && time.Now().Before(end); n++ {
+		if n > 0 {
+			select {
+			case <-r.Context().Done():
+				return
+			case <-tick.C:
+			}
+		}
+		// Recheck native onboarding even on an already-open socket. Revocation
+		// terminates the stream and the controller before another frame escapes.
+		state := c.status(r.Context())
+		if state != "usable" || r.Context().Err() != nil {
+			if state == "missing" && r.Context().Err() == nil {
+				c.revoke()
+			}
+			return
+		}
+		c.mu.Lock()
+		s := c.sessions[id]
+		closed := c.closed || s == nil
+		c.mu.Unlock()
+		if closed {
+			return
+		}
+		rec := httptest.NewRecorder()
+		c.observe(rec, r, id)
+		if rec.Code != 200 || rec.Body.Len() > conversationStreamFrameLimit {
+			return
+		}
+		c.mu.Lock()
+		s = c.sessions[id]
+		if c.closed || s == nil {
+			c.mu.Unlock()
+			return
+		}
+		// A bounded monotonic cursor covers status/ack changes as well as Pi
+		// events. Old or missing cursors receive a full status resnapshot.
+		s.streamSeq++
+		seq := s.streamSeq
+		c.mu.Unlock()
+		frame := strings.TrimSpace(rec.Body.String())
+		if _, err := io.WriteString(w, "id: "+prefix+strconv.FormatUint(seq, 10)+"\nevent: status\ndata: "+frame+"\n\n"); err != nil {
+			return
+		}
+		flusher.Flush()
+	}
+}
+
+const conversationStreamFrameLimit = 1 << 20

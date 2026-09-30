@@ -3,6 +3,7 @@
 package gateway
 
 import (
+	"bufio"
 	"context"
 	"io"
 	"net"
@@ -16,6 +17,11 @@ import (
 	"testing"
 	"time"
 )
+
+type streamRecorder struct{ *httptest.ResponseRecorder }
+
+func (w streamRecorder) SetWriteDeadline(time.Time) error { return nil }
+func (w streamRecorder) Flush()                           { w.ResponseRecorder.Flush() }
 
 func TestConversationGatewaySessionBoundary(t *testing.T) {
 	now := time.Now()
@@ -48,6 +54,11 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 			reply = `{"schema_version":1,"command_id":"` + cmd + `","state":"pending"}`
 		case conversationBase + "/" + id + "/status":
 			reply = `{"schema_version":1,"agent_id":"pi:` + id + `","workspace_id":"` + ws + `","state":"pending","command_id":"` + cmd + `","ack":"pending","event_cursor":0,"events":[],"event_loss":false,"native_history":"missing","native_revision":"","history_query":"/api/v1/agents/pi:` + id + `/history"}`
+		case conversationBase + "/" + id + "/stream":
+			w.Header().Set("Content-Type", "text/event-stream")
+			w.(http.Flusher).Flush()
+			_, _ = io.WriteString(w, "id: ev1:12345678-1234-4123-8123-123456789abc:1\nevent: status\ndata: {\"schema_version\":1,\"agent_id\":\"pi:"+id+"\",\"workspace_id\":\""+ws+"\",\"state\":\"idle\",\"command_id\":\"\",\"ack\":\"\",\"event_cursor\":0,\"events\":[],\"event_loss\":false,\"native_history\":\"missing\",\"native_revision\":\"\",\"history_query\":\"/api/v1/agents/pi:"+id+"/history\"}\n\n")
+			return
 		case conversationBase + "/" + id + "/abort":
 			reply = `{"schema_version":1,"command_id":"` + cmd + `","state":"pending"}`
 		case conversationBase + "/" + id + "/stop":
@@ -89,7 +100,11 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 			}
 		}
 		w := httptest.NewRecorder()
-		h.ServeHTTP(w, r)
+		if strings.HasSuffix(path, "/stream") {
+			h.ServeHTTP(streamRecorder{w}, r)
+		} else {
+			h.ServeHTTP(w, r)
+		}
 		return w
 	}
 	create := `{"workspace_id":"` + ws + `"}`
@@ -116,6 +131,12 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 	}
 	if w := send("GET", conversationBase+"/"+id+"/status", first, "", ""); w.Code != 200 {
 		t.Fatalf("status %d %s", w.Code, w.Body.String())
+	}
+	if w := send("GET", conversationBase+"/"+id+"/stream", second, "", ""); w.Code != 404 {
+		t.Fatalf("foreign stream %d", w.Code)
+	}
+	if w := send("GET", conversationBase+"/"+id+"/stream", first, "", ""); w.Code != 200 || !strings.Contains(w.Body.String(), "event: status") {
+		t.Fatalf("stream %d %s", w.Code, w.Body.String())
 	}
 	if w := send("POST", conversationBase+"/"+id+"/abort", second, `{"command_id":"`+cmd+`"}`, second); w.Code != 404 {
 		t.Fatalf("foreign abort %d", w.Code)
@@ -147,6 +168,36 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 	}
 	if w := send("GET", conversationBase+"/"+id+"/status", second, "", ""); w.Code != 404 {
 		t.Fatalf("successor %d", w.Code)
+	}
+}
+
+func TestStreamHeaderBudgetLeavesBodyReadable(t *testing.T) {
+	for _, tc := range []struct {
+		name, headers string
+		ok            bool
+	}{
+		{"ordinary", "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\n\r\n", true},
+		{"oversized", "HTTP/1.1 200 OK\r\nX-Padding: " + strings.Repeat("a", 8192) + "\r\n\r\n", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			reader := bufio.NewReader(&streamHeaderReader{source: strings.NewReader(tc.headers + strings.Repeat("b", 1<<20))})
+			res, err := http.ReadResponse(reader, nil)
+			if !tc.ok {
+				if err == nil {
+					res.Body.Close()
+					t.Fatal("oversized headers accepted")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer res.Body.Close()
+			body, err := io.ReadAll(res.Body)
+			if err != nil || len(body) != 1<<20 {
+				t.Fatalf("body truncated: %d %v", len(body), err)
+			}
+		})
 	}
 }
 
