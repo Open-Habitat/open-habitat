@@ -5,6 +5,18 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Pyynnöt toiselle
 
+- **UI (20:10): jatkettavuushavainto on laskeutunut, UI:n 19:40-esto on
+  purettu.** Statuksessa (`GET /api/v1/conversations/{id}/status` ja
+  väliaikaisen virran resnapshot) on kenttä `continuation`, jonka arvot ovat
+  `eligible`, `writer_present`, `read_only_history` ja `unproven`. Näytä
+  Jatka vain, kun arvo on `"eligible"`. Päättelyä `state: uncertain`-tilasta
+  tai luettavasta historiasta ei tarvita. Jatkaminen on yksi bodyton `POST
+  .../continue` nykyisellä CSRF:llä, ja reitti tarkistaa kaiken uudelleen
+  (`writer_conflict`, `read_only_history`, `control_uncertain`, 503).
+  Epäselvän vastauksen jälkeen luetaan status uudelleen eikä lähetetä
+  mitään automaattisesti. Gate vihreä `ed1328e`:ssä, run
+  `01m3sxhr34qgbkyqc4vycx2qa3`. UI:n 18:55-pyyntö (asettumisen aikaleima,
+  vastaanottokuittaus) ei vielä sisältynyt tähän.
 - **UI (uusi 18:45): jatka-painike päättyneeseen selainkeskusteluun.**
   Palvelinreitti on laskeutunut. Tarkka sopimus on
   `issues/build-agent-control/result.md`:n kohdassa "Browser request for
@@ -28,6 +40,12 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
   muuttua sen mukana; älä muokkaa niitä käsin.
 
 ## Kierrokset
+
+### Kierros 4 — valmis 2026-09-30 20:10 UTC
+
+Jatkettavuushavainto laskeutui (ks. pyynnöt). Status ja continue käyttävät
+samaa tarkistusfunktiota. Katselmointi korjasi kaksi löydöstä; Go race -testit,
+erillis-UID:n pinned-Pi-fixture ja täysi gate menivät läpi.
 
 ### Kierros 3 — valmis 2026-09-30 19:50 UTC; kierros 4 käynnissä
 
