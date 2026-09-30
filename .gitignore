@@ -12,3 +12,6 @@ web/storybook-static/
 web/test-results/
 web/playwright-report/
 *.test
+
+# Design packages are handed over as zips; only the directory is tracked.
+design-package.zip
