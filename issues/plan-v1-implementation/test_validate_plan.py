@@ -46,7 +46,11 @@ class PlanValidatorTests(unittest.TestCase):
         self.run_validator("history visual review must not block agent control")
 
     def test_missing_visual_evidence_fails(self):
-        self.change("build-agent-control", "visual-acceptance.md", "missing-evidence.md")
+        path = self.root / "issues/build-agent-control/item.md"
+        content = path.read_text()
+        self.assertIn("visual-acceptance.md", content)
+        # Remove every reference: the policy can mention the evidence file twice.
+        path.write_text(content.replace("visual-acceptance.md", "missing-evidence.md"))
         self.run_validator("missing visual evidence and explicit human decision policy: build-agent-control")
 
     def test_missing_human_decision_fails(self):
