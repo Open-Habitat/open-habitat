@@ -3,13 +3,15 @@ created: 2026-09-30
 updated: 2026-09-30
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@review-browser-design-v2', '@complete-conversation-ui']
 lane: design-v2
 lane_seq: 2
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
 blocked_by: ['@recut-ui-foundation']
+closed: 2026-09-30
+closed_by: night-ui-worker
 ---
 
 # Fit the conversation view to browser design v2
