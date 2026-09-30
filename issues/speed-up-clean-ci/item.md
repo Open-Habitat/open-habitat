@@ -3,7 +3,7 @@ created: 2026-09-29
 updated: 2026-09-30
 type: improvement
 reporter: jari
-status: open
+status: in-progress
 priority: normal
 lane: build-tooling
 collision: [scripts/ci-local.sh]
