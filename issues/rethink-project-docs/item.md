@@ -124,6 +124,16 @@ rajat käsitellään ennen tiliasetuksia, jotta eri toiminnot eivät sekoitu.
    Tarkista yhteys nykyiseen agenttiohjaukseen ja ehkäise päällekkäinen työ.
    Uusien toteutusissueiden linkit lisätään tähän, kun ne ovat olemassa.
 
+### Design-review-issuen uudelleenkirjoitus valmis 30.9.2026
+
+Jari hyväksyi [review-browser-design-v2-issuen](../review-browser-design-v2/item.md)
+uudistetun tavoitteen ja merkitsi tämän tekstin läpikäynnin valmiiksi.
+Hyväksytty versio on commitissa `82a5c4e`: design toimii nykyisen UI:n,
+komponenttipohjan sekä asettelu- ja tyyliratkaisujen vertailukohtana.
+Review tuottaa arvion puutteista, yhteisistä parannuksista ja toteutuspolusta
+viivatarkkaan, helposti tarkennettavaan lopputulokseen. Varsinainen arvio
+ja toteutussuunnitelma ovat edelleen tekemättä; review-issue pysyy avoimena.
+
 ### Ensimmäinen lukukierros tehty 30.9.2026
 
 Designiin on tutustuttu: [selain-designin ensiluku](../review-browser-design-v2/first-read.md)
