@@ -12,6 +12,16 @@ export function accountLabel(displayName: string): string {
     : "Oma tili";
 }
 
+function useThemeChoice() {
+  const [theme, setTheme] = useState(getThemeChoice);
+  useEffect(() => {
+    const sync = () => setTheme(getThemeChoice());
+    window.addEventListener("nah:theme-change", sync);
+    return () => window.removeEventListener("nah:theme-change", sync);
+  }, []);
+  return theme;
+}
+
 export function AccountShelf({
   name,
   onSettings,
@@ -21,12 +31,7 @@ export function AccountShelf({
   onSettings: () => void;
   onLogout: () => void;
 }) {
-  const [theme, setTheme] = useState(getThemeChoice);
-  useEffect(() => {
-    const sync = () => setTheme(getThemeChoice());
-    window.addEventListener("nah:theme-change", sync);
-    return () => window.removeEventListener("nah:theme-change", sync);
-  }, []);
+  const theme = useThemeChoice();
   const themes: { id: ThemeChoice; label: string }[] = [
     { id: "system", label: "Järjestelmä" },
     { id: "light", label: "Vaalea" },
@@ -56,7 +61,6 @@ export function AccountShelf({
           if (id.startsWith("theme-")) {
             const choice = id.slice(6) as ThemeChoice;
             setThemeChoice(choice);
-            setTheme(choice);
           }
           if (id === "settings") onSettings();
           if (id === "logout") onLogout();
@@ -108,7 +112,7 @@ export function AccountSettings({
   onBack: () => void;
   onLogout?: () => void;
 }) {
-  const [theme, setTheme] = useState(getThemeChoice);
+  const theme = useThemeChoice();
   const state = states[nativeState ?? "unknown"];
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), []);
@@ -170,10 +174,7 @@ export function AccountSettings({
             { value: "light", label: "Vaalea" },
             { value: "dark", label: "Tumma" },
           ]}
-          onChange={(choice) => {
-            setThemeChoice(choice);
-            setTheme(choice);
-          }}
+          onChange={setThemeChoice}
         />
       </section>
       {onLogout ? (

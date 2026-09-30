@@ -2,7 +2,7 @@ export type ThemeChoice = "system" | "light" | "dark";
 const key = "nah:theme";
 const query = window.matchMedia?.("(prefers-color-scheme: dark)");
 
-export function getThemeChoice(): ThemeChoice {
+function initialThemeChoice(): ThemeChoice {
   try {
     const saved = window.localStorage.getItem(key);
     if (saved === "light" || saved === "dark") return saved;
@@ -10,6 +10,10 @@ export function getThemeChoice(): ThemeChoice {
     // Private browsing or disabled storage: the system setting remains usable.
   }
   return "system";
+}
+
+export function getThemeChoice(): ThemeChoice {
+  return current;
 }
 
 function apply(choice: ThemeChoice) {
@@ -30,7 +34,7 @@ export function setThemeChoice(choice: ThemeChoice) {
   window.dispatchEvent(new Event("nah:theme-change"));
 }
 
-let current = getThemeChoice();
+let current = initialThemeChoice();
 apply(current);
 query?.addEventListener("change", () => {
   if (current === "system") apply(current);
