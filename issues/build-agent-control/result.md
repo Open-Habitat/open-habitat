@@ -263,3 +263,16 @@ two synthetic-provider prompts, request disconnect/no retry and restart history
 read-only. The script does **not** invoke the new abort route, systemd or a real
 provider. The failed preflight is superseded for the old scenario only; no
 cross-UID abort claim is made.
+
+Final committed runtime candidate `82e817c` passed
+`PATH=/home/maintainer/Sources/native-agent-host/.tools/go/bin:/home/maintainer/Sources/native-agent-host/.tools/node/bin:$PATH TMPDIR=/var/tmp NAH_PORT_BASE=15000 PLAYWRIGHT_BROWSERS_PATH=/home/maintainer/Sources/native-agent-host/.cache/ms-playwright ./scripts/ci-local.sh --clean --json`
+(`status:passed`, `clean:true`, including production browser journeys, Go race,
+contracts and release packaging). Earlier clean-gate attempts were stopped to
+repair review findings and the UID fixture; one attempt reached Playwright but
+failed because an interrupted run had left Vite listening on port 14709. The
+orphaned worktree-local listener was stopped, and the complete gate passed on a
+fresh port range. This receipt-only change does not change runtime or packaged
+inputs, so the successful clean-gate result is reused. The gate does not prove
+SSE, ended-session continuation, live provider, or browser-rendered real-Pi abort.
+Leave `@build-agent-control` open/in-progress with no acceptance criterion
+claimed from this intermediate slice.
