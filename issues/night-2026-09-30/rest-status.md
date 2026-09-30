@@ -29,6 +29,21 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Kierrokset
 
+### Kierros 2 — valmis 2026-09-30 19:20 UTC
+
+**Laskeutui** (`build-agent-control`, run `01m3sszrzjyp781twe94y7g5g4`, gate
+vihreä `7371131`:ssä, riippumaton katselmointi korjauksineen). Uusi
+`GET /api/v1/events?after=` antaa snapshotin watermarkin ja rajatun,
+toistettavan SSE-virran. `ev1`-cursorit, `Last-Event-ID`, `409
+cursor_expired` ja `409 cursor_instance_mismatch` toimivat. Virta on toistaiseksi
+**vain invalidointi**: se lähettää `snapshot.invalidated`-tapahtuman, jonka
+jälkeen selain hakee tilan uudelleen. Rakenteiset history-, jono- ja
+workspace-tapahtumat sekä snapshotin `live_tail` puuttuvat vielä. UI:lle:
+voit ottaa virran käyttöön invalidointisignaalina, mutta säilytä status- ja
+historiahaku varapolkuna.
+
+**Seuraava kierros:** rakenteiset tapahtumat ja `live_tail`.
+
 ### Kierros 1 — valmis 2026-09-30 18:45 UTC
 
 **Yhteenveto.** Kaikki kolme omaa ajoa ovat laskeutuneet, eikä mitään ole
