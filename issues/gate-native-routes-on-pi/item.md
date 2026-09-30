@@ -2,7 +2,7 @@
 created: 2026-09-28
 updated: 2026-09-30
 type: task
-status: open
+status: in-progress
 priority: normal
 related: ['@design-first-use-onboarding', '@add-pi-device-adapter']
 lane: gateway-pi-gate
