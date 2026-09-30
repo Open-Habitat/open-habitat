@@ -6,6 +6,8 @@ import {
   Button,
   ModelChange,
   ConversationTimeline,
+  ConversationFrame,
+  ConversationStream,
   InlineNotice,
   Markdown,
   ToolOutput,
@@ -314,7 +316,7 @@ export function HistoryView({
     }
   };
   return (
-    <section className="ah-reading-view">
+    <ConversationFrame>
       <AgentHeader
         title={agent.title.display}
         activityLabel="Prosessin tila ei tiedossa"
@@ -334,18 +336,20 @@ export function HistoryView({
           ]}
         />
       ) : null}
-      <ConversationTimeline
-        state={state}
-        items={timelineItems(entries, stale)}
-        historyMode="pagedAccessible"
-        emptyLabel="Natiivissa historiassa ei ole vielä viestejä."
-        onJumpToLatest={() => {}}
-        problem={{
-          title: "Historiaa ei saada",
-          description:
-            "Lähde puuttuu, on vioittunut tai muuttui lukemisen aikana. Päivitä tilannekuva.",
-        }}
-      />
+      <ConversationStream>
+        <ConversationTimeline
+          state={state}
+          items={timelineItems(entries, stale)}
+          historyMode="pagedAccessible"
+          emptyLabel="Natiivissa historiassa ei ole vielä viestejä."
+          onJumpToLatest={() => {}}
+          problem={{
+            title: "Historiaa ei saada",
+            description:
+              "Lähde puuttuu, on vioittunut tai muuttui lukemisen aikana. Päivitä tilannekuva.",
+          }}
+        />
+      </ConversationStream>
       {sourceUpdated ? (
         <InlineNotice
           title="Lähde päivittyi"
@@ -364,7 +368,7 @@ export function HistoryView({
         title="Vain luku"
         description="Historian avaaminen ei käynnistä eikä jatka Pi:tä. Prosessia tai ohjauskanavaa ei ole vahvistettu."
       />
-    </section>
+    </ConversationFrame>
   );
 }
 export async function readHistoryFetch(

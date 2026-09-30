@@ -165,7 +165,9 @@ export function App() {
   useEffect(() => {
     if (location.pathname !== "/settings" && returningFromSettings.current) {
       returningFromSettings.current = false;
-      document.querySelector<HTMLElement>(".ah-account-shelf button")?.focus();
+      document
+        .querySelector<HTMLElement>("[data-account-controls] button")
+        ?.focus();
     }
   }, [location.pathname]);
   const identity = snapshot?.identity.web_identity_id;

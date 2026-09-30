@@ -1,6 +1,7 @@
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { Icon } from "./Icon";
 import { Input, Label, TextField } from "react-aria-components";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { Button } from "./Primitives";
 import { Badge, StatusMark } from "./Status";
 import type { Action, AsyncState, Availability, Tone } from "./types";
@@ -18,6 +19,27 @@ export function AppShell({
   overlays?: ReactNode;
   toast?: ReactNode;
 }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
+  useEffect(() => {
+    if (location.key) setMobileOpen(false);
+  }, [location.key]);
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMobileOpen(false);
+        mobileTrigger.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onEscape);
+    return () => window.removeEventListener("keydown", onEscape);
+  }, [mobileOpen]);
+  const mobileTrigger = useRef<HTMLButtonElement>(null);
+  const closeMobile = () => {
+    setMobileOpen(false);
+    requestAnimationFrame(() => mobileTrigger.current?.focus());
+  };
   return (
     <div className="ah-app-shell">
       {/* biome-ignore lint/a11y/useValidAnchor: same-page skip link also focuses the tabIndex=-1 target. */}
@@ -29,9 +51,35 @@ export function AppShell({
         Siirry sisältöön
       </a>
       {connection}
-      <div className={`ah-shell-body${rail ? "" : " ah-shell-no-rail"}`}>
-        {rail}
+      <div
+        className={`ah-shell-body${rail ? "" : " ah-shell-no-rail"}${mobileOpen ? " ah-mobile-open" : ""}`}
+      >
+        {mobileOpen ? (
+          <button
+            type="button"
+            className="ah-mobile-scrim"
+            aria-label="Sulje navigaatio"
+            onClick={closeMobile}
+          />
+        ) : null}
+        <div className="ah-rail-slot">{rail}</div>
         <main id="main" tabIndex={-1}>
+          {rail ? (
+            <div className="ah-mobile-toolbar">
+              <button
+                type="button"
+                ref={mobileTrigger}
+                aria-label="Avaa navigaatio"
+                aria-expanded={mobileOpen}
+                onClick={() => setMobileOpen(true)}
+              >
+                <Icon name="menu" />
+              </button>
+              <Link to="/workspaces" aria-label="Etusivu">
+                <Icon name="home" />
+              </Link>
+            </div>
+          ) : null}
           {main}
         </main>
       </div>
@@ -393,8 +441,21 @@ export function AgentHeader({
           label={activityLabel}
           tone="info"
           animated={activityAnimated ? "running" : false}
+          kind={
+            activityAnimated
+              ? "working"
+              : activityLabel.includes("tiedossa")
+                ? "unknown"
+                : "neutral"
+          }
         />
-        <StatusMark label={controlLabel} tone="neutral" />
+        <StatusMark
+          label={controlLabel}
+          tone="neutral"
+          kind={
+            controlLabel.includes("käytettävissä") ? "read-only" : "neutral"
+          }
+        />
       </p>
       {titleAction?.failureNotice ? (
         <p className="ah-inline-error">{titleAction.failureNotice}</p>

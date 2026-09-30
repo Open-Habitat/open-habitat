@@ -1,24 +1,49 @@
 import type { ReactNode } from "react";
 import { Button } from "./Primitives";
+import { Icon } from "./Icon";
 import type { Action, ProblemView, Tone } from "./types";
 
+export type StatusKind =
+  | "working"
+  | "read-only"
+  | "success"
+  | "error"
+  | "unknown"
+  | "pill"
+  | "neutral";
 export function StatusMark({
   label,
   tone = "neutral",
   animated = false,
+  kind = "neutral",
 }: {
   label: string;
   tone?: Tone;
   animated?: false | "running";
+  kind?: StatusKind;
 }) {
   return (
-    <span className={`ah-status ah-tone-${tone}`}>
-      <span
-        aria-hidden="true"
-        className={
-          animated === "running" ? "ah-status-dot ah-running" : "ah-status-dot"
-        }
-      />
+    <span className={`ah-status ah-tone-${tone} ah-status-${kind}`}>
+      {kind === "success" || kind === "error" || kind === "unknown" ? (
+        <Icon
+          name={
+            kind === "success"
+              ? "check"
+              : kind === "error"
+                ? "cross"
+                : "question"
+          }
+        />
+      ) : (
+        <span
+          aria-hidden="true"
+          className={
+            animated === "running"
+              ? "ah-status-dot ah-running"
+              : "ah-status-dot"
+          }
+        />
+      )}
       {label}
     </span>
   );
@@ -33,10 +58,11 @@ export function Badge({
   count?: number;
 }) {
   return (
-    <span className={`ah-badge ah-tone-${tone}`}>
-      {label}
-      {count === undefined ? null : ` ${count}`}
-    </span>
+    <StatusMark
+      kind="pill"
+      label={count === undefined ? label : `${label} ${count}`}
+      tone={tone}
+    />
   );
 }
 export function ProgressIndicator({

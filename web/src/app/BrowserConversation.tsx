@@ -13,6 +13,8 @@ import {
   Composer,
   QueuePanel,
   ConversationTimeline,
+  ConversationFrame,
+  ConversationStream,
   InlineNotice,
   WorkingProgress,
 } from "../components";
@@ -900,7 +902,7 @@ export function BrowserConversation({
           </ul>
         </>
       ) : (
-        <>
+        <ConversationFrame>
           <AgentHeader
             title={title ?? "Uusi keskustelu"}
             activityLabel={
@@ -966,8 +968,8 @@ export function BrowserConversation({
               />
             </fieldset>
           ) : null}
-          <section
-            ref={feed}
+          <ConversationStream
+            streamRef={feed}
             onScroll={() => {
               const el = feed.current;
               if (!el) return;
@@ -977,11 +979,6 @@ export function BrowserConversation({
                 readingAnchor.current = undefined;
                 setUnseen(0);
               } else captureAnchor();
-            }}
-            style={{
-              maxHeight: "60vh",
-              overflow: "auto",
-              overflowAnchor: "none",
             }}
           >
             <ConversationTimeline
@@ -1003,7 +1000,7 @@ export function BrowserConversation({
                 setUnseen(0);
               }}
             />
-          </section>
+          </ConversationStream>
           {next && !stale ? (
             <Button
               label="Lataa seuraava historiasivu"
@@ -1093,7 +1090,7 @@ export function BrowserConversation({
             }
             onPress={() => (stale ? onRefreshStale?.() : void refresh())}
           />
-        </>
+        </ConversationFrame>
       )}
       {receipt ? <InlineNotice title={receipt} tone="warning" /> : null}
       {problem ? <InlineNotice title={problem} tone="danger" /> : null}

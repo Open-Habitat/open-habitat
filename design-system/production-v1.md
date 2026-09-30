@@ -16,7 +16,7 @@ komennot.
 
 ## Rajaus ja omistajuus
 
-V1 on suomenkielinen desktop-UI yhdelle URL:n määräämälle palvelimelle ja Pi:lle.
+V1 on suomenkielinen UI yhdelle URL:n määräämälle palvelimelle ja Pi:lle. V2:n väliaikainen päätös 30.9.2026 ottaa myös 390 px:n asettelun mukaan.
 Mobiili, palvelimen vaihto, B11-prosessikeskus, yleinen worktree-manageri,
 selaimen credential-säilö, OS-ilmoitukset ja muut harnessit eivät kuulu tähän.
 
@@ -43,7 +43,7 @@ malliin, ei Composer-komponentin sisäiseksi tai hostiin synkronoitavaksi tilaks
 | Teema | yhteiset vaalea/tumma-tokenit | vaatii molemmat teemat | Vaalea ja tumma ovat v1:n yhtä tuettuja teemoja. Oletus seuraa `prefers-color-scheme`a. Käyttäjä voi valita Järjestelmä/Vaalea/Tumma käyttäjävalikosta; laitekohtainen ei-sensitiivinen valinta saa olla `localStorage`ssa. Teema ei kuulu host-snapshotiin. |
 | Värit | `--ah-*`-tokenit | samat arvot eri nimillä sekä `rail`/`scrim` | `tokens/` on ainoa lähde. Yhteiset `--ah-rail`- ja `--ah-scrim`-tokenit säilyttävät workspace-toimituksen pinnat ilman näkymäkohtaista arvoa. Tilaa ei ilmaista vain värillä. |
 | Typografia | väljä sisältöasteikko, 70ch | tiiviimpi navigaatioasteikko | Keskustelu käyttää nykyisiä body/code-tokeneita ja enintään 70ch lukumittaa. Navigaatio käyttää meta/ui/title-tasoja, ei omaa rinnakkaista asteikkoa. Tekniset tunnisteet ovat monospacella ja kääntämättä. Fontit paketoidaan tuotteen kanssa; tuotanto ei lataa niitä kolmannen osapuolen ajonaikaisesta URL:sta. |
-| Välistys | 4–36 px nimetty asteikko | 4 px ruudukko, myös 9/14 px | Nykyinen `--ah-s1…s8` on yhteinen asteikko. Uudet komponentit käyttävät nimettyjä tokeneita; vedoksen yksittäiset mitat ovat sommittelureferenssejä, eivät uusia tokeneita. |
+| Välistys | 4–36 px nimetty asteikko | 4 px ruudukko, myös 9/14 px | Nykyinen `--ah-s1…s8` on yhteinen asteikko. V2:n mitoitustaulukko on jaettujen fontti-, väli-, pyöristys- ja asetteluarvojen lähde 30.9.2026 kirjatun väliaikaisen päätöksen perusteella; muut vedoksen yksittäiset mitat ovat sommittelureferenssejä. |
 | Liike | 380–900 ms ja vaakasiirtymä | 160–200 ms ja pieni pystysiirtymä | Yhteiset tokenit on korjattu 160–180 ms tilanvaihtoihin ja pieneen pystysiirtymään; jatkuva pulssi vain aidosti running/reconnecting-tilassa. Sisältö ei liu'u lukusuunnassa. Reduced motion poistaa pulssin ja siirtymän mutta säilyttää tekstin ja tilamerkin. |
 | Agenttirivi | ei määritelty | tila saattoi jäädä pisteeseen/hoveriin | Rivi näyttää aina tekstin “Odottaa vastaustasi”, “Työskentelee”, “Odottaa viestiä”, “Ei käynnissä”, “Vain luku” tai “Tila ei tiedossa”. Piste on toisteinen. Huomiomerkki on tekstinä ja määränä. |
 | Otsikko | ehdotti ennalta määrättyjä uudelleengenerointikohtia | “Uusi keskustelu”, sitten synopsis | Hostin `title.display/source/generation_state` ratkaisee näytön. Generoinnin syöte on enintään ensimmäisten neljän ja viimeisten neljän käyttäjäviestin uniikki unioni lähdejärjestyksessä. Manuaalinen otsikon viereinen “Luo otsikko uudelleen” näkyy vain tuetulla capabilityllä. Epäonnistuminen säilyttää edellisen otsikon/fallbackin. |

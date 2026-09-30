@@ -22,5 +22,15 @@
   --ah-shadow-dialog: 0 12px 40px rgba(16, 24, 40, .18);
 
   --ah-app-max: 960px;
+  --ah-rail-width: 296px;
+  --ah-rail-compact-width: 52px;
+  --ah-conversation-width: 780px;
+  --ah-column-pad-block: 22px;
+  --ah-column-pad-inline: 24px;
+  --ah-topbar-pad-block: 13px;
+  --ah-topbar-pad-inline: 24px;
+  --ah-r-nav: 9px;
   --ah-touch: 44px;
+  --ah-focus-width: 2px;
+  --ah-focus-offset: 2px;
 }

@@ -28,7 +28,7 @@ export function AccountShelf({
     { id: "dark", label: "Tumma" },
   ];
   return (
-    <div className="ah-account-shelf">
+    <div className="ah-account-shelf" data-account-controls>
       <span className="ah-rail-identity" title={name}>
         {name}
       </span>

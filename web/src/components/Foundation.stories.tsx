@@ -1,0 +1,59 @@
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Button } from "./Primitives";
+import { ConversationFrame, ConversationStream } from "./ConversationFrame";
+import { AgentHeader } from "./Navigation";
+import { StatusMark } from "./Status";
+import { Icon } from "./Icon";
+
+const meta = {
+  title: "Production/V2 foundation",
+  parameters: { layout: "fullscreen" },
+} satisfies Meta;
+export default meta;
+type Story = StoryObj<typeof meta>;
+const noop = () => {};
+function Example({ theme }: { theme: "light" | "dark" }) {
+  return (
+    <div
+      data-theme={theme}
+      style={{
+        height: 700,
+        background: "var(--ah-bg)",
+        color: "var(--ah-ink)",
+      }}
+    >
+      <ConversationFrame>
+        <AgentHeader
+          title="Keskustelun otsikko"
+          activityLabel="Työskentelee"
+          activityAnimated
+          controlLabel="Selainohjaus"
+          workspaceLabel="aurinkokello"
+          workspaceHref="/workspaces"
+          detailsExpanded={false}
+          onToggleDetails={noop}
+        />
+        <ConversationStream>
+          <p>Keskustelun sisältö</p>
+          <StatusMark kind="success" label="Vuoro valmis" />
+          <StatusMark kind="error" label="Virhe" tone="danger" />
+          <StatusMark kind="unknown" label="Ei tiedossa" />
+          <StatusMark kind="read-only" label="Vain luku" />
+          <StatusMark kind="pill" label="Jonossa 2" />
+        </ConversationStream>
+        <div className="ah-actions">
+          <Button label="Lähetä" onPress={noop} />
+          <Button label="Keskeytä" variant="quiet" onPress={noop} />
+          <Button
+            label="Ei käytettävissä"
+            availability={{ state: "unknown", reason: "Odotetaan yhteyttä." }}
+            onPress={noop}
+          />
+          <Icon name="copy" />
+        </div>
+      </ConversationFrame>
+    </div>
+  );
+}
+export const Light: Story = { render: () => <Example theme="light" /> };
+export const Dark: Story = { render: () => <Example theme="dark" /> };

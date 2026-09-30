@@ -109,6 +109,15 @@ function Message({
             label={state}
             tone={stateTone}
             animated={stateAnimated ? "running" : false}
+            kind={
+              stateAnimated
+                ? "working"
+                : stateTone === "danger"
+                  ? "error"
+                  : stateTone === "warning"
+                    ? "unknown"
+                    : "neutral"
+            }
           />
         ) : null}
       </header>

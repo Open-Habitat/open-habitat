@@ -11,3 +11,5 @@ export * from "./PiDeviceSignIn";
 export * from "./GitHubRepoChooser";
 export * from "./Operations";
 export * from "./WorkingProgress";
+export * from "./ConversationFrame";
+export * from "./Icon";
