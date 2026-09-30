@@ -206,6 +206,9 @@ export function BrowserConversation({
   useEffect(() => {
     if (stale) return;
     alive.current = true;
+    // An older continuation can settle while stale and skip its generation-
+    // guarded finally. Its persisted marker, not busy, blocks a second write.
+    setBusy(false);
     const controller = new AbortController();
     setCSRF(undefined);
     setCurrent(undefined);

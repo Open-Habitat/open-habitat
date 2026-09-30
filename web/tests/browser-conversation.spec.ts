@@ -889,7 +889,7 @@ async function endedConversation(page: import("@playwright/test").Page) {
 }
 
 for (const [proof, reason] of [
-  ["writer_present", /Toinen kirjoittaja on aktiivinen/],
+  ["writer_present", /Keskustelulla on yhä aktiivinen kirjoittaja/],
   ["read_only_history", /terminaalin historiaa/],
   ["unproven", /turvalliseksi jatkaa/],
 ] as const)
@@ -989,6 +989,7 @@ for (const code of [
   "writer_conflict",
   "read_only_history",
   "control_uncertain",
+  "capacity_exceeded",
   "network",
   "503",
 ] as const) {
@@ -1003,7 +1004,8 @@ for (const code of [
         attempts++;
         if (code === "network") return route.abort("failed");
         return route.fulfill({
-          status: code === "503" ? 503 : 409,
+          status:
+            code === "503" ? 503 : code === "capacity_exceeded" ? 429 : 409,
           contentType: "application/json",
           body: JSON.stringify({
             schema_version: 1,
@@ -1020,12 +1022,14 @@ for (const code of [
     await page.getByRole("button", { name: "Jatka keskustelua" }).click();
     const phrase =
       code === "writer_conflict"
-        ? "Toinen kirjoittaja"
-        : code === "read_only_history"
-          ? "terminaalin historiaa"
-          : code === "control_uncertain"
-            ? "turvalliseksi jatkaa"
-            : "Jatkamisen tulos on epävarma";
+        ? "aktiivinen kirjoittaja"
+        : code === "capacity_exceeded"
+          ? "raja on täynnä"
+          : code === "read_only_history"
+            ? "terminaalin historiaa"
+            : code === "control_uncertain"
+              ? "turvalliseksi jatkaa"
+              : "Jatkamisen tulos on epävarma";
     await expect(page.getByText(new RegExp(phrase))).toBeVisible();
     await page.reload();
     await expect(
@@ -1127,6 +1131,58 @@ test("@browser-conversation status reconciles before a late continuation reply",
       page.getByText("Jatkamisen tulos epävarma", { exact: true }),
     ).toHaveCount(0);
     expect(attempts).toBe(1);
+  } finally {
+    release();
+  }
+});
+
+test("@browser-conversation stale recovery during continuation never strands controls or reposts", async ({
+  page,
+}) => {
+  const id = await endedConversation(page);
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let wrote!: () => void;
+  const written = new Promise<void>((resolve) => {
+    wrote = resolve;
+  });
+  let posts = 0;
+  await page.route(
+    `**/api/v1/conversations/${id.slice(3)}/continue`,
+    async (route) => {
+      posts++;
+      const response = await route.fetch();
+      expect(response.status()).toBe(200);
+      wrote();
+      await held;
+      await route.fulfill({ response });
+    },
+  );
+  try {
+    await page.getByRole("button", { name: "Jatka keskustelua" }).click();
+    await written;
+    await page.route("**/api/v1/snapshot", (route) =>
+      route.fulfill({ status: 503, body: "unavailable" }),
+    );
+    await page.getByRole("button", { name: "Päivitä", exact: true }).click();
+    await expect(
+      page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
+    ).toBeVisible();
+    release(); // response settles during stale: the old finally cannot clear busy
+    await page.unroute("**/api/v1/snapshot");
+    await page.getByRole("button", { name: "Yritä uudelleen" }).click();
+    await expect(
+      page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
+    ).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "Tarkista keskustelun tila" })
+      .click();
+    await expect(
+      page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    ).toBeEnabled();
+    expect(posts).toBe(1);
   } finally {
     release();
   }

@@ -787,6 +787,7 @@ export function EndedConversationControl({
     | "writer_conflict"
     | "read_only_history"
     | "control_uncertain"
+    | "capacity_exceeded"
     | "uncertain";
   onContinue: () => void;
 }) {
@@ -795,11 +796,13 @@ export function EndedConversationControl({
       "Aiemman vuoron tulos voi olla epävarma. Tarkista historia ennen uuden viestin lähettämistä.",
     pending: "Jatkamista pyydetään. Älä lähetä pyyntöä uudelleen.",
     writer_conflict:
-      "Toinen kirjoittaja on aktiivinen tai sen päättymistä ei ole voitu todistaa.",
+      "Keskustelulla on yhä aktiivinen kirjoittaja tai kirjoittajan päättymistä ei ole voitu varmistaa.",
     read_only_history:
       "Tämä on terminaalin historiaa; sitä ei voi ohjata selaimesta.",
     control_uncertain:
       "Historiaa tai työtilaa ei ole vielä voitu todentaa turvalliseksi jatkaa.",
+    capacity_exceeded:
+      "Samanaikaisten keskustelujen raja on täynnä. Jatkamista ei käynnistetty.",
     uncertain:
       "Jatkamisen tulos on epävarma. Tarkista tila ja historia; pyyntöä ei lähetetä uudelleen automaattisesti.",
   };

@@ -46,7 +46,8 @@ export class NotAdmitted extends Error {}
 export type ContinueRefusal =
   | "writer_conflict"
   | "read_only_history"
-  | "control_uncertain";
+  | "control_uncertain"
+  | "capacity_exceeded";
 export class ContinuationRefused extends Error {
   constructor(readonly code: ContinueRefusal) {
     super(code);
@@ -236,15 +237,17 @@ export async function continueConversation(
     cache: "no-store",
     headers: { "X-Agent-Host-CSRF": csrf, Origin: window.location.origin },
   });
-  if (response.status === 409) {
+  if (response.status === 409 || response.status === 429) {
     const error = await readJSON(response);
     if (
       object(error) &&
       error.schema_version === 1 &&
       object(error.error) &&
-      ["writer_conflict", "read_only_history", "control_uncertain"].includes(
-        String(error.error.code),
-      )
+      ((response.status === 409 &&
+        ["writer_conflict", "read_only_history", "control_uncertain"].includes(
+          String(error.error.code),
+        )) ||
+        (response.status === 429 && error.error.code === "capacity_exceeded"))
     )
       throw new ContinuationRefused(error.error.code as ContinueRefusal);
     throw new Error("invalid refusal");
