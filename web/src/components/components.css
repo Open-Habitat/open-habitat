@@ -1312,4 +1312,7 @@ h1[tabindex="-1"]:focus {
     font-size: 15px;
   }
 }
-.ah-reading-view:has(> .ah-conversation-frame) { height: 100%; min-height: 0; }
+.ah-reading-view:has(> .ah-conversation-frame) {
+  height: 100%;
+  min-height: 0;
+}
