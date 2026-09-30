@@ -54,6 +54,31 @@ function safeRoute(path: string) {
     ? path
     : "/workspaces";
 }
+function agentProcessLabel(process: string): string {
+  return (
+    (
+      {
+        daemon_managed_live: "Prosessi käynnissä",
+        terminal_observed_live: "Käynnissä terminaalissa",
+        confirmed_exited: "Ei käynnissä",
+        not_observed: "Prosessia ei havaittu",
+        stale: "Tieto vanhentunut",
+      } as Record<string, string>
+    )[process] ?? "Prosessin tila ei tiedossa"
+  );
+}
+function agentControlLabel(control: string): string {
+  return (
+    (
+      {
+        read_only: "Vain luku",
+        transfer_possible: "Siirrettävissä",
+        unavailable: "Ohjaus ei saatavilla",
+        unknown: "Ohjaus ei tiedossa",
+      } as Record<string, string>
+    )[control] ?? ""
+  );
+}
 function sourceLabel(state: string) {
   return (
     (
@@ -956,8 +981,14 @@ export function App() {
                           ? `/workspaces/${w.workspace_id}?conversation=${a.agent_id}`
                           : `/agents/${a.agent_id}`,
                         title: a.title.display,
-                        activityLabel: "",
-                        controlLabel: "",
+                        activityLabel: agentProcessLabel(a.process),
+                        controlLabel: browserSessions.some(
+                          (s) =>
+                            s.agent_id === a.agent_id &&
+                            s.workspace_id === w.workspace_id,
+                        )
+                          ? ""
+                          : agentControlLabel(a.control),
                         selected:
                           a.agent_id === selectedAgentId ||
                           (selectedId === w.workspace_id &&

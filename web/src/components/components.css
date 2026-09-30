@@ -1494,3 +1494,9 @@ h1[tabindex="-1"]:focus {
   align-items: center;
   justify-content: space-between;
 }
+@media (max-width: 800px) {
+  .ah-rail .ah-agent-item .ah-nav-link {
+    display: grid;
+    align-content: center;
+  }
+}

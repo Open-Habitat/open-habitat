@@ -162,10 +162,21 @@ export function NavLink({
   badgeText?: string;
   statusText?: string;
 }) {
+  const statusId = useId();
   return (
-    <Link aria-current={current} className="ah-nav-link" to={href}>
+    <Link
+      aria-current={current}
+      aria-label={label}
+      aria-describedby={statusText ? statusId : undefined}
+      className="ah-nav-link"
+      to={href}
+    >
       <span className="ah-nav-label">{label}</span>
-      {statusText ? <small>{statusText}</small> : null}
+      {statusText ? (
+        <span id={statusId}>
+          <StatusMark label={statusText} tone="neutral" />
+        </span>
+      ) : null}
       {badgeText ? <Badge label={badgeText} tone="warning" /> : null}
     </Link>
   );
