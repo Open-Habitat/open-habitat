@@ -52,9 +52,15 @@ nopeuttamisen että tarpeellisten testien valinnan muutoksen perusteella.
 Näiden kuvausten käsittely on valmis. Toteutusissueiden tilaa tai DAGia ei muutettu.
 
 ADR 0001:n läpikäynti valmistui Jarin hyväksymällä rajauksella 2026-09-30.
-Seuraavaksi ehdotetaan [päätössivua](../../docs/decisions.md): se kuvaa jo
-hyväksyttyjä valintoja yhä ehdotuksina ja sisältää vanhoja katselmointiportteja.
-Lue päätöslähteet ja esittele rajaus Jarille ennen uudelleenkirjoitusta.
+Jari sopi seuraavaksi [päätössivun](../../docs/decisions.md) läpikäynnin.
+Se kuvaa jo hyväksyttyjä valintoja yhä ehdotuksina ja sisältää vanhoja
+katselmointiportteja. Tavoitteena on selkeä kartta: mitä on päätetty, mistä
+perustelut löytyvät ja mitkä valinnat ovat aidosti avoinna. Toteutuksen tila
+kuuluu toteutussivulle ja työjärjestys DAGiin.
+
+Jatka `/rethink-document`-skillillä päätöslähteiden lukemisesta ja tarkenna
+rajaus havaintojen perusteella. Päätössivua ei vielä käsitelty; tässä kirjattiin
+Jarin pyytämä seuraava kohde.
 
 UI- ja design-dokumentit ovat Jarin pyynnöstä odottamassa 2026-09-30:
 toinen agentti tekee laajempaa käyttöliittymäkierrosta. Niihin palataan sen
