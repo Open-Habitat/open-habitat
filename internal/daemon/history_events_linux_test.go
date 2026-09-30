@@ -4,6 +4,7 @@ package daemon
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -72,5 +73,59 @@ func TestNativeHistoryEntriesPublishedOnceFromJSONL(t *testing.T) {
 	}
 	if !strings.Contains(string(j.frames[1]), "answer") {
 		t.Fatal("native content lost")
+	}
+}
+
+func TestContinuedHistorySeedsReplayWithoutEvictingOtherAgent(t *testing.T) {
+	home := t.TempDir()
+	cwd := filepath.Join(home, "src", "fixture")
+	root := filepath.Join(home, historyRoot)
+	for _, dir := range []string{cwd, root} {
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const id = "11111111-1111-4111-8111-111111111111"
+	path := filepath.Join(root, "session.jsonl")
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Fprintf(f, `{"type":"session","version":3,"id":%q,"cwd":%q}`+"\n", id, cwd)
+	parent := ""
+	for i := 0; i < 200; i++ {
+		key := fmt.Sprintf("old_%04d", i)
+		if parent == "" {
+			fmt.Fprintf(f, `{"type":"message","id":%q,"message":{"role":"user","content":"old"}}`+"\n", key)
+		} else {
+			fmt.Fprintf(f, `{"type":"message","id":%q,"parentId":%q,"message":{"role":"assistant","content":"old"}}`+"\n", key, parent)
+		}
+		parent = key
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	keys, err := existingHistoryKeys(path, os.Geteuid(), id, cwd)
+	if err != nil || len(keys) != 200 {
+		t.Fatalf("continued baseline: %d %v", len(keys), err)
+	}
+	j := newEventJournal()
+	j.appendInvalidation("pi:22222222-2222-4222-8222-222222222222")
+	s := &conversation{id: id, cwd: cwd, publishedHistory: keys}
+	c := &ConversationController{cfg: transport.Config{Home: home, UID: os.Geteuid()}, home: home, journal: j, sessions: map[string]*conversation{id: s}}
+	f, err = os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Fprintf(f, `{"type":"message","id":"new_reply","parentId":%q,"message":{"role":"assistant","content":"new"}}`+"\n", parent)
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	c.publishNativeHistory(s)
+	c.publishNativeHistory(s)
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if j.seq != 2 || len(j.frames) != 2 || !strings.Contains(string(j.frames[1]), `"native_key":"new_reply"`) {
+		t.Fatalf("old entries evicted user replay: seq=%d frames=%d", j.seq, len(j.frames))
 	}
 }

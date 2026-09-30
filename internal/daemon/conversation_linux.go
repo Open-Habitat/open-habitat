@@ -479,6 +479,14 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 		}
 	}()
 	defer ws.Close()
+	// The owner fence is still held. Establish the pre-existing native keys
+	// before starting Pi so the first settlement emits only this turn's new
+	// entries, not the entire continued session into the shared replay ring.
+	published, err := existingHistoryKeys(path, c.cfg.UID, id, cwd)
+	if err != nil {
+		snapshotError(w, 409, "control_uncertain")
+		return
+	}
 	c.mu.Lock()
 	// Another create or continuation may have run while history was read.
 	// The owner fence still excludes another native writer for this ID.
@@ -506,7 +514,7 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
-	s := &conversation{id: id, workspace: origin.Workspace, cwd: cwd, rpc: p, owner: owner, state: "idle", ack: "uncertain", events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool)}
+	s := &conversation{id: id, workspace: origin.Workspace, cwd: cwd, rpc: p, owner: owner, state: "idle", ack: "uncertain", events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool), publishedHistory: published}
 
 	if old != nil {
 		s.commands = old.commands
@@ -605,6 +613,21 @@ func (c *ConversationController) drain(s *conversation) {
 	c.mu.Unlock()
 }
 
+// A continuation has already fenced and reconciled this native file. Seed
+// only its existing active-branch entries; the next settlement must not
+// flood the per-user event ring with old history.
+func existingHistoryKeys(path string, uid int, id, cwd string) (map[string]bool, error) {
+	native := readNativeSettled(path, uid)
+	if native.state != "readable" || native.id != id || native.cwd != cwd {
+		return nil, errors.New("native history changed before continuation")
+	}
+	keys := make(map[string]bool, len(native.entries))
+	for _, entry := range native.entries {
+		keys[entry.Key] = true
+	}
+	return keys, nil
+}
+
 // Pi's settlement notification carries no persistent entry identity. Read the
 // mapped UID's checked JSONL instead; never turn an RPC message into history.
 // A failed/unstable read invalidates the view rather than claiming settlement.
@@ -632,17 +655,29 @@ func (c *ConversationController) publishNativeHistory(s *conversation) {
 		if s.publishedHistory == nil {
 			s.publishedHistory = make(map[string]bool)
 		}
+		fresh := make([]historyEntry, 0)
 		for _, entry := range native.entries {
 			if s.publishedHistory[entry.Key] {
 				continue
 			}
 			s.publishedHistory[entry.Key] = true
+			fresh = append(fresh, entry)
+		}
+		c.mu.Unlock()
+		for _, entry := range fresh {
 			inline(&native, &entry)
+			// Continuation can replace a reaped handle while native reads
+			// complete. Never publish a superseded controller's tail.
+			c.mu.Lock()
+			if c.sessions[s.id] != s || c.closed {
+				c.mu.Unlock()
+				return
+			}
 			if c.journal != nil {
 				c.journal.appendNativeEntry("pi:"+s.id, entry)
 			}
+			c.mu.Unlock()
 		}
-		c.mu.Unlock()
 		return
 	}
 	if c.journal != nil {
