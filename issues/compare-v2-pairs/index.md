@@ -16,38 +16,38 @@ Use a fresh lab incarnation for the cleanest sidebar histories. `PLAYWRIGHT_BROW
 
 | Draft state | Theme · width | Draft | Synthetic lab | Visible differences |
 | --- | --- | --- | --- | --- |
-| Return/home | light · 1440 | [draft](home-light-1440-draft.avif) | [image](home-light-1440-lab.avif) · [HTML](home-light-1440-lab.html) | G1, I1, I2 |
-| Return/home | dark · 1440 | [draft](home-dark-1440-draft.avif) | [image](home-dark-1440-lab.avif) · [HTML](home-dark-1440-lab.html) | G1, I1, I2 |
-| Return/home | light · 390 | [draft](home-light-390-draft.avif) | [image](home-light-390-lab.avif) · [HTML](home-light-390-lab.html) | G1, I1, I2 |
-| Return/home | dark · 390 | [draft](home-dark-390-draft.avif) | [image](home-dark-390-lab.avif) · [HTML](home-dark-390-lab.html) | G1, I1, I2 |
-| Collapsed desktop rail | light · 1440 | [draft](collapsed-light-1440-draft.avif) | [image](collapsed-light-1440-lab.avif) · [HTML](collapsed-light-1440-lab.html) | I1, I2 |
-| Collapsed desktop rail | dark · 1440 | [draft](collapsed-dark-1440-draft.avif) | [image](collapsed-dark-1440-lab.avif) · [HTML](collapsed-dark-1440-lab.html) | I1, I2 |
-| Open phone drawer | light · 390 | [draft](drawer-light-390-draft.avif) | [image](drawer-light-390-lab.avif) · [HTML](drawer-light-390-lab.html) | G2, I1 |
-| Open phone drawer | dark · 390 | [draft](drawer-dark-390-draft.avif) | [image](drawer-dark-390-lab.avif) · [HTML](drawer-dark-390-lab.html) | G2, I1 |
-| Account menu | light · 1440 | [draft](account-menu-light-1440-draft.avif) | [image](account-menu-light-1440-lab.avif) · [HTML](account-menu-light-1440-lab.html) | G2, I2 |
-| Account menu | dark · 1440 | [draft](account-menu-dark-1440-draft.avif) | [image](account-menu-dark-1440-lab.avif) · [HTML](account-menu-dark-1440-lab.html) | G2, I2 |
-| New conversation | light · 1440 | [draft](new-light-1440-draft.avif) | [image](new-light-1440-lab.avif) · [HTML](new-light-1440-lab.html) | G3, I1 |
-| New conversation | dark · 1440 | [draft](new-dark-1440-draft.avif) | [image](new-dark-1440-lab.avif) · [HTML](new-dark-1440-lab.html) | G3, I1 |
-| Working/queue | light · 1440 | [draft](working-light-1440-draft.avif) | [image](working-light-1440-lab.avif) · [HTML](working-light-1440-lab.html) | G3, I4, I5 |
-| Working/queue | dark · 1440 | [draft](working-dark-1440-draft.avif) | [image](working-dark-1440-lab.avif) · [HTML](working-dark-1440-lab.html) | G3, I4, I5 |
-| Working/queue | light · 390 | [draft](working-light-390-draft.avif) | [image](working-light-390-lab.avif) · [HTML](working-light-390-lab.html) | G3, I4, I5 |
-| Working/queue | dark · 390 | [draft](working-dark-390-draft.avif) | [image](working-dark-390-lab.avif) · [HTML](working-dark-390-lab.html) | G3, I4, I5 |
-| Answer settled | light · 1440 | [draft](completed-light-1440-draft.avif) | [image](completed-light-1440-lab.avif) · [HTML](completed-light-1440-lab.html) | G3, I4, I5 |
-| Answer settled | dark · 1440 | [draft](completed-dark-1440-draft.avif) | [image](completed-dark-1440-lab.avif) · [HTML](completed-dark-1440-lab.html) | G3, I4, I5 |
-| Answer settled | light · 390 | [draft](completed-light-390-draft.avif) | [image](completed-light-390-lab.avif) · [HTML](completed-light-390-lab.html) | G3, I4, I5 |
-| Answer settled | dark · 390 | [draft](completed-dark-390-draft.avif) | [image](completed-dark-390-lab.avif) · [HTML](completed-dark-390-lab.html) | G3, I4, I5 |
-| Rejected send | light · 1440 | [draft](rejected-light-1440-draft.avif) | [image](rejected-light-1440-lab.avif) · [HTML](rejected-light-1440-lab.html) | G3, I4 |
-| Rejected send | dark · 1440 | [draft](rejected-dark-1440-draft.avif) | [image](rejected-dark-1440-lab.avif) · [HTML](rejected-dark-1440-lab.html) | G3, I4 |
-| Outage | light · 1440 | [draft](disconnected-light-1440-draft.avif) | [image](disconnected-light-1440-lab.avif) · [HTML](disconnected-light-1440-lab.html) | G3, I4, I6 |
-| Outage | dark · 1440 | [draft](disconnected-dark-1440-draft.avif) | [image](disconnected-dark-1440-lab.avif) · [HTML](disconnected-dark-1440-lab.html) | G3, I4, I6 |
-| Outage | light · 390 | [draft](disconnected-light-390-draft.avif) | [image](disconnected-light-390-lab.avif) · [HTML](disconnected-light-390-lab.html) | G3, I4, I6 |
-| Outage | dark · 390 | [draft](disconnected-dark-390-draft.avif) | [image](disconnected-dark-390-lab.avif) · [HTML](disconnected-dark-390-lab.html) | G3, I4, I6 |
-| Read-only history | light · 1440 | [draft](read-only-light-1440-draft.avif) | [image](read-only-light-1440-lab.avif) · [HTML](read-only-light-1440-lab.html) | G3, I4 |
-| Read-only history | dark · 1440 | [draft](read-only-dark-1440-draft.avif) | [image](read-only-dark-1440-lab.avif) · [HTML](read-only-dark-1440-lab.html) | G3, I4 |
-| Read-only history | light · 390 | [draft](read-only-light-390-draft.avif) | [image](read-only-light-390-lab.avif) · [HTML](read-only-light-390-lab.html) | G3, I4 |
-| Read-only history | dark · 390 | [draft](read-only-dark-390-draft.avif) | [image](read-only-dark-390-lab.avif) · [HTML](read-only-dark-390-lab.html) | G3, I4 |
-| Settings | light · 1440 | [draft](settings-light-1440-draft.avif) | [image](settings-light-1440-lab.avif) · [HTML](settings-light-1440-lab.html) | G2, I2, I3 |
-| Settings | dark · 1440 | [draft](settings-dark-1440-draft.avif) | [image](settings-dark-1440-lab.avif) · [HTML](settings-dark-1440-lab.html) | G2, I2, I3 |
+| Return/home | light · 1440 | ![Draft](home-light-1440-draft.avif) | ![Lab](home-light-1440-lab.avif) · [HTML](home-light-1440-lab.html) | G1, I1, I2 |
+| Return/home | dark · 1440 | ![Draft](home-dark-1440-draft.avif) | ![Lab](home-dark-1440-lab.avif) · [HTML](home-dark-1440-lab.html) | G1, I1, I2 |
+| Return/home | light · 390 | ![Draft](home-light-390-draft.avif) | ![Lab](home-light-390-lab.avif) · [HTML](home-light-390-lab.html) | G1, I1, I2 |
+| Return/home | dark · 390 | ![Draft](home-dark-390-draft.avif) | ![Lab](home-dark-390-lab.avif) · [HTML](home-dark-390-lab.html) | G1, I1, I2 |
+| Collapsed desktop rail | light · 1440 | ![Draft](collapsed-light-1440-draft.avif) | ![Lab](collapsed-light-1440-lab.avif) · [HTML](collapsed-light-1440-lab.html) | I1, I2 |
+| Collapsed desktop rail | dark · 1440 | ![Draft](collapsed-dark-1440-draft.avif) | ![Lab](collapsed-dark-1440-lab.avif) · [HTML](collapsed-dark-1440-lab.html) | I1, I2 |
+| Open phone drawer | light · 390 | ![Draft](drawer-light-390-draft.avif) | ![Lab](drawer-light-390-lab.avif) · [HTML](drawer-light-390-lab.html) | G2, I1 |
+| Open phone drawer | dark · 390 | ![Draft](drawer-dark-390-draft.avif) | ![Lab](drawer-dark-390-lab.avif) · [HTML](drawer-dark-390-lab.html) | G2, I1 |
+| Account menu | light · 1440 | ![Draft](account-menu-light-1440-draft.avif) | ![Lab](account-menu-light-1440-lab.avif) · [HTML](account-menu-light-1440-lab.html) | G2, I2 |
+| Account menu | dark · 1440 | ![Draft](account-menu-dark-1440-draft.avif) | ![Lab](account-menu-dark-1440-lab.avif) · [HTML](account-menu-dark-1440-lab.html) | G2, I2 |
+| New conversation | light · 1440 | ![Draft](new-light-1440-draft.avif) | ![Lab](new-light-1440-lab.avif) · [HTML](new-light-1440-lab.html) | G3, I1 |
+| New conversation | dark · 1440 | ![Draft](new-dark-1440-draft.avif) | ![Lab](new-dark-1440-lab.avif) · [HTML](new-dark-1440-lab.html) | G3, I1 |
+| Working/queue | light · 1440 | ![Draft](working-light-1440-draft.avif) | ![Lab](working-light-1440-lab.avif) · [HTML](working-light-1440-lab.html) | G3, I4, I5 |
+| Working/queue | dark · 1440 | ![Draft](working-dark-1440-draft.avif) | ![Lab](working-dark-1440-lab.avif) · [HTML](working-dark-1440-lab.html) | G3, I4, I5 |
+| Working/queue | light · 390 | ![Draft](working-light-390-draft.avif) | ![Lab](working-light-390-lab.avif) · [HTML](working-light-390-lab.html) | G3, I4, I5 |
+| Working/queue | dark · 390 | ![Draft](working-dark-390-draft.avif) | ![Lab](working-dark-390-lab.avif) · [HTML](working-dark-390-lab.html) | G3, I4, I5 |
+| Answer settled | light · 1440 | ![Draft](completed-light-1440-draft.avif) | ![Lab](completed-light-1440-lab.avif) · [HTML](completed-light-1440-lab.html) | G3, I4, I5 |
+| Answer settled | dark · 1440 | ![Draft](completed-dark-1440-draft.avif) | ![Lab](completed-dark-1440-lab.avif) · [HTML](completed-dark-1440-lab.html) | G3, I4, I5 |
+| Answer settled | light · 390 | ![Draft](completed-light-390-draft.avif) | ![Lab](completed-light-390-lab.avif) · [HTML](completed-light-390-lab.html) | G3, I4, I5 |
+| Answer settled | dark · 390 | ![Draft](completed-dark-390-draft.avif) | ![Lab](completed-dark-390-lab.avif) · [HTML](completed-dark-390-lab.html) | G3, I4, I5 |
+| Rejected send | light · 1440 | ![Draft](rejected-light-1440-draft.avif) | ![Lab](rejected-light-1440-lab.avif) · [HTML](rejected-light-1440-lab.html) | G3, I4 |
+| Rejected send | dark · 1440 | ![Draft](rejected-dark-1440-draft.avif) | ![Lab](rejected-dark-1440-lab.avif) · [HTML](rejected-dark-1440-lab.html) | G3, I4 |
+| Outage | light · 1440 | ![Draft](disconnected-light-1440-draft.avif) | ![Lab](disconnected-light-1440-lab.avif) · [HTML](disconnected-light-1440-lab.html) | G3, I4, I6 |
+| Outage | dark · 1440 | ![Draft](disconnected-dark-1440-draft.avif) | ![Lab](disconnected-dark-1440-lab.avif) · [HTML](disconnected-dark-1440-lab.html) | G3, I4, I6 |
+| Outage | light · 390 | ![Draft](disconnected-light-390-draft.avif) | ![Lab](disconnected-light-390-lab.avif) · [HTML](disconnected-light-390-lab.html) | G3, I4, I6 |
+| Outage | dark · 390 | ![Draft](disconnected-dark-390-draft.avif) | ![Lab](disconnected-dark-390-lab.avif) · [HTML](disconnected-dark-390-lab.html) | G3, I4, I6 |
+| Read-only history | light · 1440 | ![Draft](read-only-light-1440-draft.avif) | ![Lab](read-only-light-1440-lab.avif) · [HTML](read-only-light-1440-lab.html) | G3, I4 |
+| Read-only history | dark · 1440 | ![Draft](read-only-dark-1440-draft.avif) | ![Lab](read-only-dark-1440-lab.avif) · [HTML](read-only-dark-1440-lab.html) | G3, I4 |
+| Read-only history | light · 390 | ![Draft](read-only-light-390-draft.avif) | ![Lab](read-only-light-390-lab.avif) · [HTML](read-only-light-390-lab.html) | G3, I4 |
+| Read-only history | dark · 390 | ![Draft](read-only-dark-390-draft.avif) | ![Lab](read-only-dark-390-lab.avif) · [HTML](read-only-dark-390-lab.html) | G3, I4 |
+| Settings | light · 1440 | ![Draft](settings-light-1440-draft.avif) | ![Lab](settings-light-1440-lab.avif) · [HTML](settings-light-1440-lab.html) | G2, I2, I3 |
+| Settings | dark · 1440 | ![Draft](settings-dark-1440-draft.avif) | ![Lab](settings-dark-1440-lab.avif) · [HTML](settings-dark-1440-lab.html) | G2, I2, I3 |
 
 ## What still differs
 
