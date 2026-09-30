@@ -51,8 +51,8 @@ ne eivät ole jäljempänä kuvatun yleisen komentoskeeman toteutus.
 Gatewayn uudelleenkäynnistys kadottaa selainistuntojen ohjaussidokset.
 Daemonin uudelleenkäynnistys kadottaa sen muistissa olevan ohjaustilan.
 Pi:n kirjoittama historia säilyy luettavana. Väliaikaisen keskusteluvirran
-`Last-Event-ID` ei mahdollista aukon toistoa: vanha kursori palauttaa
-`409 cursor_expired`, vieraan daemon-elinkaaren kursori
+`Last-Event-ID` ei mahdollista aukon toistoa: jokainen nykyisen elinkaaren
+jo käytetty kursori palauttaa `409 cursor_expired`, vieraan daemon-elinkaaren kursori
 `409 cursor_instance_mismatch`. Selain hakee silloin uuden tilan ja natiivihistorian;
 virta ei väitä välistä jääneiden tapahtumien tulleen toimitetuiksi.
 

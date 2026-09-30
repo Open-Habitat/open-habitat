@@ -657,17 +657,15 @@ func (c *ConversationController) stream(w http.ResponseWriter, r *http.Request, 
 		c.mu.Lock()
 		current := session.streamSeq
 		c.mu.Unlock()
-		// This provisional stream has no replay buffer. Only the immediately
-		// preceding frame can be followed without silently skipping a gap.
-		// Older cursors require a fresh native-backed status/history read.
 		if err != nil || seq == 0 || seq > current {
 			snapshotError(w, 409, "control_uncertain")
 			return
 		}
-		if seq < current {
-			snapshotError(w, 409, "cursor_expired")
-			return
-		}
+		// No frame can be replayed. Even the latest cursor may have missed
+		// frames emitted to another viewer, so require a fresh status/history
+		// read instead of claiming a continuous stream.
+		snapshotError(w, 409, "cursor_expired")
+		return
 	}
 	// The UDS transport has a five-second request deadline. Remove it only
 	// for this finite read-only stream; keep an absolute write bound.
@@ -725,8 +723,8 @@ func (c *ConversationController) stream(w http.ResponseWriter, r *http.Request, 
 			c.mu.Unlock()
 			return
 		}
-		// A bounded monotonic cursor covers status/ack changes as well as Pi
-		// events. A missing cursor receives a full status resnapshot.
+		// IDs belong to this private resnapshot channel, not the published
+		// replay contract. Every connection without a cursor starts afresh.
 		s.streamSeq++
 		seq := s.streamSeq
 		c.mu.Unlock()

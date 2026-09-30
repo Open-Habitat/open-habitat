@@ -433,11 +433,11 @@ func TestConversationStreamCursorAndNativeRecovery(t *testing.T) {
 	if code, body := request("ev1:bbbbbbbb-1234-4123-8123-123456789abc:1"); code != 409 || !strings.Contains(body, "cursor_instance_mismatch") {
 		t.Fatalf("previous incarnation admitted: %d %s", code, body)
 	}
-	if code, next := request("ev1:" + instance + ":1"); code != 200 || !strings.Contains(next, ":2") {
-		t.Fatalf("reconnect: %d %s", code, next)
-	}
 	if code, body := request("ev1:" + instance + ":1"); code != 409 || !strings.Contains(body, "cursor_expired") {
-		t.Fatalf("gap silently accepted: %d %s", code, body)
+		t.Fatalf("cursor without replay silently accepted: %d %s", code, body)
+	}
+	if code, next := request(""); code != 200 || !strings.Contains(next, ":2") {
+		t.Fatalf("fresh resnapshot: %d %s", code, next)
 	}
 }
 

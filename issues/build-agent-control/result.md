@@ -341,8 +341,9 @@ This is a deliberately **partial** server-side slice, not the requested replay
 or ended-conversation continuation. The current finite per-conversation status
 SSE stream has no event ring and cannot replay a missed frame. Previously an
 old `Last-Event-ID` silently received a fresh frame with a jumped sequence;
-now the daemon returns `409 cursor_expired` before SSE headers and the gateway
-preserves that validated code. A cursor from another daemon incarnation returns
+now every already-used cursor gets `409 cursor_expired` before SSE headers and
+the gateway preserves that validated code. Even the latest cursor is not
+replayable: parallel viewers can each advance the provisional frame counter. A cursor from another daemon incarnation returns
 `409 cursor_instance_mismatch`; future or malformed cursors remain rejected.
 A client must fetch current status and native Pi history after a gap, never
 interpret a fresh resnapshot as a replay. The production browser currently
@@ -361,3 +362,22 @@ This slice does not start a new Pi process over native history, prove writer
 absence after stop, implement the daemon-wide snapshot/`after` handoff or
 replay ring, or run a rendered real-Pi browser journey. No live provider, real
 home, deployment, or Jari visual verdict. The issue remains **in-progress**.
+
+At candidate `305292b`, the exact requested clean-tree gate with
+`NAH_PORT_BASE=18600` exited 0 (`status:passed`, `clean:true`). This is
+superseded for the final diff by the review correction below. The distinct-UID
+`TMPDIR=/var/tmp ./scripts/test-real-pi-controller.sh` also passed (rootless
+Podman, pinned Pi 0.85.1, synthetic provider, UID 21001/21002/21003), but the
+fixture does **not** exercise this stream or a continuation path; it proves only
+the unchanged create/send/restart-read-only journey. Focused
+`go test -race ./internal/daemon ./internal/gateway -run 'TestConversation(Stream|Gateway)' -count=1`
+passed after the correction.
+
+Independent review level: Claude Fable 5.1 finder found a real concurrency
+problem in the first candidate's exception for an immediately preceding cursor:
+concurrent viewers can advance the shared counter between the check and the
+first frame, giving a false continuity claim. We removed that exception and
+reject every used cursor, even the latest. GPT-6 Astra independently checked
+the revised authorization and cursor paths and found no remaining concrete
+finding. No issue was filed; the published replay and continuation work remain
+in this open issue, not disguised as a completed capability.
