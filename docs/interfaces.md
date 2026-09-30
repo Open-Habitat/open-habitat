@@ -263,8 +263,9 @@ Daemonin omistaman Pi:n hyväksytty `queue_update` julkaistaan lisäksi
 Se on hetkellinen jonohavainto, ei kuittaus yksittäisen komennon hyväksynnästä.
 Yleinen snapshot lukee yhä vain natiivihistoriaa eikä sen queue-revision vastaa
 tämän ohjaimen jonoa: uusi snapshot syrjäyttää jonoeventin, eikä vielä
-toteuta kesken vuoron jatkamisen takuuta. `history.entry`-, delta- ja
-workspace-eventit eivät vielä synny tästä reitistä. Snapshotin watermark otetaan ennen natiivilukua, joten
+toteuta kesken vuoron jatkamisen takuuta. Pi:n `agent_settled`-havainnon jälkeen
+JSONL:stä luetut `history.entry`-merkinnät syntyvät tästä reitistä;
+delta- ja workspace-eventit eivät vielä synny. Snapshotin watermark otetaan ennen natiivilukua, joten
 sen aikana syntyneen muutoksen invalidointi voidaan myös toistaa. Nykyisen
 kuvan ja streamin päällekkäisyys ei todista atomista näkymää samaan kellonhetkeen.
 Yhteys kestää enintään 20 sekuntia, daemonin kirjoitusaika enintään 24 ja
@@ -295,8 +296,18 @@ uudelleenyhdistäminen vaatii kirjautumisen.
 
 `history.entry` käyttää Pi:n pysyvää `native_key`:tä; vielä tallentamattomilla
 RPC-deltaeventeillä on daemonin event-ID. Snapshotin `activity` ja `live_tail`
-mahdollistavat paluun myös kesken vuoron. Selain poistaa tailin ja virran
-päällekkäisyydet event-ID:n ja cursorin avulla. Gateway ei muodosta omaa
+mahdollistavat paluun myös kesken vuoron. Täsmällinen sovitussääntö:
+selaimen väliaikainen tail koostuu vain saman agentin virran deltaeventeistä;
+se deduplikoi event-ID:llä ja cursorilla. Kun Pi:n JSONL:stä luettu
+`history.entry` saapuu, selain korvaa vastaavan väliaikaisen sisältöosuuden
+pysyvällä merkinnällä, jonka avain on `native_key`, eikä lisää tekstiä
+uudelleen. Jos deltaa ei voida sitoa tähän merkintään yksiselitteisesti,
+selain poistaa saman vuoron väliaikaisen tailin ja hakee natiivihistorian
+uudelleen ennen kirjoituksia. Vanha tai puuttuva cursor vaatii uuden
+snapshotin. **Toteutustilanne:** daemon julkaisee tällä hetkellä vain
+JSONL:stä luetun `history.entry`-merkinnän Pi:n `agent_settled`-havainnon
+jälkeen. Se ei vielä julkaise deltoja eikä täytä atomista live-tail-sovitusta;
+selaimen on käytettävä väliaikaista statusvirtaa ja HTTP-historiaa. Gateway ei muodosta omaa
 snapshotia tai tapahtumia: saavuttamaton daemon on 503, puuttuva autentikointi 401.
 
 ### Komennon hyväksyntä ei ole sen suoritus

@@ -67,7 +67,7 @@ func (j *eventJournal) appendInvalidation(agent string) {
 	if j.instance == "" {
 		return
 	}
-	j.appendLocked("snapshot.invalidated", agent, map[string]string{"reason": "source_changed"})
+	j.appendLocked("snapshot.invalidated", agent, "", map[string]string{"reason": "source_changed"})
 }
 
 // appendEvent serializes publication with cursor allocation. Oversized native
@@ -78,9 +78,21 @@ func (j *eventJournal) appendEvent(kind, agent string, payload any) {
 	if j.instance == "" {
 		return
 	}
-	j.appendLocked(kind, agent, payload)
+	j.appendLocked(kind, agent, "", payload)
 }
-func (j *eventJournal) appendLocked(kind, agent string, payload any) {
+
+// Native history identity is sourced only from checked Pi JSONL. A large
+// history body falls back to invalidation rather than publishing a partial
+// entry without a way to fetch its remaining content.
+func (j *eventJournal) appendNativeEntry(agent string, entry historyEntry) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if j.instance == "" {
+		return
+	}
+	j.appendLocked("history.entry", agent, entry.Key, map[string]any{"entry_key": entry.Key, "entry_kind": entry.Kind, "content": entry.Content})
+}
+func (j *eventJournal) appendLocked(kind, agent, nativeKey string, payload any) {
 	id, ok := uuid()
 	if !ok {
 		return
@@ -89,7 +101,11 @@ func (j *eventJournal) appendLocked(kind, agent string, payload any) {
 	if agent != "" {
 		resource = map[string]string{"agent_id": agent}
 	}
-	b, err := json.Marshal(map[string]any{"schema_version": 1, "event_id": "evt_" + strings.ReplaceAll(id, "-", ""), "cursor": j.cursor(j.seq + 1), "server_instance_id": j.instance, "sequence": j.seq + 1, "emitted_at": time.Now().UTC().Format(time.RFC3339Nano), "kind": kind, "resource": resource, "payload": payload})
+	frame := map[string]any{"schema_version": 1, "event_id": "evt_" + strings.ReplaceAll(id, "-", ""), "cursor": j.cursor(j.seq + 1), "server_instance_id": j.instance, "sequence": j.seq + 1, "emitted_at": time.Now().UTC().Format(time.RFC3339Nano), "kind": kind, "resource": resource, "payload": payload}
+	if nativeKey != "" {
+		frame["native_key"] = nativeKey
+	}
+	b, err := json.Marshal(frame)
 	if err != nil {
 		return
 	}

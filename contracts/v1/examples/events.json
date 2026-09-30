@@ -1,25 +1,72 @@
 [
   {
-    "schema_version": 1, "event_id": "evt_example0042",
+    "schema_version": 1,
+    "event_id": "evt_example0042",
     "cursor": "ev1:22222222-2222-4222-8222-222222222222:42",
-    "server_instance_id": "22222222-2222-4222-8222-222222222222", "sequence": 42,
-    "emitted_at": "2026-09-22T14:00:01Z", "kind": "command.changed",
-    "resource": {"agent_id": "pi:33333333-3333-4333-8333-333333333333", "client_command_id": "55555555-5555-4555-8555-555555555555"},
-    "payload": {"acceptance": "accepted", "execution": "running"}
+    "server_instance_id": "22222222-2222-4222-8222-222222222222",
+    "sequence": 42,
+    "emitted_at": "2026-09-22T14:00:01Z",
+    "kind": "command.changed",
+    "resource": {
+      "agent_id": "pi:33333333-3333-4333-8333-333333333333",
+      "client_command_id": "55555555-5555-4555-8555-555555555555"
+    },
+    "payload": {
+      "acceptance": "accepted",
+      "execution": "running"
+    }
   },
   {
-    "schema_version": 1, "event_id": "evt_example0043",
+    "schema_version": 1,
+    "event_id": "evt_example0043",
     "cursor": "ev1:22222222-2222-4222-8222-222222222222:43",
-    "server_instance_id": "22222222-2222-4222-8222-222222222222", "sequence": 43,
-    "emitted_at": "2026-09-22T14:00:02Z", "kind": "assistant.delta",
-    "resource": {"agent_id": "pi:33333333-3333-4333-8333-333333333333"},
-    "native_key": "entry-redacted:block-0:delta-1", "payload": {"text": "Synthetic response."}
+    "server_instance_id": "22222222-2222-4222-8222-222222222222",
+    "sequence": 43,
+    "emitted_at": "2026-09-22T14:00:02Z",
+    "kind": "assistant.delta",
+    "resource": {
+      "agent_id": "pi:33333333-3333-4333-8333-333333333333"
+    },
+    "native_key": "entry-redacted:block-0:delta-1",
+    "payload": {
+      "text": "Synthetic response."
+    }
   },
   {
-    "schema_version": 1, "event_id": "evt_example0044",
+    "schema_version": 1,
+    "event_id": "evt_example0044",
     "cursor": "ev1:22222222-2222-4222-8222-222222222222:44",
-    "server_instance_id": "22222222-2222-4222-8222-222222222222", "sequence": 44,
-    "emitted_at": "2026-09-22T14:00:03Z", "kind": "snapshot.invalidated",
-    "resource": {"scope": "user"}, "payload": {"reason": "source_changed"}
+    "server_instance_id": "22222222-2222-4222-8222-222222222222",
+    "sequence": 44,
+    "emitted_at": "2026-09-22T14:00:03Z",
+    "kind": "snapshot.invalidated",
+    "resource": {
+      "scope": "user"
+    },
+    "payload": {
+      "reason": "source_changed"
+    }
+  },
+  {
+    "schema_version": 1,
+    "event_id": "evt_example0045",
+    "cursor": "ev1:22222222-2222-4222-8222-222222222222:45",
+    "server_instance_id": "22222222-2222-4222-8222-222222222222",
+    "sequence": 45,
+    "emitted_at": "2026-09-22T14:00:04Z",
+    "kind": "history.entry",
+    "resource": {
+      "agent_id": "pi:33333333-3333-4333-8333-333333333333"
+    },
+    "native_key": "native_0045",
+    "payload": {
+      "entry_key": "native_0045",
+      "entry_kind": "assistant",
+      "content": {
+        "media_type": "text/plain",
+        "text": "Synthetic persisted response.",
+        "complete": true
+      }
+    }
   }
 ]

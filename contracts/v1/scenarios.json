@@ -60,7 +60,8 @@
     "covers": [
       "duplicates",
       "ordering",
-      "daemon-owned Pi queue.changed replay"
+      "daemon-owned Pi queue.changed replay",
+      "daemon-owned Pi native history.entry replay"
     ],
     "given": [
       "client last applied sequence 42"
@@ -72,7 +73,8 @@
       "42 is ignored by event_id/cursor",
       "43 applies once",
       "an out-of-order sequence greater than one marks writes disabled and starts resnapshot",
-      "queue.changed carries the agent resource, a revision, and steering/follow_up; it is not a command receipt"
+      "queue.changed carries the agent resource, a revision, and steering/follow_up; it is not a command receipt",
+      "history.entry is published only from a readable Pi JSONL entry, carries its persistent native_key, and repeating the native observation does not publish the same key twice"
     ]
   },
   {

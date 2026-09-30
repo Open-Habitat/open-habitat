@@ -127,12 +127,13 @@ func (a *Auth) forwardEvents(w http.ResponseWriter, r *http.Request, conn net.Co
 			Sequence         uint64            `json:"sequence"`
 			EventID          string            `json:"event_id"`
 			Kind             string            `json:"kind"`
+			NativeKey        string            `json:"native_key"`
 			Resource         map[string]string `json:"resource"`
 			Payload          json.RawMessage   `json:"payload"`
 		}
 		decoder := json.NewDecoder(bytes.NewReader([]byte(body)))
 		decoder.DisallowUnknownFields()
-		if decoder.Decode(&event) != nil || decoder.Decode(new(any)) != io.EOF || event.SchemaVersion != 1 || event.Cursor != id || event.ServerInstanceID != parts[1] || event.Sequence != seq || !regexp.MustCompile(`^evt_[A-Za-z0-9_-]{8,80}$`).MatchString(event.EventID) || !validEventTime(event.EmittedAt) || event.Kind != kind || !validEventResource(event.Resource) || !validCombinedPayload(kind, event.Resource, event.Payload) {
+		if decoder.Decode(&event) != nil || decoder.Decode(new(any)) != io.EOF || event.SchemaVersion != 1 || event.Cursor != id || event.ServerInstanceID != parts[1] || event.Sequence != seq || !regexp.MustCompile(`^evt_[A-Za-z0-9_-]{8,80}$`).MatchString(event.EventID) || !validEventTime(event.EmittedAt) || event.Kind != kind || !validEventResource(event.Resource) || !validCombinedPayload(kind, event.Resource, event.NativeKey, event.Payload) {
 			return
 		}
 		if !scanner.Scan() || scanner.Text() != "" {
@@ -152,7 +153,7 @@ func (a *Auth) forwardEvents(w http.ResponseWriter, r *http.Request, conn net.Co
 
 // This allowlist prevents a compromised daemon response from forwarding
 // arbitrary event types or extra fields into another user's browser.
-func validCombinedPayload(kind string, resource map[string]string, raw json.RawMessage) bool {
+func validCombinedPayload(kind string, resource map[string]string, nativeKey string, raw json.RawMessage) bool {
 	var fields map[string]json.RawMessage
 	if json.Unmarshal(raw, &fields) != nil || fields == nil {
 		return false
@@ -160,6 +161,7 @@ func validCombinedPayload(kind string, resource map[string]string, raw json.RawM
 	allowed := map[string][]string{
 		"snapshot.invalidated": {"reason"},
 		"queue.changed":        {"revision", "steering", "follow_up"},
+		"history.entry":        {"entry_key", "entry_kind", "content"},
 	}
 	keys, ok := allowed[kind]
 	if !ok || len(fields) != len(keys) {
@@ -169,6 +171,41 @@ func validCombinedPayload(kind string, resource map[string]string, raw json.RawM
 		if _, ok := fields[k]; !ok {
 			return false
 		}
+	}
+	if kind != "history.entry" && nativeKey != "" {
+		return false
+	}
+	if kind == "history.entry" {
+		if resource["agent_id"] == "" || len(nativeKey) < 1 || len(nativeKey) > 128 {
+			return false
+		}
+		for _, ch := range nativeKey {
+			if !((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-') {
+				return false
+			}
+		}
+		var key, entryKind string
+		if json.Unmarshal(fields["entry_key"], &key) != nil || key != nativeKey || json.Unmarshal(fields["entry_kind"], &entryKind) != nil {
+			return false
+		}
+		switch entryKind {
+		case "user", "assistant", "tool", "model_change", "unknown":
+		default:
+			return false
+		}
+		var content struct {
+			MediaType  string `json:"media_type"`
+			Text       string `json:"text"`
+			Complete   bool   `json:"complete"`
+			ContentID  string `json:"content_id"`
+			NextOffset int    `json:"next_offset"`
+		}
+		dec := json.NewDecoder(bytes.NewReader(fields["content"]))
+		dec.DisallowUnknownFields()
+		if dec.Decode(&content) != nil || dec.Decode(new(any)) != io.EOF || content.MediaType != "text/plain" || len(content.Text) > 65536 || content.NextOffset < 0 {
+			return false
+		}
+		return true
 	}
 	if kind == "snapshot.invalidated" {
 		var reason string

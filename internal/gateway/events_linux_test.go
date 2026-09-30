@@ -19,14 +19,16 @@ import (
 func TestCombinedPayloadAllowlist(t *testing.T) {
 	agent := map[string]string{"agent_id": "pi:12345678-1234-1234-1234-123456789012"}
 	for _, tc := range []struct {
-		kind, body string
-		want       bool
+		kind, key, body string
+		want            bool
 	}{
-		{"queue.changed", `{"revision":"queue_00000001","steering":["hello"],"follow_up":[]}`, true},
-		{"queue.changed", `{"revision":"queue_00000001","steering":["hello"],"follow_up":[],"secret":"x"}`, false},
-		{"assistant.delta", `{"text":"x"}`, false},
+		{"queue.changed", "", `{"revision":"queue_00000001","steering":["hello"],"follow_up":[]}`, true},
+		{"queue.changed", "", `{"revision":"queue_00000001","steering":["hello"],"follow_up":[],"secret":"x"}`, false},
+		{"assistant.delta", "", `{"text":"x"}`, false},
+		{"history.entry", "native_1", `{"entry_key":"native_1","entry_kind":"assistant","content":{"media_type":"text/plain","text":"hello","complete":true}}`, true},
+		{"history.entry", "native_1", `{"entry_key":"other","entry_kind":"assistant","content":{"media_type":"text/plain","text":"hello","complete":true}}`, false},
 	} {
-		if got := validCombinedPayload(tc.kind, agent, []byte(tc.body)); got != tc.want {
+		if got := validCombinedPayload(tc.kind, agent, tc.key, []byte(tc.body)); got != tc.want {
 			t.Errorf("%s: got %v", tc.kind, got)
 		}
 	}

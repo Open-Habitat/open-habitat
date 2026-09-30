@@ -306,9 +306,13 @@ try:
         except RuntimeError:
             print('settlement diagnostic',name,{k:last.get(k) for k in ('state','ack','command_id','native_history')},'provider calls',len(Model.calls),file=sys.stderr)
             raise
+        # Native JSONL is the source of the persistent key, never the RPC event.
+        code,_,native_page=request(op,last['history_query']+'?limit=200')
+        check(code==200,'native page before SSE')
+        native_keys={entry['entry_key'] for entry in json.loads(native_page)['entries']}
         # Read the bounded combined stream through the real gateway, then
-        # reconnect with the delivered cursor. This fixture currently proves
-        # invalidation replay; queue_update is covered by Go tests.
+        # reconnect from the original cursor. Queue and mid-turn tails are
+        # still outside this fixture's coverage.
         events_url=ORIGIN+'/api/v1/events?after='+urllib.parse.quote(starting_cursor)
         with op.open(events_url,timeout=27) as stream:
             check(stream.status==200,'events admission')
@@ -318,6 +322,20 @@ try:
             body=stream.readline().decode().strip()
             check(kind=='event: snapshot.invalidated' and body.startswith('data: '),'structured event frame')
             event=json.loads(body[6:]); check(event['cursor']==event_id[4:] and event['kind']=='snapshot.invalidated','event data')
+            check(stream.readline()==b'\n','first SSE frame separator')
+            persisted=[]
+            for _ in range(127):
+                frame_id=stream.readline().decode().strip()
+                frame_kind=stream.readline().decode().strip()
+                frame_body=stream.readline().decode().strip()
+                check(frame_id.startswith('id: ') and frame_body.startswith('data: '),'bounded event frame')
+                frame=json.loads(frame_body[6:])
+                if frame_kind=='event: history.entry':
+                    check(frame['native_key'] in native_keys and frame['payload']['entry_key']==frame['native_key'],'persistent JSONL key')
+                    persisted.append(frame)
+                    if frame['payload']['entry_kind']=='assistant': break
+                check(stream.readline()==b'\n','SSE frame separator')
+            check(any(x['payload']['entry_kind']=='assistant' for x in persisted),'persisted assistant SSE')
         resume=urllib.request.Request(events_url,headers={'Last-Event-ID':starting_cursor})
         with op.open(resume,timeout=27) as stream:
             check(stream.readline().decode().strip()==event_id,'reconnect replays exact cursor')

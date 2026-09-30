@@ -66,6 +66,7 @@ type conversation struct {
 	streamSeq                    uint64
 	lost                         bool
 	aborting                     bool
+	publishedHistory             map[string]bool // bounded to this native session; JSONL is authoritative
 }
 
 func newConversationController(ctx context.Context, cfg transport.Config, runtime *core.PiRuntimeConfig, trusted func(*http.Request) bool, status func(context.Context) string) *ConversationController {
@@ -584,13 +585,17 @@ func (c *ConversationController) drain(s *conversation) {
 				s.rpc.overflow.Store(true)
 			}
 		}
-		if frame.Type == "agent_settled" {
+		settled := frame.Type == "agent_settled"
+		if settled {
 			s.settled = true
 			if s.state == "accepted" {
 				s.state = "idle"
 			}
 		}
 		c.mu.Unlock()
+		if settled {
+			c.publishNativeHistory(s)
+		}
 	}
 	c.mu.Lock()
 	s.state = "uncertain"
@@ -598,6 +603,51 @@ func (c *ConversationController) drain(s *conversation) {
 		s.ack = "uncertain"
 	}
 	c.mu.Unlock()
+}
+
+// Pi's settlement notification carries no persistent entry identity. Read the
+// mapped UID's checked JSONL instead; never turn an RPC message into history.
+// A failed/unstable read invalidates the view rather than claiming settlement.
+func (c *ConversationController) publishNativeHistory(s *conversation) {
+	sessions, err := nativeSessions(c.nativeCfg())
+	if err != nil {
+		if c.journal != nil {
+			c.journal.appendInvalidation("pi:" + s.id)
+		}
+		return
+	}
+	for _, header := range sessions {
+		if header.id != s.id || header.cwd != s.cwd || header.state != "readable" {
+			continue
+		}
+		native := readNativeSettled(header.path, c.cfg.UID)
+		if native.state != "readable" || native.id != s.id || native.cwd != s.cwd {
+			break
+		}
+		c.mu.Lock()
+		if c.sessions[s.id] != s || c.closed {
+			c.mu.Unlock()
+			return
+		}
+		if s.publishedHistory == nil {
+			s.publishedHistory = make(map[string]bool)
+		}
+		for _, entry := range native.entries {
+			if s.publishedHistory[entry.Key] {
+				continue
+			}
+			s.publishedHistory[entry.Key] = true
+			inline(&native, &entry)
+			if c.journal != nil {
+				c.journal.appendNativeEntry("pi:"+s.id, entry)
+			}
+		}
+		c.mu.Unlock()
+		return
+	}
+	if c.journal != nil {
+		c.journal.appendInvalidation("pi:" + s.id)
+	}
 }
 func (c *ConversationController) lookup(w http.ResponseWriter, id string) *conversation {
 	c.mu.Lock()
