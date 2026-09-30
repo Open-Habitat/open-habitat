@@ -61,7 +61,7 @@ describe("published conversation stream", () => {
       }),
       agent,
     ).turn;
-    expect(provisionalItems(turn, []).map((item) => item.text)).toEqual([
+    expect(provisionalItems(turn).map((item) => item.text)).toEqual([
       "Hei maailma",
       "bash · succeeded",
     ]);
@@ -79,9 +79,54 @@ describe("published conversation stream", () => {
       agent,
     );
     expect(settled.entry?.entry_key).toBe("native-1");
+    expect(provisionalItems(settled.turn)).toEqual([]);
+  });
+  it("keeps messages in tool order, never suppresses a new tail because old native text happens to match", () => {
+    let turn = initialTurn(cursor(0));
+    turn = applyTurnEvent(
+      turn,
+      parse(1, "assistant.delta", { text: "Tarkistan", content_index: 0 }),
+      agent,
+    ).turn;
+    turn = applyTurnEvent(
+      turn,
+      parse(2, "tool.started", {
+        tool_call_id: "tool-1",
+        tool_name: "bash",
+        state: "running",
+      }),
+      agent,
+    ).turn;
+    turn = applyTurnEvent(
+      turn,
+      parse(3, "tool.finished", {
+        tool_call_id: "tool-1",
+        tool_name: "bash",
+        state: "succeeded",
+      }),
+      agent,
+    ).turn;
+    turn = applyTurnEvent(
+      turn,
+      parse(4, "assistant.delta", { text: "Valmis", content_index: 0 }),
+      agent,
+    ).turn;
+    expect(provisionalItems(turn).map((item) => item.text)).toEqual([
+      "Tarkistan",
+      "bash · succeeded",
+      "Valmis",
+    ]);
     expect(
-      provisionalItems(settled.turn, settled.entry ? [settled.entry] : []),
-    ).toEqual([]);
+      provisionalItems(
+        initialTurn(cursor(2), [
+          parse(2, "tool.started", {
+            tool_call_id: "tool-1",
+            tool_name: "bash",
+            state: "running",
+          }),
+        ]),
+      ).map((item) => item.kind),
+    ).toEqual(["tool"]);
   });
   it("rejects gaps and instance changes, and distinguishes truncated history fallback", () => {
     const turn = initialTurn(cursor(2));
@@ -103,6 +148,15 @@ describe("published conversation stream", () => {
         agent,
       ).recover,
     ).toBe("snapshot");
+    const foreign = parseConversationEvent(
+      frame(
+        3,
+        "snapshot.invalidated",
+        { reason: "ring_truncated" },
+        { agent_id: "pi:22222222-2222-4222-8222-222222222222" },
+      ),
+    );
+    expect(applyTurnEvent(turn, foreign, agent).recover).toBeUndefined();
     expect(() =>
       parseConversationEvent(
         frame(3, "assistant.delta", { text: "ok", content_index: -1 }),

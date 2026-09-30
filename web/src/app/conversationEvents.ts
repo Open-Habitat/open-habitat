@@ -86,12 +86,15 @@ export function applyTurnEvent(
   )
     return { turn, recover: "snapshot" };
   const next = { ...turn, cursor: event.cursor, sequence: event.sequence };
-  if (event.kind === "snapshot.invalidated")
+  if (event.kind === "snapshot.invalidated") {
+    if (event.resource.agent_id && event.resource.agent_id !== agentId)
+      return { turn: next };
     return {
       turn: next,
       recover:
         event.payload.reason === "ring_truncated" ? "history" : "snapshot",
     };
+  }
   if (event.resource.agent_id !== agentId) return { turn: next };
   if (event.kind === "history.entry") {
     const payload = event.payload;
@@ -100,7 +103,7 @@ export function applyTurnEvent(
       kind: payload.entry_kind as HistoryEntry["kind"],
       content: payload.content as HistoryEntry["content"],
     };
-    return { turn: { ...next, fragments: [] }, entry };
+    return { turn: { ...next, fragments: [], truncated: false }, entry };
   }
   if (
     [
@@ -115,48 +118,36 @@ export function applyTurnEvent(
   }
   return { turn: next };
 }
-export function provisionalItems(turn: LiveTurn, native: HistoryEntry[]) {
+export function provisionalItems(turn: LiveTurn) {
   if (turn.truncated) return [];
-  const text = new Map<number, string>();
-  const tools = new Map<string, { name: string; state: string }>();
-  const order: { id: string; kind: string }[] = [];
+  const items: { id: string; kind: string; text: string; index?: number }[] =
+    [];
+  const tools = new Map<string, number>();
   for (const event of turn.fragments) {
     if (event.kind === "assistant.delta") {
       const index =
         typeof event.payload.content_index === "number"
           ? event.payload.content_index
           : 0;
-      if (!text.has(index))
-        order.push({ id: `live-text-${index}`, kind: "assistant" });
-      text.set(index, (text.get(index) ?? "") + event.payload.text);
-    }
-    if (event.kind.startsWith("tool.")) {
-      const id = event.payload.tool_call_id as string;
-      if (!tools.has(id)) order.push({ id: `live-tool-${id}`, kind: "tool" });
-      tools.set(id, {
-        name: event.payload.tool_name as string,
-        state: event.payload.state as string,
-      });
+      const last = items.at(-1);
+      if (last?.kind === "assistant" && last.index === index)
+        last.text += event.payload.text;
+      else
+        items.push({
+          id: `live-text-${event.event_id}`,
+          kind: "assistant",
+          text: event.payload.text as string,
+          index,
+        });
+    } else if (event.kind.startsWith("tool.")) {
+      const key = event.payload.tool_call_id as string;
+      const text = `${event.payload.tool_name} · ${event.payload.state}`;
+      const position = tools.get(key);
+      if (position === undefined) {
+        tools.set(key, items.length);
+        items.push({ id: `live-tool-${key}`, kind: "tool", text });
+      } else items[position].text = text;
     }
   }
-  // A native entry supersedes the whole provisional turn. A status/history
-  // poll may win the race against the SSE frame; never show both copies.
-  if (
-    native.length &&
-    turn.fragments.length &&
-    native.at(-1)?.kind === "assistant" &&
-    native.at(-1)?.entry_key !== undefined &&
-    native.at(-1)?.content.text.includes([...text.values()].join(""))
-  )
-    return [];
-  return order
-    .map(({ id, kind }) => ({
-      id,
-      kind,
-      text:
-        kind === "assistant"
-          ? (text.get(Number(id.slice("live-text-".length))) ?? "")
-          : `${tools.get(id.slice("live-tool-".length))?.name} · ${tools.get(id.slice("live-tool-".length))?.state}`,
-    }))
-    .filter((item) => item.text);
+  return items;
 }

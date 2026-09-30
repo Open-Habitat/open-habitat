@@ -207,7 +207,9 @@ test("@lab combined stream reconciles a forced gap without reposting", async ({
     if (new URL(request.url()).pathname === "/api/v1/snapshot") snapshotReads++;
   });
   let injected = false;
+  let streamReads = 0;
   await page.route("**/api/v1/events?after=*", async (route) => {
+    streamReads++;
     if (injected) return route.continue();
     injected = true;
     const after =
@@ -238,6 +240,7 @@ test("@lab combined stream reconciles a forced gap without reposting", async ({
   await page.reload();
   await expect.poll(() => injected).toBe(true);
   await expect.poll(() => snapshotReads).toBeGreaterThan(1);
+  await expect.poll(() => streamReads).toBeGreaterThan(1);
   await expect(page.getByText("This frame must not appear")).toHaveCount(0);
   await expect(
     page.getByText('Selvä. Kysyit: "hidas stream-tarkistus".', {
