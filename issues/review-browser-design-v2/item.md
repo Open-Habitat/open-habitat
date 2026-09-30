@@ -87,3 +87,7 @@ Assessment written: assessment.md (rev 82a5c4e). Foundation functionally sound, 
 ### 2026-09-30T16:59:44Z · @jari
 
 2026-09-30: Jari confirmed that the repository chooser behaviour agreed with the designer for browser design v2 is: all repositories visible by default, time filtering as a user choice. The delivered handoff and Onboarding v2 HTML start with a monthly filter enabled; implementation follows this agreement, not the handoff default.
+
+### 2026-09-30T17:23:44Z · @night-ui
+
+Provisional for the night of 2026-09-30, per issues/night-2026-09-30/plan.md (Jari may overturn in the morning; any effect is then scoped by a new issue): (1) phone fitting is in the implementation scope; (2) the v2 handoff sizing table is the source of the shared values, and the sentence in design-system/production-v1.md treating draft sizes as references is updated. Implementation slices: recut-ui-foundation, fit-conversation-v2, fit-sidebar-v2, fit-onboarding-v2, fit-account-and-history-v2, compare-v2-pairs (lane design-v2).
