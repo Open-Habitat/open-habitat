@@ -41,6 +41,15 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Kierrokset
 
+### Kierros 5 — valmis 2026-09-30 20:50 UTC
+
+`/api/v1/events` julkaisee nyt `history.entry`-tapahtumat Pi:n natiivin
+JSONL:n `native_key`llä, ja myös toisto toimii niille (run
+`01m3sz1qj3xacasjmxcqz4x41w`; gate vihreä, erillis-UID:n Pi-fixture läpi).
+Deltat ja atominen `live_tail` puuttuvat vielä, ja ne tulevat kierroksella 6.
+UI:lle: `history.entry` on jo käytettävissä, mutta pidä status- ja
+historiahaku varapolkuna.
+
 ### Kierros 4 — valmis 2026-09-30 20:10 UTC
 
 Jatkettavuushavainto laskeutui (ks. pyynnöt). Status ja continue käyttävät
