@@ -775,6 +775,61 @@ export function Composer({
     </section>
   );
 }
+export function EndedConversationControl({
+  state,
+  onContinue,
+  retryAvailable = false,
+}: {
+  retryAvailable?: boolean;
+  state:
+    | "ready"
+    | "pending"
+    | "writer_conflict"
+    | "read_only_history"
+    | "control_uncertain"
+    | "uncertain";
+  onContinue: () => void;
+}) {
+  const descriptions = {
+    ready:
+      "Aiemman vuoron tulos voi olla epävarma. Tarkista historia ennen uuden viestin lähettämistä.",
+    pending: "Jatkamista pyydetään. Älä lähetä pyyntöä uudelleen.",
+    writer_conflict:
+      "Toinen kirjoittaja on aktiivinen tai sen päättymistä ei ole voitu todistaa.",
+    read_only_history:
+      "Tämä on terminaalin historiaa; sitä ei voi ohjata selaimesta.",
+    control_uncertain:
+      "Historiaa tai työtilaa ei ole vielä voitu todentaa turvalliseksi jatkaa.",
+    uncertain:
+      "Jatkamisen tulos on epävarma. Tarkista tila ja historia; pyyntöä ei lähetetä uudelleen automaattisesti.",
+  };
+  return (
+    <section className="ah-composer" aria-label="Päättyneen keskustelun ohjaus">
+      <InlineNotice
+        title={
+          state === "ready"
+            ? "Keskustelu ei ole ohjattavissa"
+            : state === "pending"
+              ? "Jatkaminen odottaa"
+              : state === "uncertain"
+                ? "Jatkamisen tulos epävarma"
+                : "Jatkaminen estetty"
+        }
+        description={descriptions[state]}
+        tone={state === "ready" ? "neutral" : "warning"}
+      />
+      {state === "ready" || (state === "uncertain" && retryAvailable) ? (
+        <Button
+          label={
+            state === "ready" ? "Jatka keskustelua" : "Yritä jatkaa uudelleen"
+          }
+          variant="quiet"
+          onPress={onContinue}
+        />
+      ) : null}
+    </section>
+  );
+}
 export function QueuePanel({
   steeringTexts,
   followUpTexts,

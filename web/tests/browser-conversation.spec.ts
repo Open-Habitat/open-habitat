@@ -853,3 +853,218 @@ test("@browser-conversation separate streaming drafts survive agent switches and
   ).toEqual([]);
   await expect(page.getByText("toisen oma luonnos")).toHaveCount(0);
 });
+
+async function endedConversation(page: import("@playwright/test").Page) {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(page).toHaveURL(/conversation=pi/);
+  const id = new URL(page.url()).searchParams.get("conversation");
+  if (!id) throw new Error("missing conversation");
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await editor.fill("synthetic end then continue");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect
+    .poll(async () => {
+      const r = await page.request.get(
+        `/api/v1/conversations/${id.slice(3)}/status`,
+      );
+      const s = await r.json();
+      return s.state === "idle" && s.native_history === "readable";
+    })
+    .toBe(true);
+  const { csrf } = await (await page.request.get("/auth/session")).json();
+  const stopped = await page.request.post(
+    `/api/v1/conversations/${id.slice(3)}/stop`,
+    {
+      headers: { "X-Agent-Host-CSRF": csrf, Origin: host },
+    },
+  );
+  expect(stopped.status()).toBe(200);
+  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
+  await expect(
+    page.getByRole("button", { name: "Jatka keskustelua" }),
+  ).toBeVisible();
+  await expect(editor).toHaveCount(0);
+  return id;
+}
+
+test("@browser-conversation ended browser lease continues explicitly without reposting", async ({
+  page,
+}) => {
+  const id = await endedConversation(page);
+  let continuations = 0,
+    sends = 0;
+  page.on("request", (r) => {
+    if (r.url().endsWith("/continue")) continuations++;
+    if (r.url().endsWith("/send")) sends++;
+  });
+  const posted = page.waitForRequest((r) => r.url().endsWith("/continue"));
+  await page.getByRole("button", { name: "Jatka keskustelua" }).click();
+  const request = await posted;
+  expect(request.postData()).toBeNull();
+  expect(request.headers()["x-agent-host-csrf"]).toBeTruthy();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/Aiemman vuoron tulos on epävarma/),
+  ).toBeVisible();
+  expect(continuations).toBe(1);
+  expect(sends).toBe(0);
+  const status = await (
+    await page.request.get(`/api/v1/conversations/${id.slice(3)}/status`)
+  ).json();
+  expect(status.state).toBe("idle");
+  await page.goto("/agents/pi:11111111-1111-4111-8111-111111111111");
+  await expect(page.getByText("Vain luku · Ohjausta ei ole")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Jatka keskustelua" }),
+  ).toHaveCount(0);
+});
+
+for (const code of [
+  "writer_conflict",
+  "read_only_history",
+  "control_uncertain",
+  "network",
+  "503",
+] as const) {
+  test(`@browser-conversation continuation ${code} never reposts`, async ({
+    page,
+  }) => {
+    const id = await endedConversation(page);
+    let attempts = 0;
+    await page.route(
+      `**/api/v1/conversations/${id.slice(3)}/continue`,
+      (route) => {
+        attempts++;
+        if (code === "network") return route.abort("failed");
+        return route.fulfill({
+          status: code === "503" ? 503 : 409,
+          contentType: "application/json",
+          body: JSON.stringify({
+            schema_version: 1,
+            error: {
+              code,
+              message: "not available",
+              retryable: false,
+              correlation_id: "req_00000000",
+            },
+          }),
+        });
+      },
+    );
+    await page.getByRole("button", { name: "Jatka keskustelua" }).click();
+    const phrase =
+      code === "writer_conflict"
+        ? "Toinen kirjoittaja"
+        : code === "read_only_history"
+          ? "terminaalin historiaa"
+          : code === "control_uncertain"
+            ? "turvalliseksi jatkaa"
+            : "Jatkamisen tulos on epävarma";
+    await expect(page.getByText(new RegExp(phrase))).toBeVisible();
+    await page.reload();
+    await expect(
+      page.getByRole("button", { name: "Jatka keskustelua" }),
+    ).toHaveCount(code === "503" || code === "network" ? 0 : 1);
+    await page
+      .getByRole("button", { name: "Tarkista keskustelun tila" })
+      .click();
+    expect(attempts).toBe(1);
+    if (code === "network" || code === "503") {
+      await expect(
+        page.getByRole("button", { name: "Yritä jatkaa uudelleen" }),
+      ).toBeVisible();
+      await page
+        .getByRole("button", { name: "Yritä jatkaa uudelleen" })
+        .click();
+      await expect.poll(() => attempts).toBe(2); // only this explicit second press reposts
+    }
+  });
+}
+
+test("@browser-conversation lost continuation reply reconciles status and history without another POST", async ({
+  page,
+}) => {
+  const id = await endedConversation(page);
+  let attempts = 0;
+  await page.route(
+    `**/api/v1/conversations/${id.slice(3)}/continue`,
+    async (route) => {
+      attempts++;
+      const response = await route.fetch(); // native write succeeded, browser reply lost
+      expect(response.status()).toBe(200);
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: "{}",
+      });
+    },
+  );
+  await page.route(`**/api/v1/agents/${id}/history*`, (route) =>
+    route.fulfill({ status: 503, contentType: "application/json", body: "{}" }),
+  );
+  await page.getByRole("button", { name: "Jatka keskustelua" }).click();
+  await expect(
+    page.getByText("Jatkamisen tulos epävarma", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toHaveCount(0);
+  await page.unroute(`**/api/v1/agents/${id}/history*`);
+  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
+  await expect(
+    page.getByText("Aiemman vuoron tulos on epävarma", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
+  expect(attempts).toBe(1);
+});
+
+test("@browser-conversation status reconciles before a late continuation reply", async ({
+  page,
+}) => {
+  const id = await endedConversation(page);
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let wrote!: () => void;
+  const written = new Promise<void>((resolve) => {
+    wrote = resolve;
+  });
+  let attempts = 0;
+  await page.route(
+    `**/api/v1/conversations/${id.slice(3)}/continue`,
+    async (route) => {
+      attempts++;
+      const response = await route.fetch(); // daemon has started the new child
+      expect(response.status()).toBe(200);
+      wrote();
+      await held;
+      await route.fulfill({ response });
+    },
+  );
+  try {
+    await page.getByRole("button", { name: "Jatka keskustelua" }).click();
+    await written;
+    await page
+      .getByRole("button", { name: "Tarkista keskustelun tila" })
+      .click();
+    await expect(
+      page.getByText("Aiemman vuoron tulos on epävarma", { exact: true }),
+    ).toBeVisible();
+    release();
+    await expect(
+      page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    ).toBeEnabled();
+    await expect(
+      page.getByText("Jatkamisen tulos epävarma", { exact: true }),
+    ).toHaveCount(0);
+    expect(attempts).toBe(1);
+  } finally {
+    release();
+  }
+});

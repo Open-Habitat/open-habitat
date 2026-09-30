@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import {
   AssistantMessage,
+  EndedConversationControl,
   Composer,
   ConversationTimeline,
   UncertainCommandCard,
@@ -181,6 +182,35 @@ export const UncertainDraftNarrow: Story = {
   parameters: { viewport: { defaultViewport: "mobile1" } },
 };
 
+// Both themes render the production continuation control, never a story-only copy.
+export const EndedBrowserConversationLight: Story = {
+  render: () => <EndedConversationControl state="ready" onContinue={noop} />,
+  globals: { theme: "light" },
+};
+export const EndedBrowserConversationDark: Story = {
+  render: () => <EndedConversationControl state="ready" onContinue={noop} />,
+  globals: { theme: "dark" },
+};
+export const WriterConflict: Story = {
+  render: () => (
+    <EndedConversationControl state="writer_conflict" onContinue={noop} />
+  ),
+};
+export const TerminalHistory: Story = {
+  render: () => (
+    <EndedConversationControl state="read_only_history" onContinue={noop} />
+  ),
+};
+export const UnprovenControl: Story = {
+  render: () => (
+    <EndedConversationControl state="control_uncertain" onContinue={noop} />
+  ),
+};
+export const UncertainContinuation: Story = {
+  render: () => (
+    <EndedConversationControl state="uncertain" onContinue={noop} />
+  ),
+};
 // Every story uses the production components and the Storybook light/dark toolbar.
 export const CompletedTurn: Story = {
   render: () => (

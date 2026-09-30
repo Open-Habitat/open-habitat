@@ -27,10 +27,15 @@ func isFakePi(args []string) bool {
 // Prompts steer it: "hidas" slows every step, "hylkää" is rejected,
 // "kaadu" exits mid-turn, "pitkä" answers at length.
 func runFakePi(args []string) {
-	id := ""
+	id, existing := "", ""
 	for i := 0; i+1 < len(args); i++ {
 		if args[i] == "--session-id" {
 			id = args[i+1]
+		}
+		if args[i] == "--session" {
+			existing = args[i+1]
+			id = strings.TrimSuffix(filepath.Base(existing), ".jsonl")
+			if cut := strings.LastIndex(id, "_"); cut >= 0 { id = id[cut+1:] }
 		}
 	}
 	cwd, err := os.Getwd()
@@ -40,6 +45,7 @@ func runFakePi(args []string) {
 	home := os.Getenv("HOME")
 	dir := filepath.Join(home, ".pi", "agent", "sessions", "--"+strings.ReplaceAll(strings.Trim(cwd, "/"), "/", "-")+"--")
 	path := filepath.Join(dir, time.Now().UTC().Format("2006-01-02T15-04-05-000Z")+"_"+id+".jsonl")
+	if existing != "" { path = existing }
 	var out sync.Mutex
 	emit := func(v any) {
 		b, _ := json.Marshal(v)
@@ -47,7 +53,16 @@ func runFakePi(args []string) {
 		defer out.Unlock()
 		os.Stdout.Write(append(b, '\n'))
 	}
-	s := &fakeSession{id: id, cwd: cwd, dir: dir, path: path}
+	s := &fakeSession{id: id, cwd: cwd, dir: dir, path: path, started: existing != ""}
+	if existing != "" {
+		// Continue the same native chain; never overwrite an existing session.
+		data, err := os.ReadFile(existing)
+		if err != nil { os.Exit(2) }
+		for _, line := range strings.Split(string(data), "\n") {
+			var entry struct { ID string `json:"id"` }
+			if json.Unmarshal([]byte(line), &entry) == nil && entry.ID != "" { s.parent = entry.ID }
+		}
+	}
 	busy := false
 	steering, followUp := []string{}, []string{}
 	var mu sync.Mutex

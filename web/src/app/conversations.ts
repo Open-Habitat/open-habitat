@@ -38,6 +38,15 @@ function session(v: unknown): v is Session & Record<string, unknown> {
   );
 }
 export class NotAdmitted extends Error {}
+export type ContinueRefusal =
+  | "writer_conflict"
+  | "read_only_history"
+  | "control_uncertain";
+export class ContinuationRefused extends Error {
+  constructor(readonly code: ContinueRefusal) {
+    super(code);
+  }
+}
 async function json(response: Response): Promise<unknown> {
   if (response.status === 409) throw new NotAdmitted("state changed");
   if (
@@ -45,6 +54,9 @@ async function json(response: Response): Promise<unknown> {
     response.headers.get("content-type")?.split(";")[0] !== "application/json"
   )
     throw new Error("unavailable");
+  return readBody(response);
+}
+async function readBody(response: Response): Promise<unknown> {
   const reader = response.body?.getReader();
   if (!reader) throw new Error("unavailable");
   const chunks: Uint8Array[] = [];
@@ -202,6 +214,55 @@ export async function send(
     v.state !== "pending"
   )
     throw new Error("invalid send");
+}
+export async function continueConversation(
+  id: string,
+  workspace: string,
+  csrf: string,
+): Promise<void> {
+  if (!ws.test(workspace)) throw new Error("invalid workspace");
+  // No body, including an empty JSON object. A lost response is never replayed.
+  const response = await fetch(`${path(id)}/continue`, {
+    method: "POST",
+    credentials: "same-origin",
+    cache: "no-store",
+    headers: { "X-Agent-Host-CSRF": csrf, Origin: window.location.origin },
+  });
+  if (response.status === 409) {
+    const error = await readJSON(response);
+    if (
+      object(error) &&
+      error.schema_version === 1 &&
+      object(error.error) &&
+      ["writer_conflict", "read_only_history", "control_uncertain"].includes(
+        String(error.error.code),
+      )
+    )
+      throw new ContinuationRefused(error.error.code as ContinueRefusal);
+    throw new Error("invalid refusal");
+  }
+  if (response.status === 401 || response.status === 428)
+    throw new Error("identity_lost");
+  const v = await json(response);
+  if (
+    !object(v) ||
+    v.schema_version !== 1 ||
+    !session(v) ||
+    v.agent_id !== id ||
+    v.workspace_id !== workspace ||
+    v.state !== "idle" ||
+    v.prior_outcome !== "uncertain"
+  )
+    throw new Error("invalid continuation");
+}
+
+// The same bounded read used for successes also protects error parsing.
+async function readJSON(response: Response): Promise<unknown> {
+  if (
+    response.headers.get("content-type")?.split(";")[0] !== "application/json"
+  )
+    throw new Error("unavailable");
+  return readBody(response);
 }
 export async function abortTurn(id: string, commandId: string, csrf: string) {
   if (!uuid.test(commandId)) throw new Error("invalid command");

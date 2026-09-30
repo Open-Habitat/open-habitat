@@ -17,6 +17,7 @@ import {
   ConversationStream,
   InlineNotice,
   WorkingProgress,
+  EndedConversationControl,
 } from "../components";
 import {
   create,
@@ -30,6 +31,9 @@ import {
   NotAdmitted,
   status,
   abortTurn,
+  continueConversation,
+  ContinuationRefused,
+  type ContinueRefusal,
 } from "./conversations";
 import { readHistoryFetch, timelineItems } from "./HistoryView";
 import type { HistoryEntry } from "./history";
@@ -86,6 +90,11 @@ export function BrowserConversation({
   const [problem, setProblem] = useState("");
   const [busy, setBusy] = useState(false);
   const [historyError, setHistoryError] = useState(false);
+  const [continuation, setContinuation] = useState<
+    "pending" | "uncertain" | ContinueRefusal
+  >();
+  const [retryContinuation, setRetryContinuation] = useState(false);
+  const continueAttempt = useRef(0);
   const [unseen, setUnseen] = useState(0);
   const [events, setEvents] = useState<unknown[]>([]);
   const [startedAt, setStartedAt] = useState<number>();
@@ -108,6 +117,8 @@ export function BrowserConversation({
   // Presentation-only marker: a lost abort receipt must not be treated as a
   // rejected prompt after the component remounts during session revalidation.
   const abortKey = csrf && id ? `nah:abort:${identity}:${csrf}:${id}` : "";
+  const continuationKey =
+    csrf && id ? `nah:continue:${identity}:${csrf}:${id}` : "";
   const alive = useRef(true);
   const generation = useRef(0);
   const feed = useRef<HTMLElement>(null);
@@ -198,6 +209,7 @@ export function BrowserConversation({
     const controller = new AbortController();
     setCSRF(undefined);
     setCurrent(undefined);
+    setRetryContinuation(false);
     setEntries([]);
     setEvents([]);
     setStartedAt(undefined);
@@ -261,7 +273,15 @@ export function BrowserConversation({
   }, [id, workspace.workspace_id, identity, place, placeKey, stale]);
   useEffect(() => {
     setDraft(draftKey ? (sessionStorage.getItem(draftKey) ?? "") : "");
-  }, [draftKey]);
+    setContinuation(
+      continuationKey
+        ? ((sessionStorage.getItem(continuationKey) as
+            | "uncertain"
+            | ContinueRefusal
+            | null) ?? undefined)
+        : undefined,
+    );
+  }, [draftKey, continuationKey]);
   const changeDraft = (value: string) => {
     setDraft(value);
     if (draftKey) sessionStorage.setItem(draftKey, value);
@@ -304,6 +324,12 @@ export function BrowserConversation({
           setFinishedInBackground(true);
         wasWorking.current = working;
         setCurrent(nextStatus);
+        // Reconcile an ambiguous continuation only against fresh status and history.
+        const continueKey = `nah:continue:${identity}:${csrf}:${id}`;
+        const reconciledContinuation =
+          sessionStorage.getItem(continueKey) === "uncertain" &&
+          nextStatus.state === "idle" &&
+          nextStatus.native_history === "readable";
         if (nextStatus.state === "idle") setWorkingMode("follow_up");
         const abortId = sessionStorage.getItem(
           `nah:abort:${identity}:${csrf}:${id}`,
@@ -356,6 +382,11 @@ export function BrowserConversation({
         }
         if (
           !abortReceipt &&
+          !reconciledContinuation &&
+          (nextStatus.state !== "idle" ||
+            sessionStorage.getItem(
+              `nah:ambiguous:${identity}:${csrf}:${id}`,
+            )) &&
           nextStatus.command_id &&
           nextStatus.ack === "uncertain"
         )
@@ -379,6 +410,7 @@ export function BrowserConversation({
           }
           sessionStorage.removeItem(submittedKey);
           sessionStorage.removeItem(`nah:ambiguous:${identity}:${csrf}:${id}`);
+          sessionStorage.removeItem(`nah:continued:${identity}:${csrf}:${id}`);
           setReceipt("Viesti hyväksyttiin.");
         }
         setEvents(nextStatus.events); // bounded tail, never concatenate snapshots
@@ -442,6 +474,15 @@ export function BrowserConversation({
             }
             setNext(cursor);
             setHistoryError(false);
+            if (reconciledContinuation) {
+              sessionStorage.removeItem(continueKey);
+              sessionStorage.setItem(
+                `nah:continued:${identity}:${csrf}:${id}`,
+                "1",
+              );
+              setContinuation(undefined);
+              setReceipt("");
+            }
           } catch {
             if (alive.current && version === generation.current)
               setHistoryError(true);
@@ -512,6 +553,9 @@ export function BrowserConversation({
       stream.onerror = () => {
         stream?.close();
         stream = undefined;
+        // A 409 cursor expiry and a transport loss both require status/history
+        // resnapshot, never a repeat of a native write.
+        if (!removed) void refresh();
         if (!removed)
           retry = window.setTimeout(() => {
             retry = undefined;
@@ -631,6 +675,88 @@ export function BrowserConversation({
       if (alive.current) setBusy(false);
     }
   };
+  const recheckContinuation = async () => {
+    if (!id || !csrf || continuation !== "uncertain" || stale) return;
+    const attempt = continueAttempt.current;
+    const version = generation.current;
+    setRetryContinuation(false);
+    try {
+      await verify();
+      const fresh = await status(id);
+      if (
+        fresh.workspace_id !== workspace.workspace_id ||
+        fresh.state !== "uncertain" ||
+        fresh.native_history !== "readable"
+      )
+        return;
+      await readHistoryFetch(id);
+      if (
+        alive.current &&
+        version === generation.current &&
+        attempt === continueAttempt.current &&
+        !staleRef.current &&
+        sessionStorage.getItem(continuationKey) === "uncertain"
+      )
+        setRetryContinuation(true); // only an explicit check permits another deliberate press
+    } catch {
+      setRetryContinuation(false);
+    }
+  };
+  const continueEnded = async () => {
+    if (
+      stale ||
+      busy ||
+      !csrf ||
+      !id ||
+      !current ||
+      current.state !== "uncertain" ||
+      current.native_history !== "readable" ||
+      (continuation && (continuation !== "uncertain" || !retryContinuation)) ||
+      !controlled
+    )
+      return;
+    const version = generation.current;
+    ++continueAttempt.current;
+    setBusy(true);
+    setRetryContinuation(false);
+    let sent = false;
+    try {
+      const token = await verify();
+      if (!alive.current || version !== generation.current) return;
+      // Persist before the native write; reload must not quietly repost it.
+      sessionStorage.setItem(continuationKey, "uncertain");
+      setContinuation("pending");
+      sent = true;
+      await continueConversation(id, workspace.workspace_id, token);
+      if (
+        !alive.current ||
+        version !== generation.current ||
+        sessionStorage.getItem(continuationKey) !== "uncertain"
+      )
+        return;
+      setContinuation("uncertain");
+      setReceipt(
+        "Jatkaminen kuitattiin. Tarkistetaan tila ja historia; aiemman vuoron tulos on epävarma.",
+      );
+      void refresh();
+    } catch (error) {
+      if (!alive.current || version !== generation.current) return;
+      if (sent && sessionStorage.getItem(continuationKey) !== "uncertain")
+        return;
+      if (error instanceof ContinuationRefused) {
+        // A 409 is a definite refusal, not an ambiguous write. Retain its
+        // explanation until the person's next explicit status check.
+        sessionStorage.removeItem(continuationKey);
+        setContinuation(error.code);
+      } else if (sent) {
+        setContinuation("uncertain");
+      } else {
+        setReceipt("Istuntoa ei voitu vahvistaa. Jatkamista ei lähetetty.");
+      }
+    } finally {
+      if (alive.current && version === generation.current) setBusy(false);
+    }
+  };
   const submit = async () => {
     if (
       stale ||
@@ -639,6 +765,7 @@ export function BrowserConversation({
       (current.state !== "idle" && current.state !== "rejected") ||
       !draft.trim() ||
       ambiguous ||
+      continuation ||
       !csrf
     )
       return;
@@ -814,6 +941,7 @@ export function BrowserConversation({
     !stale &&
     !busy &&
     !ambiguous &&
+    !continuation &&
     (current.state === "idle" ||
       current.state === "rejected" ||
       current.state === "accepted");
@@ -868,6 +996,16 @@ export function BrowserConversation({
     <>
       {receipt ? <InlineNotice title={receipt} tone="warning" /> : null}
       {problem ? <InlineNotice title={problem} tone="danger" /> : null}
+      {csrf &&
+      id &&
+      sessionStorage.getItem(`nah:continued:${identity}:${csrf}:${id}`) &&
+      !continuation ? (
+        <InlineNotice
+          title="Aiemman vuoron tulos on epävarma"
+          description="Jatkaminen ei vahvista aiemman viestin tai työkalun tulosta. Tarkista natiivi historia ennen uutta viestiä."
+          tone="warning"
+        />
+      ) : null}
       {ambiguous ? (
         <InlineNotice
           title="Aiemman pyynnön tulos epävarma"
@@ -1054,7 +1192,16 @@ export function BrowserConversation({
               Pi:n tapahtumia vastaanotettu; historiaa odotetaan.
             </p>
           ) : null}
-          {controlled ? (
+          {controlled &&
+          (continuation ||
+            (current?.state === "uncertain" &&
+              current.native_history === "readable")) ? (
+            <EndedConversationControl
+              state={stale ? "control_uncertain" : (continuation ?? "ready")}
+              onContinue={() => void continueEnded()}
+              retryAvailable={!stale && retryContinuation}
+            />
+          ) : controlled ? (
             <Composer
               value={draft}
               onChange={changeDraft}
@@ -1136,7 +1283,19 @@ export function BrowserConversation({
                 ? "primary"
                 : "quiet"
             }
-            onPress={() => (stale ? onRefreshStale?.() : void refresh())}
+            onPress={() => {
+              if (stale) onRefreshStale?.();
+              else {
+                if (
+                  continuation &&
+                  continuation !== "uncertain" &&
+                  continuation !== "pending"
+                )
+                  setContinuation(undefined);
+                void refresh();
+                void recheckContinuation();
+              }
+            }}
           />
           {notices}
         </ConversationFrame>
