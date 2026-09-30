@@ -57,15 +57,14 @@ ensin viimeistellä vanhaa designia varten eikä luonnoksen ehdotuksia tulkita
 huomaamatta hyväksytyiksi vaatimuksiksi. Tilien turvallisuusnäyttö ja poistamisen
 rajat käsitellään ennen tiliasetuksia, jotta eri toiminnot eivät sekoitu.
 
-1. **[review-browser-design-v2](../review-browser-design-v2/item.md): ensimmäinen lukukierros.**
-   Tämä on uuden toimituksen oikea issue. Lue
-   [handoff](../review-browser-design-v2/design/handoff.md) ja sen neljä vedosta
-   kokonaisuutena, tunnista tavoiteltu käyttökokemus ja kokoa avoimet kysymykset.
-   Vertaa hyväksyntäväitteitä alkuperäisiin päätöksiin. Tässä vaiheessa saadaan
-   suunta seuraaville läpikäynneille; komponenttikartta ja toteutuksen lopullinen
-   jako täsmennetään kohdan 8 yhteydessä. Esimerkiksi mobiili, nimen/avatarin
-   lähde, OpenAI-asetukset ja epäselvän kloonaustuloksen esitys tarvitsevat
-   vertailun nykyisiin päätöksiin.
+1. **[review-browser-design-v2](../review-browser-design-v2/item.md): design vertailukohdaksi.**
+   Tutustu [handoffiin](../review-browser-design-v2/design/handoff.md) ja neljään
+   vedokseen. Tavoitteena on arvioida, miten nykyinen UI-koodi, komponentit ja
+   yhteiset asettelu- ja tyyliratkaisut pystyvät tuottamaan tämän lopputuloksen
+   tarkasti. Pelkkä designin lukeminen ja päätösten vertailu on lähtötietoa;
+   varsinainen arvio tarvitsee nykykoodin ja renderöityjen näkymien vertailun.
+   Toiminnalliset rajat täsmentyvät seuraavissa kohdissa, ja toteutuspolku
+   kootaan kohdassa 8.
 2. **[prove-jit-guest-isolation](../prove-jit-guest-isolation/item.md).**
    Erota jo saatu ensikirjautumisen ja kahden Unix-käyttäjän näyttö jäljellä
    olevasta työstä. Lue tulosraportit sekä Jarin myöhemmät rajaukset, etenkin
@@ -107,12 +106,16 @@ rajat käsitellään ennen tiliasetuksia, jotta eri toiminnot eivät sekoitu.
    rajaukseen: terminaalihistoria on luettava, päättynyttä selainkeskustelua voi
    jatkaa ja saapuva sisältö näytetään vähintään turvallisena tekstinä.
    Tokenit, tyylit ja nykyiset tuotantokomponentit ovat vertailuaineistoa.
-8. **[review-browser-design-v2](../review-browser-design-v2/item.md): yhteenveto ja jalkauttamisen suunnitelma.**
-   Viimeistele vedosten tilojen vastaavuus nykyiseen toteutukseen,
-   komponenttikartta ja jäljellä olevat päätöskohdat. Nyt yleiset dokumentit,
-   onboarding ja tiliasetukset antavat toteutusjaolle yhteisen lähtökohdan.
-   Ehdota rajatut toteutuspalat ja niiden omistajat. Palaa kohtien 6–7 teksteihin
-   vain, jos tässä tehdään niitä muuttava päätös.
+8. **[review-browser-design-v2](../review-browser-design-v2/item.md): komponenttipohjan arvio ja toteutuspolku.**
+   Arvioi konkreettisten näkymien ja koodin avulla, kuinka toimiva nykyinen
+   käyttöliittymä on ja kuinka kaukana se on designista. Riittääkö komponenttien
+   tarkentaminen ja kokoaminen, vai tarvitaanko yhteisiä korjauksia asetteluun,
+   tyyleihin tai komponenttien vastuunjakoon? Tavoite on viivatarkka sijoittelu
+   ja johdonmukainen ilme, jota on helppo tarkentaa yhteisten ratkaisujen kautta.
+   Suosittele perusteltu polku yhteisistä parannuksista komponentteihin ja
+   valmiisiin näkymiin sekä tapa todeta vastaavuus designiin. Komponenttikartta
+   tukee tätä arviota. Sovita työ olemassa oleviin issueihin; merkittävät
+   arkkitehtuurivalinnat käsitellään Jarin kanssa.
 9. **Jalkauttavat toteutusissuet:**
    [complete-conversation-ui](../complete-conversation-ui/item.md) sekä
    v2-katselmoinnissa täsmentyvät tai syntyvät toteutusissuet.
@@ -123,13 +126,18 @@ rajat käsitellään ennen tiliasetuksia, jotta eri toiminnot eivät sekoitu.
 
 ### Ensimmäinen lukukierros tehty 30.9.2026
 
-Kohta 1 on tehty: [selain-designin ensiluku](../review-browser-design-v2/first-read.md)
+Designiin on tutustuttu: [selain-designin ensiluku](../review-browser-design-v2/first-read.md)
 kokoaa neljän vedoksen sisällön, päätöslähteet, ristiriidat ja suositukset.
 Omega Habitat ja etunimi/sähköposti ovat jo sovittuja; avatar, mobiilin
 toteutuslaajuus, OpenAI-asetukset ja repohaun kuukausisuodin vaativat vielä
 sovituksen. Epävarman kloonauksen piilottaminen ja aina loppuun vierittäminen
 poikkeavat nykyisistä päätöksistä. Puhelin-onboarding on toimituksessa,
 vaikka handoff sanoo sen puuttuvan.
+
+Jari täsmensi reviewn tavoitteen: design on vertailukohta nykyisen
+komponenttipohjan ja visuaalisen toteutustavan toimivuudelle. Ensiluku ei vielä
+vastaa tähän. Arvio pohjan valmiudesta, yhteisistä parannustarpeista ja polusta
+viivatarkkaan lopputulokseen on tekemättä.
 
 **Kohta 2: prove-jit-guest-isolation — ensimmäinen uudistettu versio valmis.**
 [Issue](../prove-jit-guest-isolation/item.md) kuvaa nyt jäljellä olevat

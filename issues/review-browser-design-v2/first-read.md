@@ -4,6 +4,12 @@
 kohta 1: toimituksen suunta ja ratkaistavat asiat. Komponenttikartta ja työnjako
 valmistuvat saman läpikäynnin kohdassa 8 tilien ja onboardingin käsittelyn jälkeen.
 
+Jarin täsmentämä [reviewn tavoite](item.md) on arvioida nykyisen UI-koodin,
+komponenttipohjan sekä yhteisten asettelu- ja tyyliratkaisujen kykyä tuottaa
+design tarkasti ja helposti muokattavasti. Tämä ensiluku antaa siihen
+lähtötietoa. Se ei vielä arvioi pohjan toimivuutta, yhteisiä parannustarpeita
+eikä toteutuspolkua.
+
 ## Tavoiteltu käyttökokemus
 
 [Handoff](design/handoff.md) ja neljä vedosta muodostavat johdonmukaisen suunnan:

@@ -10,33 +10,61 @@ lane: design-review
 collision: [design-system/, docs/, web/src/components/Conversation.tsx]
 ---
 
-# Review browser design v2 delivery
+# Assess the UI foundation against browser design v2
 
 ## Goal
-Review the external designer's **Selainpolku v2** delivery at the start of the next stint and turn it into a grounded, reviewable implementation plan. This is a review of received design, not approval of every proposed behavior or permission to copy prototype code.
+
+Use the supplied browser design as a concrete benchmark for our UI codebase.
+Determine how far we are from implementing it faithfully, how well the current
+UI works, and whether the component library and shared layout and styling
+structures provide a sound foundation for getting there.
+
+The desired result is precise placement, sizing and alignment, with visual
+appearance that is easy to refine consistently across views. Composing and
+adjusting components should naturally produce screens that follow this design.
+The review should explain whether that is achievable with local refinements
+or whether shared foundations need work, and recommend a path to the result.
 
 ## Input
-Jari supplied `rowan:/Users/maintainer/Downloads/Selainpolku v2 suunnittelu.zip` (SHA-256 `4bb65eba40a4206eeddda6b3dff4c561c398e858eb844f1397c8a7499729f94f`), received on 2026-09-30. Extracted source is under this issue's `design/`: `handoff.md` and four HTML mockups plus `support.js`. The zip is not committed. The mockups load public CDN React/Babel and Google Fonts when opened; treat them as untrusted prototypes, not production assets or live app screens.
 
-## Review
+Jari provided the design extracted in `design/`.
 
-The [first reading](first-read.md) records the intended experience, decision
-sources and unresolved differences. Continue in the order Jari chose in
-@rethink-project-docs: account isolation, deprovisioning, onboarding, account
-settings and shared UI documents, then return here for the component/state map
-and implementation slices. This prevents the prototype's assumptions from
-becoming requirements before their product meaning is settled.
+## Assessment
 
-The map connects the sketches to current production components, tokens and
-host states, including keyboard/focus behavior and missing views. It should
-make the remaining work understandable enough to assign without overlapping
-agent-control, onboarding or account-settings work. Important differences
-include unresolved checkout outcomes, preserved drafts and reading position,
-identity display sources, OpenAI settings and mobile scope. The first reading
-has the sources and recommendations; prototype approval labels alone do not
-resolve them. Real user decisions and native state determine the behavior.
+Compare the design with current production components and rendered screens,
+including their interaction states. Look at how layouts, spacing, typography,
+tokens and component variants combine, where those decisions live, and how
+predictably a shared change carries through the application. Existing stories,
+browser tests and visual evidence help establish what works and what remains
+uncertain.
+
+Ground the assessment in representative screens and concrete code. Explain
+which parts already fit, which need component-level refinement, and which
+expose recurring problems in the shared structure or styling approach. A
+component map is useful where it explains those gaps. The central question is
+whether the foundation can reliably produce the intended interface and remain
+easy to adjust as the design evolves.
+
+Recommend the shared improvements that matter and an ordered implementation
+path: foundation work, component refinements and screen composition, with the
+dependencies and existing issue ownership made clear. Explain how visual
+comparison will establish precise fidelity and consistent behavior across the
+relevant screen sizes and states. Propose abstractions where repeated needs
+justify them; conclusions should follow from the current code and observed
+gaps.
+
+The [first reading](first-read.md) supplies design context and known behavioral
+differences. It has not assessed the quality or readiness of the UI foundation.
+Functional decisions from @rethink-project-docs inform the target: uncertain
+native writes, identity boundaries and preserved user input still need honest
+UI behavior. Bring material product or architecture choices to Jari with a
+recommendation; routine layout and styling choices belong to the implementer.
 
 ## Acceptance Criteria
-- [ ] Component/state map and conflict list tied to current source and accepted decisions; note which sketches are missing and what decision would change an outcome Jari cares about.
-- [ ] Recommend ordered, independently implementable visual slices with explicit hot-file/collision boundaries; do not conflate design review with visual acceptance or issue completion.
-- [ ] Record Jari's decision on material design disagreements before scheduling implementation. Do not publish the prototypes or live data as a shareable link without review.
+
+- [ ] A source- and screen-grounded assessment explains how well the current UI
+  works and how far its components and shared structures are from the design.
+- [ ] Concrete examples distinguish local refinements from shared improvements
+  needed for precise layout and easy, consistent visual tuning.
+- [ ] A recommended implementation path identifies dependencies, existing work
+  and how the resulting screens will be compared with the design.
