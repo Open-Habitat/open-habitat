@@ -30,18 +30,20 @@ ehdokas ajan tasalla, ei rakenneta erillistä katselmointiprosessia.
 | [Tuotteen tavoite](../../docs/product.md) | Käyttäjän työ ja sovitut toiminnot. Nykytila erotettu tavoitteesta; vanhat MVP-portit, terminaalinsiirto ja testimatriisit poistettu tuotekuvauksesta. | `fae13b8` |
 | [Todennettava näyttö](../../docs/assumptions.md) | Alkuperäisten kokeiden havainnot ja rajat sekä GitHub-käytön ja keskusteluun palaamisen puuttuva kokonaisnäyttö. Sovitut ratkaisut ja testien vastuut linkitetty omiin lähteisiinsä. UI-sivun terminaalisiirto korjattu samaan rajaan. | `75d4fa5` |
 | [Käyttökulut](../../docs/ui.md) | Käyttäjän kulku ja sovittu keskustelukokemus. Nykytila erotettu tavoitteesta, vanhat dialogiohjaimet ja katselmointiportit poistettu; protokolla- ja komponenttidetaljit linkitetty omiin lähteisiin. | `925bdb1` |
+| [ADR 0004: ensikirjautumisen tilinluonti](../../docs/adr-0004-first-login-user-provisioning.md) | Brokerin tilinluonti ja sidonta, gatewayn todennus ja daemonin natiivit tunnukset. Nykyinen keskeytyspolitiikka ilman vanhan palautusvaatimuksen historiaa; toteutusmekanismit ja näyttö linkitetty omiin lähteisiinsä. | `992d27d` |
 
-Samalla on tehty kohdennettuja korjauksia toteutussivuun, ADR 0004:ään,
+Samalla on tehty kohdennettuja korjauksia toteutussivuun,
 CLI-konformanssiin ja liittyviin issueihin. Näitä ei ole vielä kokonaisuudessaan
 käyty läpi tällä skillillä.
 
 ## Seuraavaksi
 
 Seuraava läpikäytävä dokumentti on
-[ADR 0004: ensikirjautumisen tilinluonti](../../docs/adr-0004-first-login-user-provisioning.md).
-Erotetaan hyväksytty root-brokerin vastuu ja Unix-käyttäjän sidonta vanhasta
-asennustilanteesta, toteutusmekanismeista ja käyttöönoton testiohjeista.
-Päätöksen alkuperä tarkistetaan hyväksymisissuesta ennen uudelleenkirjoitusta.
+[ADR 0001: Unix-natiivi host](../../docs/adr-0001-unix-native-agent-host.md).
+Säilytetään natiivien komponenttien, Unix-käyttäjien ja tietojen omistajuuden
+perustelut. Tarkistetaan myöhempien päätösten suhde usean palvelimen selaimeen,
+keskustelujen jatkamiseen ja tekstin edelleen avoimiksi kuvaamiin valintoihin
+ennen uudelleenkirjoituksen rajausta.
 
 UI- ja design-dokumentit ovat Jarin pyynnöstä odottamassa 2026-09-30:
 toinen agentti tekee laajempaa käyttöliittymäkierrosta. Niihin palataan sen
@@ -240,3 +242,23 @@ kerrotaan erikseen. Sovittua toiminnallista laajuutta ei muutettu.
 
 Lähteinä olivat gatewayn ja daemonin keskustelureitit, gatewayn lukureitit
 sekä selaimen istunnon tarkistus. UI- tai design-tiedostoja ei muutettu.
+
+## ADR 0004:n läpikäynti 2026-09-30
+
+Jari hyväksyi ehdotetun rajauksen ja tarkensi, ettei vanhan palautuspäätöksen
+historiaa säilytetä dokumentissa. ADR kertoo nykyisen tilinluonnin vastuunjaon,
+sen perustelut ja epäselvän keskeytyksen pääsyn estävän käytöksen.
+Turvallinen vaiheiden uudelleentoisto on ehdollinen mahdollisuus, ei
+palautumislupaus tai erillinen ylläpitäjän palautusprojekti.
+
+Lähtörevisio oli `177006d`. Lähteinä olivat alkuperäinen tilinluontipäätös,
+keskeytyneen provisioinnin issuen Jarin päätös 27.9., ADR:t 0003 ja 0006,
+rajapintasivu ja brokerin toteutusissuet. Vanhan testikoneen tilanne,
+nimetyt testitilit ja käyttöönottokokeiden luettelo poistettiin ADR:stä.
+Protokollan, lukituksen, journalin ja testinäytön yksityiskohdat jäävät
+olemassa oleviin lähteisiin; uutta liitettä ei luotu.
+
+Dokumentaatiovalidaattori ja `git diff --check` läpäisivät. Issue doctorissa
+ei ollut skeema- tai linkkivirheitä; muiden issueiden PNG-kuvahavainnot
+säilyvät. Täyttä CI-porttia ei ajettu uudelleen, koska muutos koskee vain
+dokumentaatiota. Live-palvelinta ei muutettu eikä testattu.
