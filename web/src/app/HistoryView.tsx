@@ -24,9 +24,7 @@ import {
 
 // Only the daemon's explicit fallback marker is interpreted here. Unknown data
 // stays text, including malformed JSON and fields we do not recognize.
-function unfamiliar(
-  text: string,
-): {
+function unfamiliar(text: string): {
   type: string;
   summary: { key: string; text: string }[];
   raw: string;
@@ -45,10 +43,11 @@ function unfamiliar(
   const fields = value as Record<string, unknown>;
   return {
     type: match[1],
-    summary: ["prompt", "text", "message", "description", "payload"].flatMap((key) =>
-      typeof fields[key] === "string" && fields[key]
-        ? [{ key, text: fields[key] as string }]
-        : [],
+    summary: ["prompt", "text", "message", "description", "payload"].flatMap(
+      (key) =>
+        typeof fields[key] === "string" && fields[key]
+          ? [{ key, text: fields[key] as string }]
+          : [],
     ),
     raw: match[2],
   };
