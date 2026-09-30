@@ -132,7 +132,7 @@ func (a *Auth) forwardEvents(w http.ResponseWriter, r *http.Request, conn net.Co
 		}
 		decoder := json.NewDecoder(bytes.NewReader([]byte(body)))
 		decoder.DisallowUnknownFields()
-		if decoder.Decode(&event) != nil || decoder.Decode(new(any)) != io.EOF || event.SchemaVersion != 1 || event.Cursor != id || event.ServerInstanceID != parts[1] || event.Sequence != seq || !regexp.MustCompile(`^evt_[A-Za-z0-9_-]{8,80}$`).MatchString(event.EventID) || !validEventTime(event.EmittedAt) || event.Kind != kind || !validCombinedPayload(kind, event.Resource, event.Payload) {
+		if decoder.Decode(&event) != nil || decoder.Decode(new(any)) != io.EOF || event.SchemaVersion != 1 || event.Cursor != id || event.ServerInstanceID != parts[1] || event.Sequence != seq || !regexp.MustCompile(`^evt_[A-Za-z0-9_-]{8,80}$`).MatchString(event.EventID) || !validEventTime(event.EmittedAt) || event.Kind != kind || !validEventResource(event.Resource) || !validCombinedPayload(kind, event.Resource, event.Payload) {
 			return
 		}
 		if !scanner.Scan() || scanner.Text() != "" {

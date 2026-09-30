@@ -508,3 +508,30 @@ It does not produce a queue event in this path, or establish browser rendering,
 real-provider use, a live host, or cross-UID queue payload delivery. Focused
 race tests of the changed journal and gateway pass; full gate and independent
 review receipts are recorded below. Leave the issue **in-progress**.
+
+Review and gate addendum for this partial slice: committed candidate `f522523`
+passed the exact requested clean gate (`status:passed`, `clean:true`, log
+`/var/tmp/nah-structured-clean-gate-retry.log`). The first invocation failed
+at the implementation-owner validator because a new CT-036 scenario had no
+owner row. We moved that queue assertion into the already-owned CT-004 and
+committed it; the subsequent complete gate passed. This was not treated as a
+successful partial run. The first full race-package run before the gate also
+failed `TestPiDeviceNativeAndOwnership` with native status `unknown` because
+the pinned local Pi test dependency was absent; the clean gate installed its
+test dependencies and all Go race packages passed. The scenario validator
+initially rejected an invalid ID and then a duplicate ID; the final scenario
+validated in the gate. The rootless distinct-UID fixture passed on the first
+attempt (`/var/tmp/nah-structured-real-pi.log`).
+
+Independent **critical** final-diff review, after the green gate: Claude Fable
+5.1 finder and GPT-6 Astra adversarial verifier. One confirmed defect: the
+gateway lost its resource-map allowlist when adding queue payload validation;
+the guard is restored and a malformed-resource regression test added. The
+finder's revision-mismatch observation is not an integration defect: the
+published queue event and provisional status are separate protocols, and the
+browser only consumes the provisional one. The new shared snapshot remains
+read-only and cannot reconcile either revision. Review and assessment scratch:
+`history/review-queue-events-final.md`,
+`history/assessment-queue-events-final.{json,md}`; `/assess-findings --apply`
+applied the one clean fix. No new issue was filed. The corrected code has
+focused Go race tests green; its final clean-gate receipt follows below.

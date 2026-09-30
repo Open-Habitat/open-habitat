@@ -44,6 +44,7 @@ func TestEventsGatewayReplaysAndRejectsForeignFrames(t *testing.T) {
 	defer ln.Close()
 	const instance = "12345678-1234-4123-8123-123456789abc"
 	var extra atomic.Bool
+	var badResource atomic.Bool
 	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v1/events" || r.Header.Get("X-Agent-Host-Identity") != identityID(m) {
 			t.Errorf("bad forwarded request %s", r.URL.String())
@@ -55,7 +56,11 @@ func TestEventsGatewayReplaysAndRejectsForeignFrames(t *testing.T) {
 			if extra.Load() {
 				field = `,"unknown":"leak"`
 			}
-			_, _ = fmt.Fprintf(w, "id: ev1:%s:%d\nevent: snapshot.invalidated\ndata: {\"schema_version\":1,\"event_id\":\"evt_example%04d\",\"cursor\":\"ev1:%s:%d\",\"server_instance_id\":\"%s\",\"sequence\":%d,\"emitted_at\":\"2026-09-30T18:00:00Z\",\"kind\":\"snapshot.invalidated\",\"resource\":{\"scope\":\"user\"},\"payload\":{\"reason\":\"source_changed\"}%s}\n\n", instance, i, i, instance, i, instance, i, field)
+			resource := `{"scope":"user"}`
+			if badResource.Load() {
+				resource = `{"scope":"user","agent_id":"pi:12345678-1234-1234-1234-123456789012"}`
+			}
+			_, _ = fmt.Fprintf(w, "id: ev1:%s:%d\nevent: snapshot.invalidated\ndata: {\"schema_version\":1,\"event_id\":\"evt_example%04d\",\"cursor\":\"ev1:%s:%d\",\"server_instance_id\":\"%s\",\"sequence\":%d,\"emitted_at\":\"2026-09-30T18:00:00Z\",\"kind\":\"snapshot.invalidated\",\"resource\":%s,\"payload\":{\"reason\":\"source_changed\"}%s}\n\n", instance, i, i, instance, i, instance, i, resource, field)
 			w.(http.Flusher).Flush()
 		}
 	})}
@@ -88,5 +93,11 @@ func TestEventsGatewayReplaysAndRejectsForeignFrames(t *testing.T) {
 	w = send()
 	if strings.Contains(w.Body.String(), "unknown") || strings.Contains(w.Body.String(), "event: snapshot.invalidated") {
 		t.Fatalf("forwarded invalid frame: %s", w.Body.String())
+	}
+	extra.Store(false)
+	badResource.Store(true)
+	w = send()
+	if strings.Contains(w.Body.String(), "event: snapshot.invalidated") {
+		t.Fatalf("forwarded invalid resource: %s", w.Body.String())
 	}
 }
