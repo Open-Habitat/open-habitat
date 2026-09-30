@@ -61,6 +61,13 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	} else if match[1] != "" {
 		kind = match[2]
 	}
+	if kind == "stream" {
+		last := r.Header.Get("Last-Event-ID")
+		if len(r.Header.Values("Last-Event-ID")) > 1 || len(last) > 100 || (last != "" && !conversationStreamCursor.MatchString(last)) {
+			safe(w, 400, "invalid_request")
+			return
+		}
+	}
 	if match[1] != "" {
 		if !conversationUUID.MatchString(match[1]) || !a.ownsConversation(owner, match[1]) {
 			safe(w, 404, "resource_not_found")
@@ -149,15 +156,8 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	hash := sha256.Sum256([]byte("conversation-owner\x00" + owner))
 	req.Header.Set("X-Agent-Host-Session", base64.RawURLEncoding.EncodeToString(hash[:]))
 	req.Close = true
-	if kind == "stream" {
-		last := r.Header.Get("Last-Event-ID")
-		if len(r.Header.Values("Last-Event-ID")) > 1 || len(last) > 100 || (last != "" && !conversationStreamCursor.MatchString(last)) {
-			safe(w, 400, "invalid_request")
-			return
-		}
-		if last != "" {
-			req.Header.Set("Last-Event-ID", last)
-		}
+	if kind == "stream" && r.Header.Get("Last-Event-ID") != "" {
+		req.Header.Set("Last-Event-ID", r.Header.Get("Last-Event-ID"))
 	}
 	// The socket may have accepted a write even when no acknowledgement arrives.
 	ambiguous := kind == "create" || kind == "send" || kind == "steer" || kind == "follow_up" || kind == "clear_queue" || kind == "abort" || kind == "stop"
@@ -490,6 +490,9 @@ type streamHeaderReader struct {
 }
 
 func (h *streamHeaderReader) Read(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
 	if h.body {
 		return h.source.Read(p)
 	}
@@ -521,12 +524,30 @@ func (a *Auth) forwardConversationStream(w http.ResponseWriter, r *http.Request,
 		return
 	}
 	defer res.Body.Close()
-	if res.ProtoMajor != 1 || res.ProtoMinor != 1 || res.ContentLength > 0 || len(res.TransferEncoding) > 1 || (len(res.TransferEncoding) == 1 && res.TransferEncoding[0] != "chunked") {
+	if res.ProtoMajor != 1 || res.ProtoMinor != 1 {
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
-	if res.StatusCode == 409 {
-		safe(w, 409, "control_uncertain")
+	// Daemon errors are ordinary bounded JSON replies, never SSE frames.
+	// Validate the closed error vocabulary before mapping them to browser
+	// responses, just as the non-stream status route does.
+	if res.StatusCode != 200 {
+		codes := map[int]string{400: "invalid_request", 403: "cross_user_denied", 404: "resource_not_found", 409: "control_uncertain", 428: "pi_onboarding_required", 429: "capacity_exceeded", 503: "native_source_unavailable"}
+		code, ok := codes[res.StatusCode]
+		if !ok || len(res.TransferEncoding) != 0 || len(res.Header.Values("Content-Length")) != 1 || res.ContentLength <= 0 || res.ContentLength > conversationReplyLimit || res.Header.Get("Content-Type") != "application/json" {
+			safe(w, 503, "daemon_unavailable")
+			return
+		}
+		body, err := io.ReadAll(io.LimitReader(res.Body, conversationReplyLimit+1))
+		if err != nil || int64(len(body)) != res.ContentLength || !validConversationError(body, res.StatusCode) {
+			safe(w, 503, "daemon_unavailable")
+			return
+		}
+		safe(w, res.StatusCode, code)
+		return
+	}
+	if res.ContentLength > 0 || len(res.TransferEncoding) > 1 || (len(res.TransferEncoding) == 1 && res.TransferEncoding[0] != "chunked") {
+		safe(w, 503, "daemon_unavailable")
 		return
 	}
 	if res.StatusCode != 200 || res.Header.Get("Content-Type") != "text/event-stream" || len(res.Header.Values("Content-Type")) != 1 {

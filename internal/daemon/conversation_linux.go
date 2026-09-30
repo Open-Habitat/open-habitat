@@ -640,7 +640,8 @@ func (c *ConversationController) stream(w http.ResponseWriter, r *http.Request, 
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
-	if c.lookup(w, id) == nil {
+	session := c.lookup(w, id)
+	if session == nil {
 		return
 	}
 	// One finite connection costs at most twenty native status reads. The
@@ -654,7 +655,7 @@ func (c *ConversationController) stream(w http.ResponseWriter, r *http.Request, 
 		}
 		seq, err := strconv.ParseUint(strings.TrimPrefix(last, prefix), 10, 64)
 		c.mu.Lock()
-		current := c.sessions[id].streamSeq
+		current := session.streamSeq
 		c.mu.Unlock()
 		// Concurrent viewers can advance this cursor independently. An old
 		// cursor receives a full native-backed resnapshot, never a false
@@ -680,7 +681,9 @@ func (c *ConversationController) stream(w http.ResponseWriter, r *http.Request, 
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(200)
-	tick := time.NewTicker(time.Second)
+	// Limit native onboarding probes and whole-history revision reads to one
+	// every two seconds per connected viewer.
+	tick := time.NewTicker(2 * time.Second)
 	defer tick.Stop()
 	end := time.Now().Add(20 * time.Second)
 	for n := 0; n < 20 && time.Now().Before(end); n++ {

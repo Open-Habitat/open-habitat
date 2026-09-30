@@ -55,6 +55,14 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 		case conversationBase + "/" + id + "/status":
 			reply = `{"schema_version":1,"agent_id":"pi:` + id + `","workspace_id":"` + ws + `","state":"pending","command_id":"` + cmd + `","ack":"pending","event_cursor":0,"events":[],"event_loss":false,"native_history":"missing","native_revision":"","history_query":"/api/v1/agents/pi:` + id + `/history"}`
 		case conversationBase + "/" + id + "/stream":
+			if r.Header.Get("Last-Event-ID") != "" {
+				body := `{"schema_version":1,"error":{"code":"control_uncertain","message":"Request could not be completed","retryable":false,"correlation_id":"req_00000000"}}`
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+				w.WriteHeader(409)
+				_, _ = io.WriteString(w, body)
+				return
+			}
 			w.Header().Set("Content-Type", "text/event-stream")
 			w.(http.Flusher).Flush()
 			_, _ = io.WriteString(w, "id: ev1:12345678-1234-4123-8123-123456789abc:1\nevent: status\ndata: {\"schema_version\":1,\"agent_id\":\"pi:"+id+"\",\"workspace_id\":\""+ws+"\",\"state\":\"idle\",\"command_id\":\"\",\"ack\":\"\",\"event_cursor\":0,\"events\":[],\"event_loss\":false,\"native_history\":\"missing\",\"native_revision\":\"\",\"history_query\":\"/api/v1/agents/pi:"+id+"/history\"}\n\n")
@@ -137,6 +145,15 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 	}
 	if w := send("GET", conversationBase+"/"+id+"/stream", first, "", ""); w.Code != 200 || !strings.Contains(w.Body.String(), "event: status") {
 		t.Fatalf("stream %d %s", w.Code, w.Body.String())
+	}
+	cursorRequest := httptest.NewRequest("GET", "https://host.test"+conversationBase+"/"+id+"/stream", nil)
+	cursorRequest.RequestURI = cursorRequest.URL.Path
+	cursorRequest.AddCookie(&http.Cookie{Name: cookieName, Value: first})
+	cursorRequest.Header.Set("Last-Event-ID", "ev1:12345678-1234-4123-8123-123456789abc:1")
+	cursorReply := httptest.NewRecorder()
+	h.ServeHTTP(streamRecorder{cursorReply}, cursorRequest)
+	if cursorReply.Code != 409 || strings.Contains(cursorReply.Body.String(), "expired") {
+		t.Fatalf("cursor rejection %d %s", cursorReply.Code, cursorReply.Body.String())
 	}
 	if w := send("POST", conversationBase+"/"+id+"/abort", second, `{"command_id":"`+cmd+`"}`, second); w.Code != 404 {
 		t.Fatalf("foreign abort %d", w.Code)

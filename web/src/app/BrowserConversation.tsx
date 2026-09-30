@@ -471,7 +471,18 @@ export function BrowserConversation({
   useEffect(() => {
     if (!id || !csrf || stale) return;
     void refresh();
-    const timer = window.setInterval(() => void refresh(), 3000);
+    // While SSE is healthy, a slower HTTP poll remains the independent
+    // fallback; when SSE fails, return to the original three-second cadence.
+    let lastPoll = Date.now();
+    const timer = window.setInterval(() => {
+      if (
+        stream?.readyState !== EventSource.OPEN ||
+        Date.now() - lastPoll >= 15000
+      ) {
+        lastPoll = Date.now();
+        void refresh();
+      }
+    }, 3000);
     // Stream frames are bounded status resnapshots, not a second history.
     // The verified HTTP status/native-history read remains authoritative and
     // also recovers when the stream is unavailable or a cursor expires.
