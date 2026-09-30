@@ -3,10 +3,12 @@ created: 2026-09-29
 updated: 2026-09-30
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: oauth-design
 collision: [docs/, internal/gateway/, internal/daemon/]
+closed: 2026-09-30
+closed_by: agent
 ---
 
 # Investigate Pi browser OAuth callback
