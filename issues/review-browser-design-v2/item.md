@@ -59,8 +59,8 @@ layout and component styling problems, with code examples and a component map.
 It recommends proving shared improvements in a complete view before extending
 them across the UI. Implementation mechanisms, work division and visual test
 methods remain proposals; the target is faithful design and predictable shared
-adjustments. Mobile scope, the default repository filter and adopting the v2 sizing as
-the token source remain Jari's open choices. The assessment uses source inspection and earlier synthetic screenshots,
+adjustments. Mobile scope and adopting the v2 sizing as the token source remain Jari's
+open choices; the repository filter default is agreed (see Decisions). The assessment uses source inspection and earlier synthetic screenshots,
 not a new demonstration of the whole UI's behavior.
 Functional decisions from @rethink-project-docs inform the target: uncertain
 native writes, identity boundaries and preserved user input still need honest
@@ -81,3 +81,9 @@ recommendation; routine layout and styling choices belong to the implementer.
 ### 2026-09-30T15:30:37Z · @agent
 
 Assessment written: assessment.md (rev 82a5c4e). Foundation functionally sound, styling layer thin; recommends one foundation slice (tokens re-cut to the design, layout templates, button/status/icon primitives, one styling mechanism) before component refinement and screen composition. Awaiting Jari on mobile scope, default repo filter, and v2 sizing as token source.
+
+## Decisions
+
+### 2026-09-30T16:59:44Z · @jari
+
+2026-09-30: Jari confirmed that the repository chooser behaviour agreed with the designer for browser design v2 is: all repositories visible by default, time filtering as a user choice. The delivered handoff and Onboarding v2 HTML start with a monthly filter enabled; implementation follows this agreement, not the handoff default.

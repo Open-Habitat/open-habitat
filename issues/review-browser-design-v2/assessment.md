@@ -154,18 +154,20 @@ ja [tilinäyttöpäätös](../decide-account-display/item.md) nimen ja sähköpo
 esityksen. Reitin yhdistäminen ja projektin uudelleennimeäminen ovat erillisiä
 kysymyksiä; niitä ei tarvitse ratkaista tämän arvion perusteella.
 
-Kolme valintaa on edelleen avoinna Jarille:
+Kaksi valintaa on edelleen avoinna Jarille:
 
 - **Mobiilin toteutuslaajuus.** Aiempi rajaus koskee työpöytää. Puhelinvedos
   ei yksin muuta sitä. Suosittelen ottamaan puhelinsovituksen mukaan, mutta
   sen työmäärä arvioidaan koko näkymän ja vuorovaikutuksen perusteella.
-- **Repohaun oletussuodatin.** Suosittelen kaikkia repoja aluksi näkyviin ja
-  aikarajausta käyttäjän valintana, jotta tarpeellinen vanha repo ei katoa.
 - **V2:n mitoitus tokenien lähteeksi.** `production-v1.md` pitää vedosten
   mittoja sommittelureferensseinä; v2-handoff ilmoittaa mitoituksensa
   lopulliseksi. Suosittelen ottamaan v2:n mitoitustaulukon yhteisten arvojen
   lähteeksi ja päivittämään tuon lauseen. Tämä on design systemin kaanonin
   muutos, joten se on Jarin päätös.
+
+Repohaun oletus on sovittu: kaikki repot näkyvät, ja aikarajaus on käyttäjän
+valinta. Jari vahvisti 30.9., että tämä on designerin kanssa sovittu v2:n
+käytös; handoffin ja HTML:n oletusarvoinen kuukausirajaus ei vastaa sitä.
 
 ## Miten vastaavuus todetaan
 

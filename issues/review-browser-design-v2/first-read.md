@@ -46,7 +46,7 @@ designerin kanssa tehdyt päätökset voidaan täydentää Jarin tiedolla.
 | OpenAI asetuksissa | Handoff itse nimeää rivin ehdotukseksi. Nykyinen `AccountSettings` näyttää GitHubin tilan, myös `partial`-tilan, joka asetusten vedoksesta puuttuu. OpenAI-vedos näyttää aina ”Yhdistetty” ja toimettoman uudelleenkirjautumispainikkeen. | Suosittelen Pi:n todellisen kirjautumistilan näyttämistä. Uudelleenkirjautuminen ja tunnusten irrotus käsitellään erikseen tiliasetuksissa; selainuloskirjautuminen ei poista natiiveja tunnuksia. |
 | Keskustelun avaaminen lopusta | Handoff sanoo aina viimeisimpään; vedoksen `openConv` tyhjentää luonnoksen ja vierittää alas. [UI-kuvaus](../../docs/ui.md) ja `BrowserConversation` säilyttävät luonnoksen ja lukukohdan keskustelua vaihdettaessa. | Ensimmäinen avaus voi alkaa lopusta. Paluu samaan keskusteluun palauttaa lukukohdan; Viimeisimpään-toiminto säilyy. Vedoksen tilalogiikkaa ei siirretä tuotteeseen. |
 | Ohjaa, Lähetä ja jonon tyhjennys | Natiivit steer/follow-up ja koko jonon tyhjennys ovat [hyväksyttyjä](../review-ui-v1/review.md). Kahden painikkeen esitys on v2-ehdotus. Vedoksen `clearQueue` korvaa jo kirjoitetun luonnoksen jonon tekstillä. | Painikkeet voivat selkeyttää eroa. Säilytä tuotannon tapa liittää Pi:n vahvistamat poistetut viestit olemassa olevaan luonnokseen. Älä lupaa tarkempaa ohjauksen ajoitusta kuin Pi tarjoaa. |
-| Repojen aktiivisuussuodin | Kuukausi oletuksena ja aikavälivalitsin ovat uusia ehdotuksia. Nykyinen lista suodattaa nimellä ja sopimus toimittaa `pushed_at`-ajan; handoff puhuu GitHubin päivitysajasta. | Suosittelen aluksi kaikkia repoja näkyviin ja aikarajausta käyttäjän valintana: vanha mutta tarpeellinen repo ei katoa oletusnäkymästä. Täsmennä, suodatetaanko viimeistä pushia vai muuta päivitystä. |
+| Repojen aktiivisuussuodin | Jari vahvisti 30.9. designerin kanssa sovitun v2-käytöksen: kaikki repot näkyvät oletuksena, aikarajaus on käyttäjän valinta. Handoffin ja HTML:n oletusarvoinen kuukausirajaus poikkeaa tästä. | Toteuta sovittu oletus. Sopimus toimittaa `pushed_at`-ajan, joten suodatin nimetään viimeisen pushin mukaan. |
 
 ## Jatkoläpikäynneissä huomioitavaa
 
@@ -70,9 +70,9 @@ ei myöskään todista, että päättyneen selainkeskustelun jatkaminen on toteu
 
 ## Avoimet kysymykset ja seuraava vaihe
 
-Jarin tietoa tarvitaan siitä, hyväksyikö hän designerin kanssa myös mobiilin
-toteutuksen tai repojen oletusarvoisen kuukausisuodattimen. Repossa näkyvä
-aineisto ei ratkaise näitä. Muut v2:n uudet vuorovaikutusvalinnat voidaan
+Jarin tietoa tarvitaan vielä mobiilin toteutuslaajuudesta. Repojen suodatus
+on vahvistettu yllä: kaikki näkyvät oletuksena, aikarajaus on valinnainen.
+Muut v2:n uudet vuorovaikutusvalinnat voidaan
 sovittaa ehdotuksina kohtien 4–8 käsittelyssä. Epävarman kirjoituksen,
 lukukohdan ja luonnoksen säilyttämiseen on jo päätösperusta.
 
