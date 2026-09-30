@@ -7,7 +7,7 @@ priority: normal
 epic: native-agent-host-architecture
 lane: agent-control
 lane_seq: 50
-collision: [docs/, AGENTS.md, design-system/, internal/daemon/, web/src/components/Conversation.tsx]
+collision: [AGENTS.md, internal/daemon/, docs/interfaces.md, internal/gateway/, contracts/v1/]
 commits:
 - hash: de00aba1219f6af692f54fb6646db88a6577dad3
   summary: Mark agent control in progress
@@ -74,3 +74,9 @@ contract. Buffering and limits serve observed responsiveness and recovery needs.
 and Jari's visual feedback. Jari makes the appearance decision after reviewing
 those screenshots; a pending verdict does not block functional work or
 independent tasks.
+
+## Comments
+
+### 2026-09-30T17:24:12Z · @claude
+
+2026-09-30 night:rest: collision narrowed for the daemon/gateway/contract slice of the two-conductor night (issues/night-2026-09-30/plan.md). Browser work (Conversation.tsx, design-system/) belongs to night:ui; re-add those tokens before scheduling browser work under this issue.
