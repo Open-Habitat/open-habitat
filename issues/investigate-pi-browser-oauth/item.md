@@ -17,28 +17,29 @@ Find out whether Pi sign-in can return the browser directly to this service,
 without asking the user to enter a device code. Recommend a supported approach
 or explain why the existing device-code flow should remain.
 
-## What is known
+## Starting point
 
 The [source investigation](analysis.md) found that Pi 0.85.1 fixes its browser
 callback to localhost on the user's computer. It did not establish whether
 OpenAI permits an HTTPS callback to this host. An earlier anti-bot 403 does
 not settle that question.
 
-## Scope
+Establish provider support and an available Pi integration path before investing
+in a detailed protocol. Pi owns credentials under the mapped Unix user. A code
+relay through the gateway is one possible design; assess it by whether it keeps
+the returning browser bound to the right session and Unix user without moving
+credential ownership into the gateway.
 
-First establish provider support and an available Pi integration path. A full
-new login protocol is not a prerequisite for this investigation. Pi remains
-the credential owner under the mapped Unix user; gateway code relay is only a
-possible design, not an approved requirement. Bring any proposed change in
-component authority to Jari before implementation.
+A real provider experiment involves a person's account and may leave credentials
+or temporary host configuration behind. Jari wants to hear about that experiment
+before it happens; describe what it will establish and how its temporary state
+will be removed. Disposable synthetic tests are useful for host behavior, but
+cannot establish which callbacks the provider accepts.
 
-If a real provider experiment is needed, inform Jari beforehand and describe
-its scope, participant consent, return route and cleanup. Synthetic work uses
-disposable state without real identities or credentials. Do not bypass anti-bot
-protections. This issue does not authorize a real login or callback implementation.
+## Result
 
-## Acceptance Criteria
-
-- [ ] Record what supported callback/client configuration and Pi integration are available, distinguishing source findings, synthetic tests and provider evidence.
-- [ ] Recommend implementation, a bounded real experiment, or continued device-code sign-in. State any unresolved compatibility question plainly.
-- [ ] If recommending implementation, describe the effect on gateway/daemon responsibilities and how the login stays bound to the correct browser session and Unix user. Detailed protocol design belongs to the subsequent implementation work after the architectural choice.
+Record the supported options, evidence and remaining uncertainty in the research
+note. Recommend implementation, a bounded real experiment, or continued
+device-code sign-in. Explain any proposed change in component authority so Jari
+can decide the architecture. A full protocol design is useful once a feasible
+path has been found.

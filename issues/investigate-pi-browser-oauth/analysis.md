@@ -37,8 +37,8 @@ bind the returning browser to the correct authenticated session and Unix user.
 Recommend implementation, a bounded real experiment, or continued device-code
 sign-in according to the evidence. Inform Jari before a real provider experiment
 and define its scope, consenting participant, return route and cleanup. Synthetic
-tests cannot answer whether the provider accepts a callback, and must not use
-real identities or credentials. Do not bypass anti-bot protections.
+tests use disposable identities and credentials; they cannot answer whether the
+provider accepts a callback. Anti-bot responses leave that question unresolved.
 
 ## Evidence and limits
 
@@ -57,5 +57,4 @@ They do not establish browser callback support, provider acceptance or separate
 Unix-user isolation. The temporary dependency link was removed afterward.
 
 No provider request or real sign-in was made during that source investigation.
-Provider compatibility remains unknown; no callback implementation is approved
-by these findings.
+Provider compatibility remains unknown.

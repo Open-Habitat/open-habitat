@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-29
+updated: 2026-09-30
 type: task
 status: open
 priority: normal
@@ -14,65 +14,58 @@ collision: [docs/, AGENTS.md, design-system/, internal/daemon/, web/src/componen
 
 ## Goal
 
-A user can work with Pi from the browser: start a conversation in a workspace,
-send a message, watch the response and tool activity as they happen, and return
-after a browser disconnect. They can also continue an ended browser conversation
-with its existing native history.
+A user can start a Pi conversation in a workspace, send a message, follow the
+response and tool activity, interrupt work and return after a browser disconnect.
+They can deliberately continue an ended browser conversation with its native
+history.
 
-## Scope
+## How this fits the native system
 
-The mapped user's daemon owns the Pi process. Pi executes tools, uses its native
-configuration and writes its own history. The browser sends commands over HTTP
-and receives live updates through Server-Sent Events (SSE).
+The mapped user's daemon owns the Pi process. Pi runs tools, uses its native
+configuration and writes its history. Browser commands travel over HTTP and live
+updates over Server-Sent Events (SSE).
 
-Browser conversations have one writer. The same conversation is not controlled
-simultaneously from the browser, SSH/tmux or independent clients. This operating
-rule applies to both test and production systems. Prior terminal histories are read-only; terminal takeover
-and cross-process writer coordination are outside this task.
+Browser conversations have one writer in both test and production use. Existing
+terminal histories are read-only; this task does not coordinate simultaneous
+writers across browser and terminal processes. After a restart, readable history
+and available control are separate facts.
 
-Interruption is best effort. The daemon owns the direct Pi child and bounds its
-writes and shutdown waits; systemd handles service cleanup on daemon stop or
-crash. A detached native tool may outlive an individual interruption. Show
-uncertain termination honestly and do not start another writer into unresolved
-work. A per-conversation cgroup or separate supervisor is not required.
+Interruption is best effort: the daemon owns its direct Pi child, while systemd
+handles service cleanup. A detached tool can outlive an interrupted turn. Show
+that uncertainty so the user does not mistake unresolved work for a stopped
+conversation or start a competing writer. A per-conversation supervisor is not
+needed for this scope.
 
-Deliver every incoming agent message to the browser, including question requests
-and unfamiliar message types, so the UI can show them at least as safe text.
-An unsupported dialog must not hide the question. Pi-specific dialog response
-and cancellation controls remain outside this task. Ordinary conversation
-continues through user messages.
-@complete-conversation-ui owns the remaining rich presentation and queue controls.
+Incoming questions and unfamiliar content reach the browser as safe text, so an
+unsupported dialog does not hide what the agent asked. Pi-specific answer and
+cancel dialog controls are outside the agreed scope. @complete-conversation-ui
+owns rich presentation and queue controls.
 
-## Acceptance Criteria
+## What completion looks like
 
-- [ ] The user starts a Pi conversation in a selected workspace, sends a message and sees whether it is pending, accepted, rejected or uncertain.
-- [ ] Response text and tool activity arrive through SSE while Pi works. A slow or disconnected browser can recover the current state without silently losing track of the work.
-- [ ] Closing the browser leaves Pi running. On return, the user sees the conversation's current state and native history; an uncertain message is never sent again automatically.
-- [ ] The user deliberately continues an ended browser conversation with the same native history. After a daemon restart, the UI distinguishes readable history from available control and does not claim unresolved work has stopped.
-- [ ] The user can request interruption and see its actual outcome or remaining uncertainty.
-- [ ] Drafts, editor focus and reading position survive live updates and session revalidation. Reopening a conversation shows Pi's native history.
-- [ ] Each authenticated user can control only their own conversations; browser input cannot select another Unix user's processes, sockets or history.
-- [ ] The browser journey is demonstrated against real Pi, including send, live response, interruption, ended-conversation continuation and disconnect/reconnect.
+- [ ] A message has an understandable pending, accepted, rejected or uncertain outcome; an uncertain send is not repeated automatically.
+- [ ] Text and tool activity arrive live through SSE, and a slow or disconnected browser recovers the current state without silently losing track of work.
+- [ ] Closing the browser leaves Pi running. Returning shows current state and native history; an ended browser conversation can be deliberately continued.
+- [ ] Interruption shows its actual result or remaining uncertainty, including the limits of control after daemon restart.
+- [ ] Drafts, editor focus and reading position survive live updates and session revalidation.
+- [ ] Each authenticated user controls only their own conversations and accesses only their own native history.
+- [ ] The browser journey is demonstrated against real Pi: send, live response, interruption, ended-conversation continuation and disconnect/reconnect.
 
-## Planning handoff
+## Starting from the existing implementation
 
-Build on the existing daemon controller, gateway routes and production browser
-components. Complete SSE and ended-conversation continuation, and verify the
-whole browser journey. Keep the browser/host contract and its generated types
-in sync with the implementation.
+Build on the daemon controller, gateway routes and production browser components.
+[result.md](result.md) records intermediate implementations and tests at specific
+revisions. Compare its old gap descriptions with current code, especially after
+the later UI work. SSE and ended-conversation continuation remain explicit
+completion outcomes, not reasons to rebuild the parts already working.
 
 The [implementation map](../plan-v1-implementation/implementation-briefs.md)
-assigns the related contract scenarios. Add buffering or limits only for a
-concrete need, keep the implementation simple, and adjust values from measured
-behavior so they do not obstruct normal conversation use.
+assigns related work; [TESTING.md](../../TESTING.md) defines project checks.
+Keep the contract consistent with behavior and choose buffering or limits from
+concrete needs and observations. Browser tests, real Pi tests and Unix-user
+isolation tests answer different questions; record which were exercised and
+whether the provider was synthetic or real.
 
-Verify browser behavior, real Pi behavior and Unix-user isolation at the layers
-that exercise them. Record the tested revision and limits of each result,
-including whether the provider was synthetic or real. Use disposable fixtures;
-a real provider login requires the person's participation.
-Run `./scripts/ci-local.sh --clean --json` before landing.
-
-Provide proportionate screenshots and browser evidence in `visual-acceptance.md`.
-Record Jari's visual verdict when given; unreviewed appearance stays unreviewed,
-but a screenshot verdict is not a prerequisite for completing functional work
-or proceeding with independent work.
+[visual-acceptance.md](visual-acceptance.md) holds browser evidence and Jari's
+visual feedback. Unreviewed appearance stays visible as such, while functional
+work and independent tasks can proceed.

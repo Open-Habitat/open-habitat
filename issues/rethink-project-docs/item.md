@@ -13,8 +13,11 @@ collision: [docs/]
 
 ## Tarkoitus
 
-Käymme Jarin kanssa projektin dokumentteja läpi `/rethink-document`-skillillä,
-jotta toteuttaja erottaa oikeat päätökset agentin lisäämistä vaatimuksista.
+Käymme Jarin kanssa projektin dokumentteja ja issueita läpi. `/rethink-document`
+sopii oikeiden päätösten erottamiseen agentin lisäämistä vaatimuksista.
+Toteuttajalle suunnattu issue voi sopia paremmin `/rethink-instructions`-skillille:
+se selventää tavoitetta, taustatietoa ja perusteluja sekä poistaa turhan
+menettelyohjauksen ja lupaportit. Valinta tehdään tekstin tehtävän perusteella.
 Tämä issue on jatkamiskohta: pidetään käsiteltyjen dokumenttien lista ja seuraava
 ehdokas ajan tasalla, ei rakenneta erillistä katselmointiprosessia.
 
@@ -38,15 +41,12 @@ käyty läpi tällä skillillä.
 
 ## Seuraavaksi
 
-Jari pyysi välissä neljän issuen läpikäynnin tässä järjestyksessä:
+Jarin pyytämät neljä issuea on käsitelty `/rethink-instructions`-skillillä:
+`investigate-pi-browser-oauth`, `gate-native-routes-on-pi`, `speed-up-clean-ci`
+ja `build-agent-control`. Niiden tekstit kuvaavat tavoitetta ja toteuttajan
+lähtötilannetta; tämä läpikäynti ei sulkenut toteutusissueita.
 
-1. `investigate-pi-browser-oauth` — käsitelty: issue ja `analysis.md` rajattu
-   tuetun kirjautumistavan selvittämiseen. Jari hyväksyi rajauksen 30.9.
-2. [gate-native-routes-on-pi](../gate-native-routes-on-pi/item.md) — seuraavaksi.
-3. [speed-up-clean-ci](../speed-up-clean-ci/item.md).
-4. [build-agent-control](../build-agent-control/item.md) — uusintaläpikäynti.
-
-Näiden jälkeen palataan [ADR 0001:een](../../docs/adr-0001-unix-native-agent-host.md).
+Seuraavaksi palataan [ADR 0001:een](../../docs/adr-0001-unix-native-agent-host.md).
 Säilytetään natiivien komponenttien, Unix-käyttäjien ja tietojen omistajuuden
 perustelut. Tarkistetaan myöhempien päätösten suhde usean palvelimen selaimeen,
 keskustelujen jatkamiseen ja tekstin edelleen avoimiksi kuvaamiin valintoihin.
@@ -283,3 +283,22 @@ protokollasuunnitelma poistettiin. Toteuttamiskelpoisuutta ei selvitetty uudelle
 eikä issuea suljettu. Dokumentaatiovalidaattori, issue doctor (vain muiden
 issueiden olemassa olevat kuvamuotohavainnot) ja `git diff --check` läpäisivät.
 Täyttä CI-porttia ei ajettu dokumenttimuutokselle.
+## Toteutusissueiden ohjeiden läpikäynti 2026-09-30
+
+Jari korjasi skillivalinnan: myös issue voi olla agenttiohje, jolloin
+`rethink-instructions` sopii paremmin kuin päätösten alkuperään keskittyvä
+`rethink-document`. Ohje kirjattiin molempiin Fleetrepon omistamiin skilleihin.
+Yleinen “this issue does not authorize” -lause poistettiin Pi-tutkimuksesta.
+Oikeasta provider-kokeesta etukäteen kertominen säilyy Jarin nimenomaisena
+toiveena, perusteltuna henkilön tilin ja kokeen jättämän tilan kautta.
+
+Pi-portin issue kuvaa nyt repo-valinnan hyväksytyn poikkeuksen ja olemassa olevan
+toteutuksen. CI-nopeutus alkaa jo tehdyistä muutoksista ja mittauksista;
+jäljellä olevan työn arvo ratkaisee lisäoptimoinnin. Agenttiohjauksessa säilyvät
+sovitut käyttötulokset, yhden kirjoittajan käyttötapa, SSE, jatkaminen ja
+Unix-eristys. Toistuvat testikäskyt korvattiin TESTING.md-viitteellä ja vanhat
+tulosraportit tunnistetaan tiettyjen revisioiden näytöksi.
+
+Muutokset ovat ohjetekstiä, eivät uusi toteutus tai hyväksyntänäyttö.
+Dokumentaatiovalidaattori ja `git diff --check` läpäisivät; issue doctorissa
+oli vain muiden issueiden kuvamuotohavaintoja. Täyttä CI-porttia ei ajettu.

@@ -1,6 +1,6 @@
 ---
 created: 2026-09-28
-updated: 2026-09-28
+updated: 2026-09-30
 type: task
 status: open
 priority: normal
@@ -12,19 +12,47 @@ blocked_by: ['@add-pi-device-adapter']
 
 # Gate native browser routes on Pi sign-in
 
-## Description
-
 ## Goal
-Implement the already agreed gateway→mapped-user-daemon authority boundary for first-use Pi sign-in. No new credential broker: Pi owns OpenAI Codex OAuth under the mapped UID. After authenticated web login, require a usable native Pi subscription status before exposing browser workspace, repository, history or agent routes; return a recoverable onboarding-required/unknown state instead of native data.
 
-## Scope
-Add the minimal generated browser/host contract and authenticated per-session Pi device-code start/status/cancel routing using the existing mapped UDS. Never trust browser-provided UID, socket, provider or auth state. Show only Pi-generated verification URI/user code and redacted state; gateway neither reads credentials nor exchanges tokens. Protect start/cancel with existing session, Origin and CSRF; status and every gated native read/command route reauthorize mapping. No permanent onboarding database or speculative cache. Web wizard, repo list/import and live agent control are separate later slices. Existing SSH/tmux access stays native and unaffected. The first version creates new browser-owned Pi sessions; existing unrelated terminal histories remain read-only until ownership is independently known.
+After browser login, a user chooses and checks out GitHub repositories, then
+signs in to Pi before opening normal workspaces, native history or agent controls.
+When Pi status is missing or unknown, the browser shows the setup or recovery
+needed to continue.
 
-## Acceptance Criteria
-- [ ] Native data and commands fail closed before Pi sign-in, including direct URL/stale tab, missing daemon/unknown credential and cross-user attempts, without leaking native names or credentials.
-- [ ] One mapped UID device-code operation per owning web session can start, report safe progress, cancel best-effort and recover honestly after interruption; no browser credential handling.
-- [ ] Generated Go/TS contract, deterministic per-UID synthetic tests, and host-backed browser tests where relevant; ./scripts/ci-local.sh --clean --json passes. Security review of final auth boundary and explicit evidence limits in result.md.
-- [ ] No live provider login or test-host deployment in this implementation issue; real consented browser proof follows installation procedure.
+The narrow first-use repository chooser and checkout run before Pi sign-in,
+as Jari decided in @github-repos-first-onboarding. Normal workspace and history
+access still depend on usable Pi authentication.
 
-## Architecture
-Use existing gateway/daemon/broker authority in AGENTS.md and accepted Pi-native device-code decision in @design-first-use-onboarding. This task implements that contract, not a new architecture approval gate. Retain unchanged native terminal history behavior.
+## Authority and ownership
+
+Pi exchanges, stores and refreshes its own credentials under the mapped Unix
+user. The daemon starts the native device-code operation and relays Pi's
+instructions and progress. The gateway authenticates the browser and routes to
+that user's daemon; it does not need access to native credentials.
+
+Both Unix-user identity and browser-session ownership matter: another user or
+another login session must not take over a pending sign-in. Missing daemon state
+or an interrupted attempt is uncertainty to show and reconcile against Pi,
+not evidence of a successful login. Existing SSH/tmux use remains native.
+The accepted interaction and its reasons are in @design-first-use-onboarding.
+
+## Existing work and completion
+
+The Pi read gate, session-owned start/status/cancel routes and generated contract
+are implemented. [result.md](result.md) records synthetic browser tests and
+separate-UID container evidence, with their limits. The repository-first flow
+has its own [evidence](../github-repos-first-onboarding/result.md). These reports
+describe particular revisions; compare their remaining gaps with current code
+and deployment receipts rather than treating every old gap as unfinished work.
+
+Complete any remaining integration so direct URLs, stale tabs and unavailable
+Pi state preserve the gate, the repository-first exception stays narrow, and
+users can understand and recover from interrupted sign-in. Keep the browser
+contract consistent with that behavior. The wizard belongs to the onboarding
+work; conversation control and terminal-history behavior belong to
+@build-agent-control.
+
+Demonstrate the access and ownership boundaries at the layers that exercise them.
+[TESTING.md](../../TESTING.md) defines the project checks. Update the result with
+what is verified and any concrete remaining gap; synthetic tests and real host
+receipts establish different things.
