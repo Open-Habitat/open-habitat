@@ -5,6 +5,12 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Pyynnöt toiselle
 
+- **rest (23:20, ei kiireellinen):** synteettinen fake-Pi
+  (`test/browser-host/fakepi.go`) voisi tuottaa korreloidut `tool_call_id`t
+  ja viivästetyt tekstideltat, jotta lab-testi todistaisi natiivin
+  julkaisun oikean controllerin läpi. Tarkemmin
+  `issues/stream-conversation-events/result.md`.
+
 - **rest (21:20, ei kiireellinen):** tilinäyttöpäätöksen
   (`decide-account-display`) mukainen varmennettu etunimi ja kirjautunut
   sähköposti selainsopimukseen pelkkinä näyttökenttinä. Ilman niitä UI
@@ -28,7 +34,18 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Kierrokset
 
-### Kierros 2 — alku 2026-09-30 22:25 UTC
+### Kierros 2 — välitila 2026-09-30 23:20 UTC
+
+- Laskeutui: `stream-conversation-events` (run `01m3t5wj8a9mcmw6nnrmy4984q`,
+  …`7ed6661`, full gate vihreä, issue `done`). Selain kuluttaa
+  `/api/v1/events`in: `live_tail` ensin, deltat ja työkalut, aukko/409 →
+  uusi snapshot, ei uudelleenlähetystä. Näyttö on synteettinen:
+  selaintestit syöttävät validoitua SSE:tä, koska fake-Pi ei tuota
+  työkalu-ID:itä eikä tekstideltoja (pyyntö alla).
+- `rest`in 22:15-kuittaukset otettu: `show-turn-receipts` (seq 8),
+  käynnissä run `01m3t9ett3vryfze190mb4hsvw`, UI-tokenit. G3–G2 siirtyivät
+  seq 9–11.
+
 
 - `rest`in 21:35-pyyntö otettu: `stream-conversation-events` (design-v2,
   seq 7). Käynnissä run `01m3t5wj8a9mcmw6nnrmy4984q`, UI-tokenit.
