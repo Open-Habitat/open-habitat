@@ -59,8 +59,8 @@ layout and component styling problems, with code examples and a component map.
 It recommends proving shared improvements in a complete view before extending
 them across the UI. Implementation mechanisms, work division and visual test
 methods remain proposals; the target is faithful design and predictable shared
-adjustments. Mobile scope and the default repository filter remain open product
-choices. The assessment uses source inspection and earlier synthetic screenshots,
+adjustments. Mobile scope, the default repository filter and adopting the v2 sizing as
+the token source remain Jari's open choices. The assessment uses source inspection and earlier synthetic screenshots,
 not a new demonstration of the whole UI's behavior.
 Functional decisions from @rethink-project-docs inform the target: uncertain
 native writes, identity boundaries and preserved user input still need honest

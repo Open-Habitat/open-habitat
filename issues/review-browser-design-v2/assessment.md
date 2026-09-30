@@ -125,6 +125,23 @@ Keskustelu paljastaisi useimmat tässä havaitut ongelmat. Toimiva sovitus
 antaa näyttöä siitä, mitkä ratkaisut kannattaa jakaa muille näkymille.
 Kaiken tyylisiivouksen valmistuminen ei ole tämän edellytys.
 
+Viipaleen yhteiset osat (tokenit, painike, tilamerkki, ikonit, kehys) ovat
+kaikkien näkymien yhteisiä, joten sivupalkin ja onboardingin sovitus odottaa
+sen valmistumista. Jotta viipale ei valmistu näkymäkohtaisina ohituksina,
+sen hyväksymisehdoiksi kannattaa ottaa nämä, riippumatta siitä, miten ne
+toteutetaan:
+
+- Viipaleen näkymässä fonttikoot, välit ja layout-mitat tulevat yhteisistä
+  arvoista, ja yhden arvon muutos näkyy näkymän kaikissa käyttöpaikoissa.
+- Painikkeen ulkoasu ei riipu esi-isävalitsimesta, ja estetty painike on
+  luettava molemmissa teemoissa.
+- Tilamerkin sanasto (käynnissä, vain luku, ✓, ✕, ?, pilleri) tulee yhdestä
+  komponentista.
+- Ikonit eivät riipu järjestelmäfontista.
+- Näkymän asettelu (yläpalkki, viestivirta, kirjoituskenttä) on
+  komponenttikirjaston osa, ei sovelluskerroksen inline-tyyliä.
+- Uusilla ja muuttuneilla komponenteilla on story molemmissa teemoissa.
+
 Keskustelun sovitus kuuluu [complete-conversation-ui](../complete-conversation-ui/item.md)
 -työhön ja onboarding [design-first-use-onboarding](../design-first-use-onboarding/item.md)
 -työhön. Sivupalkin ja asetusten työnjako sekä yhteisen pohjatyön mahdollinen
@@ -137,13 +154,18 @@ ja [tilinäyttöpäätös](../decide-account-display/item.md) nimen ja sähköpo
 esityksen. Reitin yhdistäminen ja projektin uudelleennimeäminen ovat erillisiä
 kysymyksiä; niitä ei tarvitse ratkaista tämän arvion perusteella.
 
-Kaksi tuotevalintaa on edelleen avoinna:
+Kolme valintaa on edelleen avoinna Jarille:
 
 - **Mobiilin toteutuslaajuus.** Aiempi rajaus koskee työpöytää. Puhelinvedos
   ei yksin muuta sitä. Suosittelen ottamaan puhelinsovituksen mukaan, mutta
   sen työmäärä arvioidaan koko näkymän ja vuorovaikutuksen perusteella.
 - **Repohaun oletussuodatin.** Suosittelen kaikkia repoja aluksi näkyviin ja
   aikarajausta käyttäjän valintana, jotta tarpeellinen vanha repo ei katoa.
+- **V2:n mitoitus tokenien lähteeksi.** `production-v1.md` pitää vedosten
+  mittoja sommittelureferensseinä; v2-handoff ilmoittaa mitoituksensa
+  lopulliseksi. Suosittelen ottamaan v2:n mitoitustaulukon yhteisten arvojen
+  lähteeksi ja päivittämään tuon lauseen. Tämä on design systemin kaanonin
+  muutos, joten se on Jarin päätös.
 
 ## Miten vastaavuus todetaan
 
@@ -153,9 +175,22 @@ molemmat teemat sekä toteutuslaajuuteen kuuluvat näyttöleveydet. Yhteisen
 mitan tai komponentin muutoksen pitää näkyä johdonmukaisesti sen eri
 käyttöpaikoissa. Storybook auttaa tarkastamaan nämä yhdistelmät.
 
-Valikoidut selaimen mittatarkistukset ja hyväksytyistä näkymistä otetut
-kuvavertailut voivat myöhemmin suojata tärkeimpiä ominaisuuksia. Niiden
-laajuus valitaan toteutuksessa. Rooliin ja nimeen perustuvat toimintatestit
+Ehdotus on kolme kerrosta, kevyimmästä raskaimpaan; laajuus valitaan
+toteutuksessa:
+
+1. **Mittaväitteet gatessa.** Selaintesti lukee labin näkymästä
+   maamerkkielementtien lasketut tyylit (sivupalkin leveydet, yläpalkin
+   täyte, sarakkeen leveys, tekstikoot, pyöristykset, fokusrengas) ja vertaa
+   niitä handoffin mitoitustaulukkoon. Deterministinen ja paljastaa yhteisen
+   arvon karkaamisen heti.
+2. **Parikuvat katselmointiin.** Jokaisesta designin tilasta labin näkymä ja
+   vedoksen sama tila rinnakkain issuekansiossa. Vedoksen fonttipyynnöt
+   ohjataan paketoituihin fontteihin, jotta vertailu ei riipu CDN:stä.
+   Pikselivertailua vedokseen ei tehdä, koska aineisto eroaa tarkoituksella.
+3. **Baseline hyväksynnän jälkeen.** Hyväksytystä näkymästä tallennetaan
+   kuvabaseline tilaa ja teemaa kohti, jotta myöhempi yhteinen muutos
+   näyttää jalanjälkensä. Baseline päivitetään samassa commitissa muutoksen
+   kanssa. Rooliin ja nimeen perustuvat toimintatestit
 sekä saavutettavuuden, zoomin ja reduced motion -asetuksen tarkistukset
 antavat täydentävää näyttöä. [TESTING.md](../../TESTING.md) kertoo, mitä eri
 kokeet osoittavat.
