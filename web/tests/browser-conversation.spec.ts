@@ -68,7 +68,9 @@ test("@browser-conversation create, send once, reconnect and old history stays r
   // The native acknowledgement may arrive before the browser observes the
   // intermediate waiting label; either is a valid outcome of this one send.
   await expect(
-    page.getByText(/Viesti odottaa natiivia hyväksyntää|Viesti hyväksyttiin\./),
+    page.getByText(
+      /Viesti odottaa natiivia hyväksyntää|Viesti hyväksyttiin Pi:n RPC:ssä/,
+    ),
   ).toBeVisible();
   expect(sends).toBe(1);
   await page.reload();
@@ -111,11 +113,247 @@ test("@browser-conversation polling survives an unavailable stream without resen
   await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("Fallback");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
-    page.getByText(/Viesti hyväksyttiin\.|Viesti odottaa natiivia hyväksyntää/),
+    page.getByText(
+      /Viesti hyväksyttiin Pi:n RPC:ssä|Viesti odottaa natiivia hyväksyntää/,
+    ),
   ).toBeVisible();
   expect(sends).toBe(1);
 });
 
+// The synthetic Pi has no receipt/question/settlement scenario yet. Intercept
+// validated private gateway responses after the real TLS login/create/send path.
+for (const outcome of [
+  "pending",
+  "accepted",
+  "rejected",
+  "uncertain",
+] as const) {
+  test(`@browser-conversation validated ${outcome} send receipt never reposts`, async ({
+    page,
+  }) => {
+    await open(page);
+    await page
+      .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+      .click();
+    await expect(
+      page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    ).toBeVisible();
+    let lookups = 0;
+    await page.route("**/api/v1/conversations/*/status", async (route) => {
+      const response = await route.fetch();
+      const body = await response.json();
+      if (body.command_id) body.send_receipt = outcome;
+      await route.fulfill({ response, json: body });
+    });
+    await page.route(
+      "**/api/v1/conversations/*/receipt?command_id=*",
+      async (route) => {
+        lookups++;
+        const command_id = new URL(route.request().url()).searchParams.get(
+          "command_id",
+        );
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            schema_version: 1,
+            command_id,
+            state: outcome,
+          }),
+        });
+      },
+    );
+    let sends = 0;
+    page.on("request", (request) => {
+      if (request.url().endsWith("/send")) sends++;
+    });
+    await page
+      .getByRole("textbox", { name: "Viesti Pi:lle" })
+      .fill(`Synteettinen ${outcome}`);
+    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+    await expect(page.locator(`.ah-send-${outcome}`)).toBeVisible();
+    if (outcome === "uncertain") {
+      await expect(
+        page.getByRole("button", { name: "Kopioi teksti" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Lähetä", exact: true }),
+      ).toBeDisabled();
+    }
+    expect(sends).toBe(1);
+    const before = lookups;
+    await page
+      .getByRole("button", { name: "Tarkista keskustelun tila" })
+      .click();
+    await expect(page.locator(`.ah-send-${outcome}`)).toBeVisible();
+    expect(lookups).toBe(before); // matching status receipt avoids an extra request
+  });
+}
+test("@browser-conversation lost reply looks up matching command without repost", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
+  let lookups = 0;
+  await page.route("**/api/v1/conversations/*/status", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    if (body.command_id) delete body.send_receipt; // force command-ID lookup
+    await route.fulfill({ response, json: body });
+  });
+  await page.route(
+    "**/api/v1/conversations/*/receipt?command_id=*",
+    async (route) => {
+      lookups++;
+      const command_id = new URL(route.request().url()).searchParams.get(
+        "command_id",
+      );
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          schema_version: 1,
+          command_id,
+          state: "accepted",
+        }),
+      });
+    },
+  );
+  let sends = 0;
+  page.on("request", (request) => {
+    if (request.url().endsWith("/send")) sends++;
+  });
+  await page
+    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .fill("Vain kerran");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(page.locator(".ah-send-accepted")).toBeVisible();
+  expect(lookups).toBeGreaterThan(0);
+  expect(sends).toBe(1);
+});
+test("@browser-conversation safe question and settled boundary require validated status and native key", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
+  await page.route("**/api/v1/conversations/*/status", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.pending_question = {
+      request_id: "question-1",
+      question_kind: "unknown",
+      prompt: "<script>alert(1)</script>",
+      choices: ["<b>ei html</b>"],
+    };
+    body.turn_settled = {
+      state: "settled",
+      observed_at: "2026-09-30T13:53:00Z",
+      native_key: "not-in-history",
+    };
+    await route.fulfill({ response, json: body });
+  });
+  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
+  await expect(
+    page.getByRole("region", { name: "Pi:n kysymys" }),
+  ).toContainText("<script>alert(1)</script>");
+  await expect(
+    page.getByRole("region", { name: "Pi:n kysymys" }).getByRole("button"),
+  ).toHaveCount(0);
+  await expect(page.locator(".ah-settled")).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "Pi:n kysymys" }).locator("script"),
+  ).toHaveCount(0);
+});
+test("@browser-conversation in-flight send remains pending through missing receipt", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let started!: () => void;
+  const entered = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  await page.route("**/api/v1/conversations/*/send", async (route) => {
+    started();
+    await held;
+    await route.continue();
+  });
+  let sends = 0;
+  page.on("request", (request) => {
+    if (request.url().endsWith("/send")) sends++;
+  });
+  await page
+    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .fill("Odota kuittausta");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await entered;
+  await expect(page.locator(".ah-send-pending")).toBeVisible();
+  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
+  await expect(page.locator(".ah-send-uncertain")).toHaveCount(0);
+  release();
+  await expect(page.locator(".ah-send-accepted")).toBeVisible();
+  expect(sends).toBe(1);
+});
+test("@browser-conversation settled marker needs observed native key", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
+  const agentId = new URL(page.url()).searchParams.get("conversation");
+  expect(agentId).toMatch(/^pi:/);
+  await page
+    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .fill("Valmis vastaus");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  let key = "";
+  await expect
+    .poll(async () => {
+      const response = await page.request.get(
+        `/api/v1/agents/${agentId}/history`,
+      );
+      if (!response.ok()) return false;
+      const body = await response.json();
+      key =
+        body.entries?.find(
+          (entry: { kind: string; entry_key: string }) =>
+            entry.kind === "assistant",
+        )?.entry_key ?? "";
+      return !!key;
+    })
+    .toBe(true);
+  await page.route("**/api/v1/conversations/*/status", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.turn_settled = {
+      state: "settled",
+      native_key: key,
+      observed_at: "2026-09-30T13:53:00Z",
+    };
+    await route.fulfill({ response, json: body });
+  });
+  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
+  await expect(page.locator(".ah-settled")).toContainText(
+    /Vuoro valmis .* odottaa viestiäsi/,
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator(".ah-settled")).toBeVisible();
+});
 test("@browser-conversation ordinary session loading is not an uncertain create", async ({
   page,
 }) => {

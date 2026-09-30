@@ -16,6 +16,18 @@ export type Status = Session & {
   native_revision: string;
   history_query: string;
   queue?: { revision: number; steering: string[]; follow_up: string[] };
+  send_receipt?: "" | "pending" | "accepted" | "rejected" | "uncertain";
+  turn_settled?: {
+    state: "settled" | "unknown";
+    observed_at: string;
+    native_key: string;
+  } | null;
+  pending_question?: {
+    request_id: string;
+    question_kind: "input" | "confirm" | "select" | "unknown";
+    prompt: string;
+    choices: string[];
+  } | null;
 };
 const uuid = /^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$/;
 const agent = /^pi:[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$/;
@@ -193,10 +205,62 @@ export function parseStatus(v: unknown, id: string): Status {
             typeof t === "string" &&
             new TextEncoder().encode(t).length <= 65536,
         ))) ||
-    v.history_query !== `/api/v1/agents/${id}/history`
+    v.history_query !== `/api/v1/agents/${id}/history` ||
+    (v.send_receipt !== undefined &&
+      !["", "pending", "accepted", "rejected", "uncertain"].includes(
+        String(v.send_receipt),
+      )) ||
+    (v.turn_settled != null &&
+      (!object(v.turn_settled) ||
+        !["settled", "unknown"].includes(String(v.turn_settled.state)) ||
+        typeof v.turn_settled.observed_at !== "string" ||
+        !Number.isFinite(Date.parse(v.turn_settled.observed_at)) ||
+        typeof v.turn_settled.native_key !== "string" ||
+        v.turn_settled.native_key.length > 128 ||
+        (v.turn_settled.state === "settled" && !v.turn_settled.native_key))) ||
+    (v.pending_question != null &&
+      (!object(v.pending_question) ||
+        typeof v.pending_question.request_id !== "string" ||
+        !v.pending_question.request_id ||
+        v.pending_question.request_id.length > 200 ||
+        !["input", "confirm", "select", "unknown"].includes(
+          String(v.pending_question.question_kind),
+        ) ||
+        typeof v.pending_question.prompt !== "string" ||
+        !v.pending_question.prompt ||
+        v.pending_question.prompt.length > 1000 ||
+        !Array.isArray(v.pending_question.choices) ||
+        v.pending_question.choices.length > 100 ||
+        !v.pending_question.choices.every(
+          (c: unknown) => typeof c === "string" && c.length <= 500,
+        )))
   )
     throw new Error("invalid status");
   return v as Status;
+}
+// A 404 is absence of evidence, not rejection. Never re-issue the send.
+export async function sendReceipt(
+  id: string,
+  commandId: string,
+): Promise<"pending" | "accepted" | "rejected" | "uncertain" | undefined> {
+  if (!uuid.test(commandId)) throw new Error("invalid command");
+  const response = await fetch(
+    `${path(id)}/receipt?command_id=${encodeURIComponent(commandId)}`,
+    {
+      credentials: "same-origin",
+      cache: "no-store",
+    },
+  );
+  if (response.status === 404) return undefined;
+  const v = await json(response);
+  if (
+    !object(v) ||
+    v.schema_version !== 1 ||
+    v.command_id !== commandId ||
+    !["pending", "accepted", "rejected", "uncertain"].includes(String(v.state))
+  )
+    throw new Error("invalid receipt");
+  return v.state as "pending" | "accepted" | "rejected" | "uncertain";
 }
 export async function send(
   id: string,

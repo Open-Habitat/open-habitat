@@ -9,6 +9,7 @@ import {
 import { useNavigate } from "react-router";
 import {
   AgentHeader,
+  AssistantMessage,
   Button,
   Composer,
   ConversationFrame,
@@ -16,10 +17,21 @@ import {
   ConversationTimeline,
   EndedConversationControl,
   InlineNotice,
+  Markdown,
+  NativeQuestion,
   QueuePanel,
+  SendObservation,
+  TurnSettlement,
   WorkingProgress,
 } from "../components";
 import { UnpresentedEvents } from "../components/WorkingProgress";
+import {
+  applyTurnEvent,
+  initialTurn,
+  type LiveTurn,
+  parseConversationEvent,
+  provisionalItems,
+} from "./conversationEvents";
 import {
   abortTurn,
   ContinuationRefused,
@@ -34,21 +46,13 @@ import {
   type Session,
   type Status,
   send,
+  sendReceipt,
   status,
 } from "./conversations";
 import { readHistoryFetch, timelineItems } from "./HistoryView";
-import {
-  applyTurnEvent,
-  initialTurn,
-  parseConversationEvent,
-  provisionalItems,
-  type LiveTurn,
-} from "./conversationEvents";
-import { AssistantMessage, Markdown } from "../components";
-import type { Snapshot } from "./snapshot";
 import type { HistoryEntry } from "./history";
 import { piStatus, sessionCSRF } from "./pi";
-import type { Workspace } from "./snapshot";
+import type { Snapshot, Workspace } from "./snapshot";
 
 // Only ephemeral presentation state, never authority to control a session.
 export type ConversationPlace = {
@@ -100,6 +104,10 @@ export function BrowserConversation({
   const [next, setNext] = useState<string>();
   const [draft, setDraft] = useState("");
   const [receipt, setReceipt] = useState("");
+  const [sendObservation, setSendObservation] = useState<{
+    text: string;
+    state: "pending" | "accepted" | "rejected" | "uncertain";
+  }>();
   const [problem, setProblem] = useState("");
   const [busy, setBusy] = useState(false);
   const [historyError, setHistoryError] = useState(false);
@@ -129,12 +137,14 @@ export function BrowserConversation({
   const wasAtBottom = useRef(true);
   const [details, setDetails] = useState(false);
   const pending = useRef(false);
+  const sendInFlight = useRef(false);
   const staleRef = useRef(stale);
   staleRef.current = stale;
   const submittedKey =
     csrf && id ? `nah:submitted:${identity}:${csrf}:${id}` : "";
   // Presentation-only marker: a lost abort receipt must not be treated as a
   // rejected prompt after the component remounts during session revalidation.
+  const sendKey = csrf && id ? `nah:last-send:${identity}:${csrf}:${id}` : "";
   const abortKey = csrf && id ? `nah:abort:${identity}:${csrf}:${id}` : "";
   const continuationKey =
     csrf && id ? `nah:continue:${identity}:${csrf}:${id}` : "";
@@ -247,6 +257,7 @@ export function BrowserConversation({
     setSessions([]);
     setProblem("");
     setReceipt("");
+    setSendObservation(undefined);
     setUnseen(0);
     void (async () => {
       try {
@@ -378,10 +389,42 @@ export function BrowserConversation({
                 : "Keskeytyksen tulos jäi epävarmaksi; istunto voi olla päättynyt.",
           );
         }
+        const unresolvedId = sessionStorage.getItem(
+          `nah:ambiguous:${identity}:${csrf}:${id}`,
+        );
+        const lastSendId = sessionStorage.getItem(
+          `nah:last-send:${identity}:${csrf}:${id}`,
+        );
+        let sendOutcome:
+          | "pending"
+          | "accepted"
+          | "rejected"
+          | "uncertain"
+          | undefined;
+        if (lastSendId) {
+          if (nextStatus.command_id === lastSendId && nextStatus.send_receipt) {
+            sendOutcome = nextStatus.send_receipt;
+          } else {
+            try {
+              sendOutcome = await sendReceipt(id, lastSendId);
+            } catch {
+              sendOutcome = undefined;
+            }
+          }
+          if (!alive.current || version !== generation.current) return;
+          const text = sessionStorage.getItem(submittedKey);
+          if (text !== null)
+            setSendObservation({
+              text,
+              state:
+                sendOutcome ?? (sendInFlight.current ? "pending" : "uncertain"),
+            });
+        }
         if (
           !abortReceipt &&
-          nextStatus.command_id &&
-          nextStatus.ack === "rejected"
+          nextStatus.command_id === unresolvedId &&
+          (lastSendId === unresolvedId ? sendOutcome : nextStatus.ack) ===
+            "rejected"
         ) {
           const unresolvedKey = `nah:ambiguous:${identity}:${csrf}:${id}`;
           if (sessionStorage.getItem(unresolvedKey) === nextStatus.command_id) {
@@ -398,7 +441,6 @@ export function BrowserConversation({
                 );
               }
             }
-            sessionStorage.removeItem(submittedKey);
             sessionStorage.removeItem(unresolvedKey);
           }
           setReceipt(
@@ -413,7 +455,8 @@ export function BrowserConversation({
               `nah:ambiguous:${identity}:${csrf}:${id}`,
             )) &&
           nextStatus.command_id &&
-          nextStatus.ack === "uncertain"
+          (lastSendId === unresolvedId ? sendOutcome : nextStatus.ack) ===
+            "uncertain"
         )
           setReceipt(
             "Viestin hyväksyntä jäi epävarmaksi. Tarkista natiivi historia, älä lähetä automaattisesti uudelleen.",
@@ -425,7 +468,8 @@ export function BrowserConversation({
           unresolved &&
           unresolved === nextStatus.command_id &&
           !abortReceipt &&
-          nextStatus.ack === "accepted"
+          (lastSendId === unresolvedId ? sendOutcome : nextStatus.ack) ===
+            "accepted"
         ) {
           const sentText = sessionStorage.getItem(submittedKey);
           const key = `nah:draft:${identity}:${csrf}:${id}`;
@@ -433,10 +477,11 @@ export function BrowserConversation({
             setDraft("");
             sessionStorage.setItem(key, "");
           }
-          sessionStorage.removeItem(submittedKey);
           sessionStorage.removeItem(`nah:ambiguous:${identity}:${csrf}:${id}`);
           sessionStorage.removeItem(`nah:continued:${identity}:${csrf}:${id}`);
-          setReceipt("Viesti hyväksyttiin.");
+          setReceipt(
+            "Viesti hyväksyttiin Pi:n RPC:ssä; vuoro ei välttämättä ole valmis.",
+          );
         }
         setEvents(nextStatus.events); // bounded tail, never concatenate snapshots
         setProblem("");
@@ -1008,20 +1053,27 @@ export function BrowserConversation({
       const token = await verify();
       if (!alive.current) return;
       sessionStorage.setItem(submittedKey, text);
+      sessionStorage.setItem(sendKey, command);
+      setSendObservation({ text, state: "pending" });
       sessionStorage.setItem(ambiguousKey, command);
       setReceipt("Viesti odottaa kuittausta");
+      sendInFlight.current = true;
       await send(current.agent_id, text, command, token);
       if (!alive.current) return;
       setReceipt("Viesti odottaa natiivia hyväksyntää");
       await refresh();
     } catch {
-      if (alive.current)
+      if (alive.current) {
+        if (sessionStorage.getItem(ambiguousKey))
+          setSendObservation({ text, state: "uncertain" });
         setReceipt(
           sessionStorage.getItem(ambiguousKey)
             ? "Lähetyksen tulos epävarma. Viestiä ei lähetetä automaattisesti uudelleen. Tarkista tila ja natiivi historia."
             : "Istuntoa ei voitu vahvistaa. Viestiä ei lähetetty.",
         );
+      }
     } finally {
+      sendInFlight.current = false;
       if (alive.current) setBusy(false);
     }
   };
@@ -1043,6 +1095,8 @@ export function BrowserConversation({
     try {
       const token = await verify();
       if (!alive.current) return;
+      sessionStorage.removeItem(sendKey);
+      setSendObservation(undefined);
       sessionStorage.setItem(submittedKey, text);
       sessionStorage.setItem(ambiguousKey, command);
       setReceipt("Viesti odottaa kuittausta");
@@ -1382,6 +1436,59 @@ export function BrowserConversation({
               }
               items={[
                 ...timelineItems(entries, stale),
+                ...(sendObservation
+                  ? [
+                      {
+                        id: "send-observation",
+                        kind: "receipt",
+                        content: (
+                          <SendObservation
+                            text={sendObservation.text}
+                            state={sendObservation.state}
+                            showText
+                            onCopy={() =>
+                              void navigator.clipboard?.writeText(
+                                sendObservation.text,
+                              )
+                            }
+                          />
+                        ),
+                      },
+                    ]
+                  : []),
+                ...(current?.turn_settled?.state === "settled" &&
+                entries.some(
+                  (entry) =>
+                    entry.entry_key === current.turn_settled?.native_key,
+                ) &&
+                !stale
+                  ? [
+                      {
+                        id: `settled:${current.turn_settled.native_key}`,
+                        kind: "settled",
+                        content: (
+                          <TurnSettlement
+                            observedAt={current.turn_settled.observed_at}
+                          />
+                        ),
+                      },
+                    ]
+                  : []),
+                ...(current?.pending_question && !stale
+                  ? [
+                      {
+                        id: `question:${current.pending_question.request_id}`,
+                        kind: "question",
+                        content: (
+                          <NativeQuestion
+                            kind={current.pending_question.question_kind}
+                            prompt={current.pending_question.prompt}
+                            choices={current.pending_question.choices}
+                          />
+                        ),
+                      },
+                    ]
+                  : []),
                 ...provisionalItems(
                   live ?? {
                     cursor: "",

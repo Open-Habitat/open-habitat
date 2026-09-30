@@ -906,6 +906,34 @@ h1[tabindex="-1"]:focus {
 .ah-reading-view .ah-feed {
   gap: var(--ah-s3);
 }
+.ah-send-observation,
+.ah-native-question {
+  max-width: min(var(--ah-measure), 100%);
+  padding: var(--ah-s2) var(--ah-s3);
+  border: 1px dashed var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface-2);
+  overflow-wrap: anywhere;
+}
+.ah-send-observation p {
+  margin: var(--ah-s1) 0;
+}
+.ah-send-observation p:last-of-type,
+.ah-settled {
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+.ah-send-uncertain,
+.ah-send-rejected {
+  border-color: var(--ah-line);
+}
+.ah-settled {
+  text-align: center;
+  margin: var(--ah-s2) 0;
+}
+.ah-native-question h2 {
+  font-size: var(--ah-size-ui);
+}
 .ah-feed > li[data-kind="user"] + li[data-kind="assistant"] {
   margin-top: calc(-1 * var(--ah-s2));
 }

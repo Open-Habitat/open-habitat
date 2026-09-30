@@ -35,10 +35,10 @@ last "Browser request for night:ui" section. Update deviation I4 in
 
 ## Acceptance Criteria
 
-- [ ] Settled, accepted, rejected, uncertain and pending states render per the
+- [x] Settled, accepted, rejected, uncertain and pending states render per the
   draft in both themes at desktop and 390 px, backed only by host fields.
-- [ ] Question text renders safely without a reply affordance.
-- [ ] Browser tests against the synthetic host cover each receipt state; no
+- [x] Question text renders safely without a reply affordance.
+- [x] Browser tests against the synthetic host cover each receipt state; no
   resend on any of them.
 ## Shared context for every design-v2 slice
 

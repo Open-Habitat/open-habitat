@@ -2,12 +2,15 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import {
   AssistantMessage,
-  EndedConversationControl,
   Composer,
   ConversationTimeline,
+  EndedConversationControl,
+  NativeQuestion,
+  SendObservation,
+  SupportedQuestion,
+  TurnSettlement,
   UncertainCommandCard,
   UserMessage,
-  SupportedQuestion,
 } from "./Conversation";
 import { Markdown } from "./Markdown";
 import { WorkingProgress } from "./WorkingProgress";
@@ -62,6 +65,46 @@ function History({
     </main>
   );
 }
+const receiptStates = (
+  ["pending", "accepted", "rejected", "uncertain"] as const
+).map((state) => (
+  <SendObservation
+    key={state}
+    text={`Testiviesti ${state}`}
+    state={state}
+    showText
+    onCopy={noop}
+  />
+));
+const receipts = (narrow = false) => (
+  <main style={{ maxWidth: narrow ? 390 : 960 }}>
+    {receiptStates}
+    <TurnSettlement observedAt="2026-09-30T13:53:00Z" />
+    <NativeQuestion
+      kind="unknown"
+      prompt="<b>Ei HTML:ää</b>"
+      choices={["Kyllä", "Ei"]}
+    />
+  </main>
+);
+export const TurnReceiptsLight: Story = {
+  render: () => receipts(),
+  globals: { theme: "light" },
+};
+export const TurnReceiptsDark: Story = {
+  render: () => receipts(),
+  globals: { theme: "dark" },
+};
+export const TurnReceiptsPhoneLight: Story = {
+  render: () => receipts(true),
+  globals: { theme: "light" },
+  parameters: { viewport: { defaultViewport: "mobile1" } },
+};
+export const TurnReceiptsPhoneDark: Story = {
+  render: () => receipts(true),
+  globals: { theme: "dark" },
+  parameters: { viewport: { defaultViewport: "mobile1" } },
+};
 export const EmptyHistory: Story = { render: () => <History state="empty" /> };
 export const LoadingHistory: Story = {
   render: () => <History state="loading" />,

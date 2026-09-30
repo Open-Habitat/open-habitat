@@ -219,6 +219,72 @@ export function AssistantMessage({
     </Message>
   );
 }
+export function SendObservation({
+  text,
+  state,
+  showText,
+  onCopy,
+}: {
+  text: string;
+  state: "pending" | "accepted" | "rejected" | "uncertain";
+  showText: boolean;
+  onCopy: () => void;
+}) {
+  const labels = {
+    pending: "Lähetetään · odottaa Pi:n kuittausta",
+    accepted: "Hyväksytty Pi:n RPC:ssä · vuoro voi jatkua",
+    rejected: "Hylätty · teksti säilytettiin",
+    uncertain:
+      "? Ei tiedossa, vastaanottiko Pi viestin. Viestiä ei lähetetä uudelleen automaattisesti.",
+  };
+  return (
+    <div className={`ah-send-observation ah-send-${state}`}>
+      {showText ? <p>{text}</p> : null}
+      <p>{labels[state]}</p>
+      {state === "uncertain" ? (
+        <Button label="Kopioi teksti" variant="quiet" onPress={onCopy} />
+      ) : null}
+    </div>
+  );
+}
+export function TurnSettlement({ observedAt }: { observedAt: string }) {
+  return (
+    <p className="ah-settled" role="status">
+      ✓ Vuoro valmis{" "}
+      {new Date(observedAt).toLocaleTimeString("fi-FI", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })}{" "}
+      · odottaa viestiäsi
+    </p>
+  );
+}
+export function NativeQuestion({
+  kind,
+  prompt,
+  choices,
+}: {
+  kind: "input" | "confirm" | "select" | "unknown";
+  prompt: string;
+  choices: string[];
+}) {
+  return (
+    <section className="ah-native-question" aria-label="Pi:n kysymys">
+      <h2>
+        Pi:n kysymys havaittu ·{" "}
+        {kind === "unknown"
+          ? "Tuntematon kysymystyyppi"
+          : "Laajennuksen kysymys"}
+      </h2>
+      <p>{prompt}</p>
+      {choices.length ? <p>Vaihtoehdot: {choices.join(" · ")}</p> : null}
+      <p>
+        Kysymys on voitu käsitellä muualla. Tavallinen viesti ei vastaa Pi:n
+        laajennusdialogiin. Vastaaminen selaimessa ei ole tuettu.
+      </p>
+    </section>
+  );
+}
 export function ModelChange({
   modelId,
   onCopy,
