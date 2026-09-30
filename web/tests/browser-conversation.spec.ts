@@ -1,5 +1,5 @@
-import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "@playwright/test";
+import { hostOrigin } from "../test-ports.mjs";
 
 const host = hostOrigin;
 // The host shares both controller capacity and the OAuth peer admission bucket
@@ -887,6 +887,69 @@ async function endedConversation(page: import("@playwright/test").Page) {
   await expect(editor).toHaveCount(0);
   return id;
 }
+
+for (const [proof, reason] of [
+  ["writer_present", /Toinen kirjoittaja on aktiivinen/],
+  ["read_only_history", /terminaalin historiaa/],
+  ["unproven", /turvalliseksi jatkaa/],
+] as const)
+  test(`@browser-conversation uncertain readable history ${proof} cannot continue`, async ({
+    page,
+  }) => {
+    await open(page);
+    await page.route("**/api/v1/conversations/*/stream", (route) =>
+      route.abort("failed"),
+    );
+    await page
+      .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+      .click();
+    await expect(page).toHaveURL(/conversation=pi/);
+    const id = new URL(page.url()).searchParams.get("conversation");
+    expect(id).toMatch(/^pi:/);
+    await page
+      .getByRole("textbox", { name: "Viesti Pi:lle" })
+      .fill("synthetic live child");
+    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+    await expect
+      .poll(async () => {
+        const response = await page.request.get(
+          `/api/v1/conversations/${id?.slice(3)}/status`,
+        );
+        const observed = await response.json();
+        return observed.native_history;
+      })
+      .toBe("readable");
+    let posts = 0;
+    page.on("request", (request) => {
+      if (request.url().endsWith("/continue")) posts++;
+    });
+    await page.route(
+      `**/api/v1/conversations/${id?.slice(3)}/status`,
+      async (route) => {
+        const response = await route.fetch();
+        const data = await response.json();
+        // The child is still alive. Readable JSONL and uncertain RPC state do not
+        // constitute proof that the owner fence can be reacquired.
+        await route.fulfill({
+          response,
+          json: {
+            ...data,
+            state: "uncertain",
+            native_history: "readable",
+            continuation: proof,
+          },
+        });
+      },
+    );
+    await page
+      .getByRole("button", { name: "Tarkista keskustelun tila" })
+      .click();
+    await expect(page.getByText(reason)).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Jatka keskustelua" }),
+    ).toHaveCount(0);
+    expect(posts).toBe(0);
+  });
 
 test("@browser-conversation ended browser lease continues explicitly without reposting", async ({
   page,

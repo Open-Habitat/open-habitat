@@ -8,6 +8,11 @@ export type Status = Session & {
   events: unknown[];
   event_loss: boolean;
   native_history: string;
+  continuation:
+    | "eligible"
+    | "writer_present"
+    | "read_only_history"
+    | "unproven";
   native_revision: string;
   history_query: string;
   queue?: { revision: number; steering: string[]; follow_up: string[] };
@@ -169,6 +174,9 @@ export function parseStatus(v: unknown, id: string): Status {
     typeof v.event_loss !== "boolean" ||
     !["missing", "unavailable", "readable"].includes(
       String(v.native_history),
+    ) ||
+    !["eligible", "writer_present", "read_only_history", "unproven"].includes(
+      String(v.continuation),
     ) ||
     typeof v.native_revision !== "string" ||
     v.native_revision.length > 256 ||

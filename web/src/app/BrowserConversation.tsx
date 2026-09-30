@@ -11,33 +11,33 @@ import {
   AgentHeader,
   Button,
   Composer,
-  QueuePanel,
-  ConversationTimeline,
   ConversationFrame,
   ConversationStream,
-  InlineNotice,
-  WorkingProgress,
+  ConversationTimeline,
   EndedConversationControl,
+  InlineNotice,
+  QueuePanel,
+  WorkingProgress,
 } from "../components";
+import { UnpresentedEvents } from "../components/WorkingProgress";
 import {
-  create,
-  list,
-  type Session,
-  type Status,
-  parseStatus,
-  send,
-  queueMessage,
-  clearQueue,
-  NotAdmitted,
-  status,
   abortTurn,
-  continueConversation,
   ContinuationRefused,
   type ContinueRefusal,
+  clearQueue,
+  continueConversation,
+  create,
+  list,
+  NotAdmitted,
+  parseStatus,
+  queueMessage,
+  type Session,
+  type Status,
+  send,
+  status,
 } from "./conversations";
 import { readHistoryFetch, timelineItems } from "./HistoryView";
 import type { HistoryEntry } from "./history";
-import { UnpresentedEvents } from "../components/WorkingProgress";
 import { piStatus, sessionCSRF } from "./pi";
 import type { Workspace } from "./snapshot";
 
@@ -685,8 +685,7 @@ export function BrowserConversation({
       const fresh = await status(id);
       if (
         fresh.workspace_id !== workspace.workspace_id ||
-        fresh.state !== "uncertain" ||
-        fresh.native_history !== "readable"
+        fresh.continuation !== "eligible"
       )
         return;
       await readHistoryFetch(id);
@@ -709,8 +708,7 @@ export function BrowserConversation({
       !csrf ||
       !id ||
       !current ||
-      current.state !== "uncertain" ||
-      current.native_history !== "readable" ||
+      current.continuation !== "eligible" ||
       (continuation && (continuation !== "uncertain" || !retryContinuation)) ||
       !controlled
     )
@@ -1192,14 +1190,26 @@ export function BrowserConversation({
               Pi:n tapahtumia vastaanotettu; historiaa odotetaan.
             </p>
           ) : null}
-          {controlled &&
-          (continuation ||
-            (current?.state === "uncertain" &&
-              current.native_history === "readable")) ? (
+          {controlled && (continuation || current?.state === "uncertain") ? (
             <EndedConversationControl
-              state={stale ? "control_uncertain" : (continuation ?? "ready")}
+              state={
+                stale
+                  ? "control_uncertain"
+                  : (continuation ??
+                    (current?.continuation === "eligible"
+                      ? "ready"
+                      : current?.continuation === "writer_present"
+                        ? "writer_conflict"
+                        : current?.continuation === "read_only_history"
+                          ? "read_only_history"
+                          : "control_uncertain"))
+              }
               onContinue={() => void continueEnded()}
-              retryAvailable={!stale && retryContinuation}
+              retryAvailable={
+                !stale &&
+                retryContinuation &&
+                current?.continuation === "eligible"
+              }
             />
           ) : controlled ? (
             <Composer

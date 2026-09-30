@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import { Button, RadioGroup, TextArea, TextField } from "./Primitives";
 import { Markdown } from "./Markdown";
 import { Disclosure } from "./Overlays";
-import { InlineNotice, StatusMark } from "./Status";
+import { Button, RadioGroup, TextArea, TextField } from "./Primitives";
 import type { StatusKind } from "./Status";
+import { InlineNotice, StatusMark } from "./Status";
 import type { Availability, ProblemView, TimelineItem, Tone } from "./types";
 import { enabled } from "./types";
 
@@ -804,7 +804,7 @@ export function EndedConversationControl({
       "Jatkamisen tulos on epävarma. Tarkista tila ja historia; pyyntöä ei lähetetä uudelleen automaattisesti.",
   };
   return (
-    <section className="ah-composer" aria-label="Päättyneen keskustelun ohjaus">
+    <section className="ah-composer" aria-label="Keskustelun ohjaus">
       <InlineNotice
         title={
           state === "ready"

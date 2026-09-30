@@ -47,11 +47,11 @@ and in `issues/night-2026-09-30/ui-status.md` rather than editing
 
 ## Acceptance Criteria
 
-- [ ] An ended browser-owned conversation offers a quiet continue action in
+- [x] An ended browser-owned conversation offers a quiet continue action in
   the read-only composer area; terminal/foreign histories do not.
-- [ ] Success, the three refusal states, network failure and an uncertain 503
+- [x] Success, the three refusal states, network failure and an uncertain 503
   each have an honest presentation with no automatic retry or resend.
-- [ ] Role/name tests cover the states against the synthetic host; stories in
+- [x] Role/name tests cover the states against the synthetic host; stories in
   both themes; lab screenshots in this issue folder.
 ## Shared context for every design-v2 slice
 
