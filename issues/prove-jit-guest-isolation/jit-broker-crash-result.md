@@ -1,6 +1,6 @@
 # Broker crash during first-login account creation
 
-`TMPDIR=/var/tmp ./scripts/vm-test.sh jit-broker-crash --json` passed in a disposable rootless Podman/QEMU Ubuntu noble guest (PID 1 systemd, synthetic GitHub identities only). Tested source base `f6defc8e02a0f1535d434c2f7ec117bb04af960a` plus the scenario changes committed with this report; fixture binary SHA-256 `661bbfdaf5c59b7e8defed04606b20e89be82196d3d1540e0c2289851fe1bc42`. Guest duration: 195 seconds. Pinned image SHA-256 `612b2c0cc1bc413a6cb8c38fd611794caf0f2b436c50013d8b3794db12ad7354`; verified Fleetrepo policy blobs at `85ac4588c9de4c1ceb1fccf58d57753ca58a7688` (the harness emits their hashes).
+`TMPDIR=/var/tmp ./scripts/vm-test.sh jit-broker-crash --json` passed in a disposable rootless Podman/QEMU Ubuntu noble guest (PID 1 systemd, synthetic GitHub identities only). The committed-tree run tested revision `4fc8802f76aa2b44018768026ae4e89d78af7567` (followed only by formatting and receipt edits); fixture binary SHA-256 `b78f527489cabc5f570e36d590940126f17e6a3817df1b3ee0c833ae5472710d`. Guest duration: 207 seconds. Pinned image SHA-256 `612b2c0cc1bc413a6cb8c38fd611794caf0f2b436c50013d8b3794db12ad7354`; verified Fleetrepo policy blobs at `85ac4588c9de4c1ceb1fccf58d57753ca58a7688` (the harness emits their hashes).
 
 ## What happened
 
