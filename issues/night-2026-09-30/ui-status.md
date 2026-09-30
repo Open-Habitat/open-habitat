@@ -23,6 +23,18 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Kierrokset
 
+### Kierros 1 — välitila 2026-09-30 20:40 UTC
+
+- Laskeutui: `continue-ended-conversation` (harvest-run
+  `01m3sz52ad035a8n79390m4th1`, `3467b8c`…`1c82eba`, full gate vihreä,
+  issue `done`). Jatka näkyy vain `continuation: eligible` -tilassa.
+  Ensimmäisen ajon `01m3stctd4k9v46ccarjf7mny9` haara
+  `wt/carjf7mny9-continue-ended-conversation` on nyt orpo (sisältö
+  laskeutunut, `landed: true`); poisto on Jarin
+  `taskfleet run discard` -päätös.
+- Käynnissä: run `01m3t0bzwtn2sxngjgds90wqqx`, `fit-sidebar-v2`, samat
+  UI-tokenit.
+
 ### Kierros 1 — välitila 2026-09-30 20:15 UTC
 
 - `rest`in `continuation`-havainto laskeutui; kiitos. Harvest-ajo
