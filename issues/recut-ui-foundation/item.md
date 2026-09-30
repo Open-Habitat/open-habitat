@@ -3,12 +3,14 @@ created: 2026-09-30
 updated: 2026-09-30
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@review-browser-design-v2', '@complete-conversation-ui']
 lane: design-v2
 lane_seq: 1
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
+closed: 2026-09-30
+closed_by: night-ui-worker
 ---
 
 # Re-cut the UI foundation for browser design v2
@@ -40,19 +42,19 @@ faithfully and tuned predictably, and prove it in the conversation view.
 
 ## Acceptance Criteria
 
-- [ ] In the conversation view, font sizes, spacing and layout dimensions come
+- [x] In the conversation view, font sizes, spacing and layout dimensions come
   from shared values, and changing one value shows in every place it is used.
-- [ ] Button appearance does not depend on an ancestor selector, and a disabled
+- [x] Button appearance does not depend on an ancestor selector, and a disabled
   button is readable in both themes.
-- [ ] The status vocabulary comes from one component.
-- [ ] Icons do not depend on the system font.
-- [ ] Top bar, message stream and composer layout is part of the component
+- [x] The status vocabulary comes from one component.
+- [x] Icons do not depend on the system font.
+- [x] Top bar, message stream and composer layout is part of the component
   library, not application-layer inline style, and works at phone width.
-- [ ] New and changed components have stories in both themes.
-- [ ] A browser test in the gate reads computed styles of landmark elements in
+- [x] New and changed components have stories in both themes.
+- [x] A browser test in the gate reads computed styles of landmark elements in
   the lab (rail widths, top-bar padding, column width, text sizes, radii, focus
   ring) and compares them with the handoff table.
-- [ ] `component-map.md` exists and lists deviations that were not resolved.
+- [x] `component-map.md` exists and lists deviations that were not resolved.
 ## Shared context for every design-v2 slice
 
 - Benchmark: [handoff](../review-browser-design-v2/design/handoff.md) and the
