@@ -41,18 +41,23 @@ käyty läpi tällä skillillä.
 
 ## Seuraavaksi
 
-Jarin pyytämät neljä issuea käytiin hänen pyynnöstään uudelleen läpi
-`/rethink-instructions`-skillillä 2026-09-30 lähtörevisiosta `e5a12ef`:
+Jari hyväksyi 2026-09-30 neljän issuen uusintakierroksen:
 `investigate-pi-browser-oauth`, `gate-native-routes-on-pi`, `speed-up-clean-ci`
-ja `build-agent-control`. Uusintakierros säilytti toiminnallisen laajuuden ja
-vastuurajat, mutta korvasi tarkistuslistan ja toistuvan työnjohdon tavoitteen ja
-riskien perusteluilla. OAuth-muistion päällekkäinen työohje poistettiin; lähdenäyttö
-rajoineen säilyi. Toteutusissueiden tilaa tai DAGia ei muutettu.
+ja `build-agent-control`. Niille tehtiin `/rethink-instructions` ja
+`/fact-check-instructions` sekä Jarin lukukierroksen tarkennukset
+(committisarja `8444680`–`8347997`). Pi-kirjautumisen issue kuvaa nyt pakollisen
+onboardingin ja paluun OpenAI-vaiheeseen; testien nopeutus kattaa sekä testien
+nopeuttamisen että tarpeellisten testien valinnan muutoksen perusteella.
+Näiden kuvausten käsittely on valmis. Toteutusissueiden tilaa tai DAGia ei muutettu.
 
-Seuraavaksi palataan [ADR 0001:een](../../docs/adr-0001-unix-native-agent-host.md).
+Seuraava läpikäynti on **`/rethink-document` tiedostolle
+[ADR 0001](../../docs/adr-0001-unix-native-agent-host.md)**.
 Säilytetään natiivien komponenttien, Unix-käyttäjien ja tietojen omistajuuden
 perustelut. Tarkistetaan myöhempien päätösten suhde usean palvelimen selaimeen,
 keskustelujen jatkamiseen ja tekstin edelleen avoimiksi kuvaamiin valintoihin.
+Jatketaan dokumentin ja päätöslähteiden lukemisesta sekä ehdotetun rajauksen
+esittelystä Jarille ennen uudelleenkirjoitusta. ADR:n käsittelyä ei aloitettu
+tämän jatkamiskohdan kirjaamisen yhteydessä.
 
 UI- ja design-dokumentit ovat Jarin pyynnöstä odottamassa 2026-09-30:
 toinen agentti tekee laajempaa käyttöliittymäkierrosta. Niihin palataan sen
