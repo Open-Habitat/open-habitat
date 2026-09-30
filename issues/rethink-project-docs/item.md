@@ -131,9 +131,19 @@ sovituksen. Epävarman kloonauksen piilottaminen ja aina loppuun vierittäminen
 poikkeavat nykyisistä päätöksistä. Puhelin-onboarding on toimituksessa,
 vaikka handoff sanoo sen puuttuvan.
 
-**Seuraavaksi kohta 2: prove-jit-guest-isolation.** Designin avoimet kysymykset
-kulkevat mukana kohdissa 4–8; komponenttikarttaa tai toteutusjakoa ei ole vielä
-tehty. Tämä on agentin lähteisiin perustuva ensiluku, ei Jarin uusi hyväksyntä.
+**Kohta 2: prove-jit-guest-isolation — ensimmäinen uudistettu versio valmis.**
+[Issue](../prove-jit-guest-isolation/item.md) kuvaa nyt jäljellä olevat
+havainnot, ja [tulosyhteenveto](../prove-jit-guest-isolation/result.md)
+erottaa jo saadun näytön niistä. Erillinen palautusmenettely poistui
+vaatimuksista Jarin myöhemmän päätöksen perusteella. Fleetrepon 29.9.
+uudelleenkäynnistyskoe oli ilman käyttäjäsidontoja, joten kahden sidotun
+käyttäjän käynnistyksenjälkeinen eristys jää todennettavaksi. Todellisen
+broker-kaatumisen jälkeisen pääsyneston näyttö erotetaan palautustoiminnosta.
+
+Jari pyysi tästä ensimmäisen version; uutta hyväksyntää tai testitulosta ei
+kirjattu. Seuraava lukukohde tämän version jälkeen on kohta 3:
+`deprovision-bound-user` ja ADR 0007. Designin avoimet kysymykset kulkevat
+mukana kohdissa 4–8; komponenttikarttaa tai toteutusjakoa ei ole vielä tehty.
 
 ### Aineiston ja skillin valinta
 

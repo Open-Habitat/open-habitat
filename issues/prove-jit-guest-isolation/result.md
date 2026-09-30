@@ -1,27 +1,79 @@
-# JIT isolation acceptance ledger — in progress
+# First-login isolation: established evidence and remaining observations
 
-**Status: OPEN.** Evidence below is synthetic, disposable PID1 guest evidence, not live-host installation or consent. Historical static `two-user-routing` is a separate precreated-account baseline. No host deployment or reboot automation is authorized by this issue.
+Reconciled on 2026-09-30 against product source `da841c5` and the later
+[Jari decision on interrupted provisioning](../reconcile-interrupted-jit-provisioning/item.md).
+The issue remains open. This summary separates historical test results from
+work still needed; no new guest or live test was run for this edit.
 
-| Acceptance item | State | Receipt / limit |
+## Established evidence
+
+| Behavior | Observed result and source | Limit |
 | --- | --- | --- |
-| Root broker, systemd/kernel peer checks, two newly allocated UIDs, cross-UID home/socket denial and mapped browser routes | Proven in disposable guest | `jit-socket-activation-result.md`, `jit-revocation-result.md`: `jit-login` success, UIDs 21032/21033, root and foreign peer denied; snapshot routes checked. Not live-host evidence. |
-| First login, sequential rerun/handle rename, native gh failure and uncertain handoff | Proven in bounded synthetic cases | `jit-revocation-result.md` and `jit-post-install-daemon-diagnostic-result.md`; post-install credential retained but final diagnostic change was not rerun in PID1. No real GitHub identities or token revocation. |
-| Truly simultaneous first-login *gateway callbacks* (same and distinct ID) | Proven in disposable guest, bounded; reversed admission now exercised | At clean `1f74f1f`, provider rendezvous preceded both identity responses; the distinct-ID round then released C before B, allocated C=21033/B=21034 and returned `[303,303]`. The same-ID round was also `[303,303]`. Three isolated mapped snapshots and cross-UID denials passed. Broker admission overlap and every interleaving are not claimed. |
-| Revocation of existing and new browser sessions | Proven for requests in guest | `jit-revocation-result.md`: old A sessions 401, new A callback 403, global epoch cuts B's old session too. |
-| Active SSE revocation | Not applicable to current product; future behavior unproved | `internal/gateway/server.go` returns 404 for `/events`; `server_test.go` expects 404. No active SSE stream exists to revoke yet. If one is implemented, a connected-stream revocation test becomes required. |
-| Journal interruption, crash restart and safe operator reconciliation | **Not proven in guest** | `jit-journal-intermediate-result.md` covers synthetic writer restart at every journal phase *in-process* only. No actual crashed root broker with a partially completed account or operator repair proved. |
-| Drift refusal against integrated JIT binding | Proven for selected synthetic request-time faults; crash still unproved | `jit-provision` at `3d2121c` denied root daemon-config mode drift. The packaged callback guest at `1f74f1f` denied NSS name alias (`drift`) and corrupt head, mismatched head generation and rolled-back allowlist epoch (`state_unavailable`) with unchanged non-fault ledger bytes; after restoring each disposable fault, a route worked (NSS required fresh login because the old session was revoked). The Fleetrepo activation gate does **not** inspect daemon config; no gate-level drift denial or actual SIGKILL recovery is claimed. |
-| Post-reboot ACL restoration | **Delegated, not proven** | Jari's 2026-09-25 decision requires a later operator-observed smoke **after authorized safe installation on the real test server**. `jit-reboot-result.md` is red diagnostic only. No reboot harness expansion here. |
-| Reviewed Fleetrepo input and app revision | Pinned Fleetrepo source and verified packaged release, bounded | Nine immutable Fleetrepo blobs at `85ac4588c9de4c1ceb1fccf58d57753ca58a7688` are checked before rendering. At clean `1f74f1f`, packaged archive SHA-256 `121d6d947f370d58c77c163d878f4323d10f1634bdb3a071544c7d49e3adef5f` passed verification; the extracted binary and five systemd templates were staged into the guest. Web assets were verified, not served. The provider listened only on guest loopback in a network-isolated disposable guest. Older `jit-login`/`jit-provision` receipts used locally compiled binaries. |
+| First login allocates separate Linux accounts; routes, homes and sockets remain separate | [Socket activation](jit-socket-activation-result.md) and [revocation guest](jit-revocation-result.md), including `jit-login` and `jit-provision` at `1b607206`: new UIDs, mapped snapshots, kernel peer checks and foreign home/socket denials passed. | Disposable systemd guests and synthetic GitHub identities. The static `two-user-routing` baseline starts with existing accounts. |
+| Repeat login and changed GitHub handle retain the binding | [Revocation guest](jit-revocation-result.md), `1b607206`: same numeric identity retained its UID/name binding without another native gh login. | Sequential case; concurrency is covered separately below. |
+| Simultaneous first-login callbacks | [Concurrent callback guest](jit-concurrent-result.md), `4ea1356d`: same-ID and distinct-ID rounds both returned `[303,303]`, with one binding per identity and three isolated snapshots. At `1f74f1f`, a later controlled C-before-B round also passed. | Provider rendezvous establishes simultaneous gateway callbacks, not every broker scheduling interleaving. |
+| Revocation denies existing and new browser sessions | [Revocation guest](jit-revocation-result.md), `1b607206`: old A sessions returned 401 and new A callback 403; B needed a fresh login after the global epoch change. | Request-time browser authorization, not deletion of native credentials or cancellation of existing native work. |
+| Native gh failure or uncertain handoff does not create a usable browser session | [Revocation guest](jit-revocation-result.md), `1b607206`: failed login, wrong native identity and pre-install acknowledgement loss denied the session. [Post-install daemon diagnostic](jit-post-install-daemon-diagnostic-result.md), `4467e26`: retained credential, lost daemon and callback 503 with session/snapshot 401/401. | The later diagnostic receipt-preservation change was checked offline, not rerun in a PID1 guest. A daemon kill is not a broker crash during account creation. |
+| Pending journal prevents use of uncertain account state | [Journal test](jit-journal-intermediate-result.md): a fresh Writer at each journal phase returned `state_unavailable`, issued no route, called no executor and left the state bytes unchanged. | In-process restart simulation, not an actual crashed root broker or disk durability test. |
+| Selected inconsistent state denies access | `jit-provision` at `3d2121c` denied daemon-config mode drift. Packaged callback guest at `1f74f1f` denied an NSS alias, corrupt head, mismatched generation and rolled-back allowlist epoch. | Selected request-time faults; no universal drift claim and no claim that the Fleetrepo activation gate checks daemon config. |
+| Packaged product and pinned Fleetrepo input were used | [Concurrent callback receipt](jit-concurrent-result.md) records verified archive, embedded commit and binary hash, plus nine immutable Fleetrepo blobs at `85ac4588`. | Web assets were verified in the package but not served by this guest. Older guest receipts used locally compiled binaries. |
 
-The clean committed `4ea1356df3d98c57ca8454751321eb90243e9dac` concurrent callback guest passed (exit 0, 248 guest seconds), with verified archive SHA-256 `b6af8361e5287482176069b3de98173ab4e623617b3cdc250dca86007a3cb6aa` and embedded commit `4ea1356df3d98c57ca8454751321eb90243e9dac`. Its binary SHA-256 was `bf6f80560192afc45a68fb94ead49ae0732e04d647be368fe3f1398e514ceaab`. See `jit-concurrent-result.md` for the red attempts, fixture correction, independent review, final separate static baseline and clean CI (after one disclosed Playwright port-in-use failure), and precise limits. This adds no proof of a crashed broker, broader drift or post-reboot ACL restoration. **The issue stays open.**
+### Latest concurrent and drift run
 
-The retry-with-harvest run `01m3h691hj8m15hbqvvc7t43zf` reproduced the preserved branch's distinct-ID `[503,503]` on clean main `4d7905e` (258 guest seconds, three bindings and both credentials present); a diagnostic-only run on otherwise identical code passed. Two runs of the harvested drift harness at `d7cdc7b` passed, while later pre-fix runs also failed `[503,503]`. In a red run at `05d20ce`, both B and C completed `gh config get` with exit 0, then executed cleanup before any fake `git` command logged. The guest-only `git` stand-in hard-coded B→21033 and C→21034, while the broker assigns the next available UID in actual admission order. Red serial logs showed guestthree's daemon starting before guesttwo's. The stand-in rejected the valid reversed mapping before writing its first log line. This is a **pre-existing harness race on main**, not a product handoff race introduced by the preserved branch. A provisional 12-second product handoff budget was tested, did not resolve the failure, and was fully reverted; production authorization and timeouts are unchanged. The corrected stand-in checks the UID's real NSS name/home, the offline regression accepts either distinct-ID order and rejects duplicate UIDs, and the new guest deliberately releases C first *after* both `/user` calls rendezvous. On clean `1f74f1f918f45d2cb457b876dac5d13ed4100426`, the packaged guest passed (exit 0, 250 guest seconds): same-ID and C-first distinct-ID `[303,303]`, cross-UID routes/DAC and all four harvested drift denials. Binary SHA-256 `fbe014477589ed9e8c8350b06338c79c570b1142d53d84d41bb786c5dc5f92c7`. This tests one controlled valid interleaving, not all schedules. Actual broker SIGKILL and operator reconciliation remain **unproved** and are tracked separately for Jari's decision; this parent stays **OPEN**. No real host or credential was used.
+The successful `jit-concurrent` run at
+`1f74f1f918f45d2cb457b876dac5d13ed4100426` exited 0 after 250 guest seconds.
+Archive SHA-256:
+`121d6d947f370d58c77c163d878f4323d10f1634bdb3a071544c7d49e3adef5f`.
+Binary SHA-256:
+`fbe014477589ed9e8c8350b06338c79c570b1142d53d84d41bb786c5dc5f92c7`.
+Same-ID and C-first distinct-ID rounds returned `[303,303]`; mapped snapshots,
+foreign-UID denials and the four ledger/NSS drift cases passed.
 
-First extension attempt at clean `095cecc` failed closed (`boot_proof_failed`, 223 guest seconds): the synthetic pending marker correctly made broker startup exit nonzero, so a client expecting a framed `state_unavailable` reply got none. The independent review caught the wrong oracle and an unrelated gate assertion for config drift. Neither new flag passed in that attempt. A second clean committed attempt at `90050dc` also failed closed after 223 guest seconds: `systemctl start native-agent-host-broker.service` returned success with the synthetic pending marker in place (`broker_state=active`). Socket activation can race a manual stop/start, so this observation does **not** establish either a fresh refused invocation or unsafe acceptance by a newly started broker. The restart experiment was removed rather than weaken the oracle or expand a fault/reboot harness. Actual partial-account crash/restart and recovery stay unproved. The subsequent bounded guest tested only the live broker's config-drift classification; its passing receipt is below.
+Earlier distinct-ID `[503,503]` results exposed a guest-only fake-git bug:
+it assumed B and C would always receive UIDs in that order. The corrected
+fixture checks actual NSS identity/home and deliberately exercises the reverse
+order. A trial product timeout increase did not fix the failure and was
+reverted. Failed runs remain failures; this successful run establishes one
+controlled valid ordering. Detailed earlier attempts and review history remain
+in the linked receipts and this file's Git history before this rewrite.
 
-The bounded `jit-provision --json` guest passed (exit 0, 201 seconds) on clean committed executable `3d2121c0a212c31992da2d1082f07b08651252bd`: systemd PID1, UIDs 21032/21033/21003, binary SHA-256 `35b35328375194bf40e4f2535dc282f00c7e68f3c5c7c50afe2e8c3ebcbcba86`, scope `jit-provision`, `broker_config_drift_denied=true`, alongside the earlier provisioning, peer, ACL and pending checks. The guest's offline `test/vm/test-vm-test.sh` oracle checks a missing drift flag is rejected, including optimized Python. This is a **green intermediate**, not parallel callbacks or partial-crash recovery. Exact baseline/CI receipts and final review follow below.
+## What remains
 
-Independent security review of this diff used `claude-fable-5-1` to identify and correct the initial wrong restart/drift oracles, `gpt-6-astra` for an independent false-negative check of the corrected code, and `deepseek-flash` on the final narrowed diff (with its requested actual diff attached); the latter found no introduced must-fix/should-fix defect. Existing oracle gaps outside this diff (for example some pre-existing generic negative-status checks) are not presented as newly fixed. Assessment is in ignored `history/assessment-jit-pending-drift.{json,md}`; no independent issue filed because the still-open parent already owns unproved scopes. An independent complete-branch-diff `gpt-6-astra` review found the offline *missing concurrency* regression: the negative receipt lacked both concurrency and the new drift flag, so it would reject even if concurrency were not enforced. Corrected to remove each required flag separately from an otherwise passing receipt and reran offline tests. No guest executable/proof/host validator change followed the passing run. The optional model-performance write failed SSH authentication to Alder (exit 3), without affecting tests or reviewed code.
+**Post-reboot isolation with bound users.** Jari's 25 September decision
+replaced further reboot-harness expansion with an operator-observed test-server
+smoke. The [old reboot diagnostic](jit-reboot-result.md) is failed historical
+evidence, not the next work plan. Fleetrepo's
+`issues/rebuild-test-vm-first-use/result.md` at revision
+`d27243fe9a0a7b5b0ab4868ba3deb3856bd4af6f` records a 29 September reboot,
+policy/ACL preparation, service startup and denied unprivileged socket access.
+It explicitly had zero user bindings. It therefore does not establish login,
+per-user routing or restored isolation between two bound users after reboot.
+Host-specific facts remain in that private repository.
 
-The separate historical static `two-user-routing --json` baseline passed (exit 0, 197 seconds), scope `product-two-user-routing`, clean committed executable `3d2121c`; it used precreated UIDs 21001/21002, not JIT accounts. First clean CI attempt on the final docs revision failed at Playwright port 4183 already in use by another process; the port was free on inspection and the next clean-tree attempt passed (exit 0, `status=passed, clean=true`) at `f2146b6` before the final offline-only oracle correction. A still-earlier CI attempt failed its clean-tree guard when this worker edited files during the run; neither failure is reported as a pass. After the isolated-negative-oracle correction, `./scripts/ci-local.sh --clean --json` passed (exit 0; `{"status":"passed","clean":true}`), started on clean committed `9244029` and completed with clean committed documentation-only `a06577e`; neither the guest executable proof nor the offline oracle changed during this CI. `bash test/vm/test-vm-test.sh` and focused `go test -race ./internal/provision -run 'TestBrokerStartupDenials|TestWriterRestartAtEveryJournalPhase' -count=1` passed; `issuectl doctor --json` returned no warnings/violations and `git diff --check` passed. No claim is made for the two failed CI attempts. That earlier intermediate did not prove guest parallel callbacks or archive provenance; the new bounded result above does. Closure remains unjustified while actual broker crash/reconciliation and broader drift are unproved; reboot remains a separate deferred operator smoke, not a synthetic pass.
+**Actual broker-crash refusal.** A broker killed during account creation has
+not been shown in a guest to restart and refuse the uncertain partial state.
+The in-process journal result above is the evidence currently available. Any
+additional test should establish that specific security claim, rather than
+require a recovery implementation. The recovery issue was closed `wontfix`
+on 28 September under Jari's idempotent-or-no-recovery decision; operator
+reconciliation is no longer an acceptance requirement here.
+
+**New stream behavior.** The general `/events` endpoint still returns 404 at
+`da841c5`. This says nothing about other streaming routes. Revocation of a
+future conversation stream belongs with
+[agent control](../build-agent-control/item.md); request-time results above
+are not connected-stream proof.
+
+## Reading the receipts
+
+The linked reports identify their tested revisions, failed attempts, reviews
+and CI results. Their older “still open” lists describe the time of each run;
+later successful results and Jari's later decisions determine remaining work.
+The accepted evidence does not require a separate operator recovery procedure
+or proof of every imaginable concurrency or drift case.
+
+This documentation pass changes no implementation, fixture, deployment or
+issue status. The project-document validator and `git diff --check` passed;
+issue doctor reported only existing non-AVIF images in other issues, with no
+schema or reference findings. The full CI gate and guest scenarios were not
+rerun for this text-only change.
