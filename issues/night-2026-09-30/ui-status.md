@@ -34,6 +34,14 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Kierrokset
 
+### Kierros 2 — välitila 2026-09-30 23:50 UTC
+
+- Laskeutui: `show-turn-receipts` (run `01m3t9ett3vryfze190mb4hsvw`,
+  …`f38942f`, full gate vihreä, issue `done`). Lähetyskuittaukset,
+  natiiviavaimella rajattu "Vuoro valmis" ja kysymys pelkkänä tekstinä.
+- Käynnissä: run `01m3tbajabater7c7k7ks896sq`, `fit-conversation-density-v2`
+  (G3), UI-tokenit.
+
 ### Kierros 2 — välitila 2026-09-30 23:20 UTC
 
 - Laskeutui: `stream-conversation-events` (run `01m3t5wj8a9mcmw6nnrmy4984q`,
