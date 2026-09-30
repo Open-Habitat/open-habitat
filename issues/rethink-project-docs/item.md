@@ -43,6 +43,32 @@ Samalla on tehty kohdennettuja korjauksia
 CLI-konformanssiin ja liittyviin issueihin. Näitä ei ole vielä kokonaisuudessaan
 käyty läpi tällä skillillä.
 
+### Yön 30.9. rethink-läpikäynti ilman Jaria
+
+Nämä 19 issuea käytiin läpi consult-llm:n avulla ilman Jaria; kaikki yksiköt valmistuivat, eikä yhtään ohitettu tai jäänyt epäonnistuneeksi. `manage-agent-worktrees`-issuessa havaittu ristiriita Jarin aiempaan päätökseen jätettiin ratkaisematta ja kirjattiin issueen.
+
+| Dokumentti | Lopputulos | Commit |
+|---|---|---|
+| [add-conversation-recap](../add-conversation-recap/item.md) | suunnittelutehtävä selkeytetty ja faktantarkistettu, päätösmerkintä kirjattu. | `be2eb51` |
+| [archive-agent-conversations](../archive-agent-conversations/item.md) | toteutusissue selkeytetty ja faktat tarkistettu; epävarma pysäytys ja puuttuva annotaatiototeutus täsmennetty. | `02e9931` |
+| [connect-github-workspaces](../connect-github-workspaces/item.md) | toteutusohje selkeytetty ja faktat tarkistettu; päätösmerkintä tallennettu. | `1650d0a` |
+| [deliver-login-pilot](../deliver-login-pilot/item.md) | issue selkeytetty ja faktantarkistettu, Jarin päätökset säilytetty. | `5d0fd5a` |
+| [expose-native-status](../expose-native-status/item.md) | ohje selkeytetty ja vanhentunut MVP-raja korjattu; faktat tarkistettu. | `1347664` |
+| [extend-editor-tools](../extend-editor-tools/item.md) | suunnitteluisuetta selkeytetty ja vanhentuneet väitteet korjattu. | `1667042` |
+| [extend-process-ui](../extend-process-ui/item.md) | tehtäväteksti selkeytetty, faktantarkistettu ja päätös kirjattu. | `a8688af` |
+| [extend-tool-views](../extend-tool-views/item.md) | tehtävä selkeytetty käyttöhavaintoon nojaavaksi suunnittelutyöksi, teematieto ajantasaistettu. | `288d45b` |
+| [manage-agent-worktrees](../manage-agent-worktrees/item.md) | ohje selkeytetty, faktat tarkistettu ja päätösristiriita kirjattu. | `93567a4` |
+| [manage-workspace-lifecycle](../manage-workspace-lifecycle/item.md) | ohje selkeytetty, faktat tarkistettu ja päätösmerkintä kirjattu. | `0ced955` |
+| [native-agent-host-architecture](../native-agent-host-architecture/item.md) | arkkitehtuurieepos selkeytetty ja faktat tarkistettu. | `cca16dd` |
+| [plan-second-user-admission](../plan-second-user-admission/item.md) | testiasennuksen hyväksymisraja ja avoin broker-valinta selkiytetty; Jarin päätös säilytetty. | `522395b` |
+| [prepare-interactive-demo](../prepare-interactive-demo/item.md) | harjoituksen tila ja vanhentuneiden kuvien rajaus selkeytetty, Jarin päätös säilytetty. | `842d552` |
+| [prepare-mvp-operations](../prepare-mvp-operations/item.md) | toteutusissue selkeytetty ja faktantarkistettu; hyväksymis- ja palautumisrajat säilytetty. | `b3bd6a4` |
+| [prove-clean-server-install](../prove-clean-server-install/item.md) | ohje selkeytetty, faktat tarkistettu ja päätös kirjattu. | `ca27807` |
+| [refine-agent-status](../refine-agent-status/item.md) | selkeä nykyteksti säilytettiin; rethink- ja faktantarkistus kirjattiin päätösmerkintään. | `3ad9335` |
+| [rename-omega-habitat](../rename-omega-habitat/item.md) | issue selkeytetty ja asennetun tilan nimeämisriskit tarkistettu. | `5419831` |
+| [verify-live-pi-journey](../verify-live-pi-journey/item.md) | hyväksyntäkirja selkeytetty ja vanhentunut reset-ohje rajattu pois. | `267aa35` |
+| [verify-v1-resilience](../verify-v1-resilience/item.md) | ohje tiivistetty, lähteet tarkistettu ja päätös kirjattu. | `26d0f23` |
+
 ## Seuraavaksi: tilit, onboarding ja uusi selain-design
 
 Jari pyysi 2026-09-30 seuraavan läpikäyntikokonaisuuden: neljä nimettyä
