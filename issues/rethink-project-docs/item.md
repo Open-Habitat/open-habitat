@@ -41,10 +41,13 @@ käyty läpi tällä skillillä.
 
 ## Seuraavaksi
 
-Jarin pyytämät neljä issuea on käsitelty `/rethink-instructions`-skillillä:
+Jarin pyytämät neljä issuea käytiin hänen pyynnöstään uudelleen läpi
+`/rethink-instructions`-skillillä 2026-09-30 lähtörevisiosta `e5a12ef`:
 `investigate-pi-browser-oauth`, `gate-native-routes-on-pi`, `speed-up-clean-ci`
-ja `build-agent-control`. Niiden tekstit kuvaavat tavoitetta ja toteuttajan
-lähtötilannetta; tämä läpikäynti ei sulkenut toteutusissueita.
+ja `build-agent-control`. Uusintakierros säilytti toiminnallisen laajuuden ja
+vastuurajat, mutta korvasi tarkistuslistan ja toistuvan työnjohdon tavoitteen ja
+riskien perusteluilla. OAuth-muistion päällekkäinen työohje poistettiin; lähdenäyttö
+rajoineen säilyi. Toteutusissueiden tilaa tai DAGia ei muutettu.
 
 Seuraavaksi palataan [ADR 0001:een](../../docs/adr-0001-unix-native-agent-host.md).
 Säilytetään natiivien komponenttien, Unix-käyttäjien ja tietojen omistajuuden

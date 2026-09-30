@@ -11,35 +11,28 @@ collision: [docs/, internal/gateway/, internal/daemon/]
 
 # Investigate Pi browser OAuth callback
 
-## Goal
+Find a supported way for Pi sign-in to return the browser directly to this
+service without device-code entry, or explain why device-code sign-in remains
+the practical choice. The useful result is a recommendation grounded in provider
+support and a Pi integration path; a detailed callback protocol can follow once
+that path is known to exist.
 
-Find out whether Pi sign-in can return the browser directly to this service,
-without asking the user to enter a device code. Recommend a supported approach
-or explain why the existing device-code flow should remain.
+The [research note](analysis.md) records the Pi 0.85.1 source investigation.
+Its built-in browser flow returns to localhost on the browser's computer, not
+the remote host. Whether the provider permits an HTTPS callback to this service
+is still unknown; an anti-bot 403 did not answer it.
 
-## Starting point
+Pi owns credential exchange, storage and refresh under the mapped Unix user.
+A gateway code relay is a possibility to assess, not an agreed solution. The
+returning browser needs to remain bound to the right browser session and Unix
+user. Any proposed change to component authority needs Jari's architecture
+decision.
 
-The [source investigation](analysis.md) found that Pi 0.85.1 fixes its browser
-callback to localhost on the user's computer. It did not establish whether
-OpenAI permits an HTTPS callback to this host. An earlier anti-bot 403 does
-not settle that question.
+A real provider experiment uses a person's account and may leave credentials or
+host configuration behind. Jari has asked to hear beforehand what the experiment
+will establish and how its temporary state will be removed. Synthetic tests can
+exercise host behavior but cannot establish provider acceptance.
 
-Establish provider support and an available Pi integration path before investing
-in a detailed protocol. Pi owns credentials under the mapped Unix user. A code
-relay through the gateway is one possible design; assess it by whether it keeps
-the returning browser bound to the right session and Unix user without moving
-credential ownership into the gateway.
-
-A real provider experiment involves a person's account and may leave credentials
-or temporary host configuration behind. Jari wants to hear about that experiment
-before it happens; describe what it will establish and how its temporary state
-will be removed. Disposable synthetic tests are useful for host behavior, but
-cannot establish which callbacks the provider accepts.
-
-## Result
-
-Record the supported options, evidence and remaining uncertainty in the research
-note. Recommend implementation, a bounded real experiment, or continued
-device-code sign-in. Explain any proposed change in component authority so Jari
-can decide the architecture. A full protocol design is useful once a feasible
-path has been found.
+The research note should leave the next implementer with the supported options,
+the evidence and its limits, and a recommendation: implementation, a bounded
+real experiment to resolve a specific uncertainty, or continued device-code use.

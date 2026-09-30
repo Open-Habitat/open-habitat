@@ -12,60 +12,52 @@ collision: [docs/, AGENTS.md, design-system/, internal/daemon/, web/src/componen
 
 # Connect v1 conversation controls to Pi
 
-## Goal
-
-A user can start a Pi conversation in a workspace, send a message, follow the
-response and tool activity, interrupt work and return after a browser disconnect.
+A user can start a Pi conversation in a workspace, send a message, follow text
+and tool activity live, interrupt work and return after a browser disconnect.
 They can deliberately continue an ended browser conversation with its native
 history.
 
-## How this fits the native system
-
 The mapped user's daemon owns the Pi process. Pi runs tools, uses its native
-configuration and writes its history. Browser commands travel over HTTP and live
-updates over Server-Sent Events (SSE).
+configuration and writes its history; the host does not need a second history
+store. Browser commands travel over HTTP and live updates over Server-Sent
+Events (SSE). Closing the browser leaves Pi running. A slow connection or a
+returning browser recovers current state and native history without losing track
+of work. Drafts, editor focus and reading position survive updates and session
+revalidation.
+
+Sending needs an understandable outcome: pending, accepted, rejected or uncertain.
+An uncertain send is not repeated automatically because the first one may have
+reached Pi. Interruption likewise shows its actual result or remaining
+uncertainty. The daemon owns its direct Pi child and systemd handles service
+cleanup, but a detached tool can outlive an interrupted turn. That limit matters
+when deciding whether work has stopped and another writer can safely start.
+A per-conversation supervisor is outside the agreed scope.
 
 Browser conversations have one writer in both test and production use. Existing
-terminal histories are read-only; this task does not coordinate simultaneous
-writers across browser and terminal processes. After a restart, readable history
-and available control are separate facts.
+terminal histories are read-only; coordinating simultaneous browser and terminal
+writers is outside this task. After a daemon restart, readable history does not
+by itself mean that control is available. Each authenticated user can access
+only their own history and control only their own conversations.
 
-Interruption is best effort: the daemon owns its direct Pi child, while systemd
-handles service cleanup. A detached tool can outlive an interrupted turn. Show
-that uncertainty so the user does not mistake unresolved work for a stopped
-conversation or start a competing writer. A per-conversation supervisor is not
-needed for this scope.
+Incoming questions and unfamiliar content reach the browser at least as safe
+text, so unsupported presentation does not hide what the agent said or asked.
+Pi-specific answer and cancel dialog controls are outside the agreed scope.
+@complete-conversation-ui owns rich presentation and queue controls; the
+[implementation map](../plan-v1-implementation/implementation-briefs.md)
+assigns the related contract scenarios.
 
-Incoming questions and unfamiliar content reach the browser as safe text, so an
-unsupported dialog does not hide what the agent asked. Pi-specific answer and
-cancel dialog controls are outside the agreed scope. @complete-conversation-ui
-owns rich presentation and queue controls.
+Build on the existing daemon controller, gateway routes and production browser
+components. [result.md](result.md) records earlier implementation slices and
+their evidence, not a current task list. Completion includes SSE, deliberate
+continuation of ended browser conversations, and a demonstrated browser journey
+against real Pi covering send, live response, interruption, ended-conversation
+continuation and disconnect/reconnect.
+[TESTING.md](../../TESTING.md) distinguishes browser behavior, real Pi with a
+synthetic provider, real provider use and Unix-user isolation; the result should
+make clear which of those the demonstration establishes.
 
-## What completion looks like
-
-- [ ] A message has an understandable pending, accepted, rejected or uncertain outcome; an uncertain send is not repeated automatically.
-- [ ] Text and tool activity arrive live through SSE, and a slow or disconnected browser recovers the current state without silently losing track of work.
-- [ ] Closing the browser leaves Pi running. Returning shows current state and native history; an ended browser conversation can be deliberately continued.
-- [ ] Interruption shows its actual result or remaining uncertainty, including the limits of control after daemon restart.
-- [ ] Drafts, editor focus and reading position survive live updates and session revalidation.
-- [ ] Each authenticated user controls only their own conversations and accesses only their own native history.
-- [ ] The browser journey is demonstrated against real Pi: send, live response, interruption, ended-conversation continuation and disconnect/reconnect.
-
-## Starting from the existing implementation
-
-Build on the daemon controller, gateway routes and production browser components.
-[result.md](result.md) records intermediate implementations and tests at specific
-revisions. Compare its old gap descriptions with current code, especially after
-the later UI work. SSE and ended-conversation continuation remain explicit
-completion outcomes, not reasons to rebuild the parts already working.
-
-The [implementation map](../plan-v1-implementation/implementation-briefs.md)
-assigns related work; [TESTING.md](../../TESTING.md) defines project checks.
-Keep the contract consistent with behavior and choose buffering or limits from
-concrete needs and observations. Browser tests, real Pi tests and Unix-user
-isolation tests answer different questions; record which were exercised and
-whether the provider was synthetic or real.
-
+The [interface specification](../../docs/interfaces.md) describes the agreed
+contract. Buffering and limits serve observed responsiveness and recovery needs.
 [visual-acceptance.md](visual-acceptance.md) holds browser evidence and Jari's
-visual feedback. Unreviewed appearance stays visible as such, while functional
-work and independent tasks can proceed.
+visual feedback; pending appearance review does not block functional work or
+independent tasks.

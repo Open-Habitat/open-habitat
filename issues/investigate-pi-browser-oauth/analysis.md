@@ -20,25 +20,13 @@ OpenAI Codex.
 An earlier unauthenticated provider probe received an anti-bot 403. That result
 establishes neither acceptance nor rejection of an HTTPS host callback.
 
-## What remains to establish
+## Open question
 
-Can a supported Pi/OpenAI integration return the browser directly to this
-service, without device-code entry? Establish what return addresses and clients
-the provider permits, and whether Pi supports the corresponding credential
-exchange and storage. The 0.85.1 observation does not establish the capabilities
-of later versions.
-
-Pi must continue to own credentials under the user's Unix account. A possible
-code relay through the gateway is an implementation proposal, not a chosen
-architecture. If a supported path exists, explain its effect on the gateway and
-daemon responsibilities before designing the detailed protocol. The flow must
-bind the returning browser to the correct authenticated session and Unix user.
-
-Recommend implementation, a bounded real experiment, or continued device-code
-sign-in according to the evidence. Inform Jari before a real provider experiment
-and define its scope, consenting participant, return route and cleanup. Synthetic
-tests use disposable identities and credentials; they cannot answer whether the
-provider accepts a callback. Anti-bot responses leave that question unresolved.
+Provider acceptance of a remote HTTPS callback and a corresponding Pi integration
+path remain unestablished. Pi provider extensions alone do not settle the first
+question, and the 0.85.1 source observation does not describe later versions.
+The [issue](item.md) defines the research goal and the constraints on a real
+experiment.
 
 ## Evidence and limits
 
