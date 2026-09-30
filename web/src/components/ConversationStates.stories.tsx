@@ -182,6 +182,29 @@ export const UncertainDraftNarrow: Story = {
   parameters: { viewport: { defaultViewport: "mobile1" } },
 };
 
+// An interrupted observation blocks writes without taking focus from the draft.
+const disconnectedComposer = () => (
+  <Composer
+    value="Keskeneräinen viesti"
+    activity="idle"
+    selectedWorkingMode="follow_up"
+    availability={{ state: "unknown", reason: "Yhteyttä tarkistetaan." }}
+    editorAvailability={{ state: "enabled" }}
+    onChange={noop}
+    onSendNow={noop}
+    onSteer={noop}
+    onFollowUp={noop}
+    onModeChange={noop}
+  />
+);
+export const InterruptedStreamLight: Story = {
+  render: disconnectedComposer,
+  globals: { theme: "light" },
+};
+export const InterruptedStreamDark: Story = {
+  render: disconnectedComposer,
+  globals: { theme: "dark" },
+};
 // Both themes render the production continuation control, never a story-only copy.
 export const EndedBrowserConversationLight: Story = {
   render: () => <EndedConversationControl state="ready" onContinue={noop} />,

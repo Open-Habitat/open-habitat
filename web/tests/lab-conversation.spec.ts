@@ -175,7 +175,46 @@ test("@lab browser renders provisional delta and tool from verified combined SSE
     }
   });
   await expect(page.getByText("Synteettinen live-teksti")).toBeVisible();
-  await expect(page.getByText("bash · running", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("bash · Käynnissä", { exact: true }),
+  ).toBeVisible();
+});
+
+test("@lab expired combined cursor resnapshots and reconnects without another send", async ({
+  page,
+}) => {
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "aurinkokello" })
+    .click();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
+  let snapshots = 0;
+  let streams = 0;
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/api/v1/snapshot") snapshots++;
+  });
+  await page.route("**/api/v1/events?after=*", async (route) => {
+    streams++;
+    if (streams <= 2)
+      await route.fulfill({
+        status: 409,
+        contentType: "application/json",
+        body: '{"code":"cursor_expired"}',
+      });
+    else await route.continue();
+  });
+  await page.reload();
+  await expect.poll(() => streams).toBeGreaterThan(2);
+  await expect.poll(() => snapshots).toBeGreaterThan(1);
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
 });
 
 test("@lab combined stream reconciles a forced gap without reposting", async ({

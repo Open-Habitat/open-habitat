@@ -63,7 +63,7 @@ describe("published conversation stream", () => {
     ).turn;
     expect(provisionalItems(turn).map((item) => item.text)).toEqual([
       "Hei maailma",
-      "bash · succeeded",
+      "bash · Valmis",
     ]);
     const settled = applyTurnEvent(
       turn,
@@ -113,7 +113,7 @@ describe("published conversation stream", () => {
     ).turn;
     expect(provisionalItems(turn).map((item) => item.text)).toEqual([
       "Tarkistan",
-      "bash · succeeded",
+      "bash · Valmis",
       "Valmis",
     ]);
     expect(

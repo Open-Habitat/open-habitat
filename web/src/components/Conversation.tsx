@@ -664,6 +664,7 @@ export function SupportedQuestion({
 export function Composer({
   value,
   availability = enabled,
+  editorAvailability,
   activity,
   selectedWorkingMode,
   sendState,
@@ -680,6 +681,7 @@ export function Composer({
 }: {
   value: string;
   availability?: Availability;
+  editorAvailability?: Availability;
   activity: "idle" | "working" | "settling";
   selectedWorkingMode: "steer" | "follow_up";
   sendState?: "idle" | "pending" | "rejected" | "uncertain";
@@ -706,7 +708,7 @@ export function Composer({
         label="Viesti Pi:lle"
         value={value}
         onChange={onChange}
-        availability={availability}
+        availability={editorAvailability ?? availability}
         hint="Enter lähettää. Shift+Enter tekee rivinvaihdon."
         onCommit={
           sendState === "pending" || availability.state !== "enabled"

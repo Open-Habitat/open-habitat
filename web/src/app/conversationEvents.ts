@@ -141,7 +141,16 @@ export function provisionalItems(turn: LiveTurn) {
         });
     } else if (event.kind.startsWith("tool.")) {
       const key = event.payload.tool_call_id as string;
-      const text = `${event.payload.tool_name} · ${event.payload.state}`;
+      const label =
+        (
+          {
+            running: "Käynnissä",
+            succeeded: "Valmis",
+            failed: "Epäonnistui",
+            cancelled: "Keskeytetty",
+          } as Record<string, string>
+        )[event.payload.state as string] ?? "Tila ei tiedossa";
+      const text = `${event.payload.tool_name} · ${label}`;
       const position = tools.get(key);
       if (position === undefined) {
         tools.set(key, items.length);

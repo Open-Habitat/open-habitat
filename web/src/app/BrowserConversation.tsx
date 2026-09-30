@@ -113,6 +113,7 @@ export function BrowserConversation({
   const [live, setLive] = useState<LiveTurn>();
   const [streamError, setStreamError] = useState(false);
   const streamFailures = useRef(0);
+  const probePending = useRef(false);
   const pendingNativeEntry = useRef<string | undefined>(undefined);
   const [startedAt, setStartedAt] = useState<number>();
   const [elapsed, setElapsed] = useState(0);
@@ -504,6 +505,8 @@ export function BrowserConversation({
                 (old) => old && { ...old, fragments: [], truncated: false },
               );
             } else if (
+              !pendingNativeEntry.current &&
+              !working &&
               old.length &&
               merged.some(
                 (e) =>
@@ -516,7 +519,7 @@ export function BrowserConversation({
                 (old) => old && { ...old, fragments: [], truncated: false },
               );
             }
-            if (!streamStatus) setStreamError(false);
+            if (!streamStatus && !probePending.current) setStreamError(false);
             if (reconciledContinuation) {
               sessionStorage.removeItem(continueKey);
               sessionStorage.setItem(
@@ -534,7 +537,11 @@ export function BrowserConversation({
           // Missing new history is normal before the first Pi write. A verified
           // status is enough to restore the existing idle-control gate.
           setHistoryError(nextStatus.native_history === "unavailable");
-          if (!streamStatus && nextStatus.native_history === "missing")
+          if (
+            !streamStatus &&
+            !probePending.current &&
+            nextStatus.native_history === "missing"
+          )
             setStreamError(false);
         }
       } catch {
@@ -561,6 +568,7 @@ export function BrowserConversation({
   );
   useEffect(() => {
     if (!id || !csrf || stale) return;
+    probePending.current = false; // this effect starts from App's freshly verified snapshot
     let removed = false;
     let source: EventSource | undefined;
     let retry: number | undefined;
@@ -577,11 +585,9 @@ export function BrowserConversation({
       }
       source?.close();
       source = undefined;
+      // Keep the verified editor mounted while the independent HTTP check
+      // decides when control is safe again.
       setStreamError(true);
-      setCurrent(undefined);
-      setProblem(
-        "Live-tapahtumien järjestys katkesi. Ohjaus odottaa tuoretta tilaa ja historiaa.",
-      );
       void refresh();
       onResnapshot();
     };
@@ -663,39 +669,63 @@ export function BrowserConversation({
         });
       }
       source.onerror = () => {
-        if (removed || opened) return; // finite clean close: native EventSource reconnects with Last-Event-ID
+        if (
+          removed ||
+          (opened && source?.readyState === EventSource.CONNECTING)
+        )
+          return; // finite close: native EventSource reconnects with Last-Event-ID
         source?.close();
         source = undefined;
+        probePending.current = true;
         setStreamError(true);
-        setCurrent(undefined);
-        setProblem(
-          "Live-yhteys katkesi. Ohjaus odottaa tuoretta tilaa ja historiaa.",
-        );
         void refresh();
-        // HTTP 409 is not exposed by EventSource. One verified snapshot
-        // re-establishes the cursor; repeated failures use bounded backoff.
-        if (++streamFailures.current === 1) onResnapshot();
-        retry = window.setTimeout(
-          () => {
-            retry = undefined;
-            connect();
-          },
-          Math.min(3000 * streamFailures.current, 30000),
-        );
+        // EventSource hides the HTTP status. Probe only a failed handshake:
+        // 409 needs a new cursor, but an unavailable optional stream must not
+        // remount the editor on every browser return. Cancel a successful
+        // probe body immediately; it is never used as a second event source.
+        void (async () => {
+          try {
+            const response = await fetch(
+              `/api/v1/events?after=${encodeURIComponent(turn.cursor)}`,
+              {
+                credentials: "same-origin",
+                cache: "no-store",
+                signal: AbortSignal.timeout(5000),
+              },
+            );
+            await response.body?.cancel();
+            if (removed) return;
+            if (
+              response.status === 409 ||
+              response.status === 401 ||
+              response.status === 403
+            ) {
+              onResnapshot();
+              return;
+            }
+          } catch {
+            /* Transport loss: HTTP status/history remain the fallback. */
+          }
+          if (removed) return;
+          probePending.current = false;
+          void refresh(); // only a fresh HTTP read can unblock writes
+          retry = window.setTimeout(
+            () => {
+              retry = undefined;
+              connect();
+            },
+            Math.min(3000 * ++streamFailures.current, 30000),
+          );
+        })();
       };
     };
     connect();
-    const focus = () => {
-      if (document.visibilityState === "visible" && !source && !retry) {
-        onResnapshot();
-      }
-    };
-    document.addEventListener("visibilitychange", focus);
+    // App owns tab-return identity verification and supplies a fresh snapshot;
+    // a second visibility refresh here would race focus/selection restoration.
     return () => {
       removed = true;
       source?.close();
       if (retry) window.clearTimeout(retry);
-      document.removeEventListener("visibilitychange", focus);
     };
   }, [
     id,
@@ -842,7 +872,7 @@ export function BrowserConversation({
     }
   };
   const start = async () => {
-    if (stale || busy || !csrf || ambiguous) return;
+    if (stale || streamError || busy || !csrf || ambiguous) return;
     setBusy(true);
     setReceipt("Varmistetaan istuntoa.");
     try {
@@ -899,6 +929,7 @@ export function BrowserConversation({
   const continueEnded = async () => {
     if (
       stale ||
+      streamError ||
       busy ||
       !csrf ||
       !id ||
@@ -953,6 +984,7 @@ export function BrowserConversation({
   const submit = async () => {
     if (
       stale ||
+      streamError ||
       busy ||
       !current ||
       (current.state !== "idle" && current.state !== "rejected") ||
@@ -990,6 +1022,7 @@ export function BrowserConversation({
   const submitQueue = async (kind: "steer" | "follow_up") => {
     if (
       stale ||
+      streamError ||
       busy ||
       !current ||
       current.state !== "accepted" ||
@@ -1032,6 +1065,7 @@ export function BrowserConversation({
   const clearNativeQueue = async () => {
     if (
       stale ||
+      streamError ||
       busy ||
       !current ||
       !csrf ||
@@ -1078,7 +1112,7 @@ export function BrowserConversation({
     }
   };
   const stopNow = async () => {
-    if (stale || busy || !current || !csrf) return;
+    if (stale || streamError || busy || !current || !csrf) return;
     setBusy(true);
     setReceipt("Varmistetaan istuntoa.");
     let sent = false;
@@ -1126,12 +1160,12 @@ export function BrowserConversation({
   const controlled =
     !!current &&
     !problem &&
-    !streamError &&
     sessions.some(
       (s) => s.agent_id === id && s.workspace_id === workspace.workspace_id,
     );
   const canSend =
     controlled &&
+    !streamError &&
     !stale &&
     !busy &&
     !ambiguous &&
@@ -1422,7 +1456,7 @@ export function BrowserConversation({
           {controlled && (continuation || current?.state === "uncertain") ? (
             <EndedConversationControl
               state={
-                stale
+                stale || streamError
                   ? "control_uncertain"
                   : (continuation ??
                     (current?.continuation === "eligible"
@@ -1436,6 +1470,7 @@ export function BrowserConversation({
               onContinue={() => void continueEnded()}
               retryAvailable={
                 !stale &&
+                !streamError &&
                 retryContinuation &&
                 current?.continuation === "eligible"
               }
@@ -1450,6 +1485,9 @@ export function BrowserConversation({
               queueKnown={!!current?.queue}
               queueOpen={queueOpen}
               sendState={busy ? "pending" : ambiguous ? "uncertain" : "idle"}
+              editorAvailability={
+                streamError && !stale ? { state: "enabled" } : undefined
+              }
               availability={
                 canSend
                   ? { state: "enabled" }
@@ -1465,7 +1503,7 @@ export function BrowserConversation({
               onModeChange={setWorkingMode}
               onOpenQueue={() => setQueueOpen(!queueOpen)}
               onInterrupt={
-                current?.state === "accepted" && !stale
+                current?.state === "accepted" && !stale && !streamError
                   ? () => setConfirmStop(true)
                   : undefined
               }
@@ -1500,6 +1538,7 @@ export function BrowserConversation({
               state={stale ? "stale" : current?.queue ? "ready" : "error"}
               clearAvailability={
                 !stale &&
+                !streamError &&
                 !busy &&
                 !ambiguous &&
                 current?.queue &&
