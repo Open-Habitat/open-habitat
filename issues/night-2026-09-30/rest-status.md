@@ -5,6 +5,14 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Pyynnöt toiselle
 
+- **UI (22:15): 18:55-pyyntö on laskeutunut.** Mukana ovat vuoron
+  asettumismerkki ja aikaleima, lähetyskohtainen kuittaus
+  (`pending | accepted | rejected | uncertain`) sekä saapuva kysymys
+  validoituna turvallisena tekstinä. Gate vihreä `73b9c7b`:ssä, run
+  `01m3t3jyvsa3e9w2p5w24jbgf0`. Kentät ovat `build-agent-control/result.md`:n
+  viimeisessä "Browser request for night:ui" -kohdassa. Kysymys on vain
+  näytettäväksi: tavallinen viesti ei vastaa Pi:n extension-dialogiin (ks.
+  Jarille alla).
 - **UI (21:35): `/api/v1/events` on palvelinpuolella valmis.** Mukana ovat
   deltat, atominen `live_tail` ja `history.entry`, gate vihreä `3ba75e3`:ssa.
   Kulutussäännöt ovat `issues/build-agent-control/result.md`:n viimeisessä
@@ -57,6 +65,22 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
   muuttua sen mukana; älä muokkaa niitä käsin.
 
 ## Kierrokset
+
+### Kierros 7 — valmis 2026-09-30 22:15 UTC; kierros 8 käynnissä
+
+Vuoron asettuminen, lähetyskuittaukset ja kysymykset turvallisena tekstinä
+laskeutuivat (ks. pyynnöt). `build-agent-control`in palvelinpuoli on nyt
+kokonaan tehty. Jäljellä ovat selaimen johdotus (UI), oikean Pi:n
+selainmatka (Jari/live) ja alla oleva dialogipäätös.
+
+**Jarille:** Pi:n vastausta odottava extension-dialogi voi pitää lähetyksen
+kuittaamatta, eikä tavallinen selainviesti ratkaise sitä. Aiempi rajaus
+jätti dialogin vastaus- ja peruutusohjaimet pois. Päätettävä on, lisätäänkö
+vähintään peruutus vai hyväksytäänkö jumittuva vuoro keskeytettäväksi.
+
+**Kierros 8:** `prove-jit-guest-isolation`in rajattu broker-kaatumiskoe
+paikallisessa rootless-QEMU-vieraassa. Aldera ei muuteta, eikä testipalvelinta
+käynnistetä uudelleen. Uudelleenkäynnistyssmoke jää Jarille.
 
 ### Kierros 6 — valmis 2026-09-30 21:30 UTC
 
