@@ -108,9 +108,10 @@ func (a *Auth) forwardEvents(w http.ResponseWriter, r *http.Request, conn net.Co
 		if err != nil || seq != previous+1 {
 			return
 		}
-		if !scanner.Scan() || scanner.Text() != "event: snapshot.invalidated" {
+		if !scanner.Scan() || !strings.HasPrefix(scanner.Text(), "event: ") {
 			return
 		}
+		kind := strings.TrimPrefix(scanner.Text(), "event: ")
 		if !scanner.Scan() || !strings.HasPrefix(scanner.Text(), "data: ") {
 			return
 		}
@@ -127,13 +128,11 @@ func (a *Auth) forwardEvents(w http.ResponseWriter, r *http.Request, conn net.Co
 			EventID          string            `json:"event_id"`
 			Kind             string            `json:"kind"`
 			Resource         map[string]string `json:"resource"`
-			Payload          struct {
-				Reason string `json:"reason"`
-			} `json:"payload"`
+			Payload          json.RawMessage   `json:"payload"`
 		}
 		decoder := json.NewDecoder(bytes.NewReader([]byte(body)))
 		decoder.DisallowUnknownFields()
-		if decoder.Decode(&event) != nil || decoder.Decode(new(any)) != io.EOF || event.SchemaVersion != 1 || event.Cursor != id || event.ServerInstanceID != parts[1] || event.Sequence != seq || !regexp.MustCompile(`^evt_[A-Za-z0-9_-]{8,80}$`).MatchString(event.EventID) || !validEventTime(event.EmittedAt) || event.Kind != "snapshot.invalidated" || event.Payload.Reason != "source_changed" || !validEventResource(event.Resource) {
+		if decoder.Decode(&event) != nil || decoder.Decode(new(any)) != io.EOF || event.SchemaVersion != 1 || event.Cursor != id || event.ServerInstanceID != parts[1] || event.Sequence != seq || !regexp.MustCompile(`^evt_[A-Za-z0-9_-]{8,80}$`).MatchString(event.EventID) || !validEventTime(event.EmittedAt) || event.Kind != kind || !validCombinedPayload(kind, event.Resource, event.Payload) {
 			return
 		}
 		if !scanner.Scan() || scanner.Text() != "" {
@@ -143,7 +142,7 @@ func (a *Auth) forwardEvents(w http.ResponseWriter, r *http.Request, conn net.Co
 		if !valid || latest.identity != initial.identity || latest.csrf != initial.csrf || latest.epoch != initial.epoch || latest.generation != initial.generation {
 			return
 		}
-		if _, err := io.WriteString(w, "id: "+id+"\nevent: snapshot.invalidated\ndata: "+body+"\n\n"); err != nil {
+		if _, err := io.WriteString(w, "id: "+id+"\nevent: "+kind+"\ndata: "+body+"\n\n"); err != nil {
 			return
 		}
 		flusher.Flush()
@@ -151,6 +150,45 @@ func (a *Auth) forwardEvents(w http.ResponseWriter, r *http.Request, conn net.Co
 	}
 }
 
+// This allowlist prevents a compromised daemon response from forwarding
+// arbitrary event types or extra fields into another user's browser.
+func validCombinedPayload(kind string, resource map[string]string, raw json.RawMessage) bool {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(raw, &fields) != nil || fields == nil {
+		return false
+	}
+	allowed := map[string][]string{
+		"snapshot.invalidated": {"reason"},
+		"queue.changed":        {"revision", "steering", "follow_up"},
+	}
+	keys, ok := allowed[kind]
+	if !ok || len(fields) != len(keys) {
+		return false
+	}
+	for _, k := range keys {
+		if _, ok := fields[k]; !ok {
+			return false
+		}
+	}
+	if kind == "snapshot.invalidated" {
+		var reason string
+		return json.Unmarshal(fields["reason"], &reason) == nil && (reason == "source_changed" || reason == "ring_truncated")
+	}
+	if resource["agent_id"] == "" {
+		return false
+	}
+	var revision string
+	var steering, follow []string
+	if json.Unmarshal(fields["revision"], &revision) != nil || len(revision) < 8 || len(revision) > 200 || json.Unmarshal(fields["steering"], &steering) != nil || steering == nil || json.Unmarshal(fields["follow_up"], &follow) != nil || follow == nil || len(steering)+len(follow) > 128 {
+		return false
+	}
+	for _, text := range append(steering, follow...) {
+		if len(text) > 65536 {
+			return false
+		}
+	}
+	return true
+}
 func validEventTime(v string) bool { _, err := time.Parse(time.RFC3339Nano, v); return err == nil }
 func validEventResource(m map[string]string) bool {
 	if len(m) != 1 {

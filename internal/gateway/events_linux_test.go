@@ -16,6 +16,17 @@ import (
 	"time"
 )
 
+func TestCombinedPayloadAllowlist(t *testing.T) {
+	agent := map[string]string{"agent_id":"pi:12345678-1234-1234-1234-123456789012"}
+	for _, tc := range []struct{ kind, body string; want bool }{
+		{"queue.changed", `{"revision":"queue_00000001","steering":["hello"],"follow_up":[]}`, true},
+		{"queue.changed", `{"revision":"queue_00000001","steering":["hello"],"follow_up":[],"secret":"x"}`, false},
+		{"assistant.delta", `{"text":"x"}`, false},
+	} {
+		if got := validCombinedPayload(tc.kind, agent, []byte(tc.body)); got != tc.want { t.Errorf("%s: got %v", tc.kind, got) }
+	}
+}
+
 func TestEventsGatewayReplaysAndRejectsForeignFrames(t *testing.T) {
 	now := time.Now()
 	uid := os.Getuid()

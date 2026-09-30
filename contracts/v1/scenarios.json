@@ -591,5 +591,23 @@
       "status returns only missing, usable or unknown and no credential bytes",
       "a different identity or an unavailable daemon never exposes native names"
     ]
+  },
+  {
+    "id": "CT-036",
+    "covers": [
+      "daemon-owned Pi queue.changed replay",
+      "bounded event window"
+    ],
+    "given": [
+      "a browser-owned Pi session emits a valid queue_update frame"
+    ],
+    "when": [
+      "daemon receives the frame while events are being replayed"
+    ],
+    "then": [
+      "a queue.changed frame has the Pi agent resource, revision and steering/follow_up arrays",
+      "the event cursor follows earlier frames and reconnect replays exactly the retained frame",
+      "an expired cursor requires a new snapshot; queue event alone is not a command receipt"
+    ]
   }
 ]

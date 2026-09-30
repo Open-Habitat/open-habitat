@@ -255,9 +255,14 @@ Toteutettu välivaihe käyttää muistissa 128 tapahtuman / 1 MiB:n toistoikkuna
 käyttäjän daemonissa. Pi:n nopeat välitulokset yhdistyvät enintään noin 250 ms:n
 mittaiseen trailing-ilmoitukseen; jokainen viimeinenkin muutos saa ilmoituksen.
 Muutos ilmoitetaan `snapshot.invalidated`-eventillä:
-selain hakee sen jälkeen uuden snapshotin ja tarvittaessa natiivihistorian;
-rakenteiset `history.entry`-, delta-, queue- ja workspace-eventit eivät vielä
-synny tästä reitistä. Snapshotin watermark otetaan ennen natiivilukua, joten
+selain hakee sen jälkeen uuden snapshotin ja tarvittaessa natiivihistorian.
+Daemonin omistaman Pi:n hyväksytty `queue_update` julkaistaan lisäksi
+`queue.changed`-eventtinä samassa järjestyksessä kuin RPC-kehys vastaanotetaan.
+Se on hetkellinen jonohavainto, ei kuittaus yksittäisen komennon hyväksynnästä.
+Yleinen snapshot lukee yhä vain natiivihistoriaa eikä sen queue-revision vastaa
+tämän ohjaimen jonoa: uusi snapshot syrjäyttää jonoeventin, eikä vielä
+toteuta kesken vuoron jatkamisen takuuta. `history.entry`-, delta- ja
+workspace-eventit eivät vielä synny tästä reitistä. Snapshotin watermark otetaan ennen natiivilukua, joten
 sen aikana syntyneen muutoksen invalidointi voidaan myös toistaa. Nykyisen
 kuvan ja streamin päällekkäisyys ei todista atomista näkymää samaan kellonhetkeen.
 Yhteys kestää enintään 20 sekuntia, daemonin kirjoitusaika enintään 24 ja

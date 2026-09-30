@@ -477,3 +477,34 @@ Focused Go race tests and the full clean gate receipts follow in the closing add
 Review level: independent **critical** final-diff review of first committed candidate `3acf394` by Claude Fable 5.1, with GPT-6 Astra adversarial verification of two source-confirmed findings. Both found realistic load/cursor failures in the first candidate: one fresh Node onboarding probe *twice per replayed frame*, and one invalidation for *every* Pi RPC delta. The first is corrected with admission and bounded two-second native checks even under continuous replay; the second coalesces deltas into a guaranteed trailing user-scoped invalidation every 250 ms while retaining every RPC event in the native controller. A synthetic gateway test now checks consecutive replay and rejection of an unknown event field. See local scratch `history/review-agent-events-replay.md` and assessment. No residual review finding passed the intake filing bar. The review did **not** prove normal-world latency, full structured events or browser use of this stream.
 
 Final committed runtime/contracts candidate `cf8601a` passed the requested clean gate (`TMPDIR=/var/tmp PATH=/home/maintainer/Sources/native-agent-host/.tools/go/bin:/home/maintainer/Sources/native-agent-host/.tools/node/bin:$PATH NAH_PORT_BASE=18600 PLAYWRIGHT_BROWSERS_PATH=/home/maintainer/Sources/native-agent-host/.cache/ms-playwright ./scripts/ci-local.sh --clean --json`), `status:passed`, `clean:true`, log `/var/tmp/nah-events-final-clean-gate.log`. `go test -race ./internal/daemon ./internal/gateway -count=1` passed after review correction. `TMPDIR=/var/tmp ./scripts/test-real-pi-controller.sh` passed on the final runtime code (`/var/tmp/nah-events-final-real-pi.log`), covering the previous distinct-UID native controller story but **not** `/api/v1/events`; event relay/replay was checked with synthetic Go tests. `python3 issues/define-host-contracts/validate_contracts.py` passed with the new invalidation example, so the gate validates that event shape. `/assess-findings --apply` recorded two confirmed findings, both already corrected before application, with zero unapplied clean fixes (`history/assessment-agent-events-replay.{json,md}`). The final gate is repeated on this receipt-only commit below; this paragraph changes no executable code, schemas, examples or packaged input.
+
+## Queue event partial slice (taskfleet 01m3svy0w0qr4ttyfxp1yq30wb)
+
+This is **not** the requested structured live response or mid-turn recovery.
+The shared bounded user-UID journal now accepts typed events; validated Pi
+`queue_update` observations emit `queue.changed` frames in RPC receive order,
+with daemon sequence and event ID. The gateway forwards only validated
+invalidation and queue payloads, after its existing per-frame session/broker
+checks. It rejects other kinds rather than forwarding unvalidated native data.
+The existing provisional status stream and HTTP history/status remain available.
+Queue events are not command receipts; an RPC overflow or dropped SSE replay
+requires a fresh status/history read. The generic snapshot still has a native
+read-only agent fact, not the controller's queue or live tail. No `history.entry`,
+assistant/tool deltas, turn, command outcomes, or atomic mid-turn handoff have
+been implemented here. External native changes remain invalidations. The
+browser cannot yet render a live response from this endpoint alone.
+
+**Browser request for night:ui:** Keep the provisional status and HTTP history
+fallback. Treat `queue.changed` as a transient observation, not proof that
+steering/follow-up was accepted or removed. On an expired cursor or an
+invalidation, resnapshot and read the relevant native history/status; do not
+resend an uncertain command. Do not implement delta/tail reconciliation based
+on this slice: the snapshot does not carry a controller-owned live tail yet.
+
+The distinct-UID rootless pinned Pi 0.85.1 fixture with a synthetic provider
+passed after extending it to read a structured invalidation event over the
+real gateway and replay exactly that frame with `Last-Event-ID` for both users.
+It does not produce a queue event in this path, or establish browser rendering,
+real-provider use, a live host, or cross-UID queue payload delivery. Focused
+race tests of the changed journal and gateway pass; full gate and independent
+review receipts are recorded below. Leave the issue **in-progress**.

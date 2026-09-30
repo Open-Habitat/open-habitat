@@ -272,6 +272,7 @@ try:
             print('status diagnostic',name,round(time.monotonic()-start_status,2),direct.returncode,direct.stdout[-100:],direct.stderr[:180],file=sys.stderr)
         check(status==200,'snapshot '+str(status)+' '+snap[:120].decode(errors='replace'))
         check(f'{name}-ordinary'.encode() in snap and f'{NAMES[1-index]}-ordinary'.encode() not in snap,'snapshot identity')
+        starting_cursor=json.loads(snap)['event_cursor']
         ws=json.loads(snap)['workspaces'][0]['workspace_id']
         check(request(op,'/api/v1/conversations',{'workspace_id':ws},'wrong')[0]==403,'CSRF')
         status,_,data=request(op,'/api/v1/conversations',{'workspace_id':ws},csrf)
@@ -305,6 +306,23 @@ try:
         except RuntimeError:
             print('settlement diagnostic',name,{k:last.get(k) for k in ('state','ack','command_id','native_history')},'provider calls',len(Model.calls),file=sys.stderr)
             raise
+        # Read the bounded combined stream through the real gateway, then
+        # reconnect with the delivered cursor. This fixture currently proves
+        # invalidation replay; queue_update is covered by Go tests.
+        events_url=ORIGIN+'/api/v1/events?after='+urllib.parse.quote(starting_cursor)
+        with op.open(events_url,timeout=27) as stream:
+            check(stream.status==200,'events admission')
+            event_id=stream.readline().decode().strip()
+            check(event_id.startswith('id: ev1:'),'event cursor')
+            kind=stream.readline().decode().strip()
+            body=stream.readline().decode().strip()
+            check(kind=='event: snapshot.invalidated' and body.startswith('data: '),'structured event frame')
+            event=json.loads(body[6:]); check(event['cursor']==event_id[4:] and event['kind']=='snapshot.invalidated','event data')
+        resume=urllib.request.Request(events_url,headers={'Last-Event-ID':starting_cursor})
+        with op.open(resume,timeout=27) as stream:
+            check(stream.readline().decode().strip()==event_id,'reconnect replays exact cursor')
+            check(stream.readline().decode().strip()==kind,'reconnect replays kind')
+            check(stream.readline().decode().strip()==body,'reconnect replays exact payload')
         code,_,data=request(op,route+'/send',{'message':msg,'command_id':command},csrf)
         check(code==409,'no duplicate dispatch')
         code,_,body=request(op,route+'/status');view=json.loads(body)

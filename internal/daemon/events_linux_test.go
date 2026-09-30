@@ -51,6 +51,16 @@ func TestEventJournalReplayAndErrors(t *testing.T) {
 	}
 }
 
+func TestEventJournalMixedReplayAndByteBound(t *testing.T) {
+	j := newEventJournal()
+	zero, _ := j.watermark()
+	j.appendEvent("queue.changed", "pi:12345678-1234-1234-1234-123456789012", map[string]any{"revision":"queue_00000001", "steering":[]string{"next"}, "follow_up":[]string{}})
+	j.appendInvalidation("")
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if j.seq != 2 || len(j.frames) != 2 || j.bytes > eventWindowBytes || !strings.Contains(string(j.frames[0]), `"queue.changed"`) || !strings.Contains(string(j.frames[1]), `"snapshot.invalidated"`) || zero != j.cursor(0) { t.Fatal("mixed stream lost ordering") }
+}
+
 func TestEventJournalNativeBurstHasTrailingInvalidation(t *testing.T) {
 	j := newEventJournal()
 	before, _ := j.watermark()

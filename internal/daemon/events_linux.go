@@ -14,8 +14,8 @@ import (
 	"time"
 )
 
-// eventJournal belongs to one mapped UID and one daemon lifetime. It does not
-// duplicate native history: changes signal that the client must read it again.
+// eventJournal belongs to one mapped UID and one daemon lifetime. Frames are
+// transient presentation hints; native Pi history remains authoritative.
 const eventWindowCount = 128
 const eventWindowBytes = 1 << 20
 
@@ -67,13 +67,38 @@ func (j *eventJournal) appendInvalidation(agent string) {
 	if j.instance == "" {
 		return
 	}
-	j.seq++
-	id, _ := uuid()
+	j.appendLocked("snapshot.invalidated", agent, map[string]string{"reason": "source_changed"})
+}
+
+// appendEvent serializes publication with cursor allocation. Oversized native
+// content is never partially presented as if complete: invalidate instead.
+func (j *eventJournal) appendEvent(kind, agent string, payload any) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if j.instance == "" {
+		return
+	}
+	j.appendLocked(kind, agent, payload)
+}
+func (j *eventJournal) appendLocked(kind, agent string, payload any) {
+	id, ok := uuid()
+	if !ok {
+		return
+	}
 	resource := map[string]string{"scope": "user"}
 	if agent != "" {
 		resource = map[string]string{"agent_id": agent}
 	}
-	b, _ := json.Marshal(map[string]any{"schema_version": 1, "event_id": "evt_" + strings.ReplaceAll(id, "-", ""), "cursor": j.cursor(j.seq), "server_instance_id": j.instance, "sequence": j.seq, "emitted_at": time.Now().UTC().Format(time.RFC3339Nano), "kind": "snapshot.invalidated", "resource": resource, "payload": map[string]string{"reason": "source_changed"}})
+	b, err := json.Marshal(map[string]any{"schema_version": 1, "event_id": "evt_" + strings.ReplaceAll(id, "-", ""), "cursor": j.cursor(j.seq + 1), "server_instance_id": j.instance, "sequence": j.seq + 1, "emitted_at": time.Now().UTC().Format(time.RFC3339Nano), "kind": kind, "resource": resource, "payload": payload})
+	if err != nil {
+		return
+	}
+	if len(b) > eventWindowBytes {
+		// A bounded invalidation still tells clients to reload native sources.
+		kind = "snapshot.invalidated"
+		b, _ = json.Marshal(map[string]any{"schema_version": 1, "event_id": "evt_" + strings.ReplaceAll(id, "-", ""), "cursor": j.cursor(j.seq + 1), "server_instance_id": j.instance, "sequence": j.seq + 1, "emitted_at": time.Now().UTC().Format(time.RFC3339Nano), "kind": kind, "resource": resource, "payload": map[string]string{"reason": "ring_truncated"}})
+	}
+	j.seq++
 	j.frames = append(j.frames, b)
 	j.bytes += len(b)
 	for len(j.frames) > eventWindowCount || j.bytes > eventWindowBytes {
@@ -187,9 +212,10 @@ func (j *eventJournal) stream(w http.ResponseWriter, r *http.Request, valid, nat
 			}
 			var event struct {
 				Cursor string `json:"cursor"`
+				Kind   string `json:"kind"`
 			}
 			_ = json.Unmarshal(b, &event)
-			if _, err := io.WriteString(w, "id: "+event.Cursor+"\nevent: snapshot.invalidated\ndata: "+string(b)+"\n\n"); err != nil {
+			if _, err := io.WriteString(w, "id: "+event.Cursor+"\nevent: "+event.Kind+"\ndata: "+string(b)+"\n\n"); err != nil {
 				return
 			}
 			flusher.Flush()

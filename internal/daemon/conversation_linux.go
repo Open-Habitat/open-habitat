@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -526,6 +527,9 @@ func (c *ConversationController) drain(s *conversation) {
 				if valid {
 					s.queueSteering, s.queueFollowUp = q.Steering, q.FollowUp
 					s.queueRevision++
+					if c.journal != nil {
+						c.journal.appendEvent("queue.changed", "pi:"+s.id, map[string]any{"revision": fmt.Sprintf("queue_%08d", s.queueRevision), "steering": q.Steering, "follow_up": q.FollowUp})
+					}
 				} else {
 					s.rpc.overflow.Store(true)
 				}
