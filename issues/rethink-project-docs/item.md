@@ -36,7 +36,8 @@ ehdokas ajan tasalla, ei rakenneta erillistä katselmointiprosessia.
 | [ADR 0004: ensikirjautumisen tilinluonti](../../docs/adr-0004-first-login-user-provisioning.md) | Brokerin tilinluonti ja sidonta, gatewayn todennus ja daemonin natiivit tunnukset. Nykyinen keskeytyspolitiikka ilman vanhan palautusvaatimuksen historiaa; toteutusmekanismit ja näyttö linkitetty omiin lähteisiinsä. | `992d27d` |
 | [ADR 0001: natiivi Unix-arkkitehtuuri](../../docs/adr-0001-unix-native-agent-host.md) | Natiivien tietojen omistajuus ja Unix-eristys perusteluineen; myöhemmät tilinluonti-, jatkamis- ja selainrajaukset linkitetty. | Tämän läpikäynnin commit (`Refs-Issue` Gitissä). |
 | [Päätökset](../../docs/decisions.md) | Hyväksytyt ratkaisut lähteineen sekä käyttäjän poistamisen ja lokituksen avoimet ehdotukset. Toteutustilanne ja protokolladetaljit omiin lähteisiinsä. Jari hyväksyi läpikäynnin. | `80f8107` |
-| [Toteutuksen työnjako](../../docs/implementation.md) | Toimintojen yhteinen perusta ja riippuvuudet, työn omistajat sekä todentamisen ja asennuksen vastuut. Jarin lukukierros odottaa. | Tämän läpikäynnin commit (`Refs-Issue` Gitissä). |
+| [Toteutuksen työnjako](../../docs/implementation.md) | Toimintojen yhteinen perusta ja riippuvuudet, työn omistajat sekä todentamisen ja asennuksen vastuut. Jari siirtyi seuraavaan dokumenttiin. | `ab4f8ea` |
+| [Etusivu](../../docs/index.md) | Lukupolku tavoitteesta arkkitehtuuriin ja toteutukseen; sivukuvaukset ajan tasalle ja vanha julkaisueste pois. | Tämän läpikäynnin commit (`Refs-Issue` Gitissä). |
 
 Samalla on tehty kohdennettuja korjauksia
 CLI-konformanssiin ja liittyviin issueihin. Näitä ei ole vielä kokonaisuudessaan
@@ -53,9 +54,11 @@ onboardingin ja paluun OpenAI-vaiheeseen; testien nopeutus kattaa sekä testien
 nopeuttamisen että tarpeellisten testien valinnan muutoksen perusteella.
 Näiden kuvausten käsittely on valmis. Toteutusissueiden tilaa tai DAGia ei muutettu.
 
-Jari hyväksyi päätössivun läpikäynnin ja valitsi seuraavaksi toteutuksen
-työnjaon (`docs/implementation.md`). Se käsiteltiin 2026-09-30; seuraava askel
-on Jarin lukukierros. Seuraavaa dokumenttikohdetta ei ole vielä sovittu.
+Päätössivu, toteutuksen työnjako ja etusivu on käsitelty 2026-09-30.
+Jari pyysi viimeksi etusivun korjauksen. Seuraavaksi ehdotettiin tilannesivua
+(`docs/status.md`), mutta sen käsittelyä ei ole vielä sovittu. Sivun nykyinen
+tilannekuva on 24.9. ja tarvitsee lähteisiin perustuvan ajantasaistuksen, myös
+vanhan Glasspad-esteen ja lopullisen MVP-katselmoinnin osalta.
 
 ADR 0002:ssa on edelleen vaatimus jokaisen UI-osan hyväksynnästä ennen
 riippuvien töiden jatkamista. Se on ristiriidassa nykyisen AGENTS-WORKFLOW.md:n
@@ -393,3 +396,17 @@ vastaavat nyt työnjakosivun tehtävää.
 Dokumentaatiovalidaattori ja `git diff --check` läpäisivät. Täyttä CI-porttia
 ei ajettu dokumenttimuutokselle. Toteutusta tai päätettyä toiminnallista
 laajuutta ei muutettu; dokumentaatiota ei julkaistu.
+
+## Etusivun läpikäynti 2026-09-30
+
+Jari hyväksyi etusivun lukupolkujen ja vanhentuneen julkaisuesteen korjauksen.
+Lähtörevisio oli `ab4f8ea`. Nykyiset tuote-, päätös- ja työnjakosivut sekä
+navigaatio määräävät kuvaukset. Tavoite erotetaan valmiista toteutuksesta;
+tilannesivuun viitataan päivättynä kuvauksena, koska se kuvaa yhä 24.9. tilaa.
+Vanha julkaisueste poistettiin docs/AGENTS.md:n tiedon perusteella. Etusivu ei
+lupaa terminaalikeskustelujen selainohjausta. Julkaisun ylläpitotieto säilyy
+AGENTS.md:ssä, jonka viittaus nyt korjattuun etusivuun päivitettiin samalla.
+
+Dokumentaatiovalidaattori ja `git diff --check` läpäisivät. Täyttä CI-porttia
+ei ajettu dokumenttimuutokselle. Glasspad-julkaisua ei tehty eikä kokeiltu;
+tuotteen toimintaa tai päätöksiä ei muutettu.

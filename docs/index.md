@@ -1,35 +1,38 @@
 # Native Agent Host
 
-Native Agent Host tuo selaimen käyttöliittymäksi Linux-palvelimen workspaceihin
-ja natiiveihin AI-agentteihin. Käyttäjä säilyttää omat tiedostonsa, tunnuksensa ja
-työkalunsa; samoja töitä voi jatkaa SSH:n, tmuxin ja selaimen kautta.
+Native Agent Host tuo selaimen käyttöliittymäksi Linux-palvelimen työtiloihin
+ja natiiveihin AI-agentteihin. Jokainen käyttäjä työskentelee omalla
+Unix-tunnuksellaan. Tiedostot, tunnukset ja keskusteluhistoriat pysyvät
+natiivien työkalujen hallussa, ja SSH- ja tmux-käyttö säilyvät selaimen rinnalla.
 
-Aloita [tavoitteesta ja MVP:stä](product.md) ja
-[katso tämänhetkinen tilanne](status.md).
+## Aloita tästä
 
-## Tavoite ja eteneminen
+[Tavoite ja toiminnot](product.md) kertoo, mitä käyttäjän on tarkoitus saada
+aikaan. [Käyttökulut](ui.md) kuvaa keskustelun, navigoinnin ja toiminnan
+katkoissa. Sivut kuvaavat sovittua tavoitetta, jonka toteutus on vielä kesken.
 
-- [Tavoite ja MVP](product.md): mitä ensimmäisellä järjestelmällä voi tehdä.
-- [Toteutuksen työnjako](implementation.md): miten toiminnot rakentuvat yhteisen perustan varaan.
-- [Tilanne](status.md): mitä on tehty ja mikä tarvitsee seuraavaksi huomiota.
+[Arkkitehtuuri](architecture.md) selittää järjestelmän osat ja vastuut.
+[Päätökset](decisions.md) kokoaa hyväksytyt ratkaisut perusteluineen sekä
+avoimet ehdotukset. [Toteutuksen työnjako](implementation.md) näyttää,
+miten toiminnot rakentuvat yhteisen perustan varaan ja mistä niiden työt löytyvät.
 
-## Järjestelmä ja päätökset
+[Tilanne](status.md) on päivätty kuvaus toteutuksesta ja sen näytöstä.
+Tarkista sivun päivämäärä ja lähderevisio: sen jälkeen tehty työ näkyy
+vastuullisissa issueissa.
 
-- [Arkkitehtuuri](architecture.md): sovittu Unix-natiivi perusta.
-- [Kriittiset oletukset](assumptions.md): mitä pitää vielä todentaa.
-- [Päätökset](decisions.md): hyväksytyt ratkaisut ja seuraavat päätöstehtävät.
+## Tarkemmat kuvaukset
+
+- [Rajapinnat](interfaces.md): nykyiset reitit, sovittu tuleva käyttäytyminen ja tietojen omistajuus.
 - [Daemonien sidonnat](daemon-bindings.md): käyttäjäkohtaiset asetukset ja niiden hakemistopolun suojaus.
-- [Pi-runtime](pi-runtime.md): rootin asentaman Node/Pi-julkaisun daemon-kohtainen sidonta.
-- [Rajapinnat](interfaces.md): komponenttien vastuut ja tarkennettava käyttäytyminen.
-- [Lokituksen ehdotus](logging.md): turvalliset diagnostiikkajäljet ja Jarin päätettävät rajat.
-- [Tutkimukset](evidence.md): aiempi näyttö ja sen rajoitukset.
+- [Pi-runtime](pi-runtime.md): rootin asentaman Node/Pi-julkaisun valinta käyttäjädaemonille.
+- [Design system](design-system.md): yhteinen ulkoasu ja tuotantokomponentit.
+- [Lokituksen ehdotus](logging.md): diagnostiikan ehdotettu käytäntö ja avoimet valinnat.
 
-## Käyttöliittymä
+## Näyttö ja avoimet kysymykset
 
-- [Käyttökulut](ui.md): keskustelu, navigointi ja toiminta katkoissa.
-- [Design system](design-system.md): yhteinen perusta ja polku oikeisiin komponentteihin.
-
-Tarkemmat suunnitelmat, kokeet ja toteutustehtävät löytyvät sivujen linkittämistä
-issueista. Osa tutkimuslinkeistä osoittaa yksityiseen GitHub-repoon ja vaatii
-pääsyoikeuden. Tämä on repon dokumentaatio; Glasspad tarjoaa sille selainkatselun,
-kun sen nykyinen agenttiohjetiedostojen käsittelyrajoitus on korjattu.
+[Todennettava näyttö](assumptions.md) kertoo, mitä ratkaisuista pitää vielä
+osoittaa ja mitä kokeet ovat jo selvittäneet.
+[Tutkimukset](evidence.md) johtaa aikaisempiin kokeisiin ja niiden rajoituksiin.
+Tarkemmat suunnitelmat, toteutustehtävät ja tulokset löytyvät sivujen
+linkittämistä issueista. Osa tutkimuslinkeistä vaatii pääsyn yksityiseen
+GitHub-repoon.

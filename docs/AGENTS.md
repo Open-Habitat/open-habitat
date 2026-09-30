@@ -92,7 +92,7 @@ Publishing is a separate act from landing on `main`, run as
 result is a shareable link, and the pages link into issue directories that a
 reader of the link may not be able to open. Glasspad has ignored top-level
 `AGENTS.md` and the `CLAUDE.md` symlink since 0.17.5, so the earlier blocker is
-gone; the documentation has still never been published, and `index.md` and
-`status.md` still say the blocker exists. Keep the instruction files where they
+gone; the documentation has still never been published. The dated `status.md`
+snapshot still describes the old blocker and needs reconciliation in its review. Keep the instruction files where they
 are rather than building a second tree for the viewer, and never describe a
 publication that did not happen.
