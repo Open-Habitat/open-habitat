@@ -7,7 +7,7 @@ status: open
 priority: high
 related: ['@review-browser-design-v2', '@compare-v2-pairs']
 lane: design-v2
-lane_seq: 10
+lane_seq: 11
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
 blocked_by: ['@fit-return-view-v2']
 ---

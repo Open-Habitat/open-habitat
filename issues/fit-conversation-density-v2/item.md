@@ -7,9 +7,9 @@ status: open
 priority: high
 related: ['@review-browser-design-v2', '@compare-v2-pairs']
 lane: design-v2
-lane_seq: 8
+lane_seq: 9
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
-blocked_by: ['@stream-conversation-events']
+blocked_by: ['@stream-conversation-events', '@show-turn-receipts']
 ---
 
 # Fit conversation header and composer density to v2
