@@ -535,3 +535,6 @@ read-only and cannot reconcile either revision. Review and assessment scratch:
 `history/assessment-queue-events-final.{json,md}`; `/assess-findings --apply`
 applied the one clean fix. No new issue was filed. The corrected code has
 focused Go race tests green; its final clean-gate receipt follows below.
+
+Final corrected runtime/test commit `0985610` passed the exact requested full
+clean gate (`TMPDIR=/var/tmp PATH=/home/maintainer/Sources/native-agent-host/.tools/go/bin:/home/maintainer/Sources/native-agent-host/.tools/node/bin:$PATH NAH_PORT_BASE=18600 PLAYWRIGHT_BROWSERS_PATH=/home/maintainer/Sources/native-agent-host/.cache/ms-playwright ./scripts/ci-local.sh --clean --json`), `status:passed`, `clean:true`, log `/var/tmp/nah-structured-final-clean-gate.log`. This receipt-only edit changes no runnable code, fixture, schema, or packaged input. No deployment or live data was used.
