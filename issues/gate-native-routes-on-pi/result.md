@@ -22,4 +22,15 @@ The synthetic host has one Linux UID for both browser identities; its two-sessio
 
 Independent final-diff review: Claude Fable 5.1 identified two locally confirmed regressions in the first candidate; both were fixed before `c003d07`. GPT-6 Astra inspected the corrected diff as a separate verifier, checked both findings against the fix and probed the unknown-state read/control and cross-session attempt boundaries; it refuted both findings against the corrected tree and found no bypass in the inspected paths. No review residual was filed: the confirmed findings were fixed in this issue; no self-contained outstanding observed defect remained for `/assess-findings` to spin off. The review is code-grounded, not live OAuth evidence; the verifier did not run browser fault injection or a distinct-UID VM, and synthetic UID evidence above is a container, not systemd/live-host isolation.
 
-**Still unverified:** the installed pinned Pi runtime on the test host, real first-use OpenAI device exchange, actual test-host UID/socket/systemd wiring, and live-server first-use recovery. A real-user login cannot be inferred from synthetic accounts and was not attempted. Keep this issue **in progress**, without a `Fixes-Issue` stamp, until deployment receipts or approved live validation cover that acceptance boundary. The committed candidate is useful and fail-closed under the synthetic and disposable-UID checks, but is not a claim of completed first use.
+**Still unverified:** the installed pinned Pi runtime on the test host, real first-use OpenAI device exchange, actual test-host UID/socket/systemd wiring, and live-server first-use recovery. A real-user login cannot be inferred from synthetic accounts and was not attempted. The committed candidate is fail-closed under the synthetic and disposable-UID checks, but is not a claim of completed first use.
+
+## Implementation closure and separate live checks
+
+After Jari requested separating completed implementation from real-environment
+testing, this issue is closed for its landed native gate and browser direct-route
+behavior at `c003d0789905061d771e806083906ef887fd4a19`. The clean gate and
+focused synthetic/UID checks above are implementation evidence. This does **not**
+turn untested provider or host claims into passes. The checklist and consent /
+release preconditions now live at @verify-live-pi-journey; observations that
+expose a defect will get a focused implementation issue. The onboarding wizard
+and agent control remain their own issues.

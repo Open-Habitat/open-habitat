@@ -2,12 +2,14 @@
 created: 2026-09-28
 updated: 2026-09-30
 type: task
-status: in-progress
+status: done
 priority: normal
-related: ['@design-first-use-onboarding', '@add-pi-device-adapter']
+related: ['@design-first-use-onboarding', '@add-pi-device-adapter', '@verify-live-pi-journey']
 lane: gateway-pi-gate
 collision: [internal/gateway/, internal/daemon/, contracts/v1/, docs/]
 blocked_by: ['@add-pi-device-adapter']
+closed: 2026-09-30
+closed_by: pi
 ---
 
 # Show OpenAI onboarding when Pi sign-in is missing or uncertain
@@ -40,14 +42,32 @@ comes from checking Pi's native state, so an old browser view cannot turn missin
 state into a successful login. The approved device-code interaction is recorded
 in @design-first-use-onboarding, with the repository-first ordering above.
 
-The code already checks Pi sign-in before allowing workspace and history reads.
-It also provides browser requests to start, check and cancel sign-in, limited
-to the browser session that started the attempt, with a defined message format
-between browser and host. These pieces do not establish that the whole onboarding
-journey is complete. [result.md](result.md) holds their browser and distinct-UID
-test evidence; [repository-first evidence](../github-repos-first-onboarding/result.md)
-covers the exception. Finish the remaining integration from the current code and
-record what now demonstrates the access boundaries and recovery behavior.
-[TESTING.md](../../TESTING.md) explains what each test layer establishes.
-The onboarding work owns the wizard; @build-agent-control owns conversation
-control and terminal-history behavior.
+The native gate, session-bound Pi attempt, direct-route browser integration and
+unknown-state retry behavior have now landed. [result.md](result.md) records the
+committed clean gate, production-bundle synthetic browser tests, disposable
+multi-UID checks and independent review, with their limits. This closes the
+**product implementation** described here, not the real-provider or test-server
+acceptance. Those still-unverified scenarios are explicit checks in
+@verify-live-pi-journey; its outcome may file a concrete follow-up defect.
+[Repository-first evidence](../github-repos-first-onboarding/result.md) covers
+the narrow exception. [TESTING.md](../../TESTING.md) explains what each test
+layer establishes. The onboarding work owns the full wizard;
+@build-agent-control owns conversation control and terminal-history behavior.
+
+## Acceptance Criteria
+
+- [x] Native Pi gate and browser direct-route/unknown-state flow are implemented
+  without granting normal workspace, history or control access on missing or
+  uncertain Pi state.
+- [x] Session-bound attempt and recovery boundaries pass production-bundle
+  synthetic browser, disposable distinct-UID and clean-tree CI checks, with
+  limitations recorded in [result.md](result.md).
+
+The test-host, real provider and second-person observations are **not** checked
+here; their explicit pending checklist is @verify-live-pi-journey.
+
+## Resolution
+
+### 2026-09-30T12:07:53Z · @pi
+
+Native Pi gate and browser direct-route implementation passed the clean gate and focused synthetic/UID tests; test-host and real-provider acceptance is tracked separately in @verify-live-pi-journey.
