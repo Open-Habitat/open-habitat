@@ -54,12 +54,21 @@ func launchPiRPCWithOwnership(binary, home, cwd, sessionFile string, env []strin
 // launchPiRPCCommand only creates a fresh session. The generated ID is passed
 // to Pi's --session-id (not --session, which can reopen an existing writer).
 func launchPiRPCCommand(binary string, prefix []string, home, cwd string, env []string, owner *piOwnership, workspace *os.File) (*piRPC, error) {
+	return launchPiRPCSession(binary, prefix, home, cwd, env, owner, workspace, "")
+}
+
+// Only the reconciled continuation path supplies a native session file.
+func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []string, owner *piOwnership, workspace *os.File, sessionFile string) (*piRPC, error) {
 	args := append(append([]string{}, prefix...), "--mode", "rpc")
 	if owner != nil {
 		if owner.file == nil || !sessionIDPattern.MatchString(owner.id) {
 			return nil, errors.New("Pi owner unavailable")
 		}
-		args = append(args, "--session-id", owner.id)
+		if sessionFile != "" {
+			args = append(args, "--session", sessionFile)
+		} else {
+			args = append(args, "--session-id", owner.id)
+		}
 	}
 	cmd := exec.Command(binary, args...)
 	if workspace != nil {

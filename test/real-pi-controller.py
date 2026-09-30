@@ -82,7 +82,9 @@ def request(op, path, obj=None, csrf=None, headers=None):
     if obj is not None:
         data = json.dumps(obj).encode()
         h.update({'Content-Type':'application/json', 'Origin':ORIGIN, 'X-Agent-Host-CSRF':csrf or ''})
-    req = urllib.request.Request(ORIGIN+path, data=data, headers=h)
+    if path.endswith(("/stop","/continue")):
+        h.update({"Origin":ORIGIN,"X-Agent-Host-CSRF":csrf or ""})
+    req = urllib.request.Request(ORIGIN+path, data=data, headers=h,method="POST" if path.endswith(("/stop","/continue")) else None)
     try:
         with op.open(req, timeout=20) as r: return r.status, r.headers, r.read()
     except urllib.error.HTTPError as e: return e.code, e.headers, e.read()
@@ -252,7 +254,7 @@ try:
     control.close()
     wait(lambda:gateway.poll() is not None or port_ready(8443),'gateway listener',5)
     check(gateway.poll() is None,'gateway died')
-    handles=[];browsers=[]
+    handles=[];browsers=[];browser_csrf=[]
     for index,name in enumerate(NAMES):
         op,jar=browser();browsers.append(op)
         status,h,_=request(op,'/auth/github/start')
@@ -262,7 +264,7 @@ try:
         status,_,body=request(op,'/auth/github/callback?'+urllib.parse.urlencode({'state':state,'code':'a' if index==0 else 'b'}))
         check(status==303,'OAuth callback '+str(status)+' '+body[:120].decode(errors='replace'))
         status,_,body=request(op,'/auth/session');check(status==200,'session')
-        csrf=json.loads(body)['csrf']
+        csrf=json.loads(body)['csrf'];browser_csrf.append(csrf)
         status,_,snap=request(op,'/api/v1/snapshot',headers={'X-Agent-Host-UID':str(UIDS[1-index]),'X-Agent-Host-Socket':f'/run/native-agent-host/users/{NAMES[1-index]}/daemon.sock'})
         if status != 200:
             start_status=time.monotonic()
@@ -313,8 +315,26 @@ try:
         foreign=handles[1-index]
         check(request(op,'/api/v1/conversations/'+foreign[3:]+'/status')[0]==404,'cross-login handle')
         check(request(op,'/api/v1/agents/'+foreign+'/history?limit=200')[0] in (404,503),'cross UID history')
+    # A stopped child must release its inherited owner lock before Pi may
+    # reopen the exact native JSONL (never --session-id on this path).
+    for index,op in enumerate(browsers):
+        route='/api/v1/conversations/'+handles[index][3:]
+        code,_,body=request(op,route+'/continue',csrf=browser_csrf[index])
+        check(code==409 and json.loads(body)['error']['code']=='writer_conflict','live child denies continuation')
+        check(request(op,route+'/stop',csrf=browser_csrf[index])[0]==200,'stop Pi')
+        wait(lambda: request(op,route+'/status')[0]==200 and json.loads(request(op,route+'/status')[2])['state']=='uncertain', 'Pi stopped', 15)
+        code,_,body=request(op,route+'/continue',csrf=browser_csrf[index])
+        check(code==200,'continue '+str(code)+' '+body[:120].decode(errors='replace'))
+        command=f'aabbccdd-0000-4000-8000-{index+3:012d}'
+        code,_,body=request(op,route+'/send',{'message':'continued proof '+NAMES[index],'command_id':command},browser_csrf[index])
+        check(code==200,'continued send '+str(code)+' '+body[:120].decode(errors='replace'))
+        def continued():
+            code,_,body=request(op,route+'/status')
+            return code==200 and json.loads(body)['command_id']==command and json.loads(body)['ack']=='accepted' and json.loads(body)['native_history']=='readable'
+        wait(continued,'continued Pi settlement',20)
+    check(request(browsers[0],'/api/v1/conversations/'+handles[1][3:]+'/continue',csrf=browser_csrf[0])[0]==404,'foreign continue denied')
     check(request(browser()[0],'/api/v1/conversations')[0]==401,'anonymous deny')
-    check(len(Model.calls)==2,'one native request per UID, no retry')
+    check(len(Model.calls)==4,'one native request per send, no retry')
     # Restart a mapped daemon directly. This is not systemd service lifecycle;
     # the old controller handle is lost but native history remains readable.
     old = children[0]
@@ -327,14 +347,16 @@ try:
     wait(lambda:replacement.poll() is not None or request(browsers[0],'/api/v1/onboarding/pi/status')[0]==200,'daemon restart status',10)
     check(replacement.poll() is None,'restart daemon exited')
     code,_,data=request(browsers[0],'/api/v1/conversations/'+handles[0][3:]+'/status')
-    check(code==404,'old handle cannot be reused after restart')
+    check(code==404,'old handle cannot be reused implicitly after restart')
+    code,_,data=request(browsers[0],'/api/v1/conversations/'+handles[0][3:]+'/continue',csrf=browser_csrf[0])
+    check(code==200,'restart continuation after lock + history proof '+str(code)+' '+data[:120].decode(errors='replace'))
     code,_,data=request(browsers[0],'/api/v1/agents/'+handles[0]+'/history?limit=200')
     check(code==200 and b'hello from synthetic' in data,'native history after restart')
-    check(len(Model.calls)==2,'restart did not resend')
+    check(len(Model.calls)==4,'restart did not resend')
     for name in NAMES:
         home=pathlib.Path('/home')/name
         check(subprocess.run(['/usr/bin/python3','-c',"import pathlib,sys;sys.exit(not any(pathlib.Path.home().joinpath('.pi/agent/sessions').rglob('*.jsonl')))"] ,preexec_fn=drop(UIDS[NAMES.index(name)]),env={'HOME':str(home),'PATH':'/usr/bin:/bin'}).returncode==0,'native Pi JSONL '+name)
-    print(json.dumps({'status':'passed','scope':'rootless-real-pi-controller','uids':[21001,21002,21003],'native_pi':'0.85.1','node':'22.21.1','provider_calls':len(Model.calls),'oauth':'loopback TLS synthetic','broker':'static canonical protocol fixture','daemon_restart':'history_readable_no_control_recovery','systemd':False,'browser_chromium':False}))
+    print(json.dumps({'status':'passed','scope':'rootless-real-pi-controller','uids':[21001,21002,21003],'native_pi':'0.85.1','node':'22.21.1','provider_calls':len(Model.calls),'oauth':'loopback TLS synthetic','broker':'static canonical protocol fixture','daemon_restart':'explicit_continuation_with_lock_and_history_proof','systemd':False,'browser_chromium':False}))
 except Exception as e:
     import traceback
     print(json.dumps({'status':'failed','reason':str(e)[:220], 'line':traceback.extract_tb(e.__traceback__)[-1].lineno}),file=sys.stderr)

@@ -35,6 +35,7 @@ ja [daemonista](../internal/daemon/handoff_linux.go).
 | `POST /api/v1/conversations/<session-id>/clear_queue` | jonojen tyhjennys ja vahvistetusti poistetut tekstit |
 | `POST /api/v1/conversations/<session-id>/abort` | Pi:n nykyisen vuoron keskeytyspyyntö, ei prosessin pysäytys |
 | `POST /api/v1/conversations/<session-id>/stop` | keskustelun pysäytyspyyntö |
+| `POST /api/v1/conversations/<session-id>/continue` | päättyneen selainkeskustelun tietoinen jatkaminen samasta natiivista Pi-istunnosta, tyhjä runko |
 | `GET /api/v1/conversations/<session-id>/stream` | väliaikainen, rajallinen tilannekuva-SSE; ei yleinen tapahtumavirta |
 | `GET /api/v1/onboarding/github/repos` | käyttäjän GitHub-repot, sivutettuina `page`- ja `limit`-parametreilla |
 | `POST /api/v1/onboarding/github/clone` | `full_name`-kentän repon kloonaus; lopputulos JSON-vastauksena |
@@ -43,6 +44,8 @@ ja [daemonista](../internal/daemon/handoff_linux.go).
 | `POST /api/v1/onboarding/pi/attempt` | laitekirjautumisyrityksen aloitus |
 | `GET /api/v1/onboarding/pi/attempt` | saman selainistunnon yrityksen tila |
 | `DELETE /api/v1/onboarding/pi/attempt` | yrityksen keskeytyspyyntö |
+
+Jatkaminen palauttaa `agent_id`, `workspace_id`, `state: idle` ja `prior_outcome: uncertain`: aiemman vuoron tulosta ei päätellä eikä epävarmaa viestiä lähetetä uudelleen. Elävän kirjoittajan lukko palauttaa 409 `writer_conflict`; ilman selaimesta luotua lukon alkuperämerkintää palautuu 409 `read_only_history`; epäselvä historia tai työtila palauttaa 409 `control_uncertain`. Gateway vaatii saman kirjautumisistunnon hallussa olevan keskustelukahvan myös jatkamisessa. Daemonin uudelleenkäynnistyksen jälkeen pelkkä luettava historia ei riitä: Pi:n lapselle periytynyt lukko on saatava uudelleen, natiivi historia täsmäytetään ja vain eksplisiittinen pyyntö käynnistää uuden lapsen. Gatewayn uudelleenkäynnistyksessä katoavaa kahvavuokraa ei palauteta historiasta. Irrotetut työkalut voivat jäädä eloon; siksi aiemman työn lopputulos jää epävarmaksi.
 
 Nykyinen selainohjaus kysyy tilaa toistuvasti. Sen väliaikaisen protokollan
 muodot validoidaan [gatewayn ohjausreitissä](../internal/gateway/conversation_linux.go)

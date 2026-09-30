@@ -381,3 +381,48 @@ reject every used cursor, even the latest. GPT-6 Astra independently checked
 the revised authorization and cursor paths and found no remaining concrete
 finding. No issue was filed; the published replay and continuation work remain
 in this open issue, not disguised as a completed capability.
+
+## Ended browser conversation continuation (taskfleet 01m3spz5wm8rr136atrn7kex10)
+
+Harvested the two preserved provisional-stream commits `305292b` and `a35dbb7`
+without touching their original worktree. The private status stream now rejects
+all replay cursors (409 before SSE headers); there is still no replay ring.
+
+An explicit empty-body `POST /api/v1/conversations/{session-id}/continue` now
+reopens the **same** Pi session using the pinned CLI's `--session <path>`.
+The gateway requires the same authenticated browser-session handle, broker
+binding and CSRF as other writes; another browser login or mapped UID cannot
+claim it. A terminal-originated history has no browser-origin marker on the
+private owner-lock inode and cannot be continued. The daemon reacquires that
+inode non-blockingly; a live direct child retains the inherited lock, including
+across daemon restart. For an in-memory child, it also requires the reaped
+signal. It resolves the current workspace descriptor, checks the marked
+workspace/cwd, and double-reads native history before spawning. A held lock
+returns `writer_conflict`; an unmarked terminal history returns
+`read_only_history`; unsettled or mismatched native history returns
+`control_uncertain`. The new child inherits the lock until it exits. The
+response reports `prior_outcome: uncertain`: a previous send or detached tool
+is not asserted to have finished, and no prompt is resent. Gateway restart
+loses the browser lease and therefore fails closed rather than adopting a
+native history.
+
+### Browser request for night:ui
+
+Use explicit `POST /api/v1/conversations/{session-id}/continue` with CSRF and
+**no request body** after an ended browser-owned conversation. Success is
+`{schema_version:1,agent_id:"pi:<same-id>",workspace_id,state:"idle",prior_outcome:"uncertain"}`;
+then read status/history and let the person choose whether to send a new prompt.
+Do not retry an uncertain prior send. Show `writer_conflict` as an active or
+unproven writer, `read_only_history` as terminal history that cannot be
+controlled, and `control_uncertain` as history/workspace not yet safe to
+continue. A 503 after writing the continuation request is also uncertain:
+re-read status, never automatically POST it again. No browser code changed in
+this server-side slice.
+
+Pinned Pi 0.85.1 synthetic-provider distinct-UID fixture: end → explicit
+continue → send for both users and explicit continuation after daemon restart
+passed; live-child writer conflict and foreign handle denial passed. No
+real-provider credentials, home, deployment or live browser journey used. The
+full clean gate and independent final-diff review receipts follow below.
+General `/api/v1/events` snapshot/replay ring, browser controls, and the real-Pi
+browser journey remain; leave this issue in-progress.

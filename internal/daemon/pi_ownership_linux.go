@@ -3,8 +3,10 @@
 package daemon
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -84,4 +86,36 @@ func reconciledNativeHistory(path string, uid int, id, cwd string) (string, erro
 		return "", errors.New("native Pi history unsettled or unavailable")
 	}
 	return a.revision, nil
+}
+
+// The lock inode also carries the minimal browser-origin proof needed after a
+// daemon restart. It is not a history index: native JSONL remains authoritative.
+type browserOrigin struct {
+	Workspace string `json:"workspace"`
+	Cwd       string `json:"cwd"`
+}
+
+func (o *piOwnership) markBrowser(workspace, cwd string) error {
+	if !idPattern.MatchString(workspace) || !filepath.IsAbs(cwd) {
+		return errors.New("invalid browser origin")
+	}
+	b, _ := json.Marshal(browserOrigin{workspace, cwd})
+	if err := o.file.Truncate(0); err != nil {
+		return err
+	}
+	if _, err := o.file.WriteAt(append(b, '\n'), 0); err != nil {
+		return err
+	}
+	return o.file.Sync()
+}
+func (o *piOwnership) browserOrigin() (browserOrigin, error) {
+	var origin browserOrigin
+	if _, err := o.file.Seek(0, 0); err != nil {
+		return origin, err
+	}
+	b, err := io.ReadAll(io.LimitReader(o.file, 1025))
+	if err != nil || len(b) > 1024 || json.Unmarshal(b, &origin) != nil || !idPattern.MatchString(origin.Workspace) || !filepath.IsAbs(origin.Cwd) {
+		return origin, errors.New("browser origin unavailable")
+	}
+	return origin, nil
 }

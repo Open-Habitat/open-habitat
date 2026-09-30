@@ -206,6 +206,8 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		}
 	case r.Method == http.MethodPost && parts[1] == "abort":
 		c.abort(w, r, parts[0])
+	case r.Method == http.MethodPost && parts[1] == "continue":
+		c.continueEnded(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "stop":
 		c.stop(w, r, parts[0])
 	default:
@@ -300,6 +302,11 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Inherit only a bounded, explicit environment. Pi reads credentials itself.
+	if err := owner.markBrowser(body.WorkspaceID, cwd); err != nil {
+		_ = owner.release()
+		snapshotError(w, 503, "native_source_unavailable")
+		return
+	}
 	p, err := launchPiRPCCommand(c.runtime.Node, []string{filepath.Join(filepath.Dir(c.runtime.Entry), "bundle", "cli.js")}, c.home, cwd, []string{"PATH=/usr/bin:/bin", "USER=" + c.cfg.Username}, owner, ws)
 	if err != nil {
 		_ = owner.release()
@@ -314,6 +321,102 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 	go c.drain(s)
 	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": body.WorkspaceID, "state": "idle"})
 }
+
+// continueEnded is explicit. A browser lease at the gateway and the lock's
+// origin marker are both required; a terminal history alone cannot grant control.
+func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Request, id string) {
+	if r.ContentLength != 0 || len(r.TransferEncoding) != 0 {
+		snapshotError(w, 400, "invalid_request")
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.closed || c.runtime == nil {
+		snapshotError(w, 503, "native_source_unavailable")
+		return
+	}
+	old := c.sessions[id]
+	if old != nil {
+		select {
+		case <-old.rpc.exited:
+		default:
+			snapshotError(w, 409, "writer_conflict")
+			return
+		}
+	}
+	device := &PiDevice{Home: c.home, Node: c.runtime.Node, Entry: c.runtime.Entry, Manifest: c.runtime.Manifest, TrustedRuntime: !c.fixture, SharedSelector: !c.fixture, FixtureHome: c.fixture}
+	if device.validate() != nil {
+		snapshotError(w, 503, "native_source_unavailable")
+		return
+	}
+	owner, err := acquirePiOwnership(c.home, id)
+	if err != nil {
+		snapshotError(w, 409, "writer_conflict")
+		return
+	}
+	defer func() {
+		if owner != nil {
+			_ = owner.release()
+		}
+	}()
+	origin, err := owner.browserOrigin()
+	if err != nil {
+		snapshotError(w, 409, "read_only_history")
+		return
+	}
+	if old != nil && (old.workspace != origin.Workspace || old.cwd != origin.Cwd) {
+		snapshotError(w, 409, "control_uncertain")
+		return
+	}
+	ws, cwd, err := c.workspaceFD(origin.Workspace)
+	if err != nil || cwd != origin.Cwd {
+		if ws != nil {
+			_ = ws.Close()
+		}
+		snapshotError(w, 409, "control_uncertain")
+		return
+	}
+	defer ws.Close()
+	histories, err := nativeSessions(c.nativeCfg())
+	if err != nil {
+		snapshotError(w, 503, "native_source_unavailable")
+		return
+	}
+	path := ""
+	for _, h := range histories {
+		if h.id == id {
+			if path != "" || h.cwd != cwd || h.state != "readable" {
+				snapshotError(w, 409, "control_uncertain")
+				return
+			}
+			path = h.path
+		}
+	}
+	if path == "" {
+		snapshotError(w, 409, "control_uncertain")
+		return
+	}
+	if _, err := reconciledNativeHistory(path, c.cfg.UID, id, cwd); err != nil {
+		snapshotError(w, 409, "control_uncertain")
+		return
+	}
+	p, err := launchPiRPCSession(c.runtime.Node, []string{filepath.Join(filepath.Dir(c.runtime.Entry), "bundle", "cli.js")}, c.home, cwd, []string{"PATH=/usr/bin:/bin", "USER=" + c.cfg.Username}, owner, ws, path)
+	if err != nil {
+		snapshotError(w, 503, "native_source_unavailable")
+		return
+	}
+	s := &conversation{id: id, workspace: origin.Workspace, cwd: cwd, rpc: p, owner: owner, state: "idle", ack: "uncertain", events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool)}
+	if old != nil {
+		s.commands = old.commands
+		s.command = old.command
+	}
+	c.sessions[id] = s
+	owner = nil // the child and watcher now own this lock
+	go c.watch(s)
+	go c.drain(s)
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": origin.Workspace, "state": "idle", "prior_outcome": "uncertain"})
+}
+
 func (c *ConversationController) watch(s *conversation) {
 	<-s.rpc.exited
 	_ = s.rpc.in.Close()

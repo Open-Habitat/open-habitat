@@ -69,6 +69,8 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 			return
 		case conversationBase + "/" + id + "/abort":
 			reply = `{"schema_version":1,"command_id":"` + cmd + `","state":"pending"}`
+		case conversationBase + "/" + id + "/continue":
+			reply = `{"schema_version":1,"agent_id":"pi:` + id + `","workspace_id":"` + ws + `","state":"idle","prior_outcome":"uncertain"}`
 		case conversationBase + "/" + id + "/stop":
 			reply = `{"schema_version":1,"state":"termination_unknown"}`
 		default:
@@ -163,6 +165,12 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 	}
 	if w := send("POST", conversationBase+"/"+id+"/abort", first, `{"command_id":"`+cmd+`"}`, first); w.Code != 200 {
 		t.Fatalf("abort %d %s", w.Code, w.Body.String())
+	}
+	if w := send("POST", conversationBase+"/"+id+"/continue", second, "", second); w.Code != 404 {
+		t.Fatalf("foreign continuation: %d", w.Code)
+	}
+	if w := send("POST", conversationBase+"/"+id+"/continue", first, "", first); w.Code != 200 {
+		t.Fatalf("continuation: %d %s", w.Code, w.Body.String())
 	}
 	if w := send("POST", conversationBase+"/"+id+"/stop", first, "", first); w.Code != 200 {
 		t.Fatalf("stop %d %s", w.Code, w.Body.String())

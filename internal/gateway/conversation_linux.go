@@ -24,7 +24,7 @@ import (
 // This private gateway protocol deliberately does not add a browser v1 contract.
 // The lease table is fail-closed on gateway restart: an orphan cannot be claimed
 // by another browser session. Native histories remain accessible read-only.
-var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|abort|status|stream|stop))?$`)
+var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|abort|status|stream|stop|continue))?$`)
 var conversationStreamCursor = regexp.MustCompile(`^ev1:[0-9a-fA-F-]{36}:[0-9]{1,20}$`)
 var conversationUUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 var conversationWorkspace = regexp.MustCompile(`^ws_[A-Za-z0-9_-]{8,64}$`)
@@ -160,7 +160,7 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 		req.Header.Set("Last-Event-ID", r.Header.Get("Last-Event-ID"))
 	}
 	// The socket may have accepted a write even when no acknowledgement arrives.
-	ambiguous := kind == "create" || kind == "send" || kind == "steer" || kind == "follow_up" || kind == "clear_queue" || kind == "abort" || kind == "stop"
+	ambiguous := kind == "create" || kind == "send" || kind == "steer" || kind == "follow_up" || kind == "clear_queue" || kind == "abort" || kind == "stop" || kind == "continue"
 	failure := func() {
 		if ambiguous {
 			safe(w, 503, "control_uncertain")
@@ -200,7 +200,7 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	}
 	if res.StatusCode != 200 {
 		// Errors have a closed vocabulary. Do not reflect daemon-controlled text.
-		codes := map[int]string{400: "invalid_request", 403: "cross_user_denied", 404: "resource_not_found", 409: "control_uncertain", 428: "pi_onboarding_required", 429: "capacity_exceeded", 503: "native_source_unavailable"}
+		codes := map[int]string{400: "invalid_request", 403: "cross_user_denied", 404: "resource_not_found", 409: strErrorCode(data), 428: "pi_onboarding_required", 429: "capacity_exceeded", 503: "native_source_unavailable"}
 		code, ok := codes[res.StatusCode]
 		if !ok || !validConversationError(data, res.StatusCode) {
 			failure()
@@ -374,13 +374,22 @@ func validConversationInput(kind string, b []byte) bool {
 	message := str(m, "message")
 	return ok && message != "" && len(message) <= 65536 && conversationUUID.MatchString(str(m, "command_id"))
 }
+func strErrorCode(b []byte) string {
+	var m map[string]json.RawMessage
+	_ = json.Unmarshal(b, &m)
+	var e map[string]json.RawMessage
+	_ = json.Unmarshal(m["error"], &e)
+	var code string
+	_ = json.Unmarshal(e["code"], &code)
+	return code
+}
 func validConversationError(b []byte, status int) bool {
 	m, ok := strictObject(b, []string{"schema_version", "error"})
 	if !ok || string(m["schema_version"]) != "1" {
 		return false
 	}
 	e, ok := strictObject(m["error"], []string{"code", "message", "retryable", "correlation_id"})
-	allowed := map[int]map[string]bool{400: {"invalid_request": true}, 403: {"cross_user_denied": true}, 404: {"resource_not_found": true}, 409: {"control_uncertain": true, "cursor_expired": true, "cursor_instance_mismatch": true}, 428: {"pi_onboarding_required": true}, 429: {"capacity_exceeded": true}, 503: {"daemon_unavailable": true, "native_source_unavailable": true}}
+	allowed := map[int]map[string]bool{400: {"invalid_request": true}, 403: {"cross_user_denied": true}, 404: {"resource_not_found": true}, 409: {"control_uncertain": true, "cursor_expired": true, "cursor_instance_mismatch": true, "writer_conflict": true, "read_only_history": true}, 428: {"pi_onboarding_required": true}, 429: {"capacity_exceeded": true}, 503: {"daemon_unavailable": true, "native_source_unavailable": true}}
 	return ok && allowed[status][str(e, "code")] && string(e["retryable"]) == "false"
 }
 func stateOK(s string) bool {
@@ -393,8 +402,11 @@ func stateOK(s string) bool {
 func validatedConversationReply(kind string, b []byte, requestedID string) ([]byte, string, bool) {
 	var required, optional []string
 	switch kind {
-	case "create":
+	case "create", "continue":
 		required = []string{"schema_version", "agent_id", "workspace_id", "state"}
+		if kind == "continue" {
+			required = append(required, "prior_outcome")
+		}
 	case "list":
 		required = []string{"schema_version", "sessions"}
 	case "send", "steer", "follow_up", "abort":
@@ -419,8 +431,8 @@ func validatedConversationReply(kind string, b []byte, requestedID string) ([]by
 	}
 	validWS := func(v string) bool { return conversationWorkspace.MatchString(v) }
 	switch kind {
-	case "create":
-		ok = validAgent(str(m, "agent_id")) && validWS(str(m, "workspace_id")) && str(m, "state") == "idle"
+	case "create", "continue":
+		ok = validAgent(str(m, "agent_id")) && validWS(str(m, "workspace_id")) && str(m, "state") == "idle" && (kind != "continue" || id == requestedID && str(m, "prior_outcome") == "uncertain")
 	case "list":
 		var entries []json.RawMessage
 		ok = json.Unmarshal(m["sessions"], &entries) == nil && entries != nil && len(entries) <= 128
