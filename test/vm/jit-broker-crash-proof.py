@@ -70,6 +70,13 @@ try:
         control=ensure_control()
     check(control.get('route',{}).get('uid')==21032 and control['route'].get('username')=='guestone','control broker route before revocation socket')
     check(unit('is-active','native-agent-host-daemon@guestone.socket').stdout.strip()==b'active','control socket inactive')
+    first_pid=pid()
+    check(first_pid>1,'broker not running')
+    check(unit('restart','native-agent-host-broker.service').returncode==0,'clean broker restart failed')
+    clean_pid=pid(); clean_state=unit('is-active','native-agent-host-broker.service').stdout.strip()
+    clean_reply=ensure_control('authorize') if clean_pid>1 and clean_state==b'active' else {}
+    check(clean_pid>1 and clean_pid!=first_pid and clean_state==b'active' and clean_reply.get('route',{}).get('uid')==21032,
+          'clean restart did not serve healthy binding pid_changed='+str(clean_pid!=first_pid)+' active='+clean_state.decode()+' reply='+str(clean_reply.get('failure','no_reply'))[:40])
     config=pathlib.Path('/etc/native-agent-host/gateway.json');os.chown(config,0,21003);config.chmod(0o640)
     key=pathlib.Path('/etc/native-agent-host/tls.key');os.chown(key,0,21003);key.chmod(0o640)
     with open('/etc/hosts','a') as f:f.write('\n127.0.0.1 github.com api.github.com host.fixture\n')
@@ -143,11 +150,7 @@ try:
     check(baseline_session==200 and baseline_snapshot==200,'A baseline session='+str(baseline_session)+' snapshot='+str(baseline_snapshot))
     before=json.loads((state/'bindings.json').read_text())
     check(before['bindings']==[{'id':'100000001','uid':21032,'username':'guestone'}],'A binding')
-    first_pid=pid()
-    check(first_pid>1,'broker not running')
-    check(unit('restart','native-agent-host-broker.service').returncode==0,'clean broker restart failed')
-    check(pid()>1 and pid()!=first_pid and unit('is-active','native-agent-host-broker.service').stdout.strip()==b'active' and
-          ensure_control('authorize').get('route',{}).get('uid')==21032,'clean restart did not serve healthy binding')
+    check(pid()>1 and ensure_control('authorize').get('route',{}).get('uid')==21032,'healthy broker unavailable immediately before fault')
     def drop_control():os.setgroups([]);os.setresgid(21032,21032,21032);os.setresuid(21032,21032,21032)
     native=subprocess.Popen(['/usr/bin/sleep','300'],preexec_fn=drop_control,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     check(native.poll() is None and as_uid(21032,"open('/home/guestone/fixture-native','w').write('alive')").returncode==0,'control native baseline')
