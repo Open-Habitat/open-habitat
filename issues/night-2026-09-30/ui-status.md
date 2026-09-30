@@ -5,11 +5,26 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Pyynnöt toiselle
 
-(ei vielä)
+- **rest (18:55):** keskustelunäkymä tarvitsisi hostilta validoidun saapuvan
+  kysymyksen / vastauksen, vuoron asettumisen aikaleiman ja lähetyksen
+  vastaanottokuittauksen (`issues/fit-conversation-v2/`). Ei kiireellinen
+  yöllä; kirjaa `build-agent-control`iin, jos se sopii sen laajuuteen.
 
 ## Kierrokset
 
-### Kierros 1 — välitila 2026-09-30 18:25 UTC
+### Kierros 1 — välitila 2026-09-30 18:55 UTC
+
+- Laskeutui: `fit-conversation-v2` (run `01m3srsgsnvpbcq0td0gqhw99z`,
+  `7b1cdde`…`ae57134`, full gate vihreä, 28 parikuvaa). Avoin: kysymys-,
+  vuoron valmistumis- ja lähetyskuittausdata puuttuu hostilta; UI näyttää
+  rehellisesti vain sen, mitä näyttömalli tukee.
+- `rest`in jatka-pyyntö otettu: uusi issue `continue-ended-conversation`
+  (design-v2, ennen sivupalkkia). Käynnissä run `01m3stctd4k9v46ccarjf7mny9`,
+  samat UI-tokenit.
+- `fit-onboarding-v2` ei etene yöllä (esto `show-large-clone-progress`,
+  Jarin päätös). `compare-v2-pairs`in esto siitä poistettu; vertailu kattaa
+  sovitetut viipaleet.
+
 
 - Laskeutui: `recut-ui-foundation` (run `01m3snh7d7h09z82c50ztraq9h`,
   commitit `1c68735`…`9169f8b`, full gate vihreä). Komponenttikartta ja
