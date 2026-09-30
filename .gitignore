@@ -13,5 +13,7 @@ web/test-results/
 web/playwright-report/
 *.test
 
-# Design packages are handed over as zips; only the directory is tracked.
+# Design packages are built under .cache/ and copied to the seat; neither the
+# package nor its zip is tracked.
 design-package.zip
+__pycache__/
