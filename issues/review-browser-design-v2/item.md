@@ -54,7 +54,15 @@ justify them; conclusions should follow from the current code and observed
 gaps.
 
 The [first reading](first-read.md) supplies design context and known behavioral
-differences. It has not assessed the quality or readiness of the UI foundation.
+differences. The [assessment](assessment.md) (30.9.2026, revision `82a5c4e`)
+answers the questions below: the foundation is functionally sound but its
+styling layer does not carry the design's precision, so it recommends one
+bounded foundation slice (tokens re-cut to the design, layout templates,
+button/status/icon primitives, one styling mechanism) before component
+refinement and screen composition, with a component map, an ordered path and
+a three-layer visual comparison method. Three choices are left to Jari:
+mobile scope, the default repository filter, and adopting the v2 sizing as
+the token source.
 Functional decisions from @rethink-project-docs inform the target: uncertain
 native writes, identity boundaries and preserved user input still need honest
 UI behavior. Bring material product or architecture choices to Jari with a
@@ -62,9 +70,15 @@ recommendation; routine layout and styling choices belong to the implementer.
 
 ## Acceptance Criteria
 
-- [ ] A source- and screen-grounded assessment explains how well the current UI
+- [x] A source- and screen-grounded assessment explains how well the current UI
   works and how far its components and shared structures are from the design.
-- [ ] Concrete examples distinguish local refinements from shared improvements
+- [x] Concrete examples distinguish local refinements from shared improvements
   needed for precise layout and easy, consistent visual tuning.
-- [ ] A recommended implementation path identifies dependencies, existing work
+- [x] A recommended implementation path identifies dependencies, existing work
   and how the resulting screens will be compared with the design.
+
+## Comments
+
+### 2026-09-30T15:30:37Z · @agent
+
+Assessment written: assessment.md (rev 82a5c4e). Foundation functionally sound, styling layer thin; recommends one foundation slice (tokens re-cut to the design, layout templates, button/status/icon primitives, one styling mechanism) before component refinement and screen composition. Awaiting Jari on mobile scope, default repo filter, and v2 sizing as token source.
