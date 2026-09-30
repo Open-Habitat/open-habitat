@@ -63,8 +63,10 @@ user would care about and you cannot tell which he or she would choose.
 
 Work is tracked as issues in `issues/<slug>/`, managed with `issuectl` through
 the `/issue` skill. The DAG is the schedule; `TODO.md` is only the story around
-it. Plans, experiments and results live with their issue. Project documentation
-is in `docs/`, starting at `docs/index.md`, and `docs/AGENTS.md` says how it is
+it. Plans, experiments and results live with their issue. The repository-local
+`design-package` skill assembles tracked synthetic UI evidence for external
+design feedback. Project documentation is in `docs/`, starting at
+`docs/index.md`, and `docs/AGENTS.md` says how it is
 written. Subdirectory `README.md` files are reserved for the public front door,
 so content for agents goes in that directory's `AGENTS.md`; each `CLAUDE.md` is
 a symlink to it, so edit the `AGENTS.md`. CLI work follows the AI-first CLI
