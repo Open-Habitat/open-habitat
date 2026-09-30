@@ -276,3 +276,61 @@ inputs, so the successful clean-gate result is reused. The gate does not prove
 SSE, ended-session continuation, live provider, or browser-rendered real-Pi abort.
 Leave `@build-agent-control` open/in-progress with no acceptance criterion
 claimed from this intermediate slice.
+
+## Provisional conversation status stream (taskfleet 01m3seftbn3dhnpwzm4axbvpr4)
+
+Selectively harvested the seven-file uncommitted SSE patch from the failed run
+`01m3s01ys4kqdgqnjhjcc66mkb` into this fresh branch. Its preserved worktree
+and patch (`dc7f34eb41b5d4c4c823cb687339a8be32aa83e5c912c9b16789fdb07f56193a`)
+were inspected but not modified or merged. The adopted slice provides a private
+`GET /api/v1/conversations/{id}/stream` for a current browser-session lease:
+each SSE frame is a validated *status resnapshot* backed by native Pi observations.
+The daemon verifies Pi onboarding again before each frame; the gateway checks
+broker authorization, the current browser session and handle ownership before
+releasing each frame. Browser status and native-history HTTP reads remain the
+fallback; an ambiguous send is never retried. Browser route unmount closes its
+EventSource. A disconnect leaves the mapped user's Pi child running.
+
+This stream is **not** the combined event/replay contract in `docs/interfaces.md`
+or `contracts/v1/`: it has no missed-event replay or `after` snapshot handoff.
+Its `ev1:` ID scopes the ephemeral status cursor to one daemon incarnation,
+but the current browser intentionally reconnects with a fresh EventSource and
+resnapshots rather than claiming gap-free replay. The `Last-Event-ID` validation
+path is available to other clients and rejects foreign/future cursors; it does
+not turn this private channel into the published replay API. The browser's
+three-second HTTP poll resumes when the stream fails and relaxes to 15 seconds
+while it is open. Each finite connection runs for at most 20 seconds, emits at
+most 20 frames on a two-second tick, each at most 1 MiB. Gateway response
+headers are limited to 8 KiB; its scanner permits at most 20 bounded frames,
+with 27-second socket and 26-second browser-write deadlines. The daemon's
+absolute write deadline is 24 seconds. Non-200 daemon errors use bounded,
+validated JSON and are never forwarded raw. These bounds do not establish a
+host-wide multi-user load benchmark.
+
+At final runtime commit `919866c9cc3cd0088e28e8fc63b5ba98a31d8ae6`,
+`TMPDIR=/var/tmp PATH=/home/maintainer/Sources/native-agent-host/.tools/go/bin:/home/maintainer/Sources/native-agent-host/.tools/node/bin:$PATH NAH_PORT_BASE=18400 PLAYWRIGHT_BROWSERS_PATH=/home/maintainer/Sources/native-agent-host/.cache/ms-playwright ./scripts/ci-local.sh --clean --json`
+exited 0 (`status:passed`, `clean:true`; full Go race, browser, contract and
+package checks). The same clean gate passed at the earlier runtime commit
+`c47e3c8` on port base 18100, but that result was superseded after review
+corrections. Focused Go race conversation/header tests and `test-web-fast.sh`
+passed after the corrections; the pre-correction focused browser suite passed
+20 cases including a stream response and HTTP fallback when the stream is
+unavailable. `TMPDIR=/var/tmp ./scripts/test-real-pi-controller.sh` passed
+against distinct disposable mapped UIDs 21001/21002 and gateway UID 21003,
+pinned Pi 0.85.1, and a synthetic provider; this pre-correction scenario did
+**not** exercise SSE. The full gate's browser host also uses synthetic fixtures,
+not distinct kernel UIDs. No real home, account, live provider or deployment
+was used.
+
+Independent Claude Fable 5.1 review of `c47e3c8` identified excess per-frame
+resource work, an unused browser reconnect cursor and a daemon-error mapping
+bug. The bounded cadence/poll correction and validated error mapping landed in
+`919866c`; review of that final diff found no remaining release-blocking
+security or correctness defect. Remaining efficiency and provisional replay
+limitations are documented above, not filed as speculative new issues.
+
+The failed run did **not** implement deliberate continuation of an ended browser
+conversation, and this harvest did not add it. Nor does this receipt establish
+the published SSE event/replay contract, a rendered real-Pi browser journey,
+real-provider acceptance or Jari's visual verdict. Leave
+`@build-agent-control` open/in-progress; do not mark its acceptance complete.
