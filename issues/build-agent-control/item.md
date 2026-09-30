@@ -61,6 +61,7 @@ make clear which of those the demonstration establishes.
 
 The [interface specification](../../docs/interfaces.md) describes the agreed
 contract. Buffering and limits serve observed responsiveness and recovery needs.
-[visual-acceptance.md](visual-acceptance.md) holds browser evidence and Jari's
-visual feedback; pending appearance review does not block functional work or
+[visual-acceptance.md](visual-acceptance.md) holds synthetic browser screenshots
+and Jari's visual feedback. Jari makes the appearance decision after reviewing
+those screenshots; a pending verdict does not block functional work or
 independent tasks.
