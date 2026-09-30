@@ -313,15 +313,25 @@ test("@browser-conversation revalidation restores editor selection, paged readin
     page.getByRole("button", { name: "Uutta sisältöä (1)" }),
   ).toBeVisible();
   expect(await feed.evaluate((node) => node.scrollTop)).toBeCloseTo(before, 0);
-  // Returning to this agent restores its own reading anchor and editor focus.
-  await page.getByRole("link", { name: "ordinary-dir" }).last().click();
-  // The URL can change before React commits the route. Returning earlier
-  // leaves the conversation mounted and the link holding focus, so wait for
-  // the workspace view before testing restoration from a different view.
-  await expect(editor).toHaveCount(0);
+  // The status button and a navigation link both take focus away from the
+  // editor. Test restoration from a genuinely focused editor instead of
+  // depending on whether a clicked link loses focus before React unmounts.
+  await editor.evaluate((node: HTMLTextAreaElement) => {
+    node.focus({ preventScroll: true });
+    node.setSelectionRange(4, 9);
+  });
+  await expect(editor).toBeFocused();
   await page.goBack();
+  await expect(editor).toHaveCount(0);
+  await page.goForward();
   await expect(editor).toHaveValue("kesken oleva viesti");
   await expect(editor).toBeFocused();
+  expect(
+    await editor.evaluate((node: HTMLTextAreaElement) => [
+      node.selectionStart,
+      node.selectionEnd,
+    ]),
+  ).toEqual([4, 9]);
   expect(await feed.evaluate((node) => node.scrollTop)).toBeCloseTo(before, 0);
   await page.getByRole("button", { name: "Tilivalikko" }).click();
   await page.getByRole("menuitem", { name: "Asetukset" }).click();
