@@ -162,6 +162,10 @@ func validCombinedPayload(kind string, resource map[string]string, nativeKey str
 		"snapshot.invalidated": {"reason"},
 		"queue.changed":        {"revision", "steering", "follow_up"},
 		"history.entry":        {"entry_key", "entry_kind", "content"},
+		"assistant.delta":      {"text", "content_index"},
+		"tool.started":         {"tool_call_id", "tool_name", "state"},
+		"tool.updated":         {"tool_call_id", "tool_name", "state"},
+		"tool.finished":        {"tool_call_id", "tool_name", "state"},
 	}
 	keys, ok := allowed[kind]
 	if !ok || len(fields) != len(keys) {
@@ -174,6 +178,27 @@ func validCombinedPayload(kind string, resource map[string]string, nativeKey str
 	}
 	if kind != "history.entry" && nativeKey != "" {
 		return false
+	}
+	if kind == "assistant.delta" {
+		if resource["agent_id"] == "" {
+			return false
+		}
+		var text string
+		var index int
+		return json.Unmarshal(fields["text"], &text) == nil && len(text) > 0 && len(text) <= 4096 && json.Unmarshal(fields["content_index"], &index) == nil && index >= 0
+	}
+	if strings.HasPrefix(kind, "tool.") {
+		if resource["agent_id"] == "" {
+			return false
+		}
+		var id, name, state string
+		if json.Unmarshal(fields["tool_call_id"], &id) != nil || json.Unmarshal(fields["tool_name"], &name) != nil || json.Unmarshal(fields["state"], &state) != nil || len(id) < 1 || len(id) > 200 || len(name) < 1 || len(name) > 200 {
+			return false
+		}
+		if kind == "tool.finished" {
+			return state == "succeeded" || state == "failed" || state == "cancelled"
+		}
+		return state == "running"
 	}
 	if kind == "history.entry" {
 		if resource["agent_id"] == "" || len(nativeKey) < 1 || len(nativeKey) > 128 {

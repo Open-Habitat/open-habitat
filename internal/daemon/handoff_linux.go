@@ -52,7 +52,9 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(RepoObservePath, RepoObserveHandler(cfg, server.TrustedPeer))
 	mux.Handle("/api/v1/onboarding/pi/attempt", PiAttemptHandler(cfg, server.TrustedPeer, pi))
 	journal := newEventJournal()
-	mux.Handle(SnapshotPath, piGate(cfg, server.TrustedPeer, piStatus, snapshotHandlerWithJournal(cfg, server.TrustedPeer, Discover, nativeSessions, cfg.Home, nativeStatus, journal)))
+	controller := newConversationController(ctx, cfg, runtime, server.TrustedPeer, piStatus)
+	controller.journal = journal
+	mux.Handle(SnapshotPath, piGate(cfg, server.TrustedPeer, piStatus, snapshotHandlerWithController(cfg, server.TrustedPeer, Discover, nativeSessions, cfg.Home, nativeStatus, journal, controller)))
 	mux.Handle("/api/v1/events", piGate(cfg, server.TrustedPeer, piStatus, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		journal.stream(w, r, func() bool {
 			return server.TrustedPeer(r) && validSnapshotIdentity(cfg, r)
@@ -60,8 +62,6 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	})))
 	mux.Handle("/api/v1/agents/", piGate(cfg, server.TrustedPeer, piStatus, HistoryHandler(cfg, server.TrustedPeer)))
 	mux.Handle("/api/v1/content/", piGate(cfg, server.TrustedPeer, piStatus, HistoryHandler(cfg, server.TrustedPeer)))
-	controller := newConversationController(ctx, cfg, runtime, server.TrustedPeer, piStatus)
-	controller.journal = journal
 	mux.Handle("/api/v1/conversations", controller)
 	mux.Handle("/api/v1/conversations/", controller)
 	defer controller.shutdown()

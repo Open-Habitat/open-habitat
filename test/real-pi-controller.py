@@ -138,6 +138,8 @@ class Model(http.server.BaseHTTPRequestHandler):
         for delta, finish in [({'role':'assistant','content':'hello from synthetic'},None),({},'stop')]:
             chunk={'id':'fixture','object':'chat.completion.chunk','created':0,'model':'fake','choices':[{'index':0,'delta':delta,'finish_reason':finish}]}
             self.wfile.write(b'data: '+json.dumps(chunk).encode()+b'\n\n')
+            self.wfile.flush()
+            if delta.get('content') and len(self.calls)==2: time.sleep(12)
         self.wfile.write(b'data: [DONE]\n\n')
 
 def socket_ready(path):
@@ -295,6 +297,20 @@ try:
         else:
             status,_,data=request(op,route+'/send',{'message':msg,'command_id':command},csrf)
             check(status==200,'send '+str(status)+' '+data[:120].decode(errors='replace'))
+        if index==1:
+            mid={}
+            def live_snapshot():
+                code,_,body=request(op,'/api/v1/snapshot')
+                if code!=200:return False
+                snap=json.loads(body)
+                for a in snap['agents']:
+                    if a['agent_id']==agent and any(e['kind']=='assistant.delta' for e in a['live_tail']):
+                        mid.update(snap);return True
+                return False
+            wait(live_snapshot,'mid-turn live tail '+name,20)
+            tail=next(a['live_tail'] for a in mid['agents'] if a['agent_id']==agent)
+            check('hello from synthetic' in ''.join(e['payload']['text'] for e in tail if e['kind']=='assistant.delta'),'snapshot tail text')
+            mid_cursor=mid['event_cursor']
         last = {}
         def settled():
             code,_,body=request(op,route+'/status')
@@ -324,18 +340,33 @@ try:
             event=json.loads(body[6:]); check(event['cursor']==event_id[4:] and event['kind']=='snapshot.invalidated','event data')
             check(stream.readline()==b'\n','first SSE frame separator')
             persisted=[]
+            deltas=[]
             for _ in range(127):
                 frame_id=stream.readline().decode().strip()
                 frame_kind=stream.readline().decode().strip()
                 frame_body=stream.readline().decode().strip()
                 check(frame_id.startswith('id: ') and frame_body.startswith('data: '),'bounded event frame')
                 frame=json.loads(frame_body[6:])
+                if frame_kind=='event: assistant.delta': deltas.append(frame)
                 if frame_kind=='event: history.entry':
                     check(frame['native_key'] in native_keys and frame['payload']['entry_key']==frame['native_key'],'persistent JSONL key')
                     persisted.append(frame)
                     if frame['payload']['entry_kind']=='assistant': break
                 check(stream.readline()==b'\n','SSE frame separator')
-            check(any(x['payload']['entry_kind']=='assistant' for x in persisted),'persisted assistant SSE')
+            check(deltas and any(x['payload']['entry_kind']=='assistant' for x in persisted),'delta and persisted assistant SSE')
+        if index==1:
+            mid_url=ORIGIN+'/api/v1/events?after='+urllib.parse.quote(mid_cursor)
+            with op.open(mid_url,timeout=27) as stream:
+                found=False
+                for _ in range(20):
+                    line=stream.readline().decode().strip()
+                    if not line.startswith('id: '):continue
+                    resumed_kind=stream.readline().decode().strip()
+                    resumed_body=stream.readline().decode().strip()
+                    if resumed_kind=='event: history.entry' and json.loads(resumed_body[6:])['payload']['entry_kind']=='assistant':
+                        found=True;break
+                    check(stream.readline()==b'\n','mid-turn separator')
+                check(found,'mid-turn resume persisted entry')
         resume=urllib.request.Request(events_url,headers={'Last-Event-ID':starting_cursor})
         with op.open(resume,timeout=27) as stream:
             check(stream.readline().decode().strip()==event_id,'reconnect replays exact cursor')

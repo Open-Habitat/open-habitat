@@ -170,11 +170,68 @@ func TestSnapshotWatermarkPrecedesConcurrentNativeChange(t *testing.T) {
 		Oldest      string `json:"oldest_replay_cursor"`
 		Instance    string `json:"server_instance_id"`
 	}
-	if json.Unmarshal(w.Body.Bytes(), &snap) != nil || snap.EventCursor != j.cursor(0) || snap.Instance != j.instance || snap.Oldest != j.cursor(0) {
+	if json.Unmarshal(w.Body.Bytes(), &snap) != nil || snap.EventCursor != j.cursor(1) || snap.Instance != j.instance || snap.Oldest != j.cursor(0) {
 		t.Fatal(w.Body.String())
 	}
 	seq, code := j.parse(snap.EventCursor)
-	if code != "" || seq != 0 {
+	if code != "" || seq != 1 {
 		t.Fatal(seq, code)
+	}
+}
+
+func TestJournalMidTurnAtomicTailAndReplay(t *testing.T) {
+	j := newEventJournal()
+	agent := "pi:12345678-1234-1234-1234-123456789012"
+	j.activity(agent, "running")
+	for i := 0; i < 30; i++ {
+		j.delta(agent, "abc", 0)
+	}
+	j.progress(agent, "tool.started", map[string]string{"tool_call_id": "tool_1", "tool_name": "bash", "state": "running"})
+	cursor, _, views := j.turnView()
+	tail := views[agent]
+	if tail.activity != "running" || len(tail.frames) != 2 || !strings.Contains(string(tail.frames[0]), `"text":"`+strings.Repeat("abc", 30)+`"`) {
+		t.Fatalf("incomplete atomic tail: %+v", tail)
+	}
+	seq, code := j.parse(cursor)
+	if code != "" {
+		t.Fatal(code)
+	}
+	j.delta(agent, "next", 1)
+	j.progress(agent, "tool.finished", map[string]string{"tool_call_id": "tool_1", "tool_name": "bash", "state": "succeeded"})
+	j.mu.Lock()
+	oldest := j.seq - uint64(len(j.frames))
+	frames := append([][]byte(nil), j.frames...)
+	j.mu.Unlock()
+	if seq != 2 || len(frames[seq-oldest:]) != 2 || !strings.Contains(string(frames[seq-oldest]), `"text":"next"`) {
+		t.Fatal("resume omitted or duplicated a delta")
+	}
+	j.nativeEntry(agent, historyEntry{Key: "native_1", Kind: "assistant", Content: historyContent{MediaType: "text/plain", Text: "abcnext", Complete: true}})
+	_, _, views = j.turnView()
+	if len(views[agent].frames) != 0 {
+		t.Fatal("persisted assistant failed to supersede tail")
+	}
+}
+
+func TestJournalCoalescingAndReplayLimits(t *testing.T) {
+	j := newEventJournal()
+	agent := "pi:12345678-1234-1234-1234-123456789012"
+	for n := 0; n < 400; n++ {
+		j.delta(agent, "a", 0)
+	}
+	cursor, _, views := j.turnView()
+	if len(views[agent].frames) != 1 || j.seq != 1 {
+		t.Fatal("unbounded delta frames")
+	}
+	for n := 0; n < eventWindowCount+10; n++ {
+		j.progress(agent, "tool.updated", map[string]string{"tool_call_id": "call", "tool_name": "bash", "state": "running"})
+	}
+	j.mu.Lock()
+	count, bytes := len(j.frames), j.bytes
+	j.mu.Unlock()
+	if count > eventWindowCount || bytes > eventWindowBytes {
+		t.Fatal("unbounded replay")
+	}
+	if _, code := j.parse(cursor); code != "cursor_expired" {
+		t.Fatal("old cursor did not expire", code)
 	}
 }

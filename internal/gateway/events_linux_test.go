@@ -103,3 +103,22 @@ func TestEventsGatewayReplaysAndRejectsForeignFrames(t *testing.T) {
 		t.Fatalf("forwarded invalid resource: %s", w.Body.String())
 	}
 }
+
+func TestLiveDeltaGatewayAllowlist(t *testing.T) {
+	agent := map[string]string{"agent_id": "pi:12345678-1234-1234-1234-123456789012"}
+	for _, tc := range []struct {
+		kind, body string
+		ok         bool
+	}{
+		{"assistant.delta", `{"text":"hello","content_index":0}`, true},
+		{"assistant.delta", `{"text":"hello","content_index":-1}`, false},
+		{"assistant.delta", `{"text":"hello","content_index":0,"foreign":"secret"}`, false},
+		{"tool.started", `{"tool_call_id":"one","tool_name":"bash","state":"running"}`, true},
+		{"tool.finished", `{"tool_call_id":"one","tool_name":"bash","state":"succeeded"}`, true},
+		{"tool.finished", `{"tool_call_id":"one","tool_name":"bash","state":"running"}`, false},
+	} {
+		if got := validCombinedPayload(tc.kind, agent, "", []byte(tc.body)); got != tc.ok {
+			t.Errorf("%s %s: %t", tc.kind, tc.body, got)
+		}
+	}
+}

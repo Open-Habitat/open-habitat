@@ -12,12 +12,23 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 )
 
 // eventJournal belongs to one mapped UID and one daemon lifetime. Frames are
 // transient presentation hints; native Pi history remains authoritative.
 const eventWindowCount = 128
 const eventWindowBytes = 1 << 20
+
+type turnTail struct {
+	activity string
+	frames   []json.RawMessage
+	bytes    int
+	text     string
+	index    int
+	timer    *time.Timer
+	overflow bool
+}
 
 type eventJournal struct {
 	mu       sync.Mutex
@@ -27,11 +38,12 @@ type eventJournal struct {
 	bytes    int
 	changed  chan struct{}
 	pending  bool // one trailing invalidation coalesces bursty Pi deltas
+	tails    map[string]*turnTail
 }
 
 func newEventJournal() *eventJournal {
 	id, _ := uuid()
-	return &eventJournal{instance: id, changed: make(chan struct{})}
+	return &eventJournal{instance: id, changed: make(chan struct{}), tails: make(map[string]*turnTail)}
 }
 func (j *eventJournal) cursor(seq uint64) string { return fmt.Sprintf("ev1:%s:%d", j.instance, seq) }
 
@@ -124,6 +136,107 @@ func (j *eventJournal) appendLocked(kind, agent, nativeKey string, payload any) 
 	close(j.changed)
 	j.changed = make(chan struct{})
 }
+
+// All tail changes and the corresponding cursor allocations use the journal lock.
+// A snapshot copies both under that same lock. Text is coalesced for at most
+// 50ms or 4096 bytes; non-text events flush it first to preserve RPC order.
+func (j *eventJournal) tail(agent string) *turnTail {
+	t := j.tails[agent]
+	if t == nil {
+		t = &turnTail{activity: "idle"}
+		j.tails[agent] = t
+	}
+	return t
+}
+func (j *eventJournal) flushTextLocked(agent string, t *turnTail) {
+	if t.text == "" {
+		return
+	}
+	text, index := t.text, t.index
+	t.text = ""
+	j.appendTailLocked(agent, t, "assistant.delta", map[string]any{"text": text, "content_index": index})
+}
+func (j *eventJournal) appendTailLocked(agent string, t *turnTail, kind string, payload any) {
+	if t.overflow {
+		return
+	}
+	before := j.seq
+	j.appendLocked(kind, agent, "", payload)
+	if j.seq == before {
+		return
+	}
+	frame := j.frames[len(j.frames)-1]
+	if len(frame) > 8192 || t.bytes+len(frame) > 128<<10 || len(t.frames) == 128 {
+		t.overflow = true
+		t.frames = nil
+		t.bytes = 0
+		j.appendLocked("snapshot.invalidated", agent, "", map[string]string{"reason": "ring_truncated"})
+		return
+	}
+	t.frames = append(t.frames, frame)
+	t.bytes += len(frame)
+}
+func (j *eventJournal) delta(agent, text string, index int) {
+	if text == "" || !utf8.ValidString(text) {
+		return
+	}
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	t := j.tail(agent)
+	if len(text) > 4096 {
+		t.overflow = true
+		j.appendLocked("snapshot.invalidated", agent, "", map[string]string{"reason": "ring_truncated"})
+		return
+	}
+	if t.text != "" && (t.index != index || len(t.text)+len(text) > 4096) {
+		j.flushTextLocked(agent, t)
+	}
+	t.index, t.text = index, t.text+text
+	if t.timer == nil {
+		t.timer = time.AfterFunc(50*time.Millisecond, func() { j.mu.Lock(); defer j.mu.Unlock(); t.timer = nil; j.flushTextLocked(agent, t) })
+	}
+}
+func (j *eventJournal) progress(agent, kind string, payload any) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	t := j.tail(agent)
+	j.flushTextLocked(agent, t)
+	j.appendTailLocked(agent, t, kind, payload)
+}
+func (j *eventJournal) activity(agent, state string) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	t := j.tail(agent)
+	j.flushTextLocked(agent, t)
+	t.activity = state
+}
+func (j *eventJournal) nativeEntry(agent string, entry historyEntry) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	t := j.tail(agent)
+	j.flushTextLocked(agent, t)
+	j.appendLocked("history.entry", agent, entry.Key, map[string]any{"entry_key": entry.Key, "entry_kind": entry.Kind, "content": entry.Content})
+	// Pi does not give RPC deltas a persistent key. Assistant entries supersede
+	// the provisional turn as a unit, never match on text or event arrival time.
+	if entry.Kind == "assistant" {
+		t.frames = nil
+		t.bytes = 0
+		t.overflow = false
+	}
+}
+func (j *eventJournal) turnView() (string, string, map[string]turnTail) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	views := make(map[string]turnTail, len(j.tails))
+	for agent, t := range j.tails {
+		j.flushTextLocked(agent, t)
+		copyTail := *t
+		copyTail.frames = append([]json.RawMessage(nil), t.frames...)
+		views[agent] = copyTail
+	}
+	return j.cursor(j.seq), j.cursor(j.seq - uint64(len(j.frames))), views
+}
+
 func (j *eventJournal) parse(cursor string) (uint64, string) {
 	parts := strings.Split(cursor, ":")
 	if len(parts) != 3 || parts[0] != "ev1" || len(parts[2]) == 0 || len(parts[2]) > 20 || (len(parts[2]) > 1 && parts[2][0] == '0') {

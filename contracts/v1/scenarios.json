@@ -37,7 +37,8 @@
   {
     "id": "CT-003",
     "covers": [
-      "snapshot/SSE race"
+      "snapshot/SSE race",
+      "atomic controller live_tail and activity"
     ],
     "given": [
       "snapshot watermark is sequence 41"
@@ -48,7 +49,8 @@
     "then": [
       "snapshot is an atomic view at 41",
       "the stream starts at 42",
-      "no change is lost or applied twice"
+      "no change is lost or applied twice",
+      "the daemon-owned live_tail and event_cursor are captured under one journal lock; native changes outside the controller invalidate or require a history read"
     ],
     "fixtures": [
       "examples/snapshot.json",
@@ -61,7 +63,8 @@
       "duplicates",
       "ordering",
       "daemon-owned Pi queue.changed replay",
-      "daemon-owned Pi native history.entry replay"
+      "daemon-owned Pi native history.entry replay",
+      "assistant.delta and tool progress followed by persistent history"
     ],
     "given": [
       "client last applied sequence 42"
@@ -74,7 +77,8 @@
       "43 applies once",
       "an out-of-order sequence greater than one marks writes disabled and starts resnapshot",
       "queue.changed carries the agent resource, a revision, and steering/follow_up; it is not a command receipt",
-      "history.entry is published only from a readable Pi JSONL entry, carries its persistent native_key, and repeating the native observation does not publish the same key twice"
+      "history.entry is published only from a readable Pi JSONL entry, carries its persistent native_key, and repeating the native observation does not publish the same key twice",
+      "bounded coalesced assistant.delta and tool progress use daemon event IDs; the persisted assistant entry supersedes the turn tail rather than appending a duplicate"
     ]
   },
   {

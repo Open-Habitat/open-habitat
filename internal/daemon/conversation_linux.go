@@ -547,6 +547,48 @@ func (c *ConversationController) watch(s *conversation) {
 	_ = s.owner.release()
 }
 
+// Only validated, bounded native fields cross into the public journal.
+func (c *ConversationController) publishDelta(agent string, raw json.RawMessage) {
+	var e struct {
+		Type                  string `json:"type"`
+		AssistantMessageEvent struct {
+			Type         string `json:"type"`
+			Delta        string `json:"delta"`
+			ContentIndex int    `json:"contentIndex"`
+		} `json:"assistantMessageEvent"`
+		ToolCallID string `json:"toolCallId"`
+		ToolName   string `json:"toolName"`
+		IsError    bool   `json:"isError"`
+	}
+	if json.Unmarshal(raw, &e) != nil {
+		return
+	}
+	switch e.Type {
+	case "agent_start", "turn_start":
+		c.journal.activity(agent, "running")
+	case "message_update":
+		if e.AssistantMessageEvent.Type == "text_delta" && e.AssistantMessageEvent.ContentIndex >= 0 && e.AssistantMessageEvent.Delta != "" {
+			c.journal.delta(agent, e.AssistantMessageEvent.Delta, e.AssistantMessageEvent.ContentIndex)
+		}
+	case "tool_execution_start", "tool_execution_update", "tool_execution_end":
+		if len(e.ToolCallID) < 1 || len(e.ToolCallID) > 200 || len(e.ToolName) < 1 || len(e.ToolName) > 200 {
+			return
+		}
+		kind, state := "tool.updated", "running"
+		if e.Type == "tool_execution_start" {
+			kind = "tool.started"
+		}
+		if e.Type == "tool_execution_end" {
+			kind = "tool.finished"
+			state = "succeeded"
+			if e.IsError {
+				state = "failed"
+			}
+		}
+		c.journal.progress(agent, kind, map[string]string{"tool_call_id": e.ToolCallID, "tool_name": e.ToolName, "state": state})
+	}
+}
+
 func (c *ConversationController) drain(s *conversation) {
 	for e := range s.rpc.events {
 		c.mu.Lock()
@@ -566,7 +608,12 @@ func (c *ConversationController) drain(s *conversation) {
 		}
 		s.events = append(s.events, e)
 		if c.journal != nil {
-			c.journal.invalidateNative()
+			if frame.Type != "message_update" && !strings.HasPrefix(frame.Type, "tool_execution_") {
+				c.journal.invalidateNative()
+			}
+		}
+		if c.journal != nil {
+			c.publishDelta("pi:"+s.id, raw)
 		}
 		if frame.Type == "queue_update" {
 			var q struct {
@@ -596,6 +643,9 @@ func (c *ConversationController) drain(s *conversation) {
 		settled := frame.Type == "agent_settled"
 		if settled {
 			s.settled = true
+			if c.journal != nil {
+				c.journal.activity("pi:"+s.id, "settling")
+			}
 			if s.state == "accepted" {
 				s.state = "idle"
 			}
@@ -603,6 +653,9 @@ func (c *ConversationController) drain(s *conversation) {
 		c.mu.Unlock()
 		if settled {
 			c.publishNativeHistory(s)
+			if c.journal != nil {
+				c.journal.activity("pi:"+s.id, "idle")
+			}
 		}
 	}
 	c.mu.Lock()
@@ -674,7 +727,7 @@ func (c *ConversationController) publishNativeHistory(s *conversation) {
 				return
 			}
 			if c.journal != nil {
-				c.journal.appendNativeEntry("pi:"+s.id, entry)
+				c.journal.nativeEntry("pi:"+s.id, entry)
 			}
 			c.mu.Unlock()
 		}

@@ -296,19 +296,30 @@ uudelleenyhdistäminen vaatii kirjautumisen.
 
 `history.entry` käyttää Pi:n pysyvää `native_key`:tä; vielä tallentamattomilla
 RPC-deltaeventeillä on daemonin event-ID. Snapshotin `activity` ja `live_tail`
-mahdollistavat paluun myös kesken vuoron. Täsmällinen sovitussääntö:
-selaimen väliaikainen tail koostuu vain saman agentin virran deltaeventeistä;
-se deduplikoi event-ID:llä ja cursorilla. Kun Pi:n JSONL:stä luettu
-`history.entry` saapuu, selain korvaa vastaavan väliaikaisen sisältöosuuden
-pysyvällä merkinnällä, jonka avain on `native_key`, eikä lisää tekstiä
-uudelleen. Jos deltaa ei voida sitoa tähän merkintään yksiselitteisesti,
-selain poistaa saman vuoron väliaikaisen tailin ja hakee natiivihistorian
-uudelleen ennen kirjoituksia. Vanha tai puuttuva cursor vaatii uuden
-snapshotin. **Toteutustilanne:** daemon julkaisee tällä hetkellä vain
-JSONL:stä luetun `history.entry`-merkinnän Pi:n `agent_settled`-havainnon
-jälkeen. Se ei vielä julkaise deltoja eikä täytä atomista live-tail-sovitusta;
-selaimen on käytettävä väliaikaista statusvirtaa ja HTTP-historiaa. Gateway ei muodosta omaa
-snapshotia tai tapahtumia: saavuttamaton daemon on 503, puuttuva autentikointi 401.
+mahdollistavat paluun myös kesken vuoron. Täsmällinen sovitussääntö: snapshotin `live_tail` sisältää saman agentin
+väliaikaiset event-kehykset tapahtuma-ID:ineen. Selain näyttää ne kerran ja
+jatkaa vain snapshotin `event_cursor`-arvon jälkeisestä sequencestä. RPC ei
+anna pysyvää avainta, joten sisältöä ei yhdistetä tekstiä vertaamalla:
+Pi:n JSONL:stä luettu `history.entry` (erityisesti `assistant`) korvaa
+**koko saman agentin väliaikaisen vuorotailin** natiivihistoriasta luetuilla
+merkinnöillä. Selain deduplikoi pysyvät merkinnät `native_key`:llä; se ei
+lisää niiden tekstiä deltan perään. Jos natiivi merkintä puuttuu vielä,
+väliaikainen tail säilyy seuraavaan merkintään asti. Cursor-aukko, 409 tai
+`snapshot.invalidated` vaatii uuden snapshotin ja natiivihistorian ennen
+kirjoituksia; epävarmaa komentoa ei lähetetä uudestaan.
+
+Daemonin controller-tilan `activity`, `live_tail` ja cursor kopioidaan saman
+journal-lukon alla. Tekstideltoja yhdistetään enintään 50 ms ja 4096 tavuun;
+työkalutapahtuma pakottaa aiemman tekstin ensin ulos. Muisti- ja toistorajat
+voivat katkaista väliaikaisen tailin; `ring_truncated` vaatii historian uudelleenluvun.
+Natiivin tiedostojärjestelmän havainnot tehdään ennen controllerin lukittua
+leikkausta, eivätkä ulkopuoliset Pi-/terminaalikirjoitukset kuulu samaan
+atomiseen hetkeen. Tällainen muutos havaitaan vain uudella natiivihistorian
+luvulla tai `snapshot.invalidated`-tapahtumalla; etenkin daemonin ulkopuolisen
+kirjoittajan muuttumista juuri snapshot-luvun jälkeen ei voida todistaa
+pelkällä cursorilla. Selain hakee historian myös aukossa ja palatessaan
+kesken vuoron. Gateway ei muodosta omaa snapshotia tai tapahtumia:
+saavuttamaton daemon on 503, puuttuva autentikointi 401.
 
 ### Komennon hyväksyntä ei ole sen suoritus
 

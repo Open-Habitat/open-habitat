@@ -74,6 +74,9 @@ func validSnapshotIdentity(cfg transport.Config, r *http.Request) bool {
 	return len(ids) == 1 && len(names) == 1 && ids[0] == opaque("wid_", cfg.Provider+":"+cfg.Subject) && names[0] == "GitHub user "+cfg.Subject
 }
 func snapshotHandlerWithJournal(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) string, journal *eventJournal) http.Handler {
+	return snapshotHandlerWithController(cfg, trusted, discover, sessionsReader, nativeHome, nativeStatus, journal, nil)
+}
+func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) string, journal *eventJournal, controller *ConversationController) http.Handler {
 	instance, ok := uuid()
 	if journal != nil {
 		instance, ok = journal.instance, journal.instance != ""
@@ -95,8 +98,12 @@ func snapshotHandlerWithJournal(cfg transport.Config, trusted func(*http.Request
 		// during construction are replayed after this cursor, even if already
 		// reflected in the image; consumers deduplicate by sequence.
 		eventCursor, oldestCursor := "ev1:"+instance+":0", "ev1:"+instance+":0"
+		var turnViews map[string]turnTail
+		var beforeNative string
 		if journal != nil {
-			eventCursor, oldestCursor = journal.watermark()
+			// Native discovery can race with changes outside the controller. Controller
+			// state is captured only after native observation, with its cursor.
+			beforeNative, _ = journal.watermark()
 		}
 		observation := discover(cfg)
 		if observation.State == "error" {
@@ -194,6 +201,45 @@ func snapshotHandlerWithJournal(cfg transport.Config, trusted func(*http.Request
 					break
 				}
 			}
+		}
+		if controller != nil {
+			controller.mu.Lock()
+			for _, active := range controller.sessions {
+				id := "pi:" + active.id
+				found := false
+				for _, raw := range agents {
+					if raw.(map[string]any)["agent_id"] == id {
+						found = true
+						break
+					}
+				}
+				if !found && seen[active.workspace] {
+					agent := sessionFact(nativeSession{id: active.id, state: "missing"}, active.workspace, cfg.UID)
+					agent["history"] = "missing"
+					agents = append(agents, agent)
+				}
+			}
+		}
+		if journal != nil {
+			eventCursor, oldestCursor, turnViews = journal.turnView()
+			for _, raw := range agents {
+				agent := raw.(map[string]any)
+				if t, ok := turnViews[agent["agent_id"].(string)]; ok {
+					agent["activity"] = t.activity
+					tail := make([]json.RawMessage, 0, len(t.frames))
+					tail = append(tail, t.frames...)
+					agent["live_tail"] = tail
+				}
+			}
+		}
+		if controller != nil {
+			controller.mu.Unlock()
+		}
+		// Native observations are not journal-atomic. If an observable native
+		// change arrived during discovery, leave an explicit resnapshot signal
+		// *after* the controller cursor instead of silently consuming it.
+		if journal != nil && beforeNative != eventCursor {
+			journal.appendInvalidation("")
 		}
 		ghState := nativeStatus(r.Context())
 		if ghState != "connected" && ghState != "disconnected" && ghState != "partial" && ghState != "pending" {

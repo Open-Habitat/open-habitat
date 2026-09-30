@@ -568,3 +568,41 @@ Final corrected runtime/test commit `c3758d6` passed the requested committed-tre
 The missing live assistant/tool deltas and atomic `activity`/`live_tail` snapshot require a turn-scoped provisional fragment model, bounded coalescing, native-key reconciliation and a journal-locked snapshot handoff. Those are deliberately **not** inferred from this post-settlement history publisher. The required mid-turn synthetic-provider reconnect and rendered browser journey therefore remain unproven, not merely untested. Leave the issue **in-progress** and use the provisional stream plus HTTP fallback until that work is complete. This receipt-only paragraph changes no executable input; the exact clean gate is repeated on this final receipt commit below.
 
 Receipt-only commit `1e7ba3e` passed the same full clean gate (`status:passed`, `clean:true`; `/var/tmp/nah-history-entry-final-receipt-gate.log`). This addition records the receipt without changing runtime code, schema, fixtures or packaged assets. The final-tree gate result after committing this paragraph is reported through the Taskfleet handoff, without another self-referential receipt edit.
+
+## Live controller deltas and snapshot tail (taskfleet 01m3t1a2fq14zkjjk6jk6pnq2f)
+
+The daemon publishes bounded Pi `assistant.delta` and tool progress on the
+combined per-UID journal. Text coalesces for at most 50 ms / 4096 bytes; a tool
+frame flushes preceding text. The gateway validates and forwards these kinds
+under its existing per-frame session, broker and UID checks. The controller's
+`activity` and provisional `live_tail` are copied with `event_cursor` under the
+journal lock. A new controller-owned conversation appears in the snapshot even
+before Pi creates its native JSONL file. Persisted assistant `history.entry`
+from JSONL clears the provisional tail atomically with its journal event; the
+browser must replace, not append. The ring and tail are bounded, and native
+changes outside this controller still use invalidation/history fallback.
+
+### Browser request for night:ui
+
+Read the snapshot, show each agent's `live_tail` provisionally using its event
+IDs, then open `/api/v1/events?after=<event_cursor>`. Apply only the exact next
+sequence; ignore already applied IDs, and on gap/409/invalidation fetch a new
+snapshot and native history. `assistant.delta` text uses `content_index`;
+`tool.started/updated/finished` use `tool_call_id`. On an assistant
+`history.entry`, discard that agent's **entire** provisional turn tail and
+render the native entry keyed by `native_key` instead, reconciling the history
+page; never append the persisted text to the deltas. An oversized tail emits
+`ring_truncated`, so use the HTTP history/status fallback rather than claiming
+an intact live turn. Never resend an uncertain prompt. Retain provisional
+conversation status streaming and HTTP fallback; no browser code changed here.
+
+The pinned Pi 0.85.1, rootless distinct-UID synthetic fixture now delays the
+second provider turn long enough to observe a real RPC text delta in a
+mid-turn snapshot, then resumes from that cursor and observes the JSONL-keyed
+assistant entry. It also checks first-cursor replay and isolation of two mapped
+UIDs. It does not exercise a native tool-call stream, Chromium rendering, a
+real provider, systemd or a deployed host. Native filesystem changes outside
+the daemon are not journal-atomic with discovery; observable changes during
+snapshot construction trigger a subsequent invalidation, but an unobserved
+external write needs a fresh history read. The issue stays **in-progress** for
+the rendered browser journey.
