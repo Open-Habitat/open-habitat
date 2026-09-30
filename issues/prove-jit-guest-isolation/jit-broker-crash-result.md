@@ -1,0 +1,21 @@
+# Broker crash during first-login account creation
+
+`TMPDIR=/var/tmp ./scripts/vm-test.sh jit-broker-crash --json` passed in a disposable rootless Podman/QEMU Ubuntu noble guest (PID 1 systemd, synthetic GitHub identities only). Tested source base `f6defc8e02a0f1535d434c2f7ec117bb04af960a` plus the scenario changes committed with this report; fixture binary SHA-256 `661bbfdaf5c59b7e8defed04606b20e89be82196d3d1540e0c2289851fe1bc42`. Guest duration: 195 seconds. Pinned image SHA-256 `612b2c0cc1bc413a6cb8c38fd611794caf0f2b436c50013d8b3794db12ad7354`; verified Fleetrepo policy blobs at `85ac4588c9de4c1ceb1fccf58d57753ca58a7688` (the harness emits their hashes).
+
+## What happened
+
+The guest established A (`guestone`, UID 21032) as a healthy, broker-bound control before activating the gateway's private revocation socket. That order matters: the historical pinned Fleetrepo gate does not recognize `revoke.sock` as a permitted runtime path during a *new* daemon-socket activation. The already-active A daemon route and browser session returned 200 before the fault. A native process ran under A's UID throughout the crash.
+
+For B (`guesttwo`, UID 21033), the guest-only build hook sent **SIGKILL to the real systemd-managed root broker** just after the `account` executor step returned. Systemd recorded `Result=signal`, `ExecMainCode=2`, `ExecMainStatus=9`. NSS then resolved B's new account, while its home and daemon config were absent, the committed ledger still contained only A, and `pending.json` remained at phase `account`. This phase was chosen because it includes irreversible Unix-account creation without a durable binding; an earlier reservation-only kill would not exercise that boundary. No phase matrix or disk-loss durability claim is made.
+
+B's OAuth callback returned 403 (`identity_mapping_denied`), its session and snapshot both returned 401, and no route was issued. An explicit systemd service start produced a **new invocation** which exited with `Result=exit-code` and no running broker; the pending bytes and binding ledger were unchanged. The startup guard checks the pending marker before verifying bindings or invoking the executor. No B home/config/socket or published binding appeared after the restart.
+
+The pending journal also denies **A's browser session and routed daemon requests** (401/401). This is intentional global fail-closed behavior, not unaffected browser availability. A's pre-existing native process remained alive; A could still read its own home file as UID 21032, while the partial B account could not read it. Thus the unaffected-sibling observation is native process/DAC continuity, **not** independent browser routing while the broker state is uncertain. The issue must not claim the latter.
+
+## Sensitivity and limits
+
+A local-only mutation of the host proof validator fed an otherwise passing receipt with `restart_refused=false`, `no_session=false`, or `no_executor_after_crash=false`; each was rejected (exit 1), while the unmodified receipt passed (exit 0). This is validator sensitivity, not a second crash experiment. The guest also checks real systemd signal evidence, pending bytes, post-crash filesystem state, and failed restart, rather than trusting a guest-supplied success flag alone.
+
+Only the guest fixture build uses `-tags nah_guest_fault`; an ordinary no-tag build from the same source was compiled and scanned to show it lacks the fault-marker literal while the guest binary contains it. Neither the release packaging command nor the default build supplies that tag. No host service, real account, credential, ingress, test server or Fleetrepo file changed; no pending marker was cleared and no recovery attempted. The separate operator-observed post-reboot smoke with bound users remains outstanding.
+
+The initial failed guest attempts were fixture diagnostics, not evidence of a successful crash: missing revocation activation, missing current config parent, historical gate/revocation-socket incompatibility and emulated first-ensure timeouts were resolved before this passing run. Their sanitized error envelopes are under `/var/tmp/jit-broker-crash-run{1..17}.err` on this machine. The full clean gate and independent review are recorded after completion below.

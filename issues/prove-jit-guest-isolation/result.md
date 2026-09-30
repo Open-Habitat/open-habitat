@@ -14,7 +14,7 @@ work still needed; no new guest or live test was run for this edit.
 | Simultaneous first-login callbacks | [Concurrent callback guest](jit-concurrent-result.md), `4ea1356d`: same-ID and distinct-ID rounds both returned `[303,303]`, with one binding per identity and three isolated snapshots. At `1f74f1f`, a later controlled C-before-B round also passed. | Provider rendezvous establishes simultaneous gateway callbacks, not every broker scheduling interleaving. |
 | Revocation denies existing and new browser sessions | [Revocation guest](jit-revocation-result.md), `1b607206`: old A sessions returned 401 and new A callback 403; B needed a fresh login after the global epoch change. | Request-time browser authorization, not deletion of native credentials or cancellation of existing native work. |
 | Native gh failure or uncertain handoff does not create a usable browser session | [Revocation guest](jit-revocation-result.md), `1b607206`: failed login, wrong native identity and pre-install acknowledgement loss denied the session. [Post-install daemon diagnostic](jit-post-install-daemon-diagnostic-result.md), `4467e26`: retained credential, lost daemon and callback 503 with session/snapshot 401/401. | The later diagnostic receipt-preservation change was checked offline, not rerun in a PID1 guest. A daemon kill is not a broker crash during account creation. |
-| Pending journal prevents use of uncertain account state | [Journal test](jit-journal-intermediate-result.md): a fresh Writer at each journal phase returned `state_unavailable`, issued no route, called no executor and left the state bytes unchanged. | In-process restart simulation, not an actual crashed root broker or disk durability test. |
+| Pending journal prevents use of uncertain account state | [Journal test](jit-journal-intermediate-result.md): a fresh Writer at each journal phase returned `state_unavailable`, issued no route, called no executor and left the state bytes unchanged. [Broker-crash guest](jit-broker-crash-result.md): systemd root broker killed after account creation, fresh invocation refused the retained `account` journal; B received no session or route. | One actual SIGKILL phase in a disposable guest; no disk-loss durability or recovery claim. The pending guard denies A's existing browser route too, while A's native process/DAC access persists. |
 | Selected inconsistent state denies access | `jit-provision` at `3d2121c` denied daemon-config mode drift. Packaged callback guest at `1f74f1f` denied an NSS alias, corrupt head, mismatched generation and rolled-back allowlist epoch. | Selected request-time faults; no universal drift claim and no claim that the Fleetrepo activation gate checks daemon config. |
 | Packaged product and pinned Fleetrepo input were used | [Concurrent callback receipt](jit-concurrent-result.md) records verified archive, embedded commit and binary hash, plus nine immutable Fleetrepo blobs at `85ac4588`. | Web assets were verified in the package but not served by this guest. Older guest receipts used locally compiled binaries. |
 
@@ -50,13 +50,17 @@ It explicitly had zero user bindings. It therefore does not establish login,
 per-user routing or restored isolation between two bound users after reboot.
 Host-specific facts remain in that private repository.
 
-**Actual broker-crash refusal.** A broker killed during account creation has
-not been shown in a guest to restart and refuse the uncertain partial state.
-The in-process journal result above is the evidence currently available. Any
-additional test should establish that specific security claim, rather than
-require a recovery implementation. The recovery issue was closed `wontfix`
-on 28 September under Jari's idempotent-or-no-recovery decision; operator
-reconciliation is no longer an acceptance requirement here.
+**Actual broker-crash refusal.** The [broker-crash guest](jit-broker-crash-result.md)
+killed the real root broker after B's Unix account was created but before its
+binding was committed. A fresh systemd invocation refused the unchanged pending
+`account` journal. B obtained no route or browser session, and its home/config
+were never created. The pre-existing A native process and its home access
+continued, but the global pending guard denied A's browser session and route
+as well; browser availability for the other identity is **not** established
+under this fault. This one phase is not a reboot/disk-durability or recovery
+proof. The recovery issue was closed `wontfix` on 28 September under Jari's
+idempotent-or-no-recovery decision; operator reconciliation is not an
+acceptance requirement here.
 
 **New stream behavior.** The general `/events` endpoint still returns 404 at
 `da841c5`. This says nothing about other streaming routes. Revocation of a
@@ -72,8 +76,7 @@ later successful results and Jari's later decisions determine remaining work.
 The accepted evidence does not require a separate operator recovery procedure
 or proof of every imaginable concurrency or drift case.
 
-This documentation pass changes no implementation, fixture, deployment or
-issue status. The project-document validator and `git diff --check` passed;
-issue doctor reported only existing non-AVIF images in other issues, with no
-schema or reference findings. The full CI gate and guest scenarios were not
-rerun for this text-only change.
+The 30 September broker-crash guest is a separate, later observation from the
+prior documentation-only reconciliation. Its fixture, gate and review receipts
+are in the linked result; the issue remains open for the operator-observed
+post-reboot check.

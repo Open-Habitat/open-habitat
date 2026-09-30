@@ -31,7 +31,7 @@ staged = {name: subprocess.check_output(['git','-C',str(source),'show',
 for name, digest in receipts.items():
     if hashlib.sha256(staged[name]).hexdigest() != digest:
         raise ValueError(f'Fleetrepo JIT policy hash mismatch: {name}')
-if len(sys.argv) not in (3,4) or (len(sys.argv)==4 and sys.argv[3] not in ('login','reboot','concurrent')) or not Path(sys.argv[2]).is_file():
+if len(sys.argv) not in (3,4) or (len(sys.argv)==4 and sys.argv[3] not in ('login','reboot','concurrent','broker-crash')) or not Path(sys.argv[2]).is_file():
     raise ValueError('Expected output directory and regular product binary')
 run = Path(sys.argv[1]); binary = Path(sys.argv[2])
 (run/'jit-receipt.json').write_text(json.dumps({'commit':head,'sha256':receipts},sort_keys=True))
@@ -53,7 +53,7 @@ for name in ('native-agent-host-jit-policy-gate.service','native-agent-host-jit-
     add('/etc/systemd/system/'+name,staged[name])
 for name in ('native-agent-host-broker.socket','native-agent-host-daemon@.socket'):
     add('/etc/systemd/system/'+name+'.d/10-fleetrepo-jit-gate.conf',staged[name+'.d/10-fleetrepo-jit-gate.conf'])
-proof='jit-concurrent-proof.py' if len(sys.argv)==4 and sys.argv[3]=='concurrent' else 'jit-login-proof.py' if login else 'jit-proof.py'
+proof='jit-broker-crash-proof.py' if len(sys.argv)==4 and sys.argv[3]=='broker-crash' else 'jit-concurrent-proof.py' if len(sys.argv)==4 and sys.argv[3]=='concurrent' else 'jit-login-proof.py' if login else 'jit-proof.py'
 add('/usr/local/sbin/jit-proof',(repo/'test/vm'/proof).read_bytes(),'0755')
 if len(sys.argv)==4 and sys.argv[3]=='reboot':
     add('/etc/native-agent-host/reboot-fixture','reboot\n')
@@ -71,7 +71,10 @@ if login:
     add('/etc/native-agent-host/tls.key',(run/'tls.key').read_bytes(),'0600')
     add('/etc/native-agent-host/fixture-ca.crt',(run/'tls.crt').read_bytes())
     add('/etc/native-agent-host/gateway.json',json.dumps({'component':'gateway','listen':'127.0.0.1:8443','tls_cert':'/etc/native-agent-host/tls.crt','tls_key':'/etc/native-agent-host/tls.key','gateway_uid':21003,'oauth':{'client_id':'fixture-client','client_secret':'fixture-secret','callback_url':'https://host.fixture:8443/auth/github/callback','origin':'https://host.fixture:8443'}}))
-    add('/etc/systemd/system/product-gateway.service','[Service]\nUser=native-agent-host-gateway\nGroup=native-agent-host-gateway\nEnvironment=SSL_CERT_FILE=/etc/native-agent-host/fixture-ca.crt\nExecStart=/opt/native-agent-host/current/native-agent-host gateway exec --config /etc/native-agent-host/gateway.json\nNoNewPrivileges=yes\nUMask=0077\n')
+    gateway_socket = len(sys.argv)==4 and sys.argv[3]=='broker-crash'
+    if gateway_socket:
+        add('/etc/systemd/system/product-gateway.socket','[Socket]\nListenStream=/run/native-agent-host/revoke.sock\nSocketMode=0600\nSocketUser=root\nSocketGroup=root\nFileDescriptorName=revoke\nService=product-gateway.service\n')
+    add('/etc/systemd/system/product-gateway.service','[Service]\n'+('Sockets=product-gateway.socket\n' if gateway_socket else '')+'User=native-agent-host-gateway\nGroup=native-agent-host-gateway\nEnvironment=SSL_CERT_FILE=/etc/native-agent-host/fixture-ca.crt\nExecStart=/opt/native-agent-host/current/native-agent-host gateway exec --config /etc/native-agent-host/gateway.json\nNoNewPrivileges=yes\nUMask=0077\n')
     for script, target in [('fake-provider.py','product-fake-provider'),('fake-gh.py','gh'),('fake-git.py','git')]:
         data=(repo/'test/vm'/script).read_text()
         data=data.replace('agent-a','guestone').replace('agent-b','guesttwo').replace('agent-c','guestthree').replace('agent_a','guestone').replace('agent_b','guesttwo').replace('agent_c','guestthree').replace('31003','100000003').replace('21001','21032').replace('21002','21033').replace('31001','100000001').replace('31002','100000002')
@@ -81,6 +84,7 @@ if login:
     (run/'tls.key').unlink();(run/'tls.crt').unlink()
 seed['runcmd'] = [
  ['mkdir','-p','/mnt/product','/opt/native-agent-host/current','/etc/native-agent-host'],
+ ['install','-d','-o','root','-g','root','-m','0711','/etc/omega-habitat','/etc/omega-habitat/daemon','/etc/omega-habitat/daemon/user-mappings'],
  ['mount','-o','ro','/dev/disk/by-label/PRODUCT','/mnt/product'],
  ['install','-m','0755','/mnt/product/native-agent-host','/opt/native-agent-host/current/native-agent-host'],
  ['install','-m','0755','/mnt/product/setfacl','/usr/bin/setfacl'],

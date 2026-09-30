@@ -15,8 +15,8 @@ PY
   else printf 'error: %s\n' "$2" >&2; fi
   exit "$3"
 }
-[[ $# -eq 1 || ( $# -eq 2 && ${2:-} == --json ) ]] || fail invalid_arguments 'Expected self-test|systemd-self-test|two-user-routing|broker-guest|jit-provision|jit-login|jit-concurrent|jit-reboot-diagnostic [--json]' 1
-[[ $scenario == self-test || $scenario == systemd-self-test || $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-reboot-diagnostic ]] || fail invalid_scenario 'Expected self-test, systemd-self-test, two-user-routing, broker-guest, jit-provision or jit-login or jit-concurrent or jit-reboot-diagnostic' 1
+[[ $# -eq 1 || ( $# -eq 2 && ${2:-} == --json ) ]] || fail invalid_arguments 'Expected self-test|systemd-self-test|two-user-routing|broker-guest|jit-provision|jit-login|jit-concurrent|jit-broker-crash|jit-reboot-diagnostic [--json]' 1
+[[ $scenario == self-test || $scenario == systemd-self-test || $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-broker-crash || $scenario == jit-reboot-diagnostic ]] || fail invalid_scenario 'Expected self-test, systemd-self-test, two-user-routing, broker-guest, jit-provision or jit-login or jit-concurrent or jit-broker-crash or jit-reboot-diagnostic' 1
 # Treat the recipe as data, never source executable text.
 image_url= image_sha= image_arch=
 while IFS= read -r line || [[ -n $line ]]; do
@@ -80,7 +80,7 @@ echo "$image_sha  $image" | sha256sum -c --status || fail image_checksum_mismatc
 printf 'instance-id: synthetic-systemd-fixture\nlocal-hostname: fixture-vm\n' > "$run/meta-data"
 seed_file=/fixture/cloud-init.yaml
 binary_sha= product_commit= archive_sha= embedded_commit=
-if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-reboot-diagnostic ]]; then
+if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-broker-crash || $scenario == jit-reboot-diagnostic ]]; then
   command -v go >/dev/null || fail missing_go 'Go is required to build product fixture' 2
   command -v openssl >/dev/null || fail missing_openssl 'OpenSSL is required for fixture TLS' 2
   product_commit=$(git -C "$repo" rev-parse HEAD)
@@ -99,15 +99,23 @@ if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario ==
     embedded_commit=$("$run/native-agent-host" --json version | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["commit"])') || fail invalid_release 'Embedded commit unavailable' 2
     [[ $embedded_commit == "$product_commit" ]] || fail invalid_release 'Embedded release commit differs from committed tree' 2
   else
-    (cd "$repo" && CGO_ENABLED=0 go build -trimpath -o "$run/native-agent-host" ./cmd/native-agent-host) || fail product_build_failed 'Could not build product binary' 2
+    tags=()
+    [[ $scenario == jit-broker-crash ]] && tags=(-tags nah_guest_fault)
+    (cd "$repo" && CGO_ENABLED=0 go build -trimpath "${tags[@]}" -o "$run/native-agent-host" ./cmd/native-agent-host) || fail product_build_failed 'Could not build product binary' 2
+    if [[ $scenario == jit-broker-crash ]]; then
+      (cd "$repo" && CGO_ENABLED=0 go build -trimpath -o "$run/release-comparison" ./cmd/native-agent-host) || fail product_build_failed 'Could not build release-comparison binary' 2
+      ! grep -aq 'nah-guest-broker-crash' "$run/release-comparison" || fail product_build_failed 'Guest fault marker leaked into ordinary build' 2
+      grep -aq 'nah-guest-broker-crash' "$run/native-agent-host" || fail product_build_failed 'Guest fixture binary lacks crash hook' 2
+    fi
   fi
   binary_sha=$(sha256sum "$run/native-agent-host" | cut -d' ' -f1)
-  if [[ $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-reboot-diagnostic ]]; then
+  if [[ $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-broker-crash || $scenario == jit-reboot-diagnostic ]]; then
     # Read only: exact landed Fleetrepo checkout and reviewed policy hashes are
     # checked by the renderer before any private bytes reach the disposable ISO.
     jit_args=()
     [[ $scenario == jit-login ]] && jit_args=(login)
     [[ $scenario == jit-concurrent ]] && jit_args=(concurrent)
+    [[ $scenario == jit-broker-crash ]] && jit_args=(broker-crash)
     [[ $scenario == jit-reboot-diagnostic ]] && jit_args=(reboot)
     PRODUCT_RELEASE_ROOT=${release_root:-} FLEETREPO_JIT_SOURCE=${FLEETREPO_JIT_SOURCE:-/home/maintainer/Sources/fleetrepo} python3 "$repo/test/vm/jit-fixture.py" "$run" "$run/native-agent-host" "${jit_args[@]}" >"$run/fixture.log" 2>&1 || fail invalid_policy_input 'Pinned Fleetrepo commit or reviewed JIT gate blob unavailable or invalid' 1
     seed_file=/run-data/jit-cloud-init.yaml
@@ -118,7 +126,7 @@ if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario ==
     python3 "$repo/test/vm/product-fixture.py" "$run" "$run/native-agent-host" || fail invalid_product_fixture 'Could not render private product seed' 2
     seed_file=/run-data/product-cloud-init.yaml
   fi
-  if [[ $scenario == two-user-routing || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-reboot-diagnostic ]]; then
+  if [[ $scenario == two-user-routing || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-broker-crash || $scenario == jit-reboot-diagnostic ]]; then
     # The pinned noble cloud image lacks the ACL utilities required by the
     # broker's existing-binding verifier. Carry guest-local tools from the
     # disposable pinned image; never install a host package or relax ACLs.
@@ -238,6 +246,38 @@ RECEIPT_CHECK
   cleanup; trap - EXIT
   [[ ! -e $run ]] || fail cleanup_failed 'Private guest run directory remains' 2
   if $json; then printf '{"schema_version":1,"data":{"status":"passed","launched":true,"scope":"jit-reboot-diagnostic","product_commit":"%s","binary_sha256":"%s","image_sha256":"%s","tool_image_id":"%s","fleetrepo":%s,"duration_seconds":%d,"guest":%s},"warnings":[]}\n' "$product_commit" "$binary_sha" "$image_sha" "$image_id" "$fleetrepo_receipt" "$duration" "$proof"; else echo "JIT reboot passed (${duration}s)"; fi
+  exit 0
+fi
+if [[ $scenario == jit-broker-crash ]]; then
+  if [[ $vm_status -ne 0 || -z $proof ]] || ! python3 - "$proof" <<'CRASH_CHECK'
+import json,sys
+try:
+ p=json.loads(sys.argv[1])
+ if p.get('status')!='passed' or p.get('scope')!='jit-broker-crash' or p.get('pid1')!='systemd' or p.get('phase')!='account':sys.exit(1)
+ if not all(p.get(k) is True for k in ('real_sigkill','account_exists','pending_retained','restart_refused','no_route','no_session','no_executor_after_crash','other_user_native_unaffected')):sys.exit(1)
+ if p.get('callback_status') not in (403,503) or p.get('session_status')!=401 or p.get('other_session_status')!=401 or p.get('other_snapshot_status')!=401:sys.exit(1)
+except (ValueError,TypeError,AttributeError):sys.exit(1)
+CRASH_CHECK
+  then
+    reason=$(python3 - "$proof" <<'CRASH_REASON'
+import json,re,sys
+try: print(re.sub('[^A-Za-z0-9 _./:-]',' ',str(json.loads(sys.argv[1]).get('reason','receipt rejected')))[:220])
+except (ValueError,TypeError):print('missing proof')
+CRASH_REASON
+)
+    fail boot_proof_failed "JIT broker crash guest refused proof (VM exit $vm_status, ${duration}s; check=$reason)" 2
+  fi
+  if ! python3 - "$run/serial.log" "$run/native-agent-host" <<'CRASH_SCAN'
+import pathlib,sys
+for name in ('guestone','guesttwo','guestthree','UNKNOWN'):
+ token=('PRODUCT_VM_TOKEN_'+name+'_FIXTURE_ONLY_92764').encode()
+ if any(token in pathlib.Path(p).read_bytes() for p in sys.argv[1:]):sys.exit(1)
+CRASH_SCAN
+  then fail token_scan_failed 'Synthetic token found in crash output or binary' 2; fi
+  fleetrepo_receipt=$(cat "$run/jit-receipt.json")
+  cleanup; trap - EXIT
+  [[ ! -e $run ]] || fail cleanup_failed 'Private guest run directory remains' 2
+  if $json; then printf '{"schema_version":1,"data":{"status":"passed","launched":true,"scope":"jit-broker-crash","product_commit":"%s","binary_sha256":"%s","image_sha256":"%s","tool_image_id":"%s","fleetrepo":%s,"duration_seconds":%d,"guest":%s},"warnings":[]}\n' "$product_commit" "$binary_sha" "$image_sha" "$image_id" "$fleetrepo_receipt" "$duration" "$proof"; else echo "JIT broker crash guest passed (${duration}s)"; fi
   exit 0
 fi
 if [[ $scenario == jit-concurrent ]]; then
