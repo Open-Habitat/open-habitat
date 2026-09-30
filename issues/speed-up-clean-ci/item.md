@@ -3,10 +3,12 @@ created: 2026-09-29
 updated: 2026-09-30
 type: improvement
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 lane: build-tooling
 collision: [scripts/ci-local.sh]
+closed: 2026-09-30
+closed_by: agent
 ---
 
 # Get test feedback faster
