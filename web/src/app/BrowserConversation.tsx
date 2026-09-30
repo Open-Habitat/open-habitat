@@ -835,6 +835,19 @@ export function BrowserConversation({
   const selected = sessions.filter(
     (s) => s.workspace_id === workspace.workspace_id,
   );
+  const notices = (
+    <>
+      {receipt ? <InlineNotice title={receipt} tone="warning" /> : null}
+      {problem ? <InlineNotice title={problem} tone="danger" /> : null}
+      {ambiguous ? (
+        <InlineNotice
+          title="Aiemman pyynnön tulos epävarma"
+          description="Tarkista lista, tila ja natiivi historia. Automaattista uudelleenlähetystä ei tehdä; aloita tarvittaessa uusi selainistunto vasta selvitettyäsi tilanteen."
+          tone="warning"
+        />
+      ) : null}
+    </>
+  );
   return (
     <section ref={section} className="ah-reading-view">
       {!id ? (
@@ -919,6 +932,14 @@ export function BrowserConversation({
                     }[current.state] ?? "Tila ei tiedossa")
                   : "Tila ei tiedossa"
             }
+            activityKind={
+              current?.state === "accepted"
+                ? "working"
+                : stale || !current || current.state === "uncertain"
+                  ? "unknown"
+                  : "neutral"
+            }
+            controlKind={controlled ? "neutral" : "read-only"}
             controlLabel={
               controlled ? "Selainohjaus" : "Ohjaus ei ole käytettävissä"
             }
@@ -1090,17 +1111,10 @@ export function BrowserConversation({
             }
             onPress={() => (stale ? onRefreshStale?.() : void refresh())}
           />
+          {notices}
         </ConversationFrame>
       )}
-      {receipt ? <InlineNotice title={receipt} tone="warning" /> : null}
-      {problem ? <InlineNotice title={problem} tone="danger" /> : null}
-      {ambiguous ? (
-        <InlineNotice
-          title="Aiemman pyynnön tulos epävarma"
-          description="Tarkista lista, tila ja natiivi historia. Automaattista uudelleenlähetystä ei tehdä; aloita tarvittaessa uusi selainistunto vasta selvitettyäsi tilanteen."
-          tone="warning"
-        />
-      ) : null}
+      {!id ? notices : null}
     </section>
   );
 }

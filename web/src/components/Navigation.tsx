@@ -4,6 +4,7 @@ import { Input, Label, TextField } from "react-aria-components";
 import { Link, useLocation } from "react-router";
 import { Button } from "./Primitives";
 import { Badge, StatusMark } from "./Status";
+import type { StatusKind } from "./Status";
 import type { Action, AsyncState, Availability, Tone } from "./types";
 
 export function AppShell({
@@ -29,13 +30,18 @@ export function AppShell({
     const onEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setMobileOpen(false);
-        mobileTrigger.current?.focus();
+        requestAnimationFrame(() => mobileTrigger.current?.focus());
       }
     };
     window.addEventListener("keydown", onEscape);
     return () => window.removeEventListener("keydown", onEscape);
   }, [mobileOpen]);
   const mobileTrigger = useRef<HTMLButtonElement>(null);
+  const mobileNav = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (mobileOpen)
+      mobileNav.current?.querySelector<HTMLElement>("nav")?.focus();
+  }, [mobileOpen]);
   const closeMobile = () => {
     setMobileOpen(false);
     requestAnimationFrame(() => mobileTrigger.current?.focus());
@@ -58,12 +64,26 @@ export function AppShell({
           <button
             type="button"
             className="ah-mobile-scrim"
-            aria-label="Sulje navigaatio"
+            aria-label="Sulje valikko"
             onClick={closeMobile}
           />
         ) : null}
-        <div className="ah-rail-slot">{rail}</div>
-        <main id="main" tabIndex={-1}>
+        {rail ? (
+          <div className="ah-rail-slot" ref={mobileNav}>
+            {rail}
+            {mobileOpen ? (
+              <button
+                type="button"
+                className="ah-mobile-close"
+                aria-label="Sulje navigaatio"
+                onClick={closeMobile}
+              >
+                <Icon name="back" />
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        <main id="main" tabIndex={-1} inert={mobileOpen}>
           {rail ? (
             <div className="ah-mobile-toolbar">
               <button
@@ -275,6 +295,7 @@ export function WorkspaceRail({
   return (
     <nav
       aria-label="Työtilat ja keskustelut"
+      tabIndex={-1}
       className={collapsed ? "ah-rail ah-rail-collapsed" : "ah-rail"}
     >
       <header className="ah-rail-head">
@@ -294,7 +315,8 @@ export function WorkspaceRail({
           </span>
           <Button
             ariaLabel={collapsed ? "Avaa navigaatio" : "Sulje navigaatio"}
-            label={collapsed ? "›" : "‹"}
+            label={collapsed ? "Avaa navigaatio" : "Sulje navigaatio"}
+            icon={collapsed ? "forward" : "back"}
             variant="secondary"
             size="compact"
             onPress={onToggle}
@@ -371,6 +393,8 @@ export function AgentHeader({
   titleState,
   activityLabel,
   activityAnimated = false,
+  activityKind = "neutral",
+  controlKind = "neutral",
   controlLabel,
   workspaceLabel,
   workspaceHref,
@@ -382,6 +406,8 @@ export function AgentHeader({
   titleState?: string;
   activityLabel: string;
   activityAnimated?: boolean;
+  activityKind?: StatusKind;
+  controlKind?: StatusKind;
   controlLabel: string;
   workspaceLabel: string;
   workspaceHref: string;
@@ -441,21 +467,9 @@ export function AgentHeader({
           label={activityLabel}
           tone="info"
           animated={activityAnimated ? "running" : false}
-          kind={
-            activityAnimated
-              ? "working"
-              : activityLabel.includes("tiedossa")
-                ? "unknown"
-                : "neutral"
-          }
+          kind={activityKind}
         />
-        <StatusMark
-          label={controlLabel}
-          tone="neutral"
-          kind={
-            controlLabel.includes("käytettävissä") ? "read-only" : "neutral"
-          }
-        />
+        <StatusMark label={controlLabel} tone="neutral" kind={controlKind} />
       </p>
       {titleAction?.failureNotice ? (
         <p className="ah-inline-error">{titleAction.failureNotice}</p>

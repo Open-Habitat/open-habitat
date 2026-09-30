@@ -147,15 +147,8 @@ export function App() {
       editor.setSelectionRange(start, end);
     }
   }, [verifying]);
-  const [collapsed, setCollapsed] = useState(
-    () => window.matchMedia?.("(max-width: 800px)").matches ?? false,
-  );
+  const [collapsed, setCollapsed] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  // Close the narrow rail after a route change, not when the user opens it.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the pathname is the route-change signal.
-  useEffect(() => {
-    if (window.matchMedia?.("(max-width: 800px)").matches) setCollapsed(true);
-  }, [location.pathname]);
   const [logoutError, setLogoutError] = useState(false);
   const [settingsReturn, setSettingsReturn] = useState("/workspaces");
   const returningFromSettings = useRef(false);
@@ -165,9 +158,10 @@ export function App() {
   useEffect(() => {
     if (location.pathname !== "/settings" && returningFromSettings.current) {
       returningFromSettings.current = false;
-      document
-        .querySelector<HTMLElement>("[data-account-controls] button")
-        ?.focus();
+      (window.matchMedia("(max-width: 800px)").matches
+        ? document.querySelector<HTMLElement>("[aria-label='Avaa navigaatio']")
+        : document.querySelector<HTMLElement>("[data-account-controls] button")
+      )?.focus();
     }
   }, [location.pathname]);
   const identity = snapshot?.identity.web_identity_id;

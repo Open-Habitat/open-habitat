@@ -43,9 +43,26 @@ test("@lab v2 shared conversation metrics in both themes and at phone width", as
             document.querySelector(".ah-conversation-frame") ??
             document.documentElement
           ).getBoundingClientRect().width,
+          renderedColumnWidth: (
+            document.querySelector(".ah-conversation-stream > .ah-timeline") ??
+            document.documentElement
+          ).getBoundingClientRect().width,
+          streamScrolls:
+            (document.querySelector(".ah-conversation-stream")?.scrollHeight ??
+              0) >
+            (document.querySelector(".ah-conversation-stream")?.clientHeight ??
+              0),
+          mainScrolls:
+            (document.querySelector("main")?.scrollHeight ?? 0) >
+            (document.querySelector("main")?.clientHeight ?? 0),
         };
       });
-      if (width === 1440) expect(values.railWidth).toBe(296);
+      if (width === 1440) {
+        expect(values.railWidth).toBe(296);
+        expect(values.renderedColumnWidth).toBe(780);
+      }
+      expect(values.streamScrolls).toBe(true);
+      expect(values.mainScrolls).toBe(false);
       expect(values.topPadding).toBe("13px");
       expect(values.sidePadding).toBe("24px");
       expect(values.columnWidth).toBe("780px");
@@ -61,4 +78,21 @@ test("@lab v2 shared conversation metrics in both themes and at phone width", as
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole("button", { name: "Sulje navigaatio" }).click();
   await expect(page.locator(".ah-rail")).toHaveCSS("width", "52px");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  const trigger = page.getByRole("button", { name: "Avaa navigaatio" });
+  await trigger.click();
+  await expect(
+    page
+      .getByRole("navigation", { name: "Työtilat ja keskustelut" })
+      .getByRole("link", { name: /aurinkokello/ })
+      .first(),
+  ).toBeVisible();
+  await expect(page.locator(".ah-rail")).not.toHaveClass(/ah-rail-collapsed/);
+  await expect(page.locator(".ah-rail")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(trigger).toBeFocused();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollHeight),
+  ).toBeLessThanOrEqual(844);
 });

@@ -1,3 +1,4 @@
+import { Icon } from "./Icon";
 import { useCallback, useRef } from "react";
 import type { ReactNode, RefObject } from "react";
 import {
@@ -222,7 +223,11 @@ export function Disclosure({
         type="button"
         onClick={onToggle}
       >
-        <span aria-hidden="true">{expanded ? "▾" : "▸"}</span> {label}
+        <Icon
+          name="forward"
+          className={expanded ? "ah-icon-expanded" : undefined}
+        />{" "}
+        {label}
         {summary ? <small>{summary}</small> : null}
       </button>
       {expanded ? <div className="ah-disclosure-panel">{children}</div> : null}

@@ -320,6 +320,8 @@ export function HistoryView({
       <AgentHeader
         title={agent.title.display}
         activityLabel="Prosessin tila ei tiedossa"
+        activityKind="unknown"
+        controlKind="read-only"
         controlLabel="Vain luku · Ohjausta ei ole"
         workspaceLabel={workspaceName}
         workspaceHref={`/workspaces/${workspaceId}`}

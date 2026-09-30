@@ -2,7 +2,11 @@ import type { ReactNode } from "react";
 
 /** Viewport-height conversation composition. The caller owns history anchoring and focus. */
 export function ConversationFrame({ children }: { children: ReactNode }) {
-  return <section className="ah-conversation-frame">{children}</section>;
+  return (
+    <section className="ah-conversation-frame ah-reading-view">
+      {children}
+    </section>
+  );
 }
 
 /** The only scrolling region; the application may attach its history ref and onScroll. */

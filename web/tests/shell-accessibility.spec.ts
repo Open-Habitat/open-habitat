@@ -59,6 +59,7 @@ test("@a11y signed-out, shell, settings and narrow shell have no axe violations 
       ),
     ).toBeLessThanOrEqual(1);
   }
+  await page.getByRole("button", { name: "Avaa navigaatio" }).click();
   await page.getByRole("button", { name: "Tilivalikko" }).click();
   await page.getByRole("menuitem", { name: "Asetukset" }).click();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);

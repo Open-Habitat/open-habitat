@@ -48,10 +48,14 @@
 }
 .ah-app-shell:has(.ah-rail) > .ah-shell-body > main {
   max-width: none;
+  min-height: 0;
   overflow: auto;
 }
 .ah-app-shell:has(.ah-rail) .ah-state {
   max-width: 720px;
+}
+.ah-app-shell:has(.ah-rail) .ah-state:has(.ah-conversation-frame) {
+  max-width: none;
 }
 .ah-shell-no-rail {
   grid-template-columns: minmax(0, 1fr);
@@ -1152,7 +1156,12 @@ h1[tabindex="-1"]:focus {
 
 /* Shared conversation template: header, a single scrolling stream and footer controls. */
 .ah-shell-body > main:has(.ah-conversation-frame) {
+  height: 100%;
   padding: 0;
+}
+.ah-shell-body > main:has(.ah-conversation-frame) > .ah-state {
+  height: 100%;
+  min-height: 0;
 }
 .ah-conversation-frame {
   display: flex;
@@ -1250,9 +1259,10 @@ h1[tabindex="-1"]:focus {
     min-height: 0;
     position: relative;
   }
-  .ah-shell-body:has(.ah-rail) > main {
+  .ah-app-shell:has(.ah-rail) > .ah-shell-body > main {
     flex: 1;
     min-width: 0;
+    min-height: 0;
     overflow: auto;
   }
   .ah-shell-body > .ah-rail-slot {
@@ -1269,6 +1279,20 @@ h1[tabindex="-1"]:focus {
   }
   .ah-mobile-open .ah-rail {
     width: 100%;
+  }
+  .ah-mobile-open .ah-rail-title > .ah-control {
+    display: none;
+  }
+  .ah-mobile-close {
+    position: absolute;
+    right: var(--ah-s2);
+    top: var(--ah-s2);
+    z-index: 2;
+    width: var(--ah-touch);
+    height: var(--ah-touch);
+    border: 0;
+    background: var(--ah-rail);
+    color: var(--ah-ink);
   }
   .ah-mobile-scrim {
     display: block;
@@ -1296,8 +1320,11 @@ h1[tabindex="-1"]:focus {
     background: transparent;
     color: var(--ah-ink);
   }
-  .ah-conversation-frame {
+  .ah-app-shell:has(.ah-rail) .ah-state:has(.ah-conversation-frame) {
     height: calc(100% - var(--ah-touch));
+  }
+  .ah-conversation-frame {
+    height: 100%;
   }
   .ah-shell-body:has(.ah-conversation-frame) > .ah-rail-slot {
     display: none;
@@ -1315,4 +1342,7 @@ h1[tabindex="-1"]:focus {
 .ah-reading-view:has(> .ah-conversation-frame) {
   height: 100%;
   min-height: 0;
+}
+.ah-icon-expanded {
+  transform: rotate(90deg);
 }

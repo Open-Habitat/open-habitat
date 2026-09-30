@@ -12,6 +12,7 @@ import {
   TextField as AriaTextField,
 } from "react-aria-components";
 import type { Availability, Option } from "./types";
+import { Icon, type IconName } from "./Icon";
 import { enabled, unavailableReason } from "./types";
 
 export interface ButtonProps {
@@ -23,6 +24,7 @@ export interface ButtonProps {
   pending?: boolean;
   shortcutHint?: string;
   ariaLabel?: string;
+  icon?: IconName;
 }
 export function Button({
   label,
@@ -33,6 +35,7 @@ export function Button({
   pending = false,
   shortcutHint,
   ariaLabel,
+  icon,
 }: ButtonProps) {
   const reason = unavailableReason(availability);
   return (
@@ -44,7 +47,7 @@ export function Button({
         isPending={pending}
         onPress={onPress}
       >
-        {pending ? `${label}…` : label}
+        {icon ? <Icon name={icon} /> : pending ? `${label}…` : label}
         {shortcutHint ? <kbd>{shortcutHint}</kbd> : null}
       </AriaButton>
       {reason ? <span className="ah-control-reason">{reason}</span> : null}
@@ -192,7 +195,7 @@ export function Checkbox({
       onChange={onChange}
     >
       <span className="ah-checkbox-box" aria-hidden="true">
-        {checked ? "✓" : ""}
+        {checked ? <Icon name="check" /> : null}
       </span>
       <span>
         {label}

@@ -3,6 +3,7 @@ import { Button, RadioGroup, TextArea, TextField } from "./Primitives";
 import { Markdown } from "./Markdown";
 import { Disclosure } from "./Overlays";
 import { InlineNotice, StatusMark } from "./Status";
+import type { StatusKind } from "./Status";
 import type { Availability, ProblemView, TimelineItem, Tone } from "./types";
 import { enabled } from "./types";
 
@@ -87,6 +88,7 @@ function Message({
   state,
   stateTone = "neutral",
   stateAnimated = false,
+  stateKind = "neutral",
   onCopy,
 }: {
   speaker: string;
@@ -95,6 +97,7 @@ function Message({
   state?: string;
   stateTone?: Tone;
   stateAnimated?: boolean;
+  stateKind?: StatusKind;
   onCopy: () => void;
 }) {
   return (
@@ -109,15 +112,7 @@ function Message({
             label={state}
             tone={stateTone}
             animated={stateAnimated ? "running" : false}
-            kind={
-              stateAnimated
-                ? "working"
-                : stateTone === "danger"
-                  ? "error"
-                  : stateTone === "warning"
-                    ? "unknown"
-                    : "neutral"
-            }
+            kind={stateKind}
           />
         ) : null}
       </header>
@@ -191,6 +186,15 @@ export function AssistantMessage({
             : "neutral"
       }
       stateAnimated={streamState === "streaming"}
+      stateKind={
+        streamState === "streaming"
+          ? "working"
+          : streamState === "failed"
+            ? "error"
+            : streamState === "unknown"
+              ? "unknown"
+              : "neutral"
+      }
       onCopy={onCopy}
     >
       {children}
