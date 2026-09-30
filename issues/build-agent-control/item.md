@@ -8,6 +8,9 @@ epic: native-agent-host-architecture
 lane: agent-control
 lane_seq: 50
 collision: [docs/, AGENTS.md, design-system/, internal/daemon/, web/src/components/Conversation.tsx]
+commits:
+- hash: de00aba1219f6af692f54fb6646db88a6577dad3
+  summary: Mark agent control in progress
 ---
 
 # Connect v1 conversation controls to Pi
