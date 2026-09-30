@@ -1,5 +1,11 @@
 # Clean gate performance and testing policy
 
+## Current improvement: explicit fast web feedback
+
+`./scripts/test-web-fast.sh` runs the existing formatting, lint, TypeScript, unit and component checks as one command on an installed checkout, without reinstalling dependencies or launching the serial browser suite. No implicit path-based test selection or cached pass is claimed. A developer chooses browser specs when a UI/host journey changes, and the complete clean gate still checks the final runtime/test/release tree. See root `TESTING.md` for the boundary rules.
+
+Measured on this worktree (Linux, Node 22.23.2, warm `web/node_modules`; `/usr/bin/time`, one observation each under variable load): `npm ci --prefix web --no-audit --no-fund` took 3.10 s once. The five checks run individually took 0.15, 0.17, 0.36, 1.90 and 3.34 s wall respectively (5.92 s sum); the new script took **5.98 s** wall, 26.52 s user + 2.84 s system CPU. Thus the wrapper itself does not speed up the same checks; choosing these checks instead of repeating the complete clean gate gives about **178 s earlier web-only feedback** relative to the prior warm full-gate observation of 183.56 s. That cross-run comparison is illustrative, not a controlled speedup claim: machine load and tree differ. These fast checks cannot establish host-backed behavior, UID isolation, contracts, reproducible packaging, or a releasable tree. For browser-facing edits, add the relevant synthetic Playwright journey; for shared or cross-layer changes prefer the full suite. No browser workers were added.
+
 Implementation commit: `b317851` (parent `35dccfc`). The root `TESTING.md` is the single test-selection guide. A runtime/release/test change still runs the complete clean gate once on the final committed tree; documentation-only work uses focused validators. The full gate continues to run the same Go, web, contracts, fixture, license, issue and archive checks. Playwright's E2E and a11y cases now share one host startup and one fresh production build, also used by packaging; standalone browser commands still build their own assets. Go/npm content-addressed caches persist only inside this checkout's ignored `.cache/ci-local/`, while HOME, venv and tool installs remain per-run and disposable.
 
 ## Measurements
