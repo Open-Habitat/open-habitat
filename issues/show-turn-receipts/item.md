@@ -3,12 +3,14 @@ created: 2026-09-30
 updated: 2026-09-30
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@build-agent-control', '@stream-conversation-events']
 lane: design-v2
 lane_seq: 8
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
+closed: 2026-09-30
+closed_by: night-ui-worker
 ---
 
 # Show turn and send receipts in the conversation
