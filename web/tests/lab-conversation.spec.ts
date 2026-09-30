@@ -194,7 +194,7 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
   await expect(progress).toContainText("Käyttää työkalua: bash", {
     timeout: 12000,
   });
-  await page.getByRole("button", { name: "Keskeytä Pi:n vuoro" }).click();
+  await page.getByRole("button", { name: "Keskeytä" }).click();
   await expect(
     page.getByRole("group", { name: "Vahvista keskeytys" }),
   ).toBeVisible();

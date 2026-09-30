@@ -25,6 +25,7 @@ export interface ButtonProps {
   shortcutHint?: string;
   ariaLabel?: string;
   icon?: IconName;
+  trailingIcon?: IconName;
 }
 export function Button({
   label,
@@ -36,6 +37,7 @@ export function Button({
   shortcutHint,
   ariaLabel,
   icon,
+  trailingIcon,
 }: ButtonProps) {
   const reason = unavailableReason(availability);
   return (
@@ -48,6 +50,7 @@ export function Button({
         onPress={onPress}
       >
         {icon ? <Icon name={icon} /> : pending ? `${label}…` : label}
+        {trailingIcon ? <Icon name={trailingIcon} /> : null}
         {shortcutHint ? <kbd>{shortcutHint}</kbd> : null}
       </AriaButton>
       {reason ? <span className="ah-control-reason">{reason}</span> : null}

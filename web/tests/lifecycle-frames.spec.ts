@@ -24,9 +24,7 @@ test("@browser-conversation repeated completed turns do not become Pi messages",
     await expect(
       page.getByText(`Selvä. Kysyit: "Vuoro ${i}".`, { exact: false }),
     ).toBeVisible({ timeout: 15_000 });
-    await expect(
-      page.getByRole("button", { name: "Keskeytä Pi:n vuoro" }),
-    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Keskeytä" })).toHaveCount(0);
     await expect(page.getByText("Muu Pi:n viesti")).toHaveCount(0);
   }
   await page.reload();

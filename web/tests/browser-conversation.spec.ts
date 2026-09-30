@@ -86,9 +86,7 @@ test("@browser-conversation create, send once, reconnect and old history stays r
   });
   // The short synthetic turn may already have settled after reload. An idle
   // conversation must not offer a meaningless interruption request.
-  await expect(
-    page.getByRole("button", { name: "Keskeytä Pi:n vuoro" }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Keskeytä" })).toHaveCount(0);
   await page.goto("/agents/pi:11111111-1111-4111-8111-111111111111");
   await expect(page.getByText("Vain luku · Ohjausta ei ole")).toBeVisible();
   await expect(
@@ -288,9 +286,9 @@ test("@browser-conversation revalidation restores editor selection, paged readin
     node.scrollTop = node.scrollHeight;
   });
   await expect.poll(bottomGap).toBeLessThanOrEqual(1);
-  await page.getByRole("button", { name: /Jonossa 0/ }).click();
+  await page.getByRole("button", { name: "Tiedot" }).click();
   await expect.poll(bottomGap).toBeLessThanOrEqual(1);
-  await page.getByRole("button", { name: /Jonossa 0/ }).click();
+  await page.getByRole("button", { name: "Tiedot" }).click();
   await editor.fill("kesken oleva viesti");
   await editor.evaluate((node: HTMLTextAreaElement) => {
     node.focus();
@@ -731,18 +729,13 @@ test("@browser-conversation steer, follow-up and clear return only removed texts
   await editor.fill("hidas päätyö");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "Suorita valmistumisen jälkeen" }),
+    page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toBeVisible();
   await editor.fill("jonoon yksi");
-  await page
-    .getByRole("button", { name: "Suorita valmistumisen jälkeen" })
-    .click();
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(editor).toHaveValue("");
-  await page.locator(".ah-radio-group label").first().click();
   await editor.fill("ohjaus kaksi");
-  await page
-    .getByRole("button", { name: "Ohjaa tämän vuoron jälkeen" })
-    .click();
+  await page.getByRole("button", { name: "Ohjaa" }).click();
   await expect(editor).toHaveValue("");
   await page.getByRole("button", { name: /Jonossa/ }).click();
   await expect(page.getByText("jonoon yksi", { exact: true })).toBeVisible();
@@ -773,7 +766,7 @@ test("@browser-conversation a stale working view cannot strand an unsent queued 
   await editor.fill("hidas päätyö");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "Suorita valmistumisen jälkeen" }),
+    page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toBeVisible();
   await editor.fill("ei jonoon");
   let release!: () => void;
@@ -790,9 +783,7 @@ test("@browser-conversation a stale working view cannot strand an unsent queued 
     await route.continue();
   });
   try {
-    await page
-      .getByRole("button", { name: "Suorita valmistumisen jälkeen" })
-      .click();
+    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
     await intercepted;
     // The original turn settles while the browser request is held. The daemon
     // rejects this new command before native delivery; it is NOT ambiguous.

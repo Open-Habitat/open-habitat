@@ -52,6 +52,16 @@ test("@lab v2 shared conversation metrics in both themes and at phone width", as
               0) >
             (document.querySelector(".ah-conversation-stream")?.clientHeight ??
               0),
+          speakerSize: style(".ah-message header strong").fontSize,
+          copyIcon: Boolean(
+            document.querySelector(".ah-message header .ah-button svg"),
+          ),
+          toolBorder: style(".ah-tool-group").borderTopWidth,
+          detailsVisible: Boolean(
+            document.querySelector(
+              ".ah-agent-header > button[aria-expanded] svg",
+            ),
+          ),
           mainScrolls:
             (document.querySelector("main")?.scrollHeight ?? 0) >
             (document.querySelector("main")?.clientHeight ?? 0),
@@ -70,6 +80,10 @@ test("@lab v2 shared conversation metrics in both themes and at phone width", as
       expect(values.titleSize).toBe("15.5px");
       expect(values.bodySize).toBe(width === 390 ? "15px" : "14.5px");
       expect(values.buttonRadius).toBe("8px");
+      expect(values.speakerSize).toBe("11px");
+      expect(values.copyIcon).toBe(true);
+      expect(values.toolBorder).toBe("1px");
+      expect(values.detailsVisible).toBe(true);
       expect(values.focusWidth).toBe("2px");
       expect(values.focusOffset).toBe("2px");
       expect(values.frameWidth).toBeLessThanOrEqual(width);

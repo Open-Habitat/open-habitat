@@ -6,6 +6,7 @@ import {
   ConversationTimeline,
   UncertainCommandCard,
   UserMessage,
+  SupportedQuestion,
 } from "./Conversation";
 import { Markdown } from "./Markdown";
 import { WorkingProgress } from "./WorkingProgress";
@@ -178,4 +179,55 @@ export const UncertainDraftNarrow: Story = {
     ),
   ],
   parameters: { viewport: { defaultViewport: "mobile1" } },
+};
+
+// Every story uses the production components and the Storybook light/dark toolbar.
+export const CompletedTurn: Story = {
+  render: () => (
+    <main>
+      <UserMessage sourceText="Tutki muutos." onCopy={noop} />
+      <AssistantMessage streamState="complete" time="13.53" onCopy={noop}>
+        <Markdown text="Muutos tarkistettu." />
+      </AssistantMessage>
+    </main>
+  ),
+};
+export const ReadOnlyHistory: Story = {
+  render: () => (
+    <main>
+      <History state="ready" />
+      <p role="status">
+        Vain luku · Ohjaus ei ole käytettävissä. Historiaa voi lukea, mutta
+        viestiä ei voi lähettää.
+      </p>
+    </main>
+  ),
+};
+export const IncomingQuestion: Story = {
+  render: () => (
+    <main>
+      <SupportedQuestion
+        requestId="synthetic-question"
+        kind="confirm"
+        prompt="Jatketaanko tarkistusta?"
+        state="open"
+        onChange={noop}
+        onRespond={noop}
+        onCancel={noop}
+      />
+    </main>
+  ),
+};
+export const AwayFromLatest: Story = {
+  render: () => (
+    <main>
+      <ConversationTimeline
+        state="ready"
+        items={items}
+        historyMode="pagedAccessible"
+        showJumpToLatest
+        onJumpToLatest={noop}
+      />
+    </main>
+  ),
 };

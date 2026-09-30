@@ -11,6 +11,7 @@ export function ConversationTimeline({
   state,
   items,
   newContentCount = 0,
+  showJumpToLatest = false,
   historyMode,
   emptyLabel = "Aloita keskustelu.",
   problem,
@@ -20,6 +21,7 @@ export function ConversationTimeline({
   state: "loading" | "ready" | "empty" | "error" | "stale" | "unavailable";
   items: (TimelineItem & { kind?: string })[];
   newContentCount?: number;
+  showJumpToLatest?: boolean;
   historyMode: "virtualized" | "pagedAccessible";
   emptyLabel?: string;
   problem?: ProblemView;
@@ -71,12 +73,19 @@ export function ConversationTimeline({
           </li>
         ))}
       </ol>
-      {newContentCount > 0 ? (
-        <Button
-          label={`Uutta sisältöä (${newContentCount})`}
-          variant="secondary"
-          onPress={onJumpToLatest}
-        />
+      {newContentCount > 0 || showJumpToLatest ? (
+        <div className="ah-jump-latest">
+          <Button
+            label={
+              newContentCount > 0
+                ? `Uutta sisältöä (${newContentCount})`
+                : "Viimeisimpään"
+            }
+            variant="secondary"
+            trailingIcon="down"
+            onPress={onJumpToLatest}
+          />
+        </div>
       ) : null}
     </section>
   );
@@ -106,6 +115,14 @@ function Message({
     >
       <header>
         <strong>{speaker}</strong>
+        <Button
+          ariaLabel={`Kopioi viesti: ${speaker}`}
+          label="Kopioi"
+          icon="copy"
+          variant="quiet"
+          size="compact"
+          onPress={onCopy}
+        />
         {time ? <time>{time}</time> : null}
         {state ? (
           <StatusMark
@@ -117,13 +134,6 @@ function Message({
         ) : null}
       </header>
       <div className="ah-prose">{children}</div>
-      <Button
-        ariaLabel={`Kopioi viesti: ${speaker}`}
-        label="Kopioi"
-        variant="quiet"
-        size="compact"
-        onPress={onCopy}
-      />
     </article>
   );
 }
@@ -168,7 +178,7 @@ export function AssistantMessage({
 }) {
   const labels = {
     streaming: "Vastaa",
-    complete: "Valmis",
+    complete: "Vuoro valmis",
     interrupted: "Keskeytetty",
     failed: "Epäonnistui",
     unknown: "Tila ei tiedossa",
@@ -177,7 +187,13 @@ export function AssistantMessage({
     <Message
       speaker={modelLabel ? `Pi · ${modelLabel}` : "Pi"}
       time={time}
-      state={streamState ? labels[streamState] : undefined}
+      state={
+        streamState === "complete"
+          ? `Vuoro valmis${time ? ` ${time}` : ""} · odottaa viestiäsi`
+          : streamState
+            ? labels[streamState]
+            : undefined
+      }
       stateTone={
         streamState === "failed"
           ? "danger"
@@ -187,13 +203,15 @@ export function AssistantMessage({
       }
       stateAnimated={streamState === "streaming"}
       stateKind={
-        streamState === "streaming"
-          ? "working"
-          : streamState === "failed"
-            ? "error"
-            : streamState === "unknown"
-              ? "unknown"
-              : "neutral"
+        streamState === "complete"
+          ? "success"
+          : streamState === "streaming"
+            ? "working"
+            : streamState === "failed"
+              ? "error"
+              : streamState === "unknown"
+                ? "unknown"
+                : "neutral"
       }
       onCopy={onCopy}
     >
@@ -523,11 +541,11 @@ export function UnknownEvent({
   return (
     <article className="ah-unknown">
       <StatusMark label="Tuntematon tapahtuma" tone="warning" />
-      <h3>{kindLabel}</h3>
       <p>{safeSummary}</p>
+      <h3>{kindLabel}</h3>
       {safePayloadText ? (
         <details>
-          <summary>Näytä alkuperäinen sisältö</summary>
+          <summary>Alkuperäinen sisältö</summary>
           <pre>{safePayloadText}</pre>
         </details>
       ) : null}
@@ -650,6 +668,8 @@ export function Composer({
   selectedWorkingMode,
   sendState,
   queueSummary,
+  queueKnown = true,
+  queueOpen = false,
   onChange,
   onSendNow,
   onSteer,
@@ -664,6 +684,8 @@ export function Composer({
   selectedWorkingMode: "steer" | "follow_up";
   sendState?: "idle" | "pending" | "rejected" | "uncertain";
   queueSummary?: string;
+  queueKnown?: boolean;
+  queueOpen?: boolean;
   onChange: (value: string) => void;
   onSendNow: () => void;
   onSteer: () => void;
@@ -692,49 +714,6 @@ export function Composer({
             : send
         }
       />
-      {activity === "working" ? (
-        <RadioGroup
-          label="Työskentelyn aikainen lähetystapa"
-          value={selectedWorkingMode}
-          options={[
-            {
-              value: "steer",
-              label: "Ohjaa tämän vuoron jälkeen",
-              description: "Ei keskeytä käynnissä olevaa työkalua.",
-            },
-            { value: "follow_up", label: "Suorita valmistumisen jälkeen" },
-          ]}
-          onChange={onModeChange}
-        />
-      ) : null}
-      <div className="ah-actions">
-        <Button
-          label={
-            activity === "working"
-              ? selectedWorkingMode === "steer"
-                ? "Ohjaa tämän vuoron jälkeen"
-                : "Suorita valmistumisen jälkeen"
-              : "Lähetä"
-          }
-          availability={availability}
-          pending={sendState === "pending"}
-          onPress={send}
-        />
-        {onInterrupt ? (
-          <Button
-            label="Keskeytä vuoro"
-            variant="secondary"
-            onPress={onInterrupt}
-          />
-        ) : null}
-        {onOpenQueue ? (
-          <Button
-            label={queueSummary ?? "Avaa jono"}
-            variant="quiet"
-            onPress={onOpenQueue}
-          />
-        ) : null}
-      </div>
       {sendState === "rejected" ? (
         <InlineNotice
           title="Viesti hylättiin"
@@ -742,6 +721,57 @@ export function Composer({
           tone="danger"
         />
       ) : null}
+      {activity === "working" ? (
+        <p className="ah-composer-hint">
+          Ohjaa antaa ohjeen seuraavassa välissä eikä keskeytä työkalua. Lähetä
+          lisää jonoon vuoron jälkeen. Enter käyttää viimeksi valittua tapaa:{" "}
+          {selectedWorkingMode === "steer" ? "Ohjaa" : "Lähetä"}.
+        </p>
+      ) : null}
+      <div className="ah-actions">
+        {onInterrupt ? (
+          <Button label="Keskeytä" variant="quiet" onPress={onInterrupt} />
+        ) : null}
+        {activity === "working" ? (
+          <Button
+            label="Ohjaa"
+            variant="secondary"
+            availability={availability}
+            pending={sendState === "pending"}
+            onPress={() => {
+              onModeChange("steer");
+              onSteer();
+            }}
+          />
+        ) : null}
+        <Button
+          label="Lähetä"
+          availability={availability}
+          pending={sendState === "pending"}
+          onPress={
+            activity === "working"
+              ? () => {
+                  onModeChange("follow_up");
+                  onFollowUp();
+                }
+              : onSendNow
+          }
+        />
+        {onOpenQueue &&
+        (queueOpen ||
+          !queueKnown ||
+          (queueSummary && queueSummary !== "Jonossa 0")) ? (
+          <Button
+            label={
+              queueKnown
+                ? (queueSummary ?? "Avaa jono")
+                : "Jonon tila ei tiedossa"
+            }
+            variant="quiet"
+            onPress={onOpenQueue}
+          />
+        ) : null}
+      </div>
     </section>
   );
 }

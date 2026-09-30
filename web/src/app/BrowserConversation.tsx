@@ -92,6 +92,7 @@ export function BrowserConversation({
   const [elapsed, setElapsed] = useState(0);
   const [confirmStop, setConfirmStop] = useState(false);
   const [queueOpen, setQueueOpen] = useState(false);
+  const [awayFromLatest, setAwayFromLatest] = useState(false);
   const [workingMode, setWorkingMode] = useState<"steer" | "follow_up">(
     "follow_up",
   );
@@ -110,6 +111,7 @@ export function BrowserConversation({
   const alive = useRef(true);
   const generation = useRef(0);
   const feed = useRef<HTMLElement>(null);
+  const stopConfirmation = useRef<HTMLFieldSetElement>(null);
   const section = useRef<HTMLElement>(null);
   const restored = useRef(false);
   const focusedOnOpen = useRef(false);
@@ -791,6 +793,16 @@ export function BrowserConversation({
       }
     }
   };
+  useEffect(() => {
+    if (confirmStop && !stale && current?.state === "accepted")
+      stopConfirmation.current?.querySelector("button")?.focus();
+  }, [confirmStop, stale, current?.state]);
+  const closeStopConfirmation = () => {
+    setConfirmStop(false);
+    section.current
+      ?.querySelector<HTMLElement>(".ah-composer .ah-button")
+      ?.focus();
+  };
   const controlled =
     !!current &&
     !problem &&
@@ -972,40 +984,6 @@ export function BrowserConversation({
             elapsed={elapsed}
           />
           <UnpresentedEvents events={events} />
-          {controlled && !stale && current?.state === "accepted" ? (
-            <Button
-              label="Keskeytä Pi:n vuoro"
-              variant="secondary"
-              availability={
-                busy
-                  ? { state: "unknown", reason: "Pyyntö kesken" }
-                  : { state: "enabled" }
-              }
-              onPress={() => setConfirmStop(true)}
-            />
-          ) : null}
-          {confirmStop && !stale && current?.state === "accepted" ? (
-            <fieldset aria-label="Vahvista keskeytys">
-              <p>
-                Keskeytetäänkö Pi:n vuoro? Jo käynnistyneiden työkalujen
-                päättymistä ei voida vahvistaa.
-              </p>
-              <Button
-                label="Kyllä, keskeytä vuoro"
-                onPress={() => void stopNow()}
-                availability={
-                  busy
-                    ? { state: "unknown", reason: "Pyyntö kesken" }
-                    : { state: "enabled" }
-                }
-              />
-              <Button
-                label="Jatka työskentelyä"
-                variant="quiet"
-                onPress={() => setConfirmStop(false)}
-              />
-            </fieldset>
-          ) : null}
           <ConversationStream
             streamRef={feed}
             onScroll={() => {
@@ -1013,6 +991,7 @@ export function BrowserConversation({
               if (!el) return;
               wasAtBottom.current =
                 el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+              setAwayFromLatest(!wasAtBottom.current);
               if (wasAtBottom.current) {
                 readingAnchor.current = undefined;
                 setUnseen(0);
@@ -1032,8 +1011,10 @@ export function BrowserConversation({
               items={timelineItems(entries, stale)}
               historyMode="pagedAccessible"
               newContentCount={unseen}
+              showJumpToLatest={awayFromLatest}
               onJumpToLatest={() => {
                 wasAtBottom.current = true;
+                setAwayFromLatest(false);
                 feed.current?.scrollTo({ top: feed.current.scrollHeight });
                 setUnseen(0);
               }}
@@ -1080,6 +1061,8 @@ export function BrowserConversation({
               activity={current?.state === "accepted" ? "working" : "idle"}
               selectedWorkingMode={workingMode}
               queueSummary={`Jonossa ${(current?.queue?.steering.length ?? 0) + (current?.queue?.follow_up.length ?? 0)}`}
+              queueKnown={!!current?.queue}
+              queueOpen={queueOpen}
               sendState={busy ? "pending" : ambiguous ? "uncertain" : "idle"}
               availability={
                 canSend
@@ -1095,7 +1078,34 @@ export function BrowserConversation({
               onFollowUp={() => void submitQueue("follow_up")}
               onModeChange={setWorkingMode}
               onOpenQueue={() => setQueueOpen(!queueOpen)}
+              onInterrupt={
+                current?.state === "accepted" && !stale
+                  ? () => setConfirmStop(true)
+                  : undefined
+              }
             />
+          ) : null}
+          {confirmStop && !stale && current?.state === "accepted" ? (
+            <fieldset ref={stopConfirmation} aria-label="Vahvista keskeytys">
+              <p>
+                Keskeytetäänkö Pi:n vuoro? Jo käynnistyneiden työkalujen
+                päättymistä ei voida vahvistaa.
+              </p>
+              <Button
+                label="Kyllä, keskeytä vuoro"
+                onPress={() => void stopNow()}
+                availability={
+                  busy
+                    ? { state: "unknown", reason: "Pyyntö kesken" }
+                    : { state: "enabled" }
+                }
+              />
+              <Button
+                label="Jatka työskentelyä"
+                variant="quiet"
+                onPress={closeStopConfirmation}
+              />
+            </fieldset>
           ) : null}
           {controlled && queueOpen ? (
             <QueuePanel

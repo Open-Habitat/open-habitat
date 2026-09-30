@@ -494,11 +494,12 @@ export function AgentHeader({
         <p className="ah-inline-error">{titleAction.failureNotice}</p>
       ) : null}
       <button
+        className="ah-details-toggle"
         aria-expanded={detailsExpanded}
         type="button"
         onClick={onToggleDetails}
       >
-        Lisätiedot
+        Tiedot <Icon name="down" />
       </button>
     </header>
   );

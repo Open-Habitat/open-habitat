@@ -20,9 +20,7 @@ for (const theme of ["light", "dark"] as const) {
       page.getByText("Työskentelee", { exact: true }).first(),
     ).toBeVisible();
     await expect(
-      page
-        .getByRole("button", { name: "Suorita valmistumisen jälkeen" })
-        .last(),
+      page.getByRole("button", { name: "Lähetä", exact: true }).last(),
     ).toBeEnabled();
     await page.screenshot({
       path: `${evidence}/design-happy-${theme}.png`,

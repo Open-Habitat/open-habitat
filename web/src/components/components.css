@@ -1344,3 +1344,52 @@ h1[tabindex="-1"]:focus {
 .ah-icon-expanded {
   transform: rotate(90deg);
 }
+/* Conversation landmarks share the frame's column and control tokens. */
+.ah-message header strong {
+  font-size: var(--ah-size-label);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.ah-message header .ah-control {
+  margin-inline-start: auto;
+}
+.ah-message header .ah-button {
+  padding: var(--ah-s1);
+}
+.ah-agent-header > .ah-details-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s1);
+  padding: var(--ah-s1) var(--ah-s2);
+  border: 0;
+  border-radius: var(--ah-r-md);
+  background: transparent;
+  color: var(--ah-muted);
+  cursor: pointer;
+}
+.ah-agent-header > .ah-details-toggle:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-accent);
+  outline-offset: var(--ah-focus-offset);
+}
+.ah-composer-hint {
+  font-size: var(--ah-size-meta);
+  color: var(--ah-muted);
+}
+.ah-jump-latest {
+  position: sticky;
+  bottom: var(--ah-s3);
+  justify-self: center;
+  display: flex;
+  height: 0;
+  margin-top: calc(-1 * var(--ah-s5));
+  overflow: visible;
+}
+.ah-jump-latest .ah-control {
+  transform: translateY(-100%);
+}
+.ah-jump-latest .ah-button {
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-surface);
+  box-shadow: 0 2px 8px var(--ah-scrim);
+}
