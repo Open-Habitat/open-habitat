@@ -2,9 +2,10 @@
 created: 2026-09-29
 updated: 2026-09-30
 type: task
-status: open
+status: done
 priority: normal
 labels: [human-review]
+closed: 2026-09-30
 ---
 
 # Decide account display name and single conversation route
@@ -32,3 +33,9 @@ A writable browser chat lives at `/workspaces/:id?conversation=pi:…`, and the 
 ### 2026-09-30T08:09:10Z · @jari
 
 Account display decision (Jari): show the person’s first name in the default/compact view; when the account view is opened, show the signed-in email address. Do not derive a first name by blindly splitting an email address. Determine a trustworthy source for the first name and which authenticated email to display before changing the browser/host contract; keep both display-only, never authority for Unix identity. The separate single-conversation-route question was not decided by this comment.
+
+## Resolution
+
+### 2026-09-30T08:34:19Z · @issuectl
+
+Jari chose first name in the compact/default view and the signed-in email address in the opened account view; recorded above under Decisions. The design agent has been briefed separately. Closing this decision/handoff issue does not claim the UI or contract is implemented. The separate conversation-route suggestion remains undecided and can be revisited with the design results and host control semantics.
