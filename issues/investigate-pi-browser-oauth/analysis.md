@@ -1,48 +1,26 @@
 # Pi browser OAuth feasibility
 
-## Findings
+## Recommendation (2026-10-01)
 
-The source investigation on 2026-09-29 inspected Pi **0.85.1**. Its built-in
-OpenAI Codex browser login uses the fixed return address
-`http://localhost:1455/auth/callback` in both authorization and token exchange.
-In the user's browser, `localhost` means their own computer, not the remote
-host running Pi. `PI_OAUTH_CALLBACK_HOST` changes where Pi listens; it does
-not change that return address. The manual code-entry fallback does not make
-the return address configurable either.
+**Keep Pi's device-code sign-in for the remote browser product.** There is no supported direct HTTPS return to this host in the pinned Pi **0.85.1** Codex flow. OpenAI's current [Codex authentication guidance](https://developers.openai.com/codex/auth/#login-on-headless-devices) explicitly prefers device-code authentication for remote/headless use when the localhost browser callback cannot reach the CLI. This is a recommendation for the present product, **not** a claim that OpenAI rejects every HTTPS redirect or that future Pi versions cannot support one. No browser-login implementation or provider experiment is justified by the available evidence. Revisit only if provider-supported redirect/client registration and a Pi-owned per-UID integration are established; a gateway code relay is not an agreed architecture.
 
-Pi's device-code flow works differently: the browser displays instructions,
-while Pi exchanges and stores credentials under the mapped Unix user. The
-host's existing adapter selects that method and has no browser callback
-interface. Pi provider extensions can define OAuth flows, but that alone does
-not establish permission to use a different return address or client for
-OpenAI Codex.
+## What the sources show
 
-An earlier unauthenticated provider probe received an anti-bot 403. That result
-establishes neither acceptance nor rejection of an HTTPS host callback.
+- The installed `@earendil-works/pi-coding-agent` is **0.85.1**; its bundled `@earendil-works/pi-ai/dist/auth/oauth/openai-codex.js` sets `REDIRECT_URI = "http://localhost:1455/auth/callback"` in both authorization URL and token exchange, listens on port 1455, checks `state`, exchanges the code with its PKCE verifier, and returns credentials to Pi. `PI_OAUTH_CALLBACK_HOST` changes only the listener bind address; it does not change the redirect URI. The manual-code fallback still exchanges against the same fixed redirect. A browser on a different machine resolves `localhost` locally, not on the remote host. [Pi source at version 0.85.1](https://github.com/earendil-works/pi-mono/blob/main/packages/ai/src/auth/oauth/openai-codex.ts) (link to upstream moving branch; assertions here were verified against the installed 0.85.1 file, not the current branch).
+- The same file's device flow requests a code, notifies the user of `https://auth.openai.com/codex/device`, polls for authorization and exchanges it using the distinct `https://auth.openai.com/deviceauth/callback` redirect. [OpenAI Codex authentication guide, “Login on headless devices”](https://developers.openai.com/codex/auth/#login-on-headless-devices) recommends device auth (beta), notes it may need enabling in personal security settings or workspace permissions, and describes SSH localhost forwarding as an alternative for the *CLI*. It does not document registering this product's HTTPS callback with the Codex client ID.
+- [Pi provider docs, OAuth Support](https://github.com/earendil-works/pi-mono/blob/main/packages/coding-agent/docs/custom-provider.md#oauth-support) describe extension-defined login, exchange, refresh and storage. That makes a custom Pi flow technically conceivable but grants no permission to reuse the built-in Codex client ID with another redirect. [Pi providers docs](https://github.com/earendil-works/pi-mono/blob/main/packages/coding-agent/docs/providers.md) say OAuth credentials live in `~/.pi/agent/auth.json` and refresh automatically; this is separate from Codex CLI's cache.
+- In this repo, [`internal/daemon/pi_device_helper.mjs`](../../internal/daemon/pi_device_helper.mjs) pins 0.85.1, selects `device_code` through `ModelRuntime.login` under the mapped UID, emits only code/status frames and never returns credentials; [`pi_device_linux.go`](../../internal/daemon/pi_device_linux.go) enforces the bounded protocol. [`docs/interfaces.md`](../../docs/interfaces.md) describes the per-browser-session attempt, cancellation and timeout. There is no host callback for Pi. This evidence establishes the *present adapter*, not all possible Pi extension designs.
 
-## Open question
+An earlier unauthenticated probe got an anti-bot 403. That does **not** show that a genuine authenticated authorization request accepts or rejects a remote redirect. No account/provider login or live host change was performed for this note.
 
-Provider acceptance of a remote HTTPS callback and a corresponding Pi integration
-path remain unestablished. Pi provider extensions alone do not settle the first
-question, and the 0.85.1 source observation does not describe later versions.
-The [issue](item.md) defines the research goal and the constraints on a real
-experiment.
+## Options and limits
 
-## Evidence and limits
+1. **Device code (recommended now):** browser visits provider's verification page, user enters the one-time code; Pi alone polls, exchanges, saves and refreshes tokens as the mapped UID. The host only exposes the short-lived code and attempt status to the authenticated session. Operational limitation: user must enter a code and device auth may be disabled for their account/workspace.
+2. **Remote HTTPS callback (not currently supported):** would require provider-authorized redirect/client configuration *and* a Pi-owned flow accepting an inbound code with a per-attempt PKCE verifier under the correct UID. Pi's extension API is a possible implementation mechanism, not provider approval. Neither switching `PI_OAUTH_CALLBACK_HOST` nor changing the authorization URL alone works: Pi's exchange still uses localhost. Do not silently replace Pi's native storage/refresh with gateway credentials.
+3. **SSH port forwarding of localhost:1455 (CLI workaround, not a web onboarding path):** OpenAI documents this for remote Codex CLI; it requires a user-controlled SSH connection and local port availability, and does not produce an HTTPS callback to this service. Copying local auth caches is likewise not an acceptable browser onboarding design for a multi-user host.
 
-The [source investigation](https://github.com/maintainer/native-agent-host/blob/b624d1a06ff5cf7b7d17236f475d8577b48b9358/issues/investigate-pi-browser-oauth/analysis.md)
-records the inspected Pi package paths and host files. The relevant Pi sources
-were `@earendil-works/pi-ai/dist/auth/oauth/openai-codex.js`, `pkce.js`, and Pi's
-provider documentation. The inspected host adapter and attempt handlers kept
-exchange and storage in the mapped user's Pi process.
+A hypothetical gateway relay would expose an authorization code to another process: it must first bind an unguessable, single-use, expiring state to the initiating browser session *and* exactly one mapped daemon/UID, reject replay and session changes, avoid redirects or logs leaking codes, and keep the verifier and token exchange solely in that UID's Pi process. An OAuth `state` match inside Pi alone does not authenticate the web session; the callback arrives as an unauthenticated browser navigation and must not select a Unix user from caller-provided parameters. The existing device attempt's five-minute lifetime and browser-session isolation do not automatically transfer to a new callback. Moving identity authority or credential exchange to the gateway requires Jari's explicit architecture decision (see [`internal/AGENTS.md`](../../internal/AGENTS.md), [`docs/adr-0003-host-stack.md`](../../docs/adr-0003-host-stack.md)).
 
-The investigation ran
-`TMPDIR=/var/tmp node --test internal/daemon/pi-device-test/helper.test.mjs`.
-After supplying the missing test-local dependency from the installed pinned
-0.85.1 package, all three tests passed with disposable homes and mocked device
-endpoints. They cover existing device-login behavior, redaction and interruption.
-They do not establish browser callback support, provider acceptance or separate
-Unix-user isolation. The temporary dependency link was removed afterward.
+## If direct return becomes worth pursuing
 
-No provider request or real sign-in was made during that source investigation.
-Provider compatibility remains unknown.
+First seek explicit provider documentation/support for an HTTPS redirect registered to an appropriate client and compatibility with Pi-managed Codex credentials; do not infer this from an unauthenticated 403 or a synthetic mock. Then build a **disposable, offline** two-session/two-UID simulation: prove callback state-to-session/UID binding, single use, expiration/cancel, wrong-session rejection and that only the mapped UID's Pi storage is touched. This learns host isolation, **not** provider acceptance. If that passes and Jari still wants the UX, ask his prior approval for one bounded real-account experiment, naming the account, client/redirect and temporary environment in advance. One authorized login would test provider redirect and token exchange with exact redirect/PKCE parameters and Pi-owned storage/refresh; rejection is informative but success on one account is not general provider support. Do not print or retain tokens, codes, verifier or HTTP response bodies in reports; use a disposable home and private HTTPS test callback, stop the test listener, revoke the granted authorization where supported, remove the temporary Pi auth file and callback config, and verify cleanup and logs before reporting. Do not run this on a live shared host without separate approval. Until these prerequisites hold, stop at device code.
