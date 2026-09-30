@@ -14,5 +14,12 @@
     "emitted_at": "2026-09-22T14:00:02Z", "kind": "assistant.delta",
     "resource": {"agent_id": "pi:33333333-3333-4333-8333-333333333333"},
     "native_key": "entry-redacted:block-0:delta-1", "payload": {"text": "Synthetic response."}
+  },
+  {
+    "schema_version": 1, "event_id": "evt_example0044",
+    "cursor": "ev1:22222222-2222-4222-8222-222222222222:44",
+    "server_instance_id": "22222222-2222-4222-8222-222222222222", "sequence": 44,
+    "emitted_at": "2026-09-22T14:00:03Z", "kind": "snapshot.invalidated",
+    "resource": {"scope": "user"}, "payload": {"reason": "source_changed"}
   }
 ]

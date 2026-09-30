@@ -74,6 +74,9 @@ events = json.loads((BASE / "examples" / "events.json").read_text())
 event_validator = Draft202012Validator(schemas["event.schema.json"], registry=registry, format_checker=format_checker)
 for event in events:
     event_validator.validate(event)
+# The server's first replay slice emits this closed invalidation shape rather
+# than structured native deltas; keep it exercised by the offline gate.
+assert any(event["kind"] == "snapshot.invalidated" and event["resource"] == {"scope": "user"} and event["payload"] == {"reason": "source_changed"} for event in events)
 for previous, current in zip(events, events[1:]):
     assert current["server_instance_id"] == previous["server_instance_id"]
     assert current["sequence"] == previous["sequence"] + 1
