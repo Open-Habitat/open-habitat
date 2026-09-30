@@ -25,9 +25,9 @@ Myöhemmät rajaukset löytyvät nykyisistä sivuista ja ADR:istä.
 ## Avoimet valinnat
 
 - **Sidotun Unix-käyttäjän poistaminen.** [ADR 0007](adr-0007-bound-user-deprovision.md)
-  on ehdotus poistamisen, UID:n uudelleenkäytön estämisen ja keskeytyksistä
-  palautumisen mallista. Oman testitilin poistamiseen annettu lupa ei vielä
-  hyväksy ehdotettua yleistä arkkitehtuuria.
+  jää myöhemmäksi: käyttäjän ”poista minut” -toiminto ja ylläpitäjän CLI-komento
+  ovat tulevia tarpeita, joiden toteutustapaa ei ole päätetty. Nykyiseen
+  testikäyttöön riittää koko testiympäristön nollaus (Jarin päätös 30.9.2026).
 - **Lokituksen tarkempi käytäntö.** [Lokitusehdotus](logging.md) jättää
   päätettäväksi komponenttien välisen tapahtumien yhdistämisen, säilytys- ja
   käyttöoikeusrajat sekä käyttäjälle mahdollisesti annettavan tukiviitteen.

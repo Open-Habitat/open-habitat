@@ -48,7 +48,7 @@ groups:
         desc: Rootin paikallinen gateway-ohjauspolku ja OAuth-virtojen rajat.
       - slug: adr-0007-bound-user-deprovision
         title: ADR 0007 — Sidotun käyttäjän poistaminen
-        desc: Ehdotus UID-haudan, migraation ja root-ohjauksen rajasta; toteutus estetty.
+        desc: Myöhempi käyttäjän poistotarve ja ylläpitäjän CLI; toteutustapa avoin.
       - slug: daemon-bindings
         title: Daemonien yksityiset sidonnat
         desc: Juuren hallitsema hakemistopolku ja käyttäjäkohtaiset käyttöoikeudet.

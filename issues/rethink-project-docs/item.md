@@ -159,9 +159,30 @@ käyttäjän käynnistyksenjälkeinen eristys jää todennettavaksi. Todellisen
 broker-kaatumisen jälkeisen pääsyneston näyttö erotetaan palautustoiminnosta.
 
 Jari pyysi tästä ensimmäisen version; uutta hyväksyntää tai testitulosta ei
-kirjattu. Seuraava lukukohde tämän version jälkeen on kohta 3:
-`deprovision-bound-user` ja ADR 0007. Designin avoimet kysymykset kulkevat
+kirjattu. Kohta 3 on käsitelty alla kuvatulla tavalla. Seuraava lukukohde on kohta 4:
+`github-repos-first-onboarding` sekä `design-first-use-onboarding` suunnitelmineen. Designin avoimet kysymykset kulkevat
 mukana kohdissa 4–8; komponenttikarttaa tai toteutusjakoa ei ole vielä tehty.
+
+### Kohta 3: käyttäjän poistaminen käsitelty 30.9.2026
+
+Jari vahvisti, että nyt tarvitaan toimiva testiympäristö, johon koko
+järjestelmän nollaus riittää. Yksittäisen testitilin poistamisen toteutusissue
+suljettiin korvautuneena. Käyttäjän ”poista minut” -toiminto ja ylläpitäjän
+CLI-komento yksittäisen käyttäjän poistamiseen jäävät myöhemmiksi tarpeiksi;
+niitä ei aikataulutettu eikä niiden arkkitehtuuria hyväksytty.
+
+ADR 0007 kuvaa nyt tämän rajauksen ja nykyisen brokerin teknisen ongelman.
+Vanha pilot.11-migraatioeste ja yksityiskohtainen poistomekanismi eivät ohjaa
+nykyistä työtä. Päätössivu ja navigaatio päivitettiin vastaamaan rajausta.
+Lähteinä olivat tuotekoodi revisiossa `0d9621c`, Fleetrepon reset- ja
+uudelleenrakennusissueiden päätökset ja tulokset revisiossa `231bde93` sekä
+Jarin tämän keskustelun täsmennys. Live-ympäristöä ei muutettu.
+
+Dokumentaatiovalidaattori ja `git diff --check` läpäisivät. Issue doctorissa
+oli vain muiden issueiden olemassa olevia kuvamuotohavaintoja. Täyttä
+CI-porttia ei ajettu dokumenttimuutokselle.
+
+Seuraavaksi kohta 4: repovalinta ja onboarding.
 
 ### Aineiston ja skillin valinta
 
