@@ -19,13 +19,14 @@ import {
   WorkspaceSection,
 } from "../components";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
+import { ReturnView } from "../components/ReturnView";
 import {
   BrowserConversation,
   type ConversationPlace,
 } from "./BrowserConversation";
+import { list as listConversations, type Session } from "./conversations";
 import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
-import { list as listConversations, type Session } from "./conversations";
 import { piStatus, sessionCSRF } from "./pi";
 import { readSnapshot, sourceState, type Workspace } from "./snapshot";
 import {
@@ -663,6 +664,7 @@ export function App() {
     ) : location.pathname === "/settings" ? (
       <AccountSettings
         name="Oma tili"
+        onLogout={logout}
         nativeState={snapshot?.auth?.native_github.state}
         onBack={() => {
           returningFromSettings.current = true;
@@ -773,55 +775,35 @@ export function App() {
               Työtilasi ja niiden keskustelut löydät vasemmalta. Voit jatkaa
               lukemista avaamalla keskustelun.
             </p>
-            <section className="ah-continue" aria-labelledby="continue-heading">
-              <h2 id="continue-heading">Palaa keskusteluihin</h2>
-              {snapshot?.agents.some(
-                (a) =>
-                  a.history === "readable" &&
-                  visible.some((w) => w.workspace_id === a.workspace_id),
-              ) ? (
-                <ul className="ah-continue-list">
-                  {snapshot.agents
-                    .filter(
-                      (a) =>
-                        a.history === "readable" &&
-                        visible.some((w) => w.workspace_id === a.workspace_id),
-                    )
-                    .slice(0, 3)
-                    .map((a) => {
-                      const workspace = visible.find(
-                        (w) => w.workspace_id === a.workspace_id,
-                      );
-                      const browserSession = browserSessions.some(
-                        (s) =>
-                          s.agent_id === a.agent_id &&
-                          s.workspace_id === a.workspace_id,
-                      );
-                      return (
-                        <li key={a.agent_id}>
-                          <Link
-                            to={
-                              browserSession
-                                ? `/workspaces/${a.workspace_id}?conversation=${a.agent_id}`
-                                : `/agents/${a.agent_id}`
-                            }
-                          >
-                            {a.title.display}
-                            <small>
-                              {workspace?.display_name ?? workspace?.name}
-                              {browserSession
-                                ? " · Jatka työtä"
-                                : " · Vain luettavissa"}
-                            </small>
-                          </Link>
-                        </li>
-                      );
-                    })}
-                </ul>
-              ) : (
-                <p>Keskusteluja ei vielä näy. Valitse työtila vasemmalta.</p>
-              )}
-            </section>
+            <ReturnView
+              conversations={(snapshot?.agents ?? [])
+                .filter(
+                  (a) =>
+                    a.history === "readable" &&
+                    visible.some((w) => w.workspace_id === a.workspace_id),
+                )
+                .slice(0, 3)
+                .map((a) => {
+                  const workspace = visible.find(
+                    (w) => w.workspace_id === a.workspace_id,
+                  );
+                  const browserSession = browserSessions.some(
+                    (s) =>
+                      s.agent_id === a.agent_id &&
+                      s.workspace_id === a.workspace_id,
+                  );
+                  return {
+                    id: a.agent_id,
+                    href: browserSession
+                      ? `/workspaces/${a.workspace_id}?conversation=${a.agent_id}`
+                      : `/agents/${a.agent_id}`,
+                    title: a.title.display,
+                    workspace: workspace?.display_name ?? workspace?.name ?? "",
+                    browserSession,
+                    process: phase === "stale" ? "stale" : a.process,
+                  };
+                })}
+            />
           </>
         ) : null}
         {source === "absent" ? (

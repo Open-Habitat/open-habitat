@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { Menu } from "./Overlays";
-import { Button } from "./Primitives";
+import { Button, RadioGroup } from "./Primitives";
 import { InlineNotice, StatusMark } from "./Status";
 
 /** Provider subject numbers are not a useful person-facing name. */
@@ -22,6 +22,11 @@ export function AccountShelf({
   onLogout: () => void;
 }) {
   const [theme, setTheme] = useState(getThemeChoice);
+  useEffect(() => {
+    const sync = () => setTheme(getThemeChoice());
+    window.addEventListener("nah:theme-change", sync);
+    return () => window.removeEventListener("nah:theme-change", sync);
+  }, []);
   const themes: { id: ThemeChoice; label: string }[] = [
     { id: "system", label: "Järjestelmä" },
     { id: "light", label: "Vaalea" },
@@ -96,11 +101,14 @@ export function AccountSettings({
   name,
   nativeState,
   onBack,
+  onLogout,
 }: {
   name: string;
   nativeState?: NativeState;
   onBack: () => void;
+  onLogout?: () => void;
 }) {
+  const [theme, setTheme] = useState(getThemeChoice);
   const state = states[nativeState ?? "unknown"];
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), []);
@@ -115,22 +123,69 @@ export function AccountSettings({
       <h1 ref={heading} tabIndex={-1}>
         Asetukset
       </h1>
-      <p>Tili: {name}</p>
-      <section aria-labelledby="ah-github-heading" className="ah-account-panel">
-        <h2 id="ah-github-heading">GitHub</h2>
-        <p>
-          Yhteys tällä palvelimella{" "}
-          <StatusMark
-            label={state.label}
-            tone={nativeState === "connected" ? "success" : "warning"}
+      <section
+        className="ah-account-section"
+        aria-labelledby="ah-account-heading"
+      >
+        <h2 id="ah-account-heading">Tili</h2>
+        <p>{name}</p>
+      </section>
+      <section
+        className="ah-account-section"
+        aria-labelledby="ah-connections-heading"
+      >
+        <h2 id="ah-connections-heading">Yhteydet tällä palvelimella</h2>
+        <div className="ah-account-panel">
+          <div className="ah-account-connection">
+            <h3>GitHub</h3>
+            <StatusMark
+              label={state.label}
+              kind={
+                nativeState === "connected"
+                  ? "success"
+                  : nativeState === "unknown" || !nativeState
+                    ? "unknown"
+                    : "neutral"
+              }
+              tone={nativeState === "connected" ? "success" : "warning"}
+            />
+          </div>
+          <p>{state.description}</p>
+          <InlineNotice
+            title="Yhteyttä ei voi vielä katkaista täällä"
+            description="Uloskirjautuminen sulkee selaimen istunnon, mutta ei poista tämän palvelimen GitHub-kirjautumista."
           />
-        </p>
-        <p>{state.description}</p>
-        <InlineNotice
-          title="Yhteyttä ei voi vielä katkaista täällä"
-          description="Uloskirjautuminen sulkee selaimen istunnon, mutta ei poista tämän palvelimen GitHub-kirjautumista."
+        </div>
+      </section>
+      <section
+        className="ah-account-section"
+        aria-labelledby="ah-appearance-heading"
+      >
+        <h2 id="ah-appearance-heading">Ulkoasu</h2>
+        <RadioGroup
+          label="Teema"
+          value={theme}
+          options={[
+            { value: "system", label: "Järjestelmä" },
+            { value: "light", label: "Vaalea" },
+            { value: "dark", label: "Tumma" },
+          ]}
+          onChange={(choice) => {
+            setThemeChoice(choice);
+            setTheme(choice);
+          }}
         />
       </section>
+      {onLogout ? (
+        <section
+          className="ah-account-section"
+          aria-labelledby="ah-session-heading"
+        >
+          <h2 id="ah-session-heading">Istunto</h2>
+          <p>Kirjautuminen ulos sulkee vain tämän selaimen istunnon.</p>
+          <Button label="Kirjaudu ulos" variant="quiet" onPress={onLogout} />
+        </section>
+      ) : null}
     </section>
   );
 }

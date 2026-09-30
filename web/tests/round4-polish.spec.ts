@@ -14,7 +14,7 @@ test("@workspace-slice home labels history honestly and route focus keeps keyboa
   const heading = page.getByRole("heading", { name: "Työtilat", exact: true });
   await expect(heading).toBeFocused();
   await expect(
-    page.getByRole("heading", { name: "Palaa keskusteluihin" }),
+    page.getByRole("heading", { name: "Jatka siitä, mihin jäit" }),
   ).toBeVisible();
   const links = page.locator(".ah-continue-list a");
   await expect(links.first()).toBeVisible();
@@ -40,7 +40,7 @@ test("@workspace-slice home labels history honestly and route focus keeps keyboa
     await readOnly.click();
     await expect(page).toHaveURL(/\/agents\//);
     await expect(
-      page.getByRole("heading", { name: "Palaa keskusteluihin" }),
+      page.getByRole("heading", { name: "Jatka siitä, mihin jäit" }),
     ).toHaveCount(0);
   }
 });

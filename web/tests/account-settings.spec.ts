@@ -1,5 +1,6 @@
+import { expect, type Page, test } from "@playwright/test";
 import { hostOrigin } from "../test-ports.mjs";
-import { expect, test, type Page } from "@playwright/test";
+
 const host = hostOrigin;
 test.use({
   baseURL: host,
@@ -62,6 +63,18 @@ test("@account-settings verified native state, route return and honest disconnec
     page.getByText("Yhteyttä ei voi vielä katkaista täällä"),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: /Katkaise/ })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Tili" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Yhteydet tällä palvelimella" }),
+  ).toBeVisible();
+  await expect(page.getByText("OpenAI", { exact: true })).toHaveCount(0);
+  await page.getByText("Tumma", { exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByText("Vaalea", { exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(
+    page.getByRole("button", { name: "Kirjaudu ulos" }),
+  ).toBeVisible();
   await page.screenshot({
     path: "test-results/evidence/account-connected.png",
     fullPage: true,

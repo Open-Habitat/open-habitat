@@ -27,6 +27,7 @@ export function setThemeChoice(choice: ThemeChoice) {
   }
   current = choice;
   apply(current);
+  window.dispatchEvent(new Event("nah:theme-change"));
 }
 
 let current = getThemeChoice();

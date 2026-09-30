@@ -50,3 +50,14 @@ the running indicator shows only what the host really knows.
 - Ownership tonight: this work may change `web/`, `design-system/`,
   `docs/ui.md` and `docs/design-system.md`. A needed change in `internal/`,
   `contracts/` or other docs is recorded in this issue as a request instead.
+
+## Implementation decisions and host request
+
+- Kept the verified-identity fallback **Oma tili**; the snapshot does not supply a verified personal name or email. The draft's full name, email and avatar are not displayed.
+- The snapshot supplies `auth.native_github.state` but no verified OpenAI/Pi credential-connection field. **Request for the host/contract owner:** expose a user-scoped, validated Pi connection status (including unknown/unavailable) if an OpenAI connection row is wanted. Do not infer it from onboarding, process activity or a browser session. Until then, omit that row and any fake reconnect action.
+- Return rows use observed `process` values only (`daemon_managed_live` or `terminal_observed_live`) for a running indicator; `not_observed`, stale and unknown are not called running. The native history and browser-session routes are preserved. The draft's always-on progress stages and timestamps are omitted because the snapshot does not provide them.
+- Kept account logout scoped to browser session; native GitHub credentials are not revoked. No change to reading position, draft or command reconciliation.
+
+## Synthetic visual evidence
+
+Captured from the synthetic lab at `NAH_PORT_BASE=21000`, using only invented fixture identities and workspaces. Every screenshot has a same-basename offline HTML snapshot beside it; no personal account information or real host was captured. Settings: [light desktop](settings-light-1440.avif), [dark desktop](settings-dark-1440.avif), [light 390 px](settings-light-390.avif), [dark 390 px](settings-dark-390.avif). Return view: [light desktop](workspaces-light-1440.avif), [dark desktop](workspaces-dark-1440.avif), [light 390 px](workspaces-light-390.avif), [dark 390 px](workspaces-dark-390.avif). Phone captures use a 390 × 1100 viewport to show all four settings sections; desktop uses 1440 × 900. The lab fixtures do not contain a verified Pi/OpenAI connection or a positively observed live process, so those particular marks are covered by component tests and are not presented as screenshot evidence.

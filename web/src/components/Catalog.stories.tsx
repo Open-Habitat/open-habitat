@@ -1,22 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
-import { AlertDialog, Dialog, Menu, Tabs } from "./Overlays";
-import { AccountShelf, AccountSettings } from "./Account";
-import { LoginCard, LoginErrorNotice } from "./LoginCard";
-import {
-  Button,
-  Checkbox,
-  RadioGroup,
-  TextArea,
-  TextField,
-} from "./Primitives";
-import {
-  AgentFacts,
-  AgentHeader,
-  AppShell,
-  WorkspaceRail,
-  WorkspaceSection,
-} from "./Navigation";
+import { AccountSettings, AccountShelf } from "./Account";
 import {
   AssistantMessage,
   CodeBlock,
@@ -32,7 +16,24 @@ import {
   UnknownEvent,
   UserMessage,
 } from "./Conversation";
+import { LoginCard, LoginErrorNotice } from "./LoginCard";
+import {
+  AgentFacts,
+  AgentHeader,
+  AppShell,
+  WorkspaceRail,
+  WorkspaceSection,
+} from "./Navigation";
 import { CapabilityNotice, OperationProgress } from "./Operations";
+import { AlertDialog, Dialog, Menu, Tabs } from "./Overlays";
+import {
+  Button,
+  Checkbox,
+  RadioGroup,
+  TextArea,
+  TextField,
+} from "./Primitives";
+import { ReturnView } from "./ReturnView";
 import {
   ConnectionBanner,
   InlineNotice,
@@ -307,7 +308,12 @@ export const Account: Story = {
   render: () => (
     <main>
       <AccountShelf name="Oma tili" onSettings={noop} onLogout={noop} />
-      <AccountSettings name="Oma tili" nativeState="connected" onBack={noop} />
+      <AccountSettings
+        name="Oma tili"
+        nativeState="connected"
+        onBack={noop}
+        onLogout={noop}
+      />
     </main>
   ),
 };
@@ -509,3 +515,44 @@ export const UnhappyStates: Story = {
     </main>
   ),
 };
+
+export const AccountDark: Story = {
+  render: () => (
+    <main>
+      <AccountSettings
+        name="Oma tili"
+        nativeState="connected"
+        onBack={noop}
+        onLogout={noop}
+      />
+    </main>
+  ),
+  globals: { theme: "dark" },
+};
+const returns = [
+  {
+    id: "example",
+    href: "/agents/example",
+    title: "Keskustelu esimerkistä",
+    workspace: "esimerkki-projekti",
+    browserSession: false,
+    process: "daemon_managed_live",
+  },
+  {
+    id: "older",
+    href: "/agents/older",
+    title: "Aiempi keskustelu",
+    workspace: "toinen-projekti",
+    browserSession: true,
+    process: "not_observed",
+  },
+];
+export const Return: Story = {
+  render: () => (
+    <main>
+      <h1>Työtilat</h1>
+      <ReturnView conversations={returns} />
+    </main>
+  ),
+};
+export const ReturnDark: Story = { ...Return, globals: { theme: "dark" } };

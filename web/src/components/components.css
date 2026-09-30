@@ -296,13 +296,25 @@
 }
 .ah-account-settings {
   display: grid;
-  gap: var(--ah-s4);
+  gap: var(--ah-s7);
+  max-width: 680px;
+  margin-inline: auto;
+  min-width: 0;
 }
 .ah-account-settings > .ah-control {
   justify-self: start;
 }
 .ah-account-settings h1,
 .ah-account-settings p {
+  margin: 0;
+}
+.ah-account-section {
+  display: grid;
+  gap: var(--ah-s4);
+  min-width: 0;
+}
+.ah-account-section h2,
+.ah-account-connection h3 {
   margin: 0;
 }
 .ah-account-panel {
@@ -313,11 +325,11 @@
   border-radius: var(--ah-r-lg);
   background: var(--ah-surface);
 }
-.ah-account-panel h2 {
-  margin: 0;
-}
-.ah-account-panel > .ah-control {
-  justify-self: start;
+.ah-account-connection {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ah-s4);
 }
 .ah-control {
   display: inline-flex;
@@ -683,37 +695,48 @@ h1[tabindex="-1"]:focus {
   white-space: nowrap;
 }
 .ah-continue {
-  margin-top: var(--ah-s7);
+  max-width: 760px;
+  margin: var(--ah-s8) auto 0;
   padding-block: var(--ah-s5);
   border-top: 1px solid var(--ah-line);
 }
 .ah-continue h2 {
   margin: 0 0 var(--ah-s4);
-  font-size: 1.125rem;
+}
+.ah-continue > p {
+  color: var(--ah-muted);
 }
 .ah-continue-list {
   list-style: none;
   padding: 0;
-  margin: 0;
+  margin: var(--ah-s6) 0 0;
   display: grid;
   gap: var(--ah-s2);
 }
 .ah-continue-list a {
-  display: block;
+  display: grid;
+  gap: var(--ah-s2);
   padding: var(--ah-s4);
   background: var(--ah-surface);
   border: 1px solid var(--ah-line);
   border-radius: var(--ah-r-lg);
-  color: var(--ah-accent-ink);
+  color: var(--ah-ink);
+  text-decoration: none;
   overflow-wrap: anywhere;
 }
 .ah-continue-list a:hover {
   border-color: var(--ah-accent-ink);
 }
-.ah-continue-list small {
-  display: block;
-  margin-top: var(--ah-s1);
+.ah-return-title {
+  font-weight: 600;
+}
+.ah-return-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ah-s3);
   color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
 }
 .ah-back-link {
   color: var(--ah-accent-ink);
