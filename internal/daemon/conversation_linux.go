@@ -22,7 +22,8 @@ import (
 )
 
 // ConversationController is scoped to one daemon incarnation. It is deliberately
-// not a gateway route or a durable command ledger. No restart takeover exists.
+// not a gateway route or a durable command ledger. Native history and the
+// browser-origin owner lock permit explicit continuation after daemon restart.
 type ConversationController struct {
 	mu       sync.Mutex
 	sessions map[string]*conversation
@@ -38,6 +39,12 @@ type ConversationController struct {
 	fixture  bool   // untrusted synthetic runtime: never set in production
 	instance string // ephemeral stream cursor scope; never a history store
 }
+
+// A continued native session retains spent browser IDs within this daemon
+// incarnation so a lost earlier receipt cannot be replayed after continuation.
+// Bound that protection separately from the smaller native event/queue limits.
+const maxConversationCommands = 4096
+
 type conversation struct {
 	id, workspace, cwd           string
 	rpc                          *piRPC
@@ -255,20 +262,8 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	active := 0
-	for _, s := range c.sessions {
-		select {
-		case <-s.rpc.exited:
-		default:
-			active++
-		}
-	}
-	if c.closed || active >= 4 || len(c.sessions) >= 128 {
-		snapshotError(w, 429, "capacity_exceeded")
-		return
-	}
+	// Native discovery and durable origin sync can block on disk I/O. Do not
+	// stall event drains for other Pi children while preparing a new one.
 	device := &PiDevice{Home: c.home, Node: c.runtime.Node, Entry: c.runtime.Entry, Manifest: c.runtime.Manifest, TrustedRuntime: !c.fixture, SharedSelector: !c.fixture, FixtureHome: c.fixture}
 	if device.validate() != nil {
 		snapshotError(w, 503, "native_source_unavailable")
@@ -301,20 +296,41 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
+	releaseOwner := true
+	defer func() {
+		if releaseOwner {
+			_ = owner.release()
+		}
+	}()
 	// Inherit only a bounded, explicit environment. Pi reads credentials itself.
 	if err := owner.markBrowser(body.WorkspaceID, cwd); err != nil {
-		_ = owner.release()
 		snapshotError(w, 503, "native_source_unavailable")
+		return
+	}
+	c.mu.Lock()
+	active := 0
+	for _, s := range c.sessions {
+		select {
+		case <-s.rpc.exited:
+		default:
+			active++
+		}
+	}
+	if c.closed || active >= 4 || len(c.sessions) >= 128 {
+		c.mu.Unlock()
+		snapshotError(w, 429, "capacity_exceeded")
 		return
 	}
 	p, err := launchPiRPCCommand(c.runtime.Node, []string{filepath.Join(filepath.Dir(c.runtime.Entry), "bundle", "cli.js")}, c.home, cwd, []string{"PATH=/usr/bin:/bin", "USER=" + c.cfg.Username}, owner, ws)
 	if err != nil {
-		_ = owner.release()
+		c.mu.Unlock()
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
 	s := &conversation{id: id, workspace: body.WorkspaceID, cwd: cwd, rpc: p, owner: owner, state: "idle", events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool)}
 	c.sessions[id] = s
+	releaseOwner = false
+	c.mu.Unlock()
 	// The daemon retains the advisory lock until the direct child is reaped;
 	// stopped sessions stay as uncertain tombstones for lost-request lookup.
 	go c.watch(s)
@@ -544,7 +560,7 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}
-	if c.closed || s.aborting || (kind == "send" && s.state != "idle" && s.state != "rejected") || (kind != "send" && s.state != "accepted") || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= 128 {
+	if c.closed || s.aborting || (kind == "send" && s.state != "idle" && s.state != "rejected") || (kind != "send" && s.state != "accepted") || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= maxConversationCommands {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return
@@ -657,7 +673,7 @@ func (c *ConversationController) clearQueue(w http.ResponseWriter, r *http.Reque
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}
-	if c.closed || s.aborting || s.state == "pending" || s.state == "uncertain" || s.state == "stopping" || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= 128 {
+	if c.closed || s.aborting || s.state == "pending" || s.state == "uncertain" || s.state == "stopping" || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= maxConversationCommands {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return
@@ -713,7 +729,7 @@ func (c *ConversationController) abort(w http.ResponseWriter, r *http.Request, i
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}
-	if c.closed || s.state != "accepted" || s.settled || s.aborting || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= 128 {
+	if c.closed || s.state != "accepted" || s.settled || s.aborting || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= maxConversationCommands {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return

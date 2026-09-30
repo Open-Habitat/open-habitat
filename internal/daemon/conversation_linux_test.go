@@ -88,6 +88,37 @@ for line in sys.stdin:
 	if again.Code != 409 {
 		t.Fatalf("duplicate send: %d", again.Code)
 	}
+	// A native session can continue beyond the former 128-command ceiling
+	// without forgetting spent IDs. The map is retained across continuation.
+	c.mu.Lock()
+	for i := 0; i < 127; i++ {
+		s.commands[fmt.Sprintf("aaaaaaaa-aaaa-4aaa-8aaa-%012d", i)] = true
+	}
+	c.mu.Unlock()
+	next := httptest.NewRequest("POST", "http://unix/send", strings.NewReader(fmt.Sprintf(`{"message":"after continuation","command_id":%q}`, "aaaaaaaa-aaaa-4aaa-8aaa-999999999999")))
+	next.Header.Set("Content-Type", "application/json")
+	w = httptest.NewRecorder()
+	c.send(w, next, id)
+	if w.Code != 200 {
+		t.Fatalf("send after 128 spent IDs: %d %s", w.Code, w.Body.String())
+	}
+	deadline = time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		c.mu.Lock()
+		idle := s.state == "idle"
+		c.mu.Unlock()
+		if idle {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	oldID := httptest.NewRequest("POST", "http://unix/send", strings.NewReader(body))
+	oldID.Header.Set("Content-Type", "application/json")
+	again = httptest.NewRecorder()
+	c.send(again, oldID, id)
+	if again.Code != 409 {
+		t.Fatalf("old receipt ID replayed after continuation: %d", again.Code)
+	}
 }
 
 func TestConversationWorkspaceReplacement(t *testing.T) {
