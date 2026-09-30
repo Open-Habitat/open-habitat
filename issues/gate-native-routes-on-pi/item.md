@@ -25,7 +25,7 @@ history or control routes before Pi sign-in.
 Pi exchanges, stores and refreshes credentials under the mapped Unix user.
 The daemon starts Pi's native device-code operation and relays its instructions
 and progress; the gateway authenticates the browser and routes to that user's
-daemon. This keeps native credentials out of the gateway and preserves ordinary
+daemon. This keeps Pi credentials out of the gateway and preserves ordinary
 SSH/tmux use. A pending attempt belongs to both its Unix user and its browser
 session: neither another user nor another login session can take it over.
 

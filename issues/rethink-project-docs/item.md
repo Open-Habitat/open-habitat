@@ -305,3 +305,27 @@ tulosraportit tunnistetaan tiettyjen revisioiden näytöksi.
 Muutokset ovat ohjetekstiä, eivät uusi toteutus tai hyväksyntänäyttö.
 Dokumentaatiovalidaattori ja `git diff --check` läpäisivät; issue doctorissa
 oli vain muiden issueiden kuvamuotohavaintoja. Täyttä CI-porttia ei ajettu.
+
+## Neljän issuen faktantarkistus 2026-09-30
+
+`/fact-check-instructions` tarkisti revisiosta `8444680` samat neljä issuea.
+Agenttiohjauksen tavoitteet erotettiin nykytilasta: selain kyselee nyt tilaa
+HTTP:llä; SSE ja päättyneen selainkeskustelun jatkaminen puuttuvat edelleen.
+Lähteet ovat `web/src/app/BrowserConversation.tsx`, daemonin ja gatewayn
+`conversation_linux.go` sekä `docs/interfaces.md`. Pi-portin tunnusrajaus
+korjattiin koskemaan Pi-tunnuksia: gateway välittää erillisessä GitHub-virrassa
+väliaikaisen tunnuksen daemonille (`internal/AGENTS.md`).
+
+OAuth-issuen localhost-havainto vastaa tämän koneen asennettua Pi 0.85.1:tä
+(`pi-ai/dist/auth/oauth/openai-codex.js`); hostin helper on myös sidottu siihen
+versioon ja valitsee device-code-menetelmän. Pi-portin reittien kytkentä,
+istunto-omistajuus ja generoitu sopimus löytyvät nykykoodista. CI-issuen
+välimuistit ja yhdistetty selainajo vastaavat `scripts/ci-local.sh`:ta;
+`web/playwright.config.ts` pitää jaetun skenaariotilan vuoksi yhden workerin.
+Ajat ja negatiivisten testien tulokset vastaavat kirjattuja historiallisia
+raportteja. Kahteen jälkimmäiseen havaintokokonaisuuteen ei tarvittu uusia
+vaatimuksia tai päätöksiä.
+
+Tarkistus oli lähde- ja dokumenttitarkistus. Providerin hyväksymiä callbackeja,
+nykyistä live-asennusta tai vanhojen suoritusraporttien tuloksia ei todennettu
+uusilla ajoilla. Toteutusta, testipalvelinta tai issueiden tilaa ei muutettu.

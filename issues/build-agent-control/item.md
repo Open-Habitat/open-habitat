@@ -12,16 +12,17 @@ collision: [docs/, AGENTS.md, design-system/, internal/daemon/, web/src/componen
 
 # Connect v1 conversation controls to Pi
 
-A user can start a Pi conversation in a workspace, send a message, follow text
-and tool activity live, interrupt work and return after a browser disconnect.
+The target is that a user can start a Pi conversation in a workspace, send a
+message, follow text and tool activity live, interrupt work and return after a
+browser disconnect.
 They can deliberately continue an ended browser conversation with its native
 history.
 
 The mapped user's daemon owns the Pi process. Pi runs tools, uses its native
 configuration and writes its history; the host does not need a second history
-store. Browser commands travel over HTTP and live updates over Server-Sent
-Events (SSE). Closing the browser leaves Pi running. A slow connection or a
-returning browser recovers current state and native history without losing track
+store. The agreed interface uses HTTP for browser commands and Server-Sent
+Events (SSE) for live updates. Closing the browser leaves Pi running. A slow
+connection or a returning browser recovers current state and native history without losing track
 of work. Drafts, editor focus and reading position survive updates and session
 revalidation.
 
@@ -47,7 +48,9 @@ Pi-specific answer and cancel dialog controls are outside the agreed scope.
 assigns the related contract scenarios.
 
 Build on the existing daemon controller, gateway routes and production browser
-components. [result.md](result.md) records earlier implementation slices and
+components. The current browser polls conversation status over HTTP; SSE and
+continuation of ended browser conversations are not implemented yet.
+[result.md](result.md) records earlier implementation slices and
 their evidence, not a current task list. Completion includes SSE, deliberate
 continuation of ended browser conversations, and a demonstrated browser journey
 against real Pi covering send, live response, interruption, ended-conversation
