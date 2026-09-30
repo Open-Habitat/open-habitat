@@ -242,3 +242,24 @@ rejected and uncertain abort acknowledgements use interruption-specific text
 across revalidation rather than send-receipt text; it never retries the abort.
 These fixes do not make a slow or detached native tool safe to resume, nor do
 they prove a gateway response can never be lost on unrelated transport failures.
+
+At candidate `3a7780b`, focused checks passed:
+`TMPDIR=/var/tmp PATH=/home/maintainer/Sources/native-agent-host/.tools/go/bin:$PATH
+go test -race ./internal/daemon ./internal/gateway -run 'Test(Conversation|PiRPC)' -count=1`,
+`./scripts/test-web-fast.sh`, and pinned Pi 0.85.1 synthetic-provider
+`TestPiRPCNativeSyntheticProvider` (idle abort followed by `get_state` in the
+same child; this does **not** exercise active native tool cancellation). A
+same-UID fixture test delays abort and checks queue-clear denial, while a
+separate short-deadline transport test checks that an ambiguous abort does not
+close the child stdin. These do not prove browser-rendered native abort.
+
+The optional distinct-UID `TMPDIR=/var/tmp ./scripts/test-real-pi-controller.sh`
+first failed before the scenario because the product gateway now requires a
+root-owned private revocation socket activated as FD 3; the older disposable
+fixture had not supplied one. The fixture now supplies only that root-owned
+0600 listener, not a substitute gateway. Its rerun passed in rootless networkless
+Podman with mapped UIDs 21001/21002 and gateway UID 21003, pinned Pi 0.85.1,
+two synthetic-provider prompts, request disconnect/no retry and restart history
+read-only. The script does **not** invoke the new abort route, systemd or a real
+provider. The failed preflight is superseded for the old scenario only; no
+cross-UID abort claim is made.

@@ -46,14 +46,14 @@ def drop(uid, gid=None):
         os.setuid(uid)
     return change
 
-def start(args, uid=None, env=None, fd=None):
+def start(args, uid=None, env=None, fd=None, fdname='daemon'):
     def prepare():
         os.environ.update(env or {})
         if uid is not None:
             drop(uid)()
     if fd is not None:
-        trampoline = 'import os,sys;fd=int(sys.argv[1]);os.dup2(fd,3);os.set_inheritable(3,True);os.environ.update(LISTEN_PID=str(os.getpid()),LISTEN_FDS="1",LISTEN_FDNAMES="daemon");os.execv(sys.argv[2],sys.argv[2:])'
-        args = ['/usr/bin/python3','-c',trampoline,str(fd),*args]
+        trampoline = 'import os,sys;fd=int(sys.argv[1]);os.dup2(fd,3);os.set_inheritable(3,True);os.environ.update(LISTEN_PID=str(os.getpid()),LISTEN_FDS="1",LISTEN_FDNAMES=sys.argv[2]);os.execv(sys.argv[3],sys.argv[3:])'
+        args = ['/usr/bin/python3','-c',trampoline,str(fd),fdname,*args]
     p = subprocess.Popen(args, preexec_fn=prepare, pass_fds=(() if fd is None else (fd,)))
     children.append(p)
     return p
@@ -241,7 +241,15 @@ try:
     check(provider.poll() is None,'OAuth fixture failed')
     config='/etc/native-agent-host/gateway.json'
     put(config,{'component':'gateway','listen':'127.0.0.1:8443','tls_cert':'/etc/native-agent-host/tls.crt','tls_key':'/etc/native-agent-host/tls.key','gateway_uid':GATEWAY,'oauth':{'client_id':'fixture-client','client_secret':'fixture-secret','callback_url':ORIGIN+'/auth/github/callback','origin':ORIGIN}},0o640,0,GATEWAY)
-    gateway=start(['/fixture/product','gateway','exec','--config',config],GATEWAY,{'HOME':'/var/empty/native-agent-host-gateway','SSL_CERT_FILE':'/etc/native-agent-host/tls.crt'})
+    # Product gateway requires systemd-style activation for its private,
+    # root-owned revocation listener; the guest simulates only that descriptor.
+    revoke=pathlib.Path('/run/native-agent-host/revoke.sock')
+    control=socket.socket(socket.AF_UNIX)
+    control.bind(str(revoke))
+    os.chown(revoke,0,0);revoke.chmod(0o600)
+    control.listen(8)
+    gateway=start(['/fixture/product','gateway','exec','--config',config],GATEWAY,{'HOME':'/var/empty/native-agent-host-gateway','SSL_CERT_FILE':'/etc/native-agent-host/tls.crt'},control.fileno(),fdname='revoke')
+    control.close()
     wait(lambda:gateway.poll() is not None or port_ready(8443),'gateway listener',5)
     check(gateway.poll() is None,'gateway died')
     handles=[];browsers=[]
