@@ -21,28 +21,20 @@ Two ideas shape everything here:
 
 ## Where authority lives
 
-The product is one Go module and binary plus the browser package in `web/`.
-Three authorities are kept apart on purpose. `internal/gateway` authenticates a
-browser and decides which Unix user it is talking to; it never reads a home or
-runs an agent. `internal/daemon` runs as that one UID and does that user's
-work, trusting nothing the browser or the gateway asserts about identity.
-`internal/provision` is the root-only broker that creates an account on first
-approved login and does nothing else. If any of these could do another's job, a
-bug in one would become a bug with the others' access, which is why moving an
-authority between them is an architecture change rather than a refactor.
-`internal/AGENTS.md` walks the boundaries and their traps; `docs/architecture.md`
-and the ADRs under `docs/` carry the reasoning.
+The product is one Go binary plus the browser package in `web/`. Three
+authorities stay apart: `internal/gateway` authenticates the browser and picks
+the Unix user, `internal/daemon` runs as that user and trusts no identity claim
+from the browser or the gateway, and `internal/provision` is the root-only
+broker that only creates an account on first approved login. Moving authority
+between them is an architecture change; `internal/AGENTS.md`,
+`docs/architecture.md` and the ADRs explain why.
 
-`contracts/v1/` is the browser/host contract as both sides have to see it.
-`internal/contracts/` and `web/src/contracts/` are generated from it, and the
-gate fails on drift. `web/src/components/` holds the production components that
-both the app and Storybook import, so a story shows the real component rather
-than a copy. `systemd/`, `sysusers.d/` and `tmpfiles.d/` are neutral package
-templates; the concrete installation is Fleetrepo's.
-
-[TESTING.md](TESTING.md) is the single guide to choosing focused tests, when to
-run the full clean gate, and what each result does and does not prove. Keep
-validation proportional to the change without weakening the release proof.
+`contracts/v1/` is the browser/host contract; `internal/contracts/` and
+`web/src/contracts/` are generated from it, and the gate fails on drift.
+`web/src/components/` holds the production components that Storybook also
+imports. `systemd/`, `sysusers.d/` and `tmpfiles.d/` are neutral templates; the
+concrete installation is Fleetrepo's. [TESTING.md](TESTING.md) says which tests
+to run and what each result proves.
 
 ## How work proceeds
 
@@ -52,56 +44,18 @@ users to stay compatible with, so formats, interfaces and data change freely
 without compatibility code.
 
 Cutting a release and installing it on the test server is ordinary work and
-does not wait for a go/no-go from Jari. The reason for care is not the
-installation, which is replaceable, but what sits behind it: real people's
-accounts and native history on that host, and a route from the internet.
-Fleetrepo's `infra/native-agent-host-test/RELEASE-UPGRADE.md` is the procedure,
-with receipts and host facts kept there. It exists so that we always know
-exactly which bytes are running and can go back to the previous release. When
-its preflight fails or the way back is unclear, stop and report; improvising on
-a host with real accounts on it risks exactly what the procedure protects.
-There is no production deployment yet, and standing one up is Jari's decision,
-not an extension of the test-server routine.
+does not wait for a go/no-go from Jari. Fleetrepo's `infra/native-agent-host-
+test/RELEASE-UPGRADE.md` is the procedure, with receipts and host facts kept
+there. It exists so that we always know exactly which bytes are running and can
+go back to the previous release.
 
 Architecture is decided together with Jari: which component has which
-authority, the security model, the browser/host contract and major
-dependencies. These come to him as a recommendation with the reasoning, and
-the decision is recorded in an issue or ADR so it survives the conversation.
-Otherwise he wants the work to proceed without him. Ready work in the DAG gets
-done; a question is worth his attention when the outcomes differ in a way he
-would care about and you cannot tell which he would choose.
-
-Evidence is reported as it is. Claims about isolation here rest on layers with
-different reach: a unit test, a disposable QEMU guest, a browser test against a
-synthetic host and a live host each prove something different. A synthetic
-guest is not a live host and a mock is not an integration. Say what was
-verified, at which revision, and what was not, so the next person knows what
-they are looking at.
-
-## What is at stake
-
-Four things here are precious enough to state as limits, each with its reason.
-
-- **Real people.** Only people who have agreed sign in, and a real person's
-  identity is used only with that person's own participation. Their credentials
-  never travel over a channel whose other end has not been authenticated.
-- **The internet.** The test server is reachable from outside. Anything
-  reachable has real access control in front of it; an obscure or noindexed URL
-  is not access control, and the access-control layer in front of the test host
-  is not something to route around for convenience.
-- **Public history.** The repository will be public and its Git history is
-  permanent. Host-specific facts such as addresses, IDs, users, secrets and
-  deployment receipts live in Fleetrepo under `infra/native-agent-host-test/`; a
-  real value pasted here once stays for good.
-- **Synthetic tests.** Tests and fixtures never touch a real home, Pi history,
-  SSH agent, browser profile or credentials, for the same reason and so that
-  they run on any machine. Test fixture mode (`VITE_ENABLE_TEST_FIXTURES`) never
-  reaches a production build, because a fixture flag on a build meant for the
-  host would ship test seams to the internet; the gate greps `web/dist/` and
-  the packaged release for it.
-
-Worktrees, guests, release archives and temporary files are disposable and
-need nobody's permission.
+authority, the security model and major dependencies. These come to him as a
+recommendation with the reasoning, and the decision is recorded in an issue or
+ADR so it survives the conversation. Otherwise he wants the work to proceed
+without him. Ready work in the DAG gets done; a question is worth his attention
+when the outcomes differ in a way he would care about and you cannot tell which
+he would choose.
 
 ## Issues and documentation
 
