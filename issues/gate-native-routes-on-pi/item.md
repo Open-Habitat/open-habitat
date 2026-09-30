@@ -10,7 +10,7 @@ collision: [internal/gateway/, internal/daemon/, contracts/v1/, docs/]
 blocked_by: ['@add-pi-device-adapter']
 ---
 
-# Gate native browser routes on Pi sign-in
+# Show OpenAI onboarding when Pi sign-in is missing or uncertain
 
 After browser login, first-use onboarding is required before normal workspaces,
 native history or agent controls open. The user goes through GitHub repository
