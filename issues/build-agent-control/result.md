@@ -588,7 +588,7 @@ Read the snapshot, show each agent's `live_tail` provisionally using its event
 IDs, then open `/api/v1/events?after=<event_cursor>`. Apply only the exact next
 sequence; ignore already applied IDs, and on gap/409/invalidation fetch a new
 snapshot and native history. `assistant.delta` text uses `content_index`;
-`tool.started/updated/finished` use `tool_call_id`. On an assistant
+`tool.started` and `tool.finished` use `tool_call_id`; content-free native tool updates are not published, to protect the shared replay window. On an assistant
 `history.entry`, discard that agent's **entire** provisional turn tail and
 render the native entry keyed by `native_key` instead, reconciling the history
 page; never append the persisted text to the deltas. An oversized tail emits
@@ -606,3 +606,5 @@ the daemon are not journal-atomic with discovery; observable changes during
 snapshot construction trigger a subsequent invalidation, but an unobserved
 external write needs a fresh history read. The issue stays **in-progress** for
 the rendered browser journey.
+
+Independent **critical** final-diff review followed the first committed-tree clean gate (`993b86b`, `status:passed`, `clean:true`, `/var/tmp/nah-agent-live-clean-gate.log`): Claude Fable 5.1 finder and GPT-6 Astra adversarial verifier. Three source-confirmed defects were corrected: snapshot text flush caused a false native invalidation; child exit/continuation could retain a stale or overflowed tail; content-free tool updates could evict all per-user replay. The fourth candidate, lock-held tail copying, did not establish a realistic stall. Review `history/review-agent-live-final.md` and assessment in ignored local scratch. The corrected distinct-UID synthetic-provider fixture passed (`/var/tmp/nah-live-fixture-reviewed.log`), as did focused Go race tests. No additional authority or store. The final clean gate receipt will be reported at handoff after committing the correction.

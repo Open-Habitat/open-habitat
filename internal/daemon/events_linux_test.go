@@ -187,7 +187,7 @@ func TestJournalMidTurnAtomicTailAndReplay(t *testing.T) {
 		j.delta(agent, "abc", 0)
 	}
 	j.progress(agent, "tool.started", map[string]string{"tool_call_id": "tool_1", "tool_name": "bash", "state": "running"})
-	cursor, _, views := j.turnView()
+	cursor, _, _, views := j.turnView()
 	tail := views[agent]
 	if tail.activity != "running" || len(tail.frames) != 2 || !strings.Contains(string(tail.frames[0]), `"text":"`+strings.Repeat("abc", 30)+`"`) {
 		t.Fatalf("incomplete atomic tail: %+v", tail)
@@ -206,7 +206,7 @@ func TestJournalMidTurnAtomicTailAndReplay(t *testing.T) {
 		t.Fatal("resume omitted or duplicated a delta")
 	}
 	j.nativeEntry(agent, historyEntry{Key: "native_1", Kind: "assistant", Content: historyContent{MediaType: "text/plain", Text: "abcnext", Complete: true}})
-	_, _, views = j.turnView()
+	_, _, _, views = j.turnView()
 	if len(views[agent].frames) != 0 {
 		t.Fatal("persisted assistant failed to supersede tail")
 	}
@@ -218,7 +218,7 @@ func TestJournalCoalescingAndReplayLimits(t *testing.T) {
 	for n := 0; n < 400; n++ {
 		j.delta(agent, "a", 0)
 	}
-	cursor, _, views := j.turnView()
+	cursor, _, _, views := j.turnView()
 	if len(views[agent].frames) != 1 || j.seq != 1 {
 		t.Fatal("unbounded delta frames")
 	}
@@ -233,5 +233,40 @@ func TestJournalCoalescingAndReplayLimits(t *testing.T) {
 	}
 	if _, code := j.parse(cursor); code != "cursor_expired" {
 		t.Fatal("old cursor did not expire", code)
+	}
+}
+
+func TestSnapshotPendingDeltaDoesNotInvalidateNative(t *testing.T) {
+	j := newEventJournal()
+	agent := "pi:12345678-1234-1234-1234-123456789012"
+	j.delta(agent, "hello", 0)
+	before := j.nativeGeneration()
+	cursor, _, after, views := j.turnView()
+	if before != after || cursor != j.cursor(1) || j.seq != 1 || len(views[agent].frames) != 1 {
+		t.Fatal("snapshot flush spuriously invalidated", cursor, j.seq)
+	}
+}
+
+func TestJournalOverflowResetAndWriterExit(t *testing.T) {
+	j := newEventJournal()
+	agent := "pi:12345678-1234-1234-1234-123456789012"
+	j.activity(agent, "running")
+	j.delta(agent, "first", 0)
+	j.progress(agent, "tool.started", map[string]string{"tool_call_id": "one", "tool_name": "bash", "state": "running"})
+	j.delta(agent, strings.Repeat("x", 4097), 0)
+	_, _, _, views := j.turnView()
+	if !views[agent].overflow || len(views[agent].frames) != 0 {
+		t.Fatal("overflow retained partial turn")
+	}
+	j.reset(agent, "unknown")
+	_, _, _, views = j.turnView()
+	if views[agent].activity != "unknown" || len(views[agent].frames) != 0 {
+		t.Fatal("dead writer retained provisional state")
+	}
+	j.reset(agent, "running")
+	j.delta(agent, "new turn", 0)
+	_, _, _, views = j.turnView()
+	if views[agent].overflow || len(views[agent].frames) != 1 {
+		t.Fatal("new writer could not publish after overflow")
 	}
 }

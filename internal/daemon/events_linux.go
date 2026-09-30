@@ -31,14 +31,15 @@ type turnTail struct {
 }
 
 type eventJournal struct {
-	mu       sync.Mutex
-	instance string
-	seq      uint64
-	frames   [][]byte
-	bytes    int
-	changed  chan struct{}
-	pending  bool // one trailing invalidation coalesces bursty Pi deltas
-	tails    map[string]*turnTail
+	mu        sync.Mutex
+	instance  string
+	seq       uint64
+	frames    [][]byte
+	bytes     int
+	changed   chan struct{}
+	pending   bool // one trailing invalidation coalesces bursty Pi deltas
+	nativeGen uint64
+	tails     map[string]*turnTail
 }
 
 func newEventJournal() *eventJournal {
@@ -79,6 +80,7 @@ func (j *eventJournal) appendInvalidation(agent string) {
 	if j.instance == "" {
 		return
 	}
+	j.nativeGen++
 	j.appendLocked("snapshot.invalidated", agent, "", map[string]string{"reason": "source_changed"})
 }
 
@@ -185,6 +187,9 @@ func (j *eventJournal) delta(agent, text string, index int) {
 	t := j.tail(agent)
 	if len(text) > 4096 {
 		t.overflow = true
+		t.frames = nil
+		t.bytes = 0
+		t.text = ""
 		j.appendLocked("snapshot.invalidated", agent, "", map[string]string{"reason": "ring_truncated"})
 		return
 	}
@@ -203,6 +208,23 @@ func (j *eventJournal) progress(agent, kind string, payload any) {
 	j.flushTextLocked(agent, t)
 	j.appendTailLocked(agent, t, kind, payload)
 }
+
+// Reset is used only at writer/turn boundaries. A timer from the old turn
+// cannot resurrect its text: it finds an empty pending buffer under this lock.
+func (j *eventJournal) reset(agent, state string) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	t := j.tail(agent)
+	t.text = ""
+	t.frames = nil
+	t.bytes = 0
+	t.overflow = false
+	t.activity = state
+	if t.timer != nil {
+		t.timer.Stop()
+		t.timer = nil
+	}
+}
 func (j *eventJournal) activity(agent, state string) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
@@ -215,6 +237,7 @@ func (j *eventJournal) nativeEntry(agent string, entry historyEntry) {
 	defer j.mu.Unlock()
 	t := j.tail(agent)
 	j.flushTextLocked(agent, t)
+	j.nativeGen++
 	j.appendLocked("history.entry", agent, entry.Key, map[string]any{"entry_key": entry.Key, "entry_kind": entry.Kind, "content": entry.Content})
 	// Pi does not give RPC deltas a persistent key. Assistant entries supersede
 	// the provisional turn as a unit, never match on text or event arrival time.
@@ -224,7 +247,13 @@ func (j *eventJournal) nativeEntry(agent string, entry historyEntry) {
 		t.overflow = false
 	}
 }
-func (j *eventJournal) turnView() (string, string, map[string]turnTail) {
+func (j *eventJournal) nativeGeneration() uint64 {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	return j.nativeGen
+}
+
+func (j *eventJournal) turnView() (string, string, uint64, map[string]turnTail) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	views := make(map[string]turnTail, len(j.tails))
@@ -234,7 +263,7 @@ func (j *eventJournal) turnView() (string, string, map[string]turnTail) {
 		copyTail.frames = append([]json.RawMessage(nil), t.frames...)
 		views[agent] = copyTail
 	}
-	return j.cursor(j.seq), j.cursor(j.seq - uint64(len(j.frames))), views
+	return j.cursor(j.seq), j.cursor(j.seq - uint64(len(j.frames))), j.nativeGen, views
 }
 
 func (j *eventJournal) parse(cursor string) (uint64, string) {

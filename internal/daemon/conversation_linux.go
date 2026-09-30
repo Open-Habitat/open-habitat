@@ -57,6 +57,7 @@ type conversation struct {
 	state                        string // idle, pending, accepted, rejected, uncertain, stopping
 	ack                          string // last command: pending, accepted, rejected, uncertain
 	settled                      bool
+	dead                         bool
 	queueSteering, queueFollowUp []string
 	queueRevision                uint64
 	commands                     map[string]bool
@@ -522,6 +523,7 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 	}
 	c.sessions[id] = s
 	if c.journal != nil {
+		c.journal.reset("pi:"+id, "idle")
 		c.journal.appendInvalidation("pi:" + id)
 	}
 	owner = nil // the child and watcher now own this lock
@@ -536,11 +538,13 @@ func (c *ConversationController) watch(s *conversation) {
 	_ = s.rpc.in.Close()
 	_ = s.rpc.out.Close()
 	c.mu.Lock()
+	s.dead = true
 	s.state = "uncertain"
 	if s.ack == "pending" {
 		s.ack = "uncertain"
 	}
-	if c.journal != nil {
+	if c.sessions[s.id] == s && c.journal != nil {
+		c.journal.reset("pi:"+s.id, "unknown")
 		c.journal.appendInvalidation("pi:" + s.id)
 	}
 	c.mu.Unlock()
@@ -564,13 +568,15 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 		return
 	}
 	switch e.Type {
-	case "agent_start", "turn_start":
+	case "agent_start":
+		c.journal.reset(agent, "running")
+	case "turn_start":
 		c.journal.activity(agent, "running")
 	case "message_update":
 		if e.AssistantMessageEvent.Type == "text_delta" && e.AssistantMessageEvent.ContentIndex >= 0 && e.AssistantMessageEvent.Delta != "" {
 			c.journal.delta(agent, e.AssistantMessageEvent.Delta, e.AssistantMessageEvent.ContentIndex)
 		}
-	case "tool_execution_start", "tool_execution_update", "tool_execution_end":
+	case "tool_execution_start", "tool_execution_end":
 		if len(e.ToolCallID) < 1 || len(e.ToolCallID) > 200 || len(e.ToolName) < 1 || len(e.ToolName) > 200 {
 			return
 		}
@@ -592,6 +598,10 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 func (c *ConversationController) drain(s *conversation) {
 	for e := range s.rpc.events {
 		c.mu.Lock()
+		if s.dead || (c.sessions[s.id] != nil && c.sessions[s.id] != s) {
+			c.mu.Unlock()
+			break
+		}
 		s.cursor++
 		if len(s.events) == 64 {
 			s.events = s.events[1:]
@@ -653,15 +663,22 @@ func (c *ConversationController) drain(s *conversation) {
 		c.mu.Unlock()
 		if settled {
 			c.publishNativeHistory(s)
-			if c.journal != nil {
+			c.mu.Lock()
+			if c.sessions[s.id] == s && !c.closed && c.journal != nil {
 				c.journal.activity("pi:"+s.id, "idle")
 			}
+			c.mu.Unlock()
 		}
 	}
 	c.mu.Lock()
-	s.state = "uncertain"
-	if s.ack == "pending" {
-		s.ack = "uncertain"
+	if c.sessions[s.id] == s {
+		s.state = "uncertain"
+		if s.ack == "pending" {
+			s.ack = "uncertain"
+		}
+		if c.journal != nil {
+			c.journal.reset("pi:"+s.id, "unknown")
+		}
 	}
 	c.mu.Unlock()
 }

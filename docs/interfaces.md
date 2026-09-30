@@ -310,7 +310,7 @@ kirjoituksia; epävarmaa komentoa ei lähetetä uudestaan.
 
 Daemonin controller-tilan `activity`, `live_tail` ja cursor kopioidaan saman
 journal-lukon alla. Tekstideltoja yhdistetään enintään 50 ms ja 4096 tavuun;
-työkalutapahtuma pakottaa aiemman tekstin ensin ulos. Muisti- ja toistorajat
+työkalun aloitus tai lopetus pakottaa aiemman tekstin ensin ulos. Sisällöttömiä natiiveja työkalun välipäivityksiä ei julkaista, jotta ne eivät syrjäytä muiden agenttien toistoa. Muisti- ja toistorajat
 voivat katkaista väliaikaisen tailin; `ring_truncated` vaatii historian uudelleenluvun.
 Natiivin tiedostojärjestelmän havainnot tehdään ennen controllerin lukittua
 leikkausta, eivätkä ulkopuoliset Pi-/terminaalikirjoitukset kuulu samaan

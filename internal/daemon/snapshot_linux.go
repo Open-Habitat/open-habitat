@@ -99,11 +99,12 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		// reflected in the image; consumers deduplicate by sequence.
 		eventCursor, oldestCursor := "ev1:"+instance+":0", "ev1:"+instance+":0"
 		var turnViews map[string]turnTail
-		var beforeNative string
+		var beforeNative uint64
+		var afterNative uint64
 		if journal != nil {
 			// Native discovery can race with changes outside the controller. Controller
 			// state is captured only after native observation, with its cursor.
-			beforeNative, _ = journal.watermark()
+			beforeNative = journal.nativeGeneration()
 		}
 		observation := discover(cfg)
 		if observation.State == "error" {
@@ -221,7 +222,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 			}
 		}
 		if journal != nil {
-			eventCursor, oldestCursor, turnViews = journal.turnView()
+			eventCursor, oldestCursor, afterNative, turnViews = journal.turnView()
 			for _, raw := range agents {
 				agent := raw.(map[string]any)
 				if t, ok := turnViews[agent["agent_id"].(string)]; ok {
@@ -238,7 +239,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		// Native observations are not journal-atomic. If an observable native
 		// change arrived during discovery, leave an explicit resnapshot signal
 		// *after* the controller cursor instead of silently consuming it.
-		if journal != nil && beforeNative != eventCursor {
+		if journal != nil && beforeNative != afterNative {
 			journal.appendInvalidation("")
 		}
 		ghState := nativeStatus(r.Context())
