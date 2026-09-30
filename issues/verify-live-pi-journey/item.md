@@ -10,21 +10,85 @@ related: ['@gate-native-routes-on-pi', '@build-agent-control']
 
 # Verify live Pi onboarding and conversation
 
-## Goal
-Keep the remaining **real-environment acceptance checks** separate from product implementation issues. A passing Playwright run with synthetic identities/Pi is evidence for browser behavior, not for a real provider, systemd installation, or per-person Unix separation on the test server. Record exact product release, host receipt, participants/consent and result for each check; a failed check becomes a concrete implementation bug, not an unchecked box silently waived.
+This issue records the remaining real-environment acceptance for Pi onboarding,
+conversation control and per-person Unix separation on the test server.
+@gate-native-routes-on-pi owns the implemented access gate;
+@build-agent-control owns conversation control. A failed acceptance check becomes
+a concrete implementation bug; it does not disappear from this ledger.
 
-## Preconditions
-The test server currently runs pilot.12, not these newly landed changes. Before any replacing release or test-account reset, confirm the Fleetrepo test host's approved versioned upgrade/rollback procedure and exact bytes; do not infer authorization to overwrite pilot.12 from this checklist. Product release and concrete deployment belong in Fleetrepo; no real secret, one-time code, private home, screenshot with workspace names or unredacted identity is committed here. Any real OpenAI sign-in needs Jari's consent and participation; a second person's sign-in is voluntary and separately consented.
+Synthetic browser tests establish browser behavior. Real Pi with a synthetic
+provider, real provider use and installed-host isolation establish different
+things; [TESTING.md](../../TESTING.md) explains those evidence boundaries.
+
+## Release and consent boundaries
+
+The recorded test-server baseline is pilot.12, before these changes.
+Before any replacing release or test-account reset, confirm the Fleetrepo test
+host's approved versioned upgrade/rollback procedure and exact bytes; do not
+infer authorization to overwrite pilot.12 from this checklist. The release
+procedure lives in Fleetrepo's `infra/native-agent-host-test/RELEASE-UPGRADE.md`;
+its personal-state reset targets the destroyed pilot.11 installation, not this
+baseline. There is no current test-account reset procedure.
+
+Product release and concrete deployment belong in Fleetrepo; no real secret,
+one-time code, private home, screenshot with workspace names or unredacted
+identity is committed here. Any real OpenAI sign-in needs Jari's consent and
+participation; a second person's sign-in is voluntary and separately consented.
 
 ## Pi onboarding and native gate
-- [ ] On an installed **new** release, a returning signed-in user with missing Pi credentials reaches the OpenAI step from a normal route and a direct workspace/history/control URL; only the explicit pre-Pi GitHub chooser/checkout remains accessible. No native history/control leaks on a stale tab or changed browser session.
-- [ ] If Pi state is unknown or the daemon is interrupted, the OpenAI step explains check failure and permits a fresh read-only retry; it does not claim credentials are missing or automatically restart an uncertain attempt. An old device code or another browser session cannot take over a pending attempt.
-- [ ] With Jari's approved account, verify actual installed Pi device-code exchange, credentials saved by Pi under the mapped UID, usable return to the intended browser route and recovery after reload; record redacted outcomes and clean up any temporary experiment state. Do not mistake the prior synthetic provider/UID tests for this result.
-- [ ] Check test-host kernel UID/socket permissions, systemd activation and cross-user denials using consented identities; disposable rootless multi-UID fixtures are not host proof. If no second participant is available, record this as not run, not pass.
 
-## Agent control (run only after @build-agent-control implementation lands)
-- [ ] Against real installed Pi with a synthetic/offline provider where possible, exercise the **rendered browser** journey: create/send, live streamed text/tool updates, interrupt, reconnect without duplicate send, and deliberate continuation of an ended browser-owned conversation from native history. Existing terminal histories remain read-only, and losing daemon state must not confer control.
-- [ ] With Jari's separate approval for real provider use, repeat the agreed bounded conversation story using his account; distinguish provider success from synthetic-model success and record cleanup of temporary state. Do not require another person's credentials for this check.
+These checks concern an installed new release.
+
+- [ ] A returning signed-in user with missing Pi credentials reaches the OpenAI
+  step from a normal route and direct workspace, history and control URLs.
+  Of the workspace routes, only the explicit pre-Pi GitHub chooser/checkout
+  remains accessible. Native history and control stay protected on stale tabs
+  and after a browser-session
+  change.
+- [ ] Unknown Pi state or a daemon interruption produces an explained check
+  failure and a fresh read-only retry. The browser neither claims credentials
+  are missing nor automatically restarts an uncertain attempt. An old device
+  code or another browser session cannot take over a pending attempt.
+- [ ] With Jari's approved account, the installed Pi completes the actual
+  device-code exchange, saves its credentials under the mapped UID and returns
+  the browser to the intended route, with recovery after reload. Record
+  redacted outcomes and clean up temporary experiment state. Prior synthetic
+  provider/UID results do not establish this outcome.
+- [ ] The test host's kernel UID/socket permissions, systemd activation and
+  cross-user denials work with consented identities. Disposable rootless
+  multi-UID fixtures do not establish host isolation. A second participant
+  can sign in only after @plan-second-user-admission's test-host admission is
+  in place; without both, this check remains not run.
+
+## Agent control
+
+Run these checks only after @build-agent-control implementation lands.
+
+- [ ] Against real installed Pi, with a synthetic/offline provider where
+  possible, the rendered browser supports create/send, live streamed text and
+  tool updates, interruption, reconnect without duplicate send, and deliberate
+  continuation of an ended browser-owned conversation from native history.
+  Existing terminal histories remain read-only; losing daemon state does not
+  confer control.
+- [ ] With Jari's separate approval for real provider use, repeat the agreed
+  bounded conversation story using his account; distinguish provider success
+  from synthetic-model success and record cleanup of temporary state. Do not
+  require another person's credentials for this check.
 
 ## Evidence
-Put redacted product-level observations in `result.md`; link concrete Fleetrepo deployment/recovery receipts rather than copying host facts or secrets into this public repository. The list is the acceptance ledger, not an executable lane or permission to deploy/authorize a person.
+
+Record each check's exact product release, Fleetrepo host receipt,
+participants/consent and result in `result.md`, with redacted product-level
+observations and links to any resulting implementation bugs. Link concrete
+Fleetrepo deployment/recovery receipts rather than copying host facts or secrets
+into this product repository. Missing prerequisites remain explicit as not run;
+a partial run is not a pass.
+
+This is an acceptance ledger, not an executable lane or permission to deploy
+or authorize a person.
+
+## Decisions
+
+### 2026-09-30T17:56:20Z · @claude
+
+Rethink-night 30.9.: rethink-instructions (gpt-6-astra), faktantarkistus fact-check-instructions (claude-opus-5-5). Ilman Jaria säilytin kuusi erillistä hyväksyntätarkistusta, suostumus- ja julkaisurajat sekä alkuperäisen frontmatterin; tulkitsin pilot.12:n kirjattuna lähtötasona ja erottelin synteettisen testin, oikean Pi:n, tarjoajan ja testipalvelimen näytöt. Faktantarkistus erotti pilot.12:n julkaisuohjeen vanhentuneesta pilot.11:n tilan nollausohjeesta, täsmensi että vain työtilareiteistä GitHub-esivaihe on avoin, ja että toisen käyttäjän pääsy edellyttää myös testipalvelimen admission-muutosta. Julkinen repo -väite muutettiin tuoterepoksi (GitHubin näkyvyys nyt private). Hostin nykytilaa tai offline-tarjoajan asentamista ei vahvistettu; tarkista ennen live-koetta. Ristiriitaa Jarin kirjattuihin päätöksiin ei löytynyt.
