@@ -330,8 +330,8 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 		return
 	}
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	if c.closed || c.runtime == nil {
+		c.mu.Unlock()
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
@@ -339,17 +339,19 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 	if old != nil {
 		select {
 		case <-old.rpc.exited:
+			// The watcher releases its FD after acquiring c.mu; release it here
+			// too so an already-reaped child cannot appear to be a live writer.
+			_ = old.owner.release()
 		default:
+			c.mu.Unlock()
 			snapshotError(w, 409, "writer_conflict")
 			return
 		}
 	}
-	device := &PiDevice{Home: c.home, Node: c.runtime.Node, Entry: c.runtime.Entry, Manifest: c.runtime.Manifest, TrustedRuntime: !c.fixture, SharedSelector: !c.fixture, FixtureHome: c.fixture}
-	if device.validate() != nil {
-		snapshotError(w, 503, "native_source_unavailable")
-		return
-	}
+	// Acquire the fence before dropping c.mu. Parallel continuation attempts
+	// cannot both pass, even when the native history scan is slow.
 	owner, err := acquirePiOwnership(c.home, id)
+	c.mu.Unlock()
 	if err != nil {
 		snapshotError(w, 409, "writer_conflict")
 		return
@@ -359,6 +361,11 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 			_ = owner.release()
 		}
 	}()
+	device := &PiDevice{Home: c.home, Node: c.runtime.Node, Entry: c.runtime.Entry, Manifest: c.runtime.Manifest, TrustedRuntime: !c.fixture, SharedSelector: !c.fixture, FixtureHome: c.fixture}
+	if device.validate() != nil {
+		snapshotError(w, 503, "native_source_unavailable")
+		return
+	}
 	origin, err := owner.browserOrigin()
 	if err != nil {
 		snapshotError(w, 409, "read_only_history")
@@ -400,18 +407,42 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}
+	c.mu.Lock()
+	// Another create or continuation may have run while history was read.
+	// The owner fence still excludes another native writer for this ID.
+	active := 0
+	for _, session := range c.sessions {
+		select {
+		case <-session.rpc.exited:
+		default:
+			active++
+		}
+	}
+	if c.closed || c.sessions[id] != old {
+		c.mu.Unlock()
+		snapshotError(w, 409, "control_uncertain")
+		return
+	}
+	if active >= 4 || (old == nil && len(c.sessions) >= 128) {
+		c.mu.Unlock()
+		snapshotError(w, 429, "capacity_exceeded")
+		return
+	}
 	p, err := launchPiRPCSession(c.runtime.Node, []string{filepath.Join(filepath.Dir(c.runtime.Entry), "bundle", "cli.js")}, c.home, cwd, []string{"PATH=/usr/bin:/bin", "USER=" + c.cfg.Username}, owner, ws, path)
 	if err != nil {
+		c.mu.Unlock()
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
 	s := &conversation{id: id, workspace: origin.Workspace, cwd: cwd, rpc: p, owner: owner, state: "idle", ack: "uncertain", events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool)}
+
 	if old != nil {
 		s.commands = old.commands
 		s.command = old.command
 	}
 	c.sessions[id] = s
 	owner = nil // the child and watcher now own this lock
+	c.mu.Unlock()
 	go c.watch(s)
 	go c.drain(s)
 	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": origin.Workspace, "state": "idle", "prior_outcome": "uncertain"})

@@ -333,6 +333,16 @@ try:
             return code==200 and json.loads(body)['command_id']==command and json.loads(body)['ack']=='accepted' and json.loads(body)['native_history']=='readable'
         wait(continued,'continued Pi settlement',20)
     check(request(browsers[0],'/api/v1/conversations/'+handles[1][3:]+'/continue',csrf=browser_csrf[0])[0]==404,'foreign continue denied')
+    # A terminal-native history has no host origin marker. Remove a disposable
+    # fixture marker to exercise that refusal with an otherwise valid lease.
+    route='/api/v1/conversations/'+handles[1][3:]
+    check(request(browsers[1],route+'/stop',csrf=browser_csrf[1])[0]==200,'stop before missing-origin test')
+    lock=pathlib.Path('/home/agent-b/pi-owners')/(handles[1][3:]+'.lock')
+    subprocess.run(['/usr/bin/python3','-c','import sys;open(sys.argv[1],"wb").close()',str(lock)],preexec_fn=drop(UIDS[1]),check=True)
+    wait(lambda: json.loads(request(browsers[1],route+'/status')[2])['state']=='uncertain','terminal fixture stopped',10)
+    code,_,body=request(browsers[1],route+'/continue',csrf=browser_csrf[1])
+    check(code==409 and json.loads(body)['error']['code']=='read_only_history','unmarked history denied')
+
     check(request(browser()[0],'/api/v1/conversations')[0]==401,'anonymous deny')
     check(len(Model.calls)==4,'one native request per send, no retry')
     # Restart a mapped daemon directly. This is not systemd service lifecycle;
