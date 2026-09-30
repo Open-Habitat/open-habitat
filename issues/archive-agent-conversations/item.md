@@ -1,6 +1,6 @@
 ---
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-30
 type: task
 status: open
 priority: normal
@@ -13,44 +13,80 @@ collision: [docs/, AGENTS.md, design-system/]
 
 # Archive native agent conversations
 
-## Goal
+Let users remove a conversation from the active list, find it in its workspace's
+archive and, where browser control is supported, deliberately continue it with
+the same native Pi history and `pi:<sessionId>`. Archiving changes presentation;
+it does not copy or delete history or create another conversation store.
 
-Implement the accepted stop, archive and continue flow using native agent history.
+The [implementation map](../plan-v1-implementation/implementation-briefs.md)
+assigns this issue the archive journey and CT-021.
+[Agent control](../build-agent-control/item.md) owns the underlying browser
+control and continuation path. Build on that implementation and the
+[interface contract](../../docs/interfaces.md), which specifies per-user
+[annotations](../../contracts/v1/annotations.schema.json) for archive state.
+That file is not yet implemented, and the current snapshot agent has no archive
+field; deliver the necessary contract and daemon/browser changes as part of this
+slice. The archive is presented per workspace, but its metadata is not a new
+workspace-local store.
 
-## Context
+Stopping the managed process, archiving, restoring visibility and resuming are
+separate actions with separately visible outcomes. An archived conversation
+leaves the active list only after its annotation change succeeds. “Continue”
+restores visibility and resumes as distinct stages, so a failed resume does not
+conceal a successful unarchive. Restoring visibility alone neither starts Pi
+nor moves focus into a read-only editor.
 
-Use the accepted workspace and conversation handoffs plus the Pi lifecycle evidence from @probe-pi-control.
+The contract allows archiving an idle or confirmed-ended conversation;
+an active writer produces `writer_conflict`. Offer process stop only when the
+adapter reports supported browser control over the owned runtime.
+The [Pi control probe](../probe-pi-control/result.md) verified turn interruption
+with `abort`, not process shutdown. The current daemon's process-stop action
+terminates its direct Pi child but reports `termination_unknown`: detached tools
+and history settlement are not confirmed. `agent_settled` establishes a turn's
+idle boundary, not process exit. Stop alone cannot make archive or another writer
+safe while ownership is uncertain; establish the required native facts first.
 
-## Scope
+Pi permits competing runtimes to open the same session. Readable history,
+observed process state and owned control are therefore separate facts.
+Continuation uses the supported native resume path and the daemon's
+single-writer protection; uncertain ownership or unfinished prior work cannot
+be treated as permission to start another writer. Terminal histories remain
+read-only under the current scope: if a terminal history is archived, it can be
+restored to the active list but not continued from the browser. An unknown
+process state is not proof that it is idle or ended. Browser disconnect does not stop Pi.
 
-Do not create a parallel conversation history or Agent Host archive database. Archive state must map to a native capability or to the smallest explicitly justified workspace-local presentation metadata.
+Make failures understandable without losing native facts. Missing history,
+unreadable annotations and an unavailable source are different from an empty
+archive. Annotation corruption should leave native history accessible, expose
+the presentation-state problem and preserve the corrupt bytes. A stale view or
+lost response leaves the action uncertain until its outcome can be established.
 
-## Acceptance Criteria
+Build ArchiveDialog in the shared production components to its
+[catalog contract](../../design-system/component-catalog-v1.md), including the
+archive-conflict example. The
+[production design](../../design-system/production-v1.md) describes the
+archive route, interaction and focus behavior. Application and component examples
+share their controls, state semantics and styling, so the examples demonstrate
+the delivered behavior. Retire any canonical mock this implementation replaces;
+originals may remain in their receiving issue as historical evidence.
 
-- [ ] Stop an agent only when the adapter reports that browser control is available.
-- [ ] Remove an archived conversation from the active list without deleting native history.
-- [ ] List archived conversations per workspace and continue one through the supported native resume path.
-- [ ] Preserve honest read-only behavior when history exists but control is unavailable.
-- [ ] Verify stop/resume failures, disconnects and stale state without claiming success prematurely.
+Demonstrate CT-021 with disposable native history: archive, restore and continue
+the same session without a transcript copy. Cover active-writer conflicts,
+stop/resume failures, annotation crash/corruption, missing history and
+stale/disconnected views. Record the tested revision, commands, outcomes and
+remaining limits in `result.md` here, following
+[TESTING.md](../../TESTING.md) and the current
+[local checks](../../scripts/AGENTS.md). Update affected durable documentation
+and component examples; issuectl remains the source of task status.
 
-## Implementation and evidence
+Put proportionate browser evidence and screenshots in
+`visual-acceptance.md` here, identifying the tested revision,
+environment and relevant outcomes. Record Jari's visual verdict when given.
+Unreviewed appearance remains unreviewed; it does not block functional
+completion or independent downstream work.
 
-Use the [delivery plan](../plan-v1-implementation/plan.md), accepted implementation
-briefs and exact checks verified by @build-app-foundation. Save `result.md` here with
-the tested revision, commands, outcomes and remaining limits. Update the affected
-durable documents and component examples; do not duplicate task state in TODO.md.
+## Decisions
 
-## Bounded planning handoff
+### 2026-09-30T17:36:29Z · @claude
 
-This issue owns M6. Stop, archive annotation, unarchive and resume are separate observable operations. Prove active-writer conflict, annotation crash/corruption, missing history, stale/disconnect and same native resume ID; never copy or delete Pi history. See [the implementation briefs](../plan-v1-implementation/implementation-briefs.md).
-
-
-## Visual evidence
-
-Provide proportionate browser evidence and screenshots in
-`issues/archive-agent-conversations/visual-acceptance.md`, with the tested revision,
-environment and relevant outcomes. Record Jari's visual verdict when given;
-unreviewed appearance remains unreviewed. A pending screenshot verdict does not
-block functional completion or independent downstream work.
-
-Interactive and repeated behavior must use the shared production component implementation. Local composition may arrange one-off content but may not invent controls, state semantics, focus rules or styling. When this production slice replaces a canonical/root mock or static reference, remove the superseded root/canonical reference in the same accepted change; an original may remain only in its receiving issue as historical evidence.
+Rethink-night 30.9.: toteuttajalle suunnattu issue kirjoitettiin rethink-instructions-skillillä (gpt-6-astra); faktantarkistus fact-check-instructions-skillillä (claude-opus-5-5). Ilman Jaria valittiin nykyinen käyttäjäkohtainen annotaatiosopimus, saman Pi-ID:n jatkaminen, erilliset stop/arkistointi/palautus/resume-toimet ja terminaalihistorian varovainen vain luku -tulkinta; visuaalinen arvio jää ei-estäväksi. Faktantarkistus korjasi väitteen jo toteutetusta annotaatiosta (toteutus ja snapshotin arkistokenttä puuttuvat), erotti daemonin epävarman prosessipysäytyksen Pi:n abortista ja täsmensi ArchiveDialogin olevan vielä rakennettava. Ristiriitaa Jarin kirjattuun päätökseen ei löytynyt. Avoin sopimustulkinta: tuntemattoman prosessitilan terminaalihistoriaa ei pidetä idle-/päättyneenä ilman näyttöä; mahdollinen säännön löysennys tarvitsee erillisen päätöksen, eikä sitä tehty yöllä.
