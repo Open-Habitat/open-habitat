@@ -37,3 +37,155 @@ export async function openLab({
     .click();
   return { browser, context, page };
 }
+
+// A static, inert twin of a synthetic lab screenshot. Never call on a live host.
+export async function snapshot(page, outBase, { html = true } = {}) {
+  const { mkdir, writeFile } = await import("node:fs/promises");
+  const { dirname } = await import("node:path");
+  const { execFileSync } = await import("node:child_process");
+  if (new URL(page.url()).origin !== origin)
+    throw new Error("Snapshot refused: page is outside the synthetic lab");
+  const marker = await page.request.get(`${origin}/fixture/lab-marker`);
+  if (marker.status() !== 204)
+    throw new Error("Snapshot refused: host is not the synthetic lab");
+  await page.evaluate(() => document.fonts.ready);
+  await mkdir(dirname(outBase), { recursive: true });
+  await page.screenshot({ path: `${outBase}.png`, fullPage: true });
+  if (!html) return;
+  const captured = await page.evaluate(async () => {
+    const root = document.documentElement.cloneNode(true);
+    const live = [...document.documentElement.querySelectorAll("*")];
+    const copies = [...root.querySelectorAll("*")];
+    const inline = async (reference, base = location.href) => {
+      const url = new URL(reference, base);
+      if (url.protocol === "data:") return url.href;
+      if (url.origin !== location.origin)
+        throw new Error(`Non-lab asset: ${url.origin}`);
+      const response = await fetch(url.href);
+      if (!response.ok) throw new Error(`Asset unavailable: ${url.pathname}`);
+      const blob = await response.blob();
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+    };
+    const cssUrls = async (text, base) => {
+      const matches = [...text.matchAll(/url\(\s*(['"]?)(.*?)\1\s*\)/gi)];
+      for (const match of matches.reverse()) {
+        const url = match[2].trim();
+        const replacement = url.startsWith("#") ? url : await inline(url, base);
+        text = `${text.slice(0, match.index)}url("${replacement}")${text.slice(match.index + match[0].length)}`;
+      }
+      return text;
+    };
+    const ruleText = async (rules, base) => {
+      let result = "";
+      for (const rule of rules) {
+        if (rule.type === CSSRule.IMPORT_RULE) {
+          result += await ruleText(rule.styleSheet.cssRules, rule.href || base);
+        } else result += `${await cssUrls(rule.cssText, base)}\n`;
+      }
+      return result;
+    };
+    let css = "";
+    for (const sheet of document.styleSheets)
+      css += await ruleText(sheet.cssRules, sheet.href || location.href);
+    for (let i = 0; i < live.length; i++) {
+      const src = live[i],
+        dst = copies[i];
+      if (src instanceof HTMLInputElement) {
+        if (src.type === "password" || src.type === "hidden")
+          dst.removeAttribute("value");
+        else dst.setAttribute("value", src.value);
+        if (src.checked) dst.setAttribute("checked", "");
+        else dst.removeAttribute("checked");
+      }
+      if (src instanceof HTMLTextAreaElement) dst.textContent = src.value;
+      if (src instanceof HTMLSelectElement) {
+        [...src.options].forEach((option, index) => {
+          const clone = dst.options[index];
+          if (option.selected) clone.setAttribute("selected", "");
+          else clone.removeAttribute("selected");
+        });
+      }
+      if (src instanceof HTMLDetailsElement || src instanceof HTMLDialogElement)
+        dst.open = src.open;
+      if (src.scrollTop)
+        dst.setAttribute("data-snapshot-scroll-top", String(src.scrollTop));
+      if (src.scrollLeft)
+        dst.setAttribute("data-snapshot-scroll-left", String(src.scrollLeft));
+      if (src instanceof HTMLCanvasElement) {
+        const image = document.createElement("img");
+        image.src = src.toDataURL();
+        dst.replaceWith(image);
+      }
+      if (dst.hasAttribute("style"))
+        dst.setAttribute(
+          "style",
+          await cssUrls(dst.getAttribute("style"), location.href),
+        );
+      for (const attr of ["src", "poster"]) {
+        if (dst.hasAttribute(attr))
+          dst.setAttribute(attr, await inline(dst.getAttribute(attr)));
+      }
+      if (dst.hasAttribute("srcset")) dst.removeAttribute("srcset"); // src is already embedded.
+    }
+    for (const element of [...root.querySelectorAll("*")]) {
+      if (
+        [
+          "SCRIPT",
+          "IFRAME",
+          "OBJECT",
+          "EMBED",
+          "BASE",
+          "LINK",
+          "META",
+          "NOSCRIPT",
+        ].includes(element.tagName)
+      ) {
+        element.remove();
+        continue;
+      }
+      for (const attr of [...element.attributes]) {
+        if (
+          /^on/i.test(attr.name) ||
+          [
+            "href",
+            "action",
+            "formaction",
+            "xlink:href",
+            "integrity",
+            "nonce",
+          ].includes(attr.name)
+        )
+          element.removeAttribute(attr.name);
+      }
+      if (element instanceof HTMLInputElement && element.type === "hidden")
+        element.remove();
+    }
+    const style = document.createElement("style");
+    style.textContent = css.replace(/<\/style/gi, "<\\/style");
+    root.querySelector("head").append(style);
+    // CSP also disables submission, navigation and network if opened locally.
+    const meta = document.createElement("meta");
+    meta.setAttribute("http-equiv", "Content-Security-Policy");
+    meta.setAttribute(
+      "content",
+      "default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline' data:; form-action 'none'; navigate-to 'none'",
+    );
+    root.querySelector("head").prepend(meta);
+    return `<!doctype html>\n${root.outerHTML}`;
+  });
+  const commit = execFileSync("git", ["rev-parse", "--short", "HEAD"], {
+    encoding: "utf8",
+  }).trim();
+  const header = `<!-- Synthetic lab | commit ${commit} | route ${new URL(page.url()).pathname.replaceAll("--", "-")} | viewport ${page.viewportSize().width}x${page.viewportSize().height} | theme ${await page.evaluate(() => document.documentElement.dataset.theme || "system")} | ${new Date().toISOString()} -->\n`;
+  const contents = header + captured;
+  if (Buffer.byteLength(contents) > 2 * 1024 * 1024)
+    console.warn(
+      `Snapshot exceeds 2 MB: ${outBase}.html (${Buffer.byteLength(contents)} bytes)`,
+    );
+  await writeFile(`${outBase}.html`, contents);
+}

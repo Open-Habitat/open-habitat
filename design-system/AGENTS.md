@@ -113,3 +113,6 @@ logiikka, katalogi todistaa jonkin muun kuin tuotannon toimivuuden. Katalogin
 sopimus kertoo, mitä komponentin pitää tukea (pitkä suomenkielinen sisältö,
 näppäimistö, tumma teema, 200 %:n zoom, reduced motion), ja `web/AGENTS.md` sekä
 `docs/design-system.md` kertovat, millä komennoilla se tarkistetaan.
+
+Visual evidence is a paired synthetic-lab screenshot and offline static HTML
+snapshot stored side by side in the issue folder (see `web/AGENTS.md`).

@@ -393,6 +393,13 @@ esac
 	ts.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/fixture/") {
 			switch r.URL.Path {
+			case "/fixture/lab-marker":
+				if !lab {
+					http.NotFound(w, r)
+					return
+				}
+				w.WriteHeader(http.StatusNoContent)
+				return
 			case "/fixture/conversations-reset":
 				// Tests explicitly discard the previous synthetic daemon incarnation.
 				for i, current := range conversationHandlers {

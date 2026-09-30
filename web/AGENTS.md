@@ -72,3 +72,10 @@ Dependencies are pinned in the committed lockfile and installed with
 `npm ci --prefix web`; `npm install` rewrites the lock, and `scripts/ci-local.sh`
 proves the lock complete by reinstalling offline. The root `TESTING.md` gives the commands, scope and full-gate policy; the
 `scripts` block in `package.json` names the individual checks.
+
+UI evidence is always a screenshot paired with a static HTML snapshot from the
+synthetic lab, saved side by side in the issue folder. Use `snapshot(page, outBase)`
+from `lab/session.mjs` for scripted journeys; `lab/shoot.mjs` includes HTML by
+default (`--no-html` is only for exceptional debugging). Never capture a live
+host, real profile or real user data. Open the HTML offline to inspect layout
+and semantics without a running lab; the image remains the visual reference.

@@ -98,3 +98,6 @@ Inspect skips before claiming coverage: `go test -v` exposes ACL/root/UID cases
 skipped on an ordinary developer machine. For visual changes, include
 proportionate screenshots and identify whether they show a synthetic or live
 environment.
+
+Visual evidence belongs in the issue folder as adjacent screenshot and static
+HTML from the synthetic lab (`web/lab/session.mjs` `snapshot`); never use live data.
