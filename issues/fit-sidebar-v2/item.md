@@ -3,15 +3,13 @@ created: 2026-09-30
 updated: 2026-09-30
 type: task
 reporter: jari
-status: done
+status: in-progress
 priority: high
 related: ['@review-browser-design-v2', '@decide-account-display']
 lane: design-v2
 lane_seq: 3
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
 blocked_by: ['@fit-conversation-v2', '@continue-ended-conversation']
-closed: 2026-09-30
-closed_by: night-ui-worker
 ---
 
 # Fit the sidebar and account menu to browser design v2
@@ -67,3 +65,7 @@ The validated browser snapshot carries `identity.display_name` (which may be a p
 The `Etusivu` badge counts only snapshot agents whose process is explicitly `daemon_managed_live` or `terminal_observed_live`, and is omitted for stale snapshots; unknown/not-observed processes do not become “running”. No host aggregate running count exists, so this is a count of host-reported live agents, not of all Taskfleet jobs or browser tabs.
 
 Draft deviations: navigation remains native links (including Back/history and route current state), not button-only rows; connection and read-only text remain explicit under the existing accessibility agreement. The existing rail filter and refresh stay available. The draft's collapsed `+` workspace picker cannot be implemented honestly without a currently available create/chooser intent in this rail; request a separate product/contract design for that action rather than inserting a nonfunctional control. Theme remains available as existing menu items rather than an invented radio state machine. These follow `production-v1.md` and the recut component map.
+
+## Reopen Notes — 2026-09-30
+
+_Add rationale for reopening here._
