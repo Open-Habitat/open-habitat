@@ -3,7 +3,7 @@ created: 2026-09-30
 updated: 2026-09-30
 type: improvement
 reporter: claude
-status: untriaged
+status: open
 priority: normal
 provenance: agent
 ---

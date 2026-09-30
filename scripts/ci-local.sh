@@ -11,6 +11,8 @@ tmp=$(mktemp -d)
 # Content-addressed build/download caches are disposable, but survive consecutive
 # runs in this checkout. HOME and the Python/tool installs remain private per run.
 export HOME="$tmp/home" GOCACHE="$repo/.cache/ci-local/go-build" GOMODCACHE="$repo/.cache/ci-local/go-mod" NPM_CONFIG_CACHE="$repo/.cache/ci-local/npm" PLAYWRIGHT_BROWSERS_PATH="$repo/.cache/ms-playwright" CI=1
+# Go's default module cache is read-only; worktree teardown must be able to remove it.
+export GOFLAGS="${GOFLAGS:+$GOFLAGS }-modcacherw"
 mkdir -p "$HOME" "$GOCACHE" "$GOMODCACHE" "$NPM_CONFIG_CACHE" "$PLAYWRIGHT_BROWSERS_PATH" "$tmp/bin"
 phase_name=setup
 phase_start=$(date +%s)
