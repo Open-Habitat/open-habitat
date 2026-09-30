@@ -13,51 +13,64 @@ collision: [docs/]
 
 ## Goal
 
-Design and deliver a first-use journey between successful browser login and the normal workspace view, based on Jari's observations after the first real pilot login (2026-09-27). Separate native GitHub and Pi credentials; do not implement a new credential broker or fake a native login state.
+Make the path from browser login to useful agent work clear: GitHub login,
+repository selection and checkout, then OpenAI sign-in through Pi. The user
+can choose no repositories and continue. A returning user with usable Pi
+credentials enters normal workspaces directly. The agreed journey and recovery
+behavior are described in [plan.md](plan.md).
 
-## User feedback
+The visual target is the new **browser design v2**, supplied under
+[@review-browser-design-v2](../review-browser-design-v2/item.md). This issue
+owns composing its onboarding screens from production components and connecting
+them to the existing flow. The design review coordinates shared UI improvements;
+@github-repos-first-onboarding owns repository selection and checkout behavior.
 
-- After first login, show the user's GitHub repositories as a tidy, selectable list. The user selects repos to import; clone selected repos as their own workspaces under `~/src`. This is a guided first-use screen, not a replacement for the normal workspace view.
-- `~/src` must exist as part of provisioning/onboarding. Its absence is a setup failure, not an acceptable first-use empty state. Preserve safe handling for later deletion or read failure.
-- Verify usable native GitHub authorization during onboarding; never present a successful setup based only on the browser session. The pilot showed the generic unknown-state warning despite native `gh` being verified independently.
-- During onboarding, require native Pi authentication before entering the normal workspace or repository browsing UI. **First version: OpenAI ChatGPT subscription device-code browser sign-in**, driven by the mapped UID daemon through Pi's native `openai-codex` runtime; Pi persists and refreshes its credentials. Other methods, including API keys, are later work. Never expose tokens in browser logs or persistent gateway state. The exact gateway/daemon contract still requires security review before implementation.
-- Normal users should not see the numeric `GitHub user 1272053` identity fallback or the message `Web-uloskirjautuminen ei katkaise natiiveja GitHub-tunnuksia.` on the everyday workspace screen. Replace numeric fallback with a humane display name or neutral fallback; keep precise identity for secure internal binding. Explain the distinction between web logout and native disconnect only at the relevant settings/action confirmation.
-- Add a small bottom-left sidebar shelf with an account/context menu including Settings. Include a GitHub integration settings page that shows the verified native connection and provides an explicit GitHub disconnect/logout action. Keep web logout separate from native `gh` logout; account for subsequent web sessions and native Git access after disconnect.
+## Existing foundation
 
-## Design and delivery boundaries
+The native Pi adapter, gateway/daemon onboarding contracts, Pi access gate,
+repository chooser and checkout observation already exist. Their sources and
+evidence are linked in the plan. Build the remaining journey on these
+components. Each report establishes only the revision and environment it tested.
 
-This is a product request, not an approved implementation architecture. Recommend first delivering a bounded decision/design for first-use state, safe `~/src` creation, GitHub list/import and partial clone retry, Pi login handoff and credential authority, settings/disconnect behavior, and returning-user recovery. Then split implementation into small serial UI/security-boundary slices with synthetic per-UID tests and Jari's visual acceptance. Existing @connect-github-workspaces covers search/clone and native authorization but not the first-use list/selection journey; avoid duplicating it. @build-history-view remains in `testing` awaiting Jari's separate visual verdict; these observations do not accept or reject that view.
+## Remaining work
 
-No live credentials or second-person identity may be used for testing without explicit participation. Keep host-specific deployment receipts in Fleetrepo. The normal workspace UI must not expose numeric IDs or operational caveats as default chrome.
+Fit login, repository selection and OpenAI sign-in into the v2 layout, with
+clear progress, recovery and a way to interrupt onboarding and log out. All
+repositories are visible by default, with time filtering chosen by the user.
+Unverified checkout or login results remain explicit even when a draft omits
+them. Returning from another browser tab should preserve the current step and
+input after confirming the same web identity.
+
+Pi owns its native credentials under the mapped Unix user. The daemon drives
+the approved device-code interaction, and the browser displays the instructions;
+the user does not need a Pi terminal. The first version uses a ChatGPT
+subscription; API keys and other methods are later work. Pi handles token
+exchange, storage and refresh. Interrupted attempts are resolved by checking
+native status. Independent terminal Pi login/logout during onboarding is outside
+this version's workflow; [plan.md](plan.md) describes recovery.
+
+Normal workspaces, history and agent
+control require usable Pi credentials. The narrow first-use GitHub list/checkout
+path is the agreed exception. `~/src` is prepared during setup; inability to
+read it is different from an empty directory.
+
+@add-account-settings-ui owns the account menu and integration settings.
+@decide-account-display specifies first name in the normal view and signed-in
+email in the expanded account view. Web logout, native GitHub disconnect and
+Unix-account removal are separate actions; their consequences belong beside
+the relevant action. The later account-settings review resolves remaining
+name/email sources and connection controls.
 
 ## Acceptance Criteria
 
-- [ ] Record and review a concrete Pi subscription browser-auth handoff and its credential ownership boundary before implementing that boundary; Jari has approved the first-version product behavior, not a specific security implementation.
-- [ ] The approved design specifies first-run vs returning-user behavior, a usable-path guarantee or honest recovery on failure, and retry semantics for native auth and partially imported repos.
-- [ ] Implementation slices and dependencies are linked to the existing GitHub workspace/lifecycle issues and have dedicated evidence, tests, and UI screenshots.
+- [ ] The v2 onboarding screens deliver the agreed GitHub → repositories →
+  OpenAI journey using the existing native integrations and shared UI.
+- [ ] First use, returning users, empty selection, interrupted sign-in and
+  uncertain or partial checkout have understandable recovery without false
+  success or repeated uncertain writes.
+- [ ] Visual and functional evidence covers the resulting screens, with live
+  provider and installed-host results distinguished from synthetic tests.
 
-## Design evidence (2026-09-28)
-
-[plan.md](plan.md) now reflects the approved Pi-native device-code interaction and Jari's scope clarification in `c657202`. The manual callback/paste plan is superseded, not a delivery prerequisite. The adapter remains in progress; no gateway gate, onboarding wire contract, wizard or end-to-end recovery is implemented by this design edit. The plan names four small **candidate** delivery boundaries and existing workspace/settings dependencies without creating a second schedule; they are not accepted/laned issues. No live sign-in or credential was used. Acceptance checkboxes remain open pending security-contract review, implementation and synthetic/visual evidence.
-
-## Decisions
-
-### 2026-09-27T18:32:55Z · @jari
-
-2026-09-27: Pi sign-in is mandatory before any repository browsing or normal workspace UI; the product has no useful mode without agents. First version supports the native Pi OpenAI ChatGPT subscription browser login; API-key and other methods follow later. Jari asks for autonomous overnight implementation without further routine check-ins. The exact credential handoff and authority boundary must follow Pi-native behavior, with security evidence before live deployment.
-
-### 2026-09-27T19:57:44Z · @agent
-
-2026-09-27 source-grounded refinement pending Jari approval: Pi 0.85.1 openai-codex /login already offers native Device code login (headless) for ChatGPT subscription in a browser. Unlike the default browser PKCE callback, it needs no fixed localhost:1455 listener or pasted failed redirect; daemon can show Pi-notified verification URI/user code and let Pi poll/store/refresh under mapped UID. The user chose subscription browser sign-in, but has NOT explicitly accepted device-code interaction as the first-version UX; this is a proposed architectural simplification, not approval or implementation. A strict manual-only browser patch was prototyped in @prototype-pi-manual-login (28 synthetic tests) as fallback; neither live OpenAI flow nor same-origin host gate is proven. Ask Jari whether native device-code experience satisfies first version before binding host auth APIs to either flow.
-
-### 2026-09-28T05:19:21Z · @jari
-
-2026-09-27 Jari approved using Pi native OpenAI ChatGPT subscription device-code browser sign-in for the first version, for now. The user must not have to open a Pi terminal: mapped user daemon drives Pi native login, web shows verification URL and user code, user confirms in their browser; Pi owns credential storage/refresh. The approval is for this first-version product interaction, not a license for an unreviewed gateway credential broker or a live real-user test without consent. API keys and other methods remain later. The earlier manual-only default-browser patch is prototype/fallback, not required for this approved first version.
-
-### 2026-09-28T12:29:49Z · @jari
-
-2026-09-28 first-version scope clarification: the mapped user daemon coordinates Pi sign-in by starting one Pi-native operation as that UID and relaying device-code instructions to the browser; Pi owns token exchange, auth.json writes and refresh. Do not build a host credential writer or broker, switch to Pi-in-Go solely for login, or scrape the TUI. The expected user flow has no independent terminal Pi login/logout while web onboarding is in progress; do not block v1 on a speculative cross-process conditional-commit protocol. Daemon normally stays up; on restart during an attempt, report an interrupted/unknown attempt and recheck Pi-native status rather than showing false success. Preserve ordinary Unix UID isolation and basic safe child cleanup. The earlier manual callback design in plan.md is superseded by the approved native device-code flow.
-
-### 2026-09-29T04:53:16Z · @jari
-
-2026-09-29: The first onboarding step after browser/GitHub login is choosing which GitHub repositories to check out. Pi device-code login follows this selection/checkout, before normal workspace browsing, native history or agent controls. This supersedes the earlier Pi-before-repository-browsing order only for the narrow first-use GitHub chooser/import path. See @github-repos-first-onboarding.
+[TESTING.md](../../TESTING.md) describes validation; @verify-live-pi-journey
+tracks the remaining real-environment Pi checks. Visual feedback is collected
+for this UI without blocking unrelated work.

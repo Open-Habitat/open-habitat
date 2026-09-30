@@ -11,41 +11,60 @@ blocked_by: ['@pre-pi-github-clone', '@github-chooser-component', '@single-actio
 
 # Choose GitHub repositories before Pi sign-in
 
-## Goal and decision (Jari, 2026-09-29)
-After browser/GitHub login, the **first onboarding step** is a tidy list of this mapped Unix user's checkoutable GitHub repositories. The user chooses which to check out into `~/src`. Only then does ChatGPT/Pi device-code sign-in run before normal workspaces, native history or agent control open. This supersedes the earlier Pi-before-repository-browsing order recorded in @design-first-use-onboarding; it does not permit agent/history/workspace data to bypass the Pi gate.
+## Goal
 
-## Current gap
-Pilot.9 sends authenticated users straight to Pi first-use. No repository picker or native GitHub list/import backend exists; the `@connect-github-workspaces` and `@manage-workspace-lifecycle` tasks are still open. Simply changing a heading or route cannot make the chooser real. Preserve native gh/Git as the authority, per-UID homes and socket boundary, no repo registry or gateway credential broker.
+After browser/GitHub login, the user chooses repositories to check out into
+`~/src`, then signs in to OpenAI through Pi before entering normal workspaces,
+history or agent control. One explicit Continue action checks out the selected
+repositories, shows progress and advances after confirmed success. With no
+selection it advances directly to Pi. Native `gh`, Git and the user's filesystem
+remain the sources of truth.
 
-## Delivery slices
-1. A narrow pre-Pi native gh repository listing contract, authenticated by gateway broker mapping, executed by the mapped UID and bounded/paginated. No paths, tokens or credential output; explicitly scoped to onboarding GitHub repo metadata, not existing Pi-gated workspace/history/agent endpoints. Test distinct UIDs and forged browser identity.
-2. Selection and checked repository import under the mapped UID's safe `~/src`, with exact owner/repo confirmation, duplicate destination and partial clone handling. No automatic retry on uncertain mutations, no fabricated clone success. Reuse or narrow the existing lifecycle/clone design; no parallel store.
-3. Production first-use GitHub chooser screen shown before the Pi card, recovering from reload/partially imported repos; on completion the Pi gate remains mandatory. Cover empty/denied/partial states and focus/reading position with synthetic browser tests. Keep normal existing users' workspaces protected by Pi until usable.
+## Current implementation and remaining work
 
-## Acceptance
-- [ ] A fresh authenticated GitHub user can list and select their own checkoutable repositories before Pi login, clone selected refs safely, then proceed to Pi login; existing histories/agent routes remain Pi gated.
-- [ ] Failure and returning-user behavior remain honest with native gh/filesystem as truth, across distinct UID fixtures; no credential leakage or raw GitHub error text.
-- [ ] Full clean CI, release verification, visual evidence and the exact test-server release/paluu operator before a live claim. A consented user performs any real provider login.
+The chooser, pre-Pi native catalog, checkout and read-only checkout observation
+are implemented. `web/src/app/GitHubOnboarding.tsx` loads the catalog, binds the
+flow to the web session and verifies existing or newly created checkouts before
+advancing. A user with usable Pi credentials goes straight to normal workspaces.
+[The implementation report](result.md) records synthetic browser evidence;
+[@observe-pre-pi-checkout](../observe-pre-pi-checkout/item.md) also records a
+separate-kernel-UID check.
+
+Finish the journey against the new
+[onboarding design](../design-first-use-onboarding/plan.md). All repositories
+are visible by default; the user can choose a time filter. Visual composition
+belongs to @design-first-use-onboarding, with shared
+UI improvements coordinated by @review-browser-design-v2.
+
+An interrupted reply may leave a completed checkout. Observe native state
+before offering another write. If observation also fails, explain that the
+result could not be verified and offer another read-only check. Show which
+repositories succeeded when only some did; a partial directory or conflicting
+origin needs an honest explanation, not automatic removal or another clone.
+The v2 draft's success/error presentation must still express this uncertainty.
+
+## Acceptance Criteria
+
+- [ ] The complete first-use journey lists the mapped user's repositories,
+  checks out the selected ones with one Continue action, and proceeds to Pi;
+  empty selection also works. Normal workspace/history/control access stays
+  behind the Pi gate.
+- [ ] Returning users and interrupted or partial checkouts recover from native
+  facts without duplicate writes, misleading success or cross-user data.
+- [ ] The v2 chooser and its failure states have visual evidence. The result
+  distinguishes synthetic tests, earlier live observations and what has been
+  verified on the installed release.
+
+[TESTING.md](../../TESTING.md) defines the relevant checks. Fleetrepo owns
+installation and recovery receipts; @verify-live-pi-journey owns the current
+Pi/provider checks.
+
+Jari has authorized cloning his existing GitHub repositories and creating
+private disposable repositories for live integration tests using his mapped
+native account. Real GitHub/Pi sign-in involves Jari. Synthetic fixtures stay
+separate from real accounts, and host-specific receipts stay in Fleetrepo.
 
 ## Related
-@design-first-use-onboarding, @connect-github-workspaces, @manage-workspace-lifecycle, @fix-pi-onboarding-poll-starvation
 
-## Decisions
-
-### 2026-09-29T05:26:48Z · @jari
-
-2026-09-29: Jari explicitly authorizes the agent to clone his existing GitHub repositories in live integration testing and, when useful, create private disposable GitHub test repositories to verify the workflow. The agent may exercise the mapped native account with full permissions and need not ask separately for these routine tests. Keep automated synthetic fixtures separate from real accounts; record exact live outcomes without secrets or host-specific values in this public repository (concrete host receipts belong in Fleetrepo).
-
-### 2026-09-29T05:31:09Z · @jari
-
-2026-09-29: Keep first-use UI as simple as possible. Repository selection must actually result in native checkout, not only a list or pending choice. One explicit Jatka action after choosing repos performs selected checkouts, shows progress and advances to Pi after confirmed success; with zero selected it advances without checkout. Do not add separate Hae valitut, skip and then another Jatka sequence. An uncertain write is reconciled by read-only native observation, not auto-retried.
-
-### 2026-09-29T07:24:32Z · @jari
-
-2026-09-29: Jari wants the next fresh agent to run an end-to-end test from a genuinely reset TEST server and reset his mapped TEST account, including GitHub integration/consent and Pi again. He explicitly declines backups of the test-server/account data: "Ei tarvist mitään varmuuskopioita. olemme testipavlelimella." This supersedes the earlier test-account preservation preference for this particular reset only, not any other person, machine or production host. Execute only after establishing exact host/account scope, technical reset preflight and the currently deployed/recoverable release; consent for GitHub/Pi must still involve Jari. Prefer fixing the observed chooser/status/refresh bugs and installing the tested release before asking him to retest the unchanged pilot.10 UI. Live read-only mapped-UID GitHub API already saw 40 owned personal repos including 14 private: missing private repos in the chooser were not proven to be an OAuth-scope failure (browser paged two at a time). The real Pi gate reached usable after Jari confirmed a device code; conversation send remains unverified. No reset or credential revocation has been performed in this session.
-
-## Comments
-
-### 2026-09-29T06:51:44Z · @agent
-
-2026-09-29 live pilot.10 smoke at product 43bc79f: after browser GitHub login the real repo chooser appeared before Pi, one explicit Jatka checked out one private empty repository as the mapped UID, independent native Git/origin/ownership readback confirmed it, and the browser advanced to ChatGPT login. One native Pi device-code attempt displayed the verified link and code in Jari’s Chrome; code contents were not read or recorded. Jari has not confirmed provider sign-in; no agent conversation or full visual verdict. Synthetic browser evidence remains in result.md; host-specific receipt in private Fleetrepo @deploy-pilot10-github-first. Live UX gap: adapter fetches only 2 repos/page; follow-up required before calling chooser simple or fully accepted.
+@design-first-use-onboarding, @connect-github-workspaces,
+@manage-workspace-lifecycle, @fix-pi-onboarding-poll-starvation

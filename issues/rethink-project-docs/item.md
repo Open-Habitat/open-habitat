@@ -159,9 +159,9 @@ käyttäjän käynnistyksenjälkeinen eristys jää todennettavaksi. Todellisen
 broker-kaatumisen jälkeisen pääsyneston näyttö erotetaan palautustoiminnosta.
 
 Jari pyysi tästä ensimmäisen version; uutta hyväksyntää tai testitulosta ei
-kirjattu. Kohta 3 on käsitelty alla kuvatulla tavalla. Seuraava lukukohde on kohta 4:
-`github-repos-first-onboarding` sekä `design-first-use-onboarding` suunnitelmineen. Designin avoimet kysymykset kulkevat
-mukana kohdissa 4–8; komponenttikarttaa tai toteutusjakoa ei ole vielä tehty.
+kirjattu. Kohdat 3 ja 4 on käsitelty alla kuvatulla tavalla. Seuraava lukukohde on
+kohta 5: `add-account-settings-ui`. Designin sovitus jatkuu kohdissa 5–8;
+nykyinen komponenttiarvio on `review-browser-design-v2/assessment.md`:ssä.
 
 ### Kohta 3: käyttäjän poistaminen käsitelty 30.9.2026
 
@@ -182,7 +182,39 @@ Dokumentaatiovalidaattori ja `git diff --check` läpäisivät. Issue doctorissa
 oli vain muiden issueiden olemassa olevia kuvamuotohavaintoja. Täyttä
 CI-porttia ei ajettu dokumenttimuutokselle.
 
-Seuraavaksi kohta 4: repovalinta ja onboarding.
+### Kohta 4: repovalinta ja onboarding käsitelty 30.9.2026
+
+`github-repos-first-onboarding`, `design-first-use-onboarding` ja sen suunnitelma
+kirjoitettiin uudelleen nykyisen toteutuksen ja hyväksytyn GitHub → repot →
+OpenAI -kulun pohjalta. Pi-adapteri, reitit, pääsyraja, valinta ja kloonaustuloksen
+tarkistus ovat olemassa; vanhat ehdotukset niiden rakentamisesta poistettiin.
+Toteutusissueiden tavoitteet erottavat jäljellä olevan työn historiallisesta
+näytöstä. Rajapintadetaljit linkitetään nykyisiin sopimuksiin, tiliasetukset
+niiden omaan issueen. Jarin pyynnöstä molempien issueiden päätös- ja
+kommenttihistoria poistettiin. Voimassa olevat rajaukset ja testilupa säilyvät
+leipätekstissä; aiemmat merkinnät löytyvät Gitistä.
+
+Vertailukohta on uusi Selainpolku v2. Jari vahvisti, että designerin kanssa on
+jo sovittu kaikkien repojen näkyvän oletuksena ja aikarajauksen olevan käyttäjän
+valinta. Jarin pyynnöstä design-review-issueen ja sen arvioihin tehdyt
+muutokset palautettiin; rajaus säilyy onboarding-teksteissä.
+Toimitetun handoffin ja HTML:n kuukausisuodatin oletuksena ei vastaa sopimusta;
+alkuperäinen toimitus säilyy vertailuaineistona. Epävarma kloonaustulos pysyy
+näkyvissä, jos myöskään natiivin tilan tarkistus ei ratkaise sitä.
+
+Lähdekoodi tarkistettiin revisioista `b4c74bb` ja `770f46a`; jälkimmäinen sisälsi
+myös samanaikaisen design-arvion tekstipäivityksen. Arvioon myöhemmin tullut
+`4f04de6` säilytettiin. Design-review-hakemisto jäi palautuksen jälkeen
+täsmälleen sen commitoituun tilaan. Lähteinä olivat Jarin aiemmat
+onboarding-päätökset, nykyinen selainvirta ja sopimukset, toteutusten tulokset
+sekä tämän keskustelun v2-täsmennys. Live-kokeita ei tehty eikä toteutusissueita
+suljettu tällä tekstien läpikäynnillä.
+
+Dokumentaatiovalidaattori ja `git diff --check` läpäisivät. Issue doctorissa
+oli vain muiden issueiden aiempia PNG-kuvamuotohavaintoja. Täyttä CI-porttia
+ei ajettu dokumenttimuutokselle.
+
+Seuraavaksi kohta 5: `add-account-settings-ui`.
 
 ### Aineiston ja skillin valinta
 

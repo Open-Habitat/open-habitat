@@ -1,37 +1,105 @@
-# First-use onboarding: Pi-native device-code login
+# First-use onboarding: GitHub, repositories, OpenAI
 
-**Decision baseline (2026-09-28):** Jari accepted the first-version *interaction*: after web login the mapped UID's daemon starts Pi's native OpenAI ChatGPT subscription device-code login, sends only Pi's verification URI and user code to the web UI, and Pi polls, exchanges, writes and refreshes its own `auth.json`. The user confirms in a browser without opening a Pi terminal. This is **not** approval of a particular gateway/API security design or evidence of a working host login. The previous browser-PKCE/manual redirect proposal in this file is superseded; @prototype-pi-manual-login is a fallback experiment, **not** a prerequisite. Source: [item decisions](item.md), especially 2026-09-28T05:19:21Z and 12:29:49Z (commit `c657202`), and [adapter issue](../add-pi-device-adapter/item.md).
+After signing in with GitHub, a new user chooses repositories to bring into
+`~/src`, then connects their ChatGPT subscription through Pi. They can do this
+entirely in the browser. GitHub provides repository access; Pi provides agent
+credentials. Each native tool owns its credentials under the user's Unix account.
 
-## Native seam and evidence limits
+## The agreed journey
 
-Pi 0.85.1's `ModelRuntime.login("openai-codex", "oauth", interaction)` exposes a `select` interaction for `device_code`, then notifies with a verification URI and user code. Its native provider handles device polling, token exchange and its credential file. This is a Node process API, not a Go API, web endpoint or Pi RPC `/login`; the daemon invokes a short-lived native helper as the mapped UID, not a scraped TUI or Pi-in-Go replacement. `openai-codex` OAuth is distinct from the `openai` API key provider. Never return `login()`'s credential or `getAuth()`'s secret to gateway/browser; show only the device-code instructions, safe progress and redacted status. Pi owns credential writes/refresh, not a host credential broker. The web GitHub token is unrelated.
+The repository screen shows the user's checkoutable GitHub repositories. All
+are visible by default, with a time filter the user can turn on. Jari confirmed
+on 30 September that this is already agreed with the designer for **browser
+design v2**. The delivered handoff and HTML start with the monthly filter on;
+that default does not govern implementation. The current catalog supplies last
+push time (`pushed_at`), so a filter using it should say what time it measures.
+Repositories without a known time and selected repositories stay visible.
 
-Evidence: [@prove-pi-browser-auth](../prove-pi-browser-auth/result.md) established a synthetic Pi 0.85.1 credential-store seam and browser-mode defects, **not** a live device login; [@add-pi-device-adapter](../add-pi-device-adapter/result.md) records a removed experimental device-code helper, synthetic process tests and concrete security findings. Its terminal-writer conditional-commit recommendation is superseded by Jari's later decision: independent terminal login/logout during web onboarding is not a v1 workflow, so no speculative cross-process credential protocol blocks v1. Do not promise that a daemon lock fences external terminal Pi writers. Its concrete credential-path, orphan-child, stalled IPC and test-coverage findings still inform adapter acceptance. The adapter issue remains in progress; this design does not race its worker or claim the earlier candidate was delivered. No real OpenAI credential, live Pi subscription, second person's identity, two-UID isolation or deployed device flow has been verified here.
+One Continue action checks out the selected repositories and shows progress.
+Confirmed success advances to OpenAI sign-in; choosing none advances without a
+checkout. Native `gh`, Git and the filesystem determine access and results.
+An already-present matching checkout does not need to be cloned again.
 
-## Recommended first-use boundary (security design for review)
+For OpenAI sign-in, the user's daemon starts Pi's native device-code operation.
+The browser shows the verification link, user code and progress; the user
+confirms on the provider's page. Pi handles token exchange, storage and refresh.
+Only a native status check confirming usable credentials opens normal
+workspaces, histories and agent control. API keys and other login methods are
+later work.
 
-- Browser web identity is authenticated and mapped by gateway/broker on each request as in [interfaces](../../docs/interfaces.md); browser fields never select UID, home, socket or provider. Gateway routes only over the broker-selected per-user socket. The daemon checks peer/UID and owns the Pi operation, its lifetime and the native status check. It invokes a pinned Pi runtime with controlled UID-local home/agent directory and minimal child environment; validate credential path ownership/mode without reading tokens into gateway. No host credential writes. A daemon crash or helper death makes an attempt interrupted/unknown; recheck Pi native status, never infer success from a notification or blindly repeat an uncertain exchange. Own and reap child processes even on cancellation/restart; bound IPC, deadlines, output and admission. These are ordinary safety properties, not a cross-process transaction with an independent terminal Pi process.
-- `POST /api/v1/onboarding/pi/start` requests a new attempt for the authenticated web session, without a UID or credential in the body. The daemon selects Pi's **device_code** method via native interaction and returns Pi's verification URL and user code with a session-bound opaque attempt ID and expiry. There is **no callback, redirect URL paste, localhost listener, `complete` POST or code handoff through gateway**. Browser opens the Pi-provided verification URL in a new tab, shows the user code and observes redacted pending/success/failure via bounded status polling. Do not put the code in a host URL, analytics, logs, or persistent gateway state; responses are no-store. Only Pi polls the provider and exchanges tokens. The browser cannot declare itself connected.
-- Bind start, status and cancel to the current mapped UID and web session; require session + exact Origin + CSRF on writes, reject cross-session attempts, clear pending UI on logout/account switch/remap. Cancellation may be too late to prevent Pi from writing; wait for/reap the helper and recheck native status. Browser disconnect does not prove cancellation. On daemon restart the old attempt is not resumable: present interruption/unknown and recheck native Pi status; a new attempt requires explicit action. If provider rejects, expires or native status is unavailable, show a safe retry/re-auth path. Do not expose raw native error, provider response, tokens, account IDs, home path or stderr. An external terminal change can affect the next native status check; v1 does not claim last-writer exclusion.
-- **Server-side Pi gate before native data**, not merely a sidebar condition: every repository list/search/clone, workspace, snapshot, history, agent and command endpoint including stale direct URLs checks a mapped daemon Pi `openai-codex` OAuth status before reading native data. Only session, onboarding status/start/cancel and logout work while blocked. Unknown/unavailable status fails closed, with a recoverable error; no cached `ready` flag across refresh failure, credential removal, remap or restart. Stored OAuth type plus native resolution/refresh can prove current credential usability, not paid entitlement or identity. Allow the static shell to render the blank onboarding state. SSH/tmux remain native and outside the browser gate. Separately check native `gh` identity against the mapped GitHub numeric ID and Git transport as specified in [interfaces](../../docs/interfaces.md); web OAuth alone does not prove Git access.
+The [v2 onboarding draft](../review-browser-design-v2/design/vedokset/Onboarding%20v2.dc.html)
+is the visual reference for the shared frame, step indicator, repository list,
+code presentation and interruption confirmation. The
+[design assessment](../review-browser-design-v2/assessment.md) relates it to the
+production components and shared styling. Phone variants are reference material;
+mobile implementation scope remains a separate decision.
 
-## Journey and recovery
+## Returning and recovering
 
-Derive stage from broker mapping, validated `~/src`, native Pi and native GitHub, not a persisted `onboarding_complete` flag. First login: prepare/verify `~/src` as the mapped UID (no symlink/replacement; unsafe owner/mode is a setup error), Pi device sign-in, native GitHub repair if needed, select GitHub repositories, import, then normal workspaces. Pi must be usable before *fetching or displaying* repo names. Empty repository selection may continue; Pi cancel stays at Pi sign-in. Reuse @provision-first-src for provision-time root and @connect-github-workspaces for native GitHub search/clone/transport, not another workspace registry or clone implementation. The account shelf and integration settings already have a UI slice; connect them to truthful native status separately from web logout. Keep human-friendly account chrome and logout caveats in Settings/confirmation, not the default workspace.
+A returning user with usable Pi credentials goes straight to workspaces,
+including when `~/src` is empty. There is no permanent host onboarding-complete
+record: current native state determines what can open. The existing browser
+flow also remembers reaching the Pi step within the same web session, so a
+reload need not repeat repository selection.
 
-Returning user with usable Pi OAuth and safe `~/src` goes straight to workspaces even when `~/src` is empty; disconnected/partial GitHub gets integration repair before repository browsing or Git operations. If Pi is missing, refresh fails or daemon is unavailable, gate the browser and offer re-auth/retry; never delete workspaces on logout. Web logout ends the web session/pending operation, not Pi/`gh` auth. Pi local logout (if offered) uses Pi's native logout under that UID and immediately rechecks the gate; GitHub disconnect uses `gh` under that UID with fresh web authentication/confirmation and verified local removal. No claim of provider-side GitHub token revocation. Keep existing partial clone directory visible as incomplete; on lost ACK reconcile operation result plus filesystem/Git remote and retry only with fresh preconditions/command ID, never auto-reclone or delete. Browser disconnect does not cancel clone.
+The root directory is prepared during provisioning. An absent, unreadable or
+unsafe directory is a setup problem, not a successful empty workspace list.
+Browser login alone does not prove native GitHub access; repository operations
+need verified native authorization. Missing Pi credentials lead to sign-in;
+an unavailable status needs a check/retry explanation, not a claim that the
+user is disconnected. Normal native data remains protected by the Pi gate.
 
-## Contract to agree and add with implementation, not in current `contracts/v1`
+A lost checkout reply may follow a successful write. Read-only observation can
+confirm the checkout, establish that it is absent, or find a conflict or partial
+directory. If the result still cannot be established, show that uncertainty
+and offer another check. Explain which repositories succeeded. Another clone
+requires a user action and current native evidence that it is safe; losing a
+browser connection neither cancels a clone nor makes automatic retry safe.
+This behavior remains necessary when adapting the draft's success/error states.
 
-The current [v1 schemas](../../contracts/v1/) and [interfaces](../../docs/interfaces.md) describe snapshot/command behavior, **not** onboarding endpoints or a Pi-ready gate. Recommend an additive versioned status response with `stage` (`pi_required`, `github_required`, `repository_selection`, `ready`, `setup_error`), redacted Pi/GitHub/root states and optional own-session attempt phase/expiry; start returns `{attempt_id, expires_at, verification_uri, user_code}` from Pi; cancel takes an attempt ID. Status distinguishes pending, connected, missing, interrupted, failed and unavailable without conveying credentials. Exact paths, field names, caps and error envelopes belong to the security/contract review before code generation; add schemas, redacted fixtures and cross-boundary scenarios together with `docs/interfaces.md`, then regenerate Go/TS. No callback or host `complete` endpoint. Repo selection is a Pi-gated, paginated native `gh` list with safe labels and exact refs; selected repos use existing `workspace.github.clone` command/operation reconciliation. No new repo store. Shared production UI components and synthetic browser failure screenshots cover keyboard/focus, expired code, interruption, wrong session, unsafe root and partial import.
+A delayed device code is still being prepared, not a login error. If the daemon
+or attempt stops, check Pi's native state before offering a new attempt. Neither
+a notification nor returning from the provider's tab proves completion.
+Changing web identity clears the previous user's onboarding state. Independent
+terminal Pi login/logout during web onboarding is outside the agreed first
+version, so no additional cross-process credential protocol is required.
 
-## Small delivery boundaries and DAG handoff
+Web logout ends browser access without deleting workspaces or native credentials.
+Native disconnect controls belong to account settings, and Unix-account removal
+is a separate concern. The [account-settings issue](../add-account-settings-ui/item.md)
+owns those controls and the [account-display decision](../decide-account-display/item.md)
+owns first-name/email presentation.
 
-The following are **proposed delivery boundaries, not newly scheduled issues**. Existing @add-pi-device-adapter (in progress) owns native helper/status/lifecycle and synthetic per-UID evidence; do not duplicate or change its issue from this design worker. After its usable status seam, accept and lane these disjoint issues through issuectl if Jari accepts the security contract:
+## Existing implementation and ownership
 
-1. **Server Pi gate + wire contract** (new): gateway/daemon routing, server-side read and command gate, session/UID ownership and CSRF/no-store, generated schemas/scenarios. Depends on @add-pi-device-adapter. Prove two synthetic UIDs, blocked direct URLs/snapshot/repo names, stale sessions, restart/refresh failure and redaction. This precedes exposing the wizard or repository list.
-2. **Web first-use wizard** (new): session-bound device instructions/poll/cancel UI, `~/src` setup/recovery and account shelf navigation. Depends on the gate and @provision-first-src; the existing account settings UI owns its shelf visuals, so integrate rather than recreate. Capture synthetic happy/error screenshots and Jari's visual verdict.
-3. **Guided GitHub selection/import** (new): paginated repo selection plus UI import/reconciliation. Depends on the gate, wizard and @connect-github-workspaces (which itself depends on @manage-workspace-lifecycle). Link existing native gh search/clone rather than duplicate it; separate native gh and Git transport failure from Pi status. Cover zero selection, partial clone and lost ACK.
-4. **Returning-user recovery/Settings wiring** (new): native-status reentry, Pi reauth/local logout and GitHub disconnect/repair wired to real actions. Depends on the gate and wizard; GitHub action on @connect-github-workspaces. Reuse existing account settings UI. Test missing/expired Pi, empty root, restarted daemon, external native auth change and session switch. This can be developed alongside selection after their common prerequisites, but must be integrated before claiming the whole journey delivered.
+The source check for this rewrite used `770f46a` (30 September 2026):
 
-Keep @build-history-view's separate visual hold intact. Implementation/security and Jari visual evidence belong to each delivery issue. The design issue remains open: the concrete gateway contract has not been accepted, these dependent slices have not been delivered, and no end-to-end onboarding or live consented sign-in is proved. This design-only change needs `issuectl doctor --json`, documentation link validation and diff inspection, not a live provider test or a claim that clean CI proves auth. Source/contract changes in later slices require `./scripts/ci-local.sh --clean --json` and the applicable synthetic boundary tests. No deployment follows from this plan.
+| Area | Source and work owner |
+| --- | --- |
+| Pi-native login, status and process lifecycle | [Adapter result](../add-pi-device-adapter/result.md) |
+| Server-side Pi access gate and direct-route protection | [Gate result](../gate-native-routes-on-pi/result.md) |
+| First-use directory | [Provisioning issue](../provision-first-src/item.md) |
+| Repository catalog, selection, checkout and observation | [Repository onboarding](../github-repos-first-onboarding/item.md), `web/src/app/GitHubOnboarding.tsx` |
+| Browser Pi instructions, polling and recovery | `web/src/app/PiOnboarding.tsx`, composed through `web/src/app/App.tsx` |
+| Current routes and generated wire contracts | [Interfaces](../../docs/interfaces.md), [v1 schemas](../../contracts/v1/) |
+| V2 onboarding composition | [This issue](item.md), coordinated with the [UI assessment](../review-browser-design-v2/item.md) |
+
+These components already exist; the remaining work is to complete and verify
+the journey and its v2 presentation. Shared visual improvements and work division
+follow the design assessment and the live issue DAG. This plan does not create
+a second implementation queue.
+
+## What the evidence establishes
+
+The repository-onboarding result records synthetic browser coverage. Its issue
+also records a pilot.10 live checkout confirmed by native Git/origin/ownership
+readback. The [checkout-observation issue](../observe-pre-pi-checkout/item.md)
+records a separate-kernel-UID fixture. The native Pi gate has its own synthetic
+and UID results. These reports describe particular revisions and do not prove
+the current installed journey or acceptance of v2 visuals.
+
+[TESTING.md](../../TESTING.md) defines the checks appropriate to implementation
+changes. [Live Pi verification](../verify-live-pi-journey/item.md) tracks current
+provider and installed-host checks; Fleetrepo keeps concrete installation and
+recovery receipts. Earlier live observations remain evidence for what they
+actually exercised, not a substitute for verifying later changes.
