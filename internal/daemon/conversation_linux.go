@@ -650,18 +650,22 @@ func (c *ConversationController) stream(w http.ResponseWriter, r *http.Request, 
 	last := r.Header.Get("Last-Event-ID")
 	if last != "" {
 		if len(last) > 100 || !strings.HasPrefix(last, prefix) {
-			snapshotError(w, 409, "control_uncertain")
+			snapshotError(w, 409, "cursor_instance_mismatch")
 			return
 		}
 		seq, err := strconv.ParseUint(strings.TrimPrefix(last, prefix), 10, 64)
 		c.mu.Lock()
 		current := session.streamSeq
 		c.mu.Unlock()
-		// Concurrent viewers can advance this cursor independently. An old
-		// cursor receives a full native-backed resnapshot, never a false
-		// claim of replay. Future or invented cursors fail closed.
+		// This provisional stream has no replay buffer. Only the immediately
+		// preceding frame can be followed without silently skipping a gap.
+		// Older cursors require a fresh native-backed status/history read.
 		if err != nil || seq == 0 || seq > current {
 			snapshotError(w, 409, "control_uncertain")
+			return
+		}
+		if seq < current {
+			snapshotError(w, 409, "cursor_expired")
 			return
 		}
 	}
@@ -722,7 +726,7 @@ func (c *ConversationController) stream(w http.ResponseWriter, r *http.Request, 
 			return
 		}
 		// A bounded monotonic cursor covers status/ack changes as well as Pi
-		// events. Old or missing cursors receive a full status resnapshot.
+		// events. A missing cursor receives a full status resnapshot.
 		s.streamSeq++
 		seq := s.streamSeq
 		c.mu.Unlock()

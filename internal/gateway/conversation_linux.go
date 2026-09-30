@@ -380,7 +380,7 @@ func validConversationError(b []byte, status int) bool {
 		return false
 	}
 	e, ok := strictObject(m["error"], []string{"code", "message", "retryable", "correlation_id"})
-	allowed := map[int]map[string]bool{400: {"invalid_request": true}, 403: {"cross_user_denied": true}, 404: {"resource_not_found": true}, 409: {"control_uncertain": true}, 428: {"pi_onboarding_required": true}, 429: {"capacity_exceeded": true}, 503: {"daemon_unavailable": true, "native_source_unavailable": true}}
+	allowed := map[int]map[string]bool{400: {"invalid_request": true}, 403: {"cross_user_denied": true}, 404: {"resource_not_found": true}, 409: {"control_uncertain": true, "cursor_expired": true, "cursor_instance_mismatch": true}, 428: {"pi_onboarding_required": true}, 429: {"capacity_exceeded": true}, 503: {"daemon_unavailable": true, "native_source_unavailable": true}}
 	return ok && allowed[status][str(e, "code")] && string(e["retryable"]) == "false"
 }
 func stateOK(s string) bool {
@@ -542,6 +542,15 @@ func (a *Auth) forwardConversationStream(w http.ResponseWriter, r *http.Request,
 		if err != nil || int64(len(body)) != res.ContentLength || !validConversationError(body, res.StatusCode) {
 			safe(w, 503, "daemon_unavailable")
 			return
+		}
+		if res.StatusCode == 409 {
+			var envelope struct {
+				Error struct {
+					Code string `json:"code"`
+				} `json:"error"`
+			}
+			_ = json.Unmarshal(body, &envelope)
+			code = envelope.Error.Code
 		}
 		safe(w, res.StatusCode, code)
 		return

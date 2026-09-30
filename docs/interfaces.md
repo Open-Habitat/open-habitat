@@ -35,6 +35,7 @@ ja [daemonista](../internal/daemon/handoff_linux.go).
 | `POST /api/v1/conversations/<session-id>/clear_queue` | jonojen tyhjennys ja vahvistetusti poistetut tekstit |
 | `POST /api/v1/conversations/<session-id>/abort` | Pi:n nykyisen vuoron keskeytyspyyntö, ei prosessin pysäytys |
 | `POST /api/v1/conversations/<session-id>/stop` | keskustelun pysäytyspyyntö |
+| `GET /api/v1/conversations/<session-id>/stream` | väliaikainen, rajallinen tilannekuva-SSE; ei yleinen tapahtumavirta |
 | `GET /api/v1/onboarding/github/repos` | käyttäjän GitHub-repot, sivutettuina `page`- ja `limit`-parametreilla |
 | `POST /api/v1/onboarding/github/clone` | `full_name`-kentän repon kloonaus; lopputulos JSON-vastauksena |
 | `GET /api/v1/onboarding/github/checkout` | `full_name`-parametrin paikallisen checkoutin natiivi havainto |
@@ -49,7 +50,11 @@ ja toteutetaan [daemonin ohjaimessa](../internal/daemon/conversation_linux.go);
 ne eivät ole jäljempänä kuvatun yleisen komentoskeeman toteutus.
 Gatewayn uudelleenkäynnistys kadottaa selainistuntojen ohjaussidokset.
 Daemonin uudelleenkäynnistys kadottaa sen muistissa olevan ohjaustilan.
-Pi:n kirjoittama historia säilyy luettavana.
+Pi:n kirjoittama historia säilyy luettavana. Väliaikaisen keskusteluvirran
+`Last-Event-ID` ei mahdollista aukon toistoa: vanha kursori palauttaa
+`409 cursor_expired`, vieraan daemon-elinkaaren kursori
+`409 cursor_instance_mismatch`. Selain hakee silloin uuden tilan ja natiivihistorian;
+virta ei väitä välistä jääneiden tapahtumien tulleen toimitetuiksi.
 
 Yleinen SSE-virta, komento- ja operaatiokyselyt sekä päättyneen
 selainkeskustelun jatkaminen ovat vielä toteutettavaa

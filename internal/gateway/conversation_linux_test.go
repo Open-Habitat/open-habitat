@@ -56,7 +56,7 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 			reply = `{"schema_version":1,"agent_id":"pi:` + id + `","workspace_id":"` + ws + `","state":"pending","command_id":"` + cmd + `","ack":"pending","event_cursor":0,"events":[],"event_loss":false,"native_history":"missing","native_revision":"","history_query":"/api/v1/agents/pi:` + id + `/history"}`
 		case conversationBase + "/" + id + "/stream":
 			if r.Header.Get("Last-Event-ID") != "" {
-				body := `{"schema_version":1,"error":{"code":"control_uncertain","message":"Request could not be completed","retryable":false,"correlation_id":"req_00000000"}}`
+				body := `{"schema_version":1,"error":{"code":"cursor_expired","message":"Request could not be completed","retryable":false,"correlation_id":"req_00000000"}}`
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 				w.WriteHeader(409)
@@ -152,7 +152,7 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 	cursorRequest.Header.Set("Last-Event-ID", "ev1:12345678-1234-4123-8123-123456789abc:1")
 	cursorReply := httptest.NewRecorder()
 	h.ServeHTTP(streamRecorder{cursorReply}, cursorRequest)
-	if cursorReply.Code != 409 || strings.Contains(cursorReply.Body.String(), "expired") {
+	if cursorReply.Code != 409 || !strings.Contains(cursorReply.Body.String(), `"cursor_expired"`) {
 		t.Fatalf("cursor rejection %d %s", cursorReply.Code, cursorReply.Body.String())
 	}
 	if w := send("POST", conversationBase+"/"+id+"/abort", second, `{"command_id":"`+cmd+`"}`, second); w.Code != 404 {

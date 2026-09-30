@@ -334,3 +334,30 @@ conversation, and this harvest did not add it. Nor does this receipt establish
 the published SSE event/replay contract, a rendered real-Pi browser journey,
 real-provider acceptance or Jari's visual verdict. Leave
 `@build-agent-control` open/in-progress; do not mark its acceptance complete.
+
+## Provisional stream gap rejection (taskfleet 01m3snj56qfh0t14tyd429hmz8)
+
+This is a deliberately **partial** server-side slice, not the requested replay
+or ended-conversation continuation. The current finite per-conversation status
+SSE stream has no event ring and cannot replay a missed frame. Previously an
+old `Last-Event-ID` silently received a fresh frame with a jumped sequence;
+now the daemon returns `409 cursor_expired` before SSE headers and the gateway
+preserves that validated code. A cursor from another daemon incarnation returns
+`409 cursor_instance_mismatch`; future or malformed cursors remain rejected.
+A client must fetch current status and native Pi history after a gap, never
+interpret a fresh resnapshot as a replay. The production browser currently
+opens a new EventSource without a cursor and falls back to HTTP polling; this
+change does not supply its eventual reconnect/replay implementation.
+
+**Browser request for night:ui:** Do not treat the private `status` stream as
+the published `/api/v1/events` contract. On stream failure or a 409 cursor
+error, read status and `/api/v1/agents/pi:<id>/history`; never resend an
+uncertain prompt automatically. The browser needs an explicit affordance to
+continue an ended browser-owned conversation only after the daemon exposes a
+safe continuation route. Existing terminal history remains read-only; a
+readable history after daemon restart does not authorize continuation.
+
+This slice does not start a new Pi process over native history, prove writer
+absence after stop, implement the daemon-wide snapshot/`after` handoff or
+replay ring, or run a rendered real-Pi browser journey. No live provider, real
+home, deployment, or Jari visual verdict. The issue remains **in-progress**.
