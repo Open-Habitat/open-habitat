@@ -690,6 +690,8 @@ for line in sys.stdin:
  r=json.loads(line)
  print(json.dumps(dict(type="response",id=r["id"],command=r["type"],success=True)),flush=True)
  print(json.dumps(dict(type="extension_ui_request",id="req_1",method="custom_dialog",title="Choose <plain text>",options=["one","two"])),flush=True)
+ print(json.dumps(dict(type="extension_ui_request",id="req_2",method="setStatus",statusText="Synthetic <safe> status")),flush=True)
+ time.sleep(.2)
  print(json.dumps(dict(type="message_end",message={"role":"assistant"})),flush=True)
  time.sleep(.05)
  print(json.dumps(dict(type="agent_settled")),flush=True)
@@ -710,6 +712,31 @@ for line in sys.stdin:
 	req := httptest.NewRequest("POST", "http://unix/send", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	c.send(httptest.NewRecorder(), req, id)
+	// Fire-and-forget updates must not replace an unanswered dialog before Pi settles.
+	questionDeadline := time.Now().Add(2 * time.Second)
+	seenDialog := false
+	for time.Now().Before(questionDeadline) {
+		c.journal.mu.Lock()
+		updateSeen := false
+		for _, raw := range c.journal.frames {
+			if strings.Contains(string(raw), `"kind":"unknown.native"`) {
+				updateSeen = true
+				break
+			}
+		}
+		c.journal.mu.Unlock()
+		if updateSeen {
+			c.mu.Lock()
+			q := s.question
+			seenDialog = q != nil && q["request_id"] == "req_1"
+			c.mu.Unlock()
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if !seenDialog {
+		t.Fatal("status update displaced pending dialog")
+	}
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		c.mu.Lock()
@@ -726,7 +753,7 @@ for line in sys.stdin:
 	}
 	c.mu.Unlock()
 	c.journal.mu.Lock()
-	foundQuestion := false
+	foundQuestion, foundSafeUpdate := false, false
 	for _, raw := range c.journal.frames {
 		var event struct {
 			Kind    string         `json:"kind"`
@@ -735,10 +762,16 @@ for line in sys.stdin:
 		if json.Unmarshal(raw, &event) == nil && event.Kind == "question.requested" && event.Payload["question_kind"] == "unknown" && event.Payload["prompt"] == "Choose <plain text>" {
 			foundQuestion = true
 		}
+		if event.Kind == "unknown.native" {
+			content, _ := event.Payload["content"].(map[string]any)
+			if content["text"] == "Synthetic <safe> status" {
+				foundSafeUpdate = true
+			}
+		}
 	}
 	c.journal.mu.Unlock()
-	if !foundQuestion {
-		t.Fatal("unknown question not published as safe text")
+	if !foundQuestion || !foundSafeUpdate {
+		t.Fatalf("question or safe fire-and-forget update missing: %v %v", foundQuestion, foundSafeUpdate)
 	}
 	lookup := httptest.NewRecorder()
 	c.readReceipt(lookup, httptest.NewRequest("GET", "http://unix/receipt?command_id="+id, nil), id)

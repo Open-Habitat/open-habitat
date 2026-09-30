@@ -254,7 +254,7 @@ Toteutettu yksityinen ohjainreitti käyttää toistaiseksi
 `/api/v1/commands`-sopimuksen sijaan. Vastaanottokuittaus on
 `pending | accepted | rejected | uncertain`; `accepted` edellyttää Pi:n
 korreloitua RPC-vastausta, ei valmistunutta vuoroa. Myös status sisältää
-viimeisen lähetyksen `send_receipt`-arvon. Kuittaukset ja
+viimeisen komennon `send_receipt`-arvon, jos komento oli lähetys. Kuittaukset ja
 `command.changed`-eventit ovat vain daemonin muistin mittaisia: uudelleenkäynnistyksen
 jälkeen puuttuvaa kuittausta ei tulkita hylkäykseksi eikä viestiä lähetetä
 automaattisesti uudelleen. Gateway rajaa haun kirjautuneen selaimen omaan
@@ -265,11 +265,16 @@ Statuskenttä `turn_settled` ja `turn.settled`-eventti sisältävät daemonin
 havaintoajan ja viimeksi tällä vuorolla julkaistun, tarkistetusta JSONL:stä
 luetun assistant-avaimen (`native_key`). Jos avainta ei voi todentaa,
 `state: unknown` ja tyhjä avain ilmoittavat rajan, eikä UI saa näyttää
-vahvistettua valmistumista. `pending_question` ja `question.requested`
+vahvistettua valmistumista. `state: settled` ei lupaa onnistunutta lopputulosta.
+`pending_question` ja `question.requested`
 välittävät Pi:n extension UI -pyynnön rajatun ID:n, metodin (tuntematon on
 `unknown`), otsikon/viestin ja valinnat *tekstinä*, ei HTML:nä.
-Vastaus- ja perumisdialogi eivät kuulu tähän reittiin; käyttäjä voi lähettää
-tavallisen viestin. Selain saa esittää tekstin vain tekstisolmuna, ei HTML:nä.
+Pi:n ilmoitukset ja tilapäivitykset eivät korvaa odottavaa kysymystä;
+ne kulkevat `unknown.native`-eventtinä rajattuna tekstinä.
+Vastaus- ja perumisdialogi eivät kuulu tähän reittiin. Jos Pi odottaa
+`extension_ui_response`-vastausta ennen lähetyskuittausta, tavallinen viesti
+ei vielä ratkaise pyyntöä; selain ei saa väittää kysymystä vastatuksi.
+Selain saa esittää tekstin vain tekstisolmuna, ei HTML:nä.
 
 Viestin lähetys ja etenemisen seuraaminen ovat eri asioita. Jos lähetyksen
 kuittaus katoaa, selain selvittää viestin tilanteen palvelimelta. Jos tilanne

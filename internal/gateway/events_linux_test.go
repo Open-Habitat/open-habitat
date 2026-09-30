@@ -135,6 +135,9 @@ func TestControlEventPayloadAllowlist(t *testing.T) {
 		{"question.requested", `{"request_id":"q1","question_kind":"unknown","prompt":"text","choices":[],"html":"<script>"}`, false},
 		{"command.changed", `{"client_command_id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","acceptance":"accepted","execution":"unknown"}`, true},
 		{"command.changed", `{"client_command_id":"bad","acceptance":"accepted","execution":"unknown"}`, false},
+		{"unknown.native", `{"native_type":"extension_ui_request","content":{"media_type":"text/plain","text":"<safe>","complete":true}}`, true},
+		{"unknown.native", `{"native_type":"extension_ui_request","content":{"media_type":"text/html","text":"<script>","complete":true}}`, false},
+		{"tool.finished", `{"tool_call_id":"call_1","tool_name":"read","state":"succeeded"}`, true},
 	} {
 		if got := validCombinedPayload(tc.kind, agent, "", []byte(tc.body)); got != tc.ok {
 			t.Errorf("%s %s: %v", tc.kind, tc.body, got)

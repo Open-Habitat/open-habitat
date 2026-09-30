@@ -169,6 +169,7 @@ func validCombinedPayload(kind string, resource map[string]string, nativeKey str
 		"turn.settled":         {"state", "observed_at", "native_key"},
 		"command.changed":      {"client_command_id", "acceptance", "execution"},
 		"question.requested":   {"request_id", "question_kind", "prompt", "choices"},
+		"unknown.native":       {"native_type", "content"},
 	}
 	keys, ok := allowed[kind]
 	if !ok || len(fields) != len(keys) {
@@ -181,6 +182,13 @@ func validCombinedPayload(kind string, resource map[string]string, nativeKey str
 	}
 	if kind != "history.entry" && nativeKey != "" {
 		return false
+	}
+	if kind == "unknown.native" {
+		if resource["agent_id"] == "" || string(fields["native_type"]) != `"extension_ui_request"` {
+			return false
+		}
+		content, ok := strictObject(fields["content"], []string{"media_type", "text", "complete"})
+		return ok && str(content, "media_type") == "text/plain" && len(str(content, "text")) > 0 && len(str(content, "text")) <= 1000 && string(content["complete"]) == "true"
 	}
 	if kind == "turn.settled" || kind == "question.requested" || kind == "command.changed" {
 		if resource["agent_id"] == "" {

@@ -129,3 +129,37 @@ func TestContinuedHistorySeedsReplayWithoutEvictingOtherAgent(t *testing.T) {
 		t.Fatalf("old entries evicted user replay: seq=%d frames=%d", j.seq, len(j.frames))
 	}
 }
+
+// A new prompt admitted while the native file is being read must not let the
+// preceding turn clear the new provisional tail or attach its native key.
+func TestNativeHistoryTurnGenerationFencesStaleSettlement(t *testing.T) {
+	home := t.TempDir()
+	cwd := filepath.Join(home, "src", "fixture")
+	root := filepath.Join(home, historyRoot)
+	for _, dir := range []string{cwd, root} {
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const id = "11111111-1111-4111-8111-111111111111"
+	file := filepath.Join(root, "session.jsonl")
+	data := fmt.Sprintf(`{"type":"session","version":3,"id":%q,"cwd":%q}`+"\n", id, cwd) + `{"type":"message","id":"native_one","message":{"role":"assistant","content":"answer"}}` + "\n"
+	if err := os.WriteFile(file, []byte(data), 0600); err != nil {
+		t.Fatal(err)
+	}
+	j := newEventJournal()
+	s := &conversation{id: id, cwd: cwd, turnGeneration: 2}
+	c := &ConversationController{cfg: transport.Config{Home: home, UID: os.Geteuid()}, home: home, journal: j, sessions: map[string]*conversation{id: s}}
+	if key := c.publishNativeHistoryForTurn(s, 1); key != "" {
+		t.Fatalf("stale turn key: %s", key)
+	}
+	j.mu.Lock()
+	old := j.seq
+	j.mu.Unlock()
+	if old != 0 {
+		t.Fatal("stale turn published native event")
+	}
+	if key := c.publishNativeHistoryForTurn(s, 2); key != "native_one" {
+		t.Fatalf("current turn key: %s", key)
+	}
+}

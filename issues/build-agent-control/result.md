@@ -613,8 +613,10 @@ Independent **critical** final-diff review followed the first committed-tree cle
 
 The server now exposes a validated private conversation status with `turn_settled`
 (`state`, `observed_at`, `native_key`), `send_receipt` for the latest send, and
-`pending_question` (ID, kind, prompt and plain-text choices). Combined SSE emits
-`turn.settled`, `command.changed` and `question.requested` in the existing
+`pending_question` (ID, kind, prompt and plain-text choices). Pi fire-and-forget
+notifications do not overwrite a response-bearing question. Combined SSE emits
+`turn.settled`, `command.changed`, `question.requested` and safe-text
+`unknown.native` notifications in the existing
 per-UID bounded journal. Settlement is observed from Pi's `agent_settled`, not
 assistant `message_end`. It follows the checked native history publication;
 without a new assistant JSONL key it says `unknown` rather than claiming a
@@ -638,7 +640,12 @@ before deciding what to show; a missing lookup or a daemon restart is
 uncertain and must **never** cause automatic resend. `accepted` is RPC
 acceptance, not completion. Treat `pending_question.prompt` and `choices` as
 text nodes only, never `innerHTML`; `unknown` method is deliberately visible.
-Respond by ordinary message; Pi-specific dialog answer/cancel is not supported.
+Pi-specific dialog answer/cancel is not supported. Ordinary messages remain
+the only browser write path but **cannot** resolve a Pi extension dialog that
+blocks the outer prompt acknowledgement awaiting `extension_ui_response`;
+do not show an answer control or claim the dialog was answered. This is a
+remaining product limitation, not a completed response workflow. Display
+`unknown.native` notifications as inert text.
 On a gap/409/invalidation keep the existing snapshot and native history
 fallback. No browser code was changed here.
 
@@ -647,5 +654,39 @@ receipt lookup, settlement timestamp and native key and their SSE events
 through two mapped UIDs; it cannot emit a Pi extension UI request with the
 provider alone. A fake Pi RPC unit fixture emits an unknown UI request and an
 intermediate assistant `message_end` before `agent_settled`, exercising the
-safe-text and unknown-history path. This is not a rendered browser, live host,
+safe-text and unknown-history path; a fake fire-and-forget status update
+verifies it cannot replace the question. A focused native-history regression
+checks that a newly admitted send fences the previous turn’s slow settlement,
+and a gateway regression checks successful tool frames remain replayable. This is not a rendered browser, live host,
 real provider, or dialog-answer proof. The issue remains **in-progress**.
+
+Independent **critical** final-diff review of committed candidate `72b25c4`:
+Claude Fable 5.1 finder and GPT-6 Astra adversarial verifier. Both source-confirmed
+three defects: a successful tool event was incorrectly labelled `settled` and
+blocked gateway SSE replay; Pi's fire-and-forget UI updates displaced a genuine
+pending question; and a newly admitted send could inherit the previous turn's
+settlement after a slow native history read. The corrected code restores
+`tool.finished: succeeded`, keeps inert notifications as validated `unknown.native`
+plain text (with real `editor`/unknown dialogs still visible), and fences
+native publication and settlement by turn generation. The verifier refuted the
+finder's additional claim that old publication could clear *new* deltas in
+this race: the sole RPC drain loop cannot process those new deltas until the
+old native read returns. Review scratch: `history/review-turn-settled-receipts.md`;
+assessment: `history/assessment-turn-settled-receipts.{json,md}`. No residual
+review issue met the intake bar. The corrected rootless pinned-Pi fixture
+passed (`/var/tmp/nah-turn-receipt-reviewed-final-fixture.log`), as did focused
+Go race tests; the full corrected committed-tree gate receipt is reported at
+handoff.
+
+The first full gate attempt reached its final checks but **failed**, because
+`go fmt ./...` reformatted an unformatted committed gateway test, leaving a
+dirty tree (`/var/tmp/nah-turn-receipts-gate.log`). The corrected committed
+candidate `72b25c4` then passed the exact requested clean gate
+(`status:passed`, `clean:true`, `/var/tmp/nah-turn-receipts-final-gate.log`).
+That pass predates the review fixes; it does not prove the final reviewed code.
+The contract validator initially rejected the new required command ID against
+an existing example, so the new field became optional for the older v1 event;
+the final validator passed. The first fixture receipt lookup returned 400 until
+query handling was fixed; the first focused question test expected a question
+to persist after Pi settled and was corrected. None of those failed attempts
+is presented as successful evidence. No deployment or real data was used.

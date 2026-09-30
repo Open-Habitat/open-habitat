@@ -69,6 +69,7 @@ type conversation struct {
 	lost                         bool
 	aborting                     bool
 	receipts                     map[string]string // bounded to spent send IDs; no durable acceptance claim
+	turnGeneration               uint64            // increments on each new prompt, fences slow native settlement reads
 	settlement                   map[string]string // observed_at, native_key, state; nil means unknown
 	question                     map[string]any    // bounded plain-text pending UI request
 	publishedHistory             map[string]bool   // bounded to this native session; JSONL is authoritative
@@ -599,7 +600,7 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 		}
 		if e.Type == "tool_execution_end" {
 			kind = "tool.finished"
-			state = "settled"
+			state = "succeeded"
 			if e.IsError {
 				state = "failed"
 			}
@@ -665,46 +666,62 @@ func (c *ConversationController) drain(s *conversation) {
 		}
 		if frame.Type == "extension_ui_request" {
 			var q struct {
-				ID      string   `json:"id"`
-				Method  string   `json:"method"`
-				Title   string   `json:"title"`
-				Message string   `json:"message"`
-				Options []string `json:"options"`
+				ID          string   `json:"id"`
+				Method      string   `json:"method"`
+				Title       string   `json:"title"`
+				Message     string   `json:"message"`
+				StatusText  string   `json:"statusText"`
+				Text        string   `json:"text"`
+				Prefill     string   `json:"prefill"`
+				WidgetLines []string `json:"widgetLines"`
+				Options     []string `json:"options"`
 			}
 			if json.Unmarshal(raw, &q) == nil && len(q.ID) > 0 && len(q.ID) <= 200 && utf8.ValidString(q.ID) {
-				kind := q.Method
-				if kind != "input" && kind != "confirm" && kind != "select" {
-					kind = "unknown"
-				}
 				prompt := q.Title
-				if prompt == "" {
-					prompt = q.Message
+				for _, candidate := range []string{q.Message, q.StatusText, q.Text, q.Prefill, strings.Join(q.WidgetLines, "\n")} {
+					if prompt == "" && candidate != "" {
+						prompt = candidate
+					}
 				}
 				if len(prompt) > 1000 {
 					prompt = string([]rune(prompt)[:min(len([]rune(prompt)), 250)])
 				}
 				if prompt == "" {
-					prompt = "Pi requested user input (" + kind + ")"
-				}
-				if len(q.Options) > 100 {
-					q.Options = q.Options[:100]
-				}
-				options := make([]string, 0, len(q.Options))
-				for _, option := range q.Options {
-					if len(option) <= 500 && utf8.ValidString(option) {
-						options = append(options, option)
-					}
+					prompt = "Pi UI request (no text available)"
 				}
 				if utf8.ValidString(prompt) && len(prompt) <= 1000 {
-					s.question = map[string]any{"request_id": q.ID, "question_kind": kind, "prompt": prompt, "choices": options}
-					if c.journal != nil {
-						c.journal.appendEvent("question.requested", "pi:"+s.id, s.question)
+					kind := q.Method
+					if kind != "input" && kind != "confirm" && kind != "select" {
+						kind = "unknown"
+					}
+					switch q.Method {
+					case "notify", "setStatus", "setWidget", "setTitle", "set_editor_text":
+						// These Pi RPC UI updates need no response. Preserve
+						// their content as safe text, never replace a dialog.
+						if c.journal != nil {
+							c.journal.appendEvent("unknown.native", "pi:"+s.id, map[string]any{"native_type": "extension_ui_request", "content": map[string]any{"media_type": "text/plain", "text": prompt, "complete": true}})
+						}
+					default:
+						if len(q.Options) > 100 {
+							q.Options = q.Options[:100]
+						}
+						choices := make([]string, 0, len(q.Options))
+						for _, option := range q.Options {
+							if len(option) <= 500 && utf8.ValidString(option) {
+								choices = append(choices, option)
+							}
+						}
+						s.question = map[string]any{"request_id": q.ID, "question_kind": kind, "prompt": prompt, "choices": choices}
+						if c.journal != nil {
+							c.journal.appendEvent("question.requested", "pi:"+s.id, s.question)
+						}
 					}
 				}
 			}
 		}
 
 		settled := frame.Type == "agent_settled"
+		turn := s.turnGeneration
 		if settled {
 			s.question = nil // any unanswered UI request is no longer pending after Pi settled
 			s.settled = true
@@ -717,9 +734,9 @@ func (c *ConversationController) drain(s *conversation) {
 		}
 		c.mu.Unlock()
 		if settled {
-			key := c.publishNativeHistory(s)
+			key := c.publishNativeHistoryForTurn(s, turn)
 			c.mu.Lock()
-			if c.sessions[s.id] == s && !c.closed {
+			if c.sessions[s.id] == s && !c.closed && s.turnGeneration == turn {
 				state := "unknown"
 				if key != "" {
 					state = "settled"
@@ -729,7 +746,7 @@ func (c *ConversationController) drain(s *conversation) {
 					c.journal.appendEvent("turn.settled", "pi:"+s.id, s.settlement)
 				}
 			}
-			if c.sessions[s.id] == s && !c.closed && c.journal != nil {
+			if c.sessions[s.id] == s && !c.closed && s.turnGeneration == turn && c.journal != nil {
 				c.journal.activity("pi:"+s.id, "idle")
 			}
 			c.mu.Unlock()
@@ -770,6 +787,12 @@ func existingHistoryKeys(path string, uid int, id, cwd string) (map[string]bool,
 // mapped UID's checked JSONL instead; never turn an RPC message into history.
 // A failed/unstable read invalidates the view rather than claiming settlement.
 func (c *ConversationController) publishNativeHistory(s *conversation) string {
+	c.mu.Lock()
+	turn := s.turnGeneration
+	c.mu.Unlock()
+	return c.publishNativeHistoryForTurn(s, turn)
+}
+func (c *ConversationController) publishNativeHistoryForTurn(s *conversation, turn uint64) string {
 	sessions, err := nativeSessions(c.nativeCfg())
 	if err != nil {
 		if c.journal != nil {
@@ -786,7 +809,7 @@ func (c *ConversationController) publishNativeHistory(s *conversation) string {
 			break
 		}
 		c.mu.Lock()
-		if c.sessions[s.id] != s || c.closed {
+		if c.sessions[s.id] != s || c.closed || s.turnGeneration != turn {
 			c.mu.Unlock()
 			return ""
 		}
@@ -798,7 +821,6 @@ func (c *ConversationController) publishNativeHistory(s *conversation) string {
 			if s.publishedHistory[entry.Key] {
 				continue
 			}
-			s.publishedHistory[entry.Key] = true
 			fresh = append(fresh, entry)
 		}
 		c.mu.Unlock()
@@ -811,10 +833,11 @@ func (c *ConversationController) publishNativeHistory(s *conversation) string {
 			// Continuation can replace a reaped handle while native reads
 			// complete. Never publish a superseded controller's tail.
 			c.mu.Lock()
-			if c.sessions[s.id] != s || c.closed {
+			if c.sessions[s.id] != s || c.closed || s.turnGeneration != turn {
 				c.mu.Unlock()
 				return ""
 			}
+			s.publishedHistory[entry.Key] = true
 			if c.journal != nil {
 				c.journal.nativeEntry("pi:"+s.id, entry)
 			}
@@ -878,6 +901,7 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 	s.ack = "pending"
 	s.commands[body.CommandID] = true
 	if kind == "send" {
+		s.turnGeneration++
 		s.settled = false
 		s.settlement = nil
 		s.question = nil
