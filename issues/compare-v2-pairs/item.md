@@ -9,7 +9,7 @@ related: ['@review-browser-design-v2']
 lane: design-v2
 lane_seq: 6
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
-blocked_by: ['@fit-account-and-history-v2', '@fit-onboarding-v2']
+blocked_by: ['@fit-account-and-history-v2']
 ---
 
 # Compare browser design v2 drafts with the lab in pairs
@@ -51,3 +51,9 @@ no image baselines until Jari accepts the views.
 - Ownership tonight: this work may change `web/`, `design-system/`,
   `docs/ui.md` and `docs/design-system.md`. A needed change in `internal/`,
   `contracts/` or other docs is recorded in this issue as a request instead.
+
+## Comments
+
+### 2026-09-30T18:49:20Z · @night-ui
+
+Onboarding blocker removed for the night: fit-onboarding-v2 waits on show-large-clone-progress, which waits on Jari's clone-quota authority decision. Tonight's pairs cover the fitted slices; onboarding pairs follow when that slice lands.
