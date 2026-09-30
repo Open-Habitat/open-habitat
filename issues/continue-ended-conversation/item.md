@@ -3,7 +3,7 @@ created: 2026-09-30
 updated: 2026-09-30
 type: task
 reporter: jari
-status: open
+status: in-progress
 priority: high
 related: ['@build-agent-control', '@fit-conversation-v2']
 lane: design-v2
