@@ -2,7 +2,7 @@
 created: 2026-09-30
 updated: 2026-09-30
 type: improvement
-status: untriaged
+status: done
 priority: normal
 provenance: ai-review
 source_ref: taskfleet:01m3qt2vsv3zp4512fymdhm3h2/review-finding:ux-audit-round-6
@@ -14,6 +14,7 @@ assessment_outcome: SPIN_OFF
 review_confidence: high
 review_severity: medium
 review_target: d677a25
+closed: 2026-09-30
 ---
 
 # Review the complete browser journey after queue and theme changes
