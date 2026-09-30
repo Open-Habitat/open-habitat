@@ -426,3 +426,40 @@ real-provider credentials, home, deployment or live browser journey used. The
 full clean gate and independent final-diff review receipts follow below.
 General `/api/v1/events` snapshot/replay ring, browser controls, and the real-Pi
 browser journey remain; leave this issue in-progress.
+
+Final runtime commit `44d6089` passed the exact clean gate:
+`TMPDIR=/var/tmp PATH=/home/maintainer/Sources/native-agent-host/.tools/go/bin:/home/maintainer/Sources/native-agent-host/.tools/node/bin:$PATH NAH_PORT_BASE=18600 PLAYWRIGHT_BROWSERS_PATH=/home/maintainer/Sources/native-agent-host/.cache/ms-playwright ./scripts/ci-local.sh --clean --json`
+(`status:passed`, `clean:true`; `/var/tmp/agent-control-clean-gate-final.log`).
+The same committed code passed focused `go test -race ./internal/daemon
+./internal/gateway -run 'Test(Conversation|PiRPC|PiOwnership)' -count=1`
+and `TMPDIR=/var/tmp ./scripts/test-real-pi-controller.sh`. The latter uses
+rootless isolated UIDs 21001, 21002 and gateway UID 21003, pinned Pi 0.85.1,
+synthetic provider and no real user data. It covers two end → continue → send
+round-trips, conflicting live writer, foreign handle, absence of browser-origin
+marker, restart with explicit lock/history proof, and no automatic resend of
+an uncertain initial send. It does not cover real-provider use, detached tool
+lifetime, systemd restart, or a browser-rendered continuation journey.
+
+Independent **critical** final-diff review: Claude Fable 5.1 finder with GPT-6
+Astra adversarial verifier, after the first green gate, confirmed three earlier
+corrections (mutex-narrowed history reconciliation, reaped-owner release and
+continuation admission bounds), then found creation still held the controller
+mutex across disk work and a continued session inherited the old 128-command
+limit. Both were repaired in `44d6089`, without dropping prior spent command
+IDs: the bounded in-memory budget is now 4096 per session per daemon
+incarnation. The clean gate above passed on that final runtime commit. Review
+and `/assess-findings --apply` records are
+`history/review-agent-control-final.md` and
+`history/assessment-agent-control-final.{json,md}` (local scratch); no
+mechanical fix remained to apply, no new issue was filed. No new authority or
+native-history copy was introduced.
+
+Earlier attempts did not pass: the first clean-gate invocation had uncommitted
+files; the second had an npm registry read timeout (cache seeded from the main
+checkout); the third reached browser tests but intermittently failed an existing
+workspace button-contrast assertion (85 others passed). A fresh gate passed
+before review fixes and the final gate passed after them. The rootless fixture
+first used the wrong request method/CSRF for bodyless stop, then passed after
+repairing its request helper; a focused test initially reused a consumed HTTP
+body and passed after using a fresh request. None of those failed invocations
+is counted as proof. The optional model-performance corpus step was not run.
