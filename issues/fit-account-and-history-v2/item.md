@@ -3,13 +3,15 @@ created: 2026-09-30
 updated: 2026-09-30
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@review-browser-design-v2', '@add-account-settings-ui']
 lane: design-v2
 lane_seq: 5
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
 blocked_by: ['@fit-sidebar-v2']
+closed: 2026-09-30
+closed_by: night-ui-worker
 ---
 
 # Fit account settings and history to browser design v2
@@ -23,9 +25,9 @@ the running indicator shows only what the host really knows.
 
 ## Acceptance Criteria
 
-- [ ] Settings and history views match the draft in both themes and at phone
+- [x] Settings and history views match the draft in both themes and at phone
   width, without invented state.
-- [ ] Stories in both themes; lab screenshots in this issue folder.
+- [x] Stories in both themes; lab screenshots in this issue folder.
 ## Shared context for every design-v2 slice
 
 - Benchmark: [handoff](../review-browser-design-v2/design/handoff.md) and the
