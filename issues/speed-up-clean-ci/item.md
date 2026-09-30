@@ -9,29 +9,34 @@ lane: build-tooling
 collision: [scripts/ci-local.sh]
 ---
 
-# Speed up clean CI gate
+# Get test feedback faster
 
-Shorten the feedback loop for small changes while keeping the evidence needed
-to ship a release. The run that prompted this issue took 203 seconds, and
-workers sometimes repeated the full gate for unchanged code.
+Make testing take less time during development. A small change should get useful
+feedback quickly. The run that prompted this issue took 203 seconds, and workers
+sometimes repeated the full test run for unchanged code.
 
-The existing improvement combines browser startup and build work, reuses
-checkout-local Go/npm caches and gives test selection one home in
-[TESTING.md](../../TESTING.md). [result.md](result.md) records a warm-cache
-comparison of 215 to 184 seconds. Those are single observations under variable
-load, not a guaranteed speedup; the serial browser suite remained the largest
-cost.
+Two directions are worth investigating:
 
-The remaining question is whether this already meets the purpose or whether a
-material bottleneck warrants more work. Comparable source revisions, cache
-conditions and machine load make a timing comparison meaningful. The result
-should explain the time saved and remaining costs, with enough evidence to
-judge whether the improvement is complete; there is no target percentage.
+- Make the tests themselves faster. Find where time goes: individual tests,
+  setup, repeated builds or tests waiting on one another. The browser tests
+  currently share scenario state, so running more workers safely may require
+  making the tests independent first.
+- Run less when less is enough. Can a change tell us which tests are relevant?
+  Look at how tests relate to the code and behavior they cover, whether that
+  relationship supports useful selection, and when an earlier result still
+  applies. A small local change and a shared dependency change need not require
+  the same test run.
 
-A passing gate still means the checked source and release package passed.
-Cache reuse is valuable where changed inputs still invalidate results, and
-concurrency is valuable where runs remain independent. The browser tests share
-scenario state, so merely increasing their worker count can mix test cases.
-Disposable test homes and checkout-local caches protect native accounts and
-installed tools. The existing negative tests in the result show that broken
-source and lockfile changes still failed after the optimization.
+These are possible approaches, not a requirement to build a test-selection
+system. Prefer improvements that noticeably shorten the wait without making
+relevant failures easier to miss. The useful result is faster feedback and a
+clear basis for choosing what to run, including when a full run is worthwhile.
+The current policy in [TESTING.md](../../TESTING.md) is a starting point to
+reassess as part of this work; update it to reflect the resulting approach.
+
+Some work is already done: browser checks share startup and build work, and
+Go/npm caches are reused within a checkout. [result.md](result.md) records a
+warm-cache comparison of 215 to 184 seconds, with the browser suite still the
+largest cost. These were single observations under variable load. Build on
+those results and explain what further changes save time and why the selected
+tests are sufficient for the changes they cover.
