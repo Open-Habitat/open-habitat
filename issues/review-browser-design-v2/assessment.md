@@ -1,377 +1,178 @@
 # UI-pohjan arvio selainpolku v2:ta vasten
 
-30.9.2026, lähderevisio `82a5c4e`. Tämä on issuen varsinainen arvio:
-kuinka hyvin nykyinen UI toimii, kuinka kaukana komponentit ja yhteiset
-rakenteet ovat designista ja mitä pitää tehdä yhteisesti ennen kuin näkymät
-kannattaa sovittaa. [Ensiluku](first-read.md) kattaa designin sisällön ja
-toiminnalliset poikkeamat, eikä niitä toisteta tässä.
+30.9.2026. Koodihavainnot perustuvat revisioon `82a5c4e` ja aiempiin
+synteettisen labin kuviin. [Ensiluku](first-read.md) käsittelee designin
+sisällön ja sen erot sovittuun toimintaan.
 
 ## Johtopäätös
 
-Pohja on toiminnallisesti ja semanttisesti vahva mutta visuaalisesti ohut.
-Komponenttien rajat, tilasanasto, estosyyt, saavutettavuus, testit ja Storybook
-ovat kunnossa, ja designin vaatimus "toiminta, rajapinnat ja tilakoneet pysyvät
-ennallaan" on juuri sitä, mitä nykyinen jako sovelluskerroksen ja
-komponenttien välillä tukee. Tyylikerros sen sijaan ei kanna designin
-tarkkuutta: tokenit eivät sido komponentteja, sovelluskehys ei tunne
-keskustelunäkymän rakennetta, painikkeen, tilamerkin ja ikonin kaltaiset
-perusasiat on ratkaistu käyttöpaikka kerrallaan, ja sovelluskerros koostaa osan
-näkymistä raakaelementeistä. Paikallinen hienosäätö ei tuota designin
-"tarkka sijoittelu, helppo yhtenäinen muokkaus" -ominaisuutta, koska jokainen
-näkymä pitäisi säätää erikseen ja sama säätö ei siirry muihin.
+Nykyisen UI:n yhteisen fonttikoon, välistyksen tai painikkeen muuttaminen ei
+välity näkymiin johdonmukaisesti. Osa mitoista tulee tokeneista, osa on
+kirjoitettu käyttöpaikkaan, ja komponentin ulkoasua muutetaan sen ympärillä
+olevan näkymän CSS-valitsimilla. Siksi designin tarkka toteuttaminen vaatii
+sekä yhteisen pohjan parantamista että näkymäkohtaista sovitusta.
 
-Suositus on yksi rajattu pohjatyö neljässä kohdassa ja vasta sen jälkeen
-komponenttien ja näkymien sovitus:
+Nykyiset tuotantokomponentit ovat käyttökelpoinen lähtökohta. Näyttömallien
+ja sovelluslogiikan erottelu, estosyiden esitys sekä olemassa olevat testit ja
+Storybook tukevat ulkoasun muuttamista. Tämä arvio ei kuitenkaan osoita koko
+käyttöliittymän toimivuutta: siinä ei ajettu uusia selainkokeita.
 
-1. tokenit leikataan designin mitoitukseen ja komponentit sidotaan niihin;
-2. kehykseen lisätään näkymäpohjat (keskustelu, keskitetty sivu, onboarding);
-3. painike, tilamerkki ja ikoni määritellään kerran variantteina;
-4. tyylitiedosto jaetaan komponenteittain ilman ohituskerrosta.
+Suosittelen aloittamaan yhteisistä mitoitus- ja asetteluongelmista ja
+sovittamaan niiden ratkaisut ensin yhteen kokonaiseen näkymään. Sen jälkeen
+samaa pohjaa voi käyttää sivupalkin, keskustelun ja onboardingin viimeistelyyn.
+Tavoite on designia tarkasti vastaava käyttöliittymä, jonka yhteistä ilmettä
+voi säätää ennustettavasti. Alla olevat toteutustavat ovat suosituksia;
+komponenttijako, tyylimekanismi ja työn pilkkominen täsmentyvät toteutuksessa.
 
-Pohjatyön jälkeen komponenttien hienosäätö ja näkymien koostaminen ovat
-suoraviivaisia ja jaettavissa rinnakkain. Ilman pohjatyötä sama sovitus on
-mahdollinen, mutta se jäisi näkymäkohtaisten poikkeusten varaan ja designin
-seuraava versio aloittaisi alusta.
+## Mikä nykyisessä pohjassa auttaa
 
-## Mitä nykyinen UI tekee hyvin
+Komponentit saavat näyttömallin ja palauttavat käyttäjän aikomuksen.
+Verkkoliikenne, luonnokset ja istuntosidonta ovat `web/src/app/`-kerroksessa.
+Tämä antaa mahdollisuuden muuttaa esitystä säilyttäen toiminnan, vaikka myös
+sovelluskerroksen näkymäkoostumuksia täytyy muokata.
 
-Näiden varaan voi rakentaa, eikä niitä pidä ajaa uudelleen ulkoasun mukana.
+`Availability` ja `Button` välittävät estetyn toiminnon syyn, ja `StatusMark`
+yhdistää tilan tekstin ja merkin. Näitä sopimuksia voi käyttää myös uudessa
+ilmeessä. Väritokenit ovat jo vedosten paletti, ja teeman vaihto on yhteinen
+sovellukselle, Storybookille ja labille.
 
-- **Näyttömalli ja intentti.** Komponentit saavat valmiin näyttömallin ja
-  palauttavat käyttäjän aikomuksen; verkko, kuitit, luonnokset ja
-  istuntosidonta ovat `web/src/app/`-kerroksessa
-  (`BrowserConversation.tsx`, `GitHubOnboarding.tsx`, `PiOnboarding.tsx`).
-  Designin vaatima "säilytä tilanhallinta ja kilpatilanteiden käsittely"
-  toteutuu, koska ulkoasu ei kosketa tätä kerrosta.
-- **Saatavuus syineen.** `Availability`-tyyppi ja `Button`-primitiivin
-  `ah-control-reason` tekevät estosyystä komponenttisopimuksen, ei
-  näkymäkohtaista tekstiä. Designin "estetty painike ei haalistu, syy
-  tekstinä vieressä" on tämän sopimuksen tyylikysymys.
-- **Tila merkki + sana.** `StatusMark` ei koskaan näytä pelkkää väriä, ja
-  `DesignSystem.test.tsx` vartioi sitä. Designin merkkisanasto (✓ ✕ ?
-  sykkivä piste, ontto rengas) on saman komponentin varianttien lisäys.
-- **Tokenit ja teemat.** `design-system/tokens/colors.css` on täsmälleen
-  vedosten väripaletti; `theme.ts` vaihtaa `data-theme`-attribuutin ja
-  Storybook ja lab käyttävät samaa polkua. Tummasta teemasta on olemassa
-  näyttö ([dark-history](../extremely-impartial-spiders/dark-history.png)).
-- **Testit kestävät ulkoasumuutoksen.** Playwright- ja komponenttitestit
-  valitsevat elementit roolin ja nimen perusteella; `.ah-*`-luokkiin nojaa
-  vain muutama kohta (`.ah-login-card`, `.ah-status-dot`,
-  `App.tsx` fokuspalautus `.ah-account-shelf button`). Nimiä muuttavat
-  kohdat (Lisätiedot → Tiedot, Keskeytä vuoro → Keskeytä) näkyvät testeissä
-  ja korjataan samassa muutoksessa.
-- **Näyttövälineet.** `web/lab/shoot.mjs`, `matrix.mjs` ja
-  `session.mjs`:n `snapshot` tuottavat parillisen kuva + staattinen HTML
-  -näytön synteettisestä labista, ja `design-system.spec.ts` ajaa Axen
-  molemmissa teemoissa ja 200 %:n zoomin.
+Testit käyttävät pääosin rooleja ja nimiä, joten ne kestävät rakenteen ja
+ulkoasun muutoksia. Storybook ja synteettisen labin kuvaustyökalut antavat
+valmiit välineet vertailuun. Saavutettavuudelle on selainkokeita molemmissa
+teemoissa ja 200 prosentin zoomilla.
 
-## Missä etäisyys syntyy
+## Missä yhteistä työtä tarvitaan
 
-Kuvat [working-after](../complete-conversation-ui/working-after.png),
-[reading-desktop](../complete-conversation-ui/reading-desktop.png),
-[round4-after-home](../extremely-impartial-spiders/round4-after-home.png),
-[round4-after-github](../extremely-impartial-spiders/round4-after-github.png)
-ja [dark-settings](../extremely-impartial-spiders/dark-settings.png) ovat
-synteettisen labin näyttöjä 29.–30.9. ja vastaavat yhä nykyistä CSS:ää.
-Vertailukohta on `design/vedokset/`.
+### Mitoitus ei välity yhteisistä arvoista näkymiin
 
-### A. Tokenit eivät ohjaa komponentteja (yhteinen)
+`components.css` käyttää kirjaimellista fonttikokoa 24 kertaa ja tokenia
+viidesti. Otsikon koko määritellään eri tavoin `app.css`:ssä,
+`.ah-agent-header h1`:ssä ja lukunäkymän ohituksessa. Layout-mittoja on myös
+sovelluskomponenteissa: `BrowserConversation` rajoittaa viestivirran korkeuden
+inline-tyylillä arvoon `60vh`.
 
-`typography.css` määrittelee kahdeksan kokoa, mutta `components.css` käyttää
-kirjaimellista fonttikokoa 24 kertaa ja tokenia 5 kertaa; kirjaimellisia
-kokoja on 11 erilaista. Otsikot ovat kolmessa paikassa kolmella tavalla:
-`app.css` `main h1` 30 px, `.ah-agent-header h1` `clamp(1.25rem, 2vw,
-1.75rem)`, `.ah-reading-view .ah-agent-header h1` 1.25 rem. Designin
-keskustelun otsikko on 15,5 px yhdellä rivillä ja sivun otsikko 21–22 px.
-Kun typografia-asteikkoa muutetaan, muutos ei siirry näkymiin, ja juuri se
-on ominaisuus, jota issue kysyy.
+Yhteisiä arvoja kannattaa käyttää niissä mitoissa, joiden halutaan muuttuvan
+yhdessä. Designin mitat toimivat tavoitellun ulkoasun vertailukohtana;
+jokaiselle luvulle ei tästä seuraa omaa tokenia.
+[Tuotantodesign](../../design-system/production-v1.md) pitää vedosten
+yksittäisiä mittoja sommittelureferensseinä. Toteutuksessa arvioidaan, miltä
+osin nykyistä asteikkoa pitää muuttaa tarkan lopputuloksen saamiseksi.
 
-Välistys on paremmin sidottu (76 tokenkäyttöä, 30 kirjaimellista), mutta
-asteikko 4/6/9/12/14/18/24/36 ei sisällä designin käyttämiä arvoja 8, 10, 13,
-16, 22, 28 ja 56, joten sivupalkin ja rivien välit on kirjoitettu pikseleinä
-(`padding: 11px 10px`, `padding: 8px 8px`, `gap: 2px`). Pyöristyksistä
-puuttuu vain sivupalkin rivien 9 px.
+### Keskustelun ja onboardingin asettelua pitää muuttaa
 
-Layout-mitat ovat hajallaan kirjaimellisina: sivupalkki 296 px
-grid-määrittelyssä, suljettu 46 px kahdessa säännössä (design 52), keskitetty
-sivu 720 px kolmessa säännössä, viestin mitta 70ch ja 76ch kahdessa, ja
-keskustelun vierityskorkeus `60vh` inline-tyylinä
-(`BrowserConversation.tsx`, `style={{ maxHeight: "60vh" }}`).
+`AppShell` käyttää yhtä grid-rakennetta, jonka käyttäytymistä sivupalkin
+läsnäolo muuttaa `:has(.ah-rail)`-valitsimella. Keskustelun viestivirta on
+sen sisällä omassa korkeusrajoitetussa laatikossaan. Designissa yläpalkki,
+vierittyvä viestivirta ja kirjoituskenttä muodostavat koko näkymän asettelun.
+Tämä ero vaatii rakenteellista sovitusta.
 
-`production-v1.md` sanoo, että vedoksen yksittäiset mitat ovat
-sommittelureferenssejä eivätkä tokeneita. Se kirjoitettiin v1-toimituksille.
-V2-handoff ilmoittaa mitoituksen lopulliseksi ja käyttää vain nykyisiä
-värejä, joten suosittelen kirjaamaan v2:n mitoitustaulukon tokenien lähteeksi
-ja päivittämään tuon lauseen. Tämä on design systemin kaanonin muutos, joten
-Jari voi torjua sen; ilman sitä jokainen mitta jää komponentin sisäiseksi
-vakioksi.
+Onboardingin kolme korttia on toteutettu erikseen: `LoginCard`,
+`GitHubRepoChooser` ja `PiDeviceSignIn` käyttävät eri leveyksiä ja täytteitä.
+Design yhdistää ne kehykseen, jossa näkyvät tuotenimi, palvelin ja vaihe.
+Yhteinen kehys on perusteltu ehdotus tähän toistuvaan tarpeeseen. Keskustelun
+ja keskitettyjen sivujen yhteiset osat täsmentyvät niitä sovitettaessa.
 
-### B. Sovelluskehys ei tunne näkymätyyppejä (yhteinen)
+### Painikkeiden, tilamerkkien ja ikonien esitys hajautuu
 
-`AppShell` on yksi grid: `main` saa `clamp`-marginaalin ja `.ah-state`
-keskittää 720 px:iin; `:has(.ah-rail)`-valitsin vaihtaa käytöksen, kun
-sivupalkki on paikalla. Keskustelu on rakennettu tämän sisään
-`.ah-reading-view`-osiona, jossa syöte vierittyy omassa `60vh`-laatikossaan
-ja kirjoituskenttä on `position: sticky` osion sisällä. Design tarvitsee
-kolme sivupohjaa, joita nyt ei ole:
+`components.css`:ssä on 11 painiketta käyttöpaikan perusteella muuttavaa
+esi-isävalitsinta. `Menu` ja `Dialog` puolestaan määräävät laukaisimensa
+ulkoasun, mikä vaikeuttaa designin tilipainikkeen ja ikonivalikon tekemistä.
+Painikkeen esitystapojen kokoaminen yhteiseen toteutukseen helpottaisi
+muutoksia. Estetyn painikkeen läpinäkyvyys pitää sovittaa designiin ja sen
+luettavuus tarkistaa molemmissa teemoissa.
 
-1. **Keskustelu**: kiinteä yläpalkki (`--ah-surface`, alareuna `--ah-line`,
-   pad 13 × 24), koko korkeuden vierityssarake (max 780 px), kiinteä
-   kirjoituskehys ja kelluva *Viimeisimpään ↓*.
-2. **Keskitetty sivu**: paluunäkymä 760 px / yläväli 56 ja asetukset 680 px
-   / osioväli 28.
-3. **Onboarding-kehys**: tuotenimi ja palvelin kortin yläpuolella,
-   vaiheilmaisin kortissa, seuraava askel kortin alla, kortin leveys
-   440/560/480.
+Tilamerkkien esitys jakautuu `StatusMark`in, `Badge`n ja sivupalkin
+CSS-ohitusten kesken. Niille kannattaa määritellä yhteinen visuaalinen
+sanasto. Tekstimerkki-ikoneista osa näkyi ensiluvun selainympäristössä
+puuttuvan merkin ruutuina. Pieni SVG-ikonijoukko olisi tapa poistaa tämä
+fonttiriippuvuus.
 
-Onboarding-kortti on nyt kolme erillistä toteutusta samasta asiasta:
-`.ah-login-card` (pad 26, max 440), `GitHubRepoChooser.module.css .card`
-(pad `--ah-s7` = 24, max 48 rem) ja `PiDeviceSignIn.module.css .card` (sama
-kuin edellinen). Vaiheilmaisinta ei ole; kirjautumisen ja repovalinnan
-näkymät eivät kerro, mille palvelimelle ollaan tulossa.
+### Tyyliohitukset vaikeuttavat muutosten ennakointia
 
-Puhelin: `@media (max-width: 800px)` pinoaa koko sivupalkin keskustelun
-yläpuolelle ([round4-narrow-home](../extremely-impartial-spiders/round4-narrow-home.png)).
-Design haluaa 316 px:n laatikon ja scrimin. Sekin on kehystyötä, mutta
-toteutuslaajuus on Jarin päätös (ensiluvun avoin kysymys).
+Lukunäkymä esimerkiksi poistaa viestikortin reunan, taustan ja täytteen
+valitsimella `.ah-reading-view .ah-feed .ah-message:not(.ah-message-alert)`.
+Yhteisen viestityylin vaikutus riippuu siten siitä, missä viesti näytetään.
 
-### C. Kolme primitiiviä puuttuu (yhteinen)
+Komponentin omien esitystapojen selkeyttäminen vähentäisi tällaisia ohituksia.
+Nykyisen suuren `components.css`:n jakaminen voi auttaa ylläpitoa, mutta
+kahden tyylimekanismin olemassaolo ei yksin osoita, että toinen täytyy poistaa.
+Siivousta voi tehdä sovituksen mukana. Muutamat testit, labin snapshot ja
+`App.tsx`:n fokuspalautus käyttävät `.ah-*`-valitsimia; niiden viittaukset on
+huomioitava rakennetta muutettaessa.
 
-**Painike.** `.ah-button` on 44 px korkea, `compact` 36 px, ja
-`components.css` sisältää 11 esi-isävalitsinta, jotka muokkaavat sitä
-käyttöpaikan mukaan (`.ah-rail .ah-button-compact` 30 px,
-`.ah-rail-filter .ah-button` 30 px leveä, `.ah-rail-refresh .ah-button`
-11 px teksti, `.ah-account-shelf .ah-button`, `.ah-login-card .ah-button`).
-Design tarvitsee kolme kokoa (työkalurivi 13,5 px pad 9 × 12, hiljainen
-tekstipainike, 32 × 32 ikonipainike) ja avatar-painikkeen, ja ne kuuluvat
-`Button`-propseiksi, ei ohituksiksi. Estetyn painikkeen `opacity: 0.65`
-tekee tummassa teemassa *Päivitä*- ja *Tilivalikko*-painikkeista
-lukukelvottomia, kuten handoff huomauttaa; designin ratkaisu (tausta
-`--ah-line`, teksti `--ah-muted`) on yksi sääntö `Button`issa. Lisäksi
-`Menu`- ja `Dialog`-komponenttien laukaisin on kovakoodattu
-`ah-button-secondary`-painikkeeksi (`Overlays.tsx`), joten tilipainiketta
-avatarilla tai suljetun kaistan `+`-valikkoa ei voi tehdä ilman
-laukaisinpropsia.
+## Komponentit ja näkymät
 
-**Tilamerkki.** `StatusMark`-piste on aina ontto rengas
-(`border: 2px solid currentColor`), ja sivupalkin ohitukset täyttävät sen
-`background: currentColor`. Design käyttää yhtä sanastoa kaikkialla:
-täytetty sykkivä piste vain käynnissä olevalle, ontto rengas vain luvulle,
-✓ ✕ ? -merkit, ja pilleri yläpalkissa ja paluunäkymässä. Nyt sama asia on jaettu `StatusMark`in, `Badge`n ja kahden CSS-ohituksen
-kesken; sen kuuluu olla yhden komponentin varianttisanasto.
+Kartta kokoaa keskeiset sovitustarpeet. Uuden komponentin tarve ratkaistaan
+sen perusteella, mikä rakenne tai käytös todella toistuu.
 
-**Ikonit.** Ikonit ovat tekstimerkkejä (`‹ › ▾ ▸ ✓`), ja lisäksi nuolet
-piirretään CSS-reunoilla (`.ah-menu-chevron`, `.ah-disclosure-chevron`).
-Instrument Sans ei sisällä ⌂ ⧉ ↻ -merkkejä, joten ne tulevat
-järjestelmäfontista ja näkyivät ensiluvun Playwright-ympäristössä
-puuttuvan merkin ruutuina. Handoff sanoo "jos koodissa on ikonijärjestelmä,
-käytä sitä". Suosittelen pientä inline-SVG-`Icon`-komponenttia, noin
-kymmenen merkkiä (koti, valikko, nuolet, kopioi, ✓, ✕, ?, ↓, ↗, ↻, +),
-`currentColor`-värillä ja `aria-hidden`. Se ei ole ikonikirjasto, ja se
-poistaa fonttiriippuvuuden.
+| Alue | Nykyinen pohja | Sovitustarve |
+| --- | --- | --- |
+| Sovelluskehys | `AppShell`, `ConnectionBanner` | Keskustelun korkeus ja vieritys, yläpalkki, kirjoituskenttä ja katkosbanneri. |
+| Sivupalkki ja tilivalikko | `WorkspaceRail`, `WorkspaceSection`, `AgentNavItem`, `AccountShelf`, `Menu` | Tiiviit rivit, suljettu ikonikaista ja tilivalikon laukaisin. Nimen ja sähköpostin lähde seuraa tilinäyttöpäätöstä. |
+| Keskustelun otsikko ja viestit | `AgentHeader`, `AgentFacts`, `Message`, `UserMessage`, `AssistantMessage` | Otsikon, Tiedot-paneelin, puhujatunnisteiden, kopioinnin ja viestien asettelu. Koko otsikko säilyy luettavana. |
+| Työkalut ja eteneminen | `ToolGroup`, `ToolRow`, `Disclosure`, `WorkingProgress` | Yhteinen tilasanasto, työkalurivien mitoitus ja valmistuneen vuoron esitys. |
+| Kirjoittaminen ja lähetyksen tulos | `Composer`, `QueuePanel`, `UncertainCommandCard`, `ConversationTimeline`, `HistoryView` | Ohjaa- ja Lähetä-painikkeet, epävarmuuden sijainti, viimeisimpään siirtyminen ja vain luku -selite. Luonnoksen ja lukukohdan säilyminen perustuu aiempiin päätöksiin. |
+| Paluunäkymä | `App.tsx`:n `ah-continue` | Keskustelulistan esitys ja todellinen käynnissä-tieto; nykyinen `activityLabel` on tyhjä. |
+| Asetukset | `AccountSettings` | Osioiden sommittelu sekä Pi:n todelliseen tilaan perustuva yhteysrivi. |
+| Onboarding | `LoginCard`, `GitHubRepoChooser`, `PiDeviceSignIn` | Yhteinen kehys, vaiheilmaisin, reporivit, koodin esitys ja keskeytysvahvistus. Epävarma haun tulos säilyy näkyvänä. |
+| Puhelin | Kapeassa näkymässä pinottu sivupalkki | Designin valikkolaatikko ja koko näkymän sovitus, jos mobiili otetaan toteutuslaajuuteen. |
 
-### D. Kaksi tyylimekanismia ja kasvava ohituskerros (yhteinen)
+## Eteneminen ja avoimet valinnat
 
-Yhteinen `components.css` (1 235 riviä, 247 sääntöä) ja kaksi CSS-moduulia
-elävät rinnakkain. Tiedoston ensimmäinen rivi on
-`biome-ignore-all noDescendingSpecificity`, koska sivupalkin ohitukset
-ohittavat yhteiset tyylit tarkoituksella. Lukunäkymän viesti on ohitus
-kortista: `.ah-reading-view .ah-feed .ah-message:not(.ah-message-alert)`
-nollaa `.ah-message`in reunan, taustan ja täytteen ja vaihtaa sen
-gridiksi. Suljettu sivupalkki piilottaa tekstin `font-size: 0`:lla.
-Kaikki nämä toimivat, mutta ne ovat syy siihen, ettei yhteisen säännön
-muutoksen vaikutusta voi ennustaa: sama viesti näyttää eri asioilta sen
-mukaan, minkä esi-isän alla se on.
+Ensimmäinen toteutuskokonaisuus kannattaa valita niin, että yhteisiä
+mitoituksia, painikkeita ja asettelua kokeillaan valmiissa näkymässä.
+Keskustelu paljastaisi useimmat tässä havaitut ongelmat. Toimiva sovitus
+antaa näyttöä siitä, mitkä ratkaisut kannattaa jakaa muille näkymille.
+Kaiken tyylisiivouksen valmistuminen ei ole tämän edellytys.
 
-Suositus: yksi mekanismi ja sääntö, että variantti on komponentin oma
-asia eikä esi-isän valitsin. Rajoite toteuttajalle: testit, labin snapshot
-ja `App.tsx`:n fokuspalautus viittaavat muutamaan `.ah-*`-nimeen, joten
-nimien hajautus rikkoisi ne. Muutos voidaan tehdä komponentti kerrallaan
-hienosäädön yhteydessä, ei kertarysäyksellä.
+Keskustelun sovitus kuuluu [complete-conversation-ui](../complete-conversation-ui/item.md)
+-työhön ja onboarding [design-first-use-onboarding](../design-first-use-onboarding/item.md)
+-työhön. Sivupalkin ja asetusten työnjako sekä yhteisen pohjatyön mahdollinen
+oma issue täsmennetään toteutusta suunniteltaessa. Jaetut tiedostot, kuten
+`App.tsx` ja komponenttityylit, vaikuttavat siihen, mitä voi tehdä rinnakkain.
 
-### E. Sovelluskerros koostaa raakaelementeistä (yhteisen ja paikallisen raja)
+Paluunäkymän käynnissä-tieto tarvitsee hostin todellisen tilan.
+[Agenttiohjaustyö](../build-agent-control/item.md) määrittää ohjauksen kyvyt,
+ja [tilinäyttöpäätös](../decide-account-display/item.md) nimen ja sähköpostin
+esityksen. Reitin yhdistäminen ja projektin uudelleennimeäminen ovat erillisiä
+kysymyksiä; niitä ei tarvitse ratkaista tämän arvion perusteella.
 
-`production-v1.md` kieltää ad hoc -kontrollit, mutta ei ad hoc -sommittelua,
-ja se näkyy. `App.tsx`:n etusivu on `<h1>Työtilat</h1>` ja `<p>`, joita
-tyylittävät `app.css`:n `main h1`- ja `main p`-säännöt; keskustelun
-aloitusnäkymä `BrowserConversation.tsx`:ssä on `<h2>Pi-keskustelut</h2>` ja
-raaka `<ul>`, jossa linkin tekstinä on `agent_id`; vuoron keskeytyksen
-vahvistus on `<fieldset>` kahdella painikkeella; *Natiivi tunniste* on
-`<p>`; lukunäkymän *Vain luku* on `InlineNotice` syötteen alla. Näissä
-kohdissa designilla on oma komponentti (paluunäkymän keskustelurivit,
-Tiedot-paneeli, `AlertDialog`-vahvistus, vain luku -selite kirjoituskentän
-tilalla). Kun kohdan B sivupohjat ja kohdan C primitiivit ovat olemassa,
-nämä ovat paikallisia korjauksia näkymä kerrallaan.
+Kaksi tuotevalintaa on edelleen avoinna:
 
-## Komponenttikartta
+- **Mobiilin toteutuslaajuus.** Aiempi rajaus koskee työpöytää. Puhelinvedos
+  ei yksin muuta sitä. Suosittelen ottamaan puhelinsovituksen mukaan, mutta
+  sen työmäärä arvioidaan koko näkymän ja vuorovaikutuksen perusteella.
+- **Repohaun oletussuodatin.** Suosittelen kaikkia repoja aluksi näkyviin ja
+  aikarajausta käyttäjän valintana, jotta tarpeellinen vanha repo ei katoa.
 
-Kartta vastaa handoffin pyytämää komponenttikarttaa siltä osin kuin se
-selittää puutteet; propsit, tilat ja tapahtumat täsmentyvät toteutuksessa. Sarake *Luokka*: **sopii** = tyylimuutos
-riittää; **hienosäätö** = komponentin oma rakenne muuttuu; **uusi** =
-tarvitsee oman komponentin, jonka rajauksen ja nimen toteuttaja päättää;
-**pohja** = riippuu kohdista A–D.
+## Miten vastaavuus todetaan
 
-| Vedoksen elementti | Nykyinen | Luokka | Huomio |
-| --- | --- | --- | --- |
-| Sovelluskehys, katkosbanneri | `AppShell`, `ConnectionBanner` | pohja, hienosäätö | Ohut banneri ja *Yhdistä*; kehys saa sivupohjat (B). |
-| Sivupalkki auki, Etusivu-rivi, työtilaryhmä | `WorkspaceRail`, `WorkspaceSection`, `AgentNavItem` | hienosäätö + uusi rivikomponentti | Rivillä piste + otsikko + meta; työtilan `+` vaatii luontitoiminnon siirron sivupalkkiin (nyt `BrowserConversation`). |
-| Sivupalkki suljettu (52 px kaista) | `ah-rail-collapsed` | uusi | Ikonikaista tarvitsee ikonipainikkeen (C) ja `Menu`-laukaisimen. |
-| Tilipainike, avatar, valikko teemavalitsimella | `AccountShelf`, `Menu` | uusi tilipainike; valikko tarvitsee vapaan laukaisimen ja teemavalitsimen | Nimi ja sähköposti riippuvat `decide-account-display`-sopimuksesta; nimikirjaimet ovat oletus. |
-| Keskustelun yläpalkki, tilapilleri, Tiedot ▾ | `AgentHeader`, `AgentFacts` | hienosäätö | Yksirivinen otsikko, pilleri vain poikkeamalle, *Näytä koko otsikko* poistuu; Tiedot chip-rivinä. |
-| Viestit (puhujatunniste + ⧉, kupla, teksti) | `Message`, `UserMessage`, `AssistantMessage` | hienosäätö | Lukunäkymän ohitus poistuu (D); kopiointi ikonipainikkeena (C). |
-| ✓ Vuoro valmis -rivi | – | uusi | Pieni; tieto on `current.state`. |
-| Työkaluryhmä ja -rivi | `ToolGroup`, `ToolRow`, `Disclosure` | hienosäätö | Mono-nimi, määrä, tulos; koko otsikko näppäimistöllä (ensiluku). |
-| Työ käynnissä | `WorkingProgress` | hienosäätö | Pilleri yläpalkkiin, eteneminen työkalurivin viereen. |
-| Kirjoituskehys: Keskeytä · Ohjaa · Lähetä | `Composer` + `RadioGroup` | hienosäätö | Radiot poistuvat; lähetystapa säilyy sovelluksen `workingMode`-tilana. Hylätty ilmoitus kentän yläpuolella on jo `sendState`. |
-| Epävarma lähetys viestin alla | `UncertainCommandCard`, kuitti-`InlineNotice` | uusi | Näyttömalli on jo olemassa; sijainti ja esitys vaihtuvat. |
-| Jono | `QueuePanel` | hienosäätö | Tyhjennys palauttaa Pi:n vahvistamat tekstit (jo toteutettu). |
-| Viimeisimpään ↓ / Uutta sisältöä | `ConversationTimeline`-painike | uusi kelluva painike | Kuuluu keskustelun sivupohjaan (B). |
-| Vain luku kirjoituskentän tilalla | `HistoryView`-`InlineNotice` | uusi | Sisältää *Uusi keskustelu* vain, kun luonti on saatavilla. |
-| Paluunäkymä: käynnissä, viimeksi avatut | `App.tsx` `ah-continue` | uusi näkymä ja rivikomponentti | Käynnissä-tieto puuttuu snapshotista (`activityLabel: ""`); riippuu `build-agent-control`ista. |
-| Asetukset: Tili, Yhteydet, Ulkoasu, Istunto | `AccountSettings` | hienosäätö + uusi osiokehys | OpenAI-rivi on ehdotus; Pi:n todellinen tila on saatavilla `piStatus`ista. |
-| Onboarding-kehys ja vaiheilmaisin | – | uusi kehys ja vaiheilmaisin | `LoginCard`, `GitHubRepoChooser`, `PiDeviceSignIn` sovitetaan kehykseen (B). |
-| Repolistan rivi ja aikasuodin | `GitHubRepoChooser` checkbox-rivi | uusi rivikomponentti | `role="checkbox"`; osittainen ja epävarma tila säilyvät ensiluvun mukaan; suodattimen oletus on Jarin päätös. |
-| Kirjautumiskoodi 24 px, kaksi vaihetta | `PiDeviceSignIn` | hienosäätö | Rakenne on jo vaiheittainen. |
-| Keskeytä käyttöönotto -linkki + vahvistus | `danger-subtle`-painike | hienosäätö | Hiljainen linkki ja `AlertDialog` (on olemassa). |
-| Puhelimen valikkolaatikko | pinottu sivupalkki | uusi | Laajuus Jarin päätös. |
-| Tumma teema | tokenit | sopii | Estetyn painikkeen korjaus tulee `Button`ista. |
+Toteutuksen ja vedoksen samoja tiloja verrataan rinnakkain synteettisessä
+labissa. Vertailuun kuuluvat sommittelu, mitoitus ja vuorovaikutustilat,
+molemmat teemat sekä toteutuslaajuuteen kuuluvat näyttöleveydet. Yhteisen
+mitan tai komponentin muutoksen pitää näkyä johdonmukaisesti sen eri
+käyttöpaikoissa. Storybook auttaa tarkastamaan nämä yhdistelmät.
 
-## Toteutuspolku
+Valikoidut selaimen mittatarkistukset ja hyväksytyistä näkymistä otetut
+kuvavertailut voivat myöhemmin suojata tärkeimpiä ominaisuuksia. Niiden
+laajuus valitaan toteutuksessa. Rooliin ja nimeen perustuvat toimintatestit
+sekä saavutettavuuden, zoomin ja reduced motion -asetuksen tarkistukset
+antavat täydentävää näyttöä. [TESTING.md](../../TESTING.md) kertoo, mitä eri
+kokeet osoittavat.
 
-Järjestys perustuu riippuvuuksiin: pohja ensin, koska jokainen hienosäätö
-muuten kirjoittaisi omat kokonsa ja ohituksensa uudelleen.
+## Arvion näyttö ja rajat
 
-### 0. Jarin päätökset
+Alkuperäinen arvio perustui tokeneihin, tuotantokomponentteihin ja niiden
+CSS:ään, sovelluskerroksen näkymäkoostumuksiin, Storybookin ja labin
+välineisiin, testeihin sekä v2-handoffiin ja vedoksiin. Lukumäärät kuvaavat
+revisiota `82a5c4e`.
 
-Kolme asiaa, joissa lopputulos eroaa ja joita en voi päätellä repossa:
-
-- Mobiilin toteutuslaajuus (ensiluku). Suositus: laatikko toteutetaan
-  kehystyönä, koska pinottu sivupalkki ei ole käyttökelpoinen ja laatikko
-  on yksi komponentti; muut puhelinnäkymät seuraavat samoista sivupohjista.
-- Repohaun oletussuodatin (ensiluku). Suositus: kaikki näkyvissä, aikaraja
-  käyttäjän valintana.
-- V2:n mitoitus tokenien lähteeksi ja `production-v1.md`:n lauseen päivitys
-  (kohta A). Suositus: kyllä.
-
-### 1. Pohja (yksi työpuu, yksi hyväksyttävä slice)
-
-Slice on valmis, kun seuraavat pitävät paikkansa. Miten ne saavutetaan
-(tokenien nimet, propsien muoto, tiedostojako, komponenttien nimet) on
-toteuttajan ratkaistavissa; kohdat A–D kertovat, mistä nykytila kaatuu.
-
-- Typografia, välit, pyöristykset ja layout-mitat tulevat tokeneista, ja
-  designin mitoitustaulukon jokaisella arvolla on token. Yhden tokenin
-  muutos näkyy kaikissa näkymissä; `components.css`:ssä ja `app.css`:ssä ei
-  ole kirjaimellisia fonttikokoja eikä layout-leveyksiä.
-- Painikkeella on designin tarvitsemat variantit ja koot omina propseinaan,
-  estetty painike näkyy ilman läpinäkyvyyttä molemmissa teemoissa, ja
-  yhtään esi-isävalitsimella tehtyä painikeohitusta ei ole. Valikon ja
-  dialogin laukaisimen ulkoasu on kutsujan annettavissa.
-- Tilamerkki kattaa designin sanaston (käynnissä, vain luku, ✓, ✕, ?,
-  pilleri) yhdestä komponentista, ja sivupalkin omat tilamerkkityylit
-  poistuvat.
-- Ikonit eivät riipu järjestelmäfontista. Suositus on pieni inline-SVG-
-  joukko `currentColor`-värillä, koska se poikkeaa handoffin
-  tekstimerkeistä; jos toteuttaja päätyy muuhun, syy kirjataan.
-- Keskustelulla, keskitetyllä sivulla ja onboardingilla on kukin oma
-  sivupohja komponenttikirjastossa, ja kaikki kolme onboarding-korttia
-  käyttävät samaa kehystä. Puhelimen laatikko kuuluu tähän, jos Jari
-  hyväksyy laajuuden.
-- Tyylillä on yksi mekanismi, eikä komponentin ulkoasu riipu siitä, minkä
-  esi-isän alla se on. Globaalit `.ah-*`-nimet säilyvät niiltä osin kuin
-  testit, labin snapshot ja `App.tsx`:n fokuspalautus niihin viittaavat.
-- Jokaisella uudella primitiivillä ja sivupohjalla on story vaaleana ja
-  tummana, ja mitoitusväitteet (alla) ajetaan gatessa. Vanhat näkymät
-  saavat näyttää tässä vaiheessa keskeneräisiltä; slice hyväksytään gaten
-  ja storyjen perusteella, ei näkymien.
-
-Omistaja: uusi issue, joka estää seuraavat vaiheet. Se muokkaa
-`design-system/`- ja `web/src/components/`-hakemistoja, joten se on
-ristiriidassa `complete-conversation-ui`n `collision`-listan kanssa ja
-ajetaan yksin.
-
-### 2. Komponenttien hienosäätö (kolme rinnakkaista työpuuta pohjan jälkeen)
-
-Kukin sovittaa oman alueensa komponentit kartan mukaan, päivittää storyt ja
-tuottaa parikuvat vedoksiin (alla). Alueet eivät jaa tiedostoja:
-
-- **Sivupalkki, tili ja asetukset**: `Navigation.tsx`, `Account.tsx`,
-  `App.tsx`:n sivupalkkikoostumus. Tilipainikkeen nimi ja sähköposti
-  toteutetaan vasta, kun `auth`-skeema kuljettaa ne
-  (`decide-account-display`); siihen asti nimikirjaimet ja *Oma tili*.
-- **Keskustelu**: `Conversation.tsx`, `WorkingProgress.tsx`,
-  `BrowserConversation.tsx` ja `HistoryView.tsx` keskustelun sivupohjan
-  sisään; yläpalkki, viestit, työkalurivi, kirjoituskehys, jono, epävarma
-  lähetys, vain luku. Tämä on `complete-conversation-ui`n omistamaa aluetta
-  ja voi kulkea sen alla; sen `blocked_by: build-agent-control` koskee
-  toimintaa, ei ulkoasua, mutta *Ohjaa*-painikkeen lupaus riippuu
-  ohjaimen todellisesta kyvystä.
-- **Onboarding**: `LoginCard.tsx`, `GitHubRepoChooser.tsx`,
-  `PiDeviceSignIn.tsx`, `GitHubOnboarding.tsx`, `PiOnboarding.tsx`
-  onboarding-kehyksen sisään; vaiheilmaisin, repolistan rivi, kirjautumiskoodi,
-  keskeytysvahvistus. Kuuluu `design-first-use-onboarding`-issuen alle; sen
-  toiminnalliset viat (Pilot.12) korjataan samassa alueessa mutta erillisinä
-  committeina.
-
-### 3. Näkymien koostaminen
-
-- **Paluunäkymä** omana näkymänä ja keskustelurivikomponenttina. Vaatii
-  keskustelukohtaisen käynnissä-tiedon snapshotiin tai ohjaimen listaan;
-  odottaa `build-agent-control`ia. `refine-agent-status` (post-MVP) ratkeaa
-  käytännössä tällä rivikäsittelyllä; suosittelen sulkemaan sen tämän
-  työn viitteellä, kun rivit on hyväksytty.
-- **Yksi keskustelureitti** (`decide-account-display`n avoin kohta 2):
-  sivupalkin rivit ja paluunäkymä ovat helpompia, kun `/agents/:id` on
-  ainoa reitti. Ei estä ulkoasutyötä, mutta kannattaa päättää ennen
-  paluunäkymää.
-- **Puhelin**: valikkolaatikko ja 390 px:n tarkistus samoilla sivupohjilla, jos
-  laajuus hyväksytään.
-- **Nimi**: `rename-omega-habitat` on erillinen; UI käyttää jo Omega
-  Habitatia (`LoginCard`, `ah-identity-check-title` sanoo vielä
-  "Agent Host" ja korjataan sivupalkkialueessa).
-
-## Miten tarkkuus todetaan
-
-Kolme kerrosta, kevyimmästä raskaimpaan. Kaikki ajetaan synteettisessä
-labissa; oikeita profiileja tai testipalvelinta ei käytetä.
-
-1. **Mitoitusväitteet gatessa.** Selaintesti lukee lab-näkymän
-   maamerkkielementtien lasketut tyylit (sivupalkin leveydet, yläpalkin
-   täyte, sarakkeen leveys, otsikon ja leipätekstin koko, pyöristykset,
-   fokusrengas) ja vertaa niitä handoffin mitoitustaulukkoon molemmissa
-   teemoissa ja laajuuteen kuuluvissa leveyksissä. Deterministinen, ei
-   tarvitse kuvavertailua ja paljastaa tokenin karkaamisen heti.
-2. **Parikuvat katselmointiin.** Jokaiselle designin tilalle (uusi, työ,
-   valmis, hylätty, katkos, vain luku, asetukset, paluu, sivupalkki
-   suljettu, onboarding 1–3, tumma) tallennetaan labin näkymä ja vedoksen
-   sama tila rinnakkain issuekansioon labin nykyisillä välineillä. Vedos
-   avataan eristetyssä kontekstissa, ja sen fonttipyynnöt ohjataan
-   paketoituihin fontteihin, jotta vertailu ei riipu CDN:stä. Jari
-   katselmoi parit; pikselivertailua vedokseen ei tehdä, koska aineisto ja
-   tekstit eroavat tarkoituksella.
-3. **Pikselibaseline hyväksynnän jälkeen.** Hyväksytystä näkymästä
-   tallennetaan baseline tilaa ja teemaa kohti, jotta myöhempi token- tai
-   komponenttimuutos näyttää jalanjälkensä kuvina. Baseline päivitetään
-   tietoisesti samassa commitissa muutoksen kanssa.
-
-Axe molemmissa teemoissa, 200 %:n zoom ja reduced motion -testit säilyvät
-sellaisinaan ja koskevat myös uusia primitiivejä.
-
-## Tarkistuksen näyttö
-
-Luettu kokonaan: `design-system/` tokenit ja `production-v1.md`,
-`web/src/components/` kaikki tuotantomoduulit ja `components.css`,
-`web/src/app/App.tsx`, `BrowserConversation.tsx`, `HistoryView.tsx`,
-`GitHubOnboarding.tsx`, `PiOnboarding.tsx`, `theme.ts`, `app.css`,
-Storybookin `preview.ts`, `web/lab/`-työkalut, `design-system.spec.ts`,
-`TESTING.md`, `docs/design-system.md` sekä handoff ja `Selainpolku v2`- ja
-`Onboarding v2` -vedosten rakenne. Luvut (fonttikoot 24/5, välit 76/30,
-11 painikeohitusta, 247 sääntöä) ovat `grep`-laskentaa `components.css`:stä
-revisiossa `82a5c4e`. Kuvat ovat aiempien issueiden synteettisiä
-lab-näyttöjä 29.–30.9.; uusia kuvia ei otettu, koska sen jälkeiset
-`web/src`-commitit koskevat Pi:n ohjausta ja onboardingin toimintaa, eivät
-tyylejä, ja väitteet on tarkistettu suoraan CSS:stä eikä kuvista.
-
-Ei ajettu: Storybookia, labia, gatea eikä vedoksia selaimessa tässä
-arviossa (ensiluku avasi vedokset). Arvio ei muuta ajettavaa koodia, joten
-gaten poikkeus dokumenttimuutoksille pätee.
+Kuvaesimerkkeinä olivat aiemmat synteettiset lab-näkymät
+[työn aikana](../complete-conversation-ui/working-after.png),
+[lukunäkymästä](../complete-conversation-ui/reading-desktop.png),
+[etusivulta](../extremely-impartial-spiders/round4-after-home.png),
+[GitHub-vaiheesta](../extremely-impartial-spiders/round4-after-github.png) ja
+[tummista asetuksista](../extremely-impartial-spiders/dark-settings.png).
+Uusia kuvia, selaintestejä tai gatea ei ajettu tätä arviota varten.
+Havainnot perustelevat sovitustyötä; ne eivät ole valmiin UI:n visuaalinen
+hyväksyntä tai kattava toiminnallinen tarkistus.

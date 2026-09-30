@@ -54,15 +54,14 @@ justify them; conclusions should follow from the current code and observed
 gaps.
 
 The [first reading](first-read.md) supplies design context and known behavioral
-differences. The [assessment](assessment.md) (30.9.2026, revision `82a5c4e`)
-answers the questions below: the foundation is functionally sound but its
-styling layer does not carry the design's precision, so it recommends one
-bounded foundation slice (tokens re-cut to the design, layout templates,
-button/status/icon primitives, one styling mechanism) before component
-refinement and screen composition, with a component map, an ordered path and
-a three-layer visual comparison method. Three choices are left to Jari:
-mobile scope, the default repository filter, and adopting the v2 sizing as
-the token source.
+differences. The [assessment](assessment.md) identifies shared sizing,
+layout and component styling problems, with code examples and a component map.
+It recommends proving shared improvements in a complete view before extending
+them across the UI. Implementation mechanisms, work division and visual test
+methods remain proposals; the target is faithful design and predictable shared
+adjustments. Mobile scope and the default repository filter remain open product
+choices. The assessment uses source inspection and earlier synthetic screenshots,
+not a new demonstration of the whole UI's behavior.
 Functional decisions from @rethink-project-docs inform the target: uncertain
 native writes, identity boundaries and preserved user input still need honest
 UI behavior. Bring material product or architecture choices to Jari with a
