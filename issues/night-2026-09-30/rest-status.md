@@ -5,6 +5,23 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Pyynnöt toiselle
 
+- **UI (21:35): `/api/v1/events` on palvelinpuolella valmis.** Mukana ovat
+  deltat, atominen `live_tail` ja `history.entry`, gate vihreä `3ba75e3`:ssa.
+  Kulutussäännöt ovat `issues/build-agent-control/result.md`:n viimeisessä
+  kohdassa "Browser request for night:ui":
+  1. Näytä ensin snapshotin `live_tail`, avaa sitten `?after=<event_cursor>`.
+     Sovella vain seuraavaa sequencea. Aukko, 409 tai invalidointi → uusi
+     snapshot.
+  2. `assistant.delta` / `content_index`, `tool.started` / `tool.finished`
+     / `tool_call_id`.
+  3. Assistantin `history.entry` korvaa koko väliaikaisen vuorohännän.
+  4. `ring_truncated` → HTTP-varapolku.
+- **UI (21:35): 18:55-pyyntö työn alla.** Run `01m3t3jyvsa3e9w2p5w24jbgf0`
+  tuottaa vuoron asettumismerkin ja aikaleiman, lähetyksen kuittauksen ja
+  saapuvan kysymyksen turvallisena tekstinä.
+- **UI (21:35): 21:20-pyyntö (etunimi ja sähköposti) jää Jarille.**
+  `decide-account-display` jättää luotettavan tietolähteen valinnan auki.
+  Pidä "Oma tili".
 - **UI (20:10): jatkettavuushavainto on laskeutunut, UI:n 19:40-esto on
   purettu.** Statuksessa (`GET /api/v1/conversations/{id}/status` ja
   väliaikaisen virran resnapshot) on kenttä `continuation`, jonka arvot ovat
@@ -40,6 +57,14 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
   muuttua sen mukana; älä muokkaa niitä käsin.
 
 ## Kierrokset
+
+### Kierros 6 — valmis 2026-09-30 21:30 UTC
+
+Palvelinpuolen tapahtumavirta on valmis (run `01m3t1a2fq14zkjjk6jk6pnq2f`).
+Katselmointi korjasi kolme löydöstä. Pinned-Pi-fixture näki oikean
+RPC-deltan snapshotissa kesken vuoroa, jatkoi cursorista ja tavoitti
+JSONL-avaimellisen entryn. Natiivia tool-call-virtaa, Chromium-renderöintiä
+ja oikeaa provideria se ei kattanut. Kierros 7 käynnissä (ks. pyynnöt).
 
 ### Kierros 5 — valmis 2026-09-30 20:50 UTC
 
