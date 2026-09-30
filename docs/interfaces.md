@@ -252,7 +252,9 @@ jää epäselväksi, käyttäjä näkee sen epävarmana. Automaattinen uudelleen
 voisi teettää saman työn kahdesti, joten päätös uudesta yrityksestä jää käyttäjälle.
 
 Toteutettu välivaihe käyttää muistissa 128 tapahtuman / 1 MiB:n toistoikkunaa
-käyttäjän daemonissa. Muutos ilmoitetaan `snapshot.invalidated`-eventillä:
+käyttäjän daemonissa. Pi:n nopeat välitulokset yhdistyvät enintään noin 250 ms:n
+mittaiseen trailing-ilmoitukseen; jokainen viimeinenkin muutos saa ilmoituksen.
+Muutos ilmoitetaan `snapshot.invalidated`-eventillä:
 selain hakee sen jälkeen uuden snapshotin ja tarvittaessa natiivihistorian;
 rakenteiset `history.entry`-, delta-, queue- ja workspace-eventit eivät vielä
 synny tästä reitistä. Snapshotin watermark otetaan ennen natiivilukua, joten

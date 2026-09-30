@@ -483,6 +483,9 @@ func (c *ConversationController) watch(s *conversation) {
 	if s.ack == "pending" {
 		s.ack = "uncertain"
 	}
+	if c.journal != nil {
+		c.journal.appendInvalidation("pi:" + s.id)
+	}
 	c.mu.Unlock()
 	_ = s.owner.release()
 }
@@ -506,7 +509,7 @@ func (c *ConversationController) drain(s *conversation) {
 		}
 		s.events = append(s.events, e)
 		if c.journal != nil {
-			c.journal.appendInvalidation("pi:" + s.id)
+			c.journal.invalidateNative()
 		}
 		if frame.Type == "queue_update" {
 			var q struct {

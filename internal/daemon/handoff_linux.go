@@ -55,8 +55,8 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(SnapshotPath, piGate(cfg, server.TrustedPeer, piStatus, snapshotHandlerWithJournal(cfg, server.TrustedPeer, Discover, nativeSessions, cfg.Home, nativeStatus, journal)))
 	mux.Handle("/api/v1/events", piGate(cfg, server.TrustedPeer, piStatus, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		journal.stream(w, r, func() bool {
-			return server.TrustedPeer(r) && piStatus(r.Context()) == "usable" && validSnapshotIdentity(cfg, r)
-		})
+			return server.TrustedPeer(r) && validSnapshotIdentity(cfg, r)
+		}, func() bool { return piStatus(r.Context()) == "usable" })
 	})))
 	mux.Handle("/api/v1/agents/", piGate(cfg, server.TrustedPeer, piStatus, HistoryHandler(cfg, server.TrustedPeer)))
 	mux.Handle("/api/v1/content/", piGate(cfg, server.TrustedPeer, piStatus, HistoryHandler(cfg, server.TrustedPeer)))

@@ -45,9 +45,53 @@ func TestEventJournalReplayAndErrors(t *testing.T) {
 	}
 	r := httptest.NewRequest("GET", "http://unix/api/v1/events?after="+zero, nil)
 	w := httptest.NewRecorder()
-	j.stream(w, r, func() bool { return true })
+	j.stream(w, r, func() bool { return true }, func() bool { return true })
 	if w.Code != 409 || !strings.Contains(w.Body.String(), "cursor_expired") || strings.Contains(w.Header().Get("Content-Type"), "event-stream") {
 		t.Fatal(w.Code, w.Body.String())
+	}
+}
+
+func TestEventJournalNativeBurstHasTrailingInvalidation(t *testing.T) {
+	j := newEventJournal()
+	before, _ := j.watermark()
+	for i := 0; i < 300; i++ {
+		j.invalidateNative()
+	}
+	deadline := time.After(time.Second)
+	for {
+		j.mu.Lock()
+		cursor, changed := j.cursor(j.seq), j.changed
+		j.mu.Unlock()
+		if cursor != before {
+			break
+		}
+		select {
+		case <-changed:
+		case <-deadline:
+			t.Fatal("missing trailing invalidation")
+		}
+	}
+	j.mu.Lock()
+	count := j.seq
+	j.mu.Unlock()
+	if count != 1 {
+		t.Fatalf("burst produced %d events", count)
+	}
+	j.invalidateNative()
+	deadline = time.After(time.Second)
+	for {
+		j.mu.Lock()
+		seq := j.seq
+		changed := j.changed
+		j.mu.Unlock()
+		if seq == 2 {
+			break
+		}
+		select {
+		case <-changed:
+		case <-deadline:
+			t.Fatal("last native change was suppressed")
+		}
 	}
 }
 
@@ -58,7 +102,7 @@ func TestEventStreamExactReplayAndLastEventID(t *testing.T) {
 	first, _ := j.watermark()
 	j.appendInvalidation("")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		j.stream(w, r, func() bool { return r.Context().Err() == nil })
+		j.stream(w, r, func() bool { return r.Context().Err() == nil }, func() bool { return true })
 	}))
 	defer server.Close()
 	for _, tc := range []struct {
