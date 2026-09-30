@@ -1,6 +1,6 @@
 ---
 created: 2026-09-21
-updated: 2026-09-29
+updated: 2026-09-30
 type: task
 status: open
 priority: normal
@@ -13,49 +13,75 @@ collision: [docs/, AGENTS.md]
 
 # Package the MVP and prepare its pilot operation
 
-## Goal
-
 Make releases installable and recoverable, with generic self-hosting guidance
-and a verified procedure for the test installation.
+and a verified procedure for the authorized test installation. Build on the
+existing reproducible release packaging and neutral service templates.
 
-## Context
+## Scope and ownership
 
-Read [the delivery plan](../plan-v1-implementation/plan.md), [product goal](../../docs/product.md),
-[architecture](../../docs/architecture.md), and the governing AGENTS.md files.
-Use the installed workflow skills. Keep detailed work and evidence in this issue directory.
-Follow ADR 0001: native histories/configuration, discovered directories, no parallel history,
-workspace registry, credential broker or speculative cache. Desktop first, one server and Pi.
+Native Agent Host owns portable packaging and generic installation,
+configuration, update, rollback, live-version and operator documentation.
+Fleetrepo owns the test host's accounts, bindings, secrets, ingress and release
+selection. Coordinate concrete deployment changes there; exact live commands
+and receipts belong in its
+`infra/native-agent-host-test/RELEASE-UPGRADE.md`.
+
+Test releases proceed under that procedure, including any review it requires
+from Jari before an operator's first live use. A production installation
+remains a separate decision by Jari. A failed
+preflight stops deployment because the procedure's assumptions about the host
+or recovery path no longer hold.
+
+The [product goal](../../docs/product.md),
+[architecture](../../docs/architecture.md) and
+[ADR 0001](../../docs/adr-0001-unix-native-agent-host.md) define the intended
+system: desktop first, one server and Pi, with native tools owning their
+histories and configuration. Packaging preserves that ownership rather than
+adding parallel histories, a workspace registry, credential broker or
+speculative cache. The [delivery plan](../plan-v1-implementation/plan.md) is
+historical context, not a current acceptance gate.
 
 ## Acceptance Criteria
 
-- [ ] Implement and verify the accepted package/service lifecycle and gateway-to-daemon account mapping without ad hoc persistent source installs.
-- [ ] Compare the neutral units and effective service configuration with the [service restrictions](service-requirements.md); verify required protections rather than treating current templates as proof of conformance.
-- [ ] Document prerequisites, exact install/update/start/stop/rollback and live-version commands in `docs/operations.md`; make CI/package checks reproducible.
-- [ ] Define ownership and backup/restore of native histories, workspace annotations and host configuration; show logs/health sufficient to diagnose failures without leaking credentials.
-- [ ] Exercise installation and rollback in a disposable environment with synthetic identities and representative workspaces.
-- [ ] Use Fleetrepo's current test-installation upgrade procedure and verified rollback path for the authorized test server; stop if its preflight fails.
-- [ ] Prepare the pilot procedure and cleanup/recovery instructions for @verify-v1-resilience; no production availability claim from packaging alone.
+- [ ] Implement and verify the recoverable release lifecycle described in
+  [ADR 0003](../../docs/adr-0003-host-stack.md) and the gateway-to-daemon
+  account mapping through release packages, without ad hoc persistent source
+  installs.
+- [ ] Verify both neutral templates and effective service configuration against
+  [service-requirements.md](service-requirements.md), including isolation,
+  privilege restrictions, native environment, shutdown, diagnostic privacy,
+  frontend routing and the linked operator contract. Missing settings in a
+  template do not waive a requirement; templates alone do not prove the
+  installation meets it.
+- [ ] Write `docs/operations.md` with prerequisites and exact generic
+  install/update/start/stop/rollback and live-version commands, reproducible
+  CI/package checks, ownership and backup/restore of native histories,
+  workspace annotations and host configuration, and useful diagnostics within
+  the required privacy boundary.
+- [ ] Demonstrate installation, repeated apply, update, failed activation and
+  rollback in a disposable environment with synthetic identities and
+  representative workspaces. Preserve native histories, credentials and
+  workspace state; cleanup removes only fixture-owned state.
+- [ ] Exercise the authorized test-host upgrade through Fleetrepo's current
+  procedure, confirming its rollback path is ready and using live switch-back
+  only if the new release fails; record the Fleetrepo revision and observed
+  outcome.
+- [ ] Prepare the pilot procedure and cleanup/recovery instructions for
+  @verify-v1-resilience. That issue owns the resilience pilot; packaging
+  evidence alone establishes no production availability claim.
 
-## Delivery and verification
+## Evidence
 
-Record exact inputs/revisions, commands, outcomes and remaining limits in this issue's
-`result.md`. Update the owned durable documents; do not duplicate a task queue in TODO.md.
-Run the applicable repository documentation checks. Product workers also run the exact
-checks established by @plan-v1-implementation and verified by @build-app-foundation.
-A failed or unavailable check is not a pass. Never close a human-review issue on the user's behalf.
-Do not expand into the next issue after delivering this bounded task.
+Keep detailed work in this issue directory and record exact inputs, revisions,
+commands, outcomes and remaining limits in `result.md`. Update the durable
+documents this work owns, following the governing AGENTS.md files.
+[TESTING.md](../../TESTING.md) defines the current implementation, packaging and
+documentation checks and what their results prove. Distinguish verified
+behavior from failed or unavailable checks so the pilot can build on the
+evidence without inheriting unsupported claims.
 
-## Bounded planning handoff
+## Decisions
 
-Build on the existing reproducible release packaging and neutral service
-templates. Native Agent Host owns generic installation, configuration, update,
-rollback, live-version and operator documentation. Fleetrepo owns the concrete
-accounts, bindings, secrets, ingress and release selection for the test host.
-Coordinate that work there and record its revision and observed outcome.
+### 2026-09-30T17:50:57Z · @claude
 
-Verify install, repeated apply, update, failed activation and rollback in a
-disposable environment. Preserve native history and credentials; test cleanup
-removes only fixture-owned state. Exact live commands and receipts belong to
-Fleetrepo's `infra/native-agent-host-test/RELEASE-UPGRADE.md`, not a copied shell
-recipe in this repository. Test releases proceed under that procedure; a
-production installation is a separate decision by Jari.
+Rethink-night 30.9.: rethink-instructions / gpt-6-astra tiivisti toteutusissuen vastuujaon, hyväksymisehdot ja näytön; tein ilman Jaria varovaiset valinnat säilyttää tietoturvarajat, pysäyttää epäonnistuneeseen preflightiin, jättää tuotantokäyttöönoton erilliseksi päätökseksi ja olla tulkitsematta tietyn Fleetrepo-operaattorin hyväksyntää annetuksi. fact-check-instructions / claude-opus-5-5 tarkisti lähteitä vasten: täsmensin ensimmäisen live-operaattorin Jari-hyväksynnän, erotin valmiin rollback-polun vain vikatilanteessa tehtävästä live switch-backista, säilytin Acceptance Criteria -otsikon issuectl readyä varten, päivitin muokkauspäivän sekä tarkensin ADR 0003 -viitteen ja varmuuskopioinnin kohteet. Jarin kirjattuihin päätöksiin ei löytynyt ristiriitaa; runbookin tämänhetkinen operaattori on yhä hyväksymättä. Tämän issuen ulkopuolista Fleetrepo-runbookin epäselvyyttä ei ratkaistu tässä.
