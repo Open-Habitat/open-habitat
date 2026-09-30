@@ -14,8 +14,8 @@ groups:
         title: Tilanne
         desc: Valmistuneet asiat, avoimet kysymykset ja seuraava katselmointi.
       - slug: implementation
-        title: Vaiheistus
-        desc: Määrittelystä toimivaan ytimeen ja koko MVP:hen.
+        title: Toteutuksen työnjako
+        desc: Toimintojen yhteinen perusta, riippuvuudet ja toteutuksen vastuut.
 
   - label: Järjestelmä ja päätökset
     members:

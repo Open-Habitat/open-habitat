@@ -10,7 +10,7 @@ Aloita [tavoitteesta ja MVP:stä](product.md) ja
 ## Tavoite ja eteneminen
 
 - [Tavoite ja MVP](product.md): mitä ensimmäisellä järjestelmällä voi tehdä.
-- [Vaiheistus](implementation.md): miten määrittely ja toteutus johtavat siihen.
+- [Toteutuksen työnjako](implementation.md): miten toiminnot rakentuvat yhteisen perustan varaan.
 - [Tilanne](status.md): mitä on tehty ja mikä tarvitsee seuraavaksi huomiota.
 
 ## Järjestelmä ja päätökset

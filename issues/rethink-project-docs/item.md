@@ -35,9 +35,10 @@ ehdokas ajan tasalla, ei rakenneta erillistä katselmointiprosessia.
 | [Käyttökulut](../../docs/ui.md) | Käyttäjän kulku ja sovittu keskustelukokemus. Nykytila erotettu tavoitteesta, vanhat dialogiohjaimet ja katselmointiportit poistettu; protokolla- ja komponenttidetaljit linkitetty omiin lähteisiin. | `925bdb1` |
 | [ADR 0004: ensikirjautumisen tilinluonti](../../docs/adr-0004-first-login-user-provisioning.md) | Brokerin tilinluonti ja sidonta, gatewayn todennus ja daemonin natiivit tunnukset. Nykyinen keskeytyspolitiikka ilman vanhan palautusvaatimuksen historiaa; toteutusmekanismit ja näyttö linkitetty omiin lähteisiinsä. | `992d27d` |
 | [ADR 0001: natiivi Unix-arkkitehtuuri](../../docs/adr-0001-unix-native-agent-host.md) | Natiivien tietojen omistajuus ja Unix-eristys perusteluineen; myöhemmät tilinluonti-, jatkamis- ja selainrajaukset linkitetty. | Tämän läpikäynnin commit (`Refs-Issue` Gitissä). |
-| [Päätökset](../../docs/decisions.md) | Hyväksytyt ratkaisut lähteineen sekä käyttäjän poistamisen ja lokituksen avoimet ehdotukset. Toteutustilanne ja protokolladetaljit omiin lähteisiinsä. Jarin lukukierros odottaa. | Tämän läpikäynnin commit (`Refs-Issue` Gitissä). |
+| [Päätökset](../../docs/decisions.md) | Hyväksytyt ratkaisut lähteineen sekä käyttäjän poistamisen ja lokituksen avoimet ehdotukset. Toteutustilanne ja protokolladetaljit omiin lähteisiinsä. Jari hyväksyi läpikäynnin. | `80f8107` |
+| [Toteutuksen työnjako](../../docs/implementation.md) | Toimintojen yhteinen perusta ja riippuvuudet, työn omistajat sekä todentamisen ja asennuksen vastuut. Jarin lukukierros odottaa. | Tämän läpikäynnin commit (`Refs-Issue` Gitissä). |
 
-Samalla on tehty kohdennettuja korjauksia toteutussivuun,
+Samalla on tehty kohdennettuja korjauksia
 CLI-konformanssiin ja liittyviin issueihin. Näitä ei ole vielä kokonaisuudessaan
 käyty läpi tällä skillillä.
 
@@ -52,9 +53,9 @@ onboardingin ja paluun OpenAI-vaiheeseen; testien nopeutus kattaa sekä testien
 nopeuttamisen että tarpeellisten testien valinnan muutoksen perusteella.
 Näiden kuvausten käsittely on valmis. Toteutusissueiden tilaa tai DAGia ei muutettu.
 
-Päätössivu käsiteltiin 2026-09-30 aiemmin sovitun tehtävän mukaisesti:
-hyväksytyt ratkaisut, perustelujen lähteet ja avoimet valinnat. Jarin lukukierros
-on seuraava askel. Uutta dokumenttikohdetta ei ole vielä sovittu.
+Jari hyväksyi päätössivun läpikäynnin ja valitsi seuraavaksi toteutuksen
+työnjaon (`docs/implementation.md`). Se käsiteltiin 2026-09-30; seuraava askel
+on Jarin lukukierros. Seuraavaa dokumenttikohdetta ei ole vielä sovittu.
 
 ADR 0002:ssa on edelleen vaatimus jokaisen UI-osan hyväksynnästä ennen
 riippuvien töiden jatkamista. Se on ristiriidassa nykyisen AGENTS-WORKFLOW.md:n
@@ -371,3 +372,24 @@ vastuulle. ADR 0002:n vanha UI-hyväksyntäportti jäi odottavaan läpikäyntiin
 Dokumentaatiovalidaattori ja `git diff --check` läpäisivät. Täyttä CI-porttia
 ei ajettu dokumenttimuutokselle. Dokumentaatiota ei julkaistu eikä
 live-palvelinta muutettu.
+
+## Toteutuksen työnjaon läpikäynti 2026-09-30
+
+Jari hyväksyi tehtäväksi selittää osien rakentumisen toistensa varaan sekä
+erottaa pysyvät riippuvuudet DAGin työjärjestyksestä. Lähtörevisio oli
+`80f8107`. Lähteinä olivat nykyinen toteutuskartta, alkuperäinen vaiheistus
+(historialliseksi merkitty), tuotesivu, agenttiohjauksen ja keskustelu-UI:n
+issuet, TESTING.md sekä MVP-loppuportin poisto ja nykyinen työskentelyohje.
+
+Vanha loppuportti oli jo poistettu sivulta aiemmassa korjauksessa. Nyt teksti
+selittää kirjautumisen, historian, ohjauksen ja muiden toimintojen yhteydet.
+SSE ja jatkaminen kuvataan tavoitteina; kysymysten näyttäminen erotetaan
+vastausdialogien rajauksesta. Testien valinta viittaa TESTING.md:hen,
+puskurien yksityiskohdat säilyvät rajapintasivulla ja toteutuskartassa.
+GitHub Actionsin käytöstäpoiston historiatieto poistettiin lukijan sivulta.
+Julkaisun ja Fleetrepon vastuuraja säilyi. Navigaatio ja etusivun linkkikuvaus
+vastaavat nyt työnjakosivun tehtävää.
+
+Dokumentaatiovalidaattori ja `git diff --check` läpäisivät. Täyttä CI-porttia
+ei ajettu dokumenttimuutokselle. Toteutusta tai päätettyä toiminnallista
+laajuutta ei muutettu; dokumentaatiota ei julkaistu.
