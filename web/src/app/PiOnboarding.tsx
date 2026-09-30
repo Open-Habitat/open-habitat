@@ -33,6 +33,7 @@ export function PiOnboarding({
   onBack?: () => void;
 }) {
   const [view, setView] = useState<PiDeviceSignInView>({ phase: "waiting" });
+  const checkFailed = useRef(false);
   const [busy, setBusy] = useState(false);
   const [checking, setChecking] = useState(false);
   const busyRef = useRef(false);
@@ -97,7 +98,13 @@ export function PiOnboarding({
             onUsable();
             return;
           }
+          if (status === "unknown" || status === "unavailable") {
+            checkFailed.current = true;
+            setView({ phase: "unavailable" });
+            return;
+          }
         }
+        checkFailed.current = false;
         const attempt = await piAttempt(
           method,
           bound.current,
@@ -135,14 +142,10 @@ export function PiOnboarding({
         setView(viewOf(attempt));
       } catch {
         if (current()) {
+          if (method === "GET") checkFailed.current = true;
           // A lost write response is uncertain, not proof that Pi failed.
-          // A failed read must not erase still-visible device instructions.
-          setView((previous) =>
-            method === "GET" &&
-            (previous.phase === "pending" || previous.phase === "expired")
-              ? previous
-              : { phase: "interrupted" },
-          );
+          // A failed read cannot authorize a new device attempt.
+          setView({ phase: "interrupted" });
         }
       } finally {
         if (active.current === controller) active.current = undefined;
@@ -163,7 +166,11 @@ export function PiOnboarding({
     void check();
     let tick = 0;
     const timer = window.setInterval(() => {
-      if (!ending.current && (preparingCode.current || ++tick % 3 === 0))
+      if (
+        !ending.current &&
+        !checkFailed.current &&
+        (preparingCode.current || ++tick % 3 === 0)
+      )
         void check();
     }, 300);
     const focus = () => {

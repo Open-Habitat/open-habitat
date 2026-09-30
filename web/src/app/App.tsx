@@ -119,6 +119,7 @@ export function App() {
     (s: RootState) => s.connection,
   );
   const [refreshKey, setRefreshKey] = useState(0);
+  const [piCheckFailed, setPiCheckFailed] = useState(false);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const [browserSessions, setBrowserSessions] = useState<Session[]>([]);
   const [verifying, setVerifying] = useState(false);
@@ -329,7 +330,10 @@ export function App() {
           )
             return;
           if (status === "login" || session === "login") return fail("login");
-          if (status === "missing") return fail("pi");
+          if (status === "missing" || status === "unknown") {
+            setPiCheckFailed(status === "unknown");
+            return fail("pi");
+          }
           token = session ?? (await sessionCSRF(controller.signal));
           // A failed authority check is not a transport outage. A different
           // session must never inherit the previous user's mounted content.
@@ -347,9 +351,13 @@ export function App() {
           }
           verifiedToken = token;
           if (status === "unavailable") {
-            // The daemon can be down while the browser session is still
-            // authenticated. A second cookie check gates stale retention.
-            await retain(token);
+            // Retain already verified facts only for the same session. Initial
+            // requests belong in the OpenAI step with an explicit check error.
+            if (snapshot) await retain(token);
+            else {
+              setPiCheckFailed(true);
+              fail("pi");
+            }
             return;
           }
           // Unknown or malformed Pi status is not permission to retain.
@@ -417,6 +425,7 @@ export function App() {
           return fail("login");
         }
         sessionBinding.current = token;
+        setPiCheckFailed(false);
         dispatch(authenticated(next));
         window.clearTimeout(timeout);
         setVerifying(false);
@@ -604,6 +613,10 @@ export function App() {
       </>
     ) : phase === "pi_required" ? (
       <GitHubOnboarding
+        skipChooser={
+          piCheckFailed ||
+          (location.pathname !== "/" && location.pathname !== "/workspaces")
+        }
         onUsable={refresh}
         onLogin={requireLogin}
         onLogout={logout}

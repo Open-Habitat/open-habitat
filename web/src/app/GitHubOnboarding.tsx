@@ -36,8 +36,10 @@ export function GitHubOnboarding({
   onUsable,
   onLogin,
   onLogout,
+  skipChooser = false,
 }: {
   onUsable: () => void;
+  skipChooser?: boolean;
   onLogin: () => void;
   onLogout: () => Promise<void>;
 }) {
@@ -161,7 +163,7 @@ export function GitHubOnboarding({
         if (bound.current === csrf) {
           setStep((old) =>
             old === "loading"
-              ? sessionStorage.getItem(marker) === key.current
+              ? skipChooser || sessionStorage.getItem(marker) === key.current
                 ? "pi"
                 : "github"
               : old,
@@ -174,7 +176,7 @@ export function GitHubOnboarding({
         if (!alive || !current(n)) return;
         bound.current = csrf;
         key.current = digest;
-        if (sessionStorage.getItem(marker) === digest) {
+        if (skipChooser || sessionStorage.getItem(marker) === digest) {
           setStep("pi");
           return;
         }
@@ -206,7 +208,7 @@ export function GitHubOnboarding({
       window.clearInterval(timer);
       window.removeEventListener("focus", focus);
     };
-  }, [load, onLogin, reset, current]);
+  }, [load, onLogin, reset, current, skipChooser]);
   const verifySession = async (n: number) => {
     try {
       const csrf = await sessionCSRF();
