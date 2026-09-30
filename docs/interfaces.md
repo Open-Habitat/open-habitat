@@ -33,6 +33,7 @@ ja [daemonista](../internal/daemon/handoff_linux.go).
 | `POST /api/v1/conversations/<session-id>/steer` | ohjaava viesti Pi:n steering-jonoon |
 | `POST /api/v1/conversations/<session-id>/follow_up` | jatkoviesti Pi:n follow-up-jonoon |
 | `POST /api/v1/conversations/<session-id>/clear_queue` | jonojen tyhjennys ja vahvistetusti poistetut tekstit |
+| `POST /api/v1/conversations/<session-id>/abort` | Pi:n nykyisen vuoron keskeytyspyyntö, ei prosessin pysäytys |
 | `POST /api/v1/conversations/<session-id>/stop` | keskustelun pysäytyspyyntö |
 | `GET /api/v1/onboarding/github/repos` | käyttäjän GitHub-repot, sivutettuina `page`- ja `limit`-parametreilla |
 | `POST /api/v1/onboarding/github/clone` | `full_name`-kentän repon kloonaus; lopputulos JSON-vastauksena |

@@ -49,6 +49,7 @@ type conversation struct {
 	events                       []json.RawMessage
 	cursor                       uint64
 	lost                         bool
+	aborting                     bool
 }
 
 func newConversationController(ctx context.Context, cfg transport.Config, runtime *core.PiRuntimeConfig, trusted func(*http.Request) bool, status func(context.Context) string) *ConversationController {
@@ -196,6 +197,8 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		} else {
 			c.sendKind(w, r, parts[0], parts[1])
 		}
+	case r.Method == http.MethodPost && parts[1] == "abort":
+		c.abort(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "stop":
 		c.stop(w, r, parts[0])
 	default:
@@ -551,6 +554,56 @@ func (c *ConversationController) clearQueue(w http.ResponseWriter, r *http.Reque
 	}
 	historyJSON(w, map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": "accepted", "removed_queue": map[string]any{"steering": reply.Steering, "follow_up": reply.FollowUp}})
 }
+
+// abort interrupts the current Pi turn, not the Pi process or its detached tools.
+// A command ID is spent before writing so an uncertain receipt cannot be retried.
+func (c *ConversationController) abort(w http.ResponseWriter, r *http.Request, id string) {
+	var body struct {
+		CommandID string `json:"command_id"`
+	}
+	if decodeControl(r, &body, 1024) != nil || !sessionIDPattern.MatchString(body.CommandID) {
+		snapshotError(w, 400, "invalid_request")
+		return
+	}
+	c.mu.Lock()
+	s := c.sessions[id]
+	if s == nil {
+		c.mu.Unlock()
+		snapshotError(w, 404, "resource_not_found")
+		return
+	}
+	if c.closed || s.state != "accepted" || s.settled || s.aborting || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= 128 {
+		c.mu.Unlock()
+		snapshotError(w, 409, "control_uncertain")
+		return
+	}
+	s.aborting = true
+	s.commands[body.CommandID] = true
+	s.command = body.CommandID
+	s.ack = "pending"
+	c.mu.Unlock()
+	// A browser disconnect cannot cancel an abort already delivered to Pi.
+	go func() {
+		accepted, err := s.rpc.request("abort", "", 4*time.Second)
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		s.aborting = false
+		if s.command != body.CommandID || c.closed || s.state == "uncertain" || s.state == "stopping" {
+			return
+		}
+		switch {
+		case err != nil:
+			s.ack = "uncertain"
+			s.state = "uncertain"
+		case !accepted:
+			s.ack = "rejected"
+		default:
+			s.ack = "accepted"
+		}
+	}()
+	historyJSON(w, map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": "pending"})
+}
+
 func (c *ConversationController) stop(w http.ResponseWriter, r *http.Request, id string) {
 	if r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
 		snapshotError(w, 400, "invalid_request")

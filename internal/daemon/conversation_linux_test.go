@@ -329,3 +329,56 @@ for line in sys.stdin:
 		t.Fatalf("long queue state %s", state)
 	}
 }
+
+func TestConversationAbortTurnKeepsWriterAndRejectsReplay(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("requires nonroot")
+	}
+	home := t.TempDir()
+	script := filepath.Join(home, "pi")
+	code := `#!/usr/bin/env python3
+import json,sys
+for line in sys.stdin:
+ r=json.loads(line)
+ print(json.dumps(dict(type="response",id=r["id"],command=r["type"],success=True)),flush=True)
+`
+	if err := os.WriteFile(script, []byte(code), 0700); err != nil {
+		t.Fatal(err)
+	}
+	p, err := launchPiRPC(script, home, home, "", []string{"PATH=/usr/bin:/bin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.close()
+	id := ownershipTestID
+	s := &conversation{id: id, rpc: p, state: "accepted", commands: map[string]bool{}}
+	c := &ConversationController{sessions: map[string]*conversation{id: s}}
+	body := fmt.Sprintf(`{"command_id":%q}`, id)
+	call := func() *httptest.ResponseRecorder {
+		r := httptest.NewRequest("POST", "http://unix/abort", strings.NewReader(body))
+		r.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		c.abort(w, r, id)
+		return w
+	}
+	if w := call(); w.Code != 200 || !strings.Contains(w.Body.String(), `"pending"`) {
+		t.Fatalf("abort: %d %s", w.Code, w.Body.String())
+	}
+	if w := call(); w.Code != 409 {
+		t.Fatalf("replayed abort: %d", w.Code)
+	}
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		c.mu.Lock()
+		ack, state, aborting := s.ack, s.state, s.aborting
+		c.mu.Unlock()
+		if ack == "accepted" && !aborting {
+			if state != "accepted" {
+				t.Fatalf("process state %s", state)
+			}
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatal("no Pi abort acknowledgement")
+}

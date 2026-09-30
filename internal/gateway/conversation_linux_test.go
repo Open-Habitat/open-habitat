@@ -48,6 +48,8 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 			reply = `{"schema_version":1,"command_id":"` + cmd + `","state":"pending"}`
 		case conversationBase + "/" + id + "/status":
 			reply = `{"schema_version":1,"agent_id":"pi:` + id + `","workspace_id":"` + ws + `","state":"pending","command_id":"` + cmd + `","ack":"pending","event_cursor":0,"events":[],"event_loss":false,"native_history":"missing","native_revision":"","history_query":"/api/v1/agents/pi:` + id + `/history"}`
+		case conversationBase + "/" + id + "/abort":
+			reply = `{"schema_version":1,"command_id":"` + cmd + `","state":"pending"}`
 		case conversationBase + "/" + id + "/stop":
 			reply = `{"schema_version":1,"state":"termination_unknown"}`
 		default:
@@ -114,6 +116,15 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 	}
 	if w := send("GET", conversationBase+"/"+id+"/status", first, "", ""); w.Code != 200 {
 		t.Fatalf("status %d %s", w.Code, w.Body.String())
+	}
+	if w := send("POST", conversationBase+"/"+id+"/abort", second, `{"command_id":"`+cmd+`"}`, second); w.Code != 404 {
+		t.Fatalf("foreign abort %d", w.Code)
+	}
+	if w := send("POST", conversationBase+"/"+id+"/abort", first, `{"command_id":"`+cmd+`"}`, "wrong"); w.Code != 403 {
+		t.Fatalf("abort csrf %d", w.Code)
+	}
+	if w := send("POST", conversationBase+"/"+id+"/abort", first, `{"command_id":"`+cmd+`"}`, first); w.Code != 200 {
+		t.Fatalf("abort %d %s", w.Code, w.Body.String())
 	}
 	if w := send("POST", conversationBase+"/"+id+"/stop", first, "", first); w.Code != 200 {
 		t.Fatalf("stop %d %s", w.Code, w.Body.String())

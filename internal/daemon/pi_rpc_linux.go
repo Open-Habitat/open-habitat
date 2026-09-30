@@ -165,7 +165,7 @@ type piReply struct {
 // retry the prompt automatically. The controller drains native events from a
 // separate bounded queue; overflow poisons the transport.
 func (p *piRPC) requestQueue(kind, message string, timeout time.Duration) (piReply, error) {
-	if kind != "get_state" && kind != "prompt" && kind != "steer" && kind != "follow_up" && kind != "clear_queue" {
+	if kind != "get_state" && kind != "prompt" && kind != "steer" && kind != "follow_up" && kind != "clear_queue" && kind != "abort" {
 		return piReply{}, errors.New("unsupported Pi RPC request")
 	}
 	if (kind == "prompt" || kind == "steer" || kind == "follow_up") && (message == "" || len(message) > 65536) {

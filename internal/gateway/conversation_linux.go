@@ -23,7 +23,7 @@ import (
 // This private gateway protocol deliberately does not add a browser v1 contract.
 // The lease table is fail-closed on gateway restart: an orphan cannot be claimed
 // by another browser session. Native histories remain accessible read-only.
-var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|status|stop))?$`)
+var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|abort|status|stop))?$`)
 var conversationUUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 var conversationWorkspace = regexp.MustCompile(`^ws_[A-Za-z0-9_-]{8,64}$`)
 
@@ -66,7 +66,7 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var body []byte
-	if kind == "create" || kind == "send" || kind == "steer" || kind == "follow_up" || kind == "clear_queue" {
+	if kind == "create" || kind == "send" || kind == "steer" || kind == "follow_up" || kind == "clear_queue" || kind == "abort" {
 		limit := int64(1024)
 		if kind == "send" || kind == "steer" || kind == "follow_up" {
 			limit = 66000
@@ -145,7 +145,7 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	req.Header.Set("X-Agent-Host-Session", base64.RawURLEncoding.EncodeToString(hash[:]))
 	req.Close = true
 	// The socket may have accepted a write even when no acknowledgement arrives.
-	ambiguous := kind == "create" || kind == "send" || kind == "steer" || kind == "follow_up" || kind == "clear_queue" || kind == "stop"
+	ambiguous := kind == "create" || kind == "send" || kind == "steer" || kind == "follow_up" || kind == "clear_queue" || kind == "abort" || kind == "stop"
 	failure := func() {
 		if ambiguous {
 			safe(w, 503, "control_uncertain")
@@ -198,7 +198,7 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 		_ = json.Unmarshal(clean, &reply)
 		ok = str(reply, "workspace_id") == input["workspace_id"]
 	}
-	if ok && (kind == "send" || kind == "steer" || kind == "follow_up" || kind == "clear_queue") {
+	if ok && (kind == "send" || kind == "steer" || kind == "follow_up" || kind == "clear_queue" || kind == "abort") {
 		var input map[string]string
 		_ = json.Unmarshal(body, &input)
 		var reply map[string]json.RawMessage
@@ -347,7 +347,7 @@ func validConversationInput(kind string, b []byte) bool {
 		m, ok := strictObject(b, []string{"workspace_id"})
 		return ok && conversationWorkspace.MatchString(str(m, "workspace_id"))
 	}
-	if kind == "clear_queue" {
+	if kind == "clear_queue" || kind == "abort" {
 		m, ok := strictObject(b, []string{"command_id"})
 		return ok && conversationUUID.MatchString(str(m, "command_id"))
 	}
@@ -378,7 +378,7 @@ func validatedConversationReply(kind string, b []byte, requestedID string) ([]by
 		required = []string{"schema_version", "agent_id", "workspace_id", "state"}
 	case "list":
 		required = []string{"schema_version", "sessions"}
-	case "send", "steer", "follow_up":
+	case "send", "steer", "follow_up", "abort":
 		required = []string{"schema_version", "command_id", "state"}
 	case "clear_queue":
 		required = []string{"schema_version", "command_id", "state", "removed_queue"}
@@ -412,7 +412,7 @@ func validatedConversationReply(kind string, b []byte, requestedID string) ([]by
 				break
 			}
 		}
-	case "send", "steer", "follow_up":
+	case "send", "steer", "follow_up", "abort":
 		ok = conversationUUID.MatchString(str(m, "command_id")) && str(m, "state") == "pending"
 	case "clear_queue":
 		q, valid := strictObject(m["removed_queue"], []string{"steering", "follow_up"})

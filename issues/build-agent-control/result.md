@@ -209,3 +209,22 @@ The 30-second App session revalidation still removes the old snapshot before req
 Production-bundle Playwright against the synthetic TLS browser host exercised the actual 30-second timer with a controlled clock: 50 loaded entries, scroll away from the bottom, a selected substring in a nonempty draft, revalidation and a new live status tail. Focus, selection, draft, loaded pages and scroll survived; a subsequent new native-history entry was signalled as unread without jumping, and leaving for settings produced no further conversation status polls over another 30 seconds. Four other browser conversation scenarios also passed. The synthetic test intercepts status/history responses and is **not** real Pi, a real provider, visual approval, separate mapped UIDs or a live host. It models a first-page response containing a new entry; incremental detection beyond the first history page remains limited by the provisional paged API. No live host/OAuth/real home was touched. Issue stays open pending Jari's visual verdict and consented real-provider story.
 
 At committed revision `32147dd`, `TMPDIR=/var/tmp PATH=/home/maintainer/Sources/native-agent-host/.tools/go/bin:$PATH PLAYWRIGHT_BROWSERS_PATH=/home/maintainer/Sources/native-agent-host/.cache/ms-playwright ./scripts/ci-local.sh --clean --json` exited 0 (`status:passed`, `clean:true`), including the full browser suites and release verifier. The first gate attempt stopped before checks on a transient npm `ETIMEDOUT`; the retry passed. Focused final-diff review checked identity/CSRF scoping, aborted refreshes, route timer cleanup and non-retry behavior; no review finding met the filing bar. This receipt adds no runtime behavior.
+
+## Native turn-abort intermediate (taskfleet 01m3ryav5nytnq1hd5as623hpk)
+
+The browser's “interrupt Pi turn” button previously called `stop`, which terminated
+its entire Pi child and reported unknown tool termination. It now sends one
+UUID-tagged `abort` RPC through authenticated, CSRF-checked gateway forwarding.
+The daemon admits abort only on a live accepted turn, spends the command ID before
+writing, rejects replay and concurrent abort, and reports pending followed by
+Pi's correlated accepted/rejected/uncertain acknowledgement in status. Browser
+network ambiguity is not retried. Pi's process and native history remain owned
+by the same controller; abort is **not** evidence detached tools stopped or that
+history settled. `stop` remains a separate private API. Only one browser lease
+can access the handle and terminal histories remain read-only.
+
+This is an intermediate slice, not issue completion: SSE, ended-browser-session
+continuation, rendered real-Pi browser journey, and real-provider acceptance are
+still pending. Synthetic fake-Pi and same-UID gateway tests establish abort
+routing and acknowledgement/replay semantics only; distinct-UID Pi proof from
+prior slices does not cover this new abort route. No live host or real credentials.

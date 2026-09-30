@@ -200,6 +200,23 @@ export async function send(
   )
     throw new Error("invalid send");
 }
+export async function abortTurn(id: string, commandId: string, csrf: string) {
+  if (!uuid.test(commandId)) throw new Error("invalid command");
+  const v = await request(
+    `${path(id)}/abort`,
+    undefined,
+    { command_id: commandId },
+    csrf,
+  );
+  if (
+    !object(v) ||
+    v.schema_version !== 1 ||
+    v.command_id !== commandId ||
+    v.state !== "pending"
+  )
+    throw new Error("invalid abort");
+}
+
 export async function stop(id: string, csrf: string) {
   const v = await request(`${path(id)}/stop`, undefined, undefined, csrf);
   if (!object(v) || v.schema_version !== 1 || v.state !== "termination_unknown")

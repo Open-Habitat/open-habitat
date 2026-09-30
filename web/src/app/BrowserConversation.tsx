@@ -26,7 +26,7 @@ import {
   clearQueue,
   NotAdmitted,
   status,
-  stop,
+  abortTurn,
 } from "./conversations";
 import { readHistoryFetch, timelineItems } from "./HistoryView";
 import type { HistoryEntry } from "./history";
@@ -652,18 +652,18 @@ export function BrowserConversation({
       const token = await verify();
       if (!alive.current) return;
       sent = true;
-      setReceipt("Pysäytystä pyydetään");
-      await stop(current.agent_id, token);
+      setReceipt("Keskeytystä pyydetään");
+      await abortTurn(current.agent_id, crypto.randomUUID(), token);
       if (alive.current)
         setReceipt(
-          "Pysäytystä pyydettiin. Työkalujen päättymistä ei ole vahvistettu.",
+          "Keskeytyspyyntö vastaanotettiin. Pi:n kuittaus näkyy tilassa; työkalujen päättymistä ei ole vahvistettu.",
         );
     } catch {
       if (alive.current)
         setReceipt(
           sent
-            ? "Pysäytyksen tulos epävarma. Työkaluja voi yhä olla käynnissä."
-            : "Istuntoa ei voitu vahvistaa. Pysäytystä ei pyydetty.",
+            ? "Keskeytyksen tulos epävarma. Tarkista tila; pyyntöä ei lähetetä uudelleen."
+            : "Istuntoa ei voitu vahvistaa. Keskeytystä ei pyydetty.",
         );
     } finally {
       if (alive.current) {
@@ -833,9 +833,7 @@ export function BrowserConversation({
             elapsed={elapsed}
           />
           <UnpresentedEvents events={events} />
-          {controlled &&
-          !stale &&
-          ["pending", "accepted", "stopping"].includes(current?.state ?? "") ? (
+          {controlled && !stale && current?.state === "accepted" ? (
             <Button
               label="Keskeytä Pi:n vuoro"
               variant="secondary"
@@ -847,9 +845,7 @@ export function BrowserConversation({
               onPress={() => setConfirmStop(true)}
             />
           ) : null}
-          {confirmStop &&
-          !stale &&
-          ["pending", "accepted", "stopping"].includes(current?.state ?? "") ? (
+          {confirmStop && !stale && current?.state === "accepted" ? (
             <fieldset aria-label="Vahvista keskeytys">
               <p>
                 Keskeytetäänkö Pi:n vuoro? Jo käynnistyneiden työkalujen
