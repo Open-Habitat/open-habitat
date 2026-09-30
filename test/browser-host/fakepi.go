@@ -35,7 +35,9 @@ func runFakePi(args []string) {
 		if args[i] == "--session" {
 			existing = args[i+1]
 			id = strings.TrimSuffix(filepath.Base(existing), ".jsonl")
-			if cut := strings.LastIndex(id, "_"); cut >= 0 { id = id[cut+1:] }
+			if cut := strings.LastIndex(id, "_"); cut >= 0 {
+				id = id[cut+1:]
+			}
 		}
 	}
 	cwd, err := os.Getwd()
@@ -45,7 +47,9 @@ func runFakePi(args []string) {
 	home := os.Getenv("HOME")
 	dir := filepath.Join(home, ".pi", "agent", "sessions", "--"+strings.ReplaceAll(strings.Trim(cwd, "/"), "/", "-")+"--")
 	path := filepath.Join(dir, time.Now().UTC().Format("2006-01-02T15-04-05-000Z")+"_"+id+".jsonl")
-	if existing != "" { path = existing }
+	if existing != "" {
+		path = existing
+	}
 	var out sync.Mutex
 	emit := func(v any) {
 		b, _ := json.Marshal(v)
@@ -57,10 +61,16 @@ func runFakePi(args []string) {
 	if existing != "" {
 		// Continue the same native chain; never overwrite an existing session.
 		data, err := os.ReadFile(existing)
-		if err != nil { os.Exit(2) }
+		if err != nil {
+			os.Exit(2)
+		}
 		for _, line := range strings.Split(string(data), "\n") {
-			var entry struct { ID string `json:"id"` }
-			if json.Unmarshal([]byte(line), &entry) == nil && entry.ID != "" { s.parent = entry.ID }
+			var entry struct {
+				ID string `json:"id"`
+			}
+			if json.Unmarshal([]byte(line), &entry) == nil && entry.ID != "" {
+				s.parent = entry.ID
+			}
 		}
 	}
 	busy := false
