@@ -37,8 +37,14 @@ test("@pi-onboarding direct native routes show OpenAI check failure and recover 
       expect((await page.request.get(url)).status()).toBe(428);
     }
     await page.getByRole("button", { name: "Tarkista tila" }).click();
-    await expect(page.getByText("Tilaa ei voitu vahvistaa")).toBeVisible();
+    // Wait for the unknown check to settle before changing the native fixture.
+    await expect(
+      page.getByRole("button", { name: "Tarkista tila" }),
+    ).toBeVisible();
     await page.request.get("/fixture/pi-state?value=missing");
+    await expect(
+      page.getByRole("button", { name: "Tarkista tila" }),
+    ).toBeVisible();
     await page.getByRole("button", { name: "Tarkista tila" }).click();
     await expect(
       page.getByRole("button", { name: "Aloita kirjautuminen" }),

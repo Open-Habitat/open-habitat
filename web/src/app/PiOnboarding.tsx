@@ -81,14 +81,17 @@ export function PiOnboarding({
         bound.current = csrf;
         return true;
       };
+      let readingStatus = false;
       try {
         if (!(await session())) return;
         // A write already checks its session binding in piAttempt. Reading
         // native status before a POST can exhaust the response budget while
         // the helper has started and is preparing a code.
         if (method === "GET" && !preparingCode.current) {
+          readingStatus = true;
           const status = await piStatus(controller.signal);
           if (!current() || !(await session())) return;
+          readingStatus = false;
           if (status === "login") {
             onLogin();
             return;
@@ -142,10 +145,19 @@ export function PiOnboarding({
         setView(viewOf(attempt));
       } catch {
         if (current()) {
-          if (method === "GET") checkFailed.current = true;
-          // A lost write response is uncertain, not proof that Pi failed.
-          // A failed read cannot authorize a new device attempt.
-          setView({ phase: "interrupted" });
+          if (readingStatus) {
+            checkFailed.current = true;
+            setView({ phase: "unavailable" });
+          } else {
+            // A failed attempt poll is not a native-status failure. Keep
+            // visible instructions while retrying the read, never the write.
+            setView((previous) =>
+              method === "GET" &&
+              (previous.phase === "pending" || previous.phase === "expired")
+                ? previous
+                : { phase: "interrupted" },
+            );
+          }
         }
       } finally {
         if (active.current === controller) active.current = undefined;

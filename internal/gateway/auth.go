@@ -324,12 +324,8 @@ func uiReturn(path string) bool {
 		if len(id) != 36 {
 			return false
 		}
-		for i, c := range id {
-			if i == 8 || i == 13 || i == 18 || i == 23 {
-				if c != '-' {
-					return false
-				}
-			} else if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+		for _, c := range id {
+			if c != '-' && !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
 				return false
 			}
 		}
