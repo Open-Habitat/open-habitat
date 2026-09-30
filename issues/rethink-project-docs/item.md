@@ -43,57 +43,107 @@ Samalla on tehty kohdennettuja korjauksia
 CLI-konformanssiin ja liittyviin issueihin. Näitä ei ole vielä kokonaisuudessaan
 käyty läpi tällä skillillä.
 
-## Seuraavaksi
+## Seuraavaksi: tilit, onboarding ja uusi selain-design
 
-Jari hyväksyi 2026-09-30 neljän issuen uusintakierroksen:
-`investigate-pi-browser-oauth`, `gate-native-routes-on-pi`, `speed-up-clean-ci`
-ja `build-agent-control`. Niille tehtiin `/rethink-instructions` ja
-`/fact-check-instructions` sekä Jarin lukukierroksen tarkennukset
-(committisarja `8444680`–`8347997`). Pi-kirjautumisen issue kuvaa nyt pakollisen
-onboardingin ja paluun OpenAI-vaiheeseen; testien nopeutus kattaa sekä testien
-nopeuttamisen että tarpeellisten testien valinnan muutoksen perusteella.
-Näiden kuvausten käsittely on valmis. Toteutusissueiden tilaa tai DAGia ei muutettu.
+Jari pyysi 2026-09-30 seuraavan läpikäyntikokonaisuuden: neljä nimettyä
+issuea, uuden design-agentin draftin vastaanotto ja jalkauttaminen sekä
+käyttöliittymän dokumentit. Aiempi UI-dokumenttien odotus korvautuu tällä
+kokonaisuudella. Tämä on tekstien ja päätösten läpikäyntijärjestys;
+toteutuksen tilat ja riippuvuudet pysyvät issuectl:n DAGissa.
 
-Päätössivu, toteutuksen työnjako ja etusivu on käsitelty 2026-09-30.
-Jari pyysi viimeksi etusivun korjauksen. Seuraavaksi ehdotettiin tilannesivua
-(`docs/status.md`), mutta sen käsittelyä ei ole vielä sovittu. Sivun nykyinen
-tilannekuva on 24.9. ja tarvitsee lähteisiin perustuvan ajantasaistuksen, myös
-vanhan Glasspad-esteen ja lopullisen MVP-katselmoinnin osalta.
+**Ensin uusi paketti tutuksi, sitten toiminnalliset rajat, niiden jälkeen
+yleiset UI-dokumentit ja lopuksi toteutuksen työnjako.** Näin dokumentteja ei
+ensin viimeistellä vanhaa designia varten eikä luonnoksen ehdotuksia tulkita
+huomaamatta hyväksytyiksi vaatimuksiksi. Tilien turvallisuusnäyttö ja poistamisen
+rajat käsitellään ennen tiliasetuksia, jotta eri toiminnot eivät sekoitu.
 
-ADR 0002:ssa on edelleen vaatimus jokaisen UI-osan hyväksynnästä ennen
-riippuvien töiden jatkamista. Se on ristiriidassa nykyisen AGENTS-WORKFLOW.md:n
-kanssa, joka sallii muun työn jatkamisen. Tämä kuuluu odottavaan UI-kokonaisuuteen;
-historiallista päätöstä ei muutettu päätössivun toimituksellisessa korjauksessa.
+1. **[review-browser-design-v2](../review-browser-design-v2/item.md): ensimmäinen lukukierros.**
+   Tämä on uuden toimituksen oikea issue. Lue
+   [handoff](../review-browser-design-v2/design/handoff.md) ja sen neljä vedosta
+   kokonaisuutena, tunnista tavoiteltu käyttökokemus ja kokoa avoimet kysymykset.
+   Vertaa hyväksyntäväitteitä alkuperäisiin päätöksiin. Tässä vaiheessa saadaan
+   suunta seuraaville läpikäynneille; komponenttikartta ja toteutuksen lopullinen
+   jako täsmennetään kohdan 8 yhteydessä. Esimerkiksi mobiili, nimen/avatarin
+   lähde, OpenAI-asetukset ja epäselvän kloonaustuloksen esitys tarvitsevat
+   vertailun nykyisiin päätöksiin.
+2. **[prove-jit-guest-isolation](../prove-jit-guest-isolation/item.md).**
+   Erota jo saatu ensikirjautumisen ja kahden Unix-käyttäjän näyttö jäljellä
+   olevasta työstä. Lue tulosraportit sekä Jarin myöhemmät rajaukset, etenkin
+   uudelleenkäynnistyskokeen yksinkertaistaminen. Näin vanhat testivaatimukset
+   eivät määritä seuraavien issueiden tilannekuvaa.
+3. **[deprovision-bound-user](../deprovision-bound-user/item.md) ja sen [ADR 0007](../../docs/adr-0007-bound-user-deprovision.md).**
+   Selvitä, mikä tarve on jäljellä testipalvelimen uudelleenrakennuksen jälkeen,
+   mikä on hyväksytty tavoite ja mikä vasta ehdotettu poistamisarkkitehtuuri.
+   Erota Unix-tilin poistaminen, selainuloskirjautuminen ja natiivien tunnusten
+   irrottaminen. Historialliset pilot.11-väitteet tarkistetaan nykyisiä tuloksia
+   vasten; yleistä poistotoimintoa ei päätellä testitilin kertaluonteisesta tarpeesta.
+4. **[github-repos-first-onboarding](../github-repos-first-onboarding/item.md) sekä [design-first-use-onboarding](../design-first-use-onboarding/item.md) ja sen suunnitelma.**
+   Käy ensin läpi repovalinnan nykyinen toiminta ja Jarin päätökset, sitten
+   sovita vanhempi onboarding-kokonaisuus niihin. GitHub → repot → OpenAI,
+   palaava käyttäjä ja epäselvän kloonauksen käsittely verrataan uuden draftin
+   ehdotuksiin. Aiemmin läpikäydyt Pi-kirjautumisen ja Pi-portin issuet toimivat
+   lähteinä; niitä avataan uudelleen vain esiin tulevien ristiriitojen osalta.
+5. **[add-account-settings-ui](../add-account-settings-ui/item.md).**
+   Erota jo toteutettu tilinäkymä jäljellä olevasta työstä. Käytä
+   [decide-account-display](../decide-account-display/item.md)-päätöstä ja uuden
+   draftin tilivalikkoa/asetuksia lähteinä. Täsmennä nimen ja sähköpostin lähde,
+   GitHub- ja OpenAI-yhteyksien esitys sekä uloskirjautumisen ja irrotuksen rajat
+   edellisten kohtien perusteella.
+6. **Yleinen UI-kuvaus ja selainratkaisun päätös:**
+   [docs/ui.md](../../docs/ui.md) ja
+   [ADR 0002](../../docs/adr-0002-frontend-stack.md).
+   Sovita käyttökulut edellä selvitettyihin päätöksiin ja draftin ratkaistuihin
+   ehdotuksiin. ADR 0002:n vanha vaatimus jokaisen UI-osan hyväksynnästä ennen
+   riippuvien töiden jatkamista on ristiriidassa nykyisen työskentelyohjeen kanssa;
+   käsittele se päätöshistorian säilyttävällä tavalla. Rajapintasivusta tarkistetaan
+   vain tämän kokonaisuuden koskettamat kohdat, ei aloiteta koko sivua uudelleen.
+7. **Tuotantodesign ja komponenttisopimukset yhdessä:**
+   [production-v1.md](../../design-system/production-v1.md),
+   [component-catalog-v1.md](../../design-system/component-catalog-v1.md) ja
+   [docs/design-system.md](../../docs/design-system.md).
+   Erota sovittu ilme ja vuorovaikutus agentin lisäämistä mekanismeista ja
+   lukurajoista. Säilytä saavutettavuus, fokus, näppäimet, reitit ja komponenttien
+   vastuut. Korjaa vanha terminaalisiirto ja Pi-kysymysten vastausohjaimet nykyiseen
+   rajaukseen: terminaalihistoria on luettava, päättynyttä selainkeskustelua voi
+   jatkaa ja saapuva sisältö näytetään vähintään turvallisena tekstinä.
+   Tokenit, tyylit ja nykyiset tuotantokomponentit ovat vertailuaineistoa.
+8. **[review-browser-design-v2](../review-browser-design-v2/item.md): yhteenveto ja jalkauttamisen suunnitelma.**
+   Viimeistele vedosten tilojen vastaavuus nykyiseen toteutukseen,
+   komponenttikartta ja jäljellä olevat päätöskohdat. Nyt yleiset dokumentit,
+   onboarding ja tiliasetukset antavat toteutusjaolle yhteisen lähtökohdan.
+   Ehdota rajatut toteutuspalat ja niiden omistajat. Palaa kohtien 6–7 teksteihin
+   vain, jos tässä tehdään niitä muuttava päätös.
+9. **Jalkauttavat toteutusissuet:**
+   [complete-conversation-ui](../complete-conversation-ui/item.md) sekä
+   v2-katselmoinnissa täsmentyvät tai syntyvät toteutusissuet.
+   Sovita niiden tavoitteet ja työnjako komponenttikarttaan; onboardingin ja
+   tiliasetusten jo käsiteltyjä issueita täydennetään tarvittaessa.
+   Tarkista yhteys nykyiseen agenttiohjaukseen ja ehkäise päällekkäinen työ.
+   Uusien toteutusissueiden linkit lisätään tähän, kun ne ovat olemassa.
 
-UI- ja design-dokumentit ovat Jarin pyynnöstä odottamassa 2026-09-30:
-toinen agentti tekee laajempaa käyttöliittymäkierrosta. Niihin palataan sen
-jälkeen; alla säilyy aiemmin sovittu jatkorajaus.
+### Aineiston ja skillin valinta
 
-### Odottava UI-kokonaisuus
+Uusi v2-toimitus on jo repossa. Erillisiä juuri tätä toimitusta jalkauttavia
+v2-toteutusissueita ei löytynyt 2026-09-30 haussa; `review-browser-design-v2`
+omistaa niiden valmistelun. `complete-conversation-ui`, onboarding ja
+tiliasetukset ovat olemassa olevia sovitettavia töitä, eivät vielä valmis
+v2-toteutussuunnitelma. Suljettu
+[assemble-browser-redesign-handoff](../assemble-browser-redesign-handoff/item.md)
+on designerille lähetetty lähtöpaketti. Suljetut `receive-designer-v1`,
+`design-production-ui`, `build-design-system` ja `integrate-designer-rail`
+ovat vanhan designin ja toteutuksen lähteitä, eivät uuden toimituksen työjono.
 
-Odottava kokonaisuus on [tuotantodesign](../../design-system/production-v1.md)
-ja [komponenttikatalogi](../../design-system/component-catalog-v1.md) yhdessä.
-Niiden läpikäynti jatkuu käyttöliittymäkierroksen jälkeen; muiden dokumenttien
-käsittely jatkuu sillä välin.
+Toteuttajalle suunnattu issue tai handoff käydään läpi `/rethink-instructions`-
+skillillä ja sen ajantasaisuus tarkistetaan lähteistä. Päätös- ja design-tekstiin
+sopii `/rethink-document`. Lähteinä säilyvät alkuperäinen UI-päätös,
+nykyiset rajapinnat, agenttiohjauksen rajaus ja issueiden tulokset. Tämän
+kirjauksen yhteydessä kohteita ei vielä kirjoitettu uudelleen eikä draftia
+hyväksytty tai toteutettu.
 
-- Korjaa terminaalin siirtodialogi ja Pi-kysymysten vastausohjaimet vastaamaan
-  nykyistä agenttiohjauksen rajausta. Terminaalihistoriat ovat vain luettavia;
-  päättynyttä selainkeskustelua voi jatkaa. Saapuvat kysymykset ja muu sisältö
-  näytetään vähintään turvallisena tekstinä.
-- Erota sovittu käyttökokemus agentin lisäämistä tarkoista mekanismeista ja
-  lukurajoista. Selvitä niiden alkuperä päätöksistä ennen muuttamista;
-  toteutuksen yksityiskohta ei sellaisenaan ole tuotevaatimus.
-- Säilytä ulkoasun, saavutettavuuden ja komponenttien vastuiden perustelut.
-  Reitit, fokus, näppäimet ja komponenttisopimukset tarvitsevat edelleen omat
-  lähteensä; niitä ei kopioida takaisin UI-sivulle.
-
-Lähteiksi nykyinen [UI-sivu](../../docs/ui.md),
-[rajapintasivu](../../docs/interfaces.md), alkuperäinen
-[UI-päätös](../review-ui-v1/review.md), ADR 0002 sekä
-[agenttiohjauksen](../build-agent-control/item.md) ja
-[keskustelun UI:n](../complete-conversation-ui/item.md) nykyiset rajaukset.
-Tämä jatkamiskohta päivitettiin Jarin pyynnöstä; tuotantodesignin ja
-komponenttikatalogin kokonaisläpikäyntiä ei ole vielä tehty.
+Tilannesivu (`docs/status.md`) jää myöhemmäksi ehdokkaaksi tämän Jarin valitseman
+kokonaisuuden jälkeen. Se kuvaa yhä 24.9. tilaa, mukaan lukien vanhan
+Glasspad-esteen ja lopullisen MVP-katselmoinnin. Muut dokumentit jatkuvat tämän
+kokonaisuuden jälkeen Jarin kanssa valittavassa järjestyksessä.
 
 ## Rajapintasivun läpikäynti 2026-09-29
 
