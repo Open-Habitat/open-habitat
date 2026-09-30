@@ -54,10 +54,10 @@ Architecture is decided together with the user: which component has which
 authority, the security model and major dependencies. These come to the user as
 a recommendation with the reasoning, and the decision is recorded in an issue
 or ADR so it survives the conversation. Otherwise the user wants the work to
-proceed without them. Ready work in the DAG gets done.
+proceed without him or her. Ready work in the DAG gets done.
 
 A question is worth the user's attention when the outcomes differ in a way the
-user would care about and you cannot tell which they would choose.
+user would care about and you cannot tell which he or she would choose.
 
 ## Issues and documentation
 
