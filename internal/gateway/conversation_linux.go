@@ -433,7 +433,7 @@ func validatedConversationReply(kind string, b []byte, requestedID string) ([]by
 		required = []string{"schema_version", "state"}
 	case "status":
 		optional = []string{"queue"}
-		required = []string{"schema_version", "agent_id", "workspace_id", "state", "command_id", "ack", "event_cursor", "events", "event_loss", "native_history", "native_revision", "history_query"}
+		required = []string{"schema_version", "agent_id", "workspace_id", "state", "command_id", "ack", "event_cursor", "events", "event_loss", "native_history", "native_revision", "history_query", "continuation"}
 	default:
 		return nil, "", false
 	}
@@ -478,7 +478,7 @@ func validatedConversationReply(kind string, b []byte, requestedID string) ([]by
 		var lost bool
 		ack := str(m, "ack")
 		history := str(m, "native_history")
-		ok = id == requestedID && validAgent(str(m, "agent_id")) && validWS(str(m, "workspace_id")) && stateOK(str(m, "state")) && (str(m, "command_id") == "" || conversationUUID.MatchString(str(m, "command_id"))) && (ack == "" || ack == "pending" || ack == "accepted" || ack == "rejected" || ack == "uncertain") && json.Unmarshal(m["event_cursor"], &cursor) == nil && json.Unmarshal(m["event_loss"], &lost) == nil && json.Unmarshal(m["events"], &events) == nil && events != nil && len(events) <= 64 && (history == "missing" || history == "unavailable" || history == "readable") && str(m, "history_query") == "/api/v1/agents/pi:"+id+"/history" && len(str(m, "native_revision")) <= 256
+		ok = id == requestedID && validAgent(str(m, "agent_id")) && validWS(str(m, "workspace_id")) && stateOK(str(m, "state")) && (str(m, "command_id") == "" || conversationUUID.MatchString(str(m, "command_id"))) && (ack == "" || ack == "pending" || ack == "accepted" || ack == "rejected" || ack == "uncertain") && json.Unmarshal(m["event_cursor"], &cursor) == nil && json.Unmarshal(m["event_loss"], &lost) == nil && json.Unmarshal(m["events"], &events) == nil && events != nil && len(events) <= 64 && (history == "missing" || history == "unavailable" || history == "readable") && (str(m, "continuation") == "eligible" || str(m, "continuation") == "writer_present" || str(m, "continuation") == "read_only_history" || str(m, "continuation") == "unproven") && str(m, "history_query") == "/api/v1/agents/pi:"+id+"/history" && len(str(m, "native_revision")) <= 256
 		if raw, present := m["queue"]; present {
 			q, valid := strictObject(raw, []string{"revision", "steering", "follow_up"})
 			var rev uint64

@@ -339,8 +339,19 @@ try:
         route='/api/v1/conversations/'+handles[index][3:]
         code,_,body=request(op,route+'/continue',csrf=browser_csrf[index])
         check(code==409 and json.loads(body)['error']['code']=='writer_conflict','live child denies continuation')
+        code,_,body=request(op,route+'/status')
+        check(code==200 and json.loads(body)['continuation']=='writer_present','live child status refuses continuation')
         check(request(op,route+'/stop',csrf=browser_csrf[index])[0]==200,'stop Pi')
         wait(lambda: request(op,route+'/status')[0]==200 and json.loads(request(op,route+'/status')[2])['state']=='uncertain', 'Pi stopped', 15)
+        if index == 0:
+            native = next(p for p in pathlib.Path('/home/agent-a/.pi/agent/sessions').rglob('*.jsonl') if json.loads(p.read_bytes().splitlines()[0])['id']==handles[index][3:])
+            with native.open('ab') as f: f.write(b'{"type":\n')
+            check(json.loads(request(op,route+'/status')[2])['continuation']=='unproven','corrupt native history unproven')
+            code,_,body=request(op,route+'/continue',csrf=browser_csrf[index])
+            check(code==409 and json.loads(body)['error']['code']=='control_uncertain','corrupt history denies continuation')
+            with native.open('rb+') as f:
+                f.seek(-len(b'{"type":\n'),2); f.truncate()
+        wait(lambda: json.loads(request(op,route+'/status')[2])['continuation']=='eligible','reaped child eligible',15)
         code,_,body=request(op,route+'/continue',csrf=browser_csrf[index])
         check(code==200,'continue '+str(code)+' '+body[:120].decode(errors='replace'))
         command=f'aabbccdd-0000-4000-8000-{index+3:012d}'
@@ -360,6 +371,7 @@ try:
     wait(lambda: json.loads(request(browsers[1],route+'/status')[2])['state']=='uncertain','terminal fixture stopped',10)
     code,_,body=request(browsers[1],route+'/continue',csrf=browser_csrf[1])
     check(code==409 and json.loads(body)['error']['code']=='read_only_history','unmarked history denied')
+    check(json.loads(request(browsers[1],route+'/status')[2])['continuation']=='read_only_history','terminal history status read-only')
 
     check(request(browser()[0],'/api/v1/conversations')[0]==401,'anonymous deny')
     check(len(Model.calls)==4,'one native request per send, no retry')

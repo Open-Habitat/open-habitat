@@ -53,7 +53,7 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 		case conversationBase + "/" + id + "/send":
 			reply = `{"schema_version":1,"command_id":"` + cmd + `","state":"pending"}`
 		case conversationBase + "/" + id + "/status":
-			reply = `{"schema_version":1,"agent_id":"pi:` + id + `","workspace_id":"` + ws + `","state":"pending","command_id":"` + cmd + `","ack":"pending","event_cursor":0,"events":[],"event_loss":false,"native_history":"missing","native_revision":"","history_query":"/api/v1/agents/pi:` + id + `/history"}`
+			reply = `{"schema_version":1,"agent_id":"pi:` + id + `","workspace_id":"` + ws + `","state":"pending","command_id":"` + cmd + `","ack":"pending","event_cursor":0,"events":[],"event_loss":false,"continuation":"unproven","native_history":"missing","native_revision":"","history_query":"/api/v1/agents/pi:` + id + `/history"}`
 		case conversationBase + "/" + id + "/stream":
 			if r.Header.Get("Last-Event-ID") != "" {
 				body := `{"schema_version":1,"error":{"code":"cursor_expired","message":"Request could not be completed","retryable":false,"correlation_id":"req_00000000"}}`
@@ -65,7 +65,7 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 			}
 			w.Header().Set("Content-Type", "text/event-stream")
 			w.(http.Flusher).Flush()
-			_, _ = io.WriteString(w, "id: ev1:12345678-1234-4123-8123-123456789abc:1\nevent: status\ndata: {\"schema_version\":1,\"agent_id\":\"pi:"+id+"\",\"workspace_id\":\""+ws+"\",\"state\":\"idle\",\"command_id\":\"\",\"ack\":\"\",\"event_cursor\":0,\"events\":[],\"event_loss\":false,\"native_history\":\"missing\",\"native_revision\":\"\",\"history_query\":\"/api/v1/agents/pi:"+id+"/history\"}\n\n")
+			_, _ = io.WriteString(w, "id: ev1:12345678-1234-4123-8123-123456789abc:1\nevent: status\ndata: {\"schema_version\":1,\"agent_id\":\"pi:"+id+"\",\"workspace_id\":\""+ws+"\",\"state\":\"idle\",\"command_id\":\"\",\"ack\":\"\",\"event_cursor\":0,\"events\":[],\"event_loss\":false,\"continuation\":\"unproven\",\"native_history\":\"missing\",\"native_revision\":\"\",\"history_query\":\"/api/v1/agents/pi:"+id+"/history\"}\n\n")
 			return
 		case conversationBase + "/" + id + "/abort":
 			reply = `{"schema_version":1,"command_id":"` + cmd + `","state":"pending"}`
@@ -228,6 +228,20 @@ func TestStreamHeaderBudgetLeavesBodyReadable(t *testing.T) {
 
 func TestConversationReplyValidation(t *testing.T) {
 	id := "12345678-1234-4123-8123-123456789abc"
+	status := `{"schema_version":1,"agent_id":"pi:` + id + `","workspace_id":"ws_12345678","state":"uncertain","command_id":"","ack":"uncertain","event_cursor":0,"events":[],"event_loss":false,"native_history":"readable","native_revision":"rev","history_query":"/api/v1/agents/pi:` + id + `/history","continuation":"eligible"}`
+	for _, value := range []string{"eligible", "writer_present", "read_only_history", "unproven"} {
+		if _, _, ok := validatedConversationReply("status", []byte(strings.Replace(status, `"eligible"`, `"`+value+`"`, 1)), id); !ok {
+			t.Fatalf("rejected continuation %s", value)
+		}
+	}
+	for _, invalid := range []string{`"continuation":"unexpected"`, `"continuation":null`, `"continuation":17`, `"unknown":"eligible"`} {
+		if _, _, ok := validatedConversationReply("status", []byte(strings.Replace(status, `"continuation":"eligible"`, invalid, 1)), id); ok {
+			t.Fatalf("accepted invalid continuation %s", invalid)
+		}
+	}
+	if _, _, ok := validatedConversationReply("status", []byte(strings.Replace(status, `,"continuation":"eligible"`, "", 1)), id); ok {
+		t.Fatal("accepted status without continuation")
+	}
 	for _, raw := range []string{`{"schema_version":1,"agent_id":"pi:` + id + `","workspace_id":"ws_12345678","state":"idle","secret":"oops"}`, `{"schema_version":1,"agent_id":"pi:bad","workspace_id":"ws_12345678","state":"idle"}`, `{"schema_version":1,"sessions":[{"agent_id":"pi:bad","workspace_id":"ws_12345678","state":"idle"}]}`} {
 		kind := "create"
 		if strings.Contains(raw, "sessions") {

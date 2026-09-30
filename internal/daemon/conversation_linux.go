@@ -346,6 +346,80 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": body.WorkspaceID, "state": "idle"})
 }
 
+// continuationProof is the single admission proof used by status and continue.
+// The returned owner fence stays held through admission, or is released by the
+// status caller. The probe does no work past a failed non-blocking lock check.
+func (c *ConversationController) continuationProof(id string) (*piOwnership, browserOrigin, *os.File, string, string, *conversation, string) {
+	var zero browserOrigin
+	c.mu.Lock()
+	old := c.sessions[id]
+	if c.closed || c.runtime == nil {
+		c.mu.Unlock()
+		return nil, zero, nil, "", "", old, "unproven"
+	}
+	if old != nil {
+		select {
+		case <-old.rpc.exited:
+			// Reaped is positive evidence; release our copy of the child's lock.
+			_ = old.owner.release()
+		default:
+			c.mu.Unlock()
+			return nil, zero, nil, "", "", old, "writer_present"
+		}
+	}
+	owner, err := acquirePiOwnership(c.home, id)
+	c.mu.Unlock()
+	if err != nil {
+		return nil, zero, nil, "", "", old, "writer_present"
+	}
+	fail := func(kind string) (*piOwnership, browserOrigin, *os.File, string, string, *conversation, string) {
+		_ = owner.release()
+		return nil, zero, nil, "", "", old, kind
+	}
+	origin, err := owner.browserOrigin()
+	if err != nil {
+		return fail("read_only_history")
+	}
+	if old != nil && (old.workspace != origin.Workspace || old.cwd != origin.Cwd) {
+		return fail("unproven")
+	}
+	device := &PiDevice{Home: c.home, Node: c.runtime.Node, Entry: c.runtime.Entry, Manifest: c.runtime.Manifest, TrustedRuntime: !c.fixture, SharedSelector: !c.fixture, FixtureHome: c.fixture}
+	if device.validate() != nil {
+		return fail("unproven")
+	}
+	ws, cwd, err := c.workspaceFD(origin.Workspace)
+	if err != nil || cwd != origin.Cwd {
+		if ws != nil {
+			_ = ws.Close()
+		}
+		return fail("unproven")
+	}
+	histories, err := nativeSessions(c.nativeCfg())
+	if err != nil {
+		_ = ws.Close()
+		return fail("unproven")
+	}
+	path := ""
+	for _, h := range histories {
+		if h.id == id {
+			if path != "" || h.cwd != cwd || h.state != "readable" {
+				_ = ws.Close()
+				return fail("unproven")
+			}
+			path = h.path
+		}
+	}
+	if path == "" {
+		_ = ws.Close()
+		return fail("unproven")
+	}
+	if _, err := reconciledNativeHistory(path, c.cfg.UID, id, cwd); err != nil {
+		_ = ws.Close()
+		return fail("unproven")
+	}
+	return owner, origin, ws, cwd, path, old, "eligible"
+}
+
 // continueEnded is explicit. A browser lease at the gateway and the lock's
 // origin marker are both required; a terminal history alone cannot grant control.
 func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Request, id string) {
@@ -353,31 +427,16 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
-	c.mu.Lock()
-	if c.closed || c.runtime == nil {
-		c.mu.Unlock()
-		snapshotError(w, 503, "native_source_unavailable")
-		return
-	}
-	old := c.sessions[id]
-	if old != nil {
-		select {
-		case <-old.rpc.exited:
-			// The watcher releases its FD after acquiring c.mu; release it here
-			// too so an already-reaped child cannot appear to be a live writer.
-			_ = old.owner.release()
-		default:
-			c.mu.Unlock()
+	owner, origin, ws, cwd, path, old, eligibility := c.continuationProof(id)
+	if eligibility != "eligible" {
+		switch eligibility {
+		case "writer_present":
 			snapshotError(w, 409, "writer_conflict")
-			return
+		case "read_only_history":
+			snapshotError(w, 409, "read_only_history")
+		default:
+			snapshotError(w, 409, "control_uncertain")
 		}
-	}
-	// Acquire the fence before dropping c.mu. Parallel continuation attempts
-	// cannot both pass, even when the native history scan is slow.
-	owner, err := acquirePiOwnership(c.home, id)
-	c.mu.Unlock()
-	if err != nil {
-		snapshotError(w, 409, "writer_conflict")
 		return
 	}
 	defer func() {
@@ -385,52 +444,7 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 			_ = owner.release()
 		}
 	}()
-	device := &PiDevice{Home: c.home, Node: c.runtime.Node, Entry: c.runtime.Entry, Manifest: c.runtime.Manifest, TrustedRuntime: !c.fixture, SharedSelector: !c.fixture, FixtureHome: c.fixture}
-	if device.validate() != nil {
-		snapshotError(w, 503, "native_source_unavailable")
-		return
-	}
-	origin, err := owner.browserOrigin()
-	if err != nil {
-		snapshotError(w, 409, "read_only_history")
-		return
-	}
-	if old != nil && (old.workspace != origin.Workspace || old.cwd != origin.Cwd) {
-		snapshotError(w, 409, "control_uncertain")
-		return
-	}
-	ws, cwd, err := c.workspaceFD(origin.Workspace)
-	if err != nil || cwd != origin.Cwd {
-		if ws != nil {
-			_ = ws.Close()
-		}
-		snapshotError(w, 409, "control_uncertain")
-		return
-	}
 	defer ws.Close()
-	histories, err := nativeSessions(c.nativeCfg())
-	if err != nil {
-		snapshotError(w, 503, "native_source_unavailable")
-		return
-	}
-	path := ""
-	for _, h := range histories {
-		if h.id == id {
-			if path != "" || h.cwd != cwd || h.state != "readable" {
-				snapshotError(w, 409, "control_uncertain")
-				return
-			}
-			path = h.path
-		}
-	}
-	if path == "" {
-		snapshotError(w, 409, "control_uncertain")
-		return
-	}
-	if _, err := reconciledNativeHistory(path, c.cfg.UID, id, cwd); err != nil {
-		snapshotError(w, 409, "control_uncertain")
-		return
-	}
 	c.mu.Lock()
 	// Another create or continuation may have run while history was read.
 	// The owner fence still excludes another native writer for this ID.
@@ -673,7 +687,21 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 			}
 		}
 	}
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "command_id": command, "ack": ack, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}})
+	owner, _, ws, _, _, _, continuation := c.continuationProof(id)
+	if ws != nil {
+		_ = ws.Close()
+	}
+	if owner != nil {
+		_ = owner.release()
+	}
+	// A concurrent continuation can change the handle while the probe runs.
+	// Never advertise eligibility for a superseded handle.
+	c.mu.Lock()
+	if c.closed || c.sessions[id] != s {
+		continuation = "unproven"
+	}
+	c.mu.Unlock()
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "continuation": continuation, "command_id": command, "ack": ack, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}})
 }
 
 // clearQueue returns only Pi's correlated clear_queue response. No local queue
