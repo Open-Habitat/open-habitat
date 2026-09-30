@@ -24,7 +24,7 @@ import (
 // This private gateway protocol deliberately does not add a browser v1 contract.
 // The lease table is fail-closed on gateway restart: an orphan cannot be claimed
 // by another browser session. Native histories remain accessible read-only.
-var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|abort|status|stream|stop|continue))?$`)
+var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|abort|status|receipt|stream|stop|continue))?$`)
 var conversationStreamCursor = regexp.MustCompile(`^ev1:[0-9a-fA-F-]{36}:[0-9]{1,20}$`)
 var conversationUUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 var conversationWorkspace = regexp.MustCompile(`^ws_[A-Za-z0-9_-]{8,64}$`)
@@ -38,7 +38,7 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	if events {
 		match = []string{path, "", "events"}
 	}
-	if match == nil || path != r.URL.Path || (!events && r.URL.RawQuery != "") || (!events && r.RequestURI != path) || (!events && !a.exact(r, path)) || (events && (!a.exact(r, path, "after") || r.Method != "GET" || !conversationStreamCursor.MatchString(r.URL.Query().Get("after")))) || (r.ProtoMajor != 1 || r.ProtoMinor != 1) && r.ProtoMajor != 2 || len(r.TransferEncoding) != 0 || (r.Method != "GET" && r.Method != "POST") || (match[1] != "" && ((match[2] == "status" || match[2] == "stream") != (r.Method == "GET"))) {
+	if match == nil || path != r.URL.Path || (!events && match != nil && match[2] != "receipt" && r.URL.RawQuery != "") || (!events && r.RequestURI != r.URL.RequestURI()) || (!events && !(match != nil && match[2] == "receipt" && a.exact(r, path, "command_id") && conversationUUID.MatchString(r.URL.Query().Get("command_id")) || match != nil && match[2] != "receipt" && a.exact(r, path))) || (events && (!a.exact(r, path, "after") || r.Method != "GET" || !conversationStreamCursor.MatchString(r.URL.Query().Get("after")))) || (r.ProtoMajor != 1 || r.ProtoMinor != 1) && r.ProtoMajor != 2 || len(r.TransferEncoding) != 0 || (r.Method != "GET" && r.Method != "POST") || (match[1] != "" && ((match[2] == "status" || match[2] == "receipt" || match[2] == "stream") != (r.Method == "GET"))) {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -151,7 +151,7 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	stop := context.AfterFunc(r.Context(), func() { _ = conn.SetDeadline(time.Now()) })
 	defer stop()
 	req, err := http.NewRequestWithContext(r.Context(), r.Method, "http://unix"+func() string {
-		if events {
+		if events || kind == "receipt" {
 			return path + "?" + r.URL.RawQuery
 		}
 		return path
@@ -239,6 +239,11 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 		var reply map[string]json.RawMessage
 		_ = json.Unmarshal(clean, &reply)
 		ok = str(reply, "command_id") == input["command_id"]
+	}
+	if ok && kind == "receipt" {
+		var reply map[string]json.RawMessage
+		_ = json.Unmarshal(clean, &reply)
+		ok = str(reply, "command_id") == r.URL.Query().Get("command_id")
 	}
 	if !ok {
 		failure()
@@ -429,10 +434,12 @@ func validatedConversationReply(kind string, b []byte, requestedID string) ([]by
 		required = []string{"schema_version", "command_id", "state"}
 	case "clear_queue":
 		required = []string{"schema_version", "command_id", "state", "removed_queue"}
+	case "receipt":
+		required = []string{"schema_version", "command_id", "state"}
 	case "stop":
 		required = []string{"schema_version", "state"}
 	case "status":
-		optional = []string{"queue"}
+		optional = []string{"queue", "send_receipt", "turn_settled", "pending_question"}
 		required = []string{"schema_version", "agent_id", "workspace_id", "state", "command_id", "ack", "event_cursor", "events", "event_loss", "native_history", "native_revision", "history_query", "continuation"}
 	default:
 		return nil, "", false
@@ -470,6 +477,8 @@ func validatedConversationReply(kind string, b []byte, requestedID string) ([]by
 				ok = false
 			}
 		}
+	case "receipt":
+		ok = conversationUUID.MatchString(str(m, "command_id")) && (str(m, "state") == "pending" || str(m, "state") == "accepted" || str(m, "state") == "rejected" || str(m, "state") == "uncertain")
 	case "stop":
 		ok = str(m, "state") == "termination_unknown"
 	case "status":
@@ -479,6 +488,22 @@ func validatedConversationReply(kind string, b []byte, requestedID string) ([]by
 		ack := str(m, "ack")
 		history := str(m, "native_history")
 		ok = id == requestedID && validAgent(str(m, "agent_id")) && validWS(str(m, "workspace_id")) && stateOK(str(m, "state")) && (str(m, "command_id") == "" || conversationUUID.MatchString(str(m, "command_id"))) && (ack == "" || ack == "pending" || ack == "accepted" || ack == "rejected" || ack == "uncertain") && json.Unmarshal(m["event_cursor"], &cursor) == nil && json.Unmarshal(m["event_loss"], &lost) == nil && json.Unmarshal(m["events"], &events) == nil && events != nil && len(events) <= 64 && (history == "missing" || history == "unavailable" || history == "readable") && (str(m, "continuation") == "eligible" || str(m, "continuation") == "writer_present" || str(m, "continuation") == "read_only_history" || str(m, "continuation") == "unproven") && str(m, "history_query") == "/api/v1/agents/pi:"+id+"/history" && len(str(m, "native_revision")) <= 256
+		if raw, present := m["send_receipt"]; present {
+			v := str(m, "send_receipt")
+			if string(raw) == "null" || json.Unmarshal(raw, &v) != nil || v != "" && v != "pending" && v != "accepted" && v != "rejected" && v != "uncertain" {
+				ok = false
+			}
+		}
+		if raw, present := m["turn_settled"]; present && string(raw) != "null" {
+			if !validSettlement(raw) {
+				ok = false
+			}
+		}
+		if raw, present := m["pending_question"]; present && string(raw) != "null" {
+			if !validQuestion(raw) {
+				ok = false
+			}
+		}
 		if raw, present := m["queue"]; present {
 			q, valid := strictObject(raw, []string{"revision", "steering", "follow_up"})
 			var rev uint64
@@ -505,6 +530,32 @@ func validatedConversationReply(kind string, b []byte, requestedID string) ([]by
 	}
 	clean, err := json.Marshal(m)
 	return clean, id, err == nil
+}
+
+func validSettlement(raw []byte) bool {
+	m, ok := strictObject(raw, []string{"state", "observed_at", "native_key"})
+	return ok && (str(m, "state") == "succeeded" || str(m, "state") == "unknown") && validEventTime(str(m, "observed_at")) && len(str(m, "native_key")) <= 128 && (str(m, "state") != "succeeded" || str(m, "native_key") != "")
+}
+func validQuestion(raw []byte) bool {
+	m, ok := strictObject(raw, []string{"request_id", "question_kind", "prompt", "choices"})
+	if !ok || len(str(m, "request_id")) < 1 || len(str(m, "request_id")) > 200 || len(str(m, "prompt")) < 1 || len(str(m, "prompt")) > 1000 {
+		return false
+	}
+	switch str(m, "question_kind") {
+	case "input", "confirm", "select", "unknown":
+	default:
+		return false
+	}
+	var options []string
+	if json.Unmarshal(m["choices"], &options) != nil || options == nil || len(options) > 100 {
+		return false
+	}
+	for _, o := range options {
+		if len(o) > 500 {
+			return false
+		}
+	}
+	return true
 }
 
 // streamHeaderReader budgets response headers without capping the following

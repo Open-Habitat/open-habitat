@@ -16,6 +16,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/maintainer/native-agent-host/internal/core"
 	"github.com/maintainer/native-agent-host/internal/transport"
@@ -67,7 +68,10 @@ type conversation struct {
 	streamSeq                    uint64
 	lost                         bool
 	aborting                     bool
-	publishedHistory             map[string]bool // bounded to this native session; JSONL is authoritative
+	receipts                     map[string]string // bounded to spent send IDs; no durable acceptance claim
+	settlement                   map[string]string // observed_at, native_key, state; nil means unknown
+	question                     map[string]any    // bounded plain-text pending UI request
+	publishedHistory             map[string]bool   // bounded to this native session; JSONL is authoritative
 }
 
 func newConversationController(ctx context.Context, cfg transport.Config, runtime *core.PiRuntimeConfig, trusted func(*http.Request) bool, status func(context.Context) string) *ConversationController {
@@ -111,6 +115,9 @@ func (c *ConversationController) shutdown() {
 		}
 		if s.ack == "pending" {
 			s.ack = "uncertain"
+		}
+		if s.receipts != nil && s.receipts[s.command] == "pending" {
+			c.receipt(s, s.command, "uncertain")
 		}
 		list = append(list, s)
 	}
@@ -190,7 +197,7 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		snapshotError(w, 428, "pi_onboarding_required")
 		return
 	}
-	if r.URL.RawQuery != "" || r.URL.EscapedPath() != r.URL.Path || r.RequestURI != r.URL.Path {
+	if (r.URL.RawQuery != "" && !(r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/receipt") && len(r.URL.Query()) == 1 && len(r.URL.Query()["command_id"]) == 1 && sessionIDPattern.MatchString(r.URL.Query().Get("command_id")))) || r.URL.EscapedPath() != r.URL.Path || r.RequestURI != r.URL.RequestURI() {
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
@@ -211,6 +218,8 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	switch {
+	case r.Method == http.MethodGet && parts[1] == "receipt":
+		c.readReceipt(w, r, parts[0])
 	case r.Method == http.MethodGet && parts[1] == "status":
 		c.observe(w, r, parts[0])
 	case r.Method == http.MethodGet && parts[1] == "stream":
@@ -519,6 +528,7 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 
 	if old != nil {
 		s.commands = old.commands
+		s.receipts = old.receipts
 		s.command = old.command
 	}
 	c.sessions[id] = s
@@ -542,6 +552,9 @@ func (c *ConversationController) watch(s *conversation) {
 	s.state = "uncertain"
 	if s.ack == "pending" {
 		s.ack = "uncertain"
+	}
+	if s.receipts != nil && s.receipts[s.command] == "pending" {
+		c.receipt(s, s.command, "uncertain")
 	}
 	if c.sessions[s.id] == s && c.journal != nil {
 		c.journal.reset("pi:"+s.id, "unknown")
@@ -650,6 +663,49 @@ func (c *ConversationController) drain(s *conversation) {
 				s.rpc.overflow.Store(true)
 			}
 		}
+		if frame.Type == "extension_ui_request" {
+			var q struct {
+				ID      string   `json:"id"`
+				Method  string   `json:"method"`
+				Title   string   `json:"title"`
+				Message string   `json:"message"`
+				Options []string `json:"options"`
+			}
+			if json.Unmarshal(raw, &q) == nil && len(q.ID) > 0 && len(q.ID) <= 200 && utf8.ValidString(q.ID) {
+				kind := q.Method
+				if kind != "input" && kind != "confirm" && kind != "select" {
+					kind = "unknown"
+				}
+				prompt := q.Title
+				if prompt == "" {
+					prompt = q.Message
+				}
+				if len(prompt) > 1000 {
+					prompt = string([]rune(prompt)[:min(len([]rune(prompt)), 250)])
+				}
+				if prompt == "" {
+					prompt = "Pi requested user input (" + kind + ")"
+				}
+				if len(q.Options) > 100 {
+					q.Options = q.Options[:100]
+				}
+				options := make([]string, 0, len(q.Options))
+				for _, option := range q.Options {
+					if len(option) <= 500 && utf8.ValidString(option) {
+						options = append(options, option)
+					}
+				}
+				if utf8.ValidString(prompt) && len(prompt) <= 1000 {
+					s.question = map[string]any{"request_id": q.ID, "question_kind": kind, "prompt": prompt, "choices": options}
+					if c.journal != nil {
+						c.journal.appendEvent("question.requested", "pi:"+s.id, s.question)
+					}
+				}
+			}
+		}
+		if frame.Type == "extension_ui_response" {
+			s.question = nil
+		}
 		settled := frame.Type == "agent_settled"
 		if settled {
 			s.settled = true
@@ -662,8 +718,18 @@ func (c *ConversationController) drain(s *conversation) {
 		}
 		c.mu.Unlock()
 		if settled {
-			c.publishNativeHistory(s)
+			key := c.publishNativeHistory(s)
 			c.mu.Lock()
+			if c.sessions[s.id] == s && !c.closed {
+				state := "unknown"
+				if key != "" {
+					state = "succeeded"
+				}
+				s.settlement = map[string]string{"state": state, "observed_at": time.Now().UTC().Format(time.RFC3339Nano), "native_key": key}
+				if c.journal != nil {
+					c.journal.appendEvent("turn.settled", "pi:"+s.id, s.settlement)
+				}
+			}
 			if c.sessions[s.id] == s && !c.closed && c.journal != nil {
 				c.journal.activity("pi:"+s.id, "idle")
 			}
@@ -675,6 +741,9 @@ func (c *ConversationController) drain(s *conversation) {
 		s.state = "uncertain"
 		if s.ack == "pending" {
 			s.ack = "uncertain"
+		}
+		if s.receipts != nil && s.receipts[s.command] == "pending" {
+			c.receipt(s, s.command, "uncertain")
 		}
 		if c.journal != nil {
 			c.journal.reset("pi:"+s.id, "unknown")
@@ -701,13 +770,13 @@ func existingHistoryKeys(path string, uid int, id, cwd string) (map[string]bool,
 // Pi's settlement notification carries no persistent entry identity. Read the
 // mapped UID's checked JSONL instead; never turn an RPC message into history.
 // A failed/unstable read invalidates the view rather than claiming settlement.
-func (c *ConversationController) publishNativeHistory(s *conversation) {
+func (c *ConversationController) publishNativeHistory(s *conversation) string {
 	sessions, err := nativeSessions(c.nativeCfg())
 	if err != nil {
 		if c.journal != nil {
 			c.journal.appendInvalidation("pi:" + s.id)
 		}
-		return
+		return ""
 	}
 	for _, header := range sessions {
 		if header.id != s.id || header.cwd != s.cwd || header.state != "readable" {
@@ -720,7 +789,7 @@ func (c *ConversationController) publishNativeHistory(s *conversation) {
 		c.mu.Lock()
 		if c.sessions[s.id] != s || c.closed {
 			c.mu.Unlock()
-			return
+			return ""
 		}
 		if s.publishedHistory == nil {
 			s.publishedHistory = make(map[string]bool)
@@ -734,26 +803,44 @@ func (c *ConversationController) publishNativeHistory(s *conversation) {
 			fresh = append(fresh, entry)
 		}
 		c.mu.Unlock()
+		lastKey := ""
 		for _, entry := range fresh {
+			if entry.Kind == "assistant" {
+				lastKey = entry.Key
+			}
 			inline(&native, &entry)
 			// Continuation can replace a reaped handle while native reads
 			// complete. Never publish a superseded controller's tail.
 			c.mu.Lock()
 			if c.sessions[s.id] != s || c.closed {
 				c.mu.Unlock()
-				return
+				return ""
 			}
 			if c.journal != nil {
 				c.journal.nativeEntry("pi:"+s.id, entry)
 			}
 			c.mu.Unlock()
 		}
-		return
+		return lastKey
 	}
 	if c.journal != nil {
 		c.journal.appendInvalidation("pi:" + s.id)
 	}
+	return ""
 }
+
+// receipt records the Pi RPC acknowledgement, never completion of the turn.
+// Caller holds c.mu. A missing entry after restart is unknown, never accepted.
+func (c *ConversationController) receipt(s *conversation, id, outcome string) {
+	if s.receipts == nil {
+		s.receipts = make(map[string]string)
+	}
+	s.receipts[id] = outcome
+	if c.journal != nil {
+		c.journal.appendEvent("command.changed", "pi:"+s.id, map[string]string{"client_command_id": id, "acceptance": outcome, "execution": "unknown"})
+	}
+}
+
 func (c *ConversationController) lookup(w http.ResponseWriter, id string) *conversation {
 	c.mu.Lock()
 	s := c.sessions[id]
@@ -793,6 +880,12 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 	s.commands[body.CommandID] = true
 	if kind == "send" {
 		s.settled = false
+		s.settlement = nil
+		s.question = nil
+		if s.receipts == nil {
+			s.receipts = make(map[string]string)
+		}
+		c.receipt(s, body.CommandID, "pending")
 	}
 	s.command = body.CommandID
 	c.mu.Unlock()
@@ -828,8 +921,29 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 				s.state = "idle"
 			}
 		}
+		if kind == "send" {
+			c.receipt(s, body.CommandID, s.ack)
+		}
 	}()
 	historyJSON(w, map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": "pending"})
+}
+func (c *ConversationController) readReceipt(w http.ResponseWriter, r *http.Request, id string) {
+	if r.ContentLength != 0 || len(r.TransferEncoding) != 0 {
+		snapshotError(w, 400, "invalid_request")
+		return
+	}
+	c.mu.Lock()
+	s := c.sessions[id]
+	result := ""
+	if s != nil {
+		result = s.receipts[r.URL.Query().Get("command_id")]
+	}
+	c.mu.Unlock()
+	if result == "" {
+		snapshotError(w, 404, "resource_not_found")
+		return
+	}
+	historyJSON(w, map[string]any{"schema_version": 1, "command_id": r.URL.Query().Get("command_id"), "state": result})
 }
 func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request, id string) {
 	if r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
@@ -842,6 +956,12 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 	}
 	c.mu.Lock()
 	state, command, ack, cursor, lost := s.state, s.command, s.ack, s.cursor, s.lost
+	settlement := s.settlement
+	question := s.question
+	receipt := ""
+	if s.receipts != nil {
+		receipt = s.receipts[s.command]
+	}
 	queueSteering, queueFollowUp, queueRevision := append([]string{}, s.queueSteering...), append([]string{}, s.queueFollowUp...), s.queueRevision
 	events := append([]json.RawMessage{}, s.events...)
 	cwd := s.cwd
@@ -852,6 +972,10 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 		if s.ack == "pending" {
 			s.ack = "uncertain"
 			ack = "uncertain"
+		}
+		if receipt == "pending" {
+			c.receipt(s, s.command, "uncertain")
+			receipt = "uncertain"
 		}
 	}
 	c.mu.Unlock()
@@ -898,7 +1022,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 		continuation = "unproven"
 	}
 	c.mu.Unlock()
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "continuation": continuation, "command_id": command, "ack": ack, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}})
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}})
 }
 
 // clearQueue returns only Pi's correlated clear_queue response. No local queue

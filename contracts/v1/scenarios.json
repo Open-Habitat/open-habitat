@@ -64,7 +64,9 @@
       "ordering",
       "daemon-owned Pi queue.changed replay",
       "daemon-owned Pi native history.entry replay",
-      "assistant.delta and tool progress followed by persistent history"
+      "assistant.delta and tool progress followed by persistent history",
+      "Pi agent_settled native key and host timestamp",
+      "safe extension UI question"
     ],
     "given": [
       "client last applied sequence 42"
@@ -78,7 +80,9 @@
       "an out-of-order sequence greater than one marks writes disabled and starts resnapshot",
       "queue.changed carries the agent resource, a revision, and steering/follow_up; it is not a command receipt",
       "history.entry is published only from a readable Pi JSONL entry, carries its persistent native_key, and repeating the native observation does not publish the same key twice",
-      "bounded coalesced assistant.delta and tool progress use daemon event IDs; the persisted assistant entry supersedes the turn tail rather than appending a duplicate"
+      "bounded coalesced assistant.delta and tool progress use daemon event IDs; the persisted assistant entry supersedes the turn tail rather than appending a duplicate",
+      "turn.settled is observed only after Pi agent_settled, correlated to an assistant native JSONL key or marked unknown if unavailable, with a host observation timestamp",
+      "extension_ui_request delivers bounded plain-text question ID, kind and choices even for unknown methods; no raw HTML is forwarded"
     ]
   },
   {
@@ -138,7 +142,8 @@
     "id": "CT-008",
     "covers": [
       "uncertain command",
-      "retry policy"
+      "retry policy",
+      "send RPC receipt lookup and replay"
     ],
     "given": [
       "the connection ends before acceptance response"
@@ -150,7 +155,8 @@
       "a matching retained result reconciles it",
       "absence never proves non-delivery after ledger epoch change or eviction",
       "there is no automatic resend",
-      "a deliberate resend uses a new ID and explicit confirmation"
+      "a deliberate resend uses a new ID and explicit confirmation",
+      "a pending send has a per-command lookup and command.changed acceptance event; accepted is only a correlated Pi RPC acknowledgement; after loss, uncertainty is not retried"
     ]
   },
   {

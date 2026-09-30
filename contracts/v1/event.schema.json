@@ -392,12 +392,20 @@
                 "enum": [
                   "succeeded",
                   "failed",
-                  "interrupted"
+                  "interrupted",
+                  "unknown"
                 ]
               },
               "error_code": {
                 "type": "string",
                 "pattern": "^[a-z][a-z0-9_]{2,63}$"
+              },
+              "observed_at": {
+                "$ref": "common.schema.json#/$defs/timestamp"
+              },
+              "native_key": {
+                "type": "string",
+                "maxLength": 128
               }
             }
           }
@@ -426,7 +434,8 @@
                 "enum": [
                   "accepted",
                   "rejected",
-                  "uncertain"
+                  "uncertain",
+                  "pending"
                 ]
               },
               "execution": {
@@ -442,6 +451,10 @@
               "error_code": {
                 "type": "string",
                 "pattern": "^[a-z][a-z0-9_]{2,63}$"
+              },
+              "client_command_id": {
+                "type": "string",
+                "format": "uuid"
               }
             }
           }
@@ -571,7 +584,8 @@
           "enum": [
             "input",
             "confirm",
-            "select"
+            "select",
+            "unknown"
           ]
         },
         "prompt": {

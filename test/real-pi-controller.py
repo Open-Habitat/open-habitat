@@ -317,7 +317,7 @@ try:
             check(code==200,'status '+str(code))
             view=json.loads(body)
             last.update(view)
-            return view['command_id']==command and view['ack']=='accepted' and view['native_history']=='readable' and any(e.get('type')=='agent_settled' for e in view['events'])
+            return view['command_id']==command and view['send_receipt']=='accepted' and view['turn_settled'] is not None and view['turn_settled']['state']=='succeeded' and view['native_history']=='readable'
         try: wait(settled,'Pi status/settlement '+name,20)
         except RuntimeError:
             print('settlement diagnostic',name,{k:last.get(k) for k in ('state','ack','command_id','native_history')},'provider calls',len(Model.calls),file=sys.stderr)
@@ -326,6 +326,9 @@ try:
         code,_,native_page=request(op,last['history_query']+'?limit=200')
         check(code==200,'native page before SSE')
         native_keys={entry['entry_key'] for entry in json.loads(native_page)['entries']}
+        check(last['turn_settled']['native_key'] in native_keys and last['turn_settled']['observed_at'].endswith('Z'),'settled correlates with native history and host time')
+        code,_,receipt=request(op,route+'/receipt?command_id='+command)
+        check(code==200 and json.loads(receipt).get('state')=='accepted','accepted Pi RPC receipt lookup '+str(code)+' '+receipt[:200].decode(errors='replace'))
         # Read the bounded combined stream through the real gateway, then
         # reconnect from the original cursor. Queue and mid-turn tails are
         # still outside this fixture's coverage.
@@ -336,11 +339,13 @@ try:
             check(event_id.startswith('id: ev1:'),'event cursor')
             kind=stream.readline().decode().strip()
             body=stream.readline().decode().strip()
-            check(kind=='event: snapshot.invalidated' and body.startswith('data: '),'structured event frame')
+            check(kind.startswith('event: ') and body.startswith('data: '),'structured event frame')
             event=json.loads(body[6:]); check(event['cursor']==event_id[4:] and event['kind']=='snapshot.invalidated','event data')
             check(stream.readline()==b'\n','first SSE frame separator')
             persisted=[]
             deltas=[]
+            settled_events=[]
+            receipts=[]
             for _ in range(127):
                 frame_id=stream.readline().decode().strip()
                 frame_kind=stream.readline().decode().strip()
@@ -348,11 +353,15 @@ try:
                 check(frame_id.startswith('id: ') and frame_body.startswith('data: '),'bounded event frame')
                 frame=json.loads(frame_body[6:])
                 if frame_kind=='event: assistant.delta': deltas.append(frame)
+                if frame_kind=='event: turn.settled': settled_events.append(frame)
+                if frame_kind=='event: command.changed': receipts.append(frame)
                 if frame_kind=='event: history.entry':
                     check(frame['native_key'] in native_keys and frame['payload']['entry_key']==frame['native_key'],'persistent JSONL key')
                     persisted.append(frame)
-                    if frame['payload']['entry_kind']=='assistant': break
+                    # Keep reading through turn.settled after native history publication.
                 check(stream.readline()==b'\n','SSE frame separator')
+                if settled_events and persisted and deltas and any(r['payload']['acceptance']=='accepted' and r['payload']['client_command_id']==command for r in receipts): break
+            check(settled_events and settled_events[-1]['payload']['native_key']==last['turn_settled']['native_key'],'turn settled event correlation')
             check(deltas and any(x['payload']['entry_kind']=='assistant' for x in persisted),'delta and persisted assistant SSE')
         if index==1:
             mid_url=ORIGIN+'/api/v1/events?after='+urllib.parse.quote(mid_cursor)

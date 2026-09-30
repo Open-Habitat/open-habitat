@@ -166,6 +166,9 @@ func validCombinedPayload(kind string, resource map[string]string, nativeKey str
 		"tool.started":         {"tool_call_id", "tool_name", "state"},
 		"tool.updated":         {"tool_call_id", "tool_name", "state"},
 		"tool.finished":        {"tool_call_id", "tool_name", "state"},
+		"turn.settled":         {"state", "observed_at", "native_key"},
+		"command.changed":      {"client_command_id", "acceptance", "execution"},
+		"question.requested":   {"request_id", "question_kind", "prompt", "choices"},
 	}
 	keys, ok := allowed[kind]
 	if !ok || len(fields) != len(keys) {
@@ -178,6 +181,22 @@ func validCombinedPayload(kind string, resource map[string]string, nativeKey str
 	}
 	if kind != "history.entry" && nativeKey != "" {
 		return false
+	}
+	if kind == "turn.settled" || kind == "question.requested" || kind == "command.changed" {
+		if resource["agent_id"] == "" {
+			return false
+		}
+		if kind == "turn.settled" {
+			return validSettlement(raw)
+		}
+		if kind == "question.requested" {
+			return validQuestion(raw)
+		}
+		var id, acceptance, execution string
+		if json.Unmarshal(fields["client_command_id"], &id) != nil || !conversationUUID.MatchString(id) || json.Unmarshal(fields["acceptance"], &acceptance) != nil || json.Unmarshal(fields["execution"], &execution) != nil {
+			return false
+		}
+		return (acceptance == "pending" || acceptance == "accepted" || acceptance == "rejected" || acceptance == "uncertain") && execution == "unknown"
 	}
 	if kind == "assistant.delta" {
 		if resource["agent_id"] == "" {

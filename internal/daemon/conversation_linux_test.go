@@ -677,3 +677,59 @@ func TestConversationContinuationProofAndStatus(t *testing.T) {
 	}
 	restartProof("unproven")
 }
+
+func TestConversationReceiptAndUnknownQuestion(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("requires nonroot")
+	}
+	home := t.TempDir()
+	script := filepath.Join(home, "pi")
+	code := `#!/usr/bin/env python3
+import json,sys,time
+for line in sys.stdin:
+ r=json.loads(line)
+ print(json.dumps(dict(type="response",id=r["id"],command=r["type"],success=True)),flush=True)
+ print(json.dumps(dict(type="extension_ui_request",id="req_1",method="custom_dialog",title="Choose <plain text>",options=["one","two"])),flush=True)
+ print(json.dumps(dict(type="message_end",message={"role":"assistant"})),flush=True)
+ time.sleep(.05)
+ print(json.dumps(dict(type="agent_settled")),flush=True)
+`
+	if err := os.WriteFile(script, []byte(code), 0700); err != nil {
+		t.Fatal(err)
+	}
+	p, err := launchPiRPC(script, home, home, "", []string{"PATH=/usr/bin:/bin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.close()
+	id := ownershipTestID
+	s := &conversation{id: id, rpc: p, state: "idle", commands: map[string]bool{}, events: []json.RawMessage{}}
+	c := &ConversationController{sessions: map[string]*conversation{id: s}, journal: newEventJournal()}
+	go c.drain(s)
+	body := fmt.Sprintf(`{"message":"hello","command_id":%q}`, id)
+	req := httptest.NewRequest("POST", "http://unix/send", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	c.send(httptest.NewRecorder(), req, id)
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		c.mu.Lock()
+		done := s.settlement != nil && s.receipts[id] == "accepted" && s.question != nil
+		c.mu.Unlock()
+		if done {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	c.mu.Lock()
+	if s.receipts[id] != "accepted" || s.question == nil || s.question["question_kind"] != "unknown" || s.question["prompt"] != "Choose <plain text>" || s.settlement["state"] != "unknown" {
+		t.Errorf("receipt %v question %v settlement %v", s.receipts, s.question, s.settlement)
+	}
+	c.mu.Unlock()
+	lookup := httptest.NewRecorder()
+	c.readReceipt(lookup, httptest.NewRequest("GET", "http://unix/receipt?command_id="+id, nil), id)
+	if lookup.Code != 200 || !strings.Contains(lookup.Body.String(), `"accepted"`) {
+		t.Fatalf("lookup %d %s", lookup.Code, lookup.Body.String())
+	}
+	_, _, _, views := c.journal.turnView()
+	_ = views
+}

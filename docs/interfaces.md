@@ -248,6 +248,29 @@ kuin Pi työskentelee. Jos selainyhteys katkeaa, Pi jatkaa työtään. Yhteyden
 palattua selain hakee katkon aikana syntyneet tapahtumat. Jos niitä ei enää
 ole saatavilla, selain hakee uuden tilannekuvan ja keskustelun Pi:n historiasta.
 
+Toteutettu yksityinen ohjainreitti käyttää toistaiseksi
+`POST /api/v1/conversations/{id}/send`-pyynnön `command_id`-tunnusta ja
+`GET /api/v1/conversations/{id}/receipt?command_id=<uuid>`-hakua varsinaisen
+`/api/v1/commands`-sopimuksen sijaan. Vastaanottokuittaus on
+`pending | accepted | rejected | uncertain`; `accepted` edellyttää Pi:n
+korreloitua RPC-vastausta, ei valmistunutta vuoroa. Myös status sisältää
+viimeisen lähetyksen `send_receipt`-arvon. Kuittaukset ja
+`command.changed`-eventit ovat vain daemonin muistin mittaisia: uudelleenkäynnistyksen
+jälkeen puuttuvaa kuittausta ei tulkita hylkäykseksi eikä viestiä lähetetä
+automaattisesti uudelleen. Gateway rajaa haun kirjautuneen selaimen omaan
+keskustelukahvaan.
+
+Pi:n `agent_settled` on vuoron päättymishavainto, ei `message_end`.
+Statuskenttä `turn_settled` ja `turn.settled`-eventti sisältävät daemonin
+havaintoajan ja viimeksi tällä vuorolla julkaistun, tarkistetusta JSONL:stä
+luetun assistant-avaimen (`native_key`). Jos avainta ei voi todentaa,
+`state: unknown` ja tyhjä avain ilmoittavat rajan, eikä UI saa näyttää
+vahvistettua valmistumista. `pending_question` ja `question.requested`
+välittävät Pi:n extension UI -pyynnön rajatun ID:n, metodin (tuntematon on
+`unknown`), otsikon/viestin ja valinnat *tekstinä*, ei HTML:nä.
+Vastaus- ja perumisdialogi eivät kuulu tähän reittiin; käyttäjä voi lähettää
+tavallisen viestin. Selain saa esittää tekstin vain tekstisolmuna, ei HTML:nä.
+
 Viestin lähetys ja etenemisen seuraaminen ovat eri asioita. Jos lähetyksen
 kuittaus katoaa, selain selvittää viestin tilanteen palvelimelta. Jos tilanne
 jää epäselväksi, käyttäjä näkee sen epävarmana. Automaattinen uudelleenlähetys

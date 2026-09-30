@@ -608,3 +608,44 @@ external write needs a fresh history read. The issue stays **in-progress** for
 the rendered browser journey.
 
 Independent **critical** final-diff review followed the first committed-tree clean gate (`993b86b`, `status:passed`, `clean:true`, `/var/tmp/nah-agent-live-clean-gate.log`): Claude Fable 5.1 finder and GPT-6 Astra adversarial verifier. Three source-confirmed defects were corrected: snapshot text flush caused a false native invalidation; child exit/continuation could retain a stale or overflowed tail; content-free tool updates could evict all per-user replay. The fourth candidate, lock-held tail copying, did not establish a realistic stall. Review `history/review-agent-live-final.md` and assessment in ignored local scratch. The corrected distinct-UID synthetic-provider fixture passed (`/var/tmp/nah-live-fixture-reviewed.log`), as did focused Go race tests. No additional authority or store. The final clean gate receipt will be reported at handoff after committing the correction.
+
+## Turn settlement, RPC send receipt and safe incoming question (taskfleet 01m3t3jyvsa3e9w2p5w24jbgf0)
+
+The server now exposes a validated private conversation status with `turn_settled`
+(`state`, `observed_at`, `native_key`), `send_receipt` for the latest send, and
+`pending_question` (ID, kind, prompt and plain-text choices). Combined SSE emits
+`turn.settled`, `command.changed` and `question.requested` in the existing
+per-UID bounded journal. Settlement is observed from Pi's `agent_settled`, not
+assistant `message_end`. It follows the checked native history publication;
+without a new assistant JSONL key it says `unknown` rather than claiming a
+completed turn. Its timestamp is the host's observation after that history
+check, not a Pi-generated timestamp. The private authenticated
+`GET /api/v1/conversations/{id}/receipt?command_id=<uuid>` reads any retained
+send outcome. This intentionally extends the existing controller instead of
+implementing the wider `/api/v1/commands` protocol: only sends are tracked;
+other command types retain their existing acknowledgements. The receipt map
+shares the 4096 spent-ID bound and survives in-process continuation but not a
+daemon restart; missing receipts after restart are uncertain to the browser,
+not rejected. No automatic retry. Gateway admission and every SSE frame retain
+session/broker and mapped UID checks, and the new payloads are allowlisted.
+
+### Browser request for night:ui
+
+Read `turn_settled.state === "succeeded"` only with its `native_key` and
+`observed_at` to label a completed turn; `unknown` means no proven per-entry
+boundary. Use the matching `command_id`'s receipt lookup for a lost send reply
+before deciding what to show; a missing lookup or a daemon restart is
+uncertain and must **never** cause automatic resend. `accepted` is RPC
+acceptance, not completion. Treat `pending_question.prompt` and `choices` as
+text nodes only, never `innerHTML`; `unknown` method is deliberately visible.
+Respond by ordinary message; Pi-specific dialog answer/cancel is not supported.
+On a gap/409/invalidation keep the existing snapshot and native history
+fallback. No browser code was changed here.
+
+The pinned real-Pi 0.85.1 synthetic-provider fixture exercises acceptance,
+receipt lookup, settlement timestamp and native key and their SSE events
+through two mapped UIDs; it cannot emit a Pi extension UI request with the
+provider alone. A fake Pi RPC unit fixture emits an unknown UI request and an
+intermediate assistant `message_end` before `agent_settled`, exercising the
+safe-text and unknown-history path. This is not a rendered browser, live host,
+real provider, or dialog-answer proof. The issue remains **in-progress**.

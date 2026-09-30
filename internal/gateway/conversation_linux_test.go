@@ -52,6 +52,8 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 			}
 		case conversationBase + "/" + id + "/send":
 			reply = `{"schema_version":1,"command_id":"` + cmd + `","state":"pending"}`
+		case conversationBase + "/" + id + "/receipt":
+			reply = `{"schema_version":1,"command_id":"` + cmd + `","state":"accepted"}`
 		case conversationBase + "/" + id + "/status":
 			reply = `{"schema_version":1,"agent_id":"pi:` + id + `","workspace_id":"` + ws + `","state":"pending","command_id":"` + cmd + `","ack":"pending","event_cursor":0,"events":[],"event_loss":false,"continuation":"unproven","native_history":"missing","native_revision":"","history_query":"/api/v1/agents/pi:` + id + `/history"}`
 		case conversationBase + "/" + id + "/stream":
@@ -141,6 +143,12 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 	}
 	if w := send("GET", conversationBase+"/"+id+"/status", first, "", ""); w.Code != 200 {
 		t.Fatalf("status %d %s", w.Code, w.Body.String())
+	}
+	if w := send("GET", conversationBase+"/"+id+"/receipt?command_id="+cmd, second, "", ""); w.Code != 404 {
+		t.Fatalf("foreign receipt %d", w.Code)
+	}
+	if w := send("GET", conversationBase+"/"+id+"/receipt?command_id="+cmd, first, "", ""); w.Code != 200 || !strings.Contains(w.Body.String(), `"accepted"`) {
+		t.Fatalf("receipt %d %s", w.Code, w.Body.String())
 	}
 	if w := send("GET", conversationBase+"/"+id+"/stream", second, "", ""); w.Code != 404 {
 		t.Fatalf("foreign stream %d", w.Code)
@@ -232,6 +240,24 @@ func TestConversationReplyValidation(t *testing.T) {
 	for _, value := range []string{"eligible", "writer_present", "read_only_history", "unproven"} {
 		if _, _, ok := validatedConversationReply("status", []byte(strings.Replace(status, `"eligible"`, `"`+value+`"`, 1)), id); !ok {
 			t.Fatalf("rejected continuation %s", value)
+		}
+	}
+	enriched := strings.Replace(status, `"continuation":"eligible"`, `"continuation":"eligible","send_receipt":"accepted","turn_settled":{"state":"succeeded","observed_at":"2026-09-30T19:00:00Z","native_key":"key1"},"pending_question":{"request_id":"q1","question_kind":"unknown","prompt":"<b>text</b>","choices":[]}`, 1)
+	if _, _, ok := validatedConversationReply("status", []byte(enriched), id); !ok {
+		t.Fatal("valid control status rejected")
+	}
+	for _, bad := range []string{`"send_receipt":null`, `"send_receipt":"bogus"`, `"native_key":""`, `"html":"<script>"`} {
+		modified := enriched
+		switch bad {
+		case `"send_receipt":null`, `"send_receipt":"bogus"`:
+			modified = strings.Replace(modified, `"send_receipt":"accepted"`, bad, 1)
+		case `"native_key":""`:
+			modified = strings.Replace(modified, `"native_key":"key1"`, bad, 1)
+		default:
+			modified = strings.Replace(modified, `"choices":[]`, `"choices":[],`+bad, 1)
+		}
+		if _, _, ok := validatedConversationReply("status", []byte(modified), id); ok {
+			t.Fatalf("accepted %s", bad)
 		}
 	}
 	for _, invalid := range []string{`"continuation":"unexpected"`, `"continuation":null`, `"continuation":17`, `"unknown":"eligible"`} {
