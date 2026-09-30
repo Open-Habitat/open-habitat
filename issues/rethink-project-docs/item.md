@@ -121,6 +121,20 @@ rajat käsitellään ennen tiliasetuksia, jotta eri toiminnot eivät sekoitu.
    Tarkista yhteys nykyiseen agenttiohjaukseen ja ehkäise päällekkäinen työ.
    Uusien toteutusissueiden linkit lisätään tähän, kun ne ovat olemassa.
 
+### Ensimmäinen lukukierros tehty 30.9.2026
+
+Kohta 1 on tehty: [selain-designin ensiluku](../review-browser-design-v2/first-read.md)
+kokoaa neljän vedoksen sisällön, päätöslähteet, ristiriidat ja suositukset.
+Omega Habitat ja etunimi/sähköposti ovat jo sovittuja; avatar, mobiilin
+toteutuslaajuus, OpenAI-asetukset ja repohaun kuukausisuodin vaativat vielä
+sovituksen. Epävarman kloonauksen piilottaminen ja aina loppuun vierittäminen
+poikkeavat nykyisistä päätöksistä. Puhelin-onboarding on toimituksessa,
+vaikka handoff sanoo sen puuttuvan.
+
+**Seuraavaksi kohta 2: prove-jit-guest-isolation.** Designin avoimet kysymykset
+kulkevat mukana kohdissa 4–8; komponenttikarttaa tai toteutusjakoa ei ole vielä
+tehty. Tämä on agentin lähteisiin perustuva ensiluku, ei Jarin uusi hyväksyntä.
+
 ### Aineiston ja skillin valinta
 
 Uusi v2-toimitus on jo repossa. Erillisiä juuri tätä toimitusta jalkauttavia

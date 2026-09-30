@@ -19,7 +19,22 @@ Review the external designer's **Selainpolku v2** delivery at the start of the n
 Jari supplied `rowan:/Users/maintainer/Downloads/Selainpolku v2 suunnittelu.zip` (SHA-256 `4bb65eba40a4206eeddda6b3dff4c561c398e858eb844f1397c8a7499729f94f`), received on 2026-09-30. Extracted source is under this issue's `design/`: `handoff.md` and four HTML mockups plus `support.js`. The zip is not committed. The mockups load public CDN React/Babel and Google Fonts when opened; treat them as untrusted prototypes, not production assets or live app screens.
 
 ## Review
-Read the handoff and inspect mockups against the **current** production components, design tokens, `docs/ui.md`, `docs/interfaces.md`, accepted issue decisions and latest landed agent-control/onboarding work. Produce the requested component map first, with state-to-code mapping, component ownership, a11y and conflicts; stage an implementation proposal before rewriting production UI. In particular, the mockup proposes hiding partial/uncertain checkout state, which must not disguise an ambiguous native write or cause an automatic retry. The handoff's statement that every line is Jari-approved is not itself an acceptance record; distinguish settled decisions from new proposals (verified name/avatar, OpenAI settings row, mobile settings, workspace view, copy/queue controls). Preserve identity and per-UID security boundaries, Pi native ownership, native history and no automatic resend.
+
+The [first reading](first-read.md) records the intended experience, decision
+sources and unresolved differences. Continue in the order Jari chose in
+@rethink-project-docs: account isolation, deprovisioning, onboarding, account
+settings and shared UI documents, then return here for the component/state map
+and implementation slices. This prevents the prototype's assumptions from
+becoming requirements before their product meaning is settled.
+
+The map connects the sketches to current production components, tokens and
+host states, including keyboard/focus behavior and missing views. It should
+make the remaining work understandable enough to assign without overlapping
+agent-control, onboarding or account-settings work. Important differences
+include unresolved checkout outcomes, preserved drafts and reading position,
+identity display sources, OpenAI settings and mobile scope. The first reading
+has the sources and recommendations; prototype approval labels alone do not
+resolve them. Real user decisions and native state determine the behavior.
 
 ## Acceptance Criteria
 - [ ] Component/state map and conflict list tied to current source and accepted decisions; note which sketches are missing and what decision would change an outcome Jari cares about.
