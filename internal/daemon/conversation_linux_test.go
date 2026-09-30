@@ -567,6 +567,57 @@ func TestConversationContinuationProofAndStatus(t *testing.T) {
 	check("writer_present") // live child, despite uncertain RPC and readable JSONL
 	close(exited)           // direct child reaped; status releases the controller's lock
 	check("eligible")
+	// A second status must wait for this daemon's temporary probe instead
+	// of reporting a foreign writer while no Pi process is running.
+	originalDiscover := c.discover
+	entered, unblock := make(chan struct{}), make(chan struct{})
+	c.discover = func(cfg transport.Config) Discovery {
+		close(entered)
+		<-unblock
+		return originalDiscover(cfg)
+	}
+	first := make(chan string, 1)
+	go func() { first <- status() }()
+	select {
+	case <-entered:
+	case <-time.After(time.Second):
+		t.Fatal("first probe did not enter discovery")
+	}
+	c.discover = originalDiscover
+	second := make(chan string, 1)
+	go func() { second <- status() }()
+	close(unblock)
+	if got := <-first; got != "eligible" {
+		t.Fatalf("first probe: %s", got)
+	}
+	if got := <-second; got != "eligible" {
+		t.Fatalf("overlapping probe: %s", got)
+	}
+	permit, ok := c.proofPermit(context.Background())
+	if !ok {
+		t.Fatal("could not hold local proof gate")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if release, ok := c.proofPermit(ctx); ok {
+		release()
+		t.Fatal("canceled proof wait entered")
+	}
+	permit()
+	// Native source failures retain 503 on admission, but status never
+	// exports that internal reason as a fifth continuation value.
+	runtime := c.runtime
+	c.runtime = nil
+	checkStatusOnly := status()
+	if checkStatusOnly != "unproven" {
+		t.Fatalf("missing runtime: %s", checkStatusOnly)
+	}
+	w := httptest.NewRecorder()
+	c.continueEnded(w, httptest.NewRequest("POST", "http://unix/continue", nil), id)
+	if w.Code != 503 {
+		t.Fatalf("missing runtime admission: %d %s", w.Code, w.Body.String())
+	}
+	c.runtime = runtime
 	// The status probe never reserves a writer lock beyond its own request.
 	other, err := acquirePiOwnership(home, id)
 	if err != nil {

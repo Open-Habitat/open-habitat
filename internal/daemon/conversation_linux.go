@@ -40,6 +40,9 @@ type ConversationController struct {
 	fixture  bool   // untrusted synthetic runtime: never set in production
 	instance string // ephemeral provisional stream cursor scope
 	journal  *eventJournal
+	// A short-lived per-daemon gate prevents status probes from presenting each
+	// other's temporary flock as an external writer. Never hold mu across I/O.
+	proofGate chan struct{}
 }
 
 // A continued native session retains spent browser IDs within this daemon
@@ -346,6 +349,28 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": body.WorkspaceID, "state": "idle"})
 }
 
+// proofPermit serializes temporary probes and continuation admission, including
+// the period after proof returns while the caller still owns its fence. Waiting
+// is bounded; saturation yields unproven/unavailable, never a false writer.
+func (c *ConversationController) proofPermit(ctx context.Context) (func(), bool) {
+	c.mu.Lock()
+	if c.proofGate == nil {
+		c.proofGate = make(chan struct{}, 1)
+	}
+	gate := c.proofGate
+	c.mu.Unlock()
+	timer := time.NewTimer(2 * time.Second)
+	defer timer.Stop()
+	select {
+	case gate <- struct{}{}:
+		return func() { <-gate }, true
+	case <-ctx.Done():
+		return nil, false
+	case <-timer.C:
+		return nil, false
+	}
+}
+
 // continuationProof is the single admission proof used by status and continue.
 // The returned owner fence stays held through admission, or is released by the
 // status caller. The probe does no work past a failed non-blocking lock check.
@@ -355,7 +380,7 @@ func (c *ConversationController) continuationProof(id string) (*piOwnership, bro
 	old := c.sessions[id]
 	if c.closed || c.runtime == nil {
 		c.mu.Unlock()
-		return nil, zero, nil, "", "", old, "unproven"
+		return nil, zero, nil, "", "", old, "source_unavailable"
 	}
 	if old != nil {
 		select {
@@ -385,7 +410,7 @@ func (c *ConversationController) continuationProof(id string) (*piOwnership, bro
 	}
 	device := &PiDevice{Home: c.home, Node: c.runtime.Node, Entry: c.runtime.Entry, Manifest: c.runtime.Manifest, TrustedRuntime: !c.fixture, SharedSelector: !c.fixture, FixtureHome: c.fixture}
 	if device.validate() != nil {
-		return fail("unproven")
+		return fail("source_unavailable")
 	}
 	ws, cwd, err := c.workspaceFD(origin.Workspace)
 	if err != nil || cwd != origin.Cwd {
@@ -397,7 +422,7 @@ func (c *ConversationController) continuationProof(id string) (*piOwnership, bro
 	histories, err := nativeSessions(c.nativeCfg())
 	if err != nil {
 		_ = ws.Close()
-		return fail("unproven")
+		return fail("source_unavailable")
 	}
 	path := ""
 	for _, h := range histories {
@@ -427,6 +452,12 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
+	releasePermit, ok := c.proofPermit(r.Context())
+	if !ok {
+		snapshotError(w, 503, "native_source_unavailable")
+		return
+	}
+	defer releasePermit()
 	owner, origin, ws, cwd, path, old, eligibility := c.continuationProof(id)
 	if eligibility != "eligible" {
 		switch eligibility {
@@ -434,6 +465,8 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 			snapshotError(w, 409, "writer_conflict")
 		case "read_only_history":
 			snapshotError(w, 409, "read_only_history")
+		case "source_unavailable":
+			snapshotError(w, 503, "native_source_unavailable")
 		default:
 			snapshotError(w, 409, "control_uncertain")
 		}
@@ -687,12 +720,21 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 			}
 		}
 	}
-	owner, _, ws, _, _, _, continuation := c.continuationProof(id)
-	if ws != nil {
-		_ = ws.Close()
-	}
-	if owner != nil {
-		_ = owner.release()
+	continuation := "unproven"
+	if releasePermit, ok := c.proofPermit(r.Context()); ok {
+		func() {
+			defer releasePermit()
+			owner, _, ws, _, _, _, proof := c.continuationProof(id)
+			if ws != nil {
+				_ = ws.Close()
+			}
+			if owner != nil {
+				_ = owner.release()
+			}
+			if proof != "source_unavailable" {
+				continuation = proof
+			}
+		}()
 	}
 	// A concurrent continuation can change the handle while the probe runs.
 	// Never advertise eligibility for a superseded handle.
