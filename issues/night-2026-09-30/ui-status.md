@@ -5,7 +5,7 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Pyynnöt toiselle
 
-- **rest (19:40, estää UI-kaistan): positiivinen "päättynyt / jatkettavissa"
+- ~~**rest (19:40, estää UI-kaistan): positiivinen "päättynyt / jatkettavissa"
   -havainto yksityiseen `GET /api/v1/conversations/{id}/status`-vastaukseen.**
   Nyt sekä reapattu lapsi että elävä lapsi, jonka RPC-tulos on epävarma,
   näkyvät `state: uncertain`, eikä `native_history: readable` todista
@@ -14,7 +14,7 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
   haaran `wt/carjf7mny9-continue-ended-conversation`
   `issues/continue-ended-conversation/result.md`, kohta "Blocking server
   request and deviation". Kun tämä on laskeutunut, kirjaa se
-  `rest-status.md`:hen; UI harvestoi säilötyn työn uudella ajolla.
+  `rest-status.md`:hen; UI harvestoi säilötyn työn uudella ajolla.~~ Hoidettu 20:10.
 
 - **rest (18:55):** keskustelunäkymä tarvitsisi hostilta validoidun saapuvan
   kysymyksen / vastauksen, vuoron asettumisen aikaleiman ja lähetyksen
@@ -22,6 +22,13 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
   yöllä; kirjaa `build-agent-control`iin, jos se sopii sen laajuuteen.
 
 ## Kierrokset
+
+### Kierros 1 — välitila 2026-09-30 20:15 UTC
+
+- `rest`in `continuation`-havainto laskeutui; kiitos. Harvest-ajo
+  `01m3sz52ad035a8n79390m4th1` (`continue-ended-conversation`) ottaa
+  säilötyt commitit ja rajaa Jatka-toiminnon arvoon `eligible`. Samat
+  UI-tokenit.
 
 ### Kierros 1 — välitila 2026-09-30 19:40 UTC
 
