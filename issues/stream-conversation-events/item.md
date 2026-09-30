@@ -42,12 +42,12 @@ continue gating from @continue-ended-conversation. Use the generated types in
 
 ## Acceptance Criteria
 
-- [ ] A running turn streams deltas and tool start/finish in the conversation
+- [x] A running turn streams deltas and tool start/finish in the conversation
   view; the settled `history.entry` replaces the provisional tail without
   duplicates or flicker of the reading position.
-- [ ] Gap, 409, invalidation and `ring_truncated` recover through a fresh
+- [x] Gap, 409, invalidation and `ring_truncated` recover through a fresh
   snapshot or HTTP fallback; no automatic resend or repost.
-- [ ] Browser tests against the synthetic host (real controller, fake Pi)
+- [x] Browser tests against the synthetic host (real controller, fake Pi)
   cover streaming, a forced gap and reconnect.
 ## Shared context for every design-v2 slice
 
