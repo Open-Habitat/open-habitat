@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-21
+updated: 2026-09-30
 type: task
 status: open
 priority: normal
@@ -13,55 +13,74 @@ collision: [docs/, AGENTS.md, design-system/]
 
 # Verify reconnect and two-user separation for v1
 
-## Goal
+Make the delivered desktop experience reliable enough for real use, with evidence
+of recovery and user isolation that guides focused fixes and the next feature.
+This work produces evidence and fixes, not a final MVP acceptance checkpoint.
 
-Make the working prototype reliable enough to evaluate with real users and decide its first follow-up.
+## Behavior to establish
 
-## Context
+Browser or gateway loss leaves the daemon-owned Pi process running. Reconnection
+recovers through SSE replay or a fresh snapshot without duplicate messages.
+A send interrupted before acknowledgement remains uncertain until reconciled;
+it is not automatically resent.
 
-Follow the current Unix-native architecture and the bounded UI v1 brief.
+Daemon failure has different guarantees: an active turn need not survive.
+Recovery reconciles native history and process evidence before allowing another
+writer, including uncertainty about detached tools. Stale observations and missing
+native sources produce visible, recoverable states rather than invented success.
 
-Sources: [architecture](../../docs/architecture.md),
-[design package](../native-agent-host-architecture/ui-design-package.md),
-[conversation v1](../native-agent-host-architecture/ui-design-conversation.md).
-Detailed plans and results for this task belong in this issue directory.
+Two distinct Linux accounts remain separate across routing, native access,
+snapshots and events, including attempts to reach the other user's resources.
+Independent SSH, tmux and native Pi use remains possible. Terminal histories are
+read-only in the browser; opening one neither takes over the terminal nor starts
+another writer.
 
-## Scope
+Exercise the delivered workspace, GitHub, worktree and archive flows through
+partial failures and recovery. Verify package update and rollback, including
+preservation of native data, where the environment can establish those claims.
+Measure realistic long-history and streaming workloads and adjust useful limits
+from the results.
 
-Keep native histories, component configuration and subprocess ownership with their
-native components. Use the agreed HTTP/SSE path. Do not add a workspace registry,
+## Approach and boundaries
+
+Use the current [architecture](../../docs/architecture.md),
+[implementation map](../plan-v1-implementation/implementation-briefs.md),
+[contract scenarios](../../contracts/v1/scenarios.json) and feature results to
+select integration checks. [TESTING.md](../../TESTING.md) describes executable
+checks and what their evidence proves. The
+[delivery plan](../plan-v1-implementation/plan.md) records the historical direction;
+[production design](../../design-system/production-v1.md) is the current design.
+The [design package](../native-agent-host-architecture/ui-design-package.md) and
+[conversation brief](../native-agent-host-architecture/ui-design-conversation.md)
+provide earlier design context.
+
+Native components retain their histories, configuration and subprocess ownership.
+Recovery follows the agreed HTTP/SSE contracts, including the separate onboarding
+clone cancellation behavior. Verification does not introduce a workspace registry,
 parallel history store, credential broker, internal tenant model or speculative cache.
 
-## Acceptance Criteria
+Use two synthetic Unix users and disposable native data for automated isolation
+tests. Browser fixtures using one UID cannot establish Linux account separation.
+Live participants sign in themselves; technical verification does not depend on
+a second person's participation. Live checks follow Fleetrepo's current
+`infra/native-agent-host-test/` documentation (including `RELEASE-UPGRADE.md`
+for updates and switch-back) and the pilot procedure from @prepare-mvp-operations.
 
-- [ ] Browser loss does not stop the agent; reconnect resumes events or fetches a fresh snapshot without duplicate messages.
-- [ ] A send interrupted before acknowledgement remains uncertain until reconciled; it is not automatically resent.
-- [ ] Daemon restart, stale observations and missing native sources produce honest recoverable UI states.
-- [ ] Test two distinct Linux accounts and negative cross-user routing/access cases with an agreed test setup.
-- [ ] Verify independent SSH/tmux/native Pi use and read-only terminal histories; do not require browser takeover or simultaneous writers to one conversation.
-- [ ] Walk through desktop v1 with Jari and record remaining defects and the observed need for the next feature.
+## Results and follow-up
 
-## Implementation and evidence
+Save plans and evidence in this issue directory, with `result.md` identifying the
+tested revision, commands, outcomes and remaining limits. Distinguish synthetic
+evidence from live-host evidence and leave untested behavior explicit.
 
-Use the [delivery plan](../plan-v1-implementation/plan.md), accepted implementation
-briefs and exact checks verified by @build-app-foundation. Save `result.md` here with
-the tested revision, commands, outcomes and remaining limits. Update the affected
-durable documents and component examples; do not duplicate task state in TODO.md.
+Carry findings through focused fixes and review. Update affected durable
+documentation and component examples; issuectl owns task state.
 
-Exercise delivered workspace/GitHub/worktree/archive flows, partial failures,
-daemon restart, native history recovery and independent SSH/tmux/Pi use. Use two
-synthetic Unix users for automated isolation tests. Live participants choose to
-sign in themselves; a second person's participation is not a prerequisite for
-technical verification. Follow Fleetrepo's current test-installation procedure
-for live checks and record their limits separately from synthetic evidence.
-Report findings for focused fixes and review as they arise.
+Walk through desktop v1 with Jari and record remaining defects and the observed
+need for the next feature. Pending feedback remains pending without blocking
+technical verification or independent work.
 
-## Bounded planning handoff
+## Decisions
 
-Use the current [contract scenarios](../../contracts/v1/scenarios.json) and
-feature results to select integration tests. Exercise browser/SSE/gateway/daemon
-failure and package update/rollback where the environment can prove them.
-Check cross-user denial, preserved native data and absence of silent duplicate
-sends. Measure realistic long-history and streaming workloads; adjust useful
-limits instead of building machinery to meet arbitrary numbers. This work
-produces evidence and fixes, not a final MVP acceptance checkpoint.
+### 2026-09-30T17:57:09Z · @claude
+
+Rethink-night 30.9.: rethink-instructions / gpt-6-astra tiivisti toteuttajalle osoitetun issuen tavoitteiksi, rajoiksi ja näytöksi. Ilman Jaria valitsin säilyttää kaksikäyttäjäeristyksen, epävarman lähetyksen ja natiivin omistajuuden rajat sekä Jarin työpöytäkatselmoinnin palautteena, ei teknisen todentamisen porttina; synteettiset eri UID:t eivät korvaudu yhden UID:n selainfixtuureilla. fact-check-instructions / claude-opus-5-5 tarkisti lähteet: tarkensin live-ohjeen kattamaan Fleetrepon asennusdokumentaation ja @prepare-mvp-operations-pilottiohjeen pelkän release-runbookin sijasta, nimesin production-v1.md:n nykyiseksi designiksi ja vanhat briefit taustaksi sekä päivitin muokkauspäivän. Jarin kirjattuihin päätöksiin ei löytynyt ristiriitaa. Live-kahden käyttäjän näytön saatavuus ja uuden Fleetrepo-operaattorin hyväksyntä jäävät erikseen todennettaviksi; niitä ei tulkittu tässä hyväksytyiksi.
