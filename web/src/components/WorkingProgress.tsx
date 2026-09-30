@@ -21,6 +21,29 @@ export function progressLabel(events: unknown[]): string {
   return "Odottaa Pi:n seuraavaa vaihetta";
 }
 
+// Pi 0.85.1 AgentSessionEvent (pi-agent-core AgentEvent) and RPC response
+// frames: these are turn lifecycle, queue or metadata, not new user-facing
+// messages. Message and tool content is read from native history instead.
+// Do not wildcard by prefix: extensions and future event types still need a
+// safe visible fallback, including questions not yet persisted in history.
+const representedFrames = new Set([
+  "agent_start",
+  "agent_end",
+  "agent_settled",
+  "turn_start",
+  "turn_end",
+  "message_start",
+  "message_update",
+  "message_end",
+  "tool_execution_start",
+  "tool_execution_update",
+  "tool_execution_end",
+  "queue_update",
+  "response", // Normally separated by the daemon RPC reader.
+  "session_info_changed",
+  "thinking_level_changed",
+]);
+
 // Live Pi events are not a substitute for native history, but a pending
 // question may not have been persisted there yet. Keep unsupported events
 // visible as inert text rather than silently discarding them.
@@ -34,13 +57,7 @@ export function UnpresentedEvents({ events }: { events: unknown[] }) {
         const record = event as Record<string, unknown>;
         if (
           typeof record.type !== "string" ||
-          [
-            "agent_start",
-            "agent_end",
-            "message_end",
-            "tool_execution_start",
-            "tool_execution_end",
-          ].includes(record.type)
+          representedFrames.has(record.type)
         )
           return null;
         const text = JSON.stringify(event);

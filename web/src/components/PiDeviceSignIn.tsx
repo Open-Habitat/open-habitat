@@ -17,6 +17,7 @@ export interface PiDeviceSignInProps {
   onCancel?: () => void;
   onRetry?: () => void;
   onRefresh?: () => void;
+  onBack?: () => void;
 }
 
 // Match the native Pi adapter's verified device page, not an arbitrary URL or
@@ -71,6 +72,7 @@ export function PiDeviceSignIn({
   onCancel,
   onRetry,
   onRefresh,
+  onBack,
 }: PiDeviceSignInProps) {
   // The feedback is associated with the code, so a replaced attempt never shows stale copy success.
   const [copy, setCopy] = useState<{ code: string; message: string }>();
@@ -204,6 +206,13 @@ export function PiDeviceSignIn({
             label="Aloita uusi yritys"
             variant="secondary"
             onPress={onRetry}
+          />
+        ) : null}
+        {onBack ? (
+          <Button
+            label="Takaisin valitsemaan GitHub-repoja"
+            variant="secondary"
+            onPress={onBack}
           />
         ) : null}
       </div>

@@ -208,6 +208,7 @@ export function PiOnboarding({
       <PiDeviceSignIn
         view={view}
         checking={checking}
+        onBack={onBack}
         onCancel={
           bound.current &&
           (view.phase === "ready" ||
@@ -235,13 +236,6 @@ export function PiOnboarding({
             : undefined
         }
       />
-      {onBack ? (
-        <Button
-          label="Takaisin valitsemaan GitHub-repoja"
-          variant="secondary"
-          onPress={onBack}
-        />
-      ) : null}
       <div className="ah-onboarding-exit">
         <Button
           label="Keskeytä käyttöönotto ja kirjaudu ulos"

@@ -21,6 +21,37 @@ describe("working progress", () => {
     expect(document.querySelector("img")).toBeNull();
     expect(screen.getByText(/Jatketaanko/)).toBeTruthy();
   });
+  it("consumes repeated Pi lifecycle/control frames without hiding future content", () => {
+    const turn = [
+      "agent_start",
+      "turn_start",
+      "message_start",
+      "message_update",
+      "tool_execution_start",
+      "tool_execution_update",
+      "tool_execution_end",
+      "message_end",
+      "turn_end",
+      "agent_end",
+      "agent_settled",
+      "queue_update",
+      "session_info_changed",
+      "thinking_level_changed",
+      "response",
+    ].map((type) => ({ type, payload: "private control payload" }));
+    render(
+      <UnpresentedEvents
+        events={[
+          ...Array.from({ length: 12 }, () => turn).flat(),
+          { type: "future_event", payload: "<img src=x onerror=alert(1)>" },
+        ]}
+      />,
+    );
+    expect(screen.getAllByText("Muu Pi:n viesti")).toHaveLength(1);
+    expect(screen.queryByText(/private control payload/)).toBeNull();
+    expect(screen.getByText(/future_event/)).toBeTruthy();
+    expect(document.querySelector("img")).toBeNull();
+  });
   it("shows allowlisted work without exposing host arguments or unknown payload", () => {
     expect(
       progressLabel([

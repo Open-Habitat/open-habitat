@@ -41,14 +41,24 @@ test("@first-use abort is a danger action on both onboarding steps; first choose
     const start = page.getByRole("button", { name: "Aloita kirjautuminen" });
     await expect(start).toHaveClass(/ah-button-primary/);
     await expect(start).toBeVisible();
+    const card = page.getByRole("region", { name: "ChatGPT-kirjautuminen" });
+    const back = card.getByRole("button", {
+      name: "Takaisin valitsemaan GitHub-repoja",
+    });
+    await expect(back).toHaveClass(/ah-button-secondary/);
     const startBox = await start.boundingBox();
+    const backBox = await back.boundingBox();
     const abortBox = await page
       .getByRole("button", {
         name: "Keskeytä käyttöönotto ja kirjaudu ulos",
       })
       .boundingBox();
     expect(
-      startBox && abortBox && abortBox.y > startBox.y + startBox.height,
+      startBox &&
+        backBox &&
+        abortBox &&
+        backBox.y >= startBox.y &&
+        abortBox.y > backBox.y + backBox.height,
     ).toBe(true);
   } finally {
     await page.request.get("/fixture/pi-state?value=missing");
