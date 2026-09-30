@@ -34,6 +34,7 @@ ehdokas ajan tasalla, ei rakenneta erillistä katselmointiprosessia.
 | [Todennettava näyttö](../../docs/assumptions.md) | Alkuperäisten kokeiden havainnot ja rajat sekä GitHub-käytön ja keskusteluun palaamisen puuttuva kokonaisnäyttö. Sovitut ratkaisut ja testien vastuut linkitetty omiin lähteisiinsä. UI-sivun terminaalisiirto korjattu samaan rajaan. | `75d4fa5` |
 | [Käyttökulut](../../docs/ui.md) | Käyttäjän kulku ja sovittu keskustelukokemus. Nykytila erotettu tavoitteesta, vanhat dialogiohjaimet ja katselmointiportit poistettu; protokolla- ja komponenttidetaljit linkitetty omiin lähteisiin. | `925bdb1` |
 | [ADR 0004: ensikirjautumisen tilinluonti](../../docs/adr-0004-first-login-user-provisioning.md) | Brokerin tilinluonti ja sidonta, gatewayn todennus ja daemonin natiivit tunnukset. Nykyinen keskeytyspolitiikka ilman vanhan palautusvaatimuksen historiaa; toteutusmekanismit ja näyttö linkitetty omiin lähteisiinsä. | `992d27d` |
+| [ADR 0001: natiivi Unix-arkkitehtuuri](../../docs/adr-0001-unix-native-agent-host.md) | Natiivien tietojen omistajuus ja Unix-eristys perusteluineen; myöhemmät tilinluonti-, jatkamis- ja selainrajaukset linkitetty. | Tämän läpikäynnin commit (`Refs-Issue` Gitissä). |
 
 Samalla on tehty kohdennettuja korjauksia toteutussivuun,
 CLI-konformanssiin ja liittyviin issueihin. Näitä ei ole vielä kokonaisuudessaan
@@ -50,14 +51,10 @@ onboardingin ja paluun OpenAI-vaiheeseen; testien nopeutus kattaa sekä testien
 nopeuttamisen että tarpeellisten testien valinnan muutoksen perusteella.
 Näiden kuvausten käsittely on valmis. Toteutusissueiden tilaa tai DAGia ei muutettu.
 
-Seuraava läpikäynti on **`/rethink-document` tiedostolle
-[ADR 0001](../../docs/adr-0001-unix-native-agent-host.md)**.
-Säilytetään natiivien komponenttien, Unix-käyttäjien ja tietojen omistajuuden
-perustelut. Tarkistetaan myöhempien päätösten suhde usean palvelimen selaimeen,
-keskustelujen jatkamiseen ja tekstin edelleen avoimiksi kuvaamiin valintoihin.
-Jatketaan dokumentin ja päätöslähteiden lukemisesta sekä ehdotetun rajauksen
-esittelystä Jarille ennen uudelleenkirjoitusta. ADR:n käsittelyä ei aloitettu
-tämän jatkamiskohdan kirjaamisen yhteydessä.
+ADR 0001:n läpikäynti valmistui Jarin hyväksymällä rajauksella 2026-09-30.
+Seuraavaksi ehdotetaan [päätössivua](../../docs/decisions.md): se kuvaa jo
+hyväksyttyjä valintoja yhä ehdotuksina ja sisältää vanhoja katselmointiportteja.
+Lue päätöslähteet ja esittele rajaus Jarille ennen uudelleenkirjoitusta.
 
 UI- ja design-dokumentit ovat Jarin pyynnöstä odottamassa 2026-09-30:
 toinen agentti tekee laajempaa käyttöliittymäkierrosta. Niihin palataan sen
@@ -334,3 +331,21 @@ vaatimuksia tai päätöksiä.
 Tarkistus oli lähde- ja dokumenttitarkistus. Providerin hyväksymiä callbackeja,
 nykyistä live-asennusta tai vanhojen suoritusraporttien tuloksia ei todennettu
 uusilla ajoilla. Toteutusta, testipalvelinta tai issueiden tilaa ei muutettu.
+
+## ADR 0001:n läpikäynti 2026-09-30
+
+Jari hyväksyi rajauksen: natiivien komponenttien ja Unix-käyttäjien perustelut
+säilyvät, usean palvelimen arkkitehtuurinen mahdollisuus erotetaan ensimmäisen
+selainversion laajuudesta ja keskustelujen jatkaminen täsmennetään nykyiseen
+rajaukseen. Ratkaistut avoimet kysymykset korvataan viitteillä ADR:iin 0003 ja
+0004. HTTP/SSE-periaate säilyy, yksityiskohdat kuuluvat rajapintasivulle.
+
+Lähtörevisio oli `2837e2c`. Lähteinä olivat alkuperäinen ADR revisiossa
+`e3bd133`, sen kirjaamisissue, UI-päätöksen rajaus, ADR:t 0003–0005 sekä
+nykyinen agenttiohjauksen issue. ADR linkittää myöhemmät päätökset eikä muuta
+niiden sisältöä. Toisto ja vanhan vaihtoehtoisen alustamallin kuvaus poistettiin;
+uutta liitettä ei tarvittu. UI- ja design-dokumentteihin ei koskettu.
+
+Dokumentaatiovalidaattori ja `git diff --check` läpäisivät. Täyttä CI-porttia
+ei ajettu uudelleen, koska muutos koskee vain dokumentaatiota. Live-palvelinta
+ei muutettu eikä testattu.
