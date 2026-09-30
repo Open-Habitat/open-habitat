@@ -16,7 +16,7 @@ ja [ensikirjautumisen päätökseen](adr-0004-first-login-user-provisioning.md).
 
 ## Nykyiset selainreitit
 
-Alla ovat toteutetut reitit, tarkistettuina revisiosta `35dccfc`.
+Alla ovat toteutetut reitit, tarkistettuina revisiosta `b0bac9e`.
 Käyttötapausten testitulokset ja live-todennukset löytyvät toteutusissueista.
 Reititys löytyy [gatewaysta](../internal/gateway/server.go)
 ja [daemonista](../internal/daemon/handoff_linux.go).
@@ -30,6 +30,9 @@ ja [daemonista](../internal/daemon/handoff_linux.go).
 | `POST /api/v1/conversations` | uuden Pi-keskustelun käynnistys `workspace_id`:llä |
 | `GET /api/v1/conversations/<session-id>/status` | keskustelun tila ja saatavilla olevat välitulokset |
 | `POST /api/v1/conversations/<session-id>/send` | viesti ja sen UUID-muotoinen `command_id` |
+| `POST /api/v1/conversations/<session-id>/steer` | ohjaava viesti Pi:n steering-jonoon |
+| `POST /api/v1/conversations/<session-id>/follow_up` | jatkoviesti Pi:n follow-up-jonoon |
+| `POST /api/v1/conversations/<session-id>/clear_queue` | jonojen tyhjennys ja vahvistetusti poistetut tekstit |
 | `POST /api/v1/conversations/<session-id>/stop` | keskustelun pysäytyspyyntö |
 | `GET /api/v1/onboarding/github/repos` | käyttäjän GitHub-repot, sivutettuina `page`- ja `limit`-parametreilla |
 | `POST /api/v1/onboarding/github/clone` | `full_name`-kentän repon kloonaus; lopputulos JSON-vastauksena |
@@ -415,7 +418,8 @@ lupaa uusia kirjoitusta; `fresh_snapshot_required` vaatii uuden havainnon.
 Tuntematon koodi näytetään geneerisesti säilyttäen status ja korrelaatio.
 Osittaiset vaikutukset pysyvät näkyvissä.
 
-Yleisen v1-sopimuksen virhekoodit ja HTTP-statukset ovat:
+Yleisen v1-sopimuksen virhekoodit ja nykyisten snapshot- ja Pi-statusreittien
+täsmennykset ovat:
 
 | HTTP | Koodi | Merkitys |
 |---:|---|---|
@@ -425,10 +429,15 @@ Yleisen v1-sopimuksen virhekoodit ja HTTP-statukset ovat:
 | 404 | `resource_not_found`, `command_outcome_unknown`, `content_revision_gone` | ei saa tulkita toisen käyttäjän olemassaoloa |
 | 409 | `stale_precondition`, `command_id_conflict`, `cursor_expired`, `cursor_instance_mismatch`, `writer_conflict`, `path_replaced`, `manual_worktree_blocks_delete` | nykytila estää turvallisen etenemisen |
 | 422 | `capability_unsupported`, `capability_unknown`, `path_unsupported`, `path_escape`, `confirmation_mismatch` | pyyntö on ymmärretty mutta sitä ei voi toteuttaa |
-| 502 | `daemon_unavailable` | daemonin vastaus ei läpäissyt muodon tai identiteetin tarkistusta; selaimen vanhat tiedot poistetaan |
+| 502 | `daemon_unavailable` | snapshot- tai Pi-statusreitin daemon-vastaus ei läpäissyt muodon tarkistusta; selaimen vanhat tiedot poistetaan |
 | 503 | `daemon_unavailable`, `native_source_unavailable`, `capability_temporarily_unavailable` | tila on tilapäisesti saavuttamaton; vahvistetun saman istunnon sisältö voi jäädä vanhentuneena luettavaksi ilman kirjoituksia |
 | 500 | `native_adapter_error`, `operation_partial`, `annotation_corrupt` | tarkka osatulos/fakta säilyy ja näytetään; `annotation_corrupt` koskee vain annotaatiota kirjoittavaa komentoa, ei snapshot/history-lukua |
 
+Snapshotin identiteettiristiriita palauttaa `403 identity_mismatch`.
+Historian ja sisällön lukureitit palauttavat nykyisin virheellisestä
+daemon-vastauksesta `503 daemon_unavailable`; yllä kuvattu 502-erottelu ei
+vielä koske niitä. Reittien tarkistukset ovat
+[gatewayn lukureiteissä](../internal/gateway/snapshot_linux.go).
 
 Käyttöönoton ja väliaikaisen selainohjauksen lisäkoodit kuvataan niiden
 reiteissä ja validaattoreissa. `annotation_corrupt` koskee annotaation

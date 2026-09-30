@@ -1,6 +1,6 @@
 ---
 created: 2026-09-29
-updated: 2026-09-29
+updated: 2026-09-30
 type: task
 status: open
 priority: normal
@@ -37,10 +37,22 @@ käyty läpi tällä skillillä.
 
 ## Seuraavaksi
 
-Seuraava kokonaisuus on [tuotantodesign](../../design-system/production-v1.md)
+Seuraava läpikäytävä dokumentti on
+[ADR 0004: ensikirjautumisen tilinluonti](../../docs/adr-0004-first-login-user-provisioning.md).
+Erotetaan hyväksytty root-brokerin vastuu ja Unix-käyttäjän sidonta vanhasta
+asennustilanteesta, toteutusmekanismeista ja käyttöönoton testiohjeista.
+Päätöksen alkuperä tarkistetaan hyväksymisissuesta ennen uudelleenkirjoitusta.
+
+UI- ja design-dokumentit ovat Jarin pyynnöstä odottamassa 2026-09-30:
+toinen agentti tekee laajempaa käyttöliittymäkierrosta. Niihin palataan sen
+jälkeen; alla säilyy aiemmin sovittu jatkorajaus.
+
+### Odottava UI-kokonaisuus
+
+Odottava kokonaisuus on [tuotantodesign](../../design-system/production-v1.md)
 ja [komponenttikatalogi](../../design-system/component-catalog-v1.md) yhdessä.
-Ne ohjaavat toteuttajaa suoraan, joten niiden ristiriidat korjataan ennen muiden
-dokumenttien läpikäyntiä.
+Niiden läpikäynti jatkuu käyttöliittymäkierroksen jälkeen; muiden dokumenttien
+käsittely jatkuu sillä välin.
 
 - Korjaa terminaalin siirtodialogi ja Pi-kysymysten vastausohjaimet vastaamaan
   nykyistä agenttiohjauksen rajausta. Terminaalihistoriat ovat vain luettavia;
@@ -216,3 +228,15 @@ läpikäynnin kohteeksi.
 `git diff --check` läpäisivät. Täyttä CI-porttia ei ajettu uudelleen:
 muutokset koskevat vain dokumentaatiota ja linkkejä (`TESTING.md`).
 Live-palvelinta ei muutettu eikä testattu.
+
+## Rajapintasivun uusintatarkistus 2026-09-30
+
+Jari hyväksyi rajatun faktapäivityksen. Revisioon `b0bac9e` verraten
+nykyisten reittien taulukkoon lisättiin `steer`, `follow_up` ja `clear_queue`.
+Snapshot- ja Pi-statusreittien virheellinen daemon-vastaus erotettiin
+snapshotin identiteettiristiriidasta: ensimmäinen palauttaa 502:n,
+jälkimmäinen 403:n. Historian ja sisällön lukureittien nykyinen 503-käytös
+kerrotaan erikseen. Sovittua toiminnallista laajuutta ei muutettu.
+
+Lähteinä olivat gatewayn ja daemonin keskustelureitit, gatewayn lukureitit
+sekä selaimen istunnon tarkistus. UI- tai design-tiedostoja ei muutettu.
