@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#eceef1; }
+  a { color:#2b7f8c } a:hover { color:#1d5f69 }
+</style>
+</helmet>
+
+<div style="font-family:'Instrument Sans',system-ui,sans-serif; color:#16191d; background:#f6f7f8; padding:40px 32px 64px; display:flex; flex-direction:column; align-items:center; gap:32px">
+
+  <div style="width:100%; max-width:920px; display:flex; flex-direction:column; gap:8px">
+    <div style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.09em; text-transform:uppercase; color:#61676f">Agent Host UI · ilmemääritys v0.1</div>
+    <h1 style="margin:0; font:600 30px 'Instrument Sans',sans-serif; letter-spacing:-.015em">Rauhallinen työkalu, ei tuote-esittely</h1>
+    <p style="margin:0; max-width:68ch; font-size:15px; line-height:1.6; color:#3d434b; text-wrap:pretty">Käyttöliittymä on luettava pinta pitkäkestoiselle työlle. Väri kertoo korkeintaan yhden asian kerrallaan, tila kerrotaan aina myös sanalla tai merkillä, ja liike rajoittuu siihen mikä oikeasti muuttuu. Arvot ovat tiedostossa <code style="font:400 13.5px 'JetBrains Mono',monospace; background:#eef0f3; padding:1px 5px; border-radius:4px">styles.css + tokens/</code>.</p>
+  </div>
+
+  <div style="width:100%; max-width:920px; display:flex; flex-direction:column; gap:14px">
+    <div style="font:600 13px 'Instrument Sans',sans-serif; letter-spacing:.06em; text-transform:uppercase; color:#61676f">1 · Värit</div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px">
+      <div style="background:#fff; border:1px solid #e2e6e9; border-radius:10px; overflow:hidden"><div style="height:56px; background:#f6f7f8; border-bottom:1px solid #e2e6e9"></div><div style="padding:8px 10px"><div style="font:500 12.5px 'Instrument Sans',sans-serif">Tausta</div><div style="font:400 11.5px 'JetBrains Mono',monospace; color:#61676f">#f6f7f8</div></div></div>
+      <div style="background:#fff; border:1px solid #e2e6e9; border-radius:10px; overflow:hidden"><div style="height:56px; background:#ffffff; border-bottom:1px solid #e2e6e9"></div><div style="padding:8px 10px"><div style="font:500 12.5px 'Instrument Sans',sans-serif">Pinta</div><div style="font:400 11.5px 'JetBrains Mono',monospace; color:#61676f">#ffffff</div></div></div>
+      <div style="background:#fff; border:1px solid #e2e6e9; border-radius:10px; overflow:hidden"><div style="height:56px; background:#16191d; border-bottom:1px solid #e2e6e9"></div><div style="padding:8px 10px"><div style="font:500 12.5px 'Instrument Sans',sans-serif">Teksti</div><div style="font:400 11.5px 'JetBrains Mono',monospace; color:#61676f">#16191d</div></div></div>
+      <div style="background:#fff; border:1px solid #e2e6e9; border-radius:10px; overflow:hidden"><div style="height:56px; background:#2b7f8c; border-bottom:1px solid #e2e6e9"></div><div style="padding:8px 10px"><div style="font:500 12.5px 'Instrument Sans',sans-serif">Korostus</div><div style="font:400 11.5px 'JetBrains Mono',monospace; color:#61676f">#2b7f8c</div></div></div>
+      <div style="background:#fff; border:1px solid #e2e6e9; border-radius:10px; overflow:hidden"><div style="height:56px; background:#2f7a55; border-bottom:1px solid #e2e6e9"></div><div style="padding:8px 10px"><div style="font:500 12.5px 'Instrument Sans',sans-serif">Onnistui</div><div style="font:400 11.5px 'JetBrains Mono',monospace; color:#61676f">#2f7a55</div></div></div>
+      <div style="background:#fff; border:1px solid #e2e6e9; border-radius:10px; overflow:hidden"><div style="height:56px; background:#a3412b; border-bottom:1px solid #e2e6e9"></div><div style="padding:8px 10px"><div style="font:500 12.5px 'Instrument Sans',sans-serif">Virhe</div><div style="font:400 11.5px 'JetBrains Mono',monospace; color:#61676f">#a3412b</div></div></div>
+    </div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap">
+      <div style="flex:1; min-width:280px; background:#fff; border:1px solid #e2e6e9; border-radius:10px; padding:12px 14px; font-size:13.5px; line-height:1.6; color:#3d434b">Korostusta käytetään vain aktiiviseen tilaan, ensisijaiseen painikkeeseen ja käynnissä olevaan työhön. Ei koristeena, ei otsikoissa.</div>
+      <div style="flex:1; min-width:280px; background:#14171a; border:1px solid #2a3036; border-radius:10px; padding:12px 14px; font-size:13.5px; line-height:1.6; color:#c5cad0">Tumma teema on sama rakenne, ei oma ilme: pinnat #14171a / #1b1f23, korostus vaalenee arvoon #4fa6b4 jotta kontrasti säilyy.</div>
+    </div>
+  </div>
+
+  <div style="width:100%; max-width:920px; display:flex; flex-direction:column; gap:14px">
+    <div style="font:600 13px 'Instrument Sans',sans-serif; letter-spacing:.06em; text-transform:uppercase; color:#61676f">2 · Typografia</div>
+    <div style="background:#fff; border:1px solid #e2e6e9; border-radius:10px; padding:18px 20px; display:flex; flex-direction:column; gap:14px">
+      <div style="display:flex; align-items:baseline; gap:16px"><span style="font:600 15px 'Instrument Sans',sans-serif; flex:1">Workspace-listauksen toteutus</span><span style="font:400 12px 'JetBrains Mono',monospace; color:#6b7178">Instrument Sans 600 · 15px · otsikko</span></div>
+      <div style="display:flex; align-items:baseline; gap:16px"><span style="font:400 14.5px 'Instrument Sans',sans-serif; line-height:1.6; flex:1">Katson ensin, miten workspace-lista muodostetaan.</span><span style="font:400 12px 'JetBrains Mono',monospace; color:#6b7178">400 · 14.5px/1.6 · leipäteksti, max 70ch</span></div>
+      <div style="display:flex; align-items:baseline; gap:16px"><span style="font:500 13.5px 'Instrument Sans',sans-serif; flex:1">Luettu 15 tiedostoa</span><span style="font:400 12px 'JetBrains Mono',monospace; color:#6b7178">500 · 13.5px · työkalurivi</span></div>
+      <div style="display:flex; align-items:baseline; gap:16px"><span style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.07em; text-transform:uppercase; color:#61676f; flex:1">Pi · 14.02</span><span style="font:400 12px 'JetBrains Mono',monospace; color:#6b7178">500 · 11px · .07em · puhujatunniste</span></div>
+      <div style="display:flex; align-items:baseline; gap:16px"><span style="font:400 12.5px 'JetBrains Mono',monospace; flex:1">src/workspaces.ts · exit 1 · @@ -78,9 +78,16 @@</span><span style="font:400 12px 'JetBrains Mono',monospace; color:#6b7178">JetBrains Mono · 12.5px · polut, diff, output</span></div>
+    </div>
+    <div style="font-size:13px; color:#61676f">Sääntö: jokainen konekielinen merkkijono — polku, komento, exit-koodi, resume-ID — on monospacea. Ihmiselle kirjoitettu teksti ei koskaan ole.</div>
+  </div>
+
+  <div style="width:100%; max-width:920px; display:flex; flex-direction:column; gap:14px">
+    <div style="font:600 13px 'Instrument Sans',sans-serif; letter-spacing:.06em; text-transform:uppercase; color:#61676f">3 · Tilat</div>
+    <div style="background:#fff; border:1px solid #e2e6e9; border-radius:10px; padding:16px 18px; display:flex; flex-wrap:wrap; gap:10px">
+      <span style="display:inline-flex; align-items:center; gap:6px; background:#e6f1f3; color:#1d5f69; border:1px solid #cfe3e6; border-radius:999px; padding:4px 11px; font:500 12px 'Instrument Sans',sans-serif"><span style="width:7px;height:7px;border-radius:99px;background:#2b7f8c"></span>Työskentelee</span>
+      <span style="display:inline-flex; align-items:center; gap:6px; color:#61676f; border:1px solid #e2e6e9; border-radius:999px; padding:4px 11px; font:500 12px 'Instrument Sans',sans-serif"><span style="width:7px;height:7px;border-radius:99px;background:#61676f"></span>Odottaa viestiä</span>
+      <span style="display:inline-flex; align-items:center; gap:6px; color:#2f7a55; border:1px solid #cfe3d8; border-radius:999px; padding:4px 11px; font:500 12px 'Instrument Sans',sans-serif">✓ Valmis</span>
+      <span style="display:inline-flex; align-items:center; gap:6px; color:#a3412b; background:#fdf1ee; border:1px solid #f3d7d0; border-radius:999px; padding:4px 11px; font:500 12px 'Instrument Sans',sans-serif">✕ Virhe · exit 1</span>
+      <span style="display:inline-flex; align-items:center; gap:6px; color:#61676f; border:1px dashed #d5dade; border-radius:999px; padding:4px 11px; font:500 12px 'Instrument Sans',sans-serif">⃠ Keskeytetty</span>
+      <span style="display:inline-flex; align-items:center; gap:6px; color:#6b7178; border:1px dashed #d5dade; border-radius:999px; padding:4px 11px; font:500 12px 'Instrument Sans',sans-serif">? Ei tiedossa</span>
+    </div>
+    <div style="font-size:13px; color:#61676f; max-width:70ch; line-height:1.6">Tila on aina merkki + sana + väri, tässä järjestyksessä. Tuntematonta ei esitetä valmiina eikä pysähtyneenä. Sykkivä piste esiintyy vain kun jokin on oikeasti käynnissä, ja se katoaa <code style="font:400 12.5px 'JetBrains Mono',monospace">prefers-reduced-motion</code>-asetuksella.</div>
+  </div>
+
+  <div style="width:100%; max-width:920px; display:flex; flex-direction:column; gap:14px">
+    <div style="font:600 13px 'Instrument Sans',sans-serif; letter-spacing:.06em; text-transform:uppercase; color:#61676f">4 · Kontrollit</div>
+    <div style="background:#fff; border:1px solid #e2e6e9; border-radius:10px; padding:18px 20px; display:flex; flex-wrap:wrap; align-items:center; gap:12px">
+      <button style="background:#2b7f8c; color:#fff; border:0; border-radius:8px; padding:8px 18px; font:500 13.5px 'Instrument Sans',sans-serif; cursor:pointer" style-hover="background:#246b76" onClick="{{ noop }}">Lähetä</button>
+      <button style="background:#2b7f8c; color:#fff; border:0; border-radius:8px; padding:8px 18px; font:500 13.5px 'Instrument Sans',sans-serif; opacity:.45" onClick="{{ noop }}">Lähetä (estetty)</button>
+      <button style="border:1px solid #e2e6e9; background:#fff; color:#16191d; border-radius:8px; padding:8px 16px; font:500 13.5px 'Instrument Sans',sans-serif; cursor:pointer" style-hover="background:#f1f4f5" onClick="{{ noop }}">Keskeytä</button>
+      <button style="border:0; background:transparent; color:#61676f; padding:6px 2px; font:500 12.5px 'Instrument Sans',sans-serif; cursor:pointer" style-hover="color:#1d5f69" onClick="{{ noop }}">Kopioi koodi</button>
+      <span style="font-size:12.5px; color:#61676f; margin-left:auto">Estetty painike saa aina sanallisen syyn viereensä.</span>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:10px; font-size:13px; line-height:1.6; color:#3d434b">
+      <div style="background:#fff; border:1px solid #e2e6e9; border-radius:10px; padding:12px 14px"><strong style="font-weight:600">Pyöristykset</strong><br>5px merkinnät · 8px painikkeet ja kentät · 10px kortit ja viestit · 12px sovelluskehys</div>
+      <div style="background:#fff; border:1px solid #e2e6e9; border-radius:10px; padding:12px 14px"><strong style="font-weight:600">Reunat, ei varjoja</strong><br>1px #e2e6e9 erottaa pinnat. Varjo vain sovelluskehyksellä ja kelluvalla painikkeella.</div>
+      <div style="background:#fff; border:1px solid #e2e6e9; border-radius:10px; padding:12px 14px"><strong style="font-weight:600">Välit</strong><br>4px-ruudukko: 9/12 sisäpehmuste työkaluriveillä, 14 viestien väli, 18 reunus.</div>
+      <div style="background:#fff; border:1px solid #e2e6e9; border-radius:10px; padding:12px 14px"><strong style="font-weight:600">Fokus</strong><br>2px korostusreunus 2px offsetilla. Näppäimistöfokus ei katoa päivityksissä.</div>
+    </div>
+  </div>
+
+  <div style="width:100%; max-width:920px; display:flex; flex-direction:column; gap:14px">
+    <div style="font:600 13px 'Instrument Sans',sans-serif; letter-spacing:.06em; text-transform:uppercase; color:#61676f">5 · Työkalutapahtuman anatomia</div>
+    <div style="background:#fff; border:1px solid #e2e6e9; border-radius:10px; padding:16px 18px; display:flex; flex-direction:column; gap:10px">
+      <div style="display:flex; align-items:center; gap:10px; border:1px solid #e2e6e9; border-radius:10px; padding:9px 12px; font-size:13.5px">
+        <span style="font:400 11px 'JetBrains Mono',monospace; color:#61676f; width:10px">▸</span>
+        <span style="font-weight:500">Nimi tai komento</span>
+        <span style="margin-left:auto; display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:#2f7a55">✓ Tila</span>
+        <span style="font-size:12.5px; color:#6b7178">Määrä · kesto</span>
+      </div>
+      <div style="font-size:13px; color:#61676f; line-height:1.6; max-width:70ch">Yksi rivi riittää: avaaja, tunniste, tila, määrä. Yksityiskohdat avautuvat paikallaan eivätkä siirrä lukukohtaa. Ryhmän otsikko kantaa virheen myös suljettuna. Diff on tarkastelua varten — hyväksyntäpainiketta ei piirretä ellei harness oikeasti odota vastausta.</div>
+    </div>
+  </div>
+
+  <div style="width:100%; max-width:920px; display:flex; flex-direction:column; gap:14px">
+    <div style="font:600 13px 'Instrument Sans',sans-serif; letter-spacing:.06em; text-transform:uppercase; color:#61676f">6 · Avoimet toteutussäännöt</div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:10px; font-size:13px; line-height:1.65; color:#3d434b">
+      <div style="background:#fff; border:1px solid #e2e6e9; border-radius:10px; padding:12px 14px"><strong style="font-weight:600">Keskustelun otsikko generoidaan</strong><br>Otsikkoa ei kysytä käyttäjältä. Se muodostetaan ensimmäisen viestin ja siihen tulleen vastauksen jälkeen, ja päivitetään uudelleen noin 3., 5. ja 10. vuoron kohdalla, jos aihe on selvästi siirtynyt. Päivitys ei saa vilkkua kesken lukemisen — vaihda otsikko vuoron rajalla.</div>
+      <div style="background:#fff; border:1px solid #e2e6e9; border-radius:10px; padding:12px 14px"><strong style="font-weight:600">Harness ei näy käyttäjälle</strong><br>Yläpalkissa lukee <code style="font:400 12.5px 'JetBrains Mono',monospace">Model: sonnet-5 · Thinking: medium</code>. Pi, resume-ID:t ja muut toteutuksen tunnisteet kuuluvat lisätietoihin tai lokiin, eivät perusnäkymään.</div>
+      <div style="background:#fff; border:1px solid #e2e6e9; border-radius:10px; padding:12px 14px"><strong style="font-weight:600">Oletustilaa ei näytetä</strong><br>Yhdistetty ja odottaa viestiä ovat oletuksia: vain vihreä piste jää näkyviin, teksti tulee hoverilla ja hetkeksi tilan vaihtuessa. Poikkeama — työskentelee, keskeytetty, yhteys poikki — kirjoitetaan aina auki.</div>
+      <div style="background:#fff; border:1px solid #e2e6e9; border-radius:10px; padding:12px 14px"><strong style="font-weight:600">Polku lyhennetään</strong><br>Näytä projektin nimi (<code style="font:400 12.5px 'JetBrains Mono',monospace">native-agent-host</code>), ei koko polkua eikä käyttäjätunnusta. Täysi polku kuuluu lisätietoihin.</div>
+      <div style="background:#fff; border:1px solid #e2e6e9; border-radius:10px; padding:12px 14px"><strong style="font-weight:600">Lähetystapa on valinta, ei sääntö</strong><br>Enterin toiminta on kytkin syötekentän vieressä. Agentin ollessa käynnissä lähetykselle on kaksi kohdetta — <em>Ohjaa nyt</em> (seuraava katkoskohta) ja <em>Vastauksen jälkeen</em> (jono) — omina painikkeinaan, ja ⏎ merkitsee kumpaan Enter osuu.</div>
+    </div>
+  </div>
+
+  <div style="width:100%; max-width:920px; background:#e6f1f3; border:1px solid #cfe3e6; border-radius:10px; padding:16px 18px; font-size:13.5px; line-height:1.7; color:#1d5f69">
+    <strong style="font-weight:600">Mitä tämä ei vielä ole:</strong> tämä on ilmemääritys, ei koottu design system -projekti. Kun hyväksyt suunnan, voin viedä nämä tokenit, komponentit ja säännöt omaksi design system -projektikseen, jota paketti 1 ja tuotantokoodi voivat käyttää suoraan.
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1000,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  renderVals() { return { noop: (e) => e && e.preventDefault && e.preventDefault() }; }
+}
+</script>
+</body>
+</html>

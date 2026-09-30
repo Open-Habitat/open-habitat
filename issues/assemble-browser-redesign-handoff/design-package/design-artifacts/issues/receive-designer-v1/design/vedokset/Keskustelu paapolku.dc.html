@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#e9ebee; }
+  [data-theme="dark"] { background:#0e1013; }
+  :root, [data-theme="light"] {
+    --bg:#f6f7f8; --surface:#ffffff; --surface-2:#fbfcfd; --line:#e2e6e9; --line-soft:#eef0f3;
+    --ink:#16191d; --ink-2:#3d434b; --muted:#61676f; --faint:#6b7178;
+    --acc:#2b7f8c; --acc-ink:#1d5f69; --acc-soft:#e6f1f3; --acc-line:#cfe3e6;
+    --err:#a3412b; --err-soft:#fdf1ee; --err-line:#f3d7d0;
+    --ok:#2f7a55; --ok-soft:#eef7f1; --on-acc:#ffffff;
+  }
+  [data-theme="dark"] {
+    --bg:#14171a; --surface:#1b1f23; --surface-2:#171a1e; --line:#2a3036; --line-soft:#232830;
+    --ink:#e6e9ec; --ink-2:#c5cad0; --muted:#98a0a8; --faint:#949ca6;
+    --acc:#4fa6b4; --acc-ink:#9fd4dd; --acc-soft:#173137; --acc-line:#2c4a52;
+    --err:#e8a08a; --err-soft:#261c1b; --err-line:#4a2e28;
+    --ok:#8fcfa8; --ok-soft:#1b2721; --on-acc:#0f1417;
+  }
+  @keyframes p { 0%,100%{opacity:1} 50%{opacity:.3} }
+  @keyframes apr { from { opacity:0; transform:translateX(-8px) } to { opacity:1; transform:none } }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important } }
+  textarea::placeholder { color:var(--faint) }
+  a { color:#2b7f8c } a:hover { color:#1d5f69 }
+</style>
+</helmet>
+
+<div data-theme="{{ theme }}" style="min-height:100vh; padding:24px; box-sizing:border-box; background:var(--bg); font-family:'Instrument Sans',system-ui,sans-serif; color:var(--ink); display:flex; flex-direction:column; align-items:center; gap:14px">
+
+  <div style="width:100%; max-width:960px; display:flex; align-items:center; flex-wrap:wrap; gap:10px; font-size:12.5px; color:var(--muted)">
+    <span>Simuloitu pääpolku — kaikki tapahtumat ovat kuvitteellisia</span>
+    <button style="border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:8px; padding:5px 11px; font:500 12.5px 'Instrument Sans',sans-serif; cursor:pointer; white-space:nowrap; flex-shrink:0" onClick="{{ triggerAsk }}" title="B6 — harness kysyy kesken työn">Kysymys</button>
+    <button style="border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:8px; padding:5px 11px; font:500 12.5px 'Instrument Sans',sans-serif; cursor:pointer; white-space:nowrap; flex-shrink:0" onClick="{{ toggleConn }}" title="B10 — yhteys palvelimeen">{{ connBtn }}</button>
+    <button style="border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:8px; padding:5px 11px; font:500 12.5px 'Instrument Sans',sans-serif; cursor:pointer; white-space:nowrap; flex-shrink:0" onClick="{{ toggleReadonly }}" title="B7 — historia ilman elävää prosessia">{{ readonlyBtn }}</button>
+    <button style="margin-left:auto; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:8px; padding:5px 11px; font:500 12.5px 'Instrument Sans',sans-serif; cursor:pointer; white-space:nowrap; flex-shrink:0" onClick="{{ toggleTheme }}">{{ themeLabel }}</button>
+    <button style="border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:8px; padding:5px 11px; font:500 12.5px 'Instrument Sans',sans-serif; cursor:pointer; white-space:nowrap; flex-shrink:0" onClick="{{ reset }}">Alusta uudelleen</button>
+  </div>
+
+  <div style="width:100%; max-width:960px; height:740px; display:flex; flex-direction:column; background:var(--bg); border:1px solid var(--line); border-radius:12px; overflow:hidden; box-shadow:0 1px 2px rgba(16,24,40,.05), 0 10px 30px rgba(16,24,40,.06)">
+
+    <div style="display:flex; align-items:center; gap:12px; padding:12px 18px; background:var(--surface); border-bottom:1px solid var(--line); flex-shrink:0">
+      <div style="min-width:0; flex:1; display:flex; flex-direction:column; gap:3px">
+        <div style="display:flex; align-items:center; gap:10px; min-width:0">
+          <span style="font:600 15px 'Instrument Sans',sans-serif">Workspace-listauksen toteutus</span>
+          <sc-if value="{{ showStatus }}" hint-placeholder-val="{{ false }}">
+            <div onMouseEnter="{{ statusEnter }}" onMouseLeave="{{ statusLeave }}" title="{{ workingTitle }}" style="display:inline-flex; align-items:center; gap:6px; background:var(--acc-soft); color:var(--acc-ink); border:1px solid var(--acc-line); border-radius:999px; padding:3px 10px; font:500 12px 'Instrument Sans',sans-serif; cursor:default; min-width:0; animation:apr 380ms cubic-bezier(.2,.7,.3,1) both">
+              <span style="width:7px; height:7px; border-radius:99px; background:{{ statusDot }}; animation:{{ statusAnim }}; flex-shrink:0"></span>{{ statusLabel }}
+              <span style="max-width:{{ statusW }}; opacity:{{ statusO }}; overflow:hidden; white-space:nowrap; font-weight:400; transition:max-width 900ms cubic-bezier(.2,.7,.3,1), opacity 620ms ease">· {{ workingLabel }}</span>
+            </div>
+          </sc-if>
+        </div>
+        <div style="font:400 11.5px 'JetBrains Mono',monospace; color:var(--muted)">native-agent-host</div>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0">
+      <div onMouseEnter="{{ connEnter }}" onMouseLeave="{{ connLeave }}" title="{{ connText }}" style="display:flex; align-items:center; gap:6px; color:{{ connColor }}; font-size:12px; cursor:default">
+        <span style="width:8px; height:8px; border-radius:99px; background:{{ connDot }}; flex-shrink:0"></span>
+        <span style="max-width:{{ connWidth }}; opacity:{{ connOpacity }}; overflow:hidden; white-space:nowrap; transition:max-width 900ms cubic-bezier(.2,.7,.3,1), opacity 620ms ease">{{ connText }}</span>
+      </div>
+      <sc-if value="{{ showModel }}" hint-placeholder-val="{{ true }}">
+        <div onMouseEnter="{{ modelEnter }}" onMouseLeave="{{ modelLeave }}" title="Model: sonnet-5 · Thinking: medium" style="display:flex; align-items:center; gap:5px; font:400 11.5px 'JetBrains Mono',monospace; color:var(--faint); cursor:default">
+          <span style="max-width:{{ modelW }}; opacity:{{ modelO }}; overflow:hidden; white-space:nowrap; transition:max-width 900ms cubic-bezier(.2,.7,.3,1), opacity 620ms ease">Model:</span>
+          <span style="display:inline-flex">sonnet<span style="max-width:{{ modelVer }}; opacity:{{ modelO }}; overflow:hidden; white-space:nowrap; transition:max-width 900ms cubic-bezier(.2,.7,.3,1), opacity 620ms ease">-5</span></span>
+          <span style="max-width:{{ modelW }}; opacity:{{ modelO }}; overflow:hidden; white-space:nowrap; transition:max-width 900ms cubic-bezier(.2,.7,.3,1), opacity 620ms ease">· Thinking:</span>
+          <span title="Thinking: medium (taso 2/5)" style="display:flex; align-items:flex-end; gap:2px; height:11px">
+            <span style="width:3px; height:3px; border-radius:1px; background:var(--ink-2)"></span>
+            <span style="width:3px; height:5px; border-radius:1px; background:var(--ink-2)"></span>
+            <span style="width:3px; height:7px; border-radius:1px; background:var(--line)"></span>
+            <span style="width:3px; height:9px; border-radius:1px; background:var(--line)"></span>
+            <span style="width:3px; height:11px; border-radius:1px; background:var(--line)"></span>
+          </span>
+          <span style="max-width:{{ modelW }}; opacity:{{ modelO }}; overflow:hidden; white-space:nowrap; transition:max-width 900ms cubic-bezier(.2,.7,.3,1), opacity 620ms ease">medium</span>
+        </div>
+      </sc-if>
+      </div>
+    </div>
+
+    <div ref="{{ scrollRef }}" onScroll="{{ onScroll }}" style="flex:1; overflow:auto; padding:18px 18px 8px; display:flex; flex-direction:column; gap:14px; position:relative">
+
+      <div style="display:flex; align-items:center; gap:10px; color:var(--faint); font-size:11.5px">
+        <span style="height:1px; background:var(--line); flex:1"></span>Aiempi historia<span style="height:1px; background:var(--line); flex:1"></span>
+      </div>
+
+      <sc-for list="{{ items }}" as="item" hint-placeholder-count="4">
+        <div style="display:flex; flex-direction:column; gap:8px">
+
+          <sc-if value="{{ item.isUser }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; flex-direction:column; gap:5px; align-items:flex-start">
+              <div style="display:flex; align-items:center; gap:6px">
+                <span style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--muted)">Jari · {{ item.time }}</span>
+                <button title="Kopioi viesti" style="border:0; background:transparent; color:var(--faint); padding:1px 4px; border-radius:5px; font-size:13px; line-height:1; cursor:pointer" style-hover="background:var(--acc-soft); color:var(--acc-ink)" onClick="{{ item.onCopy }}">⧉</button>
+              </div>
+              <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 14px; font-size:14.5px; line-height:1.55; max-width:78%; white-space:pre-wrap">{{ item.text }}</div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ item.isAgentLabel }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; align-items:center; gap:6px">
+              <span style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--acc-ink)">Pi · {{ item.time }}</span>
+              <button title="Kopioi vastaus" style="border:0; background:transparent; color:var(--faint); padding:1px 4px; border-radius:5px; font-size:13px; line-height:1; cursor:pointer" style-hover="background:var(--acc-soft); color:var(--acc-ink)" onClick="{{ item.onCopy }}">⧉</button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ item.isText }}" hint-placeholder-val="{{ false }}">
+            <p style="margin:0; font-size:14.5px; line-height:1.6; color:var(--ink-2); max-width:70ch; text-wrap:pretty">{{ item.text }}</p>
+          </sc-if>
+
+          <sc-if value="{{ item.isNote }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; align-items:center; gap:8px; border:1px dashed var(--line); border-radius:8px; padding:8px 12px; font-size:13px; color:var(--muted)">{{ item.text }}</div>
+          </sc-if>
+
+          <sc-if value="{{ item.isAsk }}" hint-placeholder-val="{{ false }}">
+            <div style="background:var(--surface); border:2px solid {{ item.askBorder }}; border-radius:10px; padding:13px 15px; display:flex; flex-direction:column; gap:10px; animation:apr 380ms cubic-bezier(.2,.7,.3,1) both">
+              <div style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--acc-ink)">Pi kysyy</div>
+              <div style="font-size:14.5px; line-height:1.55">{{ item.question }}</div>
+              <sc-if value="{{ item.unanswered }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+                  <sc-for list="{{ item.options }}" as="opt" hint-placeholder-count="2">
+                    <button style="background:{{ opt.bg }}; color:{{ opt.fg }}; border:1px solid {{ opt.border }}; border-radius:8px; padding:8px 14px; font:500 13.5px 'Instrument Sans',sans-serif; cursor:pointer" onClick="{{ opt.onPick }}">{{ opt.label }}</button>
+                  </sc-for>
+                  <span style="font-size:12px; color:var(--faint)">Työ on pysähtynyt tähän kysymykseen.</span>
+                </div>
+              </sc-if>
+              <sc-if value="{{ item.answer }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:13px; color:var(--ok)">✓ Vastattu: {{ item.answer }}</div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ item.isGroup }}" hint-placeholder-val="{{ false }}">
+            <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; overflow:hidden">
+              <button style="width:100%; box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:9px 12px; background:transparent; border:0; color:var(--ink); font:400 13.5px 'Instrument Sans',sans-serif; cursor:pointer; text-align:left" style-hover="background:var(--surface-2)" onClick="{{ item.onToggle }}">
+                <span style="font:400 11px 'JetBrains Mono',monospace; color:var(--muted); width:10px">{{ item.mark }}</span>
+                <span style="font-weight:500">{{ item.title }}</span>
+                <span style="margin-left:auto; display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:{{ item.statusColor }}">
+                  <span style="width:6px; height:6px; border-radius:99px; background:{{ item.statusColor }}; animation:{{ item.anim }}"></span>{{ item.statusText }}
+                </span>
+                <span style="font-size:12.5px; color:var(--faint)">{{ item.meta }}</span>
+              </button>
+              <sc-if value="{{ item.open }}" hint-placeholder-val="{{ false }}">
+                <div style="border-top:1px solid var(--line-soft); font:400 12.5px 'JetBrains Mono',monospace; color:var(--ink-2)">
+                  <sc-for list="{{ item.rows }}" as="row" hint-placeholder-count="3">
+                    <div style="display:flex; gap:10px; padding:5px 12px; align-items:center">
+                      <span style="color:{{ row.color }}; width:10px">{{ row.mark }}</span>
+                      <span>{{ row.path }}</span>
+                      <span style="margin-left:auto; color:var(--faint)">{{ row.meta }}</span>
+                    </div>
+                  </sc-for>
+                  <div style="padding:5px 12px 8px; color:var(--faint)">{{ item.more }}</div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ item.isSearch }}" hint-placeholder-val="{{ false }}">
+            <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:9px 12px; display:flex; align-items:center; gap:10px; font-size:13.5px">
+              <span style="font-weight:500">Haku</span>
+              <span style="font:400 12.5px 'JetBrains Mono',monospace; background:var(--surface-2); border:1px solid var(--line-soft); border-radius:5px; padding:1px 6px">{{ item.term }}</span>
+              <span style="color:var(--muted); font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ item.summary }}</span>
+              <span style="margin-left:auto; display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:{{ item.statusColor }}">
+                <span style="width:6px; height:6px; border-radius:99px; background:{{ item.statusColor }}; animation:{{ item.anim }}"></span>{{ item.statusText }}
+              </span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ item.isShell }}" hint-placeholder-val="{{ false }}">
+            <div style="background:{{ item.shellBg }}; border:1px solid {{ item.shellLine }}; border-radius:10px; overflow:hidden">
+              <button style="width:100%; box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:9px 12px; background:transparent; border:0; color:var(--ink); cursor:pointer; text-align:left" onClick="{{ item.onToggle }}">
+                <span style="font:400 11px 'JetBrains Mono',monospace; color:var(--muted); width:10px">{{ item.mark }}</span>
+                <span style="font:400 12.5px 'JetBrains Mono',monospace; flex:1">{{ item.cmd }}</span>
+                <span style="display:inline-flex; align-items:center; gap:6px; font:500 12.5px 'Instrument Sans',sans-serif; color:{{ item.statusColor }}">
+                  <span style="width:6px; height:6px; border-radius:99px; background:{{ item.statusColor }}; animation:{{ item.anim }}"></span>{{ item.statusText }}
+                </span>
+              </button>
+              <sc-if value="{{ item.open }}" hint-placeholder-val="{{ false }}">
+                <div style="border-top:1px solid {{ item.shellLine }}">
+                  <pre style="margin:0; padding:10px 12px; font:400 12.5px 'JetBrains Mono',monospace; line-height:1.55; white-space:pre-wrap; color:var(--ink-2)">{{ item.output }}</pre>
+                  <div style="display:flex; align-items:center; gap:10px; padding:6px 12px 8px; font-size:12px; color:var(--faint)">
+                    <span>Lähteen säilyttämä output, 18 riviä</span>
+                    <button style="margin-left:auto; border:0; background:transparent; color:var(--muted); font:500 12px 'Instrument Sans',sans-serif; cursor:pointer" onClick="{{ item.onCopy }}">Kopioi koodi</button>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ item.isDiff }}" hint-placeholder-val="{{ false }}">
+            <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; overflow:hidden">
+              <button style="width:100%; box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:9px 12px; background:transparent; border:0; color:var(--ink); cursor:pointer; text-align:left" onClick="{{ item.onToggle }}">
+                <span style="font:400 11px 'JetBrains Mono',monospace; color:var(--muted); width:10px">{{ item.mark }}</span>
+                <span style="font:500 13.5px 'Instrument Sans',sans-serif">Muokattu</span>
+                <span style="font:400 12.5px 'JetBrains Mono',monospace; flex:1; color:var(--ink-2)">{{ item.path }}</span>
+                <span style="font:500 12px 'JetBrains Mono',monospace; color:var(--ok)">+9</span>
+                <span style="font:500 12px 'JetBrains Mono',monospace; color:var(--err)">−2</span>
+              </button>
+              <sc-if value="{{ item.open }}" hint-placeholder-val="{{ false }}">
+                <div style="border-top:1px solid var(--line-soft); font:400 12.5px 'JetBrains Mono',monospace; line-height:1.6; overflow:auto">
+                  <sc-for list="{{ item.lines }}" as="line" hint-placeholder-count="6">
+                    <div style="padding:1px 12px; background:{{ line.bg }}; color:{{ line.color }}; white-space:pre">{{ line.text }}</div>
+                  </sc-for>
+                  <div style="display:flex; align-items:center; gap:10px; padding:6px 12px 8px; font:400 12px 'Instrument Sans',sans-serif; color:var(--faint); border-top:1px solid var(--line-soft)">
+                    <span>Muutos on jo tehty — tämä on tarkastelua varten.</span>
+                    <button style="margin-left:auto; border:0; background:transparent; color:var(--muted); font:500 12px 'Instrument Sans',sans-serif; cursor:pointer" onClick="{{ item.onCopy }}">Kopioi koodi</button>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+        </div>
+      </sc-for>
+
+      <sc-if value="{{ working }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; align-items:center; gap:10px; font-size:13.5px; color:var(--ink-2); padding-bottom:6px">
+          <span style="width:8px; height:8px; border-radius:99px; background:var(--acc); animation:p 2.4s ease-in-out infinite"></span>
+          {{ workingLabel }}
+        </div>
+      </sc-if>
+    </div>
+
+    <sc-if value="{{ showJump }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; justify-content:center; margin-top:-14px">
+        <button style="border:1px solid var(--acc-line); background:var(--acc-soft); color:var(--acc-ink); border-radius:999px; padding:5px 14px; font:500 12.5px 'Instrument Sans',sans-serif; cursor:pointer; box-shadow:0 2px 8px rgba(16,24,40,.08)" onClick="{{ jumpDown }}">Uutta sisältöä ↓</button>
+      </div>
+    </sc-if>
+
+    <div style="padding:12px 18px 14px; border-top:1px solid var(--line); background:var(--surface); flex-shrink:0; display:flex; flex-direction:column; gap:9px">
+      <sc-if value="{{ offline }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; align-items:center; gap:9px; background:var(--err-soft); border:1px solid var(--err-line); border-radius:8px; padding:8px 11px; font-size:12.5px; color:var(--err)">
+          <span style="width:8px; height:8px; border-radius:99px; background:var(--err); flex-shrink:0"></span>
+          <span>Yhteys palvelimeen Alder poikki — tiedot ovat klo 14.03 tilanteesta. Viestiä ei lähetetä ennen kuin yhteys palaa.</span>
+          <button style="margin-left:auto; border:1px solid var(--err-line); background:var(--surface); color:var(--ink); border-radius:7px; padding:4px 10px; font:500 12px 'Instrument Sans',sans-serif; cursor:pointer; flex-shrink:0" onClick="{{ toggleConn }}">Yhdistä</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showResume }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; align-items:center; gap:10px; background:var(--surface-2); border:1px dashed var(--line); border-radius:8px; padding:10px 12px; font-size:13px; color:var(--ink-2)">
+          <span style="line-height:1.55">{{ resumeText }}</span>
+          <button style="margin-left:auto; background:var(--acc); color:var(--on-acc); border:0; border-radius:8px; padding:8px 15px; font:500 13.5px 'Instrument Sans',sans-serif; cursor:pointer; opacity:{{ resumeOpacity }}" disabled="{{ resumeBusy }}" onClick="{{ doResume }}">{{ resumeBtn }}</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ hasQueue }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; flex-direction:column; gap:4px">
+          <div style="display:flex; align-items:center; gap:8px; font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--muted)">
+            <span>Jonossa {{ queueCount }}</span>
+            <button style="border:0; background:transparent; color:var(--muted); font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.07em; text-transform:uppercase; cursor:pointer; text-decoration:underline" onClick="{{ clearQueue }}">Tyhjennä</button>
+          </div>
+          <sc-for list="{{ queue }}" as="q" hint-placeholder-count="1">
+            <div style="display:flex; align-items:center; gap:9px; background:var(--acc-soft); border:1px solid var(--acc-line); border-radius:8px; padding:6px 10px; font-size:12.5px; color:var(--acc-ink); animation:apr 320ms cubic-bezier(.2,.7,.3,1) both">
+              <span style="font:500 11px 'JetBrains Mono',monospace; background:var(--surface); border:1px solid var(--acc-line); border-radius:4px; padding:1px 5px; flex-shrink:0">{{ q.order }}</span>
+              <span style="font-weight:500; flex-shrink:0">{{ q.label }}</span>
+              <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; opacity:.85">{{ q.text }}</span>
+              <button style="margin-left:auto; border:0; background:transparent; color:var(--acc-ink); font:500 12px 'Instrument Sans',sans-serif; cursor:pointer; text-decoration:underline; flex-shrink:0" onClick="{{ q.onCancel }}">Peru</button>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ canCompose }}" hint-placeholder-val="{{ true }}">
+      <textarea rows="2" value="{{ draft }}" onChange="{{ onDraft }}" onKeyDown="{{ onKey }}" placeholder="Kirjoita viesti — Enter lähettää, Shift+Enter rivinvaihto" style="width:100%; box-sizing:border-box; resize:none; border:1px solid var(--line); border-radius:10px; padding:10px 12px; font:400 14.5px 'Instrument Sans',sans-serif; line-height:1.5; background:var(--surface-2); color:var(--ink)"></textarea>
+
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+        <sc-if value="{{ working }}" hint-placeholder-val="{{ false }}">
+          <button style="display:inline-flex; align-items:center; gap:7px; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:8px; padding:7px 13px; font:500 13px 'Instrument Sans',sans-serif; cursor:pointer; flex-shrink:0" style-hover="background:var(--err-soft); border-color:var(--err-line)" onClick="{{ interrupt }}">Keskeytä<span style="font:400 11px 'JetBrains Mono',monospace; color:var(--muted)">Esc Esc</span></button>
+        </sc-if>
+        <span style="color:var(--muted); font:400 12.5px 'Instrument Sans',sans-serif">{{ composerHint }}</span>
+
+        <sc-if value="{{ working }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-left:auto; display:flex; align-items:center; gap:8px">
+            <button style="display:inline-flex; align-items:center; gap:7px; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:8px; padding:8px 14px; font:500 13.5px 'Instrument Sans',sans-serif; cursor:pointer; opacity:{{ sendOpacity }}" disabled="{{ sendDisabled }}" onClick="{{ sendSteer }}" title="Lähtee heti kun käynnissä oleva työkalu on valmis">Lähetä heti<span style="font:400 11px 'JetBrains Mono',monospace; color:var(--muted)">⌘⏎</span></button>
+            <button style="display:inline-flex; align-items:center; gap:7px; background:var(--acc); color:var(--on-acc); border:1px solid var(--acc); border-radius:8px; padding:8px 14px; font:500 13.5px 'Instrument Sans',sans-serif; cursor:pointer; opacity:{{ sendOpacity }}" disabled="{{ sendDisabled }}" onClick="{{ sendAfter }}" title="Jää jonoon ja lähtee kun agentti on valmis">Lähetä jonoon<span style="font:400 11px 'JetBrains Mono',monospace; opacity:.8">⏎</span></button>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ idleComposer }}" hint-placeholder-val="{{ true }}">
+          <button style="margin-left:auto; background:var(--acc); color:var(--on-acc); border:0; border-radius:8px; padding:8px 18px; font:500 13.5px 'Instrument Sans',sans-serif; cursor:pointer; opacity:{{ sendOpacity }}" disabled="{{ sendDisabled }}" onClick="{{ send }}">Lähetä</button>
+        </sc-if>
+      </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed; left:50%; bottom:28px; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:9px 16px; border-radius:8px; font:500 13px 'Instrument Sans',sans-serif; z-index:40">{{ toast }}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1020,&quot;height&quot;:860},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light' | 'dark'&quot;},&quot;nopeus&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1,&quot;min&quot;:0.5,&quot;max&quot;:3,&quot;step&quot;:0.5,&quot;unit&quot;:&quot;×&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;naytaMalli&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const DIFF = [
+  ["@@ -78,9 +78,16 @@ export async function listWorkspaces()", "meta"],
+  ["  const root = path.join(os.homedir(), 'src')", "ctx"],
+  ["− const dirs = await readdir(root)", "del"],
+  ["− return dirs.map(toWorkspace)", "del"],
+  ["+ const entries = await readdir(root, { withFileTypes: true })", "add"],
+  ["+ const dirs = entries.filter((e) => e.isDirectory())", "add"],
+  ["+ return Promise.all(", "add"],
+  ["+   dirs.map(async (d) => ({", "add"],
+  ["+     name: d.name,", "add"],
+  ["+     path: path.join(root, d.name),", "add"],
+  ["+     git: await isGitRepo(path.join(root, d.name)),", "add"],
+  ["+   })),", "add"],
+  ["+ )", "add"],
+  ["}", "ctx"],
+];
+const DIFF_CODE = DIFF.slice(1).map((l) => l[0].replace(/^[−+] /, "")).join("\n");
+const SHELL_OUT = "FAIL  test/workspaces.spec.ts\n  ● listWorkspaces › palauttaa ~/src-hakemistot\n\n    TypeError: scanDir is not a function\n      at listWorkspaces (src/workspaces.ts:92:18)\n\nTests: 1 failed, 4 passed";
+const ROWS = [
+  { path: "src/workspaces.ts", meta: "142 riviä" },
+  { path: "src/routes/workspaces.get.ts", meta: "88 riviä" },
+  { path: "src/fs/scan.ts", meta: "61 riviä" },
+];
+
+function base() {
+  return {
+    items: [
+      { id: "h1", kind: "user", time: "13.48", text: "Miten workspace-lista nyt muodostuu?" },
+      { id: "h2", kind: "agentLabel", time: "13.48" },
+      { id: "h3", kind: "text", text: "Lista tulee listWorkspaces-funktiosta tiedostossa src/workspaces.ts. Se lukee ~/src-hakemiston kerran ja palauttaa kaikki merkinnät sellaisenaan, myös tiedostot." },
+    ],
+    phase: "idle",
+    draft: "Näytä ~/src-hakemistot workspace-listassa.",
+    open: { g1: false, s1: true, d1: true },
+    toast: "",
+    workingLabel: "",
+    queue: [],
+    conn: "online",
+    readonly: false,
+    resumeBusy: false,
+  };
+}
+
+class Component extends DCLogic {
+  state = Object.assign({ theme: null, deliverMode: "after", connShow: true, modelShow: false, statusShow: false }, base());
+  scrollRef = React.createRef();
+  atBottom = true;
+
+  componentDidMount() {
+    this._conn = setTimeout(() => this.setState({ connShow: false }), 2200);
+    this._esc = (e) => {
+      if (e.key !== "Escape" || this.state.phase !== "working") return;
+      const now = Date.now();
+      if (this._lastEsc && now - this._lastEsc < 900) { this._lastEsc = 0; this.interrupt(); }
+      else { this._lastEsc = now; this.flash("Paina Esc uudelleen keskeyttääksesi"); }
+    };
+    document.addEventListener("keydown", this._esc);
+  }
+  componentWillUnmount() {
+    clearTimeout(this._t); clearTimeout(this._toast); clearTimeout(this._conn); clearTimeout(this._mdl); clearTimeout(this._sts);
+    document.removeEventListener("keydown", this._esc);
+  }
+  componentDidUpdate() {
+    const el = this.scrollRef.current;
+    if (el && this.atBottom) el.scrollTop = el.scrollHeight;
+  }
+  speed() { return this.props.nopeus || 1; }
+  flash(msg) {
+    this.setState({ toast: msg });
+    clearTimeout(this._toast);
+    this._toast = setTimeout(() => this.setState({ toast: "" }), 1800);
+  }
+  copy(text, label) {
+    try {
+      navigator.clipboard.writeText(text).then(() => this.flash(label), () => this.flash("Kopiointi ei onnistunut"));
+    } catch (e) { this.flash("Kopiointi ei onnistunut"); }
+  }
+  add(item) { this.setState((s) => ({ items: s.items.concat([item]) })); }
+  upd(id, patch) {
+    this.setState((s) => ({ items: s.items.map((i) => (i.id === id ? Object.assign({}, i, patch) : i)) }));
+  }
+
+  send(mode) {
+    const text = this.state.draft.trim();
+    if (!text) return;
+    if (this.state.phase === "working") {
+      const m = mode || "after";
+      this.setState((s) => ({ queue: s.queue.concat([{ qid: "q" + Date.now() + s.queue.length, text: text, mode: m }]), draft: "" }));
+      return;
+    }
+    this.atBottom = true;
+    this.setState((s) => ({
+      items: s.items.concat([{ id: "u1", kind: "user", time: "14.02", text: text }, { id: "a1", kind: "agentLabel", time: "14.02" }]),
+      draft: "",
+      phase: "working",
+      workingLabel: "Pi vastaanotti viestin…",
+    }));
+    this.run();
+  }
+
+  run() {
+    const steps = [
+      [500, () => { this.add({ id: "t1", kind: "text", text: "Katson ensin, miten workspace-lista muodostetaan, ja etsin kohdan jossa hakemistot luetaan." }); this.setState({ workingLabel: "Lukee tiedostoja…" }); }],
+      [600, () => this.add({ id: "g1", kind: "group", title: "Luetaan tiedostoja", status: "run", statusText: "4/15", meta: "rinnakkain" })],
+      [1400, () => { this.upd("g1", { status: "ok", statusText: "✓ 15/15", meta: "2,4 s · rinnakkain" }); this.setState({ workingLabel: "Hakee…" }); }],
+      [500, () => this.add({ id: "q1", kind: "search", term: "readdir(", summary: "haetaan…", status: "run", statusText: "kesken" })],
+      [800, () => { this.upd("q1", { status: "ok", statusText: "✓ 7 osumaa", summary: "src/fs/scan.ts:24, src/workspaces.ts:81 …" }); this.setState({ workingLabel: "Ajaa komentoa…" }); }],
+      [500, () => this.add({ id: "s1", kind: "shell", cmd: "$ npm run test:workspaces", status: "run", statusText: "ajossa", output: "" })],
+      [1600, () => { this.upd("s1", { status: "err", statusText: "✕ Virhe · exit 1", output: SHELL_OUT }); this.setState({ workingLabel: "Korjaa…" }); }],
+      [700, () => this.add({ id: "t2", kind: "text", text: "Testi kaatui puuttuvaan vientiin. Lisään hakemistolistauksen ja Git-tarkistuksen src/workspaces.ts-tiedostoon:" })],
+      [600, () => this.add({ id: "d1", kind: "diff", path: "src/workspaces.ts" })],
+      [600, () => { this.add({ id: "s2", kind: "shell", cmd: "$ npm run test:workspaces", status: "run", statusText: "ajossa", output: "" }); this.setState({ workingLabel: "Ajaa testit uudelleen…" }); }],
+      [2200, () => this.upd("s2", { status: "ok", statusText: "✓ exit 0", output: "PASS  test/workspaces.spec.ts\n\nTests: 5 passed" })],
+      [500, () => { this.add({ id: "t3", kind: "text", text: "Testit menevät läpi. Workspace-lista näyttää nyt ~/src-hakemistot ja merkitsee, mitkä niistä ovat Git-repoja." }); this.setState({ phase: "done", workingLabel: "" }); }],
+    ];
+    this._steps = steps;
+    this._i = 0;
+    this.tick();
+  }
+
+  paused() {
+    return this.state.conn === "offline" || this.state.items.some((i) => i.kind === "ask" && !i.answer);
+  }
+
+  tick() {
+    clearTimeout(this._t);
+    if (!this._steps || this.paused() || this.state.phase !== "working") return;
+    if (this._i >= this._steps.length) { this._steps = null; this.finish(); return; }
+    const st = this._steps[this._i++];
+    this._t = setTimeout(() => { st[1](); this.deliverSteer(); this.tick(); }, st[0] / this.speed());
+  }
+
+  askNow() {
+    clearTimeout(this._t);
+    this.atBottom = true;
+    this.setState((s) => ({
+      items: s.items.concat([{
+        id: "ask" + s.items.length,
+        kind: "ask",
+        question: "Ohitetaanko piilohakemistot workspace-listassa?",
+        options: ["Kyllä, ohita", "Näytä kaikki"],
+        answer: null,
+      }]),
+      workingLabel: "Odottaa vastaustasi",
+    }));
+  }
+
+  answerAsk(id, label) {
+    this.setState(
+      (s) => ({
+        items: s.items.map((i) => (i.id === id ? Object.assign({}, i, { answer: label }) : i)),
+        workingLabel: "Jatkaa työtä…",
+      }),
+      () => this.tick()
+    );
+  }
+
+  setConn(next) {
+    if (next === "offline") {
+      clearTimeout(this._t);
+      this.setState({ conn: "offline" });
+      return;
+    }
+    this.setState(
+      (s) => ({
+        conn: "online",
+        items: s.items.concat([{ id: "cn" + s.items.length, kind: "note", text: "Yhteys palasi. Tila päivitettiin lähteestä — luonnos ja lukukohta säilyivät." }]),
+      }),
+      () => this.tick()
+    );
+  }
+
+  deliverSteer() {
+    const p = this.state.queue.filter((q) => q.mode === "steer")[0];
+    if (!p) return;
+    this.atBottom = true;
+    this.setState((s) => ({
+      queue: s.queue.filter((q) => q.qid !== p.qid),
+      items: s.items.concat([
+        { id: "st" + s.items.length, kind: "user", time: "14.03", text: p.text },
+        { id: "sn" + s.items.length, kind: "note", text: "Ohjaus toimitettiin kesken vuoron. Pi ottaa sen huomioon seuraavassa vaiheessa." },
+      ]),
+    }));
+  }
+
+  finish() {
+    const q = this.state.queue;
+    if (!q.length) return;
+    this.atBottom = true;
+    const msgs = q.map((m, n) => ({ id: "qm" + m.qid, kind: "user", time: "14.04", text: m.text }));
+    const note = q.length > 1 ? [{ id: "qn" + q[0].qid, kind: "note", text: q.length + " jonossa ollutta viestiä toimitettiin järjestyksessä työn päätyttyä." }] : [];
+    this.setState((s) => ({
+      queue: [],
+      phase: "working",
+      workingLabel: "Pi vastaanotti jonon…",
+      items: s.items.concat(note).concat(msgs).concat([{ id: "qa" + q[0].qid, kind: "agentLabel", time: "14.04" }]),
+    }));
+    this._t = setTimeout(() => {
+      this.add({ id: "qt" + q[0].qid, kind: "text", text: q.length > 1 ? "Selvä. Käyn jonon läpi järjestyksessä, ensimmäisenä " + q[0].text.toLowerCase() : "Selvä. Otan tarkennuksen työn alle seuraavaksi." });
+      this.setState({ phase: "done", workingLabel: "" });
+    }, 1400 / this.speed());
+  }
+
+  interrupt() {
+    clearTimeout(this._t);
+    this._steps = null;
+    this.setState((s) => ({
+      items: s.items
+        .map((i) => (i.status === "run" ? Object.assign({}, i, { status: "stop", statusText: "⃠ Keskeytetty" }) : i))
+        .concat([{ id: "n1", kind: "note", text: "Työ keskeytettiin 14.03. Keskeneräiset työkalut merkittiin keskeytetyiksi; jo tehtyjä muutoksia ei peruttu." }]),
+      phase: "stopped",
+      workingLabel: "",
+      queue: [],
+      draft: s.queue.length ? s.queue.map((q) => q.text).join("\n\n") : s.draft,
+    }));
+  }
+
+  renderVals() {
+    const st = this.state;
+    const theme = st.theme || this.props.theme || "light";
+    const tone = {
+      run: "var(--acc)", ok: "var(--ok)", err: "var(--err)", stop: "var(--muted)",
+    };
+    const diffStyle = {
+      meta: ["var(--line-soft)", "var(--muted)"],
+      ctx: ["transparent", "var(--ink-2)"],
+      add: ["var(--ok-soft)", "var(--ink)"],
+      del: ["var(--err-soft)", "var(--ink)"],
+    };
+    const working = st.phase === "working";
+    const items = st.items.map((i, idx) => {
+      const open = !!st.open[i.id];
+      const o = {
+        id: i.id, time: i.time, text: i.text, title: i.title, term: i.term, summary: i.summary,
+        cmd: i.cmd, output: i.output, path: i.path, meta: i.meta, mark: open ? "▾" : "▸", open: open,
+        statusText: i.statusText, statusColor: tone[i.status] || "var(--muted)",
+        anim: i.status === "run" ? "p 2.4s ease-in-out infinite" : "none",
+        isUser: i.kind === "user", isAgentLabel: i.kind === "agentLabel", isText: i.kind === "text",
+        isNote: i.kind === "note", isGroup: i.kind === "group", isSearch: i.kind === "search",
+        isShell: i.kind === "shell", isDiff: i.kind === "diff", isAsk: i.kind === "ask",
+        onToggle: () => this.setState((s) => ({ open: Object.assign({}, s.open, { [i.id]: !s.open[i.id] }) })),
+      };
+      if (i.kind === "user") o.onCopy = () => this.copy(i.text, "Viesti kopioitu");
+      if (i.kind === "ask") {
+        o.question = i.question;
+        o.answer = i.answer;
+        o.unanswered = !i.answer;
+        o.askBorder = i.answer ? "var(--line)" : "var(--acc)";
+        o.options = i.options.map((label, n) => ({
+          label: label,
+          bg: n === 0 ? "var(--acc)" : "var(--surface)",
+          fg: n === 0 ? "var(--on-acc)" : "var(--ink)",
+          border: n === 0 ? "var(--acc)" : "var(--line)",
+          onPick: () => this.answerAsk(i.id, label),
+        }));
+      }
+      if (i.kind === "agentLabel") {
+        const turn = [];
+        for (let k = idx + 1; k < st.items.length; k++) {
+          const n = st.items[k];
+          if (n.kind === "user" || n.kind === "agentLabel") break;
+          if (n.kind === "text") turn.push(n.text);
+        }
+        o.onCopy = () => this.copy(turn.join("\n\n"), "Vastaus kopioitu");
+      }
+      if (i.kind === "shell") {
+        o.shellBg = i.status === "err" ? "var(--err-soft)" : "var(--surface)";
+        o.shellLine = i.status === "err" ? "var(--err-line)" : "var(--line)";
+        o.onCopy = () => this.copy(i.output, "Koodi kopioitu");
+      }
+      if (i.kind === "group") {
+        o.rows = ROWS.map((r) => ({ path: r.path, meta: r.meta, mark: "✓", color: "var(--ok)" }));
+        o.more = i.status === "ok" ? "+ 12 muuta lukua" : "+ luetaan…";
+      }
+      if (i.kind === "diff") {
+        o.lines = DIFF.map((l, n) => ({ text: l[0], bg: diffStyle[l[1]][0], color: diffStyle[l[1]][1], key: n }));
+        o.onCopy = () => this.copy(DIFF_CODE, "Koodi kopioitu");
+      }
+      return o;
+    });
+
+    const labels = { idle: "", working: "Työskentelee", done: "", stopped: "Keskeytetty" };
+    const dots = { idle: "var(--muted)", working: "var(--acc)", done: "var(--ok)", stopped: "var(--err)" };
+    const hint = working
+      ? "Enter lähettää jonoon · ⌘+Enter lähettää heti"
+      : "Enter lähettää · Shift+Enter rivinvaihto";
+    const hint2 = st.conn === "offline" ? "Yhteys poikki — lähettäminen ei ole käytettävissä" : hint;
+    const connOn = st.connShow;
+    const modelOn = st.modelShow;
+
+    return {
+      theme: theme,
+      themeLabel: theme === "dark" ? "Vaalea teema" : "Tumma teema",
+      toggleTheme: () => this.setState({ theme: theme === "dark" ? "light" : "dark" }),
+      reset: () => { clearTimeout(this._t); this.atBottom = true; this.setState(Object.assign({ theme: theme }, base())); },
+      items: items,
+      working: working,
+      workingLabel: st.workingLabel,
+      statusLabel: labels[st.phase],
+      statusDot: dots[st.phase],
+      statusAnim: working ? "p 2.4s ease-in-out infinite" : "none",
+      showStatus: st.phase === "working",
+      showModel: this.props.naytaMalli !== false,
+      connWidth: connOn || st.conn === "offline" ? "125px" : "0px",
+      connOpacity: connOn || st.conn === "offline" ? 1 : 0,
+      connEnter: () => { clearTimeout(this._conn); this.setState({ connShow: true }); },
+      connLeave: () => { this._conn = setTimeout(() => this.setState({ connShow: false }), 150); },
+      draft: st.draft,
+      onDraft: (e) => this.setState({ draft: e.target.value }),
+      onKey: (e) => {
+        if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+        const now = e.metaKey || e.ctrlKey;
+        if (!now && e.shiftKey) return;
+        e.preventDefault();
+        this.send(working ? (now ? "steer" : "after") : "now");
+      },
+      modelW: modelOn ? "90px" : "0px",
+      modelVer: modelOn ? "24px" : "0px",
+      modelO: modelOn ? 1 : 0,
+      modelEnter: () => { clearTimeout(this._mdl); this.setState({ modelShow: true }); },
+      modelLeave: () => { this._mdl = setTimeout(() => this.setState({ modelShow: false }), 150); },
+      send: () => this.send("now"),
+      sendSteer: () => this.send("steer"),
+      sendAfter: () => this.send("after"),
+      statusW: st.statusShow ? "320px" : "0px",
+      statusO: st.statusShow ? 1 : 0,
+      statusEnter: () => { clearTimeout(this._sts); this.setState({ statusShow: true }); },
+      statusLeave: () => { this._sts = setTimeout(() => this.setState({ statusShow: false }), 150); },
+      workingTitle: st.workingLabel || "Agentti työskentelee",
+      idleComposer: !working,
+      triggerAsk: () => this.askNow(),
+      toggleConn: () => this.setConn(st.conn === "online" ? "offline" : "online"),
+      connBtn: st.conn === "online" ? "Katkaise yhteys" : "Yhdistä",
+      offline: st.conn === "offline",
+      readonly: st.readonly,
+      showResume: st.readonly && st.conn === "online",
+      readonlyBtn: st.readonly ? "Palaa keskusteluun" : "Näytä historiana",
+      toggleReadonly: () => { clearTimeout(this._t); this.setState((s) => ({ readonly: !s.readonly, resumeBusy: false, phase: !s.readonly ? "idle" : s.phase, workingLabel: "" })); },
+      canCompose: !st.readonly,
+      resumeText: st.resumeBusy
+        ? "Käynnistetään agenttia natiivilla ID:llä…"
+        : "Historia on luettavissa. Agentin prosessi ei ole käynnissä — avaaminen ei itsessään resumoi sitä.",
+      resumeBtn: st.resumeBusy ? "Käynnistetään…" : "Jatka keskustelua",
+      resumeBusy: st.resumeBusy,
+      resumeOpacity: st.resumeBusy ? 0.45 : 1,
+      doResume: () => {
+        if (st.resumeBusy) return;
+        this.setState({ resumeBusy: true });
+        this._t = setTimeout(() => this.setState((s) => ({
+          resumeBusy: false,
+          readonly: false,
+          items: s.items.concat([{ id: "rs" + s.items.length, kind: "note", text: "Agentti resumoitiin 14.06. Historia jatkuu samasta keskustelusta." }]),
+        })), 1600 / this.speed());
+      },
+      connDot: st.conn === "online" ? "var(--ok)" : "var(--err)",
+      connColor: st.conn === "online" ? "var(--muted)" : "var(--err)",
+      connText: st.conn === "online" ? "Yhdistetty · Alder" : "Yhteys poikki · Alder",
+      hasQueue: st.queue.length > 0,
+      queueCount: st.queue.length,
+      clearQueue: () => this.setState((s) => ({ queue: [], draft: s.draft || s.queue.map((q) => q.text).join("\n\n") })),
+      queue: st.queue.map((q, n) => ({
+        order: n + 1,
+        text: q.text,
+        label: q.mode === "steer" ? "seuraavan työkalun jälkeen" : "kun agentti on valmis",
+        onCancel: () => this.setState((s) => ({ queue: s.queue.filter((x) => x.qid !== q.qid) })),
+      })),
+      sendDisabled: !st.draft.trim() || st.conn === "offline",
+      sendOpacity: !st.draft.trim() || st.conn === "offline" ? 0.45 : 1,
+      composerHint: hint2,
+      interrupt: () => this.interrupt(),
+      toast: st.toast,
+      scrollRef: this.scrollRef,
+      onScroll: (e) => {
+        const el = e.target;
+        const bottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+        if (bottom !== this.atBottom) { this.atBottom = bottom; this.forceUpdate(); }
+      },
+      showJump: !this.atBottom && working,
+      jumpDown: () => {
+        const el = this.scrollRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
+        this.atBottom = true; this.forceUpdate();
+      },
+      noop: (e) => e && e.preventDefault && e.preventDefault(),
+    };
+  }
+}
+</script>
+</body>
+</html>

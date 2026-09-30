@@ -1,0 +1,50 @@
+.card {
+  display: grid;
+  gap: var(--ah-s5);
+  max-width: 48rem;
+  padding: var(--ah-s7);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-xl);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+}
+.card header {
+  display: grid;
+  gap: var(--ah-s2);
+}
+.card h1,
+.card h2,
+.card h3,
+.card p {
+  margin: 0;
+}
+.card p {
+  line-height: var(--ah-lh-ui);
+}
+.steps {
+  display: grid;
+  gap: var(--ah-s4);
+}
+.steps a {
+  color: var(--ah-accent-ink);
+  overflow-wrap: anywhere;
+}
+.code {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s4);
+  align-items: center;
+}
+.code code {
+  padding: var(--ah-s3);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+  font-size: var(--ah-size-ui);
+  user-select: all;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s3);
+}

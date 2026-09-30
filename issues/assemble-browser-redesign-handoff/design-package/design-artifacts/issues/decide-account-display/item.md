@@ -1,0 +1,28 @@
+---
+created: 2026-09-29
+updated: 2026-09-29
+type: task
+status: open
+priority: normal
+labels: [human-review]
+---
+
+# Decide account display name and single conversation route
+
+Two browser/host contract questions surfaced by the overnight synthetic UX audits (`issues/decidedly-loud-station/audit.md`, `issues/relatively-robust-flower/audit.md`). Both change the contract, so they are Jari's decision.
+
+## 1. Show which account is signed in
+
+Today every person sees "Oma tili" in the rail and settings: `accountLabel()` collapses the provider identity to a generic label, and the snapshot carries no person-facing name. After a logout and a different sign-in in the same tab, nothing on screen shows whose work is being read. No data leaked in the tests; the problem is that the page gives the person no way to check it.
+
+**Recommendation:** the gateway already learns the verified GitHub login during OAuth. Add it to the snapshot's `auth` block as a display-only field, and show it in the rail and settings. The UI never uses it for authority, and the Unix username and UID stay hidden.
+
+## 2. One route for a conversation
+
+A writable browser chat lives at `/workspaces/:id?conversation=pi:…`, and the same conversation's native history lives at `/agents/:id`. They look the same but have different addresses, so deep links and back-navigation differ.
+
+**Recommendation:** converge on the native-ID route `/agents/pi:<id>`, with the write controls shown when this daemon incarnation holds the controller for that session. Do this once the host semantics of "controllable here" are settled, rather than as a browser-only redirect.
+
+## Decision
+
+(Jari)

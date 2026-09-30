@@ -1,0 +1,133 @@
+.card {
+  display: grid;
+  gap: var(--ah-s5);
+  max-width: 48rem;
+  min-width: 0;
+  padding: var(--ah-s7);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-xl);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+}
+.header {
+  display: grid;
+  gap: var(--ah-s2);
+}
+.header > * {
+  margin: 0;
+}
+.header p {
+  line-height: var(--ah-lh-ui);
+}
+.list {
+  display: grid;
+  gap: var(--ah-s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: min(32rem, 42dvh);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.row {
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+}
+.choice {
+  display: flex;
+  align-items: start;
+  gap: var(--ah-s3);
+  padding: var(--ah-s4);
+  cursor: pointer;
+}
+.choice input {
+  margin-top: 0.25em;
+  accent-color: var(--ah-accent-ink);
+}
+.choice input:focus-visible {
+  outline: 2px solid var(--ah-accent-ink);
+  outline-offset: 2px;
+}
+.details {
+  display: grid;
+  gap: var(--ah-s2);
+  min-width: 0;
+}
+.name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ah-s2);
+  overflow-wrap: anywhere;
+}
+.description {
+  color: var(--ah-ink-2);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.current {
+  margin: 0;
+  color: var(--ah-ink-2);
+  overflow-wrap: anywhere;
+}
+.footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ah-s3);
+  margin: 0 calc(-1 * var(--ah-s7)) calc(-1 * var(--ah-s7));
+  padding: var(--ah-s4) var(--ah-s7);
+  border-top: 1px solid var(--ah-line);
+  border-radius: 0 0 var(--ah-r-xl) var(--ah-r-xl);
+  background: var(--ah-surface);
+}
+.count {
+  margin: 0;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s3);
+}
+
+@media (max-width: 40rem) {
+  .card {
+    padding: var(--ah-s4);
+  }
+  .footer {
+    margin: 0 calc(-1 * var(--ah-s4)) calc(-1 * var(--ah-s4));
+    padding: var(--ah-s3) var(--ah-s4);
+  }
+  .list {
+    max-height: min(26rem, 36dvh);
+  }
+  .actions {
+    width: 100%;
+  }
+  .actions > * {
+    width: 100%;
+  }
+}
+
+.filter {
+  display: grid;
+  gap: var(--ah-s2);
+}
+.filter input {
+  font: inherit;
+  padding: var(--ah-s2);
+  color: var(--ah-ink);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+}
+.filter input:focus-visible {
+  outline: 2px solid var(--ah-accent-ink);
+  outline-offset: 2px;
+}

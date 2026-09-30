@@ -1,0 +1,50 @@
+/* Designer's Latin/Latin-ext families are bundled with the release, never fetched at runtime.
+   OFL licenses and original font files are in ../fonts/. */
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../fonts/instrument-sans-latin.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../fonts/instrument-sans-latin-ext.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("../fonts/jetbrains-mono-latin.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("../fonts/jetbrains-mono-latin-ext.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+:root {
+  --ah-font: "Instrument Sans", system-ui, sans-serif;
+  --ah-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --ah-size-h1: 30px;
+  --ah-size-h2: 16px;
+  --ah-size-title: 15px;
+  --ah-size-body: 14.5px;
+  --ah-size-ui: 13.5px;
+  --ah-size-meta: 12.5px;
+  --ah-size-label: 11px;
+  --ah-size-code: 12.5px;
+
+  --ah-lh-body: 1.6;
+  --ah-lh-ui: 1.55;
+  --ah-measure: 70ch;
+}
