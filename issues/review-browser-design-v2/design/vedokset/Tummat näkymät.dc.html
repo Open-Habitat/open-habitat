@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#0e1013; }
+  a { color:#9fd4dd } a:hover { color:#4fa6b4 }
+</style>
+</helmet>
+
+<div style="min-height:100vh; box-sizing:border-box; padding:32px 28px 64px; background:#0e1013; font-family:'Instrument Sans',system-ui,sans-serif; color:#e6e9ec; display:flex; flex-direction:column; gap:28px">
+
+  <div style="max-width:1480px; width:100%; margin:0 auto; display:flex; flex-direction:column; gap:14px">
+    <div style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.09em; text-transform:uppercase; color:#98a0a8">Tumma teema · kaikki välinäkymät</div>
+    <h1 style="margin:0; font:600 26px 'Instrument Sans',sans-serif; letter-spacing:-.015em">Tummat näkymät</h1>
+    <p style="margin:0; max-width:82ch; font-size:14.5px; line-height:1.6; color:#c5cad0; text-wrap:pretty">Tumma teema on sama rakenne samoilla tokeneilla (<code style="font:400 13px 'JetBrains Mono',monospace">tokens/colors.css</code>), ei oma ilme. Ruudut ovat oikeita näkymiä puolikkaassa koossa — avaa lähdetiedosto nähdäksesi täysikokoisena ja klikattavana.</p>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr)); gap:12px; font-size:13.5px; line-height:1.55; color:#c5cad0">
+      <div style="background:#1b1f23; border:1px solid #2a3036; border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:6px"><strong style="font-weight:600; color:#e6e9ec">Estetty painike ei enää haalistu</strong>Nykyisessä tummassa teemassa estetyt napit (Päivitä, Tilivalikko) olivat läpikuultavia ja lukukelvottomia. Nyt estetty painike on harmaa pinta ja vaalea teksti, ja syy kerrotaan sen vieressä.</div>
+      <div style="background:#1b1f23; border:1px solid #2a3036; border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:6px"><strong style="font-weight:600; color:#e6e9ec">Korostus vaalenee</strong>Korostus #4fa6b4 ja sen teksti #9fd4dd. Ensisijaisen painikkeen teksti on tumma (#0f1417), jotta kontrasti säilyy (n. 7:1).</div>
+      <div style="background:#1b1f23; border:1px solid #2a3036; border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:6px"><strong style="font-weight:600; color:#e6e9ec">Toissijainen teksti</strong>Muted #98a0a8 ja faint #949ca6 pinnalla #1b1f23 ovat noin 6:1 — pienikin metateksti ylittää 4.5:1.</div>
+    </div>
+  </div>
+
+  <sc-for list="{{ sections }}" as="sec" hint-placeholder-count="2">
+    <div style="max-width:1480px; width:100%; margin:0 auto; display:flex; flex-direction:column; gap:12px">
+      <div style="display:flex; align-items:baseline; gap:12px">
+        <h2 style="margin:0; font:600 16px 'Instrument Sans',sans-serif">{{ sec.title }}</h2>
+        <span style="font:400 12px 'JetBrains Mono',monospace; color:#98a0a8">{{ sec.file }}</span>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fill,720px); gap:20px 24px">
+        <sc-for list="{{ sec.tiles }}" as="t" hint-placeholder-count="4">
+          <div style="display:flex; flex-direction:column; gap:8px">
+            <span style="font:500 12.5px 'Instrument Sans',sans-serif; color:#c5cad0">{{ t.label }}</span>
+            <div style="width:720px; height:450px; overflow:hidden; border-radius:8px; border:1px solid #2a3036; background:#14171a">
+              <div style="width:1440px; height:900px; transform:scale(.5); transform-origin:0 0; pointer-events:none">
+                <sc-if value="{{ t.main }}" hint-placeholder-val="{{ true }}">
+                  <dc-import name="Selainpolku v2" mode="{{ t.mode }}" frame-only="{{ true }}" theme="dark" hint-size="1440px,900px"></dc-import>
+                </sc-if>
+                <sc-if value="{{ t.onb }}" hint-placeholder-val="{{ false }}">
+                  <dc-import name="Onboarding v2" step="{{ t.step }}" state="{{ t.state }}" frame-only="{{ true }}" theme="dark" hint-size="1440px,900px"></dc-import>
+                </sc-if>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const MAIN = [
+  ["paluu", "Paluu — Jatka siitä, mihin jäit"],
+  ["uusi", "Uusi keskustelu"],
+  ["tyo", "Työskentelee + jono"],
+  ["valmis", "Valmis vastaus"],
+  ["hylatty", "Hylätty lähetys"],
+  ["katkos", "Katkos + epävarma lähetys"],
+  ["luku", "Vain luku"],
+  ["asetukset", "Asetukset"],
+];
+const ONB = [
+  [1, "idle", "Kirjautuminen"],
+  [1, "finishing", "Paluu GitHubista"],
+  [1, "error", "Kirjautumisvirhe"],
+  [2, "selected", "Repot — kaksi valittu"],
+  [2, "progress", "Repojen haku käynnissä"],
+  [2, "failed", "Repon haku epäonnistui"],
+  [2, "exit", "Keskeytyksen vahvistus"],
+  [3, "pending", "OpenAI — koodi näkyvissä"],
+  [3, "connected", "OpenAI — yhdistetty"],
+];
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      sections: [
+        { title: "Pääsnäkymä", file: "Selainpolku v2.dc.html", tiles: MAIN.map(([mode, label]) => ({ main: true, onb: false, mode, label })) },
+        { title: "Onboarding", file: "Onboarding v2.dc.html", tiles: ONB.map(([step, state, label]) => ({ main: false, onb: true, step, state, label })) },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

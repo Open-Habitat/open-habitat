@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#e9ebee; }
+  :root, [data-theme="light"] {
+    --bg:#f6f7f8; --surface:#ffffff; --surface-2:#fbfcfd; --rail:#f1f3f5; --line:#e2e6e9; --line-soft:#eef0f3;
+    --ink:#16191d; --ink-2:#3d434b; --muted:#61676f; --faint:#6b7178;
+    --acc:#2b7f8c; --acc-ink:#1d5f69; --acc-soft:#e6f1f3; --acc-line:#cfe3e6; --on-acc:#ffffff;
+    --ok:#2f7a55; --ok-soft:#eef7f1; --err:#a3412b; --err-soft:#fdf1ee; --err-line:#f3d7d0;
+  }
+  [data-theme="dark"] {
+    --bg:#14171a; --surface:#1b1f23; --surface-2:#171a1e; --rail:#171a1e; --line:#2a3036; --line-soft:#232830;
+    --ink:#e6e9ec; --ink-2:#c5cad0; --muted:#98a0a8; --faint:#949ca6;
+    --acc:#4fa6b4; --acc-ink:#9fd4dd; --acc-soft:#173137; --acc-line:#2c4a52; --on-acc:#0f1417;
+    --ok:#8fcfa8; --ok-soft:#1b2721; --err:#e8a08a; --err-soft:#261c1b; --err-line:#4a2e28;
+  }
+  @keyframes p { 0%,100%{opacity:1} 50%{opacity:.3} }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important } }
+  a { color:var(--acc-ink) } a:hover { color:var(--acc) }
+  button:focus-visible { outline:2px solid var(--acc); outline-offset:2px }
+</style>
+</helmet>
+
+<div data-theme="{{ theme }}" style="min-height:{{ rootMinH }}; box-sizing:border-box; padding:{{ rootPad }}; background:var(--bg); font-family:'Instrument Sans',system-ui,sans-serif; color:var(--ink); display:flex; flex-direction:column; align-items:center; gap:22px">
+
+  <sc-if value="{{ showChrome }}" hint-placeholder-val="{{ true }}">
+  <div style="width:100%; max-width:1440px; display:flex; flex-direction:column; gap:18px">
+    <div style="display:flex; flex-direction:column; gap:6px">
+      <div style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.09em; text-transform:uppercase; color:var(--muted)">Onboarding · välinäkymät 2–3 / 6</div>
+      <h1 style="margin:0; font:600 26px 'Instrument Sans',sans-serif; letter-spacing:-.015em">{{ pageTitle }}</h1>
+      <p style="margin:0; max-width:80ch; font-size:14.5px; line-height:1.6; color:var(--ink-2); text-wrap:pretty">Nykyinen kortti ei kerro, mille palvelimelle kirjaudutaan, mitä kirjautuminen antaa tai mitä sen jälkeen tapahtuu. Uusi kehys on sama kaikissa ensikäytön vaiheissa: tuote ja palvelin ylhäällä, vaiheet näkyvissä alusta asti, ja jokaisella odotuksella on oma tilansa — ei tyhjää siirtymää.</p>
+    </div>
+
+    <div role="tablist" aria-label="Vaihe" style="display:flex; gap:4px; background:var(--rail); border:1px solid var(--line); border-radius:10px; padding:3px; align-self:flex-start">
+      <sc-for list="{{ stepTabs }}" as="t" hint-placeholder-count="2">
+        <button role="tab" aria-selected="{{ t.sel }}" style="border:0; background:{{ t.bg }}; color:{{ t.fg }}; border-radius:7px; padding:7px 14px; font:500 13px 'Instrument Sans',sans-serif; cursor:pointer; box-shadow:{{ t.shadow }}" onClick="{{ t.on }}">{{ t.label }}</button>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr)); gap:12px">
+      <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; font-size:13.5px; line-height:1.55; color:var(--ink-2)">
+        <strong style="font-weight:600; color:var(--ink)">Kevyet rivit, selvä valinta</strong>
+        Raskaat kortit ja selaimen valintaruudut vaihtuvat tiiviiksi listaksi. Koko rivi on valintakohde, ja valittu rivi korostuu. Repon nimi on monospacea, päivämäärä oikealla.
+      </div>
+      <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; font-size:13.5px; line-height:1.55; color:var(--ink-2)">
+        <strong style="font-weight:600; color:var(--ink)">Painike kertoo seurauksen</strong>
+        Ilman valintaa: <em>Jatka ilman repoja</em>. Valinnan jälkeen: <em>Hae 2 repoa ja jatka</em>. Haun aikana lista vaihtuu repokohtaiseksi etenemiseksi.
+      </div>
+      <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; font-size:13.5px; line-height:1.55; color:var(--ink-2)">
+        <strong style="font-weight:600; color:var(--ink)">Keskeytys kehyksessä</strong>
+        Irrallinen punainen nappi korvautuu hiljaisella linkillä kortin alla. Painallus avaa selvän vahvistuksen, jossa kerrotaan seuraukset — pilotissa keskeytys tuntui liian neutraalilta.
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isStep3 }}" hint-placeholder-val="{{ false }}">
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr)); gap:12px">
+      <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; font-size:13.5px; line-height:1.55; color:var(--ink-2)">
+        <strong style="font-weight:600; color:var(--ink)">Yksi pääpainike kerrallaan</strong>
+        Nykyisessä näkymässä on kolme samanarvoista nappia. Nyt jokaisessa tilassa on yksi ensisijainen toiminto; paluu repoihin ja peruutus ovat hiljaisia linkkejä.
+      </div>
+      <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; font-size:13.5px; line-height:1.55; color:var(--ink-2)">
+        <strong style="font-weight:600; color:var(--ink)">Koodi on pääosassa</strong>
+        Koodi näkyy isona ja kopioitavana, ja ohjeet ovat kaksi numeroitua vaihetta proosan sijaan. Linkki OpenAI:hin on painike, joka kertoo avaavansa uuden välilehden.
+      </div>
+      <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; font-size:13.5px; line-height:1.55; color:var(--ink-2)">
+        <strong style="font-weight:600; color:var(--ink)">Odotus on näkyvä</strong>
+        ”Odotetaan vahvistusta” -rivi kertoo, että sivu päivittyy itsestään. Pilotissa ensimmäinen painallus näytti virheen ennen koodia; nyt koodin valmistelulla on oma tilansa.
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ true }}">
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr)); gap:12px">
+      <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; font-size:13.5px; line-height:1.55; color:var(--ink-2)">
+        <strong style="font-weight:600; color:var(--ink)">Palvelin näkyy</strong>
+        Osoite määrää palvelimen, joten se näytetään kortin yläpuolella. Kortin teksti kertoo lyhyesti, mitä kirjautumisen jälkeen voi tehdä.
+      </div>
+      <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; font-size:13.5px; line-height:1.55; color:var(--ink-2)">
+        <strong style="font-weight:600; color:var(--ink)">Polku näkyy etukäteen</strong>
+        Kolme vaihetta: GitHub, repot, OpenAI. Pilotissa OpenAI-kirjautuminen tuli yllätyksenä; nyt se on luvattu ensimmäisestä ruudusta.
+      </div>
+      <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; font-size:13.5px; line-height:1.55; color:var(--ink-2)">
+        <strong style="font-weight:600; color:var(--ink)">Paluu GitHubista on tila</strong>
+        Pilotin tyhjä istunnon varmistus korvautuu näkymällä ”Viimeistellään kirjautumista”. Se ei korjaa hitautta, mutta käyttäjä tietää, mitä odotetaan.
+      </div>
+    </div>
+    </sc-if>
+
+    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px">
+      <span style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); margin-right:4px">Tila</span>
+      <sc-for list="{{ switches }}" as="s" hint-placeholder-count="6">
+        <button style="display:inline-flex; align-items:center; gap:7px; border:1px solid {{ s.line }}; background:{{ s.bg }}; color:{{ s.fg }}; border-radius:8px; padding:6px 12px; font:500 12.5px 'Instrument Sans',sans-serif; cursor:pointer" onClick="{{ s.on }}">{{ s.label }}<span style="font:500 10.5px 'Instrument Sans',sans-serif; letter-spacing:.05em; text-transform:uppercase; opacity:.75">{{ s.tag }}</span></button>
+      </sc-for>
+      <button style="margin-left:auto; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:8px; padding:6px 12px; font:500 12.5px 'Instrument Sans',sans-serif; cursor:pointer" onClick="{{ toggleTheme }}">{{ themeLabel }}</button>
+    </div>
+    <sc-if value="{{ isFinishing }}" hint-placeholder-val="{{ false }}">
+      <div style="background:var(--acc-soft); border:1px solid var(--acc-line); border-radius:10px; padding:12px 14px; display:flex; flex-direction:column; gap:6px; font-size:13px; line-height:1.6; color:var(--ink-2); max-width:90ch">
+        <strong style="font-weight:600; color:var(--acc-ink)">Toteuttajalle · Paluu GitHubista</strong>
+        <span>Vaihelista on esimerkki. Täytä se niillä todellisilla vaiheilla, jotka palvelin kirjautumisen viimeistelyssä tekee ja joista se pystyy kertomaan — älä lisää vaiheita, joita ei oikeasti seurata.</span>
+        <span>Näkymä on näkyvissä vain hetken: kun istunto on auki, siirrytään automaattisesti Repot-vaiheeseen ilman painallusta. Vedos ei animoi siirtymää.</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
+      <div style="background:var(--acc-soft); border:1px solid var(--acc-line); border-radius:10px; padding:12px 14px; display:flex; flex-direction:column; gap:6px; font-size:13px; line-height:1.6; color:var(--ink-2); max-width:90ch">
+        <strong style="font-weight:600; color:var(--acc-ink)">Toteuttajalle · Repot</strong>
+        <span>Pilotissa repon valinta vaati toisen painalluksen. Se on toiminnallinen vika (näkymä vaihtuu ikkunan fokuksen palatessa), eikä tämä vedos korjaa sitä: ensimmäisen painalluksen pitää aina osua.</span>
+        <span>Valmis-tila näkyy hetken ja siirtyy automaattisesti OpenAI-vaiheeseen.</span>
+        <span>Haun tulos on joko onnistunut tai virhe. Jos vastaus katoaa, palvelimelta tarkistetaan ennen näyttämistä, tuliko repo työtilaksi; käyttäjälle ei näytetä ”epäselvää” välitilaa. Uudelleenhaku käynnistyy vain käyttäjän painalluksesta.</span>
+        <span>Aktiivisuussuodin käyttää GitHubin viimeisintä päivitysaikaa. Repoja, joiden päivitysaikaa ei tiedetä, ei piiloteta, eikä valittua repoa piiloteta koskaan.</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isStep3 }}" hint-placeholder-val="{{ false }}">
+      <div style="background:var(--acc-soft); border:1px solid var(--acc-line); border-radius:10px; padding:12px 14px; display:flex; flex-direction:column; gap:6px; font-size:13px; line-height:1.6; color:var(--ink-2); max-width:90ch">
+        <strong style="font-weight:600; color:var(--acc-ink)">Toteuttajalle · OpenAI</strong>
+        <span>Pilotissa ensimmäinen painallus näytti virheen ennen koodia ja paluu oli hidas. Ne ovat toiminnallisia vikoja: ”Koodia valmistellaan” -tila ei saa näyttää virhettä, vaikka koodi viipyisi.</span>
+        <span>Yhdistetty-tila näkyy hetken ja siirtyy automaattisesti työtiloihin (paluunäkymä). Vahvistussivun osoite ja koodi tulevat palvelimelta; näytä vain hyväksytty OpenAI-osoite.</span>
+      </div>
+    </sc-if>
+    <div style="font-size:13px; line-height:1.6; color:var(--muted); max-width:90ch">Huom. virhetilojen tekstit ovat esimerkkejä rakenteesta ja sävystä: otsikko kertoo mitä tapahtui, alla mitä käyttäjä voi tehdä. Ne pitää mukauttaa todellisiin virhetilanteisiin, kun palvelimen ja GitHubin palauttamat virheet on kartoitettu — virhekoodia tai kirjautumislinkkiä ei näytetä käyttäjälle.</div>
+  </div>
+  </sc-if>
+
+  <div style="width:100%; overflow-x:auto; display:flex; padding-bottom:4px">
+    <div style="margin:0 auto; display:flex; align-items:flex-start; gap:28px">
+      <sc-for list="{{ frames }}" as="f" hint-placeholder-count="2">
+        <div style="display:flex; flex-direction:column; gap:8px; flex-shrink:0">
+          <span style="font:400 11.5px 'JetBrains Mono',monospace; color:var(--muted)">{{ f.label }}</span>
+          <div style="width:{{ f.w }}; height:{{ f.h }}; box-sizing:border-box; background:var(--bg); border:1px solid var(--line); border-radius:12px; overflow:auto; box-shadow:0 1px 2px rgba(16,24,40,.05), 0 10px 30px rgba(16,24,40,.06); display:flex; flex-direction:column; align-items:center; padding:{{ f.pad }}">
+
+            <div style="width:100%; max-width:{{ colMax }}; display:flex; flex-direction:column; gap:18px">
+
+              <div style="display:flex; align-items:center; gap:10px; padding:0 2px">
+                <span style="font:600 14px 'Instrument Sans',sans-serif; letter-spacing:-.01em">Omega Habitat</span>
+                <span style="width:1px; height:14px; background:var(--line)"></span>
+                <span style="font:400 12px 'JetBrains Mono',monospace; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap">127.0.0.1:59553</span>
+              </div>
+
+              <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:{{ f.cardPad }}; display:flex; flex-direction:column; gap:20px">
+
+                <ol aria-label="Käyttöönoton vaiheet" style="list-style:none; margin:0; padding:0; display:flex; align-items:center; gap:8px">
+                  <sc-for list="{{ steps }}" as="st" hint-placeholder-count="3">
+                    <li aria-current="{{ st.current }}" style="display:flex; align-items:center; gap:7px; flex:{{ st.flex }}; min-width:0">
+                      <span style="width:20px; height:20px; box-sizing:border-box; flex-shrink:0; border-radius:99px; border:1px solid {{ st.line }}; background:{{ st.bg }}; color:{{ st.fg }}; display:inline-flex; align-items:center; justify-content:center; font:600 11px 'Instrument Sans',sans-serif">{{ st.mark }}</span>
+                      <span style="display:flex; flex-direction:column; min-width:0; line-height:1.2">
+                        <span style="font:{{ st.weight }} 12.5px 'Instrument Sans',sans-serif; color:{{ st.labelColor }}; white-space:nowrap">{{ st.label }}</span>
+                        <sc-if value="{{ st.sub }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px; color:var(--faint); white-space:nowrap">{{ st.sub }}</span></sc-if>
+                      </span>
+                      <sc-if value="{{ st.rule }}" hint-placeholder-val="{{ true }}"><span style="flex:1; min-width:0; height:1px; background:var(--line)"></span></sc-if>
+                    </li>
+                  </sc-for>
+                </ol>
+
+                <sc-if value="{{ isForm }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex; flex-direction:column; gap:16px">
+                    <sc-if value="{{ notice }}" hint-placeholder-val="{{ false }}">
+                      <div role="{{ noticeRole }}" style="background:{{ noticeBg }}; border:1px solid {{ noticeLine }}; border-radius:10px; padding:11px 13px; display:flex; flex-direction:column; gap:4px">
+                        <span style="font:500 13px 'Instrument Sans',sans-serif; color:{{ noticeColor }}">{{ noticeTitle }}</span>
+                        <span style="font-size:13px; line-height:1.55; color:var(--ink-2)">{{ notice }}</span>
+                      </div>
+                    </sc-if>
+                    <div style="display:flex; flex-direction:column; gap:8px">
+                      <h2 style="margin:0; font:600 21px 'Instrument Sans',sans-serif; letter-spacing:-.015em">{{ heading }}</h2>
+                      <p style="margin:0; font-size:14px; line-height:1.6; color:var(--ink-2); text-wrap:pretty">Kirjaudu GitHub-tililläsi. Pääset omiin työtiloihisi ja voit työskennellä niissä agenttien kanssa.</p>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:8px">
+                      <button disabled="{{ pending }}" style="display:flex; align-items:center; justify-content:center; gap:9px; width:100%; background:{{ btnBg }}; color:{{ btnFg }}; border:0; border-radius:8px; padding:11px 18px; font:500 14px 'Instrument Sans',sans-serif; cursor:pointer" style-hover="filter:brightness(.94)" onClick="{{ login }}">{{ btnLabel }}</button>
+                      <sc-if value="{{ showGoogle }}" hint-placeholder-val="{{ false }}">
+                        <button disabled="{{ pending }}" style="width:100%; background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:10px 18px; font:500 14px 'Instrument Sans',sans-serif; cursor:pointer; opacity:{{ btnOpacity }}" style-hover="background:var(--surface-2)">Kirjaudu Googlella</button>
+                      </sc-if>
+                      <sc-if value="{{ pending }}" hint-placeholder-val="{{ false }}">
+                        <div role="status" style="display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted)"><span style="width:7px; height:7px; border-radius:99px; background:var(--acc); animation:p 1.4s ease-in-out infinite"></span>Avataan GitHubin kirjautumissivu tähän välilehteen.</div>
+                      </sc-if>
+                      <sc-if value="{{ altAccount }}" hint-placeholder-val="{{ false }}">
+                        <span style="font-size:12.5px; color:var(--muted); line-height:1.55">Jos GitHub kirjaa sinut automaattisesti samalle tilille, kirjaudu ensin ulos osoitteessa github.com.</span>
+                      </sc-if>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ isFinishing }}" hint-placeholder-val="{{ false }}">
+                  <div role="status" aria-live="polite" style="display:flex; flex-direction:column; gap:14px">
+                    <div style="display:flex; flex-direction:column; gap:8px">
+                      <h2 style="margin:0; font:600 21px 'Instrument Sans',sans-serif; letter-spacing:-.015em">Viimeistellään kirjautumista</h2>
+                      <p style="margin:0; font-size:14px; line-height:1.6; color:var(--ink-2)">GitHub vahvisti tilisi. Palvelin avaa nyt istunnon ja tarkistaa käyttäjäsi.</p>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--line-soft); padding-top:12px; font-size:13px">
+                      <div style="display:flex; align-items:center; gap:9px; color:var(--ink-2)"><span style="width:14px; color:var(--ok)">✓</span>GitHub-tili vahvistettu</div>
+                      <div style="display:flex; align-items:center; gap:9px; color:var(--ink)"><span style="width:14px; display:inline-flex; justify-content:center"><span style="width:7px; height:7px; border-radius:99px; background:var(--acc); animation:p 1.4s ease-in-out infinite"></span></span>Avataan istuntoa palvelimella</div>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex; flex-direction:column; gap:16px">
+                    <div style="display:flex; flex-direction:column; gap:8px">
+                      <h2 style="margin:0; font:600 21px 'Instrument Sans',sans-serif; letter-spacing:-.015em">{{ r2Heading }}</h2>
+                      <p style="margin:0; font-size:14px; line-height:1.6; color:var(--ink-2); text-wrap:pretty">{{ r2Lead }}</p>
+                    </div>
+
+                    <sc-if value="{{ r2Notice }}" hint-placeholder-val="{{ false }}">
+                      <div role="{{ r2NoticeRole }}" style="background:{{ r2NoticeBg }}; border:1px solid {{ r2NoticeLine }}; border-radius:10px; padding:11px 13px; display:flex; flex-direction:column; gap:8px">
+                        <div style="display:flex; flex-direction:column; gap:3px">
+                          <span style="font:500 13px 'Instrument Sans',sans-serif; color:{{ r2NoticeColor }}">{{ r2NoticeTitle }}</span>
+                          <span style="font-size:13px; line-height:1.55; color:var(--ink-2)">{{ r2Notice }}</span>
+                        </div>
+                        <sc-if value="{{ r2NoticeAction }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+                            <button style="border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:8px; padding:7px 13px; font:500 13px 'Instrument Sans',sans-serif; cursor:pointer" style-hover="background:var(--surface-2)" onClick="{{ r2NoticeOn }}">{{ r2NoticeAction }}</button>
+                            <sc-if value="{{ r2CanEdit }}" hint-placeholder-val="{{ false }}">
+                              <button style="border:0; background:transparent; color:var(--acc-ink); padding:0; font:500 13px 'Instrument Sans',sans-serif; cursor:pointer; text-decoration:underline" onClick="{{ editSel }}">Jatka ilman sitä</button>
+                            </sc-if>
+                          </div>
+                        </sc-if>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ r2Catalog }}" hint-placeholder-val="{{ true }}">
+                      <div style="display:flex; flex-direction:column; gap:10px">
+                        <input type="search" aria-label="Suodata repoja nimellä" placeholder="Suodata repoja nimellä" value="{{ q }}" onInput="{{ onQ }}" style="width:100%; box-sizing:border-box; border:1px solid var(--line); background:var(--surface-2); color:var(--ink); border-radius:8px; padding:9px 11px; font:400 13.5px 'Instrument Sans',sans-serif">
+                        <div style="position:relative; display:flex; align-items:center; gap:9px; font:400 13px 'Instrument Sans',sans-serif; color:var(--ink-2)">
+                          <button role="switch" aria-checked="{{ recentOn }}" aria-labelledby="recent-label" style="position:relative; width:28px; height:16px; flex-shrink:0; border:0; padding:0; border-radius:99px; background:{{ trackBg }}; cursor:pointer; transition:background 150ms" onClick="{{ toggleRecent }}"><span style="position:absolute; top:2px; left:{{ knobX }}; width:12px; height:12px; border-radius:99px; background:var(--surface); transition:left 150ms"></span></button>
+                          <span id="recent-label" style="display:inline-flex; align-items:baseline; gap:4px; flex-wrap:wrap">
+                            <span onClick="{{ toggleRecent }}" style="cursor:pointer">Näytä vain viimeisen</span>
+                            <button aria-haspopup="listbox" aria-expanded="{{ periodMenu }}" style="border:0; background:transparent; color:var(--acc-ink); padding:0; font:500 13px 'Instrument Sans',sans-serif; cursor:pointer; text-decoration:underline; text-decoration-style:dotted; text-underline-offset:3px" onClick="{{ togglePeriod }}">{{ periodLabel }} ▾</button>
+                            <span onClick="{{ toggleRecent }}" style="cursor:pointer">aikana päivitetyt</span>
+                          </span>
+                          <sc-if value="{{ periodMenu }}" hint-placeholder-val="{{ false }}">
+                            <div role="listbox" aria-label="Aikaväli" style="position:absolute; left:120px; top:24px; width:190px; background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:5px; display:flex; flex-direction:column; box-shadow:0 6px 18px rgba(16,24,40,.12); z-index:5">
+                              <sc-for list="{{ periods }}" as="pd" hint-placeholder-count="4">
+                                <button role="option" aria-selected="{{ pd.sel }}" style="display:flex; align-items:center; gap:8px; text-align:left; border:0; background:transparent; color:var(--ink); border-radius:6px; padding:7px 9px; font:400 13px 'Instrument Sans',sans-serif; cursor:pointer" style-hover="background:var(--surface-2)" onClick="{{ pd.on }}"><span style="width:12px; color:var(--acc-ink)">{{ pd.mark }}</span>{{ pd.label }}</button>
+                              </sc-for>
+                            </div>
+                          </sc-if>
+                          <span style="margin-left:auto; font-size:12px; color:var(--faint); white-space:nowrap">{{ hiddenText }}</span>
+                        </div>
+                        <div role="group" aria-label="GitHub-repot" style="border:1px solid var(--line); border-radius:10px; overflow:auto; max-height:{{ listMax }}; display:flex; flex-direction:column">
+                          <sc-for list="{{ repos }}" as="rp" hint-placeholder-count="6">
+                            <button role="checkbox" aria-checked="{{ rp.checked }}" style="display:flex; align-items:flex-start; gap:11px; width:100%; box-sizing:border-box; text-align:left; border:0; border-top:{{ rp.rule }}; background:{{ rp.bg }}; color:var(--ink); padding:10px 12px; cursor:pointer" style-hover="background:{{ rp.hover }}" onClick="{{ rp.on }}">
+                              <span aria-hidden="true" style="margin-top:1px; width:16px; height:16px; box-sizing:border-box; flex-shrink:0; border-radius:4px; border:1.5px solid {{ rp.boxLine }}; background:{{ rp.boxBg }}; color:var(--on-acc); display:inline-flex; align-items:center; justify-content:center; font-size:11px; line-height:1">{{ rp.tick }}</span>
+                              <span style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px">
+                                <span style="display:flex; align-items:center; gap:8px; min-width:0">
+                                  <span style="font:500 13px 'JetBrains Mono',monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ rp.name }}</span>
+                                  <sc-if value="{{ rp.priv }}" hint-placeholder-val="{{ false }}"><span style="flex-shrink:0; border:1px solid var(--line); border-radius:5px; padding:0 6px; font:500 11px 'Instrument Sans',sans-serif; color:var(--muted)">Yksityinen</span></sc-if>
+                                </span>
+                                <sc-if value="{{ rp.desc }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px; color:var(--muted); line-height:1.45">{{ rp.desc }}</span></sc-if>
+                              </span>
+                              <span style="flex-shrink:0; font-size:12px; color:var(--faint); white-space:nowrap">{{ rp.date }}</span>
+                            </button>
+                          </sc-for>
+                          <sc-if value="{{ noMatch }}" hint-placeholder-val="{{ false }}">
+                            <div role="status" style="padding:18px 12px; font-size:13px; color:var(--muted); text-align:center">Hakua vastaavia repoja ei löytynyt.</div>
+                          </sc-if>
+                        </div>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ r2Loading }}" hint-placeholder-val="{{ false }}">
+                      <div role="status" style="border:1px solid var(--line); border-radius:10px; padding:14px 12px; display:flex; flex-direction:column; gap:12px">
+                        <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted)"><span style="width:7px; height:7px; border-radius:99px; background:var(--acc); animation:p 1.4s ease-in-out infinite"></span>Haetaan GitHub-repoja…</div>
+                        <sc-for list="{{ skeletons }}" as="k" hint-placeholder-count="4">
+                          <div style="display:flex; gap:11px; align-items:center"><span style="width:16px; height:16px; border-radius:4px; background:var(--line-soft)"></span><span style="height:10px; width:{{ k.w }}; border-radius:4px; background:var(--line-soft)"></span></div>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ r2Progress }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex; flex-direction:column; gap:8px">
+                        <div role="status" aria-live="polite" style="display:flex; align-items:center; gap:10px; font-size:13px">
+                          <span style="font-weight:500">{{ progLabel }}</span>
+                          <span style="flex:1; height:4px; border-radius:99px; background:var(--line-soft); overflow:hidden"><span style="display:block; height:100%; width:{{ progPct }}; background:var(--acc); border-radius:99px"></span></span>
+                        </div>
+                        <div style="border:1px solid var(--line); border-radius:10px; display:flex; flex-direction:column; font-size:13px">
+                          <sc-for list="{{ progRows }}" as="pr" hint-placeholder-count="3">
+                            <div style="display:flex; align-items:center; gap:11px; padding:9px 12px; border-top:{{ pr.rule }}">
+                              <span style="width:16px; display:inline-flex; justify-content:center; color:{{ pr.color }}"><span style="width:{{ pr.dotW }}; height:{{ pr.dotW }}; border-radius:99px; background:var(--acc); animation:p 1.4s ease-in-out infinite"></span>{{ pr.mark }}</span>
+                              <span style="flex:1; min-width:0; font:400 12.5px 'JetBrains Mono',monospace; color:var(--ink-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ pr.name }}</span>
+                              <span style="font-size:12.5px; color:{{ pr.color }}; white-space:nowrap">{{ pr.text }}</span>
+                            </div>
+                          </sc-for>
+                        </div>
+                        <span style="font-size:12.5px; color:var(--muted); line-height:1.55">{{ progHint }}</span>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ r2Footer }}" hint-placeholder-val="{{ true }}">
+                      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; border-top:1px solid var(--line-soft); padding-top:14px">
+                        <span role="status" aria-live="polite" style="font-size:13px; color:var(--muted)">{{ countText }}</span>
+                        <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
+                          <button style="border:0; background:transparent; color:var(--muted); padding:0; font:500 12.5px 'Instrument Sans',sans-serif; cursor:pointer; text-decoration:underline" onClick="{{ clearSel }}">Tyhjennä</button>
+                        </sc-if>
+                        <button style="margin-left:auto; background:var(--acc); color:var(--on-acc); border:0; border-radius:8px; padding:10px 18px; font:500 14px 'Instrument Sans',sans-serif; cursor:pointer" style-hover="filter:brightness(.94)" onClick="{{ proceed }}">{{ proceedLabel }}</button>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ isStep3 }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex; flex-direction:column; gap:16px">
+                    <div style="display:flex; flex-direction:column; gap:8px">
+                      <h2 style="margin:0; font:600 21px 'Instrument Sans',sans-serif; letter-spacing:-.015em">{{ r3Heading }}</h2>
+                      <p style="margin:0; font-size:14px; line-height:1.6; color:var(--ink-2); text-wrap:pretty">Agentit käyttävät OpenAI-tiliäsi. Kirjautuminen tehdään OpenAI:n omalla sivulla koodilla — salasanaa ei syötetä tänne.</p>
+                    </div>
+
+                    <sc-if value="{{ r3Notice }}" hint-placeholder-val="{{ false }}">
+                      <div role="{{ r3NoticeRole }}" style="background:{{ r3NoticeBg }}; border:1px solid {{ r3NoticeLine }}; border-radius:10px; padding:11px 13px; display:flex; flex-direction:column; gap:3px">
+                        <span style="font:500 13px 'Instrument Sans',sans-serif; color:{{ r3NoticeColor }}">{{ r3NoticeTitle }}</span>
+                        <span style="font-size:13px; line-height:1.55; color:var(--ink-2)">{{ r3Notice }}</span>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ r3Code }}" hint-placeholder-val="{{ false }}">
+                      <ol style="list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:14px">
+                        <li style="display:flex; gap:12px">
+                          <span style="width:22px; height:22px; box-sizing:border-box; flex-shrink:0; border-radius:99px; border:1px solid var(--line); color:var(--muted); display:inline-flex; align-items:center; justify-content:center; font:600 11.5px 'Instrument Sans',sans-serif">1</span>
+                          <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:8px">
+                            <span style="font:500 14px 'Instrument Sans',sans-serif; padding-top:2px">Kopioi koodi</span>
+                            <div style="display:flex; align-items:center; gap:10px; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:10px 10px 10px 16px">
+                              <span aria-label="Kirjautumiskoodi ABCD-1234" style="flex:1; font:500 24px 'JetBrains Mono',monospace; letter-spacing:.12em; user-select:all">ABCD-1234</span>
+                              <button style="border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:8px; padding:7px 13px; font:500 13px 'Instrument Sans',sans-serif; cursor:pointer" style-hover="background:var(--surface-2)" onClick="{{ copyCode }}">{{ copyLabel }}</button>
+                            </div>
+                          </div>
+                        </li>
+                        <li style="display:flex; gap:12px">
+                          <span style="width:22px; height:22px; box-sizing:border-box; flex-shrink:0; border-radius:99px; border:1px solid var(--line); color:var(--muted); display:inline-flex; align-items:center; justify-content:center; font:600 11.5px 'Instrument Sans',sans-serif">2</span>
+                          <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:8px">
+                            <span style="font:500 14px 'Instrument Sans',sans-serif; padding-top:2px">Syötä koodi OpenAI:n sivulla</span>
+                            <button style="align-self:flex-start; background:var(--acc); color:var(--on-acc); border:0; border-radius:8px; padding:9px 16px; font:500 13.5px 'Instrument Sans',sans-serif; cursor:pointer" style-hover="filter:brightness(.94)" onClick="{{ openOpenAI }}">Avaa OpenAI:n sivu ↗</button>
+                            <span style="font-size:12.5px; color:var(--muted)">Avautuu uuteen välilehteen. Palaa tänne vahvistuksen jälkeen.</span>
+                          </div>
+                        </li>
+                      </ol>
+                      <div role="status" aria-live="polite" style="display:flex; align-items:center; gap:9px; border-top:1px solid var(--line-soft); padding-top:13px; font-size:13px; color:var(--ink-2)">
+                        <span style="width:7px; height:7px; border-radius:99px; background:var(--acc); animation:p 1.4s ease-in-out infinite; flex-shrink:0"></span>
+                        <span style="flex:1">Odotetaan vahvistusta OpenAI:lta. Sivu päivittyy itsestään.</span>
+                        <button style="border:0; background:transparent; color:var(--muted); padding:0; font:500 12.5px 'Instrument Sans',sans-serif; cursor:pointer; text-decoration:underline; white-space:nowrap" onClick="{{ cancelAttempt }}">Peruuta yritys</button>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ r3Action }}" hint-placeholder-val="{{ true }}">
+                      <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap">
+                        <button disabled="{{ r3Busy }}" style="background:{{ r3Bg }}; color:{{ r3Fg }}; border:0; border-radius:8px; padding:10px 18px; font:500 14px 'Instrument Sans',sans-serif; cursor:pointer" style-hover="filter:brightness(.94)" onClick="{{ r3On }}">{{ r3Label }}</button>
+                        <sc-if value="{{ r3Busy }}" hint-placeholder-val="{{ false }}">
+                          <span role="status" style="display:inline-flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted)"><span style="width:7px; height:7px; border-radius:99px; background:var(--acc); animation:p 1.4s ease-in-out infinite"></span>Valmistellaan kirjautumiskoodia</span>
+                        </sc-if>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ r3Back }}" hint-placeholder-val="{{ true }}">
+                      <button style="align-self:flex-start; border:0; background:transparent; color:var(--muted); padding:0; font:500 12.5px 'Instrument Sans',sans-serif; cursor:pointer" style-hover="color:var(--acc-ink)" onClick="{{ backToRepos }}">‹ Takaisin repojen valintaan</button>
+                    </sc-if>
+                  </div>
+                </sc-if>
+              </div>
+
+              <div style="padding:0 2px; font-size:12.5px; line-height:1.6; color:var(--muted); text-wrap:pretty">{{ footnote }}</div>
+              <sc-if value="{{ showExitLink }}" hint-placeholder-val="{{ false }}">
+                <button style="align-self:flex-start; border:0; background:transparent; color:var(--muted); padding:2px 2px; font:500 12.5px 'Instrument Sans',sans-serif; cursor:pointer; text-decoration:underline; text-underline-offset:3px" style-hover="color:var(--err)" onClick="{{ askExit }}">Keskeytä käyttöönotto ja kirjaudu ulos</button>
+              </sc-if>
+              <sc-if value="{{ exitOpen }}" hint-placeholder-val="{{ false }}">
+                <div role="alertdialog" aria-label="Keskeytä käyttöönotto" style="background:var(--surface); border:1px solid var(--err-line); border-radius:12px; padding:16px 18px; display:flex; flex-direction:column; gap:12px">
+                  <div style="display:flex; flex-direction:column; gap:4px">
+                    <span style="font:600 15px 'Instrument Sans',sans-serif">Keskeytetäänkö käyttöönotto?</span>
+                    <span style="font-size:13px; line-height:1.55; color:var(--ink-2)">Sinut kirjataan ulos tästä selaimesta. Jo haetut repot jäävät palvelimelle. Voit aloittaa käyttöönoton alusta kirjautumalla uudelleen.</span>
+                  </div>
+                  <div style="display:flex; gap:8px; flex-wrap:wrap">
+                    <button style="background:var(--err); color:var(--on-acc); border:0; border-radius:8px; padding:8px 14px; font:500 13.5px 'Instrument Sans',sans-serif; cursor:pointer" onClick="{{ doExit }}">Keskeytä ja kirjaudu ulos</button>
+                    <button style="border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:8px; padding:8px 14px; font:500 13.5px 'Instrument Sans',sans-serif; cursor:pointer" onClick="{{ cancelExit }}">Jatka käyttöönottoa</button>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;step&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:1,&quot;min&quot;:1,&quot;max&quot;:3,&quot;tsType&quot;:&quot;number&quot;},&quot;state&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;frameOnly&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light' | 'dark'&quot;},&quot;google&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const STATES = [
+  ["idle", "Aloitus", "kuvattu"],
+  ["pending", "Siirrytään GitHubiin", "ehdotus"],
+  ["finishing", "Paluu GitHubista", "ehdotus"],
+  ["error", "Virhe", "sovittu"],
+  ["noaccess", "Ei pääsyä palvelimelle", "ehdotus"],
+  ["expired", "Istunto päättyi", "ehdotus"],
+  ["signedout", "Kirjauduttu ulos", "ehdotus"],
+];
+const STATES2 = [
+  ["catalog", "Valinta", "kuvattu"],
+  ["selected", "Kaksi valittu", "sovittu"],
+  ["loading", "Listaa haetaan", "sovittu"],
+  ["empty", "Ei repoja", "sovittu"],
+  ["unavailable", "Listaa ei saatu", "sovittu"],
+  ["progress", "Haku käynnissä", "sovittu"],
+  ["failed", "Haku epäonnistui", "ehdotus"],
+  ["done", "Valmis", "sovittu"],
+  ["exit", "Keskeytyksen vahvistus", "ehdotus"],
+];
+const STATES3 = [
+  ["start", "Aloitus", "kuvattu"],
+  ["waiting", "Koodia valmistellaan", "sovittu"],
+  ["pending", "Koodi näkyvissä", "kuvattu"],
+  ["connected", "Yhdistetty", "sovittu"],
+  ["expired", "Koodi vanheni", "sovittu"],
+  ["failed", "Epäonnistui", "sovittu"],
+  ["unavailable", "Tilaa ei saatu", "sovittu"],
+  ["exit", "Keskeytyksen vahvistus", "ehdotus"],
+];
+const N3 = {
+  connected: ["status", "✓ OpenAI-tili yhdistetty", "Siirrytään työtiloihin…", "ok"],
+  expired: ["status", "Koodi vanheni", "Koodia ei käytetty ajoissa. Hae uusi koodi ja yritä uudelleen.", "neutral"],
+  failed: ["alert", "✕ Kirjautuminen ei onnistunut", "Hae uusi koodi ja yritä uudelleen. Jos virhe toistuu, ota yhteyttä ylläpitäjään.", "err"],
+  unavailable: ["alert", "✕ Kirjautumisen tilaa ei saatu palvelimelta", "Tarkista tila uudelleen. Uutta kirjautumisyritystä ei aloiteta ennen tarkistusta.", "err"],
+};
+const NOTICES = {
+  error: ["alert", "✕ Kirjautuminen ei onnistunut", "Yritä uudelleen. Jos virhe toistuu, ota yhteyttä palvelun ylläpitäjään. Älä lähetä tunnuksia tai kirjautumislinkkejä.", "err"],
+  noaccess: ["alert", "✕ Tällä GitHub-tilillä ei ole pääsyä palvelimelle", "Pyydä ylläpitäjältä käyttöoikeus tai kirjaudu toisella GitHub-tilillä.", "err"],
+  expired: ["status", "Istuntosi päättyi", "Kirjaudu uudelleen. Pi:n työ palvelimella ei keskeytynyt.", "neutral"],
+  signedout: ["status", "✓ Kirjauduit ulos", "Tämän selaimen luonnokset ja luettu sisältö poistettiin. Palvelimen työtilat ja Pi:n historia säilyvät.", "ok"],
+};
+const REPOS = [
+  ["alice-m/aurinkokello", "Komentorivityökalu auringonnousun ja -laskun laskemiseen.", "28.9.2026", false],
+  ["alice-m/kotisivu", "", "27.9.2026", false],
+  ["alice-m/reseptikirja", "Reseptien tallennus ja haku.", "14.9.2026", false],
+  ["alice-m/muistiinpanot", "", "2.9.2026", true],
+  ["alice-m/tilastoharjoitus", "Kurssin harjoitustyöt.", "1.1.2025", false, true],
+  ["alice-m/vanha-blogi", "", "3.3.2024", false, true],
+  ["alice-m/kurssi-2023", "Ohjelmoinnin perusteet, syksy 2023.", "12.5.2023", true, true],
+  ["habitat-lab/first", "Synteettinen testirepo.", "Ei tiedossa", false],
+  ["habitat-lab/tyokalut-ja-apuskriptit-pitka-nimi", "Pitkä nimi ja kuvaus tarkistaa rivityksen: skriptejä palvelimen ylläpitoon.", "Ei tiedossa", true],
+];
+const AGE = { "alice-m/aurinkokello": 2, "alice-m/kotisivu": 3, "alice-m/reseptikirja": 16, "alice-m/muistiinpanot": 28, "alice-m/tilastoharjoitus": 637, "alice-m/vanha-blogi": 941, "alice-m/kurssi-2023": 1237 };
+const PERIODS = [["viikon", 7], ["kuukauden", 30], ["kolmen kuukauden", 90], ["vuoden", 365]];
+const PICK = ["alice-m/aurinkokello", "alice-m/kotisivu"];
+
+class Component extends DCLogic {
+  state = { step: 1, s: "idle", s2: "catalog", s3: "start", copied: false, theme: null, sel: [], q: "", recent: true, period: 30, periodMenu: false };
+
+  componentDidMount() {
+    const p = this.props;
+    if (p.step === 2) { this.setState({ step: 2 }); if (p.state) this.set2(p.state); }
+    else if (p.step === 3) this.setState({ step: 3, s3: p.state || "start" });
+    else if (p.state) this.setState({ s: p.state });
+  }
+  set2(k) {
+    const sel = ["catalog", "loading", "empty", "unavailable"].includes(k) ? [] : k === "exit" ? this.state.sel : PICK.slice();
+    this.setState({ s2: k, sel, q: "" });
+  }
+
+  renderVals() {
+    const st = this.state;
+    const theme = st.theme || this.props.theme || "light";
+    const step = st.step;
+    const s3 = st.s3;
+    const k3 = s3 === "exit" ? "pending" : s3;
+    const n3 = N3[k3];
+    const t3 = n3 ? n3[3] : null;
+    const s = st.s;
+    const s2 = st.s2;
+    const n = step === 1 ? NOTICES[s] : null;
+    const tone = n ? n[3] : null;
+    const pending = s === "pending";
+    const finishing = step === 1 && s === "finishing";
+    const stepDefs = ["GitHub", "Repot", "OpenAI"];
+    const steps = stepDefs.map((label, i, arr) => {
+      const done = i < step - 1, active = i === step - 1;
+      return {
+        label, sub: "", mark: done ? "✓" : String(i + 1),
+        current: active ? "step" : "false",
+        bg: active ? "var(--acc-soft)" : done ? "var(--ok-soft)" : "transparent",
+        line: active ? "var(--acc-line)" : done ? "var(--ok)" : "var(--line)",
+        fg: active ? "var(--acc-ink)" : done ? "var(--ok)" : "var(--muted)",
+        weight: active ? 600 : 400,
+        labelColor: active ? "var(--ink)" : done ? "var(--ink-2)" : "var(--muted)",
+        rule: i < arr.length - 1, flex: i < arr.length - 1 ? "1" : "0 0 auto",
+      };
+    });
+    const footnotes = {
+      idle: "Seuraavaksi voit valita GitHub-repoja työtiloiksi ja kirjautua OpenAI-tiliin, jota Pi käyttää. Molemmat vaiheet voi tehdä myöhemmin uudelleen.",
+      finishing: "Jos tämä kestää yli puoli minuuttia, lataa sivu uudelleen. Kirjautuminen ei ala alusta, jos istunto ehti avautua.",
+    };
+    const frame = (w, h, label, narrow) => ({ w: w + "px", h: h + "px", label, pad: narrow ? "40px 16px" : (step === 1 ? "120px 24px" : "64px 24px"), cardPad: narrow ? "20px" : "26px" });
+
+    // step 2
+    const selSet = new Set(st.sel);
+    const ql = st.q.trim().toLowerCase();
+    const matches = REPOS.filter((r) => r[0].toLowerCase().includes(ql));
+    const visible = matches.filter((r) => !st.recent || AGE[r[0]] == null || AGE[r[0]] <= st.period || selSet.has(r[0]));
+    const hiddenCount = matches.length - visible.length;
+    const toggle = (name) => this.setState((x) => ({ sel: x.sel.includes(name) ? x.sel.filter((v) => v !== name) : x.sel.concat([name]) }));
+    const repos = visible.map((r, i) => {
+      const c = selSet.has(r[0]);
+      return {
+        name: r[0], desc: r[1], date: r[2], priv: r[3], checked: c ? "true" : "false",
+        rule: i ? "1px solid var(--line-soft)" : "0",
+        bg: c ? "var(--acc-soft)" : "var(--surface)", hover: c ? "var(--acc-soft)" : "var(--surface-2)",
+        boxLine: c ? "var(--acc)" : "var(--faint)", boxBg: c ? "var(--acc)" : "transparent", tick: c ? "✓" : "",
+        on: () => toggle(r[0]),
+      };
+    });
+    const k = s2 === "exit" ? "selected" : s2;
+    const catalogLike = ["catalog", "selected"].includes(k);
+    const progLike = ["progress", "failed", "done"].includes(k);
+    const pick = PICK.concat(["alice-m/reseptikirja"]);
+    const rowState = {
+      progress: [["ok", "haettu"], ["run", "haetaan…"], ["wait", "odottaa"]],
+      failed: [["ok", "haettu"], ["ok", "haettu"], ["err", "✕ ei haettu"]],
+      done: [["ok", "haettu"], ["ok", "haettu"], ["ok", "haettu"]],
+    }[k] || [];
+    const progRows = rowState.map((rs, i) => ({
+      name: pick[i], text: rs[1], rule: i ? "1px solid var(--line-soft)" : "0",
+      mark: rs[0] === "ok" ? "✓" : rs[0] === "wait" ? "·" : "",
+      dotW: rs[0] === "run" ? "7px" : "0px",
+      color: rs[0] === "ok" ? "var(--ok)" : rs[0] === "run" ? "var(--acc-ink)" : rs[0] === "err" ? "var(--err)" : "var(--muted)",
+    }));
+    const okCount = rowState.filter((x) => x[0] === "ok").length;
+    const notices2 = {
+      unavailable: ["alert", "✕ Repoja ei voitu hakea", "GitHubin repolistaa ei saatu. Tarkista yhteys ja yritä uudelleen.", "err", "Yritä uudelleen", false],
+      empty: ["status", "GitHub-tililläsi ei ole repoja", "Voit jatkaa ilman repoja ja lisätä työtiloja myöhemmin.", "neutral", "", false],
+      failed: ["alert", "✕ Repoa alice-m/reseptikirja ei saatu haettua", "Kaksi muuta repoa on haettu ja ne ovat työtiloina. Voit hakea puuttuvan uudelleen tai jatkaa ilman sitä.", "err", "Hae uudelleen", true],
+      done: ["status", "✓ Repot haettu", "Siirrytään OpenAI-kirjautumiseen…", "ok", "", false],
+    };
+    const n2 = notices2[k];
+    const t2 = n2 ? n2[3] : null;
+    const cnt = st.sel.length;
+
+    const fo = !!this.props.frameOnly;
+    return {
+      theme, showChrome: !fo, rootPad: fo ? "0" : "32px 24px 64px", rootMinH: fo ? "0" : "100vh",
+      themeLabel: theme === "dark" ? "Vaalea teema" : "Tumma teema",
+      toggleTheme: () => this.setState({ theme: theme === "dark" ? "light" : "dark" }),
+      pageTitle: step === 1 ? "Kirjautuminen ja yhteinen kehys" : step === 2 ? "Repojen valinta" : "OpenAI-kirjautuminen",
+      isStep1: step === 1, isStep2: step === 2, isStep3: step === 3,
+      r3Heading: k3 === "connected" ? "OpenAI-tili yhdistetty" : "Kirjaudu OpenAI-tiliisi",
+      r3Notice: n3 ? n3[2] : "", r3NoticeTitle: n3 ? n3[1] : "", r3NoticeRole: n3 ? n3[0] : "status",
+      r3NoticeBg: t3 === "err" ? "var(--err-soft)" : t3 === "ok" ? "var(--ok-soft)" : "var(--surface-2)",
+      r3NoticeLine: t3 === "err" ? "var(--err-line)" : "var(--line)",
+      r3NoticeColor: t3 === "err" ? "var(--err)" : t3 === "ok" ? "var(--ok)" : "var(--ink)",
+      r3Code: k3 === "pending",
+      r3Action: ["start", "waiting", "expired", "failed", "unavailable"].includes(k3),
+      r3Busy: k3 === "waiting", r3Bg: k3 === "waiting" ? "var(--line)" : "var(--acc)", r3Fg: k3 === "waiting" ? "var(--ink-2)" : "var(--on-acc)",
+      r3Label: k3 === "waiting" ? "Haetaan koodia…" : k3 === "unavailable" ? "Tarkista tila" : k3 === "start" ? "Hae kirjautumiskoodi" : "Hae uusi koodi",
+      r3On: () => this.setState({ s3: k3 === "unavailable" ? "start" : "waiting" }),
+      r3Back: k3 !== "connected",
+      backToRepos: () => this.setState({ step: 2 }),
+      copyLabel: st.copied ? "✓ Kopioitu" : "Kopioi",
+      copyCode: () => { try { navigator.clipboard.writeText("ABCD-1234"); } catch (e) {} this.setState({ copied: true }); },
+      openOpenAI: () => {},
+      cancelAttempt: () => this.setState({ s3: "start", copied: false }),
+      stepTabs: [[1, "1 · Kirjautuminen"], [2, "2 · Repot"], [3, "3 · OpenAI"]].map(([v, l]) => ({
+        label: l, sel: step === v ? "true" : "false", on: () => this.setState({ step: v }),
+        bg: step === v ? "var(--surface)" : "transparent", fg: step === v ? "var(--ink)" : "var(--muted)",
+        shadow: step === v ? "0 1px 2px rgba(16,24,40,.10)" : "none",
+      })),
+      switches: (step === 1 ? STATES : step === 2 ? STATES2 : STATES3).map(([key, label, tag]) => {
+        const on = step === 1 ? s === key : step === 2 ? s2 === key : s3 === key;
+        return {
+          label, tag, on: () => step === 1 ? this.setState({ s: key }) : step === 2 ? this.set2(key) : this.setState({ s3: key, copied: false }),
+          bg: on ? "var(--acc)" : "var(--surface)", fg: on ? "var(--on-acc)" : "var(--ink)", line: on ? "var(--acc)" : "var(--line)",
+        };
+      }),
+      frames: fo ? [frame(1440, 900, "", false)] : [frame(1440, 900, "1440 × 900", false), frame(390, 844, "390 × 844", true)],
+      colMax: step === 1 ? "440px" : step === 2 ? "560px" : "480px",
+      steps,
+      isForm: step === 1 && !finishing, isFinishing: finishing,
+      notice: n ? n[2] : "", noticeRole: n ? n[0] : "status", noticeTitle: n ? n[1] : "",
+      noticeBg: tone === "err" ? "var(--err-soft)" : tone === "ok" ? "var(--ok-soft)" : "var(--surface-2)",
+      noticeLine: tone === "err" ? "var(--err-line)" : "var(--line)",
+      noticeColor: tone === "err" ? "var(--err)" : tone === "ok" ? "var(--ok)" : "var(--ink)",
+      heading: s === "signedout" || s === "expired" ? "Kirjaudu uudelleen" : "Kirjaudu palvelimelle",
+      pending, btnOpacity: pending ? 0.55 : 1, btnBg: pending ? "var(--line)" : "var(--acc)", btnFg: pending ? "var(--ink-2)" : "var(--on-acc)",
+      btnLabel: pending ? "Siirrytään GitHubiin…" : s === "error" ? "Yritä uudelleen" : s === "noaccess" ? "Kirjaudu toisella GitHub-tilillä" : "Kirjaudu GitHubilla",
+      altAccount: s === "noaccess",
+      login: () => this.setState({ s: "pending" }),
+      showGoogle: this.props.google === true,
+      footnote: step === 1 ? (footnotes[s] || "") : "",
+
+      r2Heading: progLike ? "Haetaan repoja työtiloiksi" : "Valitse repot työtiloiksi",
+      r2Lead: progLike ? "Jokainen valittu repo kloonataan palvelimelle omaksi työtilakseen." : "Valitut repot kloonataan palvelimelle, ja jokaisesta tulee oma työtila. Voit myös jatkaa ilman repoja.",
+      r2Notice: n2 ? n2[2] : "", r2NoticeTitle: n2 ? n2[1] : "", r2NoticeRole: n2 ? n2[0] : "status",
+      r2NoticeBg: t2 === "err" ? "var(--err-soft)" : t2 === "ok" ? "var(--ok-soft)" : "var(--surface-2)",
+      r2NoticeLine: t2 === "err" ? "var(--err-line)" : "var(--line)",
+      r2NoticeColor: t2 === "err" ? "var(--err)" : t2 === "ok" ? "var(--ok)" : "var(--ink)",
+      r2NoticeAction: n2 ? n2[4] : "", r2CanEdit: n2 ? n2[5] : false,
+      r2NoticeOn: () => k === "unavailable" ? this.set2("loading") : this.set2("progress"),
+      editSel: () => this.set2("done"),
+      r2Catalog: catalogLike, r2Loading: k === "loading", r2Progress: progLike,
+      r2Footer: catalogLike || k === "empty",
+      q: st.q, onQ: (e) => this.setState({ q: e.target.value }),
+      repos, noMatch: catalogLike && visible.length === 0,
+      recentOn: st.recent ? "true" : "false",
+      toggleRecent: () => this.setState((x) => ({ recent: !x.recent })),
+      trackBg: st.recent ? "var(--acc)" : "var(--line)", knobX: st.recent ? "14px" : "2px",
+      hiddenText: st.recent && hiddenCount ? hiddenCount + " piilossa" : "",
+      periodLabel: (PERIODS.find((p) => p[1] === st.period) || PERIODS[1])[0],
+      periodMenu: st.periodMenu,
+      togglePeriod: () => this.setState((x) => ({ periodMenu: !x.periodMenu })),
+      periods: PERIODS.map(([l, d]) => ({ label: l, sel: st.period === d ? "true" : "false", mark: st.period === d ? "✓" : "", on: () => this.setState({ period: d, periodMenu: false, recent: true }) })),
+      listMax: "330px",
+      skeletons: [{ w: "58%" }, { w: "44%" }, { w: "66%" }, { w: "38%" }],
+      progLabel: k === "done" ? "Haettu 3/3" : "Haettu " + okCount + "/3",
+      progPct: Math.round((okCount / 3) * 100) + "%",
+      progHint: k === "progress" ? "Suuren repon haku voi kestää. Pidä välilehti auki, kunnes haku on valmis." : "",
+      progRows,
+      countText: cnt === 0 ? "Ei valittuja repoja" : cnt === 1 ? "1 repo valittu" : cnt + " repoa valittu",
+      hasSel: cnt > 0,
+      clearSel: () => this.setState({ sel: [] }),
+      proceedLabel: cnt === 0 ? "Jatka ilman repoja" : cnt === 1 ? "Hae 1 repo ja jatka" : "Hae " + cnt + " repoa ja jatka",
+      proceed: () => { if (cnt > 0) this.set2("progress"); else this.setState({ step: 3, s3: "start" }); },
+      showExitLink: (step === 2 && s2 !== "exit") || (step === 3 && s3 !== "exit" && s3 !== "connected"),
+      exitOpen: (step === 2 && s2 === "exit") || (step === 3 && s3 === "exit"),
+      askExit: () => step === 2 ? this.setState({ s2: "exit" }) : this.setState({ s3: "exit" }),
+      cancelExit: () => step === 2 ? this.setState({ s2: cnt ? "selected" : "catalog" }) : this.setState({ s3: "pending" }),
+      doExit: () => this.setState({ step: 1, s: "signedout", s2: "catalog", s3: "start", sel: [] }),
+    };
+  }
+}
+</script>
+</body>
+</html>
