@@ -13,6 +13,8 @@ commits:
   summary: Mark agent control in progress
 - hash: 0201340bd3932731ae478fe4010758f7b49cc688
   summary: Route browser turn interruption to Pi abort rather than terminating session
+- hash: 4277fa9dd8c3777bb49916732724fc194c790dce
+  summary: Preserve Pi process on slow abort and reconcile interruption receipts
 ---
 
 # Connect v1 conversation controls to Pi
