@@ -9,7 +9,7 @@ related: ['@review-browser-design-v2', '@decide-account-display']
 lane: design-v2
 lane_seq: 3
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
-blocked_by: ['@fit-conversation-v2']
+blocked_by: ['@fit-conversation-v2', '@continue-ended-conversation']
 ---
 
 # Fit the sidebar and account menu to browser design v2
