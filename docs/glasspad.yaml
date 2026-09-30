@@ -33,10 +33,10 @@ groups:
         desc: Hyväksytty natiivien käyttäjien, tiedostojen ja agenttien perusta.
       - slug: adr-0002-frontend-stack
         title: ADR 0002 — Frontend-stack
-        desc: Ehdotettu selainasiakas, tilanhallinta, renderöinti ja testaus.
+        desc: Hyväksytty selainasiakas, tilanhallinta, renderöinti ja testaus.
       - slug: adr-0003-host-stack
         title: ADR 0003 — Host-stack
-        desc: Ehdotettu gateway, daemonit, autentikointi ja operointi.
+        desc: Hyväksytty gateway, daemonit, autentikointi ja operointi.
       - slug: adr-0004-first-login-user-provisioning
         title: ADR 0004 — Ensikirjautumisen Unix-käyttäjä
         desc: Hyväksytty GitHub-kirjautumisen käyttäjäprovisioinnin raja.

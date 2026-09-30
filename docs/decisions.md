@@ -1,42 +1,37 @@
 # Päätökset ja avoimet valinnat
 
-[ADR 0001](adr-0001-unix-native-agent-host.md) on hyväksytty: käyttäjäkohtainen
-Unix-daemon gatewayn takana, natiivit workspacet ja historiat sekä HTTP/SSE.
-[Arkkitehtuuri](architecture.md) kuvaa sen käytännössä.
+Järjestelmä tuo käyttäjän natiivit työtilat ja agentit selaimeen. Unix-käyttäjät
+rajaavat pääsyn, ja natiivit työkalut omistavat edelleen tiedostonsa,
+tunnuksensa ja historiansa. Alla ovat sovitut ratkaisut ja niiden perustelut.
+Toteutuksen eteneminen on [tilannesivulla](status.md).
 
-[ADR 0002](adr-0002-frontend-stack.md) hyväksyy React- ja stable TypeScript 7 -selainasiakkaan, Biome-lint/format-rajan, `tsc --noEmit` -typecheckin, yhden Redux-tapahtumatilan, React Aria -komponenttipohjan sekä rajatun Markdown-, koodi- ja diffirenderöinnin. [ADR 0003](adr-0003-host-stack.md) hyväksyy yhden Go-binaarin gatewaylle ja käyttäjädaemoneille, ensisijaisen GitHub OAuth -kirjautumisen ja natiivin `gh` HTTPS-helperin asennuksen samalla authorizationilla, valinnaisen Google-providerin, systemd-palvelut, Unix-socketit ja Fleetrepon kautta hallittavan Alder-deklaraation.
-[ADR 0004](adr-0004-first-login-user-provisioning.md) hyväksyy ensimmäisellä sallitulla GitHub-verkkokirjautumisella tapahtuvan Unix-käyttäjän luomisen erillisellä root-omisteisella paikallisella brokerilla. Varmennettu numeerinen GitHub-ID on pysyvä avain, nimi vain ensimmäisen käyttökerran nimiehdokas. Broker tarkistaa rootin hallitseman sallittujen ID:iden listan ja sidoksen; gateway pysyy ei-root-käyttäjänä. Jari hyväksyi tämän muutoksen 2026-09-24; se ei ole vielä toteutus- tai vieraskonetesti.
+## Hyväksytyt ratkaisut
 
-[ADR 0006](adr-0006-subject-revocation.md) hyväksyy vain rootin käytettävissä olevan paikallisen gateway-socketin yhden GitHub-subjektin selainistuntojen ja vanhojen OAuth-virtojen mitätöintiin; se ei katkaise käyttäjädaemonia tai natiiveja tunnuksia. Jari hyväksyi suunnan 2026-09-29 [tehtävässä](../issues/revoke-subject-sessions/item.md). [ADR 0007](adr-0007-bound-user-deprovision.md) ehdottaa kokonaisen sidotun Unix-käyttäjän poiston rajaa. Toteutus on estetty, kunnes pilot.11:n UID-historia ja Fleetrepon käynnistyspolitiikan siirtymä voidaan todentaa; kirjautumisistunnon mitätöinti ei yksin poista käyttäjää.
-
-[ADR 0005](adr-0005-clone-progress-stream.md) hyväksyy GitHub-onboardingin suuren kloonauksen rajatun, CSRF-suojatun ja käyttäjädaemonin UID:hen sidotun vaihevirran. Katkennut yhteys keskeyttää kirjoituksen; refresh selvittää tilanteen vain natiivista Gitistä. Edistymistä ei tallenneta eikä kloonausta uusita automaattisesti. Jari hyväksyi sopimusrajan 2026-09-29 [toteutustehtävän päätöksessä](../issues/show-large-clone-progress/item.md); protokollaa tai pidempiä rajoja ei ole vielä toteutettu.
-
-Jari hyväksyi molemmat päätökset ja muun kahdeksanosaisen toteutuspaketin
-2026-09-23 revision `b87b1aae5d6fefcd914d4f06c0e510b5ca124f60`
-mukaisena. [Päätöspöytäkirja](../issues/review-implementation-plan/review.md)
-tallentaa rajat. Operaattori-CLI noudattaa AI-first CLI -kanonia (`config
-path/show`, `doctor`, noun–verb-rajat, globaali `--json`, rakenteiset virheet ja
-JSONL-lokit). Nykyinen JSX, klikkiprototyyppien simuloidut toiminnot ja
-alustavat operointikomennot eivät silti ole näyttöä toimivasta
-tuotantojärjestelmästä.
-
-| Päätettävä kokonaisuus | Valmistelu | Päätöksen aineisto |
+| Valinta | Mitä on sovittu | Perustelut |
 |---|---|---|
-| Toteutettava käyttökokemus | [UI-katselmoinnin valmistelu](../issues/prepare-ui-review/item.md) | Käyttökulut ja Pi-/elinkaarikokeen osoittamat rajat. |
-| Frontend, tilanhallinta, renderöinti ja komponenttipohja | [Frontend-valinta](../issues/choose-frontend-stack/item.md) | [Ehdotettu ADR 0002](adr-0002-frontend-stack.md), vaihtoehdot ja kokeet. |
-| Gateway, autentikointi, daemon ja paketointi | [Host-valinta](../issues/choose-host-stack/item.md) | [Ehdotettu ADR 0003](adr-0003-host-stack.md), käyttäjärajat, prosessiomistajuus, operointikomennot ja testikohde. |
-| Rajapinnat ja tietojen omistajuus | [Sopimukset](../issues/define-host-contracts/item.md) | Komennot, tapahtumat, kuittaukset, palautuminen ja annotaatiot. |
-| Tuotantodesign ja komponenttisopimukset | [Tuotantodesign](../issues/design-production-ui/item.md) | Yhtenäinen design system ja vuorovaikutus. |
-| Toteutus- ja käyttöönottovalmius | [Toteutuspalat](../issues/plan-v1-implementation/item.md) | Rajatut työt, tarkistuskomennot, kohde ja valtuudet. |
+| Natiivi perusta | Gateway ohjaa kirjautuneen käyttäjän tämän omalle Unix-daemonille. Työtilat ja historiat luetaan natiiveista lähteistä; selaimelle tarjotaan HTTP/SSE-rajapinta. | [ADR 0001](adr-0001-unix-native-agent-host.md) |
+| Selainasiakas | React ja TypeScript, yksi Redux-tapahtumatila, React Aria sekä turvallinen Markdownin, koodin ja diffien esitys. Tuotantokomponentit ja Storybook käyttävät samaa koodia. | [ADR 0002](adr-0002-frontend-stack.md) |
+| Host ja kirjautuminen | Yksi Go-binaari, erilliset gatewayn, daemonin ja brokerin vastuut, systemd ja Unix-socketit. GitHub-kirjautuminen asentaa myös käyttäjän natiivit `gh`-tunnukset. Tuote omistaa yleisen paketoinnin, Fleetrepo konkreettisen asennuksen. | [ADR 0003](adr-0003-host-stack.md) |
+| Ensimmäinen kirjautuminen | Root-broker luo sallitulle GitHub-käyttäjälle Unix-tilin. Pysyvä sidos perustuu varmennettuun numeeriseen GitHub-ID:hen. | [ADR 0004](adr-0004-first-login-user-provisioning.md) |
+| Kloonauksen eteneminen | Daemon välittää Gitin etenemisen selaimeen. Yhteyskatko keskeyttää kirjoituksen; paluu selvittää tuloksen natiivista Gitistä. Erillistä edistymistietovarastoa tai automaattista uusintaa ei lisätä. | [ADR 0005](adr-0005-clone-progress-stream.md) |
+| Selainistuntojen mitätöinti | Root voi mitätöidä yhden GitHub-käyttäjän selainistunnot ja aiemmin alkaneet OAuth-virrat paikallisesti. Toimi ei poista Unix-tiliä eikä natiiveja tunnuksia. | [ADR 0006](adr-0006-subject-revocation.md) |
 
-Uudet tekniset päätökset kirjoitetaan ehdotetuiksi ADR:iksi valmistelun aikana
-ja linkitetään tälle sivulle. Niiden perusteet ja kokeiden versiot säilytetään.
-[Toteutusvalmiuden katselmointi](../issues/review-implementation-plan/review.md)
-vahvisti lisäksi SSE-/ledger-/historiarajat, neljä v1-sopimustäsmennystä, Pi:n
-ensimmäiset/viimeiset neljä viestiä käyttävän otsikon, GitHub
-OAuth-/session-/socket-/native `gh` -politiikan, yhden focused private-repo
--smoken sekä generic self-hosting/Fleetrepo-rajan.
+[Käyttökulut](ui.md) kuvaavat sovitun keskustelu- ja työtilakokemuksen;
+[rajapinnat](interfaces.md) tietojen omistajuuden ja yhteyksien käyttäytymisen.
+Alkuperäiset hyväksynnät ovat [UI-päätöksessä 22.9.](../issues/review-ui-v1/review.md)
+ja [toteutuspaketin päätöksessä 23.9.](../issues/review-implementation-plan/review.md).
+Myöhemmät rajaukset löytyvät nykyisistä sivuista ja ADR:istä.
 
-Muut harnessit, sovelluskohtaiset Northwind-/Acme-integraatiot, vahvempi eristys
-ja usean palvelimen käyttöliittymä tarvitsevat myöhemmin oman valintansa.
-Niitä ei ratkaista ensimmäisen MVP:n sivuvaikutuksena.
+## Avoimet valinnat
+
+- **Sidotun Unix-käyttäjän poistaminen.** [ADR 0007](adr-0007-bound-user-deprovision.md)
+  on ehdotus poistamisen, UID:n uudelleenkäytön estämisen ja keskeytyksistä
+  palautumisen mallista. Oman testitilin poistamiseen annettu lupa ei vielä
+  hyväksy ehdotettua yleistä arkkitehtuuria.
+- **Lokituksen tarkempi käytäntö.** [Lokitusehdotus](logging.md) jättää
+  päätettäväksi komponenttien välisen tapahtumien yhdistämisen, säilytys- ja
+  käyttöoikeusrajat sekä käyttäjälle mahdollisesti annettavan tukiviitteen.
+  Tunnusten ja käyttäjän sisällön suojaaminen kuuluu jo hyväksyttyyn rakenteeseen.
+
+Muut agenttiohjelmat, sovelluskohtaiset integraatiot, vahvempi eristys ja usean
+palvelimen selainkäyttö tarvitsevat oman päätöksensä, jos niille tulee tarve.
