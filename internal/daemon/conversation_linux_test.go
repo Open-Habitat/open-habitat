@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/maintainer/native-agent-host/internal/core"
 	"github.com/maintainer/native-agent-host/internal/transport"
 	"golang.org/x/sys/unix"
 )
@@ -487,4 +488,141 @@ func TestConversationStreamUnknownProbeDoesNotRevoke(t *testing.T) {
 	if c.closed || s.state != "idle" {
 		t.Fatal("transient status failure killed Pi controller")
 	}
+}
+
+func TestConversationContinuationProofAndStatus(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("requires nonroot lock owner")
+	}
+	const id = ownershipTestID
+	const workspace = "ws_12345678"
+	home := t.TempDir()
+	cwd := filepath.Join(home, "src", "project")
+	for _, path := range []string{cwd, filepath.Join(home, ".pi", "agent", "sessions")} {
+		if err := os.MkdirAll(path, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fd, err := unix.Open(cwd, unix.O_PATH|unix.O_DIRECTORY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fi, err := stat(fd)
+	unix.Close(fd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	selected := Workspace{Name: "project", Kind: "repository", Metadata: "missing", WorkspaceID: workspace, dev: uint64(fi.Dev), ino: fi.Ino}
+	path := filepath.Join(home, ".pi", "agent", "sessions", "session.jsonl")
+	header := fmt.Sprintf("{\"type\":\"session\",\"version\":3,\"id\":%q,\"cwd\":%q}\n", id, cwd)
+	if err := os.WriteFile(path, []byte(header), 0600); err != nil {
+		t.Fatal(err)
+	}
+	owner, err := acquirePiOwnership(home, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.release()
+	if err := owner.markBrowser(workspace, cwd); err != nil {
+		t.Fatal(err)
+	}
+	exited := make(chan struct{})
+	s := &conversation{id: id, workspace: workspace, cwd: cwd, rpc: &piRPC{exited: exited}, owner: owner, state: "uncertain", events: []json.RawMessage{}}
+	c := &ConversationController{home: home, fixture: true, cfg: transport.Config{Home: home, UID: os.Geteuid()}, runtime: &core.PiRuntimeConfig{Node: "/bin/sh", Entry: "/bin/fake", Manifest: "/bin/fake"}, sessions: map[string]*conversation{id: s}}
+	c.discover = func(transport.Config) Discovery { return Discovery{State: "present", Entries: []Workspace{selected}} }
+	status := func() string {
+		w := httptest.NewRecorder()
+		c.observe(w, httptest.NewRequest("GET", "http://unix/status", nil), id)
+		if w.Code != 200 {
+			t.Fatalf("status: %d %s", w.Code, w.Body.String())
+		}
+		var view struct {
+			Continuation string `json:"continuation"`
+			State        string `json:"state"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &view); err != nil {
+			t.Fatal(err)
+		}
+		if view.State != "uncertain" {
+			t.Fatalf("unexpected state: %s", view.State)
+		}
+		return view.Continuation
+	}
+	check := func(expected string) {
+		t.Helper()
+		if got := status(); got != expected {
+			t.Fatalf("status continuation %s, want %s", got, expected)
+		}
+		o, _, ws, _, _, _, got := c.continuationProof(id)
+		if ws != nil {
+			ws.Close()
+		}
+		if o != nil {
+			o.release()
+		}
+		if got != expected {
+			t.Fatalf("admission proof %s, want %s", got, expected)
+		}
+	}
+	check("writer_present") // live child, despite uncertain RPC and readable JSONL
+	close(exited)           // direct child reaped; status releases the controller's lock
+	check("eligible")
+	// The status probe never reserves a writer lock beyond its own request.
+	other, err := acquirePiOwnership(home, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check("writer_present")
+	other.release()
+	if err := os.WriteFile(path, []byte(header+"{\"type\":\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	check("unproven")
+	if err := os.WriteFile(path, []byte(header), 0600); err != nil {
+		t.Fatal(err)
+	}
+	terminal, err := acquirePiOwnership(home, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := terminal.file.Truncate(0); err != nil {
+		t.Fatal(err)
+	}
+	terminal.release()
+	check("read_only_history")
+	origin, err := acquirePiOwnership(home, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := origin.markBrowser(workspace, cwd); err != nil {
+		t.Fatal(err)
+	}
+	origin.release()
+	// Simulate a daemon restart: no in-memory child, but the same lock,
+	// origin, workspace and native-history proof is still required.
+	c.sessions = map[string]*conversation{}
+	restartProof := func(expected string) {
+		t.Helper()
+		o, _, ws, _, _, _, got := c.continuationProof(id)
+		if ws != nil {
+			ws.Close()
+		}
+		if o != nil {
+			o.release()
+		}
+		if got != expected {
+			t.Fatalf("restart proof %s, want %s", got, expected)
+		}
+	}
+	restartProof("eligible")
+	other, err = acquirePiOwnership(home, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	restartProof("writer_present")
+	other.release()
+	if err := os.WriteFile(path, []byte(header+"{\"type\":\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	restartProof("unproven")
 }
