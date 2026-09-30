@@ -251,7 +251,13 @@ func (p *piRPC) requestQueue(kind, message string, timeout time.Duration) (piRep
 			return result, nil
 		case <-timer.C:
 			p.poisoned = true
-			_ = p.in.Close()
+			// Pi's abort receipt follows waitForIdle. A slow tool can outlive
+			// this deadline: stop issuing commands but leave stdin open so
+			// Pi may finish its native history instead of shutting down on EOF.
+			// Close still owns eventual process cleanup on service shutdown.
+			if kind != "abort" {
+				_ = p.in.Close()
+			}
 			return piReply{}, errors.New("Pi acceptance uncertain: timeout")
 		}
 	}

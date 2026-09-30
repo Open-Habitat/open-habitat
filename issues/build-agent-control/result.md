@@ -228,3 +228,17 @@ continuation, rendered real-Pi browser journey, and real-provider acceptance are
 still pending. Synthetic fake-Pi and same-UID gateway tests establish abort
 routing and acknowledgement/replay semantics only; distinct-UID Pi proof from
 prior slices does not cover this new abort route. No live host or real credentials.
+
+Final-diff review correction for this increment: Claude Fable 5.1 identified
+three actionable abort-path defects; GPT-6 Astra independently checked their
+premises against pinned Pi 0.85.1 and the revised code. Pi waits for idle before
+acknowledging abort. The controller now allows up to 30 seconds, and on abort
+expiry poisons further writes **without closing stdin**, so a slow Pi can still
+settle native history; its control remains uncertain and cannot be reused.
+Concurrent steer/follow-up/queue-clear are rejected while abort is in flight,
+preventing an abort-delayed clear from losing the only returned queue texts.
+The browser keeps a login-scoped, presentation-only abort ID so accepted,
+rejected and uncertain abort acknowledgements use interruption-specific text
+across revalidation rather than send-receipt text; it never retries the abort.
+These fixes do not make a slow or detached native tool safe to resume, nor do
+they prove a gateway response can never be lost on unrelated transport failures.

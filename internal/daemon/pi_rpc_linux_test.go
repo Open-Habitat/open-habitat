@@ -36,8 +36,42 @@ done
 	if _, err := p.request("prompt", "", time.Second); err == nil {
 		t.Fatal("empty message accepted")
 	}
-	if _, err := p.request("abort", "", time.Second); err == nil {
-		t.Fatal("unsupported command accepted")
+	if accepted, err := p.request("abort", "", time.Second); err != nil || !accepted {
+		t.Fatalf("abort: %v %v", accepted, err)
+	}
+}
+
+func TestPiRPCSlowAbortDoesNotShutDownChild(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("requires nonroot")
+	}
+	home := t.TempDir()
+	script := filepath.Join(home, "pi")
+	// Pi's abort receipt can be delayed until the run loop is idle.
+	body := `#!/bin/sh
+read line
+sleep .15
+printf '%s\n' '{"type":"response","id":"late","command":"abort","success":true}'
+read line
+`
+	if err := os.WriteFile(script, []byte(body), 0700); err != nil {
+		t.Fatal(err)
+	}
+	p, err := launchPiRPC(script, home, home, "", []string{"PATH=/usr/bin:/bin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.close()
+	if accepted, err := p.request("abort", "", 25*time.Millisecond); accepted || err == nil {
+		t.Fatalf("slow abort: %v %v", accepted, err)
+	}
+	select {
+	case <-p.exited:
+		t.Fatal("abort timeout terminated Pi child")
+	default:
+	}
+	if !p.poisoned {
+		t.Fatal("ambiguous channel reused")
 	}
 }
 

@@ -337,9 +337,10 @@ func TestConversationAbortTurnKeepsWriterAndRejectsReplay(t *testing.T) {
 	home := t.TempDir()
 	script := filepath.Join(home, "pi")
 	code := `#!/usr/bin/env python3
-import json,sys
+import json,sys,time
 for line in sys.stdin:
  r=json.loads(line)
+ if r["type"]=="abort": time.sleep(.1)
  print(json.dumps(dict(type="response",id=r["id"],command=r["type"],success=True)),flush=True)
 `
 	if err := os.WriteFile(script, []byte(code), 0700); err != nil {
@@ -366,6 +367,13 @@ for line in sys.stdin:
 	}
 	if w := call(); w.Code != 409 {
 		t.Fatalf("replayed abort: %d", w.Code)
+	}
+	clear := httptest.NewRequest("POST", "http://unix/clear_queue", strings.NewReader(body))
+	clear.Header.Set("Content-Type", "application/json")
+	blocked := httptest.NewRecorder()
+	c.clearQueue(blocked, clear, id)
+	if blocked.Code != 409 {
+		t.Fatalf("clear while aborting: %d", blocked.Code)
 	}
 	deadline := time.Now().Add(time.Second)
 	for time.Now().Before(deadline) {

@@ -403,7 +403,7 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}
-	if c.closed || (kind == "send" && s.state != "idle" && s.state != "rejected") || (kind != "send" && s.state != "accepted") || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= 128 {
+	if c.closed || s.aborting || (kind == "send" && s.state != "idle" && s.state != "rejected") || (kind != "send" && s.state != "accepted") || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= 128 {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return
@@ -516,7 +516,7 @@ func (c *ConversationController) clearQueue(w http.ResponseWriter, r *http.Reque
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}
-	if c.closed || s.state == "pending" || s.state == "uncertain" || s.state == "stopping" || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= 128 {
+	if c.closed || s.aborting || s.state == "pending" || s.state == "uncertain" || s.state == "stopping" || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= 128 {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return
@@ -584,7 +584,8 @@ func (c *ConversationController) abort(w http.ResponseWriter, r *http.Request, i
 	c.mu.Unlock()
 	// A browser disconnect cannot cancel an abort already delivered to Pi.
 	go func() {
-		accepted, err := s.rpc.request("abort", "", 4*time.Second)
+		// Pi acknowledges abort only after waiting for its run loop to settle.
+		accepted, err := s.rpc.request("abort", "", 30*time.Second)
 		c.mu.Lock()
 		defer c.mu.Unlock()
 		s.aborting = false

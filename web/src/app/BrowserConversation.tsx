@@ -101,6 +101,9 @@ export function BrowserConversation({
   staleRef.current = stale;
   const submittedKey =
     csrf && id ? `nah:submitted:${identity}:${csrf}:${id}` : "";
+  // Presentation-only marker: a lost abort receipt must not be treated as a
+  // rejected prompt after the component remounts during session revalidation.
+  const abortKey = csrf && id ? `nah:abort:${identity}:${csrf}:${id}` : "";
   const alive = useRef(true);
   const generation = useRef(0);
   const feed = useRef<HTMLElement>(null);
@@ -292,7 +295,33 @@ export function BrowserConversation({
       wasWorking.current = working;
       setCurrent(nextStatus);
       if (nextStatus.state === "idle") setWorkingMode("follow_up");
-      if (nextStatus.command_id && nextStatus.ack === "rejected") {
+      const abortId = sessionStorage.getItem(
+        `nah:abort:${identity}:${csrf}:${id}`,
+      );
+      const abortReceipt =
+        !!abortId && nextStatus.command_id === abortId.replace(/^done:/, "");
+      if (
+        abortReceipt &&
+        nextStatus.ack !== "pending" &&
+        !abortId.startsWith("done:")
+      ) {
+        sessionStorage.setItem(
+          `nah:abort:${identity}:${csrf}:${id}`,
+          `done:${abortId}`,
+        );
+        setReceipt(
+          nextStatus.ack === "accepted"
+            ? "Pi kuittasi keskeytyksen. Työkalujen päättymistä ei ole vahvistettu."
+            : nextStatus.ack === "rejected"
+              ? "Pi hylkäsi keskeytyksen."
+              : "Keskeytyksen tulos jäi epävarmaksi; istunto voi olla päättynyt.",
+        );
+      }
+      if (
+        !abortReceipt &&
+        nextStatus.command_id &&
+        nextStatus.ack === "rejected"
+      ) {
         const unresolvedKey = `nah:ambiguous:${identity}:${csrf}:${id}`;
         if (sessionStorage.getItem(unresolvedKey) === nextStatus.command_id) {
           const rejectedText = sessionStorage.getItem(submittedKey);
@@ -315,7 +344,11 @@ export function BrowserConversation({
           "Viesti hylättiin. Teksti säilytettiin; voit lähettää sen uudelleen tarkoituksella.",
         );
       }
-      if (nextStatus.command_id && nextStatus.ack === "uncertain")
+      if (
+        !abortReceipt &&
+        nextStatus.command_id &&
+        nextStatus.ack === "uncertain"
+      )
         setReceipt(
           "Viestin hyväksyntä jäi epävarmaksi. Tarkista natiivi historia, älä lähetä automaattisesti uudelleen.",
         );
@@ -325,6 +358,7 @@ export function BrowserConversation({
       if (
         unresolved &&
         unresolved === nextStatus.command_id &&
+        !abortReceipt &&
         nextStatus.ack === "accepted"
       ) {
         const sentText = sessionStorage.getItem(submittedKey);
@@ -605,6 +639,9 @@ export function BrowserConversation({
       !current ||
       !csrf ||
       ambiguous ||
+      (abortKey &&
+        !!sessionStorage.getItem(abortKey) &&
+        !sessionStorage.getItem(abortKey)?.startsWith("done:")) ||
       current.state === "pending" ||
       current.state === "uncertain" ||
       current.state === "stopping"
@@ -653,17 +690,23 @@ export function BrowserConversation({
       if (!alive.current) return;
       sent = true;
       setReceipt("Keskeytystä pyydetään");
-      await abortTurn(current.agent_id, crypto.randomUUID(), token);
+      const commandId = crypto.randomUUID();
+      if (abortKey) sessionStorage.setItem(abortKey, commandId);
+      await abortTurn(current.agent_id, commandId, token);
       if (alive.current)
         setReceipt(
           "Keskeytyspyyntö vastaanotettiin. Pi:n kuittaus näkyy tilassa; työkalujen päättymistä ei ole vahvistettu.",
         );
-    } catch {
+    } catch (error) {
+      if (error instanceof NotAdmitted && abortKey)
+        sessionStorage.removeItem(abortKey);
       if (alive.current)
         setReceipt(
-          sent
-            ? "Keskeytyksen tulos epävarma. Tarkista tila; pyyntöä ei lähetetä uudelleen."
-            : "Istuntoa ei voitu vahvistaa. Keskeytystä ei pyydetty.",
+          error instanceof NotAdmitted
+            ? "Keskeytystä ei hyväksytty. Tarkista keskustelun tila."
+            : sent
+              ? "Keskeytyksen tulos epävarma. Tarkista tila; pyyntöä ei lähetetä uudelleen."
+              : "Istuntoa ei voitu vahvistaa. Keskeytystä ei pyydetty.",
         );
     } finally {
       if (alive.current) {

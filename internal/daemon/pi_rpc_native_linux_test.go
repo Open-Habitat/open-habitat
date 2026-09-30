@@ -113,12 +113,23 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 	if session.state != "readable" {
 		t.Fatalf("native history %s", session.state)
 	}
+	found := false
 	for _, entry := range session.entries {
 		if strings.Contains(entry.full, "hello from synthetic") {
-			return
+			found = true
 		}
 	}
-	t.Fatal("native reply missing")
+	if !found {
+		t.Fatal("native reply missing")
+	}
+	// Exercise the pinned Pi abort wire command (on an idle turn); unlike
+	// process stop it must leave the same child available for a state query.
+	if ok, err := p.request("abort", "", 15*time.Second); err != nil || !ok {
+		t.Fatalf("native abort: %v %v", ok, err)
+	}
+	if ok, err := p.request("get_state", "", 15*time.Second); err != nil || !ok {
+		t.Fatalf("Pi after abort: %v %v", ok, err)
+	}
 }
 
 func TestPiRPCNativeState(t *testing.T) {
