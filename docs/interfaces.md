@@ -37,6 +37,7 @@ ja [daemonista](../internal/daemon/handoff_linux.go).
 | `POST /api/v1/conversations/<session-id>/stop` | keskustelun pysäytyspyyntö |
 | `POST /api/v1/conversations/<session-id>/continue` | päättyneen selainkeskustelun tietoinen jatkaminen samasta natiivista Pi-istunnosta, tyhjä runko |
 | `GET /api/v1/conversations/<session-id>/stream` | väliaikainen, rajallinen tilannekuva-SSE; ei yleinen tapahtumavirta |
+| `GET /api/v1/events?after=<cursor>` | rajallinen yhdistetty SSE-toistovirta; toistaiseksi vain `snapshot.invalidated` natiivin Pi-tapahtuman tai ohjaimen elinkaaren muutoksesta |
 | `GET /api/v1/onboarding/github/repos` | käyttäjän GitHub-repot, sivutettuina `page`- ja `limit`-parametreilla |
 | `POST /api/v1/onboarding/github/clone` | `full_name`-kentän repon kloonaus; lopputulos JSON-vastauksena |
 | `GET /api/v1/onboarding/github/checkout` | `full_name`-parametrin paikallisen checkoutin natiivi havainto |
@@ -59,8 +60,7 @@ jo käytetty kursori palauttaa `409 cursor_expired`, vieraan daemon-elinkaaren k
 `409 cursor_instance_mismatch`. Selain hakee silloin uuden tilan ja natiivihistorian;
 virta ei väitä välistä jääneiden tapahtumien tulleen toimitetuiksi.
 
-Yleinen SSE-virta, komento- ja operaatiokyselyt sekä päättyneen
-selainkeskustelun jatkaminen ovat vielä toteutettavaa
+Yleisen SSE:n rakenteiset deltaeventit sekä komento- ja operaatiokyselyt ovat vielä toteutettavaa
 [agenttiohjausta](../issues/build-agent-control/item.md). Niiden sovittu
 merkitys kuvataan alempana erillään nykyisistä reiteistä.
 
@@ -235,7 +235,6 @@ Seuraavat yleiset reitit ovat sovittu, vielä toteuttamaton pinta:
 
 | Metodi ja polku | Merkitys |
 |---|---|
-| `GET /api/v1/events?after=<cursor>` | snapshotia seuraava yhdistetty SSE-virta, [event-skeema](../contracts/v1/event.schema.json) |
 | `POST /api/v1/commands` | komennon hyväksyntä, [command-skeema](../contracts/v1/command.schema.json) |
 | `GET /api/v1/commands/<client-command-id>` | saatavilla oleva hyväksyntä- ja suoritustulos |
 | `GET /api/v1/operations/<operation-id>` | saatavilla oleva päättyneen operaation tulos, [operation-skeema](../contracts/v1/operation.schema.json) |
@@ -251,6 +250,18 @@ Viestin lähetys ja etenemisen seuraaminen ovat eri asioita. Jos lähetyksen
 kuittaus katoaa, selain selvittää viestin tilanteen palvelimelta. Jos tilanne
 jää epäselväksi, käyttäjä näkee sen epävarmana. Automaattinen uudelleenlähetys
 voisi teettää saman työn kahdesti, joten päätös uudesta yrityksestä jää käyttäjälle.
+
+Toteutettu välivaihe käyttää muistissa 128 tapahtuman / 1 MiB:n toistoikkunaa
+käyttäjän daemonissa. Muutos ilmoitetaan `snapshot.invalidated`-eventillä:
+selain hakee sen jälkeen uuden snapshotin ja tarvittaessa natiivihistorian;
+rakenteiset `history.entry`-, delta-, queue- ja workspace-eventit eivät vielä
+synny tästä reitistä. Snapshotin watermark otetaan ennen natiivilukua, joten
+sen aikana syntyneen muutoksen invalidointi voidaan myös toistaa. Nykyisen
+kuvan ja streamin päällekkäisyys ei todista atomista näkymää samaan kellonhetkeen.
+Yhteys kestää enintään 20 sekuntia, daemonin kirjoitusaika enintään 24 ja
+gatewayn kirjoitusaika 26 sekuntia; gatewaylla on 27 sekunnin socket-deadline
+ja enintään 128 kehystä. Liian hidas lukija katkaistaan. Selain ei vielä käytä
+tätä reittiä; väliaikainen keskusteluvirta jää käyttöön.
 
 [Snapshot](../contracts/v1/snapshot.schema.json) on daemonin muodostama
 tilannekuva. Sen `event_cursor` kertoo, mihin asti tapahtumat ovat mukana

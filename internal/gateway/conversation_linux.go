@@ -33,8 +33,12 @@ const conversationBase = "/api/v1/conversations"
 
 func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.EscapedPath()
+	events := path == "/api/v1/events"
 	match := conversationPath.FindStringSubmatch(path)
-	if match == nil || path != r.URL.Path || r.URL.RawQuery != "" || r.RequestURI != path || !a.exact(r, path) || (r.ProtoMajor != 1 || r.ProtoMinor != 1) && r.ProtoMajor != 2 || len(r.TransferEncoding) != 0 || (r.Method != "GET" && r.Method != "POST") || (match[1] != "" && ((match[2] == "status" || match[2] == "stream") != (r.Method == "GET"))) {
+	if events {
+		match = []string{path, "", "events"}
+	}
+	if match == nil || path != r.URL.Path || (!events && r.URL.RawQuery != "") || (!events && r.RequestURI != path) || (!events && !a.exact(r, path)) || (events && (!a.exact(r, path, "after") || r.Method != "GET" || !conversationStreamCursor.MatchString(r.URL.Query().Get("after")))) || (r.ProtoMajor != 1 || r.ProtoMinor != 1) && r.ProtoMajor != 2 || len(r.TransferEncoding) != 0 || (r.Method != "GET" && r.Method != "POST") || (match[1] != "" && ((match[2] == "status" || match[2] == "stream") != (r.Method == "GET"))) {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -56,12 +60,15 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	}
 	owner := c.Value
 	kind := "list"
+	if events {
+		kind = "events"
+	}
 	if r.Method == "POST" && match[1] == "" {
 		kind = "create"
 	} else if match[1] != "" {
 		kind = match[2]
 	}
-	if kind == "stream" {
+	if kind == "stream" || kind == "events" {
 		last := r.Header.Get("Last-Event-ID")
 		if len(r.Header.Values("Last-Event-ID")) > 1 || len(last) > 100 || (last != "" && !conversationStreamCursor.MatchString(last)) {
 			safe(w, 400, "invalid_request")
@@ -131,7 +138,7 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	deadline := time.Now().Add(5 * time.Second)
-	if kind == "stream" {
+	if kind == "stream" || kind == "events" {
 		deadline = time.Now().Add(27 * time.Second)
 	}
 	if d, ok := r.Context().Deadline(); ok && d.Before(deadline) {
@@ -143,7 +150,12 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	}
 	stop := context.AfterFunc(r.Context(), func() { _ = conn.SetDeadline(time.Now()) })
 	defer stop()
-	req, err := http.NewRequestWithContext(r.Context(), r.Method, "http://unix"+path, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(r.Context(), r.Method, "http://unix"+func() string {
+		if events {
+			return path + "?" + r.URL.RawQuery
+		}
+		return path
+	}(), bytes.NewReader(body))
 	if err != nil {
 		safe(w, 503, "daemon_unavailable")
 		return
@@ -156,7 +168,7 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	hash := sha256.Sum256([]byte("conversation-owner\x00" + owner))
 	req.Header.Set("X-Agent-Host-Session", base64.RawURLEncoding.EncodeToString(hash[:]))
 	req.Close = true
-	if kind == "stream" && r.Header.Get("Last-Event-ID") != "" {
+	if (kind == "stream" || kind == "events") && r.Header.Get("Last-Event-ID") != "" {
 		req.Header.Set("Last-Event-ID", r.Header.Get("Last-Event-ID"))
 	}
 	// The socket may have accepted a write even when no acknowledgement arrives.
@@ -172,8 +184,12 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 		failure()
 		return
 	}
-	if kind == "stream" {
-		a.forwardConversationStream(w, r, conn, req, owner, s, match[1])
+	if kind == "stream" || kind == "events" {
+		if events {
+			a.forwardEvents(w, r, conn, req, s)
+		} else {
+			a.forwardConversationStream(w, r, conn, req, owner, s, match[1])
+		}
 		return
 	}
 	limited := &io.LimitedReader{R: conn, N: conversationReplyLimit + 4096}

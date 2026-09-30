@@ -1,0 +1,164 @@
+//go:build linux
+
+package gateway
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"io"
+	"net"
+	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+)
+
+// forwardEvents does not forward arbitrary daemon bytes. Every frame is
+// allowlisted and bound to the exact cursor sequence and daemon instance.
+func (a *Auth) forwardEvents(w http.ResponseWriter, r *http.Request, conn net.Conn, req *http.Request, initial session) {
+	reader := bufio.NewReader(&streamHeaderReader{source: conn})
+	res, err := http.ReadResponse(reader, req)
+	if err != nil {
+		safe(w, 503, "daemon_unavailable")
+		return
+	}
+	defer res.Body.Close()
+	if res.ProtoMajor != 1 || res.ProtoMinor != 1 {
+		safe(w, 503, "daemon_unavailable")
+		return
+	}
+	if res.StatusCode != 200 {
+		if (res.StatusCode != 409 && res.StatusCode != 400 && res.StatusCode != 403 && res.StatusCode != 428 && res.StatusCode != 503) || res.ContentLength <= 0 || res.ContentLength > 4096 || len(res.TransferEncoding) != 0 || res.Header.Get("Content-Type") != "application/json" {
+			safe(w, 503, "daemon_unavailable")
+			return
+		}
+		b, err := io.ReadAll(io.LimitReader(res.Body, 4097))
+		if err != nil || int64(len(b)) != res.ContentLength {
+			safe(w, 503, "daemon_unavailable")
+			return
+		}
+		var e struct {
+			SchemaVersion int `json:"schema_version"`
+			Error         struct {
+				Code string `json:"code"`
+			} `json:"error"`
+		}
+		if json.Unmarshal(b, &e) != nil || e.SchemaVersion != 1 {
+			safe(w, 503, "daemon_unavailable")
+			return
+		}
+		allowed := map[int]map[string]bool{400: {"invalid_request": true}, 403: {"cross_user_denied": true}, 409: {"cursor_expired": true, "cursor_instance_mismatch": true}, 428: {"pi_onboarding_required": true}, 503: {"native_source_unavailable": true}}
+		if !allowed[res.StatusCode][e.Error.Code] {
+			safe(w, 503, "daemon_unavailable")
+			return
+		}
+		safe(w, res.StatusCode, e.Error.Code)
+		return
+	}
+	if res.Header.Get("Content-Type") != "text/event-stream" || len(res.Header.Values("Content-Type")) != 1 || res.ContentLength > 0 || len(res.TransferEncoding) > 1 {
+		safe(w, 503, "daemon_unavailable")
+		return
+	}
+	flusher, ok := w.(http.Flusher)
+	if !ok || http.NewResponseController(w).SetWriteDeadline(time.Now().Add(26*time.Second)) != nil {
+		safe(w, 503, "daemon_unavailable")
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	scanner := bufio.NewScanner(res.Body)
+	scanner.Buffer(make([]byte, 4096), conversationReplyLimit+256)
+	cursor := r.URL.Query().Get("after")
+	if last := r.Header.Get("Last-Event-ID"); last != "" {
+		cursor = last
+	}
+	parts := strings.Split(cursor, ":")
+	previous, _ := strconv.ParseUint(parts[2], 10, 64)
+	for count := 0; count < 128; count++ {
+		if !scanner.Scan() {
+			return
+		}
+		line := scanner.Text()
+		if line == ": heartbeat" {
+			if !scanner.Scan() || scanner.Text() != "" {
+				return
+			}
+			latest, valid := a.authenticated(r)
+			if !valid || latest.identity != initial.identity || latest.csrf != initial.csrf || latest.epoch != initial.epoch || latest.generation != initial.generation {
+				return
+			}
+			if _, err := io.WriteString(w, ": heartbeat\n\n"); err != nil {
+				return
+			}
+			flusher.Flush()
+			continue
+		}
+		if !strings.HasPrefix(line, "id: ") {
+			return
+		}
+		id := strings.TrimPrefix(line, "id: ")
+		next := strings.Split(id, ":")
+		if len(next) != 3 || next[1] != parts[1] {
+			return
+		}
+		seq, err := strconv.ParseUint(next[2], 10, 64)
+		if err != nil || seq != previous+1 {
+			return
+		}
+		if !scanner.Scan() || scanner.Text() != "event: snapshot.invalidated" {
+			return
+		}
+		if !scanner.Scan() || !strings.HasPrefix(scanner.Text(), "data: ") {
+			return
+		}
+		body := strings.TrimPrefix(scanner.Text(), "data: ")
+		if len(body) > conversationReplyLimit {
+			return
+		}
+		var event struct {
+			EmittedAt        string            `json:"emitted_at"`
+			SchemaVersion    int               `json:"schema_version"`
+			Cursor           string            `json:"cursor"`
+			ServerInstanceID string            `json:"server_instance_id"`
+			Sequence         uint64            `json:"sequence"`
+			EventID          string            `json:"event_id"`
+			Kind             string            `json:"kind"`
+			Resource         map[string]string `json:"resource"`
+			Payload          struct {
+				Reason string `json:"reason"`
+			} `json:"payload"`
+		}
+		decoder := json.NewDecoder(bytes.NewReader([]byte(body)))
+		decoder.DisallowUnknownFields()
+		if decoder.Decode(&event) != nil || decoder.Decode(new(any)) != io.EOF || event.SchemaVersion != 1 || event.Cursor != id || event.ServerInstanceID != parts[1] || event.Sequence != seq || !regexp.MustCompile(`^evt_[A-Za-z0-9_-]{8,80}$`).MatchString(event.EventID) || !validEventTime(event.EmittedAt) || event.Kind != "snapshot.invalidated" || event.Payload.Reason != "source_changed" || !validEventResource(event.Resource) {
+			return
+		}
+		if !scanner.Scan() || scanner.Text() != "" {
+			return
+		}
+		latest, valid := a.authenticated(r)
+		if !valid || latest.identity != initial.identity || latest.csrf != initial.csrf || latest.epoch != initial.epoch || latest.generation != initial.generation {
+			return
+		}
+		if _, err := io.WriteString(w, "id: "+id+"\nevent: snapshot.invalidated\ndata: "+body+"\n\n"); err != nil {
+			return
+		}
+		flusher.Flush()
+		previous = seq
+	}
+}
+
+func validEventTime(v string) bool { _, err := time.Parse(time.RFC3339Nano, v); return err == nil }
+func validEventResource(m map[string]string) bool {
+	if len(m) != 1 {
+		return false
+	}
+	if m["scope"] == "user" {
+		return true
+	}
+	id := m["agent_id"]
+	return strings.HasPrefix(id, "pi:") && conversationUUID.MatchString(strings.TrimPrefix(id, "pi:"))
+}

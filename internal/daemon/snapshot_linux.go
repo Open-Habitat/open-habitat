@@ -66,7 +66,18 @@ func SnapshotHandlerWithNativeRoot(cfg transport.Config, trusted func(*http.Requ
 	return snapshotHandlerWithStatus(cfg, trusted, discover, func(c transport.Config) ([]nativeSession, error) { c.Home = root; return nativeSessions(c) }, root, func(context.Context) string { return "unknown" })
 }
 func snapshotHandlerWithStatus(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) string) http.Handler {
+	return snapshotHandlerWithJournal(cfg, trusted, discover, sessionsReader, nativeHome, nativeStatus, nil)
+}
+func validSnapshotIdentity(cfg transport.Config, r *http.Request) bool {
+	ids := r.Header.Values("X-Agent-Host-Identity")
+	names := r.Header.Values("X-Agent-Host-Display-Name")
+	return len(ids) == 1 && len(names) == 1 && ids[0] == opaque("wid_", cfg.Provider+":"+cfg.Subject) && names[0] == "GitHub user "+cfg.Subject
+}
+func snapshotHandlerWithJournal(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) string, journal *eventJournal) http.Handler {
 	instance, ok := uuid()
+	if journal != nil {
+		instance, ok = journal.instance, journal.instance != ""
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !ok || trusted == nil || !trusted(r) || r.ProtoMajor != 1 || r.ProtoMinor != 1 || r.Method != http.MethodGet || r.RequestURI != SnapshotPath || r.URL.Path != SnapshotPath || r.URL.RawQuery != "" || r.Host != "unix" || transport.ValidateConfig(cfg) != nil {
 			snapshotError(w, http.StatusForbidden, "cross_user_denied")
@@ -79,6 +90,13 @@ func snapshotHandlerWithStatus(cfg transport.Config, trusted func(*http.Request)
 		if len(ids) != 1 || len(names) != 1 || ids[0] != expected || names[0] != display || strings.ContainsAny(ids[0]+names[0], "\r\n") {
 			snapshotError(w, http.StatusForbidden, "cross_user_denied")
 			return
+		}
+		// Capture the watermark before native observation. Concurrent Pi events
+		// during construction are replayed after this cursor, even if already
+		// reflected in the image; consumers deduplicate by sequence.
+		eventCursor, oldestCursor := "ev1:"+instance+":0", "ev1:"+instance+":0"
+		if journal != nil {
+			eventCursor, oldestCursor = journal.watermark()
 		}
 		observation := discover(cfg)
 		if observation.State == "error" {
@@ -183,7 +201,7 @@ func snapshotHandlerWithStatus(cfg transport.Config, trusted func(*http.Request)
 		}
 		// No event stream or command consumer exists yet. The watermark is at zero
 		// for this daemon incarnation; writes remain disabled.
-		body := map[string]any{"schema_version": 1, "snapshot_id": snapID, "captured_at": at, "server_instance_id": instance, "event_cursor": "ev1:" + instance + ":0", "oldest_replay_cursor": "ev1:" + instance + ":0", "user_observation_token": opaque("obs_", snapID+":user"), "write_state": "read_only", "identity": map[string]string{"web_identity_id": expected, "display_name": display}, "sources": []any{fact("filesystem", state), fact("pi_history", func() string {
+		body := map[string]any{"schema_version": 1, "snapshot_id": snapID, "captured_at": at, "server_instance_id": instance, "event_cursor": eventCursor, "oldest_replay_cursor": oldestCursor, "user_observation_token": opaque("obs_", snapID+":user"), "write_state": "read_only", "identity": map[string]string{"web_identity_id": expected, "display_name": display}, "sources": []any{fact("filesystem", state), fact("pi_history", func() string {
 			if historyErr != nil {
 				return "unavailable"
 			}

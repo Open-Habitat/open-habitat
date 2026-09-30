@@ -37,7 +37,8 @@ type ConversationController struct {
 	home     string
 	discover func(transport.Config) Discovery
 	fixture  bool   // untrusted synthetic runtime: never set in production
-	instance string // ephemeral stream cursor scope; never a history store
+	instance string // ephemeral provisional stream cursor scope
+	journal  *eventJournal
 }
 
 // A continued native session retains spent browser IDs within this daemon
@@ -99,6 +100,9 @@ func (c *ConversationController) shutdown() {
 	list := make([]*conversation, 0, len(c.sessions))
 	for _, s := range c.sessions {
 		s.state = "uncertain"
+		if c.journal != nil {
+			c.journal.appendInvalidation("pi:" + s.id)
+		}
 		if s.ack == "pending" {
 			s.ack = "uncertain"
 		}
@@ -329,6 +333,9 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 	}
 	s := &conversation{id: id, workspace: body.WorkspaceID, cwd: cwd, rpc: p, owner: owner, state: "idle", events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool)}
 	c.sessions[id] = s
+	if c.journal != nil {
+		c.journal.appendInvalidation("pi:" + id)
+	}
 	releaseOwner = false
 	c.mu.Unlock()
 	// The daemon retains the advisory lock until the direct child is reaped;
@@ -457,6 +464,9 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 		s.command = old.command
 	}
 	c.sessions[id] = s
+	if c.journal != nil {
+		c.journal.appendInvalidation("pi:" + id)
+	}
 	owner = nil // the child and watcher now own this lock
 	c.mu.Unlock()
 	go c.watch(s)
@@ -495,6 +505,9 @@ func (c *ConversationController) drain(s *conversation) {
 			s.lost = true
 		}
 		s.events = append(s.events, e)
+		if c.journal != nil {
+			c.journal.appendInvalidation("pi:" + s.id)
+		}
 		if frame.Type == "queue_update" {
 			var q struct {
 				Steering []string `json:"steering"`
