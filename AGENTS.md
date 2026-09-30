@@ -45,19 +45,19 @@ users to stay compatible with, so formats, interfaces and data change freely
 without compatibility code.
 
 Cutting a release and installing it on the test server is ordinary work and
-does not wait for a go/no-go from Jari. Fleetrepo's
+does not wait for a go/no-go from the user. Fleetrepo's
 `infra/native-agent-host-test/RELEASE-UPGRADE.md` is the procedure, with
 receipts and host facts kept there. It exists so that we always know exactly
 which bytes are running and can go back to the previous release.
 
-Architecture is decided together with Jari: which component has which
-authority, the security model and major dependencies. These come to him as a
-recommendation with the reasoning, and the decision is recorded in an issue or
-ADR so it survives the conversation. Otherwise he wants the work to proceed
-without him. Ready work in the DAG gets done.
+Architecture is decided together with the user: which component has which
+authority, the security model and major dependencies. These come to the user as
+a recommendation with the reasoning, and the decision is recorded in an issue
+or ADR so it survives the conversation. Otherwise the user wants the work to
+proceed without them. Ready work in the DAG gets done.
 
-A question is worth his attention when the outcomes differ in a way he would
-care about and you cannot tell which he would choose.
+A question is worth the user's attention when the outcomes differ in a way the
+user would care about and you cannot tell which they would choose.
 
 ## Issues and documentation
 
