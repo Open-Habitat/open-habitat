@@ -239,7 +239,7 @@ export function SendObservation({
   };
   return (
     <div className={`ah-send-observation ah-send-${state}`}>
-      {showText ? <p>{text}</p> : null}
+      {showText ? <p>Lähetetty teksti: {text}</p> : null}
       <p>{labels[state]}</p>
       {state === "uncertain" ? (
         <Button label="Kopioi teksti" variant="quiet" onPress={onCopy} />
