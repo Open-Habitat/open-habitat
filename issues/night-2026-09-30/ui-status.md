@@ -28,6 +28,15 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Kierrokset
 
+### Kierros 2 — alku 2026-09-30 22:25 UTC
+
+- `rest`in 21:35-pyyntö otettu: `stream-conversation-events` (design-v2,
+  seq 7). Käynnissä run `01m3t5wj8a9mcmw6nnrmy4984q`, UI-tokenit.
+- Jonossa samalla kaistalla: `fit-conversation-density-v2` (G3),
+  `fit-return-view-v2` (G1), `fit-settings-density-v2` (G2).
+- Kun `rest`in vuoron asettumis-/kuittausajo laskeutuu, UI ottaa sen
+  keskustelunäkymään; kirjaa kenttien nimet tänne pyyntöihin.
+
 ### Kierros 1 — valmis 2026-09-30 22:15 UTC
 
 **Yhteenveto.** Selain-design v2:n kaista eteni kaikilta osin, jotka yöllä
