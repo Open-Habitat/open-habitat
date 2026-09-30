@@ -38,12 +38,18 @@ käyty läpi tällä skillillä.
 
 ## Seuraavaksi
 
-Seuraava läpikäytävä dokumentti on
-[ADR 0001: Unix-natiivi host](../../docs/adr-0001-unix-native-agent-host.md).
+Jari pyysi välissä neljän issuen läpikäynnin tässä järjestyksessä:
+
+1. `investigate-pi-browser-oauth` — käsitelty: issue ja `analysis.md` rajattu
+   tuetun kirjautumistavan selvittämiseen. Jari hyväksyi rajauksen 30.9.
+2. [gate-native-routes-on-pi](../gate-native-routes-on-pi/item.md) — seuraavaksi.
+3. [speed-up-clean-ci](../speed-up-clean-ci/item.md).
+4. [build-agent-control](../build-agent-control/item.md) — uusintaläpikäynti.
+
+Näiden jälkeen palataan [ADR 0001:een](../../docs/adr-0001-unix-native-agent-host.md).
 Säilytetään natiivien komponenttien, Unix-käyttäjien ja tietojen omistajuuden
 perustelut. Tarkistetaan myöhempien päätösten suhde usean palvelimen selaimeen,
-keskustelujen jatkamiseen ja tekstin edelleen avoimiksi kuvaamiin valintoihin
-ennen uudelleenkirjoituksen rajausta.
+keskustelujen jatkamiseen ja tekstin edelleen avoimiksi kuvaamiin valintoihin.
 
 UI- ja design-dokumentit ovat Jarin pyynnöstä odottamassa 2026-09-30:
 toinen agentti tekee laajempaa käyttöliittymäkierrosta. Niihin palataan sen
@@ -262,3 +268,18 @@ Dokumentaatiovalidaattori ja `git diff --check` läpäisivät. Issue doctorissa
 ei ollut skeema- tai linkkivirheitä; muiden issueiden PNG-kuvahavainnot
 säilyvät. Täyttä CI-porttia ei ajettu uudelleen, koska muutos koskee vain
 dokumentaatiota. Live-palvelinta ei muutettu eikä testattu.
+## Pi-selainkirjautumisen tutkimusissuen läpikäynti 2026-09-30
+
+Jari hyväksyi rajauksen: ensin selvitetään palveluntarjoajan tuki ja Pi:n
+integrointitapa. Kokonaista kirjautumisprotokollaa ei tarvitse suunnitella ennen
+toteuttamiskelpoisuuden selviämistä. Pi omistaa edelleen tunnukset käyttäjän
+Unix-tilillä. Gatewayn kautta välitettävä koodi on ehdotus, ei vaatimus.
+Lopputulokseksi riittää perusteltu suositus toteutuksesta, rajatusta oikeasta
+kokeesta tai laitekoodilla jatkamisesta. Oikeasta kokeesta kerrotaan etukäteen.
+
+Issue ja `analysis.md` kirjoitettiin tämän mukaisiksi. Muistio säilyttää
+Pi 0.85.1:n lähdehavainnot, kokeiden rajat ja avoimet kysymykset; spekulatiivinen
+protokollasuunnitelma poistettiin. Toteuttamiskelpoisuutta ei selvitetty uudelleen
+eikä issuea suljettu. Dokumentaatiovalidaattori, issue doctor (vain muiden
+issueiden olemassa olevat kuvamuotohavainnot) ja `git diff --check` läpäisivät.
+Täyttä CI-porttia ei ajettu dokumenttimuutokselle.

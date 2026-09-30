@@ -1,6 +1,6 @@
 ---
 created: 2026-09-29
-updated: 2026-09-29
+updated: 2026-09-30
 type: task
 reporter: jari
 status: open
@@ -11,14 +11,34 @@ collision: [docs/, internal/gateway/, internal/daemon/]
 
 # Investigate Pi browser OAuth callback
 
-## Context
-Jari approved a bounded investigation of ordinary OpenAI browser OAuth as an alternative to Pi's device-code sign-in, not a provider login or an architecture change. Pi 0.85.1 currently hardcodes `http://localhost:1455/auth/callback`. An unauthenticated probe encountered anti-bot 403 and did not establish whether OpenAI accepts an HTTPS test-server callback.
+## Goal
 
-## Scope and decision gate
-- First design a safe state/PKCE exchange bound to browser session AND mapped Unix UID; check callback origin, per-user Pi ownership, revocation, timeouts and cross-user isolation. Decide whether the gateway/daemon authority boundary would change, and take that architectural choice to Jari before changing it.
-- Identify a consented provider experiment with a verified return route and rollback; inform Jari **before** any real provider test. Never bypass anti-bot, use a real browser session, or persist a real credential during a synthetic proof.
-- Use synthetic tests/probes without a real home or identity. If provider compatibility cannot be established safely, report that limitation rather than implement speculative callback handling.
+Find out whether Pi sign-in can return the browser directly to this service,
+without asking the user to enter a device code. Recommend a supported approach
+or explain why the existing device-code flow should remain.
 
-## Acceptance
-- Evidence and recommendation recorded here, distinguishing synthetic and live results; a scoped implementation issue only after the architectural decision and provider feasibility are clear.
-- No new authorization route or live provider login is implied by this issue.
+## What is known
+
+The [source investigation](analysis.md) found that Pi 0.85.1 fixes its browser
+callback to localhost on the user's computer. It did not establish whether
+OpenAI permits an HTTPS callback to this host. An earlier anti-bot 403 does
+not settle that question.
+
+## Scope
+
+First establish provider support and an available Pi integration path. A full
+new login protocol is not a prerequisite for this investigation. Pi remains
+the credential owner under the mapped Unix user; gateway code relay is only a
+possible design, not an approved requirement. Bring any proposed change in
+component authority to Jari before implementation.
+
+If a real provider experiment is needed, inform Jari beforehand and describe
+its scope, participant consent, return route and cleanup. Synthetic work uses
+disposable state without real identities or credentials. Do not bypass anti-bot
+protections. This issue does not authorize a real login or callback implementation.
+
+## Acceptance Criteria
+
+- [ ] Record what supported callback/client configuration and Pi integration are available, distinguishing source findings, synthetic tests and provider evidence.
+- [ ] Recommend implementation, a bounded real experiment, or continued device-code sign-in. State any unresolved compatibility question plainly.
+- [ ] If recommending implementation, describe the effect on gateway/daemon responsibilities and how the login stays bound to the correct browser session and Unix user. Detailed protocol design belongs to the subsequent implementation work after the architectural choice.
