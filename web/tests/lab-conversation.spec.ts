@@ -90,6 +90,163 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   ).toBe(true);
 });
 
+test("@lab browser renders provisional delta and tool from verified combined SSE frames", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const Native = window.EventSource;
+    window.EventSource = class extends EventTarget {
+      static readonly CONNECTING = Native.CONNECTING;
+      static readonly OPEN = Native.OPEN;
+      static readonly CLOSED = Native.CLOSED;
+      readonly CONNECTING = Native.CONNECTING;
+      readonly OPEN = Native.OPEN;
+      readonly CLOSED = Native.CLOSED;
+      readonly withCredentials = false;
+      readonly url: string;
+      readyState: number = Native.OPEN;
+      onopen: ((event: Event) => void) | null = null;
+      onerror: ((event: Event) => void) | null = null;
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      constructor(url: string | URL) {
+        super();
+        this.url = String(url);
+        if (this.url.startsWith("/api/v1/events?"))
+          Object.assign(window, { testStream: this });
+      }
+      close() {
+        this.readyState = Native.CLOSED;
+      }
+    } as typeof EventSource;
+  });
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "aurinkokello" })
+    .click();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Boolean((window as unknown as { testStream?: EventSource }).testStream),
+      ),
+    )
+    .toBe(true);
+  await page.evaluate(async () => {
+    const source = (window as unknown as { testStream: EventSource })
+      .testStream;
+    const after =
+      new URL(source.url, location.href).searchParams.get("after") ?? "";
+    const parts = /^ev1:([0-9a-f-]{36}):(\d+)$/.exec(after);
+    if (!parts) throw new Error("missing cursor");
+    const agent = new URL(location.href).searchParams.get("conversation");
+    for (const [index, kind, payload] of [
+      [
+        1,
+        "assistant.delta",
+        { text: "Synteettinen live-teksti", content_index: 0 },
+      ],
+      [
+        2,
+        "tool.started",
+        { tool_call_id: "synthetic-tool", tool_name: "bash", state: "running" },
+      ],
+    ] as const) {
+      const sequence = Number(parts[2]) + index;
+      const cursor = `ev1:${parts[1]}:${sequence}`;
+      source.dispatchEvent(
+        new MessageEvent(kind, {
+          lastEventId: cursor,
+          data: JSON.stringify({
+            schema_version: 1,
+            event_id: `evt_abcdefgh${index}`,
+            cursor,
+            server_instance_id: parts[1],
+            sequence,
+            emitted_at: "2026-09-30T20:00:00Z",
+            kind,
+            resource: { agent_id: agent },
+            payload,
+          }),
+        }),
+      );
+    }
+  });
+  await expect(page.getByText("Synteettinen live-teksti")).toBeVisible();
+  await expect(page.getByText("bash · running", { exact: true })).toBeVisible();
+});
+
+test("@lab combined stream reconciles a forced gap without reposting", async ({
+  page,
+}) => {
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "aurinkokello" })
+    .click();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await editor.fill("hidas stream-tarkistus");
+  let sends = 0;
+  page.on("request", (request) => {
+    if (request.url().endsWith("/send")) sends++;
+  });
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(
+    page.getByText('Selvä. Kysyit: "hidas stream-tarkistus".', {
+      exact: false,
+    }),
+  ).toBeVisible({ timeout: 30000 });
+  expect(sends).toBe(1);
+  let snapshotReads = 0;
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/api/v1/snapshot") snapshotReads++;
+  });
+  let injected = false;
+  await page.route("**/api/v1/events?after=*", async (route) => {
+    if (injected) return route.continue();
+    injected = true;
+    const after =
+      new URL(route.request().url()).searchParams.get("after") ?? "";
+    const match = /^ev1:([0-9a-f-]{36}):(\d+)$/.exec(after);
+    if (!match) throw new Error("missing snapshot cursor");
+    const sequence = Number(match[2]) + 2; // Deliberately skip one frame.
+    const cursor = `ev1:${match[1]}:${sequence}`;
+    const frame = {
+      schema_version: 1,
+      event_id: "evt_abcdefgh12345",
+      cursor,
+      server_instance_id: match[1],
+      sequence,
+      emitted_at: "2026-09-30T20:00:00Z",
+      kind: "assistant.delta",
+      resource: {
+        agent_id: new URL(page.url()).searchParams.get("conversation"),
+      },
+      payload: { text: "This frame must not appear", content_index: 0 },
+    };
+    await route.fulfill({
+      status: 200,
+      contentType: "text/event-stream",
+      body: `id: ${cursor}\nevent: assistant.delta\ndata: ${JSON.stringify(frame)}\n\n`,
+    });
+  });
+  await page.reload();
+  await expect.poll(() => injected).toBe(true);
+  await expect.poll(() => snapshotReads).toBeGreaterThan(1);
+  await expect(page.getByText("This frame must not appear")).toHaveCount(0);
+  await expect(
+    page.getByText('Selvä. Kysyit: "hidas stream-tarkistus".', {
+      exact: false,
+    }),
+  ).toBeVisible();
+  expect(sends).toBe(1);
+});
+
 test("@lab fresh replies remain visible across native history pages", async ({
   page,
 }) => {

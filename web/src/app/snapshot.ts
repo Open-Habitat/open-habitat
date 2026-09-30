@@ -6,6 +6,7 @@ import common from "../../../contracts/v1/common.schema.json";
 import event from "../../../contracts/v1/event.schema.json";
 import operation from "../../../contracts/v1/operation.schema.json";
 import schema from "../../../contracts/v1/snapshot.schema.json";
+import type { Event } from "../contracts/v1.generated";
 
 const ajv = new Ajv({ strict: false, allErrors: false });
 addFormats(ajv);
@@ -41,9 +42,12 @@ export interface Agent {
   process: string;
   control: string;
   title: { display: string };
+  live_tail: Event[];
 }
 export interface Snapshot {
   schema_version: 1;
+  event_cursor: string;
+  server_instance_id: string;
   identity: { web_identity_id: string; display_name: string };
   sources: Fact[];
   workspaces: Workspace[];

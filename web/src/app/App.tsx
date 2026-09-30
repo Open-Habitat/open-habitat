@@ -726,6 +726,8 @@ export function App() {
                 : undefined
             }
             identity={identity}
+            snapshot={snapshot}
+            onResnapshot={refresh}
             title={
               snapshot?.agents.find(
                 (a) =>

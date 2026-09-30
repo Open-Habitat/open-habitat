@@ -37,6 +37,15 @@ import {
   status,
 } from "./conversations";
 import { readHistoryFetch, timelineItems } from "./HistoryView";
+import {
+  applyTurnEvent,
+  initialTurn,
+  parseConversationEvent,
+  provisionalItems,
+  type LiveTurn,
+} from "./conversationEvents";
+import { AssistantMessage, Markdown } from "../components";
+import type { Snapshot } from "./snapshot";
 import type { HistoryEntry } from "./history";
 import { piStatus, sessionCSRF } from "./pi";
 import type { Workspace } from "./snapshot";
@@ -65,6 +74,8 @@ export function BrowserConversation({
   id,
   title,
   identity,
+  snapshot,
+  onResnapshot,
   place,
   onSessionCreated,
   stale = false,
@@ -76,6 +87,8 @@ export function BrowserConversation({
   id?: string;
   title?: string;
   identity: string;
+  snapshot: Snapshot;
+  onResnapshot: () => void;
   place: RefObject<Map<string, ConversationPlace>>;
   onSessionCreated: (session: Session) => void;
 }) {
@@ -97,6 +110,9 @@ export function BrowserConversation({
   const continueAttempt = useRef(0);
   const [unseen, setUnseen] = useState(0);
   const [events, setEvents] = useState<unknown[]>([]);
+  const [live, setLive] = useState<LiveTurn>();
+  const [streamError, setStreamError] = useState(false);
+  const streamFailures = useRef(0);
   const [startedAt, setStartedAt] = useState<number>();
   const [elapsed, setElapsed] = useState(0);
   const [confirmStop, setConfirmStop] = useState(false);
@@ -215,6 +231,7 @@ export function BrowserConversation({
     setRetryContinuation(false);
     setEntries([]);
     setEvents([]);
+    setLive(undefined);
     setStartedAt(undefined);
     setElapsed(0);
     setConfirmStop(false);
@@ -477,6 +494,7 @@ export function BrowserConversation({
             }
             setNext(cursor);
             setHistoryError(false);
+            if (!streamStatus) setStreamError(false);
             if (reconciledContinuation) {
               sessionStorage.removeItem(continueKey);
               sessionStorage.setItem(
@@ -516,6 +534,144 @@ export function BrowserConversation({
       captureAnchor,
     ],
   );
+  useEffect(() => {
+    if (!id || !csrf || stale) return;
+    let removed = false;
+    let source: EventSource | undefined;
+    let retry: number | undefined;
+    let turn: LiveTurn;
+    const recover = (historyOnly = false) => {
+      source?.close();
+      source = undefined;
+      if (removed) return;
+      setStreamError(true);
+      setCurrent(undefined);
+      setProblem(
+        "Live-tapahtumien järjestys katkesi. Ohjaus odottaa tuoretta tilaa ja historiaa.",
+      );
+      void refresh();
+      if (!historyOnly) onResnapshot();
+      // A truncated turn cannot be safely reconstructed from the replay ring.
+      if (historyOnly)
+        setLive((old) => old && { ...old, fragments: [], truncated: true });
+    };
+    try {
+      const tail =
+        snapshot.agents.find(
+          (a) => a.agent_id === id && a.workspace_id === workspace.workspace_id,
+        )?.live_tail ?? [];
+      turn = initialTurn(
+        snapshot.event_cursor,
+        tail.map((frame) => parseConversationEvent(JSON.stringify(frame))),
+      );
+      setLive(turn);
+    } catch {
+      recover();
+      return () => {
+        removed = true;
+      };
+    }
+    const connect = () => {
+      if (removed || document.visibilityState === "hidden") return;
+      source = new EventSource(
+        `/api/v1/events?after=${encodeURIComponent(turn.cursor)}`,
+      );
+      source.onopen = () => {
+        streamFailures.current = 0;
+      };
+      for (const kind of [
+        "snapshot.invalidated",
+        "history.entry",
+        "assistant.delta",
+        "tool.started",
+        "tool.updated",
+        "tool.finished",
+        "queue.changed",
+        "turn.settled",
+        "command.changed",
+        "agent.changed",
+        "workspace.changed",
+        "title.changed",
+        "source.warning",
+        "question.requested",
+        "question.resolved",
+        "operation.changed",
+        "unknown.native",
+      ]) {
+        source.addEventListener(kind, (message) => {
+          try {
+            const event = parseConversationEvent(
+              (message as MessageEvent).data,
+            );
+            if ((message as MessageEvent).lastEventId !== event.cursor)
+              throw new Error("mismatched SSE id");
+            if (
+              event.server_instance_id === turn.instance &&
+              event.sequence <= turn.sequence
+            )
+              return;
+            const result = applyTurnEvent(turn, event, id);
+            if (result.recover) {
+              recover(result.recover === "history");
+              return;
+            }
+            turn = result.turn;
+            setLive(turn);
+            if (result.entry) {
+              const entry = result.entry;
+              captureAnchor();
+              setEntries((old) =>
+                old.some((item) => item.entry_key === entry.entry_key)
+                  ? old
+                  : [...old, entry],
+              );
+              void refresh(); // reconcile the native page, not a command receipt
+            }
+          } catch {
+            recover();
+          }
+        });
+      }
+      source.onerror = () => {
+        source?.close();
+        source = undefined;
+        if (removed) return;
+        setStreamError(true);
+        setCurrent(undefined);
+        setProblem(
+          "Live-yhteys katkesi. Ohjaus odottaa tuoretta tilaa ja historiaa.",
+        );
+        void refresh();
+        // EventSource cannot expose HTTP 409. Resnapshot before reconnecting;
+        // do not ask the browser to implicitly replay from an unknown cursor.
+        if (++streamFailures.current === 1) onResnapshot();
+        // A missing endpoint or repeated 409 must not spin the entire app.
+      };
+    };
+    if (streamFailures.current < 2) connect();
+    const focus = () => {
+      if (document.visibilityState === "visible" && !source && !retry) {
+        onResnapshot();
+      }
+    };
+    document.addEventListener("visibilitychange", focus);
+    return () => {
+      removed = true;
+      source?.close();
+      if (retry) window.clearTimeout(retry);
+      document.removeEventListener("visibilitychange", focus);
+    };
+  }, [
+    id,
+    csrf,
+    stale,
+    snapshot.event_cursor,
+    snapshot.agents,
+    workspace.workspace_id,
+    refresh,
+    onResnapshot,
+    captureAnchor,
+  ]);
   useEffect(() => {
     if (!id || !csrf || stale) return;
     void refresh();
@@ -934,6 +1090,7 @@ export function BrowserConversation({
   const controlled =
     !!current &&
     !problem &&
+    !streamError &&
     sessions.some(
       (s) => s.agent_id === id && s.workspace_id === workspace.workspace_id,
     );
@@ -1147,7 +1304,34 @@ export function BrowserConversation({
                     ? "ready"
                     : "empty"
               }
-              items={timelineItems(entries, stale)}
+              items={[
+                ...timelineItems(entries, stale),
+                ...provisionalItems(
+                  live ?? {
+                    cursor: "",
+                    instance: "",
+                    sequence: 0,
+                    fragments: [],
+                    truncated: true,
+                  },
+                  entries,
+                ).map((item) => ({
+                  id: item.id,
+                  kind: item.kind,
+                  content:
+                    item.kind === "assistant" ? (
+                      <AssistantMessage
+                        onCopy={() =>
+                          void navigator.clipboard?.writeText(item.text)
+                        }
+                      >
+                        <Markdown text={item.text} />
+                      </AssistantMessage>
+                    ) : (
+                      <p role="status">{item.text}</p>
+                    ),
+                })),
+              ]}
               historyMode="pagedAccessible"
               newContentCount={unseen}
               showJumpToLatest={awayFromLatest}
@@ -1181,7 +1365,14 @@ export function BrowserConversation({
               }
             />
           ) : null}
-          {current?.event_loss ? (
+          {streamError ? (
+            <InlineNotice
+              title="Live-yhteys katkesi"
+              description="Tila ja natiivi historia tarkistetaan uudelleen. Viestiä ei lähetetä uudelleen."
+              tone="warning"
+            />
+          ) : null}
+          {live?.truncated || current?.event_loss ? (
             <InlineNotice
               title="Tapahtumia jäi väliin"
               description="Live-tapahtumien häntä ei ole täydellinen. Tarkista natiivi historia."
