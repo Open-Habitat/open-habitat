@@ -3,12 +3,14 @@ created: 2026-09-30
 updated: 2026-09-30
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@review-browser-design-v2', '@build-agent-control']
 lane: design-v2
 lane_seq: 7
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
+closed: 2026-09-30
+closed_by: night-ui-worker
 ---
 
 # Stream the conversation from the published event stream
