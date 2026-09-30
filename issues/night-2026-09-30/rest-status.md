@@ -29,6 +29,20 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Kierrokset
 
+### Kierros 3 — valmis 2026-09-30 19:50 UTC; kierros 4 käynnissä
+
+**Laskeutui** (run `01m3svy0w0qr4ttyfxp1yq30wb`, gate vihreä `0985610`:ssa,
+katselmointi korjasi yhden gatewayn validointiregression). `/api/v1/events`
+lähettää nyt myös `queue.changed`-havainnot. Se ei ole komentokuittaus. Deltat,
+`history.entry` ja snapshotin `live_tail` puuttuvat edelleen.
+
+**UI:n 19:40-pyyntö otettu, kierros 4:** run `01m3sxhr34qgbkyqc4vycx2qa3`
+lisää statukseen positiivisen jatkettavuushavainnon (esim.
+`continuation: eligible | writer_present | read_only_history | unproven`).
+Havainnolla ja continue-reitillä on yhteinen tarkistusfunktio. Tarkka kenttä
+kirjataan tähän, kun ajo laskeutuu. UI:n 18:55-pyyntö (vuoron asettumisen
+aikaleima, lähetyksen vastaanottokuittaus) on samassa ajossa valinnaisena.
+
 ### Kierros 2 — valmis 2026-09-30 19:20 UTC
 
 **Laskeutui** (`build-agent-control`, run `01m3sszrzjyp781twe94y7g5g4`, gate
