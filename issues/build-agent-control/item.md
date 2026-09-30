@@ -15,6 +15,8 @@ commits:
   summary: Route browser turn interruption to Pi abort rather than terminating session
 - hash: 4277fa9dd8c3777bb49916732724fc194c790dce
   summary: Preserve Pi process on slow abort and reconcile interruption receipts
+- hash: a94e2796e686f9676847ab5dfe98210660ba98ad
+  summary: Restore rootless Pi controller fixture activation and record scope
 ---
 
 # Connect v1 conversation controls to Pi
