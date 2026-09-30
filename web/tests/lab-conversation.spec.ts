@@ -1,5 +1,13 @@
 import { expect, test } from "@playwright/test";
 
+// The real synthetic controller has a bounded live-child budget. Each browser
+// journey owns a fresh disposable daemon incarnation, not a previous test's Pi.
+test.beforeEach(async ({ page }) => {
+  expect(
+    (await page.request.get("/fixture/conversations-reset")).status(),
+  ).toBe(204);
+});
+
 test("@lab real controller creates and persists a fake-Pi turn", async ({
   page,
 }) => {

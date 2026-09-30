@@ -114,6 +114,7 @@ export function BrowserConversation({
   const [streamError, setStreamError] = useState(false);
   const streamFailures = useRef(0);
   const probePending = useRef(false);
+  const verifiedSnapshot = useRef(snapshot);
   const pendingNativeEntry = useRef<string | undefined>(undefined);
   const [startedAt, setStartedAt] = useState<number>();
   const [elapsed, setElapsed] = useState(0);
@@ -234,6 +235,8 @@ export function BrowserConversation({
     setEntries([]);
     setEvents([]);
     setLive(undefined);
+    pendingNativeEntry.current = undefined;
+    streamFailures.current = 0;
     setStartedAt(undefined);
     setElapsed(0);
     setConfirmStop(false);
@@ -568,7 +571,11 @@ export function BrowserConversation({
   );
   useEffect(() => {
     if (!id || !csrf || stale) return;
-    probePending.current = false; // this effect starts from App's freshly verified snapshot
+    probePending.current = false;
+    if (verifiedSnapshot.current !== snapshot) {
+      verifiedSnapshot.current = snapshot;
+      setStreamError(false); // App has already verified the replacement snapshot/session
+    }
     let removed = false;
     let source: EventSource | undefined;
     let retry: number | undefined;
@@ -731,8 +738,7 @@ export function BrowserConversation({
     id,
     csrf,
     stale,
-    snapshot.event_cursor,
-    snapshot.agents,
+    snapshot,
     workspace.workspace_id,
     refresh,
     onResnapshot,
