@@ -29,11 +29,16 @@ export function AccountShelf({
   ];
   return (
     <div className="ah-account-shelf" data-account-controls>
-      <span className="ah-rail-identity" title={name}>
-        {name}
-      </span>
       <Menu
         label="Tilivalikko"
+        triggerLabel={`${name}, Tilivalikko`}
+        trigger={
+          <span className="ah-account-trigger">
+            <span className="ah-account-avatar" aria-hidden="true" />
+            <span className="ah-rail-identity">{name}</span>
+          </span>
+        }
+        heading={<strong>{name}</strong>}
         items={[
           { id: "settings", label: "Asetukset" },
           ...themes.map(({ id, label }) => ({

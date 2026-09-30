@@ -24,11 +24,13 @@ test("@lab shell opens conversations from home and keeps narrow navigation reach
   await expect(
     page
       .getByRole("navigation", { name: "Työtilat ja keskustelut" })
-      .getByRole("link", { name: "Kaikki työtilat" }),
+      .getByRole("link", { name: "Etusivu" }),
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Avaa navigaatio" }).click();
   await expect(
-    page.getByRole("link", { name: "Kaikki työtilat" }),
+    page
+      .getByRole("navigation", { name: "Työtilat ja keskustelut" })
+      .getByRole("link", { name: "Etusivu", exact: true }),
   ).toBeVisible();
   await page.locator(".ah-rail .ah-workspace-link").first().click();
   await expect(

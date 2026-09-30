@@ -30,14 +30,14 @@ test("@a11y keyboard navigation places focus on destination and restores account
   await workspace.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name, exact: true })).toBeFocused();
-  await page.getByRole("button", { name: "Tilivalikko" }).click();
+  await page.getByRole("button", { name: /Tilivalikko/ }).click();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Tilivalikko" })).toBeFocused();
-  await page.getByRole("button", { name: "Tilivalikko" }).click();
+  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeFocused();
+  await page.getByRole("button", { name: /Tilivalikko/ }).click();
   await page.getByRole("menuitem", { name: "Asetukset" }).click();
   await expect(page.getByRole("heading", { name: "Asetukset" })).toBeFocused();
   await page.getByRole("button", { name: "Takaisin" }).click();
-  await expect(page.getByRole("button", { name: "Tilivalikko" })).toBeFocused();
+  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeFocused();
 });
 
 test("@a11y signed-out, shell, settings and narrow shell have no axe violations or horizontal overflow", async ({
@@ -60,7 +60,15 @@ test("@a11y signed-out, shell, settings and narrow shell have no axe violations 
     ).toBeLessThanOrEqual(1);
   }
   await page.getByRole("button", { name: "Avaa navigaatio" }).click();
-  await page.getByRole("button", { name: "Tilivalikko" }).click();
+  await expect(
+    page.getByRole("navigation", { name: "Työtilat ja keskustelut" }),
+  ).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("button", { name: "Avaa navigaatio" }),
+  ).toBeFocused();
+  await page.getByRole("button", { name: "Avaa navigaatio" }).click();
+  await page.getByRole("button", { name: /Tilivalikko/ }).click();
   await page.getByRole("menuitem", { name: "Asetukset" }).click();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });

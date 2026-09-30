@@ -156,10 +156,16 @@ export function AlertDialog({
 }
 export function Menu({
   label,
+  triggerLabel,
+  trigger,
+  heading,
   items,
   onAction,
 }: {
   label: string;
+  triggerLabel?: string;
+  trigger?: ReactNode;
+  heading?: ReactNode;
   items: {
     id: string;
     label: string;
@@ -176,11 +182,16 @@ export function Menu({
         if (!open) queueMicrotask(() => triggerRef.current?.focus());
       }}
     >
-      <AriaButton ref={triggerRef} className="ah-button ah-button-secondary">
-        {label}
+      <AriaButton
+        ref={triggerRef}
+        className="ah-button ah-button-secondary"
+        aria-label={triggerLabel ?? label}
+      >
+        {trigger ?? label}
         <span aria-hidden="true" className="ah-menu-chevron" />
       </AriaButton>
       <Popover className="ah-popover">
+        {heading ? <div className="ah-menu-heading">{heading}</div> : null}
         <AriaMenu aria-label={label} onAction={(key) => onAction(String(key))}>
           {items.map((item) => (
             <MenuItem

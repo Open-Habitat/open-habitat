@@ -110,7 +110,7 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   );
   await shot(page, "ready");
   await page.getByRole("button", { name: "Sulje navigaatio" }).click();
-  await expect(page.getByRole("button", { name: "Tilivalikko" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeVisible();
   await page.getByRole("button", { name: "Avaa navigaatio" }).click();
   await page.getByRole("link", { name: "ordinary-dir" }).click();
   await expect(page.locator("main h1")).toHaveText("ordinary-dir");
@@ -125,7 +125,7 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   await page.getByRole("button", { name: "Tyhjennä haku" }).click();
   await page.getByRole("button", { name: "Päivitä" }).click();
   await expect(page.getByRole("link", { name: "ordinary-dir" })).toBeVisible();
-  await page.getByRole("link", { name: "Kaikki työtilat" }).click();
+  await page.getByRole("link", { name: "Etusivu" }).click();
   await expect(page.locator("main h1")).toHaveText("Työtilat");
   await page.keyboard.press("Tab");
   await page.getByRole("link", { name: "Siirry sisältöön" }).focus();
@@ -134,7 +134,7 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   const [logoutResponse] = await Promise.all([
     page.waitForResponse((response) => response.url().endsWith("/auth/logout")),
     (async () => {
-      await page.getByRole("button", { name: "Tilivalikko" }).click();
+      await page.getByRole("button", { name: /Tilivalikko/ }).click();
       await page.getByRole("menuitem", { name: "Kirjaudu ulos" }).click();
     })(),
   ]);

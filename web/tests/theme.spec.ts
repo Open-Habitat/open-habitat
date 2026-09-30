@@ -7,10 +7,10 @@ async function login(page: import("@playwright/test").Page) {
   await page.goto("/");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
-  await expect(page.getByRole("button", { name: "Tilivalikko" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeVisible();
 }
 async function select(page: import("@playwright/test").Page, name: string) {
-  await page.getByRole("button", { name: "Tilivalikko" }).click();
+  await page.getByRole("button", { name: /Tilivalikko/ }).click();
   await page.getByRole("menuitem", { name: `Teema: ${name}` }).click();
 }
 
@@ -23,7 +23,7 @@ test("production theme follows the system, persists an explicit device choice, a
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await expect(page.getByRole("button", { name: "Tilivalikko" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeVisible();
   await page.emulateMedia({ colorScheme: "light" });
   await select(page, "Järjestelmä");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");

@@ -10,7 +10,7 @@ async function login(page: Page, name: "Alice" | "Bob" = "Alice") {
   await page.goto("/");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name }).click();
-  await expect(page.getByRole("button", { name: "Tilivalikko" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeVisible();
 }
 async function state(page: Page, native: string) {
   await page.route("**/api/v1/snapshot", async (route) => {
@@ -25,11 +25,11 @@ async function state(page: Page, native: string) {
   });
 }
 async function settings(page: Page) {
-  await page.getByRole("button", { name: "Tilivalikko" }).focus();
+  await page.getByRole("button", { name: /Tilivalikko/ }).focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("menuitem", { name: "Asetukset" })).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Tilivalikko" })).toBeFocused();
+  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeFocused();
   await page.keyboard.press("Enter");
   await page.getByRole("menuitem", { name: "Asetukset" }).focus();
   await page.keyboard.press("Enter");
@@ -45,7 +45,7 @@ test("@account-settings verified native state, route return and honest disconnec
   await expect(page.getByRole("navigation")).not.toContainText(
     "GitHub user 42",
   );
-  await page.getByRole("button", { name: "Tilivalikko" }).click();
+  await page.getByRole("button", { name: /Tilivalikko/ }).click();
   await expect(page.getByRole("menuitem", { name: "Asetukset" })).toBeVisible();
   await page.screenshot({
     path: "test-results/evidence/account-menu.png",
@@ -68,7 +68,7 @@ test("@account-settings verified native state, route return and honest disconnec
   });
   await page.getByRole("button", { name: "Takaisin" }).click();
   await expect(page).toHaveURL(new RegExp(`${returnPath}$`));
-  await expect(page.getByRole("button", { name: "Tilivalikko" })).toBeFocused();
+  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeFocused();
   await settings(page);
   await page.reload();
   await expect(
@@ -76,7 +76,7 @@ test("@account-settings verified native state, route return and honest disconnec
   ).toBeVisible();
   await page.getByRole("button", { name: "Takaisin" }).click();
   await expect(page).toHaveURL(/\/workspaces$/);
-  await expect(page.getByRole("button", { name: "Tilivalikko" })).toBeFocused();
+  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeFocused();
 });
 test("@account-settings partial, unknown and logout/user switch", async ({
   page,
@@ -97,7 +97,7 @@ test("@account-settings partial, unknown and logout/user switch", async ({
     path: "test-results/evidence/account-unknown.png",
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Tilivalikko" }).click();
+  await page.getByRole("button", { name: /Tilivalikko/ }).click();
   await page.getByRole("menuitem", { name: "Kirjaudu ulos" }).click();
   await expect(
     page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
@@ -105,7 +105,7 @@ test("@account-settings partial, unknown and logout/user switch", async ({
   await expect(page).toHaveURL(/\/workspaces$/);
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Bob" }).click();
-  await expect(page.getByRole("button", { name: "Tilivalikko" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeVisible();
   await expect(page.getByRole("navigation")).not.toContainText(
     "GitHub user 42",
   );

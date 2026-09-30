@@ -1393,3 +1393,104 @@ h1[tabindex="-1"]:focus {
   background: var(--ah-surface);
   box-shadow: 0 2px 8px var(--ah-scrim);
 }
+/* Shared navigation v2: the same rail renders in the desktop strip and phone drawer. */
+.ah-rail-home {
+  display: flex;
+  align-items: center;
+  min-height: var(--ah-touch);
+  gap: var(--ah-s3);
+  padding: var(--ah-s2) var(--ah-s3);
+  border-radius: var(--ah-r-nav);
+  color: var(--ah-ink);
+  text-decoration: none;
+  font-weight: 600;
+}
+.ah-rail-home:hover,
+.ah-rail-home[aria-current="page"] {
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+}
+.ah-rail-home .ah-badge {
+  margin-inline-start: auto;
+}
+.ah-rail-collapsed .ah-rail-home {
+  flex-direction: column;
+  gap: 0;
+  padding-inline: 0;
+}
+.ah-rail-collapsed .ah-rail-home-label {
+  display: none;
+}
+.ah-rail-collapsed .ah-rail-home .ah-badge {
+  margin: 0;
+}
+.ah-account-shelf > .ah-button {
+  width: 100%;
+  min-width: 0;
+}
+.ah-account-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  min-width: 0;
+}
+.ah-account-avatar {
+  display: inline-block;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--ah-accent-soft);
+  border: 1px solid var(--ah-line);
+}
+.ah-rail-collapsed .ah-rail-identity,
+.ah-rail-collapsed .ah-account-shelf .ah-menu-chevron {
+  display: none;
+}
+.ah-menu-heading {
+  padding: var(--ah-s3);
+  border-bottom: 1px solid var(--ah-line);
+}
+.ah-rail :is(a, button, input):focus-visible,
+.ah-mobile-toolbar :is(a, button):focus-visible,
+.ah-mobile-close:focus-visible {
+  outline: 2px solid var(--ah-accent);
+  outline-offset: 2px;
+}
+@media (max-width: 800px) {
+  .ah-rail-home {
+    min-height: var(--ah-touch);
+  }
+  .ah-workspace-toggle {
+    height: var(--ah-touch);
+    width: var(--ah-touch);
+  }
+  .ah-workspace-link,
+  .ah-rail .ah-agent-item .ah-nav-link {
+    min-height: var(--ah-touch);
+    display: flex;
+    align-items: center;
+  }
+  .ah-mobile-close {
+    cursor: pointer;
+  }
+}
+.ah-rail-collapsed .ah-account-shelf > .ah-button {
+  width: var(--ah-touch);
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+.ah-workspace ul {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ah-agent-item,
+.ah-agent-item .ah-nav-link {
+  min-width: 0;
+}
+.ah-account-shelf > .ah-button {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}

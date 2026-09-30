@@ -45,8 +45,30 @@ export function AppShell({
     if (!drawerActive) return;
     const onEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        event.preventDefault();
         setMobileOpen(false);
         requestAnimationFrame(() => mobileTrigger.current?.focus());
+      }
+      if (event.key === "Tab") {
+        const items = Array.from(
+          mobileNav.current?.querySelectorAll<HTMLElement>(
+            "a[href], button:not([disabled]), input:not([disabled])",
+          ) ?? [],
+        ).filter((item) => item.getClientRects().length > 0);
+        const first = items[0];
+        const last = items.at(-1);
+        if (!first || !last) return;
+        if (
+          event.shiftKey &&
+          (document.activeElement === first ||
+            document.activeElement === mobileNav.current?.querySelector("nav"))
+        ) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
       }
     };
     window.addEventListener("keydown", onEscape);
@@ -286,6 +308,8 @@ export function WorkspaceRail({
   connectionLabel,
   connectionTone,
   attentionCount,
+  homeCurrent = false,
+  runningCount,
   filterValue,
   resultSummary,
   summaryAction,
@@ -301,6 +325,8 @@ export function WorkspaceRail({
   connectionLabel: string;
   connectionTone?: Tone;
   attentionCount?: number;
+  homeCurrent?: boolean;
+  runningCount?: number;
   filterValue: string;
   resultSummary: string;
   summaryAction?: ReactNode;
@@ -341,6 +367,18 @@ export function WorkspaceRail({
             onPress={onToggle}
           />
         </div>
+        <Link
+          to="/workspaces"
+          aria-current={homeCurrent ? "page" : undefined}
+          className="ah-rail-home"
+          title="Etusivu"
+        >
+          <Icon name="home" />
+          <span className="ah-rail-home-label">Etusivu</span>
+          {runningCount !== undefined && runningCount > 0 ? (
+            <Badge label={`${runningCount} käynnissä`} tone="info" />
+          ) : null}
+        </Link>
         {attentionCount ? (
           <Badge
             label="Odottaa vastaustasi"

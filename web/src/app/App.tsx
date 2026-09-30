@@ -15,11 +15,9 @@ import {
   AppShell,
   ConnectionBanner,
   InlineNotice,
-  NavLink,
   WorkspaceRail,
   WorkspaceSection,
 } from "../components";
-import { accountLabel } from "../components/Account";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import {
   BrowserConversation,
@@ -639,7 +637,7 @@ export function App() {
       </>
     ) : location.pathname === "/settings" ? (
       <AccountSettings
-        name={accountLabel(snapshot?.identity.display_name ?? "")}
+        name="Oma tili"
         nativeState={snapshot?.auth?.native_github.state}
         onBack={() => {
           returningFromSettings.current = true;
@@ -900,22 +898,24 @@ export function App() {
                 }
                 sessionActions={
                   <AccountShelf
-                    name={accountLabel(snapshot.identity.display_name)}
+                    name="Oma tili"
                     onSettings={openSettings}
                     onLogout={logout}
                   />
                 }
+                homeCurrent={location.pathname === "/workspaces"}
+                runningCount={
+                  phase === "authenticated"
+                    ? snapshot.agents.filter(
+                        (a) =>
+                          a.process === "daemon_managed_live" ||
+                          a.process === "terminal_observed_live",
+                      ).length
+                    : undefined
+                }
                 filterValue={filter}
                 resultSummary={`${matches.length} ${source === "confirmed" ? "työtilaa" : "löydettyä työtilaa"}`}
-                summaryAction={
-                  <NavLink
-                    label="Kaikki työtilat"
-                    href="/workspaces"
-                    current={
-                      location.pathname === "/workspaces" ? "page" : false
-                    }
-                  />
-                }
+                summaryAction={undefined}
                 listState={railState}
                 onToggle={() => setCollapsed(!collapsed)}
                 onFilter={(v) => dispatch(filterChanged(v))}

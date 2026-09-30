@@ -28,11 +28,11 @@ contract change as a request; do not split an email address into a name.
 
 ## Acceptance Criteria
 
-- [ ] Sidebar open, collapsed and phone-drawer states match the draft in both
+- [x] Sidebar open, collapsed and phone-drawer states match the draft in both
   themes, with keyboard and screen-reader behaviour from the handoff.
-- [ ] Account button and menu follow the account-display decision or the
+- [x] Account button and menu follow the account-display decision or the
   documented fallback.
-- [ ] Stories in both themes; lab screenshots in this issue folder.
+- [x] Stories in both themes; lab screenshots in this issue folder.
 ## Shared context for every design-v2 slice
 
 - Benchmark: [handoff](../review-browser-design-v2/design/handoff.md) and the
@@ -57,3 +57,11 @@ contract change as a request; do not split an email address into a name.
 - Ownership tonight: this work may change `web/`, `design-system/`,
   `docs/ui.md` and `docs/design-system.md`. A needed change in `internal/`,
   `contracts/` or other docs is recorded in this issue as a request instead.
+
+## Implementation decisions and contract request
+
+The validated browser snapshot carries `identity.display_name` (which may be a provider login/subject) and `auth.native_github.state`, but neither a verified first name nor the signed-in email. The `/auth/session` browser model supplies session binding/CSRF, not those display fields. **Request for a future contract decision:** add display-only verified first name and authenticated email to the browser snapshot/session view model, with explicit provenance and no role in Unix identity or routing. Until then the rail button, menu heading and settings show **Oma tili** with an initials-free avatar; no email is guessed from a login.
+
+The `Etusivu` badge counts only snapshot agents whose process is explicitly `daemon_managed_live` or `terminal_observed_live`, and is omitted for stale snapshots; unknown/not-observed processes do not become “running”. No host aggregate running count exists, so this is a count of host-reported live agents, not of all Taskfleet jobs or browser tabs.
+
+Draft deviations: navigation remains native links (including Back/history and route current state), not button-only rows; connection and read-only text remain explicit under the existing accessibility agreement. The existing rail filter and refresh stay available. The draft's collapsed `+` workspace picker cannot be implemented honestly without a currently available create/chooser intent in this rail; request a separate product/contract design for that action rather than inserting a nonfunctional control. Theme remains available as existing menu items rather than an invented radio state machine. These follow `production-v1.md` and the recut component map.

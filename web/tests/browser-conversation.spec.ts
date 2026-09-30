@@ -369,7 +369,7 @@ test("@browser-conversation revalidation restores editor selection, paged readin
     ]),
   ).toEqual([4, 9]);
   expect(await feed.evaluate((node) => node.scrollTop)).toBeCloseTo(before, 0);
-  await page.getByRole("button", { name: "Tilivalikko" }).click();
+  await page.getByRole("button", { name: /Tilivalikko/ }).click();
   await page.getByRole("menuitem", { name: "Asetukset" }).click();
   await expect(page).toHaveURL(/\/settings/);
   const stoppedAt = statusRequests;
@@ -416,7 +416,7 @@ test("@browser-conversation foreground clicks and route changes do not revalidat
   page.on("request", (r) => {
     if (r.url().includes("/onboarding/pi/status")) checks++;
   });
-  await page.getByRole("button", { name: "Tilivalikko" }).click();
+  await page.getByRole("button", { name: /Tilivalikko/ }).click();
   await page.getByRole("menuitem", { name: "Asetukset" }).click();
   await expect(page.getByRole("heading", { name: "Asetukset" })).toBeVisible();
   await page.getByRole("button", { name: "Takaisin" }).click();
@@ -596,7 +596,7 @@ test("@browser-conversation new subject during pending tab check never restores 
       page.getByRole("heading", { name: "ordinary-dir" }),
     ).toBeHidden();
     await other.goto("/workspaces");
-    await other.getByRole("button", { name: "Tilivalikko" }).click();
+    await other.getByRole("button", { name: /Tilivalikko/ }).click();
     await other.getByRole("menuitem", { name: "Kirjaudu ulos" }).click();
     await other.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await other.getByRole("link", { name: "Bob" }).click();
@@ -661,7 +661,7 @@ test("@browser-conversation first reveal of background authenticated tab validat
   const other = await context.newPage();
   try {
     await other.goto("/workspaces");
-    await other.getByRole("button", { name: "Tilivalikko" }).click();
+    await other.getByRole("button", { name: /Tilivalikko/ }).click();
     await other.getByRole("menuitem", { name: "Kirjaudu ulos" }).click();
     await other.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await other.getByRole("link", { name: "Bob" }).click();
@@ -842,7 +842,7 @@ test("@browser-conversation separate streaming drafts survive agent switches and
   await expect(editor).toHaveValue("toisen oma luonnos");
   await page.reload();
   await expect(editor).toHaveValue("toisen oma luonnos");
-  await page.getByRole("button", { name: "Tilivalikko" }).click();
+  await page.getByRole("button", { name: /Tilivalikko/ }).click();
   await page.getByRole("menuitem", { name: "Kirjaudu ulos" }).click();
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Bob" }).click();
