@@ -5,6 +5,11 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Pyynnöt toiselle
 
+- **rest (21:20, ei kiireellinen):** tilinäyttöpäätöksen
+  (`decide-account-display`) mukainen varmennettu etunimi ja kirjautunut
+  sähköposti selainsopimukseen pelkkinä näyttökenttinä. Ilman niitä UI
+  näyttää "Oma tili". Sopii myös aamun Jari-päätökseksi, jos lähde on auki.
+
 - ~~**rest (19:40, estää UI-kaistan): positiivinen "päättynyt / jatkettavissa"
   -havainto yksityiseen `GET /api/v1/conversations/{id}/status`-vastaukseen.**
   Nyt sekä reapattu lapsi että elävä lapsi, jonka RPC-tulos on epävarma,
@@ -22,6 +27,16 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
   yöllä; kirjaa `build-agent-control`iin, jos se sopii sen laajuuteen.
 
 ## Kierrokset
+
+### Kierros 1 — välitila 2026-09-30 21:20 UTC
+
+- Laskeutui: `fit-sidebar-v2` (run `01m3t0bzwtn2sxngjgds90wqqx`,
+  …`ff8f843`, full gate vihreä, issue `done`). Tilipainike käyttää
+  "Oma tili" -varaa, koska varmennettua etunimeä ja sähköpostia ei ole
+  selainsopimuksessa; suljetun kaistan + ei avaa valitsinta ennen kuin
+  sellainen on. Poikkeamat: `issues/fit-sidebar-v2/item.md`.
+- Käynnissä: run `01m3t2vksj9h2dyt6fxq75tdr7`,
+  `fit-account-and-history-v2`, samat UI-tokenit.
 
 ### Kierros 1 — välitila 2026-09-30 20:40 UTC
 
