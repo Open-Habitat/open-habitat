@@ -1,61 +1,40 @@
-# Aamun UI-katselmus — synteettinen laboratorio
+# Aamun katselmus — yön 29.–30.9. selainkäyttöliittymä
 
-Yön työn jälkeen ensikäytön repo- ja Pi-kirjautumispolku on selkeämpi, paluunäkymä kertoo milloin keskustelu on vain luettavissa, ja työtilan historia on tiiviimpi ja näyttää Markdownin sekä koodin luettavasti. Uudessa keskustelussa Pi:n työ ja vastaus erottuvat, hylätty viesti jättää luonnoksen talteen ja katkos säilyttää viimeksi vahvistetun sisällön vanhentuneeksi merkittynä. Tilivalikosta voi nyt valita järjestelmän, vaalean tai tumman teeman. Kuvat on otettu tämän työpuun nykyisestä päähaaran pohjasta `b132481` uuden tuotantobundlen kautta; aiemmat neljä [UX-katselmusta](../decidedly-loud-station/audit.md) ([2](../relatively-robust-flower/audit.md), [3](../unduly-grateful-slip/audit.md), [4](../extremely-impartial-spiders/audit.md)) kertovat, miksi näitä muutettiin.
+Yön aikana korjattiin Jarin pilot.12:ssa näkemät ensikäytön ja keskustelun kompastukset sekä seitsemän synteettisen UX-katselmuksen havainnot. GitHubin jälkeen repot voi valita tai ohittaa, Pi:n ChatGPT-kirjautuminen on oma vaiheensa, ja palaaja näkee, avautuuko keskustelu luettavaksi vai voiko sitä jatkaa. Uusi keskustelu alkaa kirjoituskentästä. Keskeneräinen työ näkyy, ja sen aikana voi valita lisäohjeen tai jonoon menevän viestin. Viestin hylkäys säilyttää luonnoksen; eri keskustelujen luonnokset ja lukukohta eivät sekoitu. Työkalutulokset ovat yhdessä avattavassa ryhmässä. Tulevan tuntemattoman kysymysmuodon teksti näkyy nyt ennen avattavaa alkuperäistä JSONia. Pi:n sisäinen valmistumiskehys ei enää näy viestinä. Historia muotoilee Markdownin ja koodin, katkos jättää jo vahvistetun sisällön luettavaksi ja teema seuraa oletuksena järjestelmää.
 
-**Mitä laboratorio näyttää:** paikallinen HTTPS-selainlaboratorio käyttää keksittyä Alicea, valekirjautumista GitHubiin, keksittyä repo- ja työtiladataa sekä vale-Pi:tä, mutta uuden keskustelun taustalla on oikea sovelluksen keskusteluohjain. Siksi siinä voi tarkastella selaimen kulkua, luonnoksen säilymistä ja synteettisen työn etenemistä; se ei todista oikean palveluntarjoajan kirjautumista, oikeaa Pi:tä eikä eri Linux-käyttäjien eristystä.
+Kaikki kuvat ovat **synteettisiä**, paikallisen HTTPS-laboratorion tuotantobundlesta: keksitty Alice, valekirjautuminen, keksityt työtilat ja vale-Pi oikean keskusteluohjaimen läpi. Pohjana yön main-tilanne `371518c`, mukana viimeinen tuntemattoman sisällön korjaus `c0f58a9`; kuvat otettu saman korjauksen tuotantobundlesta. Kuvat ovat hetkikuvia, eivät Jarin hyväksyntä. Vertailun tausta: [kierrokset 1–7](../inordinately-zany-kick/audit.md) (aiemmat kuusi linkitetty siellä ja TODO.md:ssä).
 
-Kaikki alla olevat kuvat ovat tuoreita **synteettisiä** Chromiumin 1440 × 900 -näkymiä, ellei leveydestä tai teemasta toisin sanota. Kuvat näyttävät hetken, eivät testaa koko saavutettavuutta.
+## Ensikäyttö ja paluu
 
-## 1. Kirjautuminen
+![Kirjautuminen](images/signin.avif) ![Vapaaehtoinen repovalinta](images/chooser.avif)
 
-![Kirjautumissivu](images/signin.avif)
+![Pi-kirjautumisen aloitus](images/pi-start.avif) ![Synteettinen laitekoodi](images/pi-code.avif)
 
-Katso, löytyykö ainoa etenemistoiminto heti ja kertooko sivu ymmärrettävästi mihin ollaan kirjautumassa.
+![Paluunäkymä](images/landing.avif) ![Paluu kapealla näytöllä](images/narrow-landing.avif)
 
-## 2. Ensikäyttö: repot ja Pi-kirjautuminen
+**Jari:** onko ensikäytön etenemisen ja keskeytyksen painotus sekä etusivun lupaus oikea?
 
-![Repojen valinta](images/chooser.avif) ![Pi-kirjautumisen aloitus ja keskeytys](images/pi-start.avif)
+## Lukeminen ja työskentely
 
-Repojen valinta on vapaaehtoinen, ja Pi-kirjautumisen aloittaminen on ensisijainen toiminto; käyttöönoton keskeytys ja uloskirjautuminen ovat erillinen hillitty toiminto. Yrityksen käynnistyttyä valmisteluvaiheessa on oma peruutus, jota ei pidä sekoittaa uloskirjautumiseen: ![Kirjautumisyrityksen valmistelu](images/pi-code.avif). Kuvassa ei vielä ole laitekoodia. **Jari: ovatko etenemisen ja keskeytyksen painot oikeat?**
+![Työtila](images/workspace.avif) ![Natiivihistoria](images/history.avif) ![Kapea historia](images/narrow-history.avif)
 
-## 3. Paluu ja aloitus
+![Uusi keskustelu](images/chat-new.avif) ![Pi työskentelee ja ohjausvalinnat](images/chat-working.avif) ![Valmis vastaus](images/chat-answer.avif)
 
-![Paluunäkymä](images/landing.avif) ![390 pikselin paluunäkymä](images/narrow-landing.avif)
+![Ryhmitellyt työkalut](images/tool-group.avif) ![Tuntematon sisältö ja avattava alkuperäinen tieto](images/unknown-content.avif)
 
-Paluulinkki kertoo, milloin avataan vain luettavaa historiaa eikä käynnistetä Pi:tä. Katso erityisesti, löydätkö jatkettavan työn ilman että työtilalista toistuu pääsisällössä. **Jari: antaako tämä etusivu oikean lupauksen palaajalle?**
+![Hylätty viesti, luonnos tallessa](images/chat-rejected.avif) ![Keskustelun oma luonnos palasi](images/draft-restored.avif) ![Katkos: vanhentunut sisältö](images/outage.avif)
 
-## 4. Työtila ja historia
+**Jari:** erottuvatko kesken oleva työ, valmis vastaus ja luettava historia toisistaan? Tuntemattomaan kysymykseen ei tarjota arvattua vastaustoimintoa.
 
-![Työtila](images/workspace.avif) ![Markdown ja koodi historiassa](images/history.avif)
+## Teema ja asetukset
 
-Työtilasta pääsee natiivihistoriaan; viestit muodostavat luettavan virran ja Markdownin koodilohko pysyy omana kopioitavana sisältönään. Vertaile myös [390 pikselin historiaa](images/narrow-history.avif) ja [tummaa historiaa](images/system-dark-history.avif). **Jari: onko lukutiheys nyt sopiva, myös kapeassa näkymässä?**
+![Tilivalikko](images/menu.avif) ![Tumma aloitus](images/theme-dark.avif) ![Tumma historia](images/system-dark-history.avif) ![Asetukset](images/settings.avif)
 
-## 5. Uusi keskustelu → työ → vastaus
-
-![Uusi keskustelu](images/chat-new.avif) ![Pi työskentelee](images/chat-working.avif) ![Valmis vastaus](images/chat-answer.avif)
-
-Tyhjä kirjoitusnäkymä on pääasia; `hidas` näyttää työn edistymisen ennen valmista vastausta. **Jari: näkyykö ero odotuksen ja valmistumisen välillä riittävän selvästi?**
-
-## 6. Hylätty lähetys
-
-![Hylätty viesti ja säilynyt luonnos](images/chat-rejected.avif)
-
-`hylkää` näyttää hylkäyksen ja pitää kirjoitetun tekstin kentässä; uutta lähetystä ei tehdä itsestään. Katso, onko palautumistoiminto ymmärrettävä ilman teknistä selitystä.
-
-## 7. Katkos ja vanhentunut tieto
-
-![Vanhentuneeksi merkitty historia katkon aikana](images/outage.avif)
-
-Katkos tuotiin jo avatun historian päälle. Luettu sisältö pysyy nähtävissä, mutta se on merkitty vanhentuneeksi eikä uutta työtä pidä tehdä sen perusteella. **Jari: huomaatko varoituksen ilman että se peittää itse historian?**
-
-## 8. Tilivalikko, teema ja asetukset
-
-![Tilivalikon teemavalinta](images/menu.avif) ![Tumma teema](images/theme-dark.avif) ![Asetukset](images/settings.avif)
-
-Valikossa voi vaihtaa teemaa; erillinen [järjestelmän tummaa asetusta seuraava näkymä](images/system-dark-landing.avif) näyttää oletuksen ilman käsivalintaa. **Jari: toimiiko tumma kontrasti ja löytyykö teemavalinta oikeasta paikasta?**
+**Jari:** toimiiko tumma kontrasti ja löydätkö teeman valikosta?
 
 ## Auki ja todistamatta
 
-- [@decide-account-display](../decide-account-display/item.md): Jarin päätös siitä, näytetäänkö vahvistettu, ihmisen tunnistama tilin nimi ja miten keskustelujen osoitteet yhtenäistetään. Nyt geneerinen *Oma tili* ei yksilöi käyttäjää.
-- `pilot.13` ei ole testipalvelimella: uudelleen rakennetun VM:n vaihto- ja palautusoperaattori odottaa Jarin hyväksyntää Fleetrepossa. Tämä kuvakierros ei muuta julkaisutilannetta.
-- Ei live-palvelinta, oikeaa Pi:tä tai palveluntarjoajaa. Laboratorion host ajaa saman UID:n piirissä; nämä kuvat eivät todista käyttäjien välistä eristystä. Ei täyttä CI-porttia, ruudunlukijakierrosta eikä todellista monikäyttäjäympäristöä tämän dokumenttikierroksen perusteella.
+- [@decide-account-display](../decide-account-display/item.md): vahvistettu tilin näyttönimi ja yhtenäinen keskustelureitti odottavat Jarin päätöstä. Geneerinen *Oma tili* ei yksilöi käyttäjää.
+- [Rakenteinen muokkausdiffi](../complete-conversation-ui/result.md): nykyinen historia välittää tekstiä, ei todistettua Pi:n rakenteista edit-patchia. Sopimuspäätös tarvitaan ennen diff-tulkintaa.
+- **pilot.13 ei ole asennettu.** Fleetrepo-commit `0eb57677` valmisteli uudelleenrakennetun testipalvelimen vaihto- ja palautusoperaattorin offline; Jarin hyväksyntä vaaditaan ennen live-vaihtoa. Palvelimella on edelleen pilot.12.
+- Kuvat eivät osoita oikean GitHubin tai Pi:n toimintaa, eri UID:ien eristystä eivätkä live-palvelimen tilaa. Ne eivät yksin todenna jonon tyhjentymistä, lukukohdan säilymistä pitkässä historiassa, ruudunlukijaa tai koko näppäimistöpolkua. Käyttöliittymän testit ja puhdas CI-portti raportoidaan erikseen, ei kuvien ominaisuutena.
