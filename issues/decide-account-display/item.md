@@ -1,6 +1,6 @@
 ---
 created: 2026-09-29
-updated: 2026-09-29
+updated: 2026-09-30
 type: task
 status: open
 priority: normal
@@ -26,3 +26,9 @@ A writable browser chat lives at `/workspaces/:id?conversation=pi:…`, and the 
 ## Decision
 
 (Jari)
+
+## Decisions
+
+### 2026-09-30T08:09:10Z · @jari
+
+Account display decision (Jari): show the person’s first name in the default/compact view; when the account view is opened, show the signed-in email address. Do not derive a first name by blindly splitting an email address. Determine a trustworthy source for the first name and which authenticated email to display before changing the browser/host contract; keep both display-only, never authority for Unix identity. The separate single-conversation-route question was not decided by this comment.
