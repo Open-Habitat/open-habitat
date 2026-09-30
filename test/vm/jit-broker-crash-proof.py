@@ -38,7 +38,7 @@ print(b.decode())
 """
     def drop():os.setgroups([]);os.setresgid(21003,21003,21003);os.setresuid(21003,21003,21003)
     p=subprocess.run(['/usr/bin/python3','-c',code,operation],preexec_fn=drop,capture_output=True,text=True,timeout=115)
-    return json.loads(p.stdout) if p.returncode==0 else {}
+    return json.loads(p.stdout) if p.returncode==0 else {'failure':'exchange_exit_'+str(p.returncode)}
 
 provider=None
 native=None
@@ -76,7 +76,7 @@ try:
     clean_pid=pid(); clean_state=unit('is-active','native-agent-host-broker.service').stdout.strip()
     clean_reply=ensure_control('authorize') if clean_pid>1 and clean_state==b'active' else {}
     check(clean_pid>1 and clean_pid!=first_pid and clean_state==b'active' and clean_reply.get('route',{}).get('uid')==21032,
-          'clean restart did not serve healthy binding pid_changed='+str(clean_pid!=first_pid)+' active='+clean_state.decode()+' reply='+str(clean_reply.get('failure','no_reply'))[:40])
+          'clean restart did not serve healthy binding pid_changed='+str(clean_pid!=first_pid)+' active='+clean_state.decode()+' final='+unit('is-active','native-agent-host-broker.service').stdout.decode().strip()+' reply='+str(clean_reply.get('failure','no_reply'))[:40])
     config=pathlib.Path('/etc/native-agent-host/gateway.json');os.chown(config,0,21003);config.chmod(0o640)
     key=pathlib.Path('/etc/native-agent-host/tls.key');os.chown(key,0,21003);key.chmod(0o640)
     with open('/etc/hosts','a') as f:f.write('\n127.0.0.1 github.com api.github.com host.fixture\n')
