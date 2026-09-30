@@ -138,14 +138,20 @@ test("@lab fake-Pi crash leaves the turn readable but blocks another send", asyn
   await expect(page.getByText("Tila epävarma")).toBeVisible({ timeout: 20000 });
   await expect(
     page.getByRole("button", { name: "Lähetä", exact: true }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Jatka keskustelua" }),
+  ).toBeVisible();
   await page.reload();
   await expect(
     page.getByRole("heading", { level: 1, name: "kaadu nyt" }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Lähetä", exact: true }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Jatka keskustelua" }),
+  ).toBeVisible();
 });
 
 test("@lab intermediate assistant message does not claim turn completion", async ({
