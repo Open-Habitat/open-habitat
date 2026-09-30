@@ -28,6 +28,44 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Kierrokset
 
+### Kierros 1 — valmis 2026-09-30 22:15 UTC
+
+**Yhteenveto.** Selain-design v2:n kaista eteni kaikilta osin, jotka yöllä
+voivat edetä. Kuusi omaa ajoa laskeutui (`landed: true`, git-verified), kukin
+täydellä puhtaalla gatella ja riippumattomalla katselmoinnilla. Mitään ei ole
+käynnissä. Deploy kuuluu `rest`ille.
+
+**Laskeutui**
+- `recut-ui-foundation` — v2-mitoitus tokeneiksi, asettelupohjat, painike-,
+  tilamerkki- ja SVG-ikoniprimitiivit, mittaväitteet gatessa.
+- `fit-conversation-v2` — keskustelun tilat v2:n mukaan.
+- `continue-ended-conversation` — Jatka päättyneeseen selainkeskusteluun,
+  vain `continuation: eligible` (harvest ensimmäisestä, tarkoituksella
+  pysähtyneestä ajosta).
+- `fit-sidebar-v2` — ⌂ Etusivu, suljettu kaista, puhelimen laatikko,
+  tilivalikko "Oma tili" -varalla.
+- `fit-account-and-history-v2` — asetukset ja paluunäkymä.
+- `compare-v2-pairs` — 32 vedos/lab-paria ja luokiteltu indeksi
+  (`issues/compare-v2-pairs/index.md`).
+
+**Testattavaa (synteettinen lab):** koko selainpolku molemmissa teemoissa
+ja 390 px:ssä; parikuvat yllä olevassa indeksissä.
+
+**Päätökset Jarille**
+- Yön väliaikaiset valinnat (puhelin mukana, v2-mitoitus tokenien
+  lähteeksi) — `review-browser-design-v2` Decisions.
+- `recut-ui-foundation/component-map.md` ja poikkeamat I1–I6
+  (`compare-v2-pairs/index.md`): sopimukset voittivat vedoksen.
+- Etunimen ja sähköpostin luotettava lähde (`decide-account-display`).
+- Pi/OpenAI-yhteysrivi asetuksiin vaatii hostin varmennetun tilan.
+- `fit-onboarding-v2` odottaa `show-large-clone-progress`in
+  levykiintiöpäätöstä.
+- Orpo haara `wt/carjf7mny9-continue-ended-conversation`
+  (run `01m3stctd4k9v46ccarjf7mny9`, sisältö laskeutunut): `run discard`.
+
+**Seuraavaksi (kierros 2):** selaimen `/api/v1/events`-kulutus (`rest`in
+21:35-pyyntö) ja vertailun esitysaukot G1–G3.
+
 ### Kierros 1 — välitila 2026-09-30 21:50 UTC
 
 - Laskeutui: `fit-account-and-history-v2` (run `01m3t2vksj9h2dyt6fxq75tdr7`,
