@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-22
+updated: 2026-09-30
 type: task
 status: open
 priority: normal
@@ -13,27 +13,52 @@ collision: [docs/, design-system/]
 
 # Expose native task profiles and worker information when needed
 
-## Goal
+## Purpose
 
-Show component-owned task profile/model changes and reliable Taskfleet/tmux bindings when a real user workflow needs them. Do not invent a profile configuration layer or browser-owned agent identity.
+Design the smallest useful way to show native task profile/model changes and
+reliable Taskfleet/tmux bindings when observed use of the working product
+reveals a need. This is accepted follow-up design work covering L8 and L13 in
+[the TUI follow-up list](../native-agent-host-architecture/ui-design-later.md).
 
-## Context
+The result is a concrete information and interaction design, reviewed before
+implementation begins or an implementation issue is activated. Available native
+fields are evidence for the design, not a list of features to expose.
 
-This is accepted post-MVP design work covering L8 and L13 in [the complete TUI follow-up list](../native-agent-host-architecture/ui-design-later.md). Begin by designing the smallest useful native-status experience from observed MVP use; do not expose every available field or add implementation before that design is reviewed.
+## Design considerations
+
+For task profiles, start with showing the model/thinking change made by a native
+command and a brief confirmation. A profile selector depends on the component
+providing both profiles and a supported way to invoke them. The Fleetrepo TUI report's profile names are examples, not a new host-owned
+configuration schema.
+
+For Taskfleet and tmux, show bindings and worker state only where the native
+evidence supports them. Worker lifecycle, conversation availability and browser
+controllability are separate facts: finding a worker or its history does not
+establish that the browser can control it. Unknown and stale information need
+honest representations rather than an inferred ready or stopped state.
+
+Native components retain histories, configuration, agent identity and subprocess
+ownership. The browser presents their information through the agreed HTTP/SSE
+path. A browser tab does not become an agent identity. Workspace registries,
+parallel history stores, credential brokers, internal tenant models and
+speculative caches remain outside this task; duplicating native ownership would
+create competing sources of truth.
+
+## Expected result
+
+The reviewed design connects a concrete user need to the information shown and
+any supported interaction. It records what was verified about native profile
+commands, bindings and telemetry, including unknown/stale states and the limits
+of browser control. Unverified capabilities remain explicit uncertainties.
+
+Keep the design, supporting evidence and review results in this issue directory.
 
 Sources: [architecture](../../docs/architecture.md),
 [design package](../native-agent-host-architecture/ui-design-package.md),
 [conversation v1](../native-agent-host-architecture/ui-design-conversation.md).
-Detailed plans and results for this task belong in this issue directory.
 
-## Scope
+## Decisions
 
-Keep native histories, component configuration and subprocess ownership with their
-native components. Use the agreed HTTP/SSE path. Do not add a workspace registry,
-parallel history store, credential broker, internal tenant model or speculative cache.
+### 2026-09-30T17:34:40Z · @claude
 
-## Acceptance Criteria
-
-- [ ] Produce and review a concrete information and interaction design before any implementation issue is activated.
-- [ ] Verify native profile commands and telemetry interpretation, including unknown/stale states.
-- [ ] Distinguish worker lifecycle, conversation availability and browser controllability; only add controls supported by the source.
+Rethink-night 30.9.: toteuttajalle suunnattu issue selkeytettiin rethink-instructions-skillillä (gpt-6-astra) ja tarkistettiin fact-check-instructions-skillillä (claude-opus-5-5). Ilman Jaria säilytettiin suunnittelun katselmointi ennen toteutusta, etusivun metatiedot ja natiivien komponenttien omistajuus; täsmennettiin L8/L13:n rajat valitsematta uutta profiiliskeemaa tai kontrollia. Faktantarkistus korjasi vanhentuneen MVP-valmistumisrajan mukaiseksi Jarin 28.9. päätöksen kanssa (havaittuun käyttöön perustuva jatkosuunnittelu) ja täsmensi Fleetrepo TUI -raportin viitteen. Metatietojen lane ja blocked_by jätettiin ennalleen toimeksiannon mukaisesti; ristiriitaa Jarin aiemman päätöksen kanssa ei jäänyt. Natiivikomentojen ja telemetrian todellinen tuki jää suunnittelutyössä todennettavaksi.
