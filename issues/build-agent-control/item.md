@@ -11,6 +11,8 @@ collision: [docs/, AGENTS.md, design-system/, internal/daemon/, web/src/componen
 commits:
 - hash: de00aba1219f6af692f54fb6646db88a6577dad3
   summary: Mark agent control in progress
+- hash: 0201340bd3932731ae478fe4010758f7b49cc688
+  summary: Route browser turn interruption to Pi abort rather than terminating session
 ---
 
 # Connect v1 conversation controls to Pi
