@@ -1,6 +1,6 @@
 # Pi browser OAuth feasibility
 
-## Recommendation (2026-10-01)
+## Recommendation (2026-09-30)
 
 **Keep Pi's device-code sign-in for the remote browser product.** There is no supported direct HTTPS return to this host in the pinned Pi **0.85.1** Codex flow. OpenAI's current [Codex authentication guidance](https://developers.openai.com/codex/auth/#login-on-headless-devices) explicitly prefers device-code authentication for remote/headless use when the localhost browser callback cannot reach the CLI. This is a recommendation for the present product, **not** a claim that OpenAI rejects every HTTPS redirect or that future Pi versions cannot support one. No browser-login implementation or provider experiment is justified by the available evidence. Revisit only if provider-supported redirect/client registration and a Pi-owned per-UID integration are established; a gateway code relay is not an agreed architecture.
 
