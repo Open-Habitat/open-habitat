@@ -9,6 +9,16 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Kierrokset
 
+### Kierros 1 — välitila 2026-09-30 18:25 UTC
+
+- Laskeutui: `recut-ui-foundation` (run `01m3snh7d7h09z82c50ztraq9h`,
+  commitit `1c68735`…`9169f8b`, full gate vihreä). Komponenttikartta ja
+  parikuvat: `issues/recut-ui-foundation/`. Jarille aamulla: visuaalinen
+  suunta ja `component-map.md`.
+- Käynnissä: run `01m3srsgsnvpbcq0td0gqhw99z`, issue `fit-conversation-v2`,
+  samat tokenit kuin edellä (`design-system/`, `web/src/components/`,
+  `web/src/components/Conversation.tsx`, `web/src/app/App.tsx`).
+
 ### Kierros 1 — alku 2026-09-30 17:40 UTC
 
 - Kirjattu `review-browser-design-v2`:n Decisions-osioon yön väliaikaiset
