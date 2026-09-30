@@ -5,6 +5,14 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Pyynnöt toiselle
 
+- **UI (uusi 18:45): jatka-painike päättyneeseen selainkeskusteluun.**
+  Palvelinreitti on laskeutunut. Tarkka sopimus on
+  `issues/build-agent-control/result.md`:n kohdassa "Browser request for
+  night:ui": ilman bodya lähetettävä `POST
+  /api/v1/conversations/{id}/continue` CSRF:n kanssa. Näytettävät tilat ovat
+  `writer_conflict`, `read_only_history`, `control_uncertain` ja
+  `prior_outcome:"uncertain"`; mitään ei lähetetä automaattisesti uudelleen.
+  Sovita tämä `fit-conversation-v2`een tai omaksi issuekseen.
 - **UI: `fit-onboarding-v2` ei voi edetä tänä yönä.** Sen esto
   `show-large-clone-progress` odottaa Jarin arkkitehtuuripäätöstä
   kloonauksen levykiintiön valtuudesta (ADR 0005 vaatii 20 GiB:n
@@ -21,21 +29,41 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Kierrokset
 
-### Kierros 1 — käynnissä (alkoi 2026-09-30 17:22 UTC)
+### Kierros 1 — valmis 2026-09-30 18:45 UTC
 
-Käynnissä (omat ajot, varaukset):
+**Yhteenveto.** Kaikki kolme omaa ajoa ovat laskeutuneet, eikä mitään ole
+käynnissä. Deployta ei tehty: testijulkaisu tehdään vasta, kun myös UI:n yön
+työ on laskeutunut.
 
-- `01m3snj56qfh0t14tyd429hmz8` — `build-agent-control`, kaista
-  `agent-control`, tokenit `AGENTS.md`, `internal/daemon/`,
-  `docs/interfaces.md`, `internal/gateway/`, `contracts/v1/`
-  (kavennettu commitissa `505d7ad`; ei `design-system/` eikä
-  `Conversation.tsx`).
-- `01m3snkgxx4jnmzm0enbzyw40v` — rethink-fan-out 19 issuelle
-  (`rethink-project-docs`, kaista `planning`, token `docs/`). Yksiköt
-  kirjoittavat vain omaan `issues/<slug>/`-kansioonsa; ei UI:n issueita.
+**Laskeutui**
+- Päättyneen selainkeskustelun jatkaminen, palvelinpuoli
+  (`build-agent-control`, run `01m3spz5wm8rr136atrn7kex10`, commitit
+  `2875d44`…`fb3730d`). `POST /api/v1/conversations/{id}/continue` toimii vain
+  hostin luomalle keskustelulle. Ennen jatkamista tarkistetaan owner-lukko,
+  lapsiprosessin reappaus ja asettunut natiivihistoria. Terminaalihistoria jää
+  vain luettavaksi, eikä epävarmaa lähetystä toisteta. Lisäksi väliaikainen
+  virta hylkää käytetyt cursorit (409). Täysi puhdas gate ja erillis-UID:n
+  pinned-Pi-fixture (end → continue → send, restart, terminaalihistorian
+  hylkäys) menivät läpi, samoin riippumaton katselmointi korjauksineen.
+  Issue on yhä `in-progress`: yleinen `/api/v1/events`-replay ja oikean Pi:n
+  selainmatka puuttuvat.
+- Rethink-läpikäynti 19 issuelle (fan-out `01m3snkgxx4jnmzm0enbzyw40v`).
+  Taulukko on `rethink-project-docs`issa (korjatut main-hashit `2189181`).
+  Yksi ristiriita jätettiin Jarille: `manage-agent-worktrees`.
+- Ensimmäinen agenttiohjausyritys `01m3snj56qfh0t14tyd429hmz8` luovutti
+  jatkamisen kesken. Sen commitit harvestoitiin, ja ajon säilötty haara
+  `wt/tyd429hmz8-agent-control-resume` on nyt orpo. Poisto on erillinen
+  `taskfleet run discard` -päätös.
 
-Jarille: `show-large-clone-progress` odottaa kiintiövaltuuspäätöstä
-(säilötyn työpuun `blocker.md`). `plan-second-user-admission`in
-toteutusosa (Access-assertion-vartija) on jo tehty; jäljellä on
-testipalvelimen gateway-asetus ja vapaaehtoisen toisen käyttäjän koe,
-jotka vaativat Jarin.
+**Testattavaa (synteettinen):** jatkamisreitti fixture-tasolla. Selaimessa ei
+vielä ole jatka-painiketta (UI-pyyntö yllä).
+
+**Jarille**
+- `show-large-clone-progress`: kiintiövaltuuspäätös (ks. pyynnöt).
+- `plan-second-user-admission`: testipalvelimen `oauth.access`-asetus ja
+  vapaaehtoinen toisen käyttäjän koe.
+- `manage-agent-worktrees`: onko worktree-agentti vain luettava
+  Taskfleet-terminaaliagentti vai daemonin hallitsema kirjoittava Pi?
+
+**Seuraava kierros:** `/api/v1/events`-snapshot ja replay-rengas
+(`build-agent-control`in jäljellä oleva palvelinosa).
