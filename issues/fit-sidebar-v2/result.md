@@ -8,4 +8,4 @@ Checks during development: `TMPDIR=/var/tmp/nah-sidebar ./scripts/test-web-fast.
 
 Earlier committed candidate `d7b389c` (before the final agent status marks): `NAH_PORT_BASE=21000 TMPDIR=/var/tmp/nah-sidebar PLAYWRIGHT_BROWSERS_PATH=$PWD/.cache/ms-playwright ./scripts/ci-local.sh --clean --json` passed with `{status:"passed",clean:true}`; `issuectl doctor --json` passed with no schema or parse errors; `git diff --check` passed. Post-gate changes are only issue result and closure metadata; runnable sources, tests, fixtures and packaged inputs unchanged. No distinct-UID, live-provider or real-host claim follows from this synthetic evidence.
 
-Final gate after status marks: pending committed candidate.
+Final gate on committed status-mark candidate `eb4a422`: `NAH_PORT_BASE=21000 TMPDIR=/var/tmp/nah-sidebar PLAYWRIGHT_BROWSERS_PATH=$PWD/.cache/ms-playwright ./scripts/ci-local.sh --clean --json` passed with `{status:"passed",clean:true}`. The separate synthetic lab browser suite passed 9/9 on the same runnable tree. After this gate only issue-result and closure metadata changed.
