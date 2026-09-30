@@ -2,38 +2,106 @@
 
 **Status:** Accepted
 
-**Date:** 2026-09-24
-
-**Authors:** Pi; approved by Jari Mustonen in the 2026-09-24 decision brief for @decide-jit-github-user-provisioning. This accepts the design, not live credentials or deployment.
+**Decision date:** 2026-09-24
 
 ## Context
 
-A first browser login by an initially allowlisted person must create that person's local Unix account on the dedicated Linux test deployment, install native `gh` HTTPS authentication under the same UID with one GitHub consent, and establish a web session. One user can own many agents. This does **not** make GitHub an SSH authentication provider. ADR 0003 currently requires an existing root-owned `(github, numeric ID) -> UID` mapping; `internal/gateway/auth.go` rejects an ID without one. The staged Fleetrepo operator-root local onboarding procedure creates a Unix user but deliberately does not bind a GitHub identity, activate units or handle OAuth. Its `alice` and `bob` are inert test identities, not accounts to adopt or delete. See Fleetrepo `infra/native-agent-host-test/RUNTIME.md` (Additional local Unix users) and `issues/native-agent-hetzner-user-onboarding/result.md`; their guest evidence covers preflight only, not an added user. The host's SSH pin is still TOFU; do not transfer live credentials or enable public ingress before independent host-key validation and separate live gates.
+A person invited to the host should be able to sign in with GitHub and start
+working without an administrator first creating their Linux account. The same
+GitHub authorization should establish their browser identity and configure
+native `gh` under their Unix user. Their account may run many agents.
+
+Creating accounts requires root authority. Giving that authority to the gateway
+would expose account management to the component that parses browser traffic
+and OAuth responses. A separate local broker keeps those responsibilities apart.
 
 ## Decision
 
-Use a **small root-owned local provisioning broker**, separate from the non-root gateway, on a systemd Unix socket with restrictive parent traversal and socket permissions. Only the fixed gateway UID may connect (kernel peer credentials checked by the broker, not a caller-provided header). The broker runs as root because local account, trusted mapping, service configuration and socket preparation require that authority; it has no network listener, OAuth client secret, provider token or access to browser traffic. It accepts only a bounded, versioned `ensure` request containing provider `github`, the canonical positive numeric ID obtained from authenticated GitHub `/user`, and that same response's login as a *candidate name*. The gateway must first validate the single-use browser-bound state/PKCE and obtain `/user`; never accept a subject or login from browser parameters, headers or an unverified profile. A compromised gateway can impersonate an allowlisted ID to this broker: UID peer checks do not prove a remote GitHub identity. Keep the allowlist private, restrict gateway attack surface and treat this as the explicit remaining trust boundary, not independent attestation.
+### The broker owns account creation and bindings
 
-The broker alone reads the root-owned operator-updatable allowlist of stable numeric GitHub IDs and the root-owned binding ledger. It checks authorization on **every** ensure, including existing bindings, before any mutation or return of a routable target. Initial allowlist contains only the two operator-verified test IDs; no names or email addresses authorize access. Root-owned files and directory must reject symlinks, unexpected owner/mode, duplicate IDs, duplicate UIDs or conflicting instances; fail closed on missing, malformed or stale state. A changed allowlist takes effect at the next authorization check without a service restart; removing an ID immediately denies new login and **existing session/API/SSE access** through an authorization epoch/recheck on every request (and closes open streams), before any daemon operation. Credential removal/revocation and account deprovisioning are separate, explicit operator actions: removing a web authorization neither kills running agents nor revokes an OAuth grant. An existing session must never remain routable solely because it cached a previous binding. Expose a read-only `authorize` check through the same restricted broker socket for each session-backed request and SSE authorization/heartbeat, returning the current binding generation and epoch; the gateway does not read root files or cache a positive authorization across requests. Operator revocation also invalidates gateway sessions/streams; a request already executing at the instant of revocation cannot be undone, so stop traffic and settle active work separately when immediate containment is required. If the broker cannot verify the allowlist or binding, deny rather than use a cached success. Provider rename does not change binding or UID; an existing ID keeps its account and only its display login may change.
+Use a small root-owned provisioning broker, reached only through a restricted
+local Unix socket. It authenticates the fixed gateway UID using kernel peer
+credentials and accepts a narrow data protocol. It has no network listener,
+arbitrary command interface or OAuth credentials.
 
-For a new allowed ID the broker serializes under a host-wide root-only lock, rechecks the allowlist and ledger inside the lock, and reserves a unique name, UID/GID, home and instance. Start with the verified GitHub login only if it matches the strict local username policy and all NSS/passwd/group, home, config, socket, systemd instance and existing ledger checks show it absent and unclaimed; otherwise **do not adopt an existing name or UID**. Return a typed `name_collision` requiring an operator-assigned safe alternate name in the root-owned allowlist; no automatic suffix that could squat on another person's name. Allocate a free UID/GID in a separately reviewed deployment range, never trust the request's UID/name. Check again under lock just before writes; an external operator changing NSS outside this lock during provisioning is drift and must stop activation and require reconciliation, not silently claim the account. The operator must not independently use the reserved pool during broker transactions.
+The gateway verifies the GitHub login and obtains the stable numeric ID from
+GitHub's authenticated user response. The broker checks that ID against a
+root-owned operator-managed allowlist and binds it to exactly one local UID.
+The browser cannot choose a Unix account. A GitHub login name is only an initial
+Unix-name candidate; renaming the GitHub account leaves its existing binding
+unchanged.
 
-Write and fsync a root-only pending journal with immutable ID, proposed name, UID and operation phase **before** first mutation. Create the Unix account and private home, then trusted per-user daemon config and exact socket ACL/directory, install/verify inactive unit readiness and peer routing; publish the binding by atomic rename plus directory fsync only after all checks pass, and clear the journal last. Reruns for a committed ID return its exact immutable UID/name/socket only after NSS, home, config, socket ACL and unit checks pass; no reallocation or silent repair. Any partial account/config/journal, conflicting mapping or failed verification blocks that identity (and fail-closed startup/activation if shared state is unsafe), without returning a routable target. Root operator inspects and resumes a known safe phase or repairs drift with an audited recovery procedure; never auto-delete an account/home, reuse its UID, or clear a marker merely to retry. No distributed transaction with Linux account tools is claimed; journaling and verification give recoverable, not atomic OS mutations. Concurrent same-ID requests serialize and converge on one binding; different IDs cannot claim the same resources.
+The broker relies on the gateway to authenticate the remote person. A
+compromised gateway can claim an allowed GitHub ID: checking the local peer
+UID does not independently prove who signed in. The gateway must therefore
+remain small and restricted, even though it runs without root privileges.
 
-The broker returns the committed route, mapping generation and authorization epoch, never a token or credential. The gateway verifies the broker-authorized route using root-controlled traversal, mapped socket ownership and permissions before sending the **one** transient OAuth token over the mapped daemon UDS. On a systemd-created listener the gateway's peer credentials identify PID 1/root, not the mapped daemon; the daemon checks the gateway UID on its accepted connection. The detailed checks are in [the interface contract](interfaces.md#gateway--daemon). The daemon independently checks its root-owned binding and numeric ID, installs `gh` as that UID and verifies `gh auth status`, `gh api user` numeric ID and HTTPS helper as ADR 0003 requires. No token in broker, journal, queue, log, cookie, argv or environment; no handoff retry with a retained token. Concurrent callbacks for the same ID must serialize native installation under that UID or reobserve already installed matching auth, never race two `gh` writes. Only then rotate/create a web session, with rechecked authorization epoch and binding just before issuance. On `gh` failure or lost acknowledgement there is no normal session; discard the token and require a new complete OAuth flow, rechecking existing native auth and any partial writes. A session creation or response failure does not roll back the Unix user or credential. If allowlist changed during provisioning/handoff, deny session and do not route requests; operator handles any installed credential explicitly. Web logout remains distinct from native `gh` disconnect.
+For a new allowed ID, the broker creates a private Unix account and home and
+prepares its daemon configuration, service and socket. It must verify these
+before publishing a routable binding. An occupied or unsafe name requires an
+operator-approved alternative; an existing account is never silently adopted.
+Concurrent logins must converge on one binding without assigning the same
+resources to different people. Root-owned state and the native account must
+agree before an existing binding can be used.
 
-Fleetrepo owns concrete private allowlist and alternate-name approvals, broker service/socket/ACL and root-owned deployment config, secret input, UID pool and live guest convergence/recovery. The public app owns the generic broker protocol, strict parsers and peer checks, gateway callback/session integration, daemon binding verification, neutral service templates, and tests. Fleetrepo's staged `onboard_user.py` remains an operator-only offline procedure, **not** a web broker callable by the gateway; adapt its reviewed collision and pending-state safety rules rather than invoking an arbitrary root shell script from HTTP. Reconcile per-user socket directories after each reboot before activation: the packaged template's `DirectoryMode=0711` is not safe as a fallback without the reviewed restrictive preparation. No deployment or machine mutation follows from accepting this ADR.
+### Authorization remains current
 
-## Supersession and alternatives
+The broker checks current authorization for both new and existing bindings.
+The gateway rechecks through the broker on each session-backed request and
+while streams remain open. Removing an ID from the allowlist denies further
+web access and closes its streams. Unavailable or inconsistent broker state
+must deny access rather than reuse a cached success.
 
-This supersedes **only** ADR 0003's requirement that every GitHub subject map to a *pre-existing* Unix user and its fixed gateway startup mapping as the sole admission path. The root-owned `(provider, numeric ID) -> one UID` binding still exists, now produced and verified by the broker at first login. ADR 0001's *administrator-owned mapping* remains true: the operator owns authorization and root owns bindings; the browser never chooses a UID. The gateway stays non-root, does not read user homes or run agents, and the daemon still checks its own mapping. ADR 0003's one-consent token, session, socket-peer and credential-storage rules otherwise remain in force.
+Removing web access leaves native agents, files and credentials in place.
+Already-running operations cannot be undone by revoking authorization.
+[ADR 0006](adr-0006-subject-revocation.md) defines the separate operator action
+for invalidating browser sessions and older OAuth attempts.
 
-- **Pre-create two accounts and static mapping:** simpler for a tiny pilot, but fails the approved first-login creation journey and requires manual account setup before every new user.
-- **Run the gateway as root or give it `useradd`/systemd capabilities:** removes a hop but exposes root account management to public HTTP/OAuth parsing and widens blast radius; rejected.
-- **Broker with unrestricted command execution or token forwarding:** avoidable root command-injection and credential exposure; rejected in favor of a narrow data-only local protocol. Privileged broker compromise is still host-root compromise.
+### Native credentials precede the browser session
 
-## Consequences and proof required before live use
+Once the broker has committed the binding, the gateway forwards the transient
+OAuth token once over the verified route to that user's daemon. The daemon
+independently checks its binding and GitHub identity, installs native `gh`
+authentication as its own UID and verifies HTTPS Git authentication.
+The token never enters broker state or logs. Concurrent callbacks must not race
+native credential writes.
 
-This adds a small privileged service, root ledger and recovery runbook. A root-owned allowlist is deliberate administrative trust, not trust-on-first-login; numeric IDs must be verified out of band before admission. Revocation denies web use but cannot claw back Unix files, running agents or previously issued GitHub tokens. Actual Pi conversation control is outside the login-success claim.
+Only successful native setup and a final authorization check permit a browser
+session. A failed or uncertain handoff requires a new login that reobserves
+native state; the gateway does not retain a token for replay. Failure to create
+or deliver the session does not roll back the Unix account or installed
+credential. Web logout and native credential removal remain separate actions.
+[ADR 0003](adr-0003-host-stack.md) and the
+[interface contract](interfaces.md#identiteetti-ja-luottamusrajat) define the
+credential and routing protections.
 
-Implementation tests must cover: unknown/revoked ID (including active session/SSE), renamed handle, malformed provider data and unsafe/colliding names, existing `alice`/`bob` denial, duplicate/parallel callbacks and different-ID collision, reboot ACL loss, NSS drift, partial account/journal/config/unit writes and manual recovery, `gh` partial failure/mismatched ID/lost response, session issuance race with revocation, peer spoof/cross-UID socket access and home denial with two real guest UIDs. Fixture tests alone do not establish live host safety. Before real credentials or ingress, independently verify host key, land and converge reviewed Fleetrepo declarations, prove root broker peer and cross-UID denial in the private guest, and run an explicitly authorized first-login and rerun smoke with two consented accounts. No live OAuth, SSH, DNS, guest or cloud change was performed for this decision.
+### Interrupted creation denies access
+
+Account creation can stop between Linux operations. Record the intended work
+before mutations and publish the binding only after verification. An uncertain
+partial account or binding must remain inaccessible; blindly retrying, deleting
+its home or reusing its UID could give another person access to its data.
+
+There is no separate operator recovery procedure for interrupted first-user
+creation. Resuming is justified only if completed phases can be identified and
+retried safely at reasonable cost. Otherwise the operation remains blocked.
+The [interruption issue](../issues/reconcile-interrupted-jit-provisioning/item.md)
+owns that scope; this decision does not promise automatic recovery.
+
+## Ownership and implementation
+
+The product owns the broker protocol, account and binding verification, gateway
+integration, daemon checks and neutral service templates. Fleetrepo owns the
+concrete deployment: authorized IDs, alternate names, UID allocation range,
+service permissions, secrets and installation.
+
+This replaces ADR 0003's requirement for a pre-existing account and static
+startup mapping. The administrator still controls admission and root owns the
+binding, as required by ADR 0001. The gateway remains unprivileged and outside
+user homes; native work stays in each user's daemon.
+
+The [broker writer](../issues/implement-jit-broker-writer/item.md) owns locking,
+journaling and publication details. The
+[guest isolation work](../issues/prove-jit-guest-isolation/result.md) records
+implementation evidence and its limits. This ADR defines the authority boundary;
+those results and Fleetrepo's deployment receipts establish what has been tested.
