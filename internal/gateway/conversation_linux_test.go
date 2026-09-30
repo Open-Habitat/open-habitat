@@ -242,7 +242,7 @@ func TestConversationReplyValidation(t *testing.T) {
 			t.Fatalf("rejected continuation %s", value)
 		}
 	}
-	enriched := strings.Replace(status, `"continuation":"eligible"`, `"continuation":"eligible","send_receipt":"accepted","turn_settled":{"state":"succeeded","observed_at":"2026-09-30T19:00:00Z","native_key":"key1"},"pending_question":{"request_id":"q1","question_kind":"unknown","prompt":"<b>text</b>","choices":[]}`, 1)
+	enriched := strings.Replace(status, `"continuation":"eligible"`, `"continuation":"eligible","send_receipt":"accepted","turn_settled":{"state":"settled","observed_at":"2026-09-30T19:00:00Z","native_key":"key1"},"pending_question":{"request_id":"q1","question_kind":"unknown","prompt":"<b>text</b>","choices":[]}`, 1)
 	if _, _, ok := validatedConversationReply("status", []byte(enriched), id); !ok {
 		t.Fatal("valid control status rejected")
 	}

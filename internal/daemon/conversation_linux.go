@@ -599,7 +599,7 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 		}
 		if e.Type == "tool_execution_end" {
 			kind = "tool.finished"
-			state = "succeeded"
+			state = "settled"
 			if e.IsError {
 				state = "failed"
 			}
@@ -703,11 +703,10 @@ func (c *ConversationController) drain(s *conversation) {
 				}
 			}
 		}
-		if frame.Type == "extension_ui_response" {
-			s.question = nil
-		}
+
 		settled := frame.Type == "agent_settled"
 		if settled {
+			s.question = nil // any unanswered UI request is no longer pending after Pi settled
 			s.settled = true
 			if c.journal != nil {
 				c.journal.activity("pi:"+s.id, "settling")
@@ -723,7 +722,7 @@ func (c *ConversationController) drain(s *conversation) {
 			if c.sessions[s.id] == s && !c.closed {
 				state := "unknown"
 				if key != "" {
-					state = "succeeded"
+					state = "settled"
 				}
 				s.settlement = map[string]string{"state": state, "observed_at": time.Now().UTC().Format(time.RFC3339Nano), "native_key": key}
 				if c.journal != nil {

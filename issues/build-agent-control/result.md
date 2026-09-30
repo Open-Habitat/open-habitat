@@ -631,7 +631,7 @@ session/broker and mapped UID checks, and the new payloads are allowlisted.
 
 ### Browser request for night:ui
 
-Read `turn_settled.state === "succeeded"` only with its `native_key` and
+Read `turn_settled.state === "settled"` only with its `native_key` and
 `observed_at` to label a completed turn; `unknown` means no proven per-entry
 boundary. Use the matching `command_id`'s receipt lookup for a lost send reply
 before deciding what to show; a missing lookup or a daemon restart is

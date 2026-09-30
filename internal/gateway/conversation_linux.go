@@ -534,7 +534,7 @@ func validatedConversationReply(kind string, b []byte, requestedID string) ([]by
 
 func validSettlement(raw []byte) bool {
 	m, ok := strictObject(raw, []string{"state", "observed_at", "native_key"})
-	return ok && (str(m, "state") == "succeeded" || str(m, "state") == "unknown") && validEventTime(str(m, "observed_at")) && len(str(m, "native_key")) <= 128 && (str(m, "state") != "succeeded" || str(m, "native_key") != "")
+	return ok && (str(m, "state") == "settled" || str(m, "state") == "unknown") && validEventTime(str(m, "observed_at")) && len(str(m, "native_key")) <= 128 && (str(m, "state") != "settled" || str(m, "native_key") != "")
 }
 func validQuestion(raw []byte) bool {
 	m, ok := strictObject(raw, []string{"request_id", "question_kind", "prompt", "choices"})

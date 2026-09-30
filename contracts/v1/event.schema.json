@@ -393,7 +393,8 @@
                   "succeeded",
                   "failed",
                   "interrupted",
-                  "unknown"
+                  "unknown",
+                  "settled"
                 ]
               },
               "error_code": {

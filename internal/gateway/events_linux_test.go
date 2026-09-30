@@ -124,14 +124,23 @@ func TestLiveDeltaGatewayAllowlist(t *testing.T) {
 }
 
 func TestControlEventPayloadAllowlist(t *testing.T) {
- agent := map[string]string{"agent_id":"pi:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"}
- for _, tc := range []struct{kind, body string; ok bool}{
-  {"turn.settled",`{"state":"succeeded","native_key":"abc","observed_at":"2026-09-30T19:00:00Z"}`,true},
-  {"turn.settled",`{"state":"succeeded","native_key":"abc","observed_at":"bad"}`,false},
-  {"question.requested",`{"request_id":"q1","question_kind":"unknown","prompt":"<b>safe as text</b>","choices":[]}`,true},
-  {"question.requested",`{"request_id":"q1","question_kind":"unknown","prompt":"text","choices":[],"html":"<script>"}`,false},
-  {"command.changed",`{"client_command_id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","acceptance":"accepted","execution":"unknown"}`,true},
-  {"command.changed",`{"client_command_id":"bad","acceptance":"accepted","execution":"unknown"}`,false},
- } { if got:=validCombinedPayload(tc.kind,agent,"",[]byte(tc.body));got!=tc.ok {t.Errorf("%s %s: %v",tc.kind,tc.body,got)} }
- if validCombinedPayload("turn.settled",map[string]string{"scope":"user"},"",[]byte(`{"state":"succeeded","native_key":"abc","observed_at":"2026-09-30T19:00:00Z"}`)) {t.Fatal("user-scoped event")}
+	agent := map[string]string{"agent_id": "pi:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"}
+	for _, tc := range []struct {
+		kind, body string
+		ok         bool
+	}{
+		{"turn.settled", `{"state":"settled","native_key":"abc","observed_at":"2026-09-30T19:00:00Z"}`, true},
+		{"turn.settled", `{"state":"settled","native_key":"abc","observed_at":"bad"}`, false},
+		{"question.requested", `{"request_id":"q1","question_kind":"unknown","prompt":"<b>safe as text</b>","choices":[]}`, true},
+		{"question.requested", `{"request_id":"q1","question_kind":"unknown","prompt":"text","choices":[],"html":"<script>"}`, false},
+		{"command.changed", `{"client_command_id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","acceptance":"accepted","execution":"unknown"}`, true},
+		{"command.changed", `{"client_command_id":"bad","acceptance":"accepted","execution":"unknown"}`, false},
+	} {
+		if got := validCombinedPayload(tc.kind, agent, "", []byte(tc.body)); got != tc.ok {
+			t.Errorf("%s %s: %v", tc.kind, tc.body, got)
+		}
+	}
+	if validCombinedPayload("turn.settled", map[string]string{"scope": "user"}, "", []byte(`{"state":"settled","native_key":"abc","observed_at":"2026-09-30T19:00:00Z"}`)) {
+		t.Fatal("user-scoped event")
+	}
 }

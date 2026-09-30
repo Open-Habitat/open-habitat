@@ -713,7 +713,7 @@ for line in sys.stdin:
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		c.mu.Lock()
-		done := s.settlement != nil && s.receipts[id] == "accepted" && s.question != nil
+		done := s.settlement != nil && s.receipts[id] == "accepted"
 		c.mu.Unlock()
 		if done {
 			break
@@ -721,10 +721,25 @@ for line in sys.stdin:
 		time.Sleep(time.Millisecond)
 	}
 	c.mu.Lock()
-	if s.receipts[id] != "accepted" || s.question == nil || s.question["question_kind"] != "unknown" || s.question["prompt"] != "Choose <plain text>" || s.settlement["state"] != "unknown" {
+	if s.receipts[id] != "accepted" || s.settlement["state"] != "unknown" || s.question != nil {
 		t.Errorf("receipt %v question %v settlement %v", s.receipts, s.question, s.settlement)
 	}
 	c.mu.Unlock()
+	c.journal.mu.Lock()
+	foundQuestion := false
+	for _, raw := range c.journal.frames {
+		var event struct {
+			Kind    string         `json:"kind"`
+			Payload map[string]any `json:"payload"`
+		}
+		if json.Unmarshal(raw, &event) == nil && event.Kind == "question.requested" && event.Payload["question_kind"] == "unknown" && event.Payload["prompt"] == "Choose <plain text>" {
+			foundQuestion = true
+		}
+	}
+	c.journal.mu.Unlock()
+	if !foundQuestion {
+		t.Fatal("unknown question not published as safe text")
+	}
 	lookup := httptest.NewRecorder()
 	c.readReceipt(lookup, httptest.NewRequest("GET", "http://unix/receipt?command_id="+id, nil), id)
 	if lookup.Code != 200 || !strings.Contains(lookup.Body.String(), `"accepted"`) {

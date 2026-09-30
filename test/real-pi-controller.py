@@ -317,7 +317,7 @@ try:
             check(code==200,'status '+str(code))
             view=json.loads(body)
             last.update(view)
-            return view['command_id']==command and view['send_receipt']=='accepted' and view['turn_settled'] is not None and view['turn_settled']['state']=='succeeded' and view['native_history']=='readable'
+            return view['command_id']==command and view['send_receipt']=='accepted' and view['turn_settled'] is not None and view['turn_settled']['state']=='settled' and view['native_history']=='readable'
         try: wait(settled,'Pi status/settlement '+name,20)
         except RuntimeError:
             print('settlement diagnostic',name,{k:last.get(k) for k in ('state','ack','command_id','native_history')},'provider calls',len(Model.calls),file=sys.stderr)
