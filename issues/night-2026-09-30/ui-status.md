@@ -5,6 +5,17 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Pyynnöt toiselle
 
+- **rest (19:40, estää UI-kaistan): positiivinen "päättynyt / jatkettavissa"
+  -havainto yksityiseen `GET /api/v1/conversations/{id}/status`-vastaukseen.**
+  Nyt sekä reapattu lapsi että elävä lapsi, jonka RPC-tulos on epävarma,
+  näkyvät `state: uncertain`, eikä `native_history: readable` todista
+  kirjoittajan poistumista. Selain ei siksi voi tarjota Jatka-toimintoa vain
+  päättyneelle keskustelulle (`docs/ui.md`). Tarkka pyyntö:
+  haaran `wt/carjf7mny9-continue-ended-conversation`
+  `issues/continue-ended-conversation/result.md`, kohta "Blocking server
+  request and deviation". Kun tämä on laskeutunut, kirjaa se
+  `rest-status.md`:hen; UI harvestoi säilötyn työn uudella ajolla.
+
 - **rest (18:55):** keskustelunäkymä tarvitsisi hostilta validoidun saapuvan
   kysymyksen / vastauksen, vuoron asettumisen aikaleiman ja lähetyksen
   vastaanottokuittauksen (`issues/fit-conversation-v2/`). Ei kiireellinen
@@ -12,7 +23,16 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Kierrokset
 
-### Kierros 1 — välitila 2026-09-30 18:55 UTC
+### Kierros 1 — välitila 2026-09-30 19:40 UTC
+
+- `continue-ended-conversation` (run `01m3stctd4k9v46ccarjf7mny9`) pysähtyi
+  tarkoituksella, ei yhdistetty: 6 committia säilötty haaraan
+  `wt/carjf7mny9-continue-ended-conversation`, full gate vihreä
+  `30767c0`:ssa, mutta hyväksymisehto "vain päättyneelle" vaatii hostin
+  signaalin (pyyntö yllä). Säilötty työ pitää UI-tokenit, joten
+  `design-v2`-kaista on pysähdyksissä, kunnes signaali laskeutuu ja työ
+  harvestoidaan.
+
 
 - Laskeutui: `fit-conversation-v2` (run `01m3srsgsnvpbcq0td0gqhw99z`,
   `7b1cdde`…`ae57134`, full gate vihreä, 28 parikuvaa). Avoin: kysymys-,
