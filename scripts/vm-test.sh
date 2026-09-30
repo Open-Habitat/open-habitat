@@ -99,11 +99,16 @@ if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario ==
     embedded_commit=$("$run/native-agent-host" --json version | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["commit"])') || fail invalid_release 'Embedded commit unavailable' 2
     [[ $embedded_commit == "$product_commit" ]] || fail invalid_release 'Embedded release commit differs from committed tree' 2
   else
-    tags=()
-    [[ $scenario == jit-broker-crash ]] && tags=(-tags nah_guest_fault)
-    (cd "$repo" && CGO_ENABLED=0 go build -trimpath "${tags[@]}" -o "$run/native-agent-host" ./cmd/native-agent-host) || fail product_build_failed 'Could not build product binary' 2
+    overlay=()
     if [[ $scenario == jit-broker-crash ]]; then
-      (cd "$repo" && CGO_ENABLED=0 go build -trimpath -o "$run/release-comparison" ./cmd/native-agent-host) || fail product_build_failed 'Could not build release-comparison binary' 2
+      python3 "$repo/test/vm/jit-crash-overlay.py" "$repo" "$run" || fail product_build_failed 'Could not prepare disposable guest build overlay' 2
+      overlay=(-overlay "$run/guest-overlay.json")
+    fi
+    (cd "$repo" && GOFLAGS= CGO_ENABLED=0 go build -trimpath "${overlay[@]}" -o "$run/native-agent-host" ./cmd/native-agent-host) || fail product_build_failed 'Could not build product binary' 2
+    if [[ $scenario == jit-broker-crash ]]; then
+      # A release compiled from committed source cannot include the overlay,
+      # even if a caller sets the formerly dangerous guest build tag.
+      (cd "$repo" && GOFLAGS=-tags=nah_guest_fault CGO_ENABLED=0 go build -trimpath -o "$run/release-comparison" ./cmd/native-agent-host) || fail product_build_failed 'Could not build release-comparison binary' 2
       ! grep -aq 'nah-guest-broker-crash' "$run/release-comparison" || fail product_build_failed 'Guest fault marker leaked into ordinary build' 2
       grep -aq 'nah-guest-broker-crash' "$run/native-agent-host" || fail product_build_failed 'Guest fixture binary lacks crash hook' 2
     fi

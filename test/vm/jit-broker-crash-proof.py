@@ -22,12 +22,12 @@ def login(op,code):
     state_arg=urllib.parse.parse_qs(urllib.parse.urlparse(headers['Location']).query)['state'][0]
     return get(op,'/auth/github/callback?'+urllib.parse.urlencode({'state':state_arg,'code':code}))
 def pid():return int(unit('show','-P','MainPID','native-agent-host-broker.service').stdout.strip())
-def ensure_control():
+def ensure_control(operation='ensure'):
     # Prepare the healthy binding before the private revocation socket exists.
     # This historical Fleetrepo gate rejects extra runtime paths on activation.
-    code = """import json,socket,struct
+    code = """import json,socket,struct,sys
 s=socket.socket(socket.AF_UNIX);s.settimeout(105);s.connect('/run/native-agent-host/broker.sock')
-b=json.dumps({'version':1,'operation':'ensure','provider':'github','id':'100000001','candidate':'guestone'}).encode()
+b=json.dumps({'version':1,'operation':sys.argv[1],'provider':'github','id':'100000001','candidate':'guestone'}).encode()
 s.sendall(struct.pack('>I',len(b))+b);s.shutdown(socket.SHUT_WR)
 h=s.recv(4);assert len(h)==4
 n=struct.unpack('>I',h)[0];assert n<4096
@@ -37,7 +37,7 @@ while len(b)<n:
 print(b.decode())
 """
     def drop():os.setgroups([]);os.setresgid(21003,21003,21003);os.setresuid(21003,21003,21003)
-    p=subprocess.run(['/usr/bin/python3','-c',code],preexec_fn=drop,capture_output=True,text=True,timeout=115)
+    p=subprocess.run(['/usr/bin/python3','-c',code,operation],preexec_fn=drop,capture_output=True,text=True,timeout=115)
     return json.loads(p.stdout) if p.returncode==0 else {}
 
 provider=None
@@ -143,7 +143,11 @@ try:
     check(baseline_session==200 and baseline_snapshot==200,'A baseline session='+str(baseline_session)+' snapshot='+str(baseline_snapshot))
     before=json.loads((state/'bindings.json').read_text())
     check(before['bindings']==[{'id':'100000001','uid':21032,'username':'guestone'}],'A binding')
-    check(pid()>1,'broker not running')
+    first_pid=pid()
+    check(first_pid>1,'broker not running')
+    check(unit('restart','native-agent-host-broker.service').returncode==0,'clean broker restart failed')
+    check(pid()>1 and pid()!=first_pid and unit('is-active','native-agent-host-broker.service').stdout.strip()==b'active' and
+          ensure_control('authorize').get('route',{}).get('uid')==21032,'clean restart did not serve healthy binding')
     def drop_control():os.setgroups([]);os.setresgid(21032,21032,21032);os.setresuid(21032,21032,21032)
     native=subprocess.Popen(['/usr/bin/sleep','300'],preexec_fn=drop_control,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     check(native.poll() is None and as_uid(21032,"open('/home/guestone/fixture-native','w').write('alive')").returncode==0,'control native baseline')

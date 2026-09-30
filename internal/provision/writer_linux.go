@@ -485,7 +485,6 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 		if e := w.Executor.Step(ctx, phase, identity); e != nil {
 			return failure(Drift)
 		}
-		guestCrashAfterStep(phase)
 	}
 	j.Phase = "verify"
 	if replace(fd, "pending.json", marshal(j)) != nil {
