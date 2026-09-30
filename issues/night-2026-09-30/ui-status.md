@@ -28,6 +28,15 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Kierrokset
 
+### Kierros 1 — välitila 2026-09-30 21:50 UTC
+
+- Laskeutui: `fit-account-and-history-v2` (run `01m3t2vksj9h2dyt6fxq75tdr7`,
+  `6c580c9`…`766a29a`, full gate vihreä, issue `done`). Asetuksista puuttuu
+  Pi/OpenAI-yhteysrivi, koska snapshotissa ei ole varmennettua tilaa
+  (pyyntö issuessa).
+- Käynnissä: run `01m3t48p660x6yj6y9wtfrk5xr`, `compare-v2-pairs`
+  (vedos vs. lab -parit, ei tuotekoodimuutoksia), samat UI-tokenit.
+
 ### Kierros 1 — välitila 2026-09-30 21:20 UTC
 
 - Laskeutui: `fit-sidebar-v2` (run `01m3t0bzwtn2sxngjgds90wqqx`,
