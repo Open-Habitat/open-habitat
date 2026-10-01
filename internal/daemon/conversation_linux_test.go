@@ -795,9 +795,12 @@ for line in sys.stdin:
  if r["type"] == "prompt":
   print(json.dumps(dict(type="response",id=r["id"],command="prompt",success=True)),flush=True)
   print(json.dumps(dict(type="extension_ui_request",id="native-1",method="select",title="Choose",options=["one","two"])),flush=True)
- elif r["type"] == "extension_ui_response":
+ elif r["type"] == "extension_ui_response" and r["id"] == "native-1":
   print(json.dumps(dict(type="extension_ui_request",id="native-2",method="confirm",title="Confirm",message="Continue?")),flush=True)
   print(json.dumps(dict(type="extension_ui_request",id="native-3",method="custom",title="Unknown")),flush=True)
+ elif r["type"] == "extension_ui_response" and r["id"] == "native-3":
+  print(json.dumps(dict(type="agent_settled")),flush=True)
+  print(json.dumps(dict(type="extension_ui_request",id="native-4",method="input",title="After turn")),flush=True)
 `
 	if err := os.WriteFile(script, []byte(code), 0700); err != nil {
 		t.Fatal(err)
@@ -852,6 +855,24 @@ for line in sys.stdin:
 		t.Fatalf("replay: %d", code)
 	}
 	wait("native-2")
+	// Both requests arrived before the visible one was cancelled. Pi does not
+	// repeat a request, so the daemon must keep native-3 until promotion.
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		c.mu.Lock()
+		queued := len(s.queuedQuestions)
+		c.mu.Unlock()
+		if queued == 1 {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	c.mu.Lock()
+	queued := len(s.queuedQuestions)
+	c.mu.Unlock()
+	if queued != 1 {
+		t.Fatal("concurrent dialog was discarded")
+	}
 	if code := call("native-2", "cancel", ""); code != 200 {
 		t.Fatalf("cancel: %d", code)
 	}
@@ -861,5 +882,9 @@ for line in sys.stdin:
 	}
 	if code := call("native-3", "cancel", ""); code != 200 {
 		t.Fatalf("unknown cancel: %d", code)
+	}
+	wait("native-4")
+	if code := call("native-4", "answer", `,"value":"later"`); code != 200 {
+		t.Fatalf("post-settlement answer: %d", code)
 	}
 }

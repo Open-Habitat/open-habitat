@@ -75,8 +75,25 @@ type conversation struct {
 	questionID                   string            // native ID; never trust a browser-supplied native identity
 	questionKind                 string
 	questionChoices              []string
-	spentQuestions               map[string]bool // native IDs already answered or cancelled
-	publishedHistory             map[string]bool // bounded to this native session; JSONL is authoritative
+	queuedQuestions              []pendingQuestion // bounded native requests waiting behind the visible one
+	spentQuestions               map[string]bool   // native IDs already answered or cancelled
+	publishedHistory             map[string]bool   // bounded to this native session; JSONL is authoritative
+}
+
+type pendingQuestion struct {
+	id, kind string
+	choices  []string
+	view     map[string]any
+}
+
+// Caller holds c.mu. Only one request is visible at a time, but Pi can have
+// multiple outstanding native resolvers (including after an earlier timeout).
+func (c *ConversationController) showQuestion(s *conversation, q pendingQuestion) {
+	s.questionID, s.questionKind, s.questionChoices = q.id, q.kind, q.choices
+	s.question = q.view
+	if c.journal != nil {
+		c.journal.appendEvent("question.requested", "pi:"+s.id, q.view)
+	}
 }
 
 func newConversationController(ctx context.Context, cfg transport.Config, runtime *core.PiRuntimeConfig, trusted func(*http.Request) bool, status func(context.Context) string) *ConversationController {
@@ -750,11 +767,25 @@ func (c *ConversationController) drain(s *conversation) {
 						if s.spentQuestions == nil {
 							s.spentQuestions = make(map[string]bool)
 						}
-						if !s.spentQuestions[q.ID] && s.questionID == "" && len(s.spentQuestions) < maxConversationCommands {
-							s.questionID, s.questionKind, s.questionChoices = q.ID, kind, choices
-							s.question = map[string]any{"request_id": q.ID, "question_kind": kind, "prompt": prompt, "choices": choices}
-							if c.journal != nil {
-								c.journal.appendEvent("question.requested", "pi:"+s.id, s.question)
+						if !s.spentQuestions[q.ID] && len(s.spentQuestions) < maxConversationCommands {
+							duplicate := s.questionID == q.ID
+							for _, queued := range s.queuedQuestions {
+								if queued.id == q.ID {
+									duplicate = true
+								}
+							}
+							if !duplicate {
+								next := pendingQuestion{q.ID, kind, choices, map[string]any{"request_id": q.ID, "question_kind": kind, "prompt": prompt, "choices": choices}}
+								if s.questionID == "" {
+									c.showQuestion(s, next)
+								} else if len(s.queuedQuestions) < 16 {
+									s.queuedQuestions = append(s.queuedQuestions, next)
+								} else {
+									s.rpc.overflow.Store(true)
+									if c.journal != nil {
+										c.journal.appendInvalidation("pi:" + s.id)
+									}
+								}
 							}
 						}
 					}
@@ -767,6 +798,7 @@ func (c *ConversationController) drain(s *conversation) {
 		if settled {
 			s.question = nil // any unanswered UI request is no longer pending after Pi settled
 			s.questionID = ""
+			s.queuedQuestions = nil
 			s.settled = true
 			if c.journal != nil {
 				c.journal.activity("pi:"+s.id, "settling")
@@ -949,6 +981,7 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 		s.settlement = nil
 		s.question = nil
 		s.questionID = ""
+		s.queuedQuestions = nil
 		if s.receipts == nil {
 			s.receipts = make(map[string]string)
 		}
@@ -1111,7 +1144,7 @@ func (c *ConversationController) answerQuestion(w http.ResponseWriter, r *http.R
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}
-	if c.closed || s.dead || s.rpc.overflow.Load() || s.questionID != body.RequestID || s.spentQuestions[body.RequestID] || s.settled || s.state == "uncertain" || s.aborting {
+	if c.closed || s.dead || s.rpc.overflow.Load() || s.questionID != body.RequestID || s.spentQuestions[body.RequestID] || s.state == "uncertain" || s.aborting {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return
@@ -1165,7 +1198,10 @@ func (c *ConversationController) answerQuestion(w http.ResponseWriter, r *http.R
 	s.spentQuestions[body.RequestID] = true
 	s.questionID = ""
 	s.question = nil
-	if c.journal != nil {
+	if len(s.queuedQuestions) > 0 {
+		c.showQuestion(s, s.queuedQuestions[0])
+		s.queuedQuestions = s.queuedQuestions[1:]
+	} else if c.journal != nil {
 		c.journal.appendInvalidation("pi:" + s.id)
 	}
 	c.mu.Unlock()
