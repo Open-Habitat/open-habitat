@@ -3,12 +3,14 @@ created: 2026-10-01
 updated: 2026-10-01
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@architecture-built-on-caution']
 lane: caution-removal
 lane_seq: 20
 blocked_by: ['@gateway-authorize-once']
+closed: 2026-10-01
+closed_by: claude
 ---
 
 # Replace gateway byte-exact proxies with one stdlib proxy
@@ -37,3 +39,7 @@ coverage. Replace assertions about removed parsing with these forwarding and
 boundary outcomes; browser journeys continue to work.
 
 Test selection and the final gate follow [TESTING.md](../../TESTING.md).
+
+## Resolution
+
+The shared Unix HTTP proxy replaces the route-specific response validators; browser parsing and daemon peer checks remain, while the conversation lease stays for step 5. The final clean gate passed on `6b35448`; see [result.md](result.md) for tests, review and remaining distinct-UID verification limits.
