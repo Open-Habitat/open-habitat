@@ -26,8 +26,9 @@ and for the broker in ADR 0004.
   about who is calling is used. Binding, UID/home, Pi selector and pinned
   runtime tree/Node version are checked once before serving. Changing the
   binding or runtime requires a daemon restart. Missing first-use Pi credentials
-  do not prevent startup; existing credential paths are checked when starting
-  onboarding. Pi login status is an onboarding check, not a native-read security
+  do not prevent startup; existing credential paths are checked before device
+  login and status helpers because status can refresh Pi's auth file. Pi login
+  status is an onboarding check, not a native-read security
   boundary: snapshot, history and streams never spawn a Pi status helper. Model-call authentication failures reach the browser only
   as a fixed code in the private conversation status.
 - `provision/` is the root-only broker and Linux executor that create a

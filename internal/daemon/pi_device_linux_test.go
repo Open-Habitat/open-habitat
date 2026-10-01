@@ -109,8 +109,8 @@ func TestPiDeviceUnsafePaths(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(home, ".pi", "agent")); err != nil {
 		t.Fatal(err)
 	}
-	if p.validateCredentials() == nil {
-		t.Fatal("symlink accepted")
+	if p.Status() != "unknown" {
+		t.Fatal("symlink accepted for status refresh")
 	}
 	if _, _, err := p.Start(); err == nil {
 		t.Fatal("symlink accepted for login")
@@ -127,6 +127,9 @@ func TestPiDeviceUnsafePaths(t *testing.T) {
 	}
 	if err := os.Chmod(auth, 0644); err != nil {
 		t.Fatal(err)
+	}
+	if p.Status() != "unknown" {
+		t.Fatal("world-readable auth accepted for status refresh")
 	}
 	if _, _, err := p.Start(); err == nil {
 		t.Fatal("world-readable auth accepted")

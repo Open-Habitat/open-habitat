@@ -191,6 +191,12 @@ func (p *PiDevice) StatusContext(ctx context.Context) string {
 	return state
 }
 func (p *PiDevice) status(parent context.Context) (string, error) {
+	// Even status can refresh and rewrite Pi auth.json. This check belongs at
+	// each helper spawn, including the follow-up status after device login;
+	// selector and runtime validation remain startup-only.
+	if err := p.validateCredentials(); err != nil {
+		return "unknown", err
+	}
 	ctx, cancel := context.WithTimeout(parent, 15*time.Second)
 	defer cancel()
 	result, err := p.run(ctx, "status", func(PiDeviceEvent) {})

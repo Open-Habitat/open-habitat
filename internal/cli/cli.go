@@ -271,7 +271,9 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 				return nil, system("native_runtime_unavailable", "invalid Pi runtime selector")
 			}
 			if err := daemon.ServeHTTP(ctx, ln, *cfg.Handoff, adapter.Consumer(), adapter.Status, daemonHealthMux(), runtime); err != nil {
-				return nil, system("server_failed", "daemon socket service failed")
+				// ServeHTTP returns only fixed, redacted startup/transport errors;
+				// surface the reason so an unsafe runtime can be repaired.
+				return nil, system("server_failed", "daemon socket service failed: "+err.Error())
 			}
 			return nil, nil
 		}
