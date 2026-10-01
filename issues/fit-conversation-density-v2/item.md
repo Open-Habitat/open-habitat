@@ -1,15 +1,17 @@
 ---
 created: 2026-09-30
-updated: 2026-09-30
+updated: 2026-10-01
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@review-browser-design-v2', '@compare-v2-pairs']
 lane: design-v2
 lane_seq: 9
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
 blocked_by: ['@stream-conversation-events', '@show-turn-receipts']
+closed: 2026-10-01
+closed_by: night-ui-worker
 ---
 
 # Fit conversation header and composer density to v2
