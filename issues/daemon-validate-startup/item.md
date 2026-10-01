@@ -39,6 +39,12 @@ startup and why changing the binding or runtime requires a daemon restart.
 
 Test selection and the final gate follow [TESTING.md](../../TESTING.md).
 
+## Acceptance Criteria
+
+- [x] Startup rejects unsafe binding, selector and runtime; first-use credentials do not block onboarding.
+- [x] Requests trust the connection's gateway UID, not identity headers; runtime checks leave ordinary request paths.
+- [x] Focused tests and the clean final gate pass on the implementation tree.
+
 ## Resolution
 
 ### 2026-10-01T20:08:48Z · @claude
