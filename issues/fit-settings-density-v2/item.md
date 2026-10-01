@@ -3,13 +3,15 @@ created: 2026-09-30
 updated: 2026-10-01
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@review-browser-design-v2', '@compare-v2-pairs']
 lane: design-v2
 lane_seq: 11
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
 blocked_by: ['@fit-return-view-v2']
+closed: 2026-10-01
+closed_by: agent
 ---
 
 # Fit settings, account menu and drawer density to v2
@@ -56,3 +58,9 @@ stays accessible (`radiogroup`). Update the affected pairs in
 - Ownership tonight: this work may change `web/`, `design-system/`,
   `docs/ui.md` and `docs/design-system.md`. A needed change in `internal/`,
   `contracts/` or other docs is recorded in this issue as a request instead.
+
+## Resolution
+
+### 2026-10-01T02:09:25Z · @agent
+
+Fitted G2 on desktop and phone in light/dark synthetic lab; accessible theme controls and honest statuses preserved; committed clean gate passed.
