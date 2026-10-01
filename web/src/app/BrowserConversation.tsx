@@ -175,10 +175,13 @@ export function BrowserConversation({
     onSessionCreated,
     navigate,
   });
+  // The ref becomes populated after mount, but must not re-focus abort on the
+  // next live update after the user has moved focus to cancel.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ref contents are read only when confirmation state changes.
   useEffect(() => {
     if (confirmStop && current?.state === "accepted")
       stopConfirmation.current?.querySelector("button")?.focus();
-  }, [confirmStop, current?.state, stopConfirmation.current?.querySelector]);
+  }, [confirmStop, current?.state]);
   const closeStopConfirmation = () => {
     setConfirmStop(false);
     section.current
@@ -193,6 +196,7 @@ export function BrowserConversation({
     (current.state === "idle" ||
       current.state === "rejected" ||
       current.state === "accepted");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refs are only used for the first opening focus.
   useEffect(() => {
     if (!id || !controlled || focusedOnOpen.current) return;
     focusedOnOpen.current = true;
@@ -200,13 +204,7 @@ export function BrowserConversation({
       section.current
         ?.querySelector("textarea")
         ?.focus({ preventScroll: true });
-  }, [
-    id,
-    controlled,
-    section.current?.querySelector,
-    focusedOnOpen.current,
-    focusedOnOpen,
-  ]);
+  }, [id, controlled]);
   return (
     <section ref={section} className="ah-reading-view">
       {!id ? (

@@ -260,6 +260,8 @@ export function useConversation({
     },
     [draftKey],
   );
+  // Ref contents are sampled when refresh runs, not part of callback identity.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mutable reading refs do not drive refresh recreation.
   const refresh = useCallback(
     async (requestContinuation = false, readHistory = false) => {
       if (!id || !alive.current) return;
@@ -444,9 +446,6 @@ export function useConversation({
       navigate,
       onLogin,
       changeDraft,
-      wasAtBottom.current,
-      setUnseen,
-      latest.current.entries,
     ],
   );
   latestRefresh.current = refresh;
