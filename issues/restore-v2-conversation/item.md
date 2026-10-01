@@ -3,12 +3,14 @@ created: 2026-10-01
 updated: 2026-10-01
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@review-browser-design-v2', '@compare-v2-pairs']
 lane: design-v2
 lane_seq: 12
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
+closed: 2026-10-01
+closed_by: night-ui-worker
 ---
 
 # Restore v2 presentation rules and fit the conversation to the draft
@@ -65,6 +67,12 @@ the way to be honest:
 - The deviation list I1–I6 in `issues/compare-v2-pairs/index.md` is
   superseded wherever it justified added text or controls; keep only the
   substance (no invented data, no auto-resend).
+
+## Acceptance Criteria
+
+- [x] Synthetic lab pairs cover working, completed, rejected, disconnected, read-only and new conversations in both themes at desktop and 390 px; phone new/rejected use the nearest available layout reference, as noted in `result.md`.
+- [x] The fixture holds a running tool with two queued messages, hydrates prior history for uncertain send, and cleans generated sessions between captures.
+- [x] The committed implementation passes the clean gate and issue validation.
 
 ## How acceptance works
 
