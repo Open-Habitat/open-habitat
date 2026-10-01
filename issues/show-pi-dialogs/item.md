@@ -9,7 +9,7 @@ related: ['@answer-pi-dialogs']
 lane: design-v2
 lane_seq: 13
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
-blocked_by: ['@restore-v2-conversation']
+blocked_by: ['@restore-v2-conversation', '@polish-v2-conversation']
 ---
 
 # Answer and cancel Pi dialogs in the conversation view
