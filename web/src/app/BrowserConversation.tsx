@@ -134,6 +134,11 @@ export function BrowserConversation({
   const wasAtBottom = useRef(true);
   const [details, setDetails] = useState(false);
   const pending = useRef(false);
+  const queuedRefresh = useRef(false);
+  const queuedProof = useRef(false);
+  const latestRefresh = useRef<(proof?: boolean) => Promise<void>>(
+    async () => {},
+  );
   const sendInFlight = useRef(false);
   const staleRef = useRef(stale);
   staleRef.current = stale;
@@ -329,12 +334,18 @@ export function BrowserConversation({
         stale ||
         !id ||
         !csrf ||
-        pending.current ||
         !sessions.some(
           (s) => s.agent_id === id && s.workspace_id === workspace.workspace_id,
         )
       )
         return;
+      // A journal event can arrive during a status/history read. Never drop
+      // its invalidation just because an earlier read was still in flight.
+      if (pending.current) {
+        queuedRefresh.current = true;
+        queuedProof.current ||= requestContinuation;
+        return;
+      }
       pending.current = true;
       const version = generation.current;
       try {
@@ -593,6 +604,12 @@ export function BrowserConversation({
         }
       } finally {
         pending.current = false;
+        if (queuedRefresh.current) {
+          const proof = queuedProof.current;
+          queuedRefresh.current = false;
+          queuedProof.current = false;
+          void latestRefresh.current(proof);
+        }
       }
     },
     [
@@ -606,6 +623,7 @@ export function BrowserConversation({
       captureAnchor,
     ],
   );
+  latestRefresh.current = refresh;
   useEffect(() => {
     if (!id || !csrf || stale) return;
     probePending.current = false;
