@@ -3,7 +3,7 @@ created: 2026-10-01
 updated: 2026-10-01
 type: task
 reporter: jari
-status: open
+status: in-progress
 priority: high
 related: ['@review-browser-design-v2', '@compare-v2-pairs']
 lane: design-v2
