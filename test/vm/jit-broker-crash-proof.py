@@ -185,8 +185,13 @@ try:
     tail=[re.sub('[^A-Za-z0-9 _./:=,-]',' ',line.decode('utf-8','replace'))[:85]
           for line in all_refusal_log.splitlines()[-6:] if b'TOKEN_' not in line and b'secret' not in line.lower()]
     stages=re.findall(rb'NAH_GUEST_STAGE_[a-z_]+',all_refusal_log)
+    def path_state(p):
+        try:
+            s=os.lstat(p)
+            return p+':'+str((stat.S_IFMT(s.st_mode),s.st_uid,s.st_gid,stat.S_IMODE(s.st_mode)))
+        except OSError as e:return p+':'+type(e).__name__
     check(refusal_log.count(b'NAH_GUEST_PENDING_REFUSED')==1,
-          'pending guard not observed filtered='+str(refusal_log.count(b'NAH_GUEST_PENDING_REFUSED'))+' all='+str(all_refusal_log.count(b'NAH_GUEST_PENDING_REFUSED'))+' stages='+','.join(x.decode() for x in stages[-8:]))
+          'guard missing; preconditions='+','.join(x.decode() for x in re.findall(rb'NAH_GUEST_(?:CONFIG_INVALID|SOCKET_UNSAFE)',all_refusal_log)[-3:])+' paths='+';'.join(path_state(p) for p in ('/run','/run/native-agent-host','/run/native-agent-host/broker.sock'))+' stages='+','.join(x.decode() for x in stages[-4:]))
     check(journal.read_bytes()==pending,'restart cleared or rewrote journal')
     session_status,_,_=get(affected,'/auth/session')
     snapshot_status,_,_=get(affected,'/api/v1/snapshot')

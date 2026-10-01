@@ -37,6 +37,11 @@ startup_with_diagnostic = startup.replace('\t\t\treturn ErrBrokerStartup',
     '\t\t\tif n == "pending.json" { _, _ = os.Stderr.WriteString("NAH_GUEST_PENDING_REFUSED\\n") }\n\t\t\treturn ErrBrokerStartup')
 broker_replacement = run / 'guest-broker.go'
 broker_source = broker_source.replace(startup, startup_with_diagnostic)
+check = 'if err != nil || !brokerSocketSafe(cfg.GatewayGID) {\n\t\treturn ErrBrokerStartup\n\t}'
+if broker_source.count(check) != 1:
+    raise SystemExit('broker precondition diagnostic site drifted')
+broker_source = broker_source.replace(check, '''if err != nil { _, _ = os.Stderr.WriteString("NAH_GUEST_CONFIG_INVALID\\n"); return ErrBrokerStartup }
+	if !brokerSocketSafe(cfg.GatewayGID) { _, _ = os.Stderr.WriteString("NAH_GUEST_SOCKET_UNSAFE\\n"); return ErrBrokerStartup }''')
 for anchor, stage in [
     ('cfg, err := loadBrokerConfig()', 'config'),
     ('fd, err := brokerFD()', 'fd'),
