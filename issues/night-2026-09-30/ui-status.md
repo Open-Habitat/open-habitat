@@ -34,6 +34,28 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Kierrokset
 
+### Loppuraportti 2026-10-01 02:15 UTC — night:ui lopetti, frontier tyhjä
+
+**Yhteenveto.** Kaksi kierrosta, yksitoista omaa ajoa; kaikki laskeutuivat
+(`landed: true`) täydellä puhtaalla gatella ja riippumattomalla
+katselmoinnilla. Yksi ajo pysähtyi tarkoituksella ja harvestoitiin, kun
+`rest` toimitti puuttuvan signaalin. Mitään ei ole käynnissä. Kaistalla
+`design-v2` jäljellä vain `fit-onboarding-v2` (esto Jarin päätöksessä).
+
+**Laskeutui kierroksella 2:** `stream-conversation-events`,
+`show-turn-receipts`, `fit-conversation-density-v2` (G3),
+`fit-return-view-v2` (G1), `fit-settings-density-v2` (G2, run
+`01m3thsssb62vez01pf67yjc1c`, …`9fb62d1`). Kierroksen 1 tulokset alla.
+
+**Testattavaa (synteettinen lab):** koko selainpolku molemmissa teemoissa ja
+390 px:ssä, jatkaminen, live-virta ja kuittaukset;
+`issues/compare-v2-pairs/index.md`.
+
+**Päätökset Jarille:** ks. kierroksen 1 raportti sekä `rest`in
+loppuraportti (julkaisuoperaattori, kloonauskiintiö, extension-dialogi).
+
+**Spin-offit:** ei avoimia ehdotuksia; G1–G3 tehtiin.
+
 ### Kierros 2 — välitila 2026-10-01 01:40 UTC
 
 - Laskeutui: `fit-return-view-v2` (G1, run `01m3tfhyyma819xbqzrmfykjmd`,
