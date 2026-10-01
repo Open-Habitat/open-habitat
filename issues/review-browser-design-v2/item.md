@@ -82,6 +82,10 @@ recommendation; routine layout and styling choices belong to the implementer.
 
 Assessment written: assessment.md (rev 82a5c4e). Foundation functionally sound, styling layer thin; recommends one foundation slice (tokens re-cut to the design, layout templates, button/status/icon primitives, one styling mechanism) before component refinement and screen composition. Awaiting Jari on mobile scope, default repo filter, and v2 sizing as token source.
 
+### 2026-10-01T17:53:50Z · @jari
+
+Jari 2026-10-01 (pilot.15): viivaleveydet ja paddingit ovat käyttöliittymässä ihan muuta kuin design-malleissa, ja fonttikoot pitää tarkistaa samalla. Konkreettinen esimerkki @composer-footer-layout.
+
 ## Decisions
 
 ### 2026-09-30T16:59:44Z · @jari
