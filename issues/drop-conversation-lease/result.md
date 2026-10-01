@@ -33,4 +33,4 @@ same-UID synthetic browser host in this result. The surviving daemon/Pi child
 across a real gateway restart is exercised by the synthetic socket fixture,
 not a production deployment.
 
-Final committed-tree gate: pending.
+Final committed product tree: `2fc7e4b`. `NAH_PORT_BASE=14500 ./scripts/ci-local.sh --clean --json` passed (114 browser tests, 13 lab tests, Go race suite, generated contracts and package verification). Only this evidence text and issue closure metadata followed the validated tree.
