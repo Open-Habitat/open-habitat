@@ -3,7 +3,7 @@ created: 2026-10-01
 updated: 2026-10-01
 type: feature
 reporter: jari
-status: open
+status: in-progress
 priority: high
 related: ['@build-agent-control']
 lane: agent-control
