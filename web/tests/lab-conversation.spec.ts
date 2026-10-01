@@ -39,7 +39,9 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   await editor.fill("Tutki synteettinen työtila");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
-    page.getByText("Tutki synteettinen työtila", { exact: true }),
+    page
+      .getByRole("region", { name: "Keskusteluhistoria" })
+      .getByText("Tutki synteettinen työtila", { exact: true }),
   ).toBeVisible({ timeout: 20000 });
   await expect(page.getByText("Katson ensin, mitä työtilassa on.")).toBeVisible(
     { timeout: 20000 },
@@ -312,7 +314,11 @@ test("@lab fresh replies remain visible across native history pages", async ({
   for (let i = 1; i <= 8; i++) {
     await editor.fill(`Kierros ${i}`);
     await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-    await expect(page.getByText(`Kierros ${i}`, { exact: true })).toBeVisible({
+    await expect(
+      page
+        .getByRole("region", { name: "Keskusteluhistoria" })
+        .getByText(`Kierros ${i}`, { exact: true }),
+    ).toBeVisible({
       timeout: 20000,
     });
     await expect(
@@ -320,7 +326,11 @@ test("@lab fresh replies remain visible across native history pages", async ({
     ).toBeVisible({ timeout: 30000 });
     await expect(editor).toBeEnabled({ timeout: 30000 });
   }
-  await expect(page.getByText("Kierros 8", { exact: true })).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "Keskusteluhistoria" })
+      .getByText("Kierros 8", { exact: true }),
+  ).toBeVisible();
 });
 
 test("@lab fake-Pi crash leaves the turn readable but blocks another send", async ({
@@ -337,13 +347,20 @@ test("@lab fake-Pi crash leaves the turn readable but blocks another send", asyn
   const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
   await editor.fill("kaadu nyt");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(page.getByText("kaadu nyt", { exact: true })).toBeVisible({
+  await expect(
+    page
+      .getByRole("region", { name: "Keskusteluhistoria" })
+      .getByText("kaadu nyt", { exact: true }),
+  ).toBeVisible({
     timeout: 20000,
   });
   await expect(page.getByText("Tila epävarma")).toBeVisible({ timeout: 20000 });
   await expect(
     page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toHaveCount(0);
+  // The live transition to uncertain does not run an expensive continuation
+  // proof on a journal event. A deliberate status check can request one.
+  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
   await expect(
     page.getByRole("button", { name: "Jatka keskustelua" }),
   ).toBeVisible();
@@ -362,6 +379,9 @@ test("@lab fake-Pi crash leaves the turn readable but blocks another send", asyn
 test("@lab intermediate assistant message does not claim turn completion", async ({
   page,
 }) => {
+  expect(
+    (await page.request.get("/fixture/scenario?value=pi-visual-hold")).status(),
+  ).toBe(204);
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
@@ -384,11 +404,17 @@ test("@lab intermediate assistant message does not claim turn completion", async
     /Käyttää työkalua|Odottaa Pi:n seuraavaa vaihetta|Valmistelee seuraavaa vaihetta/,
   );
   await expect(intermediate.locator("header")).toHaveText("Pi");
+  expect(
+    (await page.request.get("/fixture/scenario?value=ready")).status(),
+  ).toBe(204);
 });
 
 test("@lab slow turn explains work and stop requires an explicit confirmation", async ({
   page,
 }) => {
+  expect(
+    (await page.request.get("/fixture/scenario?value=pi-visual-hold")).status(),
+  ).toBe(204);
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
@@ -407,7 +433,7 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
     { timeout: 20000 },
   );
   await expect(progress).toContainText("Käyttää työkalua bash", {
-    timeout: 12000,
+    timeout: 20000,
   });
   await page.getByRole("button", { name: "Keskeytä" }).click();
   await expect(
@@ -417,6 +443,9 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
   await expect(
     page.getByRole("group", { name: "Vahvista keskeytys" }),
   ).toHaveCount(0);
+  expect(
+    (await page.request.get("/fixture/scenario?value=ready")).status(),
+  ).toBe(204);
   await expect(
     page.getByText(/työn päättymistä ei voida vahvistaa/),
   ).toBeVisible({ timeout: 20000 });
@@ -436,27 +465,43 @@ test("@lab idle conversation uses journal alone and journal heartbeat is 20 seco
     .getByRole("navigation")
     .getByRole("link", { name: "aurinkokello" })
     .click();
+  const firstStatus = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/v1/conversations/") &&
+      new URL(response.url()).pathname.endsWith("/status") &&
+      response.ok(),
+  );
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toBeVisible();
-  // The initial status and snapshot are allowed; count only idle requests.
+  await firstStatus;
+  // Wait for the initial status and event-stream handshake to settle before
+  // timing a genuinely idle window. The editor can render before either ends.
+  await page.waitForTimeout(1000);
   let statusReads = 0;
   let removedStreams = 0;
   let journalReads = 0;
+  const observed: string[] = [];
+  const started = Date.now();
   page.on("request", (request) => {
     const url = new URL(request.url());
     if (
       url.pathname.endsWith("/status") &&
       url.pathname.includes("/conversations/")
-    )
+    ) {
+      observed.push(`status +${Date.now() - started}ms ${url.search}`);
       statusReads++;
+    }
     if (
       url.pathname.endsWith("/stream") &&
       url.pathname.includes("/conversations/")
     )
       removedStreams++;
-    if (url.pathname === "/api/v1/events") journalReads++;
+    if (url.pathname === "/api/v1/events") {
+      observed.push(`journal +${Date.now() - started}ms`);
+      journalReads++;
+    }
   });
   const heartbeat = await page.evaluate(async () => {
     const snapshot = await (await fetch("/api/v1/snapshot")).json();
@@ -482,7 +527,7 @@ test("@lab idle conversation uses journal alone and journal heartbeat is 20 seco
   expect(heartbeat.text).toContain(": heartbeat");
   expect(heartbeat.elapsed).toBeGreaterThanOrEqual(18000);
   expect(heartbeat.elapsed).toBeLessThan(25000);
-  expect(statusReads).toBe(0);
-  expect(removedStreams).toBe(0);
-  expect(journalReads).toBe(1); // the explicit heartbeat observation only
+  expect(statusReads, observed.join(", ")).toBe(0);
+  expect(removedStreams, observed.join(", ")).toBe(0);
+  expect(journalReads, observed.join(", ")).toBe(1); // the explicit heartbeat observation only
 });

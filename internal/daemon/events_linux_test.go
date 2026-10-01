@@ -130,6 +130,29 @@ func TestEventJournalNativeBurstHasTrailingInvalidation(t *testing.T) {
 	}
 }
 
+func TestEventStreamOpensBeforeFirstHeartbeat(t *testing.T) {
+	j := newEventJournal()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		j.stream(w, r, func() bool { return true })
+	}))
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "GET", server.URL+"/api/v1/events?after="+j.cursor(0), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Host = "unix"
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("idle event stream did not open before its heartbeat: %v", err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 200 || res.Header.Get("Content-Type") != "text/event-stream" {
+		t.Fatalf("unexpected idle event stream: %d %s", res.StatusCode, res.Header.Get("Content-Type"))
+	}
+}
+
 func TestEventStreamExactReplayAndLastEventID(t *testing.T) {
 	j := newEventJournal()
 	zero, _ := j.watermark()

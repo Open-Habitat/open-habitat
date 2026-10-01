@@ -228,9 +228,8 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 		emit(map[string]any{"type": "agent_end"})
 		return
 	}
-	start := map[string]any{"type": "tool_execution_start", "toolName": "bash"}
+	start := map[string]any{"type": "tool_execution_start", "toolName": "bash", "toolCallId": callID}
 	if stream {
-		start["toolCallId"] = callID
 		start["args"] = map[string]any{"command": "ls"}
 	}
 	emit(start)
@@ -268,9 +267,8 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 		time.Sleep(step)
 	}
 	s.append(message("toolResult", []map[string]any{{"type": "text", "text": listing}}, map[string]any{"toolCallId": callID, "toolName": "bash", "isError": false}))
-	end := map[string]any{"type": "tool_execution_end", "toolName": "bash"}
+	end := map[string]any{"type": "tool_execution_end", "toolName": "bash", "toolCallId": callID}
 	if stream {
-		end["toolCallId"] = callID
 		end["result"] = map[string]any{"content": []map[string]any{{"type": "text", "text": listing}}}
 		end["isError"] = false
 	}

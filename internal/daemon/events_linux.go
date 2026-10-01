@@ -333,6 +333,7 @@ func (j *eventJournal) stream(w http.ResponseWriter, r *http.Request, valid func
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(200)
+	flusher.Flush() // Open the SSE connection now, not on the first 20s heartbeat.
 	deadline := time.Now().Add(10 * time.Minute)
 	end := time.NewTimer(time.Until(deadline))
 	defer end.Stop()
