@@ -7,7 +7,8 @@ status: open
 priority: normal
 provenance: agent
 provenance_detail: wrap-up-2026-10-01
-lane: unlaned
+lane: design-package
+lane_seq: 1
 ---
 
 # Design package assembly fails when its cache directory is missing
