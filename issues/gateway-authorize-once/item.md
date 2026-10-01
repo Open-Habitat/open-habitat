@@ -3,11 +3,13 @@ created: 2026-10-01
 updated: 2026-10-01
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@architecture-built-on-caution']
 lane: caution-removal
 lane_seq: 10
+closed: 2026-10-01
+closed_by: claude
 ---
 
 # Gateway authorizes a session once at login
@@ -38,3 +40,13 @@ points. ADR 0006 and interfaces describe explicit revocation as the runtime
 revocation mechanism; changing the allowlist alone does not end live sessions.
 
 Test selection and the final gate follow [TESTING.md](../../TESTING.md).
+
+## Acceptance Criteria
+
+- [x] Counting broker proves one login-time authorization and no exchange on live requests or stream frames.
+- [x] Expiry, logout, revocation and two-daemon routing still pass synthetic tests.
+- [x] Clean committed-tree gate, project view validator and issue doctor pass.
+
+## Resolution
+
+Implemented at `5199976`; [result and test evidence](result.md). The broker-approved, root-only revocation check remains unchanged: changing it would alter ADR 0006's authority contract. An unlaned follow-up [tracks the admission/revocation ordering gap](../vastly-cowardly-rainstorm/item.md).
