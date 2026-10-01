@@ -42,7 +42,6 @@ import {
   create,
   list,
   NotAdmitted,
-  parseStatus,
   queueMessage,
   type Session,
   type Status,
@@ -119,6 +118,7 @@ export function BrowserConversation({
   const [events, setEvents] = useState<unknown[]>([]);
   const [live, setLive] = useState<LiveTurn>();
   const [streamError, setStreamError] = useState(false);
+  const openedProof = useRef("");
   const streamFailures = useRef(0);
   const probePending = useRef(false);
   const verifiedSnapshot = useRef(snapshot);
@@ -249,6 +249,7 @@ export function BrowserConversation({
     setLive(undefined);
     pendingNativeEntry.current = undefined;
     streamFailures.current = 0;
+    setStreamError(false);
     setConfirmStop(false);
     setWorkingMode("follow_up");
     setFinishedInBackground(false);
@@ -323,7 +324,7 @@ export function BrowserConversation({
     if (draftKey) sessionStorage.setItem(draftKey, value);
   };
   const refresh = useCallback(
-    async (streamStatus?: Status) => {
+    async (requestContinuation = false) => {
       if (
         stale ||
         !id ||
@@ -337,13 +338,13 @@ export function BrowserConversation({
       pending.current = true;
       const version = generation.current;
       try {
-        // The gateway rechecks broker and browser session on every stream frame;
-        // the daemon checks the mapped identity. Fallback HTTP reads do likewise.
-        if (!streamStatus) {
-          const token = await sessionCSRF();
-          if (token !== csrf) throw new Error("identity_lost");
-        }
-        const nextStatus = streamStatus ?? (await status(id));
+        const token = await sessionCSRF();
+        if (token !== csrf) throw new Error("identity_lost");
+        let nextStatus = await status(id);
+        // A continuation proof is expensive and meaningful only for an ended
+        // conversation. Ordinary status reads never run one.
+        if (requestContinuation && nextStatus.state === "uncertain")
+          nextStatus = await status(id, undefined, true);
         if (!alive.current || version !== generation.current) return;
         if (nextStatus.workspace_id !== workspace.workspace_id)
           throw new Error("invalid workspace");
@@ -363,7 +364,7 @@ export function BrowserConversation({
         const reconciledContinuation =
           sessionStorage.getItem(continueKey) === "uncertain" &&
           nextStatus.state === "idle" &&
-          nextStatus.native_history === "readable";
+          nextStatus.native_history === "present";
         if (nextStatus.state === "idle") setWorkingMode("follow_up");
         const abortId = sessionStorage.getItem(
           `nah:abort:${identity}:${csrf}:${id}`,
@@ -483,7 +484,7 @@ export function BrowserConversation({
         }
         setEvents(nextStatus.events); // bounded tail, never concatenate snapshots
         setProblem("");
-        if (nextStatus.native_history === "readable") {
+        if (nextStatus.native_history === "present") {
           try {
             const page = await readHistoryFetch(id);
             if (!alive.current || version !== generation.current) return;
@@ -565,7 +566,6 @@ export function BrowserConversation({
                 (old) => old && { ...old, fragments: [], truncated: false },
               );
             }
-            if (!streamStatus && !probePending.current) setStreamError(false);
             if (reconciledContinuation) {
               sessionStorage.removeItem(continueKey);
               sessionStorage.setItem(
@@ -583,12 +583,6 @@ export function BrowserConversation({
           // Missing new history is normal before the first Pi write. A verified
           // status is enough to restore the existing idle-control gate.
           setHistoryError(nextStatus.native_history === "unavailable");
-          if (
-            !streamStatus &&
-            !probePending.current &&
-            nextStatus.native_history === "missing"
-          )
-            setStreamError(false);
         }
       } catch {
         if (alive.current && version === generation.current) {
@@ -666,6 +660,7 @@ export function BrowserConversation({
       source.onopen = () => {
         opened = true;
         streamFailures.current = 0;
+        setStreamError(false);
       };
       for (const kind of [
         "snapshot.invalidated",
@@ -712,18 +707,29 @@ export function BrowserConversation({
               pendingNativeEntry.current = result.entry.entry_key;
               void refresh();
             } else if (!pendingNativeEntry.current) setLive(turn);
-            if (event.kind === "turn.settled") void refresh();
+            if (
+              [
+                "turn.settled",
+                "command.changed",
+                "queue.changed",
+                "question.requested",
+                "question.resolved",
+                "snapshot.invalidated",
+              ].includes(event.kind)
+            )
+              void refresh();
           } catch {
             recover();
           }
         });
       }
       source.onerror = () => {
-        if (
-          removed ||
-          (opened && source?.readyState === EventSource.CONNECTING)
-        )
-          return; // finite close: native EventSource reconnects with Last-Event-ID
+        if (removed) return;
+        if (opened && source?.readyState === EventSource.CONNECTING) {
+          setStreamError(true);
+          void refresh();
+          return; // EventSource reconnects with Last-Event-ID
+        }
         source?.close();
         source = undefined;
         probePending.current = true;
@@ -788,72 +794,41 @@ export function BrowserConversation({
   ]);
   useEffect(() => {
     if (!id || !csrf || stale) return;
-    void refresh();
-    // While SSE is healthy, a slower HTTP poll remains the independent
-    // fallback; when SSE fails, return to the original three-second cadence.
-    let lastPoll = Date.now();
+    const openKey = `${identity}:${id}`;
+    const requestProof =
+      sessions.some(
+        (s) => s.agent_id === id && s.workspace_id === workspace.workspace_id,
+      ) && openedProof.current !== openKey;
+    if (requestProof) openedProof.current = openKey;
+    void refresh(requestProof);
+    // Only poll while the journal is unavailable; the journal drives status
+    // changes on a healthy connection. A tab return also catches missed events.
     const timer = window.setInterval(() => {
-      if (
-        stream?.readyState !== EventSource.OPEN ||
-        Date.now() - lastPoll >= 15000
-      ) {
-        lastPoll = Date.now();
+      if (streamError) void refresh();
+    }, 60000);
+    const focus = () => {
+      if (document.visibilityState === "visible") {
+        setFinishedInBackground(false);
         void refresh();
       }
-    }, 3000);
-    // Stream frames are bounded status resnapshots, not a second history.
-    // The verified HTTP status/native-history read remains authoritative and
-    // also recovers when the stream is unavailable or a cursor expires.
-    let stream: EventSource | undefined;
-    let retry: number | undefined;
-    let removed = false;
-    const connect = () => {
-      if (removed || document.visibilityState === "hidden") return;
-      stream = new EventSource(`/api/v1/conversations/${id.slice(3)}/stream`);
-      stream.addEventListener("status", (event) => {
-        try {
-          const snapshot = parseStatus(
-            JSON.parse((event as MessageEvent).data),
-            id,
-          );
-          void refresh(snapshot);
-        } catch {
-          stream?.close();
-          stream = undefined;
-          void refresh();
-        }
-      });
-      stream.onerror = () => {
-        stream?.close();
-        stream = undefined;
-        // A 409 cursor expiry and a transport loss both require status/history
-        // resnapshot, never a repeat of a native write.
-        if (!removed) void refresh();
-        if (!removed)
-          retry = window.setTimeout(() => {
-            retry = undefined;
-            connect();
-          }, 3000);
-      };
-    };
-    connect();
-    const focus = () => {
-      if (document.visibilityState === "visible")
-        setFinishedInBackground(false);
-      void refresh();
-      if (!stream && retry === undefined) connect();
     };
     window.addEventListener("focus", focus);
     document.addEventListener("visibilitychange", focus);
     return () => {
-      removed = true;
       window.clearInterval(timer);
-      if (retry !== undefined) window.clearTimeout(retry);
-      stream?.close();
       window.removeEventListener("focus", focus);
       document.removeEventListener("visibilitychange", focus);
     };
-  }, [id, csrf, refresh, stale]);
+  }, [
+    id,
+    csrf,
+    refresh,
+    stale,
+    streamError,
+    sessions,
+    identity,
+    workspace.workspace_id,
+  ]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a live fragment changes the feed height without changing native entries.
   useLayoutEffect(() => {
     if (wasAtBottom.current && feed.current) {
@@ -946,7 +921,7 @@ export function BrowserConversation({
     setRetryContinuation(false);
     try {
       await verify();
-      const fresh = await status(id);
+      const fresh = await status(id, undefined, true);
       if (
         fresh.workspace_id !== workspace.workspace_id ||
         fresh.continuation !== "eligible"
@@ -1588,7 +1563,7 @@ export function BrowserConversation({
                 tone="warning"
               />
             ) : null}
-            {events.length && current?.native_history !== "readable" ? (
+            {events.length && current?.native_history !== "present" ? (
               <p role="status">
                 Pi:n tapahtumia vastaanotettu; historiaa odotetaan.
               </p>

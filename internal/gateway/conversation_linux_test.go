@@ -60,19 +60,6 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 			reply = `{"schema_version":1,"command_id":"` + cmd + `","state":"accepted"}`
 		case conversationBase + "/" + id + "/status":
 			reply = `{"schema_version":1,"agent_id":"pi:` + id + `","workspace_id":"` + ws + `","state":"pending","command_id":"` + cmd + `","ack":"pending","event_cursor":0,"events":[],"event_loss":false,"continuation":"unproven","native_history":"missing","native_revision":"","history_query":"/api/v1/agents/pi:` + id + `/history"}`
-		case conversationBase + "/" + id + "/stream":
-			if r.Header.Get("Last-Event-ID") != "" {
-				body := `{"schema_version":1,"error":{"code":"cursor_expired","message":"Request could not be completed","retryable":false,"correlation_id":"req_00000000"}}`
-				w.Header().Set("Content-Type", "application/json")
-				w.Header().Set("Content-Length", strconv.Itoa(len(body)))
-				w.WriteHeader(409)
-				_, _ = io.WriteString(w, body)
-				return
-			}
-			w.Header().Set("Content-Type", "text/event-stream")
-			w.(http.Flusher).Flush()
-			_, _ = io.WriteString(w, "id: ev1:12345678-1234-4123-8123-123456789abc:1\nevent: status\ndata: {\"schema_version\":1,\"agent_id\":\"pi:"+id+"\",\"workspace_id\":\""+ws+"\",\"state\":\"idle\",\"command_id\":\"\",\"ack\":\"\",\"event_cursor\":0,\"events\":[],\"event_loss\":false,\"continuation\":\"unproven\",\"native_history\":\"missing\",\"native_revision\":\"\",\"history_query\":\"/api/v1/agents/pi:"+id+"/history\"}\n\n")
-			return
 		case conversationBase + "/" + id + "/question":
 			reply = `{"schema_version":1,"request_id":"native-a","state":"uncertain"}`
 		case conversationBase + "/" + id + "/abort":
@@ -153,29 +140,24 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 	if w := send("GET", conversationBase+"/"+id+"/status", first, "", ""); w.Code != 200 {
 		t.Fatalf("status %d %s", w.Code, w.Body.String())
 	}
+	if w := send("GET", conversationBase+"/"+id+"/status?continuation=true", first, "", ""); w.Code != 200 {
+		t.Fatalf("explicit proof route %d %s", w.Code, w.Body.String())
+	}
+	if w := send("GET", conversationBase+"/"+id+"/status?continuation=false", first, "", ""); w.Code != 400 {
+		t.Fatalf("invalid proof flag %d", w.Code)
+	}
+
 	if w := send("GET", conversationBase+"/"+id+"/receipt?command_id="+cmd, second, "", ""); w.Code != 404 {
 		t.Fatalf("foreign receipt %d", w.Code)
 	}
 	if w := send("GET", conversationBase+"/"+id+"/receipt?command_id="+cmd, first, "", ""); w.Code != 200 || !strings.Contains(w.Body.String(), `"accepted"`) {
 		t.Fatalf("receipt %d %s", w.Code, w.Body.String())
 	}
-	if w := send("GET", conversationBase+"/"+id+"/stream", second, "", ""); w.Code != 404 {
-		t.Fatalf("foreign stream %d", w.Code)
-	}
-	if w := send("GET", conversationBase+"/"+id+"/stream", first, "", ""); w.Code != 200 || !strings.Contains(w.Body.String(), "event: status") {
-		t.Fatalf("stream %d %s", w.Code, w.Body.String())
-	}
-	cursorRequest := httptest.NewRequest("GET", "https://host.test"+conversationBase+"/"+id+"/stream", nil)
-	cursorRequest.RequestURI = cursorRequest.URL.Path
-	cursorRequest.AddCookie(&http.Cookie{Name: cookieName, Value: first})
-	cursorRequest.Header.Set("Last-Event-ID", "ev1:12345678-1234-4123-8123-123456789abc:1")
-	cursorReply := httptest.NewRecorder()
-	h.ServeHTTP(streamRecorder{cursorReply}, cursorRequest)
-	if cursorReply.Code != 409 || !strings.Contains(cursorReply.Body.String(), `"cursor_expired"`) {
-		t.Fatalf("cursor rejection %d %s", cursorReply.Code, cursorReply.Body.String())
+	if w := send("GET", conversationBase+"/"+id+"/stream", first, "", ""); w.Code != 400 {
+		t.Fatalf("removed stream %d", w.Code)
 	}
 	if brokerCalls.Load() != 0 {
-		t.Fatalf("live conversation requests or stream called broker %d times", brokerCalls.Load())
+		t.Fatalf("live conversation requests called broker %d times", brokerCalls.Load())
 	}
 	question := `{"request_id":"native-a","action":"answer","value":"hello"}`
 	if w := send("POST", conversationBase+"/"+id+"/question", second, question, second); w.Code != 404 {

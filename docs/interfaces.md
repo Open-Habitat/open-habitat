@@ -28,7 +28,7 @@ ja [daemonista](../internal/daemon/handoff_linux.go).
 | `GET /api/v1/content/<content-id>` | pitkän sisällön osa; `offset` ja `limit_bytes` ohjaavat lukua |
 | `GET /api/v1/conversations` | selainistunnon hallittavissa olevat keskustelut |
 | `POST /api/v1/conversations` | uuden Pi-keskustelun käynnistys `workspace_id`:llä |
-| `GET /api/v1/conversations/<session-id>/status` | keskustelun tila ja saatavilla olevat välitulokset |
+| `GET /api/v1/conversations/<session-id>/status` | keskustelun tila ja natiivin tiedoston metatieto; `?continuation=true` pyytää erillisen jatkamistodistuksen avattaessa päättynyt keskustelu |
 | `POST /api/v1/conversations/<session-id>/send` | viesti ja sen UUID-muotoinen `command_id` |
 | `POST /api/v1/conversations/<session-id>/steer` | ohjaava viesti Pi:n steering-jonoon |
 | `POST /api/v1/conversations/<session-id>/follow_up` | jatkoviesti Pi:n follow-up-jonoon |
@@ -36,8 +36,7 @@ ja [daemonista](../internal/daemon/handoff_linux.go).
 | `POST /api/v1/conversations/<session-id>/abort` | Pi:n nykyisen vuoron keskeytyspyyntö, ei prosessin pysäytys |
 | `POST /api/v1/conversations/<session-id>/stop` | keskustelun pysäytyspyyntö |
 | `POST /api/v1/conversations/<session-id>/continue` | päättyneen selainkeskustelun tietoinen jatkaminen samasta natiivista Pi-istunnosta, tyhjä runko |
-| `GET /api/v1/conversations/<session-id>/stream` | väliaikainen, rajallinen tilannekuva-SSE; ei yleinen tapahtumavirta |
-| `GET /api/v1/events?after=<cursor>` | rajallinen yhdistetty SSE-toistovirta; toistaiseksi vain `snapshot.invalidated` natiivin Pi-tapahtuman tai ohjaimen elinkaaren muutoksesta |
+| `GET /api/v1/events?after=<cursor>` | yhdistetty SSE-toistovirta; keskustelun tilamuutokset, natiivi historia ja invalidoinnit |
 | `GET /api/v1/onboarding/github/repos` | käyttäjän GitHub-repot, sivutettuina `page`- ja `limit`-parametreilla |
 | `POST /api/v1/onboarding/github/clone` | `full_name`-kentän repon kloonaus; lopputulos JSON-vastauksena |
 | `GET /api/v1/onboarding/github/checkout` | `full_name`-parametrin paikallisen checkoutin natiivi havainto |
@@ -46,11 +45,11 @@ ja [daemonista](../internal/daemon/handoff_linux.go).
 | `GET /api/v1/onboarding/pi/attempt` | saman selainistunnon yrityksen tila |
 | `DELETE /api/v1/onboarding/pi/attempt` | yrityksen keskeytyspyyntö |
 
-Yksityisen `status`-vastauksen `continuation` on positiivinen havainto: `eligible` tarkoittaa, että selainperäinen omistajamerkintä täsmää, edellinen suora lapsi on korjattu talteen (tai daemonin uudelleenkäynnistyksen jälkeen omistajalukko on vapaa), työtila täsmää ja natiivi historia on kahdesti luettu vakaaksi oikealle id:lle ja cwd:lle. `writer_present` tarkoittaa elävää lasta tai varattua/epävarmaa omistajalukkoa, `read_only_history` puuttuvaa kelvollista selainalkuperää ja `unproven` keskeneräistä tai epäselvää muuta todistetta. Luettava `native_history` yksin ei todista kirjoittajan poistumista. Status vain havainnoi ja vapauttaa lukon heti; saman daemonin samanaikaiset tilakyselyt ja jatkaminen jonottavat enintään kaksi sekuntia erillisellä portilla eivätkä näy toisilleen ulkopuolisena kirjoittajana. Jonon aikakatkaisu näkyy tilassa `unproven` (jatkamisessa 503), ei `writer_present`. `continue` suorittaa saman todistuksen uudelleen ja pitää lukon uuden lapsen käynnistykseen asti. Välissä tapahtunut kilpailu voi palauttaa `writer_conflict`. Vain `eligible` oikeuttaa selaimen tarjoamaan jatkamista; se ei todista aiemman vuoron tai irrotetun työkalun lopputulosta.
+Vain `?continuation=true` -tilapyynnön `continuation` on jatkamistodistus; tavallinen tilapyyntö palauttaa `unproven` ilman todistusta. `eligible` tarkoittaa, että selainperäinen omistajamerkintä täsmää, edellinen suora lapsi on korjattu talteen (tai daemonin uudelleenkäynnistyksen jälkeen omistajalukko on vapaa), työtila täsmää ja natiivi historia on kahdesti luettu vakaaksi oikealle id:lle ja cwd:lle. `writer_present` tarkoittaa elävää lasta tai varattua/epävarmaa omistajalukkoa, `read_only_history` puuttuvaa kelvollista selainalkuperää ja `unproven` keskeneräistä tai epäselvää muuta todistetta. `native_history: present` tarkoittaa vain tiedoston olemassaoloa ja `native_revision` on sen koon ja muutosajan vihje. Vain historiarajapinnan lukija ratkaisee, onko sisältö luettavissa ja kelvollista. Tiedoston olemassaolo ei todista kirjoittajan poistumista. Status vain havainnoi ja vapauttaa lukon heti; saman daemonin samanaikaiset tilakyselyt ja jatkaminen jonottavat enintään kaksi sekuntia erillisellä portilla eivätkä näy toisilleen ulkopuolisena kirjoittajana. Jonon aikakatkaisu näkyy tilassa `unproven` (jatkamisessa 503), ei `writer_present`. `continue` suorittaa saman todistuksen uudelleen ja pitää lukon uuden lapsen käynnistykseen asti. Välissä tapahtunut kilpailu voi palauttaa `writer_conflict`. Vain `eligible` oikeuttaa selaimen tarjoamaan jatkamista; se ei todista aiemman vuoron tai irrotetun työkalun lopputulosta.
 
 Jatkaminen palauttaa `agent_id`, `workspace_id`, `state: idle` ja `prior_outcome: uncertain`: aiemman vuoron tulosta ei päätellä eikä epävarmaa viestiä lähetetä uudelleen. Elävän kirjoittajan lukko palauttaa 409 `writer_conflict`; ilman selaimesta luotua lukon alkuperämerkintää palautuu 409 `read_only_history`; epäselvä historia tai työtila palauttaa 409 `control_uncertain`. Gateway vaatii saman kirjautumisistunnon hallussa olevan keskustelukahvan myös jatkamisessa. Daemonin uudelleenkäynnistyksen jälkeen pelkkä luettava historia ei riitä: Pi:n lapselle periytynyt lukko on saatava uudelleen, natiivi historia täsmäytetään ja vain eksplisiittinen pyyntö käynnistää uuden lapsen. Gatewayn uudelleenkäynnistyksessä katoavaa kahvavuokraa ei palauteta historiasta. Irrotetut työkalut voivat jäädä eloon; siksi aiemman työn lopputulos jää epävarmaksi.
 
-Nykyinen selainohjaus kysyy tilaa toistuvasti. Sen väliaikaisen protokollan
+Selain hakee tilan avattaessa keskustelun ja journalin tilamuutosten jälkeen; vain katkenneen tapahtumavirran aikana se käyttää hidasta varakyselyä. Sen väliaikaisen protokollan
 pyyntömuodot validoidaan [daemonin ohjaimessa](../internal/daemon/conversation_linux.go),
 ja selain tarkistaa vastausten muodot. [Gateway](../internal/gateway/proxy_linux.go)
 välittää vastauksen tulkitsematta sitä (paitsi väliaikaisen kahvavuokran vaatima
@@ -58,11 +57,7 @@ keskustelulistan suodatus ja uuden kahvan kirjaus);
 ne eivät ole jäljempänä kuvatun yleisen komentoskeeman toteutus.
 Gatewayn uudelleenkäynnistys kadottaa selainistuntojen ohjaussidokset.
 Daemonin uudelleenkäynnistys kadottaa sen muistissa olevan ohjaustilan.
-Pi:n kirjoittama historia säilyy luettavana. Väliaikaisen keskusteluvirran
-`Last-Event-ID` ei mahdollista aukon toistoa: jokainen nykyisen elinkaaren
-jo käytetty kursori palauttaa `409 cursor_expired`, vieraan daemon-elinkaaren kursori
-`409 cursor_instance_mismatch`. Selain hakee silloin uuden tilan ja natiivihistorian;
-virta ei väitä välistä jääneiden tapahtumien tulleen toimitetuiksi.
+Pi:n kirjoittama historia säilyy luettavana. Tapahtumajournalin kursori mahdollistaa toiston rajallisen ikkunan sisällä. Vanhentunut kursori palauttaa `409 cursor_expired`, vieraan daemon-elinkaaren kursori `409 cursor_instance_mismatch`; selain hakee silloin uuden tilannekuvan ja natiivihistorian.
 
 Yleisen SSE:n rakenteiset deltaeventit sekä komento- ja operaatiokyselyt ovat vielä toteutettavaa
 [agenttiohjausta](../issues/build-agent-control/item.md). Niiden sovittu
@@ -308,11 +303,10 @@ JSONL:stä luetut `history.entry`-merkinnät syntyvät tästä reitistä;
 delta- ja workspace-eventit eivät vielä synny. Snapshotin watermark otetaan ennen natiivilukua, joten
 sen aikana syntyneen muutoksen invalidointi voidaan myös toistaa. Nykyisen
 kuvan ja streamin päällekkäisyys ei todista atomista näkymää samaan kellonhetkeen.
-Yhteys kestää enintään 20 sekuntia, daemonin kirjoitusaika enintään 24 ja
+Yhteys kestää enintään 10 minuuttia, sykettä lähetetään 20 sekunnin välein, daemonin kirjoitusaika enintään 11 minuuttia ja
 gateway katkaisee yli 10 sekuntia jumittuneen kirjoituksen. Gateway ei rajoita
 terveen virran kehysten tai kokonaisrungon määrää; daemon päättää virran
-eliniän. Selain ei vielä käytä
-tätä reittiä; väliaikainen keskusteluvirta jää käyttöön.
+eliniän. Selain käyttää tätä ainoana työntökanavana.
 
 [Snapshot](../contracts/v1/snapshot.schema.json) on daemonin muodostama
 tilannekuva. Sen `event_cursor` kertoo, mihin asti tapahtumat ovat mukana

@@ -51,6 +51,29 @@ func TestEventJournalReplayAndErrors(t *testing.T) {
 	}
 }
 
+func TestEventStreamChecksValidityOnlyOnOpen(t *testing.T) {
+	j := newEventJournal()
+	zero, _ := j.watermark()
+	j.appendInvalidation("")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		checks := 0
+		j.stream(w, r, func() bool { checks++; return checks == 1 })
+	}))
+	defer server.Close()
+	req, _ := http.NewRequest("GET", server.URL+"/api/v1/events?after="+zero, nil)
+	req.Host = "unix"
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	reader := bufio.NewReader(res.Body)
+	line, err := reader.ReadString('\n')
+	if err != nil || line != "id: "+j.cursor(1)+"\n" {
+		t.Fatalf("replay %q: %v", line, err)
+	}
+}
+
 func TestEventJournalMixedReplayAndByteBound(t *testing.T) {
 	j := newEventJournal()
 	zero, _ := j.watermark()

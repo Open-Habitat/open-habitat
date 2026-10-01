@@ -163,8 +163,15 @@ function path(id: string) {
 export async function status(
   id: string,
   signal?: AbortSignal,
+  continuation = false,
 ): Promise<Status> {
-  return parseStatus(await request(`${path(id)}/status`, signal), id);
+  return parseStatus(
+    await request(
+      `${path(id)}/status${continuation ? "?continuation=true" : ""}`,
+      signal,
+    ),
+    id,
+  );
 }
 export function parseStatus(v: unknown, id: string): Status {
   if (!agent.test(id)) throw new Error("invalid agent");
@@ -188,9 +195,7 @@ export function parseStatus(v: unknown, id: string): Status {
     (v.auth_error !== undefined &&
       v.auth_error !== "" &&
       v.auth_error !== "pi_auth_failed") ||
-    !["missing", "unavailable", "readable"].includes(
-      String(v.native_history),
-    ) ||
+    !["missing", "unavailable", "present"].includes(String(v.native_history)) ||
     !["eligible", "writer_present", "read_only_history", "unproven"].includes(
       String(v.continuation),
     ) ||

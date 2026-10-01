@@ -9,10 +9,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -38,8 +36,7 @@ type ConversationController struct {
 	// Only the synthetic browser host sets them apart from cfg.Home.
 	home     string
 	discover func(transport.Config) Discovery
-	fixture  bool   // untrusted synthetic runtime: never set in production
-	instance string // ephemeral provisional stream cursor scope
+	fixture  bool // untrusted synthetic runtime: never set in production
 	journal  *eventJournal
 	// A short-lived per-daemon gate prevents continuation probes from presenting
 	// each other's temporary flock as an external writer. Never hold mu across I/O.
@@ -65,7 +62,7 @@ type conversation struct {
 	command                      string
 	events                       []json.RawMessage
 	cursor                       uint64
-	streamSeq                    uint64
+	historyPath                  string
 	lost                         bool
 	aborting                     bool
 	receipts                     map[string]string // bounded to spent send IDs; no durable acceptance claim
@@ -98,8 +95,7 @@ func (c *ConversationController) showQuestion(s *conversation, q pendingQuestion
 }
 
 func newConversationController(ctx context.Context, cfg transport.Config, runtime *core.PiRuntimeConfig, trusted func(*http.Request) bool, status func(context.Context) string) *ConversationController {
-	instance, _ := uuid() // stream refuses to start if the instance ID is unavailable
-	c := &ConversationController{cfg: cfg, runtime: runtime, trusted: trusted, status: status, sessions: make(map[string]*conversation), home: cfg.Home, discover: Discover, instance: instance}
+	c := &ConversationController{cfg: cfg, runtime: runtime, trusted: trusted, status: status, sessions: make(map[string]*conversation), home: cfg.Home, discover: Discover}
 	go func() { <-ctx.Done(); c.shutdown() }()
 	return c
 }
@@ -237,7 +233,7 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		snapshotError(w, 403, "cross_user_denied")
 		return
 	}
-	if (r.URL.RawQuery != "" && !(r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/receipt") && len(r.URL.Query()) == 1 && len(r.URL.Query()["command_id"]) == 1 && sessionIDPattern.MatchString(r.URL.Query().Get("command_id")))) || r.URL.EscapedPath() != r.URL.Path || r.RequestURI != r.URL.RequestURI() {
+	if (r.URL.RawQuery != "" && !(r.Method == http.MethodGet && ((strings.HasSuffix(r.URL.Path, "/receipt") && len(r.URL.Query()) == 1 && len(r.URL.Query()["command_id"]) == 1 && sessionIDPattern.MatchString(r.URL.Query().Get("command_id"))) || (strings.HasSuffix(r.URL.Path, "/status") && len(r.URL.Query()) == 1 && r.URL.Query().Get("continuation") == "true" && len(r.URL.Query()["continuation"]) == 1)))) || r.URL.EscapedPath() != r.URL.Path || r.RequestURI != r.URL.RequestURI() {
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
@@ -262,8 +258,6 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		c.readReceipt(w, r, parts[0])
 	case r.Method == http.MethodGet && parts[1] == "status":
 		c.observe(w, r, parts[0])
-	case r.Method == http.MethodGet && parts[1] == "stream":
-		c.stream(w, r, parts[0])
 	case r.Method == http.MethodPost && (parts[1] == "send" || parts[1] == "steer" || parts[1] == "follow_up" || parts[1] == "clear_queue"):
 		if parts[1] == "clear_queue" {
 			c.clearQueue(w, r, parts[0])
@@ -546,7 +540,7 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
-	s := &conversation{id: id, workspace: origin.Workspace, cwd: cwd, rpc: p, owner: owner, state: "idle", ack: "uncertain", events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool), publishedHistory: published}
+	s := &conversation{id: id, workspace: origin.Workspace, cwd: cwd, rpc: p, owner: owner, state: "idle", ack: "uncertain", events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool), publishedHistory: published, historyPath: path}
 
 	if old != nil {
 		s.commands = old.commands
@@ -980,6 +974,9 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 		c.receipt(s, body.CommandID, "pending")
 	}
 	s.command = body.CommandID
+	if c.journal != nil {
+		c.journal.appendInvalidation("pi:" + id)
+	}
 	c.mu.Unlock()
 	// A disconnect must not cancel the native request. Never retry ambiguous writes.
 	go func() {
@@ -1015,6 +1012,8 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 		}
 		if kind == "send" {
 			c.receipt(s, body.CommandID, s.ack)
+		} else if c.journal != nil {
+			c.journal.appendInvalidation("pi:" + id)
 		}
 	}()
 	historyJSON(w, map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": "pending"})
@@ -1056,7 +1055,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 	}
 	queueSteering, queueFollowUp, queueRevision := append([]string{}, s.queueSteering...), append([]string{}, s.queueFollowUp...), s.queueRevision
 	events := append([]json.RawMessage{}, s.events...)
-	cwd := s.cwd
+	cwd, path := s.cwd, s.historyPath
 	if s.rpc.overflow.Load() {
 		state = "uncertain"
 		lost = true
@@ -1071,41 +1070,59 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 		}
 	}
 	c.mu.Unlock()
+	// Discovery checks the native header only until this conversation's path is
+	// known. Thereafter status uses metadata, not a JSONL read. A present file
+	// is only a change hint; the history endpoint decides readability.
+	if path == "" {
+		if sessions, err := nativeSessions(c.nativeCfg()); err == nil {
+			for _, n := range sessions {
+				if n.id == id && n.cwd == cwd && n.state == "readable" {
+					path = n.path
+					c.mu.Lock()
+					if c.sessions[id] == s {
+						s.historyPath = path
+					}
+					c.mu.Unlock()
+					break
+				}
+			}
+		}
+	}
 	revision := ""
 	history := "missing"
-	sessions, err := nativeSessions(c.nativeCfg())
-	if err != nil {
-		history = "unavailable"
-	} else {
-		for _, n := range sessions {
-			if n.id == id {
+	if path != "" {
+		info, err := os.Lstat(path)
+		switch {
+		case errors.Is(err, os.ErrNotExist):
+			// A removed file is not readable; do not continue to trust its hint.
+		case err != nil || !info.Mode().IsRegular() || info.Size() > maxHistoryFile:
+			history = "unavailable"
+		default:
+			if owner, ok := fileOwner(info); !ok || owner != c.cfg.UID {
 				history = "unavailable"
-				if n.cwd == cwd {
-					loaded := readNativeSettled(n.path, c.cfg.UID)
-					if loaded.id == id && loaded.cwd == cwd && loaded.state == "readable" {
-						revision = loaded.revision
-						history = "readable"
-					}
-				}
-				break
+			} else {
+				history = "present"
+				revision = opaque("rev_", fmt.Sprintf("%d:%d:%d", info.Size(), info.ModTime().UnixNano(), info.Mode()))
 			}
 		}
 	}
 	continuation := "unproven"
-	if releasePermit, ok := c.proofPermit(r.Context()); ok {
-		func() {
-			defer releasePermit()
-			owner, _, ws, _, _, _, proof := c.continuationProof(id)
-			if ws != nil {
-				_ = ws.Close()
-			}
-			if owner != nil {
-				_ = owner.release()
-			}
-			if proof != "source_unavailable" {
-				continuation = proof
-			}
-		}()
+	if r.URL.Query().Get("continuation") == "true" {
+		if releasePermit, ok := c.proofPermit(r.Context()); ok {
+			func() {
+				defer releasePermit()
+				owner, _, ws, _, _, _, proof := c.continuationProof(id)
+				if ws != nil {
+					_ = ws.Close()
+				}
+				if owner != nil {
+					_ = owner.release()
+				}
+				if proof != "source_unavailable" {
+					continuation = proof
+				}
+			}()
+		}
 	}
 	// A concurrent continuation can change the handle while the probe runs.
 	// Never advertise eligibility for a superseded handle.
@@ -1231,6 +1248,9 @@ func (c *ConversationController) clearQueue(w http.ResponseWriter, r *http.Reque
 	s.state = "pending"
 	s.ack = "pending"
 	s.command = body.CommandID
+	if c.journal != nil {
+		c.journal.appendInvalidation("pi:" + id)
+	}
 	c.mu.Unlock()
 	reply, err := s.rpc.requestQueue("clear_queue", "", 4*time.Second)
 	c.mu.Lock()
@@ -1248,6 +1268,9 @@ func (c *ConversationController) clearQueue(w http.ResponseWriter, r *http.Reque
 			}
 			s.ack = "accepted"
 		}
+	}
+	if c.journal != nil {
+		c.journal.appendInvalidation("pi:" + id)
 	}
 	accepted := err == nil && reply.Accepted
 	// A correlated clear receipt remains valid even if Pi exits or a stop races
@@ -1286,6 +1309,9 @@ func (c *ConversationController) abort(w http.ResponseWriter, r *http.Request, i
 	s.commands[body.CommandID] = true
 	s.command = body.CommandID
 	s.ack = "pending"
+	if c.journal != nil {
+		c.journal.appendInvalidation("pi:" + id)
+	}
 	c.mu.Unlock()
 	// A browser disconnect cannot cancel an abort already delivered to Pi.
 	go func() {
@@ -1306,6 +1332,9 @@ func (c *ConversationController) abort(w http.ResponseWriter, r *http.Request, i
 		default:
 			s.ack = "accepted"
 		}
+		if c.journal != nil {
+			c.journal.appendInvalidation("pi:" + id)
+		}
 	}()
 	historyJSON(w, map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": "pending"})
 }
@@ -1324,107 +1353,22 @@ func (c *ConversationController) stop(w http.ResponseWriter, r *http.Request, id
 	}
 	if s.state != "stopping" {
 		s.state = "stopping"
-		go func() { _ = s.rpc.close(); c.mu.Lock(); s.state = "uncertain"; c.mu.Unlock() }()
+		if c.journal != nil {
+			c.journal.appendInvalidation("pi:" + id)
+		}
+		go func() {
+			_ = s.rpc.close()
+			c.mu.Lock()
+			s.state = "uncertain"
+			if c.journal != nil {
+				c.journal.appendInvalidation("pi:" + id)
+			}
+			c.mu.Unlock()
+		}()
 	}
 	c.mu.Unlock()
 	historyJSON(w, map[string]any{"schema_version": 1, "state": "termination_unknown"})
 }
-
-// stream is a bounded, provisional SSE status-resnapshot stream. Its cursor is
-// transport-only: lost frames are recovered from the native history and current
-// status, never from a parallel history store. A stream cannot write to Pi.
-func (c *ConversationController) stream(w http.ResponseWriter, r *http.Request, id string) {
-	if r.ContentLength > 0 || len(r.TransferEncoding) != 0 || c.instance == "" {
-		snapshotError(w, 400, "invalid_request")
-		return
-	}
-	session := c.lookup(w, id)
-	if session == nil {
-		return
-	}
-	// The gateway checks the browser login before forwarding every frame.
-	prefix := "ev1:" + c.instance + ":"
-	last := r.Header.Get("Last-Event-ID")
-	if last != "" {
-		if len(last) > 100 || !strings.HasPrefix(last, prefix) {
-			snapshotError(w, 409, "cursor_instance_mismatch")
-			return
-		}
-		seq, err := strconv.ParseUint(strings.TrimPrefix(last, prefix), 10, 64)
-		c.mu.Lock()
-		current := session.streamSeq
-		c.mu.Unlock()
-		if err != nil || seq == 0 || seq > current {
-			snapshotError(w, 409, "control_uncertain")
-			return
-		}
-		// No frame can be replayed. Even the latest cursor may have missed
-		// frames emitted to another viewer, so require a fresh status/history
-		// read instead of claiming a continuous stream.
-		snapshotError(w, 409, "cursor_expired")
-		return
-	}
-	// The UDS transport has a five-second request deadline. Remove it only
-	// for this finite read-only stream; keep an absolute write bound.
-	control := http.NewResponseController(w)
-	if control.SetReadDeadline(time.Time{}) != nil || control.SetWriteDeadline(time.Now().Add(24*time.Second)) != nil {
-		snapshotError(w, 503, "native_source_unavailable")
-		return
-	}
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		snapshotError(w, 503, "native_source_unavailable")
-		return
-	}
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(200)
-	// Limit whole-history revision reads to one
-	// every two seconds per connected viewer.
-	tick := time.NewTicker(2 * time.Second)
-	defer tick.Stop()
-	end := time.Now().Add(20 * time.Second)
-	for n := 0; n < 20 && time.Now().Before(end); n++ {
-		if n > 0 {
-			select {
-			case <-r.Context().Done():
-				return
-			case <-tick.C:
-			}
-		}
-		c.mu.Lock()
-		s := c.sessions[id]
-		closed := c.closed || s == nil
-		c.mu.Unlock()
-		if closed {
-			return
-		}
-		rec := httptest.NewRecorder()
-		c.observe(rec, r, id)
-		if rec.Code != 200 || rec.Body.Len() > conversationStreamFrameLimit {
-			return
-		}
-		c.mu.Lock()
-		s = c.sessions[id]
-		if c.closed || s == nil {
-			c.mu.Unlock()
-			return
-		}
-		// IDs belong to this private resnapshot channel, not the published
-		// replay contract. Every connection without a cursor starts afresh.
-		s.streamSeq++
-		seq := s.streamSeq
-		c.mu.Unlock()
-		frame := strings.TrimSpace(rec.Body.String())
-		if _, err := io.WriteString(w, "id: "+prefix+strconv.FormatUint(seq, 10)+"\nevent: status\ndata: "+frame+"\n\n"); err != nil {
-			return
-		}
-		flusher.Flush()
-	}
-}
-
-const conversationStreamFrameLimit = 1 << 20
 
 // Pi's assistant error text is used only for classification and never leaves
 // the daemon. Match authentication failures, not arbitrary provider errors.

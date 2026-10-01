@@ -320,7 +320,7 @@ func (j *eventJournal) stream(w http.ResponseWriter, r *http.Request, valid func
 		return
 	}
 	control := http.NewResponseController(w)
-	if control.SetReadDeadline(time.Time{}) != nil || control.SetWriteDeadline(time.Now().Add(24*time.Second)) != nil {
+	if control.SetReadDeadline(time.Time{}) != nil || control.SetWriteDeadline(time.Now().Add(11*time.Minute)) != nil {
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
@@ -333,13 +333,13 @@ func (j *eventJournal) stream(w http.ResponseWriter, r *http.Request, valid func
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(200)
-	deadline := time.Now().Add(20 * time.Second)
+	deadline := time.Now().Add(10 * time.Minute)
 	end := time.NewTimer(time.Until(deadline))
 	defer end.Stop()
-	heartbeat := time.NewTicker(2 * time.Second)
+	heartbeat := time.NewTicker(20 * time.Second)
 	defer heartbeat.Stop()
 	for {
-		if !valid() || r.Context().Err() != nil || !time.Now().Before(deadline) {
+		if r.Context().Err() != nil || !time.Now().Before(deadline) {
 			return
 		}
 		j.mu.Lock()
@@ -356,9 +356,6 @@ func (j *eventJournal) stream(w http.ResponseWriter, r *http.Request, valid func
 		changed := j.changed
 		j.mu.Unlock()
 		if b != nil {
-			if !valid() {
-				return
-			}
 			var event struct {
 				Cursor string `json:"cursor"`
 				Kind   string `json:"kind"`
@@ -373,9 +370,6 @@ func (j *eventJournal) stream(w http.ResponseWriter, r *http.Request, valid func
 		select {
 		case <-changed:
 		case <-heartbeat.C:
-			if !valid() {
-				return
-			}
 			if _, err := io.WriteString(w, ": heartbeat\n\n"); err != nil {
 				return
 			}

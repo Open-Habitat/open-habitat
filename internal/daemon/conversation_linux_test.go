@@ -3,11 +3,9 @@
 package daemon
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -420,68 +418,64 @@ for line in sys.stdin:
 	t.Fatal("no Pi abort acknowledgement")
 }
 
-func TestConversationStreamCursorAndNativeRecovery(t *testing.T) {
+func TestConversationStatusNoStreamOrImplicitProof(t *testing.T) {
 	const id = "12345678-1234-4123-8123-123456789abc"
-	const instance = "aaaaaaaa-1234-4123-8123-123456789abc"
 	home := t.TempDir()
 	s := &conversation{id: id, workspace: "ws_12345678", cwd: home, rpc: &piRPC{}, state: "idle", events: []json.RawMessage{}}
-	c := &ConversationController{instance: instance, sessions: map[string]*conversation{id: s}, home: home, cfg: transport.Config{Home: home, UID: os.Geteuid()}, status: func(context.Context) string { return "usable" }}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { c.stream(w, r, id) }))
-	defer server.Close()
-	request := func(cursor string) (int, string) {
-		req, _ := http.NewRequest("GET", server.URL, nil)
-		if cursor != "" {
-			req.Header.Set("Last-Event-ID", cursor)
+	c := &ConversationController{sessions: map[string]*conversation{id: s}, home: home, cfg: transport.Config{Home: home, UID: os.Geteuid()}, trusted: func(*http.Request) bool { return true }}
+	for _, route := range []string{"/api/v1/conversations/" + id + "/status", "/api/v1/conversations/" + id + "/stream"} {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "http://unix"+route, nil)
+		r.RequestURI = r.URL.RequestURI()
+		c.ServeHTTP(w, r)
+		if strings.HasSuffix(route, "/stream") {
+			if w.Code != 404 {
+				t.Fatalf("stream: %d", w.Code)
+			}
+			continue
 		}
-		client := &http.Client{Timeout: 3 * time.Second}
-		res, err := client.Do(req)
-		if err != nil {
-			t.Fatal(err)
+		if w.Code != 200 || !strings.Contains(w.Body.String(), `"continuation":"unproven"`) {
+			t.Fatalf("status: %d %s", w.Code, w.Body.String())
 		}
-		defer res.Body.Close()
-		if res.StatusCode != 200 {
-			b, _ := io.ReadAll(res.Body)
-			return res.StatusCode, string(b)
-		}
-		reader := bufio.NewReader(res.Body)
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			t.Fatal(err)
-		}
-		return res.StatusCode, line
-	}
-	if code, first := request(""); code != 200 || !strings.Contains(first, "ev1:"+instance+":1") {
-		t.Fatalf("initial: %d %s", code, first)
-	}
-	if code, _ := request("ev1:" + instance + ":9"); code != 409 || s.streamSeq != 1 {
-		t.Fatalf("future cursor admitted: %d seq=%d", code, s.streamSeq)
-	}
-	if code, body := request("ev1:bbbbbbbb-1234-4123-8123-123456789abc:1"); code != 409 || !strings.Contains(body, "cursor_instance_mismatch") {
-		t.Fatalf("previous incarnation admitted: %d %s", code, body)
-	}
-	if code, body := request("ev1:" + instance + ":1"); code != 409 || !strings.Contains(body, "cursor_expired") {
-		t.Fatalf("cursor without replay silently accepted: %d %s", code, body)
-	}
-	if code, next := request(""); code != 200 || !strings.Contains(next, ":2") {
-		t.Fatalf("fresh resnapshot: %d %s", code, next)
 	}
 }
 
-func TestConversationStreamDoesNotProbeOrRevoke(t *testing.T) {
+// A known native file contributes only a metadata hint. Corrupt contents do
+// not become "readable" on status; the history reader rejects them separately.
+func TestConversationStatusUsesStatAndProofIsOptIn(t *testing.T) {
 	const id = "12345678-1234-4123-8123-123456789abc"
 	home := t.TempDir()
-	s := &conversation{id: id, workspace: "ws_12345678", cwd: home, rpc: &piRPC{}, state: "idle", events: []json.RawMessage{}}
-	checks := 0
-	c := &ConversationController{instance: id, sessions: map[string]*conversation{id: s}, home: home, cfg: transport.Config{Home: home, UID: os.Geteuid()}, status: func(context.Context) string { checks++; return "missing" }}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { c.stream(w, r, id) }))
-	defer server.Close()
-	res, err := http.Get(server.URL)
-	if err != nil {
+	path := filepath.Join(home, "session.jsonl")
+	if err := os.WriteFile(path, []byte("not JSON\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	res.Body.Close()
-	if checks != 0 || c.closed || s.state != "idle" {
-		t.Fatalf("stream probed native status or revoked controller: checks=%d", checks)
+	s := &conversation{id: id, workspace: "ws_12345678", cwd: home, historyPath: path, rpc: &piRPC{}, state: "idle", events: []json.RawMessage{}}
+	c := &ConversationController{sessions: map[string]*conversation{id: s}, home: home, cfg: transport.Config{Home: home, UID: os.Geteuid()}}
+	read := func() map[string]any {
+		t.Helper()
+		w := httptest.NewRecorder()
+		c.observe(w, httptest.NewRequest("GET", "http://unix/status", nil), id)
+		if w.Code != 200 {
+			t.Fatal(w.Code)
+		}
+		var v map[string]any
+		if err := json.Unmarshal(w.Body.Bytes(), &v); err != nil {
+			t.Fatal(err)
+		}
+		return v
+	}
+	first := read()
+	if first["native_history"] != "present" || first["native_revision"] == "" || first["continuation"] != "unproven" {
+		t.Fatalf("metadata: %v", first)
+	}
+	if native := readNative(path, os.Geteuid()); native.state == "readable" {
+		t.Fatal("invalid JSONL admitted by history reader")
+	}
+	if err := os.WriteFile(path, []byte("not JSON\nmore\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if read()["native_revision"] == first["native_revision"] {
+		t.Fatal("metadata change not observed")
 	}
 }
 
@@ -527,7 +521,7 @@ func TestConversationContinuationProofAndStatus(t *testing.T) {
 	c.discover = func(transport.Config) Discovery { return Discovery{State: "present", Entries: []Workspace{selected}} }
 	status := func() string {
 		w := httptest.NewRecorder()
-		c.observe(w, httptest.NewRequest("GET", "http://unix/status", nil), id)
+		c.observe(w, httptest.NewRequest("GET", "http://unix/status?continuation=true", nil), id)
 		if w.Code != 200 {
 			t.Fatalf("status: %d %s", w.Code, w.Body.String())
 		}

@@ -421,3 +421,68 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
     page.getByText(/työn päättymistä ei voida vahvistaa/),
   ).toBeVisible({ timeout: 20000 });
 });
+
+test("@lab idle conversation uses journal alone and journal heartbeat is 20 seconds", async ({
+  page,
+}) => {
+  test.setTimeout(45000);
+  expect(
+    (await page.request.get("/fixture/scenario?value=pi-deltas")).status(),
+  ).toBe(204);
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "aurinkokello" })
+    .click();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
+  // The initial status and snapshot are allowed; count only idle requests.
+  let statusReads = 0;
+  let removedStreams = 0;
+  let journalReads = 0;
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (
+      url.pathname.endsWith("/status") &&
+      url.pathname.includes("/conversations/")
+    )
+      statusReads++;
+    if (
+      url.pathname.endsWith("/stream") &&
+      url.pathname.includes("/conversations/")
+    )
+      removedStreams++;
+    if (url.pathname === "/api/v1/events") journalReads++;
+  });
+  const heartbeat = await page.evaluate(async () => {
+    const snapshot = await (await fetch("/api/v1/snapshot")).json();
+    const start = performance.now();
+    const response = await fetch(
+      `/api/v1/events?after=${encodeURIComponent(snapshot.event_cursor)}`,
+    );
+    if (!response.body) throw new Error("journal response missing body");
+    const reader = response.body.getReader();
+    let text = "";
+    try {
+      while (performance.now() - start < 25000) {
+        const result = await reader.read();
+        if (result.done) break;
+        text += new TextDecoder().decode(result.value);
+        if (text.includes(": heartbeat")) break;
+      }
+    } finally {
+      await reader.cancel();
+    }
+    return { elapsed: performance.now() - start, text };
+  });
+  expect(heartbeat.text).toContain(": heartbeat");
+  expect(heartbeat.elapsed).toBeGreaterThanOrEqual(18000);
+  expect(heartbeat.elapsed).toBeLessThan(25000);
+  expect(statusReads).toBe(0);
+  expect(removedStreams).toBe(0);
+  expect(journalReads).toBe(1); // the explicit heartbeat observation only
+});

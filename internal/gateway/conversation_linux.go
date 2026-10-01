@@ -11,7 +11,7 @@ import (
 
 // The browser-session lease is removed in the later ownership step. Until then
 // the gateway must filter lists and record successful creates for that session.
-var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|question|abort|status|receipt|stream|stop|continue))?$`)
+var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|question|abort|status|receipt|stop|continue))?$`)
 var conversationStreamCursor = regexp.MustCompile(`^ev1:[0-9a-fA-F-]{36}:[0-9]{1,20}$`)
 var conversationUUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
@@ -24,7 +24,7 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	if events {
 		match = []string{path, "", "events"}
 	}
-	if match == nil || path != r.URL.Path || (events && (r.Method != http.MethodGet || !a.exact(r, path, "after") || !conversationStreamCursor.MatchString(r.URL.Query().Get("after")))) || (!events && match[2] == "receipt" && (!a.exact(r, path, "command_id") || !conversationUUID.MatchString(r.URL.Query().Get("command_id")))) || (!events && match[2] != "receipt" && !a.exact(r, path)) || (r.Method != http.MethodGet && r.Method != http.MethodPost) || (match[1] != "" && (match[2] == "status" || match[2] == "receipt" || match[2] == "stream") != (r.Method == http.MethodGet)) {
+	if match == nil || path != r.URL.Path || (events && (r.Method != http.MethodGet || !a.exact(r, path, "after") || !conversationStreamCursor.MatchString(r.URL.Query().Get("after")))) || (!events && match[2] == "status" && r.URL.RawQuery != "" && (!a.exact(r, path, "continuation") || r.URL.Query().Get("continuation") != "true")) || (!events && match[2] == "receipt" && (!a.exact(r, path, "command_id") || !conversationUUID.MatchString(r.URL.Query().Get("command_id")))) || (!events && match[2] != "receipt" && match[2] != "status" && !a.exact(r, path)) || (r.Method != http.MethodGet && r.Method != http.MethodPost) || (match[1] != "" && (match[2] == "status" || match[2] == "receipt") != (r.Method == http.MethodGet)) {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -53,7 +53,7 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method == http.MethodPost {
 		kind = "create"
 	}
-	stream := kind == "stream" || kind == "events"
+	stream := kind == "events"
 	if stream {
 		last := r.Header.Get("Last-Event-ID")
 		if len(r.Header.Values("Last-Event-ID")) > 1 || len(last) > 100 || last != "" && !conversationStreamCursor.MatchString(last) {

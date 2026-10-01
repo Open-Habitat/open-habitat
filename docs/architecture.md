@@ -92,7 +92,15 @@ browser conversation can be deliberately continued with the same native ID once
 its previous work is known to have ended.
 
 The browser shows incoming messages, questions and tool content. Content without
-a dedicated renderer still appears as safe text. Answering or cancelling Pi's
+a dedicated renderer still appears as safe text. The event journal is the only
+push channel for conversation changes: it replays a bounded window and keeps
+idle connections open for ten minutes with a heartbeat every 20 seconds.
+Status is fetched on open and after journal changes, not on a two-second tick.
+It stats the known native file for a cheap change hint; the history reader,
+not that hint, decides whether the file is readable. An ended conversation's
+continuation proof is requested explicitly on open and run again before
+continuing it. This avoids repeated full JSONL reads and lock probes without
+weakening the daemon's one-writer admission rule. Answering or cancelling Pi's
 separate question dialogs and taking over terminal conversations are outside
 the current agent-control work.
 
