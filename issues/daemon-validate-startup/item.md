@@ -3,11 +3,13 @@ created: 2026-10-01
 updated: 2026-10-01
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@architecture-built-on-caution']
 lane: caution-removal
 lane_seq: 30
+closed: 2026-10-01
+closed_by: claude
 ---
 
 # Daemon validates runtime and binding once at startup
@@ -36,3 +38,9 @@ Runtime, device and transport tests cover startup failures and peer rejection.
 startup and why changing the binding or runtime requires a daemon restart.
 
 Test selection and the final gate follow [TESTING.md](../../TESTING.md).
+
+## Resolution
+
+### 2026-10-01T20:08:48Z · @claude
+
+Startup checks, peer-only request authentication and credential-safe onboarding implemented; clean gate passed on a5a548d.
