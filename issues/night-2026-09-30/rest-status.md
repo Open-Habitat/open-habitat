@@ -5,6 +5,15 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Pyynnöt toiselle
 
+- **UI (01:10): rest on lopettanut yön, joten UI kirjoittaa aamulla
+  TODO.md:n "Continue here" -lohkon ja lähettää `notify-jari`-viestin.**
+  Rest-osuus lohkoon on alla olevassa loppuraportissa.
+- **UI (01:10): 23:20-pyyntö on laskeutunut.** Fake-Pi tuottaa viivästetyt
+  deltat ja korreloidun `bash`-työkalukutsun oikean controllerin kautta.
+  Ota käyttöön kutsulla `GET /fixture/scenario?value=pi-deltas` ennen tuoretta
+  promptia ja palauta `value=ready` sen jälkeen. Ohje on
+  `build-agent-control/result.md`:n viimeisessä "Browser request" -kohdassa,
+  esimerkkinä `test/browser-host/deltas.mjs`. Gate vihreä `d448965`:ssä.
 - **UI (22:15): 18:55-pyyntö on laskeutunut.** Mukana ovat vuoron
   asettumismerkki ja aikaleima, lähetyskohtainen kuittaus
   (`pending | accepted | rejected | uncertain`) sekä saapuva kysymys
@@ -65,6 +74,79 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
   muuttua sen mukana; älä muokkaa niitä käsin.
 
 ## Kierrokset
+
+### Loppuraportti 2026-10-01 01:15 UTC — rest lopetti, frontier tyhjä
+
+**Yhteenveto.** `night:rest` ajoi yhdeksän kierrosta ja yksitoista omaa
+ajoa. Kaikki laskeutuivat (`landed: true`), kukin täydellä puhtaalla
+gatella ja riippumattomalla tai kohdennetulla katselmoinnilla. Kaksi ajoa
+estyi ensin, ja niiden työ harvestoitiin uusintaan. Mitään ei ole käynnissä.
+Jäljellä olevat rest-päät odottavat Jaria. Testijulkaisua **ei tehty**, ks.
+päätökset.
+
+**Laskeutui**
+- `build-agent-control`, palvelinpuoli kokonaan:
+  - päättyneen selainkeskustelun jatkaminen ja `continuation`-havainto;
+  - `/api/v1/events`: snapshot, `live_tail`, deltat, työkalut,
+    `history.entry`, `queue.changed` ja aukoton toisto;
+  - vuoron asettuminen, lähetyskuittaukset ja kysymys turvallisena tekstinä;
+  - fake-Pi:n deltaskenaario labiin.
+
+  Issue on yhä `in-progress`: oikean Pi:n selainmatka puuttuu.
+- `prove-jit-guest-isolation`: oikea broker-SIGKILL `account`-vaiheessa
+  kertakäyttöisessä vieraassa. Uudelleenkäynnistetty broker kieltäytyy
+  pending-vartijassa, ja B:n kirjautuminen evätään. Issue on auki
+  uudelleenkäynnistyssmoken takia.
+- Rethink-läpikäynti 19 issuelle (`rethink-project-docs`-taulukko).
+
+**Testattavaa (synteettinen):** jatkaminen, live-virta ja kuittaukset labissa,
+kun UI:n johdotus on laskeutunut. Fixture-skenaario on `pi-deltas`.
+
+**Päätökset Jarille**
+1. **Testijulkaisu.** Fleetrepon `RELEASE-UPGRADE.md`:n fresh-six pilot.12 →
+   seuraaja -operaattori on merkitty "NOT approved or exercised live", ja
+   Jarin on hyväksyttävä se ja sen käänteinen ennen ensimmäistä live-ajoa.
+   Siksi julkaisua ei asennettu, eikä arkistoa rakennettu turhaan
+   vanhentumaan. Suositus: Jari hyväksyy operaattorin, minkä jälkeen
+   seuraava kierros leikkaa pilot.14:n nykyisestä mainista ja asentaa sen.
+2. **`show-large-clone-progress`**: kuka saa asettaa kloonauskohtaisen
+   20 GiB:n kiintiön (ADR 0005)? Säilötty `blocker.md` haarassa
+   `wt/jjj72341j1-bounded-clone-progress` sisältää suosituksen
+   (project quota + kapea etuoikeutettu operaatio). Estää myös UI:n
+   `fit-onboarding-v2`n.
+3. **Pi:n extension-dialogi** voi jättää lähetyksen kuittaamatta, eikä
+   tavallinen viesti vastaa siihen. Lisätäänkö vähintään peruutus, vai
+   keskeytetäänkö tällainen vuoro?
+4. **`manage-agent-worktrees`**: rethinkissä havaittu ristiriita. Onko
+   worktree-agentti vain luettava Taskfleet-terminaaliagentti vai daemonin
+   hallitsema kirjoittava Pi?
+5. **`plan-second-user-admission`**: testipalvelimen `oauth.access`-asetus ja
+   vapaaehtoinen toisen käyttäjän koe.
+6. **Tilin etunimi ja sähköposti** (UI:n pyyntö): luotettava tietolähde on
+   valitsematta (`decide-account-display`).
+
+**Keskusteltavaa**
+- Pending-journaali sulkee myös terveen käyttäjän selainistunnot
+  (globaali fail-closed). Se on tarkoituksellista, mutta yksi keskeytynyt
+  tilinluonti estää kaikkien selainkäytön, kunnes asia on selvitetty.
+- Workerit (pi-harness, `capable`) laskeutuivat usein pienemmän viipaleen
+  kuin briefi pyysi. Tiukka yhden tuotoksen briefi auttoi.
+
+**Säilötyt orvot (laskeutuneet, poisto Jarin päätös `taskfleet run
+discard`illa):** `wt/tyd429hmz8-agent-control-resume` (run
+`01m3snj56qfh0t14tyd429hmz8`) ja `wt/2wc9r2dt81-jit-broker-crash` (run
+`01m3t5zsczrk74q32wc9r2dt81`). Kummankin sisältö on harvestoitu mainiin.
+Vanha `wt/jjj72341j1-bounded-clone-progress` ei ole tämän yön ajo.
+
+**Spin-offit:** ei uusia issueita. Agenttiohjauksen jäljellä oleva työ on
+`build-agent-control`issa.
+
+### Kierros 9 — valmis 2026-10-01 01:10 UTC
+
+Broker-kaatumiskokeen uusinta laskeutui (run `01m3te2fwt5a1c144310zjgy4v`,
+gate vihreä `4dcd292`:ssa). Syy oli overlayn väärin instrumentoitu
+vartija, ei tuotevirhe. Fake-Pi-deltat laskeutuivat (run
+`01m3te2f3gns60f09kxys03h1v`).
 
 ### Kierros 8 — estyi 2026-10-01 00:30 UTC; kierros 9 käynnissä
 
