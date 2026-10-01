@@ -1,6 +1,6 @@
 ---
 created: 2026-09-29
-updated: 2026-09-29
+updated: 2026-10-01
 type: improvement
 status: open
 priority: high
@@ -27,3 +27,7 @@ Current `internal/daemon/github_clone_linux.go` synchronously waits for `git clo
 ### 2026-09-29T08:32:48Z · @jari
 
 2026-09-29: Approved the recommendation to design a bounded authenticated clone-progress stream, cancel native write on disconnect, and use read-only native Git observation on refresh; no persistent progress store and no automatic retry. Record contract and trade-offs in @decide-clone-progress-contract ADR before implementation. Approval is for design and implementation within this scope, not a live GitHub test or deployment.
+
+### 2026-10-01T02:25:51Z · @jari
+
+2026-10-01 (Jari): disk budget authority — the operator provisions each Unix user their own bounded volume (per-user limit), instead of a new per-attempt quota operation in the root broker. This amends ADR 0005's per-attempt 20 GiB requirement (docs/adr-0005-clone-progress-stream.md must be updated by the implementing run). The daemon still checks headroom before admitting a clone and fails closed when the bounded volume is absent. Preserved analysis: branch wt/jjj72341j1-bounded-clone-progress (blocker.md).
