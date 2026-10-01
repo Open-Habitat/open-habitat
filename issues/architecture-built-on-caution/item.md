@@ -10,34 +10,69 @@ related: ['@pilot14-session-revalidation-loop']
 
 # Arkkitehtuuri on rakennettu varovaisuuden, ei tarpeen varaan
 
-## Ongelma
+## Miksi tämä työ tehdään
 
-Pilot.14:n istuntosilmukan juurisyy (@pilot14-session-revalidation-loop) ei ollut yksittäinen bugi vaan arkkitehtuurivalinta: jokainen natiiviluku ja kahden tapahtumavirran joka toinen sekunti käynnistivät kokonaisen Pi-ajoympäristön Node-prosessissa kysyäkseen, onko OpenAI-kirjautuminen voimassa. Valinnalle ei ollut syytä. Se ei suojannut mitään, koska Unix-käyttäjä on jo turvallisuusraja ja Pi-tunnukset ovat käyttäjän omia tiedostoja. Se oli olemassa vain siksi, että agentti kirjoitti kommentin "a fresh native check is made for each request" ja seuraavat agentit sulattivat sen sääntönä.
+Pilot.14:ssä tavallinen paluu selainikkunaan peitti työtilan pitkällä
+istunnontarkistuksella, ja Pi-keskustelun ohjaus jäi katkenneeseen tilaan.
+[Natiivilukujen Pi-portin poistamisesta on jo päätetty](../pilot14-session-revalidation-loop/item.md):
+kirjautuminen tarkistetaan onboardingissa, ja myöhemmät kielimallikirjautumisen
+ongelmat näytetään Pi:n mallikutsun epäonnistuessa. Portti käynnisti natiivin
+Pi-apuprosessin toistuvasti myös tietojen lukemista varten. Bugikorjaus ja sen
+vaikutuksen todentaminen kuuluvat tuohon issueen.
 
 Jari 2026-10-01: tämä on vahva indikaatio siitä, että koko tähän mennessä tehty arkkitehtuuri on kuraa. Ei siksi, että yksi portti oli kallis, vaan siksi, että näin typerä ratkaisu pääsi syntymään, läpäisi katselmoinnit ja päätyi julkaisuun asti ilman, että kukaan kysyi, mitä se maksaa ja mitä se suojaa.
 
-## Mistä ilmiö näkyy
+Tämä työ selvittää, missä muualla gatewayn, daemonin ja selaimen ratkaisut
+rasittavat käyttöä tai mutkistavat toteutusta ilman vastaavaa hyötyä. Yhden
+Pi-portin korjaaminen ei vastaa tähän huoleen.
 
-Sama kuosi toistuu koodissa laajemmin. Esimerkkejä, joista mikään ei vielä ole tutkittu loppuun:
+## Mitä arvioidaan
 
-- `internal/daemon/handoff_linux.go`: "No positive result is retained across requests, refreshes or daemon restarts." Sääntö ilman syytä; seurauksena pilot.14-silmukka.
-- `internal/gateway/auth.go`: broker tarkistetaan uudelleen jokaisella istunnollisella pyynnöllä, "Never cache a positive decision." Mitä tämä suojaa, kun istunto on jo gatewayn muistissa ja peruutus on erillinen operaatio (ADR-0006)?
-- `internal/daemon/pi_device_linux.go`: asennusvalitsin tarkistetaan uudelleen ennen jokaista natiivikutsua.
-- `web/src/app/App.tsx`: välilehteen paluu peittää koko näkymän "Varmistetaan istuntoa" -peitteellä ja tekee neljä peräkkäistä palvelinlukua ennen kuin käyttäjä näkee mitään. Tavallinen ikkunan vaihto on tehty poikkeustilanteeksi.
-- `internal/gateway/snapshot_linux.go` ja `conversation_linux.go`: daemonin HTTP-vastaus hylätään, ellei se ole tavulleen odotetun muotoinen (protokollaversio, yksi Content-Type-otsake, täsmällinen Content-Length, ei chunkattua siirtoa), vaikka daemon on oma binäärimme omalla Unix-socketillaan. Kiinteät 5 sekunnin budjetit ilman mittausta.
-- Koko: `BrowserConversation.tsx` 1740 riviä, `daemon/conversation_linux.go` 1445 riviä, `App.tsx` 1022 riviä. Tiedostot ovat kasvaneet lisäämällä tarkistuksia, eivät jäsentämällä.
+Jokaisen puolustavan mekanismin tarvetta arvioidaan sen vaikutuksella:
+mitä käyttäjälle arvokasta se suojaa, kuinka usein se suoritetaan, mitä se
+maksaa ja mitä sen poistamisesta tai yksinkertaistamisesta seuraisi.
+Koodikommentti, aiempi katselmointi tai agentin kirjoittama sääntö ei yksin
+perustele ratkaisua. Suorituskykyä koskevat päätelmät tarvitsevat mittauksen;
+monimutkaisuuden haitta pitää osoittaa konkreettisesta toiminnasta tai muutostyöstä.
 
-Yhteinen piirre: mekanismi on perusteltu kommentilla, joka toteaa säännön, ei syytä. Katselmoinnit ovat vahvistaneet, että sääntöä noudatetaan, eivät kysyneet, pitäisikö sääntöä olla. Lopputulos näyttää turvalliselta ja on käytännössä hidas, hauras ja käyttäjälle sietämätön.
+Lähtökohtia koko toteutuksen tarkasteluun ovat:
 
-## Mitä halutaan
+- Natiivikutsujen toistuvat tarkistukset: Pi-portti
+  (`internal/daemon/handoff_linux.go`) ja asennusvalitsimen tarkistus
+  (`internal/daemon/pi_device_linux.go`).
+- Brokerin tarkistus jokaisella istunnollisella pyynnöllä
+  (`internal/gateway/auth.go`). Se tarkistaa käyttäjäsidonnan, epochin ja
+  generationin. [ADR 0006](../../docs/adr-0006-subject-revocation.md) säilyttää
+  nämä tarkistukset erillisen istunnon peruutuksen rinnalla. Niiden tarpeellisuus
+  ja tiheys ovat arvioitavia, eivät peruutustoiminnon perusteella ratkaistuja.
+- Selainikkunaan paluun peite ja pyyntöjono (`web/src/app/App.tsx`): miksi
+  tavallinen paluu katkaisee käytön ja mitä todentamista se oikeasti tarvitsee.
+- Daemonin vastausten muotoehdot ja viiden sekunnin aikarajat
+  (`internal/gateway/snapshot_linux.go`, `conversation_linux.go`): mitä kukin
+  ehto suojaa ja missä se hylkää muuten käyttökelpoisen vastauksen.
+- Keskustelu- ja sovelluskoodin vastuunjako, etenkin `BrowserConversation.tsx`,
+  `App.tsx` ja `internal/daemon/conversation_linux.go`. Tiedoston koko on
+  tarkasteluvihje; haitta selviää siitä, miten toiminta on jäsennetty.
 
-Tuotteen arkkitehtuuriperiaate on kirjoitettu `CLAUDE.md`:hen: Unix-käyttäjät ovat turvallisuusraja ja natiivit komponentit ovat totuus. Kaikki muu on toteutusta, jolla on hinta. Jokaisen rajoitteen, tarkistuksen ja portin pitää vastata kysymykseen: mitä käyttäjälle arvokasta tämä suojaa, mitä se maksaa ja mitä tapahtuu, jos se poistetaan. Jos vastaus on "ei mitään" tai "en tiedä", mekanismi poistetaan.
+Unix-käyttäjät eristävät ihmisten tiedostot ja prosessit. Gatewayn pitää silti
+päästää oikea selainistunto oikean käyttäjän daemoniin, eikä käyttäjän daemon
+ole gatewayn kanssa sama luottamusalue. Nykyiset vastuut ja niiden syyt löytyvät
+[arkkitehtuurista](../../docs/architecture.md) ja
+[Go-pakettien ohjeesta](../../internal/AGENTS.md). Ne ovat arvioinnin lähtötietoa;
+myös nykyisen ratkaisun voi kyseenalaistaa. Tuntematon perustelu on
+selvitettävä kysymys, ei sellaisenaan näyttö mekanismin tarpeellisuudesta tai
+turhuudesta.
 
-## Työ
+## Lopputulos
 
-1. Arkkitehtuurikatselmus, joka listaa jokaisen puolustavan mekanismin gatewayssa, daemonissa ja selaimessa: mitä se tarkistaa, kuinka usein, mitä se maksaa (mitattuna, ei arvattuna) ja mitä se oikeasti suojaa. Tulos on taulukko, jossa jokaisella rivillä on tuomio: säilytä syyn kanssa, yksinkertaista, tai poista.
-2. Taulukko käydään läpi Jarin kanssa ja päätökset kirjataan. Säilytettävät mekanismit saavat kirjatun syyn; muut poistetaan omina issueinaan.
-3. `internal/AGENTS.md` ja `docs/architecture.md` päivitetään sanomaan suoraan, mikä on turvallisuusraja ja mikä ei ole, jotta seuraava agentti ei keksi uutta porttia varmuuden vuoksi.
-4. Katselmointikäytäntö: koodikommentti tai aiemman agentin perustelu ei ole syy. Katselmoija kysyy jokaisesta tarkistuksesta, mitä se suojaa.
+Katselmuksesta käy ilmi, mitkä mekanismit kannattaa säilyttää, yksinkertaistaa
+tai poistaa ja miksi. Havaintoihin liittyvät kustannukset, käyttäjälle näkyvät
+seuraukset ja vielä epävarmat päätelmät erotetaan toisistaan. Korjaukset saavat
+rajatut toteutusissuet; valmis Pi-portin poistopäätös pysyy omassa issuessaan.
 
-Tämä issue ei ole lupa kirjoittaa tuotetta uusiksi. Se on lupa poistaa se, mille ei löydy syytä.
+Merkittävät muutokset komponenttien vastuisiin tai turvallisuusmalliin tuodaan
+Jarille perusteltuna suosituksena. Tavalliset toteutuskorjaukset etenevät
+projektin normaalin työnjaon mukaan. Arkkitehtuurikuvaus ja toteuttajien ohjeet
+päivitetään siltä osin kuin havainnot muuttavat niitä: seuraavan toteuttajan
+pitää ymmärtää ratkaisun syy ja hinta. Sama kysymys kuuluu katselmointiin,
+jotta sääntöjen noudattaminen ei korvaa niiden tarpeellisuuden arviointia.

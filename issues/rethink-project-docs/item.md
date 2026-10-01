@@ -1,6 +1,6 @@
 ---
 created: 2026-09-29
-updated: 2026-09-30
+updated: 2026-10-01
 type: task
 status: open
 priority: normal
@@ -581,3 +581,22 @@ AGENTS.md:ssä, jonka viittaus nyt korjattuun etusivuun päivitettiin samalla.
 Dokumentaatiovalidaattori ja `git diff --check` läpäisivät. Täyttä CI-porttia
 ei ajettu dokumenttimuutokselle. Glasspad-julkaisua ei tehty eikä kokeiltu;
 tuotteen toimintaa tai päätöksiä ei muutettu.
+
+### Architecture-built-on-caution: tekstin läpikäynti 1.10.2026
+
+Jarin pyynnöstä käsiteltiin [architecture-built-on-caution](../architecture-built-on-caution/item.md)
+rethink-instructions-taidolla, koska teksti ohjaa tulevaa katselmointityötä.
+Jarin kritiikki säilytettiin sanasta sanaan. Pi-portin poistopäätös erotettiin
+muista tutkittavista mekanismeista; koko tuotteen laajuinen tarkastelu säilyy.
+ADR 0006 säilyttää brokerin pyyntökohtaiset tarkistukset, joten erillinen
+istunnon peruutus ei todista niitä tarpeettomiksi. Unix-eristyksen rinnalla
+selvennettiin gatewayn todennusvastuu ja daemonin luottamusraja.
+
+Automaattinen poistaminen tuntemattoman perustelun vuoksi, pakollinen
+rivi riviltä hyväksyttäminen ja tarkka raporttimuoto korvattiin arvioinnin
+tavoitteella ja projektin tavallisella vastuunjaolla. Arkkitehtuurimuutokset
+pysyvät Jarin kanssa päätettävinä. Lähteinä olivat issuen alkuperäinen versio
+`ce206ac`, pilot.14-bugi-issuen Jarin päätös sekä nykyinen lähdekoodi ja
+arkkitehtuuriohjeet. Varsinaista katselmusta tai suorituskykymittauksia ei
+tehty eikä uutta arkkitehtuuripäätöstä kirjattu. Tämä on tekstin ensimmäinen
+uudistettu versio, ei Jarin hyväksymä katselmointitulos.
