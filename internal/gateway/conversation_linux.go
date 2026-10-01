@@ -24,7 +24,7 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	if events {
 		match = []string{path, "", "events"}
 	}
-	if match == nil || path != r.URL.Path || (events && (r.Method != http.MethodGet || !a.exact(r, path, "after") || !conversationStreamCursor.MatchString(r.URL.Query().Get("after")))) || (!events && match[2] == "status" && r.URL.RawQuery != "" && (!a.exact(r, path, "continuation") || r.URL.Query().Get("continuation") != "true")) || (!events && match[2] == "receipt" && (!a.exact(r, path, "command_id") || !conversationUUID.MatchString(r.URL.Query().Get("command_id")))) || (!events && match[2] != "receipt" && match[2] != "status" && !a.exact(r, path)) || (r.Method != http.MethodGet && r.Method != http.MethodPost) || (match[1] != "" && (match[2] == "status" || match[2] == "receipt") != (r.Method == http.MethodGet)) {
+	if match == nil || path != r.URL.Path || (events && (r.Method != http.MethodGet || !a.exact(r, path, "after") || !conversationStreamCursor.MatchString(r.URL.Query().Get("after")))) || (!events && match[2] == "status" && !(a.exact(r, path) || (a.exact(r, path, "continuation") && r.URL.Query().Get("continuation") == "true"))) || (!events && match[2] == "receipt" && (!a.exact(r, path, "command_id") || !conversationUUID.MatchString(r.URL.Query().Get("command_id")))) || (!events && match[2] != "receipt" && match[2] != "status" && !a.exact(r, path)) || (r.Method != http.MethodGet && r.Method != http.MethodPost) || (match[1] != "" && (match[2] == "status" || match[2] == "receipt") != (r.Method == http.MethodGet)) {
 		safe(w, 400, "invalid_request")
 		return
 	}

@@ -1407,7 +1407,9 @@ test("@browser-conversation status reconciles before a late continuation reply",
   try {
     await page.getByRole("button", { name: "Jatka keskustelua" }).click();
     await written;
-    await refreshConversation(page);
+    // The journal may already have removed the manual status button. Focus
+    // refreshes the mounted view without requiring that presentation control.
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
     await expect(
       page.getByText("Aiemman vuoron tulos on epävarma", { exact: true }),
     ).toBeVisible();

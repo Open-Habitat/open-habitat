@@ -64,6 +64,21 @@ func TestPiAuthErrorScrubsNativeFrame(t *testing.T) {
 	}
 }
 
+// A dead RPC output stream need not mean the child has exited yet. Without an
+// event, a browser relying on the journal would retain its old control state.
+func TestDrainEndInvalidatesConversationBeforeChildExit(t *testing.T) {
+	const id = "12345678-1234-4123-8123-123456789abc"
+	rpc := &piRPC{events: make(chan json.RawMessage), exited: make(chan struct{})}
+	close(rpc.events)
+	s := &conversation{id: id, rpc: rpc, state: "accepted", events: []json.RawMessage{}}
+	j := newEventJournal()
+	c := &ConversationController{sessions: map[string]*conversation{id: s}, journal: j}
+	c.drain(s)
+	if s.state != "uncertain" || len(j.frames) != 1 || !strings.Contains(string(j.frames[0]), `"kind":"snapshot.invalidated"`) {
+		t.Fatalf("drain end not published: state=%s frames=%q", s.state, j.frames)
+	}
+}
+
 func TestFixtureSnapshotAndEventsDoNotProbePi(t *testing.T) {
 	u, err := user.Current()
 	if err != nil {

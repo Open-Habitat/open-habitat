@@ -823,6 +823,7 @@ func (c *ConversationController) drain(s *conversation) {
 		}
 		if c.journal != nil {
 			c.journal.reset("pi:"+s.id, "unknown")
+			c.journal.appendInvalidation("pi:" + s.id)
 		}
 	}
 	c.mu.Unlock()

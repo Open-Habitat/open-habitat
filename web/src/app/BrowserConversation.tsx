@@ -334,6 +334,7 @@ export function BrowserConversation({
         stale ||
         !id ||
         !csrf ||
+        !alive.current ||
         !sessions.some(
           (s) => s.agent_id === id && s.workspace_id === workspace.workspace_id,
         )
@@ -604,12 +605,11 @@ export function BrowserConversation({
         }
       } finally {
         pending.current = false;
-        if (queuedRefresh.current) {
-          const proof = queuedProof.current;
-          queuedRefresh.current = false;
-          queuedProof.current = false;
-          void latestRefresh.current(proof);
-        }
+        const rerun = queuedRefresh.current && alive.current;
+        const proof = queuedProof.current;
+        queuedRefresh.current = false;
+        queuedProof.current = false;
+        if (rerun) void latestRefresh.current(proof);
       }
     },
     [
@@ -675,8 +675,10 @@ export function BrowserConversation({
         `/api/v1/events?after=${encodeURIComponent(turn.cursor)}`,
       );
       let opened = false;
+      let reconnectFailures = 0;
       source.onopen = () => {
         opened = true;
+        reconnectFailures = 0;
         streamFailures.current = 0;
         setStreamError(false);
       };
@@ -744,8 +746,12 @@ export function BrowserConversation({
       source.onerror = () => {
         if (removed) return;
         if (opened && source?.readyState === EventSource.CONNECTING) {
-          setStreamError(true);
-          void refresh();
+          // The normal ten-minute rotation reconnects automatically. Only a
+          // second failed attempt calls for the slow HTTP fallback and banner.
+          if (++reconnectFailures > 1) {
+            setStreamError(true);
+            void refresh();
+          }
           return; // EventSource reconnects with Last-Event-ID
         }
         source?.close();

@@ -146,6 +146,21 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 	if w := send("GET", conversationBase+"/"+id+"/status?continuation=false", first, "", ""); w.Code != 400 {
 		t.Fatalf("invalid proof flag %d", w.Code)
 	}
+	for _, hostile := range []string{"host", "tls"} {
+		r := httptest.NewRequest("GET", "https://host.test"+conversationBase+"/"+id+"/status", nil)
+		r.RequestURI = r.URL.RequestURI()
+		r.AddCookie(&http.Cookie{Name: cookieName, Value: first})
+		if hostile == "host" {
+			r.Host = "other.test"
+		} else {
+			r.TLS = nil
+		}
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Code != 400 {
+			t.Fatalf("bare status admitted %s mismatch: %d %s", hostile, w.Code, w.Body.String())
+		}
+	}
 
 	if w := send("GET", conversationBase+"/"+id+"/receipt?command_id="+cmd, second, "", ""); w.Code != 404 {
 		t.Fatalf("foreign receipt %d", w.Code)

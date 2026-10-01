@@ -326,8 +326,9 @@ Liian vanha cursor saa `409 cursor_expired`, toisen elinkaaren cursor
 `409 cursor_instance_mismatch`; nämä vastataan ennen SSE-headereita.
 Hidas yhteys voidaan katkaista. Selain palautuu cursorista tai uudella
 snapshotilla, ja kirjoitukset ovat estettyinä, kunnes näkymä on taas ajan
-tasalla. Katkos ei pysäytä Pi:tä. Istunnon päättyminen sulkee virran ja
-uudelleenyhdistäminen vaatii kirjautumisen.
+tasalla. Katkos ei pysäytä Pi:tä. Istunnon päättyminen estää uuden virran,
+mutta ei keskeytä jo avattua virtaa: se sulkeutuu viimeistään kymmenen minuutin
+eliniän päättyessä. Uudelleenyhdistäminen vaatii kirjautumisen.
 
 `history.entry` käyttää Pi:n pysyvää `native_key`:tä; vielä tallentamattomilla
 RPC-deltaeventeillä on daemonin event-ID. Snapshotin `activity` ja `live_tail`
