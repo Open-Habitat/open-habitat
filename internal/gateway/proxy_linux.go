@@ -100,11 +100,15 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 		ctx, cancel = context.WithTimeout(ctx, 60*time.Second)
 		defer cancel()
 	}
-	body := r.Body
-	if r.Method == http.MethodGet || body == nil {
-		body = http.NoBody
-	} else {
-		body = http.MaxBytesReader(w, body, proxyRequestLimit)
+	// A zero-length POST must be sent without chunked framing: the daemon
+	// rejects transfer encoding on body-less control and onboarding routes.
+	var body io.ReadCloser = http.NoBody
+	if r.ContentLength < 0 || r.ContentLength > proxyRequestLimit {
+		safe(w, 400, "invalid_request")
+		return
+	}
+	if r.Method != http.MethodGet && r.ContentLength > 0 && r.Body != nil {
+		body = http.MaxBytesReader(w, r.Body, proxyRequestLimit)
 	}
 	req, err := http.NewRequestWithContext(ctx, r.Method, "http://unix"+r.URL.RequestURI(), body)
 	if err != nil {

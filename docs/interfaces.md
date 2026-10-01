@@ -516,7 +516,7 @@ täsmennykset ovat:
 |---:|---|---|
 | 400 | `invalid_request`, `schema_version_unsupported` | muotoa ei hyväksytty; mitään ei aloitettu |
 | 401 | `authentication_required`, `session_expired` | uudet luvut ja kirjoitukset estetty |
-| 403 | `origin_denied`, `csrf_denied`, `identity_mapping_denied`, `identity_mismatch`, `peer_not_authorized`, `cross_user_denied` | luottamusraja torjui pyynnön; gateway ei luovuta vierasta snapshotia |
+| 403 | `origin_denied`, `csrf_denied`, `identity_mapping_denied`, `peer_not_authorized`, `cross_user_denied` | luottamusraja torjui pyynnön; daemon tarkistaa oman sidoksensa ennen vastaamista |
 | 404 | `resource_not_found`, `command_outcome_unknown`, `content_revision_gone` | ei saa tulkita toisen käyttäjän olemassaoloa |
 | 409 | `stale_precondition`, `command_id_conflict`, `cursor_expired`, `cursor_instance_mismatch`, `writer_conflict`, `path_replaced`, `manual_worktree_blocks_delete` | nykytila estää turvallisen etenemisen |
 | 422 | `capability_unsupported`, `capability_unknown`, `path_unsupported`, `path_escape`, `confirmation_mismatch` | pyyntö on ymmärretty mutta sitä ei voi toteuttaa |

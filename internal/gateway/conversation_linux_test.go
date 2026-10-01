@@ -38,6 +38,11 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 	var calls atomic.Int32
 	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
+		if r.Method == http.MethodPost && (strings.HasSuffix(r.URL.Path, "/stop") || strings.HasSuffix(r.URL.Path, "/continue")) && (r.ContentLength != 0 || len(r.TransferEncoding) != 0) {
+			t.Errorf("body-less control was forwarded with framing: CL=%d TE=%v", r.ContentLength, r.TransferEncoding)
+			w.WriteHeader(400)
+			return
+		}
 		if r.Host != "unix" || r.Header.Get("Cookie") != "" || r.Header.Get("Origin") != "" || r.Header.Get("X-Agent-Host-CSRF") != "" || r.Header.Get("X-Agent-Host-Identity") != identityID(m) || r.Header.Get("X-Agent-Host-Session") == strings.Repeat("A", 43) || len(r.Header.Get("X-Agent-Host-Session")) != 43 {
 			t.Errorf("unsafe daemon request: %+v", r.Header)
 		}

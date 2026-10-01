@@ -31,6 +31,11 @@ func TestPiAttemptAuthenticatedMappedSocket(t *testing.T) {
 	reply := `{"schema_version":1,"attempt":{"state":"device_code","pi_state":"missing","verification_uri":"https://auth.openai.com/codex/device","user_code":"ABCD-1234"}}`
 	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		seen <- r.Header.Get("X-Agent-Host-Session")
+		if r.ContentLength != 0 || len(r.TransferEncoding) != 0 {
+			t.Errorf("body-less attempt was forwarded with framing: CL=%d TE=%v", r.ContentLength, r.TransferEncoding)
+			w.WriteHeader(403)
+			return
+		}
 		if r.Host != "unix" || r.URL.Path != piAttemptPath || r.Header.Get("X-Agent-Host-Identity") != identityID(m) || r.Header.Get("X-Agent-Host-Socket") != "" || r.Header.Get("Cookie") != "" || r.Header.Get("Origin") != "" || r.Header.Get("X-Agent-Host-CSRF") != "" {
 			w.WriteHeader(403)
 			return

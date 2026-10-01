@@ -30,7 +30,7 @@ test("@resilience failed reads recover in place without claiming an empty catalo
   await expect(
     page.getByRole("navigation").getByRole("link", { name: "ordinary-dir" }),
   ).toBeVisible();
-  await page.request.get("/fixture/scenario?value=foreign");
+  await page.request.get("/fixture/scenario?value=malformed");
   await page.getByRole("button", { name: "Päivitä", exact: true }).click();
   await expect(page.getByText("ordinary-dir")).toHaveCount(0);
 });

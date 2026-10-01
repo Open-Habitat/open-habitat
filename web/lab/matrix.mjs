@@ -20,7 +20,6 @@ const cases = [
   "partial",
   "malformed",
   "oversize",
-  "foreign",
   "delay",
   "native-error",
   "pi-blocked",

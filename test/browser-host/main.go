@@ -345,20 +345,7 @@ esac
 			case "pi-deltas", "pi-visual-hold", "pi-auth-failure":
 				current.Load().(*daemon.ConversationController).FixtureSnapshot().ServeHTTP(w, r)
 				return
-			case "foreign":
-				rec := httptest.NewRecorder()
-				handler.ServeHTTP(rec, r)
-				var body map[string]any
-				if json.Unmarshal(rec.Body.Bytes(), &body) != nil {
-					http.Error(w, "fixture failure", 503)
-					return
-				}
-				body["auth"].(map[string]any)["provider_account_id"] = "99"
-				b, _ := json.Marshal(body)
-				w.Header().Set("Content-Type", "application/json")
-				w.Header().Set("Content-Length", strconv.Itoa(len(b)))
-				_, _ = w.Write(b)
-				return
+
 			}
 			handler.ServeHTTP(w, r)
 		}))
@@ -518,7 +505,7 @@ esac
 			case "/fixture/scenario":
 				name := r.URL.Query().Get("value")
 				switch name {
-				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "foreign", "pi-blocked", "pi-onboarding", "pi-deltas", "pi-visual-hold", "pi-auth-failure":
+				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "pi-blocked", "pi-onboarding", "pi-deltas", "pi-visual-hold", "pi-auth-failure":
 					// Read by the fake Pi child at turn start. Switching back to ready
 					// keeps subsequent lab cases on the old, faster fixture.
 					if err := os.Remove(filepath.Join(tmp, "fakepi-visual-phase")); err != nil && !os.IsNotExist(err) {
@@ -530,11 +517,14 @@ esac
 						return
 					}
 					scenario.Store(name)
-					if name == "pi-onboarding" {
-						// A new synthetic case has a fresh admission window and daemon lease.
-						// Monotonic fixture time also avoids reviving an expired session.
+					if name == "pi-onboarding" || name == "pi-blocked" {
+						// An isolated onboarding case starts a new synthetic daemon
+						// attempt and device. A previous browser may have left a native
+						// helper running; its lease must not affect the next case.
 						clock.Add(1)
 						for i, attempt := range attempts {
+							previous := devices[i]
+							devices[i] = &daemon.PiDevice{Home: previous.Home, Node: previous.Node, Entry: previous.Entry, Manifest: previous.Manifest, FixtureHome: previous.FixtureHome}
 							attempt.Store(daemon.PiAttemptHandler(configs[i], trusters[i], devices[i]))
 						}
 					}

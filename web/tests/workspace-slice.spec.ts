@@ -187,10 +187,6 @@ test("@workspace-slice confirmed empty, missing, failure, partial and deep link 
   await expect(page.locator("main")).toContainText(
     "Kaikkia työtiloja ei voitu tarkistaa",
   );
-  await scenario(page, "foreign");
-  await page.goto("/workspaces");
-  await expect(page.locator("main h1")).toHaveText("Yhteyttä ei saatu");
-  await expect(page.getByText("GitHub user 99")).toHaveCount(0);
   await scenario(page, "malformed");
   await page.goto("/workspaces");
   await expect(page.locator("main h1")).toHaveText("Yhteyttä ei saatu");
