@@ -1480,7 +1480,7 @@ test("@browser-conversation stale recovery during continuation never strands con
     ).toBeVisible();
     release(); // response settles during stale: the old finally cannot clear busy
     await page.unroute("**/api/v1/snapshot");
-    await page.getByRole("button", { name: "Yritä uudelleen" }).click();
+    await page.getByRole("button", { name: /Yhdistä|Yritä uudelleen/ }).click();
     await expect(
       page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
     ).toHaveCount(0);

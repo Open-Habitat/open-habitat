@@ -1,10 +1,10 @@
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
-import common from "../../../contracts/v1/common.schema.json";
 import annotations from "../../../contracts/v1/annotations.schema.json";
 import command from "../../../contracts/v1/command.schema.json";
-import operation from "../../../contracts/v1/operation.schema.json";
+import common from "../../../contracts/v1/common.schema.json";
 import eventSchema from "../../../contracts/v1/event.schema.json";
+import operation from "../../../contracts/v1/operation.schema.json";
 import snapshotSchema from "../../../contracts/v1/snapshot.schema.json";
 import type { Event as WireEvent } from "../contracts/v1.generated";
 import type { HistoryEntry } from "./history";
@@ -120,8 +120,14 @@ export function applyTurnEvent(
 }
 export function provisionalItems(turn: LiveTurn) {
   if (turn.truncated) return [];
-  const items: { id: string; kind: string; text: string; index?: number }[] =
-    [];
+  const items: {
+    id: string;
+    kind: string;
+    text: string;
+    index?: number;
+    name?: string;
+    state?: string;
+  }[] = [];
   const tools = new Map<string, number>();
   for (const event of turn.fragments) {
     if (event.kind === "assistant.delta") {
@@ -154,8 +160,17 @@ export function provisionalItems(turn: LiveTurn) {
       const position = tools.get(key);
       if (position === undefined) {
         tools.set(key, items.length);
-        items.push({ id: `live-tool-${key}`, kind: "tool", text });
-      } else items[position].text = text;
+        items.push({
+          id: `live-tool-${key}`,
+          kind: "tool",
+          text,
+          name: event.payload.tool_name as string,
+          state: event.payload.state as string,
+        });
+      } else {
+        items[position].text = text;
+        items[position].state = event.payload.state as string;
+      }
     }
   }
   return items;

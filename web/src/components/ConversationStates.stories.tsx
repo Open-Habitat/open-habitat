@@ -5,9 +5,10 @@ import {
   AssistantMessage,
   Composer,
   ConversationTimeline,
-  QueuePanel,
   EndedConversationControl,
+  LiveToolRow,
   NativeQuestion,
+  QueuePanel,
   SendObservation,
   SupportedQuestion,
   TurnSettlement,
@@ -129,7 +130,6 @@ export const WorkingWithNativeProgress: Story = {
       <WorkingProgress
         state="accepted"
         events={[{ type: "tool_execution_start", toolName: "bash" }]}
-        elapsed={72}
       />
       <Composer
         value="Tarkista vielä testit"
@@ -150,7 +150,7 @@ export const WorkingWithNativeProgress: Story = {
 export const StoppingTurn: Story = {
   render: () => (
     <main>
-      <WorkingProgress state="stopping" events={[]} elapsed={91} />
+      <WorkingProgress state="stopping" events={[]} />
       <Composer
         value=""
         activity="settling"
@@ -402,4 +402,13 @@ export const AwayFromLatest: Story = {
       />
     </main>
   ),
+};
+
+export const LiveToolLight: Story = {
+  render: () => <LiveToolRow name="bash" state="running" />,
+  globals: { theme: "light" },
+};
+export const LiveToolDark: Story = {
+  render: () => <LiveToolRow name="bash" state="running" />,
+  globals: { theme: "dark" },
 };

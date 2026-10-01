@@ -714,7 +714,6 @@ export function App() {
         ) ? (
           <BrowserConversation
             stale={phase === "stale"}
-            onRefreshStale={refresh}
             key={`${identity}:${selected.workspace_id}:${location.search}`}
             workspace={selected}
             id={
@@ -871,9 +870,16 @@ export function App() {
               phase === "pi_required" ||
               phase === "daemon_unavailable" ? null : (
                 <ConnectionBanner
-                  state={phase === "authenticated" ? "online" : "loading"}
+                  onRetry={phase === "stale" ? refresh : undefined}
+                  state={
+                    phase === "stale"
+                      ? "stale"
+                      : phase === "authenticated"
+                        ? "online"
+                        : "loading"
+                  }
                   hostWriteState={
-                    phase === "stale" || snapshot?.write_state === "read_only"
+                    snapshot?.write_state === "read_only"
                       ? "read_only"
                       : "writable"
                   }
@@ -888,14 +894,14 @@ export function App() {
                 serverLabel={window.location.host}
                 connectionLabel={
                   phase === "stale"
-                    ? "Tiedot voivat olla vanhoja"
+                    ? "Yhteys poikki"
                     : source === "confirmed"
                       ? "Yhdistetty"
                       : "Tietoja puuttuu"
                 }
                 connectionTone={
                   phase === "stale"
-                    ? "warning"
+                    ? "danger"
                     : source === "confirmed"
                       ? "success"
                       : "warning"
@@ -1006,14 +1012,6 @@ export function App() {
                   : "ah-state"
               }
             >
-              {phase === "stale" ? (
-                <InlineNotice
-                  title="Yhteys katkesi · tiedot voivat olla vanhoja"
-                  description="Näet viimeksi vahvistetut tiedot. Toiminnot odottavat yhteyden palautumista."
-                  tone="warning"
-                  actions={[{ label: "Yritä uudelleen", onPress: refresh }]}
-                />
-              ) : null}
               {main}
             </div>
           }

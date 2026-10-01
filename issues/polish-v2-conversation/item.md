@@ -44,9 +44,9 @@ of leftovers and fix them. Refresh the conversation pairs.
 
 ## Acceptance Criteria
 
-- [ ] All four points fixed in both themes at desktop and 390 px; pairs
+- [x] All four points fixed in both themes at desktop and 390 px; pairs
   refreshed in this issue folder next to the draft frames.
-- [ ] No behaviour regressions (no auto-resend, uncertain visible, continue
+- [x] No behaviour regressions (no auto-resend, uncertain visible, continue
   only on eligible); browser tests updated to roles/names, not prose.
 ## Why this exists
 

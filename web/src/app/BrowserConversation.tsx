@@ -17,6 +17,7 @@ import {
   ConversationTimeline,
   EndedConversationControl,
   InlineNotice,
+  LiveToolRow,
   Markdown,
   NativeQuestion,
   QueuePanel,
@@ -83,10 +84,8 @@ export function BrowserConversation({
   place,
   onSessionCreated,
   stale = false,
-  onRefreshStale,
 }: {
   stale?: boolean;
-  onRefreshStale?: () => void;
   workspace: Workspace;
   id?: string;
   title?: string;
@@ -124,8 +123,6 @@ export function BrowserConversation({
   const probePending = useRef(false);
   const verifiedSnapshot = useRef(snapshot);
   const pendingNativeEntry = useRef<string | undefined>(undefined);
-  const [startedAt, setStartedAt] = useState<number>();
-  const [elapsed, setElapsed] = useState(0);
   const [confirmStop, setConfirmStop] = useState(false);
   const [queueOpen, setQueueOpen] = useState(false);
   const [awayFromLatest, setAwayFromLatest] = useState(false);
@@ -252,8 +249,6 @@ export function BrowserConversation({
     setLive(undefined);
     pendingNativeEntry.current = undefined;
     streamFailures.current = 0;
-    setStartedAt(undefined);
-    setElapsed(0);
     setConfirmStop(false);
     setWorkingMode("follow_up");
     setFinishedInBackground(false);
@@ -356,7 +351,6 @@ export function BrowserConversation({
         const working = ["pending", "accepted", "stopping"].includes(
           nextStatus.state,
         );
-        if (working && !wasWorking.current) setStartedAt(Date.now());
         if (
           !working &&
           wasWorking.current &&
@@ -861,17 +855,6 @@ export function BrowserConversation({
       document.removeEventListener("visibilitychange", focus);
     };
   }, [id, csrf, refresh, stale]);
-  useEffect(() => {
-    if (
-      !startedAt ||
-      !["pending", "accepted", "stopping"].includes(current?.state ?? "")
-    )
-      return;
-    const tick = () => setElapsed(Math.floor((Date.now() - startedAt) / 1000));
-    tick();
-    const timer = window.setInterval(tick, 1000);
-    return () => window.clearInterval(timer);
-  }, [startedAt, current?.state]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a live fragment changes the feed height without changing native entries.
   useLayoutEffect(() => {
     if (wasAtBottom.current && feed.current) {
@@ -1431,11 +1414,6 @@ export function BrowserConversation({
               } else captureAnchor();
             }}
           >
-            <WorkingProgress
-              state={stale ? undefined : current?.state}
-              events={events}
-              elapsed={elapsed}
-            />
             <UnpresentedEvents events={events} />
             <ConversationTimeline
               state={
@@ -1523,9 +1501,16 @@ export function BrowserConversation({
                         <Markdown text={item.text} />
                       </AssistantMessage>
                     ) : (
-                      <p className="ah-tool-row ah-live-tool-row" role="status">
-                        {item.text}
-                      </p>
+                      <LiveToolRow
+                        name={item.name ?? "Työkalu"}
+                        state={
+                          item.state as
+                            | "running"
+                            | "succeeded"
+                            | "failed"
+                            | "cancelled"
+                        }
+                      />
                     ),
                 })),
               ]}
@@ -1538,6 +1523,23 @@ export function BrowserConversation({
                 feed.current?.scrollTo({ top: feed.current.scrollHeight });
                 setUnseen(0);
               }}
+            />
+            <WorkingProgress
+              state={stale ? undefined : current?.state}
+              events={events}
+              activeToolName={
+                provisionalItems(
+                  live ?? {
+                    cursor: "",
+                    instance: "",
+                    sequence: 0,
+                    fragments: [],
+                    truncated: true,
+                  },
+                ).find(
+                  (item) => item.kind === "tool" && item.state === "running",
+                )?.name
+              }
             />
             {next && !stale ? (
               <Button
@@ -1581,28 +1583,25 @@ export function BrowserConversation({
               </p>
             ) : null}
           </ConversationStream>
-          {stale ||
-          ambiguous ||
-          current?.state === "uncertain" ||
-          historyError ||
-          streamError ||
-          (continuation && !["ready", "pending"].includes(continuation)) ||
-          details ? (
+          {!stale &&
+          (ambiguous ||
+            current?.state === "uncertain" ||
+            historyError ||
+            streamError ||
+            (continuation && !["ready", "pending"].includes(continuation)) ||
+            details) ? (
             <Button
               label="Tarkista keskustelun tila"
               variant="quiet"
               onPress={() => {
-                if (stale) onRefreshStale?.();
-                else {
-                  if (
-                    continuation &&
-                    continuation !== "uncertain" &&
-                    continuation !== "pending"
-                  )
-                    setContinuation(undefined);
-                  void refresh();
-                  void recheckContinuation();
-                }
+                if (
+                  continuation &&
+                  continuation !== "uncertain" &&
+                  continuation !== "pending"
+                )
+                  setContinuation(undefined);
+                void refresh();
+                void recheckContinuation();
               }}
             />
           ) : null}

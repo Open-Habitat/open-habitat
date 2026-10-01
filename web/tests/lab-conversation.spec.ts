@@ -63,9 +63,9 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   ).toBeEnabled();
   await editor.fill("hidas toinen viesti");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(page.getByText("Pi työskentelee…", { exact: true })).toBeVisible(
-    { timeout: 20000 },
-  );
+  await expect(
+    page.getByRole("status", { name: "Pi:n työn eteneminen" }),
+  ).toBeVisible({ timeout: 20000 });
   await expect(
     page.getByText('Selvä. Kysyit: "hidas toinen viesti".', { exact: false }),
   ).toBeVisible({ timeout: 30000 });
@@ -184,7 +184,7 @@ test("@lab browser renders provisional delta and tool from verified combined SSE
   });
   await expect(page.getByText("Synteettinen live-teksti")).toBeVisible();
   await expect(
-    page.getByText("bash · Käynnissä", { exact: true }),
+    page.locator(".ah-live-tool-row").getByText("ajossa"),
   ).toBeVisible();
 });
 
@@ -379,8 +379,10 @@ test("@lab intermediate assistant message does not claim turn completion", async
   });
   await expect(intermediate).toBeVisible({ timeout: 20000 });
   await expect(
-    page.getByRole("region", { name: "Pi:n työn eteneminen" }),
-  ).toContainText("Pi työskentelee");
+    page.getByRole("status", { name: "Pi:n työn eteneminen" }),
+  ).toContainText(
+    /Käyttää työkalua|Odottaa Pi:n seuraavaa vaihetta|Valmistelee seuraavaa vaihetta/,
+  );
   await expect(intermediate.locator("header")).toHaveText("Pi");
 });
 
@@ -399,10 +401,12 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
     .getByRole("textbox", { name: "Viesti Pi:lle" })
     .fill("hidas kaadu");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  const progress = page.getByRole("region", { name: "Pi:n työn eteneminen" });
-  await expect(progress).toContainText("Pi työskentelee", { timeout: 20000 });
-  await expect(progress).toContainText(/min \d+ s/);
-  await expect(progress).toContainText("Käyttää työkalua: bash", {
+  const progress = page.getByRole("status", { name: "Pi:n työn eteneminen" });
+  await expect(progress).toContainText(
+    /Käyttää työkalua|Odottaa Pi:n seuraavaa vaihetta|Valmistelee seuraavaa vaihetta/,
+    { timeout: 20000 },
+  );
+  await expect(progress).toContainText("Käyttää työkalua bash", {
     timeout: 12000,
   });
   await page.getByRole("button", { name: "Keskeytä" }).click();

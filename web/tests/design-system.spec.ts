@@ -30,7 +30,9 @@ for (const theme of ["light", "dark"] as const) {
 }
 test("@visual unhappy states remain explicit", async ({ page }) => {
   await page.goto("/?fixture=design-unhappy");
-  await expect(page.getByText("Näytettävä tieto on vanhentunut")).toBeVisible();
+  await expect(
+    page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
+  ).toBeVisible();
   await expect(page.getByText("Tulos epävarma")).toBeVisible();
   await expect(page.getByText("Osittainen")).toBeVisible();
   await expect(page.getByText("Capabilityä ei ole vahvistettu.")).toBeVisible();

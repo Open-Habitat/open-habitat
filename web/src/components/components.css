@@ -1334,7 +1334,7 @@ h1[tabindex="-1"]:focus {
 .ah-conversation-frame > fieldset,
 .ah-conversation-notices:not(:empty) {
   flex: none;
-  max-height: 9vh;
+  max-height: min(20vh, 12rem);
   overflow: auto;
   width: min(100%, var(--ah-conversation-width));
   margin-inline: auto;
@@ -2066,10 +2066,6 @@ h1[tabindex="-1"]:focus {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ah-live-tool-row {
-  padding: var(--ah-s3);
-  color: var(--ah-ink-2);
-}
 .ah-tool-row .ah-disclosure-button > .ah-status {
   margin-inline-start: auto;
   font-weight: 400;
@@ -2143,4 +2139,111 @@ h1[tabindex="-1"]:focus {
 .ah-conversation-frame > .ah-queue {
   max-height: min(30vh, 18rem);
   overflow: auto;
+}
+
+/* The queue lives outside the scroll region; align it to the same reading gutter. */
+@media (max-width: 800px) {
+  .ah-conversation-frame > .ah-queue.ah-queue {
+    width: calc(100% - 2 * var(--ah-column-pad-inline));
+  }
+}
+.ah-working-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-working-progress .ah-status-dot {
+  border: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ah-accent);
+  flex: none;
+}
+.ah-live-tool-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s3);
+  padding: 9px 12px;
+  background: var(--ah-surface);
+  color: var(--ah-ink-2);
+  font-size: 13.5px;
+}
+.ah-live-tool-row .ah-status {
+  margin-left: auto;
+}
+
+.ah-connection-mobile-detail {
+  display: none;
+}
+.ah-send-uncertain {
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.ah-send-uncertain .ah-send-text {
+  box-sizing: border-box;
+  width: fit-content;
+  max-width: 78%;
+  padding: var(--ah-s2) var(--ah-s3);
+  border: 1px dashed var(--ah-muted);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font-size: var(--ah-size-body);
+}
+.ah-send-uncertain .ah-send-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ah-s2);
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-send-uncertain .ah-send-meta .ah-control {
+  padding: 0;
+}
+@media (max-width: 800px) {
+  .ah-connection:has(.ah-connection-mobile-detail) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0 var(--ah-s2);
+    padding: var(--ah-s2) var(--ah-s3);
+  }
+  .ah-connection:has(.ah-connection-mobile-detail) strong {
+    grid-column: 1;
+    font-size: var(--ah-size-meta);
+  }
+  .ah-connection:has(.ah-connection-mobile-detail)
+    > span:not(.ah-connection-mobile-detail):not(.ah-control) {
+    display: none;
+  }
+  .ah-connection .ah-connection-mobile-detail {
+    display: block;
+    grid-column: 1;
+    font-size: var(--ah-size-meta);
+  }
+  .ah-connection:has(.ah-connection-mobile-detail) > .ah-control {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    align-self: center;
+  }
+  .ah-conversation-frame > .ah-queue.ah-queue {
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0;
+    padding: var(--ah-s3) var(--ah-column-pad-inline) var(--ah-s2);
+    border-top: 1px solid var(--ah-line);
+    background: var(--ah-surface);
+  }
+}
+
+@media (max-width: 800px) {
+  .ah-conversation-frame > fieldset,
+  .ah-conversation-frame > .ah-conversation-notices:not(:empty) {
+    width: calc(100% - 2 * var(--ah-column-pad-inline));
+  }
 }

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { Button } from "./Primitives";
 import { Icon } from "./Icon";
+import { Button } from "./Primitives";
 import type { Action, ProblemView, Tone } from "./types";
 
 export type StatusKind =
@@ -173,8 +173,8 @@ export function ConnectionBanner({
       tone: "warning",
     },
     stale: {
-      title: "Näytettävä tieto on vanhentunut",
-      detail: `Viimeksi tarkistettu ${lastConfirmedAt ?? "ei tiedossa"}. Uusia muutoksia ei voi tehdä ennen yhteyden palaamista.`,
+      title: "Yhteys katkesi · tiedot voivat olla vanhoja",
+      detail: `${lastConfirmedAt ? `Näet klo ${lastConfirmedAt} vahvistetut tiedot.` : "Näet viimeksi vahvistetut tiedot."} Kirjoittavat toiminnot odottavat yhteyttä; luonnos ja lukukohta säilyvät.`,
       tone: "warning",
     },
     "resnapshot-required": {
@@ -212,14 +212,21 @@ export function ConnectionBanner({
       <strong>{value.title}</strong>
       <span>
         {value.detail}
-        {hostWriteState === "read_only" && visibleState !== "host-read-only"
+        {hostWriteState === "read_only" &&
+        visibleState !== "host-read-only" &&
+        visibleState !== "stale"
           ? " Työtilojen muokkaus ei myöskään ole käytettävissä."
           : ""}
       </span>
+      {visibleState === "stale" ? (
+        <span className="ah-connection-mobile-detail">
+          Näet viimeksi vahvistetut tiedot.
+        </span>
+      ) : null}
       <Problem problem={problem} />
       {onRetry ? (
         <Button
-          label="Yritä uudelleen"
+          label={state === "stale" ? "Yhdistä" : "Yritä uudelleen"}
           variant="secondary"
           size="compact"
           onPress={onRetry}

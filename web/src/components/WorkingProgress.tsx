@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-
 // Only known event types become UI copy. Never render an RPC payload or tool arguments.
 export function progressLabel(events: unknown[]): string {
   for (let i = events.length - 1; i >= 0; i--) {
@@ -11,8 +9,8 @@ export function progressLabel(events: unknown[]): string {
         typeof toolName === "string" &&
         /^(bash|read|write|edit|grep|find|ls)$/.test(toolName)
           ? toolName
-          : "työkalua";
-      return `Käyttää työkalua: ${tool}`;
+          : undefined;
+      return tool ? `Käyttää työkalua ${tool}` : "Käyttää työkalua";
     }
     if (type === "tool_execution_end") return "Työkalun tulos saapui";
     if (type === "message_end") return "Valmistelee seuraavaa vaihetta";
@@ -81,20 +79,20 @@ export function UnpresentedEvents({ events }: { events: unknown[] }) {
 export function WorkingProgress({
   state,
   events,
-  elapsed,
+  activeToolName,
 }: {
   state?: string;
   events: unknown[];
-  elapsed: number;
+  activeToolName?: string;
 }) {
-  const [announced, setAnnounced] = useState("");
   const working =
     state === "accepted" || state === "pending" || state === "stopping";
   const label =
-    state === "stopping" ? "Keskeytystä odotetaan" : progressLabel(events);
-  useEffect(() => {
-    if (working && label !== announced) setAnnounced(label);
-  }, [working, label, announced]);
+    state === "stopping"
+      ? "Keskeytystä odotetaan"
+      : activeToolName
+        ? `Käyttää työkalua ${activeToolName}`
+        : progressLabel(events);
   if (!working && state !== "uncertain") return null;
   if (state === "uncertain")
     return (
@@ -104,15 +102,13 @@ export function WorkingProgress({
       </p>
     );
   return (
-    <section aria-label="Pi:n työn eteneminen" className="ah-working-progress">
-      <p>
-        <strong>Pi työskentelee…</strong> · {Math.floor(elapsed / 60)} min{" "}
-        {elapsed % 60} s
-      </p>
-      <p>{label}</p>
-      <span className="ah-visually-hidden" role="status">
-        {announced}
-      </span>
+    <section
+      aria-label="Pi:n työn eteneminen"
+      className="ah-working-progress"
+      role="status"
+    >
+      <span className="ah-status-dot ah-running" aria-hidden="true" />
+      <span>{label}</span>
     </section>
   );
 }

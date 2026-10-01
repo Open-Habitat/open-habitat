@@ -1,14 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
-import { AccountShelf, AccountSettings } from "./Account";
+import { AccountSettings, AccountShelf } from "./Account";
 import {
   AgentHeader,
   AppShell,
   WorkspaceRail,
   WorkspaceSection,
 } from "./Navigation";
-import { ConnectionBanner, type ConnectionState } from "./Status";
 import { Button } from "./Primitives";
+import { ConnectionBanner, type ConnectionState } from "./Status";
 import { WorkingProgress } from "./WorkingProgress";
 
 const noop = () => {};
@@ -111,7 +111,6 @@ function Journey({
             <WorkingProgress
               state="accepted"
               events={[{ type: "tool_execution_start", toolName: "read" }]}
-              elapsed={85}
             />
           </>
         }
@@ -183,7 +182,7 @@ export const AccountReturnFocus: Story = {
 export const StoppingPi: Story = {
   render: () => (
     <main>
-      <WorkingProgress state="stopping" events={[]} elapsed={92} />
+      <WorkingProgress state="stopping" events={[]} />
       <Button
         label="Keskeytä vuoro"
         availability={{
@@ -198,7 +197,7 @@ export const StoppingPi: Story = {
 export const UncertainPi: Story = {
   render: () => (
     <main>
-      <WorkingProgress state="uncertain" events={[]} elapsed={92} />
+      <WorkingProgress state="uncertain" events={[]} />
     </main>
   ),
 };

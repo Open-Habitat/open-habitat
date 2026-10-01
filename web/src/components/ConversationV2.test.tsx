@@ -5,6 +5,7 @@ import {
   AssistantMessage,
   Composer,
   ConversationTimeline,
+  LiveToolRow,
   QueuePanel,
   UserMessage,
 } from "./Conversation";
@@ -14,6 +15,13 @@ function mount(node: React.ReactNode) {
 }
 const noop = () => {};
 describe("conversation v2 presentation", () => {
+  it("shows only observed live-tool facts and a textual running status", () => {
+    const view = mount(<LiveToolRow name="bash" state="running" />);
+    const row = view.getByRole("status", { name: /bash.*ajossa/ });
+    expect(row.textContent).toBe("bashajossa");
+    expect(row.querySelector("code")).toBeNull();
+    expect(row.textContent).not.toMatch(/\d+ s/);
+  });
   it("keeps explicit working intents and Enter's last selected mode without a radio group", () => {
     const steer = vi.fn();
     const followUp = vi.fn();

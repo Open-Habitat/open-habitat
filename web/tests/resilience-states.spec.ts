@@ -1,5 +1,5 @@
-import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "@playwright/test";
+import { hostOrigin } from "../test-ports.mjs";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
@@ -26,7 +26,7 @@ test("@resilience failed reads recover in place without claiming an empty catalo
   ).toBeVisible();
   await expect(page.getByText("ordinary-dir")).toHaveCount(0);
   await page.unroute("**/api/v1/snapshot");
-  await page.getByRole("button", { name: "Yritä uudelleen" }).click();
+  await page.getByRole("button", { name: /Yhdistä|Yritä uudelleen/ }).click();
   await expect(
     page.getByRole("navigation").getByRole("link", { name: "ordinary-dir" }),
   ).toBeVisible();
@@ -55,7 +55,7 @@ test("@resilience native discovery error retains previously verified content", a
   ).toBeVisible();
   await page.screenshot({ path: "test-results/evidence/stale-discovery.png" });
   await page.request.get("/fixture/scenario?value=ready");
-  await page.getByRole("button", { name: "Yritä uudelleen" }).click();
+  await page.getByRole("button", { name: /Yhdistä|Yritä uudelleen/ }).click();
   await expect(
     page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
   ).toHaveCount(0);
@@ -82,7 +82,7 @@ test("@resilience verified session retains workspaces during a host outage, disa
     page.getByRole("navigation").getByRole("link", { name: "ordinary-dir" }),
   ).toBeVisible();
   await page.unroute("**/api/v1/snapshot");
-  await page.getByRole("button", { name: "Yritä uudelleen" }).click();
+  await page.getByRole("button", { name: /Yhdistä|Yritä uudelleen/ }).click();
   await expect(
     page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
   ).toHaveCount(0);
@@ -99,7 +99,7 @@ test("@resilience verified session retains workspaces during a host outage, disa
   await page.route("**/api/v1/onboarding/pi/status", (route) =>
     route.fulfill({ status: 503, body: "daemon stopped" }),
   );
-  await page.getByRole("button", { name: "Yritä uudelleen" }).click();
+  await page.getByRole("button", { name: /Yhdistä|Yritä uudelleen/ }).click();
   await expect(
     page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
   ).toBeVisible();
@@ -108,7 +108,7 @@ test("@resilience verified session retains workspaces during a host outage, disa
   ).toBeVisible();
   await page.unroute("**/api/v1/onboarding/pi/status");
   await page.request.get("/fixture/scenario?value=delay");
-  await page.getByRole("button", { name: "Yritä uudelleen" }).click();
+  await page.getByRole("button", { name: /Yhdistä|Yritä uudelleen/ }).click();
   await expect(
     page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
   ).toHaveCount(0);
@@ -164,7 +164,7 @@ test("@resilience populated native history remains readable during outage", asyn
   ).toBeVisible();
   await expect(page.getByText("Synteettinen viesti 0").last()).toBeVisible();
   await page.unroute("**/api/v1/snapshot");
-  await page.getByRole("button", { name: "Yritä uudelleen" }).click();
+  await page.getByRole("button", { name: /Yhdistä|Yritä uudelleen/ }).click();
   await expect(
     page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
   ).toHaveCount(0);
@@ -199,7 +199,8 @@ test("@resilience active conversation stays readable but cannot send during outa
   await expect(editor).toHaveValue("Luonnos säilyy katkossa");
   await expect(
     page.getByRole("button", { name: "Tarkista keskustelun tila" }),
-  ).toHaveClass(/ah-button-quiet/);
+  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Yhdistä" })).toHaveCount(1);
   await expect(
     page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toBeDisabled();
@@ -217,7 +218,7 @@ test("@resilience active conversation stays readable but cannot send during outa
     path: "test-results/evidence/stale-conversation.png",
   });
   await page.unroute("**/api/v1/snapshot");
-  await page.getByRole("button", { name: "Yritä uudelleen" }).click();
+  await page.getByRole("button", { name: /Yhdistä|Yritä uudelleen/ }).click();
   await expect(
     page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
   ).toHaveCount(0);
@@ -268,12 +269,14 @@ test("@resilience an incomplete catalog does not claim a deep-linked conversatio
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole("main").getByRole("button", { name: "Yritä uudelleen" }),
+    page
+      .getByRole("main")
+      .getByRole("button", { name: /Yhdistä|Yritä uudelleen/ }),
   ).toBeVisible();
   await page.request.get("/fixture/scenario?value=ready");
   await page
     .getByRole("main")
-    .getByRole("button", { name: "Yritä uudelleen" })
+    .getByRole("button", { name: /Yhdistä|Yritä uudelleen/ })
     .click();
   await expect(page.getByText("Synteettinen viesti 0").last()).toBeVisible();
 });

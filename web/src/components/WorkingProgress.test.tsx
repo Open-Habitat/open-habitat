@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import {
+  progressLabel,
   UnpresentedEvents,
   WorkingProgress,
-  progressLabel,
 } from "./WorkingProgress";
 
 describe("working progress", () => {
@@ -61,11 +61,10 @@ describe("working progress", () => {
           arguments: "credential",
         },
       ]),
-    ).toBe("Käyttää työkalua: työkalua");
+    ).toBe("Käyttää työkalua");
     render(
       <WorkingProgress
         state="accepted"
-        elapsed={65}
         events={[
           {
             type: "tool_execution_start",
@@ -75,12 +74,11 @@ describe("working progress", () => {
         ]}
       />,
     );
-    expect(screen.getByText(/1 min 5 s/)).toBeTruthy();
-    expect(screen.getAllByText("Käyttää työkalua: bash")[0]).toBeTruthy();
+    expect(screen.getAllByText("Käyttää työkalua bash")[0]).toBeTruthy();
     expect(screen.queryByText("private")).toBeNull();
   });
   it("does not imply that a crashed child or its tools finished", () => {
-    render(<WorkingProgress state="uncertain" elapsed={0} events={[]} />);
+    render(<WorkingProgress state="uncertain" events={[]} />);
     expect(screen.getByRole("status").textContent).toMatch(
       /ei voida vahvistaa/,
     );

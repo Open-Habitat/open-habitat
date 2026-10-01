@@ -1,6 +1,6 @@
 import type { ReactNode, Ref } from "react";
-import { Markdown } from "./Markdown";
 import { Icon } from "./Icon";
+import { Markdown } from "./Markdown";
 import { Disclosure } from "./Overlays";
 import { Button, RadioGroup, TextArea, TextField } from "./Primitives";
 import type { StatusKind } from "./Status";
@@ -244,11 +244,15 @@ export function SendObservation({
       className={`ah-send-observation ah-send-${state}`}
       role={state === "rejected" ? "alert" : "status"}
     >
-      {showText && state === "uncertain" ? <p>{text}</p> : null}
-      <p>{labels[state]}</p>
-      {state === "uncertain" ? (
-        <Button label="Kopioi teksti" variant="quiet" onPress={onCopy} />
+      {showText && state === "uncertain" ? (
+        <p className="ah-send-text">{text}</p>
       ) : null}
+      <div className="ah-send-meta">
+        <p>{labels[state]}</p>
+        {state === "uncertain" ? (
+          <Button label="Kopioi teksti" variant="quiet" onPress={onCopy} />
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -479,6 +483,42 @@ export function DiffView({
         onPress={onCopy}
       />
     </figure>
+  );
+}
+/** Live fragments expose a name and lifecycle state, not arguments or duration. */
+export function LiveToolRow({
+  name,
+  state,
+}: {
+  name: string;
+  state: "running" | "succeeded" | "failed" | "cancelled";
+}) {
+  const labels = {
+    running: "ajossa",
+    succeeded: "valmis",
+    failed: "epäonnistui",
+    cancelled: "keskeytetty",
+  };
+  return (
+    <div
+      className="ah-tool-row ah-live-tool-row"
+      role="status"
+      aria-label={`${name} ${labels[state]}`}
+    >
+      <strong>{name}</strong>
+      <StatusMark
+        label={labels[state]}
+        kind={
+          state === "running"
+            ? "working"
+            : state === "succeeded"
+              ? "success"
+              : "error"
+        }
+        tone={state === "failed" ? "danger" : "neutral"}
+        animated={state === "running" ? "running" : false}
+      />
+    </div>
   );
 }
 export function ToolRow({

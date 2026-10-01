@@ -8,7 +8,7 @@ import { pathToFileURL } from "node:url";
 import { chromium } from "@playwright/test";
 import { origin, snapshot } from "./session.mjs";
 
-const root = resolve("issues/restore-v2-conversation/pairs");
+const root = resolve("issues/polish-v2-conversation/pairs");
 const drafts = resolve("issues/review-browser-design-v2/design/vedokset");
 const fontDir = resolve("design-system/fonts");
 const fontCss = (
@@ -363,7 +363,7 @@ try {
             `${mode}: generated conversation duplicated or missing`,
           );
         if (mode === "tyo")
-          await lab.getByText("bash · Käynnissä", { exact: true }).waitFor();
+          await lab.locator(".ah-live-tool-row").getByText("ajossa").waitFor();
         if (mode === "katkos") {
           await editor.fill("Tarkista myös näppäimistökäyttö.");
           await lab.route("**/api/v1/conversations/*/send", (r) => r.abort());
@@ -414,6 +414,65 @@ try {
       !(await lab.getByText(/Ei tiedossa, vastaanottiko Pi viestin/).count())
     )
       throw new Error(`${key}: uncertain send missing`);
+    if (mode === "tyo") {
+      const composition = await lab.evaluate((width) => {
+        const stream = document.querySelector(".ah-conversation-stream");
+        const user = stream?.querySelector('li[data-kind="user"]');
+        const progress = stream?.querySelector(".ah-working-progress");
+        const tool = stream?.querySelector(".ah-live-tool-row");
+        const queue = document.querySelector(
+          ".ah-conversation-frame > .ah-queue",
+        );
+        return {
+          order:
+            !!user &&
+            !!tool &&
+            !!progress &&
+            (user.compareDocumentPosition(tool) &
+              Node.DOCUMENT_POSITION_FOLLOWING) !==
+              0 &&
+            (tool.compareDocumentPosition(progress) &
+              Node.DOCUMENT_POSITION_FOLLOWING) !==
+              0,
+          gutter:
+            stream && queue
+              ? Math.abs(
+                  (stream.querySelector(".ah-timeline")?.getBoundingClientRect()
+                    .left ?? 0) -
+                    (width === 390
+                      ? (queue
+                          .querySelector(".ah-queue-heading")
+                          ?.getBoundingClientRect().left ?? 0)
+                      : queue.getBoundingClientRect().left),
+                )
+              : -1,
+        };
+      }, width);
+      if (
+        !composition.order ||
+        composition.gutter < 0 ||
+        composition.gutter > 2
+      )
+        throw new Error(
+          `${key}: progress/tool order or queue gutter differs: ${JSON.stringify(composition)}`,
+        );
+    }
+    if (mode === "katkos") {
+      await lab.waitForFunction(
+        () => !document.querySelector(".ah-connection")?.closest("[inert]"),
+        null,
+        { timeout: 15000 },
+      );
+      const bannerCount = await lab.locator(".ah-connection").count();
+      const noticeCount = await lab.locator("main .ah-notice").count();
+      const reconnectCount = await lab
+        .getByRole("button", { name: "Yhdistä" })
+        .count();
+      if (bannerCount !== 1 || noticeCount !== 0 || reconnectCount !== 1)
+        throw new Error(
+          `${key}: disconnected must have one app banner and one reconnect action: ${JSON.stringify({ bannerCount, noticeCount, reconnectCount, banner: await lab.locator(".ah-connection").evaluate((el) => el.outerHTML.slice(0, 1200)) })}`,
+        );
+    }
     await labShot(key);
     if (mode === "tyo") {
       if (await lab.getByText(/Selvä. Kysyit:/).count())
