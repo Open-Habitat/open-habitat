@@ -200,8 +200,8 @@ try:
     check(session_status==401 and snapshot_status==401,'B browser session/route issued')
     other_session_status,_,_=get(other,'/auth/session')
     other_snapshot_status,_,_=get(other,'/api/v1/onboarding/pi/status')
-    # Writer's pending guard intentionally denies ALL browser routes, even
-    # the healthy sibling. Its native process and DAC boundary still live.
+    # The restarted broker refuses before serving; all browser routes fail
+    # closed, including A's. Its native process and DAC boundary still live.
     check(other_session_status==401 and other_snapshot_status==401,'global browser refusal missing')
     check(native.poll() is None,'control native process stopped')
     check(as_uid(21032,"assert open('/home/guestone/fixture-native').read()=='alive'").returncode==0,'control native home unavailable')
