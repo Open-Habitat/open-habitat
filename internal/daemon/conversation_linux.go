@@ -1074,6 +1074,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 	// Discovery checks the native header only until this conversation's path is
 	// known. Thereafter status uses metadata, not a JSONL read. A present file
 	// is only a change hint; the history endpoint decides readability.
+	discoveryUnavailable := false
 	if path == "" {
 		if sessions, err := nativeSessions(c.nativeCfg()); err == nil {
 			for _, n := range sessions {
@@ -1087,10 +1088,15 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 					break
 				}
 			}
+		} else {
+			discoveryUnavailable = true
 		}
 	}
 	revision := ""
 	history := "missing"
+	if discoveryUnavailable {
+		history = "unavailable"
+	}
 	if path != "" {
 		info, err := os.Lstat(path)
 		switch {

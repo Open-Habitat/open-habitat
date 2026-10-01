@@ -477,6 +477,15 @@ func TestConversationStatusUsesStatAndProofIsOptIn(t *testing.T) {
 	if read()["native_revision"] == first["native_revision"] {
 		t.Fatal("metadata change not observed")
 	}
+	// Before a native path is known, a broken sessions root is unavailable,
+	// not evidence that history is absent.
+	s.historyPath = ""
+	if err := os.WriteFile(filepath.Join(home, ".pi"), []byte("not a directory"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got := read()["native_history"]; got != "unavailable" {
+		t.Fatalf("broken history root reported %v", got)
+	}
 }
 
 func TestConversationContinuationProofAndStatus(t *testing.T) {
