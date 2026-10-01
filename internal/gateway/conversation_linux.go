@@ -24,7 +24,7 @@ import (
 // This private gateway protocol deliberately does not add a browser v1 contract.
 // The lease table is fail-closed on gateway restart: an orphan cannot be claimed
 // by another browser session. Native histories remain accessible read-only.
-var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|abort|status|receipt|stream|stop|continue))?$`)
+var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|question|abort|status|receipt|stream|stop|continue))?$`)
 var conversationStreamCursor = regexp.MustCompile(`^ev1:[0-9a-fA-F-]{36}:[0-9]{1,20}$`)
 var conversationUUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 var conversationWorkspace = regexp.MustCompile(`^ws_[A-Za-z0-9_-]{8,64}$`)
@@ -82,9 +82,9 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var body []byte
-	if kind == "create" || kind == "send" || kind == "steer" || kind == "follow_up" || kind == "clear_queue" || kind == "abort" {
+	if kind == "create" || kind == "send" || kind == "steer" || kind == "follow_up" || kind == "clear_queue" || kind == "abort" || kind == "question" {
 		limit := int64(1024)
-		if kind == "send" || kind == "steer" || kind == "follow_up" {
+		if kind == "send" || kind == "steer" || kind == "follow_up" || kind == "question" {
 			limit = 66000
 		}
 		if r.Header.Get("Content-Type") != "application/json" || len(r.Header.Values("Content-Type")) != 1 || r.ContentLength <= 0 || r.ContentLength > limit {
@@ -172,7 +172,7 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 		req.Header.Set("Last-Event-ID", r.Header.Get("Last-Event-ID"))
 	}
 	// The socket may have accepted a write even when no acknowledgement arrives.
-	ambiguous := kind == "create" || kind == "send" || kind == "steer" || kind == "follow_up" || kind == "clear_queue" || kind == "abort" || kind == "stop" || kind == "continue"
+	ambiguous := kind == "create" || kind == "send" || kind == "steer" || kind == "follow_up" || kind == "clear_queue" || kind == "abort" || kind == "question" || kind == "stop" || kind == "continue"
 	failure := func() {
 		if ambiguous {
 			safe(w, 503, "control_uncertain")
@@ -239,6 +239,13 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 		var reply map[string]json.RawMessage
 		_ = json.Unmarshal(clean, &reply)
 		ok = str(reply, "command_id") == input["command_id"]
+	}
+	if ok && kind == "question" {
+		var input map[string]json.RawMessage
+		_ = json.Unmarshal(body, &input)
+		var reply map[string]json.RawMessage
+		_ = json.Unmarshal(clean, &reply)
+		ok = string(input["request_id"]) == string(reply["request_id"])
 	}
 	if ok && kind == "receipt" {
 		var reply map[string]json.RawMessage
@@ -387,6 +394,34 @@ func validConversationInput(kind string, b []byte) bool {
 		m, ok := strictObject(b, []string{"workspace_id"})
 		return ok && conversationWorkspace.MatchString(str(m, "workspace_id"))
 	}
+	if kind == "question" {
+		m, ok := strictObject(b, []string{"request_id", "action"}, "value")
+		if !ok || len(str(m, "request_id")) < 1 || len(str(m, "request_id")) > 200 {
+			return false
+		}
+		if str(m, "action") == "cancel" {
+			_, present := m["value"]
+			return !present
+		}
+		if str(m, "action") != "answer" {
+			return false
+		}
+		raw, present := m["value"]
+		if !present {
+			return false
+		}
+		var value any
+		return json.Unmarshal(raw, &value) == nil && (func() bool {
+			switch v := value.(type) {
+			case bool:
+				return true
+			case string:
+				return len(v) <= 65536
+			default:
+				return false
+			}
+		})()
+	}
 	if kind == "clear_queue" || kind == "abort" {
 		m, ok := strictObject(b, []string{"command_id"})
 		return ok && conversationUUID.MatchString(str(m, "command_id"))
@@ -434,6 +469,8 @@ func validatedConversationReply(kind string, b []byte, requestedID string) ([]by
 		required = []string{"schema_version", "command_id", "state"}
 	case "clear_queue":
 		required = []string{"schema_version", "command_id", "state", "removed_queue"}
+	case "question":
+		required = []string{"schema_version", "request_id", "state"}
 	case "receipt":
 		required = []string{"schema_version", "command_id", "state"}
 	case "stop":
@@ -477,6 +514,8 @@ func validatedConversationReply(kind string, b []byte, requestedID string) ([]by
 				ok = false
 			}
 		}
+	case "question":
+		ok = len(str(m, "request_id")) > 0 && len(str(m, "request_id")) <= 200 && str(m, "state") == "uncertain"
 	case "receipt":
 		ok = conversationUUID.MatchString(str(m, "command_id")) && (str(m, "state") == "pending" || str(m, "state") == "accepted" || str(m, "state") == "rejected" || str(m, "state") == "uncertain")
 	case "stop":

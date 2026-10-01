@@ -309,3 +309,33 @@ func (p *piRPC) request(kind, message string, timeout time.Duration) (bool, erro
 	reply, err := p.requestQueue(kind, message, timeout)
 	return reply.Accepted, err
 }
+
+// respondUI writes a Pi extension reply without a correlated acknowledgement.
+// It shares the request writer lock; even a complete write is not delivery proof.
+func (p *piRPC) respondUI(id, kind string, value any, cancel bool) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.poisoned || p.closing.Load() || p.overflow.Load() {
+		return errors.New("Pi UI response uncertain")
+	}
+	wire := map[string]any{"type": "extension_ui_response", "id": id}
+	if cancel {
+		wire["cancelled"] = true
+	} else if kind == "confirm" {
+		wire["confirmed"] = value
+	} else {
+		wire["value"] = value
+	}
+	b, _ := json.Marshal(wire)
+	b = append(b, '\n')
+	if err := p.in.SetWriteDeadline(time.Now().Add(4 * time.Second)); err != nil {
+		p.poisoned = true
+		return err
+	}
+	n, err := p.in.Write(b)
+	if err != nil || n != len(b) || p.closing.Load() || p.overflow.Load() {
+		p.poisoned = true
+		return errors.New("Pi UI response uncertain")
+	}
+	return nil
+}

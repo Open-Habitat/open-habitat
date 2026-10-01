@@ -405,3 +405,22 @@ func TestConversationRejectsAmbiguousDaemonErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestQuestionGatewayWireValidation(t *testing.T) {
+	for _, body := range []string{`{"request_id":"r1","action":"answer","value":true}`, `{"request_id":"r1","action":"answer","value":"one"}`, `{"request_id":"r1","action":"cancel"}`} {
+		if !validConversationInput("question", []byte(body)) {
+			t.Fatalf("rejected %s", body)
+		}
+	}
+	for _, body := range []string{`{"request_id":"r1","action":"answer"}`, `{"request_id":"r1","action":"cancel","value":null}`, `{"request_id":"r1","action":"answer","value":null}`, `{"request_id":"r1","action":"answer","value":1}`, `{"request_id":"r1","action":"cancel","extra":true}`} {
+		if validConversationInput("question", []byte(body)) {
+			t.Fatalf("accepted %s", body)
+		}
+	}
+	if _, _, ok := validatedConversationReply("question", []byte(`{"schema_version":1,"request_id":"r1","state":"uncertain"}`), ""); !ok {
+		t.Fatal("valid question receipt")
+	}
+	if _, _, ok := validatedConversationReply("question", []byte(`{"schema_version":1,"request_id":"r1","state":"accepted"}`), ""); ok {
+		t.Fatal("claimed delivery without native acknowledgement")
+	}
+}

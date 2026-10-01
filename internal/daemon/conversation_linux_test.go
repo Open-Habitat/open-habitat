@@ -781,3 +781,85 @@ for line in sys.stdin:
 	_, _, _, views := c.journal.turnView()
 	_ = views
 }
+
+func TestQuestionOneNativeWriteAndStale(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("requires nonroot")
+	}
+	home := t.TempDir()
+	script := filepath.Join(home, "pi")
+	code := `#!/usr/bin/env python3
+import json,sys
+for line in sys.stdin:
+ r=json.loads(line)
+ if r["type"] == "prompt":
+  print(json.dumps(dict(type="response",id=r["id"],command="prompt",success=True)),flush=True)
+  print(json.dumps(dict(type="extension_ui_request",id="native-1",method="select",title="Choose",options=["one","two"])),flush=True)
+ elif r["type"] == "extension_ui_response":
+  print(json.dumps(dict(type="extension_ui_request",id="native-2",method="confirm",title="Confirm",message="Continue?")),flush=True)
+  print(json.dumps(dict(type="extension_ui_request",id="native-3",method="custom",title="Unknown")),flush=True)
+`
+	if err := os.WriteFile(script, []byte(code), 0700); err != nil {
+		t.Fatal(err)
+	}
+	p, err := launchPiRPC(script, home, home, "", []string{"PATH=/usr/bin:/bin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.close()
+	id := ownershipTestID
+	s := &conversation{id: id, rpc: p, state: "idle", commands: map[string]bool{}}
+	c := &ConversationController{sessions: map[string]*conversation{id: s}, journal: newEventJournal()}
+	go c.drain(s)
+	accepted, err := p.request("prompt", "start", time.Second)
+	if err != nil || !accepted {
+		t.Fatalf("prompt: %v %v", accepted, err)
+	}
+	wait := func(want string) {
+		t.Helper()
+		end := time.Now().Add(time.Second)
+		for time.Now().Before(end) {
+			c.mu.Lock()
+			got := s.questionID
+			c.mu.Unlock()
+			if got == want {
+				return
+			}
+			time.Sleep(time.Millisecond)
+		}
+		t.Fatalf("question %q not pending", want)
+	}
+	call := func(request string, action string, value string) int {
+		t.Helper()
+		body := fmt.Sprintf(`{"request_id":%q,"action":%q%s}`, request, action, value)
+		req := httptest.NewRequest("POST", "/question", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		c.answerQuestion(w, req, id)
+		return w.Code
+	}
+	wait("native-1")
+	if code := call("wrong", "answer", `,"value":"one"`); code != 409 {
+		t.Fatalf("stale: %d", code)
+	}
+	if code := call("native-1", "answer", `,"value":"three"`); code != 400 {
+		t.Fatalf("invalid choice: %d", code)
+	}
+	if code := call("native-1", "answer", `,"value":"one"`); code != 200 {
+		t.Fatalf("answer: %d", code)
+	}
+	if code := call("native-1", "answer", `,"value":"one"`); code != 409 {
+		t.Fatalf("replay: %d", code)
+	}
+	wait("native-2")
+	if code := call("native-2", "cancel", ""); code != 200 {
+		t.Fatalf("cancel: %d", code)
+	}
+	wait("native-3")
+	if code := call("native-3", "answer", `,"value":true`); code != 409 {
+		t.Fatalf("unknown answer: %d", code)
+	}
+	if code := call("native-3", "cancel", ""); code != 200 {
+		t.Fatalf("unknown cancel: %d", code)
+	}
+}

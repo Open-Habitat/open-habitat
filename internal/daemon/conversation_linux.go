@@ -72,7 +72,11 @@ type conversation struct {
 	turnGeneration               uint64            // increments on each new prompt, fences slow native settlement reads
 	settlement                   map[string]string // observed_at, native_key, state; nil means unknown
 	question                     map[string]any    // bounded plain-text pending UI request
-	publishedHistory             map[string]bool   // bounded to this native session; JSONL is authoritative
+	questionID                   string            // native ID; never trust a browser-supplied native identity
+	questionKind                 string
+	questionChoices              []string
+	spentQuestions               map[string]bool // native IDs already answered or cancelled
+	publishedHistory             map[string]bool // bounded to this native session; JSONL is authoritative
 }
 
 func newConversationController(ctx context.Context, cfg transport.Config, runtime *core.PiRuntimeConfig, trusted func(*http.Request) bool, status func(context.Context) string) *ConversationController {
@@ -261,6 +265,8 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		} else {
 			c.sendKind(w, r, parts[0], parts[1])
 		}
+	case r.Method == http.MethodPost && parts[1] == "question":
+		c.answerQuestion(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "abort":
 		c.abort(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "continue":
@@ -741,9 +747,15 @@ func (c *ConversationController) drain(s *conversation) {
 								choices = append(choices, option)
 							}
 						}
-						s.question = map[string]any{"request_id": q.ID, "question_kind": kind, "prompt": prompt, "choices": choices}
-						if c.journal != nil {
-							c.journal.appendEvent("question.requested", "pi:"+s.id, s.question)
+						if s.spentQuestions == nil {
+							s.spentQuestions = make(map[string]bool)
+						}
+						if !s.spentQuestions[q.ID] && s.questionID == "" && len(s.spentQuestions) < maxConversationCommands {
+							s.questionID, s.questionKind, s.questionChoices = q.ID, kind, choices
+							s.question = map[string]any{"request_id": q.ID, "question_kind": kind, "prompt": prompt, "choices": choices}
+							if c.journal != nil {
+								c.journal.appendEvent("question.requested", "pi:"+s.id, s.question)
+							}
 						}
 					}
 				}
@@ -754,6 +766,7 @@ func (c *ConversationController) drain(s *conversation) {
 		turn := s.turnGeneration
 		if settled {
 			s.question = nil // any unanswered UI request is no longer pending after Pi settled
+			s.questionID = ""
 			s.settled = true
 			if c.journal != nil {
 				c.journal.activity("pi:"+s.id, "settling")
@@ -935,6 +948,7 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 		s.settled = false
 		s.settlement = nil
 		s.question = nil
+		s.questionID = ""
 		if s.receipts == nil {
 			s.receipts = make(map[string]string)
 		}
@@ -1076,6 +1090,90 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 	}
 	c.mu.Unlock()
 	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}})
+}
+
+// answerQuestion spends the native request ID before touching Pi. This uncorrelated
+// native write has no receipt: delivery is always uncertain, never retryable.
+func (c *ConversationController) answerQuestion(w http.ResponseWriter, r *http.Request, id string) {
+	var body struct {
+		RequestID string          `json:"request_id"`
+		Action    string          `json:"action"`
+		Value     json.RawMessage `json:"value"`
+	}
+	if decodeControl(r, &body, 66000) != nil || len(body.RequestID) < 1 || len(body.RequestID) > 200 || (body.Action != "answer" && body.Action != "cancel") {
+		snapshotError(w, 400, "invalid_request")
+		return
+	}
+	c.mu.Lock()
+	s := c.sessions[id]
+	if s == nil {
+		c.mu.Unlock()
+		snapshotError(w, 404, "resource_not_found")
+		return
+	}
+	if c.closed || s.dead || s.rpc.overflow.Load() || s.questionID != body.RequestID || s.spentQuestions[body.RequestID] || s.settled || s.state == "uncertain" || s.aborting {
+		c.mu.Unlock()
+		snapshotError(w, 409, "control_uncertain")
+		return
+	}
+	kind := s.questionKind
+	value := any(nil)
+	if body.Action == "cancel" {
+		if len(body.Value) != 0 {
+			c.mu.Unlock()
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
+	} else {
+		switch kind {
+		case "confirm":
+			var b bool
+			if string(body.Value) != "true" && string(body.Value) != "false" {
+				c.mu.Unlock()
+				snapshotError(w, 400, "invalid_request")
+				return
+			}
+			_ = json.Unmarshal(body.Value, &b)
+			value = b
+		case "input", "select":
+			var text string
+			if json.Unmarshal(body.Value, &text) != nil || len(text) > 65536 || !utf8.ValidString(text) {
+				c.mu.Unlock()
+				snapshotError(w, 400, "invalid_request")
+				return
+			}
+			if kind == "select" {
+				found := false
+				for _, choice := range s.questionChoices {
+					if choice == text {
+						found = true
+					}
+				}
+				if !found {
+					c.mu.Unlock()
+					snapshotError(w, 400, "invalid_request")
+					return
+				}
+			}
+			value = text
+		default:
+			c.mu.Unlock()
+			snapshotError(w, 409, "control_uncertain")
+			return
+		}
+	}
+	s.spentQuestions[body.RequestID] = true
+	s.questionID = ""
+	s.question = nil
+	if c.journal != nil {
+		c.journal.appendInvalidation("pi:" + s.id)
+	}
+	c.mu.Unlock()
+	if err := s.rpc.respondUI(body.RequestID, kind, value, body.Action == "cancel"); err != nil {
+		snapshotError(w, 409, "control_uncertain")
+		return
+	}
+	historyJSON(w, map[string]any{"schema_version": 1, "request_id": body.RequestID, "state": "uncertain"})
 }
 
 // clearQueue returns only Pi's correlated clear_queue response. No local queue

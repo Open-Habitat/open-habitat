@@ -180,7 +180,7 @@
                 "additionalProperties": false,
                 "required": [
                   "request_id",
-                  "response"
+                  "action"
                 ],
                 "properties": {
                   "request_id": {
@@ -191,12 +191,41 @@
                   "response": {
                     "type": [
                       "string",
-                      "boolean",
-                      "null"
+                      "boolean"
                     ],
                     "maxLength": 65536
+                  },
+                  "action": {
+                    "enum": [
+                      "answer",
+                      "cancel"
+                    ]
                   }
-                }
+                },
+                "oneOf": [
+                  {
+                    "properties": {
+                      "action": {
+                        "const": "cancel"
+                      }
+                    },
+                    "not": {
+                      "required": [
+                        "response"
+                      ]
+                    }
+                  },
+                  {
+                    "required": [
+                      "response"
+                    ],
+                    "properties": {
+                      "action": {
+                        "const": "answer"
+                      }
+                    }
+                  }
+                ]
               }
             }
           }
