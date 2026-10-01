@@ -34,6 +34,13 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Kierrokset
 
+### Kierros 2 — välitila 2026-10-01 01:40 UTC
+
+- Laskeutui: `fit-return-view-v2` (G1, run `01m3tfhyyma819xbqzrmfykjmd`,
+  …`1f275fd`, full gate vihreä, issue `done`).
+- Käynnissä viimeisenä: run `01m3thsssb62vez01pf67yjc1c`,
+  `fit-settings-density-v2` (G2). Arvio ~02:45 UTC.
+
 ### Kierros 2 — välitila 2026-10-01 01:05 UTC
 
 - Laskeutui: `fit-conversation-density-v2` (G3, run
