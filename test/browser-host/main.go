@@ -331,7 +331,7 @@ esac
 		mux.Handle("/api/v1/conversations", serveConversation)
 		mux.Handle("/api/v1/conversations/", serveConversation)
 		mux.Handle("/api/v1/events", gate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if scenario.Load() != "pi-deltas" {
+			if scenario.Load() != "pi-deltas" && scenario.Load() != "pi-visual-hold" {
 				http.NotFound(w, r) // Preserve the existing HTTP/status lab fallback.
 				return
 			}
@@ -351,7 +351,7 @@ esac
 				return
 			case "delay":
 				time.Sleep(650 * time.Millisecond)
-			case "pi-deltas":
+			case "pi-deltas", "pi-visual-hold":
 				current.Load().(*daemon.ConversationController).FixtureSnapshot().ServeHTTP(w, r)
 				return
 			case "foreign":
@@ -419,6 +419,30 @@ esac
 					current.Store(conversations)
 					conversationCancels[i] = cancel
 					previous()
+				}
+				w.WriteHeader(204)
+				return
+			case "/fixture/lab-conversations-clean":
+				if !lab {
+					http.NotFound(w, r)
+					return
+				}
+				// Only the invented aurinkokello history is reset. Preserve the
+				// seeded sessions; never delete a real profile or unrelated fixture.
+				dir := filepath.Join(tmp, "alice", ".pi", "agent", "sessions", "--"+strings.ReplaceAll(strings.Trim(filepath.Join(tmp, "alice", "src", "aurinkokello"), "/"), "/", "-")+"--")
+				entries, err := os.ReadDir(dir)
+				if err != nil {
+					http.Error(w, "fixture failed", 500)
+					return
+				}
+				for _, entry := range entries {
+					if !strings.HasSuffix(entry.Name(), ".jsonl") || strings.HasSuffix(entry.Name(), "_a1a1a1a1-0000-4000-8000-000000000001.jsonl") || strings.HasSuffix(entry.Name(), "_a1a1a1a1-0000-4000-8000-000000000002.jsonl") {
+						continue
+					}
+					if err := os.Remove(filepath.Join(dir, entry.Name())); err != nil {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
 				}
 				w.WriteHeader(204)
 				return
@@ -503,9 +527,13 @@ esac
 			case "/fixture/scenario":
 				name := r.URL.Query().Get("value")
 				switch name {
-				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "foreign", "pi-blocked", "pi-onboarding", "pi-deltas":
+				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "foreign", "pi-blocked", "pi-onboarding", "pi-deltas", "pi-visual-hold":
 					// Read by the fake Pi child at turn start. Switching back to ready
 					// keeps subsequent lab cases on the old, faster fixture.
+					if err := os.Remove(filepath.Join(tmp, "fakepi-visual-phase")); err != nil && !os.IsNotExist(err) {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
 					if e := os.WriteFile(fakePiScenario, []byte(name), 0600); e != nil {
 						http.Error(w, "fixture failed", 500)
 						return
@@ -524,6 +552,17 @@ esac
 					return
 				}
 				w.WriteHeader(204)
+			case "/fixture/pi-visual-ready":
+				if !lab {
+					http.NotFound(w, r)
+					return
+				}
+				if _, err := os.Stat(filepath.Join(tmp, "fakepi-visual-phase")); err != nil {
+					w.WriteHeader(http.StatusConflict)
+					return
+				}
+				w.WriteHeader(http.StatusNoContent)
+				return
 			case "/fixture/pi-restart":
 				// Replace ephemeral leases as if each synthetic daemon restarted.
 				for i, attempt := range attempts {

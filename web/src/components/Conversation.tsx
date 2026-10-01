@@ -255,7 +255,7 @@ export function SendObservation({
 export function TurnSettlement({ observedAt }: { observedAt: string }) {
   return (
     <p className="ah-settled" role="status">
-      ✓ Vuoro valmis{" "}
+      <Icon name="check" /> Vuoro valmis{" "}
       {new Date(observedAt).toLocaleTimeString("fi-FI", {
         hour: "2-digit",
         minute: "2-digit",

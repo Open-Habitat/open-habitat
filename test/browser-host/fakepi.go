@@ -201,7 +201,8 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	// The controller passes a deliberately minimal environment to Pi. The lab
 	// host writes this switch in its disposable root, not the real user's home.
 	mode, _ := os.ReadFile(filepath.Join(filepath.Dir(os.Getenv("HOME")), "fakepi-scenario"))
-	stream := strings.TrimSpace(string(mode)) == "pi-deltas"
+	visualHold := strings.TrimSpace(string(mode)) == "pi-visual-hold"
+	stream := strings.TrimSpace(string(mode)) == "pi-deltas" || visualHold
 	callID := "call_1"
 	if stream {
 		var raw [4]byte
@@ -230,7 +231,20 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 		{"type": "text", "text": "Katson ensin, mitä työtilassa on."},
 		{"type": "toolCall", "id": callID, "name": "bash", "arguments": map[string]any{"command": "ls"}},
 	}, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "toolUse"}))
-	time.Sleep(step)
+	if visualHold {
+		// Hold before the tool result so the lab can capture the live row.
+		_ = os.WriteFile(filepath.Join(filepath.Dir(os.Getenv("HOME")), "fakepi-visual-phase"), []byte("tool-start"), 0600)
+		deadline := time.Now().Add(90 * time.Second)
+		for time.Now().Before(deadline) {
+			current, _ := os.ReadFile(filepath.Join(filepath.Dir(os.Getenv("HOME")), "fakepi-scenario"))
+			if strings.TrimSpace(string(current)) != "pi-visual-hold" {
+				break
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+	} else {
+		time.Sleep(step)
+	}
 	if strings.Contains(prompt, "kaadu") {
 		os.Exit(3)
 	}

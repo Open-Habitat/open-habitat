@@ -1290,6 +1290,7 @@ export function BrowserConversation({
   const notices = (
     <>
       {receipt &&
+      sendObservation?.state !== "uncertain" &&
       !/^(Viesti hyväksyttiin|Viesti odottaa|Varmistetaan istuntoa|Jono oli jo tyhjä)/.test(
         receipt,
       ) ? (
@@ -1306,7 +1307,7 @@ export function BrowserConversation({
           tone="warning"
         />
       ) : null}
-      {ambiguous ? (
+      {ambiguous && sendObservation?.state !== "uncertain" ? (
         <InlineNotice
           title="Aiemman pyynnön tulos epävarma"
           description="Tarkista lista, tila ja natiivi historia. Automaattista uudelleenlähetystä ei tehdä; aloita tarvittaessa uusi selainistunto vasta selvitettyäsi tilanteen."
@@ -1522,7 +1523,9 @@ export function BrowserConversation({
                         <Markdown text={item.text} />
                       </AssistantMessage>
                     ) : (
-                      <p role="status">{item.text}</p>
+                      <p className="ah-tool-row ah-live-tool-row" role="status">
+                        {item.text}
+                      </p>
                     ),
                 })),
               ]}
@@ -1587,14 +1590,7 @@ export function BrowserConversation({
           details ? (
             <Button
               label="Tarkista keskustelun tila"
-              variant={
-                stale ||
-                ambiguous ||
-                current?.state === "uncertain" ||
-                historyError
-                  ? "primary"
-                  : "quiet"
-              }
+              variant="quiet"
               onPress={() => {
                 if (stale) onRefreshStale?.();
                 else {

@@ -1833,9 +1833,22 @@ h1[tabindex="-1"]:focus {
   background: var(--ah-accent-soft);
 }
 .ah-agent-topline > .ah-details-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s1);
   flex: none;
   margin-left: auto;
   min-height: var(--ah-touch);
+  padding: var(--ah-s1) var(--ah-s2);
+  border: 0;
+  background: transparent;
+  color: var(--ah-muted);
+  font: inherit;
+  cursor: pointer;
+}
+.ah-agent-topline > .ah-details-toggle:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-accent);
+  outline-offset: var(--ah-focus-offset);
 }
 .ah-header-facts {
   display: flex;
@@ -1987,6 +2000,7 @@ h1[tabindex="-1"]:focus {
 .ah-header-workspace {
   display: block;
   width: fit-content;
+  font-family: var(--ah-mono);
   color: var(--ah-muted);
   font-size: var(--ah-size-meta);
   text-decoration: none;
@@ -2052,6 +2066,10 @@ h1[tabindex="-1"]:focus {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.ah-live-tool-row {
+  padding: var(--ah-s3);
+  color: var(--ah-ink-2);
+}
 .ah-tool-row .ah-disclosure-button > .ah-status {
   margin-inline-start: auto;
   font-weight: 400;
@@ -2065,7 +2083,12 @@ h1[tabindex="-1"]:focus {
   margin-inline-start: 0;
 }
 .ah-conversation-frame .ah-composer {
-  background: var(--ah-surface);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.ah-settled .ah-icon {
+  vertical-align: -0.2em;
 }
 .ah-composer-empty .ah-actions .ah-control-reason {
   position: absolute;

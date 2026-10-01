@@ -49,7 +49,16 @@ const desktop = [
   "collapsed",
   "account-menu",
 ];
-const phone = ["paluu", "drawer", "valmis", "tyo", "luku", "katkos"];
+const phone = [
+  "paluu",
+  "drawer",
+  "valmis",
+  "tyo",
+  "luku",
+  "katkos",
+  "uusi",
+  "hylatty",
+];
 const modes = {
   paluu: "home",
   uusi: "new",
@@ -167,7 +176,9 @@ async function draftShot(file, mode, theme, width, key) {
     width === 390
       ? reference
           .locator('#dc-root [style*="width: 390px"][style*="height: 844px"]')
-          .nth(phone.indexOf(mode))
+          // The phone draft has no separate new/rejected frame. Use its
+          // completed composition as a layout reference, not a state claim.
+          .nth(mode === "uusi" || mode === "hylatty" ? 2 : phone.indexOf(mode))
       : reference
           .locator('#dc-root [style*="width: 1440px"][style*="height: 900px"]')
           .first();
@@ -255,6 +266,7 @@ try {
             : jobs) {
     await fixture("scenario?value=ready");
     await fixture("conversations-reset");
+    await fixture("lab-conversations-clean");
     await fixture("history?mode=ready");
     let path =
       mode === "paluu" ||
@@ -278,8 +290,15 @@ try {
         await editor.fill("hylkää");
         await lab.getByRole("button", { name: "Lähetä", exact: true }).click();
         await lab.getByText("Viesti hylättiin.", { exact: false }).waitFor();
-      } else if (mode === "tyo" || mode === "valmis") {
-        await editor.fill("hidas tarkistus");
+      } else if (mode === "tyo" || mode === "valmis" || mode === "katkos") {
+        if (mode === "tyo") {
+          await fixture("scenario?value=pi-visual-hold");
+          await lab.reload(); // start the verified event stream before the tool begins
+          await editor.waitFor();
+        }
+        await editor.fill(
+          "Tarkista etusivun saavutettavuus ja korjaa mobiilinavigaatio.",
+        );
         await lab.getByRole("button", { name: "Lähetä", exact: true }).click();
         if (mode === "tyo") {
           await lab.getByRole("button", { name: "Ohjaa" }).waitFor();
@@ -289,31 +308,88 @@ try {
             .click();
           await editor.fill("Älä muuta footerin rakennetta.");
           await lab.getByRole("button", { name: "Ohjaa" }).click();
-          await lab.getByRole("button", { name: /Jonossa/ }).click();
           await lab
-            .getByText("Älä muuta footerin rakennetta.", { exact: true })
-            .waitFor();
+            .waitForFunction(
+              () => {
+                const panel = document.querySelector(".ah-queue");
+                return panel?.textContent?.includes(
+                  "Älä muuta footerin rakennetta.",
+                );
+              },
+              null,
+              { timeout: 10000 },
+            )
+            .catch(async () => {
+              throw new Error(
+                `Second queue item not accepted: ${(await lab.locator("main").innerText()).slice(-1200)}`,
+              );
+            });
+          await lab.waitForFunction(
+            async (url) => (await fetch(url)).status === 204,
+            `${origin}/fixture/pi-visual-ready`,
+            { timeout: 20000 },
+          );
         }
-        if (mode === "valmis")
+        if (mode === "valmis" || mode === "katkos") {
           await lab
             .getByText(/Selvä. Kysyit:/)
             .last()
             .waitFor({ timeout: 30000 });
-      } else if (mode === "katkos") {
-        await editor.fill("Luonnos katkon aikana");
-        await lab.route("**/api/v1/snapshot", (r) => r.abort());
-        if (width === 390)
-          await lab.evaluate(() => {
-            window.dispatchEvent(new Event("blur"));
-            window.dispatchEvent(new Event("focus"));
-          });
+        }
+        if (width === 390) await lab.reload();
         else
           await lab
             .getByRole("button", { name: "Päivitä", exact: true })
             .click();
         await lab
-          .getByText("Yhteys katkesi · tiedot voivat olla vanhoja")
+          .getByRole("heading", { name: /Tarkista etusivun saavutettavuus/ })
           .waitFor();
+        const conversation = new URL(lab.url()).searchParams.get(
+          "conversation",
+        );
+        const observed = await (
+          await lab.request.get(`${origin}/api/v1/snapshot`)
+        ).json();
+        if (
+          !conversation ||
+          observed.agents.filter((agent) => agent.agent_id === conversation)
+            .length !== 1 ||
+          (width === 1440 &&
+            (await nav
+              .locator(`a[href*="conversation=${conversation}"]`)
+              .count()) !== 1)
+        )
+          throw new Error(
+            `${mode}: generated conversation duplicated or missing`,
+          );
+        if (mode === "tyo")
+          await lab.getByText("bash · Käynnissä", { exact: true }).waitFor();
+        if (mode === "katkos") {
+          await editor.fill("Tarkista myös näppäimistökäyttö.");
+          await lab.route("**/api/v1/conversations/*/send", (r) => r.abort());
+          await lab
+            .getByRole("button", { name: "Lähetä", exact: true })
+            .click();
+          await lab
+            .getByText(/Ei tiedossa, vastaanottiko Pi viestin/)
+            .waitFor();
+          await lab.route("**/api/v1/snapshot", (r) => r.abort());
+          if (width === 390)
+            await lab.evaluate(() => {
+              window.dispatchEvent(new Event("blur"));
+              window.dispatchEvent(new Event("focus"));
+            });
+          else
+            await lab
+              .getByRole("button", { name: "Päivitä", exact: true })
+              .click();
+          await lab
+            .getByText("Yhteys katkesi · tiedot voivat olla vanhoja")
+            .waitFor();
+          await lab.locator(".ah-conversation-stream").evaluate((stream) => {
+            stream.scrollTop = stream.scrollHeight;
+          });
+        }
       }
     }
     if (mode === "drawer")
@@ -323,9 +399,27 @@ try {
     if (mode === "account-menu")
       await lab.getByRole("button", { name: "Tilivalikko" }).click();
     const key = `${modes[mode]}-${theme}-${width}`;
-    if (mode === "tyo" && (await lab.getByText(/Selvä. Kysyit:/).count()))
-      throw new Error(`${key}: fake Pi settled before working capture`);
+    if (mode === "tyo") {
+      if (await lab.getByText(/Selvä. Kysyit:/).count())
+        throw new Error(`${key}: fake Pi settled before working capture`);
+      if (
+        !(await lab.locator("main").innerText()).includes(
+          "Älä muuta footerin rakennetta.",
+        )
+      )
+        throw new Error(`${key}: second queue item missing`);
+    }
+    if (
+      mode === "katkos" &&
+      !(await lab.getByText(/Ei tiedossa, vastaanottiko Pi viestin/).count())
+    )
+      throw new Error(`${key}: uncertain send missing`);
     await labShot(key);
+    if (mode === "tyo") {
+      if (await lab.getByText(/Selvä. Kysyit:/).count())
+        throw new Error(`${key}: fake Pi settled during capture`);
+      await fixture("scenario?value=ready");
+    }
     await draftShot(
       width === 390 ? "Puhelin v2.dc.html" : "Selainpolku v2.dc.html",
       mode,
