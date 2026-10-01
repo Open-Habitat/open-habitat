@@ -472,8 +472,8 @@ func (c *ConversationController) continuationProof(id string) (*piOwnership, bro
 	return owner, origin, ws, cwd, path, old, "eligible"
 }
 
-// continueEnded is explicit. A browser lease at the gateway and the lock's
-// origin marker are both required; a terminal history alone cannot grant control.
+// continueEnded is explicit. The daemon requires its native ownership lock and
+// browser-origin marker; a terminal history alone cannot grant control.
 func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Request, id string) {
 	if r.ContentLength != 0 || len(r.TransferEncoding) != 0 {
 		snapshotError(w, 400, "invalid_request")

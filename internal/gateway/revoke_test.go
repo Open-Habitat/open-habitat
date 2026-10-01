@@ -11,9 +11,6 @@ func TestRevokeSubjectIsolationAndFlowCutoff(t *testing.T) {
 	h, a, p, _, _ := fixture(t)
 	state, flow := start(t, h)
 	old := callback(h, state, flow).Result().Cookies()[1]
-	a.mu.Lock()
-	a.conversations = map[string]map[string]bool{old.Value: {"synthetic": true}}
-	a.mu.Unlock()
 	state2, flow2 := start(t, h)
 	// Two subjects share the gateway; the other subject remains authorized.
 	p.id = "43"
@@ -25,12 +22,6 @@ func TestRevokeSubjectIsolationAndFlowCutoff(t *testing.T) {
 	}
 	if request(h, "GET", "/auth/session", old).Code != http.StatusUnauthorized {
 		t.Fatal("old cookie survived")
-	}
-	a.mu.Lock()
-	_, grant := a.conversations[old.Value]
-	a.mu.Unlock()
-	if grant {
-		t.Fatal("conversation authorization survived")
 	}
 	if request(h, "GET", "/auth/session", other).Code != http.StatusOK {
 		t.Fatal("other subject removed")

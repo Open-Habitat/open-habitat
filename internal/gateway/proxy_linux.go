@@ -52,8 +52,7 @@ func daemonUID(c *net.UnixConn) int {
 
 // proxy builds a new request rather than cloning the browser request: only the
 // session's mapped socket and the explicitly selected headers cross the boundary.
-// onReply is used solely for the temporary per-browser conversation lease.
-func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream bool, onReply func([]byte) ([]byte, bool)) {
+func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream bool) {
 	target := s.identity
 	if a.snapshotDial == nil && udssecure.Mapped(target.Socket, target.UID) != nil {
 		safe(w, 503, "daemon_unavailable")
@@ -121,7 +120,7 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 			req.Header.Set("Content-Type", typ)
 		}
 	}
-	if c, e := r.Cookie(cookieName); e == nil && (r.URL.Path == piAttemptPath || r.URL.Path == "/api/v1/events" || conversationPath.MatchString(r.URL.Path)) {
+	if c, e := r.Cookie(cookieName); e == nil && (r.URL.Path == piAttemptPath) {
 		prefix := "conversation-owner\x00"
 		if r.URL.Path == piAttemptPath {
 			prefix = "pi-attempt-owner\x00"
@@ -175,13 +174,6 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	if err != nil || int64(len(data)) > proxyBodyLimit {
 		safe(w, 503, "daemon_unavailable")
 		return
-	}
-	if onReply != nil && res.StatusCode == 200 {
-		data, _ = onReply(data)
-		if data == nil {
-			safe(w, 503, "daemon_unavailable")
-			return
-		}
 	}
 	if typ := res.Header.Get("Content-Type"); typ != "" {
 		w.Header().Set("Content-Type", typ)

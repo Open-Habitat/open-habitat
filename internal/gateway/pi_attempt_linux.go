@@ -22,5 +22,5 @@ func (a *Auth) piAttempt(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	a.proxy(w, r, s, false, nil)
+	a.proxy(w, r, s, false)
 }

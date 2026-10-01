@@ -25,7 +25,7 @@ func (a *Auth) snapshotOrPiStatus(w http.ResponseWriter, r *http.Request, path s
 		safe(w, 401, "authentication_required")
 		return
 	}
-	a.proxy(w, r, s, false, nil)
+	a.proxy(w, r, s, false)
 }
 
 // The gateway accepts only canonical, bounded read paths. It never chooses a UID
@@ -65,5 +65,5 @@ func (a *Auth) history(w http.ResponseWriter, r *http.Request) {
 		safe(w, 401, "authentication_required")
 		return
 	}
-	a.proxy(w, r, s, false, nil)
+	a.proxy(w, r, s, false)
 }

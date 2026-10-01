@@ -37,7 +37,6 @@ func (a *Auth) RevokeSubject(ctx context.Context, subject string) error {
 	for key, s := range a.sessions {
 		if s.identity.Subject == subject {
 			delete(a.sessions, key)
-			delete(a.conversations, key)
 			removed++
 		}
 	}

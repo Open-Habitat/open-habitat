@@ -17,7 +17,7 @@ and for the broker in ADR 0004.
   UI and routes each request to the mapped daemon over its per-user socket. The
   shared proxy checks the mapped socket once, forwards finite bodies within a
   cap and flushes streams without interpreting daemon replies. Conversation
-  list filtering and create tracking remain until the lease-removal step. It
+  ownership is per Unix user in the daemon; the gateway keeps no lease table. It
   runs as a fixed unprivileged UID, never reads a home, and never passes
   browser headers on as identity.
 - `daemon/` runs as one mapped UID and owns native discovery, Pi history and

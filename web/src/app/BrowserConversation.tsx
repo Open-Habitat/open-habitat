@@ -40,7 +40,6 @@ import {
   clearQueue,
   continueConversation,
   create,
-  list,
   NotAdmitted,
   queueMessage,
   type Session,
@@ -96,7 +95,6 @@ export function BrowserConversation({
 }) {
   const navigate = useNavigate();
   const [csrf, setCSRF] = useState<string>();
-  const [sessions, setSessions] = useState<Session[]>([]);
   const [current, setCurrent] = useState<Status>();
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [next, setNext] = useState<string>();
@@ -294,7 +292,6 @@ export function BrowserConversation({
     setFinishedInBackground(false);
     wasWorking.current = false;
     wasAtBottom.current = true;
-    setSessions([]);
     setProblem("");
     setReceipt("");
     setSendObservation(undefined);
@@ -303,7 +300,6 @@ export function BrowserConversation({
       try {
         const token = await sessionCSRF(controller.signal);
         if (token === "login") throw new Error("identity_lost");
-        const found = await list(controller.signal);
         if (controller.signal.aborted) return;
         const saved = place.current.get(placeKey);
         if (
@@ -311,11 +307,7 @@ export function BrowserConversation({
           saved.identity === identity &&
           saved.csrf === token &&
           saved.workspaceId === workspace.workspace_id &&
-          saved.id === id &&
-          found.some(
-            (s) =>
-              s.agent_id === id && s.workspace_id === workspace.workspace_id,
-          )
+          saved.id === id
         ) {
           setEntries(saved.entries);
           setNext(saved.next);
@@ -323,22 +315,9 @@ export function BrowserConversation({
           restored.current = true;
         } else place.current.delete(placeKey);
         setCSRF(token);
-        setSessions(found);
-        if (
-          id &&
-          !found.some(
-            (s) =>
-              s.agent_id === id && s.workspace_id === workspace.workspace_id,
-          )
-        )
-          setProblem(
-            "Ohjausoikeutta ei löytynyt tästä selainistunnosta. Vanha historia on vain luettavissa.",
-          );
       } catch {
         if (!controller.signal.aborted)
-          setProblem(
-            "Istuntoa tai ohjauslistaa ei voitu vahvistaa. Ohjaus on estetty.",
-          );
+          setProblem("Istuntoa ei voitu vahvistaa. Ohjaus on estetty.");
       }
     })();
     return () => {
@@ -373,16 +352,7 @@ export function BrowserConversation({
   };
   const refresh = useCallback(
     async (requestContinuation = false) => {
-      if (
-        stale ||
-        !id ||
-        !csrf ||
-        !alive.current ||
-        !sessions.some(
-          (s) => s.agent_id === id && s.workspace_id === workspace.workspace_id,
-        )
-      )
-        return;
+      if (stale || !id || !csrf || !alive.current) return;
       // A journal event can arrive during a status/history read. Never drop
       // its invalidation just because an earlier read was still in flight.
       if (pending.current) {
@@ -687,7 +657,6 @@ export function BrowserConversation({
     [
       id,
       csrf,
-      sessions,
       workspace.workspace_id,
       identity,
       submittedKey,
@@ -902,10 +871,7 @@ export function BrowserConversation({
   useEffect(() => {
     if (!id || !csrf || stale) return;
     const openKey = `${identity}:${id}`;
-    const requestProof =
-      sessions.some(
-        (s) => s.agent_id === id && s.workspace_id === workspace.workspace_id,
-      ) && openedProof.current !== openKey;
+    const requestProof = openedProof.current !== openKey;
     if (requestProof) openedProof.current = openKey;
     void refresh(requestProof);
     // Only poll while the journal is unavailable; the journal drives status
@@ -926,16 +892,7 @@ export function BrowserConversation({
       window.removeEventListener("focus", focus);
       document.removeEventListener("visibilitychange", focus);
     };
-  }, [
-    id,
-    csrf,
-    refresh,
-    stale,
-    journalOffline,
-    sessions,
-    identity,
-    workspace.workspace_id,
-  ]);
+  }, [id, csrf, refresh, stale, journalOffline, identity]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a live fragment changes the feed height without changing native entries.
   useLayoutEffect(() => {
     if (wasAtBottom.current && feed.current) {
@@ -977,21 +934,6 @@ export function BrowserConversation({
     if (!csrf || token !== csrf) throw new Error("identity_lost");
     return token;
   };
-  const recheckList = async () => {
-    try {
-      if (!csrf || (await sessionCSRF()) !== csrf)
-        throw new Error("identity_lost");
-      setSessions(await list());
-      setProblem("");
-      setReceipt(
-        ambiguous
-          ? "Lista tarkistettu. Jos luonti ei näy, sen tulos on edelleen epävarma."
-          : "Keskustelulista tarkistettu.",
-      );
-    } catch {
-      setProblem("Ohjauslistaa ei voitu tarkistaa.");
-    }
-  };
   const start = async () => {
     if (stale || streamError || busy || !csrf || ambiguous) return;
     setBusy(true);
@@ -1004,7 +946,6 @@ export function BrowserConversation({
       const result = await create(workspace.workspace_id, token);
       sessionStorage.removeItem(ambiguousKey);
       if (!alive.current) return;
-      setSessions((old) => [...old, result]);
       onSessionCreated(result);
       navigate(
         `/workspaces/${workspace.workspace_id}?conversation=${result.agent_id}`,
@@ -1013,7 +954,7 @@ export function BrowserConversation({
       if (alive.current) {
         setReceipt(
           sessionStorage.getItem(ambiguousKey)
-            ? "Luonnin tulos epävarma. Älä luo uudelleen tässä istunnossa. Tarkista lista ja natiivi historia."
+            ? "Luonnin tulos epävarma. Älä luo uudelleen tässä istunnossa. Tarkista tilannekuva ja natiivi historia."
             : "Istuntoa ei voitu vahvistaa. Luontia ei lähetetty.",
         );
       }
@@ -1288,11 +1229,7 @@ export function BrowserConversation({
       ?.focus();
   };
   const controlled =
-    !!current &&
-    !problem &&
-    sessions.some(
-      (s) => s.agent_id === id && s.workspace_id === workspace.workspace_id,
-    );
+    !!current && !problem && current.workspace_id === workspace.workspace_id;
   const canSend =
     controlled &&
     !streamError &&
@@ -1347,9 +1284,6 @@ export function BrowserConversation({
         ?.querySelector("textarea")
         ?.focus({ preventScroll: true });
   }, [id, controlled]);
-  const selected = sessions.filter(
-    (s) => s.workspace_id === workspace.workspace_id,
-  );
   const notices = (
     <>
       {receipt &&
@@ -1373,7 +1307,7 @@ export function BrowserConversation({
       {ambiguous && sendObservation?.state !== "uncertain" ? (
         <InlineNotice
           title="Aiemman pyynnön tulos epävarma"
-          description="Tarkista lista, tila ja natiivi historia. Automaattista uudelleenlähetystä ei tehdä; aloita tarvittaessa uusi selainistunto vasta selvitettyäsi tilanteen."
+          description="Tarkista tilannekuva, tila ja natiivi historia. Automaattista uudelleenlähetystä ei tehdä; aloita tarvittaessa uusi selainistunto vasta selvitettyäsi tilanteen."
           tone="warning"
         />
       ) : null}
@@ -1411,39 +1345,7 @@ export function BrowserConversation({
               }
               onPress={() => void start()}
             />
-            <Button
-              label="Tarkista keskustelulista"
-              variant={ambiguous ? "secondary" : "quiet"}
-              availability={
-                stale
-                  ? { state: "unknown", reason: "Yhteys on katkennut." }
-                  : { state: "enabled" }
-              }
-              onPress={() => void recheckList()}
-            />
           </fieldset>
-          <ul>
-            {selected.map((s) => (
-              <li key={s.agent_id}>
-                <a
-                  href={`/workspaces/${workspace.workspace_id}?conversation=${s.agent_id}`}
-                >
-                  {s.agent_id}
-                </a>{" "}
-                ·{" "}
-                {(
-                  {
-                    idle: "Valmis",
-                    pending: "Odottaa kuittausta",
-                    accepted: "Pi työskentelee",
-                    rejected: "Viesti hylättiin",
-                    uncertain: "Tila epävarma",
-                    stopping: "Pysäytetään",
-                  } as Record<string, string>
-                )[s.state] ?? "Tila ei tiedossa"}
-              </li>
-            ))}
-          </ul>
         </>
       ) : (
         <ConversationFrame>

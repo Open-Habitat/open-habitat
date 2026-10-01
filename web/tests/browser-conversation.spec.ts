@@ -65,15 +65,10 @@ test("@browser-conversation create, send once, reconnect and old history stays r
   const create = page.getByRole("button", {
     name: "Aloita uusi Pi-keskustelu",
   });
-  const recheck = page.getByRole("button", {
-    name: "Tarkista keskustelulista",
-  });
   await expect(create).toHaveClass(/ah-button-primary/);
-  await expect(recheck).toHaveClass(/ah-button-quiet/);
-  const first = await create.boundingBox();
-  const second = await recheck.boundingBox();
-  if (!first || !second) throw new Error("Conversation actions missing");
-  expect(second.x - (first.x + first.width)).toBeGreaterThan(8);
+  await expect(
+    page.getByRole("button", { name: "Tarkista keskustelulista" }),
+  ).toHaveCount(0);
   const stream = page.waitForResponse(
     (r) => new URL(r.url()).pathname === "/api/v1/events" && r.status() === 200,
   );
@@ -499,9 +494,8 @@ test("@browser-conversation lost create acknowledgement blocks duplicate creatio
     page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
   ).toBeDisabled();
   await expect(
-    page.getByRole("button", { name: "Tarkista keskustelulista" }),
-  ).toHaveClass(/ah-button-secondary/);
-  await page.getByRole("button", { name: "Tarkista keskustelulista" }).click();
+    page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+  ).toBeDisabled();
   expect(attempts).toBe(1);
 });
 test("@browser-conversation uncertain send survives reload without duplicate", async ({
@@ -753,8 +747,6 @@ test("@browser-conversation foreground clicks and route changes do not revalidat
   await page.getByRole("menuitem", { name: "Asetukset" }).click();
   await expect(page.getByRole("heading", { name: "Asetukset" })).toBeVisible();
   await page.getByRole("button", { name: "Takaisin" }).click();
-  await page.getByRole("button", { name: "Tarkista keskustelulista" }).click();
-  await expect(page.getByText("Keskustelulista tarkistettu.")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Pi-keskustelut" }),
   ).toBeVisible();
@@ -763,14 +755,9 @@ test("@browser-conversation foreground clicks and route changes do not revalidat
     page.getByRole("group", { name: "Pi-keskustelun toiminnot" }),
   ).toBeVisible();
   await page.setViewportSize({ width: 750, height: 720 });
-  const first = await page
-    .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
-    .boundingBox();
-  const second = await page
-    .getByRole("button", { name: "Tarkista keskustelulista" })
-    .boundingBox();
-  if (!first || !second) throw new Error("actions missing");
-  expect(second.y > first.y || second.x - first.x - first.width > 8).toBe(true);
+  await expect(
+    page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+  ).toBeVisible();
   await page
     .getByRole("group", { name: "Pi-keskustelun toiminnot" })
     .scrollIntoViewIfNeeded();
@@ -1306,7 +1293,7 @@ for (const [proof, reason] of [
     expect(posts).toBe(0);
   });
 
-test("@browser-conversation ended browser lease continues explicitly without reposting", async ({
+test("@browser-conversation ended browser conversation continues explicitly without reposting", async ({
   page,
 }) => {
   const id = await endedConversation(page);

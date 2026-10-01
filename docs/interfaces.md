@@ -26,7 +26,7 @@ ja [daemonista](../internal/daemon/handoff_linux.go).
 | `GET /api/v1/snapshot` | työtilojen ja natiivihistorioiden tilannekuva |
 | `GET /api/v1/agents/<agent-id>/history` | sivu Pi:n historiaa; `after` ja `limit` ohjaavat sivutusta |
 | `GET /api/v1/content/<content-id>` | pitkän sisällön osa; `offset` ja `limit_bytes` ohjaavat lukua |
-| `GET /api/v1/conversations` | selainistunnon hallittavissa olevat keskustelut |
+| `GET /api/v1/conversations` | käyttäjän daemonin hallitsemat keskustelut |
 | `POST /api/v1/conversations` | uuden Pi-keskustelun käynnistys `workspace_id`:llä |
 | `GET /api/v1/conversations/<session-id>/status` | keskustelun tila ja natiivin tiedoston metatieto; `?continuation=true` pyytää erillisen jatkamistodistuksen avattaessa päättynyt keskustelu |
 | `POST /api/v1/conversations/<session-id>/send` | viesti ja sen UUID-muotoinen `command_id` |
@@ -47,15 +47,16 @@ ja [daemonista](../internal/daemon/handoff_linux.go).
 
 Vain `?continuation=true` -tilapyynnön `continuation` on jatkamistodistus; tavallinen tilapyyntö palauttaa `unproven` ilman todistusta. `eligible` tarkoittaa, että selainperäinen omistajamerkintä täsmää, edellinen suora lapsi on korjattu talteen (tai daemonin uudelleenkäynnistyksen jälkeen omistajalukko on vapaa), työtila täsmää ja natiivi historia on kahdesti luettu vakaaksi oikealle id:lle ja cwd:lle. `writer_present` tarkoittaa elävää lasta tai varattua/epävarmaa omistajalukkoa, `read_only_history` puuttuvaa kelvollista selainalkuperää ja `unproven` keskeneräistä tai epäselvää muuta todistetta. `native_history: present` tarkoittaa vain tiedoston olemassaoloa ja `native_revision` on sen koon ja muutosajan vihje. Vain historiarajapinnan lukija ratkaisee, onko sisältö luettavissa ja kelvollista. Tiedoston olemassaolo ei todista kirjoittajan poistumista. Status vain havainnoi ja vapauttaa lukon heti; saman daemonin samanaikaiset tilakyselyt ja jatkaminen jonottavat enintään kaksi sekuntia erillisellä portilla eivätkä näy toisilleen ulkopuolisena kirjoittajana. Jonon aikakatkaisu näkyy tilassa `unproven` (jatkamisessa 503), ei `writer_present`. `continue` suorittaa saman todistuksen uudelleen ja pitää lukon uuden lapsen käynnistykseen asti. Välissä tapahtunut kilpailu voi palauttaa `writer_conflict`. Vain `eligible` oikeuttaa selaimen tarjoamaan jatkamista; se ei todista aiemman vuoron tai irrotetun työkalun lopputulosta.
 
-Jatkaminen palauttaa `agent_id`, `workspace_id`, `state: idle` ja `prior_outcome: uncertain`: aiemman vuoron tulosta ei päätellä eikä epävarmaa viestiä lähetetä uudelleen. Elävän kirjoittajan lukko palauttaa 409 `writer_conflict`; ilman selaimesta luotua lukon alkuperämerkintää palautuu 409 `read_only_history`; epäselvä historia tai työtila palauttaa 409 `control_uncertain`. Gateway vaatii saman kirjautumisistunnon hallussa olevan keskustelukahvan myös jatkamisessa. Daemonin uudelleenkäynnistyksen jälkeen pelkkä luettava historia ei riitä: Pi:n lapselle periytynyt lukko on saatava uudelleen, natiivi historia täsmäytetään ja vain eksplisiittinen pyyntö käynnistää uuden lapsen. Gatewayn uudelleenkäynnistyksessä katoavaa kahvavuokraa ei palauteta historiasta. Irrotetut työkalut voivat jäädä eloon; siksi aiemman työn lopputulos jää epävarmaksi.
+Jatkaminen palauttaa `agent_id`, `workspace_id`, `state: idle` ja `prior_outcome: uncertain`: aiemman vuoron tulosta ei päätellä eikä epävarmaa viestiä lähetetä uudelleen. Elävän kirjoittajan lukko palauttaa 409 `writer_conflict`; ilman selaimesta luotua lukon alkuperämerkintää palautuu 409 `read_only_history`; epäselvä historia tai työtila palauttaa 409 `control_uncertain`. Gateway reitittää jatkamisen kirjautuneen Unix-käyttäjän daemoniin; selainistunnon keskustelukahvaa ei ole. Daemonin uudelleenkäynnistyksen jälkeen pelkkä luettava historia ei riitä: Pi:n lapselle periytynyt lukko on saatava uudelleen, natiivi historia täsmäytetään ja vain eksplisiittinen pyyntö käynnistää uuden lapsen. Gatewayn uudelleenkäynnistys ei muuta daemonin keskusteluja; uusi kirjautuminen samaan Unix-käyttäjään voi ohjata niitä, jos daemon ja Pi-lapsi ovat säilyneet. Irrotetut työkalut voivat jäädä eloon; siksi aiemman työn lopputulos jää epävarmaksi.
 
 Selain hakee tilan avattaessa keskustelun ja journalin tilamuutosten jälkeen; vain katkenneen tapahtumavirran aikana se käyttää hidasta varakyselyä. Sen väliaikaisen protokollan
 pyyntömuodot validoidaan [daemonin ohjaimessa](../internal/daemon/conversation_linux.go),
 ja selain tarkistaa vastausten muodot. [Gateway](../internal/gateway/proxy_linux.go)
-välittää vastauksen tulkitsematta sitä (paitsi väliaikaisen kahvavuokran vaatima
-keskustelulistan suodatus ja uuden kahvan kirjaus);
+välittää vastauksen tulkitsematta sitä;
 ne eivät ole jäljempänä kuvatun yleisen komentoskeeman toteutus.
-Gatewayn uudelleenkäynnistys kadottaa selainistuntojen ohjaussidokset.
+Gateway ei tallenna keskustelukohtaisia ohjaussidoksia. Saman Unix-käyttäjän
+toinen kirjautuminen voi ohjata daemonin keskusteluja; daemonin omistajalukko
+estää kilpailevat natiivit kirjoittajat. Eri käyttäjien pyynnöt reitittyvät eri socketeihin.
 Daemonin uudelleenkäynnistys kadottaa sen muistissa olevan ohjaustilan.
 Pi:n kirjoittama historia säilyy luettavana. Tapahtumajournalin kursori mahdollistaa toiston rajallisen ikkunan sisällä. Vanhentunut kursori palauttaa `409 cursor_expired`, vieraan daemon-elinkaaren kursori `409 cursor_instance_mismatch`; selain hakee silloin uuden tilannekuvan ja natiivihistorian.
 

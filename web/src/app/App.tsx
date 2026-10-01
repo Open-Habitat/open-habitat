@@ -145,7 +145,9 @@ export function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [piCheckFailed, setPiCheckFailed] = useState(false);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
-  const [browserSessions, setBrowserSessions] = useState<Session[]>([]);
+  // Daemon catalog distinguishes browser-started Pi sessions from read-only
+  // terminal history; it is not a cookie-scoped conversation lease.
+  const [daemonSessions, setDaemonSessions] = useState<Session[]>([]);
   const [verifying, setVerifying] = useState(false);
   const [identityEpoch, setIdentityEpoch] = useState(0);
   const sessionBinding = useRef<string | undefined>(undefined);
@@ -313,7 +315,7 @@ export function App() {
       for (const key of Object.keys(sessionStorage))
         if (key.startsWith("nah:")) sessionStorage.removeItem(key);
       conversationPlace.current.clear();
-      setBrowserSessions([]);
+      setDaemonSessions([]);
       setIdentityEpoch((n) => n + 1);
       if (gate === "login") dispatch(authenticationRequired());
       else if (gate === "pi") dispatch(piRequired());
@@ -383,7 +385,7 @@ export function App() {
             for (const key of Object.keys(sessionStorage))
               if (key.startsWith("nah:")) sessionStorage.removeItem(key);
             conversationPlace.current.clear();
-            setBrowserSessions([]);
+            setDaemonSessions([]);
             setIdentityEpoch((n) => n + 1);
             sessionBinding.current = undefined;
             dispatch(clearIdentity());
@@ -457,15 +459,15 @@ export function App() {
         setVerifying(false);
         if (!syntheticDemo) {
           try {
-            const controlled = await listConversations(controller.signal);
+            const daemonCatalog = await listConversations(controller.signal);
             if (
               active &&
               !controller.signal.aborted &&
               sessionBinding.current === token
             )
-              setBrowserSessions(controlled);
+              setDaemonSessions(daemonCatalog);
           } catch {
-            if (active && !controller.signal.aborted) setBrowserSessions([]);
+            if (active && !controller.signal.aborted) setDaemonSessions([]);
           }
         }
       } catch {
@@ -491,7 +493,7 @@ export function App() {
     for (const key of Object.keys(sessionStorage))
       if (key.startsWith(`nah:`)) sessionStorage.removeItem(key);
     conversationPlace.current.clear();
-    setBrowserSessions([]);
+    setDaemonSessions([]);
     editorPlace.current = undefined;
     loginGeneration.current++;
     sessionBinding.current = undefined;
@@ -749,7 +751,7 @@ export function App() {
             }
             place={conversationPlace}
             onSessionCreated={(session) =>
-              setBrowserSessions((old) => [...old, session])
+              setDaemonSessions((old) => [...old, session])
             }
           />
         ) : null}
@@ -794,19 +796,19 @@ export function App() {
                 const workspace = visible.find(
                   (w) => w.workspace_id === a.workspace_id,
                 );
-                const browserSession = browserSessions.some(
+                const daemonSession = daemonSessions.some(
                   (s) =>
                     s.agent_id === a.agent_id &&
                     s.workspace_id === a.workspace_id,
                 );
                 return {
                   id: a.agent_id,
-                  href: browserSession
+                  href: daemonSession
                     ? `/workspaces/${a.workspace_id}?conversation=${a.agent_id}`
                     : `/agents/${a.agent_id}`,
                   title: a.title.display,
                   workspace: workspace?.display_name ?? workspace?.name ?? "",
-                  browserSession,
+                  browserSession: daemonSession,
                   process: phase === "stale" ? "stale" : a.process,
                 };
               })}
@@ -970,7 +972,7 @@ export function App() {
                       .filter((a) => a.workspace_id === w.workspace_id)
                       .map((a) => ({
                         agentId: a.agent_id,
-                        href: browserSessions.some(
+                        href: daemonSessions.some(
                           (s) =>
                             s.agent_id === a.agent_id &&
                             s.workspace_id === w.workspace_id,
@@ -984,7 +986,7 @@ export function App() {
                           "Prosessin tila ei tiedossa"
                             ? "Tila ei tiedossa"
                             : undefined,
-                        controlLabel: browserSessions.some(
+                        controlLabel: daemonSessions.some(
                           (s) =>
                             s.agent_id === a.agent_id &&
                             s.workspace_id === w.workspace_id,

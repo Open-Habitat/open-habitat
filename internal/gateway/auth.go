@@ -138,7 +138,6 @@ type Auth struct {
 	serial          uint64
 	revoked         map[string]uint64
 	sessions        map[string]session
-	conversations   map[string]map[string]bool
 	admission       map[string]admission
 	unmatchedLog    admission // process-wide budget; never keyed by request input
 	snapshotDial    func(context.Context, string) (net.Conn, error)
@@ -557,12 +556,10 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	for k, v := range a.sessions {
 		if !now.Before(v.idle) || !now.Before(v.absolute) {
 			delete(a.sessions, k)
-			delete(a.conversations, k)
 		}
 	}
 	if old, err := r.Cookie(cookieName); err == nil {
 		delete(a.sessions, old.Value)
-		delete(a.conversations, old.Value)
 	}
 	a.sessions[sid] = session{identity: target, accessEmail: accessEmail(r), csrf: csrf, idle: now.Add(8 * time.Hour), absolute: now.Add(24 * time.Hour)}
 	a.mu.Unlock()
@@ -587,7 +584,6 @@ func (a *Auth) authenticated(r *http.Request) (session, bool) {
 	now := a.now()
 	if !now.Before(s.idle) || !now.Before(s.absolute) {
 		delete(a.sessions, c.Value)
-		delete(a.conversations, c.Value)
 		return session{}, false
 	}
 	if s.accessEmail != accessEmail(r) {
@@ -655,7 +651,6 @@ func (a *Auth) logout(w http.ResponseWriter, r *http.Request) {
 	c, _ := r.Cookie(cookieName)
 	a.mu.Lock()
 	delete(a.sessions, c.Value)
-	delete(a.conversations, c.Value)
 	a.mu.Unlock()
 	http.SetCookie(w, &http.Cookie{Name: cookieName, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: -1})
 	w.Header().Set("Cache-Control", "no-store")

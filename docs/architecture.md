@@ -42,10 +42,10 @@ It verifies the trusted filesystem route, and the daemon authenticates the
 connecting gateway through Linux peer credentials and checks its own root-owned
 binding, UID, home, Pi selector and pinned runtime once at startup. Binding or
 runtime changes require a daemon restart; first-use Pi credentials do not. It forwards finite daemon replies without parsing their JSON and flushes event
-streams as bytes arrive; the browser validates the public reply contract. The
-conversation lease remains a temporary exception: the gateway filters its list
-and records created handles until Unix-user ownership replaces the browser
-session lease. The gateway cannot read homes or run agents. The broker's root
+streams as bytes arrive; the browser validates the public reply contract.
+The gateway holds no conversation leases or other conversation ownership state.
+The mapped Unix user owns their conversations, including across browser logins
+and gateway restarts. The gateway cannot read homes or run agents. The broker's root
 authority is confined to account provisioning; native work belongs to the daemon
 running under that user's UID.
 
@@ -85,8 +85,11 @@ writes its own history. The conversation's identity is its native resume ID,
 prefixed with the harness name, such as `pi:<id>`. A PID identifies one running
 process; the conversation can survive that process and continue later.
 
-A conversation has one writer. Independent clients do not control it
-simultaneously through the browser, SSH or tmux. Terminal histories are readable
+A conversation belongs to its Unix user, not a browser cookie. Any valid login
+of that user can control it; a different user routes to a different daemon. The
+daemon holds a native ownership flock to prevent competing writers even across
+daemon restarts. Independent clients do not control it simultaneously through
+the browser, SSH or tmux. Terminal histories are readable
 in the browser, but Pi RPC cannot attach to a running terminal TUI. An ended
 browser conversation can be deliberately continued with the same native ID once
 its previous work is known to have ended.
