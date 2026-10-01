@@ -3,9 +3,11 @@ created: 2026-10-01
 updated: 2026-10-01
 type: task
 reporter: Jari
-status: open
+status: done
 priority: high
 related: ['@pilot14-session-revalidation-loop']
+closed: 2026-10-01
+closed_by: claude
 ---
 
 # Arkkitehtuuri on rakennettu varovaisuuden, ei tarpeen varaan
@@ -76,3 +78,15 @@ projektin normaalin työnjaon mukaan. Arkkitehtuurikuvaus ja toteuttajien ohjeet
 päivitetään siltä osin kuin havainnot muuttavat niitä: seuraavan toteuttajan
 pitää ymmärtää ratkaisun syy ja hinta. Sama kysymys kuuluu katselmointiin,
 jotta sääntöjen noudattaminen ei korvaa niiden tarpeellisuuden arviointia.
+
+## Decisions
+
+### 2026-10-01T18:22:47Z · @jari
+
+Jari 2026-10-01: (1) Gateway tarkistaa brokerin valtuutuksen kerran kirjautumisessa. Istunnon elinaikana ainoa peruutustie on ADR 0006:n RevokeSubject; allowlistin muokkaus ei kirjaa ketään ulos lennossa. (2) Keskustelun omistaa Unix-käyttäjä, ei selainistunto. Saman henkilön toinen selain tai uusi kirjautuminen ohjaa samoja keskusteluja; daemonin flock pitää yhden kirjoittajan säännön. Nämä eivät ole ADR-tason muutoksia; ne kirjataan ADR 0006:n ja interfaces.md:n päivityksinä toteutusissueissa. Toteutusjärjestys: katselmuksen osan 3 askeleet 1–8 sarjassa (lane caution-removal); selainpuoli tehdään yhtenä uudelleenkirjoituksena kohdemuotoon, yksi tekijä.
+
+## Resolution
+
+### 2026-10-01T18:22:47Z · @claude
+
+Katselmus docs/reviews/architecture-review-2026-10.md: 59 mekanismia, mitatut kustannukset (lab, pilot, go test), suositus per rivi, rakenteen analyysi ja järjestetty poistosuunnitelma. Toteutusissuet: @gateway-authorize-once, @gateway-single-proxy, @daemon-validate-startup, @daemon-drop-status-stream, @drop-conversation-lease, @browser-state-rewrite, @split-large-files, @pi-onboarding-poll. Jarin päätökset Decisions-osiossa.

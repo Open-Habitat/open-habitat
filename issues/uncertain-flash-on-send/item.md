@@ -5,7 +5,10 @@ type: bug
 reporter: Jari
 status: open
 priority: high
-related: ['@pilot14-session-revalidation-loop']
+related: ['@pilot14-session-revalidation-loop', '@browser-state-rewrite']
+lane: caution-removal
+lane_seq: 65
+blocked_by: ['@browser-state-rewrite']
 ---
 
 # Viestin lähetys välähtää hetkeksi epävarma-virheen
