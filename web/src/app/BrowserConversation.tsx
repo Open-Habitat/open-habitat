@@ -118,6 +118,10 @@ export function BrowserConversation({
   const [events, setEvents] = useState<unknown[]>([]);
   const [live, setLive] = useState<LiveTurn>();
   const [streamError, setStreamError] = useState(false);
+  const [journalOffline, setJournalOffline] = useState(false);
+  const continuationProof = useRef<
+    { id: string; revision: string; result: Status["continuation"] } | undefined
+  >(undefined);
   const openedProof = useRef("");
   const streamFailures = useRef(0);
   const probePending = useRef(false);
@@ -139,6 +143,25 @@ export function BrowserConversation({
   const latestRefresh = useRef<(proof?: boolean) => Promise<void>>(
     async () => {},
   );
+  const retryTimer = useRef<number | undefined>(undefined);
+  const retryDelay = useRef(0);
+  const clearRetry = useCallback(() => {
+    if (retryTimer.current !== undefined)
+      window.clearTimeout(retryTimer.current);
+    retryTimer.current = undefined;
+    retryDelay.current = 0;
+  }, []);
+  const scheduleRetry = useCallback(() => {
+    if (retryTimer.current !== undefined || !alive.current) return;
+    retryDelay.current = Math.min(
+      retryDelay.current ? retryDelay.current * 2 : 3000,
+      30000,
+    );
+    retryTimer.current = window.setTimeout(() => {
+      retryTimer.current = undefined;
+      void latestRefresh.current();
+    }, retryDelay.current);
+  }, []);
   const sendInFlight = useRef(false);
   const staleRef = useRef(stale);
   staleRef.current = stale;
@@ -248,6 +271,8 @@ export function BrowserConversation({
     const controller = new AbortController();
     setCSRF(undefined);
     setCurrent(undefined);
+    continuationProof.current = undefined;
+    clearRetry();
     setRetryContinuation(false);
     setEntries([]);
     setEvents([]);
@@ -255,6 +280,7 @@ export function BrowserConversation({
     pendingNativeEntry.current = undefined;
     streamFailures.current = 0;
     setStreamError(false);
+    setJournalOffline(false);
     setConfirmStop(false);
     setWorkingMode("follow_up");
     setFinishedInBackground(false);
@@ -311,8 +337,17 @@ export function BrowserConversation({
       alive.current = false;
       ++generation.current;
       controller.abort();
+      clearRetry();
     };
-  }, [id, workspace.workspace_id, identity, place, placeKey, stale]);
+  }, [
+    id,
+    workspace.workspace_id,
+    identity,
+    place,
+    placeKey,
+    stale,
+    clearRetry,
+  ]);
   useEffect(() => {
     setDraft(draftKey ? (sessionStorage.getItem(draftKey) ?? "") : "");
     setContinuation(
@@ -370,6 +405,24 @@ export function BrowserConversation({
         )
           setFinishedInBackground(true);
         wasWorking.current = working;
+        if (requestContinuation) {
+          continuationProof.current = {
+            id,
+            revision: nextStatus.native_revision,
+            result: nextStatus.continuation,
+          };
+        } else if (
+          nextStatus.state === "uncertain" &&
+          continuationProof.current?.id === id &&
+          continuationProof.current.revision === nextStatus.native_revision
+        ) {
+          nextStatus = {
+            ...nextStatus,
+            continuation: continuationProof.current.result,
+          };
+        } else {
+          continuationProof.current = undefined;
+        }
         setCurrent(nextStatus);
         // Reconcile an ambiguous continuation only against fresh status and history.
         const continueKey = `nah:continue:${identity}:${csrf}:${id}`;
@@ -578,6 +631,8 @@ export function BrowserConversation({
                 (old) => old && { ...old, fragments: [], truncated: false },
               );
             }
+            if (!probePending.current) setStreamError(false);
+            clearRetry();
             if (reconciledContinuation) {
               sessionStorage.removeItem(continueKey);
               sessionStorage.setItem(
@@ -588,16 +643,25 @@ export function BrowserConversation({
               setReceipt("");
             }
           } catch {
-            if (alive.current && version === generation.current)
+            if (alive.current && version === generation.current) {
               setHistoryError(true);
+              scheduleRetry();
+            }
           }
         } else {
           // Missing new history is normal before the first Pi write. A verified
           // status is enough to restore the existing idle-control gate.
-          setHistoryError(nextStatus.native_history === "unavailable");
+          const unavailable = nextStatus.native_history === "unavailable";
+          setHistoryError(unavailable);
+          if (unavailable) scheduleRetry();
+          else {
+            if (!probePending.current) setStreamError(false);
+            clearRetry();
+          }
         }
       } catch {
         if (alive.current && version === generation.current) {
+          scheduleRetry();
           setProblem(
             "Yhteys katkesi tai istunto muuttui. Ohjaus on estetty kunnes tila varmistuu.",
           );
@@ -621,6 +685,8 @@ export function BrowserConversation({
       submittedKey,
       stale,
       captureAnchor,
+      clearRetry,
+      scheduleRetry,
     ],
   );
   latestRefresh.current = refresh;
@@ -650,6 +716,7 @@ export function BrowserConversation({
       // Keep the verified editor mounted while the independent HTTP check
       // decides when control is safe again.
       setStreamError(true);
+      setJournalOffline(true);
       void refresh();
       onResnapshot();
     };
@@ -680,6 +747,7 @@ export function BrowserConversation({
         opened = true;
         reconnectFailures = 0;
         streamFailures.current = 0;
+        setJournalOffline(false);
         setStreamError(false);
       };
       for (const kind of [
@@ -713,6 +781,11 @@ export function BrowserConversation({
               event.sequence <= turn.sequence
             )
               return;
+            if (
+              event.kind === "snapshot.invalidated" &&
+              (!event.resource.agent_id || event.resource.agent_id === id)
+            )
+              continuationProof.current = undefined;
             const result = applyTurnEvent(turn, event, id);
             if (result.recover) {
               turn = result.turn;
@@ -749,6 +822,7 @@ export function BrowserConversation({
           // The normal ten-minute rotation reconnects automatically. Only a
           // second failed attempt calls for the slow HTTP fallback and banner.
           if (++reconnectFailures > 1) {
+            setJournalOffline(true);
             setStreamError(true);
             void refresh();
           }
@@ -757,6 +831,7 @@ export function BrowserConversation({
         source?.close();
         source = undefined;
         probePending.current = true;
+        setJournalOffline(true);
         setStreamError(true);
         void refresh();
         // EventSource hides the HTTP status. Probe only a failed handshake:
@@ -828,7 +903,7 @@ export function BrowserConversation({
     // Only poll while the journal is unavailable; the journal drives status
     // changes on a healthy connection. A tab return also catches missed events.
     const timer = window.setInterval(() => {
-      if (streamError) void refresh();
+      if (journalOffline) void refresh();
     }, 60000);
     const focus = () => {
       if (document.visibilityState === "visible") {
@@ -848,7 +923,7 @@ export function BrowserConversation({
     csrf,
     refresh,
     stale,
-    streamError,
+    journalOffline,
     sessions,
     identity,
     workspace.workspace_id,

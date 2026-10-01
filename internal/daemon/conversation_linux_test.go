@@ -486,6 +486,29 @@ func TestConversationStatusUsesStatAndProofIsOptIn(t *testing.T) {
 	if got := read()["native_history"]; got != "unavailable" {
 		t.Fatalf("broken history root reported %v", got)
 	}
+	if err := os.Remove(filepath.Join(home, ".pi")); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(home, historyRoot)
+	if err := os.MkdirAll(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	oversized, err := os.Create(filepath.Join(root, "oversized.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fmt.Fprintf(oversized, "{\"type\":\"session\",\"version\":3,\"id\":%q,\"cwd\":%q}\n", id, home); err != nil {
+		t.Fatal(err)
+	}
+	if err := oversized.Truncate(maxHistoryFile + 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := oversized.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if got := read()["native_history"]; got != "unavailable" {
+		t.Fatalf("oversized native file reported %v", got)
+	}
 }
 
 func TestConversationContinuationProofAndStatus(t *testing.T) {

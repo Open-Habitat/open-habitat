@@ -1078,15 +1078,20 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 	if path == "" {
 		if sessions, err := nativeSessions(c.nativeCfg()); err == nil {
 			for _, n := range sessions {
-				if n.id == id && n.cwd == cwd && n.state == "readable" {
+				if n.id != id {
+					continue
+				}
+				if n.cwd != cwd || n.state != "readable" {
+					discoveryUnavailable = true
+				} else {
 					path = n.path
 					c.mu.Lock()
 					if c.sessions[id] == s {
 						s.historyPath = path
 					}
 					c.mu.Unlock()
-					break
 				}
+				break
 			}
 		} else {
 			discoveryUnavailable = true

@@ -125,6 +125,47 @@ test("@browser-conversation create, send once, reconnect and old history stays r
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toHaveCount(0);
 });
+test("@browser-conversation HTTP fallback permits one send while journal is unavailable", async ({
+  page,
+}) => {
+  await open(page);
+  await page.route("**/api/v1/events?after=*", (route) =>
+    route.fulfill({ status: 503, body: "unavailable" }),
+  );
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await expect(editor).toBeVisible();
+  await editor.fill("Fallback");
+  await expect(
+    page.getByRole("button", { name: "Lähetä", exact: true }),
+  ).toBeEnabled();
+  let sends = 0;
+  page.on("request", (request) => {
+    if (request.url().endsWith("/send")) sends++;
+  });
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(editor).toHaveValue("");
+  expect(sends).toBe(1);
+});
+
+test("@browser-conversation transient status failure retries with healthy journal", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await expect(editor).toBeVisible();
+  let failures = 0;
+  await page.route("**/api/v1/conversations/*/status*", async (route) => {
+    if (failures++ === 0)
+      await route.fulfill({ status: 503, body: "unavailable" });
+    else await route.continue();
+  });
+  await refreshConversation(page);
+  await expect.poll(() => failures).toBeGreaterThan(1);
+  await expect(editor).toBeEnabled({ timeout: 10000 });
+});
+
 // The synthetic Pi has no receipt/question/settlement scenario yet. Intercept
 // validated private gateway responses after the real TLS login/create/send path.
 for (const outcome of [
@@ -1180,6 +1221,16 @@ async function endedConversation(page: import("@playwright/test").Page) {
   await expect(editor).toHaveCount(0);
   return id;
 }
+
+test("@browser-conversation ordinary refresh keeps an explicit continuation proof", async ({
+  page,
+}) => {
+  await endedConversation(page);
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(
+    page.getByRole("button", { name: "Jatka keskustelua" }),
+  ).toBeVisible();
+});
 
 for (const [proof, reason] of [
   ["writer_present", /Keskustelulla on yhä aktiivinen kirjoittaja/],
