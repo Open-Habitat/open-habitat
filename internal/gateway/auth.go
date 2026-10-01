@@ -52,8 +52,8 @@ type TokenSink interface {
 	Deliver(context.Context, Identity, string, string) error
 }
 
-// ErrBrokerUnavailable denies this request without invalidating an otherwise
-// valid session. Authorization is still rechecked on every subsequent request.
+// ErrBrokerUnavailable identifies a broker outage during login or an explicit
+// revocation attempt. An issued browser session is not rechecked with the broker.
 var ErrBrokerUnavailable = errors.New("broker temporarily unavailable")
 
 // BrokerFailure is a closed diagnostic vocabulary; no broker error text is logged.
