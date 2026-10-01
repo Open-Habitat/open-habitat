@@ -14,7 +14,7 @@ test("@lab v2 shared conversation metrics in both themes and at phone width", as
       document.documentElement.dataset.theme = value;
     }, theme);
     for (const width of [1440, 390]) {
-      await page.setViewportSize({ width, height: 900 });
+      await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
       const values = await page.evaluate(() => {
         const style = (selector: string) =>
           getComputedStyle(
@@ -65,6 +65,23 @@ test("@lab v2 shared conversation metrics in both themes and at phone width", as
           mainScrolls:
             (document.querySelector("main")?.scrollHeight ?? 0) >
             (document.querySelector("main")?.clientHeight ?? 0),
+          streamBlockPadding: stream.paddingTop,
+          composerBlockPadding: style(".ah-composer").paddingTop,
+          composerBottom:
+            document.querySelector(".ah-composer")?.getBoundingClientRect()
+              .bottom ?? 9999,
+          composerActionsBottom:
+            document
+              .querySelector(".ah-composer .ah-actions")
+              ?.getBoundingClientRect().bottom ?? 9999,
+          composerPresent: Boolean(document.querySelector(".ah-composer")),
+          streamBottom:
+            document
+              .querySelector(".ah-conversation-stream")
+              ?.getBoundingClientRect().bottom ?? 9999,
+          composerScrolls:
+            (document.querySelector(".ah-composer")?.scrollHeight ?? 0) >
+            (document.querySelector(".ah-composer")?.clientHeight ?? 0),
         };
       });
       if (width === 1440) {
@@ -73,10 +90,25 @@ test("@lab v2 shared conversation metrics in both themes and at phone width", as
       }
       expect(values.streamScrolls).toBe(true);
       expect(values.mainScrolls).toBe(false);
-      expect(values.topPadding).toBe("13px");
-      expect(values.sidePadding).toBe("24px");
+      expect(values.topPadding).toBe(width === 390 ? "6px" : "13px");
+      expect(values.sidePadding).toBe(width === 390 ? "14px" : "24px");
       expect(values.columnWidth).toBe("780px");
-      expect(values.streamPadding).toBe("24px");
+      expect(values.streamPadding).toBe(width === 390 ? "14px" : "24px");
+      expect(values.streamBlockPadding).toBe(width === 390 ? "12px" : "22px");
+      if (width === 390 && !values.composerPresent) {
+        expect(values.streamBottom).toBeLessThanOrEqual(844);
+        await expect(page.locator(".ah-composer")).toHaveCount(0);
+      }
+      if (values.composerPresent) {
+        expect(values.composerBlockPadding).toBe("12px");
+        expect(values.composerScrolls).toBe(false);
+        expect(values.composerActionsBottom).toBeLessThanOrEqual(
+          values.composerBottom,
+        );
+        expect(values.composerBottom).toBeLessThanOrEqual(
+          width === 390 ? 844 : 900,
+        );
+      }
       expect(values.titleSize).toBe("15.5px");
       expect(values.bodySize).toBe(width === 390 ? "15px" : "14.5px");
       expect(values.buttonRadius).toBe("8px");

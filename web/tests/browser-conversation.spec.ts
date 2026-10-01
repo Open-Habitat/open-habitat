@@ -16,6 +16,29 @@ test.use({
   ignoreHTTPSErrors: true,
   viewport: { width: 1280, height: 720 },
 });
+async function expectPhoneComposerWithinViewport(
+  page: import("@playwright/test").Page,
+) {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const composer = page.locator(".ah-conversation-frame > .ah-composer");
+  await expect(composer).toBeVisible();
+  const bounds = await composer.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    const actions = element
+      .querySelector(".ah-actions")
+      ?.getBoundingClientRect();
+    return {
+      top: box.top,
+      bottom: box.bottom,
+      actionsBottom: actions?.bottom ?? 9999,
+      scrolls: element.scrollHeight > element.clientHeight,
+    };
+  });
+  expect(bounds.top).toBeGreaterThanOrEqual(0);
+  expect(bounds.bottom).toBeLessThanOrEqual(844);
+  expect(bounds.actionsBottom).toBeLessThanOrEqual(844);
+  expect(bounds.scrolls).toBe(false);
+}
 async function open(page: import("@playwright/test").Page) {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
@@ -172,6 +195,7 @@ for (const outcome of [
       .fill(`Synteettinen ${outcome}`);
     await page.getByRole("button", { name: "Lähetä", exact: true }).click();
     await expect(page.locator(`.ah-send-${outcome}`)).toBeVisible();
+    await expectPhoneComposerWithinViewport(page);
     if (outcome === "uncertain") {
       await expect(
         page.getByRole("button", { name: "Kopioi teksti" }),
@@ -353,6 +377,7 @@ test("@browser-conversation settled marker needs observed native key", async ({
   );
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator(".ah-settled")).toBeVisible();
+  await expectPhoneComposerWithinViewport(page);
 });
 test("@browser-conversation ordinary session loading is not an uncertain create", async ({
   page,

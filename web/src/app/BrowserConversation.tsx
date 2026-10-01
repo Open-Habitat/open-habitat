@@ -890,6 +890,8 @@ export function BrowserConversation({
     problem,
     details,
     confirmStop,
+    current?.state,
+    events,
     restoreAnchor,
     entries,
   ]);
@@ -1404,12 +1406,6 @@ export function BrowserConversation({
             onToggleDetails={() => setDetails(!details)}
           />
           {details ? <p>Natiivi tunniste: {id}</p> : null}
-          <WorkingProgress
-            state={stale ? undefined : current?.state}
-            events={events}
-            elapsed={elapsed}
-          />
-          <UnpresentedEvents events={events} />
           <ConversationStream
             streamRef={feed}
             onScroll={() => {
@@ -1424,6 +1420,12 @@ export function BrowserConversation({
               } else captureAnchor();
             }}
           >
+            <WorkingProgress
+              state={stale ? undefined : current?.state}
+              events={events}
+              elapsed={elapsed}
+            />
+            <UnpresentedEvents events={events} />
             <ConversationTimeline
               state={
                 historyError
@@ -1524,48 +1526,115 @@ export function BrowserConversation({
                 setUnseen(0);
               }}
             />
+            {next && !stale ? (
+              <Button
+                label="Lataa seuraava historiasivu"
+                onPress={() =>
+                  void readHistoryFetch(id, next)
+                    .then((p) => {
+                      if (staleRef.current) return;
+                      captureAnchor();
+                      setEntries((old) => [
+                        ...old,
+                        ...p.entries.filter(
+                          (e) => !old.some((o) => o.entry_key === e.entry_key),
+                        ),
+                      ]);
+                      setNext(p.next_after);
+                    })
+                    .catch(() => {
+                      if (!staleRef.current) setHistoryError(true);
+                    })
+                }
+              />
+            ) : null}
+            {streamError ? (
+              <InlineNotice
+                title="Live-yhteys katkesi"
+                description="Tila ja natiivi historia tarkistetaan uudelleen. Viestiä ei lähetetä uudelleen."
+                tone="warning"
+              />
+            ) : null}
+            {live?.truncated || current?.event_loss ? (
+              <InlineNotice
+                title="Tapahtumia jäi väliin"
+                description="Live-tapahtumien häntä ei ole täydellinen. Tarkista natiivi historia."
+                tone="warning"
+              />
+            ) : null}
+            {events.length && current?.native_history !== "readable" ? (
+              <p role="status">
+                Pi:n tapahtumia vastaanotettu; historiaa odotetaan.
+              </p>
+            ) : null}
+            {controlled && queueOpen ? (
+              <QueuePanel
+                steeringTexts={current?.queue?.steering ?? []}
+                followUpTexts={current?.queue?.follow_up ?? []}
+                state={stale ? "stale" : current?.queue ? "ready" : "error"}
+                clearAvailability={
+                  !stale &&
+                  !streamError &&
+                  !busy &&
+                  !ambiguous &&
+                  current?.queue &&
+                  current.state !== "pending" &&
+                  current.state !== "uncertain" &&
+                  current.state !== "stopping"
+                    ? { state: "enabled" }
+                    : { state: "unknown", reason: "Odota vahvistettua tilaa." }
+                }
+                onClearAll={() => void clearNativeQueue()}
+              />
+            ) : null}
           </ConversationStream>
-          {next && !stale ? (
-            <Button
-              label="Lataa seuraava historiasivu"
-              onPress={() =>
-                void readHistoryFetch(id, next)
-                  .then((p) => {
-                    if (staleRef.current) return;
-                    captureAnchor();
-                    setEntries((old) => [
-                      ...old,
-                      ...p.entries.filter(
-                        (e) => !old.some((o) => o.entry_key === e.entry_key),
-                      ),
-                    ]);
-                    setNext(p.next_after);
-                  })
-                  .catch(() => {
-                    if (!staleRef.current) setHistoryError(true);
-                  })
+          <Button
+            label="Tarkista keskustelun tila"
+            variant={
+              stale ||
+              ambiguous ||
+              current?.state === "uncertain" ||
+              historyError
+                ? "primary"
+                : "quiet"
+            }
+            onPress={() => {
+              if (stale) onRefreshStale?.();
+              else {
+                if (
+                  continuation &&
+                  continuation !== "uncertain" &&
+                  continuation !== "pending"
+                )
+                  setContinuation(undefined);
+                void refresh();
+                void recheckContinuation();
               }
-            />
+            }}
+          />
+          {confirmStop && !stale && current?.state === "accepted" ? (
+            <fieldset ref={stopConfirmation} aria-label="Vahvista keskeytys">
+              <p>
+                Keskeytetäänkö Pi:n vuoro? Jo käynnistyneiden työkalujen
+                päättymistä ei voida vahvistaa.
+              </p>
+              <Button
+                label="Kyllä, keskeytä vuoro"
+                onPress={() => void stopNow()}
+                availability={
+                  busy
+                    ? { state: "unknown", reason: "Pyyntö kesken" }
+                    : { state: "enabled" }
+                }
+              />
+              <Button
+                label="Jatka työskentelyä"
+                variant="quiet"
+                onPress={closeStopConfirmation}
+              />
+            </fieldset>
           ) : null}
-          {streamError ? (
-            <InlineNotice
-              title="Live-yhteys katkesi"
-              description="Tila ja natiivi historia tarkistetaan uudelleen. Viestiä ei lähetetä uudelleen."
-              tone="warning"
-            />
-          ) : null}
-          {live?.truncated || current?.event_loss ? (
-            <InlineNotice
-              title="Tapahtumia jäi väliin"
-              description="Live-tapahtumien häntä ei ole täydellinen. Tarkista natiivi historia."
-              tone="warning"
-            />
-          ) : null}
-          {events.length && current?.native_history !== "readable" ? (
-            <p role="status">
-              Pi:n tapahtumia vastaanotettu; historiaa odotetaan.
-            </p>
-          ) : null}
+          <div className="ah-conversation-notices">{notices}</div>
           {controlled && (continuation || current?.state === "uncertain") ? (
             <EndedConversationControl
               state={
@@ -1622,73 +1691,6 @@ export function BrowserConversation({
               }
             />
           ) : null}
-          {confirmStop && !stale && current?.state === "accepted" ? (
-            <fieldset ref={stopConfirmation} aria-label="Vahvista keskeytys">
-              <p>
-                Keskeytetäänkö Pi:n vuoro? Jo käynnistyneiden työkalujen
-                päättymistä ei voida vahvistaa.
-              </p>
-              <Button
-                label="Kyllä, keskeytä vuoro"
-                onPress={() => void stopNow()}
-                availability={
-                  busy
-                    ? { state: "unknown", reason: "Pyyntö kesken" }
-                    : { state: "enabled" }
-                }
-              />
-              <Button
-                label="Jatka työskentelyä"
-                variant="quiet"
-                onPress={closeStopConfirmation}
-              />
-            </fieldset>
-          ) : null}
-          {controlled && queueOpen ? (
-            <QueuePanel
-              steeringTexts={current?.queue?.steering ?? []}
-              followUpTexts={current?.queue?.follow_up ?? []}
-              state={stale ? "stale" : current?.queue ? "ready" : "error"}
-              clearAvailability={
-                !stale &&
-                !streamError &&
-                !busy &&
-                !ambiguous &&
-                current?.queue &&
-                current.state !== "pending" &&
-                current.state !== "uncertain" &&
-                current.state !== "stopping"
-                  ? { state: "enabled" }
-                  : { state: "unknown", reason: "Odota vahvistettua tilaa." }
-              }
-              onClearAll={() => void clearNativeQueue()}
-            />
-          ) : null}
-          <Button
-            label="Tarkista keskustelun tila"
-            variant={
-              stale ||
-              ambiguous ||
-              current?.state === "uncertain" ||
-              historyError
-                ? "primary"
-                : "quiet"
-            }
-            onPress={() => {
-              if (stale) onRefreshStale?.();
-              else {
-                if (
-                  continuation &&
-                  continuation !== "uncertain" &&
-                  continuation !== "pending"
-                )
-                  setContinuation(undefined);
-                void refresh();
-                void recheckContinuation();
-              }
-            }}
-          />
-          {notices}
         </ConversationFrame>
       )}
       {!id ? notices : null}

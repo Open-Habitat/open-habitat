@@ -204,6 +204,15 @@ test("@resilience active conversation stays readable but cannot send during outa
     page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toBeDisabled();
   await expect(page.getByRole("button", { name: "Keskeytä" })).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const composer = page.locator(".ah-conversation-frame > .ah-composer");
+  await expect(composer).toBeVisible();
+  expect(
+    await composer.evaluate((node) => node.getBoundingClientRect().bottom),
+  ).toBeLessThanOrEqual(844);
+  expect(
+    await composer.evaluate((node) => node.scrollHeight > node.clientHeight),
+  ).toBe(false);
   await page.screenshot({
     path: "test-results/evidence/stale-conversation.png",
   });

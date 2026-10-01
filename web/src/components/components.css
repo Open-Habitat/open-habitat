@@ -1208,8 +1208,18 @@ h1[tabindex="-1"]:focus {
   padding: 0;
 }
 .ah-shell-body > main:has(.ah-conversation-frame) > .ah-state {
+  display: flex;
+  flex-direction: column;
   height: 100%;
   min-height: 0;
+}
+.ah-state:has(.ah-conversation-frame) > .ah-reading-view {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+.ah-state:has(.ah-conversation-frame) .ah-notice {
+  margin-top: var(--ah-s2);
 }
 .ah-conversation-frame {
   display: flex;
@@ -1237,22 +1247,65 @@ h1[tabindex="-1"]:focus {
   margin: 0;
 }
 .ah-agent-header .ah-actions {
-  margin: var(--ah-s2) 0;
+  justify-content: flex-start;
+  margin: var(--ah-s1) 0;
+  gap: var(--ah-s2);
 }
 .ah-conversation-stream {
   flex: 1 1 auto;
-  min-height: 6rem;
+  min-height: 0;
   overflow: auto;
   overflow-anchor: none;
   padding: var(--ah-column-pad-block) var(--ah-column-pad-inline);
 }
-.ah-conversation-stream > .ah-timeline {
+.ah-conversation-stream > * {
   width: min(100%, var(--ah-conversation-width));
   margin-inline: auto;
 }
 .ah-conversation-frame .ah-composer {
   position: relative;
-  padding: var(--ah-column-pad-block) var(--ah-column-pad-inline);
+  max-height: none;
+  overflow: visible;
+  padding: var(--ah-composer-pad-block) var(--ah-column-pad-inline);
+}
+.ah-conversation-frame .ah-composer .ah-field {
+  gap: var(--ah-composer-field-gap);
+  margin: 0;
+}
+.ah-conversation-frame .ah-composer .ah-actions {
+  justify-content: flex-start;
+  margin: var(--ah-s2) 0 0;
+}
+/* The editor already exposes the same disabled reason; do not repeat it for each send mode. */
+.ah-conversation-frame
+  .ah-composer:has(.ah-field .ah-control-reason)
+  .ah-actions
+  .ah-control-reason {
+  display: none;
+}
+.ah-conversation-frame .ah-composer-hint {
+  margin: var(--ah-s1) 0 0;
+}
+.ah-conversation-frame .ah-composer textarea {
+  min-height: var(--ah-touch);
+  padding-block: var(--ah-s2);
+}
+.ah-conversation-frame > fieldset,
+.ah-conversation-notices:not(:empty) {
+  flex: none;
+  max-height: 9vh;
+  overflow: auto;
+  width: min(100%, var(--ah-conversation-width));
+  margin-inline: auto;
+}
+.ah-conversation-notices:empty {
+  display: none;
+}
+@media (max-height: 600px) {
+  .ah-conversation-frame .ah-composer {
+    max-height: 45vh;
+    overflow: auto;
+  }
 }
 .ah-status-read-only .ah-status-dot {
   border-style: dashed;

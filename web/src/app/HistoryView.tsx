@@ -351,25 +351,25 @@ export function HistoryView({
               "Lähde puuttuu, on vioittunut tai muuttui lukemisen aikana. Päivitä tilannekuva.",
           }}
         />
-      </ConversationStream>
-      {sourceUpdated ? (
+        {sourceUpdated ? (
+          <InlineNotice
+            title="Lähde päivittyi"
+            description="Pi kirjoitti historiaan sivujen välillä. Natiivijärjestys säilyy; päivitä tarvittaessa."
+            tone="warning"
+          />
+        ) : null}
+        {next && state !== "error" && !stale ? (
+          <Button
+            label={busy ? "Ladataan…" : "Lataa seuraava sivu"}
+            pending={busy}
+            onPress={loadMore}
+          />
+        ) : null}
         <InlineNotice
-          title="Lähde päivittyi"
-          description="Pi kirjoitti historiaan sivujen välillä. Natiivijärjestys säilyy; päivitä tarvittaessa."
-          tone="warning"
+          title="Vain luku"
+          description="Historian avaaminen ei käynnistä eikä jatka Pi:tä. Prosessia tai ohjauskanavaa ei ole vahvistettu."
         />
-      ) : null}
-      {next && state !== "error" && !stale ? (
-        <Button
-          label={busy ? "Ladataan…" : "Lataa seuraava sivu"}
-          pending={busy}
-          onPress={loadMore}
-        />
-      ) : null}
-      <InlineNotice
-        title="Vain luku"
-        description="Historian avaaminen ei käynnistä eikä jatka Pi:tä. Prosessia tai ohjauskanavaa ei ole vahvistettu."
-      />
+      </ConversationStream>
     </ConversationFrame>
   );
 }

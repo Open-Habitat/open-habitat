@@ -29,8 +29,19 @@
   --ah-column-pad-inline: 24px;
   --ah-topbar-pad-block: 13px;
   --ah-topbar-pad-inline: 24px;
+  --ah-composer-pad-block: 12px;
+  --ah-composer-field-gap: 6px;
   --ah-r-nav: 9px;
   --ah-touch: 44px;
   --ah-focus-width: 2px;
   --ah-focus-offset: 2px;
+}
+
+@media (max-width: 800px) {
+  :root {
+    --ah-topbar-pad-block: 6px;
+    --ah-topbar-pad-inline: 14px;
+    --ah-column-pad-block: 12px;
+    --ah-column-pad-inline: 14px;
+  }
 }
