@@ -3,13 +3,15 @@ created: 2026-09-30
 updated: 2026-10-01
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@review-browser-design-v2', '@compare-v2-pairs']
 lane: design-v2
 lane_seq: 10
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
 blocked_by: ['@fit-conversation-density-v2']
+closed: 2026-10-01
+closed_by: night-ui-worker
 ---
 
 # Fit the return view hierarchy to v2
