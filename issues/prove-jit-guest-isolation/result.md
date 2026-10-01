@@ -1,9 +1,8 @@
 # First-login isolation: established evidence and remaining observations
 
-Reconciled on 2026-09-30 against product source `da841c5` and the later
+Reconciled on 2026-10-01 against the broker-crash guest result and the later
 [Jari decision on interrupted provisioning](../reconcile-interrupted-jit-provisioning/item.md).
-The issue remains open. This summary separates historical test results from
-work still needed; no new guest or live test was run for this edit.
+The issue remains open. No live test-server smoke was run for this edit.
 
 ## Established evidence
 
@@ -14,7 +13,7 @@ work still needed; no new guest or live test was run for this edit.
 | Simultaneous first-login callbacks | [Concurrent callback guest](jit-concurrent-result.md), `4ea1356d`: same-ID and distinct-ID rounds both returned `[303,303]`, with one binding per identity and three isolated snapshots. At `1f74f1f`, a later controlled C-before-B round also passed. | Provider rendezvous establishes simultaneous gateway callbacks, not every broker scheduling interleaving. |
 | Revocation denies existing and new browser sessions | [Revocation guest](jit-revocation-result.md), `1b607206`: old A sessions returned 401 and new A callback 403; B needed a fresh login after the global epoch change. | Request-time browser authorization, not deletion of native credentials or cancellation of existing native work. |
 | Native gh failure or uncertain handoff does not create a usable browser session | [Revocation guest](jit-revocation-result.md), `1b607206`: failed login, wrong native identity and pre-install acknowledgement loss denied the session. [Post-install daemon diagnostic](jit-post-install-daemon-diagnostic-result.md), `4467e26`: retained credential, lost daemon and callback 503 with session/snapshot 401/401. | The later diagnostic receipt-preservation change was checked offline, not rerun in a PID1 guest. A daemon kill is not a broker crash during account creation. |
-| Pending journal prevents use of uncertain account state | [Journal test](jit-journal-intermediate-result.md): a fresh Writer at each journal phase returned `state_unavailable`, issued no route, called no executor and left the state bytes unchanged. [Broker-crash guest](jit-broker-crash-result.md): actual post-account SIGKILL and B session/route denial were observed, but the restarted service failed before the pending guard was observed; the stronger reviewed proof is blocked. | Earlier passing guest result cannot establish **pending-caused** restart refusal. No disk-loss durability or recovery claim. A's browser route was denied while its native process/DAC access persisted. |
+| Pending journal prevents use of uncertain account state | [Journal test](jit-journal-intermediate-result.md): a fresh Writer at each phase returned `state_unavailable`, issued no route, called no executor and left state unchanged. [Broker-crash guest](jit-broker-crash-result.md), `b8941ba`: real post-account SIGKILL; restarted broker hit the `secureFile` pending guard, issued no route and left journal bytes unchanged. | One real PID1 guest crash at `account`, not disk-loss durability or recovery. A's browser route was denied while its native process/DAC access persisted. |
 | Selected inconsistent state denies access | `jit-provision` at `3d2121c` denied daemon-config mode drift. Packaged callback guest at `1f74f1f` denied an NSS alias, corrupt head, mismatched generation and rolled-back allowlist epoch. | Selected request-time faults; no universal drift claim and no claim that the Fleetrepo activation gate checks daemon config. |
 | Packaged product and pinned Fleetrepo input were used | [Concurrent callback receipt](jit-concurrent-result.md) records verified archive, embedded commit and binary hash, plus nine immutable Fleetrepo blobs at `85ac4588`. | Web assets were verified in the package but not served by this guest. Older guest receipts used locally compiled binaries. |
 
@@ -50,18 +49,17 @@ It explicitly had zero user bindings. It therefore does not establish login,
 per-user routing or restored isolation between two bound users after reboot.
 Host-specific facts remain in that private repository.
 
-**Actual broker-crash refusal remains unproven.** The [broker-crash guest](jit-broker-crash-result.md)
-observed a real root-broker SIGKILL after B's Unix account was created, with
-no binding, B browser session or route. Its early restart assertion accepted
-a generic systemd failure. The independent review correctly required proof
-that startup reached the pending-journal guard. The strengthened guest does
-not observe that guard: restart fails earlier at the config/socket check.
-Thus this is a failed proof, not an acceptance result. A's native process and
-home access continued, but A's browser requests were also denied; browser
-availability for the other identity is **not** established under the fault.
-There is no reboot/disk-durability or recovery claim. The recovery issue was
-closed `wontfix` on 28 September; operator reconciliation is not an acceptance
-requirement here.
+**Actual broker-crash refusal observed.** The [broker-crash guest](jit-broker-crash-result.md)
+passed at `b8941ba`: a real systemd-managed broker SIGKILL after B's Unix
+account step left a pending journal and no binding. On socket-activated restart,
+the broker refused at `secureFile`'s pending check *before* Writer.Startup and
+issued no route. The earlier guest marker had been placed at the later Writer
+check, so it falsely suggested a config/socket failure; the corrected
+fixture-only marker proves the actual guard. A's native process and home access
+continued, but A's browser requests were also denied; browser availability
+for the other identity is **not** established under the fault. No reboot,
+disk-durability or recovery claim follows. The recovery issue was closed
+`wontfix` on 28 September.
 
 **New stream behavior.** The general `/events` endpoint still returns 404 at
 `da841c5`. This says nothing about other streaming routes. Revocation of a
@@ -77,7 +75,6 @@ later successful results and Jari's later decisions determine remaining work.
 The accepted evidence does not require a separate operator recovery procedure
 or proof of every imaginable concurrency or drift case.
 
-The 30 September broker-crash attempt is separate from the prior documentation
-reconciliation. Its failed reviewed result is linked above. The issue remains
-open for this broker-crash refusal proof and the operator-observed post-reboot
-check.
+The 30 September broker-crash attempt was corrected and passed in the disposable
+guest on 1 October. The issue remains open for the operator-observed bound-user
+post-reboot check.
