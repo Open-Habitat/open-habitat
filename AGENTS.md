@@ -45,7 +45,9 @@ users to stay compatible with, so formats, interfaces and data change freely
 without compatibility code.
 
 Cutting a release and installing it on the test server is ordinary work and
-does not wait for a go/no-go from the user. Fleetrepo's
+does not wait for a go/no-go from the user, including the first live run of a
+new upgrade operator in the procedure; a working rollback is the safeguard,
+not an approval. Fleetrepo's
 `infra/native-agent-host-test/RELEASE-UPGRADE.md` is the procedure, with
 receipts and host facts kept there. It exists so that we always know exactly
 which bytes are running and can go back to the previous release.
