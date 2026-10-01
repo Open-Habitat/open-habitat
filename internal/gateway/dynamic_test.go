@@ -3,61 +3,11 @@ package gateway
 import (
 	"context"
 	"errors"
-	"net/http"
-	"net/http/httptest"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 )
-
-func TestBrokerRevokesExistingSessions(t *testing.T) {
-	for _, tc := range []string{"revoked", "outage", "epoch", "generation rollback", "uid", "socket"} {
-		t.Run(tc, func(t *testing.T) {
-			h, a, _, _, _ := fixture(t)
-			b := a.broker.(*fakeBroker)
-			state, flow := start(t, h)
-			cb := callback(h, state, flow)
-			if cb.Code != http.StatusSeeOther {
-				t.Fatal(cb.Code)
-			}
-			cookie := cb.Result().Cookies()[1]
-			if request(h, "GET", "/auth/session", cookie).Code != 200 {
-				t.Fatal("initial session denied")
-			}
-			b.mu.Lock()
-			switch tc {
-			case "revoked":
-				delete(b.routes, "42")
-			case "outage":
-				b.fail = true
-			case "epoch":
-				b.epoch++
-			case "generation rollback":
-				b.generation = 0
-			case "uid":
-				v := b.routes["42"]
-				v.UID++
-				b.routes["42"] = v
-			case "socket":
-				v := b.routes["42"]
-				v.Socket = "/tmp/attacker"
-				b.routes["42"] = v
-			}
-			b.mu.Unlock()
-			for _, path := range []string{"/auth/session", "/api/v1/snapshot"} {
-				r := httptest.NewRequest("GET", "https://host.test"+path, nil)
-				r.RequestURI = r.URL.RequestURI()
-				r.AddCookie(cookie)
-				w := httptest.NewRecorder()
-				h.ServeHTTP(w, r)
-				if got := w.Code; got != 401 {
-					t.Fatalf("%s: %d", path, got)
-				}
-			}
-		})
-	}
-}
 
 type stoppingSink struct {
 	entered chan struct{}
@@ -169,89 +119,38 @@ func TestConcurrentSessionRequestsAndUnrelatedProvision(t *testing.T) {
 	}
 }
 
-type barrierBroker struct {
-	base    *fakeBroker
-	entered chan struct{}
-	resume  chan struct{}
-	count   atomic.Int32
-}
-
-func (b *barrierBroker) Exchange(ctx context.Context, r BrokerRequest) (BrokerReply, error) {
-	if r.Operation == "authorize" && b.count.Add(1) <= 2 {
-		b.entered <- struct{}{}
-		select {
-		case <-b.resume:
-		case <-ctx.Done():
-			return BrokerReply{}, ctx.Err()
-		}
-	}
-	return b.base.Exchange(ctx, r)
-}
-func TestSimultaneousBrokerSessionRechecks(t *testing.T) {
+// Login authorizes once. Policy edits and broker outages do not invalidate a
+// live session; only explicit revocation, logout and expiry do.
+func TestSessionAuthorizationOnlyAtLogin(t *testing.T) {
 	h, a, _, _, _ := fixture(t)
-	a.now = time.Now
+	b := a.broker.(*fakeBroker)
+	var mu sync.Mutex
+	calls := map[string]int{}
+	b.hook = func(r BrokerRequest) { mu.Lock(); calls[r.Operation]++; mu.Unlock() }
 	state, flow := start(t, h)
 	cb := callback(h, state, flow)
 	if cb.Code != 303 {
 		t.Fatal(cb.Code)
 	}
 	cookie := cb.Result().Cookies()[1]
-	base := a.broker.(*fakeBroker)
-	barrier := &barrierBroker{base: base, entered: make(chan struct{}, 2), resume: make(chan struct{})}
-	a.broker = barrier
-	codes := make(chan int, 2)
-	for i := 0; i < 2; i++ {
-		go func() { codes <- request(h, "GET", "/auth/session", cookie).Code }()
+	mu.Lock()
+	if calls["ensure"] != 1 || calls["authorize"] != 1 {
+		t.Fatalf("login calls: %v", calls)
 	}
-	<-barrier.entered
-	<-barrier.entered
-	close(barrier.resume)
-	for i := 0; i < 2; i++ {
-		if code := <-codes; code != 200 {
-			t.Fatalf("concurrent broker recheck: %d", code)
+	mu.Unlock()
+	b.mu.Lock()
+	b.epoch++
+	delete(b.routes, "42")
+	b.fail = true
+	b.mu.Unlock()
+	for i := 0; i < 5; i++ {
+		if code := request(h, "GET", "/auth/session", cookie).Code; code != 200 {
+			t.Fatalf("live session: %d", code)
 		}
 	}
-}
-
-type intermittentBroker struct {
-	base        Broker
-	unavailable bool
-}
-
-func (b *intermittentBroker) Exchange(ctx context.Context, r BrokerRequest) (BrokerReply, error) {
-	if b.unavailable {
-		return BrokerReply{}, ErrBrokerUnavailable
-	}
-	return b.base.Exchange(ctx, r)
-}
-func TestUnavailableBrokerDeniesWithoutLosingSession(t *testing.T) {
-	h, a, _, _, _ := fixture(t)
-	state, flow := start(t, h)
-	cb := callback(h, state, flow)
-	if cb.Code != http.StatusSeeOther {
-		t.Fatal(cb.Code)
-	}
-	cookie := cb.Result().Cookies()[1]
-	b := &intermittentBroker{base: a.broker, unavailable: true}
-	a.broker = b
-	if got := request(h, "GET", "/auth/session", cookie).Code; got != 401 {
-		t.Fatal(got)
-	}
-	b.unavailable = false
-	if got := request(h, "GET", "/auth/session", cookie).Code; got != 200 {
-		t.Fatal("transient outage deleted session", got)
-	}
-	base := b.base.(*fakeBroker)
-	base.mu.Lock()
-	delete(base.routes, "42")
-	base.mu.Unlock()
-	if got := request(h, "GET", "/auth/session", cookie).Code; got != 401 {
-		t.Fatal("revoked route", got)
-	}
-	base.mu.Lock()
-	base.routes["42"] = BrokerRoute{UID: 1001, Username: "alice", Socket: "/run/native-agent-host/users/alice/daemon.sock"}
-	base.mu.Unlock()
-	if got := request(h, "GET", "/auth/session", cookie).Code; got != 401 {
-		t.Fatal("revoked session resurrected", got)
+	mu.Lock()
+	defer mu.Unlock()
+	if calls["authorize"] != 1 || calls["ensure"] != 1 {
+		t.Fatalf("live session called broker: %v", calls)
 	}
 }

@@ -63,7 +63,7 @@ func TestGatewayRepoCatalogPrePiMappedSocket(t *testing.T) {
 	a := &Auth{cfg: OAuthConfig{Origin: "https://host.test"}, broker: newFakeBroker(), now: func() time.Time { return now }, sessions: map[string]session{}}
 	for i, m := range mappings {
 		a.broker.(*fakeBroker).routes[m.Subject] = BrokerRoute{UID: uint32(uid), Username: m.Username, Socket: m.Socket}
-		a.sessions[strconv.Itoa(i)] = session{identity: m, epoch: 1, generation: 1, idle: now.Add(time.Hour), absolute: now.Add(time.Hour)}
+		a.sessions[strconv.Itoa(i)] = session{identity: m, idle: now.Add(time.Hour), absolute: now.Add(time.Hour)}
 	}
 	a.snapshotDial = func(ctx context.Context, p string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, "unix", paths[p])

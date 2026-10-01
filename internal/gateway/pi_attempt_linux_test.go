@@ -44,7 +44,7 @@ func TestPiAttemptAuthenticatedMappedSocket(t *testing.T) {
 	a := &Auth{cfg: OAuthConfig{Origin: "https://host.test"}, broker: newFakeBroker(), now: func() time.Time { return now }, sessions: map[string]session{}}
 	a.broker.(*fakeBroker).routes["42"] = BrokerRoute{UID: uint32(uid), Username: "alice", Socket: m.Socket}
 	token := strings.Repeat("A", 43)
-	a.sessions[token] = session{identity: m, epoch: 1, generation: 1, csrf: "csrf-secret", idle: now.Add(time.Hour), absolute: now.Add(time.Hour)}
+	a.sessions[token] = session{identity: m, csrf: "csrf-secret", idle: now.Add(time.Hour), absolute: now.Add(time.Hour)}
 	a.snapshotDial = func(ctx context.Context, p string) (net.Conn, error) {
 		if p != m.Socket {
 			t.Errorf("wrong socket %q", p)

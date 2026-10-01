@@ -111,7 +111,7 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 		return (&net.Dialer{}).DialContext(ctx, "unix", listeners[path])
 	}
 	for i, m := range mappings {
-		a.sessions[strconv.Itoa(i)] = session{identity: m, epoch: 1, generation: 1, idle: now.Add(time.Hour), absolute: now.Add(time.Hour)}
+		a.sessions[strconv.Itoa(i)] = session{identity: m, idle: now.Add(time.Hour), absolute: now.Add(time.Hour)}
 	}
 	h := NewWithAuth("", a)
 	send := func(id, path string, headers map[string]string) *httptest.ResponseRecorder {

@@ -39,7 +39,7 @@ func TestGatewayObserveBoundSessionAndReply(t *testing.T) {
 	})}
 	go srv.Serve(ln)
 	defer srv.Close()
-	a := &Auth{cfg: OAuthConfig{Origin: "https://host.test"}, broker: newFakeBroker(), now: func() time.Time { return now }, sessions: map[string]session{"one": {identity: id, epoch: 1, generation: 1, idle: now.Add(time.Hour), absolute: now.Add(time.Hour)}}}
+	a := &Auth{cfg: OAuthConfig{Origin: "https://host.test"}, broker: newFakeBroker(), now: func() time.Time { return now }, sessions: map[string]session{"one": {identity: id, idle: now.Add(time.Hour), absolute: now.Add(time.Hour)}}}
 	a.broker.(*fakeBroker).routes["42"] = BrokerRoute{UID: uint32(uid), Username: "alice", Socket: id.Socket}
 	a.snapshotDial = func(ctx context.Context, _ string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, "unix", socket)

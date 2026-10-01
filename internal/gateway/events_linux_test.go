@@ -70,8 +70,11 @@ func TestEventsGatewayReplaysAndRejectsForeignFrames(t *testing.T) {
 	defer srv.Close()
 	a := &Auth{cfg: OAuthConfig{Origin: "https://host.test"}, broker: newFakeBroker(), now: func() time.Time { return now }, sessions: map[string]session{}}
 	a.broker.(*fakeBroker).routes["42"] = BrokerRoute{UID: uint32(uid), Username: "alice", Socket: m.Socket}
+	var brokerCalls atomic.Int32
+	a.broker.(*fakeBroker).hook = func(BrokerRequest) { brokerCalls.Add(1) }
+	a.broker.(*fakeBroker).fail = true
 	cookie := strings.Repeat("A", 43)
-	a.sessions[cookie] = session{identity: m, epoch: 1, generation: 1, csrf: cookie, idle: now.Add(time.Hour), absolute: now.Add(time.Hour)}
+	a.sessions[cookie] = session{identity: m, csrf: cookie, idle: now.Add(time.Hour), absolute: now.Add(time.Hour)}
 	a.snapshotDial = func(ctx context.Context, p string) (net.Conn, error) {
 		if p != m.Socket {
 			t.Errorf("wrong socket %s", p)
@@ -90,6 +93,9 @@ func TestEventsGatewayReplaysAndRejectsForeignFrames(t *testing.T) {
 	w := send()
 	if w.Code != 200 || strings.Count(w.Body.String(), "event: snapshot.invalidated") != 2 || !strings.Contains(w.Body.String(), "id: ev1:"+instance+":2") {
 		t.Fatalf("stream %d %s", w.Code, w.Body.String())
+	}
+	if brokerCalls.Load() != 0 {
+		t.Fatalf("events frames called broker %d times", brokerCalls.Load())
 	}
 	extra.Store(true)
 	w = send()

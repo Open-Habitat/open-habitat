@@ -88,9 +88,12 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 	defer srv.Close()
 	a := &Auth{cfg: OAuthConfig{Origin: "https://host.test"}, broker: newFakeBroker(), now: func() time.Time { return now }, sessions: map[string]session{}}
 	a.broker.(*fakeBroker).routes["42"] = BrokerRoute{UID: uint32(uid), Username: "alice", Socket: m.Socket}
+	var brokerCalls atomic.Int32
+	a.broker.(*fakeBroker).hook = func(BrokerRequest) { brokerCalls.Add(1) }
+	a.broker.(*fakeBroker).fail = true
 	first, second := strings.Repeat("A", 43), strings.Repeat("B", 43)
 	for _, k := range []string{first, second} {
-		a.sessions[k] = session{identity: m, epoch: 1, generation: 1, csrf: k, idle: now.Add(time.Hour), absolute: now.Add(time.Hour)}
+		a.sessions[k] = session{identity: m, csrf: k, idle: now.Add(time.Hour), absolute: now.Add(time.Hour)}
 	}
 	a.snapshotDial = func(ctx context.Context, p string) (net.Conn, error) {
 		if p != m.Socket {
@@ -166,6 +169,9 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 	h.ServeHTTP(streamRecorder{cursorReply}, cursorRequest)
 	if cursorReply.Code != 409 || !strings.Contains(cursorReply.Body.String(), `"cursor_expired"`) {
 		t.Fatalf("cursor rejection %d %s", cursorReply.Code, cursorReply.Body.String())
+	}
+	if brokerCalls.Load() != 0 {
+		t.Fatalf("live conversation requests or stream called broker %d times", brokerCalls.Load())
 	}
 	question := `{"request_id":"native-a","action":"answer","value":"hello"}`
 	if w := send("POST", conversationBase+"/"+id+"/question", second, question, second); w.Code != 404 {
@@ -335,7 +341,7 @@ func TestConversationLostAckAndPeerDenial(t *testing.T) {
 	a := &Auth{cfg: OAuthConfig{Origin: "https://host.test"}, broker: newFakeBroker(), now: func() time.Time { return now }, sessions: map[string]session{}}
 	a.broker.(*fakeBroker).routes["42"] = BrokerRoute{UID: uint32(uid), Username: "alice", Socket: m.Socket}
 	token := strings.Repeat("A", 43)
-	a.sessions[token] = session{identity: m, epoch: 1, generation: 1, csrf: "csrf", idle: now.Add(time.Hour), absolute: now.Add(time.Hour)}
+	a.sessions[token] = session{identity: m, csrf: "csrf", idle: now.Add(time.Hour), absolute: now.Add(time.Hour)}
 	a.snapshotDial = func(ctx context.Context, p string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, "unix", socket)
 	}
@@ -368,43 +374,6 @@ func TestConversationLostAckAndPeerDenial(t *testing.T) {
 	h.ServeHTTP(w, r)
 	if w.Code != 200 || !strings.Contains(w.Body.String(), `"sessions":[]`) || calls.Load() != 2 {
 		t.Fatalf("list after ambiguity %d %s calls=%d", w.Code, w.Body.String(), calls.Load())
-	}
-}
-
-func TestConversationRejectsExpiredSessionAfterSlowBody(t *testing.T) {
-	now := time.Now()
-	uid := os.Getuid()
-	m := Identity{"github", "42", uid, "alice", "/run/native-agent-host/users/alice/daemon.sock"}
-	a := &Auth{cfg: OAuthConfig{Origin: "https://host.test"}, broker: newFakeBroker(), now: func() time.Time { return now }, sessions: map[string]session{}}
-	a.broker.(*fakeBroker).routes["42"] = BrokerRoute{UID: uint32(uid), Username: "alice", Socket: m.Socket}
-	token := strings.Repeat("A", 43)
-	a.sessions[token] = session{identity: m, epoch: 1, generation: 1, csrf: "csrf", idle: now.Add(time.Hour), absolute: now.Add(time.Hour)}
-	var dialed atomic.Bool
-	a.snapshotDial = func(context.Context, string) (net.Conn, error) { dialed.Store(true); return nil, io.EOF }
-	reader, writer := io.Pipe()
-	payload := `{"workspace_id":"ws_12345678"}`
-	r := httptest.NewRequest("POST", "https://host.test"+conversationBase, reader)
-	r.RequestURI = conversationBase
-	r.ContentLength = int64(len(payload))
-	r.AddCookie(&http.Cookie{Name: cookieName, Value: token})
-	r.Header.Set("Origin", "https://host.test")
-	r.Header.Set("X-Agent-Host-CSRF", "csrf")
-	r.Header.Set("Content-Type", "application/json")
-	result := make(chan *httptest.ResponseRecorder, 1)
-	go func() { w := httptest.NewRecorder(); NewWithAuth("", a).ServeHTTP(w, r); result <- w }()
-	a.mu.Lock()
-	delete(a.sessions, token)
-	a.mu.Unlock()
-	go func() { _, _ = io.WriteString(writer, payload); _ = writer.Close() }()
-	var w *httptest.ResponseRecorder
-	select {
-	case w = <-result:
-	case <-time.After(2 * time.Second):
-		_ = reader.Close()
-		t.Fatal("slow body did not settle")
-	}
-	if w.Code != 401 || dialed.Load() {
-		t.Fatalf("revoked slow body forwarded: %d dial=%v", w.Code, dialed.Load())
 	}
 }
 

@@ -27,8 +27,8 @@ func (a *Auth) RevokeSubject(ctx context.Context, subject string) error {
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	// The broker verification precedes the lock. No broker rebind is accepted:
-	// subsequent requests reauthorize, and this operation never routes to a UID.
+	// The broker verification precedes the lock. Revocation removes sessions
+	// synchronously; a later broker policy edit alone does not end them.
 	if a.revoked == nil {
 		a.revoked = make(map[string]uint64)
 	}

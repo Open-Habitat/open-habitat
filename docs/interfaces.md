@@ -94,8 +94,11 @@ ei hyväksy lomakedataa, eikä CORS avaa tunnistettuja pyyntöjä muille origine
 Vanhentuneella istunnolla jo näytetty sisältö saa jäädä luettavaksi, mutta
 uudet pyynnöt vaativat kirjautumisen. Identiteetin vaihto tyhjentää edellisen
 käyttäjän näkymän ja selainluonnokset. Web-logout mitätöi web-istunnon ja
-säilyttää natiivin `gh`-kirjautumisen. Sovitussa SSE-toteutuksessa se sulkee
-myös istuntoon sidotut virrat.
+säilyttää natiivin `gh`-kirjautumisen. Broker tarkistaa sidoksen kerran
+kirjautuessa. Käynnissä olevan istunnon lopettaa vanheneminen, logout tai
+root-operaattorin `RevokeSubject`; allowlistin muutos ei yksin kirjaa ulos.
+Jo avatun SSE-virran kehyksiä ei valtuuteta uudestaan, joten logout tai
+peruutus estää uudet pyynnöt mutta ei keskeytä jo avattua virtaa.
 
 ### Gateway → daemon
 
@@ -150,7 +153,7 @@ erillinen teko; paikallinen logout ei väitä tehneensä sitä.
 ## Käyttöönoton rajapinnat
 
 GitHub-listaus ja kloonaus ovat käytettävissä ennen Pi-kirjautumista.
-Istunto ja brokerin tuore sidos valitsevat käyttäjän; daemon varmistaa peerin,
+Istuntoon kirjautumisessa hyväksytty brokerin sidos valitsee käyttäjän; daemon varmistaa peerin,
 oman sidoksensa ja oman `gh`:n GitHub-ID:n. Lista tulee natiivista `gh`:sta
 ilman omaa rekisteriä. Täysi sivu ilmoittaa `has_more`, joten viimeinen sivu
 voi olla tyhjä. [Repo](../contracts/v1/github-repos.schema.json)-,

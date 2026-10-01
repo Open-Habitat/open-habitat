@@ -120,11 +120,10 @@ type pending struct {
 	serial                                            uint64
 }
 type session struct {
-	identity          Identity
-	accessEmail       string
-	epoch, generation uint64
-	csrf              string
-	idle, absolute    time.Time
+	identity       Identity
+	accessEmail    string
+	csrf           string
+	idle, absolute time.Time
 }
 type Auth struct {
 	cfg             OAuthConfig
@@ -565,55 +564,33 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		delete(a.sessions, old.Value)
 		delete(a.conversations, old.Value)
 	}
-	a.sessions[sid] = session{identity: target, accessEmail: accessEmail(r), epoch: checked.Epoch, generation: checked.Generation, csrf: csrf, idle: now.Add(8 * time.Hour), absolute: now.Add(24 * time.Hour)}
+	a.sessions[sid] = session{identity: target, accessEmail: accessEmail(r), csrf: csrf, idle: now.Add(8 * time.Hour), absolute: now.Add(24 * time.Hour)}
 	a.mu.Unlock()
 	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: sid, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})
 	a.authEvent(attempt, "accepted", "none")
 	http.Redirect(w, r, p.returnTo, http.StatusSeeOther)
 }
 
-// authenticated rechecks the broker for every session-backed request before any
-// daemon operation or session disclosure. Never cache a positive decision.
+// authenticated resolves the cookie locally. The broker authorizes the binding at
+// login; RevokeSubject deletes sessions under this same lock.
 func (a *Auth) authenticated(r *http.Request) (session, bool) {
-	c, e := r.Cookie(cookieName)
-	if e != nil {
-		return session{}, false
-	}
-	a.mu.Lock()
-	s, ok := a.sessions[c.Value]
-	now := a.now()
-	if ok && (!now.Before(s.idle) || !now.Before(s.absolute)) {
-		delete(a.sessions, c.Value)
-		delete(a.conversations, c.Value)
-		ok = false
-	}
-	a.mu.Unlock()
-	if !ok || s.accessEmail != accessEmail(r) {
-		return session{}, false
-	}
-	reply, err := a.broker.Exchange(r.Context(), BrokerRequest{Operation: "authorize", ID: s.identity.Subject})
-	target, valid := brokerIdentity(s.identity.Subject, reply)
-	if err != nil || !valid || target != s.identity || reply.Generation < s.generation || reply.Epoch != s.epoch {
-		if !errors.Is(err, ErrBrokerUnavailable) {
-			a.mu.Lock()
-			delete(a.sessions, c.Value)
-			delete(a.conversations, c.Value)
-			a.mu.Unlock()
-		}
+	c, err := r.Cookie(cookieName)
+	if err != nil {
 		return session{}, false
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	// A concurrent logout or rotation cannot resurrect a removed session.
-	current, ok := a.sessions[c.Value]
-	if !ok || current.csrf != s.csrf || current.identity != s.identity || current.accessEmail != s.accessEmail || current.epoch != s.epoch || current.generation != s.generation || current.absolute != s.absolute {
+	s, ok := a.sessions[c.Value]
+	if !ok {
 		return session{}, false
 	}
-	s = current
-	now = a.now()
+	now := a.now()
 	if !now.Before(s.idle) || !now.Before(s.absolute) {
 		delete(a.sessions, c.Value)
 		delete(a.conversations, c.Value)
+		return session{}, false
+	}
+	if s.accessEmail != accessEmail(r) {
 		return session{}, false
 	}
 	s.idle = now.Add(8 * time.Hour)

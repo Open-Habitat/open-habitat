@@ -100,13 +100,6 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 		safe(w, 400, "invalid_request")
 		return
 	}
-	// A slow browser body can outlive logout or a broker rebind. Authorize
-	// again immediately before touching the mapped socket.
-	latest, valid := a.authenticated(r)
-	if !valid || latest.identity != s.identity || latest.csrf != s.csrf || latest.epoch != s.epoch || latest.generation != s.generation {
-		safe(w, 401, "authentication_required")
-		return
-	}
 	if match[1] != "" && !a.ownsConversation(owner, match[1]) {
 		safe(w, 404, "resource_not_found")
 		return
@@ -186,9 +179,9 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	}
 	if kind == "stream" || kind == "events" {
 		if events {
-			a.forwardEvents(w, r, conn, req, s)
+			a.forwardEvents(w, r, conn, req)
 		} else {
-			a.forwardConversationStream(w, r, conn, req, owner, s, match[1])
+			a.forwardConversationStream(w, r, conn, req, match[1])
 		}
 		return
 	}
@@ -281,10 +274,10 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 		}
 		a.mu.Unlock()
 	}
-	// Fail closed if a logout/rebind raced the daemon response.
+	// Fail closed if logout or explicit revocation raced the daemon response.
 	a.mu.Lock()
 	current, exists := a.sessions[owner]
-	live := exists && current.csrf == s.csrf && current.identity == target && current.epoch == s.epoch && current.generation == s.generation
+	live := exists && current.csrf == s.csrf && current.identity == target
 	a.mu.Unlock()
 	if !live {
 		failure()
@@ -636,9 +629,9 @@ func (h *streamHeaderReader) Read(p []byte) (int, error) {
 }
 
 // A stream is deliberately finite. The gateway validates each daemon status
-// frame and rechecks the broker/session before releasing it to the browser;
+// frame before releasing it to the browser;
 // the daemon, not the gateway, produces cursors and native observations.
-func (a *Auth) forwardConversationStream(w http.ResponseWriter, r *http.Request, conn net.Conn, req *http.Request, owner string, initial session, id string) {
+func (a *Auth) forwardConversationStream(w http.ResponseWriter, r *http.Request, conn net.Conn, req *http.Request, id string) {
 	// ReadResponse does not impose a header byte budget of its own. Limit
 	// daemon-controlled headers before accepting any streaming response.
 	reader := bufio.NewReader(&streamHeaderReader{source: conn})
@@ -729,10 +722,6 @@ func (a *Auth) forwardConversationStream(w http.ResponseWriter, r *http.Request,
 			return
 		}
 		if !scanner.Scan() || scanner.Text() != "" {
-			return
-		}
-		latest, valid := a.authenticated(r)
-		if !valid || latest.identity != initial.identity || latest.csrf != initial.csrf || latest.epoch != initial.epoch || latest.generation != initial.generation || !a.ownsConversation(owner, id) {
 			return
 		}
 		if _, err := io.WriteString(w, "id: "+cursor+"\nevent: status\ndata: "+payload+"\n\n"); err != nil {

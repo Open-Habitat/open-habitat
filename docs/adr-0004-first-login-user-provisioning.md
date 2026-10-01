@@ -44,18 +44,14 @@ Concurrent logins must converge on one binding without assigning the same
 resources to different people. Root-owned state and the native account must
 agree before an existing binding can be used.
 
-### Authorization remains current
+### Authorization at login and explicit revocation
 
-The broker checks current authorization for both new and existing bindings.
-The gateway rechecks through the broker on each session-backed request and
-while streams remain open. Removing an ID from the allowlist denies further
-web access and closes its streams. Unavailable or inconsistent broker state
-must deny access rather than reuse a cached success.
-
-Removing web access leaves native agents, files and credentials in place.
-Already-running operations cannot be undone by revoking authorization.
-[ADR 0006](adr-0006-subject-revocation.md) defines the separate operator action
-for invalidating browser sessions and older OAuth attempts.
+The broker checks current authorization when the gateway issues a session.
+After login, the gateway routes from its local session until expiry, logout or
+`RevokeSubject` ([ADR 0006](adr-0006-subject-revocation.md)). An allowlist
+change by itself does not log out an existing session; revoke access explicitly
+before editing admission policy. Already-running operations cannot be undone.
+Native agents, files and credentials remain in place when web access ends.
 
 ### Native credentials precede the browser session
 

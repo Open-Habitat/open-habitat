@@ -33,6 +33,9 @@ The gateway authenticates the browser and maps its identity to exactly one Linux
 account on that server. On an approved first GitHub login, the root broker
 creates and verifies the account and its binding to the stable numeric GitHub ID.
 The administrator controls admission; the browser cannot choose a Unix user.
+The broker authorizes the binding at login, not on each request or stream frame.
+An operator uses `RevokeSubject` to remove live browser sessions before changing
+the allowlist; changing the allowlist alone does not log out existing sessions.
 
 The gateway forwards requests to that account's systemd-created Unix socket.
 It verifies the trusted filesystem route, and the daemon authenticates the

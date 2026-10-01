@@ -17,7 +17,7 @@ import (
 
 // forwardEvents does not forward arbitrary daemon bytes. Every frame is
 // allowlisted and bound to the exact cursor sequence and daemon instance.
-func (a *Auth) forwardEvents(w http.ResponseWriter, r *http.Request, conn net.Conn, req *http.Request, initial session) {
+func (a *Auth) forwardEvents(w http.ResponseWriter, r *http.Request, conn net.Conn, req *http.Request) {
 	reader := bufio.NewReader(&streamHeaderReader{source: conn})
 	res, err := http.ReadResponse(reader, req)
 	if err != nil {
@@ -86,10 +86,6 @@ func (a *Auth) forwardEvents(w http.ResponseWriter, r *http.Request, conn net.Co
 			if !scanner.Scan() || scanner.Text() != "" {
 				return
 			}
-			latest, valid := a.authenticated(r)
-			if !valid || latest.identity != initial.identity || latest.csrf != initial.csrf || latest.epoch != initial.epoch || latest.generation != initial.generation {
-				return
-			}
 			if _, err := io.WriteString(w, ": heartbeat\n\n"); err != nil {
 				return
 			}
@@ -137,10 +133,6 @@ func (a *Auth) forwardEvents(w http.ResponseWriter, r *http.Request, conn net.Co
 			return
 		}
 		if !scanner.Scan() || scanner.Text() != "" {
-			return
-		}
-		latest, valid := a.authenticated(r)
-		if !valid || latest.identity != initial.identity || latest.csrf != initial.csrf || latest.epoch != initial.epoch || latest.generation != initial.generation {
 			return
 		}
 		if _, err := io.WriteString(w, "id: "+id+"\nevent: "+kind+"\ndata: "+body+"\n\n"); err != nil {
