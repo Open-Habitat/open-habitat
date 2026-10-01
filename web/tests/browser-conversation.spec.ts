@@ -1232,6 +1232,22 @@ test("@browser-conversation ordinary refresh keeps an explicit continuation proo
   ).toBeVisible();
 });
 
+test("@browser-conversation an opening continuation proof retries after HTTP failure", async ({
+  page,
+}) => {
+  let proofRequests = 0;
+  await page.route(
+    "**/api/v1/conversations/*/status?continuation=true",
+    (route) => {
+      if (++proofRequests === 1)
+        return route.fulfill({ status: 503, body: "unavailable" });
+      return route.continue();
+    },
+  );
+  await endedConversation(page);
+  expect(proofRequests).toBeGreaterThan(1);
+});
+
 for (const [proof, reason] of [
   ["writer_present", /Keskustelulla on yhä aktiivinen kirjoittaja/],
   ["read_only_history", /terminaalin historiaa/],

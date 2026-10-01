@@ -145,13 +145,19 @@ export function BrowserConversation({
   );
   const retryTimer = useRef<number | undefined>(undefined);
   const retryDelay = useRef(0);
-  const clearRetry = useCallback(() => {
+  const retryProof = useRef(false);
+  const clearRetry = useCallback((unmount = false) => {
+    // A simultaneous ordinary refresh may succeed while an opening proof is
+    // still waiting to retry. It does not discharge that explicit request.
+    if (retryProof.current && !unmount) return;
     if (retryTimer.current !== undefined)
       window.clearTimeout(retryTimer.current);
     retryTimer.current = undefined;
     retryDelay.current = 0;
+    if (unmount) retryProof.current = false;
   }, []);
-  const scheduleRetry = useCallback(() => {
+  const scheduleRetry = useCallback((proof = false) => {
+    retryProof.current ||= proof;
     if (retryTimer.current !== undefined || !alive.current) return;
     retryDelay.current = Math.min(
       retryDelay.current ? retryDelay.current * 2 : 3000,
@@ -159,7 +165,9 @@ export function BrowserConversation({
     );
     retryTimer.current = window.setTimeout(() => {
       retryTimer.current = undefined;
-      void latestRefresh.current();
+      const needsProof = retryProof.current;
+      retryProof.current = false;
+      void latestRefresh.current(needsProof);
     }, retryDelay.current);
   }, []);
   const sendInFlight = useRef(false);
@@ -272,7 +280,7 @@ export function BrowserConversation({
     setCSRF(undefined);
     setCurrent(undefined);
     continuationProof.current = undefined;
-    clearRetry();
+    clearRetry(true);
     setRetryContinuation(false);
     setEntries([]);
     setEvents([]);
@@ -337,7 +345,7 @@ export function BrowserConversation({
       alive.current = false;
       ++generation.current;
       controller.abort();
-      clearRetry();
+      clearRetry(true);
     };
   }, [
     id,
@@ -661,7 +669,7 @@ export function BrowserConversation({
         }
       } catch {
         if (alive.current && version === generation.current) {
-          scheduleRetry();
+          scheduleRetry(requestContinuation);
           setProblem(
             "Yhteys katkesi tai istunto muuttui. Ohjaus on estetty kunnes tila varmistuu.",
           );
