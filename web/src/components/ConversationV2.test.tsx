@@ -5,6 +5,7 @@ import {
   AssistantMessage,
   Composer,
   ConversationTimeline,
+  QueuePanel,
   UserMessage,
 } from "./Conversation";
 
@@ -60,13 +61,72 @@ describe("conversation v2 presentation", () => {
         <Composer {...props} queueKnown queueOpen />
       </MemoryRouter>,
     );
-    expect(view.getByRole("button", { name: "Jonossa 0" })).toBeTruthy();
+    expect(
+      view
+        .getByRole("button", { name: "Jonossa 0" })
+        .getAttribute("aria-expanded"),
+    ).toBe("true");
     view.rerender(
       <MemoryRouter>
         <Composer {...props} queueKnown />
       </MemoryRouter>,
     );
     expect(view.queryByRole("button", { name: "Jonossa 0" })).toBeNull();
+  });
+  it("never presents an unknown queue as zero items", () => {
+    const view = mount(
+      <QueuePanel
+        steeringTexts={[]}
+        followUpTexts={[]}
+        state="error"
+        clearAvailability={{ state: "unknown", reason: "Odota havaintoa." }}
+        onClearAll={noop}
+      />,
+    );
+    expect(view.getByText("Jonon tila ei tiedossa")).toBeTruthy();
+    expect(view.queryByText("0")).toBeNull();
+  });
+  it("names the selected Enter action while working", () => {
+    const view = mount(
+      <Composer
+        value="Ohje"
+        activity="working"
+        selectedWorkingMode="steer"
+        onChange={noop}
+        onSendNow={noop}
+        onSteer={noop}
+        onFollowUp={noop}
+        onModeChange={noop}
+      />,
+    );
+    expect(view.getByText(/Enter: Ohjaa/)).toBeTruthy();
+    const editor = view.getByRole("textbox", { name: "Viesti Pi:lle" });
+    expect(editor.getAttribute("aria-describedby")).toBeTruthy();
+  });
+  it("keeps an empty ready composer quiet and prevents an empty send", () => {
+    const submit = vi.fn();
+    const view = mount(
+      <Composer
+        value=""
+        activity="idle"
+        selectedWorkingMode="follow_up"
+        onChange={noop}
+        onSendNow={submit}
+        onSteer={noop}
+        onFollowUp={noop}
+        onModeChange={noop}
+      />,
+    );
+    expect(view.getByRole("button", { name: "Lähetä" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+    expect(
+      view
+        .getByRole("textbox", { name: "Viesti Pi:lle" })
+        .getAttribute("placeholder"),
+    ).toBe("Viesti Pi:lle");
+    expect(submit).not.toHaveBeenCalled();
   });
   it("keeps an unavailable send disabled and a rejected draft visible", () => {
     const view = mount(

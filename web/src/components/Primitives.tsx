@@ -63,6 +63,7 @@ interface FieldProps {
   value: string;
   onChange: (value: string) => void;
   hint?: string;
+  placeholder?: string;
   error?: string;
   required?: boolean;
   mono?: boolean;
@@ -110,6 +111,7 @@ export function TextArea({
   value,
   onChange,
   hint,
+  placeholder,
   error,
   required,
   mono,
@@ -132,6 +134,7 @@ export function TextArea({
       <Label>{label}</Label>
       <AriaTextArea
         className={mono ? "ah-mono" : undefined}
+        placeholder={placeholder}
         rows={rows}
         onKeyDown={(event) => {
           if (

@@ -159,8 +159,8 @@ test("@account-settings compact phone drawer and settings preserve status and ra
   await expect(firstAgent).toHaveAccessibleDescription(
     /Prosessin tila ei tiedossa · Vain luku/,
   );
-  await expect(firstAgent).toContainText("Tila ei tiedossa");
-  await expect(firstAgent).toContainText("Vain luku");
+  await expect(firstAgent).toContainText("vain luku");
+  await expect(firstAgent.locator(".ah-status")).toHaveText("vain luku");
   await page.getByRole("button", { name: /Tilivalikko/ }).click();
   await page.getByRole("menuitem", { name: "Asetukset" }).click();
   await expect(page.getByRole("radiogroup", { name: "Teema" })).toBeVisible();

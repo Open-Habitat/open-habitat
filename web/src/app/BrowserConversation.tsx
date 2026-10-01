@@ -1289,7 +1289,12 @@ export function BrowserConversation({
   );
   const notices = (
     <>
-      {receipt ? <InlineNotice title={receipt} tone="warning" /> : null}
+      {receipt &&
+      !/^(Viesti hyväksyttiin|Viesti odottaa|Varmistetaan istuntoa|Jono oli jo tyhjä)/.test(
+        receipt,
+      ) ? (
+        <InlineNotice title={receipt} tone="warning" />
+      ) : null}
       {problem ? <InlineNotice title={problem} tone="danger" /> : null}
       {csrf &&
       id &&
@@ -1572,52 +1577,39 @@ export function BrowserConversation({
                 Pi:n tapahtumia vastaanotettu; historiaa odotetaan.
               </p>
             ) : null}
-            {controlled && queueOpen ? (
-              <QueuePanel
-                panelRef={queuePanel}
-                steeringTexts={current?.queue?.steering ?? []}
-                followUpTexts={current?.queue?.follow_up ?? []}
-                state={stale ? "stale" : current?.queue ? "ready" : "error"}
-                clearAvailability={
-                  !stale &&
-                  !streamError &&
-                  !busy &&
-                  !ambiguous &&
-                  current?.queue &&
-                  current.state !== "pending" &&
-                  current.state !== "uncertain" &&
-                  current.state !== "stopping"
-                    ? { state: "enabled" }
-                    : { state: "unknown", reason: "Odota vahvistettua tilaa." }
-                }
-                onClearAll={() => void clearNativeQueue()}
-              />
-            ) : null}
           </ConversationStream>
-          <Button
-            label="Tarkista keskustelun tila"
-            variant={
-              stale ||
-              ambiguous ||
-              current?.state === "uncertain" ||
-              historyError
-                ? "primary"
-                : "quiet"
-            }
-            onPress={() => {
-              if (stale) onRefreshStale?.();
-              else {
-                if (
-                  continuation &&
-                  continuation !== "uncertain" &&
-                  continuation !== "pending"
-                )
-                  setContinuation(undefined);
-                void refresh();
-                void recheckContinuation();
+          {stale ||
+          ambiguous ||
+          current?.state === "uncertain" ||
+          historyError ||
+          streamError ||
+          (continuation && !["ready", "pending"].includes(continuation)) ||
+          details ? (
+            <Button
+              label="Tarkista keskustelun tila"
+              variant={
+                stale ||
+                ambiguous ||
+                current?.state === "uncertain" ||
+                historyError
+                  ? "primary"
+                  : "quiet"
               }
-            }}
-          />
+              onPress={() => {
+                if (stale) onRefreshStale?.();
+                else {
+                  if (
+                    continuation &&
+                    continuation !== "uncertain" &&
+                    continuation !== "pending"
+                  )
+                    setContinuation(undefined);
+                  void refresh();
+                  void recheckContinuation();
+                }
+              }}
+            />
+          ) : null}
           {confirmStop && !stale && current?.state === "accepted" ? (
             <fieldset ref={stopConfirmation} aria-label="Vahvista keskeytys">
               <p>
@@ -1639,6 +1631,32 @@ export function BrowserConversation({
                 onPress={closeStopConfirmation}
               />
             </fieldset>
+          ) : null}
+          {controlled &&
+          (queueOpen ||
+            !!(
+              (current?.queue?.steering.length ?? 0) +
+              (current?.queue?.follow_up.length ?? 0)
+            )) ? (
+            <QueuePanel
+              panelRef={queuePanel}
+              steeringTexts={current?.queue?.steering ?? []}
+              followUpTexts={current?.queue?.follow_up ?? []}
+              state={stale ? "stale" : current?.queue ? "ready" : "error"}
+              clearAvailability={
+                !stale &&
+                !streamError &&
+                !busy &&
+                !ambiguous &&
+                current?.queue &&
+                current.state !== "pending" &&
+                current.state !== "uncertain" &&
+                current.state !== "stopping"
+                  ? { state: "enabled" }
+                  : { state: "unknown", reason: "Odota vahvistettua tilaa." }
+              }
+              onClearAll={() => void clearNativeQueue()}
+            />
           ) : null}
           <div className="ah-conversation-notices">{notices}</div>
           {controlled && (continuation || current?.state === "uncertain") ? (

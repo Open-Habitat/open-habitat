@@ -176,11 +176,29 @@ export function NavLink({
       <span className="ah-nav-label">{label}</span>
       {statusText ? (
         <span id={statusId}>
-          {displayStatusText ? (
+          {displayStatusText !== undefined ? (
             <>
-              <span aria-hidden="true">
-                <StatusMark label={displayStatusText} tone="neutral" />
-              </span>
+              {displayStatusText ? (
+                <span aria-hidden="true">
+                  <StatusMark
+                    label={displayStatusText}
+                    tone={
+                      displayStatusText === "Tieto vanhentunut" ||
+                      displayStatusText === "Ohjaus ei tiedossa"
+                        ? "warning"
+                        : "neutral"
+                    }
+                    kind={
+                      displayStatusText === "vain luku"
+                        ? "read-only"
+                        : displayStatusText === "Tieto vanhentunut" ||
+                            displayStatusText === "Ohjaus ei tiedossa"
+                          ? "unknown"
+                          : "neutral"
+                    }
+                  />
+                </span>
+              ) : null}
               <span className="ah-visually-hidden">{statusText}</span>
             </>
           ) : (
@@ -237,9 +255,23 @@ export function AgentNavItem({
         badgeText={attentionLabel}
         statusText={status || undefined}
         displayStatusText={
-          activityShortLabel
-            ? [activityShortLabel, ...statusParts].join(" · ")
-            : undefined
+          stale || presence === "absent"
+            ? stale
+              ? "Tieto vanhentunut"
+              : "Ei enää löydy"
+            : controlLabel === "Ohjaus ei tiedossa" ||
+                controlLabel === "Ohjaus ei saatavilla"
+              ? controlLabel
+              : controlLabel === "Vain luku"
+                ? "vain luku"
+                : activityLabel === "Prosessi käynnissä"
+                  ? "työssä"
+                  : activityLabel === "Käynnissä terminaalissa"
+                    ? "terminaalissa"
+                    : activityShortLabel &&
+                        activityShortLabel !== "Tila ei tiedossa"
+                      ? activityShortLabel
+                      : ""
         }
       />
       {relativeTime ? <time>{relativeTime}</time> : null}
@@ -505,67 +537,65 @@ export function AgentHeader({
     onPress: () => void;
   };
 }) {
-  const [expandedTitle, setExpandedTitle] = useState(false);
-  const [previousTitle, setPreviousTitle] = useState(title);
-  if (previousTitle !== title) {
-    setPreviousTitle(title);
-    setExpandedTitle(false);
-  }
+  const visibleActivity =
+    activityLabel !== "Valmis" &&
+    activityLabel !== "Odottaa viestiä" &&
+    !(controlKind === "read-only" && activityKind === "unknown");
+  const visibleControl = controlKind === "read-only";
   return (
     <header className="ah-agent-header">
-      <p>
-        <Link to={workspaceHref}>{workspaceLabel}</Link>
-      </p>
-      <div className="ah-title-row">
-        <h1
-          className={expandedTitle ? "ah-title-expanded" : undefined}
-          title={title}
-        >
-          {title}
-        </h1>
-        {titleAction ? (
-          <Button
-            label={titleAction.label}
-            ariaLabel={titleAction.label}
-            variant="quiet"
-            size="compact"
-            pending={titleAction.pending}
-            availability={titleAction.availability}
-            onPress={titleAction.onPress}
+      <div className="ah-agent-topline">
+        <div className="ah-title-row">
+          <h1 title={title}>{title}</h1>
+          {titleAction?.availability?.state === "enabled" ? (
+            <Button
+              label={titleAction.label}
+              ariaLabel={titleAction.label}
+              variant="quiet"
+              size="compact"
+              pending={titleAction.pending}
+              onPress={titleAction.onPress}
+            />
+          ) : null}
+        </div>
+        {visibleActivity ? (
+          <StatusMark
+            label={activityLabel}
+            tone="info"
+            animated={activityAnimated ? "running" : false}
+            kind={activityKind}
           />
+        ) : visibleControl ? (
+          <StatusMark label="Vain luku" tone="neutral" kind="read-only" />
         ) : null}
-      </div>
-      {title.length > 65 ? (
         <button
-          className="ah-title-toggle"
+          className="ah-details-toggle"
+          aria-expanded={detailsExpanded}
           type="button"
-          aria-expanded={expandedTitle}
-          onClick={() => setExpandedTitle(!expandedTitle)}
+          onClick={onToggleDetails}
         >
-          {expandedTitle ? "Tiivistä otsikko" : "Näytä koko otsikko"}
+          Tiedot <Icon name="down" />
         </button>
-      ) : null}
+      </div>
+      <Link className="ah-header-workspace" to={workspaceHref}>
+        {workspaceLabel}
+      </Link>
       {titleState ? <StatusMark label={titleState} tone="info" /> : null}
-      <p className="ah-actions">
-        <StatusMark
-          label={activityLabel}
-          tone="info"
-          animated={activityAnimated ? "running" : false}
-          kind={activityKind}
-        />
-        <StatusMark label={controlLabel} tone="neutral" kind={controlKind} />
-      </p>
       {titleAction?.failureNotice ? (
         <p className="ah-inline-error">{titleAction.failureNotice}</p>
       ) : null}
-      <button
-        className="ah-details-toggle"
-        aria-expanded={detailsExpanded}
-        type="button"
-        onClick={onToggleDetails}
-      >
-        Tiedot <Icon name="down" />
-      </button>
+      {detailsExpanded ? (
+        <div className="ah-header-facts">
+          <p className="ah-header-full-title">{title}</p>
+          <StatusMark label={controlLabel} tone="neutral" kind={controlKind} />
+          {titleAction?.availability?.state !== "enabled" &&
+          titleAction?.availability?.reason ? (
+            <p className="ah-control-reason">
+              {titleAction.availability.reason}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </header>
   );
 }

@@ -8,7 +8,7 @@ import { pathToFileURL } from "node:url";
 import { chromium } from "@playwright/test";
 import { origin, snapshot } from "./session.mjs";
 
-const root = resolve("issues/compare-v2-pairs");
+const root = resolve("issues/restore-v2-conversation/pairs");
 const drafts = resolve("issues/review-browser-design-v2/design/vedokset");
 const fontDir = resolve("design-system/fonts");
 const fontCss = (
@@ -238,17 +238,24 @@ try {
         ].indexOf(mode);
       return order(a.mode) - order(b.mode);
     });
-  for (const { width, theme, mode } of process.argv.includes("--home")
-    ? jobs.filter((j) => j.mode === "paluu")
-    : process.argv.includes("--extras")
-      ? jobs.filter(
-          (j) =>
-            ["collapsed", "account-menu"].includes(j.mode) ||
-            (j.mode === "katkos" && j.width === 390),
-        )
-      : jobs) {
+  for (const { width, theme, mode } of process.argv.includes("--read-only")
+    ? jobs.filter((j) => j.mode === "luku")
+    : process.argv.includes("--working")
+      ? jobs.filter((j) => j.mode === "tyo")
+      : process.argv.includes("--without-working")
+        ? jobs.filter((j) => j.mode !== "tyo")
+        : process.argv.includes("--home")
+          ? jobs.filter((j) => j.mode === "paluu")
+          : process.argv.includes("--extras")
+            ? jobs.filter(
+                (j) =>
+                  ["collapsed", "account-menu"].includes(j.mode) ||
+                  (j.mode === "katkos" && j.width === 390),
+              )
+            : jobs) {
     await fixture("scenario?value=ready");
     await fixture("conversations-reset");
+    await fixture("history?mode=ready");
     let path =
       mode === "paluu" ||
       mode === "drawer" ||
@@ -287,7 +294,6 @@ try {
             .getByText("Älä muuta footerin rakennetta.", { exact: true })
             .waitFor();
         }
-        await lab.getByText("Katson ensin, mitä työtilassa on.").waitFor();
         if (mode === "valmis")
           await lab
             .getByText(/Selvä. Kysyit:/)

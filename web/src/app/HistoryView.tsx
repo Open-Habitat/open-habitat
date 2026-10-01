@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 import {
   AgentFacts,
   AgentHeader,
@@ -365,11 +366,14 @@ export function HistoryView({
             onPress={loadMore}
           />
         ) : null}
-        <InlineNotice
-          title="Vain luku"
-          description="Historian avaaminen ei käynnistä eikä jatka Pi:tä. Prosessia tai ohjauskanavaa ei ole vahvistettu."
-        />
       </ConversationStream>
+      <div className="ah-read-only-footer">
+        <div>
+          <strong>Vain luku</strong>
+          <p>Tätä keskustelua ei voi ohjata selaimesta.</p>
+        </div>
+        <Link to={`/workspaces/${workspaceId}`}>Uusi keskustelu</Link>
+      </div>
     </ConversationFrame>
   );
 }

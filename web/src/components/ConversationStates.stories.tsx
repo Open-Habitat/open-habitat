@@ -1,9 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
+import { MemoryRouter } from "react-router";
 import {
   AssistantMessage,
   Composer,
   ConversationTimeline,
+  QueuePanel,
   EndedConversationControl,
   NativeQuestion,
   SendObservation,
@@ -13,6 +15,7 @@ import {
   UserMessage,
 } from "./Conversation";
 import { Markdown } from "./Markdown";
+import { AgentHeader } from "./Navigation";
 import { WorkingProgress } from "./WorkingProgress";
 
 const noop = () => {};
@@ -255,6 +258,79 @@ export const EndedBrowserConversationLight: Story = {
 };
 export const EndedBrowserConversationDark: Story = {
   render: () => <EndedConversationControl state="ready" onContinue={noop} />,
+  globals: { theme: "dark" },
+};
+// The header, queue and footer use the same production components in both themes.
+const v2Conversation = () => (
+  <MemoryRouter>
+    <main className="ah-conversation-frame" style={{ minHeight: 600 }}>
+      <AgentHeader
+        title="Tee etusivusta mobiiliystävällinen"
+        activityLabel="Työskentelee"
+        activityKind="working"
+        activityAnimated
+        controlKind="neutral"
+        controlLabel="Selainohjaus"
+        workspaceLabel="kotisivu"
+        workspaceHref="/workspaces/ws_example00"
+        detailsExpanded={false}
+        onToggleDetails={noop}
+      />
+      <div className="ah-conversation-stream">
+        <ConversationTimeline
+          state="ready"
+          items={[
+            {
+              id: "user",
+              kind: "user",
+              content: (
+                <UserMessage
+                  sourceText="Tee etusivusta mobiiliystävällinen."
+                  onCopy={noop}
+                />
+              ),
+            },
+            {
+              id: "assistant",
+              kind: "assistant",
+              content: (
+                <AssistantMessage onCopy={noop}>
+                  <Markdown text="Katson ensin, mitä työtilassa on." />
+                </AssistantMessage>
+              ),
+            },
+          ]}
+          historyMode="virtualized"
+          onJumpToLatest={noop}
+        />
+      </div>
+      <QueuePanel
+        steeringTexts={["Älä muuta footerin rakennetta."]}
+        followUpTexts={["Aja lopuksi Lighthouse mobiiliprofiililla."]}
+        state="ready"
+        clearAvailability={{ state: "enabled" }}
+        onClearAll={noop}
+      />
+      <Composer
+        value=""
+        activity="working"
+        selectedWorkingMode="follow_up"
+        onChange={noop}
+        onSendNow={noop}
+        onSteer={noop}
+        onFollowUp={noop}
+        onModeChange={noop}
+        onInterrupt={noop}
+      />
+    </main>
+  </MemoryRouter>
+);
+export const V2WorkingLight: Story = {
+  render: v2Conversation,
+  globals: { theme: "light" },
+};
+export const V2WorkingDark: Story = {
+  render: v2Conversation,
   globals: { theme: "dark" },
 };
 export const WriterConflict: Story = {

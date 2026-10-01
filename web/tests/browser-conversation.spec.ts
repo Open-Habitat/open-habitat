@@ -39,6 +39,12 @@ async function expectPhoneComposerWithinViewport(
   expect(bounds.actionsBottom).toBeLessThanOrEqual(844);
   expect(bounds.scrolls).toBe(false);
 }
+async function refreshConversation(page: import("@playwright/test").Page) {
+  const check = page.getByRole("button", { name: "Tarkista keskustelun tila" });
+  if (!(await check.isVisible()))
+    await page.getByRole("button", { name: "Tiedot" }).click();
+  await check.click();
+}
 async function open(page: import("@playwright/test").Page) {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
@@ -79,7 +85,7 @@ test("@browser-conversation create, send once, reconnect and old history stays r
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Tarkista keskustelun tila" }),
-  ).toHaveClass(/ah-button-quiet/);
+  ).toHaveCount(0);
   await page
     .getByRole("textbox", { name: "Viesti Pi:lle" })
     .fill("Synteettinen testipyyntö");
@@ -88,13 +94,10 @@ test("@browser-conversation create, send once, reconnect and old history stays r
     if (r.url().endsWith("/send")) sends++;
   });
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  // The native acknowledgement may arrive before the browser observes the
-  // intermediate waiting label; either is a valid outcome of this one send.
+  // Accepted delivery clears the submitted draft but does not claim turn completion.
   await expect(
-    page.getByText(
-      /Viesti odottaa natiivia hyväksyntää|Viesti hyväksyttiin Pi:n RPC:ssä/,
-    ),
-  ).toBeVisible();
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toHaveValue("");
   expect(sends).toBe(1);
   await page.reload();
   await expect(
@@ -113,7 +116,11 @@ test("@browser-conversation create, send once, reconnect and old history stays r
   // conversation must not offer a meaningless interruption request.
   await expect(page.getByRole("button", { name: "Keskeytä" })).toHaveCount(0);
   await page.goto("/agents/pi:11111111-1111-4111-8111-111111111111");
-  await expect(page.getByText("Vain luku · Ohjausta ei ole")).toBeVisible();
+  await expect(
+    page
+      .locator(".ah-read-only-footer")
+      .getByText("Vain luku", { exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toHaveCount(0);
@@ -136,10 +143,8 @@ test("@browser-conversation polling survives an unavailable stream without resen
   await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("Fallback");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
-    page.getByText(
-      /Viesti hyväksyttiin Pi:n RPC:ssä|Viesti odottaa natiivia hyväksyntää/,
-    ),
-  ).toBeVisible();
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toHaveValue("");
   expect(sends).toBe(1);
 });
 
@@ -194,7 +199,12 @@ for (const outcome of [
       .getByRole("textbox", { name: "Viesti Pi:lle" })
       .fill(`Synteettinen ${outcome}`);
     await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-    await expect(page.locator(`.ah-send-${outcome}`)).toBeVisible();
+    if (outcome === "accepted") {
+      await expect(
+        page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+      ).toHaveValue("");
+      await expect(page.locator(".ah-send-accepted")).toHaveCount(0);
+    } else await expect(page.locator(`.ah-send-${outcome}`)).toBeVisible();
     await expectPhoneComposerWithinViewport(page);
     if (outcome === "uncertain") {
       await expect(
@@ -206,10 +216,13 @@ for (const outcome of [
     }
     expect(sends).toBe(1);
     const before = lookups;
-    await page
-      .getByRole("button", { name: "Tarkista keskustelun tila" })
-      .click();
-    await expect(page.locator(`.ah-send-${outcome}`)).toBeVisible();
+    await refreshConversation(page);
+    if (outcome === "accepted") {
+      await expect(
+        page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+      ).toHaveValue("");
+      await expect(page.locator(".ah-send-accepted")).toHaveCount(0);
+    } else await expect(page.locator(`.ah-send-${outcome}`)).toBeVisible();
     expect(lookups).toBe(before); // matching status receipt avoids an extra request
   });
 }
@@ -254,7 +267,10 @@ test("@browser-conversation lost reply looks up matching command without repost"
     .getByRole("textbox", { name: "Viesti Pi:lle" })
     .fill("Vain kerran");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(page.locator(".ah-send-accepted")).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toHaveValue("");
+  await expect(page.locator(".ah-send-accepted")).toHaveCount(0);
   expect(lookups).toBeGreaterThan(0);
   expect(sends).toBe(1);
 });
@@ -282,7 +298,7 @@ test("@browser-conversation safe question and settled boundary require validated
     };
     await route.fulfill({ response, json: body });
   });
-  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
+  await refreshConversation(page);
   await expect(
     page.getByRole("region", { name: "Pi:n kysymys" }),
   ).toContainText("<script>alert(1)</script>");
@@ -325,10 +341,13 @@ test("@browser-conversation in-flight send remains pending through missing recei
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await entered;
   await expect(page.locator(".ah-send-pending")).toBeVisible();
-  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
+  await refreshConversation(page);
   await expect(page.locator(".ah-send-uncertain")).toHaveCount(0);
   release();
-  await expect(page.locator(".ah-send-accepted")).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toHaveValue("");
+  await expect(page.locator(".ah-send-accepted")).toHaveCount(0);
   expect(sends).toBe(1);
 });
 test("@browser-conversation settled marker needs observed native key", async ({
@@ -371,7 +390,7 @@ test("@browser-conversation settled marker needs observed native key", async ({
     };
     await route.fulfill({ response, json: body });
   });
-  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
+  await refreshConversation(page);
   await expect(page.locator(".ah-settled")).toContainText(
     /Vuoro valmis .* odottaa viestiäsi/,
   );
@@ -567,7 +586,7 @@ test("@browser-conversation revalidation restores editor selection, paged readin
     });
   });
   count = 50;
-  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
+  await refreshConversation(page);
   await expect(page.locator(".ah-feed li")).toHaveCount(50);
   const feed = page.locator("section:has(> .ah-timeline)").last();
   const bottomGap = () =>
@@ -636,7 +655,7 @@ test("@browser-conversation revalidation restores editor selection, paged readin
   // An incoming native entry beyond the first page must be signalled without
   // waiting for a manual history-page click or jumping away from the reader.
   count = 51;
-  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
+  await refreshConversation(page);
   await expect(
     page.getByRole("button", { name: "Uutta sisältöä (1)" }),
   ).toBeVisible();
@@ -690,7 +709,7 @@ test("@browser-conversation malformed host status fails closed without rendering
       }),
     }),
   );
-  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
+  await refreshConversation(page);
   await expect(
     page.getByText(/Yhteys katkesi tai istunto muuttui/),
   ).toBeVisible();
@@ -1029,35 +1048,20 @@ test("@browser-conversation steer, follow-up and clear return only removed texts
   await editor.fill("ohjaus kaksi");
   await page.getByRole("button", { name: "Ohjaa" }).click();
   await expect(editor).toHaveValue("");
-  await page.getByRole("button", { name: /Jonossa/ }).click();
   const queuePanel = page.getByRole("region", { name: "Työskentelyjono" });
-  await expect(queuePanel).toBeFocused();
-  const stream = page.locator(".ah-conversation-stream");
-  expect(
-    await queuePanel.evaluate((node) => node.getBoundingClientRect().top),
-  ).toBeLessThan(
-    await stream.evaluate((node) => node.getBoundingClientRect().bottom),
+  await expect(queuePanel).toBeVisible();
+  await expect(queuePanel.getByRole("listitem")).toHaveCount(2);
+  await expect(queuePanel.getByRole("listitem").first()).toContainText(
+    "ohjaus kaksi",
   );
-  await expect(page.getByText("jonoon yksi", { exact: true })).toBeVisible();
-  await expect(page.getByText("ohjaus kaksi", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: /Jonossa/ }).click();
-  await expect(queuePanel).toHaveCount(0);
-  await page.getByRole("button", { name: /Jonossa/ }).click();
-  await expect(queuePanel).toBeFocused();
-  await page
-    .getByRole("heading", { name: "Työskentelyjono" })
-    .scrollIntoViewIfNeeded();
-  await page.screenshot({
-    path: "test-results/queue-before-clear.png",
-  });
-  await page.getByRole("button", { name: "Tyhjennä koko jono" }).click();
+  await expect(queuePanel.getByRole("listitem").last()).toContainText(
+    "jonoon yksi",
+  );
+  await page.screenshot({ path: "test-results/queue-before-clear.png" });
+  await page.getByRole("button", { name: "Tyhjennä jono" }).click();
   await expect(editor).toHaveValue("ohjaus kaksi\n\njonoon yksi");
-  await page
-    .getByRole("heading", { name: "Työskentelyjono" })
-    .scrollIntoViewIfNeeded();
-  await page.screenshot({
-    path: "test-results/queue-after-clear.png",
-  });
+  await expect(queuePanel).toHaveCount(0);
+  await page.screenshot({ path: "test-results/queue-after-clear.png" });
   await expect(page.getByText("jonoon yksi", { exact: true })).toHaveCount(0);
 });
 
@@ -1126,9 +1130,7 @@ test("@browser-conversation separate streaming drafts survive agent switches and
   await expect(editor).toBeVisible();
   await editor.fill("hidas ensimmäinen vuoro");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page.getByText(/Viesti hyväksyttiin|Viesti odottaa natiivia hyväksyntää/),
-  ).toBeVisible();
+  await expect(editor).toHaveValue("");
   await editor.fill("ensimmäisen oma luonnos");
   await page.getByRole("link", { name: "ordinary-dir" }).last().click();
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
@@ -1184,7 +1186,7 @@ async function endedConversation(page: import("@playwright/test").Page) {
     },
   );
   expect(stopped.status()).toBe(200);
-  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
+  await refreshConversation(page);
   await expect(
     page.getByRole("button", { name: "Jatka keskustelua" }),
   ).toBeVisible();
@@ -1245,9 +1247,7 @@ for (const [proof, reason] of [
         });
       },
     );
-    await page
-      .getByRole("button", { name: "Tarkista keskustelun tila" })
-      .click();
+    await refreshConversation(page);
     await expect(page.getByText(reason)).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Jatka keskustelua" }),
@@ -1283,7 +1283,11 @@ test("@browser-conversation ended browser lease continues explicitly without rep
   ).json();
   expect(status.state).toBe("idle");
   await page.goto("/agents/pi:11111111-1111-4111-8111-111111111111");
-  await expect(page.getByText("Vain luku · Ohjausta ei ole")).toBeVisible();
+  await expect(
+    page
+      .locator(".ah-read-only-footer")
+      .getByText("Vain luku", { exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Jatka keskustelua" }),
   ).toHaveCount(0);
@@ -1339,9 +1343,7 @@ for (const code of [
     await expect(
       page.getByRole("button", { name: "Jatka keskustelua" }),
     ).toHaveCount(code === "503" || code === "network" ? 0 : 1);
-    await page
-      .getByRole("button", { name: "Tarkista keskustelun tila" })
-      .click();
+    await refreshConversation(page);
     expect(attempts).toBe(1);
     if (code === "network" || code === "503") {
       await expect(
@@ -1384,7 +1386,7 @@ test("@browser-conversation lost continuation reply reconciles status and histor
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toHaveCount(0);
   await page.unroute(`**/api/v1/agents/${id}/history*`);
-  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
+  await refreshConversation(page);
   await expect(
     page.getByText("Aiemman vuoron tulos on epävarma", { exact: true }),
   ).toBeVisible();
@@ -1421,9 +1423,7 @@ test("@browser-conversation status reconciles before a late continuation reply",
   try {
     await page.getByRole("button", { name: "Jatka keskustelua" }).click();
     await written;
-    await page
-      .getByRole("button", { name: "Tarkista keskustelun tila" })
-      .click();
+    await refreshConversation(page);
     await expect(
       page.getByText("Aiemman vuoron tulos on epävarma", { exact: true }),
     ).toBeVisible();
@@ -1480,9 +1480,6 @@ test("@browser-conversation stale recovery during continuation never strands con
     await expect(
       page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
     ).toHaveCount(0);
-    await page
-      .getByRole("button", { name: "Tarkista keskustelun tila" })
-      .click();
     await expect(
       page.getByRole("textbox", { name: "Viesti Pi:lle" }),
     ).toBeEnabled();

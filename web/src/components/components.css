@@ -1267,7 +1267,7 @@ h1[tabindex="-1"]:focus {
   flex-direction: column;
   min-height: 0;
   height: 100%;
-  background: var(--ah-surface);
+  background: var(--ah-bg);
 }
 .ah-conversation-frame > :not(.ah-conversation-stream):not(.ah-agent-header) {
   flex: none;
@@ -1800,4 +1800,320 @@ h1[tabindex="-1"]:focus {
   .ah-mobile-open .ah-agent-item .ah-status-dot {
     display: none;
   }
+}
+/* V2 conversation: one quiet toolbar, one reading column and compact queue. */
+.ah-conversation-frame > .ah-agent-header {
+  width: 100%;
+}
+.ah-agent-topline {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s3);
+  min-width: 0;
+}
+.ah-agent-topline .ah-title-row {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+.ah-agent-header .ah-title-row h1 {
+  display: block;
+  max-width: none;
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ah-agent-topline > .ah-status {
+  flex: none;
+  border-radius: var(--ah-r-pill);
+  padding: 3px var(--ah-s2);
+  background: var(--ah-accent-soft);
+}
+.ah-agent-topline > .ah-details-toggle {
+  flex: none;
+  margin-left: auto;
+  min-height: var(--ah-touch);
+}
+.ah-header-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s4);
+  align-items: center;
+  font-size: var(--ah-size-meta);
+}
+.ah-conversation-frame .ah-composer .ah-field label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+.ah-conversation-frame .ah-composer .ah-field textarea {
+  min-height: 72px;
+}
+.ah-conversation-frame .ah-composer .ah-actions {
+  align-items: center;
+}
+.ah-conversation-frame .ah-composer .ah-actions .ah-control:last-child {
+  margin-inline-start: auto;
+}
+.ah-conversation-frame .ah-composer-hint {
+  margin: var(--ah-s2) 0 0;
+}
+.ah-queue-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--ah-muted);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.ah-queue {
+  margin-block: var(--ah-s4);
+}
+.ah-queue-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  color: var(--ah-muted);
+}
+.ah-queue-heading h2 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.ah-queue-heading .ah-control {
+  margin-left: auto;
+}
+.ah-queue-items {
+  display: grid;
+  gap: var(--ah-s2);
+  padding: 0;
+  margin: var(--ah-s2) 0;
+  list-style: none;
+}
+.ah-queue-items li {
+  display: flex;
+  gap: var(--ah-s3);
+  padding: 9px 12px;
+  border-radius: var(--ah-r-md);
+  background: var(--ah-accent-soft);
+  overflow-wrap: anywhere;
+}
+.ah-queue-items li span {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  flex: none;
+}
+.ah-tool-row {
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  overflow: hidden;
+}
+.ah-tool-row.ah-tool-error {
+  border-color: var(--ah-err-line);
+  background: var(--ah-err-soft);
+}
+.ah-tool-row .ah-disclosure {
+  border: 0;
+}
+.ah-tool-row .ah-disclosure-button {
+  padding: 9px 12px;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.ah-tool-row .ah-disclosure-button small {
+  color: var(--ah-muted);
+  font-weight: 400;
+}
+.ah-tool-row .ah-tool-output {
+  margin: 0;
+  border: 0;
+}
+.ah-tool-row .ah-tool-output pre {
+  margin: 0;
+}
+.ah-send-accepted {
+  display: none;
+}
+.ah-message header .ah-control {
+  margin-inline-start: 0;
+}
+.ah-message header .ah-button {
+  font-size: 0;
+}
+.ah-message header .ah-button .ah-icon {
+  font-size: var(--ah-size-ui);
+}
+@media (max-width: 800px) {
+  .ah-agent-topline {
+    gap: var(--ah-s2);
+  }
+  .ah-agent-topline .ah-title-row {
+    flex: 1;
+  }
+  .ah-conversation-frame > .ah-agent-header {
+    padding: var(--ah-s2) var(--ah-s3);
+  }
+  .ah-conversation-frame .ah-composer {
+    padding: var(--ah-s3);
+  }
+}
+.ah-rail .ah-agent-item .ah-nav-link {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ah-s2);
+}
+.ah-rail .ah-agent-item .ah-nav-link > span[id] {
+  min-width: 0;
+  white-space: nowrap;
+  font-size: var(--ah-size-meta);
+  color: var(--ah-muted);
+}
+.ah-rail .ah-agent-item .ah-nav-link .ah-status-read-only .ah-status-dot {
+  width: 9px;
+  height: 9px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+}
+.ah-header-workspace {
+  display: block;
+  width: fit-content;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  text-decoration: none;
+}
+.ah-read-only-footer {
+  display: flex;
+  background: var(--ah-surface);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ah-s4);
+  padding: var(--ah-s3);
+  border: 1px dashed var(--ah-line);
+  border-radius: var(--ah-r-md);
+  font-size: var(--ah-size-meta);
+}
+.ah-read-only-footer p {
+  margin: var(--ah-s1) 0 0;
+  color: var(--ah-muted);
+}
+.ah-read-only-footer a {
+  flex: none;
+  color: var(--ah-ink);
+  text-decoration: none;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  padding: var(--ah-s2);
+}
+.ah-reading-view .ah-feed > li[data-kind="user"] {
+  display: flex;
+}
+.ah-reading-view
+  .ah-feed
+  > li[data-kind="user"]
+  .ah-message:not(.ah-message-alert) {
+  width: fit-content;
+  border: 1px solid var(--ah-line);
+  border-radius: 10px;
+  background: var(--ah-surface);
+}
+.ah-reading-view
+  .ah-feed
+  > li[data-kind="assistant"]
+  .ah-message:not(.ah-message-alert) {
+  padding-inline: 0;
+}
+/* Keep keyboard guidance attached to the field for assistive tech; the visible
+   footer is the single hint line, while blocked-state reasons remain visible. */
+.ah-conversation-frame .ah-composer .ah-field .ah-hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+.ah-header-full-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.ah-tool-row .ah-tool-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-tool-row .ah-disclosure-button > .ah-status {
+  margin-inline-start: auto;
+  font-weight: 400;
+  color: var(--ah-muted);
+}
+.ah-tool-row .ah-disclosure-button > .ah-status .ah-status-dot {
+  width: 7px;
+  height: 7px;
+}
+.ah-tool-row .ah-disclosure-button small {
+  margin-inline-start: 0;
+}
+.ah-conversation-frame .ah-composer {
+  background: var(--ah-surface);
+}
+.ah-composer-empty .ah-actions .ah-control-reason {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+.ah-agent-topline > .ah-status-read-only {
+  background: transparent;
+  border: 1px dashed var(--ah-line);
+}
+@media (max-width: 800px) {
+  .ah-shell-body > main:has(.ah-conversation-frame) {
+    position: relative;
+  }
+  .ah-shell-body > main:has(.ah-conversation-frame) > .ah-mobile-toolbar {
+    position: absolute;
+    z-index: 2;
+    top: var(--ah-s2);
+    left: var(--ah-s2);
+    height: var(--ah-touch);
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .ah-app-shell:has(.ah-rail) .ah-state:has(.ah-conversation-frame) {
+    height: 100%;
+  }
+  .ah-conversation-frame > .ah-agent-header {
+    min-height: 74px;
+    padding: var(--ah-s3) var(--ah-s3) var(--ah-s3) 100px;
+  }
+  .ah-agent-topline .ah-title-row {
+    flex: 1 1 0;
+  }
+  .ah-agent-topline > .ah-status {
+    font-size: var(--ah-size-meta);
+  }
+  .ah-agent-topline > .ah-details-toggle {
+    width: var(--ah-touch);
+    padding-inline: 0;
+    font-size: 0;
+  }
+}
+/* A long host queue stays independently scrollable instead of displacing the editor. */
+.ah-conversation-frame > .ah-queue {
+  max-height: min(30vh, 18rem);
+  overflow: auto;
 }

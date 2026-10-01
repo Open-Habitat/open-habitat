@@ -1,5 +1,6 @@
 import type { ReactNode, Ref } from "react";
 import { Markdown } from "./Markdown";
+import { Icon } from "./Icon";
 import { Disclosure } from "./Overlays";
 import { Button, RadioGroup, TextArea, TextField } from "./Primitives";
 import type { StatusKind } from "./Status";
@@ -237,9 +238,13 @@ export function SendObservation({
     uncertain:
       "? Ei tiedossa, vastaanottiko Pi viestin. Viestiä ei lähetetä uudelleen automaattisesti.",
   };
+  if (state === "accepted") return null;
   return (
-    <div className={`ah-send-observation ah-send-${state}`}>
-      {showText ? <p>Lähetetty teksti: {text}</p> : null}
+    <div
+      className={`ah-send-observation ah-send-${state}`}
+      role={state === "rejected" ? "alert" : "status"}
+    >
+      {showText && state === "uncertain" ? <p>{text}</p> : null}
       <p>{labels[state]}</p>
       {state === "uncertain" ? (
         <Button label="Kopioi teksti" variant="quiet" onPress={onCopy} />
@@ -498,24 +503,42 @@ export function ToolRow({
   children?: ReactNode;
 }) {
   return (
-    <Disclosure
-      expanded={expanded}
-      label={name}
-      summary={[targetText, statusLabel, durationText]
-        .filter(Boolean)
-        .join(" · ")}
-      onToggle={onToggle}
+    <section
+      className={`ah-tool-row${errorSummary ? " ah-tool-error" : ""}`}
+      data-state={state}
     >
-      {errorSummary ? (
-        <InlineNotice
-          title="Työkalu epäonnistui"
-          description={errorSummary}
-          tone="danger"
+      <button
+        type="button"
+        className="ah-disclosure-button"
+        aria-expanded={expanded}
+        onClick={onToggle}
+      >
+        <Icon
+          name="forward"
+          className={expanded ? "ah-icon-expanded" : undefined}
         />
+        <span className="ah-tool-name">{name}</span>
+        {targetText ? <code>{targetText}</code> : null}
+        <StatusMark
+          label={statusLabel}
+          tone={errorSummary ? "danger" : "neutral"}
+          kind={errorSummary ? "error" : "neutral"}
+        />
+        {durationText ? <small>{durationText}</small> : null}
+      </button>
+      {expanded ? (
+        <div className="ah-disclosure-panel">
+          {errorSummary ? (
+            <InlineNotice
+              title="Työkalu epäonnistui"
+              description={errorSummary}
+              tone="danger"
+            />
+          ) : null}
+          {children}
+        </div>
       ) : null}
-      <StatusMark label={state} tone={errorSummary ? "danger" : "neutral"} />
-      {children}
-    </Disclosure>
+    </section>
   );
 }
 export function ToolGroup({
@@ -567,14 +590,7 @@ export function ToolOutput({
   onLoadMore?: () => void;
 }) {
   return (
-    <div className="ah-tool-output">
-      <p>
-        {streamSemantics === "unknown"
-          ? "Päivitystapa ei tiedossa"
-          : streamSemantics === "replacement"
-            ? "Tuloste korvautuu"
-            : "Tuloste jatkuu"}
-      </p>
+    <div className="ah-tool-output" data-stream-semantics={streamSemantics}>
       <pre>{text}</pre>
       <Button
         label="Kopioi näkyvä tuloste"
@@ -762,6 +778,10 @@ export function Composer({
   onInterrupt?: () => void;
   onOpenQueue?: () => void;
 }) {
+  const sendAvailability: Availability =
+    !value.trim() && availability.state === "enabled"
+      ? { state: "disabled", reason: "Kirjoita viesti." }
+      : availability;
   const send =
     activity === "working"
       ? selectedWorkingMode === "steer"
@@ -769,15 +789,21 @@ export function Composer({
         : onFollowUp
       : onSendNow;
   return (
-    <section className="ah-composer" aria-label="Kirjoita viesti">
+    <section
+      className={`ah-composer${!value.trim() && availability.state === "enabled" ? " ah-composer-empty" : ""}`}
+      aria-label="Kirjoita viesti"
+    >
       <TextArea
         label="Viesti Pi:lle"
+        placeholder={
+          activity === "working" ? "Ohjaa tai lähetä jonoon…" : "Viesti Pi:lle"
+        }
         value={value}
         onChange={onChange}
         availability={editorAvailability ?? availability}
-        hint="Enter lähettää. Shift+Enter tekee rivinvaihdon."
+        hint="Enter lähettää valitulla tavalla. Shift+Enter tekee rivinvaihdon."
         onCommit={
-          sendState === "pending" || availability.state !== "enabled"
+          sendState === "pending" || sendAvailability.state !== "enabled"
             ? undefined
             : send
         }
@@ -789,13 +815,7 @@ export function Composer({
           tone="danger"
         />
       ) : null}
-      {activity === "working" ? (
-        <p className="ah-composer-hint">
-          Ohjaa antaa ohjeen seuraavassa välissä eikä keskeytä työkalua. Lähetä
-          lisää jonoon vuoron jälkeen. Enter käyttää viimeksi valittua tapaa:{" "}
-          {selectedWorkingMode === "steer" ? "Ohjaa" : "Lähetä"}.
-        </p>
-      ) : null}
+
       <div className="ah-actions">
         {onInterrupt ? (
           <Button label="Keskeytä" variant="quiet" onPress={onInterrupt} />
@@ -804,7 +824,7 @@ export function Composer({
           <Button
             label="Ohjaa"
             variant="secondary"
-            availability={availability}
+            availability={sendAvailability}
             pending={sendState === "pending"}
             onPress={() => {
               onModeChange("steer");
@@ -814,7 +834,7 @@ export function Composer({
         ) : null}
         <Button
           label="Lähetä"
-          availability={availability}
+          availability={sendAvailability}
           pending={sendState === "pending"}
           onPress={
             activity === "working"
@@ -825,21 +845,26 @@ export function Composer({
               : onSendNow
           }
         />
-        {onOpenQueue &&
-        (queueOpen ||
-          !queueKnown ||
-          (queueSummary && queueSummary !== "Jonossa 0")) ? (
-          <Button
-            label={
-              queueKnown
-                ? (queueSummary ?? "Avaa jono")
-                : "Jonon tila ei tiedossa"
-            }
-            variant="quiet"
-            onPress={onOpenQueue}
-          />
-        ) : null}
       </div>
+      <p className="ah-composer-hint">
+        {activity === "working"
+          ? `Ohjaa välissä (ei keskeytä työkalua) · Lähetä jonoon · Enter: ${selectedWorkingMode === "steer" ? "Ohjaa" : "Lähetä"} · Shift+Enter rivinvaihto`
+          : "Enter lähettää · Shift+Enter rivinvaihto"}
+        {onOpenQueue && (!queueKnown || queueOpen) ? (
+          <>
+            {" "}
+            ·{" "}
+            <button
+              type="button"
+              className="ah-queue-link"
+              aria-expanded={queueOpen}
+              onClick={onOpenQueue}
+            >
+              {queueKnown ? queueSummary : "Jonon tila ei tiedossa"}
+            </button>
+          </>
+        ) : null}
+      </p>
     </section>
   );
 }
@@ -923,45 +948,40 @@ export function QueuePanel({
       tabIndex={-1}
       aria-label="Työskentelyjono"
     >
-      <h2>Työskentelyjono</h2>
+      <div className="ah-queue-heading">
+        <h2>Odottaa Pi:tä</h2>
+        {state !== "error" ? (
+          <span>{steeringTexts.length + followUpTexts.length}</span>
+        ) : null}
+        <Button
+          label="Tyhjennä jono"
+          variant="quiet"
+          size="compact"
+          pending={state === "pendingClear"}
+          availability={clearAvailability}
+          onPress={onClearAll}
+        />
+      </div>
       {state === "stale" ? (
         <InlineNotice title="Jono on vanhentunut" tone="warning" />
       ) : null}
       {state === "error" ? (
-        <InlineNotice
-          title="Jonoa ei saatu"
-          description="Jonon sisältöä ei tulkita tyhjäksi."
-          tone="danger"
-        />
-      ) : null}
-      {state !== "error" ? (
-        <>
-          <Queue title="Ohjaukset tämän vuoron jälkeen" texts={steeringTexts} />
-          <Queue title="Valmistumisen jälkeen" texts={followUpTexts} />
-        </>
-      ) : null}
-      <Button
-        label="Tyhjennä koko jono"
-        variant="secondary"
-        pending={state === "pendingClear"}
-        availability={clearAvailability}
-        onPress={onClearAll}
-      />
-    </section>
-  );
-}
-function Queue({ title, texts }: { title: string; texts: string[] }) {
-  return (
-    <section>
-      <h3>{title}</h3>
-      {texts.length ? (
-        <ol>
-          {keyedText(texts).map(({ key, value: text }) => (
-            <li key={key}>{text}</li>
-          ))}
-        </ol>
+        <InlineNotice title="Jonon tila ei tiedossa" tone="warning" />
       ) : (
-        <p>Ei viestejä.</p>
+        <ul className="ah-queue-items">
+          {keyedText(steeringTexts).map(({ key, value }) => (
+            <li key={`steer:${key}`}>
+              <span>Ohjaa</span>
+              {value}
+            </li>
+          ))}
+          {keyedText(followUpTexts).map(({ key, value }) => (
+            <li key={`follow:${key}`}>
+              <span>Lähetä</span>
+              {value}
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );

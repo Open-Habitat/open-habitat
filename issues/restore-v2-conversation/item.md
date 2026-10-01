@@ -99,3 +99,46 @@ thing a reviewer sees.
 - Ownership tonight: this work may change `web/`, `design-system/`,
   `docs/ui.md` and `docs/design-system.md`. A needed change in `internal/`,
   `contracts/` or other docs is recorded in this issue as a request instead.
+
+## Implementation deviations and host requests (2026-10-01)
+
+- The native-history projection currently flattens an assistant message's
+  tool call into text such as `Työkalu: bash`, and emits tool results separately
+  without the command, exit code or duration needed for the draft's structured
+  command/tool rows. The browser does not parse that prose to invent a command,
+  duration or result. **Request to the internal/contracts worker:** expose the
+  native tool-call/result relationship and observed command/duration/exit data
+  through the validated history contract; until then the bordered result row
+  shows only the tool name and actual result status. A missing duration is not
+  displayed as zero or guessed from arrival time.
+- The existing synthetic lab's `conversations-reset` replaces the controller,
+  but leaves every fake Pi JSONL session on disk. `history?mode=ready` rewrites
+  only the original seeded session, not newly created conversations. Repeating
+  the comparison's create/send journey accumulates duplicates in the sidebar.
+  The fake Pi's `hidas` turn also settles before two queue commands and the
+  screenshot complete at 1440 px. **Request to the internal/test worker:** add
+  a lab-only deterministic reset that removes only synthetic generated session
+  files, and a barrier-controlled running fixture with two queued items and a
+  real tool call, plus answered and read-only history. Do not change the
+  production contract or insert screenshot-only fake DOM. This worker is barred
+  from modifying `internal/`, `contracts/` and `test/browser-host/`.
+- `Vain luku` for an unverified historical process remains read-only without
+  claiming it was started in a terminal. The draft's terminal attribution and
+  sample exit code are not facts available for this specific history, so those
+  are omitted. The history page links to the workspace's actual new-conversation
+  action instead of starting/resuming this read-only history.
+- The actual synthetic native history contains a `model_change` entry, and
+  model-change events remain visible in the timeline; the illustrated draft
+  has no corresponding event. We do not silently drop a native history event
+  to make unrelated fixture content resemble the draft.
+- On a 390 px screen the `Tiedot` action remains a 44 px keyboard/touch target
+  beside the status, rather than disappearing as in the phone draft; the
+  existing technical-facts disclosure must remain reachable without a desktop
+  pointer.
+- The disconnected lab capture also currently has no hydrated conversation: the
+  offline transition happens on an empty new-conversation route, while the
+  illustrated disconnected draft retains a prior transcript and an uncertain
+  send. This pair shows offline controls but cannot validate the illustrated
+  timeline. A faithful scenario needs a synthetic preloaded conversation and
+  send-ack uncertainty before the disconnect; it cannot be inferred from a
+  screenshot of a new route.

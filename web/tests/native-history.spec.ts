@@ -46,7 +46,7 @@ test("@native-history native page, continuation, unknown, reopen and no writes",
       .locator(".ah-feed")
       .getByText("Synteettinen viesti 0", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("Vain luku · Ohjausta ei ole")).toBeVisible();
+  await expect(page.locator(".ah-read-only-footer")).toContainText("Vain luku");
   await page.screenshot({
     path: "test-results/evidence/history-happy.png",
     fullPage: true,
