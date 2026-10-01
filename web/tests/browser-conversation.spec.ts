@@ -75,7 +75,7 @@ test("@browser-conversation create, send once, reconnect and old history stays r
   if (!first || !second) throw new Error("Conversation actions missing");
   expect(second.x - (first.x + first.width)).toBeGreaterThan(8);
   const stream = page.waitForResponse(
-    (r) => r.url().endsWith("/stream") && r.status() === 200,
+    (r) => new URL(r.url()).pathname === "/api/v1/events" && r.status() === 200,
   );
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   expect((await stream).headers()["content-type"]).toBe("text/event-stream");
@@ -125,29 +125,6 @@ test("@browser-conversation create, send once, reconnect and old history stays r
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toHaveCount(0);
 });
-test("@browser-conversation polling survives an unavailable stream without resending", async ({
-  page,
-}) => {
-  await open(page);
-  await page.route("**/api/v1/conversations/*/stream", (route) =>
-    route.fulfill({ status: 503, body: "unavailable" }),
-  );
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-  ).toBeVisible();
-  let sends = 0;
-  page.on("request", (request) => {
-    if (request.url().endsWith("/send")) sends++;
-  });
-  await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("Fallback");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-  ).toHaveValue("");
-  expect(sends).toBe(1);
-});
-
 // The synthetic Pi has no receipt/question/settlement scenario yet. Intercept
 // validated private gateway responses after the real TLS login/create/send path.
 for (const outcome of [
@@ -553,7 +530,7 @@ test("@browser-conversation revalidation restores editor selection, paged readin
       response,
       json: {
         ...data,
-        native_history: "readable",
+        native_history: "present",
         native_revision: "synthetic-1",
         event_cursor: tail,
         events: tail ? [{ kind: "synthetic-update" }] : [],
@@ -617,8 +594,8 @@ test("@browser-conversation revalidation restores editor selection, paged readin
   const before = await feed.evaluate((node) => node.scrollTop);
   expect(before).toBeGreaterThan(0);
   // Idle viewing must not replace the editor with a full-screen loading page.
-  // The conversation's own 3-second native status poll is separate from the
-  // top-level snapshot revalidation which used to unmount the whole page.
+  // A healthy journal needs no native status polling. Top-level snapshot
+  // revalidation must not unmount the editor either.
   let snapshotReads = 0;
   await page.route("**/api/v1/snapshot", async (route) => {
     snapshotReads++;
@@ -1185,7 +1162,7 @@ async function endedConversation(page: import("@playwright/test").Page) {
         `/api/v1/conversations/${id.slice(3)}/status`,
       );
       const s = await r.json();
-      return s.state === "idle" && s.native_history === "readable";
+      return s.state === "idle" && s.native_history === "present";
     })
     .toBe(true);
   const { csrf } = await (await page.request.get("/auth/session")).json();
@@ -1209,13 +1186,10 @@ for (const [proof, reason] of [
   ["read_only_history", /terminaalin historiaa/],
   ["unproven", /turvalliseksi jatkaa/],
 ] as const)
-  test(`@browser-conversation uncertain readable history ${proof} cannot continue`, async ({
+  test(`@browser-conversation uncertain native file ${proof} cannot continue`, async ({
     page,
   }) => {
     await open(page);
-    await page.route("**/api/v1/conversations/*/stream", (route) =>
-      route.abort("failed"),
-    );
     await page
       .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
       .click();
@@ -1234,24 +1208,24 @@ for (const [proof, reason] of [
         const observed = await response.json();
         return observed.native_history;
       })
-      .toBe("readable");
+      .toBe("present");
     let posts = 0;
     page.on("request", (request) => {
       if (request.url().endsWith("/continue")) posts++;
     });
     await page.route(
-      `**/api/v1/conversations/${id?.slice(3)}/status`,
+      `**/api/v1/conversations/${id?.slice(3)}/status*`,
       async (route) => {
         const response = await route.fetch();
         const data = await response.json();
-        // The child is still alive. Readable JSONL and uncertain RPC state do not
-        // constitute proof that the owner fence can be reacquired.
+        // A present JSONL and uncertain RPC state do not constitute proof
+        // that the owner fence can be reacquired.
         await route.fulfill({
           response,
           json: {
             ...data,
             state: "uncertain",
-            native_history: "readable",
+            native_history: "present",
             continuation: proof,
           },
         });

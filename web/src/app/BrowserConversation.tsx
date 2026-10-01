@@ -1604,7 +1604,7 @@ export function BrowserConversation({
                   continuation !== "pending"
                 )
                   setContinuation(undefined);
-                void refresh();
+                void refresh(true); // explicit check may prove an ended conversation
                 void recheckContinuation();
               }}
             />
