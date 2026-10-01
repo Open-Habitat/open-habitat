@@ -155,12 +155,14 @@ export function NavLink({
   current = false,
   badgeText,
   statusText,
+  displayStatusText,
 }: {
   label: string;
   href: string;
   current?: "page" | false;
   badgeText?: string;
   statusText?: string;
+  displayStatusText?: string;
 }) {
   const statusId = useId();
   return (
@@ -174,7 +176,16 @@ export function NavLink({
       <span className="ah-nav-label">{label}</span>
       {statusText ? (
         <span id={statusId}>
-          <StatusMark label={statusText} tone="neutral" />
+          {displayStatusText ? (
+            <>
+              <span aria-hidden="true">
+                <StatusMark label={displayStatusText} tone="neutral" />
+              </span>
+              <span className="ah-visually-hidden">{statusText}</span>
+            </>
+          ) : (
+            <StatusMark label={statusText} tone="neutral" />
+          )}
         </span>
       ) : null}
       {badgeText ? <Badge label={badgeText} tone="warning" /> : null}
@@ -186,6 +197,7 @@ export interface AgentNavModel {
   href: string;
   title: string;
   activityLabel: string;
+  activityShortLabel?: string;
   controlLabel: string;
   attentionLabel?: string;
   relativeTime?: string;
@@ -198,6 +210,7 @@ export function AgentNavItem({
   href,
   title,
   activityLabel,
+  activityShortLabel,
   controlLabel,
   attentionLabel,
   relativeTime,
@@ -206,14 +219,12 @@ export function AgentNavItem({
   presence = "present",
   stale = false,
 }: AgentNavModel) {
-  const status = [
-    activityLabel,
+  const statusParts = [
     controlLabel,
     stale ? "Tieto vanhentunut" : null,
     presence === "absent" ? "Ei enää löydy" : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  ].filter(Boolean);
+  const status = [activityLabel, ...statusParts].filter(Boolean).join(" · ");
   return (
     <li
       className="ah-agent-item"
@@ -225,6 +236,11 @@ export function AgentNavItem({
         current={selected ? "page" : false}
         badgeText={attentionLabel}
         statusText={status || undefined}
+        displayStatusText={
+          activityShortLabel
+            ? [activityShortLabel, ...statusParts].join(" · ")
+            : undefined
+        }
       />
       {relativeTime ? <time>{relativeTime}</time> : null}
     </li>

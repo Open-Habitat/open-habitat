@@ -22,10 +22,10 @@ Use a fresh lab incarnation for the cleanest sidebar histories. `PLAYWRIGHT_BROW
 | Return/home | dark · 390 | ![Draft](home-dark-390-draft.avif) | ![Lab](home-dark-390-lab.avif) · [HTML](home-dark-390-lab.html) | G1 fitted, I1, I2 |
 | Collapsed desktop rail | light · 1440 | ![Draft](collapsed-light-1440-draft.avif) | ![Lab](collapsed-light-1440-lab.avif) · [HTML](collapsed-light-1440-lab.html) | I1, I2 |
 | Collapsed desktop rail | dark · 1440 | ![Draft](collapsed-dark-1440-draft.avif) | ![Lab](collapsed-dark-1440-lab.avif) · [HTML](collapsed-dark-1440-lab.html) | I1, I2 |
-| Open phone drawer | light · 390 | ![Draft](drawer-light-390-draft.avif) | ![Lab](drawer-light-390-lab.avif) · [HTML](drawer-light-390-lab.html) | G2, I1 |
-| Open phone drawer | dark · 390 | ![Draft](drawer-dark-390-draft.avif) | ![Lab](drawer-dark-390-lab.avif) · [HTML](drawer-dark-390-lab.html) | G2, I1 |
-| Account menu | light · 1440 | ![Draft](account-menu-light-1440-draft.avif) | ![Lab](account-menu-light-1440-lab.avif) · [HTML](account-menu-light-1440-lab.html) | G2, I2 |
-| Account menu | dark · 1440 | ![Draft](account-menu-dark-1440-draft.avif) | ![Lab](account-menu-dark-1440-lab.avif) · [HTML](account-menu-dark-1440-lab.html) | G2, I2 |
+| Open phone drawer | light · 390 | ![Draft](drawer-light-390-draft.avif) | ![Lab](drawer-light-390-lab.avif) · [HTML](drawer-light-390-lab.html) | G2 fitted, I1 |
+| Open phone drawer | dark · 390 | ![Draft](drawer-dark-390-draft.avif) | ![Lab](drawer-dark-390-lab.avif) · [HTML](drawer-dark-390-lab.html) | G2 fitted, I1 |
+| Account menu | light · 1440 | ![Draft](account-menu-light-1440-draft.avif) | ![Lab](account-menu-light-1440-lab.avif) · [HTML](account-menu-light-1440-lab.html) | G2 fitted, I2 |
+| Account menu | dark · 1440 | ![Draft](account-menu-dark-1440-draft.avif) | ![Lab](account-menu-dark-1440-lab.avif) · [HTML](account-menu-dark-1440-lab.html) | G2 fitted, I2 |
 | New conversation | light · 1440 | ![Draft](new-light-1440-draft.avif) | ![Lab](new-light-1440-lab.avif) · [HTML](new-light-1440-lab.html) | G3 fitted, I1 |
 | New conversation | dark · 1440 | ![Draft](new-dark-1440-draft.avif) | ![Lab](new-dark-1440-lab.avif) · [HTML](new-dark-1440-lab.html) | G3 fitted, I1 |
 | Working/queue | light · 1440 | ![Draft](working-light-1440-draft.avif) | ![Lab](working-light-1440-lab.avif) · [HTML](working-light-1440-lab.html) | G3 fitted, I4, I5 |
@@ -46,8 +46,8 @@ Use a fresh lab incarnation for the cleanest sidebar histories. `PLAYWRIGHT_BROW
 | Read-only history | dark · 1440 | ![Draft](read-only-dark-1440-draft.avif) | ![Lab](read-only-dark-1440-lab.avif) · [HTML](read-only-dark-1440-lab.html) | G3 fitted, I4 |
 | Read-only history | light · 390 | ![Draft](read-only-light-390-draft.avif) | ![Lab](read-only-light-390-lab.avif) · [HTML](read-only-light-390-lab.html) | G3 fitted, I4 |
 | Read-only history | dark · 390 | ![Draft](read-only-dark-390-draft.avif) | ![Lab](read-only-dark-390-lab.avif) · [HTML](read-only-dark-390-lab.html) | G3 fitted, I4 |
-| Settings | light · 1440 | ![Draft](settings-light-1440-draft.avif) | ![Lab](settings-light-1440-lab.avif) · [HTML](settings-light-1440-lab.html) | G2, I2, I3 |
-| Settings | dark · 1440 | ![Draft](settings-dark-1440-draft.avif) | ![Lab](settings-dark-1440-lab.avif) · [HTML](settings-dark-1440-lab.html) | G2, I2, I3 |
+| Settings | light · 1440 | ![Draft](settings-light-1440-draft.avif) | ![Lab](settings-light-1440-lab.avif) · [HTML](settings-light-1440-lab.html) | G2 fitted, I2, I3 |
+| Settings | dark · 1440 | ![Draft](settings-dark-1440-draft.avif) | ![Lab](settings-dark-1440-lab.avif) · [HTML](settings-dark-1440-lab.html) | G2 fitted, I2, I3 |
 
 The conversation pairs were refreshed for the density slice using the synthetic fake Pi, which cannot produce all receipt/question states. See the validated-response synthetic [receipt captures](../show-turn-receipts/result.md) for the remaining I4 states in both themes and desktop/phone widths. The pair captures alone do not establish every receipt outcome.
 
@@ -56,7 +56,7 @@ The conversation pairs were refreshed for the density slice using the synthetic 
 **Fidelity gaps worth a follow-up:**
 
 - **G1 — return composition (fitted by `fit-return-view-v2`):** desktop and phone now start with “Jatka siitä, mihin jäit” and use compact grouped rows, with no separate “Työtilat” introduction. The fresh synthetic lab has no positively observed live process, so it shows only “Muut keskustelut”; component tests cover “Käynnissä” with observed live processes. “Viimeksi avatut”, timestamps, progress and a one-click new-conversation button are not claimed without host recency or a workspace choice (I1).
-- **G2 — density and controls:** the settings lab uses large, separated headings and vertical theme radios, not the draft's compact bordered rows and horizontal segmented theme choice; the account menu likewise uses tall rows instead of the compact popover. The drawer lists verbose per-agent status lines and filter controls unlike the reference. These are presentation gaps, not a reason to suppress the honest statuses.
+- **G2 — density and controls (fitted by `fit-settings-density-v2`):** settings use compact bordered rows and a horizontal segmented theme radiogroup; the account menu groups its theme actions in a compact row. The phone drawer keeps the native search/refresh and the observed agent status text, now compacted into a single short status line per agent. The draft omits those controls and asserts status from mock data; these deliberate source-truth differences remain (I1–I3).
 - **G3 — conversation composition (fitted by `fit-conversation-density-v2`):** shared phone spacing tokens and the scrolling transcript keep the editor and actions inside 390 × 844 in the captured states; desktop retains the agreed v2 sizing table. The header remains multi-line to disclose the workspace, activity and control truth (I4); long titles stay accessible. Receipt and queue details scroll with the transcript, while urgent notices remain visible in a bounded panel above the composer. Synthetic browser tests also cover rejected, pending, uncertain, settled and outage states. This is not a claim of pixel equivalence with mock data.
 
 **Intentional deviations already recorded in the fitted slice issues** (do not close these by imitating fake draft data):

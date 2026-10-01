@@ -49,13 +49,17 @@ export function AccountShelf({
           </span>
         }
         heading={<strong>{name}</strong>}
+        popoverClassName="ah-account-menu"
         items={[
           { id: "settings", label: "Asetukset" },
           ...themes.map(({ id, label }) => ({
             id: `theme-${id}`,
             label: `Teema: ${label}${theme === id ? " (valittu)" : ""}`,
+            selected: theme === id,
+            group: "theme",
+            displayLabel: label,
           })),
-          { id: "logout", label: "Kirjaudu ulos" },
+          { id: "logout", label: "Kirjaudu ulos", danger: true },
         ]}
         onAction={(id) => {
           if (id.startsWith("theme-")) {
@@ -132,7 +136,10 @@ export function AccountSettings({
         aria-labelledby="ah-account-heading"
       >
         <h2 id="ah-account-heading">Tili</h2>
-        <p>{name}</p>
+        <div className="ah-account-identity">
+          <span className="ah-account-avatar" aria-hidden="true" />
+          <strong>{name}</strong>
+        </div>
       </section>
       <section
         className="ah-account-section"
@@ -155,27 +162,33 @@ export function AccountSettings({
             />
           </div>
           <p>{state.description}</p>
-          <InlineNotice
-            title="Yhteyttä ei voi vielä katkaista täällä"
-            description="Uloskirjautuminen sulkee selaimen istunnon, mutta ei poista tämän palvelimen GitHub-kirjautumista."
-          />
         </div>
+        <InlineNotice
+          title="Yhteyttä ei voi vielä katkaista täällä"
+          description="Uloskirjautuminen sulkee selaimen istunnon, mutta ei poista tämän palvelimen GitHub-kirjautumista."
+        />
       </section>
       <section
         className="ah-account-section"
         aria-labelledby="ah-appearance-heading"
       >
         <h2 id="ah-appearance-heading">Ulkoasu</h2>
-        <RadioGroup
-          label="Teema"
-          value={theme}
-          options={[
-            { value: "system", label: "Järjestelmä" },
-            { value: "light", label: "Vaalea" },
-            { value: "dark", label: "Tumma" },
-          ]}
-          onChange={setThemeChoice}
-        />
+        <div className="ah-account-panel ah-account-theme-row">
+          <div>
+            <strong>Teema</strong>
+            <p>Järjestelmä seuraa käyttöjärjestelmän asetusta.</p>
+          </div>
+          <RadioGroup
+            label="Teema"
+            value={theme}
+            options={[
+              { value: "system", label: "Järjestelmä" },
+              { value: "light", label: "Vaalea" },
+              { value: "dark", label: "Tumma" },
+            ]}
+            onChange={setThemeChoice}
+          />
+        </div>
       </section>
       {onLogout ? (
         <section
@@ -183,8 +196,20 @@ export function AccountSettings({
           aria-labelledby="ah-session-heading"
         >
           <h2 id="ah-session-heading">Istunto</h2>
-          <p>Kirjautuminen ulos sulkee vain tämän selaimen istunnon.</p>
-          <Button label="Kirjaudu ulos" variant="quiet" onPress={onLogout} />
+          <div className="ah-account-panel ah-account-session-row">
+            <div>
+              <strong>Kirjaudu ulos tästä selaimesta</strong>
+              <p>
+                Kirjautuminen ulos sulkee vain tämän selaimen istunnon.
+                Agenttien työ palvelimella jatkuu.
+              </p>
+            </div>
+            <Button
+              label="Kirjaudu ulos"
+              variant="danger-subtle"
+              onPress={onLogout}
+            />
+          </div>
         </section>
       ) : null}
     </section>

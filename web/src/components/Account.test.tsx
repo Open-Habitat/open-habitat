@@ -1,7 +1,7 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { getThemeChoice, setThemeChoice } from "../theme";
-import { AccountSettings, accountLabel } from "./Account";
+import { AccountSettings, AccountShelf, accountLabel } from "./Account";
 
 describe("account presentation", () => {
   it("keeps the settings radio in sync with a theme change made elsewhere", () => {
@@ -43,6 +43,40 @@ describe("account presentation", () => {
     } finally {
       get.mockRestore();
       put.mockRestore();
+      act(() => setThemeChoice("system"));
+    }
+  });
+  it("keeps the theme radiogroup while presenting it as a compact row", () => {
+    render(
+      <AccountSettings name="Oma tili" onBack={() => {}} onLogout={() => {}} />,
+    );
+    const group = screen.getByRole("radiogroup", { name: "Teema" });
+    expect(group.closest(".ah-account-theme-row")).toBeTruthy();
+    expect(group.querySelectorAll('input[type="radio"]')).toHaveLength(3);
+    expect(screen.getByText("Kirjaudu ulos tästä selaimesta")).toBeTruthy();
+  });
+  it("keeps the account popover actions and selected theme", async () => {
+    setThemeChoice("dark");
+    try {
+      render(
+        <AccountShelf
+          name="Oma tili"
+          onSettings={() => {}}
+          onLogout={() => {}}
+        />,
+      );
+      fireEvent.click(
+        screen.getByRole("button", { name: /Oma tili, Tilivalikko/ }),
+      );
+      const option = await screen.findByRole("menuitem", {
+        name: /Teema: Tumma/,
+      });
+      expect(option.getAttribute("data-group-selected")).toBe("true");
+      expect(screen.getByRole("menuitem", { name: "Asetukset" })).toBeTruthy();
+      expect(
+        screen.getByRole("menuitem", { name: "Kirjaudu ulos" }),
+      ).toBeTruthy();
+    } finally {
       act(() => setThemeChoice("system"));
     }
   });

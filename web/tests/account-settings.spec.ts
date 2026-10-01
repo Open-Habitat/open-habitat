@@ -146,3 +146,32 @@ test("@account-settings unavailable snapshot does not display previous identity"
     fullPage: true,
   });
 });
+
+test("@account-settings compact phone drawer and settings preserve status and radio keyboard selection", async ({
+  page,
+}) => {
+  await login(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Avaa navigaatio" }).click();
+  const nav = page.getByRole("navigation", { name: "Työtilat ja keskustelut" });
+  const firstAgent = nav.locator(".ah-agent-item .ah-nav-link").first();
+  await expect(firstAgent).toHaveAttribute("aria-describedby", /.+/);
+  await expect(firstAgent).toHaveAccessibleDescription(
+    /Prosessin tila ei tiedossa · Vain luku/,
+  );
+  await expect(firstAgent).toContainText("Tila ei tiedossa");
+  await expect(firstAgent).toContainText("Vain luku");
+  await page.getByRole("button", { name: /Tilivalikko/ }).click();
+  await page.getByRole("menuitem", { name: "Asetukset" }).click();
+  await expect(page.getByRole("radiogroup", { name: "Teema" })).toBeVisible();
+  await page.getByRole("radio", { name: "Vaalea" }).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("radio", { name: "Tumma" })).toBeChecked();
+  expect(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+    ),
+  ).toBeLessThanOrEqual(1);
+});

@@ -29,9 +29,9 @@ stays accessible (`radiogroup`). Update the affected pairs in
 
 ## Acceptance Criteria
 
-- [ ] Settings, account menu and drawer density match the draft at desktop
+- [x] Settings, account menu and drawer density match the draft at desktop
   and 390 px in both themes, with honest statuses.
-- [ ] Stories and pairs updated.
+- [x] Stories and pairs updated.
 ## Shared context for every design-v2 slice
 
 - Benchmark: [handoff](../review-browser-design-v2/design/handoff.md) and the

@@ -961,6 +961,11 @@ export function App() {
                           : `/agents/${a.agent_id}`,
                         title: a.title.display,
                         activityLabel: agentProcessLabel(a.process),
+                        activityShortLabel:
+                          agentProcessLabel(a.process) ===
+                          "Prosessin tila ei tiedossa"
+                            ? "Tila ei tiedossa"
+                            : undefined,
                         controlLabel: browserSessions.some(
                           (s) =>
                             s.agent_id === a.agent_id &&

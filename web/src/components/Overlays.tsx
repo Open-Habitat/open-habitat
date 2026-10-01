@@ -161,17 +161,22 @@ export function Menu({
   heading,
   items,
   onAction,
+  popoverClassName,
 }: {
   label: string;
   triggerLabel?: string;
   trigger?: ReactNode;
   heading?: ReactNode;
+  popoverClassName?: string;
   items: {
     id: string;
     label: string;
     description?: string;
     availability?: Availability;
     danger?: boolean;
+    selected?: boolean;
+    group?: string;
+    displayLabel?: string;
   }[];
   onAction: (id: string) => void;
 }) {
@@ -190,18 +195,23 @@ export function Menu({
         {trigger ?? label}
         <span aria-hidden="true" className="ah-menu-chevron" />
       </AriaButton>
-      <Popover className="ah-popover">
+      <Popover
+        className={`ah-popover${popoverClassName ? ` ${popoverClassName}` : ""}`}
+      >
         {heading ? <div className="ah-menu-heading">{heading}</div> : null}
         <AriaMenu aria-label={label} onAction={(key) => onAction(String(key))}>
           {items.map((item) => (
             <MenuItem
               className={item.danger ? "ah-menu-danger" : undefined}
+              data-group={item.group}
+              data-group-selected={item.selected || undefined}
               id={item.id}
               key={item.id}
               isDisabled={Boolean(unavailableReason(item.availability))}
               textValue={item.label}
+              aria-label={item.displayLabel ? item.label : undefined}
             >
-              <span>{item.label}</span>
+              <span>{item.displayLabel ?? item.label}</span>
               {item.description ? <small>{item.description}</small> : null}
               {unavailableReason(item.availability) ? (
                 <small>{unavailableReason(item.availability)}</small>

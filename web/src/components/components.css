@@ -1645,3 +1645,159 @@ h1[tabindex="-1"]:focus {
     align-content: center;
   }
 }
+
+/* Settings v2: compact cards, with native accessible radio semantics. */
+.ah-account-settings {
+  gap: var(--ah-s6);
+}
+.ah-account-settings > .ah-control .ah-button {
+  min-height: var(--ah-touch);
+  padding-inline: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ah-muted);
+}
+.ah-account-settings h1 {
+  font-size: var(--ah-size-h1);
+}
+.ah-account-section {
+  gap: var(--ah-s2);
+}
+.ah-account-section h2 {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.ah-account-identity,
+.ah-account-panel {
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+}
+.ah-account-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s4);
+  padding: var(--ah-s4);
+}
+.ah-account-identity .ah-account-avatar {
+  width: var(--ah-touch);
+  height: var(--ah-touch);
+}
+.ah-account-panel {
+  gap: var(--ah-s2);
+  padding: var(--ah-s4);
+}
+.ah-account-panel > p,
+.ah-account-panel div > p {
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-ui);
+}
+.ah-account-section > .ah-notice {
+  padding: var(--ah-s2) 0;
+  border: 0;
+  background: transparent;
+}
+.ah-account-theme-row,
+.ah-account-session-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--ah-s4);
+}
+.ah-account-theme-row > div,
+.ah-account-session-row > div {
+  flex: 1 1 13rem;
+}
+.ah-account-theme-row .ah-radio-group {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  margin: 0;
+  padding: 2px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-rail);
+}
+.ah-account-theme-row .ah-radio-group > .ah-field-label,
+.ah-account-theme-row .ah-radio-dot {
+  display: none;
+}
+.ah-account-theme-row .ah-radio-group label {
+  align-items: center;
+  padding: var(--ah-s2) var(--ah-s3);
+  white-space: nowrap;
+  font-size: var(--ah-size-meta);
+  cursor: pointer;
+}
+.ah-account-theme-row .ah-radio-group label[data-selected] {
+  background: var(--ah-surface);
+  color: var(--ah-accent-ink);
+  box-shadow: var(--ah-shadow-menu);
+}
+.ah-account-session-row .ah-control {
+  flex: none;
+}
+.ah-account-menu {
+  min-width: 17rem;
+  padding: var(--ah-s2);
+}
+.ah-account-menu [role="menu"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+}
+.ah-account-menu
+  [role="menuitem"]:not([data-group="theme"]):not(.ah-menu-danger) {
+  border-bottom: 1px solid var(--ah-line-soft);
+}
+.ah-account-menu [role="menuitem"]:not([data-group="theme"]) {
+  grid-column: 1 / -1;
+  padding: var(--ah-s2) var(--ah-s3);
+}
+.ah-account-menu [data-group="theme"] {
+  text-align: center;
+  padding: var(--ah-s2) 2px;
+  background: var(--ah-rail);
+  font-size: var(--ah-size-meta);
+}
+.ah-account-menu [data-group="theme"][data-group-selected] {
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+  font-weight: 600;
+}
+.ah-account-menu .ah-menu-danger {
+  border-top: 1px solid var(--ah-line-soft);
+  border-bottom: 0;
+}
+@media (max-width: 800px) {
+  /* Keep all observed status words, but put them alongside the title rather
+     than allocating a second line to every agent in the narrow drawer. */
+  .ah-mobile-open .ah-rail-filter {
+    margin-top: var(--ah-s2);
+  }
+  .ah-mobile-open .ah-rail .ah-agent-item .ah-nav-link {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0 var(--ah-s2);
+    min-height: var(--ah-touch);
+    padding: 2px var(--ah-s2);
+  }
+  .ah-mobile-open .ah-agent-item .ah-nav-link > span[id] {
+    grid-column: 1 / -1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: var(--ah-size-meta);
+    color: var(--ah-muted);
+  }
+  .ah-mobile-open .ah-agent-item .ah-status {
+    display: inline;
+    font-size: inherit;
+  }
+  .ah-mobile-open .ah-agent-item .ah-status-dot {
+    display: none;
+  }
+}
