@@ -3,10 +3,11 @@ created: 2026-10-01
 updated: 2026-10-01
 type: bug
 reporter: agent
-status: untriaged
+status: open
 priority: normal
 provenance: agent
 provenance_detail: wrap-up-2026-10-01
+lane: unlaned
 ---
 
 # Design package assembly fails when its cache directory is missing

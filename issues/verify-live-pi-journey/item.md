@@ -1,11 +1,12 @@
 ---
 created: 2026-09-30
-updated: 2026-09-30
+updated: 2026-10-01
 type: task
 reporter: jari
 status: open
 priority: high
 related: ['@gate-native-routes-on-pi', '@build-agent-control']
+lane: agent-control
 ---
 
 # Verify live Pi onboarding and conversation
@@ -22,13 +23,11 @@ things; [TESTING.md](../../TESTING.md) explains those evidence boundaries.
 
 ## Release and consent boundaries
 
-The recorded test-server baseline is pilot.12, before these changes.
-Before any replacing release or test-account reset, confirm the Fleetrepo test
-host's approved versioned upgrade/rollback procedure and exact bytes; do not
-infer authorization to overwrite pilot.12 from this checklist. The release
-procedure lives in Fleetrepo's `infra/native-agent-host-test/RELEASE-UPGRADE.md`;
-its personal-state reset targets the destroyed pilot.11 installation, not this
-baseline. There is no current test-account reset procedure.
+The test server runs pilot.14 (2026-10-01). Releases and test-server data
+changes follow the root `AGENTS.md`: deploys need no approval, a failed
+upgrade is fixed forward, and test users and data are disposable. The
+procedure and receipts are in Fleetrepo's
+`infra/native-agent-host-test/RELEASE-UPGRADE.md`.
 
 Product release and concrete deployment belong in Fleetrepo; no real secret,
 one-time code, private home, screenshot with workspace names or unredacted
@@ -84,8 +83,9 @@ Fleetrepo deployment/recovery receipts rather than copying host facts or secrets
 into this product repository. Missing prerequisites remain explicit as not run;
 a partial run is not a pass.
 
-This is an acceptance ledger, not an executable lane or permission to deploy
-or authorize a person.
+Agents run every check that needs no real person: synthetic or offline
+provider, test users created for the purpose. Checks that need Jari's real
+OpenAI account or a second consenting person stay marked as waiting for them.
 
 ## Decisions
 
