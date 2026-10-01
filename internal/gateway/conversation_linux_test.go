@@ -69,6 +69,8 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 			w.(http.Flusher).Flush()
 			_, _ = io.WriteString(w, "id: ev1:12345678-1234-4123-8123-123456789abc:1\nevent: status\ndata: {\"schema_version\":1,\"agent_id\":\"pi:"+id+"\",\"workspace_id\":\""+ws+"\",\"state\":\"idle\",\"command_id\":\"\",\"ack\":\"\",\"event_cursor\":0,\"events\":[],\"event_loss\":false,\"continuation\":\"unproven\",\"native_history\":\"missing\",\"native_revision\":\"\",\"history_query\":\"/api/v1/agents/pi:"+id+"/history\"}\n\n")
 			return
+		case conversationBase + "/" + id + "/question":
+			reply = `{"schema_version":1,"request_id":"native-a","state":"uncertain"}`
 		case conversationBase + "/" + id + "/abort":
 			reply = `{"schema_version":1,"command_id":"` + cmd + `","state":"pending"}`
 		case conversationBase + "/" + id + "/continue":
@@ -164,6 +166,16 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 	h.ServeHTTP(streamRecorder{cursorReply}, cursorRequest)
 	if cursorReply.Code != 409 || !strings.Contains(cursorReply.Body.String(), `"cursor_expired"`) {
 		t.Fatalf("cursor rejection %d %s", cursorReply.Code, cursorReply.Body.String())
+	}
+	question := `{"request_id":"native-a","action":"answer","value":"hello"}`
+	if w := send("POST", conversationBase+"/"+id+"/question", second, question, second); w.Code != 404 {
+		t.Fatalf("foreign dialog answer %d", w.Code)
+	}
+	if w := send("POST", conversationBase+"/"+id+"/question", first, question, "wrong"); w.Code != 403 {
+		t.Fatalf("dialog csrf %d", w.Code)
+	}
+	if w := send("POST", conversationBase+"/"+id+"/question", first, question, first); w.Code != 200 || !strings.Contains(w.Body.String(), `"uncertain"`) {
+		t.Fatalf("dialog answer %d %s", w.Code, w.Body.String())
 	}
 	if w := send("POST", conversationBase+"/"+id+"/abort", second, `{"command_id":"`+cmd+`"}`, second); w.Code != 404 {
 		t.Fatalf("foreign abort %d", w.Code)
