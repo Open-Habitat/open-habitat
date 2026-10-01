@@ -44,14 +44,15 @@ as the task allows and problems found along the way are fixed. There are no
 users to stay compatible with, so formats, interfaces and data change freely
 without compatibility code.
 
-Cutting a release and installing it on the test server is ordinary work and
-does not wait for a go/no-go from the user, including the first live run of a
-new upgrade operator in the procedure. A failed upgrade is fixed forward until
-the new release runs, not switched back, and test-server user data may be
-changed when a fix needs it. Fleetrepo's
-`infra/native-agent-host-test/RELEASE-UPGRADE.md` is the procedure, with
-receipts and host facts kept there. It exists so that we always know exactly
-which bytes are running and can go back to the previous release.
+The agent can decide when to cut and deploy a release to the test server and
+carry the whole release through autonomously, including the first live use of
+a new upgrade operator. The server exists solely for testing: its users, data
+and previous product versions are disposable. An upgrade that fails can be
+fixed forward or replaced by a fresh installation; there is no need to retain
+older releases for rollback. Fleetrepo's
+`infra/native-agent-host-test/RELEASE-UPGRADE.md` explains the deployment and
+its trust boundaries; the private inventory and issue results record which
+bytes actually ran.
 
 Architecture is decided together with the user: which component has which
 authority, the security model and major dependencies. These come to the user as
