@@ -379,6 +379,35 @@ test("@browser-conversation settled marker needs observed native key", async ({
   await expect(page.locator(".ah-settled")).toBeVisible();
   await expectPhoneComposerWithinViewport(page);
 });
+test("@browser-conversation resized editor keeps actions reachable", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const composer = page.locator(".ah-conversation-frame > .ah-composer");
+  await page
+    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .evaluate((node) => {
+      node.style.height = "600px";
+    });
+  await expect
+    .poll(() =>
+      composer.evaluate((node) => node.scrollHeight > node.clientHeight),
+    )
+    .toBe(true);
+  expect(
+    await composer.evaluate((node) => node.getBoundingClientRect().bottom),
+  ).toBeLessThanOrEqual(720);
+  await composer.evaluate((node) => {
+    node.scrollTop = node.scrollHeight;
+  });
+  expect(
+    await composer
+      .locator(".ah-actions")
+      .evaluate((node) => node.getBoundingClientRect().bottom),
+  ).toBeLessThanOrEqual(720);
+});
+
 test("@browser-conversation ordinary session loading is not an uncertain create", async ({
   page,
 }) => {

@@ -1264,7 +1264,7 @@ h1[tabindex="-1"]:focus {
 }
 .ah-conversation-frame .ah-composer {
   position: relative;
-  max-height: min(40rem, calc(100dvh - 12rem));
+  max-height: min(40rem, calc(100dvh - 16rem));
   overflow: auto;
   padding: var(--ah-composer-pad-block) var(--ah-column-pad-inline);
 }
@@ -1303,7 +1303,7 @@ h1[tabindex="-1"]:focus {
 }
 @media (max-height: 600px) {
   .ah-conversation-frame .ah-composer {
-    max-height: 45vh;
+    max-height: min(45vh, calc(100dvh - 14rem));
     overflow: auto;
   }
 }
