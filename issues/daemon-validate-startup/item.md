@@ -3,7 +3,7 @@ created: 2026-10-01
 updated: 2026-10-01
 type: task
 reporter: jari
-status: open
+status: in-progress
 priority: high
 related: ['@architecture-built-on-caution']
 lane: caution-removal
