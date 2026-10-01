@@ -331,6 +331,10 @@ esac
 		mux.Handle("/api/v1/conversations", serveConversation)
 		mux.Handle("/api/v1/conversations/", serveConversation)
 		mux.Handle("/api/v1/events", gate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if scenario.Load() != "pi-deltas" {
+				http.NotFound(w, r) // Preserve the existing HTTP/status lab fallback.
+				return
+			}
 			current.Load().(*daemon.ConversationController).FixtureEvents().ServeHTTP(w, r)
 		})))
 		mux.Handle("/api/v1/agents/", gate(daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home)))
