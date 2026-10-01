@@ -36,6 +36,17 @@ if broker_source.count(startup) != 1 or 'NAH_GUEST_PENDING_REFUSED' in broker_so
 startup_with_diagnostic = startup.replace('\t\t\treturn ErrBrokerStartup',
     '\t\t\tif n == "pending.json" { _, _ = os.Stderr.WriteString("NAH_GUEST_PENDING_REFUSED\\n") }\n\t\t\treturn ErrBrokerStartup')
 broker_replacement = run / 'guest-broker.go'
-broker_replacement.write_text(broker_source.replace(startup, startup_with_diagnostic))
+broker_source = broker_source.replace(startup, startup_with_diagnostic)
+for anchor, stage in [
+    ('cfg, err := loadBrokerConfig()', 'config'),
+    ('fd, err := brokerFD()', 'fd'),
+    ('if writer.Startup(ctx) != nil {', 'startup'),
+    ('fd, err := lockedDir(ctx, w.Dir, w.owner)', 'ledger_lock'),
+]:
+    if broker_source.count(anchor) != 1:
+        raise SystemExit('broker diagnostic site drifted: '+stage)
+    broker_source = broker_source.replace(anchor,
+        '_, _ = os.Stderr.WriteString("NAH_GUEST_STAGE_'+stage+'\\n")\n\t'+anchor)
+broker_replacement.write_text(broker_source)
 (run / 'guest-overlay.json').write_text(json.dumps({'Replace': {
     str(source): str(replacement), str(broker): str(broker_replacement)}}))
