@@ -181,8 +181,11 @@ try:
     refusal_log=command('journalctl','_SYSTEMD_INVOCATION_ID='+next_invocation.decode('ascii'),'-u',
                         'native-agent-host-broker.service','--no-pager','-o','cat').stdout
     all_refusal_log=command('journalctl','-u','native-agent-host-broker.service','--no-pager','-o','cat').stdout
+    import re
+    tail=[re.sub('[^A-Za-z0-9 _./:=,-]',' ',line.decode('utf-8','replace'))[:85]
+          for line in all_refusal_log.splitlines()[-6:] if b'TOKEN_' not in line and b'secret' not in line.lower()]
     check(refusal_log.count(b'NAH_GUEST_PENDING_REFUSED')==1,
-          'new broker invocation did not report pending startup guard filtered='+str(refusal_log.count(b'NAH_GUEST_PENDING_REFUSED'))+' all='+str(all_refusal_log.count(b'NAH_GUEST_PENDING_REFUSED'))+' lines='+str(len(all_refusal_log.splitlines())))
+          'pending guard not observed filtered='+str(refusal_log.count(b'NAH_GUEST_PENDING_REFUSED'))+' all='+str(all_refusal_log.count(b'NAH_GUEST_PENDING_REFUSED'))+' tail='+repr(tail)[:250])
     check(journal.read_bytes()==pending,'restart cleared or rewrote journal')
     session_status,_,_=get(affected,'/auth/session')
     snapshot_status,_,_=get(affected,'/api/v1/snapshot')
