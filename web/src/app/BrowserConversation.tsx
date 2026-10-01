@@ -40,6 +40,7 @@ import {
   clearQueue,
   continueConversation,
   create,
+  ConversationNotFound,
   NotAdmitted,
   queueMessage,
   type Session,
@@ -637,13 +638,20 @@ export function BrowserConversation({
             clearRetry();
           }
         }
-      } catch {
+      } catch (error) {
         if (alive.current && version === generation.current) {
-          scheduleRetry(requestContinuation);
-          setProblem(
-            "Yhteys katkesi tai istunto muuttui. Ohjaus on estetty kunnes tila varmistuu.",
-          );
-          setCurrent(undefined);
+          if (error instanceof ConversationNotFound) {
+            // The daemon no longer controls this ID. Native history, if it
+            // survived, remains available on the ordinary read-only route.
+            clearRetry(true);
+            navigate(`/agents/${id}`, { replace: true });
+          } else {
+            scheduleRetry(requestContinuation);
+            setProblem(
+              "Yhteys katkesi tai istunto muuttui. Ohjaus on estetty kunnes tila varmistuu.",
+            );
+            setCurrent(undefined);
+          }
         }
       } finally {
         pending.current = false;
@@ -664,6 +672,7 @@ export function BrowserConversation({
       captureAnchor,
       clearRetry,
       scheduleRetry,
+      navigate,
     ],
   );
   latestRefresh.current = refresh;

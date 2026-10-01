@@ -120,12 +120,8 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 			req.Header.Set("Content-Type", typ)
 		}
 	}
-	if c, e := r.Cookie(cookieName); e == nil && (r.URL.Path == piAttemptPath) {
-		prefix := "conversation-owner\x00"
-		if r.URL.Path == piAttemptPath {
-			prefix = "pi-attempt-owner\x00"
-		}
-		hash := sha256.Sum256([]byte(prefix + c.Value))
+	if c, e := r.Cookie(cookieName); e == nil && r.URL.Path == piAttemptPath {
+		hash := sha256.Sum256([]byte("pi-attempt-owner\x00" + c.Value))
 		req.Header.Set("X-Agent-Host-Session", base64.RawURLEncoding.EncodeToString(hash[:]))
 	}
 	if stream {

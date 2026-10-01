@@ -473,6 +473,34 @@ test("@browser-conversation ordinary session loading is not an uncertain create"
   await expect(page.getByText("Varmistetaan istuntoa.")).toHaveCount(0);
 });
 
+test("@browser-conversation missing daemon control opens surviving native history", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(page).toHaveURL(/conversation=pi%3A|conversation=pi:/);
+  const id = new URL(page.url()).searchParams.get("conversation");
+  if (!id) throw new Error("missing created conversation");
+  await page.route(
+    `**/api/v1/conversations/${id.slice(3)}/status*`,
+    async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: '{"code":"resource_not_found"}',
+      });
+    },
+  );
+  await page.reload();
+  await expect(page).toHaveURL(`/agents/${id}`);
+  await expect(
+    page.getByText(/Yhteys katkesi tai istunto muuttui/),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toHaveCount(0);
+});
+
 test("@browser-conversation lost create acknowledgement blocks duplicate creation", async ({
   page,
 }) => {
@@ -490,9 +518,6 @@ test("@browser-conversation lost create acknowledgement blocks duplicate creatio
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await expect(page.getByText(/Luonnin tulos epävarma/)).toBeVisible();
   await page.reload();
-  await expect(
-    page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
-  ).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
   ).toBeDisabled();

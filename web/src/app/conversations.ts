@@ -56,6 +56,7 @@ function session(v: unknown): v is Session & Record<string, unknown> {
   );
 }
 export class NotAdmitted extends Error {}
+export class ConversationNotFound extends Error {}
 export type ContinueRefusal =
   | "writer_conflict"
   | "read_only_history"
@@ -67,6 +68,7 @@ export class ContinuationRefused extends Error {
   }
 }
 async function json(response: Response): Promise<unknown> {
+  if (response.status === 404) throw new ConversationNotFound("not found");
   if (response.status === 409) throw new NotAdmitted("state changed");
   if (
     !response.ok ||

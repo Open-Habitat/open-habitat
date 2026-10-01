@@ -22,8 +22,15 @@ Evidence on the synthetic host (no real user data):
   `issuectl doctor --json` passed. Doctor reported existing legacy raster-image
   advisories, no blocking errors.
 
-The clean committed-tree gate and its revision are recorded after it completes.
+The first clean gate passed on `9811217` (113 browser cases, 13 lab cases,
+Go race tests and packaging). Independent security/correctness review found one
+browser regression: an ID absent after daemon restart looped on 404 as though
+its connection had failed. A status 404 now moves to native read-only history;
+transient failures still retry. The final gate revision is recorded below.
+
 Cross-UID isolation remains established by the existing guest tests, not by the
 same-UID synthetic browser host in this result. The surviving daemon/Pi child
 across a real gateway restart is exercised by the synthetic socket fixture,
 not a production deployment.
+
+Final committed-tree gate: pending.
