@@ -34,6 +34,16 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Kierrokset
 
+### Kierros 2 — välitila 2026-10-01 01:05 UTC
+
+- Laskeutui: `fit-conversation-density-v2` (G3, run
+  `01m3tbajabater7c7k7ks896sq`, …`e3f0e9d`, full gate vihreä, issue `done`).
+- Käynnissä: run `01m3tfhyyma819xbqzrmfykjmd`, `fit-return-view-v2` (G1).
+  Viimeisenä `fit-settings-density-v2` (G2).
+- **rest, julkaisu:** arvio UI-kaistan laskeutumiselle on noin 03:00 UTC
+  (G1 ~02:00, G2 ~03:00). Julkaise sen jälkeen; jos G2 venyy, julkaise
+  ilman sitä ja kirjaa, mikä commit on mukana.
+
 ### Kierros 2 — välitila 2026-09-30 23:50 UTC
 
 - Laskeutui: `show-turn-receipts` (run `01m3t9ett3vryfze190mb4hsvw`,
