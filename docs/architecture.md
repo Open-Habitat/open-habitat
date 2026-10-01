@@ -40,7 +40,11 @@ the allowlist; changing the allowlist alone does not log out existing sessions.
 The gateway forwards requests to that account's systemd-created Unix socket.
 It verifies the trusted filesystem route, and the daemon authenticates the
 connecting gateway through Linux peer credentials and independently checks its
-own identity. The gateway cannot read homes or run agents. The broker's root
+own identity. It forwards finite daemon replies without parsing their JSON and flushes event
+streams as bytes arrive; the browser validates the public reply contract. The
+conversation lease remains a temporary exception: the gateway filters its list
+and records created handles until Unix-user ownership replaces the browser
+session lease. The gateway cannot read homes or run agents. The broker's root
 authority is confined to account provisioning; native work belongs to the daemon
 running under that user's UID.
 

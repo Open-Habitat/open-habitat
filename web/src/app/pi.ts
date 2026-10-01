@@ -56,8 +56,6 @@ export async function piStatus(
     signal,
   });
   if (response.status === 401) return "login";
-  // The gateway reserves 503 for a mapped daemon that cannot answer;
-  // malformed Pi-status replies are rejected separately as 502.
   if (response.status === 503) return "unavailable";
   const value = await boundedJSON(response);
   if (!statusValid(value)) throw new Error("invalid Pi status");

@@ -51,8 +51,10 @@ Yksityisen `status`-vastauksen `continuation` on positiivinen havainto: `eligibl
 Jatkaminen palauttaa `agent_id`, `workspace_id`, `state: idle` ja `prior_outcome: uncertain`: aiemman vuoron tulosta ei päätellä eikä epävarmaa viestiä lähetetä uudelleen. Elävän kirjoittajan lukko palauttaa 409 `writer_conflict`; ilman selaimesta luotua lukon alkuperämerkintää palautuu 409 `read_only_history`; epäselvä historia tai työtila palauttaa 409 `control_uncertain`. Gateway vaatii saman kirjautumisistunnon hallussa olevan keskustelukahvan myös jatkamisessa. Daemonin uudelleenkäynnistyksen jälkeen pelkkä luettava historia ei riitä: Pi:n lapselle periytynyt lukko on saatava uudelleen, natiivi historia täsmäytetään ja vain eksplisiittinen pyyntö käynnistää uuden lapsen. Gatewayn uudelleenkäynnistyksessä katoavaa kahvavuokraa ei palauteta historiasta. Irrotetut työkalut voivat jäädä eloon; siksi aiemman työn lopputulos jää epävarmaksi.
 
 Nykyinen selainohjaus kysyy tilaa toistuvasti. Sen väliaikaisen protokollan
-muodot validoidaan [gatewayn ohjausreitissä](../internal/gateway/conversation_linux.go)
-ja toteutetaan [daemonin ohjaimessa](../internal/daemon/conversation_linux.go);
+pyyntömuodot validoidaan [daemonin ohjaimessa](../internal/daemon/conversation_linux.go),
+ja selain tarkistaa vastausten muodot. [Gateway](../internal/gateway/proxy_linux.go)
+välittää vastauksen tulkitsematta sitä (paitsi väliaikaisen kahvavuokran vaatima
+keskustelulistan suodatus ja uuden kahvan kirjaus);
 ne eivät ole jäljempänä kuvatun yleisen komentoskeeman toteutus.
 Gatewayn uudelleenkäynnistys kadottaa selainistuntojen ohjaussidokset.
 Daemonin uudelleenkäynnistys kadottaa sen muistissa olevan ohjaustilan.
@@ -306,8 +308,9 @@ delta- ja workspace-eventit eivät vielä synny. Snapshotin watermark otetaan en
 sen aikana syntyneen muutoksen invalidointi voidaan myös toistaa. Nykyisen
 kuvan ja streamin päällekkäisyys ei todista atomista näkymää samaan kellonhetkeen.
 Yhteys kestää enintään 20 sekuntia, daemonin kirjoitusaika enintään 24 ja
-gatewayn kirjoitusaika 26 sekuntia; gatewaylla on 27 sekunnin socket-deadline
-ja enintään 128 kehystä. Liian hidas lukija katkaistaan. Selain ei vielä käytä
+gateway katkaisee yli 10 sekuntia jumittuneen kirjoituksen. Gateway ei rajoita
+terveen virran kehysten tai kokonaisrungon määrää; daemon päättää virran
+eliniän. Selain ei vielä käytä
 tätä reittiä; väliaikainen keskusteluvirta jää käyttöön.
 
 [Snapshot](../contracts/v1/snapshot.schema.json) on daemonin muodostama
@@ -517,15 +520,14 @@ täsmennykset ovat:
 | 404 | `resource_not_found`, `command_outcome_unknown`, `content_revision_gone` | ei saa tulkita toisen käyttäjän olemassaoloa |
 | 409 | `stale_precondition`, `command_id_conflict`, `cursor_expired`, `cursor_instance_mismatch`, `writer_conflict`, `path_replaced`, `manual_worktree_blocks_delete` | nykytila estää turvallisen etenemisen |
 | 422 | `capability_unsupported`, `capability_unknown`, `path_unsupported`, `path_escape`, `confirmation_mismatch` | pyyntö on ymmärretty mutta sitä ei voi toteuttaa |
-| 502 | `daemon_unavailable` | snapshot- tai Pi-statusreitin daemon-vastaus ei läpäissyt muodon tarkistusta; selaimen vanhat tiedot poistetaan |
 | 503 | `daemon_unavailable`, `native_source_unavailable`, `capability_temporarily_unavailable` | tila on tilapäisesti saavuttamaton; vahvistetun saman istunnon sisältö voi jäädä vanhentuneena luettavaksi ilman kirjoituksia |
 | 500 | `native_adapter_error`, `operation_partial`, `annotation_corrupt` | tarkka osatulos/fakta säilyy ja näytetään; `annotation_corrupt` koskee vain annotaatiota kirjoittavaa komentoa, ei snapshot/history-lukua |
 
-Snapshotin identiteettiristiriita palauttaa `403 identity_mismatch`.
-Historian ja sisällön lukureitit palauttavat nykyisin virheellisestä
-daemon-vastauksesta `503 daemon_unavailable`; yllä kuvattu 502-erottelu ei
-vielä koske niitä. Reittien tarkistukset ovat
-[gatewayn lukureiteissä](../internal/gateway/snapshot_linux.go).
+Gateway ei tulkitse daemonin virhekoodia tai identiteettikenttää: daemon
+tarkistaa oman sidoksensa ja selain validoi saamansa snapshotin. Yhteyden
+virheestä tai liian suuresta äärellisestä vastauksesta gateway palauttaa
+`503 daemon_unavailable`; daemonin antama status ja runko välittyvät sellaisinaan.
+Reititys on [gatewayn proxyssä](../internal/gateway/proxy_linux.go).
 
 Käyttöönoton ja väliaikaisen selainohjauksen lisäkoodit kuvataan niiden
 reiteissä ja validaattoreissa. `annotation_corrupt` koskee annotaation

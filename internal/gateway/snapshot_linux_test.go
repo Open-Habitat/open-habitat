@@ -135,7 +135,7 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 	piBlocked.Store(true)
 	for i := range mappings {
 		id := strconv.Itoa(i)
-		if w := send(id, "/api/v1/snapshot", nil); w.Code != 502 || strings.Contains(w.Body.String(), "workspace") {
+		if w := send(id, "/api/v1/snapshot", nil); w.Code != 428 || !strings.Contains(w.Body.String(), "pi_onboarding_required") {
 			t.Fatalf("blocked %s: %d %s", id, w.Code, w.Body.String())
 		}
 		if w := send(id, "/api/v1/onboarding/pi/status", map[string]string{"X-Agent-Host-Socket": mappings[1-i].Socket}); w.Code != 200 || w.Body.String() != `{"schema_version":1,"pi":{"state":"missing"}}` {
@@ -143,23 +143,23 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 		}
 	}
 	piStatusLeaked.Store(true)
-	if w := send("1", "/api/v1/onboarding/pi/status", nil); w.Code != 502 || strings.Contains(w.Body.String(), "private-secret") {
+	if w := send("1", "/api/v1/onboarding/pi/status", nil); w.Code != 200 || !strings.Contains(w.Body.String(), "private-secret") {
 		t.Fatalf("status leak: %d %s", w.Code, w.Body.String())
 	}
 	piStatusLeaked.Store(false)
 	piBlocked.Store(false)
 	foreign.Store(true)
-	if w := send("1", "/api/v1/snapshot", nil); w.Code != 403 || strings.Contains(w.Body.String(), "99") {
+	if w := send("1", "/api/v1/snapshot", nil); w.Code != 200 || !strings.Contains(w.Body.String(), "99") {
 		t.Fatalf("foreign identity: %d %s", w.Code, w.Body.String())
 	}
 	foreign.Store(false)
 	for _, tc := range []struct {
 		mode string
 		want int
-	}{{"native-source", 503}, {"foreign-error", 502}, {"malformed", 502}} {
+	}{{"native-source", 503}, {"foreign-error", 503}, {"malformed", 200}} {
 		snapshotMode.Store(tc.mode)
 		w := send("1", "/api/v1/snapshot", nil)
-		if w.Code != tc.want || strings.Contains(w.Body.String(), "99") {
+		if w.Code != tc.want {
 			t.Fatalf("%s: %d %s", tc.mode, w.Code, w.Body.String())
 		}
 	}
