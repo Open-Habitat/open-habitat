@@ -133,8 +133,8 @@ esac
 	probe(21003, "21002", "43", "GET", a, 404) // same session digest cannot cross socket
 	probe(21002, "21001", "42", "GET", a, -1)  // wrong UID cannot connect at all
 	probe(21001, "21002", "43", "DELETE", a, -1)
-	probe(21003, "21001", "42", "NATIVE", a, 428) // no native bytes before Pi
-	probe(21003, "21002", "43", "NATIVE", a, 428)
+	probe(21003, "21001", "42", "NATIVE", a, 200) // mapped peer retains access to its own native data
+	probe(21003, "21002", "43", "NATIVE", a, 200)
 }
 func servePiUID(t *testing.T) {
 	uid := os.Geteuid()
@@ -152,7 +152,13 @@ func servePiUID(t *testing.T) {
 	device := &daemon.PiDevice{Home: home, Node: filepath.Join(home, "fake-node"), Entry: "/synthetic/entry", Manifest: "/synthetic/manifest"}
 	mux := http.NewServeMux()
 	mux.Handle("/api/v1/onboarding/pi/attempt", daemon.PiAttemptHandler(cfg, trusted, device))
-	mux.Handle("/api/v1/snapshot", daemon.PiGateHandler(cfg, trusted, func(context.Context) string { return "missing" }, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { fmt.Fprint(w, "NATIVE-SECRET") })))
+	mux.Handle("/api/v1/snapshot", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !trusted(r) {
+			w.WriteHeader(403)
+			return
+		}
+		fmt.Fprint(w, "NATIVE-SECRET")
+	}))
 	srv := &http.Server{Handler: mux, ConnContext: func(ctx context.Context, c net.Conn) context.Context {
 		if uc, ok := c.(*net.UnixConn); ok {
 			v, e := daemon.PeerUID(uc)

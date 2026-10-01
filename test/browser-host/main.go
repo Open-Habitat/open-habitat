@@ -287,15 +287,6 @@ esac
 			}
 			return "usable"
 		}
-		gate := func(next http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if scenario.Load() == "pi-blocked" || scenario.Load() == "pi-onboarding" {
-					daemon.PiGateHandler(cfg, trusted, status, next).ServeHTTP(w, r)
-					return
-				}
-				next.ServeHTTP(w, r)
-			})
-		}
 		mux.Handle(daemon.RepoCatalogPath, daemon.RepoCatalogHandlerWithFixtureGH(cfg, trusted, ghProgram, home))
 		cloneHandler := daemon.RepoCloneHandlerWithFixturePrograms(cfg, trusted, home, home, ghProgram, gitProgram)
 		mux.Handle(daemon.RepoClonePath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -330,16 +321,16 @@ esac
 		})
 		mux.Handle("/api/v1/conversations", serveConversation)
 		mux.Handle("/api/v1/conversations/", serveConversation)
-		mux.Handle("/api/v1/events", gate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if scenario.Load() != "pi-deltas" && scenario.Load() != "pi-visual-hold" {
+		mux.Handle("/api/v1/events", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if scenario.Load() != "pi-deltas" && scenario.Load() != "pi-visual-hold" && scenario.Load() != "pi-auth-failure" {
 				http.NotFound(w, r) // Preserve the existing HTTP/status lab fallback.
 				return
 			}
 			current.Load().(*daemon.ConversationController).FixtureEvents().ServeHTTP(w, r)
-		})))
-		mux.Handle("/api/v1/agents/", gate(daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home)))
-		mux.Handle("/api/v1/content/", gate(daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home)))
-		mux.Handle(daemon.SnapshotPath, gate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		}))
+		mux.Handle("/api/v1/agents/", daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home))
+		mux.Handle("/api/v1/content/", daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home))
+		mux.Handle(daemon.SnapshotPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch scenario.Load().(string) {
 			case "malformed":
 				w.Header().Set("Content-Type", "application/json")
@@ -351,7 +342,7 @@ esac
 				return
 			case "delay":
 				time.Sleep(650 * time.Millisecond)
-			case "pi-deltas", "pi-visual-hold":
+			case "pi-deltas", "pi-visual-hold", "pi-auth-failure":
 				current.Load().(*daemon.ConversationController).FixtureSnapshot().ServeHTTP(w, r)
 				return
 			case "foreign":
@@ -370,7 +361,7 @@ esac
 				return
 			}
 			handler.ServeHTTP(w, r)
-		})))
+		}))
 		srv := &http.Server{Handler: mux, ConnContext: func(ctx context.Context, c net.Conn) context.Context {
 			uc, ok := c.(*net.UnixConn)
 			if !ok {
@@ -527,7 +518,7 @@ esac
 			case "/fixture/scenario":
 				name := r.URL.Query().Get("value")
 				switch name {
-				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "foreign", "pi-blocked", "pi-onboarding", "pi-deltas", "pi-visual-hold":
+				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "foreign", "pi-blocked", "pi-onboarding", "pi-deltas", "pi-visual-hold", "pi-auth-failure":
 					// Read by the fake Pi child at turn start. Switching back to ready
 					// keeps subsequent lab cases on the old, faster fixture.
 					if err := os.Remove(filepath.Join(tmp, "fakepi-visual-phase")); err != nil && !os.IsNotExist(err) {

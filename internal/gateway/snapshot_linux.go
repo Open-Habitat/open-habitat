@@ -83,7 +83,12 @@ func (a *Auth) snapshotOrPiStatus(w http.ResponseWriter, r *http.Request, path s
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
-	deadline := time.Now().Add(5 * time.Second)
+	deadline := time.Now().Add(func() time.Duration {
+		if path == "/api/v1/onboarding/pi/status" {
+			return 14 * time.Second
+		}
+		return 5 * time.Second
+	}())
 	if d, ok := r.Context().Deadline(); ok && d.Before(deadline) {
 		deadline = d
 	}
@@ -118,7 +123,7 @@ func (a *Auth) snapshotOrPiStatus(w http.ResponseWriter, r *http.Request, path s
 	// Invalid upstream envelopes are not transport outages, for either
 	// snapshot or Pi status. A 503 means the mapped daemon could not answer.
 	invalidStatus := 502
-	if res.ProtoMajor != 1 || res.ProtoMinor != 1 || (res.StatusCode != 200 && !(path == "/api/v1/snapshot" && (res.StatusCode == 428 || res.StatusCode == 503))) || res.Header.Get("Content-Type") != "application/json" || len(res.Header.Values("Content-Type")) != 1 || res.ContentLength <= 0 || res.ContentLength > snapshotLimit || len(res.TransferEncoding) != 0 || len(res.Header.Values("Content-Length")) != 1 {
+	if res.ProtoMajor != 1 || res.ProtoMinor != 1 || (res.StatusCode != 200 && !(path == "/api/v1/snapshot" && res.StatusCode == 503)) || res.Header.Get("Content-Type") != "application/json" || len(res.Header.Values("Content-Type")) != 1 || res.ContentLength <= 0 || res.ContentLength > snapshotLimit || len(res.TransferEncoding) != 0 || len(res.Header.Values("Content-Length")) != 1 {
 		safe(w, invalidStatus, "daemon_unavailable")
 		return
 	}
@@ -142,11 +147,6 @@ func (a *Auth) snapshotOrPiStatus(w http.ResponseWriter, r *http.Request, path s
 			Provider          string `json:"provider"`
 			ProviderAccountID string `json:"provider_account_id"`
 		} `json:"auth"`
-	}
-	if res.StatusCode == 428 {
-		// Do not forward arbitrary daemon error bodies across the boundary.
-		safe(w, 428, "pi_onboarding_required")
-		return
 	}
 	if path == "/api/v1/snapshot" {
 		if res.StatusCode == 503 {
@@ -293,7 +293,7 @@ func (a *Auth) history(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer res.Body.Close()
-	if res.ProtoMajor != 1 || res.ProtoMinor != 1 || (res.StatusCode != 200 && res.StatusCode != 400 && res.StatusCode != 404 && res.StatusCode != 409 && res.StatusCode != 428 && res.StatusCode != 503) || res.Header.Get("Content-Type") != "application/json" || len(res.Header.Values("Content-Type")) != 1 || res.ContentLength < 0 || res.ContentLength > historyLimit || len(res.TransferEncoding) != 0 || len(res.Header.Values("Content-Length")) != 1 {
+	if res.ProtoMajor != 1 || res.ProtoMinor != 1 || (res.StatusCode != 200 && res.StatusCode != 400 && res.StatusCode != 404 && res.StatusCode != 409 && res.StatusCode != 503) || res.Header.Get("Content-Type") != "application/json" || len(res.Header.Values("Content-Type")) != 1 || res.ContentLength < 0 || res.ContentLength > historyLimit || len(res.TransferEncoding) != 0 || len(res.Header.Values("Content-Length")) != 1 {
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
@@ -305,10 +305,6 @@ func (a *Auth) history(w http.ResponseWriter, r *http.Request) {
 	var tail [1]byte
 	if n, e := reader.Read(tail[:]); n != 0 || e != io.EOF || limited.N == 0 {
 		safe(w, 503, "daemon_unavailable")
-		return
-	}
-	if res.StatusCode == 428 {
-		safe(w, 428, "pi_onboarding_required")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

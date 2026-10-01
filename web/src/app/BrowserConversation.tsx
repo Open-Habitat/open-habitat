@@ -52,7 +52,7 @@ import {
 } from "./conversations";
 import { readHistoryFetch, timelineItems } from "./HistoryView";
 import type { HistoryEntry } from "./history";
-import { piStatus, sessionCSRF } from "./pi";
+import { sessionCSRF } from "./pi";
 import type { Snapshot, Workspace } from "./snapshot";
 
 // Only ephemeral presentation state, never authority to control a session.
@@ -338,11 +338,10 @@ export function BrowserConversation({
       const version = generation.current;
       try {
         // The gateway rechecks broker and browser session on every stream frame;
-        // the daemon rechecks Pi. Fallback HTTP reads perform their own checks.
+        // the daemon checks the mapped identity. Fallback HTTP reads do likewise.
         if (!streamStatus) {
           const token = await sessionCSRF();
-          if (token !== csrf || (await piStatus()) !== "usable")
-            throw new Error("identity_lost");
+          if (token !== csrf) throw new Error("identity_lost");
         }
         const nextStatus = streamStatus ?? (await status(id));
         if (!alive.current || version !== generation.current) return;
@@ -893,8 +892,7 @@ export function BrowserConversation({
   }, [finishedInBackground]);
   const verify = async () => {
     const token = await sessionCSRF();
-    if (!csrf || token !== csrf || (await piStatus()) !== "usable")
-      throw new Error("identity_lost");
+    if (!csrf || token !== csrf) throw new Error("identity_lost");
     return token;
   };
   const recheckList = async () => {
@@ -1561,6 +1559,19 @@ export function BrowserConversation({
                       if (!staleRef.current) setHistoryError(true);
                     })
                 }
+              />
+            ) : null}
+            {current?.auth_error === "pi_auth_failed" ? (
+              <InlineNotice
+                title="Kielimallikirjautuminen ei ole kunnossa"
+                description="Kirjaudu OpenAI-tilillesi uudelleen ja jatka sitten keskustelua. Viestiä ei lähetetä automaattisesti uudelleen."
+                tone="danger"
+                actions={[
+                  {
+                    label: "Kirjaudu",
+                    onPress: () => navigate("/workspaces?pi_sign_in=1"),
+                  },
+                ]}
               />
             ) : null}
             {streamError ? (

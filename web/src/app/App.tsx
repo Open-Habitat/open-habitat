@@ -150,6 +150,8 @@ export function App() {
   const [identityEpoch, setIdentityEpoch] = useState(0);
   const sessionBinding = useRef<string | undefined>(undefined);
   const loginGeneration = useRef(0);
+  // First load only. A successful onboarding attempt has already checked Pi.
+  const piChecked = useRef(false);
   const editorPlace = useRef<
     { editor: HTMLTextAreaElement; start: number; end: number } | undefined
   >(undefined);
@@ -344,27 +346,37 @@ export function App() {
       try {
         let token: string | "login" | undefined;
         if (!syntheticDemo) {
-          // On the initial unauthenticated load, avoid requesting a session
-          // before the Pi gate: onboarding owns its own session binding.
-          // Only the authenticated tab-return path overlaps these reads.
-          const [status, session] = snapshot
-            ? await Promise.all([
-                piStatus(controller.signal),
-                sessionCSRF(controller.signal),
-              ])
-            : [await piStatus(controller.signal), undefined];
+          // The first load checks Pi once. Tab returns verify only browser
+          // session and snapshot; a broken credential is reported by Pi's call.
+          const session = await sessionCSRF(controller.signal);
           if (
             !active ||
             controller.signal.aborted ||
             generation !== loginGeneration.current
           )
             return;
-          if (status === "login" || session === "login") return fail("login");
-          if (status === "missing" || status === "unknown") {
-            setPiCheckFailed(status === "unknown");
-            return fail("pi");
+          if (session === "login") return fail("login");
+          token = session;
+          if (snapshot && sessionBinding.current !== token) {
+            piChecked.current = false;
           }
-          token = session ?? (await sessionCSRF(controller.signal));
+          if (!piChecked.current) {
+            const status = await piStatus(controller.signal);
+            if (
+              !active ||
+              controller.signal.aborted ||
+              generation !== loginGeneration.current
+            )
+              return;
+            if (status === "login") return fail("login");
+            if (status === "missing") return fail("pi");
+            if (status === "unknown" || status === "unavailable") {
+              setPiCheckFailed(true);
+              return fail("pi");
+            }
+            if (status !== "usable") return fail("unavailable");
+            piChecked.current = true;
+          }
           // A failed authority check is not a transport outage. A different
           // session must never inherit the previous user's mounted content.
           if (snapshot && sessionBinding.current !== token) {
@@ -380,18 +392,6 @@ export function App() {
             return;
           }
           verifiedToken = token;
-          if (status === "unavailable") {
-            // Retain already verified facts only for the same session. Initial
-            // requests belong in the OpenAI step with an explicit check error.
-            if (snapshot) await retain(token);
-            else {
-              setPiCheckFailed(true);
-              fail("pi");
-            }
-            return;
-          }
-          // Unknown or malformed Pi status is not permission to retain.
-          if (status !== "usable") return fail("unavailable");
         }
         if (
           !active ||
@@ -423,7 +423,6 @@ export function App() {
         }
         if (response.status === 401) return fail("login");
         if (response.status === 403) return fail("unavailable");
-        if (response.status === 428) return fail("pi");
         // The gateway rejects malformed daemon snapshots as 502 and foreign
         // identities as 403. A 503 is now a transient native/host outage.
         if (!active || generation !== loginGeneration.current) return;
@@ -499,6 +498,7 @@ export function App() {
     editorPlace.current = undefined;
     loginGeneration.current++;
     sessionBinding.current = undefined;
+    piChecked.current = false;
     dispatch(clearIdentity());
     navigate("/workspaces", { replace: true });
     try {
@@ -612,7 +612,19 @@ export function App() {
                 ? "filtered-empty"
                 : "ready";
   const main =
-    phase === "loading" ? (
+    phase === "authenticated" &&
+    new URLSearchParams(location.search).has("pi_sign_in") ? (
+      <GitHubOnboarding
+        skipChooser
+        forceSignIn
+        onUsable={() => {
+          navigate("/workspaces", { replace: true });
+          refresh();
+        }}
+        onLogin={requireLogin}
+        onLogout={logout}
+      />
+    ) : phase === "loading" ? (
       <>
         <h1>Ladataan</h1>
         <p>Haetaan työtiloja…</p>
@@ -647,7 +659,10 @@ export function App() {
           piCheckFailed ||
           (location.pathname !== "/" && location.pathname !== "/workspaces")
         }
-        onUsable={refresh}
+        onUsable={() => {
+          piChecked.current = true;
+          refresh();
+        }}
         onLogin={requireLogin}
         onLogout={logout}
       />

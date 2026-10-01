@@ -297,7 +297,7 @@ func (j *eventJournal) parse(cursor string) (uint64, string) {
 	}
 	return seq, ""
 }
-func (j *eventJournal) stream(w http.ResponseWriter, r *http.Request, valid, nativeUsable func() bool) {
+func (j *eventJournal) stream(w http.ResponseWriter, r *http.Request, valid func() bool) {
 	if r.Method != "GET" || r.URL.Path != "/api/v1/events" || r.Host != "unix" || r.ProtoMajor != 1 || r.ProtoMinor != 1 || r.ContentLength > 0 || len(r.TransferEncoding) > 0 || len(r.Header.Values("Last-Event-ID")) > 1 || len(r.URL.Query()["after"]) != 1 || len(r.URL.Query()) != 1 {
 		snapshotError(w, 400, "invalid_request")
 		return
@@ -336,20 +336,11 @@ func (j *eventJournal) stream(w http.ResponseWriter, r *http.Request, valid, nat
 	deadline := time.Now().Add(20 * time.Second)
 	end := time.NewTimer(time.Until(deadline))
 	defer end.Stop()
-	lastNative := time.Now() // the outer Pi gate checked native usability at admission
 	heartbeat := time.NewTicker(2 * time.Second)
 	defer heartbeat.Stop()
 	for {
 		if !valid() || r.Context().Err() != nil || !time.Now().Before(deadline) {
 			return
-		}
-		// Also check during a busy replay: a continuously available frame
-		// must not starve the native revocation or finite lifetime checks.
-		if time.Since(lastNative) >= 2*time.Second {
-			if !nativeUsable() {
-				return
-			}
-			lastNative = time.Now()
 		}
 		j.mu.Lock()
 		oldest := j.seq - uint64(len(j.frames))

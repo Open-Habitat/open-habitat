@@ -41,14 +41,14 @@ test("@pi-onboarding native attempt drives the production browser, never a callb
       page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
     ).toBeVisible();
     await expect(page.getByText("git-project")).toHaveCount(0);
-    expect((await page.request.get("/api/v1/snapshot")).status()).toBe(428);
+    expect((await page.request.get("/api/v1/snapshot")).status()).toBe(200);
     expect(
       (
         await page.request.get(
           "/api/v1/agents/pi:11111111-1111-4111-8111-111111111111/history?limit=1",
         )
       ).status(),
-    ).toBe(428);
+    ).toBe(200);
     await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
     await expect(page.getByText("ABCD-1234")).toBeVisible();
     expect(page.url()).not.toContain("ABCD-1234");

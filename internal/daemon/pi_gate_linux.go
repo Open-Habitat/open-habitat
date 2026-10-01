@@ -7,30 +7,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/maintainer/native-agent-host/internal/transport"
 )
-
-// PiGateHandler is the native-read boundary for a mapped daemon socket.
-// It checks the authenticated hop before querying Pi, then fails closed
-// before invoking any native read. A fresh native check is made for each request.
-func PiGateHandler(cfg transport.Config, trusted func(*http.Request) bool, status func(context.Context) string, next http.Handler) http.Handler {
-	return piGate(cfg, trusted, status, next)
-}
-
-func piGate(cfg transport.Config, trusted func(*http.Request) bool, status func(context.Context) string, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !historyAuthorized(cfg, trusted, r) {
-			snapshotError(w, 403, "cross_user_denied")
-			return
-		}
-		if status(r.Context()) != "usable" || r.Context().Err() != nil {
-			snapshotError(w, 428, "pi_onboarding_required")
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
 
 // PiStatusHandler discloses only the mapped daemon's native credential state.
 // It never reads workspaces, history or the credential value into the response.
@@ -40,7 +20,13 @@ func PiStatusHandler(cfg transport.Config, trusted func(*http.Request) bool, sta
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
+		// The listener's default five-second write deadline is too short for
+		// the native helper. Recorders without deadline support need no override.
+		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(14 * time.Second))
 		state := status(r.Context())
+		if r.Context().Err() != nil {
+			state = "unknown"
+		}
 		if state != "usable" && state != "missing" {
 			state = "unknown"
 		}

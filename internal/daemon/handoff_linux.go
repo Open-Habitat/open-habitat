@@ -33,8 +33,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	if mux == nil {
 		mux = http.NewServeMux()
 	}
-	// The native Pi status is checked before any native workspace or history read.
-	// No positive result is retained across requests, refreshes or daemon restarts.
+	// Pi status is queried only by the explicit onboarding endpoint.
 	pi := &PiDevice{Home: cfg.Home}
 	if runtime != nil {
 		pi.Node, pi.Entry, pi.Manifest = runtime.Node, runtime.Entry, runtime.Manifest
@@ -42,7 +41,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 		pi.SharedSelector = true
 	}
 	piStatus := func(parent context.Context) string {
-		ctx, cancel := context.WithTimeout(parent, 3*time.Second)
+		ctx, cancel := context.WithTimeout(parent, 12*time.Second)
 		defer cancel()
 		return pi.StatusContext(ctx)
 	}
@@ -54,14 +53,14 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	journal := newEventJournal()
 	controller := newConversationController(ctx, cfg, runtime, server.TrustedPeer, piStatus)
 	controller.journal = journal
-	mux.Handle(SnapshotPath, piGate(cfg, server.TrustedPeer, piStatus, snapshotHandlerWithController(cfg, server.TrustedPeer, Discover, nativeSessions, cfg.Home, nativeStatus, journal, controller)))
-	mux.Handle("/api/v1/events", piGate(cfg, server.TrustedPeer, piStatus, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle(SnapshotPath, snapshotHandlerWithController(cfg, server.TrustedPeer, Discover, nativeSessions, cfg.Home, nativeStatus, journal, controller))
+	mux.Handle("/api/v1/events", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		journal.stream(w, r, func() bool {
 			return server.TrustedPeer(r) && validSnapshotIdentity(cfg, r)
-		}, func() bool { return piStatus(r.Context()) == "usable" })
-	})))
-	mux.Handle("/api/v1/agents/", piGate(cfg, server.TrustedPeer, piStatus, HistoryHandler(cfg, server.TrustedPeer)))
-	mux.Handle("/api/v1/content/", piGate(cfg, server.TrustedPeer, piStatus, HistoryHandler(cfg, server.TrustedPeer)))
+		})
+	}))
+	mux.Handle("/api/v1/agents/", HistoryHandler(cfg, server.TrustedPeer))
+	mux.Handle("/api/v1/content/", HistoryHandler(cfg, server.TrustedPeer))
 	mux.Handle("/api/v1/conversations", controller)
 	mux.Handle("/api/v1/conversations/", controller)
 	defer controller.shutdown()

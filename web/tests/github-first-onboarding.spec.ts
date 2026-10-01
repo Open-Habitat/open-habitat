@@ -17,14 +17,14 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
   await page.request.get("/fixture/scenario?value=pi-onboarding");
   await page.request.get("/fixture/pi-state?value=missing");
   await login(page);
-  expect((await page.request.get("/api/v1/snapshot")).status()).toBe(428);
+  expect((await page.request.get("/api/v1/snapshot")).status()).toBe(200);
   expect(
     (
       await page.request.get(
         "/api/v1/agents/pi:11111111-1111-4111-8111-111111111111/history?limit=1",
       )
     ).status(),
-  ).toBe(428);
+  ).toBe(200);
   await expect(page.getByText("fixture/first")).toBeVisible();
   await expect(page.getByRole("checkbox")).toHaveCount(52);
   // Large catalogs scroll inside the chooser, so the selected count and

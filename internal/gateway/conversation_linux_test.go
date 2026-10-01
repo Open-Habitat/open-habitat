@@ -249,6 +249,18 @@ func TestStreamHeaderBudgetLeavesBodyReadable(t *testing.T) {
 func TestConversationReplyValidation(t *testing.T) {
 	id := "12345678-1234-4123-8123-123456789abc"
 	status := `{"schema_version":1,"agent_id":"pi:` + id + `","workspace_id":"ws_12345678","state":"uncertain","command_id":"","ack":"uncertain","event_cursor":0,"events":[],"event_loss":false,"native_history":"readable","native_revision":"rev","history_query":"/api/v1/agents/pi:` + id + `/history","continuation":"eligible"}`
+	for _, code := range []string{`""`, `"pi_auth_failed"`} {
+		withCode := strings.Replace(status, `"continuation":"eligible"`, `"continuation":"eligible","auth_error":`+code, 1)
+		if _, _, ok := validatedConversationReply("status", []byte(withCode), id); !ok {
+			t.Fatalf("rejected fixed authentication code %s", code)
+		}
+	}
+	for _, code := range []string{`null`, `"401 Unauthorized token=secret"`, `"other"`} {
+		withCode := strings.Replace(status, `"continuation":"eligible"`, `"continuation":"eligible","auth_error":`+code, 1)
+		if _, _, ok := validatedConversationReply("status", []byte(withCode), id); ok {
+			t.Fatalf("forwarded raw or invalid authentication error %s", code)
+		}
+	}
 	for _, value := range []string{"eligible", "writer_present", "read_only_history", "unproven"} {
 		if _, _, ok := validatedConversationReply("status", []byte(strings.Replace(status, `"eligible"`, `"`+value+`"`, 1)), id); !ok {
 			t.Fatalf("rejected continuation %s", value)

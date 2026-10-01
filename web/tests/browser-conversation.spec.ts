@@ -770,6 +770,10 @@ test("@browser-conversation slow tab return masks old facts without unmounting a
   await expect(editor).toBeVisible();
   await editor.fill("unfinished synthetic draft");
   await editor.focus();
+  let piChecks = 0;
+  page.on("request", (request) => {
+    if (request.url().endsWith("/onboarding/pi/status")) piChecks++;
+  });
   let release!: () => void;
   const held = new Promise<void>((resolve) => {
     release = resolve;
@@ -778,7 +782,7 @@ test("@browser-conversation slow tab return masks old facts without unmounting a
   const requested = new Promise<void>((resolve) => {
     started = resolve;
   });
-  await page.route("**/api/v1/onboarding/pi/status", async (route) => {
+  await page.route("**/api/v1/snapshot", async (route) => {
     started();
     await held;
     await route.continue().catch(() => {});
@@ -800,6 +804,7 @@ test("@browser-conversation slow tab return masks old facts without unmounting a
     await expect(editor).toBeVisible();
     await expect(editor).toHaveValue("unfinished synthetic draft");
     await expect(editor).toBeFocused();
+    expect(piChecks).toBe(0);
     await expect(page.getByRole("heading", { name: "Ladataan" })).toHaveCount(
       0,
     );
@@ -808,7 +813,7 @@ test("@browser-conversation slow tab return masks old facts without unmounting a
   }
 });
 
-test("@browser-conversation stalled and failed revalidation never reveals old identity", async ({
+test("@browser-conversation stalled snapshot retains only session-verified stale facts", async ({
   page,
 }) => {
   await page.clock.install();
@@ -817,7 +822,7 @@ test("@browser-conversation stalled and failed revalidation never reveals old id
   const requested = new Promise<void>((resolve) => {
     started = resolve;
   });
-  await page.route("**/api/v1/onboarding/pi/status", async (route) => {
+  await page.route("**/api/v1/snapshot", async (route) => {
     started();
     await new Promise<void>(() => {});
     await route.continue().catch(() => {});
@@ -832,11 +837,12 @@ test("@browser-conversation stalled and failed revalidation never reveals old id
   ).toBeHidden();
   await page.clock.fastForward(10_001);
   await expect(
-    page.getByRole("heading", { name: "Yhteyttä ei saatu" }),
+    page.getByRole("heading", { name: "ordinary-dir" }),
   ).toBeVisible();
-  await expect(page.getByRole("heading", { name: "ordinary-dir" })).toHaveCount(
-    0,
-  );
+  await expect(page.getByText("Yhteys poikki").first()).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Lähetä", exact: true }),
+  ).toHaveCount(0);
 });
 
 test("@browser-conversation reauth on tab return drops old identity", async ({
@@ -895,7 +901,7 @@ test("@browser-conversation new subject during pending tab check never restores 
   const requested = new Promise<void>((resolve) => {
     started = resolve;
   });
-  await page.route("**/api/v1/onboarding/pi/status", async (route) => {
+  await page.route("**/api/v1/snapshot", async (route) => {
     started();
     await held;
     await route.continue().catch(() => {});
@@ -1491,4 +1497,34 @@ test("@browser-conversation stale recovery during continuation never strands con
   } finally {
     release();
   }
+});
+
+test("@browser-conversation model authentication error offers sign-in without leaking provider text", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
+  await page.request.get("/fixture/scenario?value=pi-auth-failure");
+  await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("kokeilu");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(
+    page.getByText("Kielimallikirjautuminen ei ole kunnossa"),
+  ).toBeVisible();
+  expect(await page.locator("main").innerText()).not.toContain(
+    "synthetic-secret",
+  );
+  await page.getByRole("button", { name: "Kirjaudu", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+  ).toBeVisible();
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.request.get("/fixture/pi-state?value=usable");
+  await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
+  await expect(
+    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+  ).toHaveCount(0, { timeout: 12000 });
+  await expect(page.getByText("ordinary-dir").first()).toBeVisible();
 });

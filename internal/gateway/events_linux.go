@@ -30,7 +30,7 @@ func (a *Auth) forwardEvents(w http.ResponseWriter, r *http.Request, conn net.Co
 		return
 	}
 	if res.StatusCode != 200 {
-		if (res.StatusCode != 409 && res.StatusCode != 400 && res.StatusCode != 403 && res.StatusCode != 428 && res.StatusCode != 503) || res.ContentLength <= 0 || res.ContentLength > 4096 || len(res.TransferEncoding) != 0 || res.Header.Get("Content-Type") != "application/json" {
+		if (res.StatusCode != 409 && res.StatusCode != 400 && res.StatusCode != 403 && res.StatusCode != 503) || res.ContentLength <= 0 || res.ContentLength > 4096 || len(res.TransferEncoding) != 0 || res.Header.Get("Content-Type") != "application/json" {
 			safe(w, 503, "daemon_unavailable")
 			return
 		}
@@ -49,7 +49,7 @@ func (a *Auth) forwardEvents(w http.ResponseWriter, r *http.Request, conn net.Co
 			safe(w, 503, "daemon_unavailable")
 			return
 		}
-		allowed := map[int]map[string]bool{400: {"invalid_request": true}, 403: {"cross_user_denied": true}, 409: {"cursor_expired": true, "cursor_instance_mismatch": true}, 428: {"pi_onboarding_required": true}, 503: {"native_source_unavailable": true}}
+		allowed := map[int]map[string]bool{400: {"invalid_request": true}, 403: {"cross_user_denied": true}, 409: {"cursor_expired": true, "cursor_instance_mismatch": true}, 503: {"native_source_unavailable": true}}
 		if !allowed[res.StatusCode][e.Error.Code] {
 			safe(w, 503, "daemon_unavailable")
 			return

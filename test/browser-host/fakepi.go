@@ -221,6 +221,13 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 		delta("mitä työtilassa on.")
 		time.Sleep(step)
 	}
+	if strings.TrimSpace(string(mode)) == "pi-auth-failure" {
+		// Deliberately include a secret-shaped suffix: only the fixed daemon code
+		// may reach the private browser status protocol.
+		emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant", "stopReason": "error", "errorMessage": "401 Unauthorized token=synthetic-secret"}})
+		emit(map[string]any{"type": "agent_end"})
+		return
+	}
 	start := map[string]any{"type": "tool_execution_start", "toolName": "bash"}
 	if stream {
 		start["toolCallId"] = callID

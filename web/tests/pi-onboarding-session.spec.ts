@@ -29,7 +29,7 @@ test("@pi-onboarding switching sessions drops device instructions and native fac
     expect(
       (await page.request.get("/api/v1/onboarding/pi/attempt")).status(),
     ).toBe(404);
-    expect((await page.request.get("/api/v1/snapshot")).status()).toBe(428);
+    expect((await page.request.get("/api/v1/snapshot")).status()).toBe(200);
   } finally {
     await page.request.get("/fixture/pi-state?value=missing");
     await page.request.get("/fixture/scenario?value=ready");

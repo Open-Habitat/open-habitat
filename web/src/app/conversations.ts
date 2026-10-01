@@ -7,6 +7,7 @@ export type Status = Session & {
   event_cursor: number;
   events: unknown[];
   event_loss: boolean;
+  auth_error?: "" | "pi_auth_failed";
   native_history: string;
   continuation:
     | "eligible"
@@ -123,8 +124,7 @@ async function request(
       : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (response.status === 401 || response.status === 428)
-    throw new Error("identity_lost");
+  if (response.status === 401) throw new Error("identity_lost");
   return json(response);
 }
 const base = "/api/v1/conversations";
@@ -185,6 +185,9 @@ export function parseStatus(v: unknown, id: string): Status {
       (e: unknown) => object(e) && JSON.stringify(e).length <= 8192,
     ) ||
     typeof v.event_loss !== "boolean" ||
+    (v.auth_error !== undefined &&
+      v.auth_error !== "" &&
+      v.auth_error !== "pi_auth_failed") ||
     !["missing", "unavailable", "readable"].includes(
       String(v.native_history),
     ) ||
@@ -316,8 +319,7 @@ export async function continueConversation(
       throw new ContinuationRefused(error.error.code as ContinueRefusal);
     throw new Error("invalid refusal");
   }
-  if (response.status === 401 || response.status === 428)
-    throw new Error("identity_lost");
+  if (response.status === 401) throw new Error("identity_lost");
   const v = await json(response);
   if (
     !object(v) ||

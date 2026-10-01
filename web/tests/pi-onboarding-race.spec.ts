@@ -47,12 +47,10 @@ test("@pi-onboarding delayed old-session response cannot restore code after focu
     await a.bringToFront();
     release();
     await expect(a.getByText("ABCD-1234")).toHaveCount(0);
+    // Bob can already have a usable Pi login. The old Alice code must not
+    // reappear regardless of Bob's own first-use state.
     await expect(
-      a.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
-    ).toBeVisible();
-    await a.getByRole("button", { name: /jatka/i }).click();
-    await expect(
-      a.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+      a.getByText("Bobin synteettinen viesti 0").first(),
     ).toBeVisible();
     expect(
       (await a.request.get("/api/v1/onboarding/pi/attempt")).status(),
@@ -69,6 +67,10 @@ test("@pi-onboarding does not offer an action before its session is bound", asyn
   await page.request.get("/fixture/scenario?value=pi-onboarding");
   await page.request.get("/fixture/pi-state?value=missing");
   try {
+    await page.goto("/workspaces");
+    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+    await page.getByRole("link", { name: "Alice" }).click();
+    await expect(page.getByRole("button", { name: /jatka/i })).toBeVisible();
     let release!: () => void;
     const blocked = new Promise<void>((resolve) => {
       release = resolve;
@@ -89,15 +91,12 @@ test("@pi-onboarding does not offer an action before its session is bound", asyn
       await blocked;
       await route.fulfill({ response });
     });
-    await page.goto("/workspaces");
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Alice" }).click();
+    await page.getByRole("button", { name: /jatka/i }).click();
     await capturedPromise;
     await expect(
       page.getByRole("button", { name: "Aloita kirjautuminen" }),
     ).toHaveCount(0);
     release();
-    await page.getByRole("button", { name: /jatka/i }).click();
     await expect(
       page.getByRole("button", { name: "Aloita kirjautuminen" }),
     ).toBeVisible();

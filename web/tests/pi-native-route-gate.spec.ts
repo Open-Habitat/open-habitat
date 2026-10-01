@@ -12,7 +12,7 @@ async function signIn(page: import("@playwright/test").Page) {
   ).toBeVisible();
 }
 
-test("@pi-onboarding direct native routes show OpenAI check failure and recover only on native usable", async ({
+test("@pi-onboarding browser checks OpenAI once while direct native reads remain mapped", async ({
   page,
 }) => {
   await page.request.get("/fixture/scenario?value=pi-onboarding");
@@ -34,7 +34,11 @@ test("@pi-onboarding direct native routes show OpenAI check failure and recover 
       "/api/v1/content/ct_abcdefgh?offset=0&limit_bytes=100",
       "/api/v1/conversations",
     ]) {
-      expect((await page.request.get(url)).status()).toBe(428);
+      expect((await page.request.get(url)).status()).toBe(
+        url === "/api/v1/content/ct_abcdefgh?offset=0&limit_bytes=100"
+          ? 404
+          : 200,
+      );
     }
     await page.getByRole("button", { name: "Tarkista tila" }).click();
     // Wait for the unknown check to settle before changing the native fixture.

@@ -37,9 +37,11 @@ export function GitHubOnboarding({
   onLogin,
   onLogout,
   skipChooser = false,
+  forceSignIn = false,
 }: {
   onUsable: () => void;
   skipChooser?: boolean;
+  forceSignIn?: boolean;
   onLogin: () => void;
   onLogout: () => Promise<void>;
 }) {
@@ -397,6 +399,7 @@ export function GitHubOnboarding({
   };
   return step === "pi" ? (
     <PiOnboarding
+      forceSignIn={forceSignIn}
       onUsable={onUsable}
       onLogin={onLogin}
       onLogout={onLogout}

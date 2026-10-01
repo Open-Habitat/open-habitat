@@ -41,8 +41,8 @@ type ConversationController struct {
 	fixture  bool   // untrusted synthetic runtime: never set in production
 	instance string // ephemeral provisional stream cursor scope
 	journal  *eventJournal
-	// A short-lived per-daemon gate prevents status probes from presenting each
-	// other's temporary flock as an external writer. Never hold mu across I/O.
+	// A short-lived per-daemon gate prevents continuation probes from presenting
+	// each other's temporary flock as an external writer. Never hold mu across I/O.
 	proofGate chan struct{}
 }
 
@@ -71,6 +71,7 @@ type conversation struct {
 	receipts                     map[string]string // bounded to spent send IDs; no durable acceptance claim
 	turnGeneration               uint64            // increments on each new prompt, fences slow native settlement reads
 	settlement                   map[string]string // observed_at, native_key, state; nil means unknown
+	authError                    string            // fixed code only; cleared on a new prompt
 	question                     map[string]any    // bounded plain-text pending UI request
 	questionID                   string            // native ID; never trust a browser-supplied native identity
 	questionKind                 string
@@ -136,11 +137,7 @@ func (c *ConversationController) FixtureEvents() http.Handler {
 		return http.NotFoundHandler()
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if c.status(r.Context()) != "usable" {
-			snapshotError(w, 428, "pi_onboarding_required")
-			return
-		}
-		c.journal.stream(w, r, func() bool { return c.trusted(r) && validSnapshotIdentity(c.cfg, r) }, func() bool { return c.status(r.Context()) == "usable" })
+		c.journal.stream(w, r, func() bool { return c.trusted(r) && validSnapshotIdentity(c.cfg, r) })
 	})
 }
 
@@ -179,7 +176,6 @@ func (c *ConversationController) shutdown() {
 		_ = s.owner.release()
 	}
 }
-func (c *ConversationController) revoke() { c.shutdown() }
 
 // workspaceFD resolves only a freshly discovered immediate child, using the
 // kernel's beneath/no-symlink/no-mount constraints. The open descriptor is
@@ -239,14 +235,6 @@ func (c *ConversationController) workspaceFD(id string) (*os.File, string, error
 func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !historyAuthorized(c.cfg, c.trusted, r) {
 		snapshotError(w, 403, "cross_user_denied")
-		return
-	}
-	state := c.status(r.Context())
-	if state != "usable" || r.Context().Err() != nil {
-		if state == "missing" {
-			c.revoke()
-		}
-		snapshotError(w, 428, "pi_onboarding_required")
 		return
 	}
 	if (r.URL.RawQuery != "" && !(r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/receipt") && len(r.URL.Query()) == 1 && len(r.URL.Query()["command_id"]) == 1 && sessionIDPattern.MatchString(r.URL.Query().Get("command_id")))) || r.URL.EscapedPath() != r.URL.Path || r.RequestURI != r.URL.RequestURI() {
@@ -683,6 +671,29 @@ func (c *ConversationController) drain(s *conversation) {
 			e, _ = json.Marshal(map[string]any{"type": frame.Type, "truncated": true})
 			s.lost = true
 		}
+		// Model errors may contain provider text or secrets. Never retain
+		// the raw native failure in a browser-visible status frame.
+		if frame.Type == "message_end" {
+			var result struct {
+				Message struct {
+					Role         string `json:"role"`
+					StopReason   string `json:"stopReason"`
+					ErrorMessage string `json:"errorMessage"`
+				} `json:"message"`
+			}
+			if json.Unmarshal(raw, &result) == nil && result.Message.Role == "assistant" && result.Message.StopReason == "error" {
+				if modelAuthFailure(result.Message.ErrorMessage) {
+					s.authError = "pi_auth_failed"
+					// A provider may have emitted provisional text before the
+					// failure. Do not preserve it in the private status tail.
+					s.events = []json.RawMessage{}
+					if c.journal != nil {
+						c.journal.reset("pi:"+s.id, "unknown")
+					}
+				}
+				e = []byte(`{"type":"message_end","message":{"role":"assistant","stopReason":"error"}}`)
+			}
+		}
 		s.events = append(s.events, e)
 		if c.journal != nil {
 			if frame.Type != "message_update" && !strings.HasPrefix(frame.Type, "tool_execution_") {
@@ -979,6 +990,7 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 		s.turnGeneration++
 		s.settled = false
 		s.settlement = nil
+		s.authError = ""
 		s.question = nil
 		s.questionID = ""
 		s.queuedQuestions = nil
@@ -1122,7 +1134,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 		continuation = "unproven"
 	}
 	c.mu.Unlock()
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}})
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "auth_error": s.authError, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}})
 }
 
 // answerQuestion spends the native request ID before touching Pi. This uncorrelated
@@ -1350,8 +1362,7 @@ func (c *ConversationController) stream(w http.ResponseWriter, r *http.Request, 
 	if session == nil {
 		return
 	}
-	// One finite connection costs at most twenty native status reads. The
-	// gateway checks the browser login again before forwarding every frame.
+	// The gateway checks the browser login before forwarding every frame.
 	prefix := "ev1:" + c.instance + ":"
 	last := r.Header.Get("Last-Event-ID")
 	if last != "" {
@@ -1389,7 +1400,7 @@ func (c *ConversationController) stream(w http.ResponseWriter, r *http.Request, 
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(200)
-	// Limit native onboarding probes and whole-history revision reads to one
+	// Limit whole-history revision reads to one
 	// every two seconds per connected viewer.
 	tick := time.NewTicker(2 * time.Second)
 	defer tick.Stop()
@@ -1401,15 +1412,6 @@ func (c *ConversationController) stream(w http.ResponseWriter, r *http.Request, 
 				return
 			case <-tick.C:
 			}
-		}
-		// Recheck native onboarding even on an already-open socket. Revocation
-		// terminates the stream and the controller before another frame escapes.
-		state := c.status(r.Context())
-		if state != "usable" || r.Context().Err() != nil {
-			if state == "missing" && r.Context().Err() == nil {
-				c.revoke()
-			}
-			return
 		}
 		c.mu.Lock()
 		s := c.sessions[id]
@@ -1443,3 +1445,10 @@ func (c *ConversationController) stream(w http.ResponseWriter, r *http.Request, 
 }
 
 const conversationStreamFrameLimit = 1 << 20
+
+// Pi's assistant error text is used only for classification and never leaves
+// the daemon. Match authentication failures, not arbitrary provider errors.
+func modelAuthFailure(text string) bool {
+	lower := strings.ToLower(text)
+	return strings.Contains(lower, "401") || strings.Contains(lower, "403") || strings.Contains(lower, "unauthorized") || strings.Contains(lower, "authentication failed") || strings.Contains(lower, "invalid api key") || strings.Contains(lower, "invalid_api_key")
+}

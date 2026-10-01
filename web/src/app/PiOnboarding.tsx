@@ -26,11 +26,13 @@ export function PiOnboarding({
   onLogin,
   onLogout,
   onBack,
+  forceSignIn = false,
 }: {
   onUsable: () => void;
   onLogin: () => void;
   onLogout: () => Promise<void>;
   onBack?: () => void;
+  forceSignIn?: boolean;
 }) {
   const [view, setView] = useState<PiDeviceSignInView>({ phase: "waiting" });
   const checkFailed = useRef(false);
@@ -39,6 +41,7 @@ export function PiOnboarding({
   const busyRef = useRef(false);
   const bound = useRef<string | undefined>(undefined);
   const hadCode = useRef(false);
+  const attemptInFlight = useRef(false);
   const preparingCode = useRef(false);
   const generation = useRef(0);
   const active = useRef<AbortController | undefined>(undefined);
@@ -87,7 +90,7 @@ export function PiOnboarding({
         // A write already checks its session binding in piAttempt. Reading
         // native status before a POST can exhaust the response budget while
         // the helper has started and is preparing a code.
-        if (method === "GET" && !preparingCode.current) {
+        if (method === "GET" && !attemptInFlight.current && !forceSignIn) {
           readingStatus = true;
           const status = await piStatus(controller.signal);
           if (!current() || !(await session())) return;
@@ -115,14 +118,17 @@ export function PiOnboarding({
         );
         if (!current() || !(await session())) return;
         if (attempt === "login") {
+          attemptInFlight.current = false;
           onLogin();
           return;
         }
         if (attempt === "busy") {
+          attemptInFlight.current = false;
           setView({ phase: "interrupted" });
           return;
         }
         if (attempt === "absent") {
+          attemptInFlight.current = false;
           preparingCode.current = false;
           // Remember a code until an explicit new attempt. An absent native
           // attempt is not evidence that the provider accepted or rejected it.
@@ -138,6 +144,8 @@ export function PiOnboarding({
             return;
           }
         }
+        attemptInFlight.current =
+          attempt.state === "pending" || attempt.state === "device_code";
         if (method === "POST" && attempt.state === "pending")
           preparingCode.current = true;
         if (attempt.state !== "pending") preparingCode.current = false;
@@ -171,20 +179,15 @@ export function PiOnboarding({
         }
       }
     },
-    [onLogin, onUsable],
+    [onLogin, onUsable, forceSignIn],
   );
   useEffect(() => {
     alive.current = true;
     void check();
-    let tick = 0;
     const timer = window.setInterval(() => {
-      if (
-        !ending.current &&
-        !checkFailed.current &&
-        (preparingCode.current || ++tick % 3 === 0)
-      )
+      if (!ending.current && !checkFailed.current && attemptInFlight.current)
         void check();
-    }, 300);
+    }, 900);
     const focus = () => {
       if (!ending.current) void check();
     };
@@ -204,6 +207,7 @@ export function PiOnboarding({
     busyRef.current = true;
     setBusy(true);
     hadCode.current = false;
+    attemptInFlight.current = method === "POST";
     preparingCode.current = false;
     setView({ phase: "interrupted" }); // Hide instructions before a write or cancel.
     void check(method); // Supersedes any pending read; one click means one write.

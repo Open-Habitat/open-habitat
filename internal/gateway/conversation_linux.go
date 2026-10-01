@@ -216,7 +216,7 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	}
 	if res.StatusCode != 200 {
 		// Errors have a closed vocabulary. Do not reflect daemon-controlled text.
-		codes := map[int]string{400: "invalid_request", 403: "cross_user_denied", 404: "resource_not_found", 409: strErrorCode(data), 428: "pi_onboarding_required", 429: "capacity_exceeded", 503: "native_source_unavailable"}
+		codes := map[int]string{400: "invalid_request", 403: "cross_user_denied", 404: "resource_not_found", 409: strErrorCode(data), 429: "capacity_exceeded", 503: "native_source_unavailable"}
 		code, ok := codes[res.StatusCode]
 		if !ok || !validConversationError(data, res.StatusCode) {
 			failure()
@@ -445,7 +445,7 @@ func validConversationError(b []byte, status int) bool {
 		return false
 	}
 	e, ok := strictObject(m["error"], []string{"code", "message", "retryable", "correlation_id"})
-	allowed := map[int]map[string]bool{400: {"invalid_request": true}, 403: {"cross_user_denied": true}, 404: {"resource_not_found": true}, 409: {"control_uncertain": true, "cursor_expired": true, "cursor_instance_mismatch": true, "writer_conflict": true, "read_only_history": true}, 428: {"pi_onboarding_required": true}, 429: {"capacity_exceeded": true}, 503: {"daemon_unavailable": true, "native_source_unavailable": true}}
+	allowed := map[int]map[string]bool{400: {"invalid_request": true}, 403: {"cross_user_denied": true}, 404: {"resource_not_found": true}, 409: {"control_uncertain": true, "cursor_expired": true, "cursor_instance_mismatch": true, "writer_conflict": true, "read_only_history": true}, 429: {"capacity_exceeded": true}, 503: {"daemon_unavailable": true, "native_source_unavailable": true}}
 	return ok && allowed[status][str(e, "code")] && string(e["retryable"]) == "false"
 }
 func stateOK(s string) bool {
@@ -476,7 +476,7 @@ func validatedConversationReply(kind string, b []byte, requestedID string) ([]by
 	case "stop":
 		required = []string{"schema_version", "state"}
 	case "status":
-		optional = []string{"queue", "send_receipt", "turn_settled", "pending_question"}
+		optional = []string{"queue", "send_receipt", "turn_settled", "pending_question", "auth_error"}
 		required = []string{"schema_version", "agent_id", "workspace_id", "state", "command_id", "ack", "event_cursor", "events", "event_loss", "native_history", "native_revision", "history_query", "continuation"}
 	default:
 		return nil, "", false
@@ -527,6 +527,12 @@ func validatedConversationReply(kind string, b []byte, requestedID string) ([]by
 		ack := str(m, "ack")
 		history := str(m, "native_history")
 		ok = id == requestedID && validAgent(str(m, "agent_id")) && validWS(str(m, "workspace_id")) && stateOK(str(m, "state")) && (str(m, "command_id") == "" || conversationUUID.MatchString(str(m, "command_id"))) && (ack == "" || ack == "pending" || ack == "accepted" || ack == "rejected" || ack == "uncertain") && json.Unmarshal(m["event_cursor"], &cursor) == nil && json.Unmarshal(m["event_loss"], &lost) == nil && json.Unmarshal(m["events"], &events) == nil && events != nil && len(events) <= 64 && (history == "missing" || history == "unavailable" || history == "readable") && (str(m, "continuation") == "eligible" || str(m, "continuation") == "writer_present" || str(m, "continuation") == "read_only_history" || str(m, "continuation") == "unproven") && str(m, "history_query") == "/api/v1/agents/pi:"+id+"/history" && len(str(m, "native_revision")) <= 256
+		if raw, present := m["auth_error"]; present {
+			v := str(m, "auth_error")
+			if string(raw) == "null" || (v != "" && v != "pi_auth_failed") {
+				ok = false
+			}
+		}
 		if raw, present := m["send_receipt"]; present {
 			v := str(m, "send_receipt")
 			if string(raw) == "null" || json.Unmarshal(raw, &v) != nil || v != "" && v != "pending" && v != "accepted" && v != "rejected" && v != "uncertain" {
@@ -650,7 +656,7 @@ func (a *Auth) forwardConversationStream(w http.ResponseWriter, r *http.Request,
 	// Validate the closed error vocabulary before mapping them to browser
 	// responses, just as the non-stream status route does.
 	if res.StatusCode != 200 {
-		codes := map[int]string{400: "invalid_request", 403: "cross_user_denied", 404: "resource_not_found", 409: "control_uncertain", 428: "pi_onboarding_required", 429: "capacity_exceeded", 503: "native_source_unavailable"}
+		codes := map[int]string{400: "invalid_request", 403: "cross_user_denied", 404: "resource_not_found", 409: "control_uncertain", 429: "capacity_exceeded", 503: "native_source_unavailable"}
 		code, ok := codes[res.StatusCode]
 		if !ok || len(res.TransferEncoding) != 0 || len(res.Header.Values("Content-Length")) != 1 || res.ContentLength <= 0 || res.ContentLength > conversationReplyLimit || res.Header.Get("Content-Type") != "application/json" {
 			safe(w, 503, "daemon_unavailable")

@@ -598,11 +598,11 @@
       "browser session is broker-mapped to synthetic UID A and Pi OAuth is absent or unavailable"
     ],
     "when": [
-      "direct snapshot/history/content URLs are requested after sign-in and after native status changes"
+      "browser checks onboarding once on initial load and direct snapshot/history/content URLs are requested after native status changes"
     ],
     "then": [
-      "daemon verifies peer and mapped identity before querying Pi",
-      "native reads do not run unless a fresh Pi OAuth status is usable",
+      "daemon verifies peer and mapped identity on every native read without querying Pi",
+      "browser shows first-use onboarding when native Pi status is missing",
       "status returns only missing, usable or unknown and no credential bytes",
       "a different identity or an unavailable daemon never exposes native names"
     ]

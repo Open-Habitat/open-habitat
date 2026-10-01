@@ -88,8 +88,8 @@ func TestGatewayRepoCatalogPrePiMappedSocket(t *testing.T) {
 		if w.Code != 200 || !strings.Contains(w.Body.String(), "org/repo"+m.Subject) || strings.Contains(w.Body.String(), "org/repo"+mappings[1-i].Subject) || w.Header().Get("Cache-Control") != "no-store" {
 			t.Fatalf("catalog %s: %d %s", id, w.Code, w.Body.String())
 		}
-		if w := send(id, "/api/v1/snapshot"); w.Code != 428 {
-			t.Fatalf("Pi bypass: %d %s", w.Code, w.Body.String())
+		if w := send(id, "/api/v1/snapshot"); w.Code != 502 {
+			t.Fatalf("legacy Pi gate response was forwarded: %d %s", w.Code, w.Body.String())
 		}
 	}
 	for _, path := range []string{githubReposPath + "?page=0&limit=2", githubReposPath + "?page=1&limit=2&owner=bob", githubReposPath + "?limit=2&page=1"} {

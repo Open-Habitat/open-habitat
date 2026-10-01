@@ -169,9 +169,15 @@ tai kumotuksi. Web-istunnon poistuminen voi jättää natiivin yrityksen käynti
 sen aikarajaan asti. Vastauksia ei tallenneta välimuistiin.
 
 Pi-kirjautumisen käyttöliittymä on [sovelluksessa](../web/src/app/PiOnboarding.tsx).
-Daemon avaa snapshotin, historian, sisällön ja selainohjauksen vain, kun tuore
-Pi-tila on `usable`; muuten vastaus on `428 pi_onboarding_required`.
-Tämä ei anna selaimelle terminaalikeskustelun ohjausta.
+Selain tarkistaa Pi-tilan kerran sivun ensilatauksessa ennen normaalin näkymän avaamista.
+Daemon ei tarkista Pi-tilaa snapshotissa, historiassa, keskusteluissa eikä SSE-virroissa;
+nämä lukureitit ovat edelleen sidottuja gatewayn istuntoon ja daemonin Unix-käyttäjään.
+Välilehteen paluu tarkistaa vain istunnon ja snapshotin. Jos Pi:n mallikutsu
+epäonnistuu kirjautumisen vuoksi, daemon luokittelee virheen kiinteäksi
+`pi_auth_failed`-koodiksi yksityisessä keskustelutilassa eikä välitä mallin
+raakaa virhetekstiä. Selain tarjoaa silloin paluun OpenAI-kirjautumisvaiheeseen
+ilman keskustelun automaattista uudelleenlähetystä. Tämä ei anna selaimelle
+terminaalikeskustelun ohjausta.
 
 ### GitHub-kloonauksen sovittu vaihevirta
 

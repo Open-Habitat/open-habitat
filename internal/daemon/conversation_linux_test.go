@@ -251,12 +251,9 @@ func TestConversationPrivateBoundary(t *testing.T) {
 	if w := request("GET", path, opaque("wid_", "github:42"), ""); w.Code != 200 || !strings.Contains(w.Body.String(), `"sessions":[]`) {
 		t.Fatalf("private list: %d %s", w.Code, w.Body.String())
 	}
-	c.status = func(context.Context) string { return "missing" }
-	if w := request("GET", path, opaque("wid_", "github:42"), ""); w.Code != 428 {
-		t.Fatalf("revoked: %d", w.Code)
-	}
-	if !c.closed {
-		t.Fatal("revocation did not close controller")
+	c.status = func(context.Context) string { checks++; return "missing" }
+	if w := request("GET", path, opaque("wid_", "github:42"), ""); w.Code != 200 || checks != 0 || c.closed {
+		t.Fatalf("native read used Pi status or revoked controller: %d checks=%d", w.Code, checks)
 	}
 }
 
@@ -473,11 +470,12 @@ func TestConversationStreamCursorAndNativeRecovery(t *testing.T) {
 	}
 }
 
-func TestConversationStreamUnknownProbeDoesNotRevoke(t *testing.T) {
+func TestConversationStreamDoesNotProbeOrRevoke(t *testing.T) {
 	const id = "12345678-1234-4123-8123-123456789abc"
 	home := t.TempDir()
 	s := &conversation{id: id, workspace: "ws_12345678", cwd: home, rpc: &piRPC{}, state: "idle", events: []json.RawMessage{}}
-	c := &ConversationController{instance: id, sessions: map[string]*conversation{id: s}, home: home, cfg: transport.Config{Home: home, UID: os.Geteuid()}, status: func(context.Context) string { return "unknown" }}
+	checks := 0
+	c := &ConversationController{instance: id, sessions: map[string]*conversation{id: s}, home: home, cfg: transport.Config{Home: home, UID: os.Geteuid()}, status: func(context.Context) string { checks++; return "missing" }}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { c.stream(w, r, id) }))
 	defer server.Close()
 	res, err := http.Get(server.URL)
@@ -485,8 +483,8 @@ func TestConversationStreamUnknownProbeDoesNotRevoke(t *testing.T) {
 		t.Fatal(err)
 	}
 	res.Body.Close()
-	if c.closed || s.state != "idle" {
-		t.Fatal("transient status failure killed Pi controller")
+	if checks != 0 || c.closed || s.state != "idle" {
+		t.Fatalf("stream probed native status or revoked controller: checks=%d", checks)
 	}
 }
 

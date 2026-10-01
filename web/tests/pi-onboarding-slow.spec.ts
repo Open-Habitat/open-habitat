@@ -59,6 +59,7 @@ test("@pi-onboarding slow native reads finish across multiple poll intervals wit
     ).toBeVisible();
     expect(posts).toBe(1);
     await page.request.get("/fixture/pi-restart");
+    await page.getByRole("button", { name: "Tarkista tila" }).click();
     await expect(page.getByText("Kirjautumisyritys päättyi")).toBeVisible({
       timeout: 16000,
     });

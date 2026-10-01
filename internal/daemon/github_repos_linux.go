@@ -45,8 +45,8 @@ type repoReply struct {
 	Repositories  []repoItem `json:"repositories"`
 }
 
-// RepoCatalogHandler is intentionally outside PiGateHandler. The per-UID daemon
-// uses only its own installed gh authorization, not a token or owner from HTTP.
+// RepoCatalogHandler uses the per-UID daemon's installed gh authorization,
+// not a token or owner from HTTP. Pi sign-in does not govern repository reads.
 func RepoCatalogHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
 	return repoCatalogHandler(cfg, trusted, func(ctx context.Context, args ...string) ([]byte, error) { return runRepoGH(ctx, cfg.Home, args...) })
 }

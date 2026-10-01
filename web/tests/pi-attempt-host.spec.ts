@@ -12,7 +12,7 @@ async function login(page: Page, user: "Alice" | "Bob" = "Alice") {
   expect((await page.request.get("/auth/session")).status()).toBe(200);
 }
 
-test("@pi-attempt production host denies pre-Pi direct native reads and foreign/stale attempts", async ({
+test("@pi-attempt native reads stay mapped while foreign and stale attempts are denied", async ({
   browser,
 }) => {
   const owner = await browser.newContext({
@@ -38,9 +38,11 @@ test("@pi-attempt production host denies pre-Pi direct native reads and foreign/
       "/api/v1/content/ct_abcdefgh?offset=0&limit_bytes=100",
     ]) {
       const response = await a.request.get(path);
-      expect(response.status(), path).toBe(428);
+      expect(response.status(), path).toBe(
+        path.includes("/api/v1/content/") ? 404 : 200,
+      );
       expect(response.headers()["cache-control"]).toContain("no-store");
-      expect(await response.text()).not.toContain("Synteettinen viesti");
+      // Native reads remain scoped to this authenticated mapping.
     }
     expect((await a.request.get("/api/v1/onboarding/pi/status")).status()).toBe(
       200,
@@ -82,7 +84,7 @@ test("@pi-attempt production host denies pre-Pi direct native reads and foreign/
       const c = await foreignAccount.newPage();
       await login(c, "Bob");
       expect((await c.request.get(attempt)).status()).toBe(404);
-      expect((await c.request.get("/api/v1/snapshot")).status()).toBe(428);
+      expect((await c.request.get("/api/v1/snapshot")).status()).toBe(200);
     } finally {
       await foreignAccount.close();
     }

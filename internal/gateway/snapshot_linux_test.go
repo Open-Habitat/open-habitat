@@ -135,7 +135,7 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 	piBlocked.Store(true)
 	for i := range mappings {
 		id := strconv.Itoa(i)
-		if w := send(id, "/api/v1/snapshot", nil); w.Code != 428 || strings.Contains(w.Body.String(), "workspace") {
+		if w := send(id, "/api/v1/snapshot", nil); w.Code != 502 || strings.Contains(w.Body.String(), "workspace") {
 			t.Fatalf("blocked %s: %d %s", id, w.Code, w.Body.String())
 		}
 		if w := send(id, "/api/v1/onboarding/pi/status", map[string]string{"X-Agent-Host-Socket": mappings[1-i].Socket}); w.Code != 200 || w.Body.String() != `{"schema_version":1,"pi":{"state":"missing"}}` {

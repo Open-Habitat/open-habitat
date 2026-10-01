@@ -45,7 +45,7 @@ func TestEventJournalReplayAndErrors(t *testing.T) {
 	}
 	r := httptest.NewRequest("GET", "http://unix/api/v1/events?after="+zero, nil)
 	w := httptest.NewRecorder()
-	j.stream(w, r, func() bool { return true }, func() bool { return true })
+	j.stream(w, r, func() bool { return true })
 	if w.Code != 409 || !strings.Contains(w.Body.String(), "cursor_expired") || strings.Contains(w.Header().Get("Content-Type"), "event-stream") {
 		t.Fatal(w.Code, w.Body.String())
 	}
@@ -114,7 +114,7 @@ func TestEventStreamExactReplayAndLastEventID(t *testing.T) {
 	first, _ := j.watermark()
 	j.appendInvalidation("")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		j.stream(w, r, func() bool { return r.Context().Err() == nil }, func() bool { return true })
+		j.stream(w, r, func() bool { return r.Context().Err() == nil })
 	}))
 	defer server.Close()
 	for _, tc := range []struct {
