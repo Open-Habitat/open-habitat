@@ -18,7 +18,7 @@ agent and follow it in the workspace navigation.
 
 The [implementation briefs](../plan-v1-implementation/implementation-briefs.md)
 identify current ownership. The accepted
-[designer handoff](../receive-designer-v1/design/workspaces/AGENTS.md)
+[designer handoff](../../design-system/drafts/v1/workspaces/AGENTS.md)
 records the original interaction intent; the
 [delivery plan](../plan-v1-implementation/plan.md) is historical.
 Current operation semantics live in [interfaces](../../docs/interfaces.md)

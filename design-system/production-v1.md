@@ -6,8 +6,8 @@ määrittää julkiset komponenttisopimukset. Ajettava Storybook `web/src/compon
 niiden olennaiset yhdistelmät. Tämä määrittely säilyy toteutuksen kanonisena
 visuaalisena ja vuorovaikutuksellisena syötteenä; katalogi ei ole backend-journey.
 
-Alkuperäiset [keskusteluvedokset](../issues/receive-designer-v1/design/vedokset/)
-ja [workspace-vedokset](../issues/receive-designer-v1/design/workspaces/) säilyvät
+Alkuperäiset [keskusteluvedokset](drafts/v1/vedokset/)
+ja [workspace-vedokset](drafts/v1/workspaces/) säilyvät
 muuttamattomina referensseinä. Jos ne ovat ristiriidassa tämän tiedoston,
 [hyväksyttyjen UI-päätösten](../issues/review-ui-v1/review.md) tai
 [v1-host-sopimuksen](../contracts/v1/AGENTS.md) kanssa, tämä määrittely ratkaisee

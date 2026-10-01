@@ -19,7 +19,7 @@ in-progress metadata commit. Inputs were inspected at these source revisions:
 | `issues/plan-v1-implementation/plan.md` | `a41065f5984621e4c7c76050960b4e1ed3841086` |
 | accepted `issues/review-ui-v1/review.md` and `docs/product.md`/`docs/ui.md` | `9732ffbd3ff0af37911b84b86f321808e482c13b` |
 | `issues/receive-designer-v1/review.md` | `c2c0be8ba0c62f56144ffaa8132cbc92d27e3332` |
-| received sources under `issues/receive-designer-v1/design/` | repository state at starting revision; files left byte-unchanged |
+| received sources under `design-system/drafts/v1/` | repository state at starting revision; files left byte-unchanged |
 | `issues/probe-pi-control/result.md` | `4187da0ec40079ec09d98539c03f840102cde616` |
 | `issues/probe-workspace-lifecycle/result.md` | `c1e06b0af9a2835106b5f27277dd1de31766856a` |
 | accepted ADR 0001 | `642bd26c7f68009c8c59f284aca04f169ed97598` |

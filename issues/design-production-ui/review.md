@@ -14,8 +14,8 @@ landauksen jälkeen; työn sisältävä commit on tämän tiedoston Git-historia
 6. [V1-host-sopimuksen merkitys](../../docs/interfaces.md) ja
    [koneellinen sopimus](../../contracts/v1/AGENTS.md)
 
-Alkuperäiset [keskustelu-](../receive-designer-v1/design/vedokset/) ja
-[workspace-referenssit](../receive-designer-v1/design/workspaces/) säilyvät
+Alkuperäiset [keskustelu-](../../design-system/drafts/v1/vedokset/) ja
+[workspace-referenssit](../../design-system/drafts/v1/workspaces/) säilyvät
 muuttamattomina. Staattinen kierros ei sisällä mock-backendia tai toimivia
 komentoja.
 

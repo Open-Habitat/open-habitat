@@ -19,7 +19,7 @@ toimii, kertoo [`production-v1.md`](../../production-v1.md), erityisesti osio
 `web/src/components/`-hakemistossa ja Storybookin `Production/Catalog`-tarinassa
 `Conversation`. Kun tämä sivu ja ne ovat eri mieltä, ne ovat oikeassa.
 Alkuperäinen klikattava pääpolku ja tilavedokset ovat
-[`issues/receive-designer-v1/design/vedokset/`](../../../issues/receive-designer-v1/design/vedokset/)-hakemistossa
+[`design-system/drafts/v1/vedokset/`](../../drafts/v1/vedokset/)-hakemistossa
 muuttumattomana evidenssinä.
 
 Sivu linkittää tyylit vain `../../styles.css`:n kautta, ja siinä on sen koko

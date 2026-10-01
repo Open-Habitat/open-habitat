@@ -28,7 +28,7 @@ The worktree was based on the separately committed in-progress metadata revision
 
 The visual inventory included the conversation main flow, B1–B10/B12 states,
 B5a–B5f tool states, visual specification, host A1–A9 main mock and A1–A9
-summary under `issues/receive-designer-v1/design/`. All were treated as design
+summary under `design-system/drafts/v1/`. All were treated as design
 references with simulated behavior, never as backend evidence.
 
 ## Changed artifacts

@@ -4,7 +4,7 @@ Toimeksianto koodaavalle agentille. Luettavissa ilman aiempaa keskustelua.
 
 ## Yleiskuva
 
-Omega Habitatin selainkäyttöliittymän visuaalinen uudistus: kirjautuminen, repovalinta, OpenAI-kirjautuminen, paluunäkymä, keskustelu (uusi, työskentelee, valmis, hylätty, katkos, vain luku), asetukset, tumma teema ja 390 px puhelin. Tavoite on palauttaa toteutus aiempien suunnittelijavedosten ilmeeseen (`issues/receive-designer-v1/design/vedokset/Ilme-maaritys.dc.html`, `Keskustelu paapolku.dc.html`, `workspaces/Agenttilista vasemmalla.dc.html`): rauhallinen työkalu, jossa näkyvät vain poikkeamat.
+Omega Habitatin selainkäyttöliittymän visuaalinen uudistus: kirjautuminen, repovalinta, OpenAI-kirjautuminen, paluunäkymä, keskustelu (uusi, työskentelee, valmis, hylätty, katkos, vain luku), asetukset, tumma teema ja 390 px puhelin. Tavoite on palauttaa toteutus aiempien suunnittelijavedosten ilmeeseen (`design-system/drafts/v1/vedokset/Ilme-maaritys.dc.html`, `Keskustelu paapolku.dc.html`, `workspaces/Agenttilista vasemmalla.dc.html`): rauhallinen työkalu, jossa näkyvät vain poikkeamat.
 
 Toiminta, rajapinnat ja tilakoneet pysyvät ennallaan, ellei alla toisin sanota. Tämä on **ulkoasun ja vuorovaikutuksen** uudistus.
 

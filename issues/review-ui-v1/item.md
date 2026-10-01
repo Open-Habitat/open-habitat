@@ -66,7 +66,7 @@ Design system siirrettiin vastaanotto-issuen alta projektin pysyväksi juuritaso
 
 ### 2026-09-20T08:51:55Z · @pi
 
-Jarin palautteen perusteella design system erotettiin ensimmäisen keskusteludesignin aineistosta. Juuritason design-system/ sisältää nyt vain yhteiset tokenit, visuaaliset käyttökortit ja komponenttireferenssit. Vedokset, staattinen keskusteluprototyyppi ja toimituksen toimeksiantokopiot ovat issues/receive-designer-v1/design/-hakemistossa. Design systemin AGENTS.md viittaa arkkitehtuuridokumentteihin ja styles.css:ään eikä enää kopioi tuotteen kuvausta, tokeniarvoja tai näkymäkohtaisia sisältösääntöjä.
+Jarin palautteen perusteella design system erotettiin ensimmäisen keskusteludesignin aineistosta. Juuritason design-system/ sisältää nyt vain yhteiset tokenit, visuaaliset käyttökortit ja komponenttireferenssit. Vedokset, staattinen keskusteluprototyyppi ja toimituksen toimeksiantokopiot säilyvät nykyään design-system/drafts/v1/-hakemistossa. Design systemin AGENTS.md viittaa arkkitehtuuridokumentteihin ja styles.css:ään eikä enää kopioi tuotteen kuvausta, tokeniarvoja tai näkymäkohtaisia sisältösääntöjä.
 
 ### 2026-09-21T10:37:10Z · @pi
 

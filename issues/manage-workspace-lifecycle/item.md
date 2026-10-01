@@ -17,7 +17,7 @@ Let users create, configure, hide, restore and delete local workspaces discovere
 under `~/src`, while preserving the filesystem and native tools as the source
 of truth.
 
-The [workspace handoff](../receive-designer-v1/design/workspaces/AGENTS.md)
+The [workspace handoff](../../design-system/drafts/v1/workspaces/AGENTS.md)
 describes the accepted experience. Agreed [product behavior](../../docs/product.md),
 [interfaces](../../docs/interfaces.md) and
 [production design](../../design-system/production-v1.md) carry its subsequent

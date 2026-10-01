@@ -19,8 +19,8 @@ settings belong to @manage-workspace-lifecycle; this issue owns the GitHub
 integration and the [native GitHub assumption](../../docs/assumptions.md#githubin-natiivi-käyttö-kirjautumisen-jälkeen).
 The [implementation map](../plan-v1-implementation/implementation-briefs.md)
 assigns CT-018, CT-032 and CT-034 here. The older
-[workspace handoff](../receive-designer-v1/design/workspaces/AGENTS.md) describes
-creation and settings; the newer [browser design v2 handoff](../review-browser-design-v2/design/handoff.md)
+[workspace handoff](../../design-system/drafts/v1/workspaces/AGENTS.md) describes
+creation and settings; the newer [browser design v2 handoff](../../design-system/drafts/v2/handoff.md)
 covers repository choosing and account connections. Jari chose all repositories
 visible by default, with time filtering left to the user (see
 [the design review](../review-browser-design-v2/item.md)). Neither handoff is

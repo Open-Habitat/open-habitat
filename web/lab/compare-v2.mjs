@@ -9,7 +9,7 @@ import { chromium } from "@playwright/test";
 import { origin, snapshot } from "./session.mjs";
 
 const root = resolve("issues/polish-v2-conversation/pairs");
-const drafts = resolve("issues/review-browser-design-v2/design/vedokset");
+const drafts = resolve("design-system/drafts/v2/vedokset");
 const fontDir = resolve("design-system/fonts");
 const fontCss = (
   await Promise.all(

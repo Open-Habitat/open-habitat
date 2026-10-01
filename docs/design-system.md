@@ -44,7 +44,7 @@ Storyt näyttävät komponenttien näyttötilat synteettisillä tiedoilla; ne ei
   määrittää hyväksyttyjen journeyjen tarvitsemat primitiivit ja tuoteosat,
   julkiset tuotetermiset propsit/tapahtumat sekä pakolliset tilaesimerkit.
 - Historialliset keskustelu- ja workspace-vedokset ovat
-  [`issues/receive-designer-v1/design/`](../issues/receive-designer-v1/design/)-hakemistossa.
+  [`design-system/drafts/v1/`](../design-system/drafts/v1/)-hakemistossa.
   Ne eivät ole tuotantokoodia tai näyttö backend-kyvystä.
 
 Vaalea ja tumma teema kuuluvat molemmat v1:een. Järjestelmäteema on oletus ja

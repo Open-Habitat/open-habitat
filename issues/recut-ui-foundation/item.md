@@ -57,8 +57,8 @@ faithfully and tuned predictably, and prove it in the conversation view.
 - [x] `component-map.md` exists and lists deviations that were not resolved.
 ## Shared context for every design-v2 slice
 
-- Benchmark: [handoff](../review-browser-design-v2/design/handoff.md) and the
-  drafts in `../review-browser-design-v2/design/vedokset/`; the
+- Benchmark: [handoff](../../design-system/drafts/v2/handoff.md) and the
+  drafts in `../../design-system/drafts/v2/vedokset/`; the
   [assessment](../review-browser-design-v2/assessment.md) explains the gaps
   and the [first reading](../review-browser-design-v2/first-read.md) the
   known behavioural differences.

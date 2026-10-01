@@ -24,7 +24,7 @@ Päätösten perustelut ovat issueissa. [`issues/receive-designer-v1/review.md`]
 kirjaa toimitusten alkuperät ja Jarin hyväksymän suunnan,
 [`issues/review-ui-v1/review.md`](../issues/review-ui-v1/review.md) hyväksytyt
 UI-päätökset. Alkuperäiset vedokset ja klikattavat simulaatiot ovat
-[`issues/receive-designer-v1/design/`](../issues/receive-designer-v1/design/)-hakemistossa
+[`design-system/drafts/v1/`](drafts/v1/)-hakemistossa
 muuttumattomana evidenssinä, jonka checksumit on kirjattu. Ne ovat hyviä
 sommittelureferenssejä, mutta niiden ehdottamat rajapinnat eivät ole sopimus:
 yksittäisen jonorivin peruminen, kiinteä otsikon uudelleengenerointirytmi ja vain

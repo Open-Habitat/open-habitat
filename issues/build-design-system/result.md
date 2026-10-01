@@ -8,7 +8,7 @@
 - Tested product revision: `9fc0840` (implementation commits `c3cd5cb`, `f387657`, and documentation correction `9fc0840`).
 - Runtime/toolchain: React 19.3.0, React Aria Components 1.21.1, Storybook 10.6.0, Playwright 1.63.0, Axe 4.13.0, Chromium 153.0.8010.12, Node 22.23.2, Go 1.27.1.
 
-This slice replaced the superseded canonical mock component tree and static production kit with typed production modules under `web/src/components/`. The original received design remains issue-local under `issues/receive-designer-v1/design/`. Both the app and Storybook import the production modules. The deterministic browser preview is guarded by `VITE_ENABLE_TEST_FIXTURES=true`, lazily imported from `web/src/test/`, and absent from the production bundle.
+This slice replaced the superseded canonical mock component tree and static production kit with typed production modules under `web/src/components/`. The original received design is now preserved under `design-system/drafts/v1/`. Both the app and Storybook import the production modules. The deterministic browser preview is guarded by `VITE_ENABLE_TEST_FIXTURES=true`, lazily imported from `web/src/test/`, and absent from the production bundle.
 
 ## Component ownership
 

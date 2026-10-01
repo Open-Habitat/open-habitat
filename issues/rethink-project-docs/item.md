@@ -84,7 +84,7 @@ huomaamatta hyväksytyiksi vaatimuksiksi. Tilien turvallisuusnäyttö ja poistam
 rajat käsitellään ennen tiliasetuksia, jotta eri toiminnot eivät sekoitu.
 
 1. **[review-browser-design-v2](../review-browser-design-v2/item.md): design vertailukohdaksi.**
-   Tutustu [handoffiin](../review-browser-design-v2/design/handoff.md) ja neljään
+   Tutustu [handoffiin](../../design-system/drafts/v2/handoff.md) ja neljään
    vedokseen. Tavoitteena on arvioida, miten nykyinen UI-koodi, komponentit ja
    yhteiset asettelu- ja tyyliratkaisut pystyvät tuottamaan tämän lopputuloksen
    tarkasti. Pelkkä designin lukeminen ja päätösten vertailu on lähtötietoa;

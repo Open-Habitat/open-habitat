@@ -6,9 +6,9 @@ vastaanotettiin 2026-09-20 ja workspace-/navigointidesign 2026-09-21. Aineisto o
 suunnittelukierroksen referenssiä, ei yhteisen design systemin lähde eikä
 hyväksytty toteutusmäärittely.
 
-- Yhteiset tokenit ja komponentit ovat [`../../../design-system/`](../../../design-system/).
+- Yhteiset tokenit ja komponentit ovat [`../../`](../../).
 - Tuotteen arkkitehtuuri on [`../../../docs/architecture.md`](../../../docs/architecture.md).
-- Vastaanottoarvio ja avoimet kysymykset ovat [`../review.md`](../review.md).
+- Vastaanottoarvio ja avoimet kysymykset ovat [`../../../issues/receive-designer-v1/review.md`](../../../issues/receive-designer-v1/review.md).
 - Canonical designer-toimeksiannot ovat arkkitehtuuri-issuen
   `ui-design-*.md`-tiedostoissa. `toimeksianto/` säilyttää toimituksen mukana
   palautuneet kopiot vain toimituksen ymmärtämistä varten.
@@ -25,7 +25,7 @@ Kaikki vedosten tapahtumat ovat simuloituja. Vedos ei todista Pi-adapterin,
 daemonin, GitHub-kytkennän tai muun taustatoiminnon tukea. Jari hyväksyi
 workspace- ja agenttinavigoinnin handoffissa kuvatut toiminnot ensimmäisen
 funktionaalisen MVP-version suunnaksi 2026-09-21; tarkat päätökset ja tekniset
-rajat ovat [`../review.md`](../review.md)-tiedostossa. Keskustelun jonotus, kesken
+rajat ovat [`../../../issues/receive-designer-v1/review.md`](../../../issues/receive-designer-v1/review.md)-tiedostossa. Keskustelun jonotus, kesken
 vuoron ohjaus ja muut Pi-rajapinnasta riippuvat ehdotukset odottavat edelleen
 adapterikoetta ja yhteistä UI-katselmointia.
 

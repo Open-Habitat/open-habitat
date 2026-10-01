@@ -12,8 +12,8 @@ Definition work used repository revision `c7ed46ee20821a6faaa4072fc7645c8ebeba8b
   `docs/implementation.md`, and the prior `docs/product.md`, `docs/ui.md` and
   `docs/assumptions.md`;
 - `issues/receive-designer-v1/review.md` and both delivered design handoffs:
-  `issues/receive-designer-v1/design/AGENTS.md` and
-  `issues/receive-designer-v1/design/workspaces/AGENTS.md`;
+  `design-system/drafts/v1/AGENTS.md` and
+  `design-system/drafts/v1/workspaces/AGENTS.md`;
 - conversation design delivery SHA-256
   `a517af7bab5261a9e51c5c8df21da37d74c25fe9bb9816d74d4d232dd8f62744` and
   workspace/navigation delivery SHA-256
