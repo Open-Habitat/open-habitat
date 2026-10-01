@@ -22,8 +22,8 @@ kertovat tämän rehellisesti.
 `design-artifacts/issues/recut-ui-foundation/component-map.md`); se on
 katselmoitavaksi, ei sinua sitovaksi. Katso toteutusta omien vedostesi vieressä ja kerro, mitä
 kannattaa muuttaa ja miten. `rendered-pages/` sisältää vedos/toteutus-pareja:
-`issues/polish-v2-conversation/pairs/` (uusin, korjattu keskustelu) ja
-`issues/compare-v2-pairs/` (koko polku ennen korjauskierrosta). Toteutuksen
+`issues/polish-v2-conversation/pairs/` kattaa koko polun nykytilassa;
+`-before`-kuvat näyttävät keskustelun ennen viimeistä korjausta. Toteutuksen
 kuvat ovat synteettisestä labista, jossa on keksitty käyttäjä ja keksityt
 työtilat; ne ovat nykytilan näyttö, eivät hyväksytty tavoite.
 
