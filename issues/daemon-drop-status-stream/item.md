@@ -20,14 +20,28 @@ Step 4 of the [architecture review](../../docs/reviews/architecture-review-2026-
 ## Scope
 
 - Delete `ConversationController.stream`, `streamSeq`, `conversationStreamFrameLimit` and the `httptest.NewRecorder` use (D5); gateway route and forwarder for `/stream` go with it.
-- `observe`: `stat` the native file for `native_history` and `native_revision` instead of reading it (D6); compute `continuation` only when the request asks (query flag) and in `continueEnded` (D7). Never run a proof on a tick.
-- Events stream (`eventJournal.stream`): lifetime 10 minutes, heartbeat 20 s, validity checked once at open; gateway forwarder follows (D8).
+- `observe`: `stat` the native file for `native_history` and `native_revision` instead of reading it (D6); compute `continuation` only when explicitly requested on opening an ended conversation (the query flag or route is an implementation choice) and in `continueEnded` (D7). Never run a proof on a tick.
+- Events stream (`eventJournal.stream`): long-lived (start with a 10-minute lifetime and 20 s heartbeat), validity checked once at open; gateway forwarder follows (D8).
 - Audit that every status transition is published: `command.changed`, `turn.settled`, `question.requested`, `queue.changed`, `snapshot.invalidated`. `auth_error` is set on `message_end`, which already invalidates.
 - Browser: a minimal adaptation so the current UI keeps working (open the events stream, refresh status on events); the full browser rewrite is @browser-state-rewrite.
 - `docs/interfaces.md`: remove the temporary stream route and the 2 s cadence text.
 
-## Acceptance Criteria
+File metadata provides a cheap change hint; it does not prove that history is
+readable or valid. The history reader owns that result. Reflect the distinction
+in the status contract and browser adaptation rather than reporting a successful
+history read that never happened.
 
-- [ ] `TestConversationStreamDoesNotProbeOrRevoke` and `TestConversationStreamCursorAndNativeRecovery` deleted; `TestEventStreamExactReplayAndLastEventID` and the journal tests unchanged.
-- [ ] New test: status for an ended conversation runs one continuation proof per explicit request and none otherwise; status for a live conversation reads no history file.
-- [ ] Lab measurement (`scripts/lab.sh`): one idle open conversation tab makes no `/status` request and keeps one events stream open with 3 heartbeats per minute.
+## Result to establish
+
+An idle conversation no longer causes periodic status requests or full history
+reads while the journal stream is healthy. Opening an ended conversation can
+request a continuation proof; ordinary status reads do not run it. Continue
+still makes its own admission decision.
+
+Journal replay, gap recovery and native invalidations continue to work, and
+send, abort, queue, question and authentication-failure changes reach the UI.
+Replace status-stream tests with evidence for those outcomes and the cheap
+status path. A lab observation records request counts and heartbeat cadence;
+it does not establish live-server performance.
+
+Test selection and the final gate follow [TESTING.md](../../TESTING.md).

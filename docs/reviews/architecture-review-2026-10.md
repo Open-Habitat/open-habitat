@@ -5,13 +5,25 @@ Reviewed tree: `36fe9a1` (main, 2026-10-01). Read-only review for
 Scope: `internal/gateway`, `internal/daemon`, `internal/provision`,
 `web/src/app` and the state logic in `web/src/components`.
 
+The table records findings against that revision; Parts 2 and 3 guide the
+implementation. [Jari's recorded decision](../../issues/architecture-built-on-caution/item.md#decisions)
+approves login-time broker authorization, Unix-user conversation ownership,
+and steps 1–8 in sequence, with one author for the browser rewrite. The target
+is not yet implemented. Row IDs remain stable so the implementation issues
+can refer to the findings.
+
+Code locations, file sizes and measurements describe the reviewed tree.
+Suggested helper names, timeouts and file boundaries are implementation
+starting points, not independent acceptance requirements. Their purpose is to
+remove repeated work while retaining the boundaries explained in each row.
+
 ## How to read the verdicts
 
 Each mechanism was judged on three questions: what user-valuable thing it
 protects that the Unix boundary does not already protect, what it costs, and
 what happens if it is removed. "Keep" rows carry the reason in the row. Where
 no reason exists in code, ADRs, `docs/decisions.md` or an issue, the row says
-"no recorded reason". Measurements come from three sources and are marked:
+"no recorded reason". Evidence and estimates are labelled separately:
 
 - **lab**: `scripts/lab.sh` on alder, one Chromium tab driven by Playwright,
   synthetic daemon and fake Pi on loopback. Request counts are exact; latencies
@@ -58,7 +70,7 @@ slowest tests (2.0 to 2.2 s each) exist to prove fixed deadlines fire.
 
 | # | Where | What it checks | When | What it protects, concretely | Cost | Verdict |
 |---|---|---|---|---|---|---|
-| G1 | `auth.go: authenticated` | Broker `authorize` round trip; route, epoch, generation must match the session | Every session-backed request; twice on conversation routes (`conversation_linux.go:120`); once per stream frame and heartbeat | A subject removed from the allowlist or rebound between two requests. ADR 0006 already gives the operator `RevokeSubject`, which deletes sessions synchronously, and ADR 0006 itself notes the per-request check cannot undo a request already admitted. Epoch equality also means any allowlist rewrite that bumps the epoch logs out every user on the host at their next request; no recorded reason for that behaviour. | ~100 broker round trips per idle tab per minute (lab count, see above); every one holds the broker's directory lock, so users serialize on each other. 2 s broker exchange timeout turns a slow disk into a 401 for everyone. Comment says "Never cache a positive decision"; commit d00cd68 has no message body. | **Simplify**: authorize at login (callback already does ensure + authorize), then trust the in-memory session until expiry or `RevokeSubject`. Remove the per-frame and double checks. |
+| G1 | `auth.go: authenticated` | Broker `authorize` round trip; route, epoch, generation must match the session | Every session-backed request; twice on conversation routes (`conversation_linux.go:120`); once per stream frame and heartbeat | A subject removed from the allowlist or rebound between two requests. ADR 0006 already gives the operator `RevokeSubject`, which deletes sessions synchronously, and ADR 0006 itself notes the per-request check cannot undo a request already admitted. Epoch equality also means any allowlist rewrite that bumps the epoch logs out every user on the host at their next request; no recorded reason for that behaviour. | ~100 broker round trips per idle tab per minute (estimate from lab request counts and call sites, see above); every one holds the broker's directory lock, so users serialize on each other. 2 s broker exchange timeout turns a slow disk into a 401 for everyone. Comment says "Never cache a positive decision"; commit d00cd68 has no message body. | **Simplify**: authorize at login (callback already does ensure + authorize), then trust the in-memory session until expiry or `RevokeSubject`. Remove the per-frame and double checks. |
 | G2 | `auth.go: authenticated` second half | After the broker reply, re-read the session map and compare csrf, identity, epoch, generation, absolute | Every request | A logout racing a request. Real but local: a map lookup under the mutex. | Negligible | **Keep** as the single session lookup once G1 is gone; drop the field-by-field comparison, a map hit is the check. |
 | G3 | `auth.go: callback` | Three `revoked` checks, broker `ensure` then `authorize` after token handoff, exact epoch/generation comparison | Once per login | ADR 0006 revocation cutoff racing a login; a session issued on a binding the broker changed during handoff | Login only | **Keep**; recorded in ADR 0006. The second `revoked` check (after `ensure`) and the third (at insert) could be one, but it is login-path code. |
 | G4 | `auth.go: start` | Per-peer token bucket, 4096 pending flows cap, 5 min flow TTL | Login only | Unauthenticated memory exhaustion of the pending map | Login only | **Keep** |
@@ -68,10 +80,10 @@ slowest tests (2.0 to 2.2 s each) exist to prove fixed deadlines fire.
 | G8 | `snapshot_linux.go: snapshotOrPiStatus`, `history`; `conversation_linux.go` non-stream; `pi_attempt_linux.go` | Response `ProtoMinor == 1`, exactly one `Content-Type`, exactly one `Content-Length` equal to the body, no chunked encoding, trailing-byte EOF probe, `LimitedReader` with 4096 slack | Every proxied response | A non-conforming response would mean a different program answered on the socket, which G7 already excludes, or a bug in our own daemon. Rejecting it as 502 or 503 does not protect the user; it hides the daemon's answer. The browser validates every body again (Ajv for snapshot, `parseStatus` for status). | ~60 lines per route, five copies; dedicated tests (`snapshot_linux_test.go` 194 lines, `conversation_linux_test.go` 450, `events_linux_test.go` 149) mostly exercise this. | **Remove**. Keep one body size cap. |
 | G9 | `snapshot_linux.go` identity binding (`identity_mismatch`), Pi status re-marshalled from a closed vocabulary | Snapshot's `web_identity_id` and `provider_account_id` equal the session's | Every snapshot | The daemon already refuses a request whose identity header does not match its own binding (`validSnapshotIdentity`, `historyAuthorized`). This is a check of a check on our own binary. | Small | **Remove** |
 | G10 | `conversation_linux.go: validConversationError`, `validatedConversationReply`, `strictObject`; `events_linux.go: validCombinedPayload`, per-event `DisallowUnknownFields` | Every daemon reply and every event frame re-parsed field by field against an allowlist; errors mapped through a status-code allowlist; unknown code becomes `control_uncertain` or `daemon_unavailable` | Every reply, every frame | The comment claims it stops "a compromised daemon response" reaching "another user's browser". The daemon is the user's own UID; it can only reach that user's browser, through that user's session. A compromised daemon that wants to show the user something simply writes a valid frame. The 502/503 split (`invalidStatus`) exists only to drive the browser's `fail("unavailable")` path, which drops the whole view. | ~400 lines in `conversation_linux.go`, ~200 in `events_linux.go`; any new status field or event kind must be added in three places (daemon, gateway allowlist, browser parser) or it is silently dropped: this is how `auth_error` had to be threaded through in pilot.15. | **Remove**. Forward status, headers and body. Browser parsing stays. |
-| G11 | Fixed deadlines: 5 s dial, 5 s snapshot/history/non-stream, 14 s Pi status, 27 s stream socket, 26 s stream write | Every request | A hung daemon tying up a gateway goroutine. The browser already aborts its own fetches (`AbortController`, 10 s in `App.tsx`), and `r.Context()` cancels the proxy when the browser goes away. | Pilot: snapshot took 3.2 to 3.7 s on the loaded server, so 5 s was one load spike away from 503 for every read. No record of what any of the numbers was sized against. Deadline tests cost 2 s each. | **Simplify**: one generous bound (60 s) per proxied request as a last resort; otherwise follow the browser's context. |
+| G11 | Proxy deadlines | Fixed deadlines: 5 s dial, 5 s snapshot/history/non-stream, 14 s Pi status, 27 s stream socket, 26 s stream write | Every request | A hung daemon tying up a gateway goroutine. The browser already aborts its own fetches (`AbortController`, 10 s in `App.tsx`), and `r.Context()` cancels the proxy when the browser goes away. | Pilot: snapshot took 3.2 to 3.7 s on the loaded server, so 5 s was one load spike away from 503 for every read. No record of what any of the numbers was sized against. Deadline tests cost 2 s each. | **Simplify**: generous bounds compatible with the operation; a stream must outlive its heartbeat and intended lifetime. Follow browser cancellation and bound stalled writes. |
 | G12 | `conversation_linux.go: forwardConversationStream` | 20 frames max, cursor monotonic, each frame re-parsed as a full status (G10), broker re-auth per frame (G1) | Every stream frame, every 2 s | Nothing beyond G1 and G10. The 20-frame limit mirrors the daemon's own 20 s lifetime. | Lines and tests as G10; per-frame broker trip as G1 | **Remove** with the stream itself (D5). |
 | G13 | `events_linux.go: forwardEvents` | 128 frames max, `seq == previous+1`, instance match, per-kind allowlist, broker re-auth per heartbeat and per frame | Every frame and every 2 s heartbeat | Gap detection is already done by the browser (`applyTurnEvent` returns `recover: "snapshot"` on a gap) and by the daemon (`cursor_expired`). | As G10 plus 128-frame cap forces reconnects during fast Pi output | **Remove** validation and re-auth; pipe bytes with a write deadline. |
-| G14 | `conversation_linux.go` lease table (`a.conversations`), `ownsConversation` twice, list filtering, create binding under lock | A conversation handle may be used only by the browser session cookie that created it | Every conversation request; list responses filtered | Keeps the same person's second browser or second login from controlling a conversation they started in the first. Not a Unix boundary. The daemon already enforces one writer per conversation (`piOwnership` flock, `continuationProof`) and one controller per UID. The comment calls it "fail-closed on gateway restart": every gateway restart or re-login makes every conversation read-only until the user presses "continue", which is the "Ohjausoikeutta ei löytynyt tästä selainistunnosta" state Jari saw. | ~80 lines, three locked sections, plus browser `list`/`recheckList`/`sessions` state and the "Tarkista keskustelulista" button | **Remove**. The daemon owns conversations per UID; any valid session of that user controls them. This changes a product rule (one browser session per conversation) and needs Jari's decision in the issue, not an ADR. |
+| G14 | `conversation_linux.go` lease table (`a.conversations`), `ownsConversation` twice, list filtering, create binding under lock | A conversation handle may be used only by the browser session cookie that created it | Every conversation request; list responses filtered | Keeps the same person's second browser or second login from controlling a conversation they started in the first. Not a Unix boundary. The daemon already enforces one writer per conversation (`piOwnership` flock, `continuationProof`) and one controller per UID. The comment calls it "fail-closed on gateway restart": every gateway restart or re-login makes every conversation read-only until the user presses "continue", which is the "Ohjausoikeutta ei löytynyt tästä selainistunnosta" state Jari saw. | ~80 lines, three locked sections, plus browser `list`/`recheckList`/`sessions` state and the "Tarkista keskustelulista" button | **Remove**. The daemon owns conversations per UID; any valid session of that user controls them. Jari approved Unix-user ownership in decision 2 of the source issue; step 5 records and implements it. |
 | G15 | `conversation_linux.go: validConversationInput` | Strict JSON of request bodies, UUID shapes, 65536 byte texts | Every POST | The daemon validates the same body with `decodeControl` and `DisallowUnknownFields`. | ~60 lines | **Remove**; one validator in the daemon. |
 | G16 | `conversation_linux.go` body re-auth ("A slow browser body can outlive logout") | Second `authenticated` after reading the body | Every POST and GET on conversation routes (not only slow bodies) | A logout during a 66 KB upload | Doubles G1 | **Remove** with G1. |
 | G17 | `streamHeaderReader` 8 KiB header budget | Daemon response headers | Every stream | Our own daemon sending 8 KiB of headers | 30 lines | **Remove**; `http.Transport.MaxResponseHeaderBytes` exists if wanted. |
@@ -91,7 +103,7 @@ slowest tests (2.0 to 2.2 s each) exist to prove fixed deadlines fire.
 | D6 | `conversation_linux.go: observe` native history read | Full JSONL read to produce `native_revision` and `native_history: readable` | Every status request | Whether the native file can be read and which revision it is | Full file read per status | **Simplify**: `stat` for existence and size/mtime as the revision; read the file only on the history route. |
 | D7 | `conversation_linux.go: continuationProof` via `observe` | For a conversation whose child has exited: flock probe, D1 to D3, `workspaceFD`, `nativeSessions`, `reconciledNativeHistory` (reads the JSONL twice), 2 s `proofPermit` queue | Every status read and every stream tick of an ended conversation | Whether "continue" would succeed, so the UI can offer the button. `continueEnded` re-runs the whole proof anyway. | For every ended conversation on screen: ~15 000 `lstat`, one Node spawn and three full history reads every 2 s. | **Simplify**: compute `continuation` only on an explicit status request made when the user opens the ended view, and on `continue` itself. Never on a tick. |
 | D8 | `events_linux.go: stream` | 20 s lifetime, 2 s heartbeat, `valid()` on every loop iteration and before every frame; `valid()` is `TrustedPeer` plus `validSnapshotIdentity`, and `TrustedPeer` calls `transport.validate` | Every iteration, every 2 s | `transport.validate` does an NSS `user.LookupId` and re-reads the root-owned binding file under `/etc` through an `openat` chain. It protects against root changing the daemon's binding file under the running daemon. Root can stop the daemon instead. Peer UID is read once per connection in `ConnContext` and is the real check. | NSS lookup + 5 `openat` + file read per heartbeat per tab; `historyAuthorized` and the snapshot handler run the same on every HTTP request (17 call sites of `validate`/`ValidateConfig`). | **Simplify**: validate the binding once at startup; per request check only the peer UID from the connection context. Events stream: lifetime 10 min or longer, heartbeat 20 s, validity checked once at open. |
-| D9 | `snapshot_linux.go`, `history_linux.go: historyAuthorized` | `X-Agent-Host-Identity` hash and display name equal the daemon's own binding | Every request | The gateway choosing the socket from one binding and sending headers from another. The gateway derives both from the same `Identity` value. | String compare, negligible; but it is a second identity assertion the docs must explain. | **Remove** the headers; the peer UID and the socket are the identity. |
+| D9 | `snapshot_linux.go`, `history_linux.go: historyAuthorized` | `X-Agent-Host-Identity` hash and display name equal the daemon's own binding | Every request | The gateway choosing the socket from one binding and sending headers from another. The gateway derives both from the same `Identity` value. | String compare, negligible; but it is a second identity assertion the docs must explain. | **Remove** the headers; the mapped socket selects the user; the peer UID authenticates the gateway process. |
 | D10 | `events_linux.go` journal: 128 frames / 1 MiB ring, 250 ms trailing invalidation, 50 ms delta coalescing, 8 KiB per frame, `ring_truncated` | Replay window and frame sizes | Per event | The replay mechanism itself; bounded memory | Design, not defence | **Keep** |
 | D11 | `conversation_linux.go: workspaceFD` | `openat2` beneath/no-symlink/no-mount, dev/ino must match discovery | Once per create and continue | A workspace directory renamed between discovery and chdir. Same UID, so not a boundary, but it is one call and gives the child a correct cwd. | Once | **Keep** |
 | D12 | `pi_ownership_linux.go` flock + origin marker; `reconciledNativeHistory` double read | One writer per native session across daemon restarts; a continuation only for a browser-started session | On create, continue, and D7 | The product rule "one writer" and no silent takeover of a terminal session. Recorded in `docs/architecture.md` and `interfaces.md`. | Once per create/continue if D7 is fixed | **Keep** |
@@ -123,13 +135,13 @@ slowest tests (2.0 to 2.2 s each) exist to prove fixed deadlines fire.
 | B6 | `BrowserConversation.tsx` `sessionCSRF` before every `refresh()` (`refresh:343`) and `verify()` before every write | Token still equals the one captured at mount | 12 per idle minute (lab); before every send, queue, abort, continue, create | A session that changed since mount. The server already answers 401 to a stale cookie and the write carries the CSRF header; a pre-check proves nothing the write itself does not. | Half of the idle request volume; "Varmistetaan istuntoa." shown before every send | **Remove**; handle 401 from the real request. |
 | B7 | `BrowserConversation.tsx` mount effect: `sessionCSRF` + `list` before anything renders; `sessions`, `recheckList`, "Tarkista keskustelulista" | Conversation is in this browser session's lease | On mount | G14. Falls with it. | Two requests before the first meaningful render (bug `conversation-open-flicker`, first of three phases) | **Remove** with G14. |
 | B8 | `BrowserConversation.tsx` `streamError`, `probePending`, events probe fetch, "Live-yhteys katkesi", `canSend` gated on `!streamError` | Writes blocked while the status stream is not open | On any stream error, including the designed 20 s close when `opened` was not observed | Nothing: whether a write is admissible is decided by the daemon (409 `control_uncertain`). A read stream's health has no bearing on it. This produced the pilot.14 read-only state. | ~80 lines, exponential retry, probe fetch | **Remove**. Stream loss shows a banner and nothing else. |
-| B9 | `BrowserConversation.tsx` `ambiguous` (sessionStorage `nah:ambiguous`) read at render; notice "Aiemman pyynnön tulos epävarma" when `ambiguous && sendObservation.state !== "uncertain"` | A write whose response was lost | Rendered on every render while the key exists | Real for a lost response. But `submit()` sets the key *before* the request and clears it only when the next `refresh()` sees acceptance, so every normal send shows the "previous request uncertain" notice for the whole pending window. Bug `uncertain-flash-on-send`. | One notice, wrong timing | **Simplify**: pending is pending (`SendObservation` already renders it); "uncertain" only after the request fails or times out, and then it stays. |
+| B9 | `BrowserConversation.tsx` `ambiguous` (sessionStorage `nah:ambiguous`) read at render; notice "Aiemman pyynnön tulos epävarma" when `ambiguous && sendObservation.state !== "uncertain"` | A write whose response was lost | Rendered on every render while the key exists | Real for a lost response. But `submit()` sets the key *before* the request and clears it only when the next `refresh()` sees acceptance, so every normal send shows the "previous request uncertain" notice for the whole pending window. Bug `uncertain-flash-on-send`. | One notice, wrong timing | **Simplify**: pending is pending (`SendObservation` already renders it); "uncertain" only after the request fails or times out, until the server supplies an authoritative outcome; a retry must not duplicate the write. |
 | B10 | `BrowserConversation.tsx` storage keys `nah:<kind>:<identity>:<csrf>:<id>` for draft, submitted, last-send, abort, continue, continued, ambiguous | Markers scoped to one login | Per render (`sessionStorage.getItem` inside render and inside `refresh`) | Scoping to the person is real; scoping to the CSRF token is not (B4). Seven keys read in render and reconciled in a 150-line block of `refresh`. | The reconciliation block (`refresh:361-483`) is the hardest code in the file | **Simplify**: key by identity and conversation; keep draft, last-send and continue markers; drop `continued`, `abort done:` and the derived receipt strings. |
 | B11 | `BrowserConversation.tsx` `refresh` history walk: re-read page 1 and walk forward up to 16 pages on every refresh | Timeline prefix unchanged | Every refresh | Native history changed under the browser; real after `snapshot.invalidated` | Lab: 19 history reads for one send | **Simplify**: read history on open and on `history.entry`/`snapshot.invalidated`; otherwise append from the event. |
 | B12 | `BrowserConversation.tsx` 3 s poll timer (15 s while SSE open) plus 3 s stream reconnect plus events reconnect with backoff | Fallback when streams fail | Continuous | Belt and braces for D5/D8 | 12 status/min idle | **Remove** the status stream and the fast poll with D5; keep one slow fallback poll (60 s) while the events stream is down. |
 | B13 | `BrowserConversation.tsx` three-source open: empty timeline → history → status/live tail; `App.tsx` keys the component on `location.search`, so navigating into a conversation remounts | Nothing; it is sequencing | On open | Bug `conversation-open-flicker` | Three renders, 0.5 s each on the server | **Simplify**: one loader fetching status and history in parallel; render a single loading state until both are in; mount once per conversation id. |
 | B14 | `BrowserConversation.tsx` `continuation` states, `retryContinuation`, `continueAttempt`, `recheckContinuation` | Continue only after an explicit re-check | On ended conversations | The server already returns 409 `writer_conflict` etc.; the browser can show the refusal | ~90 lines | **Simplify**: press continue, show the server's answer. |
-| B15 | `PiOnboarding.tsx` 900 ms attempt poll with `sessionCSRF` before each, single-flight guards, focus re-check | Device-code progress | During onboarding only | Onboarding feedback | 2 requests/s for up to 5 min | **Simplify** to a 2 s poll without the session pre-read. Low priority. |
+| B15 | `PiOnboarding.tsx` 900 ms attempt poll with `sessionCSRF` before each, single-flight guards, focus re-check | Device-code progress | During onboarding only | Onboarding feedback | 2 requests/s for up to 5 min | **Simplify** to a slower poll (starting at 2 s) without the session pre-read. Low priority. |
 | B16 | `conversations.ts`, `snapshot.ts`, `pi.ts` strict parsers, bounded readers | Response shape | Per response | Programming errors on either side surface as errors, not as undefined UI | Lines, but one copy each | **Keep**; this is the browser's one validation layer, which is why G8 to G10 are redundant. |
 | B17 | `store.ts` reducer: identity change resets filter and bumps `generation` | Previous person's state | On snapshot with new identity | The real case | Tiny | **Keep**; make it the only place. |
 
@@ -145,16 +157,15 @@ So every event that might have happened while the browser was not looking
 became a trigger to ask again, and every ask became a mask, because an answer
 in flight was treated as "unknown" rather than "unchanged until told otherwise".
 
-"Is this user still this user" has exactly one server-side answer: the session
-cookie maps to one subject, and the server refuses a request when it does not.
-A browser cannot change its subject without going through `/auth/github/start`,
-which replaces the cookie. The only way a tab shows the wrong person's content
-is that someone else logged in from another tab in the same browser. The
-server handles that by answering the next request with the new identity's
-snapshot, and the reducer already resets on an identity change. Nothing the
-browser does on focus adds to that. The mask protects against a case the data
-path already handles, at the price of hiding the same person's content from
-themselves several times a minute.
+The gateway resolves each request's cookie to a session and mapped user.
+An expired or revoked session gets 401. A successful login in another tab can
+replace the shared cookie; a later snapshot then carries the new identity and
+the browser resets its state. Until it receives that identity, a background tab
+can still display its previously loaded content. Removing the focus mask does
+not make account switches instantly visible. The browser rewrite needs to keep
+late replies from the previous identity out of the new view and preserve CSRF
+on writes. These are different responsibilities from repeatedly hiding an
+unchanged view while a refresh is in flight.
 
 "Is this view current" belongs to the daemon's journal. The journal publishes
 `snapshot.invalidated`, `history.entry`, `turn.settled`, `command.changed`,
@@ -179,7 +190,7 @@ focus refresh) exists because the browser did not trust the journal to tell it.
   request, G1), in the daemon's root-owned binding (re-read per request, D8),
   in the `X-Agent-Host-Identity` header (D9), in the snapshot body (G9), and in
   the browser's `sessionBinding`/`identity`/`priorIdentity`/`lastIdentity`.
-  Each hop re-derives what the previous hop already decided.
+  Some assertions repeat the same binding; the gateway routing decision and the daemon peer check still protect different boundaries.
 - **Native history** is Pi's JSONL file. It is read in full by `observe` every
   2 s (D5, D6), twice more by `continuationProof` (D7), by the history route,
   and by the browser's walk (B11). The journal's `history.entry` events were
@@ -190,8 +201,9 @@ focus refresh) exists because the browser did not trust the journal to tell it.
 - **Pi runtime trust** is the root-owned tree verified by the operator at
   install, and re-verified by the daemon on every native call (D1, D2).
 
-Every pair above is a place where "recheck" was the answer to drift between
-two copies. Removing the second copy removes the recheck.
+The removals below target repeated checks and competing state. The browser
+still needs a view of daemon state, and each authority retains its own boundary.
+Fewer copies alone do not establish that a check is unnecessary.
 
 ### The target shape
 
@@ -200,23 +212,29 @@ and `authorize`, token handoff, session issued (G3, unchanged). After that a
 request is: cookie → session map → identity → mapped socket, with Origin and
 CSRF on writes. The session ends on idle or absolute expiry, logout, or
 `RevokeSubject`. The gateway never asks the broker again for a live session.
-Every `/api/v1/*` route is the same forty lines: check session, check the
+The common API forwarding path is: check session, check the
 socket is the mapped one (G7, once), open an `http.Transport` with a Unix
 `DialContext`, copy method, path, query, body and `Last-Event-ID` in, copy
-status, `Content-Type` and body out with one size cap, follow the browser's
-context plus a long safety deadline. Streams are copied with a flush per write
+status, `Content-Type` and body out with bounded finite bodies, follow the
+browser's context with deadlines that permit the intended stream lifetime.
+Streams are copied with a flush per write
 and a write deadline. No response is parsed. `auth.go` keeps OAuth and
 sessions; the five proxy files become one. The lease table goes.
 
 **Daemon.** Validates once at start: binding file, UID and home, Pi selector,
-Pi runtime tree, Node version (D1, D2, D8). Refuses to start otherwise. Per
-request it checks the peer UID from the connection and nothing else. It owns
-every conversation of its UID; whoever reaches its socket is that user. Status
+Pi runtime tree, Node version (D1, D2, D8). Invalid startup configuration
+prevents startup. Credential-file checks belong to onboarding, where missing
+credentials are an expected first-use state (D3). Per
+request it authenticates the configured gateway UID from the connection;
+request validation and conversation admission remain in their handlers. The
+mapped socket selects the Unix user, and that user owns the conversations. Status
 is computed on request from in-memory state and a `stat` of the native file.
 Continuation proof runs when the user asks to continue, and once when an ended
-conversation is opened. The journal is the only push channel: long-lived,
-heartbeat every 20 s, and it already carries every state change. The per-
-conversation status stream is deleted.
+conversation is opened. A `stat` supplies a change hint, not evidence that a
+history is readable or valid; the history reader establishes that. The journal
+becomes the only push channel: long-lived, with a heartbeat (starting at 20 s).
+Step 4 verifies that its events cover the state the browser needs. The
+per-conversation status stream is deleted.
 
 **Browser.** Loads once: session, Pi status (once per page), snapshot. Opens
 the events stream from the snapshot cursor and keeps it open. On an event it
@@ -228,9 +246,10 @@ rejected, or uncertain only if the request itself failed after being sent. The
 server's 401 is the only trigger for the login view; a changed
 `web_identity_id` in any snapshot is the only trigger for a state reset. A
 transport failure shows the stale banner over unchanged content and retries on
-`online` and on an explicit button. There is no focus listener. The user sees
-a mask never, a loading state only on first load and conversation open, and an
-error only when the server answered with one.
+`online` and on an explicit button. There is no focus listener. Loading is
+visible on first load and conversation open. Background refreshes
+leave content mounted; server refusals, malformed replies and transport
+failures are shown according to their meaning.
 
 ### File sizes and seams
 
@@ -260,113 +279,22 @@ error only when the server answered with one.
 
 ## Part 3: ordered removal plan
 
-Each step leaves the product working and the gate green. Tests named are the
-existing ones that must still pass or be rewritten to assert the new behaviour;
-`TESTING.md` lists how they run.
+Jari chose this sequence. Each step leaves a usable product for the next;
+the linked issue owns its scope and evidence. The browser rewrite has one
+author because its state transitions must fit together. Test selection and
+the final gate follow [TESTING.md](../../TESTING.md).
 
-1. **Gateway: authorize once per session.** Remove the broker call from
-   `authenticated`; remove the second `authenticated` in the conversation
-   handler and the per-frame/heartbeat rechecks in both forwarders. Keep
-   expiry, logout and `RevokeSubject`.
-   Proves it: `auth_test.go` session tests, `revoke_test.go` (revocation still
-   removes sessions), `TestAuthenticatedGatewayToTwoDaemonSnapshotHandlers`
-   (two users still cannot cross).
-   Simpler downstream: `BrokerFailure` plumbing and `ErrBrokerUnavailable`
-   shrink to the login path; broker lock contention disappears.
-   Risk if wrong: an operator who edits the allowlist and expects instant
-   logout. Mitigation is already in ADR 0006: run `RevokeSubject`. Document it
-   in `docs/adr-0006` as the only runtime revocation path.
+| Step | Implementation issue | Outcome and dependency |
+|---|---|---|
+| 1 | [Authorize once](../../issues/gateway-authorize-once/item.md) | G1, G2, G13 and G16: live requests use the local session; expiry, logout and explicit revocation remain. Documents decision 1. |
+| 2 | [One proxy](../../issues/gateway-single-proxy/item.md) | G5, G7–G13, G15 and G17: common Unix HTTP forwarding, without interpreting daemon payloads. Keeps the lease until step 5. |
+| 3 | [Validate at startup](../../issues/daemon-validate-startup/item.md) | D1–D3, D8, D9 and D16: stable environment checks leave the request path; peer authentication and request validation remain. |
+| 4 | [Drop status stream](../../issues/daemon-drop-status-stream/item.md) | D5–D8: journal-driven updates, cheap status and continuation proof on demand. Includes the browser adaptation needed before step 6. |
+| 5 | [Drop conversation lease](../../issues/drop-conversation-lease/item.md) | G14 and B7: any valid login of the same Unix user reaches that user's conversations. Documents decision 2; retains the daemon's writer lock. |
+| 6 | [Rewrite browser state](../../issues/browser-state-rewrite/item.md) | B1–B14 and B17: the Part 2 target, preserving B5 and B16. Resolves the mask, open flicker and uncertain-send notice bugs. |
+| 7 | [Split responsibilities](../../issues/split-large-files/item.md) | Separate the concerns described in Part 2 after the removals. Updates architecture and agent guidance to the implemented model. |
+| 8 | [Slow onboarding polling](../../issues/pi-onboarding-poll/item.md) | B15: device-code progress without a session pre-read on every poll. |
 
-2. **Gateway: one proxy function.** Replace G7 to G13, G15 and G17 with one
-   stdlib proxy over a Unix transport, one body cap, one long deadline. Delete
-   the error-code and event allowlists and the 502/503 distinction.
-   Proves it: `snapshot_integration_linux_test.go`, the conversation and
-   events gateway tests reduced to "status and body are forwarded, streams
-   flush, oversize is cut"; browser Playwright specs unchanged.
-   Simpler downstream: adding a status field or event kind touches daemon and
-   browser only; `pi.ts` loses the 502 branch.
-   Risk if wrong: a daemon bug that emits garbage reaches the browser's
-   parsers, which reject it with the same user-visible result as today.
-
-3. **Daemon: validate once at start.** Move D1 to D3 and D8 into startup;
-   per request keep the peer UID; drop the identity headers (D9) on both
-   sides; drop D16.
-   Proves it: `pi_runtime_linux_test.go` and `pi_device_linux_test.go`
-   re-targeted at startup; `TestFixtureSnapshotAndEventsDoNotProbePi` extended
-   to count no `node` spawn and no selector read during create and status
-   (the fakes already count).
-   Simpler downstream: `PiDevice.validate` becomes a constructor;
-   `historyAuthorized` becomes `trusted(r)`.
-   Risk if wrong: an operator who replaces the Pi tree under a running daemon.
-   `docs/pi-runtime.md` already requires a restart; `fleetrepo` does one.
-
-4. **Daemon: delete the status stream; status on demand; proof on demand.**
-   Remove `stream`, D5; `observe` uses `stat` for revision (D6) and computes
-   `continuation` only when the request asks for it (query flag or a separate
-   route) and in `continue` (D7). Events stream lifetime 10 min, heartbeat
-   20 s, validity checked at open.
-   Proves it: `TestConversationStreamDoesNotProbeOrRevoke` and
-   `TestConversationStreamCursorAndNativeRecovery` are deleted;
-   `TestEventStreamExactReplayAndLastEventID` and
-   `TestEventJournalNativeBurstHasTrailingInvalidation` unchanged;
-   `conversation_linux_test.go` send/abort/queue/question tests unchanged; a
-   new test asserts status for an ended conversation does one proof per
-   explicit request.
-   Simpler downstream: `httptest.NewRecorder` in production code goes;
-   `streamSeq` and `conversationStreamFrameLimit` go; the browser loses one
-   EventSource and the 3 s poll.
-   Risk if wrong: a state change the journal does not publish. Audit:
-   `state` transitions pending→accepted/rejected/uncertain are published as
-   `command.changed`; settlement as `turn.settled`; questions, queues and
-   invalidations have their events; `auth_error` is set on a `message_end` frame, which already triggers
-   `invalidateNative`, so the browser re-reads status.
-
-5. **Gateway: delete the lease table** (G14) and the browser `list`
-   dependency (B7). Jari's decision to record in the issue: any session of the
-   same person controls their conversations.
-   Proves it: `conversation_auth_linux_test.go` (daemon one-writer rule still
-   holds), a gateway test that two different users still get 404 for each
-   other's IDs (the daemon answers that, since the ID is not in its map).
-   Simpler downstream: `recheckList`, "Tarkista keskustelulista",
-   `browserSessions` in `App.tsx` and the list filtering go.
-   Risk if wrong: a second browser of the same person sends to a conversation
-   the first is watching. The daemon serializes writes and both tabs see the
-   same journal; this is the SSH-and-browser case the architecture already
-   accepts.
-
-6. **Browser state model, one step.** Remove the mask, focus/blur/visibility
-   listeners, `retain`/`stale`, `sessionBinding`, `identityEpoch`,
-   `loginGeneration`, `captureEditor`, `conversationPlace`, and the four
-   `sessionStorage` purges, leaving the reducer reset on identity change and
-   one purge on logout (B1 to B4). In `BrowserConversation`: drop
-   `sessionCSRF`/`verify` pre-checks (B6), `streamError`/probe (B8), the
-   status stream and fast poll (B12), the session/list mount step (B7); one
-   loader for status + history on open (B13); pending rendered as pending and
-   "uncertain" only after a sent request fails (B9); storage keys by identity
-   and conversation (B10); history read on open and on `history.entry` or
-   invalidation (B11); continue shows the server's answer (B14). Keep the
-   first-load Pi check (B5) and the strict parsers (B16).
-   Proves it: rewrite `web/tests/browser-conversation.spec.ts` to assert no
-   `.ah-identity-check` ever renders, one render on open, no notice during a
-   normal send, 401 leads to the login card, a snapshot with a different
-   identity resets the view; keep the `first-use-ux` and `github-*` specs;
-   `conversationEvents.test.tsx` unchanged. Lab measurement afterwards should
-   show an idle tab at 1 open events stream and 3 heartbeats per minute.
-   Closes: `session-mask-on-every-refresh` (B1, B2), `conversation-open-flicker`
-   (B7, B13), `uncertain-flash-on-send` (B9).
-   Risk if wrong: another person's content visible after a hidden-tab login
-   swap. The server answers the next request with the new identity and the
-   reducer resets; the Playwright "new subject mid-check" case from
-   keep-conversation-view-stable is kept as the regression test.
-
-7. **Splits.** Apply the seams in Part 2 to `BrowserConversation.tsx`,
-   `conversation_linux.go`, `App.tsx` and `auth.go`. Pure moves; the gate
-   proves them.
-
-8. **PiOnboarding cadence** (B15): 2 s poll, no session pre-read. Proves it:
-   `PiDeviceSignIn.test.tsx`, `first-use-ux.spec.ts`.
-
-After step 6 the remaining caution is: login (G3, G4, G6, G18 to G20),
-provisioning (P1 to P5), daemon startup validation, one-writer and no-duplicate-
-write rules (D11 to D15, D17), and the browser's parsers. Each of those has a
-scenario written next to it above.
+The retained protections are login and request authentication, provisioning,
+startup validation, conversation admission and one-writer ownership,
+non-duplicate writes, and browser parsing. Their reasons remain in Part 1.

@@ -19,9 +19,14 @@ Step 8 of the [architecture review](../../docs/reviews/architecture-review-2026-
 
 ## Scope
 
-- Poll every 2 s while an attempt is in flight; no session pre-read; a 401 from the attempt read leads to login.
+- Use a slower poll, starting at 2 s, while an attempt is in flight; no session pre-read; a 401 from the attempt read leads to login.
 
-## Acceptance Criteria
+## Result to establish
 
-- [ ] `PiDeviceSignIn.test.tsx` and `first-use-ux.spec.ts` pass.
-- [ ] Device-code login still completes in the lab fake Pi flow.
+Device-code progress remains understandable and the fake-Pi login flow still
+completes. Each attempt poll makes one attempt request without a session
+pre-read; a 401 from that request leads to login. Polling stops when the attempt
+ends or the view closes. `PiDeviceSignIn.test.tsx` and
+`first-use-ux.spec.ts` are the existing coverage.
+
+Test selection and the final gate follow [TESTING.md](../../TESTING.md).

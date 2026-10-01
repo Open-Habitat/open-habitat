@@ -15,18 +15,25 @@ blocked_by: ['@gateway-authorize-once']
 
 ## Goal
 
-Step 2 of the [architecture review](../../docs/reviews/architecture-review-2026-10.md) removal plan. Replace the five byte-exact proxy implementations in `internal/gateway` (snapshot, history, Pi status, Pi attempt, conversation and events forwarders) with one stdlib proxy over a Unix transport.
+Step 2 of the [architecture review](../../docs/reviews/architecture-review-2026-10.md) removal plan. Replace the route-specific proxy implementations in `internal/gateway` (snapshot, history, Pi status, Pi attempt, conversation and events forwarders) with one stdlib proxy over a Unix transport.
 
 ## Scope
 
-- One function: check session, check the mapped socket once with `udssecure.Mapped` (G7), dial through `http.Transport` with a Unix `DialContext`, copy method, path, query, body and `Last-Event-ID` in; copy status, `Content-Type` and body out with one size cap; streams flushed per write with a write deadline; follow the browser's context plus one generous deadline (G11).
+- One function: check session, check the mapped socket once with `udssecure.Mapped` (G7), dial through `http.Transport` with a Unix `DialContext`, copy method, path, query, body and `Last-Event-ID` in; copy status, `Content-Type` and body out with bounded finite bodies; streams flushed promptly with a stalled-write deadline. Follow browser cancellation and use deadlines compatible with long-lived events (G11).
 - Delete: protocol-version, single-header, exact-Content-Length and trailing-byte checks (G8); snapshot identity rebinding and Pi status re-marshalling (G9); `validatedConversationReply`, `validConversationError`, `validCombinedPayload`, `strictObject` and the status-code allowlists including the 502/503 distinction (G10, G12, G13); `validConversationInput` (G15); `streamHeaderReader` (G17); HTTP/1.1 pinning and body-absence guards (G5).
 - Keep Origin + CSRF on writes (G6), `uiReturn`, `safe()`.
 - Browser: remove the 502 branch in `web/src/app/pi.ts` and `App.tsx`; parsers in `conversations.ts`, `snapshot.ts` stay as the single validation layer.
 - Do not remove the conversation lease table here; that is @drop-conversation-lease.
 
-## Acceptance Criteria
+## Result to establish
 
-- [ ] Gateway tests reduced to: status and body forwarded, streams flush, oversize body cut, two users cannot reach each other's daemon (`snapshot_integration_linux_test.go`, `TestAuthenticatedGatewayToTwoDaemonSnapshotHandlers`).
-- [ ] Adding a status field in the daemon reaches the browser without a gateway change (test: daemon fixture adds an extra field, browser parser receives it).
-- [ ] `scripts/ci-local.sh --clean` passes; Playwright specs unchanged.
+Daemon status codes and bodies reach the browser unchanged, including added
+fields. Streams flush promptly, cancellation releases the connection, stalled
+writes are bounded, and finite-body limits do not truncate a healthy long-lived
+stream. Routing still confines each user to the mapped daemon.
+
+The gateway integration, conversation and events tests provide the starting
+coverage. Replace assertions about removed parsing with these forwarding and
+boundary outcomes; browser journeys continue to work.
+
+Test selection and the final gate follow [TESTING.md](../../TESTING.md).

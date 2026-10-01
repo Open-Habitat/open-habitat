@@ -25,9 +25,16 @@ Decision (Jari, 2026-10-01, recorded in @architecture-built-on-caution): broker 
 - Keep callback-time `ensure` + `authorize` and the revoked-serial checks (G3).
 - Update `docs/adr-0006-subject-revocation.md` and `docs/interfaces.md` so that revocation is the only runtime path.
 
-## Acceptance Criteria
+## Result to establish
 
-- [ ] No broker exchange happens for a request carrying a valid session; a test with a counting fake broker proves zero calls after login.
-- [ ] `revoke_test.go` still proves `RevokeSubject` removes the subject's sessions and the next request gets 401.
-- [ ] `TestAuthenticatedGatewayToTwoDaemonSnapshotHandlers` passes unchanged.
-- [ ] ADR 0006 and interfaces name revocation as the only runtime revocation path.
+A counting broker shows no authorization exchange after login for live-session
+requests or forwarded stream frames. Session expiry, logout and
+`RevokeSubject` still deny subsequent requests, including when revocation races
+login. The two-daemon routing scenario still isolates users.
+
+The session and revoke tests and
+`TestAuthenticatedGatewayToTwoDaemonSnapshotHandlers` are the existing starting
+points. ADR 0006 and interfaces describe explicit revocation as the runtime
+revocation mechanism; changing the allowlist alone does not end live sessions.
+
+Test selection and the final gate follow [TESTING.md](../../TESTING.md).

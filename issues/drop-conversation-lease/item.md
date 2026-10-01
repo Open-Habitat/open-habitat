@@ -26,8 +26,16 @@ Decision (Jari, 2026-10-01, recorded in @architecture-built-on-caution): a conve
 - Browser: remove `list`/`sessions`/`recheckList` and the "Tarkista keskustelulista" button; `controlled` derives from status alone (B7). Keep the Pi attempt session binding (`pi_attempt_linux.go`) as is; it is onboarding state, not a conversation.
 - `docs/interfaces.md` and `docs/architecture.md`: one writer per conversation is the daemon's rule; the gateway holds no conversation state.
 
-## Acceptance Criteria
+## Result to establish
 
-- [ ] `conversation_auth_linux_test.go` proves the daemon one-writer rule still holds.
-- [ ] Gateway test: two different users get 404 for each other's conversation IDs.
-- [ ] After a gateway restart or re-login, an existing browser conversation is still controllable without "continue".
+A second login of the same person can control the existing conversation,
+including after a gateway restart followed by login. This assumes the daemon
+and its Pi child survived; restarting a dead child remains continuation.
+Different Unix users cannot reach each other's conversations, and the daemon
+still prevents competing writers to one native session.
+
+Exercise both same-user access and cross-user routing through the gateway,
+with daemon ownership tests retaining the writer-lock coverage. Update the
+architecture and interfaces to describe Unix-user conversation ownership.
+
+Test selection and the final gate follow [TESTING.md](../../TESTING.md).

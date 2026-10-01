@@ -24,13 +24,27 @@ The browser loads once: session, Pi status (once per page), snapshot. It opens t
 ## Scope
 
 - `App.tsx`: remove the `verifying` mask, focus/blur/visibility listeners, `retain`/`stale`, 10 s timeout, `sessionBinding`, `identityEpoch`, `loginGeneration`, `captureEditor`, `conversationPlace`, the four `sessionStorage` purges (B1 to B4). Keep the first-load Pi check (B5) and the reducer reset (B17). Key the tree on `web_identity_id`. Mount a conversation once per id, not per `location.search`.
-- `BrowserConversation.tsx`: drop `sessionCSRF`/`verify` pre-checks (B6), `streamError`/probe/"Live-yhteys katkesi" gating of writes (B8), the status stream and 3 s poll (B12), the session/list mount step (B7); one loader for status and history on open (B13); pending rendered as pending, "uncertain" only after a sent request fails and then it stays (B9); storage keys by identity and conversation (B10); history read on open and on `history.entry` or invalidation (B11); continue shows the server's answer (B14). One slow fallback poll (60 s) only while the events stream is down.
+- `BrowserConversation.tsx`: drop `sessionCSRF`/`verify` pre-checks (B6), `streamError`/probe/"Live-yhteys katkesi" gating of writes (B8), the status stream and 3 s poll (B12), the session/list mount step (B7); one loader for status and history on open (B13); pending rendered as pending, "uncertain" only after a sent request fails, until an authoritative outcome resolves it (B9); storage keys by identity and conversation (B10); history read on open and on `history.entry` or invalidation (B11); continue shows the server's answer (B14). One slow fallback poll (starting at 60 s) only while the events stream is down.
 - Keep the strict parsers (B16).
 - Record in `docs/ui.md` when the user sees a loading state, a stale banner or an error, and that there is no mask.
 
-## Acceptance Criteria
+## Result to establish
 
-- [ ] `web/tests/browser-conversation.spec.ts` rewritten: no `.ah-identity-check` ever renders; a conversation opens with one render; a normal send shows no uncertain notice; 401 leads to the login card; a snapshot with a different identity resets the view (the keep-conversation-view-stable "new subject" case kept as regression).
-- [ ] Lab measurement: an idle open conversation tab makes no requests other than the events stream and its heartbeats; a tab return makes no request.
-- [ ] `App.tsx` and `BrowserConversation.tsx` each under 600 lines before @split-large-files.
-- [ ] The three linked bugs reproduce no longer on the test server (pilot release, Jari confirms).
+Opening a conversation has one coherent loading transition, with no empty
+history or partial status phase flashing before the loaded view. Normal sends
+show pending and then the known outcome, without an uncertain notice during
+the request. A lost reply stays uncertain until resolved without duplicating
+the command. Background refreshes and tab returns leave the view mounted.
+
+Browser coverage includes 401 to login, a changed snapshot identity resetting
+the view, and late old-identity replies not repopulating it. Preserve the
+first-use and GitHub journeys and journal gap recovery. An idle-tab lab
+measurement shows one healthy events stream and no periodic status or session
+reads; returning to the tab creates no refresh burst.
+
+The three linked defects are verified on the test server and the result states
+the tested version and evidence. Jari can review visual evidence on his own
+schedule. Responsibility-based file splitting belongs to step 7; there is no
+line-count threshold for completing this rewrite.
+
+Test selection and the final gate follow [TESTING.md](../../TESTING.md).

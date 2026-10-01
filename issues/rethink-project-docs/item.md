@@ -69,7 +69,39 @@ Nämä 19 issuea käytiin läpi consult-llm:n avulla ilman Jaria; kaikki yksikö
 | [verify-live-pi-journey](../verify-live-pi-journey/item.md) | hyväksyntäkirja selkeytetty ja vanhentunut reset-ohje rajattu pois. | `639ad01` |
 | [verify-v1-resilience](../verify-v1-resilience/item.md) | ohje tiivistetty, lähteet tarkistettu ja päätös kirjattu. | `00d4539` |
 
-## Seuraavaksi: tilit, onboarding ja uusi selain-design
+## Arkkitehtuurikatselmus ja kahdeksan toteutusissuea: tekstikierros 1.10.2026
+
+Jari valitsi seuraavaksi [arkkitehtuurikatselmuksen](../../docs/reviews/architecture-review-2026-10.md)
+ja sen kahdeksan toteutusissuetta. Ne käytiin läpi `rethink-instructions`-skillillä
+toteuttajille suunnattuina ohjeina lähtörevisiosta `ed6162d`:
+
+| Dokumentti | Tekstin muutos |
+|---|---|
+| Katselmus, osat 1–3 | Kaikki 59 rivitunnistetta ja verdiktien luokat säilyvät. Historiallinen näyttö erotettu tulevasta kohdemuodosta; osa 3 kertoo työnjaon ja linkittää toteutusissueihin. |
+| [gateway-authorize-once](../gateway-authorize-once/item.md) | Päätös 1 säilyy; näyttö koskee brokerikutsujen poistumista, istunnon päättymistä ja käyttäjien reititystä. |
+| [gateway-single-proxy](../gateway-single-proxy/item.md) | Välityksen tavoite säilyy; aikarajat ja kokorajat sovitettu pitkään tapahtumavirtaan. |
+| [daemon-validate-startup](../daemon-validate-startup/item.md) | Käynnistystarkistukset erotettu gatewayn UID:n tarkistuksesta ja onboardingin tunnustiedostoista. |
+| [daemon-drop-status-stream](../daemon-drop-status-stream/item.md) | Tilapäivitysten kattavuus ja halpa status kuvattu lopputuloksina; tiedoston metadata ei todista historian luettavuutta. |
+| [drop-conversation-lease](../drop-conversation-lease/item.md) | Päätös 2 säilyy; gatewayn uudelleenkäynnistys erotettu daemonin tai Pi-lapsen päättymisestä. |
+| [browser-state-rewrite](../browser-state-rewrite/item.md) | Kohdemuodon kappale säilyy sellaisenaan. Rivimääräraja ja Jarin pakollinen loppukuittaus poistettu; latauksen yhtenäisyys, epävarman lähetyksen ratkaiseminen ja identiteetin vaihto kuvattu havaittavana toimintana. |
+| [split-large-files](../split-large-files/item.md) | Jako vastuiden mukaan, ei 700 rivin kattoa. Arkkitehtuuri- ja agenttiohjeiden päivitys säilyy työn osana. |
+| [pi-onboarding-poll](../pi-onboarding-poll/item.md) | Hitaampi kysely ilman istunnon esilukua; kahden sekunnin väli on toteutuksen lähtöarvo. |
+
+Lähteinä olivat katselmuksen pohjarevisio, sen nykyteksti, lähdeissuen Jarin
+päätös, toteutusissuet, `internal/AGENTS.md`, `AGENTS-WORKFLOW.md`, `TESTING.md`
+sekä gatewayn kirjautumis- ja daemonin peer-tarkistuksen lähdekoodi.
+Katselmuksen 60 sekunnin proxyraja oli ristiriidassa pitkän tapahtumavirran
+kanssa. Käyttäjän vaihtumisen kuvausta täsmennettiin: vanha välilehti voi näyttää
+ladattua sisältöä uuden identiteetin saapumiseen asti; peitteen poistaminen ei
+tee vaihdosta välitöntä. Mittauksiksi nimettyjä vanhoja tuloksia ei ajettu uudelleen.
+
+Tämä on tekstien läpikäynti. Toteutusissueiden tilat ja DAG säilyvät ennallaan;
+Jarin kaksi päätöstä ja askelten 1–8 sarjajärjestys säilyvät. Dokumentaation
+validaattori ja `git diff --check` läpäisivät. Issue doctor raportoi vain
+muiden issueiden 225 kuvamuotohavaintoa. Täyttä CI-porttia ei ajettu
+dokumenttimuutokselle, eikä toteutusta tai testipalvelinta muutettu.
+
+## Aiemmin sovittu kokonaisuus: tilit, onboarding ja uusi selain-design
 
 Jari pyysi 2026-09-30 seuraavan läpikäyntikokonaisuuden: neljä nimettyä
 issuea, uuden design-agentin draftin vastaanotto ja jalkauttaminen sekä
