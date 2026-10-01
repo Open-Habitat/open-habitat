@@ -1040,6 +1040,10 @@ test("@browser-conversation steer, follow-up and clear return only removed texts
   );
   await expect(page.getByText("jonoon yksi", { exact: true })).toBeVisible();
   await expect(page.getByText("ohjaus kaksi", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /Jonossa/ }).click();
+  await expect(queuePanel).toHaveCount(0);
+  await page.getByRole("button", { name: /Jonossa/ }).click();
+  await expect(queuePanel).toBeFocused();
   await page
     .getByRole("heading", { name: "Työskentelyjono" })
     .scrollIntoViewIfNeeded();

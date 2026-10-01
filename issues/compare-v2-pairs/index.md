@@ -26,38 +26,38 @@ Use a fresh lab incarnation for the cleanest sidebar histories. `PLAYWRIGHT_BROW
 | Open phone drawer | dark · 390 | ![Draft](drawer-dark-390-draft.avif) | ![Lab](drawer-dark-390-lab.avif) · [HTML](drawer-dark-390-lab.html) | G2, I1 |
 | Account menu | light · 1440 | ![Draft](account-menu-light-1440-draft.avif) | ![Lab](account-menu-light-1440-lab.avif) · [HTML](account-menu-light-1440-lab.html) | G2, I2 |
 | Account menu | dark · 1440 | ![Draft](account-menu-dark-1440-draft.avif) | ![Lab](account-menu-dark-1440-lab.avif) · [HTML](account-menu-dark-1440-lab.html) | G2, I2 |
-| New conversation | light · 1440 | ![Draft](new-light-1440-draft.avif) | ![Lab](new-light-1440-lab.avif) · [HTML](new-light-1440-lab.html) | G3, I1 |
-| New conversation | dark · 1440 | ![Draft](new-dark-1440-draft.avif) | ![Lab](new-dark-1440-lab.avif) · [HTML](new-dark-1440-lab.html) | G3, I1 |
-| Working/queue | light · 1440 | ![Draft](working-light-1440-draft.avif) | ![Lab](working-light-1440-lab.avif) · [HTML](working-light-1440-lab.html) | G3, I4, I5 |
-| Working/queue | dark · 1440 | ![Draft](working-dark-1440-draft.avif) | ![Lab](working-dark-1440-lab.avif) · [HTML](working-dark-1440-lab.html) | G3, I4, I5 |
-| Working/queue | light · 390 | ![Draft](working-light-390-draft.avif) | ![Lab](working-light-390-lab.avif) · [HTML](working-light-390-lab.html) | G3, I4, I5 |
-| Working/queue | dark · 390 | ![Draft](working-dark-390-draft.avif) | ![Lab](working-dark-390-lab.avif) · [HTML](working-dark-390-lab.html) | G3, I4, I5 |
-| Answer settled | light · 1440 | ![Draft](completed-light-1440-draft.avif) | ![Lab](completed-light-1440-lab.avif) · [HTML](completed-light-1440-lab.html) | G3, I4, I5 |
-| Answer settled | dark · 1440 | ![Draft](completed-dark-1440-draft.avif) | ![Lab](completed-dark-1440-lab.avif) · [HTML](completed-dark-1440-lab.html) | G3, I4, I5 |
-| Answer settled | light · 390 | ![Draft](completed-light-390-draft.avif) | ![Lab](completed-light-390-lab.avif) · [HTML](completed-light-390-lab.html) | G3, I4, I5 |
-| Answer settled | dark · 390 | ![Draft](completed-dark-390-draft.avif) | ![Lab](completed-dark-390-lab.avif) · [HTML](completed-dark-390-lab.html) | G3, I4, I5 |
-| Rejected send | light · 1440 | ![Draft](rejected-light-1440-draft.avif) | ![Lab](rejected-light-1440-lab.avif) · [HTML](rejected-light-1440-lab.html) | G3, I4 |
-| Rejected send | dark · 1440 | ![Draft](rejected-dark-1440-draft.avif) | ![Lab](rejected-dark-1440-lab.avif) · [HTML](rejected-dark-1440-lab.html) | G3, I4 |
-| Outage | light · 1440 | ![Draft](disconnected-light-1440-draft.avif) | ![Lab](disconnected-light-1440-lab.avif) · [HTML](disconnected-light-1440-lab.html) | G3, I4, I6 |
-| Outage | dark · 1440 | ![Draft](disconnected-dark-1440-draft.avif) | ![Lab](disconnected-dark-1440-lab.avif) · [HTML](disconnected-dark-1440-lab.html) | G3, I4, I6 |
-| Outage | light · 390 | ![Draft](disconnected-light-390-draft.avif) | ![Lab](disconnected-light-390-lab.avif) · [HTML](disconnected-light-390-lab.html) | G3, I4, I6 |
-| Outage | dark · 390 | ![Draft](disconnected-dark-390-draft.avif) | ![Lab](disconnected-dark-390-lab.avif) · [HTML](disconnected-dark-390-lab.html) | G3, I4, I6 |
-| Read-only history | light · 1440 | ![Draft](read-only-light-1440-draft.avif) | ![Lab](read-only-light-1440-lab.avif) · [HTML](read-only-light-1440-lab.html) | G3, I4 |
-| Read-only history | dark · 1440 | ![Draft](read-only-dark-1440-draft.avif) | ![Lab](read-only-dark-1440-lab.avif) · [HTML](read-only-dark-1440-lab.html) | G3, I4 |
-| Read-only history | light · 390 | ![Draft](read-only-light-390-draft.avif) | ![Lab](read-only-light-390-lab.avif) · [HTML](read-only-light-390-lab.html) | G3, I4 |
-| Read-only history | dark · 390 | ![Draft](read-only-dark-390-draft.avif) | ![Lab](read-only-dark-390-lab.avif) · [HTML](read-only-dark-390-lab.html) | G3, I4 |
+| New conversation | light · 1440 | ![Draft](new-light-1440-draft.avif) | ![Lab](new-light-1440-lab.avif) · [HTML](new-light-1440-lab.html) | G3 fitted, I1 |
+| New conversation | dark · 1440 | ![Draft](new-dark-1440-draft.avif) | ![Lab](new-dark-1440-lab.avif) · [HTML](new-dark-1440-lab.html) | G3 fitted, I1 |
+| Working/queue | light · 1440 | ![Draft](working-light-1440-draft.avif) | ![Lab](working-light-1440-lab.avif) · [HTML](working-light-1440-lab.html) | G3 fitted, I4, I5 |
+| Working/queue | dark · 1440 | ![Draft](working-dark-1440-draft.avif) | ![Lab](working-dark-1440-lab.avif) · [HTML](working-dark-1440-lab.html) | G3 fitted, I4, I5 |
+| Working/queue | light · 390 | ![Draft](working-light-390-draft.avif) | ![Lab](working-light-390-lab.avif) · [HTML](working-light-390-lab.html) | G3 fitted, I4, I5 |
+| Working/queue | dark · 390 | ![Draft](working-dark-390-draft.avif) | ![Lab](working-dark-390-lab.avif) · [HTML](working-dark-390-lab.html) | G3 fitted, I4, I5 |
+| Answer settled | light · 1440 | ![Draft](completed-light-1440-draft.avif) | ![Lab](completed-light-1440-lab.avif) · [HTML](completed-light-1440-lab.html) | G3 fitted, I4, I5 |
+| Answer settled | dark · 1440 | ![Draft](completed-dark-1440-draft.avif) | ![Lab](completed-dark-1440-lab.avif) · [HTML](completed-dark-1440-lab.html) | G3 fitted, I4, I5 |
+| Answer settled | light · 390 | ![Draft](completed-light-390-draft.avif) | ![Lab](completed-light-390-lab.avif) · [HTML](completed-light-390-lab.html) | G3 fitted, I4, I5 |
+| Answer settled | dark · 390 | ![Draft](completed-dark-390-draft.avif) | ![Lab](completed-dark-390-lab.avif) · [HTML](completed-dark-390-lab.html) | G3 fitted, I4, I5 |
+| Rejected send | light · 1440 | ![Draft](rejected-light-1440-draft.avif) | ![Lab](rejected-light-1440-lab.avif) · [HTML](rejected-light-1440-lab.html) | G3 fitted, I4 |
+| Rejected send | dark · 1440 | ![Draft](rejected-dark-1440-draft.avif) | ![Lab](rejected-dark-1440-lab.avif) · [HTML](rejected-dark-1440-lab.html) | G3 fitted, I4 |
+| Outage | light · 1440 | ![Draft](disconnected-light-1440-draft.avif) | ![Lab](disconnected-light-1440-lab.avif) · [HTML](disconnected-light-1440-lab.html) | G3 fitted, I4, I6 |
+| Outage | dark · 1440 | ![Draft](disconnected-dark-1440-draft.avif) | ![Lab](disconnected-dark-1440-lab.avif) · [HTML](disconnected-dark-1440-lab.html) | G3 fitted, I4, I6 |
+| Outage | light · 390 | ![Draft](disconnected-light-390-draft.avif) | ![Lab](disconnected-light-390-lab.avif) · [HTML](disconnected-light-390-lab.html) | G3 fitted, I4, I6 |
+| Outage | dark · 390 | ![Draft](disconnected-dark-390-draft.avif) | ![Lab](disconnected-dark-390-lab.avif) · [HTML](disconnected-dark-390-lab.html) | G3 fitted, I4, I6 |
+| Read-only history | light · 1440 | ![Draft](read-only-light-1440-draft.avif) | ![Lab](read-only-light-1440-lab.avif) · [HTML](read-only-light-1440-lab.html) | G3 fitted, I4 |
+| Read-only history | dark · 1440 | ![Draft](read-only-dark-1440-draft.avif) | ![Lab](read-only-dark-1440-lab.avif) · [HTML](read-only-dark-1440-lab.html) | G3 fitted, I4 |
+| Read-only history | light · 390 | ![Draft](read-only-light-390-draft.avif) | ![Lab](read-only-light-390-lab.avif) · [HTML](read-only-light-390-lab.html) | G3 fitted, I4 |
+| Read-only history | dark · 390 | ![Draft](read-only-dark-390-draft.avif) | ![Lab](read-only-dark-390-lab.avif) · [HTML](read-only-dark-390-lab.html) | G3 fitted, I4 |
 | Settings | light · 1440 | ![Draft](settings-light-1440-draft.avif) | ![Lab](settings-light-1440-lab.avif) · [HTML](settings-light-1440-lab.html) | G2, I2, I3 |
 | Settings | dark · 1440 | ![Draft](settings-dark-1440-draft.avif) | ![Lab](settings-dark-1440-lab.avif) · [HTML](settings-dark-1440-lab.html) | G2, I2, I3 |
 
-The working, completed, rejected and outage pair images above predate the turn-receipt browser slice. They remain a historical comparison of the synthetic fake Pi (which cannot produce all receipt/question states); see the validated-response synthetic [receipt captures](../show-turn-receipts/result.md) for current I4 in both themes and desktop/phone widths. Do not interpret the old I4 screenshots as current receipt behavior.
+The conversation pairs were refreshed for the density slice using the synthetic fake Pi, which cannot produce all receipt/question states. See the validated-response synthetic [receipt captures](../show-turn-receipts/result.md) for the remaining I4 states in both themes and desktop/phone widths. The pair captures alone do not establish every receipt outcome.
 
 ## What still differs
 
-**Fidelity gaps worth a follow-up** (not changed by this evidence-only run):
+**Fidelity gaps worth a follow-up:**
 
 - **G1 — return composition:** desktop and phone lab add a separate “Työtilat” introduction above “Jatka siitä, mihin jäit”, and show independent cards rather than the draft's grouped “Käynnissä” / “Viimeksi avatut” list. On 390 px the extra introduction consumes much of the first screen. The synthetic fixture cannot demonstrate a verified running process, but that does not explain the extra heading or grouping.
 - **G2 — density and controls:** the settings lab uses large, separated headings and vertical theme radios, not the draft's compact bordered rows and horizontal segmented theme choice; the account menu likewise uses tall rows instead of the compact popover. The drawer lists verbose per-agent status lines and filter controls unlike the reference. These are presentation gaps, not a reason to suppress the honest statuses.
-- **G3 — conversation composition:** the lab header still takes multiple stacked lines, and the transcript and composer have substantially more vertical padding than the draft. The phone composer/receipts can fall below the 844 px fold while the draft pins the editor/actions within it; compare working, completed, rejection and outage captures. A safe fit must preserve focus, reading anchor and receipts.
+- **G3 — conversation composition (fitted by `fit-conversation-density-v2`):** shared phone spacing tokens and the scrolling transcript keep the editor and actions inside 390 × 844 in the captured states; desktop retains the agreed v2 sizing table. The header remains multi-line to disclose the workspace, activity and control truth (I4); long titles stay accessible. Receipt and queue details scroll with the transcript, while urgent notices remain visible in a bounded panel above the composer. Synthetic browser tests also cover rejected, pending, uncertain, settled and outage states. This is not a claim of pixel equivalence with mock data.
 
 **Intentional deviations already recorded in the fitted slice issues** (do not close these by imitating fake draft data):
 

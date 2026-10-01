@@ -29,11 +29,11 @@ capture command.
 
 ## Acceptance Criteria
 
-- [ ] Header, transcript and composer spacing match the draft's sizing at
+- [x] Header, transcript and composer spacing match the draft's sizing at
   desktop and 390 px in both themes; the phone composer and its actions stay
   within the first viewport in the working, answered, rejected, outage and
   read-only states.
-- [ ] Focus, reading anchor and receipts are preserved; metric assertions
+- [x] Focus, reading anchor and receipts are preserved; metric assertions
   extended for the new landmarks.
 ## Shared context for every design-v2 slice
 
@@ -59,3 +59,7 @@ capture command.
 - Ownership tonight: this work may change `web/`, `design-system/`,
   `docs/ui.md` and `docs/design-system.md`. A needed change in `internal/`,
   `contracts/` or other docs is recorded in this issue as a request instead.
+
+## Implementation notes
+
+The v2 draft fits a single-line conversation title and omits the explicit control and status labels, send acceptance states and stale notice. Those changes would violate the agreed header and uncertain-send behavior. The fitted template retains the workspace link, expandable long title, both textual statuses, the selected working send mode, command receipts, reading anchor, and connection notice. On phones, shared spacing tokens shrink the header and stream; supplementary progress, queue, status controls and notices scroll with the transcript rather than pushing the composer below the viewport. Desktop header/column values remain the v2 sizing table's 13 × 24 and 22/24. No host or contract change is needed for this presentation slice.
