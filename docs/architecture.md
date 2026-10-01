@@ -98,8 +98,10 @@ The browser shows incoming messages, questions and tool content. Content without
 a dedicated renderer still appears as safe text. The event journal is the only
 push channel for conversation changes: it replays a bounded window and keeps
 idle connections open for ten minutes with a heartbeat every 20 seconds.
-The browser reads its session and Pi onboarding state once per page load, then
-uses the snapshot cursor for the events stream. It opens a conversation with
+The browser reads its session and Pi onboarding state on first load, and again
+only if a snapshot identifies a different person; the new person's writes must
+not reuse the previous CSRF token. It then uses the snapshot cursor for the
+events stream. It opens a conversation with
 parallel status and history reads and reveals the view only after both finish.
 Status is fetched after journal state changes, and history after native-entry
 or invalidation events, not on a two-second tick. A dropped stream gets a slow

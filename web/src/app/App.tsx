@@ -183,6 +183,9 @@ export function App() {
       returningFromSettings.current = false;
       setExpanded({});
       setDaemonSessions([]);
+      setCSRF(undefined);
+      piChecked.current = false;
+      if (identity) setRefreshKey((n) => n + 1); // one session/Pi check for the new identity
     }
     if (identity) priorIdentity.current = identity;
   }, [identity]);
@@ -214,12 +217,21 @@ export function App() {
     location.search,
   );
   const [catalogOffline, setCatalogOffline] = useState(false);
+  const catalogRecovering = useRef(false);
+  const [catalogEpoch, setCatalogEpoch] = useState(0);
+  useEffect(() => {
+    if (catalogRecovering.current && snapshot) {
+      catalogRecovering.current = false;
+      setCatalogEpoch((n) => n + 1);
+    }
+  }, [snapshot]);
   useEffect(() => {
     if (!catalogOffline || viewingConversation) return;
     const timer = window.setInterval(refresh, 60000);
     return () => window.clearInterval(timer);
   }, [catalogOffline, viewingConversation, refresh]);
   useEffect(() => {
+    void catalogEpoch; // re-open only after a recovered cursor
     if (!identity || viewingConversation || syntheticDemo || fixtureName)
       return;
     const source = new EventSource(
@@ -248,14 +260,25 @@ export function App() {
           );
           await response.body?.cancel();
           if (response.status === 401) requireLogin();
-          else if (response.status === 409) refresh();
+          else if (response.status === 409) {
+            source.close();
+            catalogRecovering.current = true;
+            refresh();
+          }
         } catch {
           /* Reconnect and slow snapshot fallback handle transport loss. */
         }
       })();
     };
     return () => source.close();
-  }, [identity, viewingConversation, fixtureName, refresh, requireLogin]);
+  }, [
+    identity,
+    viewingConversation,
+    fixtureName,
+    refresh,
+    requireLogin,
+    catalogEpoch,
+  ]);
   const manualRefresh = () => {
     setHistoryRefreshKey((n) => n + 1);
     refresh();
@@ -297,6 +320,8 @@ export function App() {
             status === "unknown" ||
             status === "unavailable"
           ) {
+            if (status === "missing")
+              sessionStorage.removeItem("nah:github-step");
             setPiCheckFailed(status !== "missing");
             return fail("pi");
           }
@@ -547,6 +572,7 @@ export function App() {
       />
     ) : selectedAgent && agentWorkspace ? (
       <HistoryView
+        onLogin={requireLogin}
         key={`${selectedAgent.agent_id}:${historyRefreshKey}`}
         agent={selectedAgent}
         workspaceName={agentWorkspace.display_name ?? agentWorkspace.name}
@@ -586,7 +612,11 @@ export function App() {
           (f) => f.source === "filesystem" && f.state === "confirmed",
         ) ? (
           <BrowserConversation
-            csrf={csrf}
+            csrf={
+              priorIdentity.current && priorIdentity.current !== identity
+                ? undefined
+                : csrf
+            }
             onLogin={requireLogin}
             key={`${identity}:${selected.workspace_id}:${new URLSearchParams(location.search).get("conversation") ?? "new"}`}
             workspace={selected}

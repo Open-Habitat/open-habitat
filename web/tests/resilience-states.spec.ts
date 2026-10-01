@@ -22,9 +22,11 @@ test("@resilience failed reads recover in place without claiming an empty catalo
   );
   await page.getByRole("button", { name: "Päivitä", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Yhteyttä ei saatu" }),
+    page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
   ).toBeVisible();
-  await expect(page.getByText("ordinary-dir")).toHaveCount(0);
+  await expect(
+    page.getByRole("navigation").getByRole("link", { name: "ordinary-dir" }),
+  ).toBeVisible();
   await page.unroute("**/api/v1/snapshot");
   await page.getByRole("button", { name: /Yhdistä|Yritä uudelleen/ }).click();
   await expect(
@@ -32,7 +34,12 @@ test("@resilience failed reads recover in place without claiming an empty catalo
   ).toBeVisible();
   await page.request.get("/fixture/scenario?value=malformed");
   await page.getByRole("button", { name: "Päivitä", exact: true }).click();
-  await expect(page.getByText("ordinary-dir")).toHaveCount(0);
+  await expect(
+    page.getByRole("navigation").getByRole("link", { name: "ordinary-dir" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
+  ).toBeVisible();
 });
 
 test("@resilience native discovery error retains previously verified content", async ({
@@ -117,7 +124,7 @@ test("@resilience verified session retains workspaces during a host outage, disa
   ).toBeVisible();
 });
 
-test("@resilience stale tab clears old identity when its session expires while away", async ({
+test("@resilience expired session reaches login on explicit retry, not tab focus", async ({
   page,
 }) => {
   await page.request.get("/fixture/scenario?value=ready");
@@ -137,6 +144,11 @@ test("@resilience stale tab clears old identity when its session expires while a
   await page.evaluate(() => window.dispatchEvent(new Event("blur")));
   await page.request.get("/fixture/expire");
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(
+    page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
+  ).toHaveCount(0);
+  await page.unroute("**/api/v1/snapshot");
+  await page.getByRole("button", { name: "Yhdistä" }).click();
   await expect(
     page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
   ).toBeVisible();
@@ -170,7 +182,7 @@ test("@resilience populated native history remains readable during outage", asyn
   ).toHaveCount(0);
 });
 
-test("@resilience active conversation stays readable but cannot send during outage", async ({
+test("@resilience active conversation stays readable and server decides writes during snapshot outage", async ({
   page,
 }) => {
   await page.request.get("/fixture/conversations-reset");
@@ -203,7 +215,7 @@ test("@resilience active conversation stays readable but cannot send during outa
   await expect(page.getByRole("button", { name: "Yhdistä" })).toHaveCount(1);
   await expect(
     page.getByRole("button", { name: "Lähetä", exact: true }),
-  ).toBeDisabled();
+  ).toBeEnabled();
   await expect(page.getByRole("button", { name: "Keskeytä" })).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
   const composer = page.locator(".ah-conversation-frame > .ah-composer");

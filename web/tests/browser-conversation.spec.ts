@@ -1233,10 +1233,15 @@ test("@browser-conversation changed snapshot identity discards late previous sta
     await other.getByRole("menuitem", { name: "Kirjaudu ulos" }).click();
     await other.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await other.getByRole("link", { name: "Bob" }).click();
+    let sessionReads = 0;
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname === "/auth/session") sessionReads++;
+    });
     await page.getByRole("button", { name: "Päivitä" }).click();
     await expect(
       page.getByRole("heading", { name: "Kohdetta ei enää löydy" }),
     ).toBeVisible();
+    await expect.poll(() => sessionReads).toBeGreaterThan(0);
     release();
     await expect(
       page.getByRole("textbox", { name: "Viesti Pi:lle" }),
@@ -1245,4 +1250,84 @@ test("@browser-conversation changed snapshot identity discards late previous sta
     release();
     await other.close();
   }
+});
+
+test("@browser-conversation a lost accepted send resolves on reload without another write", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await expect(editor).toBeVisible();
+  let sends = 0;
+  // Keep the receipt unavailable until reload; the daemon still accepts the write.
+  await page.route("**/api/v1/conversations/*/status", (route) =>
+    route.fulfill({ status: 503 }),
+  );
+  await page.route("**/api/v1/conversations/*/send", async (route) => {
+    sends++;
+    const response = await route.fetch(); // daemon accepted, only browser reply lost
+    expect(response.status()).toBe(200);
+    await route.abort("failed");
+  });
+  await editor.fill("only once");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(page.locator(".ah-send-uncertain")).toBeVisible();
+  await page.unroute("**/api/v1/conversations/*/status");
+  await page.reload();
+  await expect(editor).toBeVisible();
+  await expect(editor).toHaveValue("");
+  await editor.fill("next deliberate message");
+  await expect(
+    page.getByRole("button", { name: "Lähetä", exact: true }),
+  ).toBeEnabled();
+  expect(sends).toBe(1);
+});
+
+test("@browser-conversation queue-clear 401 reaches login", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await expect(editor).toBeVisible();
+  await editor.fill("hidas päätyö");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Lähetä", exact: true }),
+  ).toBeVisible();
+  await editor.fill("jonoon");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Tyhjennä jono" }),
+  ).toBeVisible();
+  await page.route("**/api/v1/conversations/*/clear_queue", (route) =>
+    route.fulfill({ status: 401 }),
+  );
+  await page.getByRole("button", { name: "Tyhjennä jono" }).click();
+  await expect(
+    page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
+  ).toBeVisible();
+});
+
+test("@browser-conversation catalog cursor 409 opens a new stream after snapshot", async ({
+  page,
+}) => {
+  await open(page);
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "ordinary-dir" })
+    .click();
+  // Return to the catalog so it, not the conversation component, owns events.
+  await page.getByRole("link", { name: "Etusivu" }).click();
+  let streams = 0;
+  await page.route("**/api/v1/events?after=*", (route) => {
+    streams++;
+    if (streams <= 2)
+      return route.fulfill({ status: 409, body: "cursor_expired" });
+    return route.continue();
+  });
+  await page.reload();
+  await expect(page.getByRole("navigation")).toBeVisible();
+  await expect.poll(() => streams, { timeout: 10000 }).toBeGreaterThan(2);
 });

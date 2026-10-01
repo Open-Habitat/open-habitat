@@ -56,7 +56,13 @@ function unfamiliar(text: string): {
   };
 }
 
-export function Entry({ entry }: { entry: HistoryEntry }) {
+export function Entry({
+  entry,
+  onLogin,
+}: {
+  entry: HistoryEntry;
+  onLogin?: () => void;
+}) {
   const [content, setContent] = useState(entry.content);
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -85,8 +91,9 @@ export function Entry({ entry }: { entry: HistoryEntry }) {
       )
         throw new Error("invalid chunk");
       setContent({ ...chunk.content, text: content.text + chunk.content.text });
-    } catch {
-      setFailed(true);
+    } catch (error) {
+      if ((error as Error).message === "identity_lost") onLogin?.();
+      else setFailed(true);
     } finally {
       setPending(false);
     }
@@ -182,7 +189,7 @@ export function Entry({ entry }: { entry: HistoryEntry }) {
 }
 // Group only adjacent native tool results. Keys belong to the first entry so
 // disclosure state survives refreshes that preserve the native event order.
-export function timelineItems(entries: HistoryEntry[]) {
+export function timelineItems(entries: HistoryEntry[], onLogin?: () => void) {
   const items: { id: string; kind: string; content: React.ReactNode }[] = [];
   for (let i = 0; i < entries.length; ) {
     const first = entries[i];
@@ -190,7 +197,9 @@ export function timelineItems(entries: HistoryEntry[]) {
       items.push({
         id: first.entry_key,
         kind: first.kind,
-        content: <Entry key={first.entry_key} entry={first} />,
+        content: (
+          <Entry key={first.entry_key} entry={first} onLogin={onLogin} />
+        ),
       });
       i++;
       continue;
@@ -201,14 +210,27 @@ export function timelineItems(entries: HistoryEntry[]) {
     items.push({
       id: first.entry_key,
       kind: "tool",
-      content: <HistoryToolGroup key={first.entry_key} entries={group} />,
+      content: (
+        <HistoryToolGroup
+          key={first.entry_key}
+          entries={group}
+          onLogin={onLogin}
+        />
+      ),
     });
   }
   return items;
 }
-function HistoryToolGroup({ entries }: { entries: HistoryEntry[] }) {
+function HistoryToolGroup({
+  entries,
+  onLogin,
+}: {
+  entries: HistoryEntry[];
+  onLogin?: () => void;
+}) {
   const [expanded, setExpanded] = useState(false);
-  if (entries.length === 1) return <Entry entry={entries[0]} />;
+  if (entries.length === 1)
+    return <Entry entry={entries[0]} onLogin={onLogin} />;
   return (
     <ToolGroup
       title="Työkalut"
@@ -217,7 +239,7 @@ function HistoryToolGroup({ entries }: { entries: HistoryEntry[] }) {
       onToggle={() => setExpanded(!expanded)}
     >
       {entries.map((entry) => (
-        <Entry key={entry.entry_key} entry={entry} />
+        <Entry key={entry.entry_key} entry={entry} onLogin={onLogin} />
       ))}
     </ToolGroup>
   );
@@ -226,10 +248,12 @@ export function HistoryView({
   agent,
   workspaceName,
   workspaceId,
+  onLogin,
 }: {
   agent: Agent;
   workspaceName: string;
   workspaceId: string;
+  onLogin: () => void;
 }) {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [state, setState] = useState<"loading" | "ready" | "empty" | "error">(
@@ -259,11 +283,13 @@ export function HistoryView({
         setRevision(page.native_revision);
         setState(page.entries.length ? "ready" : "empty");
       })
-      .catch(() => {
-        if (!controller.signal.aborted) setState("error");
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        if ((error as Error).message === "identity_lost") onLogin();
+        else setState("error");
       });
     return () => controller.abort();
-  }, [agent.agent_id, agent.history]);
+  }, [agent.agent_id, agent.history, onLogin]);
   const loadMore = async () => {
     if (!next || busy) return;
     setBusy(true);
@@ -279,8 +305,9 @@ export function HistoryView({
       setRevision(page.native_revision);
       setEntries([...entries, ...page.entries]);
       setNext(page.next_after);
-    } catch {
-      setState("error");
+    } catch (error) {
+      if ((error as Error).message === "identity_lost") onLogin();
+      else setState("error");
     } finally {
       setBusy(false);
     }
@@ -311,7 +338,7 @@ export function HistoryView({
       <ConversationStream>
         <ConversationTimeline
           state={state}
-          items={timelineItems(entries)}
+          items={timelineItems(entries, onLogin)}
           historyMode="pagedAccessible"
           emptyLabel="Natiivissa historiassa ei ole vielä viestejä."
           onJumpToLatest={() => {}}

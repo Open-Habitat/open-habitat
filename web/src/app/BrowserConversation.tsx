@@ -271,6 +271,11 @@ export function BrowserConversation({
         );
         setEvents(state.events);
         openReady.current = true;
+        if (
+          sessionStorage.getItem(sendKey) ||
+          sessionStorage.getItem(continuationKey) === "uncertain"
+        )
+          void latestRefresh.current(false, true);
         if (queuedRefresh.current) {
           queuedRefresh.current = false;
           void latestRefresh.current(false, true);
@@ -304,6 +309,8 @@ export function BrowserConversation({
     onLogin,
     openAttempt,
     navigate,
+    sendKey,
+    continuationKey,
   ]);
   useEffect(() => {
     setDraft(sessionStorage.getItem(draftKey) ?? "");
@@ -556,6 +563,8 @@ export function BrowserConversation({
       );
       setLive(turn);
     } catch {
+      recovering.current = true;
+      setJournalOffline(true);
       resnapshot.current();
       return;
     }
@@ -675,10 +684,10 @@ export function BrowserConversation({
   }, [id, workspace.workspace_id, onLogin, streamEpoch]);
   useEffect(() => {
     if (!id || !journalOffline) return;
-    const timer = window.setInterval(
-      () => void latestRefresh.current(false, true),
-      60000,
-    );
+    const timer = window.setInterval(() => {
+      if (recovering.current) resnapshot.current();
+      void latestRefresh.current(false, true);
+    }, 60000);
     return () => window.clearInterval(timer);
   }, [id, journalOffline]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a live fragment changes the feed height without changing native entries.
@@ -922,8 +931,9 @@ export function BrowserConversation({
           : "Jono oli jo tyhjä.",
       );
       void refresh();
-    } catch {
-      if (alive.current)
+    } catch (error) {
+      if ((error as Error).message === "identity_lost") onLogin();
+      else if (alive.current)
         setReceipt(
           sent
             ? "Jonon tyhjennyksen tulos epävarma. Tarkista tila; viestejä ei palautettu ilman kuittausta."
@@ -1120,7 +1130,7 @@ export function BrowserConversation({
                     : "empty"
               }
               items={[
-                ...timelineItems(entries),
+                ...timelineItems(entries, onLogin),
                 ...(sendObservation
                   ? [
                       {
@@ -1249,8 +1259,10 @@ export function BrowserConversation({
                       ]);
                       setNext(p.next_after);
                     })
-                    .catch(() => {
-                      setHistoryError(true);
+                    .catch((error) => {
+                      if ((error as Error).message === "identity_lost")
+                        onLogin();
+                      else setHistoryError(true);
                     })
                 }
               />
