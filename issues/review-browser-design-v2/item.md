@@ -1,6 +1,6 @@
 ---
 created: 2026-09-30
-updated: 2026-09-30
+updated: 2026-10-01
 type: task
 reporter: jari
 status: open
@@ -91,3 +91,7 @@ Assessment written: assessment.md (rev 82a5c4e). Foundation functionally sound, 
 ### 2026-09-30T17:23:44Z · @night-ui
 
 Provisional for the night of 2026-09-30, per issues/night-2026-09-30/plan.md (Jari may overturn in the morning; any effect is then scoped by a new issue): (1) phone fitting is in the implementation scope; (2) the v2 handoff sizing table is the source of the shared values, and the sentence in design-system/production-v1.md treating draft sizes as references is updated. Implementation slices: recut-ui-foundation, fit-conversation-v2, fit-sidebar-v2, fit-onboarding-v2, fit-account-and-history-v2, compare-v2-pairs (lane design-v2).
+
+### 2026-10-01T02:18:48Z · @jari
+
+2026-10-01 (Jari): the night's provisional choices stand (phone in scope, v2 sizing as token source); anything wrong will show in the UI and becomes an issue. Jari judged the night's lab rendering far from the design (compare-v2-pairs): visual fidelity to the draft is the bar, not the slices' self-reported completion.
