@@ -3,12 +3,14 @@ created: 2026-10-01
 updated: 2026-10-01
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@restore-v2-conversation']
 lane: design-v2
 lane_seq: 12
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
+closed: 2026-10-01
+closed_by: night-ui-worker
 ---
 
 # Close remaining conversation differences from the draft
