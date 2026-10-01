@@ -37,6 +37,16 @@ test("@workspace-slice home labels history honestly and route focus keeps keyboa
   expect(
     await focused.evaluate((el) => getComputedStyle(el).outlineWidth),
   ).toBe("2px");
+  await page.setViewportSize({ width: 390, height: 844 });
+  // Stress the real list CSS with a synthetic long title; the host fixture's
+  // short title cannot expose clipping.
+  const longTitle = links.first().locator(".ah-return-title");
+  await longTitle.evaluate((el) => {
+    el.textContent = `Pitkä keskustelun otsikko ${"sisältö ".repeat(24)}`;
+  });
+  expect(
+    await longTitle.evaluate((el) => el.scrollWidth <= el.clientWidth),
+  ).toBe(true);
   const readOnly = links.filter({ hasText: "Vain luettavissa" }).first();
   if (await readOnly.count()) {
     await readOnly.click();

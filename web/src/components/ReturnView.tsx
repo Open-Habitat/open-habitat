@@ -86,8 +86,8 @@ export function ReturnView({
         <h1 id="continue-heading">Jatka siitä, mihin jäit</h1>
         <p>
           Selainikkunan sulkeminen ei pysäytä käynnissä olevaa Pi:tä.
-          Keskustelun avaaminen näyttää historian — se ei käynnistä eikä ohjaa
-          Pi:tä.
+          Keskustelun avaaminen näyttää historian käynnistämättä Pi:tä.
+          Selainistunnon ohjaus riippuu sen nykyisestä tilasta.
         </p>
       </header>
       {conversations.length ? (

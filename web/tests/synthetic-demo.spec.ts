@@ -5,9 +5,9 @@ import { expect, test } from "@playwright/test";
 const base = demoOrigin;
 test.use({ baseURL: base, viewport: { width: 1280, height: 720 } });
 for (const [scenario, heading] of [
-  ["ready", "Työtilat"],
+  ["ready", "Jatka siitä, mihin jäit"],
   ["empty", "Työtilat"],
-  ["partial", "Työtilat"],
+  ["partial", "Jatka siitä, mihin jäit"],
   ["missing", "Työtilat"],
   ["unavailable", "Yhteyttä ei saatu"],
   ["login", "Tervetuloa Omega Habitatiin"],
@@ -38,7 +38,9 @@ for (const [scenario, heading] of [
     if (scenario === "partial") {
       await expect(page.getByRole("link", { name: "uncertain" })).toBeVisible();
       await expect(
-        page.getByText(/määrä voi olla puutteellinen/),
+        page.getByText(
+          "Kaikkia työtiloja ei voitu tarkistaa. Näet vain löytyneet työtilat.",
+        ),
       ).toBeVisible();
     }
     if (scenario === "empty")
@@ -117,5 +119,7 @@ test("no authentication, fixture routes, production build fixture, or external h
       })
     ).status(),
   ).toBe(403);
-  await expect(page.getByText("Demo-käyttäjä (synteettinen)")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Oma tili, Tilivalikko/ }),
+  ).toBeVisible();
 });

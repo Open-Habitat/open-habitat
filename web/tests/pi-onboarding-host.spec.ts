@@ -62,7 +62,9 @@ test("@pi-onboarding native attempt drives the production browser, never a callb
       (await foreign.request.get("/api/v1/onboarding/pi/attempt")).status(),
     ).toBe(404);
     await page.request.get("/fixture/pi-state?value=usable");
-    await expect(page.getByRole("heading", { name: "Työtilat" })).toBeVisible({
+    await expect(
+      page.getByRole("heading", { name: "Jatka siitä, mihin jäit" }),
+    ).toBeVisible({
       timeout: 12000,
     });
     await expect(page.getByText("ABCD-1234")).toHaveCount(0);

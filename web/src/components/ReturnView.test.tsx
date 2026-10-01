@@ -28,6 +28,7 @@ describe("return view", () => {
       }),
     ).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Työtilat" })).toBeNull();
+    expect(screen.getByText(/Selainistunnon ohjaus riippuu/)).toBeTruthy();
   });
   it("groups only positively observed running processes, preserving links and native history", () => {
     show([
@@ -74,6 +75,11 @@ describe("return view", () => {
     expect(within(others).queryByText(/käynnissä/i)).toBeNull();
     expect(screen.queryByText("Viimeksi avatut")).toBeNull();
     expect(screen.queryByText("Jatkettavissa")).toBeNull();
+  });
+  it("keeps a long native title in the link rather than truncating its text", () => {
+    const title = `Pitkä otsikko ${"x".repeat(160)}`;
+    show([{ ...base, title }]);
+    expect(screen.getByRole("link", { name: new RegExp(title) })).toBeTruthy();
   });
   it("offers no fabricated return link when the list is empty", () => {
     show([]);

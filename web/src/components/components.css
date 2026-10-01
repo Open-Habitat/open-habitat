@@ -758,10 +758,8 @@ h1[tabindex="-1"]:focus {
   min-width: 0;
 }
 .ah-return-title {
-  overflow: hidden;
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .ah-return-meta {
   display: flex;

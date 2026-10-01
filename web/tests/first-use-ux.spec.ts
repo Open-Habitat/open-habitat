@@ -87,7 +87,9 @@ test("@first-use a slow status read does not delay the device-code start, and co
     await page.unrouteAll({ behavior: "ignoreErrors" });
     const started = Date.now();
     await page.request.get("/fixture/pi-state?value=usable");
-    await expect(page.getByRole("heading", { name: "Työtilat" })).toBeVisible({
+    await expect(
+      page.getByRole("heading", { name: "Jatka siitä, mihin jäit" }),
+    ).toBeVisible({
       timeout: 4500,
     });
     expect(Date.now() - started).toBeLessThan(4500);
