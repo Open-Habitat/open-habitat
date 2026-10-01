@@ -1,11 +1,13 @@
 ---
 created: 2026-09-30
-updated: 2026-09-30
+updated: 2026-10-01
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@review-browser-design-v2', '@rethink-project-docs']
+closed: 2026-10-01
+closed_by: night-ui
 ---
 
 # Night round 2026-09-30: two conductors
@@ -22,3 +24,9 @@ kapellimestarien viestikanava ja `run-night.sh` käynnistää roolin.
 ## Tulos
 
 Täytetään aamulla statustiedostojen perusteella.
+
+## Comments
+
+### 2026-10-01T06:31:40Z · @night-ui
+
+Result: both conductors finished; summaries in ui-status.md and rest-status.md. Jari's morning review (2026-10-01) found the UI captures far from the drafts; the correction continued in restore-v2-conversation and polish-v2-conversation, and pilot.14 was deployed.
