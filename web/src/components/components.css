@@ -2098,7 +2098,11 @@ h1[tabindex="-1"]:focus {
   }
   .ah-conversation-frame > .ah-agent-header {
     min-height: 74px;
-    padding: var(--ah-s3) var(--ah-s3) var(--ah-s3) 100px;
+    padding: var(--ah-topbar-pad-block) var(--ah-topbar-pad-inline)
+      var(--ah-topbar-pad-block) 100px;
+  }
+  .ah-conversation-frame .ah-composer {
+    padding: var(--ah-composer-pad-block) var(--ah-column-pad-inline);
   }
   .ah-agent-topline .ah-title-row {
     flex: 1 1 0;

@@ -67,13 +67,15 @@ test("@lab long native title keeps the original accessible at 390px", async ({
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     390,
   );
-  await page.getByRole("button", { name: "Näytä koko otsikko" }).click();
-  await expect(
-    page.getByRole("button", { name: "Tiivistä otsikko" }),
-  ).toHaveAttribute("aria-expanded", "true");
-  expect(
-    await heading.evaluate((el) => el.getBoundingClientRect().height),
-  ).toBeGreaterThan(clipped);
+  await page.getByRole("button", { name: "Tiedot" }).click();
+  await expect(page.getByRole("button", { name: "Tiedot" })).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+  await expect(page.locator(".ah-header-full-title")).toHaveText(title);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    390,
+  );
 });
 
 test("@lab GitHub chooser, synthetic clone and Pi onboarding", async ({

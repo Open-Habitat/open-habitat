@@ -31,7 +31,8 @@ test("@lab v2 shared conversation metrics in both themes and at phone width", as
         return {
           railWidth: Math.round(rail.getBoundingClientRect().width),
           topPadding: header.paddingTop,
-          sidePadding: header.paddingLeft,
+          sidePadding: header.paddingRight,
+          headerLeadingPadding: header.paddingLeft,
           columnWidth: root.getPropertyValue("--ah-conversation-width").trim(),
           streamPadding: stream.paddingLeft,
           titleSize: heading.fontSize,
@@ -59,7 +60,7 @@ test("@lab v2 shared conversation metrics in both themes and at phone width", as
           toolBorder: style(".ah-tool-group").borderTopWidth,
           detailsVisible: Boolean(
             document.querySelector(
-              ".ah-agent-header > button[aria-expanded] svg",
+              ".ah-agent-header .ah-details-toggle[aria-expanded] svg",
             ),
           ),
           mainScrolls:
@@ -92,6 +93,9 @@ test("@lab v2 shared conversation metrics in both themes and at phone width", as
       expect(values.mainScrolls).toBe(false);
       expect(values.topPadding).toBe(width === 390 ? "6px" : "13px");
       expect(values.sidePadding).toBe(width === 390 ? "14px" : "24px");
+      expect(values.headerLeadingPadding).toBe(
+        width === 390 ? "100px" : "24px",
+      );
       expect(values.columnWidth).toBe("780px");
       expect(values.streamPadding).toBe(width === 390 ? "14px" : "24px");
       expect(values.streamBlockPadding).toBe(width === 390 ? "12px" : "22px");

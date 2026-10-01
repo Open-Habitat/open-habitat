@@ -318,9 +318,7 @@ test("@lab fresh replies remain visible across native history pages", async ({
     await expect(
       page.getByText(`Selvä. Kysyit: "Kierros ${i}".`, { exact: false }),
     ).toBeVisible({ timeout: 30000 });
-    await expect(
-      page.getByRole("button", { name: "Lähetä", exact: true }),
-    ).toBeEnabled({ timeout: 30000 });
+    await expect(editor).toBeEnabled({ timeout: 30000 });
   }
   await expect(page.getByText("Kierros 8", { exact: true })).toBeVisible();
 });
