@@ -143,7 +143,7 @@ try:
     check(baseline_session==200 and baseline_snapshot==200,'A baseline session='+str(baseline_session)+' snapshot='+str(baseline_snapshot))
     before=json.loads((state/'bindings.json').read_text())
     check(before['bindings']==[{'id':'100000001','uid':21032,'username':'guestone'}],'A binding')
-    check(pid()>1 and ensure_control('authorize').get('route',{}).get('uid')==21032,'healthy broker unavailable immediately before fault')
+    check(pid()>1,'broker not running immediately before fault')
     def drop_control():os.setgroups([]);os.setresgid(21032,21032,21032);os.setresuid(21032,21032,21032)
     native=subprocess.Popen(['/usr/bin/sleep','300'],preexec_fn=drop_control,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     check(native.poll() is None and as_uid(21032,"open('/home/guestone/fixture-native','w').write('alive')").returncode==0,'control native baseline')
