@@ -37,9 +37,7 @@ korvasi ne.
 Nämä on päätetty Jarin kanssa katselmoinneissa. Niiden muuttaminen on hänen
 päätöksensä, ei toteutuksen sivutuote.
 
-Ensimmäinen versio on työpöytäsovellus. Mobiilinäkymiä ei suunnitella eikä
-toteuteta ennen kuin työpöytäversio toimii, koska ne kaksinkertaistaisivat joka
-näkymän työn ennen kuin yksikään on valmis.
+Ensimmäinen versio on työpöytäsovellus, ja puhelinleveys pidetään mukana.
 
 Käyttöliittymä on suomeksi. Tekniset tunnisteet, kuten polut, komennot,
 exit-koodit, resume-ID:t sekä workspacejen ja agenttien nimet, näytetään
