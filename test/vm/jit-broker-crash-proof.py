@@ -162,11 +162,14 @@ try:
     check(json.loads((state/'bindings.json').read_text())==before,'binding changed')
     check(not pathlib.Path('/home/guesttwo').exists() and not pathlib.Path('/etc/omega-habitat/daemon/user-mappings/daemon-guesttwo.json').exists(),'executor advanced after crash')
     pending=journal.read_bytes()
-    # Real systemd activation must launch a *new* broker and be refused by
-    # Writer.Startup; socket remains available but cannot issue a reply.
+    # A bare service start does not inherit systemd's listening descriptor in
+    # this historical fixture. Trigger the real socket-activated broker from
+    # a gateway-UID peer instead; it must refuse before replying.
     unit('reset-failed','native-agent-host-broker.service')
     prior_invocation=unit('show','-P','InvocationID','native-agent-host-broker.service').stdout.strip()
-    restart=unit('start','native-agent-host-broker.service')
+    check(unit('is-active','native-agent-host-broker.socket').stdout.strip()==b'active','broker activation socket lost')
+    restarted_reply=ensure_control('authorize')
+    check(restarted_reply.get('route') is None,'restarted broker issued route')
     # Type=simple may report successful start before ServeBroker.Startup exits.
     for _ in range(50):
         if pid()==0 and unit('is-active','native-agent-host-broker.service').stdout.strip() in (b'failed',b'inactive'):break
@@ -174,7 +177,7 @@ try:
     next_invocation=unit('show','-P','InvocationID','native-agent-host-broker.service').stdout.strip()
     check(next_invocation and next_invocation!=prior_invocation and pid()==0 and
           unit('show','-P','Result','native-agent-host-broker.service').stdout.strip()==b'exit-code',
-          'broker restart accepted pending journal (start='+str(restart.returncode)+')')
+          'socket-activated broker restart accepted pending journal')
     refusal_log=command('journalctl','_SYSTEMD_INVOCATION_ID='+next_invocation.decode('ascii'),'-u',
                         'native-agent-host-broker.service','--no-pager','-o','cat').stdout
     all_refusal_log=command('journalctl','-u','native-agent-host-broker.service','--no-pager','-o','cat').stdout
