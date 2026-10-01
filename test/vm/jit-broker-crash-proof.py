@@ -191,7 +191,8 @@ try:
             s=os.lstat(p)
             return p+':'+str((stat.S_IFMT(s.st_mode),s.st_uid,s.st_gid,stat.S_IMODE(s.st_mode)))
         except OSError as e:return p+':'+type(e).__name__
-    check(refusal_log.count(b'NAH_GUEST_PENDING_REFUSED')==1,
+    check(refusal_log.count(b'NAH_GUEST_PENDING_REFUSED_CONFIG')==1 and
+          b'NAH_GUEST_PENDING_REFUSED_STARTUP' not in refusal_log and b'NAH_GUEST_STAGE_fd' not in refusal_log,
           'guard missing; preconditions='+','.join(x.decode() for x in re.findall(rb'NAH_GUEST_(?:CONFIG_INVALID|SOCKET_UNSAFE)',all_refusal_log)[-3:])+' paths='+';'.join(path_state(p) for p in ('/run','/run/native-agent-host','/run/native-agent-host/broker.sock'))+' stages='+','.join(x.decode() for x in stages[-4:]))
     check(journal.read_bytes()==pending,'restart cleared or rewrote journal')
     session_status,_,_=get(affected,'/auth/session')

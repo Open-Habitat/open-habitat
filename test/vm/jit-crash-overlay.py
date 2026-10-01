@@ -34,7 +34,7 @@ startup = '\t\tif !absent(fd, n) {\n\t\t\treturn ErrBrokerStartup\n\t\t}\n'
 if broker_source.count(startup) != 1 or 'NAH_GUEST_PENDING_REFUSED' in broker_source:
     raise SystemExit('broker startup injection site drifted')
 startup_with_diagnostic = startup.replace('\t\t\treturn ErrBrokerStartup',
-    '\t\t\tif n == "pending.json" { _, _ = os.Stderr.WriteString("NAH_GUEST_PENDING_REFUSED\\n") }\n\t\t\treturn ErrBrokerStartup')
+    '\t\t\tif n == "pending.json" { _, _ = os.Stderr.WriteString("NAH_GUEST_PENDING_REFUSED_STARTUP\\n") }\n\t\t\treturn ErrBrokerStartup')
 broker_replacement = run / 'guest-broker.go'
 broker_source = broker_source.replace(startup, startup_with_diagnostic)
 check = 'if err != nil || !brokerSocketSafe(cfg.GatewayGID) {\n\t\treturn ErrBrokerStartup\n\t}'
@@ -64,7 +64,7 @@ if state_source.count(pending_check) != 1:
     raise SystemExit('secureFile pending guard drifted')
 state_source = state_source.replace(pending_check, pending_check.replace(
     '\t\treturn nil, ErrInvalid',
-    '\t\tif name == "broker.json" { _, _ = os.Stderr.WriteString("NAH_GUEST_PENDING_REFUSED\\n") }\n\t\treturn nil, ErrInvalid'))
+    '\t\tif name == "broker.json" { _, _ = os.Stderr.WriteString("NAH_GUEST_PENDING_REFUSED_CONFIG\\n") }\n\t\treturn nil, ErrInvalid'))
 state_replacement = run / 'guest-state.go'
 state_replacement.write_text(state_source)
 (run / 'guest-overlay.json').write_text(json.dumps({'Replace': {
