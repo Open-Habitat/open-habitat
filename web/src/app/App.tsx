@@ -20,10 +20,7 @@ import {
 } from "../components";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import { ReturnView } from "../components/ReturnView";
-import {
-  BrowserConversation,
-  type ConversationPlace,
-} from "./BrowserConversation";
+import { BrowserConversation } from "./BrowserConversation";
 import { list as listConversations, type Session } from "./conversations";
 import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
@@ -148,33 +145,9 @@ export function App() {
   // Daemon catalog distinguishes browser-started Pi sessions from read-only
   // terminal history; it is not a cookie-scoped conversation lease.
   const [daemonSessions, setDaemonSessions] = useState<Session[]>([]);
-  const [verifying, setVerifying] = useState(false);
-  const [identityEpoch, setIdentityEpoch] = useState(0);
-  const sessionBinding = useRef<string | undefined>(undefined);
-  const loginGeneration = useRef(0);
+  const [csrf, setCSRF] = useState<string>();
   // First load only. A successful onboarding attempt has already checked Pi.
   const piChecked = useRef(false);
-  const editorPlace = useRef<
-    { editor: HTMLTextAreaElement; start: number; end: number } | undefined
-  >(undefined);
-  const captureEditor = useCallback(() => {
-    const editor = document.activeElement;
-    if (editor instanceof HTMLTextAreaElement)
-      editorPlace.current = {
-        editor,
-        start: editor.selectionStart,
-        end: editor.selectionEnd,
-      };
-  }, []);
-  useLayoutEffect(() => {
-    if (verifying || !editorPlace.current) return;
-    const { editor, start, end } = editorPlace.current;
-    editorPlace.current = undefined;
-    if (editor.isConnected && !editor.disabled) {
-      editor.focus({ preventScroll: true });
-      editor.setSelectionRange(start, end);
-    }
-  }, [verifying]);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileLayout, setMobileLayout] = useState(
     () => window.matchMedia?.("(max-width: 800px)").matches ?? false,
@@ -190,9 +163,6 @@ export function App() {
   const [logoutError, setLogoutError] = useState(false);
   const [settingsReturn, setSettingsReturn] = useState("/workspaces");
   const returningFromSettings = useRef(false);
-  // Memory-only reading place. Revalidation masks the mounted view; a changed
-  // login or a failed check drops both the snapshot and ephemeral UI state.
-  const conversationPlace = useRef(new Map<string, ConversationPlace>());
   useEffect(() => {
     if (location.pathname !== "/settings" && returningFromSettings.current) {
       returningFromSettings.current = false;
@@ -205,21 +175,17 @@ export function App() {
   const identity = snapshot?.identity.web_identity_id;
   const priorIdentity = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (
-      priorIdentity.current &&
-      ((identity && identity !== priorIdentity.current) ||
-        phase === "authentication_required" ||
-        phase === "pi_required")
-    ) {
+    if (priorIdentity.current && identity !== priorIdentity.current) {
       for (const key of Object.keys(sessionStorage))
-        if (key.startsWith(`nah:`)) sessionStorage.removeItem(key);
+        if (key.startsWith(`nah:${priorIdentity.current}:`))
+          sessionStorage.removeItem(key);
       setSettingsReturn("/workspaces");
       returningFromSettings.current = false;
       setExpanded({});
-      conversationPlace.current.clear();
+      setDaemonSessions([]);
     }
     if (identity) priorIdentity.current = identity;
-  }, [identity, phase]);
+  }, [identity]);
   const openSettings = () => {
     setSettingsReturn(
       safeRoute(location.pathname) === "/settings"
@@ -234,10 +200,62 @@ export function App() {
       ? new URLSearchParams(location.search).get("fixture")
       : null;
   const refresh = useCallback(() => {
-    captureEditor();
-    setVerifying(true);
     setRefreshKey((n) => n + 1);
-  }, [captureEditor]);
+  }, []);
+  const requireLogin = useCallback(
+    () => dispatch(authenticationRequired()),
+    [dispatch],
+  );
+  // Outside a conversation the catalog still needs journal invalidations.
+  // A selected conversation owns the same single stream for its live turn.
+  const snapshotCursor = useRef(snapshot?.event_cursor);
+  snapshotCursor.current = snapshot?.event_cursor;
+  const viewingConversation = /\bconversation=pi(?:%3A|:)/i.test(
+    location.search,
+  );
+  const [catalogOffline, setCatalogOffline] = useState(false);
+  useEffect(() => {
+    if (!catalogOffline || viewingConversation) return;
+    const timer = window.setInterval(refresh, 60000);
+    return () => window.clearInterval(timer);
+  }, [catalogOffline, viewingConversation, refresh]);
+  useEffect(() => {
+    if (!identity || viewingConversation || syntheticDemo || fixtureName)
+      return;
+    const source = new EventSource(
+      `/api/v1/events?after=${encodeURIComponent(snapshotCursor.current ?? "")}`,
+    );
+    for (const kind of [
+      "snapshot.invalidated",
+      "agent.changed",
+      "workspace.changed",
+      "title.changed",
+      "source.warning",
+    ])
+      source.addEventListener(kind, refresh);
+    source.onopen = () => setCatalogOffline(false);
+    source.onerror = () => {
+      setCatalogOffline(true);
+      void (async () => {
+        try {
+          const response = await fetch(
+            `/api/v1/events?after=${encodeURIComponent(snapshotCursor.current ?? "")}`,
+            {
+              credentials: "same-origin",
+              cache: "no-store",
+              signal: AbortSignal.timeout(5000),
+            },
+          );
+          await response.body?.cancel();
+          if (response.status === 401) requireLogin();
+          else if (response.status === 409) refresh();
+        } catch {
+          /* Reconnect and slow snapshot fallback handle transport loss. */
+        }
+      })();
+    };
+    return () => source.close();
+  }, [identity, viewingConversation, fixtureName, refresh, requireLogin]);
   const manualRefresh = () => {
     setHistoryRefreshKey((n) => n + 1);
     refresh();
@@ -249,188 +267,55 @@ export function App() {
     window.addEventListener("online", refresh);
     return () => window.removeEventListener("online", refresh);
   }, [phase, refresh]);
-  const requireLogin = useCallback(
-    () => dispatch(authenticationRequired()),
-    [dispatch],
-  );
-  // A click in an already foreground window is not a return to the tab.
-  // Mask identity-scoped DOM on a real return until the cookie and snapshot
-  // have both been verified. Keep it mounted to preserve the editor and scroll.
-  useEffect(() => {
-    if (
-      syntheticDemo ||
-      fixtureName ||
-      (phase !== "authenticated" && phase !== "stale")
-    )
-      return;
-    // The first authenticated render may happen in a background tab; there
-    // need not have been a blur event for this listener to observe.
-    let away = document.visibilityState === "hidden" || !document.hasFocus();
-    const blur = () => {
-      captureEditor();
-      away = true;
-    };
-    const visibility = () => {
-      if (document.visibilityState === "hidden") away = true;
-      else if (away) {
-        away = false;
-        refresh();
-      }
-    };
-    const focus = () => {
-      if (document.visibilityState === "visible" && away) {
-        away = false;
-        refresh();
-      }
-    };
-    window.addEventListener("blur", blur);
-    window.addEventListener("focus", focus);
-    document.addEventListener("visibilitychange", visibility);
-    return () => {
-      window.removeEventListener("blur", blur);
-      window.removeEventListener("focus", focus);
-      document.removeEventListener("visibilitychange", visibility);
-    };
-  }, [refresh, captureEditor, fixtureName, phase]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is the explicit refresh trigger, not read inside the effect.
   useEffect(() => {
     if (fixtureName?.startsWith("design") && CatalogPreview) return;
     const controller = new AbortController();
-    // A pending endpoint must not leave the identity mask up forever.
     let active = true;
-    let verifiedToken: string | undefined;
-    let timedOut = false;
-    let retaining = false;
-    const timeout = window.setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-      if (active && !retaining) void retain(verifiedToken);
-    }, 10000);
-    const generation = loginGeneration.current;
     if (!snapshot) dispatch(loading());
     const fail = (gate: "login" | "pi" | "unavailable") => {
-      if (!active || generation !== loginGeneration.current) return;
-      window.clearTimeout(timeout);
-      sessionBinding.current = undefined;
-      for (const key of Object.keys(sessionStorage))
-        if (key.startsWith("nah:")) sessionStorage.removeItem(key);
-      conversationPlace.current.clear();
-      setDaemonSessions([]);
-      setIdentityEpoch((n) => n + 1);
-      if (gate === "login") dispatch(authenticationRequired());
-      else if (gate === "pi") dispatch(piRequired());
+      if (!active) return;
+      if (gate === "login") {
+        setCSRF(undefined);
+        dispatch(authenticationRequired());
+      } else if (gate === "pi") dispatch(piRequired());
+      else if (snapshot) dispatch(stale());
       else dispatch(unavailable());
-      editorPlace.current = undefined;
-      setVerifying(false);
-    };
-    const retain = async (token?: string) => {
-      if (retaining) return;
-      retaining = true;
-      if (!active || !snapshot || !token || sessionBinding.current !== token) {
-        fail("unavailable");
-        return;
-      }
-      try {
-        // The cookie can change after the first check and before a failed
-        // snapshot. Verify once more before leaving old facts on screen.
-        const current = await sessionCSRF(AbortSignal.timeout(3000));
-        if (!active || generation !== loginGeneration.current) return;
-        if (current !== token)
-          return fail(current === "login" ? "login" : "unavailable");
-        dispatch(stale());
-        window.clearTimeout(timeout);
-        setVerifying(false);
-      } catch {
-        fail("unavailable");
-      }
     };
     const load = async () => {
       try {
-        let token: string | "login" | undefined;
-        if (!syntheticDemo) {
-          // The first load checks Pi once. Tab returns verify only browser
-          // session and snapshot; a broken credential is reported by Pi's call.
-          const session = await sessionCSRF(controller.signal);
+        if (!syntheticDemo && !piChecked.current) {
+          const token = await sessionCSRF(controller.signal);
+          if (!active) return;
+          if (token === "login") return fail("login");
+          setCSRF(token);
+          const status = await piStatus(controller.signal);
+          if (!active) return;
+          if (status === "login") return fail("login");
           if (
-            !active ||
-            controller.signal.aborted ||
-            generation !== loginGeneration.current
-          )
-            return;
-          if (session === "login") return fail("login");
-          token = session;
-          if (snapshot && sessionBinding.current !== token) {
-            piChecked.current = false;
+            status === "missing" ||
+            status === "unknown" ||
+            status === "unavailable"
+          ) {
+            setPiCheckFailed(status !== "missing");
+            return fail("pi");
           }
-          if (!piChecked.current) {
-            const status = await piStatus(controller.signal);
-            if (
-              !active ||
-              controller.signal.aborted ||
-              generation !== loginGeneration.current
-            )
-              return;
-            if (status === "login") return fail("login");
-            if (status === "missing") return fail("pi");
-            if (status === "unknown" || status === "unavailable") {
-              setPiCheckFailed(true);
-              return fail("pi");
-            }
-            if (status !== "usable") return fail("unavailable");
-            piChecked.current = true;
-          }
-          // A failed authority check is not a transport outage. A different
-          // session must never inherit the previous user's mounted content.
-          if (snapshot && sessionBinding.current !== token) {
-            for (const key of Object.keys(sessionStorage))
-              if (key.startsWith("nah:")) sessionStorage.removeItem(key);
-            conversationPlace.current.clear();
-            setDaemonSessions([]);
-            setIdentityEpoch((n) => n + 1);
-            sessionBinding.current = undefined;
-            dispatch(clearIdentity());
-            window.clearTimeout(timeout);
-            setVerifying(false);
-            return;
-          }
-          verifiedToken = token;
+          piChecked.current = true;
         }
-        if (
-          !active ||
-          controller.signal.aborted ||
-          generation !== loginGeneration.current
-        )
-          return;
-        if (token === "login") return fail("login");
-        let response: Response;
-        try {
-          response = await fetch(
-            syntheticDemo
-              ? `/api/v1/snapshot?scenario=${new URLSearchParams(location.search).get("scenario") ?? "ready"}`
-              : "/api/v1/snapshot",
-            {
-              credentials: "same-origin",
-              cache: "no-store",
-              signal: controller.signal,
-            },
-          );
-        } catch {
-          // Only the snapshot transport may fail while authority is verified.
-          if (timedOut) return;
-          if (snapshot && verifiedToken && !controller.signal.aborted) {
-            await retain(verifiedToken);
-            return;
-          }
-          throw new Error("snapshot transport");
-        }
+        const response = await fetch(
+          syntheticDemo
+            ? `/api/v1/snapshot?scenario=${new URLSearchParams(location.search).get("scenario") ?? "ready"}`
+            : "/api/v1/snapshot",
+          {
+            credentials: "same-origin",
+            cache: "no-store",
+            signal: controller.signal,
+          },
+        );
+        if (!active) return;
         if (response.status === 401) return fail("login");
-        if (response.status === 403) return fail("unavailable");
-        if (!active || generation !== loginGeneration.current) return;
-        if (response.status >= 500) {
-          if (snapshot) await retain(verifiedToken);
-          else fail("unavailable");
-          return;
-        }
+        if (response.status === 403 || response.status >= 500)
+          return fail("unavailable");
         if (
           !response.ok ||
           response.headers.get("content-type")?.split(";")[0] !==
@@ -438,46 +323,25 @@ export function App() {
         )
           throw new Error("unavailable");
         const next = await readSnapshot(response);
-        if (
-          !active ||
-          controller.signal.aborted ||
-          generation !== loginGeneration.current
-        )
-          return;
-        if (
-          snapshot &&
-          snapshot.identity.web_identity_id !== next.identity.web_identity_id
-        ) {
-          // A mismatched snapshot is not proof that this browser belongs to
-          // the new identity. Clear rather than rendering either identity.
-          return fail("login");
-        }
-        sessionBinding.current = token;
+        if (!active) return;
         setPiCheckFailed(false);
         dispatch(authenticated(next));
-        window.clearTimeout(timeout);
-        setVerifying(false);
         if (!syntheticDemo) {
           try {
-            const daemonCatalog = await listConversations(controller.signal);
-            if (
-              active &&
-              !controller.signal.aborted &&
-              sessionBinding.current === token
-            )
-              setDaemonSessions(daemonCatalog);
-          } catch {
-            if (active && !controller.signal.aborted) setDaemonSessions([]);
+            const catalog = await listConversations(controller.signal);
+            if (active) setDaemonSessions(catalog);
+          } catch (error) {
+            if (active && (error as Error).message === "identity_lost")
+              fail("login");
           }
         }
       } catch {
-        if (!timedOut) fail("unavailable");
+        if (active && !controller.signal.aborted) fail("unavailable");
       }
     };
     void load();
     return () => {
       active = false;
-      window.clearTimeout(timeout);
       controller.abort();
     };
   }, [dispatch, refreshKey, fixtureName, syntheticDemo]);
@@ -491,12 +355,9 @@ export function App() {
     }
     // Hide every identity-scoped fact before the first write or new login.
     for (const key of Object.keys(sessionStorage))
-      if (key.startsWith(`nah:`)) sessionStorage.removeItem(key);
-    conversationPlace.current.clear();
+      if (key.startsWith(`nah:${identity}:`)) sessionStorage.removeItem(key);
     setDaemonSessions([]);
-    editorPlace.current = undefined;
-    loginGeneration.current++;
-    sessionBinding.current = undefined;
+    setCSRF(undefined);
     piChecked.current = false;
     dispatch(clearIdentity());
     navigate("/workspaces", { replace: true });
@@ -566,7 +427,6 @@ export function App() {
   // Focus only on navigation or a new sign-in state, never on a snapshot refresh.
   // Settings owns its own entry focus and the conversation owns its editor focus.
   useLayoutEffect(() => {
-    if (verifying) return;
     const previous = previousView.current;
     previousView.current = { path: location.pathname, phase };
     if (previous.path === location.pathname && previous.phase === phase) return;
@@ -582,7 +442,7 @@ export function App() {
     const heading = main?.querySelector<HTMLElement>("h1");
     if (heading) heading.tabIndex = -1;
     (heading ?? main)?.focus({ preventScroll: true });
-  }, [location.pathname, phase, verifying, selectedAgentId]);
+  }, [location.pathname, phase, selectedAgentId]);
   const selectedAgent = snapshot?.agents.find(
     (a) => a.agent_id === selectedAgentId,
   );
@@ -687,7 +547,6 @@ export function App() {
       />
     ) : selectedAgent && agentWorkspace ? (
       <HistoryView
-        stale={phase === "stale"}
         key={`${selectedAgent.agent_id}:${historyRefreshKey}`}
         agent={selectedAgent}
         workspaceName={agentWorkspace.display_name ?? agentWorkspace.name}
@@ -727,8 +586,9 @@ export function App() {
           (f) => f.source === "filesystem" && f.state === "confirmed",
         ) ? (
           <BrowserConversation
-            stale={phase === "stale"}
-            key={`${identity}:${selected.workspace_id}:${location.search}`}
+            csrf={csrf}
+            onLogin={requireLogin}
+            key={`${identity}:${selected.workspace_id}:${new URLSearchParams(location.search).get("conversation") ?? "new"}`}
             workspace={selected}
             id={
               /^pi:[0-9a-fA-F-]{36}$/.test(
@@ -749,7 +609,6 @@ export function App() {
                   a.workspace_id === selected.workspace_id,
               )?.title.display
             }
-            place={conversationPlace}
             onSessionCreated={(session) =>
               setDaemonSessions((old) => [...old, session])
             }
@@ -854,183 +713,164 @@ export function App() {
       </Suspense>
     );
   return (
-    <>
-      {verifying && snapshot ? (
-        <div role="status" className="ah-identity-check">
-          <span className="ah-identity-check-title">Agent Host</span>
-          <span>Varmistetaan istuntoa…</span>
-        </div>
-      ) : null}
-      <div
-        key={identityEpoch}
-        style={
-          verifying && snapshot
-            ? { visibility: "hidden", pointerEvents: "none" }
-            : undefined
+    <div key={identity}>
+      <AppShell
+        connection={
+          <>
+            {syntheticDemo ? (
+              <div className="ah-demo-banner" role="status">
+                SYNTEETTINEN DEMO · Simuloitu identiteetti ja workspace-data ·
+                Ei oikeaa kirjautumista, agentteja eikä host-yhteyttä
+              </div>
+            ) : null}
+            {phase === "authentication_required" ||
+            phase === "pi_required" ||
+            phase === "daemon_unavailable" ? null : (
+              <ConnectionBanner
+                onRetry={phase === "stale" ? refresh : undefined}
+                state={
+                  phase === "stale"
+                    ? "stale"
+                    : phase === "authenticated"
+                      ? "online"
+                      : "loading"
+                }
+                hostWriteState={
+                  snapshot?.write_state === "read_only"
+                    ? "read_only"
+                    : "writable"
+                }
+              />
+            )}
+          </>
         }
-        aria-hidden={verifying && snapshot ? true : undefined}
-        inert={verifying && snapshot ? true : undefined}
-      >
-        <AppShell
-          connection={
-            <>
-              {syntheticDemo ? (
-                <div className="ah-demo-banner" role="status">
-                  SYNTEETTINEN DEMO · Simuloitu identiteetti ja workspace-data ·
-                  Ei oikeaa kirjautumista, agentteja eikä host-yhteyttä
-                </div>
-              ) : null}
-              {phase === "authentication_required" ||
-              phase === "pi_required" ||
-              phase === "daemon_unavailable" ? null : (
-                <ConnectionBanner
-                  onRetry={phase === "stale" ? refresh : undefined}
-                  state={
-                    phase === "stale"
-                      ? "stale"
-                      : phase === "authenticated"
-                        ? "online"
-                        : "loading"
+        rail={
+          (phase === "authenticated" || phase === "stale") && snapshot ? (
+            <WorkspaceRail
+              collapsed={collapsed && !mobileLayout}
+              serverLabel={window.location.host}
+              connectionLabel={
+                phase === "stale"
+                  ? "Yhteys poikki"
+                  : source === "confirmed"
+                    ? "Yhdistetty"
+                    : "Tietoja puuttuu"
+              }
+              connectionTone={
+                phase === "stale"
+                  ? "danger"
+                  : source === "confirmed"
+                    ? "success"
+                    : "warning"
+              }
+              sessionActions={
+                <AccountShelf
+                  name="Oma tili"
+                  onSettings={openSettings}
+                  onLogout={logout}
+                />
+              }
+              homeCurrent={location.pathname === "/workspaces"}
+              runningCount={
+                phase === "authenticated"
+                  ? snapshot.agents.filter(
+                      (a) =>
+                        a.process === "daemon_managed_live" ||
+                        a.process === "terminal_observed_live",
+                    ).length
+                  : undefined
+              }
+              filterValue={filter}
+              resultSummary={`${matches.length} ${source === "confirmed" ? "työtilaa" : "löydettyä työtilaa"}`}
+              summaryAction={undefined}
+              listState={railState}
+              onToggle={() => setCollapsed(!collapsed)}
+              onFilter={(v) => dispatch(filterChanged(v))}
+              onRefresh={manualRefresh}
+            >
+              {matches.map((w) => (
+                <WorkspaceSection
+                  key={w.workspace_id}
+                  workspaceId={w.workspace_id}
+                  name={w.display_name ?? w.name}
+                  href={`/workspaces/${w.workspace_id}`}
+                  expanded={
+                    expanded[w.workspace_id] ??
+                    Boolean(
+                      snapshot.agents.some(
+                        (a) => a.workspace_id === w.workspace_id,
+                      ),
+                    )
                   }
-                  hostWriteState={
-                    snapshot?.write_state === "read_only"
-                      ? "read_only"
-                      : "writable"
+                  selected={selectedId === w.workspace_id}
+                  summary={`${w.kind === "git_main_worktree" ? "Git" : "Hakemisto"} · ${sourceLabel(w.facts.find((f) => f.source === "filesystem")?.state ?? "unknown")}`}
+                  mutationState={
+                    snapshot.write_state === "read_only"
+                      ? undefined
+                      : w.mutation_state === "read_only"
+                        ? "Vain luku"
+                        : undefined
+                  }
+                  agents={snapshot.agents
+                    .filter((a) => a.workspace_id === w.workspace_id)
+                    .map((a) => ({
+                      agentId: a.agent_id,
+                      href: daemonSessions.some(
+                        (s) =>
+                          s.agent_id === a.agent_id &&
+                          s.workspace_id === w.workspace_id,
+                      )
+                        ? `/workspaces/${w.workspace_id}?conversation=${a.agent_id}`
+                        : `/agents/${a.agent_id}`,
+                      title: a.title.display,
+                      activityLabel: agentProcessLabel(a.process),
+                      activityShortLabel:
+                        agentProcessLabel(a.process) ===
+                        "Prosessin tila ei tiedossa"
+                          ? "Tila ei tiedossa"
+                          : undefined,
+                      controlLabel: daemonSessions.some(
+                        (s) =>
+                          s.agent_id === a.agent_id &&
+                          s.workspace_id === w.workspace_id,
+                      )
+                        ? ""
+                        : agentControlLabel(a.control),
+                      selected:
+                        a.agent_id === selectedAgentId ||
+                        (selectedId === w.workspace_id &&
+                          new URLSearchParams(location.search).get(
+                            "conversation",
+                          ) === a.agent_id),
+                    }))}
+                  onToggle={() =>
+                    setExpanded({
+                      ...expanded,
+                      [w.workspace_id]: !(
+                        expanded[w.workspace_id] ??
+                        Boolean(
+                          snapshot.agents.some(
+                            (a) => a.workspace_id === w.workspace_id,
+                          ),
+                        )
+                      ),
+                    })
                   }
                 />
-              )}
-            </>
-          }
-          rail={
-            (phase === "authenticated" || phase === "stale") && snapshot ? (
-              <WorkspaceRail
-                collapsed={collapsed && !mobileLayout}
-                serverLabel={window.location.host}
-                connectionLabel={
-                  phase === "stale"
-                    ? "Yhteys poikki"
-                    : source === "confirmed"
-                      ? "Yhdistetty"
-                      : "Tietoja puuttuu"
-                }
-                connectionTone={
-                  phase === "stale"
-                    ? "danger"
-                    : source === "confirmed"
-                      ? "success"
-                      : "warning"
-                }
-                sessionActions={
-                  <AccountShelf
-                    name="Oma tili"
-                    onSettings={openSettings}
-                    onLogout={logout}
-                  />
-                }
-                homeCurrent={location.pathname === "/workspaces"}
-                runningCount={
-                  phase === "authenticated"
-                    ? snapshot.agents.filter(
-                        (a) =>
-                          a.process === "daemon_managed_live" ||
-                          a.process === "terminal_observed_live",
-                      ).length
-                    : undefined
-                }
-                filterValue={filter}
-                resultSummary={`${matches.length} ${source === "confirmed" ? "työtilaa" : "löydettyä työtilaa"}`}
-                summaryAction={undefined}
-                listState={railState}
-                onToggle={() => setCollapsed(!collapsed)}
-                onFilter={(v) => dispatch(filterChanged(v))}
-                onRefresh={manualRefresh}
-              >
-                {matches.map((w) => (
-                  <WorkspaceSection
-                    key={w.workspace_id}
-                    workspaceId={w.workspace_id}
-                    name={w.display_name ?? w.name}
-                    href={`/workspaces/${w.workspace_id}`}
-                    expanded={
-                      expanded[w.workspace_id] ??
-                      Boolean(
-                        snapshot.agents.some(
-                          (a) => a.workspace_id === w.workspace_id,
-                        ),
-                      )
-                    }
-                    selected={selectedId === w.workspace_id}
-                    summary={`${w.kind === "git_main_worktree" ? "Git" : "Hakemisto"} · ${sourceLabel(w.facts.find((f) => f.source === "filesystem")?.state ?? "unknown")}`}
-                    mutationState={
-                      snapshot.write_state === "read_only"
-                        ? undefined
-                        : w.mutation_state === "read_only"
-                          ? "Vain luku"
-                          : undefined
-                    }
-                    agents={snapshot.agents
-                      .filter((a) => a.workspace_id === w.workspace_id)
-                      .map((a) => ({
-                        agentId: a.agent_id,
-                        href: daemonSessions.some(
-                          (s) =>
-                            s.agent_id === a.agent_id &&
-                            s.workspace_id === w.workspace_id,
-                        )
-                          ? `/workspaces/${w.workspace_id}?conversation=${a.agent_id}`
-                          : `/agents/${a.agent_id}`,
-                        title: a.title.display,
-                        activityLabel: agentProcessLabel(a.process),
-                        activityShortLabel:
-                          agentProcessLabel(a.process) ===
-                          "Prosessin tila ei tiedossa"
-                            ? "Tila ei tiedossa"
-                            : undefined,
-                        controlLabel: daemonSessions.some(
-                          (s) =>
-                            s.agent_id === a.agent_id &&
-                            s.workspace_id === w.workspace_id,
-                        )
-                          ? ""
-                          : agentControlLabel(a.control),
-                        selected:
-                          a.agent_id === selectedAgentId ||
-                          (selectedId === w.workspace_id &&
-                            new URLSearchParams(location.search).get(
-                              "conversation",
-                            ) === a.agent_id),
-                      }))}
-                    onToggle={() =>
-                      setExpanded({
-                        ...expanded,
-                        [w.workspace_id]: !(
-                          expanded[w.workspace_id] ??
-                          Boolean(
-                            snapshot.agents.some(
-                              (a) => a.workspace_id === w.workspace_id,
-                            ),
-                          )
-                        ),
-                      })
-                    }
-                  />
-                ))}
-              </WorkspaceRail>
-            ) : undefined
-          }
-          main={
-            <div
-              className={
-                phase === "authentication_required"
-                  ? "ah-login-view"
-                  : "ah-state"
-              }
-            >
-              {main}
-            </div>
-          }
-        />
-      </div>
-    </>
+              ))}
+            </WorkspaceRail>
+          ) : undefined
+        }
+        main={
+          <div
+            className={
+              phase === "authentication_required" ? "ah-login-view" : "ah-state"
+            }
+          >
+            {main}
+          </div>
+        }
+      />
+    </div>
   );
 }

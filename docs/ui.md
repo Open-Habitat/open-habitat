@@ -3,7 +3,8 @@
 Käyttäjä avaa työtilansa, valitsee keskustelun ja jatkaa työtään Pi:n kanssa.
 Työtilat ja keskustelut näkyvät vasemmalla, valitun keskustelun sisältö oikealla.
 Käyttäjä voi seurata vastausta, lukea aiempaa työkalutulosta tai vaihtaa toiseen
-keskusteluun menettämättä luonnostaan ja lukukohtaansa.
+keskusteluun menettämättä luonnostaan. Auki olevan keskustelun lukukohta
+säilyy taustapäivityksissä; vaihto toiseen keskusteluun avaa historian uudelleen.
 
 Ensimmäinen käyttöliittymä on suomenkielinen työpöytänäkymä yhdelle palvelimelle.
 Vaalea ja tumma teema kuuluvat siihen; järjestelmän teema on oletus.
@@ -27,8 +28,9 @@ Git-työtilan avaaminen odottaa, että integrointivaihe on varmistanut repon ja
 agentin Git-käytön valmiuden. Puuttuva käyttöoikeus tai epäonnistunut valmistelu
 näkyy syineen.
 
-Keskustelun avaaminen näyttää natiivin historian eikä käynnistä agenttia.
-Uusi keskustelu aloitetaan erikseen. Päättynyttä selainkeskustelua voi jatkaa
+Keskustelun avaaminen näyttää yhden lataustilan, kunnes sekä tila että natiivi
+historia on haettu. Puoliksi ladattua keskustelua ei näytetä, eikä avaaminen
+käynnistä agenttia. Uusi keskustelu aloitetaan erikseen. Päättynyttä selainkeskustelua voi jatkaa
 samalla historialla, kun aiemman työn tiedetään päättyneen. Terminaalissa
 aloitetut keskustelut ovat vain luettavia. Samaa keskustelua ohjataan yhdestä
 paikasta kerrallaan.
@@ -82,9 +84,8 @@ muutos ei siirrä sitä. Dialogin sulkeminen palauttaa fokuksen mielekkääseen
 paikkaan.
 
 Keskustelu vierii uuden sisällön mukana vain, jos käyttäjä oli jo alhaalla.
-Aiemman sisällön lukija saa **Uutta sisältöä** -ilmaisimen. Lukukohta ja avatut
-työkaluryhmät säilyvät päivityksessä, kun vastaava natiivi tapahtuma on edelleen
-saatavilla.
+Aiemman sisällön lukija saa **Uutta sisältöä** -ilmaisimen. Lukukohta ja avatut työkaluryhmät säilyvät saman keskustelun päivityksessä,
+kun vastaava natiivi tapahtuma on edelleen saatavilla.
 
 Huomiota tarvitsevat keskustelut näkyvät sovelluksen omassa lukumäärässä,
 agenttirivin tekstimerkissä ja selainvälilehden otsikon luvussa. Pelkkä väri tai
@@ -100,13 +101,18 @@ eikä otsikointi estä keskustelua. Tarkka toiminta on
 
 ## Katkos ja epävarma tulos
 
-Yhteyden katketessa viimeksi saatu sisältö jää luettavaksi vanhentuneena ja
-kirjoittavat toiminnot odottavat ajantasaista tilaa. Pi jatkaa daemonin omistamana,
+Yhteyden katketessa viimeksi saatu sisältö jää näkyviin. Yhteysbanneri kertoo
+vanhentuneesta tiedosta, mutta näkymää ei peitetä tai asenneta uudelleen.
+Ensimmäinen sivulataus näyttää lataustilan; taustapäivitys ei. Selain yrittää
+lukea uudelleen verkkoyhteyden palattua tai käyttäjän Päivitä-painikkeesta.
+Kirjoitus lähetetään nykyisellä istunnolla palvelimelle, joka ratkaisee sen
+hyväksymisen; katkolla oleva tapahtumavirta ei yksin estä lähetystä. Pi jatkaa daemonin omistamana,
 vaikka selain suljetaan. Palatessa käyttäjä näkee nykyisen työn ja katkon aikana
 syntyneen historian. Daemonin tai palvelimen sammuminen voi sen sijaan katkaista
 aktiivisen työn.
 
-Jos viestin kuittaus katoaa, käyttöliittymä selvittää tilanteen palvelimelta.
+Normaali lähetys näkyy odottavana vastauksen ajan, ei epävarmana. Jos viestin
+kuittaus katoaa, käyttöliittymä selvittää tilanteen palvelimelta.
 Jos tulosta ei voida tietää, se näytetään epävarmana. Tekstin voi kopioida tai
 lähettää tietoisesti uutena viestinä; automaattinen uusinta voisi teettää saman
 työn kahdesti. Luonnos ja lukukohta säilyvät yhteyden palautuessa.

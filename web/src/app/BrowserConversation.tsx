@@ -1,5 +1,4 @@
 import {
-  type RefObject,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -51,28 +50,8 @@ import {
 } from "./conversations";
 import { readHistoryFetch, timelineItems } from "./HistoryView";
 import type { HistoryEntry } from "./history";
-import { sessionCSRF } from "./pi";
 import type { Snapshot, Workspace } from "./snapshot";
 
-// Only ephemeral presentation state, never authority to control a session.
-export type ConversationPlace = {
-  identity: string;
-  csrf: string;
-  workspaceId: string;
-  id: string;
-  entries: HistoryEntry[];
-  next?: string;
-  unseen: number;
-  scrollTop: number;
-  anchor?: { key: string; offset: number };
-  focus?: {
-    start: number;
-    end: number;
-    direction: "forward" | "backward" | "none";
-  };
-};
-
-// Kept only for this browser login. An ambiguous create/send is never retried.
 export function BrowserConversation({
   workspace,
   id,
@@ -80,23 +59,24 @@ export function BrowserConversation({
   identity,
   snapshot,
   onResnapshot,
-  place,
+  csrf,
+  onLogin,
   onSessionCreated,
-  stale = false,
 }: {
-  stale?: boolean;
   workspace: Workspace;
   id?: string;
   title?: string;
   identity: string;
   snapshot: Snapshot;
   onResnapshot: () => void;
-  place: RefObject<Map<string, ConversationPlace>>;
+  csrf?: string;
+  onLogin: () => void;
   onSessionCreated: (session: Session) => void;
 }) {
   const navigate = useNavigate();
-  const [csrf, setCSRF] = useState<string>();
   const [current, setCurrent] = useState<Status>();
+  const [opened, setOpened] = useState(false);
+  const [openAttempt, setOpenAttempt] = useState(0);
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [next, setNext] = useState<string>();
   const [draft, setDraft] = useState("");
@@ -111,20 +91,15 @@ export function BrowserConversation({
   const [continuation, setContinuation] = useState<
     "pending" | "uncertain" | ContinueRefusal
   >();
-  const [retryContinuation, setRetryContinuation] = useState(false);
-  const continueAttempt = useRef(0);
   const [unseen, setUnseen] = useState(0);
   const [events, setEvents] = useState<unknown[]>([]);
   const [live, setLive] = useState<LiveTurn>();
-  const [streamError, setStreamError] = useState(false);
   const [journalOffline, setJournalOffline] = useState(false);
   const continuationProof = useRef<
     { id: string; revision: string; result: Status["continuation"] } | undefined
   >(undefined);
   const openedProof = useRef("");
   const streamFailures = useRef(0);
-  const probePending = useRef(false);
-  const verifiedSnapshot = useRef(snapshot);
   const pendingNativeEntry = useRef<string | undefined>(undefined);
   const [confirmStop, setConfirmStop] = useState(false);
   const [queueOpen, setQueueOpen] = useState(false);
@@ -137,26 +112,33 @@ export function BrowserConversation({
   const wasAtBottom = useRef(true);
   const [details, setDetails] = useState(false);
   const pending = useRef(false);
+  const openReady = useRef(false);
   const queuedRefresh = useRef(false);
   const queuedProof = useRef(false);
-  const latestRefresh = useRef<(proof?: boolean) => Promise<void>>(
-    async () => {},
-  );
+  const queuedHistory = useRef(false);
+  const latestRefresh = useRef<
+    (proof?: boolean, history?: boolean) => Promise<void>
+  >(async () => {});
   const retryTimer = useRef<number | undefined>(undefined);
   const retryDelay = useRef(0);
   const retryProof = useRef(false);
+  const retryHistory = useRef(false);
   const clearRetry = useCallback((unmount = false) => {
     // A simultaneous ordinary refresh may succeed while an opening proof is
     // still waiting to retry. It does not discharge that explicit request.
-    if (retryProof.current && !unmount) return;
+    if ((retryProof.current || retryHistory.current) && !unmount) return;
     if (retryTimer.current !== undefined)
       window.clearTimeout(retryTimer.current);
     retryTimer.current = undefined;
     retryDelay.current = 0;
-    if (unmount) retryProof.current = false;
+    if (unmount) {
+      retryProof.current = false;
+      retryHistory.current = false;
+    }
   }, []);
-  const scheduleRetry = useCallback((proof = false) => {
+  const scheduleRetry = useCallback((proof = false, history = false) => {
     retryProof.current ||= proof;
+    retryHistory.current ||= history;
     if (retryTimer.current !== undefined || !alive.current) return;
     retryDelay.current = Math.min(
       retryDelay.current ? retryDelay.current * 2 : 3000,
@@ -165,37 +147,40 @@ export function BrowserConversation({
     retryTimer.current = window.setTimeout(() => {
       retryTimer.current = undefined;
       const needsProof = retryProof.current;
+      const needsHistory = retryHistory.current;
       retryProof.current = false;
-      void latestRefresh.current(needsProof);
+      retryHistory.current = false;
+      void latestRefresh.current(needsProof, needsHistory);
     }, retryDelay.current);
   }, []);
-  const sendInFlight = useRef(false);
-  const staleRef = useRef(stale);
-  staleRef.current = stale;
-  const submittedKey =
-    csrf && id ? `nah:submitted:${identity}:${csrf}:${id}` : "";
-  // Presentation-only marker: a lost abort receipt must not be treated as a
-  // rejected prompt after the component remounts during session revalidation.
-  const sendKey = csrf && id ? `nah:last-send:${identity}:${csrf}:${id}` : "";
-  const abortKey = csrf && id ? `nah:abort:${identity}:${csrf}:${id}` : "";
-  const continuationKey =
-    csrf && id ? `nah:continue:${identity}:${csrf}:${id}` : "";
+  const storage = (kind: string, key = id ?? workspace.workspace_id) =>
+    `nah:${identity}:${kind}:${key}`;
+  const submittedKey = storage("submitted");
+  const sendKey = storage("last-send");
+  const continuationKey = storage("continue");
+  const draftKey = storage("draft");
+  const uncertainKey = storage("uncertain");
+  const ambiguous = sessionStorage.getItem(uncertainKey);
   const alive = useRef(true);
   const generation = useRef(0);
   const feed = useRef<HTMLElement>(null);
   const queuePanel = useRef<HTMLElement>(null);
   const queueReturn = useRef<
-    | { top: number; atBottom: boolean; anchor: ConversationPlace["anchor"] }
+    | {
+        top: number;
+        atBottom: boolean;
+        anchor?: { key: string; offset: number };
+      }
     | undefined
   >(undefined);
   const stopConfirmation = useRef<HTMLFieldSetElement>(null);
   const section = useRef<HTMLElement>(null);
-  const restored = useRef(false);
   const focusedOnOpen = useRef(false);
-  const latest = useRef({ entries, next, unseen, csrf });
-  latest.current = { entries, next, unseen, csrf };
-  const placeKey = `${identity}:${workspace.workspace_id}:${id}`;
-  const readingAnchor = useRef<ConversationPlace["anchor"]>(undefined);
+  const latest = useRef({ entries, next, unseen });
+  latest.current = { entries, next, unseen };
+  const readingAnchor = useRef<{ key: string; offset: number } | undefined>(
+    undefined,
+  );
   const captureAnchor = useCallback(() => {
     const viewport = feed.current;
     if (!viewport || wasAtBottom.current) return;
@@ -213,7 +198,10 @@ export function BrowserConversation({
     }
   }, []);
   const restoreAnchor = useCallback(
-    (anchor: ConversationPlace["anchor"], pages: HistoryEntry[]) => {
+    (
+      anchor: { key: string; offset: number } | undefined,
+      pages: HistoryEntry[],
+    ) => {
       const viewport = feed.current;
       if (!viewport || !anchor) return false;
       const index = pages.findIndex((e) => e.entry_key === anchor.key);
@@ -228,97 +216,78 @@ export function BrowserConversation({
     },
     [],
   );
-  // Capture before React removes the DOM, including the actual textarea selection.
-  useLayoutEffect(() => {
-    return () => {
-      const {
-        csrf: token,
-        entries: pages,
-        next: cursor,
-        unseen: count,
-      } = latest.current;
-      if (!id || !token) return;
-      const editor = section.current?.querySelector("textarea");
-      const focused = editor && document.activeElement === editor;
-      captureAnchor();
-      place.current.set(placeKey, {
-        identity,
-        csrf: token,
-        workspaceId: workspace.workspace_id,
-        id,
-        entries: pages,
-        next: cursor,
-        unseen: count,
-        scrollTop: feed.current?.scrollTop ?? 0,
-        anchor: readingAnchor.current,
-        focus: focused
-          ? {
-              start: editor.selectionStart,
-              end: editor.selectionEnd,
-              direction: editor.selectionDirection as
-                | "forward"
-                | "backward"
-                | "none",
-            }
-          : undefined,
-      });
-    };
-  }, [id, identity, workspace.workspace_id, place, placeKey, captureAnchor]);
-  const draftKey = csrf && id ? `nah:draft:${identity}:${csrf}:${id}` : "";
-  const ambiguousKey = csrf
-    ? `nah:ambiguous:${identity}:${csrf}:${id ?? workspace.workspace_id}`
-    : "";
-  const ambiguous = ambiguousKey ? sessionStorage.getItem(ambiguousKey) : null;
   useEffect(() => {
-    if (stale) return;
+    void openAttempt; // explicit retry of the parallel open loader
     alive.current = true;
-    // An older continuation can settle while stale and skip its generation-
-    // guarded finally. Its persisted marker, not busy, blocks a second write.
-    setBusy(false);
     const controller = new AbortController();
-    setCSRF(undefined);
+    const version = ++generation.current;
+    if (!id)
+      return () => {
+        alive.current = false;
+        controller.abort();
+      };
+    openReady.current = false;
     setCurrent(undefined);
-    continuationProof.current = undefined;
-    clearRetry(true);
-    setRetryContinuation(false);
+    setOpened(false);
     setEntries([]);
-    setEvents([]);
     setLive(undefined);
-    pendingNativeEntry.current = undefined;
-    streamFailures.current = 0;
-    setStreamError(false);
-    setJournalOffline(false);
-    setConfirmStop(false);
-    setWorkingMode("follow_up");
-    setFinishedInBackground(false);
-    wasWorking.current = false;
-    wasAtBottom.current = true;
+    setHistoryError(false);
     setProblem("");
-    setReceipt("");
-    setSendObservation(undefined);
-    setUnseen(0);
+    // Both reads are one open transition. Never publish a partial view.
     void (async () => {
       try {
-        const token = await sessionCSRF(controller.signal);
-        if (token === "login") throw new Error("identity_lost");
-        if (controller.signal.aborted) return;
-        const saved = place.current.get(placeKey);
+        const [stateResult, historyResult] = await Promise.allSettled([
+          status(id, controller.signal).then(async (initial) =>
+            initial.state === "uncertain"
+              ? status(id, controller.signal, true)
+              : initial,
+          ),
+          readHistoryFetch(id, undefined, controller.signal),
+        ]);
+        if (!alive.current || version !== generation.current) return;
+        if (stateResult.status === "rejected") throw stateResult.reason;
+        const state = stateResult.value;
         if (
-          saved &&
-          saved.identity === identity &&
-          saved.csrf === token &&
-          saved.workspaceId === workspace.workspace_id &&
-          saved.id === id
-        ) {
-          setEntries(saved.entries);
-          setNext(saved.next);
-          setUnseen(saved.unseen);
-          restored.current = true;
-        } else place.current.delete(placeKey);
-        setCSRF(token);
-      } catch {
-        if (!controller.signal.aborted)
-          setProblem("Istuntoa ei voitu vahvistaa. Ohjaus on estetty.");
+          historyResult.status === "rejected" &&
+          !(
+            state.native_history === "missing" &&
+            (historyResult.reason as Error).message === "history_missing"
+          )
+        )
+          throw historyResult.reason;
+        if (state.workspace_id !== workspace.workspace_id)
+          throw new Error("invalid workspace");
+        setCurrent(state);
+        setOpened(true);
+        setEntries(
+          historyResult.status === "fulfilled"
+            ? historyResult.value.entries
+            : [],
+        );
+        setNext(
+          historyResult.status === "fulfilled"
+            ? historyResult.value.next_after
+            : undefined,
+        );
+        setEvents(state.events);
+        openReady.current = true;
+        if (queuedRefresh.current) {
+          queuedRefresh.current = false;
+          void latestRefresh.current(false, true);
+        }
+        openedProof.current = `${identity}:${id}`;
+        continuationProof.current = {
+          id,
+          revision: state.native_revision,
+          result: state.continuation,
+        };
+      } catch (error) {
+        if (alive.current && version === generation.current) {
+          if ((error as Error).message === "identity_lost") onLogin();
+          else if (error instanceof ConversationNotFound)
+            navigate(`/agents/${id}`, { replace: true });
+          else setProblem("Keskustelua ei voitu ladata. Yritä uudelleen.");
+        }
       }
     })();
     return () => {
@@ -329,51 +298,68 @@ export function BrowserConversation({
     };
   }, [
     id,
-    workspace.workspace_id,
     identity,
-    place,
-    placeKey,
-    stale,
+    workspace.workspace_id,
     clearRetry,
+    onLogin,
+    openAttempt,
+    navigate,
   ]);
   useEffect(() => {
-    setDraft(draftKey ? (sessionStorage.getItem(draftKey) ?? "") : "");
+    setDraft(sessionStorage.getItem(draftKey) ?? "");
     setContinuation(
-      continuationKey
-        ? ((sessionStorage.getItem(continuationKey) as
-            | "uncertain"
-            | ContinueRefusal
-            | null) ?? undefined)
-        : undefined,
+      (sessionStorage.getItem(continuationKey) as
+        | "uncertain"
+        | ContinueRefusal
+        | null) ?? undefined,
     );
-  }, [draftKey, continuationKey]);
-  const changeDraft = (value: string) => {
-    setDraft(value);
-    if (draftKey) sessionStorage.setItem(draftKey, value);
-  };
+    const text = sessionStorage.getItem(submittedKey);
+    if (text !== null && sessionStorage.getItem(uncertainKey))
+      setSendObservation({ text, state: "uncertain" });
+  }, [draftKey, continuationKey, submittedKey, uncertainKey]);
+  const changeDraft = useCallback(
+    (value: string) => {
+      setDraft(value);
+      sessionStorage.setItem(draftKey, value);
+    },
+    [draftKey],
+  );
   const refresh = useCallback(
-    async (requestContinuation = false) => {
-      if (stale || !id || !csrf || !alive.current) return;
-      // A journal event can arrive during a status/history read. Never drop
-      // its invalidation just because an earlier read was still in flight.
+    async (requestContinuation = false, readHistory = false) => {
+      if (!id || !alive.current) return;
+      if (!openReady.current) {
+        queuedRefresh.current = true;
+        queuedProof.current ||= requestContinuation;
+        queuedHistory.current ||= readHistory;
+        return;
+      }
       if (pending.current) {
         queuedRefresh.current = true;
         queuedProof.current ||= requestContinuation;
+        queuedHistory.current ||= readHistory;
         return;
       }
       pending.current = true;
       const version = generation.current;
       try {
-        const token = await sessionCSRF();
-        if (token !== csrf) throw new Error("identity_lost");
         let nextStatus = await status(id);
-        // A continuation proof is expensive and meaningful only for an ended
-        // conversation. Ordinary status reads never run one.
         if (requestContinuation && nextStatus.state === "uncertain")
           nextStatus = await status(id, undefined, true);
         if (!alive.current || version !== generation.current) return;
         if (nextStatus.workspace_id !== workspace.workspace_id)
           throw new Error("invalid workspace");
+        if (requestContinuation)
+          continuationProof.current = {
+            id,
+            revision: nextStatus.native_revision,
+            result: nextStatus.continuation,
+          };
+        else if (
+          nextStatus.state === "uncertain" &&
+          continuationProof.current?.id === id &&
+          continuationProof.current.revision === nextStatus.native_revision
+        )
+          nextStatus.continuation = continuationProof.current.result;
         const working = ["pending", "accepted", "stopping"].includes(
           nextStatus.state,
         );
@@ -384,305 +370,162 @@ export function BrowserConversation({
         )
           setFinishedInBackground(true);
         wasWorking.current = working;
-        if (requestContinuation) {
-          continuationProof.current = {
-            id,
-            revision: nextStatus.native_revision,
-            result: nextStatus.continuation,
-          };
-        } else if (
-          nextStatus.state === "uncertain" &&
-          continuationProof.current?.id === id &&
-          continuationProof.current.revision === nextStatus.native_revision
-        ) {
-          nextStatus = {
-            ...nextStatus,
-            continuation: continuationProof.current.result,
-          };
-        } else {
-          continuationProof.current = undefined;
-        }
         setCurrent(nextStatus);
-        // Reconcile an ambiguous continuation only against fresh status and history.
-        const continueKey = `nah:continue:${identity}:${csrf}:${id}`;
-        const reconciledContinuation =
-          sessionStorage.getItem(continueKey) === "uncertain" &&
-          nextStatus.state === "idle" &&
-          nextStatus.native_history === "present";
-        if (nextStatus.state === "idle") setWorkingMode("follow_up");
-        const abortId = sessionStorage.getItem(
-          `nah:abort:${identity}:${csrf}:${id}`,
-        );
-        const abortReceipt =
-          !!abortId && nextStatus.command_id === abortId.replace(/^done:/, "");
-        if (
-          abortReceipt &&
-          nextStatus.ack !== "pending" &&
-          !abortId.startsWith("done:")
-        ) {
-          sessionStorage.setItem(
-            `nah:abort:${identity}:${csrf}:${id}`,
-            `done:${abortId}`,
-          );
-          setReceipt(
-            nextStatus.ack === "accepted"
-              ? "Pi kuittasi keskeytyksen. Työkalujen päättymistä ei ole vahvistettu."
-              : nextStatus.ack === "rejected"
-                ? "Pi hylkäsi keskeytyksen."
-                : "Keskeytyksen tulos jäi epävarmaksi; istunto voi olla päättynyt.",
-          );
-        }
-        const unresolvedId = sessionStorage.getItem(
-          `nah:ambiguous:${identity}:${csrf}:${id}`,
-        );
-        const lastSendId = sessionStorage.getItem(
-          `nah:last-send:${identity}:${csrf}:${id}`,
-        );
-        let sendOutcome:
-          | "pending"
-          | "accepted"
-          | "rejected"
-          | "uncertain"
-          | undefined;
-        if (lastSendId) {
-          if (nextStatus.command_id === lastSendId && nextStatus.send_receipt) {
-            sendOutcome = nextStatus.send_receipt;
-          } else {
+        setEvents(nextStatus.events);
+        setProblem("");
+        const command = sessionStorage.getItem(sendKey);
+        if (command) {
+          let outcome =
+            nextStatus.command_id === command
+              ? nextStatus.send_receipt ||
+                (nextStatus.ack === "accepted" || nextStatus.ack === "rejected"
+                  ? nextStatus.ack
+                  : undefined)
+              : undefined;
+          if (!outcome) {
             try {
-              sendOutcome = await sendReceipt(id, lastSendId);
-            } catch {
-              sendOutcome = undefined;
+              outcome = await sendReceipt(id, command);
+            } catch (error) {
+              if ((error as Error).message === "identity_lost") throw error;
             }
           }
           if (!alive.current || version !== generation.current) return;
           const text = sessionStorage.getItem(submittedKey);
-          if (text !== null)
-            setSendObservation({
-              text,
-              state:
-                sendOutcome ?? (sendInFlight.current ? "pending" : "uncertain"),
-            });
-        }
-        if (
-          !abortReceipt &&
-          nextStatus.command_id === unresolvedId &&
-          (lastSendId === unresolvedId ? sendOutcome : nextStatus.ack) ===
-            "rejected"
-        ) {
-          const unresolvedKey = `nah:ambiguous:${identity}:${csrf}:${id}`;
-          if (sessionStorage.getItem(unresolvedKey) === nextStatus.command_id) {
-            const rejectedText = sessionStorage.getItem(submittedKey);
-            if (rejectedText !== null) {
-              // Do not overwrite edits made while the acknowledgement was pending.
+          if (text !== null && outcome) {
+            setSendObservation({ text, state: outcome });
+            if (outcome === "uncertain")
+              sessionStorage.setItem(uncertainKey, command);
+            if (outcome === "accepted" || outcome === "rejected") {
+              sessionStorage.removeItem(uncertainKey);
               if (
-                !sessionStorage.getItem(`nah:draft:${identity}:${csrf}:${id}`)
-              ) {
-                setDraft(rejectedText);
-                sessionStorage.setItem(
-                  `nah:draft:${identity}:${csrf}:${id}`,
-                  rejectedText,
-                );
-              }
+                outcome === "accepted" &&
+                sessionStorage.getItem(draftKey) === text
+              )
+                changeDraft("");
+              if (outcome === "rejected" && !sessionStorage.getItem(draftKey))
+                changeDraft(text);
             }
-            sessionStorage.removeItem(unresolvedKey);
           }
-          setReceipt(
-            "Viesti hylättiin. Teksti säilytettiin; voit lähettää sen uudelleen tarkoituksella.",
-          );
         }
+        const reconcileContinuation =
+          sessionStorage.getItem(continuationKey) === "uncertain" &&
+          nextStatus.state === "idle" &&
+          nextStatus.native_history === "present";
         if (
-          !abortReceipt &&
-          !reconciledContinuation &&
-          (nextStatus.state !== "idle" ||
-            sessionStorage.getItem(
-              `nah:ambiguous:${identity}:${csrf}:${id}`,
-            )) &&
-          nextStatus.command_id &&
-          (lastSendId === unresolvedId ? sendOutcome : nextStatus.ack) ===
-            "uncertain"
-        )
-          setReceipt(
-            "Viestin hyväksyntä jäi epävarmaksi. Tarkista natiivi historia, älä lähetä automaattisesti uudelleen.",
-          );
-        const unresolved = sessionStorage.getItem(
-          `nah:ambiguous:${identity}:${csrf}:${id}`,
-        );
-        if (
-          unresolved &&
-          unresolved === nextStatus.command_id &&
-          !abortReceipt &&
-          (lastSendId === unresolvedId ? sendOutcome : nextStatus.ack) ===
-            "accepted"
+          (readHistory || reconcileContinuation) &&
+          nextStatus.native_history === "present"
         ) {
-          const sentText = sessionStorage.getItem(submittedKey);
-          const key = `nah:draft:${identity}:${csrf}:${id}`;
-          if (sentText !== null && sessionStorage.getItem(key) === sentText) {
-            setDraft("");
-            sessionStorage.setItem(key, "");
-          }
-          sessionStorage.removeItem(`nah:ambiguous:${identity}:${csrf}:${id}`);
-          sessionStorage.removeItem(`nah:continued:${identity}:${csrf}:${id}`);
-          setReceipt(
-            "Viesti hyväksyttiin Pi:n RPC:ssä; vuoro ei välttämättä ole valmis.",
-          );
-        }
-        setEvents(nextStatus.events); // bounded tail, never concatenate snapshots
-        setProblem("");
-        if (nextStatus.native_history === "present") {
-          try {
-            const page = await readHistoryFetch(id);
+          const page = await readHistoryFetch(id);
+          if (!alive.current || version !== generation.current) return;
+          const old = latest.current.entries;
+          const prefix =
+            old.length > 0 &&
+            page.entries.every((e, i) => old[i]?.entry_key === e.entry_key);
+          let merged = prefix ? [...old] : [...page.entries];
+          let cursor = prefix
+            ? (old.at(-1)?.entry_key ?? page.next_after)
+            : page.next_after;
+          if (prefix && !page.next_after && old.length === page.entries.length)
+            cursor = undefined;
+          for (let n = 0; cursor && n < 16; n++) {
+            const additional = await readHistoryFetch(id, cursor);
             if (!alive.current || version !== generation.current) return;
-            const old = latest.current.entries;
-            // The native history is oldest-first. The first page is NOT a live
-            // tail: after 25 entries a fresh reply is only reachable via `after`.
-            // Walk forward from the last known key, keeping the reading position.
-            // Bound each poll so very large histories cannot monopolize the tab.
-            const prefixMatches =
-              old.length > 0 &&
-              page.entries.every((e, i) => old[i]?.entry_key === e.entry_key);
-            let merged = prefixMatches ? [...old] : [...page.entries];
-            let cursor = prefixMatches
-              ? (old.at(-1)?.entry_key ?? page.next_after)
-              : page.next_after;
-            if (
-              prefixMatches &&
-              !page.next_after &&
-              old.length === page.entries.length
-            )
+            if (!additional.entries.length && additional.complete) {
               cursor = undefined;
-            for (let n = 0; cursor && n < 16; n++) {
-              const additional = await readHistoryFetch(id, cursor);
-              if (!alive.current || version !== generation.current) return;
-              // Native history can change while walking: retry at the next poll
-              // rather than claiming a discontinuous feed is up to date.
-              if (!additional.entries.length && additional.complete) {
-                cursor = undefined;
-                break;
-              }
-              if (
-                !additional.entries.length ||
-                additional.entries.some((e) =>
-                  merged.some((m) => m.entry_key === e.entry_key),
-                )
-              ) {
-                setHistoryError(true);
-                return;
-              }
-              merged = [...merged, ...additional.entries];
-              cursor = additional.next_after;
+              break;
             }
-            if (merged.length > old.length && !wasAtBottom.current)
-              setUnseen((n) => n + merged.length - old.length);
             if (
-              merged.length !== old.length ||
-              merged.some(
-                (e, i) =>
-                  e.entry_key !== old[i]?.entry_key ||
-                  e.content.text !== old[i]?.content.text ||
-                  e.content.complete !== old[i]?.content.complete,
+              !additional.entries.length ||
+              additional.entries.some((e) =>
+                merged.some((m) => m.entry_key === e.entry_key),
               )
             ) {
-              captureAnchor();
-              setEntries(merged);
+              setHistoryError(true);
+              return;
             }
-            setNext(cursor);
-            setHistoryError(false);
+            merged = [...merged, ...additional.entries];
+            cursor = additional.next_after;
+          }
+          if (merged.length > old.length && !wasAtBottom.current)
+            setUnseen((n) => n + merged.length - old.length);
+          captureAnchor();
+          setEntries(merged);
+          setNext(cursor);
+          setHistoryError(false);
+          if (reconcileContinuation) {
+            sessionStorage.removeItem(continuationKey);
+            setContinuation(undefined);
+            setReceipt(
+              "Jatkaminen kuitattiin. Aiemman vuoron tulos on epävarma; tarkista natiivi historia.",
+            );
+          }
+          if (pendingNativeEntry.current) {
             if (
-              pendingNativeEntry.current &&
               merged.some((e) => e.entry_key === pendingNativeEntry.current)
             ) {
               pendingNativeEntry.current = undefined;
               setLive(
                 (old) => old && { ...old, fragments: [], truncated: false },
               );
-            } else if (
-              !pendingNativeEntry.current &&
-              !working &&
-              old.length &&
-              merged.some(
-                (e) =>
-                  e.kind === "assistant" &&
-                  !old.some((prior) => prior.entry_key === e.entry_key),
-              )
-            ) {
-              // HTTP history may have settled before its SSE entry arrives.
-              setLive(
-                (old) => old && { ...old, fragments: [], truncated: false },
-              );
+            } else {
+              scheduleRetry(false, true);
             }
-            if (!probePending.current) setStreamError(false);
-            clearRetry();
-            if (reconciledContinuation) {
-              sessionStorage.removeItem(continueKey);
-              sessionStorage.setItem(
-                `nah:continued:${identity}:${csrf}:${id}`,
-                "1",
-              );
-              setContinuation(undefined);
-              setReceipt("");
-            }
-          } catch {
-            if (alive.current && version === generation.current) {
-              setHistoryError(true);
-              scheduleRetry();
-            }
-          }
-        } else {
-          // Missing new history is normal before the first Pi write. A verified
-          // status is enough to restore the existing idle-control gate.
-          const unavailable = nextStatus.native_history === "unavailable";
-          setHistoryError(unavailable);
-          if (unavailable) scheduleRetry();
-          else {
-            if (!probePending.current) setStreamError(false);
-            clearRetry();
           }
         }
+        clearRetry();
       } catch (error) {
         if (alive.current && version === generation.current) {
-          if (error instanceof ConversationNotFound) {
-            // The daemon no longer controls this ID. Native history, if it
-            // survived, remains available on the ordinary read-only route.
-            clearRetry(true);
+          if ((error as Error).message === "identity_lost") onLogin();
+          else if (error instanceof ConversationNotFound)
             navigate(`/agents/${id}`, { replace: true });
-          } else {
-            scheduleRetry(requestContinuation);
-            setProblem(
-              "Yhteys katkesi tai istunto muuttui. Ohjaus on estetty kunnes tila varmistuu.",
-            );
-            setCurrent(undefined);
+          else {
+            setProblem("Yhteys katkesi. Näytetään viimeisin tunnettu tila.");
+            scheduleRetry(requestContinuation, readHistory);
           }
         }
       } finally {
         pending.current = false;
         const rerun = queuedRefresh.current && alive.current;
         const proof = queuedProof.current;
+        const history = queuedHistory.current;
         queuedRefresh.current = false;
         queuedProof.current = false;
-        if (rerun) void latestRefresh.current(proof);
+        queuedHistory.current = false;
+        if (rerun) void latestRefresh.current(proof, history);
       }
     },
     [
       id,
-      csrf,
       workspace.workspace_id,
-      identity,
+      sendKey,
       submittedKey,
-      stale,
+      uncertainKey,
+      continuationKey,
+      draftKey,
       captureAnchor,
       clearRetry,
       scheduleRetry,
       navigate,
+      onLogin,
+      changeDraft,
     ],
   );
   latestRefresh.current = refresh;
+  const initialSnapshot = useRef(snapshot);
+  const recovering = useRef(false);
+  const [streamEpoch, setStreamEpoch] = useState(0);
   useEffect(() => {
-    if (!id || !csrf || stale) return;
-    probePending.current = false;
-    if (verifiedSnapshot.current !== snapshot) {
-      verifiedSnapshot.current = snapshot;
-      setStreamError(false); // App has already verified the replacement snapshot/session
+    if (recovering.current && initialSnapshot.current !== snapshot) {
+      initialSnapshot.current = snapshot;
+      recovering.current = false;
+      setStreamEpoch((n) => n + 1);
     }
+  }, [snapshot]);
+  const resnapshot = useRef(onResnapshot);
+  resnapshot.current = onResnapshot;
+  useEffect(() => {
+    void streamEpoch; // reconnect only after cursor recovery
+    if (!id) return;
     let removed = false;
     let source: EventSource | undefined;
     let retry: number | undefined;
@@ -690,51 +533,40 @@ export function BrowserConversation({
     const recover = (historyOnly = false) => {
       if (removed) return;
       if (historyOnly) {
-        // The ring cannot reconstruct this turn, but later native history can.
-        // Continue observing subsequent frames and polling HTTP status/history.
         turn = { ...turn, fragments: [], truncated: true };
         setLive(turn);
-        void refresh();
+        void latestRefresh.current(false, true);
         return;
       }
       source?.close();
       source = undefined;
-      // Keep the verified editor mounted while the independent HTTP check
-      // decides when control is safe again.
-      setStreamError(true);
       setJournalOffline(true);
-      void refresh();
-      onResnapshot();
+      recovering.current = true;
+      resnapshot.current();
+      void latestRefresh.current(false, true);
     };
     try {
       const tail =
-        snapshot.agents.find(
+        initialSnapshot.current.agents.find(
           (a) => a.agent_id === id && a.workspace_id === workspace.workspace_id,
         )?.live_tail ?? [];
       turn = initialTurn(
-        snapshot.event_cursor,
+        initialSnapshot.current.event_cursor,
         tail.map((frame) => parseConversationEvent(JSON.stringify(frame))),
       );
       setLive(turn);
     } catch {
-      recover();
-      return () => {
-        removed = true;
-      };
+      resnapshot.current();
+      return;
     }
     const connect = () => {
-      if (removed || document.visibilityState === "hidden") return;
+      if (removed) return;
       source = new EventSource(
         `/api/v1/events?after=${encodeURIComponent(turn.cursor)}`,
       );
-      let opened = false;
-      let reconnectFailures = 0;
       source.onopen = () => {
-        opened = true;
-        reconnectFailures = 0;
         streamFailures.current = 0;
         setJournalOffline(false);
-        setStreamError(false);
       };
       for (const kind of [
         "snapshot.invalidated",
@@ -754,7 +586,7 @@ export function BrowserConversation({
         "question.resolved",
         "operation.changed",
         "unknown.native",
-      ]) {
+      ])
         source.addEventListener(kind, (message) => {
           try {
             const event = parseConversationEvent(
@@ -767,63 +599,41 @@ export function BrowserConversation({
               event.sequence <= turn.sequence
             )
               return;
-            if (
-              event.kind === "snapshot.invalidated" &&
-              (!event.resource.agent_id || event.resource.agent_id === id)
-            )
-              continuationProof.current = undefined;
             const result = applyTurnEvent(turn, event, id);
+            turn = result.turn;
             if (result.recover) {
-              turn = result.turn;
               recover(result.recover === "history");
               return;
             }
-            turn = result.turn;
             if (result.entry) {
-              // A streamed entry is a native observation, but not proof that
-              // all earlier history pages have been loaded. Reconcile the
-              // contiguous HTTP prefix before inserting it in the timeline.
               pendingNativeEntry.current = result.entry.entry_key;
-              void refresh();
+              void latestRefresh.current(false, true);
             } else if (!pendingNativeEntry.current) setLive(turn);
-            if (
+            if (event.kind === "snapshot.invalidated") {
+              continuationProof.current = undefined;
+              resnapshot.current();
+              void latestRefresh.current(false, true);
+            } else if (
               [
                 "turn.settled",
                 "command.changed",
                 "queue.changed",
                 "question.requested",
                 "question.resolved",
-                "snapshot.invalidated",
               ].includes(event.kind)
             )
-              void refresh();
+              void latestRefresh.current(false, event.kind === "turn.settled");
           } catch {
             recover();
           }
         });
-      }
       source.onerror = () => {
         if (removed) return;
-        if (opened && source?.readyState === EventSource.CONNECTING) {
-          // The normal ten-minute rotation reconnects automatically. Only a
-          // second failed attempt calls for the slow HTTP fallback and banner.
-          if (++reconnectFailures > 1) {
-            setJournalOffline(true);
-            setStreamError(true);
-            void refresh();
-          }
-          return; // EventSource reconnects with Last-Event-ID
-        }
         source?.close();
         source = undefined;
-        probePending.current = true;
         setJournalOffline(true);
-        setStreamError(true);
-        void refresh();
-        // EventSource hides the HTTP status. Probe only a failed handshake:
-        // 409 needs a new cursor, but an unavailable optional stream must not
-        // remount the editor on every browser return. Cancel a successful
-        // probe body immediately; it is never used as a second event source.
+        // EventSource conceals 401/409. A bounded probe identifies a session
+        // loss or cursor gap; it never becomes a second live stream.
         void (async () => {
           try {
             const response = await fetch(
@@ -836,72 +646,41 @@ export function BrowserConversation({
             );
             await response.body?.cancel();
             if (removed) return;
-            if (
-              response.status === 409 ||
-              response.status === 401 ||
-              response.status === 403
-            ) {
-              onResnapshot();
+            if (response.status === 401) {
+              onLogin();
+              return;
+            }
+            if (response.status === 409) {
+              recover();
               return;
             }
           } catch {
-            /* Transport loss: HTTP status/history remain the fallback. */
+            /* offline; slow fallback will read status */
           }
-          if (removed) return;
-          probePending.current = false;
-          void refresh(); // only a fresh HTTP read can unblock writes
-          retry = window.setTimeout(
-            () => {
-              retry = undefined;
-              connect();
-            },
-            Math.min(3000 * ++streamFailures.current, 30000),
-          );
+          if (!removed)
+            retry = window.setTimeout(
+              connect,
+              Math.min(3000 * ++streamFailures.current, 30000),
+            );
         })();
       };
     };
     connect();
-    // App owns tab-return identity verification and supplies a fresh snapshot;
-    // a second visibility refresh here would race focus/selection restoration.
     return () => {
       removed = true;
       source?.close();
       if (retry) window.clearTimeout(retry);
     };
-  }, [
-    id,
-    csrf,
-    stale,
-    snapshot,
-    workspace.workspace_id,
-    refresh,
-    onResnapshot,
-  ]);
+    // Stream ownership is per identity and conversation; snapshot updates do not remount it.
+  }, [id, workspace.workspace_id, onLogin, streamEpoch]);
   useEffect(() => {
-    if (!id || !csrf || stale) return;
-    const openKey = `${identity}:${id}`;
-    const requestProof = openedProof.current !== openKey;
-    if (requestProof) openedProof.current = openKey;
-    void refresh(requestProof);
-    // Only poll while the journal is unavailable; the journal drives status
-    // changes on a healthy connection. A tab return also catches missed events.
-    const timer = window.setInterval(() => {
-      if (journalOffline) void refresh();
-    }, 60000);
-    const focus = () => {
-      if (document.visibilityState === "visible") {
-        setFinishedInBackground(false);
-        void refresh();
-      }
-    };
-    window.addEventListener("focus", focus);
-    document.addEventListener("visibilitychange", focus);
-    return () => {
-      window.clearInterval(timer);
-      window.removeEventListener("focus", focus);
-      document.removeEventListener("visibilitychange", focus);
-    };
-  }, [id, csrf, refresh, stale, journalOffline, identity]);
+    if (!id || !journalOffline) return;
+    const timer = window.setInterval(
+      () => void latestRefresh.current(false, true),
+      60000,
+    );
+    return () => window.clearInterval(timer);
+  }, [id, journalOffline]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a live fragment changes the feed height without changing native entries.
   useLayoutEffect(() => {
     if (wasAtBottom.current && feed.current) {
@@ -938,31 +717,27 @@ export function BrowserConversation({
       document.title = old;
     };
   }, [finishedInBackground]);
-  const verify = async () => {
-    const token = await sessionCSRF();
-    if (!csrf || token !== csrf) throw new Error("identity_lost");
-    return token;
-  };
   const start = async () => {
-    if (stale || streamError || busy || !csrf || ambiguous) return;
+    if (busy || !csrf || ambiguous) return;
     setBusy(true);
-    setReceipt("Varmistetaan istuntoa.");
+
     try {
-      const token = await verify();
+      const token = csrf;
       if (!alive.current) return;
-      sessionStorage.setItem(ambiguousKey, "create");
+      sessionStorage.setItem(uncertainKey, "create");
       setReceipt("Luodaan · tulos odottaa");
       const result = await create(workspace.workspace_id, token);
-      sessionStorage.removeItem(ambiguousKey);
+      sessionStorage.removeItem(uncertainKey);
       if (!alive.current) return;
       onSessionCreated(result);
       navigate(
         `/workspaces/${workspace.workspace_id}?conversation=${result.agent_id}`,
       );
-    } catch {
+    } catch (error) {
+      if ((error as Error).message === "identity_lost") onLogin();
       if (alive.current) {
         setReceipt(
-          sessionStorage.getItem(ambiguousKey)
+          sessionStorage.getItem(uncertainKey)
             ? "Luonnin tulos epävarma. Älä luo uudelleen tässä istunnossa. Tarkista tilannekuva ja natiivi historia."
             : "Istuntoa ei voitu vahvistaa. Luontia ei lähetetty.",
         );
@@ -971,52 +746,22 @@ export function BrowserConversation({
       if (alive.current) setBusy(false);
     }
   };
-  const recheckContinuation = async () => {
-    if (!id || !csrf || continuation !== "uncertain" || stale) return;
-    const attempt = continueAttempt.current;
-    const version = generation.current;
-    setRetryContinuation(false);
-    try {
-      await verify();
-      const fresh = await status(id, undefined, true);
-      if (
-        fresh.workspace_id !== workspace.workspace_id ||
-        fresh.continuation !== "eligible"
-      )
-        return;
-      await readHistoryFetch(id);
-      if (
-        alive.current &&
-        version === generation.current &&
-        attempt === continueAttempt.current &&
-        !staleRef.current &&
-        sessionStorage.getItem(continuationKey) === "uncertain"
-      )
-        setRetryContinuation(true); // only an explicit check permits another deliberate press
-    } catch {
-      setRetryContinuation(false);
-    }
-  };
   const continueEnded = async () => {
     if (
-      stale ||
-      streamError ||
       busy ||
       !csrf ||
       !id ||
       !current ||
       current.continuation !== "eligible" ||
-      (continuation && (continuation !== "uncertain" || !retryContinuation)) ||
+      continuation ||
       !controlled
     )
       return;
     const version = generation.current;
-    ++continueAttempt.current;
     setBusy(true);
-    setRetryContinuation(false);
     let sent = false;
     try {
-      const token = await verify();
+      const token = csrf;
       if (!alive.current || version !== generation.current) return;
       // Persist before the native write; reload must not quietly repost it.
       sessionStorage.setItem(continuationKey, "uncertain");
@@ -1033,8 +778,9 @@ export function BrowserConversation({
       setReceipt(
         "Jatkaminen kuitattiin. Tarkistetaan tila ja historia; aiemman vuoron tulos on epävarma.",
       );
-      void refresh();
+      void refresh(false, true);
     } catch (error) {
+      if ((error as Error).message === "identity_lost") onLogin();
       if (!alive.current || version !== generation.current) return;
       if (sent && sessionStorage.getItem(continuationKey) !== "uncertain")
         return;
@@ -1054,8 +800,6 @@ export function BrowserConversation({
   };
   const submit = async () => {
     if (
-      stale ||
-      streamError ||
       busy ||
       !current ||
       (current.state !== "idle" && current.state !== "rejected") ||
@@ -1068,39 +812,37 @@ export function BrowserConversation({
     const text = draft;
     const command = crypto.randomUUID();
     setBusy(true);
-    setReceipt("Varmistetaan istuntoa.");
+
     try {
-      const token = await verify();
+      const token = csrf;
       if (!alive.current) return;
       sessionStorage.setItem(submittedKey, text);
       sessionStorage.setItem(sendKey, command);
       setSendObservation({ text, state: "pending" });
-      sessionStorage.setItem(ambiguousKey, command);
       setReceipt("Viesti odottaa kuittausta");
-      sendInFlight.current = true;
       await send(current.agent_id, text, command, token);
       if (!alive.current) return;
       setReceipt("Viesti odottaa natiivia hyväksyntää");
       await refresh();
-    } catch {
-      if (alive.current) {
-        if (sessionStorage.getItem(ambiguousKey))
-          setSendObservation({ text, state: "uncertain" });
+    } catch (error) {
+      if ((error as Error).message === "identity_lost") onLogin();
+      else if (alive.current && error instanceof NotAdmitted) {
+        sessionStorage.removeItem(sendKey);
+        setSendObservation({ text, state: "rejected" });
+        setReceipt("Viesti hylättiin. Tarkista keskustelun tila.");
+      } else if (alive.current) {
+        sessionStorage.setItem(uncertainKey, command);
+        setSendObservation({ text, state: "uncertain" });
         setReceipt(
-          sessionStorage.getItem(ambiguousKey)
-            ? "Lähetyksen tulos epävarma. Viestiä ei lähetetä automaattisesti uudelleen. Tarkista tila ja natiivi historia."
-            : "Istuntoa ei voitu vahvistaa. Viestiä ei lähetetty.",
+          "Lähetyksen tulos epävarma. Viestiä ei lähetetä automaattisesti uudelleen. Tarkista tila ja natiivi historia.",
         );
       }
     } finally {
-      sendInFlight.current = false;
       if (alive.current) setBusy(false);
     }
   };
   const submitQueue = async (kind: "steer" | "follow_up") => {
     if (
-      stale ||
-      streamError ||
       busy ||
       !current ||
       current.state !== "accepted" ||
@@ -1113,46 +855,46 @@ export function BrowserConversation({
       command = crypto.randomUUID();
     setBusy(true);
     try {
-      const token = await verify();
+      const token = csrf;
       if (!alive.current) return;
-      sessionStorage.removeItem(sendKey);
-      setSendObservation(undefined);
+      sessionStorage.setItem(sendKey, command);
+      setSendObservation({ text, state: "pending" });
       sessionStorage.setItem(submittedKey, text);
-      sessionStorage.setItem(ambiguousKey, command);
       setReceipt("Viesti odottaa kuittausta");
       await queueMessage(current.agent_id, text, command, token, kind);
       if (alive.current) await refresh();
     } catch (error) {
+      if ((error as Error).message === "identity_lost") onLogin();
       if (error instanceof NotAdmitted) {
-        sessionStorage.removeItem(ambiguousKey);
+        sessionStorage.removeItem(sendKey);
         sessionStorage.removeItem(submittedKey);
+        setSendObservation({ text, state: "rejected" });
         if (alive.current) {
           setReceipt(
             "Tila muuttui. Viestiä ei lähetetty. Tarkista keskustelun tila.",
           );
           void refresh();
         }
-      } else if (alive.current)
+      } else if (
+        alive.current &&
+        (error as Error).message !== "identity_lost"
+      ) {
+        sessionStorage.setItem(uncertainKey, command);
+        setSendObservation({ text, state: "uncertain" });
         setReceipt(
-          sessionStorage.getItem(ambiguousKey)
-            ? "Lähetyksen tulos epävarma. Älä lähetä automaattisesti uudelleen."
-            : "Istuntoa ei voitu vahvistaa.",
+          "Lähetyksen tulos epävarma. Älä lähetä automaattisesti uudelleen.",
         );
+      }
     } finally {
       if (alive.current) setBusy(false);
     }
   };
   const clearNativeQueue = async () => {
     if (
-      stale ||
-      streamError ||
       busy ||
       !current ||
       !csrf ||
       ambiguous ||
-      (abortKey &&
-        !!sessionStorage.getItem(abortKey) &&
-        !sessionStorage.getItem(abortKey)?.startsWith("done:")) ||
       current.state === "pending" ||
       current.state === "uncertain" ||
       current.state === "stopping"
@@ -1161,7 +903,7 @@ export function BrowserConversation({
     setBusy(true);
     let sent = false;
     try {
-      const token = await verify();
+      const token = csrf;
       if (!alive.current) return;
       sent = true;
       const removed = await clearQueue(
@@ -1192,25 +934,22 @@ export function BrowserConversation({
     }
   };
   const stopNow = async () => {
-    if (stale || streamError || busy || !current || !csrf) return;
+    if (busy || !current || !csrf) return;
     setBusy(true);
-    setReceipt("Varmistetaan istuntoa.");
+
     let sent = false;
     try {
-      const token = await verify();
+      const token = csrf;
       if (!alive.current) return;
       sent = true;
       setReceipt("Keskeytystä pyydetään");
       const commandId = crypto.randomUUID();
-      if (abortKey) sessionStorage.setItem(abortKey, commandId);
       await abortTurn(current.agent_id, commandId, token);
       if (alive.current)
         setReceipt(
           "Keskeytyspyyntö vastaanotettiin. Pi:n kuittaus näkyy tilassa; työkalujen päättymistä ei ole vahvistettu.",
         );
     } catch (error) {
-      if (error instanceof NotAdmitted && abortKey)
-        sessionStorage.removeItem(abortKey);
       if (alive.current)
         setReceipt(
           error instanceof NotAdmitted
@@ -1228,9 +967,9 @@ export function BrowserConversation({
     }
   };
   useEffect(() => {
-    if (confirmStop && !stale && current?.state === "accepted")
+    if (confirmStop && current?.state === "accepted")
       stopConfirmation.current?.querySelector("button")?.focus();
-  }, [confirmStop, stale, current?.state]);
+  }, [confirmStop, current?.state]);
   const closeStopConfirmation = () => {
     setConfirmStop(false);
     section.current
@@ -1238,53 +977,15 @@ export function BrowserConversation({
       ?.focus();
   };
   const controlled =
-    !!current && !problem && current.workspace_id === workspace.workspace_id;
+    opened && !!current && current.workspace_id === workspace.workspace_id;
   const canSend =
     controlled &&
-    !streamError &&
-    !stale &&
     !busy &&
     !ambiguous &&
     !continuation &&
     (current.state === "idle" ||
       current.state === "rejected" ||
       current.state === "accepted");
-  useLayoutEffect(() => {
-    if (!restored.current) return;
-    const saved = place.current.get(placeKey);
-    if (
-      !saved ||
-      saved.id !== id ||
-      saved.identity !== identity ||
-      saved.csrf !== csrf
-    )
-      return;
-    if (feed.current) {
-      feed.current.scrollTop = saved.scrollTop;
-      readingAnchor.current = saved.anchor;
-      if (!restoreAnchor(saved.anchor, entries))
-        feed.current.scrollTop = saved.scrollTop;
-      wasAtBottom.current =
-        feed.current.scrollHeight -
-          feed.current.scrollTop -
-          feed.current.clientHeight <
-        60;
-    }
-    if (saved.focus && !controlled) return;
-    restored.current = false;
-    if (saved.focus) {
-      const editor = section.current?.querySelector("textarea");
-      if (editor && !editor.disabled) {
-        editor.focus({ preventScroll: true });
-        editor.setSelectionRange(
-          saved.focus.start,
-          saved.focus.end,
-          saved.focus.direction,
-        );
-      }
-    }
-    place.current.delete(placeKey);
-  }, [csrf, id, identity, controlled, place, placeKey, entries, restoreAnchor]);
   useEffect(() => {
     if (!id || !controlled || focusedOnOpen.current) return;
     focusedOnOpen.current = true;
@@ -1303,20 +1004,10 @@ export function BrowserConversation({
         <InlineNotice title={receipt} tone="warning" />
       ) : null}
       {problem ? <InlineNotice title={problem} tone="danger" /> : null}
-      {csrf &&
-      id &&
-      sessionStorage.getItem(`nah:continued:${identity}:${csrf}:${id}`) &&
-      !continuation ? (
-        <InlineNotice
-          title="Aiemman vuoron tulos on epävarma"
-          description="Jatkaminen ei vahvista aiemman viestin tai työkalun tulosta. Tarkista natiivi historia ennen uutta viestiä."
-          tone="warning"
-        />
-      ) : null}
-      {ambiguous && sendObservation?.state !== "uncertain" ? (
+      {ambiguous && sendObservation?.state === "uncertain" ? (
         <InlineNotice
           title="Aiemman pyynnön tulos epävarma"
-          description="Tarkista tilannekuva, tila ja natiivi historia. Automaattista uudelleenlähetystä ei tehdä; aloita tarvittaessa uusi selainistunto vasta selvitettyäsi tilanteen."
+          description="Tarkista tila ja natiivi historia. Viestiä ei lähetetä automaattisesti uudelleen."
           tone="warning"
         />
       ) : null}
@@ -1334,48 +1025,60 @@ export function BrowserConversation({
             <Button
               label="Aloita uusi Pi-keskustelu"
               availability={
-                stale
-                  ? { state: "unknown", reason: "Yhteys on katkennut." }
-                  : !csrf
+                !csrf
+                  ? {
+                      state: "unknown",
+                      reason: problem
+                        ? "Istuntoa ei voitu vahvistaa."
+                        : "Ladataan istuntoa.",
+                    }
+                  : ambiguous
                     ? {
                         state: "unknown",
-                        reason: problem
-                          ? "Istuntoa ei voitu vahvistaa."
-                          : "Varmistetaan istuntoa.",
+                        reason: "Edellisen luonnin tulos on epävarma.",
                       }
-                    : ambiguous
-                      ? {
-                          state: "unknown",
-                          reason: "Edellisen luonnin tulos on epävarma.",
-                        }
-                      : busy
-                        ? { state: "unknown", reason: "Luonti on käynnissä." }
-                        : { state: "enabled" }
+                    : busy
+                      ? { state: "unknown", reason: "Luonti on käynnissä." }
+                      : { state: "enabled" }
               }
               onPress={() => void start()}
             />
           </fieldset>
         </>
+      ) : !opened ? (
+        <div role="status">
+          <h2>Ladataan keskustelua</h2>
+          {problem ? (
+            <InlineNotice
+              title={problem}
+              tone="danger"
+              actions={[
+                {
+                  label: "Yritä uudelleen",
+                  onPress: () => setOpenAttempt((n) => n + 1),
+                },
+              ]}
+            />
+          ) : null}
+        </div>
       ) : (
         <ConversationFrame>
           <AgentHeader
             title={title ?? "Uusi keskustelu"}
             activityLabel={
-              stale
-                ? "Tila ei tiedossa"
-                : current
-                  ? ({
-                      idle: "Valmis",
-                      pending: "Odottaa kuittausta",
-                      accepted: "Pi työskentelee",
-                      rejected: "Viesti hylättiin",
-                      uncertain: "Tila epävarma",
-                      stopping: "Pysäytetään",
-                    }[current.state] ?? "Tila ei tiedossa")
-                  : "Tila ei tiedossa"
+              current
+                ? ({
+                    idle: "Valmis",
+                    pending: "Odottaa kuittausta",
+                    accepted: "Pi työskentelee",
+                    rejected: "Viesti hylättiin",
+                    uncertain: "Tila epävarma",
+                    stopping: "Pysäytetään",
+                  }[current.state] ?? "Tila ei tiedossa")
+                : "Tila ei tiedossa"
             }
             activityKind={
-              stale || !current || current.state === "uncertain"
+              !current || current.state === "uncertain"
                 ? "unknown"
                 : current.state === "accepted"
                   ? "working"
@@ -1417,7 +1120,7 @@ export function BrowserConversation({
                     : "empty"
               }
               items={[
-                ...timelineItems(entries, stale),
+                ...timelineItems(entries),
                 ...(sendObservation
                   ? [
                       {
@@ -1442,8 +1145,7 @@ export function BrowserConversation({
                 entries.some(
                   (entry) =>
                     entry.entry_key === current.turn_settled?.native_key,
-                ) &&
-                !stale
+                )
                   ? [
                       {
                         id: `settled:${current.turn_settled.native_key}`,
@@ -1456,7 +1158,7 @@ export function BrowserConversation({
                       },
                     ]
                   : []),
-                ...(current?.pending_question && !stale
+                ...(current?.pending_question
                   ? [
                       {
                         id: `question:${current.pending_question.request_id}`,
@@ -1516,7 +1218,7 @@ export function BrowserConversation({
               }}
             />
             <WorkingProgress
-              state={stale ? undefined : current?.state}
+              state={current?.state}
               events={events}
               activeToolName={
                 provisionalItems(
@@ -1532,13 +1234,12 @@ export function BrowserConversation({
                 )?.name
               }
             />
-            {next && !stale ? (
+            {next ? (
               <Button
                 label="Lataa seuraava historiasivu"
                 onPress={() =>
                   void readHistoryFetch(id, next)
                     .then((p) => {
-                      if (staleRef.current) return;
                       captureAnchor();
                       setEntries((old) => [
                         ...old,
@@ -1549,7 +1250,7 @@ export function BrowserConversation({
                       setNext(p.next_after);
                     })
                     .catch(() => {
-                      if (!staleRef.current) setHistoryError(true);
+                      setHistoryError(true);
                     })
                 }
               />
@@ -1567,9 +1268,9 @@ export function BrowserConversation({
                 ]}
               />
             ) : null}
-            {streamError ? (
+            {journalOffline ? (
               <InlineNotice
-                title="Live-yhteys katkesi"
+                title="Tapahtumayhteys katkesi"
                 description="Tila ja natiivi historia tarkistetaan uudelleen. Viestiä ei lähetetä uudelleen."
                 tone="warning"
               />
@@ -1587,13 +1288,11 @@ export function BrowserConversation({
               </p>
             ) : null}
           </ConversationStream>
-          {!stale &&
-          (ambiguous ||
-            current?.state === "uncertain" ||
-            historyError ||
-            streamError ||
-            (continuation && !["ready", "pending"].includes(continuation)) ||
-            details) ? (
+          {ambiguous ||
+          current?.state === "uncertain" ||
+          historyError ||
+          (continuation && !["ready", "pending"].includes(continuation)) ||
+          details ? (
             <Button
               label="Tarkista keskustelun tila"
               variant="quiet"
@@ -1604,12 +1303,11 @@ export function BrowserConversation({
                   continuation !== "pending"
                 )
                   setContinuation(undefined);
-                void refresh(true); // explicit check may prove an ended conversation
-                void recheckContinuation();
+                void refresh(true, true); // explicit check may prove an ended conversation
               }}
             />
           ) : null}
-          {confirmStop && !stale && current?.state === "accepted" ? (
+          {confirmStop && current?.state === "accepted" ? (
             <fieldset ref={stopConfirmation} aria-label="Vahvista keskeytys">
               <p>
                 Keskeytetäänkö Pi:n vuoro? Jo käynnistyneiden työkalujen
@@ -1641,10 +1339,8 @@ export function BrowserConversation({
               panelRef={queuePanel}
               steeringTexts={current?.queue?.steering ?? []}
               followUpTexts={current?.queue?.follow_up ?? []}
-              state={stale ? "stale" : current?.queue ? "ready" : "error"}
+              state={current?.queue ? "ready" : "error"}
               clearAvailability={
-                !stale &&
-                !streamError &&
                 !busy &&
                 !ambiguous &&
                 current?.queue &&
@@ -1661,24 +1357,17 @@ export function BrowserConversation({
           {controlled && (continuation || current?.state === "uncertain") ? (
             <EndedConversationControl
               state={
-                stale || streamError
-                  ? "control_uncertain"
-                  : (continuation ??
-                    (current?.continuation === "eligible"
-                      ? "ready"
-                      : current?.continuation === "writer_present"
-                        ? "writer_conflict"
-                        : current?.continuation === "read_only_history"
-                          ? "read_only_history"
-                          : "control_uncertain"))
+                continuation ??
+                (current?.continuation === "eligible"
+                  ? "ready"
+                  : current?.continuation === "writer_present"
+                    ? "writer_conflict"
+                    : current?.continuation === "read_only_history"
+                      ? "read_only_history"
+                      : "control_uncertain")
               }
               onContinue={() => void continueEnded()}
-              retryAvailable={
-                !stale &&
-                !streamError &&
-                retryContinuation &&
-                current?.continuation === "eligible"
-              }
+              retryAvailable={false}
             />
           ) : controlled ? (
             <Composer
@@ -1690,9 +1379,6 @@ export function BrowserConversation({
               queueKnown={!!current?.queue}
               queueOpen={queueOpen}
               sendState={busy ? "pending" : ambiguous ? "uncertain" : "idle"}
-              editorAvailability={
-                streamError && !stale ? { state: "enabled" } : undefined
-              }
               availability={
                 canSend
                   ? { state: "enabled" }
@@ -1730,7 +1416,7 @@ export function BrowserConversation({
                 }
               }}
               onInterrupt={
-                current?.state === "accepted" && !stale && !streamError
+                current?.state === "accepted"
                   ? () => setConfirmStop(true)
                   : undefined
               }

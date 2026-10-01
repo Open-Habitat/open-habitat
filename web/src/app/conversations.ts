@@ -68,6 +68,7 @@ export class ContinuationRefused extends Error {
   }
 }
 async function json(response: Response): Promise<unknown> {
+  if (response.status === 401) throw new Error("identity_lost");
   if (response.status === 404) throw new ConversationNotFound("not found");
   if (response.status === 409) throw new NotAdmitted("state changed");
   if (
@@ -261,6 +262,7 @@ export async function sendReceipt(
       cache: "no-store",
     },
   );
+  if (response.status === 401) throw new Error("identity_lost");
   if (response.status === 404) return undefined;
   const v = await json(response);
   if (

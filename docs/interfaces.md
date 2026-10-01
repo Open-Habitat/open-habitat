@@ -49,7 +49,16 @@ Vain `?continuation=true` -tilapyynnön `continuation` on jatkamistodistus; tava
 
 Jatkaminen palauttaa `agent_id`, `workspace_id`, `state: idle` ja `prior_outcome: uncertain`: aiemman vuoron tulosta ei päätellä eikä epävarmaa viestiä lähetetä uudelleen. Elävän kirjoittajan lukko palauttaa 409 `writer_conflict`; ilman selaimesta luotua lukon alkuperämerkintää palautuu 409 `read_only_history`; epäselvä historia tai työtila palauttaa 409 `control_uncertain`. Gateway reitittää jatkamisen kirjautuneen Unix-käyttäjän daemoniin; selainistunnon keskustelukahvaa ei ole. Daemonin uudelleenkäynnistyksen jälkeen pelkkä luettava historia ei riitä: Pi:n lapselle periytynyt lukko on saatava uudelleen, natiivi historia täsmäytetään ja vain eksplisiittinen pyyntö käynnistää uuden lapsen. Gatewayn uudelleenkäynnistys ei muuta daemonin keskusteluja; uusi kirjautuminen samaan Unix-käyttäjään voi ohjata niitä, jos daemon ja Pi-lapsi ovat säilyneet. Irrotetut työkalut voivat jäädä eloon; siksi aiemman työn lopputulos jää epävarmaksi.
 
-Selain hakee tilan avattaessa keskustelun ja journalin tilamuutosten jälkeen; vain katkenneen tapahtumavirran aikana se käyttää hidasta varakyselyä. Sen väliaikaisen protokollan
+Selain lukee kirjautumisistunnon ja Pi:n onboarding-tilan kerran sivulatauksessa.
+Keskustelua avatessa tilan ja historian luvut kulkevat rinnakkain; selain näyttää
+keskustelun vasta molempien valmistuttua. Se avaa yhden tapahtumavirran
+snapshotin kursorista ja hakee tilan journalin tilamuutosten jälkeen sekä
+historian `history.entry`-tapahtuman tai invalidoinnin jälkeen. Aukko tai 409
+vaatii uuden snapshotin ja historian ilman identiteettipeitettä. Vain katkenneen
+tapahtumavirran aikana käytetään hidasta (60 s) varakyselyä. Uusi snapshot,
+jonka `web_identity_id` eroaa aiemmasta, nollaa identiteetin selaintilan;
+401 vie kirjautumisnäkymään. Lukuyhteyden katkeaminen ei ole lupa eikä este
+kirjoittaa: daemon ratkaisee kirjoituksen ja selain ei uusi kadonnutta pyyntöä. Sen väliaikaisen protokollan
 pyyntömuodot validoidaan [daemonin ohjaimessa](../internal/daemon/conversation_linux.go),
 ja selain tarkistaa vastausten muodot. [Gateway](../internal/gateway/proxy_linux.go)
 välittää vastauksen tulkitsematta sitä;

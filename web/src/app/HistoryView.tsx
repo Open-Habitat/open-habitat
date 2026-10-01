@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import {
   AgentFacts,
@@ -56,15 +56,7 @@ function unfamiliar(text: string): {
   };
 }
 
-export function Entry({
-  entry,
-  stale = false,
-}: {
-  entry: HistoryEntry;
-  stale?: boolean;
-}) {
-  const staleRef = useRef(stale);
-  staleRef.current = stale;
+export function Entry({ entry }: { entry: HistoryEntry }) {
   const [content, setContent] = useState(entry.content);
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -76,12 +68,7 @@ export function Entry({
   }, [entry]);
   const copy = () => void navigator.clipboard?.writeText(content.text);
   const more = async () => {
-    if (
-      staleRef.current ||
-      !content.content_id ||
-      content.next_offset === undefined ||
-      pending
-    )
+    if (!content.content_id || content.next_offset === undefined || pending)
       return;
     setPending(true);
     setFailed(false);
@@ -91,7 +78,6 @@ export function Entry({
         { credentials: "same-origin", cache: "no-store" },
       );
       const chunk = (await readHistory(response)) as ContentChunk;
-      if (staleRef.current) return;
       if (
         chunk.content_id !== content.content_id ||
         chunk.offset !== content.next_offset ||
@@ -100,7 +86,7 @@ export function Entry({
         throw new Error("invalid chunk");
       setContent({ ...chunk.content, text: content.text + chunk.content.text });
     } catch {
-      if (!staleRef.current) setFailed(true);
+      setFailed(true);
     } finally {
       setPending(false);
     }
@@ -109,14 +95,13 @@ export function Entry({
     entry.kind === "assistant" || entry.kind === "unknown"
       ? unfamiliar(content.text)
       : null;
-  const continuation =
-    !stale && !content.complete ? (
-      <Button
-        label={pending ? "Ladataan…" : "Lataa lisää sisältöä"}
-        onPress={more}
-        pending={pending}
-      />
-    ) : null;
+  const continuation = !content.complete ? (
+    <Button
+      label={pending ? "Ladataan…" : "Lataa lisää sisältöä"}
+      onPress={more}
+      pending={pending}
+    />
+  ) : null;
   return (
     <>
       {entry.kind === "user" ? (
@@ -157,7 +142,7 @@ export function Entry({
             streamSemantics="unknown"
             sourceState={content.complete ? "complete" : "continued"}
             onCopy={copy}
-            onLoadMore={stale ? undefined : more}
+            onLoadMore={more}
           />
           {content.text.length > 12000 ? (
             <Button
@@ -197,7 +182,7 @@ export function Entry({
 }
 // Group only adjacent native tool results. Keys belong to the first entry so
 // disclosure state survives refreshes that preserve the native event order.
-export function timelineItems(entries: HistoryEntry[], stale: boolean) {
+export function timelineItems(entries: HistoryEntry[]) {
   const items: { id: string; kind: string; content: React.ReactNode }[] = [];
   for (let i = 0; i < entries.length; ) {
     const first = entries[i];
@@ -205,7 +190,7 @@ export function timelineItems(entries: HistoryEntry[], stale: boolean) {
       items.push({
         id: first.entry_key,
         kind: first.kind,
-        content: <Entry key={first.entry_key} entry={first} stale={stale} />,
+        content: <Entry key={first.entry_key} entry={first} />,
       });
       i++;
       continue;
@@ -216,22 +201,14 @@ export function timelineItems(entries: HistoryEntry[], stale: boolean) {
     items.push({
       id: first.entry_key,
       kind: "tool",
-      content: (
-        <HistoryToolGroup key={first.entry_key} entries={group} stale={stale} />
-      ),
+      content: <HistoryToolGroup key={first.entry_key} entries={group} />,
     });
   }
   return items;
 }
-function HistoryToolGroup({
-  entries,
-  stale,
-}: {
-  entries: HistoryEntry[];
-  stale: boolean;
-}) {
+function HistoryToolGroup({ entries }: { entries: HistoryEntry[] }) {
   const [expanded, setExpanded] = useState(false);
-  if (entries.length === 1) return <Entry entry={entries[0]} stale={stale} />;
+  if (entries.length === 1) return <Entry entry={entries[0]} />;
   return (
     <ToolGroup
       title="Työkalut"
@@ -240,7 +217,7 @@ function HistoryToolGroup({
       onToggle={() => setExpanded(!expanded)}
     >
       {entries.map((entry) => (
-        <Entry key={entry.entry_key} entry={entry} stale={stale} />
+        <Entry key={entry.entry_key} entry={entry} />
       ))}
     </ToolGroup>
   );
@@ -249,15 +226,11 @@ export function HistoryView({
   agent,
   workspaceName,
   workspaceId,
-  stale = false,
 }: {
-  stale?: boolean;
   agent: Agent;
   workspaceName: string;
   workspaceId: string;
 }) {
-  const staleRef = useRef(stale);
-  staleRef.current = stale;
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [state, setState] = useState<"loading" | "ready" | "empty" | "error">(
     "loading",
@@ -268,9 +241,6 @@ export function HistoryView({
   const [busy, setBusy] = useState(false);
   const [details, setDetails] = useState(false);
   useEffect(() => {
-    // Do not load a new history from an unverified connection. A mounted
-    // history remains readable, but a newly selected one waits for retry.
-    if (stale) return;
     const controller = new AbortController();
     setEntries([]);
     setNext(undefined);
@@ -293,13 +263,12 @@ export function HistoryView({
         if (!controller.signal.aborted) setState("error");
       });
     return () => controller.abort();
-  }, [agent.agent_id, agent.history, stale]);
+  }, [agent.agent_id, agent.history]);
   const loadMore = async () => {
-    if (stale || !next || busy) return;
+    if (!next || busy) return;
     setBusy(true);
     try {
       const page = await readHistoryFetch(agent.agent_id, next);
-      if (staleRef.current) return;
       if (
         page.entries.some((e) =>
           entries.some((old) => old.entry_key === e.entry_key),
@@ -311,7 +280,7 @@ export function HistoryView({
       setEntries([...entries, ...page.entries]);
       setNext(page.next_after);
     } catch {
-      if (!staleRef.current) setState("error");
+      setState("error");
     } finally {
       setBusy(false);
     }
@@ -342,7 +311,7 @@ export function HistoryView({
       <ConversationStream>
         <ConversationTimeline
           state={state}
-          items={timelineItems(entries, stale)}
+          items={timelineItems(entries)}
           historyMode="pagedAccessible"
           emptyLabel="Natiivissa historiassa ei ole vielä viestejä."
           onJumpToLatest={() => {}}
@@ -359,7 +328,7 @@ export function HistoryView({
             tone="warning"
           />
         ) : null}
-        {next && state !== "error" && !stale ? (
+        {next && state !== "error" ? (
           <Button
             label={busy ? "Ladataan…" : "Lataa seuraava sivu"}
             pending={busy}
@@ -389,6 +358,7 @@ export async function readHistoryFetch(
     cache: "no-store",
     signal,
   });
+  if (response.status === 404) throw new Error("history_missing");
   const result = await readHistory(response);
   if (!("entries" in result) || result.agent_id !== agentId)
     throw new Error("invalid page");

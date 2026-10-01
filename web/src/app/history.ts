@@ -35,6 +35,7 @@ export interface ContentChunk {
 export async function readHistory(
   response: Response,
 ): Promise<HistoryPage | ContentChunk> {
+  if (response.status === 401) throw new Error("identity_lost");
   if (
     !response.ok ||
     response.headers.get("content-type")?.split(";")[0] !== "application/json"

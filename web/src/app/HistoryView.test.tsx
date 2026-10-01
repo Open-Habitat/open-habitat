@@ -47,23 +47,20 @@ it("groups adjacent results, leaves unknown entries as readable text and bounds 
       complete: true,
     },
   };
-  const items = timelineItems(
-    [
-      tool,
-      { ...tool, entry_key: "second" },
-      {
-        ...entry,
-        entry_key: "future",
-        kind: "unknown",
-        content: {
-          media_type: "text/plain",
-          text: "<script>unsafe</script> question",
-          complete: true,
-        },
+  const items = timelineItems([
+    tool,
+    { ...tool, entry_key: "second" },
+    {
+      ...entry,
+      entry_key: "future",
+      kind: "unknown",
+      content: {
+        media_type: "text/plain",
+        text: "<script>unsafe</script> question",
+        complete: true,
       },
-    ],
-    false,
-  );
+    },
+  ]);
   expect(items).toHaveLength(2);
   render(items.map((item) => <div key={item.id}>{item.content}</div>));
   fireEvent.click(screen.getByRole("button", { name: /Työkalut/ }));
@@ -132,17 +129,16 @@ it("shows an exact model ID as copyable timeline metadata, not code", () => {
   expect(copy).toHaveBeenCalledWith("openai/gpt-5-codex");
 });
 
-it("does not add a late content chunk after the view becomes stale", async () => {
+it("accepts a late content chunk without hiding the mounted view", async () => {
   let finish!: (response: Response) => void;
   const pending = new Promise<Response>((resolve) => {
     finish = resolve;
   });
   const fetch = vi.fn(() => pending);
   vi.stubGlobal("fetch", fetch);
-  const view = render(<Entry entry={entry} />);
+  render(<Entry entry={entry} />);
   fireEvent.click(screen.getByRole("button", { name: "Lataa lisää sisältöä" }));
   await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
-  view.rerender(<Entry entry={entry} stale />);
   finish(
     new Response(
       JSON.stringify({
@@ -151,7 +147,7 @@ it("does not add a late content chunk after the view becomes stale", async () =>
         offset: 21,
         content: {
           media_type: "text/plain",
-          text: " private new text",
+          text: " continued text",
           complete: true,
         },
       }),
@@ -159,11 +155,8 @@ it("does not add a late content chunk after the view becomes stale", async () =>
     ),
   );
   await waitFor(() =>
-    expect(screen.queryByRole("button", { name: "Ladataan…" })).toBeNull(),
+    expect(
+      screen.getByText("Visible before outage continued text"),
+    ).toBeTruthy(),
   );
-  expect(screen.getByText("Visible before outage")).toBeTruthy();
-  expect(screen.queryByText(/private new text/)).toBeNull();
-  expect(
-    screen.queryByRole("button", { name: "Lataa lisää sisältöä" }),
-  ).toBeNull();
 });
