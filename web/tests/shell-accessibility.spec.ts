@@ -11,7 +11,7 @@ async function signIn(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
   await expect(
-    page.getByRole("heading", { name: "Työtilat", exact: true }),
+    page.getByRole("heading", { name: "Jatka siitä, mihin jäit", exact: true }),
   ).toBeFocused();
 }
 

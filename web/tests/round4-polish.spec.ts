@@ -11,7 +11,9 @@ test("@workspace-slice home labels history honestly and route focus keeps keyboa
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice", exact: true }).click();
   await page.goto("/workspaces");
-  const heading = page.getByRole("heading", { name: "Työtilat", exact: true });
+  const heading = page.getByRole("heading", {
+    name: "Jatka siitä, mihin jäit",
+  });
   await expect(heading).toBeFocused();
   await expect(
     page.getByRole("heading", { name: "Jatka siitä, mihin jäit" }),

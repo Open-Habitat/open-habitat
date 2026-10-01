@@ -8,7 +8,7 @@ test("@lab shell opens conversations from home and keeps narrow navigation reach
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
   await expect(
-    page.getByRole("heading", { name: "Työtilat", exact: true }),
+    page.getByRole("heading", { name: "Jatka siitä, mihin jäit", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".ah-connection")).toHaveCount(0);
   await expect(page.locator("main .ah-workspace-card")).toHaveCount(0);
@@ -104,7 +104,9 @@ test("@lab GitHub chooser, synthetic clone and Pi onboarding", async ({
     ).toBe("confirmed");
     await page.request.get("/fixture/pi-state?value=usable");
     await page.reload();
-    await expect(page.getByRole("heading", { name: "Työtilat" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Jatka siitä, mihin jäit" }),
+    ).toBeVisible();
   } finally {
     await page.request.get("/fixture/scenario?value=ready");
   }

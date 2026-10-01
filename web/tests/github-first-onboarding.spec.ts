@@ -81,7 +81,9 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
   ).toBeVisible();
   await page.request.get("/fixture/pi-state?value=usable");
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Työtilat" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Jatka siitä, mihin jäit" }),
+  ).toBeVisible();
   await page.request.get("/fixture/pi-state?value=missing");
   await page.reload();
   await expect(

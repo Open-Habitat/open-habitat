@@ -126,7 +126,7 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   await page.getByRole("button", { name: "Päivitä" }).click();
   await expect(page.getByRole("link", { name: "ordinary-dir" })).toBeVisible();
   await page.getByRole("link", { name: "Etusivu" }).click();
-  await expect(page.locator("main h1")).toHaveText("Työtilat");
+  await expect(page.locator("main h1")).toHaveText("Jatka siitä, mihin jäit");
   await page.keyboard.press("Tab");
   await page.getByRole("link", { name: "Siirry sisältöön" }).focus();
   await page.keyboard.press("Enter");

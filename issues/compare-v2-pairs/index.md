@@ -6,7 +6,7 @@ Run from the repository root (browser binaries installed, `npm ci --prefix web -
 
 ```sh
 NAH_PORT_BASE=21000 ./scripts/lab.sh start
-NAH_PORT_BASE=21000 PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/ms-playwright" node web/lab/compare-v2.mjs
+NAH_PORT_BASE=21000 PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/ms-playwright" node web/lab/compare-v2.mjs --home  # return pairs only; omit for all pairs
 NAH_PORT_BASE=21000 ./scripts/lab.sh stop
 ```
 
@@ -16,10 +16,10 @@ Use a fresh lab incarnation for the cleanest sidebar histories. `PLAYWRIGHT_BROW
 
 | Draft state | Theme · width | Draft | Synthetic lab | Visible differences |
 | --- | --- | --- | --- | --- |
-| Return/home | light · 1440 | ![Draft](home-light-1440-draft.avif) | ![Lab](home-light-1440-lab.avif) · [HTML](home-light-1440-lab.html) | G1, I1, I2 |
-| Return/home | dark · 1440 | ![Draft](home-dark-1440-draft.avif) | ![Lab](home-dark-1440-lab.avif) · [HTML](home-dark-1440-lab.html) | G1, I1, I2 |
-| Return/home | light · 390 | ![Draft](home-light-390-draft.avif) | ![Lab](home-light-390-lab.avif) · [HTML](home-light-390-lab.html) | G1, I1, I2 |
-| Return/home | dark · 390 | ![Draft](home-dark-390-draft.avif) | ![Lab](home-dark-390-lab.avif) · [HTML](home-dark-390-lab.html) | G1, I1, I2 |
+| Return/home | light · 1440 | ![Draft](home-light-1440-draft.avif) | ![Lab](home-light-1440-lab.avif) · [HTML](home-light-1440-lab.html) | G1 fitted, I1, I2 |
+| Return/home | dark · 1440 | ![Draft](home-dark-1440-draft.avif) | ![Lab](home-dark-1440-lab.avif) · [HTML](home-dark-1440-lab.html) | G1 fitted, I1, I2 |
+| Return/home | light · 390 | ![Draft](home-light-390-draft.avif) | ![Lab](home-light-390-lab.avif) · [HTML](home-light-390-lab.html) | G1 fitted, I1, I2 |
+| Return/home | dark · 390 | ![Draft](home-dark-390-draft.avif) | ![Lab](home-dark-390-lab.avif) · [HTML](home-dark-390-lab.html) | G1 fitted, I1, I2 |
 | Collapsed desktop rail | light · 1440 | ![Draft](collapsed-light-1440-draft.avif) | ![Lab](collapsed-light-1440-lab.avif) · [HTML](collapsed-light-1440-lab.html) | I1, I2 |
 | Collapsed desktop rail | dark · 1440 | ![Draft](collapsed-dark-1440-draft.avif) | ![Lab](collapsed-dark-1440-lab.avif) · [HTML](collapsed-dark-1440-lab.html) | I1, I2 |
 | Open phone drawer | light · 390 | ![Draft](drawer-light-390-draft.avif) | ![Lab](drawer-light-390-lab.avif) · [HTML](drawer-light-390-lab.html) | G2, I1 |
@@ -55,7 +55,7 @@ The conversation pairs were refreshed for the density slice using the synthetic 
 
 **Fidelity gaps worth a follow-up:**
 
-- **G1 — return composition:** desktop and phone lab add a separate “Työtilat” introduction above “Jatka siitä, mihin jäit”, and show independent cards rather than the draft's grouped “Käynnissä” / “Viimeksi avatut” list. On 390 px the extra introduction consumes much of the first screen. The synthetic fixture cannot demonstrate a verified running process, but that does not explain the extra heading or grouping.
+- **G1 — return composition (fitted by `fit-return-view-v2`):** desktop and phone now start with “Jatka siitä, mihin jäit” and use compact grouped rows, with no separate “Työtilat” introduction. The fresh synthetic lab has no positively observed live process, so it shows only “Muut keskustelut”; component tests cover “Käynnissä” with observed live processes. “Viimeksi avatut”, timestamps, progress and a one-click new-conversation button are not claimed without host recency or a workspace choice (I1).
 - **G2 — density and controls:** the settings lab uses large, separated headings and vertical theme radios, not the draft's compact bordered rows and horizontal segmented theme choice; the account menu likewise uses tall rows instead of the compact popover. The drawer lists verbose per-agent status lines and filter controls unlike the reference. These are presentation gaps, not a reason to suppress the honest statuses.
 - **G3 — conversation composition (fitted by `fit-conversation-density-v2`):** shared phone spacing tokens and the scrolling transcript keep the editor and actions inside 390 × 844 in the captured states; desktop retains the agreed v2 sizing table. The header remains multi-line to disclose the workspace, activity and control truth (I4); long titles stay accessible. Receipt and queue details scroll with the transcript, while urgent notices remain visible in a bounded panel above the composer. Synthetic browser tests also cover rejected, pending, uncertain, settled and outage states. This is not a claim of pixel equivalence with mock data.
 

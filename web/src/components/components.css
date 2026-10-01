@@ -696,47 +696,90 @@ h1[tabindex="-1"]:focus {
 }
 .ah-continue {
   max-width: 760px;
-  margin: var(--ah-s8) auto 0;
-  padding-block: var(--ah-s5);
-  border-top: 1px solid var(--ah-line);
+  margin: 0 auto;
 }
-.ah-continue h2 {
-  margin: 0 0 var(--ah-s4);
+.ah-return-intro h1 {
+  margin: 0;
 }
-.ah-continue > p {
+.ah-return-intro p {
+  margin: var(--ah-s2) 0 0;
+  color: var(--ah-ink-2);
+}
+.ah-return-groups {
+  display: grid;
+  gap: var(--ah-s7);
+  margin-top: var(--ah-s8);
+}
+.ah-return-group h2 {
+  margin: 0 0 var(--ah-s2);
   color: var(--ah-muted);
+  font-size: var(--ah-size-label);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 .ah-continue-list {
   list-style: none;
   padding: 0;
-  margin: var(--ah-s6) 0 0;
-  display: grid;
-  gap: var(--ah-s2);
+  margin: 0;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+  overflow: hidden;
+}
+.ah-continue-list li + li {
+  border-top: 1px solid var(--ah-line-soft);
 }
 .ah-continue-list a {
   display: grid;
-  gap: var(--ah-s2);
-  padding: var(--ah-s4);
-  background: var(--ah-surface);
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-lg);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ah-s4);
+  min-height: 62px;
+  padding: var(--ah-s3) var(--ah-s4);
   color: var(--ah-ink);
   text-decoration: none;
-  overflow-wrap: anywhere;
 }
 .ah-continue-list a:hover {
+  background: var(--ah-accent-soft);
+}
+.ah-return-indicator {
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--ah-muted);
+  border-radius: 50%;
+}
+.ah-return-indicator[data-running="true"] {
   border-color: var(--ah-accent-ink);
+  background: var(--ah-accent-ink);
+}
+.ah-return-content {
+  display: grid;
+  min-width: 0;
 }
 .ah-return-title {
+  overflow: hidden;
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ah-return-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--ah-s3);
+  gap: var(--ah-s2);
   color: var(--ah-muted);
   font-size: var(--ah-size-meta);
+}
+.ah-return-arrow {
+  width: 14px;
+  height: 14px;
+  color: var(--ah-muted);
+}
+@media (max-width: 800px) {
+  .ah-return-groups {
+    margin-top: var(--ah-s7);
+  }
 }
 .ah-back-link {
   color: var(--ah-accent-ink);

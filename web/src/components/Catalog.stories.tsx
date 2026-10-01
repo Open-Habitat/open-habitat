@@ -550,7 +550,6 @@ const returns = [
 export const Return: Story = {
   render: () => (
     <main>
-      <h1>Työtilat</h1>
       <ReturnView conversations={returns} />
     </main>
   ),

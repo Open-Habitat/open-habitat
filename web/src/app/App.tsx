@@ -770,44 +770,39 @@ export function App() {
       </>
     ) : (
       <>
-        <h1>Työtilat</h1>
         {visible.length > 0 ? (
-          <>
-            <p>
-              Työtilasi ja niiden keskustelut löydät vasemmalta. Voit jatkaa
-              lukemista avaamalla keskustelun.
-            </p>
-            <ReturnView
-              conversations={(snapshot?.agents ?? [])
-                .filter(
-                  (a) =>
-                    a.history === "readable" &&
-                    visible.some((w) => w.workspace_id === a.workspace_id),
-                )
-                .slice(0, 3)
-                .map((a) => {
-                  const workspace = visible.find(
-                    (w) => w.workspace_id === a.workspace_id,
-                  );
-                  const browserSession = browserSessions.some(
-                    (s) =>
-                      s.agent_id === a.agent_id &&
-                      s.workspace_id === a.workspace_id,
-                  );
-                  return {
-                    id: a.agent_id,
-                    href: browserSession
-                      ? `/workspaces/${a.workspace_id}?conversation=${a.agent_id}`
-                      : `/agents/${a.agent_id}`,
-                    title: a.title.display,
-                    workspace: workspace?.display_name ?? workspace?.name ?? "",
-                    browserSession,
-                    process: phase === "stale" ? "stale" : a.process,
-                  };
-                })}
-            />
-          </>
-        ) : null}
+          <ReturnView
+            conversations={(snapshot?.agents ?? [])
+              .filter(
+                (a) =>
+                  a.history === "readable" &&
+                  visible.some((w) => w.workspace_id === a.workspace_id),
+              )
+              .slice(0, 3)
+              .map((a) => {
+                const workspace = visible.find(
+                  (w) => w.workspace_id === a.workspace_id,
+                );
+                const browserSession = browserSessions.some(
+                  (s) =>
+                    s.agent_id === a.agent_id &&
+                    s.workspace_id === a.workspace_id,
+                );
+                return {
+                  id: a.agent_id,
+                  href: browserSession
+                    ? `/workspaces/${a.workspace_id}?conversation=${a.agent_id}`
+                    : `/agents/${a.agent_id}`,
+                  title: a.title.display,
+                  workspace: workspace?.display_name ?? workspace?.name ?? "",
+                  browserSession,
+                  process: phase === "stale" ? "stale" : a.process,
+                };
+              })}
+          />
+        ) : (
+          <h1>Työtilat</h1>
+        )}
         {source === "absent" ? (
           <InlineNotice
             title="Työtilakansiota ei löydy"

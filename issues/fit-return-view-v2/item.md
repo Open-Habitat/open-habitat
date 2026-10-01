@@ -28,9 +28,9 @@ state, counts or timestamps. Update the affected pairs in
 
 ## Acceptance Criteria
 
-- [ ] Return view hierarchy and list density match the draft at desktop and
+- [x] Return view hierarchy and list density match the draft at desktop and
   390 px in both themes, without invented state.
-- [ ] Stories and pairs updated.
+- [x] Stories and pairs updated.
 ## Shared context for every design-v2 slice
 
 - Benchmark: [handoff](../review-browser-design-v2/design/handoff.md) and the
@@ -55,3 +55,9 @@ state, counts or timestamps. Update the affected pairs in
 - Ownership tonight: this work may change `web/`, `design-system/`,
   `docs/ui.md` and `docs/design-system.md`. A needed change in `internal/`,
   `contracts/` or other docs is recorded in this issue as a request instead.
+
+## Fit decisions and deviations
+
+- Removed the separate “Työtilat” introduction; the return view has one main heading and compact bordered list rows. Only positively observed live processes go under “Käynnissä”; everything else goes under “Muut keskustelut”. Stale snapshots never claim a process is running. Group order retains the snapshot's order, not invented recency.
+- I1: the draft's “Viimeksi avatut”, timestamps, working-stage detail and “Jatkettavissa” imply facts the current snapshot does not provide. The lab does not observe a live process, so its four paired captures show only “Muut keskustelut”; the live grouping is covered by component tests. The draft's one-click “Uusi keskustelu” would need a workspace choice; this view does not invent a target or a dead action. Users can start from a selected workspace. Existing native-history and browser-session routes remain intact.
+- No change requested of `internal/`, `contracts/`, `scripts/` or `test/browser-host/`. If a real recency-ordered return list is desired later, the host/contract owner should supply a validated ordering/observed time; do not infer it from the current snapshot array position.

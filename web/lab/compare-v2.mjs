@@ -238,13 +238,15 @@ try {
         ].indexOf(mode);
       return order(a.mode) - order(b.mode);
     });
-  for (const { width, theme, mode } of process.argv.includes("--extras")
-    ? jobs.filter(
-        (j) =>
-          ["collapsed", "account-menu"].includes(j.mode) ||
-          (j.mode === "katkos" && j.width === 390),
-      )
-    : jobs) {
+  for (const { width, theme, mode } of process.argv.includes("--home")
+    ? jobs.filter((j) => j.mode === "paluu")
+    : process.argv.includes("--extras")
+      ? jobs.filter(
+          (j) =>
+            ["collapsed", "account-menu"].includes(j.mode) ||
+            (j.mode === "katkos" && j.width === 390),
+        )
+      : jobs) {
     await fixture("scenario?value=ready");
     await fixture("conversations-reset");
     let path =
