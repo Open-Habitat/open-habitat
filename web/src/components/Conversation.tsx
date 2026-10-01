@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { Markdown } from "./Markdown";
 import { Disclosure } from "./Overlays";
 import { Button, RadioGroup, TextArea, TextField } from "./Primitives";
@@ -902,12 +902,14 @@ export function EndedConversationControl({
   );
 }
 export function QueuePanel({
+  panelRef,
   steeringTexts,
   followUpTexts,
   state,
   clearAvailability,
   onClearAll,
 }: {
+  panelRef?: Ref<HTMLElement>;
   steeringTexts: string[];
   followUpTexts: string[];
   state: "ready" | "pendingClear" | "error" | "stale";
@@ -915,7 +917,12 @@ export function QueuePanel({
   onClearAll: () => void;
 }) {
   return (
-    <section className="ah-queue">
+    <section
+      className="ah-queue"
+      ref={panelRef}
+      tabIndex={-1}
+      aria-label="Työskentelyjono"
+    >
       <h2>Työskentelyjono</h2>
       {state === "stale" ? (
         <InlineNotice title="Jono on vanhentunut" tone="warning" />

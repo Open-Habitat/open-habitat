@@ -1264,8 +1264,8 @@ h1[tabindex="-1"]:focus {
 }
 .ah-conversation-frame .ah-composer {
   position: relative;
-  max-height: none;
-  overflow: visible;
+  max-height: min(40rem, calc(100dvh - 12rem));
+  overflow: auto;
   padding: var(--ah-composer-pad-block) var(--ah-column-pad-inline);
 }
 .ah-conversation-frame .ah-composer .ah-field {

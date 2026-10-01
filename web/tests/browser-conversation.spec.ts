@@ -1001,6 +1001,14 @@ test("@browser-conversation steer, follow-up and clear return only removed texts
   await page.getByRole("button", { name: "Ohjaa" }).click();
   await expect(editor).toHaveValue("");
   await page.getByRole("button", { name: /Jonossa/ }).click();
+  const queuePanel = page.getByRole("region", { name: "Työskentelyjono" });
+  await expect(queuePanel).toBeFocused();
+  const stream = page.locator(".ah-conversation-stream");
+  expect(
+    await queuePanel.evaluate((node) => node.getBoundingClientRect().top),
+  ).toBeLessThan(
+    await stream.evaluate((node) => node.getBoundingClientRect().bottom),
+  );
   await expect(page.getByText("jonoon yksi", { exact: true })).toBeVisible();
   await expect(page.getByText("ohjaus kaksi", { exact: true })).toBeVisible();
   await page

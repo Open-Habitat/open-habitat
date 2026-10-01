@@ -151,6 +151,11 @@ export function BrowserConversation({
   const alive = useRef(true);
   const generation = useRef(0);
   const feed = useRef<HTMLElement>(null);
+  const queuePanel = useRef<HTMLElement>(null);
+  const queueReturn = useRef<
+    | { top: number; atBottom: boolean; anchor: ConversationPlace["anchor"] }
+    | undefined
+  >(undefined);
   const stopConfirmation = useRef<HTMLFieldSetElement>(null);
   const section = useRef<HTMLElement>(null);
   const restored = useRef(false);
@@ -1569,6 +1574,7 @@ export function BrowserConversation({
             ) : null}
             {controlled && queueOpen ? (
               <QueuePanel
+                panelRef={queuePanel}
                 steeringTexts={current?.queue?.steering ?? []}
                 followUpTexts={current?.queue?.follow_up ?? []}
                 state={stale ? "stale" : current?.queue ? "ready" : "error"}
@@ -1683,7 +1689,29 @@ export function BrowserConversation({
               onSteer={() => void submitQueue("steer")}
               onFollowUp={() => void submitQueue("follow_up")}
               onModeChange={setWorkingMode}
-              onOpenQueue={() => setQueueOpen(!queueOpen)}
+              onOpenQueue={() => {
+                if (queueOpen) {
+                  setQueueOpen(false);
+                  const saved = queueReturn.current;
+                  requestAnimationFrame(() => {
+                    if (!saved || !feed.current) return;
+                    feed.current.scrollTop = saved.top;
+                    if (saved.anchor) restoreAnchor(saved.anchor, entries);
+                    wasAtBottom.current = saved.atBottom;
+                    readingAnchor.current = saved.anchor;
+                    queueReturn.current = undefined;
+                  });
+                } else {
+                  captureAnchor();
+                  queueReturn.current = {
+                    top: feed.current?.scrollTop ?? 0,
+                    atBottom: wasAtBottom.current,
+                    anchor: readingAnchor.current,
+                  };
+                  setQueueOpen(true);
+                  requestAnimationFrame(() => queuePanel.current?.focus());
+                }
+              }}
               onInterrupt={
                 current?.state === "accepted" && !stale && !streamError
                   ? () => setConfirmStop(true)
