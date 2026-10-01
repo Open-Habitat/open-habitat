@@ -66,6 +66,29 @@ kierroksen alussa. Uusin merkintä ylimmäksi.
 
 ## Kierrokset
 
+### Kierros 8 — estyi 2026-10-01 00:30 UTC; kierros 9 käynnissä
+
+Broker-kaatumiskoe (run `01m3t5zsczrk74q32wc9r2dt81`) estyi. Oikea SIGKILL
+`account`-vaiheessa saatiin aikaan, ja B:n kirjautuminen evättiin. Katselmointi
+kuitenkin osoitti, ettei alkuperäinen läpimeno todistanut pending-vartijan
+aiheuttaneen kieltäytymistä: uudelleenkäynnistetty broker pysähtyy jo
+config/socket-tarkistukseen. Työpuussa on 13 säilöttyä committia.
+
+Havainto Jarille: pending-journaali sulkee myös terveen A:n selainistunnon
+(401). Se on tarkoituksellista globaalia fail-closed-käytöstä, ei
+sisarkäyttäjän riippumatonta saatavuutta.
+
+**Kierros 9 (rinnakkain):**
+- `01m3te2fwt5a1c144310zjgy4v`: broker-kokeen uusinta harvestilla, aikaraja
+  90 min. Selvitetään, onko kyse tuotevirheestä (kaatunut broker ei
+  käynnisty uudelleen) vai fixture-ajautumasta.
+- `01m3te2f3gns60f09kxys03h1v`: UI:n 23:20-pyyntö. Fake-Pi tuottaa
+  korreloidut `tool_call_id`t ja viivästetyt deltat oikean controllerin
+  kautta.
+
+**Julkaisu:** testijulkaisu tehdään, kun UI:n kaista on laskeutunut, viimeistään
+noin klo 03:00 UTC.
+
 ### Kierros 7 — valmis 2026-09-30 22:15 UTC; kierros 8 käynnissä
 
 Vuoron asettuminen, lähetyskuittaukset ja kysymykset turvallisena tekstinä
