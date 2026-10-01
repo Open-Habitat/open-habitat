@@ -177,8 +177,9 @@ try:
           'broker restart accepted pending journal (start='+str(restart.returncode)+')')
     refusal_log=command('journalctl','_SYSTEMD_INVOCATION_ID='+next_invocation.decode('ascii'),'-u',
                         'native-agent-host-broker.service','--no-pager','-o','cat').stdout
+    all_refusal_log=command('journalctl','-u','native-agent-host-broker.service','--no-pager','-o','cat').stdout
     check(refusal_log.count(b'NAH_GUEST_PENDING_REFUSED')==1,
-          'new broker invocation did not report pending startup guard')
+          'new broker invocation did not report pending startup guard filtered='+str(refusal_log.count(b'NAH_GUEST_PENDING_REFUSED'))+' all='+str(all_refusal_log.count(b'NAH_GUEST_PENDING_REFUSED'))+' lines='+str(len(all_refusal_log.splitlines())))
     check(journal.read_bytes()==pending,'restart cleared or rewrote journal')
     session_status,_,_=get(affected,'/auth/session')
     snapshot_status,_,_=get(affected,'/api/v1/snapshot')
