@@ -3,12 +3,14 @@ created: 2026-10-01
 updated: 2026-10-01
 type: bug
 reporter: Jari
-status: open
+status: fixed
 priority: high
 related: ['@pilot14-session-revalidation-loop', '@browser-state-rewrite']
 lane: caution-removal
 lane_seq: 65
 blocked_by: ['@browser-state-rewrite']
+closed: 2026-10-01
+closed_by: claude
 ---
 
 # Istunnon varmistuspeite peittää näkymän jokaisella päivityksellä
@@ -30,3 +32,17 @@ Tämä on @architecture-built-on-caution -ilmiön selainpuoli: jokainen tilanmuu
 ## Odotus
 
 Ikkunan vaihto, agentin työkalukäyttö ja vuoron valmistuminen eivät peitä näkymää. Snapshot päivitetään taustalla ja näkymä vaihtuu paikallaan. Identiteetin vaihtuminen (eri käyttäjä samassa selaimessa) on ainoa tilanne, jossa vanha sisältö pitää piilottaa, ja se on harvinainen poikkeus, ei jokaisen fokusvaihdon oletus.
+
+## Lab resolution (2026-10-01)
+
+Idle synthetic Chromium: 60 seconds and focus/visibility/blur changes resulted in zero session/status/snapshot/events requests after settling; normal updates keep existing content visible. The final committed implementation `f5f0a6f` passed the clean JSON CI gate (110 Chromium browser cases and 13 lab cases). No test-server deployment or visual verification occurred in this worker; the next release must verify this user-visible defect on the test server.
+
+## Acceptance Criteria
+
+- [x] Focus return and background event updates leave the view mounted without an identity mask.
+
+## Resolution
+
+### 2026-10-01T23:34:32Z · @claude
+
+Fixed in browser-state-rewrite; synthetic Chromium and clean lab gate passed on f5f0a6f. No test-server verification in this worker; verify visual behavior on the next release.

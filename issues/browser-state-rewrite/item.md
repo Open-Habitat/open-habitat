@@ -3,12 +3,14 @@ created: 2026-10-01
 updated: 2026-10-01
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@architecture-built-on-caution', '@session-mask-on-every-refresh', '@conversation-open-flicker', '@uncertain-flash-on-send']
 lane: caution-removal
 lane_seq: 60
 blocked_by: ['@daemon-drop-status-stream', '@drop-conversation-lease']
+closed: 2026-10-01
+closed_by: claude
 ---
 
 # Rewrite the browser state model to the check-once shape
@@ -48,3 +50,21 @@ schedule. Responsibility-based file splitting belongs to step 7; there is no
 line-count threshold for completing this rewrite.
 
 Test selection and the final gate follow [TESTING.md](../../TESTING.md).
+
+## Lab verification and resolution (2026-10-01)
+
+Implemented on `063f959`, review repairs `94a362b`, and lab assertion correction `f5f0a6f`. Synthetic host, fake Pi and Chromium; no test-server deployment in this worker.
+
+- Browser: one coherent status/history loading transition; no empty-conversation flash before the loaded view. Normal sends render pending and then the server answer; the ambiguous notice appears only on lost reply and a persisted marker reconciles on quiet reload without replaying the write. A queue-clear 401 enters login.
+- Identity and connectivity: session 401 enters login; changing the snapshot identity resets stale UI and fetches a new CSRF token; delayed old-identity replies do not repopulate it. Transport errors retain visible content under a stale banner; explicit retry reconnects. Journal gap and expired catalog cursor recovery are covered by host-backed browser cases. First-use GitHub chooser and Pi restart journeys pass.
+- Idle tab: with one healthy event stream open, advancing the synthetic browser clock 60 seconds and returning focus triggered zero session, conversation-status, snapshot or events requests (after initial settlement). No focus-triggered mask or refresh burst.
+- Automated checks: fast web gate and focused browser/lab journeys passed. Final committed implementation `f5f0a6f` passed `TMPDIR=/var/tmp/nah-browser-rewrite NAH_PORT_BASE=14600 ./scripts/ci-local.sh --clean --json` (110 browser + 13 lab cases; web, Go, contracts, packaging, doctor). The first clean run found five onboarding/resilience failures and the second found one stale lab assertion after 110 Chromium cases passed; all were corrected before the final run.
+- Review: independent security/correctness finder reported five reachable in-scope defects against `063f959`; independently checked, all fixed. Assessment at `history/assessment-browser-state-rewrite.{json,md}` is ignored local scratch, so this summary stands alone. No new issue was justified.
+
+This is lab evidence, not production or separate-kernel-UID proof. The three linked user-visible reports still need a visual check on the **test server with the next release**; the conductor owns that follow-up. No deployment was attempted here.
+
+## Acceptance Criteria
+
+- [x] Synthetic browser verifies a single coherent open, pending/uncertain write outcomes, changed-identity reset and late-reply isolation, 401 login, journal recovery, first-use onboarding and idle request counts.
+- [x] Final committed implementation passes the clean JSON CI gate.
+- [x] The independent security/correctness findings were assessed and resolved; next-release test-server check is explicitly handed off.
