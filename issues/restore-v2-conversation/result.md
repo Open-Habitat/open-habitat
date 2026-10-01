@@ -17,3 +17,20 @@ and phone, but the disconnected lab route is empty rather than holding the
 illustrated prior conversation. Together with the missing two-item working
 capture, these are not frame-by-frame evidence for the required states. The
 visual comparison remains incomplete; this worker will not merge it as done.
+
+## Final verification and handoff
+
+The committed implementation at `d6f3088` passed
+`NAH_PORT_BASE=21000 ./scripts/ci-local.sh --clean --json` (including 109
+browser-host and 12 lab Playwright tests). `issuectl doctor --json` and
+`git diff --check` also passed. The earlier clean-gate attempts failed first
+because the comparison lab occupied port 21001 and then because three older lab
+assertions described controls removed by this presentation change; the lab
+assertions were updated to check the same user-facing behavior and all 12
+passed. No production fixture/contract files were changed.
+
+This issue remains **in progress, not merge-ready**. The required two-item
+working frame and hydrated disconnected/uncertain-send frame have not been
+compared against the drafts. The synthetic fixture limitations and native
+history metadata gap remain recorded in `item.md` for follow-up. A green gate
+does not supply missing visual evidence.
