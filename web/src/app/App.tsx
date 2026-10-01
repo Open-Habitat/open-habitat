@@ -11,12 +11,9 @@ import { useDispatch, useSelector } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router";
 import {
   AccountSettings,
-  AccountShelf,
   AppShell,
   ConnectionBanner,
   InlineNotice,
-  WorkspaceRail,
-  WorkspaceSection,
 } from "../components";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import { ReturnView } from "../components/ReturnView";
@@ -37,6 +34,7 @@ import {
   stale,
   unavailable,
 } from "./store";
+import { sourceLabel, WorkspaceRailView } from "./WorkspaceRailView";
 
 const CatalogPreview =
   import.meta.env.VITE_ENABLE_TEST_FIXTURES === "true"
@@ -51,44 +49,6 @@ function safeRoute(path: string) {
     /^\/agents\/pi:[0-9a-fA-F-]{36}$/.test(path)
     ? path
     : "/workspaces";
-}
-function agentProcessLabel(process: string): string {
-  return (
-    (
-      {
-        daemon_managed_live: "Prosessi käynnissä",
-        terminal_observed_live: "Käynnissä terminaalissa",
-        confirmed_exited: "Ei käynnissä",
-        not_observed: "Prosessia ei havaittu",
-        stale: "Tieto vanhentunut",
-      } as Record<string, string>
-    )[process] ?? "Prosessin tila ei tiedossa"
-  );
-}
-function agentControlLabel(control: string): string {
-  return (
-    (
-      {
-        read_only: "Vain luku",
-        transfer_possible: "Siirrettävissä",
-        unavailable: "Ohjaus ei saatavilla",
-        unknown: "Ohjaus ei tiedossa",
-      } as Record<string, string>
-    )[control] ?? ""
-  );
-}
-function sourceLabel(state: string) {
-  return (
-    (
-      {
-        confirmed: "Vahvistettu",
-        absent: "Lähde puuttuu",
-        unavailable: "Lähde ei ole saatavilla",
-        unknown: "Tieto ei ole tiedossa",
-        conflicting: "Ristiriitainen tieto",
-      } as Record<string, string>
-    )[state] ?? "Tieto ei ole tiedossa"
-  );
 }
 function WorkspaceDetails({ workspace }: { workspace: Workspace }) {
   const fact = (source: string) =>
@@ -776,119 +736,27 @@ export function App() {
         }
         rail={
           (phase === "authenticated" || phase === "stale") && snapshot ? (
-            <WorkspaceRail
+            <WorkspaceRailView
+              phase={phase}
+              snapshot={snapshot}
+              source={source}
               collapsed={collapsed && !mobileLayout}
-              serverLabel={window.location.host}
-              connectionLabel={
-                phase === "stale"
-                  ? "Yhteys poikki"
-                  : source === "confirmed"
-                    ? "Yhdistetty"
-                    : "Tietoja puuttuu"
-              }
-              connectionTone={
-                phase === "stale"
-                  ? "danger"
-                  : source === "confirmed"
-                    ? "success"
-                    : "warning"
-              }
-              sessionActions={
-                <AccountShelf
-                  name="Oma tili"
-                  onSettings={openSettings}
-                  onLogout={logout}
-                />
-              }
-              homeCurrent={location.pathname === "/workspaces"}
-              runningCount={
-                phase === "authenticated"
-                  ? snapshot.agents.filter(
-                      (a) =>
-                        a.process === "daemon_managed_live" ||
-                        a.process === "terminal_observed_live",
-                    ).length
-                  : undefined
-              }
-              filterValue={filter}
-              resultSummary={`${matches.length} ${source === "confirmed" ? "työtilaa" : "löydettyä työtilaa"}`}
-              summaryAction={undefined}
-              listState={railState}
-              onToggle={() => setCollapsed(!collapsed)}
+              matches={matches}
+              filter={filter}
+              railState={railState}
+              selectedId={selectedId}
+              selectedAgentId={selectedAgentId}
+              daemonSessions={daemonSessions}
+              expanded={expanded}
+              onExpand={setExpanded}
               onFilter={(v) => dispatch(filterChanged(v))}
+              onToggle={() => setCollapsed(!collapsed)}
               onRefresh={manualRefresh}
-            >
-              {matches.map((w) => (
-                <WorkspaceSection
-                  key={w.workspace_id}
-                  workspaceId={w.workspace_id}
-                  name={w.display_name ?? w.name}
-                  href={`/workspaces/${w.workspace_id}`}
-                  expanded={
-                    expanded[w.workspace_id] ??
-                    Boolean(
-                      snapshot.agents.some(
-                        (a) => a.workspace_id === w.workspace_id,
-                      ),
-                    )
-                  }
-                  selected={selectedId === w.workspace_id}
-                  summary={`${w.kind === "git_main_worktree" ? "Git" : "Hakemisto"} · ${sourceLabel(w.facts.find((f) => f.source === "filesystem")?.state ?? "unknown")}`}
-                  mutationState={
-                    snapshot.write_state === "read_only"
-                      ? undefined
-                      : w.mutation_state === "read_only"
-                        ? "Vain luku"
-                        : undefined
-                  }
-                  agents={snapshot.agents
-                    .filter((a) => a.workspace_id === w.workspace_id)
-                    .map((a) => ({
-                      agentId: a.agent_id,
-                      href: daemonSessions.some(
-                        (s) =>
-                          s.agent_id === a.agent_id &&
-                          s.workspace_id === w.workspace_id,
-                      )
-                        ? `/workspaces/${w.workspace_id}?conversation=${a.agent_id}`
-                        : `/agents/${a.agent_id}`,
-                      title: a.title.display,
-                      activityLabel: agentProcessLabel(a.process),
-                      activityShortLabel:
-                        agentProcessLabel(a.process) ===
-                        "Prosessin tila ei tiedossa"
-                          ? "Tila ei tiedossa"
-                          : undefined,
-                      controlLabel: daemonSessions.some(
-                        (s) =>
-                          s.agent_id === a.agent_id &&
-                          s.workspace_id === w.workspace_id,
-                      )
-                        ? ""
-                        : agentControlLabel(a.control),
-                      selected:
-                        a.agent_id === selectedAgentId ||
-                        (selectedId === w.workspace_id &&
-                          new URLSearchParams(location.search).get(
-                            "conversation",
-                          ) === a.agent_id),
-                    }))}
-                  onToggle={() =>
-                    setExpanded({
-                      ...expanded,
-                      [w.workspace_id]: !(
-                        expanded[w.workspace_id] ??
-                        Boolean(
-                          snapshot.agents.some(
-                            (a) => a.workspace_id === w.workspace_id,
-                          ),
-                        )
-                      ),
-                    })
-                  }
-                />
-              ))}
-            </WorkspaceRail>
+              onSettings={openSettings}
+              onLogout={logout}
+              pathname={location.pathname}
+              search={location.search}
+            />
           ) : undefined
         }
         main={

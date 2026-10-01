@@ -37,12 +37,30 @@ The broker authorizes the binding at login, not on each request or stream frame.
 An operator uses `RevokeSubject` to remove live browser sessions before changing
 the allowlist; changing the allowlist alone does not log out existing sessions.
 
+Login and live requests deliberately pay for different checks. OAuth callback
+asks the broker to ensure and authorize the binding before issuing a session;
+this root-side exchange is not repeated on reads, writes or event frames.
+Each request still resolves its cookie locally (including expiry and ingress
+identity), and writes check Origin and CSRF. Explicit `RevokeSubject` deletes
+live sessions under the same session lock. Rechecking the root-owned allowlist
+on every request would serialize all users on broker disk I/O without adding
+a revocation path beyond that explicit operation.
+
 The gateway forwards requests to that account's systemd-created Unix socket.
 It verifies the trusted filesystem route, and the daemon authenticates the
 connecting gateway through Linux peer credentials and checks its own root-owned
 binding, UID, home, Pi selector and pinned runtime once at startup. Binding or
 runtime changes require a daemon restart; first-use Pi credentials do not. It forwards finite daemon replies without parsing their JSON and flushes event
 streams as bytes arrive; the browser validates the public reply contract.
+The gateway checks the mapped socket before connecting; the daemon checks the
+connection's gateway peer UID per request. Stable binding and runtime files
+are checked once at daemon startup instead of walking the pinned Pi release
+or re-reading the binding on each status or heartbeat. Root can change these
+files only as an operator action that also requires restarting the daemon;
+request bodies and conversation admission remain validated on use. Credential
+path checks belong to onboarding, because missing credentials are normal on
+first login.
+
 The gateway holds no conversation leases or other conversation ownership state.
 The mapped Unix user owns their conversations, including across browser logins
 and gateway restarts. The gateway cannot read homes or run agents. The broker's root
@@ -93,6 +111,15 @@ the browser, SSH or tmux. Terminal histories are readable
 in the browser, but Pi RPC cannot attach to a running terminal TUI. An ended
 browser conversation can be deliberately continued with the same native ID once
 its previous work is known to have ended.
+
+In the browser, `App` loads session and snapshot state and selects the main
+view; `WorkspaceRailView` renders navigation. `useConversation` loads status
+and native entries and follows the event journal for one conversation,
+`ConversationActions` owns writes and their outcome notices, and
+`useReadingPosition` keeps the timeline anchored while entries arrive.
+In the daemon, HTTP control and observation stay in the conversation
+controller; Pi event translation and continuation admission have their own
+files. These are responsibility boundaries, not line-count targets.
 
 The browser shows incoming messages, questions and tool content. Content without
 a dedicated renderer still appears as safe text. The event journal is the only

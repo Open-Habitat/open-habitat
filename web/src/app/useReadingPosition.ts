@@ -1,0 +1,135 @@
+import {
+  type Dispatch,
+  type RefObject,
+  type SetStateAction,
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import type { LiveTurn } from "./conversationEvents";
+import type { HistoryEntry } from "./history";
+
+type Anchor = { key: string; offset: number };
+export function useReadingPosition(
+  entries: HistoryEntry[],
+  next: string | undefined,
+) {
+  const [unseen, setUnseen] = useState(0);
+  const [awayFromLatest, setAwayFromLatest] = useState(false);
+  const wasAtBottom = useRef(true);
+  const feed = useRef<HTMLElement>(null);
+  const latest = useRef({ entries, next, unseen });
+  latest.current = { entries, next, unseen };
+  const readingAnchor = useRef<{ key: string; offset: number } | undefined>(
+    undefined,
+  );
+  const captureAnchor = useCallback(() => {
+    const viewport = feed.current;
+    if (!viewport || wasAtBottom.current) return;
+    const rows = viewport.querySelectorAll<HTMLElement>(".ah-feed > li");
+    const top = viewport.getBoundingClientRect().top;
+    for (let i = 0; i < rows.length; i++) {
+      const rect = rows[i].getBoundingClientRect();
+      if (rect.bottom > top && latest.current.entries[i]) {
+        readingAnchor.current = {
+          key: latest.current.entries[i].entry_key,
+          offset: rect.top - top,
+        };
+        return;
+      }
+    }
+  }, []);
+  const restoreAnchor = useCallback(
+    (
+      anchor: { key: string; offset: number } | undefined,
+      pages: HistoryEntry[],
+    ) => {
+      const viewport = feed.current;
+      if (!viewport || !anchor) return false;
+      const index = pages.findIndex((e) => e.entry_key === anchor.key);
+      const row =
+        viewport.querySelectorAll<HTMLElement>(".ah-feed > li")[index];
+      if (!row) return false;
+      viewport.scrollTop +=
+        row.getBoundingClientRect().top -
+        viewport.getBoundingClientRect().top -
+        anchor.offset;
+      return true;
+    },
+    [],
+  );
+  return {
+    feed,
+    wasAtBottom,
+    readingAnchor,
+    latest,
+    unseen,
+    setUnseen,
+    awayFromLatest,
+    setAwayFromLatest,
+    captureAnchor,
+    restoreAnchor,
+  };
+}
+
+export function useReadingPositionLayout({
+  entries,
+  live,
+  queueOpen,
+  receipt,
+  problem,
+  details,
+  confirmStop,
+  currentState,
+  events,
+  feed,
+  wasAtBottom,
+  readingAnchor,
+  restoreAnchor,
+  setUnseen,
+}: {
+  entries: HistoryEntry[];
+  live: LiveTurn | undefined;
+  queueOpen: boolean;
+  receipt: string;
+  problem: string;
+  details: boolean;
+  confirmStop: boolean;
+  currentState: string | undefined;
+  events: unknown[];
+  feed: RefObject<HTMLElement | null>;
+  wasAtBottom: RefObject<boolean>;
+  readingAnchor: RefObject<Anchor | undefined>;
+  restoreAnchor: (anchor: Anchor | undefined, pages: HistoryEntry[]) => boolean;
+  setUnseen: Dispatch<SetStateAction<number>>;
+}) {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a live fragment changes the feed height without changing native entries.
+  useLayoutEffect(() => {
+    if (wasAtBottom.current && feed.current) {
+      feed.current.scrollTop = feed.current.scrollHeight;
+      setUnseen(0);
+    } else {
+      restoreAnchor(readingAnchor.current, entries);
+    }
+  }, [entries, live, restoreAnchor]);
+  // Footer controls can change the stream height without changing history.
+  // Keep the native reading anchor for readers, or follow the latest turn.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: footer state changes are the layout-only trigger.
+  useLayoutEffect(() => {
+    const viewport = feed.current;
+    if (!viewport) return;
+    if (wasAtBottom.current) viewport.scrollTop = viewport.scrollHeight;
+    else restoreAnchor(readingAnchor.current, entries);
+  }, [
+    queueOpen,
+    receipt,
+    problem,
+    details,
+    confirmStop,
+    currentState,
+    events,
+    restoreAnchor,
+    entries,
+  ]);
+}

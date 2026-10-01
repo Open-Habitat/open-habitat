@@ -14,14 +14,20 @@ boundary in `docs/interfaces.md` (Finnish, under identity and trust boundaries),
 and for the broker in ADR 0004.
 
 - `gateway/` owns same-origin HTTP, OAuth, sessions and CSRF, serves the static
-  UI and routes each request to the mapped daemon over its per-user socket. The
+  UI and routes each request to the mapped daemon over its per-user socket.
+  `auth.go` handles login and broker authorization once when issuing a session;
+  `session.go` resolves the cookie and checks Origin/CSRF on writes on each
+  request. `RevokeSubject` removes live sessions explicitly; editing the
+  allowlist alone does not revoke them. The
   shared proxy checks the mapped socket once, forwards finite bodies within a
   cap and flushes streams without interpreting daemon replies. Conversation
   ownership is per Unix user in the daemon; the gateway keeps no lease table. It
   runs as a fixed unprivileged UID, never reads a home, and never passes
   browser headers on as identity.
 - `daemon/` runs as one mapped UID and owns native discovery, Pi history and
-  child processes. The only identity it trusts is its own root-owned binding
+  child processes. `conversation_linux.go` handles HTTP control and observation;
+  `pi_events_linux.go` translates bounded Pi events into state and journal
+  updates, and `continuation_linux.go` proves and admits native continuation. The only identity it trusts is its own root-owned binding
   and the kernel's peer credentials; nothing the browser or the gateway asserts
   about who is calling is used. Binding, UID/home, Pi selector and pinned
   runtime tree/Node version are checked once before serving. Changing the
