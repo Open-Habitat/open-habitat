@@ -53,5 +53,19 @@ for anchor, stage in [
     broker_source = broker_source.replace(anchor,
         '_, _ = os.Stderr.WriteString("NAH_GUEST_STAGE_'+stage+'\\n")\n\t'+anchor)
 broker_replacement.write_text(broker_source)
+# loadBrokerConfig calls secureFile before ServeBroker reaches Writer.Startup.
+# secureFile itself rejects pending.json, so instrument that actual guard too.
+state = repo / 'internal/provision/state_linux.go'
+state_source = state.read_text()
+pending_check = '''if e := unix.Fstatat(fd, "pending.json", &st, unix.AT_SYMLINK_NOFOLLOW); e != unix.ENOENT {
+		return nil, ErrInvalid
+	}'''
+if state_source.count(pending_check) != 1:
+    raise SystemExit('secureFile pending guard drifted')
+state_source = state_source.replace(pending_check, pending_check.replace(
+    '\t\treturn nil, ErrInvalid',
+    '\t\tif name == "broker.json" { _, _ = os.Stderr.WriteString("NAH_GUEST_PENDING_REFUSED\\n") }\n\t\treturn nil, ErrInvalid'))
+state_replacement = run / 'guest-state.go'
+state_replacement.write_text(state_source)
 (run / 'guest-overlay.json').write_text(json.dumps({'Replace': {
-    str(source): str(replacement), str(broker): str(broker_replacement)}}))
+    str(source): str(replacement), str(broker): str(broker_replacement), str(state): str(state_replacement)}}))

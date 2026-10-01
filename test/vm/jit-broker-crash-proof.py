@@ -170,7 +170,8 @@ try:
     check(unit('is-active','native-agent-host-broker.socket').stdout.strip()==b'active','broker activation socket lost')
     restarted_reply=ensure_control('authorize')
     check(restarted_reply.get('route') is None,'restarted broker issued route')
-    # Type=simple may report successful start before ServeBroker.Startup exits.
+    # Type=simple may report successful start before the config reader's
+    # pending guard (or Writer.Startup) exits.
     for _ in range(50):
         if pid()==0 and unit('is-active','native-agent-host-broker.service').stdout.strip() in (b'failed',b'inactive'):break
         time.sleep(.1)
