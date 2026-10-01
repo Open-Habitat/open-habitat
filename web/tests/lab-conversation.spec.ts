@@ -57,7 +57,7 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   await editor.fill("hylkää");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
-    page.getByText("Viesti hylättiin.", { exact: false }),
+    page.getByRole("alert").getByText("Hylätty · teksti säilytettiin"),
   ).toBeVisible({ timeout: 20000 });
   await expect(editor).toHaveValue("hylkää");
   await expect(
