@@ -3,12 +3,14 @@ created: 2026-10-01
 updated: 2026-10-01
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@architecture-built-on-caution']
 lane: caution-removal
 lane_seq: 50
 blocked_by: ['@gateway-single-proxy', '@daemon-drop-status-stream']
+closed: 2026-10-01
+closed_by: claude
 ---
 
 # Remove the gateway conversation lease table
@@ -39,3 +41,9 @@ with daemon ownership tests retaining the writer-lock coverage. Update the
 architecture and interfaces to describe Unix-user conversation ownership.
 
 Test selection and the final gate follow [TESTING.md](../../TESTING.md).
+
+## Resolution
+
+### 2026-10-01T21:57:25Z · @claude
+
+Removed cookie-scoped conversation leases. Same Unix user can resume control through a new login or gateway process; daemon flock and per-user socket routing remain. Clean CI passed on product commit 2fc7e4b; see result.md.
