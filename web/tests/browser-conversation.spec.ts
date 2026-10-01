@@ -507,12 +507,16 @@ test("@browser-conversation uncertain send survives reload without duplicate", a
     });
   });
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(page.getByText(/Lähetyksen tulos epävarma/)).toBeVisible();
+  await expect(
+    page.getByText(/Ei tiedossa, vastaanottiko Pi viestin/),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Tarkista keskustelun tila" }),
-  ).toHaveClass(/ah-button-primary/);
+  ).toHaveClass(/ah-button-quiet/);
   await page.reload();
-  await expect(page.getByText("Aiemman pyynnön tulos epävarma")).toBeVisible();
+  await expect(
+    page.getByText(/Ei tiedossa, vastaanottiko Pi viestin/),
+  ).toBeVisible();
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toHaveValue("Älä lähetä toistamiseen");
@@ -521,7 +525,7 @@ test("@browser-conversation uncertain send survives reload without duplicate", a
   ).toBeDisabled();
   expect(attempts).toBe(1);
   await page
-    .getByText("Aiemman pyynnön tulos epävarma")
+    .getByText(/Ei tiedossa, vastaanottiko Pi viestin/)
     .scrollIntoViewIfNeeded();
   await page.screenshot({
     path: "test-results/evidence/browser-conversation-uncertain.png",

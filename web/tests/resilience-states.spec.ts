@@ -199,7 +199,7 @@ test("@resilience active conversation stays readable but cannot send during outa
   await expect(editor).toHaveValue("Luonnos säilyy katkossa");
   await expect(
     page.getByRole("button", { name: "Tarkista keskustelun tila" }),
-  ).toHaveClass(/ah-button-primary/);
+  ).toHaveClass(/ah-button-quiet/);
   await expect(
     page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toBeDisabled();
