@@ -36,7 +36,7 @@ func TestPiAttemptAuthenticatedMappedSocket(t *testing.T) {
 			w.WriteHeader(403)
 			return
 		}
-		if r.Host != "unix" || r.URL.Path != piAttemptPath || r.Header.Get("X-Agent-Host-Identity") != identityID(m) || r.Header.Get("X-Agent-Host-Socket") != "" || r.Header.Get("Cookie") != "" || r.Header.Get("Origin") != "" || r.Header.Get("X-Agent-Host-CSRF") != "" {
+		if r.Host != "unix" || r.URL.Path != piAttemptPath || r.Header.Get("X-Agent-Host-Identity") != "" || r.Header.Get("X-Agent-Host-Socket") != "" || r.Header.Get("Cookie") != "" || r.Header.Get("Origin") != "" || r.Header.Get("X-Agent-Host-CSRF") != "" {
 			w.WriteHeader(403)
 			return
 		}

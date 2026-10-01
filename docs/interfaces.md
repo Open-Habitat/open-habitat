@@ -119,9 +119,10 @@ root-omisteisen käyttäjäsidoksensa, UID:n, homen ja socket-instanssin.
 Väärään kohteeseen päätynyt yhteys torjutaan. Tarkistukset ovat
 [udssecure-paketissa](../internal/udssecure/socket_linux.go).
 
-Gateway asettaa `X-Agent-Host-Identity`- ja display-name-headerit varmennetusta
-istunnosta. Ne sitovat pyynnön web-istuntoon, eivät anna daemonille oikeutta
-vaihtaa Unix-käyttäjää. GitHub-tokenin luovutuksessa gatewayn varmentaman
+Gateway valitsee käyttäjän socketin varmennetusta istunnosta. Daemon tarkistaa
+root-omisteisen sidoksen, UID:n ja homen käynnistyksessä; pyyntökohtaisesti
+se luottaa vain yhteyden kernelin ilmoittamaan gateway-UID:hen, ei HTTP-headerin
+esittämään identiteettiin. Sidoksen muuttaminen vaatii daemonin uudelleenkäynnistyksen. GitHub-tokenin luovutuksessa gatewayn varmentaman
 `expected_numeric_id`:n, daemonin oman sidoksen ja natiivin `gh api user`
 -havainnon pitää täsmätä. Paikallinen reitti ei käytä yhteistä bearer-tokenia.
 

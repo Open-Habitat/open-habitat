@@ -37,8 +37,16 @@ func TestSnapshotNativeStatusOnlyAfterTrust(t *testing.T) {
 		h.ServeHTTP(w, r)
 		return w
 	}
-	if w := request(opaque("wid_", "github:99")); w.Code != 403 || calls != 0 {
+	if w := request(opaque("wid_", "github:99")); w.Code != 200 || calls != 1 {
 		t.Fatalf("untrusted probe: %d calls=%d", w.Code, calls)
+	}
+	deniedHandler := snapshotHandlerWithStatus(cfg, func(*http.Request) bool { return false }, func(transport.Config) Discovery { t.Fatal("untrusted peer reached discovery"); return Discovery{} }, func(transport.Config) ([]nativeSession, error) { return nil, nil }, t.TempDir(), func(context.Context) string { t.Fatal("untrusted peer reached native status"); return "unknown" })
+	denied := httptest.NewRecorder()
+	untrusted := httptest.NewRequest("GET", "http://unix/api/v1/snapshot", nil)
+	untrusted.RequestURI = SnapshotPath
+	deniedHandler.ServeHTTP(denied, untrusted)
+	if denied.Code != 403 {
+		t.Fatalf("peer accepted: %d", denied.Code)
 	}
 	for _, state := range []string{"connected", "disconnected", "partial", "unknown", "invalid"} {
 		status = state
@@ -64,7 +72,7 @@ func TestSnapshotNativeStatusOnlyAfterTrust(t *testing.T) {
 			t.Fatalf("state=%s body=%s", state, w.Body.String())
 		}
 	}
-	if calls != 5 {
+	if calls != 6 {
 		t.Fatal(calls)
 	}
 }
@@ -134,18 +142,6 @@ func TestSnapshotDiscoveryAndSchema(t *testing.T) {
 		}
 		return doc
 	}
-	bad := httptest.NewRequest("GET", "http://unix/api/v1/snapshot", nil)
-	bad.RequestURI = SnapshotPath
-	bad.Header.Set("X-Agent-Host-Identity", opaque("wid_", "github:43"))
-	bad.Header.Set("X-Agent-Host-Display-Name", "GitHub user 42")
-	denied := httptest.NewRecorder()
-	h.ServeHTTP(denied, bad)
-	check(denied, 403)
-	bad.Header.Set("X-Agent-Host-Identity", opaque("wid_", "github:42"))
-	bad.Header.Add("X-Agent-Host-Identity", opaque("wid_", "github:42"))
-	denied = httptest.NewRecorder()
-	h.ServeHTTP(denied, bad)
-	check(denied, 403)
 	doc := check(request(), 200)
 	ws := doc["workspaces"].([]any)
 	if len(ws) != 3 {

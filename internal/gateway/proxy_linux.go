@@ -121,8 +121,6 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 			req.Header.Set("Content-Type", typ)
 		}
 	}
-	req.Header.Set("X-Agent-Host-Identity", identityID(target))
-	req.Header.Set("X-Agent-Host-Display-Name", "GitHub user "+target.Subject)
 	if c, e := r.Cookie(cookieName); e == nil && (r.URL.Path == piAttemptPath || r.URL.Path == "/api/v1/events" || conversationPath.MatchString(r.URL.Path)) {
 		prefix := "conversation-owner\x00"
 		if r.URL.Path == piAttemptPath {

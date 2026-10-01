@@ -43,7 +43,7 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 			w.WriteHeader(400)
 			return
 		}
-		if r.Host != "unix" || r.Header.Get("Cookie") != "" || r.Header.Get("Origin") != "" || r.Header.Get("X-Agent-Host-CSRF") != "" || r.Header.Get("X-Agent-Host-Identity") != identityID(m) || r.Header.Get("X-Agent-Host-Session") == strings.Repeat("A", 43) || len(r.Header.Get("X-Agent-Host-Session")) != 43 {
+		if r.Host != "unix" || r.Header.Get("Cookie") != "" || r.Header.Get("Origin") != "" || r.Header.Get("X-Agent-Host-CSRF") != "" || r.Header.Get("X-Agent-Host-Identity") != "" || r.Header.Get("X-Agent-Host-Session") == strings.Repeat("A", 43) || len(r.Header.Get("X-Agent-Host-Session")) != 43 {
 			t.Errorf("unsafe daemon request: %+v", r.Header)
 		}
 		var reply string

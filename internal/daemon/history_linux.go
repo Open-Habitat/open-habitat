@@ -344,8 +344,7 @@ func inline(s *nativeSession, e *historyEntry) {
 	}
 }
 func historyAuthorized(cfg transport.Config, trusted func(*http.Request) bool, r *http.Request) bool {
-	ids, names := r.Header.Values("X-Agent-Host-Identity"), r.Header.Values("X-Agent-Host-Display-Name")
-	return transport.ValidateConfig(cfg) == nil && trusted != nil && trusted(r) && r.ProtoMajor == 1 && r.ProtoMinor == 1 && r.Host == "unix" && len(ids) == 1 && len(names) == 1 && ids[0] == opaque("wid_", cfg.Provider+":"+cfg.Subject) && names[0] == "GitHub user "+cfg.Subject
+	return trusted != nil && trusted(r) && r.ProtoMajor == 1 && r.ProtoMinor == 1 && r.Host == "unix"
 }
 func historyJSON(w http.ResponseWriter, body any) {
 	b, err := json.Marshal(body)

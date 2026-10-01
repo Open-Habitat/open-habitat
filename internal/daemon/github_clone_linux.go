@@ -179,7 +179,7 @@ func validCloneName(s string) bool {
 	return len(p) == 2 && repoOwner.MatchString(p[0]) && repoName.MatchString(p[1]) && p[1] != "." && p[1] != ".."
 }
 func cloneSource(cfg transport.Config, home string) (int, error) {
-	if transport.ValidateConfig(cfg) != nil || cfg.UID != os.Geteuid() {
+	if cfg.UID != os.Geteuid() {
 		return -1, errors.New("identity")
 	}
 	root, e := unix.Open("/", unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)

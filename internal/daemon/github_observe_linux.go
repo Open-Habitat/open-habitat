@@ -58,7 +58,7 @@ func repoObserveHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 }
 func observeCheckout(parent context.Context, cfg transport.Config, home, git string, run cloneRunner, name string) string {
 	unavailable := "unavailable"
-	if transport.ValidateConfig(cfg) != nil || cfg.UID != os.Geteuid() || !filepath.IsAbs(home) || filepath.Clean(home) != home || home == "/" {
+	if cfg.UID != os.Geteuid() || !filepath.IsAbs(home) || filepath.Clean(home) != home || home == "/" {
 		return unavailable
 	}
 	root, e := unix.Open("/", unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)

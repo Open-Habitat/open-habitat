@@ -59,13 +59,6 @@ func TestRepoCatalogBoundedNativeProjection(t *testing.T) {
 			t.Fatalf("%s: %d", path, w.Code)
 		}
 	}
-	r := req.Clone(context.Background())
-	r.Header.Set("X-Agent-Host-Identity", opaque("wid_", "github:43"))
-	w = httptest.NewRecorder()
-	h.ServeHTTP(w, r)
-	if w.Code != 403 || calls != 2 {
-		t.Fatalf("forged identity: %d calls %d", w.Code, calls)
-	}
 	for _, raw := range []string{`{`, `[{"owner":{"login":"org"},"name":"private","full_name":"org/private","html_url":"https://evil.invalid","private":true}]`, `[{"owner":{"login":"org"},"name":"private","full_name":"org/private","html_url":"https://github.com/org/private"}]`, `[{"owner":{"login":"org"},"name":"private","full_name":"org/private","html_url":"https://github.com/org/private","private":true,"pushed_at":"yesterday"}]`} {
 		bad := repoCatalogHandler(cfg, func(*http.Request) bool { return true }, func(_ context.Context, args ...string) ([]byte, error) {
 			if len(args) == 4 {

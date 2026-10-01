@@ -56,13 +56,7 @@ func TestCloneRefusalsAndPartial(t *testing.T) {
 			t.Fatalf("invalid %s: %d calls %d", body, w.Code, calls)
 		}
 	}
-	forged := cloneRequest(`{"full_name":"org/repo"}`)
-	forged.Header.Set("X-Agent-Host-Identity", "wid_foreign")
 	w := httptest.NewRecorder()
-	h.ServeHTTP(w, forged)
-	if w.Code != 403 || calls != 0 {
-		t.Fatalf("foreign %d %s uri=%q len=%d", w.Code, w.Body.String(), forged.RequestURI, forged.ContentLength)
-	}
 	if e := os.Symlink(t.TempDir(), filepath.Join(home, "src")); e != nil {
 		t.Fatal(e)
 	}

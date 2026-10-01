@@ -4,6 +4,7 @@ package daemon
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/http"
 	"time"
@@ -33,12 +34,19 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	if mux == nil {
 		mux = http.NewServeMux()
 	}
+	// A missing selector is an unsafe deployment, not a first-use login state.
+	if runtime == nil {
+		return errors.New("native Pi runtime unavailable")
+	}
 	// Pi status is queried only by the explicit onboarding endpoint.
 	pi := &PiDevice{Home: cfg.Home}
 	if runtime != nil {
 		pi.Node, pi.Entry, pi.Manifest = runtime.Node, runtime.Entry, runtime.Manifest
 		pi.TrustedRuntime = true
 		pi.SharedSelector = true
+	}
+	if err := pi.validate(); err != nil {
+		return err
 	}
 	piStatus := func(parent context.Context) string {
 		ctx, cancel := context.WithTimeout(parent, 12*time.Second)
@@ -56,7 +64,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(SnapshotPath, snapshotHandlerWithController(cfg, server.TrustedPeer, Discover, nativeSessions, cfg.Home, nativeStatus, journal, controller))
 	mux.Handle("/api/v1/events", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		journal.stream(w, r, func() bool {
-			return server.TrustedPeer(r) && validSnapshotIdentity(cfg, r)
+			return server.TrustedPeer(r)
 		})
 	}))
 	mux.Handle("/api/v1/agents/", HistoryHandler(cfg, server.TrustedPeer))

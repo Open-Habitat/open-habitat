@@ -42,9 +42,6 @@ var idPattern = regexp.MustCompile(`^ws_[A-Za-z0-9_-]{8,64}$`)
 
 // Discover accepts only trusted local daemon configuration, never an HTTP field.
 func Discover(cfg transport.Config) Discovery {
-	if transport.ValidateConfig(cfg) != nil {
-		return Discovery{State: "error", Error: "invalid_identity"}
-	}
 	return scan(cfg.Home, cfg.UID, unix.Openat2)
 }
 

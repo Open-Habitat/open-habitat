@@ -68,11 +68,6 @@ func SnapshotHandlerWithNativeRoot(cfg transport.Config, trusted func(*http.Requ
 func snapshotHandlerWithStatus(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) string) http.Handler {
 	return snapshotHandlerWithJournal(cfg, trusted, discover, sessionsReader, nativeHome, nativeStatus, nil)
 }
-func validSnapshotIdentity(cfg transport.Config, r *http.Request) bool {
-	ids := r.Header.Values("X-Agent-Host-Identity")
-	names := r.Header.Values("X-Agent-Host-Display-Name")
-	return len(ids) == 1 && len(names) == 1 && ids[0] == opaque("wid_", cfg.Provider+":"+cfg.Subject) && names[0] == "GitHub user "+cfg.Subject
-}
 func snapshotHandlerWithJournal(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) string, journal *eventJournal) http.Handler {
 	return snapshotHandlerWithController(cfg, trusted, discover, sessionsReader, nativeHome, nativeStatus, journal, nil)
 }
@@ -82,15 +77,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		instance, ok = journal.instance, journal.instance != ""
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !ok || trusted == nil || !trusted(r) || r.ProtoMajor != 1 || r.ProtoMinor != 1 || r.Method != http.MethodGet || r.RequestURI != SnapshotPath || r.URL.Path != SnapshotPath || r.URL.RawQuery != "" || r.Host != "unix" || transport.ValidateConfig(cfg) != nil {
-			snapshotError(w, http.StatusForbidden, "cross_user_denied")
-			return
-		}
-		ids := r.Header.Values("X-Agent-Host-Identity")
-		names := r.Header.Values("X-Agent-Host-Display-Name")
-		expected := opaque("wid_", cfg.Provider+":"+cfg.Subject)
-		display := "GitHub user " + cfg.Subject
-		if len(ids) != 1 || len(names) != 1 || ids[0] != expected || names[0] != display || strings.ContainsAny(ids[0]+names[0], "\r\n") {
+		if !ok || trusted == nil || !trusted(r) || r.ProtoMajor != 1 || r.ProtoMinor != 1 || r.Method != http.MethodGet || r.RequestURI != SnapshotPath || r.URL.Path != SnapshotPath || r.URL.RawQuery != "" || r.Host != "unix" {
 			snapshotError(w, http.StatusForbidden, "cross_user_denied")
 			return
 		}
@@ -242,6 +229,8 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		if journal != nil && beforeNative != afterNative {
 			journal.appendInvalidation("")
 		}
+		expected := opaque("wid_", cfg.Provider+":"+cfg.Subject)
+		display := "GitHub user " + cfg.Subject
 		ghState := nativeStatus(r.Context())
 		if ghState != "connected" && ghState != "disconnected" && ghState != "partial" && ghState != "pending" {
 			ghState = "unknown"

@@ -29,7 +29,7 @@ func TestGatewayObserveBoundSessionAndReply(t *testing.T) {
 	calls := 0
 	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
-		if r.Method != "GET" || r.Header.Get("X-Agent-Host-Identity") != identityID(id) || r.Header.Get("Cookie") != "" || r.Header.Get("Authorization") != "" {
+		if r.Method != "GET" || r.Header.Get("X-Agent-Host-Identity") != "" || r.Header.Get("Cookie") != "" || r.Header.Get("Authorization") != "" {
 			t.Error("unbound request")
 		}
 		b := `{"schema_version":1,"full_name":"org/repo","state":"confirmed"}`

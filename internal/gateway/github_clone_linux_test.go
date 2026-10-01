@@ -29,7 +29,7 @@ func TestGatewayCloneCSRFAndMappedDaemon(t *testing.T) {
 	calls := 0
 	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
-		if r.Method != "POST" || r.Header.Get("X-Agent-Host-Identity") != identityID(id) || r.Header.Get("Authorization") != "" || r.Header.Get("Cookie") != "" || r.ContentLength != int64(len(`{"full_name":"org/repo"}`)) {
+		if r.Method != "POST" || r.Header.Get("X-Agent-Host-Identity") != "" || r.Header.Get("Authorization") != "" || r.Header.Get("Cookie") != "" || r.ContentLength != int64(len(`{"full_name":"org/repo"}`)) {
 			w.WriteHeader(403)
 			return
 		}

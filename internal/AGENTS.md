@@ -23,9 +23,12 @@ and for the broker in ADR 0004.
 - `daemon/` runs as one mapped UID and owns native discovery, Pi history and
   child processes. The only identity it trusts is its own root-owned binding
   and the kernel's peer credentials; nothing the browser or the gateway asserts
-  about who is calling is used. Pi login status is an onboarding check, not a
-  native-read security boundary: snapshot, history and streams never spawn a
-  Pi status helper. Model-call authentication failures reach the browser only
+  about who is calling is used. Binding, UID/home, Pi selector and pinned
+  runtime tree/Node version are checked once before serving. Changing the
+  binding or runtime requires a daemon restart. Missing first-use Pi credentials
+  do not prevent startup; existing credential paths are checked when starting
+  onboarding. Pi login status is an onboarding check, not a native-read security
+  boundary: snapshot, history and streams never spawn a Pi status helper. Model-call authentication failures reach the browser only
   as a fixed code in the private conversation status.
 - `provision/` is the root-only broker and Linux executor that create a
   person's Unix account on first approved login, with the wire protocol and a

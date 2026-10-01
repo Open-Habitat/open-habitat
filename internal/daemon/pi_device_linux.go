@@ -31,7 +31,7 @@ var piDeviceHelper string
 // Entry and Manifest are trusted deployment paths, never browser-supplied.
 type PiDevice struct {
 	Home, Node, Entry, Manifest string
-	// SharedSelector rechecks the installation selector before every native call.
+	// SharedSelector verifies the installation selector at construction.
 	SharedSelector bool
 	// TrustedRuntime enables root-owned package validation for deployment paths.
 	// Direct synthetic PiDevice tests can supply a mock instead.
@@ -39,9 +39,12 @@ type PiDevice struct {
 	// FixtureHome permits the same-UID browser host's per-identity synthetic root.
 	// Production constructors never set this; the process HOME must match there.
 	FixtureHome bool
-	mu          sync.Mutex
-	active      string
-	cancel      context.CancelFunc
+	// Test seams count startup checks without invoking a host installation.
+	selectorCheck func() error
+	runtimeCheck  func() error
+	mu            sync.Mutex
+	active        string
+	cancel        context.CancelFunc
 }
 type PiDeviceEvent struct {
 	Type            string `json:"type"`
@@ -54,17 +57,31 @@ func (p *PiDevice) validate() error {
 	if p.Home == "" || !filepath.IsAbs(p.Home) || !filepath.IsAbs(p.Node) || !filepath.IsAbs(p.Entry) || !filepath.IsAbs(p.Manifest) || os.Geteuid() == 0 {
 		return errors.New("invalid Pi device configuration or UID")
 	}
-	if err := p.checkSharedSelector(); err != nil {
+	selector := p.selectorCheck
+	if selector == nil {
+		selector = p.checkSharedSelector
+	}
+	if err := selector(); err != nil {
 		return err
 	}
 	if p.TrustedRuntime {
-		if err := p.validateRuntime(); err != nil {
+		check := p.runtimeCheck
+		if check == nil {
+			check = p.validateRuntime
+		}
+		if err := check(); err != nil {
 			return errors.New("native Pi runtime unavailable")
 		}
 	}
 	if !p.FixtureHome && os.Getenv("HOME") != p.Home {
 		return errors.New("daemon HOME mismatch")
 	}
+	return nil
+}
+
+// Credential paths are checked only when starting onboarding, not when reading
+// status or serving ordinary conversation requests. Missing paths are normal.
+func (p *PiDevice) validateCredentials() error {
 	// Pi's native auth storage follows symlinks and does not repair old file modes.
 	// Refuse unsafe existing paths rather than modifying another provider's credentials.
 	for i, path := range []string{p.Home, filepath.Join(p.Home, ".pi"), filepath.Join(p.Home, ".pi", "agent"), filepath.Join(p.Home, ".pi", "agent", "auth.json")} {
@@ -107,7 +124,7 @@ func (p *PiDevice) Start() (string, <-chan PiDeviceEvent, error) {
 	if p.active != "" {
 		return "", nil, errors.New("Pi sign-in already active")
 	}
-	if err := p.validate(); err != nil {
+	if err := p.validateCredentials(); err != nil {
 		return "", nil, err
 	}
 	var token [16]byte
@@ -164,7 +181,7 @@ func (p *PiDevice) Status() string { return p.StatusContext(context.Background()
 // StatusContext lets an HTTP caller end native refresh when its response budget
 // expires. The helper is killed and reaped before the status call returns.
 func (p *PiDevice) StatusContext(ctx context.Context) string {
-	if err := p.validate(); err != nil || ctx.Err() != nil {
+	if ctx.Err() != nil {
 		return "unknown"
 	}
 	state, err := p.status(ctx)
@@ -183,11 +200,6 @@ func (p *PiDevice) status(parent context.Context) (string, error) {
 	return result.State, nil
 }
 func (p *PiDevice) run(ctx context.Context, action string, emit func(PiDeviceEvent)) (PiDeviceEvent, error) {
-	// Device login can remain in flight after its initial validation. Recheck
-	// before every helper spawn, including its follow-up status process.
-	if err := p.checkSharedSelector(); err != nil {
-		return PiDeviceEvent{}, err
-	}
 	// -e contains only static helper code. Pi module paths are operator-controlled.
 	cmd := exec.CommandContext(ctx, p.Node, "--input-type=module", "--eval", piDeviceHelper, p.Entry, p.Manifest, action)
 	// Do not let ambient Pi directory or Node preloads redirect native credentials.

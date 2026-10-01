@@ -32,7 +32,7 @@ func TestGatewayRepoCatalogPrePiMappedSocket(t *testing.T) {
 		paths[m.Socket] = socket
 		subject := m.Subject
 		srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Header.Get("X-Agent-Host-Identity") != identityID(m) || r.Header.Get("X-Agent-Host-Display-Name") != "GitHub user "+subject || r.Header.Get("Cookie") != "" || r.Header.Get("X-Agent-Host-Socket") != "" || r.Header.Get("Authorization") != "" {
+			if r.Header.Get("X-Agent-Host-Identity") != "" || r.Header.Get("X-Agent-Host-Display-Name") != "" || r.Header.Get("Cookie") != "" || r.Header.Get("X-Agent-Host-Socket") != "" || r.Header.Get("Authorization") != "" {
 				w.WriteHeader(403)
 				return
 			}

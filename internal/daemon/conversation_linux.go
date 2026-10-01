@@ -137,7 +137,7 @@ func (c *ConversationController) FixtureEvents() http.Handler {
 		return http.NotFoundHandler()
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c.journal.stream(w, r, func() bool { return c.trusted(r) && validSnapshotIdentity(c.cfg, r) })
+		c.journal.stream(w, r, func() bool { return c.trusted(r) })
 	})
 }
 
@@ -325,32 +325,16 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 	}
 	// Native discovery and durable origin sync can block on disk I/O. Do not
 	// stall event drains for other Pi children while preparing a new one.
-	device := &PiDevice{Home: c.home, Node: c.runtime.Node, Entry: c.runtime.Entry, Manifest: c.runtime.Manifest, TrustedRuntime: !c.fixture, SharedSelector: !c.fixture, FixtureHome: c.fixture}
-	if device.validate() != nil {
-		snapshotError(w, 503, "native_source_unavailable")
-		return
-	}
 	ws, cwd, err := c.workspaceFD(body.WorkspaceID)
 	if err != nil {
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}
 	defer ws.Close()
-	histories, err := nativeSessions(c.nativeCfg())
-	if err != nil {
-		snapshotError(w, 503, "native_source_unavailable")
-		return
-	}
 	id, ok := uuid()
 	if !ok {
 		snapshotError(w, 503, "daemon_unavailable")
 		return
-	}
-	for _, s := range histories {
-		if s.id == id {
-			snapshotError(w, 503, "native_source_unavailable")
-			return
-		}
 	}
 	owner, err := acquirePiOwnership(c.home, id)
 	if err != nil {
@@ -460,10 +444,6 @@ func (c *ConversationController) continuationProof(id string) (*piOwnership, bro
 	}
 	if old != nil && (old.workspace != origin.Workspace || old.cwd != origin.Cwd) {
 		return fail("unproven")
-	}
-	device := &PiDevice{Home: c.home, Node: c.runtime.Node, Entry: c.runtime.Entry, Manifest: c.runtime.Manifest, TrustedRuntime: !c.fixture, SharedSelector: !c.fixture, FixtureHome: c.fixture}
-	if device.validate() != nil {
-		return fail("source_unavailable")
 	}
 	ws, cwd, err := c.workspaceFD(origin.Workspace)
 	if err != nil || cwd != origin.Cwd {

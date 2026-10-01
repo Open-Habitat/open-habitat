@@ -266,7 +266,10 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 			defer stop()
 			// The JIT binding is byte-verified by the root broker. Pi's separate
 			// installation selector is never taken from that per-user binding.
-			runtime, _ := core.LoadSharedPiRuntime() // absence or distrust disables Pi
+			runtime, runtimeErr := core.LoadSharedPiRuntime()
+			if runtimeErr != nil {
+				return nil, system("native_runtime_unavailable", "invalid Pi runtime selector")
+			}
 			if err := daemon.ServeHTTP(ctx, ln, *cfg.Handoff, adapter.Consumer(), adapter.Status, daemonHealthMux(), runtime); err != nil {
 				return nil, system("server_failed", "daemon socket service failed")
 			}

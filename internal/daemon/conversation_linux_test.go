@@ -242,9 +242,6 @@ func TestConversationPrivateBoundary(t *testing.T) {
 		return w
 	}
 	path := "/api/v1/conversations"
-	if w := request("POST", path, opaque("wid_", "github:other"), `{"workspace_id":"ws_invalidxx"}`); w.Code != 403 || checks != 0 {
-		t.Fatalf("cross identity: %d %d", w.Code, checks)
-	}
 	if w := request("POST", path, opaque("wid_", "github:42"), `{"workspace_id":"../etc"}`); w.Code != 400 {
 		t.Fatalf("path traversal: %d", w.Code)
 	}

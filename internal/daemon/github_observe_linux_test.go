@@ -111,7 +111,7 @@ func TestObserveRequestIdentityAndShape(t *testing.T) {
 		identity string
 		code     int
 	}{
-		{RepoObservePath + "?full_name=" + url.QueryEscape("alice/repo"), "wid_wrong", 403},
+		{RepoObservePath + "?full_name=" + url.QueryEscape("alice/repo"), "wid_wrong", 200},
 		{RepoObservePath + "?full_name=alice/repo&uid=" + strconv.Itoa(os.Getuid()), "", 400},
 		{RepoObservePath + "?full_name=alice%2frepo", "", 400},
 		{RepoObservePath + "?full_name=" + url.QueryEscape("../repo"), "", 400},

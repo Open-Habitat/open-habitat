@@ -46,7 +46,7 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 		want := m
 		label := strconv.Itoa(i)
 		srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != "GET" || (r.URL.RequestURI() != "/api/v1/snapshot" && r.URL.RequestURI() != "/api/v1/onboarding/pi/status") || r.Host != "unix" || r.Header.Get("X-Agent-Host-Identity") != identityID(want) || r.Header.Get("X-Agent-Host-Display-Name") != "GitHub user "+want.Subject || r.Header.Get("X-Agent-Host-Socket") != "" || r.Header.Get("X-Agent-Host-CSRF") != "" || r.Header.Get("Cookie") != "" || r.Header.Get("X-Forwarded-For") != "" {
+			if r.Method != "GET" || (r.URL.RequestURI() != "/api/v1/snapshot" && r.URL.RequestURI() != "/api/v1/onboarding/pi/status") || r.Host != "unix" || r.Header.Get("X-Agent-Host-Identity") != "" || r.Header.Get("X-Agent-Host-Display-Name") != "" || r.Header.Get("X-Agent-Host-Socket") != "" || r.Header.Get("X-Agent-Host-CSRF") != "" || r.Header.Get("Cookie") != "" || r.Header.Get("X-Forwarded-For") != "" {
 				w.WriteHeader(403)
 				return
 			}

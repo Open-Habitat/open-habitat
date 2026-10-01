@@ -86,8 +86,8 @@ func validate(c Config, testPath bool) error {
 	return verifyBinding(c)
 }
 
-// verifyBinding independently rereads the broker-created root binding before
-// accepting each handoff, not a subject or UID asserted by the gateway.
+// verifyBinding checks the broker-created root binding at daemon startup,
+// not a subject or UID asserted by the gateway.
 // It is deliberately unavailable for unprivileged replacement or symlinks.
 func verifyBinding(c Config) error {
 	if c.BindingFile == "" {
@@ -342,7 +342,7 @@ type peerKey struct{}
 
 // TrustedPeer is set only by the guarded Unix listener after SO_PEERCRED.
 func (s *Server) TrustedPeer(r *http.Request) bool {
-	return r.Context().Value(peerKey{}) == s.cfg.GatewayUID && validate(s.cfg, s.testPath) == nil
+	return r.Context().Value(peerKey{}) == s.cfg.GatewayUID
 }
 
 // Handler can be mounted on the same daemon ServeMux as future workspace routes.
@@ -355,7 +355,7 @@ func (s *Server) Handler() http.Handler {
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = io.WriteString(w, `{"schema_version":1,"error":"handoff_denied"}`)
 		}
-		if r.Context().Value(peerKey{}) != s.cfg.GatewayUID || validate(s.cfg, s.testPath) != nil {
+		if r.Context().Value(peerKey{}) != s.cfg.GatewayUID {
 			reject()
 			return
 		}

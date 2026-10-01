@@ -36,7 +36,11 @@ func piFixture(t *testing.T) (*PiDevice, string) {
 	if err = os.WriteFile(wrapper, []byte("#!/bin/sh\nexec "+node+" --import "+mock+" \"$@\"\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	return &PiDevice{Home: home, Node: wrapper, Entry: filepath.Join(abs, "dist/index.js"), Manifest: filepath.Join(abs, "package.json")}, home
+	p := &PiDevice{Home: home, Node: wrapper, Entry: filepath.Join(abs, "dist/index.js"), Manifest: filepath.Join(abs, "package.json")}
+	if err := p.validate(); err != nil {
+		t.Fatal(err)
+	}
+	return p, home
 }
 func TestPiDeviceFixtureHomeOnly(t *testing.T) {
 	p, _ := piFixture(t)
@@ -94,7 +98,7 @@ func TestPiDeviceNativeAndOwnership(t *testing.T) {
 func TestPiDeviceUnsafePaths(t *testing.T) {
 	p, home := piFixture(t)
 	p.Home = t.TempDir()
-	if _, _, err := p.Start(); err == nil {
+	if err := p.validate(); err == nil {
 		t.Fatal("mismatched HOME accepted")
 	}
 	p.Home = home
@@ -105,7 +109,7 @@ func TestPiDeviceUnsafePaths(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(home, ".pi", "agent")); err != nil {
 		t.Fatal(err)
 	}
-	if p.Status() != "unknown" {
+	if p.validateCredentials() == nil {
 		t.Fatal("symlink accepted")
 	}
 	if _, _, err := p.Start(); err == nil {

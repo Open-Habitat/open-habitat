@@ -89,8 +89,6 @@ func (a *Auth) githubClone(w http.ResponseWriter, r *http.Request) {
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
-	req.Header.Set("X-Agent-Host-Identity", identityID(target))
-	req.Header.Set("X-Agent-Host-Display-Name", "GitHub user "+target.Subject)
 	req.Close = true
 	if req.Write(conn) != nil {
 		safe(w, 503, "checkout_uncertain")
