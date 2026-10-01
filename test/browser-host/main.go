@@ -142,6 +142,7 @@ esac
 	identities := []gateway.Identity{{Provider: "github", Subject: "42", UID: 1001, Username: "alice", Socket: "/run/native-agent-host/users/alice/daemon.sock"}, {Provider: "github", Subject: "43", UID: 1002, Username: "bob", Socket: "/run/native-agent-host/users/bob/daemon.sock"}}
 	var scenario atomic.Value
 	scenario.Store("ready")
+	fakePiScenario := filepath.Join(tmp, "fakepi-scenario")
 	var clock atomic.Int64
 	paths := map[string]string{}
 	histories := map[string]string{}
@@ -329,6 +330,9 @@ esac
 		})
 		mux.Handle("/api/v1/conversations", serveConversation)
 		mux.Handle("/api/v1/conversations/", serveConversation)
+		mux.Handle("/api/v1/events", gate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			current.Load().(*daemon.ConversationController).FixtureEvents().ServeHTTP(w, r)
+		})))
 		mux.Handle("/api/v1/agents/", gate(daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home)))
 		mux.Handle("/api/v1/content/", gate(daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home)))
 		mux.Handle(daemon.SnapshotPath, gate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -343,6 +347,9 @@ esac
 				return
 			case "delay":
 				time.Sleep(650 * time.Millisecond)
+			case "pi-deltas":
+				current.Load().(*daemon.ConversationController).FixtureSnapshot().ServeHTTP(w, r)
+				return
 			case "foreign":
 				rec := httptest.NewRecorder()
 				handler.ServeHTTP(rec, r)
@@ -492,7 +499,13 @@ esac
 			case "/fixture/scenario":
 				name := r.URL.Query().Get("value")
 				switch name {
-				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "foreign", "pi-blocked", "pi-onboarding":
+				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "foreign", "pi-blocked", "pi-onboarding", "pi-deltas":
+					// Read by the fake Pi child at turn start. Switching back to ready
+					// keeps subsequent lab cases on the old, faster fixture.
+					if e := os.WriteFile(fakePiScenario, []byte(name), 0600); e != nil {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
 					scenario.Store(name)
 					if name == "pi-onboarding" {
 						// A new synthetic case has a fresh admission window and daemon lease.

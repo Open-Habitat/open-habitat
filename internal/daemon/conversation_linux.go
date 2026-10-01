@@ -90,7 +90,37 @@ func ConversationHandlerWithFixtureRuntime(ctx context.Context, cfg transport.Co
 	c.home = root
 	c.discover = func(transport.Config) Discovery { return scan(root, cfg.UID, unix.Openat2) }
 	c.fixture = true
+	// The browser-host exercises the controller's real event publisher. Without
+	// its journal the fake Pi RPC stream can never reach /api/v1/events.
+	c.journal = newEventJournal()
 	return c
+}
+
+// FixtureSnapshot exposes the same controller/journal snapshot handoff as the
+// production daemon, using only the browser-host's disposable native root.
+func (c *ConversationController) FixtureSnapshot() http.Handler {
+	if !c.fixture {
+		return http.NotFoundHandler()
+	}
+	sessions := func(cfg transport.Config) ([]nativeSession, error) {
+		cfg.Home = c.home
+		return nativeSessions(cfg)
+	}
+	return snapshotHandlerWithController(c.cfg, c.trusted, c.discover, sessions, c.home, func(context.Context) string { return "unknown" }, c.journal, c)
+}
+
+// FixtureEvents exposes the real bounded journal stream to the browser-host.
+func (c *ConversationController) FixtureEvents() http.Handler {
+	if !c.fixture {
+		return http.NotFoundHandler()
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if c.status(r.Context()) != "usable" {
+			snapshotError(w, 428, "pi_onboarding_required")
+			return
+		}
+		c.journal.stream(w, r, func() bool { return c.trusted(r) && validSnapshotIdentity(c.cfg, r) }, func() bool { return c.status(r.Context()) == "usable" })
+	})
 }
 
 // nativeCfg names the native root for history reads without changing the

@@ -25,7 +25,8 @@ func isFakePi(args []string) bool {
 // runFakePi speaks enough of Pi's RPC protocol for the controller and writes
 // a native v3 session file the way Pi does. It never contacts a model.
 // Prompts steer it: "hidas" slows every step, "hylkää" is rejected,
-// "kaadu" exits mid-turn, "pitkä" answers at length.
+// "kaadu" exits mid-turn, "pitkä" answers at length. The lab's pi-deltas
+// scenario adds a delayed native RPC text/tool stream without a model.
 func runFakePi(args []string) {
 	id, existing := "", ""
 	for i := 0; i+1 < len(args); i++ {
@@ -197,13 +198,37 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 		step = 4 * time.Second
 	}
 	emit(map[string]any{"type": "agent_start"})
+	// The controller passes a deliberately minimal environment to Pi. The lab
+	// host writes this switch in its disposable root, not the real user's home.
+	mode, _ := os.ReadFile(filepath.Join(filepath.Dir(os.Getenv("HOME")), "fakepi-scenario"))
+	stream := strings.TrimSpace(string(mode)) == "pi-deltas"
+	callID := "call_1"
+	if stream {
+		var raw [4]byte
+		_, _ = rand.Read(raw[:])
+		callID = "call_" + hex.EncodeToString(raw[:])
+	}
+	delta := func(text string) {
+		emit(map[string]any{"type": "message_update", "message": map[string]any{"role": "assistant"}, "assistantMessageEvent": map[string]any{"type": "text_delta", "contentIndex": 0, "delta": text}})
+	}
 	s.append(message("user", []map[string]any{{"type": "text", "text": prompt}}, nil))
 	emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "user"}})
 	time.Sleep(step)
-	emit(map[string]any{"type": "tool_execution_start", "toolName": "bash"})
+	if stream {
+		delta("Katson ensin, ")
+		time.Sleep(step)
+		delta("mitä työtilassa on.")
+		time.Sleep(step)
+	}
+	start := map[string]any{"type": "tool_execution_start", "toolName": "bash"}
+	if stream {
+		start["toolCallId"] = callID
+		start["args"] = map[string]any{"command": "ls"}
+	}
+	emit(start)
 	s.append(message("assistant", []map[string]any{
 		{"type": "text", "text": "Katson ensin, mitä työtilassa on."},
-		{"type": "toolCall", "id": "call_1", "name": "bash", "arguments": map[string]any{"command": "ls"}},
+		{"type": "toolCall", "id": callID, "name": "bash", "arguments": map[string]any{"command": "ls"}},
 	}, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "toolUse"}))
 	time.Sleep(step)
 	if strings.Contains(prompt, "kaadu") {
@@ -217,8 +242,18 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 		}
 		listing = strings.Join(names, "\n")
 	}
-	s.append(message("toolResult", []map[string]any{{"type": "text", "text": listing}}, map[string]any{"toolCallId": "call_1", "toolName": "bash", "isError": false}))
-	emit(map[string]any{"type": "tool_execution_end", "toolName": "bash"})
+	if stream {
+		emit(map[string]any{"type": "tool_execution_update", "toolCallId": callID, "toolName": "bash", "args": map[string]any{"command": "ls"}, "partialResult": map[string]any{"content": []map[string]any{{"type": "text", "text": listing}}}})
+		time.Sleep(step)
+	}
+	s.append(message("toolResult", []map[string]any{{"type": "text", "text": listing}}, map[string]any{"toolCallId": callID, "toolName": "bash", "isError": false}))
+	end := map[string]any{"type": "tool_execution_end", "toolName": "bash"}
+	if stream {
+		end["toolCallId"] = callID
+		end["result"] = map[string]any{"content": []map[string]any{{"type": "text", "text": listing}}}
+		end["isError"] = false
+	}
+	emit(end)
 	if strings.Contains(prompt, "työkalut") {
 		s.append(message("assistant", []map[string]any{{"type": "toolCall", "name": "edit", "id": "call_2"}}, nil))
 		s.append(message("toolResult", []map[string]any{{"type": "text", "text": "--- a/example.txt\n+++ b/example.txt\n@@ -1 +1 @@\n-old\n+new"}}, map[string]any{"toolCallId": "call_2", "toolName": "edit"}))
@@ -230,6 +265,13 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	answer := fmt.Sprintf("Selvä. Kysyit: %q.\n\nTyötilassa on %d kohdetta. Tämä vastaus on synteettisen Pi-korvikkeen tuottama, eikä mitään mallia kutsuttu.", prompt, strings.Count(listing, "\n")+1)
 	if strings.Contains(prompt, "pitkä") {
 		answer += "\n\n## Yhteenveto\n\n- Ensimmäinen kohta\n- Toinen kohta\n\n```go\nfunc main() {\n\tfmt.Println(\"hei\")\n}\n```\n\n" + strings.Repeat("Pitkä kappale synteettistä tekstiä. ", 80)
+	}
+	if stream {
+		middle := len(answer) / 2
+		delta(answer[:middle])
+		time.Sleep(step)
+		delta(answer[middle:])
+		time.Sleep(step)
 	}
 	s.append(message("assistant", []map[string]any{{"type": "text", "text": answer}}, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "stop"}))
 	emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant"}})
