@@ -109,8 +109,8 @@ if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario ==
       # A release compiled from committed source cannot include the overlay,
       # even if a caller sets the formerly dangerous guest build tag.
       (cd "$repo" && GOFLAGS=-tags=nah_guest_fault CGO_ENABLED=0 go build -trimpath -o "$run/release-comparison" ./cmd/native-agent-host) || fail product_build_failed 'Could not build release-comparison binary' 2
-      ! grep -aq 'nah-guest-broker-crash' "$run/release-comparison" || fail product_build_failed 'Guest fault marker leaked into ordinary build' 2
-      grep -aq 'nah-guest-broker-crash' "$run/native-agent-host" || fail product_build_failed 'Guest fixture binary lacks crash hook' 2
+      ! grep -aqE 'nah-guest-broker-crash|NAH_GUEST_PENDING_REFUSED' "$run/release-comparison" || fail product_build_failed 'Guest fault or diagnostic leaked into ordinary build' 2
+      grep -aq 'nah-guest-broker-crash' "$run/native-agent-host" && grep -aq 'NAH_GUEST_PENDING_REFUSED' "$run/native-agent-host" || fail product_build_failed 'Guest fixture binary lacks crash hook or pending diagnostic' 2
     fi
   fi
   binary_sha=$(sha256sum "$run/native-agent-host" | cut -d' ' -f1)

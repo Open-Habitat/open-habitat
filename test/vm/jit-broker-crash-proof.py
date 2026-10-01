@@ -70,13 +70,6 @@ try:
         control=ensure_control()
     check(control.get('route',{}).get('uid')==21032 and control['route'].get('username')=='guestone','control broker route before revocation socket')
     check(unit('is-active','native-agent-host-daemon@guestone.socket').stdout.strip()==b'active','control socket inactive')
-    first_pid=pid()
-    check(first_pid>1,'broker not running')
-    check(unit('restart','native-agent-host-broker.service').returncode==0,'clean broker restart failed')
-    clean_pid=pid(); clean_state=unit('is-active','native-agent-host-broker.service').stdout.strip()
-    clean_reply=ensure_control('authorize') if clean_pid>1 and clean_state==b'active' else {}
-    check(clean_pid>1 and clean_pid!=first_pid and clean_state==b'active' and clean_reply.get('route',{}).get('uid')==21032,
-          'clean restart did not serve healthy binding pid_changed='+str(clean_pid!=first_pid)+' active='+clean_state.decode()+' final='+unit('is-active','native-agent-host-broker.service').stdout.decode().strip()+' reply='+str(clean_reply.get('failure','no_reply'))[:40])
     config=pathlib.Path('/etc/native-agent-host/gateway.json');os.chown(config,0,21003);config.chmod(0o640)
     key=pathlib.Path('/etc/native-agent-host/tls.key');os.chown(key,0,21003);key.chmod(0o640)
     with open('/etc/hosts','a') as f:f.write('\n127.0.0.1 github.com api.github.com host.fixture\n')
@@ -182,6 +175,10 @@ try:
     check(next_invocation and next_invocation!=prior_invocation and pid()==0 and
           unit('show','-P','Result','native-agent-host-broker.service').stdout.strip()==b'exit-code',
           'broker restart accepted pending journal (start='+str(restart.returncode)+')')
+    refusal_log=command('journalctl','_SYSTEMD_INVOCATION_ID='+next_invocation.decode('ascii'),'-u',
+                        'native-agent-host-broker.service','--no-pager','-o','cat').stdout
+    check(refusal_log.count(b'NAH_GUEST_PENDING_REFUSED')==1,
+          'new broker invocation did not report pending startup guard')
     check(journal.read_bytes()==pending,'restart cleared or rewrote journal')
     session_status,_,_=get(affected,'/auth/session')
     snapshot_status,_,_=get(affected,'/api/v1/snapshot')

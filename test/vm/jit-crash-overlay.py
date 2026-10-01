@@ -26,4 +26,16 @@ injected = anchor + '''\t\t// Guest-build overlay only: crash the root broker af
 '''
 replacement = run / 'guest-writer.go'
 replacement.write_text(original.replace(anchor, injected))
-(run / 'guest-overlay.json').write_text(json.dumps({'Replace': {str(source): str(replacement)}}))
+# Prove the *cause* of the refused restart, not merely an exit-code. This
+# fixed, token-free diagnostic exists in the temporary guest overlay only.
+broker = repo / 'internal/provision/broker_linux.go'
+broker_source = broker.read_text()
+startup = '\t\tif !absent(fd, n) {\n\t\t\treturn ErrBrokerStartup\n\t\t}\n'
+if broker_source.count(startup) != 1 or 'NAH_GUEST_PENDING_REFUSED' in broker_source:
+    raise SystemExit('broker startup injection site drifted')
+startup_with_diagnostic = startup.replace('\t\t\treturn ErrBrokerStartup',
+    '\t\t\tif n == "pending.json" { _, _ = os.Stderr.WriteString("NAH_GUEST_PENDING_REFUSED\\n") }\n\t\t\treturn ErrBrokerStartup')
+broker_replacement = run / 'guest-broker.go'
+broker_replacement.write_text(broker_source.replace(startup, startup_with_diagnostic))
+(run / 'guest-overlay.json').write_text(json.dumps({'Replace': {
+    str(source): str(replacement), str(broker): str(broker_replacement)}}))
