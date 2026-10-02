@@ -1,16 +1,63 @@
 ---
 created: 2026-10-02
 updated: 2026-10-02
-type: improvement
+type: task
 reporter: jari
 status: untriaged
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-02:ui-observations:4-6
+related: ['@refine-agent-status', '@review-browser-design-v2', '@restore-v2-navigation']
 ---
 
-# Make hover focus and active feedback consistent across UI controls
+# Find and address the causes of inconsistent UI interaction feedback
 
-## Description
+## Problem
 
-Reporter observation (2 Oct 2026): Home agent list and repository-name hover feedback look good; the account-avatar popover and some other buttons/menus lack equally clear hover states. Wants coherent hover and keyboard focus/pressed feedback throughout, not one-off fixes. Sidebar agent selectors should show the status dot (empty/green/pulsing depending on activity), and the large "Päivitä" label near the search should use the curved-arrow icon from the design draft. Verify actual sidebar state and the draft against live screenshots; do not communicate status by color/animation alone. Consider shared button/menu/status variants and their interaction-state stories rather than ancestor-specific CSS overrides.
+Jari repeatedly encounters controls whose appearance and interaction feedback
+vary between views. On 2 October 2026, the home agent list and repository-name
+hover felt good, while the account-avatar menu and other buttons or menus lacked
+equally clear feedback. The sidebar also showed a large "Päivitä" text button
+where the draft uses a curved-arrow icon, and its agent rows lacked the expected
+status marks. These are examples of a recurring problem, not an exhaustive repair
+list or proof of a particular cause.
+
+## Investigation and recommendation
+
+Explain from the current code why these differences keep appearing and recommend
+a software design that makes consistent behavior the ordinary result of building
+a view. Trace representative good and bad examples through their components,
+interaction states and styles. The earlier
+[UI foundation assessment](../review-browser-design-v2/assessment.md) offers leads
+about local overrides and fragmented presentation; its historical findings need
+to be checked against the current implementation.
+
+The application already uses React Aria Components and its own shared primitives.
+Evaluate how that foundation is used, what established UI frameworks or component
+libraries could supply, and which of their design ideas would help here. Reusing
+more of the existing library, improving the application's abstractions, or adopting
+a different library are possible conclusions. Recommend the option supported by
+the observed causes, considering consistency, accessibility, maintenance and the
+cost of adoption. A framework change is not a predetermined outcome.
+
+## Useful outcome
+
+Produce a code-grounded explanation and a concrete recommendation for the shared
+UI foundation, illustrated with representative controls in different views.
+Show how hover, keyboard focus, pressed, selected and disabled states would be
+handled consistently, and why future controls would inherit that behavior.
+Describe the implementation path and how to demonstrate the improvement across
+views. Fixing only the reported controls does not answer the recurring problem.
+Major dependency or architecture choices are discussed with Jari under the
+project's normal decision policy.
+
+The meaning and visual language of agent states belong to @refine-agent-status.
+This investigation explains how such a shared presentation can be used reliably
+throughout the UI. Coordinate the resulting work with @restore-v2-navigation and
+@review-browser-design-v2 so their view-level changes use the same foundation.
+
+## Decisions
+
+### 2026-10-02T10:05:17Z · @codex
+
+Jarin täsmennys 2.10.2026: raportoidut hover-, painike- ja valikkoerot ovat oireita. Tehtävä on löytää koodista syyt siihen, miksi epäjohdonmukaisuutta syntyy toistuvasti, ja suositella yleinen arkkitehtoninen tai ohjelmistotekninen ratkaisu. Selvityksessä saa arvioida vakiintuneiden UI-frameworkien toiminnallisuuden tai suunnitteluperiaatteiden hyödyntämistä ja kirjaston käyttöönottoa; ratkaisua ei valita etukäteen. Pelkkä lueteltujen oireiden korjaaminen ei täytä tavoitetta. Agenttitilojen merkitys ja yhteinen visuaalinen kieli käsitellään erikseen olemassa olevassa @refine-agent-status-issuessa.

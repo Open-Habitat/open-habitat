@@ -656,3 +656,7 @@ docs/conversation-data-flow.md kirjoitettu Jarin hyväksymällä rakenteella uud
 ### 2026-10-02T09:38:01Z · @codex
 
 Jarin valitsema läpikäyntijärjestys 2.10.2026: named-server-admin-settings, consistent-control-feedback, account-profile-from-github, raw-thinking-history-blocks, latest-control-obscured. Ensimmäisen issuen teksti uudistettu hyväksytyn roolirajauksen mukaan: selainylläpitäjä hallitsee yhteisiä asetuksia ja rooleja, henkilökohtainen sisältö säilyy käyttäjien omana. Palvelin voi toimia ilman ylläpitäjäkäyttäjää; erillinen etuoikeutettu ylläpito-CLI voi nimetä sellaisen myöhemmin. Näin testiasennus ei tarvitse pakollista admin-onboardingia. Valtuutuksen arkkitehtuuri jää ratkaistavaksi. Seuraava käsiteltävä issue on consistent-control-feedback. Tämä on tekstin ja päätöksen päivitys, ei toteutus tai DAG-muutos.
+
+### 2026-10-02T10:05:17Z · @codex
+
+consistent-control-feedback käsitelty Jarin täsmennyksen mukaan: oireiden korjauslistasta koodiin perustuvaksi juurisyyn selvitykseksi ja yhteisen UI-ratkaisun suositukseksi. Nykyinen React Aria -pohja, valmiiden UI-kirjastojen hyödyntäminen ja niiden suunnitteluperiaatteet ovat arvioitavia vaihtoehtoja, eivät ennalta valittu ratkaisu. Agenttitilojen käytettävyys erotettu olemassa olevaan refine-agent-status-issueen: tilojen merkitys ja sama tunnistettava visuaalinen kieli eri näkymissä. Pelkkää pisteiden kolmijakoa ei kirjattu hyväksytyksi malliksi. Toteutusta tai DAGin ajoitusta ei muutettu. Seuraava käsiteltävä issue on account-profile-from-github.
