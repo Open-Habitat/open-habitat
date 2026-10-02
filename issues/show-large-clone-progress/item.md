@@ -1,8 +1,8 @@
 ---
 created: 2026-09-29
-updated: 2026-10-01
+updated: 2026-10-02
 type: improvement
-status: open
+status: in-progress
 priority: high
 lane: github-clone-progress
 collision: [internal/daemon/github_clone_linux.go, web/src/app/GitHubOnboarding.tsx]
