@@ -98,6 +98,9 @@ export class ConversationStore {
   applySnapshot(snapshot: Snapshot) {
     if (this.disposed || snapshot.identity.web_identity_id !== this.identity)
       return;
+    const restarted =
+      !!this.snapshotCursor &&
+      this.snapshotCursor.split(":")[1] !== snapshot.event_cursor.split(":")[1];
     this.snapshotCursor = snapshot.event_cursor;
     const cursor = snapshot.event_cursor;
     if (
@@ -146,6 +149,8 @@ export class ConversationStore {
     this.metaListeners.forEach((listener) => {
       listener();
     });
+    if (restarted)
+      for (const id of this.metadata.statuses.keys()) this.notifyStatus(id);
     for (const agent of snapshot.agents) {
       const record = this.windows.get(agent.agent_id);
       if (record && !record.value.live) {
@@ -576,6 +581,7 @@ export class ConversationStore {
     this.pager.cancelAll();
     this.snapshotCursor = snapshot.event_cursor;
     this.routed = undefined;
+    for (const id of this.metadata.statuses.keys()) this.notifyStatus(id);
     for (const [id, record] of this.windows) {
       record.queued = [];
       record.loading = false;

@@ -454,4 +454,32 @@ describe("recent conversation windows", () => {
     expect(store.read(agent)?.state).toBe("stale");
     expect(tail).toHaveBeenCalledTimes(1);
   });
+  it("treats cached control status as stale across a daemon restart", async () => {
+    const agent = id(1);
+    const statusReader = vi
+      .fn()
+      .mockResolvedValue({ agent_id: agent, state: "idle" });
+    const pager = {
+      tail: vi.fn(),
+      older: vi.fn(),
+      reconnect: vi.fn(),
+      cancelAll: vi.fn(),
+    } as unknown as ConversationPager;
+    const store = new ConversationStore("person", pager, 50, statusReader);
+    store.applySnapshot({
+      identity: { web_identity_id: "person" },
+      event_cursor: "ev1:11111111-1111-4111-8111-111111111111:1",
+      agents: [],
+    } as never);
+    store.applyStatus(agent, { agent_id: agent, state: "accepted" } as never);
+    store.applySnapshot({
+      identity: { web_identity_id: "person" },
+      event_cursor: "ev1:22222222-2222-4222-8222-222222222222:0",
+      agents: [],
+    } as never);
+    expect(store.statusStale(agent)).toBe(true);
+    await flush();
+    expect(store.status(agent)?.state).toBe("idle");
+    expect(store.statusStale(agent)).toBe(false);
+  });
 });
