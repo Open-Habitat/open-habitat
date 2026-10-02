@@ -30,17 +30,14 @@ Load history from the newest entries first and fetch older entries when the
 reader scrolls back. A page reload, a conversation no longer retained in memory,
 or deep scrolling may wait for a server response. Retention limits should keep
 recent switching useful while bounding memory even with large tool output.
-Choose and measure those limits during implementation; five conversations,
-50 entries and 4 MiB were sizing proposals, not product requirements. Likewise,
-one display frame is a useful performance target, not a proven 16 ms guarantee.
+Start with generous, adjustable limits so recently viewed conversations remain
+available. The goal is significantly faster conversation switching.
 
 During a connection break, already loaded text remains readable with its
 connection state visible. On recovery, reconcile missed events with native
 history before presenting the view as current. Streaming output remains
 provisional until native history records it, so recovery cannot silently lose
-or duplicate part of an answer. Cached presentation state does not authorize
-commands. When the browser detects logout or an identity change, discard the
-old user's content and prevent late responses from restoring it.
+or duplicate part of an answer.
 
 ## Why this approach
 
@@ -59,6 +56,8 @@ connection lifetime and recovery;
 native history reads; and
 [recent conversation windows](../issues/recent-conversation-windows/item.md)
 owns retention, incremental display and the measured switching experience.
+[Browser logout cleanup](../issues/browser-logout-cleanup/item.md) owns stopping
+stream listeners and clearing user-specific browser state when the session ends.
 These changes are not implemented by this decision.
 
 The [measurements](../issues/design-snappy-conversation-switching/measurements.md)

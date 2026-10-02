@@ -9,10 +9,13 @@ Sivun uudelleenlataus, muistista poistunut keskustelu ja kauas historiaan
 selaaminen voivat vaatia latauksen. Pi omistaa historian ja daemon ratkaisee
 komentojen hyväksymisen.
 
-Viiden keskustelun, 50 merkinnän ja 4 MiB:n rajat ovat alkuperäisen ehdotuksen
-mitoitusarvoja. Toteutuksessa valitaan ja mitataan käyttökokemusta palvelevat
-rajat. Yhden näyttöruudun päivitysväli on nopeustavoite, ei todistettu 16 ms:n
-lupaus. Selaimeen ei lisätä pysyvää historiavarastoa.
+Muistille asetetaan väljät, muutettavat rajat, jotta äskettäin katsottu sisältö
+pysyy käytettävissä. Keskustelunvaihdosta tehdään merkittävästi nopeampi.
+Selaimeen ei lisätä pysyvää historiavarastoa.
+
+@browser-logout-cleanup vastaa streamien kuuntelun lopettamisesta ja käyttäjän
+selainmuistin tyhjentämisestä uloskirjautumisessa. Keskustelunvaihdon toteutus
+antaa yhteyden ja muistin siivouksen tämän yhteisen toiminnon käytettäväksi.
 
 Jari kyseenalaisti erillisen istuntojen peruuttamisen laajennuksen tarpeen.
 @reliable-session-revocation suljettiin nykyisessä laajuudessa tarpeettomana;

@@ -44,8 +44,8 @@ bounded in-memory views of opened conversations, and newest-first native
 history reads for cold opens and recovery. Recent switching waits for no
 network response; reloads, evicted content and deep scrolling may load.
 
-Retention counts, byte budgets and the suggested 16 ms frame target are
-implementation choices to measure, not approved hard limits. The daemon keeps
+Start with generous, adjustable retention limits. The performance goal is
+significantly faster conversation switching. The daemon keeps
 command authority and Pi keeps history. Operator session revocation remains
 as implemented; @reliable-session-revocation is closed as unnecessary for the
 current scope.
@@ -57,20 +57,25 @@ measurements and simulation. Those establish the repeated history requests
 and model possible resource use; they do not demonstrate the new behavior.
 
 Implementation belongs to @one-browser-event-stream,
-@tail-first-history-paging and @recent-conversation-windows. Their issues now
-state the intended outcomes and the relevant implementation context.
+@tail-first-history-paging and @recent-conversation-windows.
+@browser-logout-cleanup owns stopping listeners and clearing user-specific
+browser state when the session ends.
 
 ## Acceptance Criteria
 
 - [x] Alternatives, simulation assumptions and the limits of measured evidence are recorded in the issue attachments.
 - [x] Jari has agreed to the revised direction recorded in ADR 0008.
-- [x] Follow-up issues describe the implementation outcomes without making the original sizing proposals mandatory.
+- [x] Follow-up issues describe the implementation outcomes and responsibilities.
 
 ## Decisions
 
 ### 2026-10-02T03:16:51Z · @jari
 
 Hyväksytty keskustelussa 2026-10-02: rajatut selainmuistinäkymät, yksi tapahtumayhteys välilehteä kohti ja uusimmasta päästä luettava historia. Viisi keskustelua, 50 merkintää, 4 MiB ja 16 ms eivät ole sitovia vaatimuksia. Istuntojen peruuttamista ei laajenneta. Jarin jatkokuittaus: ”ok. Jatketaan näillä”.
+
+### 2026-10-02T05:00:05Z · @jari
+
+Täsmennys 2.10.2026: ”Riittää, että on rajat, joita voidaan tarvittaessa muuttaa. Laitetaan ne ehkä mielelluumin ensin liian isoiksi kuin liian pieniksi.” Nopeustavoitteeksi riittää ”merkittävästi nopeampi”. Uloskirjautuminen pysäyttää streamien kuuntelun ja poistaa käyttäjän selainrakenteet; tälle oma issue @browser-logout-cleanup. Samat muutokset koskevat toteutusissueita.
 
 ## Resolution
 

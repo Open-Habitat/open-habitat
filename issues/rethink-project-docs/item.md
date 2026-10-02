@@ -638,3 +638,9 @@ uudistettu versio, ei Jarin hyväksymä katselmointitulos.
 ### 2026-10-02T03:17:43Z · @codex
 
 Keskustelunvaihdon kokonaisuus käsitelty Jarin kanssa 2.10.2026. Jari hyväksyi rajatun selainmuistin, yhden tapahtumayhteyden välilehteä kohti ja uusimmasta päästä luettavan historian. ADR 0008 sekä design-snappy-conversation-switching ja kolme toteutusissuetta kirjoitettiin tämän mukaan. Viisi keskustelua, 50 merkintää, 4 MiB ja 16 ms erotettiin agentin mitoitusehdotuksiksi. Toteutusdetaljit kuuluvat toteutusissueihin, alkuperäiset mittaukset ja paneeli säilyvät taustana. Jari kyseenalaisti kohdennetun istuntoperuutuksen käyttötarpeen ja hyväksyi reliable-session-revocation-issuen sulkemisen wontfix-tilaan; olemassa oleva toteutus ja hyväksyttyjen tapahtumayhteyksien käytös säilyvät. Päätössivu ja ADR 0006:n jatkoissueviite sovitettiin päätökseen. Tuotekoodia, palvelinta tai toteutusissueiden aikataulua ei muutettu.
+
+## Comments
+
+### 2026-10-02T05:00:05Z · @codex
+
+Jarin jatkopalaute 2.10.2026 sovitettu ADR 0008:aan, suunnitteluissuen nykykuvaukseen ja tulokseen sekä toteutusissueihin: väljät muutettavat muistirajat, merkittävästi nopeampi vaihto, komentojen hyväksymistä koskeva toisto pois. Uloskirjautumisen yhteyksien ja selainmuistin siivous siirretty omaan @browser-logout-cleanup-issueen. Historialliset päätösmerkinnät ja mittausten alkuperäiset luvut säilyvät.

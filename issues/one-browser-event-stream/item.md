@@ -31,17 +31,14 @@ not needed for this work.
 Continuous replay should recover missed updates. A gap or changed daemon
 instance requires a fresh snapshot and reconciliation of retained views.
 Loaded text stays readable during a break, with its stale/offline state
-visible. Cached status is presentation data; the daemon remains responsible
-for command admission and continuation checks.
+visible.
 
-An identity change or detected logout clears old content and ignores old
-in-flight responses. Keep this distinct from operator revocation: Jari chose
-to retain the existing revocation behavior, including already-admitted streams,
-in @reliable-session-revocation. This task adds no gateway revocation mechanism.
+Expose connection disposal to the session lifecycle. @browser-logout-cleanup
+owns closing listeners and clearing user-specific state on logout, session
+expiry or identity replacement.
 
 ## Acceptance criteria
 
 - [ ] Conversation switches keep the same connection and background updates reach the correct retained conversation.
 - [ ] Replay, event gaps and daemon restart recover without silently presenting incomplete content as current.
-- [ ] Logout and identity-change tests show that old content and late responses cannot enter the new user's view.
 - [ ] Synthetic tests cover independent tabs and stream request counts; validation follows TESTING.md.
