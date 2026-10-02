@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-10-02/history-reads
 lane: client-history
 lane_seq: 20
-blocked_by: ['@design-snappy-conversation-switching']
+blocked_by: ['@design-snappy-conversation-switching', '@design-conversation-data-flow']
 ---
 
 # Read only new history entries during a running turn
