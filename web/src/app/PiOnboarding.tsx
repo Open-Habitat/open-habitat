@@ -35,6 +35,9 @@ export function PiOnboarding({
   forceSignIn?: boolean;
 }) {
   const [view, setView] = useState<PiDeviceSignInView>({ phase: "waiting" });
+  // Parent renders must not restart polling or re-bind the session.
+  const latest = useRef({ onUsable, onLogin, forceSignIn });
+  latest.current = { onUsable, onLogin, forceSignIn };
   const checkFailed = useRef(false);
   const [busy, setBusy] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -49,7 +52,10 @@ export function PiOnboarding({
   const alive = useRef(false);
   const ending = useRef(false);
   const check = useCallback(
-    async (method: "GET" | "POST" | "DELETE" = "GET") => {
+    async (
+      method: "GET" | "POST" | "DELETE" = "GET",
+      verifySession = false,
+    ) => {
       // Reads are single-flight: a slow native status + attempt may take longer
       // than the poll interval. Only an explicit write supersedes a read.
       if (method === "GET") {
@@ -73,12 +79,12 @@ export function PiOnboarding({
         if (!current()) return false;
         if (csrf === "login") {
           setView({ phase: "interrupted" });
-          onLogin();
+          latest.current.onLogin();
           return false;
         }
         if (bound.current && bound.current !== csrf) {
           setView({ phase: "interrupted" });
-          onUsable(); // Rebuild from the new session's native status, not the old attempt.
+          latest.current.onUsable(); // Rebuild from the new session's native status, not the old attempt.
           return false;
         }
         bound.current = csrf;
@@ -88,22 +94,30 @@ export function PiOnboarding({
       try {
         // Bind once for writes. Attempt reads authenticate via their own 401;
         // polling must not fetch the session before or after each read.
-        if ((method !== "GET" || !bound.current) && !(await session())) return;
+        if (
+          (method !== "GET" || !bound.current || verifySession) &&
+          !(await session())
+        )
+          return;
         // A write already checks its session binding in piAttempt. Reading
         // native status before a POST can exhaust the response budget while
         // the helper has started and is preparing a code.
-        if (method === "GET" && !attemptInFlight.current && !forceSignIn) {
+        if (
+          method === "GET" &&
+          !attemptInFlight.current &&
+          !latest.current.forceSignIn
+        ) {
           readingStatus = true;
           const status = await piStatus(controller.signal);
-          if (!current()) return;
+          if (!current() || (verifySession && !(await session()))) return;
           readingStatus = false;
           if (status === "login") {
-            onLogin();
+            latest.current.onLogin();
             return;
           }
           if (status === "usable") {
             setView({ phase: "connected" });
-            onUsable();
+            latest.current.onUsable();
             return;
           }
           if (status === "unknown" || status === "unavailable") {
@@ -118,10 +132,10 @@ export function PiOnboarding({
           bound.current,
           controller.signal,
         );
-        if (!current()) return;
+        if (!current() || (verifySession && !(await session()))) return;
         if (attempt === "login") {
           attemptInFlight.current = false;
-          onLogin();
+          latest.current.onLogin();
           return;
         }
         if (attempt === "busy") {
@@ -138,15 +152,15 @@ export function PiOnboarding({
           return;
         }
         if (attempt.pi_state === "usable") {
-          const latest = await piStatus(controller.signal);
+          const latestStatus = await piStatus(controller.signal);
           if (!current()) return;
-          if (latest === "login") {
-            onLogin();
+          if (latestStatus === "login") {
+            latest.current.onLogin();
             return;
           }
-          if (latest === "usable") {
+          if (latestStatus === "usable") {
             setView({ phase: "connected" });
-            onUsable();
+            latest.current.onUsable();
             return;
           }
         }
@@ -185,7 +199,7 @@ export function PiOnboarding({
         }
       }
     },
-    [onLogin, onUsable, forceSignIn],
+    [],
   );
   useEffect(() => {
     alive.current = true;
@@ -195,7 +209,18 @@ export function PiOnboarding({
         void check();
     }, 2000);
     const focus = () => {
-      if (!ending.current) void check();
+      if (ending.current) return;
+      // Focus can race a poll already authorized under the previous cookie.
+      // Invalidate that reply before checking the current session; even an
+      // in-flight write is not repeated, only observed through a fresh read.
+      active.current?.abort();
+      ++generation.current;
+      reading.current = false;
+      busyRef.current = false;
+      setBusy(false);
+      setChecking(false);
+      setView({ phase: "interrupted" });
+      void check("GET", true);
     };
     window.addEventListener("focus", focus);
     return () => {

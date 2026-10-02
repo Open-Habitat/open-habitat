@@ -49,9 +49,20 @@ test("@pi-onboarding delayed old-session response cannot restore code after focu
     await expect(a.getByText("ABCD-1234")).toHaveCount(0);
     // Bob can already have a usable Pi login. The old Alice code must not
     // reappear regardless of Bob's own first-use state.
-    await expect(
-      a.getByText("Bobin synteettinen viesti 0").first(),
-    ).toBeVisible();
+    // A poll during the logout→login gap may legitimately receive 401 and
+    // show login instead; neither path may restore Alice's device code.
+    await expect
+      .poll(
+        async () =>
+          (await a
+            .getByText("Bobin synteettinen viesti 0")
+            .first()
+            .isVisible()) ||
+          (await a
+            .getByRole("button", { name: "Kirjaudu GitHubilla" })
+            .isVisible()),
+      )
+      .toBe(true);
     expect(
       (await a.request.get("/api/v1/onboarding/pi/attempt")).status(),
     ).toBe(404);

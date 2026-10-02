@@ -56,11 +56,21 @@ it("polls an active code every 2 seconds without session reads, stops at 401 or 
     vi.mocked(piAttempt).mock.calls.filter(([method]) => method === "GET"),
   ).toHaveLength(readsAtStart + 1);
   expect(sessionCSRF).toHaveBeenCalledTimes(sessionsAtStart);
+  const newOnLogin = vi.fn();
+  view.rerender(
+    <PiOnboarding
+      onLogin={newOnLogin}
+      onUsable={() => {}}
+      onLogout={vi.fn()}
+    />,
+  );
+  expect(sessionCSRF).toHaveBeenCalledTimes(sessionsAtStart);
   vi.mocked(piAttempt).mockResolvedValueOnce("login");
   await act(async () => {
     await vi.advanceTimersByTimeAsync(2000);
   });
-  expect(onLogin).toHaveBeenCalledOnce();
+  expect(onLogin).not.toHaveBeenCalled();
+  expect(newOnLogin).toHaveBeenCalledOnce();
   expect(sessionCSRF).toHaveBeenCalledTimes(sessionsAtStart);
   await act(async () => {
     await vi.advanceTimersByTimeAsync(4000);
@@ -72,4 +82,29 @@ it("polls an active code every 2 seconds without session reads, stops at 401 or 
   expect(
     vi.mocked(piAttempt).mock.calls.filter(([method]) => method === "GET"),
   ).toHaveLength(readsAtStart + 2);
+});
+
+it("stops an active poll when its view closes", async () => {
+  vi.mocked(sessionCSRF).mockResolvedValue(csrf);
+  vi.mocked(piStatus).mockResolvedValue("missing");
+  vi.mocked(piAttempt).mockResolvedValueOnce("absent").mockResolvedValue(code);
+  vi.useFakeTimers();
+  let view!: ReturnType<typeof render>;
+  await act(async () => {
+    view = render(
+      <PiOnboarding onLogin={vi.fn()} onUsable={vi.fn()} onLogout={vi.fn()} />,
+    );
+  });
+  await act(async () => {
+    fireEvent.click(
+      screen.getByRole("button", { name: "Aloita kirjautuminen" }),
+    );
+  });
+  expect(screen.getByText("TEST-1234")).toBeTruthy();
+  const reads = vi.mocked(piAttempt).mock.calls.length;
+  view.unmount();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(6000);
+  });
+  expect(piAttempt).toHaveBeenCalledTimes(reads);
 });
