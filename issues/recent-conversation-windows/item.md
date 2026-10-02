@@ -2,7 +2,7 @@
 created: 2026-10-02
 updated: 2026-10-02
 type: task
-status: open
+status: done
 priority: normal
 provenance: other
 source_ref: taskfleet:01m3x4p1t2nr61qyw6cz2cwrcm/implementation-slice:windows
@@ -11,6 +11,8 @@ originating_run_kind: technical-decision
 lane: client-history
 lane_seq: 30
 blocked_by: ['@tail-first-history-paging']
+closed: 2026-10-02
+closed_by: taskfleet
 ---
 
 # Keep bounded recent conversation windows in browser
@@ -29,15 +31,21 @@ Create a loading window on view, buffer page-racing events, and represent a conf
 
 `BrowserConversation.tsx`, `HistoryView.tsx`, `WorkspaceRailView.tsx` and `useReadingPosition.ts` subscribe/render their own slice; remove conversation-ID `key` remount in `App.tsx`, explicitly reset/preserve local UI states per id. Keep `ConversationActions.tsx`'s pending/accepted/uncertain write outcomes and sessionStorage drafts separate. `@browser-logout-cleanup` calls `dispose` and fences late responses.
 
-## Acceptance criteria
+## Acceptance Criteria
 
-- [ ] Warm switch has zero HTTP requests and immediate first paint without remount; background deltas do not re-render sidebar.
-- [ ] Deterministic tests cover page/event races, confirmed missing history, append during scroll-back, read-only observation changes, saved/provisional replacement, gap/restart, identity change, 51st window and anchored scroll-back.
-- [ ] Cold open, eviction and far-back scroll can load and display a spinner; stale data never silently claims to be current.
-- [ ] Measure click-to-paint, requests and memory against the synthetic baseline and large outputs; TESTING.md checks pass.
+- [x] Warm switch has zero HTTP requests and immediate first paint without remount; background deltas do not re-render sidebar.
+- [x] Deterministic tests cover page/event races, confirmed missing history, append during scroll-back, read-only observation changes, saved/provisional replacement, gap/restart, identity change, 51st window and anchored scroll-back.
+- [x] Cold open, eviction and far-back scroll can load and display a spinner; stale data never silently claims to be current.
+- [x] Measure click-to-paint, requests and memory against the synthetic baseline and large outputs; TESTING.md checks pass.
 
 ## Comments
 
 ### 2026-10-02T06:01:26Z · @codex
 
 Tiedonkulkusivun tekstikierrokselta toteutuksen testikonteksti: testaa myös saman natiiviavaimen päivittyminen, ristiriitainen järjestys ja rajaan osumaton sivu. Pitkän katkon rajattu taaksepäin haku joko löytää yhteisen avaimen tai korvaa vanhan jakson uudella taililla. Selainkokeessa säilyvät lukukohta ja komennon epävarman kuittauksen erillinen esitys. Vertailumittaus: issues/design-snappy-conversation-switching/measurements.md.
+
+## Resolution
+
+### 2026-10-02T09:07:51Z · @taskfleet
+
+Implemented and verified browser windows for read-only and controlled histories; full clean gate passed on 01433ec and subsequent test-only/issue commits do not alter runtime behavior. Per-conversation EventSource replacement belongs to @one-browser-event-stream.
