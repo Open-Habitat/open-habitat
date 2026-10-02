@@ -668,3 +668,7 @@ account-profile-from-github käsitelty ja Jari hyväksyi rajauksen: tilin tunnis
 ### 2026-10-02T10:11:24Z · @codex
 
 raw-thinking-history-blocks käsitelty Jarin kanssa. Salatun JSONin oireesta laajennettu keskustelulohkojen yhteisen tulkinnan ja löydettävän lohkokirjaston tehtäväksi: merkitys, käsittelijä ja samaan tuotantokomponenttiin perustuva visuaalinen katalogiesimerkki. Käyttäjälle tarkoitettu sisältö säilyy, teknisiä payloadeja ei näytetä viesteinä eikä salatun thinkingin pois jättämisestä tarvita varoitusta. Tuntemattoman sisällön esitys on hillitty ja historia/live noudattavat samaa periaatetta. docs/interfaces.md:n vanha kaiken tuntemattoman sisällön näyttövaatimus sovitettu päätökseen ja design-system-sivulle lisätty tavoiteviite nykykatalogin rinnalle. Seuraava käsiteltävä issue on latest-control-obscured. Tuotekoodia ei muutettu.
+
+### 2026-10-02T10:13:24Z · @codex
+
+Jari täsmensi lohkokirjaston työtavan: designer suunnittelee jokaisen lohkon. Kirjattu raw-thinking-history-blocks-issueen, design-system-sivulle ja AGENTS-WORKFLOW.md:n UI-työhön. Agentti toimittaa lohkojen kartoituksen ja esimerkit suunnitteluaineistoksi, toteuttaa designerin suunnitelmat ja ylläpitää niiden katalogiesityksiä.

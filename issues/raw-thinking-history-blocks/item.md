@@ -49,11 +49,18 @@ omitted from the reading view should have an explained treatment as well.
 
 Build on the existing production components and Storybook catalog described in
 [the design system](../../docs/design-system.md) and
-[the component catalog](../../design-system/component-catalog-v1.md). A designer
-should be able to browse representative examples of the blocks that can appear,
-understand their meaning and change their appearance through the same components
-the application uses. Make the relationship between a block, its handler and its
-catalog example easy to locate. Recommend the code organization from the actual
+[the component catalog](../../design-system/component-catalog-v1.md). The designer
+designs every visible block type and its relevant presentation states, including
+the unknown-content fallback. The agent inventories the types, explains their
+meaning and behavior, and supplies representative content and states as design
+input. Each block's implementation follows the designer's design; adding a new
+block includes this design work. Existing ad hoc presentations are part of the
+inventory, not presumed to be designer-approved.
+
+Implement those designs in the shared production components and expose each
+block's presentation in the catalog. Make the relationship between a block, its
+handler, its design and its catalog example easy to locate, so both the designer
+and implementer can see coverage. Recommend the code organization from the actual
 sources; a new registry or framework is not an agreed implementation choice.
 
 ## Outcome
@@ -74,3 +81,7 @@ project's normal decision policy.
 Jari hyväksyi 2.10.2026 yhteisen tulkintaperiaatteen: käyttäjälle tarkoitettu teksti, luettava thinking-sisältö ja kysymykset säilyvät; salatut payloadit ja tekninen metadata eivät muutu keskusteluviesteiksi. Salatun thinking-lohkon pois jättämisestä ei tarvita varoituskorttia. Aidosti tuntematon sisältö esitetään hillitysti avattavin tarkemmin tiedoin. Historia ja reaaliaikainen keskustelu noudattavat samaa periaatetta.
 
 Jari laajensi työn muihinkin lohkoihin: lohkot muodostavat ymmärrettävän, helposti löydettävän kirjaston, jossa kullakin on käsittely ja visuaalinen esitys designerin tarkasteltavaksi. Nykyisiä tuotantokomponentteja ja Storybookia käytetään lähtökohtana; tiettyä rekisteri- tai framework-ratkaisua ei päätetty. Rajapintadokumentin aiempi yleinen vaatimus tuntemattoman sisällön näyttämisestä täsmennetään tähän rajaan. Tämä kirjaus määrittää tulevan toteutuksen, ei väitä sen valmistuneen.
+
+### 2026-10-02T10:13:24Z · @codex
+
+Jarin lisätäsmennys sanasta sanaan: "Itse asiassa tässä pitää olla sellainen työtapa, että desigener suunnittelee *jokaisen* lohkon". Työnjako täsmennetty: agentti kartoittaa lohkotyypit, merkitykset ja tarvittavat esitystilat designerin aineistoksi; designer suunnittelee jokaisen näkyvän lohkon, myös tuntemattoman sisällön esityksen; agentti toteuttaa designit yhteisiin tuotantokomponentteihin ja katalogiin. Sama työtapa koskee uusia lohkotyyppejä. Pelkkä agentin tekemän ilmeen näyttäminen designerille ei täytä tätä tavoitetta.

@@ -35,9 +35,12 @@ samoja tuotantomoduuleja happy- ja unhappy-state-kuvissa.
 
 Storyt näyttävät komponenttien näyttötilat synteettisillä tiedoilla; ne eivät simuloi sessiosidontaa, reititystä tai Pi:n kuittauksia.
 
-Keskustelulohkojen kirjastoa täydennetään niin, että kunkin lohkotyypin
-merkitys, käsittelijä ja visuaalinen esimerkki löytyvät helposti. Designerin
-näkemät esimerkit käyttävät sovelluksen tuotantokomponentteja. Tämä on
+Designer suunnittelee jokaisen keskustelulohkon ja sen tarvittavat esitystilat,
+myös tuntemattoman sisällön esityksen. Agentti kartoittaa lohkot ja niiden
+merkitykset sekä kokoaa esimerkit suunnitteluaineistoksi. Suunnitelmat
+toteutetaan sovelluksen yhteisiin tuotantokomponentteihin ja katalogiin.
+Kunkin lohkotyypin merkitys, käsittelijä, design ja visuaalinen esimerkki
+löytyvät helposti. Sama työtapa koskee uusia lohkotyyppejä. Tämä on
 [sovittu jatkotyö](../issues/raw-thinking-history-blocks/item.md): nykyinen
 katalogi on lähtökohta, mutta kaikkien lohkojen kattavuutta ja historian sekä
 reaaliaikaisen keskustelun yhtenäistä tulkintaa ei ole vielä toteutettu.
