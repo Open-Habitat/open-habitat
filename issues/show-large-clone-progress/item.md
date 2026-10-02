@@ -2,10 +2,12 @@
 created: 2026-09-29
 updated: 2026-10-02
 type: improvement
-status: in-progress
+status: done
 priority: high
 lane: github-clone-progress
 collision: [internal/daemon/github_clone_linux.go, web/src/app/GitHubOnboarding.tsx]
+closed: 2026-10-02
+closed_by: claude
 ---
 
 # Show truthful native Git stages during large repository checkout
@@ -31,3 +33,9 @@ Current `internal/daemon/github_clone_linux.go` synchronously waits for `git clo
 ### 2026-10-01T02:25:51Z · @jari
 
 2026-10-01 (Jari): disk budget authority — the operator provisions each Unix user their own bounded volume (per-user limit), instead of a new per-attempt quota operation in the root broker. This amends ADR 0005's per-attempt 20 GiB requirement (docs/adr-0005-clone-progress-stream.md must be updated by the implementing run). The daemon still checks headroom before admitting a clone and fails closed when the bounded volume is absent. Preserved analysis: branch wt/jjj72341j1-bounded-clone-progress (blocker.md).
+
+## Resolution
+
+### 2026-10-02T01:18:27Z · @claude
+
+Native Git clone stages, bounded per-user volume admission, safe cancellation, and read-only recovery implemented and validated on the clean committed product tree. Synthetic screenshots and tests are in result.md. Operator mount provisioning and guarded live test-host deployment remain for the conductor release.
