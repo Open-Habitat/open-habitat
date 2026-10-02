@@ -58,7 +58,7 @@ native history reads; and
 owns retention, incremental display and the measured switching experience.
 [Browser logout cleanup](../issues/browser-logout-cleanup/item.md) owns stopping
 stream listeners and clearing user-specific browser state when the session ends.
-These changes are not implemented by this decision.
+These changes are not implemented by this decision. The proposed module split and data-flow interfaces are in the [conversation data-flow design](conversation-data-flow.md).
 
 The [measurements](../issues/design-snappy-conversation-switching/measurements.md)
 identify the inspected revision and the limits of the lab evidence. The

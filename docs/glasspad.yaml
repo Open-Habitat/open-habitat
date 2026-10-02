@@ -58,6 +58,9 @@ groups:
       - slug: pi-runtime
         title: Pi runtime binding
         desc: Root-owned native Pi and Node installation selected for each mapped daemon.
+      - slug: conversation-data-flow
+        title: Keskustelun tiedon kulku
+        desc: Ehdotettu muistirakenne, tapahtumien reititys ja historian sivutus.
       - slug: interfaces
         title: Rajapinnat
         desc: Yhteyksien merkitys ja vielä määriteltävä käyttäytyminen.

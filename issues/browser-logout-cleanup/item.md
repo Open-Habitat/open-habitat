@@ -15,30 +15,14 @@ collision: [web/src/app/]
 
 ## Goal
 
-Logging out stops the browser's event listeners and clears the user's
-in-memory state, including retained conversation views. Returning to the sign-in
-screen or signing in as another person starts with a clean browser state.
+Logout stops listeners and clears this person's browser data, including retained conversation windows; session expiry and a confirmed different identity use the same path. See [conversation data-flow](../../docs/conversation-data-flow.md). **Implementation order (prose only):** blocked_by @recent-conversation-windows and @one-browser-event-stream for their disposal APIs; do not change scheduling metadata until Jari reviews the design.
 
-## Context and approach
+## Scope and interface
 
-`web/src/app/App.tsx` already handles logout, clears identity and sends the
-logout request. Build on that lifecycle and inspect the existing cleanup before
-adding anything. Give logout one place to dispose of active streams, pending
-reads and user-specific state. Late responses or queued events from the old
-session must not restore content after cleanup.
-
-@one-browser-event-stream and @recent-conversation-windows introduce shared
-connection and retained-view owners. Integrate their disposal with logout here;
-those features should expose cleanup for the session lifecycle to call.
-Detected session expiry and identity replacement should use the same cleanup.
-
-Preserve truthful failure handling for the server logout request: stopping local
-listeners does not itself end the server session. This work concerns browser
-logout, not the operator's targeted-revocation mechanism in ADR 0006.
+`App.tsx` owns session transitions, not `conversationJournal.ts` or `conversationStore.ts`. Call router `stop()`, pager `cancelAll()` and store `dispose()`; invalidate an identity/session generation so late events, reads and status responses cannot repopulate old content. Clear `nah:<identity>:` sessionStorage drafts and pending-command markers, and existing Redux/user-specific state. A new login as the **same** person without logout can retain a stale window pending validation; explicit logout or expiry destroys it. Different `web_identity_id` always destroys old data. Another tab has its own local store and connection. Keep logout server failure truthful: local concealment is not proof the server session ended; do not alter ADR 0006's operator revocation semantics.
 
 ## Acceptance Criteria
 
-- [ ] Logging out closes event connections and prevents reconnects under the old session.
-- [ ] User-specific browser state, including retained histories and live output, is cleared; late events and responses cannot restore it.
-- [ ] Session expiry and switching to another identity use the same cleanup, and a subsequent login works normally.
-- [ ] Browser tests cover logout during a running turn and pending history read, a later login, and a failed server logout request. Validation follows TESTING.md.
+- [ ] Logout closes stream/reconnect timers, cancels reads and blocks late writes to cleared local state.
+- [ ] Identity replacement and expiry clear the old store, UI, drafts and pending reads; later login starts normally.
+- [ ] Tests cover logout during a turn and a pending page, same-/different-person relogin, and server logout failure. Validate per TESTING.md.

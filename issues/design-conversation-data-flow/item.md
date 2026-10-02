@@ -3,7 +3,7 @@ created: 2026-10-02
 updated: 2026-10-02
 type: task
 reporter: jari
-status: in-progress
+status: testing
 priority: high
 related: ['@one-browser-event-stream', '@tail-first-history-paging', '@recent-conversation-windows']
 lane: client-history
@@ -86,3 +86,9 @@ issues (and @browser-logout-cleanup if needed) so scope boundaries follow the
 module split, and decide whether @incremental-history-during-turn is absorbed
 (close as duplicate with a pointer) or remains. Jari reviews the document
 before the implementation issues are laned.
+
+## Comments
+
+### 2026-10-02T05:53:43Z · @claude
+
+Suunnitelma docs/conversation-data-flow.md on valmis Jarin katselmointiin. Avoimia päätöskysymyksiä ei löytynyt; toteutusissuet rajattu sen mukaan. Riippumaton review ja löydösten arviointi: history/review-conversation-data-flow.md ja history/assessment-conversation-data-flow.md (paikallinen, gitignore). Täyttä CI-porttia ei ajettu uudelleen: vain dokumentit ja issuet muuttuivat.

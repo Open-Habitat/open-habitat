@@ -14,31 +14,17 @@ originating_run_kind: technical-decision
 
 ## Goal
 
-Keep one user-wide event connection per authenticated browser tab, independent
-of the selected conversation. Route changes should neither reopen the stream
-nor lose events for conversations running in the background. This is the
-connection part of [ADR 0008](../../docs/adr-0008-snappy-conversation-switching.md).
+One validated SSE connection per authenticated tab, independent of selected conversation. Implement the journal router from the [data-flow design](../../docs/conversation-data-flow.md). **Implementation order (prose only):** blocked_by @tail-first-history-paging and @recent-conversation-windows for final browser integration. Do not change scheduling metadata before Jari reviews the design.
 
-## Approach
+## Scope and interface
 
-Bring the catalog connection in `App.tsx` and the conversation connection in
-`useConversation.ts` under one owner. That owner tracks the daemon instance and
-global event position; conversation views consume its updates. Events for
-unopened conversations still advance the stream position without allocating
-history windows for them. Each tab is independent; a cross-tab coordinator is
-not needed for this work.
+Replace `App.tsx`'s catalog EventSource and `useConversation.ts`'s per-conversation EventSource with `conversationJournal.ts`. Its `start(snapshot)`, `resume(snapshot)`, `route(event)` and `stop()` own global cursor, instance, event-ID/sequence validation, replay/probe/reconnect, snapshot recovery and dispatch to `ConversationStore.applyEvent`/`applySnapshot`; unopened conversations advance the cursor without allocating windows. Receive `HistoryPager.reconnect` from @tail-first-history-paging for expired replay and @recent-conversation-windows' store for per-ID content and metadata. A refreshed snapshot must not reset the cursor backwards or discard concurrent events. Keep stale content readable during recovery. The router has no React dependency; `App` owns wiring and supplies identity/session lifecycle callbacks. Expose `onSnapshotNeeded` for user-scoped invalidations and `onStatusChange(id)` for `turn.settled`, `command.changed`, `queue.changed`, `question.*`; the status owner refreshes its cached status and continuation proof without requiring a read on warm switch. Agent-scoped `ring_truncated` means provisional tail loss with intact cursor: reload only that agent's tail, not the whole snapshot. External read-only Pi writes do not generate an event; `App` runs slow snapshot checks in background/on visibility return. No read-only-view stream of its own.
 
-Continuous replay should recover missed updates. A gap or changed daemon
-instance requires a fresh snapshot and reconciliation of retained views.
-Loaded text stays readable during a break, with its stale/offline state
-visible.
-
-Expose connection disposal to the session lifecycle. @browser-logout-cleanup
-owns closing listeners and clearing user-specific state on logout, session
-expiry or identity replacement.
+Raise `internal/daemon/events_linux.go` replay ring from 128 events / 1 MiB to 1024 events / ~16 MiB (first bound hit wins), retaining a separate 1 MiB per-frame limit (browser validator rejects larger frames), bounded oversized-frame invalidation and per-agent `ring_truncated` recovery. An expired replay ring yields 409, not `ring_truncated`. Update corresponding tests; `contracts/v1/event.schema.json` remains the wire authority. `@browser-logout-cleanup` invokes `stop`, cancels pending work and fences late callbacks.
 
 ## Acceptance criteria
 
-- [ ] Conversation switches keep the same connection and background updates reach the correct retained conversation.
-- [ ] Replay, event gaps and daemon restart recover without silently presenting incomplete content as current.
-- [ ] Synthetic tests cover independent tabs and stream request counts; validation follows TESTING.md.
+- [ ] Route switches never reopen SSE; one stream carries background events and changes metadata without allocating unopened windows.
+- [ ] Deterministic sequences test replay, duplicate and conflicting sequence/event ID, truncated replay, daemon restart, concurrent snapshot/events and independent tabs.
+- [ ] Ring tests prove both count and byte limits and truncated recovery; UI keeps stale text visible until reconciliation, never silently current.
+- [ ] TESTING.md validation and measured request counts demonstrate one SSE and zero warm-switch requests.

@@ -14,37 +14,17 @@ originating_run_kind: technical-decision
 
 ## Goal
 
-Opening a conversation shows its newest history without walking older pages
-over HTTP. Scrolling back loads earlier content while preserving the reader's
-place. This supplies the cold-open and recovery path for
-[ADR 0008](../../docs/adr-0008-snappy-conversation-switching.md).
+Read the newest entries of Pi's selected native history first, then older entries on scroll or bounded recovery. This is the first implementation slice of the [data-flow design](../../docs/conversation-data-flow.md). No scheduling metadata changes yet.
 
-## Approach
+## Scope and interface
 
-Extend the history contract with a bounded newest page and a cursor for older
-entries. Pi's selected native file remains the source; a daemon history index
-or materialized copy is not needed. Bound response bytes as well as entry
-count so a single large tool result cannot defeat paging limits.
+Extend `contracts/v1/history.schema.json` and generated clients with newest-page request, prefix-validated `before` cursor and explicit older-complete edge; retain native entry order and `entry_key`. Return the boundary entry on backward reads (or an equivalent validated shared-key witness), since the store cannot join two disjoint pages by guessing adjacency. Change `internal/daemon/history_linux.go` (currently oldest-first `after` and full-file parse), not the daemon's identity/command authority or a new history index. Bound response bytes even for one huge entry; keep separate content reads tied to native revision. `status.native_revision` (size/mtime hint) is not history `native_revision` (hash). Bind the cursor to the prefix through its native boundary key: a plain append must leave it usable even though the whole-file `native_revision` hash changes, whereas rewriting the prefix must invalidate it. Append and concurrent rewrite tests must show coherent pages or explicit retry.
 
-Pages and separately loaded content need a revision that identifies the history
-they belong to. A changed file makes an old paging cursor unusable: the browser
-reloads the recent history instead of combining incompatible pages. The
-current status revision is a size/mtime hint, whereas the history revision is
-a content hash; their values cannot be compared as if they were the same kind
-of revision. Choose the exact request and cursor shape in `contracts/v1/` and
-regenerate its consumers.
-
-Coordinate with @recent-conversation-windows on events arriving during a read.
-An HTTP history response is not an atomic pair with the event stream. Stable
-native entry identity and explicit revision behavior must let the browser
-reconcile overlaps or reload when it cannot establish a coherent result.
+Expose a React-free `conversationPager.ts` with `tail(id, signal)`, `older(id, cursor, signal)`, `reconnect(id, heldKeys, maxPages, signal)` returning `{ pages, met }`, `cancelAll()` as specified in the design. It owns HTTP validation (`history.ts` / `HistoryView.tsx`'s `readHistoryFetch`), request cancellation and bounded newest-to-oldest reads. Return validated pages to @recent-conversation-windows; that issue alone decides window merges and scroll anchoring. A 404 on a new controlled conversation can mean confirmed missing native history, not a failed open. @one-browser-event-stream invokes recovery, not a second pager. **Implementation order (prose only):** @recent-conversation-windows blocked_by this contract; @one-browser-event-stream integration blocked_by both.
 
 ## Acceptance criteria
 
-- [ ] One initial history request returns the newest available entries within the response bounds, including for long histories.
-- [ ] Older pages can be read backwards and merged in native order without missing or repeating entries in an unchanged history.
-- [ ] File rewrites and appends have explicit, tested cursor behavior; incompatible history is detected instead of silently merged.
-- [ ] Large entries and separate content reads respect byte limits and revision checks. Record the cost of reading long native files as well as HTTP request counts.
-
-Validation follows TESTING.md; @recent-conversation-windows verifies the
-resulting browser journey.
+- [ ] One request gets newest bounded entries, including long files; backward pages cover unchanged native history in native order without duplication.
+- [ ] Rewrites and appends have tested cursor/revision semantics; incompatible pages are rejected, not mixed.
+- [ ] Large entries and separate content reads respect byte limits and revisions; measure full-file read cost and HTTP counts.
+- [ ] Contract generation and TESTING.md checks pass; the browser store can consume the documented pager API.

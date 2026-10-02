@@ -22,6 +22,7 @@ vastuullisissa issueissa.
 
 ## Tarkemmat kuvaukset
 
+- [Keskustelun tiedon kulku](conversation-data-flow.md): natiivihistorian, tapahtumavirran ja selaimen muisti-ikkunoiden toteutussuunnitelma.
 - [Rajapinnat](interfaces.md): nykyiset reitit, sovittu tuleva käyttäytyminen ja tietojen omistajuus.
 - [Daemonien sidonnat](daemon-bindings.md): käyttäjäkohtaiset asetukset ja niiden hakemistopolun suojaus.
 - [Pi-runtime](pi-runtime.md): rootin asentaman Node/Pi-julkaisun valinta käyttäjädaemonille.
