@@ -204,6 +204,10 @@ test("@lab expired combined cursor resnapshots and reconnects without another se
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toBeVisible();
+  // Tear down the old EventSource before arming the interception. Otherwise an
+  // old-page reconnect can consume one of the two forced 409s before return.
+  const conversationURL = page.url();
+  await page.goto("about:blank");
   let snapshots = 0;
   let streams = 0;
   page.on("request", (request) => {
@@ -219,7 +223,7 @@ test("@lab expired combined cursor resnapshots and reconnects without another se
       });
     else await route.continue();
   });
-  await page.reload();
+  await page.goto(conversationURL);
   await expect.poll(() => streams).toBeGreaterThan(2);
   await expect.poll(() => snapshots).toBeGreaterThan(1);
   await expect(
