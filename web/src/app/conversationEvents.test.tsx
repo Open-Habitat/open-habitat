@@ -31,6 +31,15 @@ function frame(
 const parse = (n: number, kind: string, payload: Record<string, unknown>) =>
   parseConversationEvent(frame(n, kind, payload));
 describe("published conversation stream", () => {
+  it("rejects a frame larger than one MiB in UTF-8 even when its string is shorter", () => {
+    const raw = frame(1, "assistant.delta", {
+      text: "ä".repeat(530_000),
+      content_index: 0,
+    });
+    expect(raw.length).toBeLessThan(1024 * 1024);
+    expect(new TextEncoder().encode(raw).length).toBeGreaterThan(1024 * 1024);
+    expect(() => parseConversationEvent(raw)).toThrow("oversize event");
+  });
   it("hydrates a mid-turn snapshot, orders deltas by content index and replaces the whole tail with native history", () => {
     const first = parse(3, "assistant.delta", {
       text: "Hei",

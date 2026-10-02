@@ -40,7 +40,13 @@ function cursorParts(cursor: string): { instance: string; sequence: number } {
   return { instance: parts[1], sequence };
 }
 export function parseConversationEvent(raw: string): ConversationEvent {
-  if (raw.length > 1024 * 1024) throw new Error("oversize event");
+  // SSE is bounded by bytes, not UTF-16 code units. A non-ASCII frame can
+  // exceed the transport cap while its JavaScript string length still fits.
+  if (
+    raw.length > 1024 * 1024 ||
+    new TextEncoder().encode(raw).length > 1024 * 1024
+  )
+    throw new Error("oversize event");
   const value: unknown = JSON.parse(raw);
   if (!validate?.(value)) throw new Error("invalid event");
   const frame = value as ConversationEvent;
