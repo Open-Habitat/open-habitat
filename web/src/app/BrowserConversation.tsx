@@ -52,6 +52,7 @@ export function BrowserConversation({
 }) {
   const {
     current,
+    statusStale,
     opened,
     setOpenAttempt,
     entries,
@@ -137,7 +138,10 @@ export function BrowserConversation({
     };
   }, [finishedInBackground]);
   const controlled =
-    opened && !!current && current.workspace_id === workspace.workspace_id;
+    opened &&
+    !!current &&
+    !statusStale &&
+    current.workspace_id === workspace.workspace_id;
   const [questionOutcome, setQuestionOutcome] = useState<
     "uncertain" | "stale" | null
   >(null);
@@ -263,7 +267,7 @@ export function BrowserConversation({
           <AgentHeader
             title={title ?? "Uusi keskustelu"}
             activityLabel={
-              current
+              current && !statusStale
                 ? ({
                     idle: "Valmis",
                     pending: "Odottaa kuittausta",
@@ -275,7 +279,7 @@ export function BrowserConversation({
                 : "Tila ei tiedossa"
             }
             activityKind={
-              !current || current.state === "uncertain"
+              !current || statusStale || current.state === "uncertain"
                 ? "unknown"
                 : current.state === "accepted"
                   ? "working"
@@ -464,6 +468,13 @@ export function BrowserConversation({
                 ]}
               />
             ) : null}
+            {statusStale ? (
+              <InlineNotice
+                title="Keskustelun tila vanhentui"
+                description="Näytetään viimeisin tunnettu historia. Tarkista tila ennen ohjaamista."
+                tone="warning"
+              />
+            ) : null}
             {journalOffline ? (
               <InlineNotice
                 title="Tapahtumayhteys katkesi"
@@ -485,6 +496,7 @@ export function BrowserConversation({
             ) : null}
           </ConversationStream>
           {ambiguous ||
+          statusStale ||
           current?.state === "uncertain" ||
           historyError ||
           (continuation && !["ready", "pending"].includes(continuation)) ||

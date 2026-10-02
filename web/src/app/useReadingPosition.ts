@@ -10,6 +10,17 @@ import {
 import type { LiveTurn } from "./conversationEvents";
 import type { HistoryEntry } from "./history";
 
+/** Timeline groups adjacent tool entries into one row keyed by the first entry. */
+export function visibleEntryKeys(entries: HistoryEntry[]): string[] {
+  const keys: string[] = [];
+  let tool = false;
+  for (const entry of entries) {
+    if (entry.kind !== "tool" || !tool) keys.push(entry.entry_key);
+    tool = entry.kind === "tool";
+  }
+  return keys;
+}
+
 type Anchor = { key: string; offset: number };
 export function useReadingPosition(
   entries: HistoryEntry[],
@@ -52,11 +63,12 @@ export function useReadingPosition(
     if (!viewport || wasAtBottom.current) return;
     const rows = viewport.querySelectorAll<HTMLElement>(".ah-feed > li");
     const top = viewport.getBoundingClientRect().top;
+    const keys = visibleEntryKeys(latest.current.entries);
     for (let i = 0; i < rows.length; i++) {
       const rect = rows[i].getBoundingClientRect();
-      if (rect.bottom > top && latest.current.entries[i]) {
+      if (rect.bottom > top && keys[i]) {
         readingAnchor.current = {
-          key: latest.current.entries[i].entry_key,
+          key: keys[i],
           offset: rect.top - top,
         };
         return;
@@ -70,7 +82,7 @@ export function useReadingPosition(
     ) => {
       const viewport = feed.current;
       if (!viewport || !anchor) return false;
-      const index = pages.findIndex((e) => e.entry_key === anchor.key);
+      const index = visibleEntryKeys(pages).indexOf(anchor.key);
       const row =
         viewport.querySelectorAll<HTMLElement>(".ah-feed > li")[index];
       if (!row) return false;

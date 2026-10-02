@@ -774,10 +774,13 @@ export function App() {
           </>
         }
         rail={
-          (phase === "authenticated" || phase === "stale") && snapshot ? (
+          (phase === "authenticated" || phase === "stale") &&
+          snapshot &&
+          conversationStore ? (
             <WorkspaceRailView
               phase={phase}
               snapshot={snapshot}
+              store={conversationStore}
               source={source}
               collapsed={collapsed && !mobileLayout}
               matches={matches}

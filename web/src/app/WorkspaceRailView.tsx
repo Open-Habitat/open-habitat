@@ -1,5 +1,9 @@
 import { AccountShelf, WorkspaceRail, WorkspaceSection } from "../components";
 import type { Session } from "./conversations";
+import {
+  type ConversationStore,
+  useConversationMetadata,
+} from "./conversationStore";
 import type { Snapshot, Workspace } from "./snapshot";
 import type { RootState } from "./store";
 
@@ -45,6 +49,7 @@ export function sourceLabel(state: string) {
 export function WorkspaceRailView({
   phase,
   snapshot,
+  store,
   source,
   collapsed,
   matches,
@@ -65,6 +70,7 @@ export function WorkspaceRailView({
 }: {
   phase: RootState["connection"]["phase"];
   snapshot: Snapshot;
+  store: ConversationStore;
   source: string;
   collapsed: boolean;
   matches: Workspace[];
@@ -90,6 +96,10 @@ export function WorkspaceRailView({
   pathname: string;
   search: string;
 }) {
+  const metadata = useConversationMetadata(store);
+  const agents = metadata.agents.size
+    ? [...metadata.agents.values()]
+    : snapshot.agents;
   return (
     <WorkspaceRail
       collapsed={collapsed}
@@ -118,7 +128,7 @@ export function WorkspaceRailView({
       homeCurrent={pathname === "/workspaces"}
       runningCount={
         phase === "authenticated"
-          ? snapshot.agents.filter(
+          ? agents.filter(
               (a) =>
                 a.process === "daemon_managed_live" ||
                 a.process === "terminal_observed_live",
@@ -141,9 +151,7 @@ export function WorkspaceRailView({
           href={`/workspaces/${w.workspace_id}`}
           expanded={
             expanded[w.workspace_id] ??
-            Boolean(
-              snapshot.agents.some((a) => a.workspace_id === w.workspace_id),
-            )
+            Boolean(agents.some((a) => a.workspace_id === w.workspace_id))
           }
           selected={selectedId === w.workspace_id}
           summary={`${w.kind === "git_main_worktree" ? "Git" : "Hakemisto"} · ${sourceLabel(w.facts.find((f) => f.source === "filesystem")?.state ?? "unknown")}`}
@@ -154,7 +162,7 @@ export function WorkspaceRailView({
                 ? "Vain luku"
                 : undefined
           }
-          agents={snapshot.agents
+          agents={agents
             .filter((a) => a.workspace_id === w.workspace_id)
             .map((a) => ({
               agentId: a.agent_id,
@@ -166,7 +174,21 @@ export function WorkspaceRailView({
                 ? `/workspaces/${w.workspace_id}?conversation=${a.agent_id}`
                 : `/agents/${a.agent_id}`,
               title: a.title.display,
-              activityLabel: agentProcessLabel(a.process),
+              activityLabel:
+                metadata.statuses.has(a.agent_id) &&
+                !metadata.staleStatuses.has(a.agent_id)
+                  ? ((
+                      {
+                        idle: "Valmis",
+                        pending: "Odottaa kuittausta",
+                        accepted: "Pi työskentelee",
+                        rejected: "Viesti hylättiin",
+                        uncertain: "Tila epävarma",
+                        stopping: "Pysäytetään",
+                      } as Record<string, string>
+                    )[metadata.statuses.get(a.agent_id)?.state ?? ""] ??
+                    agentProcessLabel(a.process))
+                  : agentProcessLabel(a.process),
               activityShortLabel:
                 agentProcessLabel(a.process) === "Prosessin tila ei tiedossa"
                   ? "Tila ei tiedossa"
@@ -189,11 +211,7 @@ export function WorkspaceRailView({
               ...expanded,
               [w.workspace_id]: !(
                 expanded[w.workspace_id] ??
-                Boolean(
-                  snapshot.agents.some(
-                    (a) => a.workspace_id === w.workspace_id,
-                  ),
-                )
+                Boolean(agents.some((a) => a.workspace_id === w.workspace_id))
               ),
             })
           }

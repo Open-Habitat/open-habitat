@@ -7,7 +7,7 @@ import {
   parseConversationEvent,
 } from "./conversationEvents";
 import { ConversationPager } from "./conversationPager";
-import type { Status } from "./conversations";
+import { status as readStatus, type Status } from "./conversations";
 import type { HistoryEntry, HistoryPage } from "./history";
 import type { Agent, Snapshot } from "./snapshot";
 
@@ -21,12 +21,13 @@ export type WindowView = Readonly<{
 type WindowRecord = {
   value: WindowView;
   used: number;
-  loading: boolean;
+  loading: number | false;
   queued: ConversationEvent[];
 };
 type Metadata = Readonly<{
   agents: ReadonlyMap<string, Agent>;
   statuses: ReadonlyMap<string, Status>;
+  staleStatuses: ReadonlySet<string>;
 }>;
 
 /** One tab's native read model. A missing window never implies an empty native history. */
@@ -35,23 +36,33 @@ export class ConversationStore {
   private readonly pager: ConversationPager;
   private windows = new Map<string, WindowRecord>();
   private positions = new Map<string, { key: string; offset: number }>();
-  private metadata: Metadata = { agents: new Map(), statuses: new Map() };
+  private metadata: Metadata = {
+    agents: new Map(),
+    statuses: new Map(),
+    staleStatuses: new Set(),
+  };
   private metaListeners = new Set<() => void>();
   private listeners = new Map<string, Set<() => void>>();
   private clock = 0;
+  private readSeq = 0;
+  private statusRequests = new Map<string, Promise<void>>();
+  private statusVersions = new Map<string, number>();
   private epoch = 0;
   private snapshotCursor?: string;
+  private routed?: { cursor: string; instance: string; sequence: number };
   private disposed = false;
   constructor(
     identity: string,
     pager: ConversationPager = new ConversationPager(),
     private readonly capacity = 50,
+    private readonly statusReader: (id: string) => Promise<Status> = readStatus,
   ) {
     this.identity = identity;
     this.pager = pager;
   }
   readMetadata = (): Metadata => this.metadata;
   status = (id: string): Status | undefined => this.metadata.statuses.get(id);
+  statusStale = (id: string): boolean => this.metadata.staleStatuses.has(id);
   position = (id: string) => this.positions.get(id);
   savePosition = (id: string, value?: { key: string; offset: number }) => {
     if (value) this.positions.set(id, value);
@@ -88,6 +99,46 @@ export class ConversationStore {
     if (this.disposed || snapshot.identity.web_identity_id !== this.identity)
       return;
     this.snapshotCursor = snapshot.event_cursor;
+    const cursor = snapshot.event_cursor;
+    if (
+      [...this.windows.values()].some(
+        (record) =>
+          record.value.live &&
+          !cursor.startsWith(`ev1:${record.value.live.instance}:`),
+      )
+    ) {
+      ++this.epoch;
+      this.pager.cancelAll();
+      for (const record of this.windows.values()) {
+        record.loading = false;
+        record.queued = [];
+      }
+    }
+    for (const [id, record] of this.windows) {
+      if (
+        record.value.live &&
+        !cursor.startsWith(`ev1:${record.value.live.instance}:`)
+      ) {
+        try {
+          const agent = snapshot.agents.find((a) => a.agent_id === id);
+          const live = initialTurn(
+            cursor,
+            agent?.live_tail.map((e) =>
+              parseConversationEvent(JSON.stringify(e)),
+            ) ?? [],
+          );
+          this.publish(id, {
+            ...record.value,
+            live,
+            state: record.value.entries.length ? "stale" : record.value.state,
+          });
+          if (record.value.entries.length) void this.reconnect(id);
+          else if (record.value.state === "loading") void this.loadTail(id);
+        } catch {
+          this.markStale(id);
+        }
+      }
+    }
     this.metadata = {
       ...this.metadata,
       agents: new Map(snapshot.agents.map((agent) => [agent.agent_id, agent])),
@@ -114,9 +165,13 @@ export class ConversationStore {
   }
   applyStatus(id: string, status: Status) {
     if (this.disposed || status.agent_id !== id) return;
+    this.statusVersions.set(id, (this.statusVersions.get(id) ?? 0) + 1);
     this.metadata = {
       ...this.metadata,
       statuses: new Map(this.metadata.statuses).set(id, status),
+      staleStatuses: new Set(
+        [...this.metadata.staleStatuses].filter((key) => key !== id),
+      ),
     };
     this.metaListeners.forEach((listener) => {
       listener();
@@ -142,6 +197,12 @@ export class ConversationStore {
       } catch {
         /* A stale snapshot is recovered by the event router. */
       }
+      if (
+        live &&
+        this.routed?.instance === live.instance &&
+        this.routed.sequence > live.sequence
+      )
+        live = { ...live, ...this.routed, fragments: [], truncated: true };
       record = {
         value: {
           entries: [],
@@ -174,7 +235,8 @@ export class ConversationStore {
   async loadTail(id: string, missing = false): Promise<void> {
     const record = this.windows.get(id);
     if (!record || record.loading) return;
-    record.loading = true;
+    record.loading = ++this.readSeq;
+    const read = record.loading;
     const epoch = this.epoch;
     try {
       const page = await this.pager.tail(id);
@@ -205,7 +267,7 @@ export class ConversationStore {
           state: record.value.entries.length ? "stale" : "error",
         });
     } finally {
-      record.loading = false;
+      if (record.loading === read) record.loading = false;
     }
   }
   /** The caller must confirm a missing native history, not infer it from a 404 alone. */
@@ -223,7 +285,8 @@ export class ConversationStore {
     const record = this.windows.get(id);
     const cursor = record?.value.next;
     if (!record || !cursor || record.loading) return;
-    record.loading = true;
+    record.loading = ++this.readSeq;
+    const read = record.loading;
     const epoch = this.epoch;
     try {
       const page = await this.pager.older(id, cursor);
@@ -243,13 +306,14 @@ export class ConversationStore {
     } catch {
       if (this.windows.get(id) === record) this.markStale(id);
     } finally {
-      record.loading = false;
+      if (record.loading === read) record.loading = false;
     }
   }
   async reconnect(id: string, maxPages = 8): Promise<void> {
     const record = this.windows.get(id);
     if (!record || record.loading) return;
-    record.loading = true;
+    record.loading = ++this.readSeq;
+    const read = record.loading;
     const epoch = this.epoch;
     try {
       const { pages, met } = await this.pager.reconnect(
@@ -263,21 +327,26 @@ export class ConversationStore {
         this.windows.get(id) !== record
       )
         return;
-      // The pager returns newest first; contiguous pages are applied oldest first.
-      if (!met) this.applyPage(id, pages[0], "tail");
+      // Keep one owner until every page is joined. Events wait for the complete range.
+      if (!met) this.applyPage(id, pages[0], "tail", false);
       else
-        for (const page of [...pages].reverse())
-          this.applyPage(id, page, "reconnect");
+        for (const page of [...pages].reverse()) {
+          this.applyPage(id, page, "reconnect", false);
+          if (record.value.state === "stale" || record.value.state === "error")
+            break;
+        }
+      if (record.loading === read) this.releaseQueued(record);
     } catch {
       if (this.windows.get(id) === record) this.markStale(id);
     } finally {
-      record.loading = false;
+      if (record.loading === read) record.loading = false;
     }
   }
   applyPage(
     id: string,
     page: HistoryPage,
     mode: "tail" | "older" | "reconnect" = "tail",
+    flush = true,
   ) {
     const record = this.windows.get(id);
     if (!record || this.disposed || page.agent_id !== id) return;
@@ -355,6 +424,9 @@ export class ConversationStore {
       state: entries.length ? "ready" : "empty",
       live,
     });
+    if (flush) this.releaseQueued(record);
+  }
+  private releaseQueued(record: WindowRecord) {
     record.loading = false;
     const queued = record.queued.splice(0);
     for (const event of queued) this.routeEvent(event);
@@ -363,7 +435,66 @@ export class ConversationStore {
     const record = this.windows.get(id);
     if (record) this.publish(id, { ...record.value, live });
   }
-  routeEvent(event: ConversationEvent) {
+  private notifyStatus(id: string) {
+    if (!this.metadata.statuses.has(id)) return;
+    const version = (this.statusVersions.get(id) ?? 0) + 1;
+    this.statusVersions.set(id, version);
+    if (!this.metadata.staleStatuses.has(id)) {
+      this.metadata = {
+        ...this.metadata,
+        staleStatuses: new Set(this.metadata.staleStatuses).add(id),
+      };
+      this.metaListeners.forEach((listener) => {
+        listener();
+      });
+    }
+    if (this.statusRequests.has(id)) return;
+    const epoch = this.epoch;
+    const fetchStatus = async () => {
+      try {
+        const value = await this.statusReader(id);
+        if (this.disposed || this.epoch !== epoch) return;
+        if (this.statusVersions.get(id) !== version) {
+          // A notification crossed the read. Take one fresh observation.
+          this.statusRequests.delete(id);
+          this.notifyStatus(id);
+          return;
+        }
+        this.applyStatus(id, value);
+      } catch {
+        // Keep the cached status explicitly stale; an explicit check can retry.
+      } finally {
+        if (this.statusRequests.get(id) === request)
+          this.statusRequests.delete(id);
+      }
+    };
+    const request = fetchStatus();
+    this.statusRequests.set(id, request);
+  }
+  routeEvent(event: ConversationEvent, activeId?: string) {
+    if (this.disposed) return;
+    if (
+      event.resource.agent_id &&
+      event.resource.agent_id !== activeId &&
+      [
+        "turn.settled",
+        "command.changed",
+        "queue.changed",
+        "question.requested",
+        "question.resolved",
+      ].includes(event.kind)
+    )
+      this.notifyStatus(event.resource.agent_id);
+    if (
+      !this.routed ||
+      this.routed.instance !== event.server_instance_id ||
+      event.sequence > this.routed.sequence
+    )
+      this.routed = {
+        cursor: event.cursor,
+        instance: event.server_instance_id,
+        sequence: event.sequence,
+      };
     for (const [id, record] of this.windows) {
       if (!record.value.live) continue;
       if (
@@ -375,7 +506,7 @@ export class ConversationStore {
       else if (record.loading) record.queued.push(event);
       else {
         const result = applyTurnEvent(record.value.live, event, id);
-        if (result.recover) this.markStale(id);
+        if (result.recover) this.recoverWindow(id, record, event);
         else this.publish(id, { ...record.value, live: result.turn });
       }
     }
@@ -397,8 +528,7 @@ export class ConversationStore {
     }
     const result = applyTurnEvent(live, event, id);
     if (result.recover) {
-      this.markStale(id);
-      void this.reconnect(id);
+      this.recoverWindow(id, record, event);
       return;
     }
     if (result.entry) {
@@ -421,6 +551,54 @@ export class ConversationStore {
       this.publish(id, { ...record.value, live: turn });
     }
   }
+  private recoverWindow(
+    id: string,
+    record: WindowRecord,
+    event: ConversationEvent,
+  ) {
+    this.publish(id, {
+      ...record.value,
+      live: {
+        cursor: event.cursor,
+        instance: event.server_instance_id,
+        sequence: event.sequence,
+        fragments: [],
+        truncated: true,
+      },
+      state: record.value.entries.length ? "stale" : "error",
+    });
+    if (!record.loading) void this.reconnect(id);
+  }
+  reseed(snapshot: Snapshot) {
+    if (this.disposed || snapshot.identity.web_identity_id !== this.identity)
+      return;
+    ++this.epoch;
+    this.pager.cancelAll();
+    this.snapshotCursor = snapshot.event_cursor;
+    this.routed = undefined;
+    for (const [id, record] of this.windows) {
+      record.queued = [];
+      record.loading = false;
+      try {
+        const agent = snapshot.agents.find((a) => a.agent_id === id);
+        const live = initialTurn(
+          snapshot.event_cursor,
+          agent?.live_tail.map((e) =>
+            parseConversationEvent(JSON.stringify(e)),
+          ) ?? [],
+        );
+        this.publish(id, {
+          ...record.value,
+          live,
+          state: record.value.entries.length ? "stale" : record.value.state,
+        });
+        if (record.value.entries.length) void this.reconnect(id);
+        else if (record.value.state === "loading") void this.loadTail(id);
+      } catch {
+        this.markStale(id);
+      }
+    }
+  }
   markAllStale() {
     for (const id of this.windows.keys()) this.markStale(id);
   }
@@ -438,7 +616,14 @@ export class ConversationStore {
     this.pager.cancelAll();
     this.windows.clear();
     this.positions.clear();
-    this.metadata = { agents: new Map(), statuses: new Map() };
+    this.routed = undefined;
+    this.metadata = {
+      agents: new Map(),
+      statuses: new Map(),
+      staleStatuses: new Set(),
+    };
+    this.statusRequests.clear();
+    this.statusVersions.clear();
     this.metaListeners.forEach((listener) => {
       listener();
     });

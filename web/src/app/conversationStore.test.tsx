@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ConversationPager } from "./conversationPager";
 import { ConversationStore } from "./conversationStore";
+import { visibleEntryKeys } from "./useReadingPosition";
 import type { HistoryPage } from "./history";
 
 const id = (n: number) =>
@@ -264,5 +265,193 @@ describe("recent conversation windows", () => {
     expect(store.read(agent)?.live?.fragments).toHaveLength(1);
     expect(store.read(agent)?.state).toBe("empty");
     expect(tail).not.toHaveBeenCalled();
+  });
+  it("seeds a late read-only window from the routed journal, not an older snapshot", () => {
+    const { store } = setup();
+    const snapshot = {
+      identity: { web_identity_id: "person" },
+      event_cursor: "ev1:11111111-1111-4111-8111-111111111111:5",
+      agents: [{ agent_id: id(1), live_tail: [] }],
+    };
+    store.applySnapshot(snapshot as never);
+    for (const sequence of [6, 7, 8])
+      store.routeEvent({
+        resource: { agent_id: id(2) },
+        kind: "assistant.delta",
+        payload: { text: "other" },
+        cursor: `ev1:11111111-1111-4111-8111-111111111111:${sequence}`,
+        server_instance_id: "11111111-1111-4111-8111-111111111111",
+        sequence,
+        event_id: `e${sequence}`,
+      } as never);
+    expect(store.view(id(1), false, true).live?.sequence).toBe(8);
+  });
+  it("marks a gap stale and advances the cursor before reconnecting", async () => {
+    const { store, finish } = setup();
+    store.view(id(1));
+    finish(page(id(1), ["a"]));
+    await flush();
+    store.setLive(id(1), {
+      cursor: "ev1:11111111-1111-4111-8111-111111111111:0",
+      instance: "11111111-1111-4111-8111-111111111111",
+      sequence: 0,
+      fragments: [],
+      truncated: false,
+    });
+    store.routeEvent({
+      resource: { agent_id: id(1) },
+      kind: "snapshot.invalidated",
+      payload: { reason: "source_changed" },
+      cursor: "ev1:11111111-1111-4111-8111-111111111111:1",
+      server_instance_id: "11111111-1111-4111-8111-111111111111",
+      sequence: 1,
+      event_id: "change",
+    } as never);
+    expect(store.read(id(1))?.live?.sequence).toBe(1);
+    expect(store.read(id(1))?.state).toBe("stale");
+  });
+  it("anchors rendered rows rather than raw native entries when tools group", () => {
+    const entries = page(id(1), ["tool-a", "tool-b", "user"]).entries;
+    entries[0].kind = "tool";
+    entries[1].kind = "tool";
+    entries[2].kind = "user";
+    expect(visibleEntryKeys(entries)).toEqual(["tool-a", "user"]);
+  });
+  it("refreshes a background controlled status on a router notification, not on view", async () => {
+    const agent = id(1);
+    const fresh = { agent_id: agent, state: "idle" };
+    const statusReader = vi.fn().mockResolvedValue(fresh);
+    const pager = {
+      tail: vi.fn(),
+      older: vi.fn(),
+      reconnect: vi.fn(),
+      cancelAll: vi.fn(),
+    } as unknown as ConversationPager;
+    const store = new ConversationStore("person", pager, 50, statusReader);
+    store.applyStatus(agent, { agent_id: agent, state: "accepted" } as never);
+    store.view(agent, true);
+    expect(statusReader).not.toHaveBeenCalled();
+    store.routeEvent({
+      resource: { agent_id: agent },
+      kind: "turn.settled",
+      payload: {},
+      cursor: "ev1:11111111-1111-4111-8111-111111111111:1",
+      server_instance_id: "11111111-1111-4111-8111-111111111111",
+      sequence: 1,
+      event_id: "settle",
+    } as never);
+    expect(store.statusStale(agent)).toBe(true);
+    await flush();
+    expect(statusReader).toHaveBeenCalledTimes(1);
+    expect(store.status(agent)?.state).toBe("idle");
+    expect(store.statusStale(agent)).toBe(false);
+  });
+  it("keeps a nested recovery read owning the loading flag after the original tail settles", async () => {
+    const agent = id(1);
+    let finishTail!: (p: HistoryPage) => void;
+    let finishRecovery!: (p: { pages: HistoryPage[]; met: boolean }) => void;
+    const pager = {
+      tail: vi.fn(
+        () =>
+          new Promise<HistoryPage>((resolve) => {
+            finishTail = resolve;
+          }),
+      ),
+      reconnect: vi.fn(
+        () =>
+          new Promise<{ pages: HistoryPage[]; met: boolean }>((resolve) => {
+            finishRecovery = resolve;
+          }),
+      ),
+      older: vi.fn(),
+      cancelAll: vi.fn(),
+    } as unknown as ConversationPager;
+    const store = new ConversationStore("person", pager);
+    store.view(agent);
+    store.setLive(agent, {
+      cursor: "ev1:11111111-1111-4111-8111-111111111111:0",
+      instance: "11111111-1111-4111-8111-111111111111",
+      sequence: 0,
+      fragments: [],
+      truncated: false,
+    });
+    const event = (sequence: number) => ({
+      resource: { agent_id: agent },
+      kind: "assistant.delta",
+      payload: { text: "delta" },
+      cursor: `ev1:11111111-1111-4111-8111-111111111111:${sequence}`,
+      server_instance_id: "11111111-1111-4111-8111-111111111111",
+      sequence,
+      event_id: `e${sequence}`,
+    });
+    store.routeEvent(event(2) as never); // sequence 1 was missed while the page was loading
+    finishTail(page(agent, ["a"]));
+    await flush();
+    expect(store.read(agent)?.live?.sequence).toBe(2);
+    store.routeEvent(event(4) as never);
+    expect(store.read(agent)?.live?.sequence).toBe(2); // queued behind reconnect
+    finishRecovery({
+      pages: [page(agent, ["b", "c"]), page(agent, ["a", "b"])],
+      met: true,
+    });
+    await flush();
+    expect(store.read(agent)?.live?.sequence).toBe(4); // gap starts nested reconnect
+    store.routeEvent(event(5) as never);
+    expect(store.read(agent)?.live?.sequence).toBe(4); // still queued behind nested read
+    finishRecovery({ pages: [page(agent, ["a", "b", "c"])], met: true });
+    await flush();
+    expect(store.read(agent)?.live?.sequence).toBe(5);
+  });
+  it("background text deltas notify only their window, not sidebar metadata", () => {
+    const { store } = setup();
+    const agent = id(1);
+    store.view(agent, true);
+    store.setLive(agent, {
+      cursor: "ev1:11111111-1111-4111-8111-111111111111:0",
+      instance: "11111111-1111-4111-8111-111111111111",
+      sequence: 0,
+      fragments: [],
+      truncated: false,
+    });
+    const metadata = vi.fn();
+    const windowListener = vi.fn();
+    store.subscribeMetadata(metadata);
+    store.subscribe(agent, windowListener);
+    store.routeEvent({
+      resource: { agent_id: agent },
+      kind: "assistant.delta",
+      payload: { text: "background" },
+      cursor: "ev1:11111111-1111-4111-8111-111111111111:1",
+      server_instance_id: "11111111-1111-4111-8111-111111111111",
+      sequence: 1,
+      event_id: "delta",
+    } as never);
+    expect(windowListener).toHaveBeenCalledTimes(1);
+    expect(metadata).not.toHaveBeenCalled();
+  });
+  it("a daemon restart resets the live cursor and retains stale saved content", async () => {
+    const { store, tail, finish } = setup();
+    const agent = id(1);
+    store.applySnapshot({
+      identity: { web_identity_id: "person" },
+      event_cursor: "ev1:11111111-1111-4111-8111-111111111111:1",
+      agents: [{ agent_id: agent, live_tail: [] }],
+    } as never);
+    store.view(agent);
+    finish(page(agent, ["saved"]));
+    await flush();
+    store.applySnapshot({
+      identity: { web_identity_id: "person" },
+      event_cursor: "ev1:22222222-2222-4222-8222-222222222222:0",
+      agents: [{ agent_id: agent, live_tail: [] }],
+    } as never);
+    expect(store.read(agent)?.live?.instance).toBe(
+      "22222222-2222-4222-8222-222222222222",
+    );
+    expect(store.read(agent)?.entries.map((e) => e.entry_key)).toEqual([
+      "saved",
+    ]);
+    expect(store.read(agent)?.state).toBe("stale");
+    expect(tail).toHaveBeenCalledTimes(1);
   });
 });

@@ -451,10 +451,11 @@ export function useConversation({
   useEffect(() => {
     if (recovering.current && initialSnapshot.current !== snapshot) {
       initialSnapshot.current = snapshot;
+      store.reseed(snapshot);
       recovering.current = false;
       setStreamEpoch((n) => n + 1);
     }
-  }, [snapshot]);
+  }, [snapshot, store]);
   const resnapshot = useRef(onResnapshot);
   resnapshot.current = onResnapshot;
   useEffect(() => {
@@ -543,7 +544,7 @@ export function useConversation({
               recover(result.recover === "history");
               return;
             }
-            store.routeEvent(event);
+            store.routeEvent(event, id);
             if (result.entry) {
               pendingNativeEntry.current = result.entry.entry_key;
               void latestRefresh.current(false, true);
@@ -622,6 +623,7 @@ export function useConversation({
   }, [id, journalOffline]);
   return {
     current,
+    statusStale: id ? metadata.staleStatuses.has(id) : false,
     opened: id
       ? !!current && !!windowView && windowView.state !== "loading"
       : opened,

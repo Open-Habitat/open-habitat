@@ -25,6 +25,7 @@ import {
   readHistory,
 } from "./history";
 import type { Agent } from "./snapshot";
+import { visibleEntryKeys } from "./useReadingPosition";
 
 // Only the daemon's explicit fallback marker is interpreted here. Unknown data
 // stays text, including malformed JSON and fields we do not recognize.
@@ -274,10 +275,11 @@ export function HistoryView({
     if (!viewport) return;
     const top = viewport.getBoundingClientRect().top;
     const rows = viewport.querySelectorAll<HTMLElement>(".ah-feed > li");
+    const keys = visibleEntryKeys(entries);
     for (let i = 0; i < rows.length; i++) {
       const rect = rows[i].getBoundingClientRect();
-      if (rect.bottom > top && entries[i]) {
-        anchor.current = { key: entries[i].entry_key, offset: rect.top - top };
+      if (rect.bottom > top && keys[i]) {
+        anchor.current = { key: keys[i], offset: rect.top - top };
         store.savePosition(agent.agent_id, anchor.current);
         break;
       }
@@ -287,7 +289,7 @@ export function HistoryView({
     const viewport = stream.current;
     const saved = anchor.current;
     if (!viewport || !saved) return;
-    const index = entries.findIndex((entry) => entry.entry_key === saved.key);
+    const index = visibleEntryKeys(entries).indexOf(saved.key);
     const row = viewport.querySelectorAll<HTMLElement>(".ah-feed > li")[index];
     if (row)
       viewport.scrollTop +=
