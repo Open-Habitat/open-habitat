@@ -231,6 +231,15 @@ export function PiOnboarding({
       // A poll already authorized under an old cookie must wait for this
       // focus check before applying its reply. Do not restart a slow read.
       const version = generation.current;
+      const discardOldReply = () => {
+        active.current?.abort();
+        ++generation.current;
+        reading.current = false;
+        busyRef.current = false;
+        setChecking(false);
+        setBusy(false);
+        setView({ phase: "interrupted" });
+      };
       const verification = sessionCSRF()
         .then((csrf) => {
           if (
@@ -240,17 +249,13 @@ export function PiOnboarding({
           )
             return;
           if (csrf === bound.current) return;
-          active.current?.abort();
-          ++generation.current;
-          setView({ phase: "interrupted" });
+          discardOldReply();
           if (csrf === "login") latest.current.onLogin();
           else latest.current.onUsable();
         })
         .catch(() => {
           if (!alive.current || generation.current !== version) return;
-          active.current?.abort();
-          ++generation.current;
-          setView({ phase: "interrupted" });
+          discardOldReply();
         });
       focusVerification.current = verification;
     };
