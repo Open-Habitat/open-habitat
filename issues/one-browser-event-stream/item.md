@@ -2,7 +2,7 @@
 created: 2026-10-02
 updated: 2026-10-02
 type: task
-status: open
+status: done
 priority: normal
 provenance: other
 source_ref: taskfleet:01m3x4p1t2nr61qyw6cz2cwrcm/implementation-slice:journal
@@ -11,6 +11,7 @@ originating_run_kind: technical-decision
 lane: client-history
 lane_seq: 35
 blocked_by: ['@recent-conversation-windows']
+closed: 2026-10-02
 ---
 
 # Unify browser journal stream per identity
@@ -25,9 +26,9 @@ Replace `App.tsx`'s catalog EventSource and `useConversation.ts`'s per-conversat
 
 Raise `internal/daemon/events_linux.go` replay ring from 128 events / 1 MiB to 1024 events / ~16 MiB (first bound hit wins), retaining a separate 1 MiB per-frame limit (browser validator rejects larger frames), bounded oversized-frame invalidation and per-agent `ring_truncated` recovery. An expired replay ring yields 409, not `ring_truncated`. Update corresponding tests; `contracts/v1/event.schema.json` remains the wire authority. `@browser-logout-cleanup` invokes `stop`, cancels pending work and fences late callbacks.
 
-## Acceptance criteria
+## Acceptance Criteria
 
-- [ ] Route switches never reopen SSE; one stream carries background events and changes metadata without allocating unopened windows.
-- [ ] Deterministic sequences test replay, duplicate and conflicting sequence/event ID, truncated replay, daemon restart, concurrent snapshot/events and independent tabs.
-- [ ] Ring tests prove both count and byte limits and truncated recovery; UI keeps stale text visible until reconciliation, never silently current.
-- [ ] TESTING.md validation and measured request counts demonstrate one SSE and zero warm-switch requests.
+- [x] Route switches never reopen SSE; one stream carries background events and changes metadata without allocating unopened windows.
+- [x] Deterministic sequences test replay, duplicate and conflicting sequence/event ID, truncated replay, daemon restart, concurrent snapshot/events and independent tabs.
+- [x] Ring tests prove both count and byte limits and truncated recovery; UI keeps stale text visible until reconciliation, never silently current.
+- [x] TESTING.md validation and measured request counts demonstrate one SSE and zero warm-switch requests.
