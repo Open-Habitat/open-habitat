@@ -660,3 +660,7 @@ Jarin valitsema läpikäyntijärjestys 2.10.2026: named-server-admin-settings, c
 ### 2026-10-02T10:05:17Z · @codex
 
 consistent-control-feedback käsitelty Jarin täsmennyksen mukaan: oireiden korjauslistasta koodiin perustuvaksi juurisyyn selvitykseksi ja yhteisen UI-ratkaisun suositukseksi. Nykyinen React Aria -pohja, valmiiden UI-kirjastojen hyödyntäminen ja niiden suunnitteluperiaatteet ovat arvioitavia vaihtoehtoja, eivät ennalta valittu ratkaisu. Agenttitilojen käytettävyys erotettu olemassa olevaan refine-agent-status-issueen: tilojen merkitys ja sama tunnistettava visuaalinen kieli eri näkymissä. Pelkkää pisteiden kolmijakoa ei kirjattu hyväksytyksi malliksi. Toteutusta tai DAGin ajoitusta ei muutettu. Seuraava käsiteltävä issue on account-profile-from-github.
+
+### 2026-10-02T10:07:59Z · @codex
+
+account-profile-from-github käsitelty ja Jari hyväksyi rajauksen: tilin tunnistettavuus, GitHub-profiilitiedon kulku ja yhteinen tiliesitys. Aiempi etunimi/sähköposti-päätös ja onboarding-varamenettely säilyvät; profiilikuva tukee tunnistamista. Seuraava käsiteltävä issue on raw-thinking-history-blocks, sen jälkeen latest-control-obscured. Muutos koskee tehtävätekstiä ja päätöksen tallentamista.
