@@ -32,3 +32,7 @@ Raise `internal/daemon/events_linux.go` replay ring from 128 events / 1 MiB to 1
 - [x] Deterministic sequences test replay, duplicate and conflicting sequence/event ID, truncated replay, daemon restart, concurrent snapshot/events and independent tabs.
 - [x] Ring tests prove both count and byte limits and truncated recovery; UI keeps stale text visible until reconciliation, never silently current.
 - [x] TESTING.md validation and measured request counts demonstrate one SSE and zero warm-switch requests.
+
+## Test server (pilot.17, 2026-10-02)
+
+`0.0.0-pilot.17` (source `a3a3f127`) is installed on the test VM; operator and route checks passed. Jari: reload and try one SSE stream per tab across switches, background text continuing when switching away mid-turn and back, then reload and logout. Real authenticated browser/GitHub/Pi use is still unverified; also retry pilot.16 browser fixes, Pi dialogs and large clone progress.

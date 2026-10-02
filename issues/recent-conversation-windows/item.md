@@ -49,3 +49,7 @@ Tiedonkulkusivun tekstikierrokselta toteutuksen testikonteksti: testaa myös sam
 ### 2026-10-02T09:07:51Z · @taskfleet
 
 Implemented and verified browser windows for read-only and controlled histories; full clean gate passed on 01433ec and subsequent test-only/issue commits do not alter runtime behavior. Per-conversation EventSource replacement belongs to @one-browser-event-stream.
+
+## Test server (pilot.17, 2026-10-02)
+
+`0.0.0-pilot.17` (source `a3a3f127`) is installed on the test VM; operator and route checks passed. Jari: reload and try instant warm returns without spinner or request, long-history scroll-back and preserved reading position, then reload and logout. Real authenticated browser/GitHub/Pi use is still unverified; also retry pilot.16 browser fixes, Pi dialogs and large clone progress.
