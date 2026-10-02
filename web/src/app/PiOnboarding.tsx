@@ -49,6 +49,7 @@ export function PiOnboarding({
   const generation = useRef(0);
   const active = useRef<AbortController | undefined>(undefined);
   const reading = useRef(false);
+  const focusVerification = useRef<Promise<void> | undefined>(undefined);
   const alive = useRef(false);
   const ending = useRef(false);
   const check = useCallback(
@@ -56,6 +57,16 @@ export function PiOnboarding({
       method: "GET" | "POST" | "DELETE" = "GET",
       verifySession = false,
     ) => {
+      const awaitFocus = async () => {
+        while (focusVerification.current) {
+          const pending = focusVerification.current;
+          await pending;
+          if (focusVerification.current === pending) {
+            focusVerification.current = undefined;
+            break;
+          }
+        }
+      };
       // Reads are single-flight: a slow native status + attempt may take longer
       // than the poll interval. Only an explicit write supersedes a read.
       if (method === "GET") {
@@ -109,6 +120,7 @@ export function PiOnboarding({
         ) {
           readingStatus = true;
           const status = await piStatus(controller.signal);
+          await awaitFocus();
           if (!current() || (verifySession && !(await session()))) return;
           readingStatus = false;
           if (status === "login") {
@@ -132,6 +144,7 @@ export function PiOnboarding({
           bound.current,
           controller.signal,
         );
+        await awaitFocus();
         if (!current() || (verifySession && !(await session()))) return;
         if (attempt === "login") {
           attemptInFlight.current = false;
@@ -153,6 +166,7 @@ export function PiOnboarding({
         }
         if (attempt.pi_state === "usable") {
           const latestStatus = await piStatus(controller.signal);
+          await awaitFocus();
           if (!current()) return;
           if (latestStatus === "login") {
             latest.current.onLogin();
@@ -210,17 +224,35 @@ export function PiOnboarding({
     }, 2000);
     const focus = () => {
       if (ending.current) return;
-      // Focus can race a poll already authorized under the previous cookie.
-      // Invalidate that reply before checking the current session; even an
-      // in-flight write is not repeated, only observed through a fresh read.
-      active.current?.abort();
-      ++generation.current;
-      reading.current = false;
-      busyRef.current = false;
-      setBusy(false);
-      setChecking(false);
-      setView({ phase: "interrupted" });
-      void check("GET", true);
+      if (!reading.current && !busyRef.current) {
+        void check("GET", true);
+        return;
+      }
+      // A poll already authorized under an old cookie must wait for this
+      // focus check before applying its reply. Do not restart a slow read.
+      const version = generation.current;
+      const verification = sessionCSRF()
+        .then((csrf) => {
+          if (
+            !alive.current ||
+            ending.current ||
+            generation.current !== version
+          )
+            return;
+          if (csrf === bound.current) return;
+          active.current?.abort();
+          ++generation.current;
+          setView({ phase: "interrupted" });
+          if (csrf === "login") latest.current.onLogin();
+          else latest.current.onUsable();
+        })
+        .catch(() => {
+          if (!alive.current || generation.current !== version) return;
+          active.current?.abort();
+          ++generation.current;
+          setView({ phase: "interrupted" });
+        });
+      focusVerification.current = verification;
     };
     window.addEventListener("focus", focus);
     return () => {
