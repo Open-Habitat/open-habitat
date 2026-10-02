@@ -96,6 +96,15 @@ describe("one tab-wide journal", () => {
     expect(onSnapshotNeeded).toHaveBeenCalledTimes(3);
     journal.stop();
   });
+  it("rejects reusing an event ID for a different sequence", () => {
+    vi.stubGlobal("EventSource", FakeSource);
+    const { journal, onSnapshotNeeded } = setup();
+    journal.start(snapshot(0));
+    journal.route(event(1) as never);
+    journal.route({ ...event(2), event_id: event(1).event_id } as never);
+    expect(onSnapshotNeeded).toHaveBeenCalledTimes(1);
+    journal.stop();
+  });
   it("recovers a daemon restart and never rewinds after a concurrent snapshot", () => {
     vi.stubGlobal("EventSource", FakeSource);
     const { journal, store, onSnapshotNeeded } = setup();

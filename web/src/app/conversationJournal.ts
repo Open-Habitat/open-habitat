@@ -48,6 +48,7 @@ export class ConversationJournal {
   private instance = "";
   private sequence = 0;
   private lastEventId?: string;
+  private seenIds = new Set<string>();
   private source?: EventSource;
   private timer?: number;
   private probe?: AbortController;
@@ -78,6 +79,7 @@ export class ConversationJournal {
     this.instance = instance;
     this.sequence = sequence;
     this.lastEventId = undefined;
+    this.seenIds.clear();
   }
   start(snapshot: Snapshot) {
     if (!this.stopped) return;
@@ -130,12 +132,16 @@ export class ConversationJournal {
       return;
     if (
       event.sequence !== this.sequence + 1 ||
+      this.seenIds.has(event.event_id) ||
       event.cursor !== `ev1:${this.instance}:${event.sequence}`
     )
       return this.recover();
     this.sequence = event.sequence;
     this.cursor = event.cursor;
     this.lastEventId = event.event_id;
+    this.seenIds.add(event.event_id);
+    if (this.seenIds.size > 1024)
+      this.seenIds.delete(this.seenIds.values().next().value as string);
     this.store.routeEvent(event, this.callbacks.activeId());
     if (event.kind === "snapshot.invalidated") {
       if (
