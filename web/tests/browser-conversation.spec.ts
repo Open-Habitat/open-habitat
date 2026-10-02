@@ -1223,7 +1223,7 @@ test("@browser-conversation model authentication error offers sign-in without le
   await expect(page.getByText("ordinary-dir").first()).toBeVisible();
 });
 
-test("@browser-conversation cold open waits for status and skips confirmed missing history", async ({
+test("@browser-conversation cold open waits for status and reads only present history", async ({
   page,
 }) => {
   await open(page);
@@ -1232,9 +1232,12 @@ test("@browser-conversation cold open waits for status and skips confirmed missi
     releaseStatus = resolve;
   });
   let historyReads = 0;
+  let nativeHistory: string | undefined;
   await page.route("**/api/v1/conversations/*/status*", async (route) => {
     await statusHold;
-    await route.continue();
+    const response = await route.fetch();
+    if (response.ok()) nativeHistory = (await response.json()).native_history;
+    await route.fulfill({ response });
   });
   page.on("request", (request) => {
     if (/\/api\/v1\/agents\/pi:.*\/history/.test(request.url())) historyReads++;
@@ -1250,7 +1253,8 @@ test("@browser-conversation cold open waits for status and skips confirmed missi
     await expect(
       page.getByRole("textbox", { name: "Viesti Pi:lle" }),
     ).toBeVisible();
-    expect(historyReads).toBe(0);
+    expect(["missing", "present"]).toContain(nativeHistory);
+    expect(historyReads).toBe(nativeHistory === "missing" ? 0 : 1);
   } finally {
     releaseStatus();
   }
