@@ -221,12 +221,10 @@ describe("recent conversation windows", () => {
     const pager = {
       tail: vi.fn().mockResolvedValue(page(agent, ["a", "b"], "a")),
       older: vi.fn(),
-      reconnect: vi
-        .fn()
-        .mockResolvedValue({
-          pages: [page(agent, ["c", "d"], "c"), page(agent, ["b", "c"], "b")],
-          met: true,
-        }),
+      reconnect: vi.fn().mockResolvedValue({
+        pages: [page(agent, ["c", "d"], "c"), page(agent, ["b", "c"], "b")],
+        met: true,
+      }),
       cancelAll: vi.fn(),
     } as unknown as ConversationPager;
     const store = new ConversationStore("person", pager);

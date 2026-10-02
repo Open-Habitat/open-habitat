@@ -6,7 +6,7 @@ import {
   type LiveTurn,
   parseConversationEvent,
 } from "./conversationEvents";
-import { type ConversationPager, conversationPager } from "./conversationPager";
+import { ConversationPager } from "./conversationPager";
 import type { Status } from "./conversations";
 import type { HistoryEntry, HistoryPage } from "./history";
 import type { Agent, Snapshot } from "./snapshot";
@@ -44,7 +44,7 @@ export class ConversationStore {
   private disposed = false;
   constructor(
     identity: string,
-    pager: ConversationPager = conversationPager,
+    pager: ConversationPager = new ConversationPager(),
     private readonly capacity = 50,
   ) {
     this.identity = identity;
