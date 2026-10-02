@@ -156,7 +156,7 @@ export function useConversation({
     setAwayFromLatest,
     captureAnchor,
     restoreAnchor,
-  } = useReadingPosition(entries, next, id);
+  } = useReadingPosition(entries, next, id, store);
   useEffect(() => {
     void openAttempt; // explicit retry of the parallel open loader
     alive.current = true;

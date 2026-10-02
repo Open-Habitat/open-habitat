@@ -1,0 +1,13 @@
+# Result: warm return retains the native reading anchor
+
+The controlled route is unmounted on Home. Its old reading-position map lived inside `useReadingPosition`, so the new hook instance defaulted to “at bottom” and scrolled to the latest reply. The tab's `ConversationStore` already kept keyed positions for read-only histories; controlled conversations now save and restore the same keyed anchor there, clearing it when the reader returns to the latest reply. No additional persistence or API read was added.
+
+The 34-turn missed-events notice was not a 1024-event journal gap. `ConversationController.drain` retains **64 diagnostic status events** and sets `event_loss` on normal eviction. After many turns this bit remains true even with a contiguous journal and complete native history. The notice now distinguishes a truncated live journal (always warn) from the diagnostic status tail (warn only when native history is not present). No ring-size or cursor change was necessary.
+
+## Verification
+
+- Deterministic jsdom geometry tests cover controlled warm returns at the first row of an older page and mid-way through that page, including preceding backward insertion. A read-only route uses the same store anchor across unmount/remount. A notice test distinguishes status-tail eviction from live loss. `npx vitest run src/app/useReadingPosition.test.tsx` and `npm run typecheck --prefix web` passed.
+- Production-bundle synthetic Chromium lab, fresh fake-Pi session, 34 sent turns, reload, five older-page GETs, Home and SPA return twice (`PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright node web/lab/reading-position.mjs`): first visible reply `pitkä historia 1` stayed at 0.46875 px relative to the feed; mid-page reply `pitkä historia 12` stayed at -41.671875 px. Both warm returns used **zero `/api/v1/` requests**, click-to-paint (two animation frames) was 260 ms and 335 ms respectively; the missed-events banner was absent. Lab stopped afterward. These are local synthetic measurements, not WAN latency or real-Pi evidence.
+- Full clean gate: pending on the committed candidate; receipt appended after verification.
+
+The final diff is a small client-state ownership fix plus a UI condition, with no auth or server contract changes. Focused tests and a production-bundle browser journey are proportionate review; no independent model review was needed for this low-complexity change. The test does not prove every browser engine or cross-tab restoration; the accepted design only retains positions in the current tab.

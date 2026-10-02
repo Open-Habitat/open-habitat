@@ -2,7 +2,7 @@
 created: 2026-10-02
 updated: 2026-10-02
 type: bug
-status: open
+status: fixed
 priority: high
 provenance: lab-test
 source_ref: taskfleet:01m3y604smwsz03p5qtyqw9z7h/lab-observation:controlled-reading-position
@@ -10,6 +10,7 @@ originating_run: 01m3y604smwsz03p5qtyqw9z7h
 originating_run_kind: spinoff
 lane: client-history
 lane_seq: 50
+closed: 2026-10-02
 ---
 
 # Warm controlled conversation return loses reading position after older paging
@@ -29,3 +30,7 @@ Observed twice in a fresh synthetic profile on this worktree: before the switch 
 
 ## Quick Test
 Repeat the journey with a seeded long controlled history; compare the first visible reply text and its position before navigating away and after returning, while checking zero status/history GETs. Test both at top of an older page and mid-way through it.
+
+## Acceptance Criteria
+- [x] A warm controlled return retains the same keyed reply and viewport offset at the top and mid-way through an older page without an API read.
+- [x] The read-only history retains its position too, and a long healthy session does not falsely claim missed live events.

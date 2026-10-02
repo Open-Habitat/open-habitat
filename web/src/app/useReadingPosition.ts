@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import type { LiveTurn } from "./conversationEvents";
+import type { ConversationStore } from "./conversationStore";
 import type { HistoryEntry } from "./history";
 
 /** Timeline groups adjacent tool entries into one row keyed by the first entry. */
@@ -25,16 +26,19 @@ type Anchor = { key: string; offset: number };
 export function useReadingPosition(
   entries: HistoryEntry[],
   next: string | undefined,
-  id?: string,
+  id: string | undefined,
+  store: ConversationStore,
 ) {
   const [unseen, setUnseen] = useState(0);
-  const [awayFromLatest, setAwayFromLatest] = useState(false);
-  const wasAtBottom = useRef(true);
+  const [awayFromLatest, setAwayFromLatest] = useState(
+    !!id && !!store.position(id),
+  );
+  const wasAtBottom = useRef(!id || !store.position(id));
   const feed = useRef<HTMLElement>(null);
   const latest = useRef({ entries, next, unseen });
   latest.current = { entries, next, unseen };
-  const readingAnchor = useRef<{ key: string; offset: number } | undefined>(
-    undefined,
+  const readingAnchor = useRef<Anchor | undefined>(
+    id ? store.position(id) : undefined,
   );
   const positions = useRef(
     new Map<string, { anchor?: Anchor; atBottom: boolean; top: number }>(),
@@ -43,21 +47,24 @@ export function useReadingPosition(
   useLayoutEffect(() => {
     if (selected.current === id) return;
     const old = selected.current;
-    if (old)
+    if (old) {
+      store.savePosition(old, readingAnchor.current);
       positions.current.set(old, {
         anchor: readingAnchor.current,
         atBottom: wasAtBottom.current,
         top: feed.current?.scrollTop ?? 0,
       });
+    }
     selected.current = id;
     const saved = id ? positions.current.get(id) : undefined;
-    readingAnchor.current = saved?.anchor;
-    wasAtBottom.current = saved?.atBottom ?? true;
+    const storedAnchor = id ? store.position(id) : undefined;
+    readingAnchor.current = storedAnchor ?? saved?.anchor;
+    wasAtBottom.current = !readingAnchor.current && (saved?.atBottom ?? true);
     if (feed.current && saved && !saved.anchor)
       feed.current.scrollTop = saved.top;
     setUnseen(0);
-    setAwayFromLatest(!!saved && !saved.atBottom);
-  }, [id]);
+    setAwayFromLatest(!wasAtBottom.current);
+  }, [id, store]);
   const captureAnchor = useCallback(() => {
     const viewport = feed.current;
     if (!viewport || wasAtBottom.current) return;
@@ -71,10 +78,11 @@ export function useReadingPosition(
           key: keys[i],
           offset: rect.top - top,
         };
+        if (id) store.savePosition(id, readingAnchor.current);
         return;
       }
     }
-  }, []);
+  }, [id, store]);
   const restoreAnchor = useCallback(
     (
       anchor: { key: string; offset: number } | undefined,

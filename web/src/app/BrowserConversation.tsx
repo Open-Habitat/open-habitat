@@ -20,12 +20,21 @@ import { UnpresentedEvents } from "../components/WorkingProgress";
 import { useConversationActions } from "./ConversationActions";
 import { provisionalItems } from "./conversationEvents";
 import type { ConversationStore } from "./conversationStore";
-import type { Session } from "./conversations";
+import type { Session, Status } from "./conversations";
 import { timelineItems } from "./HistoryView";
 import { PiQuestion } from "./PiQuestion";
 import type { Workspace } from "./snapshot";
 import { useConversation } from "./useConversation";
 import { useReadingPositionLayout } from "./useReadingPosition";
+
+// The status RPC retains only 64 diagnostic native events. Its loss bit is
+// expected in long sessions even when the journal and native history are intact.
+export function showMissedEvents(liveTruncated: boolean, current?: Status) {
+  return (
+    liveTruncated ||
+    !!(current?.event_loss && current.native_history !== "present")
+  );
+}
 
 export function BrowserConversation({
   workspace,
@@ -302,6 +311,7 @@ export function BrowserConversation({
               setAwayFromLatest(!wasAtBottom.current);
               if (wasAtBottom.current) {
                 readingAnchor.current = undefined;
+                if (id) store.savePosition(id);
                 setUnseen(0);
               } else captureAnchor();
             }}
@@ -414,6 +424,8 @@ export function BrowserConversation({
               showJumpToLatest={awayFromLatest}
               onJumpToLatest={() => {
                 wasAtBottom.current = true;
+                readingAnchor.current = undefined;
+                if (id) store.savePosition(id);
                 setAwayFromLatest(false);
                 feed.current?.scrollTo({ top: feed.current.scrollHeight });
                 setUnseen(0);
@@ -479,7 +491,7 @@ export function BrowserConversation({
                 tone="warning"
               />
             ) : null}
-            {live?.truncated || current?.event_loss ? (
+            {showMissedEvents(!!live?.truncated, current) ? (
               <InlineNotice
                 title="Tapahtumia jäi väliin"
                 description="Live-tapahtumien häntä ei ole täydellinen. Tarkista natiivi historia."
