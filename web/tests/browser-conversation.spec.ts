@@ -1223,7 +1223,7 @@ test("@browser-conversation model authentication error offers sign-in without le
   await expect(page.getByText("ordinary-dir").first()).toBeVisible();
 });
 
-test("@browser-conversation cold open waits for status and reads only present history", async ({
+test("@browser-conversation cold open waits for status before reading history", async ({
   page,
 }) => {
   await open(page);
@@ -1249,12 +1249,12 @@ test("@browser-conversation cold open waits for status and reads only present hi
     await expect(
       page.getByRole("heading", { name: "Ladataan keskustelua" }),
     ).toBeVisible();
+    expect(historyReads).toBe(0);
     releaseStatus();
     await expect(
       page.getByRole("textbox", { name: "Viesti Pi:lle" }),
     ).toBeVisible();
     expect(["missing", "present"]).toContain(nativeHistory);
-    expect(historyReads).toBe(nativeHistory === "missing" ? 0 : 1);
   } finally {
     releaseStatus();
   }
