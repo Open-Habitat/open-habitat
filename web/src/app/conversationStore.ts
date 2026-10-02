@@ -125,7 +125,7 @@ export class ConversationStore {
       listener();
     });
   }
-  view(id: string, confirmedMissing = false): WindowView {
+  view(id: string, confirmedMissing = false, deferLoad = false): WindowView {
     if (this.disposed) throw new Error("disposed store");
     let record = this.windows.get(id);
     if (!record) {
@@ -153,8 +153,12 @@ export class ConversationStore {
         queued: [],
       };
       this.windows.set(id, record);
-      if (!confirmedMissing) this.loadTail(id);
+      if (!confirmedMissing && !deferLoad) void this.loadTail(id);
     }
+    if (confirmedMissing && record.value.state === "loading")
+      this.confirmMissing(id);
+    else if (!deferLoad && record.value.state === "loading" && !record.loading)
+      void this.loadTail(id);
     record.used = ++this.clock;
     if (this.windows.size > this.capacity) {
       const oldest = [...this.windows]

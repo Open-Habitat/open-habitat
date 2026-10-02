@@ -239,4 +239,30 @@ describe("recent conversation windows", () => {
     ]);
     expect(store.read(agent)?.state).toBe("ready");
   });
+  it("holds a cold window for status proof while accepting early stream deltas", () => {
+    const { store, tail } = setup();
+    const agent = id(1);
+    store.view(agent, false, true);
+    expect(tail).not.toHaveBeenCalled();
+    store.setLive(agent, {
+      cursor: "ev1:11111111-1111-4111-8111-111111111111:0",
+      instance: "11111111-1111-4111-8111-111111111111",
+      sequence: 0,
+      fragments: [],
+      truncated: false,
+    });
+    store.routeEvent({
+      resource: { agent_id: agent },
+      kind: "assistant.delta",
+      payload: { text: "early" },
+      cursor: "ev1:11111111-1111-4111-8111-111111111111:1",
+      server_instance_id: "11111111-1111-4111-8111-111111111111",
+      sequence: 1,
+      event_id: "early",
+    } as never);
+    store.view(agent, true);
+    expect(store.read(agent)?.live?.fragments).toHaveLength(1);
+    expect(store.read(agent)?.state).toBe("empty");
+    expect(tail).not.toHaveBeenCalled();
+  });
 });

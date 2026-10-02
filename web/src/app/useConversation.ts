@@ -190,6 +190,7 @@ export function useConversation({
     queueReturn.current = undefined;
     pendingNativeEntry.current = undefined;
     wasWorking.current = false;
+    store.view(id, false, true); // Buffer stream events before the cold status proof returns.
     const cached = store.status(id);
     if (cached && cached.workspace_id === workspace.workspace_id) {
       store.view(id);
