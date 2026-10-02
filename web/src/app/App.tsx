@@ -175,10 +175,13 @@ export function App() {
   const refresh = useCallback(() => {
     setRefreshKey((n) => n + 1);
   }, []);
-  const requireLogin = useCallback(
-    () => dispatch(authenticationRequired()),
-    [dispatch],
-  );
+  // An observed 401 wins over any already-running snapshot/list read. A later
+  // successful response cannot re-authenticate this tab without a new login.
+  const loginFenced = useRef(false);
+  const requireLogin = useCallback(() => {
+    loginFenced.current = true;
+    dispatch(authenticationRequired());
+  }, [dispatch]);
   // Outside a conversation the catalog still needs journal invalidations.
   // A selected conversation owns the same single stream for its live turn.
   const snapshotCursor = useRef(snapshot?.event_cursor);
@@ -299,25 +302,27 @@ export function App() {
     if (fixtureName?.startsWith("design") && CatalogPreview) return;
     const controller = new AbortController();
     let active = true;
-    if (!snapshot) dispatch(loading());
+    const ready = () => active && !loginFenced.current;
+    if (!snapshot && ready()) dispatch(loading());
     const fail = (gate: "login" | "pi" | "unavailable") => {
       if (!active) return;
       if (gate === "login") {
         setCSRF(undefined);
-        dispatch(authenticationRequired());
-      } else if (gate === "pi") dispatch(piRequired());
-      else if (snapshot) dispatch(stale());
-      else dispatch(unavailable());
+        requireLogin();
+      } else if (ready() && gate === "pi") dispatch(piRequired());
+      else if (ready() && snapshot) dispatch(stale());
+      else if (ready()) dispatch(unavailable());
     };
     const load = async () => {
+      if (!ready()) return;
       try {
         if (!syntheticDemo && !piChecked.current) {
           const token = await sessionCSRF(controller.signal);
-          if (!active) return;
+          if (!ready()) return;
           if (token === "login") return fail("login");
           setCSRF(token);
           const status = await piStatus(controller.signal);
-          if (!active) return;
+          if (!ready()) return;
           if (status === "login") return fail("login");
           if (
             status === "missing" ||
@@ -341,7 +346,7 @@ export function App() {
             signal: controller.signal,
           },
         );
-        if (!active) return;
+        if (!ready()) return;
         if (response.status === 401) return fail("login");
         if (response.status === 403 || response.status >= 500)
           return fail("unavailable");
@@ -352,20 +357,20 @@ export function App() {
         )
           throw new Error("unavailable");
         const next = await readSnapshot(response);
-        if (!active) return;
+        if (!ready()) return;
         setPiCheckFailed(false);
         dispatch(authenticated(next));
         if (!syntheticDemo) {
           try {
             const catalog = await listConversations(controller.signal);
-            if (active) setDaemonSessions(catalog);
+            if (ready()) setDaemonSessions(catalog);
           } catch (error) {
-            if (active && (error as Error).message === "identity_lost")
+            if (ready() && (error as Error).message === "identity_lost")
               fail("login");
           }
         }
       } catch {
-        if (active && !controller.signal.aborted) fail("unavailable");
+        if (ready() && !controller.signal.aborted) fail("unavailable");
       }
     };
     void load();
@@ -373,8 +378,9 @@ export function App() {
       active = false;
       controller.abort();
     };
-  }, [dispatch, refreshKey, fixtureName, syntheticDemo]);
+  }, [dispatch, refreshKey, fixtureName, syntheticDemo, requireLogin]);
   const logout = async () => {
+    loginFenced.current = true;
     setLogoutError(false);
     setSettingsReturn("/workspaces");
     if (syntheticDemo) {

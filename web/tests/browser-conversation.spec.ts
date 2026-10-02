@@ -1446,13 +1446,39 @@ test("@browser-conversation queue-clear 401 reaches login", async ({
   await expect(
     page.getByRole("button", { name: "Tyhjennä jono" }),
   ).toBeVisible();
-  await page.route("**/api/v1/conversations/*/clear_queue", (route) =>
-    route.fulfill({ status: 401 }),
-  );
-  await page.getByRole("button", { name: "Tyhjennä jono" }).click();
-  await expect(
-    page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
-  ).toBeVisible();
+  // A successful snapshot already in flight must not restore the old view
+  // after the actual queue write reports an expired session.
+  let release!: () => void;
+  let started!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const intercepted = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  await page.route("**/api/v1/snapshot", async (route) => {
+    const response = await route.fetch();
+    started();
+    await held;
+    await route.fulfill({ response });
+  });
+  try {
+    await page.getByRole("button", { name: "Päivitä" }).click();
+    await intercepted;
+    await page.route("**/api/v1/conversations/*/clear_queue", (route) =>
+      route.fulfill({ status: 401 }),
+    );
+    await page.getByRole("button", { name: "Tyhjennä jono" }).click();
+    await expect(
+      page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
+    ).toBeVisible();
+    release();
+    await expect(
+      page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
+    ).toBeVisible();
+  } finally {
+    release();
+  }
 });
 
 test("@browser-conversation catalog cursor 409 opens a new stream after snapshot", async ({
