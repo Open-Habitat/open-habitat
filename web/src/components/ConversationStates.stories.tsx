@@ -88,6 +88,10 @@ const receipts = (narrow = false) => (
       kind="unknown"
       prompt="<b>Ei HTML:ää</b>"
       choices={["Kyllä", "Ei"]}
+      value=""
+      state="open"
+      onChange={noop}
+      onRespond={noop}
     />
   </main>
 );
@@ -106,6 +110,73 @@ export const TurnReceiptsPhoneLight: Story = {
 };
 export const TurnReceiptsPhoneDark: Story = {
   render: () => receipts(true),
+  globals: { theme: "dark" },
+  parameters: { viewport: { defaultViewport: "mobile1" } },
+};
+const dialogStates = (narrow = false) => (
+  <main style={{ maxWidth: narrow ? 390 : 780, display: "grid", gap: 20 }}>
+    <NativeQuestion
+      kind="input"
+      prompt="Mitä nimeä käytetään?"
+      choices={[]}
+      value="Ehdotus"
+      state="open"
+      onChange={noop}
+      onRespond={noop}
+    />
+    <NativeQuestion
+      kind="select"
+      prompt="Valitse haara"
+      choices={["main", "feature"]}
+      value="main"
+      state="open"
+      onChange={noop}
+      onRespond={noop}
+    />
+    <NativeQuestion
+      kind="confirm"
+      prompt="Jatketaanko?"
+      choices={[]}
+      value=""
+      state="open"
+      onChange={noop}
+      onRespond={noop}
+    />
+    <NativeQuestion
+      kind="unknown"
+      prompt="Tuntematon pyyntö"
+      choices={[]}
+      value=""
+      state="open"
+      onChange={noop}
+      onRespond={noop}
+    />
+    <NativeQuestion
+      kind="input"
+      prompt="Nimi"
+      choices={[]}
+      value=""
+      state="uncertain"
+      onChange={noop}
+      onRespond={noop}
+    />
+  </main>
+);
+export const PiDialogsLight: Story = {
+  render: () => dialogStates(),
+  globals: { theme: "light" },
+};
+export const PiDialogsDark: Story = {
+  render: () => dialogStates(),
+  globals: { theme: "dark" },
+};
+export const PiDialogsPhoneLight: Story = {
+  render: () => dialogStates(true),
+  globals: { theme: "light" },
+  parameters: { viewport: { defaultViewport: "mobile1" } },
+};
+export const PiDialogsPhoneDark: Story = {
+  render: () => dialogStates(true),
   globals: { theme: "dark" },
   parameters: { viewport: { defaultViewport: "mobile1" } },
 };

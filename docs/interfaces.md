@@ -274,8 +274,7 @@ korreloitua RPC-vastausta, ei valmistunutta vuoroa. Myös status sisältää
 viimeisen komennon `send_receipt`-arvon, jos komento oli lähetys. Kuittaukset ja
 `command.changed`-eventit ovat vain daemonin muistin mittaisia: uudelleenkäynnistyksen
 jälkeen puuttuvaa kuittausta ei tulkita hylkäykseksi eikä viestiä lähetetä
-automaattisesti uudelleen. Gateway rajaa haun kirjautuneen selaimen omaan
-keskustelukahvaan.
+automaattisesti uudelleen. Gateway reitittää haun kirjautuneen Unix-käyttäjän daemonille.
 
 Pi:n `agent_settled` on vuoron päättymishavainto, ei `message_end`.
 Statuskenttä `turn_settled` ja `turn.settled`-eventti sisältävät daemonin
@@ -288,9 +287,16 @@ välittävät Pi:n extension UI -pyynnön rajatun ID:n, metodin (tuntematon on
 `unknown`), otsikon/viestin ja valinnat *tekstinä*, ei HTML:nä.
 Pi:n ilmoitukset ja tilapäivitykset eivät korvaa odottavaa kysymystä;
 ne kulkevat `unknown.native`-eventtinä rajattuna tekstinä.
-Vastaus- ja perumisdialogi eivät kuulu tähän reittiin. Jos Pi odottaa
-`extension_ui_response`-vastausta ennen lähetyskuittausta, tavallinen viesti
-ei vielä ratkaise pyyntöä; selain ei saa väittää kysymystä vastatuksi.
+Erillinen `POST /api/v1/conversations/{id}/question` ottaa vastaan odottavan
+`request_id`:n ja `action: answer | cancel`. `input`- ja `select`-vastauksen
+`value` on teksti, `confirm`-vastauksen totuusarvo; perumisessa arvo puuttuu.
+Tuntemattoman tyypin saa perua mutta ei vastata. Daemon kuluttaa ID:n ennen
+Pi:n RPC-kirjoitusta ja palauttaa myös onnistuneesta HTTP-pyynnöstä `uncertain`:
+Pi ei anna korreloitua kuittausta. 409 kertoo vanhentuneesta tai jo käytetystä
+pyynnöstä. Selain merkitsee yrityksen ennen lähetystä eikä toista sitä, vaikka
+vastaus katoaisi tai sivu ladattaisiin uudelleen. Tilapäivitys voi näyttää
+seuraavan jonossa olleen kysymyksen, ei todistaa edellisen toimitusta.
+Tavallinen viesti ei ratkaise `extension_ui_response`-pyyntöä.
 Selain saa esittää tekstin vain tekstisolmuna, ei HTML:nä.
 
 Viestin lähetys ja etenemisen seuraaminen ovat eri asioita. Jos lähetyksen
@@ -421,8 +427,7 @@ vähintään tekstinä, vaikka sen dialogityypille ei olisi omaa käyttöliittym
 Pi:ltä. Viestityypin tai sisältölohkon oman esitystavan puuttuessa sen
 sisältö näytetään turvallisena tekstinä; pelkkä ilmoitus tuntemattomasta
 lohkosta ei riitä.
-Pi:n erillisten kysymysdialogien vastaus- ja perumisohjaus sekä terminaalin
-ohjauksen haltuunotto ovat nykyisen toteutustyön ulkopuolella.
+Terminaalin ohjauksen haltuunotto on nykyisen toteutustyön ulkopuolella.
 
 Vuoron keskeytys on Pi:n `abort`, ei lupaus koko prosessipuun päättymisestä.
 Steering toimitetaan Pi:n mukaisesti tool callien jälkeen. `agent_settled`

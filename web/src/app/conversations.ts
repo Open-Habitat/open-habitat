@@ -131,6 +131,42 @@ async function request(
   return json(response);
 }
 const base = "/api/v1/conversations";
+// Leave headroom for the request ID and JSON envelope under the daemon's 66000-byte limit.
+export function questionTextFits(value: string): boolean {
+  return new TextEncoder().encode(JSON.stringify(value)).length <= 60000;
+}
+export async function respondQuestion(
+  id: string,
+  requestId: string,
+  action: "answer" | "cancel",
+  csrf: string,
+  value?: string | boolean,
+): Promise<void> {
+  if (
+    !requestId ||
+    requestId.length > 200 ||
+    !csrf ||
+    (action === "answer" &&
+      (value === undefined ||
+        (typeof value === "string" && !questionTextFits(value))))
+  )
+    throw new Error("invalid question");
+  const result = await request(
+    `${path(id)}/question`,
+    undefined,
+    action === "cancel"
+      ? { request_id: requestId, action }
+      : { request_id: requestId, action, value },
+    csrf,
+  );
+  if (
+    !object(result) ||
+    result.schema_version !== 1 ||
+    result.request_id !== requestId ||
+    result.state !== "uncertain"
+  )
+    throw new Error("invalid question reply");
+}
 export async function list(signal?: AbortSignal): Promise<Session[]> {
   const v = await request(base, signal);
   if (

@@ -139,9 +139,11 @@ known native file for a cheap change hint; the history reader,
 not that hint, decides whether the file is readable. An ended conversation's
 continuation proof is requested explicitly on open and run again before
 continuing it. This avoids repeated full JSONL reads and lock probes without
-weakening the daemon's one-writer admission rule. Answering or cancelling Pi's
-separate question dialogs and taking over terminal conversations are outside
-the current agent-control work.
+weakening the daemon's one-writer admission rule. For Pi extension dialogs, the browser sends one answer or cancellation per
+native request ID, recording the attempt before writing. The daemon serializes
+it with Pi's RPC channel, but Pi supplies no correlated receipt: even a
+successful HTTP reply is uncertain. Later queued dialogs become visible through
+status and journal events. Terminal conversations remain read-only.
 
 Discovery reads the tools that already own the facts:
 

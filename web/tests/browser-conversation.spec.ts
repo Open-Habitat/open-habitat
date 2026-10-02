@@ -316,11 +316,102 @@ test("@browser-conversation safe question and settled boundary require validated
   ).toContainText("<script>alert(1)</script>");
   await expect(
     page.getByRole("region", { name: "Pi:n kysymys" }).getByRole("button"),
-  ).toHaveCount(0);
+  ).toHaveCount(1); // Unknown kind can only be cancelled.
+  await expect(
+    page.getByRole("button", { name: "Peruuta kysymys" }),
+  ).toBeVisible();
   await expect(page.locator(".ah-settled")).toHaveCount(0);
   await expect(
     page.getByRole("region", { name: "Pi:n kysymys" }).locator("script"),
   ).toHaveCount(0);
+});
+test("@browser-conversation answers once, survives reload, and reports stale without retry", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
+  await page.route("**/api/v1/conversations/*/status", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.pending_question = {
+      request_id: "q-once",
+      question_kind: "input",
+      prompt: "Kirjoita jatko",
+      choices: [],
+    };
+    await route.fulfill({ response, json: body });
+  });
+  let writes = 0;
+  await page.route("**/api/v1/conversations/*/question", async (route) => {
+    writes++;
+    expect(route.request().postDataJSON()).toEqual({
+      request_id: "q-once",
+      action: "answer",
+      value: "Jatka",
+    });
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        schema_version: 1,
+        request_id: "q-once",
+        state: "uncertain",
+      }),
+    });
+  });
+  await refreshConversation(page);
+  const question = page.getByRole("region", { name: "Pi:n kysymys" });
+  await question.getByRole("textbox", { name: "Vastaus" }).fill("Jatka");
+  await question.getByRole("button", { name: "Vastaa" }).click();
+  await expect(question).toContainText("Ei tiedossa");
+  await expect(question.getByRole("button")).toHaveCount(0);
+  await page.reload();
+  await expect(question).toContainText("Ei tiedossa");
+  expect(writes).toBe(1);
+});
+
+test("@browser-conversation unknown question cancels once and a refused answer stays stale", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
+  await page.route("**/api/v1/conversations/*/status", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.pending_question = {
+      request_id: "q-unknown",
+      question_kind: "unknown",
+      prompt: "Tuntematon",
+      choices: [],
+    };
+    await route.fulfill({ response, json: body });
+  });
+  let writes = 0;
+  await page.route("**/api/v1/conversations/*/question", async (route) => {
+    writes++;
+    expect(route.request().postDataJSON()).toEqual({
+      request_id: "q-unknown",
+      action: "cancel",
+    });
+    await route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: JSON.stringify({ code: "control_uncertain" }),
+    });
+  });
+  await refreshConversation(page);
+  const question = page.getByRole("region", { name: "Pi:n kysymys" });
+  await expect(question.getByRole("button")).toHaveCount(1);
+  await question.getByRole("button", { name: "Peruuta kysymys" }).click();
+  await expect(question).toContainText("Pyyntö voi olla vanhentunut");
+  await expect(question.getByRole("button")).toHaveCount(0);
+  expect(writes).toBe(1);
 });
 test("@browser-conversation in-flight send remains pending through missing receipt", async ({
   page,

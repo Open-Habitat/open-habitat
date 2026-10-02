@@ -61,9 +61,11 @@ päättyneen. Keskustelun arkistointi edellyttää, ettei siihen enää kirjoite
 Arkistosta jatkaminen käyttää samaa natiivihistoriaa.
 
 Kaikki saapuvat viestit ja kysymykset näytetään. Jos sisältötyypille ei ole omaa
-esitystapaa, sisältö on luettavissa turvallisena tekstinä. Pi:n erillisten
-kysymysdialogien vastaus- ja perumisohjaimet jäävät nykyisen toteutustyön
-ulkopuolelle; tavallinen keskustelu jatkuu käyttäjän viesteillä.
+esitystapaa, sisältö on luettavissa turvallisena tekstinä. Pi:n erillisen
+kysymysdialogin tekstiin voi vastata tai pyynnön perua
+keskustelussa. Tuntemattoman dialogityypin voi vain perua. Vastauksen
+vastaanotto ei vahvista, että Pi käsitteli sen: epäselvää pyyntöä ei
+lähetetä uudelleen automaattisesti.
 
 Markdown, koodi ja ryhmitellyt työkalutulokset pysyvät luettavina, ja koodin voi
 kopioida. Pi:n `edit`-työkalun toimittama rakenteinen muutos näytetään diffina.
@@ -139,9 +141,9 @@ paikalleen. Muut työtilatoiminnot kuvataan
 [UI-päätös 2026-09-22](../issues/review-ui-v1/review.md) tallentaa alkuperäiset
 valinnat. Nykyinen [agenttiohjauksen rajaus](../issues/build-agent-control/item.md)
 ja [keskustelun toteutusissue](../issues/complete-conversation-ui/item.md)
-täsmensivät myöhemmin terminaalihistoriat vain luettaviksi ja jättivät
-kysymysdialogien vastausohjaimet pois. Saapuvat kysymykset ja muu sisältö
-näytetään silti.
+täsmensivät terminaalihistoriat vain luettaviksi. Myöhemmin
+[Pi-dialogien selainohjaus](../issues/show-pi-dialogs/item.md) lisäsi
+vastauksen ja perumisen vain selaimen omiin keskusteluihin.
 
 [Design system](design-system.md) johtaa visuaalisiin lähteisiin,
 komponenttisopimuksiin ja ajettavaan katalogiin. Sovellus ja Storybook käyttävät

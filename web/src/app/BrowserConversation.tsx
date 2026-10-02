@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   AgentHeader,
   AssistantMessage,
@@ -11,13 +11,13 @@ import {
   InlineNotice,
   LiveToolRow,
   Markdown,
-  NativeQuestion,
   QueuePanel,
   SendObservation,
   TurnSettlement,
   WorkingProgress,
 } from "../components";
 import { UnpresentedEvents } from "../components/WorkingProgress";
+import { PiQuestion } from "./PiQuestion";
 import { useConversationActions } from "./ConversationActions";
 import { provisionalItems } from "./conversationEvents";
 import type { Session } from "./conversations";
@@ -137,6 +137,10 @@ export function BrowserConversation({
   }, [finishedInBackground]);
   const controlled =
     opened && !!current && current.workspace_id === workspace.workspace_id;
+  const [questionOutcome, setQuestionOutcome] = useState<
+    "uncertain" | "stale" | null
+  >(null);
+
   const {
     start,
     continueEnded,
@@ -356,10 +360,14 @@ export function BrowserConversation({
                         id: `question:${current.pending_question.request_id}`,
                         kind: "question",
                         content: (
-                          <NativeQuestion
-                            kind={current.pending_question.question_kind}
-                            prompt={current.pending_question.prompt}
-                            choices={current.pending_question.choices}
+                          <PiQuestion
+                            question={current.pending_question}
+                            agentId={current.agent_id}
+                            identity={identity}
+                            csrf={csrf}
+                            refresh={refresh}
+                            onLogin={onLogin}
+                            onOutcome={setQuestionOutcome}
                           />
                         ),
                       },
@@ -409,6 +417,13 @@ export function BrowserConversation({
                 setUnseen(0);
               }}
             />
+            {!current?.pending_question && questionOutcome ? (
+              <p className="ah-native-question" role="status">
+                {questionOutcome === "stale"
+                  ? "? Pyyntö voi olla vanhentunut tai toimitus epävarma. Tarkista tila."
+                  : "? Ei tiedossa, käsittelikö Pi pyynnön. Älä lähetä uudelleen."}
+              </p>
+            ) : null}
             <WorkingProgress
               state={current?.state}
               events={events}

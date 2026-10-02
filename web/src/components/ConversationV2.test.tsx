@@ -6,6 +6,7 @@ import {
   Composer,
   ConversationTimeline,
   LiveToolRow,
+  NativeQuestion,
   QueuePanel,
   UserMessage,
 } from "./Conversation";
@@ -15,6 +16,51 @@ function mount(node: React.ReactNode) {
 }
 const noop = () => {};
 describe("conversation v2 presentation", () => {
+  it("presents input, select, confirm and unknown dialog actions without inventing an answer", () => {
+    const respond = vi.fn();
+    const common = {
+      prompt: "Jatketaanko?",
+      choices: ["Yksi", "Kaksi"],
+      value: "Yksi",
+      state: "open" as const,
+      onChange: noop,
+      onRespond: respond,
+    };
+    const view = mount(<NativeQuestion {...common} kind="input" />);
+    fireEvent.click(view.getByRole("button", { name: "Vastaa" }));
+    expect(respond).toHaveBeenLastCalledWith("answer", "Yksi");
+    view.rerender(
+      <MemoryRouter>
+        <NativeQuestion {...common} kind="select" />
+      </MemoryRouter>,
+    );
+    expect(view.getAllByRole("radio")).toHaveLength(2);
+    fireEvent.click(view.getByRole("button", { name: "Vastaa" }));
+    expect(respond).toHaveBeenLastCalledWith("answer", "Yksi");
+    view.rerender(
+      <MemoryRouter>
+        <NativeQuestion {...common} kind="confirm" />
+      </MemoryRouter>,
+    );
+    fireEvent.click(view.getByRole("button", { name: "Ei" }));
+    expect(respond).toHaveBeenLastCalledWith("answer", false);
+    view.rerender(
+      <MemoryRouter>
+        <NativeQuestion {...common} kind="unknown" />
+      </MemoryRouter>,
+    );
+    expect(view.getAllByRole("button")).toHaveLength(1);
+    fireEvent.click(view.getByRole("button", { name: "Peruuta kysymys" }));
+    expect(respond).toHaveBeenLastCalledWith("cancel");
+    view.rerender(
+      <MemoryRouter>
+        <NativeQuestion {...common} kind="input" state="uncertain" />
+      </MemoryRouter>,
+    );
+    expect(view.queryByRole("button")).toBeNull();
+    expect(view.getByRole("status").textContent).toMatch(/Ei tiedossa/);
+  });
+
   it("shows only observed live-tool facts and a textual running status", () => {
     const view = mount(<LiveToolRow name="bash" state="running" />);
     const row = view.getByRole("status", { name: /bash.*ajossa/ });

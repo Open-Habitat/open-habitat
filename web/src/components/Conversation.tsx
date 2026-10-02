@@ -272,25 +272,93 @@ export function NativeQuestion({
   kind,
   prompt,
   choices,
+  value,
+  state,
+  onChange,
+  onRespond,
 }: {
   kind: "input" | "confirm" | "select" | "unknown";
   prompt: string;
   choices: string[];
+  value: string;
+  state: "open" | "pending" | "uncertain" | "stale" | "unavailable";
+  onChange: (value: string) => void;
+  onRespond: (action: "answer" | "cancel", value?: string | boolean) => void;
 }) {
+  const locked = state !== "open";
   return (
     <section className="ah-native-question" aria-label="Pi:n kysymys">
-      <h2>
-        Pi:n kysymys havaittu ·{" "}
-        {kind === "unknown"
-          ? "Tuntematon kysymystyyppi"
-          : "Laajennuksen kysymys"}
-      </h2>
+      <h2>Pi:n kysymys</h2>
       <p>{prompt}</p>
-      {choices.length ? <p>Vaihtoehdot: {choices.join(" · ")}</p> : null}
-      <p>
-        Kysymys on voitu käsitellä muualla. Tavallinen viesti ei vastaa Pi:n
-        laajennusdialogiin. Vastaaminen selaimessa ei ole tuettu.
-      </p>
+      {kind === "input" && !locked ? (
+        <TextField label="Vastaus" value={value} onChange={onChange} />
+      ) : null}
+      {kind === "select" && !locked ? (
+        <RadioGroup
+          label="Valitse vastaus"
+          value={value}
+          options={choices.map((choice) => ({ value: choice, label: choice }))}
+          onChange={onChange}
+        />
+      ) : null}
+      {kind === "unknown" && choices.length ? (
+        <p>{choices.join(" · ")}</p>
+      ) : null}
+      {state === "uncertain" ? (
+        <p role="status">
+          ? Ei tiedossa, käsitteliko Pi pyynnön. Tarkista tila; älä lähetä
+          uudelleen.
+        </p>
+      ) : null}
+      {state === "stale" ? (
+        <p role="status">
+          ? Pyyntö voi olla vanhentunut tai toimitus epävarma. Tarkista tila.
+        </p>
+      ) : null}
+      {state === "pending" ? <p role="status">Käsitellään…</p> : null}
+      {state === "unavailable" ? (
+        <p role="status">Ohjaus ei ole käytettävissä.</p>
+      ) : null}
+      {state === "open" ? (
+        <div className="ah-actions">
+          {kind === "confirm" ? (
+            <>
+              <Button label="Kyllä" onPress={() => onRespond("answer", true)} />
+              <Button
+                label="Ei"
+                variant="quiet"
+                onPress={() => onRespond("answer", false)}
+              />
+            </>
+          ) : kind === "input" || kind === "select" ? (
+            <Button
+              label="Vastaa"
+              availability={
+                !value ||
+                (kind === "select" && !choices.includes(value)) ||
+                new TextEncoder().encode(JSON.stringify(value)).length > 60000
+                  ? {
+                      state: "disabled",
+                      reason:
+                        new TextEncoder().encode(JSON.stringify(value)).length >
+                        60000
+                          ? "Vastaus on liian pitkä"
+                          : kind === "input"
+                            ? "Kirjoita vastaus"
+                            : "Valitse vastaus",
+                    }
+                  : { state: "enabled" }
+              }
+              onPress={() => onRespond("answer", value)}
+            />
+          ) : null}
+          <Button
+            label="Peruuta kysymys"
+            variant="quiet"
+            onPress={() => onRespond("cancel")}
+          />
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#e9ebee; }
+  :root, [data-theme="light"] {
+    --bg:#f6f7f8; --surface:#ffffff; --surface-2:#fbfcfd; --rail:#f1f3f5; --line:#e2e6e9; --line-soft:#eef0f3;
+    --ink:#16191d; --ink-2:#3d434b; --muted:#61676f; --faint:#6b7178;
+    --acc:#2b7f8c; --acc-ink:#1d5f69; --acc-soft:#e6f1f3; --acc-line:#cfe3e6; --on-acc:#ffffff;
+    --ok:#2f7a55; --ok-soft:#eef7f1; --err:#a3412b; --err-soft:#fdf1ee; --err-line:#f3d7d0; --scrim:rgba(16,24,40,.32);
+  }
+  [data-theme="dark"] {
+    --bg:#14171a; --surface:#1b1f23; --surface-2:#171a1e; --rail:#171a1e; --line:#2a3036; --line-soft:#232830;
+    --ink:#e6e9ec; --ink-2:#c5cad0; --muted:#98a0a8; --faint:#949ca6;
+    --acc:#4fa6b4; --acc-ink:#9fd4dd; --acc-soft:#173137; --acc-line:#2c4a52; --on-acc:#0f1417;
+    --ok:#8fcfa8; --ok-soft:#1b2721; --err:#e8a08a; --err-soft:#261c1b; --err-line:#4a2e28; --scrim:rgba(0,0,0,.5);
+  }
+  @keyframes p { 0%,100%{opacity:1} 50%{opacity:.3} }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important } }
+  textarea::placeholder { color:var(--faint) }
+  a { color:var(--acc-ink) } a:hover { color:var(--acc) }
+  button:focus-visible, textarea:focus-visible { outline:2px solid var(--acc); outline-offset:2px }
+</style>
+</helmet>
+
+<div data-theme="{{ theme }}" style="min-height:100vh; box-sizing:border-box; padding:32px 24px 64px; background:var(--bg); font-family:'Instrument Sans',system-ui,sans-serif; color:var(--ink); display:flex; flex-direction:column; gap:22px">
+
+  <div style="width:100%; max-width:1440px; margin:0 auto; display:flex; flex-direction:column; gap:14px">
+    <div style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.09em; text-transform:uppercase; color:var(--muted)">Puhelin · 390 px</div>
+    <h1 style="margin:0; font:600 26px 'Instrument Sans',sans-serif; letter-spacing:-.015em">Sama polku kapealla näytöllä</h1>
+    <p style="margin:0; max-width:82ch; font-size:14.5px; line-height:1.6; color:var(--ink-2); text-wrap:pretty">Nykyinen kapea näkymä pinoaa koko sivupalkin keskustelun yläpuolelle, joten keskustelu alkaa vasta ruudun alapuolelta. Nyt sivupalkki on laatikko ☰-painikkeen takana, keskustelu ja kirjoituskenttä saavat koko leveyden, ja kosketusalueet ovat vähintään 44 px. Jokainen puhelin on klikattava.</p>
+    <div style="display:flex; align-items:center; gap:8px">
+      <button style="border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:8px; padding:6px 12px; font:500 12.5px 'Instrument Sans',sans-serif; cursor:pointer" onClick="{{ toggleTheme }}">{{ themeLabel }}</button>
+      <span style="font-size:12.5px; color:var(--muted)">Vieritä sivusuunnassa nähdäksesi kaikki tilat.</span>
+    </div>
+  </div>
+
+  <div style="width:100%; overflow-x:auto; padding-bottom:8px">
+    <div style="display:flex; gap:28px; width:max-content; margin:0 auto; padding:0 4px">
+      <sc-for list="{{ phones }}" as="ph" hint-placeholder-count="6">
+        <div style="display:flex; flex-direction:column; gap:8px">
+          <span style="font:500 12.5px 'Instrument Sans',sans-serif; color:var(--ink-2)">{{ ph.label }}</span>
+          <div style="position:relative; width:390px; height:844px; box-sizing:border-box; background:var(--bg); border:1px solid var(--line); border-radius:28px; overflow:hidden; box-shadow:0 1px 2px rgba(16,24,40,.05), 0 10px 30px rgba(16,24,40,.08); display:flex; flex-direction:column">
+
+            <sc-if value="{{ ph.offline }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--err-soft); border-bottom:1px solid var(--err-line); font-size:12.5px; line-height:1.45; flex-shrink:0; margin-top:28px">
+                <span style="flex:1; color:var(--ink-2)"><strong style="font-weight:500; color:var(--err)">✕ Yhteys katkesi.</strong> Näet klo 14.03 tiedot.</span>
+                <button style="min-height:36px; border:1px solid var(--err-line); background:var(--surface); color:var(--ink); border-radius:8px; padding:0 12px; font:500 12.5px 'Instrument Sans',sans-serif; cursor:pointer">Yhdistä</button>
+              </div>
+            </sc-if>
+
+            <div style="display:flex; align-items:center; gap:6px; padding:{{ ph.topPad }}; background:var(--surface); border-bottom:1px solid var(--line); flex-shrink:0">
+              <button aria-label="Avaa valikko" style="width:36px; height:44px; flex-shrink:0; border:0; padding:0; background:transparent; color:var(--ink); border-radius:8px; font-size:22px; line-height:1; cursor:pointer; position:relative" style-hover="background:var(--surface-2)" onClick="{{ ph.openDrawer }}">☰<span style="position:absolute; top:9px; right:2px; width:7px; height:7px; border-radius:99px; background:var(--acc); border:2px solid var(--surface)"></span></button>
+              <sc-if value="{{ ph.isConv }}" hint-placeholder-val="{{ true }}">
+                <button aria-label="Etusivu" title="Etusivu" style="width:36px; height:44px; flex-shrink:0; margin-left:-4px; border:0; padding:0; background:transparent; color:var(--ink); border-radius:8px; font-size:24px; line-height:1; cursor:pointer" style-hover="background:var(--surface-2)" onClick="{{ ph.goHome }}">⌂</button>
+              </sc-if>
+              <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:1px">
+                <span style="font:600 15px 'Instrument Sans',sans-serif; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ ph.title }}</span>
+                <sc-if value="{{ ph.ws }}" hint-placeholder-val="{{ true }}">
+                  <span style="font:400 11.5px 'JetBrains Mono',monospace; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ ph.ws }}<span style="font-family:'Instrument Sans',sans-serif; color:var(--err)">{{ ph.staleText }}</span></span>
+                </sc-if>
+              </div>
+              <sc-if value="{{ ph.pill }}" hint-placeholder-val="{{ false }}">
+                <span style="display:inline-flex; align-items:center; gap:5px; flex-shrink:0; border:1px {{ ph.pillStyle }} {{ ph.pillLine }}; background:{{ ph.pillBg }}; color:{{ ph.pillColor }}; border-radius:999px; padding:3px 9px; font:500 11.5px 'Instrument Sans',sans-serif; margin-right:6px"><span style="width:6px; height:6px; border-radius:99px; background:{{ ph.pillDot }}; animation:{{ ph.pillAnim }}"></span>{{ ph.pill }}</span>
+              </sc-if>
+            </div>
+
+            <sc-if value="{{ ph.isHome }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1; overflow:auto; padding:22px 16px 28px; display:flex; flex-direction:column; gap:22px">
+                <div style="display:flex; flex-direction:column; gap:6px">
+                  <h2 style="margin:0; font:600 21px 'Instrument Sans',sans-serif; letter-spacing:-.015em">Jatka siitä, mihin jäit</h2>
+                  <p style="margin:0; font-size:14px; line-height:1.55; color:var(--ink-2)">Agentit jatkavat työtä, vaikka selain suljetaan. Keskustelun avaaminen näyttää historian eikä käynnistä mitään.</p>
+                </div>
+                <button style="min-height:44px; background:var(--acc); color:var(--on-acc); border:0; border-radius:10px; font:500 14px 'Instrument Sans',sans-serif; cursor:pointer" onClick="{{ ph.openDrawer }}">+ Uusi keskustelu</button>
+                <div style="display:flex; flex-direction:column; gap:8px">
+                  <div style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--muted)">Käynnissä</div>
+                  <button style="display:flex; align-items:center; gap:12px; text-align:left; background:var(--surface); border:1px solid var(--acc-line); border-radius:12px; padding:14px; cursor:pointer; color:var(--ink)" onClick="{{ ph.goTyo }}">
+                    <span style="width:8px; height:8px; border-radius:99px; background:var(--acc); animation:p 2.4s ease-in-out infinite; flex-shrink:0"></span>
+                    <span style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px">
+                      <span style="font:500 14px 'Instrument Sans',sans-serif">Tee etusivusta mobiiliystävällinen.</span>
+                      <span style="font-size:12.5px; color:var(--muted)"><span style="font:400 12px 'JetBrains Mono',monospace">kotisivu</span> · työskentelee</span>
+                    </span>
+                    <span style="color:var(--faint)">›</span>
+                  </button>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:8px">
+                  <div style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--muted)">Viimeksi avatut</div>
+                  <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; overflow:hidden; display:flex; flex-direction:column">
+                    <sc-for list="{{ recent }}" as="r" hint-placeholder-count="3">
+                      <button style="display:flex; align-items:center; gap:12px; text-align:left; background:transparent; border:0; border-top:{{ r.rule }}; padding:13px 14px; min-height:60px; cursor:pointer; color:var(--ink)" onClick="{{ ph.goValmis }}">
+                        <span style="width:8px; height:8px; box-sizing:border-box; border-radius:99px; background:{{ r.dot }}; border:{{ r.ring }}; flex-shrink:0"></span>
+                        <span style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px">
+                          <span style="font:500 14px 'Instrument Sans',sans-serif; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ r.title }}</span>
+                          <span style="font-size:12.5px; color:var(--muted)"><span style="font:400 12px 'JetBrains Mono',monospace">{{ r.ws }}</span> · <span style="color:{{ r.stateColor }}">{{ r.state }}</span></span>
+                        </span>
+                        <span style="color:var(--faint)">›</span>
+                      </button>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ ph.isConv }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1; min-height:0; position:relative; display:flex; flex-direction:column">
+                <div ref="{{ ph.scrollRef }}" onScroll="{{ ph.onScroll }}" style="flex:1; min-height:0; overflow:auto">
+                  <div style="padding:16px 16px 14px; display:flex; flex-direction:column; gap:12px">
+                    <sc-for list="{{ ph.items }}" as="it" hint-placeholder-count="5">
+                      <div style="display:flex; flex-direction:column; gap:7px">
+                        <sc-if value="{{ it.isUser }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex; flex-direction:column; gap:5px; align-items:flex-start">
+                            <div style="display:flex; align-items:center; gap:4px">
+                              <span style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--muted)">Sinä · {{ it.time }}</span>
+                              <button aria-label="Kopioi viesti" style="width:32px; height:28px; border:0; background:transparent; color:var(--faint); border-radius:6px; font-size:14px; cursor:pointer">⧉</button>
+                            </div>
+                            <div style="background:var(--surface); border:1px {{ it.bubbleStyle }} {{ it.bubbleLine }}; border-radius:12px; padding:10px 13px; font-size:15px; line-height:1.5; max-width:88%; white-space:pre-wrap">{{ it.text }}</div>
+                            <sc-if value="{{ it.uncertain }}" hint-placeholder-val="{{ false }}">
+                              <span style="font-size:12.5px; line-height:1.5; color:var(--muted)">? Ei tiedossa, vastaanotettiinko viesti. Sitä ei lähetetä uudelleen itsestään.</span>
+                            </sc-if>
+                          </div>
+                        </sc-if>
+                        <sc-if value="{{ it.isAgent }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex; align-items:center; gap:4px">
+                            <span style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--acc-ink)">Pi · {{ it.time }}</span>
+                            <button aria-label="Kopioi vastaus" style="width:32px; height:28px; border:0; background:transparent; color:var(--faint); border-radius:6px; font-size:14px; cursor:pointer">⧉</button>
+                          </div>
+                        </sc-if>
+                        <sc-if value="{{ it.isText }}" hint-placeholder-val="{{ false }}">
+                          <p style="margin:0; font-size:15px; line-height:1.6; color:var(--ink-2); text-wrap:pretty">{{ it.text }}</p>
+                        </sc-if>
+                        <sc-if value="{{ it.isNote }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex; align-items:center; gap:8px; color:var(--faint); font-size:12px"><span style="height:1px; background:var(--line); flex:1"></span>{{ it.text }}<span style="height:1px; background:var(--line); flex:1"></span></div>
+                        </sc-if>
+                        <sc-if value="{{ it.isCode }}" hint-placeholder-val="{{ false }}">
+                          <div style="background:var(--surface); border:1px solid var(--line); border-radius:10px; overflow:hidden">
+                            <div style="display:flex; align-items:center; padding:2px 4px 2px 12px; border-bottom:1px solid var(--line-soft); background:var(--surface-2)">
+                              <span style="font:400 11.5px 'JetBrains Mono',monospace; color:var(--muted)">{{ it.lang }}</span>
+                              <button style="margin-left:auto; min-height:36px; border:0; background:transparent; color:var(--muted); font:500 12.5px 'Instrument Sans',sans-serif; cursor:pointer; padding:0 10px">Kopioi koodi</button>
+                            </div>
+                            <pre style="margin:0; padding:11px 12px; font:400 12.5px 'JetBrains Mono',monospace; line-height:1.6; white-space:pre-wrap; overflow-wrap:anywhere">{{ it.code }}</pre>
+                          </div>
+                        </sc-if>
+                        <sc-if value="{{ it.isTool }}" hint-placeholder-val="{{ false }}">
+                          <div style="background:{{ it.cardBg }}; border:1px solid {{ it.cardLine }}; border-radius:10px; overflow:hidden">
+                            <button style="width:100%; min-height:44px; box-sizing:border-box; display:flex; align-items:center; gap:9px; padding:8px 12px; background:transparent; border:0; color:var(--ink); cursor:pointer; text-align:left" onClick="{{ it.onToggle }}">
+                              <span style="font:400 11px 'JetBrains Mono',monospace; color:var(--muted); width:10px">{{ it.mark }}</span>
+                              <span style="font:500 13.5px 'Instrument Sans',sans-serif; white-space:nowrap">{{ it.label }}</span>
+                              <span style="font:400 12px 'JetBrains Mono',monospace; color:var(--ink-2); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ it.target }}</span>
+                              <span style="display:inline-flex; align-items:center; gap:5px; font:500 12.5px 'Instrument Sans',sans-serif; color:{{ it.stColor }}; white-space:nowrap"><span style="width:6px; height:6px; border-radius:99px; background:{{ it.stColor }}; animation:{{ it.anim }}"></span>{{ it.stText }}</span>
+                            </button>
+                            <sc-if value="{{ it.open }}" hint-placeholder-val="{{ false }}">
+                              <div style="border-top:1px solid var(--line-soft); font:400 12px 'JetBrains Mono',monospace; color:var(--ink-2)">
+                                <sc-for list="{{ it.rows }}" as="row" hint-placeholder-count="3">
+                                  <div style="display:flex; gap:8px; padding:6px 12px; align-items:center"><span style="color:var(--ok); width:10px">✓</span><span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ row }}</span></div>
+                                </sc-for>
+                                <sc-if value="{{ it.output }}" hint-placeholder-val="{{ false }}">
+                                  <pre style="margin:0; padding:10px 12px; font:400 12px 'JetBrains Mono',monospace; line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere">{{ it.output }}</pre>
+                                </sc-if>
+                              </div>
+                            </sc-if>
+                          </div>
+                        </sc-if>
+                        <sc-if value="{{ it.isUnknown }}" hint-placeholder-val="{{ false }}">
+                          <div style="background:var(--surface); border:1px dashed var(--line); border-radius:10px; padding:10px 12px; display:flex; flex-direction:column; gap:4px">
+                            <span style="font:500 12px 'Instrument Sans',sans-serif; color:var(--muted)">? Sisältötyyppiä ei tunneta</span>
+                            <span style="font-size:14.5px; color:var(--ink-2)">Valitse seuraava vaihe</span>
+                          </div>
+                        </sc-if>
+                        <sc-if value="{{ it.isDone }}" hint-placeholder-val="{{ false }}">
+                          <div style="font-size:12.5px; color:var(--ok)">✓ Vuoro valmis {{ it.time }} · odottaa viestiäsi</div>
+                        </sc-if>
+                        <sc-if value="{{ it.isLive }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex; align-items:center; gap:9px; font-size:14px; color:var(--ink-2)"><span style="width:8px; height:8px; border-radius:99px; background:var(--acc); animation:p 2.4s ease-in-out infinite"></span>Käyttää työkalua bash · 5 s</div>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+                <sc-if value="{{ ph.showJump }}" hint-placeholder-val="{{ false }}">
+                  <button style="position:absolute; left:50%; bottom:12px; transform:translateX(-50%); min-height:40px; display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:999px; padding:0 16px; font:500 13px 'Instrument Sans',sans-serif; cursor:pointer; box-shadow:0 2px 10px rgba(16,24,40,.14)" onClick="{{ ph.jumpDown }}">Viimeisimpään ↓</button>
+                </sc-if>
+              </div>
+
+              <div style="border-top:1px solid var(--line); background:var(--surface); flex-shrink:0; padding:10px 12px 26px; display:flex; flex-direction:column; gap:8px">
+                <sc-if value="{{ ph.readonly }}" hint-placeholder-val="{{ false }}">
+                  <div style="background:var(--surface-2); border:1px dashed var(--line); border-radius:12px; padding:12px 14px; display:flex; flex-direction:column; gap:10px">
+                    <div style="display:flex; flex-direction:column; gap:3px">
+                      <span style="font:500 14px 'Instrument Sans',sans-serif">Vain luku — aloitettu terminaalissa</span>
+                      <span style="font-size:13px; line-height:1.5; color:var(--muted)">Jatka tätä keskustelua terminaalissa.</span>
+                    </div>
+                    <button style="min-height:44px; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:10px; font:500 14px 'Instrument Sans',sans-serif; cursor:pointer" onClick="{{ ph.openDrawer }}">Uusi keskustelu</button>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ ph.hasQueue }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex; flex-direction:column; gap:5px">
+                    <div style="display:flex; align-items:center; gap:10px; font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--muted)"><span>Odottaa · 2</span><button style="border:0; background:transparent; color:var(--muted); font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.07em; text-transform:uppercase; text-decoration:underline; padding:4px 0; cursor:pointer">Tyhjennä jono</button></div>
+                    <div style="background:var(--acc-soft); border:1px solid var(--acc-line); border-radius:8px; padding:7px 10px; font-size:12.5px; color:var(--acc-ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap"><strong style="font-weight:500">Ohjaus</strong> · Älä muuta footerin rakennetta.</div>
+                    <div style="background:var(--acc-soft); border:1px solid var(--acc-line); border-radius:8px; padding:7px 10px; font-size:12.5px; color:var(--acc-ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap"><strong style="font-weight:500">Valmistumisen jälkeen</strong> · Aja lopuksi Lighthouse.</div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ ph.canCompose }}" hint-placeholder-val="{{ true }}">
+                  <textarea aria-label="Viesti" rows="2" placeholder="{{ ph.placeholder }}" style="width:100%; box-sizing:border-box; resize:none; border:1px solid var(--line); border-radius:12px; padding:10px 12px; font:400 16px 'Instrument Sans',sans-serif; line-height:1.45; background:var(--surface-2); color:var(--ink)"></textarea>
+                  <sc-if value="{{ ph.working }}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size:12px; line-height:1.45; color:var(--muted)">Ohjaa = kesken työn ensimmäisessä välissä · Lähetä = jonoon valmistumisen jälkeen</span>
+                    <div style="display:flex; gap:8px">
+                      <button style="min-height:44px; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:10px; padding:0 14px; font:500 14px 'Instrument Sans',sans-serif; cursor:pointer">Keskeytä</button>
+                      <button style="margin-left:auto; min-height:44px; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:10px; padding:0 16px; font:500 14px 'Instrument Sans',sans-serif; cursor:pointer">Ohjaa</button>
+                      <button style="min-height:44px; background:var(--acc); color:var(--on-acc); border:0; border-radius:10px; padding:0 18px; font:500 14px 'Instrument Sans',sans-serif; cursor:pointer">Lähetä</button>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ ph.idle }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex; align-items:center; gap:10px">
+                      <span style="flex:1; font-size:12px; line-height:1.45; color:{{ ph.hintColor }}">{{ ph.hint }}</span>
+                      <button disabled="{{ ph.offline }}" style="min-height:44px; background:{{ ph.sendBg }}; color:{{ ph.sendFg }}; border:0; border-radius:10px; padding:0 20px; font:500 14px 'Instrument Sans',sans-serif; cursor:pointer">Lähetä</button>
+                    </div>
+                  </sc-if>
+                </sc-if>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ ph.drawer }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute; inset:0; display:flex; z-index:10">
+                <div role="dialog" aria-label="Työtilat ja keskustelut" style="width:316px; height:100%; box-sizing:border-box; background:var(--rail); border-right:1px solid var(--line); display:flex; flex-direction:column; padding-top:28px; position:relative">
+                  <div style="display:flex; align-items:center; gap:8px; padding:8px 8px 8px 14px">
+                    <span style="font:600 14px 'Instrument Sans',sans-serif">127.0.0.1:59553</span>
+                    <span style="display:inline-flex; align-items:center; gap:5px; font-size:11.5px; color:var(--muted)"><span style="width:8px; height:8px; border-radius:99px; background:var(--ok)"></span>Yhdistetty</span>
+                    <button aria-label="Sulje valikko" style="margin-left:auto; width:44px; height:44px; border:0; background:transparent; color:var(--ink-2); border-radius:10px; font-size:16px; cursor:pointer" onClick="{{ ph.closeDrawer }}">✕</button>
+                  </div>
+                  <div style="padding:0 10px 10px; display:flex; flex-direction:column; gap:8px; border-bottom:1px solid var(--line-soft)">
+                    <button style="display:flex; align-items:center; gap:10px; min-height:44px; box-sizing:border-box; text-align:left; border:1px solid {{ ph.homeLine }}; background:{{ ph.homeBg }}; color:var(--ink); border-radius:10px; padding:0 12px; cursor:pointer" onClick="{{ ph.goHome }}">
+                      <span style="color:var(--muted)">⌂</span><span style="flex:1; font:500 14px 'Instrument Sans',sans-serif">Etusivu</span>
+                      <span style="display:inline-flex; align-items:center; gap:5px; font-size:11.5px; color:var(--acc-ink)"><span style="width:6px; height:6px; border-radius:99px; background:var(--acc)"></span>1 käynnissä</span>
+                    </button>
+                  </div>
+                  <div style="flex:1; min-height:0; overflow:auto; padding:8px 8px 14px; display:flex; flex-direction:column; gap:6px">
+                    <sc-for list="{{ groups }}" as="g" hint-placeholder-count="6">
+                      <div style="display:flex; flex-direction:column; gap:3px">
+                        <div style="display:flex; align-items:center">
+                          <span style="flex:1; display:flex; align-items:center; gap:8px; min-height:40px; padding:0 6px">
+                            <span style="font-size:11px; color:var(--muted); width:11px">{{ g.mark }}</span>
+                            <span style="font:600 14px 'Instrument Sans',sans-serif">{{ g.name }}</span>
+                          </span>
+                          <button aria-label="Uusi keskustelu tähän työtilaan" style="width:44px; height:40px; border:0; background:transparent; color:var(--faint); border-radius:8px; font-size:16px; cursor:pointer">+</button>
+                        </div>
+                        <sc-for list="{{ g.convs }}" as="c" hint-placeholder-count="1">
+                          <button style="display:flex; align-items:center; gap:10px; min-height:44px; box-sizing:border-box; margin-left:14px; text-align:left; border:1px solid transparent; background:transparent; border-radius:10px; padding:0 10px; cursor:pointer; color:var(--ink)" onClick="{{ ph.goValmis }}">
+                            <span style="width:8px; height:8px; box-sizing:border-box; border-radius:99px; background:{{ c.dot }}; border:{{ c.ring }}; animation:{{ c.anim }}; flex-shrink:0"></span>
+                            <span style="flex:1; min-width:0; font:400 13.5px 'Instrument Sans',sans-serif; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ c.title }}</span>
+                            <span style="font-size:11px; color:{{ c.metaColor }}; flex-shrink:0">{{ c.meta }}</span>
+                          </button>
+                        </sc-for>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div style="border-top:1px solid var(--line-soft); padding:8px 10px 26px">
+                    <button style="width:100%; display:flex; align-items:center; gap:10px; min-height:44px; border:0; background:transparent; color:var(--ink); border-radius:10px; padding:0 8px; cursor:pointer; text-align:left">
+                      <span style="width:28px; height:28px; border-radius:99px; background:var(--acc-soft); border:1px solid var(--acc-line); color:var(--acc-ink); display:inline-flex; align-items:center; justify-content:center; font:600 11px 'Instrument Sans',sans-serif">AM</span>
+                      <span style="flex:1; font:500 14px 'Instrument Sans',sans-serif">Alice</span><span style="font-size:11px; color:var(--muted)">▾</span>
+                    </button>
+                  </div>
+                </div>
+                <button aria-label="Sulje valikko" style="flex:1; border:0; background:var(--scrim); cursor:pointer" onClick="{{ ph.closeDrawer }}"></button>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light' | 'dark'&quot;}}">
+const T_JSON = [
+  { k: "note", text: "Malli vaihtui · gpt-5-codex" },
+  { k: "user", time: "13.40", text: "Lisää komentoriville --json-lippu, joka tulostaa auringonnousun ja -laskun." },
+  { k: "agent", time: "13.40" },
+  { k: "text", text: "Katson ensin koodia." },
+  { k: "tool", id: "r1", label: "Luettu", target: "cmd/aurinko/main.go", st: "ok", stText: "✓" },
+  { k: "text", text: "Lisäsin --json-lipun. Tuloste on muotoa:" },
+  { k: "code", lang: "json", code: '{"nousu": "07:12", "lasku": "18:41"}' },
+  { k: "user", time: "13.52", text: "Entä aikavyöhyke?" },
+  { k: "agent", time: "13.52" },
+  { k: "tool", id: "g1", label: "Työkalut", target: "3 kutsua", st: "ok", stText: "✓ 3/3", rows: ["Luettu cmd/aurinko/main.go", "Luettu internal/sun/tz.go", "Muokattu internal/sun/tz.go"] },
+  { k: "text", text: "Käytän nyt järjestelmän aikavyöhykettä, ja --tz ohittaa sen. Lisäsin testin Helsingin kesäajan vaihtumiselle." },
+  { k: "unknown" },
+  { k: "done", time: "13.53" },
+];
+const T = {
+  valmis: T_JSON,
+  katkos: T_JSON.concat([{ k: "user", time: "14.03", text: "Lisää --tz-lipulle virheilmoitus.", uncertain: true }]),
+  tyo: [
+    { k: "user", time: "14.02", text: "Tee etusivusta mobiiliystävällinen." },
+    { k: "agent", time: "14.02" },
+    { k: "text", text: "Katson ensin, mitä työtilassa on, ja etsin kohdat joissa leveys on kiinteä." },
+    { k: "tool", id: "g1", label: "Luetaan", target: "9 tiedostoa", st: "ok", stText: "✓ 9/9", rows: ["index.html", "css/site.css", "css/grid.css"] },
+    { k: "text", text: "Pääasettelu käyttää kiinteää 960 px leveyttä. Vaihdan sen joustavaksi ja tarkistan buildin." },
+    { k: "tool", id: "s1", label: "Komento", target: "$ npm run build", st: "run", stText: "ajossa" },
+    { k: "live" },
+  ],
+  luku: [
+    { k: "user", time: "eilen", text: "Miksi CI epäonnistuu macOS:llä?" },
+    { k: "agent", time: "16.10" },
+    { k: "tool", id: "s1", label: "Komento", target: "$ go test ./...", st: "err", stText: "✕ exit 1", output: "--- FAIL: TestSunrise\n  time zone \"Europe/Helsinki\" not found\nFAIL" },
+    { k: "text", text: "macOS-ajossa aikavyöhyketietokantaa ei löydy. Lisää testiin tzdata-paketin tuonti tai aseta ZONEINFO." },
+  ],
+};
+const TITLES = {
+  valmis: ["Lisää komentoriville --json-lippu, joka tulostaa auringonnousun ja -laskun.", "aurinkokello"],
+  katkos: ["Lisää komentoriville --json-lippu, joka tulostaa auringonnousun ja -laskun.", "aurinkokello"],
+  tyo: ["Tee etusivusta mobiiliystävällinen.", "kotisivu"],
+  luku: ["Miksi CI epäonnistuu macOS:llä?", "aurinkokello"],
+};
+const PHONES = [
+  { label: "1 · Etusivu", mode: "paluu" },
+  { label: "2 · Valikko auki", mode: "paluu", drawer: true },
+  { label: "3 · Valmis vastaus", mode: "valmis" },
+  { label: "4 · Työskentelee + jono", mode: "tyo", open: { s1: true } },
+  { label: "5 · Vain luku", mode: "luku", open: { s1: true } },
+  { label: "6 · Katkos + epävarma lähetys", mode: "katkos" },
+];
+const GROUPS = [
+  { name: "aurinkokello", convs: [["Miksi CI epäonnistuu macOS:llä?", "luku"], ["Lisää komentoriville --json-lippu…", "valmis"]] },
+  { name: "first", convs: [] },
+  { name: "kotisivu", convs: [["Tee etusivusta mobiiliystävällinen.", "tyo"]] },
+  { name: "muistiinpanot", convs: [] },
+  { name: "reseptikirja", convs: [["Kirjoita README, joka kertoo…", "luku"]] },
+  { name: "tilastoharjoitus", convs: [] },
+];
+
+class Component extends DCLogic {
+  state = { theme: null, ph: PHONES.map((p) => ({ mode: p.mode, drawer: !!p.drawer, open: Object.assign({}, p.open || {}) })) };
+  refs_ = PHONES.map(() => React.createRef());
+  bottom = PHONES.map(() => true);
+
+  componentDidMount() {
+    const pin = () => this.refs_.forEach((r) => { if (r.current) r.current.scrollTop = r.current.scrollHeight; });
+    requestAnimationFrame(() => requestAnimationFrame(pin));
+    setTimeout(pin, 300);
+  }
+  upd(i, patch, pin) {
+    this.setState((s) => ({ ph: s.ph.map((p, n) => (n === i ? Object.assign({}, p, patch) : p)) }), () => {
+      if (!pin) return;
+      this.bottom[i] = true;
+      requestAnimationFrame(() => requestAnimationFrame(() => { const el = this.refs_[i].current; if (el) el.scrollTop = el.scrollHeight; this.forceUpdate(); }));
+    });
+  }
+
+  renderVals() {
+    const st = this.state;
+    const theme = st.theme || this.props.theme || "light";
+    const tone = { ok: "var(--ok)", err: "var(--err)", run: "var(--acc)" };
+    const phones = st.ph.map((p, i) => {
+      const mode = p.mode;
+      const conv = mode !== "paluu";
+      const items = (T[mode] || []).map((it) => {
+        const open = !!p.open[it.id];
+        const expandable = !!(it.rows || it.output);
+        return {
+          text: it.text, time: it.time, lang: it.lang, code: it.code, label: it.label, target: it.target, stText: it.stText,
+          stColor: tone[it.st] || "var(--muted)", anim: it.st === "run" ? "p 2.4s ease-in-out infinite" : "none",
+          cardBg: it.st === "err" ? "var(--err-soft)" : "var(--surface)", cardLine: it.st === "err" ? "var(--err-line)" : "var(--line)",
+          mark: expandable ? (open ? "▾" : "▸") : " ", open: open && expandable, rows: it.rows || [], output: it.output || "",
+          uncertain: !!it.uncertain, bubbleStyle: it.uncertain ? "dashed" : "solid", bubbleLine: it.uncertain ? "var(--faint)" : "var(--line)",
+          isUser: it.k === "user", isAgent: it.k === "agent", isText: it.k === "text", isNote: it.k === "note", isCode: it.k === "code",
+          isTool: it.k === "tool", isUnknown: it.k === "unknown", isDone: it.k === "done", isLive: it.k === "live",
+          onToggle: () => this.upd(i, { open: Object.assign({}, p.open, { [it.id]: !p.open[it.id] }) }),
+        };
+      });
+      const offline = mode === "katkos";
+      const pill = mode === "tyo" ? ["Työssä", "var(--acc-soft)", "var(--acc-line)", "var(--acc-ink)", "var(--acc)", "solid", "p 2.4s ease-in-out infinite"]
+        : mode === "luku" ? ["Vain luku", "transparent", "var(--line)", "var(--muted)", "transparent", "dashed", "none"] : null;
+      return {
+        label: PHONES[i].label, offline, topPad: offline ? "4px 4px 4px 4px" : "32px 4px 4px 4px",
+        title: conv ? TITLES[mode][0] : "Omega Habitat", ws: conv ? TITLES[mode][1] : "", staleText: offline ? " · tiedot klo 14.03" : "",
+        pill: pill ? pill[0] : "", pillBg: pill ? pill[1] : "", pillLine: pill ? pill[2] : "", pillColor: pill ? pill[3] : "", pillDot: pill ? pill[4] : "", pillStyle: pill ? pill[5] : "solid", pillAnim: pill ? pill[6] : "none",
+        isHome: !conv, isConv: conv, items,
+        readonly: mode === "luku", canCompose: mode !== "luku", working: mode === "tyo", idle: mode !== "tyo", hasQueue: mode === "tyo",
+        placeholder: mode === "tyo" ? "Ohje tai seuraava viesti" : "Viesti Pi:lle",
+        hint: offline ? "Lähettäminen odottaa yhteyttä." : "Enter lähettää", hintColor: offline ? "var(--err)" : "var(--muted)",
+        sendBg: offline ? "var(--line)" : "var(--acc)", sendFg: offline ? "var(--muted)" : "var(--on-acc)",
+        drawer: p.drawer, openDrawer: () => this.upd(i, { drawer: true }), closeDrawer: () => this.upd(i, { drawer: false }),
+        homeBg: mode === "paluu" ? "var(--surface)" : "transparent", homeLine: mode === "paluu" ? "var(--acc-line)" : "transparent",
+        goHome: () => this.upd(i, { mode: "paluu", drawer: false }),
+        goTyo: () => this.upd(i, { mode: "tyo", drawer: false, open: { s1: true } }, true),
+        goValmis: () => this.upd(i, { mode: "valmis", drawer: false }, true),
+        scrollRef: this.refs_[i],
+        onScroll: (e) => { const el = e.target; const b = el.scrollHeight - el.scrollTop - el.clientHeight < 40; if (b !== this.bottom[i]) { this.bottom[i] = b; this.forceUpdate(); } },
+        showJump: conv && !this.bottom[i],
+        jumpDown: () => { const el = this.refs_[i].current; if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" }); },
+      };
+    });
+    return {
+      theme,
+      themeLabel: theme === "dark" ? "Vaalea teema" : "Tumma teema",
+      toggleTheme: () => this.setState({ theme: theme === "dark" ? "light" : "dark" }),
+      phones,
+      recent: [
+        ["Lisää komentoriville --json-lippu, joka tulostaa auringonnousun ja -laskun.", "aurinkokello", "var(--muted)", "0", "Jatkettavissa", "var(--ok)"],
+        ["Miksi CI epäonnistuu macOS:llä?", "aurinkokello", "transparent", "1.5px solid var(--faint)", "Vain luku", "var(--muted)"],
+        ["Kirjoita README, joka kertoo miten sovellus käynnistetään.", "reseptikirja", "transparent", "1.5px solid var(--faint)", "Vain luku", "var(--muted)"],
+      ].map((r, n) => ({ title: r[0], ws: r[1], dot: r[2], ring: r[3], state: r[4], stateColor: r[5], rule: n ? "1px solid var(--line-soft)" : "0" })),
+      groups: GROUPS.map((g) => ({
+        name: g.name, mark: g.convs.length ? "▾" : "▸",
+        convs: g.convs.map(([t, k]) => ({
+          title: t, meta: k === "tyo" ? "työssä" : k === "luku" ? "vain luku" : "13.53",
+          dot: k === "tyo" ? "var(--acc)" : k === "luku" ? "transparent" : "var(--muted)", ring: k === "luku" ? "1.5px solid var(--faint)" : "0",
+          anim: k === "tyo" ? "p 2.4s ease-in-out infinite" : "none", metaColor: k === "tyo" ? "var(--acc-ink)" : "var(--faint)",
+        })),
+      })),
+    };
+  }
+}
+</script>
+</body>
+</html>

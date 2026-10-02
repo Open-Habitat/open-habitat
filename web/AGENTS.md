@@ -23,19 +23,19 @@ Pi history and tool output can contain anything. `src/app/snapshot.ts` and
 `src/app/history.ts` validate responses against the schemas in `contracts/v1/`
 before Redux sees them, read the body under a size cap even when Content-Length
 is missing or wrong, and fail with generic messages so that response text never
-reaches the UI or the console. The store retains the last verified snapshot only when the session and Pi gate
-have been positively rechecked with the same session binding and the snapshot
-transport then fails (network, timeout, 500/503/504). The gateway forwards daemon replies without parsing their shape. The
-browser checks snapshot and Pi-status shape and clears malformed responses;
-the daemon checks its own binding before producing a snapshot. If Pi status itself cannot be reached (503), the unchanged browser
-session binding is checked before keeping old facts. It marks that snapshot stale,
-keeps reading available and disables writes until a fresh snapshot arrives.
-Failed authority checks, 401/403, malformed responses, session expiry, logout
-and identity or session changes clear the old view instead. The store resets
-filter state when the identity in a new snapshot differs from the previous one. A tab can outlive a session: if one
-person's session expires and another signs in on the same tab, nothing from the
-first identity may remain visible. Showing one identity's facts under another
-is a product defect, not a UI glitch.
+reaches the UI or the console. The gateway forwards daemon replies without
+parsing their shape. The browser validates
+snapshot, status and Pi-status responses and renders host content only as text
+or sanitized Markdown. Background refreshes leave the existing view mounted;
+a failed transport refresh shows a connection banner and never turns an old
+snapshot into proof of a new identity. A 401 opens login and a snapshot with a
+new `web_identity_id` resets the previous person's state. CSRF on the actual
+write request protects writes; a preflight session read would not prove that
+the session will remain unchanged through the write. The store resets filter
+state on a new identity. A background tab can continue showing its last known
+snapshot until the next host event or refresh; a new identity must never inherit
+that snapshot or the previous person's draft. A stale response from the old
+identity must not overwrite the new view.
 
 Three ways to run the client prove different things, and the difference matters
 when reporting evidence. `npm run dev` serves the source with Vite.
@@ -49,7 +49,7 @@ directory, a fake OAuth provider, and a `/fixture/` prefix through which tests
 switch scenarios and history modes and expire sessions. That switch is
 process-wide, which is why Playwright runs with one worker. The host is
 test-only code, never imported by `cmd/native-agent-host`. Both the default browser suite and lab mode run the real daemon conversation
-controller, its lease and native-history path against a fake Pi child. This
+controller and native-history path against a fake Pi child. This
 proves routing and the browser/host contract but not UID isolation; the two-UID systemd VM
 scenarios in `scripts/vm-test.sh` prove that. A browser test passing here is
 host-backed synthetic evidence and should be described as such.
