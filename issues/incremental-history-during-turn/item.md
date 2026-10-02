@@ -3,10 +3,13 @@ created: 2026-10-02
 updated: 2026-10-02
 type: improvement
 reporter: claude
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-02/history-reads
+lane: client-history
+lane_seq: 20
+blocked_by: ['@design-snappy-conversation-switching']
 ---
 
 # Read only new history entries during a running turn
