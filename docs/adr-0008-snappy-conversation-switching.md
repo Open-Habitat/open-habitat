@@ -64,6 +64,4 @@ The [measurements](../issues/design-snappy-conversation-switching/measurements.m
 identify the inspected revision and the limits of the lab evidence. The
 [simulation](../issues/design-snappy-conversation-switching/simulation-output.txt)
 estimates event traffic and memory under stated assumptions; CPU and heap
-factors are assumptions, not profiler results. The
-[original panel](../issues/design-snappy-conversation-switching/panel.md)
-records the alternatives considered.
+factors are assumptions, not profiler results.

@@ -52,7 +52,7 @@ current scope.
 
 ## Evidence and implementation
 
-The [result](result.md) summarizes the decision and links the original panel,
+The [result](result.md) summarizes the decision and links the
 measurements and simulation. Those establish the repeated history requests
 and model possible resource use; they do not demonstrate the new behavior.
 
@@ -63,7 +63,7 @@ browser state when the session ends.
 
 ## Acceptance Criteria
 
-- [x] Alternatives, simulation assumptions and the limits of measured evidence are recorded in the issue attachments.
+- [x] The decision and its reasons are recorded in ADR 0008; simulation assumptions and measurement limits are recorded in the issue attachments.
 - [x] Jari has agreed to the revised direction recorded in ADR 0008.
 - [x] Follow-up issues describe the implementation outcomes and responsibilities.
 

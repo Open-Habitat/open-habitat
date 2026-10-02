@@ -30,10 +30,8 @@ tuottaa noin 2,6 KiB/s ja raskas kahdeksan agentin tapaus noin 117 KiB/s
 välilehteä kohti. CPU- ja muistilaajennuskertoimet ovat oletuksia.
 
 [Mittaukset](measurements.md) kertovat lähtörevision ja rajaukset.
-[Paneeli](panel.md), [alkuperäiset vastaukset](panel-raw.txt),
-[simulaatio](simulate.py) ja [tuloste](simulation-output.txt) säilyvät
-valmisteluaineistona. Niiden alkuperäiset suositukset eivät korvaa hyväksyttyä
-ADR:ää.
+[Simulaatio](simulate.py) ja [tuloste](simulation-output.txt) kuvaavat
+resurssiarvioiden oletukset ja tulokset.
 
 ## Jäljellä oleva toteutus
 

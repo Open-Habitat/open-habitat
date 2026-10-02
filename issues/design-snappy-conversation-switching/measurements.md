@@ -8,4 +8,4 @@ Size-only read of own `~/.pi/agent/sessions` (private contents never copied): 31
 
 Current `history_linux.go` reads the selected file (bounded 32 MiB), lists entries from the **oldest** by `after`, page limit max 200 (browser 25); it has no tail-first or backward cursor. `status.native_revision` is a size/mtime hint, while history `native_revision` is a hash of the file; they are **not comparable**. A new tail-first/backward paging contract is part of the recommendation. Both baseline lab journeys are fast enough to be tolerable cold opens, not to satisfy zero-network recent switching.
 
-Run simulation: `python3 issues/design-snappy-conversation-switching/simulate.py > issues/design-snappy-conversation-switching/simulation-output.txt`. Results are estimates, not a benchmark or a promise of 16 ms on long lists. The panel's unverified claims of 20–60 ms localhost and 5–25 ms IndexedDB are not used as measured inputs.
+Run simulation: `python3 issues/design-snappy-conversation-switching/simulate.py > issues/design-snappy-conversation-switching/simulation-output.txt`. Results are estimates, not a benchmark or a promise of 16 ms on long lists.
