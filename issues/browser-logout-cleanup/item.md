@@ -3,13 +3,22 @@ created: 2026-10-02
 updated: 2026-10-02
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@one-browser-event-stream', '@recent-conversation-windows']
 lane: client-history
 lane_seq: 40
 collision: [web/src/app/]
 blocked_by: ['@one-browser-event-stream']
+closed: 2026-10-02
+closed_by: agent
+commits:
+- hash: 82ae2bbbd7a14c2cc5f9a46df383d8f9b64097c1
+  summary: 'test(web): seed stale draft before expired page reload'
+- hash: 271666cdbedc9c048d1394a9e449892d5c157c67
+  summary: 'fix(web): clear expired tab drafts after a reload without identity'
+- hash: a41df85d2adce902353a04bdbac9ace96ec8e40a
+  summary: 'fix(web): dispose person-scoped browser state on session loss'
 ---
 
 # Clean up browser streams and state on logout
@@ -24,6 +33,6 @@ Logout stops listeners and clears this person's browser data, including retained
 
 ## Acceptance Criteria
 
-- [ ] Logout closes stream/reconnect timers, cancels reads and blocks late writes to cleared local state.
-- [ ] Identity replacement and expiry clear the old store, UI, drafts and pending reads; later login starts normally.
-- [ ] Tests cover logout during a turn and a pending page, same-/different-person relogin, and server logout failure. Validate per TESTING.md.
+- [x] Logout closes stream/reconnect timers, cancels reads and blocks late writes to cleared local state.
+- [x] Identity replacement and expiry clear the old store, UI, drafts and pending reads; later login starts normally.
+- [x] Tests cover logout during a turn and a pending page, same-/different-person relogin, and server logout failure. Validate per TESTING.md.
