@@ -309,12 +309,18 @@ test("@resilience missing and partial observations can be refreshed without a re
         .getByRole("button", { name: /Yritä uudelleen|Päivitä tiedot/ }),
     ).toBeVisible();
     await page.request.get("/fixture/scenario?value=ready");
-    await page
+    const recovered = page
+      .getByRole("navigation")
+      .getByRole("link", { name: "ordinary-dir" });
+    const retry = page
       .getByRole("main")
-      .getByRole("button", { name: /Yritä uudelleen|Päivitä tiedot/ })
-      .click();
-    await expect(
-      page.getByRole("navigation").getByRole("link", { name: "ordinary-dir" }),
-    ).toBeVisible();
+      .getByRole("button", { name: /Yritä uudelleen|Päivitä tiedot/ });
+    if (await retry.isVisible()) {
+      // A queued journal refresh can restore the catalog during the click;
+      // disappearance is fine, but the final state must be recovered.
+      await retry.click({ timeout: 2500 }).catch(() => {});
+    }
+    await expect(retry).toHaveCount(0);
+    await expect(recovered).toBeVisible();
   }
 });
