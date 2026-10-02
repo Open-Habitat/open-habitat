@@ -138,10 +138,7 @@ export function BrowserConversation({
     };
   }, [finishedInBackground]);
   const controlled =
-    opened &&
-    !!current &&
-    !statusStale &&
-    current.workspace_id === workspace.workspace_id;
+    opened && !!current && current.workspace_id === workspace.workspace_id;
   const [questionOutcome, setQuestionOutcome] = useState<
     "uncertain" | "stale" | null
   >(null);
@@ -166,7 +163,7 @@ export function BrowserConversation({
     receipt,
     sendObservation,
     problem,
-    controlled,
+    controlled: controlled && !statusStale,
     alive,
     generation,
     submittedKey,
@@ -201,6 +198,7 @@ export function BrowserConversation({
     controlled &&
     !busy &&
     !ambiguous &&
+    !statusStale &&
     !continuation &&
     (current.state === "idle" ||
       current.state === "rejected" ||
@@ -359,7 +357,7 @@ export function BrowserConversation({
                       },
                     ]
                   : []),
-                ...(current?.pending_question
+                ...(!statusStale && current?.pending_question
                   ? [
                       {
                         id: `question:${current.pending_question.request_id}`,
@@ -422,7 +420,7 @@ export function BrowserConversation({
                 setUnseen(0);
               }}
             />
-            {!current?.pending_question && questionOutcome ? (
+            {(!current?.pending_question || statusStale) && questionOutcome ? (
               <p className="ah-native-question" role="status">
                 {questionOutcome === "stale"
                   ? "? Pyyntö voi olla vanhentunut tai toimitus epävarma. Tarkista tila."
@@ -515,7 +513,7 @@ export function BrowserConversation({
               }}
             />
           ) : null}
-          {confirmStop && current?.state === "accepted" ? (
+          {confirmStop && !statusStale && current?.state === "accepted" ? (
             <fieldset ref={stopConfirmation} aria-label="Vahvista keskeytys">
               <p>
                 Keskeytetäänkö Pi:n vuoro? Jo käynnistyneiden työkalujen
@@ -551,6 +549,7 @@ export function BrowserConversation({
               clearAvailability={
                 !busy &&
                 !ambiguous &&
+                !statusStale &&
                 current?.queue &&
                 current.state !== "pending" &&
                 current.state !== "uncertain" &&
@@ -562,7 +561,9 @@ export function BrowserConversation({
             />
           ) : null}
           <div className="ah-conversation-notices">{notices}</div>
-          {controlled && (continuation || current?.state === "uncertain") ? (
+          {controlled &&
+          !statusStale &&
+          (continuation || current?.state === "uncertain") ? (
             <EndedConversationControl
               state={
                 continuation ??
@@ -592,8 +593,9 @@ export function BrowserConversation({
                   ? { state: "enabled" }
                   : {
                       state: "unknown",
-                      reason:
-                        "Odota vahvistettua joutotilaa; epävarmaa viestiä ei lähetetä uudelleen.",
+                      reason: statusStale
+                        ? "Tila on vanhentunut. Tarkista keskustelun tila ennen lähettämistä."
+                        : "Odota vahvistettua joutotilaa; epävarmaa viestiä ei lähetetä uudelleen.",
                     }
               }
               onSendNow={() => void submit()}
@@ -624,7 +626,7 @@ export function BrowserConversation({
                 }
               }}
               onInterrupt={
-                current?.state === "accepted"
+                current?.state === "accepted" && !statusStale
                   ? () => setConfirmStop(true)
                   : undefined
               }

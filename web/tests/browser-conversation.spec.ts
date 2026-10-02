@@ -790,14 +790,30 @@ test("@browser-conversation warm controlled return reads neither status nor hist
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toBeVisible();
   const requests: string[] = [];
+  const pending = new Set<import("@playwright/test").Request>();
+  let lastRequest = Date.now();
   page.on("request", (request) => {
     const url = new URL(request.url());
     if (
       url.pathname.startsWith("/api/v1/") &&
       url.pathname !== "/api/v1/events"
-    )
+    ) {
+      pending.add(request);
       requests.push(url.pathname);
+      lastRequest = Date.now();
+    }
   });
+  const settled = (request: import("@playwright/test").Request) => {
+    if (pending.delete(request)) lastRequest = Date.now();
+  };
+  page.on("requestfinished", settled);
+  page.on("requestfailed", settled);
+  // Creation can publish catalog/status notifications. Let those reads finish
+  // before measuring route-caused requests; the SSE itself stays connected.
+  await expect
+    .poll(() => pending.size === 0 && Date.now() - lastRequest >= 300)
+    .toBe(true);
+  requests.length = 0;
   const start = await page.evaluate(() => performance.now());
   await page.goBack(); // workspace
   await page.goBack(); // first controlled window
