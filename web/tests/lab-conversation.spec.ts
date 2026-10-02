@@ -121,7 +121,15 @@ test("@lab browser renders provisional delta and tool from verified combined SSE
       constructor(url: string | URL) {
         super();
         this.url = String(url);
-        if (this.url.startsWith("/api/v1/events?"))
+      }
+      override addEventListener(
+        type: string,
+        listener: EventListenerOrEventListenerObject | null,
+        options?: boolean | AddEventListenerOptions,
+      ) {
+        super.addEventListener(type, listener, options);
+        // The hook is ready only after the consumer installs its listeners.
+        if (type === "unknown.native" && this.url.startsWith("/api/v1/events?"))
           Object.assign(window, { testStream: this });
       }
       close() {
