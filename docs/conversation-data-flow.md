@@ -72,14 +72,12 @@ väliaikainen sisältö näytetään epävarmana ja poistetaan seuraavan vuoron
 alkaessa. Historiasivun latauksen aikana saapuvat tapahtumat kerätään talteen
 ja sovitetaan sivuun sen saavuttua, jotta vastaus ei katoa tai näy kahdesti.
 
-Vanhempien sivujen kursorin pitää kestää uusien merkintöjen lisääminen tiedoston
-loppuun. Siksi se sidotaan raja-avaimeen ja sitä edeltävään sisältöön.
-Alkuosan muuttuminen vanhentaa kursorin. Historian koko tiedoston tiiviste
-muuttuu myös tavallisessa lisäyksessä; statuksen koko- ja aikaleimavihje on
-vielä eri tieto. Näitä ei voi käyttää keskenään samanarvoisina revisioina.
-
-Historiasivun mukana tarvitaan todiste sen liittymisestä pyydettyyn rajaan,
-esimerkiksi yhteinen rajamerkintä. Tarkat viestimuodot kuuluvat
+Vanhemman sivun kursori on raja-merkinnän `entry_key`. Daemon palauttaa
+pyydetyn sivun niin, että se sisältää myös rajamerkinnän, jolloin store näkee
+yhteisen kohdan ja liittää sivun. Pi lisää merkintöjä vain tiedoston loppuun,
+joten lisäys ei vanhenna kursoria. Jos raja-avainta ei enää löydy, selain
+lataa uusimman osan uudelleen eikä yritä liittää sivuja arvaamalla.
+Tarkat viestimuodot kuuluvat
 [sopimuksiin](../contracts/v1/AGENTS.md) ja
 [sivutuksen toteutusissueen](../issues/tail-first-history-paging/item.md).
 
@@ -98,9 +96,9 @@ keskustelustore näytettävästä sisällöstä.
 | Lyhyt yhteyskatko | Vanha teksti jää luettavaksi yhteystilan kanssa. Tapahtumien toisto jatkaa viimeisestä cursorista. |
 | Pitkä katko tai daemonin uudelleenkäynnistys | Selain hakee uuden snapshotin ja historian loppuosan. Se lukee rajatusti taaksepäin löytääkseen yhteisen kohdan muistissa olevaan historiaan. Jos kohtaa ei löydy, säilytetään uusi loppuosa; vanhempaa voi hakea selaamalla. |
 | Keskustelun väliaikainen sisältö katkeaa | `ring_truncated` käynnistää kyseisen keskustelun historian päivityksen. Ehjä yhteinen tapahtumakursori säilyy. |
-| Vanhempaan historiaan selaaminen | Lukija hakee edellisen sivun ja store liittää sen historiaan. Lukukohta säilyy. Jos tiedoston aiempi sisältö on muuttunut, lataus aloitetaan uusimmasta osasta. |
+| Vanhempaan historiaan selaaminen | Lukija hakee edellisen sivun ja store liittää sen historiaan. Lukukohta säilyy. Jos raja-avainta ei löydy, lataus aloitetaan uusimmasta osasta. |
 | Uloskirjautuminen tai henkilön vaihtuminen | [Uloskirjautumisen toiminto](../issues/browser-logout-cleanup/item.md) pysäyttää kuuntelijat, peruu pyynnöt ja tyhjentää käyttäjän selainrakenteet. Myöhäiset vastaukset eivät palauta vanhaa sisältöä. |
-| Toinen välilehti tai terminaali | Jokaisella välilehdellä on oma store ja yhteys. Daemonin ohjaaman Pi:n muutokset saapuvat tapahtumina. Terminaalista kirjoittava Pi ei julkaise niitä: selain tarkistaa tiedostohavainnot snapshotista harvakseltaan ja välilehteen palattaessa sekä päivittää muuttuneet keskustelut taustalla. |
+| Toinen välilehti tai terminaali | Jokaisella välilehdellä on oma store ja yhteys. Daemonin ohjaaman Pi:n muutokset saapuvat tapahtumina. Terminaalista kirjoittava Pi ei julkaise niitä, eikä tämä toteutus seuraa niitä: muutos näkyy, kun keskustelu ladataan uudelleen. Tarve ja ratkaisu (selaimen tarkistus tai daemonin tiedostovahti) pohditaan [omassa issuessaan](../issues/notice-terminal-pi-writes/item.md). |
 
 Daemonin tapahtumien toistoikkuna kasvatetaan 1024 tapahtumaan ja noin
 16 MiB:iin, ensin täyttyvän rajan mukaan. Sen ulkopuolelle jäävä kursori
