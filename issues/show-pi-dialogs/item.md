@@ -1,9 +1,9 @@
 ---
 created: 2026-10-01
-updated: 2026-10-01
+updated: 2026-10-02
 type: task
 reporter: jari
-status: open
+status: in-progress
 priority: high
 related: ['@answer-pi-dialogs']
 lane: design-v2
