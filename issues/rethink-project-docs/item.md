@@ -664,3 +664,7 @@ consistent-control-feedback käsitelty Jarin täsmennyksen mukaan: oireiden korj
 ### 2026-10-02T10:07:59Z · @codex
 
 account-profile-from-github käsitelty ja Jari hyväksyi rajauksen: tilin tunnistettavuus, GitHub-profiilitiedon kulku ja yhteinen tiliesitys. Aiempi etunimi/sähköposti-päätös ja onboarding-varamenettely säilyvät; profiilikuva tukee tunnistamista. Seuraava käsiteltävä issue on raw-thinking-history-blocks, sen jälkeen latest-control-obscured. Muutos koskee tehtävätekstiä ja päätöksen tallentamista.
+
+### 2026-10-02T10:11:24Z · @codex
+
+raw-thinking-history-blocks käsitelty Jarin kanssa. Salatun JSONin oireesta laajennettu keskustelulohkojen yhteisen tulkinnan ja löydettävän lohkokirjaston tehtäväksi: merkitys, käsittelijä ja samaan tuotantokomponenttiin perustuva visuaalinen katalogiesimerkki. Käyttäjälle tarkoitettu sisältö säilyy, teknisiä payloadeja ei näytetä viesteinä eikä salatun thinkingin pois jättämisestä tarvita varoitusta. Tuntemattoman sisällön esitys on hillitty ja historia/live noudattavat samaa periaatetta. docs/interfaces.md:n vanha kaiken tuntemattoman sisällön näyttövaatimus sovitettu päätökseen ja design-system-sivulle lisätty tavoiteviite nykykatalogin rinnalle. Seuraava käsiteltävä issue on latest-control-obscured. Tuotekoodia ei muutettu.

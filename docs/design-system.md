@@ -35,6 +35,13 @@ samoja tuotantomoduuleja happy- ja unhappy-state-kuvissa.
 
 Storyt näyttävät komponenttien näyttötilat synteettisillä tiedoilla; ne eivät simuloi sessiosidontaa, reititystä tai Pi:n kuittauksia.
 
+Keskustelulohkojen kirjastoa täydennetään niin, että kunkin lohkotyypin
+merkitys, käsittelijä ja visuaalinen esimerkki löytyvät helposti. Designerin
+näkemät esimerkit käyttävät sovelluksen tuotantokomponentteja. Tämä on
+[sovittu jatkotyö](../issues/raw-thinking-history-blocks/item.md): nykyinen
+katalogi on lähtökohta, mutta kaikkien lohkojen kattavuutta ja historian sekä
+reaaliaikaisen keskustelun yhtenäistä tulkintaa ei ole vielä toteutettu.
+
 ## Tuotantodesign v1
 
 - [Yhdistetty tuotantodesign](../design-system/production-v1.md) ratkaisee

@@ -433,12 +433,17 @@ kirjoittaja. Samaa keskustelua ei ohjata samanaikaisesti selaimesta,
 SSH/tmuxista tai toisesta itsenäisestä clientista. Terminaalihistoria säilyy
 vain luettavana.
 
-Kaikki agentilta saapuvat viestit näytetään käyttäjälle. Myös kysymys näytetään,
+Agentilta saapuva käyttäjälle tarkoitettu sisältö näytetään. Myös kysymys näytetään,
 vähintään tekstinä, vaikka sen dialogityypille ei olisi omaa käyttöliittymää.
 `pending_question` kertoo odottavasta kysymyksestä, kun tämä tieto saadaan
-Pi:ltä. Viestityypin tai sisältölohkon oman esitystavan puuttuessa sen
-sisältö näytetään turvallisena tekstinä; pelkkä ilmoitus tuntemattomasta
-lohkosta ei riitä.
+Pi:ltä. Viestityypin tai sisältölohkon oman esitystavan puuttuessa käyttäjälle
+tarkoitettu sisältö säilyy luettavana turvallisena tekstinä. Salatut payloadit
+ja tekninen metadata eivät kuulu keskusteluviesteihin; salatun thinking-lohkon
+pois jättämisestä ei tarvita varoitusta. Aidosti tuntematon sisältö esitetään
+hillitysti, ja sen tarkemmat tiedot voi avata tarvittaessa. Sama tulkinta koskee
+historiaa ja reaaliaikaista keskustelua. Tämä on sovittu tavoite;
+[lohkojen käsittelyn toteutus](../issues/raw-thinking-history-blocks/item.md)
+korjaa nykyisen raakaa JSONia näyttävän varamenettelyn.
 Terminaalin ohjauksen haltuunotto on nykyisen toteutustyön ulkopuolella.
 
 Vuoron keskeytys on Pi:n `abort`, ei lupaus koko prosessipuun päättymisestä.
