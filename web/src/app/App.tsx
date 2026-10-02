@@ -616,9 +616,10 @@ export function App() {
                   a.workspace_id === selected.workspace_id,
               )?.title.display
             }
-            onSessionCreated={(session) =>
-              setDaemonSessions((old) => [...old, session])
-            }
+            onSessionCreated={(session) => {
+              setDaemonSessions((old) => [...old, session]);
+              refresh(); // The new agent must be in the snapshot before its live turn is seeded.
+            }}
           />
         ) : null}
         {source !== "confirmed" ? (

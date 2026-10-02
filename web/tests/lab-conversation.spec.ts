@@ -144,14 +144,27 @@ test("@lab browser renders provisional delta and tool from verified combined SSE
     .getByRole("navigation")
     .getByRole("link", { name: "aurinkokello" })
     .click();
+  const refreshed = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/v1/snapshot" &&
+      response.status() === 200,
+  );
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const newSnapshot = await (await refreshed).json();
+  const agentId = new URL(page.url()).searchParams.get("conversation");
+  expect(
+    newSnapshot.agents.some(
+      (agent: { agent_id: string }) => agent.agent_id === agentId,
+    ),
+  ).toBe(true);
   await expect
     .poll(() =>
-      page.evaluate(() =>
-        Boolean((window as unknown as { testStream?: EventSource }).testStream),
+      page.evaluate(
+        () =>
+          (window as unknown as { testStream?: EventSource }).testStream?.url,
       ),
     )
-    .toBe(true);
+    .toContain(encodeURIComponent(newSnapshot.event_cursor));
   await page.evaluate(async () => {
     const source = (window as unknown as { testStream: EventSource })
       .testStream;
@@ -198,7 +211,7 @@ test("@lab browser renders provisional delta and tool from verified combined SSE
   ).toBeVisible();
 });
 
-test("@lab expired combined cursor resnapshots and reconnects without another send", async ({
+test("@lab expired combined cursor waits for a newer snapshot without another send", async ({
   page,
 }) => {
   await page.goto("/workspaces");
@@ -232,8 +245,11 @@ test("@lab expired combined cursor resnapshots and reconnects without another se
     else await route.continue();
   });
   await page.goto(conversationURL);
-  await expect.poll(() => streams).toBeGreaterThan(2);
+  await expect.poll(() => streams).toBe(2); // initial connection and its 409 probe
   await expect.poll(() => snapshots).toBeGreaterThan(1);
+  // This synthetic 409 does not advance the daemon cursor. Reopening from the
+  // same stale snapshot would replay a known-expired cursor forever.
+  expect(streams).toBe(2);
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toBeVisible();
@@ -301,7 +317,9 @@ test("@lab combined stream reconciles a forced gap without reposting", async ({
   await page.reload();
   await expect.poll(() => injected).toBe(true);
   await expect.poll(() => snapshotReads).toBeGreaterThan(1);
-  await expect.poll(() => streamReads).toBeGreaterThan(1);
+  // The injected gap is ahead of the native daemon. Until its snapshot moves
+  // past that cursor, the router must not reopen from the stale position.
+  expect(streamReads).toBe(1);
   await expect(page.getByText("This frame must not appear")).toHaveCount(0);
   await expect(
     page.getByText('Selvä. Kysyit: "hidas stream-tarkistus".', {
