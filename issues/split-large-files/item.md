@@ -1,14 +1,16 @@
 ---
 created: 2026-10-01
-updated: 2026-10-01
+updated: 2026-10-02
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 related: ['@architecture-built-on-caution']
 lane: caution-removal
 lane_seq: 70
 blocked_by: ['@browser-state-rewrite']
+closed: 2026-10-02
+closed_by: claude
 ---
 
 # Split the large files along review seams and document the check-once model
@@ -25,6 +27,10 @@ Step 7 of the [architecture review](../../docs/reviews/architecture-review-2026-
 - `internal/gateway/auth.go`: OAuth (start, callback) separate from sessions (`authenticated`, `authorizeWrite`, `current`, `logout`, revoke).
 - Then rewrite `docs/architecture.md` and `internal/AGENTS.md` to say which checks belong at login or startup, which remain per request, and why, and add the three review questions (what it protects, what it costs, what if removed) to the review guidance in `AGENTS-WORKFLOW.md`.
 
+## Acceptance Criteria
+
+- [x] The named responsibilities are separated without changing behavior or authority; final clean gate and focused regression tests pass (see result.md).
+
 ## Result to establish
 
 The files separate conversation loading, write actions, reading position,
@@ -39,3 +45,9 @@ to startup. Review guidance asks what a mechanism protects, what it costs and
 what removing it would change.
 
 Test selection and the final gate follow [TESTING.md](../../TESTING.md).
+
+## Resolution
+
+### 2026-10-02T00:08:45Z · @claude
+
+Separated the named responsibility seams without changing authority or behavior; focused tests, independent review and the final clean gate passed. Evidence in result.md.
