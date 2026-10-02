@@ -1,6 +1,6 @@
 ---
 created: 2026-10-01
-updated: 2026-10-01
+updated: 2026-10-02
 type: bug
 reporter: Jari
 status: open
@@ -18,3 +18,9 @@ _Source: chat_
 - "Vuoro valmis 20.40 · odottaa viestiäsi" -rivin yläpuolella on ihmeellisen paljon tyhjää.
 
 Kuva liitteenä. Komponentti `web/src/components/Conversation.tsx` (composer-alue). Katso myös @review-browser-design-v2, johon viivaleveyksien, paddingien ja fonttikokojen tarkistus design-malleja vasten kirjattiin.
+
+## Comments
+
+### 2026-10-02T10:09:29Z · @jari
+
+Additional live observation, 2026-10-02 13:04 (private CleanShot; not attached to public repo): The completed-turn line "Vuoro valmis 06.07 · odottaa viestiäsi" has large empty bands above and below. The "Tapahtumia jäi väliin" notice has conspicuous unused space below its text and wide gaps both above and below the box. The left edge of that notice and the "Viesti Pi:lle" composer do not align. The disabled "Lähetä" button has excessive vertical space around it; the "Enter lähettää · Shift+Enter rivinvaihto" hint sits on a lower row, not aligned horizontally with the button (button bottom is above the hint top). Please investigate shared spacing/containers and composer layout, rather than treating each gap as an isolated margin fix. Screenshot inspected locally; contains live session context and is not committed.
