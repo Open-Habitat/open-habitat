@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import {
-  applyTurnEvent,
-  initialTurn,
-  type LiveTurn,
-  parseConversationEvent,
-} from "./conversationEvents";
-import {
   type ConversationStore,
   useConversationMetadata,
   useWindow,
@@ -18,7 +12,7 @@ import {
   sendReceipt,
   status,
 } from "./conversations";
-import type { Snapshot, Workspace } from "./snapshot";
+import type { Workspace } from "./snapshot";
 import { useReadingPosition } from "./useReadingPosition";
 
 // Owns the native read model and journal recovery for one conversation.
@@ -26,17 +20,17 @@ export function useConversation({
   workspace,
   id,
   identity,
-  snapshot,
   store,
-  onResnapshot,
+  journalOffline,
+  onStatusEvent,
   onLogin,
 }: {
   workspace: Workspace;
   id?: string;
   identity: string;
-  snapshot: Snapshot;
   store: ConversationStore;
-  onResnapshot: () => void;
+  journalOffline: boolean;
+  onStatusEvent: (listener: (id: string, kind: string) => void) => () => void;
   onLogin: () => void;
 }) {
   const navigate = useNavigate();
@@ -71,12 +65,10 @@ export function useConversation({
   const [localId, setLocalId] = useState(id);
   const localReady = localId === id;
   const live = windowView?.live;
-  const [journalOffline, setJournalOffline] = useState(false);
   const continuationProof = useRef<
     { id: string; revision: string; result: Status["continuation"] } | undefined
   >(undefined);
   const openedProof = useRef("");
-  const streamFailures = useRef(0);
   const pendingNativeEntry = useRef<string | undefined>(undefined);
   const [confirmStop, setConfirmStop] = useState(false);
   const [queueOpen, setQueueOpen] = useState(false);
@@ -445,182 +437,16 @@ export function useConversation({
     ],
   );
   latestRefresh.current = refresh;
-  const initialSnapshot = useRef(snapshot);
-  const recovering = useRef(false);
-  const [streamEpoch, setStreamEpoch] = useState(0);
-  useEffect(() => {
-    if (recovering.current && initialSnapshot.current !== snapshot) {
-      initialSnapshot.current = snapshot;
-      store.reseed(snapshot, id);
-      recovering.current = false;
-      setStreamEpoch((n) => n + 1);
-    }
-  }, [snapshot, store, id]);
-  const resnapshot = useRef(onResnapshot);
-  resnapshot.current = onResnapshot;
-  useEffect(() => {
-    void streamEpoch; // reconnect only after cursor recovery
-    if (!id) return;
-    let removed = false;
-    let source: EventSource | undefined;
-    let retry: number | undefined;
-    let turn: LiveTurn;
-    const recover = (historyOnly = false) => {
-      if (removed) return;
-      if (historyOnly) {
-        turn = { ...turn, fragments: [], truncated: true };
-        store.setLive(id, turn);
-        void latestRefresh.current(false, true);
-        return;
-      }
-      source?.close();
-      source = undefined;
-      setJournalOffline(true);
-      recovering.current = true;
-      resnapshot.current();
-      void latestRefresh.current(false, true);
-    };
-    try {
-      const tail =
-        initialSnapshot.current.agents.find(
-          (a) => a.agent_id === id && a.workspace_id === workspace.workspace_id,
-        )?.live_tail ?? [];
-      turn =
-        store.read(id)?.live ??
-        initialTurn(
-          initialSnapshot.current.event_cursor,
-          tail.map((frame) => parseConversationEvent(JSON.stringify(frame))),
-        );
-      if (!store.read(id)?.live) store.setLive(id, turn);
-    } catch {
-      recovering.current = true;
-      setJournalOffline(true);
-      resnapshot.current();
-      return;
-    }
-    const connect = () => {
-      if (removed) return;
-      source = new EventSource(
-        `/api/v1/events?after=${encodeURIComponent(turn.cursor)}`,
-      );
-      source.onopen = () => {
-        streamFailures.current = 0;
-        setJournalOffline(false);
-      };
-      for (const kind of [
-        "snapshot.invalidated",
-        "history.entry",
-        "assistant.delta",
-        "tool.started",
-        "tool.updated",
-        "tool.finished",
-        "queue.changed",
-        "turn.settled",
-        "command.changed",
-        "agent.changed",
-        "workspace.changed",
-        "title.changed",
-        "source.warning",
-        "question.requested",
-        "question.resolved",
-        "operation.changed",
-        "unknown.native",
-      ])
-        source.addEventListener(kind, (message) => {
-          try {
-            const event = parseConversationEvent(
-              (message as MessageEvent).data,
-            );
-            if ((message as MessageEvent).lastEventId !== event.cursor)
-              throw new Error("mismatched SSE id");
-            if (
-              event.server_instance_id === turn.instance &&
-              event.sequence <= turn.sequence
-            )
-              return;
-            const result = applyTurnEvent(turn, event, id);
-            turn = result.turn;
-            if (result.recover) {
-              recover(result.recover === "history");
-              return;
-            }
-            store.routeEvent(event, id);
-            if (result.entry) {
-              pendingNativeEntry.current = result.entry.entry_key;
-              void latestRefresh.current(false, true);
-            }
-            if (event.kind === "snapshot.invalidated") {
-              continuationProof.current = undefined;
-              resnapshot.current();
-              void latestRefresh.current(false, true);
-            } else if (
-              [
-                "turn.settled",
-                "command.changed",
-                "queue.changed",
-                "question.requested",
-                "question.resolved",
-              ].includes(event.kind)
-            )
-              void latestRefresh.current(false, event.kind === "turn.settled");
-          } catch {
-            recover();
-          }
-        });
-      source.onerror = () => {
-        if (removed) return;
-        source?.close();
-        source = undefined;
-        setJournalOffline(true);
-        // EventSource conceals 401/409. A bounded probe identifies a session
-        // loss or cursor gap; it never becomes a second live stream.
-        void (async () => {
-          try {
-            const response = await fetch(
-              `/api/v1/events?after=${encodeURIComponent(turn.cursor)}`,
-              {
-                credentials: "same-origin",
-                cache: "no-store",
-                signal: AbortSignal.timeout(5000),
-              },
-            );
-            await response.body?.cancel();
-            if (removed) return;
-            if (response.status === 401) {
-              onLogin();
-              return;
-            }
-            if (response.status === 409) {
-              recover();
-              return;
-            }
-          } catch {
-            /* offline; slow fallback will read status */
-          }
-          if (!removed)
-            retry = window.setTimeout(
-              connect,
-              Math.min(3000 * ++streamFailures.current, 30000),
-            );
-        })();
-      };
-    };
-    connect();
-    return () => {
-      removed = true;
-      source?.close();
-      if (retry) window.clearTimeout(retry);
-    };
-    // Stream ownership is per identity and conversation; snapshot updates do not remount it.
-  }, [id, workspace.workspace_id, onLogin, streamEpoch, store]);
-  useEffect(() => {
-    if (!id || !journalOffline) return;
-    const timer = window.setInterval(() => {
-      if (recovering.current) resnapshot.current();
-      void latestRefresh.current(false, true);
-    }, 60000);
-    return () => window.clearInterval(timer);
-  }, [id, journalOffline]);
+  // A tab-wide journal dispatches active status events here; background status
+  // observations are owned by the store and never trigger reads on switch.
+  useEffect(
+    () =>
+      onStatusEvent((agentId, kind) => {
+        if (agentId !== id) return;
+        void latestRefresh.current(false, kind === "turn.settled");
+      }),
+    [id, onStatusEvent],
+  );
   return {
     current,
     statusStale: id ? metadata.staleStatuses.has(id) : false,

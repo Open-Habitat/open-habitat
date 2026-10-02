@@ -101,7 +101,13 @@ export class ConversationStore {
     const restarted =
       !!this.snapshotCursor &&
       this.snapshotCursor.split(":")[1] !== snapshot.event_cursor.split(":")[1];
-    this.snapshotCursor = snapshot.event_cursor;
+    if (
+      this.routed?.instance === snapshot.event_cursor.split(":")[1] &&
+      this.routed.sequence > Number(snapshot.event_cursor.split(":")[2])
+    ) {
+      // The snapshot was taken before events already routed to this tab.
+      // Keep their live cursor and provisional content.
+    } else this.snapshotCursor = snapshot.event_cursor;
     const cursor = snapshot.event_cursor;
     if (
       [...this.windows.values()].some(
@@ -511,7 +517,17 @@ export class ConversationStore {
       else if (record.loading) record.queued.push(event);
       else {
         const result = applyTurnEvent(record.value.live, event, id);
-        if (result.recover) this.recoverWindow(id, record, event);
+        if (
+          result.recover &&
+          event.kind === "snapshot.invalidated" &&
+          event.payload.reason !== "ring_truncated"
+        )
+          this.publish(id, {
+            ...record.value,
+            live: result.turn,
+            state: record.value.entries.length ? "stale" : record.value.state,
+          });
+        else if (result.recover) this.recoverWindow(id, record, event);
         else this.publish(id, { ...record.value, live: result.turn });
       }
     }
@@ -532,6 +548,18 @@ export class ConversationStore {
       return;
     }
     const result = applyTurnEvent(live, event, id);
+    if (
+      result.recover &&
+      event.kind === "snapshot.invalidated" &&
+      event.payload.reason !== "ring_truncated"
+    ) {
+      this.publish(id, {
+        ...record.value,
+        live: result.turn,
+        state: record.value.entries.length ? "stale" : record.value.state,
+      });
+      return;
+    }
     if (result.recover) {
       this.recoverWindow(id, record, event);
       return;
@@ -605,6 +633,11 @@ export class ConversationStore {
         this.markStale(id);
       }
     }
+  }
+  reconcileStale() {
+    for (const [id, record] of this.windows)
+      if (record.value.state === "stale" || record.value.state === "error")
+        void this.reconnect(id);
   }
   markAllStale() {
     for (const id of this.windows.keys()) this.markStale(id);

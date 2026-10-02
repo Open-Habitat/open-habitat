@@ -23,7 +23,7 @@ import type { ConversationStore } from "./conversationStore";
 import type { Session } from "./conversations";
 import { timelineItems } from "./HistoryView";
 import { PiQuestion } from "./PiQuestion";
-import type { Snapshot, Workspace } from "./snapshot";
+import type { Workspace } from "./snapshot";
 import { useConversation } from "./useConversation";
 import { useReadingPositionLayout } from "./useReadingPosition";
 
@@ -32,9 +32,9 @@ export function BrowserConversation({
   id,
   title,
   identity,
-  snapshot,
   store,
-  onResnapshot,
+  journalOffline,
+  onStatusEvent,
   csrf,
   onLogin,
   onSessionCreated,
@@ -43,9 +43,9 @@ export function BrowserConversation({
   id?: string;
   title?: string;
   identity: string;
-  snapshot: Snapshot;
   store: ConversationStore;
-  onResnapshot: () => void;
+  journalOffline: boolean;
+  onStatusEvent: (listener: (id: string, kind: string) => void) => () => void;
   csrf?: string;
   onLogin: () => void;
   onSessionCreated: (session: Session) => void;
@@ -65,7 +65,6 @@ export function BrowserConversation({
     continuation,
     events,
     live,
-    journalOffline,
     confirmStop,
     setConfirmStop,
     queueOpen,
@@ -108,9 +107,9 @@ export function BrowserConversation({
     workspace,
     id,
     identity,
-    snapshot,
     store,
-    onResnapshot,
+    journalOffline,
+    onStatusEvent,
     onLogin,
   });
   useReadingPositionLayout({

@@ -778,6 +778,11 @@ test("@browser-conversation a stale working view cannot strand an unsent queued 
 test("@browser-conversation warm controlled return reads neither status nor history", async ({
   page,
 }) => {
+  const allStreams: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/api/v1/events")
+      allStreams.push(request.url());
+  });
   await open(page);
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await expect(
@@ -790,10 +795,12 @@ test("@browser-conversation warm controlled return reads neither status nor hist
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toBeVisible();
   const requests: string[] = [];
+  const streams: string[] = [];
   const pending = new Set<import("@playwright/test").Request>();
   let lastRequest = Date.now();
   page.on("request", (request) => {
     const url = new URL(request.url());
+    if (url.pathname === "/api/v1/events") streams.push(request.url());
     if (
       url.pathname.startsWith("/api/v1/") &&
       url.pathname !== "/api/v1/events"
@@ -814,6 +821,7 @@ test("@browser-conversation warm controlled return reads neither status nor hist
     .poll(() => pending.size === 0 && Date.now() - lastRequest >= 300)
     .toBe(true);
   requests.length = 0;
+  expect(streams).toEqual([]); // The initial connection predates the measurement.
   const start = await page.evaluate(() => performance.now());
   await page.goBack(); // workspace
   await page.goBack(); // first controlled window
@@ -830,8 +838,10 @@ test("@browser-conversation warm controlled return reads neither status nor hist
       ),
   );
   expect(requests).toEqual([]);
+  expect(streams).toEqual([]);
+  expect(allStreams).toHaveLength(1);
   console.log(
-    `warm controlled return: ${Math.round(paint - start)} ms (includes workspace navigation), ${requests.length} non-stream API requests`,
+    `warm controlled return: ${Math.round(paint - start)} ms (includes workspace navigation), ${requests.length} non-stream API requests, ${allStreams.length} total SSE, ${streams.length} reopened SSE`,
   );
 });
 

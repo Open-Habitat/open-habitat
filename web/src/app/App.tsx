@@ -19,7 +19,7 @@ import {
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import { ReturnView } from "../components/ReturnView";
 import { BrowserConversation } from "./BrowserConversation";
-import { parseConversationEvent } from "./conversationEvents";
+import { ConversationJournal } from "./conversationJournal";
 import { ConversationStore } from "./conversationStore";
 import { list as listConversations, type Session } from "./conversations";
 import { GitHubOnboarding } from "./GitHubOnboarding";
@@ -182,107 +182,72 @@ export function App() {
     loginFenced.current = true;
     dispatch(authenticationRequired());
   }, [dispatch]);
-  // Outside a conversation the catalog still needs journal invalidations.
-  // A selected conversation owns the same single stream for its live turn.
-  const snapshotCursor = useRef(snapshot?.event_cursor);
-  snapshotCursor.current = snapshot?.event_cursor;
-  const viewingConversation = /\bconversation=pi(?:%3A|:)/i.test(
-    location.search,
-  );
-  // A catalog stream can deliver a queued frame after navigation but before
-  // its effect cleanup. The selected hook owns that agent's status refresh.
-  const activeConversationId = useRef<string | undefined>(undefined);
-  activeConversationId.current = viewingConversation
+  const activeId = useRef<string | undefined>(undefined);
+  activeId.current = /^pi:[0-9a-fA-F-]{36}$/.test(
+    new URLSearchParams(location.search).get("conversation") ?? "",
+  )
     ? (new URLSearchParams(location.search).get("conversation") ?? undefined)
     : undefined;
-  const [catalogOffline, setCatalogOffline] = useState(false);
-  const catalogRecovering = useRef(false);
-  const [catalogEpoch, setCatalogEpoch] = useState(0);
+  const statusListeners = useRef(new Set<(id: string, kind: string) => void>());
+  const onStatusEvent = useCallback(
+    (listener: (id: string, kind: string) => void) => {
+      statusListeners.current.add(listener);
+      return () => {
+        statusListeners.current.delete(listener);
+      };
+    },
+    [],
+  );
+  const [journalOffline, setJournalOffline] = useState(false);
+  // Callbacks read the latest render; the journal itself belongs to the store,
+  // not the selected route or a particular snapshot response.
+  const journalCallbacks = useRef({
+    onSnapshotNeeded: refresh,
+    onStatusChange: (id: string, kind: string) => {
+      statusListeners.current.forEach((listener) => {
+        listener(id, kind);
+      });
+    },
+    onLogin: requireLogin,
+    onOffline: setJournalOffline,
+  });
+  journalCallbacks.current.onSnapshotNeeded = refresh;
+  journalCallbacks.current.onLogin = requireLogin;
+  const journal = useMemo(
+    () =>
+      conversationStore
+        ? new ConversationJournal(conversationStore, {
+            activeId: () => activeId.current,
+            onSnapshotNeeded: () => journalCallbacks.current.onSnapshotNeeded(),
+            onStatusChange: (id, kind) =>
+              journalCallbacks.current.onStatusChange(id, kind),
+            onLogin: () => journalCallbacks.current.onLogin(),
+            onOffline: (value) => journalCallbacks.current.onOffline(value),
+          })
+        : undefined,
+    [conversationStore],
+  );
+  const journalSnapshot = useRef(snapshot);
+  journalSnapshot.current = snapshot;
+  const journalEnabled =
+    !!snapshot &&
+    (phase === "authenticated" || phase === "stale") &&
+    !syntheticDemo &&
+    !fixtureName;
   useEffect(() => {
-    if (catalogRecovering.current && snapshot) {
-      catalogRecovering.current = false;
-      setCatalogEpoch((n) => n + 1);
-    }
-  }, [snapshot]);
+    if (journalEnabled && journalSnapshot.current)
+      journal?.start(journalSnapshot.current);
+    return () => journal?.stop();
+  }, [journal, journalEnabled]);
   useEffect(() => {
-    if (!catalogOffline || viewingConversation) return;
+    if (snapshot && (phase === "authenticated" || phase === "stale"))
+      journal?.resume(snapshot);
+  }, [snapshot, journal, phase]);
+  useEffect(() => {
+    if (!journalOffline) return;
     const timer = window.setInterval(refresh, 60000);
     return () => window.clearInterval(timer);
-  }, [catalogOffline, viewingConversation, refresh]);
-  useEffect(() => {
-    void catalogEpoch; // re-open only after a recovered cursor
-    if (!identity || viewingConversation || syntheticDemo || fixtureName)
-      return;
-    const source = new EventSource(
-      `/api/v1/events?after=${encodeURIComponent(snapshotCursor.current ?? "")}`,
-    );
-    for (const kind of [
-      "snapshot.invalidated",
-      "agent.changed",
-      "workspace.changed",
-      "title.changed",
-      "source.warning",
-    ])
-      source.addEventListener(kind, refresh);
-    for (const kind of [
-      "history.entry",
-      "assistant.delta",
-      "tool.started",
-      "tool.updated",
-      "tool.finished",
-      "turn.settled",
-      "command.changed",
-      "queue.changed",
-      "question.requested",
-      "question.resolved",
-      "snapshot.invalidated",
-    ])
-      source.addEventListener(kind, (message) => {
-        try {
-          const event = parseConversationEvent((message as MessageEvent).data);
-          if ((message as MessageEvent).lastEventId !== event.cursor)
-            throw new Error("mismatched SSE id");
-          conversationStore?.routeEvent(event, activeConversationId.current);
-        } catch {
-          // An untrusted frame cannot prove a native history change.
-          conversationStore?.markAllStale();
-        }
-      });
-    source.onopen = () => setCatalogOffline(false);
-    source.onerror = () => {
-      setCatalogOffline(true);
-      void (async () => {
-        try {
-          const response = await fetch(
-            `/api/v1/events?after=${encodeURIComponent(snapshotCursor.current ?? "")}`,
-            {
-              credentials: "same-origin",
-              cache: "no-store",
-              signal: AbortSignal.timeout(5000),
-            },
-          );
-          await response.body?.cancel();
-          if (response.status === 401) requireLogin();
-          else if (response.status === 409) {
-            source.close();
-            catalogRecovering.current = true;
-            refresh();
-          }
-        } catch {
-          /* Reconnect and slow snapshot fallback handle transport loss. */
-        }
-      })();
-    };
-    return () => source.close();
-  }, [
-    identity,
-    viewingConversation,
-    fixtureName,
-    refresh,
-    requireLogin,
-    catalogEpoch,
-    conversationStore,
-  ]);
+  }, [journalOffline, refresh]);
   const manualRefresh = () => {
     if (selectedAgentId) {
       conversationStore?.markStale(selectedAgentId);
@@ -381,6 +346,7 @@ export function App() {
   }, [dispatch, refreshKey, fixtureName, syntheticDemo, requireLogin]);
   const logout = async () => {
     loginFenced.current = true;
+    journal?.stop();
     setLogoutError(false);
     setSettingsReturn("/workspaces");
     if (syntheticDemo) {
@@ -640,8 +606,8 @@ export function App() {
                 : undefined
             }
             identity={identity}
-            snapshot={snapshot}
-            onResnapshot={refresh}
+            journalOffline={journalOffline}
+            onStatusEvent={onStatusEvent}
             title={
               snapshot?.agents.find(
                 (a) =>
