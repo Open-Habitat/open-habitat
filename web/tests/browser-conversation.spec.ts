@@ -71,11 +71,9 @@ test("@browser-conversation create, send once, reconnect and old history stays r
   await expect(
     page.getByRole("button", { name: "Tarkista keskustelulista" }),
   ).toHaveCount(0);
-  const stream = page.waitForResponse(
-    (r) => new URL(r.url()).pathname === "/api/v1/events" && r.status() === 200,
-  );
+  // The identity-wide stream was opened before creating a conversation.
+  // Creating it must not open a second stream (measured in the warm-switch test).
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  expect((await stream).headers()["content-type"]).toBe("text/event-stream");
   await expect(page).toHaveURL(/conversation=pi%3A|conversation=pi:/);
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
@@ -1491,7 +1489,7 @@ test("@browser-conversation queue-clear 401 reaches login", async ({
   }
 });
 
-test("@browser-conversation catalog cursor 409 opens a new stream after snapshot", async ({
+test("@browser-conversation cursor 409 waits for a newer snapshot before reopening", async ({
   page,
 }) => {
   await open(page);
@@ -1499,9 +1497,14 @@ test("@browser-conversation catalog cursor 409 opens a new stream after snapshot
     .getByRole("navigation")
     .getByRole("link", { name: "ordinary-dir" })
     .click();
-  // Return to the catalog so it, not the conversation component, owns events.
+  // The tab-wide stream stays active when returning to the catalog.
   await page.getByRole("link", { name: "Etusivu" }).click();
   let streams = 0;
+  let snapshots = 0;
+  await page.route("**/api/v1/snapshot", (route) => {
+    snapshots++;
+    return route.continue();
+  });
   await page.route("**/api/v1/events?after=*", (route) => {
     streams++;
     if (streams <= 2)
@@ -1510,5 +1513,6 @@ test("@browser-conversation catalog cursor 409 opens a new stream after snapshot
   });
   await page.reload();
   await expect(page.getByRole("navigation")).toBeVisible();
-  await expect.poll(() => streams, { timeout: 10000 }).toBeGreaterThan(2);
+  await expect.poll(() => snapshots, { timeout: 10000 }).toBeGreaterThan(1);
+  expect(streams).toBe(2); // No replay from a snapshot older than the gap.
 });

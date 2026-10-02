@@ -42,6 +42,57 @@ function setup() {
 }
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 describe("recent conversation windows", () => {
+  it("keeps confirmed missing history empty when a speculative tail 404 races status", async () => {
+    let reject!: (error: Error) => void;
+    const pager = {
+      tail: () =>
+        new Promise<HistoryPage>((_resolve, fail) => {
+          reject = fail;
+        }),
+      older: vi.fn(),
+      reconnect: vi.fn(),
+      cancelAll: vi.fn(),
+    } as unknown as ConversationPager;
+    const store = new ConversationStore("person", pager);
+    store.view(id(1));
+    store.view(id(1), true);
+    reject(new Error("history_missing"));
+    await flush();
+    expect(store.read(id(1))?.state).toBe("empty");
+    const second = new ConversationStore("person", {
+      ...pager,
+      tail: () => Promise.reject(new Error("history_missing")),
+    } as unknown as ConversationPager);
+    second.view(id(1));
+    await flush();
+    second.view(id(1), true);
+    expect(second.read(id(1))?.state).toBe("empty");
+  });
+  it("does not publish a pre-invalidation page after snapshot reconciliation", async () => {
+    const resolves: Array<(p: HistoryPage) => void> = [];
+    const tail = vi.fn(
+      () => new Promise<HistoryPage>((resolve) => resolves.push(resolve)),
+    );
+    const pager = {
+      tail,
+      older: vi.fn(),
+      reconnect: vi.fn(),
+      cancelAll: vi.fn(),
+    } as unknown as ConversationPager;
+    const store = new ConversationStore("person", pager);
+    store.view(id(1));
+    store.reconcileStale();
+    expect(pager.cancelAll).toHaveBeenCalledOnce();
+    expect(tail).toHaveBeenCalledTimes(2);
+    resolves[0](page(id(1), ["obsolete"]));
+    await flush();
+    expect(store.read(id(1))?.state).toBe("loading");
+    resolves[1](page(id(1), ["latest"]));
+    await flush();
+    expect(store.read(id(1))?.entries.map((entry) => entry.entry_key)).toEqual([
+      "latest",
+    ]);
+  });
   it("opens once, returns the same snapshot on a warm switch and never requests again", async () => {
     const { store, tail, finish } = setup();
     const first = store.view(id(1));

@@ -116,9 +116,10 @@ in the browser, but Pi RPC cannot attach to a running terminal TUI. An ended
 browser conversation can be deliberately continued with the same native ID once
 its previous work is known to have ended.
 
-In the browser, `App` loads session and snapshot state and selects the main
-view; `WorkspaceRailView` renders navigation. `useConversation` loads status
-and native entries and follows the event journal for one conversation,
+In the browser, `App` loads session and snapshot state, selects the main
+view and owns one `ConversationJournal` stream per authenticated tab.
+`ConversationStore` keeps opened histories and background status; `useConversation`
+opens the selected conversation and handles control/status refreshes.
 `ConversationActions` owns writes and their outcome notices, and
 `useReadingPosition` keeps the timeline anchored while entries arrive.
 In the daemon, HTTP control and observation stay in the conversation
@@ -132,10 +133,11 @@ idle connections open for ten minutes with a heartbeat every 20 seconds.
 The browser reads its session and Pi onboarding state on first load, and again
 only if a snapshot identifies a different person; the new person's writes must
 not reuse the previous CSRF token. It then uses the snapshot cursor for the
-events stream. It opens a conversation with
-parallel status and history reads and reveals the view only after both finish.
-Status is fetched after journal state changes, and history after native-entry
-or invalidation events, not on a two-second tick. A dropped stream gets a slow
+events stream. A cold controlled conversation obtains its status before
+loading history; a warm return uses its cached window and status without a
+network read or a new stream. Journal events update opened windows and cached
+background status. Native-entry events update saved content; invalidation
+reconciles stale windows against native history. A dropped stream gets a slow
 fallback poll; focus changes do not trigger requests or hide the view. The
 browser parses daemon responses, resets its state on a different snapshot
 identity and enters login only on 401. The daemon's status handler stats the

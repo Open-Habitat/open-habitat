@@ -126,6 +126,20 @@ describe("one tab-wide journal", () => {
     expect(FakeSource.all).toHaveLength(2);
     journal.stop();
   });
+  it("does not resume a gap from an older in-flight snapshot", () => {
+    vi.stubGlobal("EventSource", FakeSource);
+    const { journal, onSnapshotNeeded, store } = setup();
+    journal.start(snapshot(0));
+    journal.route(event(1) as never);
+    journal.route(event(3) as never);
+    journal.resume(snapshot(1));
+    expect(onSnapshotNeeded).toHaveBeenCalledTimes(2);
+    expect(FakeSource.all).toHaveLength(1);
+    expect(store.reseed).not.toHaveBeenCalled();
+    journal.resume(snapshot(3));
+    expect(FakeSource.all).toHaveLength(2);
+    journal.stop();
+  });
   it("retains the cursor after agent tail truncation, without a global snapshot", () => {
     vi.stubGlobal("EventSource", FakeSource);
     const { journal, onSnapshotNeeded, store } = setup();

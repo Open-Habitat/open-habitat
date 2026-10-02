@@ -227,7 +227,11 @@ export class ConversationStore {
       this.windows.set(id, record);
       if (!confirmedMissing && !deferLoad) void this.loadTail(id);
     }
-    if (confirmedMissing && record.value.state === "loading")
+    if (
+      confirmedMissing &&
+      !record.value.entries.length &&
+      record.value.state !== "empty"
+    )
       this.confirmMissing(id);
     else if (!deferLoad && record.value.state === "loading" && !record.loading)
       void this.loadTail(id);
@@ -265,7 +269,10 @@ export class ConversationStore {
         this.windows.get(id) !== record
       )
         return;
-      if ((error as Error).message === "history_missing" && missing)
+      if (
+        (error as Error).message === "history_missing" &&
+        (missing || record.value.state === "empty")
+      )
         this.publish(id, {
           ...record.value,
           entries: [],
@@ -315,7 +322,8 @@ export class ConversationStore {
           : "tail",
       );
     } catch {
-      if (this.windows.get(id) === record) this.markStale(id);
+      if (this.epoch === epoch && this.windows.get(id) === record)
+        this.markStale(id);
     } finally {
       if (record.loading === read) record.loading = false;
     }
@@ -348,7 +356,8 @@ export class ConversationStore {
         }
       if (record.loading === read) this.releaseQueued(record);
     } catch {
-      if (this.windows.get(id) === record) this.markStale(id);
+      if (this.epoch === epoch && this.windows.get(id) === record)
+        this.markStale(id);
     } finally {
       if (record.loading === read) record.loading = false;
     }
@@ -635,9 +644,16 @@ export class ConversationStore {
     }
   }
   reconcileStale() {
-    for (const [id, record] of this.windows)
-      if (record.value.state === "stale" || record.value.state === "error")
+    // A read begun before the authoritative snapshot must not turn a stale
+    // window back into a ready one after reconciliation has been scheduled.
+    ++this.epoch;
+    this.pager.cancelAll();
+    for (const [id, record] of this.windows) {
+      record.loading = false;
+      if (record.value.state === "loading") void this.loadTail(id);
+      else if (record.value.state === "stale" || record.value.state === "error")
         void this.reconnect(id);
+    }
   }
   markAllStale() {
     for (const id of this.windows.keys()) this.markStale(id);

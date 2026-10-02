@@ -96,6 +96,12 @@ export class ConversationJournal {
       return;
     const next = cursorParts(snapshot.event_cursor);
     if (this.recovering) {
+      // An in-flight snapshot from before the gap is not a recovery point.
+      // Replaying it would loop on the same malformed/missing event.
+      if (next.instance === this.instance && next.sequence <= this.sequence) {
+        this.callbacks.onSnapshotNeeded();
+        return;
+      }
       this.store.reseed(snapshot);
       this.reset(snapshot);
       this.recovering = false;
