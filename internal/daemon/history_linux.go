@@ -23,7 +23,7 @@ import (
 )
 
 const historyRoot = ".pi/agent/sessions"
-const maxHistoryFile = 32 << 20
+const maxHistoryFile = 512 << 20
 
 var sessionIDPattern = regexp.MustCompile(`^[0-9a-fA-F-]{36}$`)
 var entryIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
@@ -46,6 +46,7 @@ type nativeHeader struct {
 type nativeSession struct {
 	id, cwd, path, revision, state string
 	entries                        []historyEntry
+	boundaryFound, olderComplete   bool
 }
 type historyEntry struct {
 	Key     string         `json:"entry_key"`
@@ -386,7 +387,7 @@ func historyHandlerWithReader(cfg transport.Config, trusted func(*http.Request) 
 			}
 			q := r.URL.Query()
 			for k := range q {
-				if k != "after" && k != "limit" {
+				if k != "after" && k != "before" && k != "limit" {
 					snapshotError(w, 400, "invalid_request")
 					return
 				}
@@ -418,6 +419,48 @@ func historyHandlerWithReader(cfg transport.Config, trusted func(*http.Request) 
 				snapshotError(w, 503, "native_source_unavailable")
 				return
 			}
+			if q.Has("after") && len(q["after"]) != 1 {
+				snapshotError(w, 400, "invalid_request")
+				return
+			}
+			if q.Has("before") && q.Has("after") {
+				snapshotError(w, 400, "invalid_request")
+				return
+			}
+			if q.Has("before") || !q.Has("after") {
+				if q.Has("before") && (len(q["before"]) != 1 || !entryIDPattern.MatchString(q.Get("before"))) {
+					snapshotError(w, 400, "invalid_request")
+					return
+				}
+				loaded := readNativeWindow(s.path, cfg.UID, q.Get("before"), limit)
+				if loaded.id != s.id || loaded.cwd != s.cwd || loaded.state != "readable" {
+					snapshotError(w, 503, "native_source_unavailable")
+					return
+				}
+				if !loaded.boundaryFound {
+					historyJSON(w, map[string]any{"schema_version": 1, "agent_id": id, "native_revision": loaded.revision, "entries": []historyEntry{}, "older_complete": false, "boundary_found": false})
+					return
+				}
+				entries := loaded.entries
+				inlineBytes := 0
+				start := len(entries)
+				for i := len(entries) - 1; i >= 0; i-- {
+					inline(&loaded, &entries[i])
+					if start < len(entries) && inlineBytes+len(entries[i].Content.Text) > 256*1024 {
+						break
+					}
+					inlineBytes += len(entries[i].Content.Text)
+					entries[i].full = ""
+					start = i
+				}
+				entries = entries[start:]
+				body := map[string]any{"schema_version": 1, "agent_id": id, "native_revision": loaded.revision, "entries": entries, "older_complete": loaded.olderComplete && start == 0, "boundary_found": true}
+				if len(entries) > 0 && body["older_complete"] == false {
+					body["next_before"] = entries[0].Key
+				}
+				historyJSON(w, body)
+				return
+			}
 			loaded := readNativeSettled(s.path, cfg.UID)
 			if loaded.id != s.id || loaded.cwd != s.cwd || loaded.state != "readable" {
 				snapshotError(w, 503, "native_source_unavailable")
@@ -425,7 +468,7 @@ func historyHandlerWithReader(cfg transport.Config, trusted func(*http.Request) 
 			}
 			s = &loaded
 			start := 0
-			if q.Has("after") {
+			if q.Has("after") && q.Get("after") != "" {
 				if len(q["after"]) != 1 {
 					snapshotError(w, 400, "invalid_request")
 					return

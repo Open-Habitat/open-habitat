@@ -23,8 +23,11 @@ export interface HistoryPage {
   agent_id: string;
   native_revision: string;
   entries: HistoryEntry[];
-  complete: boolean;
+  complete?: boolean;
   next_after?: string;
+  older_complete?: boolean;
+  boundary_found?: boolean;
+  next_before?: string;
 }
 export interface ContentChunk {
   schema_version: 1;

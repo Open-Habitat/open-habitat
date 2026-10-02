@@ -379,7 +379,7 @@ export async function readHistoryFetch(
   signal?: AbortSignal,
 ): Promise<HistoryPage> {
   const query = new URLSearchParams({ limit: "25" });
-  if (after) query.set("after", after);
+  query.set("after", after ?? "");
   const response = await fetch(`/api/v1/agents/${agentId}/history?${query}`, {
     credentials: "same-origin",
     cache: "no-store",

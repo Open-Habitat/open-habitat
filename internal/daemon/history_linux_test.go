@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/maintainer/native-agent-host/internal/transport"
 )
@@ -86,7 +87,7 @@ func TestPiHistoryNativePagesChunksAndReopen(t *testing.T) {
 		return w.Code, body
 	}
 	base := "/api/v1/agents/pi:" + id + "/history"
-	status, page := get(base + "?limit=200")
+	status, page := get(base + "?limit=200&after=")
 	if status != 200 || len(page["entries"].([]any)) != 200 || page["complete"] != false {
 		t.Fatal(status, page)
 	}
@@ -137,8 +138,71 @@ func TestPiHistoryNativePagesChunksAndReopen(t *testing.T) {
 	if status != 200 || chunk["content"].(map[string]any)["text"] == "" {
 		t.Fatal(status, chunk)
 	}
-	status, reopen := get(base + "?limit=200")
-	if status != 200 || reopen["native_revision"] != firstRevision || reopen["entries"].([]any)[0].(map[string]any)["entry_key"] != "native0000" {
+	// Tail-first reads one bounded page, and backward pages include their
+	// shared boundary while preserving native order.
+	status, tail := get(base + "?limit=3")
+	if status != 200 || tail["older_complete"] != false || tail["boundary_found"] != true ||
+		tail["entries"].([]any)[0].(map[string]any)["entry_key"] != "native2497" {
+		t.Fatal("tail", status, tail)
+	}
+	status, older := get(base + "?limit=3&before=native2497")
+	if status != 200 || len(older["entries"].([]any)) != 4 ||
+		older["entries"].([]any)[3].(map[string]any)["entry_key"] != "native2497" ||
+		older["next_before"] != "native2494" {
+		t.Fatal("older", status, older)
+	}
+	// Walk every page with only the shared boundary repeated.
+	status, back := get(base + "?limit=200")
+	if status != 200 {
+		t.Fatal(status)
+	}
+	backKeys := map[string]bool{}
+	backRequests := 1
+	for {
+		items := back["entries"].([]any)
+		for _, item := range items {
+			key := item.(map[string]any)["entry_key"].(string)
+			backKeys[key] = true
+		}
+		if back["older_complete"] == true {
+			break
+		}
+		cursor := back["next_before"].(string)
+		status, back = get(base + "?limit=200&before=" + cursor)
+		backRequests++
+		if status != 200 || back["boundary_found"] != true ||
+			back["entries"].([]any)[len(back["entries"].([]any))-1].(map[string]any)["entry_key"] != cursor {
+			t.Fatal("disjoint page", status, cursor)
+		}
+		if backRequests > 20 {
+			t.Fatal("non-progressing cursor")
+		}
+	}
+	if len(backKeys) != 2500 || backRequests != 13 {
+		t.Fatal("backward coverage", len(backKeys), backRequests)
+	}
+	t.Logf("2500 native entries in %d backward HTTP pages (one boundary overlap per page)", backRequests)
+	status, missing := get(base + "?before=missing&limit=3")
+	if status != 200 || missing["boundary_found"] != false || len(missing["entries"].([]any)) != 0 {
+		t.Fatal("missing boundary", status, missing)
+	}
+	appendFile, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = fmt.Fprintln(appendFile, `{"type":"message","id":"native2500","message":{"role":"user","content":"append"}}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = appendFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+	status, appendedOlder := get(base + "?before=native2497&limit=3")
+	if status != 200 || appendedOlder["entries"].([]any)[3].(map[string]any)["entry_key"] != "native2497" {
+		t.Fatal("append invalidated cursor", status, appendedOlder)
+	}
+	status, reopen := get(base + "?limit=200&after=")
+	if status != 200 || reopen["native_revision"] == firstRevision || reopen["entries"].([]any)[0].(map[string]any)["entry_key"] != "native0000" {
 		t.Fatal("reopen changed identity")
 	}
 	if err := os.WriteFile(path, []byte(`{"type":"session","version":3,"id":"`+id+`","cwd":"`+src+`"}`+"\n"+`{"type":"message","id":"a","message":{`+"\n"), 0600); err != nil {
@@ -211,5 +275,83 @@ func TestPiHistoryMovedCwdAndSymlink(t *testing.T) {
 	sessions, err = nativeSessions(transport.Config{Home: home, UID: os.Getuid()})
 	if err != nil || len(sessions) != 1 {
 		t.Fatal("followed symlink", err)
+	}
+}
+
+func TestTailPageLargeNativeFileAndByteCap(t *testing.T) {
+	home := t.TempDir()
+	root := filepath.Join(home, historyRoot)
+	if err := os.MkdirAll(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	id := "11111111-1111-4111-8111-111111111111"
+	path := filepath.Join(root, "large.jsonl")
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Fprintf(f, "{\"type\":\"session\",\"version\":3,\"id\":%q,\"cwd\":\"/synthetic\"}\n", id)
+	// More than the old 32 MiB cap; the tail request never parses this prefix.
+	large := strings.Repeat("x", 34<<20)
+	fmt.Fprintf(f, "{\"type\":\"message\",\"id\":\"first\",\"message\":{\"role\":\"user\",\"content\":%q}}\n", large)
+	for i := 0; i < 8; i++ {
+		fmt.Fprintf(f, "{\"type\":\"message\",\"id\":\"last%d\",\"message\":{\"role\":\"user\",\"content\":%q}}\n", i, strings.Repeat("y", 60000))
+	}
+	if err = f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	cfg := transport.Config{Home: home, UID: os.Getuid()}
+	h := HistoryHandlerWithNativeRoot(cfg, func(*http.Request) bool { return true }, home)
+	read := func(url string) (int, map[string]any, int) {
+		t.Helper()
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", "http://unix"+url, nil))
+		var body map[string]any
+		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		return w.Code, body, w.Body.Len()
+	}
+	base := "/api/v1/agents/pi:" + id + "/history"
+	started := time.Now()
+	status, page, n := read(base + "?limit=8")
+	tailDuration := time.Since(started)
+	tailBytes := n
+	if status != 200 || n > 350000 || len(page["entries"].([]any)) < 1 || page["next_before"] == nil {
+		t.Fatal("tail byte cap", status, n, page["next_before"])
+	}
+	status, older, n := read(base + "?before=last0&limit=2")
+	if status != 200 || n > 350000 || older["entries"].([]any)[0].(map[string]any)["entry_key"] != "first" {
+		t.Fatal("large entry", status, n)
+	}
+	content := older["entries"].([]any)[0].(map[string]any)["content"].(map[string]any)
+	if content["complete"] != false {
+		t.Fatal("huge entry not chunked")
+	}
+	status, chunk, n := read(fmt.Sprintf("/api/v1/content/%s?offset=%d&limit_bytes=65536", content["content_id"], int(content["next_offset"].(float64))))
+	if status != 200 || n > 70000 || chunk["content"].(map[string]any)["text"] == "" {
+		t.Fatal("content cap", status, n)
+	}
+	t.Logf("native bytes=%d, tail request duration=%s, tail response bytes=%d, content response bytes=%d, HTTP requests=3", len(large), tailDuration, tailBytes, n)
+}
+
+func TestTailPageFollowsActiveNativeBranch(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "branch.jsonl")
+	lines := []string{
+		`{"type":"session","version":3,"id":"11111111-1111-4111-8111-111111111111","cwd":"/synthetic"}`,
+		`{"type":"message","id":"a","parentId":null,"message":{"role":"user","content":"root"}}`,
+		`{"type":"message","id":"b","parentId":"a","message":{"role":"user","content":"old"}}`,
+		`{"type":"message","id":"c","parentId":"a","message":{"role":"user","content":"active"}}`,
+	}
+	if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	page := readNativeWindow(path, os.Getuid(), "", 2)
+	if page.state != "readable" || len(page.entries) != 2 || page.entries[0].Key != "a" || page.entries[1].Key != "c" || !page.olderComplete {
+		t.Fatal(page)
+	}
+	stale := readNativeWindow(path, os.Getuid(), "b", 2)
+	if stale.state != "readable" || stale.boundaryFound {
+		t.Fatal("inactive branch cursor accepted", stale)
 	}
 }

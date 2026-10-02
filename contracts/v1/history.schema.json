@@ -2,9 +2,125 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://native-agent-host.invalid/contracts/v1/history.schema.json",
   "title": "Native history page or content chunk",
-  "oneOf": [{"$ref": "#/$defs/historyPage"}, {"$ref": "#/$defs/contentChunk"}],
+  "oneOf": [
+    {
+      "$ref": "#/$defs/historyPage"
+    },
+    {
+      "$ref": "#/$defs/contentChunk"
+    }
+  ],
   "$defs": {
-    "historyPage": {"type": "object", "additionalProperties": false, "required": ["schema_version", "agent_id", "native_revision", "entries", "complete"], "properties": {"schema_version": {"$ref": "common.schema.json#/$defs/schemaVersion"}, "agent_id": {"$ref": "common.schema.json#/$defs/agentId"}, "native_revision": {"type": "string", "minLength": 1, "maxLength": 200}, "entries": {"type": "array", "maxItems": 200, "items": {"type": "object", "additionalProperties": false, "required": ["entry_key", "kind", "content"], "properties": {"entry_key": {"type": "string", "minLength": 1, "maxLength": 300}, "kind": {"enum": ["user", "assistant", "tool", "model_change", "unknown"]}, "content": {"$ref": "common.schema.json#/$defs/content"}}}}, "complete": {"type": "boolean"}, "next_after": {"type": "string"}}},
-    "contentChunk": {"type": "object", "additionalProperties": false, "required": ["schema_version", "content_id", "offset", "content"], "properties": {"schema_version": {"$ref": "common.schema.json#/$defs/schemaVersion"}, "content_id": {"type": "string", "pattern": "^ct_"}, "offset": {"type": "integer", "minimum": 0}, "content": {"$ref": "common.schema.json#/$defs/content"}}}
+    "historyPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "agent_id",
+        "native_revision",
+        "entries"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schemaVersion"
+        },
+        "agent_id": {
+          "$ref": "common.schema.json#/$defs/agentId"
+        },
+        "native_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "entries": {
+          "type": "array",
+          "maxItems": 201,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "entry_key",
+              "kind",
+              "content"
+            ],
+            "properties": {
+              "entry_key": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "kind": {
+                "enum": [
+                  "user",
+                  "assistant",
+                  "tool",
+                  "model_change",
+                  "unknown"
+                ]
+              },
+              "content": {
+                "$ref": "common.schema.json#/$defs/content"
+              }
+            }
+          }
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "next_after": {
+          "type": "string"
+        },
+        "older_complete": {
+          "type": "boolean"
+        },
+        "boundary_found": {
+          "type": "boolean"
+        },
+        "next_before": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "complete"
+          ]
+        },
+        {
+          "required": [
+            "older_complete",
+            "boundary_found"
+          ]
+        }
+      ]
+    },
+    "contentChunk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "content_id",
+        "offset",
+        "content"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schemaVersion"
+        },
+        "content_id": {
+          "type": "string",
+          "pattern": "^ct_"
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "content": {
+          "$ref": "common.schema.json#/$defs/content"
+        }
+      }
+    }
   }
 }

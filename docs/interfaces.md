@@ -24,7 +24,7 @@ ja [daemonista](../internal/daemon/handoff_linux.go).
 | Metodi ja polku | Mitä selain saa tai pyytää |
 |---|---|
 | `GET /api/v1/snapshot` | työtilojen ja natiivihistorioiden tilannekuva |
-| `GET /api/v1/agents/<agent-id>/history` | sivu Pi:n historiaa; `after` ja `limit` ohjaavat sivutusta |
+| `GET /api/v1/agents/<agent-id>/history` | sivu Pi:n historiaa; `limit` rajaa uusimman sivun, `before` hakee vanhempia; vanha `after` tukee vielä vanhaa näkymää |
 | `GET /api/v1/content/<content-id>` | pitkän sisällön osa; `offset` ja `limit_bytes` ohjaavat lukua |
 | `GET /api/v1/conversations` | käyttäjän daemonin hallitsemat keskustelut |
 | `POST /api/v1/conversations` | uuden Pi-keskustelun käynnistys `workspace_id`:llä |
@@ -234,7 +234,13 @@ tuntemattomana; erillinen selainohjain seuraa itse käynnistämiään Pi-prosess
 
 Pi-keskustelun ID on `pi:<sessionId>` natiivista otsakkeesta. Workspace-yhteys
 perustuu otsakkeen täsmälliseen `cwd`:hen. Historia sivutetaan natiivilla
-entry-avaimella ja lähderevisioon sidotulla jatkolla. Sisältö-ID on käyttäjä-
+entry-avaimella: oletus lukee uusimman sivun, `before=<entry_key>` lukee
+vanhemmat ja palauttaa rajamerkinnän yhteisenä avaimena. `older_complete`
+ilmoittaa vanhimman reunan ja `boundary_found: false` puuttuvan rajamerkinnän,
+jolloin selain aloittaa taas uusimmasta sivusta. Lisäys tiedoston loppuun ei
+vanhenna rajaa; historian `native_revision` on sisällön hash, kun taas
+statuksen samanniminen arvo on koko- ja aikavihje. Vanha `after`-luku säilyy
+siirtymäkauden nykyiselle näkymälle. Sisältö-ID on käyttäjä-
 ja revisiosidottu: lähteen muuttuessa selain hakee historian uudestaan.
 Pitkä teksti luetaan paloina UTF-8-tavuoffseteilla, koodipisterajoja rikkomatta.
 Host ei tallenna rinnakkaista sisältökopiota.
