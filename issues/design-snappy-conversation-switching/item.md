@@ -59,3 +59,7 @@ conversation id).
 Related: @incremental-history-during-turn (current refresh re-reads history
 from the first page during a turn), @browser-state-rewrite (just landed),
 @daemon-drop-status-stream (events journal is the only push channel).
+
+## Decision needed
+
+ADR [0008](../../docs/adr-0008-snappy-conversation-switching.md) proposes a single tab-wide journal stream and five bounded in-memory recent windows, with cold native reads and no IndexedDB. Jari needs to approve or amend the architecture before the three unlaned implementation slices are accepted or scheduled. Evidence and the Finnish summary are in this issue directory; status stays in-progress until that decision.

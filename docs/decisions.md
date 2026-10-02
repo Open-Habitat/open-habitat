@@ -24,6 +24,10 @@ Myöhemmät rajaukset löytyvät nykyisistä sivuista ja ADR:istä.
 
 ## Avoimet valinnat
 
+- **Nopea keskustelun vaihto.** [ADR 0008](adr-0008-snappy-conversation-switching.md)
+  ehdottaa viimeksi katsottujen keskustelujen rajattua selainmuistinäkymää ja
+  yhtä käyttäjäkohtaista tapahtumayhteyttä välilehteä kohti. Natiivihistoria
+  pysyy ainoana totuutena; Jari ei ole vielä hyväksynyt ehdotusta.
 - **Sidotun Unix-käyttäjän poistaminen.** [ADR 0007](adr-0007-bound-user-deprovision.md)
   jää myöhemmäksi: käyttäjän ”poista minut” -toiminto ja ylläpitäjän CLI-komento
   ovat tulevia tarpeita, joiden toteutustapaa ei ole päätetty. Nykyiseen

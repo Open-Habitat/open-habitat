@@ -49,6 +49,9 @@ groups:
       - slug: adr-0007-bound-user-deprovision
         title: ADR 0007 — Sidotun käyttäjän poistaminen
         desc: Myöhempi käyttäjän poistotarve ja ylläpitäjän CLI; toteutustapa avoin.
+      - slug: adr-0008-snappy-conversation-switching
+        title: ADR 0008 — Nopea keskustelun vaihto
+        desc: Ehdotus rajatuista selainmuistin keskusteluikkunoista; Jarin päätös avoin.
       - slug: daemon-bindings
         title: Daemonien yksityiset sidonnat
         desc: Juuren hallitsema hakemistopolku ja käyttäjäkohtaiset käyttöoikeudet.

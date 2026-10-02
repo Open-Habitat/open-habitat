@@ -1,0 +1,906 @@
+[thread_id:group_99057a1b95a44111ac4cc12f66048661]
+
+## Model: gemini-3.8-flash
+[model:gemini-3.8-flash] [thread_id:api_33a65ea459074df098fa0185314ad2ef]
+
+### Observations
+
+1. **Current Lifecycle Destroys State and Forces Network on Switch**
+   In `web/src/app/useConversation.ts`, switching conversations (`id` change) immediately clears all entries, drops status to `undefined`, unsets live turns, and forces a parallel network load (`status` + `readHistoryFetch`). A 16ms switch budget (1 frame at 60Hz) is fundamentally impossible with this pattern: even on localhost loopback through the gateway and daemon Unix socket, HTTP round-trips, JSON serialization, and React re-mounts consistently take 20–60ms. Over WAN or Wi-Fi, it routinely exceeds 100ms.
+
+2. **Per-Conversation EventSource Reconnects Cause Bottlenecks and Race Conditions**
+   The browser creates and destroys `EventSource` connections on every conversation switch. However, the daemon journal (`internal/daemon/events_linux.go`) is already unified per Unix UID and daemon lifetime (`j.instance`, global `j.seq`). Multiplexing user-level and agent-level events across one stream while tearing it down on every client route change causes unnecessary HTTP handshakes, wastes gateway sockets, and risks `409 cursor_expired` during the navigation window.
+
+3. **`history.entry` Triggers a Redundant Fetch Storm**
+   When a `history.entry` event arrives over SSE, it contains the entry payload (`entry_key`, `entry_kind`, `content`). Currently, `useConversation.ts` ignores this payload for presentation, sets `pendingNativeEntry`, and triggers `latestRefresh(false, true)`, which issues a full REST `readHistoryFetch` and can loop up to 16 pagination requests. This thrashes the network and CPU right when an agent turn settles.
+
+4. **128-Frame / 1 MiB Ring Buffer Is Short-Lived**
+   Under active generation (coalesced 50ms text deltas and tool notifications), 128 frames represent only a few seconds of burst activity. Inactive background conversations will inevitably suffer ring buffer overrun if the browser tab sleeps or if another agent emits high-volume streaming tokens.
+
+---
+
+### Risks and Opportunities
+
+* **Opportunity — Zero-RTT Switching via In-Memory Windowing**:
+  Maintaining an in-memory LRU pool of recently viewed conversations (e.g., 3–5 conversations) holding their recent entry tails (e.g., the last 30–50 items) allows route transitions to read synchronously from JavaScript heap memory. This renders the target conversation on frame 0 (<2ms), easily beating the 16ms target.
+* **Risk — Cache Inconsistency with Pi JSONL**:
+  Pi JSONL is the sole source of native truth. If cached conversation windows are not invalidated or reconciled against the daemon’s `nativeGen` / `native_revision`, edits made outside the web UI (via SSH, tmux, or git branch operations) will lead to UI drift.
+* **Risk — Main-Thread Starvation from Background Streams**:
+  If the browser attempts to process and render live character deltas for background conversations, parsing overhead and React reconciliations will cause frame drops on the active conversation.
+
+---
+
+### Critique of Proposed Approaches
+
+#### Option A: One Journal Stream, Opened Windows
+* **Verdict**: **Directionally correct baseline, needs bounded windowing.**
+* **Analysis**: Moving the SSE connection from `useConversation` up to a shared workspace/session level eliminates connection churn and matches the daemon’s unified journal architecture.
+* **Flaw**: "Opened windows" cannot mean an unbounded cache. Keeping every visited conversation in memory indefinitely causes DOM and memory leaks. It must be an LRU cache limited to the most recent conversations, storing bounded tail windows rather than infinite histories.
+
+#### Option B: + IndexedDB
+* **Verdict**: **Reject.**
+* **Analysis**:
+  1. *Fails the 16ms requirement*: IndexedDB reads are asynchronous (dispatched via browser IPC to the storage subsystem). IndexedDB read transactions routinely take 5–25ms, making a guaranteed 16ms synchronous transition impossible without an in-memory tier anyway.
+  2. *Architectural violation*: Pi JSONL on disk is the authoritative history. Persisting history into IndexedDB creates a secondary persistent database in the browser, requiring schema migrations, transaction handling, eviction policies, and reconciliation when Pi files are modified out-of-band.
+  3. *Unnecessary complexity*: An in-memory cache of 3–5 conversations consumes only ~1–2 MB of JS heap. IndexedDB solves cold restarts, but the requirement explicitly permits cold opens to wait.
+
+#### Option C: Push All Tails
+* **Verdict**: **Reject for streaming deltas; accept only for settled boundaries.**
+* **Analysis**:
+  1. Pushing high-frequency provisional `assistant.delta` and `tool.*` events for *all* background agents over SSE overwhelms the 128-frame ring buffer and floods the browser main thread with JSON parsing tasks, causing frame drops and battery drain.
+  2. Background conversations do not need sub-second token streaming. They only require lifecycle transitions (`pending` -> `idle`) and committed `history.entry` events.
+
+#### Option D: Cheap Fetch on Open
+* **Verdict**: **Fails 16ms requirement if blocking; viable only as asynchronous background revalidation.**
+* **Analysis**:
+  1. Even a lightweight `HEAD` or conditional `GET /status` over localhost requires a network hop. Network I/O cannot guarantee 16ms p99 execution.
+  2. If used as a blocking gate before rendering, Option D violates the primary performance requirement. If used strictly as non-blocking background revalidation (Stale-While-Revalidate), it is useful for stale recovery.
+
+---
+
+### Alternative: Option E — "In-Memory LRU Window Store with Selective Live Dispatcher"
+
+Instead of persisting entries or streaming all live tokens indiscriminately, implement a **normalized in-memory LRU conversation store** fed by a single global SSE connection:
+
+1. **Global Event Multiplexer**: A single `EventSource` lives at the session root, pinned to the global cursor.
+2. **LRU Window Cache (Capacity: 3–5 Conversations)**: Stores the current `Status` and a slice of the most recent entries (last 50 native entries) in client memory.
+3. **Selective Event Filtering**:
+   * **Active Agent (in viewport)**: Receives all events, including transient `assistant.delta` and `tool.*` updates.
+   * **Warm Agents (in LRU, background)**: Drops `assistant.delta` text chunks to eliminate CPU churn. Directly ingests committed `history.entry` events into the cached transcript.
+4. **Instant Switch (<16ms)**: Navigating to a cached conversation extracts the ready-to-render state from memory synchronously during the React render pass.
+
+---
+
+### Recommended Architecture & Exact State Transitions
+
+```text
+               ┌────────────────────────────────────────────────────────┐
+               │              Global SSE (/api/v1/events)               │
+               └───────────┬────────────────────────────────┬───────────┘
+                           │ Active agent events            │ Inactive agent events
+                           ▼                                ▼
+              ┌─────────────────────────┐      ┌─────────────────────────┐
+              │      ACTIVE WINDOW      │      │     WARM LRU WINDOW     │
+              │ (Full live deltas + UI) │      │ (Entries only, no deltas)│
+              └────────────┬────────────┘      └────────────┬────────────┘
+         Route switch away │                                │ Route switch to
+                           ▼                                │
+              ┌─────────────────────────┐                   │
+              │     WARM LRU WINDOW     │◄──────────────────┘
+              └────────────┬────────────┘
+       Evicted from LRU or │ Ring buffer expired (409)
+                           ▼
+              ┌─────────────────────────┐
+              │   STALE / COLD STATE    │ ───► Non-blocking background fetch
+              └─────────────────────────┘
+```
+
+#### Window State Lifecycle
+
+Every conversation in the browser store sits in one of four states:
+
+1. **`COLD` (Not in LRU)**:
+   * State: No in-memory transcript.
+   * Transition: User navigates to agent -> display skeleton -> fire parallel `status` + `readHistoryFetch` -> transition to `ACTIVE`.
+
+2. **`ACTIVE` (Currently mounted and visible)**:
+   * State: Rendered in DOM. Receives live fragments (`assistant.delta`, `tool.*`), updates `LiveTurn`.
+   * Transitions:
+     * On `history.entry`: Directly append to `entries`, clear provisional fragments. **Do not refetch history.**
+     * On route change: Transition to `WARM`.
+
+3. **`WARM` (Retained in LRU, not visible)**:
+   * State: Retains last 50 entries, native revision, and last status.
+   * Transitions:
+     * On `history.entry`: Append directly to cached entries. Discard any residual live buffer.
+     * On `assistant.delta`: **Drop frame immediately.** Do not parse text deltas or allocate state.
+     * On `agent.changed` / `turn.settled`: Update cached status metadata (`state: idle | working`).
+     * On user route switch to this agent: **Synchronously promote to `ACTIVE`. Render immediately (<16ms).**
+     * On LRU eviction: Transition to `COLD` and release memory.
+
+4. **`STALE` (In LRU, but global SSE connection was lost or returned 409)**:
+   * State: In-memory transcript exists, but journal continuity was broken.
+   * Transitions:
+     * On route switch: **Render the cached warm data immediately (<16ms)**, but fire a non-blocking background conditional status/history check. If `native_revision` changed, merge updates silently or update the tail.
+
+---
+
+### Costs, Risks, and Assumptions
+
+* **Memory Cost**: Keeping 5 conversations with 50 entries each in memory consumes ~1 MB of JS heap. This is negligible.
+* **CPU / Battery Cost**: Dropping provisional deltas for inactive agents keeps the main thread idle even when multiple background agents are executing tasks.
+* **Assumptions**:
+  * The browser supports a single persistent SSE connection.
+  * The last 50 history entries are sufficient to paint the initial viewport. Deep scroll upward triggers existing pagination (`readHistoryFetch(id, cursor)`).
+  * The daemon continues providing complete entries in `history.entry` events (`entry_key`, `entry_kind`, `content`).
+
+---
+
+### What to Remove
+
+1. **Remove `EventSource` from `useConversation.ts`**:
+   Remove lines 360–480. Stream lifetime belongs to the application session, not individual conversation component mounts.
+2. **Remove the REST refetch on `history.entry`**:
+   Remove lines 425–429 in `useConversation.ts`. Ingest the `history.entry` payload directly instead of issuing a 16-page `readHistoryFetch` cascade.
+3. **Remove `setOpened(false)` and `setEntries([])` on warm route switch**:
+   Remove the keyed unmount/reset behavior in `useConversation.ts` (lines 135–141) when switching to a conversation that already resides in the LRU store.
+
+---
+
+### Non-negotiables
+
+1. **Zero Network on Recent Switch**: Switching between conversations in the LRU window must not await any network promise before rendering.
+2. **Pi JSONL Remains Canonical**: The browser in-memory store must be treated as a disposable projection. No local persistence engine (IndexedDB / LocalStorage) may act as a secondary history truth.
+3. **Selective Streaming**: Background conversations must not ingest high-frequency character deltas into UI state.
+4. **Single SSE Connection**: Exactly one `/api/v1/events` stream per browser session.
+
+---
+
+### Questions
+
+1. Does the daemon’s `history.entry` payload ever omit large message bodies (e.g. truncated tool outputs) that would force a REST fetch? *(Code in `events_linux.go` indicates it serializes `entry.Content` directly up to 1 MiB before invalidating).*
+2. Does the client need to preserve scroll positions across the entire LRU pool, or only for the active and most recent conversation? *(Maintaining anchors for the LRU pool requires tracking `readingAnchor` inside the cached window record).*
+
+---
+
+## Model: deepseek-v4-pro
+[model:deepseek-v4-pro] [thread_id:api_f7bb96e71d0f4191b6f175d154807573]
+
+## Scope and assumptions
+
+I assume the options mean:
+
+- **A**: replace the current per-conversation `EventSource` with one tab-global `EventSource`, then distribute from a browser-held journal store to opened conversation windows.
+- **B**: add IndexedDB persistence to A.
+- **C**: push every cached daemon `turnTail`, or all recent tails, to the browser on open/connection.
+- **D**: add a cheap HTTP read on conversation open instead of a browser-held cache.
+
+I also assume “recent switch renders in 16 ms without network” means switching among recently opened conversations in the same SPA session. If it also means after a full browser reload, then persistence becomes materially more important.
+
+This is an architecture recommendation, not a proposed product patch.
+
+---
+
+## Observations from the attached evidence
+
+1. **The journal cursor is global per daemon UID, not per conversation.**
+   `eventJournal.seq` and `cursor()` are a single sequence across all agents. The browser currently opens one `EventSource` per conversation and each stream receives all user events, then filters by `event.resource.agent_id`.
+
+   That works, but it means:
+
+   - N open conversations duplicate the same global event stream.
+   - Each conversation maintains its own copy of the global cursor.
+   - A cursor gap or instance mismatch is handled independently per conversation, even though it is really a global daemon-journal condition.
+
+2. **Pi JSONL is authoritative; `history.entry` is an invalidation trigger, not content.**
+   In `useConversation`, `history.entry` causes `latestRefresh(false, true)`. The event payload is not trusted as the entry body. That is correct and should remain non-negotiable.
+
+3. **`live_tail` is already per-agent provisional state copied under the daemon journal lock.**
+   `initialTurn()` rebuilds a single conversation from the snapshot cursor plus that agent’s tail. This suggests the snapshot already carries bounded per-agent tails. **Pushing all tails as a separate mechanism is likely unnecessary.**
+
+4. **The current open path is already two parallel cold reads.**
+   `status()` and `readHistoryFetch()` are `Promise.allSettled` in `useConversation`. That is the right cold-open shape. A fast-recent-switch path should not replace it; it should bypass it only when a valid local render cache exists.
+
+5. **Cursor expiry is global, not per conversation.**
+   `parse()` returns `cursor_expired` or `cursor_instance_mismatch`. The server ring is `128 frames / 1 MiB`. A per-conversation cache can therefore be stale even if its own last relevant event was recent, because other conversations’ events can evict it from the global ring.
+
+6. **Current history merge has race-prone characteristics.**
+   The merge in `refresh()` uses `latest.current.entries` from a ref, and the prefix logic depends on the exact cached prefix. This is workable for a single mounted conversation, but not a good foundation for persistent or multiple window caches.
+
+7. **Current `pendingNativeEntry` handling can lose provisional deltas that arrive during history reconciliation.**
+   After `history.entry`, `live` is not updated until the native history page is fetched. Deltas arriving during that window are suppressed from React state. That may be acceptable if those deltas are superseded by the native entry, but it is a real state-machine edge case to fix in any cache design.
+
+---
+
+## Option analysis
+
+### A — One journal stream, opened windows
+
+**Assessment:** This is the right event-integrity foundation.
+
+Benefits:
+
+- One cursor per daemon instance, parsed and validated once.
+- One reconnect/409/instance-mismatch path.
+- Consistent global event ordering.
+- Much cheaper than N per-conversation `EventSource` connections.
+- Can support recent-window switching from memory.
+
+Risks:
+
+- A single parse or cursor failure has wider blast radius. The global store must fail closed and recover with a snapshot, not kill only one window.
+- “Opened windows” alone does not retain closed/recent windows unless the design deliberately keeps bounded window caches.
+- Reload/cold SPA start still requires network.
+
+**Event-integrity requirement:** do not let each window own its own journal cursor. Keep one `JournalStore` per identity/server instance.
+
+---
+
+### B — +IndexedDB
+
+**Assessment:** Useful only as a **render cache**, not as a journal-resume or truth cache.
+
+If IndexedDB stores:
+
+- cached entries,
+- cached status,
+- cached live fragments,
+- bounded recent windows
+
+then it can make a browser reload or cold SPA start render quickly.
+
+But it should **not** be treated as:
+
+- native truth,
+- a continuation proof store,
+- a journal cursor source of truth across reloads,
+- a multi-tab shared event store.
+
+The hard problem with IndexedDB is not storage; it is **atomicity with the global journal cursor**. If the browser persists the global cursor before all window caches have durably processed the corresponding events, a reload can miss event invalidations.
+
+A safer rule: **never resume the JournalStore cursor from IndexedDB.** On load, render cached windows immediately, but always fetch a fresh snapshot/status/history and start SSE from the fresh snapshot cursor.
+
+Benefits of that rule:
+
+- No cursor/window atomicity problem.
+- No persisted stale continuation proof.
+- IndexedDB becomes an optional UI performance layer.
+- Cache loss, schema migration failure, quota errors, or private-mode IndexedDB failure all degrade safely to current cold open behavior.
+
+Risks:
+
+- Persisted native entries may be stale. The UI must mark them as stale until revalidated.
+- Multi-tab writes can still contend unless one tab is designated writer or IndexedDB is treated as best-effort.
+- Sensitive conversation content is persisted; it must be scoped by identity and cleared on logout/identity change.
+
+---
+
+### C — Push all tails
+
+**Assessment:** Poor fit.
+
+The daemon already has `tails map[string]*turnTail`, but pushing all tails:
+
+- can be large: many agents × up to 128 KiB each;
+- does not solve the native entry/status/history part of a window;
+- is one-shot, so SSE is still required;
+- duplicates the bounded per-agent tail already present in the snapshot.
+
+The correct use of tails is already in the snapshot: copy `event_cursor` and each agent’s bounded `live_tail` under the same journal lock. Do not add another dynamic “push all tails” path.
+
+---
+
+### D — Cheap fetch on open
+
+**Assessment:** Useful fallback, but not a solution.
+
+Any HTTP fetch on open involves:
+
+- network latency,
+- daemon scheduling,
+- status/history parsing,
+- possible lock/native stat.
+
+It cannot guarantee 16 ms without network.
+
+A cheap open route can help cold/deep recovery, but the recent-switch path should be local-first.
+
+---
+
+## Recommended architecture
+
+Use an **E** option:
+
+> **One tab-global journal stream + bounded client-side journal ring + bounded recent-window memory cache; optional IndexedDB only as a render cache; no per-conversation EventSource; no all-tail push.**
+
+The critical pieces are:
+
+1. **One `JournalStore` per identity and daemon instance.**
+2. **One `EventSource` per tab/identity**, not per conversation.
+3. **A bounded client ring** mirroring the server ring for replay during recent switches.
+4. **Per-conversation window caches** containing rendered entries, status, live-provisional state, and invalidation flags.
+5. **Optional IndexedDB as a best-effort render cache**, never as journal truth.
+
+### Canonical state
+
+```
+JournalStore
+  identity
+  serverInstance
+  seq                 // global last applied cursor sequence
+  online              // connecting | streaming | offline | gap
+  sourceEpoch
+  ring                // bounded recent validated events
+
+WindowCache
+  workspaceId
+  conversationId
+  journalSeq          // global seq through which this window has been processed
+  renderedEntries
+  nextAfter
+  renderedStatus
+  liveTurn
+  statusClean
+  historyClean
+  liveClean
+  historyFenceSeq
+  pendingFragments    // live deltas waiting behind a native history refresh
+  historyEpoch
+```
+
+`historyClean`, `statusClean`, and `liveClean` are not freshness timestamps; they mean “current with respect to the latest known global journal state / native history state.”
+
+---
+
+## Exact state transitions and invalidations
+
+### Journal connection state
+
+| Transition | Global effect | Window effect |
+|---|---|---|
+| Snapshot loaded | Set `serverInstance`, `seq` from `snapshot.event_cursor`; create one SSE after `seq` | Seed window live tails from per-agent snapshot tails |
+| Valid SSE event | `seq = event.sequence`; append to ring | Apply table below |
+| Duplicate event id / sequence already applied | Ignore idempotently | None |
+| Gap: `sequence != expected + 1` | Enter `gap`; drop ring; fetch new snapshot | All windows: `statusClean=false`, `historyClean=false`, `liveClean=false`; keep old display with stale indicator |
+| `cursor_expired` / `cursor_instance_mismatch` / `409` | Same as gap | Same |
+| EventSource `onopen` | Mark online; reset failure backoff | None |
+| EventSource error/offline | Mark offline; probe once; start slow fallback | Windows remain displayable but must not be considered fresh |
+| Identity change / logout | Close stream, clear ring and window caches | All derived state dropped |
+
+### Event-to-window transitions
+
+For a conversation **X**:
+
+| Event | Affected X? | Required transition |
+|---|---|---|
+| Irrelevant agent event | No | Advance `journalSeq` only |
+| `history.entry` for X | Yes | `historyClean=false`; `liveClean=false`; set `historyFenceSeq=event.sequence`; clear current live fragments; schedule page-1 native history merge |
+| `assistant.delta` / `tool.*` for X while live-clean | Yes | Append to live fragments |
+| `assistant.delta` / `tool.*` for X while `historyClean=false` | Yes | Buffer fragments with sequence greater than `historyFenceSeq`; do not append yet |
+| `snapshot.invalidated` for X with `reason=ring_truncated` | Yes | `liveClean=false`; mark tail truncated; `historyClean=false`; schedule history refresh |
+| User-scoped `snapshot.invalidated` with `reason=source_changed` | All | `sourceEpoch++`; `statusClean=false`, `historyClean=false`, `liveClean=false` for all windows; drop deep page cache; snapshot/status/history refresh |
+| `turn.settled` for X | Yes | `statusClean=false`; `historyClean=false`; `liveClean=false`; schedule status + history refresh |
+| `command.changed`, `queue.changed`, `question.*` for X | Yes | `statusClean=false`; schedule status refresh |
+| `unknown.native` | Conservative | `historyClean=false`, `liveClean=false`; investigate whether status refresh is also required |
+| `agent.changed`, `workspace.changed`, `title.changed`, `source.warning`, `operation.changed` | Probably status-level | At minimum `statusClean=false`; do not flush entries unless event semantics require native history reload |
+
+---
+
+## Window-open transition
+
+### Cache hit
+
+For a cache hit:
+
+1. Render `renderedEntries`, `renderedStatus`, and `liveTurn` synchronously.
+2. Do **not** call `status()` or `readHistoryFetch()` before first paint.
+3. Show a stale/offline indication unless the window is `statusClean`, `historyClean`, and `liveClean`.
+4. If `window.journalSeq < JournalStore.seq`:
+
+   - If the missing range is inside the client ring, replay the missing events using the same transition table.
+   - If the range is no longer available, do **not** guess. Mark:
+
+     ```text
+     statusClean=false
+     historyClean=false
+     liveClean=false
+     ```
+
+     and schedule snapshot/status/history refresh in the background.
+
+5. Register the window as active.
+
+### Cache miss
+
+Use the existing cold path:
+
+- parallel `status()` + `readHistoryFetch()`;
+- show view only after both complete.
+
+Deep scroll may still be network-backed.
+
+---
+
+## History reconciliation
+
+On `history.entry`:
+
+- Trust only the native fetch, not the event payload body.
+- Use the event’s `entry_key` as the fence key.
+- Coalesce multiple `history.entry` events into one page-1 fetch rather than rerunning on every event.
+- Keep the highest `historyFenceSeq` until the fetch confirms the corresponding native entry key is present.
+- If confirmation succeeds and no newer fence exists:
+
+  ```text
+  historyClean=true
+  ```
+
+  Then replay any buffered post-fence live fragments.
+
+- If confirmation fails:
+
+  ```text
+  historyClean=false
+  ```
+
+  Retry with bounded backoff.
+
+- If the merge detects conflicting/truncated page structure, fail closed:
+
+  ```text
+  historyError=true
+  historyClean=false
+  liveClean=false
+  ```
+
+  Do not silently replace old entries with an ambiguous merge.
+
+Deep pages should be tagged with `historyEpoch`. On any history invalidation, discard or ignore deep pages from older epochs; page 1 is the reconciliation point.
+
+---
+
+## Costs and risks
+
+### Benefits
+
+- Removes redundant per-conversation event source work.
+- One global cursor makes gap/instance-mismatch recovery coherent.
+- Recent-window switching can be both fast and event-consistent.
+- The journal stream becomes the only push path for all active and recent windows.
+- Native history remains authoritative.
+
+### Risks
+
+- **Central blast radius:** one malformed event or journal bug affects all windows. Mitigate by central validation, fail-closed invalidation, and bounded recovery.
+- **Client ring bounds:** if a conversation was not replayed before the ring evicted its range, the switch must fall back to network; stale display must be marked.
+- **History merge races:** the current component-ref-based merge is not safe for a multi-window store. The canonical entries array must live in the store, not in render refs.
+- **IndexedDB atomicity:** do not resume the journal cursor from IndexedDB unless a single writer/leader and transactional journaling are implemented.
+- **Stale continuation proof:** never continue from cached/persisted `Status.continuation`; always refresh explicitly before continue.
+- **Multi-tab:** per-tab streams are simpler; SharedWorker reduces server connections but adds lifecycle and ownership complexity.
+
+---
+
+## Non-negotiables
+
+1. **Pi JSONL remains the only durable history truth.**
+   `history.entry` and live tail frames are invalidation/provisional hints.
+
+2. **Global journal sequence is per daemon UID.**
+   A conversation cache must be tied to the `server_instance_id`, not only to conversation-local state.
+
+3. **Cursor instance mismatch or gap means resnapshot, never local patching.**
+
+4. **User-scoped `snapshot.invalidated` invalidates all derived windows for that identity/daemon.**
+
+5. **Writes and continuation require fresh status and explicit continuation proof.**
+   Cached status may render, but cached proof must not authorize an action.
+
+6. **Cached history pages are epoch-bound.**
+   Any history invalidation invalidates older deep-page caches.
+
+7. **Cache failures must be fail-open for UX but fail-closed for truth.**
+   A broken cache may render stale content with a stale indicator; it must not pretend to be fresh.
+
+8. **Identity isolation.**
+   Memory and IndexedDB caches must be scoped by identity and cleared on logout/identity loss.
+
+---
+
+## What to remove or avoid
+
+- **Per-conversation `EventSource` ownership** should be removed from `useConversation`.
+- **Letting each conversation reconstruct and advance its own global cursor** should be replaced by a single journal store.
+- **Pushing all daemon tails** should be avoided; snapshot per-agent tails are enough.
+- **Persisting continuation proof in IndexedDB** should be prohibited.
+- **Using IndexedDB to resume the live journal cursor** should be avoided unless a much more complex single-writer journal is justified.
+- **The current `pendingNativeEntry` one-shot flag** should be replaced by a per-window `historyFenceSeq` plus buffered post-fence fragments.
+
+---
+
+## Recommended path
+
+Use **one global journal store per tab/identity**, with a bounded client ring and recent-window memory cache. This gives the 16 ms recent-switch path without compromising event integrity.
+
+Add IndexedDB only as a **best-effort render cache on reload**:
+
+- Render from IndexedDB immediately.
+- Do not resume journal state from IndexedDB.
+- Fetch a fresh snapshot/status/history as soon as network is available.
+- Mark cached content stale until revalidated.
+
+Cold open remains the existing parallel `status()` + `readHistoryFetch()`. Deep scroll remains network-backed.
+
+---
+
+## Context request
+
+- **Kind:** clarification
+  **Need:** Does “recent switch” include full browser reload or cold SPA start, or only switching within an already-running SPA?
+  **Why:** Determines whether IndexedDB is necessary or whether the in-memory ring/window cache by itself satisfies the requirement.
+
+- **Kind:** clarification
+  **Need:** Can native Pi JSONL ever truncate, compact, rewrite, or otherwise remove earlier entries?
+  **Why:** Determines whether the page-1 prefix merge can preserve old deep pages or must replace on ambiguity.
+
+- **Kind:** artifact
+  **Need:** `web/src/app/snapshot.ts` and the implementation of `readHistoryFetch` / `HistoryEntry` pagination semantics.
+  **Why:** Confirms whether `snapshot.event_cursor` plus per-agent `live_tail` is sufficient to seed all recent windows, and exactly what `complete`, `next_after`, and history errors mean for merge correctness.
+
+---
+
+## Model: claude-fable-5-1
+[model:claude-fable-5-1] [thread_id:6a0784a7-5b8d-4d78-8768-a23dc102818c]
+
+I'll ground the security lens in what the browser actually stores and how identity changes are handled, then analyze the four options.**Recommendation first.** Choose A, held in memory only, with D's conditional revalidation folded in as the staleness check. Reject B outright on security grounds. Reject C as unnecessary: the unified stream already delivers every agent's frames to the browser, so "push all tails" adds server state and ring pressure without adding anything the browser does not already receive.
+
+The security delta of A is small because the transport already exposes everything the window would hold. The daemon's events stream is user-scoped, not agent-scoped, and `applyTurnEvent` filters by agent id client-side. Holding a bounded window per opened conversation keeps data the tab has already seen. What changes is lifetime, and that is where the rules below bite.
+
+**State transitions I would recommend.** One window per `(identity, server_instance_id, agent_id)`, one EventSource per identity.
+
+| From | Event | To | Network |
+|---|---|---|---|
+| absent | user opens | opening | status + history page 1 in parallel, as today |
+| opening | both arrive, workspace matches | fresh | none |
+| fresh | `history.entry` for this agent | fresh | reread page 1, as today |
+| fresh | agent-scoped `snapshot.invalidated` | stale | none until selected |
+| fresh | user-scoped `snapshot.invalidated`, SSE gap, 409 | stale, all windows | none until selected |
+| stale | user selects it | revalidating | status; history only if `native_revision` differs from the window's |
+| revalidating | revision equal | fresh | none further |
+| revalidating | revision differs or history missing | opening | full reread |
+| any | `server_instance_id` changes | evicted, all windows | resnapshot |
+| any | 401, `identity_lost`, identity change, logout | evicted, all windows, synchronously before navigate | none |
+| any | LRU overflow or byte cap | evicted, oldest unselected | none |
+
+A switch to a fresh window renders from memory with no request, which meets the requirement. A switch to a stale window also renders immediately, with a visible staleness marker, and revalidates in the background. The cursor is global, so one gap marks every window stale. That is correct and cheap only if revalidation is cheap, which is why the revision comparison matters. Both the status reply and the history page already carry `native_revision` from the same source, so the comparison needs no new contract.
+
+**What to remove.** The per-conversation EventSource and its per-conversation 60 second offline poll. The keyed remount on conversation switch, replaced by window selection. The per-conversation `openedProof` string, replaced by window identity. The "both must finish before reveal" gate stays for cold open and goes for warm switch. The provisional `live_tail` in the snapshot stays, since it seeds a window that was opened before the stream caught up.
+
+## Observations
+
+- **The client has a deliberate no-disk posture today.** Every daemon and gateway reply sets no-store, and the only client persistence is sessionStorage keyed by identity, cleared on identity change and logout at two places in App.tsx. Conversation content lives only in React state and dies with the tab. Option B reverses that posture.
+- **IndexedDB is per origin, not per identity.** Keying by identity would have to be enforced on every read path. Deletion is asynchronous and can fail or be interrupted. Quota eviction and crash leave copies. On a shared browser profile, a second GitHub identity could read the first one's tool output and file contents through any keying bug. The codebase already needed two identity-hygiene sweeps for sessionStorage. A third, asynchronous one is a real defect surface for no gain the memory window does not give.
+- **The journal ring is a shared resource.** 128 frames or 1 MiB across all agents of one user. Under C, and under A with many active agents, one chatty agent evicts the others' frames and every window goes stale on `cursor_expired`. This is availability, not confidentiality, but it is self-inflicted and the cheap revalidation is the mitigation.
+- **Revocation latency is unchanged in kind.** After `RevokeSubject`, a tab keeps rendering memory until its next request fails. Today that is one conversation. With windows it is up to N conversations of the same user. Acceptable, because the data is the user's own and the first request evicts everything.
+- **The architecture page's cache rule is satisfied by memory, not by disk.** A window is rebuildable from Pi JSONL at any time and holds no user information the server lacks. IndexedDB would be a second store that can drift, which the project rules out without a measured need.
+
+## Risks and opportunities
+
+- **Risk, A:** eviction on identity change must run before the new identity's snapshot is applied, in the same tick as the 401 or `identity_lost` observation. If it runs in an effect after navigation, one render of the old user's window can occur under the new identity.
+- **Risk, A:** the send-receipt reconciliation reads sessionStorage keys per conversation. With one stream fanning out, make sure only the selected window runs that path on each event, or each `turn.settled` triggers N status calls.
+- **Risk, A:** a hostile or runaway agent can fill the user's own browser memory. Bound windows by count and by bytes of entries, and drop deep-scroll pages first. Low severity, must be stated.
+- **Risk, C:** adds per-client subscription state or widens the push, which is new server-side state the project's principles reject, and multiplies ring eviction.
+- **Risk, B:** disk persistence across logout on shared machines, asynchronous deletion, and a per-origin store shared by identities. I see no mitigation that costs less than not doing it.
+- **Opportunity, D folded into A:** the revision comparison turns most revalidations into one small status call. It also gives a crisp definition of "stale" that the UI can show honestly.
+
+## Non-negotiables and questions
+
+Non-negotiables:
+
+- No conversation content in any persistent client store: no IndexedDB, localStorage, Cache API or service worker cache. Keep no-store on every reply. Drafts stay in sessionStorage as now.
+- Every window keyed by identity, server instance and agent id, and evicted synchronously on identity change, 401, logout and instance change.
+- The provisional tail is never promoted to history in any window. Only a `history.entry` arrival or a page reread clears fragments, as today.
+- Dispatch by `resource.agent_id`, and user-scoped invalidations fan out to all windows. An event whose workspace does not match the window's workspace is dropped.
+- A hard cap on window count and bytes.
+- No new daemon state for browser windows. The daemon stays unaware of what the browser holds.
+
+Questions:
+
+- Is the browser profile assumed personal? If a shared profile is in scope, in-memory still holds, but the revocation latency note becomes a product statement rather than a footnote.
+- Should a `server_instance_id` change evict or revalidate? I recommend evict, because a daemon restart runs one-writer reconciliation and the old window's revision cannot be trusted across it.
+- Does the 16 ms requirement cover a stale window rendering with a marker, or only fresh ones? I recommend both, since the marker is the honest state and the fetch runs behind it.
+- What is the window cap? Eight windows and roughly two megabytes of entries each would be my starting point, to be measured.
+[model:deepseek-v4-pro] [thread_id:api_f7bb96e71d0f4191b6f175d154807573]
+
+## What the supplied files change
+
+### 1. Snapshot already contains the per-agent provisional state
+
+`Snapshot` has:
+
+- one global `event_cursor`
+- one `server_instance_id`
+- per-agent `live_tail: Event[]`
+
+This confirms that the daemon already copies both the global cursor and each agent’s provisional tail together. It makes option C — separately pushing all tails — redundant. A browser-held journal store can seed recent windows from the snapshot alone.
+
+### 2. Native history has a real revision, not just an `after` key
+
+`HistoryPage.native_revision` is a SHA-256 over the full native JSONL file. `after` pagination is positional by `entry_key`, and the daemon returns `409 stale_precondition` when the requested `after` key is no longer present.
+
+This has a direct browser consequence: an old `next_after` cursor is only meaningful for the same `native_revision`. A cached page cannot be continued unless both these hold:
+
+- `page.native_revision === cachedRevision`
+- the cached prefix is still present in the new page
+
+If the file was rewritten externally, the correct behavior is replacement, not merge.
+
+### 3. Lazy content is revision-scoped
+
+`content_id` is derived from:
+
+- session id
+- native revision
+- entry key
+
+So a cached `Entry` with deferred content is invalid after the native revision changes. Any invalidation must also discard or reset lazy-loaded content chunks.
+
+### 4. History reads are not cheap on the daemon
+
+`readNative` reads the entire JSONL file and hashes it on each page request. This matters for the `history.entry` question: a native reread is authoritative, but per-event rereads are expensive and should be coalesced.
+
+---
+
+## Direct answer: may `history.entry` be applied directly?
+
+**No, not as a confirmed native entry.**
+
+A valid and contiguous SSE event proves two things:
+
+- the global journal cursor is in order
+- the daemon emitted the event at that journal sequence
+
+It does **not** prove:
+
+- the payload matches the current JSONL revision
+- the entry is still on the active leaf ancestry after an external rewrite
+- the inline `content` is complete or still valid
+- the entry’s lazy content IDs still resolve
+
+`history.entry` payload is a journal presentation hint. The native JSONL remains authoritative.
+
+### What `history.entry` should do
+
+Treat `history.entry` as a **native-history fence**, not as content:
+
+```text
+historyDirty = true
+liveDirty = true
+historyFenceSeq = event.sequence
+buffer later live deltas until authoritative page 1 confirms
+```
+
+Do **not** insert `event.payload.content` into the confirmed timeline.
+
+The recommended behavior is:
+
+- coalesce multiple `history.entry` events into one page-1 authoritative read
+- ignore event content as confirmed truth
+- clear/replace provisional live fragments through the native read, not through the event body
+
+### Why not apply payload even when contiguous?
+
+Because native history is not an append-only commit log from the event journal’s perspective. The daemon journal is transient and in-memory. Pi JSONL can be rewritten externally. A sequence-valid event only says “this event reached the journal”; it does not say “this is still what the native file contains.”
+
+If direct apply were ever considered, the event would need at least a native `native_revision` binding it to the exact file contents from which it was produced — and even then, direct apply would only be provisional until the next authoritative read. Current evidence contains no such revision field.
+
+So:
+
+```text
+Valid, contiguous history.entry = invalidation + coalesced native reread
+Invalid/gapped history.entry = snapshot/history recovery
+```
+
+This is not “reread on every single event”; it is “one fence, one pending read, one authoritative reconciliation.”
+
+---
+
+## Refined design
+
+### Option ranking after the supplied evidence
+
+| Option | Verdict |
+|---|---|
+| A: one journal stream with opened windows | Still the correct baseline |
+| B: add IndexedDB | Not needed for the stated requirement; reload can wait; keep out of journal truth |
+| C: push all tails | Rejected; snapshot `live_tail` already provides bounded per-agent state |
+| D: cheap fetch on open | Useful fallback and reconciliation path, not the 16 ms solution |
+
+The recommended form is still:
+
+> One tab-global journal store + bounded client ring + bounded LRU of recent window caches.
+
+Reload is explicitly allowed to wait, so IndexedDB can be omitted. Cold open and deep scroll remain network-backed.
+
+### Window cache shape
+
+A recent window cache should carry:
+
+```text
+workspace_id
+conversation_id
+server_instance_id
+journalSeq
+nativeRevision
+renderedStatus
+entries
+nextAfter
+liveTurn
+historyDirty
+statusDirty
+liveDirty
+historyFenceSeq
+bufferedPostFenceFragments
+```
+
+`journalSeq` is the global SSE sequence through which this window has already processed events.
+
+---
+
+## State transitions and invalidation
+
+### Journal connection
+
+| State | Global store behavior | Window behavior |
+|---|---|---|
+| Fresh snapshot | Set `server_instance_id`, `seq` from `snapshot.event_cursor`; open one SSE after it | Seed live tails from per-agent snapshot `live_tail` |
+| Valid SSE event | `seq = event.sequence`; append to ring | Apply the event table below |
+| Duplicate already-applied event | Ignore | None |
+| Cursor gap | Drop client ring; fetch new snapshot | All windows become stale |
+| `cursor_expired` / `cursor_instance_mismatch` | Treat as gap | All windows stale |
+| Offline / EventSource error | Mark offline; slow fallback poll | Windows remain renderable but visibly stale |
+| Identity loss / logout | Clear ring and window caches | All derived state dropped |
+
+### Conversation event handling
+
+For an event targeting conversation X:
+
+| Event | Effect |
+|---|---|
+| Irrelevant agent event | Advance `journalSeq` only |
+| `history.entry` for X | `historyDirty=true`; `liveDirty=true`; set `historyFenceSeq=event.sequence`; buffer later deltas; schedule one page-1 reconciliation |
+| `assistant.delta` / `tool.*` for X when `liveDirty=false` | Append to live provisional fragments |
+| `assistant.delta` / `tool.*` for X when `liveDirty=true` | Buffer behind `historyFenceSeq`; do not append yet |
+| `snapshot.invalidated` for X, `ring_truncated` | `historyDirty=true`; `liveDirty=true`; clear provisional tail; schedule history/status refresh |
+| User-scoped `snapshot.invalidated` | Invalidate all windows; discard revision-scoped pages; resnapshot |
+| `turn.settled` for X | `historyDirty=true`; `statusDirty=true`; schedule status + history |
+| `command.changed`, `queue.changed`, `question.*` for X | `statusDirty=true`; refresh status |
+| `unknown.native` | Conservative history dirty; do not assume confirmed UI state |
+| `title.changed`, `agent.changed`, `workspace.changed`, `operation.changed` | At least status dirty; investigate whether native entries are semantically affected |
+
+### Page-1 reconciliation rules
+
+When `readHistoryFetch(id)` returns:
+
+#### Same `native_revision` as cached
+
+- Existing prefix may be preserved only if both:
+  - `page.native_revision === cachedRevision`
+  - `page.entries` matches the cached prefix by `entry_key`
+
+- Then merge as today:
+
+```text
+merged = cachedEntries
+cursor = cachedLastKey
+```
+
+and fetch additional pages until caught up.
+
+#### Different `native_revision`
+
+- Discard cached entries.
+- Discard cached deep pages.
+- Discard/reset lazy content chunks.
+- Replace with `page.entries`.
+- Set `nextAfter = page.next_after`.
+- Set `nativeRevision = page.native_revision`.
+- Mark `historyDirty=false` only after successful replacement.
+
+Do **not** preserve old entries merely because the first keys look equal. Equal keys do not prove equal content or equal revision.
+
+#### Reconciliation failure
+
+If page 1 is ambiguous, incomplete, or continuation returns `409/stale_precondition`:
+
+- mark `historyError=true`
+- keep the old timeline visible
+- do not silently merge
+- retry with backoff or fall back to a fresh open
+
+This is fail-closed for truth while staying fail-open for UI availability.
+
+### Recent-switch path
+
+For a conversation whose window cache is in memory:
+
+1. Render cached `status`, `entries`, and `liveTurn` synchronously.
+2. If `window.journalSeq < globalStore.seq`:
+   - replay missing events from the client ring if available;
+   - otherwise render cached content with a stale indicator and refresh in background.
+3. Do not issue network before first paint.
+4. Bound the number of cached windows with LRU. Evicted windows use the cold open path.
+
+Cold open remains parallel:
+
+```text
+status + page-1 history
+```
+
+Deep scroll remains paged network reads.
+
+---
+
+## Risks and opportunities
+
+### Risks
+
+- **Central journal store has wider blast radius.** One malformed event can affect all windows if not contained. Mitigation is centralized validation and clear global recovery.
+- **Client ring eviction.** If a cached window falls behind the ring, it can render stale content. The UI must expose this explicitly.
+- **Native revision replacement can surprise the UI.** External rewrites may change entry content or lazy content IDs even when entry keys look stable.
+- **Coalescing can delay authoritative content.** A burst of history events should not produce a burst of fetches, but the UI must not present live fragments as confirmed native entries.
+- **Whole-file history reads can be expensive.** Browser coalescing prevents the worst per-event behavior, but a daemon-side cheap stat/revision hint is likely still desirable as a gate.
+- **Do not persist the global journal cursor to IndexedDB.** That would create a durability/atomicity problem with native revision. The stated requirement does not need it.
+
+### Opportunities
+
+- The full-file `native_revision` is a very clean epoch. Caches, continuation pages, and lazy content all become discardable with one revision comparison.
+- The supplied snapshot shape already supports the proposed design without a new daemon tail API.
+- Coalescing `history.entry` reconciliations can remove the current per-event page-1 reads and make the browser busier only during real history writes.
+
+---
+
+## Non-negotiables
+
+1. **Pi JSONL remains sole durable truth.**
+   No browser-held entry, live tail, or journal event becomes authoritative.
+
+2. **`native_revision` is the history epoch.**
+   Cached entries, deep pages, `next_after`, continuation pages, and lazy content are valid only for that revision.
+
+3. **The global journal sequence is per daemon UID/server instance.**
+   A conversation cache must be tied to `server_instance_id`, not to its agent id alone.
+
+4. **`history.entry` is an invalidation fence.**
+   It is never applied directly as a confirmed native history entry.
+
+5. **Prefix merge is revision-gated.**
+   Same keys are not enough; same `native_revision` plus matching prefix is required.
+
+6. **Lazy content invalidation follows revision.**
+   If `native_revision` changes, all cached `content_id` chunks from older revisions are dead.
+
+7. **User-scoped snapshot invalidation invalidates all windows.**
+   It cannot be scoped optimistically to one conversation.
+
+8. **Cursor gap or instance mismatch means resnapshot.**
+   Never patch the old window state forward across an unknown journal range.
+
+9. **Cached continuation proof is never actionable.**
+   Continue must always re-establish continuation status against fresh native evidence.
+
+---
+
+## What to remove
+
+- Per-conversation `EventSource` ownership.
+- The current single `pendingNativeEntry` flag as the only fence; replace with revision-aware history-fence state.
+- Prefix preservation based only on `entry_key`.
+- Any use of `history.entry.payload.content` as confirmed content.
+- IndexedDB journal-cursor resumption.
+- All-tail push.
+
+Keep the existing page-1 prefix merge only when it is additionally gated on unchanged `native_revision`.
+
+---
+
+No blocking questions remain. The previous ambiguity is resolved: recent means within the running tab, reload may wait, and native rewrites require revision-scoped replacement rather than optimistic prefix continuation.
