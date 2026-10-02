@@ -99,7 +99,7 @@ test("@native-history mapped identity isolates native content", async ({
     "Bobin synteettinen viesti 0",
   );
   const spoofed = await page.request.get(
-    `/api/v1/agents/${agent}/history?limit=1`,
+    `/api/v1/agents/${agent}/history?limit=1&after=`,
     {
       headers: {
         "X-Agent-Host-Identity": "wid_forged",

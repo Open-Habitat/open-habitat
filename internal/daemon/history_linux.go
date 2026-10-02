@@ -24,6 +24,7 @@ import (
 
 const historyRoot = ".pi/agent/sessions"
 const maxHistoryFile = 512 << 20
+const maxLegacyHistoryFile = 32 << 20
 
 var sessionIDPattern = regexp.MustCompile(`^[0-9a-fA-F-]{36}$`)
 var entryIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
@@ -180,7 +181,7 @@ func readNativeSettled(path string, uid int) nativeSession {
 func readNative(path string, uid int) nativeSession {
 	var result nativeSession
 	before, err := os.Lstat(path)
-	if err != nil || !before.Mode().IsRegular() || before.Size() > maxHistoryFile || before.Size() < 1 {
+	if err != nil || !before.Mode().IsRegular() || before.Size() > maxLegacyHistoryFile || before.Size() < 1 {
 		return result
 	}
 	if uid >= 0 {
@@ -197,8 +198,8 @@ func readNative(path string, uid int) nativeSession {
 	if err != nil || !os.SameFile(before, opened) {
 		return result
 	}
-	b, err := io.ReadAll(io.LimitReader(f, maxHistoryFile+1))
-	if err != nil || len(b) > maxHistoryFile || !utf8.Valid(b) {
+	b, err := io.ReadAll(io.LimitReader(f, maxLegacyHistoryFile+1))
+	if err != nil || len(b) > maxLegacyHistoryFile || !utf8.Valid(b) {
 		return result
 	}
 	after, err := os.Lstat(path)
@@ -211,7 +212,7 @@ func readNative(path string, uid int) nativeSession {
 	result.state = "readable"
 	result.entries = []historyEntry{}
 	scanner := bufio.NewScanner(bytes.NewReader(b))
-	scanner.Buffer(make([]byte, 4096), maxHistoryFile+1)
+	scanner.Buffer(make([]byte, 4096), maxLegacyHistoryFile+1)
 	if !scanner.Scan() {
 		return nativeSession{}
 	}
@@ -432,7 +433,7 @@ func historyHandlerWithReader(cfg transport.Config, trusted func(*http.Request) 
 					snapshotError(w, 400, "invalid_request")
 					return
 				}
-				loaded := readNativeWindow(s.path, cfg.UID, q.Get("before"), limit)
+				loaded := readNativeWindowSettled(s.path, cfg.UID, q.Get("before"), limit, "")
 				if loaded.id != s.id || loaded.cwd != s.cwd || loaded.state != "readable" {
 					snapshotError(w, 503, "native_source_unavailable")
 					return
@@ -531,7 +532,7 @@ func historyHandlerWithReader(cfg transport.Config, trusted func(*http.Request) 
 				if s.state != "readable" || !strings.HasPrefix(id, opaque("ct_", s.id)[:15]+"_") {
 					continue
 				}
-				loaded := readNativeSettled(s.path, cfg.UID)
+				loaded := readNativeWindowSettled(s.path, cfg.UID, "", 1, id)
 				if loaded.id != s.id || loaded.cwd != s.cwd || loaded.state != "readable" {
 					snapshotError(w, 404, "content_revision_gone")
 					return

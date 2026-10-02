@@ -15,6 +15,12 @@ import (
 // only the active tail needed by the requested page. No cross-request index is
 // kept. A before page includes its boundary as a shared-key witness.
 func readNativeWindow(path string, uid int, beforeKey string, limit int) nativeSession {
+	return readNativeWindowFor(path, uid, beforeKey, limit, "")
+}
+
+// Content selection follows the same active branch, hash and file stability
+// checks as paging; it retains only the requested entry's rendered text.
+func readNativeWindowFor(path string, uid int, beforeKey string, limit int, contentKey string) nativeSession {
 	var result nativeSession
 	info, err := os.Lstat(path)
 	if err != nil || !info.Mode().IsRegular() || info.Size() < 1 || info.Size() > maxHistoryFile {
@@ -44,6 +50,12 @@ func readNativeWindow(path string, uid int, beforeKey string, limit int) nativeS
 	}
 	result.revision = base64.RawURLEncoding.EncodeToString(hash.Sum(nil)[:18])
 	result.path, result.state = path, "readable"
+	header := readNativeHeader(path, uid)
+	if header.id == "" {
+		result.state = "corrupt"
+		return result
+	}
+	result.id, result.cwd = header.id, header.cwd
 	result.boundaryFound = beforeKey == ""
 	result.entries = []historyEntry{}
 	var target string
@@ -53,7 +65,11 @@ func readNativeWindow(path string, uid int, beforeKey string, limit int) nativeS
 	var stopped bool
 	// ReadAt preserves native order independently of the forward hash pass.
 	err = reverseLines(f, info.Size(), func(line []byte) bool {
-		var e nativeEntry
+		var e struct {
+			ID       string  `json:"id"`
+			Type     string  `json:"type"`
+			ParentID *string `json:"parentId"`
+		}
 		if json.Unmarshal(line, &e) != nil || !entryIDPattern.MatchString(e.ID) {
 			broken = true
 			return false
@@ -61,7 +77,6 @@ func readNativeWindow(path string, uid int, beforeKey string, limit int) nativeS
 		if e.Type == "session" {
 			return false
 		}
-		e.Raw = line
 		if !leaf {
 			leaf = true
 			chain = e.ParentID != nil
@@ -83,9 +98,22 @@ func readNativeWindow(path string, uid int, beforeKey string, limit int) nativeS
 			}
 			result.boundaryFound = true
 		}
-		kind, text := nativeText(e)
+		if contentKey != "" && contentID(&result, e.ID) != contentKey {
+			return true
+		}
+		var full nativeEntry
+		if json.Unmarshal(line, &full) != nil {
+			broken = true
+			return false
+		}
+		full.Raw = line
+		kind, text := nativeText(full)
 		if kind != "" {
 			result.entries = append(result.entries, historyEntry{Key: e.ID, Kind: kind, full: text})
+		}
+		if contentKey != "" {
+			stopped = true
+			return false
 		}
 		if len(result.entries) > limit+boolInt(beforeKey != "") {
 			stopped = true
@@ -97,21 +125,13 @@ func readNativeWindow(path string, uid int, beforeKey string, limit int) nativeS
 		result.state = "corrupt"
 		return result
 	}
-	// A limited reverse scan need not reach the header. Check its identity using
-	// the same bounded, ownership-checked native header path as discovery.
-	header := readNativeHeader(path, uid)
-	if header.id == "" {
-		result.state = "corrupt"
-		return result
-	}
-	result.id, result.cwd = header.id, header.cwd
 	after, err := os.Lstat(path)
 	if err != nil || !os.SameFile(info, after) || info.Size() != after.Size() || !info.ModTime().Equal(after.ModTime()) {
 		result.state = "corrupt"
 		return result
 	}
 	result.olderComplete = !stopped
-	if stopped {
+	if stopped && contentKey == "" {
 		result.entries = result.entries[:limit+boolInt(beforeKey != "")]
 	}
 	for i, j := 0, len(result.entries)-1; i < j; i, j = i+1, j-1 {
@@ -135,46 +155,64 @@ func reverseLines(f *os.File, size int64, visit func([]byte) bool) error {
 	if last[0] != '\n' {
 		return io.ErrUnexpectedEOF
 	}
-	var pending []byte
-	for pos := size; pos > 0; {
+	emit := func(start, end int64) (bool, error) {
+		if end-start > maxLine {
+			return false, io.ErrUnexpectedEOF
+		}
+		if end == start {
+			return true, nil
+		}
+		line := make([]byte, end-start)
+		if _, err := f.ReadAt(line, start); err != nil {
+			return false, err
+		}
+		if !utf8.Valid(line) {
+			return false, io.ErrUnexpectedEOF
+		}
+		return visit(line), nil
+	}
+	buf := make([]byte, block)
+	lineEnd := size - 1
+	for pos := size - 1; pos > 0; {
 		start := pos - block
 		if start < 0 {
 			start = 0
 		}
-		buf := make([]byte, pos-start)
-		if _, err := f.ReadAt(buf, start); err != nil {
+		chunk := buf[:pos-start]
+		if _, err := f.ReadAt(chunk, start); err != nil {
 			return err
 		}
-		end := len(buf)
-		for i := len(buf) - 1; i >= 0; i-- {
-			if buf[i] != '\n' {
+		for i := len(chunk) - 1; i >= 0; i-- {
+			if chunk[i] != '\n' {
 				continue
 			}
-			line := make([]byte, 0, end-i-1+len(pending))
-			line = append(line, buf[i+1:end]...)
-			line = append(line, pending...)
-			if len(line) > maxLine || !utf8.Valid(line) {
-				return io.ErrUnexpectedEOF
+			more, err := emit(start+int64(i)+1, lineEnd)
+			if err != nil || !more {
+				return err
 			}
-			if len(line) > 0 && !visit(line) {
-				return nil
-			}
-			pending = nil
-			end = i
+			lineEnd = start + int64(i)
 		}
-		if end+len(pending) > maxLine {
+		if lineEnd-start > maxLine {
 			return io.ErrUnexpectedEOF
 		}
-		pending = append(append([]byte(nil), buf[:end]...), pending...)
 		pos = start
 	}
-	if len(pending) > 0 {
-		if !utf8.Valid(pending) {
-			return io.ErrUnexpectedEOF
-		}
-		_ = visit(pending)
+	_, err := emit(0, lineEnd)
+	return err
+}
+
+// Pi can append between the hash and the reverse scan. The same one-retry
+// policy as native continuation avoids treating a transient append as loss.
+func readNativeWindowSettled(path string, uid int, beforeKey string, limit int, contentKey string) nativeSession {
+	return settleNativeWindow(func() nativeSession { return readNativeWindowFor(path, uid, beforeKey, limit, contentKey) })
+}
+
+func settleNativeWindow(read func() nativeSession) nativeSession {
+	s := read()
+	if s.id == "" || s.state == "corrupt" {
+		return read()
 	}
-	return nil
+	return s
 }
 
 func boolInt(b bool) int {

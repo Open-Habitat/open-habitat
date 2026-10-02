@@ -332,7 +332,22 @@ func TestTailPageLargeNativeFileAndByteCap(t *testing.T) {
 	if status != 200 || n > 70000 || chunk["content"].(map[string]any)["text"] == "" {
 		t.Fatal("content cap", status, n)
 	}
-	t.Logf("native bytes=%d, tail request duration=%s, tail response bytes=%d, content response bytes=%d, HTTP requests=3", len(large), tailDuration, tailBytes, n)
+	appendFile, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = appendFile.WriteString(`{"type":"message","id":"appended","message":{"role":"user","content":"new"}}` + "\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err = appendFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+	oldID := content["content_id"].(string)
+	status, _, _ = read("/api/v1/content/" + oldID + "?offset=0&limit_bytes=10")
+	if status != 404 {
+		t.Fatal("stale content revision accepted", status)
+	}
+	t.Logf("native bytes=%d, tail request duration=%s, tail response bytes=%d, content response bytes=%d, HTTP requests=4", len(large), tailDuration, tailBytes, n)
 }
 
 func TestTailPageFollowsActiveNativeBranch(t *testing.T) {
@@ -353,5 +368,21 @@ func TestTailPageFollowsActiveNativeBranch(t *testing.T) {
 	stale := readNativeWindow(path, os.Getuid(), "b", 2)
 	if stale.state != "readable" || stale.boundaryFound {
 		t.Fatal("inactive branch cursor accepted", stale)
+	}
+}
+
+func TestTailWindowRetriesUnstableNativeReadOnce(t *testing.T) {
+	for _, first := range []nativeSession{{}, {id: "native", state: "corrupt"}} {
+		calls := 0
+		result := settleNativeWindow(func() nativeSession {
+			calls++
+			if calls == 1 {
+				return first
+			}
+			return nativeSession{id: "native", state: "readable"}
+		})
+		if calls != 2 || result.state != "readable" {
+			t.Fatal("did not recover from append", calls, result)
+		}
 	}
 }

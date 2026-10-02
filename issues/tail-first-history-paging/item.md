@@ -24,9 +24,9 @@ Extend `contracts/v1/history.schema.json` and generated clients with newest-page
 
 Expose a React-free `conversationPager.ts` with `tail(id, signal)`, `older(id, cursor, signal)`, `reconnect(id, heldKeys, maxPages, signal)` returning `{ pages, met }`, `cancelAll()` as specified in the design. It owns HTTP validation (`history.ts` / `HistoryView.tsx`'s `readHistoryFetch`), request cancellation and bounded newest-to-oldest reads. Return validated pages to @recent-conversation-windows; that issue alone decides window merges and scroll anchoring. A 404 on a new controlled conversation can mean confirmed missing native history, not a failed open. @one-browser-event-stream invokes recovery, not a second pager. **Implementation order (prose only):** @recent-conversation-windows blocked_by this contract; @one-browser-event-stream integration blocked_by both.
 
-## Acceptance criteria
+## Acceptance Criteria
 
-- [ ] One request gets newest bounded entries, including long files; backward pages cover unchanged native history in native order without duplication.
-- [ ] Appends leave older-page cursors usable; a missing boundary key is reported and leads to a tail reload, never a guessed join.
-- [ ] Large entries and separate content reads respect byte limits and revisions; measure full-file read cost and HTTP counts.
+- [x] One request gets newest bounded entries, including long files; backward pages cover unchanged native history in native order without duplication.
+- [x] Appends leave older-page cursors usable; a missing boundary key is reported and leads to a tail reload, never a guessed join.
+- [x] Large entries and separate content reads respect byte limits and revisions; measure full-file read cost and HTTP counts.
 - [ ] Contract generation and TESTING.md checks pass; the browser store can consume the documented pager API.
