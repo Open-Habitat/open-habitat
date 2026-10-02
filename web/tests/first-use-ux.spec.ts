@@ -82,7 +82,8 @@ test("@first-use a slow status read does not delay the device-code start, and co
       await route.continue().catch(() => {});
     });
     await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
-    await expect(page.getByText("ABCD-1234")).toBeVisible({ timeout: 1500 });
+    // The fake helper first reports pending; the next 2 s attempt poll reveals the code.
+    await expect(page.getByText("ABCD-1234")).toBeVisible({ timeout: 4000 });
     expect(statusReads).toBe(0);
     await page.unrouteAll({ behavior: "ignoreErrors" });
     const started = Date.now();

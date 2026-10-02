@@ -86,14 +86,16 @@ export function PiOnboarding({
       };
       let readingStatus = false;
       try {
-        if (!(await session())) return;
+        // Bind once for writes. Attempt reads authenticate via their own 401;
+        // polling must not fetch the session before or after each read.
+        if ((method !== "GET" || !bound.current) && !(await session())) return;
         // A write already checks its session binding in piAttempt. Reading
         // native status before a POST can exhaust the response budget while
         // the helper has started and is preparing a code.
         if (method === "GET" && !attemptInFlight.current && !forceSignIn) {
           readingStatus = true;
           const status = await piStatus(controller.signal);
-          if (!current() || !(await session())) return;
+          if (!current()) return;
           readingStatus = false;
           if (status === "login") {
             onLogin();
@@ -116,7 +118,7 @@ export function PiOnboarding({
           bound.current,
           controller.signal,
         );
-        if (!current() || !(await session())) return;
+        if (!current()) return;
         if (attempt === "login") {
           attemptInFlight.current = false;
           onLogin();
@@ -137,7 +139,11 @@ export function PiOnboarding({
         }
         if (attempt.pi_state === "usable") {
           const latest = await piStatus(controller.signal);
-          if (!current() || !(await session())) return;
+          if (!current()) return;
+          if (latest === "login") {
+            onLogin();
+            return;
+          }
           if (latest === "usable") {
             setView({ phase: "connected" });
             onUsable();
@@ -187,7 +193,7 @@ export function PiOnboarding({
     const timer = window.setInterval(() => {
       if (!ending.current && !checkFailed.current && attemptInFlight.current)
         void check();
-    }, 900);
+    }, 2000);
     const focus = () => {
       if (!ending.current) void check();
     };
