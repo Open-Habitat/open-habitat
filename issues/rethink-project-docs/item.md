@@ -652,3 +652,7 @@ Jarin pyynnöstä 2.10.2026 poistettu keskustelunvaihdon alkuperäisen mallipane
 ### 2026-10-02T06:01:26Z · @codex
 
 docs/conversation-data-flow.md kirjoitettu Jarin hyväksymällä rakenteella uudelleen: tiedon kulku, vastuut ja käyttötilanteet. Tiivis rajapintakuvaus korvaa pitkät TypeScript-tyypit. Sovitut noin 50 keskustelun säilytys, 1024 tapahtuman / noin 16 MiB:n toistoikkuna sekä yhtenäisen historian sovitus säilyvät. Toteutusjärjestys ja testit jäävät issueihin. ADR 0009 kirjaa design-conversation-data-flow-issuen myöhemmän tilanhallintapäätöksen ja korvaa ADR 0002:n Redux-yksinomaisuuden keskusteludatalle. Toistoikkunan vanheneminen erotettu lähdeissuessakin ring_truncated-ilmoituksesta. Tuotekoodia tai DAGia ei muutettu.
+
+### 2026-10-02T09:38:01Z · @codex
+
+Jarin valitsema läpikäyntijärjestys 2.10.2026: named-server-admin-settings, consistent-control-feedback, account-profile-from-github, raw-thinking-history-blocks, latest-control-obscured. Ensimmäisen issuen teksti uudistettu hyväksytyn roolirajauksen mukaan: selainylläpitäjä hallitsee yhteisiä asetuksia ja rooleja, henkilökohtainen sisältö säilyy käyttäjien omana. Palvelin voi toimia ilman ylläpitäjäkäyttäjää; erillinen etuoikeutettu ylläpito-CLI voi nimetä sellaisen myöhemmin. Näin testiasennus ei tarvitse pakollista admin-onboardingia. Valtuutuksen arkkitehtuuri jää ratkaistavaksi. Seuraava käsiteltävä issue on consistent-control-feedback. Tämä on tekstin ja päätöksen päivitys, ei toteutus tai DAG-muutos.
