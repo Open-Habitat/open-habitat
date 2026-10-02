@@ -95,19 +95,25 @@ export class ConversationStore {
       listener();
     });
   }
+  private seedLive(cursor: string, tail: Agent["live_tail"]): LiveTurn {
+    let live = initialTurn(
+      cursor,
+      tail.map((e) => parseConversationEvent(JSON.stringify(e))),
+    );
+    if (
+      this.routed?.instance === live.instance &&
+      this.routed.sequence > live.sequence
+    )
+      live = { ...live, ...this.routed, fragments: [], truncated: true };
+    return live;
+  }
   applySnapshot(snapshot: Snapshot) {
     if (this.disposed || snapshot.identity.web_identity_id !== this.identity)
       return;
     const restarted =
       !!this.snapshotCursor &&
       this.snapshotCursor.split(":")[1] !== snapshot.event_cursor.split(":")[1];
-    if (
-      this.routed?.instance === snapshot.event_cursor.split(":")[1] &&
-      this.routed.sequence > Number(snapshot.event_cursor.split(":")[2])
-    ) {
-      // The snapshot was taken before events already routed to this tab.
-      // Keep their live cursor and provisional content.
-    } else this.snapshotCursor = snapshot.event_cursor;
+    this.snapshotCursor = snapshot.event_cursor;
     const cursor = snapshot.event_cursor;
     if (
       [...this.windows.values()].some(
@@ -130,12 +136,7 @@ export class ConversationStore {
       ) {
         try {
           const agent = snapshot.agents.find((a) => a.agent_id === id);
-          const live = initialTurn(
-            cursor,
-            agent?.live_tail.map((e) =>
-              parseConversationEvent(JSON.stringify(e)),
-            ) ?? [],
-          );
+          const live = this.seedLive(cursor, agent?.live_tail ?? []);
           this.publish(id, {
             ...record.value,
             live,
@@ -161,12 +162,7 @@ export class ConversationStore {
       const record = this.windows.get(agent.agent_id);
       if (record && !record.value.live) {
         try {
-          const live = initialTurn(
-            snapshot.event_cursor,
-            agent.live_tail.map((e) =>
-              parseConversationEvent(JSON.stringify(e)),
-            ),
-          );
+          const live = this.seedLive(snapshot.event_cursor, agent.live_tail);
           this.publish(agent.agent_id, { ...record.value, live });
         } catch {
           this.markStale(agent.agent_id);
@@ -199,21 +195,10 @@ export class ConversationStore {
       let live: LiveTurn | undefined;
       try {
         if (agent && this.snapshotCursor)
-          live = initialTurn(
-            this.snapshotCursor,
-            agent.live_tail.map((e) =>
-              parseConversationEvent(JSON.stringify(e)),
-            ),
-          );
+          live = this.seedLive(this.snapshotCursor, agent.live_tail);
       } catch {
         /* A stale snapshot is recovered by the event router. */
       }
-      if (
-        live &&
-        this.routed?.instance === live.instance &&
-        this.routed.sequence > live.sequence
-      )
-        live = { ...live, ...this.routed, fragments: [], truncated: true };
       record = {
         value: {
           entries: [],
@@ -285,7 +270,7 @@ export class ConversationStore {
           state: record.value.entries.length ? "stale" : "error",
         });
     } finally {
-      if (record.loading === read) record.loading = false;
+      if (record.loading === read) this.releaseQueued(record);
     }
   }
   /** The caller must confirm a missing native history, not infer it from a 404 alone. */
@@ -325,7 +310,7 @@ export class ConversationStore {
       if (this.epoch === epoch && this.windows.get(id) === record)
         this.markStale(id);
     } finally {
-      if (record.loading === read) record.loading = false;
+      if (record.loading === read) this.releaseQueued(record);
     }
   }
   async reconnect(id: string, maxPages = 8): Promise<void> {
@@ -359,7 +344,7 @@ export class ConversationStore {
       if (this.epoch === epoch && this.windows.get(id) === record)
         this.markStale(id);
     } finally {
-      if (record.loading === read) record.loading = false;
+      if (record.loading === read) this.releaseQueued(record);
     }
   }
   applyPage(
@@ -449,7 +434,8 @@ export class ConversationStore {
   private releaseQueued(record: WindowRecord) {
     record.loading = false;
     const queued = record.queued.splice(0);
-    for (const event of queued) this.routeEvent(event);
+    const id = [...this.windows].find(([, value]) => value === record)?.[0];
+    if (id) for (const event of queued) this.advanceWindow(id, record, event);
   }
   setLive(id: string, live: LiveTurn) {
     const record = this.windows.get(id);
@@ -493,11 +479,15 @@ export class ConversationStore {
   }
   routeEvent(event: ConversationEvent, activeId?: string) {
     if (this.disposed) return;
+    if (event.kind === "snapshot.invalidated" && !event.resource.agent_id)
+      for (const id of this.metadata.statuses.keys())
+        if (id !== activeId) this.notifyStatus(id);
     if (
       event.resource.agent_id &&
       event.resource.agent_id !== activeId &&
       [
         "turn.settled",
+        "snapshot.invalidated",
         "command.changed",
         "queue.changed",
         "question.requested",
@@ -515,31 +505,41 @@ export class ConversationStore {
         instance: event.server_instance_id,
         sequence: event.sequence,
       };
-    for (const [id, record] of this.windows) {
-      if (!record.value.live) continue;
-      if (
-        record.value.live.instance === event.server_instance_id &&
-        record.value.live.sequence >= event.sequence
-      )
-        continue;
-      if (id === event.resource.agent_id) this.applyEvent(event);
-      else if (record.loading) record.queued.push(event);
-      else {
-        const result = applyTurnEvent(record.value.live, event, id);
-        if (
-          result.recover &&
-          event.kind === "snapshot.invalidated" &&
-          event.payload.reason !== "ring_truncated"
-        )
-          this.publish(id, {
-            ...record.value,
-            live: result.turn,
-            state: record.value.entries.length ? "stale" : record.value.state,
-          });
-        else if (result.recover) this.recoverWindow(id, record, event);
-        else this.publish(id, { ...record.value, live: result.turn });
-      }
+    for (const [id, record] of this.windows)
+      this.advanceWindow(id, record, event);
+  }
+  private advanceWindow(
+    id: string,
+    record: WindowRecord,
+    event: ConversationEvent,
+  ) {
+    if (!record.value.live) return;
+    if (
+      record.value.live.instance === event.server_instance_id &&
+      record.value.live.sequence >= event.sequence
+    )
+      return;
+    if (id === event.resource.agent_id) {
+      this.applyEvent(event);
+      return;
     }
+    if (record.loading) {
+      record.queued.push(event);
+      return;
+    }
+    const result = applyTurnEvent(record.value.live, event, id);
+    if (
+      result.recover &&
+      event.kind === "snapshot.invalidated" &&
+      event.payload.reason !== "ring_truncated"
+    )
+      this.publish(id, {
+        ...record.value,
+        live: result.turn,
+        state: record.value.entries.length ? "stale" : record.value.state,
+      });
+    else if (result.recover) this.recoverWindow(id, record, event);
+    else this.publish(id, { ...record.value, live: result.turn });
   }
   applyEvent(event: ConversationEvent) {
     if (this.disposed) return;
@@ -584,7 +584,12 @@ export class ConversationStore {
               i === index ? (result.entry as HistoryEntry) : e,
             )
           : [...old.entries, result.entry];
-      this.publish(id, { ...old, entries, state: "ready", live: result.turn });
+      this.publish(id, {
+        ...old,
+        entries,
+        state: old.state === "loading" ? "loading" : "ready",
+        live: result.turn,
+      });
     } else {
       const turn =
         event.kind === "command.changed" && event.payload.state === "pending"
@@ -649,10 +654,18 @@ export class ConversationStore {
     ++this.epoch;
     this.pager.cancelAll();
     for (const [id, record] of this.windows) {
-      record.loading = false;
+      const stale =
+        record.value.state === "stale" || record.value.state === "error";
+      if (record.loading) this.releaseQueued(record);
       if (record.value.state === "loading") void this.loadTail(id);
-      else if (record.value.state === "stale" || record.value.state === "error")
+      else if (
+        stale ||
+        record.value.state === "stale" ||
+        record.value.state === "error"
+      ) {
+        this.markStale(id);
         void this.reconnect(id);
+      }
     }
   }
   markAllStale() {

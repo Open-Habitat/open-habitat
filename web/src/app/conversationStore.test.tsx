@@ -68,6 +68,94 @@ describe("recent conversation windows", () => {
     second.view(id(1), true);
     expect(second.read(id(1))?.state).toBe("empty");
   });
+  it("seeds a new window from a concurrent older snapshot without losing routed events", () => {
+    const { store } = setup();
+    const instance = "11111111-1111-4111-8111-111111111111";
+    const frame = {
+      resource: { agent_id: id(1) },
+      kind: "assistant.delta",
+      payload: { text: "tail", content_index: 0 },
+      cursor: `ev1:${instance}:7`,
+      server_instance_id: instance,
+      sequence: 7,
+      event_id: "evt_12345678",
+      emitted_at: "2026-10-02T10:00:00Z",
+      schema_version: 1,
+    };
+    store.applySnapshot({
+      identity: { web_identity_id: "person" },
+      event_cursor: `ev1:${instance}:5`,
+      agents: [],
+    } as never);
+    store.routeEvent({
+      ...frame,
+      sequence: 8,
+      cursor: `ev1:${instance}:8`,
+    } as never);
+    store.applySnapshot({
+      identity: { web_identity_id: "person" },
+      event_cursor: `ev1:${instance}:7`,
+      agents: [{ agent_id: id(1), live_tail: [frame] }],
+    } as never);
+    expect(store.view(id(1), true).live).toMatchObject({
+      sequence: 8,
+      truncated: true,
+    });
+  });
+  it("releases a queued active status frame without a second background status request", async () => {
+    const { store, finish } = setup();
+    const agent = id(1),
+      instance = "11111111-1111-4111-8111-111111111111";
+    store.applySnapshot({
+      identity: { web_identity_id: "person" },
+      event_cursor: `ev1:${instance}:0`,
+      agents: [{ agent_id: agent, live_tail: [] }],
+    } as never);
+    store.view(agent);
+    store.routeEvent(
+      {
+        resource: { agent_id: agent },
+        kind: "turn.settled",
+        payload: {},
+        cursor: `ev1:${instance}:1`,
+        server_instance_id: instance,
+        sequence: 1,
+        event_id: "evt_12345678",
+      } as never,
+      agent,
+    );
+    finish(page(agent, ["a"]));
+    await flush();
+    expect(store.read(agent)?.live?.sequence).toBe(1);
+    expect(store.statusStale(agent)).toBe(false);
+  });
+  it("keeps a history entry before cold status proof in loading until the tail joins", () => {
+    const { store, tail } = setup();
+    const instance = "11111111-1111-4111-8111-111111111111";
+    store.applySnapshot({
+      identity: { web_identity_id: "person" },
+      event_cursor: `ev1:${instance}:0`,
+      agents: [{ agent_id: id(1), live_tail: [] }],
+    } as never);
+    store.view(id(1), false, true);
+    store.routeEvent({
+      resource: { agent_id: id(1) },
+      kind: "history.entry",
+      payload: {
+        entry_key: "native",
+        entry_kind: "assistant",
+        content: { media_type: "text/plain", text: "answer", complete: true },
+      },
+      cursor: `ev1:${instance}:1`,
+      server_instance_id: instance,
+      sequence: 1,
+      event_id: "evt_12345678",
+      native_key: "native",
+    } as never);
+    expect(store.read(id(1))?.state).toBe("loading");
+    store.view(id(1));
+    expect(tail).toHaveBeenCalledTimes(1);
+  });
   it("does not publish a pre-invalidation page after snapshot reconciliation", async () => {
     const resolves: Array<(p: HistoryPage) => void> = [];
     const tail = vi.fn(

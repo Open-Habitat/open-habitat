@@ -112,6 +112,9 @@ export class ConversationJournal {
     ) {
       // Snapshot has passed the current replay point (or a daemon restarted).
       this.source?.close();
+      if (this.timer !== undefined) clearTimeout(this.timer);
+      this.timer = undefined;
+      this.probe?.abort();
       ++this.generation;
       this.store.reseed(snapshot);
       this.reset(snapshot);
@@ -170,8 +173,16 @@ export class ConversationJournal {
       this.invalidation = event.sequence;
       this.callbacks.onSnapshotNeeded();
     }
-    if (event.resource.agent_id && statusKinds.has(event.kind))
-      this.callbacks.onStatusChange(event.resource.agent_id, event.kind);
+    const statusAgent =
+      event.resource.agent_id ??
+      (event.kind === "snapshot.invalidated"
+        ? this.callbacks.activeId()
+        : undefined);
+    if (
+      statusAgent &&
+      (statusKinds.has(event.kind) || event.kind === "snapshot.invalidated")
+    )
+      this.callbacks.onStatusChange(statusAgent, event.kind);
   }
   private recover() {
     if (this.stopped || this.recovering) return;
@@ -237,6 +248,11 @@ export class ConversationJournal {
             this.recover();
             return;
           }
+          if (response.ok) {
+            this.failures = 0;
+            this.connect();
+            return;
+          }
         } catch {
           /* offline: retry with the last validated cursor */
         } finally {
@@ -245,7 +261,9 @@ export class ConversationJournal {
         }
         if (!this.stopped && epoch === this.generation)
           this.timer = window.setTimeout(
-            () => this.connect(),
+            () => {
+              if (epoch === this.generation) this.connect();
+            },
             Math.min(3000 * ++this.failures, 30000),
           );
       })();

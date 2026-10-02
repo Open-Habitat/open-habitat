@@ -40,7 +40,7 @@ class FakeSource {
   }
   addEventListener(_kind: string, _listener: (event: MessageEvent) => void) {}
 }
-const setup = () => {
+const setup = (activeId?: string) => {
   const store = {
     identity: "person",
     routeEvent: vi.fn(),
@@ -52,7 +52,7 @@ const setup = () => {
   const onSnapshotNeeded = vi.fn();
   const onStatusChange = vi.fn();
   const journal = new ConversationJournal(store, {
-    activeId: () => undefined,
+    activeId: () => activeId,
     onSnapshotNeeded,
     onStatusChange,
     onLogin: vi.fn(),
@@ -154,6 +154,45 @@ describe("one tab-wide journal", () => {
     expect(store.routeEvent).toHaveBeenCalledTimes(2);
     expect(FakeSource.all).toHaveLength(1);
     journal.stop();
+  });
+  it("notifies active status on a user-scoped invalidation", () => {
+    vi.stubGlobal("EventSource", FakeSource);
+    const id = "pi:12345678-1234-1234-1234-123456789012";
+    const { journal, onStatusChange } = setup(id);
+    journal.start(snapshot(0));
+    journal.route({
+      ...event(1, "snapshot.invalidated", instance, {
+        reason: "source_changed",
+      }),
+      resource: { scope: "user" },
+    } as never);
+    expect(onStatusChange).toHaveBeenCalledWith(id, "snapshot.invalidated");
+    journal.stop();
+  });
+  it("cancels a pending backoff when a newer snapshot opens a replacement stream", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("EventSource", FakeSource);
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          status: 503,
+          ok: false,
+          body: { cancel: () => Promise.resolve() },
+        }),
+      );
+      const { journal } = setup();
+      journal.start(snapshot(0));
+      FakeSource.all[0].onerror?.();
+      for (let i = 0; i < 5; i++) await Promise.resolve();
+      journal.resume(snapshot(1));
+      await vi.advanceTimersByTimeAsync(30000);
+      expect(FakeSource.all).toHaveLength(2);
+      expect(FakeSource.all[0].closed).toBe(true);
+      journal.stop();
+    } finally {
+      vi.useRealTimers();
+    }
   });
   it("keeps independent cursors and fences callbacks after stop", () => {
     vi.stubGlobal("EventSource", FakeSource);

@@ -443,7 +443,12 @@ export function useConversation({
     () =>
       onStatusEvent((agentId, kind) => {
         if (agentId !== id) return;
-        void latestRefresh.current(false, kind === "turn.settled");
+        if (kind === "snapshot.invalidated")
+          continuationProof.current = undefined;
+        void latestRefresh.current(
+          false,
+          kind === "turn.settled" || kind === "snapshot.invalidated",
+        );
       }),
     [id, onStatusEvent],
   );
