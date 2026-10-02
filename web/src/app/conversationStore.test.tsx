@@ -129,6 +129,31 @@ describe("recent conversation windows", () => {
     expect(store.read(agent)?.live?.sequence).toBe(1);
     expect(store.statusStale(agent)).toBe(false);
   });
+  it("does not read deferred cold history on invalidation or reseed before status proof", () => {
+    const { store, tail } = setup();
+    const instance = "11111111-1111-4111-8111-111111111111";
+    const snap = {
+      identity: { web_identity_id: "person" },
+      event_cursor: `ev1:${instance}:1`,
+      agents: [{ agent_id: id(1), live_tail: [] }],
+    } as never;
+    store.applySnapshot(snap);
+    store.view(id(1), false, true);
+    store.routeEvent({
+      resource: { agent_id: id(1) },
+      kind: "snapshot.invalidated",
+      payload: { reason: "source_changed" },
+      cursor: `ev1:${instance}:1`,
+      server_instance_id: instance,
+      sequence: 1,
+      event_id: "evt_12345678",
+    } as never);
+    store.reconcileStale();
+    store.reseed(snap);
+    expect(tail).not.toHaveBeenCalled();
+    store.view(id(1)); // Cold status has now proved readable history.
+    expect(tail).toHaveBeenCalledTimes(1);
+  });
   it("keeps a history entry before cold status proof in loading until the tail joins", () => {
     const { store, tail } = setup();
     const instance = "11111111-1111-4111-8111-111111111111";

@@ -22,6 +22,7 @@ type WindowRecord = {
   value: WindowView;
   used: number;
   loading: number | false;
+  deferred: boolean; // cold controlled open waits for the status proof
   queued: ConversationEvent[];
 };
 type Metadata = Readonly<{
@@ -143,7 +144,8 @@ export class ConversationStore {
             state: record.value.entries.length ? "stale" : record.value.state,
           });
           if (record.value.entries.length) void this.reconnect(id);
-          else if (record.value.state === "loading") void this.loadTail(id);
+          else if (record.value.state === "loading" && !record.deferred)
+            void this.loadTail(id);
         } catch {
           this.markStale(id);
         }
@@ -207,11 +209,13 @@ export class ConversationStore {
         },
         used: 0,
         loading: false,
+        deferred: deferLoad,
         queued: [],
       };
       this.windows.set(id, record);
       if (!confirmedMissing && !deferLoad) void this.loadTail(id);
     }
+    if (!deferLoad) record.deferred = false;
     if (
       confirmedMissing &&
       !record.value.entries.length &&
@@ -276,13 +280,15 @@ export class ConversationStore {
   /** The caller must confirm a missing native history, not infer it from a 404 alone. */
   confirmMissing(id: string) {
     const record = this.windows.get(id);
-    if (record)
+    if (record) {
+      record.deferred = false;
       this.publish(id, {
         ...record.value,
         entries: [],
         next: undefined,
         state: "empty",
       });
+    }
   }
   async older(id: string): Promise<void> {
     const record = this.windows.get(id);
@@ -642,7 +648,8 @@ export class ConversationStore {
           state: record.value.entries.length ? "stale" : record.value.state,
         });
         if (record.value.entries.length) void this.reconnect(id);
-        else if (record.value.state === "loading") void this.loadTail(id);
+        else if (record.value.state === "loading" && !record.deferred)
+          void this.loadTail(id);
       } catch {
         this.markStale(id);
       }
@@ -657,6 +664,7 @@ export class ConversationStore {
       const stale =
         record.value.state === "stale" || record.value.state === "error";
       if (record.loading) this.releaseQueued(record);
+      if (record.deferred) continue;
       if (record.value.state === "loading") void this.loadTail(id);
       else if (
         stale ||
@@ -673,6 +681,7 @@ export class ConversationStore {
   }
   markStale(id: string) {
     const record = this.windows.get(id);
+    if (record?.deferred) return; // Status must first prove whether history exists.
     if (record)
       this.publish(id, {
         ...record.value,
