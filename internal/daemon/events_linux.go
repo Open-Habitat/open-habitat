@@ -17,8 +17,9 @@ import (
 
 // eventJournal belongs to one mapped UID and one daemon lifetime. Frames are
 // transient presentation hints; native Pi history remains authoritative.
-const eventWindowCount = 128
-const eventWindowBytes = 1 << 20
+const eventWindowCount = 1024
+const eventWindowBytes = 16 << 20
+const eventFrameBytes = 1 << 20
 
 type turnTail struct {
 	activity string
@@ -123,7 +124,7 @@ func (j *eventJournal) appendLocked(kind, agent, nativeKey string, payload any) 
 	if err != nil {
 		return
 	}
-	if len(b) > eventWindowBytes {
+	if len(b) > eventFrameBytes {
 		// A bounded invalidation still tells clients to reload native sources.
 		kind = "snapshot.invalidated"
 		b, _ = json.Marshal(map[string]any{"schema_version": 1, "event_id": "evt_" + strings.ReplaceAll(id, "-", ""), "cursor": j.cursor(j.seq + 1), "server_instance_id": j.instance, "sequence": j.seq + 1, "emitted_at": time.Now().UTC().Format(time.RFC3339Nano), "kind": kind, "resource": resource, "payload": map[string]string{"reason": "ring_truncated"}})

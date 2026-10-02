@@ -86,6 +86,27 @@ func TestEventJournalMixedReplayAndByteBound(t *testing.T) {
 	}
 }
 
+func TestEventJournalByteBoundIndependentOfFrameBound(t *testing.T) {
+	j := newEventJournal()
+	zero, _ := j.watermark()
+	// Each frame fits below the separate one-MiB frame limit; bytes expire
+	// the first cursor long before the 1024-event count limit is reached.
+	for n := 0; n < 25; n++ {
+		j.appendEvent("assistant.delta", "pi:12345678-1234-1234-1234-123456789012", map[string]any{"text": strings.Repeat("a", 900<<10), "content_index": 0})
+	}
+	if len(j.frames) >= 25 || len(j.frames) >= eventWindowCount || j.bytes > eventWindowBytes {
+		t.Fatalf("byte bound did not evict: %d frames, %d bytes", len(j.frames), j.bytes)
+	}
+	if _, code := j.parse(zero); code != "cursor_expired" {
+		t.Fatal("byte-evicted cursor", code)
+	}
+	before := j.seq
+	j.appendEvent("history.entry", "pi:12345678-1234-1234-1234-123456789012", map[string]any{"content": strings.Repeat("b", (1<<20)+1)})
+	if j.seq != before+1 || !strings.Contains(string(j.frames[len(j.frames)-1]), `"ring_truncated"`) {
+		t.Fatal("oversized frame did not emit bounded invalidation")
+	}
+}
+
 func TestEventJournalNativeBurstHasTrailingInvalidation(t *testing.T) {
 	j := newEventJournal()
 	before, _ := j.watermark()
@@ -269,7 +290,7 @@ func TestJournalCoalescingAndReplayLimits(t *testing.T) {
 		t.Fatal("unbounded delta frames")
 	}
 	for n := 0; n < eventWindowCount+10; n++ {
-		j.progress(agent, "tool.updated", map[string]string{"tool_call_id": "call", "tool_name": "bash", "state": "running"})
+		j.appendEvent("tool.updated", agent, map[string]string{"tool_call_id": "call", "tool_name": "bash", "state": "running"})
 	}
 	j.mu.Lock()
 	count, bytes := len(j.frames), j.bytes
