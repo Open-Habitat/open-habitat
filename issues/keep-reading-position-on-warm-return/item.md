@@ -2,12 +2,14 @@
 created: 2026-10-02
 updated: 2026-10-02
 type: bug
-status: untriaged
-priority: normal
+status: open
+priority: high
 provenance: lab-test
 source_ref: taskfleet:01m3y604smwsz03p5qtyqw9z7h/lab-observation:controlled-reading-position
 originating_run: 01m3y604smwsz03p5qtyqw9z7h
 originating_run_kind: spinoff
+lane: client-history
+lane_seq: 50
 ---
 
 # Warm controlled conversation return loses reading position after older paging
