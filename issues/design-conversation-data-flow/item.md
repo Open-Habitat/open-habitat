@@ -3,11 +3,13 @@ created: 2026-10-02
 updated: 2026-10-02
 type: task
 reporter: jari
-status: testing
+status: done
 priority: high
 related: ['@one-browser-event-stream', '@tail-first-history-paging', '@recent-conversation-windows']
 lane: client-history
 lane_seq: 15
+closed: 2026-10-02
+closed_by: claude
 ---
 
 # Design the conversation data flow and browser store

@@ -9,6 +9,7 @@ related: ['@one-browser-event-stream', '@recent-conversation-windows']
 lane: client-history
 lane_seq: 40
 collision: [web/src/app/]
+blocked_by: ['@one-browser-event-stream']
 ---
 
 # Clean up browser streams and state on logout

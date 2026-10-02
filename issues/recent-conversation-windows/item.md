@@ -2,12 +2,15 @@
 created: 2026-10-02
 updated: 2026-10-02
 type: task
-status: untriaged
+status: open
 priority: normal
 provenance: other
 source_ref: taskfleet:01m3x4p1t2nr61qyw6cz2cwrcm/implementation-slice:windows
 originating_run: 01m3x4p1t2nr61qyw6cz2cwrcm
 originating_run_kind: technical-decision
+lane: client-history
+lane_seq: 30
+blocked_by: ['@tail-first-history-paging']
 ---
 
 # Keep bounded recent conversation windows in browser
