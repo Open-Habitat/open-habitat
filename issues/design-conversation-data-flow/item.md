@@ -3,7 +3,7 @@ created: 2026-10-02
 updated: 2026-10-02
 type: task
 reporter: jari
-status: open
+status: in-progress
 priority: high
 related: ['@one-browser-event-stream', '@tail-first-history-paging', '@recent-conversation-windows']
 lane: client-history
