@@ -2,7 +2,7 @@
 created: 2026-10-02
 updated: 2026-10-02
 type: task
-status: open
+status: done
 priority: normal
 provenance: other
 source_ref: taskfleet:01m3x4p1t2nr61qyw6cz2cwrcm/implementation-slice:paging
@@ -10,6 +10,7 @@ originating_run: 01m3x4p1t2nr61qyw6cz2cwrcm
 originating_run_kind: technical-decision
 lane: client-history
 lane_seq: 20
+closed: 2026-10-02
 ---
 
 # Add native tail-first and backward history paging
@@ -29,4 +30,4 @@ Expose a React-free `conversationPager.ts` with `tail(id, signal)`, `older(id, c
 - [x] One request gets newest bounded entries, including long files; backward pages cover unchanged native history in native order without duplication.
 - [x] Appends leave older-page cursors usable; a missing boundary key is reported and leads to a tail reload, never a guessed join.
 - [x] Large entries and separate content reads respect byte limits and revisions; measure full-file read cost and HTTP counts.
-- [ ] Contract generation and TESTING.md checks pass; the browser store can consume the documented pager API.
+- [x] Contract generation and TESTING.md checks pass; the browser store can consume the documented pager API.
