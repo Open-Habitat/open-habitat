@@ -44,7 +44,7 @@ test("@native-history native page, continuation, unknown, reopen and no writes",
   await expect(
     page
       .locator(".ah-feed")
-      .getByText("Synteettinen viesti 0", { exact: true }),
+      .getByText("Synteettinen viesti 226", { exact: true }),
   ).toBeVisible();
   await expect(page.locator(".ah-read-only-footer")).toContainText("Vain luku");
   await page.screenshot({
@@ -70,7 +70,7 @@ test("@native-history native page, continuation, unknown, reopen and no writes",
   await expect(
     page
       .locator(".ah-feed")
-      .getByText("Synteettinen viesti 0", { exact: true }),
+      .getByText("Synteettinen viesti 226", { exact: true }),
   ).toBeVisible();
 });
 test("@native-history empty native session is read-only", async ({ page }) => {
@@ -96,7 +96,7 @@ test("@native-history mapped identity isolates native content", async ({
   await page.getByRole("link", { name: "Bob" }).click();
   await page.goto(`/agents/${agent}`);
   await expect(page.locator(".ah-feed li").first()).toContainText(
-    "Bobin synteettinen viesti 0",
+    "Bobin synteettinen viesti 226",
   );
   const spoofed = await page.request.get(
     `/api/v1/agents/${agent}/history?limit=1&after=`,
@@ -124,11 +124,11 @@ test("@native-history missing, corrupt and read-only states", async ({
   await expect(
     page
       .locator(".ah-feed")
-      .getByText("Synteettinen viesti 0", { exact: true }),
+      .getByText("Synteettinen viesti 226", { exact: true }),
   ).toBeVisible();
   await fixture(page, "corrupt");
   await page.getByRole("button", { name: "Päivitä" }).click();
-  await expect(page.getByText("Historiaa ei saada")).toBeVisible();
+  await expect(page.getByText("Historia on vanhentunut")).toBeVisible();
   await page.screenshot({
     path: "test-results/evidence/history-corrupt.png",
     fullPage: true,
@@ -160,4 +160,34 @@ test("@native-history narrow history keeps actions visible without page overflow
       .getByRole("button", { name: /Kopioi/ })
       .first(),
   ).toBeVisible();
+});
+test("@native-history warm return paints without a history request", async ({
+  page,
+}) => {
+  await fixture(page, "ready");
+  await login(page);
+  await page.goto(`/agents/${agent}`);
+  await expect(page.locator(".ah-feed li")).toHaveCount(25);
+  await page.getByRole("link", { name: "Uusi keskustelu" }).click();
+  const requests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/v1/")) requests.push(request.url());
+  });
+  const start = await page.evaluate(() => performance.now());
+  await page.getByRole("link", { name: /Synteettinen viesti 0/ }).click();
+  await expect(page.locator(".ah-feed li")).toHaveCount(25);
+  const paint = await page.evaluate(
+    () =>
+      new Promise<number>((resolve) =>
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => resolve(performance.now())),
+        ),
+      ),
+  );
+  expect(requests).toEqual([]);
+  // Synthetic lab only: two animation frames, not a WAN latency promise.
+  console.log(
+    `warm read-only return: ${Math.round(paint - start)} ms, ${requests.length} API requests`,
+  );
+  expect(paint - start).toBeLessThan(2000);
 });

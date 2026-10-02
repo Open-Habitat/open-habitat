@@ -18,7 +18,7 @@ export class ConversationPager {
       const query = new URLSearchParams({ limit: "25" });
       if (before !== undefined) query.set("before", before);
       const response = await fetch(
-        `/api/v1/agents/${encodeURIComponent(id)}/history?${query}`,
+        `/api/v1/agents/${encodeURIComponent(id).replace("%3A", ":")}/history?${query}`,
         {
           credentials: "same-origin",
           cache: "no-store",

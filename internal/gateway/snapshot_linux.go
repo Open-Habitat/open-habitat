@@ -32,11 +32,11 @@ func (a *Auth) snapshotOrPiStatus(w http.ResponseWriter, r *http.Request, path s
 // or copies browser headers to the daemon.
 func historyGatewayPath(path string, q url.Values) bool {
 	if m := historyPath.FindStringSubmatch(path); m != nil {
-		if len(q) > 2 {
+		if len(q) > 2 || (q.Has("after") && q.Has("before")) {
 			return false
 		}
 		for k, v := range q {
-			if (k != "after" && k != "limit") || len(v) != 1 {
+			if (k != "after" && k != "before" && k != "limit") || len(v) != 1 {
 				return false
 			}
 		}

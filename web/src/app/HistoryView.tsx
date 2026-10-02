@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { type ConversationStore, useWindow } from "./conversationStore";
 import { Link } from "react-router";
 import {
   AgentFacts,
@@ -249,65 +250,31 @@ export function HistoryView({
   workspaceName,
   workspaceId,
   onLogin,
+  store,
 }: {
   agent: Agent;
   workspaceName: string;
   workspaceId: string;
   onLogin: () => void;
+  store: ConversationStore;
 }) {
-  const [entries, setEntries] = useState<HistoryEntry[]>([]);
-  const [state, setState] = useState<"loading" | "ready" | "empty" | "error">(
-    "loading",
-  );
-  const [next, setNext] = useState<string>();
-  const [revision, setRevision] = useState<string>();
-  const [sourceUpdated, setSourceUpdated] = useState(false);
+  const window = useWindow(store, agent.agent_id);
   const [busy, setBusy] = useState(false);
   const [details, setDetails] = useState(false);
   useEffect(() => {
-    const controller = new AbortController();
-    setEntries([]);
-    setNext(undefined);
-    setRevision(undefined);
-    setSourceUpdated(false);
-    setState("loading");
-    if (agent.history !== "readable") {
-      setState("error");
-      return () => controller.abort();
-    }
-    readHistoryFetch(agent.agent_id, undefined, controller.signal)
-      .then((page) => {
-        if (controller.signal.aborted) return;
-        setEntries(page.entries);
-        setNext(page.next_after);
-        setRevision(page.native_revision);
-        setState(page.entries.length ? "ready" : "empty");
-      })
-      .catch((error) => {
-        if (controller.signal.aborted) return;
-        if ((error as Error).message === "identity_lost") onLogin();
-        else setState("error");
-      });
-    return () => controller.abort();
-  }, [agent.agent_id, agent.history, onLogin]);
+    store.view(agent.agent_id);
+  }, [agent.agent_id, store]);
+  const entries = window?.entries ?? [];
+  const state =
+    agent.history !== "readable" ? "error" : (window?.state ?? "loading");
   const loadMore = async () => {
-    if (!next || busy) return;
+    if (!window?.next || busy) return;
     setBusy(true);
     try {
-      const page = await readHistoryFetch(agent.agent_id, next);
-      if (
-        page.entries.some((e) =>
-          entries.some((old) => old.entry_key === e.entry_key),
-        )
-      )
-        throw new Error("changed source");
-      if (page.native_revision !== revision) setSourceUpdated(true);
-      setRevision(page.native_revision);
-      setEntries([...entries, ...page.entries]);
-      setNext(page.next_after);
+      await store.older(agent.agent_id);
     } catch (error) {
       if ((error as Error).message === "identity_lost") onLogin();
-      else setState("error");
+      else store.markStale(agent.agent_id);
     } finally {
       setBusy(false);
     }
@@ -348,14 +315,7 @@ export function HistoryView({
               "Lähde puuttuu, on vioittunut tai muuttui lukemisen aikana. Päivitä tilannekuva.",
           }}
         />
-        {sourceUpdated ? (
-          <InlineNotice
-            title="Lähde päivittyi"
-            description="Pi kirjoitti historiaan sivujen välillä. Natiivijärjestys säilyy; päivitä tarvittaessa."
-            tone="warning"
-          />
-        ) : null}
-        {next && state !== "error" ? (
+        {window?.next && state !== "error" ? (
           <Button
             label={busy ? "Ladataan…" : "Lataa seuraava sivu"}
             pending={busy}

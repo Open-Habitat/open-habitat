@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -18,6 +19,7 @@ import {
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import { ReturnView } from "../components/ReturnView";
 import { BrowserConversation } from "./BrowserConversation";
+import { ConversationStore } from "./conversationStore";
 import { list as listConversations, type Session } from "./conversations";
 import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
@@ -101,7 +103,6 @@ export function App() {
   );
   const [refreshKey, setRefreshKey] = useState(0);
   const [piCheckFailed, setPiCheckFailed] = useState(false);
-  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   // Daemon catalog distinguishes browser-started Pi sessions from read-only
   // terminal history; it is not a cookie-scoped conversation lease.
   const [daemonSessions, setDaemonSessions] = useState<Session[]>([]);
@@ -133,6 +134,14 @@ export function App() {
     }
   }, [location.pathname]);
   const identity = snapshot?.identity.web_identity_id;
+  const conversationStore = useMemo(
+    () => (identity ? new ConversationStore(identity) : undefined),
+    [identity],
+  );
+  useEffect(() => () => conversationStore?.dispose(), [conversationStore]);
+  useEffect(() => {
+    if (snapshot) conversationStore?.applySnapshot(snapshot);
+  }, [conversationStore, snapshot]);
   const priorIdentity = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (priorIdentity.current && identity !== priorIdentity.current) {
@@ -240,7 +249,10 @@ export function App() {
     catalogEpoch,
   ]);
   const manualRefresh = () => {
-    setHistoryRefreshKey((n) => n + 1);
+    if (selectedAgentId) {
+      conversationStore?.markStale(selectedAgentId);
+      void conversationStore?.reconnect(selectedAgentId);
+    }
     refresh();
   };
   // A disconnected tab can recover without a page reload when the browser
@@ -530,10 +542,10 @@ export function App() {
           navigate(settingsReturn);
         }}
       />
-    ) : selectedAgent && agentWorkspace ? (
+    ) : selectedAgent && agentWorkspace && conversationStore ? (
       <HistoryView
         onLogin={requireLogin}
-        key={`${selectedAgent.agent_id}:${historyRefreshKey}`}
+        store={conversationStore}
         agent={selectedAgent}
         workspaceName={agentWorkspace.display_name ?? agentWorkspace.name}
         workspaceId={agentWorkspace.workspace_id}
