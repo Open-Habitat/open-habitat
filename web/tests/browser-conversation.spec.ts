@@ -884,6 +884,177 @@ test("@browser-conversation separate streaming drafts survive agent switches and
   await expect(page.getByText("toisen oma luonnos")).toHaveCount(0);
 });
 
+test("@browser-conversation logout fences a pending status read and turn even when server logout fails", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await expect(editor).toBeVisible();
+  await editor.fill("turn in progress");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await editor.fill("secret draft");
+  const person = await page.evaluate(
+    () =>
+      Object.keys(sessionStorage)
+        .find((key) => key.includes(":draft:"))
+        ?.split(":")[1],
+  );
+  expect(person).toBeTruthy();
+  await page.evaluate((identity) => {
+    sessionStorage.setItem(`nah:${identity}:last-send:held`, "pending");
+  }, person);
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let started!: () => void;
+  const entered = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  await page.route("**/api/v1/conversations/*/status*", async (route) => {
+    started();
+    await held;
+    await route.continue().catch(() => {});
+  });
+  await page.route("**/auth/logout", (route) => route.fulfill({ status: 503 }));
+  try {
+    await refreshConversation(page);
+    await entered;
+    await page.getByRole("button", { name: /Tilivalikko/ }).click();
+    await page.getByRole("menuitem", { name: "Kirjaudu ulos" }).click();
+    await expect(
+      page.getByText("Istunto voi olla edelleen voimassa."),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(
+        (identity) =>
+          Object.keys(sessionStorage).filter((key) =>
+            key.startsWith(`nah:${identity}:`),
+          ),
+        person,
+      ),
+    ).toEqual([]);
+    release();
+    await expect(page.getByText("secret draft")).toHaveCount(0);
+    await page.unroute("**/auth/logout");
+    await page
+      .getByRole("button", { name: "Yritä uloskirjautumista uudelleen" })
+      .click();
+    await expect(
+      page.getByText("Istunto voi olla edelleen voimassa."),
+    ).toHaveCount(0);
+    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+    await page.getByRole("link", { name: "Alice" }).click();
+    await expect(
+      page.getByRole("button", { name: /Tilivalikko/ }),
+    ).toBeVisible();
+  } finally {
+    release();
+  }
+});
+
+test("@browser-conversation a late create reply cannot restore a cleared command marker", async ({
+  page,
+}) => {
+  await open(page);
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let started!: () => void;
+  const entered = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  await page.route("**/api/v1/conversations", async (route) => {
+    started();
+    await held;
+    await route.continue().catch(() => {});
+  });
+  try {
+    await page
+      .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+      .click();
+    await entered;
+    const person = await page.evaluate(
+      () =>
+        Object.keys(sessionStorage)
+          .find((key) => key.includes(":uncertain:"))
+          ?.split(":")[1],
+    );
+    expect(person).toBeTruthy();
+    await page.getByRole("button", { name: /Tilivalikko/ }).click();
+    await page.getByRole("menuitem", { name: "Kirjaudu ulos" }).click();
+    await expect(
+      page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
+    ).toBeVisible();
+    release();
+    expect(
+      await page.evaluate(
+        (identity) =>
+          Object.keys(sessionStorage).filter((key) =>
+            key.startsWith(`nah:${identity}:`),
+          ),
+        person,
+      ),
+    ).toEqual([]);
+    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+    await page.getByRole("link", { name: "Bob" }).click();
+    await expect(
+      page.getByRole("button", { name: /Tilivalikko/ }),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(
+        (identity) =>
+          Object.keys(sessionStorage).filter((key) =>
+            key.startsWith(`nah:${identity}:`),
+          ),
+        person,
+      ),
+    ).toEqual([]);
+  } finally {
+    release();
+  }
+});
+
+test("@browser-conversation expiry clears drafts and pending markers before same-person sign-in", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await expect(editor).toBeVisible();
+  await editor.fill("not for the next session");
+  const person = await page.evaluate(
+    () =>
+      Object.keys(sessionStorage)
+        .find((key) => key.includes(":draft:"))
+        ?.split(":")[1],
+  );
+  expect(person).toBeTruthy();
+  await page.evaluate((identity) => {
+    sessionStorage.setItem(`nah:${identity}:uncertain:held`, "pending");
+  }, person);
+  expect((await page.request.get("/fixture/expire")).status()).toBe(204);
+  await refreshConversation(page);
+  await expect(
+    page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      (identity) =>
+        Object.keys(sessionStorage).filter((key) =>
+          key.startsWith(`nah:${identity}:`),
+        ),
+      person,
+    ),
+  ).toEqual([]);
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeVisible();
+  await expect(page.getByText("not for the next session")).toHaveCount(0);
+});
+
 async function endedConversation(page: import("@playwright/test").Page) {
   await open(page);
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();

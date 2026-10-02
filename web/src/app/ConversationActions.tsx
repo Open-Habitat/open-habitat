@@ -92,8 +92,8 @@ export function useConversationActions({
       sessionStorage.setItem(uncertainKey, "create");
       setReceipt("Luodaan · tulos odottaa");
       const result = await create(workspace.workspace_id, token);
-      sessionStorage.removeItem(uncertainKey);
       if (!alive.current) return;
+      sessionStorage.removeItem(uncertainKey);
       onSessionCreated(result);
       navigate(
         `/workspaces/${workspace.workspace_id}?conversation=${result.agent_id}`,
@@ -230,7 +230,7 @@ export function useConversationActions({
       if (alive.current) await refresh();
     } catch (error) {
       if ((error as Error).message === "identity_lost") onLogin();
-      if (error instanceof NotAdmitted) {
+      if (alive.current && error instanceof NotAdmitted) {
         sessionStorage.removeItem(sendKey);
         sessionStorage.removeItem(submittedKey);
         setSendObservation({ text, state: "rejected" });

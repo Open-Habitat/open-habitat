@@ -139,26 +139,41 @@ export function App() {
     () => (identity ? new ConversationStore(identity) : undefined),
     [identity],
   );
-  useEffect(() => () => conversationStore?.dispose(), [conversationStore]);
   useEffect(() => {
     if (snapshot) conversationStore?.applySnapshot(snapshot);
   }, [conversationStore, snapshot]);
   const priorIdentity = useRef<string | undefined>(undefined);
-  useEffect(() => {
-    if (priorIdentity.current && identity !== priorIdentity.current) {
+  const identityGeneration = useRef(0);
+  const owned = useRef<{
+    store?: ConversationStore;
+    journal?: ConversationJournal;
+  }>({});
+  // Invalidate callbacks before aborting reads or clearing the visible snapshot.
+  // Local concealment does not prove the server session ended.
+  const clearPerson = useCallback((person?: string) => {
+    ++identityGeneration.current;
+    owned.current.journal?.stop();
+    owned.current.store?.dispose(); // also cancels every pending page read
+    owned.current = {};
+    if (person) {
       for (const key of Object.keys(sessionStorage))
-        if (key.startsWith(`nah:${priorIdentity.current}:`))
-          sessionStorage.removeItem(key);
-      setSettingsReturn("/workspaces");
-      returningFromSettings.current = false;
-      setExpanded({});
-      setDaemonSessions([]);
-      setCSRF(undefined);
-      piChecked.current = false;
-      if (identity) setRefreshKey((n) => n + 1); // one session/Pi check for the new identity
+        if (key.startsWith(`nah:${person}:`)) sessionStorage.removeItem(key);
+    }
+    setJournalOffline(false);
+    setSettingsReturn("/workspaces");
+    returningFromSettings.current = false;
+    setExpanded({});
+    setDaemonSessions([]);
+    setCSRF(undefined);
+    piChecked.current = false;
+  }, []);
+  useLayoutEffect(() => {
+    if (priorIdentity.current && identity !== priorIdentity.current) {
+      clearPerson(priorIdentity.current);
+      if (identity) setRefreshKey((n) => n + 1);
     }
     if (identity) priorIdentity.current = identity;
-  }, [identity]);
+  }, [identity, clearPerson]);
   const openSettings = () => {
     setSettingsReturn(
       safeRoute(location.pathname) === "/settings"
@@ -179,9 +194,11 @@ export function App() {
   // successful response cannot re-authenticate this tab without a new login.
   const loginFenced = useRef(false);
   const requireLogin = useCallback(() => {
+    if (loginFenced.current) return;
     loginFenced.current = true;
+    clearPerson(priorIdentity.current);
     dispatch(authenticationRequired());
-  }, [dispatch]);
+  }, [clearPerson, dispatch]);
   const activeId = useRef<string | undefined>(undefined);
   activeId.current = /^pi:[0-9a-fA-F-]{36}$/.test(
     new URLSearchParams(location.search).get("conversation") ?? "",
@@ -227,6 +244,17 @@ export function App() {
         : undefined,
     [conversationStore],
   );
+  // Layout cleanup closes the old connection before a new identity can paint.
+  useLayoutEffect(() => {
+    owned.current = { store: conversationStore, journal };
+    return () => {
+      if (owned.current.store === conversationStore) {
+        journal?.stop();
+        conversationStore?.dispose();
+        owned.current = {};
+      }
+    };
+  }, [conversationStore, journal]);
   const journalSnapshot = useRef(snapshot);
   journalSnapshot.current = snapshot;
   const journalEnabled =
@@ -267,10 +295,14 @@ export function App() {
     if (fixtureName?.startsWith("design") && CatalogPreview) return;
     const controller = new AbortController();
     let active = true;
-    const ready = () => active && !loginFenced.current;
+    const generation = identityGeneration.current;
+    const ready = () =>
+      active &&
+      generation === identityGeneration.current &&
+      !loginFenced.current;
     if (!snapshot && ready()) dispatch(loading());
     const fail = (gate: "login" | "pi" | "unavailable") => {
-      if (!active) return;
+      if (!ready()) return;
       if (gate === "login") {
         setCSRF(undefined);
         requireLogin();
@@ -346,20 +378,13 @@ export function App() {
   }, [dispatch, refreshKey, fixtureName, syntheticDemo, requireLogin]);
   const logout = async () => {
     loginFenced.current = true;
-    journal?.stop();
+    clearPerson(priorIdentity.current);
     setLogoutError(false);
-    setSettingsReturn("/workspaces");
     if (syntheticDemo) {
       dispatch(clearIdentity());
       navigate("/workspaces?scenario=login", { replace: true });
       return;
     }
-    // Hide every identity-scoped fact before the first write or new login.
-    for (const key of Object.keys(sessionStorage))
-      if (key.startsWith(`nah:${identity}:`)) sessionStorage.removeItem(key);
-    setDaemonSessions([]);
-    setCSRF(undefined);
-    piChecked.current = false;
     dispatch(clearIdentity());
     navigate("/workspaces", { replace: true });
     try {
@@ -391,6 +416,11 @@ export function App() {
       setLogoutError(true);
     }
   };
+  const currentIdentity = useRef(identity);
+  currentIdentity.current = identity;
+  const onCurrentLogin = useCallback(() => {
+    if (identity && currentIdentity.current === identity) requireLogin();
+  }, [identity, requireLogin]);
   const visible =
     snapshot?.workspaces.filter(
       (w) => w.presence === "present" && w.visibility === "visible",
@@ -548,7 +578,7 @@ export function App() {
       />
     ) : selectedAgent && agentWorkspace && conversationStore ? (
       <HistoryView
-        onLogin={requireLogin}
+        onLogin={onCurrentLogin}
         store={conversationStore}
         agent={selectedAgent}
         workspaceName={agentWorkspace.display_name ?? agentWorkspace.name}
@@ -594,7 +624,7 @@ export function App() {
                 ? undefined
                 : csrf
             }
-            onLogin={requireLogin}
+            onLogin={onCurrentLogin}
             store={conversationStore}
             workspace={selected}
             id={
