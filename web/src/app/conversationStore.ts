@@ -574,14 +574,15 @@ export class ConversationStore {
     });
     if (!record.loading) void this.reconnect(id);
   }
-  reseed(snapshot: Snapshot) {
+  reseed(snapshot: Snapshot, activeId?: string) {
     if (this.disposed || snapshot.identity.web_identity_id !== this.identity)
       return;
     ++this.epoch;
     this.pager.cancelAll();
     this.snapshotCursor = snapshot.event_cursor;
     this.routed = undefined;
-    for (const id of this.metadata.statuses.keys()) this.notifyStatus(id);
+    for (const id of this.metadata.statuses.keys())
+      if (id !== activeId) this.notifyStatus(id);
     for (const [id, record] of this.windows) {
       record.queued = [];
       record.loading = false;

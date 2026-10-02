@@ -451,11 +451,11 @@ export function useConversation({
   useEffect(() => {
     if (recovering.current && initialSnapshot.current !== snapshot) {
       initialSnapshot.current = snapshot;
-      store.reseed(snapshot);
+      store.reseed(snapshot, id);
       recovering.current = false;
       setStreamEpoch((n) => n + 1);
     }
-  }, [snapshot, store]);
+  }, [snapshot, store, id]);
   const resnapshot = useRef(onResnapshot);
   resnapshot.current = onResnapshot;
   useEffect(() => {
