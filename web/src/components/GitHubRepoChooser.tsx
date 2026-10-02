@@ -201,7 +201,7 @@ export function GitHubRepoChooser({
               Haetaan nyt: <code>{selectedNames[checkout.completed]}</code>.
               {checkout.stage
                 ? ` ${{ reserving: "Varataan kohdetta", connecting: "Yhdistetään", receiving: "Vastaanotetaan objekteja", checkout: "Kirjoitetaan tiedostoja", verifying: "Tarkistetaan" }[checkout.stage]}${checkout.percent === undefined ? "…" : ` ${checkout.percent} %`}${checkout.receivedBytes === undefined ? "" : ` (${new Intl.NumberFormat("fi-FI").format(checkout.receivedBytes)} tavua)`}.`
-                : " Suuren repon haku voi kestää."}
+                : " Suuren repon haku voi kestää."}{" "}
               Valmiiden määrä muuttuu vasta, kun haku on tarkistettu.
             </p>
           ) : null}

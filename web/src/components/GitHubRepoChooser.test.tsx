@@ -185,6 +185,8 @@ it("labels native Git stage and native bytes without turning repo count into an 
     />,
   );
   expect(view.getByText(/Vastaanotetaan objekteja 22 %/)).toBeTruthy();
-  expect(view.getByText(/1\s*310\s*720 tavua/)).toBeTruthy();
+  expect(
+    view.getByText(/1\s*310\s*720 tavua\)\. Valmiiden määrä/),
+  ).toBeTruthy();
   expect(view.getByText(/Haettu 0\/1 repoa/)).toBeTruthy();
 });
