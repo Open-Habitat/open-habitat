@@ -1055,6 +1055,48 @@ test("@browser-conversation expiry clears drafts and pending markers before same
   await expect(page.getByText("not for the next session")).toHaveCount(0);
 });
 
+test("@browser-conversation expiry across reload clears unknown prior person's drafts", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await expect(editor).toBeVisible();
+  await editor.fill("private across reload");
+  const person = await page.evaluate(
+    () =>
+      Object.keys(sessionStorage)
+        .find((key) => key.includes(":draft:"))
+        ?.split(":")[1],
+  );
+  expect(person).toBeTruthy();
+  await page.evaluate((identity) => {
+    sessionStorage.setItem(`nah:${identity}:last-send:held`, "pending");
+    sessionStorage.setItem("nah:github-step", "global");
+  }, person);
+  expect((await page.request.get("/fixture/expire")).status()).toBe(204);
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      (identity) =>
+        Object.keys(sessionStorage).filter((key) =>
+          key.startsWith(`nah:${identity}:`),
+        ),
+      person,
+    ),
+  ).toEqual([]);
+  expect(
+    await page.evaluate(() => sessionStorage.getItem("nah:github-step")),
+  ).toBe("global");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Bob" }).click();
+  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeVisible();
+  await expect(page.getByText("private across reload")).toHaveCount(0);
+});
+
 async function endedConversation(page: import("@playwright/test").Page) {
   await open(page);
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();

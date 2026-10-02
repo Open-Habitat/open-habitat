@@ -155,10 +155,15 @@ export function App() {
     owned.current.journal?.stop();
     owned.current.store?.dispose(); // also cancels every pending page read
     owned.current = {};
-    if (person) {
-      for (const key of Object.keys(sessionStorage))
-        if (key.startsWith(`nah:${person}:`)) sessionStorage.removeItem(key);
-    }
+    // After a reload at the login boundary we no longer know which person
+    // owned this tab. Clear only identity-scoped keys, not global onboarding.
+    for (const key of Object.keys(sessionStorage))
+      if (
+        person
+          ? key.startsWith(`nah:${person}:`)
+          : /^nah:wid_[A-Za-z0-9_-]{8,80}:/.test(key)
+      )
+        sessionStorage.removeItem(key);
     setJournalOffline(false);
     setSettingsReturn("/workspaces");
     returningFromSettings.current = false;
