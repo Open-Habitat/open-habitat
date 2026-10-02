@@ -26,6 +26,13 @@ of inventing three. @browser-logout-cleanup hooks into the same lifecycle.
 
 ## Agreed starting points (Jari, 2026-10-02)
 
+These are the starting point, not a fixed contract. Anything later that would
+make this design more complex or add to it (a review finding, an idea, an
+extra safeguard) needs Jari's separate approval; review suggestions about
+hypothetical problems do not change the architecture. A real problem met
+during implementation that is best solved by changing the design is brought
+to Jari with its evidence (see `AGENTS-WORKFLOW.md`).
+
 - **One store per person.** Keyed by `web_identity_id` (provider + subject,
   i.e. the person bound to the Unix user), not by browser session. A new login
   as the same person keeps it; a different person discards it entirely.
