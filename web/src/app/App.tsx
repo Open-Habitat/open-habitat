@@ -186,6 +186,12 @@ export function App() {
   const viewingConversation = /\bconversation=pi(?:%3A|:)/i.test(
     location.search,
   );
+  // A catalog stream can deliver a queued frame after navigation but before
+  // its effect cleanup. The selected hook owns that agent's status refresh.
+  const activeConversationId = useRef<string | undefined>(undefined);
+  activeConversationId.current = viewingConversation
+    ? (new URLSearchParams(location.search).get("conversation") ?? undefined)
+    : undefined;
   const [catalogOffline, setCatalogOffline] = useState(false);
   const catalogRecovering = useRef(false);
   const [catalogEpoch, setCatalogEpoch] = useState(0);
@@ -233,7 +239,7 @@ export function App() {
           const event = parseConversationEvent((message as MessageEvent).data);
           if ((message as MessageEvent).lastEventId !== event.cursor)
             throw new Error("mismatched SSE id");
-          conversationStore?.routeEvent(event);
+          conversationStore?.routeEvent(event, activeConversationId.current);
         } catch {
           // An untrusted frame cannot prove a native history change.
           conversationStore?.markAllStale();

@@ -41,8 +41,10 @@ async function expectPhoneComposerWithinViewport(
 }
 async function refreshConversation(page: import("@playwright/test").Page) {
   const check = page.getByRole("button", { name: "Tarkista keskustelun tila" });
-  if (!(await check.isVisible()))
-    await page.getByRole("button", { name: "Tiedot" }).click();
+  const details = page.getByRole("button", { name: "Tiedot" });
+  if ((await details.getAttribute("aria-expanded")) === "false")
+    await details.click();
+  await expect(check).toBeVisible();
   await check.click();
 }
 async function open(page: import("@playwright/test").Page) {
@@ -507,14 +509,13 @@ test("@browser-conversation resized editor keeps actions reachable", async ({
   await open(page);
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   const composer = page.locator(".ah-conversation-frame > .ah-composer");
-  await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
-    .evaluate((node) => {
-      node.style.height = "600px";
-    });
   await expect
     .poll(() =>
-      composer.evaluate((node) => node.scrollHeight > node.clientHeight),
+      composer.evaluate((node) => {
+        const editor = node.querySelector("textarea");
+        if (editor) editor.style.height = "600px";
+        return node.scrollHeight > node.clientHeight;
+      }),
     )
     .toBe(true);
   expect(
