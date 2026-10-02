@@ -8,6 +8,7 @@ Focused synthetic evidence (disposable homes, fake gh/git, no real GitHub identi
 - `TMPDIR=/var/tmp go test ./internal/daemon ./internal/gateway -count=1`: pass after installing the pinned fixture dependencies.
 - `TMPDIR=/var/tmp go test -race ./internal/daemon ./internal/gateway -run 'Test(Clone|GatewayClone|Observe|RepoCatalogDistinctUIDs|Discovery)' -count=1`: pass.
 - `./scripts/test-repo-catalog-uids.sh`: pass in rootless Podman with two precreated kernel UIDs plus gateway UID; foreign socket access fails, forged headers do not change mapped-UID facts, foreign Git repository requests produce no frames.
+- Synthetic short-deadline native subprocess and simulated ENOSPC Git failure: deadline kills the group promptly; disk failure emits only `uncertain/native_failure`, retains the partial tree, leaks no stderr and refuses a new write. A rootless 4 GiB tmpfs probe showed a distinct device and 4 GiB available blocks, below the 5 GiB admission threshold. This is not evidence that the test VM's future disk-backed volume is provisioned or exhausts correctly.
 - `./scripts/test-web-fast.sh`: pass (client, component, types, lint).
 - `NAH_PORT_BASE=15000 PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" npm run test:e2e --prefix web -- --grep @github-first`: 11 passed, including chunked synthetic slow-stage onboarding.
 - Contract validator, project-view validator and `issuectl doctor --json`: pass. `git diff --check`: pass.

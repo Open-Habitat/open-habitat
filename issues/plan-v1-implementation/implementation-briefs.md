@@ -114,7 +114,7 @@ CT-025 and CT-033, which required Pi question dialogs, are retired.
 | CT-003, CT-004, CT-005, CT-006, CT-007, CT-008, CT-009, CT-010, CT-011, CT-022, CT-028, CT-030 | [build-agent-control](../build-agent-control/item.md) |
 | CT-012, CT-014, CT-015, CT-031 | [complete-conversation-ui](../complete-conversation-ui/item.md) |
 | CT-016, CT-017, CT-020, CT-024, CT-029 | [manage-workspace-lifecycle](../manage-workspace-lifecycle/item.md) |
-| CT-018, CT-032, CT-034 | [connect-github-workspaces](../connect-github-workspaces/item.md) |
+| CT-018, CT-032, CT-034, CT-036 | [connect-github-workspaces](../connect-github-workspaces/item.md) |
 | CT-019 | [manage-agent-worktrees](../manage-agent-worktrees/item.md) |
 | CT-021 | [archive-agent-conversations](../archive-agent-conversations/item.md) |
 | CT-035 | [gate-native-routes-on-pi](../gate-native-routes-on-pi/item.md) |

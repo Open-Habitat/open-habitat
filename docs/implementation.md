@@ -88,8 +88,9 @@ levytaltion ja liittää sen ennen käyttäjädaemonin käynnistystä polkuun
 oikeudet 0700 (ei ryhmän tai muiden kirjoitusoikeutta). Taltiot eivät saa
 jakaa samaa kapasiteettia rajattomalla yhteisellä tiedostojärjestelmällä:
 yksi UID ei saa voida kuluttaa toisen taltion kiintiötä. Levyn koon pitää
-olla käyttöjärjestelmän enforceeraama (esimerkiksi oma rajattu lohkolaite tai
-kovan kokorajan tmpfs), ei vain sovelluksen laskuri eikä `statfs`-ennuste.
+olla käyttöjärjestelmän enforceeraama (esimerkiksi oma rajattu levypohjainen lohkolaite tai LV), ei vain sovelluksen
+laskuri eikä `statfs`-ennuste. Usean gigatavun klooneja ei sijoiteta
+muistipohjaiselle tmpfs-liitokselle.
 Asennus huolehtii liitoksen pysyvyydestä ja käynnistysjärjestyksestä myös
 uudelleenkäynnistyksessä. Älä peitä olemassa olevia `~/src`-puita liitoksella:
 siirto tai tutkiminen on erillinen ylläpitotoimi, ei daemonin tehtävä.

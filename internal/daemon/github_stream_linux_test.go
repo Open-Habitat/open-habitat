@@ -193,3 +193,54 @@ func TestCloneTerminalClosesHeartbeatAndLastCheckoutMeasurement(t *testing.T) {
 		t.Fatal("heartbeat emitted after terminal")
 	}
 }
+
+func TestCloneStreamSyntheticDiskExhaustionIsUncertain(t *testing.T) {
+	cfg, home, _, run := streamFixture(t)
+	script := filepath.Join(home, "full-disk-git")
+	code := "#!/bin/sh\nmkdir .git\nprintf 'No space left on device: https://user:secret@invalid.example/private\\n' >&2\nexit 1\n"
+	if err := os.WriteFile(script, []byte(code), 0700); err != nil {
+		t.Fatal(err)
+	}
+	h := repoCloneStreamHandler(cfg, func(*http.Request) bool { return true }, home, "gh", script, run, func(int) bool { return true })
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, streamRequest())
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"outcome":"uncertain","reason":"native_failure"`) || strings.Contains(w.Body.String(), "secret") || strings.Contains(w.Body.String(), "invalid.example") {
+		t.Fatalf("disk failure leaked or confirmed: %d %s", w.Code, w.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(home, "src", "repo", ".git")); err != nil {
+		t.Fatal("partial directory removed", err)
+	}
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, streamRequest())
+	if w.Code != 409 || !strings.Contains(w.Body.String(), "checkout_exists") {
+		t.Fatalf("partial tree retried: %d %s", w.Code, w.Body.String())
+	}
+}
+
+func TestCloneNativeDeadlineKillsSlowProcessGroup(t *testing.T) {
+	home := t.TempDir()
+	dir := filepath.Join(home, "repo")
+	if err := os.Mkdir(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	fd, err := os.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fd.Close()
+	script := filepath.Join(home, "slow-git")
+	if err := os.WriteFile(script, []byte("#!/bin/sh\nmkdir .git\nexec /bin/sleep 30\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Millisecond)
+	defer cancel()
+	emit := &cloneEmitter{w: httptest.NewRecorder(), cancel: cancel}
+	started := time.Now()
+	err = cloneProgressCommand(ctx, script, home, int(fd.Fd()), "https://github.com/fixture/repo.git", emit)
+	if err != context.DeadlineExceeded || time.Since(started) > 3*time.Second {
+		t.Fatalf("deadline did not settle: %v after %s", err, time.Since(started))
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
+		t.Fatal("deadline removed partial tree", err)
+	}
+}

@@ -64,9 +64,9 @@ class PlanValidatorTests(unittest.TestCase):
         path.write_text(content.replace(old, new, 1))
 
     def test_missing_scenario_assignment_fails(self):
-        self.change_map("| CT-035 |", "| CT-036 |")
+        self.change_map("| CT-035 |", "| CT-037 |")
         self.run_validator("CT-035 has 0 implementation-owner rows",
-                           "unknown or retired scenario in ownership map: CT-036")
+                           "unknown or retired scenario in ownership map: CT-037")
 
     def test_duplicate_scenario_assignment_fails(self):
         self.change_map("| CT-027 |", "| CT-027, CT-027 |")
