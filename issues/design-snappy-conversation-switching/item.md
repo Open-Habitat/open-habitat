@@ -3,11 +3,12 @@ created: 2026-10-02
 updated: 2026-10-02
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@incremental-history-during-turn']
 lane: client-history
 lane_seq: 10
+closed: 2026-10-02
 ---
 
 # Design snappy conversation switching from a browser-held event stream
@@ -35,31 +36,44 @@ Decide what is removed from the current model (per-conversation status +
 history fetch on every open, per-conversation EventSource, remount keyed on
 conversation id).
 
-## What the design must deliver
+## Agreed design
 
-- Options and ideation (several designers/models), with one recommendation
-  and the reasoning, recorded as an ADR draft for Jari's decision. This moves
-  state into the browser, which touches the project principle against
-  parallel history stores and speculative caches (`CLAUDE.md`,
-  `docs/architecture.md` "a cache needs a measured performance need"); the ADR
-  must say why this is a view of native truth and not a second source, how it
-  is bounded, invalidated and reset (identity change, gap,
-  `snapshot.invalidated`), and what stays authoritative on the daemon.
-- Numerical simulations with stated assumptions: network traffic of an
-  all-conversations stream (idle, typical, heavy multi-agent use; deltas vs
-  entries), browser memory/storage (in-memory vs IndexedDB; per-conversation
-  window size; eviction), browser CPU (event parsing/sorting/rendering per
-  second), daemon/gateway cost of fan-out. Jari expects it is not heavy; the
-  simulation should confirm or refute that with numbers.
-- Latency budget per interaction (switch to a recent conversation, cold
-  open, scroll-back, send) and how the design meets "snap" (e.g. render from
-  memory within one frame), measured or modelled.
-- Implementation slices as follow-up issues once Jari accepts.
+[ADR 0008](../../docs/adr-0008-snappy-conversation-switching.md) records the
+revised direction agreed with Jari on 2026-10-02: one event connection per tab,
+bounded in-memory views of opened conversations, and newest-first native
+history reads for cold opens and recovery. Recent switching waits for no
+network response; reloads, evicted content and deep scrolling may load.
 
-Related: @incremental-history-during-turn (current refresh re-reads history
-from the first page during a turn), @browser-state-rewrite (just landed),
-@daemon-drop-status-stream (events journal is the only push channel).
+Retention counts, byte budgets and the suggested 16 ms frame target are
+implementation choices to measure, not approved hard limits. The daemon keeps
+command authority and Pi keeps history. Operator session revocation remains
+as implemented; @reliable-session-revocation is closed as unnecessary for the
+current scope.
 
-## Decision needed
+## Evidence and implementation
 
-ADR [0008](../../docs/adr-0008-snappy-conversation-switching.md) proposes a single tab-wide journal stream and five bounded in-memory recent windows, with cold native reads and no IndexedDB. Jari needs to approve or amend the architecture before the three unlaned implementation slices are accepted or scheduled. Evidence and the Finnish summary are in this issue directory; status stays in-progress until that decision.
+The [result](result.md) summarizes the decision and links the original panel,
+measurements and simulation. Those establish the repeated history requests
+and model possible resource use; they do not demonstrate the new behavior.
+
+Implementation belongs to @one-browser-event-stream,
+@tail-first-history-paging and @recent-conversation-windows. Their issues now
+state the intended outcomes and the relevant implementation context.
+
+## Acceptance Criteria
+
+- [x] Alternatives, simulation assumptions and the limits of measured evidence are recorded in the issue attachments.
+- [x] Jari has agreed to the revised direction recorded in ADR 0008.
+- [x] Follow-up issues describe the implementation outcomes without making the original sizing proposals mandatory.
+
+## Decisions
+
+### 2026-10-02T03:16:51Z · @jari
+
+Hyväksytty keskustelussa 2026-10-02: rajatut selainmuistinäkymät, yksi tapahtumayhteys välilehteä kohti ja uusimmasta päästä luettava historia. Viisi keskustelua, 50 merkintää, 4 MiB ja 16 ms eivät ole sitovia vaatimuksia. Istuntojen peruuttamista ei laajenneta. Jarin jatkokuittaus: ”ok. Jatketaan näillä”.
+
+## Resolution
+
+### 2026-10-02T03:17:43Z · @issuectl
+
+Jari hyväksyi rethink-kierroksella tarkennetun suunnan. ADR ja toteutusissueiden tavoitteet päivitetty; tuotetoteutus jää kolmeen erilliseen issueen.

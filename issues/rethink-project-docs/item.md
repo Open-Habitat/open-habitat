@@ -1,6 +1,6 @@
 ---
 created: 2026-09-29
-updated: 2026-10-01
+updated: 2026-10-02
 type: task
 status: open
 priority: normal
@@ -632,3 +632,9 @@ pysyvät Jarin kanssa päätettävinä. Lähteinä olivat issuen alkuperäinen v
 arkkitehtuuriohjeet. Varsinaista katselmusta tai suorituskykymittauksia ei
 tehty eikä uutta arkkitehtuuripäätöstä kirjattu. Tämä on tekstin ensimmäinen
 uudistettu versio, ei Jarin hyväksymä katselmointitulos.
+
+## Decisions
+
+### 2026-10-02T03:17:43Z · @codex
+
+Keskustelunvaihdon kokonaisuus käsitelty Jarin kanssa 2.10.2026. Jari hyväksyi rajatun selainmuistin, yhden tapahtumayhteyden välilehteä kohti ja uusimmasta päästä luettavan historian. ADR 0008 sekä design-snappy-conversation-switching ja kolme toteutusissuetta kirjoitettiin tämän mukaan. Viisi keskustelua, 50 merkintää, 4 MiB ja 16 ms erotettiin agentin mitoitusehdotuksiksi. Toteutusdetaljit kuuluvat toteutusissueihin, alkuperäiset mittaukset ja paneeli säilyvät taustana. Jari kyseenalaisti kohdennetun istuntoperuutuksen käyttötarpeen ja hyväksyi reliable-session-revocation-issuen sulkemisen wontfix-tilaan; olemassa oleva toteutus ja hyväksyttyjen tapahtumayhteyksien käytös säilyvät. Päätössivu ja ADR 0006:n jatkoissueviite sovitettiin päätökseen. Tuotekoodia, palvelinta tai toteutusissueiden aikataulua ei muutettu.

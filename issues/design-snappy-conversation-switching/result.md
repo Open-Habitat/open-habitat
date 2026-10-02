@@ -1,9 +1,46 @@
-# Suositus Jarille: tuore keskustelu auki ilman odotusta
+# Tuore keskustelu auki ilman odotusta
 
-[ADR 0008](../../docs/adr-0008-snappy-conversation-switching.md) on **ehdotus, ei vielä hyväksytty päätös**. Pitäisin tässä välilehdessä viiden viimeksi avatun keskustelun kevyen, korkeintaan 50 merkinnän näkymän muistissa ja yhden yhteisen tapahtumayhteyden käynnissä. Näiden välillä vaihto näyttää jo nähdyn sisällön heti, eikä klikkaus odota verkkoa. Vanhan keskustelun avaus, pitkälle taaksepäin selaus ja katkoksen jälkeinen varmistus saavat odottaa. Pi:n oma historia pysyy ainoana pysyvänä totuutena; sivun muistikopio voidaan koska tahansa pudottaa. Ei IndexedDB:tä eikä kaikkien keskustelujen esilatausta.
+Jari hyväksyi 2.10.2026 rethink-läpikäynnissä
+[ADR 0008:n](../../docs/adr-0008-snappy-conversation-switching.md) suunnan:
+selain pitää avattujen keskustelujen tuoretta sisältöä rajatusti muistissa,
+ja yksi tapahtumayhteys välilehteä kohti päivittää myös taustalla olevia
+keskusteluja. Muistissa olevaan keskusteluun paluu ei odota verkkoa.
+Sivun uudelleenlataus, muistista poistunut keskustelu ja kauas historiaan
+selaaminen voivat vaatia latauksen. Pi omistaa historian ja daemon ratkaisee
+komentojen hyväksymisen.
 
-Synteettisessä labrassa neljä vaihtoa kahden vain luettavan keskustelun välillä vei 108, 117, 100 ja 116 ms: jokainen teki yhden historiapyynnön. Ohjattava keskustelu tekee nykykoodissa lisäksi statuspyynnön ja avaa tapahtumayhteyden uudelleen; tätä tarkkaa A↔B-vaihtoa ei mitattu. Mallissa tavallinen yksi aktiivinen agentti tuottaa noin **2,6 KiB/s** tapahtumaliikennettä per välilehti; raskas kahdeksan samanaikaista agenttia noin **117 KiB/s**, kymmenellä välilehdellä yhteensä **1,14 MiB/s**. Viiden 50 merkinnän ikkunan arvio on **1,87 MiB** selainmuistia; toteutus rajaa kokonaisuuden 4 MiB:iin. Raskas virta voi täyttää daemonin 128 tapahtuman palautusrenkaan alle sekunnissa, joten aukosta palautuminen on olennainen, vaikka tavallinen liikenne on kevyt. Luvut ovat skenaarioarvioita, eivät tuotantopalvelimen mittauksia; 16 ms maalataan-muistista -tavoite on vielä todistettava toteutuksessa.
+Viiden keskustelun, 50 merkinnän ja 4 MiB:n rajat ovat alkuperäisen ehdotuksen
+mitoitusarvoja. Toteutuksessa valitaan ja mitataan käyttökokemusta palvelevat
+rajat. Yhden näyttöruudun päivitysväli on nopeustavoite, ei todistettu 16 ms:n
+lupaus. Selaimeen ei lisätä pysyvää historiavarastoa.
 
-Kolme ehdotettua toteutusosaa syntyivät **ajastamattomina** vastaanottoon: @one-browser-event-stream (yksi virta), @tail-first-history-paging (uusimmat ensin -historiasivutus), @recent-conversation-windows (rajatut muisti-ikkunat ja nopeustestit). Päätettäväksi jää, hyväksyykö Jari tämän muistiin perustuvan mallin ja sen rajan: katkoksen aikana vanha sisältö näkyy vain selvästi vanhentuneena, eikä sillä voi perustella komentoja.
+Jari kyseenalaisti erillisen istuntojen peruuttamisen laajennuksen tarpeen.
+@reliable-session-revocation suljettiin nykyisessä laajuudessa tarpeettomana;
+nykyinen broker-tarkistus ja jo hyväksyttyjen yhteyksien käytös säilyvät.
 
-Aineisto: [paneeli](panel.md) ([alkuperäiset vastaukset](panel-raw.txt)), [mittausten rajaukset](measurements.md), [simulaatio](simulate.py) ja [tuloste](simulation-output.txt). Ei tuotantokoodimuutoksia. Täyttä porttia ei ajettu uudelleen (vain dokumentit, issuet ja simulaatio).
+## Näyttö ja sen rajat
+
+Synteettisessä labrassa neljä vaihtoa kahden vain luettavan keskustelun välillä
+vei 108, 117, 100 ja 116 ms: jokainen teki historiapyynnön. Ohjattavan
+keskustelun tarkkaa A↔B-vaihtoa ei mitattu. Simulaation tavallinen yksi agentti
+tuottaa noin 2,6 KiB/s ja raskas kahdeksan agentin tapaus noin 117 KiB/s
+välilehteä kohti. CPU- ja muistilaajennuskertoimet ovat oletuksia.
+
+[Mittaukset](measurements.md) kertovat lähtörevision ja rajaukset.
+[Paneeli](panel.md), [alkuperäiset vastaukset](panel-raw.txt),
+[simulaatio](simulate.py) ja [tuloste](simulation-output.txt) säilyvät
+valmisteluaineistona. Niiden alkuperäiset suositukset eivät korvaa hyväksyttyä
+ADR:ää.
+
+## Jäljellä oleva toteutus
+
+@one-browser-event-stream vastaa yhteydestä ja palautumisesta,
+@tail-first-history-paging uusimmasta päästä luettavasta historiasta ja
+@recent-conversation-windows muistissa pidettävistä näkymistä sekä
+käyttökokemuksen mittauksista. Tuotteen uutta toimintaa ei toteutettu eikä
+mitattu tämän tekstikierroksen aikana.
+
+Dokumentaatiovalidaattori ja `git diff --check` läpäisivät. Issue doctorissa
+oli vain muiden issueiden 235 ennestään olevaa kuvamuotohavaintoa.
+Täyttä CI-porttia tai vanhoja kokeita ei ajettu uudelleen, koska muutokset
+koskevat dokumentteja ja issueita (TESTING.md).
