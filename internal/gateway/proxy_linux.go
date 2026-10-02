@@ -136,9 +136,17 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	}
 	defer res.Body.Close()
 	if stream && res.StatusCode == 200 {
+		if r.URL.Path == githubCloneStreamPath && res.Header.Get("Content-Type") != "text/event-stream; charset=utf-8" {
+			safe(w, 503, "checkout_uncertain")
+			return
+		}
 		flusher, ok := w.(http.Flusher)
 		controller := http.NewResponseController(w)
-		if !ok || controller.SetWriteDeadline(time.Now().Add(10*time.Second)) != nil {
+		if !ok {
+			safe(w, 503, "daemon_unavailable")
+			return
+		}
+		if err := controller.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil && !errors.Is(err, http.ErrNotSupported) {
 			safe(w, 503, "daemon_unavailable")
 			return
 		}
@@ -148,10 +156,15 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 		w.WriteHeader(res.StatusCode)
 		flusher.Flush()
 		buf := make([]byte, 32<<10)
+		var forwarded int64
 		for {
 			n, readErr := res.Body.Read(buf)
+			forwarded += int64(n)
+			if r.URL.Path == githubCloneStreamPath && forwarded > 512<<10 {
+				return // Closing the upstream cancels the native write; EOF is uncertain.
+			}
 			if n > 0 {
-				if controller.SetWriteDeadline(time.Now().Add(10*time.Second)) != nil {
+				if err := controller.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil && !errors.Is(err, http.ErrNotSupported) {
 					return
 				}
 				if _, err := w.Write(buf[:n]); err != nil {

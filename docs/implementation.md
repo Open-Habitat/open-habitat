@@ -78,3 +78,29 @@ Testijulkaisut asennetaan Fleetrepon ajantasaisen
 esitarkistuksen ja paluupolun pitää olla kunnossa. Oikeat ihmiset osallistuvat
 itse kirjautumiseensa; tekniset kahden UID:n eristystestit käyttävät synteettisiä
 tunnuksia. Tuotantopalvelimen perustaminen on Jarin erillinen päätös.
+
+### Kloonauksen levyliitos
+
+Julkaisun asennus-/päivitysvaiheessa ylläpitäjä tekee **jokaiselle** mapatulle
+Linux-käyttäjälle oman, korkeintaan 20 GiB:n kokoisen kovasti rajatun
+levytaltion ja liittää sen ennen käyttäjädaemonin käynnistystä polkuun
+`<käyttäjän HOME>/src`. Taltion juuren omistaja on kyseinen UID, hakemiston
+oikeudet 0700 (ei ryhmän tai muiden kirjoitusoikeutta). Taltiot eivät saa
+jakaa samaa kapasiteettia rajattomalla yhteisellä tiedostojärjestelmällä:
+yksi UID ei saa voida kuluttaa toisen taltion kiintiötä. Levyn koon pitää
+olla käyttöjärjestelmän enforceeraama (esimerkiksi oma rajattu lohkolaite tai
+kovan kokorajan tmpfs), ei vain sovelluksen laskuri eikä `statfs`-ennuste.
+Asennus huolehtii liitoksen pysyvyydestä ja käynnistysjärjestyksestä myös
+uudelleenkäynnistyksessä. Älä peitä olemassa olevia `~/src`-puita liitoksella:
+siirto tai tutkiminen on erillinen ylläpitotoimi, ei daemonin tehtävä.
+
+Daemon avaa `~/src`:n ilman symlinkkien seuraamista, tarkistaa että sen
+mount ID ja laitteen tunnus eroavat kodin vastaavista (pelkkä kodin bind mount ei kelpaa), että `statfs`-kokonaiskoko on enintään
+20 GiB ja että vapaata tilaa on vähintään 5 GiB ennen uutta virtaa. Jos
+liitos puuttuu, on liian suuri, on täynnä tai sen omistajuus/oikeudet eivät
+kelpaa, uusi klooni hylätään **ennen kohdehakemiston luontia**. Tämä ei
+vahvista jo olemassa olevaa osittaista kloonia eikä anna lupaa yrittää
+uudelleen automaattisesti. Ylläpitäjä testaa liitoksen ja ENOSPC-tilanteen
+synteettisellä tilillä ennen live-käyttöä. Sovellusrepo ei muuta Fleetrepon
+asennusta; päivitystyöntekijä lisää liitokset siellä ja tarkistaa
+julkaisun vastaanottotositteesta niiden todellisen tilan.

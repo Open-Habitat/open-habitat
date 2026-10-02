@@ -1,0 +1,8 @@
+[
+  {"schema_version":1,"sequence":1,"kind":"progress","stage":"reserving"},
+  {"schema_version":1,"sequence":2,"kind":"progress","stage":"connecting"},
+  {"schema_version":1,"sequence":3,"kind":"progress","stage":"receiving","percent":17},
+  {"schema_version":1,"sequence":4,"kind":"progress","stage":"checkout"},
+  {"schema_version":1,"sequence":5,"kind":"progress","stage":"verifying"},
+  {"schema_version":1,"sequence":6,"kind":"terminal","outcome":"confirmed"}
+]

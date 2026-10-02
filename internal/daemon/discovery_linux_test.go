@@ -162,7 +162,7 @@ func TestDiscoveryBoundsMountAndRace(t *testing.T) {
 	mkdir(t, src)
 	mkdir(t, filepath.Join(src, "w"))
 	inject := func(fd int, name string, how *unix.OpenHow) (int, error) {
-		if name == "src" && how.Resolve&unix.RESOLVE_NO_XDEV != 0 {
+		if name == "src" {
 			return -1, unix.EXDEV
 		}
 		return unix.Openat2(fd, name, how)

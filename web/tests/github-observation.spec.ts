@@ -68,10 +68,13 @@ test("@github-first lost response reconciles by read without another POST", asyn
   await page.request.get("/fixture/checkout?name=first&mode=absent");
   await enter(page);
   const before = await count(page);
-  await page.route("**/api/v1/onboarding/github/clone", async (route) => {
-    await route.fetch(); // The synthetic native checkout completed; only its browser reply is lost.
-    await route.abort();
-  });
+  await page.route(
+    "**/api/v1/onboarding/github/clone/stream",
+    async (route) => {
+      await route.fetch(); // The synthetic native checkout completed; only its browser reply is lost.
+      await route.abort();
+    },
+  );
   await page.getByRole("checkbox").first().check();
   await page.getByRole("button", { name: /jatka/i }).click();
   await expect(

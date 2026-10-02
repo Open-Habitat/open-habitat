@@ -169,13 +169,19 @@ esac
 	gitProgram := filepath.Join(tmp, "synthetic-git")
 	gitScript := `#!/bin/sh
 if [ "$1" = clone ]; then
+  if [ "$2" = --progress ]; then
+    shift
+    printf 'remote: https://host:secret@invalid.example/private\rReceiving objects: 22%% (1/4), 1.25 MiB\r' >&2
+    sleep 0.2
+    printf 'Updating files: 100%% (4/4)\n' >&2
+  fi
   mkdir -p .git || exit 1
   printf '%s\n' "$3" > .git/origin
   exit 0
 fi
 if [ "$1" = -c ]; then shift 2; fi
 case "$1" in
- rev-parse) test -d .git && printf 'true\n' ;;
+ rev-parse) test -d .git || exit 1; if [ "$2" = --verify ]; then printf '0123456789abcdef0123456789abcdef01234567\n'; else printf 'true\n'; fi ;;
  remote) cat .git/origin ;;
  config) cat .git/origin ;;
  status) test -d .git ;;
@@ -292,6 +298,10 @@ esac
 		mux.Handle(daemon.RepoClonePath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cloneCalls.Add(1)
 			cloneHandler.ServeHTTP(w, r)
+		}))
+		mux.Handle(daemon.RepoCloneStreamPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			cloneCalls.Add(1)
+			daemon.RepoCloneStreamHandlerWithFixturePrograms(cfg, trusted, home, ghProgram, gitProgram).ServeHTTP(w, r)
 		}))
 		mux.Handle(daemon.RepoObservePath, daemon.RepoObserveHandlerWithFixtureGit(cfg, trusted, home, gitProgram))
 		mux.Handle("GET /api/v1/onboarding/pi/status", daemon.PiStatusHandler(cfg, trusted, status))

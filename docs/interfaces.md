@@ -38,7 +38,8 @@ ja [daemonista](../internal/daemon/handoff_linux.go).
 | `POST /api/v1/conversations/<session-id>/continue` | päättyneen selainkeskustelun tietoinen jatkaminen samasta natiivista Pi-istunnosta, tyhjä runko |
 | `GET /api/v1/events?after=<cursor>` | yhdistetty SSE-toistovirta; keskustelun tilamuutokset, natiivi historia ja invalidoinnit |
 | `GET /api/v1/onboarding/github/repos` | käyttäjän GitHub-repot, sivutettuina `page`- ja `limit`-parametreilla |
-| `POST /api/v1/onboarding/github/clone` | `full_name`-kentän repon kloonaus; lopputulos JSON-vastauksena |
+| `POST /api/v1/onboarding/github/clone` | vanha `full_name`-kentän kloonaus; lopputulos JSON-vastauksena |
+| `POST /api/v1/onboarding/github/clone/stream` | yksi autentikoitu, ei-jatkettava Git-vaihevirta; [rajattu kehys](../contracts/v1/github-clone-progress.schema.json) |
 | `GET /api/v1/onboarding/github/checkout` | `full_name`-parametrin paikallisen checkoutin natiivi havainto |
 | `GET /api/v1/onboarding/pi/status` | onko Pi:n natiivi kirjautuminen käyttökelpoinen |
 | `POST /api/v1/onboarding/pi/attempt` | laitekirjautumisyrityksen aloitus |
@@ -193,15 +194,18 @@ terminaalikeskustelun ohjausta.
 ### GitHub-kloonauksen sovittu vaihevirta
 
 [ADR 0005](adr-0005-clone-progress-stream.md) hyväksyy erillisen
-`POST /api/v1/onboarding/github/clone/stream` -reitin. Se ei ole vielä toteutettu.
+`POST /api/v1/onboarding/github/clone/stream` -reitin. Se käyttää erillistä SSE-kirjoitusvirtaa; vanha JSON-reitti säilyy lyhyitä yhteensopivuustestejä varten.
 Kirjoittavan POST-yhteyden SSE-vastaus sisältää vain numeroidut Git-vaiheet
 ja yhden lopputilan. Selainyhteyden katkeaminen keskeyttää tämän kirjoituksen.
 Sivun uudelleenavaus tarkistaa natiivin Git-tilan ja kirjoittajan päättymisen;
-vanhaa virtaa ei jatketa eikä kloonausta uusita automaattisesti.
+vanhaa virtaa ei jatketa eikä kloonausta uusita automaattisesti. Pelkkä Gitin
+alustus, origin ja puhdas tila eivät riitä: myös HEADin täytyy viitata committiin.
+Tyhjä repo ilman ensimmäistä committia jää epävarmaksi, koska sitä ei voi
+pelkästä paikallisesta puusta erottaa katkenneesta kloonista.
 
 Tämä on eri sopimus kuin keskustelun jatkuminen selaimen sulkemisen jälkeen.
 Kloonivirta ei käytä yleisen SSE:n cursoria tai komentotulosten säilytystä.
-ADR määrittää sen hyväksytyt aika- ja levyrajat sekä epävarman lopputuloksen.
+ADR määrittää sen hyväksytyt aika- ja levyrajat sekä epävarman lopputuloksen. Käyttäjän `~/src` on erillinen, ylläpitäjän rajaama levyliitos; katso [asennuksen levyvaatimus](implementation.md#kloonauksen-levyliitos).
 
 ## Natiivit lähteet ja historia
 

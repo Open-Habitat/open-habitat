@@ -70,6 +70,12 @@ for exchange in exchanges:
     assert (BASE / "examples" / response_file).is_file(), f"missing exchange response body {response_file}"
 
 
+clone_progress = json.loads((BASE / "examples" / "github-clone-progress.json").read_text())
+for seq, frame in enumerate(clone_progress, start=1):
+    Draft202012Validator(schemas["github-clone-progress.schema.json"], registry=registry, format_checker=format_checker).validate(frame)
+    assert frame["sequence"] == seq
+assert clone_progress[-1]["kind"] == "terminal"
+
 events = json.loads((BASE / "examples" / "events.json").read_text())
 event_validator = Draft202012Validator(schemas["event.schema.json"], registry=registry, format_checker=format_checker)
 for event in events:
@@ -123,6 +129,13 @@ bad_create = json.loads((BASE / "examples" / "command-request.json").read_text()
 bad_create.update({"kind": "workspace.create", "target": {"workspace_id": "ws_example123"}, "arguments": {"name": "-unsafe", "git": False}})
 must_reject("command.schema.json", bad_create)
 
+bad_clone_progress = dict(clone_progress[2])
+bad_clone_progress["message"] = "untrusted native stderr"
+must_reject("github-clone-progress.schema.json", bad_clone_progress)
+bad_clone_progress = dict(clone_progress[-1])
+bad_clone_progress["schema_version"] = 2
+must_reject("github-clone-progress.schema.json", bad_clone_progress)
+
 bad_content = {"media_type": "text/plain", "text": "partial", "complete": False}
 try:
     Draft202012Validator(
@@ -135,4 +148,4 @@ except ValidationError:
 else:
     raise AssertionError("content schema accepted an incomplete, non-truncated value without continuation")
 
-print(f"Host contracts valid: {len(SCHEMA_FILES)} schemas, {len(checks) + 2} fixture files, {len(scenarios)} scenarios, 4 negative checks.")
+print(f"Host contracts valid: {len(SCHEMA_FILES)} schemas, {len(checks) + 2} fixture files, {len(scenarios)} scenarios, 6 negative checks.")

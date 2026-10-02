@@ -8,7 +8,7 @@ import { PiOnboarding } from "./PiOnboarding";
 import { Button } from "../components/Primitives";
 import { InlineNotice } from "../components/Status";
 import { sessionCSRF } from "./pi";
-import { catalog, clone, GitHubError, observe } from "./github";
+import { catalog, cloneStream, GitHubError, observe } from "./github";
 
 const marker = "nah:github-step";
 const message = (e: unknown) =>
@@ -65,6 +65,7 @@ export function GitHubOnboarding({
   const generation = useRef(0);
   const reads = useRef<AbortController | undefined>(undefined);
   const writing = useRef(false);
+  const writeAbort = useRef<AbortController | undefined>(undefined);
   const rechecking = useRef(false);
   const pending = useRef<string[]>([]);
   const locked = useRef(false);
@@ -72,6 +73,7 @@ export function GitHubOnboarding({
   const reset = useCallback(() => {
     ++generation.current;
     reads.current?.abort();
+    writeAbort.current?.abort();
     bound.current = "";
     key.current = "";
     pending.current = [];
@@ -207,6 +209,7 @@ export function GitHubOnboarding({
       alive = false;
       ++generation.current;
       reads.current?.abort();
+      writeAbort.current?.abort();
       window.clearInterval(timer);
       window.removeEventListener("focus", focus);
     };
@@ -270,7 +273,37 @@ export function GitHubOnboarding({
       if (state === "absent" && permitWrite) {
         // Each name gets at most one POST in this explicit Continue invocation.
         try {
-          await clone(name, bound.current);
+          const controller = new AbortController();
+          writeAbort.current = controller;
+          try {
+            await cloneStream(
+              name,
+              bound.current,
+              (frame) => {
+                if (current(n) && frame.kind === "progress")
+                  setCheckout((old) => ({
+                    phase: "progress",
+                    completed: confirmed,
+                    total: names.length,
+                    stage: frame.stage,
+                    percent:
+                      frame.percent ??
+                      (old.phase === "progress" && old.stage === frame.stage
+                        ? old.percent
+                        : undefined),
+                    receivedBytes:
+                      frame.received_bytes ??
+                      (old.phase === "progress" && old.stage === frame.stage
+                        ? old.receivedBytes
+                        : undefined),
+                  }));
+              },
+              controller.signal,
+            );
+          } finally {
+            if (writeAbort.current === controller)
+              writeAbort.current = undefined;
+          }
         } catch (e) {
           if (!current(n)) return;
           // A failed or lost response is NOT proof that the write failed.

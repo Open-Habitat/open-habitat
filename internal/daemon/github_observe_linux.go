@@ -52,6 +52,11 @@ func repoObserveHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
+		if !cloneWriter.TryLock() {
+			historyJSON(w, map[string]any{"schema_version": 1, "full_name": name, "state": "unavailable"})
+			return
+		}
+		defer cloneWriter.Unlock()
 		state := observeCheckout(r.Context(), cfg, home, git, run, name)
 		historyJSON(w, map[string]any{"schema_version": 1, "full_name": name, "state": state})
 	})
@@ -75,7 +80,7 @@ func observeCheckout(parent context.Context, cfg transport.Config, home, git str
 	if e != nil || hs.Uid != uint32(cfg.UID) || hs.Mode&0022 != 0 {
 		return unavailable
 	}
-	src, e := dir(unix.Openat2, h, "src", true)
+	src, e := dir(unix.Openat2, h, "src", false)
 	if errors.Is(e, unix.ENOENT) {
 		return "absent"
 	}
@@ -139,6 +144,8 @@ func observeCheckout(parent context.Context, cfg transport.Config, home, git str
 	read := func(args ...string) ([]byte, error) { return run(ctx, git, home, strconv.Itoa(child), args...) }
 	top, e1 := read("-c", "core.fsmonitor=false", "rev-parse", "--is-inside-work-tree")
 	remote, e2 := read("-c", "core.fsmonitor=false", "config", "--local", "--get-all", "remote.origin.url")
+	clean, e4 := read("-c", "core.fsmonitor=false", "status", "--porcelain")
+	head, e5 := read("-c", "core.fsmonitor=false", "rev-parse", "--verify", "HEAD^{commit}")
 	named, e3 := dir(unix.Openat2, src, target, true)
 	var now unix.Stat_t
 	if e3 == nil {
@@ -148,7 +155,7 @@ func observeCheckout(parent context.Context, cfg transport.Config, home, git str
 	if ctx.Err() != nil || !cloneSourceStillNamed(home, ss) || e3 != nil || !same(cs, now) {
 		return unavailable
 	}
-	if e1 != nil || e2 != nil || string(top) != "true\n" || string(remote) != "https://github.com/"+name+".git\n" {
+	if e1 != nil || e2 != nil || e4 != nil || e5 != nil || !validCloneCommit(head) || len(clean) != 0 || string(top) != "true\n" || string(remote) != "https://github.com/"+name+".git\n" {
 		return "conflict"
 	}
 	return "confirmed"

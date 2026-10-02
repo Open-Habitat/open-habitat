@@ -1,0 +1,195 @@
+//go:build linux
+
+package daemon
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/maintainer/native-agent-host/internal/transport"
+)
+
+func streamFixture(t *testing.T) (transport.Config, string, string, cloneRunner) {
+	t.Helper()
+	cfg, home := cloneFixture(t)
+	cfg.Home = home
+	if err := os.Mkdir(filepath.Join(home, "src"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	script := filepath.Join(home, "git")
+	// No provider calls or real GitHub credentials; all native text is hostile.
+	code := "#!/bin/sh\nif [ \"$1\" = clone ]; then\n printf 'remote: credential https://bad:token@example.invalid/private\\rReceiving objects: 17%% (1/6), 1.25 MiB\\rUpdating files: 100%% (6/6)\\n' >&2\n mkdir .git\n exit 0\nfi\nexit 9\n"
+	if err := os.WriteFile(script, []byte(code), 0700); err != nil {
+		t.Fatal(err)
+	}
+	run := func(_ context.Context, program, _, _ string, args ...string) ([]byte, error) {
+		if program == "gh" {
+			if args[len(args)-1] == "/user" {
+				return []byte(`{"id":42}`), nil
+			}
+			return []byte(`{"name":"repo","full_name":"org/repo","owner":{"login":"org"},"clone_url":"https://github.com/org/repo.git"}`), nil
+		}
+		switch args[0] {
+		case "rev-parse":
+			if args[len(args)-1] == "HEAD^{commit}" {
+				return []byte("0123456789abcdef0123456789abcdef01234567\n"), nil
+			}
+			return []byte("true\n"), nil
+		case "remote":
+			return []byte("https://github.com/org/repo.git\n"), nil
+		case "status":
+			return nil, nil
+		}
+		return nil, context.Canceled
+	}
+	return cfg, home, script, run
+}
+func streamRequest() *http.Request {
+	r := cloneRequest(`{"full_name":"org/repo"}`)
+	r.URL.Path = RepoCloneStreamPath
+	r.RequestURI = RepoCloneStreamPath
+	return r
+}
+func TestCloneStreamNativeStagesAndBudget(t *testing.T) {
+	cfg, home, script, run := streamFixture(t)
+	h := repoCloneStreamHandler(cfg, func(*http.Request) bool { return true }, home, "gh", script, run, func(int) bool { return false })
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, streamRequest())
+	if w.Code != 409 || strings.Contains(w.Body.String(), "event:") {
+		t.Fatalf("budget admission: %d %s", w.Code, w.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(home, "src", "repo")); !os.IsNotExist(err) {
+		t.Fatalf("destination written before budget: %v", err)
+	}
+	h = repoCloneStreamHandler(cfg, func(*http.Request) bool { return true }, home, "gh", script, run, func(int) bool { return true })
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, streamRequest())
+	data := w.Body.String()
+	if w.Code != 200 || !strings.Contains(data, `"stage":"receiving","percent":17`) || !strings.Contains(data, `"received_bytes":1310720`) || !strings.Contains(data, `"stage":"checkout","percent":100`) || !strings.Contains(data, `"outcome":"confirmed"`) {
+		t.Fatalf("stream: %d %s", w.Code, data)
+	}
+	if strings.Contains(data, "credential") || strings.Contains(data, "example.invalid") {
+		t.Fatal("native stderr leaked")
+	}
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, streamRequest())
+	if w.Code != 409 || !strings.Contains(w.Body.String(), "checkout_exists") {
+		t.Fatalf("partial collision: %d %s", w.Code, w.Body.String())
+	}
+}
+func TestCloneStreamCancellationKeepsUncertainTree(t *testing.T) {
+	cfg, home, _, run := streamFixture(t)
+	script := filepath.Join(home, "slow-git")
+	slow := "#!/bin/sh\n/usr/bin/git init -q . || exit 1\n/usr/bin/git remote add origin https://github.com/org/repo.git || exit 1\nprintf 'ready' > '" + filepath.Join(home, "clone-ready") + "'\nprintf 'Receiving objects: 1%%\\r' >&2\nexec /bin/sleep 30\n"
+	if err := os.WriteFile(script, []byte(slow), 0700); err != nil {
+		t.Fatal(err)
+	}
+	h := repoCloneStreamHandler(cfg, func(*http.Request) bool { return true }, home, "gh", script, run, func(int) bool { return true })
+	ctx, cancel := context.WithCancel(context.Background())
+	r := streamRequest().WithContext(ctx)
+	w := httptest.NewRecorder()
+	finished := make(chan struct{})
+	go func() { defer close(finished); h.ServeHTTP(w, r) }()
+	// Wait until the synthetic process has written to the reserved directory.
+	deadline := time.After(3 * time.Second)
+	for {
+		if _, err := os.Stat(filepath.Join(home, "clone-ready")); err == nil {
+			break
+		}
+		select {
+		case <-deadline:
+			cancel()
+			<-finished
+			t.Fatal("native clone did not start")
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+	cancel()
+	select {
+	case <-finished:
+	case <-time.After(3 * time.Second):
+		t.Fatal("native group did not settle on disconnect")
+	}
+	if _, err := os.Stat(filepath.Join(home, "src", "repo")); err != nil {
+		t.Fatal("cancelled tree removed")
+	}
+	if strings.Contains(w.Body.String(), `"outcome":"confirmed"`) {
+		t.Fatal("cancelled clone confirmed")
+	}
+	if got := observeCheckout(context.Background(), cfg, home, "/usr/bin/git", cloneCommand, "org/repo"); got != "conflict" {
+		t.Fatalf("partial native Git tree promoted to %s", got)
+	}
+}
+
+func TestCloneStreamRejectsUnboundedHomeSource(t *testing.T) {
+	cfg, home, script, run := streamFixture(t)
+	h := repoCloneStreamHandler(cfg, func(*http.Request) bool { return true }, home, "gh", script, run, boundedCloneVolume)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, streamRequest())
+	if w.Code != 409 || strings.Contains(w.Body.String(), "event:") {
+		t.Fatalf("unbounded source admitted: %d %s", w.Code, w.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(home, "src", "repo")); !os.IsNotExist(err) {
+		t.Fatalf("unsafe write: %v", err)
+	}
+}
+
+func TestNativeProgressParserDiscardsHostileAndOversizedLines(t *testing.T) {
+	w := httptest.NewRecorder()
+	emit := &cloneEmitter{w: w, cancel: func() {}}
+	parser := &gitProgressWriter{emit: emit}
+	hostile := "Receiving objects: 101% https://user:password@example.invalid\r" + strings.Repeat("x", 513) + "Receiving objects: 49%\r" + "remote: Updating files: 20% /home/private\r" + "Receiving objects: 0% (0/10)\r"
+	for _, chunk := range []string{hostile[:13], hostile[13:]} {
+		if _, err := parser.Write([]byte(chunk)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if strings.Contains(w.Body.String(), "password") || strings.Contains(w.Body.String(), "private") || strings.Contains(w.Body.String(), "49") || strings.Contains(w.Body.String(), "101") || !strings.Contains(w.Body.String(), `"percent":0`) {
+		t.Fatal(w.Body.String())
+	}
+}
+
+func TestCloneStreamRejectsReadableSharedSource(t *testing.T) {
+	cfg, home, script, run := streamFixture(t)
+	if err := os.Chmod(filepath.Join(home, "src"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	h := repoCloneStreamHandler(cfg, func(*http.Request) bool { return true }, home, "gh", script, run, func(int) bool { return true })
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, streamRequest())
+	if w.Code != 409 {
+		t.Fatalf("shared source admitted: %d %s", w.Code, w.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(home, "src", "repo")); !os.IsNotExist(err) {
+		t.Fatalf("directory created: %v", err)
+	}
+}
+
+func TestCloneTerminalClosesHeartbeatAndLastCheckoutMeasurement(t *testing.T) {
+	w := httptest.NewRecorder()
+	emit := &cloneEmitter{w: w, cancel: func() {}}
+	p := &gitProgressWriter{emit: emit}
+	for _, stage := range []string{"Receiving objects", "Updating files"} {
+		for n := 0; n <= 100; n++ {
+			if _, e := p.Write([]byte(fmt.Sprintf("%s: %d%% (fixture)\r", stage, n))); e != nil {
+				t.Fatal(e)
+			}
+		}
+	}
+	if !strings.Contains(w.Body.String(), `"stage":"checkout","percent":100`) {
+		t.Fatal("checkout 100% dropped by frame budget")
+	}
+	emit.terminal("confirmed", "")
+	before := w.Body.String()
+	emit.heartbeat()
+	if w.Body.String() != before {
+		t.Fatal("heartbeat emitted after terminal")
+	}
+}

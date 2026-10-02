@@ -167,3 +167,24 @@ describe("GitHub first-use chooser", () => {
     expect(initial.onProceed).not.toHaveBeenCalled();
   });
 });
+
+it("labels native Git stage and native bytes without turning repo count into an ETA", () => {
+  const initial = props();
+  const view = render(
+    <GitHubRepoChooser
+      {...initial}
+      selectedNames={[repos[0].full_name]}
+      checkout={{
+        phase: "progress",
+        completed: 0,
+        total: 1,
+        stage: "receiving",
+        percent: 22,
+        receivedBytes: 1310720,
+      }}
+    />,
+  );
+  expect(view.getByText(/Vastaanotetaan objekteja 22 %/)).toBeTruthy();
+  expect(view.getByText(/1\s*310\s*720 tavua/)).toBeTruthy();
+  expect(view.getByText(/Haettu 0\/1 repoa/)).toBeTruthy();
+});

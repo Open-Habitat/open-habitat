@@ -18,8 +18,14 @@ import (
 func TestObserveCheckoutReadOnly(t *testing.T) {
 	cfg, home := cloneFixture(t)
 	run := func(_ context.Context, _, _, _ string, args ...string) ([]byte, error) {
+		if args[len(args)-1] == "HEAD^{commit}" {
+			return []byte("0123456789abcdef0123456789abcdef01234567\n"), nil
+		}
 		if args[len(args)-1] == "--is-inside-work-tree" {
 			return []byte("true\n"), nil
+		}
+		if args[len(args)-1] == "--porcelain" {
+			return nil, nil
 		}
 		return []byte("https://github.com/alice/repo.git\n"), nil
 	}
@@ -40,8 +46,14 @@ func TestObserveCheckoutReadOnly(t *testing.T) {
 	os.Mkdir(filepath.Join(home, "src", "repo", ".git"), 0700)
 	check("confirmed")
 	other := func(_ context.Context, _, _, _ string, args ...string) ([]byte, error) {
+		if args[len(args)-1] == "HEAD^{commit}" {
+			return []byte("0123456789abcdef0123456789abcdef01234567\n"), nil
+		}
 		if args[len(args)-1] == "--is-inside-work-tree" {
 			return []byte("true\n"), nil
+		}
+		if args[len(args)-1] == "--porcelain" {
+			return nil, nil
 		}
 		return []byte("https://github.com/bob/repo.git\n"), nil
 	}
@@ -63,8 +75,14 @@ func TestObserveSeparateMappedHomes(t *testing.T) {
 		}
 	}
 	run := func(_ context.Context, _, cwd, _ string, args ...string) ([]byte, error) {
+		if args[len(args)-1] == "HEAD^{commit}" {
+			return []byte("0123456789abcdef0123456789abcdef01234567\n"), nil
+		}
 		if args[len(args)-1] == "--is-inside-work-tree" {
 			return []byte("true\n"), nil
+		}
+		if args[len(args)-1] == "--porcelain" {
+			return nil, nil
 		}
 		if cwd == first {
 			return []byte("https://github.com/alice/repo.git\n"), nil
@@ -95,6 +113,13 @@ func TestObserveWithNativeGit(t *testing.T) {
 		if out, err := exec.Command(git, args...).CombinedOutput(); err != nil {
 			t.Fatalf("git: %v %s", err, out)
 		}
+	}
+	if got := observeCheckout(context.Background(), cfg, home, git, cloneCommand, "alice/repo"); got != "conflict" {
+		t.Fatalf("unborn HEAD was confirmed: %s", got)
+	}
+	commit := exec.Command(git, "-C", path, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--allow-empty", "-m", "fixture")
+	if out, err := commit.CombinedOutput(); err != nil {
+		t.Fatalf("seed commit: %v %s", err, out)
 	}
 	if got := observeCheckout(context.Background(), cfg, home, git, cloneCommand, "alice/repo"); got != "confirmed" {
 		t.Fatal(got)

@@ -213,7 +213,7 @@ func (c *ConversationController) workspaceFD(id string) (*os.File, string, error
 	if err != nil || h.Uid != uint32(c.cfg.UID) {
 		return nil, "", errors.New("home owner changed")
 	}
-	src, err := dir(unix.Openat2, home, "src", true)
+	src, err := dir(unix.Openat2, home, "src", false)
 	if err != nil {
 		return nil, "", err
 	}

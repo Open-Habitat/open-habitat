@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "dec782c5fa087eea06f185870415c179c6781bca4b1e09052a1c2a19470bf990"
+const V1SchemaFingerprint = "d527d3a591aedd4d9a37fce5407b46825ce15b94641e5ec225b84fbcd4c148b2"
 
 var V1SchemaFiles = []string{
 	"annotations.schema.json",
@@ -13,6 +13,7 @@ var V1SchemaFiles = []string{
 	"event.schema.json",
 	"exchange.schema.json",
 	"github-checkout.schema.json",
+	"github-clone-progress.schema.json",
 	"github-clone.schema.json",
 	"github-repos.schema.json",
 	"history.schema.json",
@@ -31,6 +32,7 @@ type Error = json.RawMessage
 type Event = json.RawMessage
 type Exchange = json.RawMessage
 type GithubCheckout = json.RawMessage
+type GithubCloneProgress = json.RawMessage
 type GithubClone = json.RawMessage
 type GithubRepos = json.RawMessage
 type History = json.RawMessage

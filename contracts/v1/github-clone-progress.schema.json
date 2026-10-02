@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://native-agent-host.invalid/contracts/v1/github-clone-progress.schema.json",
+  "title": "Non-replayable Git clone progress frame",
+  "oneOf": [
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "sequence", "kind", "stage"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "sequence": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "kind": {"const": "progress"},
+        "stage": {"enum": ["reserving", "connecting", "receiving", "checkout", "verifying"]},
+        "percent": {"type": "integer", "minimum": 0, "maximum": 100},
+        "received_bytes": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+        "total_bytes": {"type": "integer", "minimum": 0, "maximum": 9007199254740991}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "sequence", "kind", "outcome"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "sequence": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "kind": {"const": "terminal"},
+        "outcome": {"enum": ["confirmed", "uncertain", "rejected"]},
+        "reason": {"enum": ["deadline_exceeded", "budget_exceeded", "cancelled", "native_failure", "verification_failed", "destination_exists", "source_unavailable"]}
+      },
+      "allOf": [{"if": {"properties": {"outcome": {"const": "confirmed"}}}, "then": {"not": {"required": ["reason"]}}, "else": {"required": ["reason"]}}]
+    }
+  ]
+}

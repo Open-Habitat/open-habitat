@@ -72,7 +72,7 @@ if [ "$1" = -c ]; then shift 2; fi
 case "$1" in
 clone) [ "$2" = -- ] && [ "$3" = "https://github.com/fixture/repo$(cat "$HOME/fixture-id").git" ] && [ "$4" = . ] || exit 9
  mkdir .git || exit 9 ;;
-rev-parse) printf 'true\n' ;;
+rev-parse) if [ "$2" = --verify ]; then printf '0123456789abcdef0123456789abcdef01234567\n'; else printf 'true\n'; fi ;;
 remote|config) printf 'https://github.com/fixture/repo%s.git\n' "$(cat "$HOME/fixture-id")" ;;
 status) : ;;
 *) exit 9 ;;
@@ -157,14 +157,15 @@ esac
 			foreign = "43"
 		}
 		status, body, e = probe(21003, foreign)
-		if e != nil || status != 403 || strings.Contains(body, "repo") {
-			t.Fatalf("forged UID %s: %d %s %v", subject, status, body, e)
+		if e != nil || status != 200 || !strings.Contains(body, "repo"+subject) || strings.Contains(body, "repo"+foreign) {
+			t.Fatalf("forged header crossed socket UID %s: %d %s %v", subject, status, body, e)
 		}
 		foreignUID := 21001
 		if subject == "42" {
 			foreignUID = 21002
 		}
-		// The same gateway UID may request a clone only from the mapped daemon.
+		// A forged header cannot switch the mapped daemon's native UID; a foreign
+		// repository is refused by the mapped UID's own gh catalog.
 		cloneProbe := func(identity string) (int, string, error) {
 			cmd := exec.Command(os.Args[0], "-test.run=^TestRepoCatalogUIDProbe$")
 			cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: 21003, Gid: 21003}}
@@ -192,16 +193,19 @@ esac
 			return status, body, err
 		}
 		status, body, e = observeProbe(foreign)
-		if e != nil || status != 403 || strings.Contains(body, "repo") {
-			t.Fatalf("forged observation %s: %d %s %v", subject, status, body, e)
+		if e != nil || status != 200 || !strings.Contains(body, "absent") {
+			t.Fatalf("foreign header changed observation UID %s: %d %s %v", subject, status, body, e)
 		}
 		status, body, e = observeProbe(subject)
 		if e != nil || status != 200 || !strings.Contains(body, "absent") {
 			t.Fatalf("observation before clone %s: %d %s %v", subject, status, body, e)
 		}
-		status, body, e = cloneProbe(foreign)
-		if e != nil || status != 403 {
-			t.Fatalf("forged clone %s: %d %s %v", subject, status, body, e)
+		stream := exec.Command(os.Args[0], "-test.run=^TestRepoCatalogUIDProbe$")
+		stream.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: 21003, Gid: 21003}}
+		stream.Env = append(os.Environ(), "REPO_UID_PROBE=1", "REPO_STREAM=1", "REPO_EXPECTED="+foreign, "REPO_SOCKET="+socket, "REPO_SUBJECT="+foreign)
+		denied, err := stream.CombinedOutput()
+		if err != nil || !strings.HasPrefix(string(denied), "503 ") || strings.Contains(string(denied), "event: progress") {
+			t.Fatalf("foreign progress request %s: %s %v", subject, denied, err)
 		}
 		status, body, e = cloneProbe(subject)
 		if e != nil || status != 200 || !strings.Contains(body, "cloned") {
@@ -239,6 +243,7 @@ func serveCatalogUID(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.Handle(RepoCatalogPath, repoCatalogHandler(cfg, trusted, run))
 	mux.Handle(RepoClonePath, RepoCloneHandlerWithFixturePrograms(cfg, trusted, home, home, filepath.Join(home, "gh"), filepath.Join(home, "git")))
+	mux.Handle(RepoCloneStreamPath, RepoCloneStreamHandlerWithFixturePrograms(cfg, trusted, home, filepath.Join(home, "gh"), filepath.Join(home, "git")))
 	mux.Handle(RepoObservePath, RepoObserveHandlerWithFixtureGit(cfg, trusted, home, filepath.Join(home, "git")))
 	srv := &http.Server{Handler: mux, ConnContext: func(ctx context.Context, c net.Conn) context.Context {
 		if uc, ok := c.(*net.UnixConn); ok {
@@ -266,8 +271,11 @@ func TestRepoCatalogUIDProbe(t *testing.T) {
 	subject := os.Getenv("REPO_SUBJECT")
 	method, path := "GET", RepoCatalogPath+"?page=1&limit=2"
 	var bodyReader io.Reader
-	if os.Getenv("REPO_CLONE") == "1" {
+	if os.Getenv("REPO_CLONE") == "1" || os.Getenv("REPO_STREAM") == "1" {
 		method, path = "POST", RepoClonePath
+		if os.Getenv("REPO_STREAM") == "1" {
+			path = RepoCloneStreamPath
+		}
 		bodyReader = bytes.NewBufferString(`{"full_name":"fixture/repo` + os.Getenv("REPO_EXPECTED") + `"}`)
 	} else if os.Getenv("REPO_OBSERVE") == "1" {
 		path = RepoObservePath + "?full_name=fixture%2Frepo" + os.Getenv("REPO_EXPECTED")

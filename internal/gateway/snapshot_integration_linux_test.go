@@ -54,10 +54,16 @@ func TestAuthenticatedGatewayToTwoDaemonSnapshotHandlers(t *testing.T) {
 	if out, e := exec.Command("/usr/bin/git", "init", "--bare", bare).CombinedOutput(); e != nil {
 		t.Fatalf("bare: %s %v", out, e)
 	}
+	work := t.TempDir()
+	for _, args := range [][]string{{"init", "-q", work}, {"-C", work, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--allow-empty", "-m", "fixture"}, {"-C", work, "push", bare, "HEAD:refs/heads/main"}, {"--git-dir", bare, "symbolic-ref", "HEAD", "refs/heads/main"}} {
+		if out, err := exec.Command("/usr/bin/git", args...).CombinedOutput(); err != nil {
+			t.Fatalf("seed bare: %v %s", err, out)
+		}
+	}
 	paths := map[string]string{}
 	peers := map[string]int{}
 	for i, m := range identities {
-		dir, e := os.MkdirTemp("/tmp", "nah-route-")
+		dir, e := os.MkdirTemp("/var/tmp", "nr-")
 		if e != nil {
 			t.Fatal(e)
 		}

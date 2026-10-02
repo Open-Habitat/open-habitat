@@ -106,6 +106,12 @@ func TestCloneSyntheticNativeGitCheckout(t *testing.T) {
 	if b, e := exec.Command("/usr/bin/git", "init", "--bare", bare).CombinedOutput(); e != nil {
 		t.Fatalf("git init: %s %v", b, e)
 	}
+	work := t.TempDir()
+	for _, args := range [][]string{{"init", "-q", work}, {"-C", work, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--allow-empty", "-m", "fixture"}, {"-C", work, "push", bare, "HEAD:refs/heads/main"}, {"--git-dir", bare, "symbolic-ref", "HEAD", "refs/heads/main"}} {
+		if b, e := exec.Command("/usr/bin/git", args...).CombinedOutput(); e != nil {
+			t.Fatalf("seed fixture: %v %s", e, b)
+		}
+	}
 	script := filepath.Join(t.TempDir(), "git-fixture")
 	content := "#!/bin/sh\nif [ \"$1\" = clone ]; then\n /usr/bin/git clone -- '" + bare + "' . || exit 1\n exec /usr/bin/git remote set-url origin https://github.com/org/repo.git\nfi\nexec /usr/bin/git \"$@\"\n"
 	if e := os.WriteFile(script, []byte(content), 0700); e != nil {

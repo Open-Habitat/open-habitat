@@ -24,12 +24,15 @@ test("@github-first slow reply and focus never start another checkout", async ({
     const reached = new Promise<void>((resolve) => {
       captured = resolve;
     });
-    await page.route("**/api/v1/onboarding/github/clone", async (route) => {
-      const reply = await route.fetch();
-      captured();
-      await delayed;
-      await route.fulfill({ response: reply }).catch(() => {});
-    });
+    await page.route(
+      "**/api/v1/onboarding/github/clone/stream",
+      async (route) => {
+        const reply = await route.fetch();
+        captured();
+        await delayed;
+        await route.fulfill({ response: reply }).catch(() => {});
+      },
+    );
     await page.getByRole("button", { name: /jatka/i }).click();
     await reached;
     try {

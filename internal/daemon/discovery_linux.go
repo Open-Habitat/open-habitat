@@ -104,7 +104,7 @@ func scan(home string, uid int, op openFunction) Discovery {
 		result.Error = "invalid_identity"
 		return result
 	}
-	src, e := dir(op, h, "src", true)
+	src, e := dir(op, h, "src", false)
 	if e != nil {
 		if errors.Is(e, unix.ENOENT) {
 			result.State = "missing"
@@ -113,6 +113,10 @@ func scan(home string, uid int, op openFunction) Discovery {
 		return result
 	}
 	defer unix.Close(src)
+	if sourceOnDifferentMount(h, src) && !dedicatedCloneVolume(src) {
+		result.Error = "unsafe_path"
+		return result
+	}
 	sourceID, e := stat(src)
 	if e != nil {
 		result.Error = reason(e)
@@ -191,7 +195,7 @@ func scan(home string, uid int, op openFunction) Discovery {
 		}
 		result.Entries = append(result.Entries, w)
 	}
-	again, err := dir(op, h, "src", true)
+	again, err := dir(op, h, "src", false)
 	if err != nil {
 		result.State = "partial"
 		result.Error = "raced_source"

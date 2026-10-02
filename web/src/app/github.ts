@@ -2,11 +2,13 @@ import Ajv from "ajv/dist/2020.js";
 import reposSchema from "../../../contracts/v1/github-repos.schema.json";
 import cloneSchema from "../../../contracts/v1/github-clone.schema.json";
 import checkoutSchema from "../../../contracts/v1/github-checkout.schema.json";
+import cloneProgressSchema from "../../../contracts/v1/github-clone-progress.schema.json";
 
 const ajv = new Ajv({ strict: false });
 const reposValid = ajv.compile(reposSchema);
 const cloneValid = ajv.compile(cloneSchema);
 const checkoutValid = ajv.compile(checkoutSchema);
+const cloneProgressValid = ajv.compile(cloneProgressSchema);
 export type Repo = {
   full_name: string;
   private: boolean;
@@ -152,4 +154,117 @@ export async function clone(
   );
   if (!cloneValid(data) || (data as { full_name: string }).full_name !== name)
     throw new GitHubError("unavailable");
+}
+
+export type CloneProgress =
+  | {
+      schema_version: 1;
+      sequence: number;
+      kind: "progress";
+      stage:
+        | "reserving"
+        | "connecting"
+        | "receiving"
+        | "checkout"
+        | "verifying";
+      percent?: number;
+      received_bytes?: number;
+      total_bytes?: number;
+    }
+  | {
+      schema_version: 1;
+      sequence: number;
+      kind: "terminal";
+      outcome: "confirmed" | "uncertain" | "rejected";
+      reason?: string;
+    };
+
+// A POST stream is never resumed. Any missing terminal, invalid frame or lost
+// connection is uncertain, even if native observation later finds a directory.
+export async function cloneStream(
+  name: string,
+  csrf: string,
+  onProgress: (frame: CloneProgress) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  let r: Response;
+  try {
+    r = await fetch("/api/v1/onboarding/github/clone/stream", {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      signal,
+      headers: {
+        "Content-Type": "application/json",
+        Origin: window.location.origin,
+        "X-Agent-Host-CSRF": csrf,
+      },
+      body: JSON.stringify({ full_name: name }),
+    });
+  } catch {
+    throw new GitHubError("unavailable");
+  }
+  if (!r.ok) {
+    await response(r, 4096);
+    throw new GitHubError("unavailable");
+  }
+  if (
+    r.headers.get("content-type") !== "text/event-stream; charset=utf-8" ||
+    !r.body
+  )
+    throw new GitHubError("unavailable");
+  const reader = r.body.getReader();
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  let pending = "",
+    sequence = 0,
+    terminal = false,
+    bytes = 0;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > 512 * 1024) throw new GitHubError("unavailable");
+      pending += decoder.decode(value, { stream: true });
+      for (;;) {
+        const end = pending.indexOf("\n\n");
+        if (end === -1) break;
+        const text = pending.slice(0, end);
+        pending = pending.slice(end + 2);
+        if (text.length > 1024 || terminal || sequence === 4096)
+          throw new GitHubError("unavailable");
+        const match = /^event: (progress|terminal)\ndata: (\{[^\n]*\})$/.exec(
+          text,
+        );
+        if (!match) throw new GitHubError("unavailable");
+        let frame: unknown;
+        try {
+          frame = JSON.parse(match[2]);
+        } catch {
+          throw new GitHubError("unavailable");
+        }
+        if (
+          !cloneProgressValid(frame) ||
+          (frame as CloneProgress).kind !== match[1] ||
+          (frame as CloneProgress).sequence !== ++sequence
+        )
+          throw new GitHubError("unavailable");
+        const parsed = frame as CloneProgress;
+        if (parsed.kind === "progress") onProgress(parsed);
+        else {
+          terminal = true;
+          if (parsed.outcome !== "confirmed")
+            throw new GitHubError("unavailable");
+        }
+      }
+      if (pending.length > 8192) throw new GitHubError("unavailable");
+    }
+    if (decoder.decode() !== "" || pending !== "" || !terminal)
+      throw new GitHubError("unavailable");
+  } catch {
+    throw new GitHubError("unavailable");
+  } finally {
+    if (!terminal || pending !== "") await reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
 }

@@ -43,6 +43,7 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc("/api/v1/onboarding/pi/status", s.auth.piStatus)
 		mux.HandleFunc("/api/v1/onboarding/github/repos", s.auth.githubRepos)
 		mux.HandleFunc("/api/v1/onboarding/github/clone", s.auth.githubClone)
+		mux.HandleFunc("/api/v1/onboarding/github/clone/stream", s.auth.githubCloneStream)
 		mux.HandleFunc("/api/v1/onboarding/github/checkout", s.auth.githubObserve)
 		mux.HandleFunc("/api/v1/onboarding/pi/attempt", s.auth.piAttempt)
 		mux.HandleFunc("/api/v1/agents/", s.auth.history)

@@ -78,7 +78,11 @@ only. [ADR 0003](adr-0003-host-stack.md) explains the stack and credential flow;
 
 A workspace is an immediate directory under `~/src`, with or without Git. The
 daemon finds it by listing that directory. A workspace needs no registry entry
-or settings file to exist.
+or settings file to exist. For browser-initiated large GitHub clones, the
+operator mounts each user's own hard-bounded volume at `~/src`. The daemon
+allows that mount but does not cross mounts inside it. A full volume blocks
+new clones without hiding existing workspaces; the mount and admission checks
+are described in [the installation notes](implementation.md#kloonauksen-levyliitos).
 
 When a stable ID or display name needs saving, its settings live in
 `.agent-host/workspace.json` inside the workspace. In a Git repository, prefer

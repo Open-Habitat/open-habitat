@@ -606,5 +606,28 @@
       "status returns only missing, usable or unknown and no credential bytes",
       "a different identity or an unavailable daemon never exposes native names"
     ]
+  },
+  {
+    "id": "CT-036",
+    "covers": [
+      "native Git clone progress",
+      "browser loss",
+      "cross-user denial"
+    ],
+    "fixtures": [
+      "examples/github-clone-progress.json"
+    ],
+    "given": [
+      "a mapped UID has native GitHub access and a dedicated hard-bounded source volume"
+    ],
+    "when": [
+      "the browser starts a single checkout stream then disconnects or reloads during a large native Git receive"
+    ],
+    "then": [
+      "only stage and bounded measurements are emitted, not Git stderr or paths",
+      "disconnect cancels the subprocess group without deleting the destination",
+      "the browser reobserves the native tree and never retries automatically",
+      "another mapped UID cannot observe the first UID's progress"
+    ]
   }
 ]
