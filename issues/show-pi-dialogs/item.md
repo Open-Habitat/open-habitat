@@ -3,13 +3,15 @@ created: 2026-10-01
 updated: 2026-10-02
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@answer-pi-dialogs']
 lane: design-v2
 lane_seq: 13
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
 blocked_by: ['@restore-v2-conversation', '@polish-v2-conversation']
+closed: 2026-10-02
+closed_by: claude
 ---
 
 # Answer and cancel Pi dialogs in the conversation view
@@ -32,11 +34,12 @@ one primary action, no explanatory prose for default states). When done, mark
 
 ## Acceptance Criteria
 
-- [ ] Supported dialog kinds can be answered and any dialog cancelled from the
+- [x] Supported dialog kinds can be answered and any dialog cancelled from the
   conversation, both themes, desktop and 390 px.
-- [ ] Uncertain, stale and refused responses are honest; no automatic retry.
-- [ ] Browser tests against the synthetic host; stories in both themes; pairs
+- [x] Uncertain, stale and refused responses are honest; no automatic retry.
+- [x] Browser tests against the synthetic host; stories in both themes; pairs
   or captures in this issue folder.
+
 ## Why this exists
 
 Jari reviewed the night's lab captures (`issues/compare-v2-pairs/`) on
@@ -117,3 +120,9 @@ thing a reviewer sees.
 - Ownership tonight: this work may change `web/`, `design-system/`,
   `docs/ui.md` and `docs/design-system.md`. A needed change in `internal/`,
   `contracts/` or other docs is recorded in this issue as a request instead.
+
+## Resolution
+
+### 2026-10-02T00:34:43Z · @claude
+
+Browser answers or cancels Pi dialogs once per request ID; synthetic browser cases, four visual pairs and clean gate on 0abd90f passed. HTTP completion remains uncertain without a Pi receipt.

@@ -1,14 +1,16 @@
 ---
 created: 2026-10-01
-updated: 2026-10-01
+updated: 2026-10-02
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@build-agent-control']
 lane: agent-control
 lane_seq: 20
 collision: [AGENTS.md, internal/daemon/, docs/interfaces.md, internal/gateway/, contracts/v1/]
+closed: 2026-10-02
+closed_by: claude
 ---
 
 # Answer and cancel Pi extension dialogs from the browser
@@ -40,7 +42,14 @@ browser shows the request as inert text and the only exit is Keskeytä
 
 ## Acceptance Criteria
 
-- [ ] Supported dialog kinds can be answered and any dialog cancelled from
+- [x] Supported dialog kinds can be answered and any dialog cancelled from
   the browser, once per request id, with honest uncertain handling.
-- [ ] Distinct-UID fake/pinned Pi fixtures cover answer, cancel, stale request
-  id and a foreign user's attempt.
+- [x] Distinct-UID fake Pi fixtures cover answer, cancel, stale request
+  id and a foreign user's attempt. The pinned provider-only fixture cannot
+  generate extension UI requests; see [result](result.md) for this limit.
+
+## Resolution
+
+### 2026-10-02T00:34:48Z · @claude
+
+Browser slice completed in @show-pi-dialogs; its result and synthetic visual pairs record the controls and uncertain delivery.
