@@ -49,4 +49,4 @@ Test selection and the final gate follow [TESTING.md](../../TESTING.md).
 
 ## Resolution
 
-Implemented at `5199976`; [result and test evidence](result.md). The broker-approved, root-only revocation check remains unchanged: changing it would alter ADR 0006's authority contract. An unlaned follow-up [tracks the admission/revocation ordering gap](../vastly-cowardly-rainstorm/item.md).
+Implemented at `5199976`; [result and test evidence](result.md). The broker-approved, root-only revocation check remains unchanged: changing it would alter ADR 0006's authority contract. An unlaned follow-up [tracks the admission/revocation ordering gap](../reliable-session-revocation/item.md).

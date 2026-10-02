@@ -51,8 +51,8 @@ Consolidate both the catalog-only EventSource in `App.tsx` and per-conversation 
 
 ## Implementation slices (unlaned reception, only after Jari decides)
 
-1. Browser single identity-scoped journal and invalidation/gap tests: @staggeringly-rural-calculator.
-2. Native history tail-first/backward paging contract, revision/content bounds and tests: @fiercely-interesting-foot.
-3. Bounded window projection, warm switch and incremental turn handling, lab frame/request benchmarks: @surprisingly-afraid-wrench.
+1. Browser single identity-scoped journal and invalidation/gap tests: @one-browser-event-stream.
+2. Native history tail-first/backward paging contract, revision/content bounds and tests: @tail-first-history-paging.
+3. Bounded window projection, warm switch and incremental turn handling, lab frame/request benchmarks: @recent-conversation-windows.
 
 A proposal is not approval to implement or release. Profile worst-case 50-entry render and large native output in synthetic browser, test overlapping fetch/event races, external file rewrite, two identities, multi-tab updates, gap/daemon restart and memory eviction before claiming the ≤16 ms target. No product code or live host was changed here.
