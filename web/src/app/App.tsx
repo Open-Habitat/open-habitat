@@ -19,6 +19,7 @@ import {
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import { ReturnView } from "../components/ReturnView";
 import { BrowserConversation } from "./BrowserConversation";
+import { parseConversationEvent } from "./conversationEvents";
 import { ConversationStore } from "./conversationStore";
 import { list as listConversations, type Session } from "./conversations";
 import { GitHubOnboarding } from "./GitHubOnboarding";
@@ -214,6 +215,30 @@ export function App() {
       "source.warning",
     ])
       source.addEventListener(kind, refresh);
+    for (const kind of [
+      "history.entry",
+      "assistant.delta",
+      "tool.started",
+      "tool.updated",
+      "tool.finished",
+      "turn.settled",
+      "command.changed",
+      "queue.changed",
+      "question.requested",
+      "question.resolved",
+      "snapshot.invalidated",
+    ])
+      source.addEventListener(kind, (message) => {
+        try {
+          const event = parseConversationEvent((message as MessageEvent).data);
+          if ((message as MessageEvent).lastEventId !== event.cursor)
+            throw new Error("mismatched SSE id");
+          conversationStore?.routeEvent(event);
+        } catch {
+          // An untrusted frame cannot prove a native history change.
+          conversationStore?.markAllStale();
+        }
+      });
     source.onopen = () => setCatalogOffline(false);
     source.onerror = () => {
       setCatalogOffline(true);
@@ -247,6 +272,7 @@ export function App() {
     refresh,
     requireLogin,
     catalogEpoch,
+    conversationStore,
   ]);
   const manualRefresh = () => {
     if (selectedAgentId) {
@@ -580,6 +606,7 @@ export function App() {
         ) : null}
         {!syntheticDemo &&
         identity &&
+        conversationStore &&
         selected.facts.some(
           (f) => f.source === "filesystem" && f.state === "confirmed",
         ) ? (
@@ -590,7 +617,7 @@ export function App() {
                 : csrf
             }
             onLogin={requireLogin}
-            key={`${identity}:${selected.workspace_id}:${new URLSearchParams(location.search).get("conversation") ?? "new"}`}
+            store={conversationStore}
             workspace={selected}
             id={
               /^pi:[0-9a-fA-F-]{36}$/.test(

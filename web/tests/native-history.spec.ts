@@ -1,5 +1,6 @@
-import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "@playwright/test";
+import { hostOrigin } from "../test-ports.mjs";
+
 const host = hostOrigin;
 const agent = "pi:11111111-1111-4111-8111-111111111111";
 test.use({
@@ -51,8 +52,19 @@ test("@native-history native page, continuation, unknown, reopen and no writes",
     path: "test-results/evidence/history-happy.png",
     fullPage: true,
   });
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Performance.enable");
+  const heap = async () => {
+    const result = await cdp.send("Performance.getMetrics");
+    return result.metrics.find((metric) => metric.name === "JSHeapUsedSize")
+      ?.value;
+  };
+  const heapTail = await heap();
   for (let i = 1; i < 11; i++)
     await page.getByRole("button", { name: "Lataa seuraava sivu" }).click();
+  console.log(
+    `synthetic 25→251 entry heap: ${heapTail}→${await heap()} bytes (CDP live heap, includes whole app; not a retained-size benchmark)`,
+  );
   await expect(page.locator(".ah-feed li")).toHaveCount(251);
   await expect(page.getByText("Tuntematon tapahtuma")).toBeVisible();
   await page.screenshot({
@@ -160,6 +172,31 @@ test("@native-history narrow history keeps actions visible without page overflow
       .getByRole("button", { name: /Kopioi/ })
       .first(),
   ).toBeVisible();
+});
+test("@native-history older page keeps the visible native row anchored", async ({
+  page,
+}) => {
+  await fixture(page, "ready");
+  await login(page);
+  await page.goto(`/agents/${agent}`);
+  await expect(page.locator(".ah-feed li")).toHaveCount(25);
+  await page.locator(".ah-conversation-stream").evaluate((el) => {
+    el.scrollTop = 0;
+  });
+  const before = await page
+    .locator(".ah-feed li")
+    .first()
+    .evaluate((el) => el.getBoundingClientRect().top);
+  // Avoid scrolling the viewport to the footer button while measuring the first row.
+  await page
+    .getByRole("button", { name: "Lataa seuraava sivu" })
+    .evaluate((button: HTMLElement) => button.click());
+  await expect(page.locator(".ah-feed li")).toHaveCount(50);
+  const after = await page
+    .locator(".ah-feed li")
+    .nth(25)
+    .evaluate((el) => el.getBoundingClientRect().top);
+  expect(Math.abs(after - before)).toBeLessThan(3);
 });
 test("@native-history warm return paints without a history request", async ({
   page,

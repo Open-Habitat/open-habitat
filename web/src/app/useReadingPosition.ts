@@ -14,6 +14,7 @@ type Anchor = { key: string; offset: number };
 export function useReadingPosition(
   entries: HistoryEntry[],
   next: string | undefined,
+  id?: string,
 ) {
   const [unseen, setUnseen] = useState(0);
   const [awayFromLatest, setAwayFromLatest] = useState(false);
@@ -24,6 +25,28 @@ export function useReadingPosition(
   const readingAnchor = useRef<{ key: string; offset: number } | undefined>(
     undefined,
   );
+  const positions = useRef(
+    new Map<string, { anchor?: Anchor; atBottom: boolean; top: number }>(),
+  );
+  const selected = useRef(id);
+  useLayoutEffect(() => {
+    if (selected.current === id) return;
+    const old = selected.current;
+    if (old)
+      positions.current.set(old, {
+        anchor: readingAnchor.current,
+        atBottom: wasAtBottom.current,
+        top: feed.current?.scrollTop ?? 0,
+      });
+    selected.current = id;
+    const saved = id ? positions.current.get(id) : undefined;
+    readingAnchor.current = saved?.anchor;
+    wasAtBottom.current = saved?.atBottom ?? true;
+    if (feed.current && saved && !saved.anchor)
+      feed.current.scrollTop = saved.top;
+    setUnseen(0);
+    setAwayFromLatest(!!saved && !saved.atBottom);
+  }, [id]);
   const captureAnchor = useCallback(() => {
     const viewport = feed.current;
     if (!viewport || wasAtBottom.current) return;

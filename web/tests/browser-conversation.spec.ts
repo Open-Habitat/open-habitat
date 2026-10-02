@@ -774,6 +774,50 @@ test("@browser-conversation a stale working view cannot strand an unsent queued 
   }
 });
 
+test("@browser-conversation warm controlled return reads neither status nor history", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
+  const firstURL = page.url();
+  await page.getByRole("link", { name: "ordinary-dir" }).last().click();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
+  const requests: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (
+      url.pathname.startsWith("/api/v1/") &&
+      url.pathname !== "/api/v1/events"
+    )
+      requests.push(url.pathname);
+  });
+  const start = await page.evaluate(() => performance.now());
+  await page.goBack(); // workspace
+  await page.goBack(); // first controlled window
+  await expect(page).toHaveURL(firstURL);
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
+  const paint = await page.evaluate(
+    () =>
+      new Promise<number>((resolve) =>
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => resolve(performance.now())),
+        ),
+      ),
+  );
+  expect(requests).toEqual([]);
+  console.log(
+    `warm controlled return: ${Math.round(paint - start)} ms (includes workspace navigation), ${requests.length} non-stream API requests`,
+  );
+});
+
 test("@browser-conversation separate streaming drafts survive agent switches and vanish on identity change", async ({
   page,
 }) => {
@@ -1179,25 +1223,21 @@ test("@browser-conversation model authentication error offers sign-in without le
   await expect(page.getByText("ordinary-dir").first()).toBeVisible();
 });
 
-test("@browser-conversation opening publishes status and history together", async ({
+test("@browser-conversation cold open waits for status and skips confirmed missing history", async ({
   page,
 }) => {
   await open(page);
   let releaseStatus!: () => void;
-  let releaseHistory!: () => void;
   const statusHold = new Promise<void>((resolve) => {
     releaseStatus = resolve;
   });
-  const historyHold = new Promise<void>((resolve) => {
-    releaseHistory = resolve;
-  });
+  let historyReads = 0;
   await page.route("**/api/v1/conversations/*/status*", async (route) => {
     await statusHold;
     await route.continue();
   });
-  await page.route("**/api/v1/agents/pi:*/history?*", async (route) => {
-    await historyHold;
-    await route.continue();
+  page.on("request", (request) => {
+    if (/\/api\/v1\/agents\/pi:.*\/history/.test(request.url())) historyReads++;
   });
   try {
     await page
@@ -1208,18 +1248,11 @@ test("@browser-conversation opening publishes status and history together", asyn
     ).toBeVisible();
     releaseStatus();
     await expect(
-      page.getByRole("heading", { name: "Ladataan keskustelua" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-    ).toHaveCount(0);
-    releaseHistory();
-    await expect(
       page.getByRole("textbox", { name: "Viesti Pi:lle" }),
     ).toBeVisible();
+    expect(historyReads).toBe(0);
   } finally {
     releaseStatus();
-    releaseHistory();
   }
 });
 

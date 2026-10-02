@@ -17,11 +17,12 @@ import {
   WorkingProgress,
 } from "../components";
 import { UnpresentedEvents } from "../components/WorkingProgress";
-import { PiQuestion } from "./PiQuestion";
 import { useConversationActions } from "./ConversationActions";
 import { provisionalItems } from "./conversationEvents";
+import type { ConversationStore } from "./conversationStore";
 import type { Session } from "./conversations";
-import { readHistoryFetch, timelineItems } from "./HistoryView";
+import { timelineItems } from "./HistoryView";
+import { PiQuestion } from "./PiQuestion";
 import type { Snapshot, Workspace } from "./snapshot";
 import { useConversation } from "./useConversation";
 import { useReadingPositionLayout } from "./useReadingPosition";
@@ -32,6 +33,7 @@ export function BrowserConversation({
   title,
   identity,
   snapshot,
+  store,
   onResnapshot,
   csrf,
   onLogin,
@@ -42,6 +44,7 @@ export function BrowserConversation({
   title?: string;
   identity: string;
   snapshot: Snapshot;
+  store: ConversationStore;
   onResnapshot: () => void;
   csrf?: string;
   onLogin: () => void;
@@ -52,9 +55,7 @@ export function BrowserConversation({
     opened,
     setOpenAttempt,
     entries,
-    setEntries,
     next,
-    setNext,
     draft,
     receipt,
     sendObservation,
@@ -102,12 +103,12 @@ export function BrowserConversation({
     setContinuation,
     navigate,
     historyError,
-    setHistoryError,
   } = useConversation({
     workspace,
     id,
     identity,
     snapshot,
+    store,
     onResnapshot,
     onLogin,
   });
@@ -444,24 +445,10 @@ export function BrowserConversation({
             {next ? (
               <Button
                 label="Lataa seuraava historiasivu"
-                onPress={() =>
-                  void readHistoryFetch(id, next)
-                    .then((p) => {
-                      captureAnchor();
-                      setEntries((old) => [
-                        ...old,
-                        ...p.entries.filter(
-                          (e) => !old.some((o) => o.entry_key === e.entry_key),
-                        ),
-                      ]);
-                      setNext(p.next_after);
-                    })
-                    .catch((error) => {
-                      if ((error as Error).message === "identity_lost")
-                        onLogin();
-                      else setHistoryError(true);
-                    })
-                }
+                onPress={() => {
+                  captureAnchor();
+                  void store.older(id);
+                }}
               />
             ) : null}
             {current?.auth_error === "pi_auth_failed" ? (

@@ -1,30 +1,30 @@
-import { useEffect, useState } from "react";
-import { type ConversationStore, useWindow } from "./conversationStore";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import {
   AgentFacts,
   AgentHeader,
   AssistantMessage,
   Button,
-  ModelChange,
-  ConversationTimeline,
   ConversationFrame,
   ConversationStream,
+  ConversationTimeline,
   InlineNotice,
   Markdown,
+  ModelChange,
+  ToolGroup,
   ToolOutput,
   ToolRow,
-  ToolGroup,
   UnknownEvent,
   UserMessage,
 } from "../components";
-import type { Agent } from "./snapshot";
+import { type ConversationStore, useWindow } from "./conversationStore";
 import {
-  readHistory,
   type ContentChunk,
   type HistoryEntry,
   type HistoryPage,
+  readHistory,
 } from "./history";
+import type { Agent } from "./snapshot";
 
 // Only the daemon's explicit fallback marker is interpreted here. Unknown data
 // stays text, including malformed JSON and fields we do not recognize.
@@ -265,10 +265,41 @@ export function HistoryView({
     store.view(agent.agent_id);
   }, [agent.agent_id, store]);
   const entries = window?.entries ?? [];
+  const stream = useRef<HTMLElement>(null);
+  const anchor = useRef<{ key: string; offset: number } | undefined>(
+    store.position(agent.agent_id),
+  );
+  const capture = () => {
+    const viewport = stream.current;
+    if (!viewport) return;
+    const top = viewport.getBoundingClientRect().top;
+    const rows = viewport.querySelectorAll<HTMLElement>(".ah-feed > li");
+    for (let i = 0; i < rows.length; i++) {
+      const rect = rows[i].getBoundingClientRect();
+      if (rect.bottom > top && entries[i]) {
+        anchor.current = { key: entries[i].entry_key, offset: rect.top - top };
+        store.savePosition(agent.agent_id, anchor.current);
+        break;
+      }
+    }
+  };
+  useLayoutEffect(() => {
+    const viewport = stream.current;
+    const saved = anchor.current;
+    if (!viewport || !saved) return;
+    const index = entries.findIndex((entry) => entry.entry_key === saved.key);
+    const row = viewport.querySelectorAll<HTMLElement>(".ah-feed > li")[index];
+    if (row)
+      viewport.scrollTop +=
+        row.getBoundingClientRect().top -
+        viewport.getBoundingClientRect().top -
+        saved.offset;
+  }, [entries]);
   const state =
     agent.history !== "readable" ? "error" : (window?.state ?? "loading");
   const loadMore = async () => {
     if (!window?.next || busy) return;
+    capture();
     setBusy(true);
     try {
       await store.older(agent.agent_id);
@@ -302,7 +333,7 @@ export function HistoryView({
           ]}
         />
       ) : null}
-      <ConversationStream>
+      <ConversationStream streamRef={stream} onScroll={capture}>
         <ConversationTimeline
           state={state}
           items={timelineItems(entries, onLogin)}

@@ -1,15 +1,15 @@
 import { useSyncExternalStore } from "react";
 import {
   applyTurnEvent,
-  initialTurn,
-  parseConversationEvent,
   type ConversationEvent,
+  initialTurn,
   type LiveTurn,
+  parseConversationEvent,
 } from "./conversationEvents";
 import { type ConversationPager, conversationPager } from "./conversationPager";
+import type { Status } from "./conversations";
 import type { HistoryEntry, HistoryPage } from "./history";
 import type { Agent, Snapshot } from "./snapshot";
-import type { Status } from "./conversations";
 
 export type WindowView = Readonly<{
   entries: HistoryEntry[];
@@ -34,6 +34,7 @@ export class ConversationStore {
   readonly identity: string;
   private readonly pager: ConversationPager;
   private windows = new Map<string, WindowRecord>();
+  private positions = new Map<string, { key: string; offset: number }>();
   private metadata: Metadata = { agents: new Map(), statuses: new Map() };
   private metaListeners = new Set<() => void>();
   private listeners = new Map<string, Set<() => void>>();
@@ -50,6 +51,12 @@ export class ConversationStore {
     this.pager = pager;
   }
   readMetadata = (): Metadata => this.metadata;
+  status = (id: string): Status | undefined => this.metadata.statuses.get(id);
+  position = (id: string) => this.positions.get(id);
+  savePosition = (id: string, value?: { key: string; offset: number }) => {
+    if (value) this.positions.set(id, value);
+    else this.positions.delete(id);
+  };
   subscribeMetadata = (listener: () => void) => {
     this.metaListeners.add(listener);
     return () => {
@@ -118,7 +125,7 @@ export class ConversationStore {
       listener();
     });
   }
-  view(id: string): WindowView {
+  view(id: string, confirmedMissing = false): WindowView {
     if (this.disposed) throw new Error("disposed store");
     let record = this.windows.get(id);
     if (!record) {
@@ -136,20 +143,27 @@ export class ConversationStore {
         /* A stale snapshot is recovered by the event router. */
       }
       record = {
-        value: { entries: [], state: "loading", live },
+        value: {
+          entries: [],
+          state: confirmedMissing ? "empty" : "loading",
+          live,
+        },
         used: 0,
         loading: false,
         queued: [],
       };
       this.windows.set(id, record);
-      this.loadTail(id);
+      if (!confirmedMissing) this.loadTail(id);
     }
     record.used = ++this.clock;
     if (this.windows.size > this.capacity) {
       const oldest = [...this.windows]
         .filter(([key]) => key !== id)
         .sort((a, b) => a[1].used - b[1].used)[0];
-      if (oldest) this.windows.delete(oldest[0]);
+      if (oldest) {
+        this.windows.delete(oldest[0]);
+        this.positions.delete(oldest[0]);
+      }
     }
     return record.value;
   }
@@ -277,7 +291,12 @@ export class ConversationStore {
     const contiguous =
       shared.length > 0 &&
       ordered &&
-      shared.every((index, i) => i === 0 || index === shared[i - 1] + 1);
+      shared.every((index, i) => i === 0 || index === shared[i - 1] + 1) &&
+      incoming.filter((e) => known.has(e.entry_key)).length ===
+        incoming.slice(
+          incoming.findIndex((e) => known.has(e.entry_key)),
+          incoming.findLastIndex((e) => known.has(e.entry_key)) + 1,
+        ).length;
     // An older page must contain the boundary as its last entry. Never join guesses.
     const validOlder =
       mode !== "older" ||
@@ -285,6 +304,7 @@ export class ConversationStore {
         incoming.at(-1)?.entry_key === old.entries[0].entry_key);
     if (mode === "older" && !validOlder) {
       this.markStale(id);
+      record.loading = false;
       void this.loadTail(id);
       return;
     }
@@ -333,7 +353,28 @@ export class ConversationStore {
     });
     record.loading = false;
     const queued = record.queued.splice(0);
-    for (const event of queued) this.applyEvent(event);
+    for (const event of queued) this.routeEvent(event);
+  }
+  setLive(id: string, live: LiveTurn) {
+    const record = this.windows.get(id);
+    if (record) this.publish(id, { ...record.value, live });
+  }
+  routeEvent(event: ConversationEvent) {
+    for (const [id, record] of this.windows) {
+      if (!record.value.live) continue;
+      if (
+        record.value.live.instance === event.server_instance_id &&
+        record.value.live.sequence >= event.sequence
+      )
+        continue;
+      if (id === event.resource.agent_id) this.applyEvent(event);
+      else if (record.loading) record.queued.push(event);
+      else {
+        const result = applyTurnEvent(record.value.live, event, id);
+        if (result.recover) this.markStale(id);
+        else this.publish(id, { ...record.value, live: result.turn });
+      }
+    }
   }
   applyEvent(event: ConversationEvent) {
     if (this.disposed) return;
@@ -376,6 +417,9 @@ export class ConversationStore {
       this.publish(id, { ...record.value, live: turn });
     }
   }
+  markAllStale() {
+    for (const id of this.windows.keys()) this.markStale(id);
+  }
   markStale(id: string) {
     const record = this.windows.get(id);
     if (record)
@@ -389,6 +433,7 @@ export class ConversationStore {
     ++this.epoch;
     this.pager.cancelAll();
     this.windows.clear();
+    this.positions.clear();
     this.metadata = { agents: new Map(), statuses: new Map() };
     this.metaListeners.forEach((listener) => {
       listener();

@@ -7,14 +7,17 @@ import {
   parseConversationEvent,
 } from "./conversationEvents";
 import {
+  type ConversationStore,
+  useConversationMetadata,
+  useWindow,
+} from "./conversationStore";
+import {
   type ContinueRefusal,
   ConversationNotFound,
   type Status,
   sendReceipt,
   status,
 } from "./conversations";
-import { readHistoryFetch } from "./HistoryView";
-import type { HistoryEntry } from "./history";
 import type { Snapshot, Workspace } from "./snapshot";
 import { useReadingPosition } from "./useReadingPosition";
 
@@ -24,6 +27,7 @@ export function useConversation({
   id,
   identity,
   snapshot,
+  store,
   onResnapshot,
   onLogin,
 }: {
@@ -31,16 +35,23 @@ export function useConversation({
   id?: string;
   identity: string;
   snapshot: Snapshot;
+  store: ConversationStore;
   onResnapshot: () => void;
   onLogin: () => void;
 }) {
   const navigate = useNavigate();
-  const [current, setCurrent] = useState<Status>();
+  const metadata = useConversationMetadata(store);
+  const windowView = useWindow(store, id ?? "");
+  const current = id ? metadata.statuses.get(id) : undefined;
+  const setCurrent = useCallback(
+    (value: Status) => store.applyStatus(value.agent_id, value),
+    [store],
+  );
   const [opened, setOpened] = useState(false);
   const [openAttempt, setOpenAttempt] = useState(0);
-  const [entries, setEntries] = useState<HistoryEntry[]>([]);
-  const [next, setNext] = useState<string>();
-  const [draft, setDraft] = useState("");
+  const entries = windowView?.entries ?? [];
+  const next = windowView?.next;
+  const [draftState, setDraftState] = useState({ key: "", value: "" });
   const [receipt, setReceipt] = useState("");
   const [sendObservation, setSendObservation] = useState<{
     text: string;
@@ -48,12 +59,18 @@ export function useConversation({
   }>();
   const [problem, setProblem] = useState("");
   const [busy, setBusy] = useState(false);
-  const [historyError, setHistoryError] = useState(false);
+  const historyError =
+    windowView?.state === "stale" || windowView?.state === "error";
+  const setHistoryError = (value: boolean) => {
+    if (value && id) store.markStale(id);
+  };
   const [continuation, setContinuation] = useState<
     "pending" | "uncertain" | ContinueRefusal
   >();
-  const [events, setEvents] = useState<unknown[]>([]);
-  const [live, setLive] = useState<LiveTurn>();
+  const events = current?.events ?? [];
+  const [localId, setLocalId] = useState(id);
+  const localReady = localId === id;
+  const live = windowView?.live;
   const [journalOffline, setJournalOffline] = useState(false);
   const continuationProof = useRef<
     { id: string; revision: string; result: Status["continuation"] } | undefined
@@ -117,6 +134,10 @@ export function useConversation({
   const sendKey = storage("last-send");
   const continuationKey = storage("continue");
   const draftKey = storage("draft");
+  const draft =
+    draftState.key === draftKey
+      ? draftState.value
+      : (sessionStorage.getItem(draftKey) ?? "");
   const uncertainKey = storage("uncertain");
   const ambiguous = sessionStorage.getItem(uncertainKey);
   const alive = useRef(true);
@@ -137,14 +158,13 @@ export function useConversation({
     feed,
     wasAtBottom,
     readingAnchor,
-    latest,
     unseen,
     setUnseen,
     awayFromLatest,
     setAwayFromLatest,
     captureAnchor,
     restoreAnchor,
-  } = useReadingPosition(entries, next);
+  } = useReadingPosition(entries, next, id);
   useEffect(() => {
     void openAttempt; // explicit retry of the parallel open loader
     alive.current = true;
@@ -156,74 +176,70 @@ export function useConversation({
         controller.abort();
       };
     openReady.current = false;
-    setCurrent(undefined);
+    setLocalId(id);
     setOpened(false);
-    setEntries([]);
-    setLive(undefined);
-    setHistoryError(false);
     setProblem("");
-    // Both reads are one open transition. Never publish a partial view.
-    void (async () => {
-      try {
-        const [stateResult, historyResult] = await Promise.allSettled([
-          status(id, controller.signal).then(async (initial) =>
-            initial.state === "uncertain"
-              ? status(id, controller.signal, true)
-              : initial,
-          ),
-          readHistoryFetch(id, undefined, controller.signal),
-        ]);
-        if (!alive.current || version !== generation.current) return;
-        if (stateResult.status === "rejected") throw stateResult.reason;
-        const state = stateResult.value;
-        if (
-          historyResult.status === "rejected" &&
-          !(
-            state.native_history === "missing" &&
-            (historyResult.reason as Error).message === "history_missing"
+    setSendObservation(undefined);
+    setReceipt("");
+    setConfirmStop(false);
+    setQueueOpen(false);
+    setDetails(false);
+    setFinishedInBackground(false);
+    setWorkingMode("follow_up");
+    focusedOnOpen.current = false;
+    queueReturn.current = undefined;
+    pendingNativeEntry.current = undefined;
+    wasWorking.current = false;
+    const cached = store.status(id);
+    if (cached && cached.workspace_id === workspace.workspace_id) {
+      store.view(id);
+      setOpened(true);
+      openReady.current = true;
+      openedProof.current = `${identity}:${id}`;
+      continuationProof.current = {
+        id,
+        revision: cached.native_revision,
+        result: cached.continuation,
+      };
+    } else {
+      // Cold status is needed to prove a missing history and control ownership.
+      void (async () => {
+        try {
+          const state = await status(id, controller.signal).then(
+            async (initial) =>
+              initial.state === "uncertain"
+                ? status(id, controller.signal, true)
+                : initial,
+          );
+          if (!alive.current || version !== generation.current) return;
+          if (state.workspace_id !== workspace.workspace_id)
+            throw new Error("invalid workspace");
+          setCurrent(state);
+          store.view(id, state.native_history === "missing");
+          setOpened(true);
+          openReady.current = true;
+          openedProof.current = `${identity}:${id}`;
+          continuationProof.current = {
+            id,
+            revision: state.native_revision,
+            result: state.continuation,
+          };
+          if (
+            sessionStorage.getItem(sendKey) ||
+            sessionStorage.getItem(continuationKey) === "uncertain"
           )
-        )
-          throw historyResult.reason;
-        if (state.workspace_id !== workspace.workspace_id)
-          throw new Error("invalid workspace");
-        setCurrent(state);
-        setOpened(true);
-        setEntries(
-          historyResult.status === "fulfilled"
-            ? historyResult.value.entries
-            : [],
-        );
-        setNext(
-          historyResult.status === "fulfilled"
-            ? historyResult.value.next_after
-            : undefined,
-        );
-        setEvents(state.events);
-        openReady.current = true;
-        if (
-          sessionStorage.getItem(sendKey) ||
-          sessionStorage.getItem(continuationKey) === "uncertain"
-        )
-          void latestRefresh.current(false, true);
-        if (queuedRefresh.current) {
-          queuedRefresh.current = false;
-          void latestRefresh.current(false, true);
+            void latestRefresh.current(false, true);
+          if (queuedRefresh.current) void latestRefresh.current(false, true);
+        } catch (error) {
+          if (alive.current && version === generation.current) {
+            if ((error as Error).message === "identity_lost") onLogin();
+            else if (error instanceof ConversationNotFound)
+              navigate(`/agents/${id}`, { replace: true });
+            else setProblem("Keskustelua ei voitu ladata. Yritä uudelleen.");
+          }
         }
-        openedProof.current = `${identity}:${id}`;
-        continuationProof.current = {
-          id,
-          revision: state.native_revision,
-          result: state.continuation,
-        };
-      } catch (error) {
-        if (alive.current && version === generation.current) {
-          if ((error as Error).message === "identity_lost") onLogin();
-          else if (error instanceof ConversationNotFound)
-            navigate(`/agents/${id}`, { replace: true });
-          else setProblem("Keskustelua ei voitu ladata. Yritä uudelleen.");
-        }
-      }
-    })();
+      })();
+    }
     return () => {
       alive.current = false;
       ++generation.current;
@@ -240,9 +256,14 @@ export function useConversation({
     navigate,
     sendKey,
     continuationKey,
+    store,
+    setCurrent,
   ]);
   useEffect(() => {
-    setDraft(sessionStorage.getItem(draftKey) ?? "");
+    setDraftState({
+      key: draftKey,
+      value: sessionStorage.getItem(draftKey) ?? "",
+    });
     setContinuation(
       (sessionStorage.getItem(continuationKey) as
         | "uncertain"
@@ -250,12 +271,15 @@ export function useConversation({
         | null) ?? undefined,
     );
     const text = sessionStorage.getItem(submittedKey);
-    if (text !== null && sessionStorage.getItem(uncertainKey))
-      setSendObservation({ text, state: "uncertain" });
+    setSendObservation(
+      text !== null && sessionStorage.getItem(uncertainKey)
+        ? { text, state: "uncertain" }
+        : undefined,
+    );
   }, [draftKey, continuationKey, submittedKey, uncertainKey]);
   const changeDraft = useCallback(
     (value: string) => {
-      setDraft(value);
+      setDraftState({ key: draftKey, value });
       sessionStorage.setItem(draftKey, value);
     },
     [draftKey],
@@ -309,7 +333,6 @@ export function useConversation({
           setFinishedInBackground(true);
         wasWorking.current = working;
         setCurrent(nextStatus);
-        setEvents(nextStatus.events);
         setProblem("");
         const command = sessionStorage.getItem(sendKey);
         if (command) {
@@ -353,43 +376,15 @@ export function useConversation({
           (readHistory || reconcileContinuation) &&
           nextStatus.native_history === "present"
         ) {
-          const page = await readHistoryFetch(id);
+          await store.reconnect(id);
           if (!alive.current || version !== generation.current) return;
-          const old = latest.current.entries;
-          const prefix =
-            old.length > 0 &&
-            page.entries.every((e, i) => old[i]?.entry_key === e.entry_key);
-          let merged = prefix ? [...old] : [...page.entries];
-          let cursor = prefix
-            ? (old.at(-1)?.entry_key ?? page.next_after)
-            : page.next_after;
-          if (prefix && !page.next_after && old.length === page.entries.length)
-            cursor = undefined;
-          for (let n = 0; cursor && n < 16; n++) {
-            const additional = await readHistoryFetch(id, cursor);
-            if (!alive.current || version !== generation.current) return;
-            if (!additional.entries.length && additional.complete) {
-              cursor = undefined;
-              break;
-            }
-            if (
-              !additional.entries.length ||
-              additional.entries.some((e) =>
-                merged.some((m) => m.entry_key === e.entry_key),
-              )
-            ) {
-              setHistoryError(true);
-              return;
-            }
-            merged = [...merged, ...additional.entries];
-            cursor = additional.next_after;
+          if (
+            store.read(id)?.state === "stale" ||
+            store.read(id)?.state === "error"
+          ) {
+            scheduleRetry(false, true);
+            return;
           }
-          if (merged.length > old.length && !wasAtBottom.current)
-            setUnseen((n) => n + merged.length - old.length);
-          captureAnchor();
-          setEntries(merged);
-          setNext(cursor);
-          setHistoryError(false);
           if (reconcileContinuation) {
             sessionStorage.removeItem(continuationKey);
             setContinuation(undefined);
@@ -399,15 +394,14 @@ export function useConversation({
           }
           if (pendingNativeEntry.current) {
             if (
-              merged.some((e) => e.entry_key === pendingNativeEntry.current)
-            ) {
+              store
+                .read(id)
+                ?.entries.some(
+                  (e) => e.entry_key === pendingNativeEntry.current,
+                )
+            )
               pendingNativeEntry.current = undefined;
-              setLive(
-                (old) => old && { ...old, fragments: [], truncated: false },
-              );
-            } else {
-              scheduleRetry(false, true);
-            }
+            else scheduleRetry(false, true);
           }
         }
         clearRetry();
@@ -441,6 +435,7 @@ export function useConversation({
       continuationKey,
       draftKey,
       captureAnchor,
+      store,
       clearRetry,
       scheduleRetry,
       navigate,
@@ -472,7 +467,7 @@ export function useConversation({
       if (removed) return;
       if (historyOnly) {
         turn = { ...turn, fragments: [], truncated: true };
-        setLive(turn);
+        store.setLive(id, turn);
         void latestRefresh.current(false, true);
         return;
       }
@@ -488,11 +483,13 @@ export function useConversation({
         initialSnapshot.current.agents.find(
           (a) => a.agent_id === id && a.workspace_id === workspace.workspace_id,
         )?.live_tail ?? [];
-      turn = initialTurn(
-        initialSnapshot.current.event_cursor,
-        tail.map((frame) => parseConversationEvent(JSON.stringify(frame))),
-      );
-      setLive(turn);
+      turn =
+        store.read(id)?.live ??
+        initialTurn(
+          initialSnapshot.current.event_cursor,
+          tail.map((frame) => parseConversationEvent(JSON.stringify(frame))),
+        );
+      if (!store.read(id)?.live) store.setLive(id, turn);
     } catch {
       recovering.current = true;
       setJournalOffline(true);
@@ -545,10 +542,11 @@ export function useConversation({
               recover(result.recover === "history");
               return;
             }
+            store.routeEvent(event);
             if (result.entry) {
               pendingNativeEntry.current = result.entry.entry_key;
               void latestRefresh.current(false, true);
-            } else if (!pendingNativeEntry.current) setLive(turn);
+            }
             if (event.kind === "snapshot.invalidated") {
               continuationProof.current = undefined;
               resnapshot.current();
@@ -612,7 +610,7 @@ export function useConversation({
       if (retry) window.clearTimeout(retry);
     };
     // Stream ownership is per identity and conversation; snapshot updates do not remount it.
-  }, [id, workspace.workspace_id, onLogin, streamEpoch]);
+  }, [id, workspace.workspace_id, onLogin, streamEpoch, store]);
   useEffect(() => {
     if (!id || !journalOffline) return;
     const timer = window.setInterval(() => {
@@ -623,30 +621,30 @@ export function useConversation({
   }, [id, journalOffline]);
   return {
     current,
-    opened,
+    opened: id
+      ? !!current && !!windowView && windowView.state !== "loading"
+      : opened,
     openAttempt,
     setOpenAttempt,
     entries,
-    setEntries,
     next,
-    setNext,
     draft,
-    receipt,
-    sendObservation,
-    problem,
-    busy,
-    continuation,
+    receipt: localReady ? receipt : "",
+    sendObservation: localReady ? sendObservation : undefined,
+    problem: localReady ? problem : "",
+    busy: localReady && busy,
+    continuation: localReady ? continuation : undefined,
     events,
     live,
     journalOffline,
-    confirmStop,
+    confirmStop: localReady && confirmStop,
     setConfirmStop,
-    queueOpen,
+    queueOpen: localReady && queueOpen,
     setQueueOpen,
     workingMode,
     setWorkingMode,
-    finishedInBackground,
-    details,
+    finishedInBackground: localReady && finishedInBackground,
+    details: localReady && details,
     setDetails,
     queueReturn,
     queuePanel,
@@ -677,7 +675,6 @@ export function useConversation({
     setContinuation,
     navigate,
     setProblem,
-    setDraft,
     setFinishedInBackground,
     historyError,
     setHistoryError,
