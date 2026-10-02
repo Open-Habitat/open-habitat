@@ -39,3 +39,7 @@ Current `internal/daemon/github_clone_linux.go` synchronously waits for `git clo
 ### 2026-10-02T01:18:27Z · @claude
 
 Native Git clone stages, bounded per-user volume admission, safe cancellation, and read-only recovery implemented and validated on the clean committed product tree. Synthetic screenshots and tests are in result.md. Operator mount provisioning and guarded live test-host deployment remain for the conductor release.
+
+## Test server (pilot.16, 2026-10-02)
+
+Operator-verified release `e1e56efe` runs with the mapped UID's dedicated 12 GiB `~/src` ext4 volume (original repositories preserved); the volume survived a guest reboot. Synthetic no-volume clone admission refuses writes while read-only discovery works. Jari: select a large GitHub repository and watch actual native receiving/checkout stages, then refresh and confirm completed checkout by read-only observation. No real clone, GitHub interaction or browser progress on pilot.16 has been verified by the operator. See the Fleetrepo private inventory for receipts.

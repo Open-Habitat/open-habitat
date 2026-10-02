@@ -68,3 +68,7 @@ This is lab evidence, not production or separate-kernel-UID proof. The three lin
 - [x] Synthetic browser verifies a single coherent open, pending/uncertain write outcomes, changed-identity reset and late-reply isolation, 401 login, journal recovery, first-use onboarding and idle request counts.
 - [x] Final committed implementation passes the clean JSON CI gate.
 - [x] The independent security/correctness findings were assessed and resolved; next-release test-server check is explicitly handed off.
+
+## Test server (pilot.16, 2026-10-02)
+
+Operator-verified on the test VM from product `e1e56efe`: release and reboot checks passed; Jari's authenticated browser use remains unverified. Jari: reload the page and check the three closed reports—no mask on return/refresh (@session-mask-on-every-refresh), no empty/open flicker (@conversation-open-flicker), and no premature uncertain flash during a normal send (@uncertain-flash-on-send). Also try Pi dialogs. See the Fleetrepo private inventory for release evidence.
