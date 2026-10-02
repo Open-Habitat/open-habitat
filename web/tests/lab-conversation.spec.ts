@@ -366,7 +366,9 @@ test("@lab fake-Pi crash leaves the turn readable but blocks another send", asyn
   ).toBeVisible({
     timeout: 20000,
   });
-  await expect(page.getByText("Tila epävarma")).toBeVisible({ timeout: 20000 });
+  await expect(page.locator("main").getByText("Tila epävarma")).toBeVisible({
+    timeout: 20000,
+  });
   await expect(
     page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toHaveCount(0);
