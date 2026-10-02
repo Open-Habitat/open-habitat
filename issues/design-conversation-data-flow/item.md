@@ -64,8 +64,9 @@ approves it with the work (see `AGENTS-WORKFLOW.md`).
   the least recently viewed conversation entirely. No byte accounting, no
   per-page release. Proper retention is a later issue (file it, unlaned).
 - **Journal replay ring.** Raise the daemon's replay window from 128 events to
-  1024 events with a byte cap (about 16 MiB), whichever is hit first; exceeding
-  either yields the existing `ring_truncated` recovery. Implementation belongs
+  1024 events with a byte cap (about 16 MiB), whichever is hit first. Reconnecting
+  with a cursor outside that replay window returns 409; `ring_truncated`
+  reports lost provisional content for an individual conversation. Implementation belongs
   to @one-browser-event-stream.
 - **Testability.** Store, event router and reconciliation are pure logic
   without React, tested with deterministic event sequences (gap, race, daemon
@@ -76,12 +77,13 @@ approves it with the work (see `AGENTS-WORKFLOW.md`).
 A design document in `docs/` written per `docs/AGENTS.md` (Finnish, plain
 language, what happens before abstractions), linked from `docs/index.md` and
 ADR 0008: the data path Pi file → daemon history reader/journal → gateway →
-browser stream and pages → store → components; the module split and their
-interfaces (types); what happens per situation (page load, switch, running
+browser stream and pages → store → components; the module split and a concise description of their
+interfaces; what happens per situation (page load, switch, running
 turn, short and long break, scroll-back, cold open, eviction, logout/identity
 change, second tab); writes (send, abort, queue, dialogs) and how they relate
 to the store while keeping the pending/accepted/uncertain semantics and
-sessionStorage drafts; test strategy. Then update the three implementation
+sessionStorage drafts. Keep implementation order and test cases in the
+implementation issues. Then update the three implementation
 issues (and @browser-logout-cleanup if needed) so scope boundaries follow the
 module split, and decide whether @incremental-history-during-turn is absorbed
 (close as duplicate with a pointer) or remains. Jari reviews the document
@@ -92,3 +94,7 @@ before the implementation issues are laned.
 ### 2026-10-02T05:53:43Z · @claude
 
 Suunnitelma docs/conversation-data-flow.md on valmis Jarin katselmointiin. Avoimia päätöskysymyksiä ei löytynyt; toteutusissuet rajattu sen mukaan. Riippumaton review ja löydösten arviointi: history/review-conversation-data-flow.md ja history/assessment-conversation-data-flow.md (paikallinen, gitignore). Täyttä CI-porttia ei ajettu uudelleen: vain dokumentit ja issuet muuttuivat.
+
+### 2026-10-02T06:01:26Z · @codex
+
+Jarin hyväksymä tekstin uudelleenkirjoitus 2.10.2026: tiedon kulku, osien vastuut ja tilanteet. Toistuvat tyyppiluettelot ja varmistelut poistettu; moduulien rajapinnan ydin ja historian sovittamisen syyt säilyvät. Toteutusjärjestys ja testit kuuluvat toteutusissueihin. ADR 0009 kirjaa tämän issuen jo sovitun Reduxin ja erillisen keskustelustoren työnjaon; ADR 0002 linkittää korvaavaan päätökseen. Lähdeissuen toistorengasta koskeva virhe korjattu: vanha kursori tuottaa 409:n, ring_truncated kuvaa yksittäisen keskustelun väliaikaisen sisällön katkeamista. Toteutusta tai aikataulua ei muutettu.

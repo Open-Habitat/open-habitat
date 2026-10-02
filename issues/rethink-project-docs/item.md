@@ -648,3 +648,7 @@ Jarin jatkopalaute 2.10.2026 sovitettu ADR 0008:aan, suunnitteluissuen nykykuvau
 ### 2026-10-02T05:10:37Z · @codex
 
 Jarin pyynnöstä 2.10.2026 poistettu keskustelunvaihdon alkuperäisen mallipaneelin yhteenveto ja raakavastaukset sekä niiden viittaukset ADR:stä, issueista ja mittausmuistiosta. Toteutuksen lähteenä säilyy yhdessä tarkennettu ADR ja toteutusissuet; paneelia ei säilytetä agenttien luettavana tausta-aineistona.
+
+### 2026-10-02T06:01:26Z · @codex
+
+docs/conversation-data-flow.md kirjoitettu Jarin hyväksymällä rakenteella uudelleen: tiedon kulku, vastuut ja käyttötilanteet. Tiivis rajapintakuvaus korvaa pitkät TypeScript-tyypit. Sovitut noin 50 keskustelun säilytys, 1024 tapahtuman / noin 16 MiB:n toistoikkuna sekä yhtenäisen historian sovitus säilyvät. Toteutusjärjestys ja testit jäävät issueihin. ADR 0009 kirjaa design-conversation-data-flow-issuen myöhemmän tilanhallintapäätöksen ja korvaa ADR 0002:n Redux-yksinomaisuuden keskusteludatalle. Toistoikkunan vanheneminen erotettu lähdeissuessakin ring_truncated-ilmoituksesta. Tuotekoodia tai DAGia ei muutettu.

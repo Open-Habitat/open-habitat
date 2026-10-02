@@ -1,6 +1,7 @@
 # ADR 0002: Use a React and TypeScript single-page client
 
-**Status:** Accepted
+**Status:** Accepted — the single Redux model for conversation data is superseded
+by [ADR 0009](adr-0009-conversation-state-ownership.md).
 
 **Date:** 2026-09-22
 

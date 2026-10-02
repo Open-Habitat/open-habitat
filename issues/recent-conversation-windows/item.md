@@ -32,3 +32,9 @@ Create a loading window on view, buffer page-racing events, and represent a conf
 - [ ] Deterministic tests cover page/event races, confirmed missing history, append during scroll-back, read-only observation changes, saved/provisional replacement, gap/restart, identity change, 51st window and anchored scroll-back.
 - [ ] Cold open, eviction and far-back scroll can load and display a spinner; stale data never silently claims to be current.
 - [ ] Measure click-to-paint, requests and memory against the synthetic baseline and large outputs; TESTING.md checks pass.
+
+## Comments
+
+### 2026-10-02T06:01:26Z · @codex
+
+Tiedonkulkusivun tekstikierrokselta toteutuksen testikonteksti: testaa myös saman natiiviavaimen päivittyminen, ristiriitainen järjestys ja rajaan osumaton sivu. Pitkän katkon rajattu taaksepäin haku joko löytää yhteisen avaimen tai korvaa vanhan jakson uudella taililla. Selainkokeessa säilyvät lukukohta ja komennon epävarman kuittauksen erillinen esitys. Vertailumittaus: issues/design-snappy-conversation-switching/measurements.md.

@@ -51,7 +51,10 @@ groups:
         desc: Myöhempi käyttäjän poistotarve ja ylläpitäjän CLI; toteutustapa avoin.
       - slug: adr-0008-snappy-conversation-switching
         title: ADR 0008 — Nopea keskustelun vaihto
-        desc: Ehdotus rajatuista selainmuistin keskusteluikkunoista; Jarin päätös avoin.
+        desc: Hyväksytty rajattu keskustelumuisti ja yksi tapahtumayhteys välilehteä kohti.
+      - slug: adr-0009-conversation-state-ownership
+        title: ADR 0009 — Keskustelutilan omistajuus
+        desc: Reduxin ja erillisen keskustelustoren työnjako.
       - slug: daemon-bindings
         title: Daemonien yksityiset sidonnat
         desc: Juuren hallitsema hakemistopolku ja käyttäjäkohtaiset käyttöoikeudet.
