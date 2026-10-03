@@ -688,3 +688,7 @@ Jarin tekstipalaute 3.10.2026 sovitettu add-account-settings-ui-issueen: nykytil
 ### 2026-10-03T06:07:55Z · @codex
 
 Jari pyysi 3.10.2026 yhden nykyisen designin: versionimet ja päällekkäiset määrittelyt pois HEAD:sta. design-system/design.md kuvaa designin, drafts/ sisältää yhden vedossarjan ja components.md johtaa tuotantokomponentteihin. Vanha vedossarja, staattinen keskustelumock ja vanhentuneet tuotantodesignin/propsien rinnakkaismäärittelyt poistettu; ne löytyvät Git-historiasta. Nykyiset ohjeet, avoimien issueiden design-viitteet ja designer-paketin kokoaja käyttävät samaa lähdettä. Historiallisten raporttien tiedostolinkit sidottu niiden kuvaamiin vanhoihin lähteisiin Gitissä. Puhelinrajaus sekä lukukohdan, repohaun ja sisältölohkojen myöhemmät päätökset sovitettu yhteiseen kuvaukseen. Issueiden tunnisteet ja DAG säilyvät.
+
+### 2026-10-03T06:16:25Z · @codex
+
+Yhden designin siivous tallennettu e961efc ja viitesiivo ba67c05. Designer-paketin 5 testiä, neljän vedoksen selainavaus ja dokumenttien linkkitarkistukset läpäisivät. Täysi scripts/ci-local.sh --clean --json läpäisi erillisessä testikopiossa revisiolla e961efc (120 selainkoetta, 13 lab-koetta, Go/race, sopimukset ja paketointi). Myöhempi viitesiivo koskee vain issueiden tekstiä. Vanhojen raporttien paikka on suljetuissa issueissa ja Git-historiassa, ei nykyisen designin lukupolussa.
