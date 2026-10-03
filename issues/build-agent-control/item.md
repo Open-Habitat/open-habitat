@@ -56,26 +56,48 @@ A detached tool can outlive an interrupted turn, so interruption does not promis
 that every tool process has stopped. A separate per-conversation supervisor is
 outside the agreed architecture.
 
-## Current implementation and remaining work
+## What is already implemented
 
-The implementation already has create, send and interrupt paths, a shared
-snapshot/SSE journal, and explicit continuation of ended browser conversations
-in both the daemon and browser. [Earlier implementation results](result.md)
-record the slices and their evidence. [The shared browser stream result](../one-browser-event-stream/result.md)
-records the later replay and recovery work; its browser evidence is synthetic.
-The existence of these paths does not establish the complete real-Pi journey.
+Create, send, interrupt, shared SSE updates and explicit continuation of ended
+browser conversations have daemon and browser implementations. The recorded
+results do not identify a specific missing control feature. They leave a gap in
+integration coverage:
 
-Complete and demonstrate the rendered browser journey against the pinned real
-Pi with a synthetic provider: create, send, live response and tool activity,
-interrupt, reconnect without duplicate submission, and end, deliberately
-continue and send again using the same native history. Repair gaps found across
-the daemon, contracts and browser. Distinguish recovered state from an uncertain
-prior outcome, and verify that read-only terminal history stays read-only.
+- Browser tests use a fake Pi child (`test/browser-host/`,
+  `web/tests/browser-conversation.spec.ts`). They exercise rendered UI and
+  recovery, but cannot show that the same behavior works with Pi itself.
+- The real-Pi fixture (`scripts/test-real-pi-controller.sh`,
+  `test/real-pi-controller.py`) uses a synthetic provider and exercises the
+  controller through HTTP/SSE with distinct Unix users. It does not render the
+  browser. Its recorded live-stream proof covers text, not a native tool call.
 
-[TESTING.md](../../TESTING.md) defines the checks and what each proves. Record
-the tested revision, outcomes and remaining gaps in the result. Installed-host
-and real-account acceptance belong to @verify-live-pi-journey, which uses this
-implementation and records failures that require further fixes here.
+[Earlier results](result.md) record those separate slices.
+[The shared browser stream result](../one-browser-event-stream/result.md)
+adds synthetic browser replay and recovery evidence.
+
+## Remaining work
+
+- [ ] **Connect the browser test to real Pi.** Provide a repeatable disposable
+  test environment in which the production browser reaches the gateway, daemon
+  and pinned Pi, with a synthetic provider and synthetic home. The current
+  browser and real-Pi fixtures are starting points; their separate passes do
+  not cover this path. The provider scenario needs to produce a real Pi tool
+  call as well as streamed text.
+- [ ] **Exercise that complete path.** Show create and send; text and tool
+  progress while Pi works; interruption; browser disconnect and reconnect
+  during a turn; and ending, deliberately continuing and sending again in the
+  same native session. Check that recovered history replaces provisional
+  content without duplication, uncertain commands are not resent, and terminal
+  history remains read-only. Verify that the person's draft, focus and reading
+  position survive the relevant updates and return.
+- [ ] **Fix observed failures and record the result.** A failure becomes a
+  specific daemon, contract or browser repair, followed by the affected checks.
+  Record the tested revision and outcomes, including any scenario still not
+  demonstrated. There is no separate unnamed feature backlog in this issue.
+
+[TESTING.md](../../TESTING.md) defines the checks for the resulting changes.
+Installed-host and real-account acceptance remain in @verify-live-pi-journey;
+this repeatable integration test uses no real account or provider credentials.
 
 ## Related work
 
