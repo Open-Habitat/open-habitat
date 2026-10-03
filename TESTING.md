@@ -58,6 +58,9 @@ PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" npm run test:browser --pref
 
 This runs all E2E and accessibility cases and builds fresh production assets.
 Use the same browser path for focused `test:e2e` or `test:a11y` runs.
+A fresh worktree has an empty `.cache/ms-playwright`, so every browser case
+then fails to launch; install Chromium there or point
+`PLAYWRIGHT_BROWSERS_PATH` at an existing cache such as `$HOME/.cache/ms-playwright`.
 `NAH_WEB_PREBUILT=1` belongs only to the gate, which has just built those assets;
 using it standalone can test stale output. Keep one Playwright worker because
 the synthetic host's scenario switch is shared across tests.

@@ -54,6 +54,8 @@ proves routing and the browser/host contract but not UID isolation; the two-UID 
 scenarios in `scripts/vm-test.sh` prove that. A browser test passing here is
 host-backed synthetic evidence and should be described as such.
 
+Run `biome` from `web/`: invoked from the repository root it fails on the nested root configuration in `web/biome.json`.
+
 For extended synthetic UI exploration, `scripts/lab.sh start|stop|status|url` builds a production bundle and starts the lab on port 4175 by default, choosing a free port and recording it in `.cache/lab/port` if occupied. Set `NAH_PORT_BASE` to a distinct value for concurrent browser suites in other worktrees (default listeners: 4174, 4175, 4183, 4184). Sign in through the fake provider as Alice or Bob. From the repository root, `PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" node web/lab/shoot.mjs /workspaces .cache/lab/shots/workspaces.png` captures a desktop view (`--narrow` for 390px, `--bob` for Bob); `web/lab/session.mjs` is reusable for scripted Chromium exploration. Screenshots and lab logs live under ignored `.cache/lab/`. The lab scans invented homes and histories, adds richer fixture content to the same real controller/fake Pi setup, and uses synthetic gh/git/OAuth, and supports `/fixture/scenario?value=pi-onboarding`. It does not establish separate-UID isolation, real Pi/provider behavior or live-host behavior. Never use a personal Chrome profile or real home for exploration.
 
 Fixture code and the production bundle are kept apart by construction.
