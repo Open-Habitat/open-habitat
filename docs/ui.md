@@ -1,98 +1,110 @@
 # Käyttöliittymän käyttökulut
 
-Käyttäjä avaa työtilansa, valitsee keskustelun ja jatkaa työtään Pi:n kanssa.
-Työtilat ja keskustelut näkyvät vasemmalla, valitun keskustelun sisältö oikealla.
-Käyttäjä voi seurata vastausta, lukea aiempaa työkalutulosta tai vaihtaa toiseen
-keskusteluun menettämättä luonnostaan. Auki olevan keskustelun lukukohta
-säilyy taustapäivityksissä; vaihto toiseen keskusteluun avaa historian uudelleen.
+Käyttäjä kirjautuu palvelimelle, avaa työtilansa ja jatkaa keskustelua Pi:n
+kanssa. Hän voi seurata agentin työtä, lukea aiempia tuloksia ja siirtyä
+keskustelusta toiseen menettämättä luonnostaan tai lukukohtaansa.
+Selain on käyttöliittymä samoihin tiedostoihin ja natiivihistorioihin, joita
+käyttäjä voi käyttää myös terminaalissa.
 
-Ensimmäinen käyttöliittymä on suomenkielinen työpöytänäkymä yhdelle palvelimelle.
-Vaalea ja tumma teema kuuluvat siihen; järjestelmän teema on oletus.
-Tämä sivu kuvaa sovittua käyttökokemusta. Kirjautuminen, työtilojen ja historian
-lukeminen sekä osa selainohjauksesta on jo toteutettu. Koko käyttökulku on vielä
-kesken: [rajapintasivu](interfaces.md) erottaa nykyisen ja tulevan toiminnan,
-[toteutusissuet](implementation.md) sisältävät tarkistetut revisiot ja tulokset.
+Käyttöliittymä on suomenkielinen ja palvelee yhden palvelimen käyttöä.
+Design kattaa työpöydän ja puhelimen sekä vaalean ja tumman teeman.
+Järjestelmän teema on oletus.
 
-## Kirjautuminen ja työtilan valinta
+Tämä sivu kuvaa sovittua käyttökokemusta. Toteutus on osittain valmis;
+esimerkiksi tiliprofiilin, agenttitilojen ja Pi:n sisältölohkojen esitystä
+vielä täydennetään. [Toteutuksen työnjako](implementation.md) johtaa töihin
+ja niiden näyttöön, [rajapinnat](interfaces.md) erottavat nykyisen toteutuksen
+sovitusta tulevasta toiminnasta.
+
+## Ensimmäinen käyttökerta
 
 Palvelimen osoite määrää, mihin käyttäjä kirjautuu. GitHub-kirjautuminen
 valmistelee sekä selainistunnon että käyttäjän natiivin GitHub-käytön.
-Käyttäjä ei valitse Linux-tunnusta selaimessa. Valinnainen Google-kirjautuminen
-näkyy vain, kun se on otettu käyttöön. Agentin käyttöön tarvittava Pi-
-kirjautuminen tehdään omassa vaiheessaan.
+Palvelimen ylläpitäjä päättää pääsystä; käyttäjä ei valitse Linux-tunnusta
+selaimessa. Valinnainen Google-kirjautuminen näkyy vain, kun se on otettu
+käyttöön. Se tunnistaa käyttäjän selainta varten eikä korvaa natiivien
+palvelujen kirjautumisia.
 
-Työtilapalkki näyttää käyttäjän `~/src`-hakemistosta löydetyt työtilat ja niihin
-liittyvät keskustelut. Listaa voi suodattaa, ja piilotetut työtilat voi palauttaa
-näkyviin. Lataus, tyhjä lista ja lukemisen epäonnistuminen erottuvat toisistaan.
-Git-työtilan avaaminen odottaa, että integrointivaihe on varmistanut repon ja
-agentin Git-käytön valmiuden. Puuttuva käyttöoikeus tai epäonnistunut valmistelu
-näkyy syineen.
+GitHubilla aloittavan käyttäjän käyttöönotto etenee repoista OpenAI-
+kirjautumiseen. Käyttäjä valitsee GitHub-repot, jotka tuodaan työtiloiksi
+palvelimelle. Kaikki saatavilla olevat repot näkyvät oletuksena; aikarajauksen
+voi ottaa itse käyttöön. Myös valitsematta yhtään repoa voi jatkaa.
+Kloonaus näyttää etenemisensä ja kustakin reposta varmistetun tuloksen.
+Jo olemassa olevaa vastaavaa työtilaa ei tarvitse kloonata uudelleen.
 
-Keskustelun avaaminen näyttää yhden lataustilan, kunnes sekä tila että natiivi
-historia on haettu. Puoliksi ladattua keskustelua ei näytetä, eikä avaaminen
-käynnistä agenttia. Uusi keskustelu aloitetaan erikseen. Päättynyttä selainkeskustelua voi jatkaa
-samalla historialla, kun aiemman työn tiedetään päättyneen. Terminaalissa
-aloitetut keskustelut ovat vain luettavia. Samaa keskustelua ohjataan yhdestä
-paikasta kerrallaan.
+OpenAI-vaihe yhdistää käyttäjän ChatGPT-tilauksen Pi:n kautta. Selain näyttää
+kirjautumislinkin ja kopioitavan koodin, ja käyttäjä vahvistaa kirjautumisen
+palveluntarjoajan sivulla. Pi hoitaa tunnusten tallentamisen ja uusimisen
+käyttäjän Unix-tilillä; terminaalia ei tarvita. Koodin valmistuminen näkyy
+odotuksena. Paluu palveluntarjoajan sivulta ei vielä tarkoita onnistumista:
+työtilat, historia ja agentin ohjaus avautuvat, kun Pi:n tunnukset on todettu
+käyttökelpoisiksi. API-avaimet ja muut kirjautumistavat ovat myöhempää työtä.
 
-Valittu työtila ja keskustelu näkyvät selaimen osoitteessa, jotta sivulle voi
-palata linkillä, reloadilla tai selaimen takaisin-toiminnolla. Puuttuva kohde
-ja kohde, jonka tilaa ei juuri nyt pystytä lukemaan, näytetään eri tilanteina.
-Työtilaan palaaminen ei itsessään käynnistä keskustelua.
+Käyttöönoton voi keskeyttää ja kirjautua ulos. Palatessa tarkistetaan natiivien
+kirjautumisten ja työtilojen nykytila. Samassa selainistunnossa jo saavutettu
+Pi-vaihe säilyy sivun lataamisen yli. Epäselvä kirjautuminen tai kloonaus
+selvitetään ennen uutta yritystä, jotta samaa työtä ei aloiteta kahdesti.
+Palaava käyttäjä, jonka Pi-tunnukset ovat kunnossa, pääsee suoraan työtiloihin.
+[Käyttöönoton suunnitelma](../issues/design-first-use-onboarding/item.md)
+kuvaa tämän kokonaisuuden ja jäljellä olevan työn.
 
-## Viesti, vastaus ja työn ohjaus
+## Työhön palaaminen ja navigointi
 
-Viestin lähettämisestä näkyy, odotetaanko kuittausta, hyväksyttiinkö viesti vai
-hylättiinkö se. Hyväksytty lähetys tyhjentää lähetetyn luonnoksen; hylätty tai
-epävarma lähetys säilyttää tekstin. Käyttäjä näkee vastauksen ja työkalujen työn
-etenemisen sekä mahdollisen keskeytyksen tai virheen.
+Sivupalkki näyttää käyttäjän `~/src`-hakemistosta löydetyt työtilat ja niiden
+keskustelut. Tavallinen hakemisto kelpaa työtilaksi ilman Gitiä tai
+asetustiedostoa. Listaa voi suodattaa, ja piilotetut työtilat voi palauttaa
+näkyviin. Tyhjä lista, lataus ja hakemiston lukemisen epäonnistuminen erottuvat
+toisistaan.
 
-Pi:n työskennellessä käyttäjä voi antaa lisäohjeen **Ohjaa tämän vuoron jälkeen**
--toiminnolla tai jonottaa viestin **Suorita valmistumisen jälkeen** -toiminnolla.
-Ohjaus noudattaa Pi:n omaa ajoitusta eikä keskeytä käynnissä olevaa työkalua.
-Jonot näkyvät erillisinä ja alkuperäisessä järjestyksessä. Koko jonon voi
-tyhjentää; editoriin palautetaan vain tekstit, joiden poistuminen on vahvistettu.
-Yksittäisten jonoviestien perumista tai järjestelyä ei luvata. Lähetys käyttää
-valittua tapaa; jonon tyhjennyttyä oletus on valmistumisen jälkeen lähettäminen.
+**Etusivu** vie paluunäkymään, josta käyttäjä löytää käynnissä olevat ja
+äskettäin avatut keskustelunsa. Työpöydällä sivupalkin voi kaventaa kaistaksi;
+puhelimessa navigaatio avautuu keskustelun päälle. Työtilan ja keskustelun
+valinta näkyy selaimen osoitteessa, jotta niihin voi palata linkillä, sivun
+uudelleenlatauksella tai selaimen takaisin-toiminnolla.
 
-Vuoron keskeytys on erillinen toiminto. Käyttöliittymä näyttää sen todellisen
-tuloksen: Pi:n keskeytys ei yksin osoita jokaisen sen käynnistämän prosessin
-päättyneen. Keskustelun arkistointi edellyttää, ettei siihen enää kirjoiteta.
-Arkistosta jatkaminen käyttää samaa natiivihistoriaa.
+Ensimmäinen keskustelun avaus hakee sen tilan ja historian ennen sisällön
+näyttämistä. Historia alkaa tuoreimmasta sisällöstä, ja vanhempaa voi lukea
+lisää. Äskettäin avattuun keskusteluun palataan saman välilehden muistissa
+olevasta näkymästä ilman uutta lataustilaa. Luonnos ja lukukohta säilyvät.
+Jos sisältö ei enää ole muistissa tai sen ajantasaisuus on menetetty,
+tarvittavat tiedot haetaan uudelleen. Puuttuva keskustelu erotetaan sellaisesta,
+jonka tietoja ei juuri nyt pystytä lukemaan.
 
-Kaikki saapuvat viestit ja kysymykset näytetään. Jos sisältötyypille ei ole omaa
-esitystapaa, sisältö on luettavissa turvallisena tekstinä. Pi:n erillisen
-kysymysdialogin tekstiin voi vastata tai pyynnön perua
-keskustelussa. Tuntemattoman dialogityypin voi vain perua. Vastauksen
-vastaanotto ei vahvista, että Pi käsitteli sen: epäselvää pyyntöä ei
-lähetetä uudelleen automaattisesti.
+Historian avaaminen ei käynnistä agenttia. Uusi keskustelu aloitetaan
+erikseen. Päättynyttä selainkeskustelua voi jatkaa samalla historialla,
+kun aiemman työn tiedetään päättyneen. Terminaalissa aloitetut keskustelut
+ovat selaimessa vain luettavia. Samaa keskustelua ohjaa yksi kirjoittaja
+kerrallaan, jotta toisistaan riippumattomat ohjaajat eivät kirjoita samaan
+historiaan yhtä aikaa.
 
-Markdown, koodi ja ryhmitellyt työkalutulokset pysyvät luettavina, ja koodin voi
-kopioida. Pi:n `edit`-työkalun toimittama rakenteinen muutos näytetään diffina.
-Muiden työkalujen tulos näytetään siinä muodossa, jonka ne tarjoavat.
-Pitkää tulosta voi avata lisää ilman, että fokus, tekstin valinta tai lukukohta
-katoaa. Agentin sisältämä HTML tai ohjelmakoodi ei suoritu käyttöliittymässä.
+## Keskustelu ja työn ohjaus
 
-## Luonnokset, lukukohta ja huomio
+Käyttäjä kirjoittaa viestin ja lähettää sen Pi:lle. Lähetyksestä näkyy,
+odotetaanko kuittausta vai hylättiinkö viesti. Hyväksytty lähetys tyhjentää
+lähetetyn luonnoksen; hylätty tai epävarma lähetys säilyttää tekstin.
+Tavallinen onnistuminen ei tarvitse pysyvää ilmoitusta. Käyttäjä seuraa
+vastausta ja työkalujen etenemistä keskustelussa.
 
-Kullakin keskustelulla on oma luonnoksensa. Se säilyy samassa välilehdessä
-sivun lataamisen yli, mutta ei välilehden sulkemisen yli. Uloskirjautuminen tai
-käyttäjän vaihtuminen tyhjentää aiemman käyttäjän luonnokset ja luetun sisällön.
-Luonnoksia ei tallenneta palvelimelle.
+Pi:n työskennellessä **Ohjaa** antaa lisäohjeen kesken työn Pi:n omalla
+ajoituksella, työkalukutsujen välissä. Se ei keskeytä käynnissä olevaa
+työkalua. **Lähetä** jonottaa viestin käsiteltäväksi työn valmistuttua.
+Ohjaus- ja jatkoviestien jonot näkyvät erillisinä alkuperäisessä järjestyksessä.
+Enter käyttää valittua lähetystapaa; jonon tyhjennyttyä oletuksena on
+valmistumisen jälkeen lähettäminen. Shift+Enter lisää rivinvaihdon.
 
-Käyttäjän keskusteluvalinta tai onnistunut luonti tai jatkaminen voi siirtää
-fokuksen viestikenttään. Taustapäivitys, uusi otsikko tai listan järjestyksen
-muutos ei siirrä sitä. Dialogin sulkeminen palauttaa fokuksen mielekkääseen
-paikkaan.
+Koko jonon voi tyhjentää. Viestikenttään palautetaan alkuperäisessä
+järjestyksessä vain tekstit, joiden poistuminen on vahvistettu. Yksittäisten
+jonoviestien peruminen tai järjestely ei kuulu sovittuun toimintaan.
+**Keskeytä** pyytää Pi:tä keskeyttämään nykyisen vuoron. Tulos näytetään sen
+mukaan, mitä tiedetään: Pi:n keskeytys ei yksin osoita kaikkien sen
+käynnistämien prosessien päättyneen.
 
-Keskustelu vierii uuden sisällön mukana vain, jos käyttäjä oli jo alhaalla.
-Aiemman sisällön lukija saa **Uutta sisältöä** -ilmaisimen. Lukukohta ja avatut työkaluryhmät säilyvät saman keskustelun päivityksessä,
-kun vastaava natiivi tapahtuma on edelleen saatavilla.
-
-Huomiota tarvitsevat keskustelut näkyvät sovelluksen omassa lukumäärässä,
-agenttirivin tekstimerkissä ja selainvälilehden otsikon luvussa. Pelkkä väri tai
-taustavälilehden otsikko ei ole ainoa merkki. Selain- ja käyttöjärjestelmä-
-ilmoitukset jäävät myöhemmäksi.
+Selaimen omassa keskustelussa Pi:n kysymykseen voi vastata tai pyynnön perua.
+Tuettu kysymys voi pyytää tekstiä, valintaa tai vahvistusta. Tuntematon
+kysymystyyppi näytetään tekstinä ja sen voi perua. Vastauksen vastaanotto
+palvelimella ei vahvista, että Pi käsitteli sen; epäselvää vastausta ei
+lähetetä automaattisesti uudelleen.
+[Dialogien selainohjaus](../issues/show-pi-dialogs/item.md) kuvaa toteutuksen.
 
 Keskustelun otsikko alkaa tekstistä **Uusi keskustelu**. Sisällöstä muodostetaan
 otsikko erillisellä mallikutsulla, ja sitä voidaan tarkentaa aiheen selkiytyessä
@@ -101,56 +113,136 @@ Epäonnistuminen säilyttää edellisen otsikon tai ensimmäisen viestin lyhyen 
 eikä otsikointi estä keskustelua. Tarkka toiminta on
 [otsikointisopimuksessa](interfaces.md#ohjauskyvyt-ja-otsikointi).
 
+## Sisällön lukeminen ja agentin tila
+
+Historia ja reaaliaikainen keskustelu esittävät saman sisällön samoilla
+merkityksillä. Käyttäjälle tarkoitettu teksti, kuvat, ajattelusisältö,
+työkalukutsut ja niiden tulokset sekä tiivistelmät säilyvät luettavina siinä
+järjestyksessä ja niillä yhteyksillä, joilla Pi ne tuottaa. Salattua
+ajatteludataa tai sisäisiä teknisiä tietoja ei esitetä keskusteluviesteinä.
+Tuntematon sisältö saa hillityn esityksen, jonka tarkemmat turvalliset tiedot
+voi avata tarvittaessa. Sisältöjen kattavaa välitystä ja esitystä täydennetään
+[Pi:n tyypitettyjen tapahtumien työssä](../issues/carry-typed-pi-events/item.md).
+
+Markdown ja koodi ovat luettavia, ja koodin voi kopioida. Työkalukutsu,
+sen eteneminen ja tulos kuuluvat yhteen. Pi:n `edit`-työkalun toimittama
+rakenteinen muutos näytetään diffina; muiden työkalujen tulos siinä muodossa,
+jonka ne tarjoavat. Pitkää tulosta voi avata lisää menettämättä fokusta,
+tekstin valintaa tai lukukohtaa. Sisällön HTML tai ohjelmakoodi ei suoritu
+käyttöliittymässä.
+
+Agentin tila vastaa käyttäjän eri kysymyksiin: onko prosessi käynnissä,
+tekeekö agentti työtä, odottaako se käyttäjää ja voiko sitä ohjata selaimesta?
+Pelkkä käynnissä oleva prosessi ei todista työskentelyä, eikä katkennut yhteys
+tarkoita agentin pysähtyneen. Esitys perustuu hostin tuntemiin tietoihin.
+[Tilojen suunnittelu](../issues/refine-agent-status/item.md) täsmentää yhteiset
+merkitykset ja esityksen sivupalkissa, agenteissa ja keskustelussa;
+lopullisia tilanimiä ja symboleja ei ole vielä lukittu.
+
+Huomiota tarvitsevat keskustelut näkyvät sovelluksen omassa lukumäärässä,
+agenttirivin tekstimerkissä ja selainvälilehden otsikon luvussa. Pelkkä väri
+tai taustavälilehden otsikko ei ole ainoa merkki. Selain- ja
+käyttöjärjestelmäilmoitukset jäävät myöhemmäksi.
+
+Keskustelu vierii uuden sisällön mukana vain, jos käyttäjä oli jo alhaalla.
+Vanhempaa sisältöä lukeva näkee **Uutta sisältöä** -ilmaisimen, ja
+**Viimeisimpään** vie keskustelun loppuun. Lukukohta ja avatut työkaluryhmät
+säilyvät saman keskustelun päivityksissä, kun vastaava historian kohta on
+edelleen saatavilla.
+
+Kullakin keskustelulla on oma luonnoksensa. Se säilyy samassa välilehdessä
+sivun lataamisen yli, mutta ei välilehden sulkemisen yli. Luonnoksia ei
+tallenneta palvelimelle. Käyttäjän keskusteluvalinta tai onnistunut luonti
+tai jatkaminen voi siirtää fokuksen viestikenttään. Taustapäivitys, uusi
+otsikko tai listan järjestyksen muutos ei siirrä sitä. Dialogin sulkeminen
+palauttaa fokuksen mielekkääseen paikkaan.
+
+## Työtilojen ja keskustelujen hallinta
+
+Käyttäjä voi luoda tavallisen hakemiston tai paikallisen Git-repon työtilaksi,
+kloonata repon GitHubista tai ottaa Gitin käyttöön myöhemmin. Paikalliselle
+repolle voi myös luoda GitHub-etärepon. Luotu työtila avataan, ja sovittuun
+luontikulkuun voi kuulua ensimmäisen agentin käynnistys ja siirtyminen
+viestikenttään. Työtilan näyttönimi ja sen omat asetukset tallentuvat työtilaan.
+
+Git-työtilan käyttö edellyttää repon ja agentin natiivin Git-käytön valmiuden
+varmistamista. Puuttuva käyttöoikeus tai epäonnistunut valmistelu näkyy syineen,
+jotta käyttäjä voi korjata sen. Kirjautuminen yksin ei todista, että agentti
+pystyy käyttämään kyseistä repoa.
+
+Agentille voi valmistella oman työhaaran Git-työtilasta. Taskfleet luo ja
+hallitsee sitä varten erillisen työhakemiston eli worktreen. Muualta löydetyt
+worktreet voivat näkyä havaintoina; niiden hallinta ei siirry selaimelle.
+Tarkempi toimintojen laajuus on
+[tuotesivulla](product.md#työtilojen-ja-keskustelujen-hallinta).
+
+Työtilan piilotus poistaa sen tavallisesta listasta ja jättää tiedostot
+paikalleen. Piilotuksen voi perua. Poisto näyttää työtilan sekä siihen
+liittyvät prosessit ja worktreet ennen vahvistusta. Epäselvä vaikutus,
+pysäyttämätön prosessi tai jäljellä oleva linkitetty worktree estää poiston.
+Taskfleet purkaa omat worktreensä.
+
+Keskustelun voi arkistoida pois aktiivisesta listasta, kun siihen ei enää
+kirjoiteta. Hallittavan agentin pysäytys ja keskustelun arkistointi ovat
+erilliset teot. Historia jää paikalleen, ja päättynyttä selainkeskustelua
+jatketaan arkistosta samalla natiivihistorialla.
+
+## Oma tili ja asetukset
+
+Tilipainike näyttää etunimen ja GitHub-profiilikuvan tai kuvan varaesityksen.
+Avattu tilinäkymä näyttää sähköpostin. Tiedot tulevat GitHubista;
+puuttuva nimi tai sähköposti kysytään käyttöönotossa. Näyttötiedot auttavat
+tunnistamaan tilin, mutta eivät muuta todennettua henkilöllisyyttä tai sitä,
+kenen Unix-tiliä käytetään. Tämä
+[yhteinen tiliesitys](../issues/account-profile-from-github/item.md)
+on vielä toteutettavana.
+
+Asetuksista löytyvät tili, yhteydet tällä palvelimella, ulkoasu ja
+selainistunto. GitHub- ja OpenAI-yhteyksistä näytetään, mitä niiden natiivista
+tilasta tiedetään. Puuttuva kirjautuminen erotetaan tilanteesta, jossa tilaa
+ei pystytä varmistamaan. Pi:n tunnusten olemassaolo ei yksin todista
+palveluntarjoajalle tehdyn pyynnön onnistumista. OpenAI-kirjautumiseen käytetään
+samaa Pi:n kautta kulkevaa käyttöönottoa.
+[Yhteysasetuksia](../issues/add-account-settings-ui/item.md) täydennetään
+vielä OpenAI-rivillä.
+
+Ulkoasusta voi valita vaalean, tumman tai järjestelmän teeman.
+Uloskirjautuminen sulkee selainistunnon ja tyhjentää selaimesta käyttäjän
+luonnokset sekä luetun sisällön. Se jättää työtilat ja palvelimen natiivit
+kirjautumiset paikalleen. Jos uloskirjautumista palvelimella ei voida vahvistaa,
+käyttäjä näkee epäonnistumisen ja voi yrittää uudelleen. Toisen henkilön
+kirjautuessa sisään näkymät käyttävät hänen tietojaan.
+
 ## Katkos ja epävarma tulos
 
-Yhteyden katketessa viimeksi saatu sisältö jää näkyviin. Yhteysbanneri kertoo
-vanhentuneesta tiedosta, mutta näkymää ei peitetä tai asenneta uudelleen.
-Ensimmäinen sivulataus näyttää lataustilan; taustapäivitys ei. Selain yrittää
-lukea uudelleen verkkoyhteyden palattua tai käyttäjän Päivitä-painikkeesta.
-Kirjoitus lähetetään nykyisellä istunnolla palvelimelle, joka ratkaisee sen
-hyväksymisen; katkolla oleva tapahtumavirta ei yksin estä lähetystä. Pi jatkaa daemonin omistamana,
-vaikka selain suljetaan. Palatessa käyttäjä näkee nykyisen työn ja katkon aikana
-syntyneen historian. Daemonin tai palvelimen sammuminen voi sen sijaan katkaista
-aktiivisen työn.
+Yhteyden katketessa viimeksi saatu sisältö jää näkyviin. Yksi yhteysilmoitus
+kertoo vanhentuneesta tiedosta; taustapäivitys ei peitä luettavaa näkymää
+latausruudulla. Selain yrittää lukea uudelleen verkkoyhteyden palattua tai
+käyttäjän Päivitä-toiminnosta. Pelkkä tapahtumavirran katkos ei estä lähetystä:
+kirjoitus lähetetään nykyisellä istunnolla palvelimelle, joka ratkaisee sen
+hyväksymisen. Kirjautumisen päättyminen vaatii uuden kirjautumisen.
 
-Normaali lähetys näkyy odottavana vastauksen ajan, ei epävarmana. Jos viestin
-kuittaus katoaa, käyttöliittymä selvittää tilanteen palvelimelta.
-Jos tulosta ei voida tietää, se näytetään epävarmana. Tekstin voi kopioida tai
-lähettää tietoisesti uutena viestinä; automaattinen uusinta voisi teettää saman
-työn kahdesti. Luonnos ja lukukohta säilyvät yhteyden palautuessa.
+Pi jatkaa daemonin omistamana, vaikka selain suljetaan. Palatessa käyttäjä
+näkee nykyisen työn ja katkon aikana syntyneen historian. Daemonin tai
+palvelimen sammuminen voi sen sijaan katkaista aktiivisen työn.
+
+Normaali lähetys näkyy kuittausta odottavana, ei epävarmana. Jos kuittaus
+katoaa, käyttöliittymä selvittää tilanteen palvelimelta. Kun tulosta ei voida
+tietää, se näytetään epävarmana. Tekstin voi kopioida tai lähettää tietoisesti
+uutena viestinä; automaattinen uusinta voisi teettää saman työn kahdesti.
+Luonnos ja lukukohta säilyvät yhteyden palautuessa.
 
 Työtilan luonti, GitHub-toiminto, Taskfleet-worktree ja poisto voivat onnistua
 vain osittain. Käyttäjä näkee valmistuneet vaiheet, virheen ja jäljelle jääneet
 vaikutukset. Uusinta perustuu tuoreeseen natiiviin tilanteeseen. Peruuttaminen
 ei tarkoita, että jo tehdyt muutokset olisi kumottu.
 
-GitHub-kloonauksen sovitulla vaihevirralla on oma
+GitHub-kloonauksen vaihevirralla on oma
 [katkokäytöksensä](adr-0005-clone-progress-stream.md): selainyhteyden katkeaminen
 keskeyttää kirjoituksen ja paluu tarkistaa Gitistä, mitä jäi jäljelle.
 Kloonausta ei aloiteta automaattisesti uudelleen.
 
-Poisto näyttää työtilan sekä siihen liittyvät prosessit ja worktreet ennen
-vahvistusta. Epäselvä vaikutus, pysäyttämätön prosessi tai jäljellä oleva
-linkitetty worktree estää poiston. Taskfleet hallitsee omia worktreitään;
-selain ei ota mielivaltaisia worktreitä hallintaansa. Piilotus jättää tiedostot
-paikalleen. Muut työtilatoiminnot kuvataan
-[tuotesivulla](product.md#työtilojen-ja-keskustelujen-hallinta).
-
-## Designin lähteet ja toteutuksen arviointi
-
-[UI-päätös 2026-09-22](../issues/review-ui-v1/review.md) tallentaa alkuperäiset
-valinnat. Nykyinen [agenttiohjauksen rajaus](../issues/build-agent-control/item.md)
-ja [keskustelun toteutusissue](../issues/complete-conversation-ui/item.md)
-täsmensivät terminaalihistoriat vain luettaviksi. Myöhemmin
-[Pi-dialogien selainohjaus](../issues/show-pi-dialogs/item.md) lisäsi
-vastauksen ja perumisen vain selaimen omiin keskusteluihin.
-
-[Design system](design-system.md) johtaa visuaalisiin lähteisiin,
-komponenttisopimuksiin ja ajettavaan katalogiin. Sovellus ja Storybook käyttävät
-samoja tuotantokomponentteja. Selainpohjaksi on valittu React ja TypeScript
-[ADR 0002:ssa](adr-0002-frontend-stack.md). Näkymien sommittelu ja vuorovaikutus löytyvät
-[designista](../design-system/design.md); protokollan toiminta
-[rajapintasivulta](interfaces.md). [Vedokset](../design-system/drafts/) näyttävät tavoitellun ulkoasun.
+## Käytettävyys ja tarkemmat lähteet
 
 Näppäimistöllä ja ruudunlukijalla on voitava käyttää samoja toimintoja.
 Pitkä sisältö, zoomaus ja vähennetty liike eivät saa peittää toimintoja tai
@@ -158,9 +250,9 @@ kadottaa lukukohtaa. Tilat kerrotaan tekstillä tai muulla väristä riippumatto
 merkillä; ruudunlukijalle ilmoitetaan mielekkäät muutokset jokaisen saapuvan
 tekstipalan sijaan.
 
-Toteutusta arvioidaan toimivista käyttökuluista, testeistä ja kuvista. Kunkin
-issuen näyttö kertoo, mitä tarkistettiin, millä revisiolla ja millä ympäristöllä.
-Jarin visuaalinen palaute kirjataan ja korjataan työn yhteydessä. Odottava
-ulkoasukatselmointi ei estä toiminnallista valmistumista tai riippumatonta työtä,
-eikä erillistä lopullista MVP-hyväksyntäporttia ole. Puhelinasettelu kuuluu designiin. Usean palvelimen
-navigointi ja prosessikeskus odottavat omaa päätöstään.
+[Design](../design-system/design.md) ja [vedokset](../design-system/drafts/)
+kuvaavat näkymien sommittelun ja visuaalisen esityksen.
+[Design system](design-system.md) johtaa yhteisiin tuotantokomponentteihin
+ja niiden katalogiin. [Rajapinnat](interfaces.md) kuvaavat tietojen ja
+komentojen merkityksen. Usean palvelimen navigointi ja prosessikeskus
+odottavat omaa päätöstään.
