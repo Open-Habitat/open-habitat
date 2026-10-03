@@ -1,9 +1,9 @@
 ---
 created: 2026-10-01
-updated: 2026-10-01
+updated: 2026-10-03
 type: bug
 reporter: agent
-status: open
+status: in-progress
 priority: normal
 provenance: agent
 provenance_detail: wrap-up-2026-10-01
