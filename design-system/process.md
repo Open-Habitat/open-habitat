@@ -42,7 +42,9 @@ uudelleen luotavaa aineistoa; niitä ei commitoida, ja paketti kirjaa lähdecomm
 Paketti näyttää myös, mikä muuttui edellisen paketin commitista, ja yhdistää
 muutokset tiloihin ja tallenteisiin. Paketin `MANIFEST.md` kirjaa commitin,
 johon asti se on ajan tasalla; sama commit kirjataan kierroksen issueen ja
-[rounds.md](rounds.md)-tiedostoon, josta seuraava kokoaja aloittaa. Git-historia antaa muutokset, inventaario
+[rounds.md](rounds.md)-tiedostoon, josta seuraava kokoaja aloittaa. Kun
+riviä ei vielä ole, paketti esittää koko inventaarion uutena ja aukkolistan
+muutoslistan sijaan. Git-historia antaa muutokset, inventaario
 niiden yhteyden käyttöliittymään. Designeriltä pyydetään kommentti jokaiseen
 esitettyyn muutokseen. Aukot näkyvät molempiin suuntiin: toteutettu tila ilman
 vedosta ja vedoksen tila ilman toteutusta.
