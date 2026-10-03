@@ -676,3 +676,7 @@ Jari täsmensi lohkokirjaston työtavan: designer suunnittelee jokaisen lohkon. 
 ### 2026-10-03T05:40:49Z · @codex
 
 latest-control-obscured käsitelty Jarin kanssa 3.10.2026 rethink-instructions-skillillä. Hyväksytty tavoite on näkyvä ja käytettävä hyppypainike myös kirjoituskentän kasvaessa sekä yhtenäinen keskustelualueen asettelu. Työ yhdistyy composer-footer-layout-issuen yhteisten säiliöiden selvitykseen; eri tyhjien välien yhteistä juurisyytä tai tiettyä CSS-korjausta ei oleteta. Näin 2.10. valittu viiden issuen tekstikierros on käsitelty. Seuraavaa dokumenttia ei ole tässä kierroksessa valittu. Tuotekoodia, issueiden tilaa tai DAGin ajoitusta ei muutettu.
+
+### 2026-10-03T05:44:00Z · @codex
+
+add-account-settings-ui tutkittu ja päivitetty 3.10.2026 Jarin pyynnöstä, lähderevisio 94b6b57. Tilivalikko, asetukset, teema ja selainuloskirjautuminen erotettu jo toteutetuksi. Profiilitiedot kuuluvat account-profile-from-github-issueen, v2-ulkoasu restore-v2-settings-issueen ja selaimen siivous browser-logout-cleanup-issueen. Asetuksista puuttuu edelleen designin OpenAI-yhteysrivi; olemassa oleva Pi-tilasopimus ei todista tilin identiteettiä tai toimivaa provider-pyyntöä. Vanha estetty irrotuspainike ja erilliset testi-/julkaisuportit poistettu tehtävävaatimuksista. Historiallinen tulos säilyy oman revisionsa näyttönä. Tuotekoodia, tilaa tai DAGia ei muutettu. Aiemman kokonaisuuden seuraava kohta on docs/ui.md ja ADR 0002, etenkin myöhempien päätösten sovitus.
