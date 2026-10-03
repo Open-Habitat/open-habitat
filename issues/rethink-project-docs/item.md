@@ -21,6 +21,49 @@ menettelyohjauksen ja lupaportit. Valinta tehdään tekstin tehtävän perusteel
 Tämä issue on jatkamiskohta: pidetään käsiteltyjen dokumenttien lista ja seuraava
 ehdokas ajan tasalla, ei rakenneta erillistä katselmointiprosessia.
 
+## Seuraava kokonaisuus: kahdeksan UI-issuea 3.10.2026
+
+Jari valitsi seuraavaksi alla olevat kahdeksan issuea. Käymme ne hänen kanssaan
+läpi yksitellen tässä järjestyksessä: yhteinen komponenttipohja ja tilojen
+merkitys ensin, sitten keskustelun sisältö ja lopuksi niitä käyttävät näkymät.
+Tämä on tekstien ja päätösten läpikäyntijärjestys; toteutuksen ajoitus ja
+riippuvuudet ovat edelleen issuectl:n DAGissa.
+
+1. **[unify-ui-primitives](../unify-ui-primitives/item.md).**
+   Selvennetään yhteisten kontrollien tavoite ja vastuut sekä erotetaan sovittu
+   React Aria -ratkaisu toteutuksen yksityiskohdista. Tämä antaa pohjan muiden
+   issueiden komponentti- ja tilavaatimuksille.
+2. **[refine-agent-status](../refine-agent-status/item.md).**
+   Käsitellään agenttitilojen käyttäjälle välittämä merkitys ja yhteys hostin
+   tietämiin faktoihin ennen niiden visuaalista suunnittelua. Sovitetaan aiempi
+   läpikäynti 2.–3.10. tehtyihin tarkennuksiin.
+3. **[design-control-states](../design-control-states/item.md).**
+   Täsmennetään designerille menevä primitiivien tilasuunnittelu ja siihen
+   kuuluva agenttitilojen osuus kahden edellisen issuen pohjalta. Erotetaan
+   suunnittelutehtävä sen tulosten toteuttamisesta.
+4. **[carry-typed-pi-events](../carry-typed-pi-events/item.md).**
+   Käydään läpi Pi:n tyypitetyn historian ja tapahtumien tiedonkulun tavoite,
+   selaimelle tarkoitettu sisältö ja työn raja suhteessa lohkojen designiin.
+5. **[design-pi-event-blocks](../design-pi-event-blocks/item.md).**
+   Sovitetaan lohkojen suunnittelutehtävä edellä käsiteltyyn tietosisältöön ja
+   yhteisiin kontrolleihin. Tarkistetaan myös suhde nykyiseen yhteen designiin
+   sekä aiempiin sisältö- ja dialogirajauksiin.
+6. **[account-profile-from-github](../account-profile-from-github/item.md).**
+   Tarkennetaan yhteinen tiliesitys ja profiilitiedon kulku ennen sivupalkin ja
+   asetusten tehtäviä. Aiemmin hyväksytty rajaus toimii lähtökohtana.
+7. **[restore-v2-navigation](../restore-v2-navigation/item.md).**
+   Käsitellään sivupalkin, tilivalikon ja paluunäkymän tavoite yhteisten
+   kontrollien, agenttitilojen ja tiliprofiilin pohjalta. Erotetaan nykyinen
+   tarve vanhan korjauskierroksen ohjeista.
+8. **[restore-v2-settings](../restore-v2-settings/item.md).**
+   Käsitellään asetusten ulkoasu ja työnjako profiilitietojen sekä jo läpikäydyn
+   add-account-settings-ui-issuen kanssa. Täsmennetään vertailukuvien päivityksen
+   tarkoitus tämän kokonaisuuden lopputuloksen osoittamisessa.
+
+**Seuraava käsiteltävä issue: unify-ui-primitives.** Tämän kierroksen issueita
+ei ole vielä käsitelty. Aiemman kokonaisuuden jäljellä oleviin dokumentteihin
+palataan tämän kierroksen jälkeen; ne säilyvät alla jatkamista varten.
+
 ## Käsitelty
 
 | Dokumentti | Lopputulos | Commit |
