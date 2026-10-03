@@ -4,7 +4,7 @@ updated: 2026-10-03
 type: improvement
 status: testing
 priority: high
-related: ['@design-first-use-onboarding', '@build-history-view', '@account-profile-from-github', '@restore-v2-settings', '@align-navigation-design', '@browser-logout-cleanup', '@decide-account-display']
+related: ['@design-first-use-onboarding', '@build-history-view', '@account-profile-from-github', '@align-settings-design', '@align-navigation-design', '@browser-logout-cleanup', '@decide-account-display']
 lane: account-ui
 collision: [web/src/app/App.tsx, design-system/]
 commits:
@@ -51,7 +51,7 @@ Use the shared account presentation from @account-profile-from-github: first
 name in the compact view, email in the opened view, GitHub profile image and
 onboarding fallback for missing details.
 
-@restore-v2-settings owns the settings layout and design comparisons;
+@align-settings-design owns the settings layout and design comparisons;
 @align-navigation-design owns the rail. Coordinate the connection entry and shared
 profile presentation with that work. Browser logout is covered by the completed
 @browser-logout-cleanup issue.

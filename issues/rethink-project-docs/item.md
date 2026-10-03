@@ -26,9 +26,9 @@ esitetään selkeästi tekstin asianomaisessa kohdassa. Erillistä Decisions-osi
 ei säilytetä saman sisällön toistona tai läpikäyntien lokina; aiemmat versiot
 löytyvät Git-historiasta.
 
-## Seuraava kokonaisuus: kahdeksan UI-issuea 3.10.2026
+## Käsitelty kokonaisuus: kahdeksan UI-issuea 3.10.2026
 
-Jari valitsi seuraavaksi alla olevat kahdeksan issuea. Käymme ne hänen kanssaan
+Jari valitsi seuraavaksi alla olevat kahdeksan issuea. Ne käytiin hänen kanssaan
 läpi yksitellen tässä järjestyksessä: yhteinen komponenttipohja ja tilojen
 merkitys ensin, sitten keskustelun sisältö ja lopuksi niitä käyttävät näkymät.
 Tämä on tekstien ja päätösten läpikäyntijärjestys; toteutuksen ajoitus ja
@@ -60,12 +60,13 @@ riippuvuudet ovat edelleen issuectl:n DAGissa.
    Käsitellään sivupalkin, tilivalikon ja paluunäkymän tavoite yhteisten
    kontrollien, agenttitilojen ja tiliprofiilin pohjalta. Erotetaan nykyinen
    tarve vanhan korjauskierroksen ohjeista.
-8. **[restore-v2-settings](../restore-v2-settings/item.md).**
+8. **[align-settings-design](../align-settings-design/item.md).**
    Käsitellään asetusten ulkoasu ja työnjako profiilitietojen sekä jo läpikäydyn
    add-account-settings-ui-issuen kanssa. Täsmennetään vertailukuvien päivityksen
    tarkoitus tämän kokonaisuuden lopputuloksen osoittamisessa.
 
-**Seuraava käsiteltävä issue: restore-v2-settings.** `unify-ui-primitives`in
+**Kahdeksan UI-issuen tekstikierros on käsitelty. Seuraava kokonaisuus on
+`docs/ui.md` ja ADR 0002 aiemman jatkamisjärjestyksen mukaisesti.** `unify-ui-primitives`in
 teksti selvennetty 3.10.2026: yhteisten kontrollien vastuu ja sovittu React Aria
 -pohja säilyvät, toteutusdetaljit jätetään toteuttajalle. Ensimmäisen vaiheen
 näyttö koskee siirrettyjä kontrolleja; loppujen siirto ja koko UI:n kattavuus
@@ -120,6 +121,15 @@ agenttitilat ja tiliprofiili käyttävät niitä omistavien töiden yhteistä to
 Vanhan korjausyön ohjeet, keskustelunäkymän oirelista ja erillinen
 hyväksyttämisportti poistettu. Vertailukuvat osoittavat toteutuksen suhteen
 designiin. Slugiin osoittavat viitteet ja riippuvuudet päivitetty.
+
+`align-settings-design` käsitelty 3.10.2026 ja nimetty ilman designin
+versionimeä. Tehtävä sovittaa asetukset yhteiseen designiin ja päivittää
+asetusten, navigaation ja keskustelun vertailut samasta toteutusrevisiosta.
+Profiilitieto ja yhteyksien toiminta kuuluvat niitä omistaville issueille;
+asettelu käyttää niiden yhteistä toteutusta. Vanhan korjausyön ohjeet,
+muista näkymistä kopioitu oirelista ja erillinen hyväksyttämisportti poistettu.
+Vertailujen tarkoitus ja puuttuvien vedostilojen käsittely selvennetty.
+Slugiviitteet ja siihen osoittavat linkit päivitetty.
 
 Pi-tapahtumakatalogi käyty läpi 3.10.2026 Jarin pyynnöstä ennen
 `design-pi-event-blocks`-issuea. `catalog-pi-events/analysis.md` selittää
@@ -805,7 +815,7 @@ latest-control-obscured käsitelty Jarin kanssa 3.10.2026 rethink-instructions-s
 
 ### 2026-10-03T05:44:00Z · @codex
 
-add-account-settings-ui tutkittu ja päivitetty 3.10.2026 Jarin pyynnöstä, lähderevisio 94b6b57. Tilivalikko, asetukset, teema ja selainuloskirjautuminen erotettu jo toteutetuksi. Profiilitiedot kuuluvat account-profile-from-github-issueen, v2-ulkoasu restore-v2-settings-issueen ja selaimen siivous browser-logout-cleanup-issueen. Asetuksista puuttuu edelleen designin OpenAI-yhteysrivi; olemassa oleva Pi-tilasopimus ei todista tilin identiteettiä tai toimivaa provider-pyyntöä. Vanha estetty irrotuspainike ja erilliset testi-/julkaisuportit poistettu tehtävävaatimuksista. Historiallinen tulos säilyy oman revisionsa näyttönä. Tuotekoodia, tilaa tai DAGia ei muutettu. Aiemman kokonaisuuden seuraava kohta on docs/ui.md ja ADR 0002, etenkin myöhempien päätösten sovitus.
+add-account-settings-ui tutkittu ja päivitetty 3.10.2026 Jarin pyynnöstä, lähderevisio 94b6b57. Tilivalikko, asetukset, teema ja selainuloskirjautuminen erotettu jo toteutetuksi. Profiilitiedot kuuluvat account-profile-from-github-issueen, asetusten ulkoasu align-settings-design-issueen ja selaimen siivous browser-logout-cleanup-issueen. Asetuksista puuttuu edelleen designin OpenAI-yhteysrivi; olemassa oleva Pi-tilasopimus ei todista tilin identiteettiä tai toimivaa provider-pyyntöä. Vanha estetty irrotuspainike ja erilliset testi-/julkaisuportit poistettu tehtävävaatimuksista. Historiallinen tulos säilyy oman revisionsa näyttönä. Tuotekoodia, tilaa tai DAGia ei muutettu. Aiemman kokonaisuuden seuraava kohta on docs/ui.md ja ADR 0002, etenkin myöhempien päätösten sovitus.
 
 ### 2026-10-03T05:52:02Z · @codex
 
