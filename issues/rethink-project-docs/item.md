@@ -26,6 +26,20 @@ esitetään selkeästi tekstin asianomaisessa kohdassa. Erillistä Decisions-osi
 ei säilytetä saman sisällön toistona tai läpikäyntien lokina; aiemmat versiot
 löytyvät Git-historiasta.
 
+## Käyttöönotot, integraatiot ja ylläpito-CLI 3.10.2026
+
+Jari valitsi järjestyksen: `evaluate-northwind-adoption`,
+`decide-acme-creator-integration`, `decide-taskfleet-browser-integration`,
+`server-administration-cli`.
+
+`evaluate-northwind-adoption` käsitelty ja rajaus hyväksytty. Arvio lähtee
+kehittäjien nykyisestä työstä ja hostin hyödystä; syyskuun selvitys on taustaa.
+Jari vahvisti, että Claude Code -integraation tarve voi syntyä tässä arviossa.
+Pi:hin siirtymistä tai toisen harnessin toteuttamista ei oleteta ennalta.
+Lopputulos on perusteltu suositus ja mahdollinen rajattu kokeilu; tarvittavat
+muutokset kirjataan erillisiksi toteutustöiksi. Issuen tila ja DAG säilyvät.
+Seuraava käsiteltävä on `decide-acme-creator-integration`.
+
 ## Palvelinylläpito, terminaalisynkronointi ja muistinkäyttö 3.10.2026
 
 Jari valitsi seuraavaksi `named-server-admin-settings`,
