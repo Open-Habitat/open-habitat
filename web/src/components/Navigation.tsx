@@ -305,7 +305,11 @@ export function WorkspaceSection({
   const summaryId = useId();
   return (
     <section className="ah-workspace">
-      <div className="ah-workspace-row" data-selected={selected || undefined}>
+      <div
+        className="ah-workspace-row"
+        data-selected={selected || undefined}
+        title={summary ? `${name} · ${summary}` : name}
+      >
         <button
           aria-expanded={expanded}
           aria-label={`${expanded ? "Sulje" : "Avaa"} ${name}`}
@@ -320,7 +324,6 @@ export function WorkspaceSection({
           kind="workspace"
           aria-describedby={summary ? summaryId : undefined}
           className="ah-workspace-link"
-          title={summary ? `${name} · ${summary}` : name}
           href={href}
         >
           {name}
@@ -434,7 +437,6 @@ export function WorkspaceRail({
           kind="home"
           current={homeCurrent}
           className="ah-rail-home"
-          title="Etusivu"
         >
           <Icon name="home" />
           <span className="ah-rail-home-label">Etusivu</span>

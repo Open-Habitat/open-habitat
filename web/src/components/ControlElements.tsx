@@ -65,7 +65,6 @@ export function LinkRow({
   className?: string;
   "aria-label"?: string;
   "aria-describedby"?: string;
-  title?: string;
 }) {
   const navigate = useNavigate();
   return (

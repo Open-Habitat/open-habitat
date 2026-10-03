@@ -47,6 +47,11 @@ test("migrated controls cannot bypass their shared component", () => {
     /biome-ignore-all|\.ah-button\s*\{|\.ah-account-shelf\s*>\s*\.ah-button/,
   );
   expect(css).not.toMatch(/\.ah-continue-list a(?:\s*\{|:hover)/);
+  expect(css).toContain(".ah-tool-row .ah-tool-output {");
+  expect(css).toContain(".ah-conversation-frame .ah-composer {");
+  expect(css).not.toContain(".ah-tool-row .ah-tool-row .ah-tool-output");
+  expect(css).not.toContain(".ah-tool-row .ah-conversation-frame .ah-composer");
+  expect(css).toContain(".ah-account-trigger {");
 });
 
 async function feedback(control: Locator, page: Page, press = true) {
@@ -88,6 +93,10 @@ test("@control-states shared feedback on navigation, list, button and menu in bo
     }, theme);
     await feedback(page.locator(".ah-continue-list a").first(), page);
     await feedback(page.locator(".ah-agent-item .ah-nav-link").first(), page);
+    await expect(page.locator(".ah-workspace-row").first()).toHaveAttribute(
+      "title",
+      /.+/,
+    );
     const menu = page.getByRole("button", { name: /Tilivalikko/ });
     await feedback(menu, page, false);
     await menu.click();
@@ -120,7 +129,10 @@ test("@control-states shared feedback on navigation, list, button and menu in bo
     .getByRole("link", { name: "ordinary-dir" })
     .click();
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  await expect(page.locator(".ah-composer")).toBeVisible();
+  const composer = page.locator(".ah-composer");
+  await expect(composer).toBeVisible();
+  await expect(composer).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(composer).toHaveCSS("border-top-width", "0px");
   const action = page
     .locator(".ah-composer [data-ah-primitive=button]")
     .first();

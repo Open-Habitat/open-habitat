@@ -160,12 +160,16 @@
 .disclosure {
   composes: surface from "./interactive.module.css";
   display: flex;
+  align-items: center;
   width: 100%;
   gap: var(--ah-s2);
-  border: 1px solid var(--ah-line);
-  --i-bg: var(--ah-surface);
+  padding: var(--ah-s3);
+  border: 0;
+  --i-bg: transparent;
   cursor: pointer;
+  text-align: left;
   font: inherit;
+  font-weight: 600;
 }
 .field {
   display: grid;

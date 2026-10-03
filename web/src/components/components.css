@@ -1404,7 +1404,7 @@ h1[tabindex="-1"]:focus {
   transform: translateY(-100%);
 }
 /* Shared navigation v2: the same rail renders in the desktop strip and phone drawer. */
-.ah-rail-collapsed .ah-account-trigger {
+.ah-account-trigger {
   display: flex;
   align-items: center;
   gap: var(--ah-s2);
@@ -1695,7 +1695,7 @@ h1[tabindex="-1"]:focus {
 .ah-tool-row .ah-disclosure {
   border: 0;
 }
-.ah-tool-row .ah-tool-row .ah-tool-output {
+.ah-tool-row .ah-tool-output {
   margin: 0;
   border: 0;
 }
@@ -1794,7 +1794,7 @@ h1[tabindex="-1"]:focus {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ah-tool-row .ah-conversation-frame .ah-composer {
+.ah-conversation-frame .ah-composer {
   background: transparent;
   border: 0;
   box-shadow: none;

@@ -122,6 +122,7 @@ function Message({
           ariaLabel={`Kopioi viesti: ${speaker}`}
           label="Kopioi"
           icon="copy"
+          presentation="messageIcon"
           variant="quiet"
           size="compact"
           onPress={onCopy}
