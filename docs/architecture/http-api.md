@@ -60,7 +60,11 @@ most 64 KiB of text or 1 MiB of base64 (aligned to UTF-8/codepoint or base64 qua
 with `next_offset` when more is available. The page's `native_revision` is a
 hash of the native file; the daemon rejects a block read when that revision
 changes, so the browser reloads the page rather than combining old and new
-content. Redacted thinking and unknown native fields cannot be selected.
+content. Saved local commands expose separate command and output text blocks,
+with exit/cancellation and truncation flags on their history entry. Saved
+session markers and compaction/branch summaries retain their native entry type;
+long summaries can be read by block. Redacted thinking and unknown native
+fields cannot be selected.
 
 ## Writes and receipts
 

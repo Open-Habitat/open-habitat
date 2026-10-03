@@ -78,9 +78,10 @@ message whose outcome it does not know, because the same work could run twice.
 
 Pi's extension dialogs arrive as `extension_ui_request` events. Dialogs that
 ask something become the conversation's pending question, carried as text with
-its method and options; notifications and widget updates become `unknown.native`
-text events. The daemon consumes the request ID before writing the answer to
-Pi, and since Pi returns no correlated receipt for it, even a successful HTTP
+its method and options; visible notifications and keyed status/widget updates
+become `extension.visible` events that replace or clear their previous value.
+The daemon consumes the request ID before writing the answer to Pi, and since
+Pi returns no correlated receipt for it, even a successful HTTP
 reply is `uncertain`. The browser records the attempt before sending and never
 repeats it.
 
@@ -102,8 +103,11 @@ stateDiagram-v2
 ```
 
 The daemon translates Pi's RPC events into journal events as they arrive:
-text deltas, tool starts and ends, queue changes, questions. When Pi reports
-`agent_settled`, the daemon reads the session file, confirms the new assistant
+text and thinking deltas, streamed tool arguments, tool execution progress,
+local-command output, lifecycle and retry signals, queue changes, questions and
+visible extension UI updates. Arguments and tool output are bounded inert text
+previews; arbitrary provider details and raw errors never enter the journal.
+When Pi reports `agent_settled`, the daemon reads the session file, confirms the new assistant
 entry by its native key and publishes `turn.settled` with that key. If the key
 cannot be verified, the settlement is reported with `state: unknown` and the
 browser does not show a confirmed completion. Settled does not mean the answer

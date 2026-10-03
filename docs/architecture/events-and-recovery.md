@@ -40,8 +40,8 @@ sequenceDiagram
   Pi->>D: message_update deltas
   D->>D: coalesce up to 50 ms / 4 KiB
   D-->>B: assistant.delta
-  Pi->>D: tool_execution_start
-  D-->>B: tool.started
+  Pi->>D: toolcall_delta / tool_execution_update
+  D-->>B: assistant.toolcall.delta / tool.updated
   Pi->>D: agent_settled
   D->>D: read JSONL, verify native key
   D-->>B: history.entry (native key), turn.settled
@@ -52,22 +52,29 @@ sequenceDiagram
 |---|---|
 | `snapshot.invalidated` | the browser must take a new snapshot; `ring_truncated` on one agent means re-read that agent's history instead |
 | `history.entry` | a new entry read from Pi's file, with its native key |
-| `assistant.delta` | provisional streamed text for the running turn |
-| `tool.started`, `tool.updated`, `tool.finished` | tool call progress |
+| `assistant.delta`, `assistant.thinking.delta`, `assistant.toolcall.delta`, `assistant.toolcall.end` | provisional ordered response blocks; argument fragments become a call with its native ID |
+| `tool.started`, `tool.updated`, `tool.finished` | execution progress associated with that call ID; cumulative updates replace the previous preview for that call in a snapshot tail |
+| `bash.output` | streamed output of a local command, separate from a model-requested tool; saved command and output blocks supersede it |
+| `pi.lifecycle`, `pi.retry`, `pi.marker` | bounded activity, retry and session/compaction signals, not durable conversation entries |
+| `extension.visible` | visible notification or keyed status/widget text; a later update replaces or clears the keyed value |
 | `queue.changed` | Pi's steering and follow-up queues as last observed |
 | `question.requested` | an extension dialog is pending |
 | `turn.settled` | Pi stopped; carries the verified native key or `unknown` |
 | `command.changed` | a write's receipt changed |
-| `unknown.native` | a native event with no dedicated rendering, carried as text |
+| `unknown.native` | an unsupported native event, named by its bounded type only; unchecked payload is not forwarded |
 | `question.resolved`, `agent.changed`, `workspace.changed`, `title.changed`, `source.warning`, `operation.changed` | reserved in the contract; the daemon does not emit them |
 
-Streamed text is provisional. Pi gives deltas no durable key, so the browser
-never merges them with history by comparing text. When the daemon publishes the
-turn's entries from the file, each `history.entry` replaces the whole
-provisional tail for that agent and the browser deduplicates by native key.
-Per agent the daemon retains at most 128 provisional frames or 128 KiB; past
-that it drops the tail and emits `ring_truncated`, which the browser answers
-with a history read.
+Streamed text and tool activity are provisional. Pi gives deltas no durable
+entry key, so the browser never merges them with history by comparing text.
+Saved assistant content replaces streamed assistant blocks, a saved tool result
+supersedes that call's progress by call ID without removing other running calls,
+and a saved local command replaces its provisional output. The browser
+also deduplicates saved entries by native key. Long persisted text, arguments,
+images and command output are read by selected block, not shipped wholesale in
+events. Per agent the daemon retains at most 128 provisional frames or 128 KiB;
+repeated cumulative tool updates replace the older preview in that tail but
+remain in the replay ring. Past those bounds the daemon emits `ring_truncated`,
+which the browser answers with a history read.
 
 The stream request validates the cursor before sending headers. A cursor older
 than the ring answers `409 cursor_expired`; a cursor from another daemon
