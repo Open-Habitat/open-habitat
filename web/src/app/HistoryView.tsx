@@ -95,11 +95,11 @@ function ReadableBlock({
       let next = loaded;
       // Images cannot render until their base64 payload is complete. A single
       // action fetches a normal-sized image; larger ones retain a page control.
-      // Every HTTP response is still limited to one 64 KiB chunk.
-      const batch = block.type === "image" ? 128 : 1;
+      // Every image response is limited to 1 MiB, text to 64 KiB.
+      const batch = block.type === "image" ? 8 : 1;
       for (let page = 0; page < batch; page++) {
         const offset = next?.offset ?? 0;
-        const url = `/api/v1/agents/${agentId}/entries/${entryKey}/blocks/${index}?${new URLSearchParams({ revision, offset: String(offset), limit_bytes: "65536" })}`;
+        const url = `/api/v1/agents/${agentId}/entries/${entryKey}/blocks/${index}?${new URLSearchParams({ revision, offset: String(offset), limit_bytes: block.type === "image" ? "1048576" : "65536" })}`;
         const response = await fetch(url, {
           credentials: "same-origin",
           cache: "no-store",

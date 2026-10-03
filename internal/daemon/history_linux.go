@@ -447,14 +447,19 @@ func historyHandlerWithReader(cfg transport.Config, trusted func(*http.Request) 
 					return
 				}
 				entries := loaded.entries
-				inlineBytes := 0
+				pageBytes := 0
 				start := len(entries)
 				for i := len(entries) - 1; i >= 0; i-- {
 					inline(&loaded, &entries[i])
-					if start < len(entries) && inlineBytes+len(entries[i].Content.Text) > 256*1024 {
+					wire, err := json.Marshal(entries[i])
+					if err != nil {
+						snapshotError(w, 503, "native_source_unavailable")
+						return
+					}
+					if start < len(entries) && pageBytes+len(wire) > 256*1024 {
 						break
 					}
-					inlineBytes += len(entries[i].Content.Text)
+					pageBytes += len(wire)
 					entries[i].full = ""
 					start = i
 				}
@@ -496,13 +501,18 @@ func historyHandlerWithReader(cfg transport.Config, trusted func(*http.Request) 
 				end = len(s.entries)
 			}
 			entries := make([]historyEntry, 0, end-start)
-			inlineBytes := 0
+			pageBytes := 0
 			for _, e := range s.entries[start:end] {
 				inline(s, &e)
-				if len(entries) > 0 && inlineBytes+len(e.Content.Text) > 256*1024 {
+				wire, err := json.Marshal(e)
+				if err != nil {
+					snapshotError(w, 503, "native_source_unavailable")
+					return
+				}
+				if len(entries) > 0 && pageBytes+len(wire) > 256*1024 {
 					break
 				}
-				inlineBytes += len(e.Content.Text)
+				pageBytes += len(wire)
 				e.full = ""
 				entries = append(entries, e)
 			}
@@ -525,7 +535,7 @@ func historyHandlerWithReader(cfg transport.Config, trusted func(*http.Request) 
 			}
 			offset, e1 := strconv.Atoi(q.Get("offset"))
 			limit, e2 := strconv.Atoi(q.Get("limit_bytes"))
-			if e1 != nil || e2 != nil || offset < 0 || limit < 1 || limit > 65536 || index < 0 || index >= 128 {
+			if e1 != nil || e2 != nil || offset < 0 || limit < 1 || limit > 1<<20 || index < 0 || index >= 128 {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}

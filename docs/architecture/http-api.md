@@ -50,12 +50,13 @@ with no unknown fields; the gateway forwards at most 64 KiB of request body.
 
 A history page is read from Pi's file at request time. Without `before` it
 returns the newest entries, up to `limit` (default and maximum 200; the browser
-asks for 25). With `before=<key>` it returns the entries older than that key and
+asks for 25). The entry projection also has a 256 KiB page budget, so a page
+of metadata-rich blocks may contain fewer than `limit` entries. With `before=<key>` it returns the entries older than that key and
 reports `older_complete` when the oldest edge was reached, or
 `boundary_found: false` when the key no longer exists, in which case the browser
 starts again from the newest page. Entries contain bounded ordered block previews; readable blocks have a separate
 read route selected by native entry key and block index. Each response is at
-most 64 KiB of text or base64 (aligned to UTF-8/codepoint or base64 quartet),
+most 64 KiB of text or 1 MiB of base64 (aligned to UTF-8/codepoint or base64 quartet),
 with `next_offset` when more is available. The page's `native_revision` is a
 hash of the native file; the daemon rejects a block read when that revision
 changes, so the browser reloads the page rather than combining old and new

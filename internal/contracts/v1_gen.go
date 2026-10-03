@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "346b7f383452195490dde0fdc9a48616d0334356ae520e717ad25c9473678eae"
+const V1SchemaFingerprint = "a25513632959d1f9c8dff4634844e4e97f59a45b461861f8c7a0927bb1a48099"
 
 var V1SchemaFiles = []string{
 	"annotations.schema.json",

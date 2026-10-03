@@ -116,6 +116,9 @@ func nativeBlockChunk(raw json.RawMessage, index, offset, limit int) (map[string
 }
 
 func textChunk(text string, offset, limit int) (map[string]any, bool) {
+	if limit > 65536 {
+		return nil, false
+	}
 	b := []byte(text)
 	if offset > len(b) || !utf8.Valid(b[:offset]) {
 		return nil, false
