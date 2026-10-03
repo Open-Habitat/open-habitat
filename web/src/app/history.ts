@@ -19,7 +19,6 @@ export interface HistoryBlock {
   mime_type?: string;
   tool_call_id?: string;
   tool_name?: string;
-  arguments?: string;
   readable?: boolean;
 }
 export interface HistoryEntry {

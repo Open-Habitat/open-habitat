@@ -11,7 +11,7 @@ import (
 	"unicode/utf8"
 )
 
-// readNativeWindow hashes the native bytes for content identity, but decodes
+// readNativeWindow hashes the native bytes for revision binding, but decodes
 // only the active tail needed by the requested page. No cross-request index is
 // kept. A before page includes its boundary as a shared-key witness.
 func readNativeWindow(path string, uid int, beforeKey string, limit int) nativeSession {
@@ -19,7 +19,7 @@ func readNativeWindow(path string, uid int, beforeKey string, limit int) nativeS
 }
 
 // Content selection follows the same active branch, hash and file stability
-// checks as paging; it retains only the requested entry's rendered text.
+// checks as paging; it retains only the selected native entry for block reads.
 func readNativeWindowFor(path string, uid int, beforeKey string, limit int, contentKey string) nativeSession {
 	var result nativeSession
 	info, err := os.Lstat(path)

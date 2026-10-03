@@ -143,12 +143,14 @@ function Message({
 }
 export function UserMessage({
   sourceText,
+  children,
   time,
   deliveryState,
   deliveryTone = "neutral",
   onCopy,
 }: {
   sourceText: string;
+  children?: ReactNode;
   time?: string;
   deliveryState?: string;
   deliveryTone?: Tone;
@@ -162,7 +164,7 @@ export function UserMessage({
       stateTone={deliveryTone}
       onCopy={onCopy}
     >
-      <Markdown text={sourceText} />
+      {children ?? <Markdown text={sourceText} />}
     </Message>
   );
 }

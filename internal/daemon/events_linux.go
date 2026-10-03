@@ -98,8 +98,8 @@ func (j *eventJournal) appendEvent(kind, agent string, payload any) {
 }
 
 // Native history identity is sourced only from checked Pi JSONL. A large
-// history body falls back to invalidation rather than publishing a partial
-// entry without a way to fetch its remaining content.
+// history body falls back to invalidation rather than publishing an oversized
+// frame; selected blocks can be fetched from the native file.
 func (j *eventJournal) appendNativeEntry(agent string, entry historyEntry) {
 	j.mu.Lock()
 	defer j.mu.Unlock()

@@ -83,47 +83,64 @@ function ReadableBlock({
   }>();
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
+  const request = useRef<AbortController | null>(null);
+  useEffect(() => () => request.current?.abort(), []);
   const more = async () => {
     if (!agentId || !revision || pending) return;
     setPending(true);
     setFailed(false);
+    const controller = new AbortController();
+    request.current = controller;
     try {
-      const offset = loaded?.offset ?? 0;
-      const url = `/api/v1/agents/${agentId}/entries/${entryKey}/blocks/${index}?${new URLSearchParams({ revision, offset: String(offset), limit_bytes: "65536" })}`;
-      const response = await fetch(url, {
-        credentials: "same-origin",
-        cache: "no-store",
-      });
-      const value = await readHistory(response);
-      if (!("chunk" in value)) throw new Error("invalid block");
-      const chunk = value as BlockChunk;
-      if (
-        chunk.agent_id !== agentId ||
-        chunk.native_revision !== revision ||
-        chunk.entry_key !== entryKey ||
-        chunk.block_index !== index ||
-        chunk.offset !== offset ||
-        (!chunk.chunk.complete &&
-          (chunk.chunk.next_offset === undefined ||
-            chunk.chunk.next_offset <= offset)) ||
-        (loaded && chunk.chunk.media_type !== loaded.mediaType)
-      )
-        throw new Error("invalid block");
-      const text = (loaded?.text ?? "") + (chunk.chunk.text ?? "");
-      const data = (loaded?.data ?? "") + (chunk.chunk.data ?? "");
-      if (text.length + data.length > 64 * 1024 * 1024)
-        throw new Error("oversize block");
-      setLoaded({
-        text,
-        data,
-        offset: chunk.chunk.next_offset ?? offset,
-        complete: chunk.chunk.complete,
-        mediaType: chunk.chunk.media_type,
-      });
+      let next = loaded;
+      // Images cannot render until their base64 payload is complete. A single
+      // action fetches a normal-sized image; larger ones retain a page control.
+      // Every HTTP response is still limited to one 64 KiB chunk.
+      const batch = block.type === "image" ? 128 : 1;
+      for (let page = 0; page < batch; page++) {
+        const offset = next?.offset ?? 0;
+        const url = `/api/v1/agents/${agentId}/entries/${entryKey}/blocks/${index}?${new URLSearchParams({ revision, offset: String(offset), limit_bytes: "65536" })}`;
+        const response = await fetch(url, {
+          credentials: "same-origin",
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const value = await readHistory(response);
+        if (!("chunk" in value)) throw new Error("invalid block");
+        const chunk = value as BlockChunk;
+        if (
+          chunk.agent_id !== agentId ||
+          chunk.native_revision !== revision ||
+          chunk.entry_key !== entryKey ||
+          chunk.block_index !== index ||
+          chunk.offset !== offset ||
+          (!chunk.chunk.complete &&
+            (chunk.chunk.next_offset === undefined ||
+              chunk.chunk.next_offset <= offset)) ||
+          (next && chunk.chunk.media_type !== next.mediaType)
+        )
+          throw new Error("invalid block");
+        const text = (next?.text ?? "") + (chunk.chunk.text ?? "");
+        const data = (next?.data ?? "") + (chunk.chunk.data ?? "");
+        if (text.length + data.length > 64 * 1024 * 1024)
+          throw new Error("oversize block");
+        next = {
+          text,
+          data,
+          offset: chunk.chunk.next_offset ?? offset,
+          complete: chunk.chunk.complete,
+          mediaType: chunk.chunk.media_type,
+        };
+        if (controller.signal.aborted) return;
+        setLoaded(next);
+        if (next.complete) break;
+      }
     } catch (error) {
+      if ((error as Error).name === "AbortError") return;
       if ((error as Error).message === "identity_lost") onLogin?.();
       else setFailed(true);
     } finally {
+      request.current = null;
       setPending(false);
     }
   };
@@ -212,31 +229,27 @@ function OrderedBlocks({
   agentId,
   revision,
   onLogin,
-  userText,
 }: {
   blocks: HistoryBlock[];
   entryKey: string;
   agentId?: string;
   revision?: string;
   onLogin?: () => void;
-  userText?: boolean;
 }) {
   return (
     <div className="ah-ordered-blocks">
-      {blocks.map((block, index) =>
-        userText && block.type === "text" && !block.readable ? null : (
-          <ReadableBlock
-            // biome-ignore lint/suspicious/noArrayIndexKey: Native block index is stable identity within an entry.
-            key={`${entryKey}:${revision}:${index}`}
-            block={block}
-            index={index}
-            entryKey={entryKey}
-            agentId={agentId}
-            revision={revision}
-            onLogin={onLogin}
-          />
-        ),
-      )}
+      {blocks.map((block, index) => (
+        <ReadableBlock
+          // biome-ignore lint/suspicious/noArrayIndexKey: Native block index is stable identity within an entry.
+          key={`${entryKey}:${revision}:${index}`}
+          block={block}
+          index={index}
+          entryKey={entryKey}
+          agentId={agentId}
+          revision={revision}
+          onLogin={onLogin}
+        />
+      ))}
     </div>
   );
 }
@@ -263,16 +276,7 @@ export function Entry({
   return (
     <>
       {entry.kind === "user" ? (
-        <>
-          <UserMessage
-            sourceText={
-              entry.blocks
-                ?.filter((b) => b.type === "text")
-                .map((b) => b.text ?? "")
-                .join("\n") ?? content.text
-            }
-            onCopy={copy}
-          />
+        <UserMessage sourceText={content.text} onCopy={copy}>
           {entry.blocks?.length ? (
             <OrderedBlocks
               blocks={entry.blocks}
@@ -280,10 +284,9 @@ export function Entry({
               agentId={agentId}
               revision={entry.native_revision ?? revision}
               onLogin={onLogin}
-              userText
             />
-          ) : null}
-        </>
+          ) : undefined}
+        </UserMessage>
       ) : null}
       {/* Native history omits the stop reason; a saved tool-use message may
           precede the rest of a still-running turn. */}
@@ -322,14 +325,8 @@ export function Entry({
       {entry.kind === "tool" ? (
         <ToolRow
           name={content.text.split("\n", 1)[0] || "Työkalu"}
-          statusLabel={
-            entry.is_error
-              ? "Virhe"
-              : content.complete
-                ? "Tulos valmis"
-                : "Tulosta lisää"
-          }
-          state={content.complete ? "Valmis" : "Jatkuu"}
+          statusLabel={entry.is_error ? "Virhe" : "Tulos valmis"}
+          state="Valmis"
           expanded={toolExpanded}
           onToggle={() => setToolExpanded(!toolExpanded)}
         >
@@ -338,7 +335,7 @@ export function Entry({
             <ToolOutput
               text={longExpanded ? content.text : content.text.slice(0, 12000)}
               streamSemantics="unknown"
-              sourceState={content.complete ? "complete" : "continued"}
+              sourceState="complete"
               onCopy={copy}
             />
           ) : null}
@@ -351,7 +348,7 @@ export function Entry({
               onLogin={onLogin}
             />
           ) : null}
-          {content.text.length > 12000 ? (
+          {!entry.blocks?.length && content.text.length > 12000 ? (
             <Button
               label={
                 longExpanded ? "Supista tuloste" : "Näytä koko ladattu tuloste"

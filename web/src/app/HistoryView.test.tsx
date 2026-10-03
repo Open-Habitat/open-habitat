@@ -360,3 +360,102 @@ it("uses the saved entry revision for a live block even when the window still ha
   expect(fetch.mock.calls[0][0]).toContain("revision=new");
   await waitFor(() => expect(screen.getByText("complete")).toBeTruthy());
 });
+
+it("loads a multi-chunk image after one explicit action", async () => {
+  const fetch = vi.fn(async (url: string) => {
+    const offset = new URL(url, "https://synthetic.invalid").searchParams.get(
+      "offset",
+    );
+    return new Response(
+      JSON.stringify({
+        schema_version: 1,
+        agent_id: "pi:11111111-1111-4111-8111-111111111111",
+        native_revision: "rev-image",
+        entry_key: "img",
+        block_index: 0,
+        offset: Number(offset),
+        chunk:
+          offset === "0"
+            ? {
+                media_type: "image/png",
+                data: "QUJD",
+                complete: false,
+                next_offset: 4,
+              }
+            : { media_type: "image/png", data: "REVG", complete: true },
+      }),
+      { headers: { "content-type": "application/json" } },
+    );
+  });
+  vi.stubGlobal("fetch", fetch);
+  const { container } = render(
+    <Entry
+      agentId="pi:11111111-1111-4111-8111-111111111111"
+      revision="rev-image"
+      entry={{
+        ...entry,
+        entry_key: "img",
+        kind: "user",
+        blocks: [{ type: "image", mime_type: "image/png", readable: true }],
+        content: { media_type: "text/plain", text: "", complete: true },
+      }}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Lataa lohkon sisältö" }));
+  await waitFor(() =>
+    expect(container.querySelector("img")?.getAttribute("src")).toBe(
+      "data:image/png;base64,QUJDREVG",
+    ),
+  );
+  expect(fetch).toHaveBeenCalledTimes(2);
+});
+
+it("renders a long user block only once inside the user bubble", () => {
+  const { container } = render(
+    <Entry
+      agentId="pi:11111111-1111-4111-8111-111111111111"
+      revision="rev1"
+      entry={{
+        ...entry,
+        blocks: [{ type: "text", text: "single prefix", readable: true }],
+        content: {
+          media_type: "text/plain",
+          text: "single prefix",
+          complete: false,
+          truncated: true,
+        },
+      }}
+    />,
+  );
+  expect(container.querySelectorAll(".ah-message")).toHaveLength(1);
+  expect(container.textContent?.split("single prefix")).toHaveLength(2);
+  expect(
+    screen.getByRole("button", { name: "Lataa lohkon sisältö" }),
+  ).toBeTruthy();
+});
+
+it("labels a saved typed tool result complete while its block can still be read", () => {
+  const { container } = render(
+    <Entry
+      agentId="pi:11111111-1111-4111-8111-111111111111"
+      revision="rev1"
+      entry={{
+        ...entry,
+        kind: "tool",
+        blocks: [{ type: "text", text: "first", readable: true }],
+        content: {
+          media_type: "text/plain",
+          text: "tool\nfirst",
+          complete: false,
+          truncated: true,
+        },
+      }}
+    />,
+  );
+  expect(container.textContent).toContain("Tulos valmis");
+  expect(container.textContent).not.toContain("Tulosta lisää");
+  fireEvent.click(screen.getByRole("button", { name: /tool/ }));
+  expect(
+    screen.getByRole("button", { name: "Lataa lohkon sisältö" }),
+  ).toBeTruthy();
+});

@@ -71,7 +71,6 @@ type historyBlock struct {
 	MimeType   string `json:"mime_type,omitempty"`
 	ToolCallID string `json:"tool_call_id,omitempty"`
 	ToolName   string `json:"tool_name,omitempty"`
-	Arguments  string `json:"arguments,omitempty"`
 	Readable   bool   `json:"readable,omitempty"`
 }
 type historyContent struct {
@@ -332,8 +331,7 @@ func nativeText(e nativeEntry) (string, string) {
 			} else if b.Type == "toolCall" {
 				parts = append(parts, "Työkalu: "+b.Name)
 			} else {
-				// Keep the complete unknown block, not just its type. Rendered as
-				// text by the browser; no native content is interpreted as markup.
+				// Unknown fields are never shown, even if their type is a string.
 				parts = append(parts, "[Sisältöä ei tueta]")
 			}
 		}
