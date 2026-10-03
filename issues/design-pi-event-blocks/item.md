@@ -5,7 +5,6 @@ type: task
 reporter: jari
 status: open
 priority: high
-lane: pi-event-design
 ---
 
 # Design every Pi event block
