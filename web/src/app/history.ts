@@ -13,10 +13,25 @@ export interface HistoryContent {
   content_id?: string;
   next_offset?: number;
 }
+export interface HistoryBlock {
+  type: "text" | "thinking" | "image" | "toolCall" | "unknown";
+  text?: string;
+  redacted?: boolean;
+  mime_type?: string;
+  tool_call_id?: string;
+  tool_name?: string;
+  arguments?: string;
+}
 export interface HistoryEntry {
   entry_key: string;
   kind: "user" | "assistant" | "tool" | "model_change" | "unknown";
   content: HistoryContent;
+  blocks?: HistoryBlock[];
+  tool_call_id?: string;
+  is_error?: boolean;
+  stop_reason?: string;
+  model?: string;
+  truncated_blocks?: boolean;
 }
 export interface HistoryPage {
   schema_version: 1;

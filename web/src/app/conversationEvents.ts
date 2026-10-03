@@ -4,6 +4,7 @@ import annotations from "../../../contracts/v1/annotations.schema.json";
 import command from "../../../contracts/v1/command.schema.json";
 import common from "../../../contracts/v1/common.schema.json";
 import eventSchema from "../../../contracts/v1/event.schema.json";
+import historySchema from "../../../contracts/v1/history.schema.json";
 import operation from "../../../contracts/v1/operation.schema.json";
 import snapshotSchema from "../../../contracts/v1/snapshot.schema.json";
 import type { Event as WireEvent } from "../contracts/v1.generated";
@@ -17,6 +18,7 @@ for (const schema of [
   command,
   operation,
   eventSchema,
+  historySchema,
   snapshotSchema,
 ])
   ajv.addSchema(schema);
@@ -108,6 +110,12 @@ export function applyTurnEvent(
       entry_key: payload.entry_key as string,
       kind: payload.entry_kind as HistoryEntry["kind"],
       content: payload.content as HistoryEntry["content"],
+      blocks: payload.blocks as HistoryEntry["blocks"],
+      tool_call_id: payload.tool_call_id as string | undefined,
+      is_error: payload.is_error as boolean | undefined,
+      stop_reason: payload.stop_reason as string | undefined,
+      model: payload.model as string | undefined,
+      truncated_blocks: payload.truncated_blocks as boolean | undefined,
     };
     return { turn: { ...next, fragments: [], truncated: false }, entry };
   }

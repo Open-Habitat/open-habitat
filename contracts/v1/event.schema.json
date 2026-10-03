@@ -189,6 +189,31 @@
               },
               "content": {
                 "$ref": "common.schema.json#/$defs/content"
+              },
+              "blocks": {
+                "type": "array",
+                "maxItems": 128,
+                "items": {
+                  "$ref": "history.schema.json#/$defs/block"
+                }
+              },
+              "tool_call_id": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "is_error": {
+                "type": "boolean"
+              },
+              "stop_reason": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "model": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "truncated_blocks": {
+                "type": "boolean"
               }
             }
           }

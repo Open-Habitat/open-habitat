@@ -18,15 +18,15 @@ import (
 	"github.com/maintainer/native-agent-host/internal/transport"
 )
 
-func TestUnknownNativeContentRetainsSafeText(t *testing.T) {
+func TestUnknownNativeContentDoesNotExposeUncheckedPayload(t *testing.T) {
 	cases := []nativeEntry{
 		{Type: "message", Message: json.RawMessage(`{"role":"assistant","content":[{"type":"futureQuestion","prompt":"Jatketaanko?","choices":["Kyllä"]}]}`)},
 		{Type: "futureEntry", Raw: json.RawMessage(`{"type":"futureEntry","payload":"<script>alert(1)</script>"}`)},
 	}
 	for _, entry := range cases {
 		kind, text := nativeText(entry)
-		if (kind != "unknown" && kind != "assistant") || (!strings.Contains(text, "Jatketaanko?") && !strings.Contains(text, "<script>")) {
-			t.Fatalf("unknown content lost: %s: %s", kind, text)
+		if (kind != "unknown" && kind != "assistant") || strings.Contains(text, "Jatketaanko?") || strings.Contains(text, "<script>") {
+			t.Fatalf("unchecked native payload exposed: %s: %s", kind, text)
 		}
 	}
 }

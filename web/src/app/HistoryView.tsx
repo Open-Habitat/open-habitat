@@ -20,6 +20,7 @@ import {
 import { type ConversationStore, useWindow } from "./conversationStore";
 import {
   type ContentChunk,
+  type HistoryBlock,
   type HistoryEntry,
   type HistoryPage,
   readHistory,
@@ -56,6 +57,51 @@ function unfamiliar(text: string): {
     ),
     raw: match[2],
   };
+}
+
+function OrderedBlocks({ blocks }: { blocks: HistoryBlock[] }) {
+  return (
+    <div className="ah-ordered-blocks">
+      {blocks.map((block, index) => {
+        const key = `${index}:${block.type}`;
+        switch (block.type) {
+          case "text":
+            return <Markdown key={key} text={block.text ?? ""} />;
+          case "thinking":
+            return (
+              <details key={key}>
+                <summary>
+                  Ajattelu{block.redacted ? " · piilotettu" : ""}
+                </summary>
+                {block.redacted ? (
+                  <p>Sisältö on redaktoitu.</p>
+                ) : (
+                  <pre>{block.text}</pre>
+                )}
+              </details>
+            );
+          case "image":
+            return (
+              <p key={key}>
+                Kuva · {block.mime_type || "tuntematon muoto"} (kuvan sisältö ei
+                ole vielä saatavilla)
+              </p>
+            );
+          case "toolCall":
+            return (
+              <p key={key}>
+                Työkalukutsu · {block.tool_name || "tuntematon"} ·{" "}
+                {block.tool_call_id || "ei tunnistetta"}
+              </p>
+            );
+          default:
+            return (
+              <p key={key}>Tuntematon sisältölohko (sisältöä ei näytetä)</p>
+            );
+        }
+      })}
+    </div>
+  );
 }
 
 export function Entry({
@@ -114,13 +160,34 @@ export function Entry({
   return (
     <>
       {entry.kind === "user" ? (
-        <UserMessage sourceText={content.text} onCopy={copy} />
+        entry.blocks ? (
+          <UserMessage
+            sourceText={entry.blocks
+              .filter((b) => b.type === "text")
+              .map((b) => b.text ?? "")
+              .join("\n")}
+            onCopy={copy}
+          />
+        ) : (
+          <UserMessage sourceText={content.text} onCopy={copy} />
+        )
       ) : null}
       {/* Native history omits the stop reason; a saved tool-use message may
           precede the rest of a still-running turn. */}
       {entry.kind === "assistant" ? (
-        <AssistantMessage onCopy={copy}>
-          {fallback ? (
+        <AssistantMessage
+          onCopy={copy}
+          modelLabel={entry.model}
+          streamState={entry.stop_reason === "error" ? "failed" : undefined}
+        >
+          {entry.blocks ? (
+            <>
+              <OrderedBlocks blocks={entry.blocks} />
+              {entry.truncated_blocks ? (
+                <p>Lohkoja katkaistu tässä näkymässä.</p>
+              ) : null}
+            </>
+          ) : fallback ? (
             <section className="ah-unknown">
               <p>Tuntematon sisältö · {fallback.type}</p>
               {fallback.summary.length ? (
@@ -141,11 +208,18 @@ export function Entry({
       {entry.kind === "tool" ? (
         <ToolRow
           name={content.text.split("\n", 1)[0] || "Työkalu"}
-          statusLabel={content.complete ? "Tulos valmis" : "Tulosta lisää"}
+          statusLabel={
+            entry.is_error
+              ? "Virhe"
+              : content.complete
+                ? "Tulos valmis"
+                : "Tulosta lisää"
+          }
           state={content.complete ? "Valmis" : "Jatkuu"}
           expanded={toolExpanded}
           onToggle={() => setToolExpanded(!toolExpanded)}
         >
+          {entry.tool_call_id ? <p>Kutsu: {entry.tool_call_id}</p> : null}
           <ToolOutput
             text={longExpanded ? content.text : content.text.slice(0, 12000)}
             streamSemantics="unknown"

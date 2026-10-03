@@ -160,3 +160,33 @@ it("accepts a late content chunk without hiding the mounted view", async () => {
     ).toBeTruthy(),
   );
 });
+
+it("renders ordered typed blocks without exposing redacted or unknown payloads", () => {
+  const { container } = render(
+    <Entry
+      entry={{
+        ...entry,
+        kind: "assistant",
+        model: "synthetic",
+        blocks: [
+          { type: "thinking", redacted: true },
+          { type: "text", text: "First" },
+          { type: "toolCall", tool_call_id: "c1", tool_name: "read" },
+          { type: "image", mime_type: "image/png" },
+          { type: "unknown" },
+          { type: "text", text: "Last" },
+        ],
+        content: {
+          media_type: "text/plain",
+          text: "unchecked-secret",
+          complete: true,
+        },
+      }}
+    />,
+  );
+  const blocks = container.querySelector(".ah-ordered-blocks");
+  expect(blocks?.textContent).toMatch(
+    /Ajattelu.*First.*read.*image\/png.*Tuntematon.*Last/s,
+  );
+  expect(container.textContent).not.toContain("unchecked-secret");
+});

@@ -50,10 +50,25 @@ type nativeSession struct {
 	boundaryFound, olderComplete   bool
 }
 type historyEntry struct {
-	Key     string         `json:"entry_key"`
-	Kind    string         `json:"kind"`
-	Content historyContent `json:"content"`
-	full    string
+	Key             string         `json:"entry_key"`
+	Kind            string         `json:"kind"`
+	Content         historyContent `json:"content"`
+	Blocks          []historyBlock `json:"blocks,omitempty"`
+	ToolCallID      string         `json:"tool_call_id,omitempty"`
+	IsError         *bool          `json:"is_error,omitempty"`
+	StopReason      string         `json:"stop_reason,omitempty"`
+	Model           string         `json:"model,omitempty"`
+	TruncatedBlocks bool           `json:"truncated_blocks,omitempty"`
+	full            string
+}
+type historyBlock struct {
+	Type       string `json:"type"`
+	Text       string `json:"text,omitempty"`
+	Redacted   bool   `json:"redacted,omitempty"`
+	MimeType   string `json:"mime_type,omitempty"`
+	ToolCallID string `json:"tool_call_id,omitempty"`
+	ToolName   string `json:"tool_name,omitempty"`
+	Arguments  string `json:"arguments,omitempty"`
 }
 type historyContent struct {
 	MediaType  string `json:"media_type"`
@@ -234,11 +249,11 @@ func readNative(path string, uid int) nativeSession {
 		seen[e.ID] = true
 		parents[e.ID] = e.ParentID
 		leaf = e.ID
-		kind, text := nativeText(e)
+		kind, _ := nativeText(e)
 		if kind == "" {
 			continue
 		}
-		result.entries = append(result.entries, historyEntry{Key: e.ID, Kind: kind, full: text})
+		result.entries = append(result.entries, nativeBlocks(e))
 	}
 	if scanner.Err() != nil || len(b) == 0 || b[len(b)-1] != '\n' {
 		result.state = "corrupt"
@@ -284,7 +299,7 @@ func nativeText(e nativeEntry) (string, string) {
 			ToolName string          `json:"toolName"`
 		}
 		if json.Unmarshal(e.Message, &m) != nil {
-			return "unknown", "Tuntematon viesti: " + string(e.Message)
+			return "unknown", "Tuntematon viesti"
 		}
 		kind := m.Role
 		if kind == "toolResult" {
@@ -303,13 +318,13 @@ func nativeText(e nativeEntry) (string, string) {
 			Name string `json:"name"`
 		}
 		if json.Unmarshal(m.Content, &blocks) != nil {
-			return "unknown", "Sisältömuotoa ei tueta: " + string(m.Content)
+			return "unknown", "Sisältömuotoa ei tueta"
 		}
 		parts := []string{}
 		if kind == "tool" && m.ToolName != "" {
 			parts = append(parts, m.ToolName)
 		}
-		for i, b := range blocks {
+		for _, b := range blocks {
 			if b.Type == "text" {
 				parts = append(parts, b.Text)
 			} else if b.Type == "toolCall" {
@@ -317,14 +332,12 @@ func nativeText(e nativeEntry) (string, string) {
 			} else {
 				// Keep the complete unknown block, not just its type. Rendered as
 				// text by the browser; no native content is interpreted as markup.
-				var raw []json.RawMessage
-				_ = json.Unmarshal(m.Content, &raw)
-				parts = append(parts, "[Sisältöä ei tueta: "+b.Type+"] "+string(raw[i]))
+				parts = append(parts, "[Sisältöä ei tueta: "+b.Type+"]")
 			}
 		}
 		return kind, strings.Join(parts, "\n")
 	default:
-		return "unknown", "Tuntematon Pi-tapahtuma: " + e.Type + "\n" + string(e.Raw)
+		return "unknown", "Tuntematon Pi-tapahtuma: " + e.Type
 	}
 }
 func contentID(s *nativeSession, key string) string {

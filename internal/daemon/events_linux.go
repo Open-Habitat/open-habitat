@@ -105,7 +105,7 @@ func (j *eventJournal) appendNativeEntry(agent string, entry historyEntry) {
 	if j.instance == "" {
 		return
 	}
-	j.appendLocked("history.entry", agent, entry.Key, map[string]any{"entry_key": entry.Key, "entry_kind": entry.Kind, "content": entry.Content})
+	j.appendLocked("history.entry", agent, entry.Key, nativeEntryPayload(entry))
 }
 func (j *eventJournal) appendLocked(kind, agent, nativeKey string, payload any) {
 	id, ok := uuid()
@@ -239,7 +239,7 @@ func (j *eventJournal) nativeEntry(agent string, entry historyEntry) {
 	t := j.tail(agent)
 	j.flushTextLocked(agent, t)
 	j.nativeGen++
-	j.appendLocked("history.entry", agent, entry.Key, map[string]any{"entry_key": entry.Key, "entry_kind": entry.Kind, "content": entry.Content})
+	j.appendLocked("history.entry", agent, entry.Key, nativeEntryPayload(entry))
 	// Pi does not give RPC deltas a persistent key. Assistant entries supersede
 	// the provisional turn as a unit, never match on text or event arrival time.
 	if entry.Kind == "assistant" {
@@ -382,4 +382,27 @@ func (j *eventJournal) stream(w http.ResponseWriter, r *http.Request, valid func
 			return
 		}
 	}
+}
+
+func nativeEntryPayload(entry historyEntry) map[string]any {
+	payload := map[string]any{"entry_key": entry.Key, "entry_kind": entry.Kind, "content": entry.Content}
+	if len(entry.Blocks) > 0 {
+		payload["blocks"] = entry.Blocks
+	}
+	if entry.ToolCallID != "" {
+		payload["tool_call_id"] = entry.ToolCallID
+	}
+	if entry.IsError != nil {
+		payload["is_error"] = *entry.IsError
+	}
+	if entry.StopReason != "" {
+		payload["stop_reason"] = entry.StopReason
+	}
+	if entry.Model != "" {
+		payload["model"] = entry.Model
+	}
+	if entry.TruncatedBlocks {
+		payload["truncated_blocks"] = true
+	}
+	return payload
 }

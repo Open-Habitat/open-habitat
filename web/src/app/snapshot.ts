@@ -4,6 +4,7 @@ import annotations from "../../../contracts/v1/annotations.schema.json";
 import command from "../../../contracts/v1/command.schema.json";
 import common from "../../../contracts/v1/common.schema.json";
 import event from "../../../contracts/v1/event.schema.json";
+import history from "../../../contracts/v1/history.schema.json";
 import operation from "../../../contracts/v1/operation.schema.json";
 import schema from "../../../contracts/v1/snapshot.schema.json";
 import type { Event } from "../contracts/v1.generated";
@@ -15,6 +16,7 @@ for (const definition of [
   annotations,
   command,
   event,
+  history,
   operation,
   schema,
 ])
