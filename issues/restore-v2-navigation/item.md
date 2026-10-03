@@ -1,6 +1,6 @@
 ---
 created: 2026-10-01
-updated: 2026-10-01
+updated: 2026-10-03
 type: task
 reporter: jari
 status: open
@@ -50,8 +50,7 @@ at 1440 px):
 
 ## Rules that win
 
-The handoff's "Ilmeen säännöt" are binding, and the draft's vocabulary is
-the way to be honest:
+The [design](../../design-system/design.md) describes the shared presentation:
 
 - Only deviations show. Default states (ready, browser control, queue 0,
   accepted send, unknown-but-normal process state) are not written out.
@@ -73,25 +72,23 @@ the way to be honest:
 Use a fresh lab and a deterministic fixture that shows the draft's states:
 at least one running conversation with tool rows and two queued items, one
 answered, one read-only, no duplicates. Refresh the pairs with
-`web/lab/compare-v2.mjs` and put the before/after pairs in this issue
+`web/lab/compare-design.mjs` and put the before/after pairs in this issue
 folder. The conductor reviews the pairs against the draft before the issue
 counts as done; write the issue's result so that the pairs are the first
 thing a reviewer sees.
-## Shared context for every design-v2 slice
+## Design sources
 
-- Benchmark: [handoff](../../design-system/drafts/v2/handoff.md) and the
-  drafts in `../../design-system/drafts/v2/vedokset/`; the
+- Benchmark: [design](../../design-system/design.md) and the
+  drafts in `../../design-system/drafts/`; the
   [assessment](../review-browser-design-v2/assessment.md) explains the gaps
   and the [first reading](../review-browser-design-v2/first-read.md) the
   known behavioural differences.
-- Provisional decisions for the night of 2026-09-30 (recorded on
-  @review-browser-design-v2; Jari may overturn them): phone width is in scope,
-  and the v2 sizing table is the source of the shared values.
+- Phone layouts are included. Shared sizing is defined in the design tokens.
 - Agreed repository-chooser default: all repositories visible, time filtering
-  is the user's choice (not the handoff's monthly default).
+  is the user's choice.
 - Keep existing state handling, polling, session binding, drafts, reading
   position and uncertain-send honesty. Where the draft contradicts
-  `docs/ui.md`, `docs/interfaces.md`, `design-system/production-v1.md` or the
+  `docs/ui.md`, `docs/interfaces.md`, `design-system/design.md` or the
   state machine, do not resolve it silently: record the deviation in this
   issue and follow the existing agreement.
 - Only existing `--ah-*` colour tokens. Icons must not depend on the system

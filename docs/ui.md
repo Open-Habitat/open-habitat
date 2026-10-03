@@ -148,12 +148,9 @@ vastauksen ja perumisen vain selaimen omiin keskusteluihin.
 [Design system](design-system.md) johtaa visuaalisiin lähteisiin,
 komponenttisopimuksiin ja ajettavaan katalogiin. Sovellus ja Storybook käyttävät
 samoja tuotantokomponentteja. Selainpohjaksi on valittu React ja TypeScript
-[ADR 0002:ssa](adr-0002-frontend-stack.md). Reitit, näppäinkomennot,
-fokuksen yksityiskohdat ja tilaesimerkit löytyvät
-[tuotantodesignista](../design-system/production-v1.md); protokollan toiminta
-[rajapintasivulta](interfaces.md). Alkuperäiset
-[suunnittelijan vedokset](../issues/receive-designer-v1/review.md) ovat
-ulkoasun lähteitä, eivät näyttö toimivasta integraatiosta.
+[ADR 0002:ssa](adr-0002-frontend-stack.md). Näkymien sommittelu ja vuorovaikutus löytyvät
+[designista](../design-system/design.md); protokollan toiminta
+[rajapintasivulta](interfaces.md). [Vedokset](../design-system/drafts/) näyttävät tavoitellun ulkoasun.
 
 Näppäimistöllä ja ruudunlukijalla on voitava käyttää samoja toimintoja.
 Pitkä sisältö, zoomaus ja vähennetty liike eivät saa peittää toimintoja tai
@@ -165,5 +162,5 @@ Toteutusta arvioidaan toimivista käyttökuluista, testeistä ja kuvista. Kunkin
 issuen näyttö kertoo, mitä tarkistettiin, millä revisiolla ja millä ympäristöllä.
 Jarin visuaalinen palaute kirjataan ja korjataan työn yhteydessä. Odottava
 ulkoasukatselmointi ei estä toiminnallista valmistumista tai riippumatonta työtä,
-eikä erillistä lopullista MVP-hyväksyntäporttia ole. Mobiili, usean palvelimen
+eikä erillistä lopullista MVP-hyväksyntäporttia ole. Puhelinasettelu kuuluu designiin. Usean palvelimen
 navigointi ja prosessikeskus odottavat omaa päätöstään.

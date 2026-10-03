@@ -4,12 +4,12 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 // Draft reference vs. synthetic host, never a live profile/server. Run from repo root.
-// NAH_PORT_BASE=21000 PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/ms-playwright" node web/lab/compare-v2.mjs
+// NAH_PORT_BASE=21000 PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/ms-playwright" node web/lab/compare-design.mjs
 import { chromium } from "@playwright/test";
 import { origin, snapshot } from "./session.mjs";
 
 const root = resolve("issues/polish-v2-conversation/pairs");
-const drafts = resolve("design-system/drafts/v2/vedokset");
+const drafts = resolve("design-system/drafts");
 const fontDir = resolve("design-system/fonts");
 const fontCss = (
   await Promise.all(
@@ -480,7 +480,7 @@ try {
       await fixture("scenario?value=ready");
     }
     await draftShot(
-      width === 390 ? "Puhelin v2.dc.html" : "Selainpolku v2.dc.html",
+      width === 390 ? "Puhelin.dc.html" : "Selainpolku.dc.html",
       mode,
       theme,
       width,

@@ -14,11 +14,11 @@ ei valita frontend-tekniikkaa tai arvioida mockeja backend-testinä.
 
 Visuaaliset referenssit:
 
-- keskustelun [klikattava pääpolku](../../design-system/drafts/v1/vedokset/Keskustelu%20paapolku.dc.html),
-  [B1–B10 ja B12 -tilat](../../design-system/drafts/v1/vedokset/Tilat%20B1-B12.dc.html)
-  sekä [B5a–B5f-työkalutilat](../../design-system/drafts/v1/vedokset/Tilat%20B5.dc.html);
-- hostin [klikattava A1–A9-päävedos](../../design-system/drafts/v1/workspaces/Agenttilista%20vasemmalla.dc.html)
-  ja [A1–A9-yhteenveto](../../design-system/drafts/v1/workspaces/Yhteenveto%20A1-A9.dc.html);
+- keskustelun [klikattava pääpolku](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/drafts/v1/vedokset/Keskustelu%20paapolku.dc.html),
+  [B1–B10 ja B12 -tilat](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/drafts/v1/vedokset/Tilat%20B1-B12.dc.html)
+  sekä [B5a–B5f-työkalutilat](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/drafts/v1/vedokset/Tilat%20B5.dc.html);
+- hostin [klikattava A1–A9-päävedos](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/drafts/v1/workspaces/Agenttilista%20vasemmalla.dc.html)
+  ja [A1–A9-yhteenveto](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/drafts/v1/workspaces/Yhteenveto%20A1-A9.dc.html);
 - [yhteinen design system](../../design-system/AGENTS.md).
 
 HTML-vedosten data, ajastimet, jonot, virheet ja toiminnot ovat simuloituja.

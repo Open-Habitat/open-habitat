@@ -1,6 +1,6 @@
 ---
 created: 2026-09-30
-updated: 2026-09-30
+updated: 2026-10-03
 type: task
 reporter: jari
 status: open
@@ -12,11 +12,11 @@ collision: [design-system/, web/src/components/, web/src/components/Conversation
 blocked_by: ['@fit-sidebar-v2', '@show-large-clone-progress']
 ---
 
-# Fit onboarding to browser design v2
+# Fit onboarding to browser design
 
 ## Goal
 
-Fit onboarding to v2: the shared frame (product name and server above the
+Fit onboarding to the design: the shared frame (product name and server above the
 card, step indicator 1 GitHub → 2 Repot → 3 OpenAI, next step below), compact
 repository rows as whole-row choices, the code display and the confirmation
 for abandoning onboarding. All repositories are visible by default and time
@@ -32,21 +32,19 @@ Waits for @show-large-clone-progress, which changes `GitHubOnboarding.tsx`.
   at phone width, with the agreed repository default.
 - [ ] State-machine changes, if any, are recorded with the reason.
 - [ ] Stories in both themes; lab screenshots in this issue folder.
-## Shared context for every design-v2 slice
+## Design sources
 
-- Benchmark: [handoff](../../design-system/drafts/v2/handoff.md) and the
-  drafts in `../../design-system/drafts/v2/vedokset/`; the
+- Benchmark: [design](../../design-system/design.md) and the
+  drafts in `../../design-system/drafts/`; the
   [assessment](../review-browser-design-v2/assessment.md) explains the gaps
   and the [first reading](../review-browser-design-v2/first-read.md) the
   known behavioural differences.
-- Provisional decisions for the night of 2026-09-30 (recorded on
-  @review-browser-design-v2; Jari may overturn them): phone width is in scope,
-  and the v2 sizing table is the source of the shared values.
+- Phone layouts are included. Shared sizing is defined in the design tokens.
 - Agreed repository-chooser default: all repositories visible, time filtering
-  is the user's choice (not the handoff's monthly default).
+  is the user's choice.
 - Keep existing state handling, polling, session binding, drafts, reading
   position and uncertain-send honesty. Where the draft contradicts
-  `docs/ui.md`, `docs/interfaces.md`, `design-system/production-v1.md` or the
+  `docs/ui.md`, `docs/interfaces.md`, `design-system/design.md` or the
   state machine, do not resolve it silently: record the deviation in this
   issue and follow the existing agreement.
 - Only existing `--ah-*` colour tokens. Icons must not depend on the system

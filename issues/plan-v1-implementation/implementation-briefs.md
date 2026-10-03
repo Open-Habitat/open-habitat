@@ -10,8 +10,8 @@ the linked issues own implementation scope and verification.
 - [Architecture](../../docs/architecture.md) and the ADRs define component authority.
 - [Interfaces](../../docs/interfaces.md) and [contracts](../../contracts/v1/AGENTS.md)
   define messages and their meaning.
-- [Production design](../../design-system/production-v1.md) and the
-  [component catalog](../../design-system/component-catalog-v1.md) guide shared UI.
+- [Production design](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/production-v1.md) and the
+  [component catalog](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/component-catalog-v1.md) guide shared UI.
 - [Local checks](../../scripts/AGENTS.md) describe the executable clean gate.
 - Test plans and results belong to the implementing issue. Concrete installation,
   upgrade and rollback procedures belong to Fleetrepo's test-installation runbook.

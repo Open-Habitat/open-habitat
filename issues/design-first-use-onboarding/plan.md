@@ -27,7 +27,7 @@ Only a native status check confirming usable credentials opens normal
 workspaces, histories and agent control. API keys and other login methods are
 later work.
 
-The [v2 onboarding draft](../../design-system/drafts/v2/vedokset/Onboarding%20v2.dc.html)
+The [v2 onboarding draft](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/drafts/v2/vedokset/Onboarding%20v2.dc.html)
 is the visual reference for the shared frame, step indicator, repository list,
 code presentation and interruption confirmation. The
 [design assessment](../review-browser-design-v2/assessment.md) relates it to the

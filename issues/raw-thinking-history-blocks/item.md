@@ -1,6 +1,6 @@
 ---
 created: 2026-10-02
-updated: 2026-10-02
+updated: 2026-10-03
 type: bug
 reporter: jari
 status: untriaged
@@ -49,7 +49,7 @@ omitted from the reading view should have an explained treatment as well.
 
 Build on the existing production components and Storybook catalog described in
 [the design system](../../docs/design-system.md) and
-[the component catalog](../../design-system/component-catalog-v1.md). The designer
+[the component catalog](../../design-system/components.md). The designer
 designs every visible block type and its relevant presentation states, including
 the unknown-content fallback. The agent inventories the types, explains their
 meaning and behavior, and supplies representative content and states as design

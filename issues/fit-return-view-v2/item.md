@@ -1,6 +1,6 @@
 ---
 created: 2026-09-30
-updated: 2026-10-01
+updated: 2026-10-03
 type: task
 reporter: jari
 status: done
@@ -35,7 +35,7 @@ state, counts or timestamps. Update the affected pairs in
 - [x] Stories and pairs updated.
 ## Shared context for every design-v2 slice
 
-- Benchmark: [handoff](../../design-system/drafts/v2/handoff.md) and the
+- Benchmark: [handoff](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/drafts/v2/handoff.md) and the
   drafts in `../../design-system/drafts/v2/vedokset/`; the
   [assessment](../review-browser-design-v2/assessment.md) explains the gaps
   and the [first reading](../review-browser-design-v2/first-read.md) the

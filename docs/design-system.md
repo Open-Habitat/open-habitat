@@ -1,6 +1,6 @@
 # Design system
 
-V1:n tuotantodesign, yhteinen visuaalinen perusta ja komponenttien rajat ovat
+Käyttöliittymän design, yhteinen visuaalinen perusta ja komponenttien rajat ovat
 [design-system-hakemistossa](../design-system/AGENTS.md). Tokeniarvot ja propsit
 määritellään vain omissa lähteissään.
 
@@ -45,23 +45,16 @@ löytyvät helposti. Sama työtapa koskee uusia lohkotyyppejä. Tämä on
 katalogi on lähtökohta, mutta kaikkien lohkojen kattavuutta ja historian sekä
 reaaliaikaisen keskustelun yhtenäistä tulkintaa ei ole vielä toteutettu.
 
-## Tuotantodesign v1
+## Design ja sen lähteet
 
-- [Yhdistetty tuotantodesign](../design-system/production-v1.md) ratkaisee
-  workspace- ja keskustelutoimitusten erot, teemat, reitit, luonnokset,
-  lukukohdan, fokuksen, keyboardin, streamingin ja saavutettavuuden.
-- [Komponenttikatalogin sopimus](../design-system/component-catalog-v1.md)
-  määrittää hyväksyttyjen journeyjen tarvitsemat primitiivit ja tuoteosat,
-  julkiset tuotetermiset propsit/tapahtumat sekä pakolliset tilaesimerkit.
-- Historialliset keskustelu- ja workspace-vedokset ovat
-  [`design-system/drafts/v1/`](../design-system/drafts/v1/)-hakemistossa.
-  Ne eivät ole tuotantokoodia tai näyttö backend-kyvystä.
+[Design](../design-system/design.md) kuvaa ilmeen, näkymät ja vuorovaikutuksen.
+[Vedokset](../design-system/drafts/) näyttävät sommittelun työpöydällä ja
+puhelimessa. [Komponenttikartta](../design-system/components.md) johtaa
+sovelluksen ja Storybookin käyttämiin lähteisiin.
 
-Vaalea ja tumma teema kuuluvat molemmat v1:een. Järjestelmäteema on oletus ja
-laitteen paikallinen valinta on esitystila, ei host-snapshotin fakta. UI on
-suomenkielinen; tekniset tunnisteet säilyvät muuttumattomina. `styles.css` on
-tokenien ainoa sisääntulo. Jokainen tila saa värin lisäksi tekstin tai muun
-ei-värillisen merkin.
+Vaalea ja tumma teema ovat yhtä tuettuja. Järjestelmäteema on oletus ja
+laitteen paikallinen valinta on esitystila. UI on suomenkielinen; tekniset
+tunnisteet säilyvät muuttumattomina. `styles.css` on tokenien sisääntulo.
 
 ## Kerrokset ja omistajuus
 

@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-30
+updated: 2026-10-03
 type: task
 status: open
 priority: normal
@@ -49,7 +49,7 @@ Use the current [architecture](../../docs/architecture.md),
 select integration checks. [TESTING.md](../../TESTING.md) describes executable
 checks and what their evidence proves. The
 [delivery plan](../plan-v1-implementation/plan.md) records the historical direction;
-[production design](../../design-system/production-v1.md) is the current design.
+[production design](../../design-system/design.md) is the current design.
 The [design package](../native-agent-host-architecture/ui-design-package.md) and
 [conversation brief](../native-agent-host-architecture/ui-design-conversation.md)
 provide earlier design context.

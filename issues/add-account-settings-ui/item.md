@@ -34,7 +34,7 @@ The account still reads “Oma tili” in both the rail and settings. There is n
 email or profile image, and the snapshot contract carries no person-facing
 profile fields.
 
-The v2 design includes GitHub and OpenAI under “Yhteydet tällä palvelimella”,
+The design includes GitHub and OpenAI under “Yhteydet tällä palvelimella”,
 but only GitHub is shown. Pi's status contract reports `usable`, `missing` or
 `unknown`. It supplies neither the OpenAI account identity nor the result of
 a live provider request. The settings browser test currently expects the

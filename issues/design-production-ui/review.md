@@ -6,16 +6,16 @@ landauksen jälkeen; työn sisältävä commit on tämän tiedoston Git-historia
 
 ## Katso nämä
 
-1. [Yhdistetty tuotantodesign](../../design-system/production-v1.md)
-2. [Komponenttikatalogin sopimus](../../design-system/component-catalog-v1.md)
-3. [Staattinen korjauskierros](../../design-system/ui_kits/production-v1/index.html)
+1. [Yhdistetty tuotantodesign](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/production-v1.md)
+2. [Komponenttikatalogin sopimus](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/component-catalog-v1.md)
+3. [Staattinen korjauskierros](https://github.com/maintainer/native-agent-host/blob/c3cd5cb4fb34556ca0fadcb35277f83dcb119e29^/design-system/ui_kits/production-v1/index.html)
 4. [Käyttökulujen yhteenveto](../../docs/ui.md)
 5. [Design systemin opas](../../docs/design-system.md)
 6. [V1-host-sopimuksen merkitys](../../docs/interfaces.md) ja
    [koneellinen sopimus](../../contracts/v1/AGENTS.md)
 
-Alkuperäiset [keskustelu-](../../design-system/drafts/v1/vedokset/) ja
-[workspace-referenssit](../../design-system/drafts/v1/workspaces/) säilyvät
+Alkuperäiset [keskustelu-](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/drafts/v1/vedokset) ja
+[workspace-referenssit](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/drafts/v1/workspaces) säilyvät
 muuttamattomina. Staattinen kierros ei sisällä mock-backendia tai toimivia
 komentoja.
 

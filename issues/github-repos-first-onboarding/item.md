@@ -1,6 +1,6 @@
 ---
 created: 2026-09-29
-updated: 2026-09-29
+updated: 2026-10-03
 type: feature
 status: testing
 priority: high
@@ -41,7 +41,7 @@ before offering another write. If observation also fails, explain that the
 result could not be verified and offer another read-only check. Show which
 repositories succeeded when only some did; a partial directory or conflicting
 origin needs an honest explanation, not automatic removal or another clone.
-The v2 draft's success/error presentation must still express this uncertainty.
+The draft's success/error presentation must still express this uncertainty.
 
 ## Acceptance Criteria
 
@@ -51,7 +51,7 @@ The v2 draft's success/error presentation must still express this uncertainty.
   behind the Pi gate.
 - [ ] Returning users and interrupted or partial checkouts recover from native
   facts without duplicate writes, misleading success or cross-user data.
-- [ ] The v2 chooser and its failure states have visual evidence. The result
+- [ ] The repository chooser and its failure states have visual evidence. The result
   distinguishes synthetic tests, earlier live observations and what has been
   verified on the installed release.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Deterministic synthetic host dialog paired with the v2 working-view composition.
+// Deterministic synthetic host dialog paired with the design’s working-view composition.
 import { chromium } from "@playwright/test";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -8,7 +8,7 @@ import { origin, openLab, snapshot } from "./session.mjs";
 
 const root = resolve("issues/show-pi-dialogs/pairs");
 await mkdir(root, { recursive: true });
-const drafts = resolve("design-system/drafts/v2/vedokset");
+const drafts = resolve("design-system/drafts");
 const fonts = (
   await Promise.all(
     [
@@ -37,7 +37,7 @@ try {
         pathToFileURL(
           resolve(
             drafts,
-            width === 390 ? "Puhelin v2.dc.html" : "Selainpolku v2.dc.html",
+            width === 390 ? "Puhelin.dc.html" : "Selainpolku.dc.html",
           ),
         ).href,
       );
@@ -76,7 +76,7 @@ try {
         await readFile(
           resolve(
             drafts,
-            width === 390 ? "Puhelin v2.dc.html" : "Selainpolku v2.dc.html",
+            width === 390 ? "Puhelin.dc.html" : "Selainpolku.dc.html",
           ),
         ),
       );

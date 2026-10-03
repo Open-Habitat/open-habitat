@@ -1,6 +1,6 @@
 ---
 created: 2026-09-27
-updated: 2026-09-29
+updated: 2026-10-03
 type: feature
 status: open
 priority: high
@@ -19,7 +19,7 @@ can choose no repositories and continue. A returning user with usable Pi
 credentials enters normal workspaces directly. The agreed journey and recovery
 behavior are described in [plan.md](plan.md).
 
-The visual target is the new **browser design v2**, supplied under
+The visual target is the **browser design**, supplied under
 [@review-browser-design-v2](../review-browser-design-v2/item.md). This issue
 owns composing its onboarding screens from production components and connecting
 them to the existing flow. The design review coordinates shared UI improvements;
@@ -34,7 +34,7 @@ components. Each report establishes only the revision and environment it tested.
 
 ## Remaining work
 
-Fit login, repository selection and OpenAI sign-in into the v2 layout, with
+Fit login, repository selection and OpenAI sign-in into the design layout, with
 clear progress, recovery and a way to interrupt onboarding and log out. All
 repositories are visible by default, with time filtering chosen by the user.
 Unverified checkout or login results remain explicit even when a draft omits
@@ -63,7 +63,7 @@ name/email sources and connection controls.
 
 ## Acceptance Criteria
 
-- [ ] The v2 onboarding screens deliver the agreed GitHub → repositories →
+- [ ] The onboarding screens deliver the agreed GitHub → repositories →
   OpenAI journey using the existing native integrations and shared UI.
 - [ ] First use, returning users, empty selection, interrupted sign-in and
   uncertain or partial checkout have understandable recovery without false

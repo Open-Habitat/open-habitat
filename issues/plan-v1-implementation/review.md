@@ -19,7 +19,7 @@ Review:
 - [Proposed ADR 0002](../../docs/adr-0002-frontend-stack.md): React 19.3, stable TypeScript 7.0.2, Vite/React Router/Redux/React Aria, Biome 2.5.14 and `tsc --noEmit`;
 - [Proposed ADR 0003](../../docs/adr-0003-host-stack.md): one Go 1.27.1 codebase/binary, systemd UDS routing and direct Pi child ownership;
 - [Host interfaces](../../docs/interfaces.md), [schemas/examples/scenarios](../../contracts/v1/AGENTS.md): executable additive CG-01–CG-04 and CT-001–CT-034;
-- [Production design](../../design-system/production-v1.md) and [component catalog](../../design-system/component-catalog-v1.md);
+- [Production design](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/production-v1.md) and [component catalog](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/component-catalog-v1.md);
 - [Corrected implementation briefs](implementation-briefs.md), downstream issues and acceptance workflow.
 
 ## Jari's eight decisions to record

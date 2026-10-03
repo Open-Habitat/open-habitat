@@ -38,19 +38,19 @@ than backend evidence.
 
 ### Canonical production design
 
-- Added [`design-system/production-v1.md`](../../design-system/production-v1.md):
+- Added [`design-system/production-v1.md`](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/production-v1.md):
   reconciled source deviations; both light/dark themes; visual foundation;
   integrated app shell; routes/deep links; identity-scoped return routes;
   drafts and reload-safe uncertain receipts; reading anchors; virtualized and
   accessible paged history; selection/copy; streaming cadence; keyboard/focus;
   composer, Pi queue and questions; TUI transfer; connection/auth/read-only;
   workspace/Git/GitHub/Taskfleet/archive/delete flows and partial operations.
-- Added [`design-system/component-catalog-v1.md`](../../design-system/component-catalog-v1.md):
+- Added [`design-system/component-catalog-v1.md`](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/component-catalog-v1.md):
   the needed primitives and product components, product-term props/intents,
   composition boundaries, all relevant async/read-only/stale/unknown/partial
   states and the implementation catalog/story matrix. Visual components never
   own Pi/network/domain reconciliation.
-- Added [`design-system/ui_kits/production-v1/`](../../design-system/ui_kits/production-v1/)
+- Added [`design-system/ui_kits/production-v1/`](https://github.com/maintainer/native-agent-host/blob/c3cd5cb4fb34556ca0fadcb35277f83dcb119e29^/design-system/ui_kits/production-v1)
   with the AGENTS/CLAUDE convention and a static, no-mock correction artifact.
 - Reconciled shared tokens by adding rail/scrim and overlay shadows and replacing
   the conversation delivery's 380–900 ms motion with 160–180 ms production

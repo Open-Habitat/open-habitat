@@ -1,6 +1,6 @@
 ---
 created: 2026-09-21
-updated: 2026-09-30
+updated: 2026-10-03
 type: task
 status: open
 priority: normal
@@ -17,10 +17,10 @@ Let users create, configure, hide, restore and delete local workspaces discovere
 under `~/src`, while preserving the filesystem and native tools as the source
 of truth.
 
-The [workspace handoff](../../design-system/drafts/v1/workspaces/AGENTS.md)
+The [workspace handoff](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/drafts/v1/workspaces/AGENTS.md)
 describes the accepted experience. Agreed [product behavior](../../docs/product.md),
 [interfaces](../../docs/interfaces.md) and
-[production design](../../design-system/production-v1.md) carry its subsequent
+[production design](../../design-system/design.md) carry its subsequent
 decisions. The [implementation map](../plan-v1-implementation/implementation-briefs.md)
 separates this issue from GitHub integration and Taskfleet worktree management.
 

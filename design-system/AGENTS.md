@@ -1,36 +1,23 @@
 # Agent Host UI
 
 Tämä hakemisto on käyttöliittymän yhteinen visuaalinen perusta: tokenit, niiden
-käyttöä näyttävät ohjekortit, paketoidut fontit sekä tuotantodesignin ja
-komponenttikatalogin määrittelyt. Tuotantokomponentit itse ovat
+käyttöä näyttävät ohjekortit, paketoidut fontit sekä designin kuvaus ja
+komponenttikartta. Tuotantokomponentit itse ovat
 `web/src/components/`-hakemistossa; tämä hakemisto kertoo, miltä niiden pitää
 näyttää ja mitä ne saavat omistaa. Tuotteen arkkitehtuuri on `docs/architecture.md`:ssä
 ja selainsovelluksen tila- ja turvarajat `web/AGENTS.md`:ssä.
 
 ## Mistä tieto löytyy
 
-[`production-v1.md`](production-v1.md) on tuotantodesignin kanoninen määrittely.
-Se sovittaa kaksi vastaanotettua designtoimitusta yhdeksi ratkaisuksi ja päättää
-teemat, reitit, fokuksen, streamingin, tilojen sanaston ja journeyt.
-[`component-catalog-v1.md`](component-catalog-v1.md) on tuotantokomponenttien
-julkinen sopimus: propsit, tapahtumat, tilat ja pakolliset story-esimerkit. Kun
-nämä ja koneellinen host-sopimus `contracts/v1/` ovat eri mieltä, tuotantodesign
-ratkaisee ulkoasun ja vuorovaikutuksen ja host-sopimus sen, mitä tietoa ja
-komentoja on saatavilla. Ajettava katalogi käynnistyy komennolla
-`npm run storybook --prefix ../web -- --no-open`; `docs/design-system.md` kuvaa
-sen ryhmät ja tarkistuskomennot.
+[design.md](design.md) kuvaa nykyisen designin ja [drafts/](drafts/) näyttää
+sen näkymät. [components.md](components.md) johtaa tuotantokomponentteihin ja
+niiden Storybook-esimerkkeihin. Propsit määritellään komponenttien lähdekoodissa,
+ja `contracts/v1/` kertoo hostin tarjoaman tiedon ja komennot.
 
-Päätösten perustelut ovat issueissa. [`issues/receive-designer-v1/review.md`](../issues/receive-designer-v1/review.md)
-kirjaa toimitusten alkuperät ja Jarin hyväksymän suunnan,
-[`issues/review-ui-v1/review.md`](../issues/review-ui-v1/review.md) hyväksytyt
-UI-päätökset. Alkuperäiset vedokset ja klikattavat simulaatiot ovat
-[`design-system/drafts/v1/`](drafts/v1/)-hakemistossa
-muuttumattomana evidenssinä, jonka checksumit on kirjattu. Ne ovat hyviä
-sommittelureferenssejä, mutta niiden ehdottamat rajapinnat eivät ole sopimus:
-yksittäisen jonorivin peruminen, kiinteä otsikon uudelleengenerointirytmi ja vain
-hoverissa näkyvä tieto korjattiin tuotantodesignissa tietoisesti. Samasta syystä
-vanhat `design-system/components/`-mockit poistettiin, kun ajettava katalogi
-korvasi ne.
+Designia päivitetään samoihin tiedostoihin. Korvatut vedokset ja ohjeet jäävät
+Git-historiaan, jotta nykyisessä puussa ja designerille lähtevässä paketissa on
+yksi suunnittelukohde. `docs/ui.md` kuvaa käyttökulut ja
+`docs/design-system.md` katalogin avaamisen.
 
 ## Päätökset, joita ei tehdä uudestaan koodissa
 
@@ -59,8 +46,7 @@ Se ei avaa verkkoa, muodosta command ID:tä, sovita snapshotia ja SSE-tapahtumia
 päättele Pi-capabilityä eikä tallenna luonnosta; nämä omistaa sovelluskerros ADR
 0002:n tilanomistustaulukon mukaan. Jos komponentti päättelisi host-tilaa itse,
 sovelluksessa olisi kaksi käsitystä siitä, mitä agentti tekee, ja ne eroaisivat
-juuri katkosten aikana, kun rehellisyys on tärkeintä. Tarkka lista komponentin
-paikallisesta tilasta on tuotantodesignin osiossa "Rajaus ja omistajuus".
+juuri katkosten aikana, kun rehellisyys on tärkeintä. Tilan omistajuus on kuvattu `docs/conversation-data-flow.md`:ssä.
 
 ## Tokenit, ohjekortit ja fontit
 
@@ -78,8 +64,7 @@ ja näyttävät tokenien tarkoitetun käytön, tilamerkinnät ja saavutettavuude
 perustason; ne avautuvat suoraan selaimessa. `fonts/` sisältää paketoidut
 Instrument Sans- ja JetBrains Mono -fontit, ja `fonts/AGENTS.md` kertoo niiden
 lisenssit ja alkuperän. Tuotanto ei lataa fontteja kolmannen osapuolen
-palvelimelta. `ui_kits/conversation/` on yksi staattinen koostamisesimerkki, ei
-tuotevaatimus.
+palvelimelta. Kokonaiset näkymät kootaan tuotantokomponenteista synteettisessä labissa.
 
 ## Mitä kaikki näkymät sanovat käyttäjälle
 
@@ -97,19 +82,14 @@ ovat tuotantodesignissa.
 
 Näkymäkohtaiset ratkaisut, kuten otsikoiden generointi, polkujen lyhentäminen,
 puhujatunnisteet, jonon esitys ja ohjaustoiminnot, kuuluvat kyseisen näkymän
-hyväksyttyyn suunnitelmaan eivätkä tänne yleisiksi säännöiksi. Ensimmäinen
-designtoimitus ehdotti useita tällaisia, ja osa hylättiin katselmoinnissa. Design
-systemin yleissääntönä hylätty päätös tulisi takaoven kautta voimaan kaikissa
-näkymissä.
+hyväksyttyyn suunnitelmaan eivätkä tänne yleisiksi säännöiksi. Yhden näkymän ratkaisu ei sellaisenaan ole kaikkien näkymien sääntö.
 
 ## Komponentit ja Storybook
 
 Sovellus, Storybook ja testien deterministinen preview tuovat samat
 TypeScript-moduulit `web/src/components/`-hakemistosta. Story näyttää oikean
 komponentin tilat valmiilla fixturella; jos storyyn rakennetaan oma kontrolli tai
-logiikka, katalogi todistaa jonkin muun kuin tuotannon toimivuuden. Katalogin
-sopimus kertoo, mitä komponentin pitää tukea (pitkä suomenkielinen sisältö,
-näppäimistö, tumma teema, 200 %:n zoom, reduced motion), ja `web/AGENTS.md` sekä
+logiikka, katalogi todistaa jonkin muun kuin tuotannon toimivuuden. Katalogi näyttää komponenttien olennaiset tilat, ja `web/AGENTS.md` sekä
 `docs/design-system.md` kertovat, millä komennoilla se tarkistetaan.
 
 Visual evidence is a paired synthetic-lab screenshot and offline static HTML

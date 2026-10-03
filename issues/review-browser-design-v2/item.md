@@ -1,6 +1,6 @@
 ---
 created: 2026-09-30
-updated: 2026-10-01
+updated: 2026-10-03
 type: task
 reporter: jari
 status: open
@@ -10,7 +10,7 @@ lane: design-review
 collision: [design-system/, docs/, web/src/components/Conversation.tsx]
 ---
 
-# Assess the UI foundation against browser design v2
+# Assess the UI foundation against browser design
 
 ## Goal
 
@@ -27,7 +27,8 @@ or whether shared foundations need work, and recommend a path to the result.
 
 ## Input
 
-Jari provided the design extracted in `design/`.
+The [design](../../design-system/design.md) and
+[reference screens](../../design-system/drafts/) are the visual target.
 
 ## Assessment
 
@@ -59,8 +60,7 @@ layout and component styling problems, with code examples and a component map.
 It recommends proving shared improvements in a complete view before extending
 them across the UI. Implementation mechanisms, work division and visual test
 methods remain proposals; the target is faithful design and predictable shared
-adjustments. Mobile scope and adopting the v2 sizing as the token source remain Jari's
-open choices; the repository filter default is agreed (see Decisions). The assessment uses source inspection and earlier synthetic screenshots,
+adjustments. Phone layouts and the design sizing are agreed; the repository filter is optional (see Decisions). The assessment uses source inspection and earlier synthetic screenshots,
 not a new demonstration of the whole UI's behavior.
 Functional decisions from @rethink-project-docs inform the target: uncertain
 native writes, identity boundaries and preserved user input still need honest

@@ -1,6 +1,6 @@
 ---
 created: 2026-09-21
-updated: 2026-09-30
+updated: 2026-10-03
 type: task
 status: open
 priority: normal
@@ -18,12 +18,12 @@ agent and follow it in the workspace navigation.
 
 The [implementation briefs](../plan-v1-implementation/implementation-briefs.md)
 identify current ownership. The accepted
-[designer handoff](../../design-system/drafts/v1/workspaces/AGENTS.md)
+[designer handoff](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/drafts/v1/workspaces/AGENTS.md)
 records the original interaction intent; the
 [delivery plan](../plan-v1-implementation/plan.md) is historical.
 Current operation semantics live in [interfaces](../../docs/interfaces.md)
 and [contracts](../../contracts/v1/AGENTS.md), with UI behavior in the
-[production design](../../design-system/production-v1.md).
+[production design](../../design-system/design.md).
 
 ## Native ownership
 

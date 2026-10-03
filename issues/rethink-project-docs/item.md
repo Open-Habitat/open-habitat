@@ -116,7 +116,7 @@ huomaamatta hyväksytyiksi vaatimuksiksi. Tilien turvallisuusnäyttö ja poistam
 rajat käsitellään ennen tiliasetuksia, jotta eri toiminnot eivät sekoitu.
 
 1. **[review-browser-design-v2](../review-browser-design-v2/item.md): design vertailukohdaksi.**
-   Tutustu [handoffiin](../../design-system/drafts/v2/handoff.md) ja neljään
+   Tutustu [handoffiin](../../design-system/design.md) ja neljään
    vedokseen. Tavoitteena on arvioida, miten nykyinen UI-koodi, komponentit ja
    yhteiset asettelu- ja tyyliratkaisut pystyvät tuottamaan tämän lopputuloksen
    tarkasti. Pelkkä designin lukeminen ja päätösten vertailu on lähtötietoa;
@@ -155,8 +155,8 @@ rajat käsitellään ennen tiliasetuksia, jotta eri toiminnot eivät sekoitu.
    käsittele se päätöshistorian säilyttävällä tavalla. Rajapintasivusta tarkistetaan
    vain tämän kokonaisuuden koskettamat kohdat, ei aloiteta koko sivua uudelleen.
 7. **Tuotantodesign ja komponenttisopimukset yhdessä:**
-   [production-v1.md](../../design-system/production-v1.md),
-   [component-catalog-v1.md](../../design-system/component-catalog-v1.md) ja
+   [design.md](../../design-system/design.md),
+   [components.md](../../design-system/components.md) ja
    [docs/design-system.md](../../docs/design-system.md).
    Erota sovittu ilme ja vuorovaikutus agentin lisäämistä mekanismeista ja
    lukurajoista. Säilytä saavutettavuus, fokus, näppäimet, reitit ja komponenttien
@@ -684,3 +684,7 @@ add-account-settings-ui tutkittu ja päivitetty 3.10.2026 Jarin pyynnöstä, lä
 ### 2026-10-03T05:52:02Z · @codex
 
 Jarin tekstipalaute 3.10.2026 sovitettu add-account-settings-ui-issueen: nykytila proosaksi tutkitun commitin kera; vanhentuneiden tulosten viitteet, läpikäynnin testiselostus, aiempien porttien historia, yleiset laatumuistutukset ja lupakieli pois. Jäljelle jäävät nykyinen toiminta, puuttuva OpenAI-yhteyden esitys ja työnjako profiili- sekä design-issueiden kanssa. Uloskirjautumisella on jo valmis browser-logout-cleanup-issue.
+
+### 2026-10-03T06:07:55Z · @codex
+
+Jari pyysi 3.10.2026 yhden nykyisen designin: versionimet ja päällekkäiset määrittelyt pois HEAD:sta. design-system/design.md kuvaa designin, drafts/ sisältää yhden vedossarjan ja components.md johtaa tuotantokomponentteihin. Vanha vedossarja, staattinen keskustelumock ja vanhentuneet tuotantodesignin/propsien rinnakkaismäärittelyt poistettu; ne löytyvät Git-historiasta. Nykyiset ohjeet, avoimien issueiden design-viitteet ja designer-paketin kokoaja käyttävät samaa lähdettä. Historiallisten raporttien tiedostolinkit sidottu niiden kuvaamiin vanhoihin lähteisiin Gitissä. Puhelinrajaus sekä lukukohdan, repohaun ja sisältölohkojen myöhemmät päätökset sovitettu yhteiseen kuvaukseen. Issueiden tunnisteet ja DAG säilyvät.

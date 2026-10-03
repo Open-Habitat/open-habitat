@@ -54,7 +54,7 @@ inline-tyylillä arvoon `60vh`.
 Yhteisiä arvoja kannattaa käyttää niissä mitoissa, joiden halutaan muuttuvan
 yhdessä. Designin mitat toimivat tavoitellun ulkoasun vertailukohtana;
 jokaiselle luvulle ei tästä seuraa omaa tokenia.
-[Tuotantodesign](../../design-system/production-v1.md) pitää vedosten
+[Tuotantodesign](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/production-v1.md) pitää vedosten
 yksittäisiä mittoja sommittelureferensseinä. Toteutuksessa arvioidaan, miltä
 osin nykyistä asteikkoa pitää muuttaa tarkan lopputuloksen saamiseksi.
 

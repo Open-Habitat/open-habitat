@@ -1,6 +1,6 @@
 ---
 created: 2026-09-21
-updated: 2026-09-30
+updated: 2026-10-03
 type: task
 status: open
 priority: normal
@@ -62,9 +62,9 @@ the presentation-state problem and preserve the corrupt bytes. A stale view or
 lost response leaves the action uncertain until its outcome can be established.
 
 Build ArchiveDialog in the shared production components to its
-[catalog contract](../../design-system/component-catalog-v1.md), including the
+[catalog contract](../../design-system/components.md), including the
 archive-conflict example. The
-[production design](../../design-system/production-v1.md) describes the
+[production design](../../design-system/design.md) describes the
 archive route, interaction and focus behavior. Application and component examples
 share their controls, state semantics and styling, so the examples demonstrate
 the delivered behavior. Retire any canonical mock this implementation replaces;
