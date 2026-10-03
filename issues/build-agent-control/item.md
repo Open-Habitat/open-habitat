@@ -2,7 +2,7 @@
 created: 2026-09-20
 updated: 2026-10-03
 type: task
-status: in-progress
+status: done
 priority: normal
 epic: native-agent-host-architecture
 lane: agent-control
@@ -17,6 +17,7 @@ commits:
   summary: Preserve Pi process on slow abort and reconcile interruption receipts
 - hash: a94e2796e686f9676847ab5dfe98210660ba98ad
   summary: Restore rootless Pi controller fixture activation and record scope
+closed: 2026-10-03
 ---
 
 # Complete native Pi conversation control
@@ -56,55 +57,28 @@ A detached tool can outlive an interrupted turn, so interruption does not promis
 that every tool process has stopped. A separate per-conversation supervisor is
 outside the agreed architecture.
 
-## What is already implemented
+## Outcome
 
 Create, send, interrupt, shared SSE updates and explicit continuation of ended
-browser conversations have daemon and browser implementations. The recorded
-results do not identify a specific missing control feature. They leave a gap in
-integration coverage:
+browser conversations are implemented. Jari closed this issue on 3 October
+2026: the software is in active testing, and missing additional test coverage
+alone does not keep this implementation task open. Defects found in use become
+separate, concrete issues.
 
-- Browser tests use a fake Pi child (`test/browser-host/`,
-  `web/tests/browser-conversation.spec.ts`). They exercise rendered UI and
-  recovery, but cannot show that the same behavior works with Pi itself.
-- The real-Pi fixture (`scripts/test-real-pi-controller.sh`,
-  `test/real-pi-controller.py`) uses a synthetic provider and exercises the
-  controller through HTTP/SSE with distinct Unix users. It does not render the
-  browser. Its recorded live-stream proof covers text, not a native tool call.
-
-[Earlier results](result.md) record those separate slices.
-[The shared browser stream result](../one-browser-event-stream/result.md)
-adds synthetic browser replay and recovery evidence.
-
-## Remaining work
-
-- [ ] **Connect the browser test to real Pi.** Provide a repeatable disposable
-  test environment in which the production browser reaches the gateway, daemon
-  and pinned Pi, with a synthetic provider and synthetic home. The current
-  browser and real-Pi fixtures are starting points; their separate passes do
-  not cover this path. The provider scenario needs to produce a real Pi tool
-  call as well as streamed text.
-- [ ] **Exercise that complete path.** Show create and send; text and tool
-  progress while Pi works; interruption; browser disconnect and reconnect
-  during a turn; and ending, deliberately continuing and sending again in the
-  same native session. Check that recovered history replaces provisional
-  content without duplication, uncertain commands are not resent, and terminal
-  history remains read-only. Verify that the person's draft, focus and reading
-  position survive the relevant updates and return.
-- [ ] **Fix observed failures and record the result.** A failure becomes a
-  specific daemon, contract or browser repair, followed by the affected checks.
-  Record the tested revision and outcomes, including any scenario still not
-  demonstrated. There is no separate unnamed feature backlog in this issue.
-
-[TESTING.md](../../TESTING.md) defines the checks for the resulting changes.
-Installed-host and real-account acceptance remain in @verify-live-pi-journey;
-this repeatable integration test uses no real account or provider credentials.
+[Implementation results](result.md) and
+[the shared browser stream result](../one-browser-event-stream/result.md)
+record the existing evidence and its limits. Browser fixtures use a fake Pi;
+the real-Pi synthetic-provider fixture exercises HTTP/SSE without rendering the
+browser. Closing the task does not turn those separate tests into a demonstrated
+combined journey. The proposed additional integration fixture is no longer a
+completion requirement.
 
 ## Related work
 
 @carry-typed-pi-events owns preserving Pi's structured content through the
 contracts and browser. @design-pi-event-blocks owns its finished presentation;
 @complete-conversation-ui covers the broader conversation experience and queue
-controls. This issue owns the working control path across those components.
+controls. This issue delivered the control path across those components.
 
 Incoming questions and unfamiliar content remain visible through a safe,
 readable presentation. Pi-specific answer and cancel dialog controls are outside

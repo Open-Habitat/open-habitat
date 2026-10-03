@@ -112,9 +112,13 @@ ja löytyvien puutteiden korjaaminen. Asennetun palvelimen ja oikeiden tilien
 näyttö kuuluu `verify-live-pi-journey`-issueen. Aiemmat omistajuus-, epävarmuus-
 ja kysymysohjauksen rajaukset säilyvät. Selaimen nykyiset komponentti- ja
 sovellushakemistot palautettu törmäysmerkintöihin yövuoron tilapäisen rajauksen
-tilalle; tila ja jonojärjestys säilyvät.
+tilalle. Jari päätti tämän jälkeen sulkea issuen: toiminnallisuus on toteutettu,
+eikä lisätestauksen puuttuminen pidä toteutusissueta auki aktiivisessa testissä
+olevassa tuotteessa. Käytössä löytyvistä vioista tehdään erilliset issuet.
+Ehdotettu uusi testipolku poistettu valmistumisehdosta; sulkeminen ei lisää
+väitteitä saadusta testinäytöstä.
 
-Nämä ovat tekstien läpikäyntejä. Toteutuksen tila ja DAG eivät muutu.
+Muiden issueiden osalta nämä ovat tekstien läpikäyntejä; niiden tila ja DAG eivät muutu.
 Aiemman kokonaisuuden jäljellä oleviin dokumentteihin palataan tämän kierroksen
 jälkeen; ne säilyvät alla jatkamista varten.
 

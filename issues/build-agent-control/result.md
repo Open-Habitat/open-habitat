@@ -1,4 +1,20 @@
-# Private bounded Pi RPC transport intermediate (not a browser controller)
+# Outcome: native Pi conversation control delivered
+
+Create, send, interrupt, shared SSE updates and explicit continuation of ended
+browser conversations are implemented. Jari closed the task on 3 October 2026
+because its remaining work was additional testing, with no identified missing
+control feature. The software is under active testing; observed defects will
+be tracked as separate issues. The proposed combined real-Pi browser fixture
+was not implemented and is not a completion requirement.
+
+The receipts below describe earlier revisions. Their pending-work statements
+belong to those revisions, not the current task. Later browser stream evidence
+is in [one-browser-event-stream](../one-browser-event-stream/result.md).
+No new runtime tests were run for this closure. Existing browser tests use fake
+Pi, while the real-Pi synthetic-provider tests exercise HTTP/SSE without browser
+rendering; closing the issue makes no additional verification claim.
+
+## Private bounded Pi RPC transport intermediate (not a browser controller)
 
 Adopted preserved commits `821ee35` and `aa6573f` from `wt/1esbvd70n4-bounded-native-pi-rpc` onto main at `3a3f883` as `7968956` and `2590b18`. The preserved branch remains untouched. The production code, tests and ADR diff are byte-identical to the previously independently reviewed final diff (gpt-6-astra finder, gemini-3.8-flash verification). That review corrected four concrete findings before adoption: recycled process-group signal, inherited stderr holding Wait, missing/null success misclassified as rejection, and detached-holder test race. The original review's ignored assessment was `history/assessment-bounded-pi-rpc.{json,md}` in its worktree; Claude finder returned no opinion. No changed risk surface was added in the adoption.
 
