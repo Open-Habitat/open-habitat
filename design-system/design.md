@@ -10,6 +10,8 @@ fontit ja liike ovat [tokeneissa](tokens/), joita sovellus käyttää
 komponentteihin, jotka näkyvät sovelluksessa ja Storybookissa.
 [Käyttökulut](../docs/ui.md) kuvaavat toiminnan ja
 [rajapinnat](../docs/interfaces.md) hostin tarjoaman tiedon.
+[Design-kierros](process.md) kertoo, miten vedokset, tämä kuvaus ja koodi
+pidetään samassa totuudessa.
 
 ## Ilme
 
