@@ -96,6 +96,14 @@ Luettava esitys kuuluu tähän työhön, lopullinen design seuraavaan issueen.
 Kysymysten näyttäminen säilyy aiemman päätöksen mukaisesti; uusia kysymys- tai
 komento-ohjaimia ei johdeta tiedonkulkutyöstä.
 
+Pi-tapahtumakatalogi käyty läpi 3.10.2026 Jarin pyynnöstä ennen
+`design-pi-event-blocks`-issuea. `catalog-pi-events/analysis.md` selittää
+historian, sisältölohkojen, live-tapahtumien, RPC:n ja hookien suhteet.
+Tarkat kentät lähteineen ovat `analysis-types.md`:ssä ja `analysis-tools.md`:ssä;
+alkuperäinen selainvertailu on päivätty `browser-observations.md`:hen.
+Design-ehdotukset erotettu Pi:n tyypeistä ja sovitetuista ohjausrajauksista.
+Tallennetun `custom`-tilan ja näkyvän custom-viestin ero selvennetty.
+
 Nämä ovat tekstien läpikäyntejä. Toteutuksen tila ja DAG eivät muutu.
 Aiemman kokonaisuuden jäljellä oleviin dokumentteihin palataan tämän kierroksen
 jälkeen; ne säilyvät alla jatkamista varten.
