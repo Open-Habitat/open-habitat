@@ -6,8 +6,8 @@ status: open
 priority: normal
 epic: native-agent-host-architecture
 blocked_by: ['@unify-ui-primitives']
-lane: post-mvp-design
-lane_seq: 60
+lane: control-state-design
+lane_seq: 5
 collision: [docs/, design-system/]
 related: ['@consistent-control-feedback', '@align-navigation-design', '@design-control-states', '@apply-control-state-design']
 ---
@@ -44,8 +44,9 @@ package as the shared controls' interaction states so their presentation forms
 a coherent whole. The designer develops one recognisable visual language for the agent
 list, sidebar and conversation, including compact presentations. Text, symbols,
 color and motion can work together; meaning remains available without relying
-on color or animation alone. The existing dot treatments are reference material;
-The state set and visual form are outcomes of this design work.
+on color or animation alone. Jari provisionally recognised the earlier ended/idle/working reading of
+the dots without fixing it as a decision. The existing dot treatments are reference material;
+the state set and visual form are outcomes of this design work.
 
 The result is a recommendation connecting each state to known facts and showing
 how the designer's presentation works across views. @design-control-states owns

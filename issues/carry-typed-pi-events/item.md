@@ -39,8 +39,9 @@ any exclusions. Internal hooks and RPC acknowledgements have different purposes
 from conversation content; being listed in the catalogue does not make them
 browser display data. Preserve extension visibility and redaction semantics.
 Choose browser-visible fields with their contents in mind: provider diagnostics,
-raw errors and arbitrary extension metadata can contain credentials or internal
-data. Unknown types need an understandable fallback without exposing unchecked
+raw errors, hook data and arbitrary extension metadata can contain credentials
+or internal data, so each of them gets a security review before it is surfaced,
+and the result records what was excluded and why. Unknown types need an understandable fallback without exposing unchecked
 payloads.
 
 ## Integration and presentation

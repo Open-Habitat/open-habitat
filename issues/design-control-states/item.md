@@ -8,7 +8,7 @@ priority: high
 related: ['@consistent-control-feedback', '@refine-agent-status']
 lane: control-state-design
 collision: [design-system/]
-blocked_by: ['@unify-ui-primitives']
+blocked_by: ['@unify-ui-primitives', '@migrate-bespoke-controls', '@refine-agent-status']
 ---
 
 # Design the interaction states of every primitive

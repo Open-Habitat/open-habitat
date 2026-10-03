@@ -16,7 +16,13 @@ komponentteihin, jotka näkyvät sovelluksessa ja Storybookissa.
 Oletustila on hiljainen. Käynnissä oleva työ, vastausta odottava kysymys,
 vain luku -tila, katkos ja epävarma tulos saavat tunnistettavan esityksen.
 Tila näkyy merkin, sanan ja värin avulla; onnistuneesta lähetyksestä tai
-tyhjästä jonosta ei synny pysyvää ilmoitusta.
+tyhjästä jonosta ei synny pysyvää ilmoitusta. Vain luku -tila on ontto rengas
+tai katkoviivareuna, ei lause. Rehellisyysvaatimukset (ei keksittyä tilaa, ei
+automaattista uudelleenlähetystä, epävarma lähetys näkyvissä) täytetään
+designin omilla elementeillä, kuten katkoviivakuplalla ja ontolla renkaalla,
+ei lisätyllä selittävällä tekstillä. Kun hostilla ei ole faktaa, elementti
+jätetään pois sen sijaan, että sen puute selitettäisiin. Painikkeissa ei ole
+ohjetekstiä.
 
 Näkymässä on yksi ensisijainen toiminto kerrallaan. Toissijaiset toiminnot
 ovat hillittyjä. Reunat erottavat pinnat, varjot kuuluvat kelluviin valikoihin,
@@ -107,3 +113,7 @@ prototyyppilogiikkaa ei kopioida sovellukseen. Tässä kuvattu toiminta täydent
 kuvia esimerkiksi lukukohdan säilymisessä, repohaun oletuksessa ja epävarmoissa
 tuloksissa. Designin toteutusta verrataan vedoksiin rinnakkain synteettisessä
 labissa; poikkeamat korjataan yhteisissä komponenteissa ja tokeneissa.
+Vertailun fixture näyttää designin tilat: vähintään yksi käynnissä oleva
+keskustelu työkaluriveineen ja kahdella jonossa olevalla viestillä, yksi
+vastattu, yksi vain luku, eikä yhtään duplikaattia. Duplikaatteja keräävä
+fixture sai aiemmin jokaisen näkymän näyttämään rikkinäiseltä.
