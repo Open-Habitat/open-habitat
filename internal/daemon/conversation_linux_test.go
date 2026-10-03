@@ -711,7 +711,7 @@ for line in sys.stdin:
  r=json.loads(line)
  print(json.dumps(dict(type="response",id=r["id"],command=r["type"],success=True)),flush=True)
  print(json.dumps(dict(type="extension_ui_request",id="req_1",method="custom_dialog",title="Choose <plain text>",options=["one","two"])),flush=True)
- print(json.dumps(dict(type="extension_ui_request",id="req_2",method="setStatus",statusText="Synthetic <safe> status")),flush=True)
+ print(json.dumps(dict(type="extension_ui_request",id="req_2",method="setStatus",statusKey="build",statusText="Synthetic <safe> status")),flush=True)
  time.sleep(.2)
  print(json.dumps(dict(type="message_end",message={"role":"assistant"})),flush=True)
  time.sleep(.05)
@@ -740,7 +740,7 @@ for line in sys.stdin:
 		c.journal.mu.Lock()
 		updateSeen := false
 		for _, raw := range c.journal.frames {
-			if strings.Contains(string(raw), `"kind":"unknown.native"`) {
+			if strings.Contains(string(raw), `"kind":"extension.visible"`) {
 				updateSeen = true
 				break
 			}
@@ -783,11 +783,8 @@ for line in sys.stdin:
 		if json.Unmarshal(raw, &event) == nil && event.Kind == "question.requested" && event.Payload["question_kind"] == "unknown" && event.Payload["prompt"] == "Choose <plain text>" {
 			foundQuestion = true
 		}
-		if event.Kind == "unknown.native" {
-			content, _ := event.Payload["content"].(map[string]any)
-			if content["text"] == "Synthetic <safe> status" {
-				foundSafeUpdate = true
-			}
+		if event.Kind == "extension.visible" && event.Payload["method"] == "setStatus" && event.Payload["key"] == "build" && event.Payload["text"] == "Synthetic <safe> status" {
+			foundSafeUpdate = true
 		}
 	}
 	c.journal.mu.Unlock()

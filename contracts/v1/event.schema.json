@@ -55,7 +55,14 @@
         "operation.changed",
         "title.changed",
         "source.warning",
-        "unknown.native"
+        "unknown.native",
+        "assistant.toolcall.delta",
+        "assistant.toolcall.end",
+        "bash.output",
+        "pi.lifecycle",
+        "pi.marker",
+        "pi.retry",
+        "extension.visible"
       ]
     },
     "resource": {
@@ -185,7 +192,8 @@
                   "assistant",
                   "tool",
                   "model_change",
-                  "unknown"
+                  "unknown",
+                  "bash"
                 ]
               },
               "content": {
@@ -220,6 +228,28 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 200
+              },
+              "entry_type": {
+                "enum": [
+                  "model_change",
+                  "thinking_level_change",
+                  "session_info",
+                  "label",
+                  "compaction",
+                  "branch_summary"
+                ]
+              },
+              "exit_code": {
+                "type": "integer"
+              },
+              "cancelled": {
+                "type": "boolean"
+              },
+              "output_truncated": {
+                "type": "boolean"
+              },
+              "exclude_from_context": {
+                "type": "boolean"
               }
             }
           }
@@ -305,6 +335,18 @@
               },
               "structured_diff": {
                 "$ref": "common.schema.json#/$defs/content"
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "arguments": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "content_index": {
+                "type": "integer",
+                "minimum": 0
               }
             }
           }
@@ -593,6 +635,274 @@
               },
               "content": {
                 "$ref": "common.schema.json#/$defs/content"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "assistant.toolcall.delta"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "content_index",
+              "text"
+            ],
+            "properties": {
+              "content_index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 4096
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "assistant.toolcall.end"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "content_index",
+              "tool_call_id",
+              "tool_name"
+            ],
+            "properties": {
+              "content_index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tool_call_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "tool_name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 4096
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "bash.output"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "text"
+            ],
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "content_index": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "pi.lifecycle"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "signal"
+            ],
+            "properties": {
+              "signal": {
+                "enum": [
+                  "agent_start",
+                  "turn_start",
+                  "turn_end",
+                  "agent_end",
+                  "agent_settled",
+                  "message_error",
+                  "message_aborted"
+                ]
+              },
+              "will_retry": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "pi.marker"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "marker"
+            ],
+            "properties": {
+              "marker": {
+                "enum": [
+                  "session_info_changed",
+                  "thinking_level_changed",
+                  "entry_appended",
+                  "compaction_start",
+                  "compaction_end"
+                ]
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 4096
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "pi.retry"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "signal"
+            ],
+            "properties": {
+              "signal": {
+                "enum": [
+                  "auto_retry_start",
+                  "auto_retry_end",
+                  "summarization_retry_scheduled",
+                  "summarization_retry_attempt_start",
+                  "summarization_retry_finished"
+                ]
+              },
+              "attempt": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "max_attempts": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "delay_ms": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "success": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "extension.visible"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "method",
+              "key",
+              "clear"
+            ],
+            "properties": {
+              "method": {
+                "enum": [
+                  "notify",
+                  "setStatus",
+                  "setWidget"
+                ]
+              },
+              "key": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "clear": {
+                "type": "boolean"
               }
             }
           }

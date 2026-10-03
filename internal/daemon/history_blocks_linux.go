@@ -9,7 +9,35 @@ import "encoding/json"
 // Image data and tool arguments are fetched only by explicit bounded block read.
 func nativeBlocks(e nativeEntry) (out historyEntry) {
 	out.Key = e.ID
+	switch e.Type {
+	case "model_change", "thinking_level_change", "session_info", "label", "compaction", "branch_summary":
+		out.EntryType = e.Type
+	}
 	out.Kind, out.full = nativeText(e)
+	if e.Type == "thinking_level_change" || e.Type == "session_info" || e.Type == "label" {
+		var marker struct {
+			ThinkingLevel string `json:"thinkingLevel"`
+			Name          string `json:"name"`
+			Label         string `json:"label"`
+			TargetID      string `json:"targetId"`
+		}
+		if json.Unmarshal(e.Raw, &marker) != nil {
+			return
+		}
+		var text string
+		switch e.Type {
+		case "thinking_level_change":
+			text = marker.ThinkingLevel
+		case "session_info":
+			text = marker.Name
+		case "label":
+			text = marker.TargetID + " · " + marker.Label
+		}
+		out.Kind = "unknown"
+		out.full = prefixBytes(text, 16384)
+		out.Blocks = []historyBlock{{Type: "text", Text: out.full}}
+		return
+	}
 	if e.Type == "custom_message" || e.Type == "compaction" || e.Type == "branch_summary" {
 		var top struct {
 			Display bool            `json:"display"`
@@ -52,6 +80,31 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 		Model      string          `json:"model"`
 	}
 	if json.Unmarshal(e.Message, &m) != nil {
+		return
+	}
+	if m.Role == "bashExecution" {
+		var bash struct {
+			Command            string `json:"command"`
+			Output             string `json:"output"`
+			ExitCode           *int   `json:"exitCode"`
+			Cancelled          bool   `json:"cancelled"`
+			Truncated          bool   `json:"truncated"`
+			ExcludeFromContext bool   `json:"excludeFromContext"`
+		}
+		if json.Unmarshal(e.Message, &bash) != nil {
+			out.Kind = "unknown"
+			return
+		}
+		out.Kind = "bash"
+		out.ExitCode = bash.ExitCode
+		out.Cancelled = bash.Cancelled
+		out.OutputTruncated = bash.Truncated
+		out.ExcludeFromContext = bash.ExcludeFromContext
+		out.Blocks = []historyBlock{
+			{Type: "text", Text: prefixBytes(bash.Command, 8192), Readable: len(bash.Command) > 8192},
+			{Type: "text", Text: prefixBytes(bash.Output, 8192), Readable: len(bash.Output) > 8192},
+		}
+		out.TruncatedBlocks = len(bash.Command) > 8192 || len(bash.Output) > 8192
 		return
 	}
 	if m.Role == "custom" {

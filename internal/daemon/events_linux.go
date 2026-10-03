@@ -203,6 +203,33 @@ func (j *eventJournal) delta(agent, kind, text string, index int) {
 		t.timer = time.AfterFunc(50*time.Millisecond, func() { j.mu.Lock(); defer j.mu.Unlock(); t.timer = nil; j.flushTextLocked(agent, t) })
 	}
 }
+
+// Pi tool updates are cumulative snapshots, not incremental output. Keep only
+// the newest update for each call in a snapshot tail; the event ring still
+// publishes every update to connected subscribers.
+func (j *eventJournal) toolUpdate(agent, callID string, payload any) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	t := j.tail(agent)
+	j.flushTextLocked(agent, t)
+	kept := t.frames[:0]
+	t.bytes = 0
+	for _, frame := range t.frames {
+		var event struct {
+			Kind    string `json:"kind"`
+			Payload struct {
+				ToolCallID string `json:"tool_call_id"`
+			} `json:"payload"`
+		}
+		if json.Unmarshal(frame, &event) == nil && event.Kind == "tool.updated" && event.Payload.ToolCallID == callID {
+			continue
+		}
+		kept = append(kept, frame)
+		t.bytes += len(frame)
+	}
+	t.frames = kept
+	j.appendTailLocked(agent, t, "tool.updated", payload)
+}
 func (j *eventJournal) progress(agent, kind string, payload any) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
@@ -247,6 +274,51 @@ func (j *eventJournal) nativeEntry(agent string, entry historyEntry) {
 		t.frames = nil
 		t.bytes = 0
 		t.overflow = false
+	} else if entry.Kind == "bash" {
+		kept := t.frames[:0]
+		t.bytes = 0
+		for _, frame := range t.frames {
+			var event struct {
+				Kind string `json:"kind"`
+			}
+			if json.Unmarshal(frame, &event) == nil && event.Kind == "bash.output" {
+				continue
+			}
+			kept = append(kept, frame)
+			t.bytes += len(frame)
+		}
+		t.frames = kept
+	} else if entry.Kind == "tool" && entry.ToolCallID != "" {
+		kept := t.frames[:0]
+		t.bytes = 0
+		indexes := map[int]bool{}
+		for _, frame := range t.frames {
+			var event struct {
+				Kind    string `json:"kind"`
+				Payload struct {
+					ToolCallID string `json:"tool_call_id"`
+					Index      int    `json:"content_index"`
+				} `json:"payload"`
+			}
+			if json.Unmarshal(frame, &event) == nil && event.Kind == "assistant.toolcall.end" && event.Payload.ToolCallID == entry.ToolCallID {
+				indexes[event.Payload.Index] = true
+			}
+		}
+		for _, frame := range t.frames {
+			var event struct {
+				Kind    string `json:"kind"`
+				Payload struct {
+					ToolCallID string `json:"tool_call_id"`
+					Index      int    `json:"content_index"`
+				} `json:"payload"`
+			}
+			if json.Unmarshal(frame, &event) == nil && (event.Payload.ToolCallID == entry.ToolCallID || (event.Kind == "assistant.toolcall.delta" && indexes[event.Payload.Index])) {
+				continue
+			}
+			kept = append(kept, frame)
+			t.bytes += len(frame)
+		}
+		t.frames = kept
 	}
 }
 func (j *eventJournal) nativeGeneration() uint64 {
@@ -401,6 +473,21 @@ func nativeEntryPayload(entry historyEntry) map[string]any {
 	}
 	if entry.Model != "" {
 		payload["model"] = entry.Model
+	}
+	if entry.EntryType != "" {
+		payload["entry_type"] = entry.EntryType
+	}
+	if entry.ExitCode != nil {
+		payload["exit_code"] = *entry.ExitCode
+	}
+	if entry.Cancelled {
+		payload["cancelled"] = true
+	}
+	if entry.OutputTruncated {
+		payload["output_truncated"] = true
+	}
+	if entry.ExcludeFromContext {
+		payload["exclude_from_context"] = true
 	}
 	if entry.TruncatedBlocks {
 		payload["truncated_blocks"] = true

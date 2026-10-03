@@ -51,18 +51,23 @@ type nativeSession struct {
 	boundaryFound, olderComplete   bool
 }
 type historyEntry struct {
-	Key             string         `json:"entry_key"`
-	Kind            string         `json:"kind"`
-	Content         historyContent `json:"content"`
-	Blocks          []historyBlock `json:"blocks,omitempty"`
-	ToolCallID      string         `json:"tool_call_id,omitempty"`
-	IsError         *bool          `json:"is_error,omitempty"`
-	StopReason      string         `json:"stop_reason,omitempty"`
-	Model           string         `json:"model,omitempty"`
-	TruncatedBlocks bool           `json:"truncated_blocks,omitempty"`
-	NativeRevision  string         `json:"native_revision,omitempty"`
-	full            string
-	raw             json.RawMessage
+	Key                string         `json:"entry_key"`
+	Kind               string         `json:"kind"`
+	Content            historyContent `json:"content"`
+	Blocks             []historyBlock `json:"blocks,omitempty"`
+	ToolCallID         string         `json:"tool_call_id,omitempty"`
+	IsError            *bool          `json:"is_error,omitempty"`
+	StopReason         string         `json:"stop_reason,omitempty"`
+	Model              string         `json:"model,omitempty"`
+	EntryType          string         `json:"entry_type,omitempty"`
+	ExitCode           *int           `json:"exit_code,omitempty"`
+	Cancelled          bool           `json:"cancelled,omitempty"`
+	OutputTruncated    bool           `json:"output_truncated,omitempty"`
+	ExcludeFromContext bool           `json:"exclude_from_context,omitempty"`
+	TruncatedBlocks    bool           `json:"truncated_blocks,omitempty"`
+	NativeRevision     string         `json:"native_revision,omitempty"`
+	full               string
+	raw                json.RawMessage
 }
 type historyBlock struct {
 	Type       string `json:"type"`
@@ -294,6 +299,12 @@ func nativeText(e nativeEntry) (string, string) {
 	case "model_change":
 		return "model_change", strings.TrimPrefix(e.Provider+"/"+e.ModelID, "/")
 	case "message":
+		var bash struct {
+			Role string `json:"role"`
+		}
+		if json.Unmarshal(e.Message, &bash) == nil && bash.Role == "bashExecution" {
+			return "bash", "Local command"
+		}
 		var m struct {
 			Role     string          `json:"role"`
 			Content  json.RawMessage `json:"content"`

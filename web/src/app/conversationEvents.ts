@@ -115,10 +115,40 @@ export function applyTurnEvent(
       is_error: payload.is_error as boolean | undefined,
       stop_reason: payload.stop_reason as string | undefined,
       model: payload.model as string | undefined,
+      entry_type: payload.entry_type as HistoryEntry["entry_type"],
+      exit_code: payload.exit_code as number | undefined,
+      cancelled: payload.cancelled as boolean | undefined,
+      output_truncated: payload.output_truncated as boolean | undefined,
+      exclude_from_context: payload.exclude_from_context as boolean | undefined,
       truncated_blocks: payload.truncated_blocks as boolean | undefined,
       native_revision: payload.native_revision as string | undefined,
     };
-    return { turn: { ...next, fragments: [], truncated: false }, entry };
+    // Saved assistant blocks supersede their streamed content. A saved tool
+    // result supersedes only that call; other concurrent calls remain live.
+    const fragments =
+      entry.kind === "tool" && entry.tool_call_id
+        ? turn.fragments.filter(
+            (fragment) =>
+              fragment.payload.tool_call_id !== entry.tool_call_id &&
+              !(
+                fragment.kind === "assistant.toolcall.delta" &&
+                turn.fragments.some(
+                  (end) =>
+                    end.kind === "assistant.toolcall.end" &&
+                    end.payload.tool_call_id === entry.tool_call_id &&
+                    end.payload.content_index ===
+                      fragment.payload.content_index,
+                )
+              ),
+          )
+        : entry.kind === "assistant"
+          ? []
+          : entry.kind === "bash"
+            ? turn.fragments.filter(
+                (fragment) => fragment.kind !== "bash.output",
+              )
+            : turn.fragments;
+    return { turn: { ...next, fragments, truncated: false }, entry };
   }
   if (
     [
@@ -127,10 +157,28 @@ export function applyTurnEvent(
       "tool.started",
       "tool.finished",
       "tool.updated",
+      "assistant.toolcall.delta",
+      "assistant.toolcall.end",
+      "bash.output",
+      "pi.lifecycle",
+      "pi.marker",
+      "pi.retry",
+      "extension.visible",
+      "unknown.native",
     ].includes(event.kind)
   ) {
-    if (turn.fragments.length >= 128) return { turn: next, recover: "history" };
-    return { turn: { ...next, fragments: [...turn.fragments, event] } };
+    const fragments =
+      event.kind === "tool.updated"
+        ? turn.fragments.filter(
+            (fragment) =>
+              !(
+                fragment.kind === "tool.updated" &&
+                fragment.payload.tool_call_id === event.payload.tool_call_id
+              ),
+          )
+        : turn.fragments;
+    if (fragments.length >= 128) return { turn: next, recover: "history" };
+    return { turn: { ...next, fragments: [...fragments, event] } };
   }
   return { turn: next };
 }
@@ -143,8 +191,12 @@ export function provisionalItems(turn: LiveTurn) {
     index?: number;
     name?: string;
     state?: string;
+    arguments?: string;
+    output?: string;
   }[] = [];
   const tools = new Map<string, number>();
+  const calls = new Map<number, number>();
+  const extensions = new Map<string, number>();
   for (const event of turn.fragments) {
     if (
       event.kind === "assistant.delta" ||
@@ -165,6 +217,88 @@ export function provisionalItems(turn: LiveTurn) {
           kind,
           text: event.payload.text as string,
           index,
+        });
+    } else if (
+      event.kind === "assistant.toolcall.delta" ||
+      event.kind === "assistant.toolcall.end"
+    ) {
+      const index = event.payload.content_index as number;
+      const position = calls.get(index);
+      const argument = (event.payload.text as string | undefined) ?? "";
+      if (position === undefined) {
+        calls.set(index, items.length);
+        items.push({
+          id: `live-call-${index}`,
+          kind: "tool",
+          text: "Työkalukutsu",
+          index,
+          arguments: argument,
+        });
+      } else {
+        items[position].arguments = event.kind.endsWith("end")
+          ? argument
+          : (items[position].arguments ?? "") + argument;
+      }
+      if (event.kind.endsWith("end")) {
+        const slot = calls.get(index);
+        calls.delete(index); // indices restart with each assistant message
+        if (slot === undefined) continue;
+        const item = items[slot];
+        item.name = event.payload.tool_name as string;
+        item.text = `${item.name} · Kutsu`;
+        item.state = "running";
+        const key = event.payload.tool_call_id as string;
+        tools.set(key, slot);
+      }
+    } else if (event.kind === "bash.output") {
+      const last = items.at(-1);
+      if (last?.kind === "bash") {
+        last.text += event.payload.text as string;
+      } else
+        items.push({
+          id: `live-bash-${event.event_id}`,
+          kind: "bash",
+          text: event.payload.text as string,
+        });
+    } else if (event.kind === "unknown.native") {
+      items.push({
+        id: `live-unknown-${event.event_id}`,
+        kind: "signal",
+        text: `Pi-tapahtumaa ei tueta · ${event.payload.native_type}`,
+      });
+    } else if (event.kind === "extension.visible") {
+      const key = `${event.payload.method}:${event.payload.key}`;
+      const position = extensions.get(key);
+      if (position !== undefined) items[position].kind = "hidden";
+      extensions.delete(key);
+      if (!event.payload.clear) {
+        extensions.set(key, items.length);
+        items.push({
+          id: `live-extension-${key}`,
+          kind: "extension",
+          name: key,
+          text: event.payload.text as string,
+        });
+      }
+    } else if (
+      event.kind === "pi.lifecycle" ||
+      event.kind === "pi.marker" ||
+      event.kind === "pi.retry"
+    ) {
+      const signal = (event.payload.signal ?? event.payload.marker) as string;
+      if (
+        ![
+          "turn_start",
+          "turn_end",
+          "agent_start",
+          "agent_settled",
+          "entry_appended",
+        ].includes(signal)
+      )
+        items.push({
+          id: `live-signal-${event.event_id}`,
+          kind: "signal",
+          text: `${signal}${event.payload.text ? ` · ${event.payload.text}` : ""}`,
         });
     } else if (event.kind.startsWith("tool.")) {
       const key = event.payload.tool_call_id as string;
@@ -187,12 +321,19 @@ export function provisionalItems(turn: LiveTurn) {
           text,
           name: event.payload.tool_name as string,
           state: event.payload.state as string,
+          arguments: event.payload.arguments as string | undefined,
+          output: event.payload.text as string | undefined,
         });
       } else {
         items[position].text = text;
         items[position].state = event.payload.state as string;
+        items[position].name = event.payload.tool_name as string;
+        if (event.payload.arguments)
+          items[position].arguments = event.payload.arguments as string;
+        if (event.payload.text)
+          items[position].output = event.payload.text as string;
       }
     }
   }
-  return items;
+  return items.filter((item) => item.kind !== "hidden");
 }

@@ -23,10 +23,32 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 					Redacted bool `json:"redacted"`
 				} `json:"content"`
 			} `json:"partial"`
+			ToolCall struct {
+				ID        string          `json:"id"`
+				Name      string          `json:"name"`
+				Arguments json.RawMessage `json:"arguments"`
+			} `json:"toolCall"`
 		} `json:"assistantMessageEvent"`
-		ToolCallID string `json:"toolCallId"`
-		ToolName   string `json:"toolName"`
-		IsError    bool   `json:"isError"`
+		Message struct {
+			Role       string `json:"role"`
+			StopReason string `json:"stopReason"`
+		} `json:"message"`
+		WillRetry     bool            `json:"willRetry"`
+		Reason        string          `json:"reason"`
+		Attempt       int             `json:"attempt"`
+		MaxAttempts   int             `json:"maxAttempts"`
+		DelayMs       int             `json:"delayMs"`
+		Success       bool            `json:"success"`
+		Name          string          `json:"name"`
+		Level         string          `json:"level"`
+		ID            string          `json:"id"`
+		Delta         string          `json:"delta"`
+		Args          json.RawMessage `json:"args"`
+		PartialResult json.RawMessage `json:"partialResult"`
+		Result        json.RawMessage `json:"result"`
+		ToolCallID    string          `json:"toolCallId"`
+		ToolName      string          `json:"toolName"`
+		IsError       bool            `json:"isError"`
 	}
 	if json.Unmarshal(raw, &e) != nil {
 		return
@@ -34,22 +56,61 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 	switch e.Type {
 	case "agent_start":
 		c.journal.reset(agent, "running")
+		c.journal.progress(agent, "pi.lifecycle", map[string]any{"signal": e.Type})
 	case "turn_start":
 		c.journal.activity(agent, "running")
+		c.journal.progress(agent, "pi.lifecycle", map[string]any{"signal": e.Type})
+	case "turn_end", "agent_end", "agent_settled":
+		c.journal.progress(agent, "pi.lifecycle", map[string]any{"signal": e.Type, "will_retry": e.WillRetry})
+	case "message_end":
+		if e.Message.Role == "assistant" && (e.Message.StopReason == "error" || e.Message.StopReason == "aborted") {
+			c.journal.progress(agent, "pi.lifecycle", map[string]any{"signal": "message_" + e.Message.StopReason})
+		}
+	case "bash_execution_update":
+		// The local command output is a delta, not a fresh history entry.
+		// Coalescing prevents a chatty command from exhausting the tail.
+		c.journal.delta(agent, "bash.output", e.Delta, 0)
+	case "session_info_changed", "thinking_level_changed", "entry_appended", "compaction_start", "compaction_end":
+		payload := map[string]string{"marker": e.Type}
+		if e.Type == "session_info_changed" {
+			payload["text"] = liveText(e.Name)
+		}
+		if e.Type == "thinking_level_changed" {
+			payload["text"] = liveText(e.Level)
+		}
+		if e.Type == "compaction_start" || e.Type == "compaction_end" {
+			payload["text"] = liveText(e.Reason)
+		}
+		c.journal.progress(agent, "pi.marker", payload)
+	case "auto_retry_start", "auto_retry_end", "summarization_retry_scheduled", "summarization_retry_attempt_start", "summarization_retry_finished":
+		c.journal.progress(agent, "pi.retry", map[string]any{"signal": e.Type, "attempt": max(0, e.Attempt), "max_attempts": max(0, e.MaxAttempts), "delay_ms": max(0, e.DelayMs), "success": e.Success})
 	case "message_update":
-		if e.AssistantMessageEvent.ContentIndex < 0 || e.AssistantMessageEvent.Delta == "" {
+		if e.AssistantMessageEvent.ContentIndex < 0 {
 			return
 		}
 		switch e.AssistantMessageEvent.Type {
 		case "text_delta":
 			c.journal.delta(agent, "assistant.delta", e.AssistantMessageEvent.Delta, e.AssistantMessageEvent.ContentIndex)
+		case "toolcall_delta":
+			if text := liveText(e.AssistantMessageEvent.Delta); text != "" {
+				c.journal.delta(agent, "assistant.toolcall.delta", text, e.AssistantMessageEvent.ContentIndex)
+			}
+		case "toolcall_end":
+			call := e.AssistantMessageEvent.ToolCall
+			if validLiveID(call.ID) && validLiveID(call.Name) {
+				payload := map[string]any{"content_index": e.AssistantMessageEvent.ContentIndex, "tool_call_id": call.ID, "tool_name": call.Name}
+				if text := liveJSON(call.Arguments); text != "" {
+					payload["text"] = text
+				}
+				c.journal.progress(agent, "assistant.toolcall.end", payload)
+			}
 		case "thinking_delta":
 			index := e.AssistantMessageEvent.ContentIndex
 			if index < len(e.AssistantMessageEvent.Partial.Content) && !e.AssistantMessageEvent.Partial.Content[index].Redacted {
 				c.journal.delta(agent, "assistant.thinking.delta", e.AssistantMessageEvent.Delta, index)
 			}
 		}
-	case "tool_execution_start", "tool_execution_end":
+	case "tool_execution_start", "tool_execution_update", "tool_execution_end":
 		if len(e.ToolCallID) < 1 || len(e.ToolCallID) > 200 || len(e.ToolName) < 1 || len(e.ToolName) > 200 {
 			return
 		}
@@ -64,7 +125,28 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 				state = "failed"
 			}
 		}
-		c.journal.progress(agent, kind, map[string]string{"tool_call_id": e.ToolCallID, "tool_name": e.ToolName, "state": state})
+		payload := map[string]any{"tool_call_id": e.ToolCallID, "tool_name": e.ToolName, "state": state}
+		if text := liveJSON(e.Args); text != "" {
+			payload["arguments"] = text
+		}
+		result := e.PartialResult
+		if e.Type == "tool_execution_end" {
+			result = e.Result
+		}
+		if text := liveResult(result); text != "" {
+			payload["text"] = text
+		}
+		if e.Type == "tool_execution_update" {
+			c.journal.toolUpdate(agent, e.ToolCallID, payload)
+		} else {
+			c.journal.progress(agent, kind, payload)
+		}
+	default:
+		// Unknown Pi event payloads are unchecked. Only its bounded type name
+		// crosses the journal; RPC acknowledgements are not conversation data.
+		if safeNativeType(e.Type) && e.Type != "response" && e.Type != "extension_ui_request" && e.Type != "message_start" && e.Type != "queue_update" {
+			c.journal.progress(agent, "unknown.native", map[string]any{"native_type": e.Type, "content": map[string]any{"media_type": "text/plain", "text": "Pi event not supported", "complete": true}})
+		}
 	}
 }
 
@@ -153,6 +235,8 @@ func (c *ConversationController) drain(s *conversation) {
 				Title       string   `json:"title"`
 				Message     string   `json:"message"`
 				StatusText  string   `json:"statusText"`
+				StatusKey   string   `json:"statusKey"`
+				WidgetKey   string   `json:"widgetKey"`
 				Text        string   `json:"text"`
 				Prefill     string   `json:"prefill"`
 				WidgetLines []string `json:"widgetLines"`
@@ -181,7 +265,25 @@ func (c *ConversationController) drain(s *conversation) {
 						// These Pi RPC UI updates need no response. Preserve
 						// their content as safe text, never replace a dialog.
 						if c.journal != nil {
-							c.journal.appendEvent("unknown.native", "pi:"+s.id, map[string]any{"native_type": "extension_ui_request", "content": map[string]any{"media_type": "text/plain", "text": prompt, "complete": true}})
+							if q.Method == "notify" || q.Method == "setStatus" || q.Method == "setWidget" {
+								key := q.ID
+								if q.Method == "setStatus" {
+									key = q.StatusKey
+								}
+								if q.Method == "setWidget" {
+									key = q.WidgetKey
+								}
+								if validLiveID(key) {
+									text := q.Message
+									if q.Method == "setStatus" {
+										text = q.StatusText
+									}
+									if q.Method == "setWidget" {
+										text = strings.Join(q.WidgetLines, "\n")
+									}
+									c.journal.progress("pi:"+s.id, "extension.visible", map[string]any{"method": q.Method, "key": key, "text": liveText(text), "clear": text == ""})
+								}
+							}
 						}
 					default:
 						if len(q.Options) > 100 {
@@ -271,4 +373,56 @@ func (c *ConversationController) drain(s *conversation) {
 		}
 	}
 	c.mu.Unlock()
+}
+
+// Live display is deliberately restricted to bounded, valid text. Native details,
+// error strings, provider payloads and arbitrary extension metadata never cross.
+func validLiveID(s string) bool { return len(s) > 0 && len(s) <= 200 && utf8.ValidString(s) }
+func safeNativeType(s string) bool {
+	if len(s) == 0 || len(s) > 80 {
+		return false
+	}
+	for _, ch := range s {
+		if !(ch >= 'a' && ch <= 'z' || ch == '_') {
+			return false
+		}
+	}
+	return true
+}
+func liveText(s string) string {
+	if !utf8.ValidString(s) {
+		return ""
+	}
+	if len(s) > 4096 {
+		prefix := s[:4093]
+		for !utf8.ValidString(prefix) {
+			prefix = prefix[:len(prefix)-1]
+		}
+		return prefix + "..."
+	}
+	return s
+}
+func liveJSON(raw json.RawMessage) string {
+	if len(raw) == 0 || !json.Valid(raw) {
+		return ""
+	}
+	return liveText(string(raw))
+}
+func liveResult(raw json.RawMessage) string {
+	var r struct {
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if json.Unmarshal(raw, &r) != nil {
+		return ""
+	}
+	var parts []string
+	for _, b := range r.Content {
+		if b.Type == "text" {
+			parts = append(parts, b.Text)
+		}
+	}
+	return liveText(strings.Join(parts, "\n"))
 }

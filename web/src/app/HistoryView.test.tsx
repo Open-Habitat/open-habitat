@@ -459,3 +459,38 @@ it("labels a saved typed tool result complete while its block can still be read"
     screen.getByRole("button", { name: "Lataa lohkon sisältö" }),
   ).toBeTruthy();
 });
+
+it("renders saved local command output and marker metadata without treating either as an assistant reply", () => {
+  const command: HistoryEntry = {
+    ...entry,
+    kind: "bash",
+    entry_key: "command-1",
+    exit_code: 2,
+    output_truncated: true,
+    exclude_from_context: true,
+    blocks: [
+      { type: "text", text: "echo test" },
+      { type: "text", text: "failure" },
+    ],
+  };
+  const marker: HistoryEntry = {
+    ...entry,
+    kind: "unknown",
+    entry_key: "marker-1",
+    entry_type: "session_info",
+    blocks: [{ type: "text", text: "Synthetic session" }],
+  };
+  const { container } = render(
+    <>
+      {timelineItems([command, marker]).map((item) => (
+        <div key={item.id}>{item.content}</div>
+      ))}
+    </>,
+  );
+  expect(container.textContent).toContain("paluuarvo 2");
+  expect(container.textContent).toContain("tuloste katkaistu");
+  expect(container.textContent).toContain("ei mallin kontekstissa");
+  expect(container.textContent).toContain("failure");
+  expect(container.textContent).toContain("session_info");
+  expect(container.querySelector("script")).toBeNull();
+});

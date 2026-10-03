@@ -14,6 +14,8 @@ func nativeBlockChunk(raw json.RawMessage, index, offset, limit int) (map[string
 		Type    string `json:"type"`
 		Message struct {
 			Role    string          `json:"role"`
+			Command string          `json:"command"`
+			Output  string          `json:"output"`
 			Content json.RawMessage `json:"content"`
 			Display bool            `json:"display"`
 		} `json:"message"`
@@ -33,6 +35,15 @@ func nativeBlockChunk(raw json.RawMessage, index, offset, limit int) (map[string
 	var content json.RawMessage
 	switch entry.Type {
 	case "message":
+		if entry.Message.Role == "bashExecution" {
+			if index == 0 {
+				return textChunk(entry.Message.Command, offset, limit)
+			}
+			if index == 1 {
+				return textChunk(entry.Message.Output, offset, limit)
+			}
+			return nil, false
+		}
 		content = entry.Message.Content
 	case "custom_message":
 		content = entry.Content

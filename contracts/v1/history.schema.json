@@ -55,7 +55,8 @@
                   "assistant",
                   "tool",
                   "model_change",
-                  "unknown"
+                  "unknown",
+                  "bash"
                 ]
               },
               "content": {
@@ -84,6 +85,28 @@
                 "maxLength": 200
               },
               "truncated_blocks": {
+                "type": "boolean"
+              },
+              "entry_type": {
+                "enum": [
+                  "model_change",
+                  "thinking_level_change",
+                  "session_info",
+                  "label",
+                  "compaction",
+                  "branch_summary"
+                ]
+              },
+              "exit_code": {
+                "type": "integer"
+              },
+              "cancelled": {
+                "type": "boolean"
+              },
+              "output_truncated": {
+                "type": "boolean"
+              },
+              "exclude_from_context": {
                 "type": "boolean"
               }
             }

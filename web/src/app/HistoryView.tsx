@@ -358,13 +358,41 @@ export function Entry({
           ) : null}
         </ToolRow>
       ) : null}
+      {entry.kind === "bash" ? (
+        <section className="ah-ordered-blocks">
+          <p>
+            Paikallinen komento ·{" "}
+            {entry.cancelled
+              ? "keskeytetty"
+              : entry.exit_code !== undefined
+                ? `paluuarvo ${entry.exit_code}`
+                : "tila ei tiedossa"}
+            {entry.output_truncated ? " · tuloste katkaistu" : ""}
+            {entry.exclude_from_context ? " · ei mallin kontekstissa" : ""}
+          </p>
+          {entry.blocks?.map((block, index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: Native command/output block positions are stable within an entry.
+            <div key={`${entry.entry_key}:${index}`}>
+              <strong>{index === 0 ? "Komento" : "Tuloste"}</strong>
+              <ReadableBlock
+                block={block}
+                index={index}
+                entryKey={entry.entry_key}
+                agentId={agentId}
+                revision={entry.native_revision ?? revision}
+                onLogin={onLogin}
+              />
+            </div>
+          ))}
+        </section>
+      ) : null}
       {entry.kind === "model_change" ? (
         <ModelChange modelId={content.text} onCopy={copy} />
       ) : null}
       {entry.kind === "unknown" ? (
         entry.blocks?.length ? (
           <section>
-            <p>Pi-merkintä</p>
+            <p>Pi-merkintä · {entry.entry_type ?? "tuntematon"}</p>
             <OrderedBlocks
               blocks={entry.blocks}
               entryKey={entry.entry_key}

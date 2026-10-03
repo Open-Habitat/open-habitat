@@ -23,13 +23,24 @@ export interface HistoryBlock {
 }
 export interface HistoryEntry {
   entry_key: string;
-  kind: "user" | "assistant" | "tool" | "model_change" | "unknown";
+  kind: "user" | "assistant" | "tool" | "model_change" | "unknown" | "bash";
   content: HistoryContent;
   blocks?: HistoryBlock[];
   tool_call_id?: string;
   is_error?: boolean;
   stop_reason?: string;
   model?: string;
+  exit_code?: number;
+  cancelled?: boolean;
+  output_truncated?: boolean;
+  exclude_from_context?: boolean;
+  entry_type?:
+    | "model_change"
+    | "thinking_level_change"
+    | "session_info"
+    | "label"
+    | "compaction"
+    | "branch_summary";
   truncated_blocks?: boolean;
   native_revision?: string;
 }

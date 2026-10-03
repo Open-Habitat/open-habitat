@@ -410,16 +410,48 @@ export function BrowserConversation({
                       >
                         <Markdown text={item.text} />
                       </AssistantMessage>
+                    ) : item.kind === "tool" ? (
+                      <section>
+                        <LiveToolRow
+                          name={item.name ?? "Työkalu"}
+                          state={
+                            (item.state ?? "running") as
+                              | "running"
+                              | "succeeded"
+                              | "failed"
+                              | "cancelled"
+                          }
+                        />
+                        {item.arguments ? (
+                          <details>
+                            <summary>Näytä kutsun argumentit</summary>
+                            <pre>{item.arguments}</pre>
+                          </details>
+                        ) : null}
+                        {item.output ? (
+                          <details>
+                            <summary>Näytä työkalun tuloste</summary>
+                            <pre>{item.output}</pre>
+                          </details>
+                        ) : null}
+                      </section>
+                    ) : item.kind === "bash" ? (
+                      <details>
+                        <summary>
+                          Paikallisen komennon tuloste · käynnissä
+                        </summary>
+                        <pre>{item.text}</pre>
+                      </details>
                     ) : (
-                      <LiveToolRow
-                        name={item.name ?? "Työkalu"}
-                        state={
-                          item.state as
-                            | "running"
-                            | "succeeded"
-                            | "failed"
-                            | "cancelled"
+                      <InlineNotice
+                        title={
+                          item.kind === "bash"
+                            ? "Paikallisen komennon tuloste"
+                            : item.kind === "extension"
+                              ? "Laajennuksen ilmoitus"
+                              : "Pi-tila"
                         }
+                        description={item.text}
                       />
                     ),
                 })),

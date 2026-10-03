@@ -211,3 +211,179 @@ describe("published conversation stream", () => {
     ).toThrow();
   });
 });
+
+describe("typed live Pi projection", () => {
+  it("joins call arguments, execution progress and result by id without duplicate rows after native history", () => {
+    let turn = initialTurn(cursor(0));
+    const steps: [string, Record<string, unknown>][] = [
+      ["assistant.toolcall.delta", { content_index: 1, text: '{"path":' }],
+      [
+        "assistant.toolcall.end",
+        {
+          content_index: 1,
+          tool_call_id: "call1",
+          tool_name: "read",
+          text: '{"path":"demo"}',
+        },
+      ],
+      [
+        "tool.started",
+        { tool_call_id: "call1", tool_name: "read", state: "running" },
+      ],
+      [
+        "tool.updated",
+        {
+          tool_call_id: "call1",
+          tool_name: "read",
+          state: "running",
+          text: "progress",
+        },
+      ],
+      [
+        "tool.finished",
+        {
+          tool_call_id: "call1",
+          tool_name: "read",
+          state: "succeeded",
+          text: "done",
+        },
+      ],
+    ];
+    steps.forEach(([kind, payload], i) => {
+      turn = applyTurnEvent(turn, parse(i + 1, kind, payload), agent).turn;
+    });
+    expect(
+      provisionalItems(turn).filter((item) => item.kind === "tool"),
+    ).toMatchObject([
+      {
+        name: "read",
+        state: "succeeded",
+        arguments: '{"path":"demo"}',
+        output: "done",
+      },
+    ]);
+    turn = applyTurnEvent(
+      turn,
+      parse(6, "history.entry", {
+        entry_key: "native-1",
+        entry_kind: "tool",
+        tool_call_id: "call1",
+        content: { media_type: "text/plain", text: "done", complete: true },
+      }),
+      agent,
+    ).turn;
+    expect(provisionalItems(turn)).toEqual([]);
+  });
+  it("replaces status and widget updates, clears them, and shows unknown types without payload", () => {
+    let turn = initialTurn(cursor(0));
+    for (const [n, kind, payload] of [
+      [
+        1,
+        "extension.visible",
+        { method: "setStatus", key: "build", text: "running", clear: false },
+      ],
+      [
+        2,
+        "extension.visible",
+        { method: "setStatus", key: "build", text: "done", clear: false },
+      ],
+      [
+        3,
+        "unknown.native",
+        {
+          native_type: "new_type",
+          content: {
+            media_type: "text/plain",
+            text: "Pi event not supported",
+            complete: true,
+          },
+        },
+      ],
+      [
+        4,
+        "extension.visible",
+        { method: "setStatus", key: "build", text: "", clear: true },
+      ],
+    ] as const)
+      turn = applyTurnEvent(turn, parse(n, kind, payload), agent).turn;
+    expect(provisionalItems(turn).map((item) => item.text)).toEqual([
+      "Pi-tapahtumaa ei tueta · new_type",
+    ]);
+  });
+});
+
+it("coalesces cumulative tool output snapshots without exhausting the browser tail and separates repeated content indexes", () => {
+  let turn = initialTurn(cursor(0));
+  for (let i = 1; i <= 140; i++)
+    turn = applyTurnEvent(
+      turn,
+      parse(i, "tool.updated", {
+        tool_call_id: "call1",
+        tool_name: "bash",
+        state: "running",
+        text: `output ${i}`,
+      }),
+      agent,
+    ).turn;
+  expect(turn.fragments).toHaveLength(1);
+  expect(provisionalItems(turn)[0].output).toBe("output 140");
+  for (const [n, kind, payload] of [
+    [141, "assistant.toolcall.delta", { content_index: 1, text: "one" }],
+    [
+      142,
+      "assistant.toolcall.end",
+      {
+        content_index: 1,
+        tool_call_id: "call2",
+        tool_name: "read",
+        text: "one",
+      },
+    ],
+    [143, "assistant.toolcall.delta", { content_index: 1, text: "two" }],
+    [
+      144,
+      "assistant.toolcall.end",
+      {
+        content_index: 1,
+        tool_call_id: "call3",
+        tool_name: "write",
+        text: "two",
+      },
+    ],
+  ] as const)
+    turn = applyTurnEvent(turn, parse(n, kind, payload), agent).turn;
+  expect(
+    provisionalItems(turn)
+      .filter((item) => item.kind === "tool")
+      .map((item) => item.name),
+  ).toEqual(["bash", "read", "write"]);
+});
+
+it("replaces provisional local output with saved command history", () => {
+  const turn = applyTurnEvent(
+    initialTurn(cursor(0)),
+    parse(1, "bash.output", { text: "running" }),
+    agent,
+  ).turn;
+  expect(provisionalItems(turn).map((item) => item.text)).toEqual(["running"]);
+  const saved = applyTurnEvent(
+    turn,
+    parse(2, "history.entry", {
+      entry_key: "native-1",
+      entry_kind: "bash",
+      content: {
+        media_type: "text/plain",
+        text: "Local command",
+        complete: true,
+      },
+      blocks: [
+        { type: "text", text: "echo test" },
+        { type: "text", text: "running" },
+      ],
+      exit_code: 0,
+    }),
+    agent,
+  );
+  expect(saved.entry?.kind).toBe("bash");
+  expect(provisionalItems(saved.turn)).toEqual([]);
+});
