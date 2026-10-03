@@ -160,17 +160,25 @@ export function Entry({
   return (
     <>
       {entry.kind === "user" ? (
-        entry.blocks ? (
+        <>
           <UserMessage
-            sourceText={entry.blocks
-              .filter((b) => b.type === "text")
-              .map((b) => b.text ?? "")
-              .join("\n")}
+            sourceText={
+              entry.truncated_blocks
+                ? content.text
+                : (entry.blocks
+                    ?.filter((b) => b.type === "text")
+                    .map((b) => b.text ?? "")
+                    .join("\n") ?? content.text)
+            }
             onCopy={copy}
           />
-        ) : (
-          <UserMessage sourceText={content.text} onCopy={copy} />
-        )
+          {!entry.truncated_blocks &&
+          entry.blocks?.some((b) => b.type !== "text") ? (
+            <OrderedBlocks
+              blocks={entry.blocks.filter((b) => b.type !== "text")}
+            />
+          ) : null}
+        </>
       ) : null}
       {/* Native history omits the stop reason; a saved tool-use message may
           precede the rest of a still-running turn. */}
@@ -180,13 +188,8 @@ export function Entry({
           modelLabel={entry.model}
           streamState={entry.stop_reason === "error" ? "failed" : undefined}
         >
-          {entry.blocks ? (
-            <>
-              <OrderedBlocks blocks={entry.blocks} />
-              {entry.truncated_blocks ? (
-                <p>Lohkoja katkaistu tässä näkymässä.</p>
-              ) : null}
-            </>
+          {entry.blocks && !entry.truncated_blocks ? (
+            <OrderedBlocks blocks={entry.blocks} />
           ) : fallback ? (
             <section className="ah-unknown">
               <p>Tuntematon sisältö · {fallback.type}</p>

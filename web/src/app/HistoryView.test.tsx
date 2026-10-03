@@ -190,3 +190,34 @@ it("renders ordered typed blocks without exposing redacted or unknown payloads",
   );
   expect(container.textContent).not.toContain("unchecked-secret");
 });
+
+it("shows image-only user prompts and full text when typed blocks were truncated", () => {
+  const { container } = render(
+    <>
+      <Entry
+        entry={{
+          ...entry,
+          blocks: [{ type: "image", mime_type: "image/png" }],
+          content: { media_type: "text/plain", text: "", complete: true },
+        }}
+      />
+      <Entry
+        entry={{
+          ...entry,
+          entry_key: "long",
+          kind: "assistant",
+          blocks: [{ type: "text", text: "short" }],
+          truncated_blocks: true,
+          content: {
+            media_type: "text/plain",
+            text: "full assistant text",
+            complete: true,
+          },
+        }}
+      />
+    </>,
+  );
+  expect(container.textContent).toContain("image/png");
+  expect(container.textContent).toContain("full assistant text");
+  expect(container.textContent).not.toContain("short");
+});

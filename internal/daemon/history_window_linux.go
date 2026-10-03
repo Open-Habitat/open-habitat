@@ -107,9 +107,9 @@ func readNativeWindowFor(path string, uid int, beforeKey string, limit int, cont
 			return false
 		}
 		full.Raw = line
-		kind, _ := nativeText(full)
-		if kind != "" {
-			result.entries = append(result.entries, nativeBlocks(full))
+		entry := nativeBlocks(full)
+		if entry.Kind != "" {
+			result.entries = append(result.entries, entry)
 		}
 		if contentKey != "" {
 			stopped = true

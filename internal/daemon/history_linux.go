@@ -249,11 +249,10 @@ func readNative(path string, uid int) nativeSession {
 		seen[e.ID] = true
 		parents[e.ID] = e.ParentID
 		leaf = e.ID
-		kind, _ := nativeText(e)
-		if kind == "" {
-			continue
+		entry := nativeBlocks(e)
+		if entry.Kind != "" {
+			result.entries = append(result.entries, entry)
 		}
-		result.entries = append(result.entries, nativeBlocks(e))
 	}
 	if scanner.Err() != nil || len(b) == 0 || b[len(b)-1] != '\n' {
 		result.state = "corrupt"
