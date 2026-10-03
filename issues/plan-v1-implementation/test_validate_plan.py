@@ -45,13 +45,13 @@ class PlanValidatorTests(unittest.TestCase):
         self.change("build-agent-control", "lane_seq: 50", "lane_seq: 50\nblocked_by: ['@build-history-view']")
         self.run_validator("history visual review must not block agent control")
 
-    def test_missing_visual_evidence_fails(self):
-        path = self.root / "issues/build-agent-control/item.md"
-        content = path.read_text()
-        self.assertIn("visual-acceptance.md", content)
-        # Remove every reference: the policy can mention the evidence file twice.
-        path.write_text(content.replace("visual-acceptance.md", "missing-evidence.md"))
-        self.run_validator("missing visual evidence and explicit human decision policy: build-agent-control")
+    def test_missing_visual_evidence_in_open_slice_fails(self):
+        self.change("manage-agent-worktrees", "visual-acceptance.md", "missing-evidence.md")
+        self.run_validator("missing visual evidence and explicit human decision policy: manage-agent-worktrees")
+
+    def test_closed_slice_does_not_need_forward_review_policy(self):
+        self.change("build-agent-control", "visual-acceptance.md", "past-evidence.md")
+        self.run_validator()
 
     def test_missing_human_decision_fails(self):
         self.change("build-history-view", "Record Jari's visual verdict when given", "File the screenshots when ready")

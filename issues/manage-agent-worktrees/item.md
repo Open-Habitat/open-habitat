@@ -64,6 +64,10 @@ Keep the [interface description](../../docs/interfaces.md),
 consistent with the agreed integration. The product page's existing promise
 of a user-chosen final branch name needs to reflect Taskfleet's actual behavior.
 
-[TESTING.md](../../TESTING.md) defines the checks and browser evidence. Record
-what was demonstrated and what remains unverified in this issue's result,
-distinguishing native Taskfleet integration from simulated behavior.
+[TESTING.md](../../TESTING.md) defines the checks and browser evidence. Save
+proportionate synthetic-lab screenshots and static HTML snapshots in
+`visual-acceptance.md`, identifying the tested revision and what they show.
+Record Jari's visual verdict when given; until then, mark appearance unreviewed
+without blocking functional completion or independent work. Record what was
+demonstrated and what remains unverified in this issue's result, distinguishing
+native Taskfleet integration from simulated behavior.

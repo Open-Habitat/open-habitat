@@ -87,9 +87,12 @@ if "human-review" not in human.get("labels", []) or human.get("lane") is not Non
 if "@review-implementation-plan" not in issue_metadata("build-app-foundation").get("blocked_by", []):
     errors.append("product implementation head must remain blocked by review-implementation-plan")
 
-# An issue promises reviewable evidence, not a particular section heading or a
-# verdict before work can proceed. Future slices have no screenshots yet.
+# Open slices promise reviewable evidence, not a verdict before work can proceed.
+# Closed slices record what actually happened in their results; they no longer
+# need a forward-looking review policy in the issue brief.
 for slug in owners[:10]:
+    if issue_metadata(slug).get("status") == "done":
+        continue
     text = (ROOT / "issues" / slug / "item.md").read_text()
     # Only the declared review policy counts; a historical decision in Comments
     # cannot substitute for a missing policy for this slice.
