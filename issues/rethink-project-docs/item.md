@@ -1,6 +1,6 @@
 ---
 created: 2026-09-29
-updated: 2026-10-02
+updated: 2026-10-03
 type: task
 status: open
 priority: normal
@@ -672,3 +672,7 @@ raw-thinking-history-blocks käsitelty Jarin kanssa. Salatun JSONin oireesta laa
 ### 2026-10-02T10:13:24Z · @codex
 
 Jari täsmensi lohkokirjaston työtavan: designer suunnittelee jokaisen lohkon. Kirjattu raw-thinking-history-blocks-issueen, design-system-sivulle ja AGENTS-WORKFLOW.md:n UI-työhön. Agentti toimittaa lohkojen kartoituksen ja esimerkit suunnitteluaineistoksi, toteuttaa designerin suunnitelmat ja ylläpitää niiden katalogiesityksiä.
+
+### 2026-10-03T05:40:49Z · @codex
+
+latest-control-obscured käsitelty Jarin kanssa 3.10.2026 rethink-instructions-skillillä. Hyväksytty tavoite on näkyvä ja käytettävä hyppypainike myös kirjoituskentän kasvaessa sekä yhtenäinen keskustelualueen asettelu. Työ yhdistyy composer-footer-layout-issuen yhteisten säiliöiden selvitykseen; eri tyhjien välien yhteistä juurisyytä tai tiettyä CSS-korjausta ei oleteta. Näin 2.10. valittu viiden issuen tekstikierros on käsitelty. Seuraavaa dokumenttia ei ole tässä kierroksessa valittu. Tuotekoodia, issueiden tilaa tai DAGin ajoitusta ei muutettu.
