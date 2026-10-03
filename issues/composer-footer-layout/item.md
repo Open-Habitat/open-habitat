@@ -1,11 +1,14 @@
 ---
 created: 2026-10-01
-updated: 2026-10-02
+updated: 2026-10-03
 type: bug
 reporter: Jari
 status: open
 priority: high
-related: ['@pilot14-session-revalidation-loop']
+related: ['@pilot14-session-revalidation-loop', '@migrate-bespoke-controls']
+blocked_by: ['@migrate-bespoke-controls']
+lane: ui-foundation
+lane_seq: 21
 ---
 
 # Lähetä-painike ja Enter-vihje eivät ole samalla rivillä, tyhjää tilaa viestikentän ympärillä

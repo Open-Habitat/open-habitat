@@ -5,6 +5,8 @@ type: task
 reporter: jari
 status: open
 priority: high
+related: ['@design-control-states']
+blocked_by: ['@design-control-states']
 ---
 
 # Design every Pi event block

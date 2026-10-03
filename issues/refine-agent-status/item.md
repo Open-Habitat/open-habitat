@@ -1,15 +1,15 @@
 ---
 created: 2026-09-21
-updated: 2026-10-02
+updated: 2026-10-03
 type: task
 status: open
 priority: normal
 epic: native-agent-host-architecture
-blocked_by: ['@review-mvp']
+blocked_by: ['@unify-ui-primitives']
 lane: post-mvp-design
 lane_seq: 60
 collision: [docs/, design-system/]
-related: ['@consistent-control-feedback', '@restore-v2-navigation']
+related: ['@consistent-control-feedback', '@restore-v2-navigation', '@design-control-states', '@apply-control-state-design']
 ---
 
 # Design a consistent language for agent states
@@ -65,3 +65,7 @@ Rethink-night 30.9.: toteuttajalle suunnattu issue käytiin läpi rethink-instru
 ### 2026-10-02T10:05:17Z · @codex
 
 Jari pyysi 2.10.2026 agenttien tiloista oman pienen käytettävyyssuunnittelun: mitä tiloja agentilla voi olla, miten niitä ilmaistaan ja miten yhtenäinen ilme kaikkialla auttaa käyttäjää ymmärtämään niitä. Hän tunnisti alustavasti aiemman tyhjä/vihreä/sykkivä-pistejaon, mutta ei lukinnut näitä tiloja tai esitystapaa. Tämä tarkentaa aiemman visuaalisen viimeistelyn tehtäväksi suunnitella tilojen merkitys ja johdonmukainen esitys. Käyttöliittymän toistuvien epäjohdonmukaisuuksien ohjelmistotekninen juurisyy kuuluu @consistent-control-feedback-issueen. Käytetään tätä olemassa olevaa issuea uuden päällekkäisen tehtävän sijasta.
+
+### 2026-10-03T06:21:31Z · @claude
+
+Jari 3.10.2026: agenttitilojen design viedään designerille samassa paketissa kuin primitiivien tilamatriisi (@design-control-states, StatusMark-luku). Toteutus eli yksi agentPresentation-funktio hostin faktoista kuuluu @apply-control-state-design-issueen ja edellyttää @unify-ui-primitives-pohjaa.

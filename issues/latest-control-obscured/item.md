@@ -3,11 +3,14 @@ created: 2026-10-02
 updated: 2026-10-03
 type: bug
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-02:ui-observations:11-14
-related: ['@composer-footer-layout']
+related: ['@composer-footer-layout', '@migrate-bespoke-controls']
+blocked_by: ['@migrate-bespoke-controls']
+lane: ui-foundation
+lane_seq: 22
 ---
 
 # Jump-to-latest control is obscured by the message composer

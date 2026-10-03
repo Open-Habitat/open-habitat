@@ -1,13 +1,16 @@
 ---
 created: 2026-10-02
-updated: 2026-10-02
+updated: 2026-10-03
 type: feature
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-02:ui-observations:7-8
 related: ['@decide-account-display', '@restore-v2-navigation', '@restore-v2-settings']
+blocked_by: ['@unify-ui-primitives']
+lane: account-ui
+lane_seq: 20
 ---
 
 # Make the signed-in account recognizable across the UI

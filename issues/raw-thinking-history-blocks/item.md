@@ -3,11 +3,15 @@ created: 2026-10-02
 updated: 2026-10-03
 type: bug
 reporter: jari
-status: untriaged
+status: obsolete
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-02:ui-observations:12
 related: ['@unknown-pi-event-thinking-level', '@consistent-control-feedback']
+closed: 2026-10-03
+disposition_note: 'Jari 3.10.2026: lohkokirjaston vaatimus ja thinking-lohkon käsittely katetaan kokonaan issueilla catalog-pi-events, carry-typed-pi-events ja design-pi-event-blocks; yhteinen tulkintaperiaate (käyttäjälle tarkoitettu teksti ja luettava thinking säilyvät, salatut payloadit ja metadata eivät muutu viesteiksi) siirtyy niiden lähtökohdaksi.'
+disposition_reason: superseded
+superseded_by: design-pi-event-blocks
 ---
 
 # Make conversation block handling coherent and discoverable
@@ -85,3 +89,9 @@ Jari laajensi työn muihinkin lohkoihin: lohkot muodostavat ymmärrettävän, he
 ### 2026-10-02T10:13:24Z · @codex
 
 Jarin lisätäsmennys sanasta sanaan: "Itse asiassa tässä pitää olla sellainen työtapa, että desigener suunnittelee *jokaisen* lohkon". Työnjako täsmennetty: agentti kartoittaa lohkotyypit, merkitykset ja tarvittavat esitystilat designerin aineistoksi; designer suunnittelee jokaisen näkyvän lohkon, myös tuntemattoman sisällön esityksen; agentti toteuttaa designit yhteisiin tuotantokomponentteihin ja katalogiin. Sama työtapa koskee uusia lohkotyyppejä. Pelkkä agentin tekemän ilmeen näyttäminen designerille ei täytä tätä tavoitetta.
+
+## Comments
+
+### 2026-10-03T06:21:31Z · @intake
+
+Obsolete: Jari 3.10.2026: lohkokirjaston vaatimus ja thinking-lohkon käsittely katetaan kokonaan issueilla catalog-pi-events, carry-typed-pi-events ja design-pi-event-blocks; yhteinen tulkintaperiaate (käyttäjälle tarkoitettu teksti ja luettava thinking säilyvät, salatut payloadit ja metadata eivät muutu viesteiksi) siirtyy niiden lähtökohdaksi. (superseded by design-pi-event-blocks)

@@ -3,11 +3,13 @@ created: 2026-10-02
 updated: 2026-10-03
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-02:ui-observations:4-6
-related: ['@refine-agent-status', '@review-browser-design-v2', '@restore-v2-navigation']
+related: ['@refine-agent-status', '@review-browser-design-v2', '@restore-v2-navigation', '@unify-ui-primitives', '@migrate-bespoke-controls', '@design-control-states', '@apply-control-state-design']
+closed: 2026-10-03
+closed_by: claude
 ---
 
 # Find and address the causes of inconsistent UI interaction feedback
@@ -65,3 +67,9 @@ Jarin täsmennys 2.10.2026: raportoidut hover-, painike- ja valikkoerot ovat oir
 ### 2026-10-03T05:44:01Z · @claude
 
 Tutkimus tehty 3.10.2026 (Claude, ei delegoitu): [investigation.md](investigation.md). Syy: vuorovaikutustilat eivät kuulu minkään primitiivin sopimukseen; React Arian data-hovered/pressed/focus-visible-attribuutteja ei käytetä tyyleissä, hover-säännöt on lisätty neljään näkymäkohtaiseen valitsimeen eri viipaleissa, kontrolleja rakennetaan kolmella tavalla, ja kahdeksan esi-isäohitusta tyylittää Buttonia ulkoapäin vaikka recut-ui-foundation kuittasi sen poistetuksi. Mittaus labin näkymistä: Button-variantit, agenttirivit, valikon rivit ja tilivalikon laukaisin eivät reagoi hoveriin tai painallukseen. Suositus: ei kirjastovaihtoa; React Aria loppuun asti, primitiivit omissa CSS-moduuleissa, yksi tilaresepti, näkymä ei tyylitä primitiiviä, gateen väite että jokainen kontrolli on primitiivi ja reagoi hoveriin ja fokukseen, designerille tilamatriisi. Odottaa Jarin kantaa vaiheen A aloitukseen.
+
+## Resolution
+
+### 2026-10-03T06:21:31Z · @claude
+
+Tutkimus ja suositus investigation.md:ssä. Jari hyväksyi 3.10.2026 polun a1 @unify-ui-primitives → a2 @migrate-bespoke-controls → b @design-control-states (designerin kierros, mukana pysyvä tilasääntö ja agenttitilat) → c @apply-control-state-design → d @design-pi-event-blocks; @carry-typed-pi-events kulkee rinnalla. Ei kirjastovaihtoa.
