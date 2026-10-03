@@ -26,28 +26,31 @@ interface does not clearly tell the person whose account they are using.
 Show the person's first name in the compact account view and their email when
 the account view is opened. GitHub is the source; onboarding asks for the name
 or email if GitHub does not provide it, as decided in @decide-account-display.
-Use the GitHub profile image to help the person recognize their account, with
-a usable presentation when no image is available.
+The first name is not guessed from an email address. Use the GitHub profile
+image to help the person recognize their account, with a usable presentation
+when no image is available.
 
 These are display details. The existing authenticated identity and Unix-user
 binding determine whose account and data the person can access; entering an
 email during onboarding does not change that identity.
 
-## Implementation approach
+## Work
 
-Trace how GitHub profile information reaches the application and why the current
-views lack it. WorkspaceRailView currently supplies the literal "Oma tili".
-Resolve the data flow and shared account presentation so the sidebar, account
-menu and settings consistently describe the same signed-in person. The work
-includes supplying missing profile information and the agreed onboarding fallback,
-not just replacing the label in one view.
+Trace how GitHub profile information reaches the application and supply the
+missing data and onboarding fallback. The sidebar, account menu and settings
+should use a shared account presentation so they consistently describe the same
+signed-in person. This includes the browser/host contract and profile data flow,
+not just replacing a label in one view.
 
-Coordinate the sidebar and settings changes with @restore-v2-navigation and
-@restore-v2-settings. The result should make the account recognizable after login
-and after switching accounts, including when GitHub lacks some display details.
+Build the account presentation from the shared controls in @unify-ui-primitives
+and the [design](../../design-system/design.md). @restore-v2-navigation owns the
+surrounding sidebar layout and @restore-v2-settings the settings layout;
+@add-account-settings-ui owns the remaining native connection settings. Those
+views consume the profile information and shared account presentation from this
+work.
 
-## Decisions
+## Acceptance Criteria
 
-### 2026-10-02T10:07:59Z · @codex
-
-Jari hyväksyi 2.10.2026 läpikäynnissä rajauksen: "Oma tili" ja puuttuvat profiilitiedot ovat oire siitä, ettei käyttöliittymä kerro selvästi kenen tilillä toimitaan. Toteuttaja selvittää profiilitiedon kulun GitHubista yhteiseen tiliesitykseen, jotta sivupalkki ja asetukset käyttävät sitä johdonmukaisesti. Aiempi etunimi/sähköposti-päätös ja puuttuvien tietojen kysyminen onboardingissa säilyvät; GitHub-profiilikuva täydentää tunnistettavuutta. Näyttötiedot eivät muuta tilin todennettua identiteettiä. Issuen teksti uudistettu tämän mukaan; toteutusta ei tehty.
+- [ ] The sidebar, opened account menu and settings identify the same signed-in person using the agreed name, email and profile image presentation.
+- [ ] Missing GitHub name or email can be supplied during onboarding, and the account remains recognizable without a profile image.
+- [ ] After logout and signing in as another person, the views show that person's profile. Display information does not change authenticated identity or Unix-user binding.

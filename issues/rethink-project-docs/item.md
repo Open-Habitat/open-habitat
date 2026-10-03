@@ -65,7 +65,7 @@ riippuvuudet ovat edelleen issuectl:n DAGissa.
    add-account-settings-ui-issuen kanssa. Täsmennetään vertailukuvien päivityksen
    tarkoitus tämän kokonaisuuden lopputuloksen osoittamisessa.
 
-**Seuraava käsiteltävä issue: account-profile-from-github.** `unify-ui-primitives`in
+**Seuraava käsiteltävä issue: restore-v2-navigation.** `unify-ui-primitives`in
 teksti selvennetty 3.10.2026: yhteisten kontrollien vastuu ja sovittu React Aria
 -pohja säilyvät, toteutusdetaljit jätetään toteuttajalle. Ensimmäisen vaiheen
 näyttö koskee siirrettyjä kontrolleja; loppujen siirto ja koko UI:n kattavuus
@@ -104,6 +104,14 @@ löydettävä lohkokirjasto säilyvät. Jari vahvisti, että meillä on vain des
 palautus päivittää yhteistä design.md:tä ja drafts/-vedoksia. Erillinen v3-polku
 poistettu. Toteutus ja katalogiesimerkit kuuluvat palautuksesta kirjattavaan
 jatkotyöhön.
+
+`account-profile-from-github`in teksti sovitettu 3.10.2026 yhteiseen
+komponenttipohjaan: aiemmin hyväksytyt etunimi, sähköposti, GitHub-profiilikuva
+ja onboarding-varamenettely säilyvät. Tämä työ tuo profiilitiedot yhteiseen
+tiliesitykseen; navigaatio ja asetukset omistavat ympäröivien näkymien asettelun.
+Näyttötiedot erotettu edelleen todennetusta identiteetistä. Toistava Decisions-osio
+poistettu; valmistuminen kuvattu tunnistettavana tilinä myös puuttuvilla tiedoilla
+ja eri henkilön kirjautuessa sisään.
 
 Pi-tapahtumakatalogi käyty läpi 3.10.2026 Jarin pyynnöstä ennen
 `design-pi-event-blocks`-issuea. `catalog-pi-events/analysis.md` selittää
