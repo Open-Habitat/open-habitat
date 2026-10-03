@@ -47,7 +47,6 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc("/api/v1/onboarding/github/checkout", s.auth.githubObserve)
 		mux.HandleFunc("/api/v1/onboarding/pi/attempt", s.auth.piAttempt)
 		mux.HandleFunc("/api/v1/agents/", s.auth.history)
-		mux.HandleFunc("/api/v1/content/", s.auth.history)
 	}
 	mux.HandleFunc("/", s.ui)
 	if s.auth != nil {

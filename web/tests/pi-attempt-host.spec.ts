@@ -35,11 +35,11 @@ test("@pi-attempt native reads stay mapped while foreign and stale attempts are 
     for (const path of [
       "/api/v1/snapshot",
       "/api/v1/agents/pi:11111111-1111-4111-8111-111111111111/history?limit=1",
-      "/api/v1/content/ct_abcdefgh?offset=0&limit_bytes=100",
+      "/api/v1/agents/pi:11111111-1111-4111-8111-111111111111/entries/missing/blocks/0?revision=missing&offset=0&limit_bytes=100",
     ]) {
       const response = await a.request.get(path);
       expect(response.status(), path).toBe(
-        path.includes("/api/v1/content/") ? 404 : 200,
+        path.includes("/entries/missing/blocks/") ? 404 : 200,
       );
       expect(response.headers()["cache-control"]).toContain("no-store");
       // Native reads remain scoped to this authenticated mapping.

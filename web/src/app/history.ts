@@ -10,8 +10,7 @@ export interface HistoryContent {
   media_type: "text/plain" | "text/markdown" | "text/x-diff";
   text: string;
   complete: boolean;
-  content_id?: string;
-  next_offset?: number;
+  truncated?: boolean;
 }
 export interface HistoryBlock {
   type: "text" | "thinking" | "image" | "toolCall" | "unknown";
@@ -21,6 +20,7 @@ export interface HistoryBlock {
   tool_call_id?: string;
   tool_name?: string;
   arguments?: string;
+  readable?: boolean;
 }
 export interface HistoryEntry {
   entry_key: string;
@@ -32,6 +32,7 @@ export interface HistoryEntry {
   stop_reason?: string;
   model?: string;
   truncated_blocks?: boolean;
+  native_revision?: string;
 }
 export interface HistoryPage {
   schema_version: 1;
@@ -44,15 +45,24 @@ export interface HistoryPage {
   boundary_found?: boolean;
   next_before?: string;
 }
-export interface ContentChunk {
+export interface BlockChunk {
   schema_version: 1;
-  content_id: string;
+  agent_id: string;
+  native_revision: string;
+  entry_key: string;
+  block_index: number;
   offset: number;
-  content: HistoryContent;
+  chunk: {
+    media_type: string;
+    text?: string;
+    data?: string;
+    complete: boolean;
+    next_offset?: number;
+  };
 }
 export async function readHistory(
   response: Response,
-): Promise<HistoryPage | ContentChunk> {
+): Promise<HistoryPage | BlockChunk> {
   if (response.status === 401) throw new Error("identity_lost");
   if (
     !response.ok ||
@@ -84,5 +94,5 @@ export async function readHistory(
     new TextDecoder("utf-8", { fatal: true }).decode(bytes),
   );
   if (!validate?.(value)) throw new Error("invalid history");
-  return value as HistoryPage | ContentChunk;
+  return value as HistoryPage | BlockChunk;
 }

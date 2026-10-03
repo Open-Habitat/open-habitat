@@ -42,17 +42,14 @@ func historyGatewayPath(path string, q url.Values) bool {
 		}
 		return true
 	}
-	if contentPath.MatchString(path) {
-		if len(q) != 2 || len(q["offset"]) != 1 || len(q["limit_bytes"]) != 1 {
-			return false
-		}
-		return true
+	if blockReadPath.MatchString(path) {
+		return len(q) == 3 && len(q["revision"]) == 1 && len(q["offset"]) == 1 && len(q["limit_bytes"]) == 1
 	}
 	return false
 }
 
 var historyPath = regexp.MustCompile(`^/api/v1/agents/pi:[0-9a-fA-F-]{36}/history$`)
-var contentPath = regexp.MustCompile(`^/api/v1/content/ct_[A-Za-z0-9_-]{8,80}$`)
+var blockReadPath = regexp.MustCompile(`^/api/v1/agents/pi:[0-9a-fA-F-]{36}/entries/[A-Za-z0-9_-]{1,128}/blocks/[0-9]{1,3}$`)
 
 func (a *Auth) history(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.EscapedPath()

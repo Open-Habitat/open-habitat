@@ -253,6 +253,7 @@ func (c *ConversationController) publishNativeHistoryForTurn(s *conversation, tu
 				lastKey = entry.Key
 			}
 			inline(&native, &entry)
+			entry.NativeRevision = native.revision
 			// Continuation can replace a reaped handle while native reads
 			// complete. Never publish a superseded controller's tail.
 			c.mu.Lock()

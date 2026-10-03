@@ -119,7 +119,7 @@
     "then": [
       "that connection closes without stopping Pi or silently losing the current state",
       "reconnect uses replay where available or a fresh snapshot",
-      "large native content remains readable through content pagination under the current wire limits"
+      "large native blocks remain readable through bounded per-block pagination under the current wire limits"
     ]
   },
   {
@@ -598,7 +598,7 @@
       "browser session is broker-mapped to synthetic UID A and Pi OAuth is absent or unavailable"
     ],
     "when": [
-      "browser checks onboarding once on initial load and direct snapshot/history/content URLs are requested after native status changes"
+      "browser checks onboarding once on initial load and direct snapshot/history/block URLs are requested after native status changes"
     ],
     "then": [
       "daemon verifies peer and mapped identity on every native read without querying Pi",

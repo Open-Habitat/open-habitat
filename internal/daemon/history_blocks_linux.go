@@ -6,17 +6,37 @@ import "encoding/json"
 
 // A bounded, explicitly selected projection of native message structure. Raw
 // provider metadata and extension details never enter the browser contract.
-// The existing content endpoint remains the way to read long text. Image data
-// and arbitrary tool arguments are not copied into history pages.
+// Image data and tool arguments are fetched only by explicit bounded block read.
 func nativeBlocks(e nativeEntry) (out historyEntry) {
 	out.Key = e.ID
 	out.Kind, out.full = nativeText(e)
-	if e.Type == "custom_message" {
-		var visibility struct {
-			Display bool `json:"display"`
+	if e.Type == "custom_message" || e.Type == "compaction" || e.Type == "branch_summary" {
+		var top struct {
+			Display bool            `json:"display"`
+			Content json.RawMessage `json:"content"`
+			Summary string          `json:"summary"`
 		}
-		if json.Unmarshal(e.Raw, &visibility) != nil || !visibility.Display {
+		if json.Unmarshal(e.Raw, &top) != nil || e.Type == "custom_message" && !top.Display {
 			out.Kind, out.full = "", ""
+			return
+		}
+		content := top.Content
+		if e.Type != "custom_message" {
+			content, _ = json.Marshal(top.Summary)
+		}
+		projection, _ := json.Marshal(struct {
+			Role    string          `json:"role"`
+			Content json.RawMessage `json:"content"`
+		}{"user", content})
+		projected := nativeBlocks(nativeEntry{ID: e.ID, Type: "message", Message: projection})
+		out.Blocks, out.TruncatedBlocks = projected.Blocks, projected.TruncatedBlocks
+		out.Kind = "unknown" // labelled native entry, not an assistant utterance
+		out.full = prefixBytes(top.Summary, 16384)
+		if e.Type == "custom_message" {
+			out.full = "Extension message"
+		}
+		if len(out.Blocks) == 0 {
+			out.Blocks = []historyBlock{{Type: "unknown"}}
 		}
 		return
 	}
@@ -57,7 +77,7 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 	}
 	var plain string
 	if json.Unmarshal(m.Content, &plain) == nil {
-		out.Blocks = []historyBlock{{Type: "text", Text: prefixBytes(plain, 16384)}}
+		out.Blocks = []historyBlock{{Type: "text", Text: prefixBytes(plain, 16384), Readable: len(plain) > 16384}}
 		out.TruncatedBlocks = len(plain) > 16384
 		return
 	}
@@ -67,18 +87,19 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 	}
 	budget := 16384
 	for _, raw := range blocks {
-		if len(out.Blocks) == 128 || budget == 0 {
+		if len(out.Blocks) == 128 {
 			out.TruncatedBlocks = true
 			break
 		}
 		var b struct {
-			Type     string `json:"type"`
-			Text     string `json:"text"`
-			Thinking string `json:"thinking"`
-			Redacted bool   `json:"redacted"`
-			MimeType string `json:"mimeType"`
-			ID       string `json:"id"`
-			Name     string `json:"name"`
+			Type      string          `json:"type"`
+			Text      string          `json:"text"`
+			Thinking  string          `json:"thinking"`
+			Redacted  bool            `json:"redacted"`
+			MimeType  string          `json:"mimeType"`
+			ID        string          `json:"id"`
+			Name      string          `json:"name"`
+			Arguments json.RawMessage `json:"arguments"`
 		}
 		if json.Unmarshal(raw, &b) != nil {
 			out.Blocks = append(out.Blocks, historyBlock{Type: "unknown"})
@@ -97,17 +118,20 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 				}
 			}
 			block.Text = prefixBytes(text, budget)
+			block.Readable = !block.Redacted && len(block.Text) < len(text)
 			budget -= len(block.Text)
 			if len(block.Text) < len(text) {
 				out.TruncatedBlocks = true
 			}
 		case "image":
 			block.Type = "image"
+			block.Readable = b.MimeType == "image/png" || b.MimeType == "image/jpeg" || b.MimeType == "image/gif" || b.MimeType == "image/webp"
 			if len(b.MimeType) <= 100 {
 				block.MimeType = b.MimeType
 			}
 		case "toolCall":
 			block.Type = "toolCall"
+			block.Readable = len(b.Arguments) > 0 && json.Valid(b.Arguments)
 			if len(b.ID) <= 200 {
 				block.ToolCallID = b.ID
 			}
@@ -116,6 +140,9 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 			}
 		}
 		out.Blocks = append(out.Blocks, block)
+	}
+	if out.Kind == "tool" && len(out.Blocks) == 0 {
+		out.Blocks = []historyBlock{{Type: "text", Text: prefixBytes(out.full, 16384), Readable: len(out.full) > 16384}}
 	}
 	return
 }

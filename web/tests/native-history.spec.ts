@@ -71,7 +71,7 @@ test("@native-history native page, continuation, unknown, reopen and no writes",
     path: "test-results/evidence/history-long-unknown.png",
     fullPage: false,
   });
-  await page.getByRole("button", { name: "Lataa lisää sisältöä" }).click();
+  await page.getByRole("button", { name: "Lataa lohkon sisältö" }).click();
   await expect(page.locator(".ah-feed li").nth(248)).not.toContainText(
     "<script>alert('bad')</script>",
   );

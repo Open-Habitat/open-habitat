@@ -116,6 +116,7 @@ export function applyTurnEvent(
       stop_reason: payload.stop_reason as string | undefined,
       model: payload.model as string | undefined,
       truncated_blocks: payload.truncated_blocks as boolean | undefined,
+      native_revision: payload.native_revision as string | undefined,
     };
     return { turn: { ...next, fragments: [], truncated: false }, entry };
   }

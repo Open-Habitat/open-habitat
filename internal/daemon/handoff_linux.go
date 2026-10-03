@@ -69,7 +69,6 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 		})
 	}))
 	mux.Handle("/api/v1/agents/", HistoryHandler(cfg, server.TrustedPeer))
-	mux.Handle("/api/v1/content/", HistoryHandler(cfg, server.TrustedPeer))
 	mux.Handle("/api/v1/conversations", controller)
 	mux.Handle("/api/v1/conversations/", controller)
 	defer controller.shutdown()

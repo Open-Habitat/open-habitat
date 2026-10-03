@@ -98,7 +98,7 @@ func readNativeWindowFor(path string, uid int, beforeKey string, limit int, cont
 			}
 			result.boundaryFound = true
 		}
-		if contentKey != "" && contentID(&result, e.ID) != contentKey {
+		if contentKey != "" && e.ID != contentKey {
 			return true
 		}
 		var full nativeEntry
@@ -108,6 +108,9 @@ func readNativeWindowFor(path string, uid int, beforeKey string, limit int, cont
 		}
 		full.Raw = line
 		entry := nativeBlocks(full)
+		if contentKey != "" {
+			entry.raw = append([]byte(nil), line...)
+		}
 		if entry.Kind != "" {
 			result.entries = append(result.entries, entry)
 		}

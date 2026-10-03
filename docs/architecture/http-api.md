@@ -28,7 +28,7 @@ Native state and control, forwarded to the user's daemon:
 | `GET /api/v1/snapshot` | workspaces, conversations, journal cursors, native `gh` state |
 | `GET /api/v1/events?after=<cursor>` | the user's event stream; `Last-Event-ID` overrides `after` |
 | `GET /api/v1/agents/pi:<id>/history?limit&before` | a page of native history, newest first; `before=<entry key>` pages back |
-| `GET /api/v1/content/<content-id>?offset&limit_bytes` | a slice of a long entry, at most 64 KiB, on UTF-8 code point boundaries |
+| `GET /api/v1/agents/pi:<id>/entries/<key>/blocks/<index>?revision&offset&limit_bytes` | a bounded slice of one selected block (UTF-8 text or base64 image); revision must match the selected native history |
 | `GET /api/v1/conversations` | the conversations this daemon controls |
 | `POST /api/v1/conversations` | start Pi in a workspace |
 | `GET /api/v1/conversations/pi:<id>/status[?continuation=true]` | observe one conversation; with the flag, run the continuation proof |
@@ -53,11 +53,13 @@ returns the newest entries, up to `limit` (default and maximum 200; the browser
 asks for 25). With `before=<key>` it returns the entries older than that key and
 reports `older_complete` when the oldest edge was reached, or
 `boundary_found: false` when the key no longer exists, in which case the browser
-starts again from the newest page. Entries longer than the inline budget are
-cut and carry a `content_id` for the content route. The page's
-`native_revision` is a hash of the content; a changed revision means the
-content IDs from the previous read are gone and the browser reads the page
-again.
+starts again from the newest page. Entries contain bounded ordered block previews; readable blocks have a separate
+read route selected by native entry key and block index. Each response is at
+most 64 KiB of text or base64 (aligned to UTF-8/codepoint or base64 quartet),
+with `next_offset` when more is available. The page's `native_revision` is a
+hash of the native file; the daemon rejects a block read when that revision
+changes, so the browser reloads the page rather than combining old and new
+content. Redacted thinking and unknown native fields cannot be selected.
 
 ## Writes and receipts
 

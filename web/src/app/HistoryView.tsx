@@ -19,7 +19,7 @@ import {
 } from "../components";
 import { type ConversationStore, useWindow } from "./conversationStore";
 import {
-  type ContentChunk,
+  type BlockChunk,
   type HistoryBlock,
   type HistoryEntry,
   type HistoryPage,
@@ -59,86 +59,67 @@ function unfamiliar(text: string): {
   };
 }
 
-function OrderedBlocks({ blocks }: { blocks: HistoryBlock[] }) {
-  return (
-    <div className="ah-ordered-blocks">
-      {blocks.map((block, index) => {
-        const key = `${index}:${block.type}`;
-        switch (block.type) {
-          case "text":
-            return <Markdown key={key} text={block.text ?? ""} />;
-          case "thinking":
-            return (
-              <details key={key}>
-                <summary>
-                  Ajattelu{block.redacted ? " · piilotettu" : ""}
-                </summary>
-                {block.redacted ? (
-                  <p>Sisältö on redaktoitu.</p>
-                ) : (
-                  <pre>{block.text}</pre>
-                )}
-              </details>
-            );
-          case "image":
-            return (
-              <p key={key}>
-                Kuva · {block.mime_type || "tuntematon muoto"} (kuvan sisältö ei
-                ole vielä saatavilla)
-              </p>
-            );
-          case "toolCall":
-            return (
-              <p key={key}>
-                Työkalukutsu · {block.tool_name || "tuntematon"} ·{" "}
-                {block.tool_call_id || "ei tunnistetta"}
-              </p>
-            );
-          default:
-            return (
-              <p key={key}>Tuntematon sisältölohko (sisältöä ei näytetä)</p>
-            );
-        }
-      })}
-    </div>
-  );
-}
-
-export function Entry({
-  entry,
+function ReadableBlock({
+  block,
+  index,
+  entryKey,
+  agentId,
+  revision,
   onLogin,
 }: {
-  entry: HistoryEntry;
+  block: HistoryBlock;
+  index: number;
+  entryKey: string;
+  agentId?: string;
+  revision?: string;
   onLogin?: () => void;
 }) {
-  const [content, setContent] = useState(entry.content);
+  const [loaded, setLoaded] = useState<{
+    text: string;
+    offset: number;
+    data: string;
+    complete: boolean;
+    mediaType: string;
+  }>();
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [toolExpanded, setToolExpanded] = useState(false);
-  const [longExpanded, setLongExpanded] = useState(false);
-  useEffect(() => {
-    setContent(entry.content);
-    setFailed(false);
-  }, [entry]);
-  const copy = () => void navigator.clipboard?.writeText(content.text);
   const more = async () => {
-    if (!content.content_id || content.next_offset === undefined || pending)
-      return;
+    if (!agentId || !revision || pending) return;
     setPending(true);
     setFailed(false);
     try {
-      const response = await fetch(
-        `/api/v1/content/${content.content_id}?offset=${content.next_offset}&limit_bytes=65536`,
-        { credentials: "same-origin", cache: "no-store" },
-      );
-      const chunk = (await readHistory(response)) as ContentChunk;
+      const offset = loaded?.offset ?? 0;
+      const url = `/api/v1/agents/${agentId}/entries/${entryKey}/blocks/${index}?${new URLSearchParams({ revision, offset: String(offset), limit_bytes: "65536" })}`;
+      const response = await fetch(url, {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      const value = await readHistory(response);
+      if (!("chunk" in value)) throw new Error("invalid block");
+      const chunk = value as BlockChunk;
       if (
-        chunk.content_id !== content.content_id ||
-        chunk.offset !== content.next_offset ||
-        chunk.content.text.length === 0
+        chunk.agent_id !== agentId ||
+        chunk.native_revision !== revision ||
+        chunk.entry_key !== entryKey ||
+        chunk.block_index !== index ||
+        chunk.offset !== offset ||
+        (!chunk.chunk.complete &&
+          (chunk.chunk.next_offset === undefined ||
+            chunk.chunk.next_offset <= offset)) ||
+        (loaded && chunk.chunk.media_type !== loaded.mediaType)
       )
-        throw new Error("invalid chunk");
-      setContent({ ...chunk.content, text: content.text + chunk.content.text });
+        throw new Error("invalid block");
+      const text = (loaded?.text ?? "") + (chunk.chunk.text ?? "");
+      const data = (loaded?.data ?? "") + (chunk.chunk.data ?? "");
+      if (text.length + data.length > 64 * 1024 * 1024)
+        throw new Error("oversize block");
+      setLoaded({
+        text,
+        data,
+        offset: chunk.chunk.next_offset ?? offset,
+        complete: chunk.chunk.complete,
+        mediaType: chunk.chunk.media_type,
+      });
     } catch (error) {
       if ((error as Error).message === "identity_lost") onLogin?.();
       else setFailed(true);
@@ -146,36 +127,160 @@ export function Entry({
       setPending(false);
     }
   };
+  const control =
+    block.readable && agentId && revision && !loaded?.complete ? (
+      <Button
+        label={
+          pending
+            ? "Ladataan…"
+            : loaded
+              ? "Lataa lisää lohkoa"
+              : "Lataa lohkon sisältö"
+        }
+        pending={pending}
+        onPress={more}
+      />
+    ) : null;
+  const warning = failed ? (
+    <InlineNotice
+      title="Lohkon sisältöä ei saatu"
+      description="Lähde on voinut muuttua. Päivitä historia."
+      tone="warning"
+    />
+  ) : null;
+  switch (block.type) {
+    case "text":
+      return (
+        <div>
+          <Markdown text={loaded?.text ?? block.text ?? ""} />
+          {control}
+          {warning}
+        </div>
+      );
+    case "thinking":
+      return (
+        <details>
+          <summary>Ajattelu{block.redacted ? " · piilotettu" : ""}</summary>
+          {block.redacted ? (
+            <p>Sisältö on redaktoitu.</p>
+          ) : (
+            <>
+              <pre>{loaded?.text ?? block.text}</pre>
+              {control}
+              {warning}
+            </>
+          )}
+        </details>
+      );
+    case "image":
+      return (
+        <div>
+          <p>Kuva · {block.mime_type || "tuntematon muoto"}</p>
+          {loaded?.complete &&
+          loaded.data &&
+          ["image/png", "image/jpeg", "image/gif", "image/webp"].includes(
+            loaded.mediaType,
+          ) ? (
+            <img
+              alt="Pi-viestin kuva"
+              src={`data:${loaded.mediaType};base64,${loaded.data}`}
+            />
+          ) : null}
+          {control}
+          {warning}
+        </div>
+      );
+    case "toolCall":
+      return (
+        <details>
+          <summary>
+            Työkalukutsu · {block.tool_name || "tuntematon"} ·{" "}
+            {block.tool_call_id || "ei tunnistetta"}
+          </summary>
+          {loaded?.text ? <pre>{loaded.text}</pre> : null}
+          {control}
+          {warning}
+        </details>
+      );
+    default:
+      return <p>Tuntematon sisältölohko (sisältöä ei näytetä)</p>;
+  }
+}
+function OrderedBlocks({
+  blocks,
+  entryKey,
+  agentId,
+  revision,
+  onLogin,
+  userText,
+}: {
+  blocks: HistoryBlock[];
+  entryKey: string;
+  agentId?: string;
+  revision?: string;
+  onLogin?: () => void;
+  userText?: boolean;
+}) {
+  return (
+    <div className="ah-ordered-blocks">
+      {blocks.map((block, index) =>
+        userText && block.type === "text" && !block.readable ? null : (
+          <ReadableBlock
+            // biome-ignore lint/suspicious/noArrayIndexKey: Native block index is stable identity within an entry.
+            key={`${entryKey}:${revision}:${index}`}
+            block={block}
+            index={index}
+            entryKey={entryKey}
+            agentId={agentId}
+            revision={revision}
+            onLogin={onLogin}
+          />
+        ),
+      )}
+    </div>
+  );
+}
+
+export function Entry({
+  entry,
+  onLogin,
+  agentId,
+  revision,
+}: {
+  entry: HistoryEntry;
+  onLogin?: () => void;
+  agentId?: string;
+  revision?: string;
+}) {
+  const content = entry.content;
+  const [toolExpanded, setToolExpanded] = useState(false);
+  const [longExpanded, setLongExpanded] = useState(false);
+  const copy = () => void navigator.clipboard?.writeText(content.text);
   const fallback =
     entry.kind === "assistant" || entry.kind === "unknown"
       ? unfamiliar(content.text)
       : null;
-  const continuation = !content.complete ? (
-    <Button
-      label={pending ? "Ladataan…" : "Lataa lisää sisältöä"}
-      onPress={more}
-      pending={pending}
-    />
-  ) : null;
   return (
     <>
       {entry.kind === "user" ? (
         <>
           <UserMessage
             sourceText={
-              entry.truncated_blocks
-                ? content.text
-                : (entry.blocks
-                    ?.filter((b) => b.type === "text")
-                    .map((b) => b.text ?? "")
-                    .join("\n") ?? content.text)
+              entry.blocks
+                ?.filter((b) => b.type === "text")
+                .map((b) => b.text ?? "")
+                .join("\n") ?? content.text
             }
             onCopy={copy}
           />
-          {!entry.truncated_blocks &&
-          entry.blocks?.some((b) => b.type !== "text") ? (
+          {entry.blocks?.length ? (
             <OrderedBlocks
-              blocks={entry.blocks.filter((b) => b.type !== "text")}
+              blocks={entry.blocks}
+              entryKey={entry.entry_key}
+              agentId={agentId}
+              revision={entry.native_revision ?? revision}
+              onLogin={onLogin}
+              userText
             />
           ) : null}
         </>
@@ -188,8 +293,14 @@ export function Entry({
           modelLabel={entry.model}
           streamState={entry.stop_reason === "error" ? "failed" : undefined}
         >
-          {entry.blocks && !entry.truncated_blocks ? (
-            <OrderedBlocks blocks={entry.blocks} />
+          {entry.blocks ? (
+            <OrderedBlocks
+              blocks={entry.blocks}
+              entryKey={entry.entry_key}
+              agentId={agentId}
+              revision={entry.native_revision ?? revision}
+              onLogin={onLogin}
+            />
           ) : fallback ? (
             <section className="ah-unknown">
               <p>Tuntematon sisältö · {fallback.type}</p>
@@ -223,13 +334,23 @@ export function Entry({
           onToggle={() => setToolExpanded(!toolExpanded)}
         >
           {entry.tool_call_id ? <p>Kutsu: {entry.tool_call_id}</p> : null}
-          <ToolOutput
-            text={longExpanded ? content.text : content.text.slice(0, 12000)}
-            streamSemantics="unknown"
-            sourceState={content.complete ? "complete" : "continued"}
-            onCopy={copy}
-            onLoadMore={more}
-          />
+          {!entry.blocks?.length ? (
+            <ToolOutput
+              text={longExpanded ? content.text : content.text.slice(0, 12000)}
+              streamSemantics="unknown"
+              sourceState={content.complete ? "complete" : "continued"}
+              onCopy={copy}
+            />
+          ) : null}
+          {entry.blocks?.length ? (
+            <OrderedBlocks
+              blocks={entry.blocks}
+              entryKey={entry.entry_key}
+              agentId={agentId}
+              revision={entry.native_revision ?? revision}
+              onLogin={onLogin}
+            />
+          ) : null}
           {content.text.length > 12000 ? (
             <Button
               label={
@@ -244,31 +365,41 @@ export function Entry({
         <ModelChange modelId={content.text} onCopy={copy} />
       ) : null}
       {entry.kind === "unknown" ? (
-        <UnknownEvent
-          kindLabel="Pi-tapahtuma"
-          safeSummary={
-            fallback
-              ? `Tapahtuman muotoa ei tueta · ${fallback.type} · ${fallback.summary.map(({ text }) => text).join(" · ") || fallback.raw}`
-              : `Tapahtuman muotoa ei tueta. ${content.text}`
-          }
-          safePayloadText={fallback?.raw ?? content.text}
-          onCopy={copy}
-        />
-      ) : null}
-      {entry.kind !== "tool" ? continuation : null}
-      {failed ? (
-        <InlineNotice
-          title="Sisällön jatkoa ei saatu"
-          description="Lähde on voinut muuttua. Päivitä historia."
-          tone="warning"
-        />
+        entry.blocks?.length ? (
+          <section>
+            <p>Pi-merkintä</p>
+            <OrderedBlocks
+              blocks={entry.blocks}
+              entryKey={entry.entry_key}
+              agentId={agentId}
+              revision={entry.native_revision ?? revision}
+              onLogin={onLogin}
+            />
+          </section>
+        ) : (
+          <UnknownEvent
+            kindLabel="Pi-tapahtuma"
+            safeSummary={
+              fallback
+                ? `Tapahtuman muotoa ei tueta · ${fallback.type} · ${fallback.summary.map(({ text }) => text).join(" · ") || fallback.raw}`
+                : `Tapahtuman muotoa ei tueta. ${content.text}`
+            }
+            safePayloadText={fallback?.raw ?? content.text}
+            onCopy={copy}
+          />
+        )
       ) : null}
     </>
   );
 }
 // Group only adjacent native tool results. Keys belong to the first entry so
 // disclosure state survives refreshes that preserve the native event order.
-export function timelineItems(entries: HistoryEntry[], onLogin?: () => void) {
+export function timelineItems(
+  entries: HistoryEntry[],
+  onLogin?: () => void,
+  agentId?: string,
+  revision?: string,
+) {
   const items: { id: string; kind: string; content: React.ReactNode }[] = [];
   for (let i = 0; i < entries.length; ) {
     const first = entries[i];
@@ -277,7 +408,13 @@ export function timelineItems(entries: HistoryEntry[], onLogin?: () => void) {
         id: first.entry_key,
         kind: first.kind,
         content: (
-          <Entry key={first.entry_key} entry={first} onLogin={onLogin} />
+          <Entry
+            key={first.entry_key}
+            entry={first}
+            onLogin={onLogin}
+            agentId={agentId}
+            revision={revision}
+          />
         ),
       });
       i++;
@@ -294,6 +431,8 @@ export function timelineItems(entries: HistoryEntry[], onLogin?: () => void) {
           key={first.entry_key}
           entries={group}
           onLogin={onLogin}
+          agentId={agentId}
+          revision={revision}
         />
       ),
     });
@@ -303,13 +442,24 @@ export function timelineItems(entries: HistoryEntry[], onLogin?: () => void) {
 function HistoryToolGroup({
   entries,
   onLogin,
+  agentId,
+  revision,
 }: {
   entries: HistoryEntry[];
   onLogin?: () => void;
+  agentId?: string;
+  revision?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   if (entries.length === 1)
-    return <Entry entry={entries[0]} onLogin={onLogin} />;
+    return (
+      <Entry
+        entry={entries[0]}
+        onLogin={onLogin}
+        agentId={agentId}
+        revision={revision}
+      />
+    );
   return (
     <ToolGroup
       title="Työkalut"
@@ -318,7 +468,13 @@ function HistoryToolGroup({
       onToggle={() => setExpanded(!expanded)}
     >
       {entries.map((entry) => (
-        <Entry key={entry.entry_key} entry={entry} onLogin={onLogin} />
+        <Entry
+          key={entry.entry_key}
+          entry={entry}
+          onLogin={onLogin}
+          agentId={agentId}
+          revision={revision}
+        />
       ))}
     </ToolGroup>
   );
@@ -415,7 +571,12 @@ export function HistoryView({
       <ConversationStream streamRef={stream} onScroll={capture}>
         <ConversationTimeline
           state={state}
-          items={timelineItems(entries, onLogin)}
+          items={timelineItems(
+            entries,
+            onLogin,
+            agent.agent_id,
+            window?.revision,
+          )}
           historyMode="pagedAccessible"
           emptyLabel="Natiivissa historiassa ei ole vielä viestejä."
           onJumpToLatest={() => {}}

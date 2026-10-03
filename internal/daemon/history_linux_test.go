@@ -132,10 +132,9 @@ func TestPiHistoryNativePagesChunksAndReopen(t *testing.T) {
 	if c["complete"] != false {
 		t.Fatal("long entry not chunked")
 	}
-	contentID := c["content_id"].(string)
-	offset := int(c["next_offset"].(float64))
-	status, chunk := get(fmt.Sprintf("/api/v1/content/%s?offset=%d&limit_bytes=65536", contentID, offset))
-	if status != 200 || chunk["content"].(map[string]any)["text"] == "" {
+	blockURL := fmt.Sprintf("/api/v1/agents/pi:%s/entries/native2496/blocks/0?revision=%s&offset=0&limit_bytes=65536", id, firstRevision)
+	status, chunk := get(blockURL)
+	if status != 200 || chunk["chunk"].(map[string]any)["text"] == "" {
 		t.Fatal(status, chunk)
 	}
 	// Tail-first reads one bounded page, and backward pages include their
@@ -216,7 +215,7 @@ func TestPiHistoryNativePagesChunksAndReopen(t *testing.T) {
 	if status != 503 {
 		t.Fatal("corrupt accepted", status)
 	}
-	status, _ = get("/api/v1/content/" + contentID + "?offset=0&limit_bytes=50")
+	status, _ = get(blockURL)
 	if status != 404 {
 		t.Fatal("old revision accepted", status)
 	}
@@ -328,8 +327,9 @@ func TestTailPageLargeNativeFileAndByteCap(t *testing.T) {
 	if content["complete"] != false {
 		t.Fatal("huge entry not chunked")
 	}
-	status, chunk, n := read(fmt.Sprintf("/api/v1/content/%s?offset=%d&limit_bytes=65536", content["content_id"], int(content["next_offset"].(float64))))
-	if status != 200 || n > 70000 || chunk["content"].(map[string]any)["text"] == "" {
+	blockURL := fmt.Sprintf("/api/v1/agents/pi:%s/entries/first/blocks/0?revision=%s&offset=0&limit_bytes=65536", id, older["native_revision"])
+	status, chunk, n := read(blockURL)
+	if status != 200 || n > 70000 || chunk["chunk"].(map[string]any)["text"] == "" {
 		t.Fatal("content cap", status, n)
 	}
 	appendFile, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0)
@@ -342,8 +342,7 @@ func TestTailPageLargeNativeFileAndByteCap(t *testing.T) {
 	if err = appendFile.Close(); err != nil {
 		t.Fatal(err)
 	}
-	oldID := content["content_id"].(string)
-	status, _, _ = read("/api/v1/content/" + oldID + "?offset=0&limit_bytes=10")
+	status, _, _ = read(blockURL)
 	if status != 404 {
 		t.Fatal("stale content revision accepted", status)
 	}

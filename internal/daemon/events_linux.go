@@ -405,5 +405,8 @@ func nativeEntryPayload(entry historyEntry) map[string]any {
 	if entry.TruncatedBlocks {
 		payload["truncated_blocks"] = true
 	}
+	if entry.NativeRevision != "" {
+		payload["native_revision"] = entry.NativeRevision
+	}
 	return payload
 }

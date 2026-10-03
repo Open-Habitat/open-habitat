@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://native-agent-host.invalid/contracts/v1/history.schema.json",
-  "title": "Native history page or content chunk",
+  "title": "Native history page or bounded block chunk",
   "oneOf": [
     {
       "$ref": "#/$defs/historyPage"
     },
     {
-      "$ref": "#/$defs/contentChunk"
+      "$ref": "#/$defs/blockChunk"
     }
   ],
   "$defs": {
@@ -121,32 +121,6 @@
         }
       ]
     },
-    "contentChunk": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "schema_version",
-        "content_id",
-        "offset",
-        "content"
-      ],
-      "properties": {
-        "schema_version": {
-          "$ref": "common.schema.json#/$defs/schemaVersion"
-        },
-        "content_id": {
-          "type": "string",
-          "pattern": "^ct_"
-        },
-        "offset": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "content": {
-          "$ref": "common.schema.json#/$defs/content"
-        }
-      }
-    },
     "block": {
       "type": "object",
       "additionalProperties": false,
@@ -185,6 +159,96 @@
         "arguments": {
           "type": "string",
           "maxLength": 16384
+        },
+        "readable": {
+          "type": "boolean"
+        }
+      }
+    },
+    "blockChunk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "agent_id",
+        "native_revision",
+        "entry_key",
+        "block_index",
+        "offset",
+        "chunk"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schemaVersion"
+        },
+        "agent_id": {
+          "$ref": "common.schema.json#/$defs/agentId"
+        },
+        "native_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "entry_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "block_index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 127
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "chunk": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "media_type",
+            "complete"
+          ],
+          "properties": {
+            "media_type": {
+              "enum": [
+                "text/plain",
+                "image/png",
+                "image/jpeg",
+                "image/gif",
+                "image/webp"
+              ]
+            },
+            "text": {
+              "type": "string",
+              "maxLength": 65536
+            },
+            "data": {
+              "type": "string",
+              "maxLength": 65536,
+              "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+            },
+            "complete": {
+              "type": "boolean"
+            },
+            "next_offset": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "oneOf": [
+            {
+              "required": [
+                "text"
+              ]
+            },
+            {
+              "required": [
+                "data"
+              ]
+            }
+          ]
         }
       }
     }

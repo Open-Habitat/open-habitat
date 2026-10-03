@@ -10,8 +10,7 @@ const entry: HistoryEntry = {
     media_type: "text/plain",
     text: "Visible before outage",
     complete: false,
-    content_id: "ct_abcdefgh",
-    next_offset: 21,
+    truncated: true,
   },
 };
 
@@ -129,25 +128,43 @@ it("shows an exact model ID as copyable timeline metadata, not code", () => {
   expect(copy).toHaveBeenCalledWith("openai/gpt-5-codex");
 });
 
-it("accepts a late content chunk without hiding the mounted view", async () => {
+it("pages one long text block without exposing its other fields", async () => {
   let finish!: (response: Response) => void;
   const pending = new Promise<Response>((resolve) => {
     finish = resolve;
   });
-  const fetch = vi.fn(() => pending);
+  const fetch = vi.fn((_url: string) => pending);
   vi.stubGlobal("fetch", fetch);
-  render(<Entry entry={entry} />);
-  fireEvent.click(screen.getByRole("button", { name: "Lataa lisää sisältöä" }));
+  render(
+    <Entry
+      agentId="pi:11111111-1111-4111-8111-111111111111"
+      revision="rev1"
+      entry={{
+        ...entry,
+        kind: "assistant",
+        blocks: [
+          { type: "text", text: "Visible before outage", readable: true },
+        ],
+      }}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Lataa lohkon sisältö" }));
   await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+  expect(fetch.mock.calls[0][0]).toContain(
+    "/entries/synthetic-1/blocks/0?revision=rev1&offset=0&limit_bytes=65536",
+  );
   finish(
     new Response(
       JSON.stringify({
         schema_version: 1,
-        content_id: "ct_abcdefgh",
-        offset: 21,
-        content: {
+        agent_id: "pi:11111111-1111-4111-8111-111111111111",
+        native_revision: "rev1",
+        entry_key: "synthetic-1",
+        block_index: 0,
+        offset: 0,
+        chunk: {
           media_type: "text/plain",
-          text: " continued text",
+          text: "Visible before outage continued text",
           complete: true,
         },
       }),
@@ -218,6 +235,128 @@ it("shows image-only user prompts and full text when typed blocks were truncated
     </>,
   );
   expect(container.textContent).toContain("image/png");
-  expect(container.textContent).toContain("full assistant text");
-  expect(container.textContent).not.toContain("short");
+  expect(container.textContent).toContain("short");
+  expect(container.textContent).not.toContain("full assistant text");
+});
+
+it("keeps redacted and unknown blocks inert while loading a result image by its own index", async () => {
+  const fetch = vi.fn(
+    async (_url: string) =>
+      new Response(
+        JSON.stringify({
+          schema_version: 1,
+          agent_id: "pi:11111111-1111-4111-8111-111111111111",
+          native_revision: "rev2",
+          entry_key: "result",
+          block_index: 2,
+          offset: 0,
+          chunk: { media_type: "image/png", data: "QUJD", complete: true },
+        }),
+        { headers: { "content-type": "application/json" } },
+      ),
+  );
+  vi.stubGlobal("fetch", fetch);
+  const { container } = render(
+    <Entry
+      agentId="pi:11111111-1111-4111-8111-111111111111"
+      revision="rev2"
+      entry={{
+        ...entry,
+        entry_key: "result",
+        kind: "tool",
+        tool_call_id: "call",
+        blocks: [
+          { type: "thinking", redacted: true },
+          { type: "unknown" },
+          { type: "image", mime_type: "image/png", readable: true },
+        ],
+        content: { media_type: "text/plain", text: "result", complete: true },
+      }}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: /result/ }));
+  expect(
+    screen.getAllByRole("button", { name: "Lataa lohkon sisältö" }),
+  ).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: "Lataa lohkon sisältö" }));
+  await waitFor(() =>
+    expect(container.querySelector("img")?.getAttribute("src")).toBe(
+      "data:image/png;base64,QUJD",
+    ),
+  );
+  expect(fetch.mock.calls[0][0]).toContain("/entries/result/blocks/2?");
+  expect(container.textContent).not.toContain("secret");
+});
+
+it("rejects a mismatched block response without replacing the visible prefix", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            schema_version: 1,
+            agent_id: "pi:11111111-1111-4111-8111-111111111111",
+            native_revision: "stale",
+            entry_key: "synthetic-1",
+            block_index: 0,
+            offset: 0,
+            chunk: { media_type: "text/plain", text: "wrong", complete: true },
+          }),
+          { headers: { "content-type": "application/json" } },
+        ),
+    ),
+  );
+  render(
+    <Entry
+      entry={{
+        ...entry,
+        kind: "assistant",
+        blocks: [{ type: "text", text: "prefix", readable: true }],
+      }}
+      agentId="pi:11111111-1111-4111-8111-111111111111"
+      revision="rev1"
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Lataa lohkon sisältö" }));
+  await waitFor(() =>
+    expect(screen.getByText("Lohkon sisältöä ei saatu")).toBeTruthy(),
+  );
+  expect(screen.getByText("prefix")).toBeTruthy();
+  expect(screen.queryByText("wrong")).toBeNull();
+});
+
+it("uses the saved entry revision for a live block even when the window still has an older revision", async () => {
+  const fetch = vi.fn(
+    async (_url: string) =>
+      new Response(
+        JSON.stringify({
+          schema_version: 1,
+          agent_id: "pi:11111111-1111-4111-8111-111111111111",
+          native_revision: "new",
+          entry_key: "synthetic-1",
+          block_index: 0,
+          offset: 0,
+          chunk: { media_type: "text/plain", text: "complete", complete: true },
+        }),
+        { headers: { "content-type": "application/json" } },
+      ),
+  );
+  vi.stubGlobal("fetch", fetch);
+  render(
+    <Entry
+      entry={{
+        ...entry,
+        kind: "assistant",
+        native_revision: "new",
+        blocks: [{ type: "text", text: "prefix", readable: true }],
+      }}
+      agentId="pi:11111111-1111-4111-8111-111111111111"
+      revision="old"
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Lataa lohkon sisältö" }));
+  await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+  expect(fetch.mock.calls[0][0]).toContain("revision=new");
+  await waitFor(() => expect(screen.getByText("complete")).toBeTruthy());
 });

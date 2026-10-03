@@ -31,11 +31,12 @@ test("@pi-onboarding browser checks OpenAI once while direct native reads remain
     for (const url of [
       "/api/v1/snapshot",
       "/api/v1/agents/pi:11111111-1111-4111-8111-111111111111/history?limit=1",
-      "/api/v1/content/ct_abcdefgh?offset=0&limit_bytes=100",
+      "/api/v1/agents/pi:11111111-1111-4111-8111-111111111111/entries/missing/blocks/0?revision=missing&offset=0&limit_bytes=100",
       "/api/v1/conversations",
     ]) {
       expect((await page.request.get(url)).status()).toBe(
-        url === "/api/v1/content/ct_abcdefgh?offset=0&limit_bytes=100"
+        url ===
+          "/api/v1/agents/pi:11111111-1111-4111-8111-111111111111/entries/missing/blocks/0?revision=missing&offset=0&limit_bytes=100"
           ? 404
           : 200,
       );

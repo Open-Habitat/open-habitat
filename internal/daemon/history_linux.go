@@ -28,6 +28,7 @@ const maxLegacyHistoryFile = 32 << 20
 
 var sessionIDPattern = regexp.MustCompile(`^[0-9a-fA-F-]{36}$`)
 var entryIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
+var blockReadPath = regexp.MustCompile(`^/api/v1/agents/(pi:[0-9a-fA-F-]{36})/entries/([A-Za-z0-9_-]{1,128})/blocks/([0-9]{1,3})$`)
 
 type nativeEntry struct {
 	ID       string          `json:"id"`
@@ -59,7 +60,9 @@ type historyEntry struct {
 	StopReason      string         `json:"stop_reason,omitempty"`
 	Model           string         `json:"model,omitempty"`
 	TruncatedBlocks bool           `json:"truncated_blocks,omitempty"`
+	NativeRevision  string         `json:"native_revision,omitempty"`
 	full            string
+	raw             json.RawMessage
 }
 type historyBlock struct {
 	Type       string `json:"type"`
@@ -69,13 +72,13 @@ type historyBlock struct {
 	ToolCallID string `json:"tool_call_id,omitempty"`
 	ToolName   string `json:"tool_name,omitempty"`
 	Arguments  string `json:"arguments,omitempty"`
+	Readable   bool   `json:"readable,omitempty"`
 }
 type historyContent struct {
-	MediaType  string `json:"media_type"`
-	Text       string `json:"text"`
-	Complete   bool   `json:"complete"`
-	ContentID  string `json:"content_id,omitempty"`
-	NextOffset int    `json:"next_offset,omitempty"`
+	MediaType string `json:"media_type"`
+	Text      string `json:"text"`
+	Complete  bool   `json:"complete"`
+	Truncated bool   `json:"truncated,omitempty"`
 }
 
 // Native files remain authoritative. The scanner holds no index or copy between requests.
@@ -331,30 +334,21 @@ func nativeText(e nativeEntry) (string, string) {
 			} else {
 				// Keep the complete unknown block, not just its type. Rendered as
 				// text by the browser; no native content is interpreted as markup.
-				parts = append(parts, "[Sisältöä ei tueta: "+b.Type+"]")
+				parts = append(parts, "[Sisältöä ei tueta]")
 			}
 		}
 		return kind, strings.Join(parts, "\n")
 	default:
-		return "unknown", "Tuntematon Pi-tapahtuma: " + e.Type
+		return "unknown", "Tuntematon Pi-tapahtuma"
 	}
 }
-func contentID(s *nativeSession, key string) string {
-	return opaque("ct_", s.id)[:15] + "_" + opaque("ct_", s.id+":"+s.revision+":"+key)[3:]
-}
-func inline(s *nativeSession, e *historyEntry) {
-	b := []byte(e.full)
-	n := len(b)
-	if n > 65536 {
-		n = 65536
-		for n > 0 && !utf8.Valid(b[:n]) {
-			n--
-		}
-	}
-	e.Content = historyContent{MediaType: "text/plain", Text: string(b[:n]), Complete: n == len(b)}
-	if n < len(b) {
-		e.Content.ContentID = contentID(s, e.Key)
-		e.Content.NextOffset = n
+func inline(_ *nativeSession, e *historyEntry) {
+	// Ancillary entry text is only a bounded label. Message blocks, not this
+	// flattened label, are the source of readable conversation content.
+	text := prefixBytes(e.full, 16384)
+	e.Content = historyContent{MediaType: "text/plain", Text: text, Complete: len(text) == len(e.full)}
+	if len(text) < len(e.full) {
+		e.Content.Truncated = true
 	}
 }
 func historyAuthorized(cfg transport.Config, trusted func(*http.Request) bool, r *http.Request) bool {
@@ -522,64 +516,51 @@ func historyHandlerWithReader(cfg transport.Config, trusted func(*http.Request) 
 			historyJSON(w, body)
 			return
 		}
-		if strings.HasPrefix(path, "/api/v1/content/") {
-			id := strings.TrimPrefix(path, "/api/v1/content/")
-			if !strings.HasPrefix(id, "ct_") || strings.Contains(id, "/") {
-				snapshotError(w, 400, "invalid_request")
-				return
-			}
+		if match := blockReadPath.FindStringSubmatch(path); match != nil {
+			id := match[1]
+			key := match[2]
+			index, _ := strconv.Atoi(match[3])
 			q := r.URL.Query()
-			if len(q) != 2 || len(q["offset"]) != 1 || len(q["limit_bytes"]) != 1 {
+			if len(q) != 3 || len(q["revision"]) != 1 || len(q["offset"]) != 1 || len(q["limit_bytes"]) != 1 || len(q.Get("revision")) > 200 {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
 			offset, e1 := strconv.Atoi(q.Get("offset"))
 			limit, e2 := strconv.Atoi(q.Get("limit_bytes"))
-			if e1 != nil || e2 != nil || offset < 0 || limit < 1 || limit > 65536 {
+			if e1 != nil || e2 != nil || offset < 0 || limit < 1 || limit > 65536 || index < 0 || index >= 128 {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
 			for i := range sessions {
 				s := &sessions[i]
-				if s.state != "readable" || !strings.HasPrefix(id, opaque("ct_", s.id)[:15]+"_") {
+				if "pi:"+s.id != id {
 					continue
 				}
-				loaded := readNativeWindowSettled(s.path, cfg.UID, "", 1, id)
-				if loaded.id != s.id || loaded.cwd != s.cwd || loaded.state != "readable" {
+				if s.state != "readable" {
+					snapshotError(w, 503, "native_source_unavailable")
+					return
+				}
+				loaded := readNativeWindowSettled(s.path, cfg.UID, "", 1, key)
+				if loaded.id != s.id || loaded.cwd != s.cwd || loaded.state != "readable" || loaded.revision != q.Get("revision") {
 					snapshotError(w, 404, "content_revision_gone")
 					return
 				}
-				s = &loaded
-				for _, e := range s.entries {
-					if contentID(s, e.Key) != id {
+				for _, entry := range loaded.entries {
+					if entry.Key != key {
 						continue
 					}
-					b := []byte(e.full)
-					if offset > len(b) || !utf8.Valid(b[:offset]) {
-						snapshotError(w, 400, "invalid_request")
+					chunk, ok := nativeBlockChunk(entry.raw, index, offset, limit)
+					if !ok {
+						snapshotError(w, 404, "resource_not_found")
 						return
 					}
-					end := offset + limit
-					if end > len(b) {
-						end = len(b)
-					}
-					for end > offset && !utf8.Valid(b[offset:end]) {
-						end--
-					}
-					if end == offset && offset < len(b) {
-						snapshotError(w, 400, "invalid_request")
-						return
-					}
-					c := historyContent{MediaType: "text/plain", Text: string(b[offset:end]), Complete: end == len(b)}
-					if end < len(b) {
-						c.ContentID = id
-						c.NextOffset = end
-					}
-					historyJSON(w, map[string]any{"schema_version": 1, "content_id": id, "offset": offset, "content": c})
+					historyJSON(w, map[string]any{"schema_version": 1, "agent_id": id, "native_revision": loaded.revision, "entry_key": key, "block_index": index, "offset": offset, "chunk": chunk})
 					return
 				}
+				snapshotError(w, 404, "resource_not_found")
+				return
 			}
-			snapshotError(w, 404, "content_revision_gone")
+			snapshotError(w, 404, "resource_not_found")
 			return
 		}
 		snapshotError(w, 404, "resource_not_found")

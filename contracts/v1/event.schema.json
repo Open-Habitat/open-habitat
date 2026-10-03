@@ -215,6 +215,11 @@
               },
               "truncated_blocks": {
                 "type": "boolean"
+              },
+              "native_revision": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
               }
             }
           }
@@ -225,7 +230,10 @@
       "if": {
         "properties": {
           "kind": {
-            "enum": ["assistant.delta", "assistant.thinking.delta"]
+            "enum": [
+              "assistant.delta",
+              "assistant.thinking.delta"
+            ]
           }
         }
       },
