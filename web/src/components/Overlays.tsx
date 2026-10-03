@@ -1,13 +1,11 @@
-import { Icon } from "./Icon";
-import { useCallback, useRef } from "react";
 import type { ReactNode, RefObject } from "react";
+import { useCallback, useRef } from "react";
 import {
-  Button as AriaButton,
   Dialog as AriaDialog,
+  Menu as AriaMenu,
+  Tabs as AriaTabs,
   DialogTrigger,
   Heading,
-  Menu as AriaMenu,
-  MenuItem,
   MenuTrigger,
   Modal,
   ModalOverlay,
@@ -15,8 +13,13 @@ import {
   Tab,
   TabList,
   TabPanel,
-  Tabs as AriaTabs,
 } from "react-aria-components";
+import {
+  ControlButton,
+  ControlMenuItem,
+  DisclosureButton,
+} from "./ControlElements";
+import { Icon } from "./Icon";
 import { Button } from "./Primitives";
 import type { Availability } from "./types";
 import { enabled, unavailableReason } from "./types";
@@ -57,9 +60,9 @@ export function Dialog({
           );
       }}
     >
-      <AriaButton ref={triggerRef} className="ah-button ah-button-secondary">
+      <ControlButton ref={triggerRef} variant="secondary">
         {triggerLabel}
-      </AriaButton>
+      </ControlButton>
       <ModalOverlay
         className="ah-overlay"
         isDismissable={!reason}
@@ -73,13 +76,13 @@ export function Dialog({
             {description ? <p>{description}</p> : null}
             {children}
             <div className="ah-dialog-actions">
-              <AriaButton
-                className="ah-button ah-button-secondary"
+              <ControlButton
+                variant="secondary"
                 slot="close"
                 isDisabled={Boolean(reason)}
               >
                 Sulje
-              </AriaButton>
+              </ControlButton>
             </div>
             {reason ? <p className="ah-control-reason">{reason}</p> : null}
           </AriaDialog>
@@ -111,9 +114,7 @@ export function AlertDialog({
   const closeReason = unavailableReason(closeAvailability);
   return (
     <DialogTrigger>
-      <AriaButton className="ah-button ah-button-danger">
-        {triggerLabel}
-      </AriaButton>
+      <ControlButton variant="danger">{triggerLabel}</ControlButton>
       <ModalOverlay
         className="ah-overlay"
         isDismissable={!closeReason}
@@ -129,14 +130,14 @@ export function AlertDialog({
             <p>{description}</p>
             {confirmationControl}
             <div className="ah-dialog-actions">
-              <AriaButton
+              <ControlButton
                 autoFocus
-                className="ah-button ah-button-secondary"
+                variant="secondary"
                 isDisabled={Boolean(closeReason)}
                 slot="close"
               >
                 Peruuta
-              </AriaButton>
+              </ControlButton>
               <Button
                 label={actionLabel}
                 variant="danger"
@@ -162,12 +163,14 @@ export function Menu({
   items,
   onAction,
   popoverClassName,
+  triggerPresentation,
 }: {
   label: string;
   triggerLabel?: string;
   trigger?: ReactNode;
   heading?: ReactNode;
   popoverClassName?: string;
+  triggerPresentation?: "account";
   items: {
     id: string;
     label: string;
@@ -187,21 +190,23 @@ export function Menu({
         if (!open) queueMicrotask(() => triggerRef.current?.focus());
       }}
     >
-      <AriaButton
+      <ControlButton
         ref={triggerRef}
-        className="ah-button ah-button-secondary"
+        variant="secondary"
+        presentation={triggerPresentation}
         aria-label={triggerLabel ?? label}
       >
         {trigger ?? label}
         <span aria-hidden="true" className="ah-menu-chevron" />
-      </AriaButton>
+      </ControlButton>
       <Popover
         className={`ah-popover${popoverClassName ? ` ${popoverClassName}` : ""}`}
       >
         {heading ? <div className="ah-menu-heading">{heading}</div> : null}
         <AriaMenu aria-label={label} onAction={(key) => onAction(String(key))}>
           {items.map((item) => (
-            <MenuItem
+            <ControlMenuItem
+              danger={item.danger}
               className={item.danger ? "ah-menu-danger" : undefined}
               data-group={item.group}
               data-group-selected={item.selected || undefined}
@@ -216,7 +221,7 @@ export function Menu({
               {unavailableReason(item.availability) ? (
                 <small>{unavailableReason(item.availability)}</small>
               ) : null}
-            </MenuItem>
+            </ControlMenuItem>
           ))}
         </AriaMenu>
       </Popover>
@@ -238,19 +243,14 @@ export function Disclosure({
 }) {
   return (
     <section className="ah-disclosure">
-      <button
-        aria-expanded={expanded}
-        className="ah-disclosure-button"
-        type="button"
-        onClick={onToggle}
-      >
+      <DisclosureButton aria-expanded={expanded} onPress={onToggle}>
         <Icon
           name="forward"
           className={expanded ? "ah-icon-expanded" : undefined}
         />{" "}
         {label}
         {summary ? <small>{summary}</small> : null}
-      </button>
+      </DisclosureButton>
       {expanded ? <div className="ah-disclosure-panel">{children}</div> : null}
     </section>
   );

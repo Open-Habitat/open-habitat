@@ -7,8 +7,8 @@ komponenttien esitystilat valmiilla näyttömalleilla.
 
 | Osa | Lähde |
 |---|---|
-| Painikkeet, kentät ja valinnat | `Primitives.tsx` |
-| Valikot ja dialogit | `Overlays.tsx` |
+| Painikkeet, kentät ja valinnat | `Primitives.tsx`, `ControlElements.tsx` |
+| Valikot ja dialogit | `Overlays.tsx`, `ControlElements.tsx` |
 | Ikonit ja tilamerkinnät | `Icon.tsx`, `Status.tsx` |
 | Sovelluskehys ja navigaatio | `Navigation.tsx`, `ConversationFrame.tsx` |
 | Tilivalikko ja asetukset | `Account.tsx` |
@@ -20,6 +20,21 @@ komponenttien esitystilat valmiilla näyttömalleilla.
 `index.ts` kokoaa viennit. Samassa hakemistossa olevat `*.stories.tsx`-tiedostot
 muodostavat ajettavan katalogin. [Design system](../docs/design-system.md)
 kertoo sen avaamisesta ja tarkistamisesta.
+
+`ControlStates.stories.tsx` näyttää oikeat painikkeet, ikonipainikkeen,
+navigaatio- ja listarivin, tilavalikon, avattavan kontrollin ja kentän molemmissa
+teemoissa. Hover, painettu, näppäimistöfokus, nykyinen/valittu, estetty ja
+odottava tila käyttävät toistaiseksi nykyisen paletin arvoja
+(`--ah-surface-2`, `--ah-accent-soft`, `--ah-accent-line`, `--ah-line`,
+`--ah-muted`, `--ah-accent`). Yhteinen resepti on
+`web/src/components/interactive.module.css`; arvot ovat **väliaikaisia**, eivät
+hyväksytty design. @design-control-states päättää lopullisen tilamatriisin.
+
+@migrate-bespoke-controls siirtää jäljellä olevat käsin tyylitetyt kontrollit
+(kuten työtilan avausnuolen, Tiedot-painikkeen, mobiilinavigaation,
+työkalurivin avaajan, jonolinkit ja vain luku -alatunnisteen) sekä yhteiset
+rivi- ja toimintoriviasettelut. @refine-agent-status päättää agentin tilojen
+merkitykset; tämä kontrollityö ei tulkitse niitä uudelleen.
 
 Designer suunnittelee keskustelulohkot ja niiden esitystilat. Kunkin lohkon
 merkityksen, käsittelijän ja katalogiesimerkin pitää löytyä yhdessä;

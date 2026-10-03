@@ -1,10 +1,11 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
-import { Icon } from "./Icon";
 import { Input, Label, TextField } from "react-aria-components";
 import { Link, useLocation } from "react-router";
-import { Button } from "./Primitives";
-import { Badge, StatusMark } from "./Status";
+import { LinkRow } from "./ControlElements";
+import { Icon } from "./Icon";
+import { Button, RefreshIconButton } from "./Primitives";
 import type { StatusKind } from "./Status";
+import { Badge, StatusMark } from "./Status";
 import type { Action, AsyncState, Availability, Tone } from "./types";
 
 export function AppShell({
@@ -166,12 +167,13 @@ export function NavLink({
 }) {
   const statusId = useId();
   return (
-    <Link
-      aria-current={current}
+    <LinkRow
+      current={Boolean(current)}
+      kind="agent"
       aria-label={label}
       aria-describedby={statusText ? statusId : undefined}
       className="ah-nav-link"
-      to={href}
+      href={href}
     >
       <span className="ah-nav-label">{label}</span>
       {statusText ? (
@@ -207,7 +209,7 @@ export function NavLink({
         </span>
       ) : null}
       {badgeText ? <Badge label={badgeText} tone="warning" /> : null}
-    </Link>
+    </LinkRow>
   );
 }
 export interface AgentNavModel {
@@ -313,15 +315,16 @@ export function WorkspaceSection({
         >
           <span aria-hidden="true" className="ah-disclosure-chevron" />
         </button>
-        <Link
-          aria-current={selected ? "page" : undefined}
+        <LinkRow
+          current={selected}
+          kind="workspace"
           aria-describedby={summary ? summaryId : undefined}
           className="ah-workspace-link"
           title={summary ? `${name} · ${summary}` : name}
-          to={href}
+          href={href}
         >
           {name}
-        </Link>
+        </LinkRow>
         {mutationState ? (
           <StatusMark label={mutationState} tone="warning" />
         ) : null}
@@ -426,9 +429,10 @@ export function WorkspaceRail({
             onPress={onToggle}
           />
         </div>
-        <Link
-          to="/workspaces"
-          aria-current={homeCurrent ? "page" : undefined}
+        <LinkRow
+          href="/workspaces"
+          kind="home"
+          current={homeCurrent}
           className="ah-rail-home"
           title="Etusivu"
         >
@@ -437,7 +441,7 @@ export function WorkspaceRail({
           {runningCount !== undefined && runningCount > 0 ? (
             <Badge label={`${runningCount} käynnissä`} tone="info" />
           ) : null}
-        </Link>
+        </LinkRow>
         {attentionCount ? (
           <Badge
             label="Odottaa vastaustasi"
@@ -466,12 +470,7 @@ export function WorkspaceRail({
                 />
               ) : null}
               <span className="ah-rail-refresh">
-                <Button
-                  label="Päivitä"
-                  variant="secondary"
-                  size="compact"
-                  onPress={onRefresh}
-                />
+                <RefreshIconButton onPress={onRefresh} />
               </span>
             </div>
             <div className="ah-rail-summary">

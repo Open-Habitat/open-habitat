@@ -1,4 +1,5 @@
 import type { ReactNode, Ref } from "react";
+import { DisclosureButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
 import { Disclosure } from "./Overlays";
@@ -84,6 +85,7 @@ export function ConversationTimeline({
             }
             variant="secondary"
             trailingIcon="down"
+            presentation="floating"
             onPress={onJumpToLatest}
           />
         </div>
@@ -615,12 +617,7 @@ export function ToolRow({
       className={`ah-tool-row${errorSummary ? " ah-tool-error" : ""}`}
       data-state={state}
     >
-      <button
-        type="button"
-        className="ah-disclosure-button"
-        aria-expanded={expanded}
-        onClick={onToggle}
-      >
+      <DisclosureButton tool aria-expanded={expanded} onPress={onToggle}>
         <Icon
           name="forward"
           className={expanded ? "ah-icon-expanded" : undefined}
@@ -633,7 +630,7 @@ export function ToolRow({
           kind={errorSummary ? "error" : "neutral"}
         />
         {durationText ? <small>{durationText}</small> : null}
-      </button>
+      </DisclosureButton>
       {expanded ? (
         <div className="ah-disclosure-panel">
           {errorSummary ? (

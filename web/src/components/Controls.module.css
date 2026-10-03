@@ -1,0 +1,284 @@
+.button {
+  composes: surface from "./interactive.module.css";
+  min-height: var(--ah-touch);
+  padding: 0 var(--ah-s5);
+  border: 1px solid transparent;
+  border-radius: var(--ah-r-md);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.primary {
+  --i-bg: var(--ah-accent);
+  --i-fg: var(--ah-on-accent);
+  --i-hover: var(--ah-accent-ink);
+  --i-hover-fg: var(--ah-on-accent);
+  --i-pressed: var(--ah-accent-soft);
+  --i-pressed-fg: var(--ah-accent-ink);
+}
+.secondary {
+  --i-bg: var(--ah-surface);
+  --i-border: var(--ah-line);
+  --i-hover: var(--ah-surface-2);
+  --i-pressed: var(--ah-accent-soft);
+}
+.quiet {
+  --i-fg: var(--ah-accent-ink);
+  --i-hover: var(--ah-accent-soft);
+  --i-pressed: var(--ah-accent-line);
+}
+.danger {
+  --i-bg: var(--ah-err);
+  --i-fg: var(--ah-surface);
+  --i-hover: var(--ah-err-soft);
+  --i-hover-fg: var(--ah-err);
+  --i-pressed: var(--ah-err-line);
+  --i-pressed-fg: var(--ah-err);
+}
+.dangerSubtle {
+  --i-bg: var(--ah-err-soft);
+  --i-border: var(--ah-err-line);
+  --i-fg: var(--ah-err);
+  --i-hover: var(--ah-err-line);
+  --i-pressed: var(--ah-err);
+  --i-pressed-fg: var(--ah-surface);
+}
+.compact {
+  min-height: 36px;
+  padding-inline: var(--ah-s3);
+}
+.button kbd {
+  margin-inline-start: var(--ah-s3);
+}
+.icon {
+  display: inline-grid;
+  place-items: center;
+  min-width: 36px;
+  padding: var(--ah-s1);
+}
+.account {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+:global(.ah-rail-collapsed) .account {
+  width: var(--ah-touch);
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+.back {
+  min-height: var(--ah-touch);
+  padding-inline: 0;
+  border: 0;
+  --i-bg: transparent;
+  --i-fg: var(--ah-muted);
+}
+.floating {
+  border-radius: var(--ah-r-pill);
+  box-shadow: 0 2px 8px var(--ah-scrim);
+}
+.messageIcon {
+  font-size: 0;
+  padding: var(--ah-s1);
+}
+.messageIcon :global(.ah-icon) {
+  font-size: var(--ah-size-ui);
+}
+.link {
+  composes: surface from "./interactive.module.css";
+  color: var(--i-fg, var(--ah-ink));
+  text-decoration: none;
+  cursor: pointer;
+}
+.nav {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  padding: var(--ah-s3);
+  border-radius: var(--ah-r-md);
+}
+.agent {
+  padding: var(--ah-s2) var(--ah-s3);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ah-s2);
+}
+.home {
+  display: flex;
+  align-items: center;
+  min-height: var(--ah-touch);
+  gap: var(--ah-s3);
+  padding: var(--ah-s2) var(--ah-s3);
+  border-radius: var(--ah-r-nav);
+  font-weight: 600;
+}
+:global(.ah-rail-collapsed) .home {
+  flex-direction: column;
+  gap: 0;
+  padding-inline: 0;
+}
+@media (max-width: 800px) {
+  :global(.ah-mobile-open) .agent {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0 var(--ah-s2);
+    min-height: var(--ah-touch);
+    padding: 2px var(--ah-s2);
+  }
+}
+.return {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ah-s4);
+  min-height: 62px;
+  padding: var(--ah-s3) var(--ah-s4);
+}
+.workspace {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 6px 5px 2px;
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.menuItem {
+  composes: surface from "./interactive.module.css";
+  display: grid;
+  padding: var(--ah-s3);
+  border-radius: var(--ah-r-sm);
+  cursor: pointer;
+}
+.menuDanger {
+  --i-fg: var(--ah-err);
+}
+.disclosure {
+  composes: surface from "./interactive.module.css";
+  display: flex;
+  width: 100%;
+  gap: var(--ah-s2);
+  border: 1px solid var(--ah-line);
+  --i-bg: var(--ah-surface);
+  cursor: pointer;
+  font: inherit;
+}
+.field {
+  display: grid;
+  gap: var(--ah-s2);
+  margin-block: var(--ah-s4);
+  max-width: 42rem;
+}
+.fieldInput {
+  composes: surface from "./interactive.module.css";
+  width: 100%;
+  min-height: var(--ah-touch);
+  padding: var(--ah-s3) var(--ah-s4);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  --i-bg: var(--ah-surface);
+  font: inherit;
+}
+.fieldInput[data-invalid] {
+  border-color: var(--ah-err);
+}
+
+@media (max-width: 800px) {
+  .workspace,
+  .agent {
+    min-height: var(--ah-touch);
+    display: flex;
+    align-items: center;
+  }
+  .agent {
+    display: grid;
+    align-content: center;
+  }
+}
+.menuItem[data-group="theme"] {
+  text-align: center;
+  padding: var(--ah-s2) 2px;
+  --i-bg: var(--ah-rail);
+  font-size: var(--ah-size-meta);
+}
+.menuItem[data-group="theme"][data-group-selected] {
+  font-weight: 600;
+}
+:global(.ah-account-menu) .menuItem:not([data-group="theme"]) {
+  grid-column: 1 / -1;
+  padding: var(--ah-s2) var(--ah-s3);
+  border-bottom: 1px solid var(--ah-line-soft);
+}
+:global(.ah-account-menu) .menuItem.menuDanger {
+  border-top: 1px solid var(--ah-line-soft);
+  border-bottom: 0;
+}
+
+textarea.fieldInput {
+  resize: vertical;
+  line-height: 1.55;
+}
+:global(.ah-conversation-frame .ah-composer) textarea.fieldInput {
+  min-height: 72px;
+}
+@media (max-width: 800px) {
+  :global(.ah-conversation-frame) textarea.fieldInput {
+    font-size: 16px;
+  }
+}
+
+.home :global(.ah-badge) {
+  margin-inline-start: auto;
+}
+:global(.ah-rail-collapsed) .home :global(.ah-rail-home-label) {
+  display: none;
+}
+:global(.ah-rail-collapsed) .home :global(.ah-badge) {
+  margin: 0;
+}
+.agent > span[id] {
+  min-width: 0;
+  white-space: nowrap;
+  font-size: var(--ah-size-meta);
+  color: var(--ah-muted);
+}
+.agent :global(.ah-status-read-only .ah-status-dot) {
+  width: 9px;
+  height: 9px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+}
+@media (max-width: 800px) {
+  :global(.ah-mobile-open) .agent > span[id] {
+    grid-column: 1 / -1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.disclosure small {
+  margin-inline-start: auto;
+}
+.toolDisclosure {
+  padding: 9px 12px;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.toolDisclosure small {
+  margin-inline-start: 0;
+  color: var(--ah-muted);
+  font-weight: 400;
+}
+.toolDisclosure > :global(.ah-status) {
+  margin-inline-start: auto;
+  font-weight: 400;
+  color: var(--ah-muted);
+}
+.toolDisclosure > :global(.ah-status) :global(.ah-status-dot) {
+  width: 7px;
+  height: 7px;
+}

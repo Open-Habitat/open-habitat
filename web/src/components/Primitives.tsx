@@ -1,18 +1,18 @@
 import type { ReactNode } from "react";
 import {
-  Button as AriaButton,
   Checkbox as AriaCheckbox,
+  RadioGroup as AriaRadioGroup,
+  TextArea as AriaTextArea,
+  TextField as AriaTextField,
   FieldError,
   Input,
   Label,
   Radio,
-  RadioGroup as AriaRadioGroup,
   Text,
-  TextArea as AriaTextArea,
-  TextField as AriaTextField,
 } from "react-aria-components";
-import type { Availability, Option } from "./types";
+import { ControlButton, controlStyles, IconButton } from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
+import type { Availability, Option } from "./types";
 import { enabled, unavailableReason } from "./types";
 
 export interface ButtonProps {
@@ -26,6 +26,7 @@ export interface ButtonProps {
   ariaLabel?: string;
   icon?: IconName;
   trailingIcon?: IconName;
+  presentation?: "back" | "floating" | "messageIcon";
 }
 export function Button({
   label,
@@ -38,13 +39,16 @@ export function Button({
   ariaLabel,
   icon,
   trailingIcon,
+  presentation,
 }: ButtonProps) {
   const reason = unavailableReason(availability);
   return (
     <span className="ah-control">
-      <AriaButton
+      <ControlButton
         aria-label={ariaLabel}
-        className={`ah-button ah-button-${variant} ah-button-${size}`}
+        variant={variant}
+        size={size}
+        presentation={presentation}
         isDisabled={Boolean(reason)}
         isPending={pending}
         onPress={onPress}
@@ -52,9 +56,22 @@ export function Button({
         {icon ? <Icon name={icon} /> : pending ? `${label}…` : label}
         {trailingIcon ? <Icon name={trailingIcon} /> : null}
         {shortcutHint ? <kbd>{shortcutHint}</kbd> : null}
-      </AriaButton>
+      </ControlButton>
       {reason ? <span className="ah-control-reason">{reason}</span> : null}
     </span>
+  );
+}
+
+export function RefreshIconButton({ onPress }: { onPress: () => void }) {
+  return (
+    <IconButton
+      aria-label="Päivitä"
+      variant="secondary"
+      size="compact"
+      onPress={onPress}
+    >
+      <Icon name="refresh" />
+    </IconButton>
   );
 }
 
@@ -85,7 +102,7 @@ export function TextField({
   const readOnly = availability.state === "read_only";
   return (
     <AriaTextField
-      className="ah-field"
+      className={`ah-field ${controlStyles.field}`}
       isDisabled={Boolean(reason) && !readOnly}
       isReadOnly={readOnly}
       isInvalid={Boolean(error)}
@@ -95,7 +112,9 @@ export function TextField({
       onChange={onChange}
     >
       <Label>{label}</Label>
-      <Input className={mono ? "ah-mono" : undefined} />
+      <Input
+        className={`${controlStyles.fieldInput} ${mono ? "ah-mono" : ""}`}
+      />
       {hint || reason ? (
         <Text slot="description">
           {hint ? <span className="ah-hint">{hint}</span> : null}
@@ -123,7 +142,7 @@ export function TextArea({
   const readOnly = availability.state === "read_only";
   return (
     <AriaTextField
-      className="ah-field"
+      className={`ah-field ${controlStyles.field}`}
       isDisabled={Boolean(reason) && !readOnly}
       isReadOnly={readOnly}
       isInvalid={Boolean(error)}
@@ -133,7 +152,7 @@ export function TextArea({
     >
       <Label>{label}</Label>
       <AriaTextArea
-        className={mono ? "ah-mono" : undefined}
+        className={`${controlStyles.fieldInput} ${mono ? "ah-mono" : ""}`}
         placeholder={placeholder}
         rows={rows}
         onKeyDown={(event) => {

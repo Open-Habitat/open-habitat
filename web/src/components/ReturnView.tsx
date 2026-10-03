@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { LinkRow } from "./ControlElements";
 import { Icon } from "./Icon";
 import { StatusMark } from "./Status";
 
@@ -32,7 +32,7 @@ function ConversationGroup({
       <ul className="ah-continue-list">
         {conversations.map((conversation) => (
           <li key={conversation.id}>
-            <Link to={conversation.href}>
+            <LinkRow href={conversation.href} kind="return">
               <span
                 className="ah-return-indicator"
                 aria-hidden="true"
@@ -60,7 +60,7 @@ function ConversationGroup({
                 </span>
               </span>
               <Icon name="forward" className="ah-return-arrow" />
-            </Link>
+            </LinkRow>
           </li>
         ))}
       </ul>

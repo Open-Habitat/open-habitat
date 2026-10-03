@@ -1,0 +1,40 @@
+/* Provisional state values from the existing palette; design-control-states owns final values. */
+.surface {
+  background: var(--i-bg, transparent);
+  color: var(--i-fg, var(--ah-ink));
+  border-color: var(--i-border, transparent);
+  transition:
+    background var(--ah-transition),
+    color var(--ah-transition),
+    border-color var(--ah-transition);
+}
+.surface:is(
+  [aria-current="page"],
+  [data-selected],
+  [data-group-selected="true"]
+) {
+  background: var(--i-selected, var(--ah-accent-soft));
+  color: var(--i-selected-fg, var(--ah-accent-ink));
+}
+.surface:not([data-disabled]):not([data-pending]):is(:hover, [data-hovered]) {
+  background: var(--i-hover, var(--ah-surface-2));
+  color: var(--i-hover-fg, var(--i-fg, var(--ah-ink)));
+}
+.surface:not([data-disabled]):not([data-pending]):is(:active, [data-pressed]) {
+  background: var(--i-pressed, var(--ah-accent-soft));
+  color: var(--i-pressed-fg, var(--i-fg, var(--ah-ink)));
+}
+.surface:is(:focus-visible, [data-focus-visible]) {
+  outline: var(--ah-focus-width) solid var(--ah-accent);
+  outline-offset: var(--ah-focus-offset);
+}
+.surface:is(:disabled, [data-disabled]) {
+  cursor: not-allowed;
+  background: var(--ah-line);
+  border-color: var(--ah-line);
+  color: var(--ah-muted);
+}
+.surface[data-pending] {
+  cursor: progress;
+  opacity: 0.7;
+}

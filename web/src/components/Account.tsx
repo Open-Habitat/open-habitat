@@ -42,6 +42,7 @@ export function AccountShelf({
       <Menu
         label="Tilivalikko"
         triggerLabel={`${name}, Tilivalikko`}
+        triggerPresentation="account"
         trigger={
           <span className="ah-account-trigger">
             <span className="ah-account-avatar" aria-hidden="true" />
@@ -125,6 +126,7 @@ export function AccountSettings({
       <Button
         label="Takaisin"
         variant="quiet"
+        presentation="back"
         size="compact"
         onPress={onBack}
       />
