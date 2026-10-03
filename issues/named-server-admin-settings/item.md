@@ -7,6 +7,7 @@ status: untriaged
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-02:ui-observations:1-3
+related: ['@server-administration-cli']
 ---
 
 # Named server and separate administrator settings with user roles
@@ -16,7 +17,9 @@ source_ref: chat:2026-10-02:ui-observations:1-3
 The sidebar currently shows a truncated server URL instead of a recognizable
 server name. Show a configurable name and provide a separate administrator page
 for shared server settings and user-role management, alongside personal Settings.
-The administrator CLI supports the same administration actions.
+The separate [privileged administration CLI task](../server-administration-cli/item.md)
+implements the operator-side administration actions after the authorization
+architecture is decided; this issue owns their shared product behavior.
 
 ## Agreed scope
 
