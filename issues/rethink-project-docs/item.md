@@ -60,13 +60,23 @@ riippuvuudet ovat edelleen issuectl:n DAGissa.
    add-account-settings-ui-issuen kanssa. Täsmennetään vertailukuvien päivityksen
    tarkoitus tämän kokonaisuuden lopputuloksen osoittamisessa.
 
-**Seuraava käsiteltävä issue: refine-agent-status.** `unify-ui-primitives`in
+**Seuraava käsiteltävä issue: design-control-states.** `unify-ui-primitives`in
 teksti selvennetty 3.10.2026: yhteisten kontrollien vastuu ja sovittu React Aria
 -pohja säilyvät, toteutusdetaljit jätetään toteuttajalle. Ensimmäisen vaiheen
 näyttö koskee siirrettyjä kontrolleja; loppujen siirto ja koko UI:n kattavuus
 kuuluvat `migrate-bespoke-controls`-issueen. Tilojen tarkistus huomioi kontrollin
-käytöksen, myös estetyn tilan. Tämä on tekstin läpikäynti, ei toteutuksen valmistuminen. Aiemman kokonaisuuden jäljellä oleviin dokumentteihin
-palataan tämän kierroksen jälkeen; ne säilyvät alla jatkamista varten.
+käytöksen, myös estetyn tilan.
+
+`refine-agent-status`in teksti selvennetty 3.10.2026: käyttäjälle merkitykselliset
+tilat johdetaan hostin tiedoista, ja prosessin olemassaolo, työskentely,
+huomion tarve sekä selaimen ohjausmahdollisuus erotetaan toisistaan. Designer
+suunnittelee esityksen `design-control-states`-kierroksella; yhteinen toteutus
+kuuluu `apply-control-state-design`-issueen. Tilaluettelo ja visuaalinen muoto
+jäävät suunnittelutyön ratkaistaviksi. Aiemmat päätösmerkinnät säilyvät.
+
+Nämä ovat tekstien läpikäyntejä. Toteutuksen tila ja DAG eivät muutu.
+Aiemman kokonaisuuden jäljellä oleviin dokumentteihin palataan tämän kierroksen
+jälkeen; ne säilyvät alla jatkamista varten.
 
 ## Käsitelty
 

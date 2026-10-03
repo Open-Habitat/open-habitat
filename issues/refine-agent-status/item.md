@@ -17,44 +17,42 @@ related: ['@consistent-control-feedback', '@restore-v2-navigation', '@design-con
 ## Purpose
 
 Help a person understand what an agent is doing and whether it needs attention,
-wherever that agent appears. Jari's 2 October 2026 sidebar observations exposed a
-broader usability question than missing dots: which states matter to the person,
-what they mean, and how the same meaning is expressed throughout the interface.
+wherever it appears. Jari's sidebar observations on 2 October 2026 raised a
+usability question: which states matter, what they mean, and how the same meaning
+is recognised across the agent list, sidebar and conversation.
 
-## Design task
+## State meaning
 
-Use the current agent behavior, the facts available from the host and observed
-use to work out the user-facing states. Distinguish concepts that answer different
-questions, such as whether a process exists, whether it is working, whether it
-is waiting for the person, and whether the browser can control it. These are
-questions for the design, not a prescribed list of states or a demand to show
-every internal state.
+Describe the user-facing states from current agent behavior, the facts available
+from the host and observations of use. Process presence, activity, a request for
+the person's attention and browser control answer different questions. A running
+process alone does not establish that the agent is working, and losing contact
+with it does not establish that it has stopped. Explain how the presentation
+handles missing or stale information alongside the states it can establish.
 
-Recommend a small, coherent visual language that helps the person recognize the
-state and decide what to do. Show it in the agent list, sidebar and conversation,
-including compact presentations. A state should remain recognizable across those
-contexts. Text, symbols, color and motion can work together; the meaning should
-also be available without distinguishing color or animation.
+For each proposed state, describe what it tells the person, which facts support
+it and what the person can do about it. Identify missing information where a
+useful distinction cannot yet be made. The current contracts and presentation
+code are evidence for what is available; existing labels and symbols do not
+define the intended meaning.
 
-The earlier hollow/green/pulsing dots are a starting point. Jari broadly recognized
-the proposed ended/idle/working interpretation but asked for this design work
-rather than fixing those meanings as a new decision. Existing drafts and
-components are reference material. Neither dots nor whole-row highlighting are
-the predetermined solution.
+## Shared presentation and delivery
 
-## Outcome and related work
+Prepare the meanings and representative examples for the agent-state chapter
+of @design-control-states. Jari decided on 3 October 2026 that the designer
+handles agent states in the same package as the shared controls' interaction
+states. The designer develops one recognisable visual language for the agent
+list, sidebar and conversation, including compact presentations. Text, symbols,
+color and motion can work together; meaning remains available without relying
+on color or animation alone. The existing dot treatments are reference material;
+Jari left the state set and visual form open for this design work.
 
-Leave a concrete recommendation with the meaning of each user-facing state, its
-relationship to facts the system actually knows, and examples across views that
-Jari can assess. Identify any missing facts rather than inventing a status from
-visual convention. The implementation work follows from the selected design.
-
-@consistent-control-feedback investigates the software foundation that lets
-shared interaction and presentation rules hold across the UI; this task owns the
-meaning and appearance of agent states. Coordinate the design with
-@restore-v2-navigation and the conversation views. Earlier post-MVP visual
-refinement was the starting scope; Jari's latest request broadens this into a
-focused usability design of agent states.
+The result is a recommendation connecting each state to known facts and showing
+how the designer's presentation works across views. @design-control-states owns
+the package and design round. @apply-control-state-design implements the agreed
+presentation through the shared `agentPresentation` mapping from host facts,
+using the foundation from @unify-ui-primitives. Coordinate the examples with
+@restore-v2-navigation and the conversation views so they use the same meanings.
 
 ## Decisions
 
