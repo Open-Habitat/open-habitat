@@ -21,6 +21,11 @@ menettelyohjauksen ja lupaportit. Valinta tehdään tekstin tehtävän perusteel
 Tämä issue on jatkamiskohta: pidetään käsiteltyjen dokumenttien lista ja seuraava
 ehdokas ajan tasalla, ei rakenneta erillistä katselmointiprosessia.
 
+Jarin tarkennus 3.10.2026: voimassa olevat päätökset ja niiden perustelut
+esitetään selkeästi tekstin asianomaisessa kohdassa. Erillistä Decisions-osiota
+ei säilytetä saman sisällön toistona tai läpikäyntien lokina; aiemmat versiot
+löytyvät Git-historiasta.
+
 ## Seuraava kokonaisuus: kahdeksan UI-issuea 3.10.2026
 
 Jari valitsi seuraavaksi alla olevat kahdeksan issuea. Käymme ne hänen kanssaan
@@ -72,7 +77,8 @@ tilat johdetaan hostin tiedoista, ja prosessin olemassaolo, työskentely,
 huomion tarve sekä selaimen ohjausmahdollisuus erotetaan toisistaan. Designer
 suunnittelee esityksen `design-control-states`-kierroksella; yhteinen toteutus
 kuuluu `apply-control-state-design`-issueen. Tilaluettelo ja visuaalinen muoto
-jäävät suunnittelutyön ratkaistaviksi. Aiemmat päätösmerkinnät säilyvät.
+jäävät suunnittelutyön ratkaistaviksi. Erillinen Decisions-osio poistettu Jarin
+palautteen perusteella: voimassa oleva sisältö on varsinaisessa tehtävätekstissä.
 
 Nämä ovat tekstien läpikäyntejä. Toteutuksen tila ja DAG eivät muutu.
 Aiemman kokonaisuuden jäljellä oleviin dokumentteihin palataan tämän kierroksen
