@@ -11,28 +11,57 @@ lane_seq: 60
 
 # Carry Pi's typed events and history to the browser
 
-## Jari's decision (2026-10-03)
+## Purpose
 
-The browser currently loses much of what Pi records and streams. This must be fixed, and the browser must work from Pi's original typed shapes rather than from today's flattened history.
+The browser loses much of what Pi records and streams because the host flattens
+history into text and forwards only a small part of live updates. Jari decided
+on 3 October 2026 that the browser should work from Pi's original typed shapes.
+[The event catalogue](../catalog-pi-events/analysis.md) maps those shapes at the
+pinned Pi 0.85.1 and identifies the current losses.
 
-## Problem
+## Typed content from Pi to the browser
 
-[The Pi event catalogue](../catalog-pi-events/analysis.md) shows the loss precisely (section E). History reaches the browser as five flattened kinds (`user`, `assistant`, `tool`, `model_change`, `unknown`; `internal/daemon/history_linux.go`, `contracts/v1/history.schema.json`): thinking, images, tool arguments and results, usage, stop reasons, local `!` executions, compaction and branch summaries, thinking-level changes, labels and visible extension messages do not cross as structured data. During a turn only text deltas and tool name/status survive (`internal/daemon/pi_events_linux.go`), not thinking deltas, tool-call argument streaming or tool results.
+Carry session entries, ordered message content blocks and live updates through
+the daemon, the generated browser contracts and the browser store without
+flattening away their meaning. Preserve thinking and redaction, images, tool
+arguments and results with their call associations, usage and stop reasons,
+local command output, compaction and branch summaries, session markers and
+visible extension content.
 
-## Goal
+Distinguish stored entries, streamed changes and lifecycle signals: a tool call,
+its progress and its result belong together, and a stream delta is an update to
+content rather than a new history row. History and live updates should converge
+on the same conversation when a turn ends or the browser reconnects. Pi's native
+history remains the durable source; the existing journal carries live updates.
 
-The daemon passes Pi's session entries, message content blocks and live events to the browser in their typed form, as Pi defines them at the pinned 0.85.1, and the browser store keeps them. Native history stays the only truth; this changes what the daemon reads from it and forwards, not where it is stored.
+Use the catalogue to account for the supported content and events, explaining
+any exclusions. Internal hooks and RPC acknowledgements have different purposes
+from conversation content; being listed in the catalogue does not make them
+browser display data. Preserve extension visibility and redaction semantics.
+Choose browser-visible fields with their contents in mind: provider diagnostics,
+raw errors and arbitrary extension metadata can contain credentials or internal
+data. Unknown types need an understandable fallback without exposing unchecked
+payloads.
 
-## Scope
+## Integration and presentation
 
-- `contracts/v1/history.schema.json` and `event.schema.json` describe the typed entries, roles, content blocks and live events from the catalogue, with generated clients; no compatibility with the flattened kinds (pre-release).
-- `internal/daemon/history_linux.go` and `pi_events_linux.go` forward those shapes, keeping existing paging, byte bounds, `entry_key` and the journal; large fields (base64 images, long outputs, summaries) stay bounded, with the existing separate content reads where needed.
-- Decide per field what must not reach the browser. Provider diagnostics, raw error payloads, hook data and arbitrary extension `details` get a security review before being surfaced (catalogue section E); hidden `display:false` extension content is not shown merely because it is on disk. Unknown future types keep a safe fallback.
-- The browser store and current components consume the typed data without losing what they show today. Visual design for each block is @design-pi-event-blocks; this issue only needs a correct, unstyled-but-readable rendering, so nothing typed is silently dropped.
+Update the history and event contracts in `contracts/v1/`, their generated
+clients, daemon readers and event handling, and browser consumers together.
+The project is pre-release, so the flattened format needs no compatibility
+layer. Preserve paging, stable entry identity, bounded transfer and the existing
+journal recovery behavior. Large images, outputs and summaries need a usable
+way to read their content without forcing every history page or live update to
+carry it all; the existing separate content reads are the starting point.
 
-## Acceptance criteria
+Provide a readable presentation using the existing components so the carried
+content can be inspected. @design-pi-event-blocks owns the finished block
+designs. Incoming extension questions remain visible; answer and cancel controls
+stay outside the agreed scope in @build-agent-control. Carrying local command
+output likewise does not require adding command controls.
 
-- [ ] Every event/entry/content type in the catalogue either crosses the contract typed, or its exclusion is recorded with the reason.
-- [ ] Deterministic tests with synthetic Pi sessions and live event sequences cover each type, very large fields and unknown types.
-- [ ] The browser shows thinking, tool arguments and results, images, local commands, compaction/branch summaries and session markers from history and live, without regressions in warm switching or paging.
-- [ ] TESTING.md checks pass.
+## Acceptance Criteria
+
+- [ ] The catalogue's content and events are accounted for by typed browser data, their internal role or a reasoned exclusion.
+- [ ] Synthetic session and live-event tests demonstrate content order, tool associations, visibility, large content and unknown-type handling, including reconciliation with history.
+- [ ] The browser presents the supported content from history and live updates where Pi supplies it, while preserving warm conversation switching, paging and reading position.
+- [ ] The relevant checks in TESTING.md pass; the result identifies what the synthetic evidence establishes and any remaining live verification.

@@ -65,7 +65,7 @@ riippuvuudet ovat edelleen issuectl:n DAGissa.
    add-account-settings-ui-issuen kanssa. Täsmennetään vertailukuvien päivityksen
    tarkoitus tämän kokonaisuuden lopputuloksen osoittamisessa.
 
-**Seuraava käsiteltävä issue: carry-typed-pi-events.** `unify-ui-primitives`in
+**Seuraava käsiteltävä issue: design-pi-event-blocks.** `unify-ui-primitives`in
 teksti selvennetty 3.10.2026: yhteisten kontrollien vastuu ja sovittu React Aria
 -pohja säilyvät, toteutusdetaljit jätetään toteuttajalle. Ensimmäisen vaiheen
 näyttö koskee siirrettyjä kontrolleja; loppujen siirto ja koko UI:n kattavuus
@@ -86,6 +86,15 @@ tilat molemmissa teemoissa sekä `refine-agent-status`in merkitykset ja esimerki
 Kiinteä komponenttinimilista poistettu. Pysyvä tilasääntö kuuluu design-package
 -ohjeeseen; erillistä pyyntöpohjaa ei oleteta. Palautettu design sovitetaan yhteen
 nykyiseen designiin, ja toteutus kuuluu `apply-control-state-design`-issueen.
+
+`carry-typed-pi-events`in teksti selvennetty 3.10.2026: Pi:n tyypit,
+sisältöjärjestys ja työkalukutsujen yhteys tuloksiin säilyvät selaimeen asti.
+Tallennettu sisältö, ajonaikaiset päivitykset ja sisäiset signaalit erotettu;
+katalogi ei velvoita näyttämään hookeja tai RPC-kuittauksia keskustelulohkoina.
+Näkyvyys- ja tietorajaukset perusteltu, nykyinen sivutus ja nopea paluu säilyvät.
+Luettava esitys kuuluu tähän työhön, lopullinen design seuraavaan issueen.
+Kysymysten näyttäminen säilyy aiemman päätöksen mukaisesti; uusia kysymys- tai
+komento-ohjaimia ei johdeta tiedonkulkutyöstä.
 
 Nämä ovat tekstien läpikäyntejä. Toteutuksen tila ja DAG eivät muutu.
 Aiemman kokonaisuuden jäljellä oleviin dokumentteihin palataan tämän kierroksen
