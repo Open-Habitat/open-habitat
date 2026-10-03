@@ -3,12 +3,19 @@ created: 2026-10-03
 updated: 2026-10-03
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 related: ['@decide-logging-policy', '@create-architecture-project-view']
 labels: [docs]
 lane: architecture-docs
 assignee: claude
+commits:
+- hash: 412eb809994fbfbbeec6902b3ef0bb53c59a0038
+  summary: 'docs: point internal/AGENTS.md at the architecture pages'
+- hash: 11b94304ad7e7284551e4374d9fc0f8553557463
+  summary: 'docs: rewrite the architecture as a present-tense system description'
+closed: 2026-10-03
+closed_by: claude
 ---
 
 # Rewrite the architecture documentation as a present-tense system description
@@ -76,3 +83,9 @@ Writing rules for the set:
 ### 2026-10-03T19:33:10Z · @claude
 
 Rewrite done in one pass by one author. Verified against source while writing; corrections to the old pages included: the event ring is 1024 events / 16 MiB (not 128 / 1 MiB), sessions last 8 h idle / 24 h total, there is no Google login, no title generation, no annotation store and no general command API in the code, Cloudflare Access is an opt-in ingress check, and the daemon keeps at most 4 live Pi children. The unimplemented general contract moved to issues/build-agent-control/general-contract.md; logging.md to issues/decide-logging-policy/proposal.md; evidence.md to issues/native-agent-host-architecture/research-index.md; the October review to issues/architecture-built-on-caution/review-2026-10.md.
+
+## Resolution
+
+### 2026-10-03T19:33:59Z · @claude
+
+Landed as 11b9430 and 412eb80 on main. Acceptance: validator and diff --check pass; banned-vocabulary grep clean; links in docs/, internal/, root instruction files and TESTING.md resolve; each page's claims checked against the source while writing.
