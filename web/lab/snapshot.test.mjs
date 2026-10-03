@@ -12,6 +12,11 @@ try {
   await page.goto(`${origin}/workspaces`);
   await page.getByRole("heading", { name: "Työtilat", exact: true }).waitFor();
   await snapshot(page, join(dir, "sample"));
+  await snapshot(page, join(dir, "fragment"), { region: "main" });
+  const fragment = await readFile(join(dir, "fragment.html"), "utf8");
+  assert.doesNotMatch(fragment, /<script\b|\bon\w+=/i);
+  assert.match(fragment, /<main\b/);
+  assert.doesNotMatch(fragment, /<nav\b/);
   const html = await readFile(join(dir, "sample.html"), "utf8");
   assert.doesNotMatch(html, /<script\b|\bon\w+=/i);
   assert.doesNotMatch(html.replace(/>[^<]*</g, "><"), /https?:\/\//i);
@@ -80,6 +85,18 @@ try {
     assert.ok(
       diff < 35,
       `offline screenshot differed from lab (mean RGB error ${diff})`,
+    );
+    await view.goto(`file://${join(dir, "fragment.html")}`);
+    assert.equal(requests, 0, "fragment requested network assets");
+    assert.equal(
+      await view.locator("main h1").innerText(),
+      await page.locator("main h1").innerText(),
+    );
+    const fragmentPng = await readFile(join(dir, "fragment.png"));
+    const offlineFragmentPng = await view.locator("main").screenshot();
+    assert.equal(
+      fragmentPng.subarray(0, 8).toString("hex"),
+      offlineFragmentPng.subarray(0, 8).toString("hex"),
     );
     await context.close();
   } finally {

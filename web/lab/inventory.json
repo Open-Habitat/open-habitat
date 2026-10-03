@@ -1,0 +1,515 @@
+{
+  "version": 1,
+  "presentations": [
+    {
+      "id": "light-desktop",
+      "theme": "light",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "light-phone",
+      "theme": "light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "dark-desktop",
+      "theme": "dark",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "id": "dark-phone",
+      "theme": "dark",
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "states": [
+    {
+      "id": "sign-in",
+      "view": "/workspaces",
+      "scenario": "ready",
+      "route": "/workspaces",
+      "steps": [],
+      "region": "main",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/LoginCard.tsx"
+      ],
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "focus": false,
+      "status": "capture"
+    },
+    {
+      "id": "repo-chooser",
+      "view": "/workspaces",
+      "scenario": "pi-onboarding",
+      "route": "/workspaces",
+      "steps": [
+        "login"
+      ],
+      "region": "main",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/GitHubRepoChooser.tsx"
+      ],
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "focus": false,
+      "status": "capture"
+    },
+    {
+      "id": "pi-start",
+      "view": "/workspaces",
+      "scenario": "pi-onboarding",
+      "route": "/workspaces",
+      "steps": [
+        "login",
+        "repo-chooser"
+      ],
+      "region": "main",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/PiDeviceSignIn.tsx"
+      ],
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "focus": false,
+      "status": "capture"
+    },
+    {
+      "id": "pi-code",
+      "view": "/workspaces",
+      "scenario": "pi-onboarding",
+      "route": "/workspaces",
+      "steps": [
+        "login",
+        "repo-chooser",
+        "start-sign-in"
+      ],
+      "region": "main",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/PiDeviceSignIn.tsx"
+      ],
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "focus": false,
+      "status": "capture"
+    },
+    {
+      "id": "landing",
+      "view": "/workspaces",
+      "scenario": "ready",
+      "route": "/workspaces",
+      "steps": [
+        "login"
+      ],
+      "region": "main",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/WorkspaceRailView.tsx"
+      ],
+      "draft": "design-system/drafts/Selainpolku.dc.html",
+      "focus": true,
+      "status": "capture"
+    },
+    {
+      "id": "workspace",
+      "view": "@workspace",
+      "scenario": "ready",
+      "route": "@workspace",
+      "steps": [
+        "login"
+      ],
+      "region": "main",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/WorkspaceRailView.tsx"
+      ],
+      "draft": "design-system/drafts/Selainpolku.dc.html",
+      "focus": true,
+      "status": "capture"
+    },
+    {
+      "id": "history",
+      "view": "@history",
+      "scenario": "ready",
+      "route": "@history",
+      "steps": [
+        "login"
+      ],
+      "region": "main",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/HistoryView.tsx"
+      ],
+      "draft": "design-system/drafts/Selainpolku.dc.html",
+      "focus": true,
+      "status": "capture"
+    },
+    {
+      "id": "settings",
+      "view": "/settings",
+      "scenario": "ready",
+      "route": "/settings",
+      "steps": [
+        "login"
+      ],
+      "region": "main",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/Account.tsx"
+      ],
+      "draft": "design-system/drafts/Selainpolku.dc.html",
+      "focus": false,
+      "status": "capture"
+    },
+    {
+      "id": "empty-catalog",
+      "view": "/workspaces",
+      "scenario": "empty",
+      "route": "/workspaces",
+      "steps": [
+        "login"
+      ],
+      "region": "main",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/WorkspaceRailView.tsx"
+      ],
+      "draft": null,
+      "focus": false,
+      "status": "capture"
+    },
+    {
+      "id": "missing-catalog",
+      "view": "/workspaces",
+      "scenario": "missing",
+      "route": "/workspaces",
+      "steps": [
+        "login"
+      ],
+      "region": "main",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/WorkspaceRailView.tsx"
+      ],
+      "draft": null,
+      "focus": false,
+      "status": "capture"
+    },
+    {
+      "id": "catalog-error",
+      "view": "/workspaces",
+      "scenario": "error",
+      "route": "/workspaces",
+      "steps": [
+        "login"
+      ],
+      "region": "main",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/Status.tsx"
+      ],
+      "draft": null,
+      "focus": false,
+      "status": "capture"
+    },
+    {
+      "id": "partial-catalog",
+      "view": "/workspaces",
+      "scenario": "partial",
+      "route": "/workspaces",
+      "steps": [
+        "login"
+      ],
+      "region": "main",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/WorkspaceRailView.tsx"
+      ],
+      "draft": null,
+      "focus": false,
+      "status": "capture"
+    },
+    {
+      "id": "malformed-snapshot",
+      "view": "/workspaces",
+      "scenario": "malformed",
+      "route": "/workspaces",
+      "steps": [
+        "login"
+      ],
+      "region": "main",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/Status.tsx"
+      ],
+      "draft": null,
+      "focus": false,
+      "status": "capture"
+    },
+    {
+      "id": "oversize-snapshot",
+      "view": "/workspaces",
+      "scenario": "oversize",
+      "route": "/workspaces",
+      "steps": [
+        "login"
+      ],
+      "region": "main",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/Status.tsx"
+      ],
+      "draft": null,
+      "focus": false,
+      "status": "capture"
+    },
+    {
+      "id": "native-error",
+      "view": "/workspaces",
+      "scenario": "native-error",
+      "route": "/workspaces",
+      "steps": [
+        "login"
+      ],
+      "region": "main",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/Status.tsx"
+      ],
+      "draft": null,
+      "focus": false,
+      "status": "capture"
+    },
+    {
+      "id": "pi-blocked",
+      "view": "/workspaces",
+      "scenario": "pi-blocked",
+      "route": "/workspaces",
+      "steps": [
+        "login"
+      ],
+      "region": "main",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/PiDeviceSignIn.tsx"
+      ],
+      "draft": null,
+      "focus": false,
+      "status": "capture"
+    },
+    {
+      "id": "new-conversation",
+      "view": "@workspace",
+      "scenario": "ready",
+      "route": "@workspace",
+      "steps": [
+        "login",
+        "new-conversation"
+      ],
+      "region": "main",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/Conversation.tsx"
+      ],
+      "draft": "design-system/drafts/Selainpolku.dc.html",
+      "focus": false,
+      "status": "capture"
+    },
+    {
+      "id": "send-rejected",
+      "view": "@workspace",
+      "scenario": "ready",
+      "route": "@workspace",
+      "steps": [
+        "login",
+        "new-conversation",
+        "send-rejected"
+      ],
+      "region": "main",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/Conversation.tsx"
+      ],
+      "draft": null,
+      "focus": false,
+      "status": "capture"
+    },
+    {
+      "id": "send-uncertain",
+      "view": "@workspace",
+      "scenario": "ready",
+      "route": "@workspace",
+      "steps": [
+        "login",
+        "new-conversation",
+        "send-uncertain"
+      ],
+      "region": "main",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/Conversation.tsx"
+      ],
+      "draft": null,
+      "focus": false,
+      "status": "capture"
+    },
+    {
+      "id": "outage",
+      "view": "@workspace",
+      "scenario": "ready",
+      "route": "@workspace",
+      "steps": [
+        "login",
+        "new-conversation",
+        "outage"
+      ],
+      "region": "main",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/Status.tsx"
+      ],
+      "draft": null,
+      "focus": false,
+      "status": "capture"
+    },
+    {
+      "id": "account-menu",
+      "view": "/workspaces",
+      "scenario": "ready",
+      "route": "/workspaces",
+      "steps": [
+        "login",
+        "account-menu"
+      ],
+      "region": "[role=\"menu\"]",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/Account.tsx"
+      ],
+      "draft": null,
+      "focus": false,
+      "status": "capture"
+    },
+    {
+      "id": "workspace-details",
+      "view": "@workspace",
+      "scenario": "ready",
+      "route": "@workspace",
+      "steps": [
+        "login",
+        "workspace-details"
+      ],
+      "region": ".ah-workspace-facts",
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/WorkspaceRailView.tsx"
+      ],
+      "draft": null,
+      "focus": false,
+      "status": "capture"
+    },
+    {
+      "id": "loading",
+      "view": "/workspaces",
+      "status": "gap",
+      "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
+      "source": [
+        "web/src/components/Status.tsx"
+      ],
+      "draft": null
+    },
+    {
+      "id": "expired-session",
+      "view": "/workspaces",
+      "status": "gap",
+      "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
+      "source": [
+        "web/src/components/LoginCard.tsx"
+      ],
+      "draft": null
+    },
+    {
+      "id": "unknown-content",
+      "view": "@history",
+      "status": "gap",
+      "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
+      "source": [
+        "web/src/components/Conversation.tsx"
+      ],
+      "draft": null
+    },
+    {
+      "id": "tool-expanded",
+      "view": "@history",
+      "status": "gap",
+      "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
+      "source": [
+        "web/src/components/Conversation.tsx"
+      ],
+      "draft": null
+    },
+    {
+      "id": "chat-working",
+      "view": "@workspace",
+      "status": "gap",
+      "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
+      "source": [
+        "web/src/components/Conversation.tsx"
+      ],
+      "draft": null
+    },
+    {
+      "id": "chat-answer",
+      "view": "@workspace",
+      "status": "gap",
+      "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
+      "source": [
+        "web/src/components/Conversation.tsx"
+      ],
+      "draft": null
+    },
+    {
+      "id": "narrow-navigation",
+      "view": "/workspaces",
+      "status": "gap",
+      "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
+      "source": [
+        "web/src/components/Navigation.tsx"
+      ],
+      "draft": null
+    },
+    {
+      "id": "filter-no-results",
+      "view": "/workspaces",
+      "status": "gap",
+      "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
+      "source": [
+        "web/src/components/Navigation.tsx"
+      ],
+      "draft": null
+    },
+    {
+      "id": "repo-chooser-error",
+      "view": "/workspaces",
+      "status": "gap",
+      "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
+      "source": [
+        "web/src/components/GitHubRepoChooser.tsx"
+      ],
+      "draft": null
+    },
+    {
+      "id": "pi-auth-failure",
+      "view": "/workspaces",
+      "status": "gap",
+      "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
+      "source": [
+        "web/src/components/PiDeviceSignIn.tsx"
+      ],
+      "draft": null
+    }
+  ]
+}

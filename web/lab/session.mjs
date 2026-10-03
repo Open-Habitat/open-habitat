@@ -39,7 +39,7 @@ export async function openLab({
 }
 
 // A static, inert twin of a synthetic lab screenshot. Never call on a live host.
-export async function snapshot(page, outBase, { html = true } = {}) {
+export async function snapshot(page, outBase, { html = true, region } = {}) {
   const { mkdir, writeFile } = await import("node:fs/promises");
   const { dirname } = await import("node:path");
   const { execFileSync } = await import("node:child_process");
@@ -50,10 +50,29 @@ export async function snapshot(page, outBase, { html = true } = {}) {
     throw new Error("Snapshot refused: host is not the synthetic lab");
   await page.evaluate(() => document.fonts.ready);
   await mkdir(dirname(outBase), { recursive: true });
-  await page.screenshot({ path: `${outBase}.png`, fullPage: true });
+  if (region) {
+    await page.locator(region).first().waitFor();
+    await page
+      .locator(region)
+      .first()
+      .screenshot({ path: `${outBase}.png` });
+  } else await page.screenshot({ path: `${outBase}.png`, fullPage: true });
   if (!html) return;
-  const captured = await page.evaluate(async () => {
+  const captured = await page.evaluate(async (region) => {
     const root = document.documentElement.cloneNode(true);
+    // Retain the original ancestor chain (theme and layout context) while
+    // discarding siblings from the *clone*, never modifying the live app.
+    const omit = new Set();
+    if (region) {
+      let node = document.querySelector(region);
+      if (!node || !document.body.contains(node))
+        throw new Error(`Missing fragment region: ${region}`);
+      while (node !== document.body) {
+        for (const sibling of node.parentElement.children)
+          if (sibling !== node) omit.add(sibling);
+        node = node.parentElement;
+      }
+    }
     const live = [...document.documentElement.querySelectorAll("*")];
     const copies = [...root.querySelectorAll("*")];
     const inline = async (reference, base = location.href) => {
@@ -132,6 +151,7 @@ export async function snapshot(page, outBase, { html = true } = {}) {
       }
       if (dst.hasAttribute("srcset")) dst.removeAttribute("srcset"); // src is already embedded.
     }
+    for (const node of omit) copies[live.indexOf(node)].remove();
     for (const element of [...root.querySelectorAll("*")]) {
       if (
         [
@@ -177,7 +197,7 @@ export async function snapshot(page, outBase, { html = true } = {}) {
     );
     root.querySelector("head").prepend(meta);
     return `<!doctype html>\n${root.outerHTML}`;
-  });
+  }, region);
   const commit = execFileSync("git", ["rev-parse", "--short", "HEAD"], {
     encoding: "utf8",
   }).trim();
