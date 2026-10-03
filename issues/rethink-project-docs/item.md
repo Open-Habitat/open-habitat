@@ -46,8 +46,17 @@ käyttäjät, yhteiset aineistot ja Moodle-yhteydet, ratkaistaan tarpeen pohjalt
 Ennalta määrätty ratkaisuvaihtoehtojen vertailu poistettu; nykyinen Unix- ja
 asiakasasennusten eristys säilyy arkkitehtuurin lähtökohtana. Lopputulos on
 perusteltu integraatiosuositus tai erillään pitäminen sekä tarvittavat jatkotyöt.
-Issuen tila ja DAG säilyvät. Seuraava käsiteltävä on
-`decide-taskfleet-browser-integration`.
+Issuen tila ja DAG säilyvät.
+
+`decide-taskfleet-browser-integration` käsitelty Jarin tarkennuksen mukaan:
+worktree-agentti halutaan Omega Habitatiin first-class citizeniksi ja
+Taskfleet on sen toteutusväline. Integraation tarve on siis sovittu;
+suunnittelutyö ratkaisee käyttökokemuksen sekä käynnistyksen ja selainohjauksen
+rajan. Nykyinen terminaaliagentin vain luku -polku on ratkaistava puute.
+Tavoite ja suunnittelun vastuu sovitettu myös `manage-agent-worktrees`-issueen.
+Taskfleet säilyy ajojen ja worktreeiden auktoriteettina; ohjauksen mekanismia
+ei vielä päätetty. Issueiden tila ja DAG säilyvät.
+Seuraava käsiteltävä on `server-administration-cli`.
 
 ## Palvelinylläpito, terminaalisynkronointi ja muistinkäyttö 3.10.2026
 

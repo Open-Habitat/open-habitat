@@ -13,8 +13,16 @@ collision: [docs/, AGENTS.md, design-system/]
 
 # Manage agent worktrees
 
-Let a person create Taskfleet-owned work from a Git workspace, open its new
-agent and follow it in the workspace navigation.
+Make worktree agents first-class agents in Omega Habitat, using Taskfleet
+to create and manage their native work. A person should be able to create
+work from a Git workspace and use its agent as a natural part of the browser
+experience. Jari confirmed this product direction on 3 October 2026.
+
+[Worktree-agent integration design](../decide-taskfleet-browser-integration/item.md)
+resolves the browser experience and the launch/control boundary this
+implementation needs. Taskfleet's current terminal-agent launch and the
+browser's read-only treatment of terminal agents are a gap for that design
+to solve.
 
 The [implementation briefs](../plan-v1-implementation/implementation-briefs.md)
 identify current ownership. Operation semantics live in
