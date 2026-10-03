@@ -60,8 +60,12 @@ riippuvuudet ovat edelleen issuectl:n DAGissa.
    add-account-settings-ui-issuen kanssa. Täsmennetään vertailukuvien päivityksen
    tarkoitus tämän kokonaisuuden lopputuloksen osoittamisessa.
 
-**Seuraava käsiteltävä issue: unify-ui-primitives.** Tämän kierroksen issueita
-ei ole vielä käsitelty. Aiemman kokonaisuuden jäljellä oleviin dokumentteihin
+**Seuraava käsiteltävä issue: refine-agent-status.** `unify-ui-primitives`in
+teksti selvennetty 3.10.2026: yhteisten kontrollien vastuu ja sovittu React Aria
+-pohja säilyvät, toteutusdetaljit jätetään toteuttajalle. Ensimmäisen vaiheen
+näyttö koskee siirrettyjä kontrolleja; loppujen siirto ja koko UI:n kattavuus
+kuuluvat `migrate-bespoke-controls`-issueen. Tilojen tarkistus huomioi kontrollin
+käytöksen, myös estetyn tilan. Tämä on tekstin läpikäynti, ei toteutuksen valmistuminen. Aiemman kokonaisuuden jäljellä oleviin dokumentteihin
 palataan tämän kierroksen jälkeen; ne säilyvät alla jatkamista varten.
 
 ## Käsitelty
