@@ -9,7 +9,7 @@ related: ['@refine-agent-status']
 lane: ui-foundation
 lane_seq: 30
 collision: [web/src/components/, design-system/]
-blocked_by: ['@design-control-states']
+blocked_by: ['@design-control-states', '@compare-draft-fidelity']
 ---
 
 # Apply the designed control states and agent presentation

@@ -8,7 +8,7 @@ priority: high
 related: ['@consistent-control-feedback']
 lane: ui-foundation
 lane_seq: 10
-collision: [web/src/components/, web/src/app/App.tsx, design-system/]
+collision: [web/src/components/, web/src/app/App.tsx, design-system/, web/src/app/]
 ---
 
 # Unify UI controls into state-aware primitives

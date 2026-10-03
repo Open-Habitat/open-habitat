@@ -7,6 +7,7 @@ status: open
 priority: high
 lane: client-history
 lane_seq: 60
+collision: [web/src/components/, web/src/app/]
 ---
 
 # Carry Pi's typed events and history to the browser
