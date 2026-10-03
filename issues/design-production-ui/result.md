@@ -50,7 +50,7 @@ than backend evidence.
   composition boundaries, all relevant async/read-only/stale/unknown/partial
   states and the implementation catalog/story matrix. Visual components never
   own Pi/network/domain reconciliation.
-- Added [`design-system/ui_kits/production-v1/`](https://github.com/maintainer/native-agent-host/blob/c3cd5cb4fb34556ca0fadcb35277f83dcb119e29^/design-system/ui_kits/production-v1)
+- Added [`design-system/ui_kits/production-v1/`](https://github.com/maintainer/native-agent-host/blob/7520760f16f98d7f0f1face7b997897ed9143d41/design-system/ui_kits/production-v1)
   with the AGENTS/CLAUDE convention and a static, no-mock correction artifact.
 - Reconciled shared tokens by adding rail/scrim and overlay shadows and replacing
   the conversation delivery's 380–900 ms motion with 160–180 ms production

@@ -18,14 +18,10 @@ with GitHub using their mapped Unix account. Local workspace creation and
 settings belong to @manage-workspace-lifecycle; this issue owns the GitHub
 integration and the [native GitHub assumption](../../docs/assumptions.md#githubin-natiivi-käyttö-kirjautumisen-jälkeen).
 The [implementation map](../plan-v1-implementation/implementation-briefs.md)
-assigns CT-018, CT-032 and CT-034 here. The older
-[workspace handoff](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/drafts/v1/workspaces/AGENTS.md) describes
-creation and settings; the [design](../../design-system/design.md)
-covers repository choosing and account connections. Jari chose all repositories
-visible by default, with time filtering left to the user (see
-[the design review](../review-browser-design-v2/item.md)). Neither handoff is
-proof that simulated GitHub states work. The v1 prototype's single create-and-push
-command does not override the separately observable operation outcomes.
+assigns CT-018, CT-032 and CT-034 here. The
+[design](../../design-system/design.md) describes repository choosing and account
+connections. All repositories are visible by default; time filtering is the
+user's choice. Creation, origin setup and push have separately observable results.
 
 Git and GitHub remain authoritative for repository state. Use the mapped user's
 native `gh` and Git configuration rather than a browser secret upload or a
