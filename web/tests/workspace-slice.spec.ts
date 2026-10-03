@@ -279,6 +279,9 @@ test("@workspace-slice @a11y built host: zoom, accessible states, no serious axe
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+  // Theme tokens switch immediately but primitive colors transition for 120ms.
+  // Audit settled colors, not an arbitrary frame midway through that transition.
+  await page.emulateMedia({ reducedMotion: "reduce" });
   for (const theme of ["light", "dark"]) {
     await page
       .locator("html")
@@ -295,7 +298,6 @@ test("@workspace-slice @a11y built host: zoom, accessible states, no serious axe
     );
     expect(violations, theme).toEqual([]);
   }
-  await page.emulateMedia({ reducedMotion: "reduce" });
   expect(
     await page
       .locator(".ah-button")
