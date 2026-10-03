@@ -3,12 +3,14 @@ created: 2026-10-03
 updated: 2026-10-03
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@consistent-control-feedback']
 lane: ui-foundation
 lane_seq: 10
 collision: [web/src/components/, web/src/app/App.tsx, design-system/, web/src/app/]
+closed: 2026-10-03
+closed_by: claude
 ---
 
 # Unify UI controls into state-aware primitives
