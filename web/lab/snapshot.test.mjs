@@ -20,7 +20,10 @@ try {
 const { browser, page } = await openLab();
 try {
   await page.goto(`${origin}/workspaces`);
-  await page.getByRole("heading", { name: "Työtilat", exact: true }).waitFor();
+  await page.locator("main h1").waitFor();
+  await page.waitForFunction(
+    () => !document.querySelector("main")?.textContent?.includes("Ladataan"),
+  );
   await snapshot(page, join(dir, "sample"));
   await snapshot(page, join(dir, "fragment"), { region: "main" });
   const fragment = await readFile(join(dir, "fragment.html"), "utf8");
