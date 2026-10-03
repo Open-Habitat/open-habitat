@@ -1,9 +1,9 @@
 ---
 created: 2026-10-02
-updated: 2026-10-02
+updated: 2026-10-03
 type: task
 reporter: jari
-status: untriaged
+status: in-progress
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-02:ui-observations:4-6
@@ -61,3 +61,7 @@ throughout the UI. Coordinate the resulting work with @restore-v2-navigation and
 ### 2026-10-02T10:05:17Z · @codex
 
 Jarin täsmennys 2.10.2026: raportoidut hover-, painike- ja valikkoerot ovat oireita. Tehtävä on löytää koodista syyt siihen, miksi epäjohdonmukaisuutta syntyy toistuvasti, ja suositella yleinen arkkitehtoninen tai ohjelmistotekninen ratkaisu. Selvityksessä saa arvioida vakiintuneiden UI-frameworkien toiminnallisuuden tai suunnitteluperiaatteiden hyödyntämistä ja kirjaston käyttöönottoa; ratkaisua ei valita etukäteen. Pelkkä lueteltujen oireiden korjaaminen ei täytä tavoitetta. Agenttitilojen merkitys ja yhteinen visuaalinen kieli käsitellään erikseen olemassa olevassa @refine-agent-status-issuessa.
+
+### 2026-10-03T05:44:01Z · @claude
+
+Tutkimus tehty 3.10.2026 (Claude, ei delegoitu): [investigation.md](investigation.md). Syy: vuorovaikutustilat eivät kuulu minkään primitiivin sopimukseen; React Arian data-hovered/pressed/focus-visible-attribuutteja ei käytetä tyyleissä, hover-säännöt on lisätty neljään näkymäkohtaiseen valitsimeen eri viipaleissa, kontrolleja rakennetaan kolmella tavalla, ja kahdeksan esi-isäohitusta tyylittää Buttonia ulkoapäin vaikka recut-ui-foundation kuittasi sen poistetuksi. Mittaus labin näkymistä: Button-variantit, agenttirivit, valikon rivit ja tilivalikon laukaisin eivät reagoi hoveriin tai painallukseen. Suositus: ei kirjastovaihtoa; React Aria loppuun asti, primitiivit omissa CSS-moduuleissa, yksi tilaresepti, näkymä ei tyylitä primitiiviä, gateen väite että jokainen kontrolli on primitiivi ja reagoi hoveriin ja fokukseen, designerille tilamatriisi. Odottaa Jarin kantaa vaiheen A aloitukseen.
