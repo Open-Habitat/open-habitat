@@ -9,63 +9,43 @@ to homes, and a bug in a daemon would be one with access to other people's
 identities. Moving an authority between packages, however convenient for the
 task at hand, is therefore an architecture change: bring it to Jari as a
 recommendation and record the decision in an issue, rather than settling it in
-code. The reasoning behind the split is in `docs/architecture.md`, boundary by
-boundary in `docs/interfaces.md` (Finnish, under identity and trust boundaries),
-and for the broker in ADR 0004.
+code.
 
-- `gateway/` owns same-origin HTTP, OAuth, sessions and CSRF, serves the static
-  UI and routes each request to the mapped daemon over its per-user socket.
-  `auth.go` handles login and broker authorization once when issuing a session;
-  `session.go` resolves the cookie and checks Origin/CSRF on writes on each
-  request. `RevokeSubject` removes live sessions explicitly; editing the
-  allowlist alone does not revoke them. The
-  shared proxy checks the mapped socket once, forwards finite bodies within a
-  cap and flushes streams without interpreting daemon replies. Conversation
-  ownership is per Unix user in the daemon; the gateway keeps no lease table. It
-  runs as a fixed unprivileged UID, never reads a home, and never passes
-  browser headers on as identity.
-- `daemon/` runs as one mapped UID and owns native discovery, Pi history and
-  child processes. `conversation_linux.go` handles HTTP control and observation;
-  `pi_events_linux.go` translates bounded Pi events into state and journal
-  updates, and `continuation_linux.go` proves and admits native continuation. The only identity it trusts is its own root-owned binding
-  and the kernel's peer credentials; nothing the browser or the gateway asserts
-  about who is calling is used. Binding, UID/home, Pi selector and pinned
-  runtime tree/Node version are checked once before serving. Changing the
-  binding or runtime requires a daemon restart. Missing first-use Pi credentials
-  do not prevent startup; existing credential paths are checked before device
-  login and status helpers because status can refresh Pi's auth file. Pi login
-  status is an onboarding check, not a native-read security
-  boundary: snapshot, history and streams never spawn a Pi status helper. Model-call authentication failures reach the browser only
-  as a fixed code in the private conversation status.
-- `provision/` is the root-only broker and Linux executor that create a
-  person's Unix account on first approved login, with the wire protocol and a
-  crash-safe journal. Fleetrepo owns the broker's directory, socket ACL, state
-  and boot ordering, and this code refuses to create or repair them: a root
-  process quietly fixing its own environment would hide deployment drift.
-- `transport/` is the bounded HTTP/1.1 handoff that carries one transient
-  GitHub token from the gateway to the daemon's socket, and `nativegh/`
-  installs it into the person's own `gh` as their UID. `transport` imports
-  `gateway` and implements the `gateway.TokenSink` interface, which `cli/`
-  wires in, so the gateway imports nothing from the daemon side.
-- `udssecure/` decides, from the file system, whether a socket path is the
-  daemon it claims to be (see below).
-- `core/` holds the component configuration and its trust checks; the
-  config file and every directory above it have to be root-owned and not
-  group- or world-writable before OAuth or handoff settings are believed.
-- `contracts/` is generated from `contracts/v1/`; `contracts/AGENTS.md` explains
-  the boundary and how drift is caught.
-- `cli/` composes the roles into the one binary and is the operator surface,
-  following the AI-first CLI canon (`CONFORMANCE.md`, `/ai-first-cli-canon`).
+What each component owns, how login and provisioning work, how a conversation
+is fenced and continued, and what the event journal guarantees are described
+in `docs/architecture/`; read the relevant page before changing a boundary.
+The packages map onto those pages as follows.
 
-One trap is worth knowing before touching either end of a socket. When the
-gateway connects to a daemon socket that systemd created and handed over,
-`SO_PEERCRED` reports the process that called `listen()`, which is PID 1 as
-root, not the daemon UID that later accepts. The gateway cannot learn from the
-connection whom it reached, so `udssecure.Mapped` establishes it from the file
-system instead: root-controlled traversal, a socket owned by the mapped UID in
-the gateway's group, mode 0660. The daemon side has no such problem, because on
-an accepted connection `SO_PEERCRED` names the real client, so it checks that
-the peer is the gateway UID. A test-mode dial to a locally bound socket sees
+- `gateway/`: TLS, OAuth, sessions, CSRF, static UI, the revocation listener
+  and the per-request proxy to the mapped daemon socket. `auth.go` is the
+  login flow, `session.go` the per-request cookie and write checks,
+  `proxy_linux.go` the forwarding. See identity-and-trust.
+- `daemon/`: discovery, Pi history reads, the conversation controller
+  (`conversation_linux.go` for HTTP control, `pi_events_linux.go` for Pi event
+  translation, `continuation_linux.go` for the continuation proof), the event
+  journal (`events_linux.go`), GitHub and Pi onboarding. See conversations,
+  events-and-recovery and workspaces.
+- `provision/`: the root-only broker, its wire protocol, state and the Linux
+  executor that creates accounts. It refuses to create or repair its own
+  directories, socket permissions or units: a root process quietly fixing its
+  environment would hide deployment drift. See identity-and-trust.
+- `transport/` carries the one-time GitHub token from gateway to daemon over
+  the daemon's socket and holds the daemon's trusted configuration and binding
+  checks; `nativegh/` installs the token into the person's `gh`. `transport`
+  imports `gateway` and implements `gateway.TokenSink`, wired in `cli/`, so the
+  gateway imports nothing from the daemon side.
+- `udssecure/` decides from the file system whether a socket path is the daemon
+  it claims to be. `core/` loads component configuration and the Pi runtime
+  selector with their trust checks. `contracts/` is generated from
+  `contracts/v1/`. `cli/` composes the roles into the one binary and is the
+  operator surface (`CONFORMANCE.md`, `/ai-first-cli-canon`).
+
+Two traps are worth knowing before touching this code.
+
+`SO_PEERCRED` on a connection to a systemd-created socket reports PID 1 as
+root, not the daemon that accepts, which is why the gateway verifies the socket
+from the file system (`udssecure.Mapped`) and the daemon verifies the gateway
+from the accepted connection. A test-mode dial to a locally bound socket sees
 the daemon UID as peer, which is why `transport` has two branches there; they
 look redundant and are not.
 
