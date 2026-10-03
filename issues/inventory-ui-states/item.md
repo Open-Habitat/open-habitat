@@ -58,7 +58,7 @@ belongs to @compare-draft-fidelity.
 
 ## Acceptance Criteria
 
-- [ ] The inventory accounts for current application views and relevant states, including gaps in lab coverage, with desktop and phone presentations in both themes.
-- [ ] One command captures every reproducible inventory state as offline HTML and a matching screenshot; the index records the source commit and any states it could not capture.
-- [ ] Fragments retain the app's appearance when opened offline, and full-page captures remain available for focus views.
-- [ ] The design package consumes the inventory, captures, draft gaps and changes since the previous package, with unresolved mappings visible.
+- [x] The inventory accounts for current application views and relevant states, including gaps in lab coverage, with desktop and phone presentations in both themes.
+- [x] One command captures every reproducible inventory state as offline HTML and a matching screenshot; the index records the source commit and any states it could not capture.
+- [x] Fragments retain the app's appearance when opened offline, and full-page captures remain available for focus views.
+- [x] The design package consumes the inventory, captures, draft gaps and changes since the previous package, with unresolved mappings visible.
