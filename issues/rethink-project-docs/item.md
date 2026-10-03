@@ -38,7 +38,16 @@ Jari vahvisti, että Claude Code -integraation tarve voi syntyä tässä arvioss
 Pi:hin siirtymistä tai toisen harnessin toteuttamista ei oleteta ennalta.
 Lopputulos on perusteltu suositus ja mahdollinen rajattu kokeilu; tarvittavat
 muutokset kirjataan erillisiksi toteutustöiksi. Issuen tila ja DAG säilyvät.
-Seuraava käsiteltävä on `decide-acme-creator-integration`.
+
+`decide-acme-creator-integration` käsitelty Jarin hyväksymällä rajauksella.
+Arvio lähtee Creatorin nykyisestä suunnasta ja hostin mahdollisesta hyödystä;
+kaksi aiempaa toteutusselvitystä ovat taustaa. Vastuunjako, erityisesti
+käyttäjät, yhteiset aineistot ja Moodle-yhteydet, ratkaistaan tarpeen pohjalta.
+Ennalta määrätty ratkaisuvaihtoehtojen vertailu poistettu; nykyinen Unix- ja
+asiakasasennusten eristys säilyy arkkitehtuurin lähtökohtana. Lopputulos on
+perusteltu integraatiosuositus tai erillään pitäminen sekä tarvittavat jatkotyöt.
+Issuen tila ja DAG säilyvät. Seuraava käsiteltävä on
+`decide-taskfleet-browser-integration`.
 
 ## Palvelinylläpito, terminaalisynkronointi ja muistinkäyttö 3.10.2026
 
