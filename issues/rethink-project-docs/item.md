@@ -65,8 +65,17 @@ riippuvuudet ovat edelleen issuectl:n DAGissa.
    add-account-settings-ui-issuen kanssa. Täsmennetään vertailukuvien päivityksen
    tarkoitus tämän kokonaisuuden lopputuloksen osoittamisessa.
 
-**Kahdeksan UI-issuen tekstikierros on käsitelty. Seuraava kokonaisuus on
-`docs/ui.md` ja ADR 0002 aiemman jatkamisjärjestyksen mukaisesti.** `unify-ui-primitives`in
+**Kahdeksan UI-issuen tekstikierros on käsitelty.** Jari valitsi seuraavaksi
+`inventory-ui-states`, `compare-draft-fidelity` ja `design-system/process.md`.
+Niiden ohjetekstit selvennetty 3.10.2026 rethink-instructions-skillillä:
+inventaario kuvaa sovellusta ja näyttää labin kattavuusaukot, muutosraportti
+kytkee Git-muutokset näkyviin tiloihin ja vastaavuusraportti erottaa mitatut
+erot, sovitut poikkeamat ja vertailuaukot. HTML-palasten, kuvaparien ja
+koneellisen mittauksen tavoite säilyy. Prosessisivu kuvaa lähteiden vastuut,
+handoffin arvioinnin ja vertailun näytön; työkalujen nykytila on erillään
+tavoitteesta. Mittauksen puhtaus ei yksin tarkoita koko designin vastaavuutta.
+Tämä on tekstien läpikäynti; työkalujen toteutus ja DAG ovat ennallaan.
+Aiemman jatkamisjärjestyksen `docs/ui.md` ja ADR 0002 jäävät seuraavaksi. `unify-ui-primitives`in
 teksti selvennetty 3.10.2026: yhteisten kontrollien vastuu ja sovittu React Aria
 -pohja säilyvät, toteutusdetaljit jätetään toteuttajalle. Ensimmäisen vaiheen
 näyttö koskee siirrettyjä kontrolleja; loppujen siirto ja koko UI:n kattavuus

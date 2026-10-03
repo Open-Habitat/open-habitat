@@ -1,121 +1,96 @@
 # Design-kierros
 
-Käyttöliittymän ulkoasu syntyy Jarin ja design-tekoälyn keskustelussa, ei
-tässä repossa. Repo antaa sille keskustelulle lähtökohdan ja ottaa tuloksen
-vastaan. Tämä sivu kuvaa, miten se tapahtuu niin, että vedokset, [designin
-kuvaus](design.md) ja koodi pysyvät samassa totuudessa. Muu ohjelmointityö
-etenee [työskentelyohjeen](../AGENTS-WORKFLOW.md) mukaan; design-kierros on
-siitä poikkeava työtapa, koska sen keskeinen vaihe tehdään repon ulkopuolella.
+Jari suunnittelee käyttöliittymän ulkoasun design-tekoälyn kanssa. Repo antaa
+keskustelulle ajantasaisen kuvan tuotteesta ja ottaa palautetun designin
+vastaan. Kierroksen tarkoitus on pitää vedokset, [designin kuvaus](design.md)
+ja toteutus samoina: designer tietää, mitä sovelluksessa on, ja toteuttaja
+pystyy osoittamaan, miten tulos vastaa suunnitelmaa.
 
-## Kolme lähdettä ja niiden roolit
+## Designin lähteet
 
-- **Vedokset** `drafts/`-hakemistossa ovat ulkoasun auktoriteetti: sommittelu,
-  mitat, tilat ja ilme. Niitä muuttaa vain design-kierros, ja ne korvataan
-  paikalleen, jotta vertailut ja paketit osoittavat aina samaan kohteeseen.
-- **[design.md](design.md)** kirjaa sen, mitä vedos ei voi ilmaista: käytöksen
-  säännöt, rehellisyysvaatimukset, tietoisesti sovitut poikkeamat ja syyt.
-  Sitä muuttaa kierroksen handoff tai Jarin päätös poikkeamasta.
-- **Koodi** (`web/src/components/`, `tokens/`, Storybook) toteuttaa vedokset.
-  Se ei ole designin lähde; kun koodi ja vedos eroavat, ero on joko korjattava
-  tai kirjattava `design.md`:hen poikkeamana.
+`drafts/` sisältää nykyisen ulkoasun: sommittelun, mitat ja esitystilat.
+[design.md](design.md) täydentää vedoksia käytöksellä, rehellisyysvaatimuksilla
+sekä Jarin kanssa sovituilla poikkeamilla perusteluineen. Tuotantokomponentit,
+tokenit ja Storybook toteuttavat tätä designia. Toteutuksen ero vedokseen on
+korjattavaa tai Jarin ratkaistava poikkeama; se ei itsessään muuta suunnitelmaa.
 
-Kun jokin näyttää väärältä, ensimmäinen kysymys on, kumpi näistä kolmesta on
-oikeassa. Vastaus on aina pääteltävissä rooleista, ei muistista.
+Designia päivitetään samoihin tiedostoihin. Aiemmat versiot jäävät
+Git-historiaan, jotta seuraavalla kierroksella on yksi suunnittelukohde.
+Jos vedos ja sovittu käytös ovat ristiriidassa, handoffin arvio selvittää,
+mikä muuttuu ja miksi.
 
-## Kierroksen vaiheet
+## Mitä designer saa
 
-### 1. Nykytila kerätään koneellisesti
+Designer ei näe sovellusta. Paketin lähtökohta on versioitu tilainventaario:
+näkymät ja käyttäjälle näkyvät tilat, myös virheet, epävarmuus ja kontrollien
+olennaiset vuorovaikutustilat, puhelimessa ja työpöydällä, molemmissa teemoissa.
+Uusi UI-työ pitää inventaarion ajan tasalla. Labista puuttuva tila näkyy
+kattavuusaukkona, jotta se ei katoa suunnittelusta.
 
-Designer ei näe sovellusta, joten paketti kertoo, mitä sovelluksessa on.
-Lähtökohta on **tilainventaario**: versioitu lista jokaisesta näkymästä ja
-tilasta, johon käyttäjä voi päätyä, mukaan lukien virhetilat, puhelin ja
-työpöytä sekä molemmat teemat. Yksi komento tallentaa inventaarion kaikki
-tilat synteettisestä labista. Tallenteet johdetaan koodista tietyssä
-commitissa, joten niitä ei commitoida; paketti kirjaa commitin.
+Inventaarion toistettavat tilat tallennetaan yhdellä komennolla synteettisestä
+labista. Designer työstää HTML:ää, joten pääaineisto on itsenäisesti avautuva
+HTML-palanen: tilaa esittävä alue tyyleineen, fontteineen ja ulkoasun
+säilyttämiseen tarvittavine ympäristöineen. Kierroksen fokusnäkymistä mukana
+on koko sivu. Kuvat palvelevat ihmisen katselmointia. Tuotetut tallenteet ovat
+uudelleen luotavaa aineistoa; niitä ei commitoida, ja paketti kirjaa lähdecommitin.
 
-Design-tekoäly työstää HTML:ää, joten tallenne on HTML, ei kuva. Kokonainen
-sivu jokaisesta tilasta on liikaa; tallenne on **palanen**: se DOM-alipuu,
-jota tila koskee, tyylit ja fontit mukaan liitettyinä niin, että se aukeaa
-yksinään ja näyttää samalta kuin sovelluksessa. Koko sivu otetaan vain
-kierroksen fokusnäkymistä. Kuvat ovat ihmisen katselmointia varten, eivät
-designerin pääaineisto.
+Paketti näyttää myös, mikä muuttui edellisen paketin commitista, ja yhdistää
+muutokset tiloihin ja tallenteisiin. Git-historia antaa muutokset, inventaario
+niiden yhteyden käyttöliittymään. Designeriltä pyydetään kommentti jokaiseen
+esitettyyn muutokseen. Aukot näkyvät molempiin suuntiin: toteutettu tila ilman
+vedosta ja vedoksen tila ilman toteutusta.
 
-Uusi käyttöliittymätyö lisää tilansa inventaarioon. Tila, jota ei ole
-listassa, ei ole olemassa designerille, ja juuri sellaisista tiloista
-syntyvät designin väärinkäsitykset.
+`design-package`-skilli kokoaa zip-paketin inventaariosta, tallenteista,
+muutos- ja aukkolistoista, nykyisestä designista, komponenteista, tokeneista ja
+viitatuista issueista. Kierroksen issueen jäävä brief kertoo fokuksen ja
+ongelmat perusteluineen. Pysyvät odotukset, kuten kontrollien olennaisten
+tilojen suunnittelu, kuuluvat skillin ylläpidettyyn ohjeeseen. Jari vie paketin
+design-työkaluun ja käy suunnittelukeskustelun siellä.
 
-### 2. Muutos edellisestä kierroksesta ja aukot
+## Palautuksesta toteutukseksi
 
-Paketin brief sisältää osion "muuttunut edellisen kierroksen jälkeen". Se
-kootaan edellisen paketin commitista alkaen `web/src`-hakemistoa
-koskettaneista commiteista ja yhdistetään inventaarion tallenteisiin, jotta
-designer näkee muutoksen eikä vain lue siitä. Jokaiseen muutokseen pyydetään
-designerin kommentti.
+Palautetut vedokset ja handoff-teksti arvioidaan kierroksen issueen ennen
+toteutuksen suunnittelua. Arvio selittää näkymien ja tilojen muutokset,
+ristiriidat sovitun käytöksen tai rajapintojen kanssa sekä puuttuvan
+lähtötiedon aiheuttamat väärinkäsitykset. Se kertoo, mitä toteutetaan,
+lykätään tai hylätään ja miksi. Vedosten esitystä verrataan edelliseen
+versioon tilakaappauksilla, koska HTML-diffi ei kerro ulkoasun muutosta.
 
-Samalla listataan **aukot**: tilat, jotka ovat koodissa mutta joille ei ole
-vedosta, ja vedoksen tilat, joita koodi ei toteuta. Aukkolista on se tieto,
-joka designeriltä useimmin puuttuu.
+Designissa löytyvä uusi toiminto tai ominaisuus kirjataan erikseen ehdokkaaksi
+issueiden lajitteluun. Näin hyödyllinen löydös säilyy eikä vedoksen mukana
+synny huomaamatta uutta tuotelupausta. Toteutusissuet johdetaan handoff-arviosta,
+ja palautus päivittää yhteistä designia.
 
-### 3. Brief ja paketti
+## Miten vastaavuus osoitetaan
 
-`design-package`-skilli kokoaa paketin: brief, tilainventaario palasineen,
-muutos- ja aukkolistat, komponentit, tokenit, nykyiset vedokset ja viitatut
-issuet. Brief kertoo kierroksen fokuksen ja ongelmat issue-viittauksin, ja se
-tallennetaan kierroksen issueen. Pysyvät vaatimukset, kuten jokaisen
-kontrollin vuorovaikutustilojen suunnittelu, kuuluvat skillin ohjeeseen, eivät
-yksittäisen briefin muistamisen varaan.
+Toteutus rakennetaan yhteisistä komponenteista ja tokeneista. Tilainventaarion
+yhteydessä ylläpidetty maamerkkikartta yhdistää vedoksen ja tuotannon vastaavat
+elementit. Samassa tilassa, sisällöllä, teemalla ja näyttöleveydellä verrataan
+niiden laskettuja tyylejä ja mittoja sekä vuorovaikutteisten elementtien rooleja
+ja nimiä. Väärä reunaviiva ja puuttuva painike päätyvät näin eroraporttiin.
 
-Paketti on zip, jonka Jari vie design-työkaluun. Se on kierroksen lähtöpiste:
-siitä alkaen työ tapahtuu Jarin ja designerin keskustelussa, ja repo odottaa.
+Kierroksen issueen jäävät raportti ja rinnakkaiset kuvat vertailtuine
+revisioineen. Sovittu poikkeama tunnistetaan design.md-viitteellä erilleen
+korjattavista eroista. Puuttuva vertailutila on aukko, ei onnistunut vertailu.
+Mittaus kertoo vertaamistaan ominaisuuksista; kuvat antavat Jarille kokonaisuuden
+arvioitavaksi.
 
-### 4. Handoff arvioidaan ennen kuin mitään toteutetaan
+Kierros on valmis, kun vedokset ja design.md kuvaavat sovitun lopputuloksen
+ja toteutuksen vertailussa ei ole ratkaisemattomia eroja. Keskeneräisessä
+kierroksessa erot ja kattavuusaukot jäävät näkyviksi jatkotöiksi. Brief,
+handoff-arvio ja vertailun tulos muodostavat seuraavan kierroksen lähtökohdan. Muu työ etenee
+[työskentelyohjeen](../AGENTS-WORKFLOW.md) mukaan.
 
-Designerin vastaus on vedokset ja handoff-teksti. Niistä kirjoitetaan
-kierroksen issueen **handoff-arvio**, näkymä ja tila kerrallaan:
+## Työkalujen nykytila
 
-- uutta, muuttunut, poistunut edelliseen vedokseen nähden;
-- ristiriita `design.md`:n sääntöjen, rajapintojen tai sovitun käytöksen
-  kanssa;
-- designerin väärinkäsitys, joka johtuu paketista puuttuneesta tiedosta;
-- toteutetaan, lykätään, hylätään, ja miksi.
+Tilainventaario ja palasten tallennus toteutetaan
+[inventory-ui-states](../issues/inventory-ui-states/item.md)-issuessa,
+mittausvertailu
+[compare-draft-fidelity](../issues/compare-draft-fidelity/item.md)-issuessa.
+Nykyinen labikaappaus tallentaa kokonaisen sivun HTML:n ja kuvan; paketin
+kokoaja käyttää valittuja Gitissä olevia tallenteita. Siihen asti kierrokset
+käyttävät tätä aineistoa ja käsin tehtyä arviota. Työkalutyö muuttaa kokoajan
+käyttämään inventaariota ja uudelleen tuotettuja tallenteita.
 
-Vedosten vertailu edelliseen versioon tehdään samalla tilakaappauksella kuin
-tuotannon vertailu, ei HTML-diffinä. Arvio vastaa kysymykseen *mitä*; vasta
-sen jälkeen suunnitellaan *miten*, ja toteutusissuet filataan arviosta.
-
-Designin tekemisen aikana löytyy usein toiminnallisuutta, jota kukaan ei ole
-pyytänyt: puuttuva toiminto, tila tai kokonainen ominaisuus. Ne kirjataan
-arvioon omana luokkanaan ja viedään issueiden lajitteluun ehdokkaina. Niitä
-ei toteuteta vedoksen mukana hiljaa, eikä niitä hukata siksi, että ne eivät
-kuuluneet kierroksen fokukseen.
-
-### 5. Toteutus mitataan vedosta vasten
-
-Toteutus rakennetaan yhteisistä komponenteista ja tokeneista. Vastaavuus
-vedokseen ei ole silmämääräinen arvio jälkikäteen vaan mittaus: labin näkymän
-maamerkkielementtien lasketut tyylit (reunat, täytteet, fontit, leveydet)
-verrataan vedoksen samoihin elementteihin, ja vuorovaikutteisten elementtien
-luettelo (rooli ja nimi) verrataan tilakohtaisesti. Puuttuva painike tai väärä
-viivaleveys on raportin rivi, ei havainto, joka sattuu jäämään huomaamatta.
-Parikuvat jäävät ihmisen katselmointia varten.
-
-Mittaus vaatii maamerkkikartan vedoksen ja tuotannon välille. Kartta on osa
-tilainventaariota ja päivittyy, kun vedos tai komponentti muuttuu.
-
-### 6. Kierros päättyy, kun kolme lähdettä täsmäävät
-
-Vedokset on korvattu `drafts/`-hakemistossa, `design.md` kuvaa muuttuneet
-säännöt ja poikkeamat, ja mittaus ei raportoi eroja, joita ei ole kirjattu
-poikkeamiksi. Kierroksen issue sisältää briefin, handoff-arvion ja mittauksen
-tuloksen. Seuraava kierros alkaa tästä commitista.
-
-## Mikä puuttuu vielä
-
-Tilainventaario, palasten tallennus ja mittausvertailu ovat sovittu suunta,
-eivät vielä olemassa olevia työkaluja. Ne toteutetaan issueissa
-[inventory-ui-states](../issues/inventory-ui-states/item.md) ja
-[compare-draft-fidelity](../issues/compare-draft-fidelity/item.md).
-Ensimmäinen kierros tätä polkua pitkin on
-[design-control-states](../issues/design-control-states/item.md). Siihen
-asti paketti kootaan nykyisillä labin kaappauksilla ja arvio kirjoitetaan
-käsin samalla rakenteella.
+[design-control-states](../issues/design-control-states/item.md) on ensimmäinen
+tälle työtavalle suunniteltu kierros.
