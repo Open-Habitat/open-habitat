@@ -24,8 +24,13 @@ mikä muuttuu ja miksi.
 Designer ei näe sovellusta. Paketin lähtökohta on versioitu tilainventaario:
 näkymät ja käyttäjälle näkyvät tilat, myös virheet, epävarmuus ja kontrollien
 olennaiset vuorovaikutustilat, puhelimessa ja työpöydällä, molemmissa teemoissa.
-Uusi UI-työ pitää inventaarion ajan tasalla. Labista puuttuva tila näkyy
-kattavuusaukkona, jotta se ei katoa suunnittelusta.
+Inventaariota ylläpitää paketin kokoaja, ei kehittäjä: paketti kootaan omassa
+worktreessä, joka lukee edellisen paketin commitista alkaen tehdyt muutokset
+ja täsmäyttää inventaarion koodin nykytilaan (reitit, storyt, labin
+fixture-skenaariot). Uusi tila löytyy siis koodista paketin kokoamisen
+yhteydessä, eikä kenenkään tarvitse muistaa lisätä sitä. Gatessa tätä ei
+tarkisteta. Labista puuttuva tila näkyy kattavuusaukkona, jotta se ei katoa
+suunnittelusta.
 
 Inventaarion toistettavat tilat tallennetaan yhdellä komennolla synteettisestä
 labista. Designer työstää HTML:ää, joten pääaineisto on itsenäisesti avautuva
@@ -35,7 +40,9 @@ on koko sivu. Kuvat palvelevat ihmisen katselmointia. Tuotetut tallenteet ovat
 uudelleen luotavaa aineistoa; niitä ei commitoida, ja paketti kirjaa lähdecommitin.
 
 Paketti näyttää myös, mikä muuttui edellisen paketin commitista, ja yhdistää
-muutokset tiloihin ja tallenteisiin. Git-historia antaa muutokset, inventaario
+muutokset tiloihin ja tallenteisiin. Paketin `MANIFEST.md` kirjaa commitin,
+johon asti se on ajan tasalla; sama commit kirjataan kierroksen issueen ja
+[rounds.md](rounds.md)-tiedostoon, josta seuraava kokoaja aloittaa. Git-historia antaa muutokset, inventaario
 niiden yhteyden käyttöliittymään. Designeriltä pyydetään kommentti jokaiseen
 esitettyyn muutokseen. Aukot näkyvät molempiin suuntiin: toteutettu tila ilman
 vedosta ja vedoksen tila ilman toteutusta.
