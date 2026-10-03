@@ -65,8 +65,18 @@ testimenettelyt korvattu lähdeviitteillä, aiemman läpikäynnin Decisions-loki
 poistettu nykytekstistä. Käynnistyksen ja ohjauksen ratkaisu kuuluu yhä
 integraation suunnitteluissueen. Toteutusta tai DAGia ei muutettu.
 
-Seuraava käsiteltävä on `server-administration-cli`; sen ehdotettu rajaus
-odottaa vielä Jarin vastausta.
+`server-administration-cli` käsitelty Jarin hyväksymän rajauksen mukaan.
+Operaattori hallitsee yhteisiä palvelinasetuksia ja käyttäjärooleja; palvelin
+voi toimia ilman selainylläpitäjää ja CLI:llä sellaisen voi nimetä myöhemmin.
+Selain ja CLI käyttävät samoja asetuksia ja rooleja. Operaattorin valtuus on
+erillinen selainroolista. Valtuutuksen arkkitehtuuri kuuluu
+`named-server-admin-settings`-issueen, CLI toteuttaa sen mukaisen pinnan.
+Kaksoisotsikko ja toistava kielto- ja ajoitusteksti poistettu; yleiset
+CLI-käytännöt viittaavat projektin canoniin. Todentaminen säilyy tehtävässä.
+
+Tämä neljän issuen kierros sekä siihen lisätty `manage-agent-worktrees` on
+käsitelty. Muutokset koskevat tehtävätekstejä; toteutusta, issueiden tilaa tai
+DAGia ei muutettu. Uutta seuraavaa dokumenttia ei ole valittu.
 
 ## Palvelinylläpito, terminaalisynkronointi ja muistinkäyttö 3.10.2026
 

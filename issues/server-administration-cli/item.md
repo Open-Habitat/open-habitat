@@ -9,16 +9,36 @@ related: ['@named-server-admin-settings']
 
 # Provide a privileged server administration CLI
 
-# Provide a privileged server administration CLI
+## Purpose
 
-## Goal
+Let the server operator manage shared server settings and user roles from the
+command line, including appointing a browser administrator after installation.
+A server can operate normally without a browser administrator, so installation
+and routine use do not depend on appointing one.
 
-Provide the operator-side administration path for shared server settings and user roles, including appointing a browser administrator after installation. A server must remain usable with no browser administrator, including disposable test installs.
+## Shared behavior and authority
 
-## Boundaries
+[Server settings and browser administration](../named-server-admin-settings/item.md)
+owns the shared product behavior and the architecture for storing and authorizing
+settings and roles. This task implements the operator-side CLI using that design.
+Browser and CLI administration act on the same settings and roles, so a change
+made through either surface has the same result where their authority overlaps.
 
-The [server-name and browser-admin feature](../named-server-admin-settings/item.md) owns the product behavior; its authorization architecture is not yet settled. Design this CLI against that decision, not as a second source of roles or settings. Operator/OS maintenance authority stays distinct from the browser administrator role. An ordinary browser administrator must not gain other users' files, credentials or conversations, and the browser must not gain the CLI's privileged operations.
+The CLI is available through the privileged operator path independently of
+browser roles. Operating-system maintenance authority and the browser
+administrator role are distinct: managing shared settings and roles in the
+browser grants no access to another user's files, credentials or conversations.
+The CLI's authorization follows the agreed architecture; the existing
+first-login provisioning broker is not assumed to be the administration service.
 
-Implement the supported shared-setting and role-management actions through the appropriate privileged operator path once the architecture is decided, with clear authorization, non-interactive operation, useful errors and verification on a disposable server. The equivalent browser-admin actions and the CLI should agree on outcomes where their authority overlaps. Do not assume that installing the server creates an administrator.
+## Completion and evidence
 
-This issue does not broaden the existing root provisioning broker's first-login authority without an explicit architectural decision. Do not lane it until the shared settings/role architecture is decided.
+The operator can inspect and change the supported shared settings and roles,
+including assigning an administrator on a server that has none. Follow the
+project's AI-first CLI canon for non-interactive use, machine-readable results
+and actionable errors; [CONFORMANCE.md](../../CONFORMANCE.md) tracks that surface.
+
+Demonstrate the operations and their authorization on a disposable server,
+including agreement with the browser view of shared settings and roles.
+Record the tested behavior and remaining limits in this issue's result,
+using [TESTING.md](../../TESTING.md) for the relevant checks.
