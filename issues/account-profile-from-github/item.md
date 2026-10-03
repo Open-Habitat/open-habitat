@@ -7,7 +7,7 @@ status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-02:ui-observations:7-8
-related: ['@decide-account-display', '@restore-v2-navigation', '@restore-v2-settings']
+related: ['@decide-account-display', '@align-navigation-design', '@restore-v2-settings']
 blocked_by: ['@unify-ui-primitives']
 lane: account-ui
 lane_seq: 20
@@ -43,7 +43,7 @@ signed-in person. This includes the browser/host contract and profile data flow,
 not just replacing a label in one view.
 
 Build the account presentation from the shared controls in @unify-ui-primitives
-and the [design](../../design-system/design.md). @restore-v2-navigation owns the
+and the [design](../../design-system/design.md). @align-navigation-design owns the
 surrounding sidebar layout and @restore-v2-settings the settings layout;
 @add-account-settings-ui owns the remaining native connection settings. Those
 views consume the profile information and shared account presentation from this

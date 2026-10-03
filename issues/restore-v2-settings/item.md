@@ -9,7 +9,7 @@ related: ['@review-browser-design-v2', '@compare-v2-pairs']
 lane: design-v2
 lane_seq: 15
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
-blocked_by: ['@restore-v2-navigation', '@unify-ui-primitives']
+blocked_by: ['@align-navigation-design', '@unify-ui-primitives']
 ---
 
 # Fit settings to the draft and refresh all design comparisons

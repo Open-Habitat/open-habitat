@@ -9,7 +9,7 @@ blocked_by: ['@unify-ui-primitives']
 lane: post-mvp-design
 lane_seq: 60
 collision: [docs/, design-system/]
-related: ['@consistent-control-feedback', '@restore-v2-navigation', '@design-control-states', '@apply-control-state-design']
+related: ['@consistent-control-feedback', '@align-navigation-design', '@design-control-states', '@apply-control-state-design']
 ---
 
 # Design a consistent language for agent states
@@ -52,4 +52,4 @@ how the designer's presentation works across views. @design-control-states owns
 the package and design round. @apply-control-state-design implements the agreed
 presentation through the shared `agentPresentation` mapping from host facts,
 using the foundation from @unify-ui-primitives. Coordinate the examples with
-@restore-v2-navigation and the conversation views so they use the same meanings.
+@align-navigation-design and the conversation views so they use the same meanings.

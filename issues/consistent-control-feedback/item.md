@@ -7,7 +7,7 @@ status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-02:ui-observations:4-6
-related: ['@refine-agent-status', '@review-browser-design-v2', '@restore-v2-navigation', '@unify-ui-primitives', '@migrate-bespoke-controls', '@design-control-states', '@apply-control-state-design']
+related: ['@refine-agent-status', '@review-browser-design-v2', '@align-navigation-design', '@unify-ui-primitives', '@migrate-bespoke-controls', '@design-control-states', '@apply-control-state-design']
 closed: 2026-10-03
 closed_by: claude
 ---
@@ -55,7 +55,7 @@ project's normal decision policy.
 
 The meaning and visual language of agent states belong to @refine-agent-status.
 This investigation explains how such a shared presentation can be used reliably
-throughout the UI. Coordinate the resulting work with @restore-v2-navigation and
+throughout the UI. Coordinate the resulting work with @align-navigation-design and
 @review-browser-design-v2 so their view-level changes use the same foundation.
 
 ## Decisions

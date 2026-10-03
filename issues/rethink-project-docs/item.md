@@ -56,7 +56,7 @@ riippuvuudet ovat edelleen issuectl:n DAGissa.
 6. **[account-profile-from-github](../account-profile-from-github/item.md).**
    Tarkennetaan yhteinen tiliesitys ja profiilitiedon kulku ennen sivupalkin ja
    asetusten tehtäviä. Aiemmin hyväksytty rajaus toimii lähtökohtana.
-7. **[restore-v2-navigation](../restore-v2-navigation/item.md).**
+7. **[align-navigation-design](../align-navigation-design/item.md).**
    Käsitellään sivupalkin, tilivalikon ja paluunäkymän tavoite yhteisten
    kontrollien, agenttitilojen ja tiliprofiilin pohjalta. Erotetaan nykyinen
    tarve vanhan korjauskierroksen ohjeista.
@@ -65,7 +65,7 @@ riippuvuudet ovat edelleen issuectl:n DAGissa.
    add-account-settings-ui-issuen kanssa. Täsmennetään vertailukuvien päivityksen
    tarkoitus tämän kokonaisuuden lopputuloksen osoittamisessa.
 
-**Seuraava käsiteltävä issue: restore-v2-navigation.** `unify-ui-primitives`in
+**Seuraava käsiteltävä issue: restore-v2-settings.** `unify-ui-primitives`in
 teksti selvennetty 3.10.2026: yhteisten kontrollien vastuu ja sovittu React Aria
 -pohja säilyvät, toteutusdetaljit jätetään toteuttajalle. Ensimmäisen vaiheen
 näyttö koskee siirrettyjä kontrolleja; loppujen siirto ja koko UI:n kattavuus
@@ -112,6 +112,14 @@ tiliesitykseen; navigaatio ja asetukset omistavat ympäröivien näkymien asette
 Näyttötiedot erotettu edelleen todennetusta identiteetistä. Toistava Decisions-osio
 poistettu; valmistuminen kuvattu tunnistettavana tilinä myös puuttuvilla tiedoilla
 ja eri henkilön kirjautuessa sisään.
+
+`align-navigation-design` käsitelty 3.10.2026. Jari pyysi navigaatioissuelle
+uuden otsikon ja slugin ilman designin versionimeä. Tehtävä on sivupalkin,
+tilivalikon ja paluunäkymän sovittaminen yhteiseen designiin. Kontrollit,
+agenttitilat ja tiliprofiili käyttävät niitä omistavien töiden yhteistä toteutusta.
+Vanhan korjausyön ohjeet, keskustelunäkymän oirelista ja erillinen
+hyväksyttämisportti poistettu. Vertailukuvat osoittavat toteutuksen suhteen
+designiin. Slugiin osoittavat viitteet ja riippuvuudet päivitetty.
 
 Pi-tapahtumakatalogi käyty läpi 3.10.2026 Jarin pyynnöstä ennen
 `design-pi-event-blocks`-issuea. `catalog-pi-events/analysis.md` selittää
