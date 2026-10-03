@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import eventSchema from "../../../contracts/v1/event.schema.json";
 import { ConversationJournal } from "./conversationJournal";
 import type { ConversationStore } from "./conversationStore";
 import type { Snapshot } from "./snapshot";
@@ -32,13 +33,16 @@ class FakeSource {
   onopen?: () => void;
   onerror?: () => void;
   closed = false;
+  listeners: string[] = [];
   constructor(public url: string) {
     FakeSource.all.push(this);
   }
   close() {
     this.closed = true;
   }
-  addEventListener(_kind: string, _listener: (event: MessageEvent) => void) {}
+  addEventListener(kind: string, _listener: (event: MessageEvent) => void) {
+    this.listeners.push(kind);
+  }
 }
 const setup = (activeId?: string) => {
   const store = {
@@ -65,6 +69,15 @@ afterEach(() => {
   FakeSource.all = [];
 });
 describe("one tab-wide journal", () => {
+  it("subscribes to every named event in the wire contract", () => {
+    vi.stubGlobal("EventSource", FakeSource);
+    const { journal } = setup();
+    journal.start(snapshot(0));
+    expect(FakeSource.all[0].listeners.sort()).toEqual(
+      [...eventSchema.properties.kind.enum].sort(),
+    );
+    journal.stop();
+  });
   it("keeps one connection across route switches and routes unopened agents without allocating windows", () => {
     vi.stubGlobal("EventSource", FakeSource);
     const { journal, store, onStatusChange } = setup();

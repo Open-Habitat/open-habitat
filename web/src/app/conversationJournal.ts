@@ -1,3 +1,4 @@
+import eventSchema from "../../../contracts/v1/event.schema.json";
 import {
   parseConversationEvent,
   type ConversationEvent,
@@ -5,25 +6,9 @@ import {
 import type { ConversationStore } from "./conversationStore";
 import type { Snapshot } from "./snapshot";
 
-const kinds = [
-  "snapshot.invalidated",
-  "history.entry",
-  "assistant.delta",
-  "tool.started",
-  "tool.updated",
-  "tool.finished",
-  "queue.changed",
-  "turn.settled",
-  "command.changed",
-  "agent.changed",
-  "workspace.changed",
-  "title.changed",
-  "source.warning",
-  "question.requested",
-  "question.resolved",
-  "operation.changed",
-  "unknown.native",
-];
+// Named SSE events have no onmessage fallback. Subscribe to the contract's
+// complete set so a new type cannot silently create a sequence gap.
+const kinds = eventSchema.properties.kind.enum;
 const statusKinds = new Set([
   "turn.settled",
   "command.changed",
