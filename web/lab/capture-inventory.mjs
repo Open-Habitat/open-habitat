@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Synthetic host only; fixture scenario is process-wide. Run without parallel browsers.
 import { execFileSync } from "node:child_process";
+import { request } from "@playwright/test";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { openLab, origin, snapshot } from "./session.mjs";
@@ -33,6 +34,17 @@ async function login(page) {
   await page.getByRole("link", { name: "Alice", exact: true }).click();
 }
 try {
+  // The lab's fixture switch is process-wide; a previous interrupted run may
+  // have left it on onboarding or a transport fault.
+  const reset = await request.newContext({ ignoreHTTPSErrors: true });
+  try {
+    const marker = await reset.get(`${origin}/fixture/lab-marker`);
+    if (marker.status() !== 204) throw new Error("Not a synthetic lab");
+    const response = await reset.get(`${origin}/fixture/scenario?value=ready`);
+    if (response.status() !== 204) throw new Error("Cannot reset lab scenario");
+  } finally {
+    await reset.dispose();
+  }
   session = await openLab();
   const { page } = session;
   page.setDefaultTimeout(8000);
