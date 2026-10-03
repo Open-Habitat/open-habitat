@@ -11,10 +11,35 @@ source_ref: chat:2026-10-02/terminal-writes
 
 # Keep terminal Pi writes in sync across open browser views
 
-## Description
+## Purpose
 
-When Pi is used from a terminal (SSH/tmux), the daemon does not notice the session file changing and publishes no journal event. Open browser views of that conversation, including views in different browsers, do not show the new messages until the conversation is loaded again. The daemon has no file watcher.
+When Pi writes to a conversation from SSH or tmux, open browser views should
+show the new messages without the user reloading the conversation. This includes
+the same conversation open in two different browsers.
 
-This is distinct from changes made through a Pi process controlled by the daemon: its events already reach each connected browser tab through the journal. The missing piece is noticing *external* writes to the native Pi session file and getting those changes to every open browser view, without introducing another history store or a separate push channel.
+The daemon currently publishes events from Pi processes it controls, but does
+not watch native session files for external writes. Terminal changes therefore
+remain invisible to an already open view until its history is loaded again.
 
-Jari decided on 2026-10-02 that the current client-history work (ADR 0008, `docs/conversation-data-flow.md`) does not handle this: no visibility listener and no background snapshot polling in the browser. Investigate how often terminal/browser concurrent use matters and whether a daemon file watcher (e.g. inotify on Pi's session directory, publishing an invalidation into the existing journal) or a browser-side check is appropriate. Jari leans toward a file watcher. Verify that two simultaneously open browsers update from the same external write, and that daemon-controlled changes still reach both without duplication. Do not schedule this issue yet, per Jari's 2026-10-03 direction.
+## Approach
+
+Find how the daemon can notice external changes and deliver them through the
+existing conversation journal. Native Pi files remain the history source, and
+all connected views should converge on the same content without duplicating
+messages already received from daemon-controlled Pi processes.
+
+A daemon file watcher is Jari's preferred direction, not a settled implementation.
+Assess terminal/browser concurrent use and compare that approach with a
+browser-side check. Directory watching and a journal invalidation are possible
+mechanisms; the choice belongs to this work.
+
+Jari excluded visibility-triggered refresh and background snapshot polling from
+the initial [browser history work](../../docs/conversation-data-flow.md) on
+2 October 2026. That scope decision leaves external-write detection here. On
+3 October he asked to leave this issue unscheduled.
+
+## Expected result
+
+An external Pi write appears in both simultaneously open browsers. Updates from
+daemon-controlled Pi still reach both, and a message seen through more than one
+update path appears only once.

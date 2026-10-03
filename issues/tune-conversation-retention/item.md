@@ -1,6 +1,6 @@
 ---
 created: 2026-10-02
-updated: 2026-10-02
+updated: 2026-10-03
 type: improvement
 status: untriaged
 priority: normal
@@ -12,10 +12,33 @@ originating_run_kind: spinoff
 
 # Tune browser conversation retention and eviction after measurements
 
-## Goal
+## Purpose
 
-After the first browser conversation-store implementation has measurements, tune retention and eviction for real conversation and tool-output sizes. The agreed initial rule in [conversation data-flow](../../docs/conversation-data-flow.md) keeps about 50 recently viewed whole conversation windows per tab, with no byte accounting or per-page release. A single very large conversation or many large tool results can still retain substantial memory; evicting only whole conversations can also discard useful recent content while keeping rarely used deep pages.
+Keep returning to recent conversations fast without retaining excessive browser
+memory during long sessions. The current conversation store keeps about 50
+recently viewed conversation windows per tab and evicts whole windows. It has
+no byte limit or separate release of older pages, so the amount retained depends
+on conversation length and tool-output size.
 
-## Scope
+## Approach
 
-Measure heap and click-to-paint on real long histories, large tool outputs and multiple concurrent conversations. Choose adjustable count/byte/deep-page limits from the evidence, preserving contiguous windows, native history as source and immediate warm switching. Do not introduce a second durable history store. Document chosen limits and behavior under pressure; verify scroll-back and reading-anchor restoration after release. This is a later improvement, not a blocker for the simple initial LRU.
+Measure browser heap use and the delay from selecting a conversation to seeing
+its content with long histories, large tool outputs and several conversations
+in use. Use those results to judge whether the current policy needs changing.
+Adjustable conversation limits, byte limits and release of older pages are
+options to evaluate, not requirements to implement all three.
+
+Favour a simple policy that preserves immediate switching to retained content.
+History remains in native Pi files; browser memory holds reloadable, contiguous
+windows into it. If content is released, scrolling back should load it again
+and restore the reading position where that entry remains available.
+
+## Expected result
+
+Record the measured memory use and switching performance, the policy chosen
+from that evidence, and how any limits can be adjusted. Demonstrate the effect
+on returning to recent conversations and reading older content after eviction.
+This is a later improvement to the existing store, not a prerequisite for it.
+
+The agreed baseline and data ownership are described in
+[conversation data-flow](../../docs/conversation-data-flow.md).

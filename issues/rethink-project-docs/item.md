@@ -26,6 +26,22 @@ esitetään selkeästi tekstin asianomaisessa kohdassa. Erillistä Decisions-osi
 ei säilytetä saman sisällön toistona tai läpikäyntien lokina; aiemmat versiot
 löytyvät Git-historiasta.
 
+## Palvelinylläpito, terminaalisynkronointi ja muistinkäyttö 3.10.2026
+
+Jari valitsi seuraavaksi `named-server-admin-settings`,
+`sync-terminal-pi-across-browsers` ja `tune-conversation-retention`.
+Tehtävätekstit selvennetty aiempien päätösten pohjalta. Palvelinylläpidon
+sovittu roolirajaus ja toiminta ilman selainylläpitäjää säilyvät; toistava
+Decisions-osio poistettu aiemman tekstiohjeen mukaisesti. Valtuutuksen
+arkkitehtuuri on edelleen ratkaistava Jarin kanssa.
+
+Terminaalimuutosten näkyminen useassa selaimessa erotettu toteutuskeinosta:
+tiedostovahti on Jarin suosima suunta, ei vielä päätetty mekanismi. Issue
+säilyy ajoittamatta. Muistinkäytön työ lähtee nykyisen 50 keskusteluikkunan
+säilytyksen mittaamisesta; tavu- ja sivurajat ovat arvioitavia vaihtoehtoja.
+Tuotekoodia, issueiden tilaa tai DAGia ei muutettu eikä uusia
+arkkitehtuuripäätöksiä tehty.
+
 ## Käsitelty kokonaisuus: kahdeksan UI-issuea 3.10.2026
 
 Jari valitsi seuraavaksi alla olevat kahdeksan issuea. Ne käytiin hänen kanssaan
