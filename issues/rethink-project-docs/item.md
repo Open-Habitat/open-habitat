@@ -26,6 +26,26 @@ esitetään selkeästi tekstin asianomaisessa kohdassa. Erillistä Decisions-osi
 ei säilytetä saman sisällön toistona tai läpikäyntien lokina; aiemmat versiot
 löytyvät Git-historiasta.
 
+## Seuraavaksi: docs/architecture
+
+Jarin hyväksymä läpikäyntijärjestys: yksi tiedosto kerrallaan, koko kansio
+taustalla ristiriitojen ja toiston tunnistamiseksi.
+
+1. `components.md` — komponenttien vastuut, toimivalta ja tiedon omistajuus.
+2. `identity-and-trust.md` — kirjautuminen, käyttäjäsidonta ja luottamusrajat.
+3. `workspaces.md` — työtilojen löytäminen ja hostin tekemät muutokset.
+4. `conversations.md` — keskustelun identiteetti, käynnistäminen, ohjaus ja jatkaminen.
+5. `events-and-recovery.md` — muutosten välitys selaimeen ja katkoista palautuminen.
+6. `http-api.md` — toimintojen rajapinta ja työnjako koneellisen sopimuksen kanssa.
+7. `deployment.md` — prosessit, socketit, tiedostot ja operaattorin vastuut.
+8. `index.md` — tarkennettujen sivujen yleiskuva ja lukupolku.
+
+Yleiskuva luetaan aluksi karttana ja muokataan viimeiseksi. Arkkitehtuurisivut
+kuvaavat nykyistä toteutusta: väitteet tarkistetaan koodista ja niitä verrataan
+päätöksiin. Sovitun tavoitteen ja toteutuksen erot nostetaan esiin.
+
+Seuraava käsiteltävä tiedosto on `docs/architecture/components.md`.
+
 ## Lokituskäytännön tehtävä 3.10.2026
 
 `decide-logging-policy` käsitelty rethink-instructions-taidolla. Jari hyväksyi
