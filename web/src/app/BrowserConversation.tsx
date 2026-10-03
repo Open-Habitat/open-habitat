@@ -397,7 +397,12 @@ export function BrowserConversation({
                   id: item.id,
                   kind: item.kind,
                   content:
-                    item.kind === "assistant" ? (
+                    item.kind === "thinking" ? (
+                      <details className="ah-ordered-blocks" open>
+                        <summary>Ajattelu · käynnissä</summary>
+                        <pre>{item.text}</pre>
+                      </details>
+                    ) : item.kind === "assistant" ? (
                       <AssistantMessage
                         onCopy={() =>
                           void navigator.clipboard?.writeText(item.text)

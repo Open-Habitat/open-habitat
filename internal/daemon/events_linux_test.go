@@ -251,7 +251,7 @@ func TestJournalMidTurnAtomicTailAndReplay(t *testing.T) {
 	agent := "pi:12345678-1234-1234-1234-123456789012"
 	j.activity(agent, "running")
 	for i := 0; i < 30; i++ {
-		j.delta(agent, "abc", 0)
+		j.delta(agent, "assistant.delta", "abc", 0)
 	}
 	j.progress(agent, "tool.started", map[string]string{"tool_call_id": "tool_1", "tool_name": "bash", "state": "running"})
 	cursor, _, _, views := j.turnView()
@@ -263,7 +263,7 @@ func TestJournalMidTurnAtomicTailAndReplay(t *testing.T) {
 	if code != "" {
 		t.Fatal(code)
 	}
-	j.delta(agent, "next", 1)
+	j.delta(agent, "assistant.delta", "next", 1)
 	j.progress(agent, "tool.finished", map[string]string{"tool_call_id": "tool_1", "tool_name": "bash", "state": "succeeded"})
 	j.mu.Lock()
 	oldest := j.seq - uint64(len(j.frames))
@@ -283,7 +283,7 @@ func TestJournalCoalescingAndReplayLimits(t *testing.T) {
 	j := newEventJournal()
 	agent := "pi:12345678-1234-1234-1234-123456789012"
 	for n := 0; n < 400; n++ {
-		j.delta(agent, "a", 0)
+		j.delta(agent, "assistant.delta", "a", 0)
 	}
 	cursor, _, _, views := j.turnView()
 	if len(views[agent].frames) != 1 || j.seq != 1 {
@@ -306,7 +306,7 @@ func TestJournalCoalescingAndReplayLimits(t *testing.T) {
 func TestSnapshotPendingDeltaDoesNotInvalidateNative(t *testing.T) {
 	j := newEventJournal()
 	agent := "pi:12345678-1234-1234-1234-123456789012"
-	j.delta(agent, "hello", 0)
+	j.delta(agent, "assistant.delta", "hello", 0)
 	before := j.nativeGeneration()
 	cursor, _, after, views := j.turnView()
 	if before != after || cursor != j.cursor(1) || j.seq != 1 || len(views[agent].frames) != 1 {
@@ -318,9 +318,9 @@ func TestJournalOverflowResetAndWriterExit(t *testing.T) {
 	j := newEventJournal()
 	agent := "pi:12345678-1234-1234-1234-123456789012"
 	j.activity(agent, "running")
-	j.delta(agent, "first", 0)
+	j.delta(agent, "assistant.delta", "first", 0)
 	j.progress(agent, "tool.started", map[string]string{"tool_call_id": "one", "tool_name": "bash", "state": "running"})
-	j.delta(agent, strings.Repeat("x", 4097), 0)
+	j.delta(agent, "assistant.delta", strings.Repeat("x", 4097), 0)
 	_, _, _, views := j.turnView()
 	if !views[agent].overflow || len(views[agent].frames) != 0 {
 		t.Fatal("overflow retained partial turn")
@@ -331,7 +331,7 @@ func TestJournalOverflowResetAndWriterExit(t *testing.T) {
 		t.Fatal("dead writer retained provisional state")
 	}
 	j.reset(agent, "running")
-	j.delta(agent, "new turn", 0)
+	j.delta(agent, "assistant.delta", "new turn", 0)
 	_, _, _, views = j.turnView()
 	if views[agent].overflow || len(views[agent].frames) != 1 {
 		t.Fatal("new writer could not publish after overflow")

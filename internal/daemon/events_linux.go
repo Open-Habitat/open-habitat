@@ -27,6 +27,7 @@ type turnTail struct {
 	bytes    int
 	text     string
 	index    int
+	textKind string
 	timer    *time.Timer
 	overflow bool
 }
@@ -155,9 +156,9 @@ func (j *eventJournal) flushTextLocked(agent string, t *turnTail) {
 	if t.text == "" {
 		return
 	}
-	text, index := t.text, t.index
+	text, index, kind := t.text, t.index, t.textKind
 	t.text = ""
-	j.appendTailLocked(agent, t, "assistant.delta", map[string]any{"text": text, "content_index": index})
+	j.appendTailLocked(agent, t, kind, map[string]any{"text": text, "content_index": index})
 }
 func (j *eventJournal) appendTailLocked(agent string, t *turnTail, kind string, payload any) {
 	if t.overflow {
@@ -179,7 +180,7 @@ func (j *eventJournal) appendTailLocked(agent string, t *turnTail, kind string, 
 	t.frames = append(t.frames, frame)
 	t.bytes += len(frame)
 }
-func (j *eventJournal) delta(agent, text string, index int) {
+func (j *eventJournal) delta(agent, kind, text string, index int) {
 	if text == "" || !utf8.ValidString(text) {
 		return
 	}
@@ -194,10 +195,10 @@ func (j *eventJournal) delta(agent, text string, index int) {
 		j.appendLocked("snapshot.invalidated", agent, "", map[string]string{"reason": "ring_truncated"})
 		return
 	}
-	if t.text != "" && (t.index != index || len(t.text)+len(text) > 4096) {
+	if t.text != "" && (t.index != index || t.textKind != kind || len(t.text)+len(text) > 4096) {
 		j.flushTextLocked(agent, t)
 	}
-	t.index, t.text = index, t.text+text
+	t.index, t.textKind, t.text = index, kind, t.text+text
 	if t.timer == nil {
 		t.timer = time.AfterFunc(50*time.Millisecond, func() { j.mu.Lock(); defer j.mu.Unlock(); t.timer = nil; j.flushTextLocked(agent, t) })
 	}

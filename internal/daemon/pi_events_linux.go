@@ -18,6 +18,11 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 			Type         string `json:"type"`
 			Delta        string `json:"delta"`
 			ContentIndex int    `json:"contentIndex"`
+			Partial      struct {
+				Content []struct {
+					Redacted bool `json:"redacted"`
+				} `json:"content"`
+			} `json:"partial"`
 		} `json:"assistantMessageEvent"`
 		ToolCallID string `json:"toolCallId"`
 		ToolName   string `json:"toolName"`
@@ -32,8 +37,17 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 	case "turn_start":
 		c.journal.activity(agent, "running")
 	case "message_update":
-		if e.AssistantMessageEvent.Type == "text_delta" && e.AssistantMessageEvent.ContentIndex >= 0 && e.AssistantMessageEvent.Delta != "" {
-			c.journal.delta(agent, e.AssistantMessageEvent.Delta, e.AssistantMessageEvent.ContentIndex)
+		if e.AssistantMessageEvent.ContentIndex < 0 || e.AssistantMessageEvent.Delta == "" {
+			return
+		}
+		switch e.AssistantMessageEvent.Type {
+		case "text_delta":
+			c.journal.delta(agent, "assistant.delta", e.AssistantMessageEvent.Delta, e.AssistantMessageEvent.ContentIndex)
+		case "thinking_delta":
+			index := e.AssistantMessageEvent.ContentIndex
+			if index < len(e.AssistantMessageEvent.Partial.Content) && !e.AssistantMessageEvent.Partial.Content[index].Redacted {
+				c.journal.delta(agent, "assistant.thinking.delta", e.AssistantMessageEvent.Delta, index)
+			}
 		}
 	case "tool_execution_start", "tool_execution_end":
 		if len(e.ToolCallID) < 1 || len(e.ToolCallID) > 200 || len(e.ToolName) < 1 || len(e.ToolName) > 200 {

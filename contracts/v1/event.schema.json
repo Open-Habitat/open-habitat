@@ -43,6 +43,7 @@
         "agent.changed",
         "history.entry",
         "assistant.delta",
+        "assistant.thinking.delta",
         "tool.started",
         "tool.updated",
         "tool.finished",
@@ -224,7 +225,7 @@
       "if": {
         "properties": {
           "kind": {
-            "const": "assistant.delta"
+            "enum": ["assistant.delta", "assistant.thinking.delta"]
           }
         }
       },

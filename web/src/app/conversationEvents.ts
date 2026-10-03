@@ -122,6 +122,7 @@ export function applyTurnEvent(
   if (
     [
       "assistant.delta",
+      "assistant.thinking.delta",
       "tool.started",
       "tool.finished",
       "tool.updated",
@@ -144,18 +145,23 @@ export function provisionalItems(turn: LiveTurn) {
   }[] = [];
   const tools = new Map<string, number>();
   for (const event of turn.fragments) {
-    if (event.kind === "assistant.delta") {
+    if (
+      event.kind === "assistant.delta" ||
+      event.kind === "assistant.thinking.delta"
+    ) {
       const index =
         typeof event.payload.content_index === "number"
           ? event.payload.content_index
           : 0;
       const last = items.at(-1);
-      if (last?.kind === "assistant" && last.index === index)
+      const kind =
+        event.kind === "assistant.thinking.delta" ? "thinking" : "assistant";
+      if (last?.kind === kind && last.index === index)
         last.text += event.payload.text;
       else
         items.push({
           id: `live-text-${event.event_id}`,
-          kind: "assistant",
+          kind,
           text: event.payload.text as string,
           index,
         });

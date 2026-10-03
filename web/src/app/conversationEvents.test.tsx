@@ -90,6 +90,41 @@ describe("published conversation stream", () => {
     expect(settled.entry?.entry_key).toBe("native-1");
     expect(provisionalItems(settled.turn)).toEqual([]);
   });
+  it("keeps thinking distinct from text at the same block index and replaces it with history", () => {
+    let turn = initialTurn(cursor(0));
+    for (const [n, kind, text] of [
+      [1, "assistant.thinking.delta", "Let me"],
+      [2, "assistant.thinking.delta", " check"],
+      [3, "assistant.delta", "Done"],
+    ] as const) {
+      turn = applyTurnEvent(
+        turn,
+        parse(n, kind, { text, content_index: 0 }),
+        agent,
+      ).turn;
+    }
+    expect(
+      provisionalItems(turn).map(({ kind, text }) => [kind, text]),
+    ).toEqual([
+      ["thinking", "Let me check"],
+      ["assistant", "Done"],
+    ]);
+    const persisted = applyTurnEvent(
+      turn,
+      parse(4, "history.entry", {
+        entry_key: "native-1",
+        entry_kind: "assistant",
+        content: { media_type: "text/plain", text: "Done", complete: true },
+        blocks: [
+          { type: "thinking", text: "Let me check" },
+          { type: "text", text: "Done" },
+        ],
+      }),
+      agent,
+    );
+    expect(persisted.entry?.blocks?.[0].type).toBe("thinking");
+    expect(provisionalItems(persisted.turn)).toEqual([]);
+  });
   it("keeps messages in tool order, never suppresses a new tail because old native text happens to match", () => {
     let turn = initialTurn(cursor(0));
     turn = applyTurnEvent(
