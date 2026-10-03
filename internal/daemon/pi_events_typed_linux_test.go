@@ -140,3 +140,16 @@ func joinTail(frames []json.RawMessage) string {
 	}
 	return strings.Join(parts, "\n")
 }
+
+func TestLocalCommandDeltasDoNotInvalidateNativeHistory(t *testing.T) {
+	for _, kind := range []string{"message_update", "tool_execution_update", "bash_execution_update"} {
+		if piEventChangesNative(kind) {
+			t.Fatalf("%s is not a persisted entry", kind)
+		}
+	}
+	for _, kind := range []string{"message_end", "entry_appended", "compaction_end"} {
+		if !piEventChangesNative(kind) {
+			t.Fatalf("%s may have changed native history", kind)
+		}
+	}
+}

@@ -196,7 +196,7 @@ func (c *ConversationController) drain(s *conversation) {
 		}
 		s.events = append(s.events, e)
 		if c.journal != nil {
-			if frame.Type != "message_update" && !strings.HasPrefix(frame.Type, "tool_execution_") {
+			if piEventChangesNative(frame.Type) {
 				c.journal.invalidateNative()
 			}
 		}
@@ -373,6 +373,12 @@ func (c *ConversationController) drain(s *conversation) {
 		}
 	}
 	c.mu.Unlock()
+}
+
+// Streaming deltas do not change native JSONL. Invalidate when Pi may have
+// appended or changed persisted entries, not on every local-command chunk.
+func piEventChangesNative(kind string) bool {
+	return kind != "message_update" && kind != "bash_execution_update" && !strings.HasPrefix(kind, "tool_execution_")
 }
 
 // Live display is deliberately restricted to bounded, valid text. Native details,
