@@ -44,7 +44,16 @@ Yleiskuva luetaan aluksi karttana ja muokataan viimeiseksi. Arkkitehtuurisivut
 kuvaavat nykyistä toteutusta: väitteet tarkistetaan koodista ja niitä verrataan
 päätöksiin. Sovitun tavoitteen ja toteutuksen erot nostetaan esiin.
 
-Seuraava käsiteltävä tiedosto on `docs/architecture/components.md`.
+`components.md` käsitelty Jarin hyväksymällä rajauksella. Sivu kuvaa
+komponenttien vastuut, niiden perustelut ja tiedon alkuperän. Gateway valitsee
+daemonin kirjautumisistunnon perusteella. Jarin tarkennuksen mukaisesti
+arkkitehtuurikuvaus ei luetteloi hyökkäysskenaarioita; tietoturvatarkastukset
+tehdään erikseen. Aiempi murrettua gatewayta koskeva sivupolku poistettu.
+Natiivilähteet erotettu muistissa säilytettävästä ajonaikaisesta tilasta.
+Tekniset yksityiskohdat ja komentoluettelo jätetty niitä käsitteleville sivuille,
+jotka ovat edelleen tässä läpikäyntijärjestyksessä. Vastuunjakoa ei muutettu.
+
+Seuraava käsiteltävä tiedosto on `docs/architecture/identity-and-trust.md`.
 
 ## Lokituskäytännön tehtävä 3.10.2026
 
