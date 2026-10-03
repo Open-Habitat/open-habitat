@@ -12,7 +12,9 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 	out.Key = e.ID
 	out.Kind, out.full = nativeText(e)
 	if e.Type == "custom_message" {
-		var visibility struct { Display bool `json:"display"` }
+		var visibility struct {
+			Display bool `json:"display"`
+		}
 		if json.Unmarshal(e.Raw, &visibility) != nil || !visibility.Display {
 			out.Kind, out.full = "", ""
 		}
