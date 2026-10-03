@@ -3,7 +3,7 @@ created: 2026-10-03
 updated: 2026-10-03
 type: feature
 reporter: jari
-status: open
+status: in-progress
 priority: high
 lane: client-history
 lane_seq: 60
