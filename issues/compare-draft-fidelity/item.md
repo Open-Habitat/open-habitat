@@ -35,7 +35,16 @@ Computed colours are resolved values; relate them to shared tokens where that
 helps explain a difference. Compare interactive elements by role and accessible
 name as well, so missing or extra controls appear in the report.
 
-Report differences by view, state and landmark. Jari's agreed deviations in
+The target is the intended, consistent design. The design AI generates HTML
+without shared components, so repeated instances can have small accidental
+variations in spacing, dimensions or styling. Ignore those inaccuracies when
+the intended common treatment is clear from the drafts and shared tokens;
+production should use the consistent component rather than reproduce each
+instance pixel for pixel. These do not need individual exceptions or Jari's
+approval. Judge them in context, not by a blanket pixel tolerance: a deliberate
+state or layout distinction can be small too.
+
+Report meaningful differences by view, state and landmark. Jari's agreed deviations in
 `design-system/design.md` are identified by reference and distinguished from
 unresolved differences. A deviation applies to the named difference, not every
 future change to that element. A missing counterpart or failed comparison stays
@@ -50,5 +59,6 @@ where they check the same properties, avoiding a second account of the design.
 ## Acceptance Criteria
 
 - [ ] For corresponding draft and lab states, the comparison reports style, dimension and control differences in both themes and at desktop and phone widths; missing counterparts and failed comparisons are visible.
-- [ ] A recorded deviation is identified separately by its design reference, while an unrecorded difference remains unresolved.
+- [ ] Small accidental inconsistencies between repeated draft elements are ignored in favour of consistent shared components and tokens; intentional design distinctions remain part of the comparison.
+- [ ] A recorded deviation is identified separately by its design reference, while a meaningful unrecorded difference remains unresolved.
 - [ ] A round's issue can carry the report and paired captures with the compared revisions and coverage; the process page points to this evidence.

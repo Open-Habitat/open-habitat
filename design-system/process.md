@@ -69,6 +69,14 @@ elementit. Samassa tilassa, sisällöllä, teemalla ja näyttöleveydellä verra
 niiden laskettuja tyylejä ja mittoja sekä vuorovaikutteisten elementtien rooleja
 ja nimiä. Väärä reunaviiva ja puuttuva painike päätyvät näin eroraporttiin.
 
+Vertailun kohde on tarkoitettu, yhtenäinen design. Design-tekoäly tuottaa
+HTML:ää ilman yhteisiä komponentteja, joten saman elementin eri esiintymiin
+voi jäädä pieniä tahattomia mitta- ja tyylieroja. Ne sivuutetaan, kun yhteinen
+ratkaisu käy ilmi vedoksista ja tokeneista. Tuotannon komponentti toteuttaa
+ratkaisun johdonmukaisesti; jokaista vedoksen pikselipoikkeamaa ei kopioida
+eikä hyväksytetä erikseen. Eroa arvioidaan sen merkityksen perusteella, sillä
+myös tarkoituksellinen tilaero voi olla pieni.
+
 Kierroksen issueen jäävät raportti ja rinnakkaiset kuvat vertailtuine
 revisioineen. Sovittu poikkeama tunnistetaan design.md-viitteellä erilleen
 korjattavista eroista. Puuttuva vertailutila on aukko, ei onnistunut vertailu.
