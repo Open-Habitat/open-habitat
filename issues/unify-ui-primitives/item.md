@@ -71,7 +71,7 @@ styles are designed in @design-control-states and applied in
 
 ## Acceptance Criteria
 
-- [ ] The shared controls and migrated examples show consistent, appropriate interaction feedback in both themes, including visible keyboard focus.
-- [ ] Migrated controls own their styles; view-level button overrides and the file-wide specificity suppression are removed.
-- [ ] A change to the common style recipe reaches its uses across views; Storybook and automated checks demonstrate the states and catch regressions on the migrated surface.
-- [ ] The provisional design values and the controls remaining for @migrate-bespoke-controls are identifiable for the next work.
+- [x] The shared controls and migrated examples show consistent, appropriate interaction feedback in both themes, including visible keyboard focus.
+- [x] Migrated controls own their styles; view-level button overrides and the file-wide specificity suppression are removed.
+- [x] A change to the common style recipe reaches its uses across views; Storybook and automated checks demonstrate the states and catch regressions on the migrated surface.
+- [x] The provisional design values and the controls remaining for @migrate-bespoke-controls are identifiable for the next work.
