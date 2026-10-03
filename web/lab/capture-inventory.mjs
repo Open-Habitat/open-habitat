@@ -68,6 +68,7 @@ try {
       if (state.status !== "capture") {
         index.missing.push({
           key,
+          state: state.id,
           reason: state.reason || "No lab reproduction",
         });
         continue;
@@ -196,7 +197,11 @@ try {
           fullPage: state.focus ? `${key}-full.html` : null,
         });
       } catch (error) {
-        index.missing.push({ key, reason: String(error).slice(0, 400) });
+        index.missing.push({
+          key,
+          state: state.id,
+          reason: String(error).slice(0, 400),
+        });
         await page.unrouteAll().catch(() => {});
       }
     }
@@ -212,9 +217,8 @@ console.log(
 );
 if (
   index.missing.some(
-    ({ key }) =>
-      inventory.states.find((s) => key.startsWith(`${s.id}-`))?.status ===
-      "capture",
+    ({ state }) =>
+      inventory.states.find((s) => s.id === state)?.status === "capture",
   )
 )
   process.exitCode = 1;
