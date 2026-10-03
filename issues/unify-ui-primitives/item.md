@@ -3,7 +3,7 @@ created: 2026-10-03
 updated: 2026-10-03
 type: task
 reporter: jari
-status: open
+status: in-progress
 priority: high
 related: ['@consistent-control-feedback']
 lane: ui-foundation
