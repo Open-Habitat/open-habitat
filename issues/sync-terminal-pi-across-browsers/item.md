@@ -3,10 +3,14 @@ created: 2026-10-02
 updated: 2026-10-03
 type: improvement
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-02/terminal-writes
+lane: client-history
+lane_seq: 70
+blocked_by: ['@carry-typed-pi-events']
+collision: [web/src/app/]
 ---
 
 # Keep terminal Pi writes in sync across open browser views

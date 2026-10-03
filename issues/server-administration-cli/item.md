@@ -5,6 +5,9 @@ type: task
 status: open
 priority: normal
 related: ['@named-server-admin-settings']
+lane: server-admin
+lane_seq: 20
+blocked_by: ['@named-server-admin-settings']
 ---
 
 # Provide a privileged server administration CLI

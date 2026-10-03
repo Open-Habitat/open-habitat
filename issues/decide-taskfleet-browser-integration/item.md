@@ -4,6 +4,8 @@ updated: 2026-10-03
 type: task
 status: open
 priority: normal
+lane: worktree-agent-design
+lane_seq: 10
 ---
 
 # Decide the browser boundary for Taskfleet and worktree integration

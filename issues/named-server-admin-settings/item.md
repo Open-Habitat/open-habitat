@@ -3,11 +3,13 @@ created: 2026-10-02
 updated: 2026-10-03
 type: feature
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-02:ui-observations:1-3
 related: ['@server-administration-cli']
+lane: server-admin
+lane_seq: 10
 ---
 
 # Named server and separate administrator settings with user roles
