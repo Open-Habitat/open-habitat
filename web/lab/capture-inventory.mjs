@@ -84,7 +84,9 @@ try {
         );
         await fixture(page, "pi-state?value=missing");
         await fixture(page, "conversations-reset");
-        await page.context().clearCookies();
+        // Keep the synthetic session across states. Repeating OAuth for every
+        // variant exhausts the gateway's real per-peer login rate limit.
+        if (state.id === "sign-in") await page.context().clearCookies();
         await page.setViewportSize({
           width: presentation.width,
           height: presentation.height,
@@ -97,7 +99,12 @@ try {
         await page.reload();
         for (const step of state.steps) {
           if (step === "login") {
-            await login(page);
+            if (
+              await page
+                .getByRole("button", { name: "Kirjaudu GitHubilla" })
+                .count()
+            )
+              await login(page);
             if (needsAuthenticatedFault) {
               await fixture(page, `scenario?value=${state.scenario}`);
               await page.reload();
