@@ -56,7 +56,17 @@ rajan. Nykyinen terminaaliagentin vain luku -polku on ratkaistava puute.
 Tavoite ja suunnittelun vastuu sovitettu myös `manage-agent-worktrees`-issueen.
 Taskfleet säilyy ajojen ja worktreeiden auktoriteettina; ohjauksen mekanismia
 ei vielä päätetty. Issueiden tila ja DAG säilyvät.
-Seuraava käsiteltävä on `server-administration-cli`.
+`manage-agent-worktrees` käsitelty tämän jälkeen kokonaisuutena Jarin
+pyynnöstä rethink-instructions-skillillä. Valmistuminen tarkoittaa agentin
+käyttöä selaimessa; pelkkä worktreen luonti ja historian näyttö eivät riitä.
+Taskfleetin omistajuus, täysi run/node-tunniste, muiden töiden suojaaminen ja
+osittaisen onnistumisen merkitys säilyvät perusteluineen. Yleiset UI- ja
+testimenettelyt korvattu lähdeviitteillä, aiemman läpikäynnin Decisions-loki
+poistettu nykytekstistä. Käynnistyksen ja ohjauksen ratkaisu kuuluu yhä
+integraation suunnitteluissueen. Toteutusta tai DAGia ei muutettu.
+
+Seuraava käsiteltävä on `server-administration-cli`; sen ehdotettu rajaus
+odottaa vielä Jarin vastausta.
 
 ## Palvelinylläpito, terminaalisynkronointi ja muistinkäyttö 3.10.2026
 
