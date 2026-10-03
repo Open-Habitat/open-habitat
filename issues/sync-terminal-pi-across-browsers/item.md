@@ -33,11 +33,6 @@ Assess terminal/browser concurrent use and compare that approach with a
 browser-side check. Directory watching and a journal invalidation are possible
 mechanisms; the choice belongs to this work.
 
-Jari excluded visibility-triggered refresh and background snapshot polling from
-the initial [browser history work](../../docs/conversation-data-flow.md) on
-2 October 2026. That scope decision leaves external-write detection here. On
-3 October he asked to leave this issue unscheduled.
-
 ## Expected result
 
 An external Pi write appears in both simultaneously open browsers. Updates from
