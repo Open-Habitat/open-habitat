@@ -244,7 +244,8 @@
       ],
       "draft": null,
       "focus": false,
-      "status": "capture"
+      "status": "gap",
+      "reason": "The lab currently shows the GitHub chooser first; this Pi blocker cannot yet be isolated as a distinct view."
     },
     {
       "id": "new-conversation",
@@ -400,6 +401,178 @@
       "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
       "source": ["web/src/components/PiDeviceSignIn.tsx"],
       "draft": null
+    }
+  ],
+  "draft_states": [
+    {
+      "id": "github/idle",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": "sign-in"
+    },
+    {
+      "id": "github/pending",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": null
+    },
+    {
+      "id": "github/finishing",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": null
+    },
+    {
+      "id": "github/error",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": null
+    },
+    {
+      "id": "github/noaccess",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": null
+    },
+    {
+      "id": "github/expired",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": "expired-session"
+    },
+    {
+      "id": "github/signedout",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": null
+    },
+    {
+      "id": "repos/catalog",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": "repo-chooser"
+    },
+    {
+      "id": "repos/selected",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": "repo-chooser"
+    },
+    {
+      "id": "repos/loading",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": null
+    },
+    {
+      "id": "repos/empty",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": null
+    },
+    {
+      "id": "repos/unavailable",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": "repo-chooser-error"
+    },
+    {
+      "id": "repos/progress",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": null
+    },
+    {
+      "id": "repos/failed",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": "repo-chooser-error"
+    },
+    {
+      "id": "repos/done",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": null
+    },
+    {
+      "id": "repos/exit",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": null
+    },
+    {
+      "id": "pi/start",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": "pi-start"
+    },
+    {
+      "id": "pi/waiting",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": null
+    },
+    {
+      "id": "pi/pending",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": "pi-code"
+    },
+    {
+      "id": "pi/connected",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": null
+    },
+    {
+      "id": "pi/expired",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": null
+    },
+    {
+      "id": "pi/failed",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": "pi-auth-failure"
+    },
+    {
+      "id": "pi/unavailable",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": null
+    },
+    {
+      "id": "pi/exit",
+      "draft": "design-system/drafts/Onboarding.dc.html",
+      "state": null
+    },
+    {
+      "id": "app/paluu",
+      "draft": "design-system/drafts/Selainpolku.dc.html",
+      "state": "landing"
+    },
+    {
+      "id": "app/uusi",
+      "draft": "design-system/drafts/Selainpolku.dc.html",
+      "state": "new-conversation"
+    },
+    {
+      "id": "app/hylatty",
+      "draft": "design-system/drafts/Selainpolku.dc.html",
+      "state": "send-rejected"
+    },
+    {
+      "id": "app/tyo",
+      "draft": "design-system/drafts/Selainpolku.dc.html",
+      "state": "chat-working"
+    },
+    {
+      "id": "app/valmis",
+      "draft": "design-system/drafts/Selainpolku.dc.html",
+      "state": "chat-answer"
+    },
+    {
+      "id": "app/katkos",
+      "draft": "design-system/drafts/Selainpolku.dc.html",
+      "state": "send-uncertain"
+    },
+    {
+      "id": "app/luku",
+      "draft": "design-system/drafts/Selainpolku.dc.html",
+      "state": "history"
+    },
+    {
+      "id": "app/asetukset",
+      "draft": "design-system/drafts/Selainpolku.dc.html",
+      "state": "settings"
+    },
+    {
+      "id": "theme/dark-views",
+      "draft": "design-system/drafts/Tummat näkymät.dc.html",
+      "state": "landing"
+    },
+    {
+      "id": "phone/phone-views",
+      "draft": "design-system/drafts/Puhelin.dc.html",
+      "state": "landing"
     }
   ]
 }

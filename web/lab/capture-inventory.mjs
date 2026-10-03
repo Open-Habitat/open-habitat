@@ -73,7 +73,15 @@ try {
         continue;
       }
       try {
-        await fixture(page, `scenario?value=${state.scenario}`);
+        const needsAuthenticatedFault = ![
+          "ready",
+          "pi-onboarding",
+          "pi-blocked",
+        ].includes(state.scenario);
+        await fixture(
+          page,
+          `scenario?value=${needsAuthenticatedFault ? "ready" : state.scenario}`,
+        );
         await fixture(page, "pi-state?value=missing");
         await fixture(page, "conversations-reset");
         await page.context().clearCookies();
@@ -90,6 +98,10 @@ try {
         for (const step of state.steps) {
           if (step === "login") {
             await login(page);
+            if (needsAuthenticatedFault) {
+              await fixture(page, `scenario?value=${state.scenario}`);
+              await page.reload();
+            }
             if (state.route !== "/workspaces") {
               const route =
                 state.route === "@workspace"
@@ -101,8 +113,12 @@ try {
               await page.locator("main").waitFor();
             }
           } else if (step === "repo-chooser") {
-            await page.getByRole("checkbox").first().check();
-            await page.getByRole("button", { name: /jatka/i }).click();
+            await page
+              .getByRole("button", { name: "Jatka ilman repoja" })
+              .click();
+            await page
+              .getByRole("heading", { name: "ChatGPT-kirjautuminen" })
+              .waitFor();
           } else if (step === "start-sign-in")
             await page
               .getByRole("button", { name: "Aloita kirjautuminen" })
@@ -119,11 +135,16 @@ try {
               .getByRole("button", { name: "Lähetä", exact: true })
               .click();
             await page
+              .locator("main")
               .getByText(
                 step === "send-rejected" ? /Viesti hylättiin/ : "Tila epävarma",
               )
               .waitFor();
           } else if (step === "outage") {
+            if (presentation.width < 600)
+              await page
+                .getByRole("button", { name: "Avaa navigaatio" })
+                .click();
             await page.route("**/api/v1/snapshot", (route) => route.abort());
             await page
               .getByRole("button", { name: "Päivitä", exact: true })
@@ -132,12 +153,21 @@ try {
               .getByText("Yhteys katkesi · tiedot voivat olla vanhoja")
               .waitFor();
             await page.unrouteAll();
-          } else if (step === "account-menu")
+          } else if (step === "account-menu") {
+            if (presentation.width < 600)
+              await page
+                .getByRole("button", { name: "Avaa navigaatio" })
+                .click();
             await page.getByRole("button", { name: "Tilivalikko" }).click();
-          else if (step === "workspace-details")
+          } else if (step === "workspace-details")
             await page.locator(".ah-workspace-facts summary").click();
           else throw new Error(`Unknown step ${step}`);
         }
+        if (state.id === "pi-start" || state.id === "pi-code")
+          await page
+            .getByRole("heading", { name: "ChatGPT-kirjautuminen" })
+            .waitFor();
+        if (state.id === "pi-code") await page.getByText("ABCD-1234").waitFor();
         await page.locator(state.region).first().waitFor();
         const actualTheme = await page.evaluate(
           () => document.documentElement.dataset.theme,
