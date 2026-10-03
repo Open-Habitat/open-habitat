@@ -3,12 +3,14 @@ created: 2026-10-03
 updated: 2026-10-03
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@design-control-states']
 lane: design-tooling
 lane_seq: 10
 collision: [web/lab/]
+closed: 2026-10-03
+closed_by: claude
 ---
 
 # Inventory UI states and capture them as fragments
