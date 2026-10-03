@@ -9,7 +9,7 @@ fontit ja liike ovat [tokeneissa](tokens/), joita sovellus käyttää
 `styles.css`:n kautta. [Komponenttikartta](components.md) johtaa samoihin
 komponentteihin, jotka näkyvät sovelluksessa ja Storybookissa.
 [Käyttökulut](../docs/ui.md) kuvaavat toiminnan ja
-[rajapinnat](../docs/interfaces.md) hostin tarjoaman tiedon.
+[arkkitehtuuri](../docs/architecture/index.md) hostin tarjoaman tiedon.
 [Design-kierros](process.md) kertoo, miten vedokset, tämä kuvaus ja koodi
 pidetään samassa totuudessa.
 
@@ -107,7 +107,7 @@ uloskirjautumisen vaikutuksen.
 
 Visuaaliset komponentit saavat näyttömallin ja välittävät käyttäjän toiminnot
 sovellukselle. Verkkoyhteydet ja natiivitiedon tulkinta kuuluvat sovellukselle;
-[tilan omistajuus](../docs/conversation-data-flow.md) kertoo työnjaon.
+[tapahtumat ja palautuminen](../docs/architecture/events-and-recovery.md) kertoo työnjaon.
 Samat tuotantokomponentit muodostavat Storybookin esimerkit.
 
 Vedokset ovat klikattavia sommittelumalleja simuloidulla tiedolla. Niiden

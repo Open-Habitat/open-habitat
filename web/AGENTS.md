@@ -3,7 +3,7 @@
 `web/` is the browser application: a React and TypeScript single-page client
 built with Vite, with Redux Toolkit for the synchronized model and React Router
 for the route. The stack and the reasons for it are in
-`docs/adr-0002-frontend-stack.md`. Its state-ownership table and its
+`docs/decisions/adr-0002-frontend-stack.md`, and the browser's state modules and recovery behaviour are described in `docs/architecture/events-and-recovery.md`. Its state-ownership table and its
 "Rendering and security boundary" section are the design this code implements,
 so read them before changing how state flows or how host content is rendered.
 In short: the route is the only record of which workspace or agent is selected,

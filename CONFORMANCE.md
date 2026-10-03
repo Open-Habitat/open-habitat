@@ -46,4 +46,4 @@ Configuration and data roots report their sources. Version output carries real
 build provenance or explicit null with a provenance object, never `unknown`.
 `gateway exec` and `daemon exec` are systemd entry points. Diagnostic access and
 redaction requirements are in
-[the interface specification](docs/interfaces.md#palveluiden-rajoitukset-ja-diagnostiikka).
+[the deployment page](docs/architecture/deployment.md).

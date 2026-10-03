@@ -2,97 +2,73 @@
 
 `docs/` is the project documentation, starting at `index.md`. It is written for
 someone who wants to understand or use the system, and it is also what Glasspad
-publishes: the Markdown here is the site, there is no separate source tree. The
-pages are mostly in Finnish for Jari, with the ADRs and `evidence.md` in
-English; keep a page in the language it already has.
+publishes: the Markdown here is the site, there is no separate source tree.
+The product pages (`product.md`, `ui.md`, `design-system.md`, `index.md`) are
+in Finnish for Jari. The architecture pages and the decision records are in
+English, because agents are their main readers and the repository will be
+public. Keep a page in the language it already has.
 
-## What good documentation looks like here
+## Three kinds of page
 
-Start with what happens: who signs in, what runs, where files live, how the
-browser and the terminal reach the same sessions. Ordinary words and a concrete
-example carry more than an abstraction:
+`architecture/` describes the system as it is. Each page covers one whole:
+components and authorities, identity and trust, conversations, events and
+recovery, workspaces, the HTTP API, deployment. A page opens with what happens,
+in ordinary words, then a Mermaid diagram, then sections. It is written in the
+present tense and carries no dates, revisions, review status, or distinction
+between agreed and built. What is not built is simply not there, apart from the
+short "Not in the system" list on the overview page. Reasons stay, as reasons:
+"the gateway cannot read homes because a bug in the component that parses
+browser traffic must not become access to files" belongs on the page; "Jari
+decided on 2026-09-23" does not. Constants appear only where they shape
+behaviour the reader must know; otherwise point at the package. Code pointers
+are at package level and sparse, since file names drift. Each page may end
+with one line naming the decision records behind it, and does not link records
+inline.
 
-> Jari signs in through the gateway. It forwards his requests to a daemon running
-> as Linux user jari. That daemon lists his ~/src directories and reads his Pi
-> histories. He can still use the same agents through SSH and tmux.
+Before writing a claim on an architecture page, check it against the current
+source. The pages exist to be trusted without reading the code, so a page that
+describes last month's behaviour is worse than no page.
 
-Write "read Pi's session file" rather than "reconstruct the authoritative native
-projection", and "questions still to answer" rather than "open decision gates".
-Process vocabulary, acceptance labels and version ceremonies displace the
-explanation the reader came for. Technical terms are fine where they clarify;
-explain them on first use.
+`decisions/` holds the architecture decision records, `adr-NNNN-<slug>.md`,
+indexed in `decisions/index.md`. They are the history layer and are not edited
+to track the present: a decision that changes gets a new record that the old
+one links to. The validator requires every record to be linked from the index.
 
-Keep the reasons. The product builds on mature Unix/Linux components because
-each one already manages its own behaviour, data and configuration, and
-composing them is the design, not a shortcut for a first version. Features are
-added when a real need appears. Tenant separation is one deployment per tenant
-with ordinary Linux users inside it; there is no host-level tenant object. A
-workspace is a directory whose settings live inside it; there is no workspace
-registry. Text that gets shorter but loses these reasons, or the limitations
-that go with them, has lost the wrong thing. For the same reason, describe the
-design as it stands rather than implying extension points or options nobody has
-chosen, and use a component such as Pi to illustrate a general principle
-without turning the example into a rule about that component.
+The product pages describe the agreed experience and may say which part is
+still being built, because the product is pre-release. Even there, write
+"read Pi's session file" rather than "reconstruct the authoritative native
+projection". Process vocabulary and acceptance labels displace the explanation
+the reader came for.
 
-The project is pre-release, and much of what the pages describe is agreed but
-not yet built. Say in plain language which is which. A mock is not an
-integration, an unverified claim is not a refuted one, and a probe that
-completed need not have confirmed its hypothesis. When you cite evidence, give
-the inspected version, the exact result link and the scope it covers, so the
-next reader can tell what was actually shown. Detailed research stays in its
-issue and is linked at an exact revision; older research is background, not the
-current design.
+## What does not belong here
 
-Pages are for readers, so maintenance notes such as who owns a page or when it
-is updated belong in this file, not on the published pages.
+Status, progress and schedule live in `TODO.md` and the issues. Research
+reports, proposals awaiting a decision, reviews and investigation results live
+in the issue that produced them. A proposal that reaches `docs/` as a page
+reads as the current design to the next agent, which is how the old
+`logging.md` and `assumptions.md` pages misled readers. Maintenance notes about
+pages, such as who updates one and when, belong in this file.
 
-## The pages
-
-`glasspad.yaml` lists every page with a one-line description and is the current
-map of the site. A few pages carry conventions that are not obvious from their
-names:
-
-- `decisions.md` and the `adr-NNNN-<slug>.md` pages record what Jari has agreed
-  to. An ADR stays proposed until his review is recorded. A decision that
-  changes gets a new ADR that the old one links to, rather than an edit that
-  quietly changes what was accepted. The validator requires every ADR to be
-  linked from `decisions.md`.
-- `status.md` is a dated snapshot for a reader, stamped with the source
-  revision it describes, not the commit that edits it. It is not a second
-  schedule; `issuectl` owns executable order, and a status page that tries to
-  own it drifts from the DAG.
-- `interfaces.md` and `design-system.md` explain and point at the machine
-  contracts in `contracts/v1/` and the design-system sources. Copied token
-  values or component APIs go stale the moment the source changes.
-- `logging.md` is a proposal awaiting Jari's decision, not an accepted policy.
-- `operations.md` does not exist yet. It is written when the install, update,
-  rollback and recovery procedures have been selected and verified, by the
-  `prepare-mvp-operations` issue. Host-specific facts stay in Fleetrepo because
-  this repository will be public.
-- `brand/` holds the identity brief. It is not a page and the validator does
-  not look at it.
-
-Update the pages a change actually affects; routine progress does not warrant
-rewriting the site. History lives in Git and closed issues.
+`brand/` holds the identity brief. It is not a page and the validator does not
+look at it.
 
 ## Files, validation and publishing
 
-Pages live directly under `docs/`. `.glasspad.yaml` contains only
-`space_key: native-agent-host`; the stable key is what lets a re-publish from
-any checkout update the hosted space in place instead of minting a new URL. The
-reader navigation in `glasspad.yaml` has to name exactly the pages that exist,
-and agent instruction files are not pages.
+Pages live under `docs/` and one level of subdirectories; a page's slug is its
+path without `.md`, so `architecture/index` is a slug. `.glasspad.yaml`
+contains only `space_key: native-agent-host`, the stable key that lets a
+re-publish from any checkout update the hosted space in place. `glasspad.yaml`
+is the reader navigation and has to name exactly the pages that exist.
 
 From the repository root, `python3 scripts/validate-project-view.py` checks the
-required pages, navigation, local links, ADR registration and the status
-metadata, and `git diff --check` catches whitespace. The root `TESTING.md` describes when the full gate is needed.
+required pages, the navigation, local links and ADR registration;
+`git diff --check` catches whitespace. The root `TESTING.md` describes when the
+full gate is needed.
 
 Publishing is a separate act from landing on `main`, run as
 `(cd docs && glasspad publish .)`. The configured target is hosted, so the
 result is a shareable link, and the pages link into issue directories that a
-reader of the link may not be able to open. Glasspad has ignored top-level
-`AGENTS.md` and the `CLAUDE.md` symlink since 0.17.5, so the earlier blocker is
-gone; the documentation has still never been published. The dated `status.md`
-snapshot still describes the old blocker and needs reconciliation in its review. Keep the instruction files where they
-are rather than building a second tree for the viewer, and never describe a
-publication that did not happen.
+reader of the link may not be able to open. Glasspad does not render Mermaid
+natively; the diagrams are kept as Mermaid anyway because GitHub and editors
+render them and agents read the diagram source. Never describe a publication
+that did not happen.

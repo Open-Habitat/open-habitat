@@ -12,7 +12,7 @@ score; `sample-evidence.json` is fixture output, not a benchmark result.
 
 The project then decided to build the first HTTP/SSE implementation directly
 and return to the benchmark only if a concrete need for another protocol
-appears (`docs/evidence.md`, "What to check next"). So the normal job here is
+appears (`issues/native-agent-host-architecture/research-index.md`, "What to check next"). So the normal job here is
 to keep the fixture green and honest, not to grow it. Adding a candidate
 adapter is a separate issue with its own review.
 

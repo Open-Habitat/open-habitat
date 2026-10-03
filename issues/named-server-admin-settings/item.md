@@ -38,7 +38,7 @@ is not a prerequisite for installation or normal use.
 
 The product behavior above is agreed; the authorization mechanism remains to be
 designed. The current gateway, per-user daemon and root provisioning broker have
-separate authorities, described in [the architecture](../../docs/architecture.md)
+separate authorities, described in [the architecture](../../docs/architecture/index.md)
 and [the runtime instructions](../../internal/AGENTS.md). Recommend where server
 settings and roles belong and how browser and CLI administration use them while
 preserving user isolation. The authority boundary is an architecture decision to make with Jari; the

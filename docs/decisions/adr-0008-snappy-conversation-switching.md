@@ -1,7 +1,7 @@
 # ADR 0008: Keep recent conversation windows in the browser
 
 **Status:** Accepted — Jari agreed to the revised direction in
-[design-snappy-conversation-switching](../issues/design-snappy-conversation-switching/item.md), 2026-10-02.
+[design-snappy-conversation-switching](../../issues/design-snappy-conversation-switching/item.md), 2026-10-02.
 
 ## Context
 
@@ -50,18 +50,18 @@ keeping every conversation's rendered component tree alive is unnecessary.
 
 ## Implementation and evidence
 
-[One browser event stream](../issues/one-browser-event-stream/item.md) owns
+[One browser event stream](../../issues/one-browser-event-stream/item.md) owns
 connection lifetime and recovery;
-[tail-first history paging](../issues/tail-first-history-paging/item.md) owns
+[tail-first history paging](../../issues/tail-first-history-paging/item.md) owns
 native history reads; and
-[recent conversation windows](../issues/recent-conversation-windows/item.md)
+[recent conversation windows](../../issues/recent-conversation-windows/item.md)
 owns retention, incremental display and the measured switching experience.
-[Browser logout cleanup](../issues/browser-logout-cleanup/item.md) owns stopping
+[Browser logout cleanup](../../issues/browser-logout-cleanup/item.md) owns stopping
 stream listeners and clearing user-specific browser state when the session ends.
-These changes are not implemented by this decision. The proposed module split and data-flow interfaces are in the [conversation data-flow design](conversation-data-flow.md).
+These changes are not implemented by this decision. The proposed module split and data-flow interfaces are in the [conversation data-flow design](../architecture/events-and-recovery.md).
 
-The [measurements](../issues/design-snappy-conversation-switching/measurements.md)
+The [measurements](../../issues/design-snappy-conversation-switching/measurements.md)
 identify the inspected revision and the limits of the lab evidence. The
-[simulation](../issues/design-snappy-conversation-switching/simulation-output.txt)
+[simulation](../../issues/design-snappy-conversation-switching/simulation-output.txt)
 estimates event traffic and memory under stated assumptions; CPU and heap
 factors are assumptions, not profiler results.

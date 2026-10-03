@@ -4,7 +4,7 @@ Tämä hakemisto on käyttöliittymän yhteinen visuaalinen perusta: tokenit, ni
 käyttöä näyttävät ohjekortit, paketoidut fontit sekä designin kuvaus ja
 komponenttikartta. Tuotantokomponentit itse ovat
 `web/src/components/`-hakemistossa; tämä hakemisto kertoo, miltä niiden pitää
-näyttää ja mitä ne saavat omistaa. Tuotteen arkkitehtuuri on `docs/architecture.md`:ssä
+näyttää ja mitä ne saavat omistaa. Tuotteen arkkitehtuuri on `docs/architecture/`-hakemistossa
 ja selainsovelluksen tila- ja turvarajat `web/AGENTS.md`:ssä.
 
 ## Mistä tieto löytyy
@@ -46,7 +46,7 @@ Se ei avaa verkkoa, muodosta command ID:tä, sovita snapshotia ja SSE-tapahtumia
 päättele Pi-capabilityä eikä tallenna luonnosta; nämä omistaa sovelluskerros ADR
 0002:n tilanomistustaulukon mukaan. Jos komponentti päättelisi host-tilaa itse,
 sovelluksessa olisi kaksi käsitystä siitä, mitä agentti tekee, ja ne eroaisivat
-juuri katkosten aikana, kun rehellisyys on tärkeintä. Tilan omistajuus on kuvattu `docs/conversation-data-flow.md`:ssä.
+juuri katkosten aikana, kun rehellisyys on tärkeintä. Tilan omistajuus on kuvattu `docs/architecture/events-and-recovery.md`:ssä.
 
 ## Tokenit, ohjekortit ja fontit
 

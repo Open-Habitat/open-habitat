@@ -9,13 +9,13 @@ tmuxin kautta. Selaimen sulkeminen jättää agentin työskentelemään.
 Ensimmäinen toteutus käyttää Pi:tä ja työpöytäselainta yhdellä Linux-palvelimella.
 Jokainen ihminen työskentelee omalla Linux-tunnuksellaan: hänen tiedostonsa,
 tunnistetietonsa ja agenttinsa ovat erillään muiden käyttäjien tiedoista.
-[Natiivi arkkitehtuuri](architecture.md) rakentuu näiden valmiiden työkalujen
+[Natiivi arkkitehtuuri](architecture/index.md) rakentuu näiden valmiiden työkalujen
 varaan, jotta niiden rinnalle ei synny toista historiaa tai työtilarekisteriä.
 
 Tämä sivu kuvaa sovittua tavoitetta. Kirjautuminen, työtilojen ja historian
 lukeminen sekä osa selainohjauksesta on jo toteutettu, mutta koko käyttökulku
-on kesken. [Rajapintasivu](interfaces.md) erottaa nykyisen toteutuksen tulevasta
-pinnasta; [toteutuskartta](implementation.md) johtaa töihin ja niiden näyttöön.
+on kesken. [Arkkitehtuuri](architecture/index.md) kuvaa nykyisen toteutuksen;
+työn tilanne on [TODO.md](../TODO.md)-tiedostossa ja issueissa.
 
 ## Kirjautumisesta omaan työtilaan
 
@@ -97,15 +97,15 @@ Pitkä tai osittain epäonnistunut toiminto näyttää, mitä todella valmistui 
 mitä jäi jäljelle. Jo luotua hakemistoa ei esimerkiksi väitetä poistetuksi siksi,
 että agentin käynnistys epäonnistui. Symlinkit ja mielivaltaiset worktreet
 voidaan näyttää havaintoina, mutta ensimmäisen version kirjoittavat toiminnot
-eivät kohdistu niihin. [Rajapinnat](interfaces.md) määrittelevät osatulosten ja
-katkoista palautumisen merkityksen; toteutusissueissa ovat mekanismit ja testit.
+eivät kohdistu niihin. [Tapahtumat ja palautuminen](architecture/events-and-recovery.md)
+kuvaa nykyisen katkoskäytöksen; toteutusissueissa ovat mekanismit ja testit.
 
 ## Käyttö ja eteneminen
 
 Asennuksen, päivityksen ja palautumisen pitää säilyttää käyttäjien natiivihistoria,
 Git-tila ja työtilojen asetukset. SSH- ja tmux-käyttö säilyvät selaimen rinnalla.
-[Yleiset julkaisu- ja asennusvastuut](implementation.md#julkaisu-ja-asennus)
-erottavat tuotepaketin konkreettisesta palvelinasennuksesta.
+[Asennus](architecture/deployment.md) erottaa tuotepaketin konkreettisesta
+palvelinasennuksesta.
 
 Tuotetta kehitetään käyttöhavaintojen ja rajattujen korjausten kautta.
 Toimintojen valmistuminen ja niiden todentaminen kirjataan omiin issueihinsa;

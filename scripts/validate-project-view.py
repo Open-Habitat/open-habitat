@@ -12,17 +12,22 @@ ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "docs"
 REQUIRED = {
     "index",
-    "architecture",
-    "decisions",
-    "evidence",
-    "implementation",
-    "status",
+    "product",
+    "ui",
+    "design-system",
+    "architecture/index",
+    "architecture/components",
+    "architecture/identity-and-trust",
+    "architecture/conversations",
+    "architecture/events-and-recovery",
+    "architecture/workspaces",
+    "architecture/http-api",
+    "architecture/deployment",
+    "decisions/index",
 }
-SLUG = re.compile(r"^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$")
+SLUG = re.compile(r"^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:/[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)?$")
 LINK = re.compile(r"!?(?<!\\)\[[^\]]*\]\(([^)]+)\)")
 ADR_FILE = re.compile(r"^adr-(\d{4})-[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.md$")
-HEX40 = re.compile(r"\*\*Source revision:\*\* `([0-9a-f]{40})`")
-DATE = re.compile(r"\*\*Updated:\*\* \d{4}-\d{2}-\d{2}")
 
 
 def fail(errors: list[str], message: str) -> None:
@@ -33,7 +38,7 @@ def manifest_slugs(text: str) -> list[str]:
     """Read slug values from this deliberately small, structure-only YAML subset."""
     result: list[str] = []
     for line_no, line in enumerate(text.splitlines(), 1):
-        match = re.match(r"^\s*-\s+slug:\s*([a-zA-Z0-9_.-]+)\s*$", line)
+        match = re.match(r"^\s*-\s+slug:\s*([a-zA-Z0-9_./-]+)\s*$", line)
         if match:
             result.append(match.group(1))
         elif "slug:" in line:
@@ -50,7 +55,9 @@ def check_link(errors: list[str], page: Path, raw_target: str, page_slugs: set[s
         fail(errors, f"{page.relative_to(ROOT)}: absolute local link is not portable: {raw_target}")
         return
     site_target = target[2:] if target.startswith("./") else target
-    if "/" not in site_target and site_target in page_slugs:
+    if site_target.endswith(".md"):
+        site_target = site_target[:-3]
+    if (page.parent / site_target).resolve().relative_to(SITE).as_posix() in page_slugs if (page.parent / site_target).resolve().is_relative_to(SITE) else False:
         return
     resolved = (page.parent / target).resolve()
     try:
@@ -74,17 +81,19 @@ def main() -> int:
         fail(errors, "docs/.glasspad.yaml must contain only 'space_key: native-agent-host'")
 
     pages = sorted(
-        page for page in SITE.glob("*.md")
+        page for page in list(SITE.glob("*.md")) + list(SITE.glob("*/*.md"))
         if page.name not in {"AGENTS.md", "CLAUDE.md"}
         and not page.name.startswith("AGENTS-")
+        and page.parent.name != "brand"
     )
-    stems = {page.stem for page in pages}
+    slug_of = {page: page.relative_to(SITE).with_suffix("").as_posix() for page in pages}
+    stems = set(slug_of.values())
     missing_required = sorted(REQUIRED - stems)
     if missing_required:
         fail(errors, f"missing required pages: {', '.join(missing_required)}")
     for page in pages:
-        if not SLUG.fullmatch(page.stem):
-            fail(errors, f"invalid page slug: {page.name}")
+        if not SLUG.fullmatch(slug_of[page]):
+            fail(errors, f"invalid page slug: {slug_of[page]}")
 
     manifest = SITE / "glasspad.yaml"
     if not manifest.is_file():
@@ -115,16 +124,9 @@ def main() -> int:
         for target in LINK.findall(text):
             check_link(errors, page, target, stems)
 
-    status = SITE / "status.md"
-    if status.is_file():
-        status_text = status.read_text(encoding="utf-8")
-        if not DATE.search(status_text):
-            fail(errors, "docs/status.md: missing ISO Updated date")
-        if not HEX40.search(status_text):
-            fail(errors, "docs/status.md: missing 40-hex Source revision")
-
     adr_ids: dict[str, str] = {}
-    decisions_text = (SITE / "decisions.md").read_text(encoding="utf-8") if (SITE / "decisions.md").is_file() else ""
+    decisions_index = SITE / "decisions" / "index.md"
+    decisions_text = decisions_index.read_text(encoding="utf-8") if decisions_index.is_file() else ""
     registered_targets: set[str] = set()
     for raw_target in LINK.findall(decisions_text):
         target = raw_target.strip().split(maxsplit=1)[0].strip("<>")
@@ -144,7 +146,7 @@ def main() -> int:
                 fail(errors, f"duplicate ADR id {adr_id}: {adr_ids[adr_id]} and {page.name}")
             adr_ids[adr_id] = page.name
             if page.stem not in registered_targets:
-                fail(errors, f"{page.name}: ADR is not linked from decisions.md")
+                fail(errors, f"{page.name}: ADR is not linked from decisions/index.md")
 
     if errors:
         for message in errors:

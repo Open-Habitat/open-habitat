@@ -47,3 +47,9 @@ Verification demonstrates useful correlation and actor attribution, protection
 of secrets and work content, and bounded behaviour when logging is flooded or
 unavailable. Architecture documentation explains what is recorded, where it
 lives and who can read it, matching the implementation.
+
+## Comments
+
+### 2026-10-03T19:33:10Z · @claude
+
+Step 1 done by rewrite-architecture-docs: the proposal is at proposal.md in this directory and docs/logging.md is gone.

@@ -68,7 +68,7 @@ native state; the gateway does not retain a token for replay. Failure to create
 or deliver the session does not roll back the Unix account or installed
 credential. Web logout and native credential removal remain separate actions.
 [ADR 0003](adr-0003-host-stack.md) and the
-[interface contract](interfaces.md#identiteetti-ja-luottamusrajat) define the
+[interface contract](../architecture/identity-and-trust.md) define the
 credential and routing protections.
 
 ### Interrupted creation denies access
@@ -81,7 +81,7 @@ its home or reusing its UID could give another person access to its data.
 There is no separate operator recovery procedure for interrupted first-user
 creation. Resuming is justified only if completed phases can be identified and
 retried safely at reasonable cost. Otherwise the operation remains blocked.
-The [interruption issue](../issues/reconcile-interrupted-jit-provisioning/item.md)
+The [interruption issue](../../issues/reconcile-interrupted-jit-provisioning/item.md)
 owns that scope; this decision does not promise automatic recovery.
 
 ## Ownership and implementation
@@ -96,8 +96,8 @@ startup mapping. The administrator still controls admission and root owns the
 binding, as required by ADR 0001. The gateway remains unprivileged and outside
 user homes; native work stays in each user's daemon.
 
-The [broker writer](../issues/implement-jit-broker-writer/item.md) owns locking,
+The [broker writer](../../issues/implement-jit-broker-writer/item.md) owns locking,
 journaling and publication details. The
-[guest isolation work](../issues/prove-jit-guest-isolation/result.md) records
+[guest isolation work](../../issues/prove-jit-guest-isolation/result.md) records
 implementation evidence and its limits. This ADR defines the authority boundary;
 those results and Fleetrepo's deployment receipts establish what has been tested.

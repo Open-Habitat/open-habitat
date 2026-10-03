@@ -12,9 +12,8 @@ Järjestelmän teema on oletus.
 
 Tämä sivu kuvaa sovittua käyttökokemusta. Toteutus on osittain valmis;
 esimerkiksi tiliprofiilin, agenttitilojen ja Pi:n sisältölohkojen esitystä
-vielä täydennetään. [Toteutuksen työnjako](implementation.md) johtaa töihin
-ja niiden näyttöön, [rajapinnat](interfaces.md) erottavat nykyisen toteutuksen
-sovitusta tulevasta toiminnasta.
+vielä täydennetään. [Arkkitehtuuri](architecture/index.md) kuvaa nykyisen
+toteutuksen; työn tilanne on [TODO.md](../TODO.md)-tiedostossa ja issueissa.
 
 ## Ensimmäinen käyttökerta
 
@@ -110,8 +109,8 @@ Keskustelun otsikko alkaa tekstistä **Uusi keskustelu**. Sisällöstä muodoste
 otsikko erillisellä mallikutsulla, ja sitä voidaan tarkentaa aiheen selkiytyessä
 sekä käyttäjän pyynnöstä otsikon vierestä. Otsikko ei vaihdu jokaisesta viestistä.
 Epäonnistuminen säilyttää edellisen otsikon tai ensimmäisen viestin lyhyen alun,
-eikä otsikointi estä keskustelua. Tarkka toiminta on
-[otsikointisopimuksessa](interfaces.md#ohjauskyvyt-ja-otsikointi).
+eikä otsikointi estä keskustelua. Otsikointia ei ole vielä toteutettu;
+sovittu toiminta on [agenttiohjauksen issuessa](../issues/build-agent-control/general-contract.md).
 
 ## Sisällön lukeminen ja agentin tila
 
@@ -238,7 +237,7 @@ vaikutukset. Uusinta perustuu tuoreeseen natiiviin tilanteeseen. Peruuttaminen
 ei tarkoita, että jo tehdyt muutokset olisi kumottu.
 
 GitHub-kloonauksen vaihevirralla on oma
-[katkokäytöksensä](adr-0005-clone-progress-stream.md): selainyhteyden katkeaminen
+[katkokäytöksensä](architecture/events-and-recovery.md): selainyhteyden katkeaminen
 keskeyttää kirjoituksen ja paluu tarkistaa Gitistä, mitä jäi jäljelle.
 Kloonausta ei aloiteta automaattisesti uudelleen.
 
@@ -253,6 +252,6 @@ tekstipalan sijaan.
 [Design](../design-system/design.md) ja [vedokset](../design-system/drafts/)
 kuvaavat näkymien sommittelun ja visuaalisen esityksen.
 [Design system](design-system.md) johtaa yhteisiin tuotantokomponentteihin
-ja niiden katalogiin. [Rajapinnat](interfaces.md) kuvaavat tietojen ja
+ja niiden katalogiin. [HTTP-rajapinta](architecture/http-api.md) kuvaa tietojen ja
 komentojen merkityksen. Usean palvelimen navigointi ja prosessikeskus
 odottavat omaa päätöstään.

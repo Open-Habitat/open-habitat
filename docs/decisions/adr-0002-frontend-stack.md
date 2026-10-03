@@ -127,4 +127,4 @@ They add another render/data path without helping an authenticated live workspac
 
 ## Evidence
 
-The comparison, primary-source revisions, exact package artifacts, failures, commands and limits are preserved in [`../issues/choose-frontend-stack/result.md`](../issues/choose-frontend-stack/result.md). The runnable disposable experiment is under [`../issues/choose-frontend-stack/experiment/`](../issues/choose-frontend-stack/experiment/).
+The comparison, primary-source revisions, exact package artifacts, failures, commands and limits are preserved in [`../issues/choose-frontend-stack/result.md`](../../issues/choose-frontend-stack/result.md). The runnable disposable experiment is under [`../issues/choose-frontend-stack/experiment/`](../../issues/choose-frontend-stack/experiment/).

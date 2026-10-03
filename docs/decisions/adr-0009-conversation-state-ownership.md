@@ -1,7 +1,7 @@
 # ADR 0009: Separate conversation content from application state
 
 **Status:** Accepted — records Jari's starting points of 2026-10-02 in
-[design-conversation-data-flow](../issues/design-conversation-data-flow/item.md).
+[design-conversation-data-flow](../../issues/design-conversation-data-flow/item.md).
 
 **Supersedes:** The single Redux synchronized-state model in
 [ADR 0002](adr-0002-frontend-stack.md) for conversation data.
@@ -25,6 +25,6 @@ in-memory conversation views chosen in
 [ADR 0008](adr-0008-snappy-conversation-switching.md); Pi remains the history
 source. No database library or persistent browser history is added.
 
-[Conversation data flow](conversation-data-flow.md) describes the planned
+[Conversation data flow](../architecture/events-and-recovery.md) describes the planned
 module responsibilities and behavior. Implementation is tracked in its linked
 issues.

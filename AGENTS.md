@@ -27,7 +27,7 @@ the Unix user, `internal/daemon` runs as that user and trusts no identity claim
 from the browser or the gateway, and `internal/provision` is the root-only
 broker that only creates an account on first approved login. Moving authority
 between them is an architecture change; `internal/AGENTS.md`,
-`docs/architecture.md` and the ADRs explain why.
+`docs/architecture/` and the ADRs under `docs/decisions/` explain why.
 
 `contracts/v1/` is the browser/host contract; `internal/contracts/` and
 `web/src/contracts/` are generated from it, and the gate fails on drift.

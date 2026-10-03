@@ -44,12 +44,12 @@ This avoids competing records of the same work.
 
 Servers remain independent, each owning its users and files. The architecture
 allows a browser to connect to several servers; the
-[accepted UI scope](../issues/review-ui-v1/review.md#scope-and-limits) leaves
+[accepted UI scope](../../issues/review-ui-v1/review.md#scope-and-limits) leaves
 multi-server navigation outside the first implementation.
 
 Use JSON/HTTP for queries and commands and one cursor-marked SSE event feed per
 server. Reconnect from retained events or fetch a fresh snapshot. The
-[interface contract](interfaces.md) supplies the details, including
+[interface contract](../architecture/http-api.md) supplies the details, including
 [ADR 0005's separate clone stream](adr-0005-clone-progress-stream.md).
 
 ## Consequences
@@ -59,5 +59,5 @@ It needs harness-specific adapters and must show incomplete or conflicting nativ
 observations honestly. Same-UID extensions cannot provide stronger user isolation.
 
 [ADR 0003](adr-0003-host-stack.md) resolves authentication, daemon implementation
-and packaging. [Architecture](architecture.md) explains their composition;
-[implementation](implementation.md) links to delivered work and remaining evidence.
+and packaging. [Architecture](../architecture/index.md) explains their composition;
+[implementation](../architecture/deployment.md) links to delivered work and remaining evidence.

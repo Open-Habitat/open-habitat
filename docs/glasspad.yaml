@@ -2,7 +2,7 @@ title: Native Agent Host — dokumentaatio
 template: prose
 
 groups:
-  - label: Tavoite ja eteneminen
+  - label: Tuote
     members:
       - slug: index
         title: Aloita tästä
@@ -10,75 +10,69 @@ groups:
       - slug: product
         title: Tavoite ja toiminnot
         desc: Tuotteen tavoite ja sovittu toiminnallinen laajuus.
-      - slug: status
-        title: Tilanne
-        desc: Valmistuneet asiat, avoimet kysymykset ja seuraava katselmointi.
-      - slug: implementation
-        title: Toteutuksen työnjako
-        desc: Toimintojen yhteinen perusta, riippuvuudet ja toteutuksen vastuut.
-
-  - label: Järjestelmä ja päätökset
-    members:
-      - slug: architecture
-        title: Arkkitehtuuri
-        desc: Sovittu Unix-natiivi rakenne ja komponenttien vastuut.
-      - slug: assumptions
-        title: Kriittiset oletukset
-        desc: Todentamista tarvitsevat väitteet ja niiden vaikutukset.
-      - slug: decisions
-        title: Päätökset
-        desc: Hyväksytyt ratkaisut ja valmisteltavat tekniset valinnat.
-      - slug: adr-0001-unix-native-agent-host
-        title: ADR 0001 — Unix-native host
-        desc: Hyväksytty natiivien käyttäjien, tiedostojen ja agenttien perusta.
-      - slug: adr-0002-frontend-stack
-        title: ADR 0002 — Frontend-stack
-        desc: Hyväksytty selainasiakas, tilanhallinta, renderöinti ja testaus.
-      - slug: adr-0003-host-stack
-        title: ADR 0003 — Host-stack
-        desc: Hyväksytty gateway, daemonit, autentikointi ja operointi.
-      - slug: adr-0004-first-login-user-provisioning
-        title: ADR 0004 — Ensikirjautumisen Unix-käyttäjä
-        desc: Hyväksytty GitHub-kirjautumisen käyttäjäprovisioinnin raja.
-      - slug: adr-0005-clone-progress-stream
-        title: ADR 0005 — Rajattu kloonauksen vaihevirta
-        desc: Hyväksytty per-UID Git-edistyminen, keskeytys ja natiivi palautumishavainto.
-      - slug: adr-0006-subject-revocation
-        title: ADR 0006 — Subjektin istuntojen mitätöinti
-        desc: Rootin paikallinen gateway-ohjauspolku ja OAuth-virtojen rajat.
-      - slug: adr-0007-bound-user-deprovision
-        title: ADR 0007 — Sidotun käyttäjän poistaminen
-        desc: Myöhempi käyttäjän poistotarve ja ylläpitäjän CLI; toteutustapa avoin.
-      - slug: adr-0008-snappy-conversation-switching
-        title: ADR 0008 — Nopea keskustelun vaihto
-        desc: Hyväksytty rajattu keskustelumuisti ja yksi tapahtumayhteys välilehteä kohti.
-      - slug: adr-0009-conversation-state-ownership
-        title: ADR 0009 — Keskustelutilan omistajuus
-        desc: Reduxin ja erillisen keskustelustoren työnjako.
-      - slug: daemon-bindings
-        title: Daemonien yksityiset sidonnat
-        desc: Juuren hallitsema hakemistopolku ja käyttäjäkohtaiset käyttöoikeudet.
-      - slug: pi-runtime
-        title: Pi runtime binding
-        desc: Root-owned native Pi and Node installation selected for each mapped daemon.
-      - slug: conversation-data-flow
-        title: Keskustelun tiedon kulku
-        desc: Ehdotettu muistirakenne, tapahtumien reititys ja historian sivutus.
-      - slug: interfaces
-        title: Rajapinnat
-        desc: Yhteyksien merkitys ja vielä määriteltävä käyttäytyminen.
-      - slug: logging
-        title: Lokituksen ehdotus
-        desc: Turvallinen diagnostiikka ja Jarin päätettävät rajat.
-      - slug: evidence
-        title: Tutkimukset
-        desc: Aikaisempi näyttö, sen lähteet ja rajoitukset.
-
-  - label: Käyttöliittymä
-    members:
       - slug: ui
         title: Käyttökulut
         desc: Keskustelu, navigointi ja toiminta katkoissa.
       - slug: design-system
         title: Design system
         desc: Yhteinen perusta ja polku tuotantokomponentteihin.
+
+  - label: Architecture
+    members:
+      - slug: architecture/index
+        title: Overview
+        desc: The two principles, the three authorities and what runs where.
+      - slug: architecture/components
+        title: Components and authorities
+        desc: What each part owns and trusts, and where each fact comes from.
+      - slug: architecture/identity-and-trust
+        title: Identity and trust
+        desc: First login, provisioning, sessions, socket checks and revocation.
+      - slug: architecture/conversations
+        title: Conversations
+        desc: Identity, start, control, one writer, ending and continuation.
+      - slug: architecture/events-and-recovery
+        title: Events and recovery
+        desc: Snapshot, event journal, browser state, disconnection and restart.
+      - slug: architecture/workspaces
+        title: Workspaces
+        desc: Discovery under ~/src, metadata, GitHub onboarding and Pi sign-in.
+      - slug: architecture/http-api
+        title: HTTP API
+        desc: Routes, paging, receipts, errors and versioning.
+      - slug: architecture/deployment
+        title: Deployment
+        desc: Processes, sockets, files on disk and operator commands.
+
+  - label: Decisions
+    members:
+      - slug: decisions/index
+        title: Decision records
+        desc: Why the system is the way it is, one record per decision.
+      - slug: decisions/adr-0001-unix-native-agent-host
+        title: ADR 0001 — Unix-native host
+        desc: Native users, files and agents as the foundation.
+      - slug: decisions/adr-0002-frontend-stack
+        title: ADR 0002 — Frontend stack
+        desc: Browser client, state management, rendering and testing.
+      - slug: decisions/adr-0003-host-stack
+        title: ADR 0003 — Host stack
+        desc: Gateway, daemons, authentication and operation.
+      - slug: decisions/adr-0004-first-login-user-provisioning
+        title: ADR 0004 — First-login provisioning
+        desc: The root broker that creates a Unix account on first approved login.
+      - slug: decisions/adr-0005-clone-progress-stream
+        title: ADR 0005 — Clone progress stream
+        desc: Bounded per-request Git progress with native recovery.
+      - slug: decisions/adr-0006-subject-revocation
+        title: ADR 0006 — Subject revocation
+        desc: Root-only local control path for ending web sessions.
+      - slug: decisions/adr-0007-bound-user-deprovision
+        title: ADR 0007 — Bound user deprovision
+        desc: A later need; implementation open.
+      - slug: decisions/adr-0008-snappy-conversation-switching
+        title: ADR 0008 — Snappy conversation switching
+        desc: Bounded conversation memory and one event connection per tab.
+      - slug: decisions/adr-0009-conversation-state-ownership
+        title: ADR 0009 — Conversation state ownership
+        desc: Redux and the separate conversation store.

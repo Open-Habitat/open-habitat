@@ -38,7 +38,7 @@ make this service easier to maintain. The Rust probe established feasibility,
 but its added ownership complexity did not improve the chosen boundary.
 A Node host would add a JavaScript dependency tree to the host itself. The
 frontend is shipped as static assets; native Pi still needs its own
-[Node runtime](pi-runtime.md). Toolchain pins belong in the build configuration.
+[Node runtime](../architecture/identity-and-trust.md). Toolchain pins belong in the build configuration.
 OAuth/OIDC library choice is implementation judgment; the authentication behavior
 and security properties must be verified whichever implementation is used.
 
@@ -67,7 +67,7 @@ provider-token revocation is a separate action. Optional Google login establishe
 web identity only and makes no request before explicit user selection.
 
 Exact authentication, storage and routing requirements are in
-[interfaces](interfaces.md#identiteetti-ja-luottamusrajat).
+[interfaces](../architecture/identity-and-trust.md).
 
 ### Native work belongs to the user's daemon
 
@@ -88,7 +88,7 @@ After restart, native history remains the source. An ended browser conversation
 can be deliberately continued once its previous work is known to have ended.
 This does not require a per-conversation cgroup or a second persistent supervisor;
 stronger containment needs a concrete reason and a separate decision.
-[Agent control](../issues/build-agent-control/item.md) owns the implementation.
+[Agent control](../../issues/build-agent-control/item.md) owns the implementation.
 
 ### Restricted services and recoverable releases
 
@@ -96,9 +96,9 @@ Systemd runs the gateway without home access and each daemon with only its user'
 authority. Service restrictions, environment setup and authenticated socket paths
 enforce that separation. Public health is aggregate; detailed readiness is
 restricted. Logs exclude credentials and user content. The
-[service and diagnostic requirements](interfaces.md#palveluiden-rajoitukset-ja-diagnostiikka)
+[service and diagnostic requirements](../architecture/deployment.md)
 preserve the detailed protections; the operator CLI follows the
-[AI-first canon](../CONFORMANCE.md).
+[AI-first canon](../../CONFORMANCE.md).
 
 Ship the binary, static frontend and neutral service templates as a
 checksum-verified immutable release. Activation selects it atomically and keeps
@@ -106,7 +106,7 @@ a known-good predecessor for rollback. Native histories, credentials and user
 settings remain outside the release. The product owns portable packaging and
 generic self-hosting guidance; Fleetrepo owns the concrete test installation,
 secrets, ingress and deployment receipts.
-[Installation and recovery](../issues/prepare-mvp-operations/item.md) owns the
+[Installation and recovery](../../issues/prepare-mvp-operations/item.md) owns the
 procedures and their verification.
 
 ## Consequences and evidence
@@ -116,7 +116,7 @@ Native work survives browser loss, while daemon failure requires honest
 reconciliation against native history. GitHub scope breadth and credential
 storage remain visible trade-offs.
 
-The [Go experiment and original review evidence](../issues/apply-review-corrections/result.md)
+The [Go experiment and original review evidence](../../issues/apply-review-corrections/result.md)
 support the stack choice. Cross-user denial, authenticated credential handoff,
 native process behavior and release recovery must be demonstrated by the
 implementing issues. Synthetic, systemd-guest and live-host evidence have

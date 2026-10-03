@@ -3,11 +3,12 @@ created: 2026-10-03
 updated: 2026-10-03
 type: task
 reporter: jari
-status: open
+status: in-progress
 priority: normal
 related: ['@decide-logging-policy', '@create-architecture-project-view']
 labels: [docs]
 lane: architecture-docs
+assignee: claude
 ---
 
 # Rewrite the architecture documentation as a present-tense system description
@@ -65,3 +66,13 @@ Writing rules for the set:
 ## Decisions
 
 - 2026-10-03 Jari: rewrite rather than patch; English for the architecture set; Mermaid in Markdown. Glasspad's lack of Mermaid rendering is handled in Glasspad, not here.
+
+### 2026-10-03T19:33:10Z · @claude
+
+2026-10-03: the architecture set lives in docs/architecture/ and the records in docs/decisions/, as nested pages. Glasspad 0.18.5 scans only the top level of a space, so a hosted publish would show the four Finnish product pages and omit the architecture until Glasspad supports subdirectories; Jari is filing Glasspad issues (Mermaid rendering) and the subdirectory gap belongs with them. The repository layout is not flattened for the viewer.
+
+## Comments
+
+### 2026-10-03T19:33:10Z · @claude
+
+Rewrite done in one pass by one author. Verified against source while writing; corrections to the old pages included: the event ring is 1024 events / 16 MiB (not 128 / 1 MiB), sessions last 8 h idle / 24 h total, there is no Google login, no title generation, no annotation store and no general command API in the code, Cloudflare Access is an opt-in ingress check, and the daemon keeps at most 4 live Pi children. The unimplemented general contract moved to issues/build-agent-control/general-contract.md; logging.md to issues/decide-logging-policy/proposal.md; evidence.md to issues/native-agent-host-architecture/research-index.md; the October review to issues/architecture-built-on-caution/review-2026-10.md.
