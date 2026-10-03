@@ -680,3 +680,7 @@ latest-control-obscured käsitelty Jarin kanssa 3.10.2026 rethink-instructions-s
 ### 2026-10-03T05:44:00Z · @codex
 
 add-account-settings-ui tutkittu ja päivitetty 3.10.2026 Jarin pyynnöstä, lähderevisio 94b6b57. Tilivalikko, asetukset, teema ja selainuloskirjautuminen erotettu jo toteutetuksi. Profiilitiedot kuuluvat account-profile-from-github-issueen, v2-ulkoasu restore-v2-settings-issueen ja selaimen siivous browser-logout-cleanup-issueen. Asetuksista puuttuu edelleen designin OpenAI-yhteysrivi; olemassa oleva Pi-tilasopimus ei todista tilin identiteettiä tai toimivaa provider-pyyntöä. Vanha estetty irrotuspainike ja erilliset testi-/julkaisuportit poistettu tehtävävaatimuksista. Historiallinen tulos säilyy oman revisionsa näyttönä. Tuotekoodia, tilaa tai DAGia ei muutettu. Aiemman kokonaisuuden seuraava kohta on docs/ui.md ja ADR 0002, etenkin myöhempien päätösten sovitus.
+
+### 2026-10-03T05:52:02Z · @codex
+
+Jarin tekstipalaute 3.10.2026 sovitettu add-account-settings-ui-issueen: nykytila proosaksi tutkitun commitin kera; vanhentuneiden tulosten viitteet, läpikäynnin testiselostus, aiempien porttien historia, yleiset laatumuistutukset ja lupakieli pois. Jäljelle jäävät nykyinen toiminta, puuttuva OpenAI-yhteyden esitys ja työnjako profiili- sekä design-issueiden kanssa. Uloskirjautumisella on jo valmis browser-logout-cleanup-issue.

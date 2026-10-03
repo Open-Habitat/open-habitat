@@ -19,75 +19,39 @@ commits:
 ## Goal
 
 Give the person one understandable place to recognize their account, see their
-native GitHub and OpenAI connection state on this server, choose the appearance
-and sign out of the browser. Continue from the existing settings implementation
-and the later account-display and v2 design decisions.
+GitHub and OpenAI connection state on this server, choose the appearance and
+sign out of the browser.
 
 ## Current implementation
 
-Source inspection at `94b6b57` on 3 October 2026 found:
+At `94b6b57`, the account menu and settings page are implemented in
+`web/src/components/Account.tsx`, with navigation through `web/src/app/App.tsx`.
+The person can change the theme, see the native GitHub connection state and
+sign out. Settings shows an explanation of the native credentials remaining
+on the server after logout; there is no native disconnect action.
 
-- `web/src/components/Account.tsx` already supplies the account menu, settings,
-  shared theme controls and browser logout. `/settings`, return navigation and
-  focus handling are wired through `web/src/app/App.tsx`.
-- Settings shows the snapshot's native GitHub state, including partial and
-  unknown states. It explains that browser logout leaves native credentials in
-  place. There is no disconnect button or native disconnect endpoint; the old
-  requirement for a disabled button no longer describes the implementation.
-- Both `App.tsx` and `WorkspaceRailView.tsx` pass the literal “Oma tili”. The
-  account presentation has no email or real profile image, and the snapshot
-  contract has no person-facing profile fields.
-- The v2 handoff includes GitHub and OpenAI under “Yhteydet tällä palvelimella”,
-  but settings currently shows only GitHub. `web/tests/account-settings.spec.ts`
-  explicitly expects no OpenAI row. Pi's existing status contract reports
-  `usable`, `missing` or `unknown`; it does not identify an OpenAI account or
-  prove that the next provider request will succeed.
-- @browser-logout-cleanup now owns the implemented cleanup of conversation
-  stores, connections, pending reads and person-specific browser state during
-  logout and identity changes.
+The account still reads “Oma tili” in both the rail and settings. There is no
+email or profile image, and the snapshot contract carries no person-facing
+profile fields.
 
-The original [result](result.md) and [visual evidence](visual-acceptance.md)
-record the earlier slice. Its clean gate passed at `88c314c`; that report's
-reference to a disabled disconnect action is historical. This inspection did
-not rerun browser tests or establish visual acceptance of the current view.
+The v2 design includes GitHub and OpenAI under “Yhteydet tällä palvelimella”,
+but only GitHub is shown. Pi's status contract reports `usable`, `missing` or
+`unknown`. It supplies neither the OpenAI account identity nor the result of
+a live provider request. The settings browser test currently expects the
+OpenAI row to be absent.
 
-## Remaining work and ownership
+## Remaining work
 
-Complete the connection-settings behavior, including the missing OpenAI entry,
-using the native observations the host can actually supply. Explain unknown or
-missing state without inventing an account identity or treating saved credentials
-as a successful live provider call. Reuse the existing Pi onboarding path where
-sign-in is needed. The later decision in @pilot14-session-revalidation-loop
-removed repeated Pi credential checks from normal workspace and history access;
-showing settings does not reinstate that gate.
+Add the OpenAI connection entry using the available native status, with a clear
+presentation when credentials are missing or their state is unknown. Use the
+existing Pi onboarding path for sign-in. Update the settings test to cover the
+new entry.
 
-@account-profile-from-github owns the profile data flow and common account
-presentation: first name in the compact view, email in the opened view, GitHub
-profile image and onboarding fallback for missing details. This follows
-@decide-account-display. Consume that shared presentation here rather than
-creating another source of profile data.
+Use the shared account presentation from @account-profile-from-github: first
+name in the compact view, email in the opened view, GitHub profile image and
+onboarding fallback for missing details.
 
-@restore-v2-settings owns the settings layout and updated design comparisons;
-@restore-v2-navigation owns the rail. Coordinate the functional settings work
-with those issues so the same production components serve both. Phone layouts
-are included in the agreed v2 scope.
-
-Browser logout, native credential removal and Unix-account deletion have
-different effects. This work uses the existing browser logout behavior. The old
-disabled-control requirement does not authorize implementing native disconnect
-or prescribe a fresh-authentication mechanism for it; a real credential-removal
-feature needs its own agreed behavior and host support.
-
-## Completion
-
-The person can recognize their account through the shared profile presentation,
-understand the supported GitHub and OpenAI connection observations, change the
-theme and sign out through the existing browser-session action. Navigation,
-keyboard focus and unavailable-state handling remain usable. The linked issues
-own profile implementation and visual fitting; this issue records the remaining
-connection behavior and the combined account-settings result.
-
-Update the relevant component/browser coverage, including the assertion that
-OpenAI is absent, and leave current visual evidence under the repository's UI
-workflow. Use `TESTING.md` for validation. Earlier synthetic results are evidence
-of those revisions, not acceptance of today's appearance or live integrations.
+@restore-v2-settings owns the settings layout and design comparisons;
+@restore-v2-navigation owns the rail. Coordinate the connection entry and shared
+profile presentation with that work. Browser logout is covered by the completed
+@browser-logout-cleanup issue.
