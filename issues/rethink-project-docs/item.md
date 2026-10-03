@@ -65,7 +65,7 @@ riippuvuudet ovat edelleen issuectl:n DAGissa.
    add-account-settings-ui-issuen kanssa. Täsmennetään vertailukuvien päivityksen
    tarkoitus tämän kokonaisuuden lopputuloksen osoittamisessa.
 
-**Seuraava käsiteltävä issue: design-pi-event-blocks.** `unify-ui-primitives`in
+**Seuraava käsiteltävä issue: account-profile-from-github.** `unify-ui-primitives`in
 teksti selvennetty 3.10.2026: yhteisten kontrollien vastuu ja sovittu React Aria
 -pohja säilyvät, toteutusdetaljit jätetään toteuttajalle. Ensimmäisen vaiheen
 näyttö koskee siirrettyjä kontrolleja; loppujen siirto ja koko UI:n kattavuus
@@ -95,6 +95,15 @@ Näkyvyys- ja tietorajaukset perusteltu, nykyinen sivutus ja nopea paluu säilyv
 Luettava esitys kuuluu tähän työhön, lopullinen design seuraavaan issueen.
 Kysymysten näyttäminen säilyy aiemman päätöksen mukaisesti; uusia kysymys- tai
 komento-ohjaimia ei johdeta tiedonkulkutyöstä.
+
+`design-pi-event-blocks`in teksti selvennetty 3.10.2026: designer suunnittelee
+jokaisen näkyvän lohkon ja sen merkitykselliset tilat Pi:n tyypitetyn sisällön
+pohjalta. Katalogin ryhmät ovat suunnitteluaineistoa; esitystavat jäävät
+designerille. Kysymysten näyttämisen rajaus, sisällön näkyvyysperiaatteet sekä
+löydettävä lohkokirjasto säilyvät. Jari vahvisti, että meillä on vain design:
+palautus päivittää yhteistä design.md:tä ja drafts/-vedoksia. Erillinen v3-polku
+poistettu. Toteutus ja katalogiesimerkit kuuluvat palautuksesta kirjattavaan
+jatkotyöhön.
 
 Pi-tapahtumakatalogi käyty läpi 3.10.2026 Jarin pyynnöstä ennen
 `design-pi-event-blocks`-issuea. `catalog-pi-events/analysis.md` selittää
