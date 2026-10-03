@@ -170,7 +170,7 @@ func (j *eventJournal) appendTailLocked(agent string, t *turnTail, kind string, 
 		return
 	}
 	frame := j.frames[len(j.frames)-1]
-	if len(frame) > 8192 || t.bytes+len(frame) > 128<<10 || len(t.frames) == 128 {
+	if len(frame) > 16<<10 || t.bytes+len(frame) > 128<<10 || len(t.frames) == 128 {
 		t.overflow = true
 		t.frames = nil
 		t.bytes = 0
@@ -187,6 +187,9 @@ func (j *eventJournal) delta(agent, kind, text string, index int) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	t := j.tail(agent)
+	if t.overflow {
+		return
+	}
 	if len(text) > 4096 {
 		t.overflow = true
 		t.frames = nil

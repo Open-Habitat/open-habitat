@@ -357,6 +357,63 @@ describe("recent conversation windows", () => {
     expect(store.read(agent)?.entries[0].content.text).toBe("saved");
     expect(store.read(agent)?.live?.fragments).toHaveLength(0);
   });
+  it("does not let an earlier settlement clear a newer turn when status refresh fails", async () => {
+    const agent = id(1);
+    const pager = {
+      tail: vi.fn().mockResolvedValue(page(agent, ["previous"])),
+      older: vi.fn(),
+      reconnect: vi.fn(),
+      cancelAll: vi.fn(),
+    } as unknown as ConversationPager;
+    const store = new ConversationStore("person", pager, 50, async () => {
+      throw new Error("status unavailable");
+    });
+    store.view(agent);
+    await flush();
+    store.applyStatus(agent, {
+      agent_id: agent,
+      turn_settled: { native_key: "previous", state: "settled" },
+    } as never);
+    const instance = "11111111-1111-4111-8111-111111111111";
+    store.setLive(agent, {
+      cursor: `ev1:${instance}:0`,
+      instance,
+      sequence: 0,
+      fragments: [],
+      truncated: false,
+    });
+    const frame = (
+      sequence: number,
+      kind: string,
+      payload: Record<string, unknown>,
+    ) => ({
+      resource: { agent_id: agent },
+      kind,
+      payload,
+      cursor: `ev1:${instance}:${sequence}`,
+      server_instance_id: instance,
+      sequence,
+      event_id: `evt_abcdefgh${sequence}`,
+    });
+    store.routeEvent(
+      frame(1, "command.changed", { state: "pending" }) as never,
+      agent,
+    );
+    expect(store.statusStale(agent)).toBe(true);
+    store.routeEvent(
+      frame(2, "assistant.delta", {
+        text: "new turn",
+        content_index: 0,
+      }) as never,
+      agent,
+    );
+    store.applyPage(agent, page(agent, ["previous", "current"]), "reconnect");
+    expect(
+      store
+        .read(agent)
+        ?.live?.fragments.some((event) => event.kind === "assistant.delta"),
+    ).toBe(true);
+  });
   it("a journal gap retains the last window but marks it stale", async () => {
     const { store, finish } = setup();
     store.view(id(1));

@@ -111,6 +111,39 @@ func TestCumulativeToolProgressKeepsBoundedTail(t *testing.T) {
 	}
 }
 
+func TestOversizeLocalOutputInvalidatesOnlyOnce(t *testing.T) {
+	j := newEventJournal()
+	agent := "pi:11111111-1111-4111-8111-111111111111"
+	for range 5 {
+		j.delta(agent, "bash.output", strings.Repeat("x", 5000), 0)
+	}
+	count := 0
+	for _, frame := range j.frames {
+		if strings.Contains(string(frame), `"reason":"ring_truncated"`) {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("oversize chunks produced %d invalidations, want 1", count)
+	}
+}
+
+func TestLargeToolArgumentsAndOutputFitLiveTail(t *testing.T) {
+	j := newEventJournal()
+	c := &ConversationController{journal: j}
+	agent := "pi:11111111-1111-4111-8111-111111111111"
+	raw, _ := json.Marshal(map[string]any{
+		"type": "tool_execution_end", "toolCallId": "call1", "toolName": "bash",
+		"args":   map[string]any{"command": strings.Repeat("a", 3900)},
+		"result": map[string]any{"content": []map[string]string{{"type": "text", "text": strings.Repeat("b", 3900)}}},
+	})
+	c.publishDelta(agent, raw)
+	_, _, _, tails := j.turnView()
+	if tails[agent].overflow || !strings.Contains(joinTail(tails[agent].frames), "tool.finished") {
+		t.Fatalf("bounded tool fields exhausted the tail: overflow=%v", tails[agent].overflow)
+	}
+}
+
 func TestSavedResultSupersedesOnlyItsLiveCall(t *testing.T) {
 	j := newEventJournal()
 	agent := "pi:11111111-1111-4111-8111-111111111111"

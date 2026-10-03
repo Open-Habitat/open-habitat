@@ -202,7 +202,8 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	// host writes this switch in its disposable root, not the real user's home.
 	mode, _ := os.ReadFile(filepath.Join(filepath.Dir(os.Getenv("HOME")), "fakepi-scenario"))
 	visualHold := strings.TrimSpace(string(mode)) == "pi-visual-hold"
-	stream := strings.TrimSpace(string(mode)) == "pi-deltas" || visualHold
+	typed := strings.TrimSpace(string(mode)) == "pi-typed"
+	stream := strings.TrimSpace(string(mode)) == "pi-deltas" || typed || visualHold
 	callID := "call_1"
 	if stream {
 		var raw [4]byte
@@ -215,6 +216,10 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	s.append(message("user", []map[string]any{{"type": "text", "text": prompt}}, nil))
 	emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "user"}})
 	time.Sleep(step)
+	if typed {
+		emit(map[string]any{"type": "message_update", "assistantMessageEvent": map[string]any{"type": "thinking_delta", "contentIndex": 1, "delta": "Synteettinen pohdinta", "partial": map[string]any{"content": []map[string]any{{"type": "text"}, {"type": "thinking", "redacted": false}}}}})
+		emit(map[string]any{"type": "message_update", "assistantMessageEvent": map[string]any{"type": "toolcall_delta", "contentIndex": 2, "delta": "{\"command\":\"ls\""}})
+	}
 	if stream {
 		delta("Katson ensin, ")
 		time.Sleep(step)
@@ -233,10 +238,12 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 		start["args"] = map[string]any{"command": "ls"}
 	}
 	emit(start)
-	s.append(message("assistant", []map[string]any{
-		{"type": "text", "text": "Katson ensin, mitä työtilassa on."},
-		{"type": "toolCall", "id": callID, "name": "bash", "arguments": map[string]any{"command": "ls"}},
-	}, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "toolUse"}))
+	content := []map[string]any{{"type": "text", "text": "Katson ensin, mitä työtilassa on."}}
+	if typed {
+		content = append(content, map[string]any{"type": "thinking", "thinking": "Synteettinen pohdinta"})
+	}
+	content = append(content, map[string]any{"type": "toolCall", "id": callID, "name": "bash", "arguments": map[string]any{"command": "ls"}})
+	s.append(message("assistant", content, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "toolUse"}))
 	if visualHold {
 		// Hold before the tool result so the lab can capture the live row.
 		_ = os.WriteFile(filepath.Join(filepath.Dir(os.Getenv("HOME")), "fakepi-visual-phase"), []byte("tool-start"), 0600)

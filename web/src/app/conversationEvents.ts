@@ -228,7 +228,7 @@ export function provisionalItems(turn: LiveTurn) {
       if (position === undefined) {
         calls.set(index, items.length);
         items.push({
-          id: `live-call-${index}`,
+          id: `live-call-${event.event_id}`,
           kind: "tool",
           text: "Työkalukutsu",
           index,

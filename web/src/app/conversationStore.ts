@@ -418,7 +418,11 @@ export class ConversationStore {
       mode === "older" || !contiguous
         ? page.next_before
         : (old.next ?? page.next_before);
-    const settledKey = this.metadata.statuses.get(id)?.turn_settled?.native_key;
+    // A cached settlement from an earlier turn cannot supersede newer live
+    // fragments while its status is awaiting a fresh observation.
+    const settledKey = this.statusStale(id)
+      ? undefined
+      : this.metadata.statuses.get(id)?.turn_settled?.native_key;
     const live =
       old.live &&
       settledKey &&
@@ -489,6 +493,12 @@ export class ConversationStore {
       for (const id of this.metadata.statuses.keys())
         if (id !== activeId) this.notifyStatus(id);
     if (
+      event.resource.agent_id &&
+      event.kind === "command.changed" &&
+      event.payload.state === "pending"
+    )
+      this.notifyStatus(event.resource.agent_id);
+    else if (
       event.resource.agent_id &&
       event.resource.agent_id !== activeId &&
       [

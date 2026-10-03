@@ -357,6 +357,8 @@ it("coalesces cumulative tool output snapshots without exhausting the browser ta
       .filter((item) => item.kind === "tool")
       .map((item) => item.name),
   ).toEqual(["bash", "read", "write"]);
+  const ids = provisionalItems(turn).map((item) => item.id);
+  expect(new Set(ids).size).toBe(ids.length);
 });
 
 it("replaces provisional local output with saved command history", () => {

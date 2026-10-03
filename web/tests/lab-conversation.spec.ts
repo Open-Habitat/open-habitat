@@ -100,6 +100,81 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   ).toBe(true);
 });
 
+test("@lab typed Pi fragments converge to saved blocks across paging, reconnect and warm return", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  expect(
+    (await page.request.get("/fixture/scenario?value=pi-typed")).status(),
+  ).toBe(204);
+  try {
+    await page.goto("/workspaces");
+    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+    await page.getByRole("link", { name: "Alice" }).click();
+    await page
+      .getByRole("navigation")
+      .getByRole("link", { name: "aurinkokello" })
+      .click();
+    await page
+      .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+      .click();
+    const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+    await editor.fill("hidas typed-journey");
+    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+    await expect(page.getByText("Synteettinen pohdinta")).toBeVisible({
+      timeout: 20000,
+    });
+    await expect(page.locator(".ah-live-tool-row")).toHaveCount(1, {
+      timeout: 20000,
+    });
+    await expect(
+      page.getByText('Selvä. Kysyit: "hidas typed-journey".', { exact: false }),
+    ).toBeVisible({ timeout: 30000 });
+    await expect(page.locator(".ah-live-tool-row")).toHaveCount(0, {
+      timeout: 30000,
+    });
+    await expect(page.getByText("Synteettinen pohdinta")).toHaveCount(1);
+    let gapInjected = false;
+    let recoveryReads = 0;
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname === "/api/v1/snapshot")
+        recoveryReads++;
+    });
+    await page.route("**/api/v1/events?after=*", async (route) => {
+      if (gapInjected) return route.continue();
+      gapInjected = true;
+      const after =
+        new URL(route.request().url()).searchParams.get("after") ?? "";
+      const match = /^ev1:([0-9a-f-]{36}):(\d+)$/.exec(after);
+      if (!match) throw new Error("missing cursor");
+      const sequence = Number(match[2]) + 2;
+      const cursor = `ev1:${match[1]}:${sequence}`;
+      await route.fulfill({
+        status: 200,
+        contentType: "text/event-stream",
+        body: `id: ${cursor}\nevent: assistant.thinking.delta\ndata: ${JSON.stringify({ schema_version: 1, event_id: "evt_abcdefgh12345", cursor, server_instance_id: match[1], sequence, emitted_at: "2026-09-30T20:00:00Z", kind: "assistant.thinking.delta", resource: { agent_id: new URL(page.url()).searchParams.get("conversation") }, payload: { text: "must not appear", content_index: 1 } })}\n\n`,
+      });
+    });
+    await page.reload();
+    await expect.poll(() => gapInjected).toBe(true);
+    await expect.poll(() => recoveryReads).toBeGreaterThan(1);
+    await expect(page.getByText("must not appear")).toHaveCount(0);
+    await expect(page.getByText("Synteettinen pohdinta")).toHaveCount(1);
+    await expect(page.locator(".ah-live-tool-row")).toHaveCount(0);
+    const conversation = page.url();
+    await page
+      .getByRole("navigation")
+      .getByRole("link", { name: "aurinkokello" })
+      .click();
+    await page.goto(conversation);
+    await expect(page.getByText("Synteettinen pohdinta")).toHaveCount(1);
+    await expect(page.locator(".ah-live-tool-row")).toHaveCount(0);
+  } finally {
+    expect(
+      (await page.request.get("/fixture/scenario?value=ready")).status(),
+    ).toBe(204);
+  }
+});
 test("@lab browser renders provisional delta and tool from verified combined SSE frames", async ({
   page,
 }) => {
