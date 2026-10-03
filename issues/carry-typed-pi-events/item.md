@@ -5,6 +5,8 @@ type: feature
 reporter: jari
 status: open
 priority: high
+lane: client-history
+lane_seq: 60
 ---
 
 # Carry Pi's typed events and history to the browser

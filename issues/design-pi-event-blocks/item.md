@@ -7,6 +7,8 @@ status: open
 priority: high
 related: ['@design-control-states']
 blocked_by: ['@design-control-states']
+lane: pi-event-design
+lane_seq: 10
 ---
 
 # Design every Pi event block
