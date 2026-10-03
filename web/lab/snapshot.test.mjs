@@ -4,9 +4,19 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { chromium } from "@playwright/test";
+import { chromium, request } from "@playwright/test";
 import { openLab, origin, snapshot } from "./session.mjs";
 const dir = await mkdtemp(join(tmpdir(), "nah-static-snapshot-"));
+const reset = await request.newContext({ ignoreHTTPSErrors: true });
+try {
+  assert.equal((await reset.get(`${origin}/fixture/lab-marker`)).status(), 204);
+  assert.equal(
+    (await reset.get(`${origin}/fixture/scenario?value=ready`)).status(),
+    204,
+  );
+} finally {
+  await reset.dispose();
+}
 const { browser, page } = await openLab();
 try {
   await page.goto(`${origin}/workspaces`);
@@ -16,7 +26,7 @@ try {
   const fragment = await readFile(join(dir, "fragment.html"), "utf8");
   assert.doesNotMatch(fragment, /<script\b|\bon\w+=/i);
   assert.match(fragment, /<main\b/);
-  assert.doesNotMatch(fragment, /<nav\b/);
+  assert.match(fragment, /aria-hidden="true"/);
   const html = await readFile(join(dir, "sample.html"), "utf8");
   assert.doesNotMatch(html, /<script\b|\bon\w+=/i);
   assert.doesNotMatch(html.replace(/>[^<]*</g, "><"), /https?:\/\//i);
@@ -95,9 +105,16 @@ try {
     const fragmentPng = await readFile(join(dir, "fragment.png"));
     const offlineFragmentPng = await view.locator("main").screenshot();
     assert.equal(
-      fragmentPng.subarray(0, 8).toString("hex"),
-      offlineFragmentPng.subarray(0, 8).toString("hex"),
+      fragmentPng.readUInt32BE(16),
+      offlineFragmentPng.readUInt32BE(16),
+      "fragment width changed offline",
     );
+    assert.equal(
+      fragmentPng.readUInt32BE(20),
+      offlineFragmentPng.readUInt32BE(20),
+      "fragment height changed offline",
+    );
+    assert.equal(await view.locator("nav a").count(), 0);
     await context.close();
   } finally {
     await offline.close();

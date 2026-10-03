@@ -151,7 +151,12 @@ export async function snapshot(page, outBase, { html = true, region } = {}) {
       }
       if (dst.hasAttribute("srcset")) dst.removeAttribute("srcset"); // src is already embedded.
     }
-    for (const node of omit) copies[live.indexOf(node)].remove();
+    for (const node of omit) {
+      const placeholder = copies[live.indexOf(node)];
+      placeholder.replaceChildren();
+      placeholder.setAttribute("aria-hidden", "true");
+      placeholder.style.visibility = "hidden";
+    }
     for (const element of [...root.querySelectorAll("*")]) {
       if (
         [
