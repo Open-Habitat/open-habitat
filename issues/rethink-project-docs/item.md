@@ -65,7 +65,7 @@ riippuvuudet ovat edelleen issuectl:n DAGissa.
    add-account-settings-ui-issuen kanssa. Täsmennetään vertailukuvien päivityksen
    tarkoitus tämän kokonaisuuden lopputuloksen osoittamisessa.
 
-**Seuraava käsiteltävä issue: design-control-states.** `unify-ui-primitives`in
+**Seuraava käsiteltävä issue: carry-typed-pi-events.** `unify-ui-primitives`in
 teksti selvennetty 3.10.2026: yhteisten kontrollien vastuu ja sovittu React Aria
 -pohja säilyvät, toteutusdetaljit jätetään toteuttajalle. Ensimmäisen vaiheen
 näyttö koskee siirrettyjä kontrolleja; loppujen siirto ja koko UI:n kattavuus
@@ -79,6 +79,13 @@ suunnittelee esityksen `design-control-states`-kierroksella; yhteinen toteutus
 kuuluu `apply-control-state-design`-issueen. Tilaluettelo ja visuaalinen muoto
 jäävät suunnittelutyön ratkaistaviksi. Erillinen Decisions-osio poistettu Jarin
 palautteen perusteella: voimassa oleva sisältö on varsinaisessa tehtävätekstissä.
+
+`design-control-states`in teksti selvennetty 3.10.2026: designerille viedään
+valmiin komponenttipohjan todelliset kontrollit ja niiden käytökseen sopivat
+tilat molemmissa teemoissa sekä `refine-agent-status`in merkitykset ja esimerkit.
+Kiinteä komponenttinimilista poistettu. Pysyvä tilasääntö kuuluu design-package
+-ohjeeseen; erillistä pyyntöpohjaa ei oleteta. Palautettu design sovitetaan yhteen
+nykyiseen designiin, ja toteutus kuuluu `apply-control-state-design`-issueen.
 
 Nämä ovat tekstien läpikäyntejä. Toteutuksen tila ja DAG eivät muutu.
 Aiemman kokonaisuuden jäljellä oleviin dokumentteihin palataan tämän kierroksen

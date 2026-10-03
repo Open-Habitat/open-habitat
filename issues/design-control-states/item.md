@@ -13,40 +13,55 @@ blocked_by: ['@unify-ui-primitives']
 
 # Design the interaction states of every primitive
 
-## Why
+## Purpose
 
-The v2 handoff specifies focus and the disabled state but no hover, pressed
-or selected state, and the draft HTML's only hover rule is `a:hover { color }`.
-Implementers invented states ad hoc, which is one root cause in
-[the investigation](../consistent-control-feedback/investigation.md). Jari
-decided on 3 October 2026 that the designer designs the states of every
-primitive once, and that every future design package carries a standing rule
-that anything a person can point at, press or reach by keyboard is designed in
-all of its states.
+Shared controls should give recognisable feedback wherever they appear. The
+[investigation](../consistent-control-feedback/investigation.md) found that
+missing interaction-state designs had left implementers inventing appearances
+view by view. Jari chose a shared design round on 3 October 2026: the designer
+specifies the controls' states and the visual language for agent states together.
 
-## Work
+## Design work
 
-Prepare a design package with the repository's `design-package` skill after
-@unify-ui-primitives has landed, so the designer sees the real primitives:
+Prepare the round with the repository's `design-package` skill using the shared
+controls established by @unify-ui-primitives and completed by
+@migrate-bespoke-controls. Inventory the actual controls, their variants and
+relevant states from the implemented catalog, with current captures in both
+light and dark themes. Identify provisional design values so the designer can
+see what still needs a deliberate choice.
 
-- Inventory: each primitive (`Button` variants and sizes, `IconButton`,
-  `LinkRow` variants, `MenuItem`, `Toggle`, `Field`, `StatusMark`) with its
-  states rest, hover, pressed, keyboard focus, selected/current, disabled with
-  reason, pending; light and dark; current lab captures of each as the
-  comparison point; the provisional colour values marked as such.
-- The standing rule for all future rounds, written once into the package
-  request template so it is present in every later package without being
-  remembered.
-- Agent states (@refine-agent-status) go to the designer in this same package
-  as the `StatusMark` chapter: which user-facing states exist, their meaning,
-  and one visual language across sidebar, header and conversation.
+Cover rest, hover, pressed, keyboard focus, selected or current, disabled and
+pending where they apply to the control's behavior. The design should make the
+control's availability and response understandable, including why an action is
+unavailable when that matters to the person. Each control needs its meaningful
+states designed; the inventory explains which apply instead of requiring the
+same set for every control.
 
-Jari runs the design round. The returned drafts and handoff go to
-`design-system/drafts/` as the next version and are applied in
-@apply-control-state-design. @design-pi-event-blocks waits for this round so
-that block designs use the agreed primitives instead of inventing controls.
+Include the meanings and examples prepared in @refine-agent-status. The designer
+uses them to develop one recognisable presentation across the agent list,
+sidebar and conversation, including compact uses. Agent activity and attention
+are distinct from a control's interaction states; designing them in the same
+round makes their appearances work together.
+
+Make state coverage part of the maintained design-package instructions, so
+future requests carry the same expectation: anything a person can point at,
+press or reach by keyboard has its relevant interaction states designed.
+The current skill owns how the brief is written; the rule belongs there rather
+than depending on someone remembering it for each round.
+
+## Delivery
+
+Jari conducts the design round. Deliver the package and keep its brief in this
+issue. Reconcile the returned handoff with the current design in
+`design-system/design.md` and its drafts in `design-system/drafts/`, so there is
+one current design to implement. Earlier versions remain in Git history.
+
+@apply-control-state-design implements the resulting control and agent-state
+presentation. @design-pi-event-blocks uses these shared controls when designing
+the conversation blocks.
 
 ## Acceptance Criteria
 
-- [ ] Package delivered with the inventory, captures, provisional values and the standing states rule; the brief kept in this issue folder.
-- [ ] Designer's answer covers every primitive and state in both themes, and the agent-state chapter.
+- [ ] The delivered package shows the actual shared controls, relevant states and provisional values in both themes, together with the agent-state meanings and examples; its brief is kept in this issue.
+- [ ] The designer's handoff covers those states and a shared agent-state presentation, and is incorporated into the current design sources.
+- [ ] The maintained design-package instructions carry the state-coverage requirement into future rounds.
