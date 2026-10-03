@@ -153,7 +153,14 @@ export async function snapshot(page, outBase, { html = true, region } = {}) {
     }
     for (const node of omit) {
       const placeholder = copies[live.indexOf(node)];
+      // The shell uses :has(.ah-rail) to switch its main-column sizing.
+      // Keep an empty rail as a layout anchor, not its captured content.
+      const rail = placeholder.querySelector(".ah-rail");
       placeholder.replaceChildren();
+      if (rail) {
+        rail.replaceChildren();
+        placeholder.append(rail);
+      }
       placeholder.setAttribute("aria-hidden", "true");
       placeholder.style.visibility = "hidden";
     }
