@@ -26,6 +26,18 @@ esitetään selkeästi tekstin asianomaisessa kohdassa. Erillistä Decisions-osi
 ei säilytetä saman sisällön toistona tai läpikäyntien lokina; aiemmat versiot
 löytyvät Git-historiasta.
 
+## Lokituskäytännön tehtävä 3.10.2026
+
+`decide-logging-policy` käsitelty rethink-instructions-taidolla. Jari hyväksyi
+tehtävän avaamisen nykyisiin tarpeisiin ja puutteisiin sekä jäljitettävyyden
+tavoitteeksi. Aiempi `design-logging-policy`-ehdotus on tausta-aineistoa;
+sen tapahtumasanasto, tunnistekiellot ja korrelaatioprotokolla eivät ole sovittuja
+vaatimuksia. Teksti huomioi jo toteutetun broker-virheiden luokittelun.
+Suunnittelu perustelee tarvittavat tapahtumat, toimijoiden tunnistamisen,
+suojaamisen ja säilytyksen; arkkitehtuurivalinnat ratkaistaan Jarin kanssa.
+Ehdotuksen siirto kuuluu edelleen `rewrite-architecture-docs`-issueen.
+Tämä muutos selventää tehtävää; toteutusta, issueiden tilaa tai DAGia ei muutettu.
+
 ## Käyttöönotot, integraatiot ja ylläpito-CLI 3.10.2026
 
 Jari valitsi järjestyksen: `evaluate-northwind-adoption`,
