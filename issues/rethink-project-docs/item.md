@@ -104,6 +104,16 @@ alkuperäinen selainvertailu on päivätty `browser-observations.md`:hen.
 Design-ehdotukset erotettu Pi:n tyypeistä ja sovitetuista ohjausrajauksista.
 Tallennetun `custom`-tilan ja näkyvän custom-viestin ero selvennetty.
 
+`build-agent-control` käsitelty uudelleen 3.10.2026 Jarin pyynnöstä.
+V1-otsikko ja vanhan yövuoron kommentti poistettu. SSE ja päättyneen
+selainkeskustelun jatkaminen kuvattu toteutettuina polkuina; jäljellä on
+kokonaisen oikean Pi:n selainkäyttökulun todentaminen synteettisellä providerilla
+ja löytyvien puutteiden korjaaminen. Asennetun palvelimen ja oikeiden tilien
+näyttö kuuluu `verify-live-pi-journey`-issueen. Aiemmat omistajuus-, epävarmuus-
+ja kysymysohjauksen rajaukset säilyvät. Selaimen nykyiset komponentti- ja
+sovellushakemistot palautettu törmäysmerkintöihin yövuoron tilapäisen rajauksen
+tilalle; tila ja jonojärjestys säilyvät.
+
 Nämä ovat tekstien läpikäyntejä. Toteutuksen tila ja DAG eivät muutu.
 Aiemman kokonaisuuden jäljellä oleviin dokumentteihin palataan tämän kierroksen
 jälkeen; ne säilyvät alla jatkamista varten.

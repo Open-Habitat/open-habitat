@@ -1,13 +1,13 @@
 ---
 created: 2026-09-20
-updated: 2026-09-30
+updated: 2026-10-03
 type: task
 status: in-progress
 priority: normal
 epic: native-agent-host-architecture
 lane: agent-control
 lane_seq: 50
-collision: [AGENTS.md, internal/daemon/, docs/interfaces.md, internal/gateway/, contracts/v1/]
+collision: [AGENTS.md, internal/daemon/, docs/interfaces.md, internal/gateway/, contracts/v1/, web/src/app/, web/src/components/]
 commits:
 - hash: de00aba1219f6af692f54fb6646db88a6577dad3
   summary: Mark agent control in progress
@@ -19,64 +19,73 @@ commits:
   summary: Restore rootless Pi controller fixture activation and record scope
 ---
 
-# Connect v1 conversation controls to Pi
+# Complete native Pi conversation control
 
-The target is that a user can start a Pi conversation in a workspace, send a
-message, follow text and tool activity live, interrupt work and return after a
-browser disconnect.
-They can deliberately continue an ended browser conversation with its native
-history.
+## Purpose
 
-The mapped user's daemon owns the Pi process. Pi runs tools, uses its native
-configuration and writes its history; the host does not need a second history
-store. The agreed interface uses HTTP for browser commands and Server-Sent
-Events (SSE) for live updates. Closing the browser leaves Pi running. A slow
-connection or a returning browser recovers current state and native history without losing track
-of work. Drafts, editor focus and reading position survive updates and session
-revalidation.
+A person can start a Pi conversation in a workspace, send a message, follow the
+response and tool activity, interrupt a turn and return after a browser
+disconnect. They can deliberately continue an ended browser conversation using
+its native history. These actions should form one working experience, with an
+understandable outcome even when a connection fails.
 
-Sending needs an understandable outcome: pending, accepted, rejected or uncertain.
-An uncertain send is not repeated automatically because the first one may have
-reached Pi. Interruption likewise shows its actual result or remaining
-uncertainty. The daemon owns its direct Pi child and systemd handles service
-cleanup, but a detached tool can outlive an interrupted turn. That limit matters
-when deciding whether work has stopped and another writer can safely start.
-A per-conversation supervisor is outside the agreed scope.
+The person's daemon runs Pi as their Unix user. Pi uses that user's native
+configuration and writes its own history. Browser commands use HTTP and live
+updates use the shared SSE stream. Closing the browser leaves Pi running;
+returning recovers current state and history while preserving drafts, focus
+and reading position.
 
-Browser conversations have one writer in both test and production use. Existing
-terminal histories are read-only; coordinating simultaneous browser and terminal
-writers is outside this task. After a daemon restart, readable history does not
-by itself mean that control is available. Each authenticated user can access
-only their own history and control only their own conversations.
+## Command outcomes and ownership
 
-Incoming questions and unfamiliar content reach the browser at least as safe
-text, so unsupported presentation does not hide what the agent said or asked.
-Pi-specific answer and cancel dialog controls are outside the agreed scope.
-@complete-conversation-ui owns rich presentation and queue controls; the
-[implementation map](../plan-v1-implementation/implementation-briefs.md)
-assigns the related contract scenarios.
+Sending distinguishes pending, accepted, rejected and uncertain outcomes.
+An uncertain send is not repeated automatically because it may already have
+reached Pi. Interruption and continuation likewise show their actual outcome
+or remaining uncertainty. Continuing a conversation does not establish how an
+earlier uncertain command ended.
 
-Build on the existing daemon controller, gateway routes and production browser
-components. The current browser polls conversation status over HTTP; SSE and
-continuation of ended browser conversations are not implemented yet.
-[result.md](result.md) records earlier implementation slices and
-their evidence, not a current task list. Completion includes SSE, deliberate
-continuation of ended browser conversations, and a demonstrated browser journey
-against real Pi covering send, live response, interruption, ended-conversation
-continuation and disconnect/reconnect.
-[TESTING.md](../../TESTING.md) distinguishes browser behavior, real Pi with a
-synthetic provider, real provider use and Unix-user isolation; the result should
-make clear which of those the demonstration establishes.
+The daemon admits one browser writer to a conversation. Existing terminal
+histories remain read-only; taking over a terminal session or coordinating
+simultaneous terminal and browser writers is outside this work. After a daemon
+restart, readable history alone does not establish control: continuation needs
+the browser-origin and ownership checks described in the
+[interface specification](../../docs/interfaces.md). Each person can read and
+control only their own conversations.
 
-The [interface specification](../../docs/interfaces.md) describes the agreed
-contract. Buffering and limits serve observed responsiveness and recovery needs.
-[visual-acceptance.md](visual-acceptance.md) holds synthetic browser screenshots
-and Jari's visual feedback. Jari makes the appearance decision after reviewing
-those screenshots; a pending verdict does not block functional work or
-independent tasks.
+The daemon owns its direct Pi child and systemd handles service cleanup.
+A detached tool can outlive an interrupted turn, so interruption does not promise
+that every tool process has stopped. A separate per-conversation supervisor is
+outside the agreed architecture.
 
-## Comments
+## Current implementation and remaining work
 
-### 2026-09-30T17:24:12Z · @claude
+The implementation already has create, send and interrupt paths, a shared
+snapshot/SSE journal, and explicit continuation of ended browser conversations
+in both the daemon and browser. [Earlier implementation results](result.md)
+record the slices and their evidence. [The shared browser stream result](../one-browser-event-stream/result.md)
+records the later replay and recovery work; its browser evidence is synthetic.
+The existence of these paths does not establish the complete real-Pi journey.
 
-2026-09-30 night:rest: collision narrowed for the daemon/gateway/contract slice of the two-conductor night (issues/night-2026-09-30/plan.md). Browser work (Conversation.tsx, design-system/) belongs to night:ui; re-add those tokens before scheduling browser work under this issue.
+Complete and demonstrate the rendered browser journey against the pinned real
+Pi with a synthetic provider: create, send, live response and tool activity,
+interrupt, reconnect without duplicate submission, and end, deliberately
+continue and send again using the same native history. Repair gaps found across
+the daemon, contracts and browser. Distinguish recovered state from an uncertain
+prior outcome, and verify that read-only terminal history stays read-only.
+
+[TESTING.md](../../TESTING.md) defines the checks and what each proves. Record
+the tested revision, outcomes and remaining gaps in the result. Installed-host
+and real-account acceptance belong to @verify-live-pi-journey, which uses this
+implementation and records failures that require further fixes here.
+
+## Related work
+
+@carry-typed-pi-events owns preserving Pi's structured content through the
+contracts and browser. @design-pi-event-blocks owns its finished presentation;
+@complete-conversation-ui covers the broader conversation experience and queue
+controls. This issue owns the working control path across those components.
+
+Incoming questions and unfamiliar content remain visible through a safe,
+readable presentation. Pi-specific answer and cancel dialog controls are outside
+the agreed scope. [Existing visual evidence](visual-acceptance.md) records earlier
+screenshots and feedback; new UI changes use the shared production components
+and receive proportionate visual evidence under the project's normal workflow.
