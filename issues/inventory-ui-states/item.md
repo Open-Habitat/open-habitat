@@ -48,9 +48,13 @@ Changes that cannot be mapped remain visible for the package author to resolve.
 Shared tokens and other rendering inputs matter alongside `web/src` changes.
 
 Integrate these outputs into the `design-package` skill and its assembler.
-The maintained instructions explain how new UI work keeps the inventory current,
-so the next package reflects the application without rediscovering its states.
-The landmark comparison belongs to @compare-draft-fidelity.
+The assembler runs in its own worktree, reads the previous package's commit
+from `design-system/rounds.md`, reconciles the inventory with the current code
+(routes, stories, lab fixture scenarios) before capturing, and records the new
+commit in `rounds.md` and the round's issue. The inventory is maintained by the
+package assembler at that moment, not by each developer; Jari decided on
+3 October 2026 that nothing checks it in the gate. The landmark comparison
+belongs to @compare-draft-fidelity.
 
 ## Acceptance Criteria
 
