@@ -24,6 +24,14 @@ valmistelee hänen natiivin GitHub-käyttönsä, jotta myös agentti voi käytt�
 Gitiä. Valinnainen Google-kirjautuminen tunnistaa käyttäjän selainta varten.
 Palvelimen ylläpitäjä päättää pääsystä; selain ei tarjoa Linux-käyttäjän valintaa.
 
+Kirjautuminen säilyy tavallisessa käytössä sekä gatewayn uudelleenkäynnistysten
+ja päivitysten yli. Käyttäjää ei pyydetä kirjautumaan päivittäin uudelleen.
+Nykyinen muistissa pidettävä, määräajoin vanheneva istunto ei vielä toteuta tätä;
+ratkaisu suunnitellaan [omassa tehtävässään](../issues/design-durable-sign-in/item.md).
+Käyttäjän poistaminen, uloskirjautumisen kokonaisuus ja pääsyn peruuttaminen
+suunnitellaan erikseen myöhemmin. Niitä ei nyt laajenneta nykyisistä
+uloskirjautumis- ja operaattoritoiminnoista.
+
 Työtilalista näyttää käyttäjän `~/src`-hakemiston välittömät hakemistot.
 Tavallinen hakemisto kelpaa työtilaksi ilman Gitiä tai asetustiedostoa.
 Git-työtilaa avattaessa integrointivaihe varmistaa ensin repon ja sen

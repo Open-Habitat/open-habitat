@@ -108,6 +108,15 @@ päätösten mukaisiksi. Tiedostopolkujen, oikeusbittien ja Pi-asennuksen
 tarkistusluetteloiden sijaan sivu viittaa käyttöönottoon ja toteutukseen.
 Vastuunjakoa, toteutusta ja hyväksyttyjä rajoja ei muutettu.
 
+Jarin jatkopalaute 4.10.2026: päivittäinen uudelleenkirjautuminen ja istunnon
+menetys gatewayn uudelleenkäynnistyksessä eivät vastaa haluttua käyttökokemusta.
+Kirjautumisen säilyminen kirjattiin tuotteen tavoitteeksi; toteutustapa
+ratkaistaan @design-durable-sign-in-issuessa Jarin kanssa. Nykyiset aikarajat
+ovat toteutuksen kuvaus, eivät hyväksytty tuotetavoite. Käyttäjän poistaminen,
+uloskirjautumisen kokonaisuus ja pääsyn peruuttaminen suunnitellaan erikseen
+myöhemmin. Arkkitehtuurisivun erillinen revocation-osio korvattiin lyhyellä
+kuvauksella olemassa olevasta operaattoritoiminnosta. Toteutusta ei muutettu.
+
 Seuraava käsiteltävä tiedosto on `docs/architecture/workspaces.md`.
 
 ## Lokituskäytännön tehtävä 3.10.2026

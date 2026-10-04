@@ -106,23 +106,11 @@ Logout ends the browser session. Native `gh` credentials and agents remain
 available under the Linux account. Pi's model-provider credentials are separate
 from GitHub login; [workspaces](workspaces.md) describes their onboarding.
 
-## Revoking browser access
-
-The root operator can revoke a person's existing browser sessions through the
-gateway's private control socket. The gateway authenticates the operator,
-checks the binding with the broker, removes the sessions and prevents login
-flows begun before revocation from issuing a session for that person.
-
-Revocation must precede removing the person from the allowlist or disabling
-their daemon socket: the broker check requires current admission and a ready
-route. A new login begun after revocation can still succeed while admission
-remains allowed. Revocation and the policy change are separate operations.
-Changing the allowlist alone does not end existing sessions.
-
-Already admitted requests continue. An open conversation event stream closes
-by its ten-minute lifetime, and the revoked session cannot reconnect. Native
-processes, files and credentials remain in place. The operator command is
-listed in [deployment](deployment.md).
+A root-only operator command can remove a person's existing web sessions and
+invalidate login flows begun before it runs. It leaves native work and already
+admitted requests running, and does not prevent a new login while admission
+remains allowed. [Deployment](deployment.md) lists the command; its behavior
+is implemented in `internal/gateway`.
 
 ## Unix authority
 
