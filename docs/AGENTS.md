@@ -68,7 +68,8 @@ full gate is needed.
 Publishing is a separate act from landing on `main`, run as
 `(cd docs && glasspad publish .)`. The configured target is hosted, so the
 result is a shareable link, and the pages link into issue directories that a
-reader of the link may not be able to open. Glasspad does not render Mermaid
-natively; the diagrams are kept as Mermaid anyway because GitHub and editors
-render them and agents read the diagram source. Never describe a publication
-that did not happen.
+reader of the link may not be able to open. Glasspad renders fenced Mermaid diagrams locally, and versions from 0.20.0
+publish pages in the `architecture/` and `decisions/` subdirectories under the
+path slugs declared in `glasspad.yaml`. GitHub and editors render the same
+source. Publishing still needs an installed Glasspad release that supports
+nested pages; never describe a publication that did not happen.
