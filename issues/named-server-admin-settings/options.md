@@ -1,62 +1,57 @@
-# Server settings and administrator roles: decision brief
+# Server settings and administrator roles: alternatives considered
 
-**Status:** Recommendation for Jari, not an accepted architecture or implementation authorization. Both this issue and `@server-administration-cli` remain open.
+Jari chose gateway ownership on 2026-10-04 and confirmed that the administrator
+page lists bound users. [ADR 0011](../../docs/decisions/adr-0011-gateway-owned-server-administration.md)
+records the decision; [the implementation issue](item.md) owns the work.
 
-## Behavior already agreed
+## The choice
 
-- Replace the sidebar's truncated URL with a configured server name. Personal Settings and a separate administrator page serve different purposes.
-- A signed-in person is an ordinary user or a browser administrator. Browser administrators can change shared settings and manage browser roles, **not** read another user's home, credentials, conversations or daemon socket. Administration is not an alternative login or a native-tool execution path.
-- The server can start, admit users and run agents with **zero** browser administrators. A privileged operator CLI can appoint one later, independently of any browser role. Root/operator maintenance authority is not conveyed by an administrator badge in the browser.
-- A disposable install must not need a browser-admin bootstrap ceremony, another database or a permanently running privileged administration process merely to show a name.
+The browser and privileged CLI need to change the same server name and browser
+roles. Those roles govern shared settings and role management, while the broker
+continues to own admission and Unix accounts. The gateway already authenticates
+browser users. The placement question was which component should own the new
+shared state and authorize its changes.
 
-For the first slice, key roles by the authenticated, canonical numeric GitHub subject, not display login or Unix username: the broker already binds that subject to a UID, and the latter names can change. Treat admission (the broker's root-owned allowlist) separately from role assignment. Role management should operate on admitted/bound subjects, not silently admit new people or provision accounts. To validate a known subject without activating an account or requiring its daemon socket to be ready, a narrowly scoped broker lookup is needed: existing `authorize` checks the binding but also requires `RouteReady`, so a stopped socket would block role assignment. A full inventory is a *separate* UI question. If the page needs an inventory of ordinary users as well as current admins, obtain it from the broker through a deliberately scoped read operation; the current protocol has only `ensure` and `authorize`. A local role file cannot honestly list every ordinary user. Whether role assignment to *unbound but allowlisted* subjects is needed is not established by the report; start with bound subjects and leave that extension for an observed need.
+## Gateway ownership — selected
 
-## Existing boundaries relevant to the choice
+The gateway stores the server name and roles and serializes changes from both
+browser requests and a root-only local control socket. It owns the original
+record of these new product facts; it does not duplicate native histories or
+the broker's admission list. A server can start with no browser administrators,
+and an operating-system operator can appoint one through the CLI.
 
-The unprivileged gateway owns OAuth identity, in-memory sessions, CSRF/origin checks and routing from the session binding to exactly one daemon socket. Sessions are not reauthorized with the broker on every request (`internal/gateway/auth.go`, `session.go`, `proxy_linux.go`). Per-user daemons own native files, credentials and Pi conversations; none should receive an admin operation. The root broker alone owns admission, bindings, account creation and its private allowlist/ledger, and accepts only the gateway UID on its socket (`internal/provision/{protocol.go,broker_linux.go,transport_linux.go,state_linux.go}`). The operator already has a root-only private *gateway* revocation socket, not a browser route (`internal/cli/revoke_linux.go`; ADR 0006). `admin readiness show` is currently foundation-only (`internal/cli/cli.go`), not an admin backend. Configuration is trusted root-installed, read once at role startup (`internal/core/config.go`).
+This keeps routine settings writes out of the root broker and adds no new
+service. It requires persistent gateway-writable storage and a private control
+socket. The CLI depends on a functioning gateway. Gateway ownership also means
+that protection of browser roles rests with that component; separating the
+file alone would not establish an independent browser identity authority.
 
-The current API has no server-setting or administrator route, and the sidebar name is not a contract field (`docs/architecture/http-api.md`). No existing component can grant a browser role today. ADRs 0001/0003/0004 make cross-user access and root provisioning separate authorities; neither says that ordinary shared *display settings and role assignment* must be root-owned. Changing the broker into the shared-settings writer would expand a deliberately narrow root authority.
+## Separate unprivileged administration service
 
-## Placements considered
+A dedicated service could own the record and serve both interfaces. It would
+separate file-writing permissions from the gateway, but would still rely on
+the gateway to identify browser users. That limited benefit did not justify
+another service account, protocol and availability dependency for this work.
 
-### A. Gateway-owned shared state (recommended)
+## Root provisioning broker
 
-A small on-disk server-name and browser-role record, outside the replaceable release and outside user homes, writable by the **gateway service UID** in a dedicated persistent state directory. This is new product state, but it is the original source of the two new facts, not a copy of native history or of the broker allowlist. The gateway owns browser-role decisions, the shared-setting endpoints and the **sole state writer**. A role check uses the server-side session's numeric subject and current committed role record on each admin request; do not freeze an admin bit in an eight-hour session. Reads of the public name can use the same record. A root CLI sends narrow commands to a root-only gateway control socket, extending the existing revocation pattern (not treating the current revoke protocol as a settings API). The gateway authenticates the OS peer; browser role is irrelevant. A normal install starts with an empty admin roster and an optional operator-supplied name/default display; it needs no first admin. Reject unsafe or missing state on writes, rather than granting access by fallback.
+The broker could store settings and roles beside its binding ledger. This
+would bring routine browser-driven settings writes into the root process and
+expand its responsibility beyond admission and account provisioning. Browser
+roles do not need that authority, so this placement was rejected.
 
-**Boundary / attack surface:** A stolen ordinary browser session cannot write shared state: same-origin CSRF and a current role check apply. A compromised gateway *could* modify roles/name because it already owns this file, but still cannot write the broker's root-private allowlist or binding, access other homes or obtain root CLI authority. Keep this file distinct from the root-owned gateway OAuth/TLS config. No administrator request should be forwarded to a user's daemon. CLI privilege comes from the connecting root OS identity, not from an admin bit. The CLI depends on the gateway being runnable (a root connection may socket-activate it); unlike direct file editing it cannot change roles while the gateway itself is broken. This does not depend on a *browser* administrator being present. The gateway must validate and serialize both browser and local-control requests, keep the two surfaces' authorization separate, and verify its state path. The operator must provision a persistent writable directory inaccessible to other UIDs; the service must refuse drift. Checking one target's bound status needs a scoped broker read independent of socket readiness; listing all bound users additionally needs a bounded inventory operation, not a gateway filesystem read of the broker's state. Such an operation would allow a compromised gateway to enumerate bindings, a real information-disclosure cost to review before including it.
+## Operator-managed configuration
 
-**Changes / consistency / cost:** Gateway: small role/state module and admin HTTP handlers, role checks, CSRF, public-name response and tests. Broker: no write or auth change; add a narrow read-only binding/admission check for role targets, and optionally a bounded inventory read for the user picker. Daemon: no change. CLI: root-only control client with non-interactive JSON results. Browser: name and administrator page; no admin API calls from ordinary users. The gateway serializes browser and CLI mutations through one writer; reads observe completed writes without a gateway restart. Installation must add a persistent gateway-writable `/var/lib` state directory, update the gateway unit's `ProtectSystem=strict` exception (e.g. `StateDirectory=` with a private mode), and add a root-only control socket; Fleetrepo's concrete unit/install contract and upgrade must follow. No new service or database, but **more than just a file**; changing representation later requires a migration of only this tiny product-owned record. Unlike gateway `gateway.json`, this state is intentionally mutable at runtime.
+Root-owned files read at startup fit settings changed only by an operator.
+Browser-managed settings would still need a privileged writer, and changes
+would need a reload mechanism or gateway restart. This does not provide the
+shared runtime editing that the browser and CLI need.
 
-### B. Separate unprivileged administration service on a local socket
+## User-list source
 
-A new service UID owns the sole writable role/settings record. The gateway authenticates the browser, then sends the verified numeric subject and a narrow requested action over a local socket; a separate root-only CLI socket admits OS operators. The service checks peer credentials and roles, and serves both surfaces from the same state and writer. It cannot reach homes or broker private files. A broker inventory read still needs a designed query if the UI must list all admitted users.
-
-**Boundary / attack surface:** A compromised gateway can claim a different subject to this service unless the service independently validates OAuth (which would create another web identity authority). This is the same inherent gateway trust described for broker `ensure` in ADR 0004; a service UID limits disk authority but does **not** make browser identity independently verifiable. Two sockets, peer checks, role protocol, an extra service account and more failure modes for state availability are needed. Gateway handlers and browser still need session/CSRF checks; CLI connects with root peer credentials; daemon and provisioning writes stay unchanged. One serial service writer makes CLI/browser consistency natural. Install/upgrade needs a new unit, sockets, permissions, state setup and availability handling. Choose this if isolating shared-state mutation from the gateway's filesystem UID earns its operational cost; it is not currently required to protect native user data.
-
-### C. Extend the root provisioning broker
-
-Add name/role records and administration verbs to its root-private state; both browser gateway and a privileged CLI call the broker, on differently authorized local operations. The gateway must pass the authenticated subject for browser admin checks. Root CLI needs its own root-authenticated socket or separate direct-state path: the existing broker listener accepts **only** the gateway UID, so root cannot simply reuse it. Broker serves an admitted-user inventory naturally alongside the binding ledger; its serialized writer gives consistent browser/CLI reads and writes.
-
-**Boundary / attack surface:** Browser-controlled requests now reach a root process for routine settings writes. A compromised gateway can assert any allowed subject to the broker, and a role check on that assertion cannot independently establish the browser's real identity. Even with a small verb set, name/role parsing and mutation expand the root broker's protocol, journal and availability coupling to login/provisioning. The daemon remains untouched; the gateway gets admin handlers, CLI a separate privileged path, broker both new storage and policy, and deployment new socket permissions or direct-state coordination. No new daemon/service UID is needed, but broker outage or state drift can now stop administration as well as login; root's narrow first-login purpose becomes harder to audit. This fits only if browser roles truly need to modify *root-owned admission/account policy*, which the agreed behavior does not require.
-
-### D. Operator-managed configuration files only
-
-Put name/roles in root-owned configuration, read by gateway at startup. The privileged CLI atomically edits those files, restarts/reloads gateway; a browser administrator would have to send settings and role mutations to a privileged writer (for example a new root socket) because the gateway cannot write the config. If the browser instead gets direct file write access, this collapses into A with a misleading root-owned-config label.
-
-**Boundary / attack surface:** Config is a familiar native operator artifact and has no speculative database, but browser writes require a second privileged service or an expanded broker; the CLI and UI disagree between edit and reload, and a gateway restart drops in-memory web sessions. A reload path adds concurrency/version handling. Broker and daemon need not change unless broker becomes the writer; gateway needs a reload and admin API; CLI needs safe file edit and reload orchestration; deployment must manage permissions and restarts. This is reasonable for a *read-only* server name, but not a good fit for browser-managed roles and settings with immediate visible results.
-
-## Recommendation and Jari's decision
-
-**Recommend A:** assign ownership of shared display settings and browser roles to the unprivileged gateway, with one persistent record and a gateway-only writer serving browser handlers and a root-only control socket. Make browser administration a capability over *shared host metadata only*, not over Linux accounts. The broker keeps admission/account ownership; the daemon stays per-user. This gives both interfaces the same truth, allows no-admin boot, and adds no new always-on service or privileged browser-facing writer. It does add a root-only socket, a writable persistent-state exception to the gateway's locked-down unit and a CLI dependency on the gateway being runnable. The trade-off is explicit: a compromised gateway can grant itself the browser-admin role and change shared settings. That must never translate into broader Unix or root authority. If Jari instead values isolation of role-file writes from the gateway UID enough to pay for another local service, choose B; it does not eliminate gateway impersonation of an authenticated subject.
-
-**Question for Jari:** Do you approve gateway ownership of the mutable server-name and browser-role record, with a root-only CLI sending operations to the gateway's sole writer over a private OS-authenticated socket, while keeping admission and account bindings exclusively with the broker? Or should those metadata writes instead be isolated in a separate unprivileged administration service despite the additional socket/service/install cost? This is an authority-boundary decision, not an invitation to make browser admins OS operators.
-
-**Inventory question for the implementation:** Should the admin page list all admitted/bound users, requiring a scoped read-only broker inventory (which exposes that inventory to a compromised gateway), or is assigning a role to a known numeric GitHub subject without browsing the entire roster enough for the first release? Recommend an inventory of *bound* users for usable role management, with only non-sensitive identity/role display and no credentials or home paths. Confirm that scope before adding the broker operation.
-
-## Work after the decision
-
-1. **Choice-independent:** design the configured server-name presentation and a read-only browser contract/display fallback for an unset name, without assuming how the value is stored or that a browser admin exists. The display can ship after its source is wired; it should not invent a persistent name cache. Nothing runnable was changed in this brief.
-2. **This issue, after Jari chooses:** define narrow settings/role schema and read/write API, authoritative subject and role validation, current-role checks on every admin request, CSRF/origin handling, no-admin default, denial tests (ordinary vs admin; other users' native endpoints unchanged), consistency and concurrent browser/CLI updates, and synthetic multi-UID isolation checks where claims warrant them. Implement the scoped target-subject check without coupling role changes to daemon socket readiness; if bound-user listing is approved, add a separate bounded inventory read without mixing it with role authorization. Add the separate UI page and sidebar name.
-3. **`@server-administration-cli`, dependent:** implement root-only inspect/update/assign/remove commands against the *chosen shared authority*, including promotion from zero admins. Cover strict input, dry-run where useful, `--json` envelopes, non-interactive operation and actionable authorization failures; verify CLI change appears in browser and browser change appears in CLI on a disposable server. Keep OS maintenance and admission commands distinct from the browser-admin role. Record exact test limits in both issue results; only then update architecture docs and record the accepted choice in an ADR or decision log, not in advance.
-
-**Evidence used:** `docs/architecture/{index,components,identity-and-trust,http-api,deployment}.md`, ADRs 0001–0009 (especially 0001, 0003, 0004, 0006, 0007), `internal/{gateway,provision,cli,core}` paths cited above, and the two issue briefs. No runtime change, lab, live server or real login was used.
+The gateway's role record cannot enumerate ordinary users, because their
+account bindings belong to the broker. The selected design reads bound users
+from the broker through a scoped read-only operation. The administrator gets
+enough identity information to select a person and see their browser role,
+without credentials or home paths. Listing users and validating role targets
+do not create accounts or depend on a running user daemon.
