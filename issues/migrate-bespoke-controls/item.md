@@ -3,13 +3,15 @@ created: 2026-10-03
 updated: 2026-10-04
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@consistent-control-feedback', '@composer-footer-layout', '@latest-control-obscured']
 lane: ui-foundation
 lane_seq: 20
 collision: [web/src/components/, web/src/app/App.tsx]
 blocked_by: ['@unify-ui-primitives']
+closed: 2026-10-04
+closed_by: claude
 ---
 
 # Migrate bespoke controls and row layouts to primitives
