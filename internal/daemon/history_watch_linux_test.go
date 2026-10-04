@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/maintainer/native-agent-host/internal/transport"
+	"golang.org/x/sys/unix"
 )
 
 func TestExternalPiAppendReachesTwoStreamsAndNativeHistory(t *testing.T) {
@@ -123,6 +124,38 @@ func TestSnapshotRaceSignalDoesNotBecomeAnotherNativeChange(t *testing.T) {
 	}
 	if cursor, _ := j.watermark(); !strings.HasSuffix(cursor, ":2") {
 		t.Fatalf("race signal missing from replay: %s", cursor)
+	}
+}
+
+func TestWatcherInitFailureLeavesValidNativeHistoryReadable(t *testing.T) {
+	home := t.TempDir()
+	root := filepath.Join(home, historyRoot)
+	if err := os.MkdirAll(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	const id = "11111111-1111-4111-8111-111111111111"
+	file := filepath.Join(root, "session.jsonl")
+	content := fmt.Sprintf(`{"type":"session","version":3,"id":%q,"cwd":%q}`+"\n"+`{"type":"message","id":"one","message":{"role":"user","content":"available"}}`+"\n", id, home)
+	if err := os.WriteFile(file, []byte(content), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cfg := transport.Config{Home: home, UID: os.Geteuid()}
+	journal := newEventJournal()
+	ready := make(chan bool, 1)
+	watchNativeHistoryWithInit(context.Background(), cfg, journal, ready, func(int) (int, error) { return -1, unix.EMFILE })
+	if <-ready {
+		t.Fatal("unexpected watcher readiness")
+	}
+	sessions, err := nativeSessions(cfg)
+	if err != nil || len(sessions) != 1 {
+		t.Fatalf("native discovery unavailable: %v %v", sessions, err)
+	}
+	native := readNativeSettled(sessions[0].path, cfg.UID)
+	if native.state != "readable" || len(native.entries) != 1 {
+		t.Fatalf("native read broken by watcher failure: %+v", native)
+	}
+	if cursor, _ := journal.watermark(); strings.HasSuffix(cursor, ":0") {
+		t.Fatal("failure did not invalidate cached views")
 	}
 }
 

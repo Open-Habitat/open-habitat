@@ -18,12 +18,16 @@ import (
 // history reader remains the only path that validates and projects Pi entries.
 // Watching the ancestors also handles a sessions directory created after login.
 func watchNativeHistory(ctx context.Context, cfg transport.Config, journal *eventJournal, ready chan<- bool) {
+	watchNativeHistoryWithInit(ctx, cfg, journal, ready, unix.InotifyInit1)
+}
+
+func watchNativeHistoryWithInit(ctx context.Context, cfg transport.Config, journal *eventJournal, ready chan<- bool, initWatch func(int) (int, error)) {
 	started := func(ok bool) {
 		if ready != nil {
 			ready <- ok
 		}
 	}
-	fd, err := unix.InotifyInit1(unix.IN_NONBLOCK | unix.IN_CLOEXEC)
+	fd, err := initWatch(unix.IN_NONBLOCK | unix.IN_CLOEXEC)
 	if err != nil {
 		started(false)
 		journal.appendInvalidation("")
