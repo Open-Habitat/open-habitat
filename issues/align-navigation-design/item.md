@@ -77,3 +77,7 @@ examples should reflect the same design.
 ### 2026-10-04T04:55:46Z · @claude
 
 Design-paketti (kierros lähdecommitista 176d9e6) toimitettu 2026-10-04 maplein ~/Downloads/align-navigation-design.zip, 14 978 055 tavua, SHA-256 de2edcee82dc1386bfa9b0a1e590a69c8b1495218b21f7293cf5655ede442221 (tarkistettu koneella). Ei lähetetty design-tekoälylle; designerin vastausta ei ole saatu.
+
+### 2026-10-04T05:45:35Z · @claude
+
+Jari 2026-10-04: issue on rajattu uudelleen (f3cb20e). Lähdecommitin 176d9e6 design-paketti on vanhentunut, ja paketti kootaan uudelleen uuden rajauksen mukaan ennen designerille lähettämistä.

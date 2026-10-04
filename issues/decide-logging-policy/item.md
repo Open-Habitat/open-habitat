@@ -1,6 +1,6 @@
 ---
 created: 2026-10-03
-updated: 2026-10-03
+updated: 2026-10-04
 type: task
 reporter: jari
 status: open
@@ -54,3 +54,9 @@ Verification demonstrates useful correlation and actor attribution, protection
 of secrets and work content, and bounded behaviour when logging is flooded or
 unavailable. Architecture documentation explains what is recorded, where it
 lives and who can read it, matching the implementation.
+
+## Decisions
+
+### 2026-10-04T05:45:35Z · @claude
+
+Jari 2026-10-04: preparation.md:n lokitussuositus hyväksytty sellaisenaan (käyty läpi erillisen agentin kanssa). Seuraava askel on toteutussuunnitelma tämän issuen hakemistoon ennen varsinaista ohjelmointia; toteutus alkaa vasta suunnitelman jälkeen.

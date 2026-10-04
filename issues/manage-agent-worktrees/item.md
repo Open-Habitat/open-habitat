@@ -94,3 +94,9 @@ screenshots and static HTML in `visual-acceptance.md`, with the tested revision.
 Record Jari's visual verdict when given; unreviewed appearance does not block
 functional completion or independent work. The result distinguishes demonstrated
 native Taskfleet integration from simulated behavior and remaining gaps.
+
+## Comments
+
+### 2026-10-04T05:45:35Z · @claude
+
+Jari 2026-10-04: issue, ADR 0010 ja decide-taskfleet-browser-integration/design.md on käyty läpi ja hiottu; issue on kunnossa. Taskfleetin tarvitsema muutos on Taskfleet-repon issue caller-owned-agent-runs (aiemmin absolutely-homely-glass), joka on työn alla siellä; repojen välistä riippuvuutta issuectl ei näe, joten toteutus tarkistaa sen tilan ennen aloitusta.

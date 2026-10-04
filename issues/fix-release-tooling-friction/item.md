@@ -3,10 +3,12 @@ created: 2026-10-04
 updated: 2026-10-04
 type: bug
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m427s47pbwfvjag70kdbhy8z
+lane: release-tooling
+lane_seq: 10
 ---
 
 # Release tooling friction found during the pilot.18 release
@@ -76,3 +78,9 @@ and Fleetrepo receipt commit `6a701800`. Fleetrepo's
 subsequent volume recovery; recovery commit `74f7560f` records the restored
 admission and host verification. These distinguish the original failures
 from the work already completed.
+
+## Comments
+
+### 2026-10-04T05:45:35Z · @claude
+
+Jari katselmoi 2026-10-04 ja hyväksyi kaistalle.
