@@ -13,3 +13,4 @@ vedoksiin nähden muutoslistan sijaan, ja kirjoittaa ensimmäisen rivin.
 
 | Paketti | Commit | Kierroksen issue |
 | --- | --- | --- |
+| Ensimmäinen inventaariopaketti: navigaatio, asetukset ja yhteiset tilat | `176d9e643440530cee375a5dc6249b95ab3f95db` | [align-navigation-design](../issues/align-navigation-design/item.md) |
