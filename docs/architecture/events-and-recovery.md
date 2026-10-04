@@ -50,7 +50,7 @@ sequenceDiagram
 
 | Kind | Meaning |
 |---|---|
-| `snapshot.invalidated` | the browser must take a new snapshot; `ring_truncated` on one agent means re-read that agent's history instead |
+| `snapshot.invalidated` | `source_changed` on the user means take a new snapshot, on one agent that its native file changed and the open window must be re-read; `ring_truncated` on one agent means re-read that agent's history because its provisional tail overflowed |
 | `history.entry` | a new entry read from Pi's file, with its native key |
 | `assistant.delta`, `assistant.thinking.delta`, `assistant.toolcall.delta`, `assistant.toolcall.end` | provisional ordered response blocks; argument fragments become a call with its native ID |
 | `tool.started`, `tool.updated`, `tool.finished` | execution progress associated with that call ID; cumulative updates replace the previous preview for that call in a snapshot tail |
@@ -82,6 +82,52 @@ incarnation answers `409 cursor_instance_mismatch`. `Last-Event-ID` on a
 reconnect overrides the query cursor. A connection lives at most ten minutes
 with a heartbeat every 20 seconds, and the browser reconnects from its last
 validated cursor. The session is checked when the stream opens, not per frame.
+
+## Writes from the terminal
+
+A Pi started in tmux writes to the same session files the browser reads, and
+the daemon has no RPC channel to it. To keep open views current, each daemon
+watches the user's session tree with inotify and publishes invalidations, not
+content. It watches the home, `.pi`, `.pi/agent` and every directory under
+`.pi/agent/sessions`, so a tree created after login is picked up, registers
+only directories that the user owns and that are not symlinks, and never
+follows a symlink into another tree. Writes elsewhere in the home are ignored.
+
+When a `.jsonl` file changes the daemon reads only its Pi header to learn the
+session ID and publishes `snapshot.invalidated` with `source_changed` on that
+agent, coalescing a burst of writes to one event per 250 ms. A directory
+change, a file whose header cannot be read, an inotify queue overflow or a
+watcher that cannot start or fails publishes the same event on the user
+instead, and the browser takes a new snapshot. A failed watcher leaves history
+readable; the browser then re-reads a cached terminal history each time it is
+opened, since no controller events can refresh it.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant T as Pi in tmux
+  participant D as Daemon
+  participant B1 as Browser 1
+  participant B2 as Browser 2
+  T->>D: append to ~/.pi/agent/sessions/.../<id>.jsonl (inotify)
+  D->>D: read header, coalesce 250 ms
+  D-->>B1: snapshot.invalidated {source_changed} on pi:<id>
+  D-->>B2: same event
+  B1->>D: GET .../history (open window)
+  B2->>D: GET .../history
+  Note over B1,B2: entries joined by native key; no duplicate rows
+```
+
+The browser marks the affected window stale and re-reads its native page.
+Entries that also arrived as `history.entry` from a daemon-controlled child
+are joined by native key, so a conversation written by both paths shows each
+entry once. The daemon counts native-change generations so a snapshot that
+straddles a write can tell; the invalidation it appends for that race is not
+itself counted as a change, which keeps two browsers from feeding each other
+an endless snapshot loop. The browser-side alternative, each tab polling the
+file, would multiply reads and timers by the number of open tabs and tie
+latency to each tab's interval; one watcher per daemon publishes one hint to
+every connected view through the journal that already handles replay and gaps.
 
 ## The browser's state
 

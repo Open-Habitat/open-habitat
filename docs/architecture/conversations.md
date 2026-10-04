@@ -129,8 +129,11 @@ writing. The lock is not a census of terminal Pi processes or detached tools;
 a Pi started in tmux does not take it, which is why the browser treats terminal
 histories as read-only rather than attempting control.
 
-Terminal sessions are readable in the browser from the same files. Pi's RPC
-mode cannot attach to a running terminal TUI, so there is no takeover.
+Terminal sessions are readable in the browser from the same files, and an
+open view follows the file as the terminal Pi appends to it, because the
+daemon watches the session tree and tells every connected browser to re-read.
+Pi's RPC mode cannot attach to a running terminal TUI, so there is no takeover.
+[Events and recovery](events-and-recovery.md) describes the watcher.
 
 ## Ending and continuing
 
