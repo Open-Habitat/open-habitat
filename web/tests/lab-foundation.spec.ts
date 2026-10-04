@@ -73,7 +73,7 @@ test("@lab v2 shared conversation metrics in both themes and at phone width", as
               .bottom ?? 9999,
           composerActionsBottom:
             document
-              .querySelector(".ah-composer .ah-actions")
+              .querySelector(".ah-composer .ah-action-row-buttons")
               ?.getBoundingClientRect().bottom ?? 9999,
           composerPresent: Boolean(document.querySelector(".ah-composer")),
           streamBottom:

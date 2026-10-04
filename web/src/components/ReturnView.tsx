@@ -1,5 +1,6 @@
 import { LinkRow } from "./ControlElements";
 import { Icon } from "./Icon";
+import { ListRow } from "./Primitives";
 import { StatusMark } from "./Status";
 
 export interface ReturnConversation {
@@ -33,33 +34,38 @@ function ConversationGroup({
         {conversations.map((conversation) => (
           <li key={conversation.id}>
             <LinkRow href={conversation.href} kind="return">
-              <span
-                className="ah-return-indicator"
-                aria-hidden="true"
-                data-running={isRunning(conversation)}
-              />
-              <span className="ah-return-content">
-                <span className="ah-return-title">{conversation.title}</span>
-                <span className="ah-return-meta">
-                  <span className="ah-mono">{conversation.workspace}</span>
-                  {isRunning(conversation) ? (
-                    <StatusMark
-                      label={
-                        conversation.process === "terminal_observed_live"
-                          ? "Käynnissä terminaalissa"
-                          : "Prosessi käynnissä"
-                      }
-                      kind="working"
-                      tone="info"
-                      animated="running"
-                    />
-                  ) : null}
-                  {!conversation.browserSession ? (
-                    <span>Vain luettavissa</span>
-                  ) : null}
+              <ListRow
+                indicator={
+                  <span
+                    className="ah-return-indicator"
+                    aria-hidden="true"
+                    data-running={isRunning(conversation)}
+                  />
+                }
+                trailing={<Icon name="forward" className="ah-return-arrow" />}
+              >
+                <span className="ah-return-content">
+                  <span className="ah-return-title">{conversation.title}</span>
+                  <span className="ah-return-meta">
+                    <span className="ah-mono">{conversation.workspace}</span>
+                    {isRunning(conversation) ? (
+                      <StatusMark
+                        label={
+                          conversation.process === "terminal_observed_live"
+                            ? "Käynnissä terminaalissa"
+                            : "Prosessi käynnissä"
+                        }
+                        kind="working"
+                        tone="info"
+                        animated="running"
+                      />
+                    ) : null}
+                    {!conversation.browserSession ? (
+                      <span>Vain luettavissa</span>
+                    ) : null}
+                  </span>
                 </span>
-              </span>
-              <Icon name="forward" className="ah-return-arrow" />
+              </ListRow>
             </LinkRow>
           </li>
         ))}

@@ -10,6 +10,7 @@ import {
   QueuePanel,
   UserMessage,
 } from "./Conversation";
+import { ConversationFrame } from "./ConversationFrame";
 
 function mount(node: React.ReactNode) {
   return render(<MemoryRouter>{node}</MemoryRouter>);
@@ -233,13 +234,15 @@ describe("conversation v2 presentation", () => {
   it("offers a return to latest even without new content when the reader scrolled away", () => {
     const jump = vi.fn();
     const view = mount(
-      <ConversationTimeline
-        state="ready"
-        items={[]}
-        historyMode="pagedAccessible"
-        showJumpToLatest
-        onJumpToLatest={jump}
-      />,
+      <ConversationFrame>
+        <ConversationTimeline
+          state="ready"
+          items={[]}
+          historyMode="pagedAccessible"
+          showJumpToLatest
+          onJumpToLatest={jump}
+        />
+      </ConversationFrame>,
     );
     fireEvent.click(view.getByRole("button", { name: "Viimeisimpään" }));
     expect(jump).toHaveBeenCalledTimes(1);

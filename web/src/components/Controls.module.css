@@ -129,10 +129,7 @@
   }
 }
 .return {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--ah-s4);
+  display: block;
   min-height: 62px;
   padding: var(--ah-s3) var(--ah-s4);
 }

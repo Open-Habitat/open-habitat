@@ -62,6 +62,47 @@ export function Button({
   );
 }
 
+/* Actions and their guidance share a baseline; blocked reasons remain below their button. */
+export function ActionRow({
+  children,
+  hint,
+  className = "",
+}: {
+  children: ReactNode;
+  hint?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`ah-action-row ${className}`}>
+      <div className="ah-action-row-buttons">{children}</div>
+      {hint ? <p className="ah-composer-hint">{hint}</p> : null}
+    </div>
+  );
+}
+
+/* Indicator, flexible content and trailing action use the same row structure. */
+export function ListRow({
+  indicator,
+  children,
+  trailing,
+  className = "",
+}: {
+  indicator?: ReactNode;
+  children: ReactNode;
+  trailing?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`ah-list-row ${className}`}>
+      {indicator ? (
+        <span className="ah-list-row-indicator">{indicator}</span>
+      ) : null}
+      <div className="ah-list-row-content">{children}</div>
+      {trailing ? <div className="ah-list-row-trailing">{trailing}</div> : null}
+    </div>
+  );
+}
+
 export function RefreshIconButton({ onPress }: { onPress: () => void }) {
   return (
     <IconButton

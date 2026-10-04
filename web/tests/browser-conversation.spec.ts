@@ -25,7 +25,7 @@ async function expectPhoneComposerWithinViewport(
   const bounds = await composer.evaluate((element) => {
     const box = element.getBoundingClientRect();
     const actions = element
-      .querySelector(".ah-actions")
+      .querySelector(".ah-action-row-buttons")
       ?.getBoundingClientRect();
     return {
       top: box.top,
@@ -501,6 +501,74 @@ test("@browser-conversation settled marker needs observed native key", async ({
   await expect(page.locator(".ah-settled")).toBeVisible();
   await expectPhoneComposerWithinViewport(page);
 });
+test("@browser-conversation footer and floating latest stay clear at phone width", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => {
+    // Synthetic overflow makes the native history scroll away from latest.
+    const feed = document.querySelector(".ah-feed");
+    for (let i = 0; i < 40; i++) {
+      const item = document.createElement("li");
+      item.textContent = `Synteettinen tapahtuma ${i}`;
+      item.style.minHeight = "100px";
+      feed?.append(item);
+    }
+    const stream = document.querySelector(".ah-conversation-stream");
+    stream?.scrollTo({ top: stream.scrollHeight });
+  });
+  const stream = page.locator(".ah-conversation-stream");
+  const scrollable = await stream.evaluate((node) => {
+    node.scrollTop = 0;
+    node.dispatchEvent(new Event("scroll", { bubbles: true }));
+    return { height: node.scrollHeight, client: node.clientHeight };
+  });
+  expect(scrollable.height).toBeGreaterThan(scrollable.client + 60);
+  const latest = page.getByRole("button", { name: "Viimeisimpään" });
+  await expect(latest).toBeVisible();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await editor.evaluate((node) => {
+    (node as HTMLElement).style.height = "160px";
+  });
+  await expect
+    .poll(() =>
+      page.locator(".ah-conversation-frame").evaluate((frame) => {
+        const jump = frame
+          .querySelector(".ah-floating-controls button")
+          ?.getBoundingClientRect();
+        const composer = frame
+          .querySelector(":scope > .ah-composer")
+          ?.getBoundingClientRect();
+        return Boolean(
+          jump &&
+            composer &&
+            jump.bottom <= composer.top &&
+            jump.top >= 0 &&
+            composer.bottom <= window.innerHeight,
+        );
+      }),
+    )
+    .toBe(true);
+  const footer = page.locator(".ah-action-row");
+  await expect(
+    footer.getByText("Enter lähettää", { exact: false }),
+  ).toBeVisible();
+  expect(
+    await footer.evaluate((row) => {
+      const hint = row
+        .querySelector(".ah-composer-hint")
+        ?.getBoundingClientRect();
+      const button = row.querySelector("button")?.getBoundingClientRect();
+      return Boolean(
+        hint && button && hint.top < button.bottom && button.top < hint.bottom,
+      );
+    }),
+  ).toBe(true);
+  await latest.click();
+});
+
 test("@browser-conversation resized editor keeps actions reachable", async ({
   page,
 }) => {
@@ -524,7 +592,7 @@ test("@browser-conversation resized editor keeps actions reachable", async ({
   });
   expect(
     await composer
-      .locator(".ah-actions")
+      .locator(".ah-action-row-buttons")
       .evaluate((node) => node.getBoundingClientRect().bottom),
   ).toBeLessThanOrEqual(720);
 });

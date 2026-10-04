@@ -1,9 +1,16 @@
 import type { ReactNode, Ref } from "react";
-import { DisclosureButton } from "./ControlElements";
+import { ControlButton, DisclosureButton } from "./ControlElements";
+import { ConversationFloatingAction } from "./ConversationFrame";
 import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
 import { Disclosure } from "./Overlays";
-import { Button, RadioGroup, TextArea, TextField } from "./Primitives";
+import {
+  ActionRow,
+  Button,
+  RadioGroup,
+  TextArea,
+  TextField,
+} from "./Primitives";
 import type { StatusKind } from "./Status";
 import { InlineNotice, StatusMark } from "./Status";
 import type { Availability, ProblemView, TimelineItem, Tone } from "./types";
@@ -76,7 +83,7 @@ export function ConversationTimeline({
         ))}
       </ol>
       {newContentCount > 0 || showJumpToLatest ? (
-        <div className="ah-jump-latest">
+        <ConversationFloatingAction>
           <Button
             label={
               newContentCount > 0
@@ -88,7 +95,7 @@ export function ConversationTimeline({
             presentation="floating"
             onPress={onJumpToLatest}
           />
-        </div>
+        </ConversationFloatingAction>
       ) : null}
     </section>
   );
@@ -924,7 +931,29 @@ export function Composer({
         />
       ) : null}
 
-      <div className="ah-actions">
+      <ActionRow
+        hint={
+          <>
+            {activity === "working"
+              ? `Ohjaa välissä (ei keskeytä työkalua) · Lähetä jonoon · Enter: ${selectedWorkingMode === "steer" ? "Ohjaa" : "Lähetä"} · Shift+Enter rivinvaihto`
+              : "Enter lähettää · Shift+Enter rivinvaihto"}
+            {onOpenQueue && (!queueKnown || queueOpen) ? (
+              <>
+                {" · "}
+                <ControlButton
+                  variant="quiet"
+                  size="compact"
+                  className="ah-queue-link"
+                  aria-expanded={queueOpen}
+                  onPress={onOpenQueue}
+                >
+                  {queueKnown ? queueSummary : "Jonon tila ei tiedossa"}
+                </ControlButton>
+              </>
+            ) : null}
+          </>
+        }
+      >
         {onInterrupt ? (
           <Button label="Keskeytä" variant="quiet" onPress={onInterrupt} />
         ) : null}
@@ -953,26 +982,7 @@ export function Composer({
               : onSendNow
           }
         />
-      </div>
-      <p className="ah-composer-hint">
-        {activity === "working"
-          ? `Ohjaa välissä (ei keskeytä työkalua) · Lähetä jonoon · Enter: ${selectedWorkingMode === "steer" ? "Ohjaa" : "Lähetä"} · Shift+Enter rivinvaihto`
-          : "Enter lähettää · Shift+Enter rivinvaihto"}
-        {onOpenQueue && (!queueKnown || queueOpen) ? (
-          <>
-            {" "}
-            ·{" "}
-            <button
-              type="button"
-              className="ah-queue-link"
-              aria-expanded={queueOpen}
-              onClick={onOpenQueue}
-            >
-              {queueKnown ? queueSummary : "Jonon tila ei tiedossa"}
-            </button>
-          </>
-        ) : null}
-      </p>
+      </ActionRow>
     </section>
   );
 }

@@ -1135,13 +1135,17 @@ h1[tabindex="-1"]:focus {
   margin-top: var(--ah-s2);
 }
 .ah-conversation-frame {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
   height: 100%;
   background: var(--ah-bg);
 }
-.ah-conversation-frame > :not(.ah-conversation-stream):not(.ah-agent-header) {
+.ah-conversation-frame
+  > :not(.ah-conversation-stream):not(.ah-agent-header):not(
+    .ah-floating-controls
+  ) {
   flex: none;
   width: min(100%, var(--ah-conversation-width));
   margin-inline: auto;
@@ -1186,19 +1190,46 @@ h1[tabindex="-1"]:focus {
   gap: var(--ah-composer-field-gap);
   margin: 0;
 }
-.ah-conversation-frame .ah-composer .ah-actions {
-  justify-content: flex-start;
-  margin: var(--ah-s2) 0 0;
+.ah-conversation-frame .ah-composer .ah-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ah-s2) var(--ah-s4);
+  margin-top: var(--ah-s2);
+}
+.ah-conversation-frame .ah-composer .ah-action-row-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ah-s2);
+  order: 2;
+  margin-inline-start: auto;
+}
+.ah-conversation-frame .ah-composer .ah-action-row .ah-composer-hint {
+  order: 1;
+  flex: 1 1 auto;
+  margin: 0;
 }
 /* The editor already exposes the same disabled reason; do not repeat it for each send mode. */
 .ah-conversation-frame
   .ah-composer:has(.ah-field .ah-control-reason)
-  .ah-actions
+  .ah-action-row
   .ah-control-reason {
   display: none;
 }
-.ah-conversation-frame .ah-composer-hint {
-  margin: var(--ah-s1) 0 0;
+.ah-list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  min-width: 0;
+}
+.ah-list-row-content {
+  flex: 1;
+  min-width: 0;
+}
+.ah-list-row-trailing {
+  flex: none;
+  margin-inline-start: auto;
 }
 .ah-conversation-frame .ah-composer textarea {
   min-height: var(--ah-touch);
@@ -1390,18 +1421,19 @@ h1[tabindex="-1"]:focus {
   font-size: var(--ah-size-meta);
   color: var(--ah-muted);
 }
-.ah-jump-latest {
-  position: sticky;
-  bottom: var(--ah-s3);
-  justify-self: center;
+.ah-floating-controls {
+  position: absolute;
+  z-index: 2;
+  bottom: calc(var(--ah-composer-height, 0px) + var(--ah-s3));
+  left: 0;
+  right: 0;
   display: flex;
-  height: 0;
-  margin-top: calc(-1 * var(--ah-s5));
-  overflow: visible;
+  justify-content: center;
+  pointer-events: none;
 }
-/* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
-.ah-jump-latest .ah-control {
-  transform: translateY(-100%);
+/* biome-ignore lint/style/noDescendingSpecificity: Pointer events do not override the earlier rail layout rules. */
+.ah-floating-controls .ah-control {
+  pointer-events: auto;
 }
 /* Shared navigation v2: the same rail renders in the desktop strip and phone drawer. */
 .ah-account-trigger {
@@ -1624,18 +1656,8 @@ h1[tabindex="-1"]:focus {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
 }
-.ah-conversation-frame .ah-composer .ah-actions {
-  align-items: center;
-}
-.ah-conversation-frame .ah-composer .ah-actions .ah-control:last-child {
-  margin-inline-start: auto;
-}
-.ah-conversation-frame .ah-composer-hint {
-  margin: var(--ah-s2) 0 0;
-}
 .ah-queue-link {
-  border: 0;
-  background: transparent;
+  min-height: auto;
   padding: 0;
   color: var(--ah-muted);
   font: inherit;
@@ -1803,7 +1825,7 @@ h1[tabindex="-1"]:focus {
   vertical-align: -0.2em;
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
-.ah-composer-empty .ah-actions .ah-control-reason {
+.ah-composer-empty .ah-action-row .ah-control-reason {
   position: absolute;
   width: 1px;
   height: 1px;
