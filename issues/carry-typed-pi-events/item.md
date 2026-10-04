@@ -1,13 +1,15 @@
 ---
 created: 2026-10-03
-updated: 2026-10-03
+updated: 2026-10-04
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: high
 lane: client-history
 lane_seq: 60
 collision: [web/src/components/, web/src/app/]
+closed: 2026-10-04
+closed_by: claude
 ---
 
 # Carry Pi's typed events and history to the browser
@@ -63,7 +65,7 @@ output likewise does not require adding command controls.
 
 ## Acceptance Criteria
 
-- [ ] The catalogue's content and events are accounted for by typed browser data, their internal role or a reasoned exclusion.
-- [ ] Synthetic session and live-event tests demonstrate content order, tool associations, visibility, large content and unknown-type handling, including reconciliation with history.
-- [ ] The browser presents the supported content from history and live updates where Pi supplies it, while preserving warm conversation switching, paging and reading position.
-- [ ] The relevant checks in TESTING.md pass; the result identifies what the synthetic evidence establishes and any remaining live verification.
+- [x] The catalogue's content and events are accounted for by typed browser data, their internal role or a reasoned exclusion.
+- [x] Synthetic session and live-event tests demonstrate content order, tool associations, visibility, large content and unknown-type handling, including reconciliation with history.
+- [x] The browser presents the supported content from history and live updates where Pi supplies it, while preserving warm conversation switching, paging and reading position.
+- [x] The relevant checks in TESTING.md pass; the result identifies what the synthetic evidence establishes and any remaining live verification.
