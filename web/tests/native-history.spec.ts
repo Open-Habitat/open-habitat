@@ -205,7 +205,10 @@ test("@native-history warm return paints from cache while revalidating history",
   await login(page);
   await page.goto(`/agents/${agent}`);
   await expect(page.locator(".ah-feed li")).toHaveCount(25);
-  await page.getByRole("link", { name: "Uusi keskustelu" }).click();
+  await page
+    .locator("#main")
+    .getByRole("link", { name: "Uusi keskustelu" })
+    .click();
   const requests: string[] = [];
   page.on("request", (request) => {
     if (request.url().includes("/api/v1/")) requests.push(request.url());
