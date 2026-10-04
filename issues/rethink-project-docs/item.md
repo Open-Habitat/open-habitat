@@ -99,7 +99,16 @@ Natiivilähteet erotettu muistissa säilytettävästä ajonaikaisesta tilasta.
 Tekniset yksityiskohdat ja komentoluettelo jätetty niitä käsitteleville sivuille,
 jotka ovat edelleen tässä läpikäyntijärjestyksessä. Vastuunjakoa ei muutettu.
 
-Seuraava käsiteltävä tiedosto on `docs/architecture/identity-and-trust.md`.
+`identity-and-trust.md` käsitelty Jarin hyväksymällä rajauksella. Sivu kuvaa
+kirjautumisen, käyttäjäsidonnan, osapuolten luottamuksen sekä selainistuntojen
+ja peruuttamisen vaikutukset. Brokerin luottamus gatewayn todentamaan
+GitHub-identiteettiin, toimivan gh-valtuutuksen uudelleenkäyttö ja revoken
+jälkeen alkavan uuden kirjautumisen mahdollisuus täsmennetty koodin ja
+päätösten mukaisiksi. Tiedostopolkujen, oikeusbittien ja Pi-asennuksen
+tarkistusluetteloiden sijaan sivu viittaa käyttöönottoon ja toteutukseen.
+Vastuunjakoa, toteutusta ja hyväksyttyjä rajoja ei muutettu.
+
+Seuraava käsiteltävä tiedosto on `docs/architecture/workspaces.md`.
 
 ## Lokituskäytännön tehtävä 3.10.2026
 
