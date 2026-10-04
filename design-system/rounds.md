@@ -4,13 +4,13 @@ Yksi rivi kierrosta kohti: paketin lähdecommit, johon asti paketti oli ajan
 tasalla, ja kierroksen issue. Seuraavan paketin muutoslista alkaa viimeisimmän
 rivin commitista. [Design-kierros](process.md) kuvaa työtavan.
 
-Taulukko on tyhjä, koska yhtään kierrosta ei ole vielä koottu tällä
-työtavalla. Aiemmat paketit (viimeisin `issues/assemble-browser-redesign-handoff/`,
-30.9.2026) koottiin käsin valituista kaappauksista ilman inventaariota, joten
-niiden commit ei kelpaa muutoslistan lähtöpisteeksi. Ensimmäinen tämän
-työtavan paketti esittää koko inventaarion uutena ja aukkolistan nykyisiin
-vedoksiin nähden muutoslistan sijaan, ja kirjoittaa ensimmäisen rivin.
+Ennen ensimmäistä inventaariopakettia toimitetut paketit (viimeisin
+`issues/assemble-browser-redesign-handoff/`, 30.9.2026) koottiin käsin
+valituista kaappauksista, joten niiden commit ei kelpaa muutoslistan
+lähtöpisteeksi. Ensimmäinen inventaariopaketti esitti koko inventaarion
+uutena; myöhempi navigaatio- ja asetuspaketti rajattiin tarkennettuun pyyntöön.
 
 | Paketti | Commit | Kierroksen issue |
 | --- | --- | --- |
 | Ensimmäinen inventaariopaketti: navigaatio, asetukset ja yhteiset tilat | `176d9e643440530cee375a5dc6249b95ab3f95db` | [align-navigation-design](../issues/align-navigation-design/item.md) |
+| Rajattu navigaation ja asetusten paketti | `7364709396830ebf8fdb9a4b5fa9fc29c3c402e9` | [align-navigation-design](../issues/align-navigation-design/item.md) |

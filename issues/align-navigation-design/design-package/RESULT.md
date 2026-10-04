@@ -1,28 +1,34 @@
 # Navigaation ja asetusten suunnittelupaketti
 
-Ensimmäinen inventaariopohjainen paketti on koottu ja toimitettu Jarille.
-Navigaation ja asetusten yhteisen kierroksen pyyntö on [REQUEST.md](REQUEST.md).
-Designerin vastausta ei ole vielä saatu.
+Yhteisen kierroksen rajattu paketti on koottu nykyisestä
+[pyynnöstä](REQUEST.md) ja toimitettu Jarille. Designerin vastausta ei ole vielä saatu.
 
 ## Toimitettu aineisto
 
-Paketin lähdecommit on `176d9e643440530cee375a5dc6249b95ab3f95db`.
-Koko inventaario esitettiin uutena: 21 tilaa neljässä esitystavassa tuotti
-84 onnistunutta kaappausta. Lisäksi 18 aukkotilalta puuttui yhteensä
-72 esitystä. `rendered-pages/COVERAGE.md` kuvaa puuttuvan aineiston sekä
-vastaavuusaukot toteutuksen ja vedosten välillä. Mukana olevat vanhemmat
-Pi-lohkojen ja kontrollimigraation erillistallenteet täydentävät aineistoa.
+Paketin lähdecommit on `7364709396830ebf8fdb9a4b5fa9fc29c3c402e9`.
+Navigaation `landing-*`, `workspace-*`, `history-*`, `account-menu-*` ja
+`workspace-details-*` sekä asetusten `settings-*` tuottivat yhteensä 24
+onnistunutta synteettistä kaappausta neljässä esitystavassa. Näiden lisäksi
+kuuden kierrokseen kuuluvan aukkotilan 24 esitystä puuttuu. Paketin
+`rendered-pages/inventory.json` ja `COVERAGE.md` näyttävät tämän rajauksen,
+puuttuvat kaappaukset ja vedosvastaavuuden aukot; koko repositorion inventaario
+on lähdetiedostossa `web/lab/inventory.json`. Mukana ovat kolme pyydettyä
+vedosta, `SettingsDensity`-story sekä navigaation ja asetusten kannalta
+olennaiset aiemmat synteettiset kontrollimigraation tallenteet. Pi-lohkojen
+kaappauksia ja erillisen kontrollitilakierroksen aineistoa ei ole mukana.
 
-Aineisto on synteettistä. Pakettikopioista poistettiin omistajan nimi,
-kotihakemistopolku ja synteettinen laitekoodiesimerkki; `MANIFEST.md`
-kirjaa nämä muutokset lähdetiedostoihin nähden.
+Pakettikopioiden henkilönnimen viittaukset ja issueiden reporter-kentät
+anonymisoitiin; varsinaisia lähdetiedostoja ei muutettu. Kaappaukset ovat
+synteettisestä labista. Paketin sisältö, rajaus ja zipin eheys tarkistettiin.
 
-[Issuen toimitusmerkinnän](../item.md#comments) mukaan paketti toimitettiin
-4.10.2026 maplein tiedostoon `~/Downloads/align-navigation-design.zip`.
-Zip sisältää alkuperäisen pyynnön; repossa oleva REQUEST.md on tarkennettu
-toimituksen jälkeen. Tiedoston koko oli 14 978 055 tavua ja koneella
-tarkistettu SHA-256:
+Paketti toimitettiin 4.10.2026 maplein tiedostoon
+`~/Downloads/align-navigation-design.zip`. Tiedoston koko oli 6 213 694 tavua
+ja mapleilla tarkistettu SHA-256:
 
 ```text
-de2edcee82dc1386bfa9b0a1e590a69c8b1495218b21f7293cf5655ede442221
+1e97b68d6e9329ed3b8ac4b1104b2c41cb1d9a8bf8523d49cf16d5fd8e5cc7cb
 ```
+
+Paketin palvelinkopio on
+`/var/tmp/nah-design-package-build/align-navigation-design.zip`. Design-tekoälylle
+ei lähetetty aineistoa.
