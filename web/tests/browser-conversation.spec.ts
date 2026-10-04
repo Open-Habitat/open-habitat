@@ -508,14 +508,10 @@ test("@browser-conversation footer and floating latest stay clear at phone width
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => {
-    // Synthetic overflow makes the native history scroll away from latest.
-    const feed = document.querySelector(".ah-feed");
-    for (let i = 0; i < 40; i++) {
-      const item = document.createElement("li");
-      item.textContent = `Synteettinen tapahtuma ${i}`;
-      item.style.minHeight = "100px";
-      feed?.append(item);
-    }
+    // Layout-only overflow survives virtualized feed reconciliation; inserted
+    // children could be removed by React before the geometry assertion.
+    const feed = document.querySelector<HTMLElement>(".ah-feed");
+    if (feed) feed.style.minHeight = "4000px";
     const stream = document.querySelector(".ah-conversation-stream");
     stream?.scrollTo({ top: stream.scrollHeight });
   });
@@ -599,6 +595,26 @@ test("@browser-conversation footer and floating latest stay clear at phone width
     )
     .toBe(true);
   await latest.click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  // Layout-only synthetic notice: its left border should meet the editor's
+  // left border, not the outside edge of the conversation frame.
+  expect(
+    await page.evaluate(() => {
+      const notices = document.querySelector(".ah-conversation-notices");
+      if (!notices) return false;
+      notices.innerHTML =
+        '<aside class="ah-notice ah-tone-warning"><strong>Tapahtumia jäi väliin</strong><p>Tarkista natiivi historia.</p></aside>';
+      const notice = notices
+        .querySelector(".ah-notice")
+        ?.getBoundingClientRect();
+      const editor = document
+        .querySelector(".ah-composer textarea")
+        ?.getBoundingClientRect();
+      return Boolean(
+        notice && editor && Math.abs(notice.left - editor.left) <= 1,
+      );
+    }),
+  ).toBe(true);
 });
 
 test("@browser-conversation resized editor keeps actions reachable", async ({

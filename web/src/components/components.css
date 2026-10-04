@@ -22,6 +22,8 @@
   color: var(--ah-ink);
 }
 .ah-skip {
+  --i-bg: var(--ah-surface);
+  --i-hover: var(--ah-surface);
   position: fixed;
   z-index: 100;
   inset: -5rem auto auto var(--ah-s4);
@@ -692,11 +694,12 @@ h1[tabindex="-1"]:focus {
   min-width: 0;
   border-radius: var(--ah-r-nav);
 }
-.ah-workspace-toggle {
+.ah-workspace-row .ah-workspace-toggle {
   flex: none;
   min-width: 26px;
   min-height: 30px;
   padding: 0;
+  border-radius: var(--ah-r-nav);
   color: var(--ah-muted);
 }
 .ah-disclosure-chevron {
@@ -1336,12 +1339,16 @@ h1[tabindex="-1"]:focus {
     color: var(--ah-ink);
   }
   .ah-mobile-scrim {
+    --i-bg: var(--ah-scrim);
+    --i-hover: var(--ah-scrim);
+    --i-pressed: var(--ah-scrim);
     display: block;
     position: fixed;
     z-index: 51;
     inset: 0;
     background: var(--ah-scrim);
     border: 0;
+    border-radius: 0;
   }
   .ah-mobile-toolbar {
     display: flex;
@@ -1970,7 +1977,8 @@ h1[tabindex="-1"]:focus {
 
 @media (max-width: 800px) {
   .ah-conversation-frame > fieldset,
-  .ah-conversation-frame > .ah-conversation-notices:not(:empty) {
+  .ah-conversation-frame
+    > .ah-conversation-notices.ah-conversation-notices:not(:empty) {
     width: calc(100% - 2 * var(--ah-column-pad-inline));
   }
 }

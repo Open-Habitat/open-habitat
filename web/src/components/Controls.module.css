@@ -134,6 +134,7 @@
   padding: var(--ah-s3) var(--ah-s4);
 }
 .workspace {
+  display: block;
   flex: 1;
   min-width: 0;
   padding: 5px 6px 5px 2px;
@@ -284,6 +285,18 @@ textarea.fieldInput {
   height: 7px;
 }
 
+.inline {
+  display: inline;
+  padding: 0;
+  --i-fg: var(--ah-accent-ink);
+  text-decoration: underline;
+}
+.header {
+  display: block;
+  width: fit-content;
+  padding: 0;
+  --i-fg: var(--ah-muted);
+}
 .externalLink {
   composes: surface from "./interactive.module.css";
   color: var(--i-fg, var(--ah-accent-ink));

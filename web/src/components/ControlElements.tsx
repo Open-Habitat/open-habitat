@@ -62,7 +62,14 @@ export function LinkRow({
   href: string;
   children: ReactNode;
   current?: boolean;
-  kind?: "nav" | "agent" | "home" | "return" | "workspace";
+  kind?:
+    | "nav"
+    | "agent"
+    | "home"
+    | "return"
+    | "workspace"
+    | "inline"
+    | "header";
   className?: string;
   "aria-label"?: string;
   "aria-describedby"?: string;

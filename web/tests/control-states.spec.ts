@@ -129,3 +129,56 @@ test("@control-states shared feedback on navigation, list, button and menu in bo
     await expect(action).toHaveCSS("cursor", "not-allowed");
   }
 });
+
+test("@control-states migrated rail, drawer and text links retain their layout", async ({
+  page,
+}) => {
+  await page.request.get(`${hostOrigin}/fixture/reset-clock`);
+  await page.request.get(`${hostOrigin}/fixture/conversations-reset`);
+  await page.request.get(`${hostOrigin}/fixture/scenario?value=ready`);
+  await page.goto(`${hostOrigin}/workspaces`);
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  const row = page.locator(".ah-workspace-row").first();
+  await expect(row).toBeVisible();
+  expect(
+    await row.evaluate((node) => node.getBoundingClientRect().height),
+  ).toBeLessThanOrEqual(36);
+  const workspace = row.locator(".ah-workspace-link");
+  await expect(workspace).toHaveCSS("display", "block");
+  expect(
+    await workspace.evaluate((node) => {
+      const label = node as HTMLElement;
+      label.textContent =
+        "long-workspace-name-that-does-not-fit-in-the-sidebar";
+      return (
+        label.getBoundingClientRect().right <=
+        (label.parentElement?.getBoundingClientRect().right ?? -1)
+      );
+    }),
+  ).toBe(true);
+  await page.locator(".ah-continue-list a").first().click();
+  await expect(page.locator(".ah-header-workspace")).toHaveCSS(
+    "padding-left",
+    "0px",
+  );
+  await expect(page.locator(".ah-header-workspace")).toHaveCSS(
+    "display",
+    "block",
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Avaa navigaatio" }).first().click();
+  const scrim = page.locator(".ah-mobile-scrim");
+  const idle = await scrim.evaluate(
+    (node) => getComputedStyle(node).backgroundColor,
+  );
+  expect(idle).not.toBe("rgba(0, 0, 0, 0)");
+  await scrim.hover({ force: true });
+  await expect(scrim).toHaveCSS("background-color", idle);
+  await scrim.click({ force: true });
+  await page.locator(".ah-skip").focus();
+  await expect(page.locator(".ah-skip")).not.toHaveCSS(
+    "background-color",
+    "rgba(0, 0, 0, 0)",
+  );
+});

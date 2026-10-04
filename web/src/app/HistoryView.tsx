@@ -629,7 +629,9 @@ export function HistoryView({
           <strong>Vain luku</strong>
           <p>Tätä keskustelua ei voi ohjata selaimesta.</p>
         </div>
-        <LinkRow href={`/workspaces/${workspaceId}`}>Uusi keskustelu</LinkRow>
+        <LinkRow href={`/workspaces/${workspaceId}`} kind="inline">
+          Uusi keskustelu
+        </LinkRow>
       </div>
     </ConversationFrame>
   );

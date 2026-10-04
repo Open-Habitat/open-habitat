@@ -61,7 +61,7 @@ function WorkspaceDetails({ workspace }: { workspace: Workspace }) {
     );
   return (
     <header className="ah-workspace-detail">
-      <LinkRow href="/workspaces" className="ah-back-link">
+      <LinkRow href="/workspaces" kind="inline" className="ah-back-link">
         Työtilat
       </LinkRow>
       <h1>{workspace.display_name ?? workspace.name}</h1>
@@ -611,7 +611,9 @@ export function App() {
           tone="warning"
           actions={[{ label: "Yritä uudelleen", onPress: refresh }]}
         />
-        <LinkRow href="/workspaces">Kaikki työtilat</LinkRow>
+        <LinkRow href="/workspaces" kind="inline">
+          Kaikki työtilat
+        </LinkRow>
       </>
     ) : selected ? (
       <>
@@ -682,7 +684,9 @@ export function App() {
           title="Mitä voit tehdä?"
           actions={[{ label: "Yritä uudelleen", onPress: refresh }]}
         />
-        <LinkRow href="/workspaces">Kaikki työtilat</LinkRow>
+        <LinkRow href="/workspaces" kind="inline">
+          Kaikki työtilat
+        </LinkRow>
       </>
     ) : (
       <>

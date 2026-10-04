@@ -589,7 +589,11 @@ export function AgentHeader({
           Tiedot <Icon name="down" />
         </ControlButton>
       </div>
-      <LinkRow className="ah-header-workspace" href={workspaceHref}>
+      <LinkRow
+        kind="header"
+        className="ah-header-workspace"
+        href={workspaceHref}
+      >
         {workspaceLabel}
       </LinkRow>
       {titleState ? <StatusMark label={titleState} tone="info" /> : null}
