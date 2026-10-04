@@ -28,6 +28,22 @@ to the host. Terminal conversations remain read-only. If a worktree is outside
 the host's accessible workspace area, its run information can still explain
 that limitation; it does not promise access to the conversation there.
 
+## Calling agents and waiting for work
+
+A calling agent must be able to delegate work to a browser-controlled worktree
+agent and start a working `taskfleet run wait <run-id>` process in its native
+execution environment. It receives the exact Taskfleet run identity and can
+wait for the outcome through Taskfleet's ordinary CLI. This is a core agent
+workflow alongside creation by a person in the browser.
+
+The child work and Taskfleet lifecycle must continue while the caller waits.
+The wait command observes Taskfleet run settlement, not merely Pi process exit.
+The integration therefore needs a supported path for reporting and settling
+the child run without requiring an action from the caller blocked in `wait`.
+A browser-only completion indicator would leave that caller waiting. Successful,
+failed and cancelled runs must remain observable through the normal wait result;
+a timeout remains distinct from completion. Taskfleet retains lifecycle authority.
+
 ## Creation failures and returning to work
 
 Run creation, worktree creation and Pi startup can succeed separately. After
@@ -78,7 +94,8 @@ boundary is already decided.
 
 Taskfleet's `issues/caller-owned-agent-runs/item.md` tracks creation without a
 terminal worker, independent supervision, recoverable creation and session
-binding. The host implementation coordinates with that supported contract;
+binding, including compatibility with the calling agent’s native wait workflow.
+The host implementation coordinates with that supported contract;
 its behavior cannot be inferred from the old terminal-worker CLI alone.
 
 The original investigation used Taskfleet 0.11.6 CLI help and workmux's

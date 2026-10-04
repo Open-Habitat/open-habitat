@@ -50,6 +50,13 @@ uncertain, so the person can recover without duplicating work. Stopping Pi
 does not settle the run. Keep completed conversations findable through the
 native run/node-to-Pi-session binding, including after worktree removal.
 
+Calling agents also need the native delegation workflow: create the child work,
+obtain its exact run ID and start `taskfleet run wait` in their own execution
+environment. The child must keep progressing and reach its Taskfleet outcome
+while the caller waits. Settlement cannot depend on that blocked caller acting
+first; Pi process exit alone does not settle the run. Preserve Taskfleet's wait
+results for completion, failure, cancellation and timeout.
+
 ## Taskfleet support and implementation choices
 
 Taskfleet's `caller-owned-agent-runs` issue owns the support needed for this
@@ -68,8 +75,12 @@ the Taskfleet/daemon ownership boundary has been decided.
 
 Demonstrate the browser journey from creation to working with the agent,
 recovery from partial creation and daemon restart, and finding completed
-conversations after cleanup. Verify native ownership during cleanup, including
-manual and unknown worktrees ([CT-019](../../contracts/v1/scenarios.json)).
+conversations after cleanup. Also demonstrate a calling agent starting a real
+`taskfleet run wait` process while the daemon-controlled child works, then
+receiving its Taskfleet outcome. Cover failure, cancellation and timeout as
+well as success, so this proves the native wait contract across both owners.
+Verify native ownership during cleanup, including manual and unknown worktrees
+([CT-019](../../contracts/v1/scenarios.json)).
 Use disposable Git, Taskfleet and harness data: real sessions and their
 uncommitted work are valuable.
 
