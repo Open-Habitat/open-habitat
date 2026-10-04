@@ -78,9 +78,3 @@ and Fleetrepo receipt commit `6a701800`. Fleetrepo's
 subsequent volume recovery; recovery commit `74f7560f` records the restored
 admission and host verification. These distinguish the original failures
 from the work already completed.
-
-## Comments
-
-### 2026-10-04T05:45:35Z · @claude
-
-Jari katselmoi 2026-10-04 ja hyväksyi kaistalle.

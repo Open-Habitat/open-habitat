@@ -59,4 +59,4 @@ lives and who can read it, matching the implementation.
 
 ### 2026-10-04T05:45:35Z · @claude
 
-Jari 2026-10-04: preparation.md:n lokitussuositus hyväksytty sellaisenaan (käyty läpi erillisen agentin kanssa). Seuraava askel on toteutussuunnitelma tämän issuen hakemistoon ennen varsinaista ohjelmointia; toteutus alkaa vasta suunnitelman jälkeen.
+Jari 2026-10-04: preparation.md:n lokitussuositus hyväksytty sellaisenaan. Seuraava askel on toteutussuunnitelma tämän issuen hakemistoon ennen varsinaista ohjelmointia; toteutus alkaa vasta suunnitelman jälkeen.
