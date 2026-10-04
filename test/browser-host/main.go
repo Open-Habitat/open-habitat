@@ -492,6 +492,20 @@ esac
 						http.Error(w, "fixture failed", 500)
 						return
 					}
+				} else if mode == "append" {
+					f, e := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
+					if e != nil {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
+					_, e = f.WriteString(`{"type":"message","id":"terminal_append","message":{"role":"user","content":"Ulkoinen terminaaliviesti"}}` + "\n")
+					if closeErr := f.Close(); e == nil {
+						e = closeErr
+					}
+					if e != nil {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
 				} else if mode == "ready" {
 					if e := seedBrowserHistory(path, filepath.Join(tmp, "alice", "src", "ordinary-dir")); e != nil {
 						http.Error(w, "fixture failed", 500)

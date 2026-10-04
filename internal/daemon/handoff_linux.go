@@ -62,6 +62,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	journal := newEventJournal()
 	controller := newConversationController(ctx, cfg, runtime, server.TrustedPeer, piStatus)
 	controller.journal = journal
+	go watchNativeHistory(ctx, cfg, journal, nil)
 	mux.Handle(SnapshotPath, snapshotHandlerWithController(cfg, server.TrustedPeer, Discover, nativeSessions, cfg.Home, nativeStatus, journal, controller))
 	mux.Handle("/api/v1/events", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		journal.stream(w, r, func() bool {

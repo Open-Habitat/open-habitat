@@ -111,6 +111,8 @@ func ConversationHandlerWithFixtureRuntime(ctx context.Context, cfg transport.Co
 	// The browser-host exercises the controller's real event publisher. Without
 	// its journal the fake Pi RPC stream can never reach /api/v1/events.
 	c.journal = newEventJournal()
+	watchCfg := c.nativeCfg()
+	go watchNativeHistory(ctx, watchCfg, c.journal, nil)
 	return c
 }
 
