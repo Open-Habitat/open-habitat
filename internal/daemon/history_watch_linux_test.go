@@ -82,7 +82,7 @@ func TestExternalPiAppendReachesTwoStreamsAndNativeHistory(t *testing.T) {
 		}()
 		select {
 		case frame := <-seen:
-			if !strings.Contains(frame, `"kind":"snapshot.invalidated"`) {
+			if !strings.Contains(frame, `"kind":"snapshot.invalidated"`) || !strings.Contains(frame, `"agent_id":"pi:`+id+`"`) {
 				t.Fatalf("client %d: %s", i, frame)
 			}
 		case <-time.After(3 * time.Second):
@@ -110,6 +110,19 @@ func TestExternalPiAppendReachesTwoStreamsAndNativeHistory(t *testing.T) {
 	journal.mu.Unlock()
 	if entries != 1 {
 		t.Fatalf("duplicate keyed entries: %d", entries)
+	}
+}
+
+func TestSnapshotRaceSignalDoesNotBecomeAnotherNativeChange(t *testing.T) {
+	j := newEventJournal()
+	j.appendInvalidation("") // one actual native change
+	generation := j.nativeGeneration()
+	j.appendSnapshotRaceInvalidation()
+	if got := j.nativeGeneration(); got != generation {
+		t.Fatalf("race signal fed back into native generation: %d → %d", generation, got)
+	}
+	if cursor, _ := j.watermark(); !strings.HasSuffix(cursor, ":2") {
+		t.Fatalf("race signal missing from replay: %s", cursor)
 	}
 }
 

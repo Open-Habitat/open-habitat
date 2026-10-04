@@ -521,7 +521,12 @@ export function HistoryView({
   const [busy, setBusy] = useState(false);
   const [details, setDetails] = useState(false);
   useEffect(() => {
+    const cached = store.read(agent.agent_id);
     store.view(agent.agent_id);
+    // Terminal histories have no controller events to fall back on. Re-read a
+    // warm window on opening if the daemon's file watcher stopped unexpectedly.
+    if (cached && !["loading", "error"].includes(cached.state))
+      void store.reconnect(agent.agent_id);
   }, [agent.agent_id, store]);
   const entries = window?.entries ?? [];
   const stream = useRef<HTMLElement>(null);

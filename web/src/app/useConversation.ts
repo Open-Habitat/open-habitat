@@ -186,9 +186,6 @@ export function useConversation({
     const cached = store.status(id);
     if (cached && cached.workspace_id === workspace.workspace_id) {
       store.view(id);
-      // A warm window is only a cache. Re-read native history on navigation so
-      // a failed daemon watch still degrades to reload-on-open, not stale text.
-      void store.reconnect(id);
       setOpened(true);
       openReady.current = true;
       openedProof.current = `${identity}:${id}`;

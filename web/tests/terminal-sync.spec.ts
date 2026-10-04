@@ -33,7 +33,7 @@ test("@native-history terminal append reaches two browser contexts once without 
           .locator(".ah-feed")
           .getByText("Ulkoinen terminaaliviesti", { exact: true }),
       ).toHaveCount(1);
-      await expect(view.locator(".ah-feed li")).toHaveCount(25);
+      await expect(view.locator(".ah-feed li")).toHaveCount(26);
     }
   } finally {
     await secondContext.close();

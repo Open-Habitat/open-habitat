@@ -33,20 +33,21 @@ type turnTail struct {
 }
 
 type eventJournal struct {
-	mu        sync.Mutex
-	instance  string
-	seq       uint64
-	frames    [][]byte
-	bytes     int
-	changed   chan struct{}
-	pending   bool // one trailing invalidation coalesces bursty Pi deltas
-	nativeGen uint64
-	tails     map[string]*turnTail
+	mu            sync.Mutex
+	instance      string
+	seq           uint64
+	frames        [][]byte
+	bytes         int
+	changed       chan struct{}
+	pending       bool            // one trailing invalidation coalesces bursty Pi deltas
+	pendingAgents map[string]bool // per-session file hints do not reload unrelated histories
+	nativeGen     uint64
+	tails         map[string]*turnTail
 }
 
 func newEventJournal() *eventJournal {
 	id, _ := uuid()
-	return &eventJournal{instance: id, changed: make(chan struct{}), tails: make(map[string]*turnTail)}
+	return &eventJournal{instance: id, changed: make(chan struct{}), tails: make(map[string]*turnTail), pendingAgents: make(map[string]bool)}
 }
 func (j *eventJournal) cursor(seq uint64) string { return fmt.Sprintf("ev1:%s:%d", j.instance, seq) }
 
@@ -75,6 +76,34 @@ func (j *eventJournal) invalidateNative() {
 		j.mu.Unlock()
 		j.appendInvalidation("")
 	})
+}
+
+// Coalesce repeated writes to one file without forcing every open history in
+// every browser to re-read. Global invalidations still cover unknown paths.
+func (j *eventJournal) invalidateNativeAgent(agent string) {
+	j.mu.Lock()
+	if j.instance == "" || j.pending || j.pendingAgents[agent] {
+		j.mu.Unlock()
+		return
+	}
+	j.pendingAgents[agent] = true
+	j.mu.Unlock()
+	time.AfterFunc(250*time.Millisecond, func() {
+		j.mu.Lock()
+		delete(j.pendingAgents, agent)
+		j.mu.Unlock()
+		j.appendInvalidation(agent)
+	})
+}
+
+// A snapshot can straddle a native write. Its recovery notification must not
+// itself count as another native write to snapshots running in other tabs.
+func (j *eventJournal) appendSnapshotRaceInvalidation() {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if j.instance != "" {
+		j.appendLocked("snapshot.invalidated", "", "", map[string]string{"reason": "source_changed"})
+	}
 }
 func (j *eventJournal) appendInvalidation(agent string) {
 	j.mu.Lock()

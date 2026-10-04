@@ -7,6 +7,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"unsafe"
 
 	"github.com/maintainer/native-agent-host/internal/transport"
@@ -81,7 +82,11 @@ func watchNativeHistory(ctx context.Context, cfg transport.Config, journal *even
 			if owner, ok := fileOwner(info); !ok || owner != cfg.UID {
 				return false
 			}
-			wd, err := unix.InotifyAddWatch(fd, path, unix.IN_CREATE|unix.IN_MOVED_TO|unix.IN_MODIFY|unix.IN_CLOSE_WRITE|unix.IN_DELETE|unix.IN_MOVED_FROM|unix.IN_DELETE_SELF|unix.IN_MOVE_SELF|unix.IN_ATTRIB|unix.IN_ONLYDIR|unix.IN_DONT_FOLLOW)
+			mask := uint32(unix.IN_CREATE | unix.IN_MOVED_TO | unix.IN_DELETE | unix.IN_MOVED_FROM | unix.IN_DELETE_SELF | unix.IN_MOVE_SELF | unix.IN_ONLYDIR | unix.IN_DONT_FOLLOW)
+			if path == root || strings.HasPrefix(path, root+string(filepath.Separator)) {
+				mask |= unix.IN_MODIFY | unix.IN_CLOSE_WRITE | unix.IN_ATTRIB
+			}
+			wd, err := unix.InotifyAddWatch(fd, path, mask)
 			if err != nil {
 				return false
 			}
@@ -122,6 +127,8 @@ func watchNativeHistory(ctx context.Context, cfg transport.Config, journal *even
 			return
 		}
 		changed, dirs := false, false
+		agents := map[string]bool{}
+		global := false
 		for offset := 0; offset+unix.SizeofInotifyEvent <= size; {
 			event := (*unix.InotifyEvent)(unsafe.Pointer(&buf[offset]))
 			offset += unix.SizeofInotifyEvent + int(event.Len)
@@ -130,8 +137,10 @@ func watchNativeHistory(ctx context.Context, cfg transport.Config, journal *even
 				return
 			}
 			if event.Mask&unix.IN_Q_OVERFLOW != 0 {
-				journal.appendInvalidation("")
-				return
+				// Queue overflow loses filenames, not the watch registrations.
+				// Rebuild and invalidate everything, then continue observing.
+				dirs, global, changed = true, true, true
+				break
 			}
 			if event.Mask&(unix.IN_DELETE_SELF|unix.IN_MOVE_SELF) != 0 {
 				dirs = true
@@ -148,6 +157,16 @@ func watchNativeHistory(ctx context.Context, cfg transport.Config, journal *even
 			}
 			if event.Mask&(unix.IN_CREATE|unix.IN_MODIFY|unix.IN_CLOSE_WRITE|unix.IN_MOVED_TO|unix.IN_DELETE|unix.IN_MOVED_FROM|unix.IN_ATTRIB) != 0 {
 				changed = true
+				if event.Mask&unix.IN_ISDIR == 0 && filepath.Ext(name) == ".jsonl" && parent != "" && parent != cfg.Home && parent != filepath.Join(cfg.Home, ".pi") && parent != filepath.Join(cfg.Home, ".pi/agent") {
+					session := readNativeHeader(filepath.Join(parent, name), cfg.UID)
+					if session.id != "" {
+						agents["pi:"+session.id] = true
+					} else {
+						global = true
+					}
+				} else if event.Mask&unix.IN_ISDIR != 0 || parent == cfg.Home || parent == filepath.Join(cfg.Home, ".pi") || parent == filepath.Join(cfg.Home, ".pi/agent") {
+					global = true
+				}
 			}
 		}
 		if dirs {
@@ -163,8 +182,12 @@ func watchNativeHistory(ctx context.Context, cfg transport.Config, journal *even
 				return
 			}
 		}
-		if changed || dirs {
+		if dirs || global {
 			journal.invalidateNative()
+		} else if changed {
+			for agent := range agents {
+				journal.invalidateNativeAgent(agent)
+			}
 		}
 	}
 }

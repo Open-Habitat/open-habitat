@@ -227,7 +227,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		// change arrived during discovery, leave an explicit resnapshot signal
 		// *after* the controller cursor instead of silently consuming it.
 		if journal != nil && beforeNative != afterNative {
-			journal.appendInvalidation("")
+			journal.appendSnapshotRaceInvalidation()
 		}
 		expected := opaque("wid_", cfg.Provider+":"+cfg.Subject)
 		display := "GitHub user " + cfg.Subject
