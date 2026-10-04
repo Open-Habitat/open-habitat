@@ -1,27 +1,84 @@
-# Designerin tehtävä: navigaatio, asetukset ja uudet yhteiset tilat
+# Designerin tehtävä: navigaatio ja asetukset
 
-Omega Habitat (Native Agent Host) on selainreitti käyttäjän omiin Linux-palvelimella oleviin työtiloihin ja Pi-keskusteluihin. Selain ei korvaa natiivihistoriaa tai SSH/tmux-käyttöä. Käyttäjä palaa töihin, vaihtaa työtilaa tai keskustelua, lukee agentin tuloksia ja hallitsee oman selainistuntonsa asetuksia. Näkymät ovat suomeksi, työpöydällä ja puhelimessa, vaaleana ja tummana. Suunnittele nykyisten `design-system/drafts/`-vedosten päivitykset, älä uutta tuotetoimintoa. Toimita muokattavat HTML/CSS-näkymät samaan vedosperheeseen käyttäen `design-system/tokens/`-arvoja; nimeä suuret muutokset tuotantokomponentteihin (`web/src/components/`) nähden ja perustele ne. Älä kopioi vedosten simuloitua tilalogiikkaa tuotantokäytökseksi.
+Omega Habitat (Native Agent Host) antaa käyttäjälle selainyhteyden omiin
+Linux-palvelimella oleviin työtiloihin ja Pi-agenttikeskusteluihin. Käyttäjä
+palaa kesken jääneeseen työhön, vaihtaa työtilaa tai keskustelua ja hallitsee
+oman tilinsä asetuksia. Toteutuksen sommittelu on erkaantunut designista:
+teknisesti toimivat näkymät eivät vielä muodosta yhtenäistä käyttöliittymää.
 
-Tämä on **ensimmäinen inventaariopohjainen paketti**. `rendered-pages/index.html` avaa neljän esitystavan (1440 × 900 ja 390 × 844, vaalea/tumma) synteettiset HTML-palaset ja kuvat; fokuksen kokonaiset sivut ovat `*-full.html`. `rendered-pages/inventory.json` on tilakartta ja `COVERAGE.md` aukkolista: se esittää koko inventaarion uutena, **ei muutoksia edelliseen pakettiin**. `MANIFEST.md` kertoo lähdecommitin. Merkitse jokaiseen ehdotukseen mitä inventaarion tilaa se koskee; kommentoi myös aukot, joita ei voi arvioida kuvasta. Paketin vanhat issuekuvat ovat täydentävää synteettistä aineistoa, eivät Jarin hyväksyntöjä. Niissä näkyvät nimet ovat keksittyjä labinimiä. Älä päättele live-agentin tai oikean käyttäjän tilaa kuvasta.
+Suunnittele navigaation ja asetusten yhteinen sommittelu nykyisten
+`design-system/drafts/`-vedosten pohjalta. Näkymät ovat suomeksi,
+työpöydällä ja puhelimessa, vaaleana ja tummana. Kierroksen toteutustyöt
+ovat `align-navigation-design` ja `align-settings-design`.
 
-## 1. Navigaatio ja työhön palaaminen — päätä tämä ensin
+## Navigaatio ja työhön palaaminen
 
-Vertaa `landing-*-full.html`, `workspace-*-full.html`, `history-*-full.html` sekä `account-menu-*` / `workspace-details-*`-palasia nykyisten `Selainpolku.dc.html`, `Puhelin.dc.html` ja `Tummat näkymät.dc.html` -vedosten vastaaviin näkymiin. Vertaa myös `issues/unify-ui-primitives/`- ja `issues/migrate-bespoke-controls/`-synteettisiä HTML-näkymiä: yhteiset LinkRow/ListRow/ActionRow ja siirretyt kontrollit ovat nyt todellista tuotantoa, eivät vedosten prototyyppiä. `COVERAGE.md`:n `narrow-navigation`, `phone-navigation-drawer`, `filter-no-results` ja uusi `expanded-navigation` ovat inventaarion tallennusaukkoja; puhelinlaatikosta on erillisiä aiempia tallenteita, ei uutta neljän esitystavan inventaariota. `review-browser-design-v2/assessment.md` arvioi vanhaa pohjaa ennen viimeisintä kontrollimigraatiota: älä kutsu sen vanhoja CSS-lukumääriä nykyisiksi vioiksi.
+Sovita avoin sivupalkki, kapea ikonikaista ja puhelimen navigaatiolaatikko
+samaan kokonaisuuteen. Niihin kuuluvat työtila- ja keskustelurivit, Etusivu,
+tilipainike ja tilivalikko. Paluunäkymä auttaa jatkamaan työtä käynnissä olevien
+ja äskettäin avattujen keskustelujen kautta. Suunnittele myös työtilasivun
+vastine: toteutuksen `workspace-*`-näkymälle puuttuu nykyisestä vedoksesta pohja.
 
-**Päätä:** miten avoin palkki, kapea ikonikaista, puhelimen laatikko, työtila- ja keskustelurivit, Etusivu, tilivalikon laukaisin/avattu valikko ja paluunäkymän aktiiviset/äskettäiset keskustelut muodostavat yhden tunnistettavan sommittelun? Näytä nykyinen rivi ja pitkä nimi, valinta, näppäimistöfokus, tilamerkki ja huomion tarve; kerro mihin kontrollin ja rivin oma tila kuuluu. Työtilan sivu puuttuu nykyisestä vedoksesta, vaikka `workspace-*` on toteutuksessa: suunnittele sen vastine. Älä tee käynnissä olevasta prosessista automaattisesti ”työskentelevää” agenttia. Ensimmäinen historian avaus hakee tiedot; lämmin paluu säilyttää luonnoksen ja lukukohdan, eikä taustapäivitys varasta fokusta (`docs/ui.md`, `align-navigation-design`). Tarvitseeko nykyinen vedos uudet tilat näille eroille?
+Näytä, miten nykyinen sijainti, pitkät nimet ja agentin tila erottuvat ja miten
+rivit toimivat valittuina ja näppäimistöfokuksessa. Agentin aktiivisuus ja huomion
+tarve ovat eri asioita kuin rivin valinta; käynnissä oleva prosessi ei yksin
+kerro agentin työskentelevän. Agenttitilojen merkitykset valmistellaan
+`refine-agent-status`-issuessa ja yhteinen esitys `design-control-states`-kierroksella.
 
-## 2. Asetukset ja tilin esitys
+Ensimmäinen keskustelun avaus hakee historian. Paluu säilyttää kirjoitusluonnoksen
+ja lukukohdan, ja taustapäivitykset säilyttävät fokuksen käyttäjän valitsemassa
+paikassa. Esitä näiden tilanteiden tarvitsema palaute osana sommittelua.
+Sovittu käyttökulku kuvataan `docs/ui.md`:ssä.
 
-Vertaa `settings-*`-palasia vedoksen `app/asetukset`-tilaan ja `SettingsDensity.stories.tsx`-katalogiin; nykyisessä inventaariossa ei ole erillistä neljän esitystavan tallennetta puuttuvasta profiilista tai tuntemattomasta yhteystilasta (`settings-connection-unknown`). **Päätä** Tili-, Yhteydet tällä palvelimella-, Ulkoasu- ja Istunto-osioiden sommittelu 1440/390 px ja molemmissa teemoissa; rivien valinta, fokus, virhe, keskeneräinen/tuntematon tila ja pitkä teksti. Tilipainikkeessa on etunimi ja GitHub-kuva tai varaesitys, avatussa tilissä sähköposti, jos tieto on saatavilla (`account-profile-from-github` on erillistä työtä). Älä näytä ”yhdistetty”, kun natiivia tilaa ei ole voitu varmistaa. Selainuloskirjautuminen **ei** poista palvelimen natiiveja tunnuksia eikä lopeta agentteja; osoita ero ilman uutta keksittyä varmistusta tai toimintoa. OpenAI-rivi ja sen todellinen toiminta kuuluvat `add-account-settings-ui`-työhön, joten suunnittele rehellinen tila, älä kuittaa sitä valmiiksi pelkän vedoksen perusteella (`align-settings-design`, `docs/ui.md`).
+## Asetukset ja tilin tunnistaminen
 
-## 3. Yhteisten kontrollien keskeneräiset esitystilat
+Sovita Tili-, Yhteydet tällä palvelimella-, Ulkoasu- ja Istunto-osiot navigaation
+kanssa samaan käyttöliittymään. Tilipainikkeessa on etunimi ja GitHub-profiilikuva
+tai varaesitys; avatussa tilinäkymässä näkyy sähköposti, kun se on saatavilla.
+Profiilitiedot ja puuttuvien tietojen käsittely kuuluvat
+`account-profile-from-github`-työhön.
 
-`ControlStates.stories.tsx`, `interactive.module.css`, `design-system/components.md` sekä `account-menu-*`, `new-conversation-*`, `settings-*` ja `landing-*` näyttävät jo yhteiset painikkeet, ikonipainikkeet, navigointi-/listarivit, valikkokohdat, avaajan ja kentät. `control-interactions` on inventaarion aukkotila: staattinen kuva ei todista hoveria, painallusta eikä näppäimistöfokusta. Nykyiset `--ah-surface-2`, `--ah-accent-soft`, `--ah-accent-line`, `--ah-line`, `--ah-muted`, `--ah-accent` ovat **väliaikaisia**. **Päätä** kullekin soveltuvalle variantille lepo, hover, pressed, näppäimistöfokus, nykyinen/valittu, estetty ja odottava; mitkä eivät ole mielekkäitä kyseiselle kontrollille? Kerro myös miten eston syy näkyy luettavasti, miten sama tyyli toimii palkissa, paluunäkymässä, asetuksissa ja kirjoituskentässä, ja mikä muuttuu tokeneissa. Erota agentin aktiivisuus/huomio kontrollin vuorovaikutustilasta: `refine-agent-status` valmistelee vielä lopulliset faktat ja merkitykset; käsittele nykyisiä pisteitä viitteenä, älä vahvistettuna semantiikkana (`design-control-states`).
+Näytä myös puuttuvat profiilitiedot, pitkät tekstit sekä yhteyksien keskeneräiset,
+tuntemattomat ja virhetilat. Yhteyden esitys perustuu saatavilla olevaan tietoon:
+varmistamaton yhteys näkyy tuntemattomana. OpenAI-yhteysrivin toiminnallisuus
+kuuluu `add-account-settings-ui`-työhön; tässä suunnitellaan sen esitys.
+Selainuloskirjautuminen päättää selainistunnon, ja palvelimen tunnukset sekä
+agenttien työ säilyvät. Asetusten tulee tehdä tämä vaikutus ymmärrettäväksi.
 
-## 4. Pi:n tyypitetyt keskustelulohkot — seuraavan kierroksen päätökset
+## Yhteinen pohja ja aineisto
 
-`carry-typed-pi-events/result.md` kirjaa mitä Pi 0.85.1:n sisältöä selain todella kantaa ja mitä se jättää turvallisuussyistä pois. Vertaa inventaarion `history-*`, `new-conversation-*`, `send-rejected-*`, `send-uncertain-*`, `outage-*`-palasia, erillisiä `typed-provisional-*` ja `block-read-synthetic.html` -tallenteita sekä `ConversationStates.stories.tsx`-katalogia vedoksen `app/tyo`, `app/valmis` ja `app/luku` -tiloihin. `typed-pi-stream`, `typed-pi-block-read`, `typed-pi-markers`, `unknown-content`, `tool-expanded` ovat inventaarion aukkoja tai vain erillisessä synteettisessä tallenteessa; valmiin sisältölohkon suunnittelun omistaa `design-pi-event-blocks` yhteisten kontrollitilojen jälkeen.
+Käytä tuotannon yhteisiä kontrolleja (`web/src/components/`) ja
+`design-system/tokens/`-arvoja. Näytä näkymien kontrollien olennaiset
+vuorovaikutustilat osana suunnitelmaa. Koko kontrollikirjaston ja agenttitilojen
+yhteinen tilasuunnittelu kuuluu `design-control-states`-kierrokseen;
+tässä tarvittavat täydennykset kirjataan sen lähtötiedoiksi.
 
-**Päätä ehdotuksena jatkokierrokselle:** miten järjestyksessä olevat käyttäjä-/assistenttitekstit ja kuvat, näkyvä ajattelu, työkalukutsu–eteneminen–tulos yhtenä kokonaisuutena, paikallinen komento ja sen tulos, tiivistelmät, istuntomerkit, näkyvät extension-viestit ja kysymykset esitetään historiassa ja streamissä? Näytä lyhyt/pitkä, keskeneräinen/valmis, onnistuminen/virhe, katkaistu esikatselu ja valittu täysi sisältö sekä hillitty tuntemattoman tyypin fallback ilman tarkistamatonta raakadataa. Piilotettu extension-data ja salattu ajattelu eivät tule näkyviksi; provider-diagnostiikka, tunnukset ja mielivaltaiset payloadit eivät ole suunnittelumateriaalia. Älä lisää kysymyksen vastaus/peru-toimintoja, paikallisen komennon suorituspainikkeita tai haaranavigaatiota tämän kuvallisen suunnittelun perusteella. Käytä edellä määriteltyjä yhteisiä kontrolleja; erota tila, jonka host tietää, ja se jota se ei tiedä. Nimeä puuttuvat esimerkit joita tarvitset seuraavaan kierrokseen, älä täytä aukkoa keksityllä todisteella.
+Paketin `rendered-pages/index.html` avaa synteettiset HTML-palaset ja kuvat
+neljässä esitystavassa: 1440 × 900 ja 390 × 844, molemmissa teemoissa.
+Fokusnäkymien kokonaiset sivut ovat `*-full.html`. Navigaation aineisto on
+`landing-*`, `workspace-*`, `history-*`, `account-menu-*` ja
+`workspace-details-*`; asetusten aineisto on `settings-*` ja
+`SettingsDensity.stories.tsx`. Vertailupohjana ovat vedokset
+`Selainpolku.dc.html`, `Puhelin.dc.html` ja `Tummat näkymät.dc.html`.
+Yhteisten kontrollien käyttöönottoa näyttävät myös
+`issues/unify-ui-primitives/`- ja `issues/migrate-bespoke-controls/`-tallenteet.
 
-Toimita jokaiselle yllä kuvatulle erolle konkreettinen päätös tai merkitty avoin kohta, vastaavat HTML/CSS-tilat ja perustelu. Jari käy designer-keskustelun itse; tämä pyyntö ei ole designerin vastaus eikä lupa muuttaa tuotteen auktoriteettia tai käyttökäytöstä.
+`MANIFEST.md` kertoo paketin lähdecommitin. Tämä on ensimmäinen
+inventaariopaketti, joten `rendered-pages/inventory.json` ja
+`rendered-pages/COVERAGE.md` kuvaavat koko tilajoukon ja sen aukot.
+Tämän paketin inventaariosta puuttuvat muun muassa avoimen ja kapean
+navigaation, puhelinlaatikon, tyhjän suodatustuloksen, puuttuvan profiilin
+ja tuntemattoman yhteystilan kattavat tallenteet. Vuorovaikutustilojakaan
+ei voi arvioida pelkistä kuvista. Vanhemmat erillistallenteet täydentävät
+aineistoa; vanha `review-browser-design-v2/assessment.md` edeltää
+kontrollimigraatiota. Kaappausten tiedot ovat keksittyjä labiesimerkkejä.
+
+## Odotettu palautus
+
+Toimita muokattavat HTML/CSS-näkymät nykyiseen vedossarjaan. Yhdistä ehdotukset
+inventaarion tiloihin, perustele olennaiset muutokset ja kerro, mitä ne muuttavat
+tuotannon komponenteissa tai tokeneissa. Merkitse avoimet suunnittelukohdat ja
+puuttuvat esimerkit, joita tarvitset ratkaisun tekemiseen.
+
+Jari käy suunnittelukeskustelun ja palautettu suunnitelma sovitetaan yhteiseen
+`design-system/design.md`:hen ja vedoksiin.

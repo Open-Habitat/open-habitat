@@ -1,9 +1,39 @@
-# Ensimmäinen inventaariopohjainen designer-paketti
+# Navigaation ja asetusten suunnittelupaketti
 
-Kierroksen omistaa tämä issue, koska sen nykyinen navigaatiokierros kattaa paluunäkymän ja tilivalikon; `align-settings-design` on saman kierroksen asetusten osuus. Paketin kysymykset ovat [REQUEST.md](REQUEST.md): navigaation sommittelu, asetusten yhteystilan rehellinen esitys, väliaikaiset kontrollitilat ja Pi:n tyypitettyjen lohkojen jatkosuunnittelu. Designerin vastausta ei ole vielä saatu eikä kumpaakaan sovitusissuea ole suljettu.
+Ensimmäinen inventaariopohjainen paketti on koottu ja toimitettu Jarille.
+Navigaation ja asetusten yhteisen kierroksen pyyntö on [REQUEST.md](REQUEST.md).
+Designerin vastausta ei ole vielä saatu.
 
-Kokoajan lähdecommit on `176d9e643440530cee375a5dc6249b95ab3f95db`. Se sisältää `web/lab/inventory.json`-inventaarion täsmäytyksen ja pyynnön. Ensimmäisellä kierroksella koko inventaario on uusi: 21 toistettavaa tilaa × 4 esitystapaa = 84 onnistunutta kaappausta, 18 eksplisiittistä aukkotilaa × 4 = 72 puuttuvaa esitystä. Indeksissä ei ole epäonnistunutta toistettavaa kaappausta. `rendered-pages/COVERAGE.md` näyttää aukot toteutuksesta vedoksiin ja päinvastoin sekä vielä kartoittamattomat storyt. Mukana on aiempia synteettisiä, erillisiä Pi-lohkojen ja kontrollimigraation HTML-tallenteita, mutta ne eivät täytä inventaarion aukkoja.
+## Toimitettu aineisto
 
-Koottu hakemisto: `.cache/design-package/align-navigation-design/`; zip: `.cache/design-package/align-navigation-design.zip`. Kokoajan automaattisen credential-tarkistuksen jälkeen pakettikopioista anonymisoitiin omistajan nimi ja koneen kotihakemistopolku sekä peitettiin synteettinen laitekoodiesimerkki HTML:stä ja neljästä vastaavasta PNG:stä. Zip rakennettiin uudelleen näistä redaktoiduista pakettikopioista; `MANIFEST.md` kertoo poikkeaman byte-for-byte-kopioihin. Lähdekoodi ja labin kaappaukset eivät muuttuneet. Paketin tekstistä tarkistettiin, ettei mukana ole oikeita identiteettejä, yksityisiä työtiloja, laitekoodeja tai yksityisen infrastruktuurin aineistoa. Kaikki labin data on keksittyä; kuva ei ole live-palvelimen todiste.
+Paketin lähdecommit on `176d9e643440530cee375a5dc6249b95ab3f95db`.
+Koko inventaario esitettiin uutena: 21 tilaa neljässä esitystavassa tuotti
+84 onnistunutta kaappausta. Lisäksi 18 aukkotilalta puuttui yhteensä
+72 esitystä. `rendered-pages/COVERAGE.md` kuvaa puuttuvan aineiston sekä
+vastaavuusaukot toteutuksen ja vedosten välillä. Mukana olevat vanhemmat
+Pi-lohkojen ja kontrollimigraation erillistallenteet täydentävät aineistoa.
 
-Toimitus: `tw doctor` ilmoitti, ettei istuinkonetta ole kytketty, ja `tw client` vastasi "No attached thin client detected". Zip jäi yllä mainittuun ohitettuun hakemistoon noudettavaksi; sitä ei kopioitu Downloads-kansioon. Pakettia ei lähetetty designerille eikä mihinkään design-AI-palveluun. Full CI-gatea ei ajettu: muutokset ovat vain inventaarion metadataa ja issue-/design-dokumentaatiota. Dokumenttivalidaattori, issue doctor ja diff-tarkistus on ajettu.
+Aineisto on synteettistä. Pakettikopioista poistettiin omistajan nimi,
+kotihakemistopolku ja synteettinen laitekoodiesimerkki; `MANIFEST.md`
+kirjaa nämä muutokset lähdetiedostoihin nähden.
+
+[Issuen toimitusmerkinnän](../item.md#comments) mukaan paketti toimitettiin
+4.10.2026 maplein tiedostoon `~/Downloads/align-navigation-design.zip`.
+Tiedoston koko oli 14 978 055 tavua ja koneella tarkistettu SHA-256:
+
+```text
+de2edcee82dc1386bfa9b0a1e590a69c8b1495218b21f7293cf5655ede442221
+```
+
+## Pyynnön nykyinen rajaus
+
+Jarin kanssa 4.10.2026 tarkennettu pyyntö keskittyy navigaatioon ja asetuksiin.
+Kontrollien yhteinen tilasuunnittelu kuuluu
+[design-control-states](../../design-control-states/item.md)-issueen ja
+Pi-lohkojen suunnittelu aineistoviitteineen
+[design-pi-event-blocks](../../design-pi-event-blocks/item.md)-issueen.
+
+Yllä tunnistettu zip sisältää alkuperäisen, laajemman pyynnön. Repossa oleva
+REQUEST.md on tarkennettu sen toimituksen jälkeen; zipiä ei ole tässä
+tekstikierroksessa päivitetty. Seuraavassa toimituksessa käytetään tarkennettua
+pyyntöä ja kirjataan uuden paketin lähdecommit ja toimitustiedot.

@@ -26,6 +26,22 @@ esitetään selkeästi tekstin asianomaisessa kohdassa. Erillistä Decisions-osi
 ei säilytetä saman sisällön toistona tai läpikäyntien lokina; aiemmat versiot
 löytyvät Git-historiasta.
 
+## Navigaation suunnittelupyyntö ja paketin tulos 4.10.2026
+
+Jari hyväksyi `align-navigation-design`-issuen REQUEST.md:n rajaamisen
+navigaation ja asetusten yhteiseen kierrokseen. Kontrollien yhteinen
+tilasuunnittelu säilyy `design-control-states`-issuessa. Pi-lohkojen pyyntö
+poistettiin tältä kierrokselta ja sen hyödylliset aineistoviitteet sekä havaitut
+aukot siirrettiin olemassa olevaan `design-pi-event-blocks`-issueen.
+Suunnittelutyöt jonottavat issueina; niiden REQUEST.md ja ajantasainen paketti
+valmistellaan kierroksen alkaessa. Erillistä valmiiden pyyntöjen jonoa ei tehdä.
+
+RESULT.md kuvaa paketin kattavuuden ja 4.10. kirjatun toimituksen maplein
+Downloadsiin. Toimitetun zipin alkuperäinen pyyntö erotettiin repossa nyt
+olevasta tarkennetusta pyynnöstä. Pakettia ei koottu uudelleen tällä
+tekstikierroksella. Navigaatio- ja asetusissueista on linkit yhteiseen pyyntöön
+ja tulokseen. Toteutusta, issueiden tilaa ja DAGia ei muutettu.
+
 ## Seuraavaksi: docs/architecture
 
 Jarin hyväksymä läpikäyntijärjestys: yksi tiedosto kerrallaan, koko kansio

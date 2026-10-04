@@ -49,6 +49,27 @@ local commands or branch summaries does not add command execution or branch
 navigation controls. Reuse the control states and agent-state presentation from
 @design-control-states so conversation content fits the rest of the UI.
 
+## Existing material for the round
+
+The [typed-event implementation result](../carry-typed-pi-events/result.md)
+records browser coverage for Pi 0.85.1. Its
+[desktop example](../carry-typed-pi-events/typed-provisional-desktop-light.html),
+sibling `typed-provisional-*` captures and
+[full-content example](../carry-typed-pi-events/block-read-synthetic.html)
+provide initial synthetic material alongside
+`web/src/components/ConversationStates.stories.tsx`.
+
+The first navigation package, built from `176d9e6`, identified
+`typed-pi-stream`, `typed-pi-block-read`, `typed-pi-markers`, `unknown-content`
+and `tool-expanded` as inventory gaps or states shown only in separate
+captures. Its `history-*`, `new-conversation-*`, `send-rejected-*`,
+`send-uncertain-*` and `outage-*` fragments provide surrounding context;
+the corresponding draft views are `app/tyo`, `app/valmis` and `app/luku`.
+Refresh these examples and coverage gaps against the implementation when this
+round starts, using the shared control design available then. Prepare this
+round's REQUEST.md here from that material; the navigation request no longer
+asks for Pi-block proposals.
+
 ## Design round and delivery
 
 Prepare the package with the repository's `design-package` skill. Explain each

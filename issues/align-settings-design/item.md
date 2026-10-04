@@ -22,6 +22,11 @@ earlier review found that technically working views had drifted from the design.
 Alongside fitting settings, refresh the view comparisons so he can assess the
 resulting interface as a whole.
 
+The joint navigation and settings round uses the
+[request](../align-navigation-design/design-package/REQUEST.md) and
+[package result](../align-navigation-design/design-package/RESULT.md)
+kept in @align-navigation-design.
+
 ## Settings
 
 Fit the account details, native connection rows, theme selection and browser

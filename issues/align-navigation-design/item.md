@@ -22,6 +22,15 @@ conversations feels like part of the same interface. Jari's earlier comparison
 found that passing technical checks had not preserved the design's composition.
 The work needs a visual comparison of the actual views with the current drafts.
 
+## Design round
+
+Navigation and settings share one [design request](design-package/REQUEST.md)
+kept in this issue. The [package result](design-package/RESULT.md) records
+its coverage and delivery. @align-settings-design owns the settings
+implementation. Shared control-state design and Pi-block design remain
+separate rounds in @design-control-states and @design-pi-event-blocks;
+each prepares its request from current material when its round starts.
+
 ## Work
 
 Fit the expanded sidebar, collapsed rail and phone navigation drawer to the
