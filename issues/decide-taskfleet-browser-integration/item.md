@@ -1,11 +1,13 @@
 ---
 created: 2026-10-03
-updated: 2026-10-03
+updated: 2026-10-04
 type: task
-status: open
+status: done
 priority: normal
 lane: worktree-agent-design
 lane_seq: 10
+closed: 2026-10-04
+closed_by: claude
 ---
 
 # Decide the browser boundary for Taskfleet and worktree integration
@@ -49,3 +51,9 @@ and safe worktree cleanup remain part of the implementation task.
 [Expose native status](../expose-native-status/item.md) covers additional
 native task-profile and worker information; the basic worktree-agent
 experience belongs here and in its implementation task.
+
+## Decisions
+
+### 2026-10-04T04:09:08Z · @claude
+
+Jari 2026-10-04: hyväksytty design.md:n vaihtoehto B, ja toteutus voi alkaa sen mukaan. Taskfleet omistaa ajon ja worktreen luonnin ja päättämisen; per-user-daemon omistaa erikseen käynnistetyn, selaimesta ohjattavan Pi-lapsiprosessin varmennetussa worktreessä. Jari odottaa, että Taskfleetiin tarvitaan muutoksia, jotta se tukee tätä ympäristöä (workspace-only/eksplisiittisen elinkaaren tila, supervisorin elinaika daemonin cgroupin ulkopuolella, run/node–Pi-istunto-sidonta). Design.md:n kysymykset 2 (worktreen sijainti ~/src:n alla, muut vain luku) ja 3 (merge/salvage/discard selaimessa vai natiivissa CLI:ssä) jäävät manage-agent-worktrees-toteutuksen ratkaistaviksi; design.md:n konservatiivinen oletus on lähtökohta.

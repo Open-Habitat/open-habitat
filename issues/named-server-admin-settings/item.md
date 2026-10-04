@@ -1,6 +1,6 @@
 ---
 created: 2026-10-02
-updated: 2026-10-03
+updated: 2026-10-04
 type: feature
 reporter: jari
 status: open
@@ -52,3 +52,9 @@ Reported by Jari on 2 October 2026: the expanded sidebar showed the truncated UR
 "omega-habitatat.ma...", followed by "Yhdistetty". He requested a configurable
 server name, separate administrator settings, an equivalent administrator CLI,
 and ordinary/admin roles managed through the administrator view.
+
+## Decisions
+
+### 2026-10-04T04:09:08Z · @claude
+
+Jari 2026-10-04: hyväksytty options.md:n suositus A. Gateway omistaa jaetun palvelinnimen ja selainroolien tietueen ja on sen ainoa kirjoittaja; root-only CLI lähettää operaatiot gatewaylle yksityisen, käyttöjärjestelmän todentaman socketin kautta; admissio ja tilisidonnat pysyvät yksin brokerilla. Jari kommentoi suositusta 'kuulostaa järkevältä', joten myös suositeltu inventaariolaajuus (admin-sivu listaa sidotut käyttäjät rajatulla, vain luku -broker-inventaariolla ilman tunnuksia tai kotihakemistopolkuja) otetaan oletukseksi; Jari voi tarkentaa ennen broker-operaation lisäämistä. ADR kirjoitetaan toteutuksen yhteydessä options.md:n kohdan 'Work after the decision' mukaan.

@@ -1,6 +1,6 @@
 ---
 created: 2026-09-21
-updated: 2026-10-03
+updated: 2026-10-04
 type: task
 status: open
 priority: normal
@@ -71,3 +71,9 @@ Record Jari's visual verdict when given; until then, mark appearance unreviewed
 without blocking functional completion or independent work. Record what was
 demonstrated and what remains unverified in this issue's result, distinguishing
 native Taskfleet integration from simulated behavior.
+
+## Comments
+
+### 2026-10-04T04:09:08Z · @claude
+
+Taskfleet-ohjausraja ratkaistu 2026-10-04 (decide-taskfleet-browser-integration, vaihtoehto B, design.md). Avoinna toteutukselle: design.md:n kysymykset 2 ja 3 sekä Taskfleetin vaatimat muutokset.
