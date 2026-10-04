@@ -198,7 +198,7 @@ test("@native-history older page keeps the visible native row anchored", async (
     .evaluate((el) => el.getBoundingClientRect().top);
   expect(Math.abs(after - before)).toBeLessThan(3);
 });
-test("@native-history warm return paints without a history request", async ({
+test("@native-history warm return paints from cache while revalidating history", async ({
   page,
 }) => {
   await fixture(page, "ready");
@@ -221,7 +221,15 @@ test("@native-history warm return paints without a history request", async ({
         ),
       ),
   );
-  expect(requests).toEqual([]);
+  // A warm read-only view paints immediately but checks the native source on
+  // open if inotify has failed while the user was away.
+  await expect
+    .poll(
+      () =>
+        requests.filter((url) => url.includes(`/agents/${agent}/history`))
+          .length,
+    )
+    .toBe(1);
   // Synthetic lab only: two animation frames, not a WAN latency promise.
   console.log(
     `warm read-only return: ${Math.round(paint - start)} ms, ${requests.length} API requests`,
