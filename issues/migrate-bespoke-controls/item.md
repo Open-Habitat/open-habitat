@@ -41,6 +41,6 @@ neighbouring raw elements.
 
 ## Acceptance Criteria
 
-- [ ] No raw `<button>`, `<a>` or `AriaButton` remains outside the primitives directory; the source test from @unify-ui-primitives passes without exceptions.
-- [ ] Lähetä and the Enter hint share one row; the jump control is fully visible above the composer; the completed-turn line has intentional spacing. Lab pairs in this issue folder.
-- [ ] @composer-footer-layout and @latest-control-obscured are closed with reference to this issue; TESTING.md checks pass.
+- [x] No raw `<button>`, `<a>` or `AriaButton` remains outside the primitives directory; the source test from @unify-ui-primitives passes without exceptions.
+- [x] Lähetä and the Enter hint share one row; the jump control is fully visible above the composer; the completed-turn line has intentional spacing. Lab pairs in this issue folder.
+- [x] @composer-footer-layout and @latest-control-obscured are closed with reference to this issue; TESTING.md checks pass.

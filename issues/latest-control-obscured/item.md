@@ -1,9 +1,9 @@
 ---
 created: 2026-10-02
-updated: 2026-10-03
+updated: 2026-10-04
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-02:ui-observations:11-14
@@ -11,6 +11,8 @@ related: ['@composer-footer-layout', '@migrate-bespoke-controls']
 blocked_by: ['@migrate-bespoke-controls']
 lane: ui-foundation
 lane_seq: 22
+closed: 2026-10-04
+closed_by: claude
 ---
 
 # Jump-to-latest control is obscured by the message composer
@@ -45,3 +47,9 @@ viewport and zoom when known, and with a growing composer.
 ### 2026-10-03T05:40:49Z · @codex
 
 Jari hyväksyi 3.10.2026 rajauksen: keskustelualueen yhteistä asettelua korjataan yhdessä composer-footer-layout-issuen kanssa. Hyppypainike näkyy ja toimii kokonaan myös kirjoituskentän kasvaessa; sisältö, tilaviestit ja kirjoituskenttä asettuvat yhtenäisesti ilman selittämättömiä tyhjiä kaistoja. Toteuttaja selvittää syyt. Nykyinen sticky-rakenne on tutkimusvihje, ei todennettu juurisyy, ja työkalulohkon sisäinen tyhjä tila voi olla eri ongelma.
+
+## Resolution
+
+### 2026-10-04T01:14:58Z · @claude
+
+Resolved by @migrate-bespoke-controls: shared composer and floating jump geometry, synthetic 390×844 and 312×675 viewport checks, and reviewed spacing corrections. Original live viewport/zoom were not recorded; appearance still awaits Jari's review.
