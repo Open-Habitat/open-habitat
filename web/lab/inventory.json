@@ -93,7 +93,8 @@
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
-        "web/src/components/WorkspaceRailView.tsx"
+        "web/src/components/WorkspaceRailView.tsx",
+        "web/src/components/SidebarV2.stories.tsx"
       ],
       "draft": "design-system/drafts/Selainpolku.dc.html",
       "focus": true,
@@ -121,7 +122,7 @@
       "route": "@history",
       "steps": ["login"],
       "region": "main",
-      "source": ["web/src/app/App.tsx", "web/src/components/HistoryView.tsx"],
+      "source": ["web/src/app/App.tsx", "web/src/components/HistoryView.tsx", "web/src/components/ConversationStates.stories.tsx"],
       "draft": "design-system/drafts/Selainpolku.dc.html",
       "focus": true,
       "status": "capture"
@@ -133,7 +134,7 @@
       "route": "/settings",
       "steps": ["login"],
       "region": "main",
-      "source": ["web/src/app/App.tsx", "web/src/components/Account.tsx"],
+      "source": ["web/src/app/App.tsx", "web/src/components/Account.tsx", "web/src/components/SettingsDensity.stories.tsx"],
       "draft": "design-system/drafts/Selainpolku.dc.html",
       "focus": false,
       "status": "capture"
@@ -302,7 +303,7 @@
       "route": "/workspaces",
       "steps": ["login", "account-menu"],
       "region": "[role=\"menu\"]",
-      "source": ["web/src/app/App.tsx", "web/src/components/Account.tsx"],
+      "source": ["web/src/app/App.tsx", "web/src/components/Account.tsx", "web/src/components/ControlStates.stories.tsx"],
       "draft": null,
       "focus": false,
       "status": "capture"
@@ -400,6 +401,76 @@
       "status": "gap",
       "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
       "source": ["web/src/components/PiDeviceSignIn.tsx"],
+      "draft": null
+    },
+    {
+      "id": "expanded-navigation",
+      "view": "/workspaces",
+      "status": "gap",
+      "reason": "Expanded desktop rail is visible in landing, but selected, filtered and collapsed alternatives lack isolated inventory journeys.",
+      "source": [
+        "web/src/components/Navigation.tsx"
+      ],
+      "draft": null
+    },
+    {
+      "id": "phone-navigation-drawer",
+      "view": "/workspaces",
+      "status": "gap",
+      "reason": "Phone drawer is present in production and earlier synthetic issue captures, but has no repeatable inventory interaction.",
+      "source": [
+        "web/src/components/Navigation.tsx"
+      ],
+      "draft": null
+    },
+    {
+      "id": "control-interactions",
+      "view": "/workspaces",
+      "status": "gap",
+      "reason": "Storybook shows real controls in both themes; inventory capture does not exercise hover, press, keyboard focus, selection, disabled and pending per applicable variant.",
+      "source": [
+        "web/src/components/ControlStates.stories.tsx"
+      ],
+      "draft": null
+    },
+    {
+      "id": "settings-connection-unknown",
+      "view": "/settings",
+      "status": "gap",
+      "reason": "Connection unavailable/unknown and missing profile states have no isolated synthetic settings capture.",
+      "source": [
+        "web/src/components/Account.tsx"
+      ],
+      "draft": null
+    },
+    {
+      "id": "typed-pi-stream",
+      "view": "@workspace",
+      "status": "gap",
+      "reason": "The typed Pi lab journey and tracked provisional screenshots exist; inventory capture does not yet reproduce the streaming-to-saved transition.",
+      "source": [
+        "web/src/components/Conversation.tsx"
+      ],
+      "draft": null
+    },
+    {
+      "id": "typed-pi-block-read",
+      "view": "@history",
+      "status": "gap",
+      "reason": "A tracked synthetic block-read pair exists, but the inventory has no repeatable selected-content journey.",
+      "source": [
+        "web/src/components/Conversation.tsx"
+      ],
+      "draft": null
+    },
+    {
+      "id": "typed-pi-markers",
+      "view": "@history",
+      "status": "gap",
+      "reason": "Summaries, session markers, visible extension output and local command states are implemented provisionally but not isolated by the inventory lab.",
+      "source": [
+        "web/src/components/Conversation.tsx"
+      ],
       "draft": null
     }
   ],
