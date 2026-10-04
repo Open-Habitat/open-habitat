@@ -26,6 +26,25 @@ esitetään selkeästi tekstin asianomaisessa kohdassa. Erillistä Decisions-osi
 ei säilytetä saman sisällön toistona tai läpikäyntien lokina; aiemmat versiot
 löytyvät Git-historiasta.
 
+## Worktree-agenttien päätös ja toteutustehtävä 4.10.2026
+
+Jari laajensi `manage-agent-worktrees`-issuen läpikäynnin ADR 0010:een ja
+`decide-taskfleet-browser-integration/design.md`:hen. Hyväksytty vastuunjako
+säilyy: Taskfleet omistaa ajon ja worktreen, käyttäjän daemon ohjattavan Pi:n.
+ADR tiivistettiin päätökseen ja perusteluihin; design kuvaa käyttökokemuksen,
+toipumisen ja toteutuksessa ratkaistavat sijainnin sekä viimeistelytoiminnot.
+Hyväksymättömän ehdotuksen otsikko, ratkaistun päätöksen odotusohjeet ja
+vaihtoehtotaulukko poistettiin. Tarkkoja CLI- ja esitysehdotuksia ei säilytetty
+sitovina vaatimuksina. Vaihtoehtoinen RPC-silta ei ole ennalta hyväksytty
+arkkitehtuurin vaihtopolku.
+
+Päätös- ja toteutusissueiden tekstit vastaavat nyt päätöstä, ja tarvittava
+Taskfleet-tuki osoittaa sen `caller-owned-agent-runs`-issueen. Omistajuuden
+varmennus, muiden töiden suojaaminen ja historian löydettävyys säilyvät.
+Tuotekuvauksen haaranimilupaus ja toteutusissuen vanha rajapintalinkki korjattiin.
+Issueiden tiloja ja DAGia ei muutettu; suljettu suunnitteluissue säilyy
+valmistuneena edeltäjänä. Integraatiota ei toteutettu tällä tekstikierroksella.
+
 ## Pi:n live-käyttökulun tulos 4.10.2026
 
 `verify-live-pi-journey/result.md` selvennetty Jarin hyväksymällä rajauksella:

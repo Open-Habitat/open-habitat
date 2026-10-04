@@ -79,10 +79,11 @@ Sovittuun toiminnalliseen laajuuteen kuuluvat:
 - **GitHub.** Käyttäjä valitsee ja kloonaa repon työtilaksi tai luo paikalliselle
   repolle etärepon. Käyttöliittymä näyttää työn etenemisen sekä Gitistä ja
   GitHubista varmistetun lopputuloksen.
-- **Oma työhaara agentille.** Käyttäjä valitsee Git-työtilasta lähtökohdan ja
-  vapaan haaran nimen. Taskfleet luo ja hallitsee worktreen, jossa agentti
-  työskentelee. Muualta löydetyt worktreet voivat näkyä havaintoina, mutta
-  selain ei ryhdy niiden yleiseksi hallintatyökaluksi.
+- **Oma työhaara agentille.** Käyttäjä antaa tehtävän Git-työtilasta
+  käynnistettävälle agentille. Taskfleet määrää lopullisen haaran nimen sekä
+  luo ja hallitsee worktreen, jossa agentti työskentelee. Muualta löydetyt
+  worktreet voivat näkyä havaintoina, mutta selain ei ryhdy niiden yleiseksi
+  hallintatyökaluksi.
 - **Piilotus ja poisto.** Työtilan voi piilottaa listasta ja palauttaa näkyviin
   muuttamatta sen tiedostoja. Poisto näyttää kohteen ja vaikutukset ja pyytää
   vahvistuksen. Pysäyttämätön prosessi, jäljellä oleva linkitetty worktree tai
