@@ -67,7 +67,10 @@ user would care about and you cannot tell which he or she would choose.
 
 Work is tracked as issues in `issues/<slug>/`, managed with `issuectl` through
 the `/issue` skill. The DAG is the schedule; `TODO.md` is only the story around
-it. Plans, experiments and results live with their issue. The repository-local
+it. Plans, experiments and results live with their issue. A comment on an issue
+earns its place only by telling a later reader something the issue text,
+metadata, ADRs and git do not already say; acknowledgements, restated status
+and soon-stale delivery details are noise. The repository-local
 `design-package` skill packages the current UI for Jari's design tool. Project documentation is in `docs/`, starting at
 `docs/index.md`, and `docs/AGENTS.md` says how it is
 written. Subdirectory `README.md` files are reserved for the public front door,
