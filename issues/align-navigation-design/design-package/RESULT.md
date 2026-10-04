@@ -19,21 +19,10 @@ kirjaa nämä muutokset lähdetiedostoihin nähden.
 
 [Issuen toimitusmerkinnän](../item.md#comments) mukaan paketti toimitettiin
 4.10.2026 maplein tiedostoon `~/Downloads/align-navigation-design.zip`.
-Tiedoston koko oli 14 978 055 tavua ja koneella tarkistettu SHA-256:
+Zip sisältää alkuperäisen pyynnön; repossa oleva REQUEST.md on tarkennettu
+toimituksen jälkeen. Tiedoston koko oli 14 978 055 tavua ja koneella
+tarkistettu SHA-256:
 
 ```text
 de2edcee82dc1386bfa9b0a1e590a69c8b1495218b21f7293cf5655ede442221
 ```
-
-## Pyynnön nykyinen rajaus
-
-Jarin kanssa 4.10.2026 tarkennettu pyyntö keskittyy navigaatioon ja asetuksiin.
-Kontrollien yhteinen tilasuunnittelu kuuluu
-[design-control-states](../../design-control-states/item.md)-issueen ja
-Pi-lohkojen suunnittelu aineistoviitteineen
-[design-pi-event-blocks](../../design-pi-event-blocks/item.md)-issueen.
-
-Yllä tunnistettu zip sisältää alkuperäisen, laajemman pyynnön. Repossa oleva
-REQUEST.md on tarkennettu sen toimituksen jälkeen; zipiä ei ole tässä
-tekstikierroksessa päivitetty. Seuraavassa toimituksessa käytetään tarkennettua
-pyyntöä ja kirjataan uuden paketin lähdecommit ja toimitustiedot.
