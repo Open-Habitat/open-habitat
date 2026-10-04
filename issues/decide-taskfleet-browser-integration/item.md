@@ -57,3 +57,9 @@ experience belongs here and in its implementation task.
 ### 2026-10-04T04:09:08Z · @claude
 
 Jari 2026-10-04: hyväksytty design.md:n vaihtoehto B, ja toteutus voi alkaa sen mukaan. Taskfleet omistaa ajon ja worktreen luonnin ja päättämisen; per-user-daemon omistaa erikseen käynnistetyn, selaimesta ohjattavan Pi-lapsiprosessin varmennetussa worktreessä. Jari odottaa, että Taskfleetiin tarvitaan muutoksia, jotta se tukee tätä ympäristöä (workspace-only/eksplisiittisen elinkaaren tila, supervisorin elinaika daemonin cgroupin ulkopuolella, run/node–Pi-istunto-sidonta). Design.md:n kysymykset 2 (worktreen sijainti ~/src:n alla, muut vain luku) ja 3 (merge/salvage/discard selaimessa vai natiivissa CLI:ssä) jäävät manage-agent-worktrees-toteutuksen ratkaistaviksi; design.md:n konservatiivinen oletus on lähtökohta.
+
+## Comments
+
+### 2026-10-04T05:09:40Z · @claude
+
+Hyväksytty raja kirjattu ADR 0010:ksi (docs/decisions/adr-0010-taskfleet-worktree-agents.md). Toteutus avoin.

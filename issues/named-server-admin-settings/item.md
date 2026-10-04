@@ -58,3 +58,9 @@ and ordinary/admin roles managed through the administrator view.
 ### 2026-10-04T04:09:08Z · @claude
 
 Jari 2026-10-04: hyväksytty options.md:n suositus A. Gateway omistaa jaetun palvelinnimen ja selainroolien tietueen ja on sen ainoa kirjoittaja; root-only CLI lähettää operaatiot gatewaylle yksityisen, käyttöjärjestelmän todentaman socketin kautta; admissio ja tilisidonnat pysyvät yksin brokerilla. Jari kommentoi suositusta 'kuulostaa järkevältä', joten myös suositeltu inventaariolaajuus (admin-sivu listaa sidotut käyttäjät rajatulla, vain luku -broker-inventaariolla ilman tunnuksia tai kotihakemistopolkuja) otetaan oletukseksi; Jari voi tarkentaa ennen broker-operaation lisäämistä. ADR kirjoitetaan toteutuksen yhteydessä options.md:n kohdan 'Work after the decision' mukaan.
+
+## Comments
+
+### 2026-10-04T05:09:40Z · @claude
+
+Hyväksytty valtuutusraja kirjattu ADR 0011:ksi (docs/decisions/adr-0011-gateway-owned-server-administration.md) jo nyt, jotta päätös ei jää vain issue-kommenttiin; toteutus voi tarkentaa yksityiskohtia uudella ADR:llä tarvittaessa.

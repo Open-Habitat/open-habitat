@@ -11,48 +11,68 @@ source_ref: taskfleet:01m427s47pbwfvjag70kdbhy8z
 
 # Release tooling friction found during the pilot.18 release
 
-## Description
+## Problem
 
-## Observed
+The pilot.18 release on 2026-10-04 required several ad hoc corrections to
+packaging and verification commands. The release completed only after those
+corrections and a separate source-volume expansion. Future releases should
+use a shared release procedure and checks that already handle these cases.
 
-The pilot.18 release on 2026-10-04 (taskfleet run `01m427s47pbwfvjag70kdbhy8z`,
-Fleetrepo receipt `6a701800`) hit several avoidable problems in the release
-tooling and its documented checks. Each was worked around during the run; none
-changed what was installed. They make the next release slower and easier to
-get wrong.
+The work belongs primarily in Fleetrepo's `infra/native-agent-host-test/`,
+which owns the test-server operators and `RELEASE-UPGRADE.md`. Some failures
+came from temporary scripts written for this particular run. Choose which
+corrections belong in reusable helpers and which are best explained in the
+release guide; the temporary wrappers themselves are not a required design.
 
-1. **Source volume admission.** The volume operator's `src_volume.py verify`
-   refuses below 5 GiB free; the 12 GiB `~/src` volume had 2.48 GB free, which
-   blocked the release record although the product was live and verified. The
-   release procedure had no step to check headroom before switching, and no
-   documented way to grow the volume. (Jari decided to grow it; separate run.)
-2. **Packaging wrapper and moving `origin/main`.** The wrapper required
-   `origin/main` to stay equal to the SHA pushed at start; other sessions
-   pushing during the gate made it fail. It should keep the exact start SHA and
-   require only that it is an ancestor of current `origin/main`.
-3. **Gate result extraction.** The wrapper read the gate's last line, which is a
-   timing line, instead of parsing the JSON status envelope.
-4. **Stale helper path.** The procedure still pointed at the removed
-   `omega_ca_migrate.py`; the pushed `omega_route.py` and `omega_access.py`
-   read-only route checks are the current ones.
-5. **Forwarded OAuth check Host header.** The probe sent the local forward port
-   in `Host`; it must send the canonical hostname while keeping TLS hostname
-   verification.
-6. **systemd probe.** `systemctl is-enabled` returns non-zero for `disabled` and
-   `static`; the probe treated those documented states as failures.
-7. **Daemon Unix-socket probe.** It used the wrong HTTP `Host`; the daemon's
-   endpoint contract requires `Host: unix`.
+## Remaining work
 
-## Expected
+Source-volume headroom was checked too late: the product had been switched
+before `src_volume.py verify` found only 2.48 GB free on the 12 GiB volume,
+below its 5 GiB admission floor. Fleetrepo has since added the growth operator,
+expanded the volume to 20 GiB and verified it successfully. The remaining
+release-workflow problem is discovering insufficient headroom before the
+switch and directing the operator to the existing remedy.
 
-The procedure and its helpers handle these cases themselves, so a release run
-spends its time on verification rather than on rediscovering them. The
-operators live in Fleetrepo (`infra/native-agent-host-test/`); this issue records
-the product-side view, and the fixes may land there.
+Packaging should preserve the exact clean, pushed revision that passed the
+gate. During pilot.18 another session advanced `origin/main` while the gate
+ran, and the temporary wrapper incorrectly treated that as a failure. Checking
+that the pinned revision remains an ancestor of current `origin/main` would
+preserve the source requirement without requiring other sessions to stop
+pushing. The wrapper also mistook the gate log's final timing line for its
+result; the authoritative result is the JSON status envelope.
 
-## Where run reports are
+The independent probes need to respect the contracts they check:
 
-A worker's terminal report is stored with its Taskfleet run, not in the
-repository: `taskfleet run show <run-id> --output json | jq .data.report`
-(files under `~/.taskfleet/runs/<run-id>/` on alder). Findings that should
-outlive the run belong in an issue like this one.
+- A forwarded OAuth request uses the canonical hostname in `Host`, without
+  the local forwarding port, while retaining TLS hostname verification.
+- A systemd check interprets the reported enablement state against the
+  expected state of that unit. The nonzero exit for `disabled` or `static`
+  alone does not mean the installation is wrong.
+- A daemon Unix-socket HTTP request uses `Host: unix`, as required by the
+  endpoint contract.
+
+The run also attempted to look up the removed `omega_ca_migrate.py`. The
+current release guide already references `omega_route.py`; the report does
+not establish a stale path in that guide. Keep route and Access verification
+aligned with the current `omega_route.py` and `omega_access.py` helpers,
+correcting any stale references actually found.
+
+## Acceptance Criteria
+
+- [ ] The shared release workflow detects insufficient source-volume headroom
+  before switching releases and points to the existing volume operator.
+- [ ] Packaging and gate-result handling retain the verified source revision
+  when `origin/main` advances and read the gate's structured result correctly.
+- [ ] Shared verification commands handle forwarded HTTP, expected systemd
+  states and daemon requests correctly; the guide identifies current helpers.
+- [ ] Focused tests or recorded checks demonstrate the corrected cases, with
+  the changes and verification recorded in the owning repository.
+
+## Sources
+
+The original observations are in Taskfleet run `01m427s47pbwfvjag70kdbhy8z`
+and Fleetrepo receipt commit `6a701800`. Fleetrepo's
+`issues/rebuild-test-vm-first-use/result.md` records both the release and the
+subsequent volume recovery; recovery commit `74f7560f` records the restored
+admission and host verification. These distinguish the original failures
+from the work already completed.

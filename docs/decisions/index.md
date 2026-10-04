@@ -19,6 +19,8 @@ one links to, rather than an edit that quietly changes what was decided.
 | [ADR 0007](adr-0007-bound-user-deprovision.md) | Removing a bound user is a later need; the implementation is open |
 | [ADR 0008](adr-0008-snappy-conversation-switching.md) | Recent conversation windows stay in browser memory, with one event connection per tab |
 | [ADR 0009](adr-0009-conversation-state-ownership.md) | Conversation content lives in a store separate from Redux application state |
+| [ADR 0010](adr-0010-taskfleet-worktree-agents.md) | Taskfleet owns worktree runs and their settlement; the daemon owns a browser-controlled Pi in the verified checkout |
+| [ADR 0011](adr-0011-gateway-owned-server-administration.md) | The gateway owns the server name and browser roles, written by it alone for the browser and a root-only CLI; the broker keeps admission |
 
 Open questions that need a decision are issues, not records. The logging
 policy is one such issue.

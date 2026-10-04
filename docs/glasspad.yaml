@@ -76,3 +76,9 @@ groups:
       - slug: decisions/adr-0009-conversation-state-ownership
         title: ADR 0009 — Conversation state ownership
         desc: Redux and the separate conversation store.
+      - slug: decisions/adr-0010-taskfleet-worktree-agents
+        title: ADR 0010 — Taskfleet worktree agents
+        desc: Taskfleet owns the run and worktree, the daemon owns the browser's Pi.
+      - slug: decisions/adr-0011-gateway-owned-server-administration
+        title: ADR 0011 — Gateway-owned administration
+        desc: Server name and browser roles in the gateway, admission in the broker.

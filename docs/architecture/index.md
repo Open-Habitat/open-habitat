@@ -92,7 +92,9 @@ Some things a reader might expect are deliberately absent.
 - Web identity comes from GitHub only. There is no second login provider.
 - Pi is the only agent harness the daemon runs. Conversation identifiers carry a harness prefix so another could be added, but none is.
 - One deployment serves one server. There is no view across servers and no tenant object inside a deployment; a second tenant is a second deployment.
-- The browser never attaches to a Pi started in a terminal. Terminal histories are readable in the browser and nothing more.
+- The browser never attaches to a Pi started in a terminal. Terminal histories are readable in the browser and follow the file as it grows, and nothing more.
+- Taskfleet's worktree agents have no presence in the browser. ADR 0010 fixes the boundary for bringing them there: Taskfleet owns the run and worktree, the daemon owns a browser-controlled Pi in that checkout.
+- There is no browser administration: no configured server name, administrator role or shared settings. ADR 0011 fixes where that authority will live.
 - There is no workspace registry, no stored annotations such as hiding a workspace or archiving a conversation, and no generated conversation titles. A conversation is labelled by its first prompt.
 - The browser cannot create, rename or delete a workspace. The only workspace write is cloning a GitHub repository during onboarding.
 - Logging has no agreed policy. Each role emits JSON lines with a fixed vocabulary to its service journal, and none of them records tokens, identities or conversation content.
