@@ -1,9 +1,9 @@
 ---
 created: 2026-10-02
-updated: 2026-10-03
+updated: 2026-10-04
 type: improvement
 reporter: jari
-status: open
+status: in-progress
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-02/terminal-writes
