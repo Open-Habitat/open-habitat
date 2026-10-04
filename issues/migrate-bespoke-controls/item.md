@@ -1,9 +1,9 @@
 ---
 created: 2026-10-03
-updated: 2026-10-03
+updated: 2026-10-04
 type: task
 reporter: jari
-status: open
+status: in-progress
 priority: high
 related: ['@consistent-control-feedback', '@composer-footer-layout', '@latest-control-obscured']
 lane: ui-foundation
