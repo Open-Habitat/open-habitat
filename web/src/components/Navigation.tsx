@@ -1,9 +1,9 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { Input, Label, TextField } from "react-aria-components";
-import { Link, useLocation } from "react-router";
-import { LinkRow } from "./ControlElements";
+import { useLocation } from "react-router";
+import { ControlButton, ExternalLink, LinkRow } from "./ControlElements";
 import { Icon } from "./Icon";
-import { Button, RefreshIconButton } from "./Primitives";
+import { Button, ListRow, RefreshIconButton } from "./Primitives";
 import type { StatusKind } from "./Status";
 import { Badge, StatusMark } from "./Status";
 import type { Action, AsyncState, Availability, Tone } from "./types";
@@ -87,59 +87,58 @@ export function AppShell({
   };
   return (
     <div className="ah-app-shell">
-      {/* biome-ignore lint/a11y/useValidAnchor: same-page skip link also focuses the tabIndex=-1 target. */}
-      <a
+      <ExternalLink
         className="ah-skip"
         href="#main"
         onClick={() => document.getElementById("main")?.focus()}
       >
         Siirry sisältöön
-      </a>
+      </ExternalLink>
       {connection}
       <div
         className={`ah-shell-body${rail ? "" : " ah-shell-no-rail"}${drawerActive ? " ah-mobile-open" : ""}`}
       >
         {drawerActive ? (
-          <button
-            type="button"
+          <ControlButton
+            variant="quiet"
             className="ah-mobile-scrim"
             aria-label="Sulje valikko"
-            onClick={closeMobile}
+            onPress={closeMobile}
           />
         ) : null}
         {rail ? (
           <div className="ah-rail-slot" ref={mobileNav}>
             {rail}
             {drawerActive ? (
-              <button
-                type="button"
+              <ControlButton
+                variant="quiet"
                 className="ah-mobile-close"
                 aria-label="Sulje navigaatio"
-                onClick={closeMobile}
+                onPress={closeMobile}
               >
                 <Icon name="back" />
-              </button>
+              </ControlButton>
             ) : null}
           </div>
         ) : null}
         <main id="main" tabIndex={-1} inert={drawerActive}>
           {rail ? (
             <div className="ah-mobile-toolbar">
-              <button
-                type="button"
+              <ControlButton
+                variant="quiet"
                 ref={mobileTrigger}
                 aria-label="Avaa navigaatio"
                 aria-expanded={drawerActive}
-                onClick={() => {
+                onPress={() => {
                   setOpenedAtKey(location.key);
                   setMobileOpen(true);
                 }}
               >
                 <Icon name="menu" />
-              </button>
-              <Link to="/workspaces" aria-label="Etusivu">
+              </ControlButton>
+              <LinkRow href="/workspaces" aria-label="Etusivu">
                 <Icon name="home" />
-              </Link>
+              </LinkRow>
             </div>
           ) : null}
           {main}
@@ -250,33 +249,37 @@ export function AgentNavItem({
       className="ah-agent-item"
       style={{ "--ah-depth": depth } as React.CSSProperties}
     >
-      <NavLink
-        href={href}
-        label={title}
-        current={selected ? "page" : false}
-        badgeText={attentionLabel}
-        statusText={status || undefined}
-        displayStatusText={
-          stale || presence === "absent"
-            ? stale
-              ? "Tieto vanhentunut"
-              : "Ei enää löydy"
-            : controlLabel === "Ohjaus ei tiedossa" ||
-                controlLabel === "Ohjaus ei saatavilla"
-              ? controlLabel
-              : controlLabel === "Vain luku"
-                ? "vain luku"
-                : activityLabel === "Prosessi käynnissä"
-                  ? "työssä"
-                  : activityLabel === "Käynnissä terminaalissa"
-                    ? "terminaalissa"
-                    : activityShortLabel &&
-                        activityShortLabel !== "Tila ei tiedossa"
-                      ? activityShortLabel
-                      : ""
-        }
-      />
-      {relativeTime ? <time>{relativeTime}</time> : null}
+      <ListRow
+        className="ah-sidebar-agent-row"
+        trailing={relativeTime ? <time>{relativeTime}</time> : undefined}
+      >
+        <NavLink
+          href={href}
+          label={title}
+          current={selected ? "page" : false}
+          badgeText={attentionLabel}
+          statusText={status || undefined}
+          displayStatusText={
+            stale || presence === "absent"
+              ? stale
+                ? "Tieto vanhentunut"
+                : "Ei enää löydy"
+              : controlLabel === "Ohjaus ei tiedossa" ||
+                  controlLabel === "Ohjaus ei saatavilla"
+                ? controlLabel
+                : controlLabel === "Vain luku"
+                  ? "vain luku"
+                  : activityLabel === "Prosessi käynnissä"
+                    ? "työssä"
+                    : activityLabel === "Käynnissä terminaalissa"
+                      ? "terminaalissa"
+                      : activityShortLabel &&
+                          activityShortLabel !== "Tila ei tiedossa"
+                        ? activityShortLabel
+                        : ""
+          }
+        />
+      </ListRow>
     </li>
   );
 }
@@ -310,27 +313,35 @@ export function WorkspaceSection({
         data-selected={selected || undefined}
         title={summary ? `${name} · ${summary}` : name}
       >
-        <button
-          aria-expanded={expanded}
-          aria-label={`${expanded ? "Sulje" : "Avaa"} ${name}`}
-          className="ah-workspace-toggle"
-          type="button"
-          onClick={onToggle}
+        <ListRow
+          className="ah-sidebar-row"
+          indicator={
+            <ControlButton
+              aria-expanded={expanded}
+              aria-label={`${expanded ? "Sulje" : "Avaa"} ${name}`}
+              className="ah-workspace-toggle"
+              variant="quiet"
+              onPress={onToggle}
+            >
+              <span aria-hidden="true" className="ah-disclosure-chevron" />
+            </ControlButton>
+          }
+          trailing={
+            mutationState ? (
+              <StatusMark label={mutationState} tone="warning" />
+            ) : undefined
+          }
         >
-          <span aria-hidden="true" className="ah-disclosure-chevron" />
-        </button>
-        <LinkRow
-          current={selected}
-          kind="workspace"
-          aria-describedby={summary ? summaryId : undefined}
-          className="ah-workspace-link"
-          href={href}
-        >
-          {name}
-        </LinkRow>
-        {mutationState ? (
-          <StatusMark label={mutationState} tone="warning" />
-        ) : null}
+          <LinkRow
+            current={selected}
+            kind="workspace"
+            aria-describedby={summary ? summaryId : undefined}
+            className="ah-workspace-link"
+            href={href}
+          >
+            {name}
+          </LinkRow>
+        </ListRow>
         {summary ? (
           <span className="ah-visually-hidden" id={summaryId}>
             {summary}
@@ -569,18 +580,18 @@ export function AgentHeader({
         ) : visibleControl ? (
           <StatusMark label="Vain luku" tone="neutral" kind="read-only" />
         ) : null}
-        <button
+        <ControlButton
           className="ah-details-toggle"
           aria-expanded={detailsExpanded}
-          type="button"
-          onClick={onToggleDetails}
+          variant="quiet"
+          onPress={onToggleDetails}
         >
           Tiedot <Icon name="down" />
-        </button>
+        </ControlButton>
       </div>
-      <Link className="ah-header-workspace" to={workspaceHref}>
+      <LinkRow className="ah-header-workspace" href={workspaceHref}>
         {workspaceLabel}
-      </Link>
+      </LinkRow>
       {titleState ? <StatusMark label={titleState} tone="info" /> : null}
       {titleAction?.failureNotice ? (
         <p className="ah-inline-error">{titleAction.failureNotice}</p>

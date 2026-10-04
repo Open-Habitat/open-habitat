@@ -566,6 +566,38 @@ test("@browser-conversation footer and floating latest stay clear at phone width
       );
     }),
   ).toBe(true);
+  // A 390 × 844 physical viewport at 125% browser zoom has about
+  // 312 × 675 CSS pixels. The hint may wrap within its column but cannot
+  // move below the button or displace the jump into the composer.
+  await page.setViewportSize({ width: 312, height: 675 });
+  await expect
+    .poll(() =>
+      page.locator(".ah-conversation-frame").evaluate((frame) => {
+        const jump = frame
+          .querySelector(".ah-floating-controls button")
+          ?.getBoundingClientRect();
+        const composer = frame
+          .querySelector(":scope > .ah-composer")
+          ?.getBoundingClientRect();
+        const hint = frame
+          .querySelector(".ah-composer-hint")
+          ?.getBoundingClientRect();
+        const send = frame
+          .querySelector(".ah-action-row-buttons button:last-of-type")
+          ?.getBoundingClientRect();
+        return Boolean(
+          jump &&
+            composer &&
+            hint &&
+            send &&
+            jump.bottom <= composer.top &&
+            composer.bottom <= innerHeight &&
+            hint.top < send.bottom &&
+            send.top < hint.bottom,
+        );
+      }),
+    )
+    .toBe(true);
   await latest.click();
 });
 

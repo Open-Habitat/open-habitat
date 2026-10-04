@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Link } from "react-router";
 import {
   AgentFacts,
   AgentHeader,
@@ -17,6 +16,7 @@ import {
   UnknownEvent,
   UserMessage,
 } from "../components";
+import { LinkRow } from "../components/ControlElements";
 import { type ConversationStore, useWindow } from "./conversationStore";
 import {
   type BlockChunk,
@@ -629,7 +629,7 @@ export function HistoryView({
           <strong>Vain luku</strong>
           <p>Tätä keskustelua ei voi ohjata selaimesta.</p>
         </div>
-        <Link to={`/workspaces/${workspaceId}`}>Uusi keskustelu</Link>
+        <LinkRow href={`/workspaces/${workspaceId}`}>Uusi keskustelu</LinkRow>
       </div>
     </ConversationFrame>
   );

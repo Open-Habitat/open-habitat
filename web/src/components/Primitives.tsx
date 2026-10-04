@@ -42,23 +42,28 @@ export function Button({
   presentation,
 }: ButtonProps) {
   const reason = unavailableReason(availability);
-  return (
-    <span className="ah-control">
-      <ControlButton
-        aria-label={ariaLabel}
-        variant={variant}
-        size={size}
-        presentation={presentation}
-        isDisabled={Boolean(reason)}
-        isPending={pending}
-        onPress={onPress}
-      >
-        {icon ? <Icon name={icon} /> : pending ? `${label}…` : label}
-        {trailingIcon ? <Icon name={trailingIcon} /> : null}
-        {shortcutHint ? <kbd>{shortcutHint}</kbd> : null}
-      </ControlButton>
-      {reason ? <span className="ah-control-reason">{reason}</span> : null}
+  const control = (
+    <ControlButton
+      aria-label={ariaLabel}
+      variant={variant}
+      size={size}
+      presentation={presentation}
+      isDisabled={Boolean(reason)}
+      isPending={pending}
+      onPress={onPress}
+    >
+      {icon ? <Icon name={icon} /> : pending ? `${label}…` : label}
+      {trailingIcon ? <Icon name={trailingIcon} /> : null}
+      {shortcutHint ? <kbd>{shortcutHint}</kbd> : null}
+    </ControlButton>
+  );
+  return reason ? (
+    <span className="ah-button-stack">
+      {control}
+      <span className="ah-control-reason">{reason}</span>
     </span>
+  ) : (
+    control
   );
 }
 

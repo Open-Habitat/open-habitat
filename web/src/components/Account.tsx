@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { Menu } from "./Overlays";
-import { Button, RadioGroup } from "./Primitives";
+import { Button, ListRow, RadioGroup } from "./Primitives";
 import { InlineNotice, StatusMark } from "./Status";
 
 /** Provider subject numbers are not a useful person-facing name. */
@@ -176,20 +176,23 @@ export function AccountSettings({
       >
         <h2 id="ah-appearance-heading">Ulkoasu</h2>
         <div className="ah-account-panel ah-account-theme-row">
-          <div>
+          <ListRow
+            trailing={
+              <RadioGroup
+                label="Teema"
+                value={theme}
+                options={[
+                  { value: "system", label: "Järjestelmä" },
+                  { value: "light", label: "Vaalea" },
+                  { value: "dark", label: "Tumma" },
+                ]}
+                onChange={setThemeChoice}
+              />
+            }
+          >
             <strong>Teema</strong>
             <p>Järjestelmä seuraa käyttöjärjestelmän asetusta.</p>
-          </div>
-          <RadioGroup
-            label="Teema"
-            value={theme}
-            options={[
-              { value: "system", label: "Järjestelmä" },
-              { value: "light", label: "Vaalea" },
-              { value: "dark", label: "Tumma" },
-            ]}
-            onChange={setThemeChoice}
-          />
+          </ListRow>
         </div>
       </section>
       {onLogout ? (
@@ -199,18 +202,21 @@ export function AccountSettings({
         >
           <h2 id="ah-session-heading">Istunto</h2>
           <div className="ah-account-panel ah-account-session-row">
-            <div>
+            <ListRow
+              trailing={
+                <Button
+                  label="Kirjaudu ulos"
+                  variant="danger-subtle"
+                  onPress={onLogout}
+                />
+              }
+            >
               <strong>Kirjaudu ulos tästä selaimesta</strong>
               <p>
                 Kirjautuminen ulos sulkee vain tämän selaimen istunnon.
                 Agenttien työ palvelimella jatkuu.
               </p>
-            </div>
-            <Button
-              label="Kirjaudu ulos"
-              variant="danger-subtle"
-              onPress={onLogout}
-            />
+            </ListRow>
           </div>
         </section>
       ) : null}

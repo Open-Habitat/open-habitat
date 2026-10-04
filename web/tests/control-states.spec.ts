@@ -1,50 +1,37 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import { hostOrigin } from "../test-ports.mjs";
 
 test.use({ ignoreHTTPSErrors: true });
 
-// Scope this guard to the migrated controls; the remaining raw controls belong to migrate-bespoke-controls.
-test("migrated controls cannot bypass their shared component", () => {
-  const sources = [
-    "Primitives.tsx",
-    "Overlays.tsx",
-    "Navigation.tsx",
-    "ReturnView.tsx",
-    "Conversation.tsx",
-  ];
-  for (const name of sources) {
-    const source = readFileSync(
-      new URL(`../src/components/${name}`, import.meta.url),
-      "utf8",
-    );
-    if (name === "Overlays.tsx") {
-      expect(source).not.toMatch(/<AriaButton\b|<MenuItem\b|<button\b/);
-    }
-    if (name === "Primitives.tsx") expect(source).not.toMatch(/<AriaButton\b/);
-    if (name === "ReturnView.tsx") {
-      expect(source).not.toMatch(/<Link\b/);
-      expect(source).toContain(
-        '<LinkRow href={conversation.href} kind="return">',
+test("production controls are constructed only in ControlElements", () => {
+  for (const dir of ["components", "app"]) {
+    const root = new URL(`../src/${dir}/`, import.meta.url);
+    for (const name of readdirSync(root).filter(
+      (entry) =>
+        entry.endsWith(".tsx") && !/\.(test|stories)\.tsx$/i.test(entry),
+    )) {
+      if (dir === "components" && name === "ControlElements.tsx") continue;
+      const source = readFileSync(new URL(name, root), "utf8");
+      expect(source, `${dir}/${name}`).not.toMatch(
+        /<(?:button|a|AriaButton)\b/g,
       );
     }
-    if (name === "Conversation.tsx") {
-      expect(source).not.toContain('className="ah-disclosure-button"');
-      expect(source).toContain("<DisclosureButton tool");
-    }
-    if (name === "Navigation.tsx") {
-      expect(source).toContain('kind="agent"');
-      expect(source).toContain('kind="workspace"');
-      expect(source).toContain('kind="home"');
-      expect(source).toContain("<RefreshIconButton onPress={onRefresh} />");
-    }
   }
+  expect(
+    readFileSync(new URL("../src/main.tsx", import.meta.url), "utf8"),
+  ).not.toMatch(/<(?:button|a|AriaButton)\b/g);
+  const conversation = readFileSync(
+    new URL("../src/components/Conversation.tsx", import.meta.url),
+    "utf8",
+  );
+  expect(conversation).toContain("<DisclosureButton tool");
   const css = readFileSync(
     new URL("../src/components/components.css", import.meta.url),
     "utf8",
   );
   expect(css).not.toMatch(
-    /biome-ignore-all|\.ah-button\s*\{|\.ah-account-shelf\s*>\s*\.ah-button/,
+    /biome-ignore-all|\.ah-button\s*\{|\.ah-account-shelf\s*>\s*\.ah-button|\.ah-control\b(?!-reason)/,
   );
   expect(css).not.toMatch(/\.ah-continue-list a(?:\s*\{|:hover)/);
   expect(css).toContain(".ah-tool-row .ah-tool-output {");

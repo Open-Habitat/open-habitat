@@ -9,13 +9,14 @@ import {
   useState,
 } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useLocation, useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import {
   AccountSettings,
   AppShell,
   ConnectionBanner,
   InlineNotice,
 } from "../components";
+import { LinkRow } from "../components/ControlElements";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import { ReturnView } from "../components/ReturnView";
 import { BrowserConversation } from "./BrowserConversation";
@@ -60,9 +61,9 @@ function WorkspaceDetails({ workspace }: { workspace: Workspace }) {
     );
   return (
     <header className="ah-workspace-detail">
-      <Link to="/workspaces" className="ah-back-link">
+      <LinkRow href="/workspaces" className="ah-back-link">
         Työtilat
-      </Link>
+      </LinkRow>
       <h1>{workspace.display_name ?? workspace.name}</h1>
       <p>
         Hakemisto <code>{workspace.name}</code>
@@ -610,7 +611,7 @@ export function App() {
           tone="warning"
           actions={[{ label: "Yritä uudelleen", onPress: refresh }]}
         />
-        <Link to="/workspaces">Kaikki työtilat</Link>
+        <LinkRow href="/workspaces">Kaikki työtilat</LinkRow>
       </>
     ) : selected ? (
       <>
@@ -681,7 +682,7 @@ export function App() {
           title="Mitä voit tehdä?"
           actions={[{ label: "Yritä uudelleen", onPress: refresh }]}
         />
-        <Link to="/workspaces">Kaikki työtilat</Link>
+        <LinkRow href="/workspaces">Kaikki työtilat</LinkRow>
       </>
     ) : (
       <>

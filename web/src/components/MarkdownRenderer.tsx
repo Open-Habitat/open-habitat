@@ -2,6 +2,7 @@ import { isValidElement, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
+import { ExternalLink } from "./ControlElements";
 import { Button } from "./Primitives";
 
 // Do not broaden this with the sanitizer's default schema: host content is untrusted.
@@ -100,9 +101,14 @@ export default function MarkdownRenderer({ text }: { text: string }) {
         urlTransform={safeUrl}
         components={{
           a: ({ href, children, ...props }) => (
-            <a {...props} href={href} target="_blank" rel="noopener noreferrer">
+            <ExternalLink
+              {...props}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               {children}
-            </a>
+            </ExternalLink>
           ),
           pre: ({ children }) => {
             if (

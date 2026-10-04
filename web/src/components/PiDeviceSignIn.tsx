@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { ExternalLink } from "./ControlElements";
+import styles from "./PiDeviceSignIn.module.css";
 import { Button } from "./Primitives";
 import { InlineNotice, StatusMark } from "./Status";
-import styles from "./PiDeviceSignIn.module.css";
 
 /** Display facts only. The caller owns the attempt, session binding, polling and native status. */
 export type PiDeviceSignInView =
@@ -134,9 +135,9 @@ export function PiDeviceSignIn({
         usable ? (
           <div className={styles.steps}>
             <p>1. Avaa OpenAI:n kirjautumissivu uuteen välilehteen.</p>
-            <a href={uri} target="_blank" rel="noopener noreferrer">
+            <ExternalLink href={uri} target="_blank" rel="noopener noreferrer">
               Avaa OpenAI:n vahvistussivu (uusi välilehti)
-            </a>
+            </ExternalLink>
             <p>2. Syötä siellä tämä koodi:</p>
             <div className={styles.code}>
               <code>{view.userCode}</code>

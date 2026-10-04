@@ -1,3 +1,4 @@
+import { ExternalLink } from "./ControlElements";
 import { Button } from "./Primitives";
 import { InlineNotice, StatusMark } from "./Status";
 import type { Availability, ProblemView, Stage } from "./types";
@@ -178,7 +179,9 @@ export function FormErrorSummary({
       <ul>
         {errors.map((error) => (
           <li key={error.fieldId}>
-            <a href={`#${error.fieldId}`}>{error.message}</a>
+            <ExternalLink href={`#${error.fieldId}`}>
+              {error.message}
+            </ExternalLink>
           </li>
         ))}
       </ul>

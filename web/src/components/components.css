@@ -1,3 +1,10 @@
+.ah-button-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ah-s1);
+  max-width: 100%;
+}
 .ah-visually-hidden {
   position: absolute;
   width: 1px;
@@ -144,7 +151,7 @@
   border: 0;
   background: currentColor;
 }
-.ah-rail-title .ah-control {
+.ah-rail-title > [data-ah-primitive="button"] {
   flex-shrink: 0;
   margin-inline-start: auto;
 }
@@ -175,7 +182,7 @@
   font-size: 0;
   gap: 0;
 }
-.ah-rail-collapsed .ah-rail-title .ah-control {
+.ah-rail-collapsed .ah-rail-title > [data-ah-primitive="button"] {
   margin: 0;
 }
 .ah-rail-filter {
@@ -243,9 +250,9 @@
   margin-top: var(--ah-s1);
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
-.ah-rail-create .ah-control {
-  display: flex;
-  align-items: stretch;
+.ah-rail-create > [data-ah-primitive="button"],
+.ah-rail-create > .ah-button-stack,
+.ah-rail-create .ah-button-stack > [data-ah-primitive="button"] {
   width: 100%;
 }
 .ah-rail-create .ah-control-reason {
@@ -289,7 +296,8 @@
   min-width: 0;
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
-.ah-account-settings > .ah-control {
+.ah-account-settings > [data-ah-primitive="button"],
+.ah-account-settings > .ah-button-stack {
   justify-self: start;
 }
 .ah-account-settings h1,
@@ -318,14 +326,6 @@
   align-items: center;
   flex-wrap: wrap;
   gap: var(--ah-s4);
-}
-/* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
-.ah-control {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--ah-s1);
-  max-width: 100%;
 }
 .ah-onboarding-exit {
   margin-top: var(--ah-s7);
@@ -457,17 +457,6 @@ h1[tabindex="-1"]:focus {
   display: flex;
   gap: var(--ah-s2);
   border-bottom: 1px solid var(--ah-line);
-}
-.ah-tabs button {
-  padding: var(--ah-s3);
-  border: 0;
-  border-bottom: 3px solid transparent;
-  background: transparent;
-  color: inherit;
-}
-.ah-tabs button[aria-selected="true"] {
-  border-bottom-color: var(--ah-accent);
-  font-weight: 600;
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
 .ah-status,
@@ -705,16 +694,10 @@ h1[tabindex="-1"]:focus {
 }
 .ah-workspace-toggle {
   flex: none;
-  display: inline-grid;
-  place-items: center;
-  width: 26px;
-  height: 30px;
+  min-width: 26px;
+  min-height: 30px;
   padding: 0;
-  border: 0;
-  border-radius: var(--ah-r-nav);
-  background: transparent;
   color: var(--ah-muted);
-  cursor: pointer;
 }
 .ah-disclosure-chevron {
   display: inline-block;
@@ -837,7 +820,10 @@ h1[tabindex="-1"]:focus {
 }
 .ah-settled {
   text-align: center;
-  margin: var(--ah-s2) 0;
+  margin: 0;
+}
+.ah-feed > li:has(.ah-settled) {
+  margin-block: calc(-1 * var(--ah-s2));
 }
 .ah-native-question h2 {
   font-size: var(--ah-size-ui);
@@ -865,7 +851,7 @@ h1[tabindex="-1"]:focus {
   grid-column: 1 / -1;
   grid-row: 2;
 }
-.ah-message:not(.ah-message-alert) > .ah-control {
+.ah-message:not(.ah-message-alert) > [data-ah-primitive="button"] {
   grid-column: 2;
   grid-row: 1;
 }
@@ -1073,14 +1059,14 @@ h1[tabindex="-1"]:focus {
   .ah-rail-collapsed .ah-rail-title > strong,
   .ah-rail-collapsed
     .ah-rail-title
-    > span:not(.ah-rail-mobile-label):not(.ah-control) {
+    > span:not(.ah-rail-mobile-label):not([data-ah-primitive="button"]) {
     display: none;
   }
   .ah-rail-collapsed .ah-rail-mobile-label {
     display: inline;
     font-weight: 600;
   }
-  .ah-rail-collapsed .ah-rail-title .ah-control {
+  .ah-rail-collapsed .ah-rail-title > [data-ah-primitive="button"] {
     margin-inline-start: auto;
   }
   .ah-rail-collapsed .ah-rail-foot {
@@ -1207,7 +1193,8 @@ h1[tabindex="-1"]:focus {
 }
 .ah-conversation-frame .ah-composer .ah-action-row .ah-composer-hint {
   order: 1;
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  min-width: 0;
   margin: 0;
 }
 /* The editor already exposes the same disabled reason; do not repeat it for each send mode. */
@@ -1227,9 +1214,19 @@ h1[tabindex="-1"]:focus {
   flex: 1;
   min-width: 0;
 }
+.ah-sidebar-row {
+  flex: 1;
+}
+.ah-sidebar-agent-row {
+  width: 100%;
+}
 .ah-list-row-trailing {
   flex: none;
   margin-inline-start: auto;
+}
+.ah-sidebar-agent-row .ah-list-row-trailing {
+  font-size: var(--ah-size-meta);
+  color: var(--ah-muted);
 }
 .ah-conversation-frame .ah-composer textarea {
   min-height: var(--ah-touch);
@@ -1324,7 +1321,7 @@ h1[tabindex="-1"]:focus {
     width: 100%;
     height: 100%;
   }
-  .ah-mobile-open .ah-rail-title > .ah-control {
+  .ah-mobile-open .ah-rail-title > [data-ah-primitive="button"] {
     display: none;
   }
   .ah-mobile-close {
@@ -1354,8 +1351,7 @@ h1[tabindex="-1"]:focus {
     padding-inline: var(--ah-s3);
     border-bottom: 1px solid var(--ah-line);
   }
-  .ah-mobile-toolbar button,
-  .ah-mobile-toolbar a {
+  .ah-mobile-toolbar [data-ah-primitive] {
     display: inline-grid;
     place-items: center;
     width: var(--ah-touch);
@@ -1398,7 +1394,7 @@ h1[tabindex="-1"]:focus {
   text-transform: uppercase;
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
-.ah-message header .ah-control {
+.ah-message header [data-ah-primitive="button"] {
   margin-inline-start: auto;
 }
 .ah-agent-header > .ah-details-toggle {
@@ -1412,10 +1408,7 @@ h1[tabindex="-1"]:focus {
   color: var(--ah-muted);
   cursor: pointer;
 }
-.ah-agent-header > .ah-details-toggle:focus-visible {
-  outline: var(--ah-focus-width) solid var(--ah-accent);
-  outline-offset: var(--ah-focus-offset);
-}
+
 /* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
 .ah-composer-hint {
   font-size: var(--ah-size-meta);
@@ -1432,7 +1425,7 @@ h1[tabindex="-1"]:focus {
   pointer-events: none;
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Pointer events do not override the earlier rail layout rules. */
-.ah-floating-controls .ah-control {
+.ah-floating-controls [data-ah-primitive="button"] {
   pointer-events: auto;
 }
 /* Shared navigation v2: the same rail renders in the desktop strip and phone drawer. */
@@ -1523,18 +1516,13 @@ h1[tabindex="-1"]:focus {
   border: 0;
   background: transparent;
 }
-.ah-account-theme-row,
-.ah-account-session-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.ah-account-theme-row .ah-list-row,
+.ah-account-session-row .ah-list-row {
   flex-wrap: wrap;
   gap: var(--ah-s4);
 }
-/* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
-.ah-account-theme-row > div,
-/* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
-.ah-account-session-row > div {
+.ah-account-theme-row .ah-list-row-content,
+.ah-account-session-row .ah-list-row-content {
   flex: 1 1 13rem;
 }
 .ah-account-theme-row .ah-radio-group {
@@ -1564,10 +1552,7 @@ h1[tabindex="-1"]:focus {
   color: var(--ah-accent-ink);
   box-shadow: var(--ah-shadow-menu);
 }
-/* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
-.ah-account-session-row .ah-control {
-  flex: none;
-}
+
 .ah-account-menu {
   min-width: 17rem;
   padding: var(--ah-s2);
@@ -1636,10 +1621,7 @@ h1[tabindex="-1"]:focus {
   font: inherit;
   cursor: pointer;
 }
-.ah-agent-topline > .ah-details-toggle:focus-visible {
-  outline: var(--ah-focus-width) solid var(--ah-accent);
-  outline-offset: var(--ah-focus-offset);
-}
+
 .ah-header-facts {
   display: flex;
   flex-wrap: wrap;
@@ -1681,7 +1663,7 @@ h1[tabindex="-1"]:focus {
   text-transform: uppercase;
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
-.ah-queue-heading .ah-control {
+.ah-queue-heading [data-ah-primitive="button"] {
   margin-left: auto;
 }
 .ah-queue-items {
@@ -1724,12 +1706,16 @@ h1[tabindex="-1"]:focus {
 /* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
 .ah-tool-row .ah-tool-output pre {
   margin: 0;
+  padding: var(--ah-s2) var(--ah-s3);
+}
+.ah-conversation-notices .ah-notice p:last-child {
+  margin-bottom: 0;
 }
 .ah-send-accepted {
   display: none;
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
-.ah-message header .ah-control {
+.ah-message header [data-ah-primitive="button"] {
   margin-inline-start: 0;
 }
 @media (max-width: 800px) {
@@ -1943,7 +1929,7 @@ h1[tabindex="-1"]:focus {
   color: var(--ah-muted);
   font-size: var(--ah-size-meta);
 }
-.ah-send-uncertain .ah-send-meta .ah-control {
+.ah-send-uncertain .ah-send-meta [data-ah-primitive="button"] {
   padding: 0;
 }
 @media (max-width: 800px) {
@@ -1958,7 +1944,7 @@ h1[tabindex="-1"]:focus {
     font-size: var(--ah-size-meta);
   }
   .ah-connection:has(.ah-connection-mobile-detail)
-    > span:not(.ah-connection-mobile-detail):not(.ah-control) {
+    > span:not(.ah-connection-mobile-detail):not([data-ah-primitive="button"]) {
     display: none;
   }
   .ah-connection .ah-connection-mobile-detail {
@@ -1966,7 +1952,8 @@ h1[tabindex="-1"]:focus {
     grid-column: 1;
     font-size: var(--ah-size-meta);
   }
-  .ah-connection:has(.ah-connection-mobile-detail) > .ah-control {
+  .ah-connection:has(.ah-connection-mobile-detail)
+    > [data-ah-primitive="button"] {
     grid-column: 2;
     grid-row: 1 / 3;
     align-self: center;

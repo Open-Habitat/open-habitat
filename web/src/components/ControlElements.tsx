@@ -7,6 +7,7 @@ import {
   Button as AriaButton,
   Link as AriaLink,
   MenuItem as AriaMenuItem,
+  Tab as AriaTab,
   RouterProvider,
 } from "react-aria-components";
 import { useNavigate } from "react-router";
@@ -107,3 +108,20 @@ export function DisclosureButton({
   );
 }
 export { styles as controlStyles };
+
+/** Links outside the router retain browser-native navigation and URL safety. */
+export function ExternalLink({
+  className,
+  ...props
+}: React.ComponentProps<"a">) {
+  return (
+    <a
+      {...props}
+      data-ah-primitive="external-link"
+      className={`${styles.externalLink} ${className ?? ""}`}
+    />
+  );
+}
+export function ControlTab(props: React.ComponentProps<typeof AriaTab>) {
+  return <AriaTab {...props} data-ah-primitive="tab" className={styles.tab} />;
+}

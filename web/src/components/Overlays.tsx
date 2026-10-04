@@ -10,13 +10,13 @@ import {
   Modal,
   ModalOverlay,
   Popover,
-  Tab,
   TabList,
   TabPanel,
 } from "react-aria-components";
 import {
   ControlButton,
   ControlMenuItem,
+  ControlTab,
   DisclosureButton,
 } from "./ControlElements";
 import { Icon } from "./Icon";
@@ -273,7 +273,7 @@ export function Tabs<T extends string>({
       onSelectionChange={(key) => onChange(String(key) as T)}
     >
       <TabList aria-label={label} className="ah-tabs" items={tabs}>
-        {(tab) => <Tab id={tab.id}>{tab.label}</Tab>}
+        {(tab) => <ControlTab id={tab.id}>{tab.label}</ControlTab>}
       </TabList>
       {active ? <TabPanel id={active.id}>{active.panel}</TabPanel> : null}
     </AriaTabs>

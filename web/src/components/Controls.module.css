@@ -283,3 +283,22 @@ textarea.fieldInput {
   width: 7px;
   height: 7px;
 }
+
+.externalLink {
+  composes: surface from "./interactive.module.css";
+  color: var(--i-fg, var(--ah-accent-ink));
+  cursor: pointer;
+}
+.tab {
+  composes: surface from "./interactive.module.css";
+  padding: var(--ah-s3);
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.tab[data-selected] {
+  border-bottom-color: var(--ah-accent);
+  font-weight: 600;
+}
