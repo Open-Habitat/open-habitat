@@ -1,7 +1,37 @@
-# Pilot.18 installed-host checks (2026-10-04)
+# Pilot.18 installed-host checks — 4 October 2026
 
-Release `0.0.0-pilot.18`, source `597264ff78da07d7123d6052aa5c929e18b6eb8f`; Fleetrepo `issues/rebuild-test-vm-first-use/result.md` deployment and verification receipt. No second participant or personal credential was used. The full clean product gate passed on this exact pushed source; it includes synthetic/offline typed Pi history, provisional events and two-browser terminal-write synchronization, but runs in a synthetic lab, **not** on the installed guest.
+Release `0.0.0-pilot.18`, source
+`597264ff78da07d7123d6052aa5c929e18b6eb8f`, was installed on the test server.
+The deployment checks below passed. The Pi browser journey covered by this
+issue was not tested on the installed host.
 
-On the installed host, the approved successor operator verified the source, six units and policy; an independent gateway-UID Unix-socket request returned mapped-daemon snapshot HTTP 200 (startup validation). Policy preflight, native gh/Pi selector, Unix peer/home/config denials, root-only revoke inode, forwarded hostname-validated TLS and anonymous Access interception passed. The initial 12 GiB mapped `~/src` remained mounted and owned, but `src_volume.py verify` refused at 2.48 GB free. In follow-up run `01m42hnp2mwe649xkxze0g2ht6`, Fleetrepo expanded the image offline to 20 GiB without deleting workspaces. The fresh volume verifier passed with 10,503,647,232 bytes free; successor and independent installed-host checks passed again. The initial refusal is historical, not an outstanding admission failure. Host technical verification is complete; actual browser/provider acceptance remains untested.
+## Verified
 
-Not run on the installed host: synthetic Pi create/send/stream/tool/interruption/reconnect/continuation via a browser. The guest has fixture mode off and no separate synthetic provider or login without Jari's real identity; do not alter his native Pi session to create a fake one. Not run: real Access/GitHub login, Pi device code, real provider conversation, second-user sign-in, or two distinct bound-user kernel-UID comparison. No checkbox in `item.md` has been completed by this receipt. Jari's authenticated browser and provider journey remains necessary; test the new typed/history/terminal-sync/control surfaces listed in the two feature results and retry the pilot.17/16 acceptance items. No workspace names or user data were recorded.
+The installed version and services matched the release. The gateway could
+reach the mapped user's daemon, and the native gh and Pi checks passed.
+Permission checks denied an unrelated Unix user access to protected sockets
+and the mapped home, and denied the mapped user access to gateway configuration.
+The session-revocation socket was restricted to root.
+
+The forwarded TLS connection passed hostname validation, and Access intercepted
+an unauthenticated request. Workspace-volume verification passed after its
+capacity was increased; the earlier free-space failure was resolved.
+
+The full clean product gate also passed on this exact source. Its synthetic
+coverage included typed Pi history, provisional events and terminal-history
+updates across two browsers. These tests ran in the lab.
+
+## Not verified on the installed host
+
+No authenticated browser journey was run with either a synthetic or real
+provider. This leaves Access/GitHub sign-in, Pi device-code onboarding and the
+browser conversation flow unverified: creating a conversation, sending,
+streaming text and tool updates, interruption, reconnect and continuation.
+Separation between two distinct signed-in users was also not tested.
+
+## Evidence
+
+Fleetrepo's `issues/rebuild-test-vm-first-use/result.md` records the pilot.18
+installation and follow-up checks on 4 October 2026, including the volume
+expansion in run `01m42hnp2mwe649xkxze0g2ht6`. It contains the detailed
+deployment and verification receipts.

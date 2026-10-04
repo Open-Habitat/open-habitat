@@ -23,8 +23,8 @@ things; [TESTING.md](../../TESTING.md) explains those evidence boundaries.
 
 ## Release and consent boundaries
 
-The test server runs pilot.14 (2026-10-01). Releases and test-server data
-changes follow the root `AGENTS.md`: deploys need no approval, a failed
+The [dated verification result](result.md) records the release checked on the
+test server. Releases and test-server data changes follow the root `AGENTS.md`: deploys need no approval, a failed
 upgrade is fixed forward, and test users and data are disposable. The
 procedure and receipts are in Fleetrepo's
 `infra/native-agent-host-test/RELEASE-UPGRADE.md`.

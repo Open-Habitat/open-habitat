@@ -26,6 +26,17 @@ esitetään selkeästi tekstin asianomaisessa kohdassa. Erillistä Decisions-osi
 ei säilytetä saman sisällön toistona tai läpikäyntien lokina; aiemmat versiot
 löytyvät Git-historiasta.
 
+## Pi:n live-käyttökulun tulos 4.10.2026
+
+`verify-live-pi-journey/result.md` selvennetty Jarin hyväksymällä rajauksella:
+pilot.18:n läpäisseet asennustarkistukset, erillinen synteettinen testinäyttö
+ja palvelimella todentamatta jäänyt selainkäyttökulku erotettu toisistaan.
+Kahden kirjautuneen käyttäjän eristystä ei ole testattu. Käyttöönoton ja
+levytilan korjauksen yksityiskohdat löytyvät Fleetrepon alkuperäisestä tuloksesta;
+testikehotukset ja tarpeeton menettelyteksti poistettu tästä raportista.
+Issuen vanha pilot.14-nykytilaväite korvattu viittauksella päivättyyn tulokseen.
+Uutta testausta ei tehty eikä issuen tilaa tai valmistumisehtoja muutettu.
+
 ## Navigaation suunnittelupyyntö ja paketin tulos 4.10.2026
 
 Jari hyväksyi `align-navigation-design`-issuen REQUEST.md:n rajaamisen
