@@ -1,34 +1,105 @@
-> Moved from `docs/logging.md` on 2026-10-03. This is the proposal awaiting the decision recorded in `item.md`.
+# Proposed logging policy
 
-# Logging for first login and native work
+Operators need to connect a reported failure to the component that failed and
+to understand who performed a relevant action. The [current inventory](preparation.md)
+shows useful gateway diagnostics, sparse broker records and gaps in daemon
+coverage. This proposal recommends consistent diagnostics in each component;
+protocol and reader-access choices remain to be settled with Jari.
+The agreed goals and information policy are in [the task](item.md).
 
-**Recommendation for Jari, not an approved logging contract.** Logs should answer *which boundary stopped an operation, and what is still safe to retry?* They must not become a second store of identities, agent work or credentials. The Unix accounts and native histories remain authoritative; the broker's root-only ledger and pending journal, not a log line, decide whether an account was published. This proposal is based on the [first-login investigation](../investigate-first-login/analysis.md), [broker-denial investigation](../investigate-broker-denial/analysis.md), [ADR 0004](../../docs/decisions/adr-0004-first-login-user-provisioning.md) and the current source (`internal/gateway/auth.go`, `internal/provision/{transport_linux,writer_linux}.go`, `internal/cli/cli.go`, `internal/daemon/snapshot_linux.go`). Those investigations include bounded live read-only evidence, but neither proves the exact failing broker guard. This document is not a live integration test.
+## Record the operation and its outcome
 
-## What to record, and where
+Use structured JSONL on service stderr, building on the existing gateway
+logger. Record meaningful transitions and exceptional outcomes: where login
+stopped, whether provisioning reached publication or readiness, why a native
+operation failed, and who changed privileged state. Normal polling and SSE
+traffic add little diagnostic value compared with their volume.
 
-Use one bounded JSON object per line, with a fixed schema: `schema_version`, timestamp in UTC, `component`, `event`, `outcome`, `reason`, and only the applicable `request_id` or `attempt_id`, `operation` and `stage`. Values of `event`, `outcome`, `reason`, `operation` and `stage` come from reviewed literal enums, never external strings or raw errors. Omit unknown or absent fields; do not invent a successful stage from a timeout. The suggested small vocabulary is:
+A common record envelope should identify the component, event, outcome and
+operation. Classify errors into useful reasons instead of copying provider or
+OS error strings, which can contain credentials or work content. Schema
+versions, exact field names and event vocabulary are implementation details;
+the existing gateway fields are a starting point, not a requirement for every
+component to emit an identical record.
 
-| Owner | Events and stages worth keeping | Failure reasons (examples of fixed values) |
-| --- | --- | --- |
-| Ingress / gateway | `http_request` at route-template and response-class level for exceptional responses; `oauth_callback` with `started`, `rejected`, `accepted`; `session_issued`; `daemon_route` failure | `shape_extra_key`, `shape_duplicate_key`, `shape_missing_or_empty`, `shape_malformed`, `flow_missing_or_expired`, `browser_mismatch`, `provider_denied`, `exchange_failed`, `broker_denied`, `handoff_failed`, `session_failed`, `route_unavailable` |
-| Root broker | `broker_exchange` for `ensure` or `authorize`: `admitted`, `rejected`, `reserved`, `published`, `ready` | `peer_denied`, `frame_invalid`, `capacity`, `deadline`, `reply_denied`, `reply_state_unavailable`, `reply_name_collision`, `reply_drift`, `host_guard_failed`, `readiness_failed` |
-| Per-UID daemon | `credential_handoff` with `received`, `verified` or `failed`; `native_request` only for failed discovery/control, with route template and outcome | `peer_denied`, `binding_changed`, `native_source_unavailable`, `credential_verification_failed`, `ack_unknown` |
-| External ingress | Minimal denied/failed route-template + response-class counts if the provider permits safe configuration; no request-target capture | `access_denied`, `origin_unavailable` |
+Provisioning publication, daemon readiness, credential acknowledgement and
+browser session issuance are different outcomes. Records should preserve those
+distinctions so an operator can locate the failed boundary. Native state and
+the broker ledger remain the authority for what exists; a missing log record
+cannot prove that an operation never happened.
 
-These are **proposed** common names, not a claim that every component currently emits them. A broker `published` means durable binding publication, **not** socket ready, credential delivered or session issued. `ready` follows verified activation; `credential_handoff` distinguishes verified acknowledgement from lost/unknown acknowledgement; `session_issued` follows the final authorize check. A pre-admission rejection means no `ensure` ran; no event is **unknown**, not proof that no request arrived. On uncertain handoff, discard the transient token and require a new complete OAuth flow; never infer success from a later daemon response. Read root-owned pending/ledger state through the private recovery procedure before declaring a partial mutation repaired.
+## Connect records across components
 
-Generate an independent random `request_id` at the gateway for an individual HTTP request, including malformed and unauthenticated requests. Keep it distinct from the gateway's short-lived random `attempt_id`, which joins OAuth start to its one callback via server-side pending state. Do not derive either from a browser header, OAuth `state`, code, session, user ID, IP or URL; never accept an incoming correlation header as authority. An unmatched callback gets a new request ID, not the claimed attempt ID. Gateway-to-broker correlation is **not implemented**: if approved, carry only the gateway-generated attempt ID in a versioned, bounded broker message after Unix peer authentication; broker validates length/format, but the peer UID is the authorization boundary. Carry it onward to the mapped daemon only over the authenticated UDS, without allowing the daemon to route from that ID. No broker token or browser-provided identity travels with it. For ordinary session/API calls use request IDs, not a persistent account/session correlation key. Logs can be compared by a tight time window until the protocol extension is reviewed; proximity alone cannot prove that two records belong to the same exchange.
+Recommend carrying the gateway's random login attempt ID to the broker and
+mapped daemon over their authenticated internal channels. That would let an
+operator distinguish concurrent attempts and follow one failure across services.
+The ID is diagnostic data; peer credentials and existing identity checks still
+determine authority and routing. This protocol change needs an architecture
+decision with Jari. Until then, comparing timestamps remains approximate.
 
-Never log code or conversation text, tool input/output, diffs, native state or session files, OAuth state/PKCE/code, tokens, cookies, CSRF, Authorization or other headers, raw URL/path/query, referrer, IP, email, handle, provider numeric ID, UID, Unix name, home or socket path, command arguments/output, secrets or raw provider/OS errors. This includes lower-trust proxy and systemd access logs: turn off request-target capture rather than trying to redact an already written OAuth URL. Do not log hashes of identities or secrets as substitute keys. Permit only route **templates**, status class, fixed reason/stage and random per-operation IDs. A safe user-facing support reference, if chosen, should be an opaque random lookup handle to a restricted event, not the OAuth attempt ID or a reflected browser parameter; generic error messages remain generic.
+For ordinary requests, use an operation reference that can connect the browser
+failure to the corresponding server records. Recommend returning a usable
+opaque support reference in place of the current constant placeholder, so a
+user can report a failure without copying a URL or credentials. The precise
+relationship between request, login-attempt and support references belongs in
+the implementation design.
 
-Restrict gateway/daemon logs to operators with a need to diagnose their boundary and broker diagnostics/ledger inspection to root-authorized operators. No cross-user daemon log browsing or public telemetry feed. Choose short retention and a byte/record cap per component, with stricter access for root broker records; rotate and delete on schedule, avoid indefinite central copies and document any ingress-provider copies privately. Log state transitions and exceptional outcomes, not every SSE heartbeat, polling request or broker authorize on each normal request. Rate-limit anonymous failures and aggregate dropped-event counts without recording attacker input. Logging failure must not turn a rejected request into success, change OAuth consumption order, or block a provisioning fsync; alert on loss of diagnostic coverage separately. Operational inspection is time-bounded and read-only.
+## Identify people where it helps
 
-## Example diagnosis and adoption
+User IDs, email addresses and other useful user identifiers may be logged.
+They can help an operator find a user's failed operation and attribute changes;
+routine diagnostics need not be anonymous. Select identifiers for those uses
+rather than treating all identity information as forbidden.
 
-The first reported login ended in `invalid_request`; source showed callback shape could fail before provider exchange or broker `ensure`, but there was no request-level proof. Later, a `broker_denied` gateway event showed a later boundary was reached, yet the same gateway reason covered both `ensure` and post-handoff `authorize`, and the adapter collapsed broker replies. The later empty-binding snapshot favored an early refusal but did not prove it. With the proposed records, an operator could look up a start/callback attempt, see `shape_extra_key` before any admitted `ensure`, **or** see `ensure` rejected with a broker failure class before reservation, without exporting the browser URL or assuming missing journal entries mean missing requests. Only private root state and an authorized new login could establish the final outcome.
+For actions requiring attribution, take the actor from the component's verified
+identity context and distinguish the actor from the affected user or setting.
+The current revocation subject identifies a target, not the operator. A browser
+parameter claiming an identity is not evidence of who acted.
 
-1. First, align gateway JSONL and synthetic secret-leak tests with the existing `oauth_callback` reasons and server-only attempt ID. Current gateway emits start/callback reasons and rate-limits unmatched callbacks, but both broker branches still say `broker_denied`; JSON errors in gateway and daemon still use the placeholder `req_00000000`. Do not widen the callback parser or change its fail-closed ordering for logging.
-2. Next, preserve safe typed broker failure classifications across the adapter; add minimal broker admission/ensure/authorize and daemon handoff stages, testing early rejection, pre-reservation refusal, pending mutation, publication, readiness failure and lost acknowledgement. Review any correlation protocol change as a security change, not an observability-only tweak. Use synthetic marker values in callback shape, wrong-peer, transport timeout, allowlist/name/host guard, partial-state and daemon-failure tests; assert the entire captured JSONL contains none of the marker codes, tokens, cookies, identities, paths or raw errors, and assert the expected enum and stage ordering instead.
-3. After Jari approves the choices below, configure private ingress/journal access, limits and retention in Fleetrepo. Test a new consented login and bounded diagnosis there under its deployment/recovery runbook; synthetic tests alone do not establish live correlation or cross-user safety.
+Credentials and conversation or tool content remain excluded. Avoid copying
+raw headers, request URLs, command output or native session files into records,
+because those containers can carry the excluded information. Ingress logging
+needs the same care: an OAuth callback URL can expose credentials before the
+application has a chance to redact anything.
 
-**Decisions for Jari:** approve or decline the authenticated cross-component attempt-ID protocol (versus time-window-only correlation); choose event retention, access and volume budgets; decide whether and how users receive an opaque support reference. Fleetrepo owns actual service/journal policies, ingress configuration, private deployment receipts and root recovery instructions. This public page gives portable rules only; it contains no host-specific identifiers or raw incident logs.
+## Access and retention
+
+Recommend root-authorized access for broker records, a limited operator group
+for gateway records, and access for the owning user and authorized operators
+to that user's daemon diagnostics. This preserves Unix user separation while
+allowing diagnosis. The reader model is an architecture choice to settle with
+Jari; Fleetrepo owns the concrete journal and ingress configuration.
+
+Retain records long enough for failures and relevant changes to be investigated,
+with automatic expiry and storage limits. Seven days for ordinary diagnostics
+and thirty days for privileged changes and broker diagnostics are initial
+sizing suggestions, not agreed requirements. Validate their usefulness and
+whether the deployment can enforce the chosen separation. Any additional log
+copy needs an explicit access and retention policy too.
+
+## Bounded delivery
+
+The task already requires logging failures not to change authorization or block
+the underlying operation. Recommend bounded, nonblocking delivery, with record
+size limits, aggregation or rate limits for repetitive failures, and dropped
+record counts when delivery recovers. Queue sizes and rate budgets can be chosen
+from expected traffic and verified under load.
+
+This permits diagnostic loss during an outage or flood. The resulting gaps must
+remain visible to operators where possible; delivery cannot be a prerequisite
+for the operation to complete. The implementation needs evidence for a writer
+that blocks, as well as the promptly failing writer already tested.
+
+## Implementation and verification
+
+Build on the gateway's existing broker classifications and callback diagnostics.
+Close the broker and daemon coverage gaps, implement the agreed correlation and
+reader model, and replace the unusable support placeholder. Verify representative
+failure paths and actor attribution alongside exclusions for secrets and work
+content, bounded volume and blocked-sink behaviour. Tests that currently exclude
+all identity markers from particular OAuth records are evidence of current
+behaviour, not a general policy against user identifiers.
+
+Product behaviour and its architecture description belong in this repository.
+Fleetrepo configures and verifies deployed journal access, retention and ingress
+capture. The existing synthetic results do not establish those deployment facts.

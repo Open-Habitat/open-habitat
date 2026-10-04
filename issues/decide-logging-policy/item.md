@@ -19,24 +19,28 @@ commits:
 
 Design and implement logging that helps operators diagnose failures and trace
 relevant actions to their actor, such as who changed shared server settings.
+The gateway already records broker operations and safe failure classifications,
+but records from different components cannot yet be reliably connected.
 
-Start from the current gateway, broker and daemon logging to identify gaps.
-The gateway already records broker operations and safe failure classifications.
+The [source inventory](preparation.md) describes current coverage and gaps.
+The [policy proposal](proposal.md) recommends how to close them; the
+[test results](result.md) describe the evidence already available.
 
 ## Approach
 
-Define which events are useful, how records belonging to the same operation
-can be connected, and what actor information is needed for traceability.
-Choose access, retention and volume limits that preserve diagnostic value
-while limiting exposure of user information. Secrets and conversation or tool
-content do not belong in diagnostic logs. Record actor identifiers where they
-serve a concrete traceability need.
+Choose events and fields for concrete diagnostic and traceability needs.
+User IDs, email addresses and other useful user identifiers may appear in logs.
+Use the identity known to the component authorizing an action when attributing
+it to an actor. Secrets and conversation or tool content do not belong in
+diagnostic logs. Access, retention and volume limits should preserve useful
+evidence while limiting exposure of user information.
 
 Unix user isolation and native account and session state remain the
 architectural basis. Resolve architectural choices with Jari, including changes
-to how components exchange correlation data. Choose event names and other
-implementation details to serve the diagnostic needs. A user-facing support
-reference may help connect a reported problem to the operator's records.
+to how components exchange correlation data and who can read their logs.
+Event names, field details and practical limits follow from the diagnostic
+needs. A user-facing support reference may help connect a reported problem
+to the operator's records.
 
 Logging should remain bounded, and its failure should not alter an authorization
 result or prevent the underlying operation from completing. Product behaviour
@@ -50,9 +54,3 @@ Verification demonstrates useful correlation and actor attribution, protection
 of secrets and work content, and bounded behaviour when logging is flooded or
 unavailable. Architecture documentation explains what is recorded, where it
 lives and who can read it, matching the implementation.
-
-## Comments
-
-### 2026-10-03T19:33:10Z · @claude
-
-Step 1 done by rewrite-architecture-docs: the proposal is at proposal.md in this directory and docs/logging.md is gone.

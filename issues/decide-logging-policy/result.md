@@ -1,9 +1,45 @@
-# Night preparation result
+# Logging preparation: test evidence
 
-The decision remains open. `preparation.md` inventories current logs, illustrates four diagnostic journeys, names gaps and sets out five policy questions plus the optional support-reference question. Neither a new inter-component ID protocol nor a retention/access policy was installed. No production runtime, daemon conversation/journal, architecture document, or test-server state was changed.
+Synthetic regression tests were added in `01c7c1a`. The logging policy remains
+open; the [source inventory](preparation.md) identifies the implementation gaps
+and the [proposal](proposal.md) recommends how to address them.
 
-Synthetic regression tests added for OAuth diagnostic redaction (including conversation/tool error markers), failure of a promptly rejecting log writer, and the root writer's pre-reservation guard diagnostic failure. Existing tests cover broker classification, exact gateway log keys and unmatched callback flood budget. These tests cannot establish safe behavior if the synchronous logging writer **blocks**, or a global log byte cap; these are explicit follow-up design/implementation needs after Jari decides policy. A provider/client ingress journal and actual per-UID journald access were not examined in the synthetic lab.
+## What the tests establish
 
-Verification: the synthetic test candidate from `bfd76b4` was adopted unchanged as `01c7c1a` on current main (`4654d4c`). `TMPDIR=/var/tmp/n NAH_PORT_BASE=15500 ./scripts/ci-local.sh --clean --json` passed on the clean committed tree at `9b1992d` (browser, Go/contracts, packaging and final checks; `status:passed`, `clean:true`). `python3 scripts/validate-project-view.py` passed (22 pages), `issuectl doctor --json` completed, and `git diff --check` passed. Only this result text changed after the gate; runnable inputs did not change.
+`internal/gateway/logging_policy_test.go` checks that selected credential,
+conversation and tool-content markers stay out of callback JSONL on a failed
+handoff. It also checks that an immediately failing diagnostic writer preserves
+both successful login and malformed-callback rejection, including provider and
+handoff call counts. An identity marker is excluded by the current emitter in
+that scenario; this is not a policy prohibition on logging user IDs or email.
 
-Historical failures in the preserved prior run: a long `TMPDIR` exceeded a Unix socket path limit in `TestParallelEnsureSerializationAndRevocation/different-id`; with the short disk-backed `/var/tmp/n`, the gateway and provision package tests passed. Its first clean-gate attempt hit npm `ETIMEDOUT` (exit 146); its retry passed browser, Go and contracts but failed at the now-fixed project-plan validator for `build-agent-control` and `manage-agent-worktrees`. Neither failure recurred in this run. No live journal ACL, ingress log settings, or blocked-writer behavior was verified.
+`internal/provision/logging_policy_linux_test.go` exercises a pre-reservation
+guard with a diagnostic callback whose writer immediately returns an error.
+The denial and absence of a binding remain intact, and the callback receives
+only the fixed stage. This is a writer-callback test, not an end-to-end test of
+the production broker's stderr delivery.
+
+Existing gateway and provision tests cover broker failure classifications,
+exact gateway record fields, callback reason classifications, selected secret
+exclusions and the unmatched-callback burst limit.
+
+## Recorded validation
+
+The full clean gate passed on committed revision `9b1992d`:
+
+```sh
+TMPDIR=/var/tmp/n NAH_PORT_BASE=15500 ./scripts/ci-local.sh --clean --json
+```
+
+The recorded result was `status:passed`, `clean:true`, covering browser,
+Go/contracts, packaging and final checks. The project documentation validator
+and `git diff --check` passed, and `issuectl doctor --json` completed. The later
+result-text update in `70750af` did not change runnable inputs.
+
+## Limits of the evidence
+
+These runs do not establish behaviour when a diagnostic writer blocks, an
+overall record or byte cap, cross-component correlation, or attribution for
+future shared-setting changes. They did not inspect live journal permissions,
+retention, ingress capture or per-user daemon log access. Those remain part of
+implementing and verifying the logging policy.
