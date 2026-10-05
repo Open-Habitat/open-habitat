@@ -1,6 +1,6 @@
 ---
 created: 2026-10-03
-updated: 2026-10-03
+updated: 2026-10-05
 type: task
 reporter: jari
 status: open
@@ -62,6 +62,6 @@ the conversation blocks.
 
 ## Acceptance Criteria
 
-- [ ] The delivered package shows the actual shared controls, relevant states and provisional values in both themes, together with the agent-state meanings and examples; its brief is kept in this issue.
+- [x] The delivered package shows the actual shared controls, relevant states and provisional values in both themes, together with the agent-state meanings and examples; its brief is kept in this issue.
 - [ ] The designer's handoff covers those states and a shared agent-state presentation, and is incorporated into the current design sources.
-- [ ] The maintained design-package instructions carry the state-coverage requirement into future rounds.
+- [x] The maintained design-package instructions carry the state-coverage requirement into future rounds.
