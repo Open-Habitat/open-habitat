@@ -10,7 +10,7 @@ lane: ui-foundation
 lane_seq: 30
 collision: [web/src/components/, design-system/]
 blocked_by: ['@design-control-states', '@compare-draft-fidelity']
-preparation: ready
+preparation: pending
 ---
 
 # Apply the designed control states and agent presentation
