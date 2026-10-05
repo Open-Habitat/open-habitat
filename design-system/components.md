@@ -39,9 +39,16 @@ navigaatio- ja listarivin, tilavalikon, avattavan kontrollin ja kentän molemmis
 teemoissa. Hover, painettu, näppäimistöfokus, nykyinen/valittu, estetty ja
 odottava tila käyttävät toistaiseksi nykyisen paletin arvoja
 (`--ah-surface-2`, `--ah-accent-soft`, `--ah-accent-line`, `--ah-line`,
-`--ah-muted`, `--ah-accent`). Yhteinen resepti on
-`web/src/components/interactive.module.css`; arvot ovat **väliaikaisia**, eivät
-hyväksytty design. @design-control-states päättää lopullisen tilamatriisin.
+`--ah-muted`, `--ah-accent`). Yhteinen nykyinen resepti on
+`web/src/components/interactive.module.css`; nämä tuotannon arvot ovat
+**väliaikaisia**. Hyväksytty esitystavoite, kummankin teeman soveltuvat tilat
+ja ehdotetut tokenit ovat
+[Kontrollitilat ja agentin tila](drafts/Kontrollitilat%20ja%20agentin%20tila.dc.html)
+-vedoksessa. @apply-control-state-design sovittaa ne todellisiin
+komponentteihin ja testaa käytöksen: vedoksen ehdottama CSS tai
+`AgentPresentation`-prop ei itsessään määrää tuotannon API:a. Agentin
+aktiivisuus, huomio, kirjoitusoikeus ja operaatiot muodostavat erilliset
+esityskanavat, joiden faktat johdetaan sovelluksessa, ei Status-komponentissa.
 
 @migrate-bespoke-controls siirtää jäljellä olevat käsin tyylitetyt kontrollit
 (kuten työtilan avausnuolen, Tiedot-painikkeen, mobiilinavigaation,

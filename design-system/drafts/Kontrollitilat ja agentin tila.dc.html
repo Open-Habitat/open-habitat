@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  @font-face { font-family:"Instrument Sans"; src:url("../fonts/instrument-sans-latin.woff2") format("woff2"); font-weight:400 600; font-display:swap; }
+  @font-face { font-family:"Instrument Sans"; src:url("../fonts/instrument-sans-latin-ext.woff2") format("woff2"); font-weight:400 600; font-display:swap; unicode-range:U+0100-02BA, U+1E00-1EFF, U+2020, U+20A0-20C0, U+2113; }
+  @font-face { font-family:"JetBrains Mono"; src:url("../fonts/jetbrains-mono-latin.woff2") format("woff2"); font-weight:400 500; font-display:swap; }
+  @font-face { font-family:"JetBrains Mono"; src:url("../fonts/jetbrains-mono-latin-ext.woff2") format("woff2"); font-weight:400 500; font-display:swap; unicode-range:U+0100-02BA, U+1E00-1EFF, U+2020, U+20A0-20C0, U+2113; }
+  body { margin:0; background:#e9ebee; }
+  :root, [data-theme="light"] {
+    --ah-bg:#f6f7f8; --ah-surface:#ffffff; --ah-surface-2:#fbfcfd; --ah-rail:#f1f3f5; --ah-line:#e2e6e9; --ah-line-soft:#eef0f3; --ah-line-strong:#c9d0d6;
+    --ah-ink:#16191d; --ah-ink-2:#3d434b; --ah-muted:#61676f; --ah-faint:#6b7178;
+    --ah-accent:#2b7f8c; --ah-accent-ink:#1d5f69; --ah-accent-soft:#e6f1f3; --ah-accent-line:#cfe3e6; --ah-on-accent:#ffffff; --ah-accent-hover:#246f7b; --ah-accent-press:#1d5f69;
+    --ah-ok:#2f7a55; --ah-err:#a3412b; --ah-err-soft:#fdf1ee; --ah-err-line:#f3d7d0; --ah-on-err:#ffffff; --ah-err-hover:#8e3825; --ah-err-press:#7a2f1f; --ah-err-soft-hover:#fae4de; --ah-err-soft-press:#f6d6cd;
+    --ah-hover:rgba(22,25,29,.05); --ah-press:rgba(22,25,29,.10); --ah-surface-hover:#f2f4f6; --ah-surface-press:#e9edf0;
+    --ah-current:#ffffff; --ah-current-line:#d5dbe0; --ah-disabled-bg:#eef0f3; --ah-disabled-fg:#61676f; --ah-focus:#2b7f8c; --ah-scrim:rgba(16,24,40,.32);
+  }
+  [data-theme="dark"] {
+    --ah-bg:#14171a; --ah-surface:#1b1f23; --ah-surface-2:#171a1e; --ah-rail:#171a1e; --ah-line:#2a3036; --ah-line-soft:#232830; --ah-line-strong:#3a424a;
+    --ah-ink:#e6e9ec; --ah-ink-2:#c5cad0; --ah-muted:#98a0a8; --ah-faint:#949ca6;
+    --ah-accent:#4fa6b4; --ah-accent-ink:#9fd4dd; --ah-accent-soft:#173137; --ah-accent-line:#2c4a52; --ah-on-accent:#0f1417; --ah-accent-hover:#63b4c1; --ah-accent-press:#7cc3cf;
+    --ah-ok:#8fcfa8; --ah-err:#e8a08a; --ah-err-soft:#261c1b; --ah-err-line:#4a2e28; --ah-on-err:#1b1f23; --ah-err-hover:#eeb3a1; --ah-err-press:#f2c3b4; --ah-err-soft-hover:#33221f; --ah-err-soft-press:#3d2823;
+    --ah-hover:rgba(230,233,236,.06); --ah-press:rgba(230,233,236,.12); --ah-surface-hover:#22272c; --ah-surface-press:#2a3036;
+    --ah-current:#23282e; --ah-current-line:#353c44; --ah-disabled-bg:#1f2328; --ah-disabled-fg:#98a0a8; --ah-focus:#4fa6b4; --ah-scrim:rgba(0,0,0,.5);
+  }
+  @keyframes ah-pulse { 0%,100% { opacity:1 } 50% { opacity:.3 } }
+  @keyframes ah-spin { to { transform:rotate(360deg) } }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important } }
+  a { color:#1d5f69 } a:hover { color:#2b7f8c }
+</style>
+</helmet>
+
+<div data-theme="light" style="min-height:100vh; box-sizing:border-box; padding:36px 28px 80px; background:var(--ah-bg); color:var(--ah-ink); font-family:'Instrument Sans',system-ui,sans-serif; display:flex; flex-direction:column; align-items:center">
+<div style="width:100%; max-width:1440px; display:flex; flex-direction:column; gap:40px">
+
+  <header style="display:flex; flex-direction:column; gap:14px">
+    <div style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.09em; text-transform:uppercase; color:var(--ah-muted)">Vedos · design-control-states · refine-agent-status</div>
+    <h1 style="margin:0; font:600 28px 'Instrument Sans',sans-serif; letter-spacing:-.015em">Kontrollien tilat ja agentin tila</h1>
+    <p style="margin:0; max-width:86ch; font-size:14.5px; line-height:1.6; color:var(--ah-ink-2); text-wrap:pretty">Ehdotus tuotantokomponenttien vuorovaikutustiloiksi ja agentin tilan yhteiseksi esitykseksi. Jokaiselle kontrolliperheelle näytetään vain sen soveltuvat tilat. Arvot ovat ehdotettuja tokeneita; nykyiset väliaikaiset arvot ja muutosperusteet ovat taulukossa alempana. Synteettinen aineisto. Tämä ei ole hostin havaintomalli: komponentit saavat valmiiksi johdetun esityksen.</p>
+    <div style="display:flex; flex-wrap:wrap; gap:12px 24px; align-items:flex-end">
+      <sc-for list="{{ toggles }}" as="g" hint-placeholder-count="3">
+        <div style="display:flex; flex-direction:column; gap:5px">
+          <span style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--ah-muted)">{{ g.title }}</span>
+          <div role="group" aria-label="{{ g.title }}" style="display:flex; gap:2px; padding:2px; background:var(--ah-rail); border:1px solid var(--ah-line); border-radius:8px">
+            <sc-for list="{{ g.opts }}" as="o" hint-placeholder-count="3">
+              <button aria-pressed="{{ o.pressed }}" onClick="{{ o.on }}" style="border:{{ o.bd }}; background:{{ o.bg }}; color:{{ o.fg }}; font:{{ o.fw }} 12.5px 'Instrument Sans',sans-serif; border-radius:6px; padding:5px 11px; cursor:pointer">{{ o.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+      <nav aria-label="Osiot" style="display:flex; flex-wrap:wrap; gap:6px 16px; font-size:13px; margin-left:auto">
+        <a href="Navigaatio%20ja%20asetukset.dc.html">Navigaatio ja asetukset →</a><a href="#periaatteet">Periaatteet</a><a href="#kontrollit">Kontrolliperheet</a><a href="#ohjaus">Agentin ohjaus</a><a href="#agentti">Agentin tila</a><a href="#tokenit">Tokenit ja kontrasti</a><a href="#muutokset">Komponenttimuutokset</a><a href="#aukot">Inventaario ja aukot</a>
+      </nav>
+    </div>
+  </header>
+
+  <section id="periaatteet" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:12px">
+    <div style="padding:14px 16px; background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:10px; display:flex; flex-direction:column; gap:6px"><strong style="font-size:13.5px">Sijainti on pinta, tila on merkki</strong><span style="font-size:13px; line-height:1.55; color:var(--ah-ink-2)">Nykyinen reitti saa neutraalin vaalean pinnan ja lihavoinnin. Korostusväri jää agentin aktiivisuudelle, huomiolle ja käyttäjän valinnalle.</span></div>
+    <div style="padding:14px 16px; background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:10px; display:flex; flex-direction:column; gap:6px"><strong style="font-size:13.5px">Painallus syventää, ei käännä</strong><span style="font-size:13px; line-height:1.55; color:var(--ah-ink-2)">Hover ja painallus tummentavat (tummassa vaalentavat) samaa väriä. Nykyinen primary-painallus vaihtaa pinnan ja tekstin vaaleaksi – se näyttää valinnalta.</span></div>
+    <div style="padding:14px 16px; background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:10px; display:flex; flex-direction:column; gap:6px"><strong style="font-size:13.5px">Epäselvä esto kerrotaan</strong><span style="font-size:13px; line-height:1.55; color:var(--ah-ink-2)">Kun esto ei käy ilmi tilanteesta, syy näkyy kontrollin yhteydessä ilman hoveria, myös kosketuksella. Tyhjän kentän lähetykselle ei tarvita toistuvaa ohjetta. Näppäimistö ja ruudunlukija saavat saman perustelun; fokusoitavuus ratkaistaan kontrollin käytöksen mukaan.</span></div>
+    <div style="padding:14px 16px; background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:10px; display:flex; flex-direction:column; gap:6px"><strong style="font-size:13.5px">Odottava säilyttää värit</strong><span style="font-size:13px; line-height:1.55; color:var(--ah-ink-2)">Opacity 0.7 poistuu. Etiketti kertoo mitä tapahtuu (Lähetetään…), pyörivä merkki on lisä ja poistuu vähennetyllä liikkeellä.</span></div>
+    <div style="padding:14px 16px; background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:10px; display:flex; flex-direction:column; gap:6px"><strong style="font-size:13.5px">Neljä akselia, neljä paikkaa</strong><span style="font-size:13px; line-height:1.55; color:var(--ah-ink-2)">Aktiivisuus: merkki rivin alussa. Huomio: täytetty korostus rivin lopussa. Kirjoitusoikeus: katkoviivatagi. Operaatio ja kuljetus: sanatagi. Ne voivat esiintyä yhtä aikaa.</span></div>
+  </section>
+
+  <section id="kontrollit" style="display:flex; flex-direction:column; gap:28px">
+    <div style="display:flex; flex-direction:column; gap:6px">
+      <h2 style="margin:0; font:600 21px 'Instrument Sans',sans-serif">Kontrolliperheet</h2>
+      <p style="margin:0; max-width:86ch; font-size:13.5px; line-height:1.6; color:var(--ah-ink-2)">{{ widthNote }}</p>
+    </div>
+
+    <sc-for list="{{ families }}" as="f" hint-placeholder-count="5">
+      <article style="display:flex; flex-direction:column; gap:12px">
+        <div style="display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 14px">
+          <h3 style="margin:0; font:600 16px 'Instrument Sans',sans-serif">{{ f.title }}</h3>
+          <span style="font:400 12px 'JetBrains Mono',monospace; color:var(--ah-muted)">{{ f.comp }}</span>
+        </div>
+        <p style="margin:0; max-width:90ch; font-size:13px; line-height:1.55; color:var(--ah-ink-2); text-wrap:pretty">{{ f.note }}</p>
+        <div style="display:flex; flex-direction:column; gap:12px">
+          <sc-for list="{{ themes }}" as="th" hint-placeholder-count="2">
+            <div data-theme="{{ th.id }}" style="background:var(--ah-bg); color:var(--ah-ink); border:1px solid var(--ah-line); border-radius:12px; padding:14px 16px 16px; overflow-x:auto">
+              <div style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--ah-muted); margin-bottom:8px">{{ th.label }}</div>
+              <div style="min-width:{{ f.minW }}">
+                <div style="display:grid; grid-template-columns:{{ f.grid }}; gap:10px; padding:0 0 8px; border-bottom:1px solid var(--ah-line)">
+                  <span style="font:600 11.5px 'Instrument Sans',sans-serif; color:var(--ah-muted)">Muunnelma</span>
+                  <sc-for list="{{ f.cols }}" as="col" hint-placeholder-count="6"><span style="font:600 11.5px 'Instrument Sans',sans-serif; color:var(--ah-muted)">{{ col }}</span></sc-for>
+                </div>
+                <sc-for list="{{ f.rows }}" as="r" hint-placeholder-count="4">
+                  <div style="display:grid; grid-template-columns:{{ f.grid }}; gap:10px; align-items:start; padding:12px 0; border-bottom:1px solid var(--ah-line-soft)">
+                    <div style="display:flex; flex-direction:column; gap:3px; min-width:0">
+                      <span style="font:600 13px 'Instrument Sans',sans-serif">{{ r.name }}</span>
+                      <span style="font-size:11.5px; line-height:1.4; color:var(--ah-muted)">{{ r.use }}</span>
+                    </div>
+                    <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="6">
+                      <div style="min-width:0; padding:8px; background:{{ r.wrap }}; border-radius:8px; display:flex; flex-direction:column; align-items:flex-start; gap:5px">
+                        <sc-if value="{{ c.na }}" hint-placeholder-val="{{ false }}"><span style="font-size:11.5px; color:var(--ah-faint); padding:4px 0">ei sovellu</span></sc-if>
+                        <sc-if value="{{ c.ok }}" hint-placeholder-val="{{ true }}">
+                          <span style="display:inline-flex; align-items:{{ c.s.ai }}; justify-content:{{ c.s.just }}; gap:{{ c.s.gap }}; box-sizing:border-box; min-height:{{ c.s.minh }}; width:{{ c.s.w }}; max-width:100%; padding:{{ c.s.pad }}; border:{{ c.s.bd }}; border-radius:{{ c.s.r }}; background:{{ c.s.bg }}; color:{{ c.s.fg }}; font-weight:{{ c.s.fw }}; font-size:{{ c.s.fs }}; outline:{{ c.s.ol }}; outline-offset:{{ c.s.olo }}; box-shadow:{{ c.s.shadow }}; text-decoration:{{ c.s.deco }}; text-decoration-thickness:{{ c.s.dth }}; text-underline-offset:3px; cursor:{{ c.s.cur }}; white-space:{{ c.s.ws }}; line-height:1.35">
+                            <sc-if value="{{ c.s.hasLead }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="flex:none; box-sizing:border-box; width:{{ c.s.lead.w }}; height:{{ c.s.lead.h }}; border:{{ c.s.lead.bd }}; border-right:{{ c.s.lead.bdr }}; border-radius:{{ c.s.lead.r }}; background:{{ c.s.lead.bg }}; color:{{ c.s.lead.fg }}; box-shadow:{{ c.s.lead.shadow }}; animation:{{ c.s.lead.anim }}; display:inline-flex; align-items:center; justify-content:center; font:700 10px 'Instrument Sans',sans-serif">{{ c.s.lead.t }}</span></sc-if>
+                            <span style="min-width:0; overflow:hidden; text-overflow:ellipsis; font-family:{{ c.s.ff }}">{{ c.s.text }}</span>
+                            <sc-if value="{{ c.s.hasTrail }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto; padding-left:8px; font:600 11px 'Instrument Sans',sans-serif; color:var(--ah-accent-ink)">{{ c.s.trail }}</span></sc-if>
+                          </span>
+                          <sc-if value="{{ c.s.hasSub }}" hint-placeholder-val="{{ false }}"><span style="max-width:220px; font-size:11.5px; line-height:1.4; color:{{ c.s.subFg }}; text-wrap:pretty">{{ c.s.sub }}</span></sc-if>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </article>
+    </sc-for>
+
+    <article style="display:flex; flex-direction:column; gap:12px">
+      <div style="display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 14px">
+        <h3 style="margin:0; font:600 16px 'Instrument Sans',sans-serif">Valikko, tavallinen dialogi ja destruktiivinen vahvistus</h3>
+        <span style="font:400 12px 'JetBrains Mono',monospace; color:var(--ah-muted)">Overlays.tsx · Menu · Dialog · AlertDialog · Account.tsx</span>
+      </div>
+      <p style="margin:0; max-width:90ch; font-size:13px; line-height:1.55; color:var(--ah-ink-2); text-wrap:pretty">Valikossa kohdistus (hover tai nuolinäppäin) on harmaa pinta; valinta on ✓-merkki, ei pinta. Destruktiivinen rivi päättyy kolmeen pisteeseen ja avaa aina AlertDialogin; se ei toimi suoraan. AlertDialogin alkufokus on Peruuta, vahvistus on danger-täyttö. Tavallisen dialogin alkufokus on ensimmäinen kenttä. Sulkeminen Escillä, Peruuta-painikkeella tai taustasta palauttaa fokuksen avaajaan, joka näkyy fokusrenkaalla.</p>
+      <sc-for list="{{ themes }}" as="th" hint-placeholder-count="2">
+        <div data-theme="{{ th.id }}" style="background:var(--ah-bg); color:var(--ah-ink); border:1px solid var(--ah-line); border-radius:12px; padding:14px 16px 18px; display:flex; flex-direction:column; gap:10px">
+          <div style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--ah-muted)">{{ th.label }}</div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; align-items:start">
+            <div style="display:flex; flex-direction:column; gap:8px">
+              <span style="font:600 12px 'Instrument Sans',sans-serif; color:var(--ah-muted)">Menu · avattu näppäimistöllä</span>
+              <div style="width:260px; padding:5px; background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:10px; box-shadow:0 6px 18px rgba(16,24,40,.10); display:flex; flex-direction:column; gap:2px">
+                <span style="padding:6px 10px 4px; font-size:12px; color:var(--ah-muted)">alice@example.com</span>
+                <span style="display:flex; align-items:center; min-height:34px; padding:0 10px; border-radius:6px; background:var(--ah-hover); outline:2px solid var(--ah-focus); outline-offset:-2px; font-size:13px">Asetukset</span>
+                <div role="radiogroup" aria-label="Teema" style="display:grid; grid-template-columns:repeat(3,1fr); gap:2px; padding:2px; margin:4px 4px; background:var(--ah-rail); border-radius:8px">
+                  <span style="text-align:center; padding:5px 2px; border-radius:6px; font-size:12px; color:var(--ah-ink-2)">Järjestelmä</span>
+                  <span style="text-align:center; padding:5px 2px; border-radius:6px; font-size:12px; color:var(--ah-ink-2)">Vaalea</span>
+                  <span style="text-align:center; padding:5px 2px; border-radius:6px; font:600 12px 'Instrument Sans',sans-serif; color:var(--ah-ink); background:var(--ah-surface); border:1px solid var(--ah-line-strong); box-shadow:0 1px 2px rgba(16,24,40,.08)">Tumma</span>
+                </div>
+                <span style="display:flex; flex-direction:column; gap:1px; padding:6px 10px; font-size:13px; color:var(--ah-disabled-fg)">Katkaise GitHub-yhteys<span style="font-size:11.5px; color:var(--ah-muted)">Ei vielä mahdollista tällä palvelimella.</span></span>
+                <span style="height:1px; background:var(--ah-line-soft); margin:2px 4px"></span>
+                <span style="display:flex; align-items:center; min-height:34px; padding:0 10px; border-radius:6px; color:var(--ah-err); font-size:13px">Kirjaudu ulos…</span>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px">
+              <span style="font:600 12px 'Instrument Sans',sans-serif; color:var(--ah-muted)">Dialog · Pi kysyy (alkufokus ensimmäisessä valinnassa)</span>
+              <div style="max-width:340px; padding:18px; background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:12px; box-shadow:0 12px 40px rgba(16,24,40,.18); display:flex; flex-direction:column; gap:12px">
+                <strong style="font:600 15.5px 'Instrument Sans',sans-serif">Ajetaanko migraatio nyt?</strong>
+                <div style="display:flex; flex-direction:column; gap:8px; font-size:13px">
+                  <span style="display:flex; align-items:center; gap:9px"><span style="width:16px; height:16px; box-sizing:border-box; border-radius:50%; border:5px solid var(--ah-accent); box-shadow:0 0 0 2px var(--ah-surface), 0 0 0 4px var(--ah-focus)"></span>Kyllä, aja nyt</span>
+                  <span style="display:flex; align-items:center; gap:9px"><span style="width:16px; height:16px; box-sizing:border-box; border-radius:50%; border:1.5px solid var(--ah-muted)"></span>Ei, jätä myöhemmäksi</span>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:8px">
+                  <span style="display:inline-flex; align-items:center; min-height:36px; padding:0 13px; border-radius:8px; border:1px solid var(--ah-line-strong); background:var(--ah-surface); font:600 13px 'Instrument Sans',sans-serif">Peruuta</span>
+                  <span style="display:inline-flex; align-items:center; min-height:36px; padding:0 13px; border-radius:8px; background:var(--ah-accent); color:var(--ah-on-accent); font:600 13px 'Instrument Sans',sans-serif">Lähetä vastaus</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px">
+              <span style="font:600 12px 'Instrument Sans',sans-serif; color:var(--ah-muted)">AlertDialog · destruktiivinen (alkufokus Peruuta)</span>
+              <div style="max-width:340px; padding:18px; background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:12px; box-shadow:0 12px 40px rgba(16,24,40,.18); display:flex; flex-direction:column; gap:10px">
+                <strong style="font:600 15.5px 'Instrument Sans',sans-serif">Kirjaudu ulos tästä selaimesta?</strong>
+                <span style="font-size:13px; line-height:1.55; color:var(--ah-ink-2)">Agenttien työ palvelimella jatkuu. Luonnokset säilyvät tässä selaimessa.</span>
+                <div style="display:flex; justify-content:flex-end; gap:8px; padding-top:4px">
+                  <span style="display:inline-flex; align-items:center; min-height:36px; padding:0 13px; border-radius:8px; border:1px solid var(--ah-line-strong); background:var(--ah-surface); font:600 13px 'Instrument Sans',sans-serif; outline:2px solid var(--ah-focus); outline-offset:2px">Peruuta</span>
+                  <span style="display:inline-flex; align-items:center; min-height:36px; padding:0 13px; border-radius:8px; background:var(--ah-err); color:var(--ah-on-err); font:600 13px 'Instrument Sans',sans-serif">Kirjaudu ulos</span>
+                </div>
+              </div>
+              <span style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ah-muted)">Suljettu → <span style="display:inline-flex; align-items:center; min-height:30px; padding:0 10px; border-radius:6px; color:var(--ah-err); font-size:12.5px; outline:2px solid var(--ah-focus); outline-offset:2px">Kirjaudu ulos…</span> saa fokuksen takaisin</span>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </article>
+  </section>
+
+  <section id="ohjaus" style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; flex-direction:column; gap:6px">
+      <h2 style="margin:0; font:600 21px 'Instrument Sans',sans-serif">Agentin ohjaus: lähetys, keskeytys, kysymys</h2>
+      <span style="font:400 12px 'JetBrains Mono',monospace; color:var(--ah-muted)">AgentInteractionControls.tsx · Conversation.tsx · PiQuestion.tsx</span>
+      <p style="margin:0; max-width:90ch; font-size:13.5px; line-height:1.6; color:var(--ah-ink-2); text-wrap:pretty">Vain luku, odottaa, hylätty ja epävarma ovat eri syitä ja tuloksia. Kenttä pysyy muokattavana kaikissa paitsi vain luku -tilassa; esto kohdistuu Lähetä-painikkeeseen ja sen syy näkyy painikkeen alla. Onnistunut kuittaus ei jätä pysyvää ilmoitusta. Catalog-storyn esitykset eivät itsessään todista Pi-yhteyttä.</p>
+    </div>
+    <sc-for list="{{ themes }}" as="th" hint-placeholder-count="2">
+      <div data-theme="{{ th.id }}" style="background:var(--ah-bg); color:var(--ah-ink); border:1px solid var(--ah-line); border-radius:12px; padding:14px 16px 18px; display:flex; flex-direction:column; gap:10px">
+        <div style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--ah-muted)">{{ th.label }}</div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax({{ aicMin }}, 1fr)); gap:14px">
+          <sc-for list="{{ aic }}" as="x" hint-placeholder-count="9">
+            <div style="display:flex; flex-direction:column; gap:8px; min-width:0">
+              <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px">
+                <strong style="font:600 13px 'Instrument Sans',sans-serif">{{ x.name }}</strong>
+                <sc-if value="{{ x.hasCond }}" hint-placeholder-val="{{ false }}"><span style="padding:1px 6px; border:1px dashed var(--ah-muted); border-radius:4px; font:500 10.5px 'JetBrains Mono',monospace; color:var(--ah-muted)">ehdollinen</span></sc-if>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:8px; padding:10px; background:var(--ah-bg); border:1px solid var(--ah-line-soft); border-radius:10px">
+                <sc-if value="{{ x.hasFb }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex; flex-direction:column; gap:4px; padding:8px 10px; border:{{ x.fb.bd }}; background:{{ x.fb.bg }}; border-radius:8px">
+                    <span style="display:flex; align-items:center; gap:7px; font:600 12.5px 'Instrument Sans',sans-serif; color:{{ x.fb.fg }}"><sc-if value="{{ x.fb.spin }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="width:10px; height:10px; box-sizing:border-box; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:{{ spinAnim }}"></span></sc-if>{{ x.fb.title }}</span>
+                    <span style="font-size:12px; line-height:1.45; color:var(--ah-ink-2)">{{ x.fb.text }}</span>
+                    <sc-if value="{{ x.fb.hasAct }}" hint-placeholder-val="{{ false }}"><span style="align-self:flex-start; display:inline-flex; align-items:center; min-height:{{ x.actH }}; padding:0 10px; border-radius:6px; background:{{ x.fb.actBg }}; color:{{ x.fb.actFg }}; font:600 12.5px 'Instrument Sans',sans-serif">{{ x.fb.act }}</span></sc-if>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ x.ro }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px dashed var(--ah-line-strong); border-radius:10px; background:var(--ah-surface-2)">
+                    <span style="display:flex; flex-direction:column; gap:2px; flex:1; min-width:0"><strong style="font:600 12.5px 'Instrument Sans',sans-serif">Vain luku</strong><span style="font-size:12px; color:var(--ah-muted)">Tätä keskustelua ei voi ohjata selaimesta.</span></span>
+                    <span style="display:inline-flex; align-items:center; min-height:{{ x.actH }}; padding:0 10px; border-radius:8px; border:1px solid var(--ah-line-strong); background:var(--ah-surface); font:600 12.5px 'Instrument Sans',sans-serif; white-space:nowrap">Uusi keskustelu</span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ x.rw }}" hint-placeholder-val="{{ true }}">
+                  <div style="min-height:52px; box-sizing:border-box; padding:8px 10px; border:1px solid var(--ah-line-strong); background:var(--ah-surface); border-radius:10px; font-size:13px; color:{{ x.fieldFg }}">{{ x.field }}</div>
+                  <div style="display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:flex-end; gap:8px">
+                    <sc-for list="{{ x.btns }}" as="b" hint-placeholder-count="2">
+                      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; max-width:100%">
+                        <span style="display:inline-flex; align-items:center; gap:7px; box-sizing:border-box; min-height:{{ b.minh }}; padding:0 13px; border:{{ b.bd }}; border-radius:8px; background:{{ b.bg }}; color:{{ b.fg }}; font:600 13px 'Instrument Sans',sans-serif; cursor:{{ b.cur }}; white-space:nowrap">
+                          <sc-if value="{{ b.hasLead }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="width:12px; height:12px; box-sizing:border-box; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:{{ spinAnim }}"></span></sc-if>{{ b.text }}
+                        </span>
+                        <sc-if value="{{ b.hasSub }}" hint-placeholder-val="{{ false }}"><span style="max-width:200px; text-align:right; font-size:11.5px; line-height:1.4; color:var(--ah-muted)">{{ b.sub }}</span></sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+              <span style="font-size:12px; line-height:1.45; color:var(--ah-muted); text-wrap:pretty">{{ x.note }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </section>
+
+  <section id="agentti" style="display:flex; flex-direction:column; gap:16px">
+    <div style="display:flex; flex-direction:column; gap:6px">
+      <h2 style="margin:0; font:600 21px 'Instrument Sans',sans-serif">Agentin tila on eri akseli</h2>
+      <span style="font:400 12px 'JetBrains Mono',monospace; color:var(--ah-muted)">Status.tsx → AgentActivityMark · AttentionBadge · CapabilityTag · OperationTag · ReturnView.tsx · Navigation.tsx · ConversationFrame.tsx</span>
+      <p style="margin:0; max-width:90ch; font-size:13.5px; line-height:1.6; color:var(--ah-ink-2); text-wrap:pretty">Yksi esitys kolmessa paikassa: agenttilista (Etusivu ja työtilasivu), sivupalkin kompakti rivi ja keskustelun otsake. Esitys koostuu neljästä erillisestä kanavasta, joista jokainen saa oman johdetun arvonsa. Otsakkeessa ei näytetä huomiota, koska keskustelun avaaminen on käynti. Katkoviivalla merkityt esimerkit ovat ehdollisia: tuotannossa ne näkyvät neutraalina tuntemattomana, kunnes puuttuva natiivifakta on olemassa.</p>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px">
+      <div style="padding:12px 14px; background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:10px; display:flex; flex-direction:column; gap:8px">
+        <strong style="font-size:13px">1 · Aktiivisuus — merkki</strong>
+        <span style="display:flex; align-items:center; gap:8px; font-size:12.5px"><span style="width:8px; height:8px; border-radius:50%; background:var(--ah-accent); animation:{{ pulseAnim }}; box-shadow:{{ pulseAlt }}"></span>Työskentelee</span>
+        <span style="display:flex; align-items:center; gap:8px; font-size:12.5px"><span style="width:9px; height:9px; box-sizing:border-box; border-radius:50%; border:2px solid var(--ah-accent)"></span>Odottaa</span>
+        <span style="display:flex; align-items:center; gap:8px; font-size:12.5px"><span style="width:12px; height:12px; box-sizing:border-box; border-radius:50%; border:1px dotted var(--ah-muted); color:var(--ah-muted); display:inline-flex; align-items:center; justify-content:center; font:700 8.5px 'Instrument Sans',sans-serif">?</span>Tila ei tiedossa</span>
+        <span style="display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ah-muted)"><span style="width:8px; height:8px; border-radius:50%; background:var(--ah-muted)"></span>Valmis (ehdollinen)</span>
+      </div>
+      <div style="padding:12px 14px; background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:10px; display:flex; flex-direction:column; gap:8px">
+        <strong style="font-size:13px">2 · Huomio — täytetty korostus</strong>
+        <span style="display:flex; align-items:center; gap:8px; font-size:12.5px"><span style="padding:1px 7px; border-radius:999px; background:var(--ah-accent); color:var(--ah-on-accent); font:600 11px 'Instrument Sans',sans-serif">Uusi vastaus</span>lista</span>
+        <span style="display:flex; align-items:center; gap:8px; font-size:12.5px"><span style="padding:1px 7px; border-radius:999px; background:var(--ah-accent); color:var(--ah-on-accent); font:600 11px 'Instrument Sans',sans-serif">Kysymys</span>lista</span>
+        <span style="display:flex; align-items:center; gap:8px; font-size:12.5px"><span style="width:8px; height:8px; border-radius:50%; background:var(--ah-accent)"></span>sivupalkki: piste + lihavoitu otsikko</span>
+        <span style="font-size:12px; color:var(--ah-muted)">Käynti poistaa huomion, ei odotusta.</span>
+      </div>
+      <div style="padding:12px 14px; background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:10px; display:flex; flex-direction:column; gap:8px">
+        <strong style="font-size:13px">3 · Kirjoitusoikeus — katkoviivatagi</strong>
+        <span style="display:flex; align-items:center; gap:8px; font-size:12.5px"><span style="padding:0 6px; height:18px; display:inline-flex; align-items:center; border:1px dashed var(--ah-line-strong); border-radius:4px; color:var(--ah-muted); font:600 11px 'Instrument Sans',sans-serif">vain luku</span></span>
+        <span style="font-size:12px; line-height:1.45; color:var(--ah-muted)">Siirtyy pois rivin alusta: ontto rengas tarkoittaa nyt odottamista. Katkoviiva on tuotteen ”ei voi kirjoittaa” -merkki myös kentässä ja kuplassa.</span>
+      </div>
+      <div style="padding:12px 14px; background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:10px; display:flex; flex-direction:column; gap:8px">
+        <strong style="font-size:13px">4 · Operaatio ja kuljetus — sanatagi</strong>
+        <span style="display:flex; flex-wrap:wrap; gap:6px"><span style="padding:0 6px; height:18px; display:inline-flex; align-items:center; border:1px solid var(--ah-err-line); background:var(--ah-err-soft); border-radius:4px; color:var(--ah-err); font:600 11px 'Instrument Sans',sans-serif">Lähetysvirhe</span><span style="padding:0 6px; height:18px; display:inline-flex; align-items:center; border:1px solid var(--ah-line-strong); background:var(--ah-surface-2); border-radius:4px; color:var(--ah-ink-2); font:600 11px 'Instrument Sans',sans-serif">Yhteys poikki</span><span style="padding:0 6px; height:18px; display:inline-flex; align-items:center; border:1px solid var(--ah-line-strong); background:var(--ah-surface-2); border-radius:4px; color:var(--ah-ink-2); font:600 11px 'Instrument Sans',sans-serif">Ei luettavissa</span></span>
+        <span style="font-size:12px; line-height:1.45; color:var(--ah-muted)">Punainen vain havaitulle virheelle. Yhteyskatko ei väitä agentin tilaa: aktiivisuus muuttuu ”ei tuoretta tietoa” -renkaaksi.</span>
+      </div>
+    </div>
+
+    <sc-for list="{{ themes }}" as="th" hint-placeholder-count="2">
+      <div data-theme="{{ th.id }}" style="background:var(--ah-bg); color:var(--ah-ink); border:1px solid var(--ah-line); border-radius:12px; padding:14px 16px 16px; overflow-x:auto">
+        <div style="font:500 11px 'Instrument Sans',sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--ah-muted); margin-bottom:8px">{{ th.label }}</div>
+        <div style="min-width:1040px">
+          <div style="display:grid; grid-template-columns:{{ agentGrid }}; gap:14px; padding-bottom:8px; border-bottom:1px solid var(--ah-line)">
+            <span style="font:600 11.5px 'Instrument Sans',sans-serif; color:var(--ah-muted)">Merkitys ja peruste</span>
+            <span style="font:600 11.5px 'Instrument Sans',sans-serif; color:var(--ah-muted)">Agenttilista</span>
+            <span style="font:600 11.5px 'Instrument Sans',sans-serif; color:var(--ah-muted)">{{ railHead }}</span>
+            <span style="font:600 11.5px 'Instrument Sans',sans-serif; color:var(--ah-muted)">Keskustelun otsake</span>
+          </div>
+          <sc-for list="{{ agentRows }}" as="a" hint-placeholder-count="11">
+            <div style="display:grid; grid-template-columns:{{ agentGrid }}; gap:14px; align-items:center; padding:12px 0; border-bottom:1px solid var(--ah-line-soft)">
+              <div style="display:flex; flex-direction:column; gap:4px; min-width:0">
+                <sc-if value="{{ a.isCombo }}" hint-placeholder-val="{{ false }}"><span style="font:500 10.5px 'Instrument Sans',sans-serif; letter-spacing:.06em; text-transform:uppercase; color:var(--ah-muted)">Yhdistelmä</span></sc-if>
+                <strong style="font:600 13px 'Instrument Sans',sans-serif">{{ a.name }}</strong>
+                <span style="font-size:11.5px; line-height:1.4; color:var(--ah-muted)">{{ a.fact }}</span>
+                <sc-if value="{{ a.hasCond }}" hint-placeholder-val="{{ false }}"><span style="align-self:flex-start; padding:2px 6px; border:1px dashed var(--ah-muted); border-radius:4px; font:500 10.5px/1.35 'JetBrains Mono',monospace; color:var(--ah-ink-2)">{{ a.cond }}</span></sc-if>
+              </div>
+              <div style="display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; padding:10px 12px; background:var(--ah-surface); border:{{ a.listBd }}; border-radius:10px; opacity:{{ a.condOp }}">
+                <span aria-hidden="true" style="flex:none; box-sizing:border-box; width:{{ a.mark.w }}; height:{{ a.mark.h }}; border:{{ a.mark.bd }}; border-radius:50%; background:{{ a.mark.bg }}; color:var(--ah-muted); box-shadow:{{ a.mark.shadow }}; animation:{{ a.mark.anim }}; display:inline-flex; align-items:center; justify-content:center; font:700 8.5px 'Instrument Sans',sans-serif">{{ a.mark.t }}</span>
+                <div style="min-width:0; display:flex; flex-direction:column; gap:3px">
+                  <span style="font:600 13.5px 'Instrument Sans',sans-serif; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ a.title }}</span>
+                  <span style="display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; font-size:11.5px; color:var(--ah-muted)">
+                    <span style="font:400 11.5px 'JetBrains Mono',monospace">{{ a.ws }}</span>
+                    <span style="color:var(--ah-ink-2)">{{ a.word }}</span>
+                    <sc-for list="{{ a.tags }}" as="g" hint-placeholder-count="1"><span style="display:inline-flex; align-items:center; height:18px; padding:0 6px; border:{{ g.bd }}; border-radius:4px; background:{{ g.bg }}; color:{{ g.fg }}; font:600 11px 'Instrument Sans',sans-serif; white-space:nowrap">{{ g.t }}</span></sc-for>
+                  </span>
+                </div>
+                <span style="display:inline-flex; align-items:center; gap:8px">
+                  <sc-if value="{{ a.hasAttn }}" hint-placeholder-val="{{ false }}"><span style="padding:1px 7px; border-radius:999px; background:var(--ah-accent); color:var(--ah-on-accent); font:600 11px 'Instrument Sans',sans-serif; white-space:nowrap">{{ a.attnLabel }}</span></sc-if>
+                  <span aria-hidden="true" style="color:var(--ah-muted); font-size:14px">›</span>
+                </span>
+              </div>
+              <div style="background:var(--ah-rail); padding:6px; border-radius:8px; opacity:{{ a.condOp }}">
+                <div style="display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; column-gap:8px; row-gap:1px; min-height:{{ a.minh }}; box-sizing:border-box; padding:5px 8px; border:{{ a.rowBd }}; background:{{ a.rowBg }}; border-radius:8px">
+                  <span aria-hidden="true" style="box-sizing:border-box; width:{{ a.mark.w }}; height:{{ a.mark.h }}; border:{{ a.mark.bd }}; border-radius:50%; background:{{ a.mark.bg }}; color:var(--ah-muted); box-shadow:{{ a.mark.shadow }}; animation:{{ a.mark.anim }}; display:inline-flex; align-items:center; justify-content:center; font:700 8.5px 'Instrument Sans',sans-serif">{{ a.mark.t }}</span>
+                  <span style="min-width:0; font-weight:{{ a.titleW }}; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ a.title }}</span>
+                  <span style="display:inline-flex; width:8px; justify-content:center"><sc-if value="{{ a.hasAttn }}" hint-placeholder-val="{{ false }}"><span aria-label="{{ a.attnLabel }}" style="width:8px; height:8px; border-radius:50%; background:var(--ah-accent)"></span></sc-if></span>
+                  <span style="grid-column:2 / 4; display:flex; flex-wrap:wrap; align-items:center; gap:2px 6px; font-size:11px; color:var(--ah-muted)">
+                    <span>{{ a.wordShort }}</span>
+                    <sc-for list="{{ a.tags }}" as="g" hint-placeholder-count="1"><span style="display:inline-flex; align-items:center; height:16px; padding:0 4px; border:{{ g.bd }}; border-radius:3px; background:{{ g.bg }}; color:{{ g.fg }}; font:600 10.5px 'Instrument Sans',sans-serif; white-space:nowrap">{{ g.t }}</span></sc-for>
+                  </span>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:4px; padding:10px 14px; background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:10px; opacity:{{ a.condOp }}">
+                <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; min-width:0">
+                  <span style="font:600 14.5px 'Instrument Sans',sans-serif; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%">{{ a.title }}</span>
+                  <span style="display:inline-flex; align-items:center; gap:6px; height:22px; padding:0 9px; box-sizing:border-box; border:1px solid var(--ah-line-strong); border-radius:999px; font:600 11.5px 'Instrument Sans',sans-serif; color:var(--ah-ink-2); white-space:nowrap">
+                    <span aria-hidden="true" style="box-sizing:border-box; width:{{ a.mark.w }}; height:{{ a.mark.h }}; border:{{ a.mark.bd }}; border-radius:50%; background:{{ a.mark.bg }}; color:var(--ah-muted); box-shadow:{{ a.mark.shadow }}; animation:{{ a.mark.anim }}; display:inline-flex; align-items:center; justify-content:center; font:700 8.5px 'Instrument Sans',sans-serif">{{ a.mark.t }}</span>{{ a.word }}
+                  </span>
+                  <sc-for list="{{ a.tags }}" as="g" hint-placeholder-count="1"><span style="display:inline-flex; align-items:center; height:22px; padding:0 8px; box-sizing:border-box; border:{{ g.bd }}; border-radius:999px; background:{{ g.bg }}; color:{{ g.fg }}; font:600 11.5px 'Instrument Sans',sans-serif; white-space:nowrap">{{ g.t }}</span></sc-for>
+                </div>
+                <span style="font:400 12px 'JetBrains Mono',monospace; color:var(--ah-muted)">{{ a.ws }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </section>
+
+  <section id="tokenit" style="display:flex; flex-direction:column; gap:16px">
+    <div style="display:flex; flex-direction:column; gap:6px">
+      <h2 style="margin:0; font:600 21px 'Instrument Sans',sans-serif">Tokenit ja kontrasti</h2>
+      <p style="margin:0; max-width:90ch; font-size:13.5px; line-height:1.6; color:var(--ah-ink-2)">Ehdotetut lisäykset <span style="font:400 12.5px 'JetBrains Mono',monospace">tokens/colors.css</span>-tiedostoon. Valmis CSS on tiedostossa <a href="../ehdotus/colors.css">ehdotus/colors.css</a> ja tilasäännöt <a href="../ehdotus/interactive.module.css">ehdotus/interactive.module.css</a>.</p>
+    </div>
+    <div style="overflow-x:auto; background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:12px">
+      <div style="min-width:980px">
+        <div style="display:grid; grid-template-columns:200px 170px 130px 130px minmax(0,1fr); gap:12px; padding:10px 14px; border-bottom:1px solid var(--ah-line); font:600 11.5px 'Instrument Sans',sans-serif; color:var(--ah-muted)"><span>Token</span><span>Nyt</span><span>Vaalea</span><span>Tumma</span><span>Peruste</span></div>
+        <sc-for list="{{ tokens }}" as="t" hint-placeholder-count="12">
+          <div style="display:grid; grid-template-columns:200px 170px 130px 130px minmax(0,1fr); gap:12px; align-items:start; padding:10px 14px; border-bottom:1px solid var(--ah-line-soft); font-size:12.5px; line-height:1.5">
+            <span style="font:500 12px 'JetBrains Mono',monospace; overflow-wrap:anywhere">{{ t.tok }}</span>
+            <span style="color:var(--ah-muted); overflow-wrap:anywhere">{{ t.now }}</span>
+            <span style="display:flex; align-items:center; gap:6px; font:400 11.5px 'JetBrains Mono',monospace"><span style="flex:none; width:16px; height:16px; border-radius:4px; border:1px solid #d5dbe0; background:{{ t.l1 }}"></span><sc-if value="{{ t.l2 }}" hint-placeholder-val="{{ false }}"><span style="flex:none; width:16px; height:16px; border-radius:4px; border:1px solid #d5dbe0; background:{{ t.l2 }}"></span></sc-if>{{ t.l }}</span>
+            <span style="display:flex; align-items:center; gap:6px; font:400 11.5px 'JetBrains Mono',monospace"><span style="flex:none; width:16px; height:16px; border-radius:4px; border:1px solid #353c44; background:{{ t.d1 }}"></span><sc-if value="{{ t.d2 }}" hint-placeholder-val="{{ false }}"><span style="flex:none; width:16px; height:16px; border-radius:4px; border:1px solid #353c44; background:{{ t.d2 }}"></span></sc-if>{{ t.d }}</span>
+            <span style="color:var(--ah-ink-2); text-wrap:pretty">{{ t.why }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <h3 style="margin:8px 0 0; font:600 16px 'Instrument Sans',sans-serif">Kontrastit (laskettu ehdotetuista arvoista)</h3>
+    <div style="overflow-x:auto; background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:12px">
+      <div style="min-width:640px">
+        <div style="display:grid; grid-template-columns:minmax(0,1fr) 90px 110px 110px; gap:12px; padding:10px 14px; border-bottom:1px solid var(--ah-line); font:600 11.5px 'Instrument Sans',sans-serif; color:var(--ah-muted)"><span>Pari</span><span>Vaatimus</span><span>Vaalea</span><span>Tumma</span></div>
+        <sc-for list="{{ contrast }}" as="k" hint-placeholder-count="12">
+          <div style="display:grid; grid-template-columns:minmax(0,1fr) 90px 110px 110px; gap:12px; padding:8px 14px; border-bottom:1px solid var(--ah-line-soft); font-size:12.5px">
+            <span>{{ k.label }}</span>
+            <span style="color:var(--ah-muted)">{{ k.min }}</span>
+            <span style="font:500 12px 'JetBrains Mono',monospace; color:{{ k.lFg }}">{{ k.l }}</span>
+            <span style="font:500 12px 'JetBrains Mono',monospace; color:{{ k.dFg }}">{{ k.d }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px">
+      <div style="padding:12px 14px; background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:10px; font-size:13px; line-height:1.55; color:var(--ah-ink-2)"><strong style="color:var(--ah-ink)">200 % zoom.</strong> Kosketusleveys 390 px vastaa 780 px:n palstaa 200 %:n zoomilla. Eston syy ja virheteksti rivittyvät painikkeen alle eivätkä katkea; sivupalkin otsikot katkeavat loppuun ellipsillä, mutta tilan sana ja tagit rivittyvät toiselle riville. Vaakavieritystä ei tarvita kontrolleissa.</div>
+      <div style="padding:12px 14px; background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:10px; font-size:13px; line-height:1.55; color:var(--ah-ink-2)"><strong style="color:var(--ah-ink)">Vähennetty liike.</strong> Työskentelee-piste ei pulssaa vaan saa staattisen renkaan; odottavan painikkeen pyörivä merkki poistuu ja etiketti (Lähetetään…) kantaa tiedon. Värisiirtymät 0 ms. Kokeile yläreunan Liike-valinnalla.</div>
+      <div style="padding:12px 14px; background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:10px; font-size:13px; line-height:1.55; color:var(--ah-ink-2)"><strong style="color:var(--ah-ink)">Kenttien reunat.</strong> line-strong (1.5:1) ei yksin täytä 3:1-ei-tekstivaatimusta. Kentät tunnistetaan aina näkyvästä nimiöstä ja pinnasta; valintaruutujen ja radioiden reuna käyttää muted-väriä (≥ 4.5:1).</div>
+    </div>
+  </section>
+
+  <section id="muutokset" style="display:flex; flex-direction:column; gap:14px">
+    <h2 style="margin:0; font:600 21px 'Instrument Sans',sans-serif">Komponenttimuutokset</h2>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:12px">
+      <sc-for list="{{ changes }}" as="ch" hint-placeholder-count="8">
+        <div style="padding:14px 16px; background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:10px; display:flex; flex-direction:column; gap:8px">
+          <span style="font:500 12.5px 'JetBrains Mono',monospace">{{ ch.file }}</span>
+          <sc-for list="{{ ch.items }}" as="it" hint-placeholder-count="3"><span style="font-size:13px; line-height:1.55; color:var(--ah-ink-2); text-wrap:pretty">{{ it }}</span></sc-for>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section id="aukot" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(420px, 1fr)); gap:24px">
+    <div style="display:flex; flex-direction:column; gap:10px">
+      <h2 style="margin:0; font:600 21px 'Instrument Sans',sans-serif">Visuaalinen ratkaisu vs. puuttuva natiivifakta</h2>
+      <div style="background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:12px">
+        <sc-for list="{{ facts }}" as="fa" hint-placeholder-count="8">
+          <div style="display:grid; grid-template-columns:150px minmax(0,1fr) 92px; gap:12px; align-items:start; padding:10px 14px; border-bottom:1px solid var(--ah-line-soft); font-size:12.5px; line-height:1.5">
+            <strong style="font-weight:600">{{ fa.state }}</strong>
+            <span style="color:var(--ah-ink-2)">{{ fa.fact }}</span>
+            <span style="justify-self:start; padding:1px 7px; border:{{ fa.bd }}; border-radius:4px; color:{{ fa.fg }}; font:600 11px 'Instrument Sans',sans-serif; white-space:nowrap">{{ fa.status }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:10px">
+      <h2 style="margin:0; font:600 21px 'Instrument Sans',sans-serif">Inventaario: muutokset ja aukot</h2>
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <sc-for list="{{ inventory }}" as="iv" hint-placeholder-count="8">
+          <div style="padding:10px 14px; background:var(--ah-surface); border:1px solid var(--ah-line); border-radius:10px; font-size:13px; line-height:1.55; color:var(--ah-ink-2); text-wrap:pretty"><strong style="color:var(--ah-ink); font-weight:600">{{ iv.h }}</strong> {{ iv.t }}</div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;initialTheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;both&quot;,&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;both&quot;,&quot;tsType&quot;:&quot;'both'|'light'|'dark'&quot;},&quot;initialWidth&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;desktop&quot;,&quot;touch&quot;],&quot;default&quot;:&quot;desktop&quot;,&quot;tsType&quot;:&quot;'desktop'|'touch'&quot;},&quot;initialMotion&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;full&quot;,&quot;reduced&quot;],&quot;default&quot;:&quot;full&quot;,&quot;tsType&quot;:&quot;'full'|'reduced'&quot;}}">
+const V = n => `var(--ah-${n})`;
+const RING = `2px solid ${V('focus')}`;
+
+const TOK = {
+  light: { bg:'#f6f7f8', surface:'#ffffff', 'surface-2':'#fbfcfd', rail:'#f1f3f5', line:'#e2e6e9', 'line-strong':'#c9d0d6', ink:'#16191d', 'ink-2':'#3d434b', muted:'#61676f', faint:'#6b7178', accent:'#2b7f8c', 'accent-ink':'#1d5f69', 'accent-soft':'#e6f1f3', 'on-accent':'#ffffff', 'accent-hover':'#246f7b', 'accent-press':'#1d5f69', err:'#a3412b', 'err-soft':'#fdf1ee', 'err-line':'#f3d7d0', 'on-err':'#ffffff', 'err-hover':'#8e3825', 'err-press':'#7a2f1f', 'err-soft-hover':'#fae4de', 'err-soft-press':'#f6d6cd', hover:'rgba(22,25,29,.05)', press:'rgba(22,25,29,.10)', 'surface-hover':'#f2f4f6', 'surface-press':'#e9edf0', current:'#ffffff', 'current-line':'#d5dbe0', 'disabled-bg':'#eef0f3', 'disabled-fg':'#61676f', ok:'#2f7a55', focus:'#2b7f8c', 'surface-old':'#fbfcfd' },
+  dark: { bg:'#14171a', surface:'#1b1f23', 'surface-2':'#171a1e', rail:'#171a1e', line:'#2a3036', 'line-strong':'#3a424a', ink:'#e6e9ec', 'ink-2':'#c5cad0', muted:'#98a0a8', faint:'#949ca6', accent:'#4fa6b4', 'accent-ink':'#9fd4dd', 'accent-soft':'#173137', 'on-accent':'#0f1417', 'accent-hover':'#63b4c1', 'accent-press':'#7cc3cf', err:'#e8a08a', 'err-soft':'#261c1b', 'err-line':'#4a2e28', 'on-err':'#1b1f23', 'err-hover':'#eeb3a1', 'err-press':'#f2c3b4', 'err-soft-hover':'#33221f', 'err-soft-press':'#3d2823', hover:'rgba(230,233,236,.06)', press:'rgba(230,233,236,.12)', 'surface-hover':'#22272c', 'surface-press':'#2a3036', current:'#23282e', 'current-line':'#353c44', 'disabled-bg':'#1f2328', 'disabled-fg':'#98a0a8', ok:'#8fcfa8', focus:'#4fa6b4' },
+};
+function rgb(s) {
+  if (s[0] === '#') { const h = s.slice(1); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)).concat(1); }
+  const m = s.match(/[\d.]+/g).map(Number); return [m[0], m[1], m[2], m[3] ?? 1];
+}
+const over = (t, b) => [0, 1, 2].map(i => t[i] * t[3] + b[i] * (1 - t[3])).concat(1);
+function lum(c) { const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }; return .2126 * f(c[0]) + .7152 * f(c[1]) + .0722 * f(c[2]); }
+function ratioC(f, b) { const a = lum(f), c = lum(b); return (Math.max(a, c) + .05) / (Math.min(a, c) + .05); }
+function ratio(t, fg, bg, under) {
+  let b = rgb(t[bg]); if (b[3] < 1) b = over(b, rgb(t[under]));
+  let f = rgb(t[fg]); if (f[3] < 1) f = over(f, b);
+  return ratioC(f, b);
+}
+const PAIRS = [
+  ['Primary · lepo', 'on-accent', 'accent', null, 4.5],
+  ['Primary · hover', 'on-accent', 'accent-hover', null, 4.5],
+  ['Primary · painallus', 'on-accent', 'accent-press', null, 4.5],
+  ['Danger · lepo', 'on-err', 'err', null, 4.5],
+  ['Danger · painallus', 'on-err', 'err-press', null, 4.5],
+  ['Danger-subtle · painallus', 'err', 'err-soft-press', null, 4.5],
+  ['Secondary · painallus', 'ink', 'surface-press', null, 4.5],
+  ['Rivi · hover sivupalkissa', 'ink', 'hover', 'rail', 4.5],
+  ['Rivi · painallus sivupalkissa', 'ink', 'press', 'rail', 4.5],
+  ['Nykyinen rivi', 'ink', 'current', null, 4.5],
+  ['Estetty teksti', 'disabled-fg', 'disabled-bg', null, 4.5],
+  ['Eston syy pinnalla', 'muted', 'surface', null, 4.5],
+  ['Eston syy taustalla', 'muted', 'bg', null, 4.5],
+  ['Placeholder', 'faint', 'surface', null, 4.5],
+  ['Fokusrengas · tausta', 'focus', 'bg', null, 3],
+  ['Fokusrengas · sivupalkki', 'focus', 'rail', null, 3],
+  ['Odottaa-rengas · sivupalkki', 'accent', 'rail', null, 3],
+  ['Huomiomerkki', 'on-accent', 'accent', null, 4.5],
+  ['Lähetysvirhe-tagi', 'err', 'err-soft', null, 4.5],
+  ['Vain luku -tagi sivupalkissa', 'muted', 'rail', null, 4.5],
+  ['Valintaruudun reuna', 'muted', 'surface', null, 3],
+  ['Kopioitu', 'ok', 'surface', null, 4.5],
+];
+function pendingOld(t) {
+  const bg = rgb(t.bg), acc = over([...rgb(t.accent).slice(0, 3), .7], bg), fg = over([...rgb(t['on-accent']).slice(0, 3), .7], acc);
+  return ratioC(fg, acc);
+}
+
+const TOKENS = [
+  { tok:'--ah-hover', now:'surface-2 (vaalea #fbfcfd)', l:'rgba(22,25,29,.05)', d:'rgba(230,233,236,.06)', why:'Läpinäkyvien rivien, hiljaisten painikkeiden ja valikkorivien hover. Nykyinen surface-2 on valkoisella pinnalla 1.01:1 eli näkymätön.' },
+  { tok:'--ah-press', now:'accent-soft', l:'rgba(22,25,29,.10)', d:'rgba(230,233,236,.12)', why:'Painallus. accent-soft on myös valitun/nykyisen pinta, joten painallus näytti valinnalta.' },
+  { tok:'--ah-surface-hover / -press', now:'surface-2 / accent-soft', l:'#f2f4f6 / #e9edf0', d:'#22272c / #2a3036', why:'Secondary-painikkeen ja korttirivien kiinteät tilat.' },
+  { tok:'--ah-accent-hover', now:'accent-ink', l:'#246f7b', d:'#63b4c1', why:'Primary hover samalla sävyllä, pienellä askeleella. Tummassa nykyinen accent-ink (#9fd4dd) on liian iso hyppy.' },
+  { tok:'--ah-accent-press', now:'accent-soft + accent-ink', l:'#1d5f69', d:'#7cc3cf', why:'Painallus syventää täyttöä. Nykyinen pressed kääntää täytön vaaleaksi ja tekstin tummaksi.' },
+  { tok:'--ah-on-err', now:'surface', l:'#ffffff', d:'#1b1f23', why:'Nimetty pari danger-täytölle; sama arvo kuin nyt.' },
+  { tok:'--ah-err-hover / -press', now:'err-soft / err-line', l:'#8e3825 / #7a2f1f', d:'#eeb3a1 / #f2c3b4', why:'Danger-täyttö säilyy hoverissa. Nyt hover vaihtaa vaaleaan pintaan, ja painike näyttää muuttuvan danger-subtleksi.' },
+  { tok:'--ah-err-soft-hover / -press', now:'err-line / err', l:'#fae4de / #f6d6cd', d:'#33221f / #3d2823', why:'Danger-subtlen painallus on nyt täysi punainen täyttö: liian voimakas, ja se näyttää vahvistukselta.' },
+  { tok:'--ah-line-strong', now:'line', l:'#c9d0d6', d:'#3a424a', why:'Secondary-painikkeen ja kenttien reuna. line valkoisella on 1.2:1.' },
+  { tok:'--ah-current / -current-line', now:'accent-soft', l:'#ffffff / #d5dbe0', d:'#23282e / #353c44', why:'Nykyinen reitti neutraalina pintana. Korostusväri vapautuu agentin huomiolle ja aktiivisuudelle.' },
+  { tok:'--ah-disabled-bg / -fg', now:'line / muted', l:'#eef0f3 / #61676f', d:'#1f2328 / #98a0a8', why:'Rauhallisempi kuin line-täyttö; tummassa line-täyttö näytti lähes secondary-painikkeelta.' },
+  { tok:'--ah-focus', now:'accent', l:'#2b7f8c', d:'#4fa6b4', why:'Semanttinen alias. Rengas 2 px, offset 2 px; vieritettävissä listoissa −2 px, jottei rengas leikkaudu.' },
+  { tok:'opacity 0.7 (pending)', now:'interactive.module.css', l:'poistetaan', d:'poistetaan', why:'Laskee primaryn tekstikontrastin vaaleassa alle 4.5:1 (ks. taulukko). Tilalle aria-busy, etiketti ja pyörivä merkki.' },
+  { tok:'--ah-spin (motion.css)', now:'—', l:'.9s linear infinite', d:'sama', why:'Odottavan painikkeen merkki; vähennetyllä liikkeellä none.' },
+];
+
+const CHANGES = [
+  { file:'tokens/colors.css · motion.css', items:['Lisää yllä olevat tokenit molempiin teemoihin. Lisää @keyframes ah-spin ja --ah-spin; reduced-motion asettaa sen arvoon none.'] },
+  { file:'interactive.module.css', items:['Oletus-hover var(--i-hover, var(--ah-hover)), painallus var(--i-pressed, var(--ah-press)).', 'aria-current/data-selected (sijainti): var(--ah-current) + 1 px current-line + font-weight 600. Erillinen [data-checked] (valinta: valintaruutu, radio, välilehti) käyttää korostusväriä.', 'Estetty: disabled-bg, disabled-fg, line-reuna. Pending: poista opacity, lisää cursor:progress; värit pysyvät.', '[data-inset-focus] → outline-offset: calc(var(--ah-focus-width) * -1) listariveille ja valikoille.'] },
+  { file:'Controls.module.css', items:['.primary: hover accent-hover, pressed accent-press, pressed-fg on-accent.', '.danger: hover err-hover, pressed err-press, fg on-err. .dangerSubtle: hover err-soft-hover, pressed err-soft-press.', '.secondary ja .fieldInput: reuna line-strong. Kentän read-only: 1 px dashed line-strong ja surface-2.', '.tab: hover --ah-hover; valittu inset 0 −3px 0 accent ja ink 600. Teeman segmentti: valittu surface + line-strong + varjo (sama asetuksissa ja tilivalikossa).', '.menuItem[data-focused]: --ah-hover-pinta ja inset-rengas vain data-focus-visible-tilassa.'] },
+  { file:'Primitives.tsx · Button', items:['Epäselvän eston syy liitetään kontrolliin saavutettavasti. Käytä aria-disabled-tilaa vain kun fokusoitavuus ja tapahtumien esto on perusteltu ja testattu React Aria -kontrollilla; älä pakota jokaista estettyä painiketta tab-järjestykseen.', 'Uusi pendingLabel-prop (”Lähetetään…”, ”Päivitetään…”), aria-busy ja ah-spin-ikoni. Koskee vain lähetystä, keskeytystä, päivitystä, tyhjennystä ja uloskirjautumista.', 'ControlReason: poista lihavoitu ”Toiminto ei ole käytettävissä.” -etuliite; syy yksin riittää ja mahtuu 200 %:n zoomissa.'] },
+  { file:'Status.tsx', items:['Jaa StatusMark neljään: AgentActivityMark (working · waiting · closed · unknown · stale), AttentionBadge (new · question, compact = piste), CapabilityTag (read-only, katkoviiva), OperationTag (send-error · provider-error · connection · history-unreadable).', 'warning-sävy poistuu: epävarma tulos esitetään neutraalina katkoviivalaatikkona, ei uutena värinä.', 'Komponentit saavat AgentPresentation-olion {activity, attention, capability, operations[]} sovelluksen agentPresentation-mappauksesta. Ne eivät päättele hostin tilaa.'] },
+  { file:'Navigation.tsx · WorkspaceRailView.tsx · ReturnView.tsx', items:['Agenttirivi: [aktiivisuusmerkki] [otsikko] [huomiopiste] / [tilasana + tagit]. Huomio lihavoi otsikon; nykyinen reitti vaihtaa vain pinnan.', 'Kapea kaista näyttää Etusivu-kuvakkeen huomiopisteen ja lukumäärän; muut kanavat näkyvät avatussa sivupalkissa.', 'Paluunäkymän huomio-osio järjestyy pelkän huomion mukaan; nähty virhe jää riville muttei kärkeen.'] },
+  { file:'ConversationFrame.tsx', items:['Otsakkeessa aktiivisuuspilleri + tagit. Huomiota ei näytetä, koska avaus on käynti.'] },
+  { file:'AgentInteractionControls.tsx · PiQuestion.tsx', items:['Poista pending- ja acknowledged-lauseet: painikkeen etiketti ja viestin siirtyminen keskusteluun riittävät.', 'uncertain: neutraali katkoviivalaatikko ”Lähetysvirhe” + ”Ota teksti talteen”. Uusi checking-tulos yhteyden palattua.', 'Vain luku: kentän ja painikkeiden tilalle ilmoitus + Uusi keskustelu. Pi:n kysymys avaa Dialogin.'] },
+  { file:'Overlays.tsx · Account.tsx', items:['AlertDialog: alkufokus Peruuta, vahvistus danger; fokus palaa avaajaan. Kirjaudu ulos… -valikkorivi avaa AlertDialogin.', 'Valikon valinta ✓-merkillä; estetty valikkorivi näyttää syyn toisella rivillä.'] },
+];
+
+const FACTS = [
+  { state:'Työskentelee', fact:'Tuore elävä tila tai edistyminen (managed status, activity: running). Prosessin olemassaolo ei riitä.', status:'on' },
+  { state:'Vain luku', fact:'Snapshotin control: read_only.', status:'on' },
+  { state:'Tila ei tiedossa', fact:'unknown / not_observed / stale, myös confirmed_exited ja termination_unknown.', status:'on' },
+  { state:'Ei luettavissa', fact:'history: missing / corrupt / unavailable.', status:'on' },
+  { state:'Lähetysvirhe', fact:'Hylätty tai kadonnut kuittaus; alla oleva tulos säilytetään sovittelua varten.', status:'on' },
+  { state:'Yhteys poikki', fact:'Selaimen ja palvelimen yhteystila.', status:'on' },
+  { state:'Odottaa — uusi / nähty', fact:'Asettunut vuoro tai pending_question + avoin ohjaus on olemassa. Yhteinen per-keskustelu käyntimerkki natiivitapahtumaan puuttuu.', status:'puuttuu' },
+  { state:'Kysymys', fact:'pending_question + vastausdialogi. Huomio vaatii käyntimerkin.', status:'osittain' },
+  { state:'Valmis / suljettu', fact:'Myönteinen sulkemistieto. confirmed_exited ei kerro sulkiko käyttäjä vai kaatuiko agentti.', status:'puuttuu' },
+  { state:'Palveluvirhe', fact:'Raportoitu palveluntarjoajan epäonnistuminen.', status:'puuttuu' },
+  { state:'Tarkistus yhteyden palattua', fact:'Aiemman komennon automaattinen tarkistus (@recover-sends-after-disconnection).', status:'osittain' },
+];
+
+const INVENTORY = [
+  { h:'18 × 10 -taulukko korvattu.', t:'Navigaatio ja asetukset -vedoksen matriisi korvautuu perhekohtaisilla soveltuvilla tiloilla. Hover puuttuu kosketuksesta, odottava vain asynkronisista toiminnoista, virhe toimintopalautteesta.' },
+  { h:'Nykyinen reitti ja huomio samalla värillä.', t:'Kaappauksissa valittu sivupalkin rivi, Etusivu ja työtilan otsake käyttävät accent-softia, samaa sävyä kuin huomio. Ehdotus: neutraali current-pinta.' },
+  { h:'Vain luku -rengas.', t:'Tuotannon ”○ vain luku” on ontto rengas, joka sekoittuu Odottaa-merkkiin. Siirretään katkoviivatagiksi.' },
+  { h:'Teeman segmentti kahdella tavalla.', t:'Tilivalikko käyttää accent-soft-valintaa, asetukset surface-valintaa. Yhtenäistetään surface + line-strong.' },
+  { h:'Odottava (opacity 0.7).', t:'Kontrasti putoaa; ks. taulukon viimeinen rivi.' },
+  { h:'control-interactions, primitive-variants.', t:'Kaappaukset eivät todista hover-, painallus- tai fokusvastetta. Ehdotus: Storybook-tarinat, jotka asettavat data-hovered, data-pressed ja data-focus-visible, sekä labin kaappaus niistä.' },
+  { h:'agent-control-results.', t:'Tämän vedoksen 9 tulosta (ready … question) kannattaa tehdä tarinoiksi molemmille teemoille ja leveyksille.' },
+  { h:'agent-presentation, agent-attention.', t:'Ehdolliset tapaukset on merkitty. Lab tarvitsee fixturen, jossa on käyntimerkki ja vahvistettu sulkeminen, ennen kuin niitä voi verrata.' },
+  { h:'connection-and-send-error.', t:'Rinnakkaiselo näytetään yhdistelmäriveinä (odottaa + uusi + lähetysvirhe). Tarkistus yhteyden palattua on ehdollinen.' },
+  { h:'Status.tsx warning.', t:'Avoin kysymys edellisestä kierroksesta ratkaistaan ilman uutta väriä.' },
+  { h:'Ei kaapattu.', t:'loading, expired-session, narrow-navigation, phone-navigation-drawer, filter-no-results ja pi-auth-failure puuttuvat edelleen; niiden kontrollit käyttävät samoja tiloja.' },
+];
+
+const AG = [
+  { k:'working', name:'Työskentelee', act:'working', title:'Lisää --json-lippu komentoriville', ws:'aurinkokello', fact:'Tuore elävä tila tai edistyminen.' },
+  { k:'waitnew', name:'Odottaa — uusi', act:'waiting', attn:'new', title:'Miksi CI epäonnistuu macOS:llä?', ws:'aurinkokello', fact:'Asettunut vuoro, avoin ohjaus, ei vielä nähty.', cond:'vaatii käyntimerkin' },
+  { k:'question', name:'Odottaa — kysymys', act:'waiting', attn:'question', title:'Päivitä riippuvuudet', ws:'kotisivu', fact:'pending_question; vastataan dialogissa.', cond:'vaatii käyntimerkin' },
+  { k:'waitseen', name:'Odottaa — nähty', act:'waiting', title:'Tee etusivusta mobiiliystävällinen', ws:'kotisivu', fact:'Käynti poisti huomion, ei odotusta.', cond:'vaatii käyntimerkin' },
+  { k:'ro', name:'Vain luku', act:'unknown', ro:true, title:'Kirjoita README sovelluksen käytöstä', ws:'reseptikirja', fact:'control: read_only. Prosessi terminaalissa tai tuntematon.' },
+  { k:'unknown', name:'Tila ei tiedossa', act:'unknown', title:'Siivoa vanhat haarat', ws:'muistiinpanot', fact:'unknown, stale tai confirmed_exited ilman syytä.' },
+  { k:'senderr', name:'Lähetysvirhe', act:'waiting', err:'send', title:'Korjaa aikavyöhyketesti', ws:'aurinkokello', fact:'Kuittaus hylättiin tai katosi; toimitusta ei kiistetä.' },
+  { k:'conn', name:'Yhteys poikki', act:'stale', conn:true, title:'Lisää --json-lippu komentoriville', ws:'aurinkokello', fact:'Viimeisin tieto näkyy; aktiivisuutta ei väitetä. Lähetys estyy.' },
+  { k:'closed', name:'Valmis / suljettu', act:'closed', title:'Tilastoharjoitus 3', ws:'tilastoharjoitus', fact:'Agentti suljettu, historia luettavissa.', cond:'vaatii sulkemistiedon' },
+  { k:'hist', name:'Ei luettavissa', act:'unknown', hist:true, title:'pi-session-2026-09-12', ws:'muistiinpanot', fact:'history: missing / corrupt / unavailable.' },
+  { k:'provider', name:'Palveluvirhe', act:'waiting', err:'provider', title:'Generoi testidata', ws:'tilastoharjoitus', fact:'Raportoitu palveluntarjoajan epäonnistuminen.', cond:'vaatii raportoidun virheen' },
+];
+const COMBO = [
+  { k:'c1', name:'Työskentelee + vain luku', act:'working', ro:true, title:'Terminaalista käynnistetty refaktorointi', ws:'aurinkokello', fact:'Terminaaliagentti työskentelee, selain ei voi ohjata.' },
+  { k:'c2', name:'Nykyinen reitti + työskentelee', act:'working', cur:true, title:'Lisää --json-lippu komentoriville', ws:'aurinkokello', fact:'Sijainti on pinta, aktiivisuus on merkki.' },
+  { k:'c3', name:'Odottaa — uusi + lähetysvirhe', act:'waiting', attn:'new', err:'send', title:'Korjaa aikavyöhyketesti', ws:'aurinkokello', fact:'Uusi vastaus ja aiempi virhe yhtä aikaa.', cond:'vaatii käyntimerkin' },
+  { k:'c4', name:'Ei tiedossa + vain luku + ei luettavissa', act:'unknown', ro:true, hist:true, title:'pi-session-2026-08-30', ws:'muistiinpanot', fact:'Kolme erillistä faktaa; mikään ei korvaa toista.' },
+];
+const WORD = { working:'Työskentelee', waiting:'Odottaa', unknown:'Tila ei tiedossa', closed:'Valmis', stale:'Ei tuoretta tietoa' };
+const WORD_SHORT = { working:'työskentelee', waiting:'odottaa', unknown:'tila ei tiedossa', closed:'valmis', stale:'ei tuoretta tietoa' };
+const TAG = {
+  ro: { t:'vain luku', fg:V('muted'), bg:'transparent', bd:`1px dashed ${V('line-strong')}` },
+  send: { t:'Lähetysvirhe', fg:V('err'), bg:V('err-soft'), bd:`1px solid ${V('err-line')}` },
+  provider: { t:'Palveluvirhe', fg:V('err'), bg:V('err-soft'), bd:`1px solid ${V('err-line')}` },
+  conn: { t:'Yhteys poikki', fg:V('ink-2'), bg:V('surface-2'), bd:`1px solid ${V('line-strong')}` },
+  hist: { t:'Ei luettavissa', fg:V('ink-2'), bg:V('surface-2'), bd:`1px solid ${V('line-strong')}` },
+};
+
+class Component extends DCLogic {
+  state = {
+    theme: this.props.initialTheme ?? 'both',
+    width: this.props.initialWidth ?? 'desktop',
+    motion: this.props.initialMotion ?? 'full',
+  };
+
+  mark(kind, motion) {
+    const m = { w:'8px', h:'8px', bd:'0 solid transparent', bg:'transparent', shadow:'none', anim:'none', t:'' };
+    if (kind === 'working') return { ...m, bg:V('accent'), anim: motion ? 'ah-pulse 1.6s ease-in-out infinite' : 'none', shadow: motion ? 'none' : `0 0 0 2px ${V('accent-line')}` };
+    if (kind === 'waiting') return { ...m, w:'9px', h:'9px', bd:`2px solid ${V('accent')}` };
+    if (kind === 'closed') return { ...m, bg:V('muted') };
+    if (kind === 'stale') return { ...m, w:'9px', h:'9px', bd:`2px solid ${V('line-strong')}` };
+    return { ...m, w:'12px', h:'12px', bd:`1px dotted ${V('muted')}`, t:'?' };
+  }
+
+  build() {
+    const touch = this.state.width === 'touch';
+    const motion = this.state.motion === 'full';
+    const H = touch ? '44px' : '36px';
+    const lead = o => ({ w:'8px', h:'8px', bd:'0 solid transparent', r:'50%', bg:'transparent', fg:'inherit', shadow:'none', anim:'none', t:'', ...o, bdr: o.bdr ?? o.bd ?? '0 solid transparent' });
+    const spin = motion ? lead({ w:'12px', h:'12px', bd:'2px solid currentColor', bdr:'2px solid transparent', anim:'ah-spin .9s linear infinite' }) : null;
+    const base = { bg:'transparent', fg:V('ink'), bd:'1px solid transparent', r:'8px', pad:'0 13px', minh:H, fw:'600', fs:'13px', ol:'0 solid transparent', olo:'2px', shadow:'none', deco:'none', dth:'1px', cur:'pointer', just:'center', ai:'center', w:'auto', ff:'inherit', ws:'nowrap', gap:'7px', lead:null, trail:null, sub:null, subFg:V('muted'), text:'' };
+    const S = (...o) => {
+      const parts = o.map(p => { if (!p || !('_lead' in p)) return p; const { lead: _x, ...rest } = p; return { ...rest, lead: p._lead }; });
+      const s = Object.assign({}, base, ...parts);
+      return { ...s, _lead: s.lead, hasLead: !!s.lead, hasTrail: !!s.trail, hasSub: !!s.sub, lead: s.lead || lead({}) };
+    };
+    const DIS = { bg:V('disabled-bg'), fg:V('disabled-fg'), bd:`1px solid ${V('line')}`, cur:'not-allowed' };
+    const F = { ol:RING };
+    const FI = { ol:RING, olo:'-2px' };
+
+    const allCols = ['Lepo', 'Hover', 'Painallus', 'Fokus'];
+    const fam = (title, comp, note, cols, rows, minW) => {
+      const c2 = touch ? cols.filter(c => c !== 'Hover' && c !== 'Kohdistus') : cols;
+      return {
+        title, comp, note, cols: c2, minW: touch ? `${Math.round(minW * .86)}px` : `${minW}px`,
+        grid: `170px repeat(${c2.length}, minmax(0, 1fr))`,
+        rows: rows.map(r => ({ name: r.name, use: r.use, wrap: r.wrap || 'transparent', cells: c2.map(c => r.c[c] ? { ok: true, na: false, s: r.c[c] } : { ok: false, na: true }) })),
+      };
+    };
+    const states = (rest, v) => ({ 'Lepo': rest, 'Hover': S(rest, v.hover || {}), 'Painallus': S(rest, v.press || {}), 'Fokus': S(rest, v.focus || F), 'Kohdistus': v.hl ? S(rest, v.hl) : null });
+
+    const BTN = [
+      { name:'primary', use:'Lähetä, Aloita kirjautuminen, Jatka', text:'Lähetä', rest:{ bg:V('accent'), fg:V('on-accent') }, hover:{ bg:V('accent-hover') }, press:{ bg:V('accent-press') }, dis:'Kirjoita viesti ensin.', pend:'Lähetetään…' },
+      { name:'secondary', use:'Päivitä tiedot, Yritä uudelleen, Peruuta', text:'Päivitä tiedot', rest:{ bg:V('surface'), bd:`1px solid ${V('line-strong')}` }, hover:{ bg:V('surface-hover') }, press:{ bg:V('surface-press') }, dis:'Yhteys poikki. Päivitys palaa, kun yhteys toimii.', pend:'Päivitetään…' },
+      { name:'quiet', use:'Kopioi mallin tunniste, Takaisin valitsemaan', text:'Kopioi mallin tunniste', rest:{ fg:V('accent-ink') }, hover:{ bg:V('hover') }, press:{ bg:V('press') } },
+      { name:'danger', use:'Tyhjennä jono, vahvistus AlertDialogissa', text:'Tyhjennä jono', rest:{ bg:V('err'), fg:V('on-err') }, hover:{ bg:V('err-hover') }, press:{ bg:V('err-press') }, pend:'Tyhjennetään…' },
+      { name:'danger-subtle', use:'Kirjaudu ulos, Keskeytä käyttöönotto', text:'Kirjaudu ulos', rest:{ bg:V('err-soft'), fg:V('err'), bd:`1px solid ${V('err-line')}` }, hover:{ bg:V('err-soft-hover') }, press:{ bg:V('err-soft-press') }, pend:'Kirjaudutaan ulos…' },
+    ];
+    const btnRows = BTN.map(v => {
+      const rest = S(v.rest, { text: v.text });
+      return { name: v.name, use: v.use, c: { ...states(rest, v), 'Estetty': v.dis ? S(rest, DIS, { sub: v.dis }) : null, 'Odottaa': v.pend ? S(rest, { text: v.pend, lead: spin, cur:'progress' }) : null } };
+    });
+
+    const icoW = touch ? '44px' : '32px';
+    const ico = { w: icoW, minh: touch ? '44px' : '32px', pad:'0', gap:'0', fg:V('ink-2'), fw:'400', fs:'15px' };
+    const copyRest = S(ico, { text:'⧉' });
+    const refRest = S(ico, { text:'↻', bg:V('surface'), bd:`1px solid ${V('line-strong')}` });
+    const intRest = S({ bg:V('surface'), bd:`1px solid ${V('line-strong')}`, text:'Keskeytä', lead: lead({ w:'9px', h:'9px', r:'2px', bg:'currentColor' }) });
+    const floatRest = S({ r:'999px', bg:V('surface'), bd:`1px solid ${V('line-strong')}`, shadow:'0 2px 8px rgba(16,24,40,.12)', text:'Viimeisimpään ↓' });
+    const backRest = S({ pad:'0 4px', fg:V('muted'), text:'‹ Takaisin', fw:'500' });
+    const icoRows = [
+      { name:'Kopioi (messageIcon)', use:'Viesti, koodilohko', c: { ...states(copyRest, { hover:{ bg:V('hover'), fg:V('ink') }, press:{ bg:V('press') } }), 'Tulos': S(copyRest, { w:'auto', pad:'0 8px', gap:'7px', fs:'12.5px', fw:'600', fg:V('ok'), text:'✓ Kopioitu' }) } },
+      { name:'Päivitä (ikoni)', use:'Sivupalkin lista', c: { ...states(refRest, { hover:{ bg:V('surface-hover') }, press:{ bg:V('surface-press') } }), 'Odottaa': S(refRest, { text:'', lead: spin || lead({ t:'…', w:'auto', h:'auto' }), cur:'progress', fg:V('ink-2') }), 'Estetty': S(refRest, DIS, { sub:'Yhteys poikki.' }) } },
+      { name:'Keskeytä', use:'Työskentelevä agentti', c: { ...states(intRest, { hover:{ bg:V('surface-hover') }, press:{ bg:V('surface-press') } }), 'Odottaa': S(intRest, { text:'Keskeytetään…', lead: spin, cur:'progress' }), 'Tulos': S(intRest, { sub:'Pyyntö kuitattu. Vuoron päättymistä ei ole vielä vahvistettu.' }), 'Estetty': S(intRest, DIS, { lead:null, sub:'Vain luku: ohjaa terminaalista.' }) } },
+      { name:'floating', use:'Viimeisimpään-painike', c: states(floatRest, { hover:{ bg:V('surface-hover') }, press:{ bg:V('surface-press') } }) },
+      { name:'back', use:'Asetukset, työtilasivu', c: states(backRest, { hover:{ fg:V('ink') }, press:{ bg:V('press') } }) },
+    ];
+
+    const rowH = touch ? '44px' : '34px';
+    const cur = { bg:V('current'), bd:`1px solid ${V('current-line')}`, fw:'600' };
+    const agentRest = S({ just:'flex-start', w:'220px', pad:'0 9px', minh:rowH, fw:'400', text:'Miksi CI epäonnistuu macOS:llä?', lead: lead(this.mark('waiting', motion)) });
+    const wsRest = S({ just:'flex-start', w:'220px', pad:'0 9px', minh:rowH, text:'aurinkokello', lead: lead({ t:'›', w:'10px', h:'10px', fg:V('muted') }) });
+    const homeRest = S({ just:'flex-start', w:'220px', pad:'0 10px', minh: touch ? '44px' : '38px', r:'9px', text:'Etusivu', lead: lead({ t:'⌂', w:'14px', h:'14px', fg:V('muted') }), trail:'2 uutta' });
+    const retRest = S({ just:'flex-start', w:'250px', pad:'0 12px', minh: touch ? '52px' : '46px', r:'10px', bg:V('surface'), bd:`1px solid ${V('line')}`, text:'Tee etusivusta mobiiliystävällinen', lead: lead(this.mark('waiting', motion)) });
+    const inlRest = S({ pad:'0 2px', minh:'auto', r:'3px', fw:'500', fg:V('accent-ink'), deco:'underline', text:'Avaa OpenAI:n vahvistussivu' });
+    const hdrRest = S({ pad:'0 2px', minh:'auto', r:'3px', fw:'500', fg:V('muted'), text:'Työtilat' });
+    const longRest = S({ just:'flex-start', w:'170px', pad:'0 9px', minh:rowH, fw:'400', ff:"'JetBrains Mono',monospace", fs:'12.5px', text:'infra-ansible-palvelinkonfiguraatio-testi', lead: lead(this.mark('unknown', motion)) });
+    const navV = { hover:{ bg:V('hover') }, press:{ bg:V('press') }, focus:FI };
+    const linkRows = [
+      { name:'agent', use:'Sivupalkin keskustelu, puhelimen laatikko', wrap:V('rail'), c: { ...states(agentRest, navV), 'Nykyinen': S(agentRest, cur), 'Nykyinen + fokus': S(agentRest, cur, FI) } },
+      { name:'workspace', use:'Työtilan otsake: nimi avaa sivun', wrap:V('rail'), c: { ...states(wsRest, navV), 'Nykyinen': S(wsRest, cur), 'Nykyinen + fokus': S(wsRest, cur, FI) } },
+      { name:'home', use:'Etusivu; huomion määrä oikealla', wrap:V('rail'), c: { ...states(homeRest, navV), 'Nykyinen': S(homeRest, cur), 'Nykyinen + fokus': S(homeRest, cur, FI) } },
+      { name:'return', use:'Paluunäkymän ja työtilasivun rivi', wrap:V('bg'), c: states(retRest, { hover:{ bg:V('surface-hover') }, press:{ bg:V('surface-press') } }) },
+      { name:'inline', use:'Tekstin sisällä', wrap:V('surface'), c: states(inlRest, { hover:{ fg:V('accent'), dth:'2px' }, press:{ bg:V('accent-soft') } }) },
+      { name:'header', use:'Murupolku: Työtilat', wrap:V('bg'), c: states(hdrRest, { hover:{ fg:V('ink'), deco:'underline' }, press:{ bg:V('press') } }) },
+      { name:'pitkä nimi', use:'Kompakti leveys: loppukatkaisu, koko nimi title-attribuutissa', wrap:V('rail'), c: { 'Lepo': longRest, 'Fokus': S(longRest, FI), 'Nykyinen': S(longRest, cur) } },
+    ];
+
+    const fieldBase = { just:'flex-start', w:'230px', pad:'0 11px', fw:'400', bg:V('surface'), bd:`1px solid ${V('line-strong')}`, cur:'text' };
+    const tf = S(fieldBase, { fg:V('faint'), text:'Etsi repoa nimellä' });
+    const comp = S(fieldBase, { w:'250px', minh: touch ? '72px' : '64px', ai:'flex-start', pad:'9px 11px', fg:V('faint'), text:'Viesti Pi:lle', ws:'normal' });
+    const box = (o) => lead({ w:'16px', h:'16px', r:'4px', bd:`1.5px solid ${V('muted')}`, bg:V('surface'), ...o });
+    const cb = S({ just:'flex-start', pad:'0 2px', fw:'400', ff:"'JetBrains Mono',monospace", fs:'12.5px', text:'fixture/first', lead: box({}), minh: touch ? '44px' : '28px' });
+    const rd = S({ just:'flex-start', pad:'0 2px', fw:'400', text:'Kaikki repot', lead: box({ r:'50%' }), minh: touch ? '44px' : '28px' });
+    const fieldRows = [
+      { name:'TextField', use:'Repohaku, suodatus', wrap:V('surface'), c: { 'Lepo': tf, 'Fokus': S(tf, F), 'Täytetty / valittu': S(tf, { fg:V('ink'), text:'aurinko' }), 'Virhe': S(tf, { fg:V('ink'), bd:`1px solid ${V('err')}`, text:'aurinko/kello', sub:'Kirjoita repon nimi ilman /-merkkiä.', subFg:V('err') }), 'Estetty': S(tf, DIS, { sub:'Repolistaa haetaan vielä.' }), 'Vain luku': S(tf, { bg:V('surface-2'), bd:`1px dashed ${V('line-strong')}`, fg:V('ink'), ff:"'JetBrains Mono',monospace", fs:'12.5px', text:'127.0.0.1:20001', sub:'Asetettu palvelimella.' }) } },
+      { name:'Composer (TextArea)', use:'Keskustelun kirjoituskenttä', wrap:V('bg'), c: { 'Lepo': comp, 'Fokus': S(comp, F), 'Täytetty / valittu': S(comp, { fg:V('ink'), text:'Tarkista myös arm64.' }), 'Estetty': null, 'Vain luku': S(comp, { bg:V('surface-2'), bd:`1px dashed ${V('line-strong')}`, fg:V('muted'), text:'Tätä keskustelua ei voi ohjata selaimesta.' }) } },
+      { name:'Checkbox', use:'Repovalinta: koko rivi on osuma-alue', wrap:V('surface'), c: { 'Lepo': cb, 'Fokus': S(cb, { lead: box({ shadow:`0 0 0 2px ${V('surface')}, 0 0 0 4px ${V('focus')}` }) }), 'Täytetty / valittu': S(cb, { lead: box({ bg:V('accent'), bd:`1.5px solid ${V('accent')}`, fg:V('on-accent'), t:'✓' }) }), 'Estetty': S(cb, { fg:V('disabled-fg'), lead: box({ bg:V('disabled-bg'), bd:`1.5px solid ${V('line-strong')}` }), sub:'Jo työtilana.' }) } },
+      { name:'RadioGroup', use:'Repojen aikarajaus', wrap:V('surface'), c: { 'Lepo': rd, 'Fokus': S(rd, { lead: box({ r:'50%', shadow:`0 0 0 2px ${V('surface')}, 0 0 0 4px ${V('focus')}` }) }), 'Täytetty / valittu': S(rd, { lead: box({ r:'50%', bd:`5px solid ${V('accent')}` }) }), 'Estetty': S(rd, { fg:V('disabled-fg'), text:'Vain omat repot', lead: box({ r:'50%', bg:V('disabled-bg'), bd:`1.5px solid ${V('line-strong')}` }), sub:'GitHub ei palauttanut omistajatietoa.' }) } },
+    ];
+
+    const miRest = S({ just:'flex-start', w:'200px', pad:'0 10px', r:'6px', fw:'400', minh: touch ? '44px' : '34px', text:'Asetukset' });
+    const mdRest = S(miRest, { fg:V('err'), text:'Kirjaudu ulos…' });
+    const tabRest = S({ r:'0', pad:'0 12px', fw:'500', fg:V('muted'), text:'Tiedot' });
+    const segRest = S({ r:'6px', pad:'0 12px', fw:'500', fs:'12.5px', fg:V('ink-2'), minh: touch ? '40px' : '30px', text:'Tumma' });
+    const discRest = S({ just:'flex-start', pad:'0 8px', r:'6px', fw:'500', fg:V('ink-2'), text:'▸ Työtilan tiedot' });
+    const menuRows = [
+      { name:'ControlMenuItem', use:'Tilivalikko, Tiedot-valikko', wrap:V('surface'), c: { 'Lepo': miRest, 'Kohdistus': S(miRest, { bg:V('hover') }), 'Painallus': S(miRest, { bg:V('press') }), 'Fokus': S(miRest, { bg:V('hover') }, FI), 'Valittu / auki': S(miRest, { text:'Tumma', lead: lead({ t:'✓', w:'12px', h:'12px', fg:V('accent-ink') }) }), 'Estetty': S(miRest, { fg:V('disabled-fg'), cur:'not-allowed', text:'Katkaise GitHub-yhteys', sub:'Ei vielä mahdollista tällä palvelimella.' }) } },
+      { name:'menu · danger', use:'Avaa aina AlertDialogin', wrap:V('surface'), c: { 'Lepo': mdRest, 'Kohdistus': S(mdRest, { bg:V('err-soft') }), 'Painallus': S(mdRest, { bg:V('err-soft-press') }), 'Fokus': S(mdRest, { bg:V('err-soft') }, FI) } },
+      { name:'ControlTab', use:'Välilehdet', wrap:V('surface'), c: { 'Lepo': tabRest, 'Kohdistus': S(tabRest, { fg:V('ink'), bg:V('hover') }), 'Painallus': S(tabRest, { bg:V('press') }), 'Fokus': S(tabRest, FI, { r:'4px' }), 'Valittu / auki': S(tabRest, { fg:V('ink'), fw:'600', shadow:`inset 0 -3px 0 ${V('accent')}` }) } },
+      { name:'Teeman segmentti', use:'Tilivalikko ja asetukset (yhtenäistetty)', wrap:V('rail'), c: { 'Lepo': segRest, 'Kohdistus': S(segRest, { bg:V('hover') }), 'Painallus': S(segRest, { bg:V('press') }), 'Fokus': S(segRest, F), 'Valittu / auki': S(segRest, { bg:V('surface'), bd:`1px solid ${V('line-strong')}`, fg:V('ink'), fw:'600', shadow:'0 1px 2px rgba(16,24,40,.08)' }) } },
+      { name:'DisclosureButton', use:'Työtilan tiedot, työkalurivi', wrap:V('bg'), c: { 'Lepo': discRest, 'Kohdistus': S(discRest, { bg:V('hover') }), 'Painallus': S(discRest, { bg:V('press') }), 'Fokus': S(discRest, F), 'Valittu / auki': S(discRest, { fg:V('ink'), text:'▾ Työtilan tiedot' }) } },
+    ];
+
+    return [
+      fam('Painikkeet', 'Button · ControlButton · Controls.module.css', 'Estetty on neutraali kaikissa varianteissa; epäselvän eston syy näkyy kontrollin yhteydessä ilman hoveria. Odottava koskee vain toimintoja, joilla on kuittaus. Varmistettu virhe näkyy toimintopalautteessa (ks. Agentin ohjaus), ei painikkeen omana tilana.', [...allCols, 'Estetty', 'Odottaa'], btnRows, 1080),
+      fam('Ikonipainikkeet ja esitysmuodot', 'IconButton · presentation: messageIcon · floating · back', 'Kosketuksella ikonipainikkeen osuma-alue on 44 × 44 px myös silloin, kun piirretty pinta on pienempi. Kopioinnin tulos näkyy 1.6 s ja luetaan aria-live-alueelta.', [...allCols, 'Tulos', 'Odottaa', 'Estetty'], icoRows, 1180),
+      fam('Linkki- ja navigaatiorivit', 'LinkRow · kind: agent · workspace · home · return · inline · header', 'Nykyinen sijainti on vain valittavissa navigaatioriveissä. Se on neutraali pinta, ei korostusväri, joten se ei sekoitu agentin huomioon. Fokus piirretään listassa sisäpuolelle.', [...allCols, 'Nykyinen', 'Nykyinen + fokus'], linkRows, 1300),
+      fam('Kentät ja valinnat', 'TextField · TextArea · Checkbox · RadioGroup · Composer', 'Lähetyksen odotus kuuluu Lähetä-painikkeelle, ei kenttään. Kentän syy ja virhe näkyvät tekstinä ilman hoveria. Vain luku -kenttä käyttää katkoviivaa, tuotteen ”ei voi kirjoittaa” -merkkiä.', ['Lepo', 'Fokus', 'Täytetty / valittu', 'Virhe', 'Estetty', 'Vain luku'], fieldRows, 1240),
+      fam('Valikko, välilehti, avattava alue', 'ControlMenuItem · ControlTab · DisclosureButton', 'Kohdistus tarkoittaa hoveria tai valikon nuolinäppäinkohdistusta. Näppäimistöfokus lisää renkaan. Valinta näkyy merkkinä tai alaviivana, ei samana pintana kuin kohdistus.', ['Lepo', 'Kohdistus', 'Painallus', 'Fokus', 'Valittu / auki', 'Estetty'], menuRows, 1180),
+    ];
+  }
+
+  aicList() {
+    const touch = this.state.width === 'touch';
+    const H = touch ? '44px' : '36px';
+    const b = o => ({ minh:H, bg:V('accent'), fg:V('on-accent'), bd:'1px solid transparent', cur:'pointer', text:'Lähetä', hasLead:false, hasSub:false, sub:'', ...o });
+    const dis = { bg:V('disabled-bg'), fg:V('disabled-fg'), bd:`1px solid ${V('line')}`, cur:'not-allowed', hasSub:true };
+    const intr = o => b({ bg:V('surface'), fg:V('ink'), bd:`1px solid ${V('line-strong')}`, text:'Keskeytä', ...o });
+    const fb = o => ({ bd:'0 solid transparent', bg:'transparent', fg:V('ink'), title:'', text:'', spin:false, hasAct:false, act:'', actBg:'transparent', actFg:V('accent-ink'), ...o });
+    const draft = 'Tarkista myös arm64.';
+    const L = [
+      { name:'Valmis lähettämään', field:draft, btns:[intr({}), b({})], note:'Agentti työskentelee: Lähetä vie jonoon, Keskeytä pysäyttää vuoron. Ero kerrotaan kentän vihjerivillä.' },
+      { name:'Vain luku', ro:true, note:'Ei kenttää eikä lähetystä. Syy on itse tila; Uusi keskustelu on ainoa toiminto.' },
+      { name:'Odottaa kuittausta', field:draft, btns:[intr({}), b({ text:'Lähetetään…', hasLead:this.state.motion === 'full', cur:'progress' })], note:'Värit säilyvät, etiketti kertoo tilan. Teksti pysyy kentässä kuittaukseen asti. Ei erillistä lausetta.' },
+      { name:'Kuitattu', field:'Viesti Pi:lle', empty:true, btns:[b({ ...dis, hasSub:false, sub:'' })], note:'Ei pysyvää ilmoitusta: viesti siirtyy keskusteluun ja kenttä tyhjenee. Tyhjän kentän lähetyseston syy on ilmeinen.' },
+      { name:'Hylätty', field:'hylkää', fb:fb({ bd:`1px solid ${V('err-line')}`, bg:V('err-soft'), fg:V('err'), title:'Viesti hylättiin', text:'Teksti säilyi kentässä. Korjaa ja lähetä uudelleen.' }), btns:[b({})], note:'Havaittu virhe: punainen. Lähetä on taas käytettävissä, koska hylkäys on varma tulos.' },
+      { name:'Lähetysvirhe — epävarma', field:draft, fb:fb({ bd:`1px dashed ${V('line-strong')}`, bg:V('surface-2'), title:'Lähetysvirhe', text:'Viesti on voitu vastaanottaa. Sitä ei lähetetä automaattisesti uudelleen.', hasAct:true, act:'Ota teksti talteen' }), btns:[b({ ...dis, sub:'Edellisen lähetyksen tulos tarkistetaan ensin.' })], note:'Katkoviiva = epävarma, ei punaista: virhettä ei ole todettu.' },
+      { name:'Yhteys poikki', field:draft, btns:[intr({ ...dis, sub:'Yhteys poikki.' }), b({ ...dis, sub:'Yhteys poikki. Luonnos säilyy.' })], note:'Kenttä pysyy muokattavana. Katkoksesta kertoo yksi yläreunan ilmoitus.' },
+      { name:'Yhteys palasi — tarkistetaan', cond:true, field:draft, fb:fb({ fg:V('muted'), spin:true, title:'Tarkistetaan edellisen lähetyksen tulosta', text:'Viestiä ei lähetetä uudelleen.' }), btns:[b({ ...dis, sub:'Odottaa tarkistusta.' })], note:'Ehdollinen: automaattinen tarkistus kuuluu @recover-sends-after-disconnection-työhön.' },
+      { name:'Pi kysyy', cond:true, field:'Viesti Pi:lle', empty:true, fb:fb({ bd:`1px solid ${V('accent-line')}`, bg:V('accent-soft'), fg:V('accent-ink'), title:'Pi kysyy: ajetaanko migraatio nyt?', text:'Vastaa dialogissa. Vapaa viesti ei korvaa vastausta.', hasAct:true, act:'Vastaa…', actBg:V('accent'), actFg:V('on-accent') }), btns:[b({ ...dis, sub:'Vastaa ensin kysymykseen.' })], note:'Ehdollinen: vaatii pending_question-faktan ja vastausdialogin.' },
+    ];
+    return L.map(x => ({ ...x, ro: !!x.ro, rw: !x.ro, hasCond: !!x.cond, hasFb: !!x.fb, fb: x.fb || fb({}), btns: x.btns || [], field: x.field || '', fieldFg: x.empty ? V('faint') : V('ink'), actH: touch ? '44px' : '30px' }));
+  }
+
+  agentRows() {
+    const touch = this.state.width === 'touch';
+    const motion = this.state.motion === 'full';
+    const pres = (ex, combo) => {
+      const tags = [];
+      if (ex.ro) tags.push(TAG.ro); if (ex.err) tags.push(TAG[ex.err]); if (ex.conn) tags.push(TAG.conn); if (ex.hist) tags.push(TAG.hist);
+      return {
+        ...ex, isCombo: combo, mark: this.mark(ex.act, motion), word: WORD[ex.act], wordShort: WORD_SHORT[ex.act], tags,
+        hasAttn: !!ex.attn, attnLabel: ex.attn === 'question' ? 'Kysymys' : 'Uusi vastaus',
+        titleW: ex.attn ? '600' : '400', rowBg: ex.cur ? V('current') : 'transparent', rowBd: ex.cur ? `1px solid ${V('current-line')}` : '1px solid transparent',
+        listBd: ex.cond ? `1px dashed ${V('line-strong')}` : `1px solid ${V('line')}`, condOp: '1',
+        hasCond: !!ex.cond, cond: ex.cond || '', minh: touch ? '48px' : '40px',
+      };
+    };
+    return [...AG.map(e => pres(e, false)), ...COMBO.map(e => pres(e, true))];
+  }
+
+  renderVals() {
+    const { theme, width, motion } = this.state;
+    const opt = (key, val, label) => {
+      const on = this.state[key] === val;
+      return { label, pressed: on ? 'true' : 'false', on: () => this.setState({ [key]: val }), bg: on ? V('surface') : 'transparent', fg: on ? V('ink') : V('ink-2'), bd: on ? `1px solid ${V('line-strong')}` : '1px solid transparent', fw: on ? '600' : '500' };
+    };
+    const toggles = [
+      { title:'Teema', opts:[opt('theme', 'both', 'Molemmat'), opt('theme', 'light', 'Vaalea'), opt('theme', 'dark', 'Tumma')] },
+      { title:'Leveys', opts:[opt('width', 'desktop', 'Työpöytä'), opt('width', 'touch', 'Kosketus')] },
+      { title:'Liike', opts:[opt('motion', 'full', 'Normaali'), opt('motion', 'reduced', 'Vähennetty')] },
+    ];
+    const themes = [{ id:'light', label:'Vaalea teema' }, { id:'dark', label:'Tumma teema' }].filter(t => theme === 'both' || theme === t.id);
+    const fmt = (r, min) => ({ v: r.toFixed(2) + (r >= min ? ' ✓' : ' ✕'), fg: r >= min ? V('ink') : V('err') });
+    const contrast = PAIRS.map(([label, fg, bg, under, min]) => {
+      const l = fmt(ratio(TOK.light, fg, bg, under), min), d = fmt(ratio(TOK.dark, fg, bg, under), min);
+      return { label, min: min + ':1', l: l.v, d: d.v, lFg: l.fg, dFg: d.fg };
+    });
+    const pl = fmt(pendingOld(TOK.light), 4.5), pd = fmt(pendingOld(TOK.dark), 4.5);
+    contrast.push({ label:'Nyt: primary odottava, opacity 0.7', min:'4.5:1', l: pl.v, d: pd.v, lFg: pl.fg, dFg: pd.fg });
+    const facts = FACTS.map(f => ({ ...f, fg: f.status === 'on' ? V('ok') : f.status === 'puuttuu' ? V('err') : V('ink-2'), bd: f.status === 'on' ? `1px solid ${V('ok')}` : f.status === 'puuttuu' ? `1px solid ${V('err-line')}` : `1px dashed ${V('line-strong')}` }));
+    return {
+      toggles, themes,
+      widthNote: width === 'touch'
+        ? 'Kosketusleveys: osuma-alueet 44 px, hover-sarake poistettu. Painallus, ulkoisen näppäimistön fokus ja eston syy näytetään edelleen.'
+        : 'Työpöytä: kompakti 36 px korkeus, hover näkyy. Vaihda Kosketus-tilaan nähdäksesi 44 px osuma-alueet ilman hoveria.',
+      families: this.build(),
+      aic: this.aicList(), aicMin: width === 'touch' ? '300px' : '320px',
+      agentRows: this.agentRows(),
+      railFr: width === 'touch' ? '1.05' : '.9', railHead: width === 'touch' ? 'Puhelimen laatikko (44 px)' : 'Sivupalkin kompakti rivi',
+      spinAnim: motion === 'full' ? 'ah-spin .9s linear infinite' : 'none',
+      pulseAnim: motion === 'full' ? 'ah-pulse 1.6s ease-in-out infinite' : 'none',
+      pulseAlt: motion === 'full' ? 'none' : `0 0 0 2px ${V('accent-line')}`,
+      agentGrid: `200px minmax(0,1.15fr) minmax(0,${width === 'touch' ? '1.05' : '.9'}fr) minmax(0,1.15fr)`,
+      tokens: TOKENS.map(t => { const sp = v => { const p = v.split(' / '); const ok = s => /^(#|rgba)/.test(s); return [ok(p[0]) ? p[0] : 'transparent', p[1] && ok(p[1]) ? p[1] : '']; }; const [l1, l2] = sp(t.l), [d1, d2] = sp(t.d); return { ...t, l1, l2, d1, d2 }; }), contrast, changes: CHANGES, facts, inventory: INVENTORY,
+    };
+  }
+}
+</script>
+</body>
+</html>

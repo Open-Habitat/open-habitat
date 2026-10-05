@@ -7,8 +7,10 @@ lukemista. Käyttöliittymä toimii työpöydällä ja puhelimessa, vaaleana ja 
 [Vedokset](drafts/) näyttävät sommittelun ja esitystilat. Navigaation,
 paluunäkymän, työtilasivun ja asetusten nykyinen viite on
 [Navigaatio ja asetukset](drafts/Navigaatio%20ja%20asetukset.dc.html).
-Yhteiset mitat, värit,
-fontit ja liike ovat [tokeneissa](tokens/), joita sovellus käyttää
+Kontrollien soveltuvat tilat ja agentin tilan esityskieli ovat
+[Kontrollitilat ja agentin tila](drafts/Kontrollitilat%20ja%20agentin%20tila.dc.html)
+-vedoksessa. Ehdolliset esimerkit eivät väitä hostin jo tuottavan niiden
+vaatimia faktoja. Yhteiset mitat, värit, fontit ja liike ovat [tokeneissa](tokens/), joita sovellus käyttää
 `styles.css`:n kautta. [Komponenttikartta](components.md) johtaa samoihin
 komponentteihin, jotka näkyvät sovelluksessa ja Storybookissa.
 [Käyttökulut](../docs/product.md) kuvaavat toiminnan ja
@@ -21,18 +23,30 @@ pidetään samassa totuudessa.
 Oletustila on hiljainen. Käynnissä oleva työ, vastausta odottava kysymys,
 vain luku -tila, katkos ja epävarma tulos saavat tunnistettavan esityksen.
 Tila näkyy merkin, sanan ja värin avulla; onnistuneesta lähetyksestä tai
-tyhjästä jonosta ei synny pysyvää ilmoitusta. Vain luku -tila on ontto rengas
-tai katkoviivareuna, ei lause. Rehellisyysvaatimukset (ei keksittyä tilaa, ei
-automaattista uudelleenlähetystä, epävarma lähetys näkyvissä) täytetään
-designin omilla elementeillä, kuten katkoviivakuplalla ja ontolla renkaalla,
-ei lisätyllä selittävällä tekstillä. Kun hostilla ei ole faktaa, elementti
-jätetään pois sen sijaan, että sen puute selitettäisiin. Painikkeissa ei ole
-ohjetekstiä.
+tyhjästä jonosta ei synny pysyvää ilmoitusta. Agentin odotus on ontto rengas;
+vain luku on erillinen katkoviivatagi tai kentän katkoviivareuna. Agentin aktiivisuus, uuden vastauksen tai virheen
+huomio, kirjoitusoikeus ja operaation tulos ovat eri kanavia ja voivat näkyä
+samanaikaisesti. Nykyinen reitti on neutraali pinta, ei huomiomerkki.
+Epävarma lähetys on hillitty katkoviivalaatikko ja lyhyt lähetysvirhe, ei
+väite siitä, ettei viestiä toimitettu. Vahvistettu virhe erottuu siitä.
+Kun host ei tiedä, onko agentti suljettu, näytetään tuntematon tila eikä
+*valmis*; ilman raportoitua palveluvirhettä sellaista ei näytetä.
+
+Painikkeen yhteydessä kerrotaan epäselvän eston syy ilman hoveria myös
+puhelimessa, esimerkiksi yhteyskatkon tai kirjoitusoikeuden puutteen takia.
+Ilmeistä tyhjän kentän lähetysestoa ei selitetä toistuvalla ohjetekstillä.
+Sama tieto annetaan saavutettavasti näppäimistöllä ja ruudunlukijalla;
+fokusoitavuus ratkaistaan kontrollin toiminnan perusteella, eikä kaikkia
+estettyjä toimintoja pakoteta tab-järjestykseen.
 
 Näkymässä on yksi ensisijainen toiminto kerrallaan. Toissijaiset toiminnot
 ovat hillittyjä. Reunat erottavat pinnat, varjot kuuluvat kelluviin valikoihin,
 laatikoihin ja viimeisimpään vievään painikkeeseen. Estetty toiminto säilyy
-luettavana. Pikanäppäinten ohje kuuluu omaan vihjeriviinsä.
+luettavana. Hover ja painallus syventävät saman toiminnon sävyä, eivät muuta
+sitä valinnaksi. Odottava toiminto säilyttää kontrastinsa: sen tekstissä
+kerrotaan mitä odotetaan, liike on vain lisävihje. Fokus näkyy molemmissa
+teemoissa ja liike poistuu vähennetyn liikkeen asetuksella. Pikanäppäinten
+ohje kuuluu omaan vihjeriviinsä.
 
 Käyttöliittymä on suomeksi. Instrument Sans on ihmisen tekstille, JetBrains
 Mono poluille, komennoille, repoille ja muille koneellisille tunnisteille.

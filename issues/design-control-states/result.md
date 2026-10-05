@@ -1,0 +1,5 @@
+# Result
+
+Jari approved the returned design direction and the exception for obvious disabled actions. The reconciled [handoff](design-package/HANDOFF.md) records what was accepted, corrected and left conditional; the [visual pairs](design-package/comparison/NOTES.md) distinguish same-content settings from changed-content home examples. The returned control sheet and revised navigation/settings draft are the current references in `design-system/drafts/`; `design-system/design.md` and `design-system/components.md` point to their agreed meaning.
+
+Verified: both HTML drafts rendered in isolated Chromium without page errors; the new control sheet switched theme, width and motion; navigation switched to dark phone and current-host mode. The project-view link/navigation validator and `git diff --check` passed. No production code, tokens, host facts or lab fixtures changed. No production-versus-design fidelity comparison or independent accessibility/200% zoom test was run. @apply-control-state-design owns these next steps and has not been approved for execution by this design decision alone.

@@ -6,7 +6,10 @@ components are in `web/src/components/` and the shared values in `../tokens/`.
 
 Update these references in place when the design changes. Git preserves earlier
 versions. For navigation, the return view, workspace page, and settings, the
-current reference is `Navigaatio ja asetukset.dc.html`. Older roundups
+current reference is `Navigaatio ja asetukset.dc.html`. Shared control interaction
+states and the agent-state presentation are in `Kontrollitilat ja agentin
+tila.dc.html`; states that require facts the host does not yet provide are
+conditional examples, not current production behavior. Older roundups
 (`Selainpolku`, `Puhelin`, `Tummat näkymät`) remain references for conversation
 and other views, but their overlapping navigation and settings examples are not
 the current target. Future packages should select by view ownership instead of

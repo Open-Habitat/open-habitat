@@ -3,13 +3,15 @@ created: 2026-10-03
 updated: 2026-10-05
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 related: ['@consistent-control-feedback', '@refine-agent-status']
 lane: control-state-design
 collision: [design-system/]
 blocked_by: ['@unify-ui-primitives', '@migrate-bespoke-controls', '@refine-agent-status', '@inventory-ui-states']
 preparation: pending
+closed: 2026-10-05
+closed_by: jari
 ---
 
 # Design the interaction states of every primitive
@@ -64,5 +66,11 @@ the conversation blocks.
 ## Acceptance Criteria
 
 - [x] The delivered package shows the actual shared controls, relevant states and provisional values in both themes, together with the agent-state meanings and examples; its brief is kept in this issue.
-- [ ] The designer's handoff covers those states and a shared agent-state presentation, and is incorporated into the current design sources.
+- [x] The designer's handoff covers those states and a shared agent-state presentation, and is incorporated into the current design sources.
 - [x] The maintained design-package instructions carry the state-coverage requirement into future rounds.
+
+## Resolution
+
+### 2026-10-05T11:59:23Z · @jari
+
+Returned design reconciled and incorporated; production implementation and fact-dependent states remain in @apply-control-state-design and related issues.
