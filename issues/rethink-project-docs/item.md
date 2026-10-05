@@ -72,7 +72,7 @@ olevasta tarkennetusta pyynnöstä. Pakettia ei koottu uudelleen tällä
 tekstikierroksella. Navigaatio- ja asetusissueista on linkit yhteiseen pyyntöön
 ja tulokseen. Toteutusta, issueiden tilaa ja DAGia ei muutettu.
 
-## Seuraavaksi: docs/architecture
+## Käsitelty kokonaisuus: docs/architecture
 
 Jarin hyväksymä läpikäyntijärjestys: yksi tiedosto kerrallaan, koko kansio
 taustalla ristiriitojen ja toiston tunnistamiseksi.
@@ -189,7 +189,19 @@ komentoluettelot korvattu selityksillä ja lähdeviitteillä. ADR 0003:n yleinen
 palautusmalli erotettu testipalvelimen myöhemmästä korjaa-eteenpäin-käytännöstä.
 Tuotekoodia tai sovittua vastuunjakoa ei muutettu.
 
-Seuraava käsiteltävä tiedosto on `docs/architecture/index.md`.
+`index.md` käsitelty Jarin hyväksymällä rajauksella 5.10.2026.
+Yleiskuva on nyt perusidean, komponenttikuvan ja lukupolun muodostama kartta.
+Historian lukeminen erotettu Pi-prosessin käynnistämisestä, brokerin käyttö
+kuvattu myös kirjautumisen ulkopuolella. Päällekkäinen vastuutaulukko,
+socket-polut ja nykyisiä puutteita pysyviin rajauksiin sekoittanut luettelo
+poistettu. Vanhentuneet lokitusväitteet poistettu; hyväksytty suositus ja sen
+toteutus kuuluvat @decide-logging-policy-issueen. Tarkemmat vastuut ja
+nykytilan erot sovittuihin tavoitteisiin jäävät niitä käsitteleville sivuille.
+Tuotekoodia tai sovittua vastuunjakoa ei muutettu.
+
+`docs/architecture`-kansion sovittu läpikäynti on valmis. Seuraavaa dokumenttia
+ei ole valittu. Pi-kysymysten vastausdialogien yllä kuvattu jatkokäsittely on
+edelleen avoin.
 
 ## Lokituskäytännön tehtävä 3.10.2026
 
