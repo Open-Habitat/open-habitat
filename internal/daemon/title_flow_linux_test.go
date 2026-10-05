@@ -118,89 +118,65 @@ for line in sys.stdin:
 	if name, _ := c.sessionName(s); name != "Continued title" {
 		t.Fatalf("failure erased name: %q", name)
 	}
-	c.mu.Lock()
-	s.acceptedMessages = 1
-	s.firstText = "Original prompt"
-	s.settled = false
-	c.startAutomaticTitle(s)
-	if s.automaticFirst {
-		t.Fatal("first title attempted before settlement")
-	}
-	s.settled = true
-	c.startAutomaticTitle(s)
-	if !s.automaticFirst {
-		t.Fatal("first title not attempted after settlement")
-	}
-	c.mu.Unlock()
-	deadlineFirst := time.Now().Add(time.Second)
-	for time.Now().Before(deadlineFirst) {
-		c.mu.Lock()
-		naming := s.naming
-		c.mu.Unlock()
-		if !naming {
-			break
-		}
-		time.Sleep(time.Millisecond)
-	}
+	// The third turn does not refine a name supplied by a person or by
+	// explicit regeneration, even if automatic naming failed earlier.
 	c.mu.Lock()
 	s.acceptedMessages = 3
 	s.thirdText = "third message"
+	s.settled = true
+	c.startAutomaticTitle(s)
+	if s.naming || s.automaticRefined {
+		t.Fatal("refined a user-chosen name")
+	}
+	c.mu.Unlock()
+
+	// Reuse the same fake Pi child with a fresh native header. Hold the first
+	// automatic model call across third settlement and fourth acceptance.
+	if err := os.WriteFile(path, []byte(fmt.Sprintf(`{"type":"session","version":3,"id":%q,"cwd":%q}`+"\n", id, cwd)), 0600); err != nil {
+		t.Fatal(err)
+	}
+	enteredFirst, releaseFirst := make(chan struct{}), make(chan struct{})
+	calls := 0
+	c.titleGenerator = func(text string) (string, error) {
+		calls++
+		if calls == 1 {
+			close(enteredFirst)
+			<-releaseFirst
+			return "First automatic title", nil
+		}
+		return "Third refined title", nil
+	}
+	c.mu.Lock()
+	s.acceptedMessages = 1
+	s.firstText = "first message"
+	s.thirdText = ""
+	s.automaticFirst, s.automaticRefined, s.refinementDue = false, false, false
+	s.automaticName = ""
 	s.settled = false
 	c.startAutomaticTitle(s)
-	if s.automaticRefined {
-		t.Fatal("refined before third turn settled")
+	if s.automaticFirst {
+		t.Fatal("named before first settlement")
 	}
 	s.settled = true
 	c.startAutomaticTitle(s)
-	if !s.automaticRefined || !s.naming {
-		t.Fatal("third turn did not schedule refinement")
+	if !s.automaticFirst || !s.naming {
+		t.Fatal("first title not scheduled after settlement")
 	}
 	c.mu.Unlock()
-	deadline := time.Now().Add(time.Second)
-	for time.Now().Before(deadline) {
-		c.mu.Lock()
-		naming := s.naming
-		c.mu.Unlock()
-		if !naming {
-			break
-		}
-		time.Sleep(time.Millisecond)
-	}
-	if name, _ := c.sessionName(s); name != "Continued title" {
-		t.Fatalf("refinement overwrote user title: %q", name)
-	}
-	c.mu.Lock()
-	c.startAutomaticTitle(s)
-	if s.naming {
-		t.Fatal("refinement was scheduled twice")
-	}
-	// Hold a request across the third settlement and fourth accepted prompt.
-	// Its completion must still release the reserved third-turn refinement.
-	enteredAgain, releaseAgain := make(chan struct{}), make(chan struct{})
-	c.titleGenerator = func(string) (string, error) {
-		close(enteredAgain)
-		<-releaseAgain
-		return "Another explicit title", nil
-	}
-	s.naming = true
-	s.automaticRefined = false
-	s.refinementDue = false
-	s.acceptedMessages = 2
-	c.mu.Unlock()
-	go c.nameConversation(s, "explicit request", true)
-	<-enteredAgain
+	<-enteredFirst
 	c.mu.Lock()
 	s.acceptedMessages = 3
+	s.thirdText = "third message"
 	s.settled = true
 	c.startAutomaticTitle(s)
 	if !s.refinementDue || s.automaticRefined {
-		t.Fatal("third settlement was not reserved")
+		t.Fatal("third settlement not reserved")
 	}
 	s.acceptedMessages = 4
 	s.settled = false
 	c.mu.Unlock()
-	close(releaseAgain)
-	deadline = time.Now().Add(time.Second)
+	close(releaseFirst)
+	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
 		c.mu.Lock()
 		refined, naming := s.automaticRefined, s.naming
@@ -211,8 +187,11 @@ for line in sys.stdin:
 		time.Sleep(time.Millisecond)
 	}
 	c.mu.Lock()
-	if !s.automaticRefined || s.naming {
-		t.Fatal("fourth turn lost the third-turn refinement")
+	if !s.automaticRefined || s.naming || calls != 2 {
+		t.Fatalf("fourth turn lost refinement: refined=%v naming=%v calls=%d", s.automaticRefined, s.naming, calls)
 	}
 	c.mu.Unlock()
+	if name, _ := c.sessionName(s); name != "Third refined title" {
+		t.Fatalf("native refined title: %q", name)
+	}
 }

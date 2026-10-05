@@ -89,7 +89,7 @@ func (c *ConversationController) startAutomaticTitle(s *conversation) {
 		s.automaticFirst = true
 		s.naming = true
 		go c.nameConversation(s, s.firstText, false)
-	} else if s.refinementDue && !s.automaticRefined {
+	} else if s.refinementDue && s.automaticName != "" && !s.automaticRefined {
 		s.refinementDue = false
 		s.automaticRefined = true
 		s.naming = true

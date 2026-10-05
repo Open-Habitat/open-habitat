@@ -61,19 +61,6 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   await expect(
     page.getByRole("heading", { name: "Tutki synteettinen työtila" }),
   ).toBeVisible();
-  // A failed action in A must not appear on a different conversation B.
-  await page
-    .getByRole("link", { name: "aurinkokello", exact: true })
-    .last()
-    .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  await expect(page.getByText("Otsikkoa ei voitu luoda")).toHaveCount(0);
-  await page
-    .getByRole("navigation")
-    .getByRole("link", { name: /Tutki synteettinen työtila/ })
-    .last()
-    .click();
-  await expect(editor).toBeVisible();
   await editor.fill("hylkää");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
@@ -118,6 +105,59 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
       (entry: { agent_id: string }) => entry.agent_id === agent,
     ),
   ).toBe(true);
+});
+
+test("@lab title regeneration pending state does not return after navigation", async ({
+  page,
+}) => {
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "aurinkokello" })
+    .click();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .fill("A conversation");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(
+    page.getByText('Selvä. Kysyit: "A conversation".', { exact: false }),
+  ).toBeVisible({ timeout: 20000 });
+  // An in-flight A request can finish while B is open. Returning to A must
+  // not resurrect the old generation's pending button or failure notice.
+  let releaseTitle: (() => void) | undefined;
+  await page.route("**/regenerate_title", async (route) => {
+    await new Promise<void>((resolve) => {
+      releaseTitle = resolve;
+    });
+    await route
+      .fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: '{"schema_version":1,"state":"failed"}',
+      })
+      .catch(() => {});
+  });
+  await page.getByRole("button", { name: "Luo uusi otsikko" }).click();
+  await expect.poll(() => !!releaseTitle).toBe(true);
+  await page
+    .getByRole("link", { name: "aurinkokello", exact: true })
+    .last()
+    .click();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  releaseTitle?.();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: /A conversation/ })
+    .last()
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Luo uusi otsikko" }),
+  ).toBeEnabled();
+  await expect(page.getByText("Otsikkoa ei voitu luoda")).toHaveCount(0);
+  await page.unroute("**/regenerate_title");
 });
 
 test("@lab typed Pi fragments converge to saved blocks across paging, reconnect and warm return", async ({

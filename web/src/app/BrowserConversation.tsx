@@ -157,14 +157,16 @@ export function BrowserConversation({
   >(null);
   const [titleActionState, setTitleActionState] = useState<{
     key: string;
+    version: number;
     pending: boolean;
     error: boolean;
   } | null>(null);
   const titleActionKey = `${identity}/${workspace.workspace_id}/${id ?? ""}`;
-  const titlePending =
-    titleActionState?.key === titleActionKey && titleActionState.pending;
-  const titleError =
-    titleActionState?.key === titleActionKey && titleActionState.error;
+  const titleStateCurrent =
+    titleActionState?.key === titleActionKey &&
+    titleActionState.version === generation.current;
+  const titlePending = !!titleStateCurrent && titleActionState.pending;
+  const titleError = !!titleStateCurrent && titleActionState.error;
 
   const {
     start,
@@ -312,14 +314,19 @@ export function BrowserConversation({
                       if (!id || titlePending) return;
                       const key = titleActionKey;
                       const version = generation.current;
-                      setTitleActionState({ key, pending: true, error: false });
+                      setTitleActionState({
+                        key,
+                        version,
+                        pending: true,
+                        error: false,
+                      });
                       void regenerateTitle(id, csrf)
                         .then(() => {
                           if (generation.current !== version || !alive.current)
                             return;
                           setTitleActionState((previous) =>
                             previous?.key === key
-                              ? { key, pending: false, error: false }
+                              ? { key, version, pending: false, error: false }
                               : previous,
                           );
                         })
@@ -328,7 +335,7 @@ export function BrowserConversation({
                             return;
                           setTitleActionState((previous) =>
                             previous?.key === key
-                              ? { key, pending: false, error: true }
+                              ? { key, version, pending: false, error: true }
                               : previous,
                           );
                         });
