@@ -14,59 +14,23 @@ preparation: pending
 
 # Deliver the installation and operations guide
 
-A self-hosting operator should be able to install a release, identify what is
-running, update it and recover from failure using the public package and guide.
-The work includes fixing packaging or automation gaps that prevent this, not
-just describing the current tools. Users' native histories, credentials and
-workspace state remain outside replaceable releases.
+Write `docs/operations.md` for someone installing Native Agent Host on their
+own Linux server. The reader should be able to get a working installation
+without knowing this repository's history or having access to Jari's Fleetrepo.
 
-## Scope and approach
+Explain prerequisites, installing a release, configuring accounts and sign-in,
+starting services and checking that the installation works. Cover everyday
+operation: updates, finding the running version, logs and troubleshooting,
+backups and recovery. Explain where configuration and user data live and how
+service restarts affect running agents.
 
-Native Agent Host owns portable packaging, neutral service templates and
-`docs/operations.md`. Fleetrepo owns the test installation's accounts, bindings,
-secrets, ingress and release selection. Its
-`infra/native-agent-host-test/RELEASE-UPGRADE.md` describes live deployment;
-its private inventory and issue results hold installation facts and receipts.
-A public self-hosting guide should be usable without those private materials.
+Use the implemented software and shipped service templates as the source of
+truth. The [deployment architecture](../../docs/architecture/deployment.md)
+provides background; Fleetrepo's `infra/native-agent-host-test/` has practical
+experience from the test installation. Turn that experience into generic
+instructions without copying private host details. Describe known limitations
+honestly where they affect the reader.
 
-[ADR 0003](../../docs/decisions/adr-0003-host-stack.md) defines generic immutable
-releases, atomic activation and a known-good predecessor for rollback.
-The disposable test server follows the later [project policy](../../AGENTS.md):
-releases, including a new operator's first use, proceed autonomously and failures
-may be fixed forward or replaced by a fresh installation. It needs no retained
-rollback release. Production installation remains Jari's separate decision.
-A failed preflight identifies an assumption to repair or a reason to reinstall;
-it is not evidence that the attempted deployment is safe.
-
-The [deployment architecture](../../docs/architecture/deployment.md) describes
-current behavior and gaps. [Service requirements](service-requirements.md)
-define isolation, native environment, shutdown, diagnostic privacy, frontend
-routing and the operator contract. These protect users' files and authority;
-verify both the shipped templates and effective installation. Template text
-alone cannot establish the running system's behavior.
-
-## Acceptance Criteria
-
-- [ ] Release packages implement the generic lifecycle and authenticated
-  gateway-to-daemon account mapping, without persistent source installs.
-- [ ] `docs/operations.md` covers prerequisites, configuration, exact generic
-  install/update/start/stop/rollback and live-version commands, reproducible
-  package checks, diagnostics, cleanup and recovery. It explains ownership and
-  backup/restore of native histories, credentials, workspace annotations and
-  host configuration, including the effect of service restarts on active work.
-- [ ] A fresh agent can use the public guide and package on a separate clean
-  Linux VM with documented operator inputs and two synthetic Unix identities.
-  Evidence covers service requirements, repeated apply, restart, update, failed
-  activation and rollback, with native data and credentials preserved. A clean
-  run after repairs shows the guide is self-contained; fixture cleanup leaves
-  unrelated state alone.
-- [ ] A release runs on the authorized test host through Fleetrepo's current
-  procedure, with the observed live version and deployment outcome recorded.
-
-## Evidence
-
-Record package and Fleetrepo revisions, operator inputs, commands, observed
-results and remaining limits in `result.md`; keep secrets out of the evidence.
-[TESTING.md](../../TESTING.md) describes the relevant checks. Distinguish a
-verified installation from untested behavior: synthetic identities do not prove
-real sign-in or production availability.
+The work is complete when the guide is linked from the documentation index,
+its commands and paths have been checked against the implementation, and it
+clearly explains the information the installer needs to supply.
