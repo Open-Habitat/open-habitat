@@ -88,9 +88,3 @@ record results and limits in `result.md` and visual evidence in
 [design process](../../design-system/process.md). These shared instructions
 also govern documentation and evidence upkeep. Jari's outstanding visual verdict
 remains visible without blocking functional completion or independent work.
-
-## Decisions
-
-### 2026-09-30T17:44:44Z · @claude
-
-Rethink-night 30.9.: käsitelty toteuttajalle suunnattuna ohjeena (rethink-instructions, gpt-6-astra). Selkeytin käyttäjätoiminnot, tiedon omistajuuden, poistoturvan ja näytön; säilytin frontmatterin, hyväksytyn käyttäytymisen sekä visuaalisen arvioinnin keskeneräisyyden. Ilman Jaria valitsin nykyisen rajapintasopimuksen metadatajaon, ei-estävän visuaalikatselmoinnin ja työturvaa suojaavat testit; poistin vanhentuneen M2–M3-viitteen. Faktantarkistus (fact-check-instructions, claude-opus-5-5) korjasi synteettisen labin kuva+HTML-näyttövaatimuksen, erotti GitHub-integraation ja Taskfleet-adapterin myöhempien issueiden omistukseen sekä täsmensi tuotekuvauksen hyväksytyksi, ei jo toteutetuksi. Paikallisesti tarkistettu web/AGENTS.md, TESTING.md, docs/interfaces.md, docs/product.md, implementation-briefs.md ja issuectl show. Avoin asiakirjojen ristiriita: docs/product.md sanoo piilotuksen olevan muuttamatta työtilan tiedostoja, docs/interfaces.md vaatii ensin vakaan ID:n, mikä metadataa vailla olevassa nykyisessä daemonissa saattaa vaatia asetustiedoston kirjoitusta; en ratkaissut Jarin puolesta enkä muuttanut tätä kohtaa. Faktantarkistuksen epävarmuudet: CT-016/029:n clone-osan omistus ja työtilan asetustiedoston atomisen kirjoituksen lähde; edellinen teksti edellytti atomisuutta. En löytänyt tässä issuessa erikseen kirjattua Jarin päätöstä, jota olisi muutettu.
