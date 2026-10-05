@@ -122,7 +122,10 @@ Keskustelun otsikko alkaa tekstistä **Uusi keskustelu**. Sisällöstä muodoste
 otsikko erillisellä mallikutsulla, ja sitä voidaan tarkentaa aiheen selkiytyessä
 sekä käyttäjän pyynnöstä otsikon vierestä. Otsikko ei vaihdu jokaisesta viestistä.
 Epäonnistuminen säilyttää edellisen otsikon tai ensimmäisen viestin lyhyen alun,
-eikä otsikointi estä keskustelua. Tarkempi toiminta on [agenttiohjauksen issuessa](../issues/build-agent-control/general-contract.md).
+eikä otsikointi estä keskustelua. Otsikko on Pi:n natiivi istuntonimi, joten
+sama nimi näkyy myös terminaalin istuntolistassa. Olemassa olevaa nimeä ei
+vaihdeta automaattisesti. Tarkempi toiminta on
+[otsikointityössä](../issues/generate-conversation-titles/item.md).
 
 ## Sisällön lukeminen ja agentin tila
 

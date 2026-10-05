@@ -203,21 +203,14 @@ poistetut tekstit alkuperäisissä steering/follow-up-ryhmissä, indekseissä ja
 järjestyksessä sekä uuden queue-revision. Sama revision näkyy snapshotissa ja
 queue-eventissä. Epävarma tai epäonnistunut tyhjennys ei palauta tekstejä editoriin.
 
-Otsikko alkaa tekstistä “Uusi keskustelu” ja voi käyttää ensimmäisen viestin
-alkua fallbackina. Daemon generoi otsikon yhdellä Pi-mallikutsulla agenttiloopin
-ulkopuolella. Ensimmäinen yritys tehdään ensimmäisen hyväksytyn viestin jälkeen,
-yksi automaattinen uudelleengenerointi kolmannen viestin asetuttua; lisäksi käyttäjä
-voi pyytää uuden otsikon sen vierestä. Syöte on ensimmäisten neljän ja viimeisten
-neljän käyttäjäviestin unioni lähdejärjestyksessä, ilman toistoa. Pending estää
-rinnakkaiset kutsut, epäonnistuminen säilyttää aiemman otsikon tai fallbackin
-ja keskustelu jatkuu.
-
-[Hyväksytty otsikointivalinta](../../issues/plan-v1-implementation/review.md#5-title-adapter)
-on `openai-codex/gpt-5.6-luna`, low thinking, 16 KiB syötettä,
-120 Unicode-merkin tulos ja 0,02 USD:n raportoitu kustannusraja.
-Kertakutsuadapteri on vielä todennettava
-[otsikointityössä](../generate-conversation-titles/item.md);
-siihen asti kyky on `unknown` / `adapter_not_verified`.
+Otsikointi täydentää Pi:n natiivin istuntonimen käytön selaimeen: sama nimi
+näkyy keskustelussa, navigaatiossa ja Pi:n terminaalin istuntolistassa.
+[Otsikointityö](../generate-conversation-titles/item.md) määrittää yhdessä
+luetun tavoitteen, automaattisen nimeämisen ajoituksen, olemassa olevan nimen
+suojauksen ja käyttäjän pyytämän uudelleengeneroinnin. Se korvaa tämän
+sopimuksen aiemmat otsikkokohtaiset malli-, syöte-, kustannus- ja
+tallennusvalinnat. Pi:n nimen tallennustuki ei yksin todista automaattista
+generointikykyä; puuttuva kyky ja oikea Pi-yhteys todennetaan siinä työssä.
 
 ## Työtilan muutokset ja osittainen tulos
 
@@ -269,8 +262,9 @@ Käyttäjän esitystila on
 0600-tiedostossa 0700-hakemiston alla, atomisesti korvattuna.
 
 [Annotaatioskeema](../../contracts/v1/annotations.schema.json) kattaa työtilan
-piilotuksen, keskustelun arkistoinnin ja viimeisimmän onnistuneen generoidun
-otsikon alkuperineen. Parent-yhteys tallennetaan vain, jos sitä ei saada
+piilotuksen ja keskustelun arkistoinnin. Skeeman aiempi generoitu otsikko
+alkuperineen ei enää ole toteutustavoite: otsikointityö käyttää Pi:n
+natiivin istunnon nimeä ja sovittaa sopimukset siihen. Parent-yhteys tallennetaan vain, jos sitä ei saada
 luotettavasti natiivista Taskfleet- tai Pi-tiedosta. Jos tallennettu parent-yhteys on ristiriidassa Taskfleetista luetun
 yhteyden kanssa, käytetään Taskfleetin tietoa ja ristiriita näytetään. Esitystiedon vioittuminen ei kadota
 historiaa, vaan tuottaa lähdevaroituksen. Vioittunutta tai tuntemattoman
