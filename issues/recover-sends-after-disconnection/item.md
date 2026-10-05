@@ -8,6 +8,7 @@ priority: normal
 related: ['@align-navigation-design', '@rethink-project-docs']
 lane: agent-control
 collision: [web/src/app/App.tsx, web/src/components/Conversation.tsx, docs/]
+preparation: ready
 ---
 
 # Recover message sends after a server disconnection

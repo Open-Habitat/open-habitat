@@ -7,6 +7,7 @@ priority: normal
 related: ['@rethink-project-docs']
 lane: github-first-onboarding
 collision: [internal/daemon/, docs/]
+preparation: ready
 ---
 
 # Keep large workspace collections visible beyond 512 entries

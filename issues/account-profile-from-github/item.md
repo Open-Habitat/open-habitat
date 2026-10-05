@@ -1,6 +1,6 @@
 ---
 created: 2026-10-02
-updated: 2026-10-03
+updated: 2026-10-05
 type: feature
 reporter: jari
 status: open
@@ -11,6 +11,7 @@ related: ['@decide-account-display', '@align-navigation-design', '@align-setting
 blocked_by: ['@unify-ui-primitives']
 lane: account-ui
 lane_seq: 20
+preparation: ready
 ---
 
 # Make the signed-in account recognizable across the UI
