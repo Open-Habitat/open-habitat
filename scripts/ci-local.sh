@@ -35,8 +35,8 @@ trap cleanup EXIT
 # CI requires the pinned issuectl even when a newer machine CLI is present.
 # Never install into a persistent machine path.
   issue_archive="$tmp/issuectl.tar.xz"
-  curl -fsSL --retry 3 --retry-all-errors https://github.com/jarimustonen/issuectl/releases/download/v0.18.4/issuectl-x86_64-unknown-linux-musl.tar.xz -o "$issue_archive"
-  echo '3bd0a15a389754f52514dda4b5071caaa0d9f692f193d101d79cc5718bfac8c6  '"$issue_archive" | sha256sum -c -
+  curl -fsSL --retry 3 --retry-all-errors https://github.com/jarimustonen/issuectl/releases/download/v0.19.0/issuectl-x86_64-unknown-linux-musl.tar.xz -o "$issue_archive"
+  echo '75d5fa1b1c20cae557ab90948788f19af88bf14dfa215a538abc6096673976ef  '"$issue_archive" | sha256sum -c -
   tar -xJf "$issue_archive" -C "$tmp"
   cp "$tmp/issuectl-x86_64-unknown-linux-musl/issuectl" "$tmp/bin/issuectl"
 export PATH="$tmp/bin:$PATH"
@@ -46,7 +46,7 @@ export PYTHON="$tmp/venv/bin/python"
 go version
 node --version
 npm --version
-issuectl --version | grep -Fx 'issuectl 0.18.4'
+issuectl --version | grep -Fx 'issuectl 0.19.0'
 phase dependencies
 go mod download
 export GOPROXY=off
