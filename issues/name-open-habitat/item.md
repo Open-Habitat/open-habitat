@@ -11,114 +11,78 @@ preparation: pending
 
 # Name the project Open Habitat
 
-## Tavoite ja nimen tausta
+## Tavoite
 
-Projektin `native-agent-host` uudeksi tuotenimeksi tulee **Open Habitat**;
-teknisissä nimissä käytetään muotoa `open-habitat`. Habitat säilyttää
-ajatuksen agenteista niiden omassa ympäristössä (”in their native habitat”).
-Open kuvaa avoimuutta, ei lupausta tuesta kaikille agenteille tai
-pääsytavoille nykyisessä versiossa.
+Projektin tuotenimeksi tulee **Open Habitat** ja tekniseksi nimeksi
+`open-habitat`. Sama nimi kulkee selaimesta lähdekoodiin, julkaistavaan
+pakettiin ja kehitysympäristöön. Habitat viittaa agentteihin niiden omassa
+ympäristössä (”in their native habitat”); Open kuvaa avoimuutta eikä lupaa
+nykyversioon tukea kaikille agenteille tai pääsytavoille.
 
-Aiempi päätös oli nimi Omega Habitat (`omega-habitat`), mutta Jari vaihtoi
-sen Open Habitatiksi. GitHubin nimihauissa ei löytynyt
-täsmälleen `open-habitat`-nimistä repoa; `openhabitat` on kuitenkin jo
-käytössä (MichaelrMentele/openhabitat), ja yhden muun repon kuvaus on
-”Open Habitat”. Tämä ei ole varaus eikä tavaramerkkiselvitys. Aiemmin varattu
-`omega-habitat.dev` ei ole uuden nimen domain; sopiva verkkotunnus ja
-julkiset osoitteet ratkaistaan ennen niiden käyttöönottoa.
+## Muutoksen ulottuvuus
 
-## Muutoksen laajuus
+Nimenvaihto kattaa Go-moduulin ja importit, binäärin, web-paketin,
+systemd-, sysusers- ja tmpfiles-määritykset, asennuspolut sekä niitä tuottavat
+ja tarkistavat julkaisu- ja testityökalut. Nykyistä tuotetta kuvaavat
+sopimukset, dokumentaatio, design-aineisto ja agenttiohjeet seuraavat nimeä.
+Kartoituksessa myös `omega-habitat`, `NAH_*`, `nah-*` ja
+`native-agent-host-architecture` ovat olennaisia lähtönimiä.
 
-Issuen alkuperäisessä, 2026-09-25 kirjatussa kartoituksessa vanhan nimen
-muodoille `native-agent-host`, `native agent host` ja `native_agent_host`
-löytyi kirjainkoosta riippumatta noin 1050 osumaa ilman `node_modules/`, `.git/`, `history/` ja
-`dist/`-hakemistoja. Luku kuvaa muutoksen silloista kokoa, ei toteutuksen
-tarkkaa tiedostolistaa.
+GitHub-repo vaihtuu muodosta `maintainer/native-agent-host` muotoon
+`Open-Habitat/open-habitat`. Sitä seuraavat `origin`, paikallinen
+`~/Sources/native-agent-host`, sen `__worktrees`-hakemisto sekä taskfleet-
+ja tw-projektiviittaukset. Fleetrepo omistaa tw:n projektimerkinnän ja
+konkreettisen testiasennuksen; niiden viittaukset kuuluvat muutokseen joko
+tässä työssä tai nimetyssä Fleetrepo-jatkoissuessa.
 
-Saman nimen pitää toimia yhtenäisesti lähdekoodista asennettavaan pakettiin.
-Muutokseen kuuluvat:
+Historiallinen tutkimus, ADR tai issuen tulos saa käyttää aikansa nimeä.
+Olennaista on erottaa historia nykyisestä käyttöohjeesta. Tulokseen kirjataan
+säilytettyjen vanhojen nimien kohteet ja perusteet niin, että seuraava lukija
+ymmärtää, mitkä osumat ovat tarkoituksellisia.
 
-- **Go ja web:** `go.mod`-moduulipolku, `cmd/native-agent-host`, importit,
-  `internal/`-hakemiston asennuspolut ja yksikkönimet sekä
-  `web/package.json`, `web/package-lock.json` ja `web/index.html`.
-- **Paketointi:** `systemd/`-yksiköt, `sysusers.d/`- ja
-  `tmpfiles.d/`-määritykset ja niiden `native-agent-host.conf`-tiedostot,
-  julkaisuarkistot ja `dist/` sekä niitä tuottavat tai tarkistavat
-  `scripts/package-release.sh`, `verify-release.sh`, `vm-test.sh` ja
-  `ci-local.sh` sekä `test/vm/`-testit.
-- **Dokumentaatio ja sopimukset:** `AGENTS.md`, `docs/`, `contracts/`,
-  `design-system/`, `docs/.glasspad.yaml`, `CONFORMANCE.md`, `TODO.md`,
-  `DEPENDENCIES.md`, `AGENTS-WORKFLOW.md` sekä issue-tekstit ja
-  `native-agent-host-architecture`-viittaukset.
-- **GitHub ja kehitysympäristö:** repo
-  `maintainer/native-agent-host` → `Open-Habitat/open-habitat`,
-  paikallinen `origin`, `~/Sources/native-agent-host` ja sen
-  `__worktrees`-hakemisto sekä taskfleet- ja tw-projektikonfiguraatio
-  (tw:n projektimerkintä on Fleetrepossa).
-- **Fleetrepo:** muun muassa `native-agent-*`-issuet sekä Hetzner- ja
-  JIT-broker-töiden viittaukset yksiköihin, käyttäjiin ja polkuihin;
-  myös asennettu tila kuuluu huomioitaviin vaikutuksiin.
+## Mitä nimeämisessä on suojattava
 
-Historialliset tutkimus- ja ADR-tekstit voivat säilyttää vanhan nimen,
-kun ne kuvaavat silloista tilannetta. Toteuttaja ratkaisee säilytettävät
-kohdat niiden merkityksen perusteella ja luettelee ne tässä issuessa.
+Nimenvaihto muuttaa useimpien työalueiden tiedostoja ja työkalujen käyttämiä
+polkuja. Sille tarvitaan tämän projektin taskfleet-ajoista vapaa ikkuna,
+jotta keskeneräisten worktreeiden työ ja niiden laskeutuminen säilyvät.
+Myös säilötyt työpuut voivat sisältää ainoan kopion keskeneräisestä työstä.
 
-`docs/.glasspad.yaml`-tiedoston `space_key` tunnistaa julkaistavan
-dokumentaatiotilan: sen vaihtaminen voi vaikuttaa siihen, päivittyykö
-olemassa oleva tila vai syntyykö uusi. Kyse ei siis ole vain näkyvästä
-otsikosta. `docs/AGENTS.md` mainitsee myös vanhan avaimen ja kuuluu
-päivitettäviin viittauksiin.
+Daemonien sidontatiedostot ovat nyt polussa
+`/etc/omega-habitat/daemon/user-mappings`, erillään gatewayn salaisesta
+`/etc/native-agent-host`-hakemistosta. Molempien korvaaminen samalla uudella
+nimellä ei sellaisenaan säilytä käyttöoikeuksien erottelua. Uusien polkujen
+tulee säilyttää nykyiset lukuoikeudet ja Unix-käyttäjien välinen turvaraja;
+nimenvaihto ei muuta komponenttien auktoriteettia.
 
-Nykyinen `/etc/omega-habitat/daemon/user-mappings` on daemonien
-sidontatiedostojen paikka, erillään gatewayn salaisesta
-`/etc/native-agent-host`-hakemistosta. Nimeämisessä pitää huomioida
-molemmat lähtöpolut: niiden yhdistäminen suoralla nimenkorvauksella rikkoisi
-käyttöoikeuksien erottelun. Uusi `/etc`-rakenne on ratkaistava erikseen.
-Myös lyhenteet kuten `NAH_*` ja `nah-*` on arvioitava nimeämisen osana.
+`docs/.glasspad.yaml`-tiedoston `space_key` on julkaistun dokumentaatiotilan
+identiteetti, ei näkyvä tuotenimi. Sen vaihto voi luoda uuden tilan sen
+sijaan, että päivittäisi nykyistä. Tilan jatkuvuus ja olemassa olevat linkit
+kuuluvat siksi nimeämisratkaisuun; julkaisemisen tausta on `docs/AGENTS.md`:ssä.
 
-## Ajoitus ja asennettu tila
+Testipalvelin on jo asennettu. Ajantasainen tila ja kuitit ovat Fleetrepon
+`infra/machines/native-agent-host-test.md`:ssä, ja asennustavan valintaa
+kuvaa `infra/native-agent-host-test/RELEASE-UPGRADE.md`. Nykyinen saman
+asennusrakenteen julkaisuvaihto ei yksin ratkaise yksiköiden, käyttäjien ja
+polkujen nimeämistä. Testikoneen data ja vanhat versiot ovat korvattavissa,
+joten puhdas asennus on mahdollinen ilman yhteensopivuus- tai
+palautusmekanismin rakentamista. Fleetrepon jaettu tunnelireitti ja muut
+palvelut eivät ole hävitettävää testitilaa.
 
-Nimenvaihto koskee laajasti samoja tiedostoja kuin muu kehitys ja muuttaa
-myös työkalujen käyttämiä polkuja. Toteutus tarvitsee hiljaisen ikkunan,
-jossa yhtään taskfleet-ajoa ei ole käynnissä, jotta keskeneräisten
-worktreeiden työ ja niiden laskeutuminen eivät rikkoudu.
+## Valmis tulos
 
-Alkuperäinen toive 2026-09-25 oli tehdä muutos ennen ensimmäistä oikean
-palvelimen asennusta ja välttää siten käyttäjien ja yksiköiden migraatio.
-`TODO.md`:n 2026-09-30 tilannekuva kertoo jo testipalvelinjulkaisusta
-pilot.12. Fleetrepon 2026-09-29 inventaarion mukaan testipalvelimen pilot.12:n
-yksiköt ja polut käyttävät vanhaa nimeä. Toteutuksessa on tarkistettava
-asennettu nykytila; asentamattomuuteen ei voi enää nojata.
-
-Jos vanha nimi on käytössä systemd-yksiköissä, käyttäjissä tai poluissa,
-pelkkä tekstin vaihto ei riitä: asennus tarvitsee hallitun migraation.
-Fleetrepon viittaukset ja asennettu tila voidaan päivittää tämän työn
-yhteydessä tai kirjata omaksi Fleetrepo-issuekseen. Asennuksen tiedot ja
-kuitit ovat Fleetrepon `infra/machines/native-agent-host-test.md`:ssä. Vaihto- ja palautusmenettely
-on `infra/native-agent-host-test/RELEASE-UPGRADE.md`:ssä, mutta sen nykyinen
-operaattori on vain samojen yksiköiden ja polkujen byte-only-vaihtoa varten:
-nimenvaihto tarvitsee erillisen migraatio- tai uudelleenasennusmenettelyn.
-
-## Hyväksymiskriteerit
-
-- [ ] Go-moduuli, binääri, systemd-, sysusers- ja tmpfiles-nimet, julkaisuarkisto
-      ja web-paketti käyttävät nimeä `open-habitat` ja näkyvä tuotenimi on Open Habitat.
-- [ ] Jäljellä olevat `native-agent-host`-maininnat ovat vain tietoisesti
-      säilytettyä historiaa, ja ne on lueteltu tässä issuessa.
-- [ ] `./scripts/ci-local.sh --clean --json` menee läpi.
-- [ ] GitHub-repo on nimetty uudelleen, ja `origin` sekä paikalliset polut on
-      päivitetty.
-- [ ] Fleetrepon viittaukset ja mahdollinen asennettu tila on päivitetty tai
-      kirjattu omaksi fleetrepo-issuekseen.
+Tuote, julkaisu ja kehitysympäristö käyttävät uutta nimeä johdonmukaisesti,
+GitHub-repo ja paikalliset viittaukset on vaihdettu, ja vanhat nimet ovat
+perusteltua historiaa tai dokumentoituja ulkoisia identiteettejä.
+Fleetrepo-osuus on toteutettu tai sillä on nimetty jatkoissue, josta jäljellä
+oleva työ selviää. Nimenvaihdon toimivuus osoitetaan `TESTING.md`:n mukaisella
+puhtaalla täydellä gatella (`./scripts/ci-local.sh --clean --json`);
+asennuksesta esitetään erikseen tehtyjen tarkistusten näyttö ja rajat.
 
 ## Decisions
 
 ### Jari: uusi nimi
 
-Nimeksi tulee Open Habitat (`open-habitat` teknisissä nimissä); tämä korvaa
-aiemman Omega Habitat -päätöksen. Vanhaa domainia ei siirretä oletusarvoisesti
-uudeksi julkiseksi osoitteeksi.
-
-### 2026-09-30T17:57:12Z · @claude
-
-Aiemman Omega Habitat -päätöksen käsittely, rethink-night 30.9.: rethink-instructions (gpt-6-astra), faktantarkistus fact-check-instructions (claude-opus-5-5). Säilytin Jarin nimen, domainin, hylätyt vaihtoehdot ja hyväksymiskriteerit sekä hiljaisen toteutusikkunan; historialliset havainnot päivätty, historiallisten mainintojen arvio jätetty toteuttajalle. Ilman Jaria tulkitsin omega-perustelun nimimetaforaksi enkä päättänyt logosta tai julkaistun Glasspad-tilan siirrosta. Faktantarkistus täsmensi asennetun pilot.12:n, Fleetrepon inventaarion ja byte-only-vaihto-ohjeen rajan, vanhan ja jo käytössä olevan omega-habitat-/etc-polun käyttöoikeuseron, Glasspad-tiedoston sijainnin sekä puuttuvat koodi-, testi- ja dokumenttiviittaukset. Nykyistä vieraskoneen tilaa tai domainin saatavuutta ei tarkistettu. Ei ristiriitaa Jarin kirjattujen päätösten kanssa.
+Open Habitat (`open-habitat`) korvaa aiemman Omega Habitat -päätöksen.
+Aiemmin varattu `omega-habitat.dev` ei ole uuden nimen domain; verkkotunnus
+ja julkiset osoitteet ratkaistaan ennen käyttöönottoa. Aiempi GitHub-nimihaku
+ei ollut nimen varaus eikä tavaramerkkiselvitys.
