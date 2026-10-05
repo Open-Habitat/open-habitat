@@ -9,7 +9,7 @@ related: ['@design-control-states']
 blocked_by: ['@design-control-states']
 lane: pi-event-design
 lane_seq: 10
-preparation: ready
+preparation: pending
 ---
 
 # Design every Pi event block
@@ -94,6 +94,6 @@ follow the same designer-led approach.
 
 ## Acceptance Criteria
 
-- [ ] The delivered package accounts for the catalogue's visible content and relevant states from Pi's typed data, including the unknown-content fallback; its brief is kept in this issue.
+- [x] The delivered package accounts for the catalogue's visible content and relevant states from Pi's typed data, including the unknown-content fallback; its brief is kept in this issue.
 - [ ] The returned designs cover every visible block and its relevant states on desktop and phone in both themes, using the shared control and agent-state design.
 - [ ] The handoff is incorporated into the current design sources, and follow-up work covers production rendering, discoverable block-library examples and comparison with the designs.
