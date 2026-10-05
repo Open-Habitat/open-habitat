@@ -50,37 +50,37 @@ type ConversationController struct {
 const maxConversationCommands = 4096
 
 type conversation struct {
-	id, workspace, cwd                       string
-	rpc                                      *piRPC
-	owner                                    *piOwnership
-	state                                    string // idle, pending, accepted, rejected, uncertain, stopping
-	ack                                      string // last command: pending, accepted, rejected, uncertain
-	settled                                  bool
-	dead                                     bool
-	queueSteering, queueFollowUp             []string
-	queueRevision                            uint64
-	commands                                 map[string]bool
-	command                                  string
-	events                                   []json.RawMessage
-	cursor                                   uint64
-	historyPath                              string
-	lost                                     bool
-	aborting                                 bool
-	receipts                                 map[string]string // bounded to spent send IDs; no durable acceptance claim
-	turnGeneration                           uint64            // increments on each new prompt, fences slow native settlement reads
-	acceptedMessages                         uint64
-	naming, automaticFirst, automaticRefined bool
-	automaticName                            string // last name written by this controller, never authoritative
-	firstText, thirdText                     string
-	settlement                               map[string]string // observed_at, native_key, state; nil means unknown
-	authError                                string            // fixed code only; cleared on a new prompt
-	question                                 map[string]any    // bounded plain-text pending UI request
-	questionID                               string            // native ID; never trust a browser-supplied native identity
-	questionKind                             string
-	questionChoices                          []string
-	queuedQuestions                          []pendingQuestion // bounded native requests waiting behind the visible one
-	spentQuestions                           map[string]bool   // native IDs already answered or cancelled
-	publishedHistory                         map[string]bool   // bounded to this native session; JSONL is authoritative
+	id, workspace, cwd                                      string
+	rpc                                                     *piRPC
+	owner                                                   *piOwnership
+	state                                                   string // idle, pending, accepted, rejected, uncertain, stopping
+	ack                                                     string // last command: pending, accepted, rejected, uncertain
+	settled                                                 bool
+	dead                                                    bool
+	queueSteering, queueFollowUp                            []string
+	queueRevision                                           uint64
+	commands                                                map[string]bool
+	command                                                 string
+	events                                                  []json.RawMessage
+	cursor                                                  uint64
+	historyPath                                             string
+	lost                                                    bool
+	aborting                                                bool
+	receipts                                                map[string]string // bounded to spent send IDs; no durable acceptance claim
+	turnGeneration                                          uint64            // increments on each new prompt, fences slow native settlement reads
+	acceptedMessages                                        uint64
+	naming, automaticFirst, automaticRefined, refinementDue bool
+	automaticName                                           string // last name written by this controller, never authoritative
+	firstText, thirdText                                    string
+	settlement                                              map[string]string // observed_at, native_key, state; nil means unknown
+	authError                                               string            // fixed code only; cleared on a new prompt
+	question                                                map[string]any    // bounded plain-text pending UI request
+	questionID                                              string            // native ID; never trust a browser-supplied native identity
+	questionKind                                            string
+	questionChoices                                         []string
+	queuedQuestions                                         []pendingQuestion // bounded native requests waiting behind the visible one
+	spentQuestions                                          map[string]bool   // native IDs already answered or cancelled
+	publishedHistory                                        map[string]bool   // bounded to this native session; JSONL is authoritative
 }
 
 type pendingQuestion struct {

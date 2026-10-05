@@ -174,5 +174,45 @@ for line in sys.stdin:
 	if s.naming {
 		t.Fatal("refinement was scheduled twice")
 	}
+	// Hold a request across the third settlement and fourth accepted prompt.
+	// Its completion must still release the reserved third-turn refinement.
+	enteredAgain, releaseAgain := make(chan struct{}), make(chan struct{})
+	c.titleGenerator = func(string) (string, error) {
+		close(enteredAgain)
+		<-releaseAgain
+		return "Another explicit title", nil
+	}
+	s.naming = true
+	s.automaticRefined = false
+	s.refinementDue = false
+	s.acceptedMessages = 2
+	c.mu.Unlock()
+	go c.nameConversation(s, "explicit request", true)
+	<-enteredAgain
+	c.mu.Lock()
+	s.acceptedMessages = 3
+	s.settled = true
+	c.startAutomaticTitle(s)
+	if !s.refinementDue || s.automaticRefined {
+		t.Fatal("third settlement was not reserved")
+	}
+	s.acceptedMessages = 4
+	s.settled = false
+	c.mu.Unlock()
+	close(releaseAgain)
+	deadline = time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		c.mu.Lock()
+		refined, naming := s.automaticRefined, s.naming
+		c.mu.Unlock()
+		if refined && !naming {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	c.mu.Lock()
+	if !s.automaticRefined || s.naming {
+		t.Fatal("fourth turn lost the third-turn refinement")
+	}
 	c.mu.Unlock()
 }

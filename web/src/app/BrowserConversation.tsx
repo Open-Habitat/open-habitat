@@ -155,8 +155,16 @@ export function BrowserConversation({
   const [questionOutcome, setQuestionOutcome] = useState<
     "uncertain" | "stale" | null
   >(null);
-  const [titlePending, setTitlePending] = useState(false);
-  const [titleError, setTitleError] = useState(false);
+  const [titleActionState, setTitleActionState] = useState<{
+    key: string;
+    pending: boolean;
+    error: boolean;
+  } | null>(null);
+  const titleActionKey = `${identity}/${workspace.workspace_id}/${id ?? ""}`;
+  const titlePending =
+    titleActionState?.key === titleActionKey && titleActionState.pending;
+  const titleError =
+    titleActionState?.key === titleActionKey && titleActionState.error;
 
   const {
     start,
@@ -288,7 +296,11 @@ export function BrowserConversation({
           <AgentHeader
             title={title ?? "Uusi keskustelu"}
             titleAction={
-              controlled && csrf
+              controlled &&
+              csrf &&
+              !statusStale &&
+              !serverUnavailable &&
+              !problem
                 ? {
                     label: "Luo uusi otsikko",
                     availability: { state: "enabled" },
@@ -298,11 +310,28 @@ export function BrowserConversation({
                       : undefined,
                     onPress: () => {
                       if (!id || titlePending) return;
-                      setTitlePending(true);
-                      setTitleError(false);
+                      const key = titleActionKey;
+                      const version = generation.current;
+                      setTitleActionState({ key, pending: true, error: false });
                       void regenerateTitle(id, csrf)
-                        .catch(() => setTitleError(true))
-                        .finally(() => setTitlePending(false));
+                        .then(() => {
+                          if (generation.current !== version || !alive.current)
+                            return;
+                          setTitleActionState((previous) =>
+                            previous?.key === key
+                              ? { key, pending: false, error: false }
+                              : previous,
+                          );
+                        })
+                        .catch(() => {
+                          if (generation.current !== version || !alive.current)
+                            return;
+                          setTitleActionState((previous) =>
+                            previous?.key === key
+                              ? { key, pending: false, error: true }
+                              : previous,
+                          );
+                        });
                     },
                   }
                 : undefined

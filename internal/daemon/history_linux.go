@@ -635,38 +635,65 @@ func firstPrompt(s nativeSession, uid int) string {
 
 // nativeName reads Pi's latest session_info, including explicit empty names.
 // A changing file is not evidence of a name for a conditional write.
-func nativeName(s nativeSession, uid int) string { return readNativeName(s, uid, true) }
+func nativeName(s nativeSession, uid int) string {
+	name, ok := readNativeName(s, uid, true)
+	if !ok {
+		return ""
+	}
+	name = prefixBytes(name, 160)
+	if !validTitle(name) {
+		return ""
+	}
+	return name
+}
+
+// A write must distinguish an empty native name from an unreadable one, and
+// compare the full value rather than the display prefix.
+func nativeNameExact(s nativeSession, uid int) (string, bool) {
+	return readNativeName(s, uid, true)
+}
 
 // An already complete name remains safe to display when Pi appends a later
 // entry during a snapshot read. Writes use the stricter nativeName precondition.
-func nativeNameDisplay(s nativeSession, uid int) string { return readNativeName(s, uid, false) }
-
-func readNativeName(s nativeSession, uid int, strict bool) string {
-	if s.state != "readable" {
+func nativeNameDisplay(s nativeSession, uid int) string {
+	name, ok := readNativeName(s, uid, false)
+	if !ok {
 		return ""
+	}
+	name = prefixBytes(name, 160)
+	if !validTitle(name) {
+		return ""
+	}
+	return name
+}
+
+func readNativeName(s nativeSession, uid int, strict bool) (string, bool) {
+	if s.state != "readable" {
+		return "", false
 	}
 	before, err := os.Lstat(s.path)
 	if err != nil || !before.Mode().IsRegular() || before.Size() > maxHistoryFile {
-		return ""
+		return "", false
 	}
 	if uid >= 0 {
 		owner, ok := fileOwner(before)
 		if !ok || owner != uid {
-			return ""
+			return "", false
 		}
 	}
 	f, err := os.Open(s.path)
 	if err != nil {
-		return ""
+		return "", false
 	}
 	defer f.Close()
 	opened, err := f.Stat()
 	if err != nil || !os.SameFile(before, opened) {
-		return ""
+		return "", false
 	}
 	// Most names are near the tail. Inspect its complete lines backward before
 	// walking older history; the fallback remains necessary for early names.
 	var name string
+	known := false
 	const tailSize = 64 << 10
 	if before.Size() > tailSize {
 		tail := make([]byte, tailSize)
@@ -681,8 +708,12 @@ func readNativeName(s nativeSession, uid int, strict bool) string {
 						Type string `json:"type"`
 						Name string `json:"name"`
 					}
-					if json.Unmarshal(lines[i], &entry) == nil && entry.Type == "session_info" {
+					if json.Unmarshal(lines[i], &entry) != nil {
+						return "", false
+					}
+					if entry.Type == "session_info" {
 						name = strings.TrimSpace(entry.Name)
+						known = true
 						break
 					}
 				}
@@ -691,22 +722,18 @@ func readNativeName(s nativeSession, uid int, strict bool) string {
 	}
 	if name == "" {
 		if _, err := f.Seek(0, io.SeekStart); err != nil {
-			return ""
+			return "", false
 		}
-		name = scanNativeNames(f)
+		name, known = scanNativeNames(f)
 	}
 	after, err := os.Lstat(s.path)
 	if err != nil || !os.SameFile(before, after) || after.Size() < before.Size() || (strict && (before.Size() != after.Size() || !before.ModTime().Equal(after.ModTime()))) {
-		return ""
+		return "", false
 	}
-	name = prefixBytes(name, 160)
-	if !validTitle(name) {
-		return ""
-	}
-	return name
+	return name, known
 }
 
-func scanNativeNames(f *os.File) string {
+func scanNativeNames(f *os.File) (string, bool) {
 	reader := bufio.NewReaderSize(io.LimitReader(f, maxHistoryFile+1), 16<<10)
 	var name string
 	for {
@@ -714,6 +741,9 @@ func scanNativeNames(f *os.File) string {
 		// Pi tool output can be much larger than a title entry. Discard its
 		// fragments rather than allocating the whole line or losing later names.
 		if readErr == bufio.ErrBufferFull {
+			if bytes.Contains(line, []byte(`"session_info"`)) || bytes.Contains(line, []byte(`"name":`)) {
+				return "", false
+			}
 			for readErr == bufio.ErrBufferFull {
 				_, readErr = reader.ReadSlice('\n')
 			}
@@ -721,7 +751,7 @@ func scanNativeNames(f *os.File) string {
 				break
 			}
 			if readErr != nil {
-				return ""
+				return "", false
 			}
 			continue
 		}
@@ -729,7 +759,7 @@ func scanNativeNames(f *os.File) string {
 			break
 		}
 		if readErr != nil {
-			return ""
+			return "", false
 		}
 		if !bytes.Contains(line, []byte(`"session_info"`)) {
 			continue
@@ -739,13 +769,13 @@ func scanNativeNames(f *os.File) string {
 			Name string `json:"name"`
 		}
 		if json.Unmarshal(line, &entry) != nil {
-			return ""
+			return "", false
 		}
 		if entry.Type == "session_info" {
 			name = strings.TrimSpace(entry.Name)
 		}
 	}
-	return name
+	return name, true
 }
 
 func sessionFact(s nativeSession, wsid string, uid int) map[string]any {

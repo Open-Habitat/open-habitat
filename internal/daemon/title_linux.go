@@ -65,7 +65,7 @@ func (c *ConversationController) sessionName(s *conversation) (string, bool) {
 	}
 	for _, item := range sessions {
 		if item.id == s.id && item.cwd == s.cwd && item.state == "readable" {
-			return nativeName(item, c.cfg.UID), true
+			return nativeNameExact(item, c.cfg.UID)
 		}
 	}
 	return "", false
@@ -74,14 +74,23 @@ func (c *ConversationController) sessionName(s *conversation) (string, bool) {
 // Caller holds c.mu. Pi does not persist a fresh session until an assistant
 // message exists, so the first attempt starts only after native settlement.
 func (c *ConversationController) startAutomaticTitle(s *conversation) {
-	if c.closed || s.dead || s.naming || !s.settled || c.sessions[s.id] != s {
+	if c.closed || s.dead || c.sessions[s.id] != s {
 		return
 	}
-	if s.acceptedMessages == 1 && !s.automaticFirst && s.firstText != "" {
+	// Latch the third settlement even while the first model call is running.
+	// A fourth prompt must not consume the one scheduled refinement.
+	if s.acceptedMessages == 3 && s.settled && s.thirdText != "" && !s.automaticRefined {
+		s.refinementDue = true
+	}
+	if s.naming {
+		return
+	}
+	if s.acceptedMessages == 1 && s.settled && !s.automaticFirst && s.firstText != "" {
 		s.automaticFirst = true
 		s.naming = true
 		go c.nameConversation(s, s.firstText, false)
-	} else if s.acceptedMessages == 3 && !s.automaticRefined && s.thirdText != "" {
+	} else if s.refinementDue && !s.automaticRefined {
+		s.refinementDue = false
 		s.automaticRefined = true
 		s.naming = true
 		go c.nameConversation(s, s.firstText+"\n"+s.thirdText, false)

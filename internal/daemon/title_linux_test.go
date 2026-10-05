@@ -50,6 +50,32 @@ func TestNativeSessionNameWinsAndLatestPersists(t *testing.T) {
 	if name := nativeName(readNativeHeader(path, os.Getuid()), os.Getuid()); name != "A newer title" {
 		t.Fatal(name)
 	}
+	// Conditional writes compare the entire native name; the UI only shows
+	// a bounded prefix. An oversized/unknown entry must not look unnamed.
+	long := strings.Repeat("n", 200)
+	f, err = os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := json.Marshal(map[string]any{"type": "session_info", "id": "abc4", "name": long})
+	fmt.Fprintln(f, string(b))
+	f.Close()
+	if exact, ok := nativeNameExact(readNativeHeader(path, os.Getuid()), os.Getuid()); !ok || exact != long {
+		t.Fatalf("exact name %q %v", exact, ok)
+	}
+	if display := nativeNameDisplay(readNativeHeader(path, os.Getuid()), os.Getuid()); display != long[:160] {
+		t.Fatalf("display name %q", display)
+	}
+	f, err = os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ = json.Marshal(map[string]any{"type": "session_info", "id": "abc5", "name": strings.Repeat("x", 70000)})
+	fmt.Fprintln(f, string(b))
+	f.Close()
+	if name, ok := nativeNameExact(readNativeHeader(path, os.Getuid()), os.Getuid()); ok {
+		t.Fatalf("oversized native name was treated as known: %d bytes", len(name))
+	}
 }
 
 func TestFirstPromptFitsSnapshotTitle(t *testing.T) {

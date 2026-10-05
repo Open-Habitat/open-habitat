@@ -61,6 +61,19 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   await expect(
     page.getByRole("heading", { name: "Tutki synteettinen työtila" }),
   ).toBeVisible();
+  // A failed action in A must not appear on a different conversation B.
+  await page
+    .getByRole("link", { name: "aurinkokello", exact: true })
+    .last()
+    .click();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(page.getByText("Otsikkoa ei voitu luoda")).toHaveCount(0);
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: /Tutki synteettinen työtila/ })
+    .last()
+    .click();
+  await expect(editor).toBeVisible();
   await editor.fill("hylkää");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
