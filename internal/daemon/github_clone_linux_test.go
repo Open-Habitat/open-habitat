@@ -236,3 +236,42 @@ func TestCloneRenameDuringVerificationNeverSucceeds(t *testing.T) {
 		t.Fatalf("rename %d %s", w.Code, w.Body.String())
 	}
 }
+
+func TestCloneCollisionBeyondFirstBatch(t *testing.T) {
+	cfg, home := cloneFixture(t)
+	src := filepath.Join(home, "src")
+	if err := os.Mkdir(src, 0700); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 530; i++ {
+		if err := os.WriteFile(filepath.Join(src, "file-"+strconv.Itoa(i)), nil, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Mkdir(filepath.Join(src, "Repo"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	run := func(_ context.Context, program, _, _ string, args ...string) ([]byte, error) {
+		calls++
+		if program != "gh" {
+			t.Fatal("Git invoked despite destination collision")
+		}
+		if args[len(args)-1] == "/user" {
+			return []byte(`{"id":42}`), nil
+		}
+		return []byte(`{"name":"repo","full_name":"org/repo","owner":{"login":"org"},"clone_url":"https://github.com/org/repo.git"}`), nil
+	}
+	h := repoCloneHandler(cfg, func(*http.Request) bool { return true }, home, "gh", "git", run)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, cloneRequest(`{"full_name":"org/repo"}`))
+	if w.Code != 409 || !strings.Contains(w.Body.String(), "checkout_exists") || calls != 2 {
+		t.Fatalf("collision beyond batch: %d %s calls %d", w.Code, w.Body.String(), calls)
+	}
+	if got := observeCheckout(context.Background(), cfg, home, "git", nil, "org/repo"); got != "conflict" {
+		t.Fatal(got)
+	}
+	if got := observeCheckout(context.Background(), cfg, home, "git", nil, "org/other"); got != "absent" {
+		t.Fatal(got)
+	}
+}

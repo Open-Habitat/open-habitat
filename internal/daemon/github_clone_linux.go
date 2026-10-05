@@ -141,23 +141,19 @@ func cloneHandler(cfg transport.Config, trusted func(*http.Request) bool, source
 		srcInitial, _ := stat(src)
 		// GitHub repo names are case insensitive. Never conflate an existing tree
 		// (including a partial prior attempt) with a successful import.
-		dup, e := unix.Dup(src)
+		conflict := false
+		e := eachSourceEntry(src, func(entry os.DirEntry) {
+			if strings.EqualFold(entry.Name(), parts[1]) {
+				conflict = true
+			}
+		})
 		if e != nil {
 			snapshotError(w, 409, "checkout_unavailable")
 			return
 		}
-		f := os.NewFile(uintptr(dup), "src")
-		entries, e := f.ReadDir(513)
-		f.Close()
-		if (e != nil && e != io.EOF) || len(entries) > 512 {
-			snapshotError(w, 409, "checkout_unavailable")
+		if conflict {
+			snapshotError(w, 409, "checkout_exists")
 			return
-		}
-		for _, entry := range entries {
-			if strings.EqualFold(entry.Name(), parts[1]) {
-				snapshotError(w, 409, "checkout_exists")
-				return
-			}
 		}
 		if ctx.Err() != nil {
 			snapshotError(w, 409, "checkout_uncertain")

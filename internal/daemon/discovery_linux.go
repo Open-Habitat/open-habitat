@@ -34,7 +34,6 @@ type Workspace struct {
 	dev, ino    uint64 // private observation, never serialized as a browser identity
 }
 
-const maxEntries = 512
 const maxMetadata = 4096
 const maxGitfile = 1024
 
@@ -122,25 +121,14 @@ func scan(home string, uid int, op openFunction) Discovery {
 		result.Error = reason(e)
 		return result
 	}
-	copyFD, e := unix.Dup(src)
-	if e != nil {
-		result.Error = reason(e)
-		return result
-	}
-	f := os.NewFile(uintptr(copyFD), "source")
-	entries, e := f.ReadDir(maxEntries + 1)
-	f.Close()
-	if e != nil && e != io.EOF {
-		result.Error = reason(e)
-		return result
-	}
-	if len(entries) > maxEntries {
-		result.State = "partial"
-		result.Error = "entry_limit"
-		return result
-	}
+	entries := make([]os.DirEntry, 0)
+	e = eachSourceEntry(src, func(entry os.DirEntry) { entries = append(entries, entry) })
+	readErr := e
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
-	partial := false
+	partial := readErr != nil
+	if readErr != nil {
+		result.Error = reason(readErr)
+	}
 	for _, ent := range entries {
 		name := ent.Name()
 		if name == "." || name == ".." || strings.ContainsAny(name, "/\x00") || len(name) > 255 || !utf8.ValidString(name) {

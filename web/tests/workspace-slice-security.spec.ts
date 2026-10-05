@@ -103,3 +103,48 @@ test("@workspace-slice callback errors never claim a session and preserve safe d
   await expect(page).toHaveURL(/\/workspaces\/ws_abcdefgh$/);
   await expect(page.locator("main h1")).toHaveText("Kohdetta ei enää löydy");
 });
+
+test("@workspace-slice browser retains workspaces past 512 and accepts a large partial snapshot", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  const response = await page.request.get("/api/v1/snapshot");
+  expect(response.status()).toBe(200);
+  const base = await response.json();
+  const original = base.workspaces[0];
+  expect(original).toBeDefined();
+  const workspaces = Array.from({ length: 2500 }, (_, i) => ({
+    ...original,
+    workspace_id: `ws_${String(i).padStart(8, "0")}`,
+    observation_token: `obs_${String(i).padStart(8, "0")}`,
+    name: `project-${i}`,
+    display_name: `project-${i}`,
+  }));
+  // Exercise the browser's byte bound independently of the visible list count.
+  const large = {
+    ...base,
+    sources: base.sources.map((fact: { source: string }) =>
+      fact.source === "filesystem" ? { ...fact, state: "unknown" } : fact,
+    ),
+    workspaces,
+    // Preserve schema validity while pushing the wire response past the old 1 MiB limit.
+    agents: [],
+  };
+  expect(JSON.stringify(large).length).toBeGreaterThan(1024 * 1024);
+  await page.route("**/api/v1/snapshot", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(large),
+    });
+  });
+  await page.reload();
+  await expect(page.getByText("Työtiloja ei voitu vahvistaa")).toBeVisible();
+  await page
+    .getByRole("textbox", { name: "Suodata työtiloja" })
+    .fill("project-2499");
+  await expect(page.getByText("project-2499")).toBeVisible();
+});

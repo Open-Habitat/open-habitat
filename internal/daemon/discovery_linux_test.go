@@ -150,11 +150,18 @@ func TestDiscoveryBoundsMountAndRace(t *testing.T) {
 	if e := os.Mkdir(filepath.Join(src, long+"n"), 0700); !errors.Is(e, unix.ENAMETOOLONG) {
 		t.Fatalf("kernel accepted too-long name: %v", e)
 	}
-	for i := 0; i < maxEntries+1; i++ {
-		mkdir(t, filepath.Join(src, "entry"+strings.Repeat("x", i%40)+string(rune(0x1000+i))))
+	for i := 0; i < 513; i++ {
+		name := "entry" + strings.Repeat("x", i%40) + string(rune(0x1000+i))
+		if i%3 == 0 {
+			if err := os.WriteFile(filepath.Join(src, name), nil, 0600); err != nil {
+				t.Fatal(err)
+			}
+		} else {
+			mkdir(t, filepath.Join(src, name))
+		}
 	}
-	if r := testScan(t, h); r.State != "partial" || r.Error != "entry_limit" || len(r.Entries) != 0 {
-		t.Fatalf("limit: %+v", r)
+	if r := testScan(t, h); r.State != "present" || len(r.Entries) != 343 {
+		t.Fatalf("batched mixed discovery: state=%s count=%d error=%s", r.State, len(r.Entries), r.Error)
 	}
 	if e := os.RemoveAll(src); e != nil {
 		t.Fatal(e)

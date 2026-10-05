@@ -26,12 +26,15 @@ mounts inside a workspace. `~/src` itself can share the home's filesystem or
 use the dedicated volume described below. Unreadable or changing entries are
 reported as incomplete observations rather than treated as absent.
 
-The scan has a 512-entry limit, counting files and hidden entries as well as
-directories. Exceeding it returns an incomplete observation with no workspaces,
-not a list of the first 512. Files inside a project do not count toward this
-limit. Replacing this cutoff with batched discovery is agreed;
-[the workspace discovery task](../../issues/remove-workspace-entry-cutoff/item.md)
-owns that change.
+Discovery reads the whole immediate collection in bounded batches of 512 entries;
+files and hidden entries do not consume a workspace allowance. Entries that
+cannot be inspected leave the observation incomplete, while confirmed
+workspaces remain visible. A failed directory read likewise cannot establish
+that an omitted name is absent. Snapshot responses have a 16 MiB transport
+bound; if exceeded, the request fails rather than publishing a truncated list.
+Clone destination checks scan all names, including case-insensitive matches,
+before reserving a directory. A read failure blocks cloning rather than
+assuming the destination is available.
 
 The `.git` entry distinguishes a plain directory from a Git checkout or a
 linked worktree. This is a filesystem hint, not a check of Git's repository

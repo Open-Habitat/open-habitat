@@ -442,12 +442,11 @@ export function App() {
     if (
       snapshot &&
       location.pathname === "/" &&
-      source === "confirmed" &&
       phase === "authenticated" &&
       firstVisible
     )
       navigate(`/workspaces/${firstVisible}`, { replace: true });
-  }, [snapshot, source, firstVisible, location.pathname, navigate, phase]);
+  }, [snapshot, firstVisible, location.pathname, navigate, phase]);
   const selectedId = /^\/workspaces\/(ws_[A-Za-z0-9_-]{8,80})$/.exec(
     location.pathname,
   )?.[1];

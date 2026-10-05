@@ -185,3 +185,40 @@ func TestSnapshotDiscoveryAndSchema(t *testing.T) {
 	h = SnapshotHandlerWithNativeRoot(cfg, func(*http.Request) bool { return true }, state, home)
 	check(request(), 503)
 }
+
+func TestSnapshotLargeBatchedCollection(t *testing.T) {
+	cfg, home := cloneFixture(t)
+	src := filepath.Join(home, "src")
+	if err := os.Mkdir(src, 0700); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 2500; i++ {
+		name := "project-" + strconv.Itoa(i)
+		if err := os.Mkdir(filepath.Join(src, name), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for i := 0; i < 20; i++ {
+		if err := os.WriteFile(filepath.Join(src, "file-"+strconv.Itoa(i)), nil, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h := SnapshotHandlerWithNativeRoot(cfg, func(*http.Request) bool { return true }, func(transport.Config) Discovery { return DiscoverFixtureRoot(home, os.Geteuid()) }, home)
+	r := httptest.NewRequest("GET", "http://unix"+SnapshotPath, nil)
+	r.RequestURI = SnapshotPath
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != 200 {
+		t.Fatalf("snapshot: %d %s", w.Code, w.Body.String())
+	}
+	var doc struct {
+		Sources    []struct{ Source, State string }
+		Workspaces []struct{ Name string }
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &doc); err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.Workspaces) != 2500 || doc.Sources[0].State != "confirmed" || w.Body.Len() <= 1<<20 {
+		t.Fatalf("incomplete snapshot: count=%d state=%s", len(doc.Workspaces), doc.Sources[0].State)
+	}
+}

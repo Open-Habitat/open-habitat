@@ -17,7 +17,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const proxyBodyLimit int64 = 2 << 20
+const proxyBodyLimit int64 = 32 << 20
 const proxyRequestLimit int64 = 66000
 
 type idleReadConn struct{ net.Conn }

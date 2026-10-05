@@ -5,7 +5,6 @@ package daemon
 import (
 	"context"
 	"errors"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -92,22 +91,15 @@ func observeCheckout(parent context.Context, cfg transport.Config, home, git str
 	if e != nil || ss.Uid != uint32(cfg.UID) || ss.Mode&0022 != 0 {
 		return unavailable
 	}
-	dup, e := unix.Dup(src)
-	if e != nil {
-		return unavailable
-	}
-	f := os.NewFile(uintptr(dup), "src")
-	entries, e := f.ReadDir(513)
-	f.Close()
-	if (e != nil && e != io.EOF) || len(entries) > 512 {
-		return unavailable
-	}
 	target := strings.Split(name, "/")[1]
 	matches := []string{}
-	for _, entry := range entries {
+	e = eachSourceEntry(src, func(entry os.DirEntry) {
 		if strings.EqualFold(entry.Name(), target) {
 			matches = append(matches, entry.Name())
 		}
+	})
+	if e != nil {
+		return unavailable
 	}
 	if len(matches) == 0 {
 		if !cloneSourceStillNamed(home, ss) {

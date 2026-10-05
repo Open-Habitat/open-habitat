@@ -19,7 +19,7 @@ import (
 )
 
 const SnapshotPath = "/api/v1/snapshot"
-const MaxSnapshotBytes = 1 << 20
+const MaxSnapshotBytes = 16 << 20
 
 func uuid() (string, bool) {
 	var b [16]byte
