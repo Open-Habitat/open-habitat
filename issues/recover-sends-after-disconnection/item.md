@@ -59,9 +59,9 @@ implemented.
 
 ## Acceptance Criteria
 
-- [ ] Loss of server connectivity blocks new sends while preserving the text; loss of only the event stream does not falsely establish a server outage.
-- [ ] After a lost reply, recovery checks the original send outcome automatically before allowing a new send, without requiring a manual history check or issuing a duplicate send.
-- [ ] Accepted, rejected and still-unknown outcomes produce accurate, concise feedback; a missing receipt is not presented as rejection.
+- [x] Loss of server connectivity blocks new sends while preserving the text; loss of only the event stream does not falsely establish a server outage.
+- [x] After a lost reply, recovery checks the original send outcome automatically before allowing a new send, without requiring a manual history check or issuing a duplicate send.
+- [x] Accepted, rejected and still-unknown outcomes produce accurate, concise feedback; a missing receipt is not presented as rejection.
 
 ## Verification
 
