@@ -13,63 +13,53 @@ preparation: pending
 
 # Prove JIT two-user isolation in private guest
 
-## Goal
+## Purpose and established evidence
 
-Show that first approved GitHub login creates the right Unix account and that
-one user's browser, daemon or processes cannot reach another user's files,
-credentials or socket. Use disposable Linux guests with synthetic identities
-so the security boundary can be exercised without involving real people.
+Establish that approved GitHub first login binds each person to the right Unix
+account, and that their browser, daemon and native processes cannot reach
+another person's files, credentials or socket.
 
-## Evidence already obtained
+The [evidence summary](result.md) records the synthetic guest observations,
+tested revisions and limits, including first-login isolation and broker-crash
+refusal. The precreated-user baseline is distinct from first-login proof.
 
-The [evidence summary](result.md) records passing guest runs for newly
-allocated UIDs, mapped browser routes, kernel peer and filesystem denial,
-repeat login and account-handle changes, simultaneous first-login callbacks,
-session revocation, native GitHub failures and selected inconsistent-state
-faults. These are results for the recorded revisions and scenarios. The
-precreated-user `two-user-routing` baseline is separate from first-login proof.
+## Remaining observation
 
-## Remaining work
+Observe isolation between two bound users after a real test-server reboot:
+service state, login, per-user routing and cross-user home/socket denial.
+Jari chose a straightforward operator-observed smoke instead of further
+automated reboot-harness work. Fleetrepo's 29 September check
+had zero bindings, so it could not establish this property.
 
-The main remaining isolation observation is after a real test-server reboot
-with bound users: service state, login, routing and cross-user home/socket
-access. Jari chose a straightforward operator-observed smoke instead of
-expanding the automated reboot harness. Fleetrepo owns the installation and
-its receipt. Its 29 September reboot check had zero bindings, so it does not
-satisfy this observation. Test identities and native data need a deliberately
-chosen scope; other people's sessions and household services are unrelated.
+Fleetrepo owns the installation, private host details and reboot receipt. Its
+`infra/native-agent-host-test/RELEASE-UPGRADE.md` describes current deployment
+authority and operation; the dated restrictions below describe the old
+installation. The test VM's accounts and data are disposable. Other people's
+sessions, household services and infrastructure outside that VM are not.
+Synthetic identities keep isolation testing independent of real people;
+real-provider sign-in requires their participation and is a separate claim.
 
-For interrupted account creation, the required behavior is to deny access
-while state is uncertain. In-process tests cover refusal at each journal
-phase; an actual broker-process SIGKILL after account creation was also
-observed in a guest, and the restarted broker denied access while the journal
-was pending. [The evidence summary](result.md) records that result and its
-limits; repeating this check is not the remaining work. Recovery is a
-different requirement: Jari rejected a separate operator-reconciliation
-project in
-@reconcile-interrupted-jit-provisioning. This issue does not require building
-recovery or clearing a pending marker to make a test pass.
+Completion means the evidence summary establishes this bound-user post-reboot
+observation alongside the existing first-login proof. Record the tested
+revision, outcomes and limits, referring to Fleetrepo for private evidence. A
+failed or unavailable observation leaves a named gap.
 
-The recorded concurrency and drift cases already provide bounded evidence.
-Further cases should address a concrete missing security claim or observed
-failure, rather than an undefined requirement to cover every scheduling order
-or every possible drift. New behavior such as conversation event streams
-needs its own revocation coverage in the implementing work.
+## Scope and judgment
 
-## Acceptance Criteria
+Uncertain account state is denied access because adopting an ambiguous account
+could cross the Unix-user boundary. The broker-crash refusal has already been
+observed; recovery was rejected in @reconcile-interrupted-jit-provisioning.
+Clearing a pending marker to obtain a passing test would erase the uncertainty
+the test is meant to expose.
 
-- [ ] The evidence summary distinguishes established first-login isolation,
-  remaining security observations and the revisions each result covers.
-- [ ] Post-reboot isolation with bound users is recorded from the
-  operator-observed test-server smoke, with Fleetrepo owning host details.
-- [x] The actual broker-crash refusal observation is recorded with its
-  limits; no recovery feature or unbounded fault matrix is implied.
+Further fault or concurrency work needs a concrete missing security claim or
+observed failure. New behavior, such as conversation streams, carries its own
+revocation coverage in the implementing issue. Historical receipts describe
+their runs, not additional work commitments.
 
-Follow [TESTING.md](../../TESTING.md) for checks appropriate to changes.
-Security-sensitive fixture or assertion changes need independent review:
-a passing test is useful only if its negative cases really detect a breach.
-Historical receipts keep their original scope; they are not instructions to
-repeat completed work or to revive superseded recovery and reboot projects.
+[TESTING.md](../../TESTING.md) defines validation. Security-sensitive fixture
+or assertion changes need independent review because a passing negative test
+only supports isolation if it would detect an actual breach.
 
 ## Decisions
 
