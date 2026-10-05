@@ -5,11 +5,11 @@ type: task
 status: open
 priority: normal
 epic: native-agent-host-architecture
-blocked_by: ['@review-mvp']
-lane: pi-event-ui
-lane_seq: 20
+blocked_by: ['@review-mvp', '@apply-pi-block-design']
+lane: ui-foundation
+lane_seq: 50
 collision: [docs/, design-system/, web/src/components/]
-preparation: pending
+preparation: ready
 ---
 
 # Bring Pi conversation recaps to the browser
