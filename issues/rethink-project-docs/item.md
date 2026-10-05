@@ -26,6 +26,55 @@ esitetään selkeästi tekstin asianomaisessa kohdassa. Erillistä Decisions-osi
 ei säilytetä saman sisällön toistona tai läpikäyntien lokina; aiemmat versiot
 löytyvät Git-historiasta.
 
+## Seuraavaksi: päätökset, brändibriefi ja docs-juuren tekstit
+
+Jari valitsi 5.10.2026 seuraavaksi päätösdokumenttien vielä käsittelemättömät
+tekstit, `docs/brand/omega-habitat-brief.md`:n ja kaikki suoraan `docs/`:ssa
+olevat Markdown-tiedostot. Alla oleva järjestys on tämän läpikäynnin
+jatkamiskohta; se korvaa alempien, aiempien kierrosten seuraava-merkinnät.
+Yksi teksti käsitellään kerrallaan Jarin kanssa.
+
+Historia tarkistettu tiedostoittain `git log --follow`:lla, commit-viesteistä
+ja olennaisista diffeistä sekä tämän issuen merkinnöistä. ADR:ien siirto
+`docs/decisions/`:iin (`11b9430`) ei ollut niiden yhteinen tekstiläpikäynti.
+Päätöksen hyväksyminen, dokumentin luonti tai yksittäisen viitteen päivitys
+ei yksin osoita koko dokumentin läpikäyntiä. Kun siitä ei löytynyt näyttöä,
+teksti jää jonoon; tämä ei peru aiempaa päätöstä.
+
+### Käsittelyjono
+
+| Järjestys | Dokumentti | Historiasta löytynyt käsittely ja seuraavan lukemisen lähtökohta |
+|---|---|---|
+| 1 | [ADR 0002: selainratkaisu](../../docs/decisions/adr-0002-frontend-stack.md) | Koko tekstin rethink puuttuu. `5f7665b` lisäsi vain ADR 0009:n korvaavuusmerkinnän. Oli jo aiemmassa jonossa: vanha Redux-yksinomaisuus, versiot ja hyväksyntäportit on erotettava voimassa olevista päätöksistä. |
+| 2 | [ADR 0005: kloonauksen etenemisvirta](../../docs/decisions/adr-0005-clone-progress-stream.md) | Päätös kirjattu `f280b16`; myöhemmät muutokset koskevat valtuutusta ja Git-vaiheita. Koko tekstin yhteisestä läpikäynnistä ei löytynyt näyttöä. Huomioidaan myöhempi levykiintiön suunnittelupäätös. |
+| 3 | [ADR 0006: selainistuntojen peruuttaminen](../../docs/decisions/adr-0006-subject-revocation.md) | Osapäätöksiä sovitettu `a7738cd`, `5199976`, `9811217` ja `5fb1095`; koko tekstin rethink puuttuu. Erotetaan olemassa oleva operaattoritoiminto kertaluonteisen testitilin nollauksen ohjeista ja myöhemmäksi jääneestä poistamistarpeesta. |
+| 4 | [ADR 0009: keskustelutilan omistajuus](../../docs/decisions/adr-0009-conversation-state-ownership.md) | Syntyi hyväksytyn tiedonkulun läpikäynnissä `5f7665b`. Päätös on käsitelty, mutta uuden ADR-tekstin erillistä lukemista ei ole kirjattu. Luetaan omana päätöstallenteenaan ja tarkistetaan suhde ADR 0002:een ja nykyiseen arkkitehtuurisivuun. |
+| 5 | [Päätösten etusivu](../../docs/decisions/index.md) | Vanha `docs/decisions.md` käsiteltiin `80f8107`; nykyinen sivu luotiin `11b9430` ja sitä täydennettiin `1e5c86d`. Nykyistä tekstiä ei ole merkitty käsitellyksi. Luetaan ADR-kierroksen lopuksi; lokitusta koskeva väite verrataan hyväksyttyyn suositukseen. |
+| 6 | [Omega Habitat -brändibriefi](../../docs/brand/omega-habitat-brief.md) | Luotu `841b8aa`; `e961efc` päivitti vain design-viitteitä. Ei näyttöä koko briefin rethinkistä. Erotetaan Jarin valinnat agentin luovista ehdotuksista ja toimitusvaatimuksista; tuotekuvaus verrataan myöhempiin päätöksiin. |
+| 7 | [Tuotteen tavoite](../../docs/product.md) | Käsitelty `fae13b8`, sittemmin muutettu `11b9430`, `87630ae` ja `55d4cfc`. Uusintakäsittely: sovitun tavoitteen kokonaisuus, etenkin mobiilirajaus ja Pi-kysymysten ohjaimet suhteessa myöhempiin päätöksiin ja toteutukseen. |
+| 8 | [Käyttökulut](../../docs/ui.md) | Käsitelty `925bdb1`; `820a30c` on nimenomaisesti Jarin pyytämä uusi luonnos. Sen koko tekstin hyväksyntää ei löytynyt; myöhemmät korjaukset ovat osittaisia. Sovitetaan kokonaisuus nykyiseen tuotekuvaukseen ja navigaatiopäätöksiin. |
+| 9 | [Design system](../../docs/design-system.md) | Lohkojen työtapaa ja yhden designin lähteitä päivitetty `6235972`, `8b4219b` ja `e961efc`. Koko sivun läpikäynnistä ei löytynyt näyttöä. Tarkistetaan sivun tehtävä suhteessa designiin, komponenttikarttaan, nykyiseen katalogiin ja testiohjeeseen. |
+| 10 | [Dokumentaation agenttiohje](../../docs/AGENTS.md) | Rethink `94376d1` ja faktantarkistus `b6ece5b` löytyvät. Rakenne kirjoitettiin sen jälkeen uudelleen `11b9430`, ja ohjetta täsmennettiin `5d6428b` sekä `cff6c64`. Nykyinen versio luetaan rethink-instructions-skillillä. |
+| 11 | [Dokumentaation etusivu](../../docs/index.md) | Käsitelty `7bd9f82`, uudistettu hakemistorakenteen mukana `11b9430`. Luetaan viimeiseksi muiden sivujen lukupolkuna. |
+
+`docs/CLAUDE.md` on symlinkki `AGENTS.md`:hen, joten sama sisältö käsitellään
+kohdassa 10. Rajauksessa on näin 18 erillistä dokumenttia: 12 päätöshakemistossa,
+yksi brändibriefi ja viisi docs-juuressa. Niistä seitsemän ADR:ää on jo käsitelty
+alla olevan näytön perusteella; 11 tekstiä on yllä ensimmäisessä tai uudessa
+läpikäynnissä. Seuraava tiedosto on **`docs/decisions/adr-0002-frontend-stack.md`**.
+
+### Jo käsitellyt ADR:t
+
+| Dokumentti | Näyttö yhteisestä läpikäynnistä |
+|---|---|
+| [ADR 0001](../../docs/decisions/adr-0001-unix-native-agent-host.md) | `d8a165f`, 30.9.: Jarin hyväksymä natiivin omistajuuden ja myöhempien päätösten selvennys; tämän issuen ADR 0001 -merkintä. |
+| [ADR 0003](../../docs/decisions/adr-0003-host-stack.md) | `4f50e89` ja `855223a`, 29.9.: vastuut, perustelut ja Jarin tarkentama kirjastovalinnan vapaus. |
+| [ADR 0004](../../docs/decisions/adr-0004-first-login-user-provisioning.md) | `992d27d`, 30.9.: Jarin hyväksymä tilinluonnin vastuiden uudelleenkirjoitus. Myöhempi `5199976` sovitti kirjautumishetken valtuutuspäätöksen. |
+| [ADR 0007](../../docs/decisions/adr-0007-bound-user-deprovision.md) | `f2cc690`, 30.9.: Jarin vahvistama testipalvelimen nollaus riittää nyt; yleinen käyttäjän poisto jää suunniteltavaksi. |
+| [ADR 0008](../../docs/decisions/adr-0008-snappy-conversation-switching.md) | `5fb1095` ja `4633ec1`, 2.10.: yhteinen uudelleenkirjoitus ja Jarin jatkopalaute; tämän issuen päätös- ja kommenttimerkinnät. |
+| [ADR 0010](../../docs/decisions/adr-0010-taskfleet-worktree-agents.md) | `87630ae`, 4.10.: ADR, design ja toteutusissue käsiteltiin yhdessä Jarin pyynnöstä. |
+| [ADR 0011](../../docs/decisions/adr-0011-gateway-owned-server-administration.md) | `3efadbe`, 4.10.: commit kirjaa Jarin hyväksymän uudelleenkirjoituksen ja sidottujen käyttäjien listauksen tarkennuksen. Tämän issuen aiempi käsiteltyjen luettelo ei maininnut sitä. |
+
 ## Worktree-agenttien päätös ja toteutustehtävä 4.10.2026
 
 Jari laajensi `manage-agent-worktrees`-issuen läpikäynnin ADR 0010:een ja
@@ -199,9 +248,9 @@ toteutus kuuluvat @decide-logging-policy-issueen. Tarkemmat vastuut ja
 nykytilan erot sovittuihin tavoitteisiin jäävät niitä käsitteleville sivuille.
 Tuotekoodia tai sovittua vastuunjakoa ei muutettu.
 
-`docs/architecture`-kansion sovittu läpikäynti on valmis. Seuraavaa dokumenttia
-ei ole valittu. Pi-kysymysten vastausdialogien yllä kuvattu jatkokäsittely on
-edelleen avoin.
+`docs/architecture`-kansion sovittu läpikäynti on valmis. Jatkamiskohta on
+tämän issuen alun päätös-, brändi- ja docs-juuren jonossa. Pi-kysymysten
+vastausdialogien yllä kuvattu jatkokäsittely on edelleen avoin.
 
 ## Lokituskäytännön tehtävä 3.10.2026
 
