@@ -5,8 +5,12 @@ This directory contains the current design's reference screens and their shared
 components are in `web/src/components/` and the shared values in `../tokens/`.
 
 Update these references in place when the design changes. Git preserves earlier
-versions. Keep one set of screens here so comparisons and designer packages use
-the same target.
+versions. For navigation, the return view, workspace page, and settings, the
+current reference is `Navigaatio ja asetukset.dc.html`. Older roundups
+(`Selainpolku`, `Puhelin`, `Tummat näkymät`) remain references for conversation
+and other views, but their overlapping navigation and settings examples are not
+the current target. Future packages should select by view ownership instead of
+presenting the older examples as competing designs.
 
 The HTML files are simulated prototypes, including their state controls and
 network-loaded preview libraries. Inspect them in a separate browser context

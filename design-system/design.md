@@ -4,7 +4,10 @@ Omega Habitat on rauhallinen työväline omien työtilojen ja agenttikeskusteluj
 käyttöön. Keskustelu on pääsisältö; navigaatio, tilat ja toiminnot tukevat sen
 lukemista. Käyttöliittymä toimii työpöydällä ja puhelimessa, vaaleana ja tummana.
 
-[Vedokset](drafts/) näyttävät sommittelun ja esitystilat. Yhteiset mitat, värit,
+[Vedokset](drafts/) näyttävät sommittelun ja esitystilat. Navigaation,
+paluunäkymän, työtilasivun ja asetusten nykyinen viite on
+[Navigaatio ja asetukset](drafts/Navigaatio%20ja%20asetukset.dc.html).
+Yhteiset mitat, värit,
 fontit ja liike ovat [tokeneissa](tokens/), joita sovellus käyttää
 `styles.css`:n kautta. [Komponenttikartta](components.md) johtaa samoihin
 komponentteihin, jotka näkyvät sovelluksessa ja Storybookissa.
