@@ -10,20 +10,24 @@ public. Keep a page in the language it already has.
 
 ## Three kinds of page
 
-`architecture/` describes the system as it is. Each page covers one whole:
+`architecture/` describes the system as it is. Each page explains one whole:
 components and authorities, identity and trust, conversations, events and
-recovery, workspaces, the HTTP API, deployment. A page opens with what happens,
-in ordinary words, then a Mermaid diagram, then sections. It is written in the
-present tense and carries no dates, revisions, review status, or distinction
-between agreed and built. What is not built is simply not there, apart from the
-short "Not in the system" list on the overview page. Reasons stay, as reasons:
-"the gateway cannot read homes because a bug in the component that parses
-browser traffic must not become access to files" belongs on the page; "Jari
-decided on 2026-09-23" does not. Constants appear only where they shape
-behaviour the reader must know; otherwise point at the package. Code pointers
-are at package level and sparse, since file names drift. Each page may end
-with one line naming the decision records behind it, and does not link records
-inline.
+recovery, workspaces, the HTTP API, or deployment. It opens with what happens
+in ordinary words, followed by a Mermaid diagram and sections. Explain the
+reasons beside the choices they justify.
+
+Describe implemented behavior in the present tense. When a documented
+limitation or design choice is being reconsidered or has an agreed replacement,
+add a brief link to the issue that owns the change. Say whether the issue is
+exploring a solution or implementing an agreed direction, so the reader can
+distinguish current behavior from intent. Keep plans, progress and schedules
+in the issue. When the implementation changes, update the description and
+remove the change reference if it no longer helps explain the system.
+
+Constants appear only where they shape behavior the reader needs to understand.
+Otherwise point to the implementation. Keep code pointers sparse and at package
+level, since file names drift. Each page may end with one line naming the
+decision records behind it.
 
 Before writing a claim on an architecture page, check it against the current
 source. The pages exist to be trusted without reading the code, so a page that
@@ -42,8 +46,9 @@ the reader came for.
 
 ## What does not belong here
 
-Status, progress and schedule live in `TODO.md` and the issues. Research
-reports, proposals awaiting a decision, reviews and investigation results live
+Status, progress and schedule live in `TODO.md` and the issues. Architecture
+pages may link to relevant change issues as described above, but do not
+duplicate their contents. Research reports, proposals awaiting a decision, reviews and investigation results live
 in the issue that produced them. A proposal that reaches `docs/` as a page
 reads as the current design to the next agent, which is how the old
 `logging.md` and `assumptions.md` pages misled readers. Maintenance notes about

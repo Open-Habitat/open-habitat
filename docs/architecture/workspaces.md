@@ -29,7 +29,9 @@ reported as incomplete observations rather than treated as absent.
 The scan has a 512-entry limit, counting files and hidden entries as well as
 directories. Exceeding it returns an incomplete observation with no workspaces,
 not a list of the first 512. Files inside a project do not count toward this
-limit.
+limit. Replacing this cutoff with batched discovery is agreed;
+[the workspace discovery task](../../issues/remove-workspace-entry-cutoff/item.md)
+owns that change.
 
 The `.git` entry distinguishes a plain directory from a Git checkout or a
 linked worktree. This is a filesystem hint, not a check of Git's repository
@@ -71,7 +73,10 @@ Workspace reads do not require the free-space headroom, so filling a qualifying
 volume does not hide existing workspaces. Ordinary workspace reads on the
 home's filesystem need no separate volume; a separately mounted `~/src` must
 satisfy the dedicated-volume size checks. [Deployment](deployment.md) describes
-the installation's responsibilities.
+the installation's responsibilities. A
+[storage quota design task](../../issues/design-user-storage-quotas/item.md)
+is exploring how standard Linux per-user quotas and administrator controls
+will replace these fixed-volume assumptions.
 
 A disconnected browser cancels the clone. Cancellation leaves any partial
 directory in place for inspection. After an interruption, the browser asks
