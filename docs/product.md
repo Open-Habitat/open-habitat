@@ -55,8 +55,9 @@ kirjautumisten ja työtilojen nykytila. Samassa selainistunnossa jo saavutettu
 Pi-vaihe säilyy sivun lataamisen yli. Epäselvä kirjautuminen tai kloonaus
 selvitetään ennen uutta yritystä, jotta samaa työtä ei aloiteta kahdesti.
 Palaava käyttäjä, jonka Pi-tunnukset ovat kunnossa, pääsee suoraan työtiloihin.
-[Käyttöönoton suunnitelma](../issues/design-first-use-onboarding/item.md)
-kuvaa tämän kokonaisuuden ja jäljellä olevan työn.
+[Käyttöönoton päätökset](../issues/design-first-use-onboarding/item.md) on
+kirjattu issueen, ja ruutujen sovitus designiin on
+[align-onboarding-design](../issues/align-onboarding-design/item.md)-työtä.
 
 ## Työhön palaaminen ja navigointi
 

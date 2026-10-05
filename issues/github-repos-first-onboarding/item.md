@@ -30,10 +30,8 @@ advancing. A user with usable Pi credentials goes straight to normal workspaces.
 [@observe-pre-pi-checkout](../observe-pre-pi-checkout/item.md) also records a
 separate-kernel-UID check.
 
-Finish the journey against the new
-[onboarding design](../design-first-use-onboarding/item.md). All repositories
-are visible by default; the user can choose a time filter. Visual composition
-belongs to @design-first-use-onboarding.
+All repositories are visible by default; the user can choose a time filter.
+Fitting the screens to the design belongs to @align-onboarding-design.
 
 An interrupted reply may leave a completed checkout. Observe native state
 before offering another write. If observation also fails, explain that the
