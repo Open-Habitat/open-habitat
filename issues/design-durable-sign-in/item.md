@@ -1,12 +1,13 @@
 ---
 created: 2026-10-04
-updated: 2026-10-04
+updated: 2026-10-05
 type: task
 status: open
 priority: normal
 related: ['@rethink-project-docs']
 labels: [human-review]
 lane: planning
+preparation: pending
 ---
 
 # Design durable browser sign-in
