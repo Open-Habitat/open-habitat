@@ -9,7 +9,7 @@ provenance: chat
 source_ref: taskfleet:01m45tjw4bcnkre1genks6r7eh/conversation-title-split
 originating_run: 01m45tjw4bcnkre1genks6r7eh
 originating_run_kind: spinoff
-preparation: ready
+preparation: pending
 lane: conversation-titles
 collision: [internal/daemon/, web/src/app/App.tsx, web/src/components/Conversation.tsx]
 ---
