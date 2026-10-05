@@ -2,7 +2,7 @@
 created: 2026-10-05
 updated: 2026-10-05
 type: bug
-status: open
+status: in-progress
 priority: normal
 related: ['@rethink-project-docs']
 lane: github-first-onboarding
