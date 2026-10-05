@@ -1,6 +1,6 @@
 # Draft / lab fidelity
 
-Lab and drafts: 42810e4860690939bcd8fcd928696b71048d7eb3; inventory: web/lab/inventory.json; synthetic lab only.
+Lab and drafts: eda6cba80baadbdce36b0d009aedccd557e7f87a; inventory: web/lab/inventory.json; synthetic lab only.
 
 Pairs: 16; unresolved differences: 182; pair gaps: 32; inventory gaps: 79.
 
