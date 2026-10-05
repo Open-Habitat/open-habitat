@@ -94,7 +94,8 @@
       "source": [
         "web/src/app/App.tsx",
         "web/src/components/WorkspaceRailView.tsx",
-        "web/src/components/SidebarV2.stories.tsx"
+        "web/src/components/SidebarV2.stories.tsx",
+        "web/src/components/Catalog.stories.tsx"
       ],
       "draft": "design-system/drafts/Selainpolku.dc.html",
       "focus": true,
@@ -303,7 +304,7 @@
       "route": "/workspaces",
       "steps": ["login", "account-menu"],
       "region": "[role=\"menu\"]",
-      "source": ["web/src/app/App.tsx", "web/src/components/Account.tsx", "web/src/components/ControlStates.stories.tsx"],
+      "source": ["web/src/app/App.tsx", "web/src/components/Account.tsx", "web/src/components/ControlStates.stories.tsx", "web/src/components/AgentInteractionControls.stories.tsx"],
       "draft": null,
       "focus": false,
       "status": "capture"
@@ -472,6 +473,54 @@
         "web/src/components/Conversation.tsx"
       ],
       "draft": null
+    },
+    {
+      "id": "agent-control-results",
+      "view": "@workspace",
+      "status": "gap",
+      "reason": "AgentInteractionControls stories show ready, read-only, pending, acknowledged, rejected and uncertain in isolation; the inventory lab does not capture each result and size/theme combination.",
+      "source": ["web/src/components/AgentInteractionControls.tsx", "web/src/components/AgentInteractionControls.stories.tsx"],
+      "draft": null
+    },
+    {
+      "id": "primitive-variants",
+      "view": "/workspaces",
+      "status": "gap",
+      "reason": "Catalog and ControlStates stories show button variants, links, fields, checkbox, radio, menu, disclosure, dialog and tabs; inventory has no repeatable per-applicable-state hover/press/focus/current/disabled/pending/error journey.",
+      "source": ["web/src/components/Primitives.tsx", "web/src/components/ControlElements.tsx", "web/src/components/Overlays.tsx", "web/src/components/ControlStates.stories.tsx", "web/src/components/Catalog.stories.tsx"],
+      "draft": "design-system/drafts/Navigaatio ja asetukset.dc.html"
+    },
+    {
+      "id": "agent-presentation",
+      "view": "@history",
+      "status": "gap",
+      "reason": "Draft shows working, waiting-new, waiting-seen, conditional closed, read-only and unknown; lab lacks confirmed closure and per-conversation visited native-entry facts. Do not infer closed or crashed from process exit.",
+      "source": ["web/src/components/Navigation.tsx", "web/src/components/Status.tsx", "web/src/components/ReturnView.tsx", "web/src/components/SidebarV2.stories.tsx"],
+      "draft": "design-system/drafts/Navigaatio ja asetukset.dc.html"
+    },
+    {
+      "id": "agent-attention",
+      "view": "/workspaces",
+      "status": "gap",
+      "reason": "No shared per-conversation visited native-entry/question marker establishes new versus seen attention across home, rail and agent list; draft examples remain conditional.",
+      "source": ["web/src/components/ReturnView.tsx", "web/src/components/Navigation.tsx"],
+      "draft": "design-system/drafts/Navigaatio ja asetukset.dc.html"
+    },
+    {
+      "id": "read-only-agent",
+      "view": "@history",
+      "status": "gap",
+      "reason": "Terminal read-only control is a capability, not evidence of waiting or closure; no isolated inventory journey captures it.",
+      "source": ["web/src/components/Conversation.tsx", "web/src/components/AgentInteractionControls.stories.tsx"],
+      "draft": "design-system/drafts/Navigaatio ja asetukset.dc.html"
+    },
+    {
+      "id": "connection-and-send-error",
+      "view": "@workspace",
+      "status": "gap",
+      "reason": "Separate send-rejected, send-uncertain and outage captures exist, but coexistence with agent activity/attention on one row and automatic reconciliation after reconnection have no isolated journey.",
+      "source": ["web/src/components/Status.tsx", "web/src/components/Conversation.tsx"],
+      "draft": "design-system/drafts/Navigaatio ja asetukset.dc.html"
     }
   ],
   "draft_states": [
@@ -639,6 +688,16 @@
       "id": "theme/dark-views",
       "draft": "design-system/drafts/Tummat näkymät.dc.html",
       "state": "landing"
+    },
+    {
+      "id": "navigation/control-matrix",
+      "draft": "design-system/drafts/Navigaatio ja asetukset.dc.html",
+      "state": "primitive-variants"
+    },
+    {
+      "id": "navigation/agent-examples",
+      "draft": "design-system/drafts/Navigaatio ja asetukset.dc.html",
+      "state": "agent-presentation"
     },
     {
       "id": "phone/phone-views",
