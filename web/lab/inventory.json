@@ -34,7 +34,10 @@
       "route": "/workspaces",
       "steps": [],
       "region": "main",
-      "source": ["web/src/app/App.tsx", "web/src/components/LoginCard.tsx"],
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/LoginCard.tsx"
+      ],
       "draft": "design-system/drafts/Onboarding.dc.html",
       "focus": false,
       "status": "capture"
@@ -44,11 +47,14 @@
       "view": "/workspaces",
       "scenario": "pi-onboarding",
       "route": "/workspaces",
-      "steps": ["login"],
+      "steps": [
+        "login"
+      ],
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
-        "web/src/components/GitHubRepoChooser.tsx"
+        "web/src/components/GitHubRepoChooser.tsx",
+        "web/src/components/GitHubRepoChooser.stories.tsx"
       ],
       "draft": "design-system/drafts/Onboarding.dc.html",
       "focus": false,
@@ -59,7 +65,10 @@
       "view": "/workspaces",
       "scenario": "pi-onboarding",
       "route": "/workspaces",
-      "steps": ["login", "repo-chooser"],
+      "steps": [
+        "login",
+        "repo-chooser"
+      ],
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
@@ -74,11 +83,16 @@
       "view": "/workspaces",
       "scenario": "pi-onboarding",
       "route": "/workspaces",
-      "steps": ["login", "repo-chooser", "start-sign-in"],
+      "steps": [
+        "login",
+        "repo-chooser",
+        "start-sign-in"
+      ],
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
-        "web/src/components/PiDeviceSignIn.tsx"
+        "web/src/components/PiDeviceSignIn.tsx",
+        "web/src/components/PiDeviceSignIn.stories.tsx"
       ],
       "draft": "design-system/drafts/Onboarding.dc.html",
       "focus": false,
@@ -89,13 +103,16 @@
       "view": "/workspaces",
       "scenario": "ready",
       "route": "/workspaces",
-      "steps": ["login"],
+      "steps": [
+        "login"
+      ],
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
         "web/src/components/WorkspaceRailView.tsx",
         "web/src/components/SidebarV2.stories.tsx",
-        "web/src/components/Catalog.stories.tsx"
+        "web/src/components/Catalog.stories.tsx",
+        "web/src/components/Foundation.stories.tsx"
       ],
       "draft": "design-system/drafts/Selainpolku.dc.html",
       "focus": true,
@@ -106,7 +123,9 @@
       "view": "@workspace",
       "scenario": "ready",
       "route": "@workspace",
-      "steps": ["login"],
+      "steps": [
+        "login"
+      ],
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
@@ -121,9 +140,17 @@
       "view": "@history",
       "scenario": "ready",
       "route": "@history",
-      "steps": ["login"],
+      "steps": [
+        "login"
+      ],
       "region": "main",
-      "source": ["web/src/app/App.tsx", "web/src/components/HistoryView.tsx", "web/src/components/ConversationStates.stories.tsx"],
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/HistoryView.tsx",
+        "web/src/components/ConversationStates.stories.tsx",
+        "web/src/components/Markdown.stories.tsx",
+        "web/src/components/JourneyStates.stories.tsx"
+      ],
       "draft": "design-system/drafts/Selainpolku.dc.html",
       "focus": true,
       "status": "capture"
@@ -133,9 +160,15 @@
       "view": "/settings",
       "scenario": "ready",
       "route": "/settings",
-      "steps": ["login"],
+      "steps": [
+        "login"
+      ],
       "region": "main",
-      "source": ["web/src/app/App.tsx", "web/src/components/Account.tsx", "web/src/components/SettingsDensity.stories.tsx"],
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/Account.tsx",
+        "web/src/components/SettingsDensity.stories.tsx"
+      ],
       "draft": "design-system/drafts/Selainpolku.dc.html",
       "focus": false,
       "status": "capture"
@@ -145,7 +178,9 @@
       "view": "/workspaces",
       "scenario": "empty",
       "route": "/workspaces",
-      "steps": ["login"],
+      "steps": [
+        "login"
+      ],
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
@@ -160,7 +195,9 @@
       "view": "/workspaces",
       "scenario": "missing",
       "route": "/workspaces",
-      "steps": ["login"],
+      "steps": [
+        "login"
+      ],
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
@@ -175,9 +212,14 @@
       "view": "/workspaces",
       "scenario": "error",
       "route": "/workspaces",
-      "steps": ["login"],
+      "steps": [
+        "login"
+      ],
       "region": "main",
-      "source": ["web/src/app/App.tsx", "web/src/components/Status.tsx"],
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/Status.tsx"
+      ],
       "draft": null,
       "focus": false,
       "status": "capture"
@@ -187,7 +229,9 @@
       "view": "/workspaces",
       "scenario": "partial",
       "route": "/workspaces",
-      "steps": ["login"],
+      "steps": [
+        "login"
+      ],
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
@@ -202,9 +246,14 @@
       "view": "/workspaces",
       "scenario": "malformed",
       "route": "/workspaces",
-      "steps": ["login"],
+      "steps": [
+        "login"
+      ],
       "region": "main",
-      "source": ["web/src/app/App.tsx", "web/src/components/Status.tsx"],
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/Status.tsx"
+      ],
       "draft": null,
       "focus": false,
       "status": "capture"
@@ -214,9 +263,14 @@
       "view": "/workspaces",
       "scenario": "oversize",
       "route": "/workspaces",
-      "steps": ["login"],
+      "steps": [
+        "login"
+      ],
       "region": "main",
-      "source": ["web/src/app/App.tsx", "web/src/components/Status.tsx"],
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/Status.tsx"
+      ],
       "draft": null,
       "focus": false,
       "status": "capture"
@@ -226,9 +280,14 @@
       "view": "/workspaces",
       "scenario": "native-error",
       "route": "/workspaces",
-      "steps": ["login"],
+      "steps": [
+        "login"
+      ],
       "region": "main",
-      "source": ["web/src/app/App.tsx", "web/src/components/Status.tsx"],
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/Status.tsx"
+      ],
       "draft": null,
       "focus": false,
       "status": "capture"
@@ -238,7 +297,9 @@
       "view": "/workspaces",
       "scenario": "pi-blocked",
       "route": "/workspaces",
-      "steps": ["login"],
+      "steps": [
+        "login"
+      ],
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
@@ -254,9 +315,15 @@
       "view": "@workspace",
       "scenario": "ready",
       "route": "@workspace",
-      "steps": ["login", "new-conversation"],
+      "steps": [
+        "login",
+        "new-conversation"
+      ],
       "region": "main",
-      "source": ["web/src/app/App.tsx", "web/src/components/Conversation.tsx"],
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/Conversation.tsx"
+      ],
       "draft": "design-system/drafts/Selainpolku.dc.html",
       "focus": false,
       "status": "capture"
@@ -266,9 +333,16 @@
       "view": "@workspace",
       "scenario": "ready",
       "route": "@workspace",
-      "steps": ["login", "new-conversation", "send-rejected"],
+      "steps": [
+        "login",
+        "new-conversation",
+        "send-rejected"
+      ],
       "region": "main",
-      "source": ["web/src/app/App.tsx", "web/src/components/Conversation.tsx"],
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/Conversation.tsx"
+      ],
       "draft": null,
       "focus": false,
       "status": "capture"
@@ -278,9 +352,16 @@
       "view": "@workspace",
       "scenario": "ready",
       "route": "@workspace",
-      "steps": ["login", "new-conversation", "send-uncertain"],
+      "steps": [
+        "login",
+        "new-conversation",
+        "send-uncertain"
+      ],
       "region": "main",
-      "source": ["web/src/app/App.tsx", "web/src/components/Conversation.tsx"],
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/Conversation.tsx"
+      ],
       "draft": null,
       "focus": false,
       "status": "capture"
@@ -290,9 +371,16 @@
       "view": "@workspace",
       "scenario": "ready",
       "route": "@workspace",
-      "steps": ["login", "new-conversation", "outage"],
+      "steps": [
+        "login",
+        "new-conversation",
+        "outage"
+      ],
       "region": "main",
-      "source": ["web/src/app/App.tsx", "web/src/components/Status.tsx"],
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/Status.tsx"
+      ],
       "draft": null,
       "focus": false,
       "status": "capture"
@@ -302,9 +390,17 @@
       "view": "/workspaces",
       "scenario": "ready",
       "route": "/workspaces",
-      "steps": ["login", "account-menu"],
+      "steps": [
+        "login",
+        "account-menu"
+      ],
       "region": "[role=\"menu\"]",
-      "source": ["web/src/app/App.tsx", "web/src/components/Account.tsx", "web/src/components/ControlStates.stories.tsx", "web/src/components/AgentInteractionControls.stories.tsx"],
+      "source": [
+        "web/src/app/App.tsx",
+        "web/src/components/Account.tsx",
+        "web/src/components/ControlStates.stories.tsx",
+        "web/src/components/AgentInteractionControls.stories.tsx"
+      ],
       "draft": null,
       "focus": false,
       "status": "capture"
@@ -314,7 +410,10 @@
       "view": "@workspace",
       "scenario": "ready",
       "route": "@workspace",
-      "steps": ["login", "workspace-details"],
+      "steps": [
+        "login",
+        "workspace-details"
+      ],
       "region": ".ah-workspace-facts",
       "source": [
         "web/src/app/App.tsx",
@@ -329,7 +428,9 @@
       "view": "/workspaces",
       "status": "gap",
       "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
-      "source": ["web/src/components/Status.tsx"],
+      "source": [
+        "web/src/components/Status.tsx"
+      ],
       "draft": null
     },
     {
@@ -337,39 +438,49 @@
       "view": "/workspaces",
       "status": "gap",
       "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
-      "source": ["web/src/components/LoginCard.tsx"],
+      "source": [
+        "web/src/components/LoginCard.tsx"
+      ],
       "draft": null
     },
     {
       "id": "unknown-content",
       "view": "@history",
       "status": "gap",
-      "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
-      "source": ["web/src/components/Conversation.tsx"],
+      "reason": "Unknown native block fallback is implemented and tested; no isolated repeatable lab capture. Unsupported image MIME and redacted thinking are separate cases, not raw unknown payloads.",
+      "source": [
+        "web/src/components/Conversation.tsx"
+      ],
       "draft": null
     },
     {
       "id": "tool-expanded",
       "view": "@history",
       "status": "gap",
-      "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
-      "source": ["web/src/components/Conversation.tsx"],
+      "reason": "Call and result can be expanded using bounded native block reads; no repeatable inventory interaction. Success/error, image, long/truncated and extension tool variations remain uncovered visually.",
+      "source": [
+        "web/src/components/Conversation.tsx"
+      ],
       "draft": null
     },
     {
       "id": "chat-working",
       "view": "@workspace",
       "status": "gap",
-      "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
-      "source": ["web/src/components/Conversation.tsx"],
+      "reason": "ConversationStates stories and pi-typed fixture illustrate activity/progress; inventory has no repeatable mid-turn capture.",
+      "source": [
+        "web/src/components/Conversation.tsx"
+      ],
       "draft": null
     },
     {
       "id": "chat-answer",
       "view": "@workspace",
       "status": "gap",
-      "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
-      "source": ["web/src/components/Conversation.tsx"],
+      "reason": "ConversationStates stories and pi-typed saved history illustrate completed reply; inventory does not capture its settled typed state.",
+      "source": [
+        "web/src/components/Conversation.tsx"
+      ],
       "draft": null
     },
     {
@@ -377,7 +488,9 @@
       "view": "/workspaces",
       "status": "gap",
       "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
-      "source": ["web/src/components/Navigation.tsx"],
+      "source": [
+        "web/src/components/Navigation.tsx"
+      ],
       "draft": null
     },
     {
@@ -385,7 +498,9 @@
       "view": "/workspaces",
       "status": "gap",
       "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
-      "source": ["web/src/components/Navigation.tsx"],
+      "source": [
+        "web/src/components/Navigation.tsx"
+      ],
       "draft": null
     },
     {
@@ -393,7 +508,9 @@
       "view": "/workspaces",
       "status": "gap",
       "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
-      "source": ["web/src/components/GitHubRepoChooser.tsx"],
+      "source": [
+        "web/src/components/GitHubRepoChooser.tsx"
+      ],
       "draft": null
     },
     {
@@ -401,7 +518,9 @@
       "view": "/workspaces",
       "status": "gap",
       "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
-      "source": ["web/src/components/PiDeviceSignIn.tsx"],
+      "source": [
+        "web/src/components/PiDeviceSignIn.tsx"
+      ],
       "draft": null
     },
     {
@@ -448,7 +567,7 @@
       "id": "typed-pi-stream",
       "view": "@workspace",
       "status": "gap",
-      "reason": "The typed Pi lab journey and tracked provisional screenshots exist; inventory capture does not yet reproduce the streaming-to-saved transition.",
+      "reason": "pi-typed and pi-visual-hold host fixture scenarios and tracked provisional pairs exercise live indexed thinking, argument delta, progress and persisted replacement; inventory capture cannot reproduce the transition. The provisional pair is not the complete block library.",
       "source": [
         "web/src/components/Conversation.tsx"
       ],
@@ -458,7 +577,7 @@
       "id": "typed-pi-block-read",
       "view": "@history",
       "status": "gap",
-      "reason": "A tracked synthetic block-read pair exists, but the inventory has no repeatable selected-content journey.",
+      "reason": "Tracked synthetic block-read HTML/PNG show a selected full block; inventory capture cannot yet open a bounded selected-content journey.",
       "source": [
         "web/src/components/Conversation.tsx"
       ],
@@ -468,7 +587,7 @@
       "id": "typed-pi-markers",
       "view": "@history",
       "status": "gap",
-      "reason": "Summaries, session markers, visible extension output and local command states are implemented provisionally but not isolated by the inventory lab.",
+      "reason": "Saved summaries, model/thinking changes, session name/label, visible extension output and local bashExecution are provisionally rendered, but neither fixture nor inventory isolates all variants.",
       "source": [
         "web/src/components/Conversation.tsx"
       ],
@@ -479,7 +598,10 @@
       "view": "@workspace",
       "status": "gap",
       "reason": "AgentInteractionControls stories show ready, read-only, pending, acknowledged, rejected and uncertain in isolation; the inventory lab does not capture each result and size/theme combination.",
-      "source": ["web/src/components/AgentInteractionControls.tsx", "web/src/components/AgentInteractionControls.stories.tsx"],
+      "source": [
+        "web/src/components/AgentInteractionControls.tsx",
+        "web/src/components/AgentInteractionControls.stories.tsx"
+      ],
       "draft": null
     },
     {
@@ -487,7 +609,13 @@
       "view": "/workspaces",
       "status": "gap",
       "reason": "Catalog and ControlStates stories show button variants, links, fields, checkbox, radio, menu, disclosure, dialog and tabs; inventory has no repeatable per-applicable-state hover/press/focus/current/disabled/pending/error journey.",
-      "source": ["web/src/components/Primitives.tsx", "web/src/components/ControlElements.tsx", "web/src/components/Overlays.tsx", "web/src/components/ControlStates.stories.tsx", "web/src/components/Catalog.stories.tsx"],
+      "source": [
+        "web/src/components/Primitives.tsx",
+        "web/src/components/ControlElements.tsx",
+        "web/src/components/Overlays.tsx",
+        "web/src/components/ControlStates.stories.tsx",
+        "web/src/components/Catalog.stories.tsx"
+      ],
       "draft": "design-system/drafts/Navigaatio ja asetukset.dc.html"
     },
     {
@@ -495,7 +623,12 @@
       "view": "@history",
       "status": "gap",
       "reason": "Draft shows working, waiting-new, waiting-seen, conditional closed, read-only and unknown; lab lacks confirmed closure and per-conversation visited native-entry facts. Do not infer closed or crashed from process exit.",
-      "source": ["web/src/components/Navigation.tsx", "web/src/components/Status.tsx", "web/src/components/ReturnView.tsx", "web/src/components/SidebarV2.stories.tsx"],
+      "source": [
+        "web/src/components/Navigation.tsx",
+        "web/src/components/Status.tsx",
+        "web/src/components/ReturnView.tsx",
+        "web/src/components/SidebarV2.stories.tsx"
+      ],
       "draft": "design-system/drafts/Navigaatio ja asetukset.dc.html"
     },
     {
@@ -503,7 +636,10 @@
       "view": "/workspaces",
       "status": "gap",
       "reason": "No shared per-conversation visited native-entry/question marker establishes new versus seen attention across home, rail and agent list; draft examples remain conditional.",
-      "source": ["web/src/components/ReturnView.tsx", "web/src/components/Navigation.tsx"],
+      "source": [
+        "web/src/components/ReturnView.tsx",
+        "web/src/components/Navigation.tsx"
+      ],
       "draft": "design-system/drafts/Navigaatio ja asetukset.dc.html"
     },
     {
@@ -511,7 +647,10 @@
       "view": "@history",
       "status": "gap",
       "reason": "Terminal read-only control is a capability, not evidence of waiting or closure; no isolated inventory journey captures it.",
-      "source": ["web/src/components/Conversation.tsx", "web/src/components/AgentInteractionControls.stories.tsx"],
+      "source": [
+        "web/src/components/Conversation.tsx",
+        "web/src/components/AgentInteractionControls.stories.tsx"
+      ],
       "draft": "design-system/drafts/Navigaatio ja asetukset.dc.html"
     },
     {
@@ -519,8 +658,77 @@
       "view": "@workspace",
       "status": "gap",
       "reason": "Separate send-rejected, send-uncertain and outage captures exist, but coexistence with agent activity/attention on one row and automatic reconciliation after reconnection have no isolated journey.",
-      "source": ["web/src/components/Status.tsx", "web/src/components/Conversation.tsx"],
+      "source": [
+        "web/src/components/Status.tsx",
+        "web/src/components/Conversation.tsx"
+      ],
       "draft": "design-system/drafts/Navigaatio ja asetukset.dc.html"
+    },
+    {
+      "id": "typed-pi-user-images",
+      "view": "@history",
+      "status": "gap",
+      "reason": "User ordered text and image markers, supported image read, unsupported MIME placeholder and long text have no dedicated inventory journey.",
+      "source": [
+        "web/src/components/Conversation.tsx",
+        "web/src/components/ConversationStates.stories.tsx"
+      ],
+      "draft": "design-system/drafts/Selainpolku.dc.html"
+    },
+    {
+      "id": "typed-pi-thinking",
+      "view": "@history",
+      "status": "gap",
+      "reason": "Readable streaming/completed/redacted thinking (without opaque payload) is not isolated in inventory; tracked pi-typed provisional captures show only a subset.",
+      "source": [
+        "web/src/components/Conversation.tsx",
+        "web/src/components/ConversationStates.stories.tsx"
+      ],
+      "draft": "design-system/drafts/Selainpolku.dc.html"
+    },
+    {
+      "id": "typed-pi-tool-variants",
+      "view": "@history",
+      "status": "gap",
+      "reason": "Built-in/extension tool name and arguments, running/progress, saved success/error text/image and selected full/truncated content have no complete capture matrix.",
+      "source": [
+        "web/src/components/Conversation.tsx",
+        "web/src/components/ConversationStates.stories.tsx"
+      ],
+      "draft": "design-system/drafts/Selainpolku.dc.html"
+    },
+    {
+      "id": "typed-pi-local-command",
+      "view": "@history",
+      "status": "gap",
+      "reason": "Distinct local bashExecution output, exit/cancel/truncation/excludeFromContext and incremental updates have no isolated inventory journey.",
+      "source": [
+        "web/src/components/Conversation.tsx",
+        "web/src/components/ConversationStates.stories.tsx"
+      ],
+      "draft": "design-system/drafts/Selainpolku.dc.html"
+    },
+    {
+      "id": "typed-pi-extension-ui",
+      "view": "@history",
+      "status": "gap",
+      "reason": "Visible custom message/notification/status/widget replace/clear and select/confirm/input/editor question content/timeout lack repeatable inventory capture; hidden extension data is not a gap.",
+      "source": [
+        "web/src/components/Conversation.tsx",
+        "web/src/components/ConversationStates.stories.tsx"
+      ],
+      "draft": "design-system/drafts/Selainpolku.dc.html"
+    },
+    {
+      "id": "typed-pi-recovery",
+      "view": "@history",
+      "status": "gap",
+      "reason": "Abort/length/error/deferred, compaction/summary retry, queue steering/follow-up and history/live reconciliation lack repeatable inventory capture.",
+      "source": [
+        "web/src/components/Conversation.tsx",
+        "web/src/components/ConversationStates.stories.tsx"
+      ],
+      "draft": "design-system/drafts/Selainpolku.dc.html"
     }
   ],
   "draft_states": [
