@@ -1,6 +1,6 @@
 ---
 created: 2026-10-04
-updated: 2026-10-04
+updated: 2026-10-05
 type: bug
 reporter: jari
 status: open
@@ -9,6 +9,7 @@ provenance: chat
 source_ref: taskfleet:01m427s47pbwfvjag70kdbhy8z
 lane: release-tooling
 lane_seq: 10
+preparation: ready
 ---
 
 # Release tooling friction found during the pilot.18 release

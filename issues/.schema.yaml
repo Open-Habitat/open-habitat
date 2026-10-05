@@ -59,6 +59,11 @@ fields:
   review_status:
     required: false
     enum: [requested, in-review, approved, changes-requested]
+  # Joint approval of the next work described in this issue; not lifecycle status
+  # and not consent for real-person testing. The DAG gate is enabled separately.
+  preparation:
+    required: false
+    enum: [pending, reviewing, ready]
   # Lightweight estimates. Declare either `size` OR `estimate` on an
   # issue, not both — the schema can't express the mutual-exclusion
   # rule directly, but `issuectl workload` / `burndown` will flag any
