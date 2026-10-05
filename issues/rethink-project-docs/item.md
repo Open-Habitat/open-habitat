@@ -45,7 +45,7 @@ teksti jää jonoon; tämä ei peru aiempaa päätöstä.
 
 | Järjestys | Dokumentti | Historiasta löytynyt käsittely ja seuraavan lukemisen lähtökohta |
 |---|---|---|
-| 1 | [ADR 0002: selainratkaisu](../../docs/decisions/adr-0002-frontend-stack.md) | Käsitelty Jarin kanssa 5.10.: selainpohjan valinta ja perustelut säilyvät; Reduxin myöhempi muutos ja UI-hyväksyntäportin korvautuminen näkyvät omissa kohdissaan. Toteutusreseptit ja versiot jäävät lähdeaineistoon. |
+| 1 | [ADR 0002: selainratkaisu](../../docs/decisions/adr-0002-frontend-stack.md) | Käsitelty Jarin kanssa 5.10.: selainpohjan valinta ja perustelut säilyvät; Reduxin myöhempi muutos näkyy tilan omistajuuden kohdalla; vanha UI-hyväksyntäportti jää historiaan. Toteutusreseptit ja versiot jäävät lähdeaineistoon. |
 | 2 | [ADR 0005: kloonauksen etenemisvirta](../../docs/decisions/adr-0005-clone-progress-stream.md) | Päätös kirjattu `f280b16`; myöhemmät muutokset koskevat valtuutusta ja Git-vaiheita. Koko tekstin yhteisestä läpikäynnistä ei löytynyt näyttöä. Huomioidaan myöhempi levykiintiön suunnittelupäätös. |
 | 3 | [ADR 0006: selainistuntojen peruuttaminen](../../docs/decisions/adr-0006-subject-revocation.md) | Osapäätöksiä sovitettu `a7738cd`, `5199976`, `9811217` ja `5fb1095`; koko tekstin rethink puuttuu. Erotetaan olemassa oleva operaattoritoiminto kertaluonteisen testitilin nollauksen ohjeista ja myöhemmäksi jääneestä poistamistarpeesta. |
 | 4 | [ADR 0009: keskustelutilan omistajuus](../../docs/decisions/adr-0009-conversation-state-ownership.md) | Syntyi hyväksytyn tiedonkulun läpikäynnissä `5f7665b`. Päätös on käsitelty, mutta uuden ADR-tekstin erillistä lukemista ei ole kirjattu. Luetaan omana päätöstallenteenaan ja tarkistetaan suhde ADR 0002:een ja nykyiseen arkkitehtuurisivuun. |
@@ -81,8 +81,10 @@ odottaa ensimmäistä tai uutta läpikäyntiä. Seuraava tiedosto on
 Jari hyväksyi selainpohjan päätöksen tiivistämisen valintoihin ja perusteluihin.
 React, TypeScript 7, Biome, staattinen jakelu, React Aria ja yhteiset
 Storybook-tuotantokomponentit säilyvät. Reduxin alkuperäinen omistajuus ja
-ADR 0009:n myöhempi muutos kuvataan yhdessä. Aikanaan hyväksytyn
-UI-osakohtaisen hyväksyntäportin korvautuminen viittaa nykyiseen työtapaan.
+ADR 0009:n myöhempi muutos kuvataan yhdessä. Jarin jatkopalautteen mukaan
+vanhan UI-hyväksyntäportin korvautumista tai dokumentin siivousta ei selosteta
+ADR:ssä. Työkalujen hyväksyntäkokeen selostus ja päätöksen kannalta
+tarpeettomat toteutusohjeet poistettiin; nykyinen työtapa on omissa ohjeissaan.
 Turvallinen renderöinti ja pitkien historioiden käytettävyys säilyvät;
 Shiki-workerin ja diffikirjaston toteutusreseptit, kokeiden luvut sekä
 komentoluettelot jäävät alkuperäiseen valinta-aineistoon. Pakettiversiot eivät

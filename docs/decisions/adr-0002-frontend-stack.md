@@ -24,11 +24,8 @@ needs no server-side rendering or React Server Components, and deployment needs
 no JavaScript server runtime.
 
 React was chosen for its accessible controls, rendering and testing ecosystem,
-and its fit with an application that reconciles continuous events. Existing
-JSX design references ease implementation, but production components own the
-behavior. Stable TypeScript 7, Biome for formatting and linting, and `tsc` for
-type checking were explicitly accepted after the combined toolchain passed
-without forced peer dependencies, disabled checks or nightly packages.
+and its fit with an application that reconciles continuous events. Use stable
+TypeScript 7, Biome for formatting and linting, and `tsc` for type checking.
 
 ### State ownership
 
@@ -41,8 +38,6 @@ retains application and session state.
 
 Routes own the current selection, session storage preserves per-tab drafts,
 and components own transient interaction state such as focus and open menus.
-The browser reconciles evidence from the host rather than treating a missing
-acknowledgement as permission to resend a command.
 
 ### Components and rendering
 
@@ -56,15 +51,12 @@ project's control.
 
 Treat native history and tool output as untrusted content. Render ordinary
 output as text and Markdown through React Markdown, GFM support and sanitization,
-so content cannot become executable HTML. Serve application assets locally
-under the gateway's Content Security Policy. Code highlighting and diff views
-must preserve this boundary.
+so content cannot become executable HTML.
 
 Long histories and large output need bounded rendering that preserves the
 reading position and access to the content. TanStack React Virtual was selected
 for variable-height timeline virtualization. Rich renderers can load separately
-to keep the initial application small. Exact renderer recipes and the original
-experiments remain in the [selection report](../../issues/choose-frontend-stack/result.md).
+to keep the initial application small.
 
 ## Consequences and alternatives
 
@@ -79,14 +71,6 @@ reconciliation. Server-rendered HTML with HTMX would still need substantial
 custom browser state for drafts, streaming, command uncertainty and history
 virtualization. Server rendering would add a second rendering path without a
 clear benefit for this authenticated workspace.
-
-The original acceptance also required Jari's approval of each UI slice before
-dependent work could proceed. The later [working arrangement](../../AGENTS-WORKFLOW.md#ui-work)
-replaced that gate with visual reviews in batches and explicit records of what
-remains unreviewed. [TESTING.md](../../TESTING.md) defines current validation;
-[the package](../../web/package.json) and its lockfile record dependency versions.
-The original pins describe the evaluated toolchain rather than permanent
-architecture constraints.
 
 The [selection report](../../issues/choose-frontend-stack/result.md) preserves
 the comparison, package versions, trials and their limits. The
