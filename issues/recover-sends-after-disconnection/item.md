@@ -3,12 +3,14 @@ created: 2026-10-05
 updated: 2026-10-05
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 related: ['@align-navigation-design', '@rethink-project-docs']
 lane: agent-control
 collision: [web/src/app/App.tsx, web/src/components/Conversation.tsx, docs/]
 preparation: ready
+closed: 2026-10-05
+closed_by: claude
 ---
 
 # Recover message sends after a server disconnection
