@@ -364,7 +364,11 @@ export function useConversationActions({
               ? "Lähetysvirhe · tulos epävarma"
               : "Aiemman pyynnön tulos epävarma"
           }
-          description="Tarkistetaan alkuperäisen viestin kuittaus yhteyden palattua. Viestiä ei lähetetä uudelleen."
+          description={
+            receipt.startsWith("Lähetysvirhe")
+              ? "Alkuperäisen viestin kuittaus tarkistetaan yhteyden palattua. Viestiä ei lähetetä uudelleen."
+              : "Alkuperäisen viestin kuittaus ei vahvista tulosta. Viestiä ei lähetetä uudelleen."
+          }
           tone="warning"
         />
       ) : null}

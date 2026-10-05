@@ -335,7 +335,9 @@ export function useConversation({
           let outcome =
             nextStatus.command_id === command
               ? nextStatus.send_receipt ||
-                (nextStatus.ack === "accepted" || nextStatus.ack === "rejected"
+                (nextStatus.ack === "pending" ||
+                nextStatus.ack === "accepted" ||
+                nextStatus.ack === "rejected"
                   ? nextStatus.ack
                   : undefined)
               : undefined;
@@ -350,8 +352,7 @@ export function useConversation({
           if (!alive.current || version !== generation.current) return;
           const text = sessionStorage.getItem(submittedKey);
           // Do not let an older in-flight read settle a newer command.
-          if (sessionStorage.getItem(sendKey) !== command) return;
-          if (text !== null) {
+          if (sessionStorage.getItem(sendKey) === command && text !== null) {
             if (outcome === "accepted" || outcome === "rejected") {
               setSendObservation({ text, state: outcome });
               setReceipt(outcome === "rejected" ? "Viesti hylättiin." : "");

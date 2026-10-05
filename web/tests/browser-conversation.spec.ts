@@ -1861,10 +1861,14 @@ test("@browser-conversation cursor 409 waits for a newer snapshot before reopeni
 test("@browser-conversation lost accepted reply recovers on HTTP snapshot without an event", async ({
   page,
 }) => {
+  // Keep SSE unavailable and freeze scheduled retries: the HTTP snapshot
+  // must initiate the receipt check on its own.
+  await page.route("**/api/v1/events?after=*", (route) => route.abort());
   await open(page);
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
   await expect(editor).toBeVisible();
+  await page.clock.pauseAt(new Date());
   let sends = 0;
   await page.route("**/api/v1/conversations/*/send", async (route) => {
     sends++;
@@ -1968,4 +1972,38 @@ test("@browser-conversation daemon restart loses controller without declaring th
     page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toBeDisabled();
   expect(sends).toBe(1);
+});
+
+test("@browser-conversation queued command with pending ack stays pending without a receipt", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await editor.fill("hidas päätyö");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(editor).toHaveValue("");
+  let command = "";
+  let queues = 0;
+  await page.route("**/api/v1/conversations/*/follow_up", async (route) => {
+    queues++;
+    command = (route.request().postDataJSON() as { command_id: string })
+      .command_id;
+    await route.continue();
+  });
+  await page.route("**/api/v1/conversations/*/status", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    if (command && body.command_id === command) {
+      body.state = "pending";
+      body.ack = "pending";
+      body.send_receipt = "";
+    }
+    await route.fulfill({ response, json: body });
+  });
+  await editor.fill("jonoon vain kerran");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(page.locator(".ah-send-pending")).toBeVisible();
+  await expect(page.locator(".ah-send-uncertain")).toHaveCount(0);
+  expect(queues).toBe(1);
 });
