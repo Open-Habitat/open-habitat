@@ -178,7 +178,18 @@ Versiointikäytäntö säilyy; kaikkien komentopyyntöjen ei väitetä sisältä
 versiokenttää. Pi-tilatarkistus erotettu mallipyynnön onnistumisesta.
 Tuotekoodia tai sovittua vastuunjakoa ei muutettu.
 
-Seuraava käsiteltävä tiedosto on `docs/architecture/deployment.md`.
+`deployment.md` käsitelty Jarin hyväksymällä rajauksella 5.10.2026.
+Sivu kuvaa prosessien elinkaaren, pysyvät tiedot, päivitysten vaikutukset ja
+operaattorin vastuut. Broker käyttää asennuksen toimittamia yksikköpohjia;
+daemonin uudelleenkäynnistys keskeyttää sen Pi-prosessit. Kiinteät
+valmiusvastaukset ja huoltomerkin vaikutuksen puuttuminen kuvattu toteutuksen
+mukaan. Pi-valitsimen virhe estää daemonin käynnistyksen CLI:n kautta, vaikka
+valitsimen lukijan koodikommentti väittää muuta. Tarkat polku-, oikeusbitti- ja
+komentoluettelot korvattu selityksillä ja lähdeviitteillä. ADR 0003:n yleinen
+palautusmalli erotettu testipalvelimen myöhemmästä korjaa-eteenpäin-käytännöstä.
+Tuotekoodia tai sovittua vastuunjakoa ei muutettu.
+
+Seuraava käsiteltävä tiedosto on `docs/architecture/index.md`.
 
 ## Lokituskäytännön tehtävä 3.10.2026
 
