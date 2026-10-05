@@ -16,15 +16,23 @@
   background: var(--i-selected, var(--ah-current));
   color: var(--i-selected-fg, var(--ah-ink));
 }
-.surface:not([data-disabled]):not([data-pending]):is(:hover, [data-hovered]) {
+.surface:not([data-disabled]):not([data-pending]):is(
+  :hover,
+  [data-hovered],
+  [data-ah-state="hover"]
+) {
   background: var(--i-hover, var(--ah-surface-hover));
   color: var(--i-hover-fg, var(--i-fg, var(--ah-ink)));
 }
-.surface:not([data-disabled]):not([data-pending]):is(:active, [data-pressed]) {
+.surface:not([data-disabled]):not([data-pending]):is(
+  :active,
+  [data-pressed],
+  [data-ah-state="pressed"]
+) {
   background: var(--i-pressed, var(--ah-surface-press));
   color: var(--i-pressed-fg, var(--i-fg, var(--ah-ink)));
 }
-.surface:is(:focus-visible, [data-focus-visible]) {
+.surface:is(:focus-visible, [data-focus-visible], [data-ah-state="focus"]) {
   outline: var(--ah-focus-width) solid var(--ah-focus);
   outline-offset: var(--ah-focus-offset);
 }
