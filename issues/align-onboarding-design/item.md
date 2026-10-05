@@ -3,13 +3,13 @@ created: 2026-10-05
 updated: 2026-10-05
 type: task
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-05:first-use-onboarding-rethink
 originating_run: 01m45vh37hqns995zyag093677
 originating_run_kind: spinoff
-preparation: pending
+preparation: reviewing
 related: ['@design-first-use-onboarding', '@align-navigation-design', '@align-settings-design', '@account-profile-from-github', '@github-repos-first-onboarding']
 collision: [web/]
 ---
