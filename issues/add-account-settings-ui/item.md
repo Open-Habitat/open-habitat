@@ -1,10 +1,10 @@
 ---
 created: 2026-09-27
-updated: 2026-10-03
+updated: 2026-10-05
 type: improvement
-status: testing
+status: done
 priority: high
-related: ['@design-first-use-onboarding', '@build-history-view', '@account-profile-from-github', '@align-settings-design', '@align-navigation-design', '@browser-logout-cleanup', '@decide-account-display']
+related: ['@design-first-use-onboarding', '@build-history-view', '@account-profile-from-github', '@align-settings-design', '@align-navigation-design', '@browser-logout-cleanup', '@decide-account-display', '@show-pi-status-in-settings']
 lane: account-ui
 collision: [web/src/app/App.tsx, design-system/]
 commits:
@@ -12,15 +12,17 @@ commits:
   summary: Add account shelf and snapshot-backed GitHub settings
 - hash: 88c314c
   summary: Exercise web logout through account menu in workspace journey
+closed: 2026-10-05
+closed_by: jari
 ---
 
-# Complete account and native connection settings
+# Account menu and native GitHub settings
 
 ## Goal
 
-Give the person one understandable place to recognize their account, see their
-GitHub and OpenAI connection state on this server, choose the appearance and
-sign out of the browser.
+Provide an account menu and settings view for native GitHub state, appearance
+and browser logout. The OpenAI status and person-facing profile are tracked
+separately.
 
 ## Current implementation
 
@@ -40,18 +42,26 @@ but only GitHub is shown. Pi's status contract reports `usable`, `missing` or
 a live provider request. The settings browser test currently expects the
 OpenAI row to be absent.
 
-## Remaining work
+## Scope and acceptance
 
-Add the OpenAI connection entry using the available native status, with a clear
-presentation when credentials are missing or their state is unknown. Use the
-existing Pi onboarding path for sign-in. Update the settings test to cover the
-new entry.
+Jari confirmed on 5 October that he had personally viewed and tested the
+existing account/settings UI and found it satisfactory. The earlier synthetic
+screenshots are supporting evidence, not the only visual assessment.
 
-Use the shared account presentation from @account-profile-from-github: first
-name in the compact view, email in the opened view, GitHub profile image and
-onboarding fallback for missing details.
+This issue closes for the delivered account menu, GitHub settings, theme and
+browser logout. The OpenAI entry remains to be implemented in
+@show-pi-status-in-settings. Person-facing name, email, image and onboarding
+fallback belong to @account-profile-from-github; @align-settings-design owns
+layout and comparisons, and @align-navigation-design owns the rail. Closing
+this issue does not claim those separate features or live provider verification.
 
-@align-settings-design owns the settings layout and design comparisons;
-@align-navigation-design owns the rail. Coordinate the connection entry and shared
-profile presentation with that work. Browser logout is covered by the completed
-@browser-logout-cleanup issue.
+## Acceptance Criteria
+
+- [x] The account menu and settings provide GitHub native state, theme choice and browser logout with tested navigation and keyboard behavior.
+- [x] Jari has viewed and tested the current account/settings UI and considers this slice satisfactory.
+
+## Resolution
+
+### 2026-10-05T13:27:17Z · @jari
+
+Jari confirmed on 5 October that he had viewed and tested this UI and it is satisfactory. Native Pi/OpenAI status is tracked in @show-pi-status-in-settings; profile data and design alignment remain in their separate issues.
