@@ -45,7 +45,7 @@ teksti jää jonoon; tämä ei peru aiempaa päätöstä.
 
 | Järjestys | Dokumentti | Historiasta löytynyt käsittely ja seuraavan lukemisen lähtökohta |
 |---|---|---|
-| 1 | [ADR 0002: selainratkaisu](../../docs/decisions/adr-0002-frontend-stack.md) | Koko tekstin rethink puuttuu. `5f7665b` lisäsi vain ADR 0009:n korvaavuusmerkinnän. Oli jo aiemmassa jonossa: vanha Redux-yksinomaisuus, versiot ja hyväksyntäportit on erotettava voimassa olevista päätöksistä. |
+| 1 | [ADR 0002: selainratkaisu](../../docs/decisions/adr-0002-frontend-stack.md) | Käsitelty Jarin kanssa 5.10.: selainpohjan valinta ja perustelut säilyvät; Reduxin myöhempi muutos ja UI-hyväksyntäportin korvautuminen näkyvät omissa kohdissaan. Toteutusreseptit ja versiot jäävät lähdeaineistoon. |
 | 2 | [ADR 0005: kloonauksen etenemisvirta](../../docs/decisions/adr-0005-clone-progress-stream.md) | Päätös kirjattu `f280b16`; myöhemmät muutokset koskevat valtuutusta ja Git-vaiheita. Koko tekstin yhteisestä läpikäynnistä ei löytynyt näyttöä. Huomioidaan myöhempi levykiintiön suunnittelupäätös. |
 | 3 | [ADR 0006: selainistuntojen peruuttaminen](../../docs/decisions/adr-0006-subject-revocation.md) | Osapäätöksiä sovitettu `a7738cd`, `5199976`, `9811217` ja `5fb1095`; koko tekstin rethink puuttuu. Erotetaan olemassa oleva operaattoritoiminto kertaluonteisen testitilin nollauksen ohjeista ja myöhemmäksi jääneestä poistamistarpeesta. |
 | 4 | [ADR 0009: keskustelutilan omistajuus](../../docs/decisions/adr-0009-conversation-state-ownership.md) | Syntyi hyväksytyn tiedonkulun läpikäynnissä `5f7665b`. Päätös on käsitelty, mutta uuden ADR-tekstin erillistä lukemista ei ole kirjattu. Luetaan omana päätöstallenteenaan ja tarkistetaan suhde ADR 0002:een ja nykyiseen arkkitehtuurisivuun. |
@@ -59,9 +59,10 @@ teksti jää jonoon; tämä ei peru aiempaa päätöstä.
 
 `docs/CLAUDE.md` on symlinkki `AGENTS.md`:hen, joten sama sisältö käsitellään
 kohdassa 10. Rajauksessa on näin 18 erillistä dokumenttia: 12 päätöshakemistossa,
-yksi brändibriefi ja viisi docs-juuressa. Niistä seitsemän ADR:ää on jo käsitelty
-alla olevan näytön perusteella; 11 tekstiä on yllä ensimmäisessä tai uudessa
-läpikäynnissä. Seuraava tiedosto on **`docs/decisions/adr-0002-frontend-stack.md`**.
+yksi brändibriefi ja viisi docs-juuressa. Niistä kahdeksan ADR:ää on jo käsitelty
+alla olevan näytön ja jonon ensimmäisen rivin perusteella; kymmenen tekstiä
+odottaa ensimmäistä tai uutta läpikäyntiä. Seuraava tiedosto on
+**`docs/decisions/adr-0005-clone-progress-stream.md`**.
 
 ### Jo käsitellyt ADR:t
 
@@ -74,6 +75,18 @@ läpikäynnissä. Seuraava tiedosto on **`docs/decisions/adr-0002-frontend-stack
 | [ADR 0008](../../docs/decisions/adr-0008-snappy-conversation-switching.md) | `5fb1095` ja `4633ec1`, 2.10.: yhteinen uudelleenkirjoitus ja Jarin jatkopalaute; tämän issuen päätös- ja kommenttimerkinnät. |
 | [ADR 0010](../../docs/decisions/adr-0010-taskfleet-worktree-agents.md) | `87630ae`, 4.10.: ADR, design ja toteutusissue käsiteltiin yhdessä Jarin pyynnöstä. |
 | [ADR 0011](../../docs/decisions/adr-0011-gateway-owned-server-administration.md) | `3efadbe`, 4.10.: commit kirjaa Jarin hyväksymän uudelleenkirjoituksen ja sidottujen käyttäjien listauksen tarkennuksen. Tämän issuen aiempi käsiteltyjen luettelo ei maininnut sitä. |
+
+## ADR 0002:n läpikäynti 5.10.2026
+
+Jari hyväksyi selainpohjan päätöksen tiivistämisen valintoihin ja perusteluihin.
+React, TypeScript 7, Biome, staattinen jakelu, React Aria ja yhteiset
+Storybook-tuotantokomponentit säilyvät. Reduxin alkuperäinen omistajuus ja
+ADR 0009:n myöhempi muutos kuvataan yhdessä. Aikanaan hyväksytyn
+UI-osakohtaisen hyväksyntäportin korvautuminen viittaa nykyiseen työtapaan.
+Turvallinen renderöinti ja pitkien historioiden käytettävyys säilyvät;
+Shiki-workerin ja diffikirjaston toteutusreseptit, kokeiden luvut sekä
+komentoluettelot jäävät alkuperäiseen valinta-aineistoon. Pakettiversiot eivät
+muodosta pysyvää arkkitehtuurivaatimusta. Tuotekoodia ei muutettu.
 
 ## Worktree-agenttien päätös ja toteutustehtävä 4.10.2026
 
