@@ -51,13 +51,16 @@ failure, cancellation and timeout retain their native wait meanings.
 Coordinate with Taskfleet's `caller-owned-agent-runs` issue for creation without
 a terminal worker, supervision independent of the daemon service, recoverable
 creation and durable session binding. The host needs this supported contract,
-including the delegation workflow above.
+including the delegation workflow above. Jari clarified that this integration
+has no workmux dependency: Taskfleet provisions and settles caller-owned runs
+using its own Git operations. The older workmux placement suggestion in the
+linked integration design is superseded, not an option to implement.
 
 Choose supported worktree placement discoverable under `~/src`; the design
-explains the default layout mismatch. Outside and manual worktrees start as
-read-only observations. Decide which merge, salvage and discard actions belong
-in the browser, starting from native CLI settlement. These choices are delegated
-to implementation within the agreed ownership boundary.
+explains the layout mismatch. Outside and manual worktrees start as read-only
+observations. Decide which merge, salvage and discard actions belong in the
+browser, starting from native CLI settlement. These choices are delegated to
+implementation within the agreed ownership boundary.
 
 ## Evidence
 
