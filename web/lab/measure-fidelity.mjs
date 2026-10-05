@@ -180,6 +180,11 @@ try {
           } else throw new Error(`Unsupported lab step: ${step}`);
         }
         await lab.locator(state.region).first().waitFor();
+        if (state.id === "pi-code") await lab.getByText("ABCD-1234").waitFor();
+        if (state.id === "pi-start" || state.id === "pi-code")
+          await lab
+            .getByRole("heading", { name: "ChatGPT-kirjautuminen" })
+            .waitFor();
         if (
           (await lab.evaluate(() => document.documentElement.dataset.theme)) !==
           presentation.theme
