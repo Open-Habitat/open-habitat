@@ -1,4 +1,4 @@
-import inventory from "../lab/inventory.json";
+import inventory from "../lab/inventory.json" with { type: "json" };
 import { expect, test } from "@playwright/test";
 
 // Host-backed synthetic lab, not a screenshot or a live-user session.

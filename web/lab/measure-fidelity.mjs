@@ -241,10 +241,10 @@ try {
           pair.gaps.push(
             "Content/fixture mismatch: compare layout and controls only; not a like-for-like copy comparison",
           );
-        pair.images.draft = `${key}-draft.avif`;
-        pair.images.lab = `${key}-lab.avif`;
         await image(draftRegion, `${output}/${key}-draft`);
         await image(labRegion, `${output}/${key}-lab`);
+        pair.images.draft = `${key}-draft.avif`;
+        pair.images.lab = `${key}-lab.avif`;
         const draftTree = await controls(
           draft,
           `#dc-root [style*="width: ${presentation.width}px"][style*="height: ${presentation.height}px"]`,
@@ -261,18 +261,25 @@ try {
             );
         const dControls = controlLines(draftTree),
           lControls = controlLines(labTree);
-        for (const [side, list, other] of [
+        // Multiset comparison: two identically named controls on one side
+        // must not disappear behind one matching control on the other.
+        for (const [side, list, opposite] of [
           ["draft", dControls, lControls],
           ["lab", lControls, dControls],
-        ])
-          for (const line of list)
-            if (!other.includes(line))
+        ]) {
+          const remaining = [...opposite];
+          for (const line of list) {
+            const index = remaining.indexOf(line);
+            if (index >= 0) remaining.splice(index, 1);
+            else
               pair.differences.push({
                 landmark: "controls",
                 property: "role + accessible name",
                 side,
                 value: line,
               });
+          }
+        }
         for (const landmark of mapping.landmarks) {
           try {
             const frameSelector = `#dc-root [style*="width: ${presentation.width}px"][style*="height: ${presentation.height}px"]`;
