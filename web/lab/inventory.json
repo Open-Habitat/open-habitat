@@ -34,10 +34,7 @@
       "route": "/workspaces",
       "steps": [],
       "region": "main",
-      "source": [
-        "web/src/app/App.tsx",
-        "web/src/components/LoginCard.tsx"
-      ],
+      "source": ["web/src/app/App.tsx", "web/src/components/LoginCard.tsx"],
       "draft": "design-system/drafts/Onboarding.dc.html",
       "focus": false,
       "status": "capture"
@@ -47,9 +44,7 @@
       "view": "/workspaces",
       "scenario": "pi-onboarding",
       "route": "/workspaces",
-      "steps": [
-        "login"
-      ],
+      "steps": ["login"],
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
@@ -65,10 +60,7 @@
       "view": "/workspaces",
       "scenario": "pi-onboarding",
       "route": "/workspaces",
-      "steps": [
-        "login",
-        "repo-chooser"
-      ],
+      "steps": ["login", "repo-chooser"],
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
@@ -83,11 +75,7 @@
       "view": "/workspaces",
       "scenario": "pi-onboarding",
       "route": "/workspaces",
-      "steps": [
-        "login",
-        "repo-chooser",
-        "start-sign-in"
-      ],
+      "steps": ["login", "repo-chooser", "start-sign-in"],
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
@@ -103,9 +91,7 @@
       "view": "/workspaces",
       "scenario": "ready",
       "route": "/workspaces",
-      "steps": [
-        "login"
-      ],
+      "steps": ["login"],
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
@@ -123,9 +109,7 @@
       "view": "@workspace",
       "scenario": "ready",
       "route": "@workspace",
-      "steps": [
-        "login"
-      ],
+      "steps": ["login"],
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
@@ -140,9 +124,7 @@
       "view": "@history",
       "scenario": "ready",
       "route": "@history",
-      "steps": [
-        "login"
-      ],
+      "steps": ["login"],
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
@@ -160,9 +142,7 @@
       "view": "/settings",
       "scenario": "ready",
       "route": "/settings",
-      "steps": [
-        "login"
-      ],
+      "steps": ["login"],
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
@@ -178,9 +158,7 @@
       "view": "/workspaces",
       "scenario": "empty",
       "route": "/workspaces",
-      "steps": [
-        "login"
-      ],
+      "steps": ["login"],
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
@@ -195,9 +173,7 @@
       "view": "/workspaces",
       "scenario": "missing",
       "route": "/workspaces",
-      "steps": [
-        "login"
-      ],
+      "steps": ["login"],
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
@@ -212,14 +188,9 @@
       "view": "/workspaces",
       "scenario": "error",
       "route": "/workspaces",
-      "steps": [
-        "login"
-      ],
+      "steps": ["login"],
       "region": "main",
-      "source": [
-        "web/src/app/App.tsx",
-        "web/src/components/Status.tsx"
-      ],
+      "source": ["web/src/app/App.tsx", "web/src/components/Status.tsx"],
       "draft": null,
       "focus": false,
       "status": "capture"
@@ -229,9 +200,7 @@
       "view": "/workspaces",
       "scenario": "partial",
       "route": "/workspaces",
-      "steps": [
-        "login"
-      ],
+      "steps": ["login"],
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
@@ -246,14 +215,9 @@
       "view": "/workspaces",
       "scenario": "malformed",
       "route": "/workspaces",
-      "steps": [
-        "login"
-      ],
+      "steps": ["login"],
       "region": "main",
-      "source": [
-        "web/src/app/App.tsx",
-        "web/src/components/Status.tsx"
-      ],
+      "source": ["web/src/app/App.tsx", "web/src/components/Status.tsx"],
       "draft": null,
       "focus": false,
       "status": "capture"
@@ -263,14 +227,9 @@
       "view": "/workspaces",
       "scenario": "oversize",
       "route": "/workspaces",
-      "steps": [
-        "login"
-      ],
+      "steps": ["login"],
       "region": "main",
-      "source": [
-        "web/src/app/App.tsx",
-        "web/src/components/Status.tsx"
-      ],
+      "source": ["web/src/app/App.tsx", "web/src/components/Status.tsx"],
       "draft": null,
       "focus": false,
       "status": "capture"
@@ -280,14 +239,9 @@
       "view": "/workspaces",
       "scenario": "native-error",
       "route": "/workspaces",
-      "steps": [
-        "login"
-      ],
+      "steps": ["login"],
       "region": "main",
-      "source": [
-        "web/src/app/App.tsx",
-        "web/src/components/Status.tsx"
-      ],
+      "source": ["web/src/app/App.tsx", "web/src/components/Status.tsx"],
       "draft": null,
       "focus": false,
       "status": "capture"
@@ -297,9 +251,7 @@
       "view": "/workspaces",
       "scenario": "pi-blocked",
       "route": "/workspaces",
-      "steps": [
-        "login"
-      ],
+      "steps": ["login"],
       "region": "main",
       "source": [
         "web/src/app/App.tsx",
@@ -315,15 +267,9 @@
       "view": "@workspace",
       "scenario": "ready",
       "route": "@workspace",
-      "steps": [
-        "login",
-        "new-conversation"
-      ],
+      "steps": ["login", "new-conversation"],
       "region": "main",
-      "source": [
-        "web/src/app/App.tsx",
-        "web/src/components/Conversation.tsx"
-      ],
+      "source": ["web/src/app/App.tsx", "web/src/components/Conversation.tsx"],
       "draft": "design-system/drafts/Selainpolku.dc.html",
       "focus": false,
       "status": "capture"
@@ -333,16 +279,9 @@
       "view": "@workspace",
       "scenario": "ready",
       "route": "@workspace",
-      "steps": [
-        "login",
-        "new-conversation",
-        "send-rejected"
-      ],
+      "steps": ["login", "new-conversation", "send-rejected"],
       "region": "main",
-      "source": [
-        "web/src/app/App.tsx",
-        "web/src/components/Conversation.tsx"
-      ],
+      "source": ["web/src/app/App.tsx", "web/src/components/Conversation.tsx"],
       "draft": null,
       "focus": false,
       "status": "capture"
@@ -352,16 +291,9 @@
       "view": "@workspace",
       "scenario": "ready",
       "route": "@workspace",
-      "steps": [
-        "login",
-        "new-conversation",
-        "send-uncertain"
-      ],
+      "steps": ["login", "new-conversation", "send-uncertain"],
       "region": "main",
-      "source": [
-        "web/src/app/App.tsx",
-        "web/src/components/Conversation.tsx"
-      ],
+      "source": ["web/src/app/App.tsx", "web/src/components/Conversation.tsx"],
       "draft": null,
       "focus": false,
       "status": "capture"
@@ -371,16 +303,9 @@
       "view": "@workspace",
       "scenario": "ready",
       "route": "@workspace",
-      "steps": [
-        "login",
-        "new-conversation",
-        "outage"
-      ],
+      "steps": ["login", "new-conversation", "outage"],
       "region": "main",
-      "source": [
-        "web/src/app/App.tsx",
-        "web/src/components/Status.tsx"
-      ],
+      "source": ["web/src/app/App.tsx", "web/src/components/Status.tsx"],
       "draft": null,
       "focus": false,
       "status": "capture"
@@ -390,10 +315,7 @@
       "view": "/workspaces",
       "scenario": "ready",
       "route": "/workspaces",
-      "steps": [
-        "login",
-        "account-menu"
-      ],
+      "steps": ["login", "account-menu"],
       "region": "[role=\"menu\"]",
       "source": [
         "web/src/app/App.tsx",
@@ -410,10 +332,7 @@
       "view": "@workspace",
       "scenario": "ready",
       "route": "@workspace",
-      "steps": [
-        "login",
-        "workspace-details"
-      ],
+      "steps": ["login", "workspace-details"],
       "region": ".ah-workspace-facts",
       "source": [
         "web/src/app/App.tsx",
@@ -428,9 +347,7 @@
       "view": "/workspaces",
       "status": "gap",
       "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
-      "source": [
-        "web/src/components/Status.tsx"
-      ],
+      "source": ["web/src/components/Status.tsx"],
       "draft": null
     },
     {
@@ -438,9 +355,7 @@
       "view": "/workspaces",
       "status": "gap",
       "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
-      "source": [
-        "web/src/components/LoginCard.tsx"
-      ],
+      "source": ["web/src/components/LoginCard.tsx"],
       "draft": null
     },
     {
@@ -448,9 +363,7 @@
       "view": "@history",
       "status": "gap",
       "reason": "Unknown native block fallback is implemented and tested; no isolated repeatable lab capture. Unsupported image MIME and redacted thinking are separate cases, not raw unknown payloads.",
-      "source": [
-        "web/src/components/Conversation.tsx"
-      ],
+      "source": ["web/src/components/Conversation.tsx"],
       "draft": null
     },
     {
@@ -458,9 +371,7 @@
       "view": "@history",
       "status": "gap",
       "reason": "Call and result can be expanded using bounded native block reads; no repeatable inventory interaction. Success/error, image, long/truncated and extension tool variations remain uncovered visually.",
-      "source": [
-        "web/src/components/Conversation.tsx"
-      ],
+      "source": ["web/src/components/Conversation.tsx"],
       "draft": null
     },
     {
@@ -468,9 +379,7 @@
       "view": "@workspace",
       "status": "gap",
       "reason": "ConversationStates stories and pi-typed fixture illustrate activity/progress; inventory has no repeatable mid-turn capture.",
-      "source": [
-        "web/src/components/Conversation.tsx"
-      ],
+      "source": ["web/src/components/Conversation.tsx"],
       "draft": null
     },
     {
@@ -478,9 +387,7 @@
       "view": "@workspace",
       "status": "gap",
       "reason": "ConversationStates stories and pi-typed saved history illustrate completed reply; inventory does not capture its settled typed state.",
-      "source": [
-        "web/src/components/Conversation.tsx"
-      ],
+      "source": ["web/src/components/Conversation.tsx"],
       "draft": null
     },
     {
@@ -488,9 +395,7 @@
       "view": "/workspaces",
       "status": "gap",
       "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
-      "source": [
-        "web/src/components/Navigation.tsx"
-      ],
+      "source": ["web/src/components/Navigation.tsx"],
       "draft": null
     },
     {
@@ -498,9 +403,7 @@
       "view": "/workspaces",
       "status": "gap",
       "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
-      "source": [
-        "web/src/components/Navigation.tsx"
-      ],
+      "source": ["web/src/components/Navigation.tsx"],
       "draft": null
     },
     {
@@ -508,9 +411,7 @@
       "view": "/workspaces",
       "status": "gap",
       "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
-      "source": [
-        "web/src/components/GitHubRepoChooser.tsx"
-      ],
+      "source": ["web/src/components/GitHubRepoChooser.tsx"],
       "draft": null
     },
     {
@@ -518,9 +419,7 @@
       "view": "/workspaces",
       "status": "gap",
       "reason": "Requires a timed event, interaction or fixture journey not yet defined for repeatable inventory capture.",
-      "source": [
-        "web/src/components/PiDeviceSignIn.tsx"
-      ],
+      "source": ["web/src/components/PiDeviceSignIn.tsx"],
       "draft": null
     },
     {
@@ -528,9 +427,7 @@
       "view": "/workspaces",
       "status": "gap",
       "reason": "Expanded desktop rail is visible in landing, but selected, filtered and collapsed alternatives lack isolated inventory journeys.",
-      "source": [
-        "web/src/components/Navigation.tsx"
-      ],
+      "source": ["web/src/components/Navigation.tsx"],
       "draft": null
     },
     {
@@ -538,9 +435,7 @@
       "view": "/workspaces",
       "status": "gap",
       "reason": "Phone drawer is present in production and earlier synthetic issue captures, but has no repeatable inventory interaction.",
-      "source": [
-        "web/src/components/Navigation.tsx"
-      ],
+      "source": ["web/src/components/Navigation.tsx"],
       "draft": null
     },
     {
@@ -548,9 +443,7 @@
       "view": "/workspaces",
       "status": "gap",
       "reason": "Storybook shows real controls in both themes; inventory capture does not exercise hover, press, keyboard focus, selection, disabled and pending per applicable variant.",
-      "source": [
-        "web/src/components/ControlStates.stories.tsx"
-      ],
+      "source": ["web/src/components/ControlStates.stories.tsx"],
       "draft": null
     },
     {
@@ -558,9 +451,7 @@
       "view": "/settings",
       "status": "gap",
       "reason": "Connection unavailable/unknown and missing profile states have no isolated synthetic settings capture.",
-      "source": [
-        "web/src/components/Account.tsx"
-      ],
+      "source": ["web/src/components/Account.tsx"],
       "draft": null
     },
     {
@@ -568,9 +459,7 @@
       "view": "@workspace",
       "status": "gap",
       "reason": "pi-typed and pi-visual-hold host fixture scenarios and tracked provisional pairs exercise live indexed thinking, argument delta, progress and persisted replacement; inventory capture cannot reproduce the transition. The provisional pair is not the complete block library.",
-      "source": [
-        "web/src/components/Conversation.tsx"
-      ],
+      "source": ["web/src/components/Conversation.tsx"],
       "draft": null
     },
     {
@@ -578,9 +467,7 @@
       "view": "@history",
       "status": "gap",
       "reason": "Tracked synthetic block-read HTML/PNG show a selected full block; inventory capture cannot yet open a bounded selected-content journey.",
-      "source": [
-        "web/src/components/Conversation.tsx"
-      ],
+      "source": ["web/src/components/Conversation.tsx"],
       "draft": null
     },
     {
@@ -588,9 +475,7 @@
       "view": "@history",
       "status": "gap",
       "reason": "Saved summaries, model/thinking changes, session name/label, visible extension output and local bashExecution are provisionally rendered, but neither fixture nor inventory isolates all variants.",
-      "source": [
-        "web/src/components/Conversation.tsx"
-      ],
+      "source": ["web/src/components/Conversation.tsx"],
       "draft": null
     },
     {
