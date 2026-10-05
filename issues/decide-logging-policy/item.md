@@ -52,14 +52,14 @@ settings belong to Fleetrepo.
 
 ## Outcome
 
-The original policy in [ADR 0013](../../docs/decisions/adr-0013-diagnostic-logging.md) was superseded on 2026-10-05 by [ADR 0014](../../docs/decisions/adr-0014-service-logging.md) after Jari clarified that the goal is readable, consistent service logs using existing IDs, not a new tracing system. The [earlier implementation plan](implementation-plan.md) remains for context, not as a build order. Current work is @implement-diagnostic-emitter, then @correlate-diagnostics; the test-server journal instructions and verification are Fleetrepo's `nah-diagnostic-log-access`.
+The agreed policy is [ADR 0013](../../docs/decisions/adr-0013-service-logging.md): readable, consistent service logs using existing IDs. The [earlier implementation plan](implementation-plan.md) is withdrawn and retained only for context. Current work is @implement-diagnostic-emitter, then @correlate-diagnostics; the test-server journal instructions and verification are Fleetrepo's `nah-diagnostic-log-access`.
 
 ## Completion
 
 An operator can diagnose representative failures and trace relevant actions.
-Verification demonstrates useful correlation and actor attribution, protection
-of secrets and work content, and bounded behaviour when logging is flooded or
-unavailable. Architecture documentation explains what is recorded, where it
+Verification demonstrates useful existing identifiers and actor attribution,
+protection of secrets and work content, and that log failures do not change
+operation outcomes. Architecture documentation explains what is recorded, where it
 lives and who can read it, matching the implementation.
 
 ## Decisions
@@ -70,10 +70,10 @@ Jari 2026-10-04: preparation.md:n lokitussuositus hyväksytty sellaisenaan. Seur
 
 ### 2026-10-05T11:54:13Z · @claude
 
-Jari 2026-10-05: the four open questions in the implementation plan are settled as recommended and recorded in ADR 0013: attempt ID crosses the broker and daemon channels, a separate per-failure support reference, root/operator/owner reader model, root peer as actor for control actions, 7/30 day retention as the starting figures. Implementation may begin.
+Jari 2026-10-05: the four open questions in the then-current implementation plan were initially settled as recommended: attempt ID across channels, a separate support reference, a root/operator/owner reader model, and 7/30 day retention. This design was withdrawn later the same day in favor of the simpler service logging decision in current ADR 0013.
 
 ## Resolution
 
 ### 2026-10-05T11:59:15Z · @jari
 
-Decided in ADR 0013; implementation split into @implement-diagnostic-emitter and @correlate-diagnostics, deployment into Fleetrepo nah-diagnostic-log-access.
+At the time, the now-withdrawn tracing design was accepted; implementation was split into @implement-diagnostic-emitter and @correlate-diagnostics, deployment into Fleetrepo nah-diagnostic-log-access. The current scope is in ADR 0013.

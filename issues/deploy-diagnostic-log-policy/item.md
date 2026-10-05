@@ -16,7 +16,7 @@ preparation: ready
 
 ## Purpose
 
-The test installation should make the service logs from [ADR 0014](../../docs/decisions/adr-0014-service-logging.md) straightforward to find and safe to read after @implement-diagnostic-emitter and @correlate-diagnostics land. Fleetrepo's `nah-diagnostic-log-access` owns the guest settings, operator instructions and receipts. This small bridge keeps that cross-repository work on the product DAG after the release it needs; it does not create another logging system or duplicate Fleetrepo's issue.
+The test installation should make the service logs from [ADR 0013](../../docs/decisions/adr-0013-service-logging.md) straightforward to find and safe to read after @implement-diagnostic-emitter and @correlate-diagnostics land. Fleetrepo's `nah-diagnostic-log-access` owns the guest settings, operator instructions and receipts. This small bridge keeps that cross-repository work on the product DAG after the release it needs; it does not create another logging system or duplicate Fleetrepo's issue.
 
 When the product changes are released, check the installed revision and pick up the Fleetrepo issue in its own DAG. If Fleetrepo already completed it, read its actual guest evidence rather than starting a duplicate run. Record the release and Fleetrepo outcome here without copying private host details. An earlier product unit test cannot establish effective journal readers or retention on the guest.
 

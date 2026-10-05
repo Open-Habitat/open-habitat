@@ -1,14 +1,8 @@
 # Logging policy: superseded implementation plan
 
-> Historical plan for ADR 0013, superseded by [ADR 0014](../../docs/decisions/adr-0014-service-logging.md). Do not implement its new protocols, support references, async emitter or per-class retention from this document. The current work is in @implement-diagnostic-emitter and @correlate-diagnostics.
+> Historical, withdrawn plan. The current decision is [ADR 0013](../../docs/decisions/adr-0013-service-logging.md). Do not implement the new protocols, support references, async emitter or per-class retention from this plan; the current work is in @implement-diagnostic-emitter and @correlate-diagnostics.
 
-Jari approved the [proposal](proposal.md) on 2026-10-04 and the four open
-architecture questions on 2026-10-05, recorded in
-[ADR 0013](../../docs/decisions/adr-0013-diagnostic-logging.md). This plan says
-what to build and what the implementer should know that the code does not show.
-The [inventory](preparation.md) describes the starting point. The
-[existing tests](result.md) cover only selected exclusions and a writer that
-fails immediately; everything below still needs its own evidence.
+This plan followed the [proposal](proposal.md) and a former correlation design that Jari subsequently withdrew. It records the thinking at the time, not what to build. The [inventory](preparation.md) describes the starting point; the [existing tests](result.md) cover only selected exclusions and a writer that fails immediately.
 
 ## The shape of it
 
@@ -97,16 +91,14 @@ the socket proves. Do not invent a name from the subject, the body or UID 0.
 
 Update [deployment](../../docs/architecture/deployment.md) and
 [identity and trust](../../docs/architecture/identity-and-trust.md) to describe
-what shipped: record flow, who reads what, what happens on loss. ADR 0013 is
-the decision; if implementation forces a change to it, write a new ADR.
+what shipped: record flow, who reads what, what happens on loss. This section reflects the withdrawn design, not the current logging decision.
 
 ## Fleetrepo
 
 Fleetrepo owns journal permissions, reader groups, expiry, disk caps and ingress
 logging. Before changing anything, check what `nah-admin`
 (`infra/native-agent-host-test/ADMIN.md`) can read today and whether ingress
-captures callback URLs. Then set the reader model from ADR 0013 and the 7/30
-day retention, and verify on the test guest: root, the operator and two mapped
+captures callback URLs. The withdrawn design called for a special reader model and 7/30-day retention, then verification on the test guest: root, the operator and two mapped
 users each try to read the others' records; a synthetic failed login produces
 a trace across all three services; controlled volume hits the limits without
 touching live users. If journald cannot keep the classes apart, say which
