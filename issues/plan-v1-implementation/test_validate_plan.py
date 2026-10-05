@@ -57,6 +57,13 @@ class PlanValidatorTests(unittest.TestCase):
         self.change("manage-workspace-lifecycle", "Jari's outstanding visual verdict", "Visual review")
         self.run_validator("missing visual evidence and explicit human decision policy: manage-workspace-lifecycle")
 
+    def test_missing_human_decision_in_agent_slice_fails(self):
+        self.change("manage-agent-worktrees", "recording Jari's verdict when given", "filing screenshots when ready")
+        self.run_validator("missing visual evidence and explicit human decision policy: manage-agent-worktrees")
+
+    def test_obsolete_slice_does_not_need_forward_review_policy(self):
+        self.run_validator()  # complete-conversation-ui is obsolete, not awaiting another verdict.
+
     def change_map(self, old, new):
         path = self.root / "issues/plan-v1-implementation/implementation-briefs.md"
         content = path.read_text()
