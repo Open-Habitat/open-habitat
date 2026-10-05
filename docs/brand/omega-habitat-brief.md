@@ -3,7 +3,7 @@
 Omega Habitat needs a recognizable identity for its browser interface. The name
 is chosen; the visual identity is to be designed and selected with Jari. The
 repository's working name is still Native Agent Host, and its renaming has its
-own [task](../../issues/rename-omega-habitat/item.md).
+own [task](../../issues/name-open-habitat/item.md).
 
 ## Product and audience
 
@@ -94,4 +94,4 @@ that would harm legibility or recognition.
 
 [Product](../product.md), [current interface design](../../design-system/design.md),
 [color tokens](../../design-system/tokens/colors.css) and
-[name decision](../../issues/rename-omega-habitat/item.md).
+[name decision](../../issues/name-open-habitat/item.md).

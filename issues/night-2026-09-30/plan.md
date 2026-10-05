@@ -37,7 +37,7 @@ Poikkeukset, jotka tiedetään jo nyt:
   `TODO.md`:n `## 🔄 Continue here` -lohkon kirjoittaa aamulla se, joka
   lopettaa viimeisenä; sitä ennen kumpikin päivittää vain omaa
   statustiedostoaan.
-- `rename-omega-habitat` törmää kaikkeen, eikä sitä tehdä yöllä.
+- `name-open-habitat` törmää kaikkeen, eikä sitä tehdä yöllä.
 
 ## Viestikanava
 
@@ -102,7 +102,7 @@ DAGin spawnattavat päät, jotka eivät ole UI:n tai Jarin:
    `RELEASE-UPGRADE.md`:n mukaan, kuitit Fleetrepoen. Live-Pi-matkaa
    (`verify-live-pi-journey`) ei yritetä; se on Jarin.
 
-Ei yöllä: `rename-omega-habitat`, `prove-jit-guest-isolation` (Aldern ja
+Ei yöllä: `name-open-habitat`, `prove-jit-guest-isolation` (Aldern ja
 VM:n kautta kulkeva koe jää aamuun, ellei kaikki muu ole valmis ja VM
 tavoitettavissa ilman Aldern muutoksia), `testing`-tilan issuet (Jarin
 katselmointi) ja `pilot`/`installation`-kaistat (estetyt).

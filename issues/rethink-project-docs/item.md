@@ -573,7 +573,7 @@ Nämä 19 issuea käytiin läpi consult-llm:n avulla ilman Jaria; kaikki yksikö
 | [installation-and-operations-guide](../installation-and-operations-guide/item.md) | toteutusissue selkeytetty ja faktantarkistettu; hyväksymis- ja palautumisrajat säilytetty. | `20546ef` |
 | [prove-clean-server-install](../prove-clean-server-install/item.md) | ohje selkeytetty, faktat tarkistettu ja päätös kirjattu. | `c3a9049` |
 | [refine-agent-status](../refine-agent-status/item.md) | selkeä nykyteksti säilytettiin; rethink- ja faktantarkistus kirjattiin päätösmerkintään. | `fe81b5f` |
-| [rename-omega-habitat](../rename-omega-habitat/item.md) | issue selkeytetty ja asennetun tilan nimeämisriskit tarkistettu. | `a291033` |
+| [name-open-habitat](../name-open-habitat/item.md) | issue selkeytetty ja asennetun tilan nimeämisriskit tarkistettu. | `a291033` |
 | [verify-live-pi-journey](../verify-live-pi-journey/item.md) | hyväksyntäkirja selkeytetty ja vanhentunut reset-ohje rajattu pois. | `639ad01` |
 | [verify-v1-resilience](../verify-v1-resilience/item.md) | ohje tiivistetty, lähteet tarkistettu ja päätös kirjattu. | `00d4539` |
 
