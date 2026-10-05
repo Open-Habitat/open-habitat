@@ -26,6 +26,44 @@ esitetään selkeästi tekstin asianomaisessa kohdassa. Erillistä Decisions-osi
 ei säilytetä saman sisällön toistona tai läpikäyntien lokina; aiemmat versiot
 löytyvät Git-historiasta.
 
+## Seuraavaksi: design-system-kansion dokumentit
+
+Jari pyysi 5.10.2026 tutkimaan kansion ja järjestämään dokumentit mielekkääksi
+läpikäyntijonoksi. Alla on sen pohjalta laadittu järjestys: ensin designin
+kokonaisuus ja esityssäännöt, sitten vedosten ja toteutuksen kartat, lopuksi
+kierrosten työtapa ja ylläpito-ohjeet. Tämä on nykyinen jatkamiskohta ja korvaa
+alempien kierrosten seuraava-merkinnät. Seuraavana on **design-system/design.md**.
+Tekstit luetaan Jarin kanssa yksi kerrallaan; pienet samaa asiaa käsittelevät
+kortit muodostavat yhteisen lukukokonaisuuden.
+
+Kartoitus kattoi seitsemän varsinaista Markdown-tiedostoa, yhdeksän HTML-
+ohjekorttia ja viisi HTML-vedosta sekä niiden tukiaineiston. Markdownien
+viimeisimmät muutokset tarkistettiin tiedostoittain Git-historiasta ja aiempi
+käsittely tämän issuen merkinnöistä. Yhden designin yhdistäminen (`e961efc`)
+ja myöhemmät täsmennykset ovat lähtöaineistoa; ne eivät yksin osoita jokaisen
+nykyisen tekstin yhteistä läpikäyntiä. Vedosten HTML:stä luettiin tekstit ja
+rakenne; tässä kartoituksessa ei tehty visuaalista selainkatselmusta.
+
+| Järjestys | Dokumentti tai lukukokonaisuus | Luokka ja lukemisen tarkoitus |
+|---|---|---|
+| 1 | [design.md](../../design-system/design.md) | Designin pääkuvaus, rethink-document. Erotetaan sovittu ilme ja käyttäytyminen, näkymäkohtaiset ratkaisut sekä toteutus- ja testiohjeet. Verrataan juuri käsiteltyyn tuotekuvaukseen ja myöhempiin agenttitilojen päätöksiin; Pi-dialogien rajaus tarkistetaan nykyisistä issueista. |
+| 2 | [guidelines/states.html](../../design-system/guidelines/states.html) | Tilojen esitysohje. Verrataan sanastoa ja merkkejä refine-agent-status-analyysiin sekä kontrollitilojen suunnitteluun. Vanha kortti ei yksin ratkaise tilojen merkityksiä tai uutta visuaalista muotoa. |
+| 3 | guidelines/ — värit, typografia ja välit | Visuaalisen perustan ohjekortit: colors-light.html, colors-dark.html, colors-accent.html, colors-state.html, type-ui.html, type-mono.html ja spacing.html. Luetaan pienenä kokonaisuutena designin pohjalta; verrataan esimerkkejä tokeneihin ja erotetaan perustellut esityssäännöt kopioiduista arvoista. |
+| 4 | [guidelines/motion.html](../../design-system/guidelines/motion.html) | Liikkeen esitysohje. Kortin 2,4 s / 900 ms / 380 ms poikkeavat tokens/motion.css:n 1,6 s / 180 ms / 180 ms arvoista. Selvitetään tarkoitettu liike ja lukujen alkuperä ennen tekstin korjaamista; kumpaakaan lähdettä ei hyväksytä automaattisesti oikeaksi. |
+| 5 | [drafts/AGENTS.md](../../design-system/drafts/AGENTS.md) ja vedosten työnjako | Agenttiohje, rethink-instructions, sekä siihen liittyvät suunnitteluviitteet. Navigaatio ja asetukset.dc.html omistaa nykyisen navigaation ja asetukset; Selainpolku.dc.html, Puhelin.dc.html ja Tummat näkymät.dc.html sisältävät myös vanhempia päällekkäisiä esimerkkejä. Onboarding.dc.html kuvaa käyttöönottoa. Luetaan ohje ja vedoksiin kirjoitetut selitykset yhdessä: mikä on nykyinen viite, mikä taustaa? Visuaaliset muutokset käsitellään design-kierroksella. |
+| 6 | [components.md](../../design-system/components.md) | Nykyisen toteutuksen ja katalogin kartta. Tarkistetaan lähdekoodista, mitä tiedostoissa ja storyissa on, ja erotetaan se keskeneräisestä suunnittelusta. Teksti kuvaa migrate-bespoke-controls- ja refine-agent-status-töitä vielä tulevina, vaikka ne ovat valmistuneet. |
+| 7 | [process.md](../../design-system/process.md) | Design-kierroksen agenttiohje, rethink-instructions. Käsitelty yhdessä 3.10.; nyt päivitysluku toteutuneiden inventaario- ja pakettikierrosten sekä myöhemmän handoff-ohjeen jälkeen. Erityisesti Työkalujen nykytila -osio kuvaa inventaariota vielä tulevana työnä. |
+| 8 | [rounds.md](../../design-system/rounds.md) | Kierrosten lähde- ja toimitushakemisto. Luetaan prosessin jälkeen: mitä commit tarkoittaa ja miten rajatun paketin kattavuus vaikuttaa seuraavan kierroksen lähtöpisteeseen? Tarkistetaan väitteet kierrosten manifesteista ja tuloksista; toimitushistoria ei ole uusi designpäätös. |
+| 9 | [fonts/AGENTS.md](../../design-system/fonts/AGENTS.md) | Fonttien alkuperä- ja ylläpito-ohje. Lyhyt faktantarkistus: mukana olevat leikkaukset, lähteiden jäljitettävyys, lisenssit ja paikallinen lataus. Lisenssitekstit toimivat lähteinä, niitä ei kirjoiteta uudelleen. |
+| 10 | [AGENTS.md](../../design-system/AGENTS.md) | Koko kansion agenttiohje, rethink-instructions. Luetaan viimeiseksi tarkennettujen lähteiden karttana. Tarkistettavia kohtia ovat työpöytä/puhelin-rajaus, vanha viittaus ADR 0002:n tilanomistustaulukkoon sekä muualla omistetun designin ja työtavan toisto. |
+
+`CLAUDE.md`-tiedostot ovat kolmen `AGENTS.md`:n symlinkkejä, eivät erillisiä
+lukukohteita. `styles.css`, neljä `tokens/*.css`-tiedostoa ja `drafts/support.js`
+ovat toteutusta; fonttibinaarit ovat resursseja ja OFL-tekstit alkuperäisiä
+lisenssejä. Niitä käytetään lukemisen lähteinä, mutta niille ei tehdä omaa
+proosan uudelleenkirjoitusjonoa. Kartoitus ei muuta designia, tokeneita tai
+vedoksia eikä korvaa käynnissä olevan designer-kierroksen palautusarviota.
+
 ## Käsitelty: päätökset, brändibriefi ja docs-juuren tekstit
 
 Jari valitsi 5.10.2026 seuraavaksi päätösdokumenttien vielä käsittelemättömät
@@ -58,8 +96,8 @@ teksti jää jonoon; tämä ei peru aiempaa päätöstä.
 | 11 | [Dokumentaation etusivu](../../docs/index.md) | Käsitelty Jarin kanssa 5.10.: nimeksi Omega Habitat, komponenttikartta erotettu tavoitekuvauksista ja päätökset nykyisestä toteutuksesta. Sivujen kirjoitustavan selostus poistettu; tuotteen peruskuvaus ja lukupolut säilyvät. |
 
 `docs/CLAUDE.md` on symlinkki `AGENTS.md`:hen, joten sama sisältö käsiteltiin
-kohdassa 10. Tämä dokumenttikierros on käsitelty loppuun. Seuraavaa tekstiä
-ei ole valittu. Pi-kysymysdialogien rajaus jää erikseen ratkaistavaksi.
+kohdassa 10. Tämä dokumenttikierros on käsitelty loppuun. Seuraava kokonaisuus on
+yllä oleva design-system-kansion jono.
 
 Jari hyväksyi 5.10. sivujen yhdistämisen, koska ne ylläpitivät samoja
 käyttökokemuksen päätöksiä kahdessa paikassa ja olivat jo erkaantuneet.
