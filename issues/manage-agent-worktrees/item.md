@@ -1,6 +1,6 @@
 ---
 created: 2026-09-21
-updated: 2026-10-04
+updated: 2026-10-05
 type: task
 status: open
 priority: normal
@@ -9,6 +9,7 @@ lane: ui-v1
 lane_seq: 90
 blocked_by: ['@connect-github-workspaces', '@decide-taskfleet-browser-integration']
 collision: [docs/, AGENTS.md, design-system/]
+preparation: reviewing
 ---
 
 # Manage agent worktrees
