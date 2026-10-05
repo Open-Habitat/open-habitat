@@ -1,6 +1,6 @@
 ---
 created: 2026-09-21
-updated: 2026-09-29
+updated: 2026-10-05
 type: task
 status: open
 priority: normal
@@ -9,6 +9,7 @@ lane: ui-v1
 lane_seq: 60
 blocked_by: ['@build-agent-control']
 collision: [docs/, AGENTS.md, design-system/]
+preparation: reviewing
 ---
 
 # Complete the accepted conversation and navigation experience
