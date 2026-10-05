@@ -1,6 +1,6 @@
 # ADR 0013: Diagnostics are correlated across services and read along the Unix user boundary
 
-**Status:** Accepted by Jari on 2026-10-05.
+**Status:** Superseded on 2026-10-05 by [ADR 0014](adr-0014-service-logging.md). This records the earlier choice; it is not the current implementation target.
 
 An operator who gets a report of a failed login or a stuck agent needs to find
 the matching records in the gateway, the broker and the user's daemon. Today

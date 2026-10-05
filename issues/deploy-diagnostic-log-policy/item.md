@@ -12,20 +12,16 @@ blocked_by: ['@correlate-diagnostics']
 preparation: ready
 ---
 
-# Apply diagnostic log policy on the test installation
+# Verify diagnostic logs on the test installation
 
 ## Purpose
 
-Complete the test-installation part of [ADR 0013](../../docs/decisions/adr-0013-diagnostic-logging.md) after @implement-diagnostic-emitter and @correlate-diagnostics. The concrete guest configuration and receipts belong to Fleetrepo's `nah-diagnostic-log-access` issue, not to this portable product repository. This issue is a scheduling bridge: issuectl cannot express a blocker across repositories, so without a local successor the Fleetrepo work could be forgotten or run against an older release.
+The test installation should make the service logs from [ADR 0014](../../docs/decisions/adr-0014-service-logging.md) straightforward to find and safe to read after @implement-diagnostic-emitter and @correlate-diagnostics land. Fleetrepo's `nah-diagnostic-log-access` owns the guest settings, operator instructions and receipts. This small bridge keeps that cross-repository work on the product DAG after the release it needs; it does not create another logging system or duplicate Fleetrepo's issue.
 
-## Next action
-
-When the product work lands, check that the release containing both changes is installed on the test guest. Then pick up `nah-diagnostic-log-access` from the Fleetrepo DAG, where its worker can inspect actual journal permissions, ingress, retention and cross-user access under Fleetrepo's operator policy. If that issue is already finished, inspect its release and guest receipts rather than starting a duplicate run. A product commit or a synthetic test alone does not prove deployed access. If journald cannot enforce the agreed reader boundary, return the concrete alternatives for a joint decision instead of declaring success or introducing a second log store.
-
-The product issue records only the release and Fleetrepo issue result needed to establish that this handoff happened. Installation-specific configuration, identities and logs remain private in Fleetrepo.
+When the product changes are released, check the installed revision and pick up the Fleetrepo issue in its own DAG. If Fleetrepo already completed it, read its actual guest evidence rather than starting a duplicate run. Record the release and Fleetrepo outcome here without copying private host details. An earlier product unit test cannot establish effective journal readers or retention on the guest.
 
 ## Acceptance Criteria
 
-- [ ] The test guest runs a release containing both product diagnostics changes, with the installed revision identified.
-- [ ] Fleetrepo's `nah-diagnostic-log-access` has a landed result verifying the agreed reader boundary, ingress and retention; this issue links to that outcome without copying private evidence. If the boundary cannot be enforced, keep this issue open for the joint decision.
+- [ ] The test guest runs a release containing both product logging changes, with the installed revision identified.
+- [ ] Fleetrepo's `nah-diagnostic-log-access` has a landed result for where to find service logs, who can read them, and the effective journal retention/space settings; this issue links to that result without copying private evidence.
 

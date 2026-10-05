@@ -20,4 +20,5 @@ and implementation work belong in issues.
 | [ADR 0010](adr-0010-taskfleet-worktree-agents.md) | Taskfleet owns worktree runs; the user's daemon owns the browser-controlled Pi |
 | [ADR 0011](adr-0011-gateway-owned-server-administration.md) | The gateway owns the server name and browser roles; the broker retains admission |
 | [ADR 0012](adr-0012-per-user-storage-quotas.md) | Per-user storage limits are Linux quotas over the whole home, set through the broker and shown by the gateway |
-| [ADR 0013](adr-0013-diagnostic-logging.md) | Diagnostics carry the gateway's attempt ID across services, are read along the Unix user boundary, and attribute actions to the verified identity only |
+| [ADR 0013](adr-0013-diagnostic-logging.md) | Superseded diagnostic correlation and reader model; see ADR 0014 |
+| [ADR 0014](adr-0014-service-logging.md) | Consistent, readable service logs on stderr/journald, using existing IDs when available |

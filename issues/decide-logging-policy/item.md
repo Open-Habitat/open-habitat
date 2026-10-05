@@ -52,12 +52,7 @@ settings belong to Fleetrepo.
 
 ## Outcome
 
-The policy is decided in
-[ADR 0013](../../docs/decisions/adr-0013-diagnostic-logging.md) and the
-[implementation plan](implementation-plan.md) is the build order.
-Implementation is @implement-diagnostic-emitter, then
-@correlate-diagnostics; the test-server journal configuration is Fleetrepo's
-`nah-diagnostic-log-access`.
+The original policy in [ADR 0013](../../docs/decisions/adr-0013-diagnostic-logging.md) was superseded on 2026-10-05 by [ADR 0014](../../docs/decisions/adr-0014-service-logging.md) after Jari clarified that the goal is readable, consistent service logs using existing IDs, not a new tracing system. The [earlier implementation plan](implementation-plan.md) remains for context, not as a build order. Current work is @implement-diagnostic-emitter, then @correlate-diagnostics; the test-server journal instructions and verification are Fleetrepo's `nah-diagnostic-log-access`.
 
 ## Completion
 

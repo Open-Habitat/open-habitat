@@ -1,4 +1,6 @@
-# Logging policy: implementation plan
+# Logging policy: superseded implementation plan
+
+> Historical plan for ADR 0013, superseded by [ADR 0014](../../docs/decisions/adr-0014-service-logging.md). Do not implement its new protocols, support references, async emitter or per-class retention from this document. The current work is in @implement-diagnostic-emitter and @correlate-diagnostics.
 
 Jari approved the [proposal](proposal.md) on 2026-10-04 and the four open
 architecture questions on 2026-10-05, recorded in
