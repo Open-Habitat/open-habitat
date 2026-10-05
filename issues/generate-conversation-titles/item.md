@@ -3,12 +3,13 @@ created: 2026-10-05
 updated: 2026-10-05
 type: feature
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m45tjw4bcnkre1genks6r7eh/conversation-title-split
 originating_run: 01m45tjw4bcnkre1genks6r7eh
 originating_run_kind: spinoff
+preparation: reviewing
 ---
 
 # Generate conversation titles and allow regeneration
