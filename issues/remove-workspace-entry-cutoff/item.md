@@ -2,12 +2,14 @@
 created: 2026-10-05
 updated: 2026-10-05
 type: bug
-status: in-progress
+status: fixed
 priority: normal
 related: ['@rethink-project-docs']
 lane: github-first-onboarding
 collision: [internal/daemon/, docs/]
 preparation: ready
+closed: 2026-10-05
+closed_by: claude
 ---
 
 # Keep large workspace collections visible beyond 512 entries
