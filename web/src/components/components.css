@@ -1982,3 +1982,19 @@ h1[tabindex="-1"]:focus {
     width: calc(100% - 2 * var(--ah-column-pad-inline));
   }
 }
+
+/* Keep the title visible when activity and capability are independent badges. */
+@media (max-width: 800px) {
+  .ah-agent-topline {
+    flex-wrap: wrap;
+  }
+  .ah-agent-topline .ah-title-row {
+    flex: 1 1 50%;
+  }
+  .ah-agent-topline > .ah-details-toggle {
+    order: 1;
+  }
+  .ah-agent-topline > .ah-status {
+    order: 2;
+  }
+}

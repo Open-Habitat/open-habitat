@@ -519,7 +519,7 @@ test("@lab fake-Pi crash leaves the turn readable but blocks another send", asyn
   ).toBeVisible({
     timeout: 20000,
   });
-  await expect(page.locator("main").getByText("Tila epävarma")).toBeVisible({
+  await expect(page.locator("main").getByText("Lähetys epävarma")).toBeVisible({
     timeout: 20000,
   });
   await expect(
