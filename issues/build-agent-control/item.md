@@ -77,8 +77,9 @@ completion requirement.
 
 @carry-typed-pi-events owns preserving Pi's structured content through the
 contracts and browser. @design-pi-event-blocks owns its finished presentation;
-@complete-conversation-ui covers the broader conversation experience and queue
-controls. This issue delivered the control path across those components.
+the retired @complete-conversation-ui records the initial conversation UI and
+queue controls. Its successor issues own further improvements. This issue
+delivered the control path across those components.
 
 Incoming questions and unfamiliar content remain visible through a safe,
 readable presentation. Pi-specific answer and cancel dialog controls are outside

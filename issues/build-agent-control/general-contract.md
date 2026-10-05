@@ -216,7 +216,7 @@ ja keskustelu jatkuu.
 on `openai-codex/gpt-5.6-luna`, low thinking, 16 KiB syötettä,
 120 Unicode-merkin tulos ja 0,02 USD:n raportoitu kustannusraja.
 Kertakutsuadapteri on vielä todennettava
-[keskustelun käyttöliittymätyössä](../../issues/complete-conversation-ui/item.md);
+[otsikointityössä](../generate-conversation-titles/item.md);
 siihen asti kyky on `unknown` / `adapter_not_verified`.
 
 ## Työtilan muutokset ja osittainen tulos
