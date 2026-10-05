@@ -1,14 +1,16 @@
 ---
 created: 2026-09-20
-updated: 2026-09-28
+updated: 2026-10-05
 type: task
-status: testing
+status: done
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
 lane_seq: 40
 blocked_by: ['@build-workspace-slice']
 collision: [docs/, AGENTS.md, design-system/]
+closed: 2026-10-05
+closed_by: jari
 ---
 
 # Display native Pi history for the first working core
@@ -32,11 +34,11 @@ as the next UI task's responsibility; do not silently drop its features.
 
 ## Acceptance Criteria
 
-- [ ] Use namespaced native resume IDs and evidence-based workspace association, including histories without a live controllable process.
-- [ ] Render real message text/code and generic tool output with stable identity/order, safe content rendering and explicit unsupported event fallback.
-- [ ] Handle empty, unreadable and long histories according to the accepted loading bounds; expose read-only status honestly.
-- [ ] Show the same conversation after reopening, with no duplicate authoritative history.
-- [ ] Verify representative redacted Pi fixtures and a real disposable history with the accepted commands; record limitations for @complete-conversation-ui.
+- [x] Use namespaced native resume IDs and evidence-based workspace association, including histories without a live controllable process.
+- [x] Render real message text/code and generic tool output with stable identity/order, safe content rendering and explicit unsupported event fallback.
+- [x] Handle empty, unreadable and long histories according to the accepted loading bounds; expose read-only status honestly.
+- [x] Show the same conversation after reopening, with no duplicate authoritative history.
+- [x] Verify representative redacted Pi fixtures and a real disposable history with the accepted commands; record limitations for @complete-conversation-ui.
 
 ## Delivery
 
@@ -69,3 +71,9 @@ Interactive and repeated behavior must use the shared production component imple
 ### 2026-09-28T12:42:36Z · @jari
 
 2026-09-28: Do not block agent-functionality implementation on my history-view screenshot review. Keep this visual verdict pending and work pragmatically; technical dependencies and actual file collisions still matter.
+
+## Resolution
+
+### 2026-10-05T12:49:48Z · @jari
+
+Jari has seen Pi conversations in the browser and considers the read-only history view delivered. The result.md tests and checked criteria document functional evidence; the screenshot comparison in visual-acceptance.md was not separately reviewed.
