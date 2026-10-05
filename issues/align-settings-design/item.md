@@ -15,56 +15,54 @@ preparation: pending
 
 # Align settings with the design and refresh view comparisons
 
-## Purpose
+## Purpose and design
 
-Settings should follow the shared [design](../../design-system/design.md), with
-clear sections for Tili, Yhteydet tällä palvelimella, Ulkoasu and Istunto. Jari's
-earlier review found that technically working views had drifted from the design.
-Alongside fitting settings, refresh the view comparisons so he can assess the
-resulting interface as a whole.
+Make settings a coherent place to recognize the signed-in account, understand
+native connections on this server, choose the theme and leave the browser session.
+Earlier technical checks passed while the views drifted from the design; this
+work also gives Jari a current comparison of the interface as a whole.
 
-The joint navigation and settings round uses the
-[request](../align-navigation-design/design-package/REQUEST.md) and
-[package result](../align-navigation-design/design-package/RESULT.md)
-kept in @align-navigation-design.
+The visual target is the approved
+[navigation and settings draft](../../design-system/drafts/Navigaatio%20ja%20asetukset.dc.html),
+with behavior defined in the [shared design](../../design-system/design.md).
+The joint round's [handoff](../align-navigation-design/design-package/HANDOFF.md)
+records the accepted direction and remaining gaps and links the original request
+and delivery. Its prototype logic and proposed component APIs are examples,
+not application requirements.
 
 ## Settings
 
-Fit the account details, native connection rows, theme selection and browser
-logout to the current design and `design-system/drafts/`, on desktop and phone
-in both themes. Use the shared controls and row layouts from
-@unify-ui-primitives and @migrate-bespoke-controls, with their shared state
-presentation. Views arrange components; component variants and tokens own their
-appearance and feedback.
+Fit Tili, Yhteydet tällä palvelimella, Ulkoasu and Istunto to this design on
+desktop and phone in both themes. Build on the shared controls and state
+presentation from @unify-ui-primitives and @migrate-bespoke-controls, keeping
+production components and their catalog examples consistent. @align-navigation-design
+owns the surrounding navigation; settings, the account menu and the sidebar
+should present the same person and use the same controls.
 
-@account-profile-from-github supplies the profile data and shared account
-presentation, including the agreed missing-data behavior. @add-account-settings-ui
-owns the remaining native connection functionality, including the OpenAI entry.
-This issue fits those elements into the settings layout. Connection states
-reflect the available native facts; unknown status remains understandable.
-Browser logout closes the browser session while native credentials and agent
-work remain on the server. The layout preserves that distinction.
+@account-profile-from-github owns profile data, shared account presentation and
+missing-data behavior. @add-account-settings-ui owns native connection
+functionality, including the OpenAI entry. This issue arranges those elements.
+Unknown connection status stays understandable rather than implying a verified
+connection. Browser logout ends the browser session while native credentials
+and agent work remain on the server; its presentation makes that effect clear.
+Theme selection, keyboard access, focus and return navigation remain usable
+through the layout change.
 
-Coordinate the surrounding navigation with @align-navigation-design so settings,
-the account menu and the sidebar use the same account presentation and controls.
-Keep theme selection, keyboard access, focus and return navigation working as
-the presentation changes. Shared production components and their catalog examples
-should show the same design in both themes.
+## Demonstrating the result
 
-## View comparisons
+Refresh settings, navigation and conversation comparisons from one implementation
+revision so Jari can judge how the views fit together. Use the current drafts
+and matching content, state, theme and viewport, following the
+[design process](../../design-system/process.md) and
+[synthetic lab guidance](../../web/AGENTS.md). Include ongoing, completed and
+read-only conversations, connection problems and account settings on desktop
+and phone in both themes. This is evidence of the interface, not real-provider
+behavior.
 
-Capture the resulting settings and refresh the existing conversation and
-navigation comparisons in the synthetic lab. Use the current drafts and one
-current implementation revision so the set shows how the views fit together,
-rather than mixing captures from different stages of the work. Representative
-content should make the relevant states visible, including work in progress,
-completed and read-only conversations, connection problems and account settings.
-
-Keep the comparisons and their index in this issue, with the source revision and
-remaining differences. Cover desktop and phone in both themes; where the designer
-has not supplied a corresponding draft state, identify that gap. The lab approach
-is described in `web/AGENTS.md`. The comparisons let Jari judge fidelity and choose
-further refinements; they do not establish real-provider behavior.
+Keep the comparison index and results in this issue, with the compared revisions,
+remaining differences and missing reference states visible. Gaps in the handoff,
+such as a profile image or pending OpenAI sign-in example, help identify what
+still needs evidence.
 
 ## Acceptance Criteria
 
