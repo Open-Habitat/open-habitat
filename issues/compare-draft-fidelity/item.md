@@ -4,7 +4,7 @@ updated: 2026-10-05
 type: task
 reporter: jari
 status: open
-priority: normal
+priority: high
 related: ['@design-control-states']
 lane: design-tooling
 lane_seq: 20
