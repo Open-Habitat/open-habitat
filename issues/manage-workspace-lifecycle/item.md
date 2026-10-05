@@ -9,7 +9,7 @@ lane: ui-v1
 lane_seq: 70
 blocked_by: ['@complete-conversation-ui']
 collision: [docs/, AGENTS.md, design-system/]
-preparation: pending
+preparation: ready
 ---
 
 # Manage local workspace lifecycle
@@ -28,8 +28,9 @@ separates this work from GitHub integration and Taskfleet management.
 ## User experience and stored information
 
 Creation supports a plain directory or `git init`, and Git can be enabled
-later. The created workspace opens with the product's first-agent and focus
-behavior. Directory names follow the [command contract](../../contracts/v1/command.schema.json).
+later. The created workspace opens; when the chosen flow includes a first agent,
+follow the product's start and focus behavior. Directory names follow the
+[command contract](../../contracts/v1/command.schema.json).
 Display-name edits leave directory names unchanged; Git, branch and remote
 information comes from Git. Repository readiness belongs to
 @connect-github-workspaces and remains unknown until verified.
