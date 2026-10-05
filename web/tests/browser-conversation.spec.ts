@@ -510,13 +510,13 @@ test("@browser-conversation footer and floating latest stay clear at phone width
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.evaluate(() => {
-    // Layout-only overflow survives virtualized feed reconciliation; inserted
-    // children could be removed by React before the geometry assertion.
-    const feed = document.querySelector<HTMLElement>(".ah-feed");
-    if (feed) feed.style.minHeight = "4000px";
-    const stream = document.querySelector(".ah-conversation-stream");
-    stream?.scrollTo({ top: stream.scrollHeight });
+  // React's virtualized feed can rerender after a scroll and replace its inline
+  // style. A CSS override survives reconciliation while keeping this layout-only.
+  await page.addStyleTag({
+    content: ".ah-feed { min-height: 4000px !important; }",
+  });
+  await page.locator(".ah-conversation-stream").evaluate((stream) => {
+    stream.scrollTo({ top: stream.scrollHeight });
   });
   const stream = page.locator(".ah-conversation-stream");
   const scrollable = await stream.evaluate((node) => {
