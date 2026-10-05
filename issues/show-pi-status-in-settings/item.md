@@ -12,18 +12,28 @@ collision: [web/src/components/]
 
 # Show native Pi sign-in state in account settings
 
-## Goal
+## Purpose
 
-Show the state of this server's native Pi/OpenAI sign-in alongside GitHub in account settings, without presenting credential presence as a live provider check.
+Show OpenAI alongside GitHub in account settings so the person can see the
+state of Pi sign-in on this server and reach the existing Pi onboarding flow
+when sign-in is missing.
 
-## Work
+## Context and scope
 
-Read the existing `/api/v1/onboarding/pi/status` contract (`usable`, `missing`, `unknown`), and display a comprehensible OpenAI entry for each state. Do not claim the OpenAI account identity, a verified live connection, or successful requests: none is available in the current contract. For missing sign-in, use the existing Pi onboarding flow rather than a second credential flow. Handle status fetch failure conservatively and cover the states in settings UI/browser tests. Coordinate presentation with @align-settings-design, which owns the layout and visual comparison. No native credential disconnect is part of this work.
+The status source is `/api/v1/onboarding/pi/status`, defined in
+`contracts/v1/pi-status.schema.json` and consumed by `web/src/app/pi.ts`.
+Its `usable`, `missing` and `unknown` states describe native credentials;
+they provide neither an OpenAI account identity nor proof of a successful
+provider request. Settings wording should reflect that distinction, with
+uncertainty visible when status is unknown or cannot be fetched.
 
-This is the remaining connection-state work split from @add-account-settings-ui after Jari confirmed the existing account/settings UI had been viewed and tested. @account-profile-from-github owns the person-facing name, email and image separately.
+This completes the OpenAI entry split from @add-account-settings-ui. It
+reuses native Pi sign-in; credential disconnection remains outside this
+issue. @align-settings-design owns layout and visual comparisons, and
+@account-profile-from-github owns the person's name, email and image.
 
 ## Acceptance Criteria
 
-- [ ] Settings describes usable, missing and unknown native Pi sign-in states without claiming a live provider verification or an account identity.
-- [ ] Missing sign-in can reach the existing Pi onboarding path, and failure to read status does not look connected.
-- [ ] Settings tests cover these states and the onboarding path.
+- [ ] Settings shows all three Pi states in terms the person can understand, without implying an OpenAI account identity or verified provider connection.
+- [ ] Missing sign-in leads to the existing Pi onboarding flow; a status fetch failure leaves the connection visibly uncertain.
+- [ ] Settings UI/browser tests cover the states, fetch failure and onboarding path.
