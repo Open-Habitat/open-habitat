@@ -3,7 +3,7 @@ created: 2026-10-05
 updated: 2026-10-05
 type: task
 reporter: jari
-status: open
+status: in-progress
 priority: normal
 related: ['@align-navigation-design', '@rethink-project-docs']
 lane: agent-control
