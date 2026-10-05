@@ -225,11 +225,12 @@ Pi jatkaa daemonin omistamana, vaikka selain suljetaan. Palatessa käyttäjä
 näkee nykyisen työn ja katkon aikana syntyneen historian. Daemonin tai
 palvelimen sammuminen voi sen sijaan katkaista aktiivisen työn.
 
-Normaali lähetys näkyy kuittausta odottavana, ei epävarmana. Jos kuittaus
-katoaa, käyttöliittymä selvittää tilanteen palvelimelta. Kun tulosta ei voida
-tietää, se näytetään epävarmana. Tekstin voi kopioida tai lähettää tietoisesti
-uutena viestinä; automaattinen uusinta voisi teettää saman työn kahdesti.
-Luonnos ja lukukohta säilyvät yhteyden palautuessa.
+Normaali lähetys näkyy kuittausta odottavana. Jos kuittaus katoaa,
+käyttöliittymä selvittää tilanteen palvelimelta. Ellei tulos selviä, käyttäjä
+näkee lähetysvirheen ja kehotuksen tarkistaa keskustelu ennen uutta yritystä.
+Tekstin voi kopioida tai lähettää tietoisesti uutena viestinä; automaattinen
+uusinta voisi teettää saman työn kahdesti. Luonnos ja lukukohta säilyvät
+yhteyden palautuessa.
 
 Työtilan luonti, GitHub-toiminto, Taskfleet-worktree ja poisto voivat onnistua
 vain osittain. Käyttäjä näkee valmistuneet vaiheet, virheen ja jäljelle jääneet

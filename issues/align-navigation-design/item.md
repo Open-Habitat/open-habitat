@@ -1,6 +1,6 @@
 ---
 created: 2026-10-01
-updated: 2026-10-04
+updated: 2026-10-05
 type: task
 reporter: jari
 status: open
@@ -71,3 +71,9 @@ examples should reflect the same design.
 - [ ] The sidebar, collapsed rail, phone drawer, account menu and return view follow the shared design in both themes.
 - [ ] The views use the shared controls, agent-state presentation and account profile consistently while preserving navigation behavior.
 - [ ] Synthetic lab comparisons show the resulting views beside the current drafts and identify any remaining differences.
+
+## Decisions
+
+### 2026-10-05T05:31:43Z · @jari
+
+Design response review: Jari prefers the designer’s error-forward status language to the current UI’s prominent “uncertain” messaging. A lost send acknowledgement is presented as a send error with a short instruction to check the conversation before retrying, not an extended explanation of uncertainty. Preserve the underlying distinction between confirmed rejection and unknown receipt so the UI does not claim “not sent” without evidence and never resends automatically. This changes the user-facing design, not the host receipt contract; reconcile the draft’s “ei lähetetty” label accordingly during handoff.
