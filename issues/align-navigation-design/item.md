@@ -10,7 +10,7 @@ lane: design-v2
 lane_seq: 14
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
 blocked_by: ['@restore-v2-conversation', '@show-pi-dialogs', '@unify-ui-primitives']
-preparation: pending
+preparation: ready
 ---
 
 # Align navigation with the design
