@@ -1,44 +1,155 @@
-# Logging policy: implementation plan for joint review
+# Logging policy: implementation plan
 
-**Planning only.** Jari approved the recommendation following the [source inventory](preparation.md) on 2026-10-04 and asked for this plan before programming. This does not authorize implementation, change the issue's preparation state, or settle the architecture questions below. [The proposal](proposal.md) supplies the policy direction; [the existing evidence](result.md) is not evidence that the new behavior works.
+Jari approved the [proposal](proposal.md) on 2026-10-04 and asked for this plan
+before any code. It says what the implementation consists of, which parts wait
+for a decision with him, and what the implementer needs to know that the code
+and the earlier documents do not show. The [source inventory](preparation.md)
+describes the starting point; the [existing evidence](result.md) covers only
+selected exclusions and an immediately failing writer, so it does not prove
+anything new here.
 
-## Boundaries and order
+## What stays fixed
 
-Keep diagnostic records on service stderr as bounded JSONL, separate from the broker's provisioning journal and the daemon's conversation event journal. Do not make logs an authorization source or a second account/history store. The gateway authenticates browser actors, the broker authorizes admission and binding, and the daemon observes only its own native operations ([identity and trust](../../docs/architecture/identity-and-trust.md), [ADR 0003](../../docs/decisions/adr-0003-host-stack.md), [ADR 0004](../../docs/decisions/adr-0004-first-login-user-provisioning.md)). A received diagnostic reference must never substitute for peer credentials, mapped-socket checks, the broker's allowlist, or a verified session.
+Diagnostics are bounded JSONL on service stderr, separate from the broker's
+provisioning journal and the daemon's conversation event journal, which are
+application state. Logs inform an operator; they never decide anything. The
+gateway authenticates browser actors, the broker authorizes admission and
+binding, and the daemon trusts only its own binding ([identity and
+trust](../../docs/architecture/identity-and-trust.md), [ADR
+0003](../../docs/decisions/adr-0003-host-stack.md), [ADR
+0004](../../docs/decisions/adr-0004-first-login-user-provisioning.md)). A
+correlation or support reference that arrives in a request is diagnostic data
+and nothing more: peer credentials, the mapped-socket checks, the allowlist and
+the verified session keep deciding authority and routing, and no identity or
+routing decision may depend on a reference. If a slice would make that
+tempting, it is the wrong design for the slice.
 
-The cross-component protocol and log-reader model are **decision gates**, not coding details. First read the choices below with Jari and record any architecture decision(s) before implementing affected slices. Unblocked local work may be planned separately, but this document is not a request to start it. Each implementation slice should land with its tests and honest evidence; finish with architecture documentation that describes what actually shipped, not this proposal.
+## Decisions to settle with Jari first
 
-## Product-repository slices (after approval)
+Two of the slices below change how components talk to each other or who can
+read what. Those are architecture, so they get a decision and an ADR before
+code. The rest can proceed in product scope as soon as the round is authorized.
 
-1. **Bounded diagnostic emitter.** Establish a small reusable JSONL envelope for gateway, broker and daemon: component, event, outcome, operation reference where present and a closed reason vocabulary. Start from `internal/gateway/auth.go`'s `CallbackLogger`, but include `internal/cli` startup/listening output and `internal/provision/broker_linux.go` guard records in the field inventory. Limit both bytes per record and total buffered records/bytes; use a bounded nonblocking handoff so a blocked stderr write cannot hold a login, broker mutation or daemon operation. Choose rate/aggregation budgets for repeated events (the existing unmatched-callback 32-burst/1-per-second limit is not an overall bound); count dropped records and emit a bounded recovery summary when delivery resumes. Define shutdown behavior without waiting indefinitely on a stalled sink. Test blocked, immediately failing and recovering writers, sustained flood and oversized fields, including unchanged authorization decisions, latency bounds and explicit loss; never claim that a permanently blocked sink can report its own dropped count.
+**Correlation across authorities.** The proposal recommends carrying the
+gateway's login attempt ID to the broker and the mapped daemon. Today the ID
+stays inside the gateway; the broker protocol rejects unknown fields by design
+(`internal/provision/protocol.go`), and the daemon credential handoff is its own
+frame in `internal/transport`. Both interfaces and their tests change
+deliberately, with receivers validating length and charset. Ordinary browser
+requests need a distinct, server-generated support reference, and the question
+is whether and how it crosses the gateway's rebuilt proxy request into the
+daemon. Recommendation: two separate opaque references, joined only in gateway
+records when relevant, and browser-supplied correlation headers ignored, because
+a value the browser chose can be made to collide with or impersonate another
+user's trace.
 
-2. **Gateway outcomes and support reference.** Extend existing OAuth start/callback and classified broker-failure records to cover meaningful pre-flow start failures, routing/proxy failures and Access denials without logging URLs, callback codes, headers or raw upstream errors. Replace the constant `req_00000000` in `gateway.safe` with an opaque server-generated failure reference and pair each reportable error with a record carrying that reference; for OAuth HTML redirects, design a safe way for the login UI to show/report a reference without putting sensitive data in a URL. Scope references per operation/failure rather than trusting browser-provided values. Account for gateway proxy pass-through of daemon responses, gateway-generated errors and routes that currently bypass `safe`; do not promise a log match for all HTTP errors or for dropped records. Update the browser contract/generated code and UI only if the agreed support interaction requires it. Test independent failures, browser-visible reference matching a server record, malformed callback, Access and wrong/missing daemon; test exclusions with synthetic secrets and content.
+**Who reads which records.** The proposal recommends root-authorized access to
+broker records, a restricted operator group for gateway records, and the owning
+user plus authorized operators for a user's daemon records. Fleetrepo's
+`nah-admin` login (`infra/native-agent-host-test/ADMIN.md`) is described as able
+to read logs; a general journal group would also expose broker records and other
+users' daemon records to it, which breaks the Unix-user boundary the product is
+built on. The open question is how wide that operator's view should be, and what
+to do if journald cannot express the chosen separation. Recommendation: bring
+the limitation and options to Jari rather than adding a second log copy or a
+log service, since each extra store is another place for user data to leak.
 
-3. **Broker phase and outcome coverage.** In `internal/provision` record admission denial, authorization failure, provisioning reservation/publication, readiness checks and final result at the boundary that actually knows each outcome (`protocol.go`, `transport_linux.go`, `writer_linux.go`, `broker_linux.go`). Retain the fixed guard-stage classification. Distinguish account publication from daemon readiness and from later browser-session issuance. Log the broker's validated subject where useful, not an unvalidated wire claim as an authenticated actor; do not log candidate names, root paths, command output or credentials by default. Test concurrent ensures, denied requests, interruption and partial publication, peer/framing rejection and log delivery failure: state and reply must not change. The broker ledger and native account remain the state authority.
+**Operator attribution.** Revocation ([ADR
+0006](../../docs/decisions/adr-0006-subject-revocation.md)) records the target
+subject. The root-only control socket proves a privileged peer, not which human
+acted, and [ADR 0011](../../docs/decisions/adr-0011-gateway-owned-server-administration.md)'s
+CLI path has the same shape. Browser-managed privileged changes can name the
+verified session actor. The question is whether "root peer" is an acceptable
+actor for CLI administration or whether a verified operator identity is wanted,
+in which case that boundary is designed before attribution is claimed. Until
+then records say honestly that the actor is a root peer; a name inferred from
+the subject, the request body or UID 0 would be a guess dressed as evidence.
 
-4. **Daemon diagnostics.** Add per-operation classified failure/outcome records at the authenticated token handoff (`internal/transport`, `internal/nativegh`), Pi device start and snapshot/native-discovery paths (`internal/daemon`). Record a user/account identifier only from the daemon's trusted binding, not a request field. Preserve the distinction between handoff acknowledgement, native credential readiness and snapshot failure; do not record tokens, device codes, Pi session content, tool output or native command stderr. Test success and failure under the mapped UID, synthetic secret/content exclusions and failed logging, plus cross-user denial on the authenticated socket.
+**Retention.** Seven days ordinary and thirty days for broker and privileged
+records are sizing suggestions. The real policy is chosen after Fleetrepo has
+measured volume and checked what journald can enforce; a per-class retention
+that the journal cannot implement should not be promised in documentation.
 
-5. **Correlation across authorities — gated by protocol decision.** If Jari approves, carry a gateway-generated login attempt reference on the narrow broker request and credential-handoff channel, validate length/charset at receivers and log it alongside each component's own result. `internal/gateway`'s attempt ID currently stays local; `internal/provision/protocol.go` rejects unknown fields and `internal/transport` has a separate handoff frame, so both interfaces and their tests must change deliberately. For ordinary browser requests, design a distinct opaque support reference and explicitly define if and how it crosses the gateway's rebuilt proxy request into a daemon; reject browser-supplied correlation headers. Test simultaneous attempts, invalid/spoofed values, strict framing, authorization/peer checks and a three-service synthetic trace. No identity or routing decision can depend on a correlation value. Until a decision, timestamp comparisons remain approximate.
+## Product slices
 
-6. **Actor attribution — gated where operator identity is ambiguous.** For browser-managed privileged changes, have the gateway record the verified session actor separately from target user and changed setting when those routes are implemented ([ADR 0011](../../docs/decisions/adr-0011-gateway-owned-server-administration.md)). For existing revocation ([ADR 0006](../../docs/decisions/adr-0006-subject-revocation.md)), `subject_revoked` names the target only: the root-only control socket establishes a privileged *peer*, not which human initiated it. Record that honest distinction until an approved operator identity mechanism exists; do not infer a person from subject, request body, UID 0 or a diagnostic reference. Verify browser role mutation and root control success/denial cases with separate actor/target assertions; do not add a fake actor to an action that has no verified human identity.
+**Bounded emitter.** One small reusable JSONL envelope for all three components:
+component, event, outcome, operation reference where there is one, and a closed
+reason vocabulary. `CallbackLogger` in `internal/gateway/auth.go` is the
+starting point; the field inventory also has to cover the CLI startup and
+listening lines in `internal/cli` and the guard records in
+`internal/provision/broker_linux.go`, which have different fields today.
+Gateway `slog` writes synchronously, so a blocked stderr can currently hold a
+login; the emitter needs a bounded nonblocking handoff, caps on bytes per
+record and on total buffered records, and a rate or aggregation budget for
+repeated events. The existing unmatched-callback limiter (32 burst, one per
+second) bounds one event, not the stream. Count what is dropped and emit a
+summary when delivery resumes, and let shutdown give up on a stalled sink
+rather than wait. One honesty point: a sink that stays blocked forever can
+never report its own loss, so do not write a test or a document that claims it
+can.
 
-7. **Document and integrate.** After implementation, update [architecture deployment](../../docs/architecture/deployment.md) and [identity and trust](../../docs/architecture/identity-and-trust.md) for the implemented record flow, reader boundary and failure/loss semantics. Add a new ADR for any changed authority/protocol or reader model rather than rewriting accepted ADRs. Record test commands, revision, skips and unverified behavior in the issue's result. Do not call synthetic tests proof of deployed journal access or ingress filtering.
+**Gateway outcomes and support reference.** Extend the OAuth and classified
+broker-failure records to pre-flow start failures, routing and proxy failures
+and Access denials. Replace the constant `req_00000000` in the gateway's safe
+error response (`internal/gateway/auth.go`; the daemon has its own copy in
+`internal/daemon/snapshot_linux.go`) with a server-generated opaque reference
+and write a record carrying the same reference. Not every HTTP error will have
+a match: some routes bypass the safe helper, proxied daemon responses pass
+through, and a dropped record is a dropped record, so documentation should say
+"usually", not "always". OAuth failures end in an HTML redirect, and a
+reference in a URL ends up in ingress logs, so the login UI needs another way
+to show it. Change the browser contract and UI only if the agreed support
+interaction needs it.
 
-## Fleetrepo installation slice (separate repository and evidence)
+**Broker coverage.** Record admission denial, authorization failure,
+reservation, publication, readiness and the final result at the layer that
+actually knows each outcome (`protocol.go`, `transport_linux.go`,
+`writer_linux.go`, `broker_linux.go`), keeping the fixed guard-stage
+classification. Publication, daemon readiness and later browser-session
+issuance are different outcomes and stay distinguishable. Log the broker's
+validated subject when it helps; an unvalidated wire claim is not an actor.
+Candidate names, root paths, command output and credentials stay out by
+default. The ledger and the native account remain the authority, so a logging
+failure changes neither state nor reply.
 
-Fleetrepo, not this product worktree, owns the concrete systemd journal and service permissions, reader groups/ACLs, automatic expiry and disk caps, ingress/access/tunnel logging and the operator's access path to the test server. Inspect current effective journal permissions (including whether the existing restricted `nah-admin` login in Fleetrepo's `infra/native-agent-host-test/ADMIN.md` can read all units), persistence and ingress URL capture before changing them. Configure and test the **agreed** reader model: a broker record must not become readable to an ordinary mapped user; a user's daemon records must not become visible to another user merely through a general journal group. Determine whether systemd journal's actual unit/user access can implement the desired separation; if not, bring the limitation and options to Jari rather than inventing an additional log copy or storage service. Choose feasible retention/storage controls with measured volume; seven days ordinary / thirty days broker or privileged records are sizing suggestions only, and per-class retention must not be promised if the journal cannot enforce it. Audit every additional ingress or exported copy for URLs, credential-bearing headers, access and expiry.
+**Daemon diagnostics.** Per-operation records at the credential handoff
+(`internal/transport`, `internal/nativegh`), Pi device start and snapshot and
+native discovery (`internal/daemon`). The user identifier comes from the
+daemon's trusted binding, never from a request field. Keep handoff
+acknowledgement, native credential readiness and snapshot failure apart.
+Tokens, device codes, Pi session content, tool output and native command
+stderr are the content the policy excludes.
 
-Validate on the disposable test guest after product release: inspect effective service unit and journal permissions using root, restricted operator and two distinct mapped UIDs; attempt to read each other's daemon, gateway and broker records; generate a synthetic failed OAuth callback and correlated broker/daemon failures without real credentials, inspect the resulting records and ingress logs; generate controlled volume and verify expiry/space limits without disrupting live users. Put deployment configuration and receipts in Fleetrepo under its own convergence/release procedure. Neutral service-template adjustments, if needed for portable behavior, belong here; host-specific group membership and journal config do not.
+**Documentation.** When the code is in, update [deployment](../../docs/architecture/deployment.md)
+and [identity and trust](../../docs/architecture/identity-and-trust.md) to
+describe what actually ships: the record flow, the reader boundary and what
+happens on loss. A changed protocol or reader model gets a new ADR rather than
+an edit to an accepted one.
 
-## Evidence gate for the eventual implementation
+## Fleetrepo slice
 
-For each changed Go package run focused tests (`go test ./internal/gateway ./internal/provision ./internal/daemon ./internal/transport ./internal/cli` as applicable), contract generation/drift checks when `contracts/v1/` changes, and relevant synthetic browser cases if support UI changes. On the committed final product candidate run `./scripts/ci-local.sh --clean --json` per [TESTING.md](../../TESTING.md). Use the applicable root/UID/socket VM scenarios from that guide for changed broker or daemon trust boundaries, recording skipped prerequisites rather than implying isolation was proven. Exercise a writer that **blocks**, not only one that immediately returns an error; assert bounded memory/latency and unchanged outcomes under sustained flood, with records/byte caps and loss accounting. Separate this synthetic proof from Fleetrepo guest evidence of read permissions, retention, and ingress capture. The current [result](result.md) covers only selected exclusions and immediately failing callbacks; it cannot certify these new guarantees.
+Fleetrepo owns journal and service permissions, reader groups, expiry and disk
+caps, ingress and tunnel logging and the operator's path to the test server.
+Inspect the effective state before changing it, including whether `nah-admin`
+can read every unit and whether ingress captures callback URLs. Then configure
+the agreed reader model and verify it on the disposable test guest with root,
+the restricted operator and two distinct mapped users trying to read each
+other's records, a synthetic failed OAuth callback with correlated broker and
+daemon failures, and controlled volume against the expiry and space limits.
+Deployment configuration and receipts go to Fleetrepo under its own convergence
+procedure; a neutral change to the service templates in this repository is
+fine if portable behaviour needs it, host-specific groups and journal config
+are not.
 
-## Questions for Jari before implementing the gated slices
+## What counts as evidence
 
-- **Correlation authority:** approve carrying gateway-generated attempt IDs over the authenticated broker and daemon handoff protocols and server-generated ordinary support references into daemon requests? Specify whether login attempt and support references should ever be joined, and how a browser can report an OAuth redirect failure without exposing secrets or leaking a diagnostic identifier in URL/ingress logs. Recommendation: use separate opaque references, linked only in gateway records where relevant; no browser-supplied reference is authoritative.
-- **Readers:** approve the intended access to broker (root-authorized), gateway (restricted operator), and per-user daemon (owning user plus authorized operators) records? Existing Fleetrepo `nah-admin` is described as able to read logs; a broad journal group may expose broker and other users' records. Decide whether that operator should read all user diagnostics or need narrower access, and what to do if journald cannot express the chosen policy without a second copy.
-- **Operator attribution:** is identifying a root-only control action as `root peer` sufficient for revocation and future CLI administration, or must the responsible human be attributable? If the latter, decide the verified operator-identity boundary before claiming actor attribution. Browser role changes can use the gateway's verified session actor, but ADR 0011's CLI path does not supply a human identity merely by authenticating a root peer.
-- **Retention:** after observing traffic and available journal controls, choose the actual retention/access policy for ordinary and privileged/broker diagnostics and any ingress copies; the proposal's 7/30-day split is not yet an approved operational requirement.
-
-No code, unit or lifecycle change should be inferred from this plan. Read it with Jari, resolve architecture choices explicitly, then authorize a separately scoped implementation round.
+Each changed Go package carries its own tests, and the final candidate runs
+`./scripts/ci-local.sh --clean --json` per [TESTING.md](../../TESTING.md), with
+the root, UID and socket VM scenarios from that guide where a broker or daemon
+trust boundary moved. The point that is easy to miss: test a writer that
+blocks, not only one that returns an error at once, and assert bounded memory
+and latency, unchanged authorization decisions and explicit loss accounting
+under a sustained flood. Synthetic tests prove the product's behaviour; only
+the Fleetrepo guest run proves deployed read permissions, retention and ingress
+capture, and the result should say which is which, including any skipped
+prerequisite.
