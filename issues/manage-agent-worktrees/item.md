@@ -14,84 +14,65 @@ preparation: reviewing
 
 # Manage agent worktrees
 
-## Purpose
+A person can create work from a Git workspace in Omega Habitat, find its agent
+under that workspace and work with it through the ordinary browser conversation
+view. Calling agents can delegate to the same kind of child and wait for its
+Taskfleet outcome in their own execution environment.
 
-Make worktree agents first-class agents in Omega Habitat. A person creates
-work from a Git workspace, finds its agent under that workspace, opens its
-conversation and works with it through the browser.
+Implement the [integration design](../decide-taskfleet-browser-integration/design.md).
+[ADR 0010](../../docs/decisions/adr-0010-taskfleet-worktree-agents.md) records the
+agreed ownership: Taskfleet creates and settles runs and worktrees, the per-user
+daemon controls a separate Pi child in the verified checkout, and Pi owns its
+history. The design describes creation, state presentation, recovery and history
+after cleanup; it is the source for those behaviors.
 
-Implement the [integration design](../decide-taskfleet-browser-integration/design.md)
-and the ownership division accepted in
-[ADR 0010](../../docs/decisions/adr-0010-taskfleet-worktree-agents.md): Taskfleet
-creates and settles the run and worktree, while the per-user daemon starts and
-controls a separate Pi child in the verified checkout. Creating a worktree and
-showing terminal history alone does not fulfil the goal.
+## What matters in this integration
 
-## Native ownership and browser experience
+Native identity connects the two owners: the full Taskfleet run/node identity
+and verified checkout identify the work, and the durable Pi session binding
+keeps its conversation findable after worktree removal. Branch names and display
+fragments cannot establish ownership. Cleanup affects valuable uncommitted work,
+so Taskfleet needs known ownership and remaining writers; manual and unknown
+worktrees remain read-only and block destructive cleanup that would affect them.
 
-Taskfleet owns its runs and worktrees, Git describes the checkout, and Pi owns
-its conversation history. Connect those facts so the browser shows the agent,
-its state and its relationship to the parent workspace. Missing native facts
-remain visible as uncertainty; run state alone does not establish Pi activity
-or browser control.
+Run creation, Pi startup and run settlement are separate outcomes. Showing what
+exists and what remains uncertain lets a person recover from interruption or
+daemon restart without duplicating work. Taskfleet run state alone says neither
+that Pi is active nor that the browser controls it.
 
-Use Taskfleet's supported creation inputs and show the resulting branch and
-worktree. Taskfleet determines the final branch name. When creation is
-unavailable, show a reason the person can act on.
+For delegation, the caller receives the exact run ID and starts
+`taskfleet run wait <run-id>`. The child can progress and reach its Taskfleet
+outcome while the caller is blocked there. Settlement that needs the caller to
+act first would deadlock this workflow; Pi exiting is not settlement. Success,
+failure, cancellation and timeout retain their native wait meanings.
 
-Associate work with the full Taskfleet run/node identity and verified checkout.
-A branch name or short display identifier could select someone else's work.
-Taskfleet performs cleanup once ownership and remaining writers are known.
-Manual worktrees and work without verified ownership remain read-only and
-prevent destructive cleanup that would affect them.
+## Implementation choices
 
-Worktree creation and agent startup can succeed separately. After a failure,
-disconnect or daemon restart, show what exists, what is running and what remains
-uncertain, so the person can recover without duplicating work. Stopping Pi
-does not settle the run. Keep completed conversations findable through the
-native run/node-to-Pi-session binding, including after worktree removal.
+Coordinate with Taskfleet's `caller-owned-agent-runs` issue for creation without
+a terminal worker, supervision independent of the daemon service, recoverable
+creation and durable session binding. The host needs this supported contract,
+including the delegation workflow above.
 
-Calling agents also need the native delegation workflow: create the child work,
-obtain its exact run ID and start `taskfleet run wait` in their own execution
-environment. The child must keep progressing and reach its Taskfleet outcome
-while the caller waits. Settlement cannot depend on that blocked caller acting
-first; Pi process exit alone does not settle the run. Preserve Taskfleet's wait
-results for completion, failure, cancellation and timeout.
+Choose supported worktree placement discoverable under `~/src`; the design
+explains the default layout mismatch. Outside and manual worktrees start as
+read-only observations. Decide which merge, salvage and discard actions belong
+in the browser, starting from native CLI settlement. These choices are delegated
+to implementation within the agreed ownership boundary.
 
-## Taskfleet support and implementation choices
+## Evidence
 
-Taskfleet's `caller-owned-agent-runs` issue owns the support needed for this
-division: creation without a terminal worker, a supervisor independent of the
-daemon service, recoverable creation and durable session binding. Coordinate
-the host integration with that contract.
+The result demonstrates browser creation and conversation control, recovery from
+partial creation and daemon restart, and access to completed conversations after
+cleanup. A real calling-agent `taskfleet run wait` process exercises the child
+lifecycle across both owners, including success, failure, cancellation and
+timeout. [CT-019](../../contracts/v1/scenarios.json) covers cleanup ownership.
+Distinguish native integration from simulations and remaining gaps.
 
-Resolve worktree placement so the daemon can discover created work under
-`~/src`; outside and manual worktrees start as read-only observations.
-The integration design explains the mismatch with the default nested worktree
-layout. Also decide which merge, salvage and discard actions belong in the
-browser, starting from native CLI settlement. These are implementation choices;
-the Taskfleet/daemon ownership boundary has been decided.
-
-## Completion and evidence
-
-Demonstrate the browser journey from creation to working with the agent,
-recovery from partial creation and daemon restart, and finding completed
-conversations after cleanup. Also demonstrate a calling agent starting a real
-`taskfleet run wait` process while the daemon-controlled child works, then
-receiving its Taskfleet outcome. Cover failure, cancellation and timeout as
-well as success, so this proves the native wait contract across both owners.
-Verify native ownership during cleanup, including manual and unknown worktrees
-([CT-019](../../contracts/v1/scenarios.json)).
-Use disposable Git, Taskfleet and harness data: real sessions and their
-uncommitted work are valuable.
-
-Use the shared [design](../../design-system/design.md) and production components.
-Keep the [interface description](../../docs/architecture/http-api.md),
-[contracts](../../contracts/v1/AGENTS.md) and affected documentation consistent
-with the implemented integration.
-
-[TESTING.md](../../TESTING.md) defines the checks. Keep proportionate lab
-screenshots and static HTML in `visual-acceptance.md`, with the tested revision.
-Record Jari's visual verdict when given; unreviewed appearance does not block
-functional completion or independent work. The result distinguishes demonstrated
-native Taskfleet integration from simulated behavior and remaining gaps.
+Use the shared [design](../../design-system/design.md) and production components,
+with the [HTTP description](../../docs/architecture/http-api.md) and
+[contracts](../../contracts/v1/AGENTS.md) reflecting the implemented behavior.
+[TESTING.md](../../TESTING.md) owns checks and disposable test data;
+[the design process](../../design-system/process.md) owns visual comparison.
+Keep the tested revision, lab screenshots and static HTML in
+`visual-acceptance.md`, recording Jari's verdict when given. Unreviewed appearance
+does not block functional completion or independent work.
