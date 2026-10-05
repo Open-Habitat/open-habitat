@@ -9,7 +9,7 @@ lane: ui-v1
 lane_seq: 110
 blocked_by: ['@archive-agent-conversations']
 collision: [docs/, AGENTS.md]
-preparation: pending
+preparation: ready
 ---
 
 # Deliver the installation and operations guide
