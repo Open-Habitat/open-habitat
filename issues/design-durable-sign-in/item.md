@@ -7,7 +7,7 @@ priority: normal
 related: ['@rethink-project-docs']
 labels: [human-review]
 lane: planning
-preparation: pending
+preparation: reviewing
 ---
 
 # Design durable browser sign-in
