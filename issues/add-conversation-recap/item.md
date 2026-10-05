@@ -42,9 +42,3 @@ evidence does not justify a recap. The earlier
 [conversation design](../native-agent-host-architecture/ui-design-conversation.md)
 and [design package](../native-agent-host-architecture/ui-design-package.md)
 provide UI context, not a settled recap design.
-
-## Decisions
-
-### 2026-09-30T17:35:34Z · @claude
-
-Rethink-night 30.9.: rethink-instructions (gpt-6-astra), faktantarkistus fact-check-instructions (claude-opus-5-5). Ilman Jaria rajattiin työ manuaalisen recap-kortin suunnitteluun; automaattinen recap pysyy myöhempänä harkintana, ei toteutuspäätöksenä. Otsikkoa selkeytettiin ja L7:n vanhentuminen sekä seuraavan toimen linkki tuotiin näkyviin. Faktantarkistus korjasi epämääräisen viittauksen vanhoihin luonnoksiin L7-muistiinpanoiksi ja täsmensi TUI-piirteen Pi:n /recap-extensioniksi; lähteet ja asennettu symlinkki tarkistettiin paikallisesti. Hyväksymisruudut säilytettiin työn myöhempää sulkemista varten. Ei ristiriitaa Jarin aiempiin päätöksiin. Tämän issuekansion ulkopuolella epicissä näkyy vanha otsikko ja design-paketin ajantasaisuus jäi epävarmaksi; niitä ei muokattu.
