@@ -58,12 +58,18 @@ design-työkaluun ja käy suunnittelukeskustelun siellä.
 
 ## Palautuksesta toteutukseksi
 
-Palautetut vedokset ja handoff-teksti arvioidaan kierroksen issueen ennen
-toteutuksen suunnittelua. Arvio selittää näkymien ja tilojen muutokset,
-ristiriidat sovitun käytöksen tai rajapintojen kanssa sekä puuttuvan
-lähtötiedon aiheuttamat väärinkäsitykset. Se kertoo, mitä toteutetaan,
-lykätään tai hylätään ja miksi. Vedosten esitystä verrataan edelliseen
-versioon tilakaappauksilla, koska HTML-diffi ei kerro ulkoasun muutosta.
+Palautuksen saavuttua paikannetaan ensin kierroksen issuen `REQUEST.md`,
+`RESULT.md` ja paketin lähdecommit. Palautetut vedokset ja handoff-teksti
+arvioidaan tähän pyyntöön nähden ennen toteutuksen suunnittelua. Arvio erottaa
+sommittelun, tilojen merkitykset, hostin todettavissa olevat faktat ja
+ehdotetun komponentti-API:n toisistaan. Se selittää ristiriidat sovitun
+käytöksen tai rajapintojen kanssa sekä puuttuvan lähtötiedon aiheuttamat
+väärinkäsitykset. Jarin kanssa sovitaan, mitä toteutetaan, lykätään tai
+hylätään ja miksi, ennen kuin palautus korvaa nykyisen designin. Vedosten
+esitystä verrataan edelliseen versioon tilakaappauksilla, koska HTML-diffi ei
+kerro ulkoasun muutosta. Vain samalla sisällöllä ja tilalla otettuja kuvia
+kutsutaan vastaaviksi vertailupareiksi; muuttuneet esimerkkitilat nimetään
+erikseen.
 
 Designissa löytyvä uusi toiminto tai ominaisuus kirjataan erikseen ehdokkaaksi
 issueiden lajitteluun. Näin hyödyllinen löydös säilyy eikä vedoksen mukana
