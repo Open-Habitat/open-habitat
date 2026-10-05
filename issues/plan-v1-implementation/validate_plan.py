@@ -91,15 +91,15 @@ if "@review-implementation-plan" not in issue_metadata("build-app-foundation").g
 # Closed slices record what actually happened in their results; they no longer
 # need a forward-looking review policy in the issue brief.
 for slug in owners[:10]:
-    if issue_metadata(slug).get("status") == "done":
+    if issue_metadata(slug).get("status") in {"done", "fixed", "wontfix", "duplicate", "cannot-reproduce", "obsolete"}:
         continue
     text = (ROOT / "issues" / slug / "item.md").read_text()
     # Only the declared review policy counts; a historical decision in Comments
     # cannot substitute for a missing policy for this slice.
     policy = next((section for section in re.split(r"^## ", text, flags=re.MULTILINE)
                    if "visual-acceptance.md" in section), "")
-    if (not re.search(r"screenshots?", policy, re.IGNORECASE)
-            or not re.search(r"(?:Jari|conductor)[^\n]{0,180}(?:decision|verdict)", policy, re.IGNORECASE)):
+    if (not re.search(r"screenshots?|(?:visual|browser)\s+evidence", policy, re.IGNORECASE)
+            or not re.search(r"(?:Jari|conductor)[\s\S]{0,180}(?:decision|verdict)", policy, re.IGNORECASE)):
         errors.append(f"missing visual evidence and explicit human decision policy: {slug}")
 
 if errors:

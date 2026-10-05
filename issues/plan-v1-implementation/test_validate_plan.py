@@ -54,8 +54,8 @@ class PlanValidatorTests(unittest.TestCase):
         self.run_validator()
 
     def test_missing_human_decision_fails(self):
-        self.change("build-history-view", "Record Jari's visual verdict when given", "File the screenshots when ready")
-        self.run_validator("missing visual evidence and explicit human decision policy: build-history-view")
+        self.change("manage-workspace-lifecycle", "Jari's outstanding visual verdict", "Visual review")
+        self.run_validator("missing visual evidence and explicit human decision policy: manage-workspace-lifecycle")
 
     def change_map(self, old, new):
         path = self.root / "issues/plan-v1-implementation/implementation-briefs.md"
