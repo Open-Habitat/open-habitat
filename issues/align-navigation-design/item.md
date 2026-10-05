@@ -57,6 +57,10 @@ updates do not steal focus. Current conversations and uncertain results remain
 available while the presentation changes. Drafts demonstrate composition with
 simulated data; their prototype state handling is not the application's behavior.
 
+Implementation of the sending and connection-recovery behavior agreed below belongs to
+@recover-sends-after-disconnection, including the short send-error feedback
+and automatic receipt check. It is separate from this navigation layout work.
+
 ## Demonstrating the result
 
 Use the synthetic lab to compare the implemented views with

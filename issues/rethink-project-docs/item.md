@@ -149,7 +149,23 @@ sovitun laajuuden ulkopuolelle. Jari hyväksyi nykyisen toteutuksen rehellisen
 kuvaamisen ja eron kirjaamisen jatkokäsittelyyn; dialogien säilyttämistä tai
 poistamista ei ratkaistu. Tuotekoodia tai sovittua laajuutta ei muutettu.
 
-Seuraava käsiteltävä tiedosto on `docs/architecture/events-and-recovery.md`.
+`events-and-recovery.md` käsitelty Jarin hyväksymällä rajauksella 5.10.2026.
+Sivu kuvaa avaamisen, elävät päivitykset, terminaalin muutokset ja katkoista
+palautumisen. Kursorin ja nykytilan ottamisjärjestys sekä viimeisen tapahtuman
+toiston käsittely korjattu lähdekoodin mukaisiksi. Tapahtumaluettelo ja tarkat
+ajastukset jätetty sopimukseen ja toteutukseen; puskurien rajallisuus ja sen
+vaikutukset säilyvät. Selainmuistissa oleva historia erotettu session storagen
+luonnoksista ja komentomerkinnöistä.
+
+Jarin pyynnöstä @recover-sends-after-disconnection omistaa palvelinyhteyden
+katkon aikaisen lähetyseston ja kuittauksen automaattisen tarkistamisen ennen
+seuraavaa lähetystä. Pelkkä tapahtumavirran katkos ei osoita palvelinyhteyden
+katkenneen. Kuittauksen lukeminen on jo toteutettu, mutta yhteyden palautumisen
+kytkentä ja palaute tarvitsevat muutoksen. Molemmat kuuluvat samaan
+käyttökulkuun; navigaatioissueen lisätty viite toteutustehtävään.
+Tällä kierroksella muutettiin dokumentaatiota, ei tuotekoodia.
+
+Seuraava käsiteltävä tiedosto on `docs/architecture/http-api.md`.
 
 ## Lokituskäytännön tehtävä 3.10.2026
 

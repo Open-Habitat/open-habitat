@@ -1,213 +1,148 @@
 # Events and recovery
 
-The browser learns about the user's workspaces and conversations in two ways.
-A snapshot is a complete picture at one moment. The event stream carries what
-changes after that moment, in order, with a cursor that lets the browser
-resume after a disconnection. When the cursor can no longer be honoured, the
-browser takes a fresh snapshot and reads history again. Nothing the browser
-holds is authoritative; Pi's files are.
-
-## Snapshot
-
-`GET /api/v1/snapshot` makes the daemon observe the user's native state right
-now: the directories under `~/src` with their facts, the Pi sessions matched to
-those directories, the conversations the daemon currently controls, the state
-of the native `gh` authorization, and the journal's current and oldest replay
-cursors. Each agent entry carries its activity and, for a running turn, the
-`live_tail` of provisional events already published for it. The response names
-the daemon's `server_instance_id` so the browser can tell a restart from a gap.
-The identity in it is an opaque hash of the provider and subject; no Unix
-username or home path travels to the browser.
-
-Native observation and the journal cursor are not atomic. The daemon takes the
-journal watermark before reading the files, and if the journal moved during the
-read it appends an invalidation so the browser knows to look again.
-
-## Event journal
-
-Each daemon keeps one in-memory ring of the user's events: up to 1024 events or
-16 MiB, whichever fills first. Every event has a cursor `ev1:<instance>:<seq>`,
-a unique event ID, a kind, a resource (the user or one agent) and a payload.
-
-```mermaid
-sequenceDiagram
-  autonumber
-  participant Pi
-  participant D as Daemon journal
-  participant B as Browser journal
-  B->>D: GET /api/v1/events?after=<cursor from snapshot>
-  D-->>B: replay of retained events after the cursor
-  Pi->>D: message_update deltas
-  D->>D: coalesce up to 50 ms / 4 KiB
-  D-->>B: assistant.delta
-  Pi->>D: toolcall_delta / tool_execution_update
-  D-->>B: assistant.toolcall.delta / tool.updated
-  Pi->>D: agent_settled
-  D->>D: read JSONL, verify native key
-  D-->>B: history.entry (native key), turn.settled
-  Note over D,B: ": heartbeat" every 20 s; stream ends after 10 min
-```
-
-| Kind | Meaning |
-|---|---|
-| `snapshot.invalidated` | `source_changed` on the user means take a new snapshot, on one agent that its native file changed and the open window must be re-read; `ring_truncated` on one agent means re-read that agent's history because its provisional tail overflowed |
-| `history.entry` | a new entry read from Pi's file, with its native key |
-| `assistant.delta`, `assistant.thinking.delta`, `assistant.toolcall.delta`, `assistant.toolcall.end` | provisional ordered response blocks; argument fragments become a call with its native ID |
-| `tool.started`, `tool.updated`, `tool.finished` | execution progress associated with that call ID; cumulative updates replace the previous preview for that call in a snapshot tail |
-| `bash.output` | streamed output of a local command, separate from a model-requested tool; saved command and output blocks supersede it |
-| `pi.lifecycle`, `pi.retry`, `pi.marker` | bounded activity, retry and session/compaction signals, not durable conversation entries |
-| `extension.visible` | visible notification or keyed status/widget text; a later update replaces or clears the keyed value |
-| `queue.changed` | Pi's steering and follow-up queues as last observed |
-| `question.requested` | an extension dialog is pending |
-| `turn.settled` | Pi stopped; carries the verified native key or `unknown` |
-| `command.changed` | a write's receipt changed |
-| `unknown.native` | an unsupported native event, named by its bounded type only; unchecked payload is not forwarded |
-| `question.resolved`, `agent.changed`, `workspace.changed`, `title.changed`, `source.warning`, `operation.changed` | reserved in the contract; the daemon does not emit them |
-
-Streamed text and tool activity are provisional. Pi gives deltas no durable
-entry key, so the browser never merges them with history by comparing text.
-Saved assistant content replaces streamed assistant blocks, a saved tool result
-supersedes that call's progress by call ID without removing other running calls,
-and a saved local command replaces its provisional output. The browser
-also deduplicates saved entries by native key. Long persisted text, arguments,
-images and command output are read by selected block, not shipped wholesale in
-events. Per agent the daemon retains at most 128 provisional frames or 128 KiB;
-repeated cumulative tool updates replace the older preview in that tail but
-remain in the replay ring. Past those bounds the daemon emits `ring_truncated`,
-which the browser answers with a history read.
-
-The stream request validates the cursor before sending headers. A cursor older
-than the ring answers `409 cursor_expired`; a cursor from another daemon
-incarnation answers `409 cursor_instance_mismatch`. `Last-Event-ID` on a
-reconnect overrides the query cursor. A connection lives at most ten minutes
-with a heartbeat every 20 seconds, and the browser reconnects from its last
-validated cursor. The session is checked when the stream opens, not per frame.
-
-## Writes from the terminal
-
-A Pi started in tmux writes to the same session files the browser reads, and
-the daemon has no RPC channel to it. To keep open views current, each daemon
-watches the user's session tree with inotify and publishes invalidations, not
-content. It watches the home, `.pi`, `.pi/agent` and every directory under
-`.pi/agent/sessions`, so a tree created after login is picked up, registers
-only directories that the user owns and that are not symlinks, and never
-follows a symlink into another tree. Writes elsewhere in the home are ignored.
-
-When a `.jsonl` file changes the daemon reads only its Pi header to learn the
-session ID and publishes `snapshot.invalidated` with `source_changed` on that
-agent, coalescing a burst of writes to one event per 250 ms. A directory
-change, a file whose header cannot be read, an inotify queue overflow or a
-watcher that cannot start or fails publishes the same event on the user
-instead, and the browser takes a new snapshot. A failed watcher leaves history
-readable; the browser then re-reads a cached terminal history each time it is
-opened, since no controller events can refresh it.
-
-```mermaid
-sequenceDiagram
-  autonumber
-  participant T as Pi in tmux
-  participant D as Daemon
-  participant B1 as Browser 1
-  participant B2 as Browser 2
-  T->>D: append to ~/.pi/agent/sessions/.../<id>.jsonl (inotify)
-  D->>D: read header, coalesce 250 ms
-  D-->>B1: snapshot.invalidated {source_changed} on pi:<id>
-  D-->>B2: same event
-  B1->>D: GET .../history (open window)
-  B2->>D: GET .../history
-  Note over B1,B2: entries joined by native key; no duplicate rows
-```
-
-The browser marks the affected window stale and re-reads its native page.
-Entries that also arrived as `history.entry` from a daemon-controlled child
-are joined by native key, so a conversation written by both paths shows each
-entry once. The daemon counts native-change generations so a snapshot that
-straddles a write can tell; the invalidation it appends for that race is not
-itself counted as a change, which keeps two browsers from feeding each other
-an endless snapshot loop. The browser-side alternative, each tab polling the
-file, would multiply reads and timers by the number of open tabs and tie
-latency to each tab's interval; one watcher per daemon publishes one hint to
-every connected view through the journal that already handles replay and gaps.
-
-## The browser's state
+The browser first reads the user's workspaces and conversations, then follows
+changes through one event connection per tab. Recently opened conversations
+stay in memory so returning to them is immediate. After a connection break,
+the browser catches up from retained events or reads native history again.
+Pi's session files remain the source of saved conversation content; the live
+view can be rebuilt from them and the daemon's current state.
 
 ```mermaid
 flowchart LR
-  SSE["EventSource<br/>one per tab"] --> J["ConversationJournal<br/>cursor, sequence, dedup"]
-  J --> S["ConversationStore<br/>metadata Map + window Map"]
-  P["ConversationPager<br/>25 entries per page"] --> S
-  Snap["snapshot.ts"] --> R["Redux<br/>connection phase, snapshot, filter"]
-  Snap --> J
-  S --> V["BrowserConversation / HistoryView<br/>useSyncExternalStore"]
-  R --> App["App: route, layout, login"]
-  A["ConversationActions<br/>writes and receipts"] --> S
+  Pi["Pi controlled by the daemon"] -->|live output| D["Daemon event journal"]
+  Pi --> F["Pi session files"]
+  T["Pi in a terminal"] --> F
+  F -->|change notification| D
+  F -->|history reads| B["Browser conversation view"]
+  D -->|snapshot and ordered events| B
 ```
 
-Redux holds application state: the connection phase, the current snapshot and
-the workspace filter. Conversation content lives outside Redux in
-`ConversationStore`, two plain Maps: metadata for the sidebar and status
-lines, and one window per opened conversation with its entries, next page key,
-provisional live turn and reading position. Components subscribe to one
-conversation at a time, so a streaming answer rerenders its own view and not
-the sidebar. The store keeps the 50 most recently viewed conversations and
-evicts whole windows beyond that. Switching back to a retained conversation
-renders from memory without a request; a cold open of a controlled
-conversation waits for its status before loading history.
+## Opening and retaining a view
 
-The store belongs to one identity in one tab. A new login of the same person
-keeps it; logout, expiry or a snapshot naming a different identity clears it,
-and the previous person's CSRF secret and drafts are discarded with it. History
-is never written to browser storage.
+A snapshot gathers workspace facts, native conversations, the daemon's
+controlled conversations and native GitHub authorization state. It includes
+recent provisional output for active turns and an event cursor: the point
+from which the browser can follow subsequent changes. A daemon-instance ID
+lets the browser distinguish a restart from a temporary connection break.
 
-`ConversationJournal` owns the one `EventSource` per tab. It validates each
-frame: same instance, sequence exactly one higher than the last, cursor and
-event ID consistent, no duplicate ID. Anything else is a gap.
+Reading native files is not atomic with observing running agents. The daemon
+records the native-change generation before discovery, then captures the
+controlled state, live tails and journal cursor together after discovery.
+If the native-change generation advanced during the read, it publishes an
+invalidation after that cursor so the browser reads again. This recovery
+notification does not itself count as a native change, avoiding repeated
+refreshes caused by concurrent snapshots in different tabs.
 
-## After a disconnection
+The browser reads history from the newest entries first and loads older pages
+as the person scrolls back. Application state, including the current snapshot
+and workspace filter, lives in Redux. Conversation metadata and opened history
+windows live in a separate in-memory store. Components subscribe to individual
+conversations, so a streaming answer updates its own view without rerendering
+the sidebar.
 
-```mermaid
-sequenceDiagram
-  autonumber
-  participant B as Browser
-  participant G as Gateway
-  participant D as Daemon
-  B--xG: EventSource error
-  B->>B: mark windows stale, show offline
-  B->>G: probe GET /api/v1/events?after=<cursor> (5 s)
-  alt 401
-    B->>B: open login
-  else 409 cursor expired or instance mismatch
-    B->>D: GET /api/v1/snapshot
-    D-->>B: new cursor, agents, live tails
-    B->>D: GET .../history for open windows
-    B->>D: GET /api/v1/events?after=<new cursor>
-  else 200
-    B->>D: reconnect from the same cursor
-  else network failure
-    B->>B: retry after 3 s × failures, at most 30 s; snapshot every 60 s meanwhile
-  end
-```
+The store currently retains the 50 most recently viewed conversation windows,
+including their reading positions. Returning to a retained window shows it
+immediately; a read-only terminal history is also refreshed on opening because
+it may have changed without controller events. Opening a controlled conversation
+that is not retained first checks its status before loading history.
 
-While offline the loaded text stays readable with its connection state shown.
-Writes are refused by the browser until the view is current again, because a
-command sent against a stale picture could duplicate work. A lost reply to a
-write is reported as uncertain, and the decision to try again is the person's.
+Each store belongs to one identity in one tab. A new session for the same
+person can retain it; logout, session expiry or a different identity clears
+user-specific state and stops the old event connection. History is not
+persisted in browser storage. Drafts and outstanding command markers use
+session storage so they survive a page reload.
 
-Browser or gateway loss leaves Pi running; the daemon keeps publishing into
-its ring. A daemon restart is different: the instance ID changes, every cursor
-from before is mismatched, controlled handles are gone and systemd has stopped
-the Pi children. The browser takes a snapshot, sees the conversations as
-readable histories, and the person continues one explicitly when they want to.
-[Conversations](conversations.md) describes the continuation proof.
+## Live output and saved history
 
-## The clone stream is the exception
+Each daemon keeps one ordered, in-memory event journal for its user. All
+connected tabs follow that journal independently. It carries live text,
+thinking, tool activity, command receipts and hints that native state has
+changed. The [HTTP API](http-api.md) and `contracts/v1/` define the messages.
 
-Cloning a GitHub repository during onboarding uses its own stream:
-`POST /api/v1/onboarding/github/clone/stream` answers as Server-Sent Events on
-the write request itself, carrying numbered Git stages and one final outcome.
-It has no cursor, no replay and no persisted job. Losing the browser connection
-cancels the clone. A reopened page asks the checkout endpoint what the native
-Git state shows and whether the writer has stopped; it does not resume the
-stream or clone again. [Workspaces](workspaces.md) describes the clone itself.
+Streamed output is provisional: Pi does not give each fragment a durable
+history key. When saved content becomes available, the browser replaces the
+corresponding live presentation. Saved assistant content supersedes streamed
+assistant blocks, a saved tool result replaces that call's progress by call ID,
+and a saved local command replaces its provisional output. Saved entries are
+joined by native key, rather than by comparing their text. Large saved blocks
+can be read separately instead of being sent in full through the event stream.
 
+Two bounded buffers serve different purposes. The daemon's replay journal
+retains up to 1024 events or 16 MiB, allowing a disconnected tab to catch up.
+The provisional tail for each agent retains up to 128 frames or 128 KiB,
+allowing a newly opened view to display an active turn. Repeated cumulative
+tool updates replace the earlier preview in that tail.
+
+When a provisional tail exceeds its limit, the daemon asks the browser to
+reread that conversation's history through a `ring_truncated` invalidation.
+An event too large to publish also becomes an invalidation. This is distinct
+from an expired replay cursor, which requires a new snapshot. These are
+current implementation limits, not limits on the history Pi can save.
+
+## Changes made from a terminal
+
+A Pi started in tmux writes the same session files, but the daemon has no RPC
+connection to it. One filesystem watcher per daemon observes the user's Pi
+session tree and publishes change hints through the existing event journal.
+This lets several browser tabs follow terminal work without each polling files.
+
+For a changed session file whose header identifies the conversation, the daemon
+publishes a hint for that agent. The browser refreshes the snapshot and the
+affected retained history window. Bursts of writes are coalesced. Directory
+changes, unreadable headers and watcher failures produce a user-wide hint
+instead. The watcher also notices a session tree created after login and
+restricts its watches to user-owned directories without following symlinks.
+
+Entries observed both through the controlled Pi and through the file watcher
+are joined by native key, so they appear once. If the watcher fails, history
+remains readable and is refreshed when a terminal conversation is reopened;
+continuous updates to an already open view are no longer assured.
+
+## Recovering after a connection break
+
+Each event carries a sequence, cursor and unique ID. The browser checks their
+consistency before advancing its cursor. An exact repeat of the last accepted
+event is ignored. A sequence gap, conflicting repeat, malformed event or
+changed daemon instance causes recovery from a new snapshot and history reads.
+
+A transport error alone first causes a reconnect attempt from the last
+validated cursor. The daemon replays retained events after that point. If the
+cursor has expired or belongs to a previous daemon instance, the browser
+fetches a new snapshot and reconciles its retained conversation windows.
+An expired login returns the person to sign-in. Repeated network failures
+back off; while the stream is unavailable, the browser also periodically
+tries refreshing the snapshot. Streams have a bounded lifetime and heartbeats,
+so reconnecting is part of normal operation.
+
+Loaded content remains readable with a connection warning. An event-stream
+failure does not by itself establish that ordinary HTTP requests are
+unavailable, and the current send path does not use stream availability as a
+sending condition. A failed send retains its command ID and text. Refreshing
+the conversation can query its receipt, but stream reconnection alone does not
+trigger that query, and the current feedback still asks the person to check
+the outcome. The browser never automatically resends the message.
+
+[Recover sends after disconnection](../../issues/recover-sends-after-disconnection/item.md)
+tracks implementation of the agreed change: block new sends during a server connection
+outage and automatically check the earlier send outcome when connectivity
+returns, before enabling another send. This is separate from an interruption
+of only the event stream. [Conversations](conversations.md) explains what a
+receipt establishes and why a missing receipt cannot prove rejection.
+
+Browser or gateway loss leaves Pi running and the daemon collecting events.
+A daemon restart loses its in-memory journal, receipts and controlled handles;
+in the systemd deployment, stopping the daemon also stops its Pi children.
+Saved conversations remain readable, and the person explicitly continues one
+to start a new controlled process. The new daemon instance forces browsers
+to rebuild their views rather than replaying the previous instance's events.
+
+## Cloning uses a separate stream
+
+GitHub repository cloning during onboarding streams progress as the reply to
+the clone request. It has no replay cursor or persisted job. Losing that
+connection cancels the clone; reopening the page checks the native checkout
+and whether its writer has stopped. It does not restart the clone or resume
+the old stream. [Workspaces](workspaces.md) describes this operation.
+
+Implementation lives in `internal/daemon` and `web/src/app`.
 Decisions behind this page: ADR 0005, ADR 0008, ADR 0009.
