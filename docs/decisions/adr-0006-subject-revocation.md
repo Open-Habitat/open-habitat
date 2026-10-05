@@ -1,13 +1,49 @@
 # ADR 0006: Local gateway subject revocation
 
-**Status:** Accepted (Jari approved the direction in @revoke-subject-sessions, 2026-09-29)
+**Status:** Accepted — Jari approved the original operation on 2026-09-29 and
+retained its limited scope on 2026-10-02.
 
-The gateway owns browser sessions and OAuth states. A root operator needs to remove one person's gateway access without restarting the shared gateway or changing the broker's identity ledger. An OAuth state has no subject until the callback exchanges its code; removing it from the map by subject at the moment of revocation is impossible.
+## Context
 
-Use a dedicated systemd-created Unix socket at `/run/native-agent-host/revoke.sock`, root-only mode 0600, passed as a single inherited descriptor to the unprivileged gateway. The authenticated gateway refuses startup without this descriptor. The control protocol accepts only one canonical positive numeric GitHub subject. The gateway checks kernel peer UID 0 and asks the broker to authorize the subject and return a valid binding before mutation. There is no HTTP route, browser cookie, UID, email or candidate login in this authority path. Run this before stopping the subject's daemon socket or removing the subject from the broker allowlist: `authorize` checks socket readiness and a failure returns `revoke_denied` without touching gateway memory. Revocation must succeed before policy or socket changes. A login after the cutoff but before the allowlist edit can still issue a new session; the two operations are not atomic. Jari chose on 2026-10-02 to leave this limitation in place and close [the follow-up issue](../../issues/reliable-session-revocation/item.md): current test use can reset the whole environment, and a general targeted-removal operation has no current requirement. The existing broker authority and admitted-stream behavior remain unchanged. If the scoped socket is already down, restore its readiness and retry revocation before draining it. A root connection to the systemd socket when the gateway is stopped can start the gateway; revocation does not freeze ingress. Root and the broker's allowlist are the operator authority; a compromised root operator already controls the machine. Fleetrepo must activate the socket with the service as one installation change; the package template alone does not change the live host.
+A one-time test-account reset needed to end one person's browser sessions
+without restarting the shared gateway or disturbing other users. The gateway
+owns browser authentication; native credentials, conversations and processes
+belong to the person's Unix account.
 
-Under the gateway session mutex, revoke removes that subject's sessions and sets a cutoff at the latest OAuth start serial. At callback, after provider identity resolution, an older flow for that subject is denied both before native token handoff and at the final locked session insertion. Other subjects' anonymous pending flows remain valid; they cannot be classified before the provider returns an ID. A callback already in handoff when revocation occurs may install a native credential, but cannot issue a session. A new login flow started after the cutoff is permitted. Revocation guarantees removal of prior sessions and denial of pre-cutoff OAuth flows for that subject, not a quiescent workspace. In Jari's one-time TEST-account reset, a concurrent new login is acceptable: if it recreates personal state, report that the trial was not clean rather than claiming a pristine reset. Ingress isolation would be needed to guarantee no concurrent recreation, but is not required for that accepted test reset. This does not define a general public reset contract. Restart loses all in-memory flows and sessions; no persistence or separate credential store is introduced.
+## Decision
 
-Already-running requests and native daemon processes are not terminated. The broker authorizes at login, not on live-session requests or stream frames. Editing the allowlist alone does not end an existing session: use `RevokeSubject` before changing admission policy. A request or stream already admitted is not interrupted by revocation; subsequent requests are denied. This avoids repeated serialized broker reads and leaves no implicit policy-edit logout. Provider grants, device codes, Pi history, gh credentials, daemon handles and binding ledger are outside this action. A live reset still needs a reviewed operator and separate scoped daemon drain, inventory and provider-side checks. Do not interpret this as approval for guest deletion.
+Provide a local root-only control socket for revoking one GitHub subject's
+browser sessions. The gateway verifies the caller's kernel UID and asks the
+broker to authorize the stable GitHub ID and confirm its account binding
+before changing session state. This keeps the operator action under local
+root authority and uses the broker's existing identity binding.
 
-Conversation ownership is per Unix user, not per browser session (Jari, @architecture-built-on-caution, 2026-10-01). Revoking browser sessions prevents new requests but does not delete native conversations or the daemon-owned writer lock.
+Revocation removes the subject's sessions and prevents login flows started
+before it from issuing a session. Pending OAuth flows reveal their subject
+only when GitHub identifies the person, so the gateway checks their start
+order at callback, including after native credential handoff. Other people's
+sessions and pending logins remain valid.
+
+## Scope and limits
+
+Requests authenticate against gateway sessions without repeated broker
+queries. Editing the allowlist alone therefore does not end existing sessions.
+Broker authorization requires admission and a ready daemon socket, so
+revocation must precede changes to either. These operations are not atomic:
+a new login started after revocation can still succeed while admission remains
+allowed.
+
+Already-admitted requests and streams continue. Revocation leaves native
+credentials, processes, conversations and writer locks intact; an in-flight
+login may complete credential handoff without obtaining a browser session.
+
+On 2 October, Jari [declined extending targeted revocation](../../issues/reliable-session-revocation/item.md):
+rebuilding the test environment meets the current reset need. General account
+removal remains [deferred](adr-0007-bound-user-deprovision.md).
+
+The original implementation keeps sessions and login flows in memory. The
+later [durable sign-in requirement](../../issues/design-durable-sign-in/item.md)
+calls for preserving login across gateway restarts; its design is pending.
+
+[Identity and trust](../architecture/identity-and-trust.md) describes current
+behavior, and [deployment](../architecture/deployment.md) covers operator use.
