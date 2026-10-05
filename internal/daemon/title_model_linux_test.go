@@ -53,7 +53,7 @@ func TestTitleModelUsesPinnedPiRuntimeWithSyntheticProvider(t *testing.T) {
 	if err := os.MkdirAll(agent, 0700); err != nil {
 		t.Fatal(err)
 	}
-	model := map[string]any{"providers": map[string]any{"fixture": map[string]any{"baseUrl": provider.URL + "/v1", "api": "openai-completions", "apiKey": "synthetic", "authHeader": true, "models": []any{map[string]any{"id": "fake", "name": "Fake", "reasoning": false}}}}}
+	model := map[string]any{"providers": map[string]any{"fixture": map[string]any{"baseUrl": provider.URL + "/v1", "api": "openai-completions", "apiKey": "synthetic", "authHeader": true, "models": []any{map[string]any{"id": "fake", "name": "Fake", "reasoning": true}}}}}
 	data, _ := json.Marshal(model)
 	if err := os.WriteFile(filepath.Join(agent, "models.json"), data, 0600); err != nil {
 		t.Fatal(err)

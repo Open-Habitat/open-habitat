@@ -12,10 +12,12 @@ const input = await new Promise((resolve, reject) => {
   process.stdin.on('error', reject);
 });
 const runtime = await ModelRuntime.create({ allowModelNetwork: false });
-const available = runtime.getAvailableSnapshot().filter(m => m.input?.includes('text') && m.cost && !m.reasoning);
-// Choose the least expensive configured text model, not the conversation model.
-// Price is a ranking hint, not an enforceable spending guarantee.
-available.sort((a, b) => (a.cost.input + a.cost.output) - (b.cost.input + b.cost.output));
+const available = runtime.getAvailableSnapshot().filter(m => m.input?.includes('text') && m.cost);
+// Reasoning capability is not a requirement to use reasoning: completeSimple
+// without an effort setting makes a tool-free ordinary text request.
+// Choose the least expensive configured text model, preferring non-reasoning
+// on price ties. Price is a ranking hint, not a spending guarantee.
+available.sort((a, b) => (a.cost.input + a.cost.output) - (b.cost.input + b.cost.output) || Number(a.reasoning) - Number(b.reasoning));
 const model = available[0];
 if (!model) process.exit(2);
 const answer = await runtime.completeSimple(model, {
