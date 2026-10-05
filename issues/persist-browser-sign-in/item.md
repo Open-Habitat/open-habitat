@@ -15,55 +15,59 @@ related: ['@design-durable-sign-in']
 
 # Keep browser sign-in across gateway restarts and upgrades
 
-## Description
+## Purpose
 
-## Goal
+A person stays signed in through ordinary use, browser closure, gateway
+restarts and release upgrades. Reauthentication is for logout or a stale
+session, not a daily routine. This issue implements the decision agreed with
+Jari in @design-durable-sign-in.
 
-A person is not asked to sign in again during ordinary use or after a gateway
-restart or upgrade. The design is decided in @design-durable-sign-in; this
-issue implements it.
+## Agreed design
 
-## Decided (see @design-durable-sign-in)
+The gateway owns a persistent server-side session record; the browser carries
+only a random opaque secret in a persistent cookie. The record is the authority:
+an expired, revoked or unrecognised cookie grants no access, including when
+the store is missing or unreadable. Jari accepted that losing the store means
+everyone signs in again.
 
-- The gateway keeps a persistent server-side session record; the browser
-  carries a persistent cookie holding only a random opaque secret.
-- A cookie with no valid record is denied, including when the store is
-  missing or unreadable. Losing the store means everyone signs in again.
-- Records live in a directory owned by the gateway alone, outside the
-  replaceable release and `/run`. A single file rewritten atomically is
-  enough; no database.
-- A session lasts months of ordinary use: an idle limit refreshed by use and
-  an absolute limit. The exact numbers are proposed and settled here.
-- The broker is checked at sign-in and at revocation, not on every request
-  (ADR 0004, ADR 0006). Logout and operator revocation keep working.
+A single atomically rewritten file is enough for this host's handful of
+sessions. It belongs in gateway-private state outside the replaceable release
+and `/run`, so upgrades preserve it and other non-root accounts cannot read it.
+The broker ledger and users' homes serve different authorities. Session state
+contains no OAuth tokens or native credentials.
 
-## Implementation notes
+Sessions last months of ordinary use, with a renewable idle limit and a fixed
+absolute limit that bounds the life of a stolen cookie. Choose and justify the
+numbers here; 90 days idle and one year absolute is an earlier proposal, not
+a settled requirement.
 
-Proposals to settle in this issue, with the reasoning recorded here:
+## What the implementation needs to preserve
 
-- Lifetime numbers (the earlier proposal was 90 days idle, one year
-  absolute). Renew the stored idle deadline on use at a bounded cadence rather
-  than on every request; never extend the absolute deadline.
-- Store the hash of the cookie secret, the broker-authorized GitHub ID and
-  Unix route, Access email binding, CSRF secret and both deadlines. No OAuth
-  token or native credential. Persist creation before the cookie is sent and
-  deletion before logout or revocation is acknowledged; serialize lookup,
-  renewal, logout and subject deletion so a concurrent request cannot restore
-  a revoked session. Open and validate the file before serving authenticated
-  traffic; purge expired records opportunistically.
-- Cookie: `Secure`, `HttpOnly`, `SameSite=Lax`, `Path=/` as now, plus
-  `Max-Age` ending at the absolute deadline. The server deadline is
-  authoritative.
-- Deployment: give the gateway unit a `StateDirectory` in `systemd/` and in
-  Fleetrepo's test-server installation (`infra/native-agent-host-test/`).
-  Sessions never go into the broker ledger or a user's home.
-- Documentation: `docs/architecture/identity-and-trust.md`,
-  `docs/architecture/deployment.md` and `docs/product.md` describe the old
-  in-memory behaviour and are updated with the implementation.
+Restored sessions retain the broker-authorized identity and Unix route, Access
+email binding and CSRF protection. Store a hash of the browser secret rather
+than the usable bearer secret. Existing cookie protections remain, with browser
+persistence bounded by the absolute deadline; server-side expiry is authoritative.
+
+Successful login means the session survives a restart. Successful logout or
+operator revocation means it stays removed after a restart or a concurrent
+request. This durability is what matters when choosing persistence, failure
+handling and synchronization. Idle renewal should avoid a disk write on every
+request without extending the absolute lifetime.
+
+Authorization and revocation retain their existing scope in
+[ADR 0004](../../docs/decisions/adr-0004-first-login-user-provisioning.md) and
+[ADR 0006](../../docs/decisions/adr-0006-subject-revocation.md): the broker is
+consulted at sign-in and revocation, not on every request. Broader account
+removal and logout design belong elsewhere.
+
+The deployment needs durable gateway state in both the `systemd/` templates
+and Fleetrepo's `infra/native-agent-host-test/` installation. Update the current
+behaviour documented in `docs/architecture/identity-and-trust.md`,
+`docs/architecture/deployment.md` and `docs/product.md` with the implementation.
 
 ## Acceptance Criteria
 
 - [ ] A signed-in person stays signed in across a gateway restart and a release upgrade on the test server.
-- [ ] Closing and reopening the browser within the idle limit does not require signing in again.
-- [ ] Logout and operator revocation end web access as before; an expired or revoked cookie is denied.
+- [ ] Closing and reopening the browser within the idle and absolute limits does not require signing in again.
+- [ ] Logout and operator revocation retain their existing scope and remain effective after restart; expired or revoked cookies and cookies without a valid stored record grant no access.
 - [ ] Chosen lifetime numbers and their reasoning are recorded in this issue, and the architecture and product docs describe the new behaviour.
