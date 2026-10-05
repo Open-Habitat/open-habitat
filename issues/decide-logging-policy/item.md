@@ -1,6 +1,6 @@
 ---
 created: 2026-10-03
-updated: 2026-10-04
+updated: 2026-10-05
 type: task
 reporter: jari
 status: open
@@ -11,6 +11,7 @@ blocked_by: ['@rewrite-architecture-docs']
 commits:
 - hash: 11b94304ad7e7284551e4374d9fc0f8553557463
   summary: 'docs: rewrite the architecture as a present-tense system description'
+preparation: ready
 ---
 
 # Decide and implement the logging policy
