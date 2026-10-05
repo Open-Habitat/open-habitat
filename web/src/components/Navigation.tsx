@@ -267,8 +267,10 @@ export function AgentNavItem({
               ? stale
                 ? "Tieto vanhentunut"
                 : "Ei enää löydy"
-              : (operationLabel ??
-                (controlLabel || activityShortLabel || activityLabel))
+              : controlLabel === "Vain luku"
+                ? "vain luku"
+                : (operationLabel ??
+                  (controlLabel || activityShortLabel || activityLabel))
           }
         />
       </ListRow>

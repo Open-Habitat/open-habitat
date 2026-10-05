@@ -241,6 +241,10 @@ export function BrowserConversation({
         ?.querySelector("textarea")
         ?.focus({ preventScroll: true });
   }, [id, controlled]);
+  const presentation = agentPresentation({
+    process: statusStale ? "stale" : "daemon_managed_live",
+    command: current && !statusStale ? current.state : undefined,
+  });
   return (
     <section ref={section} className="ah-reading-view">
       {!id ? (
@@ -345,22 +349,10 @@ export function BrowserConversation({
                 : undefined
             }
             activityLabel={
-              agentPresentation({
-                process: statusStale ? "stale" : "daemon_managed_live",
-                command: current && !statusStale ? current.state : undefined,
-              }).operationLabel ??
-              agentPresentation({
-                process: statusStale ? "stale" : "daemon_managed_live",
-                command: current && !statusStale ? current.state : undefined,
-              }).activityLabel
+              presentation.operationLabel ?? presentation.activityLabel
             }
             activityKind={
-              agentPresentation({
-                process: statusStale ? "stale" : "daemon_managed_live",
-                command: current && !statusStale ? current.state : undefined,
-              }).activity === "working"
-                ? "working"
-                : "unknown"
+              presentation.activity === "working" ? "working" : "unknown"
             }
             controlKind={controlled ? "neutral" : "read-only"}
             controlLabel={

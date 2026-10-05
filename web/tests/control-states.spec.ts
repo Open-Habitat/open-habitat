@@ -98,7 +98,7 @@ test("@control-states shared feedback on navigation, list, button and menu in bo
   // One shared recipe token changes the same state across views.
   await page.evaluate(() =>
     document.documentElement.style.setProperty(
-      "--ah-surface-2",
+      "--ah-surface-hover",
       "rgb(12, 78, 92)",
     ),
   );

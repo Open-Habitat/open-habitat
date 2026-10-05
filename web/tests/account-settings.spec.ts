@@ -157,7 +157,7 @@ test("@account-settings compact phone drawer and settings preserve status and ra
   const firstAgent = nav.locator(".ah-agent-item .ah-nav-link").first();
   await expect(firstAgent).toHaveAttribute("aria-describedby", /.+/);
   await expect(firstAgent).toHaveAccessibleDescription(
-    /Prosessin tila ei tiedossa · Vain luku/,
+    /Tila ei tiedossa · Vain luku/,
   );
   await expect(firstAgent).toContainText("vain luku");
   await expect(firstAgent.locator(".ah-status")).toHaveText("vain luku");
