@@ -25,13 +25,13 @@ The [reconciled handoff](../design-pi-event-blocks/design-package/HANDOFF.md) re
 
 The agreed next action is a bounded working slice: a mixed turn with text, readable thinking, a tool call, progress, saved result and assistant continuation, including expansion through revision-checked bounded block reads. This exercises the central live-to-history relationship before wider coverage. @apply-control-state-design supplies shared controls and agent status; @compare-draft-fidelity supplies the comparison mechanism.
 
-The full rendering goal covers the supported visible families in the [Pi catalogue](../catalog-pi-events/analysis.md): user text/images, assistant content, tools, local `!`/`!!` commands, summaries, session markers, visible extension content, live questions, recovery, queues and unknown content. Shared production renderers and catalog examples make each block's meaning, handler and design discoverable. Actual implementation gaps can justify dependent slices; the handoff's proposed APIs are not an approved projection backlog.
+The full rendering goal covers the supported visible families in the [Pi catalogue](../catalog-pi-events/analysis.md): user text/images, assistant content, tools, local `!`/`!!` commands, summaries, session markers, visible extension content, live questions, recovery, queues and unknown content. Shared production renderers and catalog examples make each block's meaning, handler and design discoverable. The rendering and any safe native-data projections it needs belong to this issue, even if the implementation is divided into dependent slices. The handoff's proposed APIs are not a prescribed backlog.
 
 ## Native meaning
 
 Pi remains the source of history. The handoff explains why resolved questions lack a confirmed history record, why `agent_settled` differs from an assistant finishing, and why model, usage and stop reason belong to individual messages, including retries. It also distinguishes typed local-command metadata from bash output text. These distinctions prevent a plausible-looking UI from making false claims.
 
-Conditional draft examples need verified sources and separate scope before becoming features. Missing facts remain documented gaps. Readable thinking stays available; encrypted or hidden content and raw diagnostics do not become conversation blocks. Full-result access uses bounded block reads rather than exposing `fullOutputPath` or creating another history store.
+Verify the native source for each conditional example that the UI needs and implement its safe projection here. If a fact does not exist in native data, leave the example conditional and record the gap rather than inventing it. Readable thinking stays available; encrypted or hidden content and raw diagnostics do not become conversation blocks. Full-result access uses bounded block reads rather than exposing `fullOutputPath` or creating another history store.
 
 ## Acceptance Criteria
 
