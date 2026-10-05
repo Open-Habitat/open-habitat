@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-30
+updated: 2026-10-05
 type: task
 status: open
 priority: normal
@@ -9,6 +9,7 @@ blocked_by: ['@review-mvp']
 lane: post-mvp-design
 lane_seq: 20
 collision: [docs/, design-system/]
+preparation: pending
 ---
 
 # Expose native task profiles and worker information when needed
