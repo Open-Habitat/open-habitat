@@ -79,3 +79,6 @@ groups:
       - slug: decisions/adr-0012-per-user-storage-quotas
         title: ADR 0012 — Per-user storage quotas
         desc: Linux user quotas over the whole home, administered through the broker and gateway.
+      - slug: decisions/adr-0013-diagnostic-logging
+        title: ADR 0013 — Diagnostic logging
+        desc: Attempt IDs cross services, logs are read along the Unix user boundary, actors are verified identities only.
