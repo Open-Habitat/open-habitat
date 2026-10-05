@@ -87,9 +87,9 @@ does not infer ownership from a branch name.
 conversations through presentation metadata while retaining native history.
 Stopping work, archiving and continuing a conversation are separate actions.
 
-### `prepare-mvp-operations`
+### `installation-and-operations-guide`
 
-[Installation and recovery](../prepare-mvp-operations/item.md) owns portable
+[Installation and recovery](../installation-and-operations-guide/item.md) owns portable
 release artifacts and generic self-hosting guidance. Fleetrepo owns the concrete
 test installation and its verified upgrade/rollback procedure.
 

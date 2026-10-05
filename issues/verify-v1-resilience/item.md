@@ -7,7 +7,7 @@ priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
 lane_seq: 120
-blocked_by: ['@archive-agent-conversations', '@complete-conversation-ui', '@prepare-mvp-operations']
+blocked_by: ['@archive-agent-conversations', '@complete-conversation-ui', '@installation-and-operations-guide']
 collision: [docs/, AGENTS.md, design-system/]
 closed: 2026-10-05
 closed_by: jari
@@ -66,7 +66,7 @@ tests. Browser fixtures using one UID cannot establish Linux account separation.
 Live participants sign in themselves; technical verification does not depend on
 a second person's participation. Live checks follow Fleetrepo's current
 `infra/native-agent-host-test/` documentation (including `RELEASE-UPGRADE.md`
-for updates and switch-back) and the pilot procedure from @prepare-mvp-operations.
+for updates and switch-back) and the pilot procedure from @installation-and-operations-guide.
 
 ## Results and follow-up
 

@@ -15,7 +15,7 @@ owners = [
     "build-history-view", "build-agent-control", "complete-conversation-ui",
     "manage-workspace-lifecycle", "connect-github-workspaces",
     "manage-agent-worktrees", "archive-agent-conversations",
-    "prepare-mvp-operations", "verify-v1-resilience",
+    "installation-and-operations-guide", "verify-v1-resilience",
 ]
 errors: list[str] = []
 

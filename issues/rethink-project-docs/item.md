@@ -528,7 +528,7 @@ Nämä 19 issuea käytiin läpi consult-llm:n avulla ilman Jaria; kaikki yksikö
 | [native-agent-host-architecture](../native-agent-host-architecture/item.md) | arkkitehtuurieepos selkeytetty ja faktat tarkistettu. | `0de9982` |
 | [plan-second-user-admission](../plan-second-user-admission/item.md) | testiasennuksen hyväksymisraja ja avoin broker-valinta selkiytetty; Jarin päätös säilytetty. | `f59c73e` |
 | [prepare-interactive-demo](../prepare-interactive-demo/item.md) | harjoituksen tila ja vanhentuneiden kuvien rajaus selkeytetty, Jarin päätös säilytetty. | `e655539` |
-| [prepare-mvp-operations](../prepare-mvp-operations/item.md) | toteutusissue selkeytetty ja faktantarkistettu; hyväksymis- ja palautumisrajat säilytetty. | `20546ef` |
+| [installation-and-operations-guide](../installation-and-operations-guide/item.md) | toteutusissue selkeytetty ja faktantarkistettu; hyväksymis- ja palautumisrajat säilytetty. | `20546ef` |
 | [prove-clean-server-install](../prove-clean-server-install/item.md) | ohje selkeytetty, faktat tarkistettu ja päätös kirjattu. | `c3a9049` |
 | [refine-agent-status](../refine-agent-status/item.md) | selkeä nykyteksti säilytettiin; rethink- ja faktantarkistus kirjattiin päätösmerkintään. | `fe81b5f` |
 | [rename-omega-habitat](../rename-omega-habitat/item.md) | issue selkeytetty ja asennetun tilan nimeämisriskit tarkistettu. | `a291033` |
@@ -779,7 +779,7 @@ Gatewayn sisältöä koskeva lause täsmennettiin erottamaan liikenteen välitys
 lokeista ja diagnostiikasta. Hyväksyttyjen päätösten välisiä ristiriitoja ei
 läpikäynnissä havaittu. Sivu ei muuta protokollaa eikä väitä live-todennusta.
 
-Palveluvaatimukset säilyvät [asennusissuen liitteessä](../prepare-mvp-operations/service-requirements.md).
+Palveluvaatimukset säilyvät [asennusissuen liitteessä](../installation-and-operations-guide/service-requirements.md).
 Testien vastuut ja suunnitelmat ovat ennestään toteutuskartassa ja toteutusissueissa.
 Dokumentaatio- ja toteutuskartan tarkistukset sekä `git diff --check` läpäisivät.
 `./scripts/ci-local.sh --clean --json` läpäisi revisiolla

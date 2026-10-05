@@ -7,7 +7,7 @@ priority: high
 lane: installation
 lane_seq: 10
 collision: [docs/, AGENTS.md]
-related: ['@prepare-mvp-operations']
+related: ['@installation-and-operations-guide']
 blocked_by: ['@deliver-login-pilot']
 closed: 2026-10-05
 closed_by: jari
@@ -25,7 +25,7 @@ package and documented operator inputs.
 
 Native Agent Host owns the guide, generic scripts and product package.
 Fleetrepo owns the concrete Hetzner pilot's users, secrets, firewall, DNS, fleet
-and receipts. Coordinate with @prepare-mvp-operations and reuse and improve its
+and receipts. Coordinate with @installation-and-operations-guide and reuse and improve its
 operations artifact rather than duplicate its general lifecycle work. Start
 with the guide; a reusable skill becomes worth proposing only after the process
 works and repeated agent use warrants one.
@@ -98,4 +98,4 @@ Rethink-night 30.9.: toteuttajalle suunnattu issue kirjoitettiin luettavammaksi 
 
 ### 2026-10-05T10:00:03Z · @jari
 
-The standalone guide and clean-VM proof belong to @prepare-mvp-operations as acceptance of installable packaging, not a separate post-pilot test issue. The distinctive fresh-agent and synthetic two-UID checks have been carried there.
+The standalone guide and clean-VM proof belong to @installation-and-operations-guide as acceptance of installable packaging, not a separate post-pilot test issue. The distinctive fresh-agent and synthetic two-UID checks have been carried there.

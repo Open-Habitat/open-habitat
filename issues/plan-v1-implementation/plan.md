@@ -134,7 +134,7 @@ sovittuja valtuus- ja vahvistusrajoja. Arkisto ei ole toinen historiatietokanta.
 
 ## 8. Käyttöönotto, häiriöt ja hyväksyntä
 
-@prepare-mvp-operations paketoi sovelluksen ja dokumentoi asennuksen,
+@installation-and-operations-guide paketoi sovelluksen ja dokumentoi asennuksen,
 päivityksen, palautumisen, lokit sekä natiivien tietojen säilymisen.
 @verify-v1-resilience suorittaa sovitut kahden käyttäjän, katkosten,
 uudelleenkäynnistysten, natiivikäytön ja koko toimintovalikoiman pilotin

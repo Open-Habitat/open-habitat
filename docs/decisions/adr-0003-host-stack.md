@@ -106,7 +106,7 @@ a known-good predecessor for rollback. Native histories, credentials and user
 settings remain outside the release. The product owns portable packaging and
 generic self-hosting guidance; Fleetrepo owns the concrete test installation,
 secrets, ingress and deployment receipts.
-[Installation and recovery](../../issues/prepare-mvp-operations/item.md) owns the
+[Installation and recovery](../../issues/installation-and-operations-guide/item.md) owns the
 procedures and their verification.
 
 ## Consequences and evidence

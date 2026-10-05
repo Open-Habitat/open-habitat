@@ -1,6 +1,6 @@
 ---
 created: 2026-09-21
-updated: 2026-09-30
+updated: 2026-10-05
 type: task
 status: open
 priority: normal
@@ -11,7 +11,7 @@ blocked_by: ['@archive-agent-conversations']
 collision: [docs/, AGENTS.md]
 ---
 
-# Package the MVP and prepare its pilot operation
+# Deliver the installation and operations guide
 
 Make releases installable and recoverable, with generic self-hosting guidance
 and a verified procedure for the authorized test installation. Build on the
