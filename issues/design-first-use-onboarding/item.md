@@ -1,12 +1,13 @@
 ---
 created: 2026-09-27
-updated: 2026-10-03
+updated: 2026-10-05
 type: feature
 status: open
 priority: high
 related: ['@connect-github-workspaces', '@manage-workspace-lifecycle', '@provision-first-src', '@add-pi-device-adapter', '@add-account-settings-ui', '@build-history-view']
 lane: onboarding-design
 collision: [docs/]
+preparation: reviewing
 ---
 
 # Design first-use onboarding and account settings
