@@ -797,5 +797,172 @@
       "draft": "design-system/drafts/Puhelin.dc.html",
       "state": "landing"
     }
-  ]
+  ],
+  "landmarks": {
+    "sign-in": {
+      "draft_state": "github/idle",
+      "draft": {
+        "step": 1,
+        "state": "idle"
+      },
+      "landmarks": [
+        {
+          "id": "card",
+          "draft": "[style*=\"border-radius: 12px\"][style*=\"gap: 20px\"]",
+          "lab": "main .ah-login-card",
+          "properties": [
+            "backgroundColor",
+            "borderTopWidth",
+            "borderTopColor",
+            "borderRadius",
+            "paddingTop",
+            "paddingLeft"
+          ],
+          "dimensions": ["width", "height"]
+        },
+        {
+          "id": "heading",
+          "draft": "h2",
+          "lab": "main .ah-login-card h1",
+          "properties": [
+            "fontFamily",
+            "fontSize",
+            "fontWeight",
+            "lineHeight",
+            "letterSpacing",
+            "color"
+          ],
+          "dimensions": []
+        }
+      ]
+    },
+    "repo-chooser": {
+      "draft_state": "repos/catalog",
+      "draft": {
+        "step": 2,
+        "state": "catalog"
+      },
+      "landmarks": [
+        {
+          "id": "onboarding-card",
+          "draft": "[style*=\"border-radius: 12px\"][style*=\"gap: 20px\"]",
+          "lab": "main section[aria-labelledby=\"github-chooser-title\"]",
+          "properties": [
+            "backgroundColor",
+            "borderTopWidth",
+            "borderTopColor",
+            "borderRadius",
+            "paddingTop",
+            "paddingLeft"
+          ],
+          "dimensions": ["width", "height"]
+        },
+        {
+          "id": "heading",
+          "draft": "h2",
+          "lab": "main #github-chooser-title",
+          "properties": [
+            "fontFamily",
+            "fontSize",
+            "fontWeight",
+            "lineHeight",
+            "letterSpacing",
+            "color"
+          ],
+          "dimensions": []
+        }
+      ]
+    },
+    "pi-start": {
+      "draft_state": "pi/start",
+      "draft": {
+        "step": 3,
+        "state": "start"
+      },
+      "landmarks": [
+        {
+          "id": "onboarding-card",
+          "draft": "[style*=\"border-radius: 12px\"][style*=\"gap: 20px\"]",
+          "lab": "main section[aria-labelledby=\"pi-device-title\"]",
+          "properties": [
+            "backgroundColor",
+            "borderTopWidth",
+            "borderTopColor",
+            "borderRadius",
+            "paddingTop",
+            "paddingLeft"
+          ],
+          "dimensions": ["width", "height"]
+        },
+        {
+          "id": "heading",
+          "draft": "h2",
+          "lab": "main #pi-device-title",
+          "properties": [
+            "fontFamily",
+            "fontSize",
+            "fontWeight",
+            "lineHeight",
+            "letterSpacing",
+            "color"
+          ],
+          "dimensions": []
+        }
+      ]
+    },
+    "pi-code": {
+      "draft_state": "pi/pending",
+      "draft": {
+        "step": 3,
+        "state": "pending"
+      },
+      "landmarks": [
+        {
+          "id": "onboarding-card",
+          "draft": "[style*=\"border-radius: 12px\"][style*=\"gap: 20px\"]",
+          "lab": "main section[aria-labelledby=\"pi-device-title\"]",
+          "properties": [
+            "backgroundColor",
+            "borderTopWidth",
+            "borderTopColor",
+            "borderRadius",
+            "paddingTop",
+            "paddingLeft"
+          ],
+          "dimensions": ["width", "height"]
+        },
+        {
+          "id": "heading",
+          "draft": "h2",
+          "lab": "main #pi-device-title",
+          "properties": [
+            "fontFamily",
+            "fontSize",
+            "fontWeight",
+            "lineHeight",
+            "letterSpacing",
+            "color"
+          ],
+          "dimensions": []
+        }
+      ]
+    }
+  },
+  "foundation_metrics": {
+    "rail": ".ah-rail",
+    "header": ".ah-conversation-frame > .ah-agent-header",
+    "stream": ".ah-conversation-stream",
+    "button": ".ah-conversation-frame .ah-button",
+    "heading": ".ah-agent-header h1",
+    "message": ".ah-prose",
+    "frame": ".ah-conversation-frame",
+    "column": ".ah-conversation-stream > .ah-timeline",
+    "speaker": ".ah-message header strong",
+    "tool": ".ah-tool-group",
+    "composer": ".ah-composer",
+    "actions": ".ah-composer .ah-action-row-buttons",
+    "main": "main",
+    "copyIcon": ".ah-message header .ah-button svg",
+    "detailsIcon": ".ah-agent-header .ah-details-toggle[aria-expanded] svg"
+  }
 }

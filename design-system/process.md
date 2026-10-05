@@ -99,7 +99,14 @@ eikä hyväksytetä erikseen. Eroa arvioidaan sen merkityksen perusteella, sill�
 myös tarkoituksellinen tilaero voi olla pieni.
 
 Kierroksen issueen jäävät raportti ja rinnakkaiset kuvat vertailtuine
-revisioineen. Sovittu poikkeama tunnistetaan design.md-viitteellä erilleen
+revisioineen. Synteettisen labin käynnistyttyä komento
+`PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/ms-playwright" node web/lab/measure-fidelity.mjs issues/<kierros>/pairs`
+kirjoittaa `report.md`, koneellisesti luettavan `report.json`-tiedoston ja AVIF-parit.
+`web/lab/inventory.json` yhdistää tilat ja maamerkit; vertailu ilmoittaa myös
+kartasta ja toistettavasta labista puuttuvat vastineet. Raportissa sisältöerot
+jäävät aukoiksi: vedosten simuloituja keskusteluja ei pidetä samana
+keskusteluna kuin labin historiaa. Mittaus ei korvaa kuvaparin ihmistulkintaa.
+Sovittu poikkeama tunnistetaan täsmällisellä design.md-viitteellä erilleen
 korjattavista eroista. Puuttuva vertailutila on aukko, ei onnistunut vertailu.
 Mittaus kertoo vertaamistaan ominaisuuksista; kuvat antavat Jarille kokonaisuuden
 arvioitavaksi.
@@ -112,14 +119,12 @@ handoff-arvio ja vertailun tulos muodostavat seuraavan kierroksen lähtökohdan.
 
 ## Työkalujen nykytila
 
-Tilainventaario ja palasten tallennus toteutetaan
-[inventory-ui-states](../issues/inventory-ui-states/item.md)-issuessa,
-mittausvertailu
-[compare-draft-fidelity](../issues/compare-draft-fidelity/item.md)-issuessa.
-Nykyinen labikaappaus tallentaa kokonaisen sivun HTML:n ja kuvan; paketin
-kokoaja käyttää valittuja Gitissä olevia tallenteita. Siihen asti kierrokset
-käyttävät tätä aineistoa ja käsin tehtyä arviota. Työkalutyö muuttaa kokoajan
-käyttämään inventaariota ja uudelleen tuotettuja tallenteita.
+[Tilainventaario](../web/lab/inventory.json),
+[palasten tallennus](../web/lab/capture-inventory.mjs) ja
+[mittausvertailu](../web/lab/measure-fidelity.mjs) ovat käytössä.
+Vain inventaarion toistettaville ja maamerkein kartoitetuille tiloille
+syntyy mittaustulos; muut jäävät raporttiin aukoiksi. Laajenna karttaa
+seuraavan design-kierroksen fokukseen ennen kuin tulkitset sen kattavaksi.
 
 [design-control-states](../issues/design-control-states/item.md) on ensimmäinen
 tälle työtavalle suunniteltu kierros.
