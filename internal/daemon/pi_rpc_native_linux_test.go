@@ -122,6 +122,14 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 	if !found {
 		t.Fatal("native reply missing")
 	}
+	// This is the pinned real Pi RPC, not a fake JSONL writer: Pi appends
+	// session_info itself and the daemon's native reader sees the result.
+	if ok, err := p.request("set_session_name", "A native title", 4*time.Second); err != nil || !ok {
+		t.Fatalf("native set_session_name: %v %v", ok, err)
+	}
+	if name := nativeName(readNativeHeader(sessions[0].path, os.Geteuid()), os.Geteuid()); name != "A native title" {
+		t.Fatalf("native Pi title: %q", name)
+	}
 	// Exercise the pinned Pi abort wire command (on an idle turn); unlike
 	// process stop it must leave the same child available for a state query.
 	if ok, err := p.request("abort", "", 15*time.Second); err != nil || !ok {

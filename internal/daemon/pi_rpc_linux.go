@@ -174,10 +174,10 @@ type piReply struct {
 // retry the prompt automatically. The controller drains native events from a
 // separate bounded queue; overflow poisons the transport.
 func (p *piRPC) requestQueue(kind, message string, timeout time.Duration) (piReply, error) {
-	if kind != "get_state" && kind != "prompt" && kind != "steer" && kind != "follow_up" && kind != "clear_queue" && kind != "abort" {
+	if kind != "get_state" && kind != "prompt" && kind != "steer" && kind != "follow_up" && kind != "clear_queue" && kind != "abort" && kind != "set_session_name" {
 		return piReply{}, errors.New("unsupported Pi RPC request")
 	}
-	if (kind == "prompt" || kind == "steer" || kind == "follow_up") && (message == "" || len(message) > 65536) {
+	if ((kind == "prompt" || kind == "steer" || kind == "follow_up") && (message == "" || len(message) > 65536)) || (kind == "set_session_name" && (message == "" || len(message) > 200)) {
 		return piReply{}, errors.New("invalid prompt")
 	}
 	if timeout <= 0 || timeout > 30*time.Second {
@@ -195,6 +195,9 @@ func (p *piRPC) requestQueue(kind, message string, timeout time.Duration) (piRep
 	wire := map[string]string{"id": id, "type": kind}
 	if kind == "prompt" || kind == "steer" || kind == "follow_up" {
 		wire["message"] = message
+	}
+	if kind == "set_session_name" {
+		wire["name"] = message
 	}
 	b, _ := json.Marshal(wire)
 	b = append(b, '\n')

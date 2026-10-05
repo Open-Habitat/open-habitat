@@ -20,7 +20,7 @@ import { UnpresentedEvents } from "../components/WorkingProgress";
 import { useConversationActions } from "./ConversationActions";
 import { provisionalItems } from "./conversationEvents";
 import type { ConversationStore } from "./conversationStore";
-import type { Session, Status } from "./conversations";
+import { regenerateTitle, type Session, type Status } from "./conversations";
 import { timelineItems } from "./HistoryView";
 import { PiQuestion } from "./PiQuestion";
 import type { Snapshot, Workspace } from "./snapshot";
@@ -155,6 +155,8 @@ export function BrowserConversation({
   const [questionOutcome, setQuestionOutcome] = useState<
     "uncertain" | "stale" | null
   >(null);
+  const [titlePending, setTitlePending] = useState(false);
+  const [titleError, setTitleError] = useState(false);
 
   const {
     start,
@@ -285,6 +287,26 @@ export function BrowserConversation({
         <ConversationFrame>
           <AgentHeader
             title={title ?? "Uusi keskustelu"}
+            titleAction={
+              controlled && csrf
+                ? {
+                    label: "Luo uusi otsikko",
+                    availability: { state: "enabled" },
+                    pending: titlePending,
+                    failureNotice: titleError
+                      ? "Otsikkoa ei voitu luoda"
+                      : undefined,
+                    onPress: () => {
+                      if (!id || titlePending) return;
+                      setTitlePending(true);
+                      setTitleError(false);
+                      void regenerateTitle(id, csrf)
+                        .catch(() => setTitleError(true))
+                        .finally(() => setTitlePending(false));
+                    },
+                  }
+                : undefined
+            }
             activityLabel={
               current && !statusStale
                 ? ({

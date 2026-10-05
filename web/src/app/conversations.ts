@@ -167,6 +167,17 @@ export async function respondQuestion(
   )
     throw new Error("invalid question reply");
 }
+export async function regenerateTitle(id: string, csrf: string): Promise<void> {
+  const reply = await request(
+    `${path(id)}/regenerate_title`,
+    undefined,
+    undefined,
+    csrf,
+  );
+  if (!object(reply) || reply.schema_version !== 1 || reply.state !== "pending")
+    throw new Error("invalid title reply");
+}
+
 export async function list(signal?: AbortSignal): Promise<Session[]> {
   const v = await request(base, signal);
   if (

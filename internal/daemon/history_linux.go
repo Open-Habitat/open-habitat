@@ -632,12 +632,88 @@ func firstPrompt(s nativeSession, uid int) string {
 	}
 	return ""
 }
+
+// nativeName reads Pi's latest session_info, including explicit empty names.
+// A changing file is not evidence of a name; snapshot will fall back instead.
+func nativeName(s nativeSession, uid int) string {
+	if s.state != "readable" {
+		return ""
+	}
+	before, err := os.Lstat(s.path)
+	if err != nil || !before.Mode().IsRegular() || before.Size() > maxHistoryFile {
+		return ""
+	}
+	if uid >= 0 {
+		owner, ok := fileOwner(before)
+		if !ok || owner != uid {
+			return ""
+		}
+	}
+	f, err := os.Open(s.path)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	opened, err := f.Stat()
+	if err != nil || !os.SameFile(before, opened) {
+		return ""
+	}
+	reader := bufio.NewReaderSize(io.LimitReader(f, maxHistoryFile+1), 16<<10)
+	var name string
+	for {
+		line, readErr := reader.ReadSlice('\n')
+		// Pi tool output can be much larger than a title entry. Discard its
+		// fragments rather than allocating the whole line or losing later names.
+		if readErr == bufio.ErrBufferFull {
+			for readErr == bufio.ErrBufferFull {
+				_, readErr = reader.ReadSlice('\n')
+			}
+			if readErr == io.EOF {
+				break
+			}
+			if readErr != nil {
+				return ""
+			}
+			continue
+		}
+		if readErr == io.EOF {
+			break
+		}
+		if readErr != nil {
+			return ""
+		}
+		var entry struct {
+			Type string `json:"type"`
+			Name string `json:"name"`
+		}
+		if json.Unmarshal(line, &entry) != nil {
+			return ""
+		}
+		if entry.Type == "session_info" {
+			name = strings.TrimSpace(entry.Name)
+		}
+	}
+	after, err := os.Lstat(s.path)
+	if err != nil || !os.SameFile(before, after) || before.Size() != after.Size() || !before.ModTime().Equal(after.ModTime()) {
+		return ""
+	}
+	name = prefixBytes(name, 160)
+	if !validTitle(name) {
+		return ""
+	}
+	return name
+}
+
 func sessionFact(s nativeSession, wsid string, uid int) map[string]any {
 	title := "Uusi keskustelu"
 	source := "new_conversation"
 	if prompt := firstPrompt(s, uid); prompt != "" {
 		title = prompt
 		source = "first_message_fallback"
+	}
+	if name := nativeName(s, uid); name != "" {
+		title = name
+		source = "native_session"
 	}
 	return map[string]any{"agent_id": "pi:" + s.id, "workspace_id": wsid, "observation_token": opaque("obs_", s.id+":"+s.revision), "presence": "present", "history": s.state, "process": "unknown", "control": "read_only", "activity": "unknown", "capabilities": map[string]any{"agent_resume": map[string]string{"state": "unsupported", "reason_code": "read_only_slice"}}, "title": map[string]any{"display": title, "source": source, "generation_state": "not_requested", "replaceable": true}, "queue": map[string]any{"revision": opaque("qr_", s.id), "steering": []string{}, "follow_up": []string{}}, "live_tail": []any{}, "history_query": "/api/v1/agents/pi:" + s.id + "/history"}
 }

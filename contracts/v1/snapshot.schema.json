@@ -413,7 +413,8 @@
           "enum": [
             "new_conversation",
             "first_message_fallback",
-            "generated"
+            "generated",
+            "native_session"
           ]
         },
         "generation_state": {

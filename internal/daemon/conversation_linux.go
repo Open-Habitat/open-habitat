@@ -34,10 +34,11 @@ type ConversationController struct {
 	closed   bool
 	// home is the native root; discover resolves workspaces beneath it.
 	// Only the synthetic browser host sets them apart from cfg.Home.
-	home     string
-	discover func(transport.Config) Discovery
-	fixture  bool // untrusted synthetic runtime: never set in production
-	journal  *eventJournal
+	home           string
+	discover       func(transport.Config) Discovery
+	fixture        bool                         // untrusted synthetic runtime: never set in production
+	titleGenerator func(string) (string, error) // unit fixture only
+	journal        *eventJournal
 	// A short-lived per-daemon gate prevents continuation probes from presenting
 	// each other's temporary flock as an external writer. Never hold mu across I/O.
 	proofGate chan struct{}
@@ -67,6 +68,10 @@ type conversation struct {
 	aborting                     bool
 	receipts                     map[string]string // bounded to spent send IDs; no durable acceptance claim
 	turnGeneration               uint64            // increments on each new prompt, fences slow native settlement reads
+	acceptedMessages             uint64
+	naming, automaticRefined     bool
+	automaticName                string // last name written by this controller, never authoritative
+	firstText, thirdText         string
 	settlement                   map[string]string // observed_at, native_key, state; nil means unknown
 	authError                    string            // fixed code only; cleared on a new prompt
 	question                     map[string]any    // bounded plain-text pending UI request
@@ -266,6 +271,8 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		} else {
 			c.sendKind(w, r, parts[0], parts[1])
 		}
+	case r.Method == http.MethodPost && parts[1] == "regenerate_title":
+		c.regenerateTitle(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "question":
 		c.answerQuestion(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "abort":
@@ -504,12 +511,54 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 		}
 		if kind == "send" {
 			c.receipt(s, body.CommandID, s.ack)
+			if s.ack == "accepted" {
+				s.acceptedMessages++
+				if s.acceptedMessages == 1 {
+					s.firstText = prefixBytes(body.Message, 2048)
+				}
+				if s.acceptedMessages == 3 {
+					s.thirdText = prefixBytes(body.Message, 2048)
+					c.startRefinement(s)
+				}
+				if s.acceptedMessages == 1 && !s.naming {
+					s.naming = true
+					go c.nameConversation(s, body.Message, s.turnGeneration, false)
+				}
+			}
 		} else if c.journal != nil {
 			c.journal.appendInvalidation("pi:" + id)
 		}
 	}()
 	historyJSON(w, map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": "pending"})
 }
+func (c *ConversationController) regenerateTitle(w http.ResponseWriter, r *http.Request, id string) {
+	if r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
+		snapshotError(w, 400, "invalid_request")
+		return
+	}
+	c.mu.Lock()
+	s := c.sessions[id]
+	if s == nil {
+		c.mu.Unlock()
+		snapshotError(w, 404, "resource_not_found")
+		return
+	}
+	if c.closed || s.dead || s.naming || s.acceptedMessages == 0 || s.rpc.overflow.Load() {
+		c.mu.Unlock()
+		snapshotError(w, 409, "control_uncertain")
+		return
+	}
+	s.naming = true
+	text := s.firstText
+	if s.thirdText != "" {
+		text += "\n" + s.thirdText
+	}
+	turn := s.turnGeneration
+	c.mu.Unlock()
+	go c.nameConversation(s, text, turn, true)
+	historyJSON(w, map[string]any{"schema_version": 1, "state": "pending"})
+}
+
 func (c *ConversationController) readReceipt(w http.ResponseWriter, r *http.Request, id string) {
 	if r.ContentLength != 0 || len(r.TransferEncoding) != 0 {
 		snapshotError(w, 400, "invalid_request")

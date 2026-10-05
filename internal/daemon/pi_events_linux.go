@@ -331,6 +331,7 @@ func (c *ConversationController) drain(s *conversation) {
 			s.questionID = ""
 			s.queuedQuestions = nil
 			s.settled = true
+			c.startRefinement(s)
 			if c.journal != nil {
 				c.journal.activity("pi:"+s.id, "settling")
 			}

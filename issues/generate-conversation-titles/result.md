@@ -1,0 +1,11 @@
+# Conversation titles — implementation evidence
+
+Pi 0.85.1 has `set_session_name` in RPC (`dist/modes/rpc/rpc-mode.js`) and `ModelRuntime.completeSimple` in `dist/core/model-runtime.js`. It has no automatic title generation in the inspected RPC or session implementation. The daemon reads the latest native `session_info.name` from the session JSONL; when absent it still derives a first-prompt fallback. The controller writes through the owned Pi RPC child, never by editing history. Only browser-owned conversations admit regeneration; terminal-origin names are display-only.
+
+The independent model request uses the mapped person's selected Pi installation and Pi's own configured credentials/model runtime, with no tools or agent session. It ranks available, non-reasoning text models by input + output token price, chooses the cheapest, and declines when none is available. Cost is a ranking, not a spending guarantee. Input is at most 4096 UTF-8 bytes from the first accepted prompt or bounded first/third excerpts; output is capped at 48 tokens and must be one trimmed, control-free UTF-8 line of at most 160 bytes. The subprocess has a 15-second deadline; the correlated name write has a 4-second deadline. Both are independent of sending and reading. The prompt requests a concise title in the conversation's language, and treats the excerpt as data rather than instructions. A model may fail to comply; invalid output leaves the old name alone.
+
+A first attempt starts after native prompt acknowledgement; a single refinement is reserved after the third accepted message settles. The native name is checked both before and after the model call, and the controller serializes title requests per owned session. An external/native/user-chosen name is never replaced by an automatic attempt; explicit regeneration can replace it and clears automatic-name provenance even when the generated string is identical. The only remembered name is a transient precondition in this controller incarnation, not a durable title store.
+
+## Verification
+
+Pending final committed-tree clean gate and independent final-diff review. Synthetic tests and real pinned Pi RPC evidence will be recorded below after validation. No real provider or live-server title quality has been tested.
