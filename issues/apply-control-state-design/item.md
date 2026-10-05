@@ -1,6 +1,6 @@
 ---
 created: 2026-10-03
-updated: 2026-10-03
+updated: 2026-10-05
 type: task
 reporter: jari
 status: open
@@ -10,6 +10,7 @@ lane: ui-foundation
 lane_seq: 30
 collision: [web/src/components/, design-system/]
 blocked_by: ['@design-control-states', '@compare-draft-fidelity']
+preparation: pending
 ---
 
 # Apply the designed control states and agent presentation

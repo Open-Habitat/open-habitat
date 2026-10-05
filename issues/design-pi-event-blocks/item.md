@@ -1,6 +1,6 @@
 ---
 created: 2026-10-03
-updated: 2026-10-03
+updated: 2026-10-05
 type: task
 reporter: jari
 status: open
@@ -9,6 +9,7 @@ related: ['@design-control-states']
 blocked_by: ['@design-control-states']
 lane: pi-event-design
 lane_seq: 10
+preparation: ready
 ---
 
 # Design every Pi event block
