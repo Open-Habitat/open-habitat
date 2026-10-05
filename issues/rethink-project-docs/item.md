@@ -49,7 +49,7 @@ teksti jää jonoon; tämä ei peru aiempaa päätöstä.
 | 2 | [ADR 0005: kloonauksen etenemisvirta](../../docs/decisions/adr-0005-clone-progress-stream.md) | Käsitelty Jarin kanssa 5.10.: natiivit etenemisvaiheet, vastuut, keskeytys ja Gitistä tarkistettava tulos säilyvät. Protokollan yksityiskohdat jäävät sopimuksiin ja mitoitus nykytilan kuvaukseen; levykiintiöiden suunnittelu näkyy myöhempänä suuntana. |
 | 3 | [ADR 0006: selainistuntojen peruuttaminen](../../docs/decisions/adr-0006-subject-revocation.md) | Käsitelty Jarin kanssa 5.10.: root-operaattorin rajattu istuntoperuutus, gatewayn ja brokerin vastuut sekä toiminnon rajat säilyvät. Kertaluonteisen testin nollausohjeet ja asennusreseptit poistettu; myöhempi kirjautumisen säilymisen tavoite erotettu alkuperäisestä muistiratkaisusta. |
 | 4 | [ADR 0009: keskustelutilan omistajuus](../../docs/decisions/adr-0009-conversation-state-ownership.md) | Käsitelty Jarin kanssa 5.10.: Reduxin ja keskusteluvaraston työnjako sekä sovitut tekniset valinnat säilyvät. Mapit kuvaavat kahta tietokokonaisuutta, eivät apurakenteiden määrärajaa. Päätöksen hyöty avaa tekstin ja loppuviite johtaa nykyisen toteutuksen kuvaukseen. |
-| 5 | [Päätösten etusivu](../../docs/decisions/index.md) | Vanha `docs/decisions.md` käsiteltiin `80f8107`; nykyinen sivu luotiin `11b9430` ja sitä täydennettiin `1e5c86d`. Nykyistä tekstiä ei ole merkitty käsitellyksi. Luetaan ADR-kierroksen lopuksi; lokitusta koskeva väite verrataan hyväksyttyyn suositukseen. |
+| 5 | [Päätösten etusivu](../../docs/decisions/index.md) | Käsitelty Jarin kanssa 5.10.: päätökset ja nykyinen toteutus erotettu ilman arkkitehtuurisivun automaattista etusijaa, hakemistorivit tiivistetty päätösten ytimeen ja lokituksen vanhentunut tilatieto poistettu. Päätösten sisältö ja sitovuus säilyvät. |
 | 6 | [Omega Habitat -brändibriefi](../../docs/brand/omega-habitat-brief.md) | Luotu `841b8aa`; `e961efc` päivitti vain design-viitteitä. Ei näyttöä koko briefin rethinkistä. Erotetaan Jarin valinnat agentin luovista ehdotuksista ja toimitusvaatimuksista; tuotekuvaus verrataan myöhempiin päätöksiin. |
 | 7 | [Tuotteen tavoite](../../docs/product.md) | Käsitelty `fae13b8`, sittemmin muutettu `11b9430`, `87630ae` ja `55d4cfc`. Uusintakäsittely: sovitun tavoitteen kokonaisuus, etenkin mobiilirajaus ja Pi-kysymysten ohjaimet suhteessa myöhempiin päätöksiin ja toteutukseen. |
 | 8 | [Käyttökulut](../../docs/ui.md) | Käsitelty `925bdb1`; `820a30c` on nimenomaisesti Jarin pyytämä uusi luonnos. Sen koko tekstin hyväksyntää ei löytynyt; myöhemmät korjaukset ovat osittaisia. Sovitetaan kokonaisuus nykyiseen tuotekuvaukseen ja navigaatiopäätöksiin. |
@@ -60,9 +60,9 @@ teksti jää jonoon; tämä ei peru aiempaa päätöstä.
 `docs/CLAUDE.md` on symlinkki `AGENTS.md`:hen, joten sama sisältö käsitellään
 kohdassa 10. Rajauksessa on näin 18 erillistä dokumenttia: 12 päätöshakemistossa,
 yksi brändibriefi ja viisi docs-juuressa. Kaikki yksitoista ADR:ää on käsitelty
-alla olevan näytön ja jonon neljän ensimmäisen rivin perusteella; seitsemän tekstiä
+alla olevan näytön ja jonon neljän ensimmäisen rivin perusteella; kuusi tekstiä
 odottaa ensimmäistä tai uutta läpikäyntiä. Seuraava tiedosto on
-**`docs/decisions/index.md`**.
+**`docs/brand/omega-habitat-brief.md`**.
 
 ### Jo käsitellyt ADR:t
 
