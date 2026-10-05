@@ -32,9 +32,9 @@ rajatun mode-0660 admin-UDS:n takana. Lokit eivät sisällä cookieita,
 OAuth-koodeja tai tokeneita, CSRF-arvoja, prompteja, mallivastauksia,
 tool-payloadia, tiedostosisältöä, täyttä argv:tä tai natiivien credentialien
 metadataa. Nämä ovat nykyinen tietosuojaraja;
-[logging.md](../../docs/logging.md) on erillinen ehdotus.
+[lokipolitiikan jatkotyö](../decide-logging-policy/item.md) omistaa sen
+kehittämisen.
 
 Staattisen frontendin `index.html`-fallback koskee vain tunnettuja UI-reittejä,
 ei API-, event-, auth- tai health-polkuja. CLI:n vaadittu komentopinta ja
 tulostussopimus kuvataan [CONFORMANCE.md:ssä](../../CONFORMANCE.md#operator-contract).
-
