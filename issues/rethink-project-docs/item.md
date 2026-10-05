@@ -155,7 +155,9 @@ palautumisen. Kursorin ja nykytilan ottamisjärjestys sekä viimeisen tapahtuman
 toiston käsittely korjattu lähdekoodin mukaisiksi. Tapahtumaluettelo ja tarkat
 ajastukset jätetty sopimukseen ja toteutukseen; puskurien rajallisuus ja sen
 vaikutukset säilyvät. Selainmuistissa oleva historia erotettu session storagen
-luonnoksista ja komentomerkinnöistä.
+luonnoksista ja komentomerkinnöistä. Jarin jatkopalautteen mukaisesti
+kloonaus poistettu tältä sivulta: sen toiminta ja katkeamisen vaikutukset
+kuuluvat `workspaces.md`:hen, rajapinta `http-api.md`:hen.
 
 Jarin pyynnöstä @recover-sends-after-disconnection omistaa palvelinyhteyden
 katkon aikaisen lähetyseston ja kuittauksen automaattisen tarkistamisen ennen

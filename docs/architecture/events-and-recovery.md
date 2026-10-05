@@ -136,13 +136,5 @@ Saved conversations remain readable, and the person explicitly continues one
 to start a new controlled process. The new daemon instance forces browsers
 to rebuild their views rather than replaying the previous instance's events.
 
-## Cloning uses a separate stream
-
-GitHub repository cloning during onboarding streams progress as the reply to
-the clone request. It has no replay cursor or persisted job. Losing that
-connection cancels the clone; reopening the page checks the native checkout
-and whether its writer has stopped. It does not restart the clone or resume
-the old stream. [Workspaces](workspaces.md) describes this operation.
-
 Implementation lives in `internal/daemon` and `web/src/app`.
-Decisions behind this page: ADR 0005, ADR 0008, ADR 0009.
+Decisions behind this page: ADR 0008, ADR 0009.

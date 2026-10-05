@@ -62,8 +62,8 @@ and names differing only in case, prevent a new clone.
 The daemon runs one clone at a time and streams Git's stages to the browser.
 It reports a percentage only when Git supplies a usable measurement. The
 streaming attempt has a 45-minute deadline; the non-streaming API has a shorter
-90-second request deadline. [HTTP API](http-api.md) describes the routes and
-[Events and recovery](events-and-recovery.md) explains the separate clone stream.
+90-second request deadline. The clone stream has no replay cursor or persisted
+job. [HTTP API](http-api.md) describes the routes.
 
 Cloning requires an operator-provisioned filesystem mounted at `~/src`, with
 at most 20 GiB total capacity and at least 5 GiB available before admission.
