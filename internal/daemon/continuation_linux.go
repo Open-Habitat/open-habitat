@@ -172,7 +172,9 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
-	s := &conversation{id: id, workspace: origin.Workspace, cwd: cwd, rpc: p, owner: owner, state: "idle", ack: "uncertain", events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool), publishedHistory: published, historyPath: path}
+	// Continuation is not a new conversation: seed a bounded native excerpt for
+	// explicit regeneration, but never restart the first/third auto schedule.
+	s := &conversation{id: id, workspace: origin.Workspace, cwd: cwd, rpc: p, owner: owner, state: "idle", ack: "uncertain", events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool), publishedHistory: published, historyPath: path, acceptedMessages: 4, firstText: firstPrompt(readNativeHeader(path, c.cfg.UID), c.cfg.UID)}
 
 	if old != nil {
 		s.commands = old.commands

@@ -30,7 +30,7 @@ func TestNativeSessionNameWinsAndLatestPersists(t *testing.T) {
 	rows := []any{
 		map[string]any{"type": "session", "version": 3, "id": id, "cwd": cwd},
 		map[string]any{"type": "message", "id": "abc1", "message": map[string]any{"role": "user", "content": "An early prompt"}},
-		map[string]any{"type": "message", "id": "huge", "message": map[string]any{"role": "toolResult", "content": strings.Repeat("x", 20000)}},
+		map[string]any{"type": "message", "id": "huge", "message": map[string]any{"role": "toolResult", "content": strings.Repeat("x", 100000)}},
 		map[string]any{"type": "session_info", "id": "abc2", "name": "Käyttäjän nimi"},
 		map[string]any{"type": "session_info", "id": "abc3", "name": "A newer title"},
 	}

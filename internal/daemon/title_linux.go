@@ -71,30 +71,30 @@ func (c *ConversationController) sessionName(s *conversation) (string, bool) {
 	return "", false
 }
 
-// Caller holds c.mu. The third accepted turn must have actually settled.
-func (c *ConversationController) startRefinement(s *conversation) {
-	if c.closed || s.dead || s.naming || s.automaticRefined || s.acceptedMessages != 3 || !s.settled || s.thirdText == "" || c.sessions[s.id] != s {
+// Caller holds c.mu. Pi does not persist a fresh session until an assistant
+// message exists, so the first attempt starts only after native settlement.
+func (c *ConversationController) startAutomaticTitle(s *conversation) {
+	if c.closed || s.dead || s.naming || !s.settled || c.sessions[s.id] != s {
 		return
 	}
-	s.automaticRefined = true
-	s.naming = true
-	go c.nameConversation(s, s.firstText+"\n"+s.thirdText, s.turnGeneration, false)
+	if s.acceptedMessages == 1 && !s.automaticFirst && s.firstText != "" {
+		s.automaticFirst = true
+		s.naming = true
+		go c.nameConversation(s, s.firstText, false)
+	} else if s.acceptedMessages == 3 && !s.automaticRefined && s.thirdText != "" {
+		s.automaticRefined = true
+		s.naming = true
+		go c.nameConversation(s, s.firstText+"\n"+s.thirdText, false)
+	}
 }
 
-// One worker per session. The mutex fences admission and name writes against
-// another browser request; native history is rechecked immediately before write.
-func (c *ConversationController) nameConversation(s *conversation, text string, turn uint64, explicit bool) {
-	defer func() { c.mu.Lock(); s.naming = false; c.startRefinement(s); c.mu.Unlock() }()
+// One worker per session. Native history is the precondition on either side
+// of the model call. The controller lock never spans filesystem or RPC I/O.
+func (c *ConversationController) nameConversation(s *conversation, text string, explicit bool) bool {
+	defer func() { c.mu.Lock(); s.naming = false; c.startAutomaticTitle(s); c.mu.Unlock() }()
 	before, ok := c.sessionName(s)
-	// Pi can acknowledge a prompt before flushing its first JSONL header.
-	if !ok && !explicit {
-		for attempt := 0; attempt < 8 && !ok; attempt++ {
-			time.Sleep(125 * time.Millisecond)
-			before, ok = c.sessionName(s)
-		}
-	}
 	if !ok || (!explicit && before != "" && before != s.automaticName) {
-		return
+		return false
 	}
 	generate := c.generateTitle
 	if c.fixture && c.titleGenerator != nil {
@@ -102,20 +102,26 @@ func (c *ConversationController) nameConversation(s *conversation, text string, 
 	}
 	name, err := generate(text)
 	if err != nil {
-		return
+		return false
 	}
 	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.closed || c.sessions[s.id] != s || s.dead || s.rpc.overflow.Load() || (!explicit && s.turnGeneration != turn) {
-		return
+	live := !c.closed && c.sessions[s.id] == s && !s.dead && !s.rpc.overflow.Load()
+	c.mu.Unlock()
+	if !live {
+		return false
 	}
 	current, ok := c.sessionName(s)
 	if !ok || current != before {
-		return
+		return false
 	}
 	accepted, err := s.rpc.request("set_session_name", name, 4*time.Second)
 	if err != nil || !accepted {
-		return
+		return false
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.closed || c.sessions[s.id] != s {
+		return false
 	}
 	if explicit {
 		// Even an identical regenerated string is now a user-chosen name.
@@ -126,4 +132,5 @@ func (c *ConversationController) nameConversation(s *conversation, text string, 
 	if c.journal != nil {
 		c.journal.appendInvalidation("pi:" + s.id)
 	}
+	return true
 }

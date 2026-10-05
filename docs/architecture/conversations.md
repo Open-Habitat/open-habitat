@@ -28,7 +28,9 @@ the daemon cannot choose which file represents the conversation.
 A conversation belongs to the Unix user. Multiple browsers signed in as that
 person reach the same daemon and Pi process. Control requires a live RPC
 connection from the daemon to its child; readable history alone does not
-provide it.
+provide it. The browser displays Pi's latest native session name, or a bounded
+first-prompt fallback when there is no name. A terminal-origin name is visible
+but does not grant browser control.
 
 Terminal conversations are readable and their open views follow changes to
 the session files. Pi's RPC interface cannot attach to a running terminal
@@ -70,6 +72,16 @@ it does not establish that the turn finished. Receipts live in daemon memory,
 so a missing receipt after restart cannot establish rejection. The browser
 does not automatically resend an uncertain command, because Pi may already
 have acted on it.
+
+The daemon can give a new browser-owned conversation a native Pi session name
+after its first turn settles, then refine it once after the third accepted turn
+settles. Pi persists its fresh session only when an assistant message exists,
+so naming cannot safely write at prompt acknowledgement. The name comes from
+a separate, bounded, tool-free model call through that person's Pi model
+access. A person can ask for another title beside a controlled conversation's
+name. Generation failures leave the native name or first-prompt fallback
+untouched; an existing or subsequently chosen native name is not automatically
+replaced. No host title store exists.
 
 Pi's events carry response text, thinking, tool progress and activity to the
 browser. When Pi reports that it has settled, the daemon reads native history

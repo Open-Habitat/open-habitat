@@ -50,37 +50,37 @@ type ConversationController struct {
 const maxConversationCommands = 4096
 
 type conversation struct {
-	id, workspace, cwd           string
-	rpc                          *piRPC
-	owner                        *piOwnership
-	state                        string // idle, pending, accepted, rejected, uncertain, stopping
-	ack                          string // last command: pending, accepted, rejected, uncertain
-	settled                      bool
-	dead                         bool
-	queueSteering, queueFollowUp []string
-	queueRevision                uint64
-	commands                     map[string]bool
-	command                      string
-	events                       []json.RawMessage
-	cursor                       uint64
-	historyPath                  string
-	lost                         bool
-	aborting                     bool
-	receipts                     map[string]string // bounded to spent send IDs; no durable acceptance claim
-	turnGeneration               uint64            // increments on each new prompt, fences slow native settlement reads
-	acceptedMessages             uint64
-	naming, automaticRefined     bool
-	automaticName                string // last name written by this controller, never authoritative
-	firstText, thirdText         string
-	settlement                   map[string]string // observed_at, native_key, state; nil means unknown
-	authError                    string            // fixed code only; cleared on a new prompt
-	question                     map[string]any    // bounded plain-text pending UI request
-	questionID                   string            // native ID; never trust a browser-supplied native identity
-	questionKind                 string
-	questionChoices              []string
-	queuedQuestions              []pendingQuestion // bounded native requests waiting behind the visible one
-	spentQuestions               map[string]bool   // native IDs already answered or cancelled
-	publishedHistory             map[string]bool   // bounded to this native session; JSONL is authoritative
+	id, workspace, cwd                       string
+	rpc                                      *piRPC
+	owner                                    *piOwnership
+	state                                    string // idle, pending, accepted, rejected, uncertain, stopping
+	ack                                      string // last command: pending, accepted, rejected, uncertain
+	settled                                  bool
+	dead                                     bool
+	queueSteering, queueFollowUp             []string
+	queueRevision                            uint64
+	commands                                 map[string]bool
+	command                                  string
+	events                                   []json.RawMessage
+	cursor                                   uint64
+	historyPath                              string
+	lost                                     bool
+	aborting                                 bool
+	receipts                                 map[string]string // bounded to spent send IDs; no durable acceptance claim
+	turnGeneration                           uint64            // increments on each new prompt, fences slow native settlement reads
+	acceptedMessages                         uint64
+	naming, automaticFirst, automaticRefined bool
+	automaticName                            string // last name written by this controller, never authoritative
+	firstText, thirdText                     string
+	settlement                               map[string]string // observed_at, native_key, state; nil means unknown
+	authError                                string            // fixed code only; cleared on a new prompt
+	question                                 map[string]any    // bounded plain-text pending UI request
+	questionID                               string            // native ID; never trust a browser-supplied native identity
+	questionKind                             string
+	questionChoices                          []string
+	queuedQuestions                          []pendingQuestion // bounded native requests waiting behind the visible one
+	spentQuestions                           map[string]bool   // native IDs already answered or cancelled
+	publishedHistory                         map[string]bool   // bounded to this native session; JSONL is authoritative
 }
 
 type pendingQuestion struct {
@@ -518,12 +518,8 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 				}
 				if s.acceptedMessages == 3 {
 					s.thirdText = prefixBytes(body.Message, 2048)
-					c.startRefinement(s)
 				}
-				if s.acceptedMessages == 1 && !s.naming {
-					s.naming = true
-					go c.nameConversation(s, body.Message, s.turnGeneration, false)
-				}
+				c.startAutomaticTitle(s)
 			}
 		} else if c.journal != nil {
 			c.journal.appendInvalidation("pi:" + id)
@@ -543,7 +539,7 @@ func (c *ConversationController) regenerateTitle(w http.ResponseWriter, r *http.
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}
-	if c.closed || s.dead || s.naming || s.acceptedMessages == 0 || s.rpc.overflow.Load() {
+	if c.closed || s.dead || s.naming || s.firstText == "" || s.rpc.overflow.Load() {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return
@@ -553,10 +549,15 @@ func (c *ConversationController) regenerateTitle(w http.ResponseWriter, r *http.
 	if s.thirdText != "" {
 		text += "\n" + s.thirdText
 	}
-	turn := s.turnGeneration
 	c.mu.Unlock()
-	go c.nameConversation(s, text, turn, true)
-	historyJSON(w, map[string]any{"schema_version": 1, "state": "pending"})
+	// Browser disconnect does not cancel the bounded model or native RPC call.
+	result := make(chan bool, 1)
+	go func() { result <- c.nameConversation(s, text, true) }()
+	if <-result {
+		historyJSON(w, map[string]any{"schema_version": 1, "state": "done"})
+	} else {
+		historyJSON(w, map[string]any{"schema_version": 1, "state": "failed"})
+	}
 }
 
 func (c *ConversationController) readReceipt(w http.ResponseWriter, r *http.Request, id string) {

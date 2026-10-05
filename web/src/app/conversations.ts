@@ -174,8 +174,8 @@ export async function regenerateTitle(id: string, csrf: string): Promise<void> {
     undefined,
     csrf,
   );
-  if (!object(reply) || reply.schema_version !== 1 || reply.state !== "pending")
-    throw new Error("invalid title reply");
+  if (!object(reply) || reply.schema_version !== 1 || reply.state !== "done")
+    throw new Error("title generation failed");
 }
 
 export async function list(signal?: AbortSignal): Promise<Session[]> {

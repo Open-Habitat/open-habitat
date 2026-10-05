@@ -54,6 +54,7 @@ conversation control routes use the UUID alone.
 | `GET /api/v1/conversations/<id>/receipt?command_id=<uuid>` | look up an earlier command's receipt |
 | `POST /api/v1/conversations/<id>/send`, `.../steer`, `.../follow_up` | send a message with a client-chosen `command_id` |
 | `POST /api/v1/conversations/<id>/clear_queue`, `.../abort`, `.../stop`, `.../continue`, `.../question` | queue, lifecycle and question controls |
+| `POST /api/v1/conversations/<id>/regenerate_title` | request a new native Pi name for a browser-controlled session; empty body, bounded synchronous `done` or `failed` result |
 | `GET /api/v1/onboarding/github/repos` | list GitHub repositories through the user's `gh`, using `page` and `limit` |
 | `POST /api/v1/onboarding/github/clone/stream` | clone a repository and stream progress in the response |
 | `POST /api/v1/onboarding/github/clone` | clone with a single JSON result |

@@ -4,8 +4,10 @@ package daemon
 
 import (
 	"fmt"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -68,7 +70,7 @@ for line in sys.stdin:
 	c.sessions[id] = s
 	s.naming = true
 	done := make(chan struct{})
-	go func() { c.nameConversation(s, "some text", 1, false); close(done) }()
+	go func() { c.nameConversation(s, "some text", false); close(done) }()
 	<-entered
 	// A second request is not admitted while generation is in flight.
 	if !s.naming {
@@ -87,32 +89,69 @@ for line in sys.stdin:
 	// An already named session is never automatically renamed again.
 	called := false
 	c.titleGenerator = func(string) (string, error) { called = true; return "Unwanted title", nil }
-	c.nameConversation(s, "other prompt", 1, false)
+	c.nameConversation(s, "other prompt", false)
 	if called {
 		t.Fatal("generated over a user name")
 	}
 	// Explicit regeneration can replace it, through the same native Pi RPC.
 	c.titleGenerator = func(string) (string, error) { return "Requested title", nil }
-	c.nameConversation(s, "some text", 1, true)
+	c.nameConversation(s, "some text", true)
 	if name, _ := c.sessionName(s); name != "Requested title" {
 		t.Fatalf("explicit name: %q", name)
 	}
+	// Continued sessions have an excerpt but no new-turn count. The browser
+	// action still replaces their native name through the owned Pi child.
+	s.firstText = "Original prompt"
+	s.acceptedMessages = 4
+	c.titleGenerator = func(string) (string, error) { return "Continued title", nil }
+	w := httptest.NewRecorder()
+	c.regenerateTitle(w, httptest.NewRequest("POST", "http://unix/regenerate_title", nil), id)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"done"`) {
+		t.Fatalf("continued regeneration: %d %s", w.Code, w.Body.String())
+	}
+	if name, _ := c.sessionName(s); name != "Continued title" {
+		t.Fatalf("continued name: %q", name)
+	}
 	// A model error does not erase an existing name.
 	c.titleGenerator = func(string) (string, error) { return "", fmt.Errorf("synthetic unavailable") }
-	c.nameConversation(s, "some text", 1, true)
-	if name, _ := c.sessionName(s); name != "Requested title" {
+	c.nameConversation(s, "some text", true)
+	if name, _ := c.sessionName(s); name != "Continued title" {
 		t.Fatalf("failure erased name: %q", name)
+	}
+	c.mu.Lock()
+	s.acceptedMessages = 1
+	s.firstText = "Original prompt"
+	s.settled = false
+	c.startAutomaticTitle(s)
+	if s.automaticFirst {
+		t.Fatal("first title attempted before settlement")
+	}
+	s.settled = true
+	c.startAutomaticTitle(s)
+	if !s.automaticFirst {
+		t.Fatal("first title not attempted after settlement")
+	}
+	c.mu.Unlock()
+	deadlineFirst := time.Now().Add(time.Second)
+	for time.Now().Before(deadlineFirst) {
+		c.mu.Lock()
+		naming := s.naming
+		c.mu.Unlock()
+		if !naming {
+			break
+		}
+		time.Sleep(time.Millisecond)
 	}
 	c.mu.Lock()
 	s.acceptedMessages = 3
 	s.thirdText = "third message"
 	s.settled = false
-	c.startRefinement(s)
+	c.startAutomaticTitle(s)
 	if s.automaticRefined {
 		t.Fatal("refined before third turn settled")
 	}
 	s.settled = true
-	c.startRefinement(s)
+	c.startAutomaticTitle(s)
 	if !s.automaticRefined || !s.naming {
 		t.Fatal("third turn did not schedule refinement")
 	}
@@ -127,11 +166,11 @@ for line in sys.stdin:
 		}
 		time.Sleep(time.Millisecond)
 	}
-	if name, _ := c.sessionName(s); name != "Requested title" {
+	if name, _ := c.sessionName(s); name != "Continued title" {
 		t.Fatalf("refinement overwrote user title: %q", name)
 	}
 	c.mu.Lock()
-	c.startRefinement(s)
+	c.startAutomaticTitle(s)
 	if s.naming {
 		t.Fatal("refinement was scheduled twice")
 	}

@@ -82,6 +82,11 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer p.close()
+	// Pi has not persisted a fresh session before its first assistant message;
+	// this is why automatic naming waits for native settlement.
+	if initial, err := nativeSessions(transport.Config{Home: home, UID: os.Geteuid()}); err != nil || len(initial) != 0 {
+		t.Fatalf("fresh Pi history before first reply: %+v, %v", initial, err)
+	}
 	accepted, err := p.request("prompt", "Say hello", 15*time.Second)
 	if err != nil || !accepted {
 		t.Fatalf("Pi prompt: %v %v", accepted, err)

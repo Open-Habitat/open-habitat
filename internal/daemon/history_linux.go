@@ -634,8 +634,14 @@ func firstPrompt(s nativeSession, uid int) string {
 }
 
 // nativeName reads Pi's latest session_info, including explicit empty names.
-// A changing file is not evidence of a name; snapshot will fall back instead.
-func nativeName(s nativeSession, uid int) string {
+// A changing file is not evidence of a name for a conditional write.
+func nativeName(s nativeSession, uid int) string { return readNativeName(s, uid, true) }
+
+// An already complete name remains safe to display when Pi appends a later
+// entry during a snapshot read. Writes use the stricter nativeName precondition.
+func nativeNameDisplay(s nativeSession, uid int) string { return readNativeName(s, uid, false) }
+
+func readNativeName(s nativeSession, uid int, strict bool) string {
 	if s.state != "readable" {
 		return ""
 	}
@@ -658,6 +664,49 @@ func nativeName(s nativeSession, uid int) string {
 	if err != nil || !os.SameFile(before, opened) {
 		return ""
 	}
+	// Most names are near the tail. Inspect its complete lines backward before
+	// walking older history; the fallback remains necessary for early names.
+	var name string
+	const tailSize = 64 << 10
+	if before.Size() > tailSize {
+		tail := make([]byte, tailSize)
+		if n, err := f.ReadAt(tail, before.Size()-tailSize); err == nil && n == len(tail) {
+			if first := bytes.IndexByte(tail, '\n'); first >= 0 {
+				lines := bytes.Split(tail[first+1:], []byte{'\n'})
+				for i := len(lines) - 2; i >= 0; i-- {
+					if !bytes.Contains(lines[i], []byte(`"session_info"`)) {
+						continue
+					}
+					var entry struct {
+						Type string `json:"type"`
+						Name string `json:"name"`
+					}
+					if json.Unmarshal(lines[i], &entry) == nil && entry.Type == "session_info" {
+						name = strings.TrimSpace(entry.Name)
+						break
+					}
+				}
+			}
+		}
+	}
+	if name == "" {
+		if _, err := f.Seek(0, io.SeekStart); err != nil {
+			return ""
+		}
+		name = scanNativeNames(f)
+	}
+	after, err := os.Lstat(s.path)
+	if err != nil || !os.SameFile(before, after) || after.Size() < before.Size() || (strict && (before.Size() != after.Size() || !before.ModTime().Equal(after.ModTime()))) {
+		return ""
+	}
+	name = prefixBytes(name, 160)
+	if !validTitle(name) {
+		return ""
+	}
+	return name
+}
+
+func scanNativeNames(f *os.File) string {
 	reader := bufio.NewReaderSize(io.LimitReader(f, maxHistoryFile+1), 16<<10)
 	var name string
 	for {
@@ -682,6 +731,9 @@ func nativeName(s nativeSession, uid int) string {
 		if readErr != nil {
 			return ""
 		}
+		if !bytes.Contains(line, []byte(`"session_info"`)) {
+			continue
+		}
 		var entry struct {
 			Type string `json:"type"`
 			Name string `json:"name"`
@@ -693,14 +745,6 @@ func nativeName(s nativeSession, uid int) string {
 			name = strings.TrimSpace(entry.Name)
 		}
 	}
-	after, err := os.Lstat(s.path)
-	if err != nil || !os.SameFile(before, after) || before.Size() != after.Size() || !before.ModTime().Equal(after.ModTime()) {
-		return ""
-	}
-	name = prefixBytes(name, 160)
-	if !validTitle(name) {
-		return ""
-	}
 	return name
 }
 
@@ -711,7 +755,7 @@ func sessionFact(s nativeSession, wsid string, uid int) map[string]any {
 		title = prompt
 		source = "first_message_fallback"
 	}
-	if name := nativeName(s, uid); name != "" {
+	if name := nativeNameDisplay(s, uid); name != "" {
 		title = name
 		source = "native_session"
 	}
