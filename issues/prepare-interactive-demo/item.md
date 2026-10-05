@@ -11,7 +11,7 @@ lane: demo-ui
 
 ## Purpose
 
-Give Jari a locally launchable, interactive synthetic rehearsal of the accepted desktop workspace UI while the real first-login pilot is blocked. This is parallel preparation toward a safely testable real demo, not a replacement for @first-login-pilot-readiness or @deliver-login-pilot.
+Give Jari a locally launchable, interactive synthetic rehearsal of the accepted desktop workspace UI. This is parallel preparation toward a safely testable real demo, not evidence of live authentication, two-person consent or Linux user isolation. The completed @first-login-pilot-readiness records the scope of Jari's first-login approval; subsequent real-person use follows its own consent and current test-host procedure, not a separate demo issue.
 
 ## Current state
 

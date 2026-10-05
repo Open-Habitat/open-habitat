@@ -1,14 +1,16 @@
 ---
 created: 2026-09-24
-updated: 2026-09-30
+updated: 2026-10-05
 type: task
-status: open
+status: duplicate
 priority: high
 lane: installation
 lane_seq: 10
 collision: [docs/, AGENTS.md]
 related: ['@prepare-mvp-operations']
 blocked_by: ['@deliver-login-pilot']
+closed: 2026-10-05
+closed_by: jari
 ---
 
 # Prove clean-server installation from standalone guide
@@ -91,3 +93,9 @@ specific blocker.
 ### 2026-09-30T17:49:23Z · @claude
 
 Rethink-night 30.9.: toteuttajalle suunnattu issue kirjoitettiin luettavammaksi rethink-instructions-skillillä (gpt-6-astra); alkuperäinen tavoite, näyttövaatimukset, riippuvuus ja turvallisuusrajat säilyivät. Ilman Jaria säilytettiin frontmatter ja nykyinen hyväksyntäraja, käsiteltiin docs/operations.md tulevana artefaktina eikä väitetty olemassa olevaksi; uutta hyväksyntäporttia ei lisätty. Fact-check-instructions (claude-opus-5-5) ei löytänyt korjattavaa asiavirhettä; paikallisesti varmistettiin TESTING.md:n puhdas CI -komento, issuereferenssit ja nykyisten testifixtureiden Fleetrepo-riippuvuus. Nykyinen synteettinen OAuth-fixture ei ole vielä itsenäisen julkisen oppaan mukana, ja Accessin yleinen/tietyn toimittajan merkitys jää toteutusvaiheessa ratkaistavaksi. Nämä ovat alkuperäisen tekstin avoimia toteutuskysymyksiä, eivät muutoksia Jarin kirjattuihin päätöksiin. Palvelimen tämänhetkistä tilaa ei tarkistettu.
+
+## Resolution
+
+### 2026-10-05T10:00:03Z · @jari
+
+The standalone guide and clean-VM proof belong to @prepare-mvp-operations as acceptance of installable packaging, not a separate post-pilot test issue. The distinctive fresh-agent and synthetic two-UID checks have been carried there.

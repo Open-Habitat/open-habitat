@@ -1,14 +1,16 @@
 ---
 created: 2026-09-20
-updated: 2026-10-03
+updated: 2026-10-05
 type: task
-status: open
+status: obsolete
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
 lane_seq: 120
 blocked_by: ['@archive-agent-conversations', '@complete-conversation-ui', '@prepare-mvp-operations']
 collision: [docs/, AGENTS.md, design-system/]
+closed: 2026-10-05
+closed_by: jari
 ---
 
 # Verify reconnect and two-user separation for v1
@@ -84,3 +86,9 @@ technical verification or independent work.
 ### 2026-09-30T17:57:09Z · @claude
 
 Rethink-night 30.9.: rethink-instructions / gpt-6-astra tiivisti toteuttajalle osoitetun issuen tavoitteiksi, rajoiksi ja näytöksi. Ilman Jaria valitsin säilyttää kaksikäyttäjäeristyksen, epävarman lähetyksen ja natiivin omistajuuden rajat sekä Jarin työpöytäkatselmoinnin palautteena, ei teknisen todentamisen porttina; synteettiset eri UID:t eivät korvaudu yhden UID:n selainfixtuureilla. fact-check-instructions / claude-opus-5-5 tarkisti lähteet: tarkensin live-ohjeen kattamaan Fleetrepon asennusdokumentaation ja @prepare-mvp-operations-pilottiohjeen pelkän release-runbookin sijasta, nimesin production-v1.md:n nykyiseksi designiksi ja vanhat briefit taustaksi sekä päivitin muokkauspäivän. Jarin kirjattuihin päätöksiin ei löytynyt ristiriitaa. Live-kahden käyttäjän näytön saatavuus ja uuden Fleetrepo-operaattorin hyväksyntä jäävät erikseen todennettaviksi; niitä ei tulkittu tässä hyväksytyiksi.
+
+## Resolution
+
+### 2026-10-05T10:00:03Z · @jari
+
+The broad future-v1 verification gate is retired. Reconnect, isolation and recovery are checked with their feature work and normal use; file concrete issues when problems are found. The existing synthetic outage evidence remains in result.md and is not full v1 acceptance.

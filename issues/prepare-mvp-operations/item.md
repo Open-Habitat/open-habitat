@@ -58,17 +58,21 @@ historical context, not a current acceptance gate.
   CI/package checks, ownership and backup/restore of native histories,
   workspace annotations and host configuration, and useful diagnostics within
   the required privacy boundary.
-- [ ] Demonstrate installation, repeated apply, update, failed activation and
-  rollback in a disposable environment with synthetic identities and
-  representative workspaces. Preserve native histories, credentials and
-  workspace state; cleanup removes only fixture-owned state.
+- [ ] Demonstrate installation from the standalone public guide and package on a
+  separate clean Linux VM with a fresh agent and documented operator inputs,
+  using two synthetic Unix identities. Exercise repeated apply, restart,
+  update, failed activation and rollback; preserve native histories,
+  credentials and workspace state. Repair guide or automation defects and
+  repeat from a clean baseline rather than relying on undocumented manual
+  repairs. Cleanup removes only fixture-owned state. Record the tested package
+  revision and observed live version, without treating fixtures as real-person
+  consent or installation on a production host.
 - [ ] Exercise the authorized test-host upgrade through Fleetrepo's current
   procedure, confirming its rollback path is ready and using live switch-back
   only if the new release fails; record the Fleetrepo revision and observed
   outcome.
-- [ ] Prepare the pilot procedure and cleanup/recovery instructions for
-  @verify-v1-resilience. That issue owns the resilience pilot; packaging
-  evidence alone establishes no production availability claim.
+- [ ] Document cleanup/recovery instructions and the limits of the packaging
+  evidence; installation tests alone establish no production availability claim.
 
 ## Evidence
 
