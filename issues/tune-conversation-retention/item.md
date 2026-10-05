@@ -1,13 +1,14 @@
 ---
 created: 2026-10-02
-updated: 2026-10-03
+updated: 2026-10-05
 type: improvement
-status: untriaged
+status: deferred
 priority: normal
 provenance: other
 source_ref: taskfleet:01m3xj0rdnnfgsm45yabgh5bpq/follow-up:conversation-retention
 originating_run: 01m3xj0rdnnfgsm45yabgh5bpq
 originating_run_kind: spinoff
+disposition_note: 'Later optimization: measure realistic long conversation memory and switching latency first; revisit only if those observations justify a changed retention policy.'
 ---
 
 # Tune browser conversation retention and eviction after measurements
@@ -42,3 +43,9 @@ This is a later improvement to the existing store, not a prerequisite for it.
 
 The agreed baseline and data ownership are described in
 [conversation data-flow](../../docs/conversation-data-flow.md).
+
+## Comments
+
+### 2026-10-05T10:14:25Z · @intake
+
+Deferred: Later optimization: measure realistic long conversation memory and switching latency first; revisit only if those observations justify a changed retention policy.
