@@ -6,7 +6,7 @@ status: open
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
-lane_seq: 90
+lane_seq: 1000
 blocked_by: ['@connect-github-workspaces', '@decide-taskfleet-browser-integration']
 collision: [docs/, AGENTS.md, design-system/]
 preparation: reviewing

@@ -6,10 +6,9 @@ status: open
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
-lane_seq: 100
-blocked_by: ['@manage-agent-worktrees']
-collision: [docs/, AGENTS.md, design-system/]
+lane_seq: 85
 preparation: pending
+collision: [docs/, AGENTS.md, design-system/]
 ---
 
 # Archive native agent conversations

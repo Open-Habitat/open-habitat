@@ -5,11 +5,9 @@ type: task
 status: open
 priority: normal
 epic: native-agent-host-architecture
-lane: ui-v1
-lane_seq: 110
-blocked_by: ['@archive-agent-conversations']
-collision: [docs/, AGENTS.md]
+lane: operations-docs
 preparation: ready
+collision: [docs/, AGENTS.md]
 ---
 
 # Deliver the installation and operations guide
