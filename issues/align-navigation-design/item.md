@@ -15,91 +15,68 @@ preparation: pending
 
 # Align navigation with the design
 
-## Purpose
+## Purpose and design
 
-The sidebar, account menu and return view should follow the shared
-[design](../../design-system/design.md), so moving between workspaces and
-conversations feels like part of the same interface. Jari's earlier comparison
-found that passing technical checks had not preserved the design's composition.
-The work needs a visual comparison of the actual views with the current drafts.
+Make moving between workspaces and conversations and returning to unfinished
+work feel like one coherent interface. Earlier technical checks passed while
+the implementation's composition drifted from the design; success here includes
+showing how the actual views match the intended layout.
 
-## Design round
+Jari approved the navigation and settings composition now maintained in
+[the navigation draft](../../design-system/drafts/Navigaatio%20ja%20asetukset.dc.html).
+The [shared design](../../design-system/design.md) supplies the agreed behavior
+and state meanings. The draft demonstrates composition with synthetic data;
+its proposed component APIs and prototype state handling do not define the
+application. The [handoff](design-package/HANDOFF.md) records the response's
+corrections and remaining gaps, alongside the original
+[request](design-package/REQUEST.md) and [package delivery](design-package/RESULT.md).
 
-Navigation and settings share one [design request](design-package/REQUEST.md)
-kept in this issue. The [package result](design-package/RESULT.md) records
-its coverage and delivery; the returned draft's [handoff assessment](design-package/HANDOFF.md)
-tracks what has been agreed and what remains to check. @align-settings-design owns the settings
-implementation. Shared control-state design and Pi-block design remain
-separate rounds in @design-control-states and @design-pi-event-blocks;
-each prepares its request from current material when its round starts.
+## Scope
 
-## Work
+Fit the expanded sidebar, collapsed rail, phone drawer, workspace page, account
+menu and return view to this design on desktop and phone in both themes.
+Navigation includes workspace and conversation rows, Etusivu and the account
+trigger. The workspace name opens its page; a separate disclosure control
+expands its conversations. The return view brings attention, ongoing work and
+recent conversations into a useful order.
 
-Fit the expanded sidebar, collapsed rail and phone navigation drawer to the
-design, including workspace and conversation rows, the Etusivu entry, account
-trigger and menu. Fit the return view where the person resumes work, including
-its running and recently opened conversations. Cover desktop and phone in both
-light and dark themes.
+Current location, agent state and attention communicate different things.
+“Odottaa” means an open agent waiting for a reply; visiting clears its attention
+mark, while the agent continues waiting. “Valmis” means a closed agent.
+“Odottaa sinua” includes unvisited waiting conversations and newly observed
+errors. Visiting an error removes its attention placement, while the error
+remains visible on the conversation row. Read-only access still exists and
+needs a distinct presentation from waiting. Labels follow facts the host can
+establish: a live process alone does not prove activity, and lost observation
+does not prove failure or closure.
 
-Use the shared controls from @unify-ui-primitives and @migrate-bespoke-controls.
-Views arrange those components; component variants and tokens own their visual
-behavior. Agent states use the meanings from @refine-agent-status and the shared
-presentation designed in @design-control-states and implemented by
-@apply-control-state-design. A live process alone does not establish that an
-agent is working; the views should show what the host actually knows.
+Use the shared components and tokens from @unify-ui-primitives and
+@migrate-bespoke-controls. Agent-state meanings come from @refine-agent-status;
+@design-control-states and @apply-control-state-design own their shared visual
+presentation. @account-profile-from-github owns profile data and missing-data
+behavior; this issue places the compact first-name/image presentation and the
+opened account view with email in navigation. @align-settings-design implements
+the settings layout from the same design round. Pi-block design belongs to
+@design-pi-event-blocks.
 
-Use the profile data and shared account presentation from
-@account-profile-from-github: first name and profile image in the compact view,
-email in the opened account view, with the agreed missing-data behavior. This
-issue owns their placement in navigation. The settings layout is separate work.
-
-Preserve the navigation behavior described in [the usage flows](../../docs/product.md):
-returning to a conversation retains its draft and reading position, and background
-updates do not steal focus. Current conversations and uncertain results remain
-available while the presentation changes. Drafts demonstrate composition with
-simulated data; their prototype state handling is not the application's behavior.
-
-Implementation of the sending and connection-recovery behavior agreed below belongs to
-@recover-sends-after-disconnection, including the short send-error feedback
-and automatic receipt check. It is separate from this navigation layout work.
+Preserve the [usage flows](../../docs/product.md): returning retains the draft
+and reading position, background updates retain focus, and conversations and
+unresolved send outcomes remain available. @recover-sends-after-disconnection
+owns concise send-error feedback, blocking sends during lost server connectivity
+and automatically checking the previous send on recovery. Its receipt handling
+and sending behavior are separate from this layout work.
 
 ## Demonstrating the result
 
-Use the synthetic lab to compare the implemented views with
-`design-system/drafts/` side by side. Choose representative content that makes
-the navigation and agent states visible, including active and recent conversations
-and read-only use. Keep the comparisons and remaining differences in this issue
-so Jari can judge the result. Shared production components and their catalog
-examples should reflect the same design.
+Compare production views with the maintained draft in the synthetic lab, using
+matching content, state, theme and viewport so layout differences are visible.
+Include attention, ongoing and recent conversations and read-only use. Keep
+comparisons and remaining differences here for Jari's visual review, following
+[the design process](../../design-system/process.md). Production components and
+their catalog examples should express the same design.
 
 ## Acceptance Criteria
 
-- [ ] The sidebar, collapsed rail, phone drawer, account menu and return view follow the shared design in both themes.
-- [ ] The views use the shared controls, agent-state presentation and account profile consistently while preserving navigation behavior.
-- [ ] Synthetic lab comparisons show the resulting views beside the current drafts and identify any remaining differences.
-
-## Decisions
-
-### 2026-10-05T05:31:43Z · @jari
-
-Design response review: Jari prefers the designer’s error-forward status language to the current UI’s prominent “uncertain” messaging. A lost send acknowledgement is presented as a send error with a short instruction to check the conversation before retrying, not an extended explanation of uncertainty. Preserve the underlying distinction between confirmed rejection and unknown receipt so the UI does not claim “not sent” without evidence and never resends automatically. This changes the user-facing design, not the host receipt contract; reconcile the draft’s “ei lähetetty” label accordingly during handoff.
-
-### 2026-10-05T05:33:45Z · @jari
-
-Correction to the preceding decision: do not tell the person to inspect the conversation before retrying. When server connectivity is lost, the UI blocks new sends; after connectivity returns, it checks the earlier send outcome automatically before enabling a new send. Keep the visible feedback short (send error), preserve the text and never resend automatically. A broken event stream alone is not proof that server writes are unavailable. The present browser still needs implementation work to enforce the connectivity gate and replace its manual-check copy.
-
-### 2026-10-05T08:03:19Z · @jari
-
-Agent-state correction for this designer response: @refine-agent-status records Jari’s decision that “odottaa” is an open agent waiting for a reply, with attention cleared when the person visits, while “valmis” is a closed agent. The draft’s unread-“valmis” → seen-“odottaa” transition must not be carried into the shared design. The layout can retain separate location and attention cues, but its state labels and examples need revision.
-
-### 2026-10-05T08:37:18Z · @jari
-
-Keep the read-only state in the returned navigation draft for now. Planned changes may eventually remove the need for it, but they are not in place yet. Do not copy the response’s omission into the current design; keep read-only visible and resolve its symbol against the waiting symbol during the design handoff.
-
-### 2026-10-05T08:53:29Z · @jari
-
-Jari approved: a newly observed conversation error belongs in “Odottaa sinua” until the person visits the conversation. Visiting clears its unread-attention placement, not the underlying error indication; a seen error remains visible on the conversation row without permanently taking the top of the return view.
-
-### 2026-10-05T08:58:02Z · @jari
-
-Jari approved the returned navigation and settings composition as the direction for the maintained design. This is not approval of the response’s contradictory example-state meanings or its suggested component prop API. Revise the draft examples to the decisions recorded here and in @refine-agent-status; use the resulting visual design, not prototype API guesses, to guide production components.
+- [ ] Navigation, workspace page, account menu and return view follow the shared design on desktop and phone in both themes.
+- [ ] Shared controls, agent-state presentation and account profile are consistent, and navigation preserves drafts, reading position and focus.
+- [ ] Production-versus-draft comparisons show the implemented views and identify remaining differences and coverage gaps.
