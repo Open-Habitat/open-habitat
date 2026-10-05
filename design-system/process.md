@@ -56,6 +56,12 @@ ongelmat perusteluineen. Pysyvät odotukset, kuten kontrollien olennaisten
 tilojen suunnittelu, kuuluvat skillin ylläpidettyyn ohjeeseen. Jari vie paketin
 design-työkaluun ja käy suunnittelukeskustelun siellä.
 
+Designer suunnittelee jokaisen keskustelulohkon esitystilat. Agentti kartoittaa
+lohkojen merkitykset ja toimittaa esimerkit suunnitteluaineistoksi, sitten
+toteuttaa suunnitelmat yhteisiin komponentteihin ja katalogiin. Vedokset ovat
+simuloidulla tiedolla toimivia sommittelumalleja; niiden prototyyppilogiikkaa
+ei kopioida sovellukseen.
+
 ## Palautuksesta toteutukseksi
 
 Palautuksen saavuttua paikannetaan ensin kierroksen issuen `REQUEST.md`,

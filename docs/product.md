@@ -149,9 +149,12 @@ Agentin tila vastaa käyttäjän eri kysymyksiin: onko prosessi käynnissä,
 tekeekö agentti työtä, odottaako se käyttäjää ja voiko sitä ohjata selaimesta?
 Pelkkä käynnissä oleva prosessi ei todista työskentelyä, eikä katkennut yhteys
 tarkoita agentin pysähtyneen. Esitys perustuu hostin tuntemiin tietoihin.
-[Tilojen suunnittelu](../issues/refine-agent-status/item.md) täsmentää yhteiset
-merkitykset ja esityksen sivupalkissa, agenteissa ja keskustelussa;
-lopullisia tilanimiä ja symboleja ei ole vielä lukittu.
+[Design](../design-system/design.md) ja hyväksytty
+[kontrollien ja agenttitilojen suunnitelma](../issues/design-control-states/item.md)
+kuvaavat yhteiset merkitykset ja esityksen sivupalkissa, agenteissa ja
+keskustelussa. Ehdollisten tilojen näyttäminen edellyttää niitä tukevia
+tietoja hostilta; esityksen toteutus kuuluu
+[omaan tehtäväänsä](../issues/apply-control-state-design/item.md).
 
 Huomiota tarvitsevat keskustelut näkyvät sovelluksen omassa lukumäärässä,
 agenttirivin tekstimerkissä ja selainvälilehden otsikon luvussa. Pelkkä väri

@@ -73,6 +73,12 @@ Storybook uses the same production components as the application; the
 shows Axe findings, while `test:a11y` runs browser assertions against the
 production preview fixtures. Visual captures complement behavioral assertions.
 
+Compare the design drafts and production side by side in the synthetic lab;
+correct differences in shared components and tokens. The comparison fixture
+shows at least one running conversation with tool rows and two queued messages,
+one answered conversation and one read-only conversation, with no duplicates.
+This gives the comparison distinct, recognisable design states.
+
 ```sh
 npm run test:component --prefix web
 npm run storybook:test --prefix web
