@@ -6,7 +6,7 @@ status: open
 priority: normal
 lane: rename
 collision: [docs/, AGENTS.md, design-system/, scripts/vm-test.sh]
-preparation: pending
+preparation: ready
 ---
 
 # Name the project Open Habitat
@@ -86,3 +86,7 @@ Open Habitat (`open-habitat`) korvaa aiemman Omega Habitat -päätöksen.
 Aiemmin varattu `omega-habitat.dev` ei ole uuden nimen domain; verkkotunnus
 ja julkiset osoitteet ratkaistaan ennen käyttöönottoa. Aiempi GitHub-nimihaku
 ei ollut nimen varaus eikä tavaramerkkiselvitys.
+
+### 2026-10-05T14:54:15Z · @jari
+
+2026-10-05: Jari approves the agreed Open Habitat rename as an end-of-night stretch task, only after the other selected night work has landed or settled and the repository and affected Fleetrepo Taskfleet worktrees are no longer active. This is not a request to run the rename now or to abandon unfinished branches. Check the live DAG, preserved work and external references before the broad rename. The public domain/URL remains undecided; do not invent one or rename the existing published documentation space without a continuity decision. If a human decision or live run still blocks safe completion, report the remaining work rather than claiming the rename done.
