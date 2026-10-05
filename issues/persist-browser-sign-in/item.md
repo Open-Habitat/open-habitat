@@ -3,7 +3,7 @@ created: 2026-10-05
 updated: 2026-10-05
 type: feature
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 originating_run_kind: spinoff
 provenance: agent
@@ -11,6 +11,9 @@ provenance_detail: filed from design review with Jari
 source_ref: taskfleet:01m45wen480zd1mr6544anf61c/implementation:design-durable-sign-in
 originating_run: 01m45wen480zd1mr6544anf61c
 related: ['@design-durable-sign-in']
+lane: gateway-session
+collision: [internal/gateway/, docs/, systemd/native-agent-host-gateway.service]
+preparation: ready
 ---
 
 # Keep browser sign-in across gateway restarts and upgrades
