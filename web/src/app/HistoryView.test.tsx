@@ -481,11 +481,9 @@ it("renders saved local command output and marker metadata without treating eith
     blocks: [{ type: "text", text: "Synthetic session" }],
   };
   const { container } = render(
-    <>
-      {timelineItems([command, marker]).map((item) => (
-        <div key={item.id}>{item.content}</div>
-      ))}
-    </>,
+    timelineItems([command, marker]).map((item) => (
+      <div key={item.id}>{item.content}</div>
+    )),
   );
   expect(container.textContent).toContain("paluuarvo 2");
   expect(container.textContent).toContain("tuloste katkaistu");

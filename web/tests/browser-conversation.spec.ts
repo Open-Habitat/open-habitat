@@ -1857,3 +1857,115 @@ test("@browser-conversation cursor 409 waits for a newer snapshot before reopeni
   await expect.poll(() => snapshots, { timeout: 10000 }).toBeGreaterThan(1);
   expect(streams).toBe(2); // No replay from a snapshot older than the gap.
 });
+
+test("@browser-conversation lost accepted reply recovers on HTTP snapshot without an event", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await expect(editor).toBeVisible();
+  let sends = 0;
+  await page.route("**/api/v1/conversations/*/send", async (route) => {
+    sends++;
+    const reply = await route.fetch();
+    expect(reply.status()).toBe(200);
+    await route.abort("failed");
+  });
+  await page.route("**/api/v1/conversations/*/status", (route) =>
+    route.abort(),
+  );
+  await page.route("**/api/v1/snapshot", (route) => route.abort());
+  await editor.fill("original message");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(page.locator(".ah-send-uncertain")).toBeVisible();
+  await expect(page.getByText("Lähetysvirhe", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "Päivitä", exact: true }).click();
+  await expect(
+    page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Lähetä", exact: true }),
+  ).toBeDisabled();
+  await expect(editor).toHaveValue("original message");
+  await page.unroute("**/api/v1/conversations/*/status");
+  await page.unroute("**/api/v1/snapshot");
+  await page.getByRole("button", { name: "Yhdistä" }).click();
+  await expect(page.locator(".ah-send-uncertain")).toHaveCount(0);
+  await expect(editor).toHaveValue("");
+  await editor.fill("next deliberate message");
+  await expect(
+    page.getByRole("button", { name: "Lähetä", exact: true }),
+  ).toBeEnabled();
+  expect(sends).toBe(1);
+});
+
+test("@browser-conversation a receipt lost on daemon restart remains unknown", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await expect(editor).toBeVisible();
+  let sends = 0;
+  await page.route("**/api/v1/conversations/*/send", async (route) => {
+    sends++;
+    await route.abort("failed");
+  });
+  await page.route("**/api/v1/conversations/*/status", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.command_id = "";
+    body.ack = "";
+    body.send_receipt = "";
+    await route.fulfill({ response, json: body });
+  });
+  let lookups = 0;
+  await page.route(
+    "**/api/v1/conversations/*/receipt?command_id=*",
+    (route) => {
+      lookups++;
+      return route.fulfill({ status: 404 });
+    },
+  );
+  await editor.fill("unknown message");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(page.locator(".ah-send-uncertain")).toBeVisible();
+  await expect.poll(() => lookups).toBeGreaterThan(0);
+  await page.getByRole("button", { name: "Päivitä", exact: true }).click();
+  await expect.poll(() => lookups).toBeGreaterThan(1);
+  await expect(page.locator(".ah-send-rejected")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Lähetä", exact: true }),
+  ).toBeDisabled();
+  await expect(editor).toHaveValue("unknown message");
+  expect(sends).toBe(1);
+});
+
+test("@browser-conversation daemon restart loses controller without declaring the send rejected", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await expect(editor).toBeVisible();
+  let sends = 0;
+  await page.route("**/api/v1/conversations/*/send", async (route) => {
+    sends++;
+    await route.abort("failed");
+  });
+  await page.route("**/api/v1/conversations/*/status", (route) =>
+    route.fulfill({ status: 404 }),
+  );
+  await editor.fill("cannot prove delivery");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(
+    page.getByText("Ohjaus ei ole enää käytettävissä", { exact: false }),
+  ).toBeVisible();
+  await expect(page.locator(".ah-send-rejected")).toHaveCount(0);
+  await expect(editor).toHaveValue("cannot prove delivery");
+  await expect(
+    page.getByRole("button", { name: "Lähetä", exact: true }),
+  ).toBeDisabled();
+  expect(sends).toBe(1);
+});

@@ -23,7 +23,7 @@ import type { ConversationStore } from "./conversationStore";
 import type { Session, Status } from "./conversations";
 import { timelineItems } from "./HistoryView";
 import { PiQuestion } from "./PiQuestion";
-import type { Workspace } from "./snapshot";
+import type { Snapshot, Workspace } from "./snapshot";
 import { useConversation } from "./useConversation";
 import { useReadingPositionLayout } from "./useReadingPosition";
 
@@ -43,6 +43,8 @@ export function BrowserConversation({
   identity,
   store,
   journalOffline,
+  serverUnavailable,
+  recoverySnapshot,
   onStatusEvent,
   csrf,
   onLogin,
@@ -54,6 +56,8 @@ export function BrowserConversation({
   identity: string;
   store: ConversationStore;
   journalOffline: boolean;
+  serverUnavailable: boolean;
+  recoverySnapshot?: Snapshot;
   onStatusEvent: (listener: (id: string, kind: string) => void) => () => void;
   csrf?: string;
   onLogin: () => void;
@@ -118,6 +122,7 @@ export function BrowserConversation({
     identity,
     store,
     journalOffline,
+    recoverySnapshot,
     onStatusEvent,
     onLogin,
   });
@@ -172,6 +177,7 @@ export function BrowserConversation({
     sendObservation,
     problem,
     controlled: controlled && !statusStale,
+    serverUnavailable,
     alive,
     generation,
     submittedKey,
@@ -207,6 +213,8 @@ export function BrowserConversation({
     !busy &&
     !ambiguous &&
     !statusStale &&
+    !serverUnavailable &&
+    !problem &&
     !continuation &&
     (current.state === "idle" ||
       current.state === "rejected" ||
@@ -246,7 +254,12 @@ export function BrowserConversation({
                       }
                     : busy
                       ? { state: "unknown", reason: "Luonti on käynnissä." }
-                      : { state: "enabled" }
+                      : serverUnavailable
+                        ? {
+                            state: "unknown",
+                            reason: "Palvelinyhteys katkesi.",
+                          }
+                        : { state: "enabled" }
               }
               onPress={() => void start()}
             />
@@ -598,6 +611,7 @@ export function BrowserConversation({
                 !busy &&
                 !ambiguous &&
                 !statusStale &&
+                !serverUnavailable &&
                 current?.queue &&
                 current.state !== "pending" &&
                 current.state !== "uncertain" &&
@@ -641,9 +655,11 @@ export function BrowserConversation({
                   ? { state: "enabled" }
                   : {
                       state: "unknown",
-                      reason: statusStale
-                        ? "Tila on vanhentunut. Tarkista keskustelun tila ennen lähettämistä."
-                        : "Odota vahvistettua joutotilaa; epävarmaa viestiä ei lähetetä uudelleen.",
+                      reason: serverUnavailable
+                        ? "Palvelinyhteys katkesi. Luonnos säilyy."
+                        : statusStale
+                          ? "Tila on vanhentunut. Tarkista keskustelun tila ennen lähettämistä."
+                          : "Odota vahvistettua joutotilaa; epävarmaa viestiä ei lähetetä uudelleen.",
                     }
               }
               onSendNow={() => void submit()}

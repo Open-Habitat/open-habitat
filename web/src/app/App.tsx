@@ -645,6 +645,8 @@ export function App() {
             }
             identity={identity}
             journalOffline={journalOffline}
+            serverUnavailable={phase === "stale"}
+            recoverySnapshot={snapshot}
             onStatusEvent={onStatusEvent}
             title={
               snapshot?.agents.find(

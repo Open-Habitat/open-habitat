@@ -114,20 +114,22 @@ back off; while the stream is unavailable, the browser also periodically
 tries refreshing the snapshot. Streams have a bounded lifetime and heartbeats,
 so reconnecting is part of normal operation.
 
-Loaded content remains readable with a connection warning. An event-stream
-failure does not by itself establish that ordinary HTTP requests are
-unavailable, and the current send path does not use stream availability as a
-sending condition. A failed send retains its command ID and text. Refreshing
-the conversation can query its receipt, but stream reconnection alone does not
-trigger that query, and the current feedback still asks the person to check
-the outcome. The browser never automatically resends the message.
+Loaded content remains readable with a connection warning. A failed HTTP
+snapshot marks server connectivity unavailable and blocks new conversation
+sends while retaining the draft and reading position. A failed event stream
+alone does not block writes: HTTP may still be available. When an HTTP snapshot
+succeeds again, the open conversation checks any outstanding command even if
+no event was published while disconnected.
 
-[Recover sends after disconnection](../../issues/recover-sends-after-disconnection/item.md)
-tracks implementation of the agreed change: block new sends during a server connection
-outage and automatically check the earlier send outcome when connectivity
-returns, before enabling another send. This is separate from an interruption
-of only the event stream. [Conversations](conversations.md) explains what a
-receipt establishes and why a missing receipt cannot prove rejection.
+Before posting a message the browser saves its command ID and text in session
+storage. A lost reply shows a short send error; the browser checks the original
+command's daemon receipt, retrying temporary read failures. An accepted receipt
+clears the sent draft only if it has not been edited since; a rejected receipt
+retains it. Pending and unknown outcomes keep the original command outstanding,
+so another send cannot silently replace it. A missing receipt (for example
+after daemon restart) is unknown, not rejection. The browser never resends an
+outstanding command automatically. [Conversations](conversations.md) explains
+what a receipt establishes.
 
 Browser or gateway loss leaves Pi running and the daemon collecting events.
 A daemon restart loses its in-memory journal, receipts and controlled handles;

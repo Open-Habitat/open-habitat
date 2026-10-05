@@ -182,7 +182,7 @@ test("@resilience populated native history remains readable during outage", asyn
   ).toHaveCount(0);
 });
 
-test("@resilience active conversation stays readable and server decides writes during snapshot outage", async ({
+test("@resilience active conversation stays readable and blocks writes during snapshot outage", async ({
   page,
 }) => {
   await page.request.get("/fixture/conversations-reset");
@@ -215,7 +215,7 @@ test("@resilience active conversation stays readable and server decides writes d
   await expect(page.getByRole("button", { name: "Yhdistä" })).toHaveCount(1);
   await expect(
     page.getByRole("button", { name: "Lähetä", exact: true }),
-  ).toBeEnabled();
+  ).toBeDisabled();
   await expect(page.getByRole("button", { name: "Keskeytä" })).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
   const composer = page.locator(".ah-conversation-frame > .ah-composer");

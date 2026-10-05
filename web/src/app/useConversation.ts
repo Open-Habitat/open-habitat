@@ -12,7 +12,7 @@ import {
   sendReceipt,
   status,
 } from "./conversations";
-import type { Workspace } from "./snapshot";
+import type { Snapshot, Workspace } from "./snapshot";
 import { useReadingPosition } from "./useReadingPosition";
 
 // Owns the native read model and journal recovery for one conversation.
@@ -22,6 +22,7 @@ export function useConversation({
   identity,
   store,
   journalOffline,
+  recoverySnapshot,
   onStatusEvent,
   onLogin,
 }: {
@@ -30,6 +31,7 @@ export function useConversation({
   identity: string;
   store: ConversationStore;
   journalOffline: boolean;
+  recoverySnapshot?: Snapshot;
   onStatusEvent: (listener: (id: string, kind: string) => void) => () => void;
   onLogin: () => void;
 }) {
@@ -296,6 +298,7 @@ export function useConversation({
       }
       pending.current = true;
       const version = generation.current;
+      let receiptPending = false;
       try {
         let nextStatus = await status(id);
         if (requestContinuation && nextStatus.state === "uncertain")
@@ -341,16 +344,20 @@ export function useConversation({
               outcome = await sendReceipt(id, command);
             } catch (error) {
               if ((error as Error).message === "identity_lost") throw error;
+              receiptPending = true;
             }
           }
           if (!alive.current || version !== generation.current) return;
           const text = sessionStorage.getItem(submittedKey);
-          if (text !== null && outcome) {
-            setSendObservation({ text, state: outcome });
-            if (outcome === "uncertain")
-              sessionStorage.setItem(uncertainKey, command);
+          // Do not let an older in-flight read settle a newer command.
+          if (sessionStorage.getItem(sendKey) !== command) return;
+          if (text !== null) {
             if (outcome === "accepted" || outcome === "rejected") {
+              setSendObservation({ text, state: outcome });
+              setReceipt(outcome === "rejected" ? "Viesti hylättiin." : "");
+              sessionStorage.removeItem(sendKey);
               sessionStorage.removeItem(uncertainKey);
+              sessionStorage.removeItem(submittedKey);
               if (
                 outcome === "accepted" &&
                 sessionStorage.getItem(draftKey) === text
@@ -358,6 +365,18 @@ export function useConversation({
                 changeDraft("");
               if (outcome === "rejected" && !sessionStorage.getItem(draftKey))
                 changeDraft(text);
+            } else {
+              sessionStorage.setItem(uncertainKey, command);
+              setSendObservation({
+                text,
+                state: outcome === "pending" ? "pending" : "uncertain",
+              });
+              setReceipt(
+                outcome === "pending"
+                  ? "Viesti odottaa kuittausta. Tarkistetaan uudelleen."
+                  : "Lähetyksen tulos on yhä epävarma. Viestiä ei lähetetä uudelleen.",
+              );
+              if (outcome === "pending") receiptPending = true;
             }
           }
         }
@@ -398,12 +417,20 @@ export function useConversation({
           }
         }
         clearRetry();
+        if (receiptPending) scheduleRetry();
       } catch (error) {
         if (alive.current && version === generation.current) {
           if ((error as Error).message === "identity_lost") onLogin();
-          else if (error instanceof ConversationNotFound)
-            navigate(`/agents/${id}`, { replace: true });
-          else {
+          else if (error instanceof ConversationNotFound) {
+            if (sessionStorage.getItem(sendKey)) {
+              // A restarted daemon no longer knows this controller or its
+              // receipt. Keep the readable window and the unknown draft.
+              store.markStale(id);
+              setProblem(
+                "Ohjaus ei ole enää käytettävissä. Lähetyksen tulos on epävarma.",
+              );
+            } else navigate(`/agents/${id}`, { replace: true });
+          } else {
             setProblem("Yhteys katkesi. Näytetään viimeisin tunnettu tila.");
             scheduleRetry(requestContinuation, readHistory);
           }
@@ -437,6 +464,12 @@ export function useConversation({
     ],
   );
   latestRefresh.current = refresh;
+  // A successful HTTP snapshot is a connectivity proof even if no SSE event
+  // follows it. Recheck the original command, including on a cached open.
+  useEffect(() => {
+    if (recoverySnapshot && id && sessionStorage.getItem(sendKey))
+      void latestRefresh.current();
+  }, [recoverySnapshot, id, sendKey]);
   // A tab-wide journal dispatches active status events here; background status
   // observations are owned by the store and never trigger reads on switch.
   useEffect(

@@ -34,6 +34,7 @@ export function useConversationActions({
   sendObservation,
   problem,
   controlled,
+  serverUnavailable,
   alive,
   generation,
   submittedKey,
@@ -63,6 +64,7 @@ export function useConversationActions({
   sendObservation?: Observation;
   problem: string;
   controlled: boolean;
+  serverUnavailable: boolean;
   alive: RefObject<boolean>;
   generation: RefObject<number>;
   submittedKey: string;
@@ -83,7 +85,7 @@ export function useConversationActions({
   navigate: NavigateFunction;
 }) {
   const start = async () => {
-    if (busy || !csrf || ambiguous) return;
+    if (busy || !csrf || ambiguous || serverUnavailable) return;
     setBusy(true);
 
     try {
@@ -119,7 +121,8 @@ export function useConversationActions({
       !current ||
       current.continuation !== "eligible" ||
       continuation ||
-      !controlled
+      !controlled ||
+      serverUnavailable
     )
       return;
     const version = generation.current;
@@ -171,6 +174,9 @@ export function useConversationActions({
       !draft.trim() ||
       ambiguous ||
       continuation ||
+      serverUnavailable ||
+      problem ||
+      sessionStorage.getItem(sendKey) ||
       !csrf
     )
       return;
@@ -183,6 +189,7 @@ export function useConversationActions({
       if (!alive.current) return;
       sessionStorage.setItem(submittedKey, text);
       sessionStorage.setItem(sendKey, command);
+      sessionStorage.setItem(uncertainKey, command);
       setSendObservation({ text, state: "pending" });
       setReceipt("Viesti odottaa kuittausta");
       await send(current.agent_id, text, command, token);
@@ -193,14 +200,16 @@ export function useConversationActions({
       if ((error as Error).message === "identity_lost") onLogin();
       else if (alive.current && error instanceof NotAdmitted) {
         sessionStorage.removeItem(sendKey);
+        sessionStorage.removeItem(uncertainKey);
         setSendObservation({ text, state: "rejected" });
         setReceipt("Viesti hylättiin. Tarkista keskustelun tila.");
       } else if (alive.current) {
         sessionStorage.setItem(uncertainKey, command);
         setSendObservation({ text, state: "uncertain" });
         setReceipt(
-          "Lähetyksen tulos epävarma. Viestiä ei lähetetä automaattisesti uudelleen. Tarkista tila ja natiivi historia.",
+          "Lähetysvirhe. Tarkistetaan alkuperäisen viestin kuittaus automaattisesti.",
         );
+        void refresh();
       }
     } finally {
       if (alive.current) setBusy(false);
@@ -213,6 +222,9 @@ export function useConversationActions({
       current.state !== "accepted" ||
       !draft.trim() ||
       ambiguous ||
+      serverUnavailable ||
+      problem ||
+      sessionStorage.getItem(sendKey) ||
       !csrf
     )
       return;
@@ -223,6 +235,7 @@ export function useConversationActions({
       const token = csrf;
       if (!alive.current) return;
       sessionStorage.setItem(sendKey, command);
+      sessionStorage.setItem(uncertainKey, command);
       setSendObservation({ text, state: "pending" });
       sessionStorage.setItem(submittedKey, text);
       setReceipt("Viesti odottaa kuittausta");
@@ -232,6 +245,7 @@ export function useConversationActions({
       if ((error as Error).message === "identity_lost") onLogin();
       if (alive.current && error instanceof NotAdmitted) {
         sessionStorage.removeItem(sendKey);
+        sessionStorage.removeItem(uncertainKey);
         sessionStorage.removeItem(submittedKey);
         setSendObservation({ text, state: "rejected" });
         if (alive.current) {
@@ -247,8 +261,9 @@ export function useConversationActions({
         sessionStorage.setItem(uncertainKey, command);
         setSendObservation({ text, state: "uncertain" });
         setReceipt(
-          "Lähetyksen tulos epävarma. Älä lähetä automaattisesti uudelleen.",
+          "Lähetysvirhe. Tarkistetaan alkuperäisen viestin kuittaus automaattisesti.",
         );
+        void refresh();
       }
     } finally {
       if (alive.current) setBusy(false);
@@ -344,8 +359,12 @@ export function useConversationActions({
       {problem ? <InlineNotice title={problem} tone="danger" /> : null}
       {ambiguous && sendObservation?.state === "uncertain" ? (
         <InlineNotice
-          title="Aiemman pyynnön tulos epävarma"
-          description="Tarkista tila ja natiivi historia. Viestiä ei lähetetä automaattisesti uudelleen."
+          title={
+            receipt.startsWith("Lähetysvirhe")
+              ? "Lähetysvirhe · tulos epävarma"
+              : "Aiemman pyynnön tulos epävarma"
+          }
+          description="Tarkistetaan alkuperäisen viestin kuittaus yhteyden palattua. Viestiä ei lähetetä uudelleen."
           tone="warning"
         />
       ) : null}
