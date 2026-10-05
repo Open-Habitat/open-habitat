@@ -3,13 +3,15 @@ created: 2026-10-04
 updated: 2026-10-05
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m427s47pbwfvjag70kdbhy8z
 lane: release-tooling
 lane_seq: 10
 preparation: ready
+closed: 2026-10-05
+closed_by: pi
 ---
 
 # Release tooling friction found during the pilot.18 release
@@ -62,13 +64,13 @@ correcting any stale references actually found.
 
 ## Acceptance Criteria
 
-- [ ] The shared release workflow detects insufficient source-volume headroom
+- [x] The shared release workflow detects insufficient source-volume headroom
   before switching releases and points to the existing volume operator.
-- [ ] Packaging and gate-result handling retain the verified source revision
+- [x] Packaging and gate-result handling retain the verified source revision
   when `origin/main` advances and read the gate's structured result correctly.
-- [ ] Shared verification commands handle forwarded HTTP, expected systemd
+- [x] Shared verification commands handle forwarded HTTP, expected systemd
   states and daemon requests correctly; the guide identifies current helpers.
-- [ ] Focused tests or recorded checks demonstrate the corrected cases, with
+- [x] Focused tests or recorded checks demonstrate the corrected cases, with
   the changes and verification recorded in the owning repository.
 
 ## Sources
