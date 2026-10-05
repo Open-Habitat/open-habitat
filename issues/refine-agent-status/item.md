@@ -1,6 +1,6 @@
 ---
 created: 2026-09-21
-updated: 2026-10-03
+updated: 2026-10-05
 type: task
 status: open
 priority: normal
@@ -54,3 +54,9 @@ the package and design round. @apply-control-state-design implements the agreed
 presentation through the shared `agentPresentation` mapping from host facts,
 using the foundation from @unify-ui-primitives. Coordinate the examples with
 @align-navigation-design and the conversation views so they use the same meanings.
+
+## Decisions
+
+### 2026-10-05T08:03:09Z · @jari
+
+Jari’s reading of the returned navigation draft: “odottaa” means an open agent waiting for the person to respond. It demands attention until the person has visited the conversation; after that, the agent still waits, but the unread-attention flag clears. If the person will not continue, they can close the agent. “Valmis” means the agent has been closed, not merely that it finished one turn or produced an unread reply. Do not use the designer’s proposed transition from unread “valmis” to “odottaa” on focus; visitation changes attention, not agent lifecycle. The shared presentation must distinguish this from an unexpectedly lost process or unknown host state.

@@ -81,3 +81,7 @@ Design response review: Jari prefers the designer’s error-forward status langu
 ### 2026-10-05T05:33:45Z · @jari
 
 Correction to the preceding decision: do not tell the person to inspect the conversation before retrying. When server connectivity is lost, the UI blocks new sends; after connectivity returns, it checks the earlier send outcome automatically before enabling a new send. Keep the visible feedback short (send error), preserve the text and never resend automatically. A broken event stream alone is not proof that server writes are unavailable. The present browser still needs implementation work to enforce the connectivity gate and replace its manual-check copy.
+
+### 2026-10-05T08:03:19Z · @jari
+
+Agent-state correction for this designer response: @refine-agent-status records Jari’s decision that “odottaa” is an open agent waiting for a reply, with attention cleared when the person visits, while “valmis” is a closed agent. The draft’s unread-“valmis” → seen-“odottaa” transition must not be carried into the shared design. The layout can retain separate location and attention cues, but its state labels and examples need revision.
