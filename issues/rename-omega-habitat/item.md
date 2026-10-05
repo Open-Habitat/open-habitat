@@ -1,11 +1,12 @@
 ---
 created: 2026-09-25
-updated: 2026-09-30
+updated: 2026-10-05
 type: chore
 status: open
 priority: normal
 lane: rename
 collision: [docs/, AGENTS.md, design-system/, scripts/vm-test.sh]
+preparation: pending
 ---
 
 # Projektin nimeäminen omega-habitatiksi

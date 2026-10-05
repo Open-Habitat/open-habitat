@@ -1,6 +1,6 @@
 ---
 created: 2026-09-21
-updated: 2026-10-03
+updated: 2026-10-05
 type: task
 status: open
 priority: normal
@@ -9,6 +9,7 @@ lane: ui-v1
 lane_seq: 70
 blocked_by: ['@complete-conversation-ui']
 collision: [docs/, AGENTS.md, design-system/]
+preparation: pending
 ---
 
 # Manage local workspace lifecycle
