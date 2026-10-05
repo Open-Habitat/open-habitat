@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 func TestNativeSessionNameWinsAndLatestPersists(t *testing.T) {
@@ -48,6 +49,28 @@ func TestNativeSessionNameWinsAndLatestPersists(t *testing.T) {
 	// Reopening the native file, not controller state, gives the same name.
 	if name := nativeName(readNativeHeader(path, os.Getuid()), os.Getuid()); name != "A newer title" {
 		t.Fatal(name)
+	}
+}
+
+func TestFirstPromptFitsSnapshotTitle(t *testing.T) {
+	home := t.TempDir()
+	path := filepath.Join(home, "session.jsonl")
+	id := "11111111-1111-4111-8111-111111111111"
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range []any{
+		map[string]any{"type": "session", "version": 3, "id": id, "cwd": home},
+		map[string]any{"type": "message", "id": "abc1", "message": map[string]any{"role": "user", "content": strings.Repeat("🙂", 80)}},
+	} {
+		b, _ := json.Marshal(row)
+		fmt.Fprintln(f, string(b))
+	}
+	f.Close()
+	prompt := firstPrompt(readNativeHeader(path, os.Getuid()), os.Getuid())
+	if prompt == "" || len(prompt) > 160 || !utf8.ValidString(prompt) {
+		t.Fatalf("invalid fallback: %q", prompt)
 	}
 }
 

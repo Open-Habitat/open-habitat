@@ -627,7 +627,7 @@ func firstPrompt(s nativeSession, uid int) string {
 			if len(runes) > 80 {
 				runes = runes[:80]
 			}
-			return string(runes)
+			return prefixBytes(string(runes), 160)
 		}
 	}
 	return ""
