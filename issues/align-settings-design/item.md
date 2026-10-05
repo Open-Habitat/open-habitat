@@ -1,6 +1,6 @@
 ---
 created: 2026-10-01
-updated: 2026-10-03
+updated: 2026-10-05
 type: task
 reporter: jari
 status: open
@@ -10,6 +10,7 @@ lane: design-v2
 lane_seq: 15
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
 blocked_by: ['@align-navigation-design', '@unify-ui-primitives']
+preparation: pending
 ---
 
 # Align settings with the design and refresh view comparisons

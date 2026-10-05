@@ -1,15 +1,17 @@
 ---
 created: 2026-09-30
-updated: 2026-10-03
+updated: 2026-10-05
 type: task
 reporter: jari
-status: open
+status: duplicate
 priority: high
 related: ['@review-browser-design-v2', '@design-first-use-onboarding']
 lane: design-v2
 lane_seq: 4
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx, web/src/app/GitHubOnboarding.tsx]
 blocked_by: ['@fit-sidebar-v2', '@show-large-clone-progress']
+closed: 2026-10-05
+closed_by: jari
 ---
 
 # Fit onboarding to browser design
@@ -54,3 +56,9 @@ Waits for @show-large-clone-progress, which changes `GitHubOnboarding.tsx`.
 - Ownership tonight: this work may change `web/`, `design-system/`,
   `docs/ui.md` and `docs/design-system.md`. A needed change in `internal/`,
   `contracts/` or other docs is recorded in this issue as a request instead.
+
+## Resolution
+
+### 2026-10-05T10:17:19Z · @jari
+
+This 30 September v2 night slice overlaps @design-first-use-onboarding, which now owns the shared GitHub → repositories → OpenAI screen composition and recovery. The maintained design and plan already cover the shared frame, step indicator, full-row chooser, code and interruption confirmation. Its provisional phone implementation scope is not a joint approval; resolve that with Jari in the canonical issue before implementing.
