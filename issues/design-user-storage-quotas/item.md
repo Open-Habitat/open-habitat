@@ -7,7 +7,7 @@ priority: normal
 related: ['@named-server-admin-settings', '@server-administration-cli', '@rethink-project-docs']
 lane: planning
 collision: [docs/]
-preparation: pending
+preparation: reviewing
 ---
 
 # Design per-user storage quotas using native Linux facilities
