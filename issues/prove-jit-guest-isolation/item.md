@@ -8,10 +8,10 @@ lane: auth-guest
 lane_seq: 10
 collision: [scripts/vm-test.sh]
 blocked_by: ['@native-gh-jit-handoff', '@implement-linux-executor']
-preparation: pending
+preparation: ready
 ---
 
-# Prove JIT two-user isolation in private guest
+# Prove two-user isolation after test-server reboot
 
 ## Purpose and established evidence
 
