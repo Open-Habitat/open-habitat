@@ -11,42 +11,33 @@ collision: [docs/]
 
 # Design per-user storage quotas using native Linux facilities
 
-## Goal
+The server administrator needs to see each user's disk usage and change their
+storage limit, including limits above 20 GiB for large projects. Jari approved
+using standard Linux quota facilities during the documentation review on
+2026-10-05. The limit covers the user's files, including workspaces, Pi history
+and caches, regardless of whether Git, an agent, a build or a terminal session
+writes them. Clone admission alone cannot provide that protection.
 
-Give the server administrator a per-user view of used disk space and an
-editable storage limit. Large projects can need much more than 20 GiB.
-Jari approved this direction during the workspace documentation review on
-2026-10-05: use Linux's existing tools and standard quota mechanisms.
+Recommend a mechanism grounded in the deployment's filesystems and native Linux
+facilities. The recommendation should make clear what storage is covered, how
+usage is measured, what deployment changes enable enforcement and how the
+administrator sees usage and changes limits. Exhaustion, a limit lowered below
+current usage and the server's available capacity are part of that experience.
+Native quota state is the preferred authority: a separate accounting store or
+custom enforcement service would duplicate what Linux already provides.
 
-The quota should cover the user's files as a whole, including workspaces,
-Pi history and caches. Native Git, agents, builds and terminal sessions must
-obey the same limit. A clone admission check alone cannot enforce this.
+[ADR 0011](../../docs/decisions/adr-0011-gateway-owned-server-administration.md)
+places browser roles and settings in the unprivileged gateway; changing quotas
+requires privileged system authority. The design needs a narrowly scoped way
+to cross that boundary while keeping per-user daemons out of server
+administration. The mechanism and privileged interface remain architectural
+choices to resolve with Jari.
 
-## Design to resolve with Jari
-
-Recommend a standard Linux quota mechanism suitable for the deployment's
-filesystems, and explain what storage it covers, how usage is measured and
-how the operator enables it. Define the admin experience for viewing usage,
-changing limits and reporting exhaustion, including a limit lowered below
-current usage. Account for the server's actual available capacity.
-
-ADR 0011 gives the unprivileged gateway ownership of browser roles and
-settings. Quota changes need privileged system authority. Recommend the
-smallest scoped operation across that boundary; per-user daemons retain no
-server-administration role. Prefer native quota state as the source of truth
-rather than adding a parallel accounting store or a custom enforcement service.
-
-The existing clone implementation requires a separate filesystem at ~/src,
-at most 20 GiB total and at least 5 GiB free before admission. Its workspace
-scanner also rejects larger separately mounted source volumes. The new design
-must replace these fixed-volume assumptions coherently and supersede the
-relevant part of ADR 0005 through a new decision record.
-
-## Completion
-
-Jari has a source-grounded recommendation covering the Linux mechanism,
-authority boundary, administrator experience and deployment changes. Record
-the agreed architecture and create the bounded implementation tasks. The
-choice of mechanism and privileged interface is not predetermined here.
-
-Related work: @named-server-admin-settings and @server-administration-cli.
+The current clone and discovery code in `internal/daemon` embodies the volume
+policy in [ADR 0005](../../docs/decisions/adr-0005-clone-progress-stream.md):
+clones require a separate `~/src` filesystem of at most 20 GiB with 5 GiB free,
+and discovery rejects oversized separate source volumes. Replacing those
+assumptions together avoids a quota change leaving valid workspaces invisible.
+The result of this design task is an agreed ADR superseding that storage policy
+and bounded implementation issues, coordinated with @named-server-admin-settings
+and @server-administration-cli.

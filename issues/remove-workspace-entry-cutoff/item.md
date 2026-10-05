@@ -11,42 +11,30 @@ collision: [internal/daemon/, docs/]
 
 # Keep large workspace collections visible beyond 512 entries
 
-## Problem
+Adding one entry to `~/src` can make every workspace disappear. Discovery reads
+513 immediate entries and returns `partial/entry_limit` before classifying any
+if there are more than 512. Ordinary files and hidden entries count; project
+contents do not. Thus 500 project directories plus 13 ordinary files produce an
+empty observation. Clone and checkout observation have similar cutoffs in
+`internal/daemon`.
 
-Adding one entry to ~/src can make every workspace disappear from the daemon's
-snapshot. Discovery reads 513 immediate directory entries and, if more than
-512 exist, returns partial/entry_limit before classifying any of them. Files
-and hidden entries count too; files inside projects do not. The clone and
-checkout observation paths have similar entry-count cutoffs.
+Jari approved batched discovery on 2026-10-05 so collections can grow without
+losing visible workspaces. The cutoff bounds scan work, but 512 is not a product
+limit. Batches should bound the work while allowing the whole collection to be
+observed from native directories. A registry would introduce another source of
+truth without solving that need.
 
-For example, 500 project directories plus 13 ordinary files produce an empty
-workspace observation even though all projects remain readable on disk.
-The limit bounds scan work, but there is no established product need for a
-512-entry ceiling or for dropping every result when it is crossed.
+Success means the browser keeps showing existing workspaces and discovers new
+ones above the old threshold, and collection size alone does not disable
+onboarding. This reaches through daemon discovery, snapshot construction and
+browser consumption: transport limits and partial-result handling can otherwise
+recreate the same disappearance. An inaccessible entry is not evidence of its
+absence. Clone destination checks need the complete name set, including
+case-insensitive matches, because a conflict beyond the first batch still makes
+a write unsafe.
 
-## Agreed outcome
-
-Jari approved processing discovery in batches so large workspace collections
-remain visible during the documentation review on 2026-10-05. Replace the
-all-or-nothing cutoff with bounded work that can cover the whole collection.
-Preserve the native directories as the source; no workspace registry is needed.
-
-Follow the result through snapshot construction and browser consumption so
-transport limits or partial-result handling do not recreate the disappearance.
-Inspect the related clone and checkout scans so a large collection does not
-arbitrarily disable onboarding. Keep complete destination-name collision
-checks, including case-insensitive collisions, before a clone writes.
-
-## Verification
-
-Exercise a collection above 512 entries with both directories and ordinary
-files. Show that adding the threshold-crossing entry preserves existing
-workspaces and makes the new workspace discoverable. Verify completeness
-across batches and the treatment of inaccessible entries, and check the
-onboarding paths against large collections and a conflicting destination
-beyond the first batch. Update the architecture description to match the
-implemented behavior.
-
-Source: internal/daemon discovery, snapshot, GitHub clone and checkout
-observation. This task implements discovery behavior; @design-user-storage-quotas
-owns storage limits independently.
+Evidence should cover crossing 512 with mixed directories and files,
+completeness across batches, inaccessible entries and onboarding with a
+conflicting destination beyond the first batch. The architecture description
+should explain the resulting behavior. Storage limits are independently owned
+by @design-user-storage-quotas.
