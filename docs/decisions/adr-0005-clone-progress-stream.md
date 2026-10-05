@@ -1,43 +1,88 @@
-# ADR 0005: Stream bounded native Git clone progress during onboarding
+# ADR 0005: Stream native Git clone progress during onboarding
 
-**Status:** Accepted; amended by Jari on 2026-10-01 (disk authority and proxy model)
+**Status:** Accepted — the storage policy is being reconsidered in the
+[per-user quota design](../../issues/design-user-storage-quotas/item.md).
 
-**Date:** 2026-09-29
-
-**Authors:** Pi; approved by Jari Mustonen in the 2026-09-29 decision on @show-large-clone-progress. Approval covers this design and implementation within its limits, not a live GitHub test or deployment.
+**Date:** 2026-09-29; storage authority amended on 2026-10-01.
 
 ## Context
 
-During a three-repository onboarding, the browser stayed at `Haettu 0/3` while a potentially 5 GB checkout ran. The current `POST /api/v1/onboarding/github/clone` waits for a final JSON `cloned` result, drops Git's stderr and has a 70-second subprocess / 90-second request deadline. An exceeded deadline or lost response can leave a directory whose state must not be guessed. The existing read-only `GET /api/v1/onboarding/github/checkout?full_name=…` observes the mapped UID's native Git tree and origin; it does not establish that an interrupted write has stopped. The live read-only check found directories and no running clone process, but did not establish individual durations or completeness. See @show-large-clone-progress.
+During an import of three repositories, the browser stayed at `Haettu 0/3`
+while a large checkout ran. A final response and a count of completed
+repositories could not show whether Git was making progress. A lost response
+also left the user unsure whether the checkout had completed.
 
-The browser needs truthful stages during a large write without making the gateway a Git executor or creating a second progress authority. The approved boundary is a bounded, authenticated, CSRF-protected per-UID stream, cancellation on disconnect and native read-only reconciliation after refresh.
+The browser needs to show the native work as it happens and establish its
+result from Git. The user's daemon already owns that work; adding a separate
+job registry would create another source of truth alongside the checkout.
 
 ## Decision
 
-Add a **separate v1 endpoint** `POST /api/v1/onboarding/github/clone/stream`, accepting the same strictly validated `{ "full_name": "owner/repo" }` request as the current clone POST. The gateway checks the web session, the binding authorized by the broker at login, exact same-origin `Origin` and session-bound `X-Agent-Host-CSRF` before routing to that UID's trusted daemon socket. The daemon independently validates the peer and its own mapped identity, `gh` account, canonical repository and destination. The gateway constructs a new request, never forwards browser identity headers, and relays the mapped daemon’s bounded stream through its shared stdlib Unix HTTP proxy. It does not parse SSE frames or re-authorize per frame; the daemon emits only enumerated fields and the browser validates every frame. The gateway never receives raw native stderr. A browser disconnect cancels the write; revocation prevents new requests but does not itself cancel an admitted stream. No cross-UID progress lookup or client-selected socket exists.
+Stream Git's progress from the user's daemon through the gateway to the browser
+in the clone request's response. The gateway authenticates the browser and
+routes the request to that user's daemon. The daemon validates and executes
+the native operation as its own Unix user. The gateway relays the stream
+without becoming a Git executor or a second parser of the progress protocol.
 
-A successful admission returns `200 text/event-stream; charset=utf-8`, `Cache-Control: no-store` over the POST response, consumed by `fetch`'s streaming reader, **not** auto-reconnecting `EventSource`. Each SSE frame has exactly `event: progress` or `event: terminal` and one minified `data:` JSON object, followed by a blank line. No `id`, `retry` or resume cursor is issued. The bounded frame shape is:
+The daemon converts native output into structured stages and measurements.
+The browser shows percentages only when Git supplies a usable measurement;
+otherwise it shows the current stage without an estimate. Only verified
+checkouts count toward the completed-repository total. Raw Git output is not
+forwarded, because it can contain credentials, paths and other native details.
+The browser validates the structured messages before using them.
 
-- `schema_version: 1`, `sequence: <positive integer>` increasing by exactly one within this response, beginning at 1; and `kind: "progress" | "terminal"` matching the SSE event name. Missing, duplicate, reordered, oversized or malformed frames make the browser uncertain and close the request. The browser validates the versioned schema before use; the gateway routes from the authenticated session and bounds the stream without a second protocol parser. Unknown major versions are rejected, not displayed as success.
-- Progress contains `stage: "reserving" | "connecting" | "receiving" | "checkout" | "verifying"`; optional `percent` (integer 0–100), `received_bytes` and `total_bytes` (nonnegative bounded integers) occur only when the daemon can parse that measurement from native Git for the corresponding stage. The UI shows an indeterminate stage otherwise, never a made-up overall percentage or ETA. `completed/total` in the chooser counts **only** repositories confirmed by native observation, not stage transitions.
-- Terminal contains exactly `outcome: "confirmed" | "uncertain" | "rejected"` and a small allowlisted `reason` code for non-confirmed outcomes (for example `budget_exceeded`, `cancelled`, `native_failure`, `verification_failed`, `destination_exists`, `source_unavailable`). It is the last frame. `confirmed` requires native clone exit plus re-opened destination, expected Git worktree and origin, a resolvable HEAD commit, clean-state verification and source-root identity recheck; a merely completed receive or successful subprocess exit is not confirmation. An unborn HEAD cannot distinguish an intentionally empty remote from an interrupted clone, so an empty repository without a commit remains uncertain until separately inspected. `rejected` proves **no destination write was started**. Once a reservation/write might have begun, a failure is `uncertain`, even if cancellation was requested; never claim rollback or absence. Only one terminal frame is allowed.
+### Completion and interruption
 
-This is an additive v1 surface, not an in-place replacement of the existing v1 JSON response. Define a new JSON Schema 2020-12 wire family, redacted fixtures and scenarios in `contracts/v1/` when implementing; retain the v1 strict-object/unknown-major policy. Pre-admission protocol, authentication, CSRF and validation failures return the existing bounded JSON error envelope with their HTTP status **before** SSE headers. After headers, even a native failure or timeout must be expressed as a terminal frame if the connection is alive; changing HTTP status is no longer possible. A clean EOF is **not** proof of success: if the final valid terminal frame is missing, or the gateway/browser loses the stream, acceptance and effects are uncertain. Even a received terminal `confirmed` is checked against fresh read-only native observation before advancing onboarding. No replay or reconnect to an old attempt is offered.
+The clone belongs to the active request. Disconnecting the browser cancels
+the native write, and the daemon owns stopping its subprocesses. A partial
+directory is left in place for inspection. Cancellation does not establish
+that no files were written or that the checkout is complete.
 
-The daemon, as mapped UID, owns the single writer and native Git subprocess lifecycle. Preserve the no-follow descriptor-relative reservation and revalidation rules; case-insensitive existing names, including partial trees, block another write. Bound the **entire** attempt including identity checks, Git, verification and cancellation settlement to an initial reviewed ceiling of 45 minutes and a dedicated operator-provisioned per-user volume mounted at `~/src`, with a hard 20 GiB total volume size and at least 5 GiB available headroom before admitting a clone. This is a per-UID volume budget, **not** a per-attempt quota. Serialize writes per UID; the daemon must reject admission if the bounded mount is missing, oversized, full or inaccessible. Other writers may use the shared volume and exhaust it during a clone; disk exhaustion leaves an uncertain partial directory. These initial limits cover the reported order-of-5-GB case but require synthetic pressure testing and operator review before live deployment; do not silently weaken them or run an unbounded clone where quota enforcement is unavailable. Stop the subprocess group and reap descendants on timeout, disk exhaustion, browser/gateway disconnect or daemon shutdown. A broken browser connection must close the upstream request, cancel its context and terminate the native write, not continue as a background job. Cancellation is not deletion: retain the directory for inspection. If termination/reaping cannot be established (including after daemon failure), mark the attempt uncertain and block a new write until native ownership and tree state are reconciled. Transport disconnect detection may lag; the deadline and bounded volume remain hard backstops.
+A completed transfer or successful process exit alone is insufficient to
+confirm the checkout. Native observation must establish the expected repository
+and origin, a clean checkout and a HEAD commit. The current check therefore
+leaves a repository without a first commit uncertain. A missing final message
+also leaves the result uncertain until it can be checked.
 
-Only enumerated stages and strictly parsed bounded numeric Git measurements leave the daemon. Git's `--progress` stderr is untrusted: parse known stage/measurement patterns under a bounded buffer and discard all other text. Never interpolate stderr, Git/gh error strings, repository URL, owner/repo, home/checkout path, ref, credential, or arbitrary `message`/`details` into a frame, log or gateway error. This applies recursively to nested native error payloads, not merely to a top-level `message` field. No text-based redaction is relied on as the security boundary. The daemon emits only bounded allowlisted frames. The shared gateway proxy imposes an aggregate byte limit and an idle read deadline without inspecting frame contents; browser validation rejects invalid/oversized frames and cancels the upstream request. Logs contain only safe codes and correlation identifiers, not stream bodies.
+After a refresh or interruption, the browser reads the native checkout and
+writer state again. It does not reconnect to the old stream or automatically
+repeat the write. A new attempt requires an explicit user action, a settled
+writer and an absent destination. Existing or ambiguous destinations are
+preserved; a confirmed checkout can be used without another clone.
 
-A refresh, lost final response or tab closure cannot resume the stream. Reauthenticate against the same UID binding and use read-only native Git/origin/clean-state observation, plus writer/cancellation settlement, to classify the directory as confirmed, absent, conflicting or unavailable/uncertain. Do not treat an absent observation during an un-settled writer as a safe retry. No persisted job, operation registry, progress ledger or automatic retry/cleanup is added. Once cancellation is settled, an explicitly new user action may start a new attempt **only** if fresh observation confirms absence; existing or ambiguous destinations remain blocked. Existing confirmed work can be shown and counted without another POST. A lost terminal frame does not turn the native write into a confirmed failure.
+### Resource ownership
 
-## Alternatives and limits
+The daemon serializes clone writes for its user and bounds their running time.
+The storage decision amended on 1 October puts the disk limit in an
+operator-provisioned volume for each user, with the daemon checking available
+space before admitting a clone. This lets the filesystem enforce the limit
+across native writers without adding a privileged quota operation for each
+clone. Other tools can still consume the remaining space during the attempt,
+so exhaustion may leave a partial checkout.
 
-- **Keep final JSON only / extend its timeout:** less wire work, but cannot reveal honest Git stages until the entire write ends and makes a large import appear frozen. Extending the existing deadline without cancellation and disk enforcement amplifies partial-write risk. Rejected.
-- **Poll a persisted job or reconnectable stream:** permits progress after refresh but requires a new per-user job/owner registry, retention rules and recovery authority alongside Git, plus background writes after the browser leaves. Disproportionate for onboarding; rejected. The daemon's transient writer lock is not a progress store.
-- **Forward raw Git stderr through SSE:** tempting native fidelity, but nested URLs, userinfo, paths, refs and helper output can carry credentials and identifiers. Rejected in favor of narrow enumerated frames; some Git versions may yield no usable percentages and that stage stays indeterminate.
+On 5 October, Jari approved designing standard Linux per-user quotas with
+administrator controls for usage and limits. The
+[quota design issue](../../issues/design-user-storage-quotas/item.md) owns the
+replacement decision, including coverage beyond workspaces and the privileged
+operation for changing limits. The fixed-volume policy remains implemented
+until that replacement is designed and built. Current time and capacity values
+are described in [Workspaces](../architecture/workspaces.md).
 
-This decision does not promise an exact completion estimate, resumable transfer, byte-perfect progress, cleanup of partial native directories or automatic recovery after daemon crash. The existing JSON clone keeps its shorter timeout but obeys the same bounded-volume admission as the new route; read-only checkout observation remains available even if no bounded volume is mounted. The generic snapshot/command SSE in `docs/interfaces.md` has independent replay and ledger semantics and is **not** this non-replayable write stream. Pre-Pi onboarding stays the only permitted native surface here; the stream does not open agent histories.
+## Consequences and alternatives
 
-## Implementation evidence needed
+The user sees progress during a long import without a persistent progress
+store. Closing or refreshing the page interrupts the clone, and partial
+checkouts may need manual attention. This trade-off keeps recovery grounded
+in Git and avoids a background-job lifecycle solely for onboarding.
 
-The follow-on @show-large-clone-progress implementation must test slow chunked synthetic Git output (including indeterminate stages), nested hostile stderr/URL/userinfo/path text, oversized and malformed frames, interrupted and missing terminal responses, disconnect and descendant reaping, deadline/volume exhaustion, existing partial tree, origin/clean-state mismatch, daemon restart and read-only refresh. Exercise CSRF and revocation before and during the stream (the latter does not cancel an admitted stream) and two separate synthetic UIDs across gateway/daemon/browser; prove a cross-user request sees no other UID's frames or files. Assert the production bundle contains no fixture seam. Tests use disposable homes and remotes, not real accounts or GitHub credentials. Live deployment and any credential-bearing smoke require separate authorization and the repository's guarded test-host procedure. No product code, live identity, host or credential was changed by this ADR.
+Keeping only the final JSON response, even with a longer timeout, would leave
+the original apparent freeze unresolved. A persistent job with polling or a
+reconnectable stream would support progress after navigation, but would require
+ownership, retention and recovery state beyond the native checkout. Forwarding
+raw stderr would expose native details that the browser does not need.
+
+The [HTTP API](../architecture/http-api.md) and
+[progress schema](../../contracts/v1/github-clone-progress.schema.json) define
+the wire interface. The
+[implementation issue](../../issues/show-large-clone-progress/item.md) holds
+the original approvals and implementation evidence.
