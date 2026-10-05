@@ -1,4 +1,4 @@
-# Kontrollien ja agenttitilojen paketti — koottu, toimitus kesken
+# Kontrollien ja agenttitilojen paketti — toimitettu
 
 Paketti koottiin [pyynnöstä](REQUEST.md) commitissa `1efd34d36acb753a207915be8121dc1b2a53fc94`. Se sisältää tuotantokomponentit ja story-tiedostot, tokenit, nykyiset vedokset (myös `Navigaatio ja asetukset.dc.html`), tuotteen ja käyttöliittymän kuvaukset sekä `refine-agent-status`-analyysin, `consistent-control-feedback`-tutkimuksen ja tämän kierroksen issuen. Aineistoa ei ole lähetetty design-työkaluun eikä designerin palautusta ole arvioitu.
 
@@ -6,13 +6,14 @@ Synteettinen labikaappaus onnistui 84/84 toistettavassa esityksessä (neljä nä
 
 Kokoajan oma credential-scan meni läpi. Lähdecommit, manifestin lähdetiedostojen tavut, zipin kaikki 280 jäsentä, esitysten lukumäärä, synteettinen indeksin kattavuus ja zipin CRC tarkistettiin. Briefin nimettyjen lähdetiedostojen polut ja `REQUEST.md`-linkki tarkistettiin. `git diff --check` sekä JSON-inventaarion jäsennys menivät läpi. Täyttä CI-gatea ei ajettu dokumentti-/inventaariopakettia varten.
 
-**Toimitus ei onnistunut:** `tw doctor` näytti serveriksi aldern mutta `reverse.client` ilmoitti ettei liitettyä thin clientia tunnisteta; `tw client` palautti `No attached thin client detected`. Siksi zipiä ei kopioitu eikä Downloads-polusta tai vastaanottajan koneella olevasta tavumäärästä/tiivisteestä väitetä mitään. Paketti säilytettiin alderlla palautettavaksi:
+**Toimitettu 5.10.2026:** paketin kokoajan työvuorolla `tw doctor` ei tunnistanut liitettyä thin clientia, joten zip säilytettiin alderlla. Myöhemmin saman kierroksen vastuussa oleva agentti tarkisti `tw doctor`- ja `tw client`-komennoilla, että liitetty kone oli `maple`, kopioi paketin `scp`:llä sen `~/Downloads/design-control-states.zip`-polkuun ja vahvisti vastaanottajan koneella tiedoston koon ja SHA-256:n `tw client-exec`-kanavalla. Paketti oli sama kuin kokoajan tarkistama:
 
-- `/var/tmp/nah-control-state-package/design-control-states.zip`
-- Koko: **12 021 150 tavua**
-- SHA-256: `f1834b38e3213665e47f71654562772b44cebc0fecd118e109018cea4245658e`
+- Palvelinkopio: `/var/tmp/nah-control-state-package/design-control-states.zip`
+- Vastaanottaja: `maple:/Users/maintainer/Downloads/design-control-states.zip`
+- Koko molemmissa: **12 021 150 tavua**
+- SHA-256 molemmissa: `f1834b38e3213665e47f71654562772b44cebc0fecd118e109018cea4245658e`
 
-Kun liitetty kone näkyy `tw doctor`- ja `tw client`-komennoissa, kopioi zip skillin `scp … "$(tw client)":Downloads/` -kanavalla ja tarkista koko sekä SHA-256 kohteessa. Toimituksen puuttuminen estää tämän workerin merge-toiminnon; kierroksen issue pysyy auki.
+Design-työkaluun aineistoa ei ole lähetetty; kierroksen issue pysyy auki suunnittelijan vastausta varten.
 
 ## Työkalupoikkeamat
 
