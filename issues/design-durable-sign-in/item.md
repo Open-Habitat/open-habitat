@@ -12,33 +12,36 @@ preparation: reviewing
 
 # Design durable browser sign-in
 
-## Purpose
+## Problem
 
-People should stay signed in during ordinary use and across gateway restarts
-and upgrades. Jari rejected routine repeated sign-in while reviewing
-`docs/architecture/identity-and-trust.md` on 2026-10-04.
+Jari reviewed `docs/architecture/identity-and-trust.md` on 2026-10-04 and
+rejected what it described: being asked to sign in again daily, and losing the
+session whenever the gateway restarts. That is not the experience he wants.
 
-The gateway currently keeps sessions only in memory and expires them after
-eight idle hours or 24 hours in total. Its cookie also has no persistent
-expiry. These implementation choices do not satisfy the intended experience.
-The behavior is in `internal/gateway`; the current description is in
-[identity and trust](../../docs/architecture/identity-and-trust.md).
+Today the gateway keeps sessions in memory, expires them after eight idle
+hours or 24 hours in total, and sets a cookie that lasts only for the browser
+session. That is a description of the current implementation in
+`internal/gateway`, not an accepted product goal.
+
+## Goal
+
+A person stays signed in through ordinary use and across gateway restarts and
+upgrades. Signing in again is for logout or a stale session, not a routine.
 
 ## Design
 
-Recommend how to preserve browser sign-in across normal returns to the app
-and service restarts, with reasons for the storage and lifetime choices.
-Bring changes to persistence and authentication authority to Jari before
-implementation. No particular session store, token format or expiry duration
-has been chosen.
+Agree with Jari how the gateway keeps sign-in across restarts and how long it
+lasts, with the reasons behind the storage and lifetime choices. Existing
+logout and the operator's session revocation ([ADR 0006](../../docs/decisions/adr-0006-subject-revocation.md))
+keep working with whatever is chosen.
 
-User removal, the broader logout behavior and access revocation will be
-designed separately when brought into scope. Jari explicitly excluded building
-that functionality in this documentation round. Existing logout and the
-limited operator revocation mechanism remain implemented behavior, not a
-requirement to expand them or a prerequisite for durable sign-in.
+The agreed design is recorded in this issue. Jari judged on 2026-10-05 that
+the change is small enough not to need an ADR.
+
+User removal, logout as a whole and access revocation are designed separately
+later.
 
 ## Acceptance Criteria
 
-- [ ] An agreed design explains how normal use avoids repeated sign-in and how login survives gateway restarts and upgrades.
-- [ ] The architectural decision and a bounded implementation task are recorded, with user removal and broader logout/revocation design kept outside this task.
+- [ ] Jari has agreed in this issue how sign-in is kept and how long it lasts.
+- [ ] The implementing work is filed as its own issue, so that afterwards a person is not asked to sign in again during ordinary use or after a gateway restart or upgrade.
