@@ -94,3 +94,7 @@ Agent-state correction for this designer response: @refine-agent-status records 
 ### 2026-10-05T08:37:18Z · @jari
 
 Keep the read-only state in the returned navigation draft for now. Planned changes may eventually remove the need for it, but they are not in place yet. Do not copy the response’s omission into the current design; keep read-only visible and resolve its symbol against the waiting symbol during the design handoff.
+
+### 2026-10-05T08:53:29Z · @jari
+
+Jari approved: a newly observed conversation error belongs in “Odottaa sinua” until the person visits the conversation. Visiting clears its unread-attention placement, not the underlying error indication; a seen error remains visible on the conversation row without permanently taking the top of the return view.
