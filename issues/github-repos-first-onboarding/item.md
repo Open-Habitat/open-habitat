@@ -1,12 +1,14 @@
 ---
 created: 2026-09-29
-updated: 2026-10-03
+updated: 2026-10-05
 type: feature
-status: testing
+status: done
 priority: high
 lane: github-first-onboarding
 collision: [internal/gateway/, internal/daemon/, web/src/app/App.tsx, web/src/app/PiOnboarding.tsx]
 blocked_by: ['@pre-pi-github-clone', '@github-chooser-component', '@single-action-github-onboarding', '@observe-pre-pi-checkout']
+closed: 2026-10-05
+closed_by: jari
 ---
 
 # Choose GitHub repositories before Pi sign-in
@@ -65,3 +67,9 @@ separate from real accounts, and host-specific receipts stay in Fleetrepo.
 
 @design-first-use-onboarding, @connect-github-workspaces,
 @manage-workspace-lifecycle, @fix-pi-onboarding-poll-starvation
+
+## Resolution
+
+### 2026-10-05T13:14:10Z · @jari
+
+Jari confirmed on 2026-10-05 that the onboarding work has been tested and may be closed. The recorded synthetic checks and their limits remain in result.md; no additional live-provider or cross-user observation is asserted by this closure.

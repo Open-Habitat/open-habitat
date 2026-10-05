@@ -10,6 +10,8 @@ source_ref: taskfleet:01m45tjw4bcnkre1genks6r7eh/conversation-title-split
 originating_run: 01m45tjw4bcnkre1genks6r7eh
 originating_run_kind: spinoff
 preparation: ready
+lane: conversation-titles
+collision: [internal/daemon/, web/src/app/App.tsx, web/src/components/Conversation.tsx]
 ---
 
 # Generate conversation titles and allow regeneration

@@ -1,10 +1,12 @@
 ---
 created: 2026-09-25
-updated: 2026-09-30
+updated: 2026-10-05
 type: task
-status: testing
+status: done
 priority: high
 lane: demo-ui
+closed: 2026-10-05
+closed_by: jari
 ---
 
 # Prepare interactive synthetic workspace demo
@@ -37,3 +39,9 @@ Production components and the accepted design define interactions and state sema
 ### 2026-09-30T17:49:51Z · @claude
 
 Rethink-night 30.9.: toteuttajalle suunnattu issue käsiteltiin rethink-instructions-skillillä (gpt-6-astra); faktantarkistus fact-check-instructions-skillillä (claude-opus-5-5). Ilman Jaria säilytettiin kaikki rajaukset, hyväksymiskriteerit, testing-tila ja Jarin 25.9. päätös; erotettiin valmistunut synteettinen harjoitus odottavasta Jarin visuaalisesta hyväksynnästä. Faktantarkistus korjasi virheellisen väitteen toteutuksen rajoittumisesta testitiedostoihin (tuotanto-UI:ssa on lipulla rajattuja haaroja) ja täsmensi, että dokumentoidut kuvakaappaukset ovat vanhasta revisiosta: nykyinen demo on muuttunut eikä sitä tarkistettu tässä läpikäynnissä. Ristiriitoja Jarin aiempiin päätöksiin ei havaittu.
+
+## Resolution
+
+### 2026-10-05T13:14:10Z · @jari
+
+Jari confirmed on 2026-10-05 that the synthetic demo has been tested and may be accepted. This closes the demo review, not live sign-in or multi-user isolation; historical screenshots retain their revision limits.
