@@ -31,10 +31,9 @@ advancing. A user with usable Pi credentials goes straight to normal workspaces.
 separate-kernel-UID check.
 
 Finish the journey against the new
-[onboarding design](../design-first-use-onboarding/plan.md). All repositories
+[onboarding design](../design-first-use-onboarding/item.md). All repositories
 are visible by default; the user can choose a time filter. Visual composition
-belongs to @design-first-use-onboarding, with shared
-UI improvements coordinated by @review-browser-design-v2.
+belongs to @design-first-use-onboarding.
 
 An interrupted reply may leave a completed checkout. Observe native state
 before offering another write. If observation also fails, explain that the
