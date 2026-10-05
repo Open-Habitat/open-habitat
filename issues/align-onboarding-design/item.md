@@ -9,64 +9,46 @@ provenance: chat
 source_ref: chat:2026-10-05:first-use-onboarding-rethink
 originating_run: 01m45vh37hqns995zyag093677
 originating_run_kind: spinoff
-preparation: reviewing
+preparation: ready
 related: ['@design-first-use-onboarding', '@align-navigation-design', '@align-settings-design', '@account-profile-from-github', '@github-repos-first-onboarding']
-collision: [web/]
+collision: [web/, design-system/]
+lane: design-v2
+blocked_by: ['@account-profile-from-github']
 ---
-
-# Align onboarding with the design
-
-## Description
 
 # Align onboarding with the design
 
 ## Purpose
 
-The first-use journey works: after GitHub login the person chooses
-repositories, they are checked out into `~/src`, and the ChatGPT subscription
-is connected through Pi's native device-code login
-(@design-first-use-onboarding records the decisions,
-[the usage flows](../../docs/product.md) the behavior). The screens were built
-before the current design and have not been through a design round like
-@align-navigation-design and @align-settings-design. Jari decided on
-5 October 2026 to close the product issue and carry the screens through this
-round on their own.
+Bring the working first-use journey into the current design without changing
+its behavior. After GitHub login, the person chooses repositories to check
+out into `~/src` and connects their ChatGPT subscription through Pi's native
+device-code login. @design-first-use-onboarding records the product decisions;
+[the usage flows](../../docs/product.md) describe the behavior and recovery.
 
-## Design sources
+## Scope
 
-The [design](../../design-system/design.md) section Käyttöönotto and the
-[onboarding draft](../../design-system/drafts/Onboarding.dc.html) are the
-target: the shared frame with product, server and the steps
-GitHub → Repot → OpenAI, whole-row repository choice, the code presentation
-and the calm interruption action whose confirmation explains the sign-out.
-All repositories are visible by default; the time filter is the person's
-choice. The draft starts with a monthly filter on; that does not govern.
+Compose the sign-in, repository and OpenAI screens from shared controls and
+design tokens. The [onboarding draft](../../design-system/drafts/Onboarding.dc.html)
+and the Käyttöönotto section of [design.md](../../design-system/design.md)
+describe the target. Both themes follow the desktop design. Phone widths remain
+usable, but fitting the phone draft is outside this round.
 
-The desktop screen is the target. The screens stay usable at phone width, but
-the phone draft is not fitted in this round (Jari, 5 October).
+All repositories are visible by default; time filtering is the person's
+choice, not the monthly default shown in the draft. Preserve session binding,
+checkout observation and device-code polling: an interrupted sign-in, uncertain
+checkout or partial result still needs an honest presentation even where the
+draft has no example. @account-profile-from-github supplies the profile data
+and missing-name-or-email question; this work places that question in the
+onboarding frame.
 
-## Work
-
-Compose the sign-in, repository and OpenAI screens from the shared controls
-(@unify-ui-primitives) and the design tokens, in both themes. Keep the
-existing state handling: session binding, checkout observation, device-code
-polling and the recovery cases in the usage flows. Where the draft omits an
-uncertain or partial state, the state stays visible and the deviation is
-recorded here with its reason. Missing name or email is asked during
-onboarding; @account-profile-from-github supplies the data and this round
-places the question in the frame.
-
-Capture the resulting screens in the synthetic lab and compare them with the
-draft as the [design round](../../design-system/process.md) describes, in both
-themes, with uncertain and partial states included. Keep the comparison and
-its index in this issue folder.
+The [design round](../../design-system/process.md) describes how to compare the
+composed screens with the draft. Keep the comparison and its index in this issue
+folder so Jari can review both themes, including uncertain and partial states,
+and understand any departures from the draft.
 
 ## Acceptance Criteria
 
-- [ ] The three onboarding screens match the draft in both themes on the
-  desktop, with the agreed repository default, and remain usable at phone
-  width.
-- [ ] Uncertain checkout, interrupted sign-in and partial results stay
-  visible on the composed screens; each deviation from the draft is recorded
-  with its reason.
-- [ ] Jari has reviewed the lab comparison of the screens.
+- [ ] The onboarding screens use the shared components and match the agreed desktop design in both themes, with all repositories visible by default, while remaining usable at phone width.
+- [ ] Missing profile information can be supplied in the onboarding frame; interrupted sign-in, uncertain checkout and partial results remain visible with their existing recovery behavior.
+- [ ] The lab comparison demonstrates fidelity to the agreed design, and Jari has reviewed the screens. Differences are corrected or agreed with Jari and recorded with their reasons; no unresolved design differences remain.
