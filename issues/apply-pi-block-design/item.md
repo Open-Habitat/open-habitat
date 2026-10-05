@@ -15,29 +15,27 @@ blocked_by: ['@design-pi-event-blocks', '@compare-draft-fidelity', '@apply-contr
 
 # Apply the Pi conversation-block design
 
-## Outcome
+## Purpose
 
-Replace the provisional conversation presentation with the agreed [Pi-block design](../../design-system/drafts/Pi-keskustelun%20lohkot.dc.html) and its [reconciled handoff](../design-pi-event-blocks/design-package/HANDOFF.md). Use shared production components and catalog stories/fixtures for every supported visible family. Keep the live and saved interpretations aligned; presentation is not another event or history store.
+Make Pi conversations readable through the agreed [block design](../../design-system/drafts/Pi-keskustelun%20lohkot.dc.html). Live activity and saved history should tell the same story: text, readable thinking and tools retain their native order, and a tool call, progress and result form one stable, accessible use joined by `toolCallId`.
 
-## Walking slice and boundaries
+The [reconciled handoff](../design-pi-event-blocks/design-package/HANDOFF.md) records Jari's four product decisions and the draft's factual limits. Long user messages collapse to eight lines; bash previews start at the tail and other tools at the head, remembering Alku/Loppu per tool. Adjacent-tool grouping and edit diffs are deferred; `edit` shows safe arguments. These decisions, together with [design.md](../../design-system/design.md), define the intended behaviour.
 
-Begin with one mixed turn containing text, readable thinking, a tool call, progress, saved result and assistant continuation, with ordering and `toolCallId` preserved. No duplicate `LiveToolRow`/saved row. Expand a bounded result in place via revision-checked block reads; bash previews start at the tail, other tools at the head, with Alku/Loppu choice remembered by tool. Then extend the common renderer to user text/images, long messages (eight-line collapse), local `!`/`!!` commands, summaries, session markers, visible extension content, live questions, retry/error/queue and unknown blocks, in both themes and desktop/phone. Keep PI headings restrained and thinking readable without exposing encrypted or hidden material. Existing control-state design supplies controls and agent status.
+## Scope and starting point
 
-Use only verified native data: settled means observed `agent_settled`, while model/usage/stop reason belong to their particular assistant message, including retries. Without a confirmed native record, resolved questions are not permanent history. Do not infer bash exit or native truncation metadata from text, expose `fullOutputPath` or raw diagnostic payloads, synthesize total line counts, or make new history caches. Native local-command exit metadata is separate. Do not implement adjacent-tool grouping or edit diffs in this issue; `edit` gets its safe arguments. Conditional draft examples remain conditional until their sources are verified and scoped separately.
+The agreed next action is a bounded working slice: a mixed turn with text, readable thinking, a tool call, progress, saved result and assistant continuation, including expansion through revision-checked bounded block reads. This exercises the central live-to-history relationship before wider coverage. @apply-control-state-design supplies shared controls and agent status; @compare-draft-fidelity supplies the comparison mechanism.
 
-`@compare-draft-fidelity` provides the comparison mechanism; `@apply-control-state-design` lands shared controls first. Produce matching synthetic draft/lab fixtures for content, state, theme and viewport, report missing and changed landmarks and controls, and keep paired images and measured differences in this issue. Link each visible block to its meaning, handler, draft and catalog example, and report any unavailable host fact as a gap rather than rendering an invented value. Check interaction and keyboard/focus/200%-zoom usability in the scoped views; verify one live→history native path, not just the prototype animation. Scope can be split into dependent implementation slices after the walking slice if needed; do not manufacture eight data-projection issues from the handoff alone.
+The full rendering goal covers the supported visible families in the [Pi catalogue](../catalog-pi-events/analysis.md): user text/images, assistant content, tools, local `!`/`!!` commands, summaries, session markers, visible extension content, live questions, recovery, queues and unknown content. Shared production renderers and catalog examples make each block's meaning, handler and design discoverable. Actual implementation gaps can justify dependent slices; the handoff's proposed APIs are not an approved projection backlog.
+
+## Native meaning
+
+Pi remains the source of history. The handoff explains why resolved questions lack a confirmed history record, why `agent_settled` differs from an assistant finishing, and why model, usage and stop reason belong to individual messages, including retries. It also distinguishes typed local-command metadata from bash output text. These distinctions prevent a plausible-looking UI from making false claims.
+
+Conditional draft examples need verified sources and separate scope before becoming features. Missing facts remain documented gaps. Readable thinking stays available; encrypted or hidden content and raw diagnostics do not become conversation blocks. Full-result access uses bounded block reads rather than exposing `fullOutputPath` or creating another history store.
 
 ## Acceptance Criteria
 
-- [ ] One tool call, live progress and saved result occupy one stable, accessible visual use and mixed content retains native order across live and history without a second store.
-- [ ] Supported visible families and significant normal/long/error/limited/unknown states use shared production renderers and catalog examples, with truthful boundaries for unavailable data and safe bounded full-result reads.
-- [ ] User-message collapse, local-command distinction and per-tool preview choice implement Jari's four confirmed decisions; adjacent grouping and edit diff remain deferred.
-- [ ] Corresponding draft/lab content, state, theme and viewport pairs document measured differences, missing coverage and the reconciled exceptions; scoped keyboard/zoom and native live→history checks are recorded.
-
-## Tests Run
-
-Not yet implemented.
-
-## Implementation Notes
-
-Preparation is ready for the bounded walking slice, not authorization to invent missing typed sources; after the comparison and shared-control blockers land, inspect current code and confirm which fixtures and native fields actually exist before widening coverage.
+- [ ] Mixed content preserves native order across live and history; each tool call, progress and saved result remains one accessible visual use with bounded expansion.
+- [ ] Supported families and their normal, long, error, limited and unknown states share production renderers and discoverable catalog examples, preserving the handoff's product decisions and factual limits.
+- [ ] Matching draft/lab content and states in both themes at desktop and phone widths have paired captures and measured differences in this issue, with coverage gaps and reconciled exceptions visible through the [design comparison process](../../design-system/process.md).
+- [ ] Scoped interaction, keyboard/focus and 200%-zoom checks, plus a native live-to-history path, demonstrate behaviour beyond the draft's simulated animation.
