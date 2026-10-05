@@ -1,21 +1,64 @@
-<!-- @dsCard group="States" viewport="700x150" name="Tilamerkinnät" subtitle="Merkki + sana + väri, tässä järjestyksessä" -->
+<!-- @dsCard group="States" viewport="700x550" name="Tilamerkinnät" subtitle="Aktiivisuus, huomio, kirjoitusoikeus ja tulos" -->
 <!DOCTYPE html>
-<html lang="fi"><head><meta charset="utf-8">
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tilamerkinnät</title>
 <link rel="stylesheet" href="../styles.css">
-<style>body{margin:0;padding:16px;background:var(--ah-bg);font-family:var(--ah-font);color:var(--ah-ink)}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.sw{flex:1;min-width:88px;border:1px solid var(--ah-line);border-radius:var(--ah-r-lg);overflow:hidden;background:var(--ah-surface)}
-.sw i{display:block;height:44px}
-.sw b{display:block;font:500 12px var(--ah-font);padding:6px 8px 0}
-.sw code{display:block;font:400 11px var(--ah-mono);color:var(--ah-muted);padding:0 8px 7px}
-.k{font:400 11.5px var(--ah-mono);color:var(--ah-muted)}
-</style></head><body><div class="row" style="gap:12px">
-<span style="display:inline-flex;align-items:center;gap:6px;background:var(--ah-accent-soft);color:var(--ah-accent-ink);border:1px solid var(--ah-accent-line);border-radius:999px;padding:4px 11px;font:500 12px var(--ah-font)"><span style="width:7px;height:7px;border-radius:99px;background:var(--ah-accent);animation:ah-pulse var(--ah-pulse)"></span>Työskentelee</span>
-<span style="color:var(--ah-ok);font:500 12.5px var(--ah-font)">✓ Valmis</span>
-<span style="color:var(--ah-err);font:500 12.5px var(--ah-font)">✕ Virhe · exit 1</span>
-<span style="color:var(--ah-muted);font:500 12.5px var(--ah-font)">⃠ Keskeytetty</span>
-<span style="color:var(--ah-muted);font:500 12.5px var(--ah-font)">‖ Ei aloitettu</span>
-<span style="color:var(--ah-faint);font:500 12.5px var(--ah-font)">? Ei tiedossa</span>
+<style>
+body{margin:0;padding:16px;background:var(--ah-bg);font:400 12.5px/1.5 var(--ah-font);color:var(--ah-ink)}
+h1{margin:0 0 8px;font-size:16px}
+h2{margin:0 0 8px;font-size:13px}
+p{margin:8px 0 0;color:var(--ah-muted)}
+.groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
+section{padding:12px;border:1px solid var(--ah-line);border-radius:var(--ah-r-lg);background:var(--ah-surface)}
+.row{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.activity{display:grid;gap:6px}
+.mark{display:inline-flex;flex:none;align-items:center;justify-content:center;box-sizing:border-box;width:8px;height:8px;border-radius:50%}
+.working{background:var(--ah-accent);animation:ah-pulse var(--ah-pulse)}
+.waiting{width:9px;height:9px;border:2px solid var(--ah-accent)}
+.closed{background:var(--ah-muted)}
+.unknown{width:12px;height:12px;border:1px dotted var(--ah-muted);color:var(--ah-muted);font-size:9px}
+.tag{display:inline-flex;padding:1px 7px;border-radius:4px;font-weight:500}
+.attention{border-radius:999px;background:var(--ah-accent);color:var(--ah-on-accent)}
+.readonly{border:1px dashed var(--ah-muted);color:var(--ah-muted)}
+.error{border:1px solid var(--ah-err-line);background:var(--ah-err-soft);color:var(--ah-err)}
+a{color:var(--ah-accent-ink)}
+@media(max-width:480px){.groups{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<h1>Tilamerkinnät</h1>
+<p>Merkki, sana ja väri tekevät tilasta tunnistettavan myös ilman liikettä tai värien erottamista. Eri ryhmien tiedot voivat näkyä yhtä aikaa.</p>
+<div class="groups">
+  <section>
+    <h2>Agentin aktiivisuus</h2>
+    <div class="activity">
+      <span class="row"><span class="mark working" aria-hidden="true"></span>Työskentelee</span>
+      <span class="row"><span class="mark waiting" aria-hidden="true"></span>Odottaa</span>
+      <span class="row"><span class="mark closed" aria-hidden="true"></span>Valmis</span>
+      <span class="row"><span class="mark unknown" aria-hidden="true">?</span>Tila ei tiedossa</span>
+    </div>
+    <p>Odottaa: avoin agentti odottaa käyttäjän vastausta. Valmis: agentti on suljettu. Yhden vastauksen valmistuminen ei tarkoita sulkemista.</p>
+  </section>
+  <section>
+    <h2>Uusi huomio</h2>
+    <div class="row"><span class="tag attention">Uusi vastaus</span><span class="tag attention">Kysymys</span></div>
+    <p>Keskustelussa käynti poistaa huomiomerkinnän. Agentti jää odottamaan. Uusi virhe tarvitsee samoin huomiota; nähty virhe säilyy rivillä.</p>
+  </section>
+  <section>
+    <h2>Kirjoitusoikeus</h2>
+    <span class="tag readonly">Vain luku</span>
+    <p>Keskustelua voi lukea, mutta agenttia ei voi ohjata selaimesta. Agentti voi silti työskennellä.</p>
+  </section>
+  <section>
+    <h2>Operaation tulos</h2>
+    <span class="tag error">Lähetysvirhe</span>
+    <p>Virhe tai keskeytyksen palaute kertoo operaatiosta. Se esitetään erillään agentin aktiivisuudesta.</p>
+  </section>
 </div>
-<p style="font:400 12.5px var(--ah-font);color:var(--ah-muted);margin:12px 0 0">Oletustilaa ei näytetä: yhdistetty ja odottaa viestiä ovat mykkiä. Tuntematonta ei päätellä valmiiksi.</p>
-</body></html>
+<p>Tila esitetään sitä tukevan tiedon perusteella. Jos sulkemista ei tiedetä, tila on tuntematon. Yhteyskatko ei osoita agentin sulkeutuneen.</p>
+<p>Yhdistelmät ja näkymäkohtaiset esimerkit: <a href="../drafts/Kontrollitilat%20ja%20agentin%20tila.dc.html">Kontrollitilat ja agentin tila</a>.</p>
+</body>
+</html>

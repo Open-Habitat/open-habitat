@@ -32,8 +32,8 @@ Jari pyysi 5.10.2026 tutkimaan kansion ja järjestämään dokumentit mielekkä�
 läpikäyntijonoksi. Alla on sen pohjalta laadittu järjestys: ensin designin
 kokonaisuus ja esityssäännöt, sitten vedosten ja toteutuksen kartat, lopuksi
 kierrosten työtapa ja ylläpito-ohjeet. Tämä on nykyinen jatkamiskohta ja korvaa
-alempien kierrosten seuraava-merkinnät. Designin pääkuvaus on käsitelty. Seuraavana on
-**design-system/guidelines/states.html**.
+alempien kierrosten seuraava-merkinnät. Designin pääkuvaus ja tilamerkintöjen kortti on käsitelty. Seuraavana ovat
+**guidelines-kansion värien, typografian ja välien ohjekortit** (kohta 3).
 Tekstit luetaan Jarin kanssa yksi kerrallaan; pienet samaa asiaa käsittelevät
 kortit muodostavat yhteisen lukukokonaisuuden.
 
@@ -48,7 +48,7 @@ rakenne; tässä kartoituksessa ei tehty visuaalista selainkatselmusta.
 | Järjestys | Dokumentti tai lukukokonaisuus | Luokka ja lukemisen tarkoitus |
 |---|---|---|
 | 1 | [design.md](../../design-system/design.md) | Käsitelty Jarin kanssa 5.10.: sovittu ilme, tilojen esitys ja näkymien sommittelu säilyvät. Käyttökulkujen toisto tiivistetty, lohkojen suunnittelun työnjako siirretty process.md:hen ja vertailuaineiston vaatimukset TESTING.md:hen. Pi-dialogien tuotelaajuus jää avoimeksi. Tuotekuvauksen tilasanasto-viite päivitetty hyväksyttyyn kontrollikierrokseen. |
-| 2 | [guidelines/states.html](../../design-system/guidelines/states.html) | Tilojen esitysohje. Verrataan sanastoa ja merkkejä refine-agent-status-analyysiin sekä kontrollitilojen suunnitteluun. Vanha kortti ei yksin ratkaise tilojen merkityksiä tai uutta visuaalista muotoa. |
+| 2 | [guidelines/states.html](../../design-system/guidelines/states.html) | Käsitelty Jarin kanssa 5.10.: aktiivisuus, huomio, kirjoitusoikeus ja operaation tulos erotettu hyväksytyn kontrollivedoksen pohjalta. Odotus näkyy, käynti poistaa vain huomion ja valmis tarkoittaa suljettua agenttia. Ei aloitettu ja Keskeytetty poistettu yleisestä agenttitilojen rivistä; keskeytyksen palaute kuuluu operaatiolle. Merkki, sana ja väri sekä tuntemattoman tilan rehellinen esitys säilyvät. |
 | 3 | guidelines/ — värit, typografia ja välit | Visuaalisen perustan ohjekortit: colors-light.html, colors-dark.html, colors-accent.html, colors-state.html, type-ui.html, type-mono.html ja spacing.html. Luetaan pienenä kokonaisuutena designin pohjalta; verrataan esimerkkejä tokeneihin ja erotetaan perustellut esityssäännöt kopioiduista arvoista. |
 | 4 | [guidelines/motion.html](../../design-system/guidelines/motion.html) | Liikkeen esitysohje. Kortin 2,4 s / 900 ms / 380 ms poikkeavat tokens/motion.css:n 1,6 s / 180 ms / 180 ms arvoista. Selvitetään tarkoitettu liike ja lukujen alkuperä ennen tekstin korjaamista; kumpaakaan lähdettä ei hyväksytä automaattisesti oikeaksi. |
 | 5 | [drafts/AGENTS.md](../../design-system/drafts/AGENTS.md) ja vedosten työnjako | Agenttiohje, rethink-instructions, sekä siihen liittyvät suunnitteluviitteet. Navigaatio ja asetukset.dc.html omistaa nykyisen navigaation ja asetukset; Selainpolku.dc.html, Puhelin.dc.html ja Tummat näkymät.dc.html sisältävät myös vanhempia päällekkäisiä esimerkkejä. Onboarding.dc.html kuvaa käyttöönottoa. Luetaan ohje ja vedoksiin kirjoitetut selitykset yhdessä: mikä on nykyinen viite, mikä taustaa? Visuaaliset muutokset käsitellään design-kierroksella. |
