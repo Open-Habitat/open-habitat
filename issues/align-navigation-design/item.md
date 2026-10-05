@@ -90,3 +90,7 @@ Correction to the preceding decision: do not tell the person to inspect the conv
 ### 2026-10-05T08:03:19Z · @jari
 
 Agent-state correction for this designer response: @refine-agent-status records Jari’s decision that “odottaa” is an open agent waiting for a reply, with attention cleared when the person visits, while “valmis” is a closed agent. The draft’s unread-“valmis” → seen-“odottaa” transition must not be carried into the shared design. The layout can retain separate location and attention cues, but its state labels and examples need revision.
+
+### 2026-10-05T08:37:18Z · @jari
+
+Keep the read-only state in the returned navigation draft for now. Planned changes may eventually remove the need for it, but they are not in place yet. Do not copy the response’s omission into the current design; keep read-only visible and resolve its symbol against the waiting symbol during the design handoff.
