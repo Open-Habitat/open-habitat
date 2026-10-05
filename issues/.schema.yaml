@@ -19,6 +19,9 @@
 # `required: true` once you are sure all issues have it (run
 # `issuectl doctor` first).
 version: 1
+# Only an issue approved for its next agreed work may start a new DAG worker.
+# Missing preparation is not approval; an unready lane head stays in place.
+preparation_gate: true
 fields:
   type:
     required: true

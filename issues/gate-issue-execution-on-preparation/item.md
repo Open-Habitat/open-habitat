@@ -23,8 +23,8 @@ The issuectl CLI owns the machine-readable gate. The implementation belongs in t
 
 ## Acceptance Criteria
 
-- [ ] The running issuectl version reports preparation state and why an unapproved lane head is not spawnable, without skipping it or changing status/lane semantics.
-- [ ] Repository opt-in and validated preparation updates are available; agents' issue and stint instructions reflect the same gate.
-- [ ] Existing active issues have been inventoried without blanket `ready` assignments; work already in `testing` is not silently reset.
+- [x] The running issuectl version reports preparation state and why an unapproved lane head is not spawnable, without skipping it or changing status/lane semantics.
+- [x] Repository opt-in and validated preparation updates are available; agents' issue and stint instructions reflect the same gate.
+- [x] Existing active issues have been inventoried without blanket `ready` assignments; work already in `testing` is not silently reset.
 - [ ] Jari and the conductor review the near-term issues one at a time, record the accepted next work, and separate mixed approval boundaries when needed.
-- [ ] A reservation-aware DAG read demonstrates that an unapproved issue cannot start and an approved one can when other blockers clear.
+- [x] A reservation-aware DAG read demonstrates that an unapproved issue cannot start and an approved one can when other blockers clear.
