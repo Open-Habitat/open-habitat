@@ -506,6 +506,9 @@ test("@browser-conversation footer and floating latest stay clear at phone width
 }) => {
   await open(page);
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => {
     // Layout-only overflow survives virtualized feed reconciliation; inserted
