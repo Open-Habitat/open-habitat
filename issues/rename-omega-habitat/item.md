@@ -9,36 +9,23 @@ collision: [docs/, AGENTS.md, design-system/, scripts/vm-test.sh]
 preparation: pending
 ---
 
-# Projektin nimeäminen omega-habitatiksi
+# Name the project Open Habitat
 
 ## Tavoite ja nimen tausta
 
-Projektin `native-agent-host` uudeksi nimeksi tulee `omega-habitat`.
-Jari varasi domainin `omega-habitat.dev` 2026-09-25. Nimenvaihto kattaa
-tuotteen, julkaisut, GitHub-repon ja kehitysympäristön viittaukset sekä
-Fleetrepoen ulottuvat vaikutukset.
+Projektin `native-agent-host` uudeksi tuotenimeksi tulee **Open Habitat**;
+teknisissä nimissä käytetään muotoa `open-habitat`. Habitat säilyttää
+ajatuksen agenteista niiden omassa ympäristössä (”in their native habitat”).
+Open kuvaa avoimuutta, ei lupausta tuesta kaikille agenteille tai
+pääsytavoille nykyisessä versiossa.
 
-Habitat viittaa agentteihin niiden omassa ympäristössä, ”in their native
-habitat”, ja säilyttää nykyisen nimen *native*-ajatuksen. Ω viittaa
-ilmaukseen ”alfa ja omega”: kaikki agentit ja pääsytavat, kuten selain,
-SSH ja tmux, samassa paikassa. Tämä on nimen ajatus, ei lupaus nykyisestä
-agenttituesta. Kirjain on tunnettu ja löydettävä, ja sen muodosta voi
-kehittää kaarta tai porttia muistuttavan logon.
-
-Nimeä valittaessa hylättiin seuraavat vaihtoehdot:
-
-- `lambda-*`: AWS Lambda ja Lambda Labs toimivat samalla hosting- ja
-  tekoälyinfran alueella.
-- `pi-*`: pi-agentti on yksi hostattavista agenteista.
-- `*-nexus`: Sonatype Nexus.
-- `*-hearth`: sekoittuu heart-sanaan.
-
-`eta-habitat` jäi kakkosvaihtoehdoksi. Tunnettu sivutörmäys on Metan
-`habitat-sim`, tekoälyagenttien simulaattori; omega-etuliite erottaa nimet.
-
-Tarkistuksessa 2026-09-25 GitHubista ei löytynyt `omega-habitat`-nimistä
-repoa, käyttäjää tai organisaatiota, ja `omega-habitat.ai` oli vapaana.
-Nämä ovat tuon päivän havaintoja, eivät nykytilan takeita.
+Aiempi päätös oli nimi Omega Habitat (`omega-habitat`), mutta Jari vaihtoi
+sen Open Habitatiksi. GitHubin nimihauissa ei löytynyt
+täsmälleen `open-habitat`-nimistä repoa; `openhabitat` on kuitenkin jo
+käytössä (MichaelrMentele/openhabitat), ja yhden muun repon kuvaus on
+”Open Habitat”. Tämä ei ole varaus eikä tavaramerkkiselvitys. Aiemmin varattu
+`omega-habitat.dev` ei ole uuden nimen domain; sopiva verkkotunnus ja
+julkiset osoitteet ratkaistaan ennen niiden käyttöönottoa.
 
 ## Muutoksen laajuus
 
@@ -64,7 +51,7 @@ Muutokseen kuuluvat:
   `DEPENDENCIES.md`, `AGENTS-WORKFLOW.md` sekä issue-tekstit ja
   `native-agent-host-architecture`-viittaukset.
 - **GitHub ja kehitysympäristö:** repo
-  `maintainer/native-agent-host` → `maintainer/omega-habitat`,
+  `maintainer/native-agent-host` → `Open-Habitat/open-habitat`,
   paikallinen `origin`, `~/Sources/native-agent-host` ja sen
   `__worktrees`-hakemisto sekä taskfleet- ja tw-projektikonfiguraatio
   (tw:n projektimerkintä on Fleetrepossa).
@@ -82,10 +69,10 @@ olemassa oleva tila vai syntyykö uusi. Kyse ei siis ole vain näkyvästä
 otsikosta. `docs/AGENTS.md` mainitsee myös vanhan avaimen ja kuuluu
 päivitettäviin viittauksiin.
 
-Osa nimistä on jo käytössä: `/etc/omega-habitat/daemon/user-mappings`
-on daemonien sidontatiedostojen paikka, erillään gatewayn salaisesta
-`/etc/native-agent-host`-hakemistosta (`docs/daemon-bindings.md`).
-Näiden hakemistojen yhdistäminen suoralla nimenkorvauksella rikkoisi
+Nykyinen `/etc/omega-habitat/daemon/user-mappings` on daemonien
+sidontatiedostojen paikka, erillään gatewayn salaisesta
+`/etc/native-agent-host`-hakemistosta. Nimeämisessä pitää huomioida
+molemmat lähtöpolut: niiden yhdistäminen suoralla nimenkorvauksella rikkoisi
 käyttöoikeuksien erottelun. Uusi `/etc`-rakenne on ratkaistava erikseen.
 Myös lyhenteet kuten `NAH_*` ja `nah-*` on arvioitava nimeämisen osana.
 
@@ -115,7 +102,7 @@ nimenvaihto tarvitsee erillisen migraatio- tai uudelleenasennusmenettelyn.
 ## Hyväksymiskriteerit
 
 - [ ] Go-moduuli, binääri, systemd-, sysusers- ja tmpfiles-nimet, julkaisuarkisto
-      ja web-paketti käyttävät nimeä `omega-habitat`.
+      ja web-paketti käyttävät nimeä `open-habitat` ja näkyvä tuotenimi on Open Habitat.
 - [ ] Jäljellä olevat `native-agent-host`-maininnat ovat vain tietoisesti
       säilytettyä historiaa, ja ne on lueteltu tässä issuessa.
 - [ ] `./scripts/ci-local.sh --clean --json` menee läpi.
@@ -126,6 +113,12 @@ nimenvaihto tarvitsee erillisen migraatio- tai uudelleenasennusmenettelyn.
 
 ## Decisions
 
+### Jari: uusi nimi
+
+Nimeksi tulee Open Habitat (`open-habitat` teknisissä nimissä); tämä korvaa
+aiemman Omega Habitat -päätöksen. Vanhaa domainia ei siirretä oletusarvoisesti
+uudeksi julkiseksi osoitteeksi.
+
 ### 2026-09-30T17:57:12Z · @claude
 
-Rethink-night 30.9.: rethink-instructions (gpt-6-astra), faktantarkistus fact-check-instructions (claude-opus-5-5). Säilytin Jarin nimen, domainin, hylätyt vaihtoehdot ja hyväksymiskriteerit sekä hiljaisen toteutusikkunan; historialliset havainnot päivätty, historiallisten mainintojen arvio jätetty toteuttajalle. Ilman Jaria tulkitsin omega-perustelun nimimetaforaksi enkä päättänyt logosta tai julkaistun Glasspad-tilan siirrosta. Faktantarkistus täsmensi asennetun pilot.12:n, Fleetrepon inventaarion ja byte-only-vaihto-ohjeen rajan, vanhan ja jo käytössä olevan omega-habitat-/etc-polun käyttöoikeuseron, Glasspad-tiedoston sijainnin sekä puuttuvat koodi-, testi- ja dokumenttiviittaukset. Nykyistä vieraskoneen tilaa tai domainin saatavuutta ei tarkistettu. Ei ristiriitaa Jarin kirjattujen päätösten kanssa.
+Aiemman Omega Habitat -päätöksen käsittely, rethink-night 30.9.: rethink-instructions (gpt-6-astra), faktantarkistus fact-check-instructions (claude-opus-5-5). Säilytin Jarin nimen, domainin, hylätyt vaihtoehdot ja hyväksymiskriteerit sekä hiljaisen toteutusikkunan; historialliset havainnot päivätty, historiallisten mainintojen arvio jätetty toteuttajalle. Ilman Jaria tulkitsin omega-perustelun nimimetaforaksi enkä päättänyt logosta tai julkaistun Glasspad-tilan siirrosta. Faktantarkistus täsmensi asennetun pilot.12:n, Fleetrepon inventaarion ja byte-only-vaihto-ohjeen rajan, vanhan ja jo käytössä olevan omega-habitat-/etc-polun käyttöoikeuseron, Glasspad-tiedoston sijainnin sekä puuttuvat koodi-, testi- ja dokumenttiviittaukset. Nykyistä vieraskoneen tilaa tai domainin saatavuutta ei tarkistettu. Ei ristiriitaa Jarin kirjattujen päätösten kanssa.
