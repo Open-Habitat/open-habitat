@@ -43,10 +43,18 @@ saavat kasvattaa sisältöä peittämättä toimintoja.
 
 ## Sovelluskehys
 
-Sivupalkin Etusivu vie paluunäkymään, jossa käyttäjä jatkaa keskustelujaan.
-Työtilat ryhmittelevät keskustelut. Sivupalkin voi sulkea kapeaksi kaistaksi,
-jossa keskeiset toiminnot säilyvät saatavilla. Puhelimessa navigaatio avautuu
-valikkolaatikkoon keskustelun päälle.
+Sivupalkin Etusivu vie paluunäkymään: ensin ovat uudet huomiota vaativat
+keskustelut, sitten käynnissä olevat ja viimeksi avatut. Odottava agentti
+vaatii huomiota, kunnes käyttäjä käy keskustelussa; käynti poistaa
+huomiomerkinnän mutta ei sulje agenttia. Nähty virhe säilyy keskustelurivillä
+ilman että se jää etusivun kärkeen. Valmis tarkoittaa suljettua agenttia, ei
+lukematonta vastausta.
+
+Työtilat ryhmittelevät keskustelut. Työtilan nimi avaa sen oman sivun;
+erillinen nuoli avaa ja sulkee sivupalkin ryhmän. Työtilasivulla näkyvät nimi,
+polku, uuden keskustelun aloitus ja keskustelut. Sivupalkin voi sulkea kapeaksi
+kaistaksi, jossa keskeiset toiminnot säilyvät saatavilla. Puhelimessa sama
+navigaatiosisältö avautuu valikkolaatikkoon keskustelun päälle.
 
 Tilipainikkeessa näkyvät etunimi ja profiilikuva tai sen varaesitys.
 Avattu tilinäkymä näyttää sähköpostin. Tiedot tulevat GitHubista; puuttuvat
