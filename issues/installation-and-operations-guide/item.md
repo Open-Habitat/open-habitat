@@ -70,13 +70,3 @@ results and remaining limits in `result.md`; keep secrets out of the evidence.
 [TESTING.md](../../TESTING.md) describes the relevant checks. Distinguish a
 verified installation from untested behavior: synthetic identities do not prove
 real sign-in or production availability.
-
-## Decisions
-
-The September note below records the earlier rewrite. Its first-use approval
-and test-host rollback assumptions have been superseded by the current project
-policy and Fleetrepo runbook described above.
-
-### 2026-09-30T17:50:57Z · @claude
-
-Rethink-night 30.9.: rethink-instructions / gpt-6-astra tiivisti toteutusissuen vastuujaon, hyväksymisehdot ja näytön; tein ilman Jaria varovaiset valinnat säilyttää tietoturvarajat, pysäyttää epäonnistuneeseen preflightiin, jättää tuotantokäyttöönoton erilliseksi päätökseksi ja olla tulkitsematta tietyn Fleetrepo-operaattorin hyväksyntää annetuksi. fact-check-instructions / claude-opus-5-5 tarkisti lähteitä vasten: täsmensin ensimmäisen live-operaattorin Jari-hyväksynnän, erotin valmiin rollback-polun vain vikatilanteessa tehtävästä live switch-backista, säilytin Acceptance Criteria -otsikon issuectl readyä varten, päivitin muokkauspäivän sekä tarkensin ADR 0003 -viitteen ja varmuuskopioinnin kohteet. Jarin kirjattuihin päätöksiin ei löytynyt ristiriitaa; runbookin tämänhetkinen operaattori on yhä hyväksymättä. Tämän issuen ulkopuolista Fleetrepo-runbookin epäselvyyttä ei ratkaistu tässä.
