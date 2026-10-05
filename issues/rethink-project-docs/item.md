@@ -117,7 +117,22 @@ uloskirjautumisen kokonaisuus ja pääsyn peruuttaminen suunnitellaan erikseen
 myöhemmin. Arkkitehtuurisivun erillinen revocation-osio korvattiin lyhyellä
 kuvauksella olemassa olevasta operaattoritoiminnosta. Toteutusta ei muutettu.
 
-Seuraava käsiteltävä tiedosto on `docs/architecture/workspaces.md`.
+`workspaces.md` käsitelty Jarin hyväksymällä rajauksella 5.10.2026.
+Sivu kuvaa löytämisen, tunnistamisen, kloonauksen ja lyhyesti Pi-kirjautumisen.
+Worktreeiden löydettävyys korjattu koodin mukaiseksi; levyvaatimus ja
+512 merkinnän ylityksen vaikutus esitetty nykyisenä toimintana. Rajapinta- ja
+järjestelmäkutsuluettelot korvattu selityksillä ja viitteillä.
+
+Jari hyväksyi käyttäjäkohtaisen levykiintiön suunnittelun Linuxin valmiiden
+mekanismien varaan: ylläpitäjä näkee käytön ja muuttaa rajaa, joka koskee myös
+natiivien työkalujen kirjoituksia. @design-user-storage-quotas ratkaisee
+mekanismin, kattavuuden, etuoikeutetun toiminnon ja nykyisten kiinteiden
+levyoletusten korvaamisen Jarin kanssa. @remove-workspace-entry-cutoff
+korvaa hyväksytyn suunnan mukaisesti työtilahaun kaiken pudottavan rajan
+erissä käsittelyllä. Nykyistä 20 GiB:n tai 512 merkinnän rajaa ei hyväksytty
+tuotetavoitteeksi. Toteutusta ei muutettu tällä dokumenttikierroksella.
+
+Seuraava käsiteltävä tiedosto on `docs/architecture/conversations.md`.
 
 ## Lokituskäytännön tehtävä 3.10.2026
 

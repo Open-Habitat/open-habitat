@@ -1,106 +1,104 @@
 # Workspaces
 
-A workspace is a directory immediately under the user's `~/src`. A plain
-directory qualifies; so does a Git checkout or a linked worktree. Nothing has
-to be registered, and no file has to exist inside the directory for it to
-appear. The daemon finds workspaces by listing the directory each time it
-takes a snapshot.
-
-## Discovery
-
-The daemon opens `/`, then the home, then `src`, with `openat2` and
-`RESOLVE_BENEATH`, refusing symlinks and magic links. The home may sit on its
-own filesystem, but below `~/src` no mount boundary is crossed, with one
-exception described under cloning. It reads at most 512 entries and classifies
-each one.
-
-| Kind | Evidence |
-|---|---|
-| `directory` | an ordinary directory |
-| `git_main_worktree` | a `.git` directory inside it |
-| `git_linked_worktree` | a bounded `.git` file pointing elsewhere |
-| `unknown` | the entry could not be read safely |
-
-The `.git` entry is a hint. The daemon does not run Git to verify repository
-state, so the snapshot reports the Git fact as `unknown` for both Git kinds.
-Linked worktrees created by other tools, inside or outside `~/src`, are
-observed and never managed.
-
-If `.agent-host/workspace.json` exists inside the directory, the daemon reads
-up to 4 KiB of it for a stable `ws_` identifier and an optional display name.
-Without it, the identifier is derived from the provider, subject and directory
-name, so a renamed directory is a new workspace. In a Git repository the
-natural place to keep the file out of history is `.git/info/exclude`.
-
-The snapshot carries each workspace with its name, display name, kind and three
-facts: the filesystem observation, the metadata file and the Git hint, each
-`confirmed`, `absent`, `unknown` or `unavailable` with the observation time.
-Conversations are attached to a workspace only when a Pi session header's `cwd`
-equals `~/src/<name>` exactly.
-
-## What the browser can change
-
-The browser creates, renames and deletes nothing under `~/src`. The daemon's
-only workspace write is the GitHub clone below. Everything else the person does
-to their directories, they do with native tools.
-
-## GitHub onboarding
+A workspace is a directory immediately under the user's `~/src`. It can be a
+plain directory, a Git checkout or a linked worktree. The daemon discovers it
+from the filesystem whenever it takes a snapshot, so projects created through
+native tools appear without registration. Git owns repository state and Pi's
+session files identify the conversations belonging to each workspace.
 
 ```mermaid
-sequenceDiagram
-  autonumber
-  participant B as Browser
-  participant D as Daemon
-  participant gh as gh (user)
-  participant git as git (user)
-  B->>D: GET /api/v1/onboarding/github/repos?page&limit
-  D->>gh: gh api /user
-  gh-->>D: id must equal the binding subject
-  D->>gh: gh api user repos
-  D-->>B: page of repositories, has_more
-  B->>D: POST /api/v1/onboarding/github/clone/stream {full_name}
-  D->>gh: gh api /repos/<full_name>
-  D->>git: git clone https://github.com/<full_name>.git ~/src/<name>
-  D-->>B: SSE stages, heartbeat every 20 s, one outcome
-  B->>D: GET /api/v1/onboarding/github/checkout?full_name
-  D-->>B: native observation of ~/src/<name>
+flowchart LR
+  Src["~/src: immediate directories"] --> D["User's daemon"]
+  Metadata["Optional workspace ID and display name"] --> D
+  Pi["Pi session headers: working directory"] --> D
+  D --> B["Browser workspace list and conversations"]
+  B -->|"clone a selected repository"| D
+  D --> GH["User's gh authorization"]
+  D --> Git["Git clones into ~/src"]
+  Git --> Src
 ```
 
-Repository listing and cloning run `/usr/bin/gh` and Git as the user, with no
-inherited environment and the user's own `gh` credential. Before either, the
-daemon checks that `gh api /user` returns the numeric ID in its binding; a
-missing or foreign authorization answers `409 github_auth_unavailable`. The
-clone name must match the repository's owner and name exactly, the clone URL
-must be the canonical HTTPS one, and one clone runs at a time per daemon.
+## Finding and identifying workspaces
 
-Large clones need somewhere to go. The daemon allows `~/src` to be a separate
-mount only when it is a dedicated volume: a distinct filesystem rather than a
-bind mount of the home, of at most 20 GiB. A full volume stops new clones
-without hiding the workspaces already there. The streaming clone has a ceiling
-of 45 minutes; the non-streaming route keeps 90 seconds for small
-repositories. The gateway forwards at most 512 KiB of stream per clone.
+Discovery reads the immediate directories under `~/src`; it does not search
+nested directories or other locations. It follows no symlinks and crosses no
+mounts inside a workspace. `~/src` itself can share the home's filesystem or
+use the dedicated volume described below. Unreadable or changing entries are
+reported as incomplete observations rather than treated as absent.
 
-After any interruption the checkout endpoint reports what the directory shows.
-A clone counts as complete only when Git is initialised, `origin` is set, the
-tree is clean and `HEAD` points at a commit. An empty repository without a
-first commit stays uncertain, because a local tree cannot distinguish it from
-an aborted clone.
+The scan has a 512-entry limit, counting files and hidden entries as well as
+directories. Exceeding it returns an incomplete observation with no workspaces,
+not a list of the first 512. Files inside a project do not count toward this
+limit.
 
-## Pi sign-in
+The `.git` entry distinguishes a plain directory from a Git checkout or a
+linked worktree. This is a filesystem hint, not a check of Git's repository
+state. A linked worktree is recognized only when its Git-directory reference
+can be resolved within the source tree under the scanner's path rules. A
+reference outside `~/src` leaves its kind unknown; a worktree located outside
+`~/src` is not discovered. Discovery observes worktrees without managing them.
 
-Pi's model access is the person's own OpenAI Codex credential, stored by Pi in
-the user's home. `GET /api/v1/onboarding/pi/status` runs a small helper on the
-pinned Pi SDK as the user and reports `usable`, `missing` or `unknown`. The
-browser asks once on first load and shows the sign-in step when the credential
-is missing.
+An optional `.agent-host/workspace.json` supplies a stable workspace ID and
+display name. Otherwise the daemon derives the ID from the user's identity
+and directory name, so renaming the directory changes its workspace ID.
+Keeping these optional settings with the workspace avoids a separate registry.
 
-`POST /api/v1/onboarding/pi/attempt` starts Pi's device login: the helper
-returns a verification URL and user code, the person completes it in another
-tab, and the browser polls `GET` on the same route every two seconds until the
-attempt ends or five minutes pass. The attempt is held in the daemon's memory,
-bound to one web session by a purpose-specific digest, and a second session can
-neither read nor cancel it. `DELETE` cancels and reports `unknown`, since
-cancelling proves neither success nor rollback. Snapshot, history and event
-reads never run the helper; only the onboarding routes do.
+A conversation belongs to a workspace when the working directory recorded in
+its Pi session header exactly matches that workspace's path. A stable
+workspace ID does not change this path-based association.
+[Conversations](conversations.md) describes native session identity and history.
+
+## Cloning a GitHub repository
+
+During onboarding the browser lists repositories using the user's native `gh`
+authorization. The daemon checks that this authorization belongs to the
+GitHub identity bound to the account, then uses GitHub's repository information
+to clone the selected repository into `~/src/<repository-name>`. Both `gh` and
+Git run as the user. Existing destinations, including partial earlier clones
+and names differing only in case, prevent a new clone.
+
+The daemon runs one clone at a time and streams Git's stages to the browser.
+It reports a percentage only when Git supplies a usable measurement. The
+streaming attempt has a 45-minute deadline; the non-streaming API has a shorter
+90-second request deadline. [HTTP API](http-api.md) describes the routes and
+[Events and recovery](events-and-recovery.md) explains the separate clone stream.
+
+Cloning requires an operator-provisioned filesystem mounted at `~/src`, with
+at most 20 GiB total capacity and at least 5 GiB available before admission.
+A bind mount sharing the home's filesystem does not qualify. This volume
+bounds disk consumption even when native tools write outside the browser.
+Workspace reads do not require the free-space headroom, so filling a qualifying
+volume does not hide existing workspaces. Ordinary workspace reads on the
+home's filesystem need no separate volume; a separately mounted `~/src` must
+satisfy the dedicated-volume size checks. [Deployment](deployment.md) describes
+the installation's responsibilities.
+
+A disconnected browser cancels the clone. Cancellation leaves any partial
+directory in place for inspection. After an interruption, the browser asks
+the daemon to observe the native checkout and writer state; it does not resume
+the stream or automatically retry the write. Confirmation requires the expected
+Git origin, a clean checkout and a HEAD commit. An empty repository without a
+first commit remains uncertain because that observation cannot distinguish it
+from an interrupted clone.
+
+Cloning is the host's workspace-management write. Creating other directories,
+renaming or deleting workspaces and editing their settings happen through
+native tools.
+
+## Pi sign-in during onboarding
+
+The browser also offers Pi's device sign-in for OpenAI Codex access. The daemon
+uses a helper built on the installed Pi SDK to check the stored authorization
+and start sign-in when needed. The person follows the verification link,
+enters the code and completes sign-in with the provider; Pi stores the
+credential in the user's home.
+
+The daemon holds the attempt in memory for the browser session that started
+it. The browser polls its result and can cancel it; cancellation does not prove
+whether a credential was saved. The status check resolves Pi's stored
+authorization, rather than testing a model request. Workspace snapshots and
+history reads do not invoke this helper.
+
+Discovery, cloning and onboarding are implemented in `internal/daemon`.
 
 Decisions behind this page: ADR 0001, ADR 0005.
