@@ -48,8 +48,9 @@ on color or animation alone. Jari provisionally recognised the earlier ended/idl
 the dots without fixing it as a decision. The existing dot treatments are reference material;
 the state set and visual form are outcomes of this design work.
 
-The result is a recommendation connecting each state to known facts and showing
-how the designer's presentation works across views. @design-control-states owns
+The [state meanings and evidence](analysis.md) connect each proposed label to
+available facts, identify missing facts, and give representative examples for
+the next design round. @design-control-states owns
 the package and design round. @apply-control-state-design implements the agreed
 presentation through the shared `agentPresentation` mapping from host facts,
 using the foundation from @unify-ui-primitives. Coordinate the examples with
@@ -60,3 +61,7 @@ using the foundation from @unify-ui-primitives. Coordinate the examples with
 ### 2026-10-05T08:03:09Z · @jari
 
 Jari’s reading of the returned navigation draft: “odottaa” means an open agent waiting for the person to respond. It demands attention until the person has visited the conversation; after that, the agent still waits, but the unread-attention flag clears. If the person will not continue, they can close the agent. “Valmis” means the agent has been closed, not merely that it finished one turn or produced an unread reply. Do not use the designer’s proposed transition from unread “valmis” to “odottaa” on focus; visitation changes attention, not agent lifecycle. The shared presentation must distinguish this from an unexpectedly lost process or unknown host state.
+
+## Acceptance Criteria
+
+- [x] State meanings, examples, available native facts and missing information are prepared for @design-control-states in [analysis.md](analysis.md).
