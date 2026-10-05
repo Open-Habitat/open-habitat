@@ -71,6 +71,8 @@ name/email sources and connection controls.
 - [ ] Visual and functional evidence covers the resulting screens, with live
   provider and installed-host results distinguished from synthetic tests.
 
-[TESTING.md](../../TESTING.md) describes validation; @verify-live-pi-journey
-tracks the remaining real-environment Pi checks. Visual feedback is collected
-for this UI without blocking unrelated work.
+[TESTING.md](../../TESTING.md) describes validation. Real-provider and
+installed-host observations occur during normal consented use; record concrete
+defects as issues rather than treating an old pilot checklist as approval or
+as a prerequisite for this design. Visual feedback is collected for this UI
+without blocking unrelated work.

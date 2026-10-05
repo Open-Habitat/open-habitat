@@ -56,8 +56,8 @@ The draft's success/error presentation must still express this uncertainty.
   verified on the installed release.
 
 [TESTING.md](../../TESTING.md) defines the relevant checks. Fleetrepo owns
-installation and recovery receipts; @verify-live-pi-journey owns the current
-Pi/provider checks.
+installation and recovery receipts. Real Pi/provider checks happen with
+Jari's consent in normal use; concrete failures get their own issues.
 
 Jari has authorized cloning his existing GitHub repositories and creating
 private disposable repositories for live integration tests using his mapped

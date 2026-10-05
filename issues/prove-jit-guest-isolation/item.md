@@ -1,6 +1,6 @@
 ---
 created: 2026-09-24
-updated: 2026-09-30
+updated: 2026-10-05
 type: task
 status: open
 priority: high
@@ -8,6 +8,7 @@ lane: auth-guest
 lane_seq: 10
 collision: [scripts/vm-test.sh]
 blocked_by: ['@native-gh-jit-handoff', '@implement-linux-executor']
+preparation: pending
 ---
 
 # Prove JIT two-user isolation in private guest
@@ -40,10 +41,12 @@ chosen scope; other people's sessions and household services are unrelated.
 
 For interrupted account creation, the required behavior is to deny access
 while state is uncertain. In-process tests cover refusal at each journal
-phase; an actual broker-process crash during a partially created account has
-not been demonstrated in a guest. A bounded check of that refusal remains
-useful evidence here. Recovery is a different requirement: Jari rejected a
-separate operator-reconciliation project in
+phase; an actual broker-process SIGKILL after account creation was also
+observed in a guest, and the restarted broker denied access while the journal
+was pending. [The evidence summary](result.md) records that result and its
+limits; repeating this check is not the remaining work. Recovery is a
+different requirement: Jari rejected a separate operator-reconciliation
+project in
 @reconcile-interrupted-jit-provisioning. This issue does not require building
 recovery or clearing a pending marker to make a test pass.
 
@@ -59,8 +62,8 @@ needs its own revocation coverage in the implementing work.
   remaining security observations and the revisions each result covers.
 - [ ] Post-reboot isolation with bound users is recorded from the
   operator-observed test-server smoke, with Fleetrepo owning host details.
-- [ ] The remaining actual broker-crash refusal observation is addressed
-  explicitly; no recovery feature or unbounded fault matrix is implied.
+- [x] The actual broker-crash refusal observation is recorded with its
+  limits; no recovery feature or unbounded fault matrix is implied.
 
 Follow [TESTING.md](../../TESTING.md) for checks appropriate to changes.
 Security-sensitive fixture or assertion changes need independent review:

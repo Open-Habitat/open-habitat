@@ -1,12 +1,14 @@
 ---
 created: 2026-09-30
-updated: 2026-10-01
+updated: 2026-10-05
 type: task
 reporter: jari
-status: open
+status: obsolete
 priority: high
 related: ['@gate-native-routes-on-pi', '@build-agent-control']
 lane: agent-control
+closed: 2026-10-05
+closed_by: jari
 ---
 
 # Verify live Pi onboarding and conversation
@@ -92,3 +94,9 @@ OpenAI account or a second consenting person stay marked as waiting for them.
 ### 2026-09-30T17:56:20Z · @claude
 
 Rethink-night 30.9.: rethink-instructions (gpt-6-astra), faktantarkistus fact-check-instructions (claude-opus-5-5). Ilman Jaria säilytin kuusi erillistä hyväksyntätarkistusta, suostumus- ja julkaisurajat sekä alkuperäisen frontmatterin; tulkitsin pilot.12:n kirjattuna lähtötasona ja erottelin synteettisen testin, oikean Pi:n, tarjoajan ja testipalvelimen näytöt. Faktantarkistus erotti pilot.12:n julkaisuohjeen vanhentuneesta pilot.11:n tilan nollausohjeesta, täsmensi että vain työtilareiteistä GitHub-esivaihe on avoin, ja että toisen käyttäjän pääsy edellyttää myös testipalvelimen admission-muutosta. Julkinen repo -väite muutettiin tuoterepoksi (GitHubin näkyvyys nyt private). Hostin nykytilaa tai offline-tarjoajan asentamista ei vahvistettu; tarkista ennen live-koetta. Ristiriitaa Jarin kirjattuihin päätöksiin ei löytynyt.
+
+## Resolution
+
+### 2026-10-05T10:12:26Z · @jari
+
+Jari does not want a separate issue for ordinary upcoming real-person and Pi browser testing. Retain pilot.18 result.md as bounded evidence (no Pi browser journey was run there); use consent for real sign-in, follow normal install procedures and file specific defects if observed.
