@@ -52,7 +52,7 @@ mixed-content messages and the unknown-content fallback. Blocks intentionally
 omitted from the reading view should have an explained treatment as well.
 
 Build on the existing production components and Storybook catalog described in
-[the design system](../../docs/design-system.md) and
+[the design system](../../design-system/components.md) and
 [the component catalog](../../design-system/components.md). The designer
 designs every visible block type and its relevant presentation states, including
 the unknown-content fallback. The agent inventories the types, explains their

@@ -53,13 +53,13 @@ teksti jää jonoon; tämä ei peru aiempaa päätöstä.
 | 6 | [Omega Habitat -brändibriefi](../../docs/brand/omega-habitat-brief.md) | Käsitelty Jarin kanssa 5.10.: Omega Habitat on valittu nimi, puhelin kuuluu laajuuteen ja Ω-portti jää inspiraatioksi. Designer valitsee ja perustelee muodon. Olennaiset toimitustarpeet ja suunnittelupyyntö säilyvät; toisto ja yksityiskohtaiset kieltolistat poistettu. |
 | 7 | [Tuotteen tavoite ja käyttökulut](../../docs/product.md) | Yhdistetty Jarin päätöksellä 5.10.: tuotetavoite ja käyttökulut ovat samassa sivussa, ulkoasu designissa ja nykyinen toteutus arkkitehtuurissa. Puhelin ja sisältöjen esitys vastaavat myöhempiä päätöksiä. Pi-dialogien tuotelaajuus on edelleen avoin. |
 | 8 | Käyttökulut (entinen `docs/ui.md`) | Yhdistetty kohtaan 7; erillinen sivu poistettu ja viittaukset päivitetty. |
-| 9 | [Design system](../../docs/design-system.md) | Lohkojen työtapaa ja yhden designin lähteitä päivitetty `6235972`, `8b4219b` ja `e961efc`. Koko sivun läpikäynnistä ei löytynyt näyttöä. Tarkistetaan sivun tehtävä suhteessa designiin, komponenttikarttaan, nykyiseen katalogiin ja testiohjeeseen. |
+| 9 | Design system (entinen `docs/design-system.md`) | Poistettu Jarin päätöksellä 5.10. Katalogin avaaminen on `design-system/components.md`:ssä, tarkistukset `TESTING.md`:ssä. Design, vastuut ja työtapa säilyvät omissa lähteissään ilman rinnakkaista yleissivua. |
 | 10 | [Dokumentaation agenttiohje](../../docs/AGENTS.md) | Rethink `94376d1` ja faktantarkistus `b6ece5b` löytyvät. Rakenne kirjoitettiin sen jälkeen uudelleen `11b9430`, ja ohjetta täsmennettiin `5d6428b` sekä `cff6c64`. Nykyinen versio luetaan rethink-instructions-skillillä. |
 | 11 | [Dokumentaation etusivu](../../docs/index.md) | Käsitelty `7bd9f82`, uudistettu hakemistorakenteen mukana `11b9430`. Luetaan viimeiseksi muiden sivujen lukupolkuna. |
 
 `docs/CLAUDE.md` on symlinkki `AGENTS.md`:hen, joten sama sisältö käsitellään
 kohdassa 10. Tuotetavoitteen ja käyttökulkujen yhdistämisen jälkeen seuraavana
-on **`docs/design-system.md`**, sitten dokumentaation agenttiohje ja etusivu.
+on **`docs/AGENTS.md`**, sitten dokumentaation etusivu.
 Pi-kysymysdialogien rajaus jää erikseen ratkaistavaksi.
 
 Jari hyväksyi 5.10. sivujen yhdistämisen, koska ne ylläpitivät samoja
@@ -627,7 +627,7 @@ rajat käsitellään ennen tiliasetuksia, jotta eri toiminnot eivät sekoitu.
 7. **Tuotantodesign ja komponenttisopimukset yhdessä:**
    [design.md](../../design-system/design.md),
    [components.md](../../design-system/components.md) ja
-   [docs/design-system.md](../../docs/design-system.md).
+   [docs/design-system.md](../../design-system/components.md).
    Erota sovittu ilme ja vuorovaikutus agentin lisäämistä mekanismeista ja
    lukurajoista. Säilytä saavutettavuus, fokus, näppäimet, reitit ja komponenttien
    vastuut. Korjaa vanha terminaalisiirto ja Pi-kysymysten vastausohjaimet nykyiseen

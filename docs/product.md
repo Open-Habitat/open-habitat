@@ -264,7 +264,7 @@ tekstipalan sijaan.
 
 [Design](../design-system/design.md) ja [vedokset](../design-system/drafts/)
 kuvaavat näkymien sommittelun ja visuaalisen esityksen.
-[Design system](design-system.md) johtaa yhteisiin tuotantokomponentteihin
+[Komponenttikartta](../design-system/components.md) johtaa yhteisiin tuotantokomponentteihin
 ja niiden katalogiin. [HTTP-rajapinta](architecture/http-api.md) kuvaa tietojen ja
 komentojen merkityksen.
 

@@ -65,6 +65,21 @@ then fails to launch; install Chromium there or point
 using it standalone can test stale output. Keep one Playwright worker because
 the synthetic host's scenario switch is shared across tests.
 
+## Component catalog and visual checks
+
+Storybook uses the same production components as the application; the
+[component map](design-system/components.md) explains how to open it.
+`storybook:test` builds the catalog. Its interactive accessibility addon
+shows Axe findings, while `test:a11y` runs browser assertions against the
+production preview fixtures. Visual captures complement behavioral assertions.
+
+```sh
+npm run test:component --prefix web
+npm run storybook:test --prefix web
+PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" npm run test:visual --prefix web
+PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" npm run test:a11y --prefix web
+```
+
 ## Understand the result
 
 The gate checks Go and web code, browser behavior, generated contracts,

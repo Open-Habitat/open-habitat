@@ -3,7 +3,7 @@
 `docs/` is the project documentation, starting at `index.md`. It is written for
 someone who wants to understand or use the system, and it is also what Glasspad
 publishes: the Markdown here is the site, there is no separate source tree.
-The product pages (`product.md`, `design-system.md`, `index.md`) are
+The product pages (`product.md`, `index.md`) are
 in Finnish for Jari. The architecture pages and the decision records are in
 English, because agents are their main readers and the repository will be
 public. Keep a page in the language it already has.

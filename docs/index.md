@@ -9,8 +9,8 @@ natiivien työkalujen hallussa, ja SSH- ja tmux-käyttö säilyvät selaimen rin
 
 [Tavoite ja käyttökulut](product.md) kertoo, mitä käyttäjä saa tuotteella
 aikaan ja miten hän käyttää sitä myös katkojen ja epävarmojen tulosten yhteydessä.
-[Design system](design-system.md) johtaa yhteiseen ulkoasuun ja
-tuotantokomponentteihin. Nämä sivut kuvaavat sovittua tavoitetta, jonka
+[Design](../design-system/design.md) kuvaa ulkoasun ja
+[komponenttikartta](../design-system/components.md) johtaa tuotantokomponentteihin. Nämä sivut kuvaavat sovittua tavoitetta, jonka
 toteutus on osin kesken.
 
 ## Miten järjestelmä toimii

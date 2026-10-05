@@ -10,9 +10,6 @@ groups:
       - slug: product
         title: Tavoite ja käyttökulut
         desc: Tuotteen tavoite, toiminnot ja käyttäjän käyttökulut.
-      - slug: design-system
-        title: Design system
-        desc: Yhteinen perusta ja polku tuotantokomponentteihin.
 
   - label: Architecture
     members:

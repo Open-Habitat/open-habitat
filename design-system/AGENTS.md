@@ -17,7 +17,7 @@ ja `contracts/v1/` kertoo hostin tarjoaman tiedon ja komennot.
 Designia päivitetään samoihin tiedostoihin. Korvatut vedokset ja ohjeet jäävät
 Git-historiaan, jotta nykyisessä puussa ja designerille lähtevässä paketissa on
 yksi suunnittelukohde. `docs/product.md` kuvaa käyttökulut ja
-`docs/design-system.md` katalogin avaamisen.
+`components.md` katalogin avaamisen.
 
 ## Päätökset, joita ei tehdä uudestaan koodissa
 
@@ -90,7 +90,7 @@ Sovellus, Storybook ja testien deterministinen preview tuovat samat
 TypeScript-moduulit `web/src/components/`-hakemistosta. Story näyttää oikean
 komponentin tilat valmiilla fixturella; jos storyyn rakennetaan oma kontrolli tai
 logiikka, katalogi todistaa jonkin muun kuin tuotannon toimivuuden. Katalogi näyttää komponenttien olennaiset tilat, ja `web/AGENTS.md` sekä
-`docs/design-system.md` kertovat, millä komennoilla se tarkistetaan.
+`TESTING.md` kertovat, millä komennoilla se tarkistetaan.
 
 Visual evidence is a paired synthetic-lab screenshot and offline static HTML
 snapshot stored side by side in the issue folder (see `web/AGENTS.md`).

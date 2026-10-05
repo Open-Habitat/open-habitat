@@ -18,8 +18,21 @@ komponenttien esitystilat valmiilla näyttömalleilla.
 | Käyttöönotto | `GitHubRepoChooser.tsx`, `PiDeviceSignIn.tsx` |
 
 `index.ts` kokoaa viennit. Samassa hakemistossa olevat `*.stories.tsx`-tiedostot
-muodostavat ajettavan katalogin. [Design system](../docs/design-system.md)
-kertoo sen avaamisesta ja tarkistamisesta.
+muodostavat ajettavan katalogin.
+
+Katalogin voi avata kehityspalvelimena tai rakentaa staattiseksi:
+
+```sh
+npm ci --prefix web
+npm run storybook --prefix web -- --no-open
+npm run build-storybook --prefix web
+```
+
+Storybookin työkaluriviltä voi vaihtaa vaalean ja tumman teeman.
+Storyt näyttävät komponenttien esitystilat synteettisillä tiedoilla;
+ne eivät simuloi sessiosidontaa, reititystä tai Pi:n kuittauksia.
+[Tarkistukset](../TESTING.md#component-catalog-and-visual-checks) kuvaavat
+katalogin rakentamisen sekä komponentti-, kuva- ja saavutettavuustestit.
 
 `ControlStates.stories.tsx` näyttää oikeat painikkeet, ikonipainikkeen,
 navigaatio- ja listarivin, tilavalikon, avattavan kontrollin ja kentän molemmissa

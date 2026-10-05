@@ -10,7 +10,7 @@ landauksen jälkeen; työn sisältävä commit on tämän tiedoston Git-historia
 2. [Komponenttikatalogin sopimus](https://github.com/maintainer/native-agent-host/blob/0d1a53160772be64daa00879536c8103bbd3d0e1/design-system/component-catalog-v1.md)
 3. [Staattinen korjauskierros](https://github.com/maintainer/native-agent-host/blob/7520760f16f98d7f0f1face7b997897ed9143d41/design-system/ui_kits/production-v1/index.html)
 4. [Käyttökulujen yhteenveto](https://github.com/maintainer/native-agent-host/blob/90ef1565f1df46da9ade73b885db2d5bb2c4a837/docs/ui.md)
-5. [Design systemin opas](../../docs/design-system.md)
+5. [Design systemin opas](https://github.com/maintainer/native-agent-host/blob/79a911fb364562a0a15e525934a7840cf352a56f/docs/design-system.md)
 6. [V1-host-sopimuksen merkitys](../../docs/interfaces.md) ja
    [koneellinen sopimus](../../contracts/v1/AGENTS.md)
 
