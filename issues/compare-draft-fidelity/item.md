@@ -59,7 +59,7 @@ where they check the same properties, avoiding a second account of the design.
 
 ## Acceptance Criteria
 
-- [ ] For corresponding draft and lab states, the comparison reports style, dimension and control differences in both themes and at desktop and phone widths; missing counterparts and failed comparisons are visible.
-- [ ] Small accidental inconsistencies between repeated draft elements are ignored in favour of consistent shared components and tokens; intentional design distinctions remain part of the comparison.
-- [ ] A recorded deviation is identified separately by its design reference, while a meaningful unrecorded difference remains unresolved.
-- [ ] A round's issue can carry the report and paired captures with the compared revisions and coverage; the process page points to this evidence.
+- [x] For corresponding draft and lab states, the comparison reports style, dimension and control differences in both themes and at desktop and phone widths; missing counterparts and failed comparisons are visible.
+- [x] Small accidental inconsistencies between repeated draft elements are ignored in favour of consistent shared components and tokens; intentional design distinctions remain part of the comparison.
+- [x] A recorded deviation is identified separately by its design reference, while a meaningful unrecorded difference remains unresolved.
+- [x] A round's issue can carry the report and paired captures with the compared revisions and coverage; the process page points to this evidence.
