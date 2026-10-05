@@ -2,7 +2,7 @@
 created: 2026-09-21
 updated: 2026-10-05
 type: task
-status: open
+status: done
 priority: normal
 epic: native-agent-host-architecture
 blocked_by: ['@unify-ui-primitives']
@@ -10,6 +10,8 @@ lane: control-state-design
 lane_seq: 5
 collision: [docs/, design-system/]
 related: ['@consistent-control-feedback', '@align-navigation-design', '@design-control-states', '@apply-control-state-design']
+closed: 2026-10-05
+closed_by: jari
 ---
 
 # Design a consistent language for agent states
