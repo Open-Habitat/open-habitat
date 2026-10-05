@@ -1,6 +1,6 @@
 ---
 created: 2026-09-29
-updated: 2026-10-03
+updated: 2026-10-05
 type: task
 status: open
 priority: normal
@@ -167,7 +167,18 @@ kytkentä ja palaute tarvitsevat muutoksen. Molemmat kuuluvat samaan
 käyttökulkuun; navigaatioissueen lisätty viite toteutustehtävään.
 Tällä kierroksella muutettiin dokumentaatiota, ei tuotekoodia.
 
-Seuraava käsiteltävä tiedosto on `docs/architecture/http-api.md`.
+`http-api.md` käsitelty Jarin hyväksymällä rajauksella 5.10.2026.
+Sivu selittää gatewayn ja daemonin HTTP-työnjaon, reitit, historian sivutuksen,
+komentokuittaukset ja virheiden tulkinnan. Ohjausreittien UUID-muoto,
+historiasivun aikajärjestys ja sivutusrajan sisältyminen korjattu koodin mukaan.
+503-vastauksesta ei voi päätellä, ettei kirjoitus alkanut. Kattava
+virhekooditaulukko ja tarkat tavurajat jätetty sopimukseen ja toteutukseen;
+elinkaari ja yhteyskatkoista toipuminen viittaavat jo käsiteltyihin sivuihin.
+Versiointikäytäntö säilyy; kaikkien komentopyyntöjen ei väitetä sisältävän
+versiokenttää. Pi-tilatarkistus erotettu mallipyynnön onnistumisesta.
+Tuotekoodia tai sovittua vastuunjakoa ei muutettu.
+
+Seuraava käsiteltävä tiedosto on `docs/architecture/deployment.md`.
 
 ## Lokituskäytännön tehtävä 3.10.2026
 

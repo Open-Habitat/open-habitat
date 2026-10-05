@@ -1,107 +1,127 @@
 # HTTP API
 
-The browser talks to the gateway over same-origin HTTPS. Reads are JSON `GET`
-requests and one Server-Sent Events stream; writes are JSON `POST` or `DELETE`
-requests that carry the session cookie, the configured `Origin` and the
-session's CSRF header. The gateway authenticates each request and forwards it
-unchanged in meaning to the user's daemon, which produces the reply. The
-machine-readable contract is `contracts/v1/`: a JSON Schema per message
-family, redacted examples and the scenario catalogue. This page says what the
-routes mean; the schemas say what is valid.
+The browser reads native work, sends commands and follows changes through the
+same-origin HTTPS gateway. The gateway handles web sessions itself and routes
+native operations to the signed-in person's daemon. The daemon interprets those
+operations and returns their results. This keeps browser authentication separate
+from access to native files and processes.
 
-## Routes
+```mermaid
+flowchart LR
+  B["Browser"] -->|"login and session requests"| G["Gateway"]
+  B -->|"native reads, commands and event connection"| G
+  G -->|"session selects the user's socket"| D["User's daemon"]
+  D -->|"JSON replies and SSE events"| G
+  G -->|"results"| B
+```
 
-Authentication, served by the gateway itself:
+## Requests and responsibilities
+
+Native reads use `GET`; writes use `POST` or `DELETE`. The gateway checks the
+session cookie and, for writes, the configured origin and session's CSRF header.
+It checks the route and bounds the request before forwarding it. The daemon
+validates native operation inputs. [Identity and trust](identity-and-trust.md)
+explains how the session selects the daemon and how the socket peers are checked.
+
+JSON replies carry finite results. Server-Sent Events (SSE) carry the user's
+ongoing updates and, separately, progress within a clone request. The gateway
+forwards native replies without interpreting their application content; it
+bounds finite replies and forwards streams incrementally.
+
+## Route map
+
+Authentication and probes are served by the gateway:
 
 | Route | Meaning |
 |---|---|
-| `GET /auth/github/start` | begin the GitHub login flow |
-| `GET /auth/github/callback` | complete it and issue a session |
-| `GET /auth/session` | the session's provider and CSRF secret |
+| `GET /auth/github/start`, `GET /auth/github/callback` | begin and complete GitHub login |
+| `GET /auth/session` | read the web session and its CSRF secret |
 | `POST /auth/logout` | end the web session; native `gh` authorization stays |
-| `GET /healthz`, `GET /readyz` | liveness probes with a fixed body |
+| `GET /healthz`, `GET /readyz` | fixed gateway probe responses |
 
-Native state and control, forwarded to the user's daemon:
+Native operations are forwarded to the user's daemon. In this table `<id>` is
+the Pi session UUID: history routes include the `pi:` harness prefix, while
+conversation control routes use the UUID alone.
 
 | Route | Meaning |
 |---|---|
-| `GET /api/v1/snapshot` | workspaces, conversations, journal cursors, native `gh` state |
-| `GET /api/v1/events?after=<cursor>` | the user's event stream; `Last-Event-ID` overrides `after` |
-| `GET /api/v1/agents/pi:<id>/history?limit&before` | a page of native history, newest first; `before=<entry key>` pages back |
-| `GET /api/v1/agents/pi:<id>/entries/<key>/blocks/<index>?revision&offset&limit_bytes` | a bounded slice of one selected block (UTF-8 text or base64 image); revision must match the selected native history |
-| `GET /api/v1/conversations` | the conversations this daemon controls |
-| `POST /api/v1/conversations` | start Pi in a workspace |
-| `GET /api/v1/conversations/pi:<id>/status[?continuation=true]` | observe one conversation; with the flag, run the continuation proof |
-| `GET /api/v1/conversations/pi:<id>/receipt?command_id` | the receipt of one earlier write |
-| `POST .../send`, `.../steer`, `.../follow_up` | message writes with a client `command_id` |
-| `POST .../clear_queue`, `.../abort`, `.../stop`, `.../continue`, `.../question` | the remaining controls described in [Conversations](conversations.md) |
-| `GET /api/v1/onboarding/github/repos?page&limit` | the user's GitHub repositories through their own `gh` |
-| `POST /api/v1/onboarding/github/clone/stream` | clone one repository; the reply is an SSE stage stream |
-| `POST /api/v1/onboarding/github/clone` | the same without streaming, for small repositories |
-| `GET /api/v1/onboarding/github/checkout?full_name` | what the local checkout shows |
-| `GET /api/v1/onboarding/pi/status` | whether Pi's credential is usable |
-| `POST`, `GET`, `DELETE /api/v1/onboarding/pi/attempt` | start, poll and cancel a Pi device login |
+| `GET /api/v1/snapshot` | workspaces, native and controlled conversations, event cursor and native `gh` state |
+| `GET /api/v1/events?after=<cursor>` | the user's event stream; `Last-Event-ID` takes precedence over the query cursor |
+| `GET /api/v1/agents/pi:<id>/history` | a history page; `limit` bounds entry count, `before` pages back and `after` supports forward reads |
+| `GET /api/v1/agents/pi:<id>/entries/<key>/blocks/<index>` | read part of a selected block using `revision`, `offset` and `limit_bytes` |
+| `GET`, `POST /api/v1/conversations` | list controlled conversations or start Pi in a workspace |
+| `GET /api/v1/conversations/<id>/status` | observe a conversation; `continuation=true` also checks whether it can be continued |
+| `GET /api/v1/conversations/<id>/receipt?command_id=<uuid>` | look up an earlier command's receipt |
+| `POST /api/v1/conversations/<id>/send`, `.../steer`, `.../follow_up` | send a message with a client-chosen `command_id` |
+| `POST /api/v1/conversations/<id>/clear_queue`, `.../abort`, `.../stop`, `.../continue`, `.../question` | queue, lifecycle and question controls |
+| `GET /api/v1/onboarding/github/repos` | list GitHub repositories through the user's `gh`, using `page` and `limit` |
+| `POST /api/v1/onboarding/github/clone/stream` | clone a repository and stream progress in the response |
+| `POST /api/v1/onboarding/github/clone` | clone with a single JSON result |
+| `GET /api/v1/onboarding/github/checkout?full_name=<owner/repo>` | observe the local checkout after cloning |
+| `GET /api/v1/onboarding/pi/status` | resolve Pi's stored authorization; this does not test a model request |
+| `POST`, `GET`, `DELETE /api/v1/onboarding/pi/attempt` | start, poll or cancel a Pi device login |
 
-Query strings are exact: a route accepts only the parameters listed, once
-each, and anything else is `400 invalid_request`. Bodies are small JSON objects
-with no unknown fields; the gateway forwards at most 64 KiB of request body.
+[Conversations](conversations.md) explains the controls and their lifecycle;
+[Workspaces](workspaces.md) explains cloning and provider sign-in.
 
-## History paging
+## Reading history
 
-A history page is read from Pi's file at request time. Without `before` it
-returns the newest entries, up to `limit` (default and maximum 200; the browser
-asks for 25). The entry projection also has a 256 KiB page budget, so a page
-of metadata-rich blocks may contain fewer than `limit` entries. With `before=<key>` it returns the entries older than that key and
-reports `older_complete` when the oldest edge was reached, or
-`boundary_found: false` when the key no longer exists, in which case the browser
-starts again from the newest page. Entries contain bounded ordered block previews; readable blocks have a separate
-read route selected by native entry key and block index. Each response is at
-most 64 KiB of text or 1 MiB of base64 (aligned to UTF-8/codepoint or base64 quartet),
-with `next_offset` when more is available. The page's `native_revision` is a
-hash of the native file; the daemon rejects a block read when that revision
-changes, so the browser reloads the page rather than combining old and new
-content. Saved local commands expose separate command and output text blocks,
-with exit/cancellation and truncation flags on their history entry. Saved
-session markers and compaction/branch summaries retain their native entry type;
-long summaries can be read by block. Redacted thinking and unknown native
-fields cannot be selected.
+A history request reads Pi's saved session file. With neither `before` nor
+`after`, it selects the newest entries. Entries within a page are ordered from
+oldest to newest. A `before` request selects older entries and includes the
+boundary entry so the browser can join pages by their native keys. `before`
+and `after` cannot be combined.
 
-## Writes and receipts
+Entry-count and byte limits keep pages bounded. `next_before` identifies where
+to continue backwards, and `older_complete` says that the oldest edge has been
+reached. If the boundary key no longer exists, `boundary_found: false` tells
+the browser to restart from the newest page.
 
-A command's acceptance and its effect are separate. The daemon answers a write
-with a receipt state, and the state of the work lives in the conversation's
-status and events. A lost reply leaves the outcome uncertain, and the browser
-reports it that way rather than retrying, because an unacknowledged message may
-already be running. A deliberate retry is a new command with a new ID.
+Entries contain ordered block previews. Larger readable blocks are fetched
+separately as bounded slices of text or base64 image data, with `next_offset`
+when more remains. The page's `native_revision` identifies the file contents.
+A block read must match that revision, so a changed file causes the browser to
+reload history rather than combine content from different revisions.
 
-## Errors
+## Command outcomes and errors
 
-Every error body is the shape in `contracts/v1/error.schema.json`: a fixed
-code, a generic message, a `retryable` flag and a correlation ID. The HTTP
-status says which boundary refused.
+A command's receipt describes acceptance, not completion of the agent's work.
+Conversation status and events describe its subsequent progress. If a reply is
+lost, the browser can query the receipt using the same command ID. It does not
+automatically resend the message: the first request may already be running.
+[Conversations](conversations.md) explains the limits of receipt lookup, and
+[Events and recovery](events-and-recovery.md) describes browser recovery.
 
-| Status | Codes | Meaning |
-|---:|---|---|
-| 400 | `invalid_request` | the request shape was not accepted; nothing started |
-| 401 | `authentication_required` | no valid session; the browser opens login |
-| 403 | `origin_denied`, `csrf_denied`, `identity_mapping_denied`, `cross_user_denied` | a trust boundary refused the request |
-| 404 | `resource_not_found`, `attempt_not_found`, `content_revision_gone` | the target does not exist for this user; nothing is said about other users |
-| 409 | `cursor_expired`, `cursor_instance_mismatch`, `writer_conflict`, `read_only_history`, `control_uncertain`, `github_auth_unavailable`, `checkout_exists`, `checkout_unavailable`, `attempt_active` | the current state blocks safe progress; take a new snapshot or wait |
-| 429 | `capacity_exceeded` | the daemon's Pi child or handle limit is reached |
-| 503 | `daemon_unavailable`, `native_source_unavailable`, `checkout_uncertain`, `native_adapter_error` | the daemon or a native source could not be reached or read; already shown content may stay readable, writes do not proceed |
+API errors use the envelope in `contracts/v1/error.schema.json`: a code,
+generic message, retryability flag and correlation ID. The status and code
+distinguish invalid input, missing authentication, denied access, unavailable
+resources, conflicting state and capacity or service failures. The appropriate
+response depends on the operation; a conflict does not always call for the
+same recovery action.
 
-The gateway produces `daemon_unavailable` when it cannot dial the socket or
-the reply exceeds its cap; every other daemon status and body passes through
-untouched. Free text in errors never contains home paths, usernames or URL
-credentials.
+The gateway returns `daemon_unavailable` when it cannot reach the daemon or
+read a complete reply within its limits. This can happen after the daemon
+started a write, so an HTTP 503 does not establish that nothing happened.
+The receipt or native observation must resolve the outcome. A retryability
+flag alone does not make repeating a write safe. Error messages omit native
+paths and credentials.
 
-## Versioning
+## Contracts and versioning
 
-Every message carries `schema_version: 1`. Objects are closed: an unknown field
-is a rejection, and there is no extension bag apart from the error `details`
-object. New optional fields fit within v1. Removing or renaming a field, or
-changing a type, nullability or an ordering guarantee, is a new version
-directory. `internal/contracts/` and `web/src/contracts/` are generated from
-the schemas and carry a fingerprint, so a schema edit without regeneration
-fails the gate. Requests and replies carry no Unix username and no absolute
-home path.
+`contracts/v1/` contains the message schemas, redacted examples and scenario
+catalogue. The schemas define message shapes; this page explains the HTTP
+operations. Request formats are operation-specific: not every command body
+has a version field. Versioned JSON replies and event envelopes identify the
+current schema with `schema_version: 1`.
+
+Schema objects reject unknown fields, apart from the error `details` object.
+New optional fields can be added within v1, but a validator using an older
+closed schema may reject them. Removing or renaming a field, or changing a
+type, nullability or ordering guarantee, requires a new version directory
+under the contract policy. Requests and replies carry no Unix username or
+absolute home path.
+
+The generated packages in `internal/contracts/` and `web/src/contracts/` carry
+a schema fingerprint. The gate detects schema edits without regeneration;
+runtime message validation is separate from that generated-code check.
+HTTP handlers live in `internal/gateway` and `internal/daemon`.
