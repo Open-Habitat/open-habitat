@@ -19,3 +19,4 @@ and implementation work belong in issues.
 | [ADR 0009](adr-0009-conversation-state-ownership.md) | Conversation content lives in a store separate from Redux application state |
 | [ADR 0010](adr-0010-taskfleet-worktree-agents.md) | Taskfleet owns worktree runs; the user's daemon owns the browser-controlled Pi |
 | [ADR 0011](adr-0011-gateway-owned-server-administration.md) | The gateway owns the server name and browser roles; the broker retains admission |
+| [ADR 0012](adr-0012-per-user-storage-quotas.md) | Per-user storage limits are Linux quotas over the whole home, set through the broker and shown by the gateway |

@@ -1,7 +1,7 @@
 # ADR 0005: Stream native Git clone progress during onboarding
 
-**Status:** Accepted — the storage policy is being reconsidered in the
-[per-user quota design](../../issues/design-user-storage-quotas/item.md).
+**Status:** Accepted; the storage policy in Resource ownership is superseded
+by [ADR 0012](adr-0012-per-user-storage-quotas.md).
 
 **Date:** 2026-09-29; storage authority amended on 2026-10-01.
 
@@ -60,13 +60,11 @@ across native writers without adding a privileged quota operation for each
 clone. Other tools can still consume the remaining space during the attempt,
 so exhaustion may leave a partial checkout.
 
-On 5 October, Jari approved designing standard Linux per-user quotas with
-administrator controls for usage and limits. The
-[quota design issue](../../issues/design-user-storage-quotas/item.md) owns the
-replacement decision, including coverage beyond workspaces and the privileged
-operation for changing limits. The fixed-volume policy remains implemented
-until that replacement is designed and built. Current time and capacity values
-are described in [Workspaces](../architecture/workspaces.md).
+On 5 October, [ADR 0012](adr-0012-per-user-storage-quotas.md) replaced the
+fixed volume with a Linux user quota over the whole home and administrator
+controls for usage and limits. The volume policy remains implemented until
+that replacement is built; current values are described in
+[Workspaces](../architecture/workspaces.md).
 
 ## Consequences and alternatives
 

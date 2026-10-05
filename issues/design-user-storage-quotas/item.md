@@ -103,7 +103,7 @@ default is installation configuration, not a number the product fixes.
 
 ## Acceptance Criteria
 
-- [ ] The agreed design is recorded as an ADR superseding the storage policy of ADR 0005.
+- [x] The agreed design is recorded as an ADR superseding the storage policy of ADR 0005.
 - [ ] The implementing work is filed as bounded issues coordinated with @named-server-admin-settings and @server-administration-cli, so that afterwards the administrator sees each user's usage and changes their limit, and the limit binds native writes across the whole home.
 
 ## Decisions

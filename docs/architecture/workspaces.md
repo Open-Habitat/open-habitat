@@ -73,10 +73,9 @@ Workspace reads do not require the free-space headroom, so filling a qualifying
 volume does not hide existing workspaces. Ordinary workspace reads on the
 home's filesystem need no separate volume; a separately mounted `~/src` must
 satisfy the dedicated-volume size checks. [Deployment](deployment.md) describes
-the installation's responsibilities. A
-[storage quota design task](../../issues/design-user-storage-quotas/item.md)
-is exploring how standard Linux per-user quotas and administrator controls
-will replace these fixed-volume assumptions.
+the installation's responsibilities. [ADR 0012](../decisions/adr-0012-per-user-storage-quotas.md) replaces these
+fixed-volume assumptions with a Linux user quota over the whole home; this
+page describes the implementation until that lands.
 
 A disconnected browser cancels the clone. Cancellation leaves any partial
 directory in place for inspection. After an interruption, the browser asks
