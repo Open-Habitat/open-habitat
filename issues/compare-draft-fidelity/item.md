@@ -3,7 +3,7 @@ created: 2026-10-03
 updated: 2026-10-05
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@design-control-states']
 lane: design-tooling
@@ -11,6 +11,8 @@ lane_seq: 20
 collision: [web/lab/]
 blocked_by: ['@inventory-ui-states']
 preparation: ready
+closed: 2026-10-05
+closed_by: claude
 ---
 
 # Measure implementation fidelity against the drafts
