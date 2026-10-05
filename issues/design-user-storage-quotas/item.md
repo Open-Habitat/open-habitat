@@ -2,12 +2,14 @@
 created: 2026-10-05
 updated: 2026-10-05
 type: task
-status: open
+status: done
 priority: normal
-related: ['@named-server-admin-settings', '@server-administration-cli', '@rethink-project-docs']
+related: ['@named-server-admin-settings', '@server-administration-cli', '@rethink-project-docs', '@implement-user-storage-quotas']
 lane: planning
 collision: [docs/]
 preparation: reviewing
+closed: 2026-10-05
+closed_by: jari
 ---
 
 # Design per-user storage quotas using native Linux facilities
@@ -104,10 +106,16 @@ default is installation configuration, not a number the product fixes.
 ## Acceptance Criteria
 
 - [x] The agreed design is recorded as an ADR superseding the storage policy of ADR 0005.
-- [ ] The implementing work is filed as bounded issues coordinated with @named-server-admin-settings and @server-administration-cli, so that afterwards the administrator sees each user's usage and changes their limit, and the limit binds native writes across the whole home.
+- [x] The implementing work is filed as bounded issues coordinated with @named-server-admin-settings and @server-administration-cli, so that afterwards the administrator sees each user's usage and changes their limit, and the limit binds native writes across the whole home.
 
 ## Decisions
 
 ### 2026-10-05T11:20:23Z · @jari
 
 2026-10-05: Approved the proposed design: ext4 user quotas over the whole home, two scoped broker operations (read usage and limit, set one user's limit) exposed through the gateway to the administrator page and the CLI, overcommit allowed with a warning, a default limit applied at account creation, and the per-user ~/src images and the fixed clone-admission rules removed. The result is an ADR superseding ADR 0005's storage policy.
+
+## Resolution
+
+### 2026-10-05T11:25:57Z · @jari
+
+Design agreed and recorded as ADR 0012; implementation tracked as one issue, @implement-user-storage-quotas, unscheduled by Jari's choice.
