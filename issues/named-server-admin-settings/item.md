@@ -1,6 +1,6 @@
 ---
 created: 2026-10-02
-updated: 2026-10-04
+updated: 2026-10-05
 type: feature
 reporter: jari
 status: open
@@ -10,6 +10,7 @@ source_ref: chat:2026-10-02:ui-observations:1-3
 related: ['@server-administration-cli']
 lane: server-admin
 lane_seq: 10
+preparation: ready
 ---
 
 # Named server and separate administrator settings with user roles

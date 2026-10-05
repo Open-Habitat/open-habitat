@@ -1,6 +1,6 @@
 ---
 created: 2026-10-03
-updated: 2026-10-03
+updated: 2026-10-05
 type: task
 status: open
 priority: normal
@@ -8,6 +8,7 @@ related: ['@named-server-admin-settings']
 lane: server-admin
 lane_seq: 20
 blocked_by: ['@named-server-admin-settings']
+preparation: ready
 ---
 
 # Provide a privileged server administration CLI

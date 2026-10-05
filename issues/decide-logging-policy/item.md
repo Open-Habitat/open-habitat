@@ -11,7 +11,7 @@ blocked_by: ['@rewrite-architecture-docs']
 commits:
 - hash: 11b94304ad7e7284551e4374d9fc0f8553557463
   summary: 'docs: rewrite the architecture as a present-tense system description'
-preparation: ready
+preparation: pending
 ---
 
 # Decide and implement the logging policy

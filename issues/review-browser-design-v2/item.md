@@ -1,13 +1,15 @@
 ---
 created: 2026-09-30
-updated: 2026-10-03
+updated: 2026-10-05
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 related: ['@assemble-browser-redesign-handoff']
 lane: design-review
 collision: [design-system/, docs/, web/src/components/Conversation.tsx]
+closed: 2026-10-05
+closed_by: pi
 ---
 
 # Assess the UI foundation against browser design
