@@ -3,15 +3,17 @@ created: 2026-10-03
 updated: 2026-10-05
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
-related: ['@design-logging-policy', '@rewrite-architecture-docs']
+related: ['@design-logging-policy', '@rewrite-architecture-docs', '@implement-diagnostic-emitter', '@correlate-diagnostics']
 lane: logging-design
 blocked_by: ['@rewrite-architecture-docs']
 commits:
 - hash: 11b94304ad7e7284551e4374d9fc0f8553557463
   summary: 'docs: rewrite the architecture as a present-tense system description'
 preparation: pending
+closed: 2026-10-05
+closed_by: jari
 ---
 
 # Decide and implement the logging policy
@@ -48,6 +50,15 @@ result or prevent the underlying operation from completing. Product behaviour
 belongs in this repository; concrete service access, retention and ingress
 settings belong to Fleetrepo.
 
+## Outcome
+
+The policy is decided in
+[ADR 0013](../../docs/decisions/adr-0013-diagnostic-logging.md) and the
+[implementation plan](implementation-plan.md) is the build order.
+Implementation is @implement-diagnostic-emitter, then
+@correlate-diagnostics; the test-server journal configuration is Fleetrepo's
+`nah-diagnostic-log-access`.
+
 ## Completion
 
 An operator can diagnose representative failures and trace relevant actions.
@@ -65,3 +76,9 @@ Jari 2026-10-04: preparation.md:n lokitussuositus hyväksytty sellaisenaan. Seur
 ### 2026-10-05T11:54:13Z · @claude
 
 Jari 2026-10-05: the four open questions in the implementation plan are settled as recommended and recorded in ADR 0013: attempt ID crosses the broker and daemon channels, a separate per-failure support reference, root/operator/owner reader model, root peer as actor for control actions, 7/30 day retention as the starting figures. Implementation may begin.
+
+## Resolution
+
+### 2026-10-05T11:59:15Z · @jari
+
+Decided in ADR 0013; implementation split into @implement-diagnostic-emitter and @correlate-diagnostics, deployment into Fleetrepo nah-diagnostic-log-access.
