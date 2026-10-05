@@ -98,3 +98,7 @@ Keep the read-only state in the returned navigation draft for now. Planned chang
 ### 2026-10-05T08:53:29Z · @jari
 
 Jari approved: a newly observed conversation error belongs in “Odottaa sinua” until the person visits the conversation. Visiting clears its unread-attention placement, not the underlying error indication; a seen error remains visible on the conversation row without permanently taking the top of the return view.
+
+### 2026-10-05T08:58:02Z · @jari
+
+Jari approved the returned navigation and settings composition as the direction for the maintained design. This is not approval of the response’s contradictory example-state meanings or its suggested component prop API. Revise the draft examples to the decisions recorded here and in @refine-agent-status; use the resulting visual design, not prototype API guesses, to guide production components.

@@ -2,7 +2,9 @@
 
 Response: `Navigaatio ja asetukset -vedos.zip` received 2026-10-05, based on the package at `7364709396830ebf8fdb9a4b5fa9fc29c3c402e9`. Source request: [REQUEST.md](REQUEST.md). This is a review of the proposal, not implementation acceptance. The returned archive is on Jari's seat; the draft has not yet replaced the maintained `design-system/drafts/` set.
 
-## Keep as the composition to review
+## Approved direction for composition
+
+Jari agreed to use the returned navigation and settings layout as the basis for the next design revision. This does not approve its conflicting sample-state meanings or bind production to its suggested component prop API. Correct the examples to the decisions below before replacing the maintained drafts.
 
 - One expanded rail and phone drawer sharing navigation content, with a reduced collapsed rail. Separate current location from agent status and attention; make workspace name and disclosure separate targets.
 - A workspace page with name, path, start-conversation action and conversation lists, filling the gap named in the request.
@@ -24,4 +26,4 @@ Response: `Navigaatio ja asetukset -vedos.zip` received 2026-10-05, based on the
 - Missing examples remain: actual profile image, pending OpenAI sign-in, failed logout, and reproducible drawer/collapsed/empty-filter captures. A first local Chromium rendering confirmed that the returned HTML opens and showed its default 1440 px light home view alongside the existing `Selainpolku.dc.html` home view; its settings page also rendered at desktop and simulated 390 px phone width. The inputs use different synthetic conversations, so these screenshots are **not** a matched visual comparison: the old draft leads with running/recent, whereas the response leads with two `valmis` cards and three error cards before running. With Jari's corrected meaning of `valmis`, the response's five-card attention block is not an acceptable target. Compare matching synthetic states in desktop/phone and light/dark before replacing the maintained drafts; HTML diff alone is not visual evidence. No matched comparison has been recorded here yet.
 - Long-name truncation, background list reordering during focus, confirmed Git data for the workspace page and the detailed presentation of a native Pi question remain to be settled or verified.
 
-No new feature, token or component API is accepted solely because the response proposes it. Implementation issues and the maintained design are updated after this handoff review is resolved with Jari.
+No new feature, token or component API is accepted solely because the response proposes it. Incorporate the approved composition into the maintained design after its examples and matched-state visual comparison have been reconciled; implementation issues follow that design, not the prototype's suggested prop signatures.
