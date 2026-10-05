@@ -2,12 +2,14 @@
 created: 2026-10-04
 updated: 2026-10-05
 type: task
-status: open
+status: done
 priority: normal
-related: ['@rethink-project-docs']
+related: ['@rethink-project-docs', '@persist-browser-sign-in']
 labels: [human-review]
 lane: planning
 preparation: reviewing
+closed: 2026-10-05
+closed_by: jari
 ---
 
 # Design durable browser sign-in
@@ -65,4 +67,10 @@ later.
 ## Acceptance Criteria
 
 - [x] Jari has agreed in this issue how sign-in is kept and how long it lasts.
-- [ ] The implementing work is filed as its own issue, so that afterwards a person is not asked to sign in again during ordinary use or after a gateway restart or upgrade.
+- [x] The implementing work is filed as its own issue, so that afterwards a person is not asked to sign in again during ordinary use or after a gateway restart or upgrade.
+
+## Resolution
+
+### 2026-10-05T11:29:29Z · @jari
+
+Decision agreed with Jari 2026-10-05; implementation is @persist-browser-sign-in.
