@@ -70,9 +70,3 @@ evidence belongs in `visual-acceptance.md`; Jari's visual verdict remains
 separate from functional completion, as described in
 [the working agreement](../../AGENTS-WORKFLOW.md). Updated durable documentation
 and component examples describe the delivered behavior.
-
-## Decisions
-
-### 2026-09-30T17:37:53Z · @claude
-
-Rethink-night 30.9.: rethink-instructions; vaiheen 1 malli gpt-6-astra ja faktantarkistuksen malli claude-opus-5-5. Ilman Jaria valitsin toteuttajaohjeen tiivistämisen tarkoitukseen, natiivin gh/Git-rajan ja testinäytön säilyttämisen sekä myöhemmän kuvaporttipäätöksen soveltamisen. Faktantarkistus poisti vanhentuneet M4/A6-tunnukset (A6 tarkoittaa designissa muuta), erotti jo toteutetun katalogin ja kloonauksen tämän työn luonti-/push-kytkennästä, täsmensi paikallisen gh-uloskirjautumisen ja GitHub-pään revokaation eron, lisäsi v2-designin sekä Jarin oletussuodatuspäätöksen ja rajasi kuvat synteettiseen labiin. Aiempi testing-kuvaportti on myöhemmällä päätöksellä poistettu; ei uutta ristiriitaa Jarin voimassa olevaan päätökseen. Frontmatter ja ajastus jätettiin ennalleen.
