@@ -3,13 +3,14 @@ created: 2026-10-03
 updated: 2026-10-05
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 related: ['@design-control-states']
 blocked_by: ['@design-control-states']
 lane: pi-event-design
 lane_seq: 10
 preparation: pending
+closed: 2026-10-05
 ---
 
 # Design every Pi event block
@@ -95,5 +96,11 @@ follow the same designer-led approach.
 ## Acceptance Criteria
 
 - [x] The delivered package accounts for the catalogue's visible content and relevant states from Pi's typed data, including the unknown-content fallback; its brief is kept in this issue.
-- [ ] The returned designs cover every visible block and its relevant states on desktop and phone in both themes, using the shared control and agent-state design.
-- [ ] The handoff is incorporated into the current design sources, and follow-up work covers production rendering, discoverable block-library examples and comparison with the designs.
+- [x] The returned designs cover every visible block and its relevant states on desktop and phone in both themes, using the shared control and agent-state design.
+- [x] The handoff is incorporated into the current design sources, and follow-up work covers production rendering, discoverable block-library examples and comparison with the designs.
+
+## Resolution
+
+### 2026-10-05T14:19:15Z · @issuectl
+
+Suunnittelusuunta ja neljä tuotevalintaa vahvistettiin; sovitettu vedos on nykyinen design, mutta host-faktat ja vastaavat labivertailut ovat rajattu jatkotyöhön @apply-pi-block-design.

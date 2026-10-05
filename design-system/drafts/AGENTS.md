@@ -9,10 +9,11 @@ versions. For navigation, the return view, workspace page, and settings, the
 current reference is `Navigaatio ja asetukset.dc.html`. Shared control interaction
 states and the agent-state presentation are in `Kontrollitilat ja agentin
 tila.dc.html`; states that require facts the host does not yet provide are
-conditional examples, not current production behavior. Older roundups
-(`Selainpolku`, `Puhelin`, `Tummat näkymät`) remain references for conversation
-and other views, but their overlapping navigation and settings examples are not
-the current target. Future packages should select by view ownership instead of
+conditional examples, not current production behavior. `Pi-keskustelun lohkot.dc.html` is the current conversation-content reference;
+its resolved-question history and other fact-dependent examples are conditional
+until native evidence exists. Older roundups (`Selainpolku`, `Puhelin`, `Tummat
+näkymät`) remain context for other views, but their overlapping navigation,
+settings and conversation-block examples are not competing targets. Future packages should select by view ownership instead of
 presenting the older examples as competing designs.
 
 The HTML files are simulated prototypes, including their state controls and

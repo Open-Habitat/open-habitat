@@ -93,10 +93,35 @@ viestin ero. Jonot ovat tiiviitä rivejä, joilla on yhteinen otsake ja koko
 jonon tyhjennys. Hylätty lähetys jättää tekstin korjattavaksi; epävarman
 lähetyksen yhteydessä tekstin voi ottaa talteen.
 
-Keskustelulohkojen esitys tekee käyttäjälle tarkoitetun sisällön luettavaksi
-samalla tavalla historiassa ja reaaliajassa. Salattua thinking-dataa tai
-teknisiä payloadeja ei esitetä viesteinä. Tuntematon sisältö saa hillityn
-esityksen.
+[Pi-keskustelun lohkot](drafts/Pi-keskustelun%20lohkot.dc.html) näyttää
+sovitun sisältöjen esityskielen. Pi:n järjestetty teksti, luettava ajattelu
+ja työkalut muodostavat yhden käyttäjän käynnistämän työn. PI-otsake ei toistu
+jokaisen osan edessä. Työkalun kutsu, eteneminen ja tallennettu tulos ovat
+yksi avattava käyttö samassa kohdassa; `toolCallId` yhdistää ne. Käyttäjän
+paikallinen komento erottuu Pi:n pyytämästä bash-työkalusta. Peräkkäisten
+työkalujen ryhmittely ja `edit`-diffi ovat myöhempää työtä; siihen asti edit
+näyttää sallitut argumentit. Pitkä käyttäjän viesti supistuu kahdeksaan
+riviin, mutta sen saa auki kokonaan.
+
+Keskustelun sisältö esitetään samalla tavalla historiassa ja reaaliajassa.
+Esikatselun raja, Pi:n vahvistettu katkaisu, pituusraja ja keskeytys
+näytetään toisistaan erillisinä. Rajattua sisältöä voi lukea paikallaan
+rajatulla natiivilohkoluvulla. Bash-tuloksen esikatselu alkaa lopusta ja
+muiden työkalujen alusta; käyttäjän Alku/Loppu-valinta muistetaan
+**työkalukohtaisesti**, mutta se ei muuta itse tulosta. Ajattelu pysyy
+luettavana ja valmistuttuaan supistuu. Salattua thinking-dataa, piilotettua
+laajennussisältöä tai teknisiä payloadeja ei esitetä viesteinä. Tuntematon
+sisältö saa hillityn esityksen ilman raaka-JSONia.
+
+Työn asettuminen näkyy vasta vahvistetun Pi-havainnon perusteella;
+`agent_end` ei yksin riitä, sillä sitä voi seurata automaattinen yritys.
+Malli, käyttö ja pysähtymissyy liittyvät niitä tuottaneeseen
+assistenttiviestiin, eivät koko työn keksittyyn yhteissummaan. Virhettä tai
+exit-koodia ei päätellä raakatekstistä. Saapuva kysymys näkyy elävänä ja
+avautuu nykyiseen vastausdialogiin. Ratkenneelle kysymykselle ei luvata
+pysyvää historiakirjausta, ellei natiivi tallenne vahvista sitä; pelkkä
+selaimen tapahtumaloki ei ole toinen keskusteluhistoria. Ehdolliset
+esimerkit vedoksessa eivät ole toteutettuja host-faktoja.
 
 Pi-kysymysten vastausdialogit on toteutettu, mutta niiden kuuluminen
 sovittuun tuotelaajuuteen on edelleen

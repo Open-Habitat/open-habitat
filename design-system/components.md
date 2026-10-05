@@ -56,7 +56,18 @@ työkalurivin avaajan, jonolinkit ja vain luku -alatunnisteen) sekä yhteiset
 rivi- ja toimintoriviasettelut. @refine-agent-status päättää agentin tilojen
 merkitykset; tämä kontrollityö ei tulkitse niitä uudelleen.
 
-Designer suunnittelee keskustelulohkot ja niiden esitystilat. Kunkin lohkon
-merkityksen, käsittelijän ja katalogiesimerkin pitää löytyä yhdessä;
+[Pi-keskustelun lohkot](drafts/Pi-keskustelun%20lohkot.dc.html) on näkyvien
+Pi-sisältöjen suunnittelutavoite; nykyinen `Conversation.tsx` ja
+`WorkingProgress.tsx` ovat vielä väliaikainen toteutus. Työkalun kutsu,
+elävä eteneminen ja tallennettu tulos tarvitsevat yhden saman avattavan
+esityksen. Historialla ja elävällä näkymällä on yhteiset tulkinnat myös
+paikalliselle komennolle, ajattelulle, tiivistelmille ja tuntemattomille
+lohkoille. Kunkin lohkon merkityksen, käsittelijän, designin ja katalogin
+esimerkin pitää löytyä yhdessä. Vedoksen ehdottamat komponenttinimet
+(esimerkiksi `ToolUse`, `TurnFooter` ja `BlockReader`) eivät määrää tuotannon
+prop-API:a eivätkä oikeuta uuden pysyvän kysymyshistorian tekemiseen; hostin
+vahvistetut faktat ja käytettävissä olevat natiivilohkoluvut rajaavat esitystä.
+[@design-pi-event-blocks](../issues/design-pi-event-blocks/item.md) tallentaa
+sovituspäätökset. Aiempi
 [@raw-thinking-history-blocks](../issues/raw-thinking-history-blocks/item.md)
-kokoaa tämän työn. Näkymän tarvitsema uusi komponentti täydentää samaa kirjastoa.
+selitti alkuperäisen oireen ja on suljettu vanhentuneena.

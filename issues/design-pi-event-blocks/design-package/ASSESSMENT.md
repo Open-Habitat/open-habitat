@@ -1,5 +1,7 @@
 # Returned Pi-block design — preliminary assessment
 
+This is the pre-decision review. Jari confirmed the four choices in point 4 on 5 October 2026 (including **per-tool**, not per-result, Alku/Loppu memory) and authorized correcting the native-fact boundaries. [The reconciled handoff](HANDOFF.md) and [current draft](../../../design-system/drafts/Pi-keskustelun%20lohkot.dc.html) now supersede this file's pending recommendation; the limitations and evidence gaps recorded below still apply. The original response is preserved in [RETURNED-HANDOFF.md](RETURNED-HANDOFF.md).
+
 Received from Jari as `Pi-keskustelun lohkovedos.zip` on 2026-10-05. Compared with [the brief](REQUEST.md), [package record](RESULT.md), [Pi event catalogue](../../catalog-pi-events/analysis.md), [typed-delivery result](../../carry-typed-pi-events/result.md) and current design sources. The archive contains one editable prototype, a handoff and proposed design/component/token changes; it has no packaged fonts or `support.js` but can use the existing draft siblings. Its six entries pass CRC. The prototype opens in an isolated Chromium context with the existing shared support and bundled fonts; no browser page errors on the default view. This is **review of a proposal**, not acceptance or implementation. No returned draft, CSS or component API has replaced the current references.
 
 ## Direction worth keeping
