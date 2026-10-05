@@ -132,7 +132,24 @@ korvaa hyväksytyn suunnan mukaisesti työtilahaun kaiken pudottavan rajan
 erissä käsittelyllä. Nykyistä 20 GiB:n tai 512 merkinnän rajaa ei hyväksytty
 tuotetavoitteeksi. Toteutusta ei muutettu tällä dokumenttikierroksella.
 
-Seuraava käsiteltävä tiedosto on `docs/architecture/conversations.md`.
+`conversations.md` käsitelty Jarin hyväksymällä rajauksella 5.10.2026.
+Sivu kuvaa keskustelun identiteetin, ohjauksen, käynnistyksen, yhden kirjoittajan
+lukituksen ja jatkamisen. Komennon hyväksyntä erotettu vuoron valmistumisesta.
+Jatkamisen työtilatarkistus täsmennetty tunnisteen ja polun tarkistukseksi;
+toteutus ei säilytä hakemiston pysyvää tiedostojärjestelmäidentiteettiä.
+Neljän Pi-prosessin ja 128 kahvan rajat kuvattu nykyisenä toteutuksena.
+Järjestelmäkutsu-, tapahtuma- ja reittiluettelot jätetty toteutukseen ja niitä
+käsitteleville sivuille. Taskfleetin hyväksytty integraatio erotettu nykytilasta.
+
+**Jatkokäsittely: Pi-kysymysten vastausdialogit.** Selain näyttää jo vastaus-
+ja peruutusohjaimet (`web/src/app/PiQuestion.tsx`, käytössä
+`BrowserConversation.tsx`:ssä), ja daemon käsittelee vastaukset.
+@build-agent-control ja @complete-conversation-ui rajaavat nämä dialogit
+sovitun laajuuden ulkopuolelle. Jari hyväksyi nykyisen toteutuksen rehellisen
+kuvaamisen ja eron kirjaamisen jatkokäsittelyyn; dialogien säilyttämistä tai
+poistamista ei ratkaistu. Tuotekoodia tai sovittua laajuutta ei muutettu.
+
+Seuraava käsiteltävä tiedosto on `docs/architecture/events-and-recovery.md`.
 
 ## Lokituskäytännön tehtävä 3.10.2026
 

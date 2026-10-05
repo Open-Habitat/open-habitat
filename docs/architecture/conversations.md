@@ -1,172 +1,118 @@
 # Conversations
 
-A conversation is a Pi session: one JSONL file that Pi writes under the user's
-home, identified by Pi's own session ID. The browser shows two kinds. A
-browser-controlled conversation is one whose Pi process the daemon started and
-still talks to over RPC. Every other session file, whether started in a
-terminal or left behind by an earlier browser session, is a readable history.
-The person can send messages only to the first kind, and can deliberately turn
-an ended browser conversation back into one.
-
-## Identity and location
-
-Pi stores sessions under `~/.pi/agent/sessions/`. Each file begins with a header
-naming the session ID and the working directory it was started in. The daemon
-walks that tree with bounds, refuses symlinks, reads only the header during
-discovery and gives each conversation the identifier `pi:<session id>`. A
-session belongs to a workspace when its header `cwd` is exactly
-`~/src/<name>` for a directory that discovery confirmed. Two files claiming the
-same ID make that ID unavailable rather than letting either one route.
-
-## Starting a conversation
+A conversation is a Pi session, identified by Pi's session ID and saved in a
+JSONL file in the user's home. The daemon starts Pi in a workspace and controls
+it through RPC. The browser sends commands through the daemon and follows the
+response while Pi writes its own history. Closing the browser leaves Pi
+working; after the daemon ends, the person can explicitly continue a browser
+conversation from its saved history.
 
 ```mermaid
-sequenceDiagram
-  autonumber
-  participant B as Browser
-  participant D as Daemon
-  participant L as ~/pi-owners/<id>.lock
-  participant Pi as Pi (child)
-  B->>D: POST /api/v1/conversations {workspace_id}
-  D->>D: open ~/src/<name> beneath home, no symlinks or mounts
-  D->>L: create, flock; record browser origin (workspace, cwd)
-  D->>Pi: node .../dist/bundle/cli.js --mode rpc --session-id <id>
-  Note over Pi: cwd = workspace, HOME = user home, lock fd inherited
-  D-->>B: {agent_id: pi:<id>, state: idle}
-  B->>D: POST .../send {command_id, text}
-  D->>Pi: RPC prompt
-  Pi-->>D: correlated response
-  D-->>B: receipt accepted
+flowchart LR
+  B["Browser"] -->|"start, send, interrupt, continue"| D["User's daemon"]
+  D -->|"RPC"| P["Pi child in workspace"]
+  P -->|"writes"| H["Native session history"]
+  T["Pi in terminal"] -->|"writes its own sessions"| H
+  H -->|"history reads"| D
+  D -->|"status, history, live events"| B
 ```
 
-The daemon opens the workspace directory with `openat2` beneath the home,
-without following symlinks or crossing mounts, and holds that descriptor for
-the child's working directory. It generates a fresh UUID and takes an advisory
-lock on `~/pi-owners/<id>.lock`, a private 0600 file that is never unlinked,
-because unlinking would let a second lock on a new inode coexist with the old
-owner. The lock file also records that the browser started this conversation
-and in which workspace. Pi is started from the pinned release with
-`--session-id` so it creates a new session rather than reopening one, with a
-minimal environment, the user's home, the lock descriptor inherited, its own
-process group and a kill signal tied to the daemon's death.
+## Identity and control
 
-A daemon serves at most four live Pi children at once and remembers at most
-128 conversation handles, including ended ones kept so a lost reply can still
-be looked up.
+Pi stores sessions under `~/.pi/agent/sessions/`. The daemon discovers them
+from their file headers and exposes the native session ID as `pi:<session id>`.
+The working directory recorded in the header associates a conversation with
+its [workspace](workspaces.md). Duplicate session IDs are unavailable because
+the daemon cannot choose which file represents the conversation.
 
-## Controlling it
+A conversation belongs to the Unix user. Multiple browsers signed in as that
+person reach the same daemon and Pi process. Control requires a live RPC
+connection from the daemon to its child; readable history alone does not
+provide it.
 
-| Request | Effect | Reply |
-|---|---|---|
-| `send` | prompt Pi with a message | receipt for the `command_id` |
-| `steer` | add to Pi's steering queue, delivered after the current tool call | receipt |
-| `follow_up` | add to Pi's follow-up queue, delivered when the turn settles | receipt |
-| `clear_queue` | empty both queues | the removed texts in their original groups and order |
-| `abort` | ask Pi to abort the current turn | receipt; the process keeps running |
-| `stop` | close Pi's RPC channel | `termination_unknown`; the handle becomes `uncertain` |
-| `question` | answer or cancel one pending extension dialog by its request ID | always `uncertain` |
-| `status` | observe state, queues, settlement, pending question, history hint | JSON, no side effects |
-| `continue` | re-admit an ended browser conversation | see below |
+Terminal conversations are readable and their open views follow changes to
+the session files. Pi's RPC interface cannot attach to a running terminal
+session, and the host does not take it over. The agreed
+[Taskfleet integration](../../issues/manage-agent-worktrees/item.md) will bring
+worktree agents into browser control by having the daemon start their Pi
+processes; that integration is not implemented yet.
 
-Every write carries a client-generated UUID `command_id`. A receipt is
-`pending` until Pi's correlated RPC response arrives, then `accepted` or
-`rejected`; if the daemon's event buffer overflowed or the process ended first,
-it becomes `uncertain`. `accepted` means Pi took the message, not that the
-turn finished. Receipts live in the daemon's memory only. After a daemon
-restart a missing receipt is not a rejection, and the browser never resends a
-message whose outcome it does not know, because the same work could run twice.
+## Starting Pi and keeping one writer
 
-Pi's extension dialogs arrive as `extension_ui_request` events. Dialogs that
-ask something become the conversation's pending question, carried as text with
-its method and options; visible notifications and keyed status/widget updates
-become `extension.visible` events that replace or clear their previous value.
-The daemon consumes the request ID before writing the answer to Pi, and since
-Pi returns no correlated receipt for it, even a successful HTTP
-reply is `uncertain`. The browser records the attempt before sending and never
-repeats it.
+The daemon resolves the selected workspace, opens its directory and starts Pi
+there as the user's process, with their home and native configuration. It
+assigns a fresh session ID so that starting a conversation creates new history.
 
-## Turn lifecycle
+Before launch, the daemon acquires a lock for that session and records its
+browser origin, workspace ID and working-directory path. The lock coordinates
+browser writers: it remains held while Pi runs, including through a daemon
+crash because Pi inherits it. Terminal Pi processes do not participate in this
+lock, which is another reason their histories are not admitted for browser
+control.
 
-```mermaid
-stateDiagram-v2
-  [*] --> idle: created or continued
-  idle --> running: agent_start / turn_start
-  running --> running: message_update, tool start and end
-  running --> settling: agent_settled observed
-  settling --> idle: native entries read from JSONL, turn.settled published
-  idle --> stopping: stop
-  running --> stopping: stop
-  stopping --> uncertain: RPC closed
-  running --> uncertain: process exited or events lost
-  idle --> uncertain: process exited
-  uncertain --> [*]: history remains readable
-```
+The current implementation allows four live Pi children per daemon and retains
+up to 128 conversation handles, including ended conversations whose command
+receipts remain available. Reaching either applicable limit prevents another
+start. These are implementation limits; native session files remain the
+history source independently of the retained handles.
 
-The daemon translates Pi's RPC events into journal events as they arrive:
-text and thinking deltas, streamed tool arguments, tool execution progress,
-local-command output, lifecycle and retry signals, queue changes, questions and
-visible extension UI updates. Arguments and tool output are bounded inert text
-previews; arbitrary provider details and raw errors never enter the journal.
-When Pi reports `agent_settled`, the daemon reads the session file, confirms the new assistant
-entry by its native key and publishes `turn.settled` with that key. If the key
-cannot be verified, the settlement is reported with `state: unknown` and the
-browser does not show a confirmed completion. Settled does not mean the answer
-was good, only that Pi stopped.
+## Commands and progress
 
-If Pi's model call fails with an authentication error, the daemon classifies
-it as the fixed code `pi_auth_failed` in the conversation's status and never
-forwards the provider's text. The browser then offers the Pi sign-in step
-without resending anything.
+The daemon supports sending a prompt, steering an active turn, queueing a
+follow-up and clearing those queues. Aborting asks Pi to interrupt the current
+turn while keeping the process available for another message. Stopping closes
+the RPC channel. [HTTP API](http-api.md) lists the routes and message contracts.
 
-## One writer
+Message commands have client-generated IDs so the browser can look up their
+receipts after a lost reply. A receipt distinguishes pending, accepted,
+rejected and uncertain outcomes. Acceptance means Pi accepted the command;
+it does not establish that the turn finished. Receipts live in daemon memory,
+so a missing receipt after restart cannot establish rejection. The browser
+does not automatically resend an uncertain command, because Pi may already
+have acted on it.
 
-A conversation belongs to its Unix user, not to a browser session. Any valid
-login of that user controls it, and another user's requests route to another
-daemon that cannot see it. Inside the user's account the lock file is the
-fence: the daemon holds it while its child runs, and the child inherits the
-descriptor so a daemon crash does not release the fence while Pi is still
-writing. The lock is not a census of terminal Pi processes or detached tools;
-a Pi started in tmux does not take it, which is why the browser treats terminal
-histories as read-only rather than attempting control.
+Pi's events carry response text, thinking, tool progress and activity to the
+browser. When Pi reports that it has settled, the daemon reads native history
+and associates completion with a saved assistant entry. If that entry cannot
+be verified, completion remains unknown. This establishes that the turn
+settled, not the quality of its result. Authentication failures are reported
+with a fixed status code so the browser can offer Pi sign-in without replaying
+the message. [Events and recovery](events-and-recovery.md) describes how live
+updates and saved history reach the browser and recover after a disconnection.
 
-Terminal sessions are readable in the browser from the same files, and an
-open view follows the file as the terminal Pi appends to it, because the
-daemon watches the session tree and tells every connected browser to re-read.
-Pi's RPC mode cannot attach to a running terminal TUI, so there is no takeover.
-[Events and recovery](events-and-recovery.md) describes the watcher.
+The implementation also displays pending Pi extension questions and provides
+answer and cancel controls. Those responses have no correlated Pi receipt,
+so even a successful HTTP reply leaves their outcome uncertain. The browser
+records the attempt before sending and does not repeat it. These controls go
+beyond the agreed display-only scope in
+[agent control](../../issues/build-agent-control/item.md); the
+[document review](../../issues/rethink-project-docs/item.md) records that
+implementation/scope difference for joint follow-up.
 
 ## Ending and continuing
 
-Closing the browser changes nothing; Pi keeps working and the daemon keeps the
-handle. `stop` closes the RPC channel and leaves the outcome of any detached
-tool unknown. When the child exits, the handle stays as an `uncertain`
-tombstone and the session file remains a readable history.
+Browser or gateway loss leaves Pi running. A daemon restart loses its handles
+and receipts, and systemd cleans up its service processes, including Pi.
+An independently detached tool may outlive that cleanup or an interruption;
+the host does not claim that all effects of the previous work have stopped.
+Native history remains readable.
 
-A daemon restart loses every handle. systemd stops the daemon's control group,
-so a running Pi child does not survive it either, although a tool that detached
-from the group may. After the restart the daemon knows only what the files say:
-the histories are readable, nobody controls them, and the person must ask
-explicitly to continue one.
+Continuing an ended browser conversation is an explicit action. The daemon
+checks that its previous Pi child has exited, the session lock is available,
+and the recorded browser origin identifies a discoverable workspace with the
+same ID and working-directory path. This checks the current path association;
+it does not preserve a filesystem identity across directory replacement.
+The daemon also requires one readable native session with the matching ID and
+working directory, and stable content across repeated reads.
 
-Continuation is explicit and proven twice. Opening an ended browser
-conversation asks `GET .../status?continuation=true`, which runs the proof and
-releases the lock immediately. `POST .../continue` runs the same proof and
-keeps the lock through the new child's start. The proof succeeds, with
-`eligible`, only when all of these hold:
+The browser probes eligibility when opening an ended conversation. The daemon
+repeats these checks on the continuation request and holds the lock through
+launch, so a successful probe alone does not reserve a writer. If the checks
+succeed, a new Pi child opens the existing session file. The earlier command's
+outcome remains uncertain and no message is resent. If ownership or history
+cannot be established, the conversation stays readable without control.
 
-- no live handle for the ID exists in this daemon;
-- the lock can be acquired without waiting, meaning no inherited child still holds it;
-- the lock file carries a browser origin marker, so the history was started from the browser;
-- the recorded workspace still resolves to the same directory and `cwd`;
-- exactly one readable session file carries the ID, and reading it twice gives the same content.
+Implementation: `internal/daemon` owns discovery, RPC control, writer locks and
+continuation; `web/src/app` owns browser commands and their displayed outcomes.
 
-Otherwise the status reports `writer_present`, `read_only_history` or
-`unproven`, and `continue` answers with the matching 409 code. Concurrent
-proofs and continuations within one daemon queue for at most two seconds on a
-single permit; a timeout reports `unproven`, never a false writer. A successful
-continuation starts Pi with `--session <file>` on the existing history, seeds
-the already published entry keys so the next settlement does not replay old
-history into the event journal, and reports `prior_outcome: uncertain`: the
-previous turn's result is not inferred and no message is resent.
-
-Decisions behind this page: ADR 0001, ADR 0003.
+Decisions behind this page: ADR 0001, ADR 0003, ADR 0010.
