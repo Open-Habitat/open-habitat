@@ -11,37 +11,34 @@
 .primary {
   --i-bg: var(--ah-accent);
   --i-fg: var(--ah-on-accent);
-  --i-hover: var(--ah-accent-ink);
+  --i-hover: var(--ah-accent-hover);
   --i-hover-fg: var(--ah-on-accent);
-  --i-pressed: var(--ah-accent-soft);
-  --i-pressed-fg: var(--ah-accent-ink);
+  --i-pressed: var(--ah-accent-press);
+  --i-pressed-fg: var(--ah-on-accent);
 }
 .secondary {
   --i-bg: var(--ah-surface);
-  --i-border: var(--ah-line);
-  --i-hover: var(--ah-surface-2);
-  --i-pressed: var(--ah-accent-soft);
+  --i-border: var(--ah-line-strong);
+  --i-hover: var(--ah-surface-hover);
+  --i-pressed: var(--ah-surface-press);
 }
 .quiet {
   --i-fg: var(--ah-accent-ink);
-  --i-hover: var(--ah-accent-soft);
-  --i-pressed: var(--ah-accent-line);
+  --i-hover: var(--ah-surface-hover);
+  --i-pressed: var(--ah-surface-press);
 }
 .danger {
   --i-bg: var(--ah-err);
-  --i-fg: var(--ah-surface);
-  --i-hover: var(--ah-err-soft);
-  --i-hover-fg: var(--ah-err);
-  --i-pressed: var(--ah-err-line);
-  --i-pressed-fg: var(--ah-err);
+  --i-fg: var(--ah-on-err, #ffffff);
+  --i-hover: var(--ah-err-hover);
+  --i-pressed: var(--ah-err-press);
 }
 .dangerSubtle {
   --i-bg: var(--ah-err-soft);
   --i-border: var(--ah-err-line);
   --i-fg: var(--ah-err);
-  --i-hover: var(--ah-err-line);
-  --i-pressed: var(--ah-err);
-  --i-pressed-fg: var(--ah-surface);
+  --i-hover: var(--ah-err-soft-hover);
+  --i-pressed: var(--ah-err-soft-press);
 }
 .compact {
   min-height: 36px;
@@ -94,6 +91,8 @@
   cursor: pointer;
 }
 .nav {
+  --i-hover: var(--ah-surface-hover);
+  --i-pressed: var(--ah-surface-press);
   position: relative;
   display: grid;
   min-width: 0;

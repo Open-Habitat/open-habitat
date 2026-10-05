@@ -219,6 +219,7 @@ export interface AgentNavModel {
   activityShortLabel?: string;
   controlLabel: string;
   attentionLabel?: string;
+  operationLabel?: string;
   relativeTime?: string;
   selected?: boolean;
   depth?: number;
@@ -232,6 +233,7 @@ export function AgentNavItem({
   activityShortLabel,
   controlLabel,
   attentionLabel,
+  operationLabel,
   relativeTime,
   selected = false,
   depth = 0,
@@ -240,6 +242,7 @@ export function AgentNavItem({
 }: AgentNavModel) {
   const statusParts = [
     controlLabel,
+    operationLabel,
     stale ? "Tieto vanhentunut" : null,
     presence === "absent" ? "Ei enää löydy" : null,
   ].filter(Boolean);
@@ -264,19 +267,8 @@ export function AgentNavItem({
               ? stale
                 ? "Tieto vanhentunut"
                 : "Ei enää löydy"
-              : controlLabel === "Ohjaus ei tiedossa" ||
-                  controlLabel === "Ohjaus ei saatavilla"
-                ? controlLabel
-                : controlLabel === "Vain luku"
-                  ? "vain luku"
-                  : activityLabel === "Prosessi käynnissä"
-                    ? "työssä"
-                    : activityLabel === "Käynnissä terminaalissa"
-                      ? "terminaalissa"
-                      : activityShortLabel &&
-                          activityShortLabel !== "Tila ei tiedossa"
-                        ? activityShortLabel
-                        : ""
+              : (operationLabel ??
+                (controlLabel || activityShortLabel || activityLabel))
           }
         />
       </ListRow>
@@ -549,10 +541,7 @@ export function AgentHeader({
     onPress: () => void;
   };
 }) {
-  const visibleActivity =
-    activityLabel !== "Valmis" &&
-    activityLabel !== "Odottaa viestiä" &&
-    !(controlKind === "read-only" && activityKind === "unknown");
+  const visibleActivity = true;
   const visibleControl = controlKind === "read-only";
   return (
     <header className="ah-agent-header">
@@ -577,7 +566,8 @@ export function AgentHeader({
             animated={activityAnimated ? "running" : false}
             kind={activityKind}
           />
-        ) : visibleControl ? (
+        ) : null}
+        {visibleControl ? (
           <StatusMark label="Vain luku" tone="neutral" kind="read-only" />
         ) : null}
         <ControlButton

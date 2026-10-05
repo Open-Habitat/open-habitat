@@ -1,3 +1,4 @@
+import { agentPresentation } from "./agentPresentation";
 import { LinkRow } from "./ControlElements";
 import { Icon } from "./Icon";
 import { ListRow } from "./Primitives";
@@ -14,10 +15,7 @@ export interface ReturnConversation {
 }
 
 function isRunning(conversation: ReturnConversation) {
-  return (
-    conversation.process === "daemon_managed_live" ||
-    conversation.process === "terminal_observed_live"
-  );
+  return agentPresentation({ process: conversation.process }).running;
 }
 
 function ConversationGroup({
@@ -60,6 +58,13 @@ function ConversationGroup({
                         animated="running"
                       />
                     ) : null}
+                    <StatusMark
+                      label={
+                        agentPresentation({ process: conversation.process })
+                          .activityLabel
+                      }
+                      kind="unknown"
+                    />
                     {!conversation.browserSession ? (
                       <span>Vain luettavissa</span>
                     ) : null}

@@ -1,3 +1,4 @@
+import { agentPresentation } from "../components/agentPresentation";
 import { AccountShelf, WorkspaceRail, WorkspaceSection } from "../components";
 import type { Session } from "./conversations";
 import {
@@ -7,31 +8,6 @@ import {
 import type { Snapshot, Workspace } from "./snapshot";
 import type { RootState } from "./store";
 
-function agentProcessLabel(process: string): string {
-  return (
-    (
-      {
-        daemon_managed_live: "Prosessi käynnissä",
-        terminal_observed_live: "Käynnissä terminaalissa",
-        confirmed_exited: "Ei käynnissä",
-        not_observed: "Prosessia ei havaittu",
-        stale: "Tieto vanhentunut",
-      } as Record<string, string>
-    )[process] ?? "Prosessin tila ei tiedossa"
-  );
-}
-function agentControlLabel(control: string): string {
-  return (
-    (
-      {
-        read_only: "Vain luku",
-        transfer_possible: "Siirrettävissä",
-        unavailable: "Ohjaus ei saatavilla",
-        unknown: "Ohjaus ei tiedossa",
-      } as Record<string, string>
-    )[control] ?? ""
-  );
-}
 export function sourceLabel(state: string) {
   return (
     (
@@ -174,32 +150,31 @@ export function WorkspaceRailView({
                 ? `/workspaces/${w.workspace_id}?conversation=${a.agent_id}`
                 : `/agents/${a.agent_id}`,
               title: a.title.display,
-              activityLabel:
-                metadata.statuses.has(a.agent_id) &&
-                !metadata.staleStatuses.has(a.agent_id)
-                  ? ((
-                      {
-                        idle: "Valmis",
-                        pending: "Odottaa kuittausta",
-                        accepted: "Pi työskentelee",
-                        rejected: "Viesti hylättiin",
-                        uncertain: "Tila epävarma",
-                        stopping: "Pysäytetään",
-                      } as Record<string, string>
-                    )[metadata.statuses.get(a.agent_id)?.state ?? ""] ??
-                    agentProcessLabel(a.process))
-                  : agentProcessLabel(a.process),
-              activityShortLabel:
-                agentProcessLabel(a.process) === "Prosessin tila ei tiedossa"
-                  ? "Tila ei tiedossa"
-                  : undefined,
-              controlLabel: daemonSessions.some(
-                (s) =>
-                  s.agent_id === a.agent_id &&
-                  s.workspace_id === w.workspace_id,
-              )
-                ? ""
-                : agentControlLabel(a.control),
+              ...(() => {
+                const presentation = agentPresentation({
+                  process: phase === "stale" ? "stale" : a.process,
+                  control: daemonSessions.some(
+                    (s) =>
+                      s.agent_id === a.agent_id &&
+                      s.workspace_id === w.workspace_id,
+                  )
+                    ? "writable"
+                    : a.control,
+                  command:
+                    metadata.statuses.has(a.agent_id) &&
+                    !metadata.staleStatuses.has(a.agent_id)
+                      ? metadata.statuses.get(a.agent_id)?.state
+                      : undefined,
+                  connectionLost: phase === "stale",
+                });
+                return {
+                  activityLabel: presentation.activityLabel,
+                  activityShortLabel: presentation.activityShortLabel,
+                  controlLabel: presentation.controlLabel,
+                  operationLabel: presentation.operationLabel,
+                  attentionLabel: presentation.attentionLabel,
+                };
+              })(),
               selected:
                 a.agent_id === selectedAgentId ||
                 (selectedId === w.workspace_id &&

@@ -1,3 +1,4 @@
+import { agentPresentation } from "../components/agentPresentation";
 import { useEffect, useState } from "react";
 import {
   AgentHeader,
@@ -344,23 +345,22 @@ export function BrowserConversation({
                 : undefined
             }
             activityLabel={
-              current && !statusStale
-                ? ({
-                    idle: "Valmis",
-                    pending: "Odottaa kuittausta",
-                    accepted: "Pi työskentelee",
-                    rejected: "Viesti hylättiin",
-                    uncertain: "Tila epävarma",
-                    stopping: "Pysäytetään",
-                  }[current.state] ?? "Tila ei tiedossa")
-                : "Tila ei tiedossa"
+              agentPresentation({
+                process: statusStale ? "stale" : "daemon_managed_live",
+                command: current && !statusStale ? current.state : undefined,
+              }).operationLabel ??
+              agentPresentation({
+                process: statusStale ? "stale" : "daemon_managed_live",
+                command: current && !statusStale ? current.state : undefined,
+              }).activityLabel
             }
             activityKind={
-              !current || statusStale || current.state === "uncertain"
-                ? "unknown"
-                : current.state === "accepted"
-                  ? "working"
-                  : "neutral"
+              agentPresentation({
+                process: statusStale ? "stale" : "daemon_managed_live",
+                command: current && !statusStale ? current.state : undefined,
+              }).activity === "working"
+                ? "working"
+                : "unknown"
             }
             controlKind={controlled ? "neutral" : "read-only"}
             controlLabel={

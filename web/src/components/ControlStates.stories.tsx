@@ -1,13 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { MemoryRouter } from "react-router";
 import { Button, RefreshIconButton, TextField } from "./Primitives";
-import { LinkRow } from "./ControlElements";
+import { ControlButton, LinkRow } from "./ControlElements";
 import { Menu, Disclosure } from "./Overlays";
 
-// Provisional palette values: hover=surface-2/accent-soft, pressed=accent-soft/accent-line,
-// focus=accent outline, selection=accent-soft, disabled=line/muted, pending=muted opacity.
-// design-control-states decides the final values for both themes. Hover, press and tab
-// here: these are production controls, not static mock states.
 const meta = {
   title: "Production/Interaction states",
   parameters: { layout: "fullscreen" },
@@ -32,11 +28,48 @@ function Example({ theme }: { theme: "light" | "dark" }) {
       >
         <h1>Vuorovaikutustilat · {theme}</h1>
         <p>
-          Väliaikaiset palettiarvot designerin tilamatriisiin: hover (surface-2
-          / accent-soft), painettu (accent-soft / accent-line), fokus
-          (accent-ääriviiva), valittu (accent-soft), estetty (line / muted),
-          odottava (opacity). Kokeile hiirellä ja näppäimistöllä.
+          Tuotannon kontrollit: hover, painallus ja näppäimistöfokus ovat
+          kokeiltavissa. Alla myös toistettava tilamatriisi molemmille teemoille
+          ja kosketusleveydelle.
         </p>
+        <section
+          aria-label="Painikkeiden tilamatriisi"
+          style={{ display: "grid", gap: 12, overflowX: "auto" }}
+        >
+          {(
+            [
+              "primary",
+              "secondary",
+              "quiet",
+              "danger",
+              "danger-subtle",
+            ] as const
+          ).map((variant) => (
+            <div
+              key={variant}
+              style={{
+                display: "flex",
+                gap: 12,
+                alignItems: "center",
+                minWidth: 520,
+              }}
+            >
+              <strong style={{ minWidth: 110 }}>{variant}</strong>
+              {(["rest", "hover", "pressed", "focus"] as const).map((state) => (
+                <ControlButton
+                  key={state}
+                  variant={variant}
+                  data-hovered={state === "hover" || undefined}
+                  data-pressed={state === "pressed" || undefined}
+                  data-focus-visible={state === "focus" || undefined}
+                  onPress={noop}
+                >
+                  {state}
+                </ControlButton>
+              ))}
+            </div>
+          ))}
+        </section>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <Button label="Lähetä" onPress={noop} />
           <Button label="Keskeytä" variant="quiet" onPress={noop} />
