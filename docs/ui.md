@@ -217,20 +217,21 @@ kirjautuessa sisään näkymät käyttävät hänen tietojaan.
 Yhteyden katketessa viimeksi saatu sisältö jää näkyviin. Yksi yhteysilmoitus
 kertoo vanhentuneesta tiedosta; taustapäivitys ei peitä luettavaa näkymää
 latausruudulla. Selain yrittää lukea uudelleen verkkoyhteyden palattua tai
-käyttäjän Päivitä-toiminnosta. Pelkkä tapahtumavirran katkos ei estä lähetystä:
-kirjoitus lähetetään nykyisellä istunnolla palvelimelle, joka ratkaisee sen
-hyväksymisen. Kirjautumisen päättyminen vaatii uuden kirjautumisen.
+käyttäjän Päivitä-toiminnosta. Uutta viestiä ei voi lähettää, kun yhteys
+palvelimeen on poikki. Pelkkä tapahtumavirran katkos ei kuitenkaan tarkoita,
+että palvelinyhteys on poikki. Kirjautumisen päättyminen vaatii uuden
+kirjautumisen.
 
 Pi jatkaa daemonin omistamana, vaikka selain suljetaan. Palatessa käyttäjä
 näkee nykyisen työn ja katkon aikana syntyneen historian. Daemonin tai
 palvelimen sammuminen voi sen sijaan katkaista aktiivisen työn.
 
-Normaali lähetys näkyy kuittausta odottavana. Jos kuittaus katoaa,
-käyttöliittymä selvittää tilanteen palvelimelta. Ellei tulos selviä, käyttäjä
-näkee lähetysvirheen ja kehotuksen tarkistaa keskustelu ennen uutta yritystä.
-Tekstin voi kopioida tai lähettää tietoisesti uutena viestinä; automaattinen
-uusinta voisi teettää saman työn kahdesti. Luonnos ja lukukohta säilyvät
-yhteyden palautuessa.
+Normaali lähetys näkyy kuittausta odottavana. Jos kuittaus katoaa, käyttäjä
+näkee lähetysvirheen. Yhteyden palattua käyttöliittymä tarkistaa lähetyksen
+tuloksen automaattisesti ennen kuin uusi lähetys sallitaan. Tekstin voi ottaa
+talteen; viestiä ei lähetetä automaattisesti uudelleen, sillä sama työ voisi
+muuten käynnistyä kahdesti. Luonnos ja lukukohta säilyvät yhteyden
+palautuessa.
 
 Työtilan luonti, GitHub-toiminto, Taskfleet-worktree ja poisto voivat onnistua
 vain osittain. Käyttäjä näkee valmistuneet vaiheet, virheen ja jäljelle jääneet

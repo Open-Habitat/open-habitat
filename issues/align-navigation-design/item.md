@@ -77,3 +77,7 @@ examples should reflect the same design.
 ### 2026-10-05T05:31:43Z · @jari
 
 Design response review: Jari prefers the designer’s error-forward status language to the current UI’s prominent “uncertain” messaging. A lost send acknowledgement is presented as a send error with a short instruction to check the conversation before retrying, not an extended explanation of uncertainty. Preserve the underlying distinction between confirmed rejection and unknown receipt so the UI does not claim “not sent” without evidence and never resends automatically. This changes the user-facing design, not the host receipt contract; reconcile the draft’s “ei lähetetty” label accordingly during handoff.
+
+### 2026-10-05T05:33:45Z · @jari
+
+Correction to the preceding decision: do not tell the person to inspect the conversation before retrying. When server connectivity is lost, the UI blocks new sends; after connectivity returns, it checks the earlier send outcome automatically before enabling a new send. Keep the visible feedback short (send error), preserve the text and never resend automatically. A broken event stream alone is not proof that server writes are unavailable. The present browser still needs implementation work to enforce the connectivity gate and replace its manual-check copy.

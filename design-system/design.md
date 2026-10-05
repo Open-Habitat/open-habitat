@@ -76,9 +76,10 @@ vahvistetusti poistetut viestit.
 
 Hylätty lähetys säilyttää tekstin korjausta varten. Jos lähetyksen kuittausta ei
 saada, viestin yhteydessä näkyy lähetysvirhe ja mahdollisuus ottaa teksti
-talteen. Käyttäjää pyydetään tarkistamaan keskustelu ennen uutta yritystä;
-viestiä ei lähetetä automaattisesti uudestaan. Sovelluksen yhteyskatkos näkyy
-yhdessä yläreunan ilmoituksessa.
+talteen. Yhteyskatkon aikana uutta viestiä ei voi lähettää; yhteyden palattua
+sovellus tarkistaa aiemman lähetyksen tuloksen itse. Viestiä ei lähetetä
+automaattisesti uudestaan. Sovelluksen yhteyskatkos näkyy yhdessä yläreunan
+ilmoituksessa.
 Taustapäivitys ei siirrä fokusta eikä korvaa luettavaa näkymää latausruudulla.
 
 Designer suunnittelee jokaisen keskustelulohkon esitystilat. Agentti kartoittaa
