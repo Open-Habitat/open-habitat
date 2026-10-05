@@ -9,7 +9,7 @@ lane: ui-v1
 lane_seq: 80
 blocked_by: ['@manage-workspace-lifecycle']
 collision: [docs/, AGENTS.md, design-system/]
-preparation: pending
+preparation: ready
 ---
 
 # Connect GitHub workspace flows
