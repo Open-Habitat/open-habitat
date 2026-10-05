@@ -26,7 +26,7 @@ esitetään selkeästi tekstin asianomaisessa kohdassa. Erillistä Decisions-osi
 ei säilytetä saman sisällön toistona tai läpikäyntien lokina; aiemmat versiot
 löytyvät Git-historiasta.
 
-## Seuraavaksi: päätökset, brändibriefi ja docs-juuren tekstit
+## Käsitelty: päätökset, brändibriefi ja docs-juuren tekstit
 
 Jari valitsi 5.10.2026 seuraavaksi päätösdokumenttien vielä käsittelemättömät
 tekstit, `docs/brand/omega-habitat-brief.md`:n ja kaikki suoraan `docs/`:ssa
@@ -55,11 +55,11 @@ teksti jää jonoon; tämä ei peru aiempaa päätöstä.
 | 8 | Käyttökulut (entinen `docs/ui.md`) | Yhdistetty kohtaan 7; erillinen sivu poistettu ja viittaukset päivitetty. |
 | 9 | Design system (entinen `docs/design-system.md`) | Poistettu Jarin päätöksellä 5.10. Katalogin avaaminen on `design-system/components.md`:ssä, tarkistukset `TESTING.md`:ssä. Design, vastuut ja työtapa säilyvät omissa lähteissään ilman rinnakkaista yleissivua. |
 | 10 | [Dokumentaation agenttiohje](../../docs/AGENTS.md) | Käsitelty Jarin kanssa 5.10.: tavoitteen, toteutuksen ja päätösten työnjako, kielivalinnat, lähdekoodiin perustuva nykytilakuvaus ja muutosissueiden viitteet säilyvät. ADR:n tekstiä voi selventää muuttamatta päätöstä. Vanhojen virheiden selostukset, tarkka kappalejärjestys ja Glasspadin versiohistoria poistettu; julkaisemisen olennainen tieto säilyy. |
-| 11 | [Dokumentaation etusivu](../../docs/index.md) | Käsitelty `7bd9f82`, uudistettu hakemistorakenteen mukana `11b9430`. Luetaan viimeiseksi muiden sivujen lukupolkuna. |
+| 11 | [Dokumentaation etusivu](../../docs/index.md) | Käsitelty Jarin kanssa 5.10.: nimeksi Omega Habitat, komponenttikartta erotettu tavoitekuvauksista ja päätökset nykyisestä toteutuksesta. Sivujen kirjoitustavan selostus poistettu; tuotteen peruskuvaus ja lukupolut säilyvät. |
 
 `docs/CLAUDE.md` on symlinkki `AGENTS.md`:hen, joten sama sisältö käsiteltiin
-kohdassa 10. Seuraavana on **`docs/index.md`**, dokumentaation etusivu.
-Pi-kysymysdialogien rajaus jää erikseen ratkaistavaksi.
+kohdassa 10. Tämä dokumenttikierros on käsitelty loppuun. Seuraavaa tekstiä
+ei ole valittu. Pi-kysymysdialogien rajaus jää erikseen ratkaistavaksi.
 
 Jari hyväksyi 5.10. sivujen yhdistämisen, koska ne ylläpitivät samoja
 käyttökokemuksen päätöksiä kahdessa paikassa ja olivat jo erkaantuneet.
