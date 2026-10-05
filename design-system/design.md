@@ -11,7 +11,7 @@ Yhteiset mitat, värit,
 fontit ja liike ovat [tokeneissa](tokens/), joita sovellus käyttää
 `styles.css`:n kautta. [Komponenttikartta](components.md) johtaa samoihin
 komponentteihin, jotka näkyvät sovelluksessa ja Storybookissa.
-[Käyttökulut](../docs/ui.md) kuvaavat toiminnan ja
+[Käyttökulut](../docs/product.md) kuvaavat toiminnan ja
 [arkkitehtuuri](../docs/architecture/index.md) hostin tarjoaman tiedon.
 [Design-kierros](process.md) kertoo, miten vedokset, tämä kuvaus ja koodi
 pidetään samassa totuudessa.
@@ -102,7 +102,7 @@ käyttävät samoja tulkintoja.
 
 Selaimen omien keskustelujen Pi-kysymyksiin vastataan dialogeissa.
 Terminaalista käynnistettyjen keskustelujen historiaa voi lukea.
-Keskustelujen toimintarajat on kuvattu [käyttökuluissa](../docs/ui.md).
+Keskustelujen toimintarajat on kuvattu [käyttökuluissa](../docs/product.md).
 
 ## Käyttöönotto
 

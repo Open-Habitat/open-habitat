@@ -8,11 +8,8 @@ groups:
         title: Aloita tästä
         desc: Projektin dokumentaatio ja lukupolut.
       - slug: product
-        title: Tavoite ja toiminnot
-        desc: Tuotteen tavoite ja sovittu toiminnallinen laajuus.
-      - slug: ui
-        title: Käyttökulut
-        desc: Keskustelu, navigointi ja toiminta katkoissa.
+        title: Tavoite ja käyttökulut
+        desc: Tuotteen tavoite, toiminnot ja käyttäjän käyttökulut.
       - slug: design-system
         title: Design system
         desc: Yhteinen perusta ja polku tuotantokomponentteihin.

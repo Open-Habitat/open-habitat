@@ -7,9 +7,9 @@ natiivien työkalujen hallussa, ja SSH- ja tmux-käyttö säilyvät selaimen rin
 
 ## Mitä tuote tekee
 
-[Tavoite ja toiminnot](product.md) kertoo, mitä käyttäjän on tarkoitus saada
-aikaan. [Käyttökulut](ui.md) kuvaa keskustelun, navigoinnin ja toiminnan
-katkoissa. [Design system](design-system.md) johtaa yhteiseen ulkoasuun ja
+[Tavoite ja käyttökulut](product.md) kertoo, mitä käyttäjä saa tuotteella
+aikaan ja miten hän käyttää sitä myös katkojen ja epävarmojen tulosten yhteydessä.
+[Design system](design-system.md) johtaa yhteiseen ulkoasuun ja
 tuotantokomponentteihin. Nämä sivut kuvaavat sovittua tavoitetta, jonka
 toteutus on osin kesken.
 

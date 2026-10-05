@@ -22,7 +22,7 @@ outcome automatically before enabling another send. A broken event stream
 alone does not establish that the server cannot accept writes.
 
 This implements Jari's 5 October decision in @align-navigation-design and
-[the usage flows](../../docs/ui.md). During the architecture reading Jari
+[the usage flows](../../docs/product.md). During the architecture reading Jari
 asked for a concrete implementation issue; both parts belong to the same
 send-and-recover interaction.
 

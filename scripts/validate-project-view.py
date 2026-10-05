@@ -13,7 +13,6 @@ SITE = ROOT / "docs"
 REQUIRED = {
     "index",
     "product",
-    "ui",
     "design-system",
     "architecture/index",
     "architecture/components",

@@ -6,7 +6,7 @@ ei valita frontend-tekniikkaa tai arvioida mockeja backend-testinä.
 
 ## Katso nämä
 
-1. [Yhtenäinen kirjautumisesta keskusteluun kulkeva polku](../../docs/ui.md#kirjautuminen-ja-työtilan-valinta)
+1. [Yhtenäinen kirjautumisesta keskusteluun kulkeva polku](https://github.com/maintainer/native-agent-host/blob/90ef1565f1df46da9ade73b885db2d5bb2c4a837/docs/ui.md#kirjautuminen-ja-työtilan-valinta)
 2. [Tuotteen tavoite ja sovitut toiminnot](../../docs/product.md)
 3. [Pi 0.85.1:n todellinen ohjausnäyttö](../probe-pi-control/result.md#capability-matrix)
 4. [Workspace-, GitHub-, Taskfleet- ja poistokokeen näyttö](../probe-workspace-lifecycle/result.md#outcome)

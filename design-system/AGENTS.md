@@ -16,7 +16,7 @@ ja `contracts/v1/` kertoo hostin tarjoaman tiedon ja komennot.
 
 Designia päivitetään samoihin tiedostoihin. Korvatut vedokset ja ohjeet jäävät
 Git-historiaan, jotta nykyisessä puussa ja designerille lähtevässä paketissa on
-yksi suunnittelukohde. `docs/ui.md` kuvaa käyttökulut ja
+yksi suunnittelukohde. `docs/product.md` kuvaa käyttökulut ja
 `docs/design-system.md` katalogin avaamisen.
 
 ## Päätökset, joita ei tehdä uudestaan koodissa

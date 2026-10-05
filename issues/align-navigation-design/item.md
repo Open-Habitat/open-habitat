@@ -52,7 +52,7 @@ Use the profile data and shared account presentation from
 email in the opened account view, with the agreed missing-data behavior. This
 issue owns their placement in navigation. The settings layout is separate work.
 
-Preserve the navigation behavior described in [the usage flows](../../docs/ui.md):
+Preserve the navigation behavior described in [the usage flows](../../docs/product.md):
 returning to a conversation retains its draft and reading position, and background
 updates do not steal focus. Current conversations and uncertain results remain
 available while the presentation changes. Drafts demonstrate composition with

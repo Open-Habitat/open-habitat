@@ -51,18 +51,22 @@ teksti jää jonoon; tämä ei peru aiempaa päätöstä.
 | 4 | [ADR 0009: keskustelutilan omistajuus](../../docs/decisions/adr-0009-conversation-state-ownership.md) | Käsitelty Jarin kanssa 5.10.: Reduxin ja keskusteluvaraston työnjako sekä sovitut tekniset valinnat säilyvät. Mapit kuvaavat kahta tietokokonaisuutta, eivät apurakenteiden määrärajaa. Päätöksen hyöty avaa tekstin ja loppuviite johtaa nykyisen toteutuksen kuvaukseen. |
 | 5 | [Päätösten etusivu](../../docs/decisions/index.md) | Käsitelty Jarin kanssa 5.10.: päätökset ja nykyinen toteutus erotettu ilman arkkitehtuurisivun automaattista etusijaa, hakemistorivit tiivistetty päätösten ytimeen ja lokituksen vanhentunut tilatieto poistettu. Päätösten sisältö ja sitovuus säilyvät. |
 | 6 | [Omega Habitat -brändibriefi](../../docs/brand/omega-habitat-brief.md) | Käsitelty Jarin kanssa 5.10.: Omega Habitat on valittu nimi, puhelin kuuluu laajuuteen ja Ω-portti jää inspiraatioksi. Designer valitsee ja perustelee muodon. Olennaiset toimitustarpeet ja suunnittelupyyntö säilyvät; toisto ja yksityiskohtaiset kieltolistat poistettu. |
-| 7 | [Tuotteen tavoite](../../docs/product.md) | Käsitelty `fae13b8`, sittemmin muutettu `11b9430`, `87630ae` ja `55d4cfc`. Uusintakäsittely: sovitun tavoitteen kokonaisuus, etenkin mobiilirajaus ja Pi-kysymysten ohjaimet suhteessa myöhempiin päätöksiin ja toteutukseen. |
-| 8 | [Käyttökulut](../../docs/ui.md) | Käsitelty `925bdb1`; `820a30c` on nimenomaisesti Jarin pyytämä uusi luonnos. Sen koko tekstin hyväksyntää ei löytynyt; myöhemmät korjaukset ovat osittaisia. Sovitetaan kokonaisuus nykyiseen tuotekuvaukseen ja navigaatiopäätöksiin. |
+| 7 | [Tuotteen tavoite ja käyttökulut](../../docs/product.md) | Yhdistetty Jarin päätöksellä 5.10.: tuotetavoite ja käyttökulut ovat samassa sivussa, ulkoasu designissa ja nykyinen toteutus arkkitehtuurissa. Puhelin ja sisältöjen esitys vastaavat myöhempiä päätöksiä. Pi-dialogien tuotelaajuus on edelleen avoin. |
+| 8 | Käyttökulut (entinen `docs/ui.md`) | Yhdistetty kohtaan 7; erillinen sivu poistettu ja viittaukset päivitetty. |
 | 9 | [Design system](../../docs/design-system.md) | Lohkojen työtapaa ja yhden designin lähteitä päivitetty `6235972`, `8b4219b` ja `e961efc`. Koko sivun läpikäynnistä ei löytynyt näyttöä. Tarkistetaan sivun tehtävä suhteessa designiin, komponenttikarttaan, nykyiseen katalogiin ja testiohjeeseen. |
 | 10 | [Dokumentaation agenttiohje](../../docs/AGENTS.md) | Rethink `94376d1` ja faktantarkistus `b6ece5b` löytyvät. Rakenne kirjoitettiin sen jälkeen uudelleen `11b9430`, ja ohjetta täsmennettiin `5d6428b` sekä `cff6c64`. Nykyinen versio luetaan rethink-instructions-skillillä. |
 | 11 | [Dokumentaation etusivu](../../docs/index.md) | Käsitelty `7bd9f82`, uudistettu hakemistorakenteen mukana `11b9430`. Luetaan viimeiseksi muiden sivujen lukupolkuna. |
 
 `docs/CLAUDE.md` on symlinkki `AGENTS.md`:hen, joten sama sisältö käsitellään
-kohdassa 10. Rajauksessa on näin 18 erillistä dokumenttia: 12 päätöshakemistossa,
-yksi brändibriefi ja viisi docs-juuressa. Kaikki yksitoista ADR:ää on käsitelty
-alla olevan näytön ja jonon neljän ensimmäisen rivin perusteella; viisi tekstiä
-odottaa ensimmäistä tai uutta läpikäyntiä. Seuraava tiedosto on
-**`docs/product.md`**.
+kohdassa 10. Tuotetavoitteen ja käyttökulkujen yhdistämisen jälkeen seuraavana
+on **`docs/design-system.md`**, sitten dokumentaation agenttiohje ja etusivu.
+Pi-kysymysdialogien rajaus jää erikseen ratkaistavaksi.
+
+Jari hyväksyi 5.10. sivujen yhdistämisen, koska ne ylläpitivät samoja
+käyttökokemuksen päätöksiä kahdessa paikassa ja olivat jo erkaantuneet.
+Yhdistetty sivu säilyttää käyttökulut ja tuotteen periaatteet; edistymisen
+selostus jää issueihin. Yhdistäminen ei hyväksy aiemman UI-luonnoksen kaikkia
+yksityiskohtia eikä ratkaise dialogien säilyttämistä tai poistamista.
 
 ### Jo käsitellyt ADR:t
 
@@ -498,7 +502,7 @@ jälkeen; ne säilyvät alla jatkamista varten.
 | [Rajapinnat](../../docs/interfaces.md) | Nykyiset reitit erillään sovitusta tulevasta pinnasta; viestien merkitys, katkoista palautuminen ja vastuurajat säilyvät. Palveluasetukset asennusissuen liitteeseen. | `296e4a9`, `1c1e8f8`, `742197c` |
 | [Tuotteen tavoite](../../docs/product.md) | Käyttäjän työ ja sovitut toiminnot. Nykytila erotettu tavoitteesta; vanhat MVP-portit, terminaalinsiirto ja testimatriisit poistettu tuotekuvauksesta. | `fae13b8` |
 | [Todennettava näyttö](../../docs/assumptions.md) | Alkuperäisten kokeiden havainnot ja rajat sekä GitHub-käytön ja keskusteluun palaamisen puuttuva kokonaisnäyttö. Sovitut ratkaisut ja testien vastuut linkitetty omiin lähteisiinsä. UI-sivun terminaalisiirto korjattu samaan rajaan. | `75d4fa5` |
-| [Käyttökulut](../../docs/ui.md) | Käyttäjän kulku ja sovittu keskustelukokemus. Nykytila erotettu tavoitteesta, vanhat dialogiohjaimet ja katselmointiportit poistettu; protokolla- ja komponenttidetaljit linkitetty omiin lähteisiin. | `925bdb1` |
+| [Käyttökulut](../../docs/product.md) | Käyttäjän kulku ja sovittu keskustelukokemus. Nykytila erotettu tavoitteesta, vanhat dialogiohjaimet ja katselmointiportit poistettu; protokolla- ja komponenttidetaljit linkitetty omiin lähteisiin. | `925bdb1` |
 | [ADR 0004: ensikirjautumisen tilinluonti](../../docs/adr-0004-first-login-user-provisioning.md) | Brokerin tilinluonti ja sidonta, gatewayn todennus ja daemonin natiivit tunnukset. Nykyinen keskeytyspolitiikka ilman vanhan palautusvaatimuksen historiaa; toteutusmekanismit ja näyttö linkitetty omiin lähteisiinsä. | `992d27d` |
 | [ADR 0001: natiivi Unix-arkkitehtuuri](../../docs/adr-0001-unix-native-agent-host.md) | Natiivien tietojen omistajuus ja Unix-eristys perusteluineen; myöhemmät tilinluonti-, jatkamis- ja selainrajaukset linkitetty. | Tämän läpikäynnin commit (`Refs-Issue` Gitissä). |
 | [Päätökset](../../docs/decisions.md) | Hyväksytyt ratkaisut lähteineen sekä käyttäjän poistamisen ja lokituksen avoimet ehdotukset. Toteutustilanne ja protokolladetaljit omiin lähteisiinsä. Jari hyväksyi läpikäynnin. | `80f8107` |
@@ -613,7 +617,7 @@ rajat käsitellään ennen tiliasetuksia, jotta eri toiminnot eivät sekoitu.
    GitHub- ja OpenAI-yhteyksien esitys sekä uloskirjautumisen ja irrotuksen rajat
    edellisten kohtien perusteella.
 6. **Yleinen UI-kuvaus ja selainratkaisun päätös:**
-   [docs/ui.md](../../docs/ui.md) ja
+   [docs/ui.md](../../docs/product.md) ja
    [ADR 0002](../../docs/adr-0002-frontend-stack.md).
    Sovita käyttökulut edellä selvitettyihin päätöksiin ja draftin ratkaistuihin
    ehdotuksiin. ADR 0002:n vanha vaatimus jokaisen UI-osan hyväksynnästä ennen

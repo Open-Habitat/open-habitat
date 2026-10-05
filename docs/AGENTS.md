@@ -3,7 +3,7 @@
 `docs/` is the project documentation, starting at `index.md`. It is written for
 someone who wants to understand or use the system, and it is also what Glasspad
 publishes: the Markdown here is the site, there is no separate source tree.
-The product pages (`product.md`, `ui.md`, `design-system.md`, `index.md`) are
+The product pages (`product.md`, `design-system.md`, `index.md`) are
 in Finnish for Jari. The architecture pages and the decision records are in
 English, because agents are their main readers and the repository will be
 public. Keep a page in the language it already has.
@@ -38,7 +38,8 @@ indexed in `decisions/index.md`. They are the history layer and are not edited
 to track the present: a decision that changes gets a new record that the old
 one links to. The validator requires every record to be linked from the index.
 
-The product pages describe the agreed experience and may say which part is
+`product.md` owns the product goal and usage flows in one place; visual design
+lives in `design-system/design.md`. The product pages describe the agreed experience and may say which part is
 still being built, because the product is pre-release. Even there, write
 "read Pi's session file" rather than "reconstruct the authoritative native
 projection". Process vocabulary and acceptance labels displace the explanation
