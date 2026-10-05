@@ -9,7 +9,7 @@ Inventaarion **84/84 capture-tilan esitystä** valmistui (21 tilaa × neljä yhd
 - Polku: `/var/tmp/nah-pi-block-package/design-pi-event-blocks.zip`
 - Koko: **12 549 866 tavua**
 - SHA-256: `54150cc1f64afed71e372bb8f3bf0c6779aaeca0bd18613d37bb6c79b47c5ffa`
-- Lähdecommit: `43b3a8b105b307ffb165e0cbb638bab3c60b050c`
+- Lähdecommit: `43b3a8b105b307ffb165e0cbb638bab3c60b050c` (`design-pi-event-blocks-source-2026-10-05`-tagi säilyttää tarkan paketoidun commitin worktree-merge-rebasen jälkeen)
 
 Tarkistukset: `MANIFEST.md`:n lähdecommit vastaa `HEAD`:ia kokoamishetkellä ja kaappausindeksiä; zipin **286 jäsentä** vastaavat pakettihakemistoa tavu tavulta, CRC-tarkistus meni läpi, nimetyt pyyntö-, tyyppi-, esimerkki-, token-, vedos- ja komponenttitiedostot löytyvät. Kokoajan credential-scan ajettiin kokoamisessa ja erikseen pakettihakemistolle; molemmat puhtaita. `python3 -m unittest discover -s .claude/skills/design-package/scripts -p 'test_assemble.py' -q` onnistui (6 testiä). JSON-inventaario jäsentyi ja `git diff --check` onnistui. Täyttä sovelluksen CI-gatea ei ajettu, koska tässä työssä ei muutettu suoritettavaa sovelluskoodia.
 
