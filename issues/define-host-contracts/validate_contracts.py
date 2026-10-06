@@ -140,7 +140,7 @@ must_reject("github-clone-progress.schema.json", bad_clone_progress)
 bad_content = {"media_type": "text/plain", "text": "partial", "complete": False}
 try:
     Draft202012Validator(
-        {"$ref": "https://native-agent-host.invalid/contracts/v1/common.schema.json#/$defs/content"},
+        {"$ref": "https://open-habitat.invalid/contracts/v1/common.schema.json#/$defs/content"},
         registry=registry,
         format_checker=format_checker,
     ).validate(bad_content)
