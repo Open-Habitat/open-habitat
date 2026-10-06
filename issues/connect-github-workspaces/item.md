@@ -2,7 +2,7 @@
 created: 2026-09-21
 updated: 2026-10-06
 type: task
-status: in-progress
+status: done
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
@@ -10,6 +10,8 @@ lane_seq: 80
 blocked_by: ['@manage-workspace-lifecycle']
 collision: [docs/, AGENTS.md, design-system/]
 preparation: ready
+closed: 2026-10-06
+closed_by: claude
 ---
 
 # Connect GitHub workspace flows
