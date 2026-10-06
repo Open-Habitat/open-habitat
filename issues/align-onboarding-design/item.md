@@ -3,7 +3,7 @@ created: 2026-10-05
 updated: 2026-10-06
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-05:first-use-onboarding-rethink
@@ -14,6 +14,8 @@ related: ['@design-first-use-onboarding', '@align-navigation-design', '@align-se
 collision: [web/, design-system/]
 lane: design-v2
 blocked_by: ['@account-profile-from-github']
+closed: 2026-10-06
+closed_by: claude
 ---
 
 # Align onboarding with the design
