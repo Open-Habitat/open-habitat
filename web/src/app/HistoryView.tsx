@@ -10,12 +10,10 @@ import {
   InlineNotice,
   Markdown,
   ModelChange,
-  ToolGroup,
-  ToolOutput,
-  ToolRow,
   UnknownEvent,
   UserMessage,
 } from "../components";
+import { PiBoundary, PiToolUse } from "../components/PiBlocks";
 import { LinkRow } from "../components/ControlElements";
 import { type ConversationStore, useWindow } from "./conversationStore";
 import {
@@ -59,6 +57,8 @@ function unfamiliar(text: string): {
   };
 }
 
+// A tab-local preference changes presentation only, never the native block.
+const resultEdge = new Map<string, "head" | "tail">();
 function ReadableBlock({
   block,
   index,
@@ -66,8 +66,10 @@ function ReadableBlock({
   agentId,
   revision,
   onLogin,
+  toolName,
 }: {
   block: HistoryBlock;
+  toolName?: string;
   index: number;
   entryKey: string;
   agentId?: string;
@@ -83,8 +85,17 @@ function ReadableBlock({
   }>();
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [edge, setEdge] = useState<"head" | "tail">(
+    resultEdge.get(toolName ?? "") ?? (toolName === "bash" ? "tail" : "head"),
+  );
   const request = useRef<AbortController | null>(null);
+  const preview = useRef<HTMLPreElement | null>(null);
   useEffect(() => () => request.current?.abort(), []);
+  useEffect(() => {
+    if (preview.current && toolName)
+      preview.current.scrollTop =
+        edge === "tail" ? preview.current.scrollHeight : 0;
+  }, [edge, toolName]);
   const more = async () => {
     if (!agentId || !revision || pending) return;
     setPending(true);
@@ -166,14 +177,49 @@ function ReadableBlock({
     />
   ) : null;
   switch (block.type) {
-    case "text":
+    case "text": {
+      const text = loaded?.text ?? block.text ?? "";
+      const whole = loaded?.complete || !block.readable;
       return (
-        <div>
-          <Markdown text={loaded?.text ?? block.text ?? ""} />
+        <div className={toolName ? "ah-pi-result" : undefined}>
+          {toolName ? (
+            <fieldset className="ah-pi-edge">
+              <legend>{toolName} · esikatselun kohta</legend>
+              {(["head", "tail"] as const).map((option) => (
+                <button
+                  type="button"
+                  key={option}
+                  aria-pressed={edge === option}
+                  onClick={() => {
+                    resultEdge.set(toolName, option);
+                    setEdge(option);
+                  }}
+                >
+                  {option === "head" ? "Alku" : "Loppu"}
+                </button>
+              ))}
+            </fieldset>
+          ) : null}
+          {toolName ? (
+            <pre ref={preview}>{text}</pre>
+          ) : (
+            <Markdown text={text} />
+          )}
+          {toolName && edge === "tail" && !whole ? (
+            <PiBoundary>
+              Loppu ei ole vielä saatavilla; näkyvissä ladattu alku.
+            </PiBoundary>
+          ) : null}
+          {block.readable && !loaded?.complete ? (
+            <PiBoundary>
+              Esikatselu päättyy tähän · lisää natiivista lohkoluvulla
+            </PiBoundary>
+          ) : null}
           {control}
           {warning}
         </div>
       );
+    }
     case "thinking":
       return (
         <details>
@@ -183,6 +229,9 @@ function ReadableBlock({
           ) : (
             <>
               <pre>{loaded?.text ?? block.text}</pre>
+              {block.readable && !loaded?.complete ? (
+                <PiBoundary>Esikatselu päättyy tähän</PiBoundary>
+              ) : null}
               {control}
               {warning}
             </>
@@ -229,8 +278,14 @@ function OrderedBlocks({
   agentId,
   revision,
   onLogin,
+  results,
+  liveTools,
+  toolName,
 }: {
   blocks: HistoryBlock[];
+  toolName?: string;
+  liveTools?: Map<string, LiveTool>;
+  results?: Map<string, HistoryEntry>;
   entryKey: string;
   agentId?: string;
   revision?: string;
@@ -238,18 +293,61 @@ function OrderedBlocks({
 }) {
   return (
     <div className="ah-ordered-blocks">
-      {blocks.map((block, index) => (
-        <ReadableBlock
-          // biome-ignore lint/suspicious/noArrayIndexKey: Native block index is stable identity within an entry.
-          key={`${entryKey}:${revision}:${index}`}
-          block={block}
-          index={index}
-          entryKey={entryKey}
-          agentId={agentId}
-          revision={revision}
-          onLogin={onLogin}
-        />
-      ))}
+      {blocks.map((block, index) =>
+        block.type === "toolCall" && block.tool_call_id ? (
+          <PiToolUse
+            key={`${entryKey}:${revision}:${block.tool_call_id}`}
+            name={block.tool_name || "Työkalu"}
+            state={
+              results?.get(block.tool_call_id)?.is_error
+                ? "failed"
+                : results?.has(block.tool_call_id)
+                  ? "succeeded"
+                  : toolState(liveTools?.get(block.tool_call_id)?.state)
+            }
+          >
+            <strong>Argumentit</strong>
+            <ReadableBlock
+              block={block}
+              index={index}
+              entryKey={entryKey}
+              agentId={agentId}
+              revision={revision}
+              onLogin={onLogin}
+            />
+            {liveTools?.get(block.tool_call_id)?.output &&
+            !results?.has(block.tool_call_id) ? (
+              <>
+                <strong>Viimeisin päivitys</strong>
+                <pre>{liveTools.get(block.tool_call_id)?.output}</pre>
+              </>
+            ) : null}
+            {results?.get(block.tool_call_id) ? (
+              <>
+                <strong>Tulos</strong>
+                <ResultBlocks
+                  entry={results.get(block.tool_call_id) as HistoryEntry}
+                  agentId={agentId}
+                  revision={revision}
+                  onLogin={onLogin}
+                />
+              </>
+            ) : null}
+          </PiToolUse>
+        ) : (
+          <ReadableBlock
+            // biome-ignore lint/suspicious/noArrayIndexKey: Native block index is stable identity within an entry.
+            key={`${entryKey}:${revision}:${index}`}
+            block={block}
+            toolName={toolName}
+            index={index}
+            entryKey={entryKey}
+            agentId={agentId}
+            revision={revision}
+            onLogin={onLogin}
+          />
+        ),
+      )}
     </div>
   );
 }
@@ -259,15 +357,17 @@ export function Entry({
   onLogin,
   agentId,
   revision,
+  results,
+  liveTools,
 }: {
   entry: HistoryEntry;
+  liveTools?: Map<string, LiveTool>;
+  results?: Map<string, HistoryEntry>;
   onLogin?: () => void;
   agentId?: string;
   revision?: string;
 }) {
   const content = entry.content;
-  const [toolExpanded, setToolExpanded] = useState(false);
-  const [longExpanded, setLongExpanded] = useState(false);
   const copy = () => void navigator.clipboard?.writeText(content.text);
   const fallback =
     entry.kind === "assistant" || entry.kind === "unknown"
@@ -280,6 +380,8 @@ export function Entry({
           {entry.blocks?.length ? (
             <OrderedBlocks
               blocks={entry.blocks}
+              results={results}
+              liveTools={liveTools}
               entryKey={entry.entry_key}
               agentId={agentId}
               revision={entry.native_revision ?? revision}
@@ -299,6 +401,8 @@ export function Entry({
           {entry.blocks ? (
             <OrderedBlocks
               blocks={entry.blocks}
+              results={results}
+              liveTools={liveTools}
               entryKey={entry.entry_key}
               agentId={agentId}
               revision={entry.native_revision ?? revision}
@@ -323,57 +427,44 @@ export function Entry({
         </AssistantMessage>
       ) : null}
       {entry.kind === "tool" ? (
-        <ToolRow
-          name={content.text.split("\n", 1)[0] || "Työkalu"}
-          statusLabel={entry.is_error ? "Virhe" : "Tulos valmis"}
-          state="Valmis"
-          expanded={toolExpanded}
-          onToggle={() => setToolExpanded(!toolExpanded)}
+        <PiToolUse
+          name={entry.content.text.split("\n", 1)[0] || "Työkalu"}
+          state={entry.is_error ? "failed" : "succeeded"}
         >
-          {entry.tool_call_id ? <p>Kutsu: {entry.tool_call_id}</p> : null}
-          {!entry.blocks?.length ? (
-            <ToolOutput
-              text={longExpanded ? content.text : content.text.slice(0, 12000)}
-              streamSemantics="unknown"
-              sourceState="complete"
-              onCopy={copy}
-            />
-          ) : null}
-          {entry.blocks?.length ? (
-            <OrderedBlocks
-              blocks={entry.blocks}
-              entryKey={entry.entry_key}
-              agentId={agentId}
-              revision={entry.native_revision ?? revision}
-              onLogin={onLogin}
-            />
-          ) : null}
-          {!entry.blocks?.length && content.text.length > 12000 ? (
-            <Button
-              label={
-                longExpanded ? "Supista tuloste" : "Näytä koko ladattu tuloste"
-              }
-              onPress={() => setLongExpanded(!longExpanded)}
-            />
-          ) : null}
-        </ToolRow>
+          <ResultBlocks
+            entry={entry}
+            agentId={agentId}
+            revision={revision}
+            onLogin={onLogin}
+          />
+        </PiToolUse>
       ) : null}
       {entry.kind === "bash" ? (
-        <section className="ah-ordered-blocks">
-          <p>
-            Paikallinen komento ·{" "}
-            {entry.cancelled
-              ? "keskeytetty"
-              : entry.exit_code !== undefined
-                ? `paluuarvo ${entry.exit_code}`
-                : "tila ei tiedossa"}
-            {entry.output_truncated ? " · tuloste katkaistu" : ""}
-            {entry.exclude_from_context ? " · ei mallin kontekstissa" : ""}
-          </p>
+        <section
+          className="ah-pi-local"
+          aria-label="Sinä · paikallinen komento"
+        >
+          <header>
+            <strong>Sinä · paikallinen komento</strong>
+            {entry.exclude_from_context ? (
+              <span>ei mallin kontekstissa</span>
+            ) : null}
+            <span>
+              {entry.cancelled
+                ? "peruttu"
+                : entry.exit_code !== undefined
+                  ? `paluuarvo ${entry.exit_code}`
+                  : "tila ei tiedossa"}
+            </span>
+          </header>
           {entry.blocks?.map((block, index) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: Native command/output block positions are stable within an entry.
             <div key={`${entry.entry_key}:${index}`}>
-              <strong>{index === 0 ? "Komento" : "Tuloste"}</strong>
+              {index === 0 ? (
+                <strong>Komento</strong>
+              ) : (
+                <strong>Tuloste</strong>
+              )}
               <ReadableBlock
                 block={block}
                 index={index}
@@ -384,32 +475,45 @@ export function Entry({
               />
             </div>
           ))}
+          {entry.output_truncated ? (
+            <PiBoundary>
+              Pi katkaisi paikallisen komennon tulosteen · saatavilla oleva osa
+              näkyy
+            </PiBoundary>
+          ) : null}
         </section>
       ) : null}
       {entry.kind === "model_change" ? (
         <ModelChange modelId={content.text} onCopy={copy} />
       ) : null}
       {entry.kind === "unknown" ? (
-        entry.blocks?.length ? (
-          <section>
-            <p>Pi-merkintä · {entry.entry_type ?? "tuntematon"}</p>
-            <OrderedBlocks
-              blocks={entry.blocks}
-              entryKey={entry.entry_key}
-              agentId={agentId}
-              revision={entry.native_revision ?? revision}
-              onLogin={onLogin}
-            />
-          </section>
+        entry.entry_type ? (
+          <aside className="ah-pi-marker" role="note">
+            <span>
+              {(
+                {
+                  compaction: "Keskustelu tiivistettiin",
+                  branch_summary: "Haaran tiivistelmä",
+                  thinking_level_change: "Ajattelutaso vaihtui",
+                  session_info: "Keskustelun tieto",
+                  label: "Merkintä",
+                } as Record<string, string>
+              )[entry.entry_type] ?? "Pi-merkintä"}
+            </span>
+            {entry.blocks?.length ? (
+              <OrderedBlocks
+                blocks={entry.blocks}
+                entryKey={entry.entry_key}
+                agentId={agentId}
+                revision={entry.native_revision ?? revision}
+                onLogin={onLogin}
+              />
+            ) : null}
+          </aside>
         ) : (
           <UnknownEvent
             kindLabel="Pi-tapahtuma"
-            safeSummary={
-              fallback
-                ? `Tapahtuman muotoa ei tueta · ${fallback.type} · ${fallback.summary.map(({ text }) => text).join(" · ") || fallback.raw}`
-                : `Tapahtuman muotoa ei tueta. ${content.text}`
-            }
-            safePayloadText={fallback?.raw ?? content.text}
+            safeSummary={`Sisältöä ei tueta · ${entry.entry_type ?? "tuntematon"}`}
             onCopy={copy}
           />
         )
@@ -417,92 +521,107 @@ export function Entry({
     </>
   );
 }
-// Group only adjacent native tool results. Keys belong to the first entry so
-// disclosure state survives refreshes that preserve the native event order.
+function ResultBlocks({
+  entry,
+  agentId,
+  revision,
+  onLogin,
+}: {
+  entry: HistoryEntry;
+  agentId?: string;
+  revision?: string;
+  onLogin?: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  if (entry.blocks?.length)
+    return (
+      <OrderedBlocks
+        blocks={entry.blocks}
+        toolName={entry.content.text.split("\n", 1)[0] || "Työkalu"}
+        entryKey={entry.entry_key}
+        agentId={agentId}
+        revision={entry.native_revision ?? revision}
+        onLogin={onLogin}
+      />
+    );
+  const text = entry.content.text;
+  return (
+    <div className="ah-pi-result">
+      <pre>{expanded ? text : text.slice(0, 12000)}</pre>
+      {text.length > 12000 ? (
+        <>
+          <PiBoundary>Esikatselu päättyy tähän</PiBoundary>
+          <Button
+            label={expanded ? "Supista tuloste" : "Näytä koko ladattu tuloste"}
+            onPress={() => setExpanded(!expanded)}
+          />
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+// Place results at their native call position; an orphan result (e.g. the
+// previous history page holds the call) still has its own accessible row.
+function toolState(
+  state?: string,
+): "forming" | "running" | "succeeded" | "failed" | "cancelled" | "unknown" {
+  return state === "forming" ||
+    state === "running" ||
+    state === "succeeded" ||
+    state === "failed" ||
+    state === "cancelled"
+    ? state
+    : "unknown";
+}
+export type LiveTool = {
+  callId?: string;
+  name?: string;
+  state?: string;
+  arguments?: string;
+  output?: string;
+};
 export function timelineItems(
   entries: HistoryEntry[],
   onLogin?: () => void,
   agentId?: string,
   revision?: string,
+  liveTools?: Map<string, LiveTool>,
 ) {
-  const items: { id: string; kind: string; content: React.ReactNode }[] = [];
-  for (let i = 0; i < entries.length; ) {
-    const first = entries[i];
-    if (first.kind !== "tool") {
-      items.push({
-        id: first.entry_key,
-        kind: first.kind,
-        content: (
-          <Entry
-            key={first.entry_key}
-            entry={first}
-            onLogin={onLogin}
-            agentId={agentId}
-            revision={revision}
-          />
-        ),
-      });
-      i++;
-      continue;
-    }
-    const group: HistoryEntry[] = [];
-    while (i < entries.length && entries[i].kind === "tool")
-      group.push(entries[i++]);
-    items.push({
-      id: first.entry_key,
-      kind: "tool",
+  const results = new Map<string, HistoryEntry>();
+  const calls = new Set<string>();
+  for (const entry of entries)
+    if (entry.kind === "assistant")
+      for (const block of entry.blocks ?? [])
+        if (block.type === "toolCall" && block.tool_call_id)
+          calls.add(block.tool_call_id);
+  for (const entry of entries)
+    if (
+      entry.kind === "tool" &&
+      entry.tool_call_id &&
+      calls.has(entry.tool_call_id)
+    )
+      results.set(entry.tool_call_id, entry);
+  return entries
+    .filter(
+      (entry) =>
+        !entry.tool_call_id || results.get(entry.tool_call_id) !== entry,
+    )
+    .map((entry) => ({
+      id: entry.entry_key,
+      kind: entry.kind,
       content: (
-        <HistoryToolGroup
-          key={first.entry_key}
-          entries={group}
+        <Entry
+          key={entry.entry_key}
+          entry={entry}
+          results={results}
+          liveTools={liveTools}
           onLogin={onLogin}
           agentId={agentId}
           revision={revision}
         />
       ),
-    });
-  }
-  return items;
-}
-function HistoryToolGroup({
-  entries,
-  onLogin,
-  agentId,
-  revision,
-}: {
-  entries: HistoryEntry[];
-  onLogin?: () => void;
-  agentId?: string;
-  revision?: string;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  if (entries.length === 1)
-    return (
-      <Entry
-        entry={entries[0]}
-        onLogin={onLogin}
-        agentId={agentId}
-        revision={revision}
-      />
-    );
-  return (
-    <ToolGroup
-      title="Työkalut"
-      summary={`${entries.length} tulosta`}
-      expanded={expanded}
-      onToggle={() => setExpanded(!expanded)}
-    >
-      {entries.map((entry) => (
-        <Entry
-          key={entry.entry_key}
-          entry={entry}
-          onLogin={onLogin}
-          agentId={agentId}
-          revision={revision}
-        />
-      ))}
-    </ToolGroup>
-  );
+    }));
 }
 export function HistoryView({
   agent,

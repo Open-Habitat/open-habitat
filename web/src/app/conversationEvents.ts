@@ -189,6 +189,7 @@ export function provisionalItems(turn: LiveTurn) {
     kind: string;
     text: string;
     index?: number;
+    callId?: string;
     name?: string;
     state?: string;
     arguments?: string;
@@ -248,6 +249,7 @@ export function provisionalItems(turn: LiveTurn) {
         item.text = `${item.name} · Kutsu`;
         item.state = "running";
         const key = event.payload.tool_call_id as string;
+        item.callId = key;
         tools.set(key, slot);
       }
     } else if (event.kind === "bash.output") {
@@ -320,6 +322,7 @@ export function provisionalItems(turn: LiveTurn) {
           kind: "tool",
           text,
           name: event.payload.tool_name as string,
+          callId: key,
           state: event.payload.state as string,
           arguments: event.payload.arguments as string | undefined,
           output: event.payload.text as string | undefined,

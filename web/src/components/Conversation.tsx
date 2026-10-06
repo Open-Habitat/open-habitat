@@ -1,4 +1,10 @@
-import type { ReactNode, Ref } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { ControlButton, DisclosureButton } from "./ControlElements";
 import { ConversationFloatingAction } from "./ConversationFrame";
 import { Icon } from "./Icon";
@@ -163,6 +169,19 @@ export function UserMessage({
   deliveryTone?: Tone;
   onCopy: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const [long, setLong] = useState(false);
+  const body = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = body.current;
+    if (!el) return;
+    const check = () => setLong(el.scrollHeight > el.clientHeight + 2);
+    check();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   return (
     <Message
       speaker="Sinä"
@@ -171,7 +190,22 @@ export function UserMessage({
       stateTone={deliveryTone}
       onCopy={onCopy}
     >
-      {children ?? <Markdown text={sourceText} />}
+      <div
+        ref={body}
+        className={
+          expanded ? "ah-user-content" : "ah-user-content ah-user-collapsed"
+        }
+      >
+        {children ?? <Markdown text={sourceText} />}
+      </div>
+      {long || expanded ? (
+        <Button
+          label={expanded ? "Supista viesti" : "Näytä koko viesti"}
+          variant="quiet"
+          size="compact"
+          onPress={() => setExpanded(!expanded)}
+        />
+      ) : null}
     </Message>
   );
 }
@@ -202,7 +236,7 @@ export function AssistantMessage({
       time={time}
       state={
         streamState === "complete"
-          ? `Vuoro valmis${time ? ` ${time}` : ""} · odottaa viestiäsi`
+          ? "Vastaus valmis"
           : streamState
             ? labels[streamState]
             : undefined
@@ -276,7 +310,6 @@ export function TurnSettlement({ observedAt }: { observedAt: string }) {
         hour: "2-digit",
         minute: "2-digit",
       })}{" "}
-      · odottaa viestiäsi
     </p>
   );
 }

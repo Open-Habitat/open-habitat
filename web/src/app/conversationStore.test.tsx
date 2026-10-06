@@ -536,7 +536,7 @@ describe("recent conversation windows", () => {
     entries[0].kind = "tool";
     entries[1].kind = "tool";
     entries[2].kind = "user";
-    expect(visibleEntryKeys(entries)).toEqual(["tool-a", "user"]);
+    expect(visibleEntryKeys(entries)).toEqual(["tool-a", "tool-b", "user"]);
   });
   it("refreshes a background controlled status on a router notification, not on view", async () => {
     const agent = id(1);

@@ -11,15 +11,27 @@ import type { LiveTurn } from "./conversationEvents";
 import type { ConversationStore } from "./conversationStore";
 import type { HistoryEntry } from "./history";
 
-/** Timeline groups adjacent tool entries into one row keyed by the first entry. */
+/** Match the native call/result rows used by timelineItems, including orphan results. */
 export function visibleEntryKeys(entries: HistoryEntry[]): string[] {
-  const keys: string[] = [];
-  let tool = false;
-  for (const entry of entries) {
-    if (entry.kind !== "tool" || !tool) keys.push(entry.entry_key);
-    tool = entry.kind === "tool";
-  }
-  return keys;
+  const calls = new Set(
+    entries.flatMap((entry) =>
+      entry.kind === "assistant"
+        ? (entry.blocks ?? []).flatMap((block) =>
+            block.type === "toolCall" && block.tool_call_id
+              ? [block.tool_call_id]
+              : [],
+          )
+        : [],
+    ),
+  );
+  return entries
+    .filter(
+      (entry) =>
+        entry.kind !== "tool" ||
+        !entry.tool_call_id ||
+        !calls.has(entry.tool_call_id),
+    )
+    .map((entry) => entry.entry_key);
 }
 
 type Anchor = { key: string; offset: number };

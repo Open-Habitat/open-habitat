@@ -1998,3 +1998,130 @@ h1[tabindex="-1"]:focus {
     order: 2;
   }
 }
+
+/* Pi blocks share a quiet, readable surface in live and saved turns. */
+.ah-user-content.ah-user-collapsed {
+  max-height: 12.8em; /* eight lines at the body line height */
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, #000 82%, transparent);
+}
+.ah-feed > li[data-kind="user"] .ah-message {
+  max-width: min(560px, 100%);
+  border: 1px solid var(--ah-line);
+  border-radius: 10px;
+  background: var(--ah-surface);
+}
+.ah-ordered-blocks {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.ah-ordered-blocks > details {
+  color: var(--ah-ink-2);
+}
+.ah-ordered-blocks summary {
+  cursor: pointer;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Block-specific contained code style. */
+.ah-ordered-blocks pre,
+/* biome-ignore lint/style/noDescendingSpecificity: Block-specific contained code style. */
+.ah-tool-row pre {
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--ah-sunken);
+  border: 1px solid var(--ah-line-soft);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.ah-tool-row {
+  max-width: min(var(--ah-measure), 100%);
+  background: var(--ah-surface);
+  border-radius: 10px;
+}
+.ah-tool-row[data-state="unknown"] {
+  border-style: dashed;
+}
+.ah-pi-boundary {
+  border-block: 1px dashed var(--ah-line-strong);
+  padding: 5px 0;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-pi-edge {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 3px;
+  justify-content: flex-end;
+}
+.ah-pi-edge button {
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--ah-line);
+  border-radius: 6px;
+  color: var(--ah-ink-2);
+  background: var(--ah-surface);
+  cursor: pointer;
+}
+.ah-pi-edge button[aria-pressed="true"] {
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+}
+.ah-pi-marker {
+  display: grid;
+  gap: 8px;
+  text-align: center;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Marker text is isolated from diff spans. */
+.ah-pi-marker > span {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.ah-pi-marker > span::before,
+.ah-pi-marker > span::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: var(--ah-line);
+}
+.ah-pi-local {
+  max-width: min(var(--ah-measure), 100%);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Pi local command is isolated from shell and receipt selectors. */
+.ah-pi-local header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ah-line-soft);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Pi local command is isolated from shell and receipt selectors. */
+.ah-pi-local header strong {
+  font-size: var(--ah-size-meta);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.ah-pi-local header span {
+  font-size: var(--ah-size-meta);
+  color: var(--ah-muted);
+}
+.ah-pi-local header span:last-child {
+  margin-inline-start: auto;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Pi local command is isolated from shell and receipt selectors. */
+.ah-pi-local > div {
+  padding: 8px 12px;
+}
+.ah-pi-local > .ah-pi-boundary {
+  margin: 8px 12px;
+}

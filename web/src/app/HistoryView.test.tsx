@@ -36,7 +36,7 @@ it("does not claim a projected assistant message completed the Pi turn", () => {
   ).toBeTruthy();
 });
 
-it("groups adjacent results, leaves unknown entries as readable text and bounds large output", () => {
+it("keeps orphan results accessible without grouping and bounds large output", () => {
   const tool: HistoryEntry = {
     ...entry,
     kind: "tool",
@@ -60,14 +60,49 @@ it("groups adjacent results, leaves unknown entries as readable text and bounds 
       },
     },
   ]);
-  expect(items).toHaveLength(2);
+  expect(items).toHaveLength(3);
   render(items.map((item) => <div key={item.id}>{item.content}</div>));
-  fireEvent.click(screen.getByRole("button", { name: /Työkalut/ }));
   const rows = screen.getAllByRole("button", { name: /bash/ });
   for (const row of rows) fireEvent.click(row);
   expect(screen.getAllByText("Näytä koko ladattu tuloste")).toHaveLength(2);
   expect(document.querySelector("script")).toBeNull();
-  expect(screen.getAllByText(/question/).length).toBeGreaterThan(0);
+  expect(screen.getByText(/Sisältöä ei tueta/)).toBeTruthy();
+});
+
+it("joins native call and saved result at the call position without reordering continuation", () => {
+  const assistant: HistoryEntry = {
+    ...entry,
+    kind: "assistant",
+    entry_key: "a",
+    blocks: [
+      { type: "text", text: "Ensin" },
+      { type: "thinking", text: "Ajatus" },
+      {
+        type: "toolCall",
+        tool_call_id: "c1",
+        tool_name: "read",
+        readable: true,
+      },
+      { type: "text", text: "Sitten" },
+    ],
+  };
+  const result: HistoryEntry = {
+    ...entry,
+    kind: "tool",
+    entry_key: "r",
+    tool_call_id: "c1",
+    is_error: true,
+    content: { media_type: "text/plain", text: "read\nresult", complete: true },
+    blocks: [{ type: "text", text: "result" }],
+  };
+  const items = timelineItems([assistant, result]);
+  expect(items).toHaveLength(1);
+  const { container } = render(items[0].content);
+  expect(container.textContent).toMatch(/Ensin.*Ajattelu.*read.*Sitten/s);
+  expect(screen.getAllByRole("button", { name: /read/ })).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: /read/ }));
+  expect(container.textContent).toContain("result");
+  expect(container.textContent).toContain("epäonnistui");
 });
 
 it("puts unfamiliar question text ahead of inert, collapsed JSON", () => {
@@ -452,7 +487,7 @@ it("labels a saved typed tool result complete while its block can still be read"
       }}
     />,
   );
-  expect(container.textContent).toContain("Tulos valmis");
+  expect(container.textContent).toContain("valmis");
   expect(container.textContent).not.toContain("Tulosta lisää");
   fireEvent.click(screen.getByRole("button", { name: /tool/ }));
   expect(
@@ -486,9 +521,11 @@ it("renders saved local command output and marker metadata without treating eith
     )),
   );
   expect(container.textContent).toContain("paluuarvo 2");
-  expect(container.textContent).toContain("tuloste katkaistu");
+  expect(container.textContent).toContain(
+    "Pi katkaisi paikallisen komennon tulosteen",
+  );
   expect(container.textContent).toContain("ei mallin kontekstissa");
   expect(container.textContent).toContain("failure");
-  expect(container.textContent).toContain("session_info");
+  expect(container.textContent).toContain("Keskustelun tieto");
   expect(container.querySelector("script")).toBeNull();
 });

@@ -9,13 +9,13 @@ import {
   ConversationTimeline,
   EndedConversationControl,
   InlineNotice,
-  LiveToolRow,
   Markdown,
   QueuePanel,
   SendObservation,
   TurnSettlement,
   WorkingProgress,
 } from "../components";
+import { PiToolUse } from "../components/PiBlocks";
 import { agentPresentation } from "../components/agentPresentation";
 import { UnpresentedEvents } from "../components/WorkingProgress";
 import { useConversationActions } from "./ConversationActions";
@@ -392,7 +392,27 @@ export function BrowserConversation({
                     : "empty"
               }
               items={[
-                ...timelineItems(entries, onLogin),
+                ...timelineItems(
+                  entries,
+                  onLogin,
+                  id,
+                  undefined,
+                  new Map(
+                    provisionalItems(
+                      live ?? {
+                        cursor: "",
+                        instance: "",
+                        sequence: 0,
+                        fragments: [],
+                        truncated: true,
+                      },
+                    ).flatMap((item) =>
+                      item.kind === "tool" && item.callId
+                        ? [[item.callId, item] as const]
+                        : [],
+                    ),
+                  ),
+                ),
                 ...(sendObservation
                   ? [
                       {
@@ -457,68 +477,80 @@ export function BrowserConversation({
                     fragments: [],
                     truncated: true,
                   },
-                ).map((item) => ({
-                  id: item.id,
-                  kind: item.kind,
-                  content:
-                    item.kind === "thinking" ? (
-                      <details className="ah-ordered-blocks" open>
-                        <summary>Ajattelu · käynnissä</summary>
-                        <pre>{item.text}</pre>
-                      </details>
-                    ) : item.kind === "assistant" ? (
-                      <AssistantMessage
-                        onCopy={() =>
-                          void navigator.clipboard?.writeText(item.text)
-                        }
-                      >
-                        <Markdown text={item.text} />
-                      </AssistantMessage>
-                    ) : item.kind === "tool" ? (
-                      <section>
-                        <LiveToolRow
+                )
+                  .filter(
+                    (item) =>
+                      item.kind !== "tool" ||
+                      !item.callId ||
+                      !entries.some((entry) =>
+                        entry.blocks?.some(
+                          (block) =>
+                            block.type === "toolCall" &&
+                            block.tool_call_id === item.callId,
+                        ),
+                      ),
+                  )
+                  .map((item) => ({
+                    id: item.id,
+                    kind: item.kind,
+                    content:
+                      item.kind === "thinking" ? (
+                        <details className="ah-ordered-blocks" open>
+                          <summary>Ajattelu · käynnissä</summary>
+                          <pre>{item.text}</pre>
+                        </details>
+                      ) : item.kind === "assistant" ? (
+                        <AssistantMessage
+                          onCopy={() =>
+                            void navigator.clipboard?.writeText(item.text)
+                          }
+                        >
+                          <Markdown text={item.text} />
+                        </AssistantMessage>
+                      ) : item.kind === "tool" ? (
+                        <PiToolUse
                           name={item.name ?? "Työkalu"}
                           state={
-                            (item.state ?? "running") as
+                            (item.state as
                               | "running"
                               | "succeeded"
                               | "failed"
-                              | "cancelled"
+                              | "cancelled") ?? "forming"
                           }
+                        >
+                          {item.arguments ? (
+                            <>
+                              <strong>Argumentit</strong>
+                              <pre>{item.arguments}</pre>
+                            </>
+                          ) : null}
+                          {item.output ? (
+                            <>
+                              <strong>Viimeisin päivitys</strong>
+                              <pre>{item.output}</pre>
+                            </>
+                          ) : null}
+                        </PiToolUse>
+                      ) : item.kind === "bash" ? (
+                        <details>
+                          <summary>
+                            Paikallisen komennon tuloste · käynnissä
+                          </summary>
+                          <pre>{item.text}</pre>
+                        </details>
+                      ) : (
+                        <InlineNotice
+                          title={
+                            item.kind === "bash"
+                              ? "Paikallisen komennon tuloste"
+                              : item.kind === "extension"
+                                ? "Laajennuksen ilmoitus"
+                                : "Pi-tila"
+                          }
+                          description={item.text}
                         />
-                        {item.arguments ? (
-                          <details>
-                            <summary>Näytä kutsun argumentit</summary>
-                            <pre>{item.arguments}</pre>
-                          </details>
-                        ) : null}
-                        {item.output ? (
-                          <details>
-                            <summary>Näytä työkalun tuloste</summary>
-                            <pre>{item.output}</pre>
-                          </details>
-                        ) : null}
-                      </section>
-                    ) : item.kind === "bash" ? (
-                      <details>
-                        <summary>
-                          Paikallisen komennon tuloste · käynnissä
-                        </summary>
-                        <pre>{item.text}</pre>
-                      </details>
-                    ) : (
-                      <InlineNotice
-                        title={
-                          item.kind === "bash"
-                            ? "Paikallisen komennon tuloste"
-                            : item.kind === "extension"
-                              ? "Laajennuksen ilmoitus"
-                              : "Pi-tila"
-                        }
-                        description={item.text}
-                      />
-                    ),
-                })),
+                      ),
+                  })),
               ]}
               historyMode="pagedAccessible"
               newContentCount={unseen}
