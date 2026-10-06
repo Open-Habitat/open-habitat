@@ -88,7 +88,7 @@ test("@a11y first-use steps focus their heading and announce chooser count", asy
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     await page.getByRole("button", { name: "Jatka ilman repoja" }).click();
     await expect(
-      page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+      page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
     ).toBeFocused();
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   } finally {

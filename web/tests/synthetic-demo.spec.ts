@@ -1,6 +1,6 @@
-import { demoOrigin, ports } from "../test-ports.mjs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { demoOrigin, ports } from "../test-ports.mjs";
 
 const base = demoOrigin;
 test.use({ baseURL: base, viewport: { width: 1280, height: 720 } });

@@ -1,5 +1,5 @@
-import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "@playwright/test";
+import { hostOrigin } from "../test-ports.mjs";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
@@ -73,12 +73,12 @@ test("@first-use pending code keeps attempt cancellation separate from sign-out"
     await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
     await expect(
       page.getByRole("button", { name: "Peruuta kirjautumisyritys" }),
-    ).toHaveClass(/ah-button-secondary/);
+    ).toHaveClass(/ah-button-quiet/);
     await expect(
       page.getByRole("button", {
         name: "Keskeytä käyttöönotto ja kirjaudu ulos",
       }),
-    ).toHaveClass(/ah-button-danger-subtle/);
+    ).toHaveClass(/ah-button-quiet/);
     await page
       .getByRole("button", { name: "Peruuta kirjautumisyritys" })
       .click();

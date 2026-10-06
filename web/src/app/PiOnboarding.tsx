@@ -332,7 +332,7 @@ export function PiOnboarding({
       <div className="ah-onboarding-exit">
         <Button
           label="Keskeytä käyttöönotto ja kirjaudu ulos"
-          variant="danger-subtle"
+          variant="quiet"
           onPress={() => setExitOpen(true)}
         />
       </div>

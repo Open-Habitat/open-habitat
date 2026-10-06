@@ -1,5 +1,5 @@
-import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "@playwright/test";
+import { hostOrigin } from "../test-ports.mjs";
 
 const host = hostOrigin;
 test.use({ baseURL: host, ignoreHTTPSErrors: true });
@@ -26,7 +26,9 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
     ).status(),
   ).toBe(200);
   await expect(page.getByText("fixture/first")).toBeVisible();
-  await expect(page.getByRole("checkbox")).toHaveCount(52);
+  await expect(
+    page.getByRole("list", { name: "GitHub-repot" }).getByRole("checkbox"),
+  ).toHaveCount(52);
   // Large catalogs scroll inside the chooser, so the selected count and
   // Continue action remain reachable without a five-screen-long page.
   expect(
@@ -49,7 +51,7 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
   });
   await page.getByRole("button", { name: /jatka/i }).click();
   await expect(
-    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
   ).toBeVisible();
   const observation = await page.request.get(
     "/api/v1/onboarding/github/checkout?full_name=fixture%2Ffirst",
@@ -61,12 +63,14 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
   ).toBeVisible();
   await page.getByRole("button", { name: /jatka/i }).click();
   await expect(
-    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
   ).toBeVisible();
   await page
     .getByRole("button", { name: "Takaisin valitsemaan GitHub-repoja" })
     .click();
-  await expect(page.getByRole("checkbox")).toHaveCount(52);
+  await expect(
+    page.getByRole("list", { name: "GitHub-repot" }).getByRole("checkbox"),
+  ).toHaveCount(52);
   await expect(page.getByText("Valittu 0 repoa.")).toBeVisible();
   await expect(
     (
@@ -77,7 +81,7 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
   ).resolves.toMatchObject({ state: "confirmed" });
   await page.getByRole("button", { name: /jatka/i }).click();
   await expect(
-    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
   ).toBeVisible();
   await page.request.get("/fixture/pi-state?value=usable");
   await page.reload();
@@ -91,7 +95,7 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
   ).toBeVisible();
   await page.getByRole("button", { name: /jatka/i }).click();
   await expect(
-    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
   ).toBeVisible();
   await page.request.get("/fixture/scenario?value=ready");
 });
@@ -115,17 +119,21 @@ test("@github-first narrow catalog keeps count and action reachable by keyboard 
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBeLessThanOrEqual(390);
-    await page.getByRole("checkbox").last().focus();
+    await page
+      .getByRole("list", { name: "GitHub-repot" })
+      .getByRole("checkbox")
+      .last()
+      .focus();
     await page.keyboard.press("Space");
     await expect(page.getByText("Valittu 1 repo.")).toBeInViewport();
     await expect(
-      page.getByRole("button", { name: "Hae valitut ja jatka" }),
+      page.getByRole("button", { name: "Hae 1 repo ja jatka" }),
     ).toBeInViewport();
     await page.getByRole("searchbox").fill("no-such-repo");
     await expect(page.getByText("Valittu 1 repo.")).toBeVisible();
-    await page.getByRole("button", { name: "Hae valitut ja jatka" }).click();
+    await page.getByRole("button", { name: "Hae 1 repo ja jatka" }).click();
     await expect(
-      page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+      page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
     ).toBeVisible();
   } finally {
     await page.request.get("/fixture/scenario?value=ready");
@@ -139,7 +147,7 @@ test("@github-first empty selection goes directly to Pi", async ({ page }) => {
   await login(page);
   await page.getByRole("button", { name: /jatka/i }).click();
   await expect(
-    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
   ).toBeVisible();
   await page.request.get("/fixture/scenario?value=ready");
   await page.request.get("/fixture/pi-state?value=usable");
@@ -168,7 +176,9 @@ test("@github-first incomplete catalog never permits selection or checkout", asy
     await expect(page.getByRole("button", { name: /jatka/i })).toHaveCount(0);
     await page.unrouteAll();
     await page.getByRole("button", { name: "Tarkista uudelleen" }).click();
-    await expect(page.getByRole("checkbox")).toHaveCount(52);
+    await expect(
+      page.getByRole("list", { name: "GitHub-repot" }).getByRole("checkbox"),
+    ).toHaveCount(52);
   } finally {
     await page.request.get("/fixture/scenario?value=ready");
     await page.request.get("/fixture/pi-state?value=usable");

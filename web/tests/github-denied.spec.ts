@@ -1,5 +1,5 @@
-import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "@playwright/test";
+import { hostOrigin } from "../test-ports.mjs";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 test("@github-first denied write stays uncertain until explicit read-only recheck", async ({

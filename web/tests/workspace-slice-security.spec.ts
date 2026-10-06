@@ -1,7 +1,8 @@
-import { hostOrigin } from "../test-ports.mjs";
-import { expect, test } from "@playwright/test";
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { expect, test } from "@playwright/test";
+import { hostOrigin } from "../test-ports.mjs";
+
 const host = hostOrigin;
 test.use({ baseURL: host, ignoreHTTPSErrors: true });
 test("@workspace-slice production bundle contains no fixture controls", async ({

@@ -41,7 +41,7 @@ describe("GitHub first-use chooser", () => {
     expect(view.getByText("sample-lab/aurora")).toBeTruthy();
     expect(view.getByText("sample-lab/harbor")).toBeTruthy();
     await user.click(
-      view.getByRole("checkbox", { name: /Näytä vain viimeisen/ }),
+      view.getByRole("switch", { name: /Näytä vain viimeisen/ }),
     );
     expect(view.getByRole("combobox", { name: "Aikaväli" })).toBeTruthy();
     // An unknown update time is not grounds to hide a repository.

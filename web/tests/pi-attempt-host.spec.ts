@@ -1,5 +1,5 @@
-import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Page, test } from "@playwright/test";
+import { hostOrigin } from "../test-ports.mjs";
 
 const host = hostOrigin;
 const attempt = "/api/v1/onboarding/pi/attempt";

@@ -1,5 +1,5 @@
-import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "@playwright/test";
+import { hostOrigin } from "../test-ports.mjs";
 
 const host = hostOrigin;
 test.use({ baseURL: host, ignoreHTTPSErrors: true });
@@ -23,7 +23,7 @@ test("@github-first existing checkout advances without duplicate POST", async ({
   await page.getByRole("checkbox").first().check();
   await page.getByRole("button", { name: /jatka/i }).click();
   await expect(
-    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
   ).toBeVisible();
   expect(await count(page)).toBe(before);
   await page.request.get("/fixture/checkout?name=first&mode=absent");
@@ -41,7 +41,7 @@ test("@github-first conflict and partial do not invent confirmation", async ({
   await page.getByRole("button", { name: /jatka/i }).click();
   await expect(page.getByText("Osa repoista haettiin")).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
   ).toHaveCount(0);
   expect(await count(page)).toBe(before + 1);
   await page.screenshot({
@@ -55,7 +55,7 @@ test("@github-first conflict and partial do not invent confirmation", async ({
   await page.getByRole("checkbox", { name: /fixture\/second/ }).uncheck();
   await page.getByRole("button", { name: /jatka/i }).click();
   await expect(
-    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
   ).toBeVisible();
   expect(await count(page)).toBe(before + 1); // Already confirmed first checkout is not repeated.
   await page.request.get("/fixture/checkout?name=second&mode=absent");
@@ -78,7 +78,7 @@ test("@github-first lost response reconciles by read without another POST", asyn
   await page.getByRole("checkbox").first().check();
   await page.getByRole("button", { name: /jatka/i }).click();
   await expect(
-    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
   ).toBeVisible();
   expect(await count(page)).toBe(before + 1);
   await page.request.get("/fixture/checkout?name=first&mode=absent");

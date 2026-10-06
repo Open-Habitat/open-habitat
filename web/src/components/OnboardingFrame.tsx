@@ -10,7 +10,7 @@ export function OnboardingFrame({
   children: ReactNode;
 }) {
   return (
-    <div className={styles.frame}>
+    <div className={`${styles.frame} ${styles[`step${step}`]}`}>
       <div className={styles.identity}>
         <strong>Omega Habitat</strong>
         <span aria-hidden="true" className={styles.divider} />

@@ -58,8 +58,8 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
       loaded: document.fonts.check('600 20px "Instrument Sans"'),
     };
   });
-  expect(loginLayout.width).toBeGreaterThanOrEqual(400);
-  expect(loginLayout.width).toBeLessThanOrEqual(460);
+  expect(loginLayout.width).toBeGreaterThanOrEqual(460);
+  expect(loginLayout.width).toBeLessThanOrEqual(560);
   expect(Math.abs(loginLayout.midpoint - 640)).toBeLessThan(12);
   expect(Math.abs(loginLayout.verticalMidpoint - 360)).toBeLessThan(40);
   expect(loginLayout.size).toBeGreaterThanOrEqual(19);

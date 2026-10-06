@@ -1598,13 +1598,13 @@ test("@browser-conversation model authentication error offers sign-in without le
   );
   await page.getByRole("button", { name: "Kirjaudu", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
   ).toBeVisible();
   await page.request.get("/fixture/scenario?value=ready");
   await page.request.get("/fixture/pi-state?value=usable");
   await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
   await expect(
-    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
   ).toHaveCount(0, { timeout: 12000 });
   await expect(page.getByText("ordinary-dir").first()).toBeVisible();
 });

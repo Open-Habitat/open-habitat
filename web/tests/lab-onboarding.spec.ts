@@ -98,7 +98,7 @@ test("@lab GitHub chooser, synthetic clone and Pi onboarding", async ({
     await page.getByRole("checkbox").first().check();
     await page.getByRole("button", { name: /jatka/i }).click();
     await expect(
-      page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+      page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
     ).toBeVisible();
     expect(
       (

@@ -1,5 +1,5 @@
-import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "@playwright/test";
+import { hostOrigin } from "../test-ports.mjs";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 test("@github-first slow reply and focus never start another checkout", async ({
@@ -45,7 +45,7 @@ test("@github-first slow reply and focus never start another checkout", async ({
       release();
     }
     await expect(
-      page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+      page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
     ).toBeVisible();
     expect(
       Number(await (await page.request.get("/fixture/clone-count")).text()),

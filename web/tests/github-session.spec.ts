@@ -1,5 +1,5 @@
-import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "@playwright/test";
+import { hostOrigin } from "../test-ports.mjs";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 test("@github-first logout and new cookie erase in-flight catalog", async ({
@@ -34,6 +34,9 @@ test("@github-first logout and new cookie erase in-flight catalog", async ({
     await other.goto("/workspaces");
     await other
       .getByRole("button", { name: "Keskeytä käyttöönotto ja kirjaudu ulos" })
+      .click();
+    await other
+      .getByRole("button", { name: "Kirjaudu ulos", exact: true })
       .click();
     await expect(
       other.getByRole("button", { name: "Kirjaudu GitHubilla" }),

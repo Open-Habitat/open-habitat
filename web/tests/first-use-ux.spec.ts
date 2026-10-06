@@ -1,5 +1,5 @@
-import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "@playwright/test";
+import { hostOrigin } from "../test-ports.mjs";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
@@ -22,7 +22,7 @@ test("@first-use abort is a danger action on both onboarding steps; first choose
     const abort = page.getByRole("button", {
       name: "Keskeytä käyttöönotto ja kirjaudu ulos",
     });
-    await expect(abort).toHaveClass(/ah-button-danger-subtle/);
+    await expect(abort).toHaveClass(/ah-button-quiet/);
     // Focusing the window during a click must not replace the chooser before
     // the click reaches its action.
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
@@ -31,21 +31,21 @@ test("@first-use abort is a danger action on both onboarding steps; first choose
     ).toBeVisible();
     await page.getByRole("button", { name: /jatka/i }).click();
     await expect(
-      page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+      page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
     ).toBeVisible();
     await expect(
       page.getByRole("button", {
         name: "Keskeytä käyttöönotto ja kirjaudu ulos",
       }),
-    ).toHaveClass(/ah-button-danger-subtle/);
+    ).toHaveClass(/ah-button-quiet/);
     const start = page.getByRole("button", { name: "Aloita kirjautuminen" });
     await expect(start).toHaveClass(/ah-button-primary/);
     await expect(start).toBeVisible();
-    const card = page.getByRole("region", { name: "ChatGPT-kirjautuminen" });
+    const card = page.getByRole("region", { name: "Kirjaudu OpenAI-tiliisi" });
     const back = card.getByRole("button", {
       name: "Takaisin valitsemaan GitHub-repoja",
     });
-    await expect(back).toHaveClass(/ah-button-secondary/);
+    await expect(back).toHaveClass(/ah-button-quiet/);
     const startBox = await start.boundingBox();
     const backBox = await back.boundingBox();
     const abortBox = await page

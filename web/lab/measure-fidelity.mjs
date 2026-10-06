@@ -3,7 +3,7 @@
 // Start scripts/lab.sh first. Output is an issue directory (or .cache/lab/fidelity).
 import { execFileSync } from "node:child_process";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { resolve, relative } from "node:path";
+import { relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { chromium } from "@playwright/test";
 import { origin } from "./session.mjs";
@@ -183,7 +183,7 @@ try {
         if (state.id === "pi-code") await lab.getByText("ABCD-1234").waitFor();
         if (state.id === "pi-start" || state.id === "pi-code")
           await lab
-            .getByRole("heading", { name: "ChatGPT-kirjautuminen" })
+            .getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" })
             .waitFor();
         if (
           (await lab.evaluate(() => document.documentElement.dataset.theme)) !==

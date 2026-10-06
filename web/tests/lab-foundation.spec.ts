@@ -1,5 +1,5 @@
-import inventory from "../lab/inventory.json" with { type: "json" };
 import { expect, test } from "@playwright/test";
+import inventory from "../lab/inventory.json" with { type: "json" };
 
 // Host-backed synthetic lab, not a screenshot or a live-user session.
 test("@lab v2 shared conversation metrics in both themes and at phone width", async ({

@@ -809,7 +809,7 @@
         {
           "id": "card",
           "draft": "[style*=\"border-radius: 12px\"][style*=\"gap: 20px\"]",
-          "lab": "main .ah-login-card",
+          "lab": "main div:has(> ol[aria-label=\"Käyttöönoton vaiheet\"] + .ah-login-card)",
           "properties": [
             "backgroundColor",
             "borderTopWidth",
@@ -846,7 +846,7 @@
         {
           "id": "onboarding-card",
           "draft": "[style*=\"border-radius: 12px\"][style*=\"gap: 20px\"]",
-          "lab": "main section[aria-labelledby=\"github-chooser-title\"]",
+          "lab": "main div:has(> ol[aria-label=\"Käyttöönoton vaiheet\"] + section[aria-labelledby=\"github-chooser-title\"])",
           "properties": [
             "backgroundColor",
             "borderTopWidth",
@@ -883,7 +883,7 @@
         {
           "id": "onboarding-card",
           "draft": "[style*=\"border-radius: 12px\"][style*=\"gap: 20px\"]",
-          "lab": "main section[aria-labelledby=\"pi-device-title\"]",
+          "lab": "main div:has(> ol[aria-label=\"Käyttöönoton vaiheet\"] + section[aria-labelledby=\"pi-device-title\"])",
           "properties": [
             "backgroundColor",
             "borderTopWidth",
@@ -920,7 +920,7 @@
         {
           "id": "onboarding-card",
           "draft": "[style*=\"border-radius: 12px\"][style*=\"gap: 20px\"]",
-          "lab": "main section[aria-labelledby=\"pi-device-title\"]",
+          "lab": "main div:has(> ol[aria-label=\"Käyttöönoton vaiheet\"] + section[aria-labelledby=\"pi-device-title\"])",
           "properties": [
             "backgroundColor",
             "borderTopWidth",

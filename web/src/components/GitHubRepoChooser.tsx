@@ -149,6 +149,8 @@ export function GitHubRepoChooser({
               <label>
                 <input
                   type="checkbox"
+                  role="switch"
+                  aria-checked={recent}
                   checked={recent}
                   onChange={(event) => setRecent(event.target.checked)}
                 />{" "}

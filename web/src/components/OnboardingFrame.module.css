@@ -1,9 +1,15 @@
 .frame {
-  width: min(100%, 35rem);
+  width: min(100%, 440px);
   margin: 0 auto;
   display: grid;
   gap: var(--ah-s5);
   min-width: 0;
+}
+.step2 {
+  width: min(100%, 560px);
+}
+.step3 {
+  width: min(100%, 480px);
 }
 .identity {
   display: flex;

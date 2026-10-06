@@ -1,5 +1,5 @@
-import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "@playwright/test";
+import { hostOrigin } from "../test-ports.mjs";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 test("@pi-onboarding delayed old-session response cannot restore code after focus", async ({
@@ -40,7 +40,10 @@ test("@pi-onboarding delayed old-session response cannot restore code after focu
     await a.evaluate(() => window.dispatchEvent(new Event("focus")));
     await capturedPromise;
     await b.goto("/workspaces");
-    await b.getByRole("button", { name: "Kirjaudu ulos" }).click();
+    await b
+      .getByRole("button", { name: "Keskeytä käyttöönotto ja kirjaudu ulos" })
+      .click();
+    await b.getByRole("button", { name: "Kirjaudu ulos", exact: true }).click();
     await b.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await b.getByRole("link", { name: "Bob" }).click();
     await b.getByRole("button", { name: /jatka/i }).click();

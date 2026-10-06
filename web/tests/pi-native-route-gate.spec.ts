@@ -1,5 +1,5 @@
-import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "@playwright/test";
+import { hostOrigin } from "../test-ports.mjs";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
@@ -8,7 +8,7 @@ async function signIn(page: import("@playwright/test").Page) {
   await page.getByRole("link", { name: "Alice" }).click();
   // A direct native URL skips the optional repository chooser.
   await expect(
-    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
   ).toBeVisible();
 }
 
@@ -21,7 +21,7 @@ test("@pi-onboarding browser checks OpenAI once while direct native reads remain
     await page.goto("/agents/pi:11111111-1111-4111-8111-111111111111");
     await signIn(page);
     await expect(
-      page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+      page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
     ).toBeVisible();
     await expect(page.getByText("Tilaa ei voitu vahvistaa")).toBeVisible();
     await expect(

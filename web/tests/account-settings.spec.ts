@@ -152,7 +152,7 @@ test("@account-settings Pi credentials change while the page is open; uncertaint
   await expect(page.getByText("Pi-kirjautuminen puuttuu")).toBeVisible();
   await page.getByRole("button", { name: "Kirjaudu Pi:hin" }).click();
   await expect(
-    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Aloita kirjautuminen" }),
@@ -190,7 +190,7 @@ test("@account-settings direct settings URL cannot bypass initial Pi gate", asyn
   );
   await page.goto("/settings");
   await expect(
-    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Asetukset" })).toHaveCount(0);
   await page.unrouteAll();
@@ -199,7 +199,7 @@ test("@account-settings direct settings URL cannot bypass initial Pi gate", asyn
   );
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Asetukset" })).toHaveCount(0);
 });

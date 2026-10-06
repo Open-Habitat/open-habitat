@@ -1,5 +1,5 @@
-import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Page, test } from "@playwright/test";
+import { hostOrigin } from "../test-ports.mjs";
 
 const host = hostOrigin;
 test.use({ baseURL: host, ignoreHTTPSErrors: true });
@@ -38,7 +38,7 @@ test("@pi-onboarding native attempt drives the production browser, never a callb
     await page.request.get("/fixture/pi-state?value=missing");
     await login(page);
     await expect(
-      page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+      page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
     ).toBeVisible();
     await expect(page.getByText("git-project")).toHaveCount(0);
     expect((await page.request.get("/api/v1/snapshot")).status()).toBe(200);

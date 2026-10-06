@@ -90,7 +90,7 @@
   margin: 0;
 }
 .ah-login-card h1 {
-  font-size: 20px;
+  font-size: 21px;
   line-height: 1.3;
   letter-spacing: -0.01em;
 }
@@ -339,7 +339,11 @@
   gap: var(--ah-s4);
 }
 .ah-onboarding-exit {
-  margin-top: var(--ah-s7);
+  width: min(100%, 560px);
+  margin: var(--ah-s5) auto 0;
+}
+.ah-state:has(#pi-device-title) .ah-onboarding-exit {
+  width: min(100%, 480px);
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
 .ah-control-reason,
@@ -1126,6 +1130,11 @@ h1[tabindex="-1"]:focus {
   }
   .ah-shell-no-rail > main:has(.ah-login-view) {
     min-height: 100vh;
+  }
+  .ah-shell-no-rail > main:has(.ah-login-view),
+  .ah-shell-no-rail > main:has(.ah-onboarding-exit),
+  .ah-shell-no-rail > main:has(.ah-account-onboarding) {
+    padding-inline: 16px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
