@@ -1,9 +1,9 @@
 ---
 created: 2026-10-05
-updated: 2026-10-05
+updated: 2026-10-06
 type: task
 reporter: jari
-status: open
+status: in-progress
 priority: high
 related: ['@design-pi-event-blocks']
 preparation: ready
