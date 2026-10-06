@@ -1,9 +1,9 @@
 ---
 created: 2026-10-02
-updated: 2026-10-05
+updated: 2026-10-06
 type: feature
 reporter: jari
-status: open
+status: in-progress
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-02:ui-observations:1-3
