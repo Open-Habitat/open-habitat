@@ -48,7 +48,9 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
     const cardNode = document.querySelector(".ah-login-card");
     const title = document.querySelector(".ah-login-card h1");
     if (!cardNode || !title) throw new Error("login layout missing");
-    const card = cardNode.getBoundingClientRect();
+    // The shared frame owns the surface; LoginCard is its content.
+    const card = cardNode.parentElement?.getBoundingClientRect();
+    if (!card) throw new Error("onboarding frame missing");
     return {
       width: card.width,
       midpoint: card.left + card.width / 2,
@@ -58,8 +60,8 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
       loaded: document.fonts.check('600 20px "Instrument Sans"'),
     };
   });
-  expect(loginLayout.width).toBeGreaterThanOrEqual(460);
-  expect(loginLayout.width).toBeLessThanOrEqual(560);
+  expect(loginLayout.width).toBeGreaterThanOrEqual(430);
+  expect(loginLayout.width).toBeLessThanOrEqual(450);
   expect(Math.abs(loginLayout.midpoint - 640)).toBeLessThan(12);
   expect(Math.abs(loginLayout.verticalMidpoint - 360)).toBeLessThan(40);
   expect(loginLayout.size).toBeGreaterThanOrEqual(19);
