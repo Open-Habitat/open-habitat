@@ -37,6 +37,7 @@ export function WorkspaceManagement({
   userObservationToken,
   refresh,
   onCreated,
+  onHidden,
 }: {
   csrf?: string;
   workspace?: Workspace;
@@ -44,6 +45,7 @@ export function WorkspaceManagement({
   userObservationToken?: string;
   refresh: () => void;
   onCreated?: (id: string) => void;
+  onHidden?: () => void;
 }) {
   const [name, setName] = useState("");
   const [display, setDisplay] = useState(workspace?.display_name ?? "");
@@ -88,6 +90,7 @@ export function WorkspaceManagement({
         (action === "settings" && resultId !== target?.workspace_id)
       )
         onCreated?.(resultId);
+      if (action === "visibility" && additional.hidden === true) onHidden?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Muutos epäonnistui");
       refresh();

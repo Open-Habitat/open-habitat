@@ -638,6 +638,7 @@ export function App() {
                 csrf={csrf}
                 refresh={refresh}
                 onCreated={(id) => navigate(`/workspaces/${id}`)}
+                onHidden={() => navigate("/workspaces")}
               />
             )}
           </>

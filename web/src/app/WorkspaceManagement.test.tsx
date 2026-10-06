@@ -56,12 +56,19 @@ it("offers hide without exposing deletion", async () => {
     }),
   });
   vi.stubGlobal("fetch", fetch);
+  const hidden = vi.fn();
   render(
-    <WorkspaceManagement workspace={workspace} csrf="csrf" refresh={vi.fn()} />,
+    <WorkspaceManagement
+      workspace={workspace}
+      csrf="csrf"
+      refresh={vi.fn()}
+      onHidden={hidden}
+    />,
   );
   expect(screen.queryByRole("button", { name: /poista/i })).toBeNull();
   fireEvent.click(screen.getByText("Piilota työtila"));
   await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+  await waitFor(() => expect(hidden).toHaveBeenCalledOnce());
   expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
     action: "visibility",
     workspace_id: workspace.workspace_id,
