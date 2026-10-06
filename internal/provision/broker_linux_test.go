@@ -32,6 +32,30 @@ func (e *startupExecutor) Verify(ctx context.Context, _ ExecutorIdentity) error 
 	return nil
 }
 
+func TestBrokerAdmissionConfig(t *testing.T) {
+	base := `{"version":1,"gateway_uid":21003,"gateway_gid":21003,"uid_min":21032,"uid_max":21047,"state_dir":"/var/lib/native-agent-host/broker"`
+	for _, tc := range []struct {
+		name, raw, want string
+	}{
+		{"legacy", base + `}`, ""},
+		{"explicit allowlist", base + `,"admission":"allowlist"}`, "allowlist"},
+		{"any", base + `,"admission":"any"}`, "any"},
+		{"unknown", base + `,"admission":"other"}`, "invalid"},
+		{"duplicate", base + `,"admission":"any","admission":"allowlist"}`, "invalid"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := parseBrokerConfig([]byte(tc.raw))
+			if tc.want == "invalid" {
+				if err != ErrBrokerStartup {
+					t.Fatalf("expected startup refusal: %v", err)
+				}
+			} else if err != nil || cfg.Admission != tc.want {
+				t.Fatalf("admission=%q err=%v", cfg.Admission, err)
+			}
+		})
+	}
+}
+
 func TestBrokerStartupDenials(t *testing.T) {
 	dir := fixture(t)
 	// Own the synthetic directory and files as this test process; no host state.

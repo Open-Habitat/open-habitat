@@ -33,8 +33,9 @@ sequenceDiagram
 ## Login and account binding
 
 GitHub's stable numeric user ID identifies the person. The login name supplies
-an initial Unix-name candidate; renaming the GitHub account does not change an
-existing binding. The gateway ties the OAuth callback to the browser that
+an initial Unix-name candidate; the broker lowercases it or derives a name
+from the ID if the login is unsuitable. Renaming the GitHub account does not
+change an existing binding. The gateway ties the OAuth callback to the browser that
 started it using a flow cookie, one-use state and PKCE.
 
 The broker trusts the gateway to authenticate the remote person. By default it

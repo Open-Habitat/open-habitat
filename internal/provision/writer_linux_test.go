@@ -198,6 +198,27 @@ func TestWriterExplicitAnyAdmission(t *testing.T) {
 		t.Fatal("mode removed", r)
 	}
 }
+func TestAnyAdmissionSafeAccountName(t *testing.T) {
+	for _, tc := range []struct{ login, id, want string }{
+		{"MixedCase", "91", "mixedcase"},
+		{"9-leading", "92", "gh92"},
+		{"long-provider-login-over-thirty-two", "93", "gh93"},
+	} {
+		t.Run(tc.login, func(t *testing.T) {
+			w, _ := writerFixture(t)
+			w.AdmitAny = true
+			put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":4,"ids":[]}`)
+			r := handle(w, "ensure", tc.id, tc.login)
+			if r.Route == nil || r.Route.Username != tc.want {
+				t.Fatalf("expected safe derived username %q: %+v", tc.want, r)
+			}
+			// Renaming the provider login does not change the binding.
+			if next := handle(w, "ensure", tc.id, "renamed"); next.Route == nil || next.Route.Username != tc.want {
+				t.Fatalf("binding changed after login rename: %+v", next)
+			}
+		})
+	}
+}
 func fileAbsent(p string) bool { _, e := os.Lstat(p); return os.IsNotExist(e) }
 func TestWriterFailuresRemainPending(t *testing.T) {
 	for _, phase := range []string{"available", "account", "home", "config", "socket", "unit", "verify"} {

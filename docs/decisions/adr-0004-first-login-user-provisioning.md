@@ -37,8 +37,10 @@ UID as caller and cannot independently attest the remote person's email. This
 is not a production admission design. No runtime check couples the two configs:
 installation ordering and live verification are the operator's responsibility.
 The browser cannot choose a Unix account. A GitHub login name is only an initial
-Unix-name candidate; renaming the GitHub account leaves its existing binding
-unchanged.
+Unix-name candidate: the broker lowercases it, or uses `gh` plus the stable
+numeric ID when it is not a valid Unix name. Name collisions still refuse
+rather than adopting an existing account; an operator alternate can resolve
+one. Renaming the GitHub account leaves its existing binding unchanged.
 
 The broker relies on the gateway to authenticate the remote person. A
 compromised gateway can claim an allowed GitHub ID: checking the local peer

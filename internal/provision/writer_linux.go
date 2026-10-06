@@ -406,7 +406,12 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 	if r.Operation != "ensure" {
 		return failure(Denied)
 	}
-	name := r.Candidate
+	name := strings.ToLower(r.Candidate)
+	if !username(name) {
+		// The numeric provider ID is stable even when its login contains
+		// characters or a length unsuitable for a Unix account name.
+		name = "gh" + r.ID
+	}
 	if entry.Alternate != "" {
 		name = entry.Alternate
 	}

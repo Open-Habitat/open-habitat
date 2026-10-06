@@ -35,11 +35,15 @@ type brokerConfig struct {
 // the root-only state directory (not the daemon-readable /etc config directory).
 // Its UID range is an operator declaration, not a built-in guess at the pool.
 func loadBrokerConfig() (brokerConfig, error) {
-	var cfg brokerConfig
 	b, err := secureFile(brokerState, "broker.json", 0)
 	if err != nil {
-		return cfg, ErrBrokerStartup
+		return brokerConfig{}, ErrBrokerStartup
 	}
+	return parseBrokerConfig(b)
+}
+
+func parseBrokerConfig(b []byte) (brokerConfig, error) {
+	var cfg brokerConfig
 	if _, err := object(b, "version", "gateway_uid", "gateway_gid", "uid_min", "uid_max", "state_dir", "admission"); err != nil {
 		return cfg, ErrBrokerStartup
 	}
