@@ -174,6 +174,11 @@ func TestPersistentExpiryAndMissingStore(t *testing.T) {
 	if e := os.Remove(path); e != nil {
 		t.Fatal(e)
 	}
+	// A fresh login must not republish the old memory snapshot after file loss.
+	state, flow = start(t, h)
+	if callback(h, state, flow).Code != 303 {
+		t.Fatal("new login after file loss failed")
+	}
 	if request(h, "GET", "/auth/session", cookie).Code != 401 {
 		t.Fatal("missing live store accepted")
 	}
