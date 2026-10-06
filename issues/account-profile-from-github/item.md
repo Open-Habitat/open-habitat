@@ -3,7 +3,7 @@ created: 2026-10-02
 updated: 2026-10-06
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-02:ui-observations:7-8
@@ -12,6 +12,8 @@ blocked_by: ['@unify-ui-primitives']
 lane: account-ui
 lane_seq: 20
 preparation: ready
+closed: 2026-10-06
+closed_by: claude
 ---
 
 # Make the signed-in account recognizable across the UI
