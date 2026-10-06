@@ -179,7 +179,10 @@ export function WorkspaceRailView({
                 : undefined
           }
           agents={agents
-            .filter((a) => a.workspace_id === w.workspace_id)
+            .filter(
+              (a) =>
+                a.workspace_id === w.workspace_id && a.archive !== "archived",
+            )
             .map((a) => ({
               agentId: a.agent_id,
               href: daemonSessions.some(

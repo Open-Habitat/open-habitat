@@ -463,7 +463,12 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}
-	if c.closed || s.aborting || (kind == "send" && s.state != "idle" && s.state != "rejected") || (kind != "send" && s.state != "accepted") || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= maxConversationCommands {
+	archiveState := "active"
+	if c.home != "" {
+		annotations, annotationErr := loadVisibility(c.home)
+		archiveState = archiveFact(annotations, annotationErr, "pi:"+id)
+	}
+	if archiveState != "active" || c.closed || s.aborting || (kind == "send" && s.state != "idle" && s.state != "rejected") || (kind != "send" && s.state != "accepted") || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= maxConversationCommands {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return

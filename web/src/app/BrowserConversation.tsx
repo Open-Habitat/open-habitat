@@ -16,6 +16,7 @@ import {
   WorkingProgress,
 } from "../components";
 import { agentPresentation } from "../components/agentPresentation";
+import { ArchiveControls } from "../components/ArchiveControls";
 import { PiToolUse } from "../components/PiBlocks";
 import { RecapCard } from "../components/RecapCard";
 import { UnpresentedEvents } from "../components/WorkingProgress";
@@ -32,7 +33,7 @@ import {
 } from "./conversations";
 import { timelineItems } from "./HistoryView";
 import { PiQuestion } from "./PiQuestion";
-import type { Snapshot, Workspace } from "./snapshot";
+import type { Agent, Snapshot, Workspace } from "./snapshot";
 import { useConversation } from "./useConversation";
 import { useReadingPositionLayout } from "./useReadingPosition";
 
@@ -47,6 +48,9 @@ export function showMissedEvents(liveTruncated: boolean, current?: Status) {
 
 export function BrowserConversation({
   workspace,
+  archive,
+  onArchive,
+  archiveBusy,
   id,
   title,
   identity,
@@ -60,6 +64,9 @@ export function BrowserConversation({
   onSessionCreated,
 }: {
   workspace: Workspace;
+  archive?: Agent;
+  onArchive?: (agent: Agent, archived: boolean) => Promise<boolean>;
+  archiveBusy?: boolean;
   id?: string;
   title?: string;
   identity: string;
@@ -288,6 +295,8 @@ export function BrowserConversation({
   };
   const canSend =
     controlled &&
+    archive?.archive !== "archived" &&
+    archive?.archive !== "unknown" &&
     !busy &&
     !ambiguous &&
     !statusStale &&
@@ -825,6 +834,19 @@ export function BrowserConversation({
               }}
             />
           ) : null}
+          {controlled && archive && !statusStale && !serverUnavailable ? (
+            <ArchiveControls
+              state={archive.archive ?? "unknown"}
+              eligible={
+                !busy &&
+                (current?.state === "idle" ||
+                  current?.continuation === "eligible")
+              }
+              busy={!!archiveBusy}
+              onArchive={() => void onArchive?.(archive, true)}
+              onRestore={() => void onArchive?.(archive, false)}
+            />
+          ) : null}
           {confirmStop && !statusStale && current?.state === "accepted" ? (
             <fieldset ref={stopConfirmation} aria-label="Vahvista keskeytys">
               <p>
@@ -888,7 +910,14 @@ export function BrowserConversation({
                       ? "read_only_history"
                       : "control_uncertain")
               }
-              onContinue={() => void continueEnded()}
+              onContinue={() => {
+                if (archive?.archive === "archived") {
+                  if (onArchive)
+                    void onArchive(archive, false).then((ok) => {
+                      if (ok) void continueEnded();
+                    });
+                } else void continueEnded();
+              }}
               retryAvailable={false}
             />
           ) : controlled ? (
@@ -906,11 +935,16 @@ export function BrowserConversation({
                   ? { state: "enabled" }
                   : {
                       state: "unknown",
-                      reason: serverUnavailable
-                        ? "Palvelinyhteys katkesi. Luonnos säilyy."
-                        : statusStale
-                          ? "Tila on vanhentunut. Tarkista keskustelun tila ennen lähettämistä."
-                          : "Odota vahvistettua joutotilaa; epävarmaa viestiä ei lähetetä uudelleen.",
+                      reason:
+                        archive?.archive === "archived"
+                          ? "Palauta keskustelu arkistosta ennen viestin lähettämistä."
+                          : archive?.archive === "unknown"
+                            ? "Arkiston tila on epävarma. Päivitä tiedot."
+                            : serverUnavailable
+                              ? "Palvelinyhteys katkesi. Luonnos säilyy."
+                              : statusStale
+                                ? "Tila on vanhentunut. Tarkista keskustelun tila ennen lähettämistä."
+                                : "Odota vahvistettua joutotilaa; epävarmaa viestiä ei lähetetä uudelleen.",
                     }
               }
               onSendNow={() => void submit()}

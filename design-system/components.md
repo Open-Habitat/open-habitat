@@ -12,7 +12,7 @@ komponenttien esitystilat valmiilla näyttömalleilla.
 | Ikonit ja tilamerkinnät | `Icon.tsx`, `Status.tsx` |
 | Sovelluskehys ja navigaatio | `Navigation.tsx`, `ConversationFrame.tsx` |
 | Tilivalikko ja asetukset | `Account.tsx` |
-| Keskustelu, kirjoituskenttä ja jonot | `Conversation.tsx`, `AgentInteractionControls.tsx` |
+| Keskustelu, kirjoituskenttä ja jonot | `Conversation.tsx`, `AgentInteractionControls.tsx`, `ArchiveControls.tsx` |
 | Markdown ja koodi | `Markdown.tsx` |
 | Työn eteneminen ja operaatiot | `WorkingProgress.tsx`, `Operations.tsx` |
 | Käyttöönotto | `GitHubRepoChooser.tsx`, `PiDeviceSignIn.tsx` |

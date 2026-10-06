@@ -24,6 +24,9 @@ const WorkspacePath = "/api/v1/workspaces"
 
 type workspaceRequest struct {
 	Action               string  `json:"action"`
+	AgentID              string  `json:"agent_id,omitempty"`
+	Archived             *bool   `json:"archived,omitempty"`
+	PreviousArchive      string  `json:"previous_archive,omitempty"`
 	Name                 string  `json:"name,omitempty"`
 	WorkspaceID          string  `json:"workspace_id,omitempty"`
 	ObservationToken     string  `json:"observation_token,omitempty"`
@@ -107,6 +110,19 @@ func loadVisibility(home string) (workspaceVisibility, error) {
 	if dec.Decode(&state) != nil || dec.Decode(&extra) != io.EOF || state.SchemaVersion != 1 || state.Workspaces == nil || state.Conversations == nil {
 		return state, errors.New("unknown state")
 	}
+	for id, visibility := range state.Workspaces {
+		if !idPattern.MatchString(id) || visibility.UpdatedAt == "" {
+			return state, errors.New("state annotation unreadable")
+		}
+		if _, err := time.Parse(time.RFC3339Nano, visibility.UpdatedAt); err != nil {
+			return state, errors.New("state annotation unreadable")
+		}
+	}
+	for id := range state.Conversations {
+		if !strings.HasPrefix(id, "pi:") || archiveFact(state, nil, id) == "unknown" {
+			return state, errors.New("state annotation unreadable")
+		}
+	}
 	return state, nil
 }
 func saveVisibility(home string, s workspaceVisibility) error {
@@ -151,6 +167,12 @@ func saveVisibility(home string, s workspaceVisibility) error {
 // request observes native entries anew; browser names and IDs alone never grant
 // access to a path. Destructive removal is intentionally not exposed.
 func WorkspaceHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
+	return workspaceHandler(cfg, trusted, nil)
+}
+func WorkspaceHandlerWithArchive(cfg transport.Config, trusted func(*http.Request) bool, controller *ConversationController) http.Handler {
+	return workspaceHandler(cfg, trusted, controller)
+}
+func workspaceHandler(cfg transport.Config, trusted func(*http.Request) bool, controller *ConversationController) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !historyAuthorized(cfg, trusted, r) {
 			snapshotError(w, 403, "cross_user_denied")
@@ -166,6 +188,18 @@ func WorkspaceHandler(cfg transport.Config, trusted func(*http.Request) bool) ht
 		dec := json.NewDecoder(bytes.NewReader(b))
 		dec.DisallowUnknownFields()
 		if e != nil || int64(len(b)) != r.ContentLength || !catalogNoDuplicates(b) || dec.Decode(&in) != nil || dec.Decode(&extra) != io.EOF {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
+		if in.Action == "conversation_archive" {
+			if controller == nil || in.Name != "" || in.UserObservationToken != "" || in.DisplayName != nil || in.Git != nil || in.Hidden != nil || in.Archived == nil || !strings.HasPrefix(in.AgentID, "pi:") {
+				snapshotError(w, 400, "invalid_request")
+				return
+			}
+			controller.archiveInput(w, strings.TrimPrefix(in.AgentID, "pi:"), archiveRequest{WorkspaceID: in.WorkspaceID, Archived: *in.Archived, ObservationToken: in.ObservationToken, PreviousArchive: in.PreviousArchive})
+			return
+		}
+		if in.AgentID != "" || in.Archived != nil || in.PreviousArchive != "" {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
@@ -390,4 +424,35 @@ func ensureWorkspaceExclude(fd int) error {
 		return file.Sync()
 	}
 	return nil
+}
+
+// archiveFact never treats an unreadable annotation as an empty archive.
+func archiveFact(state workspaceVisibility, readErr error, id string) string {
+	if readErr != nil {
+		return "unknown"
+	}
+	raw, ok := state.Conversations[id]
+	if !ok {
+		return "active"
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(raw, &fields) != nil || fields == nil {
+		return "unknown"
+	}
+	for field := range fields {
+		if field != "archived_at" && field != "title" && field != "parent" {
+			return "unknown"
+		}
+	}
+	if stamp, present := fields["archived_at"]; present {
+		var at string
+		if json.Unmarshal(stamp, &at) != nil || at == "" {
+			return "unknown"
+		}
+		if _, err := time.Parse(time.RFC3339Nano, at); err != nil {
+			return "unknown"
+		}
+		return "archived"
+	}
+	return "active"
 }

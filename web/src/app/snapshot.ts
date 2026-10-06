@@ -41,6 +41,8 @@ export interface Workspace {
 export interface Agent {
   agent_id: string;
   workspace_id: string;
+  archive?: "active" | "archived" | "unknown";
+  observation_token?: string;
   history: "readable" | "missing" | "corrupt" | "unavailable";
   process: string;
   control: string;

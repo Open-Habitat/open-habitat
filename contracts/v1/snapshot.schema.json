@@ -282,6 +282,7 @@
         "workspace_id": {
           "$ref": "common.schema.json#/$defs/workspaceId"
         },
+        "archive": { "enum": ["active", "archived", "unknown"] },
         "history": {
           "enum": [
             "readable",

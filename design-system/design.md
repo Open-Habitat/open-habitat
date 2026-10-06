@@ -79,6 +79,16 @@ Tilipainikkeessa näkyvät etunimi ja profiilikuva tai sen varaesitys.
 Avattu tilinäkymä näyttää sähköpostin. Asetusten osiot ovat Tili,
 Yhteydet tällä palvelimella, Ulkoasu ja Istunto.
 
+## Keskustelun arkisto
+
+Työtilasivulla arkistoidut keskustelut löytyvät erillisestä Arkisto-osiosta,
+eivät tavallisesta keskustelulistasta. Arkistointi vahvistetaan keskustelussa;
+palautus muuttaa näkyvyyttä mutta ei aloita Pi:tä. Erillinen Jatka-toiminto
+käyttää samaa natiivia historiaa. Aktiivinen kirjoittaja estää arkistoinnin.
+Tuntematon arkiston tila näytetään varoituksena, eikä sitä tulkita tyhjäksi
+arkistoksi. `ArchiveControls` on yhteinen tuotanto- ja katalogikomponentti;
+konflikti- ja tuntematon-tilan esimerkit ovat `ConversationStates.stories.tsx`:ssä.
+
 ## Keskustelu
 
 Keskustelun yläpalkissa ovat otsikko, olennainen tila ja Tiedot-valikko,

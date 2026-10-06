@@ -1,0 +1,119 @@
+//go:build linux
+
+package daemon
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"github.com/maintainer/native-agent-host/internal/transport"
+	"golang.org/x/sys/unix"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
+	const id = "12345678-1234-4123-8123-123456789abc"
+	const wsid = "ws_12345678"
+	home := t.TempDir()
+	cwd := filepath.Join(home, "src", "project")
+	if err := os.MkdirAll(cwd, 0700); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(home, ".pi", "agent", "sessions")
+	if err := os.MkdirAll(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, "history.jsonl")
+	original := []byte(fmt.Sprintf("{\"type\":\"session\",\"version\":3,\"id\":%q,\"cwd\":%q}\n", id, cwd))
+	if err := os.WriteFile(path, original, 0600); err != nil {
+		t.Fatal(err)
+	}
+	fd, err := unix.Open(cwd, unix.O_PATH|unix.O_DIRECTORY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := stat(fd)
+	unix.Close(fd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := transport.Config{Home: home, UID: os.Geteuid()}
+	c := &ConversationController{home: home, cfg: cfg, sessions: map[string]*conversation{}}
+	c.discover = func(transport.Config) Discovery {
+		return Discovery{State: "present", Entries: []Workspace{{Name: "project", Kind: "directory", WorkspaceID: wsid, dev: uint64(info.Dev), ino: info.Ino}}}
+	}
+	native := readNativeHeader(path, cfg.UID)
+	token := opaque("obs_", id+":"+native.revision)
+	request := func(archived bool, observation string) int {
+		t.Helper()
+		body, _ := json.Marshal(map[string]any{"workspace_id": wsid, "archived": archived, "previous_archive": func() string {
+			if archived {
+				return "active"
+			}
+			return "archived"
+		}(), "observation_token": observation})
+		req := httptest.NewRequest("POST", "http://unix/archive", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		c.archive(w, req, id)
+		return w.Code
+	}
+	if got := request(true, token); got != 409 {
+		t.Fatalf("terminal history admitted: %d", got)
+	}
+	exited := make(chan struct{})
+	c.sessions[id] = &conversation{id: id, workspace: wsid, cwd: cwd, rpc: &piRPC{exited: exited}, state: "accepted"}
+	if got := request(true, token); got != 409 {
+		t.Fatalf("active writer admitted: %d", got)
+	}
+	c.sessions[id].state = "idle"
+	if got := request(true, "obs_stale123"); got != 409 {
+		t.Fatalf("stale view admitted: %d", got)
+	}
+	if got := request(true, token); got != 200 {
+		t.Fatalf("archive: %d", got)
+	}
+	state, err := loadVisibility(home)
+	if err != nil || archiveFact(state, nil, "pi:"+id) != "archived" {
+		t.Fatalf("archive missing: %v %v", state, err)
+	}
+	if got := request(true, token); got != 409 {
+		t.Fatalf("stale archive view changed state: %d", got)
+	}
+	message := httptest.NewRequest("POST", "http://unix/send", bytes.NewBufferString(`{"message":"should stay hidden","command_id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"}`))
+	message.Header.Set("Content-Type", "application/json")
+	blocked := httptest.NewRecorder()
+	c.send(blocked, message, id)
+	if blocked.Code != 409 {
+		t.Fatalf("archived conversation accepted a new send: %d", blocked.Code)
+	}
+	delete(c.sessions, id) // daemon restart loses its handle; visibility restoration remains possible.
+	if got := request(false, token); got != 200 {
+		t.Fatalf("restore: %d", got)
+	}
+	state, err = loadVisibility(home)
+	if err != nil || archiveFact(state, nil, "pi:"+id) != "active" {
+		t.Fatalf("restore missing: %v %v", state, err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(data, original) {
+		t.Fatal("native history changed")
+	}
+	// Corrupt annotation bytes are not overwritten by a new archive action.
+	stateDir := filepath.Join(home, ".local", "state", "native-agent-host", "user-state.json")
+	c.sessions[id] = &conversation{id: id, workspace: wsid, cwd: cwd, rpc: &piRPC{exited: exited}, state: "idle"}
+	if err := os.WriteFile(stateDir, []byte("{broken"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got := request(true, token); got != http.StatusServiceUnavailable {
+		t.Fatalf("corrupt annotation overwritten: %d", got)
+	}
+	data, _ = os.ReadFile(stateDir)
+	if string(data) != "{broken" {
+		t.Fatal("corrupt bytes destroyed")
+	}
+}

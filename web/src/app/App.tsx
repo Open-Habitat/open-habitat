@@ -14,6 +14,7 @@ import {
   AccountLogoutDialog,
   AccountSettings,
   AppShell,
+  Button,
   ConnectionBanner,
   InlineNotice,
 } from "../components";
@@ -25,7 +26,12 @@ import { ReturnView } from "../components/ReturnView";
 import { BrowserConversation } from "./BrowserConversation";
 import { ConversationJournal } from "./conversationJournal";
 import { ConversationStore } from "./conversationStore";
-import { list as listConversations, type Session } from "./conversations";
+import {
+  list as listConversations,
+  NotAdmitted,
+  setArchive,
+  type Session,
+} from "./conversations";
 import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
 import {
@@ -141,6 +147,8 @@ export function App() {
   }, []);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [logoutError, setLogoutError] = useState(false);
+  const [archiveProblem, setArchiveProblem] = useState("");
+  const [archiveBusy, setArchiveBusy] = useState(false);
   const [logoutPrompt, setLogoutPrompt] = useState(false);
   const [settingsReturn, setSettingsReturn] = useState("/workspaces");
   const returningFromSettings = useRef(false);
@@ -562,9 +570,51 @@ export function App() {
               : matches.length === 0
                 ? "filtered-empty"
                 : "ready";
+  const changeArchive = async (
+    agent: NonNullable<typeof snapshot>["agents"][number],
+    archived: boolean,
+  ) => {
+    if (
+      !csrf ||
+      phase !== "authenticated" ||
+      archiveBusy ||
+      !agent.observation_token ||
+      agent.archive === "unknown"
+    )
+      return false;
+    setArchiveBusy(true);
+    setArchiveProblem("");
+    try {
+      await setArchive(
+        agent.agent_id,
+        agent.workspace_id,
+        agent.observation_token,
+        archived,
+        agent.archive === "archived" ? "archived" : "active",
+        csrf,
+      );
+      refresh();
+      return true;
+    } catch (error) {
+      if ((error as Error).message === "identity_lost") requireLogin();
+      setArchiveProblem(
+        error instanceof NotAdmitted
+          ? "Arkistointia ei tehty: keskustelun tila muuttui tai kirjoittaja on aktiivinen. Päivitä tiedot."
+          : "Arkistoinnin tulos on epävarma. Päivitä tilanne ennen uutta yritystä.",
+      );
+      refresh();
+      return false;
+    } finally {
+      setArchiveBusy(false);
+    }
+  };
   const returnConversations: (ReturnConversation & { workspaceId: string })[] =
     (snapshot?.agents ?? [])
-      .filter((a) => visible.some((w) => w.workspace_id === a.workspace_id))
+      .filter(
+        (a) =>
+          a.archive !== "archived" &&
+          visible.some((w) => w.workspace_id === a.workspace_id),
+      )
       .map((a) => {
         const workspace = visible.find(
           (w) => w.workspace_id === a.workspace_id,
@@ -688,13 +738,38 @@ export function App() {
         }}
       />
     ) : selectedAgent && agentWorkspace && conversationStore ? (
-      <HistoryView
-        onLogin={onCurrentLogin}
-        store={conversationStore}
-        agent={selectedAgent}
-        workspaceName={agentWorkspace.display_name ?? agentWorkspace.name}
-        workspaceId={agentWorkspace.workspace_id}
-      />
+      <>
+        {selectedAgent.archive === "archived" && (
+          <p>
+            <Button
+              label="Palauta näkyviin"
+              onPress={() => void changeArchive(selectedAgent, false)}
+              availability={
+                archiveBusy || !csrf || phase !== "authenticated"
+                  ? {
+                      state: "unknown",
+                      reason: "Päivitä yhteys ennen palautusta",
+                    }
+                  : { state: "enabled" }
+              }
+            />
+          </p>
+        )}
+        {archiveProblem && (
+          <InlineNotice
+            title="Arkiston tila epävarma"
+            description={archiveProblem}
+            tone="warning"
+          />
+        )}
+        <HistoryView
+          onLogin={onCurrentLogin}
+          store={conversationStore}
+          agent={selectedAgent}
+          workspaceName={agentWorkspace.display_name ?? agentWorkspace.name}
+          workspaceId={agentWorkspace.workspace_id}
+        />
+      </>
     ) : selectedAgentId ? (
       <>
         <h1>
@@ -739,6 +814,13 @@ export function App() {
             }
             onLogin={onCurrentLogin}
             store={conversationStore}
+            archive={snapshot?.agents.find(
+              (a) =>
+                a.agent_id ===
+                new URLSearchParams(location.search).get("conversation"),
+            )}
+            onArchive={changeArchive}
+            archiveBusy={archiveBusy}
             workspace={selected}
             id={
               /^pi:[0-9a-fA-F-]{36}$/.test(
@@ -769,6 +851,54 @@ export function App() {
         ) : null}
         {!new URLSearchParams(location.search).has("conversation") ? (
           <>
+            {archiveProblem && (
+              <InlineNotice
+                title="Arkiston tila epävarma"
+                description={archiveProblem}
+                tone="warning"
+              />
+            )}
+            <section aria-label="Työtilan arkisto">
+              <h2>Arkisto</h2>
+              {snapshot?.sources.find((f) => f.source === "annotation")
+                ?.state !== "confirmed" ? (
+                <p>Arkistoa ei voitu lukea. Päivitä tiedot.</p>
+              ) : (
+                snapshot.agents
+                  .filter(
+                    (a) =>
+                      a.workspace_id === selected.workspace_id &&
+                      a.archive === "archived",
+                  )
+                  .map((a) => (
+                    <p key={a.agent_id}>
+                      <LinkRow
+                        href={
+                          daemonSessions.some((s) => s.agent_id === a.agent_id)
+                            ? `/workspaces/${selected.workspace_id}?conversation=${a.agent_id}`
+                            : `/agents/${a.agent_id}`
+                        }
+                        kind="inline"
+                      >
+                        {a.title.display}
+                      </LinkRow>{" "}
+                      <Button
+                        label="Palauta näkyviin"
+                        variant="quiet"
+                        onPress={() => void changeArchive(a, false)}
+                        availability={
+                          archiveBusy || !csrf || phase !== "authenticated"
+                            ? {
+                                state: "unknown",
+                                reason: "Päivitä yhteys ennen palautusta",
+                              }
+                            : { state: "enabled" }
+                        }
+                      />
+                    </p>
+                  ))
+              )}
+            </section>
             <ReturnView
               store={conversationStore}
               workspaceName="Keskustelut työtilassa"

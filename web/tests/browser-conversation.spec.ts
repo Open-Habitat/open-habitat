@@ -1279,6 +1279,44 @@ async function endedConversation(page: import("@playwright/test").Page) {
   return id;
 }
 
+test("@browser-conversation archive restores visibility before native continuation", async ({
+  page,
+}) => {
+  const id = await endedConversation(page);
+  await expect(
+    page.getByRole("button", { name: "Arkistoi", exact: true }),
+  ).toBeEnabled();
+  await page.getByRole("button", { name: "Arkistoi", exact: true }).click();
+  await page.getByRole("button", { name: "Vahvista arkistointi" }).click();
+  await expect(
+    page.getByRole("button", { name: "Palauta näkyviin" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Etusivu" }).click();
+  await expect(
+    page
+      .getByRole("navigation")
+      .getByRole("link", { name: "synthetic end then continue" }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "ordinary-dir" })
+    .click();
+  const workspaceURL = page.url();
+  const archive = page.getByRole("region", { name: "Työtilan arkisto" });
+  await expect(archive).toContainText("synthetic end then continue");
+  await archive.getByRole("button", { name: "Palauta näkyviin" }).click();
+  await expect(
+    archive.getByRole("button", { name: "Palauta näkyviin" }),
+  ).toHaveCount(0);
+  await page.goto(`${workspaceURL}?conversation=${id}`);
+  await refreshConversation(page);
+  await page.getByRole("button", { name: "Jatka keskustelua" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
+  expect(new URL(page.url()).searchParams.get("conversation")).toBe(id);
+});
+
 test("@browser-conversation ordinary refresh keeps an explicit continuation proof", async ({
   page,
 }) => {

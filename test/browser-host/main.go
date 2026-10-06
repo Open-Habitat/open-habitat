@@ -346,6 +346,11 @@ esac
 		serveConversation := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			current.Load().(http.Handler).ServeHTTP(w, r)
 		})
+		fixtureWorkspaceCfg := cfg
+		fixtureWorkspaceCfg.Home = home // All workspace writes in the browser host stay in its disposable home.
+		mux.Handle(daemon.WorkspacePath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			daemon.WorkspaceHandlerWithArchive(fixtureWorkspaceCfg, trusted, current.Load().(*daemon.ConversationController)).ServeHTTP(w, r)
+		}))
 		mux.Handle("/api/v1/conversations", serveConversation)
 		mux.Handle("/api/v1/conversations/", serveConversation)
 		mux.Handle("/api/v1/events", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

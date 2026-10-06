@@ -119,7 +119,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		fact := func(source, value string) map[string]string {
 			return map[string]string{"source": source, "state": value, "observed_at": at}
 		}
-		visibility, visibilityErr := loadVisibility(cfg.Home)
+		visibility, visibilityErr := loadVisibility(nativeHome)
 		workspaces := make([]any, 0, len(observation.Entries))
 		seen := map[string]bool{}
 		for _, entry := range observation.Entries {
@@ -200,6 +200,10 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 				}
 			}
 		}
+		for _, raw := range agents {
+			agent := raw.(map[string]any)
+			agent["archive"] = archiveFact(visibility, visibilityErr, agent["agent_id"].(string))
+		}
 		if controller != nil {
 			controller.mu.Lock()
 			for _, active := range controller.sessions {
@@ -214,6 +218,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 				if !found && seen[active.workspace] {
 					agent := sessionFact(nativeSession{id: active.id, state: "missing"}, active.workspace, cfg.UID)
 					agent["history"] = "missing"
+					agent["archive"] = archiveFact(visibility, visibilityErr, id)
 					agents = append(agents, agent)
 				}
 			}
@@ -256,7 +261,12 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 				unix.Close(fd)
 			}
 		}
-		body := map[string]any{"schema_version": 1, "snapshot_id": snapID, "captured_at": at, "server_instance_id": instance, "event_cursor": eventCursor, "oldest_replay_cursor": oldestCursor, "user_observation_token": userToken, "write_state": writeState, "identity": map[string]string{"web_identity_id": expected, "display_name": display}, "sources": []any{fact("filesystem", state), fact("pi_history", func() string {
+		body := map[string]any{"schema_version": 1, "snapshot_id": snapID, "captured_at": at, "server_instance_id": instance, "event_cursor": eventCursor, "oldest_replay_cursor": oldestCursor, "user_observation_token": userToken, "write_state": writeState, "identity": map[string]string{"web_identity_id": expected, "display_name": display}, "sources": []any{fact("filesystem", state), fact("annotation", func() string {
+			if visibilityErr != nil {
+				return "unavailable"
+			}
+			return "confirmed"
+		}()), fact("pi_history", func() string {
 			if historyErr != nil {
 				return "unavailable"
 			}

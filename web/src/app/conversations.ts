@@ -515,3 +515,37 @@ export async function clearQueue(
     follow_up: q.follow_up as string[],
   };
 }
+
+// Annotation writes are never retried automatically after a lost reply. A fresh
+// snapshot is the only evidence that a presentation change actually landed.
+export async function setArchive(
+  id: string,
+  workspace: string,
+  observation: string,
+  archived: boolean,
+  previousArchive: "active" | "archived",
+  csrf: string,
+): Promise<void> {
+  if (!agent.test(id) || !ws.test(workspace) || !observation)
+    throw new Error("invalid archive target");
+  const value = await request(
+    "/api/v1/workspaces",
+    undefined,
+    {
+      action: "conversation_archive",
+      agent_id: id,
+      workspace_id: workspace,
+      observation_token: observation,
+      archived,
+      previous_archive: previousArchive,
+    },
+    csrf,
+  );
+  if (
+    !object(value) ||
+    value.schema_version !== 1 ||
+    value.agent_id !== id ||
+    value.archive !== (archived ? "archived" : "active")
+  )
+    throw new Error("invalid archive result");
+}

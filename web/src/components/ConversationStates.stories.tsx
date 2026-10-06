@@ -16,6 +16,7 @@ import {
   UserMessage,
 } from "./Conversation";
 import { Markdown } from "./Markdown";
+import { ArchiveControls } from "./ArchiveControls";
 import { AgentHeader } from "./Navigation";
 import { WorkingProgress } from "./WorkingProgress";
 
@@ -482,4 +483,38 @@ export const LiveToolLight: Story = {
 export const LiveToolDark: Story = {
   render: () => <LiveToolRow name="bash" state="running" />,
   globals: { theme: "dark" },
+};
+
+export const ArchiveConfirmation: Story = {
+  render: () => (
+    <ArchiveControls
+      state="active"
+      eligible
+      busy={false}
+      onArchive={noop}
+      onRestore={noop}
+    />
+  ),
+};
+export const ArchiveWriterConflict: Story = {
+  render: () => (
+    <ArchiveControls
+      state="active"
+      eligible={false}
+      busy={false}
+      onArchive={noop}
+      onRestore={noop}
+    />
+  ),
+};
+export const ArchiveAnnotationUnavailable: Story = {
+  render: () => (
+    <ArchiveControls
+      state="unknown"
+      eligible={false}
+      busy={false}
+      onArchive={noop}
+      onRestore={noop}
+    />
+  ),
 };

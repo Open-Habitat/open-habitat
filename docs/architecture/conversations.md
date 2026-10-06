@@ -106,6 +106,24 @@ beyond the agreed display-only scope in
 [document review](../../issues/rethink-project-docs/item.md) records that
 implementation/scope difference for joint follow-up.
 
+## Archiving presentation
+
+A browser-managed conversation with a confirmed idle controller state, or a
+positively reaped daemon child, can be archived. The daemon checks the native
+session header, workspace association and current snapshot observation token
+before updating the user's `~/.local/state/native-agent-host/user-state.json`.
+Workspace visibility and archive updates share one writer lock and an atomic
+rename; Pi history is neither moved nor copied. The snapshot reports `active`,
+`archived` or `unknown` per conversation. Archived browser conversations do not
+accept another browser send until restored. An unreadable state file makes archive
+state unknown without hiding native history or overwriting corrupt bytes; browser
+writes wait for the annotation state to be checked again.
+Archive requires the current daemon handle; terminal history and a lost daemon
+handle cannot prove idle or process exit. Restore changes only presentation and
+also works after a daemon restart. A separate explicit continuation rechecks
+native ownership and launches Pi on the same session ID. A stale archive view is
+refused rather than used to reverse another browser's action.
+
 ## Ending and continuing
 
 Browser or gateway loss leaves Pi running. A daemon restart loses its handles
