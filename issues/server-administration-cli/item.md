@@ -1,8 +1,8 @@
 ---
 created: 2026-10-03
-updated: 2026-10-05
+updated: 2026-10-06
 type: task
-status: open
+status: in-progress
 priority: normal
 related: ['@named-server-admin-settings']
 lane: server-admin
