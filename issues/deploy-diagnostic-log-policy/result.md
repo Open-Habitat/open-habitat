@@ -1,6 +1,13 @@
-# Test-release attempts: installed, public route blocked
+# Test-release attempts and completion
 
-Open Habitat `0.0.0-pilot.20` now runs on the dedicated test guest after an explicitly authorized OS rebuild. Public access remains broken (HTTP 502), and this issue's live diagnostic acceptance criteria remain incomplete. The historical attempt narratives below describe earlier states, not the current guest.
+Open Habitat `0.0.0-pilot.20` runs on the dedicated test guest after the authorized OS rebuild. The fourth-OS narrative below is historical: the conductor restarted Alder's shared cloudflared on 2026-10-06 at 18:11 UTC. Independently, a public HTTPS `GET /` returned 200 and `GET /auth/github/start` returned 302 with `Location` on `https://github.com/login/oauth/authorize` (curl, 18:12 UTC; no query string or cookie retained). This shows that an anonymous request reaches GitHub without an email gate, **not** that a GitHub callback or a browser sign-in completed. No further shared-service action was taken by this worker.
+
+## Immediately after Jari's first sign-in
+
+1. Jari opens `https://omega-habitat-test.example.test/`, signs in with GitHub and confirms his workspaces page loads. Do not paste OAuth callbacks, session cookies or tokens into a receipt. On the pinned guest root connection, run the installed `open-habitat admin users list --json`; identify his numeric GitHub subject against his own authenticated `gh api user --jq .id`, check the returned bound Unix name/UID against the broker ledger and account, and confirm a repeat sign-in reuses that binding.
+2. As guest root (gateway running), run `open-habitat admin role update <verified-numeric-GitHub-subject> --administrator true --dry-run --json`, then the same command without `--dry-run`. Verify `open-habitat admin settings show --json` and Jari's browser administration view. Do **not** grant from a guessed login name or edit `administration.json` by hand.
+3. With Jari's existing browser session, restart **only the guest's** `open-habitat-gateway.service`; reload the page and verify the same session, binding and administrator view persist. Check gateway/broker and his `open-habitat-daemon@<bound-name>.service` journals as root for structured diagnostic events and no callback query string, credential-bearing header or token. Check journal reader denial for the bound UID and `nah-admin` (without giving either a broad journal group).
+4. A second distinct consenting GitHub account must sign in to prove two-UID isolation. Verify distinct broker bindings and actual Linux UIDs, then from each mapped UID attempt to read the other's home, credentials, socket and service diagnostics; all cross-user attempts must be denied. Check each user's own daemon route still works. If a second person is unavailable, record this part as **unverified**, not passed. Provision each bound user's `~/src` volume through Fleetrepo's `src_volume.py` before Git clone/write tests; its verification and free-space requirements are in `JIT-POLICY.md`. Record redacted results in both repositories' issue results.
 
 ## Fourth-OS installation and remaining failure (2026-10-06)
 
