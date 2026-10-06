@@ -78,7 +78,7 @@ try:
         try:socket.create_connection(('127.0.0.1',443),.5).close();break
         except OSError:time.sleep(.2)
     else:raise RuntimeError('provider')
-    check(unit('start','product-gateway.socket').returncode==0,'revocation socket')
+    check(unit('start','native-agent-host-revoke.socket').returncode==0,'revocation socket')
     check(unit('start','product-gateway.service').returncode==0,'gateway')
     gateway_observation='no response'
     for _ in range(100):

@@ -91,7 +91,7 @@ try:
         try:socket.create_connection(('127.0.0.1',443),.5).close();break
         except OSError:time.sleep(.2)
     else:raise RuntimeError('provider unavailable')
-    subprocess.run(['systemctl','start','product-gateway.socket'],check=True,capture_output=True)
+    subprocess.run(['systemctl','start','native-agent-host-revoke.socket'],check=True,capture_output=True)
     subprocess.run(['systemctl','start','product-gateway.service'],check=True,capture_output=True)
     for _ in range(50):
         try:

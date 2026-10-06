@@ -106,7 +106,7 @@ print('UNEXPECTED_REPLY')
                 socket.create_connection(('127.0.0.1',443),1).close();break
             except OSError:time.sleep(.2)
         else:raise RuntimeError('fixture provider not ready')
-        subprocess.run(['systemctl','start','product-gateway.socket'],check=True,stdout=subprocess.DEVNULL)
+        subprocess.run(['systemctl','start','native-agent-host-revoke.socket'],check=True,stdout=subprocess.DEVNULL)
         subprocess.run(['systemctl','start','product-gateway.service'],check=True,stdout=subprocess.DEVNULL)
         ctx=ssl.create_default_context(cafile='/etc/native-agent-host/fixture-ca.crt')
         class NoRedirect(urllib.request.HTTPRedirectHandler):
