@@ -60,8 +60,11 @@ agree before an existing binding can be used.
 
 The broker checks current authorization when the gateway issues a session.
 In `any` mode, changing the ID allowlist does not revoke a subject: revoke
-sessions explicitly and remove that person's Access admission before relying
-on a denial of further login. Existing Unix bindings remain reserved.
+sessions explicitly. Since [ADR 0014](adr-0014-open-test-admission.md) removed
+the test installation's Access gate, there is no per-person admission denial
+in this mode; a revoked person can sign in again. Preventing new logins
+requires stopping the gateway and switching to a restrictive admission mode
+through a separately verified operator. Existing Unix bindings remain reserved.
 After login, the gateway routes from its local session until expiry, logout or
 `RevokeSubject` ([ADR 0006](adr-0006-subject-revocation.md)). An allowlist
 change by itself does not log out an existing session; revoke access explicitly
