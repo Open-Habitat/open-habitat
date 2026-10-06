@@ -112,10 +112,6 @@ func scan(home string, uid int, op openFunction) Discovery {
 		return result
 	}
 	defer unix.Close(src)
-	if sourceOnDifferentMount(h, src) && !dedicatedCloneVolume(src) {
-		result.Error = "unsafe_path"
-		return result
-	}
 	sourceID, e := stat(src)
 	if e != nil {
 		result.Error = reason(e)

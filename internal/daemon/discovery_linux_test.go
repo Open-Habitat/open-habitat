@@ -26,6 +26,31 @@ func put(t *testing.T, p, s string) {
 	}
 }
 func testScan(t *testing.T, home string) Discovery { t.Helper(); return scan(home, -1, unix.Openat2) }
+
+// Discovery is independent of filesystem capacity: a workspace must remain
+// visible even when a source filesystem grows beyond the old clone ceiling.
+func TestDiscoveryOnLargeFilesystem(t *testing.T) {
+	h := t.TempDir()
+	src := filepath.Join(h, "src")
+	mkdir(t, filepath.Join(src, "project"))
+	fd, err := unix.Open(src, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unix.Close(fd)
+	var fs unix.Statfs_t
+	if err := unix.Fstatfs(fd, &fs); err != nil {
+		t.Fatal(err)
+	}
+	if fs.Frsize <= 0 || fs.Blocks <= (20<<30)/uint64(fs.Frsize) {
+		t.Skip("test requires a filesystem larger than the retired 20 GiB limit")
+	}
+	r := testScan(t, h)
+	if len(r.Entries) != 1 || r.Entries[0].Name != "project" || r.State != "present" {
+		t.Fatalf("large filesystem must not hide workspaces: %+v", r)
+	}
+}
+
 func TestDiscoveryStatesAndFacts(t *testing.T) {
 	h := t.TempDir()
 	if r := testScan(t, h); r.State != "missing" {
