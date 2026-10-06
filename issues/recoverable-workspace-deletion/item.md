@@ -12,7 +12,7 @@ originating_run: 01m47rc6v6knd1zx908d2qy2zz
 originating_run_kind: spinoff
 lane: workspace-deletion
 collision: [internal/daemon/, docs/]
-preparation: ready
+preparation: pending
 ---
 
 # Implement recoverable local workspace deletion
@@ -35,3 +35,11 @@ Accepted for execution in this stint. Jari asked the stint to carry work as far
 as meaningfully possible and to record decisions for his after-the-fact review;
 the quarantine guarantee above is the conductor's 6 October decision, listed
 for that review.
+
+### 2026-10-06 · conductor
+
+The first attempt (run `01m47vfaep5htkxk4vdadnr5d5`) found that deletion
+needs a design step first: coordination with the conversation controller, a
+settled-history/exit check and a crash-tested quarantine journal (see
+[result.md](result.md)). Preparation returns to `pending` so the next attempt
+starts from that design rather than repeating the implementation attempt.
