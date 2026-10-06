@@ -3,7 +3,7 @@ created: 2026-10-01
 updated: 2026-10-06
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@review-browser-design-v2', '@compare-v2-pairs']
 lane: design-v2
@@ -11,6 +11,8 @@ lane_seq: 15
 collision: [design-system/, web/src/components/, web/src/components/Conversation.tsx, web/src/app/App.tsx]
 blocked_by: ['@align-navigation-design', '@unify-ui-primitives']
 preparation: ready
+closed: 2026-10-06
+closed_by: claude
 ---
 
 # Align settings with the design and refresh view comparisons
