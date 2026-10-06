@@ -617,6 +617,8 @@ export function App() {
         onLogout={() => setLogoutPrompt(true)}
         nativeState={snapshot?.auth?.native_github.state}
         nativeLogin={snapshot?.auth?.native_github.login}
+        csrf={csrf}
+        onDisconnect={refresh}
         onBack={() => {
           returningFromSettings.current = true;
           navigate(settingsReturn);

@@ -59,6 +59,8 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(RepoCloneStreamPath, RepoCloneStreamHandler(cfg, server.TrustedPeer))
 	mux.Handle(RepoObservePath, RepoObserveHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspacePath, WorkspaceHandler(cfg, server.TrustedPeer))
+	mux.Handle(RepoPublishPath, RepoPublishHandler(cfg, server.TrustedPeer))
+	mux.Handle(RepoDisconnectPath, RepoDisconnectHandler(cfg, server.TrustedPeer))
 	mux.Handle("/api/v1/onboarding/pi/attempt", PiAttemptHandler(cfg, server.TrustedPeer, pi))
 	journal := newEventJournal()
 	controller := newConversationController(ctx, cfg, runtime, server.TrustedPeer, piStatus)

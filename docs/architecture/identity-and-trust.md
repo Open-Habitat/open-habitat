@@ -106,7 +106,11 @@ flow and session, so changing Access identity requires a new host login.
 GitHub remains the source of the Unix-account identity.
 
 Logout ends the browser session. Native `gh` credentials and agents remain
-available under the Linux account. Pi's model-provider credentials are separate
+available under the Linux account. Explicit native disconnect requires an OAuth
+session issued within five minutes, a fresh local authorization observation,
+and confirmation. It calls the user's `gh` logout and reports success only after
+local absence is observed. It does not revoke the OAuth grant on GitHub; signing
+in again restores native authorization. Pi's model-provider credentials are separate
 from GitHub login; [workspaces](workspaces.md) describes their onboarding.
 
 A root-only operator command can remove a person's existing web sessions and

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ControlButton } from "../components/ControlElements";
 import type { Workspace } from "./snapshot";
+import { WorkspaceGitHub } from "./WorkspaceGitHub";
 
 type Action = "create" | "settings" | "visibility" | "git_init";
 async function mutate(input: Record<string, unknown>, csrf: string) {
@@ -180,6 +181,7 @@ export function WorkspaceManagement({
           </p>
         </>
       )}
+      <WorkspaceGitHub csrf={csrf} workspace={workspace} refresh={refresh} />
       {workspaces
         ?.filter((w) => w.visibility === "hidden")
         .map((w) => (

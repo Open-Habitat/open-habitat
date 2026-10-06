@@ -126,7 +126,9 @@ describe("account presentation", () => {
     );
     expect(screen.getByText("Osittainen yhteys")).toBeTruthy();
     expect(
-      screen.getByText(/Yhteyttä ei voi vielä katkaista täällä/),
+      screen.getByText(
+        /Selaimesta uloskirjautuminen ei poista GitHub-valtuutusta/,
+      ),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Katkaise/ })).toBeNull();
   });

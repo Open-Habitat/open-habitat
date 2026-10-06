@@ -88,6 +88,17 @@ Git origin, a clean checkout and a HEAD commit. An empty repository without a
 first commit remains uncertain because that observation cannot distinguish it
 from an interrupted clone.
 
+The workspace UI lists native `gh` repositories for import into the user's
+`~/src` and offers publishing a local main Git checkout to the signed-in
+GitHub account. Publishing uses a two-minute, single-use daemon observation
+challenge for an exact `owner/repository` and visibility. It separately creates
+the remote via `gh api`, adds an HTTPS `origin`, and pushes `HEAD` with ordinary
+Git. The browser must explicitly observe and confirm each next stage; a lost
+or failed receipt is uncertain, not a retry instruction. The daemon never sends
+credentials to the browser. Publishing is limited to repositories owned by the
+mapped GitHub login; collaboration and organization creation are not inferred
+from a browser-provided owner.
+
 The daemon also manages local workspace creation, optional `git init`, display
 names and hide/restore. It reobserves the source directory before each write,
 opens entries with no-follow descriptors and checks the observed target again

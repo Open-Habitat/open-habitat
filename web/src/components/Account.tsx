@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { NativeDisconnect } from "./NativeDisconnect";
 import {
   Dialog as AriaDialog,
   Heading,
@@ -128,8 +129,12 @@ export function AccountSettings({
   nativeLogin,
   onBack,
   onLogout,
+  csrf,
+  onDisconnect,
 }: {
   name: string;
+  csrf?: string;
+  onDisconnect?: () => void;
   nativeState?: NativeState;
   nativeLogin?: string;
   onBack: () => void;
@@ -194,9 +199,12 @@ export function AccountSettings({
           <p>{state.description}</p>
         </div>
         <p className="ah-account-hint">
-          Yhteydet kuuluvat palvelimelle, eivät tähän selaimeen. Yhteyttä ei voi
-          vielä katkaista täällä.
+          Yhteydet kuuluvat palvelimelle, eivät tähän selaimeen. Selaimesta
+          uloskirjautuminen ei poista GitHub-valtuutusta.
         </p>
+        {csrf && nativeState === "connected" ? (
+          <NativeDisconnect csrf={csrf} onDisconnected={onDisconnect} />
+        ) : null}
       </section>
       <section
         className="ah-account-section"
