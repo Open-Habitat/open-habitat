@@ -159,11 +159,12 @@ print('UNEXPECTED_REPLY')
                     except (ValueError,AttributeError):
                         pass
                 root='/run/native-agent-host'
-                dirs={name:sorted(os.listdir(root+'/users/'+name)) for name in os.listdir(root+'/users')}
+                dirs=['%s=%s'%(name,','.join(sorted(os.listdir(root+'/users/'+name))))
+                      for name in sorted(os.listdir(root+'/users'))]
                 raise RuntimeError('callback='+str(failure_status)+'/'+str(failure_code)[:24]+
                                    ' gate='+repr(gate_reasons[:1])[:100]+
                                    ' run='+repr(sorted(os.listdir(root)))+
-                                   ' dirs='+repr(dirs)[:200])
+                                   ' dirs='+','.join(dirs)[:160])
             session_status,session_headers,session_body=get(op,'/auth/session')
             snapshot_status,snapshot_headers,snapshot_body=get(op,'/api/v1/snapshot')
             captures.extend([str(session_headers).encode(),session_body,str(snapshot_headers).encode(),snapshot_body])
