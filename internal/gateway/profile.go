@@ -27,7 +27,7 @@ func normalizeProfile(p AccountProfile) AccountProfile {
 		p.Email = ""
 	}
 	u, err := url.Parse(p.AvatarURL)
-	if err != nil || u.Scheme != "https" || u.Host != "avatars.githubusercontent.com" || u.User != nil || u.Fragment != "" || len(p.AvatarURL) > 1024 {
+	if err != nil || u.Scheme != "https" || u.Host != "avatars.githubusercontent.com" || u.User != nil || u.Fragment != "" || !strings.HasPrefix(u.Path, "/") || len(p.AvatarURL) > 1024 {
 		p.AvatarURL = ""
 	}
 	return p
@@ -78,6 +78,5 @@ func (a *Auth) updateProfile(w http.ResponseWriter, r *http.Request) {
 	a.sessions[c.Value] = current
 	a.mu.Unlock()
 	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(current.profile)
+	w.WriteHeader(http.StatusNoContent)
 }

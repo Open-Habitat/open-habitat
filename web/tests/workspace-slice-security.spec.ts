@@ -66,6 +66,30 @@ test("@workspace-slice unknown mapping is denied before session", async ({
   await expect(page.locator(".ah-notice.ah-tone-danger")).toBeVisible();
   expect((await page.request.get("/api/v1/snapshot")).status()).toBe(401);
 });
+test("@workspace-slice missing GitHub email can be supplied without changing the person", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.request.get("/fixture/profile-missing-email");
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Täydennä tilisi tiedot" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Nimi")).toHaveCount(0);
+  await page.getByLabel("Sähköposti").fill("alice@example.invalid");
+  await page.getByRole("button", { name: "Jatka", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: /Alice, Tilivalikko/ }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /Alice, Tilivalikko/ }).click();
+  await expect(page.getByText("alice@example.invalid")).toBeVisible();
+  expect(
+    (await (await page.request.get("/api/v1/snapshot")).json()).auth
+      .provider_account_id,
+  ).toBe("42");
+});
 test("@workspace-slice account presentation follows the signed-in person", async ({
   page,
 }) => {

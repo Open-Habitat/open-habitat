@@ -24,7 +24,7 @@ async function login(page: import("@playwright/test").Page) {
   } else {
     await expect(
       page.getByRole("navigation", { name: "Työtilat ja keskustelut" }),
-    ).toContainText("Oma tili");
+    ).toContainText("Alice");
   }
 }
 test("@native-history native page, continuation, unknown, reopen and no writes", async ({

@@ -42,7 +42,7 @@ test("@account-settings verified native state, route return and explicit disconn
 }) => {
   await state(page, "connected");
   await login(page);
-  await expect(page.getByRole("navigation")).toContainText("Oma tili");
+  await expect(page.getByRole("navigation")).toContainText("Alice");
   await expect(page.getByRole("navigation")).not.toContainText(
     "GitHub user 42",
   );

@@ -5,12 +5,37 @@ import { AccountProfileOnboarding } from "./AccountProfileOnboarding";
 afterEach(() => vi.unstubAllGlobals());
 it("asks for missing GitHub fields and submits only presentation fields with session CSRF", async () => {
   const saved = vi.fn();
-  const fetch = vi.fn().mockResolvedValue({
+  const skip = vi.fn();
+  const fetch = vi.fn().mockResolvedValueOnce({
     ok: true,
     json: async () => ({
       name: "Alice",
       email: "alice@example.invalid",
       avatar_url: "",
+    }),
+  });
+  fetch.mockResolvedValueOnce({
+    ok: true,
+    status: 200,
+    headers: { get: () => "application/json" },
+    body: new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            JSON.stringify({
+              schema_version: 1,
+              provider: "github",
+              csrf: "a".repeat(43),
+              profile: {
+                name: "Alice",
+                email: "alice@example.invalid",
+                avatar_url: "",
+              },
+            }),
+          ),
+        );
+        controller.close();
+      },
     }),
   });
   vi.stubGlobal("fetch", fetch);
@@ -20,8 +45,12 @@ it("asks for missing GitHub fields and submits only presentation fields with ses
       csrf="synthetic-csrf"
       onSaved={saved}
       onLogin={() => {}}
+      onSkip={skip}
     />,
   );
+  expect(
+    screen.getByRole("button", { name: "Jatka ilman tietoja" }),
+  ).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Nimi"), {
     target: { value: "Alice" },
   });
@@ -40,4 +69,19 @@ it("asks for missing GitHub fields and submits only presentation fields with ses
       }),
     }),
   );
+});
+
+it("lets a person continue when GitHub has no public email", () => {
+  const skip = vi.fn();
+  render(
+    <AccountProfileOnboarding
+      profile={{ name: "Alice", email: "", avatar_url: "" }}
+      csrf="synthetic-csrf"
+      onSaved={() => {}}
+      onLogin={() => {}}
+      onSkip={skip}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Jatka ilman tietoja" }));
+  expect(skip).toHaveBeenCalledOnce();
 });

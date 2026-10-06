@@ -144,6 +144,7 @@ export function App() {
     }
   }, [location.pathname]);
   const [profile, setProfile] = useState<AccountProfile>();
+  const [profileSkipped, setProfileSkipped] = useState(false);
   const identity = snapshot?.identity.web_identity_id;
   const conversationStore = useMemo(
     () => (identity ? new ConversationStore(identity) : undefined),
@@ -181,6 +182,7 @@ export function App() {
     setDaemonSessions([]);
     setCSRF(undefined);
     setProfile(undefined);
+    setProfileSkipped(false);
     piChecked.current = false;
   }, []);
   useLayoutEffect(() => {
@@ -592,12 +594,16 @@ export function App() {
           />
         ) : null}
       </>
-    ) : !syntheticDemo && profile && (!profile.name || !profile.email) ? (
+    ) : !syntheticDemo &&
+      profile &&
+      !profileSkipped &&
+      (!profile.name || !profile.email) ? (
       <AccountProfileOnboarding
         profile={profile}
         csrf={csrf}
         onSaved={setProfile}
         onLogin={requireLogin}
+        onSkip={() => setProfileSkipped(true)}
       />
     ) : phase === "pi_required" ? (
       <GitHubOnboarding

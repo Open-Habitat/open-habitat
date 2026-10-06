@@ -1,16 +1,20 @@
 import { useState, type FormEvent } from "react";
-import type { AccountProfile } from "./pi";
+import { accountSession, type AccountProfile } from "./pi";
+import { Button } from "../components/Primitives";
+import { ControlButton } from "../components/ControlElements";
 
 export function AccountProfileOnboarding({
   profile,
   csrf,
   onSaved,
   onLogin,
+  onSkip,
 }: {
   profile: AccountProfile;
   csrf?: string;
   onSaved: (profile: AccountProfile) => void;
   onLogin: () => void;
+  onSkip?: () => void;
 }) {
   const [name, setName] = useState(profile.name);
   const [email, setEmail] = useState(profile.email);
@@ -37,8 +41,12 @@ export function AccountProfileOnboarding({
         return;
       }
       if (!response.ok) throw new Error("profile unavailable");
-      const saved: AccountProfile = await response.json();
-      onSaved(saved);
+      const current = await accountSession();
+      if (current === "login") {
+        onLogin();
+        return;
+      }
+      onSaved(current.profile);
     } catch {
       setError(true);
     } finally {
@@ -87,9 +95,20 @@ export function AccountProfileOnboarding({
             Tietoja ei voitu tallentaa. Tarkista tiedot ja yritä uudelleen.
           </p>
         )}
-        <button type="submit" disabled={pending || !csrf}>
+        <ControlButton
+          type="submit"
+          variant="primary"
+          isDisabled={pending || !csrf}
+        >
           {pending ? "Tallennetaan…" : "Jatka"}
-        </button>
+        </ControlButton>
+        {onSkip && (
+          <Button
+            label="Jatka ilman tietoja"
+            variant="secondary"
+            onPress={onSkip}
+          />
+        )}
       </form>
     </main>
   );

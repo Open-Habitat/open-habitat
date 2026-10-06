@@ -35,8 +35,9 @@ import (
 )
 
 type provider struct {
-	origin     string
-	challenges sync.Map
+	origin       string
+	challenges   sync.Map
+	missingEmail atomic.Bool // one-shot synthetic fixture for onboarding
 }
 
 func (p *provider) AuthorizationURL(state, challenge string) string {
@@ -69,7 +70,11 @@ func (p *provider) ExchangeProfile(ctx context.Context, code, verifier string) (
 	if code == "43" {
 		name = "Bob Example"
 	}
-	return token, id, login, gateway.AccountProfile{Name: name, Email: login + "@example.invalid"}, nil
+	email := login + "@example.invalid"
+	if p.missingEmail.Swap(false) {
+		email = ""
+	}
+	return token, id, login, gateway.AccountProfile{Name: name, Email: email}, nil
 }
 
 type sink struct{ scenario *atomic.Value }
@@ -538,6 +543,10 @@ esac
 				}
 				w.Header().Set("Content-Type", "text/html; charset=utf-8")
 				fmt.Fprintf(w, `<!doctype html><html lang="fi"><title>Test OAuth</title><h1>Test OAuth provider</h1><a href="/auth/github/callback?state=%s&amp;code=42">Alice</a> <a href="/auth/github/callback?state=%s&amp;code=43">Bob</a> <a href="/auth/github/callback?state=%s&amp;code=99">Unknown</a>`, html.EscapeString(url.QueryEscape(state)), html.EscapeString(url.QueryEscape(state)), html.EscapeString(url.QueryEscape(state)))
+			case "/fixture/profile-missing-email":
+				fixtureProvider.missingEmail.Store(true)
+				w.WriteHeader(204)
+				return
 			case "/fixture/scenario":
 				name := r.URL.Query().Get("value")
 				switch name {

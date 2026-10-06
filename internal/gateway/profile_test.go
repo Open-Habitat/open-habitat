@@ -33,8 +33,11 @@ func TestAccountProfileSessionFallbackCannotChangeBinding(t *testing.T) {
 	if w := call("one", "csrf-one", `{"name":"Alice","email":"alice@example.invalid","identity":"43"}`); w.Code != 400 {
 		t.Fatalf("unexpected identity field: %d", w.Code)
 	}
-	if w := call("one", "csrf-one", `{"name":"Alice Example","email":"alice@example.invalid"}`); w.Code != 200 {
+	if w := call("one", "csrf-one", `{"name":"Alice Example","email":"alice@example.invalid"}`); w.Code != 204 {
 		t.Fatalf("fallback: %d %s", w.Code, w.Body)
+	}
+	if w := call("two", "csrf-two", `{"name":"Mallory","email":"bob@example.invalid"}`); w.Code != 400 {
+		t.Fatalf("overwrote GitHub name: %d", w.Code)
 	}
 	req := httptest.NewRequest("GET", "https://host.test/auth/session", nil)
 	req.AddCookie(&http.Cookie{Name: cookieName, Value: "one"})
@@ -56,5 +59,8 @@ func TestNormalizeAccountProfile(t *testing.T) {
 	p := normalizeProfile(AccountProfile{Name: " Ada Lovelace ", Email: "ada@example.invalid", AvatarURL: "https://evil.example/u/1"})
 	if p.Name != "Ada Lovelace" || p.Email != "ada@example.invalid" || p.AvatarURL != "" {
 		t.Fatalf("profile: %+v", p)
+	}
+	if p := normalizeProfile(AccountProfile{AvatarURL: "https://avatars.githubusercontent.com?v=4"}); p.AvatarURL != "" {
+		t.Fatalf("avatar URL without path escaped: %+v", p)
 	}
 }

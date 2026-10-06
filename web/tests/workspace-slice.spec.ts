@@ -21,7 +21,7 @@ async function login(page: Page, user: "Alice" | "Bob" = "Alice") {
   await page.getByRole("link", { name: user }).click();
   await expect(
     page.getByRole("navigation", { name: "Työtilat ja keskustelut" }),
-  ).toContainText("Oma tili");
+  ).toContainText("Alice");
 }
 async function shot(page: Page, name: string) {
   await page.screenshot({

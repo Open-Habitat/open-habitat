@@ -486,7 +486,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	}
 	var token, id, login string
 	var profile AccountProfile
-	// reuse the callback error variable
+	// Preserve the lightweight Provider seam for synthetic login tests.
 	if provider, ok := a.provider.(interface {
 		ExchangeProfile(context.Context, string, string) (string, string, string, AccountProfile, error)
 	}); ok {
