@@ -52,6 +52,48 @@ func proxyCall(h http.Handler, method, path, body string) *httptest.ResponseReco
 	return w
 }
 
+func TestProxyCancellationDoesNotBlameDaemon(t *testing.T) {
+	for _, tc := range []struct {
+		name, body string
+	}{
+		{"before_headers", ""},
+		{"during_finite_body", "partial"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			started := make(chan struct{})
+			h, a := proxyFixture(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if tc.body != "" {
+					_, _ = io.WriteString(w, tc.body)
+					w.(http.Flusher).Flush()
+				}
+				close(started)
+				<-r.Context().Done()
+			}))
+			var log bytes.Buffer
+			a.log = CallbackLogger(&log)
+			ctx, cancel := context.WithCancel(context.Background())
+			r := httptest.NewRequest("GET", "https://host.test/api/v1/snapshot", nil).WithContext(ctx)
+			r.AddCookie(&http.Cookie{Name: cookieName, Value: "browser"})
+			done := make(chan struct{})
+			go func() { h.ServeHTTP(httptest.NewRecorder(), r); close(done) }()
+			select {
+			case <-started:
+			case <-time.After(3 * time.Second):
+				t.Fatal("upstream not reached")
+			}
+			cancel()
+			select {
+			case <-done:
+			case <-time.After(3 * time.Second):
+				t.Fatal("proxy did not release canceled request")
+			}
+			if log.Len() != 0 {
+				t.Fatalf("client cancellation blamed on daemon: %s", log.String())
+			}
+		})
+	}
+}
+
 func TestProxyFailureDiagnosticUsesVerifiedRoute(t *testing.T) {
 	h, a := proxyFixture(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, "synthetic-secret-content"+strings.Repeat("x", int(proxyBodyLimit)))

@@ -17,6 +17,45 @@ import (
 	"github.com/maintainer/native-agent-host/internal/diagnostic"
 )
 
+func TestBrokerListAndLookupAreNotLoggedAsFailures(t *testing.T) {
+	w, _ := writerFixture(t)
+	var b bytes.Buffer
+	logged := loggedBrokerHandler(w.Handle, diagnostic.New(&b, "broker"))
+	for _, tc := range []struct {
+		op, id, candidate string
+		wantUsers         int
+	}{
+		{"list", "0", "", 0},
+		{"ensure", "42", "carol", -1},
+		{"list", "0", "", 1},
+		{"lookup", "42", "", 1},
+	} {
+		reply := logged(context.Background(), request(tc.op, tc.id, tc.candidate))
+		if tc.wantUsers >= 0 && (reply.Users == nil || len(*reply.Users) != tc.wantUsers) || reply.Failure != "" {
+			t.Fatalf("%s: %+v", tc.op, reply)
+		}
+	}
+	var records []map[string]any
+	for _, line := range bytes.Split(bytes.TrimSpace(b.Bytes()), []byte{'\n'}) {
+		var record map[string]any
+		if err := json.Unmarshal(line, &record); err != nil {
+			t.Fatal(err)
+		}
+		records = append(records, record)
+	}
+	if len(records) != 4 {
+		t.Fatalf("events: %s", b.String())
+	}
+	for _, i := range []int{0, 2, 3} {
+		if records[i]["outcome"] != "accepted" || records[i]["user"] != nil || records[i]["reason"] != nil || records[i]["level"] != "INFO" {
+			t.Fatalf("false list/lookup rejection: %v", records[i])
+		}
+	}
+	if records[1]["user"] != "carol" {
+		t.Fatalf("ensure lost verified user: %v", records[1])
+	}
+}
+
 func TestBrokerExchangeDiagnosticVerifiedIdentityAndFailedSink(t *testing.T) {
 	var b bytes.Buffer
 	var calls int

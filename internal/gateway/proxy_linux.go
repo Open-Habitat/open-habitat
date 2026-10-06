@@ -159,7 +159,11 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	}
 	res, err := transport.RoundTrip(req)
 	if err != nil {
-		failure("daemon_exchange_failed")
+		// A browser disconnect cancels the upstream context; it is not a
+		// daemon failure. Our own finite-request timeout is still reported.
+		if r.Context().Err() == nil {
+			failure("daemon_exchange_failed")
+		}
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
@@ -210,7 +214,9 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	// daemon response must not leave a successful but truncated JSON document.
 	data, err := io.ReadAll(io.LimitReader(res.Body, proxyBodyLimit+1))
 	if err != nil || int64(len(data)) > proxyBodyLimit {
-		failure("daemon_response_unavailable")
+		if r.Context().Err() == nil {
+			failure("daemon_response_unavailable")
+		}
 		safe(w, 503, "daemon_unavailable")
 		return
 	}

@@ -132,10 +132,17 @@ func loggedBrokerHandler(handle Handler, log *slog.Logger) Handler {
 		reply := handle(ctx, r)
 		// Only the broker-verified route supplies a user. A denied request
 		// does not establish the caller's claimed identity.
-		if reply.Route != nil {
-			log.Info("broker_exchange", "outcome", "accepted", "operation", r.Operation, "user", reply.Route.Username)
-		} else {
+		switch {
+		case reply.Failure != "":
 			log.Warn("broker_exchange", "outcome", "rejected", "operation", r.Operation, "reason", string(reply.Failure))
+		case reply.Route != nil:
+			log.Info("broker_exchange", "outcome", "accepted", "operation", r.Operation, "user", reply.Route.Username)
+		case reply.Users != nil:
+			// list and lookup return Users, not a route; even an empty list
+			// is successful. Do not attribute a request ID as a verified user.
+			log.Info("broker_exchange", "outcome", "accepted", "operation", r.Operation)
+		default:
+			log.Warn("broker_exchange", "outcome", "rejected", "operation", r.Operation, "reason", "invalid_reply")
 		}
 		return reply
 	}
