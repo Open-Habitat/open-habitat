@@ -9,6 +9,21 @@ import (
 	"testing"
 )
 
+func TestEmptyBoundUserListRoundTrips(t *testing.T) {
+	w, _ := writerFixture(t)
+	reply := w.Handle(context.Background(), Request{Version: 1, Operation: "list", Provider: "github", ID: "0"})
+	if reply.Users == nil || len(*reply.Users) != 0 || reply.Failure != "" {
+		t.Fatalf("empty ledger list: %+v", reply)
+	}
+	wire, err := EncodeReply(reply)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := ParseReply(wire)
+	if err != nil || parsed.Users == nil || len(*parsed.Users) != 0 {
+		t.Fatalf("empty list roundtrip: %+v %v", parsed, err)
+	}
+}
 func TestReadBindingsWithoutDaemonReadiness(t *testing.T) {
 	w, h := writerFixture(t)
 	if r := handle(w, "ensure", "42", "alice"); r.Route == nil {
@@ -16,11 +31,11 @@ func TestReadBindingsWithoutDaemonReadiness(t *testing.T) {
 	}
 	h.routeErr = true
 	listed := w.Handle(context.Background(), Request{Version: 1, Operation: "list", Provider: "github", ID: "0"})
-	if len(listed.Users) != 1 || listed.Users[0].ID != "42" || listed.Users[0].Username != "alice" {
+	if len(*listed.Users) != 1 || (*listed.Users)[0].ID != "42" || (*listed.Users)[0].Username != "alice" {
 		t.Fatalf("list: %+v", listed)
 	}
 	found := w.Handle(context.Background(), Request{Version: 1, Operation: "lookup", Provider: "github", ID: "42"})
-	if len(found.Users) != 1 || found.Route != nil {
+	if len(*found.Users) != 1 || found.Route != nil {
 		t.Fatalf("lookup: %+v", found)
 	}
 	missing := w.Handle(context.Background(), Request{Version: 1, Operation: "lookup", Provider: "github", ID: "43"})
@@ -65,11 +80,11 @@ func TestBoundUserPagination(t *testing.T) {
 		Bindings   []row `json:"bindings"`
 	}{1, 7, users})))
 	first := w.Handle(context.Background(), Request{Version: 1, Operation: "list", Provider: "github", ID: "0"})
-	if len(first.Users) != 30 || first.Next != "30" {
+	if len(*first.Users) != 30 || first.Next != "30" {
 		t.Fatalf("first page: %+v", first)
 	}
 	second := w.Handle(context.Background(), Request{Version: 1, Operation: "list", Provider: "github", ID: "0", Candidate: first.Next})
-	if len(second.Users) != 5 || second.Next != "" || second.Users[0].ID != "31" {
+	if len(*second.Users) != 5 || second.Next != "" || (*second.Users)[0].ID != "31" {
 		t.Fatalf("second page: %+v", second)
 	}
 }

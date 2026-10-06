@@ -130,26 +130,27 @@ type session struct {
 	absolute    time.Time
 }
 type Auth struct {
-	cfg             OAuthConfig
-	provider        Provider
-	sink            TokenSink
-	broker          Broker
-	now             func() time.Time
-	random          io.Reader
-	log             *slog.Logger
-	mu              sync.Mutex
-	pending         map[string]pending
-	serial          uint64
-	revoked         map[string]uint64
-	sessions        map[string]session
-	sessionFile     string
-	adminFile       string
-	settings        serverSettings
-	admission       map[string]admission
-	unmatchedLog    admission // process-wide budget; never keyed by request input
-	snapshotDial    func(context.Context, string) (net.Conn, error)
-	snapshotPeerUID func(*net.UnixConn) int
-	access          *accessVerifier
+	cfg              OAuthConfig
+	provider         Provider
+	sink             TokenSink
+	broker           Broker
+	now              func() time.Time
+	random           io.Reader
+	log              *slog.Logger
+	mu               sync.Mutex
+	pending          map[string]pending
+	serial           uint64
+	revoked          map[string]uint64
+	sessions         map[string]session
+	sessionFile      string
+	adminFile        string
+	adminEstablished bool
+	settings         serverSettings
+	admission        map[string]admission
+	unmatchedLog     admission // process-wide budget; never keyed by request input
+	snapshotDial     func(context.Context, string) (net.Conn, error)
+	snapshotPeerUID  func(*net.UnixConn) int
+	access           *accessVerifier
 }
 type admission struct {
 	tokens float64

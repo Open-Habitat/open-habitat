@@ -398,7 +398,7 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 				return failure(Denied)
 			}
 		}
-		result := Reply{Version: 1, Users: users, Next: next, Generation: l.Generation, Epoch: a.Epoch}
+		result := Reply{Version: 1, Users: &users, Next: next, Generation: l.Generation, Epoch: a.Epoch}
 		if _, err := EncodeReply(result); err != nil {
 			return failure(StateUnavailable)
 		}

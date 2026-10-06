@@ -21,6 +21,10 @@ type BrokerReader interface {
 	ListBound(context.Context) ([]BoundUser, error)
 	LookupBound(context.Context, string) (bool, error)
 }
+
+// ErrAdministrationState distinguishes a corrupt shared state record from OAuth config.
+var ErrAdministrationState = errors.New("invalid gateway administration state")
+
 type serverSettings struct {
 	Version        int      `json:"version"`
 	Name           string   `json:"name"`
@@ -59,7 +63,13 @@ func validSettings(s serverSettings) bool {
 
 // The gateway holds the only in-process writer lock for browser and control changes.
 // State is outside the release; a corrupt existing record fails startup closed.
-func (a *Auth) loadAdministration(path string) error {
+func (a *Auth) loadAdministration(path string) (err error) {
+	defer func() {
+		if err != nil {
+			err = ErrAdministrationState
+		}
+	}()
+	a.adminEstablished = false
 	a.adminFile = path
 	a.settings = emptySettings()
 	if path == "" {
@@ -84,9 +94,20 @@ func (a *Auth) loadAdministration(path string) error {
 		return errors.New("invalid administration state")
 	}
 	a.settings = state
+	a.adminEstablished = true
 	return nil
 }
+func (a *Auth) administrationHealthy() bool {
+	if a.adminFile == "" || !a.adminEstablished {
+		return true
+	}
+	info, e := os.Lstat(a.adminFile)
+	return e == nil && privateSessionFile(info)
+}
 func (a *Auth) commitAdministration(next serverSettings) error {
+	if !a.administrationHealthy() {
+		return ErrAdministrationState
+	}
 	if !validSettings(next) {
 		return errors.New("invalid settings")
 	}
@@ -95,8 +116,8 @@ func (a *Auth) commitAdministration(next serverSettings) error {
 			if !privateSessionFile(info) {
 				return errors.New("invalid administration file")
 			}
-		} else if !os.IsNotExist(e) {
-			return e
+		} else if a.adminEstablished || !os.IsNotExist(e) {
+			return ErrAdministrationState
 		}
 		b, e := json.Marshal(next)
 		if e != nil || len(b) > 65536 {
@@ -125,6 +146,7 @@ func (a *Auth) commitAdministration(next serverSettings) error {
 		}
 		// Once renamed, the new record is authoritative even if the directory sync fails.
 		a.settings = next
+		a.adminEstablished = true
 		d, e := os.Open(dir)
 		if e != nil {
 			return e
@@ -141,6 +163,9 @@ func (a *Auth) commitAdministration(next serverSettings) error {
 func (a *Auth) isAdministrator(id string) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if !a.administrationHealthy() {
+		return false
+	}
 	for _, admin := range a.settings.Administrators {
 		if admin == id {
 			return true
@@ -148,7 +173,14 @@ func (a *Auth) isAdministrator(id string) bool {
 	}
 	return false
 }
-func (a *Auth) settingsView() serverSettings { a.mu.Lock(); defer a.mu.Unlock(); return a.settings }
+func (a *Auth) settingsView() serverSettings {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if !a.administrationHealthy() {
+		return emptySettings()
+	}
+	return a.settings
+}
 func (a *Auth) changeName(name string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -160,16 +192,23 @@ func (a *Auth) changeRole(ctx context.Context, id string, administrator bool) er
 	if !canonicalSubject(id) {
 		return errors.New("invalid subject")
 	}
-	reader, ok := a.broker.(BrokerReader)
-	if !ok {
-		return errors.New("broker read unavailable")
-	}
-	bound, e := reader.LookupBound(ctx, id)
-	if e != nil || !bound {
-		return errors.New("binding unavailable")
+	// Granting needs a current bound target. Removal only subtracts authority:
+	// permit root recovery even when a binding is gone or the broker is offline.
+	if administrator {
+		reader, ok := a.broker.(BrokerReader)
+		if !ok {
+			return errors.New("broker read unavailable")
+		}
+		bound, e := reader.LookupBound(ctx, id)
+		if e != nil || !bound {
+			return errors.New("binding unavailable")
+		}
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if !a.administrationHealthy() {
+		return ErrAdministrationState
+	}
 	next := a.settings
 	next.Administrators = append([]string{}, next.Administrators...)
 	found := false

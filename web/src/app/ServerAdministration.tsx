@@ -39,6 +39,8 @@ export function ServerAdministration({ csrf }: { csrf?: string }) {
       setError(
         "Muutosta ei voitu vahvistaa. Päivitä tiedot ennen uutta yritystä.",
       );
+      // Preserve the form. A failed response can mean a lost acknowledgement;
+      // reload to determine the server state before another write.
       setData(undefined);
     } finally {
       setSaving(false);
@@ -54,13 +56,27 @@ export function ServerAdministration({ csrf }: { csrf?: string }) {
         Selainrooli sallii vain jaettujen asetusten muuttamisen. Se ei avaa
         muiden työtiloja, keskusteluja tai tunnuksia.
       </p>
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <div role="alert">
+          <p>{error}</p>
+          <ControlButton
+            onPress={() => {
+              setError("");
+              void reload().catch(() =>
+                setError("Ylläpitoasetuksia ei voitu ladata."),
+              );
+            }}
+          >
+            Lataa tiedot uudelleen
+          </ControlButton>
+        </div>
+      )}
       {data ? (
         <>
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              void save({ name });
+              void save({ name: name.trim() });
             }}
           >
             <TextField value={name} onChange={setName} maxLength={80}>
@@ -69,7 +85,7 @@ export function ServerAdministration({ csrf }: { csrf?: string }) {
             </TextField>
             <ControlButton
               type="submit"
-              isDisabled={!csrf || saving || name === data.name}
+              isDisabled={!csrf || saving || name.trim() === data.name}
             >
               Tallenna nimi
             </ControlButton>

@@ -84,7 +84,7 @@ func TestAdministrationAuthorizationAndPersistence(t *testing.T) {
 		t.Fatal("new admin denied")
 	}
 	broker.down = true
-	if code := adminPut(h, cookie, session.CSRF, `{"subject":"43","administrator":false}`); code != 503 {
+	if code := adminPut(h, cookie, session.CSRF, `{"subject":"43","administrator":true}`); code != 503 {
 		t.Fatalf("broker failure: %d", code)
 	}
 	broker.down = false
@@ -128,5 +128,45 @@ func TestAdminControlSharesWriter(t *testing.T) {
 	}
 	if _, e := a.AdminControl(context.Background(), []byte(`{"operation":"role","subject":"44","administrator":true}`)); e == nil {
 		t.Fatal("unbound role")
+	}
+}
+
+func TestControlRemovesStaleRoleWithoutBroker(t *testing.T) {
+	_, a, _, _, _ := fixture(t)
+	broker := &adminBroker{Broker: a.broker}
+	a.broker = broker
+	if e := a.changeRole(context.Background(), "42", true); e != nil {
+		t.Fatal(e)
+	}
+	broker.down = true
+	if _, e := a.AdminControl(context.Background(), []byte(`{"operation":"role","subject":"42","administrator":false}`)); e != nil {
+		t.Fatal(e)
+	}
+	if a.isAdministrator("42") {
+		t.Fatal("broker outage preserved removed role")
+	}
+}
+
+func TestAdministrationLostLiveFileDoesNotRestoreRole(t *testing.T) {
+	_, a, _, _, _ := fixture(t)
+	path := filepath.Join(t.TempDir(), "administration.json")
+	if e := a.loadAdministration(path); e != nil {
+		t.Fatal(e)
+	}
+	a.broker = &adminBroker{Broker: a.broker}
+	if e := a.changeRole(context.Background(), "42", true); e != nil {
+		t.Fatal(e)
+	}
+	if e := os.Remove(path); e != nil {
+		t.Fatal(e)
+	}
+	if a.isAdministrator("42") {
+		t.Fatal("lost state retained admin authority")
+	}
+	if e := a.changeRole(context.Background(), "42", true); e == nil {
+		t.Fatal("lost state silently recreated with stale roles")
+	}
+	if _, e := os.Stat(path); !os.IsNotExist(e) {
+		t.Fatal("lost state recreated")
 	}
 }

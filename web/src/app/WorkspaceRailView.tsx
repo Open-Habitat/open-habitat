@@ -97,7 +97,9 @@ export function WorkspaceRailView({
   return (
     <WorkspaceRail
       collapsed={collapsed}
-      serverLabel={server?.name || window.location.host}
+      serverLabel={
+        server?.name || window.location.hostname.split(".")[0] || "Palvelin"
+      }
       connectionLabel={
         phase === "stale"
           ? "Yhteys poikki"

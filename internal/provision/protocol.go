@@ -43,13 +43,13 @@ type BoundUser struct {
 	Username string `json:"username"`
 }
 type Reply struct {
-	Users      []BoundUser `json:"users,omitempty"`
-	Next       string      `json:"next,omitempty"`
-	Version    int         `json:"version"`
-	Failure    Failure     `json:"failure,omitempty"`
-	Route      *Route      `json:"route,omitempty"`
-	Generation uint64      `json:"generation,omitempty"`
-	Epoch      uint64      `json:"epoch,omitempty"`
+	Users      *[]BoundUser `json:"users,omitempty"`
+	Next       string       `json:"next,omitempty"`
+	Version    int          `json:"version"`
+	Failure    Failure      `json:"failure,omitempty"`
+	Route      *Route       `json:"route,omitempty"`
+	Generation uint64       `json:"generation,omitempty"`
+	Epoch      uint64       `json:"epoch,omitempty"`
 }
 
 func numericID(id string) bool {
@@ -186,13 +186,13 @@ func ParseReply(b []byte) (Reply, error) {
 		default:
 			return Reply{}, ErrInvalid
 		}
-		if r.Route != nil || r.Generation != 0 || r.Epoch != 0 || len(r.Users) != 0 || r.Next != "" {
+		if r.Route != nil || r.Generation != 0 || r.Epoch != 0 || r.Users != nil || r.Next != "" {
 			return Reply{}, ErrInvalid
 		}
 		return r, nil
 	}
 	if len(raw["users"]) != 0 {
-		if r.Route != nil || r.Generation == 0 || r.Epoch == 0 || len(raw["generation"]) == 0 || len(raw["epoch"]) == 0 || len(r.Users) > 30 || r.Next != "" && !numericOffset(r.Next) {
+		if r.Route != nil || r.Generation == 0 || r.Epoch == 0 || len(raw["generation"]) == 0 || len(raw["epoch"]) == 0 || len(*r.Users) > 30 || r.Next != "" && !numericOffset(r.Next) {
 			return Reply{}, ErrInvalid
 		}
 		entries, err := checkArray(raw["users"], "users")
@@ -208,6 +208,9 @@ func ParseReply(b []byte) (Reply, error) {
 		return r, nil
 	}
 	if r.Next != "" {
+		return Reply{}, ErrInvalid
+	}
+	if r.Users != nil {
 		return Reply{}, ErrInvalid
 	}
 	if r.Route == nil || r.Generation == 0 || r.Epoch == 0 || len(raw["route"]) == 0 || len(raw["generation"]) == 0 || len(raw["epoch"]) == 0 {

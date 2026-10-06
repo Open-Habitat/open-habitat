@@ -7,6 +7,6 @@
   "properties": {
     "schema_version": {"const": 1},
     "name": {"type": "string", "maxLength": 80},
-    "users": {"type": "array", "maxItems": 40, "items": {"type": "object", "additionalProperties": false, "required": ["id", "username", "administrator"], "properties": {"id": {"type": "string", "pattern": "^[1-9][0-9]*$"}, "username": {"type": "string"}, "administrator": {"type": "boolean"}}}}
+    "users": {"type": "array", "maxItems": 1024, "items": {"type": "object", "additionalProperties": false, "required": ["id", "username", "administrator"], "properties": {"id": {"type": "string", "pattern": "^[1-9][0-9]*$"}, "username": {"type": "string"}, "administrator": {"type": "boolean"}}}}
   }
 }
