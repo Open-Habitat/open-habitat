@@ -131,6 +131,45 @@ describe("account presentation", () => {
     expect(onClose).toHaveBeenCalledOnce();
     expect(onConfirm).not.toHaveBeenCalled();
   });
+  it("distinguishes native Pi credential evidence from OpenAI identity and offers sign-in only when missing", () => {
+    const signIn = vi.fn();
+    const { rerender } = render(
+      <AccountSettings
+        piState="usable"
+        onPiSignIn={signIn}
+        onBack={() => {}}
+      />,
+    );
+    expect(screen.getByText("Pi-tunnukset käytettävissä")).toBeTruthy();
+    expect(screen.getByText(/Tämä ei vahvista OpenAI-tiliä/)).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Kirjaudu Pi:hin" }),
+    ).toBeNull();
+    rerender(
+      <AccountSettings
+        piState="missing"
+        onPiSignIn={signIn}
+        onBack={() => {}}
+      />,
+    );
+    expect(screen.getByText("Pi-kirjautuminen puuttuu")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Kirjaudu Pi:hin" }));
+    expect(signIn).toHaveBeenCalledOnce();
+    for (const piState of ["unknown", "unavailable", "checking"] as const) {
+      rerender(
+        <AccountSettings
+          piState={piState}
+          onPiSignIn={signIn}
+          onBack={() => {}}
+        />,
+      );
+      expect(
+        screen.queryByRole("button", { name: "Kirjaudu Pi:hin" }),
+      ).toBeNull();
+      expect(screen.queryByText("Pi-tunnukset käytettävissä")).toBeNull();
+    }
+    expect(screen.getByText("Tarkistetaan Pi-tilaa")).toBeTruthy();
+  });
   it("never presents a provider subject number as a name", () => {
     expect(accountLabel("GitHub user 42")).toBe("Oma tili");
     expect(accountLabel(" 123 ")).toBe("Oma tili");

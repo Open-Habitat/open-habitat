@@ -28,7 +28,12 @@ import { ConversationStore } from "./conversationStore";
 import { list as listConversations, type Session } from "./conversations";
 import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
-import { accountSession, piStatus, type AccountProfile } from "./pi";
+import {
+  accountSession,
+  piStatus,
+  type AccountProfile,
+  type PiState,
+} from "./pi";
 import { AccountProfileOnboarding } from "./AccountProfileOnboarding";
 import { readSnapshot, sourceState, type Workspace } from "./snapshot";
 import {
@@ -112,6 +117,9 @@ export function App() {
   );
   const [refreshKey, setRefreshKey] = useState(0);
   const [piCheckFailed, setPiCheckFailed] = useState(false);
+  const [settingsPiState, setSettingsPiState] = useState<
+    PiState | "checking" | "unavailable"
+  >("checking");
   // Daemon catalog distinguishes browser-started Pi sessions from read-only
   // terminal history; it is not a cookie-scoped conversation lease.
   const [daemonSessions, setDaemonSessions] = useState<Session[]>([]);
@@ -193,6 +201,7 @@ export function App() {
     if (identity) priorIdentity.current = identity;
   }, [identity, clearPerson]);
   const openSettings = () => {
+    setSettingsPiState("checking");
     setSettingsReturn(
       safeRoute(location.pathname) === "/settings"
         ? "/workspaces"
@@ -217,6 +226,28 @@ export function App() {
     clearPerson(priorIdentity.current);
     dispatch(authenticationRequired());
   }, [clearPerson, dispatch]);
+  // Separate from the first-load gate: report the current native credential
+  // state, not the state observed when this browser first authenticated.
+  useEffect(() => {
+    if (
+      location.pathname !== "/settings" ||
+      !identity ||
+      (phase !== "authenticated" && phase !== "stale")
+    )
+      return;
+    const controller = new AbortController();
+    setSettingsPiState("checking");
+    void piStatus(controller.signal)
+      .then((state) => {
+        if (controller.signal.aborted) return;
+        if (state === "login") requireLogin();
+        else setSettingsPiState(state);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setSettingsPiState("unavailable");
+      });
+    return () => controller.abort();
+  }, [location.pathname, phase, identity, requireLogin]);
   const activeId = useRef<string | undefined>(undefined);
   const routeAgent =
     new URLSearchParams(location.search).get("conversation") ??
@@ -640,6 +671,8 @@ export function App() {
         onLogout={() => setLogoutPrompt(true)}
         nativeState={snapshot?.auth?.native_github.state}
         nativeLogin={snapshot?.auth?.native_github.login}
+        piState={settingsPiState}
+        onPiSignIn={() => navigate("/settings?pi_sign_in=1")}
         csrf={csrf}
         onDisconnect={refresh}
         onBack={() => {

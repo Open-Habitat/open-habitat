@@ -72,7 +72,10 @@ test("@account-settings verified native state, route return and explicit disconn
   await expect(
     page.getByRole("heading", { name: "Yhteydet tällä palvelimella" }),
   ).toBeVisible();
-  await expect(page.getByText("OpenAI", { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "OpenAI (Pi)" }),
+  ).toBeVisible();
+  await expect(page.getByText("Pi-tunnukset käytettävissä")).toBeVisible();
   await page.getByText("Tumma", { exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.getByText("Vaalea", { exact: true }).click();
@@ -138,6 +141,69 @@ test("@account-settings partial, unknown and logout/user switch", async ({
   await page.goto("/settings");
   await expect(page.getByText("Tilaa ei tiedetä")).toBeVisible();
 });
+test("@account-settings Pi credentials change while the page is open; uncertainty is not success", async ({
+  page,
+}) => {
+  await login(page);
+  await page.route("**/api/v1/onboarding/pi/status", (route) =>
+    route.fulfill({ json: { schema_version: 1, pi: { state: "missing" } } }),
+  );
+  await settings(page);
+  await expect(page.getByText("Pi-kirjautuminen puuttuu")).toBeVisible();
+  await page.getByRole("button", { name: "Kirjaudu Pi:hin" }).click();
+  await expect(
+    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Aloita kirjautuminen" }),
+  ).toBeVisible();
+  await page.unrouteAll();
+  await page.goto("/workspaces");
+  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeVisible();
+  await page.route("**/api/v1/onboarding/pi/status", (route) =>
+    route.fulfill({ json: { schema_version: 1, pi: { state: "unknown" } } }),
+  );
+  // Client navigation, not a new first-load check: the gate remains intact.
+  await page.getByRole("button", { name: /Tilivalikko/ }).click();
+  await page.getByRole("menuitem", { name: "Asetukset" }).click();
+  await expect(page.getByText("Pi-tilaa ei voitu vahvistaa")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Kirjaudu Pi:hin" }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Takaisin" }).click();
+  await page.unrouteAll();
+  await page.route("**/api/v1/onboarding/pi/status", (route) =>
+    route.fulfill({ status: 502, body: "bad gateway" }),
+  );
+  await page.getByRole("button", { name: /Tilivalikko/ }).click();
+  await page.getByRole("menuitem", { name: "Asetukset" }).click();
+  await expect(page.getByText("Pi-tilaa ei voitu vahvistaa")).toBeVisible();
+  await expect(page.getByText(/Yhteyttä ei ole vahvistettu/)).toBeVisible();
+});
+
+test("@account-settings direct settings URL cannot bypass initial Pi gate", async ({
+  page,
+}) => {
+  await login(page);
+  await page.route("**/api/v1/onboarding/pi/status", (route) =>
+    route.fulfill({ json: { schema_version: 1, pi: { state: "missing" } } }),
+  );
+  await page.goto("/settings");
+  await expect(
+    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Asetukset" })).toHaveCount(0);
+  await page.unrouteAll();
+  await page.route("**/api/v1/onboarding/pi/status", (route) =>
+    route.fulfill({ json: { schema_version: 1, pi: { state: "unknown" } } }),
+  );
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "ChatGPT-kirjautuminen" }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Asetukset" })).toHaveCount(0);
+});
+
 test("@account-settings unavailable snapshot does not display previous identity", async ({
   page,
 }) => {

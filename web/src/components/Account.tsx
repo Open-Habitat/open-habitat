@@ -10,7 +10,7 @@ import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { Menu } from "./Overlays";
 import { Button, ListRow, RadioGroup } from "./Primitives";
 import { StatusMark } from "./Status";
-import type { AccountProfile } from "../app/pi";
+import type { AccountProfile, PiState } from "../app/pi";
 
 /** Provider subject numbers are not a useful person-facing name. */
 export function accountLabel(displayName: string): string {
@@ -166,6 +166,8 @@ export function AccountSettings({
   name,
   nativeState,
   nativeLogin,
+  piState = "checking",
+  onPiSignIn,
   onBack,
   onLogout,
   csrf,
@@ -177,6 +179,8 @@ export function AccountSettings({
   onDisconnect?: () => void;
   nativeState?: NativeState;
   nativeLogin?: string;
+  piState?: PiState | "checking" | "unavailable";
+  onPiSignIn?: () => void;
   onBack: () => void;
   onLogout?: () => void;
 }) {
@@ -250,6 +254,40 @@ export function AccountSettings({
             Paikallinen gh-valtuutus poistettu. GitHubin OAuth-lupaa ei peruttu.
           </p>
         ) : null}
+        <div className="ah-account-panel">
+          <div className="ah-account-connection">
+            <h3>OpenAI (Pi)</h3>
+            <StatusMark
+              label={
+                piState === "usable"
+                  ? "Pi-tunnukset käytettävissä"
+                  : piState === "missing"
+                    ? "Pi-kirjautuminen puuttuu"
+                    : piState === "checking"
+                      ? "Tarkistetaan Pi-tilaa"
+                      : "Pi-tilaa ei voitu vahvistaa"
+              }
+              kind={piState === "usable" ? "success" : "unknown"}
+              tone={piState === "usable" ? "success" : "warning"}
+            />
+          </div>
+          <p>
+            {piState === "usable"
+              ? "Pi:n natiivit kirjautumistiedot löytyvät tältä palvelimelta. Tämä ei vahvista OpenAI-tiliä tai yhteyden toimivuutta."
+              : piState === "missing"
+                ? "Pi:n natiiveja kirjautumistietoja ei löytynyt tältä palvelimelta."
+                : piState === "checking"
+                  ? "Tarkistetaan palvelimen Pi-kirjautumistietoja."
+                  : "Palvelimen Pi-kirjautumistietojen tilaa ei tiedetä. Yhteyttä ei ole vahvistettu."}
+          </p>
+          {piState === "missing" && onPiSignIn ? (
+            <Button
+              label="Kirjaudu Pi:hin"
+              variant="secondary"
+              onPress={onPiSignIn}
+            />
+          ) : null}
+        </div>
       </section>
       <section
         className="ah-account-section"
