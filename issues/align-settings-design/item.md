@@ -66,6 +66,6 @@ still needs evidence.
 
 ## Acceptance Criteria
 
-- [ ] Settings follows the shared design on desktop and phone in both themes, using the common controls, profile presentation and native connection behavior.
-- [ ] Account details, connection states, theme selection and browser logout remain understandable and usable, including keyboard navigation and missing profile or connection information.
-- [ ] An updated comparison set shows settings, navigation and conversation views against the current drafts at one implementation revision, with remaining differences and missing reference states identified.
+- [x] Settings follows the shared design on desktop and phone in both themes, using the common controls, profile presentation and native connection behavior.
+- [x] Account details, connection states, theme selection and browser logout remain understandable and usable, including keyboard navigation and missing profile or connection information.
+- [x] An updated comparison set shows settings, navigation and conversation views against the current drafts at one implementation revision, with remaining differences and missing reference states identified.
