@@ -3,7 +3,7 @@ created: 2026-10-05
 updated: 2026-10-06
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@design-pi-event-blocks']
 preparation: ready
@@ -11,6 +11,8 @@ lane: ui-foundation
 lane_seq: 40
 collision: [web/src/components/, web/lab/]
 blocked_by: ['@design-pi-event-blocks', '@compare-draft-fidelity', '@apply-control-state-design']
+closed: 2026-10-06
+closed_by: claude
 ---
 
 # Apply the Pi conversation-block design
