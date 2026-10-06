@@ -37,8 +37,10 @@ an initial Unix-name candidate; renaming the GitHub account does not change an
 existing binding. The gateway ties the OAuth callback to the browser that
 started it using a flow cookie, one-use state and PKCE.
 
-The broker trusts the gateway to authenticate the remote person. It checks the
-ID against the operator's allowlist and owns the binding to a Unix account.
+The broker trusts the gateway to authenticate the remote person. By default it
+checks the ID against the operator's allowlist; the test installation can
+explicitly admit any gateway-authenticated GitHub ID after signed Access
+assertions are enforced at the gateway. It owns the binding to a Unix account.
 For a new admitted identity it creates a private account and home, prepares the
 daemon binding and socket, and verifies them before publishing the route.
 Later logins reuse that binding. An occupied or unsuitable username requires

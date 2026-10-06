@@ -25,8 +25,17 @@ credentials and accepts a narrow data protocol. It has no network listener,
 arbitrary command interface or OAuth credentials.
 
 The gateway verifies the GitHub login and obtains the stable numeric ID from
-GitHub's authenticated user response. The broker checks that ID against a
+GitHub's authenticated user response. The broker normally checks that ID against a
 root-owned operator-managed allowlist and binds it to exactly one local UID.
+For the disposable test installation only, an explicit root-owned broker
+`admission: "any"` mode accepts any authenticated GitHub numeric ID without
+an allowlist entry. Fleetrepo enables this mode only after the gateway's signed
+Cloudflare Access assertion verification has been enabled and a missing assertion
+has been denied on the live forwarded origin. Cloudflare Access is the email
+admission authority in that mode; the broker still trusts only its fixed gateway
+UID as caller and cannot independently attest the remote person's email. This
+is not a production admission design. No runtime check couples the two configs:
+installation ordering and live verification are the operator's responsibility.
 The browser cannot choose a Unix account. A GitHub login name is only an initial
 Unix-name candidate; renaming the GitHub account leaves its existing binding
 unchanged.
@@ -47,6 +56,9 @@ agree before an existing binding can be used.
 ### Authorization at login and explicit revocation
 
 The broker checks current authorization when the gateway issues a session.
+In `any` mode, changing the ID allowlist does not revoke a subject: revoke
+sessions explicitly and remove that person's Access admission before relying
+on a denial of further login. Existing Unix bindings remain reserved.
 After login, the gateway routes from its local session until expiry, logout or
 `RevokeSubject` ([ADR 0006](adr-0006-subject-revocation.md)). An allowlist
 change by itself does not log out an existing session; revoke access explicitly
@@ -88,8 +100,9 @@ owns that scope; this decision does not promise automatic recovery.
 
 The product owns the broker protocol, account and binding verification, gateway
 integration, daemon checks and neutral service templates. Fleetrepo owns the
-concrete deployment: authorized IDs, alternate names, UID allocation range,
-service permissions, secrets and installation.
+concrete deployment: admission mode, authorized IDs and alternate names in
+allowlist mode, Access policy, UID allocation range, service permissions,
+secrets and installation.
 
 This replaces ADR 0003's requirement for a pre-existing account and static
 startup mapping. The administrator still controls admission and root owns the

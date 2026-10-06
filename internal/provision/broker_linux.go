@@ -28,6 +28,7 @@ type brokerConfig struct {
 	UIDMin     uint32 `json:"uid_min"`
 	UIDMax     uint32 `json:"uid_max"`
 	StateDir   string `json:"state_dir"`
+	Admission  string `json:"admission,omitempty"`
 }
 
 // loadBrokerConfig accepts an exact root-owned private configuration file in
@@ -39,7 +40,7 @@ func loadBrokerConfig() (brokerConfig, error) {
 	if err != nil {
 		return cfg, ErrBrokerStartup
 	}
-	if _, err := object(b, "version", "gateway_uid", "gateway_gid", "uid_min", "uid_max", "state_dir"); err != nil {
+	if _, err := object(b, "version", "gateway_uid", "gateway_gid", "uid_min", "uid_max", "state_dir", "admission"); err != nil {
 		return cfg, ErrBrokerStartup
 	}
 	if json.Unmarshal(b, &cfg) != nil || cfg.Version != 1 ||
@@ -47,7 +48,7 @@ func loadBrokerConfig() (brokerConfig, error) {
 		cfg.UIDMax > 60000 || cfg.UIDMax < cfg.UIDMin || cfg.UIDMax-cfg.UIDMin > 4095 ||
 		cfg.GatewayUID >= cfg.UIDMin && cfg.GatewayUID <= cfg.UIDMax ||
 		cfg.GatewayGID >= cfg.UIDMin && cfg.GatewayGID <= cfg.UIDMax ||
-		cfg.StateDir != brokerState {
+		cfg.StateDir != brokerState || (cfg.Admission != "" && cfg.Admission != "allowlist" && cfg.Admission != "any") {
 		return cfg, ErrBrokerStartup
 	}
 	return cfg, nil
@@ -100,6 +101,7 @@ func ServeBroker(ctx context.Context) error {
 	// Refuse unsafe state, including pending writes, rollback, NSS/ACL/unit
 	// drift, even when there are no incoming clients. Restart is not repair.
 	writer := NewWriter(cfg.StateDir, cfg.UIDMin, cfg.UIDMax, NewLinuxHostExecutor(cfg.GatewayUID, cfg.GatewayGID))
+	writer.AdmitAny = cfg.Admission == "any"
 	writer.GuardEvent = func(stage string) {
 		// Writer supplies fixed literals only. Never log request, candidate,
 		// UID, route, path, command output or raw host errors.

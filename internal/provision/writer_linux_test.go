@@ -170,6 +170,34 @@ func TestWriterPhasesAndCommittedVerification(t *testing.T) {
 	}
 	assertCalls(t, h, want...)
 }
+func TestWriterExplicitAnyAdmission(t *testing.T) {
+	w, h := writerFixture(t)
+	put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":4,"ids":[]}`)
+	if r := handle(w, "ensure", "91", "visitor"); r.Failure != Denied {
+		t.Fatal("default must deny unknown ID", r)
+	}
+	w.AdmitAny = true
+	if r := handle(w, "authorize", "91", ""); r.Failure != Denied {
+		t.Fatal("unbound account cannot authorize", r)
+	}
+	r := handle(w, "ensure", "91", "visitor")
+	if r.Route == nil || r.Route.UID != 2100 || r.Route.Username != "visitor" {
+		t.Fatal("new identity not provisioned", r)
+	}
+	assertCalls(t, h, provisionCalls("91", "visitor", 2100)...)
+	if r := handle(w, "authorize", "91", ""); r.Route == nil || r.Route.UID != 2100 {
+		t.Fatal("committed identity not authorized", r)
+	}
+	if r := handle(w, "ensure", "92", "visitor"); r.Failure != NameCollision {
+		t.Fatal("new identity must not claim occupied name", r)
+	}
+	// Removing the mode from operator config restores the explicit-ID rule,
+	// including for a previously bound account.
+	w.AdmitAny = false
+	if r := handle(w, "authorize", "91", ""); r.Failure != Denied {
+		t.Fatal("mode removed", r)
+	}
+}
 func fileAbsent(p string) bool { _, e := os.Lstat(p); return os.IsNotExist(e) }
 func TestWriterFailuresRemainPending(t *testing.T) {
 	for _, phase := range []string{"available", "account", "home", "config", "socket", "unit", "verify"} {

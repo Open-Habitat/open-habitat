@@ -37,7 +37,7 @@ systemd. Native file access and tool execution belong to the daemon.
 ## Provisioning broker
 
 The broker runs as root because creating Linux accounts requires that authority.
-It owns the operator allowlist and the binding from a GitHub identity to a Unix
+It owns the root-controlled admission mode and allowlist, and the binding from a GitHub identity to a Unix
 account. At first approved login it creates the account, home, daemon binding
 and socket setup; later logins reuse the binding. Its persistent ledger and
 pending-operation journal record account provisioning.

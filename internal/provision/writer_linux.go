@@ -17,7 +17,7 @@ import (
 
 // ExecutorIdentity is a value snapshot of the authorized root-owned binding.
 // Its fields cannot be changed by an injected executor; the provider is fixed
-// by the validated broker protocol, the ID comes from the allowlist or committed
+// by the validated broker protocol, the ID comes from the authenticated gateway request or committed
 // ledger, and the name/UID are assigned by the writer, never the browser.
 // It is not an independent attestation of the remote GitHub user.
 type ExecutorIdentity struct {
@@ -77,6 +77,9 @@ type Writer struct {
 	Dir            string
 	UIDMin, UIDMax uint32
 	Executor       HostExecutor
+	// AdmitAny is an explicit root-only test-installation policy. The gateway
+	// must enforce signed Access assertions before the operator enables it.
+	AdmitAny bool
 	// GuardEvent is root-local diagnostic output, never included in a reply.
 	// Only internally selected fixed literals are passed to it.
 	GuardEvent func(string)
@@ -370,7 +373,10 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 		}
 	}
 	if entry == nil {
-		return failure(Denied)
+		if !w.AdmitAny {
+			return failure(Denied)
+		}
+		entry = &allowed{ID: r.ID}
 	}
 	for _, b := range l.Bindings {
 		if b.ID == r.ID {
