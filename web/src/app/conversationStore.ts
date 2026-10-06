@@ -545,10 +545,12 @@ export class ConversationStore {
         });
       }
     }
-    if (
-      event.resource.agent_id &&
-      ["turn.settled", "question.requested"].includes(event.kind)
-    )
+    if (event.resource.agent_id && event.kind === "question.requested")
+      this.markAttention(
+        event.resource.agent_id,
+        `question:${event.payload.request_id}`,
+      );
+    else if (event.resource.agent_id && event.kind === "turn.settled")
       this.markAttention(event.resource.agent_id, event.event_id);
     if (event.kind === "snapshot.invalidated" && !event.resource.agent_id)
       for (const id of this.metadata.statuses.keys())

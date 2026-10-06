@@ -119,8 +119,12 @@ export function ReturnView({
     .sort(
       (a, b) =>
         Number(b.attention === "new") - Number(a.attention === "new") ||
-        Number(presentation(b).activity === "working") -
-          Number(presentation(a).activity === "working"),
+        { working: 2, waiting: 1, closed: 0, unknown: 0 }[
+          presentation(b).activity
+        ] -
+          { working: 2, waiting: 1, closed: 0, unknown: 0 }[
+            presentation(a).activity
+          ],
     )
     .slice(0, 3);
   const attention = ordered.filter(

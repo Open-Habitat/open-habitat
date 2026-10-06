@@ -79,6 +79,39 @@ describe("return view", () => {
     expect(screen.queryByText("Viimeksi avatut")).toBeNull();
     expect(screen.queryByText("Jatkettavissa")).toBeNull();
   });
+  it("promotes newly observed attention ahead of the three-item cutoff and retains a seen wait", () => {
+    show([
+      { ...base, id: "old-1", title: "Vanha yksi" },
+      { ...base, id: "old-2", title: "Vanha kaksi" },
+      {
+        ...base,
+        id: "wait",
+        title: "Nähty kysymys",
+        process: "daemon_managed_live",
+        command: "idle",
+        attention: "seen",
+      },
+      {
+        ...base,
+        id: "new",
+        title: "Uusi kysymys",
+        process: "daemon_managed_live",
+        pendingQuestion: true,
+        attention: "new",
+      },
+    ]);
+    const urgent = screen.getByRole("region", { name: "Tarvitsee huomiota" });
+    expect(
+      within(urgent).getByRole("link", { name: /Uusi kysymys/ }),
+    ).toBeTruthy();
+    expect(
+      within(screen.getByRole("region", { name: "Odottaa" })).getByRole(
+        "link",
+        { name: /Nähty kysymys/ },
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Vanha kaksi/ })).toBeNull();
+  });
   it("keeps a long native title in the link rather than truncating its text", () => {
     const title = `Pitkä otsikko ${"x".repeat(160)}`;
     show([{ ...base, title }]);

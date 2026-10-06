@@ -755,8 +755,17 @@ describe("attention markers", () => {
     store.setVisible(agent);
     expect(store.readMetadata().attention.get(agent)).toBe("seen");
     store.setVisible(undefined);
-    store.routeEvent(event("question.requested", 2) as never);
+    store.routeEvent(
+      event("question.requested", 2, { request_id: "q1" }) as never,
+    );
     expect(store.readMetadata().attention.get(agent)).toBe("new");
+    store.setVisible(agent);
+    store.applyStatus(agent, {
+      agent_id: agent,
+      state: "accepted",
+      pending_question: { request_id: "q1" },
+    } as never);
+    expect(store.readMetadata().attention.get(agent)).toBe("seen");
     store.routeEvent(
       event("command.changed", 3, { state: "pending" }) as never,
     );

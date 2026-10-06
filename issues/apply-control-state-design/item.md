@@ -34,4 +34,4 @@ matrix from @design-control-states replaces the provisional values that
 ## Acceptance Criteria
 
 - [x] Designed states are represented by production controls in both themes; the paired captures and unmeasured deviations are recorded in result.md. Visual acceptance remains Jari's after deployment.
-- [ ] The final committed runtime tree passes the TESTING.md clean gate (result.md records its scope).
+- [x] The final committed runtime tree passes the TESTING.md clean gate (result.md records its scope).
