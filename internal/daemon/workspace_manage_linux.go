@@ -135,6 +135,9 @@ func saveVisibility(home string, s workspaceVisibility) error {
 	if e != nil {
 		return e
 	}
+	if len(b) > 1<<20 {
+		return errors.New("state exceeds readable bound")
+	}
 	id, e := newWorkspaceID()
 	if e != nil {
 		return e

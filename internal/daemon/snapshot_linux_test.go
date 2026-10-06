@@ -196,6 +196,48 @@ func TestSnapshotDiscoveryAndSchema(t *testing.T) {
 	check(request(), 503)
 }
 
+func TestSnapshotMissingArchivedHistoryIsNotEmptyArchive(t *testing.T) {
+	cfg, home := cloneFixture(t)
+	if err := os.Mkdir(filepath.Join(home, "src"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	state, err := loadVisibility(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state.Conversations["pi:12345678-1234-4123-8123-123456789abc"] = json.RawMessage(`{"archived_at":"2026-10-06T12:00:00Z"}`)
+	if err := saveVisibility(home, state); err != nil {
+		t.Fatal(err)
+	}
+	h := SnapshotHandlerWithNativeRoot(cfg, func(*http.Request) bool { return true }, func(transport.Config) Discovery { return DiscoverFixtureRoot(home, os.Geteuid()) }, home)
+	r := httptest.NewRequest("GET", "http://unix"+SnapshotPath, nil)
+	r.RequestURI = SnapshotPath
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != 200 {
+		t.Fatalf("snapshot: %d %s", w.Code, w.Body.String())
+	}
+	var view struct {
+		Sources []struct{ Source, State string }
+		Agents  []any
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &view); err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Agents) != 0 {
+		t.Fatal("invented missing history", view.Agents)
+	}
+	for _, fact := range view.Sources {
+		if fact.Source == "pi_history" {
+			if fact.State != "unknown" {
+				t.Fatalf("missing archived history presented as %s", fact.State)
+			}
+			return
+		}
+	}
+	t.Fatal("missing history source fact")
+}
+
 func TestSnapshotLargeBatchedCollection(t *testing.T) {
 	cfg, home := cloneFixture(t)
 	src := filepath.Join(home, "src")

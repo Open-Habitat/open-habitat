@@ -238,6 +238,25 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		if controller != nil {
 			controller.mu.Unlock()
 		}
+		// An archived annotation without a discoverable native session is not
+		// an empty archive. No workspace can be inferred from the annotation.
+		orphanArchive := false
+		if visibilityErr == nil {
+			present := make(map[string]bool, len(agents))
+			for _, raw := range agents {
+				agent := raw.(map[string]any)
+				present[agent["agent_id"].(string)] = true
+				if agent["archive"] == "archived" && agent["history"] != "readable" {
+					orphanArchive = true
+				}
+			}
+			for id := range visibility.Conversations {
+				if archiveFact(visibility, nil, id) == "archived" && !present[id] {
+					orphanArchive = true
+					break
+				}
+			}
+		}
 		// Native observations are not journal-atomic. If an observable native
 		// change arrived during discovery, leave an explicit resnapshot signal
 		// *after* the controller cursor instead of silently consuming it.
@@ -271,6 +290,9 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		}()), fact("pi_history", func() string {
 			if historyErr != nil {
 				return "unavailable"
+			}
+			if orphanArchive {
+				return "unknown"
 			}
 			return "confirmed"
 		}()), fact("daemon_owner", "unknown")}, "workspaces": workspaces, "agents": agents, "operations": []any{}, "command_ledger": map[string]any{"epoch": instance, "max_entries": 10000, "max_age_seconds": 86400, "entries": []any{}}, "auth": map[string]any{"provider": cfg.Provider, "provider_account_id": cfg.Subject, "native_github": map[string]string{"state": ghState}}}

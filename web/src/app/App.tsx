@@ -745,10 +745,16 @@ export function App() {
               label="Palauta näkyviin"
               onPress={() => void changeArchive(selectedAgent, false)}
               availability={
-                archiveBusy || !csrf || phase !== "authenticated"
+                archiveBusy ||
+                !csrf ||
+                phase !== "authenticated" ||
+                selectedAgent.history !== "readable"
                   ? {
                       state: "unknown",
-                      reason: "Päivitä yhteys ennen palautusta",
+                      reason:
+                        selectedAgent.history !== "readable"
+                          ? "Historiaa ei voitu vahvistaa"
+                          : "Päivitä yhteys ennen palautusta",
                     }
                   : { state: "enabled" }
               }
@@ -864,39 +870,59 @@ export function App() {
                 ?.state !== "confirmed" ? (
                 <p>Arkistoa ei voitu lukea. Päivitä tiedot.</p>
               ) : (
-                snapshot.agents
-                  .filter(
-                    (a) =>
-                      a.workspace_id === selected.workspace_id &&
-                      a.archive === "archived",
-                  )
-                  .map((a) => (
-                    <p key={a.agent_id}>
-                      <LinkRow
-                        href={
-                          daemonSessions.some((s) => s.agent_id === a.agent_id)
-                            ? `/workspaces/${selected.workspace_id}?conversation=${a.agent_id}`
-                            : `/agents/${a.agent_id}`
-                        }
-                        kind="inline"
-                      >
-                        {a.title.display}
-                      </LinkRow>{" "}
-                      <Button
-                        label="Palauta näkyviin"
-                        variant="quiet"
-                        onPress={() => void changeArchive(a, false)}
-                        availability={
-                          archiveBusy || !csrf || phase !== "authenticated"
-                            ? {
-                                state: "unknown",
-                                reason: "Päivitä yhteys ennen palautusta",
-                              }
-                            : { state: "enabled" }
-                        }
-                      />
+                <>
+                  {snapshot.sources.find((f) => f.source === "pi_history")
+                    ?.state !== "confirmed" && (
+                    <p role="status">
+                      Arkisto voi olla puutteellinen: Pi:n historiaa ei voitu
+                      kokonaan tarkistaa. Päivitä tiedot.
                     </p>
-                  ))
+                  )}
+                  {snapshot.agents
+                    .filter(
+                      (a) =>
+                        a.workspace_id === selected.workspace_id &&
+                        a.archive === "archived",
+                    )
+                    .map((a) => (
+                      <p key={a.agent_id}>
+                        <LinkRow
+                          href={
+                            daemonSessions.some(
+                              (s) => s.agent_id === a.agent_id,
+                            )
+                              ? `/workspaces/${selected.workspace_id}?conversation=${a.agent_id}`
+                              : `/agents/${a.agent_id}`
+                          }
+                          kind="inline"
+                        >
+                          {a.title.display}
+                        </LinkRow>{" "}
+                        {a.history !== "readable" && (
+                          <span>Historia ei ole luettavissa. </span>
+                        )}
+                        <Button
+                          label="Palauta näkyviin"
+                          variant="quiet"
+                          onPress={() => void changeArchive(a, false)}
+                          availability={
+                            archiveBusy ||
+                            !csrf ||
+                            phase !== "authenticated" ||
+                            a.history !== "readable"
+                              ? {
+                                  state: "unknown",
+                                  reason:
+                                    a.history !== "readable"
+                                      ? "Historiaa ei voitu vahvistaa"
+                                      : "Päivitä yhteys ennen palautusta",
+                                }
+                              : { state: "enabled" }
+                          }
+                        />
+                      </p>
+                    ))}
+                </>
               )}
             </section>
             <ReturnView
@@ -949,6 +975,17 @@ export function App() {
       </>
     ) : (
       <>
+        {snapshot?.sources.some(
+          (f) =>
+            (f.source === "annotation" || f.source === "pi_history") &&
+            f.state !== "confirmed",
+        ) && (
+          <InlineNotice
+            title="Arkistoa ei voitu kokonaan tarkistaa"
+            description="Osa Pi:n historiasta tai arkistomerkinnöistä on poissa käytöstä. Tyhjä lista ei vahvista tyhjää arkistoa."
+            tone="warning"
+          />
+        )}
         {visible.length > 0 ? (
           <ReturnView
             store={conversationStore}

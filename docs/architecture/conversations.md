@@ -117,7 +117,9 @@ rename; Pi history is neither moved nor copied. The snapshot reports `active`,
 `archived` or `unknown` per conversation. Archived browser conversations do not
 accept another browser send until restored. An unreadable state file makes archive
 state unknown without hiding native history or overwriting corrupt bytes; browser
-writes wait for the annotation state to be checked again.
+writes wait for the annotation state to be checked again. An archive annotation
+whose native session is missing or unreadable makes the Pi-history source unknown rather than
+presenting an empty archive; the browser warns on the home and workspace views.
 Archive requires the current daemon handle; terminal history and a lost daemon
 handle cannot prove idle or process exit. Restore changes only presentation and
 also works after a daemon restart. A separate explicit continuation rechecks

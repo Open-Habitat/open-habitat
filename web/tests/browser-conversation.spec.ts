@@ -1279,6 +1279,29 @@ async function endedConversation(page: import("@playwright/test").Page) {
   return id;
 }
 
+test("@browser-conversation missing archive history never appears as a confirmed empty archive", async ({
+  page,
+}) => {
+  await open(page);
+  await page.route("**/api/v1/snapshot", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.sources.find(
+      (fact: { source: string }) => fact.source === "pi_history",
+    ).state = "unknown";
+    body.agents = [];
+    await route.fulfill({ response, json: body });
+  });
+  await page.reload();
+  await expect(
+    page.getByRole("region", { name: "Työtilan arkisto" }),
+  ).toContainText("Arkisto voi olla puutteellinen");
+  await page.getByRole("link", { name: "Etusivu" }).click();
+  await expect(
+    page.getByText("Arkistoa ei voitu kokonaan tarkistaa"),
+  ).toBeVisible();
+});
+
 test("@browser-conversation archive restores visibility before native continuation", async ({
   page,
 }) => {
