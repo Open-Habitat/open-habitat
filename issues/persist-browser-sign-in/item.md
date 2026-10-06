@@ -3,7 +3,7 @@ created: 2026-10-05
 updated: 2026-10-06
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 originating_run_kind: spinoff
 provenance: agent
@@ -14,6 +14,8 @@ related: ['@design-durable-sign-in']
 lane: gateway-session
 collision: [internal/gateway/, docs/, systemd/native-agent-host-gateway.service]
 preparation: ready
+closed: 2026-10-06
+closed_by: claude
 ---
 
 # Keep browser sign-in across gateway restarts and upgrades
