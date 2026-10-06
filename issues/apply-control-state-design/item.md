@@ -3,7 +3,7 @@ created: 2026-10-03
 updated: 2026-10-06
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 related: ['@refine-agent-status']
 lane: ui-foundation
@@ -11,6 +11,8 @@ lane_seq: 30
 collision: [web/src/components/, design-system/]
 blocked_by: ['@design-control-states', '@compare-draft-fidelity']
 preparation: pending
+closed: 2026-10-06
+closed_by: claude
 ---
 
 # Apply the designed control states and agent presentation
