@@ -42,7 +42,7 @@ issue. @align-settings-design owns layout and visual comparisons, and
 
 ## Acceptance Criteria
 
-- [ ] Settings shows all three Pi states in terms the person can understand, without implying an OpenAI account identity or verified provider connection.
-- [ ] An initial missing or uncertain Pi status continues to open onboarding, including for direct `/settings` visits; settings does not bypass the existing gate.
-- [ ] On an already open settings view, a missing status can reach the existing Pi sign-in flow; an unknown status or fetch failure is visibly uncertain rather than connected.
-- [ ] Component and browser tests cover the settings states, fetch failure and the initial gate/onboarding path.
+- [x] Settings shows all three Pi states in terms the person can understand, without implying an OpenAI account identity or verified provider connection.
+- [x] An initial missing or uncertain Pi status continues to open onboarding, including for direct `/settings` visits; settings does not bypass the existing gate.
+- [x] On an already open settings view, a missing status can reach the existing Pi sign-in flow; an unknown status or fetch failure is visibly uncertain rather than connected.
+- [x] Component and browser tests cover the settings states, fetch failure and the initial gate/onboarding path.
