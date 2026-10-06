@@ -143,6 +143,16 @@ func TestSnapshotDiscoveryAndSchema(t *testing.T) {
 		return doc
 	}
 	doc := check(request(), 200)
+	fixtureCfg := cfg
+	fixtureCfg.Home = home
+	sourceFD, sourceStat, err := workspaceSource(fixtureCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unix.Close(sourceFD)
+	if doc["user_observation_token"] != workspaceUserToken(fixtureCfg, sourceStat) {
+		t.Fatal("snapshot workspace token did not come from the disposable native root")
+	}
 	ws := doc["workspaces"].([]any)
 	if len(ws) != 3 {
 		t.Fatal(ws)
@@ -150,7 +160,7 @@ func TestSnapshotDiscoveryAndSchema(t *testing.T) {
 	if ws[0].(map[string]any)["workspace_id"] != "ws_known123" || ws[1].(map[string]any)["kind"] != "directory" || ws[2].(map[string]any)["kind"] != "git_main_worktree" {
 		t.Fatal(ws)
 	}
-	if doc["write_state"] != "read_only" {
+	if doc["write_state"] != "enabled" {
 		t.Fatal(doc)
 	}
 	if request().Body.String() == "" {

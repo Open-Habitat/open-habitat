@@ -255,8 +255,10 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		userToken := opaque("obs_", snapID+":user")
 		writeState := "read_only"
 		if observation.State == "present" || observation.State == "empty" || observation.State == "partial" && observation.Error == "" {
-			if fd, s, err := workspaceSource(cfg); err == nil {
-				userToken = workspaceUserToken(cfg, s)
+			nativeCfg := cfg
+			nativeCfg.Home = nativeHome // synthetic snapshots must not observe the runner's real home
+			if fd, s, err := workspaceSource(nativeCfg); err == nil {
+				userToken = workspaceUserToken(nativeCfg, s)
 				writeState = "enabled"
 				unix.Close(fd)
 			}
