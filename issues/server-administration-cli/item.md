@@ -46,3 +46,9 @@ Demonstrate the operations and their authorization on a disposable server,
 including agreement with the browser view of shared settings and roles.
 Record the tested behavior and remaining limits in this issue's result,
 using [TESTING.md](../../TESTING.md) for the relevant checks.
+
+## Acceptance Criteria
+
+- [x] Root can inspect and change the server name and browser roles through the gateway's private control socket, including the first grant to a bound subject.
+- [x] Nonroot callers cannot use operator administration; CLI output, validation, dry-run and failures follow the AI-first CLI canon.
+- [x] Synthetic authorization and shared-writer tests plus the final clean gate passed; live deployment and first appointment remain with the stint's release.
