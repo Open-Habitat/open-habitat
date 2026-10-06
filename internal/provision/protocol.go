@@ -38,17 +38,29 @@ type Route struct {
 	Username string `json:"username"`
 	Socket   string `json:"socket"`
 }
+type BoundUser struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+}
 type Reply struct {
-	Version    int     `json:"version"`
-	Failure    Failure `json:"failure,omitempty"`
-	Route      *Route  `json:"route,omitempty"`
-	Generation uint64  `json:"generation,omitempty"`
-	Epoch      uint64  `json:"epoch,omitempty"`
+	Users      []BoundUser `json:"users,omitempty"`
+	Next       string      `json:"next,omitempty"`
+	Version    int         `json:"version"`
+	Failure    Failure     `json:"failure,omitempty"`
+	Route      *Route      `json:"route,omitempty"`
+	Generation uint64      `json:"generation,omitempty"`
+	Epoch      uint64      `json:"epoch,omitempty"`
 }
 
 func numericID(id string) bool {
 	n, err := strconv.ParseUint(id, 10, 64)
 	return err == nil && n > 0 && strconv.FormatUint(n, 10) == id
+}
+func numericOffset(s string) bool {
+	if s == "0" {
+		return true
+	}
+	return numericID(s) && len(s) < 5
 }
 func username(s string) bool {
 	if len(s) < 1 || len(s) > 32 || s[0] < 'a' || s[0] > 'z' {
@@ -145,23 +157,23 @@ func ParseRequest(b []byte) (Request, error) {
 		return Request{}, ErrInvalid
 	}
 	_, candidatePresent := raw["candidate"]
-	if r.Operation == "ensure" && (!candidatePresent || string(raw["candidate"]) == "null") || r.Operation == "authorize" && candidatePresent {
+	if r.Operation == "ensure" && (!candidatePresent || string(raw["candidate"]) == "null") || r.Operation != "ensure" && r.Operation != "list" && candidatePresent || r.Operation == "list" && candidatePresent && !numericOffset(r.Candidate) {
 		return Request{}, ErrInvalid
 	}
-	if r.Version != 1 || r.Provider != "github" || !numericID(r.ID) || (r.Operation != "ensure" && r.Operation != "authorize") || (r.Operation == "ensure" && !githubLogin(r.Candidate)) {
+	if r.Version != 1 || r.Provider != "github" || (r.Operation == "list" && r.ID != "0") || (!numericID(r.ID) && !(r.Operation == "list" && r.ID == "0")) || (r.Operation != "ensure" && r.Operation != "authorize" && r.Operation != "lookup" && r.Operation != "list") || (r.Operation == "ensure" && !githubLogin(r.Candidate)) {
 		return Request{}, ErrInvalid
 	}
 	return r, nil
 }
 func ParseReply(b []byte) (Reply, error) {
 	var r Reply
-	if err := decode(b, &r, "version", "failure", "route", "generation", "epoch"); err != nil {
+	if err := decode(b, &r, "version", "failure", "route", "generation", "epoch", "users", "next"); err != nil {
 		return Reply{}, err
 	}
 	if r.Version != 1 {
 		return Reply{}, ErrInvalid
 	}
-	raw, _ := object(b, "version", "failure", "route", "generation", "epoch")
+	raw, _ := object(b, "version", "failure", "route", "generation", "epoch", "users", "next")
 	if len(raw["version"]) == 0 {
 		return Reply{}, ErrInvalid
 	}
@@ -174,10 +186,29 @@ func ParseReply(b []byte) (Reply, error) {
 		default:
 			return Reply{}, ErrInvalid
 		}
-		if r.Route != nil || r.Generation != 0 || r.Epoch != 0 {
+		if r.Route != nil || r.Generation != 0 || r.Epoch != 0 || len(r.Users) != 0 || r.Next != "" {
 			return Reply{}, ErrInvalid
 		}
 		return r, nil
+	}
+	if len(raw["users"]) != 0 {
+		if r.Route != nil || r.Generation == 0 || r.Epoch == 0 || len(raw["generation"]) == 0 || len(raw["epoch"]) == 0 || len(r.Users) > 30 || r.Next != "" && !numericOffset(r.Next) {
+			return Reply{}, ErrInvalid
+		}
+		entries, err := checkArray(raw["users"], "users")
+		if err != nil {
+			return Reply{}, err
+		}
+		for _, entry := range entries {
+			var u BoundUser
+			if decode(entry, &u, "id", "username") != nil || !numericID(u.ID) || !username(u.Username) {
+				return Reply{}, ErrInvalid
+			}
+		}
+		return r, nil
+	}
+	if r.Next != "" {
+		return Reply{}, ErrInvalid
 	}
 	if r.Route == nil || r.Generation == 0 || r.Epoch == 0 || len(raw["route"]) == 0 || len(raw["generation"]) == 0 || len(raw["epoch"]) == 0 {
 		return Reply{}, ErrInvalid

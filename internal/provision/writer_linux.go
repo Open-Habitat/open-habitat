@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -364,6 +365,44 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 		if replace(fd, "head.json", marshal(h)) != nil {
 			return failure(StateUnavailable)
 		}
+	}
+	if r.Operation == "list" || r.Operation == "lookup" {
+		offset := 0
+		if r.Operation == "list" && r.Candidate != "" {
+			offset, _ = strconv.Atoi(r.Candidate)
+		}
+		if offset > len(l.Bindings) {
+			return failure(Invalid)
+		}
+		users := make([]BoundUser, 0)
+		next := ""
+		if r.Operation == "list" {
+			end := offset + 30
+			if end > len(l.Bindings) {
+				end = len(l.Bindings)
+			}
+			for _, b := range l.Bindings[offset:end] {
+				users = append(users, BoundUser{ID: b.ID, Username: b.Username})
+			}
+			if end < len(l.Bindings) {
+				next = strconv.Itoa(end)
+			}
+		} else {
+			for _, b := range l.Bindings {
+				if b.ID == r.ID {
+					users = append(users, BoundUser{ID: b.ID, Username: b.Username})
+					break
+				}
+			}
+			if len(users) == 0 {
+				return failure(Denied)
+			}
+		}
+		result := Reply{Version: 1, Users: users, Next: next, Generation: l.Generation, Epoch: a.Epoch}
+		if _, err := EncodeReply(result); err != nil {
+			return failure(StateUnavailable)
+		}
+		return result
 	}
 	var entry *allowed
 	for i := range a.IDs {

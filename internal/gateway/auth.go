@@ -104,6 +104,7 @@ type Broker interface {
 }
 type AuthOptions struct {
 	Broker      Broker
+	AdminFile   string // gateway-private name and browser roles; empty only in synthetic tests
 	SessionFile string // gateway-private persistent state; empty only in synthetic tests
 	Provider    Provider
 	Sink        TokenSink
@@ -142,6 +143,8 @@ type Auth struct {
 	revoked         map[string]uint64
 	sessions        map[string]session
 	sessionFile     string
+	adminFile       string
+	settings        serverSettings
 	admission       map[string]admission
 	unmatchedLog    admission // process-wide budget; never keyed by request input
 	snapshotDial    func(context.Context, string) (net.Conn, error)
@@ -189,6 +192,9 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 		return nil, err
 	}
 	a := &Auth{sessionFile: opts.SessionFile, cfg: cfg, provider: opts.Provider, sink: opts.Sink, broker: opts.Broker, now: opts.Now, random: opts.Random, log: opts.Log, pending: map[string]pending{}, sessions: map[string]session{}, admission: map[string]admission{}, snapshotDial: opts.SnapshotDial, snapshotPeerUID: opts.SnapshotPeerUID, access: access}
+	if err := a.loadAdministration(opts.AdminFile); err != nil {
+		return nil, err
+	}
 	if err := a.loadSessions(); err != nil {
 		// Unusable state cannot authenticate any cookie. Permit a new OAuth
 		// login to replace it, without trusting or copying its old contents.
@@ -326,7 +332,7 @@ func safe(w http.ResponseWriter, status int, code string) {
 
 // uiReturn accepts only known same-origin selection routes; never API/auth/events or external URLs.
 func uiReturn(path string) bool {
-	if path == "/" || path == "/workspaces" || path == "/settings" {
+	if path == "/" || path == "/workspaces" || path == "/settings" || path == "/administration" {
 		return true
 	}
 	if strings.HasPrefix(path, "/agents/pi:") {

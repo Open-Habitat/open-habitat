@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://native-agent-host.invalid/contracts/v1/server-administration.schema.json",
+  "title": "Bound users and their browser roles",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "name", "users"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "name": {"type": "string", "maxLength": 80},
+    "users": {"type": "array", "maxItems": 40, "items": {"type": "object", "additionalProperties": false, "required": ["id", "username", "administrator"], "properties": {"id": {"type": "string", "pattern": "^[1-9][0-9]*$"}, "username": {"type": "string"}, "administrator": {"type": "boolean"}}}}
+  }
+}

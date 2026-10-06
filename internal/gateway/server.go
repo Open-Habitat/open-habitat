@@ -36,6 +36,8 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("/auth/", func(w http.ResponseWriter, _ *http.Request) { http.NotFound(w, nil) })
 	if s.auth != nil {
 		s.auth.routes(mux)
+		mux.HandleFunc("/api/v1/server", s.auth.adminHTTP)
+		mux.HandleFunc("/api/v1/server/administration", s.auth.adminHTTP)
 		mux.HandleFunc("/api/v1/snapshot", s.auth.snapshot)
 		mux.HandleFunc("/api/v1/workspaces", s.auth.workspaces)
 		mux.HandleFunc("/api/v1/workspaces/github/publish", s.auth.githubPublish)
@@ -84,5 +86,5 @@ func (s *Server) ui(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filepath.Join(s.staticDir, "index.html"))
 }
 func knownUIRoute(path string) bool {
-	return path == "/" || path == "/settings" || path == "/workspaces" || strings.HasPrefix(path, "/workspaces/") || strings.HasPrefix(path, "/agents/pi:") || strings.HasPrefix(path, "/operations/")
+	return path == "/" || path == "/settings" || path == "/administration" || path == "/workspaces" || strings.HasPrefix(path, "/workspaces/") || strings.HasPrefix(path, "/agents/pi:") || strings.HasPrefix(path, "/operations/")
 }

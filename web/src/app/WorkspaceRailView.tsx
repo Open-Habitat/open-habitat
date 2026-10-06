@@ -1,3 +1,6 @@
+import { useEffect, useState } from "react";
+import { serverInfo } from "./serverAdministration";
+import { LinkRow } from "../components/ControlElements";
 import { AccountShelf, WorkspaceRail, WorkspaceSection } from "../components";
 import type { AccountProfile } from "./pi";
 import { agentPresentation } from "../components/agentPresentation";
@@ -75,6 +78,18 @@ export function WorkspaceRailView({
   pathname: string;
   search: string;
 }) {
+  const [server, setServer] = useState<{
+    name: string;
+    administrator: boolean;
+  }>();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Re-read the current role on navigation, including after a role removal.
+  useEffect(() => {
+    const controller = new AbortController();
+    void serverInfo(controller.signal)
+      .then(setServer)
+      .catch(() => {});
+    return () => controller.abort();
+  }, [pathname]);
   const metadata = useConversationMetadata(store);
   const agents = metadata.agents.size
     ? [...metadata.agents.values()]
@@ -82,7 +97,7 @@ export function WorkspaceRailView({
   return (
     <WorkspaceRail
       collapsed={collapsed}
-      serverLabel={window.location.host}
+      serverLabel={server?.name || window.location.host}
       connectionLabel={
         phase === "stale"
           ? "Yhteys poikki"
@@ -137,6 +152,11 @@ export function WorkspaceRailView({
       onFilter={onFilter}
       onRefresh={onRefresh}
     >
+      {server?.administrator && (
+        <LinkRow href="/administration" kind="inline">
+          Palvelimen ylläpito
+        </LinkRow>
+      )}
       {matches.map((w) => (
         <WorkspaceSection
           key={w.workspace_id}

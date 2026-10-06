@@ -103,11 +103,20 @@ func serveRevocations(ctx context.Context, ln net.Listener, auth *gateway.Auth) 
 			if err != nil || uid != 0 {
 				return
 			}
-			line, err := bufio.NewReader(io.LimitReader(c, 33)).ReadString('\n')
-			if err != nil || len(line) > 32 {
+			line, err := bufio.NewReader(io.LimitReader(c, 1100)).ReadString('\n')
+			if err != nil || len(line) > 1090 {
 				return
 			}
-			if auth.RevokeSubject(ctx, strings.TrimSuffix(line, "\n")) != nil {
+			if strings.HasPrefix(line, "ADMIN ") {
+				result, e := auth.AdminControl(ctx, []byte(strings.TrimSuffix(strings.TrimPrefix(line, "ADMIN "), "\n")))
+				if e != nil {
+					c.Write([]byte("DENIED\n"))
+				} else {
+					c.Write(append(result, '\n'))
+				}
+				return
+			}
+			if len(line) > 32 || auth.RevokeSubject(ctx, strings.TrimSuffix(line, "\n")) != nil {
 				c.Write([]byte("DENIED\n"))
 				return
 			}

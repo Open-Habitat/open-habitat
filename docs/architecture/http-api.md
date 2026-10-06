@@ -38,6 +38,9 @@ Authentication and probes are served by the gateway:
 | `GET /auth/session` | read the web session, CSRF secret and display-only GitHub profile ([contract](../../contracts/v1/account-session.schema.json)); this does not expose a Unix route |
 | `POST /auth/profile` | supply missing name/email during onboarding ([input contract](../../contracts/v1/account-profile-update.schema.json)); requires session, origin and CSRF, and cannot overwrite supplied GitHub fields or change the identity binding |
 | `POST /auth/logout` | end the web session; native `gh` authorization stays |
+| `GET /api/v1/server` | session-scoped server name and current browser administrator role ([contract](../../contracts/v1/server.schema.json)); does not expose another person's native work |
+| `GET /api/v1/server/administration` | administrator-only name and bound-user role list ([contract](../../contracts/v1/server-administration.schema.json)); broker reads the binding ledger, not daemon sockets |
+| `PUT /api/v1/server/administration` | administrator-only name or browser role update ([input](../../contracts/v1/server-administration-change.schema.json)); requires Origin and CSRF; role target must already be bound |
 | `GET /healthz`, `GET /readyz` | fixed gateway probe responses |
 
 Native operations are forwarded to the user's daemon. In this table `<id>` is

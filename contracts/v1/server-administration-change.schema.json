@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://native-agent-host.invalid/contracts/v1/server-administration-change.schema.json",
+  "title": "Update one shared server setting or bound user's browser role",
+  "oneOf": [
+    {"type": "object", "additionalProperties": false, "required": ["name"], "properties": {"name": {"type": "string", "maxLength": 80}}},
+    {"type": "object", "additionalProperties": false, "required": ["subject", "administrator"], "properties": {"subject": {"type": "string", "pattern": "^[1-9][0-9]*$"}, "administrator": {"type": "boolean"}}}
+  ]
+}

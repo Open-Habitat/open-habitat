@@ -234,7 +234,7 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 	var h http.Handler
 	if c == core.Gateway {
 		if cfg.OAuth != nil {
-			a, e := gateway.NewAuth(*cfg.OAuth, gateway.AuthOptions{Provider: gateway.GitHubProvider{ClientID: cfg.OAuth.ClientID, ClientSecret: cfg.OAuth.ClientSecret, CallbackURL: cfg.OAuth.CallbackURL}, Sink: transport.NewSink(), Broker: gatewayBroker{}, SessionFile: "/var/lib/native-agent-host-gateway/sessions.json", Log: gateway.CallbackLogger(stderr)})
+			a, e := gateway.NewAuth(*cfg.OAuth, gateway.AuthOptions{Provider: gateway.GitHubProvider{ClientID: cfg.OAuth.ClientID, ClientSecret: cfg.OAuth.ClientSecret, CallbackURL: cfg.OAuth.CallbackURL}, Sink: transport.NewSink(), Broker: gatewayBroker{}, SessionFile: "/var/lib/native-agent-host-gateway/sessions.json", AdminFile: "/var/lib/native-agent-host-gateway/administration.json", Log: gateway.CallbackLogger(stderr)})
 			if e != nil {
 				return nil, system("invalid_auth_config", "invalid gateway authentication configuration")
 			}
@@ -486,6 +486,42 @@ func helpOutput() any {
 }
 
 type gatewayBroker struct{}
+
+func (gatewayBroker) ListBound(ctx context.Context) ([]gateway.BoundUser, error) {
+	users := make([]gateway.BoundUser, 0)
+	next := ""
+	var generation, epoch uint64
+	for {
+		reply, err := (provision.Client{SocketPath: provision.BrokerSocket, SocketOwnerUID: 0}).Exchange(ctx, provision.Request{Version: 1, Operation: "list", Provider: "github", ID: "0", Candidate: next})
+		if err != nil || reply.Failure != "" || reply.Users == nil || len(users) > 1024 || generation != 0 && (reply.Generation != generation || reply.Epoch != epoch) {
+			return nil, gateway.ErrBrokerUnavailable
+		}
+		generation, epoch = reply.Generation, reply.Epoch
+		for _, u := range reply.Users {
+			users = append(users, gateway.BoundUser{ID: u.ID, Username: u.Username})
+		}
+		if reply.Next == "" {
+			return users, nil
+		}
+		if reply.Next == next || len(reply.Users) == 0 {
+			return nil, gateway.ErrBrokerUnavailable
+		}
+		next = reply.Next
+	}
+}
+func (gatewayBroker) LookupBound(ctx context.Context, id string) (bool, error) {
+	reply, err := (provision.Client{SocketPath: provision.BrokerSocket, SocketOwnerUID: 0}).Exchange(ctx, provision.Request{Version: 1, Operation: "lookup", Provider: "github", ID: id})
+	if err != nil {
+		return false, gateway.ErrBrokerUnavailable
+	}
+	if reply.Failure == provision.Denied {
+		return false, nil
+	}
+	if reply.Failure != "" || len(reply.Users) != 1 || reply.Users[0].ID != id {
+		return false, gateway.ErrBrokerUnavailable
+	}
+	return true, nil
+}
 
 // mapBrokerReply translates only validated protocol enums, never wire text.
 func mapBrokerReply(reply provision.Reply, err error) (gateway.BrokerReply, error) {

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://native-agent-host.invalid/contracts/v1/server.schema.json",
+  "title": "Server name and current browser role",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "name", "administrator"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "name": {"type": "string", "maxLength": 80},
+    "administrator": {"type": "boolean"}
+  }
+}

@@ -46,7 +46,7 @@ group. Native history survives, but an active turn is interrupted.
 User homes hold workspaces, Pi histories and configuration, and native `gh`
 credentials. Root-owned broker state holds admission policy, account bindings
 and the journal of provisioning operations. These survive service restarts and
-release replacement. Gateway-private state at `/var/lib/native-agent-host-gateway/sessions.json` holds browser sessions and survives release replacement and reboot. The gateway account alone can read it; sockets and pending login flows in `/run` or memory do not persist.
+release replacement. Gateway-private state at `/var/lib/native-agent-host-gateway/sessions.json` holds browser sessions and survives release replacement and reboot. The same private StateDirectory also holds `administration.json`, the gateway-owned server name and numeric GitHub subject roles. Keep it across release replacements; do not seed a browser administrator. A missing file starts with no name or administrators; an existing corrupt or incorrectly owned file prevents gateway startup until an operator repairs it. The already root-only `revoke.sock` control channel also carries bounded `ADMIN {"operation":"show|name|role",...}` newline requests from a verified root peer; the dedicated operator client is delivered by `server-administration-cli`. The gateway account alone can read it; sockets and pending login flows in `/run` or memory do not persist.
 
 The gateway loads its installation configuration at startup; each daemon loads
 the identity binding written by the broker. The broker reads its configuration

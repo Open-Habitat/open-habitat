@@ -47,6 +47,7 @@ import {
   stale,
   unavailable,
 } from "./store";
+import { ServerAdministration } from "./ServerAdministration";
 import { WorkspaceManagement } from "./WorkspaceManagement";
 import { sourceLabel, WorkspaceRailView } from "./WorkspaceRailView";
 
@@ -59,6 +60,7 @@ function safeRoute(path: string) {
   return path === "/" ||
     path === "/workspaces" ||
     path === "/settings" ||
+    path === "/administration" ||
     /^\/workspaces\/ws_[A-Za-z0-9_-]{8,80}$/.test(path) ||
     /^\/agents\/pi:[0-9a-fA-F-]{36}$/.test(path)
     ? path
@@ -625,6 +627,8 @@ export function App() {
           />
         ) : null}
       </>
+    ) : location.pathname === "/administration" && csrf ? (
+      <ServerAdministration csrf={csrf} />
     ) : !syntheticDemo &&
       profile &&
       !profileSkipped &&
@@ -652,6 +656,9 @@ export function App() {
     ) : phase === "daemon_unavailable" ? (
       <>
         <h1>Yhteyttä ei saatu</h1>
+        <LinkRow href="/administration" kind="inline">
+          Palvelimen ylläpito
+        </LinkRow>
         <InlineNotice
           title="Työtiloja ei voitu näyttää"
           description="Tietoja ei voitu tarkistaa. Tämä ei tarkoita, että työtilasi olisivat kadonneet. Tarkista yhteys ja yritä uudelleen."
