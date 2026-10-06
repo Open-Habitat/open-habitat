@@ -1,4 +1,5 @@
 import { AccountShelf, WorkspaceRail, WorkspaceSection } from "../components";
+import { accountLabel } from "../components/Account";
 import { agentPresentation } from "../components/agentPresentation";
 import {
   type ConversationStore,
@@ -96,7 +97,7 @@ export function WorkspaceRailView({
       }
       sessionActions={
         <AccountShelf
-          name="Oma tili"
+          name={accountLabel(snapshot.identity.display_name)}
           onSettings={onSettings}
           onLogout={onLogout}
         />
@@ -106,8 +107,14 @@ export function WorkspaceRailView({
         phase === "authenticated"
           ? agents.filter(
               (a) =>
-                a.process === "daemon_managed_live" ||
-                a.process === "terminal_observed_live",
+                agentPresentation({
+                  process: a.process,
+                  command: metadata.staleStatuses.has(a.agent_id)
+                    ? undefined
+                    : metadata.statuses.get(a.agent_id)?.state,
+                  pendingQuestion: !!metadata.statuses.get(a.agent_id)
+                    ?.pending_question,
+                }).activity === "working",
             ).length
           : undefined
       }

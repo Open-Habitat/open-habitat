@@ -17,6 +17,8 @@ import {
   InlineNotice,
 } from "../components";
 import { LinkRow } from "../components/ControlElements";
+import { accountLabel } from "../components/Account";
+import type { ReturnConversation } from "../components/ReturnView";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import { ReturnView } from "../components/ReturnView";
 import { BrowserConversation } from "./BrowserConversation";
@@ -518,6 +520,29 @@ export function App() {
               : matches.length === 0
                 ? "filtered-empty"
                 : "ready";
+  const returnConversations: (ReturnConversation & { workspaceId: string })[] =
+    (snapshot?.agents ?? [])
+      .filter((a) => visible.some((w) => w.workspace_id === a.workspace_id))
+      .map((a) => {
+        const workspace = visible.find(
+          (w) => w.workspace_id === a.workspace_id,
+        );
+        const daemonSession = daemonSessions.some(
+          (s) => s.agent_id === a.agent_id && s.workspace_id === a.workspace_id,
+        );
+        return {
+          id: a.agent_id,
+          workspaceId: a.workspace_id,
+          href: daemonSession
+            ? `/workspaces/${a.workspace_id}?conversation=${a.agent_id}`
+            : `/agents/${a.agent_id}`,
+          title: a.title.display,
+          workspace: workspace?.display_name ?? workspace?.name ?? "",
+          browserSession: daemonSession,
+          history: a.history,
+          process: phase === "stale" ? "stale" : a.process,
+        };
+      });
   const main =
     phase === "authenticated" &&
     new URLSearchParams(location.search).has("pi_sign_in") ? (
@@ -585,7 +610,7 @@ export function App() {
       </>
     ) : location.pathname === "/settings" ? (
       <AccountSettings
-        name="Oma tili"
+        name={accountLabel(snapshot?.identity.display_name ?? "")}
         onLogout={logout}
         nativeState={snapshot?.auth?.native_github.state}
         onBack={() => {
@@ -631,6 +656,14 @@ export function App() {
         {!new URLSearchParams(location.search).has("conversation") ? (
           <>
             <WorkspaceDetails workspace={selected} />
+            <ReturnView
+              store={conversationStore}
+              workspaceName="Keskustelut työtilassa"
+              conversations={returnConversations.filter(
+                (conversation) =>
+                  conversation.workspaceId === selected.workspace_id,
+              )}
+            />
             {!syntheticDemo && phase === "authenticated" && (
               <WorkspaceManagement
                 key={selected.workspace_id}
@@ -718,32 +751,7 @@ export function App() {
         {visible.length > 0 ? (
           <ReturnView
             store={conversationStore}
-            conversations={(snapshot?.agents ?? [])
-              .filter(
-                (a) =>
-                  a.history === "readable" &&
-                  visible.some((w) => w.workspace_id === a.workspace_id),
-              )
-              .map((a) => {
-                const workspace = visible.find(
-                  (w) => w.workspace_id === a.workspace_id,
-                );
-                const daemonSession = daemonSessions.some(
-                  (s) =>
-                    s.agent_id === a.agent_id &&
-                    s.workspace_id === a.workspace_id,
-                );
-                return {
-                  id: a.agent_id,
-                  href: daemonSession
-                    ? `/workspaces/${a.workspace_id}?conversation=${a.agent_id}`
-                    : `/agents/${a.agent_id}`,
-                  title: a.title.display,
-                  workspace: workspace?.display_name ?? workspace?.name ?? "",
-                  browserSession: daemonSession,
-                  process: phase === "stale" ? "stale" : a.process,
-                };
-              })}
+            conversations={returnConversations}
           />
         ) : (
           <h1>Työtilat</h1>

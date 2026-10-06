@@ -32,6 +32,14 @@ export function AccountShelf({
   onLogout: () => void;
 }) {
   const theme = useThemeChoice();
+  const compactName =
+    accountLabel(name) === "Oma tili"
+      ? "Oma tili"
+      : accountLabel(name).split(/\s+/)[0];
+  const initial =
+    compactName === "Oma tili"
+      ? "?"
+      : compactName.slice(0, 1).toLocaleUpperCase();
   const themes: { id: ThemeChoice; label: string }[] = [
     { id: "system", label: "Järjestelmä" },
     { id: "light", label: "Vaalea" },
@@ -41,12 +49,14 @@ export function AccountShelf({
     <div className="ah-account-shelf" data-account-controls>
       <Menu
         label="Tilivalikko"
-        triggerLabel={`${name}, Tilivalikko`}
+        triggerLabel={`${compactName}, Tilivalikko`}
         triggerPresentation="account"
         trigger={
           <span className="ah-account-trigger">
-            <span className="ah-account-avatar" aria-hidden="true" />
-            <span className="ah-rail-identity">{name}</span>
+            <span className="ah-account-avatar" aria-hidden="true">
+              {initial}
+            </span>
+            <span className="ah-rail-identity">{compactName}</span>
           </span>
         }
         heading={<strong>{name}</strong>}
@@ -139,8 +149,12 @@ export function AccountSettings({
       >
         <h2 id="ah-account-heading">Tili</h2>
         <div className="ah-account-identity">
-          <span className="ah-account-avatar" aria-hidden="true" />
-          <strong>{name}</strong>
+          <span className="ah-account-avatar" aria-hidden="true">
+            {accountLabel(name) === "Oma tili"
+              ? "?"
+              : name.trim().slice(0, 1).toLocaleUpperCase()}
+          </span>
+          <strong>{accountLabel(name)}</strong>
         </div>
       </section>
       <section

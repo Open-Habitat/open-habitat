@@ -19,6 +19,7 @@ export interface ReturnConversation {
   command?: string;
   attention?: "new" | "seen";
   pendingQuestion?: boolean;
+  history?: "readable" | "missing" | "corrupt" | "unavailable";
 }
 
 function presentation(conversation: ReturnConversation) {
@@ -33,12 +34,17 @@ function presentation(conversation: ReturnConversation) {
 function ConversationGroup({
   title,
   conversations,
+  featured = false,
 }: {
   title: string;
   conversations: ReturnConversation[];
+  featured?: boolean;
 }) {
   return (
-    <section className="ah-return-group" aria-label={title}>
+    <section
+      className={`ah-return-group${featured ? " ah-return-featured" : ""}`}
+      aria-label={title}
+    >
       <h2>{title}</h2>
       <ul className="ah-continue-list">
         {conversations.map((conversation) => (
@@ -78,6 +84,14 @@ function ConversationGroup({
                           : "unknown"
                       }
                     />
+                    {conversation.history &&
+                    conversation.history !== "readable" ? (
+                      <StatusMark
+                        label="Historia ei luettavissa"
+                        tone="warning"
+                        kind="error"
+                      />
+                    ) : null}
                     {presentation(conversation).attentionLabel ? (
                       <StatusMark label="Uusi" tone="warning" />
                     ) : null}
@@ -98,9 +112,11 @@ function ConversationGroup({
 export function ReturnView({
   conversations,
   store,
+  workspaceName,
 }: {
   conversations: ReturnConversation[];
   store?: ConversationStore;
+  workspaceName?: string;
 }) {
   const metadata = useConversationMetadata(store);
   const decorated = conversations.map((conversation) => ({
@@ -115,33 +131,23 @@ export function ReturnView({
     attention:
       metadata.attention.get(conversation.id) ?? conversation.attention,
   }));
-  const ordered = [...decorated]
-    .sort(
-      (a, b) =>
-        Number(b.attention === "new") - Number(a.attention === "new") ||
-        { working: 2, waiting: 1, closed: 0, unknown: 0 }[
-          presentation(b).activity
-        ] -
-          { working: 2, waiting: 1, closed: 0, unknown: 0 }[
-            presentation(a).activity
-          ],
-    )
-    .slice(0, 3);
-  const attention = ordered.filter(
-    (conversation) => conversation.attention === "new",
-  );
-  const remaining = ordered.filter(
-    (conversation) => conversation.attention !== "new",
-  );
-  const running = remaining.filter(
-    (conversation) => presentation(conversation).activity === "working",
-  );
-  const waiting = remaining.filter(
-    (conversation) => presentation(conversation).activity === "waiting",
-  );
-  const others = remaining.filter(
+  // Snapshot order is catalog order, not a last-opened timestamp. Keep it
+  // stable rather than inventing recency, and never drop urgent rows for a cap.
+  const attention = decorated.filter(
     (conversation) =>
-      !["working", "waiting"].includes(presentation(conversation).activity),
+      conversation.attention === "new" ||
+      (conversation.pendingQuestion && conversation.attention !== "seen"),
+  );
+  const remaining = decorated.filter(
+    (conversation) => !attention.includes(conversation),
+  );
+  const ongoing = remaining.filter(
+    (conversation) =>
+      presentation(conversation).activity === "working" ||
+      presentation(conversation).activity === "waiting",
+  );
+  const recent = remaining.filter(
+    (conversation) => !ongoing.includes(conversation),
   );
   return (
     <section
@@ -149,31 +155,39 @@ export function ReturnView({
       aria-labelledby="continue-heading"
     >
       <header className="ah-return-intro">
-        <h1 id="continue-heading">Jatka siitä, mihin jäit</h1>
-        <p>
-          Selainikkunan sulkeminen ei pysäytä käynnissä olevaa Pi:tä.
-          Keskustelun avaaminen näyttää historian käynnistämättä Pi:tä.
-          Selainistunnon ohjaus riippuu sen nykyisestä tilasta.
-        </p>
+        {workspaceName ? (
+          <h2 id="continue-heading">{workspaceName}</h2>
+        ) : (
+          <h1 id="continue-heading">Jatka siitä, mihin jäit</h1>
+        )}
+        {!workspaceName ? (
+          <p>
+            Selainikkunan sulkeminen ei pysäytä käynnissä olevaa Pi:tä.
+            Keskustelun avaaminen näyttää historian käynnistämättä Pi:tä.
+            Selainistunnon ohjaus riippuu sen nykyisestä tilasta.
+          </p>
+        ) : null}
       </header>
       {conversations.length ? (
         <div className="ah-return-groups">
           {attention.length ? (
             <ConversationGroup
-              title="Tarvitsee huomiota"
+              title="Odottaa sinua"
+              featured
               conversations={attention}
             />
           ) : null}
-          {running.length ? (
-            <ConversationGroup title="Työskentelee" conversations={running} />
-          ) : null}
-          {waiting.length ? (
-            <ConversationGroup title="Odottaa" conversations={waiting} />
-          ) : null}
-          {others.length ? (
+          {ongoing.length ? (
             <ConversationGroup
-              title="Muut keskustelut"
-              conversations={others}
+              title="Käynnissä"
+              conversations={ongoing}
+              featured
+            />
+          ) : null}
+          {recent.length ? (
+            <ConversationGroup
+              title={workspaceName ? "Keskustelut" : "Viimeksi avatut"}
+              conversations={recent}
             />
           ) : null}
         </div>

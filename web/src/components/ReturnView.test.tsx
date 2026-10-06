@@ -57,8 +57,8 @@ describe("return view", () => {
         process: "confirmed_exited",
       },
     ]);
-    const running = screen.getByRole("region", { name: "Työskentelee" });
-    const others = screen.getByRole("region", { name: "Muut keskustelut" });
+    const running = screen.getByRole("region", { name: "Käynnissä" });
+    const others = screen.getByRole("region", { name: "Viimeksi avatut" });
     expect(within(running).getAllByRole("link")).toHaveLength(1);
     expect(
       within(running)
@@ -67,7 +67,7 @@ describe("return view", () => {
     ).toBe("/workspaces/ws_example?conversation=two");
     expect(within(running).getByText("Prosessi käynnissä")).toBeTruthy();
     expect(within(others).getByText("Käynnissä terminaalissa")).toBeTruthy();
-    expect(within(others).getAllByRole("link")).toHaveLength(2);
+    expect(within(others).getAllByRole("link")).toHaveLength(4);
     expect(
       within(others)
         .getByRole("link", { name: /Keskustelu/ })
@@ -76,8 +76,7 @@ describe("return view", () => {
     expect(
       within(others).getAllByText("Tila ei tiedossa").length,
     ).toBeGreaterThan(0);
-    expect(screen.queryByText("Viimeksi avatut")).toBeNull();
-    expect(screen.queryByText("Jatkettavissa")).toBeNull();
+    expect(screen.getByText("Viimeksi avatut")).toBeTruthy();
   });
   it("promotes newly observed attention ahead of the three-item cutoff and retains a seen wait", () => {
     show([
@@ -100,17 +99,48 @@ describe("return view", () => {
         attention: "new",
       },
     ]);
-    const urgent = screen.getByRole("region", { name: "Tarvitsee huomiota" });
+    const urgent = screen.getByRole("region", { name: "Odottaa sinua" });
     expect(
       within(urgent).getByRole("link", { name: /Uusi kysymys/ }),
     ).toBeTruthy();
     expect(
-      within(screen.getByRole("region", { name: "Odottaa" })).getByRole(
+      within(screen.getByRole("region", { name: "Käynnissä" })).getByRole(
         "link",
         { name: /Nähty kysymys/ },
       ),
     ).toBeTruthy();
-    expect(screen.queryByRole("link", { name: /Vanha kaksi/ })).toBeNull();
+    expect(screen.getByRole("link", { name: /Vanha kaksi/ })).toBeTruthy();
+  });
+  it("keeps all new attention visible ahead of ongoing rows and distinguishes a history error", () => {
+    show([
+      ...Array.from({ length: 4 }, (_, index) => ({
+        ...base,
+        id: `new-${index}`,
+        title: `Uusi ${index}`,
+        attention: "new" as const,
+      })),
+      { ...base, id: "error", title: "Rikki", history: "corrupt" },
+    ]);
+    expect(
+      within(
+        screen.getByRole("region", { name: "Odottaa sinua" }),
+      ).getAllByRole("link"),
+    ).toHaveLength(4);
+    expect(screen.getByText("Historia ei luettavissa")).toBeTruthy();
+  });
+  it("uses a subordinate heading for workspace conversations", () => {
+    render(
+      <MemoryRouter>
+        <ReturnView
+          workspaceName="Työtilan keskustelut"
+          conversations={[base]}
+        />
+      </MemoryRouter>,
+    );
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Työtilan keskustelut" }),
+    ).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Keskustelut" })).toBeTruthy();
   });
   it("keeps a long native title in the link rather than truncating its text", () => {
     const title = `Pitkä otsikko ${"x".repeat(160)}`;
