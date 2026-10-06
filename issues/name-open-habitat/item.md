@@ -1,8 +1,8 @@
 ---
 created: 2026-09-25
-updated: 2026-10-05
+updated: 2026-10-06
 type: chore
-status: open
+status: in-progress
 priority: normal
 lane: rename
 collision: [docs/, AGENTS.md, design-system/, scripts/vm-test.sh]
