@@ -14,7 +14,7 @@ import {
   UserMessage,
 } from "../components";
 import { PiBoundary, PiToolUse } from "../components/PiBlocks";
-import { LinkRow } from "../components/ControlElements";
+import { ControlButton, LinkRow } from "../components/ControlElements";
 import { type ConversationStore, useWindow } from "./conversationStore";
 import {
   type BlockChunk,
@@ -186,17 +186,18 @@ function ReadableBlock({
             <fieldset className="ah-pi-edge">
               <legend>{toolName} · esikatselun kohta</legend>
               {(["head", "tail"] as const).map((option) => (
-                <button
-                  type="button"
+                <ControlButton
+                  variant="quiet"
+                  size="compact"
                   key={option}
                   aria-pressed={edge === option}
-                  onClick={() => {
+                  onPress={() => {
                     resultEdge.set(toolName, option);
                     setEdge(option);
                   }}
                 >
                   {option === "head" ? "Alku" : "Loppu"}
-                </button>
+                </ControlButton>
               ))}
             </fieldset>
           ) : null}

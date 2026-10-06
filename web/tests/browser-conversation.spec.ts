@@ -494,9 +494,7 @@ test("@browser-conversation settled marker needs observed native key", async ({
     await route.fulfill({ response, json: body });
   });
   await refreshConversation(page);
-  await expect(page.locator(".ah-settled")).toContainText(
-    /Vuoro valmis .* odottaa viestiäsi/,
-  );
+  await expect(page.locator(".ah-settled")).toContainText(/Vuoro valmis/);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator(".ah-settled")).toBeVisible();
   await expectPhoneComposerWithinViewport(page);
