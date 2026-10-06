@@ -3,7 +3,7 @@ created: 2026-10-02
 updated: 2026-10-06
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-02:ui-observations:1-3
@@ -11,6 +11,8 @@ related: ['@server-administration-cli']
 lane: server-admin
 lane_seq: 10
 preparation: ready
+closed: 2026-10-06
+closed_by: claude
 ---
 
 # Named server and separate administrator settings with user roles
@@ -74,16 +76,16 @@ alongside the product templates.
 
 ## Acceptance Criteria
 
-- [ ] The sidebar displays the configured server name, with a usable fallback
+- [x] The sidebar displays the configured server name, with a usable fallback
   when no name has been set.
-- [ ] A browser administrator can inspect and change shared settings and
+- [x] A browser administrator can inspect and change shared settings and
   manage roles by selecting a bound user, including one whose daemon is stopped.
-- [ ] Ordinary users cannot perform administrator operations, and role removal
+- [x] Ordinary users cannot perform administrator operations, and role removal
   takes effect on subsequent requests without a new login. Neither browser
   role gives access to another person's native data.
-- [ ] The server works with no browser administrator. Gateway control
+- [x] The server works with no browser administrator. Gateway control
   operations allow an authenticated root operator to appoint one later and
   use the same settings and roles as browser administration.
-- [ ] Settings and roles survive restart and release replacement. Checks cover
+- [x] Settings and roles survive restart and release replacement. Checks cover
   authorization and consistent browser/control updates, with actual evidence
   and limits recorded in this issue's result using [TESTING.md](../../TESTING.md).
