@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { MemoryRouter } from "react-router";
 import { AccountShelf } from "./Account";
 import { AppShell, WorkspaceRail, WorkspaceSection } from "./Navigation";
+import { ReturnView } from "./ReturnView";
 
 const noop = () => {};
 const meta = {
@@ -21,7 +22,40 @@ function Example({
     <MemoryRouter initialEntries={["/workspaces"]}>
       <div data-theme={theme}>
         <AppShell
-          main={<h1>Jatka siitä, mihin jäit</h1>}
+          mobileTitle="Etusivu"
+          main={
+            <ReturnView
+              conversations={[
+                {
+                  id: "waiting",
+                  href: "/agents/pi:example",
+                  title: "Keskustelu odottaa vastausta",
+                  workspace: "esimerkki",
+                  browserSession: true,
+                  process: "daemon_managed_live",
+                  pendingQuestion: true,
+                  attention: "new",
+                },
+                {
+                  id: "working",
+                  href: "/agents/pi:working",
+                  title: "Käynnissä oleva keskustelu",
+                  workspace: "esimerkki",
+                  browserSession: true,
+                  process: "daemon_managed_live",
+                  command: "accepted",
+                },
+                {
+                  id: "history",
+                  href: "/agents/pi:history",
+                  title: "Terminaalissa avattu keskustelu",
+                  workspace: "esimerkki",
+                  browserSession: false,
+                  process: "not_observed",
+                },
+              ]}
+            />
+          }
           rail={
             <WorkspaceRail
               collapsed={collapsed}
@@ -29,7 +63,8 @@ function Example({
               connectionLabel="Yhdistetty"
               connectionTone="success"
               homeCurrent
-              runningCount={2}
+              runningCount={1}
+              attentionCount={1}
               filterValue=""
               resultSummary="1 työtila"
               listState="ready"
@@ -38,7 +73,7 @@ function Example({
               onRefresh={noop}
               sessionActions={
                 <AccountShelf
-                  name="Oma tili"
+                  name="Alice Example"
                   onSettings={noop}
                   onLogout={noop}
                 />
@@ -53,10 +88,11 @@ function Example({
                 agents={[
                   {
                     agentId: "pi:example",
-                    title: "Keskustelu",
+                    title: "Keskustelu odottaa vastausta",
                     href: "/agents/pi:example",
-                    activityLabel: "Työskentelee",
-                    controlLabel: "Selainohjaus",
+                    activityLabel: "Odottaa",
+                    controlLabel: "",
+                    attentionLabel: "Uusi",
                   },
                 ]}
               />

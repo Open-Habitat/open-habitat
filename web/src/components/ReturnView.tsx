@@ -81,7 +81,9 @@ function ConversationGroup({
                       kind={
                         presentation(conversation).activity === "working"
                           ? "working"
-                          : "unknown"
+                          : presentation(conversation).activity === "waiting"
+                            ? "neutral"
+                            : "unknown"
                       }
                     />
                     {conversation.history &&

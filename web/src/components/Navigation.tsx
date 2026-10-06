@@ -14,8 +14,10 @@ export function AppShell({
   main,
   overlays,
   toast,
+  mobileTitle,
 }: {
   connection?: ReactNode;
+  mobileTitle?: string;
   rail?: ReactNode;
   main: ReactNode;
   overlays?: ReactNode;
@@ -136,9 +138,14 @@ export function AppShell({
               >
                 <Icon name="menu" />
               </ControlButton>
-              <LinkRow href="/workspaces" aria-label="Etusivu">
-                <Icon name="home" />
-              </LinkRow>
+              <span className="ah-mobile-title" title={mobileTitle}>
+                {mobileTitle ?? "Etusivu"}
+              </span>
+              {location.pathname !== "/workspaces" ? (
+                <LinkRow href="/workspaces" aria-label="Etusivu">
+                  <Icon name="home" />
+                </LinkRow>
+              ) : null}
             </div>
           ) : null}
           {main}
@@ -462,11 +469,7 @@ export function WorkspaceRail({
           ) : null}
         </LinkRow>
         {attentionCount ? (
-          <Badge
-            label="Odottaa vastaustasi"
-            tone="warning"
-            count={attentionCount}
-          />
+          <Badge label="Uutta" tone="warning" count={attentionCount} />
         ) : null}
         {collapsed ? null : (
           <>

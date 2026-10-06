@@ -214,7 +214,10 @@ test("@native-history warm return paints from cache while revalidating history",
     if (request.url().includes("/api/v1/")) requests.push(request.url());
   });
   const start = await page.evaluate(() => performance.now());
-  await page.getByRole("link", { name: /Synteettinen viesti 0/ }).click();
+  await page
+    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
+    .getByRole("link", { name: /Synteettinen viesti 0/ })
+    .click();
   await expect(page.locator(".ah-feed li")).toHaveCount(25);
   const paint = await page.evaluate(
     () =>

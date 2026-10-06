@@ -807,6 +807,11 @@ export function App() {
   return (
     <div key={identity}>
       <AppShell
+        mobileTitle={
+          selectedAgent?.title.display ??
+          (selected ? (selected.display_name ?? selected.name) : undefined) ??
+          (location.pathname === "/settings" ? "Asetukset" : "Etusivu")
+        }
         connection={
           <>
             {syntheticDemo ? (

@@ -1394,6 +1394,14 @@ h1[tabindex="-1"]:focus {
     padding-inline: var(--ah-s3);
     border-bottom: 1px solid var(--ah-line);
   }
+  .ah-mobile-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+  }
   .ah-mobile-toolbar [data-ah-primitive] {
     display: inline-grid;
     place-items: center;
@@ -1870,6 +1878,9 @@ h1[tabindex="-1"]:focus {
 @media (max-width: 800px) {
   .ah-shell-body > main:has(.ah-conversation-frame) {
     position: relative;
+  }
+  .ah-shell-body > main:has(.ah-conversation-frame) .ah-mobile-title {
+    display: none;
   }
   .ah-shell-body > main:has(.ah-conversation-frame) > .ah-mobile-toolbar {
     position: absolute;
