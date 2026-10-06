@@ -61,3 +61,10 @@ native integration and browser states; the issue records the implemented
 revision, model-call and persistence limits, and a visual example for Jari's
 later review. Automatic behavior either follows the native source reliably
 or is an explicitly bounded follow-up.
+
+## Acceptance Criteria
+
+- [x] A browser-controlled Pi can generate a native recap and reopen it as a separate card with a suggested next step.
+- [x] Pending, failed, uncertain, aged, and stale results are legible; a newer native turn does not silently retain a current badge.
+- [x] Concurrent requests and retries do not duplicate the native entry or model call for the same turn.
+- [x] Native and browser tests pass; the visual example and bounded automatic-generation gap are recorded in [result.md](result.md).
