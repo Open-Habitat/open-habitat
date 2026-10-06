@@ -114,7 +114,7 @@ func (a *Auth) loadSessions() error {
 }
 
 // commitSessions is called under mu. Publication follows a durable atomic replace;
-// a failed write leaves the old authority in memory and on disk.
+// a pre-rename failure leaves the old authority unchanged.
 func (a *Auth) commitSessions(next map[string]session) error {
 	if a.sessionFile != "" {
 		data, err := json.Marshal(struct {
@@ -123,6 +123,9 @@ func (a *Auth) commitSessions(next map[string]session) error {
 		}{1, next})
 		if err != nil {
 			return err
+		}
+		if len(data) > 4<<20 {
+			return errors.New("session store capacity exceeded")
 		}
 		dir := filepath.Dir(a.sessionFile)
 		f, err := os.CreateTemp(dir, ".sessions-*")
@@ -145,6 +148,8 @@ func (a *Auth) commitSessions(next map[string]session) error {
 		if err = os.Rename(f.Name(), a.sessionFile); err != nil {
 			return err
 		}
+		// Rename changes the on-disk authority even if directory sync fails.
+		a.sessions = next
 		d, err := os.Open(dir)
 		if err != nil {
 			return err

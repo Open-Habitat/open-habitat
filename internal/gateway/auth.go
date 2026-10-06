@@ -121,12 +121,12 @@ type pending struct {
 	serial                                            uint64
 }
 type session struct {
-	identity    Identity       `json:"identity"`
-	profile     AccountProfile `json:"profile"`
-	accessEmail string         `json:"access_email"`
-	csrf        string         `json:"csrf"`
-	idle        time.Time      `json:"idle"`
-	absolute    time.Time      `json:"absolute"`
+	identity    Identity
+	profile     AccountProfile
+	accessEmail string
+	csrf        string
+	idle        time.Time
+	absolute    time.Time
 }
 type Auth struct {
 	cfg             OAuthConfig

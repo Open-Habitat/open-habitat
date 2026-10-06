@@ -26,7 +26,7 @@ func (a *Auth) githubDisconnect(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	// An OAuth session issued within five minutes, not an idle refresh.
-	if s.absolute.Sub(a.now()) <= 23*time.Hour+55*time.Minute {
+	if s.absolute.Sub(a.now()) <= sessionAbsolute-5*time.Minute {
 		safe(w, 403, "reauthentication_required")
 		return
 	}

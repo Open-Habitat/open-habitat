@@ -33,11 +33,12 @@ func (a *Auth) authenticated(r *http.Request) (session, bool) {
 	if s.accessEmail != accessEmail(r) {
 		return session{}, false
 	}
-	if s.idle.Sub(now) <= sessionIdle-renewalInterval {
-		s.idle = now.Add(sessionIdle)
-		if s.idle.After(s.absolute) {
-			s.idle = s.absolute
-		}
+	renewed := now.Add(sessionIdle)
+	if renewed.After(s.absolute) {
+		renewed = s.absolute
+	}
+	if renewed.Sub(s.idle) >= renewalInterval {
+		s.idle = renewed
 		if a.changedSessions(func(next map[string]session) { next[key] = s }) != nil {
 			return session{}, false
 		}

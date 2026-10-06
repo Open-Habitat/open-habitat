@@ -163,6 +163,17 @@ func TestPersistentExpiryAndMissingStore(t *testing.T) {
 	if request(h, "GET", "/auth/session", cookie).Code != 200 {
 		t.Fatal("pre-absolute denied")
 	}
+	before, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if request(h, "GET", "/auth/session", cookie).Code != 200 {
+		t.Fatal("pre-absolute repeat denied")
+	}
+	after, err := os.Stat(path)
+	if err != nil || !os.SameFile(before, after) {
+		t.Fatal("rewrote capped idle deadline on every request", err)
+	}
 	now = now.Add(time.Hour)
 	if request(h, "GET", "/auth/session", cookie).Code != 401 {
 		t.Fatal("absolute expiry not enforced")
