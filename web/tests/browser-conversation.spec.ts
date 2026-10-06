@@ -770,7 +770,7 @@ test("@browser-conversation malformed host status fails closed without rendering
   await expect(page.locator("main script")).toHaveCount(0);
 });
 
-test("@browser-conversation foreground clicks and route changes do not revalidate", async ({
+test("@browser-conversation settings checks Pi once; returning and foreground clicks do not revalidate", async ({
   page,
 }) => {
   await open(page);
@@ -781,11 +781,13 @@ test("@browser-conversation foreground clicks and route changes do not revalidat
   await page.getByRole("button", { name: /Tilivalikko/ }).click();
   await page.getByRole("menuitem", { name: "Asetukset" }).click();
   await expect(page.getByRole("heading", { name: "Asetukset" })).toBeVisible();
+  await expect(page.getByText("Pi-tunnukset käytettävissä")).toBeVisible();
+  expect(checks).toBe(1);
   await page.getByRole("button", { name: "Takaisin" }).click();
   await expect(
     page.getByRole("heading", { name: "Pi-keskustelut" }),
   ).toBeVisible();
-  expect(checks).toBe(0);
+  expect(checks).toBe(1);
   await expect(
     page.getByRole("group", { name: "Pi-keskustelun toiminnot" }),
   ).toBeVisible();
