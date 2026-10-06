@@ -59,7 +59,10 @@ test("@lab long native title keeps the original accessible at 390px", async ({
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.locator(".ah-continue-list a").first().click();
+  // Grouping follows observed state, so the target is not necessarily first.
+  const titledLink = page.locator(".ah-continue-list a", { hasText: title });
+  await expect(titledLink).toBeVisible();
+  await titledLink.click();
   const heading = page.getByRole("heading", { level: 1, name: title });
   await expect(heading).toBeVisible();
   const clipped = await heading.evaluate(
