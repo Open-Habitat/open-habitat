@@ -193,7 +193,8 @@
                   "tool",
                   "model_change",
                   "unknown",
-                  "bash"
+                  "bash",
+                  "recap"
                 ]
               },
               "content": {

@@ -42,6 +42,7 @@ type ConversationController struct {
 	// A short-lived per-daemon gate prevents continuation probes from presenting
 	// each other's temporary flock as an external writer. Never hold mu across I/O.
 	proofGate chan struct{}
+	recapPath string
 }
 
 // A continued native session retains spent browser IDs within this daemon
@@ -70,6 +71,7 @@ type conversation struct {
 	turnGeneration                                          uint64            // increments on each new prompt, fences slow native settlement reads
 	acceptedMessages                                        uint64
 	naming, automaticFirst, automaticRefined, refinementDue bool
+	recapping                                               bool
 	automaticName                                           string // last name written by this controller, never authoritative
 	firstText, thirdText                                    string
 	settlement                                              map[string]string // observed_at, native_key, state; nil means unknown
@@ -178,6 +180,9 @@ func (c *ConversationController) shutdown() {
 		_ = s.rpc.close()
 		_ = s.owner.release()
 	}
+	if c.recapPath != "" {
+		_ = os.RemoveAll(filepath.Dir(c.recapPath))
+	}
 }
 
 // workspaceFD resolves only a freshly discovered immediate child, using the
@@ -273,6 +278,8 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		}
 	case r.Method == http.MethodPost && parts[1] == "regenerate_title":
 		c.regenerateTitle(w, r, parts[0])
+	case r.Method == http.MethodPost && parts[1] == "recap":
+		c.requestRecap(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "question":
 		c.answerQuestion(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "abort":
@@ -369,7 +376,13 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		snapshotError(w, 429, "capacity_exceeded")
 		return
 	}
-	p, err := launchPiRPCCommand(c.runtime.Node, []string{filepath.Join(filepath.Dir(c.runtime.Entry), "bundle", "cli.js")}, c.home, cwd, []string{"PATH=/usr/bin:/bin", "USER=" + c.cfg.Username}, owner, ws)
+	prefix, err := c.piArgs()
+	if err != nil {
+		c.mu.Unlock()
+		snapshotError(w, 503, "native_source_unavailable")
+		return
+	}
+	p, err := launchPiRPCCommand(c.runtime.Node, prefix, c.home, cwd, []string{"PATH=/usr/bin:/bin", "USER=" + c.cfg.Username}, owner, ws)
 	if err != nil {
 		c.mu.Unlock()
 		snapshotError(w, 503, "native_source_unavailable")

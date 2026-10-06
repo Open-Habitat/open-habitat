@@ -8,6 +8,74 @@ test.beforeEach(async ({ page }) => {
   ).toBe(204);
 });
 
+test("@lab recap is separate, persisted and becomes stale after a new turn", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  expect(
+    (await page.request.get("/fixture/scenario?value=pi-recap")).status(),
+  ).toBe(204);
+  try {
+    await page.goto("/workspaces");
+    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+    await page.getByRole("link", { name: "Alice" }).click();
+    await page
+      .getByRole("navigation")
+      .getByRole("link", { name: "aurinkokello" })
+      .click();
+    await page
+      .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+      .click();
+    const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+    await editor.fill("Tutki synteettinen työtila");
+    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+    await expect(
+      page.getByText('Selvä. Kysyit: "Tutki synteettinen työtila".', {
+        exact: false,
+      }),
+    ).toBeVisible({ timeout: 20000 });
+    const card = page.getByRole("complementary", {
+      name: "Keskustelun yhteenveto",
+    });
+    await expect(card.getByRole("button", { name: "Luo katsaus" })).toBeEnabled(
+      { timeout: 20000 },
+    );
+    await card.getByRole("button", { name: "Luo katsaus" }).click();
+    await expect(
+      card.getByText("Synteettinen työtila tutkittiin ja vastaus valmistui."),
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole("region", { name: "Keskusteluhistoria" })
+        .getByText("Synteettinen työtila tutkittiin ja vastaus valmistui."),
+    ).toHaveCount(0);
+    const id = new URL(page.url()).searchParams.get("conversation");
+    expect(id).toMatch(/^pi:/);
+    const native = await (
+      await page.request.get(`/api/v1/agents/${id}/recap`)
+    ).json();
+    expect(native.recap.through).toBe(native.latest_message);
+    await page.reload();
+    await expect(
+      card.getByText("Synteettinen työtila tutkittiin ja vastaus valmistui."),
+    ).toBeVisible();
+    await card.getByRole("button", { name: "Päivitä katsaus" }).click();
+    const again = await (
+      await page.request.get(`/api/v1/agents/${id}/recap`)
+    ).json();
+    expect(again.recap.generated_at).toBe(native.recap.generated_at);
+    await editor.fill("Uusi kysymys");
+    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+    await expect(card.getByText(/Vanha – uusia viestejä/)).toBeVisible({
+      timeout: 20000,
+    });
+  } finally {
+    expect(
+      (await page.request.get("/fixture/scenario?value=ready")).status(),
+    ).toBe(204);
+  }
+});
+
 test("@lab real controller creates and persists a fake-Pi turn", async ({
   page,
 }) => {

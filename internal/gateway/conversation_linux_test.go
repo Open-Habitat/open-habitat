@@ -22,6 +22,14 @@ type streamRecorder struct{ *httptest.ResponseRecorder }
 func (w streamRecorder) SetWriteDeadline(time.Time) error { return nil }
 func (w streamRecorder) Flush()                           { w.ResponseRecorder.Flush() }
 
+func TestConversationRecapGatewayAllowlist(t *testing.T) {
+	path := "/api/v1/conversations/11111111-1111-4111-8111-111111111111/recap"
+	match := conversationPath.FindStringSubmatch(path)
+	if len(match) != 3 || match[2] != "recap" || conversationPath.MatchString(path+"/extra") {
+		t.Fatal("recap must be a canonical control path")
+	}
+}
+
 func TestConversationGatewaySessionBoundary(t *testing.T) {
 	now := time.Now()
 	uid := os.Getuid()

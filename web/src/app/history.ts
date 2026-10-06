@@ -23,7 +23,20 @@ export interface HistoryBlock {
 }
 export interface HistoryEntry {
   entry_key: string;
-  kind: "user" | "assistant" | "tool" | "model_change" | "unknown" | "bash";
+  kind:
+    | "user"
+    | "assistant"
+    | "tool"
+    | "model_change"
+    | "unknown"
+    | "bash"
+    | "recap";
+  recap?: {
+    recap: string;
+    next: string;
+    through: string;
+    generated_at: number;
+  };
   content: HistoryContent;
   blocks?: HistoryBlock[];
   tool_call_id?: string;

@@ -86,6 +86,8 @@ has no compare-and-set, so a terminal-selector rename in the final read/write
 window can still be overwritten; [the title issue](../../issues/generate-conversation-titles/item.md)
 tracks that remaining guarantee. No host title store exists.
 
+Browser-owned Pi processes load the host's recap extension. A request invokes its command through the existing RPC child, without inserting a user message or an agent turn. It bounds a separate model call and appends a `conversation-recap` custom entry through Pi. The browser reads the latest entry directly from native history, outside the transcript, and compares its last-message key with the newest native message to label it stale. Terminal sessions' existing recaps are readable, but the daemon cannot run a command in a terminal-owned Pi process. There is no browser focus/idle trigger: the TUI's focus event and in-process background-process status are not available as equivalent verifiable browser signals.
+
 Pi's events carry response text, thinking, tool progress and activity to the
 browser. When Pi reports that it has settled, the daemon reads native history
 and associates completion with a saved assistant entry. If that entry cannot

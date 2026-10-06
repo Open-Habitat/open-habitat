@@ -23,6 +23,7 @@
         "agent.process.stop",
         "agent.question.respond",
         "conversation.title.generate",
+        "conversation.recap.generate",
         "conversation.archive",
         "conversation.unarchive",
         "workspace.create",
@@ -563,6 +564,7 @@
                   "agent.process.stop",
                   "agent.question.respond",
                   "conversation.title.generate",
+        "conversation.recap.generate",
                   "conversation.archive",
                   "conversation.unarchive"
                 ]

@@ -7,6 +7,13 @@ import (
 	"testing"
 )
 
+func TestRecapGatewayReadPath(t *testing.T) {
+	base := "/api/v1/agents/pi:11111111-1111-4111-8111-111111111111/recap"
+	if !historyGatewayPath(base, url.Values{}) || historyGatewayPath(base, url.Values{"limit": {"1"}}) || historyGatewayPath(base+"/other", url.Values{}) {
+		t.Fatal("recap path must be exact and query-free")
+	}
+}
+
 func TestHistoryGatewayBackwardQuery(t *testing.T) {
 	path := "/api/v1/agents/pi:11111111-1111-4111-8111-111111111111/history"
 	for _, tc := range []struct {

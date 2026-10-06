@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://native-agent-host.invalid/contracts/v1/recap.schema.json",
+  "title": "Latest native Pi conversation recap",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "recap", "latest_message"],
+  "properties": {
+    "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+    "latest_message": { "type": "string", "maxLength": 128 },
+    "recap": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "history.schema.json#/$defs/historyPage/properties/entries/items/properties/recap" }
+      ]
+    }
+  }
+}

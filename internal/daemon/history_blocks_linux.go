@@ -9,6 +9,32 @@ import "encoding/json"
 // Image data and tool arguments are fetched only by explicit bounded block read.
 func nativeBlocks(e nativeEntry) (out historyEntry) {
 	out.Key = e.ID
+	if e.Type == "custom" {
+		var custom struct {
+			CustomType string `json:"customType"`
+			Data       struct {
+				Recap       string `json:"recap"`
+				Next        string `json:"next"`
+				Through     string `json:"through"`
+				GeneratedAt int64  `json:"generatedAt"`
+			} `json:"data"`
+		}
+		if json.Unmarshal(e.Raw, &custom) == nil && custom.CustomType == "conversation-recap" &&
+			custom.Data.Recap != "" && len(custom.Data.Recap) <= 1280 && len(custom.Data.Next) <= 640 &&
+			custom.Data.GeneratedAt > 0 {
+			if custom.Data.Through == "" && e.ParentID != nil {
+				custom.Data.Through = *e.ParentID
+			}
+			if !entryIDPattern.MatchString(custom.Data.Through) {
+				return
+			}
+			out.Kind = "recap"
+			out.Content = historyContent{MediaType: "text/plain", Text: "", Complete: true}
+			out.Recap = &recapData{Recap: custom.Data.Recap, Next: custom.Data.Next, Through: custom.Data.Through, GeneratedAt: custom.Data.GeneratedAt}
+			return
+		}
+		return
+	}
 	switch e.Type {
 	case "model_change", "thinking_level_change", "session_info", "label", "compaction", "branch_summary":
 		out.EntryType = e.Type

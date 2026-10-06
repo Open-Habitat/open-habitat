@@ -611,7 +611,8 @@ export function timelineItems(
   return entries
     .filter(
       (entry) =>
-        !entry.tool_call_id || results.get(entry.tool_call_id) !== entry,
+        entry.kind !== "recap" &&
+        (!entry.tool_call_id || results.get(entry.tool_call_id) !== entry),
     )
     .map((entry) => ({
       id: entry.entry_key,

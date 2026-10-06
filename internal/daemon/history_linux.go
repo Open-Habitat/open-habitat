@@ -50,7 +50,15 @@ type nativeSession struct {
 	entries                        []historyEntry
 	boundaryFound, olderComplete   bool
 }
+type recapData struct {
+	Recap       string `json:"recap"`
+	Next        string `json:"next"`
+	Through     string `json:"through"`
+	GeneratedAt int64  `json:"generated_at"`
+}
+
 type historyEntry struct {
+	Recap              *recapData     `json:"recap,omitempty"`
 	Key                string         `json:"entry_key"`
 	Kind               string         `json:"kind"`
 	Content            historyContent `json:"content"`
@@ -393,6 +401,42 @@ func historyHandlerWithReader(cfg transport.Config, trusted func(*http.Request) 
 		sessions, err := sessionsReader(cfg)
 		if err != nil {
 			snapshotError(w, 503, "native_source_unavailable")
+			return
+		}
+		if strings.HasPrefix(path, "/api/v1/agents/") && strings.HasSuffix(path, "/recap") {
+			id := strings.TrimSuffix(strings.TrimPrefix(path, "/api/v1/agents/"), "/recap")
+			if !strings.HasPrefix(id, "pi:") || !sessionIDPattern.MatchString(strings.TrimPrefix(id, "pi:")) || r.URL.RawQuery != "" || r.URL.Path != path {
+				snapshotError(w, 400, "invalid_request")
+				return
+			}
+			var match *nativeSession
+			for i := range sessions {
+				if "pi:"+sessions[i].id == id {
+					if match != nil {
+						snapshotError(w, 503, "native_source_unavailable")
+						return
+					}
+					match = &sessions[i]
+				}
+			}
+			if match == nil {
+				snapshotError(w, 404, "resource_not_found")
+				return
+			}
+			if match.state != "readable" {
+				snapshotError(w, 503, "native_source_unavailable")
+				return
+			}
+			value, latest, ok := latestNativeRecap(match.path, cfg.UID, match.id, match.cwd)
+			if !ok {
+				snapshotError(w, 503, "native_source_unavailable")
+				return
+			}
+			var recap *recapData
+			if value.Through != "" {
+				recap = &value
+			}
+			historyJSON(w, map[string]any{"schema_version": 1, "recap": recap, "latest_message": latest})
 			return
 		}
 		if strings.HasPrefix(path, "/api/v1/agents/") && strings.HasSuffix(path, "/history") {

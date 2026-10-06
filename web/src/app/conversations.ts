@@ -1,3 +1,13 @@
+import Ajv from "ajv/dist/2020.js";
+import common from "../../../contracts/v1/common.schema.json";
+import historySchema from "../../../contracts/v1/history.schema.json";
+import recapSchema from "../../../contracts/v1/recap.schema.json";
+
+const recapValidator = new Ajv({ strict: false });
+recapValidator.addSchema(common);
+recapValidator.addSchema(historySchema);
+recapValidator.addSchema(recapSchema);
+
 // The private provisional controller protocol is validated independently of the
 // published snapshot contract. No host-supplied HTML or error text is rendered.
 export type Session = { agent_id: string; workspace_id: string; state: string };
@@ -166,6 +176,28 @@ export async function respondQuestion(
     result.state !== "uncertain"
   )
     throw new Error("invalid question reply");
+}
+export type Recap = {
+  recap: string;
+  next: string;
+  through: string;
+  generated_at: number;
+};
+export async function readRecap(
+  id: string,
+): Promise<{ recap: Recap | null; latest_message: string }> {
+  const reply = await request(
+    `/api/v1/agents/${encodeURIComponent(id).replace("%3A", ":")}/recap`,
+  );
+  if (!recapValidator.getSchema(recapSchema.$id)?.(reply))
+    throw new Error("invalid recap");
+  const result = reply as { recap: Recap | null; latest_message: string };
+  return { recap: result.recap, latest_message: result.latest_message };
+}
+export async function requestRecap(id: string, csrf: string): Promise<void> {
+  const reply = await request(`${path(id)}/recap`, undefined, undefined, csrf);
+  if (!object(reply) || reply.schema_version !== 1 || reply.state !== "done")
+    throw new Error("recap generation failed");
 }
 export async function regenerateTitle(id: string, csrf: string): Promise<void> {
   const reply = await request(

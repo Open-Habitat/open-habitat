@@ -8,7 +8,6 @@ import (
 	"errors"
 	"net/http"
 	"os"
-	"path/filepath"
 	"time"
 )
 
@@ -166,7 +165,13 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 		snapshotError(w, 429, "capacity_exceeded")
 		return
 	}
-	p, err := launchPiRPCSession(c.runtime.Node, []string{filepath.Join(filepath.Dir(c.runtime.Entry), "bundle", "cli.js")}, c.home, cwd, []string{"PATH=/usr/bin:/bin", "USER=" + c.cfg.Username}, owner, ws, path)
+	prefix, err := c.piArgs()
+	if err != nil {
+		c.mu.Unlock()
+		snapshotError(w, 503, "native_source_unavailable")
+		return
+	}
+	p, err := launchPiRPCSession(c.runtime.Node, prefix, c.home, cwd, []string{"PATH=/usr/bin:/bin", "USER=" + c.cfg.Username}, owner, ws, path)
 	if err != nil {
 		c.mu.Unlock()
 		snapshotError(w, 503, "native_source_unavailable")

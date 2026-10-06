@@ -16,12 +16,20 @@ import {
   WorkingProgress,
 } from "../components";
 import { PiToolUse } from "../components/PiBlocks";
+import { RecapCard } from "../components/RecapCard";
 import { agentPresentation } from "../components/agentPresentation";
 import { UnpresentedEvents } from "../components/WorkingProgress";
 import { useConversationActions } from "./ConversationActions";
 import { provisionalItems } from "./conversationEvents";
 import type { ConversationStore } from "./conversationStore";
-import { regenerateTitle, type Session, type Status } from "./conversations";
+import {
+  readRecap,
+  regenerateTitle,
+  requestRecap,
+  type Recap,
+  type Session,
+  type Status,
+} from "./conversations";
 import { timelineItems } from "./HistoryView";
 import { PiQuestion } from "./PiQuestion";
 import type { Snapshot, Workspace } from "./snapshot";
@@ -168,6 +176,49 @@ export function BrowserConversation({
     titleActionState.version === generation.current;
   const titlePending = !!titleStateCurrent && titleActionState.pending;
   const titleError = !!titleStateCurrent && titleActionState.error;
+  const [recapView, setRecapView] = useState<{
+    key: string;
+    recap: Recap | null;
+    latest: string;
+    unavailable: boolean;
+  } | null>(null);
+  const [recapAction, setRecapAction] = useState<{
+    key: string;
+    pending: boolean;
+    error: boolean;
+  } | null>(null);
+  const recapKey = `${identity}/${id ?? ""}`;
+  const newestKey = entries.at(-1)?.entry_key;
+  useEffect(() => {
+    // A new native history entry can make a previously current recap stale.
+    if (!id || !opened || newestKey === "") return;
+    let cancelled = false;
+    void readRecap(id)
+      .then((result) => {
+        if (!cancelled)
+          setRecapView({
+            key: recapKey,
+            recap: result.recap,
+            latest: result.latest_message,
+            unavailable: false,
+          });
+      })
+      .catch(() => {
+        if (!cancelled)
+          setRecapView({
+            key: recapKey,
+            recap: null,
+            latest: "",
+            unavailable: true,
+          });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, opened, recapKey, newestKey]);
+  const recapCurrent = recapView?.key === recapKey ? recapView : null;
+  const recapBusy = recapAction?.key === recapKey && recapAction.pending;
+  const recapError = recapAction?.key === recapKey && recapAction.error;
 
   const {
     start,
@@ -365,6 +416,58 @@ export function BrowserConversation({
             onToggleDetails={() => setDetails(!details)}
           />
           {details ? <p>Natiivi tunniste: {id}</p> : null}
+          <RecapCard
+            recap={recapCurrent?.recap ?? null}
+            stale={
+              !!recapCurrent?.recap &&
+              (recapCurrent.recap.through !== recapCurrent.latest ||
+                (controlled &&
+                  current?.state !== "idle" &&
+                  current?.state !== "rejected"))
+            }
+            pending={!!recapBusy}
+            error={!!recapError || !!recapCurrent?.unavailable}
+            unavailable={
+              !controlled ||
+              !csrf ||
+              statusStale ||
+              serverUnavailable ||
+              !!problem ||
+              current?.state !== "idle" ||
+              !!recapCurrent?.unavailable
+            }
+            unavailableReason={
+              current?.state !== "idle"
+                ? "Odota Pi:n vuoron päättymistä."
+                : undefined
+            }
+            onRequest={
+              controlled && csrf && id
+                ? () => {
+                    if (recapBusy) return;
+                    const key = recapKey;
+                    setRecapAction({ key, pending: true, error: false });
+                    void requestRecap(id, csrf)
+                      .then(async () => {
+                        const result = await readRecap(id);
+                        if (!alive.current || key !== `${identity}/${id}`)
+                          return;
+                        setRecapView({
+                          key,
+                          recap: result.recap,
+                          latest: result.latest_message,
+                          unavailable: false,
+                        });
+                        setRecapAction({ key, pending: false, error: false });
+                      })
+                      .catch(() => {
+                        if (alive.current)
+                          setRecapAction({ key, pending: false, error: true });
+                      });
+                  }
+                : undefined
+            }
+          />
           <ConversationStream
             streamRef={feed}
             onScroll={() => {

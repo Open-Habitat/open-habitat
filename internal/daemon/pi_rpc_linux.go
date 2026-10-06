@@ -164,9 +164,10 @@ func (p *piRPC) read() {
 }
 
 type piReply struct {
-	Accepted bool
-	Steering []string
-	FollowUp []string
+	Accepted     bool
+	RecapCommand bool
+	Steering     []string
+	FollowUp     []string
 }
 
 // request serializes writes and waits for Pi's correlated acknowledgement.
@@ -174,7 +175,7 @@ type piReply struct {
 // retry the prompt automatically. The controller drains native events from a
 // separate bounded queue; overflow poisons the transport.
 func (p *piRPC) requestQueue(kind, message string, timeout time.Duration) (piReply, error) {
-	if kind != "get_state" && kind != "prompt" && kind != "steer" && kind != "follow_up" && kind != "clear_queue" && kind != "abort" && kind != "set_session_name" {
+	if kind != "get_state" && kind != "prompt" && kind != "steer" && kind != "follow_up" && kind != "clear_queue" && kind != "abort" && kind != "set_session_name" && kind != "get_commands" {
 		return piReply{}, errors.New("unsupported Pi RPC request")
 	}
 	if ((kind == "prompt" || kind == "steer" || kind == "follow_up") && (message == "" || len(message) > 65536)) || (kind == "set_session_name" && (message == "" || len(message) > 200)) {
@@ -243,6 +244,22 @@ func (p *piRPC) requestQueue(kind, message string, timeout time.Duration) (piRep
 				return piReply{}, nil
 			}
 			result := piReply{Accepted: true}
+			if kind == "get_commands" {
+				var data struct {
+					Commands []struct {
+						Name   string `json:"name"`
+						Source string `json:"source"`
+					} `json:"commands"`
+				}
+				if json.Unmarshal(response.Data, &data) != nil || data.Commands == nil || len(data.Commands) > 1024 {
+					return piReply{}, errors.New("Pi command list unavailable")
+				}
+				for _, command := range data.Commands {
+					if command.Name == "nah-conversation-recap" && command.Source == "extension" {
+						result.RecapCommand = true
+					}
+				}
+			}
 			if kind == "clear_queue" {
 				var data struct {
 					Steering []string `json:"steering"`

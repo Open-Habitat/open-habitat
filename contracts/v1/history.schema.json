@@ -56,11 +56,23 @@
                   "tool",
                   "model_change",
                   "unknown",
-                  "bash"
+                  "bash",
+                  "recap"
                 ]
               },
               "content": {
                 "$ref": "common.schema.json#/$defs/content"
+              },
+              "recap": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["recap", "next", "through", "generated_at"],
+                "properties": {
+                  "recap": {"type": "string", "maxLength": 1280},
+                  "next": {"type": "string", "maxLength": 640},
+                  "through": {"type": "string", "minLength": 1, "maxLength": 128},
+                  "generated_at": {"type": "integer", "minimum": 1}
+                }
               },
               "blocks": {
                 "type": "array",

@@ -88,6 +88,13 @@ func runFakePi(args []string) {
 		switch req.Type {
 		case "get_state":
 			emit(map[string]any{"type": "response", "id": req.ID, "command": "get_state", "success": true})
+		case "get_commands":
+			mode, _ := os.ReadFile(filepath.Join(filepath.Dir(home), "fakepi-scenario"))
+			commands := []any{}
+			if strings.TrimSpace(string(mode)) == "pi-recap" {
+				commands = append(commands, map[string]any{"name": "nah-conversation-recap", "source": "extension"})
+			}
+			emit(map[string]any{"type": "response", "id": req.ID, "command": "get_commands", "success": true, "data": map[string]any{"commands": commands}})
 		case "steer", "follow_up":
 			mu.Lock()
 			reject := req.Message == "" || strings.Contains(req.Message, "hylkää")
@@ -109,6 +116,14 @@ func runFakePi(args []string) {
 			mu.Unlock()
 			emit(map[string]any{"type": "response", "id": req.ID, "command": "clear_queue", "success": true, "data": map[string]any{"steering": removedSteering, "followUp": removedFollowUp}})
 		case "prompt":
+			if req.Message == "/nah-conversation-recap" {
+				mode, _ := os.ReadFile(filepath.Join(filepath.Dir(home), "fakepi-scenario"))
+				if strings.TrimSpace(string(mode)) == "pi-recap" && s.lastMessage != "" && s.lastRecap != s.lastMessage {
+					s.append(map[string]any{"type": "custom", "customType": "conversation-recap", "data": map[string]any{"recap": "Synteettinen työtila tutkittiin ja vastaus valmistui.", "next": "Tarkista seuraava kysymys", "through": s.lastMessage, "generatedAt": time.Now().UnixMilli(), "trigger": "manual"}})
+				}
+				emit(map[string]any{"type": "response", "id": req.ID, "command": "prompt", "success": true})
+				continue
+			}
 			mu.Lock()
 			reject := busy || strings.Contains(req.Message, "hylkää")
 			if !reject {
@@ -151,9 +166,9 @@ func runFakePi(args []string) {
 }
 
 type fakeSession struct {
-	id, cwd, dir, path string
-	parent             string
-	started            bool
+	id, cwd, dir, path             string
+	parent, lastMessage, lastRecap string
+	started                        bool
 }
 
 func (s *fakeSession) append(v map[string]any) {
@@ -175,6 +190,14 @@ func (s *fakeSession) append(v map[string]any) {
 	}
 	v["timestamp"] = time.Now().UTC().Format(time.RFC3339Nano)
 	s.parent = entry
+	if v["type"] == "message" {
+		if m, ok := v["message"].(map[string]any); ok && (m["role"] == "user" || m["role"] == "assistant") {
+			s.lastMessage = entry
+		}
+	}
+	if v["type"] == "custom" && v["customType"] == "conversation-recap" {
+		s.lastRecap = s.lastMessage
+	}
 	b, _ := json.Marshal(v)
 	f, err := os.OpenFile(s.path, os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {

@@ -1193,6 +1193,30 @@ h1[tabindex="-1"]:focus {
   margin: var(--ah-s1) 0;
   gap: var(--ah-s2);
 }
+.ah-recap {
+  margin: var(--ah-s3) var(--ah-s4);
+  padding: var(--ah-s3) var(--ah-s4);
+  background: var(--ah-surface-2);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  color: var(--ah-ink);
+}
+.ah-recap-heading,
+.ah-recap-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ah-s2);
+  flex-wrap: wrap;
+}
+.ah-recap p {
+  margin: var(--ah-s2) 0;
+  line-height: 1.5;
+}
+.ah-recap-next,
+.ah-recap-empty {
+  color: var(--ah-ink-2);
+}
 .ah-conversation-stream {
   flex: 1 1 auto;
   min-height: 0;
