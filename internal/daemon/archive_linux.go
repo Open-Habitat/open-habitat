@@ -66,6 +66,12 @@ func (c *ConversationController) archiveInput(w http.ResponseWriter, id string, 
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}
+	// A readable header alone does not establish readable native history.
+	// Check the entire settled file, then reject a changed header observation.
+	if _, err := reconciledNativeHistory(native.path, c.cfg.UID, id, cwd); err != nil || readNativeHeader(native.path, c.cfg.UID).revision != native.revision {
+		snapshotError(w, 409, "control_uncertain")
+		return
+	}
 	// Keep admission and the durable annotation commit ordered against sendKind.
 	// This is a short bounded state-file fsync under mu; releasing mu before
 	// fsync would permit a new Pi turn to start while the archive lands.

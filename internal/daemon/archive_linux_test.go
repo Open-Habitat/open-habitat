@@ -103,13 +103,25 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 	if err != nil || !bytes.Equal(data, original) {
 		t.Fatal("native history changed")
 	}
+	// A sound header does not make later corrupt native history archivable.
+	if err := os.WriteFile(path, append(bytes.Clone(original), []byte("{broken\n")...), 0600); err != nil {
+		t.Fatal(err)
+	}
+	corruptToken := opaque("obs_", id+":"+readNativeHeader(path, cfg.UID).revision)
+	c.sessions[id] = &conversation{id: id, workspace: wsid, cwd: cwd, rpc: &piRPC{exited: exited}, state: "idle"}
+	if got := request(true, corruptToken); got != http.StatusConflict {
+		t.Fatalf("corrupt history archived: %d", got)
+	}
+	if err := os.WriteFile(path, original, 0600); err != nil {
+		t.Fatal(err)
+	}
 	// Corrupt annotation bytes are not overwritten by a new archive action.
 	stateDir := filepath.Join(home, ".local", "state", "native-agent-host", "user-state.json")
-	c.sessions[id] = &conversation{id: id, workspace: wsid, cwd: cwd, rpc: &piRPC{exited: exited}, state: "idle"}
 	if err := os.WriteFile(stateDir, []byte("{broken"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if got := request(true, token); got != http.StatusServiceUnavailable {
+	restoredToken := opaque("obs_", id+":"+readNativeHeader(path, cfg.UID).revision)
+	if got := request(true, restoredToken); got != http.StatusServiceUnavailable {
 		t.Fatalf("corrupt annotation overwritten: %d", got)
 	}
 	data, _ = os.ReadFile(stateDir)
