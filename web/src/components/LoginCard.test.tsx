@@ -9,7 +9,7 @@ describe("login presentation", () => {
     expect(
       view.getByRole("heading", { name: "Tervetuloa Open Habitatiin" }),
     ).toBeTruthy();
-    expect(view.queryByText(/Unix|natiivin|Open Habitat/)).toBeNull();
+    expect(view.queryByText(/Unix|natiivin|UID|daemon/)).toBeNull();
     view.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     expect(onLogin).toHaveBeenCalledOnce();
   });
