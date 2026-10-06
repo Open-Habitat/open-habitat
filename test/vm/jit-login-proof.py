@@ -51,7 +51,7 @@ try:
             else: raise RuntimeError('direct NSS pool occupant')
     for name in names:
         check(not any(g.gr_name==name or name in g.gr_mem for g in grp.getgrall()),'group alias')
-        check(not (pathlib.Path('/etc/native-agent-host')/('daemon-'+name+'.json')).exists(),'precreated config')
+        check(not (pathlib.Path('/etc/omega-habitat/daemon/user-mappings')/('daemon-'+name+'.json')).exists(),'precreated config')
         check(not (pathlib.Path('/run/native-agent-host/users')/name).exists(),'precreated socket directory')
     # Prepare the pinned private Fleetrepo boot gate before any broker socket.
     prep='/usr/local/libexec/native-agent-host-test-jit/jit_acl_prepare.py'
@@ -210,7 +210,7 @@ print('UNEXPECTED_REPLY')
             check(home.stat().st_uid==uid and stat.S_IMODE(home.stat().st_mode)==0o700,'new home')
             binding=json.loads((ledger_dir/'bindings.json').read_text())['bindings']
             check(any(b['id']==str(100000001+index) and b['uid']==uid and b['username']==name for b in binding),'broker binding')
-            config=pathlib.Path('/etc/native-agent-host')/('daemon-'+name+'.json')
+            config=pathlib.Path('/etc/omega-habitat/daemon/user-mappings')/('daemon-'+name+'.json')
             check(config.stat().st_uid==0 and config.stat().st_gid==uid and stat.S_IMODE(config.stat().st_mode)==0o640,'executor config')
             src=home/'src';src.mkdir(mode=0o700)
             for kind in ('ordinary','git-hint','no-metadata'):

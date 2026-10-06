@@ -90,7 +90,7 @@ def vacancy():
     for name in names:
         check(all(u.pw_name!=name and u.pw_dir!='/home/'+name for u in users),'name/home occupied')
         check(all(g.gr_name!=name and name not in g.gr_mem for g in groups),'group alias')
-        for path in (Path('/home')/name, Path('/etc/native-agent-host')/('daemon-'+name+'.json'),run/'users'/name):
+        for path in (Path('/home')/name, Path('/etc/omega-habitat/daemon/user-mappings')/('daemon-'+name+'.json'),run/'users'/name):
             check(not os.path.lexists(path),'preexisting path: '+str(path))
         for kind in ('socket','service'):
             check(unit('is-active',f'native-agent-host-daemon@{name}.{kind}').stdout.strip()=='inactive','active instance collision')
@@ -154,7 +154,7 @@ try:
     for uid,name,subject,first in zip(assigned,names,ids,firsts):
         check(pwd.getpwnam(name).pw_uid==uid and pwd.getpwnam(name).pw_gid==uid and grp.getgrnam(name).gr_gid==uid,'executor account/group')
         home=Path('/home')/name; check((home.stat().st_uid,home.stat().st_gid,stat.S_IMODE(home.stat().st_mode))==(uid,uid,0o700),'executor home')
-        check((Path('/etc/native-agent-host')/('daemon-'+name+'.json')).is_file(),'executor config missing')
+        check((Path('/etc/omega-habitat/daemon/user-mappings')/('daemon-'+name+'.json')).is_file(),'executor config missing')
         rerun=route(exchange(21003,'ensure',subject,'changedname'),uid,name)
         check(rerun['route']==first['route'] and rerun['epoch']==first['epoch'] and rerun['generation']==3,'rerun not idempotent')
         check(unit('is-active','native-agent-host-daemon@'+name+'.socket').stdout.strip()=='active','daemon socket not broker-activated')
