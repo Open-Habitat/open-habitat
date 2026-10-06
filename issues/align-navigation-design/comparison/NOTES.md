@@ -1,6 +1,6 @@
 # Navigation comparison — synthetic views
 
-Source implementation: revision `fdf7115`. Designer reference: `design-system/drafts/Navigaatio ja asetukset.dc.html`, selecting **Nykyinen host** (not the conditional full-facts example). Production uses a synthetic browser-host lab and is not a live user's view. The designer draft uses other synthetic conversations, so these are composition comparisons at the same viewport/theme, not pixel-matched identical-content pairs.
+Source implementation: revision `f10acfd` (rebased; the captured UI code is unchanged). Designer reference: `design-system/drafts/Navigaatio ja asetukset.dc.html`, selecting **Nykyinen host** (not the conditional full-facts example). Production uses a synthetic browser-host lab and is not a live user's view. The designer draft uses other synthetic conversations, so these are composition comparisons at the same viewport/theme, not pixel-matched identical-content pairs.
 
 | View / viewport / theme | Production | Draft | Coverage |
 | --- | --- | --- | --- |
