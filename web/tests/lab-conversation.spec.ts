@@ -49,7 +49,7 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   await expect(page.getByText("Selvä. Kysyit:", { exact: false })).toBeVisible({
     timeout: 20000,
   });
-  await page.getByRole("button", { name: /bash.*Tulos valmis/ }).click();
+  await page.getByRole("button", { name: /bash.*valmis/ }).click();
   await expect(
     page.getByText("README.md", { exact: false }).last(),
   ).toBeVisible();

@@ -27,18 +27,26 @@ export function PiToolUse({
     unknown: "tila ei tiedossa",
   };
   return (
-    <ToolRow
-      name={name}
-      state={state}
-      statusLabel={labels[state]}
-      errorSummary={
-        state === "failed" ? "Pi ilmoitti työkalun virheestä." : undefined
+    <div
+      className={
+        state === "running" || state === "forming"
+          ? "ah-live-tool-row"
+          : undefined
       }
-      expanded={expanded}
-      onToggle={() => setExpanded(!expanded)}
     >
-      {children}
-    </ToolRow>
+      <ToolRow
+        name={name}
+        state={state}
+        statusLabel={labels[state]}
+        errorSummary={
+          state === "failed" ? "Pi ilmoitti työkalun virheestä." : undefined
+        }
+        expanded={expanded}
+        onToggle={() => setExpanded(!expanded)}
+      >
+        {children}
+      </ToolRow>
+    </div>
   );
 }
 

@@ -958,7 +958,7 @@
     "frame": ".ah-conversation-frame",
     "column": ".ah-conversation-stream > .ah-timeline",
     "speaker": ".ah-message header strong",
-    "tool": ".ah-tool-group",
+    "tool": ".ah-tool-row",
     "composer": ".ah-composer",
     "actions": ".ah-composer .ah-action-row-buttons",
     "main": "main",
