@@ -12,18 +12,18 @@ repo = Path(__file__).resolve().parents[2]
 # Read exact committed blobs, not a mutable checkout (Fleetrepo need not be at
 # the historical commit). No git checkout/worktree or host write is performed.
 source = Path(os.environ['FLEETREPO_JIT_SOURCE'])
-head = '85ac4588c9de4c1ceb1fccf58d57753ca58a7688'
+head = '3a165c4f3a455e76f29b04f97823b4ee5fcfa40d'
 if subprocess.check_output(['git','-C',str(source),'rev-parse',head],text=True).strip() != head:
     raise ValueError('Reviewed Fleetrepo JIT commit unavailable')
 receipts = {
- 'jit_policy.py':'4dc927a15fe7a2bc30cd05a5f04961f67d14a30866acd6f65a363fb53b2aa2a7',
- 'jit_acl_prepare.py':'20af327b7d64fe3546c166fb6c74b6cf54d77c471f871a1e22d4d8bb95bc9122',
+ 'jit_policy.py':'f9a9b1fe377264ef21b8861388dad6e23938cea72463af7a3f7bb5a3f20344f2',
+ 'jit_acl_prepare.py':'86303fd6922082897ce26bf0d026209ff7c33f66855ed7267260143daebaea06',
  'native-agent-host-jit-policy-gate.service':'4f5c2cd4fb1050c18729bc89c68f688b63d673a0c81bf112b51bf28c0edd4a87',
  'native-agent-host-jit-policy-gate@.service':'5943cb8a58a0136fcb07858774faa39ee2ad91361ee3ebf24cb62778effee22b',
  'native-agent-host-broker.socket.d/10-fleetrepo-jit-gate.conf':'7ebe6f363cc8c87d2c114c01c5cdf2b05715104478224ade3074b46794d66191',
  'native-agent-host-daemon@.socket.d/10-fleetrepo-jit-gate.conf':'118f129b5169c753a8096bea6f935a94d32afe77db86b813fe8356338f561e7e',
- 'jit_guest_fixture.py':'4f4f21e9e04637368f38b3044b8ab23c9ef7e2309c09aaeb3f72dc19cb99be6c',
- 'jit_guest_proof.py':'8e596a613ae45cafa0a89ca342adb37022a83efd0826850e218c8da8573e3e51',
+ 'jit_guest_fixture.py':'ca5892b129ceb972113aec74de485729a738b442f18009283df478b2eae4a5d1',
+ 'jit_guest_proof.py':'32a729c10cfd3e137bf9590c598b597f110d82304838123d4ecbca3f930c5aa7',
  'test-jit-guest.sh':'90a05994b174a1767a28dcd691aac03e6ef9ee9cca2d9ef21ad5687981c4c480',
 }
 staged = {name: subprocess.check_output(['git','-C',str(source),'show',
