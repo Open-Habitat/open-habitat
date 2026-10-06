@@ -1,5 +1,26 @@
 # First-login isolation: established evidence and remaining observations
 
+## Closed without the live reboot proof (2026-10-06)
+
+Jari decided on 6 October 2026 to close this issue with its existing evidence:
+the live reboot proof cannot be run on the current test installation, so it is
+not run.
+
+The 5 October attempt (Taskfleet run `01m46b27na102a8k8ya7ars2x2`, with
+Fleetrepo helper run `01m46b6rs6v3jnv1a0wg8eqp5n`) stopped before privileged
+access, synthetic login or reboot. The deployed gateway talks only to GitHub's
+fixed token and user endpoints, the loopback fake provider accepts only fixture
+credentials, and the installed `gh` is real. No reviewed VM-only path lets two
+synthetic callbacks exercise the deployed gateway and broker without
+redirecting real GitHub traffic or touching the real person's binding and
+credentials. A fabricated callback, broker-state edit or reboot with zero
+bindings would not prove the claim, so none was made.
+
+**Not established:** isolation between two bound users after an actual reboot
+of the test server. Everything below remains the evidence for what *was*
+shown. Any future attempt needs a separately reviewed synthetic provider and
+native-gh arrangement for the deployed path and exclusive use of the VM.
+
 Reconciled on 2026-10-01 against the broker-crash guest result and the later
 [Jari decision on interrupted provisioning](../reconcile-interrupted-jit-provisioning/item.md).
 The issue remains open. No live test-server smoke was run for this edit.

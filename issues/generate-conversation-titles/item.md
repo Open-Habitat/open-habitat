@@ -1,17 +1,19 @@
 ---
 created: 2026-10-05
-updated: 2026-10-05
+updated: 2026-10-06
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m45tjw4bcnkre1genks6r7eh/conversation-title-split
 originating_run: 01m45tjw4bcnkre1genks6r7eh
 originating_run_kind: spinoff
-preparation: pending
+preparation: ready
 lane: conversation-titles
 collision: [internal/daemon/, web/src/app/App.tsx, web/src/components/Conversation.tsx]
+closed: 2026-10-06
+closed_by: claude
 ---
 
 # Generate conversation titles and allow regeneration

@@ -1,14 +1,16 @@
 ---
 created: 2026-09-24
-updated: 2026-10-05
+updated: 2026-10-06
 type: task
-status: open
+status: wontfix
 priority: high
 lane: auth-guest
 lane_seq: 10
 collision: [scripts/vm-test.sh]
 blocked_by: ['@native-gh-jit-handoff', '@implement-linux-executor']
 preparation: ready
+closed: 2026-10-06
+closed_by: claude
 ---
 
 # Prove two-user isolation after test-server reboot
