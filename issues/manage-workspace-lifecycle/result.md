@@ -5,6 +5,8 @@
 This attempt implemented and tested internal filesystem primitives only. There is no browser route or shipped workspace-management behavior. The issue remains in progress; this branch must not be merged as a completed issue.
 
 - `TMPDIR=/var/tmp/nah-workspace-build go test ./internal/daemon -run 'TestWorkspace(Files|Settings)' -count=1` passed on the branch (synthetic home).
+- `TMPDIR=/var/tmp/nah-workspace-build PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/ms-playwright" NAH_PORT_BASE=16340 ./scripts/ci-local.sh --clean --json` passed on committed revision `cc3ef04c2e5344aa89a075f1b12547291a940c9d`; the gate reported `status: passed`, `clean: true`. The subsequent edit to this result is evidence-only; the runnable tree is unchanged.
+- `issuectl doctor --json` and `python3 scripts/validate-project-view.py` completed. Doctor reported existing repository findings outside this issue (including unknown key `superseded_by` on `raw-thinking-history-blocks`); it did not report a schema violation in this issue.
 - Tests cover rejected symlink targets and invalid directory names, revalidation after a renamed directory is replaced by a symlink, metadata round-trip, and refusing to overwrite corrupt metadata. They do not exercise deletion, Git initialization, browser disconnection, mounted directories, processes, linked worktrees, or the listed CT scenarios end to end.
 
 ## Security decision needed
