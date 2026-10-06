@@ -147,8 +147,20 @@ print('UNEXPECTED_REPLY')
                 failure_code=json.loads(body).get('error',{}).get('code','none')
             except (ValueError, AttributeError):
                 failure_code='non_json'
-            check(failure_status==503 and failure_code=='native_adapter_error',
-                  'gh fault callback issued session status='+str(failure_status)+' code='+str(failure_code)[:48]+' broker='+subprocess.run(['systemctl','is-active','native-agent-host-broker.service'],capture_output=True,text=True).stdout.strip())
+            if failure_status!=503 or failure_code!='native_adapter_error':
+                gate=subprocess.run(['journalctl','-u','native-agent-host-jit-policy-gate@'+names[index]+'.service',
+                                     '-n','12','--no-pager','-o','cat'],capture_output=True,text=True).stdout
+                gate_reasons=[]
+                for line in gate.splitlines():
+                    try:
+                        item=json.loads(line)
+                        if item.get('error',{}).get('code')=='policy-refused':
+                            gate_reasons.append(item['error'].get('message','')[:90])
+                    except (ValueError,AttributeError):
+                        pass
+                raise RuntimeError('gh fault callback issued session status='+str(failure_status)+
+                                   ' code='+str(failure_code)[:48]+' gate='+repr(gate_reasons[:2])[:200]+
+                                   ' daemon_socket='+subprocess.run(['systemctl','is-active','native-agent-host-daemon@'+names[index]+'.socket'],capture_output=True,text=True).stdout.strip())
             session_status,session_headers,session_body=get(op,'/auth/session')
             snapshot_status,snapshot_headers,snapshot_body=get(op,'/api/v1/snapshot')
             captures.extend([str(session_headers).encode(),session_body,str(snapshot_headers).encode(),snapshot_body])
