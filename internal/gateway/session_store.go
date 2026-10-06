@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -61,12 +62,17 @@ func validSessionRecord(key string, s session) bool {
 	return ok && s.identity.UID > 0
 }
 
+func privateSessionFile(info os.FileInfo) bool {
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	return ok && info.Mode().IsRegular() && info.Mode().Perm() == 0600 && stat.Uid == uint32(os.Getuid())
+}
+
 func (a *Auth) sessionStoreHealthy() bool {
 	if a.sessionFile == "" {
 		return true
 	}
 	info, err := os.Lstat(a.sessionFile)
-	return err == nil && info.Mode().IsRegular() && info.Mode().Perm() == 0600
+	return err == nil && privateSessionFile(info)
 }
 
 func (a *Auth) loadSessions() error {
@@ -80,7 +86,7 @@ func (a *Auth) loadSessions() error {
 	if err != nil {
 		return err
 	}
-	if !info.Mode().IsRegular() || info.Mode().Perm() != 0600 {
+	if !privateSessionFile(info) {
 		return errors.New("invalid session store permissions")
 	}
 	f, err := os.Open(a.sessionFile)
