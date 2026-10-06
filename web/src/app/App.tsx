@@ -656,24 +656,6 @@ export function App() {
         {!new URLSearchParams(location.search).has("conversation") ? (
           <>
             <WorkspaceDetails workspace={selected} />
-            <ReturnView
-              store={conversationStore}
-              workspaceName="Keskustelut työtilassa"
-              conversations={returnConversations.filter(
-                (conversation) =>
-                  conversation.workspaceId === selected.workspace_id,
-              )}
-            />
-            {!syntheticDemo && phase === "authenticated" && (
-              <WorkspaceManagement
-                key={selected.workspace_id}
-                workspace={selected}
-                csrf={csrf}
-                refresh={refresh}
-                onCreated={(id) => navigate(`/workspaces/${id}`)}
-                onHidden={() => navigate("/workspaces")}
-              />
-            )}
           </>
         ) : null}
         {!syntheticDemo &&
@@ -717,6 +699,28 @@ export function App() {
               refresh(); // The new agent must be in the snapshot before its live turn is seeded.
             }}
           />
+        ) : null}
+        {!new URLSearchParams(location.search).has("conversation") ? (
+          <>
+            <ReturnView
+              store={conversationStore}
+              workspaceName="Keskustelut työtilassa"
+              conversations={returnConversations.filter(
+                (conversation) =>
+                  conversation.workspaceId === selected.workspace_id,
+              )}
+            />
+            {!syntheticDemo && phase === "authenticated" && (
+              <WorkspaceManagement
+                key={selected.workspace_id}
+                workspace={selected}
+                csrf={csrf}
+                refresh={refresh}
+                onCreated={(id) => navigate(`/workspaces/${id}`)}
+                onHidden={() => navigate("/workspaces")}
+              />
+            )}
+          </>
         ) : null}
         {source !== "confirmed" ? (
           <InlineNotice
