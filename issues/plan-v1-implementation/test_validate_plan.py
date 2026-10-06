@@ -54,6 +54,11 @@ class PlanValidatorTests(unittest.TestCase):
         self.run_validator()
 
     def test_missing_human_decision_fails(self):
+        # Closed slices need no forward policy. Reopen this disposable copy to
+        # exercise the guard without depending on the live issue's status.
+        subprocess.run(["issuectl", "--root", str(self.root), "update",
+                        "manage-workspace-lifecycle", "--status", "open", "--json"],
+                       check=True, capture_output=True, text=True)
         self.change("manage-workspace-lifecycle", "Jari's outstanding visual verdict", "Visual review")
         self.run_validator("missing visual evidence and explicit human decision policy: manage-workspace-lifecycle")
 
