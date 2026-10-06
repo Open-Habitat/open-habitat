@@ -143,7 +143,12 @@ print('UNEXPECTED_REPLY')
             state=urllib.parse.parse_qs(urllib.parse.urlparse(h['Location']).query)['state'][0]
             failure_status,h,body=get(op,'/auth/github/callback?'+urllib.parse.urlencode({'state':state,'code':'a' if index==0 else 'b'}))
             captures.extend([str(h).encode(),body,repr([(c.name,c.value) for c in jar]).encode()])
-            check(failure_status==503 and json.loads(body)['error']['code']=='native_adapter_error','gh fault callback issued session')
+            try:
+                failure_code=json.loads(body).get('error',{}).get('code','none')
+            except (ValueError, AttributeError):
+                failure_code='non_json'
+            check(failure_status==503 and failure_code=='native_adapter_error',
+                  'gh fault callback issued session status='+str(failure_status)+' code='+str(failure_code)[:48]+' broker='+subprocess.run(['systemctl','is-active','native-agent-host-broker.service'],capture_output=True,text=True).stdout.strip())
             session_status,session_headers,session_body=get(op,'/auth/session')
             snapshot_status,snapshot_headers,snapshot_body=get(op,'/api/v1/snapshot')
             captures.extend([str(session_headers).encode(),session_body,str(snapshot_headers).encode(),snapshot_body])
