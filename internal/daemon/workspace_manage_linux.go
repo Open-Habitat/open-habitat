@@ -94,17 +94,11 @@ func loadVisibility(home string) (workspaceVisibility, error) {
 		return state, e
 	}
 	defer unix.Close(d)
-	fd, e := open(unix.Openat2, d, "user-state.json", unix.O_RDONLY, true)
-	if errors.Is(e, unix.ENOENT) {
+	b, status := readSmall(unix.Openat2, d, "user-state.json", 1<<20)
+	if status == "missing" {
 		return state, nil
 	}
-	if e != nil {
-		return state, e
-	}
-	f := os.NewFile(uintptr(fd), "user-state.json")
-	defer f.Close()
-	b, e := io.ReadAll(io.LimitReader(f, 1<<20+1))
-	if e != nil || len(b) > 1<<20 {
+	if status != "valid" {
 		return state, errors.New("state unreadable")
 	}
 	dec := json.NewDecoder(bytes.NewReader(b))
@@ -166,11 +160,6 @@ func WorkspaceHandler(cfg transport.Config, trusted func(*http.Request) bool) ht
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
-		if !cloneWriter.TryLock() {
-			snapshotError(w, 409, "workspace_busy")
-			return
-		}
-		defer cloneWriter.Unlock()
 		b, e := io.ReadAll(io.LimitReader(r.Body, 2049))
 		var in workspaceRequest
 		var extra any
@@ -193,6 +182,11 @@ func WorkspaceHandler(cfg transport.Config, trusted func(*http.Request) bool) ht
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
+		if !cloneWriter.TryLock() {
+			snapshotError(w, 409, "workspace_busy")
+			return
+		}
+		defer cloneWriter.Unlock()
 		src, source, e := workspaceSource(cfg)
 		if e != nil {
 			snapshotError(w, 503, "native_source_unavailable")
@@ -288,6 +282,11 @@ func WorkspaceHandler(cfg transport.Config, trusted func(*http.Request) bool) ht
 		responseID := in.WorkspaceID
 		switch in.Action {
 		case "settings":
+			if target.Kind == "git_main_worktree" {
+				if e = ensureWorkspaceExclude(child); e != nil {
+					break
+				}
+			}
 			id := target.WorkspaceID
 			if id == "" {
 				id, e = newWorkspaceID()
@@ -346,7 +345,12 @@ func initWorkspaceGit(fd int, home string) error {
 	if e := cmd.Run(); e != nil {
 		return e
 	}
-	// Git's local exclude avoids committing host annotations in a new repository.
+	return ensureWorkspaceExclude(fd)
+}
+
+// Git's local exclude keeps host annotations out of this checkout only.
+// Linked worktree git-dir files are intentionally not followed.
+func ensureWorkspaceExclude(fd int) error {
 	gitDir, e := dir(unix.Openat2, fd, ".git", true)
 	if e != nil {
 		return e
@@ -360,17 +364,21 @@ func initWorkspaceGit(fd int, home string) error {
 		return e
 	}
 	defer unix.Close(info)
-	item, e := unix.Openat2(info, "exclude", &unix.OpenHow{Flags: unix.O_RDWR | unix.O_CREAT | unix.O_CLOEXEC | unix.O_NOFOLLOW, Mode: 0600, Resolve: resolve})
+	item, e := unix.Openat2(info, "exclude", &unix.OpenHow{Flags: unix.O_RDWR | unix.O_CREAT | unix.O_NONBLOCK | unix.O_CLOEXEC | unix.O_NOFOLLOW, Mode: 0600, Resolve: resolve})
 	if e != nil {
 		return e
 	}
 	file := os.NewFile(uintptr(item), "exclude")
 	defer file.Close()
+	fileStat, e := stat(item)
+	if e != nil || fileStat.Mode&unix.S_IFMT != unix.S_IFREG {
+		return errors.New("unsafe git exclude")
+	}
 	contents, e := io.ReadAll(io.LimitReader(file, 1<<20+1))
 	if e != nil || len(contents) > 1<<20 {
 		return errors.New("git exclude unreadable")
 	}
-	if !bytes.Contains(contents, []byte("\n.agent-host/\n")) {
+	if !strings.Contains("\n"+string(contents)+"\n", "\n.agent-host/\n") {
 		if len(contents) > 0 && contents[len(contents)-1] != '\n' {
 			if _, e = file.WriteString("\n"); e != nil {
 				return e

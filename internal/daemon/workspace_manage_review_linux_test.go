@@ -7,10 +7,13 @@ import (
 	"encoding/json"
 	"github.com/maintainer/native-agent-host/internal/transport"
 	"golang.org/x/sys/unix"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"sync"
 	"testing"
 )
 
@@ -119,6 +122,83 @@ func TestWorkspaceSnapshotEnablesLocalWritesAndSourceToken(t *testing.T) {
 	defer unix.Close(src)
 	if doc["user_observation_token"] != workspaceUserToken(cfg, s) {
 		t.Fatal("source token mismatch")
+	}
+}
+
+type blockedWorkspaceBody struct {
+	once    sync.Once
+	started chan struct{}
+	release chan struct{}
+}
+
+func (b *blockedWorkspaceBody) Read([]byte) (int, error) {
+	b.once.Do(func() { close(b.started) })
+	<-b.release
+	return 0, io.EOF
+}
+func TestWorkspaceRequestBodyDoesNotHoldWriterLock(t *testing.T) {
+	cfg, _ := cloneFixture(t)
+	cfg.Home = t.TempDir()
+	body := &blockedWorkspaceBody{started: make(chan struct{}), release: make(chan struct{})}
+	r := httptest.NewRequest("POST", "http://unix/api/v1/workspaces", body)
+	r.RequestURI = WorkspacePath
+	r.ContentLength = 10
+	r.Header.Set("Content-Type", "application/json")
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		WorkspaceHandler(cfg, func(*http.Request) bool { return true }).ServeHTTP(httptest.NewRecorder(), r)
+	}()
+	<-body.started
+	if !cloneWriter.TryLock() {
+		close(body.release)
+		<-done
+		t.Fatal("request body holds shared writer lock")
+	}
+	cloneWriter.Unlock()
+	close(body.release)
+	<-done
+}
+func TestWorkspaceStateRejectsFIFOWriteWithoutBlocking(t *testing.T) {
+	home := t.TempDir()
+	d := filepath.Join(home, ".local", "state", "native-agent-host")
+	if e := os.MkdirAll(d, 0700); e != nil {
+		t.Fatal(e)
+	}
+	if e := unix.Mkfifo(filepath.Join(d, "user-state.json"), 0600); e != nil {
+		t.Fatal(e)
+	}
+	_, e := loadVisibility(home)
+	if e == nil {
+		t.Fatal("accepted FIFO as state")
+	}
+}
+func TestWorkspaceSettingsExcludeExistingGitMetadata(t *testing.T) {
+	cfg, _ := cloneFixture(t)
+	cfg.Home = t.TempDir()
+	root := filepath.Join(cfg.Home, "src", "repo")
+	if e := os.MkdirAll(root, 0700); e != nil {
+		t.Fatal(e)
+	}
+	cmd := exec.Command("git", "init", "--quiet", root)
+	cmd.Env = []string{"HOME=" + cfg.Home, "PATH=/usr/bin:/bin", "GIT_CONFIG_NOSYSTEM=1"}
+	if out, e := cmd.CombinedOutput(); e != nil {
+		t.Fatalf("git init %s: %v", out, e)
+	}
+	w := Discover(cfg).Entries[0]
+	if w.Kind != "git_main_worktree" {
+		t.Fatalf("kind %s", w.Kind)
+	}
+	id := opaque("ws_", cfg.Provider+":"+cfg.Subject+":"+w.Name)
+	code, result := workspaceReviewRequest(t, cfg, map[string]any{"action": "settings", "workspace_id": id, "observation_token": workspaceToken(cfg, w), "display_name": "Repo"})
+	if code != 200 {
+		t.Fatalf("settings: %d %v", code, result)
+	}
+	status := exec.Command("git", "-C", root, "status", "--porcelain", "--untracked-files=all")
+	status.Env = cmd.Env
+	out, e := status.CombinedOutput()
+	if e != nil || len(out) != 0 {
+		t.Fatalf("metadata not excluded: %s %v", out, e)
 	}
 }
 func TestWorkspaceGitInitWithEmptyTemplate(t *testing.T) {
