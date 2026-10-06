@@ -3,11 +3,13 @@ package gateway
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -168,5 +170,57 @@ func TestAdministrationLostLiveFileDoesNotRestoreRole(t *testing.T) {
 	}
 	if _, e := os.Stat(path); !os.IsNotExist(e) {
 		t.Fatal("lost state recreated")
+	}
+}
+
+type delayedBody struct {
+	entered, release chan struct{}
+	bytes            []byte
+	once             sync.Once
+}
+
+func (b *delayedBody) Read(p []byte) (int, error) {
+	if len(b.bytes) == 0 {
+		return 0, io.EOF
+	}
+	b.once.Do(func() { close(b.entered) })
+	<-b.release
+	n := copy(p, b.bytes)
+	b.bytes = b.bytes[n:]
+	return n, nil
+}
+func TestRemovedAdministratorCannotRegrantFromInflightRequest(t *testing.T) {
+	h, a, _, _, _ := fixture(t)
+	a.broker = &adminBroker{Broker: a.broker}
+	if e := a.changeRole(context.Background(), "42", true); e != nil {
+		t.Fatal(e)
+	}
+	state, flow := start(t, h)
+	cookie := callback(h, state, flow).Result().Cookies()[1]
+	var session struct {
+		CSRF string `json:"csrf"`
+	}
+	if e := json.Unmarshal(request(h, "GET", "/auth/session", cookie).Body.Bytes(), &session); e != nil {
+		t.Fatal(e)
+	}
+	body := &delayedBody{entered: make(chan struct{}), release: make(chan struct{}), bytes: []byte(`{"subject":"42","administrator":true}`)}
+	r := httptest.NewRequest("PUT", "https://host.test/api/v1/server/administration", nil)
+	r.Body = io.NopCloser(body)
+	r.AddCookie(cookie)
+	r.Header.Set("Origin", "https://host.test")
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("X-Agent-Host-CSRF", session.CSRF)
+	done := make(chan int, 1)
+	go func() { w := httptest.NewRecorder(); h.ServeHTTP(w, r); done <- w.Code }()
+	<-body.entered
+	if e := a.changeRole(context.Background(), "42", false); e != nil {
+		t.Fatal(e)
+	}
+	close(body.release)
+	if status := <-done; status != 403 {
+		t.Fatalf("inflight write after role removal: %d", status)
+	}
+	if a.isAdministrator("42") {
+		t.Fatal("role restored by inflight request")
 	}
 }

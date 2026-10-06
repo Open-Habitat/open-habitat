@@ -24,6 +24,7 @@ type BrokerReader interface {
 
 // ErrAdministrationState distinguishes a corrupt shared state record from OAuth config.
 var ErrAdministrationState = errors.New("invalid gateway administration state")
+var errAdminDenied = errors.New("administrator role removed")
 
 type serverSettings struct {
 	Version        int      `json:"version"`
@@ -160,9 +161,7 @@ func (a *Auth) commitAdministration(next serverSettings) error {
 	a.settings = next
 	return nil
 }
-func (a *Auth) isAdministrator(id string) bool {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+func (a *Auth) isAdministratorLocked(id string) bool {
 	if !a.administrationHealthy() {
 		return false
 	}
@@ -173,6 +172,11 @@ func (a *Auth) isAdministrator(id string) bool {
 	}
 	return false
 }
+func (a *Auth) isAdministrator(id string) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.isAdministratorLocked(id)
+}
 func (a *Auth) settingsView() serverSettings {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -181,14 +185,21 @@ func (a *Auth) settingsView() serverSettings {
 	}
 	return a.settings
 }
-func (a *Auth) changeName(name string) error {
+func (a *Auth) changeName(name string) error { return a.changeNameFor("", name) }
+func (a *Auth) changeNameFor(caller, name string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if caller != "" && !a.isAdministratorLocked(caller) {
+		return errAdminDenied
+	}
 	next := a.settings
 	next.Name = name
 	return a.commitAdministration(next)
 }
 func (a *Auth) changeRole(ctx context.Context, id string, administrator bool) error {
+	return a.changeRoleFor(ctx, "", id, administrator)
+}
+func (a *Auth) changeRoleFor(ctx context.Context, caller, id string, administrator bool) error {
 	if !canonicalSubject(id) {
 		return errors.New("invalid subject")
 	}
@@ -206,6 +217,9 @@ func (a *Auth) changeRole(ctx context.Context, id string, administrator bool) er
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if caller != "" && !a.isAdministratorLocked(caller) {
+		return errAdminDenied
+	}
 	if !a.administrationHealthy() {
 		return ErrAdministrationState
 	}
@@ -323,9 +337,13 @@ func (a *Auth) adminHTTP(w http.ResponseWriter, r *http.Request) {
 			safe(w, 400, "invalid_request")
 			return
 		}
-		e = a.changeName(*request.Name)
+		e = a.changeNameFor(s.identity.Subject, *request.Name)
 	} else {
-		e = a.changeRole(r.Context(), request.Subject, *request.Administrator)
+		e = a.changeRoleFor(r.Context(), s.identity.Subject, request.Subject, *request.Administrator)
+	}
+	if errors.Is(e, errAdminDenied) {
+		safe(w, 403, "admin_required")
+		return
 	}
 	if e != nil {
 		safe(w, 503, "administration_unavailable")

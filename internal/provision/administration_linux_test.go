@@ -88,3 +88,9 @@ func TestBoundUserPagination(t *testing.T) {
 		t.Fatalf("second page: %+v", second)
 	}
 }
+
+func TestNullBoundUserReplyRejectedWithoutPanic(t *testing.T) {
+	if _, err := ParseReply([]byte(`{"version":1,"users":null,"generation":1,"epoch":1}`)); err == nil {
+		t.Fatal("accepted null users")
+	}
+}

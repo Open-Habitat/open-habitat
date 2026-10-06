@@ -192,7 +192,7 @@ func ParseReply(b []byte) (Reply, error) {
 		return r, nil
 	}
 	if len(raw["users"]) != 0 {
-		if r.Route != nil || r.Generation == 0 || r.Epoch == 0 || len(raw["generation"]) == 0 || len(raw["epoch"]) == 0 || len(*r.Users) > 30 || r.Next != "" && !numericOffset(r.Next) {
+		if r.Users == nil || r.Route != nil || r.Generation == 0 || r.Epoch == 0 || len(raw["generation"]) == 0 || len(raw["epoch"]) == 0 || len(*r.Users) > 30 || r.Next != "" && !numericOffset(r.Next) {
 			return Reply{}, ErrInvalid
 		}
 		entries, err := checkArray(raw["users"], "users")
