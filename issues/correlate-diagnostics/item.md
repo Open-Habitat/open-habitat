@@ -23,6 +23,6 @@ Keep diagnostics separate from broker state, native history and authorization de
 
 ## Acceptance Criteria
 
-- [ ] Representative gateway, broker and daemon successes and failures produce understandable messages in the common format, with the IDs and verified identities those paths already know; records can be related where a real shared field exists.
-- [ ] Synthetic secrets and work content stay out of messages, actor and target are distinct, and logging failure does not alter tested operations or bypass cross-user access checks.
-- [ ] The product's operator examples and architecture match the landed code; the result names the revision, focused and clean gate results, and any unverified guest scenarios.
+- [x] Representative gateway, broker and daemon successes and failures produce understandable messages in the common format, with the IDs and verified identities those paths already know; records can be related where a real shared field exists.
+- [x] Synthetic secrets and work content stay out of messages, actor and target are distinct, and logging failure does not alter tested operations or bypass cross-user access checks.
+- [x] The product's operator examples and architecture match the landed code; the result names the revision, focused and clean gate results, and any unverified guest scenarios.
