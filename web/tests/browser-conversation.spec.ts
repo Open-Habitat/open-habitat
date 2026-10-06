@@ -438,6 +438,11 @@ test("@browser-conversation in-flight send remains pending through missing recei
   page.on("request", (request) => {
     if (request.url().endsWith("/send")) sends++;
   });
+  const missingReceipt = page.waitForResponse(
+    (response) =>
+      response.url().includes("/receipt?command_id=") &&
+      response.status() === 404,
+  );
   await page
     .getByRole("textbox", { name: "Viesti Pi:lle" })
     .fill("Odota kuittausta");
@@ -445,6 +450,7 @@ test("@browser-conversation in-flight send remains pending through missing recei
   await entered;
   await expect(page.locator(".ah-send-pending")).toBeVisible();
   await refreshConversation(page);
+  await missingReceipt;
   await expect(page.locator(".ah-send-uncertain")).toHaveCount(0);
   release();
   await expect(

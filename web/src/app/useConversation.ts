@@ -55,6 +55,8 @@ export function useConversation({
   }>();
   const [problem, setProblem] = useState("");
   const [busy, setBusy] = useState(false);
+  // The HTTP send may still be held after a status/receipt read returns 404.
+  const inFlightSend = useRef<string | undefined>(undefined);
   const historyError =
     windowView?.state === "stale" || windowView?.state === "error";
   const setHistoryError = (value: boolean) => {
@@ -350,6 +352,7 @@ export function useConversation({
             }
           }
           if (!alive.current || version !== generation.current) return;
+          if (!outcome && inFlightSend.current === command) outcome = "pending";
           const text = sessionStorage.getItem(submittedKey);
           // Do not let an older in-flight read settle a newer command.
           if (sessionStorage.getItem(sendKey) === command && text !== null) {
@@ -535,6 +538,7 @@ export function useConversation({
     sendKey,
     continuationKey,
     uncertainKey,
+    inFlightSend,
     changeDraft,
     refresh,
     setBusy,

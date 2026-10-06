@@ -41,6 +41,7 @@ export function useConversationActions({
   sendKey,
   continuationKey,
   uncertainKey,
+  inFlightSend,
   setBusy,
   setReceipt,
   setSendObservation,
@@ -71,6 +72,7 @@ export function useConversationActions({
   sendKey: string;
   continuationKey: string;
   uncertainKey: string;
+  inFlightSend: RefObject<string | undefined>;
   setBusy: Dispatch<SetStateAction<boolean>>;
   setReceipt: Dispatch<SetStateAction<string>>;
   setSendObservation: Dispatch<SetStateAction<Observation | undefined>>;
@@ -190,13 +192,16 @@ export function useConversationActions({
       sessionStorage.setItem(submittedKey, text);
       sessionStorage.setItem(sendKey, command);
       sessionStorage.setItem(uncertainKey, command);
+      inFlightSend.current = command;
       setSendObservation({ text, state: "pending" });
       setReceipt("Viesti odottaa kuittausta");
       await send(current.agent_id, text, command, token);
+      inFlightSend.current = undefined;
       if (!alive.current) return;
       setReceipt("Viesti odottaa natiivia hyväksyntää");
       await refresh();
     } catch (error) {
+      if (inFlightSend.current === command) inFlightSend.current = undefined;
       if ((error as Error).message === "identity_lost") onLogin();
       else if (alive.current && error instanceof NotAdmitted) {
         sessionStorage.removeItem(sendKey);
