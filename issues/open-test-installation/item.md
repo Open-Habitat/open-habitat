@@ -2,13 +2,15 @@
 created: 2026-10-06
 updated: 2026-10-06
 type: task
-status: in-progress
+status: done
 priority: normal
 lane: admission
 lane_seq: 20
 blocked_by: ['@plan-second-user-admission']
 collision: [internal/gateway/auth.go]
 preparation: ready
+closed: 2026-10-06
+closed_by: claude
 ---
 
 # Open the test installation to anyone with a GitHub account
