@@ -297,7 +297,10 @@ func cloneSource(cfg transport.Config, home string, allowCreate bool) (int, erro
 	return src, nil
 }
 func cloneCommand(parent context.Context, program, cwd, fd string, args ...string) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(parent, 70*time.Second)
+	return cloneCommandWithTimeout(parent, 70*time.Second, program, cwd, fd, args...)
+}
+func cloneCommandWithTimeout(parent context.Context, limit time.Duration, program, cwd, fd string, args ...string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(parent, limit)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, program, args...)
 	home := cwd

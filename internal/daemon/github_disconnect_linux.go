@@ -14,8 +14,7 @@ import (
 
 const RepoDisconnectPath = "/api/v1/account/github/disconnect"
 
-func RepoDisconnectHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
-	adapter, e := nativegh.New(cfg.Home, cfg.Subject, nil, nativegh.LinuxSecretService())
+func RepoDisconnectHandler(cfg transport.Config, trusted func(*http.Request) bool, adapter *nativegh.Adapter) http.Handler {
 	var mu sync.Mutex
 	token := ""
 	until := time.Time{}
@@ -24,7 +23,7 @@ func RepoDisconnectHandler(cfg transport.Config, trusted func(*http.Request) boo
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
-		if e != nil || r.URL.Path != RepoDisconnectPath || r.RequestURI != RepoDisconnectPath || r.Host != "unix" || r.URL.RawQuery != "" || r.Header.Get("X-Agent-Host-Recent-Login") != "1" || len(r.TransferEncoding) != 0 {
+		if adapter == nil || r.URL.Path != RepoDisconnectPath || r.RequestURI != RepoDisconnectPath || r.Host != "unix" || r.URL.RawQuery != "" || r.Header.Get("X-Agent-Host-Recent-Login") != "1" || len(r.TransferEncoding) != 0 {
 			snapshotError(w, 403, "reauthentication_required")
 			return
 		}

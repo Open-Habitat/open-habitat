@@ -92,8 +92,9 @@ The workspace UI lists native `gh` repositories for import into the user's
 `~/src` and offers publishing a local main Git checkout to the signed-in
 GitHub account. Publishing uses a two-minute, single-use daemon observation
 challenge for an exact `owner/repository` and visibility. It separately creates
-the remote via `gh api`, adds an HTTPS `origin`, and pushes `HEAD` with ordinary
-Git. The browser must explicitly observe and confirm each next stage; a lost
+the remote via `gh api`, adds an HTTPS `origin` only if the observed remote
+has no branches, and pushes `HEAD` with ordinary Git. The observation shows
+local HEAD and whether the working tree has changes, without returning paths. The browser must explicitly observe and confirm each next stage; a lost
 or failed receipt is uncertain, not a retry instruction. The daemon never sends
 credentials to the browser. Publishing is limited to repositories owned by the
 mapped GitHub login; collaboration and organization creation are not inferred

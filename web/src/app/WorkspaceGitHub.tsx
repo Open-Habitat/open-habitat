@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { Workspace } from "./snapshot";
 import { catalog, cloneStream, observe, type Repo } from "./github";
 import { ControlButton } from "../components/ControlElements";
@@ -10,6 +10,8 @@ type Challenge = {
   visibility: "private" | "public";
   stage: "create" | "origin" | "push";
   observation_token: string;
+  working_tree?: "clean" | "changes" | "unknown";
+  local_head?: string;
 };
 const endpoint = "/api/v1/workspaces/github/publish";
 function validChallenge(
@@ -46,6 +48,7 @@ export function WorkspaceGitHub({
   const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [confirmation, setConfirmation] = useState("");
   const [challenge, setChallenge] = useState<Challenge>();
+  const selectionRevision = useRef(0);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [filter, setFilter] = useState("");
@@ -60,7 +63,31 @@ export function WorkspaceGitHub({
       credentials: "same-origin",
       cache: "no-store",
     });
-    if (!r.ok) throw new Error("GitHubin tai Gitin tilaa ei voitu vahvistaa.");
+    if (!r.ok) {
+      const detail: unknown = await r.json().catch(() => null);
+      const error =
+        detail && typeof detail === "object" && "error" in detail
+          ? detail.error
+          : null;
+      const code =
+        error && typeof error === "object" && "code" in error
+          ? error.code
+          : null;
+      const reasons: Record<string, string> = {
+        origin_conflict:
+          "Origin osoittaa toiseen repoon. Tarkista paikallinen Git ennen julkaisemista.",
+        remote_conflict:
+          "GitHub-repo on jo käytössä, väärällä näkyvyydellä tai sitä ei voitu varmistaa tyhjäksi.",
+        github_auth_unavailable:
+          "Paikallinen GitHub-valtuutus ei vastaa tätä käyttäjää.",
+        workspace_changed:
+          "Työtila muuttui havainnon jälkeen. Päivitä työtilat.",
+      };
+      throw new Error(
+        (typeof code === "string" && reasons[code]) ||
+          "GitHubin tai Gitin tilaa ei voitu vahvistaa.",
+      );
+    }
     const value: unknown = await r.json();
     if (!validChallenge(value, name, id, vis))
       throw new Error("Havainto ei kelpaa.");
@@ -123,13 +150,24 @@ export function WorkspaceGitHub({
   const inspectPublish = async () => {
     if (!workspace || busy) return;
     setBusy(true);
+    const revision = ++selectionRevision.current;
     setChallenge(undefined);
     setConfirmation("");
     setNotice("");
     try {
-      setChallenge(await inspect(workspace.workspace_id, fullName, visibility));
-    } catch {
-      setNotice("Havainto epäonnistui. Mitään ei muutettu.");
+      const observed = await inspect(
+        workspace.workspace_id,
+        fullName,
+        visibility,
+      );
+      if (revision === selectionRevision.current) setChallenge(observed);
+    } catch (e) {
+      if (revision === selectionRevision.current)
+        setNotice(
+          e instanceof Error
+            ? e.message
+            : "Havainto epäonnistui. Mitään ei muutettu.",
+        );
     } finally {
       setBusy(false);
     }
@@ -252,6 +290,7 @@ export function WorkspaceGitHub({
             <input
               value={owner}
               onChange={(e) => {
+                ++selectionRevision.current;
                 setOwner(e.target.value);
                 setChallenge(undefined);
               }}
@@ -262,6 +301,7 @@ export function WorkspaceGitHub({
             <input
               value={repository}
               onChange={(e) => {
+                ++selectionRevision.current;
                 setRepository(e.target.value);
                 setChallenge(undefined);
               }}
@@ -272,6 +312,7 @@ export function WorkspaceGitHub({
             <select
               value={visibility}
               onChange={(e) => {
+                ++selectionRevision.current;
                 setVisibility(e.target.value as "private" | "public");
                 setChallenge(undefined);
               }}
@@ -291,7 +332,16 @@ export function WorkspaceGitHub({
             <>
               <p>
                 Seuraava vaihe: {challenge.stage}. Kohde: {challenge.full_name}{" "}
-                ({visibility}). Kirjoita tarkka nimi vahvistaaksesi.
+                ({challenge.visibility}). Kirjoita tarkka nimi vahvistaaksesi.
+              </p>
+              <p>
+                Paikallinen Git:{" "}
+                {challenge.working_tree === "clean"
+                  ? "puhdas"
+                  : challenge.working_tree === "changes"
+                    ? "muutoksia"
+                    : "tila tuntematon"}
+                ; HEAD {challenge.local_head ?? "tuntematon"}.
               </p>
               <label>
                 Vahvista owner/repository{" "}

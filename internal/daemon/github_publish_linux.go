@@ -31,10 +31,27 @@ type publishObservation struct {
 	Expires        time.Time `json:"-"`
 }
 
+func publishRepoMatches(raw []byte, name, visibility string) bool {
+	var repo struct {
+		FullName string `json:"full_name"`
+		Private  bool   `json:"private"`
+	}
+	return strictRepoJSON(raw, &repo) == nil && repo.FullName == name && repo.Private == (visibility == "private")
+}
+func verifiedPublishRepo(ctx context.Context, run cloneRunner, gh, home, name, visibility string) bool {
+	raw, e := run(ctx, gh, home, "", "api", "--method", "GET", "/repos/"+name)
+	return e == nil && publishRepoMatches(raw, name, visibility)
+}
+
 // A challenge is single-use, short-lived, and held only in this user's daemon.
 // It is not a workspace registry and is lost safely on daemon restart.
 func RepoPublishHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
-	return repoPublishHandler(cfg, trusted, cfg.Home, "/usr/bin/gh", "/usr/bin/git", cloneCommand)
+	return repoPublishHandler(cfg, trusted, cfg.Home, "/usr/bin/gh", "/usr/bin/git", func(ctx context.Context, program, home, fd string, args ...string) ([]byte, error) {
+		if program == "/usr/bin/git" && len(args) > 0 && args[0] == "push" {
+			return cloneCommandWithTimeout(ctx, 45*time.Minute, program, home, fd, args...)
+		}
+		return cloneCommand(ctx, program, home, fd, args...)
+	})
 }
 func repoPublishHandler(cfg transport.Config, trusted func(*http.Request) bool, home, gh, git string, run cloneRunner) http.Handler {
 	var mu sync.Mutex
@@ -86,7 +103,11 @@ func repoPublishHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 			return
 		}
 		defer cloneWriter.Unlock()
-		ctx, cancel := context.WithTimeout(r.Context(), 55*time.Second)
+		ceiling := 55 * time.Second
+		if r.Method == "POST" {
+			ceiling = 45 * time.Minute
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), ceiling)
 		defer cancel()
 		identity, e := run(ctx, gh, home, "", "api", "--method", "GET", "/user")
 		var user struct {
@@ -142,6 +163,10 @@ func repoPublishHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 				return
 			}
 			stage = "push"
+			if !verifiedPublishRepo(ctx, run, gh, home, in.FullName, in.Visibility) {
+				snapshotError(w, 409, "remote_conflict")
+				return
+			}
 		} else {
 			// get-url fails both for missing and damaged Git state: verify git itself.
 			list, err := run(ctx, git, home, fd, "remote")
@@ -151,11 +176,15 @@ func repoPublishHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 			}
 			raw, err := run(ctx, gh, home, "", "api", "--method", "GET", "/repos/"+in.FullName)
 			if err == nil {
-				var repo struct {
-					FullName string `json:"full_name"`
-					Private  bool   `json:"private"`
+				if !publishRepoMatches(raw, in.FullName, in.Visibility) {
+					snapshotError(w, 409, "remote_conflict")
+					return
 				}
-				if strictRepoJSON(raw, &repo) != nil || repo.FullName != in.FullName || (in.Visibility == "private") != repo.Private {
+				// An unrelated existing repo is never silently adopted. An empty
+				// GitHub repository is also the recovery state after a lost create receipt.
+				branches, branchErr := run(ctx, gh, home, "", "api", "--method", "GET", "/repos/"+in.FullName+"/branches?per_page=1")
+				var rows []json.RawMessage
+				if branchErr != nil || strictRepoJSON(branches, &rows) != nil || rows == nil || len(rows) != 0 {
 					snapshotError(w, 409, "remote_conflict")
 					return
 				}
@@ -179,7 +208,18 @@ func repoPublishHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 			}
 			challenges[token] = o
 			mu.Unlock()
-			historyJSON(w, map[string]any{"schema_version": 1, "full_name": in.FullName, "workspace_id": in.WorkspaceID, "visibility": in.Visibility, "stage": stage, "observation_token": token})
+			workingTree := "unknown"
+			if status, err := run(ctx, git, home, fd, "status", "--porcelain"); err == nil {
+				workingTree = "clean"
+				if len(status) > 0 {
+					workingTree = "changes"
+				}
+			}
+			localHead := "unborn"
+			if head, err := run(ctx, git, home, fd, "rev-parse", "--verify", "HEAD^{commit}"); err == nil && validCloneCommit(head) {
+				localHead = strings.TrimSpace(string(head))
+			}
+			historyJSON(w, map[string]any{"schema_version": 1, "full_name": in.FullName, "workspace_id": in.WorkspaceID, "visibility": in.Visibility, "stage": stage, "observation_token": token, "working_tree": workingTree, "local_head": localHead})
 			return
 		}
 		mu.Lock()
@@ -200,14 +240,8 @@ func repoPublishHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 			}
 			var raw []byte
 			raw, e = run(ctx, gh, home, "", "api", "--method", "POST", "/user/repos", "-f", "name="+strings.Split(in.FullName, "/")[1], "-F", "private="+visibility)
-			if e == nil {
-				var repo struct {
-					FullName string `json:"full_name"`
-					Private  bool   `json:"private"`
-				}
-				if strictRepoJSON(raw, &repo) != nil || repo.FullName != in.FullName || repo.Private != (in.Visibility == "private") {
-					e = errPublishReceipt
-				}
+			if e == nil && !publishRepoMatches(raw, in.FullName, in.Visibility) {
+				e = errPublishReceipt
 			}
 		case "origin":
 			_, e = run(ctx, git, home, fd, "remote", "add", "origin", "https://github.com/"+in.FullName+".git")

@@ -96,7 +96,11 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	// get ample headroom beyond the daemon's onboarding and native I/O budgets.
 	if !stream {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, 60*time.Second)
+		ceiling := 60 * time.Second
+		if r.URL.Path == "/api/v1/workspaces/github/publish" && r.Method == http.MethodPost {
+			ceiling = 46 * time.Minute
+		}
+		ctx, cancel = context.WithTimeout(ctx, ceiling)
 		defer cancel()
 	}
 	// A zero-length POST must be sent without chunked framing: the daemon

@@ -142,6 +142,7 @@ export function AccountSettings({
 }) {
   const theme = useThemeChoice();
   const state = states[nativeState ?? "unknown"];
+  const [disconnectNotice, setDisconnectNotice] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), []);
   return (
@@ -203,7 +204,18 @@ export function AccountSettings({
           uloskirjautuminen ei poista GitHub-valtuutusta.
         </p>
         {csrf && nativeState === "connected" ? (
-          <NativeDisconnect csrf={csrf} onDisconnected={onDisconnect} />
+          <NativeDisconnect
+            csrf={csrf}
+            onDisconnected={() => {
+              setDisconnectNotice(true);
+              onDisconnect?.();
+            }}
+          />
+        ) : null}
+        {disconnectNotice && nativeState !== "connected" ? (
+          <p role="status">
+            Paikallinen gh-valtuutus poistettu. GitHubin OAuth-lupaa ei peruttu.
+          </p>
         ) : null}
       </section>
       <section

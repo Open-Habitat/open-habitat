@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/maintainer/native-agent-host/internal/core"
+	"github.com/maintainer/native-agent-host/internal/nativegh"
 	"github.com/maintainer/native-agent-host/internal/transport"
 )
 
@@ -26,8 +27,11 @@ func ServeHandoff(ctx context.Context, listener *net.UnixListener, cfg transport
 
 // ServeHTTP accepts a pre-opened per-user listener and mounts internal handoff
 // alongside future daemon workspace routes on a shared HTTP/1.1 ServeMux.
-func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Config, consume transport.Consumer, nativeStatus func(context.Context) string, mux *http.ServeMux, runtime *core.PiRuntimeConfig) error {
-	server, err := transport.NewServer(cfg, consume)
+func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Config, adapter *nativegh.Adapter, mux *http.ServeMux, runtime *core.PiRuntimeConfig) error {
+	if adapter == nil {
+		return errors.New("native credential adapter unavailable")
+	}
+	server, err := transport.NewServer(cfg, adapter.Consumer())
 	if err != nil {
 		return err
 	}
@@ -60,13 +64,13 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(RepoObservePath, RepoObserveHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspacePath, WorkspaceHandler(cfg, server.TrustedPeer))
 	mux.Handle(RepoPublishPath, RepoPublishHandler(cfg, server.TrustedPeer))
-	mux.Handle(RepoDisconnectPath, RepoDisconnectHandler(cfg, server.TrustedPeer))
+	mux.Handle(RepoDisconnectPath, RepoDisconnectHandler(cfg, server.TrustedPeer, adapter))
 	mux.Handle("/api/v1/onboarding/pi/attempt", PiAttemptHandler(cfg, server.TrustedPeer, pi))
 	journal := newEventJournal()
 	controller := newConversationController(ctx, cfg, runtime, server.TrustedPeer, piStatus)
 	controller.journal = journal
 	go watchNativeHistory(ctx, cfg, journal, nil)
-	mux.Handle(SnapshotPath, snapshotHandlerWithController(cfg, server.TrustedPeer, Discover, nativeSessions, cfg.Home, nativeStatus, journal, controller))
+	mux.Handle(SnapshotPath, snapshotHandlerWithController(cfg, server.TrustedPeer, Discover, nativeSessions, cfg.Home, adapter.Status, journal, controller))
 	mux.Handle("/api/v1/events", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		journal.stream(w, r, func() bool {
 			return server.TrustedPeer(r)

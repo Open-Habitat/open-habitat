@@ -34,6 +34,7 @@ func TestPublishStagesAndDenials(t *testing.T) {
 	}
 	var remote bool
 	var created bool
+	var nonEmpty bool
 	var calls []string
 	fail := ""
 	run := func(ctx context.Context, program, home, fd string, args ...string) ([]byte, error) {
@@ -42,6 +43,12 @@ func TestPublishStagesAndDenials(t *testing.T) {
 		if program == "gh" {
 			if cmd == "api --method GET /user" {
 				return []byte(`{"id":` + cfg.Subject + `,"login":"owner"}`), nil
+			}
+			if strings.Contains(cmd, "/branches?") {
+				if nonEmpty {
+					return []byte(`[{"name":"main"}]`), nil
+				}
+				return []byte(`[]`), nil
 			}
 			if strings.Contains(cmd, "/repos/") {
 				if created {
@@ -54,6 +61,12 @@ func TestPublishStagesAndDenials(t *testing.T) {
 			}
 			created = true
 			return []byte(`{"full_name":"owner/project","private":true}`), nil
+		}
+		if cmd == "status --porcelain" {
+			return []byte(""), nil
+		}
+		if strings.HasPrefix(cmd, "rev-parse --verify") {
+			return nil, os.ErrNotExist
 		}
 		if strings.Contains(cmd, "remote get-url") {
 			if remote {
@@ -98,6 +111,13 @@ func TestPublishStagesAndDenials(t *testing.T) {
 		return w.Code, v
 	}
 	for _, stage := range []string{"create", "origin", "push"} {
+		if stage == "origin" {
+			nonEmpty = true
+			if code, _ := send("GET", nil); code != 409 {
+				t.Fatalf("unrelated existing repository admitted: %d", code)
+			}
+			nonEmpty = false
+		}
 		status, v := send("GET", nil)
 		if status != 200 || v["stage"] != stage {
 			t.Fatalf("observation %s %d %v", stage, status, v)
@@ -115,11 +135,17 @@ func TestPublishStagesAndDenials(t *testing.T) {
 		}
 		body["observation_token"] = token
 		fail = stage
-		if s, _ := send("POST", body); s != 409 { t.Fatalf("%s failure should be uncertain: %d",stage,s) }
-		if s, _ := send("POST", body); s != 409 { t.Fatalf("%s failed mutation replay: %d",stage,s) }
+		if s, _ := send("POST", body); s != 409 {
+			t.Fatalf("%s failure should be uncertain: %d", stage, s)
+		}
+		if s, _ := send("POST", body); s != 409 {
+			t.Fatalf("%s failed mutation replay: %d", stage, s)
+		}
 		fail = ""
 		status, v = send("GET", nil)
-		if status != 200 || v["stage"] != stage { t.Fatalf("%s fresh observation: %d %v",stage,status,v) }
+		if status != 200 || v["stage"] != stage {
+			t.Fatalf("%s fresh observation: %d %v", stage, status, v)
+		}
 		body["observation_token"] = v["observation_token"]
 		if s, _ := send("POST", body); s != 200 {
 			t.Fatalf("%s: %d", stage, s)

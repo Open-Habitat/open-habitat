@@ -37,7 +37,7 @@ async function settings(page: Page) {
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByRole("heading", { name: "Asetukset" })).toBeFocused();
 }
-test("@account-settings verified native state, route return and honest disconnect limit", async ({
+test("@account-settings verified native state, route return and explicit disconnect", async ({
   page,
 }) => {
   await state(page, "connected");
@@ -60,9 +60,14 @@ test("@account-settings verified native state, route return and honest disconnec
     page.locator("#main").getByText("Yhdistetty", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText(/Yhteyttä ei voi vielä katkaista täällä/),
+    page.getByText(/Selaimesta uloskirjautuminen ei poista GitHub-valtuutusta/),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: /Katkaise/ })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Tarkista katkaisu" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Katkaise paikallinen GitHub-yhteys" }),
+  ).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Tili" })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Yhteydet tällä palvelimella" }),
