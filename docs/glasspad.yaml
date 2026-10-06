@@ -82,3 +82,6 @@ groups:
       - slug: decisions/adr-0013-service-logging
         title: ADR 0013 — Service logging
         desc: Attempt IDs cross services, logs are read along the Unix user boundary, actors are verified identities only.
+      - slug: decisions/adr-0014-open-test-admission
+        title: ADR 0014 — Open test admission
+        desc: The disposable test installation accepts any verified GitHub identity without Cloudflare Access.

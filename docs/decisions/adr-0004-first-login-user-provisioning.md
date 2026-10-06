@@ -29,13 +29,14 @@ GitHub's authenticated user response. The broker normally checks that ID against
 root-owned operator-managed allowlist and binds it to exactly one local UID.
 For the disposable test installation only, an explicit root-owned broker
 `admission: "any"` mode accepts any authenticated GitHub numeric ID without
-an allowlist entry. Fleetrepo enables this mode only after the gateway's signed
-Cloudflare Access assertion verification has been enabled and a missing assertion
-has been denied on the live forwarded origin. Cloudflare Access is the email
-admission authority in that mode; the broker still trusts only its fixed gateway
-UID as caller and cannot independently attest the remote person's email. This
-is not a production admission design. No runtime check couples the two configs:
-installation ordering and live verification are the operator's responsibility.
+an allowlist entry. It was first enabled behind signed Cloudflare Access
+assertion verification and an email gate. [ADR 0014](adr-0014-open-test-admission.md)
+later removed that gate for the test installation, leaving GitHub sign-in as its
+admission step. Neither policy is a production admission design. The broker
+still trusts only its fixed gateway UID as caller; it cannot independently
+attest the remote person's email. No runtime check couples broker admission
+to a gateway or edge policy: installation ordering and live verification are
+the operator's responsibility.
 The browser cannot choose a Unix account. A GitHub login name is only an initial
 Unix-name candidate: the broker lowercases it, or uses `gh` plus the stable
 numeric ID when it is not a valid Unix name. Name collisions still refuse

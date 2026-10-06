@@ -21,3 +21,4 @@ and implementation work belong in issues.
 | [ADR 0011](adr-0011-gateway-owned-server-administration.md) | The gateway owns the server name and browser roles; the broker retains admission |
 | [ADR 0012](adr-0012-per-user-storage-quotas.md) | Per-user storage limits are Linux quotas over the whole home, set through the broker and shown by the gateway |
 | [ADR 0013](adr-0013-service-logging.md) | Consistent, readable service logs on stderr/journald, using existing IDs when available |
+| [ADR 0014](adr-0014-open-test-admission.md) | The disposable test installation admits any verified GitHub account without Cloudflare Access |
