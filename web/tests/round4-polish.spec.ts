@@ -22,7 +22,7 @@ test("@workspace-slice home labels history honestly and route focus keeps keyboa
   await expect(links.first()).toBeVisible();
   for (const link of await links.all()) {
     if ((await link.getAttribute("href"))?.startsWith("/agents/"))
-      await expect(link).toContainText("Vain luettavissa");
+      await expect(link).toContainText("Vain luku");
   }
   // Mouse navigation moves screen-reader focus, but does not draw the UA's black frame.
   await expect
@@ -47,7 +47,7 @@ test("@workspace-slice home labels history honestly and route focus keeps keyboa
   expect(
     await longTitle.evaluate((el) => el.scrollWidth <= el.clientWidth),
   ).toBe(true);
-  const readOnly = links.filter({ hasText: "Vain luettavissa" }).first();
+  const readOnly = links.filter({ hasText: "Vain luku" }).first();
   if (await readOnly.count()) {
     await readOnly.click();
     await expect(page).toHaveURL(/\/agents\//);
