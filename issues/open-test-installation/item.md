@@ -49,6 +49,6 @@ behind a verified Access assertion):
 
 ## Acceptance Criteria
 
-- [ ] The test installation's address opens the GitHub sign-in without a Cloudflare email step.
-- [ ] Any GitHub account can sign in and gets its own Unix account; existing accounts are unaffected.
-- [ ] The decision and its scope (test installation only) are recorded in the ADR log.
+- [x] The test installation's address opens the GitHub sign-in without a Cloudflare email step.
+- [x] Any GitHub account can sign in and gets its own Unix account; existing accounts are unaffected. Configuration and existing-account routing verified; a fresh full GitHub login was not exercised (see result.md).
+- [x] The decision and its scope (test installation only) are recorded in the ADR log.
