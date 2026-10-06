@@ -103,11 +103,12 @@ type Broker interface {
 	Exchange(context.Context, BrokerRequest) (BrokerReply, error)
 }
 type AuthOptions struct {
-	Broker   Broker
-	Provider Provider
-	Sink     TokenSink
-	Now      func() time.Time
-	Random   io.Reader
+	Broker      Broker
+	SessionFile string // gateway-private persistent state; empty only in synthetic tests
+	Provider    Provider
+	Sink        TokenSink
+	Now         func() time.Time
+	Random      io.Reader
 	// Log receives only fixed event fields and server-generated attempt IDs.
 	// Production defaults to JSONL on stderr.
 	Log             *slog.Logger
@@ -120,11 +121,12 @@ type pending struct {
 	serial                                            uint64
 }
 type session struct {
-	identity       Identity
-	profile        AccountProfile
-	accessEmail    string
-	csrf           string
-	idle, absolute time.Time
+	identity    Identity       `json:"identity"`
+	profile     AccountProfile `json:"profile"`
+	accessEmail string         `json:"access_email"`
+	csrf        string         `json:"csrf"`
+	idle        time.Time      `json:"idle"`
+	absolute    time.Time      `json:"absolute"`
 }
 type Auth struct {
 	cfg             OAuthConfig
@@ -139,6 +141,7 @@ type Auth struct {
 	serial          uint64
 	revoked         map[string]uint64
 	sessions        map[string]session
+	sessionFile     string
 	admission       map[string]admission
 	unmatchedLog    admission // process-wide budget; never keyed by request input
 	snapshotDial    func(context.Context, string) (net.Conn, error)
@@ -185,7 +188,11 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Auth{cfg: cfg, provider: opts.Provider, sink: opts.Sink, broker: opts.Broker, now: opts.Now, random: opts.Random, log: opts.Log, pending: map[string]pending{}, sessions: map[string]session{}, admission: map[string]admission{}, snapshotDial: opts.SnapshotDial, snapshotPeerUID: opts.SnapshotPeerUID, access: access}, nil
+	a := &Auth{sessionFile: opts.SessionFile, cfg: cfg, provider: opts.Provider, sink: opts.Sink, broker: opts.Broker, now: opts.Now, random: opts.Random, log: opts.Log, pending: map[string]pending{}, sessions: map[string]session{}, admission: map[string]admission{}, snapshotDial: opts.SnapshotDial, snapshotPeerUID: opts.SnapshotPeerUID, access: access}
+	if err := a.loadSessions(); err != nil {
+		return nil, errors.New("session store unavailable: " + err.Error())
+	}
+	return a, nil
 }
 func (a *Auth) secret() (string, error) {
 	b := make([]byte, 32)
@@ -564,17 +571,24 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := a.now()
-	for k, v := range a.sessions {
-		if !now.Before(v.idle) || !now.Before(v.absolute) {
-			delete(a.sessions, k)
+	err = a.changedSessions(func(next map[string]session) {
+		for k, v := range next {
+			if !now.Before(v.idle) || !now.Before(v.absolute) {
+				delete(next, k)
+			}
 		}
-	}
-	if old, err := r.Cookie(cookieName); err == nil {
-		delete(a.sessions, old.Value)
-	}
-	a.sessions[sid] = session{identity: target, profile: profile, accessEmail: accessEmail(r), csrf: csrf, idle: now.Add(8 * time.Hour), absolute: now.Add(24 * time.Hour)}
+		if old, e := r.Cookie(cookieName); e == nil {
+			delete(next, a.cookieKey(old.Value))
+		}
+		next[a.sessionKey(sid)] = session{identity: target, profile: profile, accessEmail: accessEmail(r), csrf: csrf, idle: now.Add(sessionIdle), absolute: now.Add(sessionAbsolute)}
+	})
 	a.mu.Unlock()
-	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: sid, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})
+	if err != nil {
+		a.authEvent(attempt, "rejected", "session_failed")
+		a.callbackFailure(w, r, 503, "authentication_required")
+		return
+	}
+	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: sid, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, Expires: now.Add(sessionAbsolute)})
 	a.authEvent(attempt, "accepted", "none")
 	http.Redirect(w, r, p.returnTo, http.StatusSeeOther)
 }

@@ -68,15 +68,20 @@ func (a *Auth) updateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	c, _ := r.Cookie(cookieName)
 	a.mu.Lock()
-	current, exists := a.sessions[c.Value]
+	key := a.cookieKey(c.Value)
+	current, exists := a.sessions[key]
 	if !exists || current.identity != s.identity || current.csrf != s.csrf {
 		a.mu.Unlock()
 		safe(w, 401, "authentication_required")
 		return
 	}
 	current.profile.Name, current.profile.Email = name, email
-	a.sessions[c.Value] = current
+	err := a.changedSessions(func(next map[string]session) { next[key] = current })
 	a.mu.Unlock()
+	if err != nil {
+		safe(w, 503, "authentication_required")
+		return
+	}
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusNoContent)
 }

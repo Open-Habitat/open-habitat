@@ -29,8 +29,7 @@ palvelujen kirjautumisia.
 
 Kirjautuminen säilyy tavallisessa käytössä sekä gatewayn uudelleenkäynnistysten
 ja päivitysten yli. Käyttäjää ei pyydetä kirjautumaan päivittäin uudelleen.
-Nykyinen muistissa pidettävä, määräajoin vanheneva istunto ei vielä toteuta tätä;
-ratkaisu suunnitellaan [omassa tehtävässään](../issues/design-durable-sign-in/item.md).
+Istunto säilyy selaimen sulkemisen jälkeenkin: käyttämättömyyden raja on 90 päivää ja ehdoton raja yksi vuosi kirjautumisesta. Uloskirjautuminen tai ylläpitäjän istuntojen peruutus päättää sen. Jos palvelimen yksityinen istuntotiedosto katoaa tai ei ole luettavissa, käyttäjät kirjautuvat uudelleen.
 Käyttäjän poistaminen, uloskirjautumisen kokonaisuus ja pääsyn peruuttaminen
 suunnitellaan erikseen myöhemmin. Niitä ei nyt laajenneta nykyisistä
 uloskirjautumis- ja operaattoritoiminnoista.

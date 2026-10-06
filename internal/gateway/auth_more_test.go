@@ -26,7 +26,7 @@ func TestOAuthSessionAdmissionAndSweep(t *testing.T) {
 	if callback(h, state, c).Code != 303 {
 		t.Fatal("login")
 	}
-	*clock = clock.Add(25 * time.Hour)
+	*clock = clock.Add(sessionIdle + time.Hour)
 	state, c = start(t, h)
 	if callback(h, state, c).Code != 303 {
 		t.Fatal("second login")

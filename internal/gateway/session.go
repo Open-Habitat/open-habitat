@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"math"
 	"net/http"
-	"time"
 )
 
 // authenticated resolves the cookie locally. The broker authorizes the binding at
@@ -17,23 +16,32 @@ func (a *Auth) authenticated(r *http.Request) (session, bool) {
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	s, ok := a.sessions[c.Value]
+	key := a.cookieKey(c.Value)
+	if !a.sessionStoreHealthy() && a.sessionFile != "" {
+		a.sessions = map[string]session{}
+		return session{}, false
+	}
+	s, ok := a.sessions[key]
 	if !ok {
 		return session{}, false
 	}
 	now := a.now()
 	if !now.Before(s.idle) || !now.Before(s.absolute) {
-		delete(a.sessions, c.Value)
+		_ = a.changedSessions(func(next map[string]session) { delete(next, key) })
 		return session{}, false
 	}
 	if s.accessEmail != accessEmail(r) {
 		return session{}, false
 	}
-	s.idle = now.Add(8 * time.Hour)
-	if s.idle.After(s.absolute) {
-		s.idle = s.absolute
+	if s.idle.Sub(now) <= sessionIdle-renewalInterval {
+		s.idle = now.Add(sessionIdle)
+		if s.idle.After(s.absolute) {
+			s.idle = s.absolute
+		}
+		if a.changedSessions(func(next map[string]session) { next[key] = s }) != nil {
+			return session{}, false
+		}
 	}
-	a.sessions[c.Value] = s
 	return s, true
 }
 func brokerIdentity(id string, reply BrokerReply) (Identity, bool) {
@@ -90,8 +98,12 @@ func (a *Auth) logout(w http.ResponseWriter, r *http.Request) {
 	}
 	c, _ := r.Cookie(cookieName)
 	a.mu.Lock()
-	delete(a.sessions, c.Value)
+	err := a.changedSessions(func(next map[string]session) { delete(next, a.cookieKey(c.Value)) })
 	a.mu.Unlock()
+	if err != nil {
+		safe(w, 503, "authentication_required")
+		return
+	}
 	http.SetCookie(w, &http.Cookie{Name: cookieName, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: -1})
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusNoContent)

@@ -93,10 +93,7 @@ sockets and files.
 
 ## Browser sessions
 
-Sessions live in gateway memory. The browser carries a random session secret
-in a Secure, HttpOnly, SameSite cookie. Sessions expire after eight idle hours
-or 24 hours in total; restarting the gateway loses them. Each request resolves
-the session locally, without another broker call. Writes also require the
+The gateway keeps hashed browser secrets and session records in its private persistent state, outside the release and `/run`. The browser carries the opaque random secret in a persistent Secure, HttpOnly, SameSite cookie, expiring no later than one year after sign-in. The gateway denies a cookie without a valid record; missing or unreadable state requires everyone to sign in again. Sessions expire after 90 days without use or one year from sign-in, whichever comes first. Active sessions renew their idle deadline at most once a day, without extending the absolute deadline. Each request resolves the session locally, without another broker call. Writes also require the
 session's CSRF secret and the configured origin, tying them to the signed-in
 application.
 

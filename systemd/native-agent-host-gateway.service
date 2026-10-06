@@ -13,6 +13,8 @@ ProtectHome=yes
 PrivateTmp=yes
 PrivateDevices=yes
 UMask=0077
+StateDirectory=native-agent-host-gateway
+StateDirectoryMode=0700
 Restart=on-failure
 
 [Install]

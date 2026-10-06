@@ -32,14 +32,18 @@ func (a *Auth) RevokeSubject(ctx context.Context, subject string) error {
 	if a.revoked == nil {
 		a.revoked = make(map[string]uint64)
 	}
-	a.revoked[subject] = a.serial
 	removed := 0
-	for key, s := range a.sessions {
-		if s.identity.Subject == subject {
-			delete(a.sessions, key)
-			removed++
+	if err := a.changedSessions(func(next map[string]session) {
+		for key, s := range next {
+			if s.identity.Subject == subject {
+				delete(next, key)
+				removed++
+			}
 		}
+	}); err != nil {
+		return errors.New("session store unavailable")
 	}
+	a.revoked[subject] = a.serial
 	a.log.Info("subject_revoked", "subject", subject, "sessions_removed", removed)
 	return nil
 }

@@ -205,7 +205,7 @@ func TestOAuthSession(t *testing.T) {
 		state, c = start(t, h)
 		w = callback(h, state, c)
 		sid = w.Result().Cookies()[1]
-		*now = now.Add(8 * time.Hour)
+		*now = now.Add(sessionIdle)
 		if request(h, "GET", "/auth/session", sid).Code != 401 {
 			t.Fatal("idle expiry")
 		}

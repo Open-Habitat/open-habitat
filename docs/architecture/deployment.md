@@ -46,8 +46,7 @@ group. Native history survives, but an active turn is interrupted.
 User homes hold workspaces, Pi histories and configuration, and native `gh`
 credentials. Root-owned broker state holds admission policy, account bindings
 and the journal of provisioning operations. These survive service restarts and
-release replacement. Sockets and in-memory session state do not provide
-persistent storage.
+release replacement. Gateway-private state at `/var/lib/native-agent-host-gateway/sessions.json` holds browser sessions and survives release replacement and reboot. The gateway account alone can read it; sockets and pending login flows in `/run` or memory do not persist.
 
 The gateway loads its installation configuration at startup; each daemon loads
 the identity binding written by the broker. The broker reads its configuration
@@ -71,9 +70,7 @@ configuration and restarts affected services. A Pi update selects a new pinned
 runtime and takes effect when daemons restart. User files and credentials
 remain outside both releases.
 
-Restarting the gateway currently loses browser sessions. The
-[durable sign-in design](../../issues/design-durable-sign-in/item.md) is
-exploring how to preserve login across restarts. Restarting daemons also
+Restarting the gateway preserves browser sessions when its private state remains available. The installation must apply the gateway StateDirectory unit change before the upgrade starts the new binary; the directory must not be removed when replacing a release. Restarting daemons also
 interrupts active Pi work, so replacing release files alone does not describe
 the effect of an upgrade on users.
 
