@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestPublishStagesAndDenials(t *testing.T) {
@@ -35,6 +36,7 @@ func TestPublishStagesAndDenials(t *testing.T) {
 	var remote bool
 	var created bool
 	var nonEmpty bool
+	var alternatePushURL bool
 	var calls []string
 	fail := ""
 	run := func(ctx context.Context, program, home, fd string, args ...string) ([]byte, error) {
@@ -67,6 +69,12 @@ func TestPublishStagesAndDenials(t *testing.T) {
 		}
 		if strings.HasPrefix(cmd, "rev-parse --verify") {
 			return nil, os.ErrNotExist
+		}
+		if strings.Contains(cmd, "remote get-url --push") {
+			if alternatePushURL {
+				return []byte("https://github.com/owner/other.git\n"), nil
+			}
+			return []byte("https://github.com/owner/project.git\n"), nil
 		}
 		if strings.Contains(cmd, "remote get-url") {
 			if remote {
@@ -111,6 +119,13 @@ func TestPublishStagesAndDenials(t *testing.T) {
 		return w.Code, v
 	}
 	for _, stage := range []string{"create", "origin", "push"} {
+		if stage == "push" {
+			alternatePushURL = true
+			if code, _ := send("GET", nil); code != 409 {
+				t.Fatalf("alternate push destination admitted: %d", code)
+			}
+			alternatePushURL = false
+		}
 		if stage == "origin" {
 			nonEmpty = true
 			if code, _ := send("GET", nil); code != 409 {
@@ -160,5 +175,28 @@ func TestPublishStagesAndDenials(t *testing.T) {
 	denied.ServeHTTP(w, r)
 	if w.Code != 403 {
 		t.Fatalf("cross user: %d", w.Code)
+	}
+	slow := repoPublishHandler(cfg, func(*http.Request) bool { return true }, cfg.Home, "gh", "git", func(ctx context.Context, program, home, fd string, args ...string) ([]byte, error) {
+		if program == "gh" && strings.Join(args, " ") == "api --method GET /user" {
+			time.Sleep(120 * time.Millisecond)
+		}
+		return run(ctx, program, home, fd, args...)
+	})
+	srv := httptest.NewUnstartedServer(slow)
+	srv.Config.WriteTimeout = 50 * time.Millisecond
+	srv.Start()
+	defer srv.Close()
+	request, e := http.NewRequest("GET", srv.URL+RepoPublishPath+"?workspace_id="+id+"&full_name=owner%2Fproject&visibility=private", nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+	request.Host = "unix"
+	response, e := srv.Client().Do(request)
+	if e != nil {
+		t.Fatalf("native response lost after short server deadline: %v", e)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != 200 {
+		t.Fatalf("native response after short server deadline: %d", response.StatusCode)
 	}
 }

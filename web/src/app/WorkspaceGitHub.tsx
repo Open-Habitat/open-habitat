@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Workspace } from "./snapshot";
 import { catalog, cloneStream, observe, type Repo } from "./github";
 import { ControlButton } from "../components/ControlElements";
@@ -52,6 +52,15 @@ export function WorkspaceGitHub({
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [filter, setFilter] = useState("");
+  const importAbort = useRef<AbortController | null>(null);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      importAbort.current?.abort();
+    };
+  }, []);
   const fullName = `${owner}/${repository}`;
   const inspect = async (
     id: string,
@@ -124,19 +133,33 @@ export function WorkspaceGitHub({
     if (!csrf || !choice || busy) return;
     setBusy(true);
     setNotice("Tuonti käynnissä…");
+    const controller = new AbortController();
+    importAbort.current = controller;
     try {
-      const before = await observe(choice);
+      const before = await observe(choice, controller.signal);
       if (before.state !== "absent")
         throw new Error("Kohde ei ole vahvistetusti vapaa. Tarkista työtilat.");
-      await cloneStream(choice, csrf, () => {});
-      const after = await observe(choice);
+      await cloneStream(
+        choice,
+        csrf,
+        (frame) => {
+          if (mounted.current && frame.kind === "progress")
+            setNotice(
+              `Tuonti: ${frame.stage}${frame.percent === undefined ? "" : ` ${frame.percent} %`}${frame.received_bytes === undefined ? "" : ` · ${frame.received_bytes} tavua`}`,
+            );
+        },
+        controller.signal,
+      );
+      const after = await observe(choice, controller.signal);
       if (after.state !== "confirmed")
         throw new Error(
           "Tuonnin tulos on epävarma. Tarkista paikallinen Git ennen uutta yritystä.",
         );
+      if (!mounted.current) return;
       setNotice("Repo tuotu työtilaksi.");
       refresh();
     } catch (e) {
+      if (!mounted.current) return;
       setNotice(
         e instanceof Error
           ? e.message
@@ -144,7 +167,8 @@ export function WorkspaceGitHub({
       );
       refresh();
     } finally {
-      setBusy(false);
+      if (importAbort.current === controller) importAbort.current = null;
+      if (mounted.current) setBusy(false);
     }
   };
   const inspectPublish = async () => {

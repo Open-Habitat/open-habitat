@@ -103,9 +103,16 @@ func repoPublishHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 			return
 		}
 		defer cloneWriter.Unlock()
-		ceiling := 55 * time.Second
+		ceiling := 50 * time.Second
 		if r.Method == "POST" {
 			ceiling = 45 * time.Minute
+		}
+		// The daemon socket's default five-second write deadline is too short
+		// for native GitHub and Git operations. Bound this single response to
+		// the same finite native budget instead of changing other routes.
+		if err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(ceiling + 10*time.Second)); err != nil && !errors.Is(err, http.ErrNotSupported) {
+			snapshotError(w, 503, "native_source_unavailable")
+			return
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), ceiling)
 		defer cancel()
@@ -163,6 +170,11 @@ func repoPublishHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 				return
 			}
 			stage = "push"
+			pushURLs, pushErr := run(ctx, git, home, fd, "remote", "get-url", "--push", "--all", "origin")
+			if pushErr != nil || string(pushURLs) != "https://github.com/"+in.FullName+".git\n" {
+				snapshotError(w, 409, "origin_conflict")
+				return
+			}
 			if !verifiedPublishRepo(ctx, run, gh, home, in.FullName, in.Visibility) {
 				snapshotError(w, 409, "remote_conflict")
 				return
@@ -246,6 +258,12 @@ func repoPublishHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 		case "origin":
 			_, e = run(ctx, git, home, fd, "remote", "add", "origin", "https://github.com/"+in.FullName+".git")
 		case "push":
+			// The effective push URL may have changed since the stage probe.
+			pushURLs, pushErr := run(ctx, git, home, fd, "remote", "get-url", "--push", "--all", "origin")
+			if pushErr != nil || string(pushURLs) != "https://github.com/"+in.FullName+".git\n" {
+				snapshotError(w, 409, "origin_conflict")
+				return
+			}
 			// No force, no implicit upstream rewrite. HEAD must be a commit.
 			_, e = run(ctx, git, home, fd, "push", "origin", "HEAD")
 		}
