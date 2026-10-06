@@ -3,7 +3,7 @@ created: 2026-10-05
 updated: 2026-10-06
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 related: ['@decide-logging-policy', '@implement-diagnostic-emitter']
 preparation: ready
@@ -11,6 +11,8 @@ lane: logging
 lane_seq: 2
 collision: [internal/gateway/, internal/provision/, internal/daemon/, internal/transport/, internal/nativegh/, docs/]
 blocked_by: ['@implement-diagnostic-emitter']
+closed: 2026-10-06
+closed_by: claude
 ---
 
 # Cover gateway, broker and daemon operations in logs
