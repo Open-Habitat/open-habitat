@@ -171,11 +171,8 @@ func (a *Auth) commitSessions(next map[string]session) error {
 }
 func (a *Auth) changedSessions(change func(map[string]session)) error {
 	if a.sessionFile != "" && !a.sessionStoreHealthy() {
-		if _, err := os.Lstat(a.sessionFile); !errors.Is(err, os.ErrNotExist) {
-			return errors.New("session store unavailable")
-		}
-		// Losing the file invalidates every previous cookie, including when the
-		// next operation is a login rather than an authenticated request.
+		// An absent or unreadable record invalidates all previous cookies.
+		// A new login can atomically replace it, not restore old memory.
 		a.sessions = map[string]session{}
 	}
 	next := make(map[string]session, len(a.sessions))

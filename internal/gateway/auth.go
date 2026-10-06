@@ -190,7 +190,10 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	}
 	a := &Auth{sessionFile: opts.SessionFile, cfg: cfg, provider: opts.Provider, sink: opts.Sink, broker: opts.Broker, now: opts.Now, random: opts.Random, log: opts.Log, pending: map[string]pending{}, sessions: map[string]session{}, admission: map[string]admission{}, snapshotDial: opts.SnapshotDial, snapshotPeerUID: opts.SnapshotPeerUID, access: access}
 	if err := a.loadSessions(); err != nil {
-		return nil, errors.New("session store unavailable: " + err.Error())
+		// Unusable state cannot authenticate any cookie. Permit a new OAuth
+		// login to replace it, without trusting or copying its old contents.
+		a.log.Warn("session_store_discarded")
+		a.sessions = map[string]session{}
 	}
 	return a, nil
 }

@@ -99,30 +99,52 @@ func TestPersistentSessions(t *testing.T) {
 func TestSessionStoreFailClosed(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "sessions.json")
 	cfg := OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: "https://host.test", CallbackURL: "https://host.test/auth/github/callback"}
-	opts := AuthOptions{Provider: &fakeProvider{}, Sink: &fakeSink{}, Broker: newFakeBroker(), SessionFile: path}
-	if _, e := NewAuth(cfg, opts); e != nil {
-		t.Fatal(e)
-	} // missing store means empty, never accepts cookie
-	if e := os.WriteFile(path, []byte(`{"version":1,"sessions":{}}`), 0600); e != nil {
-		t.Fatal(e)
+	opts := AuthOptions{Provider: &fakeProvider{id: "42", login: "alice", token: "token"}, Sink: &fakeSink{}, Broker: newFakeBroker(), SessionFile: path}
+	newHandler := func() http.Handler {
+		t.Helper()
+		a, e := NewAuth(cfg, opts)
+		if e != nil {
+			t.Fatal(e)
+		}
+		return NewWithAuth("", a)
 	}
+	h := newHandler()
+	state, flow := start(t, h)
+	old := callback(h, state, flow).Result().Cookies()[1]
 	if e := os.Chmod(path, 0644); e != nil {
 		t.Fatal(e)
 	}
-	if _, e := NewAuth(cfg, opts); e == nil {
-		t.Fatal("insecure store accepted")
+	h = newHandler()
+	if request(h, "GET", "/auth/session", old).Code != 401 {
+		t.Fatal("insecure store authenticated old cookie")
 	}
-	if e := os.Chmod(path, 0600); e != nil {
-		t.Fatal(e)
+	state, flow = start(t, h)
+	fresh := callback(h, state, flow)
+	if fresh.Code != 303 {
+		t.Fatalf("new login cannot replace unreadable store: %d", fresh.Code)
 	}
-	if _, e := NewAuth(cfg, opts); e != nil {
-		t.Fatal(e)
+	info, e := os.Stat(path)
+	if e != nil || info.Mode().Perm() != 0600 {
+		t.Fatal("replacement not private", e)
+	}
+	h = newHandler()
+	if request(h, "GET", "/auth/session", old).Code != 401 {
+		t.Fatal("old cookie revived after replacement")
+	}
+	current := fresh.Result().Cookies()[1]
+	if request(h, "GET", "/auth/session", current).Code != 200 {
+		t.Fatal("new cookie not durable")
 	}
 	if e := os.WriteFile(path, []byte(`{"version":1,"sessions":{"invalid":{}}}`), 0600); e != nil {
 		t.Fatal(e)
 	}
-	if _, e := NewAuth(cfg, opts); e == nil {
-		t.Fatal("invalid records accepted")
+	h = newHandler()
+	if request(h, "GET", "/auth/session", current).Code != 401 {
+		t.Fatal("corrupt store authenticated old cookie")
+	}
+	state, flow = start(t, h)
+	if callback(h, state, flow).Code != 303 {
+		t.Fatal("new login cannot replace corrupt store")
 	}
 }
 
