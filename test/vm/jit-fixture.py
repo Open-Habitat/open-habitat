@@ -71,10 +71,8 @@ if login:
     add('/etc/native-agent-host/tls.key',(run/'tls.key').read_bytes(),'0600')
     add('/etc/native-agent-host/fixture-ca.crt',(run/'tls.crt').read_bytes())
     add('/etc/native-agent-host/gateway.json',json.dumps({'component':'gateway','listen':'127.0.0.1:8443','tls_cert':'/etc/native-agent-host/tls.crt','tls_key':'/etc/native-agent-host/tls.key','gateway_uid':21003,'oauth':{'client_id':'fixture-client','client_secret':'fixture-secret','callback_url':'https://host.fixture:8443/auth/github/callback','origin':'https://host.fixture:8443'}}))
-    gateway_socket = len(sys.argv)==4 and sys.argv[3]=='broker-crash'
-    if gateway_socket:
-        add('/etc/systemd/system/product-gateway.socket','[Socket]\nListenStream=/run/native-agent-host/revoke.sock\nSocketMode=0600\nSocketUser=root\nSocketGroup=root\nFileDescriptorName=revoke\nService=product-gateway.service\n')
-    add('/etc/systemd/system/product-gateway.service','[Service]\n'+('Sockets=product-gateway.socket\n' if gateway_socket else '')+'User=native-agent-host-gateway\nGroup=native-agent-host-gateway\nEnvironment=SSL_CERT_FILE=/etc/native-agent-host/fixture-ca.crt\nExecStart=/opt/native-agent-host/current/native-agent-host gateway exec --config /etc/native-agent-host/gateway.json\nNoNewPrivileges=yes\nUMask=0077\n')
+    add('/etc/systemd/system/product-gateway.socket','[Socket]\nListenStream=/run/native-agent-host/revoke.sock\nSocketMode=0600\nSocketUser=root\nSocketGroup=root\nFileDescriptorName=revoke\nService=product-gateway.service\n')
+    add('/etc/systemd/system/product-gateway.service','[Service]\nSockets=product-gateway.socket\nUser=native-agent-host-gateway\nGroup=native-agent-host-gateway\nEnvironment=SSL_CERT_FILE=/etc/native-agent-host/fixture-ca.crt\nExecStart=/opt/native-agent-host/current/native-agent-host gateway exec --config /etc/native-agent-host/gateway.json\nNoNewPrivileges=yes\nUMask=0077\n')
     for script, target in [('fake-provider.py','product-fake-provider'),('fake-gh.py','gh'),('fake-git.py','git')]:
         data=(repo/'test/vm'/script).read_text()
         data=data.replace('agent-a','guestone').replace('agent-b','guesttwo').replace('agent-c','guestthree').replace('agent_a','guestone').replace('agent_b','guesttwo').replace('agent_c','guestthree').replace('31003','100000003').replace('21001','21032').replace('21002','21033').replace('31001','100000001').replace('31002','100000002')
