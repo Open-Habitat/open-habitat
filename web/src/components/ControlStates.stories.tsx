@@ -1,7 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, RefreshIconButton, TextField } from "./Primitives";
 import { ControlButton, LinkRow } from "./ControlElements";
-import { Menu, Disclosure } from "./Overlays";
+import { Disclosure, Menu } from "./Overlays";
+import {
+  Button,
+  Checkbox,
+  RadioGroup,
+  RefreshIconButton,
+  TextArea,
+  TextField,
+} from "./Primitives";
 
 const meta = {
   title: "Production/Interaction states",
@@ -97,7 +104,82 @@ function Example({ theme }: { theme: "light" | "dark" }) {
       <Disclosure label="Lisätiedot" expanded={false} onToggle={noop}>
         Sisältö
       </Disclosure>
-      <TextField label="Nimi" value="Esimerkki" onChange={noop} />
+      <section
+        aria-label="Kenttien tilamatriisi"
+        style={{ display: "grid", gap: 12, maxWidth: 480 }}
+      >
+        <TextField label="Nimi" value="Esimerkki" onChange={noop} />
+        <TextField
+          label="Valittu kenttä"
+          value="Kokeile kohdistusta"
+          onChange={noop}
+          required
+        />
+        <TextField
+          label="Virheellinen kenttä"
+          value="Virhe"
+          error="Tarkista arvo"
+          onChange={noop}
+        />
+        <TextField
+          label="Estetty kenttä"
+          value="Ei yhteyttä"
+          availability={{ state: "disabled", reason: "Ei yhteyttä" }}
+          onChange={noop}
+        />
+        <TextField
+          label="Vain luku"
+          value="Natiiviarvo"
+          availability={{ state: "read_only", reason: "Ei muokattavissa" }}
+          onChange={noop}
+        />
+        <TextArea label="Viesti" value="Luonnos" onChange={noop} />
+        <Checkbox label="Valittu" checked onChange={noop} />
+        <Checkbox label="Valitsematon" checked={false} onChange={noop} />
+        <Checkbox
+          label="Estetty"
+          checked={false}
+          onChange={noop}
+          availability={{ state: "disabled", reason: "Ei yhteyttä" }}
+        />
+        <RadioGroup
+          label="Valinta"
+          value="one"
+          onChange={noop}
+          options={[
+            { value: "one", label: "Valittu" },
+            { value: "two", label: "Valitsematon" },
+            {
+              value: "three",
+              label: "Estetty",
+              availability: { state: "disabled", reason: "Ei yhteyttä" },
+            },
+          ]}
+        />
+      </section>
+      <section
+        aria-label="Painikkeiden esto ja odotus"
+        style={{ display: "flex", flexWrap: "wrap", gap: 12 }}
+      >
+        {(
+          ["primary", "secondary", "quiet", "danger", "danger-subtle"] as const
+        ).map((variant) => (
+          <div key={variant} style={{ display: "grid", gap: 8 }}>
+            <Button
+              label={`${variant} estetty`}
+              variant={variant}
+              availability={{ state: "disabled", reason: "Ei yhteyttä" }}
+              onPress={noop}
+            />
+            <Button
+              label={`${variant} odottaa`}
+              variant={variant}
+              pending
+              onPress={noop}
+            />
+          </div>
+        ))}
+      </section>
     </div>
   );
 }

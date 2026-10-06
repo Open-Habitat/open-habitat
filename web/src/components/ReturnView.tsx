@@ -1,3 +1,7 @@
+import {
+  type ConversationStore,
+  useConversationMetadata,
+} from "../app/conversationStore";
 import { agentPresentation } from "./agentPresentation";
 import { LinkRow } from "./ControlElements";
 import { Icon } from "./Icon";
@@ -12,10 +16,18 @@ export interface ReturnConversation {
   browserSession: boolean;
   /** Only positively observed native process states may show a running mark. */
   process: string;
+  command?: string;
+  attention?: "new" | "seen";
+  pendingQuestion?: boolean;
 }
 
-function isRunning(conversation: ReturnConversation) {
-  return agentPresentation({ process: conversation.process }).running;
+function presentation(conversation: ReturnConversation) {
+  return agentPresentation({
+    process: conversation.process,
+    command: conversation.command,
+    attention: conversation.attention,
+    pendingQuestion: conversation.pendingQuestion,
+  });
 }
 
 function ConversationGroup({
@@ -37,7 +49,7 @@ function ConversationGroup({
                   <span
                     className="ah-return-indicator"
                     aria-hidden="true"
-                    data-running={isRunning(conversation)}
+                    data-running={presentation(conversation).running}
                   />
                 }
                 trailing={<Icon name="forward" className="ah-return-arrow" />}
@@ -46,7 +58,7 @@ function ConversationGroup({
                   <span className="ah-return-title">{conversation.title}</span>
                   <span className="ah-return-meta">
                     <span className="ah-mono">{conversation.workspace}</span>
-                    {isRunning(conversation) ? (
+                    {presentation(conversation).running ? (
                       <StatusMark
                         label={
                           conversation.process === "terminal_observed_live"
@@ -59,12 +71,16 @@ function ConversationGroup({
                       />
                     ) : null}
                     <StatusMark
-                      label={
-                        agentPresentation({ process: conversation.process })
-                          .activityLabel
+                      label={presentation(conversation).activityLabel}
+                      kind={
+                        presentation(conversation).activity === "working"
+                          ? "working"
+                          : "unknown"
                       }
-                      kind="unknown"
                     />
+                    {presentation(conversation).attentionLabel ? (
+                      <StatusMark label="Uusi" tone="warning" />
+                    ) : null}
                     {!conversation.browserSession ? (
                       <span>Vain luettavissa</span>
                     ) : null}
@@ -81,12 +97,47 @@ function ConversationGroup({
 
 export function ReturnView({
   conversations,
+  store,
 }: {
   conversations: ReturnConversation[];
+  store?: ConversationStore;
 }) {
-  const running = conversations.filter(isRunning);
-  const others = conversations.filter(
-    (conversation) => !isRunning(conversation),
+  const metadata = useConversationMetadata(store);
+  const decorated = conversations.map((conversation) => ({
+    ...conversation,
+    command: metadata.staleStatuses.has(conversation.id)
+      ? undefined
+      : (metadata.statuses.get(conversation.id)?.state ?? conversation.command),
+    pendingQuestion:
+      !metadata.staleStatuses.has(conversation.id) &&
+      (!!metadata.statuses.get(conversation.id)?.pending_question ||
+        conversation.pendingQuestion),
+    attention:
+      metadata.attention.get(conversation.id) ?? conversation.attention,
+  }));
+  const ordered = [...decorated]
+    .sort(
+      (a, b) =>
+        Number(b.attention === "new") - Number(a.attention === "new") ||
+        Number(presentation(b).activity === "working") -
+          Number(presentation(a).activity === "working"),
+    )
+    .slice(0, 3);
+  const attention = ordered.filter(
+    (conversation) => conversation.attention === "new",
+  );
+  const remaining = ordered.filter(
+    (conversation) => conversation.attention !== "new",
+  );
+  const running = remaining.filter(
+    (conversation) => presentation(conversation).activity === "working",
+  );
+  const waiting = remaining.filter(
+    (conversation) => presentation(conversation).activity === "waiting",
+  );
+  const others = remaining.filter(
+    (conversation) =>
+      !["working", "waiting"].includes(presentation(conversation).activity),
   );
   return (
     <section
@@ -103,8 +154,17 @@ export function ReturnView({
       </header>
       {conversations.length ? (
         <div className="ah-return-groups">
+          {attention.length ? (
+            <ConversationGroup
+              title="Tarvitsee huomiota"
+              conversations={attention}
+            />
+          ) : null}
           {running.length ? (
-            <ConversationGroup title="Käynnissä" conversations={running} />
+            <ConversationGroup title="Työskentelee" conversations={running} />
+          ) : null}
+          {waiting.length ? (
+            <ConversationGroup title="Odottaa" conversations={waiting} />
           ) : null}
           {others.length ? (
             <ConversationGroup

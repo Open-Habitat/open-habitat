@@ -30,7 +30,7 @@ describe("return view", () => {
     expect(screen.queryByRole("heading", { name: "Työtilat" })).toBeNull();
     expect(screen.getByText(/Selainistunnon ohjaus riippuu/)).toBeTruthy();
   });
-  it("groups only positively observed running processes, preserving links and native history", () => {
+  it("groups proven work separately from merely observed processes, preserving links and native history", () => {
     show([
       base,
       {
@@ -40,6 +40,7 @@ describe("return view", () => {
         title: "Selain",
         browserSession: true,
         process: "daemon_managed_live",
+        command: "accepted",
       },
       {
         ...base,
@@ -56,23 +57,25 @@ describe("return view", () => {
         process: "confirmed_exited",
       },
     ]);
-    const running = screen.getByRole("region", { name: "Käynnissä" });
+    const running = screen.getByRole("region", { name: "Työskentelee" });
     const others = screen.getByRole("region", { name: "Muut keskustelut" });
-    expect(within(running).getAllByRole("link")).toHaveLength(2);
+    expect(within(running).getAllByRole("link")).toHaveLength(1);
     expect(
       within(running)
         .getByRole("link", { name: /Selain/ })
         .getAttribute("href"),
     ).toBe("/workspaces/ws_example?conversation=two");
     expect(within(running).getByText("Prosessi käynnissä")).toBeTruthy();
-    expect(within(running).getByText("Käynnissä terminaalissa")).toBeTruthy();
-    expect(within(others).getAllByRole("link")).toHaveLength(3);
+    expect(within(others).getByText("Käynnissä terminaalissa")).toBeTruthy();
+    expect(within(others).getAllByRole("link")).toHaveLength(2);
     expect(
       within(others)
         .getByRole("link", { name: /Keskustelu/ })
         .getAttribute("href"),
     ).toBe("/agents/one");
-    expect(within(others).queryByText(/käynnissä/i)).toBeNull();
+    expect(
+      within(others).getAllByText("Tila ei tiedossa").length,
+    ).toBeGreaterThan(0);
     expect(screen.queryByText("Viimeksi avatut")).toBeNull();
     expect(screen.queryByText("Jatkettavissa")).toBeNull();
   });

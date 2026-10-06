@@ -206,11 +206,20 @@ export function App() {
     dispatch(authenticationRequired());
   }, [clearPerson, dispatch]);
   const activeId = useRef<string | undefined>(undefined);
-  activeId.current = /^pi:[0-9a-fA-F-]{36}$/.test(
-    new URLSearchParams(location.search).get("conversation") ?? "",
-  )
-    ? (new URLSearchParams(location.search).get("conversation") ?? undefined)
+  const routeAgent =
+    new URLSearchParams(location.search).get("conversation") ??
+    location.pathname.replace("/agents/", "");
+  activeId.current = /^pi:[0-9a-fA-F-]{36}$/.test(routeAgent)
+    ? routeAgent
     : undefined;
+  useEffect(() => {
+    conversationStore?.setVisible(
+      routeAgent.startsWith("pi:") ? activeId.current : undefined,
+    );
+    const onVisible = () => conversationStore?.setVisible(activeId.current);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [conversationStore, routeAgent]);
   const statusListeners = useRef(new Set<(id: string, kind: string) => void>());
   const onStatusEvent = useCallback(
     (listener: (id: string, kind: string) => void) => {
@@ -693,13 +702,13 @@ export function App() {
       <>
         {visible.length > 0 ? (
           <ReturnView
+            store={conversationStore}
             conversations={(snapshot?.agents ?? [])
               .filter(
                 (a) =>
                   a.history === "readable" &&
                   visible.some((w) => w.workspace_id === a.workspace_id),
               )
-              .slice(0, 3)
               .map((a) => {
                 const workspace = visible.find(
                   (w) => w.workspace_id === a.workspace_id,

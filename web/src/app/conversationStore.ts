@@ -29,6 +29,7 @@ type Metadata = Readonly<{
   agents: ReadonlyMap<string, Agent>;
   statuses: ReadonlyMap<string, Status>;
   staleStatuses: ReadonlySet<string>;
+  attention: ReadonlyMap<string, "new" | "seen">;
 }>;
 
 /** One tab's native read model. A missing window never implies an empty native history. */
@@ -41,8 +42,45 @@ export class ConversationStore {
     agents: new Map(),
     statuses: new Map(),
     staleStatuses: new Set(),
+    attention: new Map(),
   };
   private metaListeners = new Set<() => void>();
+  private attentionKeys = new Map<string, string>();
+  private visibleId?: string;
+  setVisible = (id?: string) => {
+    this.visibleId = id;
+    if (id && document.visibilityState === "visible") this.markSeen(id);
+  };
+  markSeen = (id: string) => {
+    if (
+      !this.metadata.attention.has(id) ||
+      this.metadata.attention.get(id) === "seen"
+    )
+      return;
+    this.metadata = {
+      ...this.metadata,
+      attention: new Map(this.metadata.attention).set(id, "seen"),
+    };
+    this.metaListeners.forEach((listener) => {
+      listener();
+    });
+  };
+  private markAttention(id: string, key: string) {
+    if (this.attentionKeys.get(id) === key) return;
+    this.attentionKeys.set(id, key);
+    this.metadata = {
+      ...this.metadata,
+      attention: new Map(this.metadata.attention).set(
+        id,
+        this.visibleId === id && document.visibilityState === "visible"
+          ? "seen"
+          : "new",
+      ),
+    };
+    this.metaListeners.forEach((listener) => {
+      listener();
+    });
+  }
   private listeners = new Map<string, Set<() => void>>();
   private clock = 0;
   private readSeq = 0;
@@ -175,6 +213,8 @@ export class ConversationStore {
   applyStatus(id: string, status: Status) {
     if (this.disposed || status.agent_id !== id) return;
     this.statusVersions.set(id, (this.statusVersions.get(id) ?? 0) + 1);
+    if (status.pending_question)
+      this.markAttention(id, `question:${status.pending_question.request_id}`);
     this.metadata = {
       ...this.metadata,
       statuses: new Map(this.metadata.statuses).set(id, status),
@@ -489,6 +529,27 @@ export class ConversationStore {
   }
   routeEvent(event: ConversationEvent, activeId?: string) {
     if (this.disposed) return;
+    if (
+      event.resource.agent_id &&
+      (event.kind === "question.resolved" ||
+        (event.kind === "command.changed" && event.payload.state === "pending"))
+    ) {
+      const id = event.resource.agent_id;
+      this.attentionKeys.delete(id);
+      if (this.metadata.attention.has(id)) {
+        const attention = new Map(this.metadata.attention);
+        attention.delete(id);
+        this.metadata = { ...this.metadata, attention };
+        this.metaListeners.forEach((listener) => {
+          listener();
+        });
+      }
+    }
+    if (
+      event.resource.agent_id &&
+      ["turn.settled", "question.requested"].includes(event.kind)
+    )
+      this.markAttention(event.resource.agent_id, event.event_id);
     if (event.kind === "snapshot.invalidated" && !event.resource.agent_id)
       for (const id of this.metadata.statuses.keys())
         if (id !== activeId) this.notifyStatus(id);
@@ -704,11 +765,14 @@ export class ConversationStore {
     this.pager.cancelAll();
     this.windows.clear();
     this.positions.clear();
+    this.attentionKeys.clear();
+    this.visibleId = undefined;
     this.routed = undefined;
     this.metadata = {
       agents: new Map(),
       statuses: new Map(),
       staleStatuses: new Set(),
+      attention: new Map(),
     };
     this.statusRequests.clear();
     this.statusVersions.clear();
@@ -728,6 +792,17 @@ export function useWindow(store: ConversationStore, id: string) {
     () => store.read(id),
   );
 }
-export function useConversationMetadata(store: ConversationStore) {
-  return useSyncExternalStore(store.subscribeMetadata, store.readMetadata);
+const emptyMetadata: Metadata = {
+  agents: new Map(),
+  statuses: new Map(),
+  staleStatuses: new Set(),
+  attention: new Map(),
+};
+const noSubscribe = () => () => {};
+const readEmpty = () => emptyMetadata;
+export function useConversationMetadata(store?: ConversationStore) {
+  return useSyncExternalStore(
+    store?.subscribeMetadata ?? noSubscribe,
+    store?.readMetadata ?? readEmpty,
+  );
 }

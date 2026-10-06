@@ -156,6 +156,7 @@ export function NavLink({
   badgeText,
   statusText,
   displayStatusText,
+  statusLabels,
 }: {
   label: string;
   href: string;
@@ -163,6 +164,7 @@ export function NavLink({
   badgeText?: string;
   statusText?: string;
   displayStatusText?: string;
+  statusLabels?: string[];
 }) {
   const statusId = useId();
   return (
@@ -207,6 +209,14 @@ export function NavLink({
           )}
         </span>
       ) : null}
+      {statusLabels?.map((text) => (
+        <StatusMark
+          key={text}
+          label={text}
+          tone={text === "Yhteys poikki" ? "warning" : "neutral"}
+          kind={text === "Vain luku" ? "read-only" : "neutral"}
+        />
+      ))}
       {badgeText ? <Badge label={badgeText} tone="warning" /> : null}
     </LinkRow>
   );
@@ -262,15 +272,17 @@ export function AgentNavItem({
           current={selected ? "page" : false}
           badgeText={attentionLabel}
           statusText={status || undefined}
+          statusLabels={[controlLabel, operationLabel].filter(
+            (text): text is string => !!text,
+          )}
           displayStatusText={
             stale || presence === "absent"
               ? stale
                 ? "Tieto vanhentunut"
                 : "Ei enää löydy"
-              : controlLabel === "Vain luku"
-                ? "vain luku"
-                : (operationLabel ??
-                  (controlLabel || activityShortLabel || activityLabel))
+              : controlLabel || operationLabel
+                ? ""
+                : activityShortLabel || activityLabel
           }
         />
       </ListRow>

@@ -5,12 +5,15 @@ export interface AgentFacts {
   history?: string;
   command?: string;
   connectionLost?: boolean;
+  /** Explicit local close, not a process exit or interrupted turn. */
+  intentionallyClosed?: boolean;
+  pendingQuestion?: boolean;
   /** Only a confirmed native event and its visited marker can set attention. */
   attention?: "new" | "seen";
 }
 
 export interface AgentPresentation {
-  activity: "working" | "waiting" | "unknown";
+  activity: "working" | "waiting" | "closed" | "unknown";
   activityLabel: string;
   activityShortLabel: string;
   controlLabel: string;
@@ -25,15 +28,28 @@ export function agentPresentation(facts: AgentFacts): AgentPresentation {
     facts.process === "terminal_observed_live";
   // A live process is not proof of an active turn. An accepted command is.
   const working =
-    running && facts.command === "accepted" && !facts.connectionLost;
+    running &&
+    facts.command === "accepted" &&
+    !facts.pendingQuestion &&
+    !facts.connectionLost;
   const waiting =
-    running && facts.command === "idle" && facts.attention !== undefined;
-  const activity = working ? "working" : waiting ? "waiting" : "unknown";
-  const activityLabel = working
-    ? "Työskentelee"
-    : waiting
-      ? "Odottaa"
-      : "Tila ei tiedossa";
+    running &&
+    (facts.pendingQuestion ||
+      (facts.command === "idle" && facts.attention !== undefined));
+  const activity = facts.intentionallyClosed
+    ? "closed"
+    : working
+      ? "working"
+      : waiting
+        ? "waiting"
+        : "unknown";
+  const activityLabel = facts.intentionallyClosed
+    ? "Valmis"
+    : working
+      ? "Työskentelee"
+      : waiting
+        ? "Odottaa"
+        : "Tila ei tiedossa";
   const operationLabel = facts.connectionLost
     ? "Yhteys poikki"
     : facts.command === "uncertain"
@@ -48,11 +64,13 @@ export function agentPresentation(facts: AgentFacts): AgentPresentation {
   return {
     activity,
     activityLabel,
-    activityShortLabel: working
-      ? "työssä"
-      : waiting
-        ? "odottaa"
-        : "Tila ei tiedossa",
+    activityShortLabel: facts.intentionallyClosed
+      ? "valmis"
+      : working
+        ? "työssä"
+        : waiting
+          ? "odottaa"
+          : "Tila ei tiedossa",
     controlLabel:
       facts.control === "read_only"
         ? "Vain luku"

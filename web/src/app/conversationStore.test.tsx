@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ConversationPager } from "./conversationPager";
 import { ConversationStore } from "./conversationStore";
-import { visibleEntryKeys } from "./useReadingPosition";
 import type { HistoryPage } from "./history";
+import { visibleEntryKeys } from "./useReadingPosition";
 
 const id = (n: number) =>
   `pi:${String(n).padStart(8, "0")}-1111-4111-8111-111111111111`;
@@ -730,5 +730,38 @@ describe("recent conversation windows", () => {
     await flush();
     expect(statusReader).not.toHaveBeenCalled();
     expect(store.statusStale(agent)).toBe(false);
+  });
+});
+
+describe("attention markers", () => {
+  it("orders new events across views, preserves seen waiting, and clears on the next command", () => {
+    const { store } = setup();
+    const agent = id(1);
+    const event = (
+      kind: string,
+      sequence: number,
+      payload: Record<string, unknown> = {},
+    ) => ({
+      resource: { agent_id: agent },
+      kind,
+      payload,
+      cursor: `ev1:11111111-1111-4111-8111-111111111111:${sequence}`,
+      server_instance_id: "11111111-1111-4111-8111-111111111111",
+      sequence,
+      event_id: `evt-${sequence}`,
+    });
+    store.routeEvent(event("turn.settled", 1) as never);
+    expect(store.readMetadata().attention.get(agent)).toBe("new");
+    store.setVisible(agent);
+    expect(store.readMetadata().attention.get(agent)).toBe("seen");
+    store.setVisible(undefined);
+    store.routeEvent(event("question.requested", 2) as never);
+    expect(store.readMetadata().attention.get(agent)).toBe("new");
+    store.routeEvent(
+      event("command.changed", 3, { state: "pending" }) as never,
+    );
+    expect(store.readMetadata().attention.has(agent)).toBe(false);
+    store.dispose();
+    expect(store.readMetadata().attention.size).toBe(0);
   });
 });

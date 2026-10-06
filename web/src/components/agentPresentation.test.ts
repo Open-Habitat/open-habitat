@@ -41,3 +41,27 @@ describe("agent presentation", () => {
     ).toBe("working");
   });
 });
+
+describe("question and closure distinctions", () => {
+  it("treats a live pending question as a wait without turning a seen question into work", () => {
+    const view = agentPresentation({
+      process: "daemon_managed_live",
+      command: "accepted",
+      pendingQuestion: true,
+      attention: "seen",
+    });
+    expect(view.activity).toBe("waiting");
+    expect(view.attentionLabel).toBeUndefined();
+  });
+  it("never calls an unexplained exit deliberate closure", () => {
+    expect(
+      agentPresentation({ process: "confirmed_exited" }).activityLabel,
+    ).not.toBe("Valmis");
+    expect(
+      agentPresentation({
+        process: "confirmed_exited",
+        intentionallyClosed: true,
+      }).activityLabel,
+    ).toBe("Valmis");
+  });
+});

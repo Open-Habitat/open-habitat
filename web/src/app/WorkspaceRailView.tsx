@@ -1,10 +1,10 @@
-import { agentPresentation } from "../components/agentPresentation";
 import { AccountShelf, WorkspaceRail, WorkspaceSection } from "../components";
-import type { Session } from "./conversations";
+import { agentPresentation } from "../components/agentPresentation";
 import {
   type ConversationStore,
   useConversationMetadata,
 } from "./conversationStore";
+import type { Session } from "./conversations";
 import type { Snapshot, Workspace } from "./snapshot";
 import type { RootState } from "./store";
 
@@ -111,6 +111,9 @@ export function WorkspaceRailView({
             ).length
           : undefined
       }
+      attentionCount={
+        [...metadata.attention.values()].filter((v) => v === "new").length
+      }
       filterValue={filter}
       resultSummary={`${matches.length} ${source === "confirmed" ? "työtilaa" : "löydettyä työtilaa"}`}
       summaryAction={undefined}
@@ -166,6 +169,10 @@ export function WorkspaceRailView({
                       ? metadata.statuses.get(a.agent_id)?.state
                       : undefined,
                   connectionLost: phase === "stale",
+                  attention: metadata.attention.get(a.agent_id),
+                  pendingQuestion:
+                    metadata.statuses.get(a.agent_id)?.pending_question !=
+                      null && !metadata.staleStatuses.has(a.agent_id),
                 });
                 return {
                   activityLabel: presentation.activityLabel,

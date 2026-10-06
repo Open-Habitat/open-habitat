@@ -1,4 +1,3 @@
-import { agentPresentation } from "../components/agentPresentation";
 import { useEffect, useState } from "react";
 import {
   AgentHeader,
@@ -17,6 +16,7 @@ import {
   TurnSettlement,
   WorkingProgress,
 } from "../components";
+import { agentPresentation } from "../components/agentPresentation";
 import { UnpresentedEvents } from "../components/WorkingProgress";
 import { useConversationActions } from "./ConversationActions";
 import { provisionalItems } from "./conversationEvents";
@@ -244,6 +244,7 @@ export function BrowserConversation({
   const presentation = agentPresentation({
     process: statusStale ? "stale" : "daemon_managed_live",
     command: current && !statusStale ? current.state : undefined,
+    pendingQuestion: !statusStale && !!current?.pending_question,
   });
   return (
     <section ref={section} className="ah-reading-view">
