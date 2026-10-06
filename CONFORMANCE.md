@@ -28,6 +28,10 @@ native-agent-host doctor --component gateway|daemon --json
 native-agent-host gateway exec --config <path> --verbose
 native-agent-host daemon exec --config <path> --verbose
 native-agent-host admin readiness show --json
+native-agent-host admin settings show --json
+native-agent-host admin settings update --name 'Example host' --dry-run --json
+native-agent-host admin users list --json
+native-agent-host admin role update <numeric-GitHub-subject> --administrator true|false --dry-run --json
 native-agent-host maintenance enter --idempotency-key <key> --dry-run --json
 native-agent-host maintenance leave --idempotency-key <key> --dry-run --json
 native-agent-host skill list --json
@@ -40,7 +44,15 @@ behavior. Global `--json` produces schema-versioned stdout and structured errors
 on stderr. `--verbose` emits redacted JSONL diagnostics, and long-running work
 uses JSONL events. Actionable and system errors use exit codes 1 and 2;
 interrupt and termination use 130 and 143. Mutation dry-runs are truthful or
-return `dry_run_unsupported`.
+return `dry_run_unsupported`. Root-only administration commands use the gateway's
+existing private control socket and its single state writer; `settings show`
+returns the name and administrator subjects, `users list` returns bound subjects
+and Unix names, and selective `update` commands are retry-safe. The CLI checks
+name and subject syntax before connecting; `--dry-run` reads current state and
+checks a grant against current bindings without reserving concurrent state.
+The gateway returns fixed error codes: an unbound grant is actionable (exit 1),
+while socket, broker or state failures are system errors (exit 2). Browser
+administration and the root CLI share writes but not authorization.
 
 Configuration and data roots report their sources. Version output carries real
 build provenance or explicit null with a provenance object, never `unknown`.

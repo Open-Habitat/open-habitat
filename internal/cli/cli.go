@@ -310,10 +310,10 @@ func daemonHealthMux() *http.ServeMux {
 	return mux
 }
 func adminCommand(args []string) (any, error) {
-	if len(args) != 2 || args[0] != "readiness" || args[1] != "show" {
-		return nil, usage("expected admin readiness show")
+	if len(args) == 2 && args[0] == "readiness" && args[1] == "show" {
+		return envelope(map[string]any{"status": "foundation-only", "ready": false, "reason": "authentication and per-user routing are not implemented"}), nil
 	}
-	return envelope(map[string]any{"status": "foundation-only", "ready": false, "reason": "authentication and per-user routing are not implemented"}), nil
+	return adminServerCommand(args)
 }
 func stateDir() string {
 	if p := os.Getenv("NATIVE_AGENT_HOST_STATE_DIR"); p != "" {
@@ -383,6 +383,11 @@ schema_version: 1
 Inspect configuration before starting a role. Prefer structured output:
     native-agent-host --json doctor --component gateway
 Never infer readiness from process liveness alone.
+For first browser administrator appointment, wait for the person's binding,
+then as root run admin users list --json to find the numeric subject, followed
+by admin role update <subject> --administrator true --json. Use admin settings
+show/update to inspect or change the shared name. These commands require the
+running gateway and its root-only control socket, not a browser role.
 `
 
 func operatorSkillContent() string {
@@ -485,7 +490,7 @@ func skillInstall(args []string) (any, error) {
 	return envelope(map[string]any{"dry_run": dry, "would": would}), nil
 }
 func helpOutput() any {
-	return envelope(map[string]any{"name": "native-agent-host", "subcommands": []string{"version", "config path|show", "doctor", "gateway exec", "daemon exec", "broker exec", "admin readiness show", "maintenance enter|leave", "revoke subject", "skill list|print|install"}, "global_flags": []string{"--json", "--verbose", "--version"}})
+	return envelope(map[string]any{"name": "native-agent-host", "subcommands": []string{"version", "config path|show", "doctor", "gateway exec", "daemon exec", "broker exec", "admin readiness show", "admin settings show|update", "admin users list", "admin role update", "maintenance enter|leave", "revoke subject", "skill list|print|install"}, "global_flags": []string{"--json", "--verbose", "--version"}})
 }
 
 type gatewayBroker struct{}

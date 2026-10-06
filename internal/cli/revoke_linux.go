@@ -20,6 +20,8 @@ import (
 
 const revokeSocket = "/run/native-agent-host/revoke.sock"
 
+var adminControlSocket = revokeSocket
+
 // The socket is created by systemd, root:root 0600; the gateway cannot
 // create it or change its permissions. SO_PEERCRED independently checks root.
 func revokeListener() (net.Listener, error) {
@@ -110,13 +112,17 @@ func serveRevocations(ctx context.Context, ln net.Listener, auth *gateway.Auth) 
 			if strings.HasPrefix(line, "ADMIN ") {
 				result, e := auth.AdminControl(ctx, []byte(strings.TrimSuffix(strings.TrimPrefix(line, "ADMIN "), "\n")))
 				if e != nil {
-					c.Write([]byte("DENIED\n"))
+					auth.LogAdminControlFailure(e)
+					c.Write([]byte("ERROR " + gateway.AdminControlError(e) + "\n"))
 				} else {
 					c.Write(append(result, '\n'))
 				}
 				return
 			}
-			if len(line) > 32 || auth.RevokeSubject(ctx, strings.TrimSuffix(line, "\n")) != nil {
+			if len(line) > 32 {
+				return
+			}
+			if auth.RevokeSubject(ctx, strings.TrimSuffix(line, "\n")) != nil {
 				c.Write([]byte("DENIED\n"))
 				return
 			}

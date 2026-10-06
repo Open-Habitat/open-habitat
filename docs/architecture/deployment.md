@@ -9,7 +9,7 @@ credentials stay outside these replaceable releases.
 ```mermaid
 flowchart TB
   Browser["Browser"] -->|HTTPS| Gateway["Gateway service<br/>unprivileged account"]
-  Operator["Root operator"] --> Revoke["Revocation socket"] --> Gateway
+  Operator["Root operator"] --> Revoke["Private control socket"] --> Gateway
   Gateway --> BrokerSocket["Broker socket"] --> Broker["Broker service<br/>root"]
   Gateway --> UserSocket["Per-user socket"] --> Daemon["Daemon service<br/>user's Unix account"]
   Daemon --> Pi["Pi child processes<br/>same account"]
@@ -25,7 +25,9 @@ flowchart TB
 The gateway terminates TLS using its configured certificate and serves the
 browser application. It runs without access to user homes. systemd supplies
 its root-only revocation socket, through which the operator can end web
-sessions with `native-agent-host revoke subject <GitHub ID>`.
+sessions with `native-agent-host revoke subject <GitHub ID>`. The same socket
+accepts root-only administration requests; the gateway remains the sole writer
+of the name and browser roles.
 
 The broker and per-user daemons are socket-activated: systemd holds the
 listening sockets and starts a service when a connection arrives. The
@@ -46,7 +48,17 @@ group. Native history survives, but an active turn is interrupted.
 User homes hold workspaces, Pi histories and configuration, and native `gh`
 credentials. Root-owned broker state holds admission policy, account bindings
 and the journal of provisioning operations. These survive service restarts and
-release replacement. Gateway-private state at `/var/lib/native-agent-host-gateway/sessions.json` holds browser sessions and survives release replacement and reboot. The same private StateDirectory also holds `administration.json`, the gateway-owned server name and numeric GitHub subject roles. Keep it across release replacements; do not seed a browser administrator. A missing file at startup starts with no name or administrators; an existing corrupt or incorrectly owned file prevents gateway startup until an operator repairs it. If an established file disappears while the gateway is running, administrator permissions fail closed and writes stop until operator repair or restart; it cannot silently re-create the old roles. The already root-only `revoke.sock` control channel also carries bounded `ADMIN {"operation":"show|name|role",...}` newline requests from a verified root peer; the dedicated operator client is delivered by `server-administration-cli`. The gateway account alone can read it; sockets and pending login flows in `/run` or memory do not persist.
+release replacement. Gateway-private state at `/var/lib/native-agent-host-gateway/sessions.json` holds browser sessions and survives release replacement and reboot. The same private StateDirectory also holds `administration.json`, the gateway-owned server name and numeric GitHub subject roles. Keep it across release replacements; do not seed a browser administrator. A missing file at startup starts with no name or administrators; an existing corrupt or incorrectly owned file prevents gateway startup until an operator repairs it. If an established file disappears while the gateway is running, administrator permissions fail closed and writes stop until operator repair or restart; it cannot silently re-create the old roles. The root-only `revoke.sock` control channel also carries bounded administration requests from a kernel-verified root peer. Use the operator CLI, not a direct edit to the state file:
+
+```sh
+native-agent-host admin settings show --json
+native-agent-host admin users list --json
+native-agent-host admin settings update --name 'Example host' --json
+native-agent-host admin role update <numeric-GitHub-subject> --administrator true --json
+native-agent-host admin role update <numeric-GitHub-subject> --administrator false --json
+```
+
+The first grant needs the person's existing broker binding (they must have signed in first); `admin users list` gives bound subjects and Unix names without credentials or home paths. A grant does not create a binding or admit an account. Removal needs no live broker binding. Updates also accept `--dry-run`; a grant plan checks the current bound-user list but cannot reserve the binding against concurrent change. The CLI requires effective root and a running gateway with the private socket. It reports structured results and errors with `--json` and does not use browser administrator roles. The gateway account alone reads `administration.json`; sockets and pending login flows in `/run` or memory do not persist.
 
 The gateway loads its installation configuration at startup; each daemon loads
 the identity binding written by the broker. The broker reads its configuration

@@ -9,6 +9,11 @@ import (
 // LogControlFailure records a fixed diagnostic when the private listener fails.
 func (a *Auth) LogControlFailure() { a.log.Error("revoke_accept_failed") }
 
+// LogAdminControlFailure records a bounded reason, never the request or file contents.
+func (a *Auth) LogAdminControlFailure(err error) {
+	a.log.Error("admin_control_failed", "reason", AdminControlError(err))
+}
+
 // RevokeSubject is callable only by the local privileged control listener, never HTTP.
 // The binding is checked against the broker before touching memory. A flow has no
 // known subject until Exchange; its start serial is compared at callback issuance.

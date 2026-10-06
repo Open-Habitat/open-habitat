@@ -25,6 +25,8 @@ type BrokerReader interface {
 // ErrAdministrationState distinguishes a corrupt shared state record from OAuth config.
 var ErrAdministrationState = errors.New("invalid gateway administration state")
 var errAdminDenied = errors.New("administrator role removed")
+var errBindingNotFound = errors.New("subject is not bound")
+var errBrokerRead = errors.New("broker read unavailable")
 
 type serverSettings struct {
 	Version        int      `json:"version"`
@@ -216,11 +218,14 @@ func (a *Auth) changeRoleFor(ctx context.Context, caller, id string, administrat
 	if administrator {
 		reader, ok := a.broker.(BrokerReader)
 		if !ok {
-			return errors.New("broker read unavailable")
+			return errBrokerRead
 		}
 		bound, e := reader.LookupBound(ctx, id)
-		if e != nil || !bound {
-			return errors.New("binding unavailable")
+		if e != nil {
+			return errBrokerRead
+		}
+		if !bound {
+			return errBindingNotFound
 		}
 	}
 	a.mu.Lock()
@@ -379,6 +384,22 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 		return nil, errors.New("invalid control request")
 	}
 	switch r.Operation {
+	case "users":
+		if r.Name != "" || r.Subject != "" || r.Administrator != nil {
+			break
+		}
+		if !a.administrationAvailable() {
+			return nil, ErrAdministrationState
+		}
+		reader, ok := a.broker.(BrokerReader)
+		if !ok {
+			return nil, errBrokerRead
+		}
+		users, e := reader.ListBound(ctx)
+		if e != nil {
+			return nil, errBrokerRead
+		}
+		return json.Marshal(users)
 	case "show":
 		if r.Name != "" || r.Subject != "" || r.Administrator != nil {
 			break
@@ -405,4 +426,22 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 		return []byte(`{"ok":true}`), nil
 	}
 	return nil, errors.New("invalid control request")
+}
+
+// AdminControlError maps private control failures to a fixed, non-sensitive wire vocabulary.
+func AdminControlError(err error) string {
+	switch {
+	case errors.Is(err, errBindingNotFound):
+		return "not_found"
+	case errors.Is(err, errBrokerRead):
+		return "broker_unavailable"
+	case errors.Is(err, ErrAdministrationState):
+		return "administration_unavailable"
+	default:
+		var pathErr *os.PathError
+		if errors.As(err, &pathErr) {
+			return "state_io"
+		}
+		return "request_failed"
+	}
 }
