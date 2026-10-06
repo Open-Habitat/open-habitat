@@ -58,7 +58,7 @@ describe("return view", () => {
       },
     ]);
     const running = screen.getByRole("region", { name: "Käynnissä" });
-    const others = screen.getByRole("region", { name: "Viimeksi avatut" });
+    const others = screen.getByRole("region", { name: "Muut keskustelut" });
     expect(within(running).getAllByRole("link")).toHaveLength(1);
     expect(
       within(running)
@@ -76,7 +76,7 @@ describe("return view", () => {
     expect(
       within(others).getAllByText("Tila ei tiedossa").length,
     ).toBeGreaterThan(0);
-    expect(screen.getByText("Viimeksi avatut")).toBeTruthy();
+    expect(screen.getByText("Muut keskustelut")).toBeTruthy();
   });
   it("promotes newly observed attention ahead of the three-item cutoff and retains a seen wait", () => {
     show([

@@ -196,7 +196,7 @@ export function ReturnView({
           ) : null}
           {recent.length ? (
             <ConversationGroup
-              title={workspaceName ? "Keskustelut" : "Viimeksi avatut"}
+              title={workspaceName ? "Keskustelut" : "Muut keskustelut"}
               conversations={recent}
             />
           ) : null}
