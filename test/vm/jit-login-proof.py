@@ -158,11 +158,12 @@ print('UNEXPECTED_REPLY')
                             gate_reasons.append(item['error'].get('message','')[:90])
                     except (ValueError,AttributeError):
                         pass
-                raise RuntimeError('gh fault callback issued session status='+str(failure_status)+
-                                   ' code='+str(failure_code)[:48]+' gate='+repr(gate_reasons[:2])[:200]+
-                                   ' daemon_socket='+subprocess.run(['systemctl','is-active','native-agent-host-daemon@'+names[index]+'.socket'],capture_output=True,text=True).stdout.strip()+
-                                   ' run_entries='+repr(sorted(os.listdir('/run/native-agent-host')))+
-                                   ' user_entries='+repr(sorted(os.listdir('/run/native-agent-host/users'))))
+                root='/run/native-agent-host'
+                dirs={name:sorted(os.listdir(root+'/users/'+name)) for name in os.listdir(root+'/users')}
+                raise RuntimeError('callback='+str(failure_status)+'/'+str(failure_code)[:24]+
+                                   ' gate='+repr(gate_reasons[:1])[:100]+
+                                   ' run='+repr(sorted(os.listdir(root)))+
+                                   ' dirs='+repr(dirs)[:200])
             session_status,session_headers,session_body=get(op,'/auth/session')
             snapshot_status,snapshot_headers,snapshot_body=get(op,'/api/v1/snapshot')
             captures.extend([str(session_headers).encode(),session_body,str(snapshot_headers).encode(),snapshot_body])
