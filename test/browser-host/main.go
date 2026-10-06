@@ -607,7 +607,8 @@ esac
 				}
 				w.WriteHeader(204)
 			case "/fixture/expire":
-				clock.Add(25)
+				// Cross the browser session's renewable 90-day idle deadline.
+				clock.Add(90*24 + 1)
 				w.WriteHeader(204)
 			case "/fixture/reset-clock":
 				clock.Add(1)
