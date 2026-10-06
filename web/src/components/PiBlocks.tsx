@@ -10,6 +10,7 @@ export function PiToolUse({
   name: string;
   state:
     | "forming"
+    | "called"
     | "running"
     | "succeeded"
     | "failed"
@@ -20,6 +21,7 @@ export function PiToolUse({
   const [expanded, setExpanded] = useState(false);
   const labels = {
     forming: "muodostaa kutsua…",
+    called: "odottaa ajoa",
     running: "ajossa",
     succeeded: "valmis",
     failed: "epäonnistui",
@@ -29,7 +31,7 @@ export function PiToolUse({
   return (
     <div
       className={
-        state === "running" || state === "forming"
+        state === "running" || state === "forming" || state === "called"
           ? "ah-live-tool-row"
           : undefined
       }

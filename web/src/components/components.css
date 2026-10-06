@@ -2125,3 +2125,17 @@ h1[tabindex="-1"]:focus {
 .ah-pi-local > .ah-pi-boundary {
   margin: 8px 12px;
 }
+.ah-pi-extension {
+  max-width: min(var(--ah-measure), 100%);
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--ah-line);
+  border-radius: 10px;
+  background: var(--ah-surface-2);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Extension card is isolated from diff spans. */
+.ah-pi-extension > span {
+  font-size: var(--ah-size-meta);
+  font-weight: 600;
+}

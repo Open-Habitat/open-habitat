@@ -105,6 +105,27 @@ it("joins native call and saved result at the call position without reordering c
   expect(container.textContent).toContain("epäonnistui");
 });
 
+it("renders safely projected visible extension content without raw unknown payloads", () => {
+  const { container } = render(
+    <Entry
+      entry={{
+        ...entry,
+        kind: "unknown",
+        entry_key: "extension",
+        blocks: [{ type: "text", text: "Plan saved" }],
+        content: {
+          media_type: "text/plain",
+          text: "untrusted raw",
+          complete: true,
+        },
+      }}
+    />,
+  );
+  expect(container.textContent).toContain("Laajennuksen viesti");
+  expect(container.textContent).toContain("Plan saved");
+  expect(container.textContent).not.toContain("untrusted raw");
+});
+
 it("puts unfamiliar question text ahead of inert, collapsed JSON", () => {
   const raw =
     '{"type":"futureQuestion","prompt":"Mitä seuraavaksi?","description":"<img src=x onerror=alert(1)>"}';

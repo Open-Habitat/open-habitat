@@ -24,7 +24,7 @@ import {
   readHistory,
 } from "./history";
 import type { Agent } from "./snapshot";
-import { visibleEntryKeys } from "./useReadingPosition";
+import { rowIndexOf, visibleEntryKeys } from "./useReadingPosition";
 
 // Only the daemon's explicit fallback marker is interpreted here. Unknown data
 // stays text, including malformed JSON and fields we do not recognize.
@@ -90,12 +90,13 @@ function ReadableBlock({
   );
   const request = useRef<AbortController | null>(null);
   const preview = useRef<HTMLPreElement | null>(null);
+  const displayedText = loaded?.text ?? block.text ?? "";
   useEffect(() => () => request.current?.abort(), []);
-  useEffect(() => {
-    if (preview.current && toolName)
+  useLayoutEffect(() => {
+    if (preview.current && toolName && displayedText.length)
       preview.current.scrollTop =
         edge === "tail" ? preview.current.scrollHeight : 0;
-  }, [edge, toolName]);
+  }, [edge, toolName, displayedText]);
   const more = async () => {
     if (!agentId || !revision || pending) return;
     setPending(true);
@@ -178,7 +179,7 @@ function ReadableBlock({
   ) : null;
   switch (block.type) {
     case "text": {
-      const text = loaded?.text ?? block.text ?? "";
+      const text = displayedText;
       const whole = loaded?.complete || !block.readable;
       return (
         <div className={toolName ? "ah-pi-result" : undefined}>
@@ -488,8 +489,11 @@ export function Entry({
         <ModelChange modelId={content.text} onCopy={copy} />
       ) : null}
       {entry.kind === "unknown" ? (
-        entry.entry_type ? (
-          <aside className="ah-pi-marker" role="note">
+        entry.entry_type || entry.blocks?.length ? (
+          <aside
+            className={entry.entry_type ? "ah-pi-marker" : "ah-pi-extension"}
+            role="note"
+          >
             <span>
               {(
                 {
@@ -499,7 +503,8 @@ export function Entry({
                   session_info: "Keskustelun tieto",
                   label: "Merkintä",
                 } as Record<string, string>
-              )[entry.entry_type] ?? "Pi-merkintä"}
+              )[entry.entry_type ?? ""] ??
+                (entry.entry_type ? "Pi-merkintä" : "Laajennuksen viesti")}
             </span>
             {entry.blocks?.length ? (
               <OrderedBlocks
@@ -672,7 +677,7 @@ export function HistoryView({
     const viewport = stream.current;
     const saved = anchor.current;
     if (!viewport || !saved) return;
-    const index = visibleEntryKeys(entries).indexOf(saved.key);
+    const index = rowIndexOf(entries, saved.key);
     const row = viewport.querySelectorAll<HTMLElement>(".ah-feed > li")[index];
     if (row)
       viewport.scrollTop +=

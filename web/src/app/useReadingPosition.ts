@@ -24,14 +24,41 @@ export function visibleEntryKeys(entries: HistoryEntry[]): string[] {
         : [],
     ),
   );
+  const joined = new Map<string, HistoryEntry>();
+  for (const entry of entries)
+    if (
+      entry.kind === "tool" &&
+      entry.tool_call_id &&
+      calls.has(entry.tool_call_id)
+    )
+      joined.set(entry.tool_call_id, entry);
   return entries
     .filter(
       (entry) =>
-        entry.kind !== "tool" ||
-        !entry.tool_call_id ||
-        !calls.has(entry.tool_call_id),
+        !entry.tool_call_id || joined.get(entry.tool_call_id) !== entry,
     )
     .map((entry) => entry.entry_key);
+}
+
+/** An orphan result can become a child of its call when older pages arrive. */
+export function rowIndexOf(entries: HistoryEntry[], key: string): number {
+  const keys = visibleEntryKeys(entries);
+  const direct = keys.indexOf(key);
+  if (direct >= 0) return direct;
+  const result = entries.find(
+    (entry) => entry.entry_key === key && entry.kind === "tool",
+  );
+  if (!result?.tool_call_id) return -1;
+  const call = entries.find(
+    (entry) =>
+      entry.kind === "assistant" &&
+      entry.blocks?.some(
+        (block) =>
+          block.type === "toolCall" &&
+          block.tool_call_id === result.tool_call_id,
+      ),
+  );
+  return call ? keys.indexOf(call.entry_key) : -1;
 }
 
 type Anchor = { key: string; offset: number };
@@ -102,7 +129,7 @@ export function useReadingPosition(
     ) => {
       const viewport = feed.current;
       if (!viewport || !anchor) return false;
-      const index = visibleEntryKeys(pages).indexOf(anchor.key);
+      const index = rowIndexOf(pages, anchor.key);
       const row =
         viewport.querySelectorAll<HTMLElement>(".ah-feed > li")[index];
       if (!row) return false;

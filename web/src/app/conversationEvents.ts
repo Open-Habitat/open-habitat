@@ -247,7 +247,7 @@ export function provisionalItems(turn: LiveTurn) {
         const item = items[slot];
         item.name = event.payload.tool_name as string;
         item.text = `${item.name} · Kutsu`;
-        item.state = "running";
+        item.state = "called";
         const key = event.payload.tool_call_id as string;
         item.callId = key;
         tools.set(key, slot);

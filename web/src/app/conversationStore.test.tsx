@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { ConversationPager } from "./conversationPager";
 import { ConversationStore } from "./conversationStore";
 import type { HistoryPage } from "./history";
-import { visibleEntryKeys } from "./useReadingPosition";
+import { rowIndexOf, visibleEntryKeys } from "./useReadingPosition";
+import type { HistoryEntry } from "./history";
 
 const id = (n: number) =>
   `pi:${String(n).padStart(8, "0")}-1111-4111-8111-111111111111`;
@@ -773,4 +774,22 @@ describe("attention markers", () => {
     store.dispose();
     expect(store.readMetadata().attention.size).toBe(0);
   });
+});
+
+it("retains a result anchor when paging joins it into its native call", () => {
+  const tool: HistoryEntry = {
+    entry_key: "r",
+    kind: "tool",
+    tool_call_id: "c",
+    content: { media_type: "text/plain", text: "result", complete: true },
+  };
+  const call: HistoryEntry = {
+    entry_key: "a",
+    kind: "assistant",
+    content: { media_type: "text/plain", text: "", complete: true },
+    blocks: [{ type: "toolCall", tool_call_id: "c", tool_name: "read" }],
+  };
+  expect(rowIndexOf([tool], "r")).toBe(0);
+  expect(rowIndexOf([call, tool], "r")).toBe(0);
+  expect(visibleEntryKeys([call, tool])).toEqual(["a"]);
 });
