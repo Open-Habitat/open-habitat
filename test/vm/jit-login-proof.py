@@ -159,12 +159,13 @@ print('UNEXPECTED_REPLY')
                     except (ValueError,AttributeError):
                         pass
                 root='/run/native-agent-host'
-                dirs=['%s=%s'%(name,','.join(sorted(os.listdir(root+'/users/'+name))))
-                      for name in sorted(os.listdir(root+'/users'))]
+                bound=json.loads((ledger_dir/'bindings.json').read_text())['bindings']
+                expected_names=([] if pathlib.Path('/opt/native-agent-host/fresh-account-policy.json').exists() else ['alice','bob'])+[b['username'] for b in bound]
                 raise RuntimeError('callback='+str(failure_status)+'/'+str(failure_code)[:24]+
-                                   ' gate='+repr(gate_reasons[:1])[:100]+
-                                   ' run='+repr(sorted(os.listdir(root)))+
-                                   ' dirs='+','.join(dirs)[:160])
+                                   ' gate='+repr(gate_reasons[:1])[:70]+
+                                   ' expected='+','.join(sorted(expected_names))+
+                                   ' actual='+','.join(sorted(os.listdir(root+'/users')))+
+                                   ' root='+','.join(sorted(os.listdir(root))))
             session_status,session_headers,session_body=get(op,'/auth/session')
             snapshot_status,snapshot_headers,snapshot_body=get(op,'/api/v1/snapshot')
             captures.extend([str(session_headers).encode(),session_body,str(snapshot_headers).encode(),snapshot_body])
