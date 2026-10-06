@@ -93,7 +93,20 @@ sockets and files.
 
 ## Browser sessions
 
-The gateway keeps hashed browser secrets and session records in its private persistent state, outside the release and `/run`. The browser carries the opaque random secret in a persistent Secure, HttpOnly, SameSite cookie, expiring no later than one year after sign-in. The gateway denies a cookie without a valid record; missing, unreadable or invalid state invalidates all old cookies, and a new OAuth login replaces unusable state. Sessions expire after 90 days without use or one year from sign-in, whichever comes first. Active sessions renew their idle deadline at most once a day, without extending the absolute deadline. Each request resolves the session locally, without another broker call. Writes also require the
+The gateway keeps hashed browser secrets and session records in its private
+persistent state, outside the release and `/run`. The browser carries the
+opaque random secret in a persistent Secure, HttpOnly, SameSite cookie,
+expiring no later than one year after sign-in. The gateway denies a cookie
+without a matching record. Missing or incorrectly permissioned live state
+invalidates cached sessions; an unreadable or malformed file at startup also
+starts with no sessions. A new OAuth login replaces unusable state. The gateway
+does not reparse an otherwise correctly owned file on every request, so
+external corruption of its contents while running is detected on restart.
+
+Sessions expire after 90 days without use or one year from sign-in, whichever
+comes first. Active sessions renew their idle deadline at most once a day,
+without extending the absolute deadline. Each request resolves the session
+locally, without another broker call. Writes also require the
 session's CSRF secret and the configured origin, tying them to the signed-in
 application.
 

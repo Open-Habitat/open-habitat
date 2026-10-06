@@ -41,9 +41,11 @@ On 2 October, Jari [declined extending targeted revocation](../../issues/reliabl
 rebuilding the test environment meets the current reset need. General account
 removal remains [deferred](adr-0007-bound-user-deprovision.md).
 
-The original implementation keeps sessions and login flows in memory. The
+The original implementation kept sessions and login flows in memory. The
 later [durable sign-in requirement](../../issues/design-durable-sign-in/item.md)
-calls for preserving login across gateway restarts; its design is pending.
+moved browser sessions into gateway-private persistent state; pending login
+flows remain in memory. The revocation scope and ordering decided here are
+unchanged.
 
 [Identity and trust](../architecture/identity-and-trust.md) describes current
 behavior, and [deployment](../architecture/deployment.md) covers operator use.
