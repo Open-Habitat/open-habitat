@@ -1,8 +1,8 @@
 ---
 created: 2026-10-05
-updated: 2026-10-05
+updated: 2026-10-06
 type: improvement
-status: open
+status: in-progress
 priority: normal
 related: ['@add-account-settings-ui', '@align-settings-design']
 lane: account-ui
