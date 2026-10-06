@@ -3,13 +3,15 @@ created: 2026-10-05
 updated: 2026-10-06
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 related: ['@correlate-diagnostics']
 lane: logging
 lane_seq: 3
 blocked_by: ['@correlate-diagnostics']
 preparation: ready
+closed: 2026-10-06
+closed_by: claude
 ---
 
 # Verify diagnostic logs on the test installation
