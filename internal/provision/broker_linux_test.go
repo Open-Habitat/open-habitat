@@ -3,13 +3,57 @@
 package provision
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"golang.org/x/sys/unix"
+
+	"github.com/maintainer/native-agent-host/internal/diagnostic"
 )
+
+func TestBrokerExchangeDiagnosticVerifiedIdentityAndFailedSink(t *testing.T) {
+	var b bytes.Buffer
+	var calls int
+	handle := func(_ context.Context, r Request) Reply {
+		calls++
+		if r.ID == "42" {
+			return Reply{Version: 1, Route: &Route{Username: "mapped-user"}}
+		}
+		return failure(Denied)
+	}
+	logged := loggedBrokerHandler(handle, diagnostic.New(&b, "broker"))
+	for _, id := range []string{"42", "43"} {
+		logged(context.Background(), Request{Operation: "ensure", ID: id, Candidate: "synthetic-secret-content"})
+	}
+	if calls != 2 || strings.Contains(b.String(), "synthetic-secret-content") || strings.Contains(b.String(), `"user":"43"`) {
+		t.Fatalf("unsafe broker record: %s", b.String())
+	}
+	for i, line := range bytes.Split(bytes.TrimSpace(b.Bytes()), []byte{'\n'}) {
+		var record map[string]any
+		if err := json.Unmarshal(line, &record); err != nil {
+			t.Fatal(err)
+		}
+		if i == 0 && (record["user"] != "mapped-user" || record["outcome"] != "accepted") || i == 1 && (record["user"] != nil || record["reason"] != "denied") {
+			t.Fatalf("incorrect attribution: %v", record)
+		}
+	}
+	failed := loggedBrokerHandler(handle, diagnostic.New(failedDiagnosticWriter{}, "broker"))
+	if reply := failed(context.Background(), Request{Operation: "ensure", ID: "43"}); reply.Failure != Denied || calls != 3 {
+		t.Fatalf("diagnostic error changed admission: %+v", reply)
+	}
+}
+
+type failedDiagnosticWriter struct{}
+
+func (failedDiagnosticWriter) Write([]byte) (int, error) {
+	return 0, errors.New("synthetic-secret-content")
+}
 
 type startupExecutor struct {
 	fail  bool

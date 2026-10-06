@@ -59,6 +59,33 @@ func accessEmail(r *http.Request) string {
 // session, every daemon-backed API and static UI, including unknown routes.
 // Only unauthenticated health probes are exempt. It never trusts forwarded
 // email headers, even if the request came from loopback.
+// Anonymous Access failures share a process-wide diagnostic budget. This
+// affects only the record, never the ingress decision or HTTP response.
+func (a *Auth) logAccessDenial(reason string) {
+	if a.log == nil {
+		return
+	}
+	a.mu.Lock()
+	now := a.now()
+	if a.accessLog.at.IsZero() {
+		a.accessLog.tokens = 32
+	} else if elapsed := now.Sub(a.accessLog.at).Seconds(); elapsed > 0 {
+		a.accessLog.tokens += elapsed
+		if a.accessLog.tokens > 32 {
+			a.accessLog.tokens = 32
+		}
+	}
+	allowed := a.accessLog.tokens >= 1
+	if allowed {
+		a.accessLog.tokens--
+	}
+	a.accessLog.at = now
+	a.mu.Unlock()
+	if allowed {
+		a.log.Warn("access_assertion", "outcome", "rejected", "reason", reason)
+	}
+}
+
 func (a *Auth) accessIngress(next http.Handler) http.Handler {
 	if a.access == nil {
 		return next
@@ -70,11 +97,13 @@ func (a *Auth) accessIngress(next http.Handler) http.Handler {
 		}
 		header := r.Header.Values("Cf-Access-Jwt-Assertion")
 		if len(header) != 1 {
+			a.logAccessDenial("assertion_missing_or_ambiguous")
 			safe(w, 403, "authentication_required")
 			return
 		}
 		email, err := a.access.verify(r.Context(), header[0])
 		if err != nil {
+			a.logAccessDenial("assertion_invalid")
 			safe(w, 403, "authentication_required")
 			return
 		}

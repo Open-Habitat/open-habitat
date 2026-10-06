@@ -51,6 +51,6 @@ func (a *Auth) RevokeSubject(ctx context.Context, subject string) error {
 		return errors.New("session store unavailable")
 	}
 	a.revoked[subject] = a.serial
-	a.log.Info("subject_revoked", "outcome", "accepted", "subject", subject, "sessions_removed", removed)
+	a.log.Info("subject_revoked", "outcome", "accepted", "actor", "root_peer", "subject", subject, "sessions_removed", removed)
 	return nil
 }

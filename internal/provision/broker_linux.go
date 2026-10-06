@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"os"
 	"strconv"
 
@@ -107,19 +108,37 @@ func ServeBroker(ctx context.Context) error {
 	// drift, even when there are no incoming clients. Restart is not repair.
 	writer := NewWriter(cfg.StateDir, cfg.UIDMin, cfg.UIDMax, NewLinuxHostExecutor(cfg.GatewayUID, cfg.GatewayGID))
 	writer.AdmitAny = cfg.Admission == "any"
+	log := diagnostic.New(os.Stderr, "broker")
+	writer.Published = func(user string) {
+		log.Info("binding_published", "outcome", "published", "operation", "ensure", "user", user)
+	}
 	writer.GuardEvent = func(stage string) {
 		// Writer supplies fixed literals only. Never log request, candidate,
 		// UID, route, path, command output or raw host errors.
 		if stage != "availability_error" && stage != "no_available_binding" && stage != "invalid_executor" && stage != "nss_probe" && stage != "group_probe" && stage != "parent_policy" && stage != "acl_policy" && stage != "path_probe" && stage != "unit_probe" {
 			return
 		}
-		diagnostic.New(os.Stderr, "broker").Warn("broker_guard", "outcome", "rejected", "reason", stage)
+		log.Warn("broker_guard", "outcome", "rejected", "reason", stage)
 	}
 	if writer.Startup(ctx) != nil {
 		return ErrBrokerStartup
 	}
-	diagnostic.New(os.Stderr, "broker").Info("service_ready", "outcome", "ready")
-	return (Server{GatewayUID: cfg.GatewayUID, SocketPath: BrokerSocket, Handler: writer.Handle}).Serve(ctx, []*os.File{fd})
+	log.Info("service_ready", "outcome", "ready")
+	return (Server{GatewayUID: cfg.GatewayUID, SocketPath: BrokerSocket, Handler: loggedBrokerHandler(writer.Handle, log)}).Serve(ctx, []*os.File{fd})
+}
+
+func loggedBrokerHandler(handle Handler, log *slog.Logger) Handler {
+	return func(ctx context.Context, r Request) Reply {
+		reply := handle(ctx, r)
+		// Only the broker-verified route supplies a user. A denied request
+		// does not establish the caller's claimed identity.
+		if reply.Route != nil {
+			log.Info("broker_exchange", "outcome", "accepted", "operation", r.Operation, "user", reply.Route.Username)
+		} else {
+			log.Warn("broker_exchange", "outcome", "rejected", "operation", r.Operation, "reason", string(reply.Failure))
+		}
+		return reply
+	}
 }
 
 // Startup inspects every committed binding, not only the identity requested by

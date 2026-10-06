@@ -21,6 +21,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/maintainer/native-agent-host/internal/diagnostic"
 	"github.com/maintainer/native-agent-host/internal/transport"
 )
 
@@ -168,7 +169,17 @@ func New(home, subject string, run Runner, evidence Evidence) (*Adapter, error) 
 // Consumer can be passed to transport.NewServer/daemon.ServeHTTP. The token
 // exists only as a call-local reader; callers must not retry the handoff.
 func (a *Adapter) Consumer() transport.Consumer {
-	return func(ctx context.Context, token string) error { _, err := a.Install(ctx, token); return err }
+	return func(ctx context.Context, token string) error {
+		result, err := a.Install(ctx, token)
+		// The phase is native observation, distinct from the transport ack.
+		// Never include token, gh output, stderr, login or credential storage.
+		if err != nil {
+			diagnostic.New(os.Stderr, "daemon").Warn("native_gh_install", "outcome", "failed", "reason", "native_install_unavailable")
+		} else {
+			diagnostic.New(os.Stderr, "daemon").Info("native_gh_install", "outcome", "accepted", "phase", string(result.Phase))
+		}
+		return err
+	}
 }
 func (a *Adapter) call(ctx context.Context, program string, output bool, in io.Reader, args ...string) ([]byte, error) {
 	return a.run.Run(ctx, Command{program, args, in, output})

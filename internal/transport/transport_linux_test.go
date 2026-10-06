@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/maintainer/native-agent-host/internal/diagnostic"
 	"github.com/maintainer/native-agent-host/internal/gateway"
 )
 
@@ -90,6 +91,32 @@ func send(t *testing.T, m gateway.Identity, b []byte) int {
 	t.Helper()
 	return raw(t, m.Socket, "POST", Path, fmt.Sprintf("Content-Type: application/json\r\nContent-Length: %d\r\n", len(b)), b)
 }
+func TestHandoffDiagnosticDoesNotExposeCredentials(t *testing.T) {
+	s, _, m, calls := fixture(t)
+	var out bytes.Buffer
+	s.log = diagnostic.New(&out, "daemon")
+	if got := send(t, m, payload(m, strings.Repeat("a", 32))); got != http.StatusNoContent {
+		t.Fatalf("handoff: %d", got)
+	}
+	if got := send(t, m, payload(m, strings.Repeat("a", 32))); got != http.StatusBadRequest {
+		t.Fatalf("replayed handoff: %d", got)
+	}
+	if calls.Load() != 1 || strings.Contains(out.String(), "sentinel-secret") || strings.Contains(out.String(), `"subject"`) || strings.Contains(out.String(), m.Socket) {
+		t.Fatalf("diagnostic leaked content or changed delivery: %s", out.String())
+	}
+	var lines []map[string]any
+	for _, line := range bytes.Split(bytes.TrimSpace(out.Bytes()), []byte{'\n'}) {
+		var record map[string]any
+		if err := json.Unmarshal(line, &record); err != nil {
+			t.Fatal(err)
+		}
+		lines = append(lines, record)
+	}
+	if len(lines) != 2 || lines[0]["outcome"] != "accepted" || lines[0]["user"] != m.Username || lines[1]["reason"] != "handoff_denied" {
+		t.Fatalf("unexpected handoff events: %v", lines)
+	}
+}
+
 func TestJITBindingFailsClosedWithoutRootOwnedConfig(t *testing.T) {
 	u, err := user.Current()
 	if err != nil {

@@ -7,6 +7,17 @@ import (
 	"testing"
 )
 
+func TestWriterPublicationIsSeparateFromReadiness(t *testing.T) {
+	w, host := writerFixture(t)
+	var published []string
+	w.Published = func(user string) { published = append(published, user) }
+	host.readyErr = true
+	reply := handle(w, "ensure", "42", "carol")
+	if reply.Route != nil || len(published) != 1 || published[0] != "carol" {
+		t.Fatalf("publication and readiness conflated: %+v, %v", reply, published)
+	}
+}
+
 func TestWriterPreReservationGuardDiagnostic(t *testing.T) {
 	for _, tc := range []struct {
 		name, fail, stage string

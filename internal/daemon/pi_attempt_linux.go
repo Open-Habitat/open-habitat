@@ -4,10 +4,12 @@ package daemon
 
 import (
 	"net/http"
+	"os"
 	"regexp"
 	"sync"
 	"time"
 
+	"github.com/maintainer/native-agent-host/internal/diagnostic"
 	"github.com/maintainer/native-agent-host/internal/transport"
 )
 
@@ -58,6 +60,7 @@ func (a *piAttempt) handler(cfg transport.Config, trusted func(*http.Request) bo
 			id, events, err := a.device.Start()
 			if err != nil {
 				a.mu.Unlock()
+				diagnostic.New(os.Stderr, "daemon").Warn("pi_device_start", "outcome", "failed", "reason", "native_source_unavailable", "user", cfg.Username)
 				snapshotError(w, 503, "native_source_unavailable")
 				return
 			}
@@ -83,6 +86,9 @@ func (a *piAttempt) handler(cfg transport.Config, trusted func(*http.Request) bo
 		}
 		id := a.id
 		a.mu.Unlock()
+		if r.Method == "POST" {
+			diagnostic.New(os.Stderr, "daemon").Info("pi_device_start", "outcome", "accepted", "user", cfg.Username, "attempt_id", id)
+		}
 		// The active helper may need the whole HTTP deadline to prepare its code.
 		// Do not block a start (or a code read) on a second native status helper.
 		// Only a terminal attempt needs credential evidence; the separate status

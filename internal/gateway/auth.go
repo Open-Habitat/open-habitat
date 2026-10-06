@@ -150,6 +150,7 @@ type Auth struct {
 	settings         serverSettings
 	admission        map[string]admission
 	unmatchedLog     admission // process-wide budget; never keyed by request input
+	accessLog        admission // bound anonymous Access denials independently
 	snapshotDial     func(context.Context, string) (net.Conn, error)
 	snapshotPeerUID  func(*net.UnixConn) int
 	access           *accessVerifier

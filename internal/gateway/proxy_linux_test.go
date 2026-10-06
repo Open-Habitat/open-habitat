@@ -3,7 +3,9 @@
 package gateway
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"net"
 	"net/http"
@@ -48,6 +50,25 @@ func proxyCall(h http.Handler, method, path, body string) *httptest.ResponseReco
 		h.ServeHTTP(w, r)
 	}
 	return w
+}
+
+func TestProxyFailureDiagnosticUsesVerifiedRoute(t *testing.T) {
+	h, a := proxyFixture(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "synthetic-secret-content"+strings.Repeat("x", int(proxyBodyLimit)))
+	}))
+	var log bytes.Buffer
+	a.log = CallbackLogger(&log)
+	w := proxyCall(h, "GET", "/api/v1/snapshot", "")
+	if w.Code != 503 {
+		t.Fatalf("response: %d", w.Code)
+	}
+	var event map[string]any
+	if err := json.Unmarshal(log.Bytes(), &event); err != nil {
+		t.Fatal(err)
+	}
+	if event["event"] != "daemon_route" || event["user"] != "alice" || event["operation"] != "snapshot" || event["reason"] != "daemon_response_unavailable" || strings.Contains(log.String(), "synthetic-secret-content") {
+		t.Fatalf("unsafe or missing classification: %s", log.String())
+	}
 }
 
 func TestProxyForwardsUninterpretedRepliesAndBody(t *testing.T) {

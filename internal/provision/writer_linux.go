@@ -84,7 +84,10 @@ type Writer struct {
 	// GuardEvent is root-local diagnostic output, never included in a reply.
 	// Only internally selected fixed literals are passed to it.
 	GuardEvent func(string)
-	owner      uint32
+	// Published is called only after the binding and head are durable. It is
+	// diagnostic only and must not affect the result of an ensure.
+	Published func(string)
+	owner     uint32
 }
 
 func NewWriter(dir string, min, max uint32, executor HostExecutor) Writer {
@@ -570,6 +573,9 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 	}
 	if unix.Unlinkat(fd, "pending.json", 0) != nil || durable(fd) != nil {
 		return failure(StateUnavailable)
+	}
+	if w.Published != nil {
+		w.Published(name)
 	}
 	return Reply{Version: 1, Route: &Route{UID: uid, Username: name, Socket: socketFor(name)}, Generation: l.Generation, Epoch: a.Epoch}
 }

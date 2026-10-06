@@ -10,10 +10,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/maintainer/native-agent-host/internal/diagnostic"
 	"github.com/maintainer/native-agent-host/internal/nativegh"
 	"github.com/maintainer/native-agent-host/internal/transport"
 	"golang.org/x/sys/unix"
@@ -96,10 +98,14 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		}
 		observation := discover(cfg)
 		if observation.State == "error" {
+			// Discovery.Error is not logged: even native diagnostics must use
+			// fixed classifications, never file names or native output.
+			diagnostic.New(os.Stderr, "daemon").Warn("snapshot_discovery", "outcome", "failed", "reason", "native_source_unavailable", "user", cfg.Username)
 			snapshotError(w, http.StatusServiceUnavailable, "native_source_unavailable")
 			return
 		}
 		if observation.State != "present" && observation.State != "empty" && observation.State != "missing" && observation.State != "partial" {
+			diagnostic.New(os.Stderr, "daemon").Warn("snapshot_discovery", "outcome", "failed", "reason", "invalid_native_observation", "user", cfg.Username)
 			snapshotError(w, 503, "native_source_unavailable")
 			return
 		}

@@ -50,11 +50,31 @@ func daemonUID(c *net.UnixConn) int {
 	return int(u.Uid)
 }
 
+// These fixed names describe routes without recording a browser-supplied URL.
+func proxyOperation(path string) string {
+	switch path {
+	case "/api/v1/snapshot":
+		return "snapshot"
+	case "/api/v1/onboarding/pi/attempt":
+		return "pi_attempt"
+	case "/api/v1/onboarding/github/repos":
+		return "github_repos"
+	default:
+		return "daemon_request"
+	}
+}
+
 // proxy builds a new request rather than cloning the browser request: only the
 // session's mapped socket and the explicitly selected headers cross the boundary.
 func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream bool) {
 	target := s.identity
+	failure := func(reason string) {
+		if a.log != nil {
+			a.log.Warn("daemon_route", "outcome", "failed", "operation", proxyOperation(r.URL.Path), "reason", reason, "user", target.Username)
+		}
+	}
 	if a.snapshotDial == nil && udssecure.Mapped(target.Socket, target.UID) != nil {
+		failure("socket_binding_unavailable")
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
@@ -115,6 +135,7 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	}
 	req, err := http.NewRequestWithContext(ctx, r.Method, "http://unix"+r.URL.RequestURI(), body)
 	if err != nil {
+		failure("request_construction_failed")
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
@@ -138,6 +159,7 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	}
 	res, err := transport.RoundTrip(req)
 	if err != nil {
+		failure("daemon_exchange_failed")
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
@@ -188,6 +210,7 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	// daemon response must not leave a successful but truncated JSON document.
 	data, err := io.ReadAll(io.LimitReader(res.Body, proxyBodyLimit+1))
 	if err != nil || int64(len(data)) > proxyBodyLimit {
+		failure("daemon_response_unavailable")
 		safe(w, 503, "daemon_unavailable")
 		return
 	}

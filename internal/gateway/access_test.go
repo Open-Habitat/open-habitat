@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -14,6 +15,35 @@ import (
 	"testing"
 	"time"
 )
+
+func TestAccessDenialDiagnosticsBoundedAndUnattributed(t *testing.T) {
+	_, a, _, _, clock := fixture(t)
+	var out bytes.Buffer
+	a.log = CallbackLogger(&out)
+	var err error
+	a.access, err = newAccessVerifier(&AccessConfig{Issuer: "https://team.cloudflareaccess.com", Audience: "app"}, a.now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := NewWithAuth("", a)
+	for i := 0; i < 80; i++ {
+		r := httptest.NewRequest("GET", "https://host.test/auth/github/start?secret=synthetic-secret", nil)
+		r.Header.Set("Cf-Access-Authenticated-User-Email", "spoofed@example.invalid")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Code != 403 {
+			t.Fatalf("ingress bypass: %d", w.Code)
+		}
+	}
+	if got := bytes.Count(out.Bytes(), []byte{'\n'}); got != 32 || strings.Contains(out.String(), "synthetic-secret") || strings.Contains(out.String(), "spoofed@example.invalid") {
+		t.Fatalf("unbounded or unsafe denial record: count=%d", got)
+	}
+	*clock = clock.Add(time.Second)
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "https://host.test/auth/github/start", nil))
+	if got := bytes.Count(out.Bytes(), []byte{'\n'}); got != 33 {
+		t.Fatalf("budget did not refill: %d", got)
+	}
+}
 
 func TestAccessIngress(t *testing.T) {
 	h, a, provider, sink, now := fixture(t)

@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -24,6 +25,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/maintainer/native-agent-host/internal/diagnostic"
 	"github.com/maintainer/native-agent-host/internal/gateway"
 	"github.com/maintainer/native-agent-host/internal/udssecure"
 	"golang.org/x/sys/unix"
@@ -328,6 +330,7 @@ type Server struct {
 	mu       sync.Mutex
 	seen     map[string]struct{}
 	testPath bool
+	log      *slog.Logger
 }
 
 func NewServer(cfg Config, consume Consumer) (*Server, error) { return newServer(cfg, consume, false) }
@@ -335,7 +338,7 @@ func newServer(cfg Config, consume Consumer, testPath bool) (*Server, error) {
 	if consume == nil || validate(cfg, testPath) != nil {
 		return nil, denied
 	}
-	return &Server{cfg: cfg, consume: consume, seen: make(map[string]struct{}), testPath: testPath}, nil
+	return &Server{cfg: cfg, consume: consume, seen: make(map[string]struct{}), testPath: testPath, log: diagnostic.New(os.Stderr, "daemon")}, nil
 }
 
 type peerKey struct{}
@@ -352,6 +355,7 @@ func (s *Server) Handler() http.Handler {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Content-Type", "application/json")
 		reject := func() {
+			s.log.Warn("credential_handoff", "outcome", "rejected", "reason", "handoff_denied")
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = io.WriteString(w, `{"schema_version":1,"error":"handoff_denied"}`)
 		}
@@ -383,9 +387,11 @@ func (s *Server) Handler() http.Handler {
 		s.seen[v.Nonce] = struct{}{}
 		s.mu.Unlock()
 		if s.consume(r.Context(), v.Token) != nil {
+			s.log.Warn("credential_handoff", "outcome", "failed", "reason", "native_install_unavailable", "user", s.cfg.Username)
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
+		s.log.Info("credential_handoff", "outcome", "accepted", "user", s.cfg.Username)
 		w.WriteHeader(http.StatusNoContent)
 	})
 }

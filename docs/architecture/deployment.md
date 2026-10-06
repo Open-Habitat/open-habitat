@@ -129,14 +129,22 @@ Each host record has `time` (UTC timestamp), `level` (slog severity),
 an internal fixed classification on failures. Optional `attempt_id` is a
 server-generated gateway login attempt ID; it is not a cross-service trace.
 `broker_operation` and `broker_reason` classify the gateway's observation of
-a broker exchange; broker guard `reason` names its failed check. A revocation
-record's `subject` is the broker-verified target, not the operator. Example
+a broker exchange; broker guard `reason` names its failed check. Broker exchange
+records name a user only after the broker has verified a route; binding publication
+is recorded separately from daemon readiness and browser session issuance. A
+revocation record's `subject` is the broker-verified target; its `actor` is
+`root_peer`, not a guessed human operator. Gateway routing uses a fixed
+`operation` name rather than a browser URL. Daemon credential handoff and native
+gh installation have separate results; a Pi device start has its own
+`attempt_id`, which is not the gateway's OAuth attempt ID. Example
 records (timestamps and opaque IDs illustrative; no user content):
 
 ```jsonl
 {"time":"2026-10-05T12:00:00Z","level":"INFO","event":"oauth_callback","schema_version":1,"component":"gateway","outcome":"rejected","reason":"broker_denied","broker_operation":"ensure","broker_reason":"denied","attempt_id":"XyZ123"}
 {"time":"2026-10-05T12:00:01Z","level":"WARN","event":"broker_guard","schema_version":1,"component":"broker","outcome":"rejected","reason":"availability_error"}
-{"time":"2026-10-05T12:00:02Z","level":"INFO","event":"service_ready","schema_version":1,"component":"daemon","outcome":"ready"}
+{"time":"2026-10-05T12:00:02Z","level":"INFO","event":"binding_published","schema_version":1,"component":"broker","outcome":"published","operation":"ensure","user":"example-user"}
+{"time":"2026-10-05T12:00:03Z","level":"WARN","event":"daemon_route","schema_version":1,"component":"gateway","outcome":"failed","operation":"snapshot","reason":"daemon_exchange_failed","user":"example-user"}
+{"time":"2026-10-05T12:00:04Z","level":"INFO","event":"credential_handoff","schema_version":1,"component":"daemon","outcome":"accepted","user":"example-user"}
 ```
 
 These records contain classifications, not raw errors, URLs, headers, tokens,
@@ -145,7 +153,9 @@ failed diagnostic write is ignored; absence of a line does not prove an
 operation did not occur. Writes to stderr are synchronous, so an indefinitely
 blocked journal stream can still delay the caller. Broker bindings and pending
 files are privileged application state, not diagnostic logs; Pi history is the
-user's native work history, not a replacement for the journal. Missing
-operation-level diagnostics remain tracked by @correlate-diagnostics.
+user's native work history, not a replacement for the journal. These
+diagnostics are best-effort observations, not a complete audit trail. Neither
+the broker protocol nor the daemon handoff frame carries the gateway's OAuth
+attempt ID; joining independent records by timestamp alone is not reliable.
 
 Decisions behind this page: ADR 0003, ADR 0004.
