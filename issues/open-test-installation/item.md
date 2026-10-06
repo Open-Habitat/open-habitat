@@ -6,6 +6,9 @@ status: open
 priority: normal
 lane: admission
 lane_seq: 20
+blocked_by: ['@plan-second-user-admission']
+collision: [internal/gateway/auth.go]
+preparation: ready
 ---
 
 # Open the test installation to anyone with a GitHub account
