@@ -52,6 +52,6 @@ work.
 
 ## Acceptance Criteria
 
-- [ ] The sidebar, opened account menu and settings identify the same signed-in person using the agreed name, email and profile image presentation.
-- [ ] Missing GitHub name or email can be supplied during onboarding, and the account remains recognizable without a profile image.
-- [ ] After logout and signing in as another person, the views show that person's profile. Display information does not change authenticated identity or Unix-user binding.
+- [x] The sidebar, opened account menu and settings identify the same signed-in person using the agreed name, email and profile image presentation.
+- [x] Missing GitHub name or email can be supplied during onboarding, and the account remains recognizable without a profile image.
+- [x] After logout and signing in as another person, the views show that person's profile. Display information does not change authenticated identity or Unix-user binding.
