@@ -2,13 +2,15 @@
 created: 2026-09-21
 updated: 2026-10-06
 type: task
-status: in-progress
+status: done
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
 lane_seq: 85
 preparation: ready
 collision: [docs/, AGENTS.md, design-system/]
+closed: 2026-10-06
+closed_by: claude
 ---
 
 # Archive native agent conversations
@@ -77,6 +79,10 @@ disconnected views. Follow [TESTING.md](../../TESTING.md), record evidence and
 limits in this issue's `result.md`, and update affected documentation and examples.
 Browser screenshots and outcomes belong in `visual-acceptance.md`; Jari's visual
 verdict remains separate from functional completion.
+
+## Acceptance Criteria
+
+- [x] CT-021 archive → restore → same-ID continuation and the refusal/uncertainty cases are verified in disposable fixtures; evidence and limits are in [the result](result.md).
 
 ## Decisions
 
