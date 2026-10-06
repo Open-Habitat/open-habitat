@@ -190,9 +190,20 @@ print('UNEXPECTED_REPLY')
                 bindings=json.loads((ledger_dir/'bindings.json').read_text()).get('bindings',[])
                 socket_unit='native-agent-host-daemon@'+name+'.socket'
                 active=subprocess.run(['systemctl','is-active',socket_unit],capture_output=True,text=True).stdout.strip()
+                gate_log=subprocess.run(['journalctl','-u','native-agent-host-jit-policy-gate@'+name+'.service',
+                                         '-n','12','--no-pager','-o','cat'],capture_output=True,text=True).stdout
+                gate_reasons=[]
+                for line in gate_log.splitlines():
+                    try:
+                        item=json.loads(line)
+                        if item.get('error',{}).get('code')=='policy-refused':
+                            gate_reasons.append(item['error'].get('message','')[:80])
+                    except (ValueError,AttributeError):
+                        pass
                 result['diagnostic']={'binding_committed':any(b.get('id')==str(100000001+index) and b.get('uid')==uids[index] for b in bindings),
                     'socket_unit_state':active,'socket_inode_present':(root/name/'daemon.sock').is_socket(),
-                    'credential_present':(pathlib.Path('/home')/name/'.config/gh/hosts.yml').is_file()}
+                    'credential_present':(pathlib.Path('/home')/name/'.config/gh/hosts.yml').is_file(),
+                    'gate_refusal':gate_reasons[-1:]}
                 raise RuntimeError('OAuth callback status '+str(status)+' code '+str(code))
             uid=uids[index];home=pathlib.Path('/home')/name
             check(pwd.getpwnam(name).pw_uid==uid and pwd.getpwnam(name).pw_gid==uid,'new NSS account')
