@@ -38,8 +38,16 @@ func (a *Auth) authenticated(r *http.Request) (session, bool) {
 		renewed = s.absolute
 	}
 	if renewed.Sub(s.idle) >= renewalInterval {
-		s.idle = renewed
-		if a.changedSessions(func(next map[string]session) { next[key] = s }) != nil {
+		updated := false
+		err := a.changedSessions(func(next map[string]session) {
+			if _, ok := next[key]; !ok {
+				return
+			}
+			s.idle = renewed
+			next[key] = s
+			updated = true
+		})
+		if err != nil || !updated {
 			return session{}, false
 		}
 	}

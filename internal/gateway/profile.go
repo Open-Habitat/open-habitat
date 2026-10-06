@@ -75,11 +75,23 @@ func (a *Auth) updateProfile(w http.ResponseWriter, r *http.Request) {
 		safe(w, 401, "authentication_required")
 		return
 	}
-	current.profile.Name, current.profile.Email = name, email
-	err := a.changedSessions(func(next map[string]session) { next[key] = current })
+	updated := false
+	err := a.changedSessions(func(next map[string]session) {
+		fresh, ok := next[key]
+		if !ok || fresh.identity != s.identity || fresh.csrf != s.csrf {
+			return
+		}
+		fresh.profile.Name, fresh.profile.Email = name, email
+		next[key] = fresh
+		updated = true
+	})
 	a.mu.Unlock()
 	if err != nil {
 		safe(w, 503, "authentication_required")
+		return
+	}
+	if !updated {
+		safe(w, 401, "authentication_required")
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")

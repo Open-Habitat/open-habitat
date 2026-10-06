@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -196,5 +197,59 @@ func TestPersistentExpiryAndMissingStore(t *testing.T) {
 	h = newHandler()
 	if request(h, "GET", "/auth/session", cookie).Code != 401 {
 		t.Fatal("missing restart store accepted")
+	}
+}
+
+type heldProfileBody struct {
+	entered chan struct{}
+	release chan struct{}
+	reader  *strings.Reader
+	once    sync.Once
+}
+
+func (b *heldProfileBody) Read(p []byte) (int, error) {
+	b.once.Do(func() { close(b.entered) })
+	<-b.release
+	return b.reader.Read(p)
+}
+
+func TestProfileCannotRepublishLostSession(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "sessions.json")
+	cfg := OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: "https://host.test", CallbackURL: "https://host.test/auth/github/callback"}
+	opts := AuthOptions{Provider: &fakeProvider{id: "42", login: "alice", token: "token"}, Sink: &fakeSink{}, Broker: newFakeBroker(), SessionFile: path}
+	a, e := NewAuth(cfg, opts)
+	if e != nil {
+		t.Fatal(e)
+	}
+	h := NewWithAuth("", a)
+	state, flow := start(t, h)
+	login := callback(h, state, flow)
+	cookie := login.Result().Cookies()[1]
+	info := request(h, "GET", "/auth/session", cookie)
+	csrf := extractCSRF(t, info.Body.String())
+	bodyText := `{"name":"Alice","email":"alice@example.invalid"}`
+	body := &heldProfileBody{entered: make(chan struct{}), release: make(chan struct{}), reader: strings.NewReader(bodyText)}
+	r := httptest.NewRequest("POST", "https://host.test/auth/profile", body)
+	r.ContentLength = int64(len(bodyText))
+	r.AddCookie(cookie)
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Origin", cfg.Origin)
+	r.Header.Set("X-Agent-Host-CSRF", csrf)
+	result := make(chan int, 1)
+	go func() { w := httptest.NewRecorder(); h.ServeHTTP(w, r); result <- w.Code }()
+	<-body.entered
+	if e := os.Remove(path); e != nil {
+		t.Fatal(e)
+	}
+	close(body.release)
+	if code := <-result; code != 401 {
+		t.Fatalf("profile republished lost session: %d", code)
+	}
+	a, e = NewAuth(cfg, opts)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if request(NewWithAuth("", a), "GET", "/auth/session", cookie).Code != 401 {
+		t.Fatal("old cookie revived after restart")
 	}
 }
