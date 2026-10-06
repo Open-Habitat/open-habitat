@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from "react";
-import { accountSession, type AccountProfile } from "./pi";
-import { Button } from "../components/Primitives";
+import { type FormEvent, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
+import { OnboardingFrame } from "../components/OnboardingFrame";
+import { Button } from "../components/Primitives";
+import { type AccountProfile, accountSession } from "./pi";
 
 export function AccountProfileOnboarding({
   profile,
@@ -54,62 +55,64 @@ export function AccountProfileOnboarding({
     }
   }
   return (
-    <main className="ah-account-onboarding">
-      <h1>Täydennä tilisi tiedot</h1>
-      <p>
-        GitHub ei antanut kaikkia näyttötietoja. Nämä tiedot näkyvät vain tilisi
-        esityksessä eivätkä muuta kirjautumista.
-      </p>
-      <form
-        onSubmit={(event) => {
-          void submit(event);
-        }}
-      >
-        {!profile.name && (
-          <label>
-            Nimi{" "}
-            <input
-              required
-              maxLength={200}
-              autoComplete="name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </label>
-        )}
-        {!profile.email && (
-          <label>
-            Sähköposti{" "}
-            <input
-              required
-              type="email"
-              maxLength={254}
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </label>
-        )}
-        {error && (
-          <p role="alert">
-            Tietoja ei voitu tallentaa. Tarkista tiedot ja yritä uudelleen.
-          </p>
-        )}
-        <ControlButton
-          type="submit"
-          variant="primary"
-          isDisabled={pending || !csrf}
+    <OnboardingFrame step={1}>
+      <main className="ah-account-onboarding">
+        <h1>Täydennä tilisi tiedot</h1>
+        <p>
+          GitHub ei antanut kaikkia näyttötietoja. Nämä tiedot näkyvät vain
+          tilisi esityksessä eivätkä muuta kirjautumista.
+        </p>
+        <form
+          onSubmit={(event) => {
+            void submit(event);
+          }}
         >
-          {pending ? "Tallennetaan…" : "Jatka"}
-        </ControlButton>
-        {onSkip && (
-          <Button
-            label="Jatka ilman tietoja"
-            variant="secondary"
-            onPress={onSkip}
-          />
-        )}
-      </form>
-    </main>
+          {!profile.name && (
+            <label>
+              Nimi{" "}
+              <input
+                required
+                maxLength={200}
+                autoComplete="name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </label>
+          )}
+          {!profile.email && (
+            <label>
+              Sähköposti{" "}
+              <input
+                required
+                type="email"
+                maxLength={254}
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            </label>
+          )}
+          {error && (
+            <p role="alert">
+              Tietoja ei voitu tallentaa. Tarkista tiedot ja yritä uudelleen.
+            </p>
+          )}
+          <ControlButton
+            type="submit"
+            variant="primary"
+            isDisabled={pending || !csrf}
+          >
+            {pending ? "Tallennetaan…" : "Jatka"}
+          </ControlButton>
+          {onSkip && (
+            <Button
+              label="Jatka ilman tietoja"
+              variant="secondary"
+              onPress={onSkip}
+            />
+          )}
+        </form>
+      </main>
+    </OnboardingFrame>
   );
 }

@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AccountLogoutDialog } from "../components/Account";
 import {
-  GitHubRepoChooser,
   type GitHubCheckoutView,
+  GitHubRepoChooser,
   type GitHubRepoChooserView,
 } from "../components/GitHubRepoChooser";
-import { PiOnboarding } from "./PiOnboarding";
 import { Button } from "../components/Primitives";
 import { InlineNotice } from "../components/Status";
-import { sessionCSRF } from "./pi";
 import { catalog, cloneStream, GitHubError, observe } from "./github";
+import { PiOnboarding } from "./PiOnboarding";
+import { sessionCSRF } from "./pi";
 
 const marker = "nah:github-step";
 const message = (e: unknown) =>
@@ -45,6 +46,7 @@ export function GitHubOnboarding({
   onLogin: () => void;
   onLogout: () => Promise<void>;
 }) {
+  const [exitOpen, setExitOpen] = useState(false);
   const [step, setStep] = useState<"loading" | "github" | "pi">("loading");
   useEffect(() => {
     if (step === "loading") return;
@@ -469,12 +471,17 @@ export function GitHubOnboarding({
         <Button
           label="Keskeytä käyttöönotto ja kirjaudu ulos"
           variant="danger-subtle"
-          onPress={() => {
-            reset();
-            void onLogout();
-          }}
+          onPress={() => setExitOpen(true)}
         />
       </div>
+      <AccountLogoutDialog
+        open={exitOpen}
+        onClose={() => setExitOpen(false)}
+        onConfirm={() => {
+          reset();
+          void onLogout();
+        }}
+      />
     </>
   );
 }

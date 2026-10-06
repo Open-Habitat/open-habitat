@@ -75,15 +75,12 @@
   padding: var(--ah-s7);
 }
 .ah-login-view {
-  width: min(100%, 440px);
+  width: 100%;
 }
 .ah-login-card {
   display: grid;
   gap: var(--ah-s6);
-  padding: 26px;
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-xl);
-  background: var(--ah-surface);
+  min-width: 0;
 }
 .ah-login-card header {
   display: grid;

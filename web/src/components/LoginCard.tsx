@@ -1,34 +1,41 @@
+import { OnboardingFrame } from "./OnboardingFrame";
 import { Button } from "./Primitives";
 import { InlineNotice } from "./Status";
 
 export function LoginCard({ onLogin }: { onLogin?: () => void }) {
   const demo = import.meta.env.VITE_SYNTHETIC_DEMO === "true";
   return (
-    <section className="ah-login-card" aria-labelledby="login-title">
-      <header>
-        <p className="eyebrow">Omega Habitat</p>
-        <h1 id="login-title">Tervetuloa Omega Habitatiin</h1>
-      </header>
-      <p>Kirjaudu sisään päästäksesi työtiloihisi.</p>
-      <Button
-        label="Kirjaudu GitHubilla"
-        availability={
-          demo
-            ? {
-                state: "unsupported",
-                reason: "Simuloidussa demossa ei voi kirjautua.",
-              }
-            : undefined
-        }
-        onPress={
-          onLogin ??
-          (() => {
-            window.location.href = "/auth/github/start";
-          })
-        }
-      />
-      {demo ? <p className="muted">Tämä näkymä on simulaatio.</p> : null}
-    </section>
+    <OnboardingFrame step={1}>
+      <section className="ah-login-card" aria-labelledby="login-title">
+        <header>
+          <p className="eyebrow">Omega Habitat</p>
+          <h1 id="login-title">Tervetuloa Omega Habitatiin</h1>
+        </header>
+        <p>
+          Kirjaudu GitHub-tililläsi. Pääset omiin työtiloihisi ja voit
+          työskennellä niissä agenttien kanssa. Kirjautumisen jälkeen voit
+          valita repot ja yhdistää OpenAI-tilisi.
+        </p>
+        <Button
+          label="Kirjaudu GitHubilla"
+          availability={
+            demo
+              ? {
+                  state: "unsupported",
+                  reason: "Simuloidussa demossa ei voi kirjautua.",
+                }
+              : undefined
+          }
+          onPress={
+            onLogin ??
+            (() => {
+              window.location.href = "/auth/github/start";
+            })
+          }
+        />
+        {demo ? <p className="muted">Tämä näkymä on simulaatio.</p> : null}
+      </section>
+    </OnboardingFrame>
   );
 }
 

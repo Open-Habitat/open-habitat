@@ -31,6 +31,22 @@ function props(): GitHubRepoChooserProps {
   };
 }
 describe("GitHub first-use chooser", () => {
+  it("shows the server and three stages, with all repos visible until filtering is chosen", async () => {
+    const user = userEvent.setup();
+    const view = render(<GitHubRepoChooser {...props()} />);
+    expect(
+      view.getByRole("list", { name: "Käyttöönoton vaiheet" }),
+    ).toBeTruthy();
+    expect(view.getByText(window.location.host)).toBeTruthy();
+    expect(view.getByText("sample-lab/aurora")).toBeTruthy();
+    expect(view.getByText("sample-lab/harbor")).toBeTruthy();
+    await user.click(
+      view.getByRole("checkbox", { name: /Näytä vain viimeisen/ }),
+    );
+    expect(view.getByRole("combobox", { name: "Aikaväli" })).toBeTruthy();
+    // An unknown update time is not grounds to hide a repository.
+    expect(view.getByText("sample-lab/harbor")).toBeTruthy();
+  });
   it("filters names without writing, then sends exactly the controlled names once", async () => {
     const user = userEvent.setup();
     const initial = props();
@@ -57,9 +73,7 @@ describe("GitHub first-use chooser", () => {
     await user.clear(view.getByRole("searchbox"));
     expect(view.getByText(/Viimeksi päivitetty: 28.9.2026/)).toBeTruthy();
     expect(initial.onProceed).not.toHaveBeenCalled();
-    await user.click(
-      view.getByRole("button", { name: "Hae valitut ja jatka" }),
-    );
+    await user.click(view.getByRole("button", { name: "Hae 1 repo ja jatka" }));
     expect(initial.onProceed).toHaveBeenCalledExactlyOnceWith([
       repos[0].full_name,
     ]);
@@ -72,7 +86,7 @@ describe("GitHub first-use chooser", () => {
     ).toBe(true);
     expect(
       view
-        .getByRole("button", { name: "Hae valitut ja jatka" })
+        .getByRole("button", { name: "Hae 1 repo ja jatka" })
         .hasAttribute("disabled"),
     ).toBe(true);
     view.rerender(

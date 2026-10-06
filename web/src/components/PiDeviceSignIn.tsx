@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ExternalLink } from "./ControlElements";
+import { OnboardingFrame } from "./OnboardingFrame";
 import styles from "./PiDeviceSignIn.module.css";
 import { Button } from "./Primitives";
 import { InlineNotice, StatusMark } from "./Status";
@@ -101,122 +102,145 @@ export function PiDeviceSignIn({
   }
 
   return (
-    <section className={styles.card} aria-labelledby="pi-device-title">
-      <header>
-        <p className="ah-eyebrow">Käyttöönotto</p>
-        <h1 id="pi-device-title" tabIndex={-1}>
-          ChatGPT-kirjautuminen
-        </h1>
-      </header>
-      <div role="status" aria-live="polite" aria-atomic="true">
-        {active ? (
-          <StatusMark
-            label={
-              view.phase === "pending"
-                ? "Odotetaan vahvistusta"
-                : "Odotetaan kirjautumista"
-            }
-            tone="info"
-            animated={view.phase === "pending" ? "running" : false}
-          />
-        ) : outcome &&
-          view.phase !== "interrupted" &&
-          view.phase !== "unavailable" ? (
-          <StatusMark label={outcome.label} tone={outcome.tone} />
-        ) : checking ? (
-          <StatusMark
-            label="Tarkistetaan tilaa"
-            tone="info"
-            animated="running"
-          />
-        ) : null}
-      </div>
-      {active ? (
-        usable ? (
-          <div className={styles.steps}>
-            <p>1. Avaa OpenAI:n kirjautumissivu uuteen välilehteen.</p>
-            <ExternalLink href={uri} target="_blank" rel="noopener noreferrer">
-              Avaa OpenAI:n vahvistussivu (uusi välilehti)
-            </ExternalLink>
-            <p>2. Syötä siellä tämä koodi:</p>
-            <div className={styles.code}>
-              <code>{view.userCode}</code>
-              <Button
-                label="Kopioi koodi"
-                variant="secondary"
-                onPress={() => {
-                  void copyCode();
-                }}
-              />
-            </div>
-            {copy?.code === view.userCode ? (
-              <p role="status">{copy.message}</p>
-            ) : null}
-            <p>
-              3. Palaa tänne vahvistuksen jälkeen. Kirjautumisen tila päivittyy
-              automaattisesti. Pelkkä linkin avaaminen ei vielä kirjaa sisään.
-            </p>
-          </div>
-        ) : (
-          <p role="alert">
-            Vahvistussivua tai koodia ei voi näyttää turvallisesti. Pyydä uusi
-            kirjautumisyritys.
-          </p>
-        )
-      ) : view.phase === "interrupted" || view.phase === "unavailable" ? (
-        <>
-          <h3>Kirjautuminen keskeytyi</h3>
-          <InlineNotice
-            title="Tilaa ei voitu vahvistaa"
-            description={
-              checking ? "Tarkistetaan palvelimen tilaa." : outcome?.detail
-            }
-            tone="danger"
-            actions={
-              onRefresh && !checking
-                ? [{ label: "Tarkista tila", onPress: onRefresh }]
-                : []
-            }
-          />
-        </>
-      ) : (
-        <p>{outcome?.detail}</p>
-      )}
-      <div className={styles.actions}>
-        {cancellable ? (
-          onCancel ? (
-            <Button
-              label="Peruuta kirjautumisyritys"
-              variant="secondary"
-              onPress={onCancel}
+    <OnboardingFrame step={3}>
+      <section className={styles.card} aria-labelledby="pi-device-title">
+        <header>
+          <p className="ah-eyebrow">Käyttöönotto</p>
+          <h1 id="pi-device-title" tabIndex={-1}>
+            Kirjaudu OpenAI-tiliisi
+          </h1>
+        </header>
+        <p>
+          Agentit käyttävät OpenAI-tiliäsi. Kirjautuminen tehdään OpenAI:n
+          omalla sivulla koodilla — salasanaa ei syötetä tänne.
+        </p>
+        <div role="status" aria-live="polite" aria-atomic="true">
+          {active ? (
+            <StatusMark
+              label={
+                view.phase === "pending"
+                  ? "Odotetaan vahvistusta"
+                  : "Odotetaan kirjautumista"
+              }
+              tone="info"
+              animated={view.phase === "pending" ? "running" : false}
             />
-          ) : null
-        ) : view.phase !== "connected" && onRetry ? (
-          <Button
-            label={
-              view.phase === "start"
-                ? "Aloita kirjautuminen"
-                : "Aloita uusi yritys"
-            }
-            variant={view.phase === "start" ? "primary" : "secondary"}
-            onPress={onRetry}
-          />
-        ) : null}
-        {active && !usable && onRetry ? (
-          <Button
-            label="Aloita uusi yritys"
-            variant="secondary"
-            onPress={onRetry}
-          />
-        ) : null}
-        {onBack ? (
-          <Button
-            label="Takaisin valitsemaan GitHub-repoja"
-            variant="secondary"
-            onPress={onBack}
-          />
-        ) : null}
-      </div>
-    </section>
+          ) : outcome &&
+            view.phase !== "interrupted" &&
+            view.phase !== "unavailable" ? (
+            <StatusMark label={outcome.label} tone={outcome.tone} />
+          ) : checking ? (
+            <StatusMark
+              label="Tarkistetaan tilaa"
+              tone="info"
+              animated="running"
+            />
+          ) : null}
+        </div>
+        {active ? (
+          usable ? (
+            <div className={styles.steps}>
+              <div className={styles.instruction}>
+                <span className={styles.number}>1</span>
+                <div>
+                  <strong>Kopioi koodi</strong>
+                  <div className={styles.code}>
+                    <code>{view.userCode}</code>
+                    <Button
+                      label="Kopioi koodi"
+                      variant="secondary"
+                      onPress={() => {
+                        void copyCode();
+                      }}
+                    />
+                  </div>
+                  {copy?.code === view.userCode ? (
+                    <p role="status">{copy.message}</p>
+                  ) : null}
+                </div>
+              </div>
+              <div className={styles.instruction}>
+                <span className={styles.number}>2</span>
+                <div>
+                  <strong>Syötä koodi OpenAI:n sivulla</strong>
+                  <ExternalLink
+                    href={uri}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Avaa OpenAI:n vahvistussivu (uusi välilehti)
+                  </ExternalLink>
+                  <p>
+                    Avautuu uuteen välilehteen. Palaa tänne vahvistuksen
+                    jälkeen.
+                  </p>
+                </div>
+              </div>
+              <p role="status">
+                Odotetaan vahvistusta OpenAI:lta. Sivu päivittyy itsestään.
+              </p>
+            </div>
+          ) : (
+            <p role="alert">
+              Vahvistussivua tai koodia ei voi näyttää turvallisesti. Pyydä uusi
+              kirjautumisyritys.
+            </p>
+          )
+        ) : view.phase === "interrupted" || view.phase === "unavailable" ? (
+          <>
+            <h3>Kirjautuminen keskeytyi</h3>
+            <InlineNotice
+              title="Tilaa ei voitu vahvistaa"
+              description={
+                checking ? "Tarkistetaan palvelimen tilaa." : outcome?.detail
+              }
+              tone="danger"
+              actions={
+                onRefresh && !checking
+                  ? [{ label: "Tarkista tila", onPress: onRefresh }]
+                  : []
+              }
+            />
+          </>
+        ) : (
+          <p>{outcome?.detail}</p>
+        )}
+        <div className={styles.actions}>
+          {cancellable ? (
+            onCancel ? (
+              <Button
+                label="Peruuta kirjautumisyritys"
+                variant="quiet"
+                onPress={onCancel}
+              />
+            ) : null
+          ) : view.phase !== "connected" && onRetry ? (
+            <Button
+              label={
+                view.phase === "start"
+                  ? "Aloita kirjautuminen"
+                  : "Aloita uusi yritys"
+              }
+              variant="primary"
+              onPress={onRetry}
+            />
+          ) : null}
+          {active && !usable && onRetry ? (
+            <Button
+              label="Aloita uusi yritys"
+              variant="secondary"
+              onPress={onRetry}
+            />
+          ) : null}
+          {onBack ? (
+            <Button
+              label="Takaisin valitsemaan GitHub-repoja"
+              variant="quiet"
+              onPress={onBack}
+            />
+          ) : null}
+        </div>
+      </section>
+    </OnboardingFrame>
   );
 }

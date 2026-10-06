@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AccountLogoutDialog } from "../components/Account";
 import {
   PiDeviceSignIn,
   type PiDeviceSignInView,
 } from "../components/PiDeviceSignIn";
 import { Button } from "../components/Primitives";
-import { piAttempt, piStatus, sessionCSRF, type Attempt } from "./pi";
+import { type Attempt, piAttempt, piStatus, sessionCSRF } from "./pi";
 
 function viewOf(attempt: Attempt): PiDeviceSignInView {
   if (
@@ -34,6 +35,7 @@ export function PiOnboarding({
   onBack?: () => void;
   forceSignIn?: boolean;
 }) {
+  const [exitOpen, setExitOpen] = useState(false);
   const [view, setView] = useState<PiDeviceSignInView>({ phase: "waiting" });
   // Parent renders must not restart polling or re-bind the session.
   const latest = useRef({ onUsable, onLogin, forceSignIn });
@@ -331,11 +333,16 @@ export function PiOnboarding({
         <Button
           label="Keskeytä käyttöönotto ja kirjaudu ulos"
           variant="danger-subtle"
-          onPress={() => {
-            void logout();
-          }}
+          onPress={() => setExitOpen(true)}
         />
       </div>
+      <AccountLogoutDialog
+        open={exitOpen}
+        onClose={() => setExitOpen(false)}
+        onConfirm={() => {
+          void logout();
+        }}
+      />
     </>
   );
 }

@@ -1,11 +1,6 @@
 .card {
   display: grid;
   gap: var(--ah-s5);
-  max-width: 48rem;
-  padding: var(--ah-s7);
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-xl);
-  background: var(--ah-surface);
   color: var(--ah-ink);
 }
 .card header {
@@ -47,4 +42,38 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--ah-s3);
+}
+.instruction {
+  display: flex;
+  align-items: start;
+  gap: var(--ah-s4);
+}
+.instruction > div {
+  min-width: 0;
+  display: grid;
+  gap: var(--ah-s3);
+}
+.number {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ah-line);
+  border-radius: 50%;
+  font-size: var(--ah-size-label);
+}
+.code {
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface-2);
+  padding: var(--ah-s2);
+  min-width: 0;
+}
+.code code {
+  border: 0;
+  padding: var(--ah-s2);
+  font-size: clamp(16px, 5vw, 24px);
+  letter-spacing: 0.1em;
+  overflow-wrap: anywhere;
 }
