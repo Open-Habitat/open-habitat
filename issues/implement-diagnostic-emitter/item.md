@@ -22,7 +22,7 @@ This issue establishes format and guidance, including a concise operator-facing 
 
 ## Acceptance Criteria
 
-- [ ] Gateway, broker and service startup/error messages produced by the host have a consistent, readable JSONL shape with documented field meanings and real examples; existing IDs and verified identity appear when relevant and available.
-- [ ] Documentation identifies each service's stderr/journal location and shows how an operator finds its records without mistaking broker state or the Pi history for diagnostic logs.
-- [ ] Representative records exclude synthetic secrets and work content, and logging failures do not change the tested operation's result.
-- [ ] The result records focused tests and the committed clean gate outcome, with skips and remaining gaps identified.
+- [x] Gateway, broker and service startup/error messages produced by the host have a consistent, readable JSONL shape with documented field meanings and real examples; existing IDs and verified identity appear when relevant and available.
+- [x] Documentation identifies each service's stderr/journal location and shows how an operator finds its records without mistaking broker state or the Pi history for diagnostic logs.
+- [x] Representative records exclude synthetic secrets and work content, and logging failures do not change the tested operation's result.
+- [x] The result records focused tests and the committed clean gate outcome, with skips and remaining gaps identified.
