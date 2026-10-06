@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState } from "react";
+import {
+  Dialog as AriaDialog,
+  Heading,
+  Modal,
+  ModalOverlay,
+} from "react-aria-components";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { Menu } from "./Overlays";
 import { Button, ListRow, RadioGroup } from "./Primitives";
-import { InlineNotice, StatusMark } from "./Status";
+import { StatusMark } from "./Status";
 
 /** Provider subject numbers are not a useful person-facing name. */
 export function accountLabel(displayName: string): string {
@@ -59,7 +65,7 @@ export function AccountShelf({
             <span className="ah-rail-identity">{compactName}</span>
           </span>
         }
-        heading={<strong>{name}</strong>}
+        heading={<strong>{accountLabel(name)}</strong>}
         popoverClassName="ah-account-menu"
         items={[
           { id: "settings", label: "Asetukset" },
@@ -70,7 +76,7 @@ export function AccountShelf({
             group: "theme",
             displayLabel: label,
           })),
-          { id: "logout", label: "Kirjaudu ulos", danger: true },
+          { id: "logout", label: "Kirjaudu ulos…", danger: true },
         ]}
         onAction={(id) => {
           if (id.startsWith("theme-")) {
@@ -119,11 +125,13 @@ const states: Record<NativeState, { label: string; description: string }> = {
 export function AccountSettings({
   name,
   nativeState,
+  nativeLogin,
   onBack,
   onLogout,
 }: {
   name: string;
   nativeState?: NativeState;
+  nativeLogin?: string;
   onBack: () => void;
   onLogout?: () => void;
 }) {
@@ -154,7 +162,10 @@ export function AccountSettings({
               ? "?"
               : name.trim().slice(0, 1).toLocaleUpperCase()}
           </span>
-          <strong>{accountLabel(name)}</strong>
+          <strong className="ah-account-full-name">{accountLabel(name)}</strong>
+          {accountLabel(name) !== "Oma tili" ? (
+            <span className="ah-account-origin">GitHubista</span>
+          ) : null}
         </div>
       </section>
       <section
@@ -165,6 +176,9 @@ export function AccountSettings({
         <div className="ah-account-panel">
           <div className="ah-account-connection">
             <h3>GitHub</h3>
+            {nativeLogin ? (
+              <code className="ah-account-login">{nativeLogin}</code>
+            ) : null}
             <StatusMark
               label={state.label}
               kind={
@@ -179,10 +193,10 @@ export function AccountSettings({
           </div>
           <p>{state.description}</p>
         </div>
-        <InlineNotice
-          title="Yhteyttä ei voi vielä katkaista täällä"
-          description="Uloskirjautuminen sulkee selaimen istunnon, mutta ei poista tämän palvelimen GitHub-kirjautumista."
-        />
+        <p className="ah-account-hint">
+          Yhteydet kuuluvat palvelimelle, eivät tähän selaimeen. Yhteyttä ei voi
+          vielä katkaista täällä.
+        </p>
       </section>
       <section
         className="ah-account-section"
@@ -219,7 +233,7 @@ export function AccountSettings({
             <ListRow
               trailing={
                 <Button
-                  label="Kirjaudu ulos"
+                  label="Kirjaudu ulos…"
                   variant="danger-subtle"
                   onPress={onLogout}
                 />
@@ -227,13 +241,74 @@ export function AccountSettings({
             >
               <strong>Kirjaudu ulos tästä selaimesta</strong>
               <p>
-                Kirjautuminen ulos sulkee vain tämän selaimen istunnon.
-                Agenttien työ palvelimella jatkuu.
+                Tämän selaimen luonnokset ja luettu sisältö poistetaan.
+                Työtilat, palvelimen tunnukset ja agenttien työ säilyvät.
               </p>
             </ListRow>
           </div>
         </section>
       ) : null}
     </section>
+  );
+}
+
+/** One confirmation for settings and the account menu; no native credential is revoked. */
+export function AccountLogoutDialog({
+  open,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <ModalOverlay
+      isOpen={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+      className="ah-overlay"
+      isDismissable
+    >
+      <Modal className="ah-modal ah-logout-modal">
+        <AriaDialog
+          className="ah-dialog"
+          aria-label="Kirjaudutaanko ulos tästä selaimesta?"
+        >
+          <Heading slot="title">Kirjaudutaanko ulos tästä selaimesta?</Heading>
+          <div className="ah-logout-effects">
+            <div>
+              <h3>Poistuu selaimesta</h3>
+              <p>
+                Selainistunto
+                <br />
+                Luonnokset
+                <br />
+                Luettu sisältö
+              </p>
+            </div>
+            <div>
+              <h3>Säilyy palvelimella</h3>
+              <p>
+                Työtilat
+                <br />
+                Palvelimen tunnukset
+                <br />
+                Agenttien käynnissä oleva työ
+              </p>
+            </div>
+          </div>
+          <div className="ah-dialog-actions">
+            <Button label="Peruuta" variant="secondary" onPress={onClose} />
+            <Button
+              label="Kirjaudu ulos"
+              variant="danger"
+              onPress={onConfirm}
+            />
+          </div>
+        </AriaDialog>
+      </Modal>
+    </ModalOverlay>
   );
 }

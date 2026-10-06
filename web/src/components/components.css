@@ -2219,3 +2219,43 @@ h1[tabindex="-1"]:focus {
   font-size: var(--ah-size-meta);
   font-weight: 600;
 }
+
+.ah-account-full-name,
+.ah-account-login {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.ah-account-origin {
+  margin-left: auto;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-account-hint {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-account-login {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-logout-modal {
+  max-width: 440px;
+}
+.ah-logout-effects {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--ah-s4);
+  margin-block: var(--ah-s4);
+}
+.ah-logout-effects h3 {
+  margin: 0 0 var(--ah-s2);
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.ah-logout-effect-text {
+  margin: 0;
+  line-height: 1.6;
+  color: var(--ah-ink-2);
+}

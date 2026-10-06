@@ -995,7 +995,11 @@ test("@browser-conversation separate streaming drafts survive agent switches and
   await page.reload();
   await expect(editor).toHaveValue("toisen oma luonnos");
   await page.getByRole("button", { name: /Tilivalikko/ }).click();
-  await page.getByRole("menuitem", { name: "Kirjaudu ulos" }).click();
+  await page.getByRole("menuitem", { name: "Kirjaudu ulos…" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Kirjaudu ulos" })
+    .click();
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Bob" }).click();
   expect(
@@ -1044,7 +1048,11 @@ test("@browser-conversation logout fences a pending status read and turn even wh
     await refreshConversation(page);
     await entered;
     await page.getByRole("button", { name: /Tilivalikko/ }).click();
-    await page.getByRole("menuitem", { name: "Kirjaudu ulos" }).click();
+    await page.getByRole("menuitem", { name: "Kirjaudu ulos…" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Kirjaudu ulos" })
+      .click();
     await expect(
       page.getByText("Istunto voi olla edelleen voimassa."),
     ).toBeVisible();
@@ -1106,7 +1114,11 @@ test("@browser-conversation a late create reply cannot restore a cleared command
     );
     expect(person).toBeTruthy();
     await page.getByRole("button", { name: /Tilivalikko/ }).click();
-    await page.getByRole("menuitem", { name: "Kirjaudu ulos" }).click();
+    await page.getByRole("menuitem", { name: "Kirjaudu ulos…" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Kirjaudu ulos" })
+      .click();
     await expect(
       page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
     ).toBeVisible();
@@ -1730,7 +1742,11 @@ test("@browser-conversation changed snapshot identity discards late previous sta
     await entered;
     await other.goto("/workspaces");
     await other.getByRole("button", { name: /Tilivalikko/ }).click();
-    await other.getByRole("menuitem", { name: "Kirjaudu ulos" }).click();
+    await other.getByRole("menuitem", { name: "Kirjaudu ulos…" }).click();
+    await other
+      .getByRole("dialog")
+      .getByRole("button", { name: "Kirjaudu ulos" })
+      .click();
     await other.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await other.getByRole("link", { name: "Bob" }).click();
     let sessionReads = 0;

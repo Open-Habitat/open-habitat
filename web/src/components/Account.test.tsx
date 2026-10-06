@@ -1,7 +1,12 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { getThemeChoice, setThemeChoice } from "../theme";
-import { AccountSettings, AccountShelf, accountLabel } from "./Account";
+import {
+  AccountLogoutDialog,
+  AccountSettings,
+  AccountShelf,
+  accountLabel,
+} from "./Account";
 
 describe("account presentation", () => {
   it("keeps the settings radio in sync with a theme change made elsewhere", () => {
@@ -74,11 +79,25 @@ describe("account presentation", () => {
       expect(option.getAttribute("data-group-selected")).toBe("true");
       expect(screen.getByRole("menuitem", { name: "Asetukset" })).toBeTruthy();
       expect(
-        screen.getByRole("menuitem", { name: "Kirjaudu ulos" }),
+        screen.getByRole("menuitem", { name: "Kirjaudu ulos…" }),
       ).toBeTruthy();
     } finally {
       act(() => setThemeChoice("system"));
     }
+  });
+  it("explains what logout removes and supports cancellation", () => {
+    const onClose = vi.fn();
+    const onConfirm = vi.fn();
+    render(
+      <AccountLogoutDialog open onClose={onClose} onConfirm={onConfirm} />,
+    );
+    expect(screen.getByRole("dialog").textContent).toContain("Luonnokset");
+    expect(screen.getByRole("dialog").textContent).toContain(
+      "Agenttien käynnissä oleva työ",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Peruuta" }));
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(onConfirm).not.toHaveBeenCalled();
   });
   it("never presents a provider subject number as a name", () => {
     expect(accountLabel("GitHub user 42")).toBe("Oma tili");
@@ -107,7 +126,7 @@ describe("account presentation", () => {
     );
     expect(screen.getByText("Osittainen yhteys")).toBeTruthy();
     expect(
-      screen.getByText("Yhteyttä ei voi vielä katkaista täällä"),
+      screen.getByText(/Yhteyttä ei voi vielä katkaista täällä/),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Katkaise/ })).toBeNull();
   });

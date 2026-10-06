@@ -60,7 +60,7 @@ test("@account-settings verified native state, route return and honest disconnec
     page.locator("#main").getByText("Yhdistetty", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText("Yhteyttä ei voi vielä katkaista täällä"),
+    page.getByText(/Yhteyttä ei voi vielä katkaista täällä/),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: /Katkaise/ })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Tili" })).toBeVisible();
@@ -73,7 +73,7 @@ test("@account-settings verified native state, route return and honest disconnec
   await page.getByText("Vaalea", { exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expect(
-    page.getByRole("button", { name: "Kirjaudu ulos" }),
+    page.getByRole("button", { name: "Kirjaudu ulos…" }),
   ).toBeVisible();
   await page.screenshot({
     path: "test-results/evidence/account-connected.png",
@@ -111,7 +111,15 @@ test("@account-settings partial, unknown and logout/user switch", async ({
     fullPage: true,
   });
   await page.getByRole("button", { name: /Tilivalikko/ }).click();
-  await page.getByRole("menuitem", { name: "Kirjaudu ulos" }).click();
+  await page.getByRole("menuitem", { name: "Kirjaudu ulos…" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Kirjaudutaanko ulos tästä selaimesta?" }),
+  ).toBeVisible();
+  await expect(page.getByRole("dialog")).toContainText("Palvelimen tunnukset");
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Kirjaudu ulos" })
+    .click();
   await expect(
     page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
   ).toBeVisible();

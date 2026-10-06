@@ -60,6 +60,7 @@ export interface Snapshot {
   auth?: {
     native_github: {
       state: "connected" | "disconnected" | "pending" | "partial" | "unknown";
+      login?: string;
     };
   };
 }

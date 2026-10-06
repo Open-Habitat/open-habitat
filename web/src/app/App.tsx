@@ -11,15 +11,16 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation, useNavigate } from "react-router";
 import {
+  AccountLogoutDialog,
   AccountSettings,
   AppShell,
   ConnectionBanner,
   InlineNotice,
 } from "../components";
-import { LinkRow } from "../components/ControlElements";
 import { accountLabel } from "../components/Account";
-import type { ReturnConversation } from "../components/ReturnView";
+import { LinkRow } from "../components/ControlElements";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
+import type { ReturnConversation } from "../components/ReturnView";
 import { ReturnView } from "../components/ReturnView";
 import { BrowserConversation } from "./BrowserConversation";
 import { ConversationJournal } from "./conversationJournal";
@@ -40,8 +41,8 @@ import {
   stale,
   unavailable,
 } from "./store";
-import { sourceLabel, WorkspaceRailView } from "./WorkspaceRailView";
 import { WorkspaceManagement } from "./WorkspaceManagement";
+import { sourceLabel, WorkspaceRailView } from "./WorkspaceRailView";
 
 const CatalogPreview =
   import.meta.env.VITE_ENABLE_TEST_FIXTURES === "true"
@@ -129,6 +130,7 @@ export function App() {
   }, []);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [logoutError, setLogoutError] = useState(false);
+  const [logoutPrompt, setLogoutPrompt] = useState(false);
   const [settingsReturn, setSettingsReturn] = useState("/workspaces");
   const returningFromSettings = useRef(false);
   useEffect(() => {
@@ -397,6 +399,7 @@ export function App() {
     };
   }, [dispatch, refreshKey, fixtureName, syntheticDemo, requireLogin]);
   const logout = async () => {
+    setLogoutPrompt(false);
     loginFenced.current = true;
     clearPerson(priorIdentity.current);
     setLogoutError(false);
@@ -611,8 +614,9 @@ export function App() {
     ) : location.pathname === "/settings" ? (
       <AccountSettings
         name={accountLabel(snapshot?.identity.display_name ?? "")}
-        onLogout={logout}
+        onLogout={() => setLogoutPrompt(true)}
         nativeState={snapshot?.auth?.native_github.state}
+        nativeLogin={snapshot?.auth?.native_github.login}
         onBack={() => {
           returningFromSettings.current = true;
           navigate(settingsReturn);
@@ -867,11 +871,18 @@ export function App() {
               onToggle={() => setCollapsed(!collapsed)}
               onRefresh={manualRefresh}
               onSettings={openSettings}
-              onLogout={logout}
+              onLogout={() => setLogoutPrompt(true)}
               pathname={location.pathname}
               search={location.search}
             />
           ) : undefined
+        }
+        overlays={
+          <AccountLogoutDialog
+            open={logoutPrompt && phase === "authenticated"}
+            onClose={() => setLogoutPrompt(false)}
+            onConfirm={logout}
+          />
         }
         main={
           <div

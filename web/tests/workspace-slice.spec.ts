@@ -1,6 +1,7 @@
-import { hostOrigin } from "../test-ports.mjs";
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
+import { hostOrigin } from "../test-ports.mjs";
+
 const host = hostOrigin;
 test.use({
   baseURL: host,
@@ -135,7 +136,11 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
     page.waitForResponse((response) => response.url().endsWith("/auth/logout")),
     (async () => {
       await page.getByRole("button", { name: /Tilivalikko/ }).click();
-      await page.getByRole("menuitem", { name: "Kirjaudu ulos" }).click();
+      await page.getByRole("menuitem", { name: "Kirjaudu ulos…" }).click();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "Kirjaudu ulos" })
+        .click();
     })(),
   ]);
   expect(logoutResponse.status()).toBe(204);
