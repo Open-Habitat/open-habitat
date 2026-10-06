@@ -952,11 +952,16 @@ test("@browser-conversation warm controlled return reads neither status nor hist
         ),
       ),
   );
-  expect(requests).toEqual([]);
+  // Recap is refreshed from native Pi history on return; status and timeline
+  // remain warm and do not revalidate just because the route changed.
+  await expect
+    .poll(() => requests.filter((path) => path.endsWith("/recap")).length)
+    .toBe(1);
+  expect(requests.filter((path) => !path.endsWith("/recap"))).toEqual([]);
   expect(streams).toEqual([]);
   expect(allStreams).toHaveLength(1);
   console.log(
-    `warm controlled return: ${Math.round(paint - start)} ms (includes workspace navigation), ${requests.length} non-stream API requests, ${allStreams.length} total SSE, ${streams.length} reopened SSE`,
+    `warm controlled return: ${Math.round(paint - start)} ms (includes workspace navigation), ${requests.length} recap reads, ${allStreams.length} total SSE, ${streams.length} reopened SSE`,
   );
 });
 

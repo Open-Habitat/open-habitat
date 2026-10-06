@@ -11,6 +11,17 @@ function messages(branch) {
     .map(e => ({ role: e.message.role, content: text(e.message.content).trim() }))
     .filter(e => e.content);
 }
+// Match the native TUI extension's turn counter so a browser-written recap
+// also counts as recapped when that same Pi history is later opened in a TUI.
+function completedTurns(branch) {
+  let awaitingAssistant = false, completed = 0;
+  for (const entry of branch) {
+    if (entry.type !== 'message') continue;
+    if (entry.message?.role === 'user') awaitingAssistant = true;
+    else if (entry.message?.role === 'assistant' && awaitingAssistant) { completed++; awaitingAssistant = false; }
+  }
+  return completed;
+}
 function promptFor(branch) {
   const recent = messages(branch).slice(-64);
   let remaining = 64 * 1024 - Buffer.byteLength(PROMPT);
@@ -62,7 +73,7 @@ export default function (pi) {
         const current = ctx.sessionManager.getBranch();
         const latest = [...current].reverse().find(e => e.type === 'message' && ['user', 'assistant'].includes(e.message?.role));
         if (latest?.id !== lastMessage.id || current.some(e => e.type === 'custom' && e.customType === TYPE && e.data?.through === lastMessage.id)) return;
-        pi.appendEntry(TYPE, { recap, next: clean(value.next, 160), through: lastMessage.id, generatedAt: Date.now(), trigger: 'manual' });
+        pi.appendEntry(TYPE, { recap, next: clean(value.next, 160), through: lastMessage.id, completedTurnCount: completedTurns(current), generatedAt: Date.now(), trigger: 'manual' });
       } catch { /* HTTP caller checks the native entry, not a notification. */ }
       finally { pending = false; }
     },

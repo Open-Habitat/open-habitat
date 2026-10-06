@@ -28,6 +28,20 @@ describe("native conversation recap", () => {
     fireEvent.click(view.getByRole("button", { name: "Päivitä katsaus" }));
     expect(base.onRequest).toHaveBeenCalledOnce();
   });
+  it("keeps the last known recap visible when its native freshness cannot be checked", () => {
+    const view = render(
+      <RecapCard {...base} recap={recap} stale={false} unverifiable={true} />,
+    );
+    expect(view.getByText("Työ etenee.")).toBeTruthy();
+    expect(view.getByText("Ajantasaisuus ei tiedossa")).toBeTruthy();
+    expect(view.getByRole("alert").textContent).toContain("ei voitu tarkistaa");
+    view.rerender(
+      <RecapCard {...base} recap={recap} stale={false} uncertain={true} />,
+    );
+    expect(view.getByRole("alert").textContent).toContain(
+      "tulos ei ole tiedossa",
+    );
+  });
   it("shows generation and failure without duplicating the recap", () => {
     const view = render(
       <RecapCard {...base} recap={null} stale={false} pending={true} />,

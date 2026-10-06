@@ -1229,6 +1229,11 @@ h1[tabindex="-1"]:focus {
   width: min(100%, var(--ah-conversation-width));
   margin-inline: auto;
 }
+.ah-conversation-stream > .ah-recap {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
 .ah-conversation-frame .ah-composer {
   position: relative;
   max-height: min(40rem, calc(100dvh - 16rem));

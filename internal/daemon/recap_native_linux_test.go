@@ -143,6 +143,11 @@ settled:
 	if err != nil || len(sessions) != 1 {
 		t.Fatalf("native sessions: %+v %v", sessions, err)
 	}
+	// The TUI extension uses this field to avoid automatic duplicate generation.
+	raw, err := os.ReadFile(sessions[0].path)
+	if err != nil || !strings.Contains(string(raw), `"completedTurnCount":1`) {
+		t.Fatalf("native recap missing TUI turn count: %v %s", err, raw)
+	}
 	saved := readNativeSettled(sessions[0].path, os.Geteuid())
 	found := 0
 	for _, e := range saved.entries {

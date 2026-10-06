@@ -1,12 +1,14 @@
+import type { Recap } from "../app/conversations";
 import { Button } from "./Primitives";
 import { StatusMark } from "./Status";
-import type { Recap } from "../app/conversations";
 
 export function RecapCard({
   recap,
   stale,
   pending,
   error,
+  uncertain = false,
+  unverifiable = false,
   unavailable,
   unavailableReason,
   onRequest,
@@ -15,6 +17,8 @@ export function RecapCard({
   stale: boolean;
   pending: boolean;
   error: boolean;
+  uncertain?: boolean;
+  unverifiable?: boolean;
   unavailable: boolean;
   unavailableReason?: string;
   onRequest?: () => void;
@@ -26,8 +30,14 @@ export function RecapCard({
         <strong>Tilannekatsaus</strong>
         {recap ? (
           <StatusMark
-            label={stale ? "Vanha – uusia viestejä" : `Luotu ${age}`}
-            tone={stale ? "warning" : "neutral"}
+            label={
+              unverifiable
+                ? "Ajantasaisuus ei tiedossa"
+                : stale
+                  ? "Vanha – uusia viestejä"
+                  : `Luotu ${age}`
+            }
+            tone={unverifiable || stale ? "warning" : "neutral"}
           />
         ) : null}
       </div>
@@ -65,9 +75,13 @@ export function RecapCard({
         ) : null}
         {pending ? <span role="status">Luodaan katsaus…</span> : null}
       </div>
-      {error ? (
+      {error || uncertain || unverifiable ? (
         <p className="ah-inline-error" role="alert">
-          Katsausta ei voitu luoda. Yritä uudelleen.
+          {unverifiable
+            ? "Katsausta ei voitu tarkistaa. Lataa sivu uudelleen."
+            : uncertain
+              ? "Luonnin tulos ei ole tiedossa. Tarkista katsaus lataamalla sivu uudelleen."
+              : "Katsausta ei voitu luoda. Yritä uudelleen."}
         </p>
       ) : null}
     </aside>
