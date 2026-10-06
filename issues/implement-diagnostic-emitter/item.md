@@ -3,13 +3,15 @@ created: 2026-10-05
 updated: 2026-10-06
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 related: ['@decide-logging-policy']
 preparation: ready
 lane: logging
 lane_seq: 1
 collision: [internal/gateway/, internal/provision/, internal/cli/, docs/]
+closed: 2026-10-06
+closed_by: claude
 ---
 
 # Standardize diagnostic log messages
