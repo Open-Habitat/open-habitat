@@ -179,7 +179,7 @@ try:
     # Broker Verify checks root-owned daemon config metadata on each existing
     # binding request; the pinned Fleetrepo socket gate does NOT inspect this
     # config. Do not claim a gate-level denial for this fault.
-    config=Path('/etc/native-agent-host/daemon-guesttwo.json')
+    config=Path('/etc/omega-habitat/daemon/user-mappings/daemon-guesttwo.json')
     original_mode=stat.S_IMODE(config.stat().st_mode)
     route(exchange(21003,'authorize',ids[1]),assigned[1],names[1])
     config.chmod(0o600)
