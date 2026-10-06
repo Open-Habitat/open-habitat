@@ -20,6 +20,8 @@ import (
 	"runtime/debug"
 	"strings"
 	"syscall"
+
+	"github.com/maintainer/native-agent-host/internal/diagnostic"
 )
 
 const schemaVersion = 1
@@ -82,6 +84,18 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		err = usage(fmt.Sprintf("unknown subcommand %q", rest[0]))
 	}
 	if err != nil {
+		// Service stderr is an operator diagnostic stream, not a place for
+		// arbitrary config paths, native errors or credential-bearing URLs.
+		if len(rest) >= 2 && rest[1] == "exec" && (rest[0] == "gateway" || rest[0] == "daemon" || rest[0] == "broker") {
+			var ce *cliError
+			reason := "internal_error"
+			exit := 2
+			if errors.As(err, &ce) {
+				reason, exit = ce.code, ce.exit
+			}
+			diagnostic.New(stderr, rest[0]).Error("service_failed", "outcome", "failed", "reason", reason)
+			return exit
+		}
 		return emitError(err, opts, stderr)
 	}
 	if out != nil {
@@ -273,6 +287,7 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 			if runtimeErr != nil {
 				return nil, system("native_runtime_unavailable", "invalid Pi runtime selector")
 			}
+			diagnostic.New(stderr, role).Info("service_ready", "outcome", "ready")
 			if err := daemon.ServeHTTP(ctx, ln, *cfg.Handoff, adapter, daemonHealthMux(), runtime); err != nil {
 				// ServeHTTP returns only fixed, redacted startup/transport errors;
 				// surface the reason so an unsafe runtime can be repaired.
@@ -286,9 +301,7 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 	if err != nil {
 		return nil, system("listen_failed", fmt.Sprintf("listen %q: %v", cfg.Listen, err))
 	}
-	if o.verbose {
-		json.NewEncoder(stderr).Encode(map[string]any{"schema_version": 1, "level": "INFO", "component": role, "event": "listening", "listen": cfg.Listen})
-	}
+	diagnostic.New(stderr, role).Info("service_ready", "outcome", "ready")
 	srv := &http.Server{Handler: h}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

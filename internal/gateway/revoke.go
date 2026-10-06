@@ -7,11 +7,13 @@ import (
 )
 
 // LogControlFailure records a fixed diagnostic when the private listener fails.
-func (a *Auth) LogControlFailure() { a.log.Error("revoke_accept_failed") }
+func (a *Auth) LogControlFailure() {
+	a.log.Error("revoke_accept_failed", "outcome", "failed", "reason", "accept_failed")
+}
 
 // LogAdminControlFailure records a bounded reason, never the request or file contents.
 func (a *Auth) LogAdminControlFailure(err error) {
-	a.log.Error("admin_control_failed", "reason", AdminControlError(err))
+	a.log.Error("admin_control_failed", "outcome", "failed", "reason", AdminControlError(err))
 }
 
 // RevokeSubject is callable only by the local privileged control listener, never HTTP.
@@ -49,6 +51,6 @@ func (a *Auth) RevokeSubject(ctx context.Context, subject string) error {
 		return errors.New("session store unavailable")
 	}
 	a.revoked[subject] = a.serial
-	a.log.Info("subject_revoked", "subject", subject, "sessions_removed", removed)
+	a.log.Info("subject_revoked", "outcome", "accepted", "subject", subject, "sessions_removed", removed)
 	return nil
 }

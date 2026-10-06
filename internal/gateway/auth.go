@@ -20,6 +20,8 @@ import (
 	"sync"
 
 	"time"
+
+	"github.com/maintainer/native-agent-host/internal/diagnostic"
 )
 
 // Identity is a root-configured route. Its socket is never derived from a browser field.
@@ -199,7 +201,7 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	if err := a.loadSessions(); err != nil {
 		// Unusable state cannot authenticate any cookie. Permit a new OAuth
 		// login to replace it, without trusting or copying its old contents.
-		a.log.Warn("session_store_discarded")
+		a.log.Warn("session_store_discarded", "outcome", "rejected", "reason", "invalid_session_store")
 		a.sessions = map[string]session{}
 	}
 	return a, nil
@@ -214,15 +216,7 @@ func (a *Auth) secret() (string, error) {
 
 // CallbackLogger emits the CLI's JSONL envelope to a caller-owned writer.
 // These security diagnostics are always on, independently of --verbose.
-func CallbackLogger(w io.Writer) *slog.Logger {
-	h := slog.NewJSONHandler(w, &slog.HandlerOptions{ReplaceAttr: func(_ []string, attr slog.Attr) slog.Attr {
-		if attr.Key == slog.MessageKey {
-			attr.Key = "event"
-		}
-		return attr
-	}})
-	return slog.New(h).With("schema_version", 1, "component", "gateway")
-}
+func CallbackLogger(w io.Writer) *slog.Logger { return diagnostic.New(w, "gateway") }
 
 // attemptID is independent of OAuth state and of the injectable OAuth random
 // source. It is never sent to a browser, provider, broker or untrusted header.
@@ -599,6 +593,8 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: sid, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, Expires: now.Add(sessionAbsolute)})
-	a.authEvent(attempt, "accepted", "none")
+	// The broker-verified route, not the provider login or callback input,
+	// is the source of the user attached to a completed login.
+	a.log.Info("oauth_callback", "outcome", "accepted", "reason", "none", "attempt_id", attempt, "user", target.Username)
 	http.Redirect(w, r, p.returnTo, http.StatusSeeOther)
 }

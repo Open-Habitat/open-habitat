@@ -112,7 +112,40 @@ pause traffic or drain work.
 and `admin readiness show` still return fixed foundation responses; neither
 checks the running installation's readiness. A successful connection and
 snapshot establish that a user's daemon responds, but do not demonstrate a
-successful Pi model request. Diagnostic behavior is implemented in
-`internal/cli` and `internal/gateway`.
+successful Pi model request. Host-owned diagnostics use one JSON object per stderr line from the gateway,
+root broker and each per-user daemon. systemd collects stderr in the service's
+journal. For the neutral unit names in `systemd/`, an operator can inspect them
+with `journalctl -u native-agent-host-gateway.service`,
+`journalctl -u native-agent-host-broker.service`, or
+`journalctl -u 'native-agent-host-daemon@<instance>.service'` (substitute the
+installation's daemon instance). Use `-f` to follow and `--since` to limit the
+time window. The installation may name units differently; Fleetrepo defines
+actual journal access, retention and disk limits. A mapped user must not be
+assumed to have permission to read other users' service records.
+
+Each host record has `time` (UTC timestamp), `level` (slog severity),
+`schema_version` (currently 1), `component` (`gateway`, `broker`, or `daemon`),
+`event` (fixed operation name) and `outcome` (classified result). `reason` is
+an internal fixed classification on failures. Optional `attempt_id` is a
+server-generated gateway login attempt ID; it is not a cross-service trace.
+`broker_operation` and `broker_reason` classify the gateway's observation of
+a broker exchange; broker guard `reason` names its failed check. A revocation
+record's `subject` is the broker-verified target, not the operator. Example
+records (timestamps and opaque IDs illustrative; no user content):
+
+```jsonl
+{"time":"2026-10-05T12:00:00Z","level":"INFO","event":"oauth_callback","schema_version":1,"component":"gateway","outcome":"rejected","reason":"broker_denied","broker_operation":"ensure","broker_reason":"denied","attempt_id":"XyZ123"}
+{"time":"2026-10-05T12:00:01Z","level":"WARN","event":"broker_guard","schema_version":1,"component":"broker","outcome":"rejected","reason":"availability_error"}
+{"time":"2026-10-05T12:00:02Z","level":"INFO","event":"service_ready","schema_version":1,"component":"daemon","outcome":"ready"}
+```
+
+These records contain classifications, not raw errors, URLs, headers, tokens,
+home paths, conversation content, command stderr or native tool output. A
+failed diagnostic write is ignored; absence of a line does not prove an
+operation did not occur. Writes to stderr are synchronous, so an indefinitely
+blocked journal stream can still delay the caller. Broker bindings and pending
+files are privileged application state, not diagnostic logs; Pi history is the
+user's native work history, not a replacement for the journal. Missing
+operation-level diagnostics remain tracked by @correlate-diagnostics.
 
 Decisions behind this page: ADR 0003, ADR 0004.

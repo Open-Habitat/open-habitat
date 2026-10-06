@@ -6,11 +6,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"os"
 	"strconv"
 
 	"golang.org/x/sys/unix"
+
+	"github.com/maintainer/native-agent-host/internal/diagnostic"
 )
 
 // BrokerSocket is the only production listener. Fleetrepo owns its directory,
@@ -112,11 +113,12 @@ func ServeBroker(ctx context.Context) error {
 		if stage != "availability_error" && stage != "no_available_binding" && stage != "invalid_executor" && stage != "nss_probe" && stage != "group_probe" && stage != "parent_policy" && stage != "acl_policy" && stage != "path_probe" && stage != "unit_probe" {
 			return
 		}
-		slog.New(slog.NewJSONHandler(os.Stderr, nil)).Info("broker_guard", "stage", stage)
+		diagnostic.New(os.Stderr, "broker").Warn("broker_guard", "outcome", "rejected", "reason", stage)
 	}
 	if writer.Startup(ctx) != nil {
 		return ErrBrokerStartup
 	}
+	diagnostic.New(os.Stderr, "broker").Info("service_ready", "outcome", "ready")
 	return (Server{GatewayUID: cfg.GatewayUID, SocketPath: BrokerSocket, Handler: writer.Handle}).Serve(ctx, []*os.File{fd})
 }
 
