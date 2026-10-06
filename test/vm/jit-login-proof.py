@@ -160,7 +160,9 @@ print('UNEXPECTED_REPLY')
                         pass
                 raise RuntimeError('gh fault callback issued session status='+str(failure_status)+
                                    ' code='+str(failure_code)[:48]+' gate='+repr(gate_reasons[:2])[:200]+
-                                   ' daemon_socket='+subprocess.run(['systemctl','is-active','native-agent-host-daemon@'+names[index]+'.socket'],capture_output=True,text=True).stdout.strip())
+                                   ' daemon_socket='+subprocess.run(['systemctl','is-active','native-agent-host-daemon@'+names[index]+'.socket'],capture_output=True,text=True).stdout.strip()+
+                                   ' run_entries='+repr(sorted(os.listdir('/run/native-agent-host')))+
+                                   ' user_entries='+repr(sorted(os.listdir('/run/native-agent-host/users'))))
             session_status,session_headers,session_body=get(op,'/auth/session')
             snapshot_status,snapshot_headers,snapshot_body=get(op,'/api/v1/snapshot')
             captures.extend([str(session_headers).encode(),session_body,str(snapshot_headers).encode(),snapshot_body])
