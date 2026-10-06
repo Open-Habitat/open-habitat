@@ -29,6 +29,7 @@ export interface Fact {
 }
 export interface Workspace {
   workspace_id: string;
+  observation_token?: string;
   name: string;
   display_name?: string;
   kind: string;

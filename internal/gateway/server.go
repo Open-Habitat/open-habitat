@@ -37,6 +37,7 @@ func (s *Server) routes() http.Handler {
 	if s.auth != nil {
 		s.auth.routes(mux)
 		mux.HandleFunc("/api/v1/snapshot", s.auth.snapshot)
+		mux.HandleFunc("/api/v1/workspaces", s.auth.workspaces)
 		mux.HandleFunc("/api/v1/events", s.auth.conversation)
 		mux.HandleFunc("/api/v1/conversations", s.auth.conversation)
 		mux.HandleFunc("/api/v1/conversations/", s.auth.conversation)

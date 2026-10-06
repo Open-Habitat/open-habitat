@@ -118,6 +118,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		fact := func(source, value string) map[string]string {
 			return map[string]string{"source": source, "state": value, "observed_at": at}
 		}
+		visibility, visibilityErr := loadVisibility(cfg.Home)
 		workspaces := make([]any, 0, len(observation.Entries))
 		seen := map[string]bool{}
 		for _, entry := range observation.Entries {
@@ -169,7 +170,15 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 			if displayName == "" {
 				displayName = entry.Name
 			}
-			workspaces = append(workspaces, map[string]any{"workspace_id": id, "observation_token": opaque("obs_", snapID+":"+id), "presence": "present", "name": entry.Name, "display_name": displayName, "kind": kind, "visibility": "visible", "mutation_state": "read_only", "facts": []any{fact("filesystem", fs), fact("annotation", annotation), fact("git", git)}, "capabilities": map[string]any{"agent_start": map[string]string{"state": "unknown", "reason_code": "adapter_not_verified"}, "workspace_delete": map[string]string{"state": "unsupported", "reason_code": "read_only_slice"}}})
+			visible := "visible"
+			if visibilityErr == nil && visibility.Workspaces[id].Hidden {
+				visible = "hidden"
+			}
+			mutation := "allowed"
+			if visibilityErr != nil {
+				mutation = "blocked_unknown"
+			}
+			workspaces = append(workspaces, map[string]any{"workspace_id": id, "observation_token": workspaceToken(cfg, entry), "presence": "present", "name": entry.Name, "display_name": displayName, "kind": kind, "visibility": visible, "mutation_state": mutation, "facts": []any{fact("filesystem", fs), fact("annotation", annotation), fact("git", git)}, "capabilities": map[string]any{"agent_start": map[string]string{"state": "unknown", "reason_code": "adapter_not_verified"}, "workspace_delete": map[string]string{"state": "unsupported", "reason_code": "unsafe_cleanup_not_verified"}}})
 		}
 		// Associate only the native header's exact cwd with a freshly confirmed
 		// immediate workspace. History is independent of process observation.

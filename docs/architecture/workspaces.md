@@ -88,9 +88,28 @@ Git origin, a clean checkout and a HEAD commit. An empty repository without a
 first commit remains uncertain because that observation cannot distinguish it
 from an interrupted clone.
 
-Cloning is the host's workspace-management write. Creating other directories,
-renaming or deleting workspaces and editing their settings happen through
-native tools.
+The daemon also manages local workspace creation, optional `git init`, display
+names and hide/restore. It reobserves the source directory before each write,
+opens entries with no-follow descriptors and checks the observed target again
+before acknowledging the result. A partial result requires a fresh snapshot;
+the browser does not repeat a failed native write automatically. Optional
+`.agent-host/workspace.json` keeps the stable ID and display name with the
+workspace. Hidden state is presentation-only in the user's
+`~/.local/state/native-agent-host/user-state.json`, keyed by that ID. Corrupt
+state and unknown workspace annotations are not overwritten.
+
+Deletion is **not enabled**. Even with descriptor-pinned traversal and a
+per-user quarantine, Linux pathname rename cannot atomically compare the
+source inode with an expected inode: a same-UID replacement can move another
+directory. The adopted guarantee permits that move, provided contents of the
+replacement are never deleted and it can be recovered after a crash. Shipping
+that guarantee still requires a recovery protocol and reliable observations of
+processes, linked worktrees outside `~/src`, and mounts; unknown worktrees and
+unowned processes must block cleanup. Those adapters are not yet verified, so
+no delete route is mounted and the browser explains why deletion is unavailable.
+A future implementation can move to quarantine, revalidate there and remove
+only the confirmed target; a mismatch must restore a moved replacement and
+report the residual operation if restoration cannot complete.
 
 ## Pi sign-in during onboarding
 

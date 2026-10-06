@@ -39,6 +39,7 @@ import {
   unavailable,
 } from "./store";
 import { sourceLabel, WorkspaceRailView } from "./WorkspaceRailView";
+import { WorkspaceManagement } from "./WorkspaceManagement";
 
 const CatalogPreview =
   import.meta.env.VITE_ENABLE_TEST_FIXTURES === "true"
@@ -626,7 +627,17 @@ export function App() {
     ) : selected ? (
       <>
         {!new URLSearchParams(location.search).has("conversation") ? (
-          <WorkspaceDetails workspace={selected} />
+          <>
+            <WorkspaceDetails workspace={selected} />
+            {!syntheticDemo && phase === "authenticated" && (
+              <WorkspaceManagement
+                key={selected.workspace_id}
+                workspace={selected}
+                csrf={csrf}
+                refresh={refresh}
+              />
+            )}
+          </>
         ) : null}
         {!syntheticDemo &&
         identity &&
@@ -733,6 +744,16 @@ export function App() {
         ) : (
           <h1>Työtilat</h1>
         )}
+        {!syntheticDemo &&
+          phase === "authenticated" &&
+          source === "confirmed" && (
+            <WorkspaceManagement
+              csrf={csrf}
+              workspaces={snapshot?.workspaces}
+              refresh={refresh}
+              onCreated={(id) => navigate(`/workspaces/${id}`)}
+            />
+          )}
         {source === "absent" ? (
           <InlineNotice
             title="Työtilakansiota ei löydy"
