@@ -16,6 +16,7 @@ import (
 
 	"github.com/maintainer/native-agent-host/internal/nativegh"
 	"github.com/maintainer/native-agent-host/internal/transport"
+	"golang.org/x/sys/unix"
 )
 
 const SnapshotPath = "/api/v1/snapshot"
@@ -175,7 +176,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 				visible = "hidden"
 			}
 			mutation := "allowed"
-			if visibilityErr != nil {
+			if visibilityErr != nil || observation.State == "partial" && observation.Error != "" || entry.Metadata == "error" || entry.Kind == "unknown" {
 				mutation = "blocked_unknown"
 			}
 			workspaces = append(workspaces, map[string]any{"workspace_id": id, "observation_token": workspaceToken(cfg, entry), "presence": "present", "name": entry.Name, "display_name": displayName, "kind": kind, "visibility": visible, "mutation_state": mutation, "facts": []any{fact("filesystem", fs), fact("annotation", annotation), fact("git", git)}, "capabilities": map[string]any{"agent_start": map[string]string{"state": "unknown", "reason_code": "adapter_not_verified"}, "workspace_delete": map[string]string{"state": "unsupported", "reason_code": "unsafe_cleanup_not_verified"}}})
@@ -244,9 +245,18 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		if ghState != "connected" && ghState != "disconnected" && ghState != "partial" && ghState != "pending" {
 			ghState = "unknown"
 		}
-		// No event stream or command consumer exists yet. The watermark is at zero
-		// for this daemon incarnation; writes remain disabled.
-		body := map[string]any{"schema_version": 1, "snapshot_id": snapID, "captured_at": at, "server_instance_id": instance, "event_cursor": eventCursor, "oldest_replay_cursor": oldestCursor, "user_observation_token": opaque("obs_", snapID+":user"), "write_state": "read_only", "identity": map[string]string{"web_identity_id": expected, "display_name": display}, "sources": []any{fact("filesystem", state), fact("pi_history", func() string {
+		// Local workspace writes are available only with a confirmed source.
+		// A missing source still gets a valid but unusable observation token.
+		userToken := opaque("obs_", snapID+":user")
+		writeState := "read_only"
+		if observation.State == "present" || observation.State == "empty" || observation.State == "partial" && observation.Error == "" {
+			if fd, s, err := workspaceSource(cfg); err == nil {
+				userToken = workspaceUserToken(cfg, s)
+				writeState = "enabled"
+				unix.Close(fd)
+			}
+		}
+		body := map[string]any{"schema_version": 1, "snapshot_id": snapID, "captured_at": at, "server_instance_id": instance, "event_cursor": eventCursor, "oldest_replay_cursor": oldestCursor, "user_observation_token": userToken, "write_state": writeState, "identity": map[string]string{"web_identity_id": expected, "display_name": display}, "sources": []any{fact("filesystem", state), fact("pi_history", func() string {
 			if historyErr != nil {
 				return "unavailable"
 			}

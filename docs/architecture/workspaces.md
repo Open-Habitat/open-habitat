@@ -91,7 +91,12 @@ from an interrupted clone.
 The daemon also manages local workspace creation, optional `git init`, display
 names and hide/restore. It reobserves the source directory before each write,
 opens entries with no-follow descriptors and checks the observed target again
-before acknowledging the result. A partial result requires a fresh snapshot;
+before acknowledging the result. Creation requires the user's source observation
+token; target writes require the workspace inode token. First annotation gives an
+unannotated directory a new stable ID rather than persisting its name-derived
+fallback ID. An unrelated corrupt entry does not disable clean targets if the
+source listing itself was complete; unreadable listings and replaced sources
+still block writes. A partial result requires a fresh snapshot;
 the browser does not repeat a failed native write automatically. Optional
 `.agent-host/workspace.json` keeps the stable ID and display name with the
 workspace. Hidden state is presentation-only in the user's

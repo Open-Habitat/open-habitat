@@ -23,13 +23,14 @@ import (
 const WorkspacePath = "/api/v1/workspaces"
 
 type workspaceRequest struct {
-	Action           string  `json:"action"`
-	Name             string  `json:"name,omitempty"`
-	WorkspaceID      string  `json:"workspace_id,omitempty"`
-	ObservationToken string  `json:"observation_token,omitempty"`
-	DisplayName      *string `json:"display_name,omitempty"`
-	Git              *bool   `json:"git,omitempty"`
-	Hidden           *bool   `json:"hidden,omitempty"`
+	Action               string  `json:"action"`
+	Name                 string  `json:"name,omitempty"`
+	WorkspaceID          string  `json:"workspace_id,omitempty"`
+	ObservationToken     string  `json:"observation_token,omitempty"`
+	UserObservationToken string  `json:"user_observation_token,omitempty"`
+	DisplayName          *string `json:"display_name,omitempty"`
+	Git                  *bool   `json:"git,omitempty"`
+	Hidden               *bool   `json:"hidden,omitempty"`
 }
 
 // The private state file is presentation only. A malformed or newer version is
@@ -184,11 +185,11 @@ func WorkspaceHandler(cfg transport.Config, trusted func(*http.Request) bool) ht
 			return
 		}
 		if in.Action == "create" {
-			if !validWorkspaceName(in.Name) || in.WorkspaceID != "" || in.ObservationToken != "" || in.Hidden != nil || in.Git == nil || in.DisplayName != nil && !validDisplay(*in.DisplayName) {
+			if !validWorkspaceName(in.Name) || in.WorkspaceID != "" || in.ObservationToken != "" || len(in.UserObservationToken) < 8 || len(in.UserObservationToken) > 200 || in.Hidden != nil || in.Git == nil || in.DisplayName != nil && !validDisplay(*in.DisplayName) {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
-		} else if in.Name != "" || !idPattern.MatchString(in.WorkspaceID) || in.ObservationToken == "" || len(in.ObservationToken) > 200 || (in.Action == "settings" && (in.DisplayName == nil || in.Git != nil || in.Hidden != nil || *in.DisplayName != "" && !validDisplay(*in.DisplayName))) || (in.Action == "visibility" && (in.Hidden == nil || in.DisplayName != nil || in.Git != nil)) || (in.Action == "git_init" && (in.Hidden != nil || in.Git != nil || in.DisplayName != nil)) {
+		} else if in.Name != "" || in.UserObservationToken != "" || !idPattern.MatchString(in.WorkspaceID) || in.ObservationToken == "" || len(in.ObservationToken) > 200 || (in.Action == "settings" && (in.DisplayName == nil || in.Git != nil || in.Hidden != nil || *in.DisplayName != "" && !validDisplay(*in.DisplayName))) || (in.Action == "visibility" && (in.Hidden == nil || in.DisplayName != nil || in.Git != nil)) || (in.Action == "git_init" && (in.Hidden != nil || in.Git != nil || in.DisplayName != nil)) {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
@@ -199,9 +200,14 @@ func WorkspaceHandler(cfg transport.Config, trusted func(*http.Request) bool) ht
 		}
 		defer unix.Close(src)
 		if in.Action == "create" {
-			// Scan the whole source; unreadable names cannot prove availability.
+			if in.UserObservationToken != workspaceUserToken(cfg, source) {
+				snapshotError(w, 409, "workspace_changed")
+				return
+			}
+			// A partial entry does not hide a name when the source listing and
+			// source identity were both read completely.
 			obs := Discover(cfg)
-			if obs.State == "error" || obs.State == "partial" {
+			if obs.State == "error" || obs.Error != "" {
 				snapshotError(w, 409, "workspace_uncertain")
 				return
 			}
@@ -240,7 +246,7 @@ func WorkspaceHandler(cfg transport.Config, trusted func(*http.Request) bool) ht
 			return
 		}
 		obs := Discover(cfg)
-		if obs.State == "partial" || obs.State == "error" {
+		if obs.State == "error" || obs.Error != "" {
 			snapshotError(w, 409, "workspace_uncertain")
 			return
 		}
@@ -260,9 +266,11 @@ func WorkspaceHandler(cfg transport.Config, trusted func(*http.Request) bool) ht
 			snapshotError(w, 409, "workspace_missing")
 			return
 		}
-		// Snapshot observation tokens are snapshot-scoped, not reconstructible from
-		// native discovery. Mutations instead require a fresh, pathname-independent
-		// token derived from the observed inode, supplied in the snapshot.
+		if target.Metadata == "error" || target.Kind == "unknown" {
+			snapshotError(w, 409, "workspace_uncertain")
+			return
+		}
+		// Native identity and inode, not the browser's path, bind the mutation.
 		expected := workspaceToken(cfg, *target)
 		if in.ObservationToken != expected {
 			snapshotError(w, 409, "workspace_changed")
@@ -277,13 +285,18 @@ func WorkspaceHandler(cfg transport.Config, trusted func(*http.Request) bool) ht
 			return
 		}
 		defer unix.Close(child)
+		responseID := in.WorkspaceID
 		switch in.Action {
 		case "settings":
 			id := target.WorkspaceID
 			if id == "" {
-				id = in.WorkspaceID
+				id, e = newWorkspaceID()
+				if e != nil {
+					break
+				}
 			}
 			e = writeWorkspaceSettings(child, id, *in.DisplayName)
+			responseID = id
 		case "visibility":
 			var state workspaceVisibility
 			state, e = loadVisibility(cfg.Home)
@@ -305,7 +318,7 @@ func WorkspaceHandler(cfg transport.Config, trusted func(*http.Request) bool) ht
 			snapshotError(w, 409, "workspace_partial")
 			return
 		}
-		historyJSON(w, map[string]any{"schema_version": 1, "workspace_id": in.WorkspaceID, "state": "updated"})
+		historyJSON(w, map[string]any{"schema_version": 1, "workspace_id": responseID, "state": "updated"})
 	})
 }
 func validDisplay(s string) bool {
@@ -313,6 +326,9 @@ func validDisplay(s string) bool {
 }
 func workspaceToken(cfg transport.Config, w Workspace) string {
 	return opaque("obs_", cfg.Provider+":"+cfg.Subject+":"+w.Name+":"+stringJSON(w.dev)+":"+stringJSON(w.ino))
+}
+func workspaceUserToken(cfg transport.Config, s unix.Stat_t) string {
+	return opaque("obs_", cfg.Provider+":"+cfg.Subject+":src:"+stringJSON(uint64(s.Dev))+":"+stringJSON(s.Ino))
 }
 func stringJSON(n uint64) string { b, _ := json.Marshal(n); return string(b) }
 func initWorkspaceGit(fd int, home string) error {
@@ -336,12 +352,15 @@ func initWorkspaceGit(fd int, home string) error {
 		return e
 	}
 	defer unix.Close(gitDir)
+	if e = unix.Mkdirat(gitDir, "info", 0700); e != nil && !errors.Is(e, unix.EEXIST) {
+		return e
+	}
 	info, e := dir(unix.Openat2, gitDir, "info", true)
 	if e != nil {
 		return e
 	}
 	defer unix.Close(info)
-	item, e := open(unix.Openat2, info, "exclude", unix.O_RDWR, true)
+	item, e := unix.Openat2(info, "exclude", &unix.OpenHow{Flags: unix.O_RDWR | unix.O_CREAT | unix.O_CLOEXEC | unix.O_NOFOLLOW, Mode: 0600, Resolve: resolve})
 	if e != nil {
 		return e
 	}

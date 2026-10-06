@@ -5,6 +5,7 @@ package daemon
 import (
 	"bytes"
 	"encoding/json"
+	"golang.org/x/sys/unix"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -19,8 +20,18 @@ func TestWorkspaceManagement(t *testing.T) {
 		t.Fatal(e)
 	}
 	handler := WorkspaceHandler(cfg, func(*http.Request) bool { return true })
+	src, source, e := workspaceSource(cfg)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer unix.Close(src)
 	request := func(input any) int {
 		t.Helper()
+		if m, ok := input.(map[string]any); ok && m["action"] == "create" {
+			if _, present := m["user_observation_token"]; !present {
+				m["user_observation_token"] = workspaceUserToken(cfg, source)
+			}
+		}
 		b, _ := json.Marshal(input)
 		r := httptest.NewRequest("POST", "http://unix/api/v1/workspaces", bytes.NewReader(b))
 		r.RequestURI = WorkspacePath
@@ -38,6 +49,9 @@ func TestWorkspaceManagement(t *testing.T) {
 	unauthorized.ServeHTTP(denied, req)
 	if denied.Code != 403 {
 		t.Fatalf("untrusted peer: %d", denied.Code)
+	}
+	if got := request(map[string]any{"action": "create", "name": "stale", "git": false, "user_observation_token": "obs_stale123"}); got != 409 {
+		t.Fatalf("stale source token: %d", got)
 	}
 	if got := request(map[string]any{"action": "create", "name": "alpha", "git": false}); got != 200 {
 		t.Fatalf("create: %d", got)

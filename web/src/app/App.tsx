@@ -87,9 +87,11 @@ function WorkspaceDetails({ workspace }: { workspace: Workspace }) {
           <div>
             <dt>Muutokset</dt>
             <dd>
-              {workspace.mutation_state === "read_only"
-                ? "Ei käytettävissä"
-                : "Tila ei tiedossa"}
+              {workspace.mutation_state === "allowed"
+                ? "Käytettävissä"
+                : workspace.mutation_state === "blocked_unknown"
+                  ? "Ei voitu vahvistaa"
+                  : "Ei käytettävissä"}
             </dd>
           </div>
         </dl>
@@ -635,6 +637,7 @@ export function App() {
                 workspace={selected}
                 csrf={csrf}
                 refresh={refresh}
+                onCreated={(id) => navigate(`/workspaces/${id}`)}
               />
             )}
           </>
@@ -750,6 +753,7 @@ export function App() {
             <WorkspaceManagement
               csrf={csrf}
               workspaces={snapshot?.workspaces}
+              userObservationToken={snapshot?.user_observation_token}
               refresh={refresh}
               onCreated={(id) => navigate(`/workspaces/${id}`)}
             />

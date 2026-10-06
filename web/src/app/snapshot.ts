@@ -50,6 +50,7 @@ export interface Agent {
 export interface Snapshot {
   schema_version: 1;
   event_cursor: string;
+  user_observation_token?: string;
   server_instance_id: string;
   identity: { web_identity_id: string; display_name: string };
   sources: Fact[];

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ControlButton } from "../components/ControlElements";
 import type { Workspace } from "./snapshot";
 
 type Action = "create" | "settings" | "visibility" | "git_init";
@@ -33,12 +34,14 @@ export function WorkspaceManagement({
   csrf,
   workspace,
   workspaces,
+  userObservationToken,
   refresh,
   onCreated,
 }: {
   csrf?: string;
   workspace?: Workspace;
   workspaces?: Workspace[];
+  userObservationToken?: string;
   refresh: () => void;
   onCreated?: (id: string) => void;
 }) {
@@ -52,13 +55,22 @@ export function WorkspaceManagement({
     additional: Record<string, unknown>,
     target = workspace,
   ) => {
-    if (!csrf || busy) return;
+    if (
+      !csrf ||
+      busy ||
+      (action === "create" && !userObservationToken) ||
+      (target && target.mutation_state !== "allowed")
+    )
+      return;
     setBusy(true);
     setError("");
     try {
-      const createdId = await mutate(
+      const resultId = await mutate(
         {
           action,
+          ...(action === "create"
+            ? { user_observation_token: userObservationToken }
+            : {}),
           ...(target
             ? {
                 workspace_id: target.workspace_id,
@@ -71,7 +83,11 @@ export function WorkspaceManagement({
       );
       setName("");
       refresh();
-      if (action === "create") onCreated?.(createdId);
+      if (
+        action === "create" ||
+        (action === "settings" && resultId !== target?.workspace_id)
+      )
+        onCreated?.(resultId);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Muutos epäonnistui");
       refresh();
@@ -107,9 +123,12 @@ export function WorkspaceManagement({
             />{" "}
             Alusta Git
           </label>
-          <button type="submit" disabled={!csrf || busy}>
+          <ControlButton
+            type="submit"
+            isDisabled={!csrf || busy || !userObservationToken}
+          >
             Luo työtila
-          </button>
+          </ControlButton>
         </form>
       )}
       {workspace && (
@@ -129,29 +148,29 @@ export function WorkspaceManagement({
                 onChange={(e) => setDisplay(e.target.value)}
               />
             </label>
-            <button
+            <ControlButton
               type="submit"
-              disabled={!csrf || busy || !workspace.observation_token}
+              isDisabled={!csrf || busy || !workspace.observation_token}
             >
               Tallenna
-            </button>
+            </ControlButton>
           </form>
           {workspace.kind === "directory" && (
-            <button
+            <ControlButton
               type="button"
-              disabled={!csrf || busy}
+              isDisabled={!csrf || busy}
               onClick={() => void run("git_init", {})}
             >
               Alusta Git
-            </button>
+            </ControlButton>
           )}
-          <button
+          <ControlButton
             type="button"
-            disabled={!csrf || busy}
+            isDisabled={!csrf || busy}
             onClick={() => void run("visibility", { hidden: true })}
           >
             Piilota työtila
-          </button>
+          </ControlButton>
           <p>
             Poisto ei ole vielä käytettävissä: aktiivisia prosesseja, muita
             työhakemistoja ja liitoksia ei voida varmistaa turvallisesti.
@@ -163,13 +182,13 @@ export function WorkspaceManagement({
         .map((w) => (
           <p key={w.workspace_id}>
             {w.display_name ?? w.name}{" "}
-            <button
+            <ControlButton
               type="button"
-              disabled={!csrf || busy || !w.observation_token}
+              isDisabled={!csrf || busy || !w.observation_token}
               onClick={() => void run("visibility", { hidden: false }, w)}
             >
               Palauta näkyviin
-            </button>
+            </ControlButton>
           </p>
         ))}
     </section>

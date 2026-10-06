@@ -25,7 +25,12 @@ it("creates a directory and opens the reported workspace", async () => {
   vi.stubGlobal("fetch", fetch);
   const created = vi.fn();
   render(
-    <WorkspaceManagement csrf="csrf" refresh={vi.fn()} onCreated={created} />,
+    <WorkspaceManagement
+      csrf="csrf"
+      userObservationToken="obs_source123"
+      refresh={vi.fn()}
+      onCreated={created}
+    />,
   );
   fireEvent.change(screen.getByLabelText("Hakemiston nimi"), {
     target: { value: "ordinary" },
@@ -36,6 +41,7 @@ it("creates a directory and opens the reported workspace", async () => {
   );
   expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
     action: "create",
+    user_observation_token: "obs_source123",
     name: "ordinary",
     git: false,
   });
