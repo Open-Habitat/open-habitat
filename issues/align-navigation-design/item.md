@@ -77,6 +77,6 @@ their catalog examples should express the same design.
 
 ## Acceptance Criteria
 
-- [ ] Navigation, workspace page, account menu and return view follow the shared design on desktop and phone in both themes.
-- [ ] Shared controls, agent-state presentation and account profile are consistent, and navigation preserves drafts, reading position and focus.
-- [ ] Production-versus-draft comparisons show the implemented views and identify remaining differences and coverage gaps.
+- [x] Navigation, workspace page, account menu and return view follow the shared design on desktop and phone in both themes.
+- [x] Shared controls, agent-state presentation and account profile are consistent, and navigation preserves drafts, reading position and focus.
+- [x] Production-versus-draft comparisons show the implemented views and identify remaining differences and coverage gaps.
