@@ -13,11 +13,14 @@ export function ServerAdministration({ csrf }: { csrf?: string }) {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const reload = useCallback(async (signal?: AbortSignal) => {
-    const next = await administration(signal);
-    setData(next);
-    setName(next.name);
-  }, []);
+  const reload = useCallback(
+    async (signal?: AbortSignal, preserveDraft = false) => {
+      const next = await administration(signal);
+      setData(next);
+      if (!preserveDraft) setName(next.name);
+    },
+    [],
+  );
   useEffect(() => {
     const controller = new AbortController();
     void reload(controller.signal).catch(() => {
@@ -62,7 +65,7 @@ export function ServerAdministration({ csrf }: { csrf?: string }) {
           <ControlButton
             onPress={() => {
               setError("");
-              void reload().catch(() =>
+              void reload(undefined, true).catch(() =>
                 setError("Ylläpitoasetuksia ei voitu ladata."),
               );
             }}

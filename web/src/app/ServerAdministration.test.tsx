@@ -66,6 +66,12 @@ it("trims a name before writing and offers reload if acknowledgement fails", asy
   fireEvent.click(
     screen.getByRole("button", { name: "Lataa tiedot uudelleen" }),
   );
-  await screen.findByRole("textbox", { name: "Palvelimen nimi" });
+  expect(
+    (
+      (await screen.findByRole("textbox", {
+        name: "Palvelimen nimi",
+      })) as HTMLInputElement
+    ).value,
+  ).toBe(" Example ");
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
 });

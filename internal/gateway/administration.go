@@ -177,6 +177,11 @@ func (a *Auth) isAdministrator(id string) bool {
 	defer a.mu.Unlock()
 	return a.isAdministratorLocked(id)
 }
+func (a *Auth) administrationAvailable() bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.administrationHealthy()
+}
 func (a *Auth) settingsView() serverSettings {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -189,6 +194,9 @@ func (a *Auth) changeName(name string) error { return a.changeNameFor("", name) 
 func (a *Auth) changeNameFor(caller, name string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if !a.administrationHealthy() {
+		return ErrAdministrationState
+	}
 	if caller != "" && !a.isAdministratorLocked(caller) {
 		return errAdminDenied
 	}
@@ -217,11 +225,11 @@ func (a *Auth) changeRoleFor(ctx context.Context, caller, id string, administrat
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if caller != "" && !a.isAdministratorLocked(caller) {
-		return errAdminDenied
-	}
 	if !a.administrationHealthy() {
 		return ErrAdministrationState
+	}
+	if caller != "" && !a.isAdministratorLocked(caller) {
+		return errAdminDenied
 	}
 	next := a.settings
 	next.Administrators = append([]string{}, next.Administrators...)
@@ -256,6 +264,10 @@ func (a *Auth) adminHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.URL.RawQuery != "" {
 		safe(w, 400, "invalid_request")
+		return
+	}
+	if !a.administrationAvailable() {
+		safe(w, 503, "administration_unavailable")
 		return
 	}
 	if r.URL.Path == "/api/v1/server" && r.Method == http.MethodGet {
@@ -370,6 +382,9 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 	case "show":
 		if r.Name != "" || r.Subject != "" || r.Administrator != nil {
 			break
+		}
+		if !a.administrationAvailable() {
+			return nil, ErrAdministrationState
 		}
 		return json.Marshal(a.settingsView())
 	case "name":

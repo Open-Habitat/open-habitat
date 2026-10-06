@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -150,7 +151,7 @@ func TestControlRemovesStaleRoleWithoutBroker(t *testing.T) {
 }
 
 func TestAdministrationLostLiveFileDoesNotRestoreRole(t *testing.T) {
-	_, a, _, _, _ := fixture(t)
+	h, a, _, _, _ := fixture(t)
 	path := filepath.Join(t.TempDir(), "administration.json")
 	if e := a.loadAdministration(path); e != nil {
 		t.Fatal(e)
@@ -164,6 +165,20 @@ func TestAdministrationLostLiveFileDoesNotRestoreRole(t *testing.T) {
 	}
 	if a.isAdministrator("42") {
 		t.Fatal("lost state retained admin authority")
+	}
+	state, flow := start(t, h)
+	cookie := callback(h, state, flow).Result().Cookies()[1]
+	var session struct {
+		CSRF string `json:"csrf"`
+	}
+	if e := json.Unmarshal(request(h, "GET", "/auth/session", cookie).Body.Bytes(), &session); e != nil {
+		t.Fatal(e)
+	}
+	if code := adminPut(h, cookie, session.CSRF, `{"name":"unavailable"}`); code != 503 {
+		t.Fatalf("lost state returned %d instead of unavailable", code)
+	}
+	if _, e := a.AdminControl(context.Background(), []byte(`{"operation":"show"}`)); !errors.Is(e, ErrAdministrationState) {
+		t.Fatalf("control showed lost state: %v", e)
 	}
 	if e := a.changeRole(context.Background(), "42", true); e == nil {
 		t.Fatal("lost state silently recreated with stale roles")

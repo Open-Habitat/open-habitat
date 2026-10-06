@@ -493,13 +493,13 @@ type gatewayBroker struct{}
 func (gatewayBroker) ListBound(ctx context.Context) ([]gateway.BoundUser, error) {
 	users := make([]gateway.BoundUser, 0)
 	next := ""
-	var generation, epoch uint64
+	var generation uint64
 	for {
 		reply, err := (provision.Client{SocketPath: provision.BrokerSocket, SocketOwnerUID: 0}).Exchange(ctx, provision.Request{Version: 1, Operation: "list", Provider: "github", ID: "0", Candidate: next})
-		if err != nil || reply.Failure != "" || reply.Users == nil || len(users) > 1024 || generation != 0 && (reply.Generation != generation || reply.Epoch != epoch) {
+		if err != nil || reply.Failure != "" || reply.Users == nil || len(users) > 1024 || generation != 0 && reply.Generation != generation {
 			return nil, gateway.ErrBrokerUnavailable
 		}
-		generation, epoch = reply.Generation, reply.Epoch
+		generation = reply.Generation
 		for _, u := range *reply.Users {
 			users = append(users, gateway.BoundUser{ID: u.ID, Username: u.Username})
 		}
