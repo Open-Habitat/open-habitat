@@ -2,7 +2,7 @@
 created: 2026-10-06
 updated: 2026-10-06
 type: task
-status: open
+status: in-progress
 priority: normal
 lane: admission
 lane_seq: 20
