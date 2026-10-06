@@ -22,6 +22,6 @@ When the product changes are released, check the installed revision and pick up 
 
 ## Acceptance Criteria
 
-- [ ] The test guest runs a release containing both product logging changes, with the installed revision identified.
-- [ ] Fleetrepo's `nah-diagnostic-log-access` has a landed result for where to find service logs, who can read them, and the effective journal retention/space settings; this issue links to that result without copying private evidence.
+- [x] The test guest runs a release containing both product logging changes, with the installed revision identified.
+- [x] Fleetrepo's `nah-diagnostic-log-access` has a landed result for where to find service logs, who can read them, and the effective journal retention/space settings; this issue links to that result without copying private evidence.
 
