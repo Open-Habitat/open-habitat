@@ -11,8 +11,8 @@ import subprocess
 import sys
 import time
 
-path = '/run/native-agent-host/broker.sock'
-state = pathlib.Path('/var/lib/native-agent-host/broker')
+path = '/run/open-habitat/broker.sock'
+state = pathlib.Path('/var/lib/open-habitat/broker')
 def check(ok, msg):
     if not ok: raise RuntimeError(msg)
 def system(*args):
@@ -29,14 +29,14 @@ def stopped():
     # Wait a bounded interval for the process to exit, never equate a queued
     # systemctl start job with broker readiness.
     for _ in range(40):
-        if system('is-active','native-agent-host-broker.service').stdout.strip() != 'active':
+        if system('is-active','open-habitat-broker.service').stdout.strip() != 'active':
             return
         time.sleep(0.1)
     raise RuntimeError('broker service remained active')
 try:
     check(pathlib.Path('/proc/1/comm').read_text().strip() == 'systemd','PID 1')
-    check(pwd.getpwnam('native-agent-host-gateway').pw_uid == 21003 and pwd.getpwnam('broker-stranger').pw_uid == 21005,'real guest UIDs')
-    check(system('start','native-agent-host-broker.socket').returncode == 0, 'socket start')
+    check(pwd.getpwnam('open-habitat-gateway').pw_uid == 21003 and pwd.getpwnam('broker-stranger').pw_uid == 21005,'real guest UIDs')
+    check(system('start','open-habitat-broker.socket').returncode == 0, 'socket start')
     st = os.lstat(path)
     check(stat.S_ISSOCK(st.st_mode) and st.st_uid == 0 and st.st_gid == 21003 and stat.S_IMODE(st.st_mode) == 0o660,'socket inode')
     denied = connect(21005,21005)
@@ -45,21 +45,21 @@ try:
     check(denied.returncode == 0 and 'connected' in denied.stdout,'root wrong-peer not denied after connect: '+denied.stderr[-160:])
     ok = connect(21003,21003)
     check(ok.returncode == 0 and json.loads(ok.stdout)['failure'] == 'denied','gateway request/handler denial')
-    check(system('is-active','native-agent-host-broker.service').stdout.strip() == 'active','service activation')
-    check(system('stop','native-agent-host-broker.service').returncode == 0,'service stop')
+    check(system('is-active','open-habitat-broker.service').stdout.strip() == 'active','service activation')
+    check(system('stop','open-habitat-broker.service').returncode == 0,'service stop')
     (state/'pending.json').symlink_to('/dev/null')
-    system('start','native-agent-host-broker.service')
+    system('start','open-habitat-broker.service')
     stopped()
     (state/'pending.json').unlink()
     (state/'head.json').rename(state/'head.saved')
     (state/'head.json').symlink_to('/dev/null')
-    system('start','native-agent-host-broker.service')
+    system('start','open-habitat-broker.service')
     stopped()
     (state/'head.json').unlink()
     (state/'head.saved').rename(state/'head.json')
     (state/'head.json').write_text('{"version":1,"epoch":3,"generation":1}')
     os.chmod(state/'head.json',0o600)
-    system('start','native-agent-host-broker.service')
+    system('start','open-habitat-broker.service')
     stopped()
     print('VM_PROOF='+json.dumps({'status':'passed','scope':'broker-private-guest','pid1':'systemd','uids':[0,21003,21005],'wrong_uid_denied':True,'wrong_peer_denied':True,'pending_symlink_denied':True,'head_symlink_denied':True,'restart_drift_denied':True}),flush=True)
     subprocess.run(['systemd-run','--on-active=15s','--unit=broker-shutdown','/usr/bin/systemctl','poweroff','--no-block'],check=True,stdout=subprocess.DEVNULL)

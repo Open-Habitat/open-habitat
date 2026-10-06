@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 // PiStatusHandler discloses only the mapped daemon's native credential state.

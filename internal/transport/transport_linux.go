@@ -25,9 +25,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/diagnostic"
-	"github.com/maintainer/native-agent-host/internal/gateway"
-	"github.com/maintainer/native-agent-host/internal/udssecure"
+	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
+	"github.com/Open-Habitat/open-habitat/internal/gateway"
+	"github.com/Open-Habitat/open-habitat/internal/udssecure"
 	"golang.org/x/sys/unix"
 )
 
@@ -65,7 +65,7 @@ type Config struct {
 }
 
 func socketOK(path string) bool {
-	const prefix = "/run/native-agent-host/users/"
+	const prefix = "/run/open-habitat/users/"
 	suffix := strings.TrimPrefix(path, prefix)
 	parts := strings.Split(suffix, "/")
 	return strings.HasPrefix(path, prefix) && len(path) < 108 && len(parts) == 2 && parts[0] != "" && parts[0] != "." && parts[0] != ".." && parts[1] == "daemon.sock" && !strings.ContainsAny(parts[0], "\\\x00\r\n")
@@ -75,10 +75,10 @@ func validSubject(s string) bool {
 	return e == nil && n > 0 && strconv.FormatUint(n, 10) == s && len(s) <= maxField
 }
 func validate(c Config, testPath bool) error {
-	if c.BindingFile != "" && c.BindingFile != "/etc/omega-habitat/daemon/user-mappings/daemon-"+c.Username+".json" {
+	if c.BindingFile != "" && c.BindingFile != "/etc/open-habitat-daemon/daemon/user-mappings/daemon-"+c.Username+".json" {
 		return denied
 	}
-	if c.GatewayUID <= 0 || c.UID <= 0 || c.UID != os.Geteuid() || c.Provider != "github" || !validSubject(c.Subject) || c.Username == "" || len(c.Username) > maxField || c.Home == "" || !filepath.IsAbs(c.Home) || filepath.Clean(c.Home) != c.Home || (socketOK(c.Socket) && c.Socket != "/run/native-agent-host/users/"+c.Username+"/daemon.sock") || (!socketOK(c.Socket) && !(testPath && filepath.IsAbs(c.Socket))) {
+	if c.GatewayUID <= 0 || c.UID <= 0 || c.UID != os.Geteuid() || c.Provider != "github" || !validSubject(c.Subject) || c.Username == "" || len(c.Username) > maxField || c.Home == "" || !filepath.IsAbs(c.Home) || filepath.Clean(c.Home) != c.Home || (socketOK(c.Socket) && c.Socket != "/run/open-habitat/users/"+c.Username+"/daemon.sock") || (!socketOK(c.Socket) && !(testPath && filepath.IsAbs(c.Socket))) {
 		return denied
 	}
 	u, e := user.LookupId(strconv.Itoa(c.UID))
@@ -116,7 +116,7 @@ func verifyBindingUnder(etcPath string, c Config, rootUID, rootGID, privateGID i
 			unix.Close(parent)
 		}
 	}()
-	for _, part := range []string{"omega-habitat", "daemon", "user-mappings"} {
+	for _, part := range []string{"open-habitat-daemon", "daemon", "user-mappings"} {
 		dir, err := unix.Openat(parent, part, unix.O_PATH|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
 		if err != nil {
 			return denied
@@ -175,7 +175,7 @@ type Sink struct {
 }
 
 func (s Sink) Deliver(ctx context.Context, m gateway.Identity, subject, token string) error {
-	if (!socketOK(m.Socket) && !(s.testPath && filepath.IsAbs(m.Socket))) || m.Provider != "github" || !validSubject(subject) || m.Subject != subject || m.UID <= 0 || m.Username == "" || len(m.Username) > maxField || (socketOK(m.Socket) && m.Socket != "/run/native-agent-host/users/"+m.Username+"/daemon.sock") || len(token) == 0 || len(token) > maxToken {
+	if (!socketOK(m.Socket) && !(s.testPath && filepath.IsAbs(m.Socket))) || m.Provider != "github" || !validSubject(subject) || m.Subject != subject || m.UID <= 0 || m.Username == "" || len(m.Username) > maxField || (socketOK(m.Socket) && m.Socket != "/run/open-habitat/users/"+m.Username+"/daemon.sock") || len(token) == 0 || len(token) > maxToken {
 		return denied
 	}
 	var nonce [16]byte

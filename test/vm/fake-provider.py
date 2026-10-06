@@ -37,6 +37,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
         body=json.dumps(data).encode();self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
 server=http.server.ThreadingHTTPServer(('127.0.0.1',443),Handler)
 ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-ctx.load_cert_chain('/etc/native-agent-host/tls.crt','/etc/native-agent-host/tls.key')
+ctx.load_cert_chain('/etc/open-habitat/tls.crt','/etc/open-habitat/tls.key')
 server.socket=ctx.wrap_socket(server.socket,server_side=True)
 server.serve_forever()

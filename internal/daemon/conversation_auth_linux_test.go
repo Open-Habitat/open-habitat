@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 func TestModelAuthFailureIsFixedAndNativeReadsDoNotProbeStatus(t *testing.T) {
@@ -36,7 +36,7 @@ func TestModelAuthFailureIsFixedAndNativeReadsDoNotProbeStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := transport.Config{UID: uid, GatewayUID: uid, Username: u.Username, Home: u.HomeDir, Provider: "github", Subject: "42", Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock"}
+	cfg := transport.Config{UID: uid, GatewayUID: uid, Username: u.Username, Home: u.HomeDir, Provider: "github", Subject: "42", Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock"}
 	checks := 0
 	c := newConversationController(context.Background(), cfg, nil, func(*http.Request) bool { return true }, func(context.Context) string { checks++; return "missing" })
 	defer c.shutdown()
@@ -88,7 +88,7 @@ func TestFixtureSnapshotAndEventsDoNotProbePi(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := transport.Config{UID: uid, GatewayUID: uid, Username: u.Username, Home: u.HomeDir, Provider: "github", Subject: "42", Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock"}
+	cfg := transport.Config{UID: uid, GatewayUID: uid, Username: u.Username, Home: u.HomeDir, Provider: "github", Subject: "42", Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock"}
 	var checks atomic.Int32
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

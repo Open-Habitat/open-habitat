@@ -255,7 +255,7 @@ func (p *piRPC) requestQueue(kind, message string, timeout time.Duration) (piRep
 					return piReply{}, errors.New("Pi command list unavailable")
 				}
 				for _, command := range data.Commands {
-					if command.Name == "nah-conversation-recap" && command.Source == "extension" {
+					if command.Name == "oh-conversation-recap" && command.Source == "extension" {
 						result.RecapCommand = true
 					}
 				}

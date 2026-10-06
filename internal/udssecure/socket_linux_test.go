@@ -21,7 +21,7 @@ func TestRejectsUncontrolledSocketAndPath(t *testing.T) {
 		t.Fatal(e)
 	}
 	defer ln.Close()
-	for _, path := range []string{socket, filepath.Join(dir, "missing.sock"), "/run/native-agent-host/users/../daemon.sock"} {
+	for _, path := range []string{socket, filepath.Join(dir, "missing.sock"), "/run/open-habitat/users/../daemon.sock"} {
 		if Mapped(path, os.Getuid()) == nil {
 			t.Fatalf("accepted uncontrolled path %q", path)
 		}

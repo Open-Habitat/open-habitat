@@ -9,10 +9,10 @@ users:
     uid: 21002
     shell: /bin/bash
     homedir: /home/agent-b
-  - name: native-agent-host-gateway
+  - name: open-habitat-gateway
     uid: 21003
     shell: /usr/sbin/nologin
-    homedir: /var/empty/native-agent-host-gateway
+    homedir: /var/empty/open-habitat-gateway
     no_create_home: true
 write_files:
   - path: /home/agent-a/SYNTHETIC-IDENTITY
@@ -67,7 +67,7 @@ write_files:
               raise RuntimeError(message)
       try:
           check(open('/proc/1/comm').read().strip() == 'systemd', 'PID 1 is not systemd')
-          for name, uid in [('agent-a', 21001), ('agent-b', 21002), ('native-agent-host-gateway', 21003)]:
+          for name, uid in [('agent-a', 21001), ('agent-b', 21002), ('open-habitat-gateway', 21003)]:
               check(pwd.getpwnam(name).pw_uid == uid, name + ' UID')
           for name, uid in [('agent-a', 21001), ('agent-b', 21002)]:
               home = '/home/' + name
@@ -91,7 +91,7 @@ write_files:
               script = "import os,socket; os.setgroups([]); os.setgid(%d); os.setuid(%d); s=socket.socket(socket.AF_UNIX); s.connect('/run/fixture-route/%s.sock')" % (pwd.getpwnam(name).pw_gid, uid, other)
               denied = subprocess.run(['/usr/bin/python3', '-c', script], capture_output=True)
               check(denied.returncode != 0 and b'PermissionError' in denied.stderr, name + ' cross-user route denial')
-          check(not os.path.exists('/var/empty/native-agent-host-gateway'), 'gateway home created')
+          check(not os.path.exists('/var/empty/open-habitat-gateway'), 'gateway home created')
           print('VM_PROOF=' + json.dumps({'status':'passed','pid1':'systemd','uids':[21001,21002,21003],'socket_activation':True,'socket_mode':'0600','cross_user_marker_denied':True,'cross_user_route_denied':True,'scope':'synthetic-environment-only'}), flush=True)
           # Let cloud-final complete before shutting down this disposable guest.
           subprocess.run(['systemd-run', '--on-active=15s', '--unit=fixture-shutdown', '/usr/bin/systemctl', 'poweroff', '--no-block'], check=True, stdout=subprocess.DEVNULL)

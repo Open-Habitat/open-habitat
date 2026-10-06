@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 	"net/http"
 	"net/http/httptest"
@@ -116,7 +116,7 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Corrupt annotation bytes are not overwritten by a new archive action.
-	stateDir := filepath.Join(home, ".local", "state", "native-agent-host", "user-state.json")
+	stateDir := filepath.Join(home, ".local", "state", "open-habitat", "user-state.json")
 	if err := os.WriteFile(stateDir, []byte("{broken"), 0600); err != nil {
 		t.Fatal(err)
 	}

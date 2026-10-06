@@ -118,7 +118,7 @@ the browser does not repeat a failed native write automatically. Optional
 workspace. For main Git worktrees the daemon adds `.agent-host/` to the
 checkout's local Git exclude instead of changing `.gitignore`. Hidden state is
 presentation-only in the user's
-`~/.local/state/native-agent-host/user-state.json`, keyed by that ID. Corrupt
+`~/.local/state/open-habitat/user-state.json`, keyed by that ID. Corrupt
 state and unknown workspace annotations are not overwritten.
 
 Deletion is **not enabled**. Even with descriptor-pinned traversal and a

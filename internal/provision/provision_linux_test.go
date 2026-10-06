@@ -33,11 +33,11 @@ func TestProtocolRejectsUntrustedInput(t *testing.T) {
 		}
 	}
 	for _, input := range []string{
-		`{"version":1,"failure":"denied","route":{"uid":42,"username":"alice","socket":"/run/native-agent-host/users/alice/daemon.sock"}}`,
-		`{"version":1,"route":{"uid":42,"uid":43,"username":"alice","socket":"/run/native-agent-host/users/alice/daemon.sock"},"generation":1,"epoch":1}`,
+		`{"version":1,"failure":"denied","route":{"uid":42,"username":"alice","socket":"/run/open-habitat/users/alice/daemon.sock"}}`,
+		`{"version":1,"route":{"uid":42,"uid":43,"username":"alice","socket":"/run/open-habitat/users/alice/daemon.sock"},"generation":1,"epoch":1}`,
 		`{"version":1,"route":{"uid":42,"username":"alice","socket":"/tmp/evil"},"generation":1,"epoch":1}`,
 		`{"version":1,"failure":"magic"}`,
-		`{"version":1,"failure":null,"route":{"uid":42,"username":"alice","socket":"/run/native-agent-host/users/alice/daemon.sock"},"generation":1,"epoch":1}`,
+		`{"version":1,"failure":null,"route":{"uid":42,"username":"alice","socket":"/run/open-habitat/users/alice/daemon.sock"},"generation":1,"epoch":1}`,
 	} {
 		if _, err := ParseReply([]byte(input)); err == nil {
 			t.Errorf("accepted reply %q", input)

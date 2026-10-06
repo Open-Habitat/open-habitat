@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 	"net/http"
 	"net/http/httptest"
@@ -24,7 +24,7 @@ func TestSnapshotNativeStatusOnlyAfterTrust(t *testing.T) {
 		t.Fatal(err)
 	}
 	uid, _ := strconv.Atoi(u.Uid)
-	cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Provider: "github", Subject: "42", Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock"}
+	cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Provider: "github", Subject: "42", Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock"}
 	calls := 0
 	status := "connected"
 	h := snapshotHandlerWithStatus(cfg, func(*http.Request) bool { return true }, func(transport.Config) Discovery { return Discovery{State: "empty"} }, func(transport.Config) ([]nativeSession, error) { return nil, nil }, t.TempDir(), func(context.Context) string { calls++; return status })
@@ -103,7 +103,7 @@ func TestSnapshotDiscoveryAndSchema(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Provider: "github", Subject: "42"}
-	cfg.Socket = "/run/native-agent-host/users/" + u.Username + "/daemon.sock"
+	cfg.Socket = "/run/open-habitat/users/" + u.Username + "/daemon.sock"
 	// The discovery seam uses a disposable root; production always calls Discover(cfg).
 	state := func(_ transport.Config) Discovery { return scan(home, uid, unix.Openat2) }
 	h := SnapshotHandlerWithNativeRoot(cfg, func(*http.Request) bool { return true }, state, home)

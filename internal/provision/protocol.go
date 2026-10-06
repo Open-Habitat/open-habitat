@@ -88,7 +88,7 @@ func githubLogin(s string) bool {
 	}
 	return true
 }
-func socketFor(name string) string { return "/run/native-agent-host/users/" + name + "/daemon.sock" }
+func socketFor(name string) string { return "/run/open-habitat/users/" + name + "/daemon.sock" }
 
 // object rejects duplicate and unknown fields before any typed decode.
 func object(b []byte, fields ...string) (map[string]json.RawMessage, error) {

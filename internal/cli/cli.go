@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/maintainer/native-agent-host/internal/core"
-	"github.com/maintainer/native-agent-host/internal/daemon"
-	"github.com/maintainer/native-agent-host/internal/gateway"
-	"github.com/maintainer/native-agent-host/internal/provision"
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/core"
+	"github.com/Open-Habitat/open-habitat/internal/daemon"
+	"github.com/Open-Habitat/open-habitat/internal/gateway"
+	"github.com/Open-Habitat/open-habitat/internal/provision"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"io"
 	"net"
 	"net/http"
@@ -21,7 +21,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/maintainer/native-agent-host/internal/diagnostic"
+	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 )
 
 const schemaVersion = 1
@@ -186,10 +186,10 @@ func componentFlag(args []string) (core.Component, []string, *cliError) {
 	return c, rest, nil
 }
 func configPath(c core.Component) string {
-	if p := os.Getenv("NATIVE_AGENT_HOST_CONFIG"); p != "" {
+	if p := os.Getenv("OPEN_HABITAT_CONFIG"); p != "" {
 		return p
 	}
-	return "/etc/native-agent-host/" + string(c) + ".json"
+	return "/etc/open-habitat/" + string(c) + ".json"
 }
 func configCommand(args []string) (any, error) {
 	if len(args) == 0 {
@@ -205,7 +205,7 @@ func configCommand(args []string) (any, error) {
 	}
 	p := configPath(c)
 	source := "default"
-	if os.Getenv("NATIVE_AGENT_HOST_CONFIG") != "" {
+	if os.Getenv("OPEN_HABITAT_CONFIG") != "" {
 		source = "env"
 	}
 	switch verb {
@@ -248,7 +248,7 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 	var h http.Handler
 	if c == core.Gateway {
 		if cfg.OAuth != nil {
-			a, e := gateway.NewAuth(*cfg.OAuth, gateway.AuthOptions{Provider: gateway.GitHubProvider{ClientID: cfg.OAuth.ClientID, ClientSecret: cfg.OAuth.ClientSecret, CallbackURL: cfg.OAuth.CallbackURL}, Sink: transport.NewSink(), Broker: gatewayBroker{}, SessionFile: "/var/lib/native-agent-host-gateway/sessions.json", AdminFile: "/var/lib/native-agent-host-gateway/administration.json", Log: gateway.CallbackLogger(stderr)})
+			a, e := gateway.NewAuth(*cfg.OAuth, gateway.AuthOptions{Provider: gateway.GitHubProvider{ClientID: cfg.OAuth.ClientID, ClientSecret: cfg.OAuth.ClientSecret, CallbackURL: cfg.OAuth.CallbackURL}, Sink: transport.NewSink(), Broker: gatewayBroker{}, SessionFile: "/var/lib/open-habitat-gateway/sessions.json", AdminFile: "/var/lib/open-habitat-gateway/administration.json", Log: gateway.CallbackLogger(stderr)})
 			if e != nil {
 				if errors.Is(e, gateway.ErrAdministrationState) {
 					return nil, system("invalid_administration_state", "private gateway administration state requires operator repair")
@@ -329,13 +329,13 @@ func adminCommand(args []string) (any, error) {
 	return adminServerCommand(args)
 }
 func stateDir() string {
-	if p := os.Getenv("NATIVE_AGENT_HOST_STATE_DIR"); p != "" {
+	if p := os.Getenv("OPEN_HABITAT_STATE_DIR"); p != "" {
 		return p
 	}
-	return "/run/native-agent-host"
+	return "/run/open-habitat"
 }
 func stateSource() string {
-	if os.Getenv("NATIVE_AGENT_HOST_STATE_DIR") != "" {
+	if os.Getenv("OPEN_HABITAT_STATE_DIR") != "" {
 		return "env"
 	}
 	return "default"
@@ -387,14 +387,14 @@ func maintenanceCommand(args []string) (any, error) {
 
 const operatorSkill = `---
 name: operator
-description: Operate and diagnose Native Agent Host runtime roles non-interactively.
+description: Operate and diagnose Open Habitat runtime roles non-interactively.
 cli_version: "0.0.0-dev"
 schema_version: 1
 ---
-# Native Agent Host operator
+# Open Habitat operator
 
 Inspect configuration before starting a role. Prefer structured output:
-    native-agent-host --json doctor --component gateway
+    open-habitat --json doctor --component gateway
 Never infer readiness from process liveness alone.
 For first browser administrator appointment, wait for the person's binding,
 then as root run admin users list --json to find the numeric subject, followed
@@ -428,7 +428,7 @@ func skillCommand(args []string) (any, error) {
 					map[string]string{"agent": "codex", "path": ".codex/skills/<name>/...", "form": "agent-skill-tree"},
 				},
 			},
-			"skills": []any{map[string]any{"name": "operator", "description": "Operate and diagnose Native Agent Host"}},
+			"skills": []any{map[string]any{"name": "operator", "description": "Operate and diagnose Open Habitat"}},
 		}), nil
 	case "print":
 		if len(args) != 2 || args[1] != "operator" {
@@ -503,7 +503,7 @@ func skillInstall(args []string) (any, error) {
 	return envelope(map[string]any{"dry_run": dry, "would": would}), nil
 }
 func helpOutput() any {
-	return envelope(map[string]any{"name": "native-agent-host", "subcommands": []string{"version", "config path|show", "doctor", "gateway exec", "daemon exec", "broker exec", "admin readiness show", "admin settings show|update", "admin users list", "admin role update", "maintenance enter|leave", "revoke subject", "skill list|print|install"}, "global_flags": []string{"--json", "--verbose", "--version"}})
+	return envelope(map[string]any{"name": "open-habitat", "subcommands": []string{"version", "config path|show", "doctor", "gateway exec", "daemon exec", "broker exec", "admin readiness show", "admin settings show|update", "admin users list", "admin role update", "maintenance enter|leave", "revoke subject", "skill list|print|install"}, "global_flags": []string{"--json", "--verbose", "--version"}})
 }
 
 type gatewayBroker struct{}
@@ -572,6 +572,6 @@ func mapBrokerReply(reply provision.Reply, err error) (gateway.BrokerReply, erro
 	}
 }
 func (gatewayBroker) Exchange(ctx context.Context, r gateway.BrokerRequest) (gateway.BrokerReply, error) {
-	reply, err := (provision.Client{SocketPath: "/run/native-agent-host/broker.sock", SocketOwnerUID: 0}).Exchange(ctx, provision.Request{Version: 1, Operation: r.Operation, Provider: "github", ID: r.ID, Candidate: r.Candidate})
+	reply, err := (provision.Client{SocketPath: "/run/open-habitat/broker.sock", SocketOwnerUID: 0}).Exchange(ctx, provision.Request{Version: 1, Operation: r.Operation, Provider: "github", ID: r.ID, Candidate: r.Candidate})
 	return mapBrokerReply(reply, err)
 }

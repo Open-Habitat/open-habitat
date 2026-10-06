@@ -20,13 +20,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/diagnostic"
-	"github.com/maintainer/native-agent-host/internal/gateway"
+	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
+	"github.com/Open-Habitat/open-habitat/internal/gateway"
 )
 
 func shortDir(t *testing.T) string {
 	t.Helper()
-	d, e := os.MkdirTemp("/tmp", "nah-uds-")
+	d, e := os.MkdirTemp("/tmp", "oh-uds-")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -126,7 +126,7 @@ func TestJITBindingFailsClosedWithoutRootOwnedConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := Config{GatewayUID: uid, UID: os.Geteuid(), Username: u.Username, Home: u.HomeDir, Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: "42", BindingFile: "/etc/omega-habitat/daemon/user-mappings/daemon-" + u.Username + ".json"}
+	cfg := Config{GatewayUID: uid, UID: os.Geteuid(), Username: u.Username, Home: u.HomeDir, Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: "42", BindingFile: "/etc/open-habitat-daemon/daemon/user-mappings/daemon-" + u.Username + ".json"}
 	if validate(cfg, false) == nil {
 		t.Fatal("accepted absent or untrusted binding")
 	}
@@ -137,7 +137,7 @@ func TestJITBindingFailsClosedWithoutRootOwnedConfig(t *testing.T) {
 }
 
 func TestJITBindingNumericIdentityAndStrictDecode(t *testing.T) {
-	cfg := Config{GatewayUID: 21003, UID: 22010, Username: "pilot", Home: "/home/pilot", Socket: "/run/native-agent-host/users/pilot/daemon.sock", Provider: "github", Subject: "42", BindingFile: "/etc/omega-habitat/daemon/user-mappings/daemon-pilot.json"}
+	cfg := Config{GatewayUID: 21003, UID: 22010, Username: "pilot", Home: "/home/pilot", Socket: "/run/open-habitat/users/pilot/daemon.sock", Provider: "github", Subject: "42", BindingFile: "/etc/open-habitat-daemon/daemon/user-mappings/daemon-pilot.json"}
 	encode := func(c Config) []byte {
 		b, err := json.Marshal(struct {
 			Component string `json:"component"`
@@ -363,7 +363,7 @@ func TestBindingTraversalPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	parent := etc
-	for _, name := range []string{"omega-habitat", "daemon", "user-mappings"} {
+	for _, name := range []string{"open-habitat-daemon", "daemon", "user-mappings"} {
 		parent = filepath.Join(parent, name)
 		if err := os.Mkdir(parent, 0711); err != nil {
 			t.Fatal(err)
@@ -372,7 +372,7 @@ func TestBindingTraversalPolicy(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	cfg := Config{GatewayUID: 21003, UID: 22010, Username: "pilot", Home: "/home/pilot", Socket: "/run/native-agent-host/users/pilot/daemon.sock", Provider: "github", Subject: "42", BindingFile: "/etc/omega-habitat/daemon/user-mappings/daemon-pilot.json"}
+	cfg := Config{GatewayUID: 21003, UID: 22010, Username: "pilot", Home: "/home/pilot", Socket: "/run/open-habitat/users/pilot/daemon.sock", Provider: "github", Subject: "42", BindingFile: "/etc/open-habitat-daemon/daemon/user-mappings/daemon-pilot.json"}
 	body, err := json.Marshal(struct {
 		Component string `json:"component"`
 		Handoff   Config `json:"handoff"`
@@ -397,7 +397,7 @@ func TestBindingTraversalPolicy(t *testing.T) {
 	if verifyBindingUnder(etc, cfg, os.Getuid()+1, os.Getgid(), os.Getgid()) == nil || verifyBindingUnder(etc, cfg, os.Getuid(), os.Getgid()+1, os.Getgid()) == nil || verifyBindingUnder(etc, cfg, os.Getuid(), os.Getgid(), os.Getgid()+1) == nil {
 		t.Fatal("accepted wrong owner or private group")
 	}
-	for _, p := range []string{filepath.Join(etc, "omega-habitat"), filepath.Join(etc, "omega-habitat", "daemon"), parent} {
+	for _, p := range []string{filepath.Join(etc, "open-habitat-daemon"), filepath.Join(etc, "open-habitat-daemon", "daemon"), parent} {
 		for _, mode := range []os.FileMode{0755, 0700, 0731} {
 			if err := os.Chmod(p, mode); err != nil {
 				t.Fatal(err)

@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 func cloneFixture(t *testing.T) (transport.Config, string) {
@@ -26,7 +26,7 @@ func cloneFixture(t *testing.T) (transport.Config, string) {
 	}
 	uid, _ := strconv.Atoi(u.Uid)
 	home := t.TempDir()
-	return transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: "42"}, home
+	return transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: "42"}, home
 }
 func cloneRequest(body string) *http.Request {
 	r := httptest.NewRequest("POST", "http://unix"+RepoClonePath, strings.NewReader(body))

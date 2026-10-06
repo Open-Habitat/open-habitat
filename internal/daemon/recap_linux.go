@@ -28,7 +28,7 @@ func (c *ConversationController) piArgs() ([]string, error) {
 			return append(args, "--extension", c.recapPath), nil
 		}
 	}
-	dir, err := os.MkdirTemp("/var/tmp", "nah-recap-")
+	dir, err := os.MkdirTemp("/var/tmp", "oh-recap-")
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +173,7 @@ func (c *ConversationController) requestRecap(w http.ResponseWriter, r *http.Req
 			done <- false
 			return
 		}
-		accepted, err := s.rpc.request("prompt", "/nah-conversation-recap", 25*time.Second)
+		accepted, err := s.rpc.request("prompt", "/oh-conversation-recap", 25*time.Second)
 		if err != nil || !accepted {
 			done <- false
 			return

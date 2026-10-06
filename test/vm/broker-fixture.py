@@ -12,27 +12,27 @@ files = []
 def add(path, content, mode='0644'):
     if isinstance(content, str): content = content.encode()
     files.append({'path': path, 'permissions': mode, 'encoding': 'b64', 'content': base64.b64encode(content).decode()})
-add('/etc/systemd/system/native-agent-host-broker.socket', (repo/'systemd/native-agent-host-broker.socket').read_bytes())
-service = (repo/'systemd/native-agent-host-broker.service').read_text().replace('/opt/native-agent-host/current/native-agent-host', '/opt/native-agent-host/native-agent-host')
-add('/etc/systemd/system/native-agent-host-broker.service', service)
+add('/etc/systemd/system/open-habitat-broker.socket', (repo/'systemd/open-habitat-broker.socket').read_bytes())
+service = (repo/'systemd/open-habitat-broker.service').read_text().replace('/opt/open-habitat/current/open-habitat', '/opt/open-habitat/open-habitat')
+add('/etc/systemd/system/open-habitat-broker.service', service)
 add('/usr/local/sbin/broker-proof', (repo/'test/vm/broker-proof.py').read_bytes(), '0755')
 add('/etc/systemd/system/broker-proof.service', '[Service]\nType=oneshot\nStandardOutput=tty\nTTYPath=/dev/ttyS0\nExecStart=/usr/local/sbin/broker-proof\n')
-state = '/var/lib/native-agent-host/broker'
+state = '/var/lib/open-habitat/broker'
 add(state+'/broker.json', json.dumps({'version':1,'gateway_uid':21003,'gateway_gid':21003,'uid_min':22010,'uid_max':22011,'state_dir':state}), '0600')
 add(state+'/allowlist.json', '{"version":1,"epoch":2,"ids":[]}', '0600')
 add(state+'/bindings.json', '{"version":1,"generation":1,"bindings":[]}', '0600')
 add(state+'/head.json', '{"version":1,"epoch":2,"generation":1}', '0600')
-seed = {'users':['default', {'name':'native-agent-host-gateway','uid':21003,'shell':'/usr/sbin/nologin','no_create_home':True}, {'name':'broker-stranger','uid':21005,'shell':'/usr/sbin/nologin','no_create_home':True}], 'write_files': files, 'runcmd': [
-    ['mkdir','-p','/mnt/product','/opt/native-agent-host'],
+seed = {'users':['default', {'name':'open-habitat-gateway','uid':21003,'shell':'/usr/sbin/nologin','no_create_home':True}, {'name':'broker-stranger','uid':21005,'shell':'/usr/sbin/nologin','no_create_home':True}], 'write_files': files, 'runcmd': [
+    ['mkdir','-p','/mnt/product','/opt/open-habitat'],
     ['mount','-o','ro','/dev/disk/by-label/PRODUCT','/mnt/product'],
-    ['install','-m','0755','/mnt/product/native-agent-host','/opt/native-agent-host/native-agent-host'],
+    ['install','-m','0755','/mnt/product/open-habitat','/opt/open-habitat/open-habitat'],
     ['umount','/mnt/product'],
-    ['mkdir','-p','/run/native-agent-host'],
-    ['chown','root:native-agent-host-gateway','/run/native-agent-host'],
-    ['chmod','0750','/run/native-agent-host'],
-    ['mkdir','-p','/etc/omega-habitat/daemon/user-mappings'],
-    ['chown','root:root','/etc/omega-habitat','/etc/omega-habitat/daemon','/etc/omega-habitat/daemon/user-mappings'],
-    ['chmod','0711','/etc/omega-habitat','/etc/omega-habitat/daemon','/etc/omega-habitat/daemon/user-mappings'],
+    ['mkdir','-p','/run/open-habitat'],
+    ['chown','root:open-habitat-gateway','/run/open-habitat'],
+    ['chmod','0750','/run/open-habitat'],
+    ['mkdir','-p','/etc/open-habitat-daemon/daemon/user-mappings'],
+    ['chown','root:root','/etc/open-habitat-daemon','/etc/open-habitat-daemon/daemon','/etc/open-habitat-daemon/daemon/user-mappings'],
+    ['chmod','0711','/etc/open-habitat-daemon','/etc/open-habitat-daemon/daemon','/etc/open-habitat-daemon/daemon/user-mappings'],
     ['chown','-R','root:root',state],
     ['chmod','0700',state],
     ['systemctl','daemon-reload'],

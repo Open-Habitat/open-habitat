@@ -5,7 +5,7 @@ package daemon
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 	"io"
 	"net/http"
@@ -161,7 +161,7 @@ func TestWorkspaceRequestBodyDoesNotHoldWriterLock(t *testing.T) {
 }
 func TestWorkspaceStateRejectsFIFOWriteWithoutBlocking(t *testing.T) {
 	home := t.TempDir()
-	d := filepath.Join(home, ".local", "state", "native-agent-host")
+	d := filepath.Join(home, ".local", "state", "open-habitat")
 	if e := os.MkdirAll(d, 0700); e != nil {
 		t.Fatal(e)
 	}

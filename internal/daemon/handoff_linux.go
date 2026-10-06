@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/core"
-	"github.com/maintainer/native-agent-host/internal/nativegh"
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/core"
+	"github.com/Open-Habitat/open-habitat/internal/nativegh"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 // ServeHandoff serves a pre-opened, configured systemd Unix listener as the

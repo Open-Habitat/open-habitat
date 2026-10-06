@@ -7,7 +7,7 @@ export default function teardown() {
   const marker = resolve("test-results/browser-host-path");
   try {
     const path = readFileSync(marker, "utf8");
-    if (/^\/tmp\/nah-browser-[0-9]+$/.test(path)) {
+    if (/^\/tmp\/oh-browser-[0-9]+$/.test(path)) {
       const stat = statSync(path);
       if (stat.isDirectory() && stat.uid === process.getuid?.())
         rmSync(path, { recursive: true, force: true });

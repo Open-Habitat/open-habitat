@@ -38,7 +38,7 @@ function promptFor(branch) {
 }
 export default function (pi) {
   let pending = false;
-  pi.registerCommand('nah-conversation-recap', {
+  pi.registerCommand('oh-conversation-recap', {
     description: 'Save a brief recap outside the agent context',
     handler: async (_args, ctx) => {
       if (pending) return;

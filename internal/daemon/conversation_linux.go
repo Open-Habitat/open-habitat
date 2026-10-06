@@ -16,8 +16,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/maintainer/native-agent-host/internal/core"
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/core"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 )
 

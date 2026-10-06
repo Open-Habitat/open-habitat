@@ -21,7 +21,7 @@ import (
 func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 	uid := os.Getuid()
 	now := time.Now()
-	mappings := []Identity{{"github", "42", uid, "alice", "/run/native-agent-host/users/alice/daemon.sock"}, {"github", "43", uid, "bob", "/run/native-agent-host/users/bob/daemon.sock"}}
+	mappings := []Identity{{"github", "42", uid, "alice", "/run/open-habitat/users/alice/daemon.sock"}, {"github", "43", uid, "bob", "/run/open-habitat/users/bob/daemon.sock"}}
 	// Same real UID is an intentional test seam: production NewAuth rejects UID
 	// reuse; the separate two-UID systemd proof belongs to phase 2C.
 	listeners := map[string]string{}
@@ -32,7 +32,7 @@ func TestSnapshotTwoMappedUnixListeners(t *testing.T) {
 	var snapshotMode atomic.Value
 	snapshotMode.Store("")
 	for i, m := range mappings {
-		dir, e := os.MkdirTemp("/tmp", "nah-snap-")
+		dir, e := os.MkdirTemp("/tmp", "oh-snap-")
 		if e != nil {
 			t.Fatal(e)
 		}

@@ -11,4 +11,4 @@ except OSError:
     path='missing'
 data={'pid':os.getpid(),'listen_pid':os.environ.get('LISTEN_PID',''),'listen_fds':os.environ.get('LISTEN_FDS',''),'listen_fdnames':os.environ.get('LISTEN_FDNAMES',''),'socket':path}
 with open('/home/'+name+'/activation.json','w') as f:json.dump(data,f)
-os.execv('/opt/native-agent-host/native-agent-host',['/opt/native-agent-host/native-agent-host',*sys.argv[1:]])
+os.execv('/opt/open-habitat/open-habitat',['/opt/open-habitat/open-habitat',*sys.argv[1:]])

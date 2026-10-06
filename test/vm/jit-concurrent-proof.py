@@ -3,7 +3,7 @@
 import concurrent.futures, fcntl, grp, hashlib, http.cookiejar, json, os, pathlib, pwd, socket, ssl, stat, subprocess, time, urllib.error, urllib.parse, urllib.request
 
 base='https://host.fixture:8443'
-ledger=pathlib.Path('/var/lib/native-agent-host/broker')
+ledger=pathlib.Path('/var/lib/open-habitat/broker')
 identities=[('a','guestone',21032,'100000001'),('b','guesttwo',21033,'100000002'),('c','guestthree',21034,'100000003')]
 result={'status':'failed','scope':'jit-concurrent'}
 provider=None
@@ -14,7 +14,7 @@ def check(ok, label):
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,*args): return None
 
-ctx=ssl.create_default_context(cafile='/etc/native-agent-host/fixture-ca.crt')
+ctx=ssl.create_default_context(cafile='/etc/open-habitat/fixture-ca.crt')
 def browser():
     jar=http.cookiejar.CookieJar()
     return urllib.request.build_opener(urllib.request.HTTPSHandler(context=ctx),urllib.request.HTTPCookieProcessor(jar),NoRedirect()),jar
@@ -62,12 +62,12 @@ def deny(uid,path):
 
 try:
     check(pathlib.Path('/proc/1/comm').read_text().strip()=='systemd','pid1')
-    expected=pathlib.Path('/etc/native-agent-host/binary.sha256').read_text().strip()
-    check(hashlib.sha256(pathlib.Path('/opt/native-agent-host/current/native-agent-host').read_bytes()).hexdigest()==expected,'binary digest')
+    expected=pathlib.Path('/etc/open-habitat/binary.sha256').read_text().strip()
+    check(hashlib.sha256(pathlib.Path('/opt/open-habitat/current/open-habitat').read_bytes()).hexdigest()==expected,'binary digest')
     check(binding()==[] and json.loads((ledger/'allowlist.json').read_text())['ids']==[],'precreated binding')
     for _,name,uid,_ in identities:
         check(not any(u.pw_name==name or u.pw_uid==uid for u in pwd.getpwall()) and not pathlib.Path('/home',name).exists(),'precreated account')
-    prep='/usr/local/libexec/native-agent-host-test-jit/jit_acl_prepare.py'
+    prep='/usr/local/libexec/open-habitat-test-jit/jit_acl_prepare.py'
     check(subprocess.run(['/usr/bin/python3',prep,'preflight','--json'],capture_output=True).returncode==0,'preflight')
     fd=os.open(ledger,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
     try:
@@ -80,18 +80,18 @@ try:
     finally:os.close(fd)
     for step in ('prepare','verify'):
         check(subprocess.run(['/usr/bin/python3',prep,step,'--json'],capture_output=True).returncode==0,step)
-    subprocess.run(['systemctl','start','native-agent-host-broker.socket'],check=True,capture_output=True)
-    sock=pathlib.Path('/run/native-agent-host/broker.sock').stat()
+    subprocess.run(['systemctl','start','open-habitat-broker.socket'],check=True,capture_output=True)
+    sock=pathlib.Path('/run/open-habitat/broker.sock').stat()
     check((sock.st_uid,sock.st_gid,stat.S_IMODE(sock.st_mode))==(0,21003,0o660),'broker ACL')
-    config=pathlib.Path('/etc/native-agent-host/gateway.json');os.chown(config,0,21003);config.chmod(0o640)
-    key=pathlib.Path('/etc/native-agent-host/tls.key');os.chown(key,0,21003);key.chmod(0o640)
+    config=pathlib.Path('/etc/open-habitat/gateway.json');os.chown(config,0,21003);config.chmod(0o640)
+    key=pathlib.Path('/etc/open-habitat/tls.key');os.chown(key,0,21003);key.chmod(0o640)
     with open('/etc/hosts','a') as f:f.write('\n127.0.0.1 github.com api.github.com host.fixture\n')
     provider=subprocess.Popen(['/usr/bin/python3','/usr/local/sbin/product-fake-provider'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     for _ in range(50):
         try:socket.create_connection(('127.0.0.1',443),.5).close();break
         except OSError:time.sleep(.2)
     else:raise RuntimeError('provider unavailable')
-    subprocess.run(['systemctl','start','native-agent-host-revoke.socket'],check=True,capture_output=True)
+    subprocess.run(['systemctl','start','open-habitat-revoke.socket'],check=True,capture_output=True)
     subprocess.run(['systemctl','start','product-gateway.service'],check=True,capture_output=True)
     for _ in range(50):
         try:
@@ -170,7 +170,7 @@ try:
         check(cred.stat().st_uid==uid and stat.S_IMODE(cred.stat().st_mode)==0o600,'credential ACL')
         for _,other,other_uid,_ in identities:
             if other==name:continue
-            check(deny(uid,'/home/'+other) and deny(uid,'/run/native-agent-host/users/'+other+'/daemon.sock'),'cross-UID DAC')
+            check(deny(uid,'/home/'+other) and deny(uid,'/run/open-habitat/users/'+other+'/daemon.sock'),'cross-UID DAC')
             check(deny(other_uid,'/home/'+name),'cross-UID credential home')
     check(len(binding())==3,'binding cardinality')
     # Faults are made only in the disposable guest, after all successful browser
@@ -188,7 +188,7 @@ try:
 s=socket.socket(socket.AF_UNIX);s.settimeout(12);s.connect(sys.argv[1]);b=sys.argv[2].encode();s.sendall(struct.pack('>I',len(b))+b);s.shutdown(socket.SHUT_WR);n=struct.unpack('>I',s.recv(4))[0];out=b''
 while len(out)<n:out+=s.recv(n-len(out))
 print(out.decode())'''
-        p=subprocess.run(['/usr/bin/python3','-c',code,'/run/native-agent-host/broker.sock',request.decode()],preexec_fn=drop,capture_output=True,text=True,timeout=18)
+        p=subprocess.run(['/usr/bin/python3','-c',code,'/run/open-habitat/broker.sock',request.decode()],preexec_fn=drop,capture_output=True,text=True,timeout=18)
         check(p.returncode==0 and json.loads(p.stdout).get('failure')==expected,label+' broker did not deny')
         expected_bytes=dict(original)
         if changed is not None:

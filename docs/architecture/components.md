@@ -31,7 +31,7 @@ describes how this view stays current.
 The gateway serves the browser application, handles GitHub login and holds web
 sessions in memory. It selects the daemon socket from the signed-in session,
 checks access to each request and forwards commands and replies. It runs as the
-unprivileged `native-agent-host-gateway` account with home access disabled by
+unprivileged `open-habitat-gateway` account with home access disabled by
 systemd. Native file access and tool execution belong to the daemon.
 
 ## Provisioning broker

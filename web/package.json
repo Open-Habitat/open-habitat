@@ -1,5 +1,5 @@
 {
-  "name": "native-agent-host-web",
+  "name": "open-habitat-web",
   "version": "0.0.0",
   "private": true,
   "type": "module",

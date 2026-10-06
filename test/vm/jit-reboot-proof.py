@@ -14,11 +14,11 @@ import subprocess
 import sys
 import time
 
-state=Path('/var/lib/native-agent-host/broker')
-run=Path('/run/native-agent-host')
+state=Path('/var/lib/open-habitat/broker')
+run=Path('/run/open-habitat')
 names=('guestone','guesttwo')
 uids=(21032,21033)
-prep='/usr/local/libexec/native-agent-host-test-jit/jit_acl_prepare.py'
+prep='/usr/local/libexec/open-habitat-test-jit/jit_acl_prepare.py'
 receipt={'status':'failed','scope':'jit-reboot-diagnostic'}
 def checkpoint(label):
     print('VM_REBOOT_DIAG='+label,flush=True)
@@ -105,12 +105,12 @@ try:
     print('VM_REBOOT_DIAG=persistent-ledger-and-homes',flush=True)
     for name in names:
         checkpoint('socket-'+name+'-status-start')
-        need(unit('is-enabled',f'native-agent-host-daemon@{name}.socket').stdout.strip()=='disabled','daemon socket enabled')
-        need(unit('is-active',f'native-agent-host-daemon@{name}.socket').stdout.strip()=='inactive','daemon socket booted without prepare')
+        need(unit('is-enabled',f'open-habitat-daemon@{name}.socket').stdout.strip()=='disabled','daemon socket enabled')
+        need(unit('is-active',f'open-habitat-daemon@{name}.socket').stdout.strip()=='inactive','daemon socket booted without prepare')
         need(not os.path.lexists(run/'users'/name/'daemon.sock'),'daemon listener present before prepare')
     checkpoint('broker-socket-status-start')
-    need(unit('is-enabled','native-agent-host-broker.socket').stdout.strip()=='disabled','broker socket enabled')
-    need(unit('is-active','native-agent-host-broker.socket').stdout.strip()=='inactive','broker socket booted without prepare')
+    need(unit('is-enabled','open-habitat-broker.socket').stdout.strip()=='disabled','broker socket enabled')
+    need(unit('is-active','open-habitat-broker.socket').stdout.strip()=='inactive','broker socket booted without prepare')
     need(not os.path.lexists(run/'broker.sock'),'broker listener present before prepare')
     print('VM_REBOOT_DIAG=disabled-sockets',flush=True)
     checkpoint('policy-preflight-start')

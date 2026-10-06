@@ -10,7 +10,7 @@ for (const [scenario, heading] of [
   ["partial", "Jatka siitä, mihin jäit"],
   ["missing", "Työtilat"],
   ["unavailable", "Yhteyttä ei saatu"],
-  ["login", "Tervetuloa Omega Habitatiin"],
+  ["login", "Tervetuloa Open Habitatiin"],
 ] as const) {
   test(`synthetic ${scenario} scenario and a11y`, async ({ page }) => {
     await page.goto(`/workspaces?scenario=${scenario}`);
@@ -78,7 +78,7 @@ test("synthetic login error is visually distinct and never echoes query detail",
     "/workspaces?scenario=login&auth_error=%3Cscript%3Eunsafe%3C%2Fscript%3E",
   );
   await expect(
-    page.getByRole("heading", { name: "Tervetuloa Omega Habitatiin" }),
+    page.getByRole("heading", { name: "Tervetuloa Open Habitatiin" }),
   ).toBeVisible();
   await expect(page.getByText("Kirjautumisessa tapahtui virhe")).toBeVisible();
   await expect(page.locator(".ah-notice.ah-tone-danger")).toBeVisible();

@@ -74,6 +74,8 @@ def main() -> int:
         return 1
 
     config = SITE / ".glasspad.yaml"
+    # Published Glasspad space identity predates the product rename; changing it
+    # would create a second space rather than updating the existing one.
     expected_config = "space_key: native-agent-host\n"
     if not config.is_file() or config.read_text(encoding="utf-8") != expected_config:
         fail(errors, "docs/.glasspad.yaml must contain only 'space_key: native-agent-host'")

@@ -49,7 +49,7 @@ during the run; ignored build caches may remain.
 
 The clean gate also runs the synthetic lab create→send→answer browser test against the real controller and fake Pi; `scripts/lab.sh` provides manual exploration.
 
-Browser listeners default to host 4174, lab 4175, Vite 4183 and demo 4184; set `NAH_PORT_BASE` to a distinct value (e.g. `NAH_PORT_BASE=14000 ./scripts/ci-local.sh --clean --json`) to run another worktree concurrently. `scripts/lab.sh start` selects a free port if its preferred lab port is busy and records it in `.cache/lab/port` for `url` and `web/lab/session.mjs`; for standalone browser checks:
+Browser listeners default to host 4174, lab 4175, Vite 4183 and demo 4184; set `OH_PORT_BASE` to a distinct value (e.g. `OH_PORT_BASE=14000 ./scripts/ci-local.sh --clean --json`) to run another worktree concurrently. `scripts/lab.sh start` selects a free port if its preferred lab port is busy and records it in `.cache/lab/port` for `url` and `web/lab/session.mjs`; for standalone browser checks:
 
 ```sh
 npm ci --prefix web
@@ -61,7 +61,7 @@ Use the same browser path for focused `test:e2e` or `test:a11y` runs.
 A fresh worktree has an empty `.cache/ms-playwright`, so every browser case
 then fails to launch; install Chromium there or point
 `PLAYWRIGHT_BROWSERS_PATH` at an existing cache such as `$HOME/.cache/ms-playwright`.
-`NAH_WEB_PREBUILT=1` belongs only to the gate, which has just built those assets;
+`OH_WEB_PREBUILT=1` belongs only to the gate, which has just built those assets;
 using it standalone can test stale output. Keep one Playwright worker because
 the synthetic host's scenario switch is shared across tests.
 

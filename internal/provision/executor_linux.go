@@ -16,7 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 )
 
@@ -36,7 +36,7 @@ func linuxCommand(ctx context.Context, path string, args ...string) ([]byte, err
 	budget := 3 * time.Second
 	// Starting a socket waits for Fleetrepo's ordered root policy gate, which
 	// may itself wait briefly for a concurrent broker authorize lock holder.
-	if path == systemctl && len(args) == 2 && args[0] == "start" && strings.HasPrefix(args[1], "native-agent-host-daemon@") && strings.HasSuffix(args[1], ".socket") {
+	if path == systemctl && len(args) == 2 && args[0] == "start" && strings.HasPrefix(args[1], "open-habitat-daemon@") && strings.HasSuffix(args[1], ".socket") {
 		budget = 15 * time.Second
 	}
 	bounded, cancel := context.WithTimeout(ctx, budget)
@@ -89,8 +89,8 @@ const (
 	getfacl    = "/usr/bin/getfacl"
 	systemctl  = "/usr/bin/systemctl"
 	homeBase   = "/home"
-	configBase = "/etc/omega-habitat/daemon/user-mappings"
-	socketBase = "/run/native-agent-host/users"
+	configBase = "/etc/open-habitat-daemon/daemon/user-mappings"
+	socketBase = "/run/open-habitat/users"
 )
 
 func number(n uint32) string { return strconv.FormatUint(uint64(n), 10) }
@@ -260,7 +260,7 @@ func (e *LinuxHostExecutor) available(ctx context.Context, name string, uid uint
 	}
 	// Existing enabled instances must not be taken over, even if their socket
 	// and per-user directory are currently absent after a reboot.
-	for _, spec := range [][2]string{{"native-agent-host-daemon@" + name + ".socket", "disabled"}, {"native-agent-host-daemon@" + name + ".service", "static"}} {
+	for _, spec := range [][2]string{{"open-habitat-daemon@" + name + ".socket", "disabled"}, {"open-habitat-daemon@" + name + ".service", "static"}} {
 		if err := e.inactiveUnit(ctx, spec[0], spec[1]); err != nil {
 			return false, availabilityGuard("unit_probe")
 		}
@@ -445,7 +445,7 @@ func (e *LinuxHostExecutor) prepareSocket(ctx context.Context, i ExecutorIdentit
 	if err != nil || !absent || e.GatewayUID == i.uid {
 		return ErrInvalid
 	}
-	if _, err := e.command(ctx, setfacl, "-n", "-m", "u:"+number(i.uid)+":--x,m::r-x", "/run/native-agent-host"); err != nil || e.runtimeACL(ctx, i.uid) != nil {
+	if _, err := e.command(ctx, setfacl, "-n", "-m", "u:"+number(i.uid)+":--x,m::r-x", "/run/open-habitat"); err != nil || e.runtimeACL(ctx, i.uid) != nil {
 		return ErrInvalid
 	}
 	if _, err := e.command(ctx, setfacl, "-m", "u:"+number(i.uid)+":--x", socketBase); err != nil {
@@ -463,7 +463,7 @@ func (e *LinuxHostExecutor) prepareSocket(ctx context.Context, i ExecutorIdentit
 	return e.socket(ctx, i)
 }
 func (e *LinuxHostExecutor) runtimeACL(ctx context.Context, uid uint32) error {
-	p := "/run/native-agent-host"
+	p := "/run/open-habitat"
 	if owner(p, 0, e.GatewayGID, 0750, true) != nil {
 		return ErrInvalid
 	}
@@ -617,31 +617,31 @@ func singleUnixListener(output []byte, path string) bool {
 func (e *LinuxHostExecutor) unit(ctx context.Context, i ExecutorIdentity, retry bool) error {
 	// No start or enable: merely ensure both templates are installed and
 	// inactive, and explicitly verify the socket's restrictive DirectoryMode.
-	for _, unit := range []string{"native-agent-host-daemon@" + i.username + ".socket", "native-agent-host-daemon@" + i.username + ".service"} {
+	for _, unit := range []string{"open-habitat-daemon@" + i.username + ".socket", "open-habitat-daemon@" + i.username + ".service"} {
 		b, err := e.command(ctx, systemctl, "show", unit, "--property=LoadState,ActiveState,FragmentPath", "--no-pager")
 		failedSocket := retry && strings.HasSuffix(unit, ".socket") && strings.Contains(string(b), "ActiveState=failed\n")
 		if err != nil || !strings.Contains(string(b), "LoadState=loaded\n") || (!strings.Contains(string(b), "ActiveState=inactive\n") && !strings.Contains(string(b), "ActiveState=active\n") && !failedSocket) || !strings.Contains(string(b), "FragmentPath=/") {
 			return ErrInvalid
 		}
 	}
-	service := "native-agent-host-daemon@" + i.username + ".service"
+	service := "open-habitat-daemon@" + i.username + ".service"
 	effective, err := e.command(ctx, systemctl, "show", service, "--property=User,Group,SupplementaryGroups,NoNewPrivileges,ExecStart", "--no-pager")
-	if err != nil || !properties(effective, map[string]string{"User": i.username, "Group": i.username, "SupplementaryGroups": "", "NoNewPrivileges": "yes"}) || !strings.Contains(string(effective), "/opt/native-agent-host/current/native-agent-host") || !strings.Contains(string(effective), "--config "+filepath.Join(configBase, "daemon-"+i.username+".json")) {
+	if err != nil || !properties(effective, map[string]string{"User": i.username, "Group": i.username, "SupplementaryGroups": "", "NoNewPrivileges": "yes"}) || !strings.Contains(string(effective), "/opt/open-habitat/current/open-habitat") || !strings.Contains(string(effective), "--config "+filepath.Join(configBase, "daemon-"+i.username+".json")) {
 		return ErrInvalid
 	}
 	// Inspect effective socket properties too: systemctl cat includes the base
 	// template even when an instance drop-in overrides its permissions.
-	socketUnit := "native-agent-host-daemon@" + i.username + ".socket"
+	socketUnit := "open-habitat-daemon@" + i.username + ".socket"
 	effective, err = e.command(ctx, systemctl, "show", socketUnit, "--property=SocketMode,DirectoryMode,SocketUser,SocketGroup,RemoveOnStop", "--no-pager")
-	if err != nil || !properties(effective, map[string]string{"SocketMode": "0660", "DirectoryMode": "0710", "SocketUser": i.username, "SocketGroup": "native-agent-host-gateway", "RemoveOnStop": "yes"}) {
+	if err != nil || !properties(effective, map[string]string{"SocketMode": "0660", "DirectoryMode": "0710", "SocketUser": i.username, "SocketGroup": "open-habitat-gateway", "RemoveOnStop": "yes"}) {
 		return ErrInvalid
 	}
-	g, ok, err := e.lookup(ctx, "group", "native-agent-host-gateway")
+	g, ok, err := e.lookup(ctx, "group", "open-habitat-gateway")
 	if err != nil || !ok {
 		return ErrInvalid
 	}
 	gp := strings.Split(g, ":")
-	if len(gp) != 4 || gp[0] != "native-agent-host-gateway" || gp[2] != number(e.GatewayGID) {
+	if len(gp) != 4 || gp[0] != "open-habitat-gateway" || gp[2] != number(e.GatewayGID) {
 		return ErrInvalid
 	}
 	// Listen is an effective, repeatable systemd socket property. Textual
@@ -656,8 +656,8 @@ func (e *LinuxHostExecutor) unit(ctx context.Context, i ExecutorIdentity, retry 
 		return ErrInvalid
 	}
 	for _, directive := range []string{
-		"ListenStream=/run/native-agent-host/users/%i/daemon.sock", "SocketMode=0660", "SocketUser=%i",
-		"SocketGroup=native-agent-host-gateway", "DirectoryMode=0710", "RemoveOnStop=yes",
+		"ListenStream=/run/open-habitat/users/%i/daemon.sock", "SocketMode=0660", "SocketUser=%i",
+		"SocketGroup=open-habitat-gateway", "DirectoryMode=0710", "RemoveOnStop=yes",
 	} {
 		if strings.Count(string(b), "\n"+directive+"\n") != 1 {
 			return ErrInvalid
@@ -668,7 +668,7 @@ func (e *LinuxHostExecutor) unit(ctx context.Context, i ExecutorIdentity, retry 
 	for _, line := range strings.Split(string(b), "\n") {
 		if strings.HasPrefix(line, "ListenStream=") || strings.HasPrefix(line, "SocketMode=") || strings.HasPrefix(line, "SocketUser=") || strings.HasPrefix(line, "SocketGroup=") || strings.HasPrefix(line, "DirectoryMode=") || strings.HasPrefix(line, "RemoveOnStop=") {
 			valid := false
-			for _, directive := range []string{"ListenStream=/run/native-agent-host/users/%i/daemon.sock", "SocketMode=0660", "SocketUser=%i", "SocketGroup=native-agent-host-gateway", "DirectoryMode=0710", "RemoveOnStop=yes"} {
+			for _, directive := range []string{"ListenStream=/run/open-habitat/users/%i/daemon.sock", "SocketMode=0660", "SocketUser=%i", "SocketGroup=open-habitat-gateway", "DirectoryMode=0710", "RemoveOnStop=yes"} {
 				if line == directive {
 					valid = true
 					break
@@ -689,7 +689,7 @@ func (e *LinuxHostExecutor) Ready(ctx context.Context, i ExecutorIdentity) error
 	if os.Geteuid() != 0 || ctx == nil || ctx.Err() != nil || e.Verify(ctx, i) != nil {
 		return ErrInvalid
 	}
-	unit := "native-agent-host-daemon@" + i.username + ".socket"
+	unit := "open-habitat-daemon@" + i.username + ".socket"
 	b, err := e.command(ctx, systemctl, "show", unit, "--property=ActiveState", "--no-pager")
 	if err != nil {
 		return ErrInvalid
@@ -703,7 +703,7 @@ func (e *LinuxHostExecutor) Ready(ctx context.Context, i ExecutorIdentity) error
 	if string(b) != "ActiveState=inactive\n" && string(b) != "ActiveState=failed\n" && string(b) != "ActiveState=activating\n" {
 		return ErrInvalid
 	}
-	gate := "native-agent-host-jit-policy-gate@" + i.username + ".service"
+	gate := "open-habitat-jit-policy-gate@" + i.username + ".service"
 	b, err = e.command(ctx, systemctl, "show", unit, "--property=Requires,After", "--no-pager")
 	if err != nil || !unitDependency(b, "Requires", gate) || !unitDependency(b, "After", gate) {
 		return ErrInvalid
@@ -729,7 +729,7 @@ func (e *LinuxHostExecutor) RouteReady(ctx context.Context, i ExecutorIdentity) 
 	if ctx == nil || ctx.Err() != nil || e == nil || e.GatewayUID == 0 || e.GatewayGID == 0 || !username(i.username) || i.uid < 1000 || i.uid > 60000 {
 		return ErrInvalid
 	}
-	b, err := e.command(ctx, systemctl, "is-active", "native-agent-host-daemon@"+i.username+".socket")
+	b, err := e.command(ctx, systemctl, "is-active", "open-habitat-daemon@"+i.username+".socket")
 	if err != nil || strings.TrimSpace(string(b)) != "active" {
 		return ErrInvalid
 	}
@@ -779,7 +779,7 @@ func gateProperties(b []byte) bool {
 // systemctl show renders ExecStart as a single structured line. Do not accept
 // extra arguments (especially --root), extra commands or an alternate binary.
 func exactGateExec(b []byte, name string) bool {
-	want := "ExecStart={ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 /usr/local/libexec/native-agent-host-test-jit/jit_policy.py verify --phase activation --target daemon:" + name + " --json ;"
+	want := "ExecStart={ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 /usr/local/libexec/open-habitat-test-jit/jit_policy.py verify --phase activation --target daemon:" + name + " --json ;"
 	count := 0
 	for _, line := range strings.Split(string(b), "\n") {
 		if strings.HasPrefix(line, "ExecStart=") {

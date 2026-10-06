@@ -33,7 +33,7 @@ with tarfile.open(archive, 'r:gz') as tar:
     tar.extractall(dest, filter='data')
 PY
 root=$(find "$tmp" -mindepth 1 -maxdepth 1 -type d);[[ -n $root ]]
-for p in bin/native-agent-host web/index.html systemd/native-agent-host-gateway.service systemd/native-agent-host-broker.service systemd/native-agent-host-broker.socket systemd/native-agent-host-revoke.socket systemd/native-agent-host-daemon@.service systemd/native-agent-host-daemon@.socket sysusers.d/native-agent-host.conf tmpfiles.d/native-agent-host.conf MANIFEST.sha256 licenses/DEPENDENCIES.md;do [[ -f "$root/$p" ]]||{ echo "error: package missing $p" >&2;exit 1;};done
+for p in bin/open-habitat web/index.html systemd/open-habitat-gateway.service systemd/open-habitat-broker.service systemd/open-habitat-broker.socket systemd/open-habitat-revoke.socket systemd/open-habitat-daemon@.service systemd/open-habitat-daemon@.socket sysusers.d/open-habitat.conf tmpfiles.d/open-habitat.conf MANIFEST.sha256 licenses/DEPENDENCIES.md;do [[ -f "$root/$p" ]]||{ echo "error: package missing $p" >&2;exit 1;};done
 python3 - "$root" <<'PY'
 import hashlib, pathlib, re, sys
 root = pathlib.Path(sys.argv[1])
@@ -51,11 +51,11 @@ for line in manifest.read_text().splitlines():
     expected[name] = digest
 if actual != set(expected) | {'MANIFEST.sha256'}:
     sys.exit('error: package inventory differs from manifest')
-allowed = {'bin/native-agent-host', 'MANIFEST.sha256', 'licenses/DEPENDENCIES.md',
-           'systemd/native-agent-host-gateway.service', 'systemd/native-agent-host-revoke.socket',
-           'systemd/native-agent-host-daemon@.service', 'systemd/native-agent-host-daemon@.socket',
-           'systemd/native-agent-host-broker.service', 'systemd/native-agent-host-broker.socket',
-           'sysusers.d/native-agent-host.conf', 'tmpfiles.d/native-agent-host.conf'}
+allowed = {'bin/open-habitat', 'MANIFEST.sha256', 'licenses/DEPENDENCIES.md',
+           'systemd/open-habitat-gateway.service', 'systemd/open-habitat-revoke.socket',
+           'systemd/open-habitat-daemon@.service', 'systemd/open-habitat-daemon@.socket',
+           'systemd/open-habitat-broker.service', 'systemd/open-habitat-broker.socket',
+           'sysusers.d/open-habitat.conf', 'tmpfiles.d/open-habitat.conf'}
 if any(not (name in allowed or name.startswith('web/')) for name in actual):
     sys.exit('error: package contains unreviewed files outside web assets')
 for name, digest in expected.items():
@@ -63,7 +63,7 @@ for name, digest in expected.items():
         sys.exit('error: package checksum mismatch: ' + name)
 PY
 # Pin the root-only control socket and gateway dependency as one authority change.
-python3 - "$root/systemd/native-agent-host-revoke.socket" "$root/systemd/native-agent-host-gateway.service" <<'PY'
+python3 - "$root/systemd/open-habitat-revoke.socket" "$root/systemd/open-habitat-gateway.service" <<'PY'
 import pathlib, sys
 
 def sections(path):
@@ -87,19 +87,31 @@ def sections(path):
 socket = sections(sys.argv[1])
 if socket != {
     '[Unit]':{'Description':'Root-only gateway subject revocation control'},
-    '[Socket]':{'ListenStream':'/run/native-agent-host/revoke.sock', 'SocketUser':'root',
+    '[Socket]':{'ListenStream':'/run/open-habitat/revoke.sock', 'SocketUser':'root',
         'SocketGroup':'root', 'SocketMode':'0600', 'DirectoryMode':'0750', 'FileDescriptorName':'revoke',
-        'RemoveOnStop':'yes', 'Service':'native-agent-host-gateway.service'},
+        'RemoveOnStop':'yes', 'Service':'open-habitat-gateway.service'},
     '[Install]':{'WantedBy':'sockets.target'}
 }: sys.exit('error: packaged revoke socket directive inventory differs')
 gateway = sections(sys.argv[2])
-if gateway.get('[Unit]',{}).get('Requires') != 'native-agent-host-revoke.socket' or \
-   gateway.get('[Unit]',{}).get('After') != 'network-online.target native-agent-host-revoke.socket':
+if gateway.get('[Unit]',{}).get('Requires') != 'open-habitat-revoke.socket' or \
+   gateway.get('[Unit]',{}).get('After') != 'network-online.target open-habitat-revoke.socket':
     sys.exit('error: packaged gateway control socket dependency differs')
+PY
+# Gateway secrets must not share the daemon binding tree. The latter has
+# root:root 0711 parents; the former is root:gateway 0750 on installation.
+python3 - "$root/systemd/open-habitat-gateway.service" "$root/systemd/open-habitat-daemon@.service" <<'PY'
+import pathlib, sys
+for path, expected in zip(sys.argv[1:], (
+    '--config /etc/open-habitat/gateway.json',
+    '--config /etc/open-habitat-daemon/daemon/user-mappings/daemon-%i.json',
+)):
+    commands = [line for line in pathlib.Path(path).read_text().splitlines() if line.startswith('ExecStart=')]
+    if len(commands) != 1 or not commands[0].endswith(expected):
+        sys.exit('error: packaged gateway/daemon config path separation differs')
 PY
 # A valid checksum is not a security policy: reject world-searchable fallback
 # directories even when a package has a matching, freshly generated manifest.
-python3 - "$root/systemd/native-agent-host-daemon@.socket" <<'PY'
+python3 - "$root/systemd/open-habitat-daemon@.socket" <<'PY'
 import pathlib, sys
 
 unit = pathlib.Path(sys.argv[1]).read_text()
@@ -116,7 +128,7 @@ for line in unit.splitlines():
 if modes != ['0710']:
     sys.exit('error: packaged daemon socket must have exactly one DirectoryMode=0710 in [Socket] (no world traversal)')
 PY
-python3 - "$root/systemd/native-agent-host-broker.socket" "$root/systemd/native-agent-host-broker.service" <<'PY'
+python3 - "$root/systemd/open-habitat-broker.socket" "$root/systemd/open-habitat-broker.service" <<'PY'
 import pathlib, sys
 
 def directives(path):
@@ -150,27 +162,27 @@ def require_section(unit, section, expected):
 
 socket_unit = directives(sys.argv[1])
 service_unit = directives(sys.argv[2])
-require_section(socket_unit, '[Unit]', {'Description':'Native Agent Host restricted root broker socket'})
+require_section(socket_unit, '[Unit]', {'Description':'Open Habitat restricted root broker socket'})
 require_section(socket_unit, '[Install]', {'WantedBy':'sockets.target'})
 require_section(service_unit, '[Unit]', {
-    'Description':'Native Agent Host root account broker',
-    'Requires':'native-agent-host-broker.socket',
-    'After':'native-agent-host-broker.socket'})
+    'Description':'Open Habitat root account broker',
+    'Requires':'open-habitat-broker.socket',
+    'After':'open-habitat-broker.socket'})
 if set(socket_unit) != {'[Unit]', '[Socket]', '[Install]'} or set(service_unit) != {'[Unit]', '[Service]'}:
     sys.exit('error: broker unit section inventory differs')
 socket = socket_unit['[Socket]']
 service = service_unit['[Service]']
 for values, key, expected in [
-    (socket, 'ListenStream', '/run/native-agent-host/broker.sock'),
+    (socket, 'ListenStream', '/run/open-habitat/broker.sock'),
     (socket, 'SocketUser', 'root'),
-    (socket, 'SocketGroup', 'native-agent-host-gateway'),
+    (socket, 'SocketGroup', 'open-habitat-gateway'),
     (socket, 'SocketMode', '0660'),
     (socket, 'DirectoryMode', '0750'),
     (socket, 'FileDescriptorName', 'broker'),
     (socket, 'RemoveOnStop', 'yes'),
     (service, 'User', 'root'),
     (service, 'Group', 'root'),
-    (service, 'ExecStart', '/opt/native-agent-host/current/native-agent-host broker exec'),
+    (service, 'ExecStart', '/opt/open-habitat/current/open-habitat broker exec'),
     (service, 'Restart', 'no'),
 ]:
     if values.get(key) != [expected]:
@@ -181,14 +193,14 @@ if set(socket) != {'ListenStream','SocketUser','SocketGroup','SocketMode','Direc
     sys.exit('error: broker socket directive inventory differs')
 if set(service) != {'Type','User','Group','ExecStart','NoNewPrivileges','ProtectSystem','ProtectHome','ReadWritePaths','PrivateTmp','PrivateDevices','UMask','Restart'}:
     sys.exit('error: broker service directive inventory differs')
-for values, expected in [(socket, {'Service':'native-agent-host-broker.service'}), (service, {
+for values, expected in [(socket, {'Service':'open-habitat-broker.service'}), (service, {
     'Type':'simple','NoNewPrivileges':'yes','ProtectSystem':'strict','ProtectHome':'no',
-    'ReadWritePaths':'/etc /var/lib/native-agent-host /home /run/native-agent-host',
+    'ReadWritePaths':'/etc /var/lib/open-habitat /home /run/open-habitat',
     'PrivateTmp':'yes','PrivateDevices':'yes','UMask':'0077'})]:
     for key, value in expected.items():
         if values.get(key) != [value]:
             sys.exit(f'error: packaged broker {key} differs or duplicates')
 PY
 if find "$root/web" -type f -name '*.map' | grep -q . || grep -R -E 'Alder-testifixture|Deterministinen testi: daemon|VITE_ENABLE_TEST_FIXTURES' "$root/web" >/dev/null;then echo 'error: test fixture content, control or source map in packaged web assets' >&2;exit 1;fi
-version=$($root/bin/native-agent-host --json version);python3 -c 'import json,sys;x=json.load(sys.stdin);assert x["data"]["commit"] and len(x["data"]["commit"])==40'<<<"$version"
+version=$($root/bin/open-habitat --json version);python3 -c 'import json,sys;x=json.load(sys.stdin);assert x["data"]["commit"] and len(x["data"]["commit"])==40'<<<"$version"
 sha=$(sha256sum "$archive"|cut -d' ' -f1);if $json;then printf '{"schema_version":1,"data":{"status":"verified","archive":"%s","sha256":"%s"},"warnings":[]}\n' "$archive" "$sha";else echo "verified $archive $sha";fi

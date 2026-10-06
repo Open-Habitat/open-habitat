@@ -15,9 +15,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/diagnostic"
-	"github.com/maintainer/native-agent-host/internal/nativegh"
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
+	"github.com/Open-Habitat/open-habitat/internal/nativegh"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 )
 

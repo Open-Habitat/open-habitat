@@ -18,7 +18,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 const RepoCatalogPath = "/api/v1/onboarding/github/repos"

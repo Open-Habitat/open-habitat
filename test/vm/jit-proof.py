@@ -13,9 +13,9 @@ import subprocess
 import sys
 import time
 
-state=Path('/var/lib/native-agent-host/broker')
-run=Path('/run/native-agent-host')
-prep='/usr/local/libexec/native-agent-host-test-jit/jit_acl_prepare.py'
+state=Path('/var/lib/open-habitat/broker')
+run=Path('/run/open-habitat')
+prep='/usr/local/libexec/open-habitat-test-jit/jit_acl_prepare.py'
 broker=run/'broker.sock'
 names=('guestone','guesttwo')
 ids=('100000001','100000002')
@@ -25,9 +25,9 @@ def cmd(*args):
     return subprocess.run(args,capture_output=True,text=True,timeout=30)
 def unit(*args): return cmd('systemctl',*args)
 def reset():
-    unit('reset-failed','native-agent-host-jit-policy-gate.service',
-         'native-agent-host-jit-policy-gate@guestone.service',
-         'native-agent-host-jit-policy-gate@guesttwo.service')
+    unit('reset-failed','open-habitat-jit-policy-gate.service',
+         'open-habitat-jit-policy-gate@guestone.service',
+         'open-habitat-jit-policy-gate@guesttwo.service')
 def probe(uid,path,connect=False,denied=False):
     code=('import os,socket,sys\ntry:\n s=socket.socket(socket.AF_UNIX);s.connect(sys.argv[1])\n' if connect else 'import os,sys\ntry:\n os.stat(sys.argv[1]+"/.")\n')
     code+='except OSError as e:\n print(e.errno,file=sys.stderr);sys.exit(1)\n'
@@ -66,14 +66,14 @@ def route(result,uid,name):
     check(result.returncode==0,'broker exchange: '+result.stderr[-300:])
     data=json.loads(result.stdout)
     if data.get('route')!={'uid':uid,'username':name,'socket':str(run/'users'/name/'daemon.sock')}:
-        gate='native-agent-host-jit-policy-gate@'+name+'.service'
+        gate='open-habitat-jit-policy-gate@'+name+'.service'
         # Safe diagnostic: unit metadata/argv only, never OAuth/provider bytes.
         props=unit('show',gate,'--property=LoadState,ExecStart,User,Type,RemainAfterExit,ExecStartPre,ExecStartPost,ExecCondition,ExecReload,ExecStopPost','--no-pager').stdout
         raise RuntimeError('wrong route: '+str(data)+' gate_properties='+repr(props[:1600]))
     return data
 def denied_start():
     reset()
-    for name in ('native-agent-host-broker.socket','native-agent-host-daemon@guestone.socket'):
+    for name in ('open-habitat-broker.socket','open-habitat-daemon@guestone.socket'):
         check(unit('start',name).returncode != 0,'unprepared socket started: '+name)
         check(unit('is-active',name).stdout.strip()!='active','socket remained active')
 def vacancy():
@@ -90,10 +90,10 @@ def vacancy():
     for name in names:
         check(all(u.pw_name!=name and u.pw_dir!='/home/'+name for u in users),'name/home occupied')
         check(all(g.gr_name!=name and name not in g.gr_mem for g in groups),'group alias')
-        for path in (Path('/home')/name, Path('/etc/omega-habitat/daemon/user-mappings')/('daemon-'+name+'.json'),run/'users'/name):
+        for path in (Path('/home')/name, Path('/etc/open-habitat-daemon/daemon/user-mappings')/('daemon-'+name+'.json'),run/'users'/name):
             check(not os.path.lexists(path),'preexisting path: '+str(path))
         for kind in ('socket','service'):
-            check(unit('is-active',f'native-agent-host-daemon@{name}.{kind}').stdout.strip()=='inactive','active instance collision')
+            check(unit('is-active',f'open-habitat-daemon@{name}.{kind}').stdout.strip()=='inactive','active instance collision')
     check(not (state/'pending.json').exists(),'pending before seed')
 def seed():
     fd=os.open(state,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
@@ -108,8 +108,8 @@ def seed():
     finally: os.close(fd)
 try:
     check(Path('/proc/1/comm').read_text().strip()=='systemd','not PID1 systemd')
-    check(Path('/opt/native-agent-host/current/native-agent-host').is_file(),'missing exact executor binary')
-    check('ExecStart=/opt/native-agent-host/current/native-agent-host' in unit('cat','native-agent-host-daemon@.service').stdout,'daemon unit binary changed')
+    check(Path('/opt/open-habitat/current/open-habitat').is_file(),'missing exact executor binary')
+    check('ExecStart=/opt/open-habitat/current/open-habitat' in unit('cat','open-habitat-daemon@.service').stdout,'daemon unit binary changed')
     vacancy()
     check(cmd('/usr/bin/python3',prep,'preflight','--json').returncode==0,'empty preflight refused')
     seed()
@@ -117,7 +117,7 @@ try:
     p=cmd('/usr/bin/python3',prep,'prepare','--json')
     check(p.returncode==0,'boot ACL preparation: '+p.stderr[-500:])
     check(cmd('/usr/bin/python3',prep,'verify','--json').returncode==0,'boot ACL verification')
-    check(unit('start','native-agent-host-broker.socket').returncode==0,'gated broker start')
+    check(unit('start','open-habitat-broker.socket').returncode==0,'gated broker start')
     st=broker.lstat();check(stat.S_ISSOCK(st.st_mode) and (st.st_uid,st.st_gid,stat.S_IMODE(st.st_mode))==(0,21003,0o660),'broker socket inode')
     check(exchange(21001,'authorize',ids[0]).returncode!=0,'wrong UID accessed broker socket')
     wrong=exchange(0,'authorize',ids[0]);check(wrong.returncode!=0,'wrong root peer received reply')
@@ -154,10 +154,10 @@ try:
     for uid,name,subject,first in zip(assigned,names,ids,firsts):
         check(pwd.getpwnam(name).pw_uid==uid and pwd.getpwnam(name).pw_gid==uid and grp.getgrnam(name).gr_gid==uid,'executor account/group')
         home=Path('/home')/name; check((home.stat().st_uid,home.stat().st_gid,stat.S_IMODE(home.stat().st_mode))==(uid,uid,0o700),'executor home')
-        check((Path('/etc/omega-habitat/daemon/user-mappings')/('daemon-'+name+'.json')).is_file(),'executor config missing')
+        check((Path('/etc/open-habitat-daemon/daemon/user-mappings')/('daemon-'+name+'.json')).is_file(),'executor config missing')
         rerun=route(exchange(21003,'ensure',subject,'changedname'),uid,name)
         check(rerun['route']==first['route'] and rerun['epoch']==first['epoch'] and rerun['generation']==3,'rerun not idempotent')
-        check(unit('is-active','native-agent-host-daemon@'+name+'.socket').stdout.strip()=='active','daemon socket not broker-activated')
+        check(unit('is-active','open-habitat-daemon@'+name+'.socket').stdout.strip()=='active','daemon socket not broker-activated')
     ledger=json.loads((state/'bindings.json').read_text())
     check(ledger.get('version')==1 and ledger.get('generation')==3 and
           sorted(ledger.get('bindings',[]),key=lambda row:row['id'])==
@@ -166,20 +166,20 @@ try:
     check(not (state/'pending.json').exists(),'writer left pending journal')
     # Exercise gate denial on a *stopped* instance: an active socket has no
     # new activation job to gate, and broker authorize is separately checked.
-    check(unit('stop','native-agent-host-daemon@guesttwo.socket').returncode==0,'stop second socket for pending gate')
+    check(unit('stop','open-habitat-daemon@guesttwo.socket').returncode==0,'stop second socket for pending gate')
     marker=state/'pending.json';marker.write_text('{"version":1}');marker.chmod(0o600)
     ledger_bytes=(state/'bindings.json').read_bytes();head_bytes=(state/'head.json').read_bytes()
     check(json.loads(exchange(21003,'authorize',ids[0]).stdout).get('failure')=='state_unavailable','pending did not block writer')
-    check(unit('start','native-agent-host-daemon@guesttwo.socket').returncode!=0,'pending allowed gate')
+    check(unit('start','open-habitat-daemon@guesttwo.socket').returncode!=0,'pending allowed gate')
     check((state/'bindings.json').read_bytes()==ledger_bytes and
           (state/'head.json').read_bytes()==head_bytes,'pending changed committed state')
     marker.unlink() # existing synthetic fault test only; never operator recovery
     reset()
-    check(unit('start','native-agent-host-daemon@guesttwo.socket').returncode==0,'second daemon socket start')
+    check(unit('start','open-habitat-daemon@guesttwo.socket').returncode==0,'second daemon socket start')
     # Broker Verify checks root-owned daemon config metadata on each existing
     # binding request; the pinned Fleetrepo socket gate does NOT inspect this
     # config. Do not claim a gate-level denial for this fault.
-    config=Path('/etc/omega-habitat/daemon/user-mappings/daemon-guesttwo.json')
+    config=Path('/etc/open-habitat-daemon/daemon/user-mappings/daemon-guesttwo.json')
     original_mode=stat.S_IMODE(config.stat().st_mode)
     route(exchange(21003,'authorize',ids[1]),assigned[1],names[1])
     config.chmod(0o600)
@@ -201,7 +201,7 @@ try:
     print('VM_PROOF='+json.dumps({'status':'passed','scope':'jit-provision','pid1':'systemd','uids':[21032,21033,21003],
         'pool_vacant_before_seed':True,'new_accounts':True,'committed_bindings':True,'concurrent_clients_released':True,'rerun_idempotent':True,
         'wrong_peer_denied':True,'wrong_uid_denied':True,'pending_denied':True,'boot_acl_denied':True,
-        'prepared_socket_started':True,'cross_uid_denied':True,'broker_config_drift_denied':True,'binary_path':'/opt/native-agent-host/current/native-agent-host'}),flush=True)
+        'prepared_socket_started':True,'cross_uid_denied':True,'broker_config_drift_denied':True,'binary_path':'/opt/open-habitat/current/open-habitat'}),flush=True)
 except Exception as exc:
     # Diagnostic only: no journal deletion or retry on an interrupted writer.
     pending=state/'pending.json'
@@ -209,7 +209,7 @@ except Exception as exc:
         journal=json.loads(pending.read_text()) if pending.is_file() else None
         phase=journal.get('phase') if isinstance(journal,dict) else None
     except (OSError,ValueError): phase='unreadable'
-    broker_state=unit('is-active','native-agent-host-broker.service').stdout.strip()
+    broker_state=unit('is-active','open-habitat-broker.service').stdout.strip()
     print('VM_PROOF='+json.dumps({'status':'failed','scope':'jit-provision','reason':str(exc),
         'pending_phase':phase,'broker_state':broker_state,
         'exchange_seconds':locals().get('exchange_seconds')}),flush=True)

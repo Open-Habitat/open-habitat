@@ -1,4 +1,4 @@
-# native-agent-host
+# open-habitat
 
 We are building a multi-user web host for native AI agents. A person signs in
 through the browser. The gateway maps them to their own Linux user, and a daemon

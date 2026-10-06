@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://native-agent-host.invalid/contracts/v1/github-clone.schema.json",
+  "$id": "https://open-habitat.invalid/contracts/v1/github-clone.schema.json",
   "title": "Authenticated pre-Pi single repository import",
   "description": "POST /api/v1/onboarding/github/clone accepts only full_name. A non-success response is not evidence that no clone occurred; reconcile with fresh native facts before any new POST.",
   "type": "object",

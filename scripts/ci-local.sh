@@ -70,15 +70,15 @@ if grep -R -E 'Alder-testifixture|Deterministinen testi: daemon' web/dist/assets
   echo 'error: test fixture content leaked into production bundle' >&2;exit 1
 fi
 phase browser
-NAH_WEB_PREBUILT=1 npm run test:browser --prefix web
-(cd web && NAH_WEB_PREBUILT=1 npx playwright test --config playwright.lab.config.ts)
+OH_WEB_PREBUILT=1 npm run test:browser --prefix web
+(cd web && OH_WEB_PREBUILT=1 npx playwright test --config playwright.lab.config.ts)
 phase go-and-contracts
 npm run build-storybook --prefix web
 go fmt ./...
 go vet ./...
 go test -race ./...
-CGO_ENABLED=0 go build -trimpath ./cmd/native-agent-host
-rm -f native-agent-host
+CGO_ENABLED=0 go build -trimpath ./cmd/open-habitat
+rm -f open-habitat
 go generate ./internal/contracts
 ./scripts/check-generated.sh
 "$PYTHON" issues/define-host-contracts/validate_contracts.py
@@ -93,13 +93,13 @@ test "$(wc -l < "$tmp/native-fixture/home/.pi/agent/sessions/fixture.jsonl")" -e
 rm -rf dist;mkdir -p dist/one dist/two
 ./scripts/package-release.sh --version 0.0.0-test --target linux-amd64 --web-dir web/dist --output dist/one
 ./scripts/package-release.sh --version 0.0.0-test --target linux-amd64 --web-dir web/dist --output dist/two
-cmp dist/one/native-agent-host-0.0.0-test-linux-amd64.tar.gz dist/two/native-agent-host-0.0.0-test-linux-amd64.tar.gz
-./scripts/verify-release.sh --archive dist/one/native-agent-host-0.0.0-test-linux-amd64.tar.gz --json
-bash scripts/test-package-socket.sh dist/one/native-agent-host-0.0.0-test-linux-amd64.tar.gz
-mkdir -p "$tmp/relocated";cp dist/one/native-agent-host-0.0.0-test-linux-amd64.tar.gz* "$tmp/relocated/"
-./scripts/verify-release.sh --archive "$tmp/relocated/native-agent-host-0.0.0-test-linux-amd64.tar.gz" --json
-printf 'tampered' >> "$tmp/relocated/native-agent-host-0.0.0-test-linux-amd64.tar.gz"
-if ./scripts/verify-release.sh --archive "$tmp/relocated/native-agent-host-0.0.0-test-linux-amd64.tar.gz" --json >/dev/null 2>&1;then echo 'error: tampered relocated archive verified' >&2;exit 1;fi
+cmp dist/one/open-habitat-0.0.0-test-linux-amd64.tar.gz dist/two/open-habitat-0.0.0-test-linux-amd64.tar.gz
+./scripts/verify-release.sh --archive dist/one/open-habitat-0.0.0-test-linux-amd64.tar.gz --json
+bash scripts/test-package-socket.sh dist/one/open-habitat-0.0.0-test-linux-amd64.tar.gz
+mkdir -p "$tmp/relocated";cp dist/one/open-habitat-0.0.0-test-linux-amd64.tar.gz* "$tmp/relocated/"
+./scripts/verify-release.sh --archive "$tmp/relocated/open-habitat-0.0.0-test-linux-amd64.tar.gz" --json
+printf 'tampered' >> "$tmp/relocated/open-habitat-0.0.0-test-linux-amd64.tar.gz"
+if ./scripts/verify-release.sh --archive "$tmp/relocated/open-habitat-0.0.0-test-linux-amd64.tar.gz" --json >/dev/null 2>&1;then echo 'error: tampered relocated archive verified' >&2;exit 1;fi
 phase final-checks
 issuectl doctor --json
 git diff --check

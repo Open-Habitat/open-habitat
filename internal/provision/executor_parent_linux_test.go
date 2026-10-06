@@ -14,7 +14,7 @@ import (
 // This exercises the same no-follow stat interpretation as the executor.
 func TestProtectedConfigParentPolicy(t *testing.T) {
 	const gatewayGID = 21003
-	base := filepath.Join(t.TempDir(), "etc", "omega-habitat", "daemon", "user-mappings")
+	base := filepath.Join(t.TempDir(), "etc", "open-habitat-daemon", "daemon", "user-mappings")
 	stats := map[string]unix.Stat_t{}
 	for p := base; ; p = filepath.Dir(p) {
 		stats[p] = unix.Stat_t{Mode: unix.S_IFDIR | 0755, Uid: 0, Gid: 0}
@@ -74,7 +74,7 @@ func TestDaemonUnitRejectsSupplementaryGroup(t *testing.T) {
 	if !properties([]byte(base), want) {
 		t.Fatal("safe service rejected")
 	}
-	if properties([]byte(base+"SupplementaryGroups=native-agent-host-gateway\n"), want) || properties([]byte("User=pilot\nGroup=pilot\nSupplementaryGroups=native-agent-host-gateway\nNoNewPrivileges=yes\n"), want) || properties([]byte("User=pilot\nGroup=pilot\nNoNewPrivileges=yes\n"), want) {
+	if properties([]byte(base+"SupplementaryGroups=open-habitat-gateway\n"), want) || properties([]byte("User=pilot\nGroup=pilot\nSupplementaryGroups=open-habitat-gateway\nNoNewPrivileges=yes\n"), want) || properties([]byte("User=pilot\nGroup=pilot\nNoNewPrivileges=yes\n"), want) {
 		t.Fatal("missing or gateway supplementary group accepted")
 	}
 }

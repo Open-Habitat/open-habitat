@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 // The coordinator, daemon and gateway probes are separate real kernel UIDs in
@@ -142,7 +142,7 @@ func dialogUIDDaemon(t *testing.T) {
 	defer p.close()
 	id := ownershipTestID
 	s := &conversation{id: id, rpc: p, state: "idle", commands: map[string]bool{}}
-	cfg := transport.Config{GatewayUID: 21003, UID: 21001, Username: "agent-a", Home: home, Socket: "/run/native-agent-host/users/agent-a/daemon.sock", Provider: "github", Subject: "42"}
+	cfg := transport.Config{GatewayUID: 21003, UID: 21001, Username: "agent-a", Home: home, Socket: "/run/open-habitat/users/agent-a/daemon.sock", Provider: "github", Subject: "42"}
 	trusted := func(r *http.Request) bool { return r.Context().Value("peer") == 21003 }
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

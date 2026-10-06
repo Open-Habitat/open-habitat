@@ -19,7 +19,7 @@ import (
 func TestGatewayCloneCSRFAndMappedDaemon(t *testing.T) {
 	uid := os.Getuid()
 	now := time.Now()
-	id := Identity{"github", "42", uid, "alice", "/run/native-agent-host/users/alice/daemon.sock"}
+	id := Identity{"github", "42", uid, "alice", "/run/open-habitat/users/alice/daemon.sock"}
 	socket := filepath.Join(t.TempDir(), "daemon.sock")
 	ln, e := net.Listen("unix", socket)
 	if e != nil {
@@ -83,7 +83,7 @@ func TestGatewayCloneCSRFAndMappedDaemon(t *testing.T) {
 func TestGatewayCloneStreamAdmissionAndNoIdentityForwarding(t *testing.T) {
 	now := time.Now()
 	uid := os.Getuid()
-	id := Identity{"github", "42", uid, "alice", "/run/native-agent-host/users/alice/daemon.sock"}
+	id := Identity{"github", "42", uid, "alice", "/run/open-habitat/users/alice/daemon.sock"}
 	socket := filepath.Join(t.TempDir(), "daemon.sock")
 	ln, err := net.Listen("unix", socket)
 	if err != nil {

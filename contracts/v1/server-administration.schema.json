@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://native-agent-host.invalid/contracts/v1/server-administration.schema.json",
+  "$id": "https://open-habitat.invalid/contracts/v1/server-administration.schema.json",
   "title": "Bound users and their browser roles",
   "type": "object", "additionalProperties": false,
   "required": ["schema_version", "name", "users"],

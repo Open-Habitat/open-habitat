@@ -4,7 +4,7 @@ package transport
 
 import (
 	"context"
-	"github.com/maintainer/native-agent-host/internal/gateway"
+	"github.com/Open-Habitat/open-habitat/internal/gateway"
 	"io"
 	"net"
 	"net/http"

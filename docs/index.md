@@ -1,6 +1,6 @@
-# Omega Habitat
+# Open Habitat
 
-Omega Habitat tuo selaimen käyttöliittymäksi Linux-palvelimen työtiloihin
+Open Habitat tuo selaimen käyttöliittymäksi Linux-palvelimen työtiloihin
 ja natiiveihin AI-agentteihin. Jokainen käyttäjä työskentelee omalla
 Unix-tunnuksellaan. Tiedostot, tunnukset ja keskusteluhistoriat pysyvät
 natiivien työkalujen hallussa, ja SSH- ja tmux-käyttö säilyvät selaimen rinnalla.

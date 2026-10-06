@@ -1,0 +1,15 @@
+[Unit]
+Description=Open Habitat daemon for %i
+Requires=open-habitat-daemon@%i.socket
+
+[Service]
+User=%i
+Group=%i
+ExecStart=/opt/open-habitat/current/open-habitat daemon exec --config /etc/open-habitat-daemon/daemon/user-mappings/daemon-%i.json
+NoNewPrivileges=yes
+ProtectSystem=full
+ProtectHome=no
+PrivateTmp=yes
+UMask=0077
+KillMode=mixed
+Restart=on-failure

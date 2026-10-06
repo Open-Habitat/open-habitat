@@ -1,6 +1,6 @@
 # Käyttöliittymän design
 
-Omega Habitatissa käyttäjä lukee agenttikeskustelua ja seuraa sen työtä.
+Open Habitatissa käyttäjä lukee agenttikeskustelua ja seuraa sen työtä.
 Keskustelu on pääsisältö; rauhallinen navigaatio, tilamerkit ja toiminnot
 auttavat löytämään olennaisen keskeyttämättä lukemista. Käyttöliittymä toimii
 työpöydällä ja puhelimessa, vaaleana ja tummana.

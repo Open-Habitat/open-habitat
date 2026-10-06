@@ -2,7 +2,7 @@
 """One actual SIGKILL, after useradd and before any binding publication."""
 import fcntl, hashlib, http.cookiejar, json, os, pathlib, pwd, socket, ssl, stat, struct, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
 
-state=pathlib.Path('/var/lib/native-agent-host/broker')
+state=pathlib.Path('/var/lib/open-habitat/broker')
 base='https://host.fixture:8443'
 result={'status':'failed','scope':'jit-broker-crash'}
 def check(ok,why):
@@ -11,7 +11,7 @@ def command(*args):return subprocess.run(args,capture_output=True,timeout=45)
 def unit(*args):return command('systemctl',*args)
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,*args):return None
-ctx=ssl.create_default_context(cafile='/etc/native-agent-host/fixture-ca.crt')
+ctx=ssl.create_default_context(cafile='/etc/open-habitat/fixture-ca.crt')
 def browser():return urllib.request.build_opener(urllib.request.HTTPSHandler(context=ctx),urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()),NoRedirect())
 def get(op,path):
     try:
@@ -21,12 +21,12 @@ def login(op,code):
     status,headers,_=get(op,'/auth/github/start');check(status==302,'oauth start')
     state_arg=urllib.parse.parse_qs(urllib.parse.urlparse(headers['Location']).query)['state'][0]
     return get(op,'/auth/github/callback?'+urllib.parse.urlencode({'state':state_arg,'code':code}))
-def pid():return int(unit('show','-P','MainPID','native-agent-host-broker.service').stdout.strip())
+def pid():return int(unit('show','-P','MainPID','open-habitat-broker.service').stdout.strip())
 def ensure_control(operation='ensure'):
     # Prepare the healthy binding before the private revocation socket exists.
     # This historical Fleetrepo gate rejects extra runtime paths on activation.
     code = """import json,socket,struct,sys
-s=socket.socket(socket.AF_UNIX);s.settimeout(105);s.connect('/run/native-agent-host/broker.sock')
+s=socket.socket(socket.AF_UNIX);s.settimeout(105);s.connect('/run/open-habitat/broker.sock')
 b=json.dumps({'version':1,'operation':sys.argv[1],'provider':'github','id':'100000001','candidate':'guestone'}).encode()
 s.sendall(struct.pack('>I',len(b))+b);s.shutdown(socket.SHUT_WR)
 h=s.recv(4);assert len(h)==4
@@ -47,8 +47,8 @@ def as_uid(uid, code):
     return subprocess.run(['/usr/bin/python3','-c',code],preexec_fn=drop,capture_output=True,timeout=8)
 try:
     check(pathlib.Path('/proc/1/comm').read_text().strip()=='systemd','PID1')
-    binary=pathlib.Path('/opt/native-agent-host/current/native-agent-host')
-    check(hashlib.sha256(binary.read_bytes()).hexdigest()==pathlib.Path('/etc/native-agent-host/binary.sha256').read_text().strip(),'binary digest')
+    binary=pathlib.Path('/opt/open-habitat/current/open-habitat')
+    check(hashlib.sha256(binary.read_bytes()).hexdigest()==pathlib.Path('/etc/open-habitat/binary.sha256').read_text().strip(),'binary digest')
     check(json.loads((state/'bindings.json').read_text())['bindings']==[],'nonempty bindings')
     for name,uid in (('guestone',21032),('guesttwo',21033)):
         check(not any(u.pw_name==name or u.pw_uid==uid for u in pwd.getpwall()),'occupied pool')
@@ -61,24 +61,24 @@ try:
             f.flush();os.fsync(f.fileno())
         nxt.replace(state/'allowlist.json');os.fsync(fd)
     finally:os.close(fd)
-    prep='/usr/local/libexec/native-agent-host-test-jit/jit_acl_prepare.py'
+    prep='/usr/local/libexec/open-habitat-test-jit/jit_acl_prepare.py'
     for step in ('preflight','prepare','verify'):
         check(command('/usr/bin/python3',prep,step,'--json').returncode==0,'policy '+step)
-    check(unit('start','native-agent-host-broker.socket').returncode==0,'broker socket')
+    check(unit('start','open-habitat-broker.socket').returncode==0,'broker socket')
     control=ensure_control()
     if control.get('route') is None and not (state/'pending.json').exists() and json.loads((state/'bindings.json').read_text())['bindings']==[{'id':'100000001','uid':21032,'username':'guestone'}]:
         control=ensure_control()
     check(control.get('route',{}).get('uid')==21032 and control['route'].get('username')=='guestone','control broker route before revocation socket')
-    check(unit('is-active','native-agent-host-daemon@guestone.socket').stdout.strip()==b'active','control socket inactive')
-    config=pathlib.Path('/etc/native-agent-host/gateway.json');os.chown(config,0,21003);config.chmod(0o640)
-    key=pathlib.Path('/etc/native-agent-host/tls.key');os.chown(key,0,21003);key.chmod(0o640)
+    check(unit('is-active','open-habitat-daemon@guestone.socket').stdout.strip()==b'active','control socket inactive')
+    config=pathlib.Path('/etc/open-habitat/gateway.json');os.chown(config,0,21003);config.chmod(0o640)
+    key=pathlib.Path('/etc/open-habitat/tls.key');os.chown(key,0,21003);key.chmod(0o640)
     with open('/etc/hosts','a') as f:f.write('\n127.0.0.1 github.com api.github.com host.fixture\n')
     provider=subprocess.Popen(['/usr/bin/python3','/usr/local/sbin/product-fake-provider'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     for _ in range(50):
         try:socket.create_connection(('127.0.0.1',443),.5).close();break
         except OSError:time.sleep(.2)
     else:raise RuntimeError('provider')
-    check(unit('start','native-agent-host-revoke.socket').returncode==0,'revocation socket')
+    check(unit('start','open-habitat-revoke.socket').returncode==0,'revocation socket')
     check(unit('start','product-gateway.service').returncode==0,'gateway')
     gateway_observation='no response'
     for _ in range(100):
@@ -122,7 +122,7 @@ try:
         pending=state/'pending.json'
         try: pending_phase=json.loads(pending.read_text()).get('phase') if pending.is_file() else 'absent'
         except (OSError,ValueError):pending_phase='unreadable'
-        broker_log=command('journalctl','-u','native-agent-host-broker.service','-n','15','--no-pager','-o','cat').stdout.decode('utf-8','replace')
+        broker_log=command('journalctl','-u','open-habitat-broker.service','-n','15','--no-pager','-o','cat').stdout.decode('utf-8','replace')
         broker_codes=[]
         for line in broker_log.splitlines():
             try:
@@ -137,7 +137,7 @@ try:
                 if event.get('reason')=='broker_denied':broker_events.append(str(event.get('broker_operation'))+':'+str(event.get('broker_reason')))
             except (ValueError,AttributeError):pass
         bindings=json.loads((state/'bindings.json').read_text())['bindings']
-        raise RuntimeError('A login status '+str(other_status)+' code '+str(failure_code)[:60]+' pending='+str(pending_phase)[:20]+' broker='+unit('is-active','native-agent-host-broker.service').stdout.decode().strip()+' account='+str(any(u.pw_name=='guestone' for u in pwd.getpwall()))+' bindings='+str(len(bindings))+' codes='+','.join(broker_codes)+' events='+','.join(broker_events))
+        raise RuntimeError('A login status '+str(other_status)+' code '+str(failure_code)[:60]+' pending='+str(pending_phase)[:20]+' broker='+unit('is-active','open-habitat-broker.service').stdout.decode().strip()+' account='+str(any(u.pw_name=='guestone' for u in pwd.getpwall()))+' bindings='+str(len(bindings))+' codes='+','.join(broker_codes)+' events='+','.join(broker_events))
     baseline_session,_,_=get(other,'/auth/session')
     baseline_snapshot,_,_=get(other,'/api/v1/onboarding/pi/status')
     check(baseline_session==200 and baseline_snapshot==200,'A baseline session='+str(baseline_session)+' snapshot='+str(baseline_snapshot))
@@ -147,53 +147,53 @@ try:
     def drop_control():os.setgroups([]);os.setresgid(21032,21032,21032);os.setresuid(21032,21032,21032)
     native=subprocess.Popen(['/usr/bin/sleep','300'],preexec_fn=drop_control,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     check(native.poll() is None and as_uid(21032,"open('/home/guestone/fixture-native','w').write('alive')").returncode==0,'control native baseline')
-    marker=pathlib.Path('/run/nah-guest-broker-crash')
+    marker=pathlib.Path('/run/oh-guest-broker-crash')
     marker.write_text('account\n');marker.chmod(0o600)
     affected=browser()
     callback_status,_,body=login(affected,'b')
     check(callback_status in (403,503),'crash callback issued route/session: '+str(callback_status))
     check(pid()==0,'broker survived SIGKILL')
-    service=unit('show','native-agent-host-broker.service','-p','Result,ExecMainCode,ExecMainStatus').stdout.decode()
+    service=unit('show','open-habitat-broker.service','-p','Result,ExecMainCode,ExecMainStatus').stdout.decode()
     props=dict(line.split('=',1) for line in service.splitlines() if line.count('=')==1)
     check(props.get('Result')=='signal' and props.get('ExecMainCode')=='2' and props.get('ExecMainStatus')=='9','no observed SIGKILL termination')
     journal=state/'pending.json'
     check(journal.is_file() and json.loads(journal.read_text()).get('phase')=='account','account journal missing')
     check(pwd.getpwnam('guesttwo').pw_uid==21033,'account not created')
     check(json.loads((state/'bindings.json').read_text())==before,'binding changed')
-    check(not pathlib.Path('/home/guesttwo').exists() and not pathlib.Path('/etc/omega-habitat/daemon/user-mappings/daemon-guesttwo.json').exists(),'executor advanced after crash')
+    check(not pathlib.Path('/home/guesttwo').exists() and not pathlib.Path('/etc/open-habitat-daemon/daemon/user-mappings/daemon-guesttwo.json').exists(),'executor advanced after crash')
     pending=journal.read_bytes()
     # A bare service start does not inherit systemd's listening descriptor in
     # this historical fixture. Trigger the real socket-activated broker from
     # a gateway-UID peer instead; it must refuse before replying.
-    unit('reset-failed','native-agent-host-broker.service')
-    prior_invocation=unit('show','-P','InvocationID','native-agent-host-broker.service').stdout.strip()
-    check(unit('is-active','native-agent-host-broker.socket').stdout.strip()==b'active','broker activation socket lost')
+    unit('reset-failed','open-habitat-broker.service')
+    prior_invocation=unit('show','-P','InvocationID','open-habitat-broker.service').stdout.strip()
+    check(unit('is-active','open-habitat-broker.socket').stdout.strip()==b'active','broker activation socket lost')
     restarted_reply=ensure_control('authorize')
     check(restarted_reply.get('route') is None,'restarted broker issued route')
     # Type=simple may report successful start before the config reader's
     # pending guard (or Writer.Startup) exits.
     for _ in range(50):
-        if pid()==0 and unit('is-active','native-agent-host-broker.service').stdout.strip() in (b'failed',b'inactive'):break
+        if pid()==0 and unit('is-active','open-habitat-broker.service').stdout.strip() in (b'failed',b'inactive'):break
         time.sleep(.1)
-    next_invocation=unit('show','-P','InvocationID','native-agent-host-broker.service').stdout.strip()
+    next_invocation=unit('show','-P','InvocationID','open-habitat-broker.service').stdout.strip()
     check(next_invocation and next_invocation!=prior_invocation and pid()==0 and
-          unit('show','-P','Result','native-agent-host-broker.service').stdout.strip()==b'exit-code',
+          unit('show','-P','Result','open-habitat-broker.service').stdout.strip()==b'exit-code',
           'socket-activated broker restart accepted pending journal')
     refusal_log=command('journalctl','_SYSTEMD_INVOCATION_ID='+next_invocation.decode('ascii'),'-u',
-                        'native-agent-host-broker.service','--no-pager','-o','cat').stdout
-    all_refusal_log=command('journalctl','-u','native-agent-host-broker.service','--no-pager','-o','cat').stdout
+                        'open-habitat-broker.service','--no-pager','-o','cat').stdout
+    all_refusal_log=command('journalctl','-u','open-habitat-broker.service','--no-pager','-o','cat').stdout
     import re
     tail=[re.sub('[^A-Za-z0-9 _./:=,-]',' ',line.decode('utf-8','replace'))[:85]
           for line in all_refusal_log.splitlines()[-6:] if b'TOKEN_' not in line and b'secret' not in line.lower()]
-    stages=re.findall(rb'NAH_GUEST_STAGE_[a-z_]+',all_refusal_log)
+    stages=re.findall(rb'OH_GUEST_STAGE_[a-z_]+',all_refusal_log)
     def path_state(p):
         try:
             s=os.lstat(p)
             return p+':'+str((stat.S_IFMT(s.st_mode),s.st_uid,s.st_gid,stat.S_IMODE(s.st_mode)))
         except OSError as e:return p+':'+type(e).__name__
-    check(refusal_log.count(b'NAH_GUEST_PENDING_REFUSED_CONFIG')==1 and
-          b'NAH_GUEST_PENDING_REFUSED_STARTUP' not in refusal_log and b'NAH_GUEST_STAGE_fd' not in refusal_log,
-          'guard missing; preconditions='+','.join(x.decode() for x in re.findall(rb'NAH_GUEST_(?:CONFIG_INVALID|SOCKET_UNSAFE)',all_refusal_log)[-3:])+' paths='+';'.join(path_state(p) for p in ('/run','/run/native-agent-host','/run/native-agent-host/broker.sock'))+' stages='+','.join(x.decode() for x in stages[-4:]))
+    check(refusal_log.count(b'OH_GUEST_PENDING_REFUSED_CONFIG')==1 and
+          b'OH_GUEST_PENDING_REFUSED_STARTUP' not in refusal_log and b'OH_GUEST_STAGE_fd' not in refusal_log,
+          'guard missing; preconditions='+','.join(x.decode() for x in re.findall(rb'OH_GUEST_(?:CONFIG_INVALID|SOCKET_UNSAFE)',all_refusal_log)[-3:])+' paths='+';'.join(path_state(p) for p in ('/run','/run/open-habitat','/run/open-habitat/broker.sock'))+' stages='+','.join(x.decode() for x in stages[-4:]))
     check(journal.read_bytes()==pending,'restart cleared or rewrote journal')
     session_status,_,_=get(affected,'/auth/session')
     snapshot_status,_,_=get(affected,'/api/v1/snapshot')

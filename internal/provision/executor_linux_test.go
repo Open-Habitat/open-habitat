@@ -192,11 +192,11 @@ func TestLinuxCommandBoundsAndCancellation(t *testing.T) {
 }
 
 func TestSocketActivationDependencyIsExact(t *testing.T) {
-	gate := "native-agent-host-jit-policy-gate@carol.service"
+	gate := "open-habitat-jit-policy-gate@carol.service"
 	if !unitDependency([]byte("Requires="+gate+" other.service\nAfter=other.service "+gate+"\n"), "Requires", gate) || !unitDependency([]byte("Requires="+gate+"\nAfter="+gate+"\n"), "After", gate) {
 		t.Fatal("valid gate rejected")
 	}
-	for _, got := range []string{"", "native-agent-host-jit-policy-gate@bob.service", "fake" + gate} {
+	for _, got := range []string{"", "open-habitat-jit-policy-gate@bob.service", "fake" + gate} {
 		if unitDependency([]byte("Requires="+got+"\n"), "Requires", gate) {
 			t.Fatal("wrong gate accepted", got)
 		}
@@ -204,7 +204,7 @@ func TestSocketActivationDependencyIsExact(t *testing.T) {
 }
 
 func TestExactGateExec(t *testing.T) {
-	good := "ExecStart={ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 /usr/local/libexec/native-agent-host-test-jit/jit_policy.py verify --phase activation --target daemon:carol --json ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }\n"
+	good := "ExecStart={ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 /usr/local/libexec/open-habitat-test-jit/jit_policy.py verify --phase activation --target daemon:carol --json ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }\n"
 	if !exactGateExec([]byte(good), "carol") {
 		t.Fatal("valid gate rejected")
 	}

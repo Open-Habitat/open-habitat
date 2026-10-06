@@ -13,7 +13,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 )
 

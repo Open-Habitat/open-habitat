@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 func TestNativeHistoryEntriesPublishedOnceFromJSONL(t *testing.T) {

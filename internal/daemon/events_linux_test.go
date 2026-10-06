@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 func TestEventJournalReplayAndErrors(t *testing.T) {
@@ -218,7 +218,7 @@ func TestSnapshotWatermarkPrecedesConcurrentNativeChange(t *testing.T) {
 		t.Fatal(err)
 	}
 	uid, _ := strconv.Atoi(u.Uid)
-	cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: "123", Home: u.HomeDir}
+	cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: "123", Home: u.HomeDir}
 	// The snapshot constructor captures the watermark before discovery, even if
 	// the native event arrives while discovery is still constructing the image.
 	discover := func(transport.Config) Discovery { j.appendInvalidation(""); return Discovery{State: "empty"} }

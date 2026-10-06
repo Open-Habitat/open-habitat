@@ -12,7 +12,7 @@ export function OnboardingFrame({
   return (
     <div className={`${styles.frame} ${styles[`step${step}`]}`}>
       <div className={styles.identity}>
-        <strong>Omega Habitat</strong>
+        <strong>Open Habitat</strong>
         <span aria-hidden="true" className={styles.divider} />
         <span className={styles.host}>{window.location.host}</span>
       </div>

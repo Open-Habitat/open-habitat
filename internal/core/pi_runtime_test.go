@@ -13,7 +13,7 @@ import (
 
 func TestSharedPiRuntimeAcrossUIDs(t *testing.T) {
 	if os.Getenv("PI_SELECTOR_CHILD") == "1" {
-		if _, err := os.Stat("/etc/native-agent-host/gateway.json"); !os.IsPermission(err) {
+		if _, err := os.Stat("/etc/open-habitat/gateway.json"); !os.IsPermission(err) {
 			t.Fatalf("UID %d reached gateway secrets: %v", os.Geteuid(), err)
 		}
 		cfg, err := LoadSharedPiRuntime()
@@ -41,16 +41,16 @@ func TestSharedPiRuntimeAcrossUIDs(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(SharedPiRuntimePath), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll("/etc/native-agent-host", 0750); err != nil {
+	if err := os.MkdirAll("/etc/open-habitat", 0750); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chown("/etc/native-agent-host", 0, 21003); err != nil {
+	if err := os.Chown("/etc/open-habitat", 0, 21003); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chmod("/etc/native-agent-host", 0750); err != nil {
+	if err := os.Chmod("/etc/open-habitat", 0750); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile("/etc/native-agent-host/gateway.json", []byte("synthetic secret"), 0640); err != nil {
+	if err := os.WriteFile("/etc/open-habitat/gateway.json", []byte("synthetic secret"), 0640); err != nil {
 		t.Fatal(err)
 	}
 	good := []byte(`{"node":"/opt/runtime/bin/node","entry":"/opt/runtime/sdk/dist/index.js","manifest":"/opt/runtime/sdk/package.json"}`)
@@ -110,8 +110,8 @@ func TestSharedPiRuntimeAcrossUIDs(t *testing.T) {
 				case "writable parent":
 					err = os.Chmod(filepath.Dir(path), 0777)
 				case "symlink parent":
-					if err = os.Rename(filepath.Dir(path), "/opt/native-agent-host-real"); err == nil {
-						err = os.Symlink("/opt/native-agent-host-real", filepath.Dir(path))
+					if err = os.Rename(filepath.Dir(path), "/opt/open-habitat-real"); err == nil {
+						err = os.Symlink("/opt/open-habitat-real", filepath.Dir(path))
 					}
 				}
 				if err != nil {
@@ -122,7 +122,7 @@ func TestSharedPiRuntimeAcrossUIDs(t *testing.T) {
 					if err := os.Remove(filepath.Dir(path)); err != nil {
 						t.Fatal(err)
 					}
-					if err := os.Rename("/opt/native-agent-host-real", filepath.Dir(path)); err != nil {
+					if err := os.Rename("/opt/open-habitat-real", filepath.Dir(path)); err != nil {
 						t.Fatal(err)
 					}
 				}

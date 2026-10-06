@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 func streamFixture(t *testing.T) (transport.Config, string, string, cloneRunner) {

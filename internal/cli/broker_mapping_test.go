@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/maintainer/native-agent-host/internal/gateway"
-	"github.com/maintainer/native-agent-host/internal/provision"
+	"github.com/Open-Habitat/open-habitat/internal/gateway"
+	"github.com/Open-Habitat/open-habitat/internal/provision"
 )
 
 func TestMapBrokerReply(t *testing.T) {

@@ -11,8 +11,8 @@ import (
 
 func TestAccountProfileSessionFallbackCannotChangeBinding(t *testing.T) {
 	h, a, _, _, now := fixture(t)
-	one := Identity{Provider: "github", Subject: "42", UID: 1001, Username: "alice", Socket: "/run/native-agent-host/users/alice/daemon.sock"}
-	two := Identity{Provider: "github", Subject: "43", UID: 1002, Username: "bob", Socket: "/run/native-agent-host/users/bob/daemon.sock"}
+	one := Identity{Provider: "github", Subject: "42", UID: 1001, Username: "alice", Socket: "/run/open-habitat/users/alice/daemon.sock"}
+	two := Identity{Provider: "github", Subject: "43", UID: 1002, Username: "bob", Socket: "/run/open-habitat/users/bob/daemon.sock"}
 	a.mu.Lock()
 	a.sessions["one"] = session{identity: one, csrf: "csrf-one", profile: AccountProfile{AvatarURL: "https://avatars.githubusercontent.com/u/42"}, idle: now.Add(time.Hour), absolute: now.Add(time.Hour)}
 	a.sessions["two"] = session{identity: two, csrf: "csrf-two", profile: AccountProfile{Name: "Bob", Email: "bob@example.invalid"}, idle: now.Add(time.Hour), absolute: now.Add(time.Hour)}

@@ -273,7 +273,7 @@ type fakeBroker struct {
 }
 
 func newFakeBroker() *fakeBroker {
-	return &fakeBroker{routes: map[string]BrokerRoute{"42": {UID: 1001, Username: "alice", Socket: "/run/native-agent-host/users/alice/daemon.sock"}, "43": {UID: 1002, Username: "bob", Socket: "/run/native-agent-host/users/bob/daemon.sock"}}, epoch: 1, generation: 1}
+	return &fakeBroker{routes: map[string]BrokerRoute{"42": {UID: 1001, Username: "alice", Socket: "/run/open-habitat/users/alice/daemon.sock"}, "43": {UID: 1002, Username: "bob", Socket: "/run/open-habitat/users/bob/daemon.sock"}}, epoch: 1, generation: 1}
 }
 func (b *fakeBroker) Exchange(_ context.Context, r BrokerRequest) (BrokerReply, error) {
 	b.mu.Lock()

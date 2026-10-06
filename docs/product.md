@@ -1,6 +1,6 @@
-# Omega Habitat — tavoite ja käyttökulut
+# Open Habitat — tavoite ja käyttökulut
 
-Omega Habitat tuo selaimen käyttöliittymäksi Linux-palvelimella oleviin
+Open Habitat tuo selaimen käyttöliittymäksi Linux-palvelimella oleviin
 projekteihin ja AI-agentteihin. Käyttäjä avaa oman työtilansa, keskustelee
 agentin kanssa ja seuraa sen työtä. Tiedostot, Git-repot ja keskusteluhistoria
 pysyvät natiivien työkalujen omassa muodossa ja käytettävissä myös SSH:n ja

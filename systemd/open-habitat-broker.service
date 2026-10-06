@@ -1,7 +1,7 @@
 [Unit]
-Description=Native Agent Host root account broker
-Requires=native-agent-host-broker.socket
-After=native-agent-host-broker.socket
+Description=Open Habitat root account broker
+Requires=open-habitat-broker.socket
+After=open-habitat-broker.socket
 # Fleetrepo owns state creation, UID pool reservation, ACL and reboot ordering.
 # This neutral template does not install a preparation/repair unit.
 
@@ -9,13 +9,13 @@ After=native-agent-host-broker.socket
 Type=simple
 User=root
 Group=root
-ExecStart=/opt/native-agent-host/current/native-agent-host broker exec
+ExecStart=/opt/open-habitat/current/open-habitat broker exec
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=no
 # Account tools create /etc locks and atomically replace passwd/group/shadow;
 # read-write exceptions for individual files would strand pending.json.
-ReadWritePaths=/etc /var/lib/native-agent-host /home /run/native-agent-host
+ReadWritePaths=/etc /var/lib/open-habitat /home /run/open-habitat
 PrivateTmp=yes
 PrivateDevices=yes
 UMask=0077

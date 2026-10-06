@@ -12,14 +12,14 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/maintainer/native-agent-host/internal/diagnostic"
+	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 )
 
 // BrokerSocket is the only production listener. Fleetrepo owns its directory,
 // socket ACL, root state, UID reservation and boot ordering; this code never
 // creates or repairs them.
-const BrokerSocket = "/run/native-agent-host/broker.sock"
-const brokerState = "/var/lib/native-agent-host/broker"
+const BrokerSocket = "/run/open-habitat/broker.sock"
+const brokerState = "/var/lib/open-habitat/broker"
 
 var ErrBrokerStartup = errors.New("broker startup refused")
 
@@ -74,12 +74,12 @@ func brokerFD() (*os.File, error) {
 // The socket inode and its ancestors are checked before Serve; systemd's
 // DirectoryMode fallback is not an authorization or boot-time ACL recipe.
 func brokerSocketSafe(gid uint32) bool {
-	for _, p := range []string{"/run", "/run/native-agent-host"} {
+	for _, p := range []string{"/run", "/run/open-habitat"} {
 		var st unix.Stat_t
 		if unix.Lstat(p, &st) != nil || st.Mode&unix.S_IFMT != unix.S_IFDIR || st.Uid != 0 || st.Mode&0022 != 0 {
 			return false
 		}
-		if p == "/run/native-agent-host" && (st.Gid != gid || st.Mode&07777 != 0750) {
+		if p == "/run/open-habitat" && (st.Gid != gid || st.Mode&07777 != 0750) {
 			return false
 		}
 	}

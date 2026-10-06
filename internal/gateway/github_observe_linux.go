@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/udssecure"
+	"github.com/Open-Habitat/open-habitat/internal/udssecure"
 )
 
 const githubObservePath = "/api/v1/onboarding/github/checkout"

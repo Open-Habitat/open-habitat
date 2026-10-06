@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/maintainer/native-agent-host/internal/gateway"
+	"github.com/Open-Habitat/open-habitat/internal/gateway"
 )
 
 type adminTestBroker struct{ bound bool }

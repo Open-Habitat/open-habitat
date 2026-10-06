@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/maintainer/native-agent-host/internal/cli"
+	"github.com/Open-Habitat/open-habitat/internal/cli"
 	"os"
 )
 

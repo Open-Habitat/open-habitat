@@ -33,7 +33,7 @@ func TestConversationRecapGatewayAllowlist(t *testing.T) {
 func TestConversationGatewaySessionBoundary(t *testing.T) {
 	now := time.Now()
 	uid := os.Getuid()
-	m := Identity{"github", "42", uid, "alice", "/run/native-agent-host/users/alice/daemon.sock"}
+	m := Identity{"github", "42", uid, "alice", "/run/open-habitat/users/alice/daemon.sock"}
 	socket := filepath.Join(t.TempDir(), "daemon.sock")
 	ln, err := net.Listen("unix", socket)
 	if err != nil {

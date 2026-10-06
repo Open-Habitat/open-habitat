@@ -32,10 +32,10 @@ def denied(name, script):
     p=as_user(name,script);return p.returncode!=0 and b'PermissionError' in p.stderr
 try:
     check(pathlib.Path('/proc/1/comm').read_text().strip()=='systemd','pid1')
-    expected=pathlib.Path('/etc/native-agent-host/binary.sha256').read_text().strip()
-    check(hashlib.sha256(pathlib.Path('/opt/native-agent-host/current/native-agent-host').read_bytes()).hexdigest()==expected,'product binary digest')
-    check(pwd.getpwnam('native-agent-host-gateway').pw_uid==gateway_uid,'gateway UID')
-    ledger_dir=pathlib.Path('/var/lib/native-agent-host/broker')
+    expected=pathlib.Path('/etc/open-habitat/binary.sha256').read_text().strip()
+    check(hashlib.sha256(pathlib.Path('/opt/open-habitat/current/open-habitat').read_bytes()).hexdigest()==expected,'product binary digest')
+    check(pwd.getpwnam('open-habitat-gateway').pw_uid==gateway_uid,'gateway UID')
+    ledger_dir=pathlib.Path('/var/lib/open-habitat/broker')
     check(json.loads((ledger_dir/'bindings.json').read_text())['bindings']==[],'bindings precreated')
     check(json.loads((ledger_dir/'allowlist.json').read_text())['ids']==[],'allowlist precreated')
     check(ledger_dir.stat().st_uid==0 and stat.S_IMODE(ledger_dir.stat().st_mode)==0o700,'root ledger directory')
@@ -51,10 +51,10 @@ try:
             else: raise RuntimeError('direct NSS pool occupant')
     for name in names:
         check(not any(g.gr_name==name or name in g.gr_mem for g in grp.getgrall()),'group alias')
-        check(not (pathlib.Path('/etc/omega-habitat/daemon/user-mappings')/('daemon-'+name+'.json')).exists(),'precreated config')
-        check(not (pathlib.Path('/run/native-agent-host/users')/name).exists(),'precreated socket directory')
+        check(not (pathlib.Path('/etc/open-habitat-daemon/daemon/user-mappings')/('daemon-'+name+'.json')).exists(),'precreated config')
+        check(not (pathlib.Path('/run/open-habitat/users')/name).exists(),'precreated socket directory')
     # Prepare the pinned private Fleetrepo boot gate before any broker socket.
-    prep='/usr/local/libexec/native-agent-host-test-jit/jit_acl_prepare.py'
+    prep='/usr/local/libexec/open-habitat-test-jit/jit_acl_prepare.py'
     check(subprocess.run(['/usr/bin/python3',prep,'preflight','--json'],capture_output=True).returncode==0,'policy preflight')
     import fcntl
     fd=os.open(ledger_dir,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
@@ -68,18 +68,18 @@ try:
     finally: os.close(fd)
     check(subprocess.run(['/usr/bin/python3',prep,'prepare','--json'],capture_output=True).returncode==0,'policy prepare')
     check(subprocess.run(['/usr/bin/python3',prep,'verify','--json'],capture_output=True).returncode==0,'policy verify')
-    subprocess.run(['systemctl','start','native-agent-host-broker.socket'],check=True,stdout=subprocess.DEVNULL)
-    runtime=pathlib.Path('/run/native-agent-host');root=runtime/'users'
+    subprocess.run(['systemctl','start','open-habitat-broker.socket'],check=True,stdout=subprocess.DEVNULL)
+    runtime=pathlib.Path('/run/open-habitat');root=runtime/'users'
     broker=runtime/'broker.sock';st=broker.stat()
     check(stat.S_ISSOCK(st.st_mode) and (st.st_uid,st.st_gid,stat.S_IMODE(st.st_mode))==(0,gateway_uid,0o660),'broker socket ACL')
-    config=pathlib.Path('/etc/native-agent-host/gateway.json')
+    config=pathlib.Path('/etc/open-habitat/gateway.json')
     os.chown(config,0,gateway_uid);config.chmod(0o640)
     with open('/etc/hosts','a') as f:f.write('\n127.0.0.1 github.com api.github.com host.fixture\n')
     # Root peer can connect by DAC but the broker transport must reject its kernel peer.
     def exchange(uid,subject):
         code='''import json,socket,struct,sys
 s=socket.socket(socket.AF_UNIX);s.settimeout(5)
-try: s.connect('/run/native-agent-host/broker.sock')
+try: s.connect('/run/open-habitat/broker.sock')
 except PermissionError as e:
  if e.errno==13: print('DAC_DENIED');sys.exit(0)
  raise
@@ -96,7 +96,7 @@ print('UNEXPECTED_REPLY')
     check(root_peer.returncode==0 and root_peer.stdout.strip()==b'PEER_REJECTED','root broker peer not rejected')
     foreign_peer=exchange(21032,'100000001')
     check(foreign_peer.returncode==0 and foreign_peer.stdout.strip()==b'DAC_DENIED','non-gateway broker DAC not denied')
-    key=pathlib.Path('/etc/native-agent-host/tls.key')
+    key=pathlib.Path('/etc/open-habitat/tls.key')
     os.chown(key,0,gateway_uid);key.chmod(0o640)
     provider=subprocess.Popen(['/usr/bin/python3','/usr/local/sbin/product-fake-provider'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     try:
@@ -106,9 +106,9 @@ print('UNEXPECTED_REPLY')
                 socket.create_connection(('127.0.0.1',443),1).close();break
             except OSError:time.sleep(.2)
         else:raise RuntimeError('fixture provider not ready')
-        subprocess.run(['systemctl','start','native-agent-host-revoke.socket'],check=True,stdout=subprocess.DEVNULL)
+        subprocess.run(['systemctl','start','open-habitat-revoke.socket'],check=True,stdout=subprocess.DEVNULL)
         subprocess.run(['systemctl','start','product-gateway.service'],check=True,stdout=subprocess.DEVNULL)
-        ctx=ssl.create_default_context(cafile='/etc/native-agent-host/fixture-ca.crt')
+        ctx=ssl.create_default_context(cafile='/etc/open-habitat/fixture-ca.crt')
         class NoRedirect(urllib.request.HTTPRedirectHandler):
             def redirect_request(self,*args): return None
         def browser():
@@ -148,7 +148,7 @@ print('UNEXPECTED_REPLY')
             except (ValueError, AttributeError):
                 failure_code='non_json'
             if failure_status!=503 or failure_code!='native_adapter_error':
-                gate=subprocess.run(['journalctl','-u','native-agent-host-jit-policy-gate@'+names[index]+'.service',
+                gate=subprocess.run(['journalctl','-u','open-habitat-jit-policy-gate@'+names[index]+'.service',
                                      '-n','12','--no-pager','-o','cat'],capture_output=True,text=True).stdout
                 gate_reasons=[]
                 for line in gate.splitlines():
@@ -158,9 +158,9 @@ print('UNEXPECTED_REPLY')
                             gate_reasons.append(item['error'].get('message','')[:90])
                     except (ValueError,AttributeError):
                         pass
-                root='/run/native-agent-host'
+                root='/run/open-habitat'
                 bound=json.loads((ledger_dir/'bindings.json').read_text())['bindings']
-                expected_names=([] if pathlib.Path('/opt/native-agent-host/fresh-account-policy.json').exists() else ['alice','bob'])+[b['username'] for b in bound]
+                expected_names=([] if pathlib.Path('/opt/open-habitat/fresh-account-policy.json').exists() else ['alice','bob'])+[b['username'] for b in bound]
                 raise RuntimeError('callback='+str(failure_status)+'/'+str(failure_code)[:24]+
                                    ' gate='+repr(gate_reasons[:1])[:70]+
                                    ' expected='+','.join(sorted(expected_names))+
@@ -188,9 +188,9 @@ print('UNEXPECTED_REPLY')
                 try: code=json.loads(body).get('error',{}).get('code','unknown')
                 except ValueError: code='non_json'
                 bindings=json.loads((ledger_dir/'bindings.json').read_text()).get('bindings',[])
-                socket_unit='native-agent-host-daemon@'+name+'.socket'
+                socket_unit='open-habitat-daemon@'+name+'.socket'
                 active=subprocess.run(['systemctl','is-active',socket_unit],capture_output=True,text=True).stdout.strip()
-                gate_log=subprocess.run(['journalctl','-u','native-agent-host-jit-policy-gate@'+name+'.service',
+                gate_log=subprocess.run(['journalctl','-u','open-habitat-jit-policy-gate@'+name+'.service',
                                          '-n','12','--no-pager','-o','cat'],capture_output=True,text=True).stdout
                 gate_reasons=[]
                 for line in gate_log.splitlines():
@@ -210,7 +210,7 @@ print('UNEXPECTED_REPLY')
             check(home.stat().st_uid==uid and stat.S_IMODE(home.stat().st_mode)==0o700,'new home')
             binding=json.loads((ledger_dir/'bindings.json').read_text())['bindings']
             check(any(b['id']==str(100000001+index) and b['uid']==uid and b['username']==name for b in binding),'broker binding')
-            config=pathlib.Path('/etc/omega-habitat/daemon/user-mappings')/('daemon-'+name+'.json')
+            config=pathlib.Path('/etc/open-habitat-daemon/daemon/user-mappings')/('daemon-'+name+'.json')
             check(config.stat().st_uid==0 and config.stat().st_gid==uid and stat.S_IMODE(config.stat().st_mode)==0o640,'executor config')
             src=home/'src';src.mkdir(mode=0o700)
             for kind in ('ordinary','git-hint','no-metadata'):
@@ -220,7 +220,7 @@ print('UNEXPECTED_REPLY')
             subprocess.run(['chown','-R',str(uid)+':'+str(uid),str(src)],check=True)
             check(b'PRODUCT_VM_TOKEN' not in body,'OAuth callback token')
             status,_,session=get(op,'/auth/session');check(status==200 and json.loads(session)['provider']=='github','authenticated session')
-            status,_,snap=get(op,'/api/v1/snapshot',{'X-Agent-Host-UID':str(uids[1-index]),'X-Agent-Host-Username':names[1-index],'X-Agent-Host-Socket':'/run/native-agent-host/users/'+names[1-index]+'/daemon.sock','X-Agent-Host-Identity':'forged'})
+            status,_,snap=get(op,'/api/v1/snapshot',{'X-Agent-Host-UID':str(uids[1-index]),'X-Agent-Host-Username':names[1-index],'X-Agent-Host-Socket':'/run/open-habitat/users/'+names[1-index]+'/daemon.sock','X-Agent-Host-Identity':'forged'})
             check(status==200,'snapshot')
             text=snap.decode();other=names[1-index]
             check(all(name+'-'+k in text for k in ('ordinary','git-hint','no-metadata')) and other+'-' not in text and '/home/' not in text and 'escape' not in text,'snapshot isolation')
@@ -240,16 +240,16 @@ print('UNEXPECTED_REPLY')
         finally:
             source.unlink();held.rename(source)
         for name in names:
-            pid=int(subprocess.check_output(['systemctl','show','-P','MainPID','native-agent-host-daemon@'+name+'.service']).strip())
+            pid=int(subprocess.check_output(['systemctl','show','-P','MainPID','open-habitat-daemon@'+name+'.service']).strip())
             check(pid>1 and ('Uid:\t'+str(pwd.getpwnam(name).pw_uid)+'\t') in pathlib.Path('/proc/%d/status'%pid).read_text(),'daemon effective UID')
             args=[a for a in pathlib.Path('/proc/%d/cmdline'%pid).read_bytes().split(b'\0') if a]
-            check(args[:3]==[b'/opt/native-agent-host/current/native-agent-host',b'daemon',b'exec'] and args[-1]==('/etc/omega-habitat/daemon/user-mappings/daemon-'+name+'.json').encode(),'daemon config argv')
+            check(args[:3]==[b'/opt/open-habitat/current/open-habitat',b'daemon',b'exec'] and args[-1]==('/etc/open-habitat-daemon/daemon/user-mappings/daemon-'+name+'.json').encode(),'daemon config argv')
             other=names[1-names.index(name)]
             sock=str(root/other/'daemon.sock')
             check(denied(name,"import socket;s=socket.socket(socket.AF_UNIX);s.connect(%r)"%sock),'cross user route')
             check(denied(name,"import os;os.listdir(%r)"%('/home/'+other)),'cross user home')
-            check(denied('native-agent-host-gateway',"import os;os.listdir(%r)"%('/home/'+name)),'gateway home')
-            check(denied('native-agent-host-gateway',"open(%r).read()"%('/home/'+name+'/.config/gh/hosts.yml')),'gateway credential')
+            check(denied('open-habitat-gateway',"import os;os.listdir(%r)"%('/home/'+name)),'gateway home')
+            check(denied('open-habitat-gateway',"open(%r).read()"%('/home/'+name+'/.config/gh/hosts.yml')),'gateway credential')
             log=(pathlib.Path('/home')/name/'gh-argv.jsonl').read_text();records=[json.loads(l) for l in log.splitlines()]
             check(any(r['argv']==['auth','login','--hostname','github.com','--with-token','--git-protocol','https'] and r['stdin'] and r['uid']==pwd.getpwnam(name).pw_uid for r in records),'gh login argv/stdin')
             check(any(r['argv']==['auth','setup-git','--hostname','github.com'] for r in records),'gh setup')
@@ -262,13 +262,13 @@ print('UNEXPECTED_REPLY')
             try: reply=s.recv(1024)
             except ConnectionResetError: reply=b''
             check(reply==b'','root peer rejection');s.close()
-        subprocess.run(['systemctl','stop','native-agent-host-daemon@guestone.socket','native-agent-host-daemon@guestone.service'],check=True,stdout=subprocess.DEVNULL)
+        subprocess.run(['systemctl','stop','open-habitat-daemon@guestone.socket','open-habitat-daemon@guestone.service'],check=True,stdout=subprocess.DEVNULL)
         # Broker denies an inactive route before handoff. This can surface as
         # 401 (session authorization unavailable), not only daemon HTTP 503;
         # either way no data or cross-user fallback may be returned.
         check(get(browsers[0],'/api/v1/snapshot')[0] in (401,503),'stopped A has no fallback')
         check(get(browsers[1],'/api/v1/snapshot')[0]==200,'stopped A does not affect B')
-        subprocess.run(['systemctl','start','native-agent-host-daemon@guestone.socket'],check=True,stdout=subprocess.DEVNULL)
+        subprocess.run(['systemctl','start','open-habitat-daemon@guestone.socket'],check=True,stdout=subprocess.DEVNULL)
         check(get(browsers[0],'/api/v1/snapshot')[0]==200,'A socket reactivates its own daemon')
         # A second callback for the same numeric ID after a provider handle
         # change must retain the committed UID and not install a second token.
@@ -338,7 +338,7 @@ print('UNEXPECTED_REPLY')
         # repeat the uncertain callback or offer its token to another sink.
         b_log=pathlib.Path('/home/guesttwo/gh-argv.jsonl')
         b_records=[json.loads(line) for line in b_log.read_text().splitlines()]
-        b_daemon=int(subprocess.check_output(['systemctl','show','-P','MainPID','native-agent-host-daemon@guesttwo.service']).strip())
+        b_daemon=int(subprocess.check_output(['systemctl','show','-P','MainPID','open-habitat-daemon@guesttwo.service']).strip())
         check(b_daemon>1,'B daemon absent before lost ack')
         b_cred=pathlib.Path('/home/guesttwo/.config/gh/hosts.yml').stat().st_ino
         lost,lost_jar=browser();status,h,_=get(lost,'/auth/github/start');check(status==302,'lost-ack start')
@@ -359,14 +359,14 @@ print('UNEXPECTED_REPLY')
         after_records=[json.loads(line) for line in b_log.read_text().splitlines()]
         check(after_records==b_records+[{'argv':['auth','status','--hostname','github.com'],'stdin':False,'uid':uids[1],'parent_pid':b_daemon}],
               'lost ack command not from B daemon or uncertain handoff retried')
-        b_after=int(subprocess.check_output(['systemctl','show','-P','MainPID','native-agent-host-daemon@guesttwo.service']).strip())
+        b_after=int(subprocess.check_output(['systemctl','show','-P','MainPID','open-habitat-daemon@guesttwo.service']).strip())
         check(b_after!=b_daemon and pathlib.Path('/home/guesttwo/.config/gh/hosts.yml').stat().st_ino==b_cred,
               'B daemon did not die or credential replaced after lost ack')
         print('VM_PHASE=lost_ack_assertions_passed',flush=True)
         # The pinned Fleetrepo policy refuses a new daemon gate while a
         # revoked sibling socket remains active. Stop A's socket and service
         # before C's first ensure; keep its account, binding and credential.
-        subprocess.run(['systemctl','stop','native-agent-host-daemon@guestone.socket','native-agent-host-daemon@guestone.service'],check=True,capture_output=True)
+        subprocess.run(['systemctl','stop','open-habitat-daemon@guestone.socket','open-habitat-daemon@guestone.service'],check=True,capture_output=True)
         check(not (root/'guestone'/'daemon.sock').exists() and (pathlib.Path('/home/guestone/.config/gh/hosts.yml').stat().st_ino==old_cred),'revoked A socket or credential changed')
         # Fresh C is provisioned only for this independent post-install case.
         # Never remove, replace, or retry a protected credential after an
@@ -410,8 +410,8 @@ print('UNEXPECTED_REPLY')
         check(len(c_records)==2 and [r['argv'][:2] for r in c_records]==[['auth','status'],['auth','login']] and all(r['uid']==c_uid for r in c_records) and c_records[1]['stdin'] and c_records[0]['parent_pid']==c_records[1]['parent_pid']>1,'post-install one-shot child calls')
         c_pid=c_records[1]['parent_pid']
         check(not pathlib.Path('/proc/%d'%c_pid).exists(),'post-install original daemon alive')
-        c_service='native-agent-host-daemon@guestthree.service'
-        c_socket='native-agent-host-daemon@guestthree.socket'
+        c_service='open-habitat-daemon@guestthree.service'
+        c_socket='open-habitat-daemon@guestthree.socket'
         # Restart=on-failure is asynchronous after SIGKILL. A successful
         # systemctl start is not itself evidence of a stable new MainPID.
         result['post_install_units']={'before_service':unit_state(c_service,UNIT_KEYS),
@@ -451,13 +451,13 @@ print('UNEXPECTED_REPLY')
                 for suffix in ('cmdline','environ'):
                     try:check(value not in (p/suffix).read_bytes(),'process token scan')
                     except (FileNotFoundError,ProcessLookupError):continue
-            for unit in ['product-gateway','native-agent-host-daemon@guestone','native-agent-host-daemon@guesttwo','native-agent-host-daemon@guestthree','native-agent-host-broker']:
+            for unit in ['product-gateway','open-habitat-daemon@guestone','open-habitat-daemon@guesttwo','open-habitat-daemon@guestthree','open-habitat-broker']:
                 journal_read=subprocess.run(['journalctl','-u',unit,'-b','--no-pager','-o','cat'],capture_output=True,timeout=10)
                 logs=journal_read.stdout
                 check(journal_read.returncode==0 and len(logs)>0,'journal scan unavailable')
                 check(len(logs)<=1048576,'journal scan exceeds 1 MiB')
                 check(value not in logs,'journal token scan')
-            for p in ['/etc/native-agent-host/gateway.json','/etc/omega-habitat/daemon/user-mappings/daemon-guestone.json','/etc/omega-habitat/daemon/user-mappings/daemon-guesttwo.json','/etc/omega-habitat/daemon/user-mappings/daemon-guestthree.json']:
+            for p in ['/etc/open-habitat/gateway.json','/etc/open-habitat-daemon/daemon/user-mappings/daemon-guestone.json','/etc/open-habitat-daemon/daemon/user-mappings/daemon-guesttwo.json','/etc/open-habitat-daemon/daemon/user-mappings/daemon-guestthree.json']:
                 check(value not in pathlib.Path(p).read_bytes(),'config token scan')
         result.update({'status':'passed','scope':'jit-login-slice','revocation':{'atomic_fsynced':True,'existing_denied_statuses':revoked,'new_denied_status':revoked_new_status,'other_uid_reauthorized':True,'ledger_account_credential_preserved':True},'rename':{'same_uid':True,'no_second_gh_login':True},'gh_failures':fault_results,'lost_ack':{'callback_status':lost_status,'session_status':lost_session,'snapshot_status':lost_snapshot,'replay_status':403,'one_daemon_gh_call_observed':True,'daemon_killed_before_ack':True,'credential_preserved':True},'post_install_lost_ack':{'callback_status':c_status,'session_status':c_session,'snapshot_status':c_snapshot,'replay_status':c_replay,'one_shot_child_calls':len(c_records),'daemon_pid_changed':c_after!=c_pid,'protected_credential_retained':True,'other_uid_reauthenticated':True},'pid1':'systemd','uids':[21032,21033,21003],'socket_mode':'0660','socket_activation':True,'pool_vacant_before_login':True,'new_accounts':True,'committed_bindings':True,'root_ledger':True,'pinned_policy_gate':True,'routes':routes,'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'cross_user_broker':True,'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'gateway_credential':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, full boot journal capped at 1 MiB per unit, process argv/environ, configs, child argv logs'},'revoked_sibling_stopped_before_c':True})
     finally:provider.terminate();provider.wait(timeout=5)
@@ -470,11 +470,11 @@ except Exception as e:
     # precedes the explicit restart. Never include show ExecStart or journal.
     if 'post_install_units' not in result and 'post_install_started' in locals():
         try:
-            result['post_install_units']={'after_service':unit_state('native-agent-host-daemon@guestthree.service',UNIT_KEYS),
-                                          'after_socket':unit_state('native-agent-host-daemon@guestthree.socket',SOCKET_KEYS)}
+            result['post_install_units']={'after_service':unit_state('open-habitat-daemon@guestthree.service',UNIT_KEYS),
+                                          'after_socket':unit_state('open-habitat-daemon@guestthree.socket',SOCKET_KEYS)}
         except (OSError,subprocess.TimeoutExpired):result['post_install_units']={'unavailable':True}
     codes={}
-    for unit in ('product-gateway','native-agent-host-broker','native-agent-host-daemon@guestone','native-agent-host-daemon@guesttwo','native-agent-host-daemon@guestthree'):
+    for unit in ('product-gateway','open-habitat-broker','open-habitat-daemon@guestone','open-habitat-daemon@guesttwo','open-habitat-daemon@guestthree'):
         journal=subprocess.run(['journalctl','-u',unit,'-n','12','--no-pager','-o','cat'],capture_output=True).stdout
         codes[unit]=[]
         for line in journal.decode('utf-8','replace').splitlines():
@@ -492,16 +492,16 @@ except Exception as e:
             for args in (['getent','passwd',name],['getent','group',name],['getent','initgroups',name]):
                 p=subprocess.run(args,capture_output=True,text=True)
                 diag[' '.join(args)]=p.stdout.strip()[:120] if p.returncode==0 else 'exit '+str(p.returncode)
-        for path in ('/run/native-agent-host','/run/native-agent-host/users',str(root/names[0]),str(root/names[1])):
+        for path in ('/run/open-habitat','/run/open-habitat/users',str(root/names[0]),str(root/names[1])):
             p=subprocess.run(['getfacl','-cpn',path],capture_output=True,text=True)
             diag[path]=p.stdout.strip().replace('\n',';')[:220] if p.returncode==0 else 'exit '+str(p.returncode)
-        for unit in ('native-agent-host-broker.service','native-agent-host-daemon@guestone.service','native-agent-host-daemon@guestone.socket'):
+        for unit in ('open-habitat-broker.service','open-habitat-daemon@guestone.service','open-habitat-daemon@guestone.socket'):
             p=subprocess.run(['systemctl','show',unit,'--property=ActiveState,ExecMainStatus,SocketMode,DirectoryMode,Listen,ExecStart','--no-pager'],capture_output=True,text=True)
             diag[unit]=p.stdout.strip().replace('\n',';')[:300]
         result['diagnostic']=diag
-    if codes.get('native-agent-host-broker'):
-        result['reason']=(result['reason']+' broker '+','.join(codes['native-agent-host-broker']))[:220]
-if result['status']=='passed' and pathlib.Path('/etc/native-agent-host/reboot-fixture').exists():
+    if codes.get('open-habitat-broker'):
+        result['reason']=(result['reason']+' broker '+','.join(codes['open-habitat-broker']))[:220]
+if result['status']=='passed' and pathlib.Path('/etc/open-habitat/reboot-fixture').exists():
     try:
         # Restore both explicit permissions; retain the binding generation and
         # head high-water. This is root-owned operator input, not a broker repair.

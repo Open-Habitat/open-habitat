@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 func TestPiAttemptSessionOwnershipAndRestart(t *testing.T) {
@@ -37,7 +37,7 @@ esac
 		t.Fatal(err)
 	}
 	p := &PiDevice{Home: home, Node: node, Entry: "/synthetic/entry", Manifest: "/synthetic/manifest"}
-	cfg := transport.Config{GatewayUID: os.Geteuid(), UID: os.Geteuid(), Username: u.Username, Home: u.HomeDir, Provider: "github", Subject: "123", Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock"}
+	cfg := transport.Config{GatewayUID: os.Geteuid(), UID: os.Geteuid(), Username: u.Username, Home: u.HomeDir, Provider: "github", Subject: "123", Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock"}
 	if err := transport.ValidateConfig(cfg); err != nil {
 		t.Fatalf("invalid synthetic route: %v (%+v)", err, cfg)
 	}

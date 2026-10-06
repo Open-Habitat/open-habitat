@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 func TestUnknownNativeContentDoesNotExposeUncheckedPayload(t *testing.T) {
@@ -73,7 +73,7 @@ func TestPiHistoryNativePagesChunksAndReopen(t *testing.T) {
 	}
 	u, _ := user.Current()
 	uid, _ := strconv.Atoi(u.Uid)
-	cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: "42"}
+	cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: "42"}
 	reader := func(c transport.Config) ([]nativeSession, error) { c.Home = home; return nativeSessions(c) }
 	get := func(path string) (int, map[string]any) {
 		t.Helper()

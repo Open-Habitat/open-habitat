@@ -14,11 +14,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/gateway"
+	"github.com/Open-Habitat/open-habitat/internal/gateway"
 	"golang.org/x/sys/unix"
 )
 
-const revokeSocket = "/run/native-agent-host/revoke.sock"
+const revokeSocket = "/run/open-habitat/revoke.sock"
 
 var adminControlSocket = revokeSocket
 

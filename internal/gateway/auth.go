@@ -21,7 +21,7 @@ import (
 
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/diagnostic"
+	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 )
 
 // Identity is a root-configured route. Its socket is never derived from a browser field.

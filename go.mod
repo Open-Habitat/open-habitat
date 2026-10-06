@@ -1,4 +1,4 @@
-module github.com/maintainer/native-agent-host
+module github.com/Open-Habitat/open-habitat
 
 go 1.27.1
 

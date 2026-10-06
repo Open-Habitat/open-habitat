@@ -40,7 +40,7 @@ func TestStrictUnknownAndJSONError(t *testing.T) {
 	}
 }
 func TestConfigPrecedence(t *testing.T) {
-	t.Setenv("NATIVE_AGENT_HOST_CONFIG", "/tmp/g.json")
+	t.Setenv("OPEN_HABITAT_CONFIG", "/tmp/g.json")
 	code, out, _ := call(t, "--json", "config", "path", "--component", "gateway")
 	if code != 0 {
 		t.Fatal(code)
@@ -52,7 +52,7 @@ func TestConfigPrecedence(t *testing.T) {
 }
 func TestMaintenanceDryRunAndIdempotency(t *testing.T) {
 	d := t.TempDir()
-	t.Setenv("NATIVE_AGENT_HOST_STATE_DIR", d)
+	t.Setenv("OPEN_HABITAT_STATE_DIR", d)
 	for _, args := range [][]string{{"--json", "maintenance", "enter", "--idempotency-key", "k", "--dry-run"}, {"--json", "maintenance", "enter", "--idempotency-key", "k"}, {"--json", "maintenance", "enter", "--idempotency-key", "k"}, {"--json", "maintenance", "leave", "--idempotency-key", "k"}, {"--json", "maintenance", "leave", "--idempotency-key", "k"}} {
 		code, _, err := call(t, args...)
 		if code != 0 {

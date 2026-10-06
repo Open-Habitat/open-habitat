@@ -25,7 +25,7 @@ flowchart TB
 The gateway terminates TLS using its configured certificate and serves the
 browser application. It runs without access to user homes. systemd supplies
 its root-only revocation socket, through which the operator can end web
-sessions with `native-agent-host revoke subject <GitHub ID>`. The same socket
+sessions with `open-habitat revoke subject <GitHub ID>`. The same socket
 accepts root-only administration requests; the gateway remains the sole writer
 of the name and browser roles.
 
@@ -48,14 +48,14 @@ group. Native history survives, but an active turn is interrupted.
 User homes hold workspaces, Pi histories and configuration, and native `gh`
 credentials. Root-owned broker state holds admission policy, account bindings
 and the journal of provisioning operations. These survive service restarts and
-release replacement. Gateway-private state at `/var/lib/native-agent-host-gateway/sessions.json` holds browser sessions and survives release replacement and reboot. The same private StateDirectory also holds `administration.json`, the gateway-owned server name and numeric GitHub subject roles. Keep it across release replacements; do not seed a browser administrator. A missing file at startup starts with no name or administrators; an existing corrupt or incorrectly owned file prevents gateway startup until an operator repairs it. If an established file disappears while the gateway is running, administrator permissions fail closed and writes stop until operator repair or restart; it cannot silently re-create the old roles. The root-only `revoke.sock` control channel also carries bounded administration requests from a kernel-verified root peer. Use the operator CLI, not a direct edit to the state file:
+release replacement. Gateway-private state at `/var/lib/open-habitat-gateway/sessions.json` holds browser sessions and survives release replacement and reboot. The same private StateDirectory also holds `administration.json`, the gateway-owned server name and numeric GitHub subject roles. Keep it across release replacements; do not seed a browser administrator. A missing file at startup starts with no name or administrators; an existing corrupt or incorrectly owned file prevents gateway startup until an operator repairs it. If an established file disappears while the gateway is running, administrator permissions fail closed and writes stop until operator repair or restart; it cannot silently re-create the old roles. The root-only `revoke.sock` control channel also carries bounded administration requests from a kernel-verified root peer. Use the operator CLI, not a direct edit to the state file:
 
 ```sh
-native-agent-host admin settings show --json
-native-agent-host admin users list --json
-native-agent-host admin settings update --name 'Example host' --json
-native-agent-host admin role update <numeric-GitHub-subject> --administrator true --json
-native-agent-host admin role update <numeric-GitHub-subject> --administrator false --json
+open-habitat admin settings show --json
+open-habitat admin users list --json
+open-habitat admin settings update --name 'Example host' --json
+open-habitat admin role update <numeric-GitHub-subject> --administrator true --json
+open-habitat admin role update <numeric-GitHub-subject> --administrator false --json
 ```
 
 The first grant needs the person's existing broker binding (they must have signed in first); `admin users list` gives bound subjects and Unix names without credentials or home paths. A grant does not create a binding or admit an account. Removal needs no live broker binding. Updates also accept `--dry-run`; a grant plan checks the current bound-user list but cannot reserve the binding against concurrent change. The CLI requires effective root and a running gateway with the private socket. It reports structured results and errors with `--json` and does not use browser administrator roles. The gateway account alone reads `administration.json`; sockets and pending login flows in `/run` or memory do not persist.
@@ -103,7 +103,7 @@ needed before provisioning can run. The product supplies neutral templates in
 `internal/provision` define the detailed installation requirements.
 
 The operator CLI exposes configuration inspection, diagnostics, revocation and
-release provenance; `native-agent-host --help` lists its commands. The current
+release provenance; `open-habitat --help` lists its commands. The current
 `maintenance enter|leave` command only creates or removes a marker file.
 The host services do not consult that marker, so the command alone does not
 pause traffic or drain work.
@@ -115,9 +115,9 @@ snapshot establish that a user's daemon responds, but do not demonstrate a
 successful Pi model request. Host-owned diagnostics use one JSON object per stderr line from the gateway,
 root broker and each per-user daemon. systemd collects stderr in the service's
 journal. For the neutral unit names in `systemd/`, an operator can inspect them
-with `journalctl -u native-agent-host-gateway.service`,
-`journalctl -u native-agent-host-broker.service`, or
-`journalctl -u 'native-agent-host-daemon@<instance>.service'` (substitute the
+with `journalctl -u open-habitat-gateway.service`,
+`journalctl -u open-habitat-broker.service`, or
+`journalctl -u 'open-habitat-daemon@<instance>.service'` (substitute the
 installation's daemon instance). Use `-f` to follow and `--since` to limit the
 time window. The installation may name units differently; Fleetrepo defines
 actual journal access, retention and disk limits. A mapped user must not be

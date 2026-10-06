@@ -25,10 +25,10 @@ func (b diagnosticBroker) Exchange(_ context.Context, r BrokerRequest) (BrokerRe
 			return BrokerReply{}, nil
 		}
 		if b.changed {
-			return BrokerReply{Route: &BrokerRoute{UID: 1001, Username: "alice", Socket: "/run/native-agent-host/users/alice/daemon.sock"}, Epoch: 2, Generation: 1}, nil
+			return BrokerReply{Route: &BrokerRoute{UID: 1001, Username: "alice", Socket: "/run/open-habitat/users/alice/daemon.sock"}, Epoch: 2, Generation: 1}, nil
 		}
 	}
-	return BrokerReply{Route: &BrokerRoute{UID: 1001, Username: "alice", Socket: "/run/native-agent-host/users/alice/daemon.sock"}, Epoch: 1, Generation: 1}, nil
+	return BrokerReply{Route: &BrokerRoute{UID: 1001, Username: "alice", Socket: "/run/open-habitat/users/alice/daemon.sock"}, Epoch: 1, Generation: 1}, nil
 }
 func TestBrokerCallbackClassification(t *testing.T) {
 	cases := []struct {
@@ -77,7 +77,7 @@ func TestBrokerCallbackClassification(t *testing.T) {
 				if last["reason"] != "broker_denied" || last["broker_operation"] != operation || last["broker_reason"] != string(tc.reason) || first["attempt_id"] != last["attempt_id"] {
 					t.Fatalf("wrong classification: %v", last)
 				}
-				for _, forbidden := range []string{"alice", "other", "/secret/socket", "/run/native-agent-host", "secret raw error", state, flow.Value} {
+				for _, forbidden := range []string{"alice", "other", "/secret/socket", "/run/open-habitat", "secret raw error", state, flow.Value} {
 					if strings.Contains(buf.String(), forbidden) {
 						t.Fatalf("leaked %q", forbidden)
 					}

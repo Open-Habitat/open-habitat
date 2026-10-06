@@ -21,7 +21,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/core"
+	"github.com/Open-Habitat/open-habitat/internal/core"
 )
 
 //go:embed pi_device_helper.mjs

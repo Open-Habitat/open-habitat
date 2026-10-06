@@ -24,7 +24,7 @@ NAMES = ('agent-a', 'agent-b')
 UIDS = (21001, 21002)
 GATEWAY = 21003
 ORIGIN = 'https://host.fixture:8443'
-RUNTIME = pathlib.Path('/opt/native-agent-host/fixture-pi')
+RUNTIME = pathlib.Path('/opt/open-habitat/fixture-pi')
 PKG = RUNTIME / 'node_modules/@earendil-works/pi-coding-agent'
 children = []
 
@@ -71,7 +71,7 @@ def wait(condition, label, seconds=15):
 
 def browser():
     jar = http.cookiejar.CookieJar()
-    ctx = ssl.create_default_context(cafile='/etc/native-agent-host/tls.crt')
+    ctx = ssl.create_default_context(cafile='/etc/open-habitat/tls.crt')
     class NoRedirect(urllib.request.HTTPRedirectHandler):
         def redirect_request(self, *args): return None
     return urllib.request.build_opener(urllib.request.HTTPSHandler(context=ctx), urllib.request.HTTPCookieProcessor(jar), NoRedirect()), jar
@@ -115,7 +115,7 @@ def broker(listener):
                     answer = {'version':1,'failure':'denied'}
                 else:
                     name = NAMES[index]
-                    answer = {'version':1,'route':{'uid':UIDS[index], 'username':name, 'socket':f'/run/native-agent-host/users/{name}/daemon.sock'}, 'generation':2,'epoch':2}
+                    answer = {'version':1,'route':{'uid':UIDS[index], 'username':name, 'socket':f'/run/open-habitat/users/{name}/daemon.sock'}, 'generation':2,'epoch':2}
                 b = json.dumps(answer).encode()
                 c.sendall(struct.pack('>I',len(b))+b)
         except (OSError, ValueError, KeyError):
@@ -168,8 +168,8 @@ try:
         (home/'SYNTHETIC-IDENTITY').chmod(0o600)
         subprocess.run(['chown','-R',f'{uid}:{uid}',str(home)],check=True)
         os.chmod(home,0o700)
-    with open('/etc/passwd','a') as f:f.write('native-agent-host-gateway:x:21003:21003::/var/empty/native-agent-host-gateway:/bin/sh\n')
-    with open('/etc/group','a') as f:f.write('native-agent-host-gateway:x:21003:\n')
+    with open('/etc/passwd','a') as f:f.write('open-habitat-gateway:x:21003:21003::/var/empty/open-habitat-gateway:/bin/sh\n')
+    with open('/etc/group','a') as f:f.write('open-habitat-gateway:x:21003:\n')
     RUNTIME.mkdir(parents=True)
     with tarfile.open('/fixture/node.tar.xz') as archive:
         node = archive.extractfile('node-v22.21.1-linux-x64/bin/node')
@@ -185,24 +185,24 @@ try:
     check(subprocess.check_output([str(RUNTIME/'bin/node'),'--version']).strip()==b'v22.21.1', 'node pin')
     check(json.loads((PKG/'package.json').read_text())['version']=='0.85.1','Pi pin')
     check(all(p.lstat().st_uid==0 and (p.is_symlink() or not p.stat().st_mode & 0o022) for p in [RUNTIME,*RUNTIME.rglob('*')]),'immutable root-owned runtime')
-    put('/opt/native-agent-host/pi-runtime.json',{'node':str(RUNTIME/'bin/node'),'entry':str(PKG/'dist/index.js'),'manifest':str(PKG/'package.json')})
-    gateway_dir = pathlib.Path('/etc/native-agent-host')
+    put('/opt/open-habitat/pi-runtime.json',{'node':str(RUNTIME/'bin/node'),'entry':str(PKG/'dist/index.js'),'manifest':str(PKG/'package.json')})
+    gateway_dir = pathlib.Path('/etc/open-habitat')
     gateway_dir.mkdir(parents=True, exist_ok=True)
     os.chown(gateway_dir, 0, GATEWAY)
     gateway_dir.chmod(0o750)
-    check(all(denied(uid, "open('/etc/native-agent-host/pi-runtime.json').read()") for uid in UIDS), 'mapped UID reached gateway secret directory')
-    check(all(subprocess.run(['/usr/bin/python3','-c',"open('/opt/native-agent-host/pi-runtime.json').read()"],preexec_fn=drop(uid)).returncode==0 for uid in UIDS), 'mapped UID cannot read shared selector')
+    check(all(denied(uid, "open('/etc/open-habitat/pi-runtime.json').read()") for uid in UIDS), 'mapped UID reached gateway secret directory')
+    check(all(subprocess.run(['/usr/bin/python3','-c',"open('/opt/open-habitat/pi-runtime.json').read()"],preexec_fn=drop(uid)).returncode==0 for uid in UIDS), 'mapped UID cannot read shared selector')
     pathlib.Path('/usr/local/lib/fixture/tokens').mkdir(parents=True)
     for name in NAMES:
         put('/usr/local/lib/fixture/tokens/'+name,'PRODUCT_VM_TOKEN_'+name.replace('-','_')+'_FIXTURE_ONLY_92764',0o600)
     for src,dest in [('gh.py','gh'),('git.py','git')]:
         shutil.copyfile('/fixture/'+src,'/usr/bin/'+dest);os.chmod('/usr/bin/'+dest,0o755)
     # The helper is embedded in the product; this copy is diagnostic only.
-    shutil.copyfile('/fixture/helper.mjs','/opt/native-agent-host/status-diagnostic.mjs')
-    os.chmod('/opt/native-agent-host/status-diagnostic.mjs',0o644)
+    shutil.copyfile('/fixture/helper.mjs','/opt/open-habitat/status-diagnostic.mjs')
+    os.chmod('/opt/open-habitat/status-diagnostic.mjs',0o644)
     model=http.server.ThreadingHTTPServer(('127.0.0.1',18743),Model)
     threading.Thread(target=model.serve_forever,daemon=True).start()
-    runtime=pathlib.Path('/run/native-agent-host')
+    runtime=pathlib.Path('/run/open-habitat')
     runtime.mkdir(exist_ok=True);os.chown(runtime,0,GATEWAY);runtime.chmod(0o750)
     users=runtime/'users';users.mkdir();os.chown(users,0,GATEWAY);users.chmod(0o710)
     for uid in UIDS:
@@ -216,9 +216,9 @@ try:
         for allowed in (GATEWAY,uid):subprocess.run(['setfacl','-m',f'u:{allowed}:--x',str(directory)],check=True)
         subprocess.run(['setfacl','-m','g::---',str(directory)],check=True)
         path=directory/'daemon.sock';s=socket.socket(socket.AF_UNIX);s.bind(str(path));os.chown(path,uid,GATEWAY);os.chmod(path,0o660);s.listen(64)
-        binding=f'/etc/omega-habitat/daemon/user-mappings/daemon-{name}.json'
+        binding=f'/etc/open-habitat-daemon/daemon/user-mappings/daemon-{name}.json'
         put(binding,{'component':'daemon','handoff':{'gateway_uid':GATEWAY,'uid':uid,'username':name,'home':'/home/'+name,'socket':str(path),'provider':'github','subject':str(31001+index),'binding_file':binding}},0o640,0,uid)
-        for parent in ('/etc/omega-habitat','/etc/omega-habitat/daemon','/etc/omega-habitat/daemon/user-mappings'):
+        for parent in ('/etc/open-habitat-daemon','/etc/open-habitat-daemon/daemon','/etc/open-habitat-daemon/daemon/user-mappings'):
             os.chmod(parent,0o711)
         p=start(['/fixture/product','daemon','exec','--config',binding],uid,{'HOME':'/home/'+name,'PATH':'/usr/bin:/bin'},s.fileno())
         s.close()
@@ -228,31 +228,31 @@ try:
     check(denied(GATEWAY,"open('/home/agent-a/SYNTHETIC-IDENTITY').read()"),'gateway home')
     for index,name in enumerate(NAMES):
         other=NAMES[1-index]
-        check(denied(UIDS[index],f"import socket;s=socket.socket(socket.AF_UNIX);s.connect('/run/native-agent-host/users/{other}/daemon.sock')"),'cross UID UDS')
+        check(denied(UIDS[index],f"import socket;s=socket.socket(socket.AF_UNIX);s.connect('/run/open-habitat/users/{other}/daemon.sock')"),'cross UID UDS')
         with socket.socket(socket.AF_UNIX) as root_peer:
             root_peer.settimeout(2)
-            root_peer.connect(f'/run/native-agent-host/users/{name}/daemon.sock')
+            root_peer.connect(f'/run/open-habitat/users/{name}/daemon.sock')
             root_peer.sendall(b'GET /healthz HTTP/1.1\r\nHost: unix\r\n\r\n')
             try: reply=root_peer.recv(64)
             except ConnectionResetError:reply=b''
             check(reply==b'','root peer refused by daemon')
-    subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-days','1','-subj','/CN=github.com','-addext','subjectAltName=DNS:github.com,DNS:api.github.com,DNS:host.fixture','-keyout','/etc/native-agent-host/tls.key','-out','/etc/native-agent-host/tls.crt'],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-    os.chown('/etc/native-agent-host/tls.key',0,GATEWAY);os.chmod('/etc/native-agent-host/tls.key',0o640)
+    subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-days','1','-subj','/CN=github.com','-addext','subjectAltName=DNS:github.com,DNS:api.github.com,DNS:host.fixture','-keyout','/etc/open-habitat/tls.key','-out','/etc/open-habitat/tls.crt'],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    os.chown('/etc/open-habitat/tls.key',0,GATEWAY);os.chmod('/etc/open-habitat/tls.key',0o640)
     with open('/etc/hosts','a') as f:f.write('\n127.0.0.1 github.com api.github.com host.fixture\n')
     shutil.copyfile('/fixture/provider.py','/usr/local/sbin/product-fake-provider');os.chmod('/usr/local/sbin/product-fake-provider',0o755)
     provider=start(['/usr/bin/python3','/usr/local/sbin/product-fake-provider'])
     wait(lambda:provider.poll() is not None or port_ready(443),'OAuth fixture',5)
     check(provider.poll() is None,'OAuth fixture failed')
-    config='/etc/native-agent-host/gateway.json'
-    put(config,{'component':'gateway','listen':'127.0.0.1:8443','tls_cert':'/etc/native-agent-host/tls.crt','tls_key':'/etc/native-agent-host/tls.key','gateway_uid':GATEWAY,'oauth':{'client_id':'fixture-client','client_secret':'fixture-secret','callback_url':ORIGIN+'/auth/github/callback','origin':ORIGIN}},0o640,0,GATEWAY)
+    config='/etc/open-habitat/gateway.json'
+    put(config,{'component':'gateway','listen':'127.0.0.1:8443','tls_cert':'/etc/open-habitat/tls.crt','tls_key':'/etc/open-habitat/tls.key','gateway_uid':GATEWAY,'oauth':{'client_id':'fixture-client','client_secret':'fixture-secret','callback_url':ORIGIN+'/auth/github/callback','origin':ORIGIN}},0o640,0,GATEWAY)
     # Product gateway requires systemd-style activation for its private,
     # root-owned revocation listener; the guest simulates only that descriptor.
-    revoke=pathlib.Path('/run/native-agent-host/revoke.sock')
+    revoke=pathlib.Path('/run/open-habitat/revoke.sock')
     control=socket.socket(socket.AF_UNIX)
     control.bind(str(revoke))
     os.chown(revoke,0,0);revoke.chmod(0o600)
     control.listen(8)
-    gateway=start(['/fixture/product','gateway','exec','--config',config],GATEWAY,{'HOME':'/var/empty/native-agent-host-gateway','SSL_CERT_FILE':'/etc/native-agent-host/tls.crt'},control.fileno(),fdname='revoke')
+    gateway=start(['/fixture/product','gateway','exec','--config',config],GATEWAY,{'HOME':'/var/empty/open-habitat-gateway','SSL_CERT_FILE':'/etc/open-habitat/tls.crt'},control.fileno(),fdname='revoke')
     control.close()
     wait(lambda:gateway.poll() is not None or port_ready(8443),'gateway listener',5)
     check(gateway.poll() is None,'gateway died')
@@ -267,10 +267,10 @@ try:
         check(status==303,'OAuth callback '+str(status)+' '+body[:120].decode(errors='replace'))
         status,_,body=request(op,'/auth/session');check(status==200,'session')
         csrf=json.loads(body)['csrf'];browser_csrf.append(csrf)
-        status,_,snap=request(op,'/api/v1/snapshot',headers={'X-Agent-Host-UID':str(UIDS[1-index]),'X-Agent-Host-Socket':f'/run/native-agent-host/users/{NAMES[1-index]}/daemon.sock'})
+        status,_,snap=request(op,'/api/v1/snapshot',headers={'X-Agent-Host-UID':str(UIDS[1-index]),'X-Agent-Host-Socket':f'/run/open-habitat/users/{NAMES[1-index]}/daemon.sock'})
         if status != 200:
             start_status=time.monotonic()
-            direct=subprocess.run([str(RUNTIME/'bin/node'),'/opt/native-agent-host/status-diagnostic.mjs',str(PKG/'dist/index.js'),str(PKG/'package.json'),'status'],preexec_fn=drop(UIDS[index]),env={'HOME':'/home/'+name,'PATH':'/usr/bin:/bin','PI_OFFLINE':'1'},capture_output=True,timeout=20)
+            direct=subprocess.run([str(RUNTIME/'bin/node'),'/opt/open-habitat/status-diagnostic.mjs',str(PKG/'dist/index.js'),str(PKG/'package.json'),'status'],preexec_fn=drop(UIDS[index]),env={'HOME':'/home/'+name,'PATH':'/usr/bin:/bin','PI_OFFLINE':'1'},capture_output=True,timeout=20)
             print('status diagnostic',name,round(time.monotonic()-start_status,2),direct.returncode,direct.stdout[-100:],direct.stderr[:180],file=sys.stderr)
         check(status==200,'snapshot '+str(status)+' '+snap[:120].decode(errors='replace'))
         check(f'{name}-ordinary'.encode() in snap and f'{NAMES[1-index]}-ordinary'.encode() not in snap,'snapshot identity')
@@ -288,7 +288,7 @@ try:
             cookie='; '.join(c.name+'='+c.value for c in jar)
             data=json.dumps({'message':msg,'command_id':command}).encode()
             head=(f'POST {route}/send HTTP/1.1\r\nHost: host.fixture:8443\r\nOrigin: {ORIGIN}\r\nX-Agent-Host-CSRF: {csrf}\r\nCookie: {cookie}\r\nContent-Type: application/json\r\nContent-Length: {len(data)}\r\nConnection: close\r\n\r\n').encode()
-            ctx=ssl.create_default_context(cafile='/etc/native-agent-host/tls.crt')
+            ctx=ssl.create_default_context(cafile='/etc/open-habitat/tls.crt')
             conn=ctx.wrap_socket(socket.create_connection(('127.0.0.1',8443)),server_hostname='host.fixture')
             conn.sendall(head+data)
             # Drop the reply after the request has reached the loopback TLS endpoint.
@@ -440,7 +440,7 @@ try:
     path=users/'agent-a'/'daemon.sock'
     path.unlink()
     s=socket.socket(socket.AF_UNIX);s.bind(str(path));os.chown(path,UIDS[0],GATEWAY);os.chmod(path,0o660);s.listen(64)
-    replacement=start(['/fixture/product','daemon','exec','--config','/etc/omega-habitat/daemon/user-mappings/daemon-agent-a.json'],UIDS[0],{'HOME':'/home/agent-a','PATH':'/usr/bin:/bin'},s.fileno())
+    replacement=start(['/fixture/product','daemon','exec','--config','/etc/open-habitat-daemon/daemon/user-mappings/daemon-agent-a.json'],UIDS[0],{'HOME':'/home/agent-a','PATH':'/usr/bin:/bin'},s.fileno())
     s.close()
     wait(lambda:replacement.poll() is not None or request(browsers[0],'/api/v1/onboarding/pi/status')[0]==200,'daemon restart status',10)
     check(replacement.poll() is None,'restart daemon exited')

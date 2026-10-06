@@ -1,0 +1,21 @@
+[Unit]
+Description=Open Habitat gateway
+After=network-online.target open-habitat-revoke.socket
+Requires=open-habitat-revoke.socket
+
+[Service]
+User=open-habitat-gateway
+Group=open-habitat-gateway
+ExecStart=/opt/open-habitat/current/open-habitat gateway exec --config /etc/open-habitat/gateway.json
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+UMask=0077
+StateDirectory=open-habitat-gateway
+StateDirectoryMode=0700
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

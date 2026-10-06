@@ -1,13 +1,10 @@
-# Omega Habitat — brand identity brief
+# Open Habitat — brand identity brief
 
-Omega Habitat needs a recognizable identity for its browser interface. The name
-is chosen; the visual identity is to be designed and selected with Jari. The
-repository's working name is still Native Agent Host, and its renaming has its
-own [task](../../issues/name-open-habitat/item.md).
+Open Habitat needs a recognizable identity for its browser interface. The product name is chosen; the visual identity is to be designed and selected with Jari.
 
 ## Product and audience
 
-Omega Habitat brings a browser interface to AI agents running in each person's
+Open Habitat brings a browser interface to AI agents running in each person's
 own Linux account. People open their workspaces and use native agent histories
 also available through SSH and tmux. Files, credentials and processes stay with
 the native tools; Linux accounts separate users. The first agent is Pi on a
@@ -18,15 +15,14 @@ The audience is people using coding agents in developer workspaces and small
 teams sharing a Linux host. The identity should help them recognize the product
 in a browser tab and navigation, and feel calm, technical and approachable.
 
-“Habitat” refers to agents working in their native environment. “Omega” evokes
-“alpha and omega”: a place bringing agents and access paths together. That is
-the name's idea, while supported agents and functions are described by the
-product. The readable name is **Omega Habitat**.
+“Habitat” refers to agents working in their native environment. “Open”
+describes the project’s openness, not support for every agent or access path.
+The readable name is **Open Habitat**.
 
 ## Creative direction
 
-An Ω-derived arch or open doorway is one possible expression of entering a
-native environment. Use it as inspiration. Recommend the form that best fits
+An open doorway is one possible expression of entering a native environment.
+Use it as inspiration. Recommend the form that best fits
 the product and remains recognizable at small sizes, and compare it with a
 viable alternative. Explain the choice through actual-size examples. A symbol
 should work alongside the name and independently where space is limited.
@@ -67,15 +63,15 @@ that would harm legibility or recognition.
 
 ## Ready-to-paste designer prompt
 
-> Design a visual identity for **Omega Habitat**, a Finnish-language browser
+> Design a visual identity for **Open Habitat**, a Finnish-language browser
 > interface to AI agents running in each person's own Linux account. Its users
 > work with coding agents and developer workspaces; their files and histories
 > remain in native tools also accessible through SSH and tmux. Initial agent
 > support is Pi on one Linux host. The interface covers desktop and phone,
 > with light and dark themes.
 >
-> “Habitat” means agents in their native environment; “Omega” evokes bringing
-> agents and access paths together. An Ω-shaped arch or doorway is inspiration,
+> “Habitat” means agents in their native environment; “Open” describes the
+> project’s openness. An open doorway is inspiration,
 > and you may recommend another form. Aim for a calm, technical, approachable
 > identity. The UI uses neutral surfaces and muted teal accents (`#2b7f8c`
 > light, `#4fa6b4` dark); choose logo colors that fit. Consider differentiation

@@ -74,7 +74,7 @@ assert "home.name=='guestthree'" in gh and "21034" in gh
 assert "'PRODUCT_VM_TOKEN_'+home.name.replace('-','_')+'_FIXTURE_ONLY_92764'" in gh
 assert "'100000003','alternate':'guestthree'" in proof
 assert "c_uid=21034" in proof and "c_name='guestthree'" in proof
-assert "native-agent-host-daemon@guestone.socket','native-agent-host-daemon@guestone.service" in proof
+assert "open-habitat-daemon@guestone.socket','open-habitat-daemon@guestone.service" in proof
 assert "not (root/'guestone'/'daemon.sock').exists()" in proof
 print('rendered third identity: provider/token, allowlist, gh UID and revoked-socket gate aligned')
 
@@ -86,7 +86,7 @@ space = {'subprocess':types.SimpleNamespace(run=lambda argv, **kw: types.SimpleN
     b'ActiveState=active\nSubState=running\nResult=success\nMainPID=2345\n'
     b'ExecStart=/secret/PRODUCT_VM_TOKEN_foo\n')))}
 exec(compile(ast.Module(body=[fn],type_ignores=[]),'<offline-unit-state>','exec'),space)
-read = space['unit_state']('native-agent-host-daemon@guestthree.service',('ActiveState','SubState','Result','MainPID'))
+read = space['unit_state']('open-habitat-daemon@guestthree.service',('ActiveState','SubState','Result','MainPID'))
 assert read == {'ActiveState':'active','SubState':'running','Result':'success','MainPID':2345}
 assert 'PRODUCT_VM_TOKEN' not in repr(read)
 space['subprocess'].run=lambda argv, **kw: types.SimpleNamespace(returncode=0,stdout=b'ActiveState=active\nSubState=\xff\nMainPID=bad\n')

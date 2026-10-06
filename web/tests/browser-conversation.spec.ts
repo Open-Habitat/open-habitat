@@ -1209,13 +1209,13 @@ test("@browser-conversation expiry across reload clears unknown prior person's d
   await page.evaluate((identity) => {
     sessionStorage.setItem(`nah:${identity}:last-send:held`, "pending");
     sessionStorage.setItem("nah:github-step", "global");
-    sessionStorage.setItem("__nah_test_reload_seed", "1");
+    sessionStorage.setItem("__oh_test_reload_seed", "1");
   }, person);
   // Re-seed once before the new App loads: the previous document may already
   // have seen a 401 from its stream, which would otherwise make this pass by luck.
   await page.addInitScript((identity) => {
-    if (sessionStorage.getItem("__nah_test_reload_seed") !== "1") return;
-    sessionStorage.removeItem("__nah_test_reload_seed");
+    if (sessionStorage.getItem("__oh_test_reload_seed") !== "1") return;
+    sessionStorage.removeItem("__oh_test_reload_seed");
     sessionStorage.setItem(
       `nah:${identity}:draft:held`,
       "private across reload",

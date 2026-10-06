@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 func TestRepoCatalogBoundedNativeProjection(t *testing.T) {
@@ -27,7 +27,7 @@ func TestRepoCatalogBoundedNativeProjection(t *testing.T) {
 		t.Fatal(err)
 	}
 	uid, _ := strconv.Atoi(u.Uid)
-	cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: "42"}
+	cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: "42"}
 	calls := 0
 	run := func(_ context.Context, args ...string) ([]byte, error) {
 		calls++
@@ -91,7 +91,7 @@ func TestRepoCatalogFullNativePageFitsBound(t *testing.T) {
 		t.Fatal(err)
 	}
 	uid, _ := strconv.Atoi(u.Uid)
-	cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: "42"}
+	cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: "42"}
 	rows := make([]map[string]any, 50)
 	for i := range rows {
 		name := fmt.Sprintf("repo%02d", i)

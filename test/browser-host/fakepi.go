@@ -92,7 +92,7 @@ func runFakePi(args []string) {
 			mode, _ := os.ReadFile(filepath.Join(filepath.Dir(home), "fakepi-scenario"))
 			commands := []any{}
 			if strings.TrimSpace(string(mode)) == "pi-recap" {
-				commands = append(commands, map[string]any{"name": "nah-conversation-recap", "source": "extension"})
+				commands = append(commands, map[string]any{"name": "oh-conversation-recap", "source": "extension"})
 			}
 			emit(map[string]any{"type": "response", "id": req.ID, "command": "get_commands", "success": true, "data": map[string]any{"commands": commands}})
 		case "steer", "follow_up":
@@ -116,7 +116,7 @@ func runFakePi(args []string) {
 			mu.Unlock()
 			emit(map[string]any{"type": "response", "id": req.ID, "command": "clear_queue", "success": true, "data": map[string]any{"steering": removedSteering, "followUp": removedFollowUp}})
 		case "prompt":
-			if req.Message == "/nah-conversation-recap" {
+			if req.Message == "/oh-conversation-recap" {
 				mode, _ := os.ReadFile(filepath.Join(filepath.Dir(home), "fakepi-scenario"))
 				if strings.TrimSpace(string(mode)) == "pi-recap" && s.lastMessage != "" && s.lastRecap != s.lastMessage {
 					s.append(map[string]any{"type": "custom", "customType": "conversation-recap", "data": map[string]any{"recap": "Synteettinen työtila tutkittiin ja vastaus valmistui.", "next": "Tarkista seuraava kysymys", "through": s.lastMessage, "generatedAt": time.Now().UnixMilli(), "trigger": "manual"}})

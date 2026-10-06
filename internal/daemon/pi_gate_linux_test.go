@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 func TestPiStatusIsOnboardingOnly(t *testing.T) {
@@ -23,7 +23,7 @@ func TestPiStatusIsOnboardingOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Provider: "github", Subject: "42", Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock"}
+	cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Provider: "github", Subject: "42", Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock"}
 	checks := 0
 	status := func(context.Context) string { checks++; return "missing" }
 	sh := PiStatusHandler(cfg, func(*http.Request) bool { return true }, status)

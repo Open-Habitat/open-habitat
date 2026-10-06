@@ -3,8 +3,8 @@
 package daemon
 
 import (
-	"github.com/maintainer/native-agent-host/internal/nativegh"
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/nativegh"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 // NewNativeHandoff binds the mapped daemon configuration to its native CLI

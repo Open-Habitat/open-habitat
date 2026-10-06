@@ -19,7 +19,7 @@ var ErrUntrusted = errors.New("untrusted systemd socket")
 // mapped UID, in the gateway's group. This is paired with SO_PEERCRED UID 0
 // on the connected socket and daemon-side SO_PEERCRED of the gateway UID.
 func Mapped(path string, uid int) error {
-	if uid <= 0 || !strings.HasPrefix(path, "/run/native-agent-host/users/") || filepath.Clean(path) != path || filepath.Base(path) != "daemon.sock" {
+	if uid <= 0 || !strings.HasPrefix(path, "/run/open-habitat/users/") || filepath.Clean(path) != path || filepath.Base(path) != "daemon.sock" {
 		return ErrUntrusted
 	}
 	for dir := filepath.Dir(path); ; dir = filepath.Dir(dir) {

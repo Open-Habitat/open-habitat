@@ -20,8 +20,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/daemon"
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/daemon"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 // TestPiAttemptDistinctUIDs runs only inside scripts/test-pi-attempt-uids.sh's
@@ -142,7 +142,7 @@ func servePiUID(t *testing.T) {
 	path := os.Getenv("PI_PATH")
 	subject := os.Getenv("PI_SUBJECT")
 	name := map[int]string{21001: "agent-a", 21002: "agent-b"}[uid]
-	cfg := transport.Config{GatewayUID: 21003, UID: uid, Username: name, Home: home, Socket: "/run/native-agent-host/users/" + name + "/daemon.sock", Provider: "github", Subject: subject}
+	cfg := transport.Config{GatewayUID: 21003, UID: uid, Username: name, Home: home, Socket: "/run/open-habitat/users/" + name + "/daemon.sock", Provider: "github", Subject: subject}
 	ln, err := net.Listen("unix", path)
 	if err != nil {
 		t.Fatal(err)

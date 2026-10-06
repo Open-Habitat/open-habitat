@@ -4,7 +4,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 // Draft reference vs. synthetic host, never a live profile/server. Run from repo root.
-// NAH_PORT_BASE=21000 PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/ms-playwright" node web/lab/compare-design.mjs
+// OH_PORT_BASE=21000 PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/ms-playwright" node web/lab/compare-design.mjs
 import { chromium } from "@playwright/test";
 import { origin, snapshot } from "./session.mjs";
 

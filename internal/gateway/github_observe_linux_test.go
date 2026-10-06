@@ -19,7 +19,7 @@ import (
 func TestGatewayObserveBoundSessionAndReply(t *testing.T) {
 	now := time.Now()
 	uid := os.Getuid()
-	id := Identity{"github", "42", uid, "alice", "/run/native-agent-host/users/alice/daemon.sock"}
+	id := Identity{"github", "42", uid, "alice", "/run/open-habitat/users/alice/daemon.sock"}
 	socket := filepath.Join(t.TempDir(), "daemon.sock")
 	ln, e := net.Listen("unix", socket)
 	if e != nil {

@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/core"
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/core"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 )
 
@@ -223,7 +223,7 @@ func TestConversationPrivateBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := transport.Config{UID: uid, GatewayUID: uid, Username: u.Username, Home: u.HomeDir, Provider: "github", Subject: "42", Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock"}
+	cfg := transport.Config{UID: uid, GatewayUID: uid, Username: u.Username, Home: u.HomeDir, Provider: "github", Subject: "42", Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock"}
 	checks := 0
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

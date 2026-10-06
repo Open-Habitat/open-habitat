@@ -17,10 +17,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/maintainer/native-agent-host/internal/daemon"
-	"github.com/maintainer/native-agent-host/internal/gateway"
+	"github.com/Open-Habitat/open-habitat/internal/daemon"
+	"github.com/Open-Habitat/open-habitat/internal/gateway"
 
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 type routeProvider struct{}
@@ -49,7 +49,7 @@ func TestAuthenticatedGatewayToTwoDaemonSnapshotHandlers(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	identities := []gateway.Identity{{Provider: "github", Subject: "42", UID: 1001, Username: "alice", Socket: "/run/native-agent-host/users/alice/daemon.sock"}, {Provider: "github", Subject: "43", UID: 1002, Username: "bob", Socket: "/run/native-agent-host/users/bob/daemon.sock"}}
+	identities := []gateway.Identity{{Provider: "github", Subject: "42", UID: 1001, Username: "alice", Socket: "/run/open-habitat/users/alice/daemon.sock"}, {Provider: "github", Subject: "43", UID: 1002, Username: "bob", Socket: "/run/open-habitat/users/bob/daemon.sock"}}
 	bare := filepath.Join(t.TempDir(), "bare.git")
 	if out, e := exec.Command("/usr/bin/git", "init", "--bare", bare).CombinedOutput(); e != nil {
 		t.Fatalf("bare: %s %v", out, e)
@@ -75,7 +75,7 @@ func TestAuthenticatedGatewayToTwoDaemonSnapshotHandlers(t *testing.T) {
 		}
 		paths[m.Socket] = path
 		peers[path] = m.UID
-		cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: m.Subject}
+		cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: m.Subject}
 		label := strconv.Itoa(i)
 		snapshot := daemon.SnapshotHandlerWithNativeRoot(cfg, func(r *http.Request) bool {
 			// Synthetic listener still checks the real connecting process's kernel UID.

@@ -1,6 +1,6 @@
 //go:build linux
 
-// Standalone browser-test host. Never imported by cmd/native-agent-host.
+// Standalone browser-test host. Never imported by cmd/open-habitat.
 package main
 
 import (
@@ -28,10 +28,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/core"
-	"github.com/maintainer/native-agent-host/internal/daemon"
-	"github.com/maintainer/native-agent-host/internal/gateway"
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/core"
+	"github.com/Open-Habitat/open-habitat/internal/daemon"
+	"github.com/Open-Habitat/open-habitat/internal/gateway"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 type provider struct {
@@ -101,7 +101,7 @@ func main() {
 	if e != nil {
 		log.Fatal(e)
 	}
-	tmp, e := os.MkdirTemp("/tmp", "nah-browser-")
+	tmp, e := os.MkdirTemp("/tmp", "oh-browser-")
 	if e != nil {
 		log.Fatal(e)
 	}
@@ -110,10 +110,10 @@ func main() {
 	// the real conversation controller against the fake Pi child.
 	lab := os.Getenv("BROWSER_HOST_LAB") == "1"
 	base := 4174
-	if raw, set := os.LookupEnv("NAH_PORT_BASE"); set {
+	if raw, set := os.LookupEnv("OH_PORT_BASE"); set {
 		base, e = strconv.Atoi(raw)
 		if e != nil || strings.Trim(raw, "0123456789") != "" || base < 1024 || base > 65525 {
-			log.Fatal("NAH_PORT_BASE must be an integer from 1024 to 65525")
+			log.Fatal("OH_PORT_BASE must be an integer from 1024 to 65525")
 		}
 	}
 	port := base
@@ -156,7 +156,7 @@ esac
 	if e := os.WriteFile(fakeNode, []byte(fakeScript), 0700); e != nil {
 		log.Fatal(e)
 	}
-	identities := []gateway.Identity{{Provider: "github", Subject: "42", UID: 1001, Username: "alice", Socket: "/run/native-agent-host/users/alice/daemon.sock"}, {Provider: "github", Subject: "43", UID: 1002, Username: "bob", Socket: "/run/native-agent-host/users/bob/daemon.sock"}}
+	identities := []gateway.Identity{{Provider: "github", Subject: "42", UID: 1001, Username: "alice", Socket: "/run/open-habitat/users/alice/daemon.sock"}, {Provider: "github", Subject: "43", UID: 1002, Username: "bob", Socket: "/run/open-habitat/users/bob/daemon.sock"}}
 	var scenario atomic.Value
 	scenario.Store("ready")
 	fakePiScenario := filepath.Join(tmp, "fakepi-scenario")
@@ -241,7 +241,7 @@ esac
 		defer ln.Close()
 		paths[m.Socket] = path
 		peers[path] = m.UID
-		cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: m.Subject}
+		cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: m.Subject}
 		handler := daemon.SnapshotHandlerWithNativeRoot(cfg, func(r *http.Request) bool { return r.Context().Value("peer") == uid }, func(transport.Config) daemon.Discovery {
 			switch scenario.Load().(string) {
 			case "empty":

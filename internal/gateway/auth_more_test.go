@@ -40,8 +40,8 @@ func TestOAuthSessionAdmissionAndSweep(t *testing.T) {
 }
 func TestOAuthSessionRejectsUnsafeMapping(t *testing.T) {
 	_, _, p, s, _ := fixture(t)
-	base := OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: "https://host.test", CallbackURL: "https://host.test/auth/github/callback", Identities: []Identity{{"github", "42", 1001, "alice", "/run/native-agent-host/users/alice/daemon.sock"}}}
-	for _, m := range []Identity{{"github", "042", 1002, "bob", "/run/native-agent-host/users/bob/daemon.sock"}, {"github", "43", 1001, "bob", "/run/native-agent-host/users/bob/daemon.sock"}, {"github", "42", 1002, "bob", "/run/native-agent-host/users/bob/daemon.sock"}, {"github", "43", 1002, "bob", "/run/native-agent-host/../alice.sock"}, {"github", "43", 1002, "bob", "/tmp/bob.sock"}} {
+	base := OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: "https://host.test", CallbackURL: "https://host.test/auth/github/callback", Identities: []Identity{{"github", "42", 1001, "alice", "/run/open-habitat/users/alice/daemon.sock"}}}
+	for _, m := range []Identity{{"github", "042", 1002, "bob", "/run/open-habitat/users/bob/daemon.sock"}, {"github", "43", 1001, "bob", "/run/open-habitat/users/bob/daemon.sock"}, {"github", "42", 1002, "bob", "/run/open-habitat/users/bob/daemon.sock"}, {"github", "43", 1002, "bob", "/run/open-habitat/../alice.sock"}, {"github", "43", 1002, "bob", "/tmp/bob.sock"}} {
 		cfg := base
 		cfg.Identities = append([]Identity{}, base.Identities...)
 		cfg.Identities = append(cfg.Identities, m)

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://native-agent-host.invalid/contracts/v1/command.schema.json",
+  "$id": "https://open-habitat.invalid/contracts/v1/command.schema.json",
   "title": "Command request and result",
   "oneOf": [
     {

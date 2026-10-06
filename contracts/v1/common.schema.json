@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://native-agent-host.invalid/contracts/v1/common.schema.json",
-  "title": "Native Agent Host common v1 types",
+  "$id": "https://open-habitat.invalid/contracts/v1/common.schema.json",
+  "title": "Open Habitat common v1 types",
   "$defs": {
     "schemaVersion": {
       "const": 1

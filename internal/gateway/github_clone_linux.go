@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/udssecure"
+	"github.com/Open-Habitat/open-habitat/internal/udssecure"
 )
 
 const githubClonePath = "/api/v1/onboarding/github/clone"

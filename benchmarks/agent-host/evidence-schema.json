@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.invalid/native-agent-host/evidence-bundle-v1.schema.json",
+  "$id": "https://example.invalid/open-habitat/evidence-bundle-v1.schema.json",
   "title": "Sanitized agent-host fixture evidence bundle",
   "type": "object",
   "additionalProperties": false,

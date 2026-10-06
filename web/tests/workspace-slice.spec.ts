@@ -40,7 +40,7 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   await scenario(page, "ready");
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Tervetuloa Omega Habitatiin" }),
+    page.getByRole("heading", { name: "Tervetuloa Open Habitatiin" }),
   ).toBeVisible();
   expect(providerRequests).toHaveLength(0);
   await page.evaluate(() => document.fonts.ready);
@@ -147,7 +147,7 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   ]);
   expect(logoutResponse.status()).toBe(204);
   await expect(
-    page.getByRole("heading", { name: "Tervetuloa Omega Habitatiin" }),
+    page.getByRole("heading", { name: "Tervetuloa Open Habitatiin" }),
   ).toBeVisible();
   await expect(page.getByText("git-project")).toHaveCount(0);
   await expect((await page.request.get("/api/v1/snapshot")).status()).toBe(401);
@@ -242,7 +242,7 @@ test("@workspace-slice identity isolation, forged headers, expiry and loading", 
     await pa.request.get("/fixture/expire");
     await pa.reload();
     await expect(
-      pa.getByRole("heading", { name: "Tervetuloa Omega Habitatiin" }),
+      pa.getByRole("heading", { name: "Tervetuloa Open Habitatiin" }),
     ).toBeVisible();
     await expect(pa.getByText("ordinary-dir")).toHaveCount(0);
   } finally {

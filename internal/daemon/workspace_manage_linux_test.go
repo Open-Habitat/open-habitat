@@ -88,7 +88,7 @@ func TestWorkspaceManagement(t *testing.T) {
 	if got := request(map[string]any{"action": "delete", "workspace_id": id, "observation_token": token}); got != 400 {
 		t.Fatalf("delete allowed: %d", got)
 	}
-	if e := os.WriteFile(filepath.Join(cfg.Home, ".local", "state", "native-agent-host", "user-state.json"), []byte("invalid"), 0600); e != nil {
+	if e := os.WriteFile(filepath.Join(cfg.Home, ".local", "state", "open-habitat", "user-state.json"), []byte("invalid"), 0600); e != nil {
 		t.Fatal(e)
 	}
 	if got := request(map[string]any{"action": "visibility", "workspace_id": id, "observation_token": token, "hidden": false}); got != 409 {

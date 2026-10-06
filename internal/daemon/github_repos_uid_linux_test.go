@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 // Run through scripts/test-repo-catalog-uids.sh: three real kernel UIDs in a
@@ -230,7 +230,7 @@ func serveCatalogUID(t *testing.T) {
 	home := os.Getenv("REPO_HOME")
 	subject := os.Getenv("REPO_SUBJECT")
 	name := map[int]string{21001: "agent-a", 21002: "agent-b"}[uid]
-	cfg := transport.Config{GatewayUID: 21003, UID: uid, Username: name, Home: home, Socket: "/run/native-agent-host/users/" + name + "/daemon.sock", Provider: "github", Subject: subject}
+	cfg := transport.Config{GatewayUID: 21003, UID: uid, Username: name, Home: home, Socket: "/run/open-habitat/users/" + name + "/daemon.sock", Provider: "github", Subject: subject}
 	ln, e := net.Listen("unix", os.Getenv("REPO_SOCKET"))
 	if e != nil {
 		t.Fatal(e)

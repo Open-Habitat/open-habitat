@@ -44,11 +44,11 @@ fixture snapshots, selected by `VITE_SYNTHETIC_DEMO`; it exercises the UI, not
 the host. `test/browser-host/` is a standalone Go TLS host on port 4174 that
 Playwright builds and starts against a fresh production `web/dist`. It mounts
 the real gateway and daemon handlers with synthetic seams: two invented
-identities on same-UID Unix sockets under a private `/tmp/nah-browser-*`
+identities on same-UID Unix sockets under a private `/tmp/oh-browser-*`
 directory, a fake OAuth provider, and a `/fixture/` prefix through which tests
 switch scenarios and history modes and expire sessions. That switch is
 process-wide, which is why Playwright runs with one worker. The host is
-test-only code, never imported by `cmd/native-agent-host`. Both the default browser suite and lab mode run the real daemon conversation
+test-only code, never imported by `cmd/open-habitat`. Both the default browser suite and lab mode run the real daemon conversation
 controller and native-history path against a fake Pi child. This
 proves routing and the browser/host contract but not UID isolation; the two-UID systemd VM
 scenarios in `scripts/vm-test.sh` prove that. A browser test passing here is
@@ -56,7 +56,7 @@ host-backed synthetic evidence and should be described as such.
 
 Run `biome` from `web/`: invoked from the repository root it fails on the nested root configuration in `web/biome.json`.
 
-For extended synthetic UI exploration, `scripts/lab.sh start|stop|status|url` builds a production bundle and starts the lab on port 4175 by default, choosing a free port and recording it in `.cache/lab/port` if occupied. Set `NAH_PORT_BASE` to a distinct value for concurrent browser suites in other worktrees (default listeners: 4174, 4175, 4183, 4184). Sign in through the fake provider as Alice or Bob. From the repository root, `PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" node web/lab/shoot.mjs /workspaces .cache/lab/shots/workspaces.png` captures a desktop view (`--narrow` for 390px, `--bob` for Bob); `web/lab/session.mjs` is reusable for scripted Chromium exploration. Screenshots and lab logs live under ignored `.cache/lab/`. The lab scans invented homes and histories, adds richer fixture content to the same real controller/fake Pi setup, and uses synthetic gh/git/OAuth, and supports `/fixture/scenario?value=pi-onboarding`. It does not establish separate-UID isolation, real Pi/provider behavior or live-host behavior. Never use a personal Chrome profile or real home for exploration.
+For extended synthetic UI exploration, `scripts/lab.sh start|stop|status|url` builds a production bundle and starts the lab on port 4175 by default, choosing a free port and recording it in `.cache/lab/port` if occupied. Set `OH_PORT_BASE` to a distinct value for concurrent browser suites in other worktrees (default listeners: 4174, 4175, 4183, 4184). Sign in through the fake provider as Alice or Bob. From the repository root, `PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" node web/lab/shoot.mjs /workspaces .cache/lab/shots/workspaces.png` captures a desktop view (`--narrow` for 390px, `--bob` for Bob); `web/lab/session.mjs` is reusable for scripted Chromium exploration. Screenshots and lab logs live under ignored `.cache/lab/`. The lab scans invented homes and histories, adds richer fixture content to the same real controller/fake Pi setup, and uses synthetic gh/git/OAuth, and supports `/fixture/scenario?value=pi-onboarding`. It does not establish separate-UID isolation, real Pi/provider behavior or live-host behavior. Never use a personal Chrome profile or real home for exploration.
 
 Fixture code and the production bundle are kept apart by construction.
 `VITE_ENABLE_TEST_FIXTURES=true` makes the app lazy-load

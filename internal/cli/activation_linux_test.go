@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 func TestActivationChild(t *testing.T) {
@@ -64,7 +64,7 @@ func TestActivatedSocketFD3(t *testing.T) {
 		{"not-listening", "unbound", "1", "daemon"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			dir, e := os.MkdirTemp("/tmp", "nah-act-")
+			dir, e := os.MkdirTemp("/tmp", "oh-act-")
 			if e != nil {
 				t.Fatal(e)
 			}

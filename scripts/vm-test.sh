@@ -39,7 +39,7 @@ command -v timeout >/dev/null || fail missing_timeout 'GNU timeout is required' 
 command -v podman >/dev/null || fail missing_podman 'Rootless Podman is required for full VM run' 2
 [[ $(podman info --format '{{.Host.Security.Rootless}}' 2>/dev/null) == true ]] || fail podman_unavailable 'Rootless Podman is unavailable; check storage and user namespace' 2
 # Build is disposable, pinned at the base manifest. No host package installation.
-tag=localhost/native-agent-host-vm-tools:prereq
+tag=localhost/open-habitat-vm-tools:prereq
 recipe_sha=$(sha256sum "$repo/test/vm/Containerfile" | cut -d' ' -f1)
 current_recipe=$(podman image inspect "$tag" --format '{{index .Labels "fixture.recipe_sha"}}' 2>/dev/null || :)
 if [[ $current_recipe != "$recipe_sha" ]]; then
@@ -50,7 +50,7 @@ fi
 image_id=$(podman image inspect "$tag" --format '{{.Id}}')
 [[ $image_id =~ ^[0-9a-f]{64}$ ]] || fail tool_image_unavailable 'Could not identify VM tools image' 2
 podman_run(){ timeout -k 5s 30s podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --pids-limit=128 --memory=3g --cpus=2 --read-only --tmpfs /tmp:rw,size=256m --mount "type=bind,src=$repo/test/vm,dst=/fixture,ro=true" "$image_id" "$@"; }
-if ! podman_run cloud-init schema --config-file /fixture/cloud-init.yaml >/dev/null 2>&1 || ! podman_run python3 -c 'import yaml; c=yaml.safe_load(open("/fixture/cloud-init.yaml")); assert isinstance(c,dict) and c.get("users") and c.get("write_files") and c.get("runcmd"); assert [(u["name"],u["uid"]) for u in c["users"] if isinstance(u,dict)] == [("agent-a",21001),("agent-b",21002),("native-agent-host-gateway",21003)]; assert {f["path"] for f in c["write_files"]} >= {"/home/agent-a/SYNTHETIC-IDENTITY","/home/agent-b/SYNTHETIC-IDENTITY","/usr/local/sbin/fixture-proof"}' 2>/dev/null; then
+if ! podman_run cloud-init schema --config-file /fixture/cloud-init.yaml >/dev/null 2>&1 || ! podman_run python3 -c 'import yaml; c=yaml.safe_load(open("/fixture/cloud-init.yaml")); assert isinstance(c,dict) and c.get("users") and c.get("write_files") and c.get("runcmd"); assert [(u["name"],u["uid"]) for u in c["users"] if isinstance(u,dict)] == [("agent-a",21001),("agent-b",21002),("open-habitat-gateway",21003)]; assert {f["path"] for f in c["write_files"]} >= {"/home/agent-a/SYNTHETIC-IDENTITY","/home/agent-b/SYNTHETIC-IDENTITY","/usr/local/sbin/fixture-proof"}' 2>/dev/null; then
   fail invalid_cloud_init 'cloud-init YAML is invalid or synthetic identities/fixture paths are missing' 1
 fi
 cache=$repo/.cache/vm
@@ -94,9 +94,9 @@ if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario ==
     archive_sha=$(sha256sum "$archive" | cut -d' ' -f1)
     # verify-release validates entry types, inventory and checksums before extraction.
     tar -xzf "$archive" -C "$run/release" || fail invalid_release 'Verified release extraction failed' 2
-    release_root="$run/release/native-agent-host-0.0.0-test-linux-amd64"
-    cp "$release_root/bin/native-agent-host" "$run/native-agent-host"
-    embedded_commit=$("$run/native-agent-host" --json version | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["commit"])') || fail invalid_release 'Embedded commit unavailable' 2
+    release_root="$run/release/open-habitat-0.0.0-test-linux-amd64"
+    cp "$release_root/bin/open-habitat" "$run/open-habitat"
+    embedded_commit=$("$run/open-habitat" --json version | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["commit"])') || fail invalid_release 'Embedded commit unavailable' 2
     [[ $embedded_commit == "$product_commit" ]] || fail invalid_release 'Embedded release commit differs from committed tree' 2
   else
     overlay=()
@@ -104,16 +104,16 @@ if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario ==
       python3 "$repo/test/vm/jit-crash-overlay.py" "$repo" "$run" || fail product_build_failed 'Could not prepare disposable guest build overlay' 2
       overlay=(-overlay "$run/guest-overlay.json")
     fi
-    (cd "$repo" && GOFLAGS= CGO_ENABLED=0 go build -trimpath "${overlay[@]}" -o "$run/native-agent-host" ./cmd/native-agent-host) || fail product_build_failed 'Could not build product binary' 2
+    (cd "$repo" && GOFLAGS= CGO_ENABLED=0 go build -trimpath "${overlay[@]}" -o "$run/open-habitat" ./cmd/open-habitat) || fail product_build_failed 'Could not build product binary' 2
     if [[ $scenario == jit-broker-crash ]]; then
       # A release compiled from committed source cannot include the overlay,
       # even if a caller sets the formerly dangerous guest build tag.
-      (cd "$repo" && GOFLAGS=-tags=nah_guest_fault CGO_ENABLED=0 go build -trimpath -o "$run/release-comparison" ./cmd/native-agent-host) || fail product_build_failed 'Could not build release-comparison binary' 2
-      ! grep -aqE 'nah-guest-broker-crash|NAH_GUEST_PENDING_REFUSED' "$run/release-comparison" || fail product_build_failed 'Guest fault or diagnostic leaked into ordinary build' 2
-      grep -aq 'nah-guest-broker-crash' "$run/native-agent-host" && grep -aq 'NAH_GUEST_PENDING_REFUSED' "$run/native-agent-host" || fail product_build_failed 'Guest fixture binary lacks crash hook or pending diagnostic' 2
+      (cd "$repo" && GOFLAGS=-tags=oh_guest_fault CGO_ENABLED=0 go build -trimpath -o "$run/release-comparison" ./cmd/open-habitat) || fail product_build_failed 'Could not build release-comparison binary' 2
+      ! grep -aqE 'oh-guest-broker-crash|OH_GUEST_PENDING_REFUSED' "$run/release-comparison" || fail product_build_failed 'Guest fault or diagnostic leaked into ordinary build' 2
+      grep -aq 'oh-guest-broker-crash' "$run/open-habitat" && grep -aq 'OH_GUEST_PENDING_REFUSED' "$run/open-habitat" || fail product_build_failed 'Guest fixture binary lacks crash hook or pending diagnostic' 2
     fi
   fi
-  binary_sha=$(sha256sum "$run/native-agent-host" | cut -d' ' -f1)
+  binary_sha=$(sha256sum "$run/open-habitat" | cut -d' ' -f1)
   if [[ $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-broker-crash || $scenario == jit-reboot-diagnostic ]]; then
     # Read only: exact landed Fleetrepo checkout and reviewed policy hashes are
     # checked by the renderer before any private bytes reach the disposable ISO.
@@ -122,13 +122,13 @@ if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario ==
     [[ $scenario == jit-concurrent ]] && jit_args=(concurrent)
     [[ $scenario == jit-broker-crash ]] && jit_args=(broker-crash)
     [[ $scenario == jit-reboot-diagnostic ]] && jit_args=(reboot)
-    PRODUCT_RELEASE_ROOT=${release_root:-} FLEETREPO_JIT_SOURCE=${FLEETREPO_JIT_SOURCE:-/home/maintainer/Sources/fleetrepo} python3 "$repo/test/vm/jit-fixture.py" "$run" "$run/native-agent-host" "${jit_args[@]}" >"$run/fixture.log" 2>&1 || fail invalid_policy_input 'Pinned Fleetrepo commit or reviewed JIT gate blob unavailable or invalid' 1
+    PRODUCT_RELEASE_ROOT=${release_root:-} FLEETREPO_JIT_SOURCE=${FLEETREPO_JIT_SOURCE:-/home/maintainer/Sources/fleetrepo} python3 "$repo/test/vm/jit-fixture.py" "$run" "$run/open-habitat" "${jit_args[@]}" >"$run/fixture.log" 2>&1 || fail invalid_policy_input 'Pinned Fleetrepo commit or reviewed JIT gate blob unavailable or invalid' 1
     seed_file=/run-data/jit-cloud-init.yaml
   elif [[ $scenario == broker-guest ]]; then
-    python3 "$repo/test/vm/broker-fixture.py" "$run" "$run/native-agent-host" || fail invalid_product_fixture 'Could not render broker seed' 2
+    python3 "$repo/test/vm/broker-fixture.py" "$run" "$run/open-habitat" || fail invalid_product_fixture 'Could not render broker seed' 2
     seed_file=/run-data/broker-cloud-init.yaml
   else
-    python3 "$repo/test/vm/product-fixture.py" "$run" "$run/native-agent-host" || fail invalid_product_fixture 'Could not render private product seed' 2
+    python3 "$repo/test/vm/product-fixture.py" "$run" "$run/open-habitat" || fail invalid_product_fixture 'Could not render private product seed' 2
     seed_file=/run-data/product-cloud-init.yaml
   fi
   if [[ $scenario == two-user-routing || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-broker-crash || $scenario == jit-reboot-diagnostic ]]; then
@@ -140,9 +140,9 @@ if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario ==
       read -r filename digest <<< "$entry"
       echo "$digest  $run/$filename" | sha256sum -c --status || fail product_iso_failed 'Pinned guest ACL utility digest mismatch' 2
     done
-    iso_files=(/native-agent-host=/run-data/native-agent-host /setfacl=/run-data/setfacl /getfacl=/run-data/getfacl /libacl.so.1=/run-data/libacl.so.1)
+    iso_files=(/open-habitat=/run-data/open-habitat /setfacl=/run-data/setfacl /getfacl=/run-data/getfacl /libacl.so.1=/run-data/libacl.so.1)
   else
-    iso_files=(/native-agent-host=/run-data/native-agent-host)
+    iso_files=(/open-habitat=/run-data/open-habitat)
   fi
   if ! timeout -k 5s 60s podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --tmpfs /tmp:rw,size=64m --mount "type=bind,src=$run,dst=/run-data" "$image_id" genisoimage -quiet -R -graft-points -V PRODUCT -o /run-data/product.iso "${iso_files[@]}"; then fail product_iso_failed 'Could not seal read-only product ISO' 2; fi
   if ! podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --tmpfs /tmp:rw,size=32m --mount "type=bind,src=$run,dst=/run-data,ro=true" "$image_id" cloud-init schema --config-file "$seed_file" >/dev/null 2>&1; then fail invalid_product_fixture 'Product cloud-init schema invalid' 1; fi
@@ -232,7 +232,7 @@ REBOOT_REASON
     fail boot_proof_failed "JIT reboot diagnostic failed closed (VM exit $vm_status, ${duration}s; check=$reason; private=$diagnostic_log)" 2
   fi
   # No synthetic credential may appear in serial output or binary.
-  if ! python3 - "$run/serial.log" "$run/native-agent-host" <<'REBOOT_SCAN'
+  if ! python3 - "$run/serial.log" "$run/open-habitat" <<'REBOOT_SCAN'
 import pathlib,sys
 for name in ('guestone','guesttwo','UNKNOWN'):
  token=('PRODUCT_VM_TOKEN_'+name+'_FIXTURE_ONLY_92764').encode()
@@ -272,7 +272,7 @@ CRASH_REASON
 )
     fail boot_proof_failed "JIT broker crash guest refused proof (VM exit $vm_status, ${duration}s; check=$reason)" 2
   fi
-  if ! python3 - "$run/serial.log" "$run/native-agent-host" <<'CRASH_SCAN'
+  if ! python3 - "$run/serial.log" "$run/open-habitat" <<'CRASH_SCAN'
 import pathlib,sys
 for name in ('guestone','guesttwo','guestthree','UNKNOWN'):
  token=('PRODUCT_VM_TOKEN_'+name+'_FIXTURE_ONLY_92764').encode()
@@ -312,7 +312,7 @@ CONCURRENT_REASON
     chmod 600 "$debug_log"; cp "$run/serial.log" "$debug_log"
     fail boot_proof_failed "JIT concurrent guest failed closed (VM exit $vm_status, ${duration}s; check=$reason; private=$debug_log)" 2
   fi
-  if ! python3 - "$run/serial.log" "$run/native-agent-host" <<'CONCURRENT_TOKEN_SCAN'
+  if ! python3 - "$run/serial.log" "$run/open-habitat" <<'CONCURRENT_TOKEN_SCAN'
 import pathlib,sys
 for name in ('guestone','guesttwo','guestthree','UNKNOWN'):
  token=('PRODUCT_VM_TOKEN_'+name+'_FIXTURE_ONLY_92764').encode()
@@ -374,7 +374,7 @@ REASON
     fi
     fail boot_proof_failed "JIT login guest failed closed (VM exit $vm_status, ${duration}s; check=$reason)" 2
   fi
-  if ! python3 - "$repo" "$run/serial.log" "$run/native-agent-host" <<'TOKEN_SCAN'
+  if ! python3 - "$repo" "$run/serial.log" "$run/open-habitat" <<'TOKEN_SCAN'
 import pathlib,sys
 repo=pathlib.Path(sys.argv[1]);tokens=[('PRODUCT_VM_TOKEN_'+n+'_FIXTURE_ONLY_92764').encode() for n in ('guestone','guesttwo','guestthree','UNKNOWN')]
 output=[pathlib.Path(sys.argv[2]),pathlib.Path(sys.argv[3])]
@@ -396,7 +396,7 @@ import json,sys
 try:
  p=json.loads(sys.argv[1])
  if not isinstance(p,dict) or p.get('status')!='passed' or p.get('scope')!='jit-provision' or p.get('pid1')!='systemd': sys.exit(1)
- if p.get('uids')!=[21032,21033,21003] or p.get('binary_path')!='/opt/native-agent-host/current/native-agent-host': sys.exit(1)
+ if p.get('uids')!=[21032,21033,21003] or p.get('binary_path')!='/opt/open-habitat/current/open-habitat': sys.exit(1)
  if not all(p.get(k) is True for k in ('pool_vacant_before_seed','new_accounts','committed_bindings','concurrent_clients_released','rerun_idempotent','wrong_peer_denied','wrong_uid_denied','pending_denied','boot_acl_denied','prepared_socket_started','cross_uid_denied','broker_config_drift_denied')): sys.exit(1)
 except (ValueError,TypeError): sys.exit(1)
 JIT_CHECK
@@ -469,7 +469,7 @@ REASON
 )
     fail boot_proof_failed "Product guest failed closed (VM exit $vm_status, ${duration}s; check=$reason)" 2
   fi
-  if ! python3 - "$repo" "$run/serial.log" "$run/native-agent-host" <<'TOKEN_SCAN'
+  if ! python3 - "$repo" "$run/serial.log" "$run/open-habitat" <<'TOKEN_SCAN'
 import pathlib,sys
 repo=pathlib.Path(sys.argv[1]); tokens=[('PRODUCT_VM_TOKEN_'+n+'_FIXTURE_ONLY_92764').encode() for n in ('agent_a','agent_b')]
 files=[pathlib.Path(sys.argv[2]),pathlib.Path(sys.argv[3]),repo/'scripts/vm-test.sh',*list((repo/'test/vm').glob('*.py'))]

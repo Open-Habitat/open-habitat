@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/gateway"
+	"github.com/Open-Habitat/open-habitat/internal/gateway"
 )
 
 type revokeTestBroker struct{}
@@ -21,7 +21,7 @@ func (revokeTestBroker) Exchange(_ context.Context, r gateway.BrokerRequest) (ga
 	if r.ID != "42" {
 		return gateway.BrokerReply{}, nil
 	}
-	return gateway.BrokerReply{Route: &gateway.BrokerRoute{UID: 1001, Username: "alice", Socket: "/run/native-agent-host/users/alice/daemon.sock"}, Epoch: 1, Generation: 1}, nil
+	return gateway.BrokerReply{Route: &gateway.BrokerRoute{UID: 1001, Username: "alice", Socket: "/run/open-habitat/users/alice/daemon.sock"}, Epoch: 1, Generation: 1}, nil
 }
 
 func TestPrivateRevocationProtocol(t *testing.T) {

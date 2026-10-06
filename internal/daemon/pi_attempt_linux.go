@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/maintainer/native-agent-host/internal/diagnostic"
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 // Attempt state is ephemeral and scoped to this daemon process. Pi remains the

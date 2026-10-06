@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 // A real subprocess, but only a disposable synthetic gh fixture and credential.
@@ -50,7 +50,7 @@ esac
 		if e := os.WriteFile(filepath.Join(home, "fixture-id"), []byte(id), 0600); e != nil {
 			t.Fatal(e)
 		}
-		cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/native-agent-host/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: id}
+		cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: id}
 		run := func(ctx context.Context, args ...string) ([]byte, error) {
 			return runRepoGHProgram(ctx, home, program, args...)
 		}

@@ -1,4 +1,4 @@
-// Run against a fresh synthetic lab: NAH_PORT_BASE=<free base> ./scripts/lab.sh start
+// Run against a fresh synthetic lab: OH_PORT_BASE=<free base> ./scripts/lab.sh start
 // PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright node web/lab/reading-position.mjs
 import { expect } from "@playwright/test";
 import { openLab } from "./session.mjs";

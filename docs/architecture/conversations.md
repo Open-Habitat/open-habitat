@@ -111,7 +111,7 @@ implementation/scope difference for joint follow-up.
 A browser-managed conversation with a confirmed idle controller state, or a
 positively reaped daemon child, can be archived. The daemon checks the native
 session header, workspace association and current snapshot observation token
-before updating the user's `~/.local/state/native-agent-host/user-state.json`.
+before updating the user's `~/.local/state/open-habitat/user-state.json`.
 Workspace visibility and archive updates share one writer lock and an atomic
 rename; Pi history is neither moved nor copied. The snapshot reports `active`,
 `archived` or `unknown` per conversation. Archived browser conversations do not

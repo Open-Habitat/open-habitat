@@ -21,7 +21,7 @@ func TestGatewayRepoCatalogPrePiMappedSocket(t *testing.T) {
 	now := time.Now()
 	paths := map[string]string{}
 	malformed := false
-	mappings := []Identity{{"github", "42", uid, "alice", "/run/native-agent-host/users/alice/daemon.sock"}, {"github", "43", uid, "bob", "/run/native-agent-host/users/bob/daemon.sock"}}
+	mappings := []Identity{{"github", "42", uid, "alice", "/run/open-habitat/users/alice/daemon.sock"}, {"github", "43", uid, "bob", "/run/open-habitat/users/bob/daemon.sock"}}
 	for _, m := range mappings {
 		dir := t.TempDir()
 		socket := filepath.Join(dir, "daemon.sock")

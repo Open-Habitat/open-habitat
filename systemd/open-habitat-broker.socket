@@ -1,18 +1,18 @@
 [Unit]
-Description=Native Agent Host restricted root broker socket
-# Fleetrepo must prepare and verify root:gateway /run/native-agent-host 0750
+Description=Open Habitat restricted root broker socket
+# Fleetrepo must prepare and verify root:gateway /run/open-habitat 0750
 # before this socket starts, including after reboot; DirectoryMode is NOT
 # an ACL/boot policy. Do not enable until that policy has landed.
 
 [Socket]
-ListenStream=/run/native-agent-host/broker.sock
+ListenStream=/run/open-habitat/broker.sock
 SocketMode=0660
 SocketUser=root
-SocketGroup=native-agent-host-gateway
+SocketGroup=open-habitat-gateway
 DirectoryMode=0750
 FileDescriptorName=broker
 RemoveOnStop=yes
-Service=native-agent-host-broker.service
+Service=open-habitat-broker.service
 
 [Install]
 WantedBy=sockets.target

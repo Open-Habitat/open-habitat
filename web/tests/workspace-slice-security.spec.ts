@@ -17,7 +17,7 @@ test("@workspace-slice production bundle contains no fixture controls", async ({
   }
   await page.goto("/?fixture=design");
   await expect(
-    page.getByRole("heading", { name: "Tervetuloa Omega Habitatiin" }),
+    page.getByRole("heading", { name: "Tervetuloa Open Habitatiin" }),
   ).toBeVisible();
   await expect(
     page.getByText("Rakenna saavutettava komponenttikirjasto"),
@@ -138,7 +138,7 @@ test("@workspace-slice callback errors never claim a session and preserve safe d
   await page.request.get("/fixture/scenario?value=native-error");
   await page.goto("/workspaces/ws_abcdefgh");
   await expect(
-    page.getByRole("heading", { name: "Tervetuloa Omega Habitatiin" }),
+    page.getByRole("heading", { name: "Tervetuloa Open Habitatiin" }),
   ).toBeVisible();
   await expect((await page.request.get("/api/v1/snapshot")).status()).toBe(401);
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();

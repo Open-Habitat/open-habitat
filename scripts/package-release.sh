@@ -10,9 +10,9 @@ while (($#)); do case "$1" in --version) version=$2;shift 2;;--target) target=$2
 [[ -f $web_dir/index.html ]] || { echo "error: --web-dir '$web_dir' is not a Vite build" >&2;exit 1; }
 if grep -R -E 'Alder-testifixture|Deterministinen testi: daemon' "$web_dir" >/dev/null;then echo "error: test fixture content found in --web-dir '$web_dir'" >&2;exit 1;fi
 mkdir -p "$output"; output=$(cd "$output"&&pwd); stage=$(mktemp -d); trap 'rm -rf "$stage"' EXIT
-name="native-agent-host-$version-$target"; root="$stage/$name"; mkdir -p "$root/bin" "$root/web" "$root/systemd" "$root/sysusers.d" "$root/tmpfiles.d" "$root/licenses"
+name="open-habitat-$version-$target"; root="$stage/$name"; mkdir -p "$root/bin" "$root/web" "$root/systemd" "$root/sysusers.d" "$root/tmpfiles.d" "$root/licenses"
 commit=$(git -C "$repo" rev-parse HEAD)
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags "-s -w -buildid= -X github.com/maintainer/native-agent-host/internal/cli.version=$version -X github.com/maintainer/native-agent-host/internal/cli.buildCommit=$commit" -o "$root/bin/native-agent-host" "$repo/cmd/native-agent-host"
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags "-s -w -buildid= -X github.com/Open-Habitat/open-habitat/internal/cli.version=$version -X github.com/Open-Habitat/open-habitat/internal/cli.buildCommit=$commit" -o "$root/bin/open-habitat" "$repo/cmd/open-habitat"
 cp -a "$web_dir"/. "$root/web/"
 # Vite source maps contain original source (including test-only flag references).
 # They are not required to serve the client and must not ship in a pilot package.

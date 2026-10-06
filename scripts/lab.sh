@@ -9,8 +9,8 @@ preferred=$(node --input-type=module -e 'import { ports } from "./web/test-ports
 portfile=$state/port
 port=$(cat "$portfile" 2>/dev/null || echo "$preferred")
 url=https://127.0.0.1:$port
-mkdir -p "$state/shots" /var/tmp/native-agent-host-build
-export TMPDIR=/var/tmp/native-agent-host-build
+mkdir -p "$state/shots" /var/tmp/open-habitat-build
+export TMPDIR=/var/tmp/open-habitat-build
 alive() {
   [[ -f $pidfile ]] && kill -0 "$(cat "$pidfile")" 2>/dev/null &&
     tr '\0' ' ' < "/proc/$(cat "$pidfile")/cmdline" | grep -Fq "$root/.cache/browser-host $root/web/dist"

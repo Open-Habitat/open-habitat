@@ -2,14 +2,14 @@
 Description=Root-only gateway subject revocation control
 
 [Socket]
-ListenStream=/run/native-agent-host/revoke.sock
+ListenStream=/run/open-habitat/revoke.sock
 SocketUser=root
 SocketGroup=root
 SocketMode=0600
 DirectoryMode=0750
 FileDescriptorName=revoke
 RemoveOnStop=yes
-Service=native-agent-host-gateway.service
+Service=open-habitat-gateway.service
 
 [Install]
 WantedBy=sockets.target

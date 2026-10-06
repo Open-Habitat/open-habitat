@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://native-agent-host.invalid/contracts/v1/account-profile-update.schema.json",
+  "$id": "https://open-habitat.invalid/contracts/v1/account-profile-update.schema.json",
   "title": "Missing display fields supplied during onboarding",
   "type": "object",
   "additionalProperties": false,

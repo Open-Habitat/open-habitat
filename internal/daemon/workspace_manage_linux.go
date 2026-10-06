@@ -16,7 +16,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/maintainer/native-agent-host/internal/transport"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 )
 
@@ -59,7 +59,7 @@ func stateDir(home string, create bool) (int, error) {
 	}
 	defer unix.Close(h)
 	parent := h
-	for _, n := range []string{".local", "state", "native-agent-host"} {
+	for _, n := range []string{".local", "state", "open-habitat"} {
 		if create {
 			if e = unix.Mkdirat(parent, n, 0700); e != nil && !errors.Is(e, unix.EEXIST) {
 				if parent != h {

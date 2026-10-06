@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium, request } from "@playwright/test";
 import { openLab, origin, snapshot } from "./session.mjs";
-const dir = await mkdtemp(join(tmpdir(), "nah-static-snapshot-"));
+const dir = await mkdtemp(join(tmpdir(), "oh-static-snapshot-"));
 const reset = await request.newContext({ ignoreHTTPSErrors: true });
 try {
   assert.equal((await reset.get(`${origin}/fixture/lab-marker`)).status(), 204);

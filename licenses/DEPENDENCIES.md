@@ -1,6 +1,6 @@
 # Dependency and license boundary
 
-Native Agent Host has no third-party Go module in the foundation. Browser
+Open Habitat has no third-party Go module in the foundation. Browser
 runtime and build dependencies are exact pins in `web/package-lock.json`.
 `scripts/check-licenses.py` requires every direct package to declare license
 metadata and rejects AGPL/GPL dependencies. Transitive notices remain available

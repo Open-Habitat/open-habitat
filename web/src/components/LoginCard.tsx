@@ -8,8 +8,8 @@ export function LoginCard({ onLogin }: { onLogin?: () => void }) {
     <OnboardingFrame step={1}>
       <section className="ah-login-card" aria-labelledby="login-title">
         <header>
-          <p className="eyebrow">Omega Habitat</p>
-          <h1 id="login-title">Tervetuloa Omega Habitatiin</h1>
+          <p className="eyebrow">Open Habitat</p>
+          <h1 id="login-title">Tervetuloa Open Habitatiin</h1>
         </header>
         <p>
           Kirjaudu GitHub-tililläsi. Pääset omiin työtiloihisi ja voit

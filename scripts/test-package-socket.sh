@@ -13,9 +13,9 @@ for mode in 0711 0755 duplicate; do
   tar -xzf "$archive" -C "$tmp/$mode/stage"
   root=$(find "$tmp/$mode/stage" -mindepth 1 -maxdepth 1 -type d)
   if [[ $mode == duplicate ]]; then
-    sed -i '/^DirectoryMode=0710$/a DirectoryMode=0711' "$root/systemd/native-agent-host-daemon@.socket"
+    sed -i '/^DirectoryMode=0710$/a DirectoryMode=0711' "$root/systemd/open-habitat-daemon@.socket"
   else
-    sed -i "s/^DirectoryMode=0710$/DirectoryMode=$mode/" "$root/systemd/native-agent-host-daemon@.socket"
+    sed -i "s/^DirectoryMode=0710$/DirectoryMode=$mode/" "$root/systemd/open-habitat-daemon@.socket"
   fi
   (cd "$root"; find . -type f ! -name MANIFEST.sha256 -print0 | sort -z | xargs -0 sha256sum > MANIFEST.sha256)
   tar -czf "$tmp/$mode/unsafe.tar.gz" -C "$tmp/$mode/stage" "$(basename "$root")"
@@ -32,9 +32,9 @@ for mode in broker-listen broker-user; do
   tar -xzf "$archive" -C "$tmp/$mode/stage"
   root=$(find "$tmp/$mode/stage" -mindepth 1 -maxdepth 1 -type d)
   if [[ $mode == broker-listen ]]; then
-    sed -i '/^ListenStream=\/run\/native-agent-host\/broker.sock$/a ListenStream = 0.0.0.0:9999' "$root/systemd/native-agent-host-broker.socket"
+    sed -i '/^ListenStream=\/run\/open-habitat\/broker.sock$/a ListenStream = 0.0.0.0:9999' "$root/systemd/open-habitat-broker.socket"
   else
-    sed -i '/^User=root$/a User = nobody' "$root/systemd/native-agent-host-broker.service"
+    sed -i '/^User=root$/a User = nobody' "$root/systemd/open-habitat-broker.service"
   fi
   (cd "$root"; find . -type f ! -name MANIFEST.sha256 -print0 | sort -z | xargs -0 sha256sum > MANIFEST.sha256)
   tar -czf "$tmp/$mode/unsafe.tar.gz" -C "$tmp/$mode/stage" "$(basename "$root")"
@@ -51,10 +51,10 @@ for mode in extra-file omitted-manifest broker-continuation broker-prestart brok
   root=$(find "$tmp/$mode/stage" -mindepth 1 -maxdepth 1 -type d)
   case $mode in
     extra-file) printf 'unlisted\n' > "$root/systemd/rogue.service" ;;
-    omitted-manifest) sed -i '/systemd\/native-agent-host-broker.service$/d' "$root/MANIFEST.sha256" ;;
-    broker-continuation) printf 'ExecStartPost=\\\n/bin/true\n' >> "$root/systemd/native-agent-host-broker.service" ;;
-    broker-prestart) printf 'ExecStartPre=/bin/true\n' >> "$root/systemd/native-agent-host-broker.service" ;;
-    broker-failure-action) sed -i '/^\[Unit\]$/a FailureAction=poweroff' "$root/systemd/native-agent-host-broker.service" ;;
+    omitted-manifest) sed -i '/systemd\/open-habitat-broker.service$/d' "$root/MANIFEST.sha256" ;;
+    broker-continuation) printf 'ExecStartPost=\\\n/bin/true\n' >> "$root/systemd/open-habitat-broker.service" ;;
+    broker-prestart) printf 'ExecStartPre=/bin/true\n' >> "$root/systemd/open-habitat-broker.service" ;;
+    broker-failure-action) sed -i '/^\[Unit\]$/a FailureAction=poweroff' "$root/systemd/open-habitat-broker.service" ;;
   esac
   if [[ $mode != omitted-manifest ]]; then
     (cd "$root"; find . -type f ! -name MANIFEST.sha256 -print0 | sort -z | xargs -0 sha256sum > MANIFEST.sha256)

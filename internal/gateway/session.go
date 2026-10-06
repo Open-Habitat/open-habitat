@@ -58,7 +58,7 @@ func brokerIdentity(id string, reply BrokerReply) (Identity, bool) {
 		return Identity{}, false
 	}
 	route := reply.Route
-	if route.UID == 0 || route.UID > uint32(math.MaxInt32) || route.Username == "" || len(route.Username) > 32 || route.Socket != "/run/native-agent-host/users/"+route.Username+"/daemon.sock" {
+	if route.UID == 0 || route.UID > uint32(math.MaxInt32) || route.Username == "" || len(route.Username) > 32 || route.Socket != "/run/open-habitat/users/"+route.Username+"/daemon.sock" {
 		return Identity{}, false
 	}
 	for i, c := range route.Username {

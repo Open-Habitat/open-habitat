@@ -39,7 +39,7 @@ if run self-test --json > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
 grep -q 'invalid_cloud_init' "$tmp/err"
 # Container-assisted tests remain offline: reject malformed YAML before download,
 # and reject a poisoned cache before attempting to boot QEMU.
-if command -v podman >/dev/null && podman image exists localhost/native-agent-host-vm-tools:prereq; then
+if command -v podman >/dev/null && podman image exists localhost/open-habitat-vm-tools:prereq; then
   cp "$repo/test/vm/cloud-init.yaml" "$tmp/repo/test/vm/cloud-init.yaml"
   printf '\n: malformed: [\n' >> "$tmp/repo/test/vm/cloud-init.yaml"
   if run systemd-self-test --json > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
@@ -53,9 +53,9 @@ if command -v podman >/dev/null && podman image exists localhost/native-agent-ho
 fi
 # Negative hash/source test runs offline even in CI without Fleetrepo.
 mkdir -p "$tmp/jit" "$tmp/fake-fleetrepo"
-printf 'binary-fixture-bytes' > "$tmp/jit/native-agent-host"
+printf 'binary-fixture-bytes' > "$tmp/jit/open-habitat"
 git -C "$tmp/fake-fleetrepo" init -q
-if FLEETREPO_JIT_SOURCE="$tmp/fake-fleetrepo" python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/native-agent-host" > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
+if FLEETREPO_JIT_SOURCE="$tmp/fake-fleetrepo" python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/open-habitat" > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
 [[ ! -e "$tmp/jit/jit-cloud-init.yaml" && ! -e "$tmp/jit/jit-receipt.json" ]]
 mkdir -p "$tmp/shim"
 cat > "$tmp/shim/git" <<'GIT'
@@ -67,7 +67,7 @@ case "$3" in
 esac
 GIT
 chmod +x "$tmp/shim/git"
-if FLEETREPO_JIT_SOURCE="$tmp/fake-fleetrepo" PATH="$tmp/shim:$PATH" python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/native-agent-host" > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
+if FLEETREPO_JIT_SOURCE="$tmp/fake-fleetrepo" PATH="$tmp/shim:$PATH" python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/open-habitat" > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
 grep -q 'Fleetrepo JIT policy hash mismatch' "$tmp/err"
 [[ ! -e "$tmp/jit/jit-cloud-init.yaml" && ! -e "$tmp/jit/jit-receipt.json" ]]
 if git -C /home/maintainer/Sources/fleetrepo cat-file -e 85ac4588c9de4c1ceb1fccf58d57753ca58a7688^{commit} 2>/dev/null; then
@@ -84,7 +84,7 @@ for mode in normal optimized; do
 done
 # Build a complete valid receipt first; test each required assertion by
 # removing only that one field (not by relying on another missing field).
-passed='{"status":"passed","scope":"jit-provision","pid1":"systemd","uids":[21032,21033,21003],"binary_path":"/opt/native-agent-host/current/native-agent-host","pool_vacant_before_seed":true,"new_accounts":true,"committed_bindings":true,"rerun_idempotent":true,"wrong_peer_denied":true,"wrong_uid_denied":true,"pending_denied":true,"boot_acl_denied":true,"prepared_socket_started":true,"cross_uid_denied":true}'
+passed='{"status":"passed","scope":"jit-provision","pid1":"systemd","uids":[21032,21033,21003],"binary_path":"/opt/open-habitat/current/open-habitat","pool_vacant_before_seed":true,"new_accounts":true,"committed_bindings":true,"rerun_idempotent":true,"wrong_peer_denied":true,"wrong_uid_denied":true,"pending_denied":true,"boot_acl_denied":true,"prepared_socket_started":true,"cross_uid_denied":true}'
 passed=$(python3 - "$passed" <<'JIT_ORACLE'
 import json,sys
 p=json.loads(sys.argv[1]);p.update(concurrent_clients_released=True,broker_config_drift_denied=True)
@@ -200,30 +200,30 @@ UNIT_ORACLE
 # fake provider, yet reject emitted tokens and accidental full JIT tokens.
 login_scanner=$(sed -n "/<<'TOKEN_SCAN'/,/^TOKEN_SCAN$/p" "$repo/scripts/vm-test.sh" | sed '1d;/^TOKEN_SCAN$/q' | sed '$d')
 printf '' > "$tmp/jit/serial.log"
-python3 -c "$login_scanner" "$repo" "$tmp/jit/serial.log" "$tmp/jit/native-agent-host"
+python3 -c "$login_scanner" "$repo" "$tmp/jit/serial.log" "$tmp/jit/open-habitat"
 printf 'PRODUCT_VM_TOKEN_UNKNOWN_FIXTURE_ONLY_92764' > "$tmp/jit/serial.log"
-if python3 -c "$login_scanner" "$repo" "$tmp/jit/serial.log" "$tmp/jit/native-agent-host"; then echo 'unknown token leaked to serial' >&2; exit 1; fi
+if python3 -c "$login_scanner" "$repo" "$tmp/jit/serial.log" "$tmp/jit/open-habitat"; then echo 'unknown token leaked to serial' >&2; exit 1; fi
 printf '' > "$tmp/jit/serial.log"
 # Optional positive seed render from read-only pinned committed blobs.
 if git -C /home/maintainer/Sources/fleetrepo cat-file -e 85ac4588c9de4c1ceb1fccf58d57753ca58a7688^{commit} 2>/dev/null; then
-FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/native-agent-host"
+FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/open-habitat"
 python3 - "$tmp/jit/jit-cloud-init.yaml" <<'JIT_FIXTURE'
 import base64,json,sys
 seed=json.loads(open(sys.argv[1]).read().split('\n',1)[1])
 files={row['path']:row for row in seed['write_files']}
-assert json.loads(base64.b64decode(files['/var/lib/native-agent-host/broker/allowlist.json']['content']))['ids']==[]
-assert json.loads(base64.b64decode(files['/var/lib/native-agent-host/broker/bindings.json']['content']))['bindings']==[]
-assert b'/opt/native-agent-host/current/native-agent-host' in base64.b64decode(files['/etc/systemd/system/native-agent-host-daemon@.service']['content'])
+assert json.loads(base64.b64decode(files['/var/lib/open-habitat/broker/allowlist.json']['content']))['ids']==[]
+assert json.loads(base64.b64decode(files['/var/lib/open-habitat/broker/bindings.json']['content']))['bindings']==[]
+assert b'/opt/open-habitat/current/open-habitat' in base64.b64decode(files['/etc/systemd/system/open-habitat-daemon@.service']['content'])
 assert seed['runcmd'][-1]==['systemctl','start','jit-proof.service']
 JIT_FIXTURE
   mkdir -p "$tmp/release-root/systemd"
   cp "$repo/systemd/"* "$tmp/release-root/systemd/"
-  printf '\n# package-root-origin\n' >> "$tmp/release-root/systemd/native-agent-host-broker.socket"
-  PRODUCT_RELEASE_ROOT="$tmp/release-root" FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/native-agent-host" concurrent
+  printf '\n# package-root-origin\n' >> "$tmp/release-root/systemd/open-habitat-broker.socket"
+  PRODUCT_RELEASE_ROOT="$tmp/release-root" FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/open-habitat" concurrent
   python3 - "$tmp/jit/jit-cloud-init.yaml" <<'JIT_CONCURRENT'
 import base64,json,sys
 seed=json.loads(open(sys.argv[1]).read().split('\n',1)[1]);files={f['path']:base64.b64decode(f['content']) for f in seed['write_files']}
-assert b'package-root-origin' in files['/etc/systemd/system/native-agent-host-broker.socket']
+assert b'package-root-origin' in files['/etc/systemd/system/open-habitat-broker.socket']
 assert b"'scope':'jit-concurrent'" in files['/usr/local/sbin/jit-proof']
 provider=files['/usr/local/sbin/product-fake-provider']
 assert b"threading.Barrier(2)" in provider and b"barrier.wait(timeout=15)" in provider
@@ -232,7 +232,7 @@ assert b"/run/fixture-c-first" in provider and b"time.sleep(3)" in provider
 assert b"reverse.write_text('1')" in files['/usr/local/sbin/jit-proof']
 assert b'pwd.getpwuid' in files['/usr/bin/git'] and b'mapped_home(os.getuid(),home)' in files['/usr/bin/git'] and b'21033' in files['/usr/bin/git'] and b'21034' in files['/usr/bin/git']
 JIT_CONCURRENT
-  FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/native-agent-host" login
+  FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/open-habitat" login
   python3 - "$tmp/jit/jit-cloud-init.yaml" <<'JIT_LOGIN'
 import base64,json,sys
 seed=json.loads(open(sys.argv[1]).read().split('\n',1)[1]); files={f['path']:base64.b64decode(f['content']) for f in seed['write_files']}
@@ -240,7 +240,7 @@ assert not any(u['name'] in ('guestone','guesttwo') for u in seed['users'])
 assert b"'scope':'jit-login-slice'" in files['/usr/local/sbin/jit-proof']
 assert b'127.0.0.1' in files['/usr/local/sbin/product-fake-provider']
 assert b'21032' in files['/usr/bin/gh'] and b'21033' in files['/usr/bin/gh']
-assert files['/var/lib/native-agent-host/broker/bindings.json'].find(b'"bindings":[]')!=-1
+assert files['/var/lib/open-habitat/broker/bindings.json'].find(b'"bindings":[]')!=-1
 assert seed['runcmd'][-1]==['systemctl','start','jit-proof.service']
 JIT_LOGIN
 fi
@@ -248,40 +248,40 @@ fi
 mkdir -p "$tmp/product"
 printf 'binary-fixture-bytes' > "$tmp/product/bin"
 python3 "$repo/test/vm/product-fixture.py" "$tmp/product" "$tmp/product/bin"
-if command -v podman >/dev/null && podman image exists localhost/native-agent-host-vm-tools:prereq; then
-  cp "$tmp/product/bin" "$tmp/product/native-agent-host"
-  podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --tmpfs /tmp:rw,size=16m --mount "type=bind,src=$tmp/product,dst=/run-data" localhost/native-agent-host-vm-tools:prereq genisoimage -quiet -R -graft-points -V PRODUCT -o /run-data/product.iso /native-agent-host=/run-data/native-agent-host
-  podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --mount "type=bind,src=$tmp/product,dst=/run-data,ro=true" localhost/native-agent-host-vm-tools:prereq isoinfo -R -i /run-data/product.iso -x /native-agent-host > "$tmp/extracted"
+if command -v podman >/dev/null && podman image exists localhost/open-habitat-vm-tools:prereq; then
+  cp "$tmp/product/bin" "$tmp/product/open-habitat"
+  podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --tmpfs /tmp:rw,size=16m --mount "type=bind,src=$tmp/product,dst=/run-data" localhost/open-habitat-vm-tools:prereq genisoimage -quiet -R -graft-points -V PRODUCT -o /run-data/product.iso /open-habitat=/run-data/open-habitat
+  podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --mount "type=bind,src=$tmp/product,dst=/run-data,ro=true" localhost/open-habitat-vm-tools:prereq isoinfo -R -i /run-data/product.iso -x /open-habitat > "$tmp/extracted"
   cmp "$tmp/product/bin" "$tmp/extracted"
 fi
 python3 - "$tmp/product/product-cloud-init.yaml" "$repo" <<'PY'
 import base64,json,sys
 c=json.loads(open(sys.argv[1]).read().split('\n',1)[1]); files={f['path']:f for f in c['write_files']}
-assert '/opt/native-agent-host/native-agent-host' not in files
-assert base64.b64decode(files['/etc/native-agent-host/binary.sha256']['content']).decode().strip()==__import__('hashlib').sha256(b'binary-fixture-bytes').hexdigest()
+assert '/opt/open-habitat/open-habitat' not in files
+assert base64.b64decode(files['/etc/open-habitat/binary.sha256']['content']).decode().strip()==__import__('hashlib').sha256(b'binary-fixture-bytes').hexdigest()
 assert any('/dev/disk/by-label/PRODUCT' in ' '.join(cmd) for cmd in c['runcmd'])
-assert any(cmd[:2]==['install','-m'] and cmd[-1]=='/opt/native-agent-host/current/native-agent-host' for cmd in c['runcmd'])
+assert any(cmd[:2]==['install','-m'] and cmd[-1]=='/opt/open-habitat/current/open-habitat' for cmd in c['runcmd'])
 assert all(any(cmd[:2]==['install','-m'] and cmd[-1]=='/usr/bin/'+tool for cmd in c['runcmd']) for tool in ('setfacl','getfacl'))
 assert len([p for p in files if p.endswith('daemon.sock')])==0
-assert all(base64.b64decode(f['content']).find(b'PRODUCT_VM_TOKEN')==-1 for p,f in files.items() if p.startswith('/etc/native-agent-host/'))
-assert '/etc/systemd/system/native-agent-host-broker.socket' in files
+assert all(base64.b64decode(f['content']).find(b'PRODUCT_VM_TOKEN')==-1 for p,f in files.items() if p.startswith('/etc/open-habitat/'))
+assert '/etc/systemd/system/open-habitat-broker.socket' in files
 # The routing guest explicitly uses a synthetic status adapter, not real Pi.
-selector=json.loads(base64.b64decode(files['/opt/native-agent-host/pi-runtime.json']['content']))
-assert selector['node']=='/opt/native-agent-host/fixture-pi/bin/node'
+selector=json.loads(base64.b64decode(files['/opt/open-habitat/pi-runtime.json']['content']))
+assert selector['node']=='/opt/open-habitat/fixture-pi/bin/node'
 assert b'"state":"usable"' in base64.b64decode(files[selector['node']]['content'])
 assert selector['entry'] in files and selector['manifest'] in files
-assert '/etc/systemd/system/native-agent-host-daemon@.socket' in files
-assert '/var/lib/native-agent-host/broker/bindings.json' in files
-assert 'identities' not in json.loads(base64.b64decode(files['/etc/native-agent-host/gateway.json']['content']))['oauth']
+assert '/etc/systemd/system/open-habitat-daemon@.socket' in files
+assert '/var/lib/open-habitat/broker/bindings.json' in files
+assert 'identities' not in json.loads(base64.b64decode(files['/etc/open-habitat/gateway.json']['content']))['oauth']
 assert c['runcmd'][-1]==['/usr/bin/python3','/usr/local/sbin/product-proof']
 for name,uid in [('agent-a',21001),('agent-b',21002)]:
-    path=f'/etc/omega-habitat/daemon/user-mappings/daemon-{name}.json'
+    path=f'/etc/open-habitat-daemon/daemon/user-mappings/daemon-{name}.json'
     cfg=json.loads(base64.b64decode(files[path]['content']))
     assert (cfg['handoff']['uid'],cfg['handoff']['username'],cfg['handoff']['home'],cfg['handoff']['subject'])==(uid,name,'/home/'+name,str(31001+uid-21001))
     assert cfg['handoff']['binding_file']==path
 # The separately generated VM fixture above is not the shipped package unit.
-unit=open(sys.argv[2]+'/systemd/native-agent-host-daemon@.socket').read()
-assert all(x in unit for x in ['SocketMode=0660\n','DirectoryMode=0710\n','FileDescriptorName=daemon\n','SocketGroup=native-agent-host-gateway\n'])
+unit=open(sys.argv[2]+'/systemd/open-habitat-daemon@.socket').read()
+assert all(x in unit for x in ['SocketMode=0660\n','DirectoryMode=0710\n','FileDescriptorName=daemon\n','SocketGroup=open-habitat-gateway\n'])
 PY
 [[ ! -e "$tmp/product/tls.key" && ! -e "$tmp/product/tls.crt" ]]
 grep -Fq "'scope':'product-two-user-routing'" "$repo/test/vm/product-proof.py"

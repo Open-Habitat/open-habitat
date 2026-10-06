@@ -7,9 +7,9 @@ describe("login presentation", () => {
     const onLogin = vi.fn();
     const view = render(<LoginCard onLogin={onLogin} />);
     expect(
-      view.getByRole("heading", { name: "Tervetuloa Omega Habitatiin" }),
+      view.getByRole("heading", { name: "Tervetuloa Open Habitatiin" }),
     ).toBeTruthy();
-    expect(view.queryByText(/Unix|natiivin|Native Agent Host/)).toBeNull();
+    expect(view.queryByText(/Unix|natiivin|Open Habitat/)).toBeNull();
     view.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     expect(onLogin).toHaveBeenCalledOnce();
   });

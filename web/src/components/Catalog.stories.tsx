@@ -229,7 +229,7 @@ function NavigationFixture() {
   const rail = (
     <WorkspaceRail
       collapsed={false}
-      serverLabel="alder.example — Native Agent Host"
+      serverLabel="alder.example — Open Habitat"
       connectionLabel="Yhteys toimii"
       attentionCount={2}
       filterValue={filter}
