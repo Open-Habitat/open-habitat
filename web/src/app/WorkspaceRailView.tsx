@@ -186,6 +186,12 @@ export function WorkspaceRailView({
                   activityShortLabel: presentation.activityShortLabel,
                   controlLabel: presentation.controlLabel,
                   operationLabel: presentation.operationLabel,
+                  historyLabel:
+                    a.history === "missing" || a.history === "corrupt"
+                      ? "Historia ei luettavissa"
+                      : a.history === "unavailable"
+                        ? "Historiaa ei voitu tarkistaa"
+                        : undefined,
                   attentionLabel: presentation.attentionLabel,
                 };
               })(),

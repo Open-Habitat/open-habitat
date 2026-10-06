@@ -127,6 +127,12 @@ describe("return view", () => {
       ).getAllByRole("link"),
     ).toHaveLength(4);
     expect(screen.getByText("Historia ei luettavissa")).toBeTruthy();
+    expect(screen.getAllByText("Vain luku").length).toBeGreaterThan(0);
+  });
+  it("treats temporarily unavailable history as unknown rather than a confirmed error", () => {
+    show([{ ...base, history: "unavailable" }]);
+    expect(screen.getByText("Historiaa ei voitu tarkistaa")).toBeTruthy();
+    expect(screen.queryByText("Historia ei luettavissa")).toBeNull();
   });
   it("uses a subordinate heading for workspace conversations", () => {
     render(

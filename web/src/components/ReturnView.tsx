@@ -89,16 +89,24 @@ function ConversationGroup({
                     {conversation.history &&
                     conversation.history !== "readable" ? (
                       <StatusMark
-                        label="Historia ei luettavissa"
+                        label={
+                          conversation.history === "unavailable"
+                            ? "Historiaa ei voitu tarkistaa"
+                            : "Historia ei luettavissa"
+                        }
                         tone="warning"
-                        kind="error"
+                        kind={
+                          conversation.history === "unavailable"
+                            ? "unknown"
+                            : "error"
+                        }
                       />
                     ) : null}
                     {presentation(conversation).attentionLabel ? (
                       <StatusMark label="Uusi" tone="warning" />
                     ) : null}
                     {!conversation.browserSession ? (
-                      <span>Vain luettavissa</span>
+                      <StatusMark label="Vain luku" kind="read-only" />
                     ) : null}
                   </span>
                 </span>

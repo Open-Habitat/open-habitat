@@ -189,6 +189,23 @@ export class ConversationStore {
         }
       }
     }
+    // A confirmed unreadable native history is an observed error. Visiting it
+    // clears its attention, not its persistent row label. Unavailable history
+    // is only lost observation, not a proven error.
+    for (const agent of snapshot.agents) {
+      const previous = this.metadata.agents.get(agent.agent_id)?.history;
+      if (agent.history === "missing" || agent.history === "corrupt") {
+        if (previous !== agent.history)
+          this.markAttention(agent.agent_id, `history:${agent.history}`);
+      } else if (
+        this.attentionKeys.get(agent.agent_id)?.startsWith("history:")
+      ) {
+        this.attentionKeys.delete(agent.agent_id);
+        const attention = new Map(this.metadata.attention);
+        attention.delete(agent.agent_id);
+        this.metadata = { ...this.metadata, attention };
+      }
+    }
     this.metadata = {
       ...this.metadata,
       agents: new Map(snapshot.agents.map((agent) => [agent.agent_id, agent])),

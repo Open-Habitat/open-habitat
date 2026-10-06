@@ -220,8 +220,18 @@ export function NavLink({
         <StatusMark
           key={text}
           label={text}
-          tone={text === "Yhteys poikki" ? "warning" : "neutral"}
-          kind={text === "Vain luku" ? "read-only" : "neutral"}
+          tone={
+            text === "Yhteys poikki" || text === "Historia ei luettavissa"
+              ? "warning"
+              : "neutral"
+          }
+          kind={
+            text === "Vain luku"
+              ? "read-only"
+              : text === "Historia ei luettavissa"
+                ? "error"
+                : "neutral"
+          }
         />
       ))}
       {badgeText ? <Badge label={badgeText} tone="warning" /> : null}
@@ -237,6 +247,7 @@ export interface AgentNavModel {
   controlLabel: string;
   attentionLabel?: string;
   operationLabel?: string;
+  historyLabel?: string;
   relativeTime?: string;
   selected?: boolean;
   depth?: number;
@@ -251,6 +262,7 @@ export function AgentNavItem({
   controlLabel,
   attentionLabel,
   operationLabel,
+  historyLabel,
   relativeTime,
   selected = false,
   depth = 0,
@@ -260,6 +272,7 @@ export function AgentNavItem({
   const statusParts = [
     controlLabel,
     operationLabel,
+    historyLabel,
     stale ? "Tieto vanhentunut" : null,
     presence === "absent" ? "Ei enää löydy" : null,
   ].filter(Boolean);
@@ -279,7 +292,7 @@ export function AgentNavItem({
           current={selected ? "page" : false}
           badgeText={attentionLabel}
           statusText={status || undefined}
-          statusLabels={[controlLabel, operationLabel].filter(
+          statusLabels={[controlLabel, operationLabel, historyLabel].filter(
             (text): text is string => !!text,
           )}
           displayStatusText={
@@ -287,7 +300,7 @@ export function AgentNavItem({
               ? stale
                 ? "Tieto vanhentunut"
                 : "Ei enää löydy"
-              : controlLabel || operationLabel
+              : controlLabel || operationLabel || historyLabel
                 ? ""
                 : activityShortLabel || activityLabel
           }

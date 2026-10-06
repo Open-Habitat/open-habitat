@@ -1333,6 +1333,9 @@ h1[tabindex="-1"]:focus {
   display: none;
 }
 @media (max-width: 800px) {
+  .ah-app-shell:has(.ah-rail) {
+    height: 100dvh;
+  }
   .ah-shell-body:has(.ah-rail) {
     display: flex;
     min-height: 0;

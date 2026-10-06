@@ -735,6 +735,28 @@ describe("recent conversation windows", () => {
 });
 
 describe("attention markers", () => {
+  it("notices confirmed history errors once, keeps seen errors visible, and does not turn unavailable into an error", () => {
+    const { store } = setup();
+    const agentId = id(1);
+    const observation = (history: string) => ({
+      identity: { web_identity_id: "person" },
+      event_cursor: "ev1:11111111-1111-4111-8111-111111111111:1",
+      agents: [{ agent_id: agentId, history }],
+    });
+    store.applySnapshot(observation("unavailable") as never);
+    expect(store.readMetadata().attention.size).toBe(0);
+    store.applySnapshot(observation("corrupt") as never);
+    expect(store.readMetadata().attention.get(agentId)).toBe("new");
+    store.setVisible(agentId);
+    expect(store.readMetadata().attention.get(agentId)).toBe("seen");
+    store.applySnapshot(observation("corrupt") as never);
+    expect(store.readMetadata().attention.get(agentId)).toBe("seen");
+    store.applySnapshot(observation("readable") as never);
+    expect(store.readMetadata().attention.has(agentId)).toBe(false);
+    store.setVisible(undefined);
+    store.applySnapshot(observation("missing") as never);
+    expect(store.readMetadata().attention.get(agentId)).toBe("new");
+  });
   it("orders new events across views, preserves seen waiting, and clears on the next command", () => {
     const { store } = setup();
     const agent = id(1);

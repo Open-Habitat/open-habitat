@@ -12,7 +12,9 @@ test("@lab shell opens conversations from home and keeps narrow navigation reach
   ).toBeVisible();
   await expect(page.locator(".ah-connection")).toHaveCount(0);
   await expect(page.locator("main .ah-workspace-card")).toHaveCount(0);
-  await expect(page.locator(".ah-continue-list li")).toHaveCount(3);
+  // The return view keeps all observed rows instead of dropping everything
+  // beyond an arbitrary three-item cutoff.
+  expect(await page.locator(".ah-continue-list li").count()).toBeGreaterThan(3);
   await expect(
     page.locator(".ah-continue-list a[href^='/agents/']").first(),
   ).toBeVisible();
