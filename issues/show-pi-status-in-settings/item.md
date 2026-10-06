@@ -2,13 +2,15 @@
 created: 2026-10-05
 updated: 2026-10-06
 type: improvement
-status: in-progress
+status: done
 priority: normal
 related: ['@add-account-settings-ui', '@align-settings-design']
 lane: account-ui
 lane_seq: 30
 collision: [web/src/components/]
 preparation: ready
+closed: 2026-10-06
+closed_by: claude
 ---
 
 # Show native Pi sign-in state in account settings
