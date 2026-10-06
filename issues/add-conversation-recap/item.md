@@ -1,8 +1,8 @@
 ---
 created: 2026-09-20
-updated: 2026-10-05
+updated: 2026-10-06
 type: task
-status: open
+status: in-progress
 priority: normal
 epic: native-agent-host-architecture
 blocked_by: ['@review-mvp', '@apply-pi-block-design']
