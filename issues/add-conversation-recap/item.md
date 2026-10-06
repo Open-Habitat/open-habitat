@@ -2,7 +2,7 @@
 created: 2026-09-20
 updated: 2026-10-06
 type: task
-status: in-progress
+status: done
 priority: normal
 epic: native-agent-host-architecture
 blocked_by: ['@review-mvp', '@apply-pi-block-design']
@@ -10,6 +10,8 @@ lane: ui-foundation
 lane_seq: 50
 collision: [docs/, design-system/, web/src/components/]
 preparation: ready
+closed: 2026-10-06
+closed_by: agent
 ---
 
 # Bring Pi conversation recaps to the browser
@@ -68,3 +70,9 @@ or is an explicitly bounded follow-up.
 - [x] Pending, failed, uncertain, aged, and stale results are legible; a newer native turn does not silently retain a current badge.
 - [x] Concurrent requests and retries do not duplicate the native entry or model call for the same turn.
 - [x] Native and browser tests pass; the visual example and bounded automatic-generation gap are recorded in [result.md](result.md).
+
+## Resolution
+
+### 2026-10-06T07:43:29Z · @agent
+
+Native Pi recap request and browser card validated at 0ddbe38; result.md records limits, visual evidence and the automatic-trigger gap.
