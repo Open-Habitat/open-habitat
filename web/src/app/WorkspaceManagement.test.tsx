@@ -14,16 +14,14 @@ const workspace = {
 };
 afterEach(() => vi.unstubAllGlobals());
 it("creates a directory and opens the reported workspace", async () => {
-  const fetch = vi
-    .fn()
-    .mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        schema_version: 1,
-        workspace_id: workspace.workspace_id,
-        state: "created",
-      }),
-    });
+  const fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      schema_version: 1,
+      workspace_id: workspace.workspace_id,
+      state: "created",
+    }),
+  });
   vi.stubGlobal("fetch", fetch);
   const created = vi.fn();
   render(
@@ -43,16 +41,14 @@ it("creates a directory and opens the reported workspace", async () => {
   });
 });
 it("offers hide without exposing deletion", async () => {
-  const fetch = vi
-    .fn()
-    .mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        schema_version: 1,
-        workspace_id: workspace.workspace_id,
-        state: "updated",
-      }),
-    });
+  const fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      schema_version: 1,
+      workspace_id: workspace.workspace_id,
+      state: "updated",
+    }),
+  });
   vi.stubGlobal("fetch", fetch);
   render(
     <WorkspaceManagement workspace={workspace} csrf="csrf" refresh={vi.fn()} />,
