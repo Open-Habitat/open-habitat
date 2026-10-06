@@ -9,6 +9,38 @@ import {
 } from "./Account";
 
 describe("account presentation", () => {
+  it("shares name, email and image across compact rail, opened menu and settings, with image fallback", async () => {
+    const profile = {
+      name: "Alice Example",
+      email: "alice@example.invalid",
+      avatar_url: "https://avatars.githubusercontent.com/u/42",
+    };
+    render(
+      <>
+        <AccountShelf
+          profile={profile}
+          onSettings={() => {}}
+          onLogout={() => {}}
+        />
+        <AccountSettings profile={profile} onBack={() => {}} />
+      </>,
+    );
+    expect(
+      screen.getByRole("button", { name: /Alice, Tilivalikko/ }),
+    ).toBeTruthy();
+    expect(screen.getByText("alice@example.invalid")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Alice, Tilivalikko/ }));
+    expect(await screen.findAllByText("alice@example.invalid")).toHaveLength(2);
+    const images = document.querySelectorAll<HTMLImageElement>(
+      ".ah-account-avatar img",
+    );
+    expect(images.length).toBeGreaterThan(0);
+    fireEvent.error(images[0]);
+    expect(
+      document.querySelector(".ah-account-trigger .ah-account-avatar")
+        ?.textContent,
+    ).toBe("A");
+  });
   it("keeps the settings radio in sync with a theme change made elsewhere", () => {
     setThemeChoice("light");
     try {

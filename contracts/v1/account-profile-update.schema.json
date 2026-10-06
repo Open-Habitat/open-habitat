@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://native-agent-host.invalid/contracts/v1/account-profile-update.schema.json",
+  "title": "Missing display fields supplied during onboarding",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "email"],
+  "properties": {
+    "name": {"type": "string", "minLength": 1, "maxLength": 200},
+    "email": {"type": "string", "minLength": 3, "maxLength": 254, "format": "email"}
+  }
+}

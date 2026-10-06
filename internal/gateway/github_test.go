@@ -43,7 +43,10 @@ func TestGitHubVerifiedUserProfile(t *testing.T) {
 				}
 				return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(tc.profile)), Header: make(http.Header)}, nil
 			})}}
-			token, id, login, err := p.Exchange(context.Background(), "code", "verifier")
+			token, id, login, profile, err := p.ExchangeProfile(context.Background(), "code", "verifier")
+			if tc.name == "canonical" && (profile.Name != "Ignored" || profile.Email != "" || profile.AvatarURL != "") {
+				t.Fatalf("unexpected profile: %+v", profile)
+			}
 			if tc.valid && (err != nil || token != "synthetic" || id != "42" || login != "alice") || !tc.valid && (err == nil || token != "" || id != "" || login != "") || calls != 2 {
 				t.Fatalf("calls=%d id=%s login=%s err=%v", calls, id, login, err)
 			}

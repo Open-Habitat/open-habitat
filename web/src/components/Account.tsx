@@ -10,6 +10,7 @@ import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { Menu } from "./Overlays";
 import { Button, ListRow, RadioGroup } from "./Primitives";
 import { StatusMark } from "./Status";
+import type { AccountProfile } from "../app/pi";
 
 /** Provider subject numbers are not a useful person-facing name. */
 export function accountLabel(displayName: string): string {
@@ -17,6 +18,47 @@ export function accountLabel(displayName: string): string {
   return name && !/^GitHub user\s+\d+$/i.test(name) && !/^\d+$/.test(name)
     ? name
     : "Oma tili";
+}
+
+export function AccountIdentity({
+  profile,
+  compact = false,
+}: {
+  profile: AccountProfile;
+  compact?: boolean;
+}) {
+  const [failedURL, setFailedURL] = useState("");
+  const name = accountLabel(profile.name);
+  const shown = compact && name !== "Oma tili" ? name.split(/\s+/)[0] : name;
+  const avatar =
+    profile.avatar_url &&
+    profile.avatar_url !== failedURL &&
+    /^https:\/\/avatars\.githubusercontent\.com\//.test(profile.avatar_url);
+  return (
+    <span className="ah-account-presentation">
+      <span className="ah-account-avatar" aria-hidden="true">
+        {avatar ? (
+          /* biome-ignore lint/a11y/noNoninteractiveElementInteractions: Image load failure swaps to the textual fallback. */
+          <img
+            src={profile.avatar_url}
+            alt=""
+            referrerPolicy="no-referrer"
+            onError={() => setFailedURL(profile.avatar_url)}
+          />
+        ) : shown === "Oma tili" ? (
+          "?"
+        ) : (
+          shown.slice(0, 1).toLocaleUpperCase()
+        )}
+      </span>
+      <span className={compact ? "ah-rail-identity" : "ah-account-details"}>
+        <strong>{shown}</strong>
+        {!compact && profile.email && (
+          <span className="ah-account-email">{profile.email}</span>
+        )}
+      </span>
+    </span>
+  );
 }
 
 function useThemeChoice() {
@@ -30,23 +72,22 @@ function useThemeChoice() {
 }
 
 export function AccountShelf({
+  profile,
   name,
   onSettings,
   onLogout,
 }: {
-  name: string;
+  profile?: AccountProfile;
+  name?: string;
   onSettings: () => void;
   onLogout: () => void;
 }) {
   const theme = useThemeChoice();
+  const person = profile ?? { name: name ?? "", email: "", avatar_url: "" };
   const compactName =
-    accountLabel(name) === "Oma tili"
+    accountLabel(person.name) === "Oma tili"
       ? "Oma tili"
-      : accountLabel(name).split(/\s+/)[0];
-  const initial =
-    compactName === "Oma tili"
-      ? "?"
-      : compactName.slice(0, 1).toLocaleUpperCase();
+      : accountLabel(person.name).split(/\s+/)[0];
   const themes: { id: ThemeChoice; label: string }[] = [
     { id: "system", label: "Järjestelmä" },
     { id: "light", label: "Vaalea" },
@@ -60,13 +101,10 @@ export function AccountShelf({
         triggerPresentation="account"
         trigger={
           <span className="ah-account-trigger">
-            <span className="ah-account-avatar" aria-hidden="true">
-              {initial}
-            </span>
-            <span className="ah-rail-identity">{compactName}</span>
+            <AccountIdentity profile={person} compact />
           </span>
         }
-        heading={<strong>{accountLabel(name)}</strong>}
+        heading={<AccountIdentity profile={person} />}
         popoverClassName="ah-account-menu"
         items={[
           { id: "settings", label: "Asetukset" },
@@ -124,6 +162,7 @@ const states: Record<NativeState, { label: string; description: string }> = {
   },
 };
 export function AccountSettings({
+  profile,
   name,
   nativeState,
   nativeLogin,
@@ -132,7 +171,8 @@ export function AccountSettings({
   csrf,
   onDisconnect,
 }: {
-  name: string;
+  profile?: AccountProfile;
+  name?: string;
   csrf?: string;
   onDisconnect?: () => void;
   nativeState?: NativeState;
@@ -141,6 +181,7 @@ export function AccountSettings({
   onLogout?: () => void;
 }) {
   const theme = useThemeChoice();
+  const person = profile ?? { name: name ?? "", email: "", avatar_url: "" };
   const state = states[nativeState ?? "unknown"];
   const [disconnectNotice, setDisconnectNotice] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -163,15 +204,7 @@ export function AccountSettings({
       >
         <h2 id="ah-account-heading">Tili</h2>
         <div className="ah-account-identity">
-          <span className="ah-account-avatar" aria-hidden="true">
-            {accountLabel(name) === "Oma tili"
-              ? "?"
-              : name.trim().slice(0, 1).toLocaleUpperCase()}
-          </span>
-          <strong className="ah-account-full-name">{accountLabel(name)}</strong>
-          {accountLabel(name) !== "Oma tili" ? (
-            <span className="ah-account-origin">GitHubista</span>
-          ) : null}
+          <AccountIdentity profile={person} />
         </div>
       </section>
       <section

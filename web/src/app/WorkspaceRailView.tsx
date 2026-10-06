@@ -1,5 +1,5 @@
 import { AccountShelf, WorkspaceRail, WorkspaceSection } from "../components";
-import { accountLabel } from "../components/Account";
+import type { AccountProfile } from "./pi";
 import { agentPresentation } from "../components/agentPresentation";
 import {
   type ConversationStore,
@@ -26,6 +26,7 @@ export function sourceLabel(state: string) {
 export function WorkspaceRailView({
   phase,
   snapshot,
+  profile,
   store,
   source,
   collapsed,
@@ -47,6 +48,7 @@ export function WorkspaceRailView({
 }: {
   phase: RootState["connection"]["phase"];
   snapshot: Snapshot;
+  profile?: AccountProfile;
   store: ConversationStore;
   source: string;
   collapsed: boolean;
@@ -97,7 +99,13 @@ export function WorkspaceRailView({
       }
       sessionActions={
         <AccountShelf
-          name={accountLabel(snapshot.identity.display_name)}
+          profile={
+            profile ?? {
+              name: snapshot.identity.display_name,
+              email: "",
+              avatar_url: "",
+            }
+          }
           onSettings={onSettings}
           onLogout={onLogout}
         />

@@ -121,6 +121,7 @@ type pending struct {
 }
 type session struct {
 	identity       Identity
+	profile        AccountProfile
 	accessEmail    string
 	csrf           string
 	idle, absolute time.Time
@@ -275,6 +276,7 @@ func (a *Auth) routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/github/start", a.start)
 	mux.HandleFunc("GET /auth/github/callback", a.callback)
 	mux.HandleFunc("GET /auth/session", a.current)
+	mux.HandleFunc("POST /auth/profile", a.updateProfile)
 	mux.HandleFunc("POST /auth/logout", a.logout)
 }
 func (a *Auth) exact(r *http.Request, path string, params ...string) bool {
@@ -482,7 +484,16 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		a.callbackFailure(w, r, 403, "authentication_required")
 		return
 	}
-	token, id, login, e := a.provider.Exchange(r.Context(), r.URL.Query().Get("code"), p.verifier)
+	var token, id, login string
+	var profile AccountProfile
+	// reuse the callback error variable
+	if provider, ok := a.provider.(interface {
+		ExchangeProfile(context.Context, string, string) (string, string, string, AccountProfile, error)
+	}); ok {
+		token, id, login, profile, e = provider.ExchangeProfile(r.Context(), r.URL.Query().Get("code"), p.verifier)
+	} else {
+		token, id, login, e = a.provider.Exchange(r.Context(), r.URL.Query().Get("code"), p.verifier)
+	}
 	if e != nil || token == "" {
 		a.authEvent(attempt, "rejected", "exchange_failed")
 		a.callbackFailure(w, r, 403, "authentication_required")
@@ -561,7 +572,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	if old, err := r.Cookie(cookieName); err == nil {
 		delete(a.sessions, old.Value)
 	}
-	a.sessions[sid] = session{identity: target, accessEmail: accessEmail(r), csrf: csrf, idle: now.Add(8 * time.Hour), absolute: now.Add(24 * time.Hour)}
+	a.sessions[sid] = session{identity: target, profile: profile, accessEmail: accessEmail(r), csrf: csrf, idle: now.Add(8 * time.Hour), absolute: now.Add(24 * time.Hour)}
 	a.mu.Unlock()
 	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: sid, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})
 	a.authEvent(attempt, "accepted", "none")

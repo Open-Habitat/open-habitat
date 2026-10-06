@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://native-agent-host.invalid/contracts/v1/account-session.schema.json",
+  "title": "Authenticated browser session and display-only profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "provider", "csrf", "profile"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "provider": {"const": "github"},
+    "csrf": {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$"},
+    "profile": {"$ref": "#/$defs/profile"}
+  },
+  "$defs": {
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "email", "avatar_url"],
+      "properties": {
+        "name": {"type": "string", "maxLength": 200},
+        "email": {"type": "string", "maxLength": 254},
+        "avatar_url": {"type": "string", "maxLength": 1024, "pattern": "^(https://avatars\\.githubusercontent\\.com/.*)?$"}
+      }
+    }
+  }
+}

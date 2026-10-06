@@ -66,6 +66,36 @@ test("@workspace-slice unknown mapping is denied before session", async ({
   await expect(page.locator(".ah-notice.ah-tone-danger")).toBeVisible();
   expect((await page.request.get("/api/v1/snapshot")).status()).toBe(401);
 });
+test("@workspace-slice account presentation follows the signed-in person", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  await expect(
+    page.getByRole("button", { name: /Alice, Tilivalikko/ }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /Alice, Tilivalikko/ }).click();
+  await expect(page.getByText("alice@example.invalid")).toBeVisible();
+  await page.getByRole("menuitem", { name: "Asetukset" }).click();
+  await expect(page.locator(".ah-account-identity")).toContainText(
+    "alice@example.invalid",
+  );
+  await page.getByRole("button", { name: "Kirjaudu ulos…" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Kirjaudu ulos" })
+    .click();
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Bob" }).click();
+  await expect(
+    page.getByRole("button", { name: /Bob, Tilivalikko/ }),
+  ).toBeVisible();
+  await expect(page.getByText("alice@example.invalid")).toHaveCount(0);
+  await page.getByRole("button", { name: /Bob, Tilivalikko/ }).click();
+  await expect(page.getByText("bob@example.invalid")).toBeVisible();
+});
 test("@workspace-slice untrusted auth error stays generic and retryable", async ({
   page,
 }) => {

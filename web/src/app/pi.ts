@@ -61,9 +61,14 @@ export async function piStatus(
   if (!statusValid(value)) throw new Error("invalid Pi status");
   return (value as { pi: { state: PiState } }).pi.state;
 }
-export async function sessionCSRF(
+export interface AccountProfile {
+  name: string;
+  email: string;
+  avatar_url: string;
+}
+export async function accountSession(
   signal?: AbortSignal,
-): Promise<string | "login"> {
+): Promise<{ csrf: string; profile: AccountProfile } | "login"> {
   const session = await fetch("/auth/session", {
     credentials: "same-origin",
     cache: "no-store",
@@ -75,17 +80,41 @@ export async function sessionCSRF(
     typeof value !== "object" ||
     value === null ||
     Array.isArray(value) ||
-    Object.keys(value).sort().join(",") !== "csrf,provider,schema_version" ||
+    Object.keys(value).sort().join(",") !==
+      "csrf,profile,provider,schema_version" ||
     !("schema_version" in value) ||
     value.schema_version !== 1 ||
     !("provider" in value) ||
     value.provider !== "github" ||
     !("csrf" in value) ||
     typeof value.csrf !== "string" ||
-    !/^[A-Za-z0-9_-]{43}$/.test(value.csrf)
+    !/^[A-Za-z0-9_-]{43}$/.test(value.csrf) ||
+    !("profile" in value) ||
+    typeof value.profile !== "object" ||
+    value.profile === null ||
+    Array.isArray(value.profile) ||
+    Object.keys(value.profile).sort().join(",") !== "avatar_url,email,name" ||
+    !("name" in value.profile) ||
+    typeof value.profile.name !== "string" ||
+    value.profile.name.length > 200 ||
+    !("email" in value.profile) ||
+    typeof value.profile.email !== "string" ||
+    value.profile.email.length > 254 ||
+    !("avatar_url" in value.profile) ||
+    typeof value.profile.avatar_url !== "string" ||
+    (value.profile.avatar_url !== "" &&
+      !/^https:\/\/avatars\.githubusercontent\.com\//.test(
+        value.profile.avatar_url,
+      ))
   )
     throw new Error("invalid session");
-  return value.csrf;
+  return { csrf: value.csrf, profile: value.profile as AccountProfile };
+}
+export async function sessionCSRF(
+  signal?: AbortSignal,
+): Promise<string | "login"> {
+  const session = await accountSession(signal);
+  return session === "login" ? "login" : session.csrf;
 }
 export async function piAttempt(
   method: "GET" | "POST" | "DELETE",

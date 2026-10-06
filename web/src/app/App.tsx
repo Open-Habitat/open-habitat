@@ -28,7 +28,8 @@ import { ConversationStore } from "./conversationStore";
 import { list as listConversations, type Session } from "./conversations";
 import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
-import { piStatus, sessionCSRF } from "./pi";
+import { accountSession, piStatus, type AccountProfile } from "./pi";
+import { AccountProfileOnboarding } from "./AccountProfileOnboarding";
 import { readSnapshot, sourceState, type Workspace } from "./snapshot";
 import {
   authenticated,
@@ -142,6 +143,7 @@ export function App() {
       )?.focus();
     }
   }, [location.pathname]);
+  const [profile, setProfile] = useState<AccountProfile>();
   const identity = snapshot?.identity.web_identity_id;
   const conversationStore = useMemo(
     () => (identity ? new ConversationStore(identity) : undefined),
@@ -178,6 +180,7 @@ export function App() {
     setExpanded({});
     setDaemonSessions([]);
     setCSRF(undefined);
+    setProfile(undefined);
     piChecked.current = false;
   }, []);
   useLayoutEffect(() => {
@@ -336,10 +339,11 @@ export function App() {
       if (!ready()) return;
       try {
         if (!syntheticDemo && !piChecked.current) {
-          const token = await sessionCSRF(controller.signal);
+          const session = await accountSession(controller.signal);
           if (!ready()) return;
-          if (token === "login") return fail("login");
-          setCSRF(token);
+          if (session === "login") return fail("login");
+          setCSRF(session.csrf);
+          setProfile(session.profile);
           const status = await piStatus(controller.signal);
           if (!ready()) return;
           if (status === "login") return fail("login");
@@ -588,6 +592,13 @@ export function App() {
           />
         ) : null}
       </>
+    ) : !syntheticDemo && profile && (!profile.name || !profile.email) ? (
+      <AccountProfileOnboarding
+        profile={profile}
+        csrf={csrf}
+        onSaved={setProfile}
+        onLogin={requireLogin}
+      />
     ) : phase === "pi_required" ? (
       <GitHubOnboarding
         skipChooser={
@@ -613,7 +624,13 @@ export function App() {
       </>
     ) : location.pathname === "/settings" ? (
       <AccountSettings
-        name={accountLabel(snapshot?.identity.display_name ?? "")}
+        profile={
+          profile ?? {
+            name: accountLabel(snapshot?.identity.display_name ?? ""),
+            email: "",
+            avatar_url: "",
+          }
+        }
         onLogout={() => setLogoutPrompt(true)}
         nativeState={snapshot?.auth?.native_github.state}
         nativeLogin={snapshot?.auth?.native_github.login}
@@ -660,9 +677,7 @@ export function App() {
     ) : selected ? (
       <>
         {!new URLSearchParams(location.search).has("conversation") ? (
-          <>
-            <WorkspaceDetails workspace={selected} />
-          </>
+          <WorkspaceDetails workspace={selected} />
         ) : null}
         {!syntheticDemo &&
         identity &&
@@ -858,6 +873,7 @@ export function App() {
             <WorkspaceRailView
               phase={phase}
               snapshot={snapshot}
+              profile={profile}
               store={conversationStore}
               source={source}
               collapsed={collapsed && !mobileLayout}

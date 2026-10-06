@@ -72,7 +72,7 @@ func (a *Auth) current(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "provider": s.identity.Provider, "csrf": s.csrf})
+	_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "provider": s.identity.Provider, "csrf": s.csrf, "profile": s.profile})
 }
 func (a *Auth) logout(w http.ResponseWriter, r *http.Request) {
 	s, ok := a.authenticated(r)

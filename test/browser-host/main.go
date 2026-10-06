@@ -60,6 +60,18 @@ func (p *provider) Exchange(_ context.Context, code, verifier string) (string, s
 	return "synthetic-token", code, login, nil
 }
 
+func (p *provider) ExchangeProfile(ctx context.Context, code, verifier string) (string, string, string, gateway.AccountProfile, error) {
+	token, id, login, err := p.Exchange(ctx, code, verifier)
+	if err != nil {
+		return "", "", "", gateway.AccountProfile{}, err
+	}
+	name := "Alice Example"
+	if code == "43" {
+		name = "Bob Example"
+	}
+	return token, id, login, gateway.AccountProfile{Name: name, Email: login + "@example.invalid"}, nil
+}
+
 type sink struct{ scenario *atomic.Value }
 
 func (s sink) Deliver(context.Context, gateway.Identity, string, string) error {

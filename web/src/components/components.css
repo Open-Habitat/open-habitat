@@ -1512,6 +1512,46 @@ h1[tabindex="-1"]:focus {
   pointer-events: auto;
 }
 /* Shared navigation v2: the same rail renders in the desktop strip and phone drawer. */
+.ah-account-presentation {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  min-width: 0;
+}
+.ah-account-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ah-account-email {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-account-avatar {
+  overflow: hidden;
+}
+.ah-account-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ah-account-onboarding form {
+  display: grid;
+  gap: var(--ah-s4);
+  max-width: 28rem;
+}
+.ah-account-onboarding label {
+  display: grid;
+  gap: var(--ah-s2);
+}
+.ah-account-onboarding input {
+  padding: var(--ah-s2);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-sm);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+}
 .ah-account-trigger {
   display: flex;
   align-items: center;
