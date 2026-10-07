@@ -8,8 +8,6 @@ priority: normal
 
 # Night stint 5–6 October 2026
 
-# Night stint 5–6 October 2026
-
 Ex post facto record of the work session that started from the
 2026-10-05 TODO.md handoff and ran until the pilot.20 deployment on
 2026-10-06. The session ran as one `/stint-start` conductor; all code
