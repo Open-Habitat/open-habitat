@@ -14,6 +14,8 @@ Ex post facto record of the work session that started from the
 changes were made by Taskfleet workers. [result.md](result.md) summarizes
 what landed, what was deployed, what was left open, the decisions made
 along the way and why the session kept stopping.
+[interruptions.md](interruptions.md) lists the run, session and instruction
+references for tracing each interruption.
 
 ## Next steps (Jari, 7 October 2026)
 
