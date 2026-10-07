@@ -19,6 +19,10 @@ along the way and why the session kept stopping.
 
 ## Next steps (Jari, 7 October 2026)
 
+These are the standard steps for taking in a stint's changes, now described in
+[AGENTS-WORKFLOW.md](../../AGENTS-WORKFLOW.md#taking-in-a-stints-changes);
+this stint is their first use.
+
 1. Go through the stint's commit messages and analyse every document that
    changed.
 2. Analyse how the contents of `docs/` and `design-system/` need to be
