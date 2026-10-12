@@ -11,12 +11,30 @@ collision: [web/]
 
 # Agent turn repeats its author and hides short thinking
 
-_Source: chat_
+Jari observed this in a Pi conversation using GPT-5.5 on pilot.22 on
+2026-10-12. The native-session inspection recorded in this report found
+only short, single-line thinking summaries (31–51 characters), such as
+`**Planning status table parsing with Python**`. Opening "Ajattelu" exposed
+that one line in a code-styled box with visible Markdown asterisks.
+"PI · GPT-5.5" also repeated above thinking, tool calls and messages,
+adding noise to the agent's work.
 
-Jari, 2026-10-12, pilot.22, a Pi conversation with GPT-5.5 (OpenAI via Pi).
+The reader should be able to follow the work and recognize the actual reply
+without opening a disclosure just to read a short summary. Short single-line
+thinking belongs directly on the "Ajattelu" row with Markdown rendered;
+multi-line thinking retains an expandable form. This concerns the readable
+text supplied by Pi, not encrypted thinking data.
 
-1. **Thinking blocks are one-line summaries.** Verified in the native session: every thinking block in the conversation is a single line of 31–51 characters such as `**Planning status table parsing with Python**`; the actual reasoning is only in the encrypted signature. Expanding "Ajattelu" therefore shows one bold-marked line in a code-styled box, with the Markdown asterisks visible. When a thinking block is a short single-line summary, show it directly on the "Ajattelu" row in the agent's work (Markdown rendered, no expansion). Keep the expandable form only for multi-line thinking from providers that send it.
-2. **"PI · GPT-5.5" is repeated above every block** (thinking, tool calls, messages). Everything in the agent's work comes from the agent, so the author/model label is noise there. The "Sinä" messages keep their author treatment.
-3. **The agent's actual reply gets a bubble** like the "Sinä" message, so it has a natural place for the copy button, and the author/model label appears at most once per reply, not on every block of the turn.
+The agent's reply gets a bubble, like the "Sinä" message, giving its copy
+action a natural home. The author/model label appears at most once per reply
+rather than above each work block. User messages keep their author treatment,
+and model information remains attached to the assistant message it describes.
 
-Check the design drafts (`design-system/drafts/Pi-keskustelun lohkot.dc.html`) and the design rule for icons (design.md), and verify in the lab on desktop and phone, including a turn with many tool calls.
+The [conversation draft](../../design-system/drafts/Pi-keskustelun%20lohkot.dc.html)
+provides the surrounding visual language. Its bubble-free reply and collapsed
+thinking examples predate the changes requested here. The shared icon rules
+are in [design.md](../../design-system/design.md).
+
+Lab validation on desktop and phone should show that short summaries are
+readable directly, longer thinking remains accessible, and replies and their
+copy actions are easy to find even in a turn with many tool calls.
