@@ -79,3 +79,14 @@ asettuvat heti lopulliseen muotoonsa. Avoin kysymys on, pitäisikö nauhan olla
 alhaalla ja olla samalla langan suljettu tila, josta langan voi avata.
 Kierros 4 kokeilee kolmea sijaintia: työn ja vastauksen välissä, langan
 viimeisenä rivinä vastauksen alla, ja kelluvana kirjoituskentän yllä.
+
+Kierroksella 4 Jari valitsi Pohjan: Solmun PI-pää pysyy langan ylälaidassa,
+tilanauha on langan viimeisenä rivinä vastauksen alla ja muuttuu työn
+päätyttyä riviksi "Työ · n ajatusta · m työkalua · kesto", josta työn saa
+kiinni ja auki; lanka jää oletuksena auki. Samalla sovittiin, että
+kirjoituskenttä pysyy paikallaan ja keskustelu rullaa sen yllä: sivu ei saa
+hyppiä, vaan agentin teksti nousee ylöspäin.
+
+Kierros 5 koskee bash-tulosteen laatikkoa, kun tulostetta on enemmän kuin
+siihen mahtuu: noin kymmenen riviä oletuksena, siirtyminen alkuun ja loppuun,
+koko tulosteen näyttäminen, ja iso tuloste omassa ikkunassa.
