@@ -75,7 +75,12 @@ func put(t *testing.T, dir, name, s string) {
 	}
 }
 func request(op, id, name string) Request {
-	return Request{Version: 1, Operation: op, Provider: "github", ID: id, Candidate: name}
+	r := Request{Version: 1, Operation: op, Provider: "github", ID: id, Candidate: name}
+	if op == "ensure" {
+		limit := uint64(1 << 30)
+		r.DefaultLimitBytes = &limit
+	}
+	return r
 }
 func result(t *testing.T, dir string, r Request) Reply {
 	t.Helper()

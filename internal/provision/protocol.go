@@ -27,11 +27,13 @@ const (
 )
 
 type Request struct {
-	Version   int    `json:"version"`
-	Operation string `json:"operation"`
-	Provider  string `json:"provider"`
-	ID        string `json:"id"`
-	Candidate string `json:"candidate,omitempty"`
+	Version           int     `json:"version"`
+	Operation         string  `json:"operation"`
+	Provider          string  `json:"provider"`
+	ID                string  `json:"id"`
+	Candidate         string  `json:"candidate,omitempty"`
+	DefaultLimitBytes *uint64 `json:"default_limit_bytes,omitempty"`
+	LimitBytes        *uint64 `json:"limit_bytes,omitempty"`
 }
 type Route struct {
 	UID      uint32 `json:"uid"`
@@ -42,7 +44,12 @@ type BoundUser struct {
 	ID       string `json:"id"`
 	Username string `json:"username"`
 }
+type QuotaReply struct {
+	UsageBytes uint64 `json:"usage_bytes"`
+	LimitBytes uint64 `json:"limit_bytes"`
+}
 type Reply struct {
+	Quota      *QuotaReply  `json:"quota,omitempty"`
 	Users      *[]BoundUser `json:"users,omitempty"`
 	Next       string       `json:"next,omitempty"`
 	Version    int          `json:"version"`
@@ -142,9 +149,11 @@ func decode(b []byte, dst any, fields ...string) error {
 	}
 	return nil
 }
+func validLimit(n uint64) bool { return n >= 1<<20 && n <= 1<<50 && n%1024 == 0 }
+
 func ParseRequest(b []byte) (Request, error) {
 	var r Request
-	raw, err := object(b, "version", "operation", "provider", "id", "candidate")
+	raw, err := object(b, "version", "operation", "provider", "id", "candidate", "default_limit_bytes", "limit_bytes")
 	if err != nil {
 		return Request{}, err
 	}
@@ -160,20 +169,29 @@ func ParseRequest(b []byte) (Request, error) {
 	if r.Operation == "ensure" && (!candidatePresent || string(raw["candidate"]) == "null") || r.Operation != "ensure" && r.Operation != "list" && candidatePresent || r.Operation == "list" && candidatePresent && !numericOffset(r.Candidate) {
 		return Request{}, ErrInvalid
 	}
-	if r.Version != 1 || r.Provider != "github" || (r.Operation == "list" && r.ID != "0") || (!numericID(r.ID) && !(r.Operation == "list" && r.ID == "0")) || (r.Operation != "ensure" && r.Operation != "authorize" && r.Operation != "lookup" && r.Operation != "list") || (r.Operation == "ensure" && !githubLogin(r.Candidate)) {
+	if _, ok := raw["default_limit_bytes"]; ok && (r.Operation != "ensure" || r.DefaultLimitBytes == nil || !validLimit(*r.DefaultLimitBytes)) {
+		return Request{}, ErrInvalid
+	}
+	if _, ok := raw["limit_bytes"]; ok && (r.Operation != "quota_set" || r.LimitBytes == nil || !validLimit(*r.LimitBytes)) {
+		return Request{}, ErrInvalid
+	}
+	if r.Operation == "quota_set" && r.LimitBytes == nil {
+		return Request{}, ErrInvalid
+	}
+	if r.Version != 1 || r.Provider != "github" || (r.Operation == "list" && r.ID != "0") || (!numericID(r.ID) && !(r.Operation == "list" && r.ID == "0")) || (r.Operation != "ensure" && r.Operation != "authorize" && r.Operation != "lookup" && r.Operation != "list" && r.Operation != "quota_read" && r.Operation != "quota_set") || (r.Operation == "ensure" && !githubLogin(r.Candidate)) {
 		return Request{}, ErrInvalid
 	}
 	return r, nil
 }
 func ParseReply(b []byte) (Reply, error) {
 	var r Reply
-	if err := decode(b, &r, "version", "failure", "route", "generation", "epoch", "users", "next"); err != nil {
+	if err := decode(b, &r, "version", "failure", "route", "generation", "epoch", "users", "next", "quota"); err != nil {
 		return Reply{}, err
 	}
 	if r.Version != 1 {
 		return Reply{}, ErrInvalid
 	}
-	raw, _ := object(b, "version", "failure", "route", "generation", "epoch", "users", "next")
+	raw, _ := object(b, "version", "failure", "route", "generation", "epoch", "users", "next", "quota")
 	if len(raw["version"]) == 0 {
 		return Reply{}, ErrInvalid
 	}
@@ -186,13 +204,23 @@ func ParseReply(b []byte) (Reply, error) {
 		default:
 			return Reply{}, ErrInvalid
 		}
-		if r.Route != nil || r.Generation != 0 || r.Epoch != 0 || r.Users != nil || r.Next != "" {
+		if r.Route != nil || r.Generation != 0 || r.Epoch != 0 || r.Users != nil || r.Next != "" || len(raw["quota"]) != 0 {
+			return Reply{}, ErrInvalid
+		}
+		return r, nil
+	}
+	if len(raw["quota"]) != 0 {
+		if r.Quota == nil || r.Route != nil || r.Users != nil || r.Next != "" || r.Generation == 0 || r.Epoch == 0 || len(raw["generation"]) == 0 || len(raw["epoch"]) == 0 {
+			return Reply{}, ErrInvalid
+		}
+		qraw, err := object(raw["quota"], "usage_bytes", "limit_bytes")
+		if err != nil || len(qraw["usage_bytes"]) == 0 || string(qraw["usage_bytes"]) == "null" || len(qraw["limit_bytes"]) == 0 || string(qraw["limit_bytes"]) == "null" || !validLimit(r.Quota.LimitBytes) {
 			return Reply{}, ErrInvalid
 		}
 		return r, nil
 	}
 	if len(raw["users"]) != 0 {
-		if r.Users == nil || r.Route != nil || r.Generation == 0 || r.Epoch == 0 || len(raw["generation"]) == 0 || len(raw["epoch"]) == 0 || len(*r.Users) > 30 || r.Next != "" && !numericOffset(r.Next) {
+		if r.Users == nil || r.Route != nil || r.Quota != nil || r.Generation == 0 || r.Epoch == 0 || len(raw["generation"]) == 0 || len(raw["epoch"]) == 0 || len(*r.Users) > 30 || r.Next != "" && !numericOffset(r.Next) {
 			return Reply{}, ErrInvalid
 		}
 		entries, err := checkArray(raw["users"], "users")
@@ -213,7 +241,7 @@ func ParseReply(b []byte) (Reply, error) {
 	if r.Users != nil {
 		return Reply{}, ErrInvalid
 	}
-	if r.Route == nil || r.Generation == 0 || r.Epoch == 0 || len(raw["route"]) == 0 || len(raw["generation"]) == 0 || len(raw["epoch"]) == 0 {
+	if r.Route == nil || r.Quota != nil || r.Generation == 0 || r.Epoch == 0 || len(raw["route"]) == 0 || len(raw["generation"]) == 0 || len(raw["epoch"]) == 0 {
 		return Reply{}, ErrInvalid
 	}
 	if err := decode(raw["route"], r.Route, "uid", "username", "socket"); err != nil {

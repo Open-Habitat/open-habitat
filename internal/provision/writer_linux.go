@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Open-Habitat/open-habitat/internal/storagequota"
 	"golang.org/x/sys/unix"
 )
 
@@ -54,7 +55,16 @@ type HostExecutor interface {
 	RouteReady(context.Context, ExecutorIdentity) error
 }
 
-var phases = []string{"account", "home", "config", "socket", "unit"}
+var phases = []string{"account", "home", "config", "socket", "unit", "quota"}
+
+type QuotaOperations interface {
+	Read(uint32) (storagequota.Quota, error)
+	Set(uint32, uint64) error
+}
+type nativeQuota struct{}
+
+func (nativeQuota) Read(uid uint32) (storagequota.Quota, error) { return storagequota.Read(uid) }
+func (nativeQuota) Set(uid uint32, limit uint64) error          { return storagequota.Set(uid, limit) }
 
 type journal struct {
 	Version    int    `json:"version"`
@@ -78,6 +88,7 @@ type Writer struct {
 	Dir            string
 	UIDMin, UIDMax uint32
 	Executor       HostExecutor
+	Quota          QuotaOperations
 	// AdmitAny is an explicit root-only test-installation policy. The gateway
 	// must enforce signed Access assertions before the operator enables it.
 	AdmitAny bool
@@ -91,7 +102,7 @@ type Writer struct {
 }
 
 func NewWriter(dir string, min, max uint32, executor HostExecutor) Writer {
-	return Writer{Dir: dir, UIDMin: min, UIDMax: max, Executor: executor}
+	return Writer{Dir: dir, UIDMin: min, UIDMax: max, Executor: executor, Quota: nativeQuota{}}
 }
 func failure(f Failure) Reply { return Reply{Version: 1, Failure: f} }
 
@@ -287,7 +298,7 @@ func stateAt(ctx context.Context, fd int, owner uint32) (allowFile, ledgerFile, 
 	return a, l, ab, lb, nil
 }
 func (w Writer) valid() bool {
-	return w.Executor != nil && w.UIDMin >= 1000 && w.UIDMax >= w.UIDMin && w.UIDMax-w.UIDMin <= 4095
+	return w.Executor != nil && w.Quota != nil && w.UIDMin >= 1000 && w.UIDMax >= w.UIDMin && w.UIDMax-w.UIDMin <= 4095
 }
 
 // Handle serializes every authorize and ensure. A pending journal or interrupted
@@ -432,6 +443,16 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 			if e := w.Executor.Verify(ctx, identity); e != nil {
 				return failure(Drift)
 			}
+			if r.Operation == "quota_read" || r.Operation == "quota_set" {
+				if r.Operation == "quota_set" && w.Quota.Set(b.UID, *r.LimitBytes) != nil {
+					return failure(StateUnavailable)
+				}
+				q, err := w.Quota.Read(b.UID)
+				if err != nil || !validLimit(q.Limit) || (r.Operation == "quota_set" && q.Limit != *r.LimitBytes) || ctx.Err() != nil || !sameState(ctx, fd, w.owner, ab, lb, a.Epoch) {
+					return failure(StateUnavailable)
+				}
+				return Reply{Version: 1, Quota: &QuotaReply{UsageBytes: q.Usage, LimitBytes: q.Limit}, Generation: l.Generation, Epoch: a.Epoch}
+			}
 			if r.Operation == "authorize" && w.Executor.RouteReady(ctx, identity) != nil {
 				// An inactive socket is not mapping drift. Deny this request but
 				// retain the session for an operator-gated restart or new ensure.
@@ -447,6 +468,9 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 	}
 	if r.Operation != "ensure" {
 		return failure(Denied)
+	}
+	if r.DefaultLimitBytes == nil {
+		return failure(Invalid)
 	}
 	name := strings.ToLower(r.Candidate)
 	if !username(name) {
@@ -535,7 +559,11 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 		if ctx.Err() != nil {
 			return failure(StateUnavailable)
 		}
-		if e := w.Executor.Step(ctx, phase, identity); e != nil {
+		if phase == "quota" {
+			if e := w.Quota.Set(uid, *r.DefaultLimitBytes); e != nil {
+				return failure(Drift)
+			}
+		} else if e := w.Executor.Step(ctx, phase, identity); e != nil {
 			return failure(Drift)
 		}
 	}

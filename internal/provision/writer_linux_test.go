@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Open-Habitat/open-habitat/internal/storagequota"
 	"golang.org/x/sys/unix"
 )
 
@@ -41,6 +42,9 @@ func assertCalls(t *testing.T, h *fakeHost, want ...hostCall) {
 func provisionCalls(id, name string, uid uint32) []hostCall {
 	calls := make([]hostCall, 0, len(phases)+1)
 	for _, phase := range phases {
+		if phase == "quota" {
+			continue
+		}
 		calls = append(calls, hostCall{phase, "github", id, name, uid})
 	}
 	return append(calls, hostCall{"verify", "github", id, name, uid}, hostCall{"verify", "github", id, name, uid})
@@ -126,6 +130,7 @@ func writerFixture(t *testing.T) (Writer, *fakeHost) {
 	h := &fakeHost{occupied: map[string]bool{}, uids: map[uint32]bool{}}
 	w := NewWriter(d, 2100, 2102, h)
 	w.owner = uint32(os.Getuid())
+	w.Quota = &fakeQuota{quota: storagequota.Quota{Limit: 1 << 30}}
 	return w, h
 }
 func handle(w Writer, op, id, name string) Reply {
@@ -463,6 +468,7 @@ func TestWriterRestartAtEveryJournalPhase(t *testing.T) {
 			// journal, even when the executor would otherwise be available.
 			restarted := NewWriter(w.Dir, 2100, 2102, w.Executor)
 			restarted.owner = w.owner
+			restarted.Quota = w.Quota
 			for _, op := range []string{"authorize", "ensure"} {
 				name := "carol"
 				if op == "authorize" {
@@ -578,4 +584,28 @@ func TestEnsureActivationRevocationRace(t *testing.T) {
 	if r := handle(w, "authorize", "42", ""); r.Failure != Denied {
 		t.Fatal(r)
 	}
+}
+
+type fakeQuota struct {
+	quota storagequota.Quota
+	fail  bool
+	uid   uint32
+	calls int
+}
+
+func (q *fakeQuota) Read(uid uint32) (storagequota.Quota, error) {
+	q.uid = uid
+	if q.fail {
+		return storagequota.Quota{}, ErrInvalid
+	}
+	return q.quota, nil
+}
+func (q *fakeQuota) Set(uid uint32, limit uint64) error {
+	q.uid = uid
+	q.calls++
+	if q.fail {
+		return ErrInvalid
+	}
+	q.quota.Limit = limit
+	return nil
 }
