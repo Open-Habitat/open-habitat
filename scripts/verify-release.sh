@@ -168,7 +168,8 @@ require_section(service_unit, '[Unit]', {
     'Description':'Open Habitat root account broker',
     'Requires':'open-habitat-broker.socket',
     'After':'open-habitat-broker.socket'})
-if set(socket_unit) != {'[Unit]', '[Socket]', '[Install]'} or set(service_unit) != {'[Unit]', '[Service]'}:
+require_section(service_unit, '[Install]', {'WantedBy':'multi-user.target'})
+if set(socket_unit) != {'[Unit]', '[Socket]', '[Install]'} or set(service_unit) != {'[Unit]', '[Service]', '[Install]'}:
     sys.exit('error: broker unit section inventory differs')
 socket = socket_unit['[Socket]']
 service = service_unit['[Service]']

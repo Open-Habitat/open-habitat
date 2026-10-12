@@ -116,7 +116,15 @@ also refuses existing routes if accounting is lost. Per-user `~/src` images
 are not part of this deployment. The product supplies neutral templates in
 [`systemd/`](../../systemd/), [`sysusers.d/`](../../sysusers.d/) and
 [`tmpfiles.d/`](../../tmpfiles.d/). Their directives and the implementation in
-`internal/provision` define the detailed installation requirements.
+`internal/provision` define the detailed installation requirements. Enable both
+`open-habitat-broker.socket` and `open-habitat-broker.service` at boot, after
+Fleetrepo has prepared the broker state, socket directory and quota enforcement.
+Socket activation alone does not run the broker until a new connection arrives;
+the broker service restores committed users' daemon sockets during startup via
+the JIT policy gate. Activation failure for one binding is logged and does not
+block the broker or other users; fix the host policy and restart the broker to
+retry that binding. Do not enable daemon sockets directly to work around a
+failed gate.
 
 The operator CLI exposes configuration inspection, diagnostics, revocation and
 release provenance; `open-habitat --help` lists its commands. The current

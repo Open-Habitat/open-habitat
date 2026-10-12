@@ -10,7 +10,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"golang.org/x/sys/unix"
 
@@ -196,6 +198,100 @@ func TestBrokerStartupDenials(t *testing.T) {
 	cancel()
 	if w.Startup(ctx) == nil {
 		t.Fatal("accepted cancelled startup")
+	}
+}
+
+// A boot starts with committed bindings but no active user sockets. Restore
+// must release the ledger lock before calling Ready, which invokes the JIT
+// gate, and keep serving when one user's gate rejects activation.
+type rebootHost struct {
+	*fakeHost
+	mu     sync.Mutex
+	active map[string]bool
+	gate   func(ExecutorIdentity) error
+}
+
+func (h *rebootHost) Ready(_ context.Context, i ExecutorIdentity) error {
+	if err := h.gate(i); err != nil {
+		return err
+	}
+	h.mu.Lock()
+	h.active[i.Username()] = true
+	h.mu.Unlock()
+	return nil
+}
+func (h *rebootHost) RouteReady(_ context.Context, i ExecutorIdentity) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if !h.active[i.Username()] {
+		return ErrInvalid
+	}
+	return nil
+}
+func TestBrokerRestoresCommittedSocketsWithoutLogin(t *testing.T) {
+	w, h := writerFixture(t)
+	put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":4,"ids":[{"id":"42"},{"id":"43"}]}`)
+	for _, u := range []struct{ id, name string }{{"42", "carol"}, {"43", "dana"}} {
+		if r := handle(w, "ensure", u.id, u.name); r.Route == nil {
+			t.Fatal(r)
+		}
+	}
+	blocked := make(chan struct{})
+	gateError := make(chan error, 2)
+	reboot := &rebootHost{fakeHost: h, active: map[string]bool{}}
+	reboot.gate = func(i ExecutorIdentity) error {
+		// The actual gate reads the ledger. If restoration holds its
+		// exclusive lock this exchange cannot complete.
+		if r := handle(w, "lookup", i.ID(), ""); r.Users == nil {
+			gateError <- errors.New("ledger unavailable during activation")
+		}
+		if i.Username() == "carol" {
+			<-blocked
+			return ErrInvalid // gate rejects Carol
+		}
+		return nil
+	}
+	w.Executor = reboot
+	bindings, err := w.startupBindings(context.Background())
+	if err != nil || len(bindings) != 2 {
+		t.Fatalf("startup: %v, bindings: %+v", err, bindings)
+	}
+	results := make(chan string, 2)
+	done := make(chan struct{})
+	go func() {
+		w.restoreSockets(context.Background(), bindings, func(user string, ok bool) {
+			if ok {
+				results <- user + ":ready"
+			} else {
+				results <- user + ":failed"
+			}
+		})
+		close(done)
+	}()
+	select {
+	case got := <-results:
+		if got != "dana:ready" {
+			t.Fatalf("blocked by failed user's gate: %s", got)
+		}
+	case <-time.After(3 * time.Second):
+		close(blocked)
+		t.Fatal("other user's restore blocked")
+	}
+	if r := handle(w, "authorize", "43", ""); r.Route == nil {
+		t.Fatalf("broker cannot serve later user: %+v", r)
+	}
+	close(blocked)
+	<-done
+	if got := <-results; got != "carol:failed" {
+		t.Fatal(got)
+	}
+	select {
+	case err := <-gateError:
+		t.Fatal(err)
+	default:
+	}
+	if r := handle(w, "authorize", "42", ""); r.Failure != StateUnavailable {
+		t.Fatalf("failed user's socket became routable: %+v", r)
 	}
 }
 

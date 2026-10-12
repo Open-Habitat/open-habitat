@@ -3,6 +3,8 @@ Description=Open Habitat root account broker
 Requires=open-habitat-broker.socket
 After=open-habitat-broker.socket
 # Fleetrepo owns state creation, UID pool reservation, ACL and reboot ordering.
+# Enable this service as well as its socket: socket activation alone waits for
+# a new login and cannot restore committed users after a reboot.
 # This neutral template does not install a preparation/repair unit.
 
 [Service]
@@ -22,3 +24,6 @@ UMask=0077
 # Account/ACL/unit operations require access to NSS, home, /etc, /run and
 # systemd. Do not add blanket CapabilityBoundingSet without guest validation.
 Restart=no
+
+[Install]
+WantedBy=multi-user.target

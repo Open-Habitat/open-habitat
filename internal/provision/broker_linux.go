@@ -9,6 +9,8 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"sync"
+	"time"
 
 	"golang.org/x/sys/unix"
 
@@ -120,7 +122,21 @@ func ServeBroker(ctx context.Context) error {
 		}
 		log.Warn("broker_guard", "outcome", "rejected", "reason", stage)
 	}
-	if writer.Startup(ctx) != nil {
+	bindings, err := writer.startupBindings(ctx)
+	if err != nil {
+		return ErrBrokerStartup
+	}
+	// Activation is outside the ledger lock: the Fleetrepo JIT gate takes a
+	// shared lock before systemd starts each socket. A failure for one binding
+	// must not prevent the broker serving the others.
+	go writer.restoreSockets(ctx, bindings, func(user string, ok bool) {
+		if ok {
+			log.Info("broker_socket_restore", "outcome", "ready", "user", user)
+		} else {
+			log.Warn("broker_socket_restore", "outcome", "rejected", "reason", "activation_unavailable", "user", user)
+		}
+	})
+	if ctx.Err() != nil {
 		return ErrBrokerStartup
 	}
 	log.Info("service_ready", "outcome", "ready")
@@ -153,46 +169,54 @@ func loggedBrokerHandler(handle Handler, log *slog.Logger) Handler {
 // Startup inspects every committed binding, not only the identity requested by
 // the first caller. A corrupt ledger or one drifted account blocks the service.
 func (w Writer) Startup(ctx context.Context) error {
+	_, err := w.startupBindings(ctx)
+	return err
+}
+
+// startupBindings returns only identities from a fully verified ledger. It
+// never starts units while holding the state lock (the gate needs that lock).
+func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error) {
 	if ctx == nil || !w.valid() {
-		return ErrBrokerStartup
+		return nil, ErrBrokerStartup
 	}
 	fd, err := lockedDir(ctx, w.Dir, w.owner)
 	if err != nil {
-		return ErrBrokerStartup
+		return nil, ErrBrokerStartup
 	}
 	defer unix.Close(fd)
 	defer unix.Flock(fd, unix.LOCK_UN)
 	for _, n := range []string{"pending.json", "pending.json.next", "bindings.json.next", "head.json.next"} {
 		if !absent(fd, n) {
-			return ErrBrokerStartup
+			return nil, ErrBrokerStartup
 		}
 	}
 	a, l, _, _, err := stateAt(ctx, fd, w.owner)
 	if err != nil {
-		return ErrBrokerStartup
+		return nil, ErrBrokerStartup
 	}
 	hb, err := readAt(fd, "head.json", w.owner)
 	var h head
 	if err != nil || decode(hb, &h, "version", "epoch", "generation") != nil || h.Version != 1 || h.Epoch == 0 || h.Generation != l.Generation || a.Epoch < h.Epoch {
-		return ErrBrokerStartup
+		return nil, ErrBrokerStartup
 	}
 	// Empty installations must reject a filesystem with no active user
 	// accounting before any first-login operation can create host state.
 	if ctx.Err() != nil {
-		return ErrBrokerStartup
+		return nil, ErrBrokerStartup
 	}
 	if w.QuotaEnabled() != nil {
 		if w.GuardEvent != nil {
 			w.GuardEvent("quota_not_enforced")
 		}
-		return ErrBrokerStartup
+		return nil, ErrBrokerStartup
 	}
 	if fs, e := w.Capacity(); e != nil || fs.Capacity == 0 || fs.Free > fs.Capacity {
-		return ErrBrokerStartup
+		return nil, ErrBrokerStartup
 	}
+	bindings := make([]ExecutorIdentity, 0, len(l.Bindings))
 	for _, b := range l.Bindings {
 		if ctx.Err() != nil || b.UID < w.UIDMin || b.UID > w.UIDMax || w.Executor.Verify(ctx, ExecutorIdentity{provider: "github", id: b.ID, username: b.Username, uid: b.UID}) != nil {
-			return ErrBrokerStartup
+			return nil, ErrBrokerStartup
 		}
 		// A binding on a filesystem that lost quota accounting must not be
 		// authorized just because its NSS identity and socket still exist.
@@ -201,11 +225,41 @@ func (w Writer) Startup(ctx context.Context) error {
 			if w.GuardEvent != nil {
 				w.GuardEvent("binding_quota_missing")
 			}
-			return ErrBrokerStartup
+			return nil, ErrBrokerStartup
 		}
+		bindings = append(bindings, ExecutorIdentity{provider: "github", id: b.ID, username: b.Username, uid: b.UID})
 	}
 	if ctx.Err() != nil {
-		return ErrBrokerStartup
+		return nil, ErrBrokerStartup
 	}
-	return nil
+	return bindings, nil
+}
+
+// restoreSockets uses the same gated Ready path as ensure. Each binding has
+// its own budget, so a stuck or failing unit cannot strand later bindings.
+func (w Writer) restoreSockets(ctx context.Context, bindings []ExecutorIdentity, report func(string, bool)) {
+	// Run off the serving path. Bound host commands but do not serialize
+	// independent users behind a failed or slow JIT gate.
+	var group sync.WaitGroup
+	slots := make(chan struct{}, 4)
+	for _, b := range bindings {
+		if ctx.Err() != nil {
+			break
+		}
+		group.Add(1)
+		go func(b ExecutorIdentity) {
+			defer group.Done()
+			select {
+			case slots <- struct{}{}:
+				defer func() { <-slots }()
+			case <-ctx.Done():
+				return
+			}
+			activation, cancel := context.WithTimeout(ctx, 90*time.Second)
+			err := w.Executor.Ready(activation, b)
+			cancel()
+			report(b.username, err == nil)
+		}(b)
+	}
+	group.Wait()
 }
