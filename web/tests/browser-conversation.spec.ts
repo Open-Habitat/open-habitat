@@ -621,20 +621,26 @@ test("@browser-conversation footer and floating latest stay clear at phone width
   await expect(
     footer.getByText("Enter lähettää", { exact: false }),
   ).toBeVisible();
+  // The send button belongs to the editor; the hint follows it in the footer.
   expect(
-    await footer.evaluate((row) => {
-      const hint = row
+    await page.locator(".ah-composer").evaluate((composer) => {
+      const hint = composer
         .querySelector(".ah-composer-hint")
         ?.getBoundingClientRect();
-      const button = row.querySelector("button")?.getBoundingClientRect();
+      const button = composer
+        .querySelector(".ah-composer-entry button")
+        ?.getBoundingClientRect();
       return Boolean(
-        hint && button && hint.top < button.bottom && button.top < hint.bottom,
+        hint &&
+          button &&
+          button.bottom <= hint.top &&
+          hint.bottom <= innerHeight,
       );
     }),
   ).toBe(true);
   // A 390 × 844 physical viewport at 125% browser zoom has about
   // 312 × 675 CSS pixels. The hint may wrap within its column but cannot
-  // move below the button or displace the jump into the composer.
+  // move outside the composer or displace the jump into the composer.
   await page.setViewportSize({ width: 312, height: 675 });
   await expect
     .poll(() =>
@@ -649,7 +655,7 @@ test("@browser-conversation footer and floating latest stay clear at phone width
           .querySelector(".ah-composer-hint")
           ?.getBoundingClientRect();
         const send = frame
-          .querySelector(".ah-action-row-buttons button:last-of-type")
+          .querySelector(".ah-composer-entry button")
           ?.getBoundingClientRect();
         return Boolean(
           jump &&
@@ -658,8 +664,8 @@ test("@browser-conversation footer and floating latest stay clear at phone width
             send &&
             jump.bottom <= composer.top &&
             composer.bottom <= innerHeight &&
-            hint.top < send.bottom &&
-            send.top < hint.bottom,
+            send.bottom <= hint.top &&
+            hint.bottom <= innerHeight,
         );
       }),
     )

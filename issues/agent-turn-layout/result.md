@@ -16,5 +16,14 @@ comparison with the draft and its fixture/model-label differences.
 
 Validation of implementation commit `7d89caa`: `./scripts/test-web-fast.sh`
 passed (109 web unit, 90 component cases), and the focused host-backed
-browser case for the saved assistant turn passed. The clean gate receipt and
-its tree are recorded after all evidence is committed.
+browser case for the saved assistant turn passed. The first full clean gate
+caught browser layout regressions in blocked send and phone widths, and a
+production-control audit failure: turn and card buttons bypassed the shared
+control primitive. Remediation moves those buttons to `ControlButton` /
+`IconButton`, keeps their compact prototype dimensions, suppresses a duplicate
+blocked-send reason beside the editor, and updates the phone assertion to
+check the send button's intentional position beside the editor. The targeted
+four browser cases and fast web gate passed after this change. The paired
+screenshots and HTML record the initial implementation commit; the primitive
+remediation affects control behavior and markup, not the intended turn/card
+layout.

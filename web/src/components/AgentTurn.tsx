@@ -1,4 +1,5 @@
 import { type ReactNode, useState } from "react";
+import { ControlButton } from "./ControlElements";
 import { Markdown } from "./Markdown";
 
 export function ThinkingRow({
@@ -31,9 +32,14 @@ export function ThinkingRow({
     );
   return (
     <div className="ah-think-long">
-      <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}>
+      <ControlButton
+        variant="quiet"
+        size="compact"
+        aria-expanded={open}
+        onPress={() => setOpen(!open)}
+      >
         Ajattelu
-      </button>
+      </ControlButton>
       {open ? (
         <blockquote>
           <Markdown text={text} />
@@ -67,15 +73,16 @@ export function AgentTurn({
     <section className="ah-agent-turn" aria-label="Agentin vuoro">
       <div className="ah-turn-head">
         <span className="ah-turn-node" />
-        <button
-          type="button"
-          disabled={working}
+        <ControlButton
+          variant="quiet"
+          size="compact"
+          isDisabled={working}
           aria-expanded={open}
-          onClick={() => setOpen(!open)}
+          onPress={() => setOpen(!open)}
         >
           PI{model ? ` · ${model}` : ""}
           {!open ? ` · ${thinkingCount} ajatusta · ${toolCount} työkalua` : ""}
-        </button>
+        </ControlButton>
       </div>
       {open ? <div className="ah-turn-work">{work}</div> : null}
       {reply ? <div className="ah-turn-reply">{reply}</div> : null}
@@ -88,14 +95,15 @@ export function AgentTurn({
             {duration ? ` · ${duration}` : ""}
           </span>
         ) : (
-          <button
-            type="button"
+          <ControlButton
+            variant="quiet"
+            size="compact"
             aria-expanded={open}
-            onClick={() => setOpen(!open)}
+            onPress={() => setOpen(!open)}
           >
             Työ · {thinkingCount} ajatusta · {toolCount} työkalua
             {duration ? ` · ${duration}` : ""}
-          </button>
+          </ControlButton>
         )}
       </div>
     </section>

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ControlButton, IconButton } from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
 
 const remembered = new Map<string, "edges" | "start" | "end" | "all">();
@@ -52,13 +53,14 @@ export function BashToolCard({
         {commandLines.length > 1 ? (
           <div className="ah-bash-command-toggle">
             {commandLines.length} riviä ·{" "}
-            <button
-              type="button"
+            <ControlButton
+              variant="quiet"
+              size="compact"
               aria-expanded={commandOpen}
-              onClick={() => setCommandOpen(!commandOpen)}
+              onPress={() => setCommandOpen(!commandOpen)}
             >
               {commandOpen ? "Vain ensimmäinen rivi" : "Näytä koko komento"}
-            </button>
+            </ControlButton>
           </div>
         ) : null}
       </div>
@@ -68,13 +70,13 @@ export function BashToolCard({
             {long && view === "edges" && !running ? (
               <div>
                 <pre>{lines.slice(0, 3).join("\n")}</pre>
-                <button
-                  type="button"
+                <ControlButton
+                  variant="quiet"
                   className="ah-bash-gap"
-                  onClick={() => select("all")}
+                  onPress={() => select("all")}
                 >
                   {lines.length - 10} riviä välistä · Näytä kaikki
-                </button>
+                </ControlButton>
                 <pre>{lines.slice(-7).join("\n")}</pre>
               </div>
             ) : (
@@ -100,26 +102,24 @@ export function BashToolCard({
                     ["all", "Näytä kaikki", "expand"],
                   ] as const
                 ).map(([value, label, icon]) => (
-                  <button
-                    type="button"
+                  <IconButton
+                    variant="quiet"
                     key={value}
-                    title={label}
                     aria-label={label}
                     aria-pressed={view === value}
-                    onClick={() => select(value)}
+                    onPress={() => select(value)}
                   >
                     <Icon name={icon as IconName} />
-                  </button>
+                  </IconButton>
                 ))}
                 {lines.length > 40 ? (
-                  <button
-                    type="button"
-                    title="Avaa omassa ikkunassa"
+                  <IconButton
+                    variant="quiet"
                     aria-label="Avaa omassa ikkunassa"
-                    onClick={() => setDialog(true)}
+                    onPress={() => setDialog(true)}
                   >
                     <Icon name="external" />
-                  </button>
+                  </IconButton>
                 ) : null}
               </fieldset>
             ) : null}
@@ -136,24 +136,26 @@ export function BashToolCard({
         >
           <header>
             <strong>bash</strong>
-            <button
-              type="button"
-              onClick={() => {
+            <ControlButton
+              variant="quiet"
+              size="compact"
+              onPress={() => {
                 if (onCopy) onCopy();
                 else void navigator.clipboard?.writeText(output ?? "");
               }}
             >
               Kopioi
-            </button>
-            <button
-              type="button"
-              onClick={() => {
+            </ControlButton>
+            <ControlButton
+              variant="quiet"
+              size="compact"
+              onPress={() => {
                 dialogRef.current?.close?.();
                 setDialog(false);
               }}
             >
               Sulje
-            </button>
+            </ControlButton>
           </header>
           <pre>
             {lines.map((line, i) => (
