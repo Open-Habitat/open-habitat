@@ -112,11 +112,24 @@ for line in sys.stdin:
 	if name, _ := c.sessionName(s); name != "Continued title" {
 		t.Fatalf("continued name: %q", name)
 	}
+	// The regression case is an already automatically named conversation.
+	// A failed manual request must retain its Pi name and allow retry.
+	s.automaticName = "Continued title"
 	// A model error does not erase an existing name.
-	c.titleGenerator = func(string) (string, error) { return "", fmt.Errorf("synthetic unavailable") }
-	c.nameConversation(s, "some text", true)
+	c.titleGenerator = func(string) (string, error) { return "", fmt.Errorf("synthetic secret: provider unavailable") }
+	w = httptest.NewRecorder()
+	c.regenerateTitle(w, httptest.NewRequest("POST", "http://unix/regenerate_title", nil), id)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"reason":"model_unavailable"`) || strings.Contains(w.Body.String(), "synthetic secret") {
+		t.Fatalf("unsafe or missing fixed reason: %d %s", w.Code, w.Body.String())
+	}
 	if name, _ := c.sessionName(s); name != "Continued title" {
 		t.Fatalf("failure erased name: %q", name)
+	}
+	c.titleGenerator = func(string) (string, error) { return "Recovered title", nil }
+	w = httptest.NewRecorder()
+	c.regenerateTitle(w, httptest.NewRequest("POST", "http://unix/regenerate_title", nil), id)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"done"`) {
+		t.Fatalf("retry failed: %d %s", w.Code, w.Body.String())
 	}
 	// The third turn does not refine a name supplied by a person or by
 	// explicit regeneration, even if automatic naming failed earlier.

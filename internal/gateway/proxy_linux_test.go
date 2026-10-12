@@ -113,6 +113,15 @@ func TestProxyFailureDiagnosticUsesVerifiedRoute(t *testing.T) {
 	}
 }
 
+func TestProxyOperationClassifiesTitleWithoutSessionID(t *testing.T) {
+	if got := proxyOperation("/api/v1/conversations/7e85a75e-e6d5-432c-bdf0-d7e4afa640b1/regenerate_title"); got != "conversation_title" {
+		t.Fatalf("title route classification: %q", got)
+	}
+	if got := proxyOperation("/api/v1/conversations/not-an-id/regenerate_title"); got != "daemon_request" {
+		t.Fatalf("unverified route classification: %q", got)
+	}
+}
+
 func TestProxyForwardsUninterpretedRepliesAndBody(t *testing.T) {
 	h, _ := proxyFixture(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/conversations" && r.Method == "POST" {

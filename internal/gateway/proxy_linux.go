@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/udssecure"
@@ -60,6 +61,10 @@ func proxyOperation(path string) string {
 	case "/api/v1/onboarding/github/repos":
 		return "github_repos"
 	default:
+		// Classify the route, never log the browser-supplied session ID.
+		if strings.HasSuffix(path, "/regenerate_title") && conversationPath.MatchString(path) {
+			return "conversation_title"
+		}
 		return "daemon_request"
 	}
 }

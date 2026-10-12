@@ -8,19 +8,46 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 )
 
 //go:embed title-helper.mjs
 var titleHelper string
 
+// Title failures carry only fixed codes. Neither provider errors nor excerpts
+// may cross into daemon logs or browser responses.
+type titleFailure string
+
+const (
+	titleModelUnavailable      titleFailure = "model_unavailable"
+	titleModelTimeout          titleFailure = "model_timeout"
+	titleModelInvalid          titleFailure = "model_invalid_response"
+	titleNativeUnavailable     titleFailure = "native_name_unavailable"
+	titleNativeChanged         titleFailure = "native_name_changed"
+	titleControllerUnavailable titleFailure = "controller_unavailable"
+	titleNameWriteFailed       titleFailure = "name_write_failed"
+)
+
+func (f titleFailure) Error() string { return string(f) }
+
+func titleReason(err error) titleFailure {
+	var reason titleFailure
+	if errors.As(err, &reason) && (reason == titleModelTimeout || reason == titleModelInvalid) {
+		return reason
+	}
+	return titleModelUnavailable // Never reflect fixture or provider error text.
+}
+
 func (c *ConversationController) generateTitle(text string) (string, error) {
 	if c.runtime == nil || !utf8.ValidString(text) {
-		return "", errors.New("title unavailable")
+		return "", titleModelUnavailable
 	}
 	text = prefixBytes(text, 4096)
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -32,15 +59,21 @@ func (c *ConversationController) generateTitle(text string) (string, error) {
 	var output bytes.Buffer
 	cmd.Stdout = &output
 	// Provider diagnostics may contain credentials or user text; never echo them.
-	if cmd.Run() != nil || output.Len() > 512 {
-		return "", errors.New("title unavailable")
+	if err := cmd.Run(); err != nil {
+		if ctx.Err() != nil {
+			return "", titleModelTimeout
+		}
+		return "", titleModelUnavailable
+	}
+	if output.Len() > 512 {
+		return "", titleModelInvalid
 	}
 	var response struct {
 		Title string `json:"title"`
 		Model string `json:"model"`
 	}
 	if json.Unmarshal(output.Bytes(), &response) != nil || response.Model == "" || !validTitle(response.Title) {
-		return "", errors.New("title unavailable")
+		return "", titleModelInvalid
 	}
 	return response.Title, nil
 }
@@ -99,11 +132,26 @@ func (c *ConversationController) startAutomaticTitle(s *conversation) {
 
 // One worker per session. Native history is the precondition on either side
 // of the model call. The controller lock never spans filesystem or RPC I/O.
-func (c *ConversationController) nameConversation(s *conversation, text string, explicit bool) bool {
-	defer func() { c.mu.Lock(); s.naming = false; c.startAutomaticTitle(s); c.mu.Unlock() }()
+func (c *ConversationController) nameConversation(s *conversation, text string, explicit bool) (failure titleFailure) {
+	defer func() {
+		if failure != "" {
+			operation := "automatic"
+			if explicit {
+				operation = "manual"
+			}
+			diagnostic.New(os.Stderr, "daemon").Warn("conversation_title", "outcome", "failed", "operation", operation, "reason", string(failure))
+		}
+		c.mu.Lock()
+		s.naming = false
+		c.startAutomaticTitle(s)
+		c.mu.Unlock()
+	}()
 	before, ok := c.sessionName(s)
-	if !ok || (!explicit && before != "" && before != s.automaticName) {
-		return false
+	if !ok {
+		return titleNativeUnavailable
+	}
+	if !explicit && before != "" && before != s.automaticName {
+		return titleNativeChanged
 	}
 	generate := c.generateTitle
 	if c.fixture && c.titleGenerator != nil {
@@ -111,26 +159,29 @@ func (c *ConversationController) nameConversation(s *conversation, text string, 
 	}
 	name, err := generate(text)
 	if err != nil {
-		return false
+		return titleReason(err)
 	}
 	c.mu.Lock()
 	live := !c.closed && c.sessions[s.id] == s && !s.dead && !s.rpc.overflow.Load()
 	c.mu.Unlock()
 	if !live {
-		return false
+		return titleControllerUnavailable
 	}
 	current, ok := c.sessionName(s)
-	if !ok || current != before {
-		return false
+	if !ok {
+		return titleNativeUnavailable
+	}
+	if current != before {
+		return titleNativeChanged
 	}
 	accepted, err := s.rpc.request("set_session_name", name, 4*time.Second)
 	if err != nil || !accepted {
-		return false
+		return titleNameWriteFailed
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.closed || c.sessions[s.id] != s {
-		return false
+		return titleControllerUnavailable
 	}
 	if explicit {
 		// Even an identical regenerated string is now a user-chosen name.
@@ -141,5 +192,5 @@ func (c *ConversationController) nameConversation(s *conversation, text string, 
 	if c.journal != nil {
 		c.journal.appendInvalidation("pi:" + s.id)
 	}
-	return true
+	return ""
 }

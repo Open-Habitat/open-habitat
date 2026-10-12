@@ -122,9 +122,16 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
     page.getByText("README.md", { exact: false }).last(),
   ).toBeVisible();
   await expect(page.getByText("Viimeisimmät live-tapahtumat")).toHaveCount(0);
-  // The fake Pi has no model runtime. Explicit regeneration reports failure
-  // without erasing the native-history first-prompt fallback.
+  // The fake Pi has no model runtime. Explicit regeneration reports a fixed
+  // reason without erasing the native-history first-prompt fallback.
+  const titleReply = page.waitForResponse((response) =>
+    response.url().endsWith("/regenerate_title"),
+  );
   await page.getByRole("button", { name: "Luo uusi otsikko" }).click();
+  expect(await (await titleReply).json()).toMatchObject({
+    state: "failed",
+    reason: "model_unavailable",
+  });
   await expect(page.getByText("Otsikkoa ei voitu luoda")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Tutki synteettinen työtila" }),

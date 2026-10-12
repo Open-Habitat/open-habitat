@@ -569,12 +569,12 @@ func (c *ConversationController) regenerateTitle(w http.ResponseWriter, r *http.
 	}
 	c.mu.Unlock()
 	// Browser disconnect does not cancel the bounded model or native RPC call.
-	result := make(chan bool, 1)
+	result := make(chan titleFailure, 1)
 	go func() { result <- c.nameConversation(s, text, true) }()
-	if <-result {
+	if reason := <-result; reason == "" {
 		historyJSON(w, map[string]any{"schema_version": 1, "state": "done"})
 	} else {
-		historyJSON(w, map[string]any{"schema_version": 1, "state": "failed"})
+		historyJSON(w, map[string]any{"schema_version": 1, "state": "failed", "reason": reason})
 	}
 }
 
