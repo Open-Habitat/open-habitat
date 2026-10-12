@@ -13,3 +13,8 @@ light and dark. The turn crops hide the unrelated sticky recap *only for the
 capture*; they do not change the component. The fake Pi supplies no provider
 thinking timing or real model. `pairs/report.md` records the measured fidelity
 comparison with the draft and its fixture/model-label differences.
+
+Validation of implementation commit `7d89caa`: `./scripts/test-web-fast.sh`
+passed (109 web unit, 90 component cases), and the focused host-backed
+browser case for the saved assistant turn passed. The clean gate receipt and
+its tree are recorded after all evidence is committed.
