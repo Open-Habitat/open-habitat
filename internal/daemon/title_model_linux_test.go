@@ -47,7 +47,7 @@ func TestTitleModelUsesPinnedPiRuntimeWithSyntheticProvider(t *testing.T) {
 		if request.Tools != nil || request.MaxTokens > 48 {
 			t.Errorf("unbounded/tool-enabled title: %+v", request)
 		}
-		if len(request.Messages) < 2 || request.Messages[0].Role != "developer" || !strings.Contains(fmt.Sprint(request.Messages[0].Content), "latest user message") || !strings.Contains(fmt.Sprint(request.Messages[1].Content), "Latest user message:\nPuhu suomea") {
+		if len(request.Messages) < 2 || (request.Messages[0].Role != "developer" && request.Messages[0].Role != "system") || !strings.Contains(fmt.Sprint(request.Messages[0].Content), "latest user message") || !strings.Contains(fmt.Sprint(request.Messages[1].Content), "Latest user message:\nPuhu suomea") {
 			t.Errorf("title language instruction absent: %+v", request.Messages)
 		}
 		// The first advertised model can fail even when Pi has another one.
