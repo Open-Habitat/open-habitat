@@ -39,3 +39,26 @@ are in [design.md](../../design-system/design.md).
 Lab validation on desktop and phone should show that short summaries are
 readable directly, longer thinking remains accessible, and replies and their
 copy actions are easy to find even in a turn with many tool calls.
+
+## Prototyyppikierrokset
+
+`prototype.html` on itsenäinen vertailusivu (tokenit ja fontit upotettu),
+jossa suunnat vaihtuvat näppäimillä 1–3. Se poistetaan, kun valittu suunta
+on viety tuotantokomponentteihin.
+
+Kierros 1 (12.10.2026) vertasi kolmea suuntaa: tekijäotsake kerran vuoron
+alussa, pystylanka marginaalissa ja ajattelu proosana. Jari valitsi langan:
+lanka sitoo ajattelun, työkalut ja vastauksen yhdeksi vuoroksi ja malli on
+vastauskuplan tilarivillä. Samalla sovittiin:
+
+- Avatussa bash-työkalussa ei ole Argumentit-otsaketta eikä `command`-nimeä;
+  näkyvissä on komento ja tuloste.
+- Lähetä-painike on kentän vieressä, ei omalla rivillään; nykyinen käyttöliittymä
+  on liian väljä.
+- Agentti voi tehdä useita lankoja peräkkäin ilman käyttäjän viestiä välissä,
+  joten tekijämerkintä ei voi olettaa käyttäjän viestiä edelleen.
+
+Kierros 2 rakentaa langan päälle ja eroaa avoimissa kohdissa: miten lanka
+tiivistetään, ovatko viestien tila- ja tekijärivit ylä- vai alalaidassa
+(käyttäjän ja agentin kuplat yhdenmukaistetaan), ja esitetäänkö peräkkäiset
+langat erillisinä vai samalla langalla.
