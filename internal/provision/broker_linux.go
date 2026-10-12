@@ -115,7 +115,7 @@ func ServeBroker(ctx context.Context) error {
 	writer.GuardEvent = func(stage string) {
 		// Writer supplies fixed literals only. Never log request, candidate,
 		// UID, route, path, command output or raw host errors.
-		if stage != "availability_error" && stage != "no_available_binding" && stage != "invalid_executor" && stage != "nss_probe" && stage != "group_probe" && stage != "parent_policy" && stage != "acl_policy" && stage != "path_probe" && stage != "unit_probe" {
+		if stage != "availability_error" && stage != "no_available_binding" && stage != "invalid_executor" && stage != "nss_probe" && stage != "group_probe" && stage != "parent_policy" && stage != "acl_policy" && stage != "path_probe" && stage != "unit_probe" && stage != "quota_not_enforced" && stage != "binding_quota_missing" {
 			return
 		}
 		log.Warn("broker_guard", "outcome", "rejected", "reason", stage)
@@ -142,10 +142,6 @@ func loggedBrokerHandler(handle Handler, log *slog.Logger) Handler {
 		case reply.Users != nil:
 			// list and lookup return Users, not a route; even an empty list
 			// is successful. Do not attribute a request ID as a verified user.
-			log.Info("broker_exchange", "outcome", "accepted", "operation", r.Operation)
-		case reply.Quota != nil:
-			// A quota reply verifies a bound UID, but neither values nor caller
-			// subject need appear in diagnostics.
 			log.Info("broker_exchange", "outcome", "accepted", "operation", r.Operation)
 		default:
 			log.Warn("broker_exchange", "outcome", "rejected", "operation", r.Operation, "reason", "invalid_reply")
@@ -182,7 +178,13 @@ func (w Writer) Startup(ctx context.Context) error {
 	}
 	// Empty installations must reject a filesystem with no active user
 	// accounting before any first-login operation can create host state.
-	if w.QuotaEnabled() != nil || ctx.Err() != nil {
+	if ctx.Err() != nil {
+		return ErrBrokerStartup
+	}
+	if w.QuotaEnabled() != nil {
+		if w.GuardEvent != nil {
+			w.GuardEvent("quota_not_enforced")
+		}
 		return ErrBrokerStartup
 	}
 	if fs, e := w.Capacity(); e != nil || fs.Capacity == 0 || fs.Free > fs.Capacity {
@@ -196,6 +198,9 @@ func (w Writer) Startup(ctx context.Context) error {
 		// authorized just because its NSS identity and socket still exist.
 		q, err := w.Quota.Read(b.UID)
 		if err != nil || !validLimit(q.Limit) {
+			if w.GuardEvent != nil {
+				w.GuardEvent("binding_quota_missing")
+			}
 			return ErrBrokerStartup
 		}
 	}

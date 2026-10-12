@@ -51,6 +51,24 @@ func TestQuotaUnavailableBeforeFirstAccountLeavesNoHostMutation(t *testing.T) {
 	}
 }
 
+func TestQuotaStartupDiagnosticsHaveFixedReasons(t *testing.T) {
+	w, _ := writerFixture(t)
+	var stages []string
+	w.GuardEvent = func(stage string) { stages = append(stages, stage) }
+	w.QuotaEnabled = func() error { return storagequota.ErrUnavailable }
+	if err := w.Startup(context.Background()); err == nil || len(stages) != 1 || stages[0] != "quota_not_enforced" {
+		t.Fatalf("unavailable filesystem: %v %v", err, stages)
+	}
+	w.QuotaEnabled = func() error { return nil }
+	if got := handle(w, "ensure", "42", "carol"); got.Route == nil {
+		t.Fatal(got)
+	}
+	w.Quota.(*fakeQuota).quota.Limit = 0
+	if err := w.Startup(context.Background()); err == nil || len(stages) != 2 || stages[1] != "binding_quota_missing" {
+		t.Fatalf("unlimited bound account: %v %v", err, stages)
+	}
+}
+
 func TestQuotaBoundAndJournaled(t *testing.T) {
 	w, _ := writerFixture(t)
 	q := w.Quota.(*fakeQuota)
