@@ -47,7 +47,5 @@ screens; @review-browser-design-v2 supplies the design assessment. Verify the
 empty and populated views and their actions in the lab on desktop and phone,
 including long titles, keyboard focus and touch access.
 
-Split from @new-conversation-view by agreement with Jari on 2026-10-12.
-That issue owns false errors and state propagation; @conversation-title-language
-owns the generated title's language. This issue presents the supplied state
-without redefining its meaning.
+@new-conversation-view owns false errors and state propagation;
+@conversation-title-language owns the generated title's language.

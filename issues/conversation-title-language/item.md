@@ -25,7 +25,3 @@ the native naming, generation timing and failure behavior described in
 @generate-conversation-titles. Verify the language choice through a running
 Finnish conversation and check that other conversation languages are still
 respected; a Finnish UI alone does not determine the title language.
-
-Split from @new-conversation-view by agreement with Jari on 2026-10-12.
-The completed title feature remains the behavior reference; this issue tracks
-its language regression separately from view layout and conversation state.

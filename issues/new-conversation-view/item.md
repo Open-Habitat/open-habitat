@@ -12,8 +12,6 @@ related: ['@conversation-actions-layout', '@conversation-title-language']
 
 # Show honest state when starting and continuing a conversation
 
-_Source: chat_
-
 A new conversation should open as a calm, usable place to write. Starting up
 or having no messages is not a failure, and the conversation and sidebar
 should describe the same observed state.
@@ -55,9 +53,6 @@ history failure in the lab on desktop and phone. Exercise state propagation
 through a running conversation as well as visual examples: a fixture alone
 cannot show that the sidebar receives the same facts as the conversation.
 
-Jari agreed to split the original report on 2026-10-12. Top-bar actions,
-title-action visibility, sidebar alignment and the workspace “+” button belong
-to @conversation-actions-layout. The English title generated for this Finnish
-conversation belongs to @conversation-title-language, linked to the original
-@generate-conversation-titles behavior. This issue retains the startup errors
-and inconsistent state information.
+Top-bar actions, title-action visibility, sidebar alignment and the workspace
+“+” button belong to @conversation-actions-layout. The title language regression
+belongs to @conversation-title-language.
