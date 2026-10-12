@@ -2,12 +2,14 @@
 created: 2026-10-12
 updated: 2026-10-12
 type: bug
-status: in-progress
+status: fixed
 priority: normal
 lane: web
 lane_seq: 3
 collision: [web/]
 preparation: ready
+closed: 2026-10-12
+closed_by: claude
 ---
 
 # OpenAI onboarding step flashes an error and buries its status
