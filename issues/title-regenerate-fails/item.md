@@ -5,8 +5,8 @@ type: bug
 status: open
 priority: normal
 related: ['@generate-conversation-titles']
-lane: signin-fix
-lane_seq: 10
+lane: daemon
+lane_seq: 1
 collision: [internal/daemon/]
 ---
 
