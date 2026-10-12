@@ -27,7 +27,9 @@ type BrokerQuota interface {
 }
 
 const maxJSONQuota = uint64(9007199254740991) // exact in browser numbers
-func validQuotaLimit(n uint64) bool           { return n >= 1024 && n <= maxJSONQuota && n%1024 == 0 }
+const maxNativeLimit = uint64(1 << 50)
+
+func validQuotaLimit(n uint64) bool { return n >= 1<<20 && n <= maxNativeLimit && n%1024 == 0 }
 func boolInt(b bool) int {
 	if b {
 		return 1

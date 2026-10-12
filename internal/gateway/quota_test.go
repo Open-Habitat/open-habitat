@@ -78,10 +78,10 @@ func TestQuotaAuthorizationAndDefault(t *testing.T) {
 		h.ServeHTTP(w, r)
 		return w.Code
 	}
-	if put("wrong", `{"subject":"43","limit_bytes":1024}`) != 403 || put(sess.CSRF, `{"subject":"043","limit_bytes":1024}`) != 400 || put(sess.CSRF, `{"subject":"43","limit_bytes":0}`) != 400 {
+	if put("wrong", `{"subject":"43","limit_bytes":1024}`) != 403 || put(sess.CSRF, `{"subject":"043","limit_bytes":1024}`) != 400 || put(sess.CSRF, `{"subject":"43","limit_bytes":0}`) != 400 || put(sess.CSRF, `{"subject":"43","limit_bytes":1024}`) != 400 {
 		t.Fatal("invalid quota write accepted")
 	}
-	if put(sess.CSRF, `{"subject":"43","limit_bytes":1024}`) != 204 || b.lastSubject != "43" || b.lastLimit != 1024 {
+	if put(sess.CSRF, `{"subject":"43","limit_bytes":1048576}`) != 204 || b.lastSubject != "43" || b.lastLimit != 1048576 {
 		t.Fatal("quota write did not reach broker by subject")
 	}
 	if _, e := a.AdminControl(context.Background(), []byte(`{"operation":"quota_set","subject":"043","limit_bytes":1024}`)); e == nil {

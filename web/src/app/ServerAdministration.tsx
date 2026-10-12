@@ -89,7 +89,8 @@ export function ServerAdministration({ csrf }: { csrf?: string }) {
     const limit = number * 1024 ** 3;
     return raw.trim() !== "" &&
       Number.isSafeInteger(limit) &&
-      limit >= 1024 &&
+      limit >= 1024 ** 2 &&
+      limit <= 2 ** 50 &&
       limit % 1024 === 0
       ? limit
       : undefined;

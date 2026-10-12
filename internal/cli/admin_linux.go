@@ -288,8 +288,8 @@ func adminServerCommand(args []string) (any, error) {
 
 func parseQuotaArg(raw string) (uint64, error) {
 	n, e := strconv.ParseUint(raw, 10, 64)
-	if e != nil || n < 1024 || n > 9007199254740991 || n%1024 != 0 || strconv.FormatUint(n, 10) != raw {
-		return 0, usage("invalid quota limit; expected a positive multiple of 1024 bytes no greater than 9007199254740991")
+	if e != nil || n < 1<<20 || n > 1<<50 || n%1024 != 0 || strconv.FormatUint(n, 10) != raw {
+		return 0, usage("invalid quota limit; expected 1048576..1125899906842624 bytes in 1024-byte steps")
 	}
 	return n, nil
 }

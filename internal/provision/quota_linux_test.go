@@ -27,6 +27,7 @@ func TestQuotaProtocolStrict(t *testing.T) {
 		`{"version":1,"quota":{"usage_bytes":12,"limit_bytes":1048576,"uid":2100},"generation":1,"epoch":1}`,
 		`{"version":1,"quota":{"limit_bytes":1048576},"generation":1,"epoch":1}`,
 		`{"version":1,"quota":{"usage_bytes":12,"limit_bytes":1048576},"generation":1,"epoch":1,"route":{}}`,
+		`{"version":1,"quota":{"usage_bytes":12,"limit_bytes":1048576,"capacity_bytes":100,"free_bytes":101},"generation":1,"epoch":1}`,
 	} {
 		if _, err := ParseReply([]byte(raw)); err == nil {
 			t.Fatalf("accepted %s", raw)

@@ -18,6 +18,23 @@ var ErrUnavailable = errors.New("user quota unavailable")
 // filesystem block size.
 type Quota struct{ Usage, Limit uint64 }
 
+// Filesystem is a point-in-time observation of the same home filesystem.
+// Free counts blocks available to ordinary users, not root-reserved blocks.
+type Filesystem struct{ Capacity, Free uint64 }
+
+func Capacity() (Filesystem, error) {
+	fd, err := homeFD()
+	if err != nil {
+		return Filesystem{}, err
+	}
+	defer unix.Close(fd)
+	var fs unix.Statfs_t
+	if unix.Fstatfs(fd, &fs) != nil || fs.Frsize <= 0 || fs.Blocks == 0 || fs.Bavail > fs.Blocks || fs.Blocks > ^uint64(0)/uint64(fs.Frsize) {
+		return Filesystem{}, ErrUnavailable
+	}
+	return Filesystem{Capacity: fs.Blocks * uint64(fs.Frsize), Free: fs.Bavail * uint64(fs.Frsize)}, nil
+}
+
 type dqblk struct {
 	Hard, Soft, Current, IHard, ISoft, ICurrent, BTime, ITime uint64
 	Valid                                                     uint32

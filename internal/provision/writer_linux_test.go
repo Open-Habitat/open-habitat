@@ -131,6 +131,9 @@ func writerFixture(t *testing.T) (Writer, *fakeHost) {
 	w := NewWriter(d, 2100, 2102, h)
 	w.owner = uint32(os.Getuid())
 	w.Quota = &fakeQuota{quota: storagequota.Quota{Limit: 1 << 30}}
+	w.Capacity = func() (storagequota.Filesystem, error) {
+		return storagequota.Filesystem{Capacity: 2 << 30, Free: 1 << 30}, nil
+	}
 	return w, h
 }
 func handle(w Writer, op, id, name string) Reply {

@@ -572,6 +572,27 @@ func mapBrokerReply(reply provision.Reply, err error) (gateway.BrokerReply, erro
 	}
 }
 func (gatewayBroker) Exchange(ctx context.Context, r gateway.BrokerRequest) (gateway.BrokerReply, error) {
-	reply, err := (provision.Client{SocketPath: "/run/open-habitat/broker.sock", SocketOwnerUID: 0}).Exchange(ctx, provision.Request{Version: 1, Operation: r.Operation, Provider: "github", ID: r.ID, Candidate: r.Candidate})
+	request := provision.Request{Version: 1, Operation: r.Operation, Provider: "github", ID: r.ID, Candidate: r.Candidate}
+	if r.Operation == "ensure" && r.DefaultLimitBytes != 0 {
+		request.DefaultLimitBytes = &r.DefaultLimitBytes
+	}
+	reply, err := (provision.Client{SocketPath: provision.BrokerSocket, SocketOwnerUID: 0}).Exchange(ctx, request)
 	return mapBrokerReply(reply, err)
+}
+
+// The gateway supplies only an authenticated provider subject. The broker
+// resolves its committed binding and never accepts a client-selected UID.
+func (gatewayBroker) ReadQuota(ctx context.Context, subject string) (gateway.Quota, gateway.QuotaFilesystem, error) {
+	r, err := (provision.Client{SocketPath: provision.BrokerSocket, SocketOwnerUID: 0}).Exchange(ctx, provision.Request{Version: 1, Operation: "quota_read", Provider: "github", ID: subject})
+	if err != nil || r.Failure != "" || r.Quota == nil {
+		return gateway.Quota{}, gateway.QuotaFilesystem{}, gateway.ErrBrokerUnavailable
+	}
+	return gateway.Quota{UsageBytes: r.Quota.UsageBytes, LimitBytes: r.Quota.LimitBytes}, gateway.QuotaFilesystem{CapacityBytes: r.Quota.CapacityBytes, FreeBytes: r.Quota.FreeBytes}, nil
+}
+func (gatewayBroker) SetQuota(ctx context.Context, subject string, limit uint64) error {
+	r, err := (provision.Client{SocketPath: provision.BrokerSocket, SocketOwnerUID: 0}).Exchange(ctx, provision.Request{Version: 1, Operation: "quota_set", Provider: "github", ID: subject, LimitBytes: &limit})
+	if err != nil || r.Failure != "" || r.Quota == nil || r.Quota.LimitBytes != limit {
+		return gateway.ErrBrokerUnavailable
+	}
+	return nil
 }

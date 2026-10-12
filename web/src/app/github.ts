@@ -30,9 +30,19 @@ export type Observation = {
 };
 export class GitHubError extends Error {
   constructor(
-    public code: "login" | "auth" | "denied" | "conflict" | "storage" | "unavailable",
+    public code:
+      | "login"
+      | "auth"
+      | "denied"
+      | "conflict"
+      | "storage"
+      | "unavailable",
   ) {
-    super(code === "storage" ? "Tallennustila on täynnä. Pyydä ylläpitäjää nostamaan tallennusrajaa." : code);
+    super(
+      code === "storage"
+        ? "Tallennustila on täynnä. Pyydä ylläpitäjää nostamaan tallennusrajaa."
+        : code,
+    );
   }
 }
 async function bounded(response: Response, max: number): Promise<unknown> {
@@ -91,9 +101,9 @@ async function response(r: Response, max: number): Promise<unknown> {
         ? "storage"
         : code === "github_auth_unavailable"
           ? "auth"
-        : code === "checkout_exists"
-          ? "conflict"
-          : "unavailable",
+          : code === "checkout_exists"
+            ? "conflict"
+            : "unavailable",
     );
   }
   if (!r.ok) throw new GitHubError("unavailable");

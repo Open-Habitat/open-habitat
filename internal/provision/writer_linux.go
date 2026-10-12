@@ -89,6 +89,7 @@ type Writer struct {
 	UIDMin, UIDMax uint32
 	Executor       HostExecutor
 	Quota          QuotaOperations
+	Capacity       func() (storagequota.Filesystem, error)
 	// AdmitAny is an explicit root-only test-installation policy. The gateway
 	// must enforce signed Access assertions before the operator enables it.
 	AdmitAny bool
@@ -102,7 +103,7 @@ type Writer struct {
 }
 
 func NewWriter(dir string, min, max uint32, executor HostExecutor) Writer {
-	return Writer{Dir: dir, UIDMin: min, UIDMax: max, Executor: executor, Quota: nativeQuota{}}
+	return Writer{Dir: dir, UIDMin: min, UIDMax: max, Executor: executor, Quota: nativeQuota{}, Capacity: storagequota.Capacity}
 }
 func failure(f Failure) Reply { return Reply{Version: 1, Failure: f} }
 
@@ -298,7 +299,7 @@ func stateAt(ctx context.Context, fd int, owner uint32) (allowFile, ledgerFile, 
 	return a, l, ab, lb, nil
 }
 func (w Writer) valid() bool {
-	return w.Executor != nil && w.Quota != nil && w.UIDMin >= 1000 && w.UIDMax >= w.UIDMin && w.UIDMax-w.UIDMin <= 4095
+	return w.Executor != nil && w.Quota != nil && w.Capacity != nil && w.UIDMin >= 1000 && w.UIDMax >= w.UIDMin && w.UIDMax-w.UIDMin <= 4095
 }
 
 // Handle serializes every authorize and ensure. A pending journal or interrupted
@@ -457,7 +458,11 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 				if err != nil || !validLimit(q.Limit) || (r.Operation == "quota_set" && q.Limit != *r.LimitBytes) || ctx.Err() != nil || !sameState(ctx, fd, w.owner, ab, lb, a.Epoch) {
 					return failure(StateUnavailable)
 				}
-				return Reply{Version: 1, Quota: &QuotaReply{UsageBytes: q.Usage, LimitBytes: q.Limit}, Generation: l.Generation, Epoch: a.Epoch}
+				fs, err := w.Capacity()
+				if err != nil || fs.Capacity == 0 || fs.Free > fs.Capacity {
+					return failure(StateUnavailable)
+				}
+				return Reply{Version: 1, Quota: &QuotaReply{UsageBytes: q.Usage, LimitBytes: q.Limit, CapacityBytes: fs.Capacity, FreeBytes: fs.Free}, Generation: l.Generation, Epoch: a.Epoch}
 			}
 			if r.Operation == "authorize" && w.Executor.RouteReady(ctx, identity) != nil {
 				// An inactive socket is not mapping drift. Deny this request but

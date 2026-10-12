@@ -19,6 +19,8 @@ const message = (e: unknown) =>
         auth: "GitHub-valtuutusta ei voitu vahvistaa.",
         denied: "Haku estettiin. Tarkista istunto ja oikeudet.",
         conflict: "Kohteessa on eri repo. Tarkista se koneella.",
+        storage:
+          "Tallennustila on täynnä. Pyydä ylläpitäjää nostamaan tallennusrajaa.",
         unavailable:
           "Tilan vahvistaminen ei onnistunut. Tarkista yhteys ja yritä uudelleen.",
       }[e.code]
