@@ -12,7 +12,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"golang.org/x/sys/unix"
 
@@ -237,6 +236,7 @@ func TestBrokerRestoresCommittedSocketsWithoutLogin(t *testing.T) {
 		}
 	}
 	blocked := make(chan struct{})
+	entered := make(chan struct{})
 	gateError := make(chan error, 2)
 	reboot := &rebootHost{fakeHost: h, active: map[string]bool{}}
 	reboot.gate = func(i ExecutorIdentity) error {
@@ -246,6 +246,7 @@ func TestBrokerRestoresCommittedSocketsWithoutLogin(t *testing.T) {
 			gateError <- errors.New("ledger unavailable during activation")
 		}
 		if i.Username() == "carol" {
+			close(entered)
 			<-blocked
 			return ErrInvalid // gate rejects Carol
 		}
@@ -268,22 +269,22 @@ func TestBrokerRestoresCommittedSocketsWithoutLogin(t *testing.T) {
 		})
 		close(done)
 	}()
-	select {
-	case got := <-results:
-		if got != "dana:ready" {
-			t.Fatalf("blocked by failed user's gate: %s", got)
-		}
-	case <-time.After(3 * time.Second):
-		close(blocked)
-		t.Fatal("other user's restore blocked")
-	}
-	if r := handle(w, "authorize", "43", ""); r.Route == nil {
-		t.Fatalf("broker cannot serve later user: %+v", r)
+	<-entered
+	// While one gate waits, the broker remains responsive; authorization
+	// fails closed for sockets that have not yet been restored.
+	if r := handle(w, "authorize", "43", ""); r.Failure != StateUnavailable {
+		t.Fatalf("inactive user unexpectedly routable: %+v", r)
 	}
 	close(blocked)
 	<-done
 	if got := <-results; got != "carol:failed" {
 		t.Fatal(got)
+	}
+	if got := <-results; got != "dana:ready" {
+		t.Fatal(got)
+	}
+	if r := handle(w, "authorize", "43", ""); r.Route == nil {
+		t.Fatalf("broker cannot serve later user: %+v", r)
 	}
 	select {
 	case err := <-gateError:
@@ -292,6 +293,30 @@ func TestBrokerRestoresCommittedSocketsWithoutLogin(t *testing.T) {
 	}
 	if r := handle(w, "authorize", "42", ""); r.Failure != StateUnavailable {
 		t.Fatalf("failed user's socket became routable: %+v", r)
+	}
+}
+
+func TestBrokerStartupVerifiesButDoesNotActivateRevokedBinding(t *testing.T) {
+	w, h := writerFixture(t)
+	put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":4,"ids":[{"id":"42"},{"id":"43"}]}`)
+	for _, u := range []struct{ id, name string }{{"42", "carol"}, {"43", "dana"}} {
+		if r := handle(w, "ensure", u.id, u.name); r.Route == nil {
+			t.Fatal(r)
+		}
+	}
+	put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":5,"ids":[{"id":"42"}]}`)
+	h.mu.Lock()
+	h.calls = nil
+	h.mu.Unlock()
+	bindings, err := w.startupBindings(context.Background())
+	if err != nil || len(bindings) != 1 || bindings[0].ID() != "42" {
+		t.Fatalf("revoked binding included in activation: %v, %+v", err, bindings)
+	}
+	assertCalls(t, h, call("verify", ExecutorIdentity{provider: "github", id: "42", username: "carol", uid: 2100}), call("verify", ExecutorIdentity{provider: "github", id: "43", username: "dana", uid: 2101}))
+	w.AdmitAny = true
+	bindings, err = w.startupBindings(context.Background())
+	if err != nil || len(bindings) != 2 {
+		t.Fatalf("admission:any dropped bound user: %v, %+v", err, bindings)
 	}
 }
 

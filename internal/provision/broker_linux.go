@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
-	"sync"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -214,6 +213,10 @@ func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error)
 		return nil, ErrBrokerStartup
 	}
 	bindings := make([]ExecutorIdentity, 0, len(l.Bindings))
+	admitted := make(map[string]bool, len(a.IDs))
+	for _, entry := range a.IDs {
+		admitted[entry.ID] = true
+	}
 	for _, b := range l.Bindings {
 		if ctx.Err() != nil || b.UID < w.UIDMin || b.UID > w.UIDMax || w.Executor.Verify(ctx, ExecutorIdentity{provider: "github", id: b.ID, username: b.Username, uid: b.UID}) != nil {
 			return nil, ErrBrokerStartup
@@ -227,7 +230,11 @@ func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error)
 			}
 			return nil, ErrBrokerStartup
 		}
-		bindings = append(bindings, ExecutorIdentity{provider: "github", id: b.ID, username: b.Username, uid: b.UID})
+		// Preserve and verify revoked bindings, but never ask the gate to
+		// activate one the broker would deny under current admission.
+		if w.AdmitAny || admitted[b.ID] {
+			bindings = append(bindings, ExecutorIdentity{provider: "github", id: b.ID, username: b.Username, uid: b.UID})
+		}
 	}
 	if ctx.Err() != nil {
 		return nil, ErrBrokerStartup
@@ -235,31 +242,17 @@ func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error)
 	return bindings, nil
 }
 
-// restoreSockets uses the same gated Ready path as ensure. Each binding has
-// its own budget, so a stuck or failing unit cannot strand later bindings.
+// restoreSockets runs off the serving path, but starts units serially: the
+// Fleetrepo gate requires every sibling listener to be fully active before it
+// will admit another. A failed gate does not stop later attempts.
 func (w Writer) restoreSockets(ctx context.Context, bindings []ExecutorIdentity, report func(string, bool)) {
-	// Run off the serving path. Bound host commands but do not serialize
-	// independent users behind a failed or slow JIT gate.
-	var group sync.WaitGroup
-	slots := make(chan struct{}, 4)
 	for _, b := range bindings {
 		if ctx.Err() != nil {
-			break
+			return
 		}
-		group.Add(1)
-		go func(b ExecutorIdentity) {
-			defer group.Done()
-			select {
-			case slots <- struct{}{}:
-				defer func() { <-slots }()
-			case <-ctx.Done():
-				return
-			}
-			activation, cancel := context.WithTimeout(ctx, 90*time.Second)
-			err := w.Executor.Ready(activation, b)
-			cancel()
-			report(b.username, err == nil)
-		}(b)
+		activation, cancel := context.WithTimeout(ctx, 90*time.Second)
+		err := w.Executor.Ready(activation, b)
+		cancel()
+		report(b.username, err == nil)
 	}
-	group.Wait()
 }

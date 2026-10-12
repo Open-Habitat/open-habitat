@@ -121,9 +121,11 @@ are not part of this deployment. The product supplies neutral templates in
 Fleetrepo has prepared the broker state, socket directory and quota enforcement.
 Socket activation alone does not run the broker until a new connection arrives;
 the broker service restores committed users' daemon sockets during startup via
-the JIT policy gate. Activation failure for one binding is logged and does not
-block the broker or other users; fix the host policy and restart the broker to
-retry that binding. Do not enable daemon sockets directly to work around a
+the JIT policy gate. The broker keeps serving during restoration and starts
+sockets one at a time because the gate inspects sibling listeners. A failed
+start is logged and later bindings are attempted; while a slow start is pending,
+other inactive sockets still cannot route. Fix the host policy and restart the
+broker to retry a failed binding. Do not enable daemon sockets directly to work around a
 failed gate.
 
 The operator CLI exposes configuration inspection, diagnostics, revocation and
