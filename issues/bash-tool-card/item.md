@@ -2,12 +2,14 @@
 created: 2026-10-12
 updated: 2026-10-12
 type: bug
-status: in-progress
+status: fixed
 priority: normal
 lane: web
 lane_seq: 6
 collision: [web/]
 preparation: ready
+closed: 2026-10-12
+closed_by: claude
 ---
 
 # Bash tool card hides the command and scatters the result header
@@ -56,3 +58,9 @@ The synthetic lab captures and short/long output fixtures are described in
 [result.md](result.md). `card-short-*` and `card-long-*` pair screenshots
 with static HTML at 1440 and 390 px in both themes; `history-*` and
 `live-running-*` show the surrounding turn.
+
+## Resolution
+
+### 2026-10-12T17:43:28Z · @claude
+
+Implemented command/output card with bounded native argument retrieval and synthetic desktop/phone light/dark pairs; see result.md and agent-turn-layout/pairs/report.md. Clean ci-local gate passed on bfabbf8.

@@ -2,12 +2,14 @@
 created: 2026-10-12
 updated: 2026-10-12
 type: improvement
-status: in-progress
+status: done
 priority: normal
 lane: web
 lane_seq: 5
 collision: [web/]
 preparation: ready
+closed: 2026-10-12
+closed_by: claude
 ---
 
 # Agent turn repeats its author and hides short thinking
@@ -79,3 +81,9 @@ The production rendering and its host-fact limits are recorded in [result.md](re
 The draft/lab comparison is [pairs/report.md](pairs/report.md). Synthetic
 turn snapshots named `history-short-*`, `history-long-multiline-*` and
 `live-running-*` pair PNG and static HTML at both widths and themes.
+
+## Resolution
+
+### 2026-10-12T17:43:28Z · @claude
+
+Implemented native turn grouping, foldable work, readable thinking and reply with synthetic desktop/phone light/dark pairs; see result.md and pairs/report.md. Clean ci-local gate passed on bfabbf8.
