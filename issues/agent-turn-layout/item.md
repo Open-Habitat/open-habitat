@@ -62,3 +62,13 @@ Kierros 2 rakentaa langan päälle ja eroaa avoimissa kohdissa: miten lanka
 tiivistetään, ovatko viestien tila- ja tekijärivit ylä- vai alalaidassa
 (käyttäjän ja agentin kuplat yhdenmukaistetaan), ja esitetäänkö peräkkäiset
 langat erillisinä vai samalla langalla.
+
+Kierroksella 2 Jari valitsi Solmun: molempien kuplien tekijä- ja tilarivi on
+ylälaidassa samassa muodossa (nimi tai tila, malli, kopiointi, aika), lanka
+tiivistetään sen päästä PI-rivin avausnapilla, ja tiivistettynä päärivillä
+lukee ajatusten ja työkalujen määrä vastauksen jäädessä näkyviin. Jokaisella
+langalla on oma pää myös peräkkäisissä langoissa.
+
+Kierros 3 näyttää Solmun agentin työn aikana. Suunnat eroavat siinä, missä
+eläväisyys asuu: aktiivisen solmun ja lohkon sykkeissä, itseään piirtävässä
+langassa vai langan päärivin tilanauhassa.
