@@ -17,4 +17,4 @@ First sign-in on the pilot.20 test installation fails for every browser. The gat
 
 Cause: `exactGateExec` in `internal/provision/executor_linux.go` pins the gate command to `/usr/local/libexec/open-habitat-test-jit/jit_policy.py`, a path the rename introduced. Fleetrepo installs and declares the gate at `/usr/local/libexec/native-agent-host-test-jit/jit_policy.py` (main, `fresh_six_install.py`, the gate units). Running that gate by hand for the bound user returns `verified`; the unit never ran because the broker rejected it first.
 
-Fix: make the product's pinned gate path match what Fleetrepo actually installs, with a regression test that fails on drift, then release and deploy so Jari can sign in. Fleetrepo owns the guest's libexec layout; renaming it there is a separate, optional change.
+Fix (Jari, 2026-10-12: the name is Open Habitat everywhere): the product's new path is correct. Fleetrepo renames its installed gate to `/usr/local/libexec/open-habitat-test-jit/` and applies it to the test guest; no product release is needed. Jari then retries the first sign-in. Renaming the test server itself is separate work.
