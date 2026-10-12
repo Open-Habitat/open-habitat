@@ -128,13 +128,15 @@ func TestCloneStreamCancellationKeepsUncertainTree(t *testing.T) {
 	}
 }
 
-func TestCloneStreamRejectsUnboundedHomeSource(t *testing.T) {
+func TestCloneStreamRejectsUnreadableQuota(t *testing.T) {
 	cfg, home, script, run := streamFixture(t)
-	h := repoCloneStreamHandler(cfg, func(*http.Request) bool { return true }, home, "gh", script, run, boundedCloneVolume)
+	// A CI host may have a valid quota for the test UID. Model an unreadable
+	// quota explicitly instead of relying on the runner's mount configuration.
+	h := repoCloneStreamHandler(cfg, func(*http.Request) bool { return true }, home, "gh", script, run, func(int) bool { return false })
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, streamRequest())
 	if w.Code != 409 || strings.Contains(w.Body.String(), "event:") {
-		t.Fatalf("unbounded source admitted: %d %s", w.Code, w.Body.String())
+		t.Fatalf("unavailable quota admitted: %d %s", w.Code, w.Body.String())
 	}
 	if _, err := os.Stat(filepath.Join(home, "src", "repo")); !os.IsNotExist(err) {
 		t.Fatalf("unsafe write: %v", err)

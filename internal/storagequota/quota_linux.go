@@ -74,9 +74,10 @@ func Read(uid uint32) (Quota, error) {
 	return readFD(fd, uid)
 }
 
-// Set changes only the block hard limit. It leaves inode and soft limits
-// untouched. The readback uses the same descriptor, avoiding a filesystem
-// switch between setting and checking the applied limit.
+// Set changes the block hard limit. It preserves any existing soft limit
+// unless the new hard limit is lower, in which case it clamps the soft limit
+// to the hard limit. Inode limits remain untouched. Readback uses the same
+// descriptor, avoiding a filesystem switch between setting and checking.
 func Set(uid uint32, bytes uint64) error {
 	if uid < 1000 || uid > 60000 || bytes < 1<<20 || bytes > 1<<50 || bytes%1024 != 0 {
 		return ErrUnavailable
@@ -86,7 +87,17 @@ func Set(uid uint32, bytes uint64) error {
 		return err
 	}
 	defer unix.Close(fd)
-	b := dqblk{Hard: bytes / 1024, Valid: qifBlockLimits}
+	// QIF_BLIMITS updates *both* block limits. An unreadable existing
+	// record is not safe to overwrite.
+	var current dqblk
+	if quotaCall(fd, getQuota, uid, &current) != nil {
+		return ErrUnavailable
+	}
+	soft := current.Soft
+	if soft > bytes/1024 {
+		soft = bytes / 1024
+	}
+	b := dqblk{Hard: bytes / 1024, Soft: soft, Valid: qifBlockLimits}
 	if quotaCall(fd, setQuota, uid, &b) != nil {
 		return ErrUnavailable
 	}
