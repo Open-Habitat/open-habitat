@@ -41,9 +41,11 @@ type dqblk struct {
 }
 
 const (
-	getInfo        = (0x800005 << 8) // QCMD(Q_GETINFO, USRQUOTA)
-	getQuota       = (0x800007 << 8) // QCMD(Q_GETQUOTA, USRQUOTA)
-	setQuota       = (0x800008 << 8) // QCMD(Q_SETQUOTA, USRQUOTA)
+	xGetQuotaStatV = ((('X' << 8) + 8) << 8) // QCMD(Q_XGETQSTATV, USRQUOTA)
+	userAcct       = 1 << 0                  // FS_QUOTA_UDQ_ACCT
+	userEnforced   = 1 << 1                  // FS_QUOTA_UDQ_ENFD
+	getQuota       = (0x800007 << 8)         // QCMD(Q_GETQUOTA, USRQUOTA)
+	setQuota       = (0x800008 << 8)         // QCMD(Q_SETQUOTA, USRQUOTA)
 	qifBlockLimits = 1
 )
 
@@ -65,23 +67,45 @@ func homeFD() (int, error) {
 	return fd, nil
 }
 
-// Enabled probes user-quota accounting without assuming an unused UID has a
-// quota record. Q_GETINFO returns ESRCH when quotas are off; this is read-only.
+// fs_quota_statv version 1 from linux/dqblk_xfs.h. Q_GETINFO only proves
+// accounting; ext4 can account usage while silently allowing writes beyond
+// the hard limit. The kernel reports enforcement independently in Flags.
+type quotaFileStat struct {
+	Inode, Blocks uint64
+	Extents, Pad  uint32
+}
+type quotaStat struct {
+	Version int8
+	Pad1    uint8
+	Flags   uint16
+	Incore  uint32
+	Files   [3]quotaFileStat
+	Timers  [3]int32
+	Warns   [4]uint16
+	Pad4    uint32
+	Pad2    [7]uint64
+}
+
+func quotaEnforced(flags uint16) bool { return flags&(userAcct|userEnforced) == userAcct|userEnforced }
+
+func enforcedFD(fd int) error {
+	q := quotaStat{Version: 1}
+	_, _, errno := unix.Syscall6(unix.SYS_QUOTACTL_FD, uintptr(fd), uintptr(xGetQuotaStatV), 0, uintptr(unsafe.Pointer(&q)), 0, 0)
+	if errno != 0 || q.Version != 1 || !quotaEnforced(q.Flags) {
+		return ErrUnavailable
+	}
+	return nil
+}
+
+// Enabled checks accounting AND enforcement on the host-selected home
+// filesystem. It does not need an unused UID or mutate kernel quota state.
 func Enabled() error {
 	fd, err := homeFD()
 	if err != nil {
 		return err
 	}
 	defer unix.Close(fd)
-	var info struct {
-		BlockGrace, InodeGrace uint64
-		Flags, Valid           uint32
-	}
-	_, _, errno := unix.Syscall6(unix.SYS_QUOTACTL_FD, uintptr(fd), uintptr(getInfo), 0, uintptr(unsafe.Pointer(&info)), 0, 0)
-	if errno != 0 {
-		return ErrUnavailable
-	}
-	return nil
+	return enforcedFD(fd)
 }
 
 func quotaCall(fd, cmd int, uid uint32, block *dqblk) error {
@@ -93,6 +117,9 @@ func quotaCall(fd, cmd int, uid uint32, block *dqblk) error {
 }
 
 func readFD(fd int, uid uint32) (Quota, error) {
+	if enforcedFD(fd) != nil {
+		return Quota{}, ErrUnavailable
+	}
 	var b dqblk
 	if quotaCall(fd, getQuota, uid, &b) != nil || b.Hard == 0 || b.Hard > ^uint64(0)/1024 {
 		return Quota{}, ErrUnavailable
@@ -125,6 +152,9 @@ func Set(uid uint32, bytes uint64) error {
 		return err
 	}
 	defer unix.Close(fd)
+	if enforcedFD(fd) != nil {
+		return ErrUnavailable
+	}
 	// QIF_BLIMITS updates *both* block limits. An unreadable existing
 	// record is not safe to overwrite.
 	var current dqblk

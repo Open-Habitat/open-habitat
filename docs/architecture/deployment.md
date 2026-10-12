@@ -107,8 +107,9 @@ receipts.
 The operator supplies admission policy, service configuration, secrets, TLS,
 DNS and ingress, as well as the Linux accounts and runtime-directory setup
 needed before provisioning can run. The filesystem holding `/home` must have
-active Linux user quotas; on the test VM its ext4 journaled quota feature is
-enabled offline before deployment. Before switching an installation with
+active and enforced Linux user quotas; the ext4 journaled quota feature on
+the test VM starts accounting but also needs quota enforcement activated on
+each boot before deployment. The broker rejects accounting-only filesystems. Before switching an installation with
 existing bound users, the operator sets and verifies a native hard limit for
 each committed UID; the new broker refuses startup otherwise. Authorization
 also refuses existing routes if accounting is lost. Per-user `~/src` images

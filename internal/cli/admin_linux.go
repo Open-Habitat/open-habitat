@@ -183,10 +183,11 @@ func adminServerCommand(args []string) (any, error) {
 			var result struct {
 				SchemaVersion int `json:"schema_version"`
 				Users         []struct {
-					ID         string `json:"id"`
-					Username   string `json:"username"`
-					UsageBytes uint64 `json:"usage_bytes"`
-					LimitBytes uint64 `json:"limit_bytes"`
+					ID            string `json:"id"`
+					Username      string `json:"username"`
+					Administrator bool   `json:"administrator"`
+					UsageBytes    uint64 `json:"usage_bytes"`
+					LimitBytes    uint64 `json:"limit_bytes"`
 				} `json:"users"`
 				Filesystem struct {
 					CapacityBytes uint64 `json:"capacity_bytes"`

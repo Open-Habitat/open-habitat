@@ -2,7 +2,24 @@
 
 package storagequota
 
-import "testing"
+import (
+	"testing"
+	"unsafe"
+)
+
+func TestQuotaStatEnforcementAndABI(t *testing.T) {
+	if size := unsafe.Sizeof(quotaStat{}); size != 160 {
+		t.Fatalf("fs_quota_statv v1 ABI size: %d", size)
+	}
+	for _, tc := range []struct {
+		flags uint16
+		want  bool
+	}{{0, false}, {userAcct, false}, {userEnforced, false}, {userAcct | userEnforced, true}} {
+		if got := quotaEnforced(tc.flags); got != tc.want {
+			t.Fatalf("flags %#x: enforced=%v, want %v", tc.flags, got, tc.want)
+		}
+	}
+}
 
 func TestInvalidUIDAndLimitsNeverReachKernel(t *testing.T) {
 	for _, uid := range []uint32{0, 999, 60001, ^uint32(0)} {
