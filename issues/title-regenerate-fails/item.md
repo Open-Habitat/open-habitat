@@ -2,13 +2,15 @@
 created: 2026-10-12
 updated: 2026-10-12
 type: bug
-status: in-progress
+status: fixed
 priority: normal
 related: ['@generate-conversation-titles']
 lane: daemon
 lane_seq: 1
 collision: [internal/daemon/]
 preparation: ready
+closed: 2026-10-12
+closed_by: claude
 ---
 
 # Manual title regeneration fails
