@@ -7,7 +7,7 @@ status: open
 priority: normal
 related: ['@new-conversation-view']
 lane: web
-lane_seq: 5
+lane_seq: 7
 collision: [web/]
 preparation: pending
 ---
