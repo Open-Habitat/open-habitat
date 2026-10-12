@@ -72,3 +72,10 @@ langalla on oma pää myös peräkkäisissä langoissa.
 Kierros 3 näyttää Solmun agentin työn aikana. Suunnat eroavat siinä, missä
 eläväisyys asuu: aktiivisen solmun ja lohkon sykkeissä, itseään piirtävässä
 langassa vai langan päärivin tilanauhassa.
+
+Kierroksella 3 Jari valitsi Nykyhetken: elävyys on yhdessä tilanauhassa,
+joka kertoo mitä agentti juuri tekee ja kauanko työ on kestänyt, ja lohkot
+asettuvat heti lopulliseen muotoonsa. Avoin kysymys on, pitäisikö nauhan olla
+alhaalla ja olla samalla langan suljettu tila, josta langan voi avata.
+Kierros 4 kokeilee kolmea sijaintia: työn ja vastauksen välissä, langan
+viimeisenä rivinä vastauksen alla, ja kelluvana kirjoituskentän yllä.
