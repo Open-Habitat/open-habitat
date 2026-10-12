@@ -25,3 +25,8 @@ Sidebar:
 5. Under the expanded workspace, the new conversation row shows "Uusi keskustelu ×  Historia ei luettavissa", the status text floating next to the row. History of a new conversation is not "unreadable"; the row should show the conversation normally, and a genuine history failure needs its own clear placement.
 
 Check the design (design-system/, `review-browser-design-v2`) for the intended top bar and states, and verify each state in the lab on desktop and phone.
+
+Sidebar after a couple of messages (Jari, 14.37):
+6. The conversation row now reads "Checking the Connection" with "○ Tila ei tiedossa" on a second line. After completed turns the state is known; "unknown" must not be the normal state of a settled conversation. Find why the sidebar has no state for it (the conversation view knew the turn had completed).
+7. The row wraps onto two lines and its white backgrounds are offset from each other and from the workspace row above. A conversation row is one line: title truncated with an ellipsis, a compact state indicator at the right, aligned with the workspace rows.
+8. The generated title is in English although the conversation was in Finnish (check against `generate-conversation-titles`: the title should follow the conversation's language).
