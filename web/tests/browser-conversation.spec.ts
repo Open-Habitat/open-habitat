@@ -60,6 +60,46 @@ async function open(page: import("@playwright/test").Page) {
     page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
   ).toBeEnabled();
 }
+test("@browser-conversation new controller stays calm and shares settled state with navigation", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const header = page.locator(".ah-agent-header");
+  const row = page
+    .locator(".ah-agent-item")
+    .filter({ hasText: "Uusi keskustelu" });
+  await expect(header.getByText("Odottaa")).toBeVisible();
+  await expect(
+    row.locator(".ah-status").filter({ hasText: "odottaa" }),
+  ).toBeVisible();
+  await expect(page.getByText("Historia ei luettavissa")).toHaveCount(0);
+  await expect(page.getByText("Tilannekatsaus")).toHaveCount(0);
+  await page
+    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .fill("Testaa uusi keskustelu");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  const id = new URL(page.url()).searchParams.get("conversation");
+  if (!id) throw new Error("missing conversation id");
+  await expect
+    .poll(async () => {
+      const response = await page.request.get(
+        `/api/v1/conversations/${id.slice(3)}/status`,
+      );
+      const status = await response.json();
+      return status.state === "idle" && status.native_history === "present";
+    })
+    .toBe(true);
+  await expect(
+    page.locator(".ah-agent-header").getByText("Odottaa"),
+  ).toBeVisible();
+  await expect(
+    row.locator(".ah-status").filter({ hasText: "odottaa" }),
+  ).toBeVisible();
+  await expect(page.getByText("Tilannekatsaus")).toBeVisible();
+  await expect(page.getByText("Historia ei luettavissa")).toHaveCount(0);
+});
+
 test("@browser-conversation create, send once, reconnect and old history stays read-only", async ({
   page,
 }) => {

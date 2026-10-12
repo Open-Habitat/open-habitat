@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
-import { serverInfo } from "./serverAdministration";
-import { LinkRow } from "../components/ControlElements";
 import { AccountShelf, WorkspaceRail, WorkspaceSection } from "../components";
-import type { AccountProfile } from "./pi";
 import { agentPresentation } from "../components/agentPresentation";
+import { LinkRow } from "../components/ControlElements";
 import {
   type ConversationStore,
+  unreadableHistory,
   useConversationMetadata,
 } from "./conversationStore";
 import type { Session } from "./conversations";
+import type { AccountProfile } from "./pi";
+import { serverInfo } from "./serverAdministration";
 import type { Snapshot, Workspace } from "./snapshot";
 import type { RootState } from "./store";
 
@@ -133,7 +134,9 @@ export function WorkspaceRailView({
           ? agents.filter(
               (a) =>
                 agentPresentation({
-                  process: a.process,
+                  process: daemonSessions.some((s) => s.agent_id === a.agent_id)
+                    ? "daemon_managed_live"
+                    : a.process,
                   command: metadata.staleStatuses.has(a.agent_id)
                     ? undefined
                     : metadata.statuses.get(a.agent_id)?.state,
@@ -194,15 +197,19 @@ export function WorkspaceRailView({
                 : `/agents/${a.agent_id}`,
               title: a.title.display,
               ...(() => {
+                const managed = daemonSessions.some(
+                  (s) =>
+                    s.agent_id === a.agent_id &&
+                    s.workspace_id === w.workspace_id,
+                );
                 const presentation = agentPresentation({
-                  process: phase === "stale" ? "stale" : a.process,
-                  control: daemonSessions.some(
-                    (s) =>
-                      s.agent_id === a.agent_id &&
-                      s.workspace_id === w.workspace_id,
-                  )
-                    ? "writable"
-                    : a.control,
+                  process:
+                    phase === "stale"
+                      ? "stale"
+                      : managed
+                        ? "daemon_managed_live"
+                        : a.process,
+                  control: managed ? "writable" : a.control,
                   command:
                     metadata.statuses.has(a.agent_id) &&
                     !metadata.staleStatuses.has(a.agent_id)
@@ -219,12 +226,18 @@ export function WorkspaceRailView({
                   activityShortLabel: presentation.activityShortLabel,
                   controlLabel: presentation.controlLabel,
                   operationLabel: presentation.operationLabel,
-                  historyLabel:
-                    a.history === "missing" || a.history === "corrupt"
-                      ? "Historia ei luettavissa"
-                      : a.history === "unavailable"
-                        ? "Historiaa ei voitu tarkistaa"
-                        : undefined,
+                  historyLabel: unreadableHistory(
+                    a,
+                    managed,
+                    metadata.statuses.get(a.agent_id),
+                  )
+                    ? "Historia ei luettavissa"
+                    : metadata.historyReadFailures.has(a.agent_id) ||
+                        a.history === "unavailable" ||
+                        metadata.statuses.get(a.agent_id)?.native_history ===
+                          "unavailable"
+                      ? "Historiaa ei voitu tarkistaa"
+                      : undefined,
                   attentionLabel: presentation.attentionLabel,
                 };
               })(),

@@ -1,9 +1,32 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ConversationPager } from "./conversationPager";
-import { ConversationStore } from "./conversationStore";
-import type { HistoryPage } from "./history";
+import { ConversationStore, unreadableHistory } from "./conversationStore";
+import type { HistoryEntry, HistoryPage } from "./history";
 import { rowIndexOf, visibleEntryKeys } from "./useReadingPosition";
-import type { HistoryEntry } from "./history";
+
+describe("history state in a controlled conversation", () => {
+  const agent = { history: "missing" } as Parameters<
+    typeof unreadableHistory
+  >[0];
+  it("does not call an unwritten empty controller history a failure", () => {
+    expect(unreadableHistory(agent, true)).toBe(false);
+    expect(
+      unreadableHistory(agent, true, { native_history: "missing" } as never),
+    ).toBe(false);
+    expect(unreadableHistory(agent, false)).toBe(true);
+  });
+  it("preserves real failure and newer positive evidence", () => {
+    expect(
+      unreadableHistory(agent, true, {
+        turn_settled: { native_key: "x" },
+      } as never),
+    ).toBe(true);
+    expect(
+      unreadableHistory(agent, false, { native_history: "present" } as never),
+    ).toBe(false);
+    expect(unreadableHistory({ history: "corrupt" } as never, true)).toBe(true);
+  });
+});
 
 const id = (n: number) =>
   `pi:${String(n).padStart(8, "0")}-1111-4111-8111-111111111111`;

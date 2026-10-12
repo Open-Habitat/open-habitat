@@ -216,24 +216,28 @@ export function NavLink({
           )}
         </span>
       ) : null}
-      {statusLabels?.map((text) => (
-        <StatusMark
-          key={text}
-          label={text}
-          tone={
-            text === "Yhteys poikki" || text === "Historia ei luettavissa"
-              ? "warning"
-              : "neutral"
-          }
-          kind={
-            text === "Vain luku"
-              ? "read-only"
-              : text === "Historia ei luettavissa"
-                ? "error"
-                : "neutral"
-          }
-        />
-      ))}
+      {statusLabels?.length ? (
+        <span className="ah-nav-details">
+          {statusLabels.map((text) => (
+            <StatusMark
+              key={text}
+              label={text}
+              tone={
+                text === "Yhteys poikki" || text === "Historia ei luettavissa"
+                  ? "warning"
+                  : "neutral"
+              }
+              kind={
+                text === "Vain luku"
+                  ? "read-only"
+                  : text === "Historia ei luettavissa"
+                    ? "error"
+                    : "neutral"
+              }
+            />
+          ))}
+        </span>
+      ) : null}
       {badgeText ? <Badge label={badgeText} tone="warning" /> : null}
     </LinkRow>
   );
@@ -300,9 +304,7 @@ export function AgentNavItem({
               ? stale
                 ? "Tieto vanhentunut"
                 : "Ei enää löydy"
-              : controlLabel || operationLabel || historyLabel
-                ? ""
-                : activityShortLabel || activityLabel
+              : activityShortLabel || activityLabel
           }
         />
       </ListRow>

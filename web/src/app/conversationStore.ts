@@ -25,10 +25,27 @@ type WindowRecord = {
   deferred: boolean; // cold controlled open waits for the status proof
   queued: ConversationEvent[];
 };
+export function unreadableHistory(
+  agent: Agent,
+  managed: boolean,
+  status?: Status,
+): boolean {
+  if (agent.history === "corrupt") return true;
+  if (agent.history !== "missing") return false;
+  if (
+    status?.native_history === "present" ||
+    status?.native_history === "unavailable"
+  )
+    return false;
+  // A controller has not yet written the first native entry in an empty chat.
+  return !managed || !!status?.turn_settled;
+}
+
 type Metadata = Readonly<{
   agents: ReadonlyMap<string, Agent>;
   statuses: ReadonlyMap<string, Status>;
   staleStatuses: ReadonlySet<string>;
+  historyReadFailures: ReadonlySet<string>;
   attention: ReadonlyMap<string, "new" | "seen">;
 }>;
 
@@ -42,6 +59,7 @@ export class ConversationStore {
     agents: new Map(),
     statuses: new Map(),
     staleStatuses: new Set(),
+    historyReadFailures: new Set(),
     attention: new Map(),
   };
   private metaListeners = new Set<() => void>();
@@ -189,13 +207,22 @@ export class ConversationStore {
         }
       }
     }
-    // A confirmed unreadable native history is an observed error. Visiting it
-    // clears its attention, not its persistent row label. Unavailable history
-    // is only lost observation, not a proven error.
+    // An unwritten history for an open, empty controller is not a read failure.
     for (const agent of snapshot.agents) {
-      const previous = this.metadata.agents.get(agent.agent_id)?.history;
-      if (agent.history === "missing" || agent.history === "corrupt") {
-        if (previous !== agent.history)
+      const previous = this.metadata.agents.get(agent.agent_id);
+      // Without the controller catalog, a first missing observation is
+      // ambiguous. A readable history disappearing is not.
+      const failed =
+        agent.history === "corrupt" ||
+        (agent.history === "missing" &&
+          (previous?.history === "readable" ||
+            !!this.metadata.statuses.get(agent.agent_id)?.turn_settled));
+      if (failed) {
+        if (
+          !previous ||
+          previous.history !== agent.history ||
+          !this.attentionKeys.get(agent.agent_id)?.startsWith("history:")
+        )
           this.markAttention(agent.agent_id, `history:${agent.history}`);
       } else if (
         this.attentionKeys.get(agent.agent_id)?.startsWith("history:")
@@ -325,11 +352,13 @@ export class ConversationStore {
           next: undefined,
           state: "empty",
         });
-      else
+      else {
+        this.noteHistoryRead(id, true);
         this.publish(id, {
           ...record.value,
           state: record.value.entries.length ? "stale" : "error",
         });
+      }
     } finally {
       if (record.loading === read) this.releaseQueued(record);
     }
@@ -404,8 +433,10 @@ export class ConversationStore {
         }
       if (record.loading === read) this.releaseQueued(record);
     } catch {
-      if (this.epoch === epoch && this.windows.get(id) === record)
+      if (this.epoch === epoch && this.windows.get(id) === record) {
+        this.noteHistoryRead(id, true);
         this.markStale(id);
+      }
     } finally {
       if (record.loading === read) this.releaseQueued(record);
     }
@@ -486,6 +517,7 @@ export class ConversationStore {
       incoming.some((entry) => entry.entry_key === settledKey)
         ? { ...old.live, fragments: [], truncated: false }
         : old.live;
+    this.noteHistoryRead(id, false);
     this.publish(id, {
       entries,
       next:
@@ -497,6 +529,16 @@ export class ConversationStore {
       live,
     });
     if (flush) this.releaseQueued(record);
+  }
+  private noteHistoryRead(id: string, failed: boolean) {
+    if (this.metadata.historyReadFailures.has(id) === failed) return;
+    const historyReadFailures = new Set(this.metadata.historyReadFailures);
+    if (failed) historyReadFailures.add(id);
+    else historyReadFailures.delete(id);
+    this.metadata = { ...this.metadata, historyReadFailures };
+    this.metaListeners.forEach((listener) => {
+      listener();
+    });
   }
   private releaseQueued(record: WindowRecord) {
     record.loading = false;
@@ -791,6 +833,7 @@ export class ConversationStore {
       agents: new Map(),
       statuses: new Map(),
       staleStatuses: new Set(),
+      historyReadFailures: new Set(),
       attention: new Map(),
     };
     this.statusRequests.clear();
@@ -815,6 +858,7 @@ const emptyMetadata: Metadata = {
   agents: new Map(),
   statuses: new Map(),
   staleStatuses: new Set(),
+  historyReadFailures: new Set(),
   attention: new Map(),
 };
 const noSubscribe = () => () => {};

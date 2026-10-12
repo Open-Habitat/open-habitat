@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { agentPresentation } from "./agentPresentation";
 
 describe("agent presentation", () => {
-  it("does not infer deliberate closure or a wait from process exit or idle", () => {
+  it("distinguishes an open idle controller from an unexplained exit", () => {
     expect(
       agentPresentation({ process: "confirmed_exited", command: "idle" })
         .activity,
@@ -10,7 +10,10 @@ describe("agent presentation", () => {
     expect(
       agentPresentation({ process: "daemon_managed_live", command: "idle" })
         .activity,
-    ).toBe("unknown");
+    ).toBe("waiting");
+    expect(agentPresentation({ process: "daemon_managed_live" }).activity).toBe(
+      "unknown",
+    );
     expect(
       agentPresentation({ process: "stale", command: "accepted" }).activity,
     ).toBe("unknown");

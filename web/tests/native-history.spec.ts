@@ -141,6 +141,11 @@ test("@native-history missing, corrupt and read-only states", async ({
   await fixture(page, "corrupt");
   await page.getByRole("button", { name: "Päivitä" }).click();
   await expect(page.getByText("Historia on vanhentunut")).toBeVisible();
+  await page.getByRole("link", { name: "Etusivu" }).first().click();
+  await expect(
+    page.getByText("Historiaa ei voitu tarkistaa").first(),
+  ).toBeVisible();
+  await page.goto(`/agents/${agent}`);
   await page.screenshot({
     path: "test-results/evidence/history-corrupt.png",
     fullPage: true,

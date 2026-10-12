@@ -33,9 +33,7 @@ export function agentPresentation(facts: AgentFacts): AgentPresentation {
     !facts.pendingQuestion &&
     !facts.connectionLost;
   const waiting =
-    running &&
-    (facts.pendingQuestion ||
-      (facts.command === "idle" && facts.attention !== undefined));
+    running && (facts.pendingQuestion || facts.command === "idle");
   const activity = facts.intentionallyClosed
     ? "closed"
     : working
