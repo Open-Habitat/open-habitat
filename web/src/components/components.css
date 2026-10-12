@@ -1071,9 +1071,6 @@ h1[tabindex="-1"]:focus {
   justify-content: flex-start;
   margin-block: var(--ah-s4);
 }
-.ah-login-view > .ah-notice {
-  margin-top: var(--ah-s6);
-}
 [aria-expanded="true"] > .ah-disclosure-chevron {
   transform: rotate(45deg);
 }

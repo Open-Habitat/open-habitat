@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import styles from "./GitHubRepoChooser.module.css";
 import { OnboardingFrame } from "./OnboardingFrame";
 import { Button } from "./Primitives";
@@ -50,6 +50,7 @@ export interface GitHubRepoChooserProps {
   onRecheck?: () => void;
   /** Leave a failed selection to choose other repos; never retry the write. */
   onEditSelection?: () => void;
+  notice?: ReactNode;
 }
 
 export function GitHubRepoChooser({
@@ -61,6 +62,7 @@ export function GitHubRepoChooser({
   onRefresh,
   onRecheck,
   onEditSelection,
+  notice,
 }: GitHubRepoChooserProps) {
   // Lock synchronously: a second click must not POST again before the parent rerenders.
   const started = useRef(false);
@@ -99,7 +101,7 @@ export function GitHubRepoChooser({
     checkout.names.length === selectedNames.length &&
     selectedNames.every((name) => checkout.names.includes(name));
   return (
-    <OnboardingFrame step={2}>
+    <OnboardingFrame step={2} notice={notice}>
       <section className={styles.card} aria-labelledby="github-chooser-title">
         <header className={styles.header}>
           <p className="ah-eyebrow">Käyttöönotto</p>

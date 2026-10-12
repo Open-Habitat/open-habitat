@@ -96,6 +96,7 @@ export function GitHubOnboarding({
       reads.current?.abort();
       const controller = new AbortController();
       reads.current = controller;
+      setError("");
       setView({ phase: "loading" }); // No incomplete catalog is selectable.
       setSelected([]); // A refreshed catalog may no longer contain old choices.
       let completedPages = 0;
@@ -461,14 +462,31 @@ export function GitHubOnboarding({
         }}
         onRecheck={recheck}
         onEditSelection={editSelection}
+        notice={
+          error ? (
+            <InlineNotice
+              title="Haun tila vaatii tarkistusta"
+              description={error}
+              tone="warning"
+              actions={[
+                {
+                  label: pending.current.length
+                    ? "Tarkista haun tila uudelleen"
+                    : bound.current
+                      ? "Tarkista repot uudelleen"
+                      : "Lataa sivu uudelleen",
+                  onPress: () => {
+                    if (pending.current.length)
+                      recheck(); // Read only; never repeat a clone.
+                    else if (bound.current) void load(generation.current);
+                    else window.location.reload();
+                  },
+                },
+              ]}
+            />
+          ) : null
+        }
       />
-      {error ? (
-        <InlineNotice
-          title="Haun tila vaatii tarkistusta"
-          description={error}
-          tone="warning"
-        />
-      ) : null}
       <div className="ah-onboarding-exit">
         <Button
           label="Keskeytä käyttöönotto ja kirjaudu ulos"

@@ -1,11 +1,18 @@
+import type { ReactNode } from "react";
 import { OnboardingFrame } from "./OnboardingFrame";
 import { Button } from "./Primitives";
 import { InlineNotice } from "./Status";
 
-export function LoginCard({ onLogin }: { onLogin?: () => void }) {
+export function LoginCard({
+  onLogin,
+  notice,
+}: {
+  onLogin?: () => void;
+  notice?: ReactNode;
+}) {
   const demo = import.meta.env.VITE_SYNTHETIC_DEMO === "true";
   return (
-    <OnboardingFrame step={1}>
+    <OnboardingFrame step={1} notice={notice}>
       <section className="ah-login-card" aria-labelledby="login-title">
         <header>
           <p className="eyebrow">Open Habitat</p>

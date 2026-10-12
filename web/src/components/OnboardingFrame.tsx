@@ -5,9 +5,11 @@ import styles from "./OnboardingFrame.module.css";
 export function OnboardingFrame({
   step,
   children,
+  notice,
 }: {
   step: 1 | 2 | 3;
   children: ReactNode;
+  notice?: ReactNode;
 }) {
   return (
     <div className={`${styles.frame} ${styles[`step${step}`]}`}>
@@ -35,6 +37,7 @@ export function OnboardingFrame({
         </ol>
         {children}
       </div>
+      {notice}
     </div>
   );
 }

@@ -29,7 +29,10 @@ test("@github-first denied write stays uncertain until explicit read-only rechec
     path: testInfo.outputPath("github-denied.png"),
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Tarkista haun tila" }).click();
+  await expect(page.getByText("Haun tila vaatii tarkistusta")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Tarkista haun tila uudelleen" })
+    .click();
   await expect(page.getByRole("button", { name: /jatka/i })).toBeVisible();
   expect(
     Number(await (await page.request.get("/fixture/clone-count")).text()),

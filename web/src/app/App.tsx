@@ -655,29 +655,34 @@ export function App() {
         <p>Haetaan työtiloja…</p>
       </>
     ) : phase === "authentication_required" ? (
-      <>
-        <LoginCard
-          onLogin={() => {
-            if (syntheticDemo) return;
-            window.location.assign(
-              `/auth/github/start?return_to=${encodeURIComponent(safeRoute(location.pathname))}`,
-            );
-          }}
-        />
-        {new URLSearchParams(location.search).has("auth_error") ? (
-          <LoginErrorNotice />
-        ) : null}
-        {logoutError ? (
-          <InlineNotice
-            title="Uloskirjautumista ei voitu vahvistaa"
-            description="Istunto voi olla edelleen voimassa. Kun yhteys toimii, yritä uloskirjautumista uudelleen."
-            tone="danger"
-            actions={[
-              { label: "Yritä uloskirjautumista uudelleen", onPress: logout },
-            ]}
-          />
-        ) : null}
-      </>
+      <LoginCard
+        onLogin={() => {
+          if (syntheticDemo) return;
+          window.location.assign(
+            `/auth/github/start?return_to=${encodeURIComponent(safeRoute(location.pathname))}`,
+          );
+        }}
+        notice={
+          <>
+            {new URLSearchParams(location.search).has("auth_error") && (
+              <LoginErrorNotice />
+            )}
+            {logoutError && (
+              <InlineNotice
+                title="Uloskirjautumista ei voitu vahvistaa"
+                description="Istunto voi olla edelleen voimassa. Kun yhteys toimii, yritä uloskirjautumista uudelleen."
+                tone="danger"
+                actions={[
+                  {
+                    label: "Yritä uloskirjautumista uudelleen",
+                    onPress: logout,
+                  },
+                ]}
+              />
+            )}
+          </>
+        }
+      />
     ) : location.pathname === "/administration" && csrf ? (
       <ServerAdministration csrf={csrf} />
     ) : !syntheticDemo &&
