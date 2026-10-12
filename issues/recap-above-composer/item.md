@@ -5,8 +5,8 @@ type: improvement
 status: open
 priority: normal
 related: ['@add-conversation-recap', '@new-conversation-view']
-lane: signin-fix
-lane_seq: 9
+lane: web
+lane_seq: 7
 collision: [web/, internal/daemon/]
 ---
 
