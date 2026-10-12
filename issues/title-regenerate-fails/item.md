@@ -13,8 +13,8 @@ collision: [internal/daemon/]
 # Manual title regeneration fails
 
 Jari reported on 2026-10-12, on pilot.22, that “Luo uusi otsikko” in the
-“Checking the Connection” conversation in `issuectl` showed only “Otsikkoa ei
-voida luoda”. The conversation already had an automatically generated title.
+“Checking the Connection” conversation in the `issuectl` repository showed
+only “Otsikkoa ei voida luoda”. The conversation already had an automatically generated title.
 That earlier success shows generation had worked for this conversation; it
 does not establish why the manual request failed.
 
