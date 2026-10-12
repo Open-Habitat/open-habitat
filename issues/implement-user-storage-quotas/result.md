@@ -1,6 +1,12 @@
-# Whole-home quotas implemented; live release blocked by policy receipt
+# Whole-home quotas implemented; pilot.22 installed, mapped-user proof pending
 
-Product source `543f5cf3c7523f601654949f71ffb86318a51555` is pushed to `origin/main`, but the test guest still runs pilot.20. This issue remains in progress: no quota-aware product release, browser administration, mapped-user workload enforcement or second-person isolation can be claimed yet. The root-only successor's preflight refused before stage/switch; no trust guard was bypassed.
+The clean test VM now runs `0.0.0-pilot.22` from pushed product source `b34a0e38a01b0ddaadf29d2716fba90fadcca626`. The exact committed tree passed the full clean JSON gate (`TMPDIR=/var/tmp/oh-release OH_PORT_BASE=17600 PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright ./scripts/ci-local.sh --clean --json`); the verified archive SHA-256 is `f670776c28e6c822a29ffe85b3ae9e465b87af55b6b8cc256bda7ff74a8ba6e9`, manifest SHA-256 `4ed88ce1071ca5b0d8393178ea6c1a32cd9f7d3fa1f6ba9c78b890ef3961a965`. Fleetrepo's clean pushed deployment source `b0e55317` passed 199 offline tests; its private inventory `infra/machines/open-habitat-test.md` and `issues/rename-open-habitat-test/result.md` record the guest receipts.
+
+On the rebuilt guest, ext4 journaled user quota enforcement is active after two real reboots. A root-created disposable UID received kernel `EDQUOT` at a 1024 KiB limit and was removed. Root CLI reads back the gateway's 8 GiB default (`8589934592` bytes), and zero bound users remain. There are no per-user `~/src` images. The public new-origin homepage returned 200 and OAuth start redirected to GitHub with the new callback. Jari still needs to change the existing GitHub OAuth application's name and URLs, then perform the first genuine sign-in; mapped-account default application, browser and CLI administration against a bound account, personal quota visibility, and Git/Pi/shell enforcement on a mapped home remain unverified. A root-only test binding cannot be created through the supported CLI without faking OAuth; broker restoration of a committed mapped socket after reboot is likewise unverified. This issue stays **in-progress** until its live acceptance criteria are proved. The clean rebuild superseded the receipt mismatch below rather than bypassing its guard.
+
+## Prior release attempt (historical)
+
+At the time of the prior attempt, product source `543f5cf3c7523f601654949f71ffb86318a51555` was pushed to `origin/main`, but the test guest still ran pilot.20. The issue remained in progress: no quota-aware product release, browser administration, mapped-user workload enforcement or second-person isolation could be claimed then. The root-only successor's preflight refused before stage/switch; no trust guard was bypassed.
 
 ## Product implementation
 
