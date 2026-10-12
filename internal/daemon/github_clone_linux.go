@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Open-Habitat/open-habitat/internal/storagequota"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 )
@@ -127,6 +128,16 @@ func cloneHandler(cfg transport.Config, trusted func(*http.Request) bool, source
 		defer unix.Close(src)
 		srcMode, modeErr := stat(src)
 		if budget != nil && (modeErr != nil || srcMode.Mode&0777 != 0700 || !budget(src) || ctx.Err() != nil) {
+			// Only report quota_full when a fresh native read confirms it.
+			// All other admission errors stay generic: an unreadable quota,
+			// unsafe source or cancellation does not establish fullness.
+			var homeStat unix.Stat_t
+			if ctx.Err() == nil && modeErr == nil && srcMode.Mode&0777 == 0700 && srcMode.Uid == uint32(os.Geteuid()) && unix.Stat("/home", &homeStat) == nil && srcMode.Dev == homeStat.Dev {
+				if q, err := storagequota.Read(uint32(os.Geteuid())); err == nil && q.Usage >= q.Limit {
+					snapshotError(w, 409, "quota_full")
+					return
+				}
+			}
 			snapshotError(w, 409, "checkout_unavailable")
 			return
 		}

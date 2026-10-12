@@ -116,7 +116,7 @@ func (a *Auth) githubClone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if res.StatusCode != 200 {
-		codes := map[int]map[string]bool{400: {"invalid_request": true}, 403: {"cross_user_denied": true}, 409: {"github_auth_unavailable": true, "checkout_unavailable": true, "checkout_exists": true, "checkout_uncertain": true}, 503: {"native_source_unavailable": true}}
+		codes := map[int]map[string]bool{400: {"invalid_request": true}, 403: {"cross_user_denied": true}, 409: {"github_auth_unavailable": true, "checkout_unavailable": true, "quota_full": true, "checkout_exists": true, "checkout_uncertain": true}, 503: {"native_source_unavailable": true}}
 		var failure struct {
 			Error struct {
 				Code string `json:"code"`

@@ -59,6 +59,21 @@ test("GitHub adapter rejects contract drift, mismatched names and oversized stre
   await expect(catalog(1)).rejects.toThrow();
 });
 
+test("full quota is explained before a clone stream starts", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: { code: "quota_full" } }), {
+        status: 409,
+        headers: { "content-type": "application/json" },
+      }),
+    ),
+  );
+  await expect(cloneStream("fixture/x", "csrf", () => {})).rejects.toThrow(
+    "Tallennustila on täynnä",
+  );
+});
+
 test("clone progress accepts chunked native stages and only a final confirmed terminal", async () => {
   const frames = [
     'event: progress\ndata: {"schema_version":1,"sequence":1,"kind":"progress","stage":"receiving","percent":23,"received_bytes":1310720}\n\n',
