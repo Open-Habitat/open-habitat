@@ -1,6 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { MemoryRouter } from "react-router";
+import { AgentTurn, ThinkingRow } from "./AgentTurn";
+import { ArchiveControls } from "./ArchiveControls";
+import { BashToolCard } from "./BashToolCard";
 import {
   AssistantMessage,
   Composer,
@@ -16,8 +19,8 @@ import {
   UserMessage,
 } from "./Conversation";
 import { Markdown } from "./Markdown";
-import { ArchiveControls } from "./ArchiveControls";
 import { AgentHeader } from "./Navigation";
+import { PiToolUse } from "./PiBlocks";
 import { WorkingProgress } from "./WorkingProgress";
 
 const noop = () => {};
@@ -516,5 +519,40 @@ export const ArchiveAnnotationUnavailable: Story = {
       onArchive={noop}
       onRestore={noop}
     />
+  ),
+};
+
+export const WorkingTurn: Story = {
+  render: () => (
+    <main style={{ maxWidth: 800, padding: 24 }}>
+      <AgentTurn
+        model="fake-pi"
+        working
+        activity="Ajaa bash"
+        duration="0:05"
+        thinkingCount={1}
+        toolCount={1}
+        work={
+          <>
+            <ThinkingRow text="**Tarkistan komennon**" live />
+            <PiToolUse name="bash" state="running">
+              <BashToolCard
+                command="ls"
+                output={Array.from(
+                  { length: 53 },
+                  (_, i) => `rivi ${i + 1}`,
+                ).join("\n")}
+                running
+              />
+            </PiToolUse>
+          </>
+        }
+        reply={
+          <AssistantMessage streamState="streaming" onCopy={noop}>
+            <Markdown text="Tarkistan tulosta" />
+          </AssistantMessage>
+        }
+      />
+    </main>
   ),
 };

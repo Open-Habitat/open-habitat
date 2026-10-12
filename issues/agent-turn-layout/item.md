@@ -72,3 +72,10 @@ komennon laatikot ovat [@bash-tool-card](../bash-tool-card/item.md)issa.
 
 Hylätyt suunnat ja niiden hinnat ovat Git-historiassa tämän tiedoston
 aiemmissa versioissa.
+
+## Implementation evidence
+
+The production rendering and its host-fact limits are recorded in [result.md](result.md).
+The draft/lab comparison is [pairs/report.md](pairs/report.md). Synthetic
+turn snapshots named `history-short-*`, `history-long-multiline-*` and
+`live-running-*` pair PNG and static HTML at both widths and themes.

@@ -32,12 +32,43 @@ export function visibleEntryKeys(entries: HistoryEntry[]): string[] {
       calls.has(entry.tool_call_id)
     )
       joined.set(entry.tool_call_id, entry);
-  return entries
-    .filter(
-      (entry) =>
-        !entry.tool_call_id || joined.get(entry.tool_call_id) !== entry,
+  const keys: string[] = [];
+  let first: string | undefined;
+  let lastText = false;
+  const flush = () => {
+    if (first) keys.push(first);
+    first = undefined;
+    lastText = false;
+  };
+  for (const entry of entries) {
+    if (
+      entry.kind === "recap" ||
+      (entry.tool_call_id && joined.get(entry.tool_call_id) === entry)
     )
-    .map((entry) => entry.entry_key);
+      continue;
+    if (entry.kind === "assistant") {
+      if (first && lastText) flush();
+      first ??= entry.entry_key;
+      lastText =
+        entry.blocks?.at(-1)?.type === "text" ||
+        (!entry.blocks?.length && !!entry.content.text);
+    } else {
+      if (
+        entry.kind === "user" ||
+        entry.kind === "bash" ||
+        entry.kind === "unknown"
+      )
+        flush();
+      if (
+        entry.kind !== "tool" ||
+        !entry.tool_call_id ||
+        !calls.has(entry.tool_call_id)
+      )
+        keys.push(entry.entry_key);
+    }
+  }
+  flush();
+  return keys;
 }
 
 /** An orphan result can become a child of its call when older pages arrive. */
@@ -45,6 +76,14 @@ export function rowIndexOf(entries: HistoryEntry[], key: string): number {
   const keys = visibleEntryKeys(entries);
   const direct = keys.indexOf(key);
   if (direct >= 0) return direct;
+  const position = entries.findIndex((entry) => entry.entry_key === key);
+  if (position >= 0 && entries[position].kind === "assistant") {
+    for (let i = position - 1; i >= 0; i--) {
+      if (keys.includes(entries[i].entry_key))
+        return keys.indexOf(entries[i].entry_key);
+      if (entries[i].kind !== "assistant" && entries[i].kind !== "tool") break;
+    }
+  }
   const result = entries.find(
     (entry) => entry.entry_key === key && entry.kind === "tool",
   );

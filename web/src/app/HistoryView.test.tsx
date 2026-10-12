@@ -62,8 +62,7 @@ it("keeps orphan results accessible without grouping and bounds large output", (
   ]);
   expect(items).toHaveLength(3);
   render(items.map((item) => <div key={item.id}>{item.content}</div>));
-  const rows = screen.getAllByRole("button", { name: /bash/ });
-  for (const row of rows) fireEvent.click(row);
+  expect(screen.getAllByRole("button", { name: /bash/ })).toHaveLength(2);
   expect(screen.getAllByText("Näytä koko ladattu tuloste")).toHaveLength(2);
   expect(document.querySelector("script")).toBeNull();
   expect(screen.getByText(/Sisältöä ei tueta/)).toBeTruthy();
@@ -549,4 +548,67 @@ it("renders saved local command output and marker metadata without treating eith
   expect(container.textContent).toContain("failure");
   expect(container.textContent).toContain("Keskustelun tieto");
   expect(container.querySelector("script")).toBeNull();
+});
+
+it("keeps consecutive native replies as separate foldable threads", () => {
+  const one: HistoryEntry = {
+    ...entry,
+    kind: "assistant",
+    entry_key: "one",
+    blocks: [{ type: "text", text: "Ensimmäinen vastaus" }],
+    content: { ...entry.content, text: "Ensimmäinen vastaus" },
+  };
+  const two: HistoryEntry = {
+    ...one,
+    entry_key: "two",
+    blocks: [{ type: "text", text: "Toinen vastaus" }],
+    content: { ...one.content, text: "Toinen vastaus" },
+  };
+  const items = timelineItems([one, two]);
+  expect(items).toHaveLength(2);
+  render(items.map((item) => <div key={item.id}>{item.content}</div>));
+  expect(screen.getAllByRole("region", { name: "Agentin vuoro" })).toHaveLength(
+    2,
+  );
+});
+
+it("reads bash arguments only after opening the native call", async () => {
+  const agentId = "pi:11111111-1111-4111-8111-111111111111";
+  const response = {
+    schema_version: 1,
+    agent_id: agentId,
+    native_revision: "rev",
+    entry_key: "a",
+    block_index: 0,
+    offset: 0,
+    chunk: {
+      media_type: "text/plain",
+      text: '{"command":"echo ok"}',
+      complete: true,
+    },
+  };
+  const fetch = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify(response), {
+      headers: { "content-type": "application/json" },
+    }),
+  );
+  vi.stubGlobal("fetch", fetch);
+  const call: HistoryEntry = {
+    ...entry,
+    entry_key: "a",
+    kind: "assistant",
+    blocks: [
+      {
+        type: "toolCall",
+        tool_name: "bash",
+        tool_call_id: "c",
+        readable: true,
+      },
+    ],
+    content: { ...entry.content, text: "" },
+  };
+  render(timelineItems([call], undefined, agentId, "rev")[0].content);
+  expect(await screen.findByText(/\$ echo ok/)).toBeTruthy();
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(fetch.mock.calls[0][0]).toContain("limit_bytes=65536");
 });

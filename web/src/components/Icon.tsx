@@ -11,7 +11,11 @@ export type IconName =
   | "check"
   | "cross"
   | "question"
-  | "external";
+  | "external"
+  | "edges"
+  | "top"
+  | "bottom"
+  | "expand";
 
 /** Decorative icon only: the adjacent control supplies its accessible name. */
 export function Icon({
@@ -42,6 +46,26 @@ export function Icon({
       <>
         <path d="M9 9a3 3 0 1 1 5 2c-1.3 1-2 1.5-2 3" />
         <path d="M12 18h.01" />
+      </>
+    ),
+    edges: (
+      <>
+        <path d="M4 4h16M4 20h16M12 7v10m-3-3 3 3 3-3M9 10l3-3 3 3" />
+      </>
+    ),
+    top: (
+      <>
+        <path d="M4 4h16M12 19V8m-4 4 4-4 4 4" />
+      </>
+    ),
+    bottom: (
+      <>
+        <path d="M4 20h16M12 5v11m-4-4 4 4 4-4" />
+      </>
+    ),
+    expand: (
+      <>
+        <path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5" />
       </>
     ),
     external: (

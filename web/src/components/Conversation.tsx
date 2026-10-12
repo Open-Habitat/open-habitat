@@ -1,9 +1,9 @@
 import {
+  type ReactNode,
+  type Ref,
   useLayoutEffect,
   useRef,
   useState,
-  type ReactNode,
-  type Ref,
 } from "react";
 import { ControlButton, DisclosureButton } from "./ControlElements";
 import { ConversationFloatingAction } from "./ConversationFrame";
@@ -232,14 +232,18 @@ export function AssistantMessage({
   };
   return (
     <Message
-      speaker={modelLabel ? `Pi · ${modelLabel}` : "Pi"}
+      speaker={
+        streamState === "streaming"
+          ? "Vastaa"
+          : streamState === "complete"
+            ? "✓ Vastaus valmis"
+            : "Pi"
+      }
       time={time}
       state={
-        streamState === "complete"
-          ? "Vastaus valmis"
-          : streamState
-            ? labels[streamState]
-            : undefined
+        streamState && streamState !== "complete" && streamState !== "streaming"
+          ? labels[streamState]
+          : modelLabel
       }
       stateTone={
         streamState === "failed"
@@ -941,21 +945,38 @@ export function Composer({
       className={`ah-composer${!value.trim() && availability.state === "enabled" ? " ah-composer-empty" : ""}`}
       aria-label="Kirjoita viesti"
     >
-      <TextArea
-        label="Viesti Pi:lle"
-        placeholder={
-          activity === "working" ? "Ohjaa tai lähetä jonoon…" : "Viesti Pi:lle"
-        }
-        value={value}
-        onChange={onChange}
-        availability={editorAvailability ?? availability}
-        hint="Enter lähettää valitulla tavalla. Shift+Enter tekee rivinvaihdon."
-        onCommit={
-          sendState === "pending" || sendAvailability.state !== "enabled"
-            ? undefined
-            : send
-        }
-      />
+      <div className="ah-composer-entry">
+        <TextArea
+          label="Viesti Pi:lle"
+          placeholder={
+            activity === "working"
+              ? "Ohjaa tai lähetä jonoon…"
+              : "Viesti Pi:lle"
+          }
+          value={value}
+          onChange={onChange}
+          availability={editorAvailability ?? availability}
+          hint="Enter lähettää valitulla tavalla. Shift+Enter tekee rivinvaihdon."
+          onCommit={
+            sendState === "pending" || sendAvailability.state !== "enabled"
+              ? undefined
+              : send
+          }
+        />
+        <Button
+          label="Lähetä"
+          availability={sendAvailability}
+          pending={sendState === "pending"}
+          onPress={
+            activity === "working"
+              ? () => {
+                  onModeChange("follow_up");
+                  onFollowUp();
+                }
+              : onSendNow
+          }
+        />
+      </div>
       {sendState === "rejected" ? (
         <InlineNotice
           title="Viesti hylättiin"
@@ -1002,19 +1023,6 @@ export function Composer({
             }}
           />
         ) : null}
-        <Button
-          label="Lähetä"
-          availability={sendAvailability}
-          pending={sendState === "pending"}
-          onPress={
-            activity === "working"
-              ? () => {
-                  onModeChange("follow_up");
-                  onFollowUp();
-                }
-              : onSendNow
-          }
-        />
       </ActionRow>
     </section>
   );

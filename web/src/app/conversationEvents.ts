@@ -25,6 +25,7 @@ for (const schema of [
 const validate = ajv.getSchema(eventSchema.$id);
 export type ConversationEvent = WireEvent & {
   event_id: string;
+  emitted_at: string;
   cursor: string;
   server_instance_id: string;
   sequence: number;

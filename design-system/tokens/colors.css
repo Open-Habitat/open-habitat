@@ -3,6 +3,8 @@
 
 :root,
 [data-theme="light"] {
+  --ah-sunken: #f3f5f7;
+  --ah-hover: rgba(16, 24, 40, .06);
   --ah-bg: #f6f7f8;
   --ah-surface: #ffffff;
   --ah-surface-2: #fbfcfd;
@@ -45,6 +47,8 @@
 }
 
 [data-theme="dark"] {
+  --ah-sunken: #14171a;
+  --ah-hover: rgba(255, 255, 255, .07);
   --ah-bg: #14171a;
   --ah-surface: #1b1f23;
   --ah-surface-2: #171a1e;

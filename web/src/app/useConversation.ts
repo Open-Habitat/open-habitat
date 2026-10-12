@@ -499,6 +499,7 @@ export function useConversation({
     setOpenAttempt,
     entries,
     next,
+    historyRevision: windowView?.revision,
     draft,
     receipt: localReady ? receipt : "",
     sendObservation: localReady ? sendObservation : undefined,

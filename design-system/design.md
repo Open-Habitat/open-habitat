@@ -121,8 +121,8 @@ on kestänyt), ja valmistuttuaan nauha on rivi, josta työn saa kiinni.
 Bash-kortissa näkyvät komento ja tuloste ilman otsakkeita; pitkä komento
 näyttää ensimmäisen rivinsä ja pitkä tuloste alun ja lopun, sivupalkin
 painikkeilla alkuun, loppuun, kokonaan tai omaan ikkunaan
-(Jari 12.10.2026). Pi:n järjestetty teksti, luettava ajattelu
-ja työkalut muodostavat yhden käyttäjän käynnistämän työn. PI-otsake ei toistu
+(Jari 12.10.2026). Pi:n järjestetty teksti, luettava ajattelu ja työkalut muodostavat
+yhden vastaukseen päättyvän langan myös peräkkäisissä agentin vuoroissa. PI-otsake ei toistu
 jokaisen osan edessä. Työkalun kutsu, eteneminen ja tallennettu tulos ovat
 yksi avattava käyttö samassa kohdassa; `toolCallId` yhdistää ne. Käyttäjän
 paikallinen komento erottuu Pi:n pyytämästä bash-työkalusta. Peräkkäisten
@@ -133,10 +133,11 @@ riviin, mutta sen saa auki kokonaan.
 Keskustelun sisältö esitetään samalla tavalla historiassa ja reaaliajassa.
 Esikatselun raja, Pi:n vahvistettu katkaisu, pituusraja ja keskeytys
 näytetään toisistaan erillisinä. Rajattua sisältöä voi lukea paikallaan
-rajatulla natiivilohkoluvulla. Bash-tuloksen esikatselu alkaa lopusta ja
-muiden työkalujen alusta; käyttäjän Alku/Loppu-valinta muistetaan
-**työkalukohtaisesti**, mutta se ei muuta itse tulosta. Ajattelu pysyy
-luettavana ja valmistuttuaan supistuu. Salattua thinking-dataa, piilotettua
+rajatulla natiivilohkoluvulla. Bash-tuloste seuraa loppua työn aikana ja valmistuttuaan näyttää yli
+kymmenen rivin tulosteesta kolme ensimmäistä ja seitsemän viimeistä;
+muiden työkalujen esikatselu alkaa alusta. Käyttäjän Alku/Loppu-valinta
+muistetaan **työkalukohtaisesti**, mutta se ei muuta itse tulosta.
+Yksirivinen ajattelu näkyy suoraan, monirivinen avautuu lainauslohkona. Salattua thinking-dataa, piilotettua
 laajennussisältöä tai teknisiä payloadeja ei esitetä viesteinä. Tuntematon
 sisältö saa hillityn esityksen ilman raaka-JSONia.
 

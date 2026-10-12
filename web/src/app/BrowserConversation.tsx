@@ -15,8 +15,10 @@ import {
   TurnSettlement,
   WorkingProgress,
 } from "../components";
+import { AgentTurn, ThinkingRow } from "../components/AgentTurn";
 import { ArchiveControls } from "../components/ArchiveControls";
 import { agentPresentation } from "../components/agentPresentation";
+import { BashToolCard } from "../components/BashToolCard";
 import { PiToolUse } from "../components/PiBlocks";
 import { RecapCard } from "../components/RecapCard";
 import { UnpresentedEvents } from "../components/WorkingProgress";
@@ -36,6 +38,22 @@ import { PiQuestion } from "./PiQuestion";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
 import { useConversation } from "./useConversation";
 import { useReadingPositionLayout } from "./useReadingPosition";
+
+function bashCommand(value: string) {
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      "command" in parsed &&
+      typeof parsed.command === "string"
+    )
+      return parsed.command;
+  } catch {
+    /* Keep native text. */
+  }
+  return value;
+}
 
 // The status RPC retains only 64 diagnostic native events. Its loss bit is
 // expected in long sessions even when the journal and native history are intact.
@@ -86,6 +104,7 @@ export function BrowserConversation({
     setOpenAttempt,
     entries,
     next,
+    historyRevision,
     draft,
     receipt,
     sendObservation,
@@ -322,6 +341,46 @@ export function BrowserConversation({
     command: current && !statusStale ? current.state : undefined,
     pendingQuestion: !statusStale && !!current?.pending_question,
   });
+  const provisional = provisionalItems(
+    live ?? {
+      cursor: "",
+      instance: "",
+      sequence: 0,
+      fragments: [],
+      truncated: true,
+    },
+  ).filter(
+    (item) =>
+      item.kind !== "tool" ||
+      !item.callId ||
+      !entries.some((entry) =>
+        entry.blocks?.some(
+          (block) =>
+            block.type === "toolCall" && block.tool_call_id === item.callId,
+        ),
+      ),
+  );
+  const [clockNow, setClockNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (current?.state !== "accepted") return;
+    const timer = window.setInterval(() => setClockNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [current?.state]);
+  const started = live?.fragments.find(
+    (event) =>
+      event.kind === "pi.lifecycle" && event.payload.signal === "turn_start",
+  );
+  const elapsed = started
+    ? Math.max(
+        0,
+        Math.floor((clockNow - Date.parse(started.emitted_at)) / 1000),
+      )
+    : undefined;
+  const duration =
+    elapsed !== undefined && Number.isFinite(elapsed)
+      ? `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, "0")}`
+      : undefined;
+  const last = provisional.at(-1);
   return (
     <section ref={section} className="ah-reading-view">
       {!id ? (
@@ -585,7 +644,7 @@ export function BrowserConversation({
                   entries,
                   onLogin,
                   id,
-                  undefined,
+                  historyRevision,
                   new Map(
                     provisionalItems(
                       live ?? {
@@ -658,88 +717,117 @@ export function BrowserConversation({
                       },
                     ]
                   : []),
-                ...provisionalItems(
-                  live ?? {
-                    cursor: "",
-                    instance: "",
-                    sequence: 0,
-                    fragments: [],
-                    truncated: true,
-                  },
-                )
-                  .filter(
-                    (item) =>
-                      item.kind !== "tool" ||
-                      !item.callId ||
-                      !entries.some((entry) =>
-                        entry.blocks?.some(
-                          (block) =>
-                            block.type === "toolCall" &&
-                            block.tool_call_id === item.callId,
+                ...(provisional.length
+                  ? [
+                      {
+                        id: `live-turn-${provisional[0].id}`,
+                        kind: "assistant",
+                        content: (
+                          <AgentTurn
+                            working={
+                              current?.state === "working" ||
+                              current?.state === "accepted"
+                            }
+                            activity={
+                              last?.kind === "tool" && last.name
+                                ? `Ajaa ${last.name}`
+                                : last?.kind === "thinking"
+                                  ? "Ajattelee"
+                                  : "Vastaa"
+                            }
+                            duration={duration}
+                            thinkingCount={
+                              provisional.filter(
+                                (item) => item.kind === "thinking",
+                              ).length
+                            }
+                            toolCount={
+                              provisional.filter((item) => item.kind === "tool")
+                                .length
+                            }
+                            work={provisional
+                              .filter((item) => item.kind !== "assistant")
+                              .map((item) => (
+                                <div key={item.id} className="ah-live-work">
+                                  {item.kind === "thinking" ? (
+                                    <ThinkingRow text={item.text} live />
+                                  ) : item.kind === "assistant" ? (
+                                    <AssistantMessage
+                                      onCopy={() =>
+                                        void navigator.clipboard?.writeText(
+                                          item.text,
+                                        )
+                                      }
+                                    >
+                                      <Markdown text={item.text} />
+                                    </AssistantMessage>
+                                  ) : item.kind === "tool" ? (
+                                    <PiToolUse
+                                      name={item.name ?? "Työkalu"}
+                                      state={
+                                        (item.state as
+                                          | "running"
+                                          | "succeeded"
+                                          | "failed"
+                                          | "cancelled") ?? "forming"
+                                      }
+                                    >
+                                      {item.name === "bash" ? (
+                                        <BashToolCard
+                                          command={bashCommand(
+                                            item.arguments ?? "",
+                                          )}
+                                          output={item.output}
+                                          running={item.state === "running"}
+                                        />
+                                      ) : item.arguments ? (
+                                        <pre>{item.arguments}</pre>
+                                      ) : null}
+                                      {item.name !== "bash" && item.output ? (
+                                        <pre>{item.output}</pre>
+                                      ) : null}
+                                    </PiToolUse>
+                                  ) : item.kind === "bash" ? (
+                                    <details>
+                                      <summary>
+                                        Paikallisen komennon tuloste · käynnissä
+                                      </summary>
+                                      <pre>{item.text}</pre>
+                                    </details>
+                                  ) : (
+                                    <InlineNotice
+                                      title={
+                                        item.kind === "bash"
+                                          ? "Paikallisen komennon tuloste"
+                                          : item.kind === "extension"
+                                            ? "Laajennuksen ilmoitus"
+                                            : "Pi-tila"
+                                      }
+                                      description={item.text}
+                                    />
+                                  )}
+                                </div>
+                              ))}
+                            reply={provisional
+                              .filter((item) => item.kind === "assistant")
+                              .map((item) => (
+                                <AssistantMessage
+                                  key={item.id}
+                                  streamState="streaming"
+                                  onCopy={() =>
+                                    void navigator.clipboard?.writeText(
+                                      item.text,
+                                    )
+                                  }
+                                >
+                                  <Markdown text={item.text} />
+                                </AssistantMessage>
+                              ))}
+                          />
                         ),
-                      ),
-                  )
-                  .map((item) => ({
-                    id: item.id,
-                    kind: item.kind,
-                    content:
-                      item.kind === "thinking" ? (
-                        <details className="ah-ordered-blocks" open>
-                          <summary>Ajattelu · käynnissä</summary>
-                          <pre>{item.text}</pre>
-                        </details>
-                      ) : item.kind === "assistant" ? (
-                        <AssistantMessage
-                          onCopy={() =>
-                            void navigator.clipboard?.writeText(item.text)
-                          }
-                        >
-                          <Markdown text={item.text} />
-                        </AssistantMessage>
-                      ) : item.kind === "tool" ? (
-                        <PiToolUse
-                          name={item.name ?? "Työkalu"}
-                          state={
-                            (item.state as
-                              | "running"
-                              | "succeeded"
-                              | "failed"
-                              | "cancelled") ?? "forming"
-                          }
-                        >
-                          {item.arguments ? (
-                            <>
-                              <strong>Argumentit</strong>
-                              <pre>{item.arguments}</pre>
-                            </>
-                          ) : null}
-                          {item.output ? (
-                            <>
-                              <strong>Viimeisin päivitys</strong>
-                              <pre>{item.output}</pre>
-                            </>
-                          ) : null}
-                        </PiToolUse>
-                      ) : item.kind === "bash" ? (
-                        <details>
-                          <summary>
-                            Paikallisen komennon tuloste · käynnissä
-                          </summary>
-                          <pre>{item.text}</pre>
-                        </details>
-                      ) : (
-                        <InlineNotice
-                          title={
-                            item.kind === "bash"
-                              ? "Paikallisen komennon tuloste"
-                              : item.kind === "extension"
-                                ? "Laajennuksen ilmoitus"
-                                : "Pi-tila"
-                          }
-                          description={item.text}
-                        />
-                      ),
-                  })),
+                      },
+                    ]
+                  : []),
               ]}
               historyMode="pagedAccessible"
               newContentCount={unseen}

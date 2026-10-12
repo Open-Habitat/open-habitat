@@ -2302,3 +2302,259 @@ h1[tabindex="-1"]:focus {
   line-height: 1.6;
   color: var(--ah-ink-2);
 }
+
+/* Native turn: work, answer and liveness share one vertical rail. */
+.ah-agent-turn {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: 10px;
+  min-width: 0;
+}
+.ah-turn-head,
+.ah-turn-work,
+.ah-turn-reply,
+.ah-turn-strip {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  min-width: 0;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Turn styles override generic component rules. */
+.ah-turn-strip > span,
+.ah-turn-head > button,
+.ah-turn-strip > button {
+  grid-column: 2;
+  justify-self: start;
+  border: 0;
+  padding: 4px 7px;
+  background: transparent;
+  color: var(--ah-ink-2);
+  text-align: left;
+  font: 500 var(--ah-size-meta) var(--ah-font);
+}
+.ah-turn-head > button:not(:disabled),
+.ah-turn-strip > button {
+  cursor: pointer;
+}
+.ah-turn-head > button:hover,
+.ah-turn-strip > button:hover {
+  background: var(--ah-hover);
+  border-radius: 6px;
+}
+.ah-turn-node {
+  grid-column: 1;
+  width: 12px;
+  height: 12px;
+  margin: 8px auto;
+  border: 2px solid var(--ah-accent);
+  border-radius: 50%;
+}
+.ah-turn-work {
+  gap: 10px;
+  position: relative;
+}
+.ah-turn-work::before,
+.ah-turn-reply::before {
+  content: "";
+  grid-column: 1;
+  grid-row: 1;
+  width: 2px;
+  height: 100%;
+  margin: auto;
+  background: var(--ah-line);
+}
+.ah-turn-work .ah-ordered-blocks {
+  grid-column: 2;
+  min-width: 0;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Turn styles override generic component rules. */
+.ah-turn-reply > .ah-message {
+  grid-column: 2;
+  min-width: 0;
+}
+.ah-turn-strip {
+  color: var(--ah-muted);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Turn styles override generic component rules. */
+.ah-turn-working > span {
+  width: 100%;
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+  border-radius: 7px;
+}
+.ah-think-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-ui);
+}
+.ah-think-row > span:first-child {
+  flex: none;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-think-row .ah-markdown p {
+  margin: 0;
+}
+.ah-think-live {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-think-long button {
+  border: 0;
+  background: transparent;
+  color: var(--ah-muted);
+  cursor: pointer;
+}
+.ah-think-long blockquote {
+  border-left: 2px solid var(--ah-line);
+  padding-left: 14px;
+  margin: 6px 0 0;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Turn styles override generic component rules. */
+.ah-agent-turn .ah-message:not(.ah-message-alert) {
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Turn styles override generic component rules. */
+.ah-feed > li[data-kind="user"] .ah-message:not(.ah-message-alert) {
+  background: var(--ah-surface-2);
+}
+.ah-bash-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Card styles override the generic conversation surface. */
+.ah-bash-card pre {
+  margin: 0;
+  padding: 8px 12px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  font: 400 var(--ah-size-code) / 1.55 var(--ah-mono);
+  background: var(--ah-sunken);
+  border: 1px solid var(--ah-line-soft);
+  border-radius: 8px;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Card styles override the generic conversation surface. */
+.ah-bash-command > pre {
+  font-weight: 500;
+}
+.ah-bash-command-toggle {
+  margin-top: 4px;
+  font-size: var(--ah-size-meta);
+  color: var(--ah-muted);
+}
+.ah-bash-command-toggle button {
+  border: 0;
+  background: transparent;
+  color: var(--ah-ink-2);
+  cursor: pointer;
+}
+.ah-bash-window {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Card styles override the generic conversation surface. */
+.ah-bash-window > pre {
+  max-height: 13.5em;
+}
+.ah-bash-window > pre.ah-bash-all {
+  max-height: none;
+}
+.ah-bash-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ah-bash-rail button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ah-muted);
+  cursor: pointer;
+}
+.ah-bash-rail button[aria-pressed="true"] {
+  color: var(--ah-ink);
+  background: var(--ah-current);
+  box-shadow: 0 0 0 1px var(--ah-current-line);
+}
+.ah-bash-gap {
+  width: 100%;
+  border: 1px solid var(--ah-line-soft);
+  background: var(--ah-sunken);
+  color: var(--ah-muted);
+  cursor: pointer;
+  padding: 4px;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Card styles override the generic conversation surface. */
+.ah-bash-output small {
+  color: var(--ah-muted);
+}
+.ah-bash-dialog {
+  position: fixed;
+  inset: 4vh 2vw;
+  width: min(960px, 96vw);
+  max-height: 92vh;
+  overflow: auto;
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  box-shadow: var(--ah-shadow-dialog);
+  z-index: 100;
+}
+.ah-bash-dialog::backdrop {
+  background: var(--ah-scrim);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Card styles override the generic conversation surface. */
+.ah-bash-dialog header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.ah-bash-dialog header button:first-of-type {
+  margin-left: auto;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Card styles override the generic conversation surface. */
+.ah-bash-dialog code {
+  display: block;
+}
+.ah-bash-dialog code span {
+  color: var(--ah-muted);
+  display: inline-block;
+  width: 4ch;
+  margin-right: 12px;
+  text-align: right;
+  user-select: none;
+}
+.ah-conversation-frame .ah-composer-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ah-s2);
+  align-items: end;
+}
+.ah-conversation-frame .ah-composer-entry .ah-field {
+  min-width: 0;
+}
+.ah-conversation-frame .ah-composer-entry > [data-ah-primitive="button"] {
+  margin-bottom: var(--ah-s2);
+}
+@media (max-width: 440px) {
+  .ah-conversation-frame .ah-composer-entry {
+    gap: var(--ah-s1);
+  }
+}
+.ah-bash-rail button svg {
+  width: 15px;
+  height: 15px;
+}

@@ -226,8 +226,8 @@ describe("conversation v2 presentation", () => {
     expect(
       view.getByRole("button", { name: "Kopioi viesti: Sinä" }),
     ).toBeTruthy();
-    expect(view.getByText("Vastaus valmis")).toBeTruthy();
-    expect(view.getAllByText("Vastaus valmis")).toHaveLength(1);
+    expect(view.getByText(/Vastaus valmis/)).toBeTruthy();
+    expect(view.getAllByText(/Vastaus valmis/)).toHaveLength(1);
   });
   it("offers a return to latest even without new content when the reader scrolled away", () => {
     const jump = vi.fn();

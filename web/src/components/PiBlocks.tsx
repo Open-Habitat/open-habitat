@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { ToolRow } from "./Conversation";
 
 /** One visual use, from call formation through the native saved result. */
@@ -18,7 +18,9 @@ export function PiToolUse({
     | "unknown";
   children?: ReactNode;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(
+    name === "bash" && state !== "forming",
+  );
   const labels = {
     forming: "muodostaa kutsua…",
     called: "odottaa ajoa",

@@ -13,8 +13,10 @@ import {
   UnknownEvent,
   UserMessage,
 } from "../components";
-import { PiBoundary, PiToolUse } from "../components/PiBlocks";
+import { AgentTurn, ThinkingRow } from "../components/AgentTurn";
+import { BashToolCard } from "../components/BashToolCard";
 import { ControlButton, LinkRow } from "../components/ControlElements";
+import { PiBoundary, PiToolUse } from "../components/PiBlocks";
 import { type ConversationStore, useWindow } from "./conversationStore";
 import {
   type BlockChunk,
@@ -224,21 +226,14 @@ function ReadableBlock({
     }
     case "thinking":
       return (
-        <details>
-          <summary>Ajattelu{block.redacted ? " · piilotettu" : ""}</summary>
-          {block.redacted ? (
-            <p>Sisältö on redaktoitu.</p>
-          ) : (
-            <>
-              <pre>{loaded?.text ?? block.text}</pre>
-              {block.readable && !loaded?.complete ? (
-                <PiBoundary>Esikatselu päättyy tähän</PiBoundary>
-              ) : null}
-              {control}
-              {warning}
-            </>
-          )}
-        </details>
+        <div>
+          <ThinkingRow
+            text={loaded?.text ?? block.text ?? ""}
+            redacted={block.redacted}
+          />
+          {control}
+          {warning}
+        </div>
       );
     case "image":
       return (
@@ -261,10 +256,7 @@ function ReadableBlock({
     case "toolCall":
       return (
         <details>
-          <summary>
-            Työkalukutsu · {block.tool_name || "tuntematon"} ·{" "}
-            {block.tool_call_id || "ei tunnistetta"}
-          </summary>
+          <summary>{block.tool_name || "Työkalu"} · argumentit</summary>
           {loaded?.text ? <pre>{loaded.text}</pre> : null}
           {control}
           {warning}
@@ -273,6 +265,93 @@ function ReadableBlock({
     default:
       return <p>Tuntematon sisältölohko (sisältöä ei näytetä)</p>;
   }
+}
+function bashCommand(value: string): string {
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      !Array.isArray(parsed) &&
+      "command" in parsed &&
+      typeof parsed.command === "string"
+    )
+      return parsed.command;
+  } catch {
+    /* Show opaque native arguments as text. */
+  }
+  return value;
+}
+function BashCall({
+  block,
+  index,
+  entryKey,
+  agentId,
+  revision,
+  output,
+  running,
+  onLogin,
+}: {
+  block: HistoryBlock;
+  index: number;
+  entryKey: string;
+  agentId?: string;
+  revision?: string;
+  output?: string;
+  running: boolean;
+  onLogin?: () => void;
+}) {
+  const [command, setCommand] = useState(block.text ?? "");
+  const [error, setError] = useState(false);
+  const [partial, setPartial] = useState(false);
+  useEffect(() => {
+    if (!block.readable || !agentId || !revision) return;
+    const controller = new AbortController();
+    const url = `/api/v1/agents/${agentId}/entries/${entryKey}/blocks/${index}?${new URLSearchParams({ revision, offset: "0", limit_bytes: "65536" })}`;
+    void fetch(url, {
+      credentials: "same-origin",
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(readHistory)
+      .then((value) => {
+        if (
+          !("chunk" in value) ||
+          value.agent_id !== agentId ||
+          value.native_revision !== revision ||
+          value.entry_key !== entryKey ||
+          value.block_index !== index ||
+          value.offset !== 0 ||
+          value.chunk.media_type !== "text/plain"
+        )
+          throw new Error("invalid block");
+        if (!controller.signal.aborted) {
+          setCommand(value.chunk.text ?? "");
+          setPartial(!value.chunk.complete);
+        }
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        if ((error as Error).message === "identity_lost") onLogin?.();
+        else setError(true);
+      });
+    return () => controller.abort();
+  }, [block.readable, agentId, revision, entryKey, index, onLogin]);
+  return (
+    <>
+      <BashToolCard
+        command={bashCommand(command)}
+        output={output}
+        running={running}
+      />
+      {error ? (
+        <PiBoundary>Komennon sisältöä ei saatu. Päivitä historia.</PiBoundary>
+      ) : null}
+      {partial ? (
+        <PiBoundary>Komennon esikatselu päättyy tähän.</PiBoundary>
+      ) : null}
+    </>
+  );
 }
 function OrderedBlocks({
   blocks,
@@ -308,33 +387,52 @@ function OrderedBlocks({
                   : toolState(liveTools?.get(block.tool_call_id)?.state)
             }
           >
-            <strong>Argumentit</strong>
-            <ReadableBlock
-              block={block}
-              index={index}
-              entryKey={entryKey}
-              agentId={agentId}
-              revision={revision}
-              onLogin={onLogin}
-            />
-            {liveTools?.get(block.tool_call_id)?.output &&
-            !results?.has(block.tool_call_id) ? (
+            {block.tool_name === "bash" ? (
+              <BashCall
+                block={block}
+                index={index}
+                entryKey={entryKey}
+                agentId={agentId}
+                revision={revision}
+                output={
+                  results
+                    ?.get(block.tool_call_id)
+                    ?.blocks?.filter((b) => b.type === "text")
+                    .map((b) => b.text ?? "")
+                    .join("\n") ?? liveTools?.get(block.tool_call_id)?.output
+                }
+                running={!results?.has(block.tool_call_id)}
+              />
+            ) : (
               <>
-                <strong>Viimeisin päivitys</strong>
-                <pre>{liveTools.get(block.tool_call_id)?.output}</pre>
-              </>
-            ) : null}
-            {results?.get(block.tool_call_id) ? (
-              <>
-                <strong>Tulos</strong>
-                <ResultBlocks
-                  entry={results.get(block.tool_call_id) as HistoryEntry}
+                <ReadableBlock
+                  block={block}
+                  index={index}
+                  entryKey={entryKey}
                   agentId={agentId}
                   revision={revision}
                   onLogin={onLogin}
                 />
+                {liveTools?.get(block.tool_call_id)?.output &&
+                !results?.has(block.tool_call_id) ? (
+                  <>
+                    <strong>Viimeisin päivitys</strong>
+                    <pre>{liveTools.get(block.tool_call_id)?.output}</pre>
+                  </>
+                ) : null}
+                {results?.get(block.tool_call_id) ? (
+                  <>
+                    <strong>Tulos</strong>
+                    <ResultBlocks
+                      entry={results.get(block.tool_call_id) as HistoryEntry}
+                      agentId={agentId}
+                      revision={revision}
+                      onLogin={onLogin}
+                    />
+                  </>
+                ) : null}
               </>
-            ) : null}
+            )}
           </PiToolUse>
         ) : (
           <ReadableBlock
@@ -608,27 +706,115 @@ export function timelineItems(
       calls.has(entry.tool_call_id)
     )
       results.set(entry.tool_call_id, entry);
-  return entries
-    .filter(
+  const visible = entries.filter(
+    (entry) =>
+      entry.kind !== "recap" &&
+      (!entry.tool_call_id || results.get(entry.tool_call_id) !== entry),
+  );
+  const items: { id: string; kind: string; content: React.ReactNode }[] = [];
+  let turn: HistoryEntry[] = [];
+  const flush = () => {
+    if (!turn.length) return;
+    const group = turn;
+    turn = [];
+    const work = group.flatMap((entry) => entry.blocks ?? []);
+    const final = group.findLast(
       (entry) =>
-        entry.kind !== "recap" &&
-        (!entry.tool_call_id || results.get(entry.tool_call_id) !== entry),
-    )
-    .map((entry) => ({
-      id: entry.entry_key,
-      kind: entry.kind,
+        entry.blocks?.some((b) => b.type === "text") ||
+        (entry.content.text && !entry.blocks?.length),
+    );
+    items.push({
+      id: group[0].entry_key,
+      kind: "assistant",
       content: (
-        <Entry
-          key={entry.entry_key}
-          entry={entry}
-          results={results}
-          liveTools={liveTools}
-          onLogin={onLogin}
-          agentId={agentId}
-          revision={revision}
+        <AgentTurn
+          model={final?.model ?? group.findLast((e) => e.model)?.model}
+          thinkingCount={work.filter((b) => b.type === "thinking").length}
+          toolCount={work.filter((b) => b.type === "toolCall").length}
+          work={group.map((entry) => (
+            <OrderedBlocks
+              key={entry.entry_key}
+              blocks={
+                entry === final
+                  ? (entry.blocks ?? []).slice(0, -1)
+                  : (entry.blocks ?? [])
+              }
+              entryKey={entry.entry_key}
+              results={results}
+              liveTools={liveTools}
+              agentId={agentId}
+              revision={entry.native_revision ?? revision}
+              onLogin={onLogin}
+            />
+          ))}
+          reply={
+            final ? (
+              <AssistantMessage
+                streamState="complete"
+                modelLabel={final.model}
+                onCopy={() =>
+                  void navigator.clipboard?.writeText(final.content.text)
+                }
+              >
+                <OrderedBlocks
+                  blocks={
+                    final.blocks?.length
+                      ? final.blocks.slice(-1)
+                      : [{ type: "text", text: final.content.text }]
+                  }
+                  entryKey={final.entry_key}
+                  agentId={agentId}
+                  revision={final.native_revision ?? revision}
+                  onLogin={onLogin}
+                />
+              </AssistantMessage>
+            ) : undefined
+          }
         />
       ),
-    }));
+    });
+  };
+  for (const entry of visible) {
+    if (entry.kind === "assistant") {
+      // A native assistant entry may contain tool calls before the final text.
+      if (
+        turn.length &&
+        (turn.at(-1)?.blocks?.at(-1)?.type === "text" ||
+          (!turn.at(-1)?.blocks?.length && !!turn.at(-1)?.content.text))
+      )
+        flush();
+      turn.push(entry);
+    } else {
+      if (
+        entry.kind === "user" ||
+        entry.kind === "bash" ||
+        entry.kind === "unknown"
+      )
+        flush();
+      if (
+        entry.kind !== "tool" ||
+        !entry.tool_call_id ||
+        !calls.has(entry.tool_call_id)
+      )
+        items.push({
+          id: entry.entry_key,
+          kind: entry.kind,
+          content: (
+            <Entry
+              key={entry.entry_key}
+              entry={entry}
+              results={results}
+              liveTools={liveTools}
+              onLogin={onLogin}
+              agentId={agentId}
+              revision={revision}
+            />
+          ),
+        });
+    }
+  }
+  flush();
+  return items;
 }
 export function HistoryView({
   agent,
