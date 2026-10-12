@@ -31,7 +31,7 @@ test("@github-first denied write stays uncertain until explicit read-only rechec
   });
   await expect(page.getByText("Haun tila vaatii tarkistusta")).toBeVisible();
   await page
-    .getByRole("button", { name: "Tarkista haun tila uudelleen" })
+    .getByRole("button", { name: "Tarkista tilanne uudelleen" })
     .click();
   await expect(page.getByRole("button", { name: /jatka/i })).toBeVisible();
   expect(

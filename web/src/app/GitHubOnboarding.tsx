@@ -471,7 +471,7 @@ export function GitHubOnboarding({
               actions={[
                 {
                   label: pending.current.length
-                    ? "Tarkista haun tila uudelleen"
+                    ? "Tarkista tilanne uudelleen"
                     : bound.current
                       ? "Tarkista repot uudelleen"
                       : "Lataa sivu uudelleen",
