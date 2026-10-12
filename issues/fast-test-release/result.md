@@ -17,10 +17,10 @@ Choose a fresh private output directory for each attempt; replace `N` with the n
 
 ## Decisions for review
 
-- The gate receipt is local ignored evidence under `.cache/ci-local/receipts/<tree>.json`, not a signed assertion. The committed tree captures runnable and packaging inputs; a changed commit with the same tree may reuse the pass while the release embeds its selected commit SHA. A changed evidence document changes the tree and needs a new pass.
-- The release command rebuilds web/dist rather than trusting ignored old assets. It packages and verifies a fresh binary and checks its source/version against the pinned checkout.
+- The gate receipt is local evidence under the shared Git common directory (`open-habitat-gate-receipts/<tree>.json`), not a signed assertion. Linked worktrees and main share it. The committed tree captures runnable and packaging inputs; a changed commit with the same tree may reuse the pass while the release embeds its selected commit SHA. A changed evidence document changes the tree and needs a new pass.
+- The release command reinstalls locked web dependencies and rebuilds web/dist rather than trusting ignored old assets or node_modules. It packages and verifies a fresh binary and checks its source/version against the pinned checkout.
 - The guest is frozen; the 100 s acceptance and live readback can only be measured by the conductor's first real release.
 
 ## Offline evidence
 
-`python3 scripts/test-gate-receipt.py` verifies same-tree acceptance, different-tree refusal, dirty-tree refusal and corrupt receipt refusal. The final clean gate and Fleetrepo offline tests are recorded in the run's completion report; no real guest operation was attempted.
+`python3 scripts/test-gate-receipt.py` verifies same-tree and linked-worktree acceptance, different-tree refusal, dirty-tree refusal and corrupt receipt refusal. The final clean gate and Fleetrepo offline tests are recorded in the run's completion report; no real guest operation was attempted.

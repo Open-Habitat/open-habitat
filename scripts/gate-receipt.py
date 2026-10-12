@@ -23,7 +23,10 @@ def identity():
 
 
 def receipt_path(tree):
-    return REPO / '.cache' / 'ci-local' / 'receipts' / (tree + '.json')
+    # Linked worktrees share a git common directory, but not ignored .cache trees.
+    # A worker gate must remain visible to main when the merged tree is identical.
+    common = Path(git('rev-parse', '--path-format=absolute', '--git-common-dir'))
+    return common / 'open-habitat-gate-receipts' / (tree + '.json')
 
 
 def main():

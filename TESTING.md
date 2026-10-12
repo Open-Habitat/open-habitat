@@ -28,8 +28,10 @@ changes, commit the final candidate and run:
 ./scripts/ci-local.sh --clean --json
 ```
 
-On success, `--clean` writes `.cache/ci-local/receipts/<HEAD tree>.json`.
-The receipt identifies the committed tree and gate inputs it covers; the release
+On success, `--clean` writes `<git common dir>/open-habitat-gate-receipts/<HEAD tree>.json`.
+That location is shared by linked worktrees, so main can reuse a worker's gate
+result when the merged tree is identical. The receipt identifies the committed
+tree and gate inputs it covers; the release
 preparer checks it against the current clean tree rather than rerunning the
 11-minute gate. A different commit with identical tree can reuse it (the
 release still pins and embeds its own commit SHA). A change to issue evidence,
@@ -39,7 +41,8 @@ keep them on the machine where the gate ran. The gate prints its JSON envelope
 on the final stdout line and the receipt path on stderr.
 
 After a clean pass, the Fleetrepo `infra/open-habitat-test/release_test.py`
-one-command operator checks the receipt, prepares fresh web assets and binary,
+one-command operator checks the receipt, installs web dependencies from the
+committed lockfile, prepares fresh web assets and binary,
 verifies the package, then transfers and switches the test guest. Its dry run
 stops before any guest transfer. It reports step/total timings and rejects a
 live run above 100 seconds. Do not hand-edit prose receipts between steps.
