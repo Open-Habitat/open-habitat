@@ -7,6 +7,7 @@ priority: normal
 lane: web
 lane_seq: 4
 collision: [web/]
+preparation: ready
 ---
 
 # OpenAI onboarding step flashes an error and buries its status

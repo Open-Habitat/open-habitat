@@ -8,6 +8,7 @@ related: ['@generate-conversation-titles']
 lane: daemon
 lane_seq: 1
 collision: [internal/daemon/]
+preparation: ready
 ---
 
 # Manual title regeneration fails

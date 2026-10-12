@@ -9,6 +9,7 @@ related: ['@generate-conversation-titles', '@new-conversation-view']
 lane: web
 lane_seq: 3
 collision: [internal/daemon/]
+preparation: ready
 ---
 
 # Generate titles in the conversation language

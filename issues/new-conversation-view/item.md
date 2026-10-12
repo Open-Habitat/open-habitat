@@ -8,6 +8,7 @@ lane: web
 lane_seq: 1
 collision: [web/]
 related: ['@conversation-actions-layout', '@conversation-title-language']
+preparation: ready
 ---
 
 # Show honest state when starting and continuing a conversation

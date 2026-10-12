@@ -7,6 +7,7 @@ priority: normal
 lane: web
 lane_seq: 8
 collision: [web/]
+preparation: ready
 ---
 
 # Cloned workspace offers Publish to GitHub

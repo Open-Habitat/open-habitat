@@ -8,6 +8,7 @@ related: ['@add-conversation-recap', '@new-conversation-view']
 lane: web
 lane_seq: 7
 collision: [web/, internal/daemon/]
+preparation: ready
 ---
 
 # Recap appears automatically above the composer and can be closed
