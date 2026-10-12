@@ -1000,12 +1000,9 @@ test("@browser-conversation warm controlled return reads neither status nor hist
         ),
       ),
   );
-  // Recap is refreshed from native Pi history on return; status and timeline
-  // remain warm and do not revalidate just because the route changed.
-  await expect
-    .poll(() => requests.filter((path) => path.endsWith("/recap")).length)
-    .toBe(1);
-  expect(requests.filter((path) => !path.endsWith("/recap"))).toEqual([]);
+  // An empty chat has nothing to recap. Status and timeline remain warm on
+  // return and no redundant recap read is needed without a native entry.
+  expect(requests).toEqual([]);
   expect(streams).toEqual([]);
   expect(allStreams).toHaveLength(1);
   console.log(
