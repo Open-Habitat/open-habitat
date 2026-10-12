@@ -111,13 +111,15 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
       .getByRole("region", { name: "Keskusteluhistoria" })
       .getByText("Tutki synteettinen työtila", { exact: true }),
   ).toBeVisible({ timeout: 20000 });
-  await expect(page.getByText("Katson ensin, mitä työtilassa on.")).toBeVisible(
-    { timeout: 20000 },
-  );
+  await expect(
+    page.getByText("Katson ensin, mitä työtilassa on.", { exact: true }),
+  ).toBeVisible({ timeout: 20000 });
   await expect(page.getByText("Selvä. Kysyit:", { exact: false })).toBeVisible({
     timeout: 20000,
   });
-  await page.getByRole("button", { name: /bash.*valmis/ }).click();
+  const bash = page.getByRole("button", { name: /bash.*valmis/ });
+  if ((await bash.getAttribute("aria-expanded")) === "false")
+    await bash.click();
   await expect(
     page.getByText("README.md", { exact: false }).last(),
   ).toBeVisible();
@@ -636,16 +638,19 @@ test("@lab intermediate assistant message does not claim turn completion", async
     .getByRole("textbox", { name: "Viesti Pi:lle" })
     .fill("hidas tarkistus");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  const intermediate = page.locator(".ah-message").filter({
-    hasText: "Katson ensin, mitä työtilassa on.",
-  });
+  const intermediate = page
+    .locator(".ah-turn-reply > .ah-message")
+    .filter({
+      hasText: "Katson ensin, mitä työtilassa on.",
+    })
+    .last();
   await expect(intermediate).toBeVisible({ timeout: 20000 });
   await expect(
     page.getByRole("status", { name: "Pi:n työn eteneminen" }),
   ).toContainText(
     /Käyttää työkalua|Odottaa Pi:n seuraavaa vaihetta|Valmistelee seuraavaa vaihetta/,
   );
-  await expect(intermediate.locator("header")).toHaveText("Pi");
+  await expect(intermediate.locator("header")).toHaveText("Vastaa");
   expect(
     (await page.request.get("/fixture/scenario?value=ready")).status(),
   ).toBe(204);
