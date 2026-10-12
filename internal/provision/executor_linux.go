@@ -37,7 +37,9 @@ func linuxCommand(ctx context.Context, path string, args ...string) ([]byte, err
 	// Starting a socket waits for Fleetrepo's ordered root policy gate, which
 	// may itself wait briefly for a concurrent broker authorize lock holder.
 	if path == systemctl && len(args) == 2 && args[0] == "start" && strings.HasPrefix(args[1], "open-habitat-daemon@") && strings.HasSuffix(args[1], ".socket") {
-		budget = 15 * time.Second
+		// The JIT gate may wait up to 30s for the committed-ledger lock.
+		// Leave time for its checks and for systemd to finish binding.
+		budget = 45 * time.Second
 	}
 	bounded, cancel := context.WithTimeout(ctx, budget)
 	defer cancel()
@@ -682,6 +684,10 @@ func (e *LinuxHostExecutor) unit(ctx context.Context, i ExecutorIdentity, retry 
 	return ctx.Err()
 }
 
+// The systemd job can outlive a timed-out or cancelled systemctl client.
+// Callers must not start another sibling socket until an operator resolves it.
+var errActivationUncertain = errors.New("socket activation outcome uncertain")
+
 // Ready is broker-only. Fleetrepo's systemd dependency performs its own
 // activation-phase policy check; the broker must not bypass that gate with a
 // direct daemon service start or an enable operation. Never repair drift.
@@ -715,6 +721,9 @@ func (e *LinuxHostExecutor) Ready(ctx context.Context, i ExecutorIdentity) error
 	// A failed gate can leave a failed socket unit. A later explicit
 	// ensure may retry it, but no route is returned until it is active.
 	if _, err := e.command(ctx, systemctl, "start", unit); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return errActivationUncertain
+		}
 		return ErrInvalid
 	}
 	if e.Verify(ctx, i) != nil {

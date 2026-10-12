@@ -122,10 +122,15 @@ Fleetrepo has prepared the broker state, socket directory and quota enforcement.
 Socket activation alone does not run the broker until a new connection arrives;
 the broker service restores committed users' daemon sockets during startup via
 the JIT policy gate. The broker keeps serving during restoration and starts
-sockets one at a time because the gate inspects sibling listeners. A failed
-start is logged and later bindings are attempted; while a slow start is pending,
-other inactive sockets still cannot route. Fix the host policy and restart the
-broker to retry a failed binding. Do not enable daemon sockets directly to work around a
+sockets one at a time because the gate inspects sibling listeners. Login
+`ensure` uses the same broker activation lock. A definite failed start is
+logged and later bindings are attempted; if the result of a submitted systemd
+job is uncertain, the broker refuses further starts until an operator inspects
+the unit state and restarts the broker. Already-active sockets remain routable while a
+slow start is pending. Fix the host policy and restart the broker to retry a
+failed binding. The Fleetrepo release switch must stop independently starting
+per-user sockets before enabling automatic restoration, or it can race the
+broker even though starts inside the broker are serialized. Do not enable daemon sockets directly to work around a
 failed gate.
 
 The operator CLI exposes configuration inspection, diagnostics, revocation and

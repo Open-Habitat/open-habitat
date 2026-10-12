@@ -103,10 +103,13 @@ func (h *fakeHost) RouteReady(_ context.Context, i ExecutorIdentity) error {
 func (h *fakeHost) Ready(ctx context.Context, i ExecutorIdentity) error {
 	h.mu.Lock()
 	h.readyCalls = append(h.readyCalls, call("ready", i))
-	fail, callback := h.readyErr, h.onReady
+	fail, uncertain, callback := h.readyErr, h.fail == "uncertain-ready", h.onReady
 	h.mu.Unlock()
 	if callback != nil {
 		callback()
+	}
+	if uncertain {
+		return errActivationUncertain
 	}
 	if fail {
 		return errors.New("socket start failed")

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -99,12 +100,22 @@ type Writer struct {
 	GuardEvent func(string)
 	// Published is called only after the binding and head are durable. It is
 	// diagnostic only and must not affect the result of an ensure.
-	Published func(string)
-	owner     uint32
+	Published  func(string)
+	owner      uint32
+	activation *activationState
+}
+
+// A single broker serializes every activation, including login ensures, since
+// the host gate requires sibling sockets to be fully active. An uncertain
+// submitted systemd job stops later starts until an operator restarts the
+// broker after investigating the unit state.
+type activationState struct {
+	slot      chan struct{}
+	uncertain bool // accessed only while holding slot
 }
 
 func NewWriter(dir string, min, max uint32, executor HostExecutor) Writer {
-	return Writer{Dir: dir, UIDMin: min, UIDMax: max, Executor: executor, Quota: nativeQuota{}, QuotaEnabled: storagequota.Enabled, Capacity: storagequota.Capacity}
+	return Writer{Dir: dir, UIDMin: min, UIDMax: max, Executor: executor, Quota: nativeQuota{}, QuotaEnabled: storagequota.Enabled, Capacity: storagequota.Capacity, activation: &activationState{slot: make(chan struct{}, 1)}}
 }
 func failure(f Failure) Reply { return Reply{Version: 1, Failure: f} }
 
@@ -300,7 +311,7 @@ func stateAt(ctx context.Context, fd int, owner uint32) (allowFile, ledgerFile, 
 	return a, l, ab, lb, nil
 }
 func (w Writer) valid() bool {
-	return w.Executor != nil && w.Quota != nil && w.QuotaEnabled != nil && w.Capacity != nil && w.UIDMin >= 1000 && w.UIDMax >= w.UIDMin && w.UIDMax-w.UIDMin <= 4095
+	return w.Executor != nil && w.activation != nil && w.Quota != nil && w.QuotaEnabled != nil && w.Capacity != nil && w.UIDMin >= 1000 && w.UIDMax >= w.UIDMin && w.UIDMax-w.UIDMin <= 4095
 }
 
 // Handle serializes every authorize and ensure. A pending journal or interrupted
@@ -321,7 +332,7 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 		return result
 	}
 	identity := ExecutorIdentity{provider: "github", id: r.ID, username: result.Route.Username, uid: result.Route.UID}
-	if w.Executor.Ready(ctx, identity) != nil {
+	if w.activate(ctx, identity) != nil {
 		// No token has crossed the boundary. Keep the committed binding and
 		// require another explicit ensure; never retry an OAuth handoff.
 		return failure(StateUnavailable)
@@ -333,6 +344,32 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 		return failure(StateUnavailable)
 	}
 	return checked
+}
+
+// activate waits outside the ledger lock. Cancellation while waiting cannot
+// submit a systemd job; cancellation after submission is reported by Ready as
+// uncertain and latches the broker closed to further activation attempts.
+func (w Writer) activate(ctx context.Context, identity ExecutorIdentity) error {
+	if ctx == nil || w.activation == nil {
+		return ErrInvalid
+	}
+	select {
+	case w.activation.slot <- struct{}{}:
+		defer func() { <-w.activation.slot }()
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	if ctx.Err() != nil || w.activation.uncertain {
+		return ErrInvalid
+	}
+	err := w.Executor.Ready(ctx, identity)
+	if errors.Is(err, errActivationUncertain) {
+		w.activation.uncertain = true
+		if w.GuardEvent != nil {
+			w.GuardEvent("activation_uncertain")
+		}
+	}
+	return err
 }
 
 func (w Writer) handleLocked(ctx context.Context, r Request) Reply {

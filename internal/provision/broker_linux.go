@@ -116,7 +116,7 @@ func ServeBroker(ctx context.Context) error {
 	writer.GuardEvent = func(stage string) {
 		// Writer supplies fixed literals only. Never log request, candidate,
 		// UID, route, path, command output or raw host errors.
-		if stage != "availability_error" && stage != "no_available_binding" && stage != "invalid_executor" && stage != "nss_probe" && stage != "group_probe" && stage != "parent_policy" && stage != "acl_policy" && stage != "path_probe" && stage != "unit_probe" && stage != "quota_not_enforced" && stage != "binding_quota_missing" {
+		if stage != "availability_error" && stage != "no_available_binding" && stage != "invalid_executor" && stage != "nss_probe" && stage != "group_probe" && stage != "parent_policy" && stage != "acl_policy" && stage != "path_probe" && stage != "unit_probe" && stage != "quota_not_enforced" && stage != "binding_quota_missing" && stage != "activation_uncertain" {
 			return
 		}
 		log.Warn("broker_guard", "outcome", "rejected", "reason", stage)
@@ -128,11 +128,15 @@ func ServeBroker(ctx context.Context) error {
 	// Activation is outside the ledger lock: the Fleetrepo JIT gate takes a
 	// shared lock before systemd starts each socket. A failure for one binding
 	// must not prevent the broker serving the others.
-	go writer.restoreSockets(ctx, bindings, func(user string, ok bool) {
-		if ok {
+	go writer.restoreSockets(ctx, bindings, func(user string, err error) {
+		if err == nil {
 			log.Info("broker_socket_restore", "outcome", "ready", "user", user)
 		} else {
-			log.Warn("broker_socket_restore", "outcome", "rejected", "reason", "activation_unavailable", "user", user)
+			reason := "activation_unavailable"
+			if errors.Is(err, errActivationUncertain) {
+				reason = "activation_uncertain"
+			}
+			log.Warn("broker_socket_restore", "outcome", "rejected", "reason", reason, "user", user)
 		}
 	})
 	if ctx.Err() != nil {
@@ -244,15 +248,19 @@ func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error)
 
 // restoreSockets runs off the serving path, but starts units serially: the
 // Fleetrepo gate requires every sibling listener to be fully active before it
-// will admit another. A failed gate does not stop later attempts.
-func (w Writer) restoreSockets(ctx context.Context, bindings []ExecutorIdentity, report func(string, bool)) {
+// will admit another. A definite gate failure does not stop later attempts;
+// an uncertain submitted systemd job must stop all further starts.
+func (w Writer) restoreSockets(ctx context.Context, bindings []ExecutorIdentity, report func(string, error)) {
 	for _, b := range bindings {
 		if ctx.Err() != nil {
 			return
 		}
 		activation, cancel := context.WithTimeout(ctx, 90*time.Second)
-		err := w.Executor.Ready(activation, b)
+		err := w.activate(activation, b)
 		cancel()
-		report(b.username, err == nil)
+		report(b.username, err)
+		if errors.Is(err, errActivationUncertain) {
+			return
+		}
 	}
 }

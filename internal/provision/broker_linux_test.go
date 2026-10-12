@@ -260,8 +260,8 @@ func TestBrokerRestoresCommittedSocketsWithoutLogin(t *testing.T) {
 	results := make(chan string, 2)
 	done := make(chan struct{})
 	go func() {
-		w.restoreSockets(context.Background(), bindings, func(user string, ok bool) {
-			if ok {
+		w.restoreSockets(context.Background(), bindings, func(user string, err error) {
+			if err == nil {
 				results <- user + ":ready"
 			} else {
 				results <- user + ":failed"
@@ -317,6 +317,57 @@ func TestBrokerStartupVerifiesButDoesNotActivateRevokedBinding(t *testing.T) {
 	bindings, err = w.startupBindings(context.Background())
 	if err != nil || len(bindings) != 2 {
 		t.Fatalf("admission:any dropped bound user: %v, %+v", err, bindings)
+	}
+}
+
+func TestBrokerActivationLockAndUncertainStart(t *testing.T) {
+	w, h := writerFixture(t)
+	identity := ExecutorIdentity{provider: "github", id: "42", username: "carol", uid: 2100}
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	h.onReady = func() { close(entered); <-release }
+	first := make(chan error, 1)
+	go func() { first <- w.activate(context.Background(), identity) }()
+	<-entered
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := w.activate(ctx, identity); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled waiter entered activation: %v", err)
+	}
+	h.mu.Lock()
+	h.onReady = nil
+	h.mu.Unlock()
+	second := make(chan error, 1)
+	go func() { second <- w.activate(context.Background(), identity) }()
+	close(release)
+	if err := <-first; err != nil {
+		t.Fatal(err)
+	}
+	if err := <-second; err != nil {
+		t.Fatalf("waiting activation did not proceed: %v", err)
+	}
+	h.mu.Lock()
+	h.fail = "uncertain-ready"
+	h.readyCalls = nil
+	h.mu.Unlock()
+	var reported []error
+	w.restoreSockets(context.Background(), []ExecutorIdentity{identity, identity}, func(_ string, err error) {
+		reported = append(reported, err)
+	})
+	if len(reported) != 1 || !errors.Is(reported[0], errActivationUncertain) {
+		t.Fatalf("continued after uncertain systemd job: %v", reported)
+	}
+	h.mu.Lock()
+	h.fail = ""
+	n := len(h.readyCalls)
+	h.mu.Unlock()
+	if err := w.activate(context.Background(), identity); err == nil {
+		t.Fatal("started another socket while submitted job may be pending")
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if len(h.readyCalls) != n {
+		t.Fatalf("uncertain activation reached executor: %v", h.readyCalls)
 	}
 }
 
