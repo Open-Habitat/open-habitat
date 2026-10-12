@@ -11,12 +11,27 @@ collision: [web/]
 
 # Bash tool card hides the command and scatters the result header
 
-_Source: chat_
+During Jari's first real Pi conversation on pilot.22 on 2026-10-12, the bash
+card hid the command behind an "Argumentit" disclosure labelled
+"Työkalukutsu · bash · call_35c7…|fc_023b…". Its result heading, preview label
+and Alku/Loppu controls occupied separate rows, making their relationship
+unclear.
 
-Jari, 2026-10-12, pilot.22, first real Pi conversation: the bash tool card.
+The card should make it easy to see what ran and read its output. Show a
+compact command preview by default, expandable to the full command. The
+internal call ID offers no help with that task; it belongs, if anywhere,
+in technical details.
 
-1. The executed command is not shown. Under "Argumentit" there is only a collapsed "Työkalukutsu · bash · call_35c7…|fc_023b…" disclosure carrying the internal call ID. The card should show the command itself: by default compact (first line or truncated), expandable to the full command. The call ID is internal and does not belong in the visible card (at most in a details view).
-2. The result header is broken: "Tulos" on one line, "bash · esikatselun kohta" floating on the next, and the "Alku"/"Loppu" buttons on yet another line, far from that text. Jari's layout: one row with bold "Tulos" on the left and, on the right of the same row, "Esikatselu:" followed by "Alku" and "Loppu" as a segmented button group (they are alternatives).
-3. The preview choice is shown only when the output is truncated; when the whole output fits, no Alku/Loppu control is shown.
+Jari's intended result header is one row: bold "Tulos" on the left and
+"Esikatselu:" with an Alku/Loppu segmented button group on the right. These
+are mutually exclusive preview positions. When the whole output fits,
+the selector has no purpose and is hidden. The existing tool-specific
+preview defaults and remembered selection are described in
+[design.md](../../design-system/design.md).
 
-Apply the same rules to the other tool cards that share this component, and verify in the lab with short and long outputs on desktop and phone.
+Other tool cards using the shared presentation should follow the same
+principles, showing their own relevant arguments rather than an internal
+identifier. The command, output and controls should remain understandable
+in both live work and history. Short and long outputs in the lab, on desktop
+and phone, provide the useful comparison: the command is discoverable, the
+header reads as one unit, and preview controls appear only when needed.
