@@ -11,8 +11,6 @@ collision: [web/]
 
 # OpenAI onboarding step flashes an error and buries its status
 
-_Source: chat_
-
 During Jari's first sign-in on pilot.22 (open-habitat-test) on 2026-10-12,
 the OpenAI onboarding step briefly showed a red error notice after clicking
 "Aloita kirjautuminen", before showing the device code. The exact wording
