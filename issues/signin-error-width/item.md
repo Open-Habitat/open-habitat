@@ -2,11 +2,13 @@
 created: 2026-10-12
 updated: 2026-10-12
 type: bug
-status: in-progress
+status: fixed
 priority: normal
 lane: signin-fix
 lane_seq: 2
 collision: [web/]
+closed: 2026-10-12
+closed_by: claude
 ---
 
 # Sign-in error notice is wider than the login card

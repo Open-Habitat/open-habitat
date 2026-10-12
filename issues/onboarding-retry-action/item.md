@@ -2,11 +2,13 @@
 created: 2026-10-12
 updated: 2026-10-12
 type: improvement
-status: in-progress
+status: done
 priority: normal
 lane: signin-fix
 lane_seq: 3
 collision: [web/]
+closed: 2026-10-12
+closed_by: claude
 ---
 
 # Onboarding notices need a retry action
