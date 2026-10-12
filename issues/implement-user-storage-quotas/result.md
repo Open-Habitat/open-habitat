@@ -1,4 +1,8 @@
-# Implementation in progress — first slice
+# Implementation in progress — quota admission slice
+
+This worker added a Linux quota reader and changed production clone admission to check the daemon's own effective UID quota plus actual filesystem free blocks. This removes the separate `~/src` mount and 20 GiB / 5 GiB admission policy. It does **not** provision a quota or expose quota administration, so it must not be deployed as a completed replacement for the old policy. On filesystems without an active readable quota clone admission fails closed. Kernel EDQUOT remains the final bound when a remote repository grows after admission.
+
+The quota reader selects only the block-backed ext4 `/home` or root mount from `/proc/self/mountinfo`, checks the device identity against `/home`, and passes that kernel-selected device to `quotactl`. Hard limits use 1024-byte quota blocks; current usage is already bytes. Its set operation requires an aligned 1 MiB–1 PiB limit and reads back the effective hard limit. Root broker integration is **not yet done**; this primitive must not be presented as an administration API.
 
 Adopted the preserved previous worker's boundary inspection. This retry removes discovery's mounted-source capacity check: workspace visibility no longer depends on a separately mounted `~/src` staying below 20 GiB. The native path, ownership, symlink and race checks remain. This is a limited, independently useful slice, **not** quota enforcement. The issue remains open.
 
@@ -6,16 +10,18 @@ Adopted the preserved previous worker's boundary inspection. This retry removes 
 
 - The root broker still permits only `ensure`, `authorize`, `lookup`, `list`; add validated bound-user quota read/set operations, selecting the committed UID rather than a client path or UID. Apply a validated gateway-provided default quota during the journaled account-creation flow before publishing a binding, and fail closed when quota setup fails.
 - Add the gateway's durable default-limit setting, shared browser/root-CLI writer, per-bound-user usage and limit reads and limit mutation, filesystem capacity/free space and overcommit warning. Native quota state must remain the only limit/usage record.
-- Replace `boundedCloneVolume` with an own-UID quota admission check in the daemon; fail closed on unreadable quotas, surface a full-quota explanation, and show personal usage/limit. Do not claim a remote Git repository's eventual size can be known in advance: kernel enforcement is final.
+- Clone admission now uses an own-UID quota check and fails closed on unreadable quotas. Still surface an understandable full-quota explanation and personal usage/limit. Do not claim a remote Git repository's eventual size can be known in advance: kernel enforcement is final.
 - Update browser, documentation and tests across the remaining boundaries. The live acceptance criteria remain unchecked.
 
 ## Fleetrepo deployment prerequisite — not deployed
+
+A separate Fleetrepo Taskfleet worker (`01m4qdwvbxz4gs3qzx6v2qr7z6`) was delegated the guest journaled quota setup, image removal and stale release guards. Its result and commit must be checked before claiming this prerequisite completed.
 
 On the disposable test installation enable ext4 journaled user quotas (`tune2fs -O quota`) on the filesystem holding `/home`, verify quota support is active after reboot, configure the gateway's initial default quota, and stop creating/mounting per-user `~/src` images in `infra/native-agent-host-test/src_volume.py`. Then prove kernel `EDQUOT` for Git, Pi and a shell across each user's whole home and verify read/write/admin UI and CLI behavior. No existing image migration is required; no deployment or live verification was performed by this worker.
 
 ## Decisions for review
 
-None taken in this slice. Quota addressing via `quotactl` must use the host-controlled home filesystem and the bound UID, not a browser-supplied path. Choose validated quota units/granularity and test them before committing the broker slice.
+Chose byte values on the application wire and 1024-byte-aligned limit values for Linux quota hard-limit blocks; a zero hard limit is unusable (Linux interprets it as unlimited). Default size and UI layout remain for the next slice. Quota addressing via `quotactl` uses the host-controlled home filesystem, not a browser-supplied path; the broker must select the UID from the committed binding.
 
 ## Evidence and limits
 
