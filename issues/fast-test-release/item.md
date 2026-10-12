@@ -2,12 +2,14 @@
 created: 2026-10-12
 updated: 2026-10-12
 type: improvement
-status: in-progress
+status: done
 priority: high
 preparation: ready
 lane: release-tooling
 lane_seq: 1
 collision: [scripts/, TESTING.md]
+closed: 2026-10-12
+closed_by: claude
 ---
 
 # Release to the test guest in under 100 seconds
@@ -33,3 +35,9 @@ Make the release one deterministic command that the conductor runs directly, fin
 3. **Duration budget.** The command prints per-step and total durations and fails its own acceptance above 100 s on the test guest; record the measured time of the first real release in the result.
 
 Keep every existing safety check of the upgrade path (source pinning, archive and manifest digests, guest identity, root-only receipts); make them fast rather than removing them. The gate's own 11-minute duration is a separate concern.
+
+## Resolution
+
+### 2026-10-12T18:03:05Z · @claude
+
+First live release pilot.24 verified in 55.3 s (within_limit); receipt release-test-receipt-pilot24.json.

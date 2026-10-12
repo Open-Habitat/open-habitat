@@ -24,3 +24,17 @@ Use a fresh private output directory for this attempt. If it was already used, c
 ## Offline evidence
 
 `python3 scripts/test-gate-receipt.py` verifies same-tree and linked-worktree acceptance, different-tree refusal, dirty-tree refusal and corrupt receipt refusal. A real product preparer plus Fleetrepo offline dry run (with only the pushed-main ancestry probe replaced for this unmerged feature branch) verified archive `6d48d13aa4e0d9a6483eed1d327ed8b31b9f89de7214f4eebd76a88c93623ae0` in 5.143 s and blocked every guest call. Fleetrepo's 205 offline tests passed. The full clean gate passed on the then-current merged candidate tree `ff587c2c3d1423eb617cf107e1c137af8cdfde04` (`/var/tmp/oh-fast-test-gate-merge.out`); earlier browser-test flakiness was retried. Concurrent changes to main and this evidence-only update mean that **the eventual main tree has no gate receipt yet**. The conductor must gate the landed clean main tree once before invoking the command above; that prerequisite is outside the 100 s release timing. No real guest operation was attempted.
+
+## First live release (2026-10-12, pilot.24)
+
+The conductor gated the landed main tree `a3cdbd23fdf60a27af3a1c33937bff0d60e897dd`
+(commit `09e2dfde9eeaa3bc67a9654e964c6313b2e2347c`, the agent-turn and bash-card
+implementation) and ran the command above from Fleetrepo main
+`66c330e670457d0c4019370d281ea04b34fd5ed6`. Result `status: verified`,
+`acceptance: within_limit`, total **55.3 s** (prepare 5.4 s, staging of the
+ten-file closure and archive about 30 s, preflight, stage, switch and verify
+16.2 s). Receipt: `release-test-receipt-pilot24.json` in this folder. The public
+edge answered 200 on `/` and 302 on `/auth/github/start` afterwards. The first
+gate attempt on the same tree failed only because an orphaned lab server from a
+deleted worktree held port 4175; the browser suite itself passed. Browser
+sign-in and the rendering of real conversations on pilot.24 remain Jari's check.
