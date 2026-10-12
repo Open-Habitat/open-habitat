@@ -118,3 +118,50 @@ test("@lab GitHub chooser, synthetic clone and Pi onboarding", async ({
     await page.request.get("/fixture/scenario?value=ready");
   }
 });
+
+test("@lab cloned GitHub checkout hides publication; local Git checkout keeps it on desktop and phone", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByRole("button", { name: "Näytä repot" }).click();
+  await page.locator("main select").selectOption("fixture/first");
+  await page.getByRole("button", { name: "Tuo työtilaksi" }).click();
+  await expect(page.getByText("Repo tuotu työtilaksi.")).toBeVisible();
+  const workspaces = (await (await page.request.get("/api/v1/snapshot")).json())
+    .workspaces;
+  const cloned = workspaces.find((w: { name: string }) => w.name === "first");
+  const local = workspaces.find(
+    (w: { name: string }) => w.name === "tilastoharjoitus",
+  );
+  expect(cloned.git_remote).toBe("github");
+  expect(local.git_remote).toBe("none");
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto(`/workspaces/${cloned.workspace_id}`);
+    await expect(
+      page.getByRole("heading", { name: "first", level: 1 }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Julkaise GitHubiin" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByText("Tässä työtilassa ei ole vielä keskusteluja."),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Arkisto" })).toHaveCount(0);
+    await page.goto(`/workspaces/${local.workspace_id}`);
+    await expect(
+      page.getByRole("heading", { name: "Julkaise GitHubiin" }),
+    ).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Omistaja" })).toBeVisible();
+    await expect(
+      page.getByText("Tässä työtilassa ei ole vielä keskusteluja."),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Arkisto" })).toHaveCount(0);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(width);
+  }
+});

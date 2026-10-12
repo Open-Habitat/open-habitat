@@ -19,6 +19,22 @@ function show(conversations: ReturnConversation[]) {
   );
 }
 describe("return view", () => {
+  it("distinguishes an empty selected workspace from the empty home", () => {
+    show([]);
+    expect(
+      screen.getByText(
+        "Keskusteluja ei vielä näy. Valitse työtila vasemmalta.",
+      ),
+    ).toBeTruthy();
+    render(
+      <MemoryRouter>
+        <ReturnView conversations={[]} workspaceName="Keskustelut työtilassa" />
+      </MemoryRouter>,
+    );
+    expect(
+      screen.getByText("Tässä työtilassa ei ole vielä keskusteluja."),
+    ).toBeTruthy();
+  });
   it("uses the return heading without a separate workspace introduction", () => {
     show([base]);
     expect(

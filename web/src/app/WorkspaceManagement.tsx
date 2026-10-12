@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ControlButton } from "../components/ControlElements";
+import { ControlButton, controlStyles } from "../components/ControlElements";
+import { TextField } from "../components/Primitives";
 import type { Workspace } from "./snapshot";
 import { WorkspaceGitHub } from "./WorkspaceGitHub";
 
@@ -110,22 +111,21 @@ export function WorkspaceManagement({
           }}
         >
           <h2>Uusi työtila</h2>
-          <label>
-            Hakemiston nimi{" "}
-            <input
-              value={name}
-              required
-              maxLength={255}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={git}
-              onChange={(e) => setGit(e.target.checked)}
-            />{" "}
-            Alusta Git
+          <TextField
+            label="Hakemiston nimi"
+            value={name}
+            onChange={setName}
+            required
+          />
+          <label className={controlStyles.field}>
+            <span>
+              <input
+                type="checkbox"
+                checked={git}
+                onChange={(e) => setGit(e.target.checked)}
+              />{" "}
+              Alusta Git
+            </span>
           </label>
           <ControlButton
             type="submit"
@@ -144,14 +144,11 @@ export function WorkspaceManagement({
               void run("settings", { display_name: display });
             }}
           >
-            <label>
-              Näyttönimi{" "}
-              <input
-                value={display}
-                maxLength={255}
-                onChange={(e) => setDisplay(e.target.value)}
-              />
-            </label>
+            <TextField
+              label="Näyttönimi"
+              value={display}
+              onChange={setDisplay}
+            />
             <ControlButton
               type="submit"
               isDisabled={!csrf || busy || !workspace.observation_token}

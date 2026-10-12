@@ -23,24 +23,26 @@ import { LinkRow } from "../components/ControlElements";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import type { ReturnConversation } from "../components/ReturnView";
 import { ReturnView } from "../components/ReturnView";
+import { AccountProfileOnboarding } from "./AccountProfileOnboarding";
 import { BrowserConversation } from "./BrowserConversation";
 import { ConversationJournal } from "./conversationJournal";
 import { ConversationStore } from "./conversationStore";
 import {
   list as listConversations,
   NotAdmitted,
-  setArchive,
   type Session,
+  setArchive,
 } from "./conversations";
 import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
+import { PersonalStorage } from "./PersonalStorage";
 import {
-  accountSession,
-  piStatus,
   type AccountProfile,
+  accountSession,
   type PiState,
+  piStatus,
 } from "./pi";
-import { AccountProfileOnboarding } from "./AccountProfileOnboarding";
+import { ServerAdministration } from "./ServerAdministration";
 import { readSnapshot, sourceState, type Workspace } from "./snapshot";
 import {
   authenticated,
@@ -53,8 +55,6 @@ import {
   stale,
   unavailable,
 } from "./store";
-import { ServerAdministration } from "./ServerAdministration";
-import { PersonalStorage } from "./PersonalStorage";
 import { WorkspaceManagement } from "./WorkspaceManagement";
 import { sourceLabel, WorkspaceRailView } from "./WorkspaceRailView";
 
@@ -98,6 +98,23 @@ function WorkspaceDetails({ workspace }: { workspace: Workspace }) {
             <dt>Git</dt>
             <dd>{fact("git")}</dd>
           </div>
+          {workspace.git_remote && (
+            <div>
+              <dt>Etärepo</dt>
+              <dd>
+                {
+                  (
+                    {
+                      github: "GitHub-origin",
+                      other: "Muu etärepo",
+                      none: "Ei etärepoa",
+                      unknown: "Ei voitu tarkistaa",
+                    } as const
+                  )[workspace.git_remote]
+                }
+              </dd>
+            </div>
+          )}
           <div>
             <dt>Asetukset</dt>
             <dd>{fact("annotation")}</dd>
@@ -875,67 +892,77 @@ export function App() {
                 tone="warning"
               />
             )}
-            <section aria-label="Työtilan arkisto">
-              <h2>Arkisto</h2>
-              {snapshot?.sources.find((f) => f.source === "annotation")
-                ?.state !== "confirmed" ? (
-                <p>Arkistoa ei voitu lukea. Päivitä tiedot.</p>
-              ) : (
-                <>
-                  {snapshot.sources.find((f) => f.source === "pi_history")
-                    ?.state !== "confirmed" && (
-                    <p role="status">
-                      Arkisto voi olla puutteellinen: Pi:n historiaa ei voitu
-                      kokonaan tarkistaa. Päivitä tiedot.
-                    </p>
-                  )}
-                  {snapshot.agents
-                    .filter(
-                      (a) =>
-                        a.workspace_id === selected.workspace_id &&
-                        a.archive === "archived",
-                    )
-                    .map((a) => (
-                      <p key={a.agent_id}>
-                        <LinkRow
-                          href={
-                            daemonSessions.some(
-                              (s) => s.agent_id === a.agent_id,
-                            )
-                              ? `/workspaces/${selected.workspace_id}?conversation=${a.agent_id}`
-                              : `/agents/${a.agent_id}`
-                          }
-                          kind="inline"
-                        >
-                          {a.title.display}
-                        </LinkRow>{" "}
-                        {a.history !== "readable" && (
-                          <span>Historia ei ole luettavissa. </span>
-                        )}
-                        <Button
-                          label="Palauta näkyviin"
-                          variant="quiet"
-                          onPress={() => void changeArchive(a, false)}
-                          availability={
-                            archiveBusy ||
-                            !csrf ||
-                            phase !== "authenticated" ||
-                            a.history !== "readable"
-                              ? {
-                                  state: "unknown",
-                                  reason:
-                                    a.history !== "readable"
-                                      ? "Historiaa ei voitu vahvistaa"
-                                      : "Päivitä yhteys ennen palautusta",
-                                }
-                              : { state: "enabled" }
-                          }
-                        />
+            {(snapshot?.sources.find((f) => f.source === "annotation")
+              ?.state !== "confirmed" ||
+              snapshot?.sources.find((f) => f.source === "pi_history")
+                ?.state !== "confirmed" ||
+              snapshot?.agents.some(
+                (a) =>
+                  a.workspace_id === selected.workspace_id &&
+                  a.archive === "archived",
+              )) && (
+              <section aria-label="Työtilan arkisto">
+                <h2>Arkisto</h2>
+                {snapshot?.sources.find((f) => f.source === "annotation")
+                  ?.state !== "confirmed" ? (
+                  <p>Arkistoa ei voitu lukea. Päivitä tiedot.</p>
+                ) : (
+                  <>
+                    {snapshot.sources.find((f) => f.source === "pi_history")
+                      ?.state !== "confirmed" && (
+                      <p role="status">
+                        Arkisto voi olla puutteellinen: Pi:n historiaa ei voitu
+                        kokonaan tarkistaa. Päivitä tiedot.
                       </p>
-                    ))}
-                </>
-              )}
-            </section>
+                    )}
+                    {snapshot.agents
+                      .filter(
+                        (a) =>
+                          a.workspace_id === selected.workspace_id &&
+                          a.archive === "archived",
+                      )
+                      .map((a) => (
+                        <p key={a.agent_id}>
+                          <LinkRow
+                            href={
+                              daemonSessions.some(
+                                (s) => s.agent_id === a.agent_id,
+                              )
+                                ? `/workspaces/${selected.workspace_id}?conversation=${a.agent_id}`
+                                : `/agents/${a.agent_id}`
+                            }
+                            kind="inline"
+                          >
+                            {a.title.display}
+                          </LinkRow>{" "}
+                          {a.history !== "readable" && (
+                            <span>Historia ei ole luettavissa. </span>
+                          )}
+                          <Button
+                            label="Palauta näkyviin"
+                            variant="quiet"
+                            onPress={() => void changeArchive(a, false)}
+                            availability={
+                              archiveBusy ||
+                              !csrf ||
+                              phase !== "authenticated" ||
+                              a.history !== "readable"
+                                ? {
+                                    state: "unknown",
+                                    reason:
+                                      a.history !== "readable"
+                                        ? "Historiaa ei voitu vahvistaa"
+                                        : "Päivitä yhteys ennen palautusta",
+                                  }
+                                : { state: "enabled" }
+                            }
+                          />
+                        </p>
+                      ))}
+                  </>
+                )}
+              </section>
+            )}
             <ReturnView
               store={conversationStore}
               workspaceName="Keskustelut työtilassa"

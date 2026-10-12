@@ -202,7 +202,11 @@ export function ReturnView({
           ) : null}
         </div>
       ) : (
-        <p>Keskusteluja ei vielä näy. Valitse työtila vasemmalta.</p>
+        <p>
+          {workspaceName
+            ? "Tässä työtilassa ei ole vielä keskusteluja."
+            : "Keskusteluja ei vielä näy. Valitse työtila vasemmalta."}
+        </p>
       )}
     </section>
   );

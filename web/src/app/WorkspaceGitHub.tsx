@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import type { Workspace } from "./snapshot";
+import { ControlButton, controlStyles } from "../components/ControlElements";
+import { TextField } from "../components/Primitives";
 import { catalog, cloneStream, observe, type Repo } from "./github";
-import { ControlButton } from "../components/ControlElements";
+import type { Workspace } from "./snapshot";
 
 type Challenge = {
   schema_version: 1;
@@ -267,16 +268,15 @@ export function WorkspaceGitHub({
           </ControlButton>
           {repos.length > 0 && (
             <>
-              <label>
-                Hae repoja{" "}
-                <input
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                />
-              </label>
-              <label>
-                Repo{" "}
+              <TextField
+                label="Hae repoja"
+                value={filter}
+                onChange={setFilter}
+              />
+              <label className={controlStyles.field}>
+                Repo
                 <select
+                  className={controlStyles.fieldInput}
                   value={choice}
                   onChange={(e) => setChoice(e.target.value)}
                 >
@@ -302,38 +302,41 @@ export function WorkspaceGitHub({
             </>
           )}
         </>
-      ) : workspace.kind === "git_main_worktree" ? (
+      ) : workspace.kind === "git_main_worktree" &&
+        (workspace.git_remote === "none" || workspace.publish_continuation) ? (
         <>
-          <h2>Julkaise GitHubiin</h2>
+          <h2>
+            {workspace.publish_continuation
+              ? "Jatka GitHub-julkaisua"
+              : "Julkaise GitHubiin"}
+          </h2>
           <p>
-            Jokainen vaihe (luonti, origin, push) vaatii uuden havainnon.
-            Epävarmaa vaihetta ei toisteta automaattisesti.
+            {workspace.publish_continuation
+              ? "GitHub-originilla ei näy haettuja haaroja. Tarkista omistaja, repo ja näkyvyys ennen mahdollista push-vaihetta."
+              : "Jokainen vaihe (luonti, origin, push) vaatii uuden havainnon. Epävarmaa vaihetta ei toisteta automaattisesti."}
           </p>
-          <label>
-            Omistaja{" "}
-            <input
-              value={owner}
-              onChange={(e) => {
-                ++selectionRevision.current;
-                setOwner(e.target.value);
-                setChallenge(undefined);
-              }}
-            />
-          </label>
-          <label>
-            Repo{" "}
-            <input
-              value={repository}
-              onChange={(e) => {
-                ++selectionRevision.current;
-                setRepository(e.target.value);
-                setChallenge(undefined);
-              }}
-            />
-          </label>
-          <label>
-            Näkyvyys{" "}
+          <TextField
+            label="Omistaja"
+            value={owner}
+            onChange={(value) => {
+              ++selectionRevision.current;
+              setOwner(value);
+              setChallenge(undefined);
+            }}
+          />
+          <TextField
+            label="Repo"
+            value={repository}
+            onChange={(value) => {
+              ++selectionRevision.current;
+              setRepository(value);
+              setChallenge(undefined);
+            }}
+          />
+          <label className={controlStyles.field}>
+            Näkyvyys
             <select
+              className={controlStyles.fieldInput}
               value={visibility}
               onChange={(e) => {
                 ++selectionRevision.current;
@@ -367,13 +370,11 @@ export function WorkspaceGitHub({
                     : "tila tuntematon"}
                 ; HEAD {challenge.local_head ?? "tuntematon"}.
               </p>
-              <label>
-                Vahvista owner/repository{" "}
-                <input
-                  value={confirmation}
-                  onChange={(e) => setConfirmation(e.target.value)}
-                />
-              </label>
+              <TextField
+                label="Vahvista owner/repository"
+                value={confirmation}
+                onChange={setConfirmation}
+              />
               <ControlButton
                 type="button"
                 isDisabled={busy || confirmation !== challenge.full_name}
@@ -384,6 +385,13 @@ export function WorkspaceGitHub({
             </>
           )}
         </>
+      ) : workspace.kind === "git_main_worktree" &&
+        workspace.git_remote !== "github" ? (
+        <p role="status">
+          {workspace.git_remote === "other"
+            ? "Työtilalla on toinen etärepo. Julkaiseminen vaatii työtilan ilman etärepoa."
+            : "Gitin etärepoa ei voitu tarkistaa. Päivitä tiedot ennen julkaisemista."}
+        </p>
       ) : null}
       {notice && <p role="status">{notice}</p>}
     </section>

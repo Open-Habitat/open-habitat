@@ -192,7 +192,8 @@ if [ "$1" = clone ]; then
     sleep 0.2
     printf 'Updating files: 100%% (4/4)\n' >&2
   fi
-  mkdir -p .git || exit 1
+  /usr/bin/git init -q . || exit 1
+  /usr/bin/git remote add origin "$3" || exit 1
   printf '%s\n' "$3" > .git/origin
   exit 0
 fi

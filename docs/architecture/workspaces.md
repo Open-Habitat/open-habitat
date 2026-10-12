@@ -90,9 +90,16 @@ first commit remains uncertain because that observation cannot distinguish it
 from an interrupted clone.
 
 The workspace UI lists native `gh` repositories for import into the user's
-`~/src` and offers publishing a local main Git checkout to the signed-in
-GitHub account. Publishing uses a two-minute, single-use daemon observation
-challenge for an exact `owner/repository` and visibility. It separately creates
+`~/src` and offers publishing a local main Git checkout with no observed remote
+to the signed-in GitHub account. The snapshot classifies remotes through bounded
+native Git reads without returning a remote URL (which may contain credentials).
+An existing or unreadable remote does not enable the creation form. A GitHub
+origin with a local commit and no observed origin-tracking refs instead offers
+a separate continuation check, so an interrupted origin-to-push step can be
+resumed without presenting cloned checkouts as new repositories. This display
+observation is not a write precondition. Publishing uses a two-minute, single-use
+daemon observation challenge for an exact `owner/repository` and visibility.
+It separately creates
 the remote via `gh api`, adds an HTTPS `origin` only if the observed remote
 has no branches, and pushes `HEAD` with ordinary Git only when its effective
 push URL is exactly the confirmed target (one URL, no alternate push URL).

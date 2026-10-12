@@ -1,13 +1,14 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { WorkspaceGitHub } from "./WorkspaceGitHub";
 import * as github from "./github";
+import { WorkspaceGitHub } from "./WorkspaceGitHub";
 
 const workspace = {
   workspace_id: "ws_abcdefgh",
   observation_token: "obs_abcdefgh",
   name: "local",
   kind: "git_main_worktree",
+  git_remote: "none" as const,
   visibility: "visible",
   mutation_state: "allowed",
   presence: "present",
@@ -73,6 +74,43 @@ it("requires exact confirmation, observes again between separate create and orig
   expect(screen.queryByText("Suorita origin")).toBeNull();
   fireEvent.click(screen.getByText("Tarkista GitHub ja Git"));
   await waitFor(() => expect(screen.getByText("Suorita origin")).toBeTruthy());
+});
+it("hides publication for a checkout with an observed GitHub origin or uncertain remote", () => {
+  const fetch = vi.fn();
+  vi.stubGlobal("fetch", fetch);
+  const { rerender } = render(
+    <WorkspaceGitHub
+      csrf="csrf"
+      workspace={{ ...workspace, git_remote: "github" }}
+      refresh={vi.fn()}
+    />,
+  );
+  expect(screen.queryByText("Julkaise GitHubiin")).toBeNull();
+  rerender(
+    <WorkspaceGitHub
+      csrf="csrf"
+      workspace={{ ...workspace, git_remote: "unknown" }}
+      refresh={vi.fn()}
+    />,
+  );
+  expect(screen.queryByText("Julkaise GitHubiin")).toBeNull();
+  expect(fetch).not.toHaveBeenCalled();
+});
+it("offers a distinct continuation check for an origin without tracking refs", () => {
+  render(
+    <WorkspaceGitHub
+      csrf="csrf"
+      workspace={{
+        ...workspace,
+        git_remote: "github",
+        publish_continuation: true,
+      }}
+      refresh={vi.fn()}
+    />,
+  );
+  expect(screen.queryByText("Julkaise GitHubiin")).toBeNull();
+  expect(screen.getByText("Jatka GitHub-julkaisua")).toBeTruthy();
+  expect(screen.getByText(/Tarkista omistaja, repo ja näkyvyys/)).toBeTruthy();
 });
 it("shows native clone progress and confirms via a fresh checkout observation", async () => {
   vi.spyOn(github, "catalog").mockResolvedValue({

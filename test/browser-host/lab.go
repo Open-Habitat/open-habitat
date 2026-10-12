@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -36,11 +37,18 @@ func seedLab(home string) error {
 			return e
 		}
 		if name != "muistiinpanot" {
-			if e := os.MkdirAll(filepath.Join(dir, ".git"), 0700); e != nil {
+			if e := exec.Command("/usr/bin/git", "-C", dir, "init", "-q").Run(); e != nil {
 				return e
 			}
-			if e := os.WriteFile(filepath.Join(dir, ".git", "origin"), []byte("https://github.com/fixture/"+name+".git\n"), 0600); e != nil {
-				return e
+			if name != "tilastoharjoitus" {
+				url := "https://github.com/fixture/" + name + ".git"
+				if e := exec.Command("/usr/bin/git", "-C", dir, "remote", "add", "origin", url).Run(); e != nil {
+					return e
+				}
+				// The synthetic clone observer also reads this fixture-only marker.
+				if e := os.WriteFile(filepath.Join(dir, ".git", "origin"), []byte(url+"\n"), 0600); e != nil {
+					return e
+				}
 			}
 		}
 		for _, f := range files {

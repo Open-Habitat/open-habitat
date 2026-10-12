@@ -1,0 +1,14 @@
+# Cloned workspace publication — result
+
+## Decisions for review
+
+- Only a freshly observed main Git checkout with **no remotes** gets the new-repository form. Existing GitHub origins get no creation form; an unreadable remote is not treated as absence. The snapshot returns only a remote classification, not the URL, because URLs may contain credentials. The daemon's publication challenge remains the authority for every write.
+- A GitHub origin with a local HEAD but no origin-tracking refs gets a *separate* continuation check. This permits recovery after the origin stage without showing a new-repository form on an ordinary clone. It is only a hint: the subsequent challenge still checks the exact owner/repo, visibility, origin and push URL. A cloned empty repo with its own local commit and no fetched refs may also see the continuation check; no write happens without explicit observation and confirmation.
+- A confirmed empty archive has no section. Unreadable annotation or Pi history still displays an archive warning. An empty selected workspace describes itself rather than asking the person to choose a workspace.
+- Settings and publish fields use shared field and button styles; the select uses the same control styles. Visual approval follows deployment; pilot.22 was not touched.
+
+## Evidence
+
+Synthetic lab (real browser + gateway/daemon handlers, fake GitHub/Pi; not UID isolation or live-provider evidence): imported `fixture/first`, observed its actual Git `origin` as `github`, and compared it to `tilastoharjoitus` (main Git checkout with no remotes). The clone has no new-publication form, no empty archive heading, and an accurate empty conversation message at 1440px and 390px. The local checkout retains the form. Paired offline evidence: [cloned desktop](cloned-desktop.png) · [HTML](cloned-desktop.html), [cloned phone](cloned-phone.png) · [HTML](cloned-phone.html), [local desktop](local-desktop.png) · [HTML](local-desktop.html), [local phone](local-phone.png) · [HTML](local-phone.html).
+
+Focused tests: `TMPDIR=/var/tmp/oh-cloned-workspace-publish go test ./internal/daemon -count=1`, `./scripts/test-web-fast.sh`, and `TMPDIR=/var/tmp/oh-cloned-workspace-publish OH_PORT_BASE=18100 PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright npx playwright test --config playwright.lab.config.ts --grep 'cloned GitHub checkout'` (from `web/`) passed. The first full daemon package attempt lacked the fixture-only `pi-device-test/node_modules` prerequisite; `npm ci --prefix internal/daemon/pi-device-test --ignore-scripts --no-audit --no-fund` resolved it and the rerun passed. The initial manual import locator timed out because the native select's accessible label differed; selecting the `main select` succeeded and the automated lab test covers it. Full clean gate: pending committed-tree run.

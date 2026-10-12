@@ -33,6 +33,8 @@ export interface Workspace {
   name: string;
   display_name?: string;
   kind: string;
+  git_remote?: "github" | "other" | "none" | "unknown";
+  publish_continuation?: boolean;
   visibility: string;
   mutation_state: string;
   presence: string;
