@@ -614,6 +614,36 @@
         "web/src/components/ConversationStates.stories.tsx"
       ],
       "draft": "design-system/drafts/Selainpolku.dc.html"
+    },
+    {
+      "id": "agent-turn-settled",
+      "view": "@workspace",
+      "scenario": "ready",
+      "route": "@workspace",
+      "steps": ["login", "synthetic-turn-short"],
+      "region": ".ah-agent-turn",
+      "source": [
+        "web/src/components/AgentTurn.tsx",
+        "web/src/app/HistoryView.tsx"
+      ],
+      "draft": "design-system/drafts/Agentin vuoro.proto.html",
+      "focus": true,
+      "status": "capture"
+    },
+    {
+      "id": "bash-card-long",
+      "view": "@workspace",
+      "scenario": "ready",
+      "route": "@workspace",
+      "steps": ["login", "synthetic-turn-long"],
+      "region": ".ah-agent-turn",
+      "source": [
+        "web/src/components/BashToolCard.tsx",
+        "web/src/app/HistoryView.tsx"
+      ],
+      "draft": "design-system/drafts/Agentin vuoro.proto.html",
+      "focus": true,
+      "status": "capture"
     }
   ],
   "draft_states": [
@@ -796,6 +826,16 @@
       "id": "phone/phone-views",
       "draft": "design-system/drafts/Puhelin.dc.html",
       "state": "landing"
+    },
+    {
+      "id": "prototype/agent-turn-settled",
+      "draft": "design-system/drafts/Agentin vuoro.proto.html",
+      "state": "agent-turn-settled"
+    },
+    {
+      "id": "prototype/bash-card-long",
+      "draft": "design-system/drafts/Agentin vuoro.proto.html",
+      "state": "bash-card-long"
     }
   ],
   "landmarks": {
@@ -946,6 +986,47 @@
           "dimensions": []
         }
       ]
+    },
+    "agent-turn-settled": {
+      "draft_state": "prototype/agent-turn-settled",
+      "draft": {
+        "prototype": true
+      },
+      "landmarks": [
+        {
+          "id": "head",
+          "draft": ".head-cell",
+          "lab": ".ah-turn-head",
+          "properties": ["fontFamily"],
+          "dimensions": []
+        }
+      ],
+      "draftControls": ".head-cell",
+      "labControls": ".ah-turn-head"
+    },
+    "bash-card-long": {
+      "draft_state": "prototype/bash-card-long",
+      "draft": {
+        "prototype": true
+      },
+      "landmarks": [
+        {
+          "id": "command",
+          "draft": "[data-live=\"e1\"] .cmd-first",
+          "lab": ".ah-bash-command pre",
+          "properties": ["fontFamily", "backgroundColor"],
+          "dimensions": []
+        },
+        {
+          "id": "output",
+          "draft": "[data-live=\"t1\"] .out-win",
+          "lab": ".ah-bash-window",
+          "properties": ["display"],
+          "dimensions": []
+        }
+      ],
+      "draftControls": ".out-rail",
+      "labControls": ".ah-bash-rail"
     }
   },
   "foundation_metrics": {

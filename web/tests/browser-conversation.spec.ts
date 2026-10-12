@@ -100,6 +100,29 @@ test("@browser-conversation new controller stays calm and shares settled state w
   await expect(page.getByText("Historia ei luettavissa")).toHaveCount(0);
 });
 
+test("@browser-conversation saved assistant turn exposes bash command and folds work without hiding reply", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .fill("Tarkista tiedostot");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  const turn = page.getByRole("region", { name: "Agentin vuoro" }).first();
+  await expect(turn.getByText("$ ls")).toBeVisible({ timeout: 30000 });
+  await expect(
+    turn.getByText("Selvä. Kysyit:", { exact: false }),
+  ).toBeVisible();
+  await expect(turn.getByText("Argumentit")).toHaveCount(0);
+  await expect(turn.getByText(/call_[a-z0-9]/)).toHaveCount(0);
+  await turn.getByRole("button", { name: /Työ ·/ }).click();
+  await expect(turn.getByText("$ ls")).toHaveCount(0);
+  await expect(
+    turn.getByText("Selvä. Kysyit:", { exact: false }),
+  ).toBeVisible();
+});
+
 test("@browser-conversation create, send once, reconnect and old history stays read-only", async ({
   page,
 }) => {

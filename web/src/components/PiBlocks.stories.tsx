@@ -58,6 +58,42 @@ const entries: HistoryEntry[] = [
     blocks: [{ type: "text", text: "Ohje vastaa nykyistä rakennetta." }],
   },
   {
+    entry_key: "bash-call",
+    kind: "assistant",
+    model: "gpt-5-codex",
+    content: content(""),
+    blocks: [
+      { type: "thinking", text: "**Tarkistan tulosteen**" },
+      {
+        type: "toolCall",
+        tool_call_id: "bash-1",
+        tool_name: "bash",
+        text: JSON.stringify({
+          command: "cat <<EOF\nensimmäinen\ntoinen\nEOF",
+        }),
+      },
+    ],
+  },
+  {
+    entry_key: "bash-result",
+    kind: "tool",
+    tool_call_id: "bash-1",
+    content: content(""),
+    blocks: [
+      {
+        type: "text",
+        text: Array.from({ length: 53 }, (_, i) => `rivi ${i + 1}`).join("\n"),
+      },
+    ],
+  },
+  {
+    entry_key: "bash-reply",
+    kind: "assistant",
+    model: "gpt-5-codex",
+    content: content("Tuloste tarkistettu."),
+    blocks: [{ type: "text", text: "Tuloste tarkistettu." }],
+  },
+  {
     entry_key: "local",
     kind: "bash",
     exit_code: 1,

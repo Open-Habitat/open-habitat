@@ -227,6 +227,10 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	visualHold := strings.TrimSpace(string(mode)) == "pi-visual-hold"
 	typed := strings.TrimSpace(string(mode)) == "pi-typed"
 	stream := strings.TrimSpace(string(mode)) == "pi-deltas" || typed || visualHold
+	command := "ls"
+	if strings.Contains(prompt, "monirivinen komento") {
+		command = "cat <<'EOF'\nensimmäinen\ntoinen\nEOF"
+	}
 	callID := "call_1"
 	if stream {
 		var raw [4]byte
@@ -258,14 +262,14 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	}
 	start := map[string]any{"type": "tool_execution_start", "toolName": "bash", "toolCallId": callID}
 	if stream {
-		start["args"] = map[string]any{"command": "ls"}
+		start["args"] = map[string]any{"command": command}
 	}
 	emit(start)
 	content := []map[string]any{{"type": "text", "text": "Katson ensin, mitä työtilassa on."}}
 	if typed {
 		content = append(content, map[string]any{"type": "thinking", "thinking": "Synteettinen pohdinta"})
 	}
-	content = append(content, map[string]any{"type": "toolCall", "id": callID, "name": "bash", "arguments": map[string]any{"command": "ls"}})
+	content = append(content, map[string]any{"type": "toolCall", "id": callID, "name": "bash", "arguments": map[string]any{"command": command}})
 	s.append(message("assistant", content, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "toolUse"}))
 	if visualHold {
 		// Hold before the tool result so the lab can capture the live row.
@@ -292,8 +296,15 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 		}
 		listing = strings.Join(names, "\n")
 	}
+	if strings.Contains(prompt, "pitkä tuloste") {
+		lines := make([]string, 53)
+		for i := range lines {
+			lines[i] = fmt.Sprintf("rivi %d", i+1)
+		}
+		listing = strings.Join(lines, "\n")
+	}
 	if stream {
-		emit(map[string]any{"type": "tool_execution_update", "toolCallId": callID, "toolName": "bash", "args": map[string]any{"command": "ls"}, "partialResult": map[string]any{"content": []map[string]any{{"type": "text", "text": listing}}}})
+		emit(map[string]any{"type": "tool_execution_update", "toolCallId": callID, "toolName": "bash", "args": map[string]any{"command": command}, "partialResult": map[string]any{"content": []map[string]any{{"type": "text", "text": listing}}}})
 		time.Sleep(step)
 	}
 	s.append(message("toolResult", []map[string]any{{"type": "text", "text": listing}}, map[string]any{"toolCallId": callID, "toolName": "bash", "isError": false}))

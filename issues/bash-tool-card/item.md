@@ -49,3 +49,10 @@ identifier. The command, output and controls should remain understandable
 in both live work and history. Short and long outputs in the lab, on desktop
 and phone, provide the useful comparison: the command is discoverable, the
 header reads as one unit, and preview controls appear only when needed.
+
+## Implementation evidence
+
+The synthetic lab captures and short/long output fixtures are described in
+[result.md](result.md). `card-short-*` and `card-long-*` pair screenshots
+with static HTML at 1440 and 390 px in both themes; `history-*` and
+`live-running-*` show the surrounding turn.

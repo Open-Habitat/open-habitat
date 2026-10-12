@@ -143,6 +143,7 @@ try {
       report.pairs.push(pair);
       try {
         await fixture(`scenario?value=${state.scenario}`);
+        if (mapping.draft.prototype) await fixture("conversations-reset");
         await fixture("pi-state?value=missing");
         await lab.setViewportSize({
           width: presentation.width,
@@ -177,6 +178,36 @@ try {
             await lab
               .getByRole("button", { name: "Aloita kirjautuminen" })
               .click();
+          } else if (
+            step === "synthetic-turn-long" ||
+            step === "synthetic-turn-short"
+          ) {
+            if (presentation.width === 390)
+              await lab
+                .getByRole("button", { name: "Avaa navigaatio" })
+                .click();
+            await lab
+              .getByRole("navigation")
+              .getByRole("link", { name: /aurinkokello/ })
+              .first()
+              .click();
+            await lab
+              .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+              .click();
+            await lab
+              .getByRole("textbox", { name: "Viesti Pi:lle" })
+              .fill(
+                step.endsWith("long")
+                  ? "monirivinen komento ja pitkä tuloste"
+                  : "Tarkista lyhyt tuloste",
+              );
+            await lab
+              .getByRole("button", { name: "Lähetä", exact: true })
+              .click();
+            await lab
+              .getByRole("button", { name: /Työ ·/ })
+              .first()
+              .waitFor({ timeout: 30000 });
           } else throw new Error(`Unsupported lab step: ${step}`);
         }
         await lab.locator(state.region).first().waitFor();
@@ -191,42 +222,49 @@ try {
         )
           throw new Error("Lab theme did not settle");
         await draft.goto(pathToFileURL(resolve(entry.draft)).href);
-        await draft.waitForFunction(
-          () => typeof window.__dcSetProps === "function",
-        );
-        const name = await draft.evaluate(() => window.__dcRootName());
-        await draft.evaluate(
-          ({ name, theme }) => window.__dcSetProps(name, { theme }),
-          { name, theme: presentation.theme },
-        );
-        // State props are read only on mount in these prototypes. Use the
-        // actual prototype controls rather than capturing the default screen.
-        if (mapping.draft.step === 2)
-          await draft.getByRole("tab", { name: "2 · Repot" }).click();
-        if (mapping.draft.step === 3)
-          await draft.getByRole("tab", { name: "3 · OpenAI" }).click();
-        if (mapping.draft.step === 3 && mapping.draft.state === "pending")
+        const prototype = !!mapping.draft.prototype;
+        let frameSelector;
+        if (prototype) {
+          await draft.locator("#theme").selectOption(presentation.theme);
+          if (presentation.width === 390) await draft.locator("#phone").check();
+          frameSelector = "#stage .vwrap > .turn.live";
+          await draft.locator(frameSelector).waitFor();
           await draft
-            .getByRole("button", { name: /Koodi näkyvissä/ })
-            .first()
-            .click();
-        if (mapping.draft.mode === "luku")
-          await draft
-            .getByRole("button", { name: "Vain luku", exact: true })
-            .first()
-            .click();
-        await draft.waitForFunction(
-          (theme) =>
-            document
-              .querySelector("#dc-root [data-theme]")
-              ?.getAttribute("data-theme") === theme,
-          presentation.theme,
-        );
-        const draftFrame = draft
-          .locator(
-            `#dc-root [style*="width: ${presentation.width}px"][style*="height: ${presentation.height}px"]`,
-          )
-          .first();
+            .locator(`${frameSelector} .strip-btn`)
+            .waitFor({ timeout: 45000 });
+        } else {
+          await draft.waitForFunction(
+            () => typeof window.__dcSetProps === "function",
+          );
+          const name = await draft.evaluate(() => window.__dcRootName());
+          await draft.evaluate(
+            ({ name, theme }) => window.__dcSetProps(name, { theme }),
+            { name, theme: presentation.theme },
+          );
+          if (mapping.draft.step === 2)
+            await draft.getByRole("tab", { name: "2 · Repot" }).click();
+          if (mapping.draft.step === 3)
+            await draft.getByRole("tab", { name: "3 · OpenAI" }).click();
+          if (mapping.draft.step === 3 && mapping.draft.state === "pending")
+            await draft
+              .getByRole("button", { name: /Koodi näkyvissä/ })
+              .first()
+              .click();
+          if (mapping.draft.mode === "luku")
+            await draft
+              .getByRole("button", { name: "Vain luku", exact: true })
+              .first()
+              .click();
+          await draft.waitForFunction(
+            (theme) =>
+              document
+                .querySelector("#dc-root [data-theme]")
+                ?.getAttribute("data-theme") === theme,
+            presentation.theme,
+          );
+          frameSelector = `#dc-root [style*="width: ${presentation.width}px"][style*="height: ${presentation.height}px"]`;
+        }
+        const draftFrame = draft.locator(frameSelector).first();
         await draftFrame.waitFor();
         await Promise.all([
           draft.evaluate(() => document.fonts.ready),
@@ -247,9 +285,14 @@ try {
         pair.images.lab = `${key}-lab.avif`;
         const draftTree = await controls(
           draft,
-          `#dc-root [style*="width: ${presentation.width}px"][style*="height: ${presentation.height}px"]`,
+          mapping.draftControls
+            ? `${frameSelector} ${mapping.draftControls}`
+            : frameSelector,
         );
-        const labTree = await controls(lab, state.region);
+        const labTree = await controls(
+          lab,
+          mapping.labControls ?? state.region,
+        );
         const controlLines = (tree) =>
           tree
             .split("\n")
@@ -282,7 +325,6 @@ try {
         }
         for (const landmark of mapping.landmarks) {
           try {
-            const frameSelector = `#dc-root [style*="width: ${presentation.width}px"][style*="height: ${presentation.height}px"]`;
             const expected = await readLandmark(
               draft,
               landmark.draft === ":scope"

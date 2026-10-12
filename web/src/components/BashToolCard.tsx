@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Icon, type IconName } from "./Icon";
 
 const remembered = new Map<string, "edges" | "start" | "end" | "all">();
@@ -20,6 +20,13 @@ export function BashToolCard({
   );
   const [dialog, setDialog] = useState(false);
   const viewport = useRef<HTMLPreElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (!dialog || !dialogRef.current) return;
+    if (typeof dialogRef.current.showModal === "function")
+      dialogRef.current.showModal();
+    else dialogRef.current.setAttribute("open", ""); // jsdom lacks showModal
+  }, [dialog]);
   const lines = output?.split("\n") ?? [];
   const long = lines.length > 10;
   const view = running ? "end" : (choice ?? "edges");
@@ -121,7 +128,12 @@ export function BashToolCard({
         </div>
       ) : null}
       {dialog ? (
-        <dialog open className="ah-bash-dialog" aria-label="bash-tuloste">
+        <dialog
+          ref={dialogRef}
+          onClose={() => setDialog(false)}
+          className="ah-bash-dialog"
+          aria-label="bash-tuloste"
+        >
           <header>
             <strong>bash</strong>
             <button
@@ -133,7 +145,13 @@ export function BashToolCard({
             >
               Kopioi
             </button>
-            <button type="button" onClick={() => setDialog(false)}>
+            <button
+              type="button"
+              onClick={() => {
+                dialogRef.current?.close?.();
+                setDialog(false);
+              }}
+            >
               Sulje
             </button>
           </header>
