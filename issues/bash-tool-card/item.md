@@ -5,9 +5,9 @@ type: bug
 status: open
 priority: normal
 lane: web
-lane_seq: 6
+lane_seq: 7
 collision: [web/]
-preparation: ready
+preparation: pending
 ---
 
 # Bash tool card hides the command and scatters the result header

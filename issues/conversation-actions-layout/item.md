@@ -7,9 +7,9 @@ status: open
 priority: normal
 related: ['@new-conversation-view']
 lane: web
-lane_seq: 2
+lane_seq: 5
 collision: [web/]
-preparation: ready
+preparation: pending
 ---
 
 # Unify conversation actions and sidebar layout

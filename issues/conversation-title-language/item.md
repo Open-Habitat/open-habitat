@@ -7,7 +7,7 @@ status: open
 priority: normal
 related: ['@generate-conversation-titles', '@new-conversation-view']
 lane: web
-lane_seq: 3
+lane_seq: 2
 collision: [internal/daemon/]
 preparation: ready
 ---

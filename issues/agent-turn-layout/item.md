@@ -5,9 +5,9 @@ type: improvement
 status: open
 priority: normal
 lane: web
-lane_seq: 5
+lane_seq: 6
 collision: [web/]
-preparation: ready
+preparation: pending
 ---
 
 # Agent turn repeats its author and hides short thinking

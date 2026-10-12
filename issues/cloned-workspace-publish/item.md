@@ -5,7 +5,7 @@ type: bug
 status: open
 priority: normal
 lane: web
-lane_seq: 8
+lane_seq: 4
 collision: [web/]
 preparation: ready
 ---
