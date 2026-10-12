@@ -15,6 +15,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
+	"github.com/Open-Habitat/open-habitat/internal/storagequota"
 )
 
 func TestBrokerListAndLookupAreNotLoggedAsFailures(t *testing.T) {
@@ -154,6 +155,7 @@ func TestBrokerStartupDenials(t *testing.T) {
 	}
 	e := &startupExecutor{}
 	w := NewWriter(dir, 22000, 22002, e)
+	w.Quota = &fakeQuota{quota: storagequota.Quota{Limit: 1 << 30}}
 	w.owner = owner
 	if err := w.Startup(context.Background()); err != nil || e.calls != 1 {
 		t.Fatalf("valid state: %v, calls %d", err, e.calls)

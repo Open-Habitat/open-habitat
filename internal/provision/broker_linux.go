@@ -180,6 +180,12 @@ func (w Writer) Startup(ctx context.Context) error {
 		if ctx.Err() != nil || b.UID < w.UIDMin || b.UID > w.UIDMax || w.Executor.Verify(ctx, ExecutorIdentity{provider: "github", id: b.ID, username: b.Username, uid: b.UID}) != nil {
 			return ErrBrokerStartup
 		}
+		// A binding on a filesystem that lost quota accounting must not be
+		// authorized just because its NSS identity and socket still exist.
+		q, err := w.Quota.Read(b.UID)
+		if err != nil || !validLimit(q.Limit) {
+			return ErrBrokerStartup
+		}
 	}
 	if ctx.Err() != nil {
 		return ErrBrokerStartup

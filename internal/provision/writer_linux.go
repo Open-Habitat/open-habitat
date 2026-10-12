@@ -443,6 +443,12 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 			if e := w.Executor.Verify(ctx, identity); e != nil {
 				return failure(Drift)
 			}
+			if r.Operation == "authorize" || r.Operation == "ensure" {
+				q, err := w.Quota.Read(b.UID)
+				if err != nil || !validLimit(q.Limit) {
+					return failure(StateUnavailable)
+				}
+			}
 			if r.Operation == "quota_read" || r.Operation == "quota_set" {
 				if r.Operation == "quota_set" && w.Quota.Set(b.UID, *r.LimitBytes) != nil {
 					return failure(StateUnavailable)

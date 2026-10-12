@@ -70,6 +70,14 @@ func TestQuotaBoundAndJournaled(t *testing.T) {
 	if got := handle(w, "ensure", "42", "carol"); got.Route == nil || q.uid != got.Route.UID {
 		t.Fatal(got, q.uid)
 	}
+	q.fail = true
+	if got := w.Handle(context.Background(), Request{Version: 1, Operation: "authorize", Provider: "github", ID: "42"}); got.Route != nil || got.Failure != StateUnavailable {
+		t.Fatalf("route permitted after quota accounting lost: %+v", got)
+	}
+	if err := w.Startup(context.Background()); err == nil {
+		t.Fatal("broker started without readable user quota")
+	}
+	q.fail = false
 	q.quota.Usage = 2 << 30
 	limit := uint64(1 << 20) // deliberately below current usage
 	r := Request{Version: 1, Operation: "quota_set", Provider: "github", ID: "42", LimitBytes: &limit}
