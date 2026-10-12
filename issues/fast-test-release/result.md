@@ -7,10 +7,13 @@ Implementation prepared in product and Fleetrepo. The guest remains frozen for J
 From Fleetrepo's root on Alder, with the gated product checkout on its approved pushed source revision:
 
 ```sh
-python3 infra/open-habitat-test/release_test.py --product-repo ~/Sources/native-agent-host --version <next-version>
+python3 infra/open-habitat-test/release_test.py \
+  --product ~/Sources/native-agent-host \
+  --version 0.0.0-pilot.N \
+  --output /var/tmp/open-habitat-release-N
 ```
 
-Use the operator's `--help` for guest/inventory parameters and dry-run syntax. The operator emits machine-readable receipts and step/total durations; it rejects a live release over 100 s. The product preparer is `scripts/prepare-test-release.sh --version <version> --output <dir>` and refuses a missing or different-tree clean gate receipt.
+Choose a fresh private output directory for each attempt; replace `N` with the next pilot number. Use the operator's `--help` for dry-run syntax. The operator emits machine-readable receipts and step/total durations; it rejects a live release over 100 s. The product preparer is `scripts/prepare-test-release.sh --version <version> --output <dir>` and refuses a missing or different-tree clean gate receipt.
 
 ## Decisions for review
 
