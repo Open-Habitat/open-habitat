@@ -17,48 +17,27 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Open-Habitat/open-habitat/internal/storagequota"
 	"golang.org/x/sys/unix"
 )
 
-const cloneVolumeBytes uint64 = 20 << 30
-const cloneMinimumFree uint64 = 5 << 30
-
-// The operator mounts a dedicated hard-bounded volume at ~/src. A free-space
-// check by itself is not a budget: the mount and total-size checks are required.
-func sourceOnDifferentMount(home, src int) bool {
-	var h, s unix.Statx_t
-	return unix.Statx(home, "", unix.AT_EMPTY_PATH, unix.STATX_MNT_ID, &h) == nil && unix.Statx(src, "", unix.AT_EMPTY_PATH, unix.STATX_MNT_ID, &s) == nil && h.Mnt_id != s.Mnt_id
-}
-
-func dedicatedCloneVolume(src int) bool {
-	var at, parent unix.Statx_t
-	if unix.Statx(src, "", unix.AT_EMPTY_PATH, unix.STATX_MNT_ID, &at) != nil ||
-		unix.Statx(src, "..", 0, unix.STATX_MNT_ID, &parent) != nil ||
-		at.Mnt_id == parent.Mnt_id {
-		return false
-	}
-	// A bind mount of the home filesystem has a distinct mount ID but shares
-	// its blocks with other users; it cannot enforce a per-user budget.
-	var source, home unix.Stat_t
-	if unix.Fstat(src, &source) != nil || unix.Fstatat(src, "..", &home, 0) != nil || source.Dev == home.Dev {
-		return false
-	}
+// Admission is a current-state check, not a prediction of the eventual
+// remote repository size. Kernel EDQUOT remains the final enforcement point.
+func quotaCloneAdmission(src int, uid uint32) bool {
+	var st unix.Stat_t
 	var fs unix.Statfs_t
-	if unix.Fstatfs(src, &fs) != nil || fs.Frsize <= 0 || fs.Blocks == 0 {
+	if unix.Fstat(src, &st) != nil || st.Uid != uid || unix.Fstatfs(src, &fs) != nil || fs.Frsize <= 0 || fs.Bavail == 0 {
 		return false
 	}
-	return fs.Blocks <= cloneVolumeBytes/uint64(fs.Frsize)
-}
-func cloneHeadroom(src int) bool {
-	var fs unix.Statfs_t
-	if unix.Fstatfs(src, &fs) != nil || fs.Frsize <= 0 {
-		return false
+	var home unix.Stat_t
+	if unix.Stat("/home", &home) != nil || st.Dev != home.Dev {
+		return false // a per-user image or bind of another filesystem is not quota-covered
 	}
-	return fs.Bavail >= cloneMinimumFree/uint64(fs.Frsize)
+	q, err := storagequota.Read(uid)
+	return err == nil && q.Usage < q.Limit
 }
-func boundedCloneVolume(src int) bool {
-	return dedicatedCloneVolume(src) && cloneHeadroom(src)
-}
+
+func boundedCloneVolume(src int) bool { return quotaCloneAdmission(src, uint32(os.Geteuid())) }
 
 type cloneFrame struct {
 	SchemaVersion int     `json:"schema_version"`
