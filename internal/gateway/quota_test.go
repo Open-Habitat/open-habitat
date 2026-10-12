@@ -1,0 +1,90 @@
+package gateway
+
+import (
+	"context"
+	"encoding/json"
+	"net/http/httptest"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+type quotaBroker struct {
+	*adminBroker
+	lastSubject string
+	lastLimit   uint64
+}
+
+func (b *quotaBroker) ReadQuota(_ context.Context, id string) (Quota, QuotaFilesystem, error) {
+	b.lastSubject = id
+	return Quota{UsageBytes: 2 * 1024 * 1024, LimitBytes: 1024 * 1024}, QuotaFilesystem{CapacityBytes: 1024 * 1024, FreeBytes: 512 * 1024}, nil
+}
+func (b *quotaBroker) SetQuota(_ context.Context, id string, limit uint64) error {
+	b.lastSubject = id
+	b.lastLimit = limit
+	return nil
+}
+func TestQuotaAuthorizationAndDefault(t *testing.T) {
+	h, a, _, _, _ := fixture(t)
+	if e := a.loadAdministration(filepath.Join(t.TempDir(), "admin.json")); e != nil {
+		t.Fatal(e)
+	}
+	b := &quotaBroker{adminBroker: &adminBroker{Broker: a.broker}}
+	a.broker = b
+	state, flow := start(t, h)
+	if r := callback(h, state, flow); r.Code != 503 {
+		t.Fatalf("missing default allowed login: %d", r.Code)
+	}
+	if _, e := a.AdminControl(context.Background(), []byte(`{"operation":"default_limit","default_limit_bytes":1073741824}`)); e != nil {
+		t.Fatal(e)
+	}
+	state, flow = start(t, h)
+	login := callback(h, state, flow)
+	if login.Code != 303 {
+		t.Fatalf("configured login: %d %s", login.Code, login.Body.String())
+	}
+	cookie := login.Result().Cookies()[1]
+	personal := request(h, "GET", "/api/v1/account/storage", cookie)
+	if personal.Code != 200 || b.lastSubject != "42" {
+		t.Fatalf("personal read: %d %s", personal.Code, b.lastSubject)
+	}
+	if request(h, "GET", "/api/v1/server/storage", cookie).Code != 403 {
+		t.Fatal("non-admin quota list")
+	}
+	if e := a.changeRole(context.Background(), "42", true); e != nil {
+		t.Fatal(e)
+	}
+	listed := request(h, "GET", "/api/v1/server/storage", cookie)
+	var result struct {
+		Overcommitted bool  `json:"overcommitted"`
+		Users         []any `json:"users"`
+	}
+	if listed.Code != 200 || json.Unmarshal(listed.Body.Bytes(), &result) != nil || !result.Overcommitted || len(result.Users) != 2 {
+		t.Fatalf("quota list: %d %s", listed.Code, listed.Body.String())
+	}
+	var sess struct {
+		CSRF string `json:"csrf"`
+	}
+	if e := json.Unmarshal(request(h, "GET", "/auth/session", cookie).Body.Bytes(), &sess); e != nil {
+		t.Fatal(e)
+	}
+	put := func(csrf, body string) int {
+		r := httptest.NewRequest("PUT", "https://host.test/api/v1/server/storage", strings.NewReader(body))
+		r.AddCookie(cookie)
+		r.Header.Set("Origin", "https://host.test")
+		r.Header.Set("X-Agent-Host-CSRF", csrf)
+		r.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w.Code
+	}
+	if put("wrong", `{"subject":"43","limit_bytes":1024}`) != 403 || put(sess.CSRF, `{"subject":"043","limit_bytes":1024}`) != 400 || put(sess.CSRF, `{"subject":"43","limit_bytes":0}`) != 400 {
+		t.Fatal("invalid quota write accepted")
+	}
+	if put(sess.CSRF, `{"subject":"43","limit_bytes":1024}`) != 204 || b.lastSubject != "43" || b.lastLimit != 1024 {
+		t.Fatal("quota write did not reach broker by subject")
+	}
+	if _, e := a.AdminControl(context.Background(), []byte(`{"operation":"quota_set","subject":"043","limit_bytes":1024}`)); e == nil {
+		t.Fatal("control accepted noncanonical subject")
+	}
+}

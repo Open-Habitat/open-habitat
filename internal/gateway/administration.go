@@ -29,9 +29,10 @@ var errBindingNotFound = errors.New("subject is not bound")
 var errBrokerRead = errors.New("broker read unavailable")
 
 type serverSettings struct {
-	Version        int      `json:"version"`
-	Name           string   `json:"name"`
-	Administrators []string `json:"administrators"`
+	Version           int      `json:"version"`
+	Name              string   `json:"name"`
+	Administrators    []string `json:"administrators"`
+	DefaultLimitBytes uint64   `json:"default_limit_bytes,omitempty"`
 }
 
 func emptySettings() serverSettings { return serverSettings{Version: 1, Administrators: []string{}} }
@@ -51,7 +52,7 @@ func validName(name string) bool {
 	return true
 }
 func validSettings(s serverSettings) bool {
-	if s.Version != 1 || !validName(s.Name) || s.Administrators == nil || len(s.Administrators) > 1024 {
+	if s.Version != 1 || !validName(s.Name) || s.Administrators == nil || len(s.Administrators) > 1024 || (s.DefaultLimitBytes != 0 && !validQuotaLimit(s.DefaultLimitBytes)) {
 		return false
 	}
 	seen := map[string]bool{}
@@ -192,6 +193,22 @@ func (a *Auth) settingsView() serverSettings {
 	}
 	return a.settings
 }
+func (a *Auth) changeDefaultLimitFor(caller string, limit uint64) error {
+	if !validQuotaLimit(limit) {
+		return errors.New("invalid quota limit")
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if !a.administrationHealthy() {
+		return ErrAdministrationState
+	}
+	if caller != "" && !a.isAdministratorLocked(caller) {
+		return errAdminDenied
+	}
+	next := a.settings
+	next.DefaultLimitBytes = limit
+	return a.commitAdministration(next)
+}
 func (a *Auth) changeName(name string) error { return a.changeNameFor("", name) }
 func (a *Auth) changeNameFor(caller, name string) error {
 	a.mu.Lock()
@@ -319,10 +336,11 @@ func (a *Auth) adminHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(struct {
-			Version int    `json:"schema_version"`
-			Name    string `json:"name"`
-			Users   []row  `json:"users"`
-		}{1, v.Name, rows})
+			Version           int    `json:"schema_version"`
+			Name              string `json:"name"`
+			Users             []row  `json:"users"`
+			DefaultLimitBytes uint64 `json:"default_limit_bytes"`
+		}{1, v.Name, rows, v.DefaultLimitBytes})
 		return
 	}
 	if r.URL.Path != "/api/v1/server/administration" || r.Method != http.MethodPut {
@@ -338,13 +356,14 @@ func (a *Auth) adminHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var request struct {
-		Name          *string `json:"name"`
-		Subject       string  `json:"subject"`
-		Administrator *bool   `json:"administrator"`
+		Name              *string `json:"name"`
+		Subject           string  `json:"subject"`
+		Administrator     *bool   `json:"administrator"`
+		DefaultLimitBytes *uint64 `json:"default_limit_bytes"`
 	}
 	dec := json.NewDecoder(io.LimitReader(r.Body, 1025))
 	dec.DisallowUnknownFields()
-	if dec.Decode(&request) != nil || dec.Decode(new(any)) != io.EOF || (request.Name == nil) == (request.Administrator == nil) || request.Name != nil && request.Subject != "" || request.Administrator != nil && !canonicalSubject(request.Subject) {
+	if dec.Decode(&request) != nil || dec.Decode(new(any)) != io.EOF || (boolInt(request.Name != nil)+boolInt(request.Administrator != nil)+boolInt(request.DefaultLimitBytes != nil) != 1) || request.Name != nil && request.Subject != "" || request.DefaultLimitBytes != nil && (request.Subject != "" || !validQuotaLimit(*request.DefaultLimitBytes)) || request.Administrator != nil && !canonicalSubject(request.Subject) {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -355,6 +374,8 @@ func (a *Auth) adminHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		e = a.changeNameFor(s.identity.Subject, *request.Name)
+	} else if request.DefaultLimitBytes != nil {
+		e = a.changeDefaultLimitFor(s.identity.Subject, *request.DefaultLimitBytes)
 	} else {
 		e = a.changeRoleFor(r.Context(), s.identity.Subject, request.Subject, *request.Administrator)
 	}
@@ -373,10 +394,12 @@ func (a *Auth) adminHTTP(w http.ResponseWriter, r *http.Request) {
 // peer credentials. The CLI client belongs to server-administration-cli.
 func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error) {
 	var r struct {
-		Operation     string `json:"operation"`
-		Name          string `json:"name"`
-		Subject       string `json:"subject"`
-		Administrator *bool  `json:"administrator"`
+		Operation         string  `json:"operation"`
+		Name              string  `json:"name"`
+		Subject           string  `json:"subject"`
+		Administrator     *bool   `json:"administrator"`
+		DefaultLimitBytes *uint64 `json:"default_limit_bytes"`
+		LimitBytes        *uint64 `json:"limit_bytes"`
 	}
 	dec := json.NewDecoder(strings.NewReader(string(payload)))
 	dec.DisallowUnknownFields()
@@ -385,7 +408,7 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 	}
 	switch r.Operation {
 	case "users":
-		if r.Name != "" || r.Subject != "" || r.Administrator != nil {
+		if r.Name != "" || r.Subject != "" || r.Administrator != nil || r.DefaultLimitBytes != nil || r.LimitBytes != nil {
 			break
 		}
 		if !a.administrationAvailable() {
@@ -401,7 +424,7 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 		}
 		return json.Marshal(users)
 	case "show":
-		if r.Name != "" || r.Subject != "" || r.Administrator != nil {
+		if r.Name != "" || r.Subject != "" || r.Administrator != nil || r.DefaultLimitBytes != nil || r.LimitBytes != nil {
 			break
 		}
 		if !a.administrationAvailable() {
@@ -409,15 +432,36 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 		}
 		return json.Marshal(a.settingsView())
 	case "name":
-		if r.Subject != "" || r.Administrator != nil || !validName(r.Name) {
+		if r.Subject != "" || r.Administrator != nil || r.DefaultLimitBytes != nil || r.LimitBytes != nil || !validName(r.Name) {
 			break
 		}
 		if e := a.changeName(r.Name); e != nil {
 			return nil, e
 		}
 		return []byte(`{"ok":true}`), nil
+	case "default_limit":
+		if r.Name != "" || r.Subject != "" || r.Administrator != nil || r.LimitBytes != nil || r.DefaultLimitBytes == nil || !validQuotaLimit(*r.DefaultLimitBytes) {
+			break
+		}
+		if e := a.changeDefaultLimitFor("", *r.DefaultLimitBytes); e != nil {
+			return nil, e
+		}
+		return []byte(`{"ok":true}`), nil
+	case "quota_users":
+		if r.Name != "" || r.Subject != "" || r.Administrator != nil || r.LimitBytes != nil || r.DefaultLimitBytes != nil {
+			break
+		}
+		return a.quotaUsers(ctx)
+	case "quota_set":
+		if r.Name != "" || r.Administrator != nil || r.DefaultLimitBytes != nil || r.LimitBytes == nil || !canonicalSubject(r.Subject) || !validQuotaLimit(*r.LimitBytes) {
+			break
+		}
+		if e := a.setQuota(ctx, "", r.Subject, *r.LimitBytes); e != nil {
+			return nil, e
+		}
+		return []byte(`{"ok":true}`), nil
 	case "role":
-		if r.Name != "" || r.Administrator == nil {
+		if r.Name != "" || r.Administrator == nil || r.DefaultLimitBytes != nil || r.LimitBytes != nil {
 			break
 		}
 		if e := a.changeRole(ctx, r.Subject, *r.Administrator); e != nil {

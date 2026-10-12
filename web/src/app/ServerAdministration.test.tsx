@@ -20,6 +20,7 @@ it("lists only bound identities and refreshes after a role update", async () => 
       return new Response(
         JSON.stringify({
           schema_version: 1,
+          default_limit_bytes: 1073741824,
           name: "Example host",
           users: [{ id: "42", username: "alice", administrator: admin }],
         }),
@@ -35,7 +36,7 @@ it("lists only bound identities and refreshes after a role update", async () => 
     await screen.findByRole("button", { name: "Anna ylläpitäjärooli" }),
   );
   await screen.findByRole("button", { name: "Poista ylläpitäjärooli" });
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
   expect(screen.queryByText(/credentials|home path/i)).toBeNull();
 });
 it("trims a name before writing and offers reload if acknowledgement fails", async () => {
@@ -49,7 +50,12 @@ it("trims a name before writing and offers reload if acknowledgement fails", asy
         return new Response(null, { status: 503 });
       }
       return new Response(
-        JSON.stringify({ schema_version: 1, name: "Initial", users: [] }),
+        JSON.stringify({
+          schema_version: 1,
+          default_limit_bytes: 1073741824,
+          name: "Initial",
+          users: [],
+        }),
         { status: 200 },
       );
     });
@@ -73,5 +79,5 @@ it("trims a name before writing and offers reload if acknowledgement fails", asy
       })) as HTMLInputElement
     ).value,
   ).toBe(" Example ");
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
 });

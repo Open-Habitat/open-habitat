@@ -54,6 +54,7 @@ import {
   unavailable,
 } from "./store";
 import { ServerAdministration } from "./ServerAdministration";
+import { PersonalStorage } from "./PersonalStorage";
 import { WorkspaceManagement } from "./WorkspaceManagement";
 import { sourceLabel, WorkspaceRailView } from "./WorkspaceRailView";
 
@@ -717,26 +718,31 @@ export function App() {
         />
       </>
     ) : location.pathname === "/settings" ? (
-      <AccountSettings
-        profile={
-          profile ?? {
-            name: accountLabel(snapshot?.identity.display_name ?? ""),
-            email: "",
-            avatar_url: "",
+      <>
+        <AccountSettings
+          profile={
+            profile ?? {
+              name: accountLabel(snapshot?.identity.display_name ?? ""),
+              email: "",
+              avatar_url: "",
+            }
           }
-        }
-        onLogout={() => setLogoutPrompt(true)}
-        nativeState={snapshot?.auth?.native_github.state}
-        nativeLogin={snapshot?.auth?.native_github.login}
-        piState={settingsPiState}
-        onPiSignIn={() => navigate("/settings?pi_sign_in=1")}
-        csrf={csrf}
-        onDisconnect={refresh}
-        onBack={() => {
-          returningFromSettings.current = true;
-          navigate(settingsReturn);
-        }}
-      />
+          onLogout={() => setLogoutPrompt(true)}
+          nativeState={snapshot?.auth?.native_github.state}
+          nativeLogin={snapshot?.auth?.native_github.login}
+          piState={settingsPiState}
+          onPiSignIn={() => navigate("/settings?pi_sign_in=1")}
+          csrf={csrf}
+          onDisconnect={refresh}
+          onBack={() => {
+            returningFromSettings.current = true;
+            navigate(settingsReturn);
+          }}
+        />
+        <PersonalStorage
+          key={snapshot?.identity.web_identity_id ?? "account"}
+        />
+      </>
     ) : selectedAgent && agentWorkspace && conversationStore ? (
       <>
         {selectedAgent.archive === "archived" && (

@@ -12,6 +12,7 @@ export type Administration = {
   schema_version: 1;
   name: string;
   users: BoundUser[];
+  default_limit_bytes: number;
 };
 
 export async function serverInfo(signal?: AbortSignal): Promise<ServerInfo> {
@@ -54,6 +55,9 @@ export async function administration(
     typeof v.name !== "string" ||
     !("users" in v) ||
     !Array.isArray(v.users) ||
+    !("default_limit_bytes" in v) ||
+    typeof v.default_limit_bytes !== "number" ||
+    !Number.isSafeInteger(v.default_limit_bytes) ||
     !v.users.every(
       (u: unknown) =>
         !!u &&
@@ -71,7 +75,10 @@ export async function administration(
 }
 export async function changeAdministration(
   csrf: string,
-  change: { name: string } | { subject: string; administrator: boolean },
+  change:
+    | { name: string }
+    | { subject: string; administrator: boolean }
+    | { default_limit_bytes: number },
 ): Promise<void> {
   const r = await fetch("/api/v1/server/administration", {
     method: "PUT",

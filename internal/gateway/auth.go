@@ -92,7 +92,10 @@ func brokerReason(err error, valid bool) BrokerFailure {
 	return BrokerBindingChanged
 }
 
-type BrokerRequest struct{ Operation, ID, Candidate string }
+type BrokerRequest struct {
+	Operation, ID, Candidate string
+	DefaultLimitBytes        uint64
+}
 type BrokerRoute struct {
 	UID              uint32
 	Username, Socket string
@@ -525,7 +528,16 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		a.callbackFailure(w, r, 403, "authentication_required")
 		return
 	}
-	ensured, err := a.broker.Exchange(r.Context(), BrokerRequest{Operation: "ensure", ID: id, Candidate: login})
+	a.mu.Lock()
+	defaultLimit := a.settings.DefaultLimitBytes
+	ready := a.administrationHealthy()
+	a.mu.Unlock()
+	if a.adminFile != "" && (!ready || !validQuotaLimit(defaultLimit)) {
+		a.authEvent(attempt, "rejected", "quota_default_missing")
+		a.callbackFailure(w, r, 503, "identity_mapping_denied")
+		return
+	}
+	ensured, err := a.broker.Exchange(r.Context(), BrokerRequest{Operation: "ensure", ID: id, Candidate: login, DefaultLimitBytes: defaultLimit})
 	target, valid := brokerIdentity(id, ensured)
 	if err != nil || !valid {
 		a.brokerEvent(attempt, "ensure", brokerReason(err, valid))

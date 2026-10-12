@@ -17,9 +17,10 @@ import (
 )
 
 type controlSettings struct {
-	Version        int      `json:"version"`
-	Name           string   `json:"name"`
-	Administrators []string `json:"administrators"`
+	Version           int      `json:"version"`
+	Name              string   `json:"name"`
+	Administrators    []string `json:"administrators"`
+	DefaultLimitBytes uint64   `json:"default_limit_bytes"`
 }
 type controlUser struct {
 	ID       string `json:"id"`
@@ -81,7 +82,7 @@ func adminOperation(operation string, fields map[string]any, reply any) error {
 
 func adminServerCommand(args []string) (any, error) {
 	if len(args) < 2 {
-		return nil, usage("expected admin settings show|update, admin users list, or admin role update")
+		return nil, usage("expected admin settings show|update, admin users list, admin role update, or admin storage list|update")
 	}
 	switch args[0] {
 	case "settings":
@@ -99,6 +100,33 @@ func adminServerCommand(args []string) (any, error) {
 			}
 			return envelope(s), nil
 		case "update":
+			if len(args) >= 4 && args[2] == "--default-limit-bytes" {
+				limit, e := parseQuotaArg(args[3])
+				if e != nil {
+					return nil, e
+				}
+				dry := len(args) == 5 && args[4] == "--dry-run"
+				if len(args) != 4 && !dry {
+					return nil, usage("expected admin settings update --default-limit-bytes <bytes> [--dry-run]")
+				}
+				if dry {
+					var current controlSettings
+					if e := adminOperation("show", nil, &current); e != nil {
+						return nil, e
+					}
+					return envelope(map[string]any{"dry_run": true, "would": []any{map[string]any{"action": "update", "resource": "server-settings", "input": map[string]any{"default_limit_bytes": limit}, "known_effects": map[string]any{"previous_default_limit_bytes": current.DefaultLimitBytes}}}}), nil
+				}
+				var ack struct {
+					OK bool `json:"ok"`
+				}
+				if e := adminOperation("default_limit", map[string]any{"default_limit_bytes": limit}, &ack); e != nil {
+					return nil, e
+				}
+				if !ack.OK {
+					return nil, system("invalid_control_response", "gateway did not acknowledge settings update")
+				}
+				return envelope(map[string]any{"default_limit_bytes": limit, "updated": true}), nil
+			}
 			if len(args) < 4 || args[2] != "--name" {
 				return nil, usage("expected admin settings update --name <name> [--dry-run]; empty name clears it")
 			}
@@ -149,6 +177,58 @@ func adminServerCommand(args []string) (any, error) {
 				return nil, system("invalid_control_response", "gateway returned invalid user list")
 			}
 			return envelope(map[string]any{"users": users, "count": len(users)}), nil
+		}
+	case "storage":
+		if args[1] == "list" && len(args) == 2 {
+			var result struct {
+				SchemaVersion int `json:"schema_version"`
+				Users         []struct {
+					ID         string `json:"id"`
+					Username   string `json:"username"`
+					UsageBytes uint64 `json:"usage_bytes"`
+					LimitBytes uint64 `json:"limit_bytes"`
+				} `json:"users"`
+				Filesystem struct {
+					CapacityBytes uint64 `json:"capacity_bytes"`
+					FreeBytes     uint64 `json:"free_bytes"`
+				} `json:"filesystem"`
+				Overcommitted bool `json:"overcommitted"`
+			}
+			if e := adminOperation("quota_users", nil, &result); e != nil {
+				return nil, e
+			}
+			if result.SchemaVersion != 1 || result.Users == nil || result.Filesystem.CapacityBytes == 0 {
+				return nil, system("invalid_control_response", "gateway returned invalid storage information")
+			}
+			return envelope(result), nil
+		}
+		if args[1] == "update" && len(args) >= 5 && args[3] == "--limit-bytes" {
+			id := args[2]
+			n, e := strconv.ParseUint(id, 10, 64)
+			if e != nil || n == 0 || strconv.FormatUint(n, 10) != id {
+				return nil, usage("expected canonical numeric GitHub subject")
+			}
+			limit, e := parseQuotaArg(args[4])
+			if e != nil {
+				return nil, e
+			}
+			dry := len(args) == 6 && args[5] == "--dry-run"
+			if len(args) != 5 && !dry {
+				return nil, usage("expected admin storage update <subject> --limit-bytes <bytes> [--dry-run]")
+			}
+			if dry {
+				return envelope(map[string]any{"dry_run": true, "would": []any{map[string]any{"action": "update", "resource": "user-storage", "input": map[string]any{"subject": id, "limit_bytes": limit}, "unknown_until_apply": []string{"binding_and_quota_at_commit"}}}}), nil
+			}
+			var ack struct {
+				OK bool `json:"ok"`
+			}
+			if e := adminOperation("quota_set", map[string]any{"subject": id, "limit_bytes": limit}, &ack); e != nil {
+				return nil, e
+			}
+			if !ack.OK {
+				return nil, system("invalid_control_response", "gateway did not acknowledge quota update")
+			}
+			return envelope(map[string]any{"subject": id, "limit_bytes": limit, "updated": true}), nil
 		}
 	case "role":
 		if args[1] == "update" {
@@ -203,5 +283,13 @@ func adminServerCommand(args []string) (any, error) {
 			return envelope(map[string]any{"subject": id, "administrator": grant, "updated": true}), nil
 		}
 	}
-	return nil, usage("expected admin settings show|update, admin users list, or admin role update")
+	return nil, usage("expected admin settings show|update, admin users list, admin role update, or admin storage list|update")
+}
+
+func parseQuotaArg(raw string) (uint64, error) {
+	n, e := strconv.ParseUint(raw, 10, 64)
+	if e != nil || n < 1024 || n > 9007199254740991 || n%1024 != 0 || strconv.FormatUint(n, 10) != raw {
+		return 0, usage("invalid quota limit; expected a positive multiple of 1024 bytes no greater than 9007199254740991")
+	}
+	return n, nil
 }

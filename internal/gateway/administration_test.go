@@ -47,6 +47,9 @@ func TestAdministrationAuthorizationAndPersistence(t *testing.T) {
 	if e := a.loadAdministration(path); e != nil {
 		t.Fatal(e)
 	}
+	if e := a.changeDefaultLimitFor("", 1024*1024); e != nil {
+		t.Fatal(e)
+	}
 	broker := &adminBroker{Broker: a.broker}
 	a.broker = broker
 	state, flow := start(t, h)
@@ -156,18 +159,21 @@ func TestAdministrationLostLiveFileDoesNotRestoreRole(t *testing.T) {
 	if e := a.loadAdministration(path); e != nil {
 		t.Fatal(e)
 	}
+	if e := a.changeDefaultLimitFor("", 1024*1024); e != nil {
+		t.Fatal(e)
+	}
 	a.broker = &adminBroker{Broker: a.broker}
 	if e := a.changeRole(context.Background(), "42", true); e != nil {
 		t.Fatal(e)
 	}
+	state, flow := start(t, h)
+	cookie := callback(h, state, flow).Result().Cookies()[1]
 	if e := os.Remove(path); e != nil {
 		t.Fatal(e)
 	}
 	if a.isAdministrator("42") {
 		t.Fatal("lost state retained admin authority")
 	}
-	state, flow := start(t, h)
-	cookie := callback(h, state, flow).Result().Cookies()[1]
 	var session struct {
 		CSRF string `json:"csrf"`
 	}

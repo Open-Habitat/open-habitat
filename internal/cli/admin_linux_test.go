@@ -22,6 +22,10 @@ func (b adminTestBroker) Exchange(context.Context, gateway.BrokerRequest) (gatew
 func (b adminTestBroker) LookupBound(_ context.Context, id string) (bool, error) {
 	return b.bound && id == "42", nil
 }
+func (b adminTestBroker) ReadQuota(_ context.Context, _ string) (gateway.Quota, gateway.QuotaFilesystem, error) {
+	return gateway.Quota{UsageBytes: 2048, LimitBytes: 1073741824}, gateway.QuotaFilesystem{CapacityBytes: 1073741824, FreeBytes: 1024}, nil
+}
+func (b adminTestBroker) SetQuota(_ context.Context, _ string, _ uint64) error { return nil }
 func (b adminTestBroker) ListBound(context.Context) ([]gateway.BoundUser, error) {
 	if !b.bound {
 		return []gateway.BoundUser{}, nil
@@ -51,6 +55,11 @@ func TestAdminOperatorAndGatewaySingleWriter(t *testing.T) {
 	defer func() { adminControlSocket = revokeSocket }()
 	commands := [][]string{
 		{"admin", "settings", "show"},
+		{"admin", "settings", "update", "--default-limit-bytes", "1073741824"},
+		{"admin", "settings", "show"},
+		{"admin", "storage", "list"},
+		{"admin", "storage", "update", "42", "--limit-bytes", "1024", "--dry-run"},
+		{"admin", "storage", "update", "42", "--limit-bytes", "1024"},
 		{"admin", "users", "list"},
 		{"admin", "role", "update", "42", "--administrator", "true", "--dry-run"},
 		{"admin", "role", "update", "42", "--administrator", "true"},
@@ -69,12 +78,13 @@ func TestAdminOperatorAndGatewaySingleWriter(t *testing.T) {
 		}
 	}
 	var s struct {
-		Version        int      `json:"version"`
-		Name           string   `json:"name"`
-		Administrators []string `json:"administrators"`
+		Version           int      `json:"version"`
+		Name              string   `json:"name"`
+		Administrators    []string `json:"administrators"`
+		DefaultLimitBytes uint64   `json:"default_limit_bytes"`
 	}
 	b, e := os.ReadFile(state)
-	if e != nil || json.Unmarshal(b, &s) != nil || s.Name != "Test host" || len(s.Administrators) != 0 {
+	if e != nil || json.Unmarshal(b, &s) != nil || s.Name != "Test host" || len(s.Administrators) != 0 || s.DefaultLimitBytes != 1073741824 {
 		t.Fatalf("gateway state %s: %v", b, e)
 	}
 	if code, _, err := call(t, "--json", "admin", "role", "update", "43", "--administrator", "true"); code != 1 || !strings.Contains(err, "not_found") {
