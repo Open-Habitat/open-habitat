@@ -19,6 +19,8 @@ references for tracing each interruption.
 
 ## Next steps (Jari, 7 October 2026)
 
+The goal is to close this issue once every step below has been done.
+
 These are the standard steps for taking in a stint's changes, now described in
 [AGENTS-WORKFLOW.md](../../AGENTS-WORKFLOW.md#taking-in-a-stints-changes);
 this stint is their first use.

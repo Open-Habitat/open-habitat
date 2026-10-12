@@ -83,7 +83,7 @@ uudelleenkäynnistyksen yli ja UID-kohtaiset tarkistukset.
   issuessa listatut kysymykset kehittäjiltä.
 - **`prove-jit-guest-isolation`:** suljettu `wontfix`; live-reboot-todistusta
   ei voitu tehdä testiasennuksella.
-- **`slightly-talented-list`:** Kaisan oma kirjautuminen ja kahden ihmisen
+- **`observe-second-person-sign-in`:** Kaisan oma kirjautuminen ja kahden ihmisen
   eristystesti odottavat hänen osallistumistaan.
 
 ## Kapellimestarin tekemät päätökset jälkikatselmointiin
