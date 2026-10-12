@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { ControlButton, controlStyles } from "../components/ControlElements";
-import { TextField } from "../components/Primitives";
+import { ControlButton } from "../components/ControlElements";
+import { Checkbox, TextField } from "../components/Primitives";
 import type { Workspace } from "./snapshot";
 import { WorkspaceGitHub } from "./WorkspaceGitHub";
 
@@ -117,16 +117,7 @@ export function WorkspaceManagement({
             onChange={setName}
             required
           />
-          <label className={controlStyles.field}>
-            <span>
-              <input
-                type="checkbox"
-                checked={git}
-                onChange={(e) => setGit(e.target.checked)}
-              />{" "}
-              Alusta Git
-            </span>
-          </label>
+          <Checkbox label="Alusta Git" checked={git} onChange={setGit} />
           <ControlButton
             type="submit"
             isDisabled={!csrf || busy || !userObservationToken}
