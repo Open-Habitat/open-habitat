@@ -90,3 +90,13 @@ hyppiä, vaan agentin teksti nousee ylöspäin.
 Kierros 5 koskee bash-tulosteen laatikkoa, kun tulostetta on enemmän kuin
 siihen mahtuu: noin kymmenen riviä oletuksena, siirtyminen alkuun ja loppuun,
 koko tulosteen näyttäminen, ja iso tuloste omassa ikkunassa.
+
+Kierroksella 5 Jari valitsi Ikkunan sivupalkin painikkeineen (alkuun, loppuun,
+näytä kaikki, oma ikkuna) ja halusi Reunojen "n riviä välistä" -näkymän
+yhdeksi painikkeeksi ja oletukseksi: valmis tuloste näyttää alun kolme ja
+lopun seitsemän riviä, ajossa oleva seuraa loppua.
+
+Kierros 6 koskee pitkän komennon esitystä, esimerkiksi heredoc-komentoa,
+jossa `cat > "$f" <<'EOF'` kantaa kymmeniä rivejä sisältöä ja varsinainen
+komento tulee vasta sen jälkeen. Muotoilua ei vielä mietitä, vain se, miten
+pitkä komento mahtuu riville ja laatikkoon.
