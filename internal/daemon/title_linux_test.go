@@ -100,6 +100,49 @@ func TestFirstPromptFitsSnapshotTitle(t *testing.T) {
 	}
 }
 
+func TestTitleExcerptTracksCurrentUserLanguage(t *testing.T) {
+	for _, tc := range []struct{ first, latest, want string }{
+		{"Hello, check the connection", "Tarkista yhteys uudelleen", "First user message:\nHello, check the connection\nLatest user message:\nTarkista yhteys uudelleen"},
+		{"Aloitetaan tästä", "Please check the connection", "First user message:\nAloitetaan tästä\nLatest user message:\nPlease check the connection"},
+		{"Parlons français", "Parlons français", "Parlons français"},
+	} {
+		if got := titleExcerpt(tc.first, tc.latest); got != tc.want {
+			t.Errorf("excerpt %q / %q: %q", tc.first, tc.latest, got)
+		}
+	}
+	long := titleExcerpt(strings.Repeat("x", 2048), strings.Repeat("y", 2048))
+	if len(long) > 4096 || !strings.HasSuffix(long, strings.Repeat("y", 2048)) {
+		t.Fatalf("latest message truncated from bounded excerpt: %d bytes", len(long))
+	}
+}
+
+func TestContinuedTitleReadsLatestNativeUserPrompt(t *testing.T) {
+	home := t.TempDir()
+	path := filepath.Join(home, "session.jsonl")
+	id := "11111111-1111-4111-8111-111111111111"
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range []any{
+		map[string]any{"type": "session", "version": 3, "id": id, "cwd": home},
+		map[string]any{"type": "message", "id": "abc1", "message": map[string]any{"role": "user", "content": "Check connection"}},
+		map[string]any{"type": "message", "id": "abc2", "parentId": "abc1", "message": map[string]any{"role": "user", "content": "Tarkista yhteys"}},
+	} {
+		b, _ := json.Marshal(row)
+		fmt.Fprintln(f, string(b))
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if got := latestNativeUserPrompt(path, os.Getuid(), id, home); got != "Tarkista yhteys" {
+		t.Fatalf("latest user prompt: %q", got)
+	}
+	if got := latestNativeUserPrompt(path, os.Getuid(), id, "/wrong"); got != "" {
+		t.Fatalf("wrong workspace yielded prompt: %q", got)
+	}
+}
+
 func TestTitleValidation(t *testing.T) {
 	for _, bad := range []string{"", " space", "two\nlines", "bad\x00byte", string(make([]byte, 161))} {
 		if validTitle(bad) {

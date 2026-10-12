@@ -73,7 +73,7 @@ type conversation struct {
 	naming, automaticFirst, automaticRefined, refinementDue bool
 	recapping                                               bool
 	automaticName                                           string // last name written by this controller, never authoritative
-	firstText, thirdText                                    string
+	firstText, thirdText, latestText                        string
 	settlement                                              map[string]string // observed_at, native_key, state; nil means unknown
 	authError                                               string            // fixed code only; cleared on a new prompt
 	question                                                map[string]any    // bounded plain-text pending UI request
@@ -537,6 +537,7 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 				if s.acceptedMessages == 3 {
 					s.thirdText = prefixBytes(body.Message, 2048)
 				}
+				s.latestText = prefixBytes(body.Message, 2048)
 				c.startAutomaticTitle(s)
 			}
 		} else if c.journal != nil {
@@ -563,11 +564,18 @@ func (c *ConversationController) regenerateTitle(w http.ResponseWriter, r *http.
 		return
 	}
 	s.naming = true
-	text := s.firstText
-	if s.thirdText != "" {
-		text += "\n" + s.thirdText
-	}
+	text := titleExcerpt(s.firstText, s.latestText)
+	path := s.historyPath
+	continued := s.acceptedMessages >= 4 && s.latestText == ""
 	c.mu.Unlock()
+	// A continued handle has no in-memory record of the previous turns.
+	// Read its current native branch, rather than imposing its first prompt's
+	// language on a later request to regenerate.
+	if continued && path != "" {
+		if recent := latestNativeUserPrompt(path, c.cfg.UID, s.id, s.cwd); recent != "" {
+			text = titleExcerpt(s.firstText, recent)
+		}
+	}
 	// Browser disconnect does not cancel the bounded model or native RPC call.
 	result := make(chan titleFailure, 1)
 	go func() { result <- c.nameConversation(s, text, true) }()

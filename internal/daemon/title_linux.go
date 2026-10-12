@@ -90,6 +90,31 @@ func validTitle(title string) bool {
 	return true
 }
 
+// Keep the original topic for context, but let the latest user message set
+// the language. A first-turn title has only one message to go on.
+func titleExcerpt(first, latest string) string {
+	if latest == "" || latest == first {
+		return first
+	}
+	// Leave room under generateTitle's 4096-byte cap for the latest message.
+	return "First user message:\n" + prefixBytes(first, 1024) + "\nLatest user message:\n" + prefixBytes(latest, 2048)
+}
+
+// A continued handle has no accepted-prompt memory. Use only the active native
+// branch, and never treat an unreadable history as evidence of newer language.
+func latestNativeUserPrompt(path string, uid int, id, cwd string) string {
+	s := readNativeSettled(path, uid)
+	if s.state != "readable" || s.id != id || s.cwd != cwd {
+		return ""
+	}
+	for i := len(s.entries) - 1; i >= 0; i-- {
+		if s.entries[i].Kind == "user" {
+			return prefixBytes(s.entries[i].full, 2048)
+		}
+	}
+	return ""
+}
+
 // The only source of truth is Pi's history. This is a precondition read, not a title store.
 func (c *ConversationController) sessionName(s *conversation) (string, bool) {
 	sessions, err := nativeSessions(c.nativeCfg())
@@ -126,7 +151,7 @@ func (c *ConversationController) startAutomaticTitle(s *conversation) {
 		s.refinementDue = false
 		s.automaticRefined = true
 		s.naming = true
-		go c.nameConversation(s, s.firstText+"\n"+s.thirdText, false)
+		go c.nameConversation(s, titleExcerpt(s.firstText, s.thirdText), false)
 	}
 }
 

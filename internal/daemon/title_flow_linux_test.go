@@ -99,18 +99,49 @@ for line in sys.stdin:
 	if name, _ := c.sessionName(s); name != "Requested title" {
 		t.Fatalf("explicit name: %q", name)
 	}
-	// Continued sessions have an excerpt but no new-turn count. The browser
-	// action still replaces their native name through the owned Pi child.
+	// A running conversation can change language on its second message.
+	// Explicit regeneration must use that message, not only the first one.
 	s.firstText = "Original prompt"
-	s.acceptedMessages = 4
-	c.titleGenerator = func(string) (string, error) { return "Continued title", nil }
+	s.latestText = "Jatketaan suomeksi"
+	s.acceptedMessages = 2
+	c.titleGenerator = func(text string) (string, error) {
+		if text != titleExcerpt("Original prompt", "Jatketaan suomeksi") {
+			t.Errorf("manual title missed running Finnish conversation: %q", text)
+		}
+		return "Continued title", nil
+	}
 	w := httptest.NewRecorder()
 	c.regenerateTitle(w, httptest.NewRequest("POST", "http://unix/regenerate_title", nil), id)
 	if w.Code != 200 || !strings.Contains(w.Body.String(), `"done"`) {
 		t.Fatalf("continued regeneration: %d %s", w.Code, w.Body.String())
 	}
 	if name, _ := c.sessionName(s); name != "Continued title" {
-		t.Fatalf("continued name: %q", name)
+		t.Fatalf("manual name: %q", name)
+	}
+	// After continuation there is no accepted-message memory. Read the last
+	// user message from the same native session for explicit regeneration.
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Fprintln(f, `{"type":"message","id":"user1","message":{"role":"user","content":"Check connection"}}`)
+	fmt.Fprintln(f, `{"type":"message","id":"user2","message":{"role":"user","content":"Tarkista yhteys"}}`)
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s.latestText = ""
+	s.historyPath = path
+	s.acceptedMessages = 4
+	c.titleGenerator = func(text string) (string, error) {
+		if text != titleExcerpt("Original prompt", "Tarkista yhteys") {
+			t.Errorf("continued title excerpt: %q", text)
+		}
+		return "Continued title", nil
+	}
+	w = httptest.NewRecorder()
+	c.regenerateTitle(w, httptest.NewRequest("POST", "http://unix/regenerate_title", nil), id)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"done"`) {
+		t.Fatalf("continued regeneration: %d %s", w.Code, w.Body.String())
 	}
 	// The regression case is an already automatically named conversation.
 	// A failed manual request must retain its Pi name and allow retry.
@@ -157,11 +188,15 @@ for line in sys.stdin:
 			<-releaseFirst
 			return "First automatic title", nil
 		}
+		if text != titleExcerpt("first message", "third message") {
+			t.Errorf("refinement excerpt: %q", text)
+		}
 		return "Third refined title", nil
 	}
 	c.mu.Lock()
 	s.acceptedMessages = 1
 	s.firstText = "first message"
+	s.latestText = "first message"
 	s.thirdText = ""
 	s.automaticFirst, s.automaticRefined, s.refinementDue = false, false, false
 	s.automaticName = ""

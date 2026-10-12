@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -46,6 +47,9 @@ func TestTitleModelUsesPinnedPiRuntimeWithSyntheticProvider(t *testing.T) {
 		if request.Tools != nil || request.MaxTokens > 48 {
 			t.Errorf("unbounded/tool-enabled title: %+v", request)
 		}
+		if len(request.Messages) < 2 || request.Messages[0].Role != "system" || !strings.Contains(fmt.Sprint(request.Messages[0].Content), "latest user message") {
+			t.Errorf("title language instruction absent: %+v", request.Messages)
+		}
 		// The first advertised model can fail even when Pi has another one.
 		// Provider error bodies must not be echoed by the helper.
 		if request.Model == "cheap" {
@@ -73,7 +77,7 @@ func TestTitleModelUsesPinnedPiRuntimeWithSyntheticProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := &ConversationController{home: home, cfg: transport.Config{Username: "synthetic"}, runtime: &core.PiRuntimeConfig{Node: "/usr/bin/node", Entry: entry}}
-	title, err := c.generateTitle("Puhu suomea")
+	title, err := c.generateTitle(titleExcerpt("Check the connection", "Puhu suomea"))
 	if err != nil || title != "Otsikko suomeksi" || cheapCalls.Load() != 1 || fallbackCalls.Load() != 1 {
 		t.Fatalf("title %q: %v, cheap=%d fallback=%d", title, err, cheapCalls.Load(), fallbackCalls.Load())
 	}
