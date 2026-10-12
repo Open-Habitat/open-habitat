@@ -110,7 +110,18 @@ jonon tyhjennys. Hylätty lähetys jättää tekstin korjattavaksi; epävarman
 lähetyksen yhteydessä tekstin voi ottaa talteen.
 
 [Pi-keskustelun lohkot](drafts/Pi-keskustelun%20lohkot.dc.html) näyttää
-sovitun sisältöjen esityskielen. Pi:n järjestetty teksti, luettava ajattelu
+sovitun sisältöjen esityskielen, ja
+[Agentin vuoro](drafts/Agentin%20vuoro.proto.html) agentin vuoron rakenteen,
+joka korvaa sen kuplattoman vastauksen ja supistetun ajattelun: vuoro on
+pystylanka, jonka pää on "PI · malli" kerran per vastaus ja samalla työn
+avausnappi; käyttäjän ja agentin viestit ovat kuplia, joilla on samanmuotoinen
+ylärivi; yksirivinen ajattelu näkyy rivillään ilman avausta. Työn aikana
+elävyys on yhdessä tilanauhassa langan lopussa (mitä agentti tekee ja kauanko
+on kestänyt), ja valmistuttuaan nauha on rivi, josta työn saa kiinni.
+Bash-kortissa näkyvät komento ja tuloste ilman otsakkeita; pitkä komento
+näyttää ensimmäisen rivinsä ja pitkä tuloste alun ja lopun, sivupalkin
+painikkeilla alkuun, loppuun, kokonaan tai omaan ikkunaan
+(Jari 12.10.2026). Pi:n järjestetty teksti, luettava ajattelu
 ja työkalut muodostavat yhden käyttäjän käynnistämän työn. PI-otsake ei toistu
 jokaisen osan edessä. Työkalun kutsu, eteneminen ja tallennettu tulos ovat
 yksi avattava käyttö samassa kohdassa; `toolCallId` yhdistää ne. Käyttäjän

@@ -40,63 +40,35 @@ Lab validation on desktop and phone should show that short summaries are
 readable directly, longer thinking remains accessible, and replies and their
 copy actions are easy to find even in a turn with many tool calls.
 
-## Prototyyppikierrokset
+## Sovittu esitys (prototyyppikierrokset 12.10.2026)
 
-`prototype.html` on itsenäinen vertailusivu (tokenit ja fontit upotettu),
-jossa suunnat vaihtuvat näppäimillä 1–3. Se poistetaan, kun valittu suunta
-on viety tuotantokomponentteihin.
+Esitys suunniteltiin kuudella `/prototype`-kierroksella; valittu kokonaisuus
+on vedoksena [Agentin vuoro.proto.html](../../design-system/drafts/Agentin%20vuoro.proto.html)
+ja kierrosten vertailusivu on `prototype.html` tässä kansiossa, kunnes
+toteutus on valmis. Tämä issue toteuttaa vuoron rakenteen; tulosteen ja
+komennon laatikot ovat [@bash-tool-card](../bash-tool-card/item.md)issa.
 
-Kierros 1 (12.10.2026) vertasi kolmea suuntaa: tekijäotsake kerran vuoron
-alussa, pystylanka marginaalissa ja ajattelu proosana. Jari valitsi langan:
-lanka sitoo ajattelun, työkalut ja vastauksen yhdeksi vuoroksi ja malli on
-vastauskuplan tilarivillä. Samalla sovittiin:
+- **Lanka.** Agentin vuoro on pystylanka vasemmassa marginaalissa: pää,
+  ajattelu- ja työkalusolmut ja vastaus. Langan pää on "PI · malli" kerran per
+  vastaus, avausnappina, jolla työn saa kiinni; tiivistettynä päärivillä lukee
+  ajatusten ja työkalujen määrä ja vastaus jää näkyviin. Jokainen vastaukseen
+  päättyvä toimi on oma lankansa myös silloin, kun agentti tekee niitä
+  peräkkäin ilman käyttäjän viestiä välissä.
+- **Kuplat ja tilarivit.** Käyttäjän ja agentin viestit ovat kuplia, joiden
+  ylärivi on samanmuotoinen: Sinä · kopioi · aika ja ✓ Vastaus valmis · malli ·
+  kopioi · aika. Malli näkyy vain vastauksen rivillä, ei työlohkojen edessä.
+- **Ajattelu.** Yksirivinen ajattelu on Ajattelu-rivillä Markdown renderöitynä
+  ilman avausta; monirivinen on avattava lainauslohko.
+- **Työn aikana.** Elävyys on yhdessä tilanauhassa langan viimeisenä rivinä
+  vastauksen alla: "● Ajaa bash · 0:05" kertoo mitä agentti tekee ja kauanko
+  työ on kestänyt. Lohkot ilmestyvät heti lopullisessa muodossaan ilman
+  sykkeitä; virtaava ajattelu näkyy yhtenä vaihtuvana rivinä, virtaava vastaus
+  kursorilla ja ylärivillä "Vastaa". Lanka ei ole tiivistettävissä työn
+  aikana. Työn päätyttyä nauhasta tulee rivi "Työ · 2 ajatusta · 3 työkalua ·
+  0:14", josta työn saa kiinni ja auki; lanka jää oletuksena auki.
+- **Vieritys.** Kirjoituskenttä pysyy paikallaan ja uusi sisältö nousee sen
+  yllä. Näkymä seuraa uusinta, kunnes lukija vierittää ylös, ja jatkaa, kun
+  hän palaa alas. Lähetä on kentän vieressä, ei omalla rivillään.
 
-- Avatussa bash-työkalussa ei ole Argumentit-otsaketta eikä `command`-nimeä;
-  näkyvissä on komento ja tuloste.
-- Lähetä-painike on kentän vieressä, ei omalla rivillään; nykyinen käyttöliittymä
-  on liian väljä.
-- Agentti voi tehdä useita lankoja peräkkäin ilman käyttäjän viestiä välissä,
-  joten tekijämerkintä ei voi olettaa käyttäjän viestiä edelleen.
-
-Kierros 2 rakentaa langan päälle ja eroaa avoimissa kohdissa: miten lanka
-tiivistetään, ovatko viestien tila- ja tekijärivit ylä- vai alalaidassa
-(käyttäjän ja agentin kuplat yhdenmukaistetaan), ja esitetäänkö peräkkäiset
-langat erillisinä vai samalla langalla.
-
-Kierroksella 2 Jari valitsi Solmun: molempien kuplien tekijä- ja tilarivi on
-ylälaidassa samassa muodossa (nimi tai tila, malli, kopiointi, aika), lanka
-tiivistetään sen päästä PI-rivin avausnapilla, ja tiivistettynä päärivillä
-lukee ajatusten ja työkalujen määrä vastauksen jäädessä näkyviin. Jokaisella
-langalla on oma pää myös peräkkäisissä langoissa.
-
-Kierros 3 näyttää Solmun agentin työn aikana. Suunnat eroavat siinä, missä
-eläväisyys asuu: aktiivisen solmun ja lohkon sykkeissä, itseään piirtävässä
-langassa vai langan päärivin tilanauhassa.
-
-Kierroksella 3 Jari valitsi Nykyhetken: elävyys on yhdessä tilanauhassa,
-joka kertoo mitä agentti juuri tekee ja kauanko työ on kestänyt, ja lohkot
-asettuvat heti lopulliseen muotoonsa. Avoin kysymys on, pitäisikö nauhan olla
-alhaalla ja olla samalla langan suljettu tila, josta langan voi avata.
-Kierros 4 kokeilee kolmea sijaintia: työn ja vastauksen välissä, langan
-viimeisenä rivinä vastauksen alla, ja kelluvana kirjoituskentän yllä.
-
-Kierroksella 4 Jari valitsi Pohjan: Solmun PI-pää pysyy langan ylälaidassa,
-tilanauha on langan viimeisenä rivinä vastauksen alla ja muuttuu työn
-päätyttyä riviksi "Työ · n ajatusta · m työkalua · kesto", josta työn saa
-kiinni ja auki; lanka jää oletuksena auki. Samalla sovittiin, että
-kirjoituskenttä pysyy paikallaan ja keskustelu rullaa sen yllä: sivu ei saa
-hyppiä, vaan agentin teksti nousee ylöspäin.
-
-Kierros 5 koskee bash-tulosteen laatikkoa, kun tulostetta on enemmän kuin
-siihen mahtuu: noin kymmenen riviä oletuksena, siirtyminen alkuun ja loppuun,
-koko tulosteen näyttäminen, ja iso tuloste omassa ikkunassa.
-
-Kierroksella 5 Jari valitsi Ikkunan sivupalkin painikkeineen (alkuun, loppuun,
-näytä kaikki, oma ikkuna) ja halusi Reunojen "n riviä välistä" -näkymän
-yhdeksi painikkeeksi ja oletukseksi: valmis tuloste näyttää alun kolme ja
-lopun seitsemän riviä, ajossa oleva seuraa loppua.
-
-Kierros 6 koskee pitkän komennon esitystä, esimerkiksi heredoc-komentoa,
-jossa `cat > "$f" <<'EOF'` kantaa kymmeniä rivejä sisältöä ja varsinainen
-komento tulee vasta sen jälkeen. Muotoilua ei vielä mietitä, vain se, miten
-pitkä komento mahtuu riville ja laatikkoon.
+Hylätyt suunnat ja niiden hinnat ovat Git-historiassa tämän tiedoston
+aiemmissa versioissa.

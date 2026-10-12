@@ -41,6 +41,10 @@ Each workspace row gets a “+” button after the repository name that starts a
 new conversation in that workspace. It has an accessible label, appears on
 hover or focus on desktop, and stays visible on touch devices.
 
+The send button sits beside the composer field, not on a row of its own;
+the current composer is too loose (agreed in the agent-turn prototype rounds,
+2026-10-12).
+
 ## Design and verification
 
 Use [the current design](../../design-system/design.md) and its referenced

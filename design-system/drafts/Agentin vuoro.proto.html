@@ -1,0 +1,930 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Agentin vuoro · valittu vedos</title>
+<style>
+/* ===== Open Habitat tokens (design-system/tokens) ===== */
+/* Värit. Vaalea on oletus, tumma on [data-theme="dark"].
+   Korostus #2b7f8c on rauhallinen, ei hälyttävä. Punainen on varattu virheelle. */
+
+:root,
+[data-theme="light"] {
+  --ah-bg: #f6f7f8;
+  --ah-surface: #ffffff;
+  --ah-surface-2: #fbfcfd;
+  --ah-rail: #f1f3f5;
+  --ah-line: #e2e6e9;
+  --ah-line-soft: #eef0f3;
+
+  --ah-ink: #16191d;
+  --ah-ink-2: #3d434b;
+  --ah-muted: #61676f;
+  --ah-faint: #6b7178;
+
+  --ah-accent: #2b7f8c;
+  --ah-accent-ink: #1d5f69;
+  --ah-accent-soft: #e6f1f3;
+  --ah-accent-line: #cfe3e6;
+  --ah-on-accent: #ffffff;
+
+  --ah-ok: #2f7a55;
+  --ah-ok-soft: #eef7f1;
+  --ah-err: #a3412b;
+  --ah-err-soft: #fdf1ee;
+  --ah-err-line: #f3d7d0;
+  --ah-line-strong: #c9d0d6;
+  --ah-accent-hover: #246f7b;
+  --ah-accent-press: #1d5f69;
+  --ah-on-err: #ffffff;
+  --ah-err-hover: #8e3825;
+  --ah-err-press: #7a2f1f;
+  --ah-err-soft-hover: #fae4de;
+  --ah-err-soft-press: #f6d6cd;
+  --ah-surface-hover: #f2f4f6;
+  --ah-surface-press: #e9edf0;
+  --ah-current: #ffffff;
+  --ah-current-line: #d5dbe0;
+  --ah-disabled-bg: #eef0f3;
+  --ah-disabled-fg: #61676f;
+  --ah-focus: #2b7f8c;
+  --ah-scrim: rgba(16, 24, 40, .32);
+}
+
+[data-theme="dark"] {
+  --ah-bg: #14171a;
+  --ah-surface: #1b1f23;
+  --ah-surface-2: #171a1e;
+  --ah-rail: #171a1e;
+  --ah-line: #2a3036;
+  --ah-line-soft: #232830;
+
+  --ah-ink: #e6e9ec;
+  --ah-ink-2: #c5cad0;
+  --ah-muted: #98a0a8;
+  --ah-faint: #949ca6;
+
+  --ah-accent: #4fa6b4;
+  --ah-accent-ink: #9fd4dd;
+  --ah-accent-soft: #173137;
+  --ah-accent-line: #2c4a52;
+  --ah-on-accent: #0f1417;
+
+  --ah-ok: #8fcfa8;
+  --ah-ok-soft: #1b2721;
+  --ah-err: #e8a08a;
+  --ah-err-soft: #261c1b;
+  --ah-err-line: #4a2e28;
+  --ah-line-strong: #3a424a;
+  --ah-accent-hover: #63b4c1;
+  --ah-accent-press: #7cc3cf;
+  --ah-on-err: #1b1f23;
+  --ah-err-hover: #eeb3a1;
+  --ah-err-press: #f2c3b4;
+  --ah-err-soft-hover: #33221f;
+  --ah-err-soft-press: #3d2823;
+  --ah-surface-hover: #22272c;
+  --ah-surface-press: #2a3036;
+  --ah-current: #23282e;
+  --ah-current-line: #353c44;
+  --ah-disabled-bg: #1f2328;
+  --ah-disabled-fg: #98a0a8;
+  --ah-focus: #4fa6b4;
+  --ah-scrim: rgba(0, 0, 0, .5);
+}
+
+/* Designer's Latin/Latin-ext families are bundled with the release, never fetched at runtime.
+   OFL licenses and original font files are in ../fonts/. */
+
+
+
+
+
+:root {
+  --ah-font: "Instrument Sans", system-ui, sans-serif;
+  --ah-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --ah-size-h1: 22px;
+  --ah-size-h2: 16px;
+  --ah-size-title: 15.5px;
+  --ah-size-body: 14.5px;
+  --ah-size-ui: 13.5px;
+  --ah-size-meta: 12.5px;
+  --ah-size-label: 11px;
+  --ah-size-code: 12.5px;
+
+  --ah-lh-body: 1.6;
+  --ah-lh-ui: 1.55;
+  --ah-measure: 70ch;
+}
+
+/* Väli ja muoto. 4px-ruudukko, keskitiheä. */
+
+:root {
+  --ah-s1: 4px;
+  --ah-s2: 6px;
+  --ah-s3: 9px;
+  --ah-s4: 12px;
+  --ah-s5: 14px;
+  --ah-s6: 18px;
+  --ah-s7: 24px;
+  --ah-s8: 36px;
+
+  --ah-r-sm: 5px;
+  --ah-r-md: 8px;
+  --ah-r-lg: 10px;
+  --ah-r-xl: 12px;
+  --ah-r-pill: 999px;
+
+  --ah-shadow-app: 0 1px 2px rgba(16, 24, 40, .05), 0 10px 30px rgba(16, 24, 40, .06);
+  --ah-shadow-float: 0 2px 8px rgba(16, 24, 40, .08);
+  --ah-shadow-menu: 0 6px 18px rgba(16, 24, 40, .10);
+  --ah-shadow-dialog: 0 12px 40px rgba(16, 24, 40, .18);
+
+  --ah-app-max: 960px;
+  --ah-rail-width: 296px;
+  --ah-rail-compact-width: 52px;
+  --ah-conversation-width: 780px;
+  --ah-column-pad-block: 22px;
+  --ah-column-pad-inline: 24px;
+  --ah-topbar-pad-block: 13px;
+  --ah-topbar-pad-inline: 24px;
+  --ah-composer-pad-block: 12px;
+  --ah-composer-field-gap: 6px;
+  --ah-r-nav: 9px;
+  --ah-touch: 44px;
+  --ah-focus-width: 2px;
+  --ah-focus-offset: 2px;
+}
+
+@media (max-width: 800px) {
+  :root {
+    --ah-topbar-pad-block: 6px;
+    --ah-topbar-pad-inline: 14px;
+    --ah-column-pad-block: 12px;
+    --ah-column-pad-inline: 14px;
+  }
+}
+
+/* Liike. Hillitty ja aina vähennettävissä. */
+
+:root {
+  --ah-pulse: 1.6s ease-in-out infinite;
+  --ah-expand: 180ms cubic-bezier(.2, .7, .3, 1);
+  --ah-fade: 160ms ease;
+  --ah-appear: 180ms cubic-bezier(.2, .7, .3, 1);
+  --ah-transition: 120ms ease;
+}
+
+@keyframes ah-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .3 } }
+@keyframes ah-appear { from { opacity: 0; transform: translateY(-4px) } to { opacity: 1; transform: none } }
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --ah-pulse: none; --ah-expand: 0ms; --ah-fade: 0ms; --ah-appear: 0ms; --ah-transition: 0ms; }
+  * { animation: none !important; transition: none !important; }
+}
+
+@font-face { font-family: "Instrument Sans"; src: url("../fonts/instrument-sans-latin.woff2") format("woff2"); font-weight: 400 600; font-display: swap; }
+@font-face { font-family: "Instrument Sans"; src: url("../fonts/instrument-sans-latin-ext.woff2") format("woff2"); font-weight: 400 600; font-display: swap; unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "JetBrains Mono"; src: url("../fonts/jetbrains-mono-latin.woff2") format("woff2"); font-weight: 400 500; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("../fonts/jetbrains-mono-latin-ext.woff2") format("woff2"); font-weight: 400 500; font-display: swap; unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+
+:root { --ah-sunken: #f3f5f7; --ah-hover: rgba(16,24,40,.06); }
+[data-theme="dark"] { --ah-sunken: #14171a; --ah-hover: rgba(255,255,255,.07); }
+
+/* ===== Page chrome (context, not a contestant) ===== */
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--ah-bg); color: var(--ah-ink); font: 400 var(--ah-size-body)/var(--ah-lh-body) var(--ah-font); -webkit-font-smoothing: antialiased; }
+.page-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding: 10px 16px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); font-size: var(--ah-size-ui); }
+.page-bar h1 { margin: 0; font-size: 14px; font-weight: 600; }
+.page-bar label { display: inline-flex; align-items: center; gap: 6px; color: var(--ah-ink-2); }
+.page-bar select, .page-bar input { font: inherit; }
+.page-bar .hint { margin-left: auto; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.page-bar .hint kbd { font: 500 11px var(--ah-mono); padding: 1px 5px; border: 1px solid var(--ah-line-strong); border-radius: 4px; background: var(--ah-surface-2); }
+.frame-wrap { display: flex; justify-content: center; padding: 16px 16px 80px; }
+.frame { width: 100%; max-width: 1080px; height: calc(100vh - 150px); min-height: 520px; background: var(--ah-bg); border: 1px solid var(--ah-line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; container-type: inline-size; }
+.frame-wrap.phone .frame { width: 390px; max-width: 100%; height: 760px; min-height: 0; }
+.topbar { display: flex; align-items: center; gap: 10px; padding: var(--ah-topbar-pad-block) var(--ah-topbar-pad-inline); background: var(--ah-surface); border-bottom: 1px solid var(--ah-line); }
+.topbar strong { font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar code { font: 400 12px var(--ah-mono); color: var(--ah-muted); }
+.topbar .state { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font: 600 12px var(--ah-font); color: var(--ah-ok); }
+.topbar .state svg { width: 12px; height: 12px; }
+.stream { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; align-items: center; gap: var(--ah-s6); padding: var(--ah-column-pad-block) var(--ah-column-pad-inline) 8px; }
+.stream > * { width: min(100%, var(--ah-conversation-width)); min-width: 0; }
+.vwrap { display: flex; flex-direction: column; gap: var(--ah-s6); }
+.composer { flex: none; border-top: 1px solid var(--ah-line-soft); background: var(--ah-bg); display: flex; justify-content: center; padding: var(--ah-composer-pad-block) var(--ah-column-pad-inline) 16px; }
+.composer div { width: min(100%, var(--ah-conversation-width)); display: flex; gap: 8px; align-items: flex-end; }
+.composer textarea { flex: 1; min-height: 44px; resize: vertical; padding: 10px 12px; font: inherit; color: var(--ah-ink); background: var(--ah-surface); border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-lg); }
+.composer button { min-height: 36px; padding: 0 14px; border: 1px solid var(--ah-accent); border-radius: var(--ah-r-md); background: var(--ah-accent); color: var(--ah-on-accent); font: 600 12.5px var(--ah-font); cursor: pointer; }
+@container (max-width: 800px) {
+  .topbar { padding: 6px 14px; }
+  .stream { padding: 12px 14px 6px; gap: var(--ah-s5); }
+  .vwrap { gap: var(--ah-s5); }
+  .composer { padding: 8px 14px 12px; }
+}
+
+/* ===== Shared conversation language (tokens only; per-variant rules below) ===== */
+.ah-in { animation: ah-appear var(--ah-appear) both; animation-delay: calc(var(--i, 0) * 45ms); }
+button { font-family: inherit; }
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--ah-muted); cursor: pointer; transition: background var(--ah-transition), color var(--ah-transition); }
+.icon-btn:hover { background: var(--ah-hover); color: var(--ah-ink); }
+.icon-btn:focus-visible, .quiet-btn:focus-visible, .disc:focus-visible, .chip:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
+.icon-btn svg { width: 15px; height: 15px; }
+.icon-btn[data-done] { color: var(--ah-ok); }
+.quiet-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--ah-muted); font: 500 13px var(--ah-font); cursor: pointer; transition: background var(--ah-transition), color var(--ah-transition); }
+.quiet-btn:hover { background: var(--ah-hover); color: var(--ah-ink-2); }
+.chev { width: 12px; height: 12px; flex: none; transition: transform var(--ah-expand); }
+[aria-expanded="true"] > .chev { transform: rotate(90deg); }
+.who { font: 600 11px var(--ah-font); letter-spacing: .08em; text-transform: uppercase; color: var(--ah-ink-2); }
+.meta { font: 400 var(--ah-size-meta)/1.4 var(--ah-font); color: var(--ah-muted); }
+.ok { display: inline-flex; align-items: center; gap: 5px; color: var(--ah-muted); font-size: 12px; }
+.ok svg { width: 12px; height: 12px; }
+
+.bubble { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); max-width: 100%; }
+.bubble.user { align-self: flex-start; max-width: min(100%, 560px); background: var(--ah-surface-2); }
+.bubble-head { display: flex; align-items: center; gap: 6px; min-height: 28px; }
+.bubble-head .icon-btn { margin-left: 2px; }
+.bubble-head time { margin-left: auto; }
+
+.prose { min-width: 0; overflow-wrap: anywhere; }
+.prose p { margin: 0 0 .6em; text-wrap: pretty; }
+.prose p:last-child, .prose ul:last-child, .prose pre:last-child { margin-bottom: 0; }
+.prose ul { margin: 0 0 .6em; padding-left: 1.3em; }
+.prose li { margin: .15em 0; }
+.prose code { font: 400 var(--ah-size-code) var(--ah-mono); }
+.prose :not(pre) > code { padding: 1px 4px; border-radius: 4px; background: var(--ah-sunken); }
+.prose pre { margin: 0 0 .6em; padding: 10px 12px; max-width: 100%; overflow: auto; background: var(--ah-sunken); border: 1px solid var(--ah-line-soft); border-radius: 8px; font: 400 12.5px/1.55 var(--ah-mono); }
+.prose pre code { background: transparent; padding: 0; }
+
+/* Tool rows: the agreed language from the draft */
+.tool { display: flex; flex-direction: column; border: 1px solid var(--ah-line); border-radius: 10px; background: var(--ah-surface); overflow: hidden; max-width: 100%; }
+.disc { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 34px; padding: 6px 12px; border: 0; background: transparent; color: var(--ah-ink); text-align: left; cursor: pointer; }
+.disc:hover { background: var(--ah-surface-hover); }
+.disc:active { background: var(--ah-surface-press); }
+.disc .chev { color: var(--ah-muted); }
+.disc .name { font: 500 12.5px var(--ah-mono); }
+.disc .target { font: 400 12.5px var(--ah-mono); color: var(--ah-muted); overflow-wrap: anywhere; min-width: 0; }
+.disc .names { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; flex: 1; min-width: 0; }
+.disc .ok { flex: none; }
+.tool-body { display: flex; flex-direction: column; gap: 12px; padding: 12px; border-top: 1px solid var(--ah-line-soft); }
+.tool-body h4 { margin: 0 0 6px; font: 600 11px var(--ah-font); letter-spacing: .06em; text-transform: uppercase; color: var(--ah-muted); }
+.tool-body dl { margin: 0; display: grid; grid-template-columns: max-content minmax(0,1fr); gap: 4px 14px; font: 400 12.5px var(--ah-mono); }
+.tool-body dt { color: var(--ah-muted); }
+.tool-body dd { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.tool-body pre { margin: 0; max-height: 220px; overflow: auto; padding: 10px 12px; background: var(--ah-sunken); border: 1px solid var(--ah-line-soft); border-radius: 8px; font: 400 12.5px/1.55 var(--ah-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Thinking: shared quote block for the long form */
+.think-quote { display: flex; flex-direction: column; gap: 6px; padding-left: 14px; border-left: 2px solid var(--ah-line); font-size: 13.5px; line-height: 1.6; color: var(--ah-ink-2); }
+.think-quote p { margin: 0; }
+
+/* ===== Lanka base (chosen in round 1) ===== */
+.turn { display: grid; grid-template-columns: 22px minmax(0,1fr); column-gap: 10px; row-gap: 10px; }
+.turn .rail-cell { grid-column: 1; position: relative; display: flex; justify-content: center; }
+.turn .rail-cell::before { content: ""; position: absolute; top: 0; bottom: -10px; width: 2px; background: var(--ah-line); }
+.turn .rail-cell.first::before { top: 14px; }
+.turn .rail-cell.last::before { bottom: auto; height: 14px; }
+.turn .rail-cell.first.last::before { display: none; }
+.node { position: relative; width: 8px; height: 8px; margin-top: 8px; border-radius: 50%; background: var(--ah-surface); border: 2px solid var(--ah-line-strong); }
+.node.head { width: 12px; height: 12px; margin-top: 6px; border-color: var(--ah-accent); }
+.node.done { border-color: var(--ah-ok); background: var(--ah-ok); }
+.node.tool { border-radius: 2px; }
+.turn .cell { grid-column: 2; min-width: 0; }
+.turn > .user { grid-column: 1 / -1; }
+.work { display: contents; }
+.work[hidden] { display: none; }
+.head-cell { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; min-height: 24px; }
+.head-cell .model { font: 400 12px var(--ah-mono); color: var(--ah-muted); }
+.head-cell .sum { font: 400 12.5px var(--ah-font); color: var(--ah-muted); }
+.head-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; margin-left: -6px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent; color: var(--ah-ink-2); cursor: pointer; }
+.head-btn:hover { background: var(--ah-hover); }
+.head-btn .chev { color: var(--ah-muted); }
+.think-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; min-height: 24px; font-size: 13.5px; color: var(--ah-ink-2); }
+.think-row .lbl { font: 500 12.5px var(--ah-font); color: var(--ah-muted); }
+.think-row .prose strong { font-weight: 600; }
+.think-btn { margin-left: -8px; }
+.bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; min-height: 28px; }
+.bar .model { font: 400 12px var(--ah-mono); color: var(--ah-muted); }
+.bar time { margin-left: auto; }
+.bar.foot { margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--ah-line-soft); }
+.bar.foot time { margin-left: 0; }
+.bar.foot .icon-btn { margin-left: auto; }
+.bar.head .icon-btn { margin-left: 2px; }
+.bubble .corner { position: absolute; top: 6px; right: 6px; }
+.bubble.bare { padding-right: 40px; }
+.bash-cmd { margin: 0; padding: 8px 12px; background: var(--ah-sunken); border: 1px solid var(--ah-line-soft); border-radius: 8px; font: 500 12.5px/1.55 var(--ah-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.bash-cmd::before { content: "$ "; color: var(--ah-muted); font-weight: 400; }
+.bash-cmd.body::before, .bash-cmd.tail::before { content: ""; }
+
+/* ===== Solmu (chosen in round 2): rows at the top of both bubbles; the head folds the thread ===== */
+.bubble.reply .bar.head .ok { color: var(--ah-ink-2); font-weight: 600; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ah-accent); animation: ah-pulse var(--ah-pulse); flex: none; }
+.working-lbl { display: inline-flex; align-items: center; gap: 7px; font: 600 12.5px var(--ah-font); color: var(--ah-accent-ink); }
+.caret { display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -2px; background: var(--ah-accent); animation: ah-caret 1s steps(1) infinite; }
+@keyframes ah-caret { 0%,100% { opacity: 1 } 50% { opacity: 0 } }
+@keyframes ah-spin { to { transform: rotate(360deg) } }
+.think-live { max-height: 4.9em; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding-left: 14px; border-left: 2px solid var(--ah-line); font-size: 13.5px; line-height: 1.6; color: var(--ah-ink-2); -webkit-mask-image: linear-gradient(to bottom, transparent, #000 45%); mask-image: linear-gradient(to bottom, transparent, #000 45%); }
+.think-live p { margin: 0; }
+.disc[disabled] { cursor: default; }
+.disc[disabled]:hover { background: transparent; }
+.disc .muted { font-size: 12.5px; color: var(--ah-muted); }
+.disc .running { flex: none; display: inline-flex; align-items: center; gap: 6px; font: 600 12px var(--ah-font); color: var(--ah-accent-ink); }
+.tool-body pre.stream { border-color: var(--ah-accent-line); }
+.turn.working .head-btn { pointer-events: none; }
+.turn.working .head-btn .chev { visibility: hidden; }
+
+/* ===== Shared: the now strip, in its working and settled forms ===== */
+.strip { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; min-height: 30px; padding: 3px 9px 3px 7px; margin-left: -7px; border-radius: 7px; }
+.strip.working { background: var(--ah-accent-soft); }
+.strip .act { display: inline-flex; align-items: center; gap: 7px; font: 500 12.5px var(--ah-font); color: var(--ah-accent-ink); }
+.strip .act .live-dot { animation: none; }
+.strip .clock { font: 400 12px var(--ah-mono); color: var(--ah-accent-ink); margin-left: auto; font-variant-numeric: tabular-nums; }
+.strip .model { font: 400 12px var(--ah-mono); color: var(--ah-muted); }
+.strip-btn { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; width: 100%; min-height: 30px; padding: 3px 9px 3px 7px; margin-left: -7px; border: 0; border-radius: 7px; background: transparent; color: var(--ah-ink-2); text-align: left; cursor: pointer; }
+.strip-btn:hover { background: var(--ah-hover); }
+.strip-btn:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
+.strip-btn .chev { color: var(--ah-muted); }
+.strip-btn .sum { font: 400 12.5px var(--ah-font); color: var(--ah-muted); }
+.strip-btn .dur { font: 400 12px var(--ah-mono); color: var(--ah-muted); margin-left: auto; }
+.strip-btn .model { font: 400 12px var(--ah-mono); color: var(--ah-muted); }
+.node.active { border-color: var(--ah-accent); background: var(--ah-accent); }
+.node.strip-node { border-color: var(--ah-accent); background: var(--ah-surface); width: 10px; height: 10px; margin-top: 10px; }
+.row-in .rail-cell, .row-in .cell { animation: ah-fade 120ms ease-out both; }
+@keyframes ah-fade { from { opacity: 0 } to { opacity: 1 } }
+.think-tick { display: flex; align-items: baseline; gap: 8px; min-height: 24px; font-size: 13.5px; color: var(--ah-ink-2); }
+.think-tick .lbl { font: 500 12.5px var(--ah-font); color: var(--ah-muted); flex: none; }
+.think-tick .line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.rail-cell[hidden], .cell[hidden] { display: none; }
+
+/* ===== Pohja thread (chosen in round 4) ===== */
+.strip-btn .sum::before { content: "Työ · "; }
+
+/* ===== Shared: the output box ===== */
+.out { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.out pre.viewport { margin: 0; overflow: auto; max-height: calc(10 * 1.55 * 12.5px + 20px); scrollbar-gutter: stable; }
+.out pre.viewport.all { max-height: none; }
+.out .out-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 12px; color: var(--ah-muted); }
+.out .out-meta .spacer { flex: 1; }
+.out .quiet-btn { min-height: 26px; padding: 0 7px; font-size: 12.5px; }
+.out .quiet-btn svg { width: 13px; height: 13px; }
+.out-dialog { width: min(96vw, 960px); max-height: 92vh; padding: 0; border: 1px solid var(--ah-line); border-radius: var(--ah-r-xl); background: var(--ah-surface); color: var(--ah-ink); box-shadow: var(--ah-shadow-dialog); }
+.out-dialog::backdrop { background: var(--ah-scrim); }
+.out-dialog .dlg-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--ah-line); position: sticky; top: 0; background: var(--ah-surface); }
+.out-dialog .dlg-head .name { font: 500 12.5px var(--ah-mono); }
+.out-dialog .dlg-head .target { font: 400 12.5px var(--ah-mono); color: var(--ah-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.out-dialog .dlg-body { padding: 14px; }
+.out-dialog pre { margin: 0; padding: 10px 12px; background: var(--ah-sunken); border: 1px solid var(--ah-line-soft); border-radius: 8px; font: 400 12.5px/1.55 var(--ah-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.out-dialog .lineno { color: var(--ah-muted); user-select: none; display: inline-block; width: 3ch; text-align: right; margin-right: 12px; }
+.out-dialog pre code { display: block; }
+.out-dialog .fail { color: var(--ah-err); }
+
+/* ===== Output box (chosen in round 5): Ikkuna with an edges view as the default ===== */
+.out-win { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 6px; align-items: start; }
+.out-rail { display: flex; flex-direction: column; gap: 2px; }
+.out-rail .icon-btn { width: 26px; height: 26px; }
+.out-rail .icon-btn[aria-pressed="true"] { background: var(--ah-current); color: var(--ah-ink); box-shadow: 0 0 0 1px var(--ah-current-line); }
+.out .gap { display: flex; align-items: center; gap: 10px; width: 100%; padding: 4px 12px; border: 0; border-inline: 1px solid var(--ah-line-soft); background: var(--ah-sunken); color: var(--ah-muted); font: 500 12px var(--ah-font); cursor: pointer; }
+.out .gap::before, .out .gap::after { content: ""; flex: 1; border-top: 1px dashed var(--ah-line-strong); }
+.out .gap:hover { color: var(--ah-ink-2); }
+.out .gap:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: -2px; }
+.out pre.part { margin: 0; max-height: none; }
+.out pre.part.head { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 0; }
+.out pre.part.tail { border-top-left-radius: 0; border-top-right-radius: 0; border-top: 0; }
+.out pre.cmd { font-weight: 500; }
+.out pre.cmd::before, .cmd-first::before { content: "$ "; color: var(--ah-muted); font-weight: 400; }
+.out pre.cmd.part.tail::before, .out pre.cmd.cont::before { content: ""; }
+
+/* ===== V1 · Rivi: the command's first line, the rest behind one quiet button ===== */
+.v1 .cmd-first { margin: 0; padding: 8px 12px; background: var(--ah-sunken); border: 1px solid var(--ah-line-soft); border-radius: 8px; font: 500 12.5px/1.55 var(--ah-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v1 .cmd-first.open { white-space: pre-wrap; overflow-wrap: anywhere; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.v1 .cmd-rest { margin: 0; padding: 8px 12px; background: var(--ah-sunken); border: 1px solid var(--ah-line-soft); border-top: 0; border-radius: 0 0 8px 8px; font: 500 12.5px/1.55 var(--ah-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.v1 .cmd-foot { display: flex; align-items: center; gap: 10px; margin-top: 4px; font-size: 12px; color: var(--ah-muted); }
+
+/* ===== V2 · Lohko: the heredoc body folds as a block inside the command ===== */
+.v2 .hd { display: flex; flex-direction: column; }
+.v2 .hd pre { margin: 0; }
+.v2 .hd pre.head { border-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.v2 .hd pre.tail { border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+.v2 .hd .hd-btn { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 30px; padding: 0 12px; border: 1px solid var(--ah-line-soft); border-inline-width: 1px; border-block: 1px dashed var(--ah-line-strong); background: var(--ah-surface-2); color: var(--ah-ink-2); font: 500 12px var(--ah-font); text-align: left; cursor: pointer; }
+.v2 .hd .hd-btn:hover { background: var(--ah-surface-hover); }
+.v2 .hd .hd-btn:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: -2px; }
+.v2 .hd .hd-btn .marker { font: 500 12px var(--ah-mono); color: var(--ah-muted); }
+.v2 .hd .hd-btn .count { margin-left: auto; color: var(--ah-muted); font-weight: 400; }
+.v2 .hd pre.body { border-radius: 0; border-top: 0; border-bottom: 0; background: var(--ah-surface); color: var(--ah-ink-2); font-weight: 400; padding-left: 24px; }
+
+/* ===== V3 · Sama laatikko: the command gets the same box as the output ===== */
+
+@container (max-width: 800px) {
+  .bubble.user { max-width: 100%; }
+  .chip .target { max-width: 16ch; }
+}
+
+</style>
+</head>
+<body>
+<div class="page-bar">
+  <h1>Agentin vuoro · valittu vedos</h1>
+  <label>Teema <select id="theme"><option value="system">Järjestelmä</option><option value="light">Vaalea</option><option value="dark">Tumma</option></select></label>
+  <label><input type="checkbox" id="phone"> Puhelin 390 px</label>
+  <label><input type="checkbox" id="slow"> Hidastettu</label>
+  <span class="hint"><kbd>R</kbd> toistaa vuoron</span>
+</div>
+<div class="frame-wrap" id="wrap">
+  <div class="frame">
+    <div class="topbar"><strong>Status-skripti</strong><code>aurinkokello</code><span class="state"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.5 5 9l4.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Valmis</span></div>
+    <div class="stream" id="stage"></div>
+    <dialog class="out-dialog" id="outdlg"></dialog>
+    <div class="composer"><div><textarea placeholder="Kirjoita Pi:lle…" aria-label="Viesti"></textarea><button type="button">Lähetä</button></div></div>
+  </div>
+</div>
+
+
+<script>
+const stage = document.getElementById('stage');
+// Follow the newest content until the person scrolls up; resume when they return to the bottom.
+let following = true; let lastTop = 0;
+stage.addEventListener('scroll', () => { const gap = stage.scrollHeight - stage.scrollTop - stage.clientHeight; if (stage.scrollTop < lastTop - 1) following = false; else if (gap < 40) following = true; lastTop = stage.scrollTop; });
+// ---------- Content: one realistic Pi conversation (GPT-5.5), two turns ----------
+const MODEL = 'GPT-5.5';
+const STATUS_MD = `| Päivä | Kohde | Tila | Huomio |
+|---|---|---|---|
+| 2026-10-03 | gateway | valmis | TLS-ketju uusittu |
+| 2026-10-06 | daemon | kesken | historian lohkoluku |
+| 2026-10-08 | web | valmis | kontrollitilat |
+| 2026-10-10 | provision | valmis | sysusers-malli |
+| 2026-10-11 | web | kesken | vuoron asettelu |`;
+
+const CONVO = [
+  { kind: 'user', time: '14:28', md: 'Tee skripti, joka parsii `status.md`:n taulukon ja tulostaa viime viikon rivit JSONina.' },
+  { kind: 'turn', time: '14:31', blocks: [
+    { t: 'think', md: '**Planning status table parsing with Python**' },
+    { t: 'tool', name: 'read', target: 'status.md', args: { path: 'status.md' }, result: STATUS_MD },
+    { t: 'think', md: '**Checking the date column format**' },
+    { t: 'tool', name: 'bash', target: 'python3 -c "import re,sys; …"', args: { command: 'python3 -c "import re; print(re.match(r\'\\d{4}-\\d{2}-\\d{2}\', \'2026-10-06\') is not None)"' }, result: 'True' },
+    { t: 'think', md: `Taulukossa on neljä saraketta ja päivämäärä on ISO-muodossa, joten \`datetime.date.fromisoformat\` riittää ilman lisäkirjastoja.
+
+Viime viikko kannattaa laskea tämän päivän perusteella seitsemän päivän ikkunana, mutta annan myös \`--since\`-lipun, jotta rajan voi antaa käsin.
+
+Tulostan rivit listana sanakirjoja, avaimet sarakeotsikoista pienellä kirjoitettuna. Tyhjät rivit ja erotinrivi ohitetaan.` },
+    { t: 'tool', name: 'write', target: 'scripts/status_rows.py', args: { path: 'scripts/status_rows.py', content: '#!/usr/bin/env python3\n"""Print status.md rows from the last week as JSON."""\nimport argparse, datetime, json, re, sys\n…' }, result: 'Wrote 41 lines to scripts/status_rows.py' },
+    { t: 'tool', name: 'bash', target: 'python3 scripts/status_rows.py --since 2026-10-05', args: { command: 'python3 scripts/status_rows.py --since 2026-10-05' }, result: `[
+  {"päivä": "2026-10-06", "kohde": "daemon", "tila": "kesken", "huomio": "historian lohkoluku"},
+  {"päivä": "2026-10-08", "kohde": "web", "tila": "valmis", "huomio": "kontrollitilat"},
+  {"päivä": "2026-10-10", "kohde": "provision", "tila": "valmis", "huomio": "sysusers-malli"},
+  {"päivä": "2026-10-11", "kohde": "web", "tila": "kesken", "huomio": "vuoron asettelu"}
+]` },
+    { t: 'reply', md: `Skripti on tiedostossa \`scripts/status_rows.py\`. Se lukee \`status.md\`:n taulukon, ohittaa otsikko- ja erotinrivit ja tulostaa viimeisen seitsemän päivän rivit JSON-listana.
+
+- Avaimet tulevat sarakeotsikoista pienellä kirjoitettuna.
+- \`--since YYYY-MM-DD\` korvaa seitsemän päivän oletusikkunan.
+- Virheellinen päivämäärä rivillä ohitetaan varoituksella stderriin.
+
+Ajo tältä viikolta antaa neljä riviä:
+
+\`\`\`
+python3 scripts/status_rows.py --since 2026-10-05
+\`\`\`` },
+  ] },
+  { kind: 'turn', time: '14:32', blocks: [
+    { t: 'think', md: '**Verifying the script on the full table**' },
+    { t: 'tool', name: 'bash', target: 'python3 scripts/status_rows.py --since 2026-10-01', args: { command: 'python3 scripts/status_rows.py --since 2026-10-01 | python3 -c "import json,sys; print(len(json.load(sys.stdin)))"' }, result: '5' },
+    { t: 'reply', md: 'Ajoin vielä ilman viikkorajausta: kaikki viisi riviä tulevat läpi, joten erotinrivin ohitus toimii.' },
+  ] },
+  { kind: 'user', time: '14:33', md: 'Hyvä. Lisää vielä `--table`-lippu, joka tulostaa saman taulukkona terminaaliin.' },
+  { kind: 'turn', time: '14:34', blocks: [
+    { t: 'think', md: '**Adding a table output mode**' },
+    { t: 'tool', name: 'edit', target: 'scripts/status_rows.py', args: { path: 'scripts/status_rows.py', oldText: 'print(json.dumps(rows, ensure_ascii=False, indent=2))', newText: 'if args.table:\n    print_table(rows)\nelse:\n    print(json.dumps(rows, ensure_ascii=False, indent=2))' }, result: 'Applied 1 edit' },
+    { t: 'tool', name: 'bash', target: 'python3 scripts/status_rows.py --table', args: { command: 'python3 scripts/status_rows.py --table' }, result: `päivä       kohde      tila    huomio
+2026-10-06  daemon     kesken  historian lohkoluku
+2026-10-08  web        valmis  kontrollitilat
+2026-10-10  provision  valmis  sysusers-malli
+2026-10-11  web        kesken  vuoron asettelu` },
+    { t: 'reply', md: 'Lisätty. `--table` tulostaa sarakkeet tasattuna; JSON pysyy oletuksena, jotta putkitus ei muutu.' },
+  ] },
+];
+
+// ---------- Tiny Markdown (bold, code, lists, fences, paragraphs) ----------
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function inline(s) {
+  return esc(s)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+}
+function md(src) {
+  const out = []; const lines = src.split('\n'); let i = 0;
+  while (i < lines.length) {
+    const l = lines[i];
+    if (l.startsWith('```')) { const buf = []; i++; while (i < lines.length && !lines[i].startsWith('```')) buf.push(lines[i++]); i++; out.push(`<pre><code>${esc(buf.join('\n'))}</code></pre>`); continue; }
+    if (/^- /.test(l)) { const items = []; while (i < lines.length && /^- /.test(lines[i])) items.push(`<li>${inline(lines[i++].slice(2))}</li>`); out.push(`<ul>${items.join('')}</ul>`); continue; }
+    if (!l.trim()) { i++; continue; }
+    const buf = []; while (i < lines.length && lines[i].trim() && !/^- |^```/.test(lines[i])) buf.push(lines[i++]);
+    out.push(`<p>${inline(buf.join(' '))}</p>`);
+  }
+  return out.join('');
+}
+const isShort = t => !t.includes('\n') && t.length <= 120;
+
+// ---------- Shared pieces ----------
+const ICON_COPY = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
+const ICON_CHECK = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.5 5 9l4.5-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const CHEV = '<svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 2.5 8 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const GLYPH_THOUGHT = '<svg class="glyph" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><circle cx="3" cy="12.5" r="1.1"/><circle cx="6" cy="9" r="1.5"/><circle cx="10.5" cy="5" r="2.6"/></svg>';
+
+let n = 0;
+const nid = () => `p${++n}`;
+const copyBtn = (label, text) => `<button class="icon-btn" type="button" aria-label="${esc(label)}" title="${esc(label)}" data-copy="${esc(text)}">${ICON_COPY}</button>`;
+const okMark = () => `<span class="ok">${ICON_CHECK}valmis</span>`;
+
+function userBubble(m, i) {
+  return `<article class="bubble user ah-in" style="--i:${i}"><div class="bubble-head"><span class="who">Sinä</span>${copyBtn('Kopioi viesti', m.md)}<time class="meta">${m.time}</time></div><div class="prose">${md(m.md)}</div></article>`;
+}
+function toolBody(b) {
+  if (b.name === 'bash') return `<div class="tool-body"><pre class="bash-cmd">${esc(b.args.command)}</pre><pre>${esc(b.result)}</pre></div>`;
+  const args = Object.entries(b.args).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
+  return `<div class="tool-body"><div><h4>Argumentit</h4><dl>${args}</dl></div><div><h4>Tulos</h4><pre>${esc(b.result)}</pre></div></div>`;
+}
+function toolRow(b, i) {
+  const id = nid();
+  return `<section class="tool ah-in" style="--i:${i}"><button class="disc" type="button" aria-expanded="false" aria-controls="${id}">${CHEV}<span class="names"><span class="name">${esc(b.name)}</span><span class="target">${esc(b.target)}</span></span>${okMark()}</button><div id="${id}" hidden>${toolBody(b)}</div></section>`;
+}
+function replyFoot(extra) { return `<div class="reply-foot"><span class="ok">${ICON_CHECK}Vastaus valmis</span>${extra || ''}</div>`; }
+
+// ---------- Lanka builder: one rail per thread (or per run of threads) ----------
+// opts.meta: 'top' | 'bottom' | 'thread'   where the author/status row lives
+// opts.fold: 'head' | 'button' | 'auto'     how the work is collapsed
+// opts.runs: 'separate' | 'merged'           consecutive threads: own head each, or one rail
+function lanka(cls, opts) {
+  let i = 0; const out = [];
+  const summary = (m) => { const th = m.blocks.filter(b => b.t === 'think').length, to = m.blocks.filter(b => b.t === 'tool').length; return `${th} ajatusta · ${to} työkalua`; };
+  const userB = (m) => {
+    if (opts.meta === 'bottom') return `<article class="bubble user ah-in" style="--i:${i++}"><div class="prose">${md(m.md)}</div><div class="bar foot"><span class="who">Sinä</span><time class="meta">${m.time}</time>${copyBtn('Kopioi viesti', m.md)}</div></article>`;
+    return userBubble(m, i++);
+  };
+  const replyB = (m, b) => {
+    const copy = copyBtn('Kopioi vastaus', b.md);
+    if (opts.meta === 'top') return `<article class="bubble reply"><div class="bar head"><span class="ok">${ICON_CHECK}Vastaus valmis</span><span class="model">${MODEL}</span>${copy}<time class="meta">${m.time}</time></div><div class="prose">${md(b.md)}</div></article>`;
+    if (opts.meta === 'thread') return `<article class="bubble reply bare"><span class="corner">${copy}</span><div class="prose">${md(b.md)}</div></article>`;
+    return `<article class="bubble reply"><div class="prose">${md(b.md)}</div><div class="bar foot"><span class="ok">${ICON_CHECK}Vastaus valmis</span><span class="model">${MODEL}</span><time class="meta">${m.time}</time>${copy}</div></article>`;
+  };
+  let k = 0;
+  while (k < CONVO.length) {
+    const m = CONVO[k];
+    if (m.kind === 'user') { out.push(userB(m)); k++; continue; }
+    // A run of consecutive threads.
+    const run = []; while (k < CONVO.length && CONVO[k].kind === 'turn') run.push(CONVO[k++]);
+    const rows = [];
+    const row = (node, cell, pos) => rows.push(`<div class="rail-cell ${pos || ''} ah-in" style="--i:${i}">${node}</div><div class="cell ah-in" style="--i:${i++}">${cell}</div>`);
+    const threads = opts.runs === 'merged' ? [run] : run.map(t => [t]);
+    threads.forEach((group, gi) => {
+      if (opts.runs !== 'merged' && gi > 0) rows.push(`<div class="cell" style="grid-column:1/-1;height:2px"></div>`);
+      const workId = nid();
+      const sum = summary(group[0]);
+      const folded = opts.fold === 'auto';
+      let head;
+      if (opts.fold === 'head') head = `<div class="head-cell"><button class="head-btn" type="button" aria-expanded="${!folded}" aria-controls="${workId}" data-sum="${esc(sum)}">${CHEV}<span class="who">Pi</span></button><span class="model">${MODEL}</span><span class="sum" hidden>${sum}</span></div>`;
+      else if (opts.fold === 'button') head = `<div class="head-cell"><span class="who">Pi</span><span class="sum" hidden>${sum}</span><button class="quiet-btn" type="button" aria-expanded="true" aria-controls="${workId}" data-open="Tiivistä" data-closed="Näytä työ">Tiivistä</button></div>`;
+      else head = `<div class="head-cell"><button class="head-btn" type="button" aria-expanded="false" aria-controls="${workId}">${CHEV}<span class="who">Pi</span></button><span class="model">${MODEL}</span><time class="meta">${group[group.length - 1].time}</time><span class="sum">${sum}</span></div>`;
+      row(`<span class="node head" aria-hidden="true"></span>`, head, 'first');
+      // Work and replies. In a merged run, all work of all threads is in one foldable group only
+      // when folding is per run; otherwise each thread's work folds separately but shares the rail.
+      group.forEach((t, ti) => {
+        const wid = ti === 0 ? workId : nid();
+        if (ti > 0) {
+          // A continuation thread on the same rail: a small head-less fold control.
+          const s = summary(t);
+          if (opts.fold === 'button') row(`<span class="node" aria-hidden="true"></span>`, `<div class="head-cell"><span class="sum" hidden>${s}</span><button class="quiet-btn" type="button" aria-expanded="true" aria-controls="${wid}" data-open="Tiivistä" data-closed="Näytä työ">Tiivistä</button></div>`);
+        }
+        rows.push(`<div class="work" id="${wid}"${folded ? ' hidden' : ''}>`);
+        for (const b of t.blocks) {
+          if (b.t === 'think') {
+            if (isShort(b.md)) row(`<span class="node" aria-hidden="true"></span>`, `<div class="think-row"><span class="lbl">Ajattelu</span><span class="prose">${md(b.md)}</span></div>`);
+            else { const id = nid(); row(`<span class="node" aria-hidden="true"></span>`, `<div><button class="quiet-btn think-btn" type="button" aria-expanded="false" aria-controls="${id}">${CHEV}Ajattelu</button><div id="${id}" class="think-quote" hidden style="margin-top:6px">${md(b.md)}</div></div>`); }
+          } else if (b.t === 'tool') row(`<span class="node tool done" aria-hidden="true"></span>`, toolRow(b, i).replace(' ah-in', ''));
+        }
+        rows.push(`</div>`);
+        const reply = t.blocks.find(b => b.t === 'reply');
+        const lastOfRun = ti === group.length - 1;
+        row(`<span class="node done" aria-hidden="true"></span>`, replyB(t, reply), lastOfRun ? 'last' : '');
+      });
+    });
+    out.push(`<div class="turn">${rows.join('')}</div>`);
+  }
+  return `<div class="vwrap ${cls}">${out.join('')}</div>`;
+}
+CONVO.push({ kind: 'user', time: '14:36', md: 'Aja testit ja korjaa, mitä löytyy.' });
+
+// ---------- The live turn, as Pi events in time (ms) ----------
+const LIVE = {
+  think1: `Testit ovat \`tests/test_status_rows.py\`:ssä. Ajan ne ensin sellaisenaan, jotta näen mikä kaatuu ennen kuin muutan mitään.
+
+Jos kaatuminen liittyy päivän laskentaan, syy on todennäköisesti \`date.today()\`, joka pitää vaihtaa parametriksi.`,
+  think2: '**Making today injectable for the default window**',
+  test1: { name: 'bash', target: 'python3 -m pytest tests/ -v', args: { command: 'python3 -m pytest tests/ -v' }, lines: (() => {
+    const names = ['parse_header', 'parse_row', 'skip_separator', 'skip_blank', 'lowercase_keys', 'iso_date', 'bad_date_warns', 'since_flag', 'since_inclusive', 'since_future', 'json_shape', 'json_unicode', 'table_align', 'table_header', 'table_empty', 'cli_help', 'cli_no_args', 'cli_bad_flag', 'file_missing', 'file_empty', 'file_no_table', 'multi_table', 'wide_cells', 'pipe_in_cell', 'trailing_spaces', 'crlf', 'bom', 'tabs', 'unicode_header', 'long_note', 'sort_order', 'dedupe', 'today_env', 'today_flag', 'since_default'];
+    const out = ['============================= test session starts =============================', 'platform linux -- Python 3.12.3, pytest-8.3.2', 'collected 35 items', ''];
+    names.forEach((n, i) => out.push(`tests/test_status_rows.py::test_${n} ${n === 'since_default' ? 'FAILED' : 'PASSED'} [${String(Math.round((i + 1) / names.length * 100)).padStart(3)}%]`));
+    out.push('', '=================================== FAILURES ===================================', '_____________________________ test_since_default ______________________________', '', '    def test_since_default(sample):', '        rows = status_rows.select(sample)', '>       assert len(rows) == 4', 'E       AssertionError: expected 4 rows, got 5', 'E       assert 5 == 4', '', 'tests/test_status_rows.py:118: AssertionError', '=========================== short test summary info ============================', 'FAILED tests/test_status_rows.py::test_since_default - AssertionError: expected 4 rows, got 5', '========================= 1 failed, 34 passed in 0.31s =========================');
+    return out; })() },
+  edit: { name: 'bash', target: 'f=$(mktemp -p /var/tmp patch-XXXX.py); cat > "$f" <<\'EOF\'', args: { command: `f=$(mktemp -p /var/tmp patch-XXXX.py); cat > "$f" <<'EOF'
+\"\"\"Make the default window's 'today' injectable.\"\"\"
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+src = path.read_text()
+
+OLD = "since = date.today() - timedelta(days=7)"
+NEW = "since = (args.today or date.today()) - timedelta(days=7)"
+if OLD not in src:
+    sys.exit("anchor not found")
+src = src.replace(OLD, NEW, 1)
+
+# add the flag next to --since
+src = src.replace(
+    'parser.add_argument("--since", type=date.fromisoformat)',
+    'parser.add_argument("--since", type=date.fromisoformat)\\n'
+    'parser.add_argument("--today", type=date.fromisoformat, help="override the current date (tests)")',
+    1,
+)
+path.write_text(src)
+print(f"patched {path}: 2 replacements")
+EOF
+python3 "$f" scripts/status_rows.py && rm -f "$f"` }, lines: ['patched scripts/status_rows.py: 2 replacements'] },
+  test2: { name: 'bash', target: 'python3 -m pytest tests/test_status_rows.py -q', args: { command: 'python3 -m pytest tests/test_status_rows.py -q' }, lines: ['....', '4 passed in 0.19s'] },
+  reply: `Testit menevät läpi. Yksi testi kaatui, koska oletusikkuna laskettiin koneen kellosta; nyt \`--today\` on parametri ja testi antaa sen kiinteänä.
+
+\`\`\`
+4 passed in 0.19s
+\`\`\``,
+};
+function script() {
+  const ev = []; let t = 0; const at = (d, fn) => { t += d; ev.push([t, fn]); };
+  const stream = (text, id, gap) => { const words = text.split(/(?<=\s)/); let acc = ''; for (const w of words) { acc += w; const s = acc; at(gap, (S) => S.set(id, { text: s })); } };
+  at(0, (S) => S.start());
+  at(350, (S) => S.add({ id: 'k1', t: 'think', text: '', live: true }));
+  stream(LIVE.think1, 'k1', 55);
+  at(300, (S) => S.set('k1', { live: false }));
+  at(350, (S) => S.add({ id: 't1', t: 'tool', ...LIVE.test1, state: 'forming', out: [], expanded: true }));
+  at(700, (S) => S.set('t1', { state: 'running' }));
+  LIVE.test1.lines.forEach((l, i) => at(i === 0 ? 400 : (i < 4 ? 220 : 90), (S) => S.push('t1', l)));
+  at(300, (S) => S.set('t1', { state: 'done' }));
+  at(500, (S) => S.add({ id: 'k2', t: 'think', text: '', live: true }));
+  stream(LIVE.think2, 'k2', 120);
+  at(250, (S) => S.set('k2', { live: false }));
+  at(400, (S) => S.add({ id: 'e1', t: 'tool', ...LIVE.edit, state: 'forming', out: [], expanded: true }));
+  at(900, (S) => S.set('e1', { state: 'running' }));
+  at(400, (S) => { S.push('e1', LIVE.edit.lines[0]); S.set('e1', { state: 'done' }); });
+  at(500, (S) => S.add({ id: 't2', t: 'tool', ...LIVE.test2, state: 'running', out: [], expanded: false }));
+  LIVE.test2.lines.forEach((l) => at(700, (S) => S.push('t2', l)));
+  at(300, (S) => S.set('t2', { state: 'done' }));
+  at(600, (S) => S.add({ id: 'r', t: 'reply', text: '', live: true }));
+  stream(LIVE.reply, 'r', 45);
+  at(500, (S) => S.set('r', { live: false }));
+  at(900, (S) => S.settle());
+  return ev;
+}
+
+// ---------- Engine: keyed rows in a thread, a movable now strip, and folding ----------
+let run = 0;
+function playLive(host, R) {
+  const token = ++run;
+  const state = { status: 'idle', blocks: [], t0: 0, dur: 0, open: true };
+  const rows = new Map();
+  const turn = document.createElement('div'); turn.className = 'turn live'; host.appendChild(turn);
+  let headRail, headCell;
+  if (R.head) { headRail = document.createElement('div'); headRail.className = 'rail-cell'; headCell = document.createElement('div'); headCell.className = 'cell'; turn.append(headRail, headCell); }
+  let stripRail, stripCell;
+  if (R.strip) { stripRail = document.createElement('div'); stripRail.className = 'rail-cell'; stripCell = document.createElement('div'); stripCell.className = 'cell'; turn.append(stripRail, stripCell); }
+  let floatEl = null;
+  const sum = () => `${state.blocks.filter(b => b.t === 'think').length} ajatusta · ${state.blocks.filter(b => b.t === 'tool').length} työkalua`;
+  const isWork = (b) => b.t !== 'reply';
+  const relayout = () => {
+    // Visibility by fold, then first/last on the visible rail cells.
+    for (const b of state.blocks) { const r = rows.get(b.id); const hide = !state.open && isWork(b); r.rail.hidden = hide; r.cell.hidden = hide; }
+    const cells = [...turn.querySelectorAll(':scope > .rail-cell:not([hidden])')];
+    cells.forEach((c, i) => { c.classList.toggle('first', i === 0); c.classList.toggle('last', state.status === 'settled' && i === cells.length - 1); c.classList.toggle('tail', state.status === 'working' && i === cells.length - 1); });
+  };
+  const renderChrome = () => {
+    if (R.head) { headRail.innerHTML = R.headNode(state); headCell.innerHTML = R.head(state, sum()); }
+    if (R.strip) { stripRail.innerHTML = `<span class="node strip-node" aria-hidden="true"></span>`; stripCell.innerHTML = R.strip(state, sum()); }
+    if (R.float) {
+      if (state.status === 'working') { if (!floatEl) { floatEl = document.createElement('div'); floatEl.className = 'float-bar'; floatEl.setAttribute('role', 'status'); document.body.appendChild(floatEl); } floatEl.innerHTML = R.float(state); }
+      else if (floatEl) { floatEl.remove(); floatEl = null; }
+    }
+    relayout();
+  };
+  const follow = () => { if (following) stage.scrollTop = stage.scrollHeight; };
+  const applyScroll = (cell) => { for (const v of cell.querySelectorAll('pre.viewport[data-scroll]')) v.scrollTop = v.dataset.scroll === 'start' ? 0 : v.scrollHeight; };
+  const patch = (id) => {
+    const b = state.blocks.find(x => x.id === id); const r = rows.get(id); const last = state.blocks[state.blocks.length - 1] === b;
+    r.rail.className = `rail-cell${r.fresh ? ' row-in' : ''}`;
+    r.rail.innerHTML = `<span class="node${b.t === 'tool' ? ' tool' : ''}${last && state.status === 'working' ? ' active' : ' done'}" aria-hidden="true"></span>`;
+    r.cell.innerHTML = R.block(b, state, last); r.cell.dataset.live = id;
+    applyScroll(r.cell); follow();
+  };
+  const S = {
+    start() { state.status = 'working'; state.t0 = performance.now(); turn.classList.add('working'); renderChrome(); },
+    add(b) {
+      state.blocks.push(b);
+      const rail = document.createElement('div'); const cell = document.createElement('div'); cell.className = 'cell';
+      rows.set(b.id, { rail, cell, fresh: true });
+      const beforeStrip = R.strip && (R.stripPos === 'end' || (R.stripPos === 'beforeReply' && isWork(b)));
+      if (beforeStrip) { turn.insertBefore(rail, stripRail); turn.insertBefore(cell, stripRail); } else turn.append(rail, cell);
+      for (const p of state.blocks) if (p !== b) { rows.get(p.id).fresh = false; patch(p.id); }
+      patch(b.id); renderChrome();
+    },
+    set(id, delta) { Object.assign(state.blocks.find(x => x.id === id), delta); patch(id); renderChrome(); },
+    push(id, line) { state.blocks.find(x => x.id === id).out.push(line); patch(id); },
+    settle() { state.status = 'settled'; state.dur = elapsed(state); state.open = !R.foldOnSettle; turn.classList.remove('working'); for (const b of state.blocks) { rows.get(b.id).fresh = false; patch(b.id); } renderChrome(); },
+  };
+  const slow = document.getElementById('slow').checked ? 2.2 : 1;
+  for (const [t, fn] of script()) setTimeout(() => { if (token === run) fn(S); }, t * slow);
+  const tick = () => { if (token !== run) { floatEl?.remove(); return; } if (state.status === 'working') renderChrome(); if (state.status !== 'settled') setTimeout(tick, 1000); };
+  setTimeout(tick, 1000);
+  turn.addEventListener('click', (e) => {
+    const fold = e.target.closest('[data-fold]');
+    if (fold) { state.open = !state.open; renderChrome(); e.stopPropagation(); return; }
+    const act = e.target.closest('[data-act]');
+    if (act) {
+      const id = act.closest('[data-live]').dataset.live; const b = state.blocks.find(x => x.id === id); const a = act.dataset.act;
+      const key = act.dataset.for === 'cmd' ? 'cmdView' : 'view';
+      if (a === 'edges' || a === 'start' || a === 'end') b[key] = a;
+      else if (a === 'all') b[key] = (b[key] ?? (key === 'view' ? outView(b) : 'edges')) === 'all' ? 'edges' : 'all';
+      else if (a === 'cmd-toggle') b.cmdOpen = !b.cmdOpen; else if (a === 'hd-toggle') b.hdOpen = !b.hdOpen;
+      else if (a === 'open') { openDialog(b, act.dataset.for === 'cmd' ? cmdLines(b) : b.out); e.stopPropagation(); return; }
+      patch(id); e.stopPropagation(); return;
+    }
+    const disc = e.target.closest('.disc[aria-controls]'); if (!disc) return;
+    const id = disc.closest('[data-live]').dataset.live; const b = state.blocks.find(x => x.id === id);
+    b.expanded = !b.expanded; patch(id); e.stopPropagation();
+  }, true);
+}
+
+// ---------- Shared live pieces ----------
+const elapsed = (state) => { const s = Math.max(0, Math.round((performance.now() - state.t0) / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+const activity = (state) => { const b = state.blocks[state.blocks.length - 1]; if (!b) return 'Aloittaa'; if (b.t === 'think') return 'Ajattelee'; if (b.t === 'tool') return b.state === 'forming' ? `Muodostaa ${b.name}-kutsua` : b.state === 'running' ? `Ajaa ${b.name}` : 'Jatkaa'; return b.live ? 'Vastaa' : 'Viimeistelee'; };
+const toolLabels = { forming: 'muodostaa kutsua…', running: 'ajossa', done: 'valmis' };
+function liveToolRow(b) {
+  const id = `live-${b.id}`;
+  const status = b.state === 'done' ? okMark() : b.state === 'running' ? `<span class="running">ajossa</span>` : `<span class="muted">${toolLabels.forming}</span>`;
+  const btn = b.state === 'forming'
+    ? `<div class="disc" role="status"><span class="chev"></span><span class="names"><span class="name">${esc(b.name)}</span></span>${status}</div>`
+    : `<button class="disc" type="button" aria-expanded="${b.expanded}" aria-controls="${id}">${CHEV}<span class="names"><span class="name">${esc(b.name)}</span><span class="target">${esc(b.target)}</span></span>${status}</button>`;
+  let body = '';
+  if (b.expanded && b.state !== 'forming') {
+    const out = b.out.join('\n');
+    body = b.name === 'bash'
+      ? `<div class="tool-body">${currentR.cmd(b)}${box(b.out, outView(b), 'out', b, b.state === 'running')}</div>`
+      : toolBody({ ...b, result: out || '…' });
+  }
+  return `<section class="tool">${btn}<div id="${id}"${b.expanded ? '' : ' hidden'}>${body}</div></section>`;
+}
+function doneThink(b) {
+  if (isShort(b.text)) return `<div class="think-row"><span class="lbl">Ajattelu</span><span class="prose">${md(b.text)}</span></div>`;
+  const id = `live-${b.id}`;
+  return `<div><button class="quiet-btn think-btn" type="button" aria-expanded="${!!b.expanded}" aria-controls="${id}">${CHEV}Ajattelu</button><div id="${id}" class="think-quote"${b.expanded ? '' : ' hidden'} style="margin-top:6px">${md(b.text)}</div></div>`;
+}
+function liveThink(b) { const lines = b.text.split('\n').filter(Boolean); return `<div class="think-tick"><span class="lbl">Ajattelee</span><span class="line">${inline(lines[lines.length - 1] || '…')}</span></div>`; }
+function replyBubble(b, state, head) {
+  const body = md(b.text); const caret = b.live && !body.endsWith('</pre>') ? '<span class="caret"></span>' : '';
+  return `<article class="bubble reply"><div class="bar head">${head}</div><div class="prose">${body}${caret}</div></article>`;
+}
+const replyHeadDone = () => `<span class="ok">${ICON_CHECK}Vastaus valmis</span><span class="model">${MODEL}</span>${copyBtn('Kopioi vastaus', LIVE.reply)}<time class="meta">14:37</time>`;
+const replyHeadLive = () => `<span class="meta" style="font-weight:500">Vastaa</span><span class="model">${MODEL}</span>`;
+const block = (b, s) => b.t === 'think' ? (b.live ? liveThink(b) : doneThink(b)) : b.t === 'tool' ? liveToolRow(b) : replyBubble(b, s, b.live ? replyHeadLive() : replyHeadDone());
+const workingStrip = (s, withAuthor) => `<div class="strip working">${withAuthor ? `<span class="who">Pi</span><span class="model">${MODEL}</span>` : ''}<span class="act"><span class="live-dot"></span>${activity(s)}</span><span class="clock">${elapsed(s)}</span></div>`;
+const settledStrip = (s, sum, withAuthor) => `<button class="strip-btn" type="button" data-fold aria-expanded="${s.open}">${CHEV}${withAuthor ? `<span class="who">Pi</span><span class="model">${MODEL}</span>` : ''}<span class="sum">${sum}</span><span class="dur">${s.dur}</span></button>`;
+
+// ---------- Output box pieces ----------
+const ICON_TOP = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14M12 20V9m-5 5 5-5 5 5"/></svg>';
+const ICON_BOTTOM = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19h14M12 4v11m-5-5 5 5 5-5"/></svg>';
+const ICON_EXPAND = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 15v5h-5M4 4l6 6M20 20l-6-6"/></svg>';
+const ICON_SHRINK = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4v6H4M14 20v-6h6M4 20l6-6M20 4l-6 6"/></svg>';
+const ICON_OPEN = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 5h6v6M19 5l-9 9"/><path d="M19 14v5H5V5h5"/></svg>';
+const BIG = 40; // lines: beyond this the output is also offered in its own window
+const liveCaret = (b) => b.state === 'running' ? '<span class="caret"></span>' : '';
+const lineText = (lines) => esc(lines.join('\n'));
+const rivit = (n) => `${n} riviä`;
+function outMeta(b, parts) { return `<div class="out-meta">${parts.filter(Boolean).join('')}</div>`; }
+const openBtn = (b) => b.out.length > BIG ? `<button class="quiet-btn" type="button" data-act="open">${ICON_OPEN}Avaa omassa ikkunassa</button>` : '';
+function openDialog(b, lines = b.out) {
+  const dlg = document.getElementById('outdlg');
+  dlg.innerHTML = `<div class="dlg-head"><span class="name">${esc(b.name)}</span><span class="target">${esc(b.target)}</span>${copyBtn('Kopioi', lines.join('\n'))}<button class="quiet-btn" type="button" data-close>Sulje</button></div><div class="dlg-body"><pre>${lines.map((l, i) => `<code><span class="lineno">${i + 1}</span>${/FAILED|Error/.test(l) ? `<span class="fail">${esc(l)}</span>` : esc(l) || ' '}</code>`).join('')}</pre></div>`;
+  dlg.showModal();
+}
+document.getElementById('outdlg').addEventListener('click', (e) => { const d = e.currentTarget; if (e.target.closest('[data-close]') || e.target === d) d.close(); });
+
+const ICON_EDGES = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 19h16"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></svg>';
+// One box for any run of lines: edges (head + tail), start, end, all; a side rail of jump buttons.
+function box(lines, view, kind, b, live, cls) {
+  const n = lines.length; const long = n > 10; const pre = `viewport${cls ? ' ' + cls : ''}`;
+  const act = (a, label, icon, pressed) => `<button class="icon-btn" type="button" data-act="${a}" data-for="${kind}" aria-label="${label}" title="${label}" aria-pressed="${pressed}">${icon}</button>`;
+  let body;
+  if (!long || view === 'all') body = `<pre class="${pre} all${live ? ' stream' : ''}">${lineText(lines)}${live ? '<span class="caret"></span>' : ''}</pre>`;
+  else if (view === 'edges') body = `<div><pre class="${pre} part head">${lineText(lines.slice(0, 3))}</pre><button class="gap" type="button" data-act="all" data-for="${kind}">${n - 10} riviä välistä · Näytä kaikki</button><pre class="${pre} part tail${live ? ' stream' : ''}">${lineText(lines.slice(-7))}${live ? '<span class="caret"></span>' : ''}</pre></div>`;
+  else body = `<pre class="${pre}${live ? ' stream' : ''}" data-scroll="${view}">${lineText(lines)}${live ? '<span class="caret"></span>' : ''}</pre>`;
+  const rail = long ? `<div class="out-rail">${act('edges', 'Alku ja loppu', ICON_EDGES, view === 'edges')}${act('start', 'Alkuun', ICON_TOP, view === 'start')}${act('end', 'Loppuun', ICON_BOTTOM, view === 'end')}${act('all', view === 'all' ? 'Supista' : 'Näytä kaikki', view === 'all' ? ICON_SHRINK : ICON_EXPAND, view === 'all')}${n > BIG ? act('open', 'Avaa omassa ikkunassa', ICON_OPEN, false) : ''}</div>` : '';
+  return `<div class="out"><div class="out-win">${body}${rail}</div>${long ? outMeta(b, [`<span>${rivit(n)}</span>`]) : ''}</div>`;
+}
+const outView = (b) => b.view ?? (b.state === 'running' ? 'end' : 'edges');
+const cmdLines = (b) => b.args.command.split('\n');
+const plainCmd = (b) => `<pre class="bash-cmd">${esc(b.args.command)}</pre>`;
+function heredoc(lines) {
+  const i = lines.findIndex(l => /<<-?\s*'?"?\w+'?"?\s*$/.test(l)); if (i < 0) return null;
+  const marker = lines[i].match(/<<-?\s*'?"?(\w+)/)[1]; const j = lines.findIndex((l, k) => k > i && l.trim() === marker); if (j < 0) return null;
+  return { head: lines.slice(0, i + 1), body: lines.slice(i + 1, j), marker, tail: lines.slice(j + 1) };
+}
+
+// ---------- V1 · Rivi: first line, the rest opens in place ----------
+const CMD1 = (b) => {
+  const lines = cmdLines(b); if (lines.length === 1) return plainCmd(b);
+  const open = !!b.cmdOpen;
+  return `<div><div class="cmd-first${open ? ' open' : ''}">${esc(lines[0])}</div>${open ? `<pre class="cmd-rest">${lineText(lines.slice(1))}</pre>` : ''}<div class="cmd-foot"><span>${rivit(lines.length)}</span><button class="quiet-btn" type="button" data-act="cmd-toggle" aria-expanded="${open}">${open ? 'Vain ensimmäinen rivi' : 'Näytä koko komento'}</button></div></div>`;
+};
+// ---------- V2 · Lohko: the heredoc body is a foldable block inside the command ----------
+const CMD2 = (b) => {
+  const lines = cmdLines(b); const hd = heredoc(lines);
+  if (!hd) return lines.length > 10 ? box(lines, b.cmdView ?? 'edges', 'cmd', b, false, 'cmd') : plainCmd(b);
+  const open = !!b.hdOpen;
+  return `<div class="hd"><pre class="bash-cmd head">${lineText(hd.head)}</pre><button class="hd-btn" type="button" data-act="hd-toggle" aria-expanded="${open}">${CHEV}<span class="marker">${esc(hd.marker)}</span><span>${open ? 'Piilota sisältö' : 'Näytä sisältö'}</span><span class="count">${rivit(hd.body.length)}</span></button>${open ? `<pre class="bash-cmd body">${lineText(hd.body)}</pre>` : ''}<pre class="bash-cmd tail" style="--p:0">${lineText([hd.marker, ...hd.tail])}</pre></div>`;
+};
+// ---------- V3 · Sama laatikko: the command uses the same box as the output ----------
+const CMD3 = (b) => { const lines = cmdLines(b); return lines.length > 10 ? box(lines, b.cmdView ?? 'edges', 'cmd', b, false, 'cmd') : plainCmd(b); };
+
+let currentR = null;
+const threadR = (CMD) => ({
+  headNode: () => `<span class="node head" aria-hidden="true"></span>`,
+  head: () => `<div class="head-cell"><span class="who" style="padding-left:1px">Pi</span><span class="model">${MODEL}</span></div>`,
+  strip: (s, sum) => s.status === 'working' ? workingStrip(s, false) : settledStrip(s, sum, false), stripPos: 'end', foldOnSettle: false, block, cmd: CMD,
+});
+const R1 = threadR(CMD1), R2 = threadR(CMD2), R3 = threadR(CMD3);
+
+function withLive(cls, R) {
+  currentR = R;
+  const html = lanka(cls, { meta: 'top', fold: 'head', runs: 'separate' });
+  requestAnimationFrame(() => { const host = stage.querySelector('.vwrap'); if (host) { following = true; stage.scrollTop = stage.scrollHeight; lastTop = stage.scrollTop; playLive(host, R); } });
+  return html;
+}
+const v1 = () => withLive('v1', R1);
+const v2 = () => withLive('v2', R2);
+const v3 = () => withLive('v3', R3);
+
+const variants = [v1, v2, v3];
+
+// ---------- Interactions inside the stage (event delegation) ----------
+stage.addEventListener('click', async (e) => {
+  const copy = e.target.closest('[data-copy]');
+  if (copy) {
+    try { await navigator.clipboard.writeText(copy.dataset.copy); } catch {}
+    const label = copy.getAttribute('aria-label');
+    copy.setAttribute('data-done', ''); copy.setAttribute('aria-label', 'Kopioitu'); copy.title = 'Kopioitu';
+    copy.innerHTML = ICON_CHECK.replace('<svg', '<svg style="width:14px;height:14px"');
+    setTimeout(() => { copy.removeAttribute('data-done'); copy.setAttribute('aria-label', label); copy.title = label; copy.innerHTML = ICON_COPY; }, 1200);
+    return;
+  }
+  const disc = e.target.closest('[aria-expanded][aria-controls]');
+  if (disc) {
+    const open = disc.getAttribute('aria-expanded') === 'true';
+    const panel = document.getElementById(disc.getAttribute('aria-controls'));
+    if (disc.classList.contains('chip')) {
+      // One open panel per chip row.
+      const row = disc.closest('.chips');
+      row.querySelectorAll('.chip[aria-expanded="true"]').forEach(c => { c.setAttribute('aria-expanded', 'false'); document.getElementById(c.getAttribute('aria-controls')).hidden = true; });
+    }
+    disc.setAttribute('aria-expanded', String(!open));
+    panel.hidden = open;
+    const sum = disc.parentElement.querySelector('.sum');
+    if (sum && disc.classList.contains('head-btn') && !disc.closest('.v3')) sum.hidden = !open;
+    if (sum && disc.classList.contains('quiet-btn') && disc.dataset.open) { sum.hidden = !open; disc.textContent = open ? disc.dataset.closed : disc.dataset.open; }
+    return;
+  }
+  const more = e.target.closest('.thought .more');
+  if (more) {
+    const t = more.closest('.thought'); const open = t.classList.toggle('open');
+    more.setAttribute('aria-expanded', String(open)); more.textContent = open ? 'Supista' : 'Näytä lisää';
+  }
+});
+
+// ---------- Page chrome: theme and phone frame ----------
+const themeSel = document.getElementById('theme');
+const mq = matchMedia('(prefers-color-scheme: dark)');
+function applyTheme() {
+  const v = themeSel.value;
+  document.documentElement.dataset.theme = v === 'system' ? (mq.matches ? 'dark' : 'light') : v;
+}
+themeSel.addEventListener('change', applyTheme); mq.addEventListener('change', applyTheme); applyTheme();
+document.getElementById('phone').addEventListener('change', (e) => document.getElementById('wrap').classList.toggle('phone', e.target.checked));
+
+// ---------- Mount the chosen combination; R replays the working turn ----------
+function mount() { stage.innerHTML = ""; run++; requestAnimationFrame(() => { stage.innerHTML = v1(); }); }
+document.addEventListener("keydown", (e) => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === "r" || e.key === "R") mount();
+});
+mount();
+</script>
+</body>
+</html>

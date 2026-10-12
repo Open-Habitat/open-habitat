@@ -9,7 +9,7 @@ versions. For navigation, the return view, workspace page, and settings, the
 current reference is `Navigaatio ja asetukset.dc.html`. Shared control interaction
 states and the agent-state presentation are in `Kontrollitilat ja agentin
 tila.dc.html`; states that require facts the host does not yet provide are
-conditional examples, not current production behavior. `Pi-keskustelun lohkot.dc.html` is the current conversation-content reference;
+conditional examples, not current production behavior. `Agentin vuoro.proto.html` is the agent-turn reference chosen from the `/prototype` rounds of 2026-10-12: it plays a working turn (R replays) and overrides the older draft's bubble-free reply and collapsed thinking. `Pi-keskustelun lohkot.dc.html` remains the conversation-content reference for the other block families;
 its resolved-question history and other fact-dependent examples are conditional
 until native evidence exists. Older roundups (`Selainpolku`, `Puhelin`, `Tummat
 näkymät`) remain context for other views, but their overlapping navigation,
