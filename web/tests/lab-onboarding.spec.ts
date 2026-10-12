@@ -127,12 +127,12 @@ test("@lab cloned GitHub checkout hides publication; local Git checkout keeps it
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
   await page.getByRole("button", { name: "Näytä repot" }).click();
-  await page.locator("main select").selectOption("fixture/first");
+  await page.locator("main select").selectOption("fixture/last");
   await page.getByRole("button", { name: "Tuo työtilaksi" }).click();
   await expect(page.getByText("Repo tuotu työtilaksi.")).toBeVisible();
   const workspaces = (await (await page.request.get("/api/v1/snapshot")).json())
     .workspaces;
-  const cloned = workspaces.find((w: { name: string }) => w.name === "first");
+  const cloned = workspaces.find((w: { name: string }) => w.name === "last");
   const local = workspaces.find(
     (w: { name: string }) => w.name === "tilastoharjoitus",
   );
@@ -142,7 +142,7 @@ test("@lab cloned GitHub checkout hides publication; local Git checkout keeps it
     await page.setViewportSize({ width, height: 844 });
     await page.goto(`/workspaces/${cloned.workspace_id}`);
     await expect(
-      page.getByRole("heading", { name: "first", level: 1 }),
+      page.getByRole("heading", { name: "last", level: 1 }),
     ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Julkaise GitHubiin" }),
