@@ -1,0 +1,13 @@
+/* ===== V2 · Lohko: the heredoc body folds as a block inside the command ===== */
+.v2 .hd { display: flex; flex-direction: column; }
+.v2 .hd pre { margin: 0; }
+.v2 .hd pre.head { border-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.v2 .hd pre.tail { border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+.v2 .hd .hd-btn { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 30px; padding: 0 12px; border: 1px solid var(--ah-line-soft); border-inline-width: 1px; border-block: 1px dashed var(--ah-line-strong); background: var(--ah-surface-2); color: var(--ah-ink-2); font: 500 12px var(--ah-font); text-align: left; cursor: pointer; }
+.v2 .hd .hd-btn:hover { background: var(--ah-surface-hover); }
+.v2 .hd .hd-btn:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: -2px; }
+.v2 .hd .hd-btn .marker { font: 500 12px var(--ah-mono); color: var(--ah-muted); }
+.v2 .hd .hd-btn .count { margin-left: auto; color: var(--ah-muted); font-weight: 400; }
+.v2 .hd pre.body { border-radius: 0; border-top: 0; border-bottom: 0; background: var(--ah-surface); color: var(--ah-ink-2); font-weight: 400; padding-left: 24px; }
+
+/* ===== V3 · Sama laatikko: the command gets the same box as the output ===== */

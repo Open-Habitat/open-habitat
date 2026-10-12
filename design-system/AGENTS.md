@@ -10,7 +10,8 @@ ja selainsovelluksen tila- ja turvarajat `web/AGENTS.md`:ssä.
 ## Mistä tieto löytyy
 
 [design.md](design.md) kuvaa nykyisen designin ja [drafts/](drafts/) näyttää
-sen näkymät. [components.md](components.md) johtaa tuotantokomponentteihin ja
+sen näkymät; [prototypes/](prototypes/) on `/prototype`-kierrosten kirjasto,
+josta keskustelunäkymän vedos rakennetaan. [components.md](components.md) johtaa tuotantokomponentteihin ja
 niiden Storybook-esimerkkeihin. Propsit määritellään komponenttien lähdekoodissa,
 ja `contracts/v1/` kertoo hostin tarjoaman tiedon ja komennot.
 

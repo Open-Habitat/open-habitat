@@ -1,0 +1,33 @@
+/* Sivun kehys: ei kilpailija, vaan ympäristö, jossa suuntaa katsotaan. */
+/* ===== Page chrome (context, not a contestant) ===== */
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--ah-bg); color: var(--ah-ink); font: 400 var(--ah-size-body)/var(--ah-lh-body) var(--ah-font); -webkit-font-smoothing: antialiased; }
+.page-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding: 10px 16px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); font-size: var(--ah-size-ui); }
+.page-bar h1 { margin: 0; font-size: 14px; font-weight: 600; }
+.page-bar label { display: inline-flex; align-items: center; gap: 6px; color: var(--ah-ink-2); }
+.page-bar select, .page-bar input { font: inherit; }
+.page-bar .hint { margin-left: auto; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.page-bar .hint kbd { font: 500 11px var(--ah-mono); padding: 1px 5px; border: 1px solid var(--ah-line-strong); border-radius: 4px; background: var(--ah-surface-2); }
+.frame-wrap { display: flex; justify-content: center; padding: 16px 16px 80px; }
+.frame { width: 100%; max-width: 1080px; height: calc(100vh - 150px); min-height: 520px; background: var(--ah-bg); border: 1px solid var(--ah-line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; container-type: inline-size; }
+.frame-wrap.phone .frame { width: 390px; max-width: 100%; height: 760px; min-height: 0; }
+.topbar { display: flex; align-items: center; gap: 10px; padding: var(--ah-topbar-pad-block) var(--ah-topbar-pad-inline); background: var(--ah-surface); border-bottom: 1px solid var(--ah-line); }
+.topbar strong { font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar code { font: 400 12px var(--ah-mono); color: var(--ah-muted); }
+.topbar .state { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font: 600 12px var(--ah-font); color: var(--ah-ok); }
+.topbar .state svg { width: 12px; height: 12px; }
+.stream { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; align-items: center; gap: var(--ah-s6); padding: var(--ah-column-pad-block) var(--ah-column-pad-inline) 8px; }
+.stream > * { width: min(100%, var(--ah-conversation-width)); min-width: 0; }
+.vwrap { display: flex; flex-direction: column; gap: var(--ah-s6); }
+.composer { flex: none; border-top: 1px solid var(--ah-line-soft); background: var(--ah-bg); display: flex; justify-content: center; padding: var(--ah-composer-pad-block) var(--ah-column-pad-inline) 16px; }
+.composer div { width: min(100%, var(--ah-conversation-width)); display: flex; gap: 8px; align-items: flex-end; }
+.composer textarea { flex: 1; min-height: 44px; resize: vertical; padding: 10px 12px; font: inherit; color: var(--ah-ink); background: var(--ah-surface); border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-lg); }
+.composer button { min-height: 36px; padding: 0 14px; border: 1px solid var(--ah-accent); border-radius: var(--ah-r-md); background: var(--ah-accent); color: var(--ah-on-accent); font: 600 12.5px var(--ah-font); cursor: pointer; }
+@container (max-width: 800px) {
+  .topbar { padding: 6px 14px; }
+  .stream { padding: 12px 14px 6px; gap: var(--ah-s5); }
+  .vwrap { gap: var(--ah-s5); }
+  .composer { padding: 8px 14px 12px; }
+}
+
