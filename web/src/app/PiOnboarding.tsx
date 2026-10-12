@@ -279,7 +279,9 @@ export function PiOnboarding({
     hadCode.current = false;
     attemptInFlight.current = method === "POST";
     preparingCode.current = false;
-    setView({ phase: "interrupted" }); // Hide instructions before a write or cancel.
+    // Starting a helper is in flight, not a failure. Cancellation hides the
+    // old code until the daemon confirms what happened.
+    setView({ phase: method === "POST" ? "waiting" : "cancelling" });
     void check(method); // Supersedes any pending read; one click means one write.
   };
   const logout = async () => {
@@ -288,7 +290,7 @@ export function PiOnboarding({
     active.current?.abort();
     reading.current = false;
     ++generation.current;
-    setView({ phase: "interrupted" });
+    setView({ phase: "cancelling" });
     try {
       if (bound.current) await piAttempt("DELETE", bound.current);
     } catch {
@@ -303,6 +305,7 @@ export function PiOnboarding({
         checking={checking}
         onBack={onBack}
         onCancel={
+          !busy &&
           bound.current &&
           (view.phase === "ready" ||
             view.phase === "pending" ||

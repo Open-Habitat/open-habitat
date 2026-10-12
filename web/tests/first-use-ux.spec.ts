@@ -66,6 +66,78 @@ test("@first-use abort is a danger action on both onboarding steps; first choose
   }
 });
 
+test("@first-use code preparation never flashes a failure, while a rejected start stays visible", async ({
+  page,
+}) => {
+  try {
+    await picker(page);
+    await page.getByRole("button", { name: /jatka/i }).click();
+    const start = page.getByRole("button", { name: "Aloita kirjautuminen" });
+    await expect(start).toBeVisible();
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const phases: string[] = [];
+    await page.evaluate(() => {
+      (window as Window & { observedPhases?: string[] }).observedPhases = [];
+      new MutationObserver(() => {
+        const text = document.body.innerText;
+        (window as Window & { observedPhases?: string[] }).observedPhases?.push(
+          text,
+        );
+      }).observe(document.body, {
+        subtree: true,
+        childList: true,
+        characterData: true,
+      });
+    });
+    await page.route("**/api/v1/onboarding/pi/attempt", async (route) => {
+      if (route.request().method() !== "POST") return route.continue();
+      const response = await route.fetch();
+      await held;
+      await route.fulfill({ response });
+    });
+    await start.click();
+    await expect(page.getByText("Valmistellaan kirjautumista")).toBeVisible();
+    await expect(page.getByText("Tilaa ei voitu vahvistaa")).toHaveCount(0);
+    release();
+    await expect(page.getByText("ABCD-1234")).toBeVisible({ timeout: 8000 });
+    await expect(
+      page.getByText(/Sivu päivittyy automaattisesti/),
+    ).toBeVisible();
+    phases.push(
+      ...(await page.evaluate(
+        () =>
+          (window as Window & { observedPhases?: string[] }).observedPhases ??
+          [],
+      )),
+    );
+    expect(
+      phases.some((text) => text.includes("Tilaa ei voitu vahvistaa")),
+    ).toBe(false);
+    await page.unrouteAll({ behavior: "ignoreErrors" });
+    // Recreate a fresh synthetic daemon attempt for an independently failed start.
+    await page.request.get("/fixture/scenario?value=pi-onboarding");
+    await page.reload();
+    await page.getByRole("button", { name: /jatka/i }).click();
+    await expect(
+      page.getByRole("button", { name: "Aloita kirjautuminen" }),
+    ).toBeVisible();
+    await page.route("**/api/v1/onboarding/pi/attempt", async (route) => {
+      if (route.request().method() === "POST")
+        await route.fulfill({ status: 500, body: "" });
+      else await route.continue();
+    });
+    await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
+    await expect(page.getByText("Tilaa ei voitu vahvistaa")).toBeVisible();
+  } finally {
+    await page.unrouteAll({ behavior: "ignoreErrors" });
+    await page.request.get("/fixture/pi-state?value=missing");
+    await page.request.get("/fixture/scenario?value=ready");
+  }
+});
+
 test("@first-use a slow status read does not delay the device-code start, and completion is noticed promptly", async ({
   page,
 }) => {

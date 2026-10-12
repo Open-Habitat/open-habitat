@@ -149,7 +149,7 @@ describe("Pi device sign-in presentation", () => {
     view.getByRole("button", { name: "Peruuta kirjautumisyritys" }).focus();
     await user.keyboard("{Enter}");
     expect(cancel).toHaveBeenCalledOnce();
-    expect(view.getByText("Odotetaan vahvistusta")).toBeTruthy();
+    expect(view.getByText("Odotetaan vahvistusta OpenAI:lta")).toBeTruthy();
     for (const phase of ["expired", "failed"] as const) {
       view.rerender(
         <PiDeviceSignIn

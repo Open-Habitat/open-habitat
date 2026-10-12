@@ -18,7 +18,15 @@
 }
 .steps {
   display: grid;
-  gap: var(--ah-s4);
+  gap: var(--ah-s5);
+  padding: var(--ah-s4);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface-2);
+}
+.hint {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-ui);
 }
 .steps a {
   color: var(--ah-accent-ink);

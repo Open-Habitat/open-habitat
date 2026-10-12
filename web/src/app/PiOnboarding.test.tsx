@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { PiOnboarding } from "./PiOnboarding";
 import { piAttempt, piStatus, sessionCSRF } from "./pi";
@@ -82,6 +88,77 @@ it("polls an active code every 2 seconds without session reads, stops at 401 or 
   expect(
     vi.mocked(piAttempt).mock.calls.filter(([method]) => method === "GET"),
   ).toHaveLength(readsAtStart + 2);
+});
+
+it("shows preparation throughout a slow start, then the code; a rejected start still shows a failure", async () => {
+  vi.mocked(sessionCSRF).mockResolvedValue(csrf);
+  vi.mocked(piStatus).mockResolvedValue("missing");
+  let resolveStart!: (value: typeof code) => void;
+  vi.mocked(piAttempt)
+    .mockResolvedValueOnce("absent")
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveStart = resolve;
+        }),
+    );
+  await act(async () => {
+    render(
+      <PiOnboarding onLogin={vi.fn()} onUsable={vi.fn()} onLogout={vi.fn()} />,
+    );
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Aloita kirjautuminen" }));
+  expect(screen.getByText("Valmistellaan kirjautumista")).toBeTruthy();
+  expect(screen.queryByText("Tilaa ei voitu vahvistaa")).toBeNull();
+  await waitFor(() => expect(resolveStart).toBeTypeOf("function"));
+  await act(async () => {
+    resolveStart(code);
+  });
+  expect(screen.getByText("TEST-1234")).toBeTruthy();
+  expect(screen.getByText(/Sivu päivittyy automaattisesti/)).toBeTruthy();
+
+  vi.mocked(piAttempt).mockRejectedValueOnce(new Error("start failed"));
+  await act(async () => {
+    fireEvent.click(
+      screen.getByRole("button", { name: "Peruuta kirjautumisyritys" }),
+    );
+  });
+  expect(screen.getByText("Tilaa ei voitu vahvistaa")).toBeTruthy();
+});
+
+it("keeps cancellation neutral until its outcome is known", async () => {
+  vi.mocked(sessionCSRF).mockResolvedValue(csrf);
+  vi.mocked(piStatus).mockResolvedValue("missing");
+  let rejectCancel!: (error: Error) => void;
+  vi.mocked(piAttempt)
+    .mockResolvedValueOnce("absent")
+    .mockResolvedValueOnce(code)
+    .mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectCancel = reject;
+        }),
+    );
+  await act(async () => {
+    render(
+      <PiOnboarding onLogin={vi.fn()} onUsable={vi.fn()} onLogout={vi.fn()} />,
+    );
+  });
+  await act(async () => {
+    fireEvent.click(
+      screen.getByRole("button", { name: "Aloita kirjautuminen" }),
+    );
+  });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Peruuta kirjautumisyritys" }),
+  );
+  expect(screen.getByText("Peruutetaan kirjautumisyritystä")).toBeTruthy();
+  expect(screen.queryByText("Tilaa ei voitu vahvistaa")).toBeNull();
+  await waitFor(() => expect(rejectCancel).toBeTypeOf("function"));
+  await act(async () => {
+    rejectCancel(new Error("cancel failed"));
+  });
+  expect(screen.getByText("Tilaa ei voitu vahvistaa")).toBeTruthy();
 });
 
 it("stops an active poll when its view closes", async () => {

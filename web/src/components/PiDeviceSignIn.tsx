@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ExternalLink } from "./ControlElements";
+import { ExternalLink, IconButton } from "./ControlElements";
+import { Icon } from "./Icon";
 import { OnboardingFrame } from "./OnboardingFrame";
 import styles from "./PiDeviceSignIn.module.css";
 import { Button } from "./Primitives";
@@ -8,7 +9,7 @@ import { InlineNotice, StatusMark } from "./Status";
 /** Display facts only. The caller owns the attempt, session binding, polling and native status. */
 export type PiDeviceSignInView =
   | { phase: "ready" | "pending"; verificationUri: string; userCode: string }
-  | { phase: "waiting" | "start" }
+  | { phase: "waiting" | "cancelling" | "start" }
   | {
       phase: "connected" | "expired" | "interrupted" | "failed" | "unavailable";
     };
@@ -33,6 +34,11 @@ const outcomes = {
     label: "Valmistellaan kirjautumista",
     tone: "info",
     detail: "Valmistellaan vahvistuskoodia. Odota hetki.",
+  },
+  cancelling: {
+    label: "Peruutetaan kirjautumisyritystä",
+    tone: "info",
+    detail: "Odota hetki.",
   },
   start: {
     label: "ChatGPT-kirjautuminen tarvitaan",
@@ -110,22 +116,8 @@ export function PiDeviceSignIn({
             Kirjaudu OpenAI-tiliisi
           </h1>
         </header>
-        <p>
-          Agentit käyttävät OpenAI-tiliäsi. Kirjautuminen tehdään OpenAI:n
-          omalla sivulla koodilla — salasanaa ei syötetä tänne.
-        </p>
         <div role="status" aria-live="polite" aria-atomic="true">
-          {active ? (
-            <StatusMark
-              label={
-                view.phase === "pending"
-                  ? "Odotetaan vahvistusta"
-                  : "Odotetaan kirjautumista"
-              }
-              tone="info"
-              animated={view.phase === "pending" ? "running" : false}
-            />
-          ) : outcome &&
+          {active ? null : outcome &&
             view.phase !== "interrupted" &&
             view.phase !== "unavailable" ? (
             <StatusMark label={outcome.label} tone={outcome.tone} />
@@ -146,13 +138,17 @@ export function PiDeviceSignIn({
                   <strong>Kopioi koodi</strong>
                   <div className={styles.code}>
                     <code>{view.userCode}</code>
-                    <Button
-                      label="Kopioi koodi"
-                      variant="secondary"
-                      onPress={() => {
-                        void copyCode();
-                      }}
-                    />
+                    <span title="Kopioi koodi">
+                      <IconButton
+                        aria-label="Kopioi koodi"
+                        variant="secondary"
+                        onPress={() => {
+                          void copyCode();
+                        }}
+                      >
+                        <Icon name="copy" />
+                      </IconButton>
+                    </span>
                   </div>
                   {copy?.code === view.userCode ? (
                     <p role="status">{copy.message}</p>
@@ -170,15 +166,20 @@ export function PiDeviceSignIn({
                   >
                     Avaa OpenAI:n vahvistussivu (uusi välilehti)
                   </ExternalLink>
-                  <p>
-                    Avautuu uuteen välilehteen. Palaa tänne vahvistuksen
-                    jälkeen.
-                  </p>
                 </div>
               </div>
-              <p role="status">
-                Odotetaan vahvistusta OpenAI:lta. Sivu päivittyy itsestään.
-              </p>
+              <div className={styles.instruction} role="status">
+                <span className={styles.number}>3</span>
+                <div>
+                  <strong>Palaa tänne ja odota</strong>
+                  <StatusMark
+                    label="Odotetaan vahvistusta OpenAI:lta"
+                    tone="info"
+                    animated={view.phase === "pending" ? "running" : false}
+                  />
+                  <p>Sivu päivittyy automaattisesti, kun kirjaudut sisään.</p>
+                </div>
+              </div>
             </div>
           ) : (
             <p role="alert">
@@ -205,6 +206,10 @@ export function PiDeviceSignIn({
         ) : (
           <p>{outcome?.detail}</p>
         )}
+        <p className={styles.hint}>
+          Kirjautuminen tehdään OpenAI:n omalla sivulla. Salasanaa ei syötetä
+          tänne.
+        </p>
         <div className={styles.actions}>
           {cancellable ? (
             onCancel ? (
