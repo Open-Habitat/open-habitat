@@ -62,9 +62,8 @@ so exhaustion may leave a partial checkout.
 
 On 5 October, [ADR 0012](adr-0012-per-user-storage-quotas.md) replaced the
 fixed volume with a Linux user quota over the whole home and administrator
-controls for usage and limits. The volume policy remains implemented until
-that replacement is built; current values are described in
-[Workspaces](../architecture/workspaces.md).
+controls for usage and limits. The implemented admission and usage behavior is
+described in [Workspaces](../architecture/workspaces.md).
 
 ## Consequences and alternatives
 

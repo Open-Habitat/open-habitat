@@ -22,8 +22,7 @@ flowchart LR
 
 Discovery reads the immediate directories under `~/src`; it does not search
 nested directories or other locations. It follows no symlinks and crosses no
-mounts inside a workspace. `~/src` itself can share the home's filesystem or
-use the dedicated volume described below. Unreadable or changing entries are
+mounts inside a workspace. `~/src` stays on the filesystem containing the user's home; a source on a different filesystem is not eligible for quota-backed cloning. Unreadable or changing entries are
 reported as incomplete observations rather than treated as absent.
 
 Discovery reads the whole immediate collection in bounded batches of 512 entries;
@@ -68,17 +67,19 @@ streaming attempt has a 45-minute deadline; the non-streaming API has a shorter
 90-second request deadline. The clone stream has no replay cursor or persisted
 job. [HTTP API](http-api.md) describes the routes.
 
-Cloning requires an operator-provisioned filesystem mounted at `~/src`, with
-at most 20 GiB total capacity and at least 5 GiB available before admission.
-A bind mount sharing the home's filesystem does not qualify. This volume
-bounds disk consumption even when native tools write outside the browser.
-Workspace reads do not require the free-space headroom, so filling a qualifying
-volume does not hide existing workspaces. Ordinary workspace reads on the
-home's filesystem need no separate volume; a separately mounted `~/src` must
-satisfy the dedicated-volume size checks. [Deployment](deployment.md) describes
-the installation's responsibilities. [ADR 0012](../decisions/adr-0012-per-user-storage-quotas.md) replaces these
-fixed-volume assumptions with a Linux user quota over the whole home; this
-page describes the implementation until that lands.
+The home filesystem has a Linux user quota for the account. Clone admission
+checks the daemon's own effective UID limit, current usage and filesystem free
+blocks. It refuses a clone when quota state cannot be read or the quota is
+full, and explains confirmed fullness in the browser. There is no fixed
+`~/src` size or separate volume requirement. A repository's eventual size
+cannot be known from GitHub metadata: after admission the kernel still enforces
+the quota for every writer, including Git, Pi and the user's shell. A write
+that reaches the limit during cloning may leave a partial checkout. Quota
+usage covers files owned by the user across the home filesystem, including
+Pi history and caches, not just `~/src`. Workspace discovery does not hide
+workspaces when the source grows. [Deployment](deployment.md) describes the
+operator's quota responsibilities; [ADR 0012](../decisions/adr-0012-per-user-storage-quotas.md)
+records the choice.
 
 A disconnected browser cancels the clone. Cancellation leaves any partial
 directory in place for inspection. After an interruption, the browser asks
@@ -150,4 +151,4 @@ history reads do not invoke this helper.
 
 Discovery, cloning and onboarding are implemented in `internal/daemon`.
 
-Decisions behind this page: ADR 0001, ADR 0005.
+Decisions behind this page: ADR 0001, ADR 0005, ADR 0012.

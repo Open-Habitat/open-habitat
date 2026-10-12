@@ -3,11 +3,12 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "205ae0c351dee54943ebced08e526a34cab0d622f9876da4b876524c9ab726cd"
+const V1SchemaFingerprint = "d7ffafd297922e62b7be332a864318b7b5fe29ef672708141f52892546bcefcc"
 
 var V1SchemaFiles = []string{
 	"account-profile-update.schema.json",
 	"account-session.schema.json",
+	"account-storage.schema.json",
 	"annotations.schema.json",
 	"command.schema.json",
 	"common.schema.json",
@@ -26,6 +27,8 @@ var V1SchemaFiles = []string{
 	"scenario.schema.json",
 	"server-administration-change.schema.json",
 	"server-administration.schema.json",
+	"server-storage-change.schema.json",
+	"server-storage.schema.json",
 	"server.schema.json",
 	"snapshot.schema.json",
 }
@@ -33,6 +36,7 @@ var V1SchemaFiles = []string{
 // Wire families remain opaque until validated against their canonical JSON Schema.
 type AccountProfileUpdate = json.RawMessage
 type AccountSession = json.RawMessage
+type AccountStorage = json.RawMessage
 type Annotations = json.RawMessage
 type Command = json.RawMessage
 type Common = json.RawMessage
@@ -51,5 +55,7 @@ type Recap = json.RawMessage
 type Scenario = json.RawMessage
 type ServerAdministrationChange = json.RawMessage
 type ServerAdministration = json.RawMessage
+type ServerStorageChange = json.RawMessage
+type ServerStorage = json.RawMessage
 type Server = json.RawMessage
 type Snapshot = json.RawMessage

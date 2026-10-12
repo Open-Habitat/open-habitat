@@ -25,8 +25,10 @@ explains how the session selects the daemon and how the socket peers are checked
 
 JSON replies carry finite results. Server-Sent Events (SSE) carry the user's
 ongoing updates and, separately, progress within a clone request. The gateway
-forwards native replies without interpreting their application content; it
-bounds finite replies and forwards streams incrementally.
+forwards native daemon replies without interpreting their application content;
+it bounds finite replies and forwards streams incrementally. Server
+administration and personal storage read native quota state through the root
+broker, not a gateway accounting store or another user's daemon.
 
 ## Route map
 
@@ -39,8 +41,11 @@ Authentication and probes are served by the gateway:
 | `POST /auth/profile` | supply missing name/email during onboarding ([input contract](../../contracts/v1/account-profile-update.schema.json)); requires session, origin and CSRF, and cannot overwrite supplied GitHub fields or change the identity binding |
 | `POST /auth/logout` | end the web session; native `gh` authorization stays |
 | `GET /api/v1/server` | session-scoped server name and current browser administrator role ([contract](../../contracts/v1/server.schema.json)); does not expose another person's native work |
-| `GET /api/v1/server/administration` | administrator-only name and bound-user role list ([contract](../../contracts/v1/server-administration.schema.json)); broker reads the binding ledger, not daemon sockets |
-| `PUT /api/v1/server/administration` | administrator-only name or browser role update ([input](../../contracts/v1/server-administration-change.schema.json)); requires Origin and CSRF; role target must already be bound |
+| `GET /api/v1/server/administration` | administrator-only name, default storage limit and bound-user role list ([contract](../../contracts/v1/server-administration.schema.json)); broker reads the binding ledger, not daemon sockets |
+| `PUT /api/v1/server/administration` | administrator-only name, default storage limit or browser role update ([input](../../contracts/v1/server-administration-change.schema.json)); requires Origin and CSRF; role target must already be bound |
+| `GET /api/v1/account/storage` | signed-in person's own kernel quota usage and limit ([contract](../../contracts/v1/account-storage.schema.json)); no other user's files or UID are exposed |
+| `GET /api/v1/server/storage` | administrator-only bound-user quotas, home filesystem capacity/free space and overcommit warning ([contract](../../contracts/v1/server-storage.schema.json)) |
+| `PUT /api/v1/server/storage` | administrator-only change of a bound subject's hard limit ([input](../../contracts/v1/server-storage-change.schema.json)); Origin and CSRF required; the broker resolves the committed UID |
 | `GET /healthz`, `GET /readyz` | fixed gateway probe responses |
 
 Native operations are forwarded to the user's daemon. In this table `<id>` is

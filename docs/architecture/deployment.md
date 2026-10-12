@@ -27,7 +27,9 @@ browser application. It runs without access to user homes. systemd supplies
 its root-only revocation socket, through which the operator can end web
 sessions with `open-habitat revoke subject <GitHub ID>`. The same socket
 accepts root-only administration requests; the gateway remains the sole writer
-of the name and browser roles.
+of the name, browser roles and default storage limit. The broker alone changes
+a bound user's Linux quota. It accepts a provider subject, resolves the
+committed UID and never accepts a client-selected UID or home path.
 
 The broker and per-user daemons are socket-activated: systemd holds the
 listening sockets and starts a service when a connection arrives. The
@@ -48,17 +50,24 @@ group. Native history survives, but an active turn is interrupted.
 User homes hold workspaces, Pi histories and configuration, and native `gh`
 credentials. Root-owned broker state holds admission policy, account bindings
 and the journal of provisioning operations. These survive service restarts and
-release replacement. Gateway-private state at `/var/lib/open-habitat-gateway/sessions.json` holds browser sessions and survives release replacement and reboot. The same private StateDirectory also holds `administration.json`, the gateway-owned server name and numeric GitHub subject roles. Keep it across release replacements; do not seed a browser administrator. A missing file at startup starts with no name or administrators; an existing corrupt or incorrectly owned file prevents gateway startup until an operator repairs it. If an established file disappears while the gateway is running, administrator permissions fail closed and writes stop until operator repair or restart; it cannot silently re-create the old roles. The root-only `revoke.sock` control channel also carries bounded administration requests from a kernel-verified root peer. Use the operator CLI, not a direct edit to the state file:
+release replacement. Gateway-private state at `/var/lib/open-habitat-gateway/sessions.json` holds browser sessions and survives release replacement and reboot. The same private StateDirectory also holds `administration.json`, the gateway-owned server name, numeric GitHub subject roles and default quota for new accounts. Native Linux quota state is the only record of each person's usage and limit. Keep it across release replacements; do not seed a browser administrator. A missing file at startup starts with no name or administrators; an existing corrupt or incorrectly owned file prevents gateway startup until an operator repairs it. If an established file disappears while the gateway is running, administrator permissions fail closed and writes stop until operator repair or restart; it cannot silently re-create the old roles. The root-only `revoke.sock` control channel also carries bounded administration requests from a kernel-verified root peer. Use the operator CLI, not a direct edit to the state file:
 
 ```sh
 open-habitat admin settings show --json
 open-habitat admin users list --json
 open-habitat admin settings update --name 'Example host' --json
+open-habitat admin settings update --default-limit-bytes 10737418240 --json
+open-habitat admin storage list --json
+open-habitat admin storage update <numeric-GitHub-subject> --limit-bytes 21474836480 --json
 open-habitat admin role update <numeric-GitHub-subject> --administrator true --json
 open-habitat admin role update <numeric-GitHub-subject> --administrator false --json
 ```
 
-The first grant needs the person's existing broker binding (they must have signed in first); `admin users list` gives bound subjects and Unix names without credentials or home paths. A grant does not create a binding or admit an account. Removal needs no live broker binding. Updates also accept `--dry-run`; a grant plan checks the current bound-user list but cannot reserve the binding against concurrent change. The CLI requires effective root and a running gateway with the private socket. It reports structured results and errors with `--json` and does not use browser administrator roles. The gateway account alone reads `administration.json`; sockets and pending login flows in `/run` or memory do not persist.
+The installation must configure a nonzero default (the command above is an example,
+not a product fixed size) before the first sign-in; login fails closed otherwise.
+The broker applies that limit in the journaled account-creation flow before
+publishing a binding. A failed quota setup leaves the journal for operator
+reconciliation and no browser route. The first grant needs the person's existing broker binding (they must have signed in first); `admin users list` gives bound subjects and Unix names without credentials or home paths. A grant does not create a binding or admit an account. Removal needs no live broker binding. Updates also accept `--dry-run`; a grant plan checks the current bound-user list but cannot reserve the binding against concurrent change. The CLI requires effective root and a running gateway with the private socket. It reports structured results and errors with `--json` and does not use browser administrator roles. The gateway account alone reads `administration.json`; sockets and pending login flows in `/run` or memory do not persist. The administrator page and CLI read each bound user's kernel quota and the home's filesystem capacity/free space from the broker. Overcommit (sum of hard limits greater than filesystem capacity) is visible but permitted; lowering a limit below usage is permitted and prevents further growth. Each signed-in person sees only their own usage and limit. The gateway is sandboxed away from `/home` and never estimates quota usage from user files.
 
 The gateway loads its installation configuration at startup; each daemon loads
 the identity binding written by the broker. The broker reads its configuration
@@ -97,7 +106,11 @@ receipts.
 
 The operator supplies admission policy, service configuration, secrets, TLS,
 DNS and ingress, as well as the Linux accounts and runtime-directory setup
-needed before provisioning can run. The product supplies neutral templates in
+needed before provisioning can run. The filesystem holding `/home` must have
+active Linux user quotas; on the test VM its ext4 journaled quota feature is
+enabled offline before deployment. A broker restart rejects a bound user whose
+quota cannot be read, and authorization refuses existing routes if accounting
+is lost. Per-user `~/src` images are not part of this deployment. The product supplies neutral templates in
 [`systemd/`](../../systemd/), [`sysusers.d/`](../../sysusers.d/) and
 [`tmpfiles.d/`](../../tmpfiles.d/). Their directives and the implementation in
 `internal/provision` define the detailed installation requirements.
@@ -158,4 +171,4 @@ diagnostics are best-effort observations, not a complete audit trail. Neither
 the broker protocol nor the daemon handoff frame carries the gateway's OAuth
 attempt ID; joining independent records by timestamp alone is not reliable.
 
-Decisions behind this page: ADR 0003, ADR 0004.
+Decisions behind this page: ADR 0003, ADR 0004, ADR 0012.
