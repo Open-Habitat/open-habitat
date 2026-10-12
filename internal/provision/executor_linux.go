@@ -720,16 +720,36 @@ func (e *LinuxHostExecutor) Ready(ctx context.Context, i ExecutorIdentity) error
 	}
 	// A failed gate can leave a failed socket unit. A later explicit
 	// ensure may retry it, but no route is returned until it is active.
-	if _, err := e.command(ctx, systemctl, "start", unit); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			return errActivationUncertain
-		}
-		return ErrInvalid
+	if err := e.startSocket(ctx, unit); err != nil {
+		return err
 	}
 	if e.Verify(ctx, i) != nil {
 		return ErrInvalid
 	}
 	return e.RouteReady(ctx, i)
+}
+
+// Once submitted, a systemd job can outlive the caller's exchange deadline.
+// Keep the activation slot until this one start has a known outcome (or its
+// own bound expires). All checks before and after the submission still honor
+// the caller's context and no route can be returned after cancellation.
+func (e *LinuxHostExecutor) startSocket(ctx context.Context, unit string) error {
+	if ctx == nil || ctx.Err() != nil {
+		return ErrInvalid
+	}
+	startCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 45*time.Second)
+	defer cancel()
+	if ctx.Err() != nil { // cancellation before submission submits no job
+		return ErrInvalid
+	}
+	_, err := e.command(startCtx, systemctl, "start", unit)
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return errActivationUncertain
+	}
+	if err != nil {
+		return ErrInvalid
+	}
+	return nil
 }
 
 // RouteReady does not start a unit: authorize must fit the short exchange

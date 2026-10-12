@@ -220,6 +220,35 @@ func TestExactGateExec(t *testing.T) {
 	}
 }
 
+func TestSubmittedSocketStartObservesOwnDeadline(t *testing.T) {
+	e := NewLinuxHostExecutor(1001, 1002)
+	ctx, cancel := context.WithCancel(context.Background())
+	calls := 0
+	e.run = func(commandCtx context.Context, path string, args ...string) ([]byte, error) {
+		calls++
+		if path != systemctl || len(args) != 2 || args[0] != "start" || args[1] != "open-habitat-daemon@carol.socket" {
+			t.Fatalf("wrong start command: %s %v", path, args)
+		}
+		cancel() // caller's exchange expires while systemd is still starting
+		if commandCtx.Err() != nil {
+			t.Fatal("submitted start canceled by browser exchange")
+		}
+		return nil, nil // systemd confirms that the socket is active
+	}
+	if err := e.startSocket(ctx, "open-habitat-daemon@carol.socket"); err != nil || calls != 1 {
+		t.Fatalf("completed start latched broker: %v, calls=%d", err, calls)
+	}
+	if err := e.startSocket(ctx, "open-habitat-daemon@carol.socket"); err == nil || calls != 1 {
+		t.Fatalf("start submitted after caller cancellation: %v, calls=%d", err, calls)
+	}
+	e.run = func(context.Context, string, ...string) ([]byte, error) {
+		return nil, context.DeadlineExceeded // dedicated command budget elapsed
+	}
+	if err := e.startSocket(context.Background(), "open-habitat-daemon@carol.socket"); !errors.Is(err, errActivationUncertain) {
+		t.Fatalf("lost uncertain systemd outcome: %v", err)
+	}
+}
+
 func TestRouteReadyDoesNotStartOrAdoptMissingSocket(t *testing.T) {
 	e := NewLinuxHostExecutor(21003, 21003)
 	i := ExecutorIdentity{provider: "github", id: "42", username: "uncreated_guest_foo", uid: 21032}
