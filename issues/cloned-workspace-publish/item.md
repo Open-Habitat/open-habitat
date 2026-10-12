@@ -11,11 +11,32 @@ collision: [web/]
 
 # Cloned workspace offers Publish to GitHub
 
-_Source: chat_
+On pilot.22 on 2026-10-12, Jari opened the `issuectl` workspace after cloning
+it from GitHub during onboarding. The page offered "Julkaise GitHubiin",
+including owner, repository, visibility and "Tarkista GitHub ja Git", even
+though the checkout already had a GitHub origin.
 
-Jari, 2026-10-12, pilot.22, workspace page of a freshly cloned repository (`issuectl`, cloned from GitHub during onboarding): the "Julkaise GitHubiin" section (owner, repo, visibility, "Tarkista GitHub ja Git") is shown although the workspace is already a Git repository with a GitHub origin. Publishing is only meaningful for a workspace without a GitHub remote; for a cloned repository the section must not appear (at most the existing remote is shown in the workspace details).
+The workspace page should offer actions appropriate to the repository's
+observed state. An existing GitHub remote makes a new-repository publishing
+form misleading, so that form is absent for this cloned workspace. Existing
+remote information, if shown, belongs in workspace details. A workspace
+without a GitHub remote remains a candidate for the existing publication
+flow, whose eligibility and confirmation rules are described in the
+[workspace architecture](../../docs/architecture/workspaces.md).
 
-Further oddities on the same screenshot, noted by the conductor and to be checked in the same pass:
-- "Keskustelut työtilassa" says "Keskusteluja ei vielä näy. Valitse työtila vasemmalta." while a workspace is already open; the empty state should say there are no conversations yet in this workspace.
-- The "Arkisto" heading is shown with nothing under it.
-- The settings and publish forms render as unstyled default controls, unlike the rest of the designed UI.
+The same screenshot raised three related presentation concerns to verify
+and address in this view:
+
+- The empty conversation list asks the person to select a workspace even
+  though one is open. Its message should say that this workspace has no
+  conversations yet.
+- "Arkisto" appears as a heading with nothing beneath it. A confirmed empty
+  archive should not leave an unexplained heading; an unreadable archive
+  still needs an understandable error state.
+- Settings and publication forms appear to use unstyled default controls.
+  They should use the product's shared controls and visual language.
+
+A useful comparison is the freshly cloned GitHub workspace against a local
+workspace eligible for publication: the former has no publication form and
+the latter retains it. Desktop and phone views with empty conversation and
+archive lists should also read coherently and match the surrounding UI.
