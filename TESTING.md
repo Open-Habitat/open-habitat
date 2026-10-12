@@ -28,10 +28,21 @@ changes, commit the final candidate and run:
 ./scripts/ci-local.sh --clean --json
 ```
 
-A successful run covers the same implementation even if the commit message or
-evidence text later changes. Reuse that result; rerun when the implementation
-changes or there is a reason, such as investigating intermittent failures.
-A release needs a full pass on the exact product tree it ships.
+On success, `--clean` writes `.cache/ci-local/receipts/<HEAD tree>.json`.
+The receipt identifies the committed tree and gate inputs it covers; the release
+preparer checks it against the current clean tree rather than rerunning the
+11-minute gate. A different commit with identical tree can reuse it (the
+release still pins and embeds its own commit SHA). A change to issue evidence,
+docs, code, dependencies or package inputs changes the tree and requires a new
+clean gate before release. Receipts are local evidence, not signed attestations;
+keep them on the machine where the gate ran. The gate prints its JSON envelope
+on the final stdout line and the receipt path on stderr.
+
+After a clean pass, the Fleetrepo `infra/open-habitat-test/release_test.py`
+one-command operator checks the receipt, prepares fresh web assets and binary,
+verifies the package, then transfers and switches the test guest. Its dry run
+stops before any guest transfer. It reports step/total timings and rejects a
+live run above 100 seconds. Do not hand-edit prose receipts between steps.
 
 Documentation-, issue- and evidence-only changes need relevant validators and
 `git diff --check`; run `issuectl doctor --json` when issue metadata changes.

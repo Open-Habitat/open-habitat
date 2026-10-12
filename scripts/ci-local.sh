@@ -86,6 +86,7 @@ go generate ./internal/contracts
 "$PYTHON" issues/plan-v1-implementation/test_validate_plan.py
 "$PYTHON" scripts/validate-project-view.py
 "$PYTHON" scripts/check-licenses.py
+"$PYTHON" scripts/test-gate-receipt.py
 ./scripts/vm-test.sh self-test --json
 phase packaging
 ./scripts/native-fixture.sh create --output "$tmp/native-fixture"
@@ -104,4 +105,5 @@ phase final-checks
 issuectl doctor --json
 git diff --check
 if $clean && [[ -n $(git status --short) ]];then git status --short >&2;echo 'error: green gate changed the clean tree' >&2;exit 1;fi
+if $clean;then python3 scripts/gate-receipt.py record >&2;fi
 if $json;then printf '{"schema_version":1,"data":{"status":"passed","clean":%s},"warnings":[]}\n' "$clean";else echo 'CI-local gate passed';fi
