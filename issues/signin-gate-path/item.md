@@ -2,11 +2,13 @@
 created: 2026-10-12
 updated: 2026-10-12
 type: bug
-status: open
+status: fixed
 priority: high
 lane: signin-fix
 lane_seq: 1
 collision: [internal/provision/]
+closed: 2026-10-12
+closed_by: claude
 ---
 
 # First sign-in fails: daemon gate path renamed in product only
