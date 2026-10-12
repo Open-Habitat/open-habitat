@@ -9,11 +9,11 @@ From Fleetrepo's root on Alder, with the gated product checkout on its approved 
 ```sh
 python3 infra/open-habitat-test/release_test.py \
   --product ~/Sources/native-agent-host \
-  --version 0.0.0-pilot.N \
-  --output /var/tmp/open-habitat-release-N
+  --version 0.0.0-pilot.24 \
+  --output /var/tmp/open-habitat-release-24
 ```
 
-Choose a fresh private output directory for each attempt; replace `N` with the next pilot number. Use the operator's `--help` for dry-run syntax. The operator emits machine-readable receipts and step/total durations; it rejects a live release over 100 s. The product preparer is `scripts/prepare-test-release.sh --version <version> --output <dir>` and refuses a missing or different-tree clean gate receipt.
+Use a fresh private output directory for this attempt. If it was already used, choose a different new private path. Use the operator's `--help` for dry-run syntax. The operator emits machine-readable receipts and step/total durations; it rejects a live release over 100 s. The product preparer is `scripts/prepare-test-release.sh --version <version> --output <dir>` and refuses a missing or different-tree clean gate receipt.
 
 ## Decisions for review
 
@@ -23,4 +23,4 @@ Choose a fresh private output directory for each attempt; replace `N` with the n
 
 ## Offline evidence
 
-`python3 scripts/test-gate-receipt.py` verifies same-tree and linked-worktree acceptance, different-tree refusal, dirty-tree refusal and corrupt receipt refusal. The final clean gate and Fleetrepo offline tests are recorded in the run's completion report; no real guest operation was attempted.
+`python3 scripts/test-gate-receipt.py` verifies same-tree and linked-worktree acceptance, different-tree refusal, dirty-tree refusal and corrupt receipt refusal. A real product preparer plus Fleetrepo offline dry run (with only the pushed-main ancestry probe replaced for this unmerged feature branch) verified archive `6d48d13aa4e0d9a6483eed1d327ed8b31b9f89de7214f4eebd76a88c93623ae0` in 5.143 s and blocked every guest call. Fleetrepo's 205 offline tests passed. The full clean gate passed on the then-current merged candidate tree `ff587c2c3d1423eb617cf107e1c137af8cdfde04` (`/var/tmp/oh-fast-test-gate-merge.out`); earlier browser-test flakiness was retried. Concurrent changes to main and this evidence-only update mean that **the eventual main tree has no gate receipt yet**. The conductor must gate the landed clean main tree once before invoking the command above; that prerequisite is outside the 100 s release timing. No real guest operation was attempted.
