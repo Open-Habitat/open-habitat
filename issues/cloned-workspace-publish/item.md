@@ -4,8 +4,8 @@ updated: 2026-10-12
 type: bug
 status: open
 priority: normal
-lane: signin-fix
-lane_seq: 6
+lane: web
+lane_seq: 8
 collision: [web/]
 ---
 
