@@ -4,8 +4,8 @@ updated: 2026-10-12
 type: improvement
 status: open
 priority: normal
-lane: signin-fix
-lane_seq: 11
+lane: web
+lane_seq: 5
 collision: [web/]
 ---
 
