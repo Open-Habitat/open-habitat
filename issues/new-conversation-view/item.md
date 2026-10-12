@@ -2,13 +2,15 @@
 created: 2026-10-12
 updated: 2026-10-12
 type: bug
-status: in-progress
+status: fixed
 priority: normal
 lane: web
 lane_seq: 1
 collision: [web/]
 related: ['@conversation-actions-layout', '@conversation-title-language']
 preparation: ready
+closed: 2026-10-12
+closed_by: claude
 ---
 
 # Show honest state when starting and continuing a conversation
