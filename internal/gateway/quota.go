@@ -113,6 +113,9 @@ func (a *Auth) setQuota(ctx context.Context, caller, subject string, limit uint6
 		return errBrokerRead
 	}
 	if err := broker.SetQuota(ctx, subject, limit); err != nil {
+		if errors.Is(err, ErrBoundUserNotFound) {
+			return errBindingNotFound
+		}
 		return errBrokerRead
 	}
 	return nil
@@ -189,6 +192,10 @@ func (a *Auth) quotaHTTP(w http.ResponseWriter, r *http.Request) {
 	err := a.setQuota(r.Context(), s.identity.Subject, input.Subject, *input.LimitBytes)
 	if errors.Is(err, errAdminDenied) {
 		safe(w, 403, "admin_required")
+		return
+	}
+	if errors.Is(err, errBindingNotFound) {
+		safe(w, 404, "not_found")
 		return
 	}
 	if err != nil {

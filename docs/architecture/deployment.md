@@ -108,9 +108,11 @@ The operator supplies admission policy, service configuration, secrets, TLS,
 DNS and ingress, as well as the Linux accounts and runtime-directory setup
 needed before provisioning can run. The filesystem holding `/home` must have
 active Linux user quotas; on the test VM its ext4 journaled quota feature is
-enabled offline before deployment. A broker restart rejects a bound user whose
-quota cannot be read, and authorization refuses existing routes if accounting
-is lost. Per-user `~/src` images are not part of this deployment. The product supplies neutral templates in
+enabled offline before deployment. Before switching an installation with
+existing bound users, the operator sets and verifies a native hard limit for
+each committed UID; the new broker refuses startup otherwise. Authorization
+also refuses existing routes if accounting is lost. Per-user `~/src` images
+are not part of this deployment. The product supplies neutral templates in
 [`systemd/`](../../systemd/), [`sysusers.d/`](../../sysusers.d/) and
 [`tmpfiles.d/`](../../tmpfiles.d/). Their directives and the implementation in
 `internal/provision` define the detailed installation requirements.

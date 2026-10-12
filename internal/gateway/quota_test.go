@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,7 @@ type quotaBroker struct {
 	*adminBroker
 	lastSubject string
 	lastLimit   uint64
+	missing     bool
 }
 
 func (b *quotaBroker) ReadQuota(_ context.Context, id string) (Quota, QuotaFilesystem, error) {
@@ -20,6 +22,9 @@ func (b *quotaBroker) ReadQuota(_ context.Context, id string) (Quota, QuotaFiles
 	return Quota{UsageBytes: 2 * 1024 * 1024, LimitBytes: 1024 * 1024}, QuotaFilesystem{CapacityBytes: 1024 * 1024, FreeBytes: 512 * 1024}, nil
 }
 func (b *quotaBroker) SetQuota(_ context.Context, id string, limit uint64) error {
+	if b.missing {
+		return ErrBoundUserNotFound
+	}
 	b.lastSubject = id
 	b.lastLimit = limit
 	return nil
@@ -86,5 +91,12 @@ func TestQuotaAuthorizationAndDefault(t *testing.T) {
 	}
 	if _, e := a.AdminControl(context.Background(), []byte(`{"operation":"quota_set","subject":"043","limit_bytes":1024}`)); e == nil {
 		t.Fatal("control accepted noncanonical subject")
+	}
+	b.missing = true
+	if put(sess.CSRF, `{"subject":"999","limit_bytes":1048576}`) != 404 {
+		t.Fatal("unbound quota target reported as broker outage")
+	}
+	if _, e := a.AdminControl(context.Background(), []byte(`{"operation":"quota_set","subject":"999","limit_bytes":1048576}`)); !errors.Is(e, errBindingNotFound) {
+		t.Fatalf("CLI unbound target: %v", e)
 	}
 }

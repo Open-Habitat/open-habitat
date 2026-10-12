@@ -41,6 +41,7 @@ type dqblk struct {
 }
 
 const (
+	getInfo        = (0x800005 << 8) // QCMD(Q_GETINFO, USRQUOTA)
 	getQuota       = (0x800007 << 8) // QCMD(Q_GETQUOTA, USRQUOTA)
 	setQuota       = (0x800008 << 8) // QCMD(Q_SETQUOTA, USRQUOTA)
 	qifBlockLimits = 1
@@ -63,6 +64,26 @@ func homeFD() (int, error) {
 	}
 	return fd, nil
 }
+
+// Enabled probes user-quota accounting without assuming an unused UID has a
+// quota record. Q_GETINFO returns ESRCH when quotas are off; this is read-only.
+func Enabled() error {
+	fd, err := homeFD()
+	if err != nil {
+		return err
+	}
+	defer unix.Close(fd)
+	var info struct {
+		BlockGrace, InodeGrace uint64
+		Flags, Valid           uint32
+	}
+	_, _, errno := unix.Syscall6(unix.SYS_QUOTACTL_FD, uintptr(fd), uintptr(getInfo), 0, uintptr(unsafe.Pointer(&info)), 0, 0)
+	if errno != 0 {
+		return ErrUnavailable
+	}
+	return nil
+}
+
 func quotaCall(fd, cmd int, uid uint32, block *dqblk) error {
 	_, _, errno := unix.Syscall6(unix.SYS_QUOTACTL_FD, uintptr(fd), uintptr(cmd), uintptr(uid), uintptr(unsafe.Pointer(block)), 0, 0)
 	if errno != 0 {

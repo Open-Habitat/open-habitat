@@ -89,6 +89,7 @@ type Writer struct {
 	UIDMin, UIDMax uint32
 	Executor       HostExecutor
 	Quota          QuotaOperations
+	QuotaEnabled   func() error
 	Capacity       func() (storagequota.Filesystem, error)
 	// AdmitAny is an explicit root-only test-installation policy. The gateway
 	// must enforce signed Access assertions before the operator enables it.
@@ -103,7 +104,7 @@ type Writer struct {
 }
 
 func NewWriter(dir string, min, max uint32, executor HostExecutor) Writer {
-	return Writer{Dir: dir, UIDMin: min, UIDMax: max, Executor: executor, Quota: nativeQuota{}, Capacity: storagequota.Capacity}
+	return Writer{Dir: dir, UIDMin: min, UIDMax: max, Executor: executor, Quota: nativeQuota{}, QuotaEnabled: storagequota.Enabled, Capacity: storagequota.Capacity}
 }
 func failure(f Failure) Reply { return Reply{Version: 1, Failure: f} }
 
@@ -299,7 +300,7 @@ func stateAt(ctx context.Context, fd int, owner uint32) (allowFile, ledgerFile, 
 	return a, l, ab, lb, nil
 }
 func (w Writer) valid() bool {
-	return w.Executor != nil && w.Quota != nil && w.Capacity != nil && w.UIDMin >= 1000 && w.UIDMax >= w.UIDMin && w.UIDMax-w.UIDMin <= 4095
+	return w.Executor != nil && w.Quota != nil && w.QuotaEnabled != nil && w.Capacity != nil && w.UIDMin >= 1000 && w.UIDMax >= w.UIDMin && w.UIDMax-w.UIDMin <= 4095
 }
 
 // Handle serializes every authorize and ensure. A pending journal or interrupted
@@ -426,7 +427,10 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 			break
 		}
 	}
-	if entry == nil {
+	// Admission governs login, not administration of an account that already
+	// exists. A revoked binding still owns blocks and must remain visible to
+	// an administrator; quota operations below can only target the ledger UID.
+	if entry == nil && r.Operation != "quota_read" && r.Operation != "quota_set" {
 		if !w.AdmitAny {
 			return failure(Denied)
 		}
@@ -551,6 +555,12 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 	// mutation budget already spent waiting for the global lock. This is
 	// admission only, not a promise that host commands will finish in time.
 	if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) < 60*time.Second {
+		return failure(StateUnavailable)
+	}
+	// Do not leave an account and pending journal merely because the home
+	// filesystem never had user-quota accounting enabled. The final Set and
+	// readback remain authoritative if support disappears after this probe.
+	if w.QuotaEnabled() != nil || ctx.Err() != nil {
 		return failure(StateUnavailable)
 	}
 	identity := ExecutorIdentity{provider: "github", id: entry.ID, username: name, uid: uid}

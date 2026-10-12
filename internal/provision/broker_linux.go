@@ -143,6 +143,10 @@ func loggedBrokerHandler(handle Handler, log *slog.Logger) Handler {
 			// list and lookup return Users, not a route; even an empty list
 			// is successful. Do not attribute a request ID as a verified user.
 			log.Info("broker_exchange", "outcome", "accepted", "operation", r.Operation)
+		case reply.Quota != nil:
+			// A quota reply verifies a bound UID, but neither values nor caller
+			// subject need appear in diagnostics.
+			log.Info("broker_exchange", "outcome", "accepted", "operation", r.Operation)
 		default:
 			log.Warn("broker_exchange", "outcome", "rejected", "operation", r.Operation, "reason", "invalid_reply")
 		}
@@ -174,6 +178,14 @@ func (w Writer) Startup(ctx context.Context) error {
 	hb, err := readAt(fd, "head.json", w.owner)
 	var h head
 	if err != nil || decode(hb, &h, "version", "epoch", "generation") != nil || h.Version != 1 || h.Epoch == 0 || h.Generation != l.Generation || a.Epoch < h.Epoch {
+		return ErrBrokerStartup
+	}
+	// Empty installations must reject a filesystem with no active user
+	// accounting before any first-login operation can create host state.
+	if w.QuotaEnabled() != nil || ctx.Err() != nil {
+		return ErrBrokerStartup
+	}
+	if fs, e := w.Capacity(); e != nil || fs.Capacity == 0 || fs.Free > fs.Capacity {
 		return ErrBrokerStartup
 	}
 	for _, b := range l.Bindings {

@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Open-Habitat/open-habitat/internal/storagequota"
 )
 
 func TestQuotaProtocolStrict(t *testing.T) {
@@ -32,6 +34,20 @@ func TestQuotaProtocolStrict(t *testing.T) {
 		if _, err := ParseReply([]byte(raw)); err == nil {
 			t.Fatalf("accepted %s", raw)
 		}
+	}
+}
+
+func TestQuotaUnavailableBeforeFirstAccountLeavesNoHostMutation(t *testing.T) {
+	w, h := writerFixture(t)
+	w.QuotaEnabled = func() error { return storagequota.ErrUnavailable }
+	if err := w.Startup(context.Background()); err == nil {
+		t.Fatal("empty broker started without quota accounting")
+	}
+	if got := handle(w, "ensure", "42", "carol"); got.Failure != StateUnavailable {
+		t.Fatalf("unavailable quota accepted: %+v", got)
+	}
+	if !fileAbsent(filepath.Join(w.Dir, "pending.json")) || len(h.steps) != 0 {
+		t.Fatal("host mutated before quota preflight")
 	}
 }
 
@@ -92,7 +108,10 @@ func TestQuotaBoundAndJournaled(t *testing.T) {
 		t.Fatal(got)
 	}
 	put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":5,"ids":[]}`)
-	if got := w.Handle(context.Background(), r); got.Failure != Denied {
-		t.Fatal(got)
+	if got := w.Handle(context.Background(), r); got.Quota == nil || got.Quota.LimitBytes != limit {
+		t.Fatalf("revoked account could not be administered: %+v", got)
+	}
+	if got := w.Handle(context.Background(), Request{Version: 1, Operation: "authorize", Provider: "github", ID: "42"}); got.Failure != Denied {
+		t.Fatalf("quota administration readmitted revoked account: %+v", got)
 	}
 }

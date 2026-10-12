@@ -584,6 +584,9 @@ func (gatewayBroker) Exchange(ctx context.Context, r gateway.BrokerRequest) (gat
 // resolves its committed binding and never accepts a client-selected UID.
 func (gatewayBroker) ReadQuota(ctx context.Context, subject string) (gateway.Quota, gateway.QuotaFilesystem, error) {
 	r, err := (provision.Client{SocketPath: provision.BrokerSocket, SocketOwnerUID: 0}).Exchange(ctx, provision.Request{Version: 1, Operation: "quota_read", Provider: "github", ID: subject})
+	if err == nil && r.Failure == provision.Denied {
+		return gateway.Quota{}, gateway.QuotaFilesystem{}, gateway.ErrBoundUserNotFound
+	}
 	if err != nil || r.Failure != "" || r.Quota == nil {
 		return gateway.Quota{}, gateway.QuotaFilesystem{}, gateway.ErrBrokerUnavailable
 	}
@@ -591,6 +594,9 @@ func (gatewayBroker) ReadQuota(ctx context.Context, subject string) (gateway.Quo
 }
 func (gatewayBroker) SetQuota(ctx context.Context, subject string, limit uint64) error {
 	r, err := (provision.Client{SocketPath: provision.BrokerSocket, SocketOwnerUID: 0}).Exchange(ctx, provision.Request{Version: 1, Operation: "quota_set", Provider: "github", ID: subject, LimitBytes: &limit})
+	if err == nil && r.Failure == provision.Denied {
+		return gateway.ErrBoundUserNotFound
+	}
 	if err != nil || r.Failure != "" || r.Quota == nil || r.Quota.LimitBytes != limit {
 		return gateway.ErrBrokerUnavailable
 	}

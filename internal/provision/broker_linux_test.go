@@ -155,6 +155,10 @@ func TestBrokerStartupDenials(t *testing.T) {
 	}
 	e := &startupExecutor{}
 	w := NewWriter(dir, 22000, 22002, e)
+	w.QuotaEnabled = func() error { return nil }
+	w.Capacity = func() (storagequota.Filesystem, error) {
+		return storagequota.Filesystem{Capacity: 2 << 30, Free: 1 << 30}, nil
+	}
 	w.Quota = &fakeQuota{quota: storagequota.Quota{Limit: 1 << 30}}
 	w.owner = owner
 	if err := w.Startup(context.Background()); err != nil || e.calls != 1 {

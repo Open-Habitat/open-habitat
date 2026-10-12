@@ -131,6 +131,7 @@ func writerFixture(t *testing.T) (Writer, *fakeHost) {
 	w := NewWriter(d, 2100, 2102, h)
 	w.owner = uint32(os.Getuid())
 	w.Quota = &fakeQuota{quota: storagequota.Quota{Limit: 1 << 30}}
+	w.QuotaEnabled = func() error { return nil }
 	w.Capacity = func() (storagequota.Filesystem, error) {
 		return storagequota.Filesystem{Capacity: 2 << 30, Free: 1 << 30}, nil
 	}
@@ -472,6 +473,8 @@ func TestWriterRestartAtEveryJournalPhase(t *testing.T) {
 			restarted := NewWriter(w.Dir, 2100, 2102, w.Executor)
 			restarted.owner = w.owner
 			restarted.Quota = w.Quota
+			restarted.QuotaEnabled = w.QuotaEnabled
+			restarted.Capacity = w.Capacity
 			for _, op := range []string{"authorize", "ensure"} {
 				name := "carol"
 				if op == "authorize" {

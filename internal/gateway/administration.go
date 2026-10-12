@@ -25,7 +25,8 @@ type BrokerReader interface {
 // ErrAdministrationState distinguishes a corrupt shared state record from OAuth config.
 var ErrAdministrationState = errors.New("invalid gateway administration state")
 var errAdminDenied = errors.New("administrator role removed")
-var errBindingNotFound = errors.New("subject is not bound")
+var ErrBoundUserNotFound = errors.New("subject is not bound")
+var errBindingNotFound = ErrBoundUserNotFound
 var errBrokerRead = errors.New("broker read unavailable")
 
 type serverSettings struct {
