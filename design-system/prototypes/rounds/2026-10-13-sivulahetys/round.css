@@ -1,0 +1,75 @@
+/* ===== Composer: reset the page chrome's generic .composer div/button rules ===== */
+.composer .cwrap { width: min(100%, var(--ah-conversation-width)); display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; row-gap: 6px; align-items: end; }
+.composer .cwrap div { width: auto; display: block; gap: 0; }
+.composer .cwrap button { min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.composer .cwrap [hidden] { display: none; }
+
+.composer .cwrap .cbox { display: flex; flex-direction: column; align-items: stretch; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-xl); background: var(--ah-surface); transition: border-color var(--ah-transition); }
+.composer .cwrap .cbox:focus-within { border-color: var(--ah-accent); box-shadow: 0 0 0 3px var(--ah-accent-soft); }
+.composer .cbox textarea { flex: none; width: 100%; min-height: 44px; resize: none; padding: 11px 14px; border: 0; border-radius: var(--ah-r-xl); background: transparent; outline: none; line-height: 1.45; }
+
+/* Send and stop: round icon buttons. */
+.composer .cwrap .c-send, .composer .cwrap .c-stop { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; transition: background var(--ah-transition), color var(--ah-transition), transform 120ms ease-out; }
+.c-send svg { width: 18px; height: 18px; }
+.composer .cwrap .c-send { background: var(--ah-accent); color: var(--ah-on-accent); }
+.composer .cwrap .c-send:hover { background: var(--ah-accent-hover); }
+.composer .cwrap .c-send[aria-disabled="true"] { background: var(--ah-disabled-bg); color: var(--ah-disabled-fg); cursor: default; }
+.composer .cwrap .c-stop { background: var(--ah-ink); color: var(--ah-bg); }
+.composer .cwrap .c-stop:hover { background: var(--ah-ink-2); }
+.composer .cwrap .c-stop.small { width: 28px; height: 28px; background: var(--ah-surface); color: var(--ah-ink); box-shadow: inset 0 0 0 1px var(--ah-line-strong); }
+.composer .cwrap .c-stop.small:hover { background: var(--ah-surface-hover); }
+.c-stop svg { width: 18px; height: 18px; }
+.c-stop.small svg { width: 15px; height: 15px; }
+.composer .cwrap button:active:not([aria-disabled="true"]) { transform: scale(.96); }
+.composer .cwrap button:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
+
+/* Mode pill: Ohjaa / Työn jälkeen while Pi works. */
+.composer .cwrap .c-seg { display: inline-flex; padding: 2px; border-radius: var(--ah-r-pill); background: var(--ah-sunken); box-shadow: inset 0 0 0 1px var(--ah-line-soft); }
+.composer .cwrap .c-seg button { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 0 10px; border-radius: var(--ah-r-pill); color: var(--ah-muted); font: 500 12px var(--ah-font); }
+.composer .cwrap .c-seg button svg { width: 14px; height: 14px; }
+.composer .cwrap .c-seg button[aria-pressed="true"] { background: var(--ah-surface); color: var(--ah-ink); box-shadow: 0 0 0 1px var(--ah-line); }
+
+.composer .cwrap .c-side { display: flex; flex-direction: column; align-items: center; gap: 6px; padding-bottom: 4px; }
+
+
+/* Queue: compact rows with one header and one clear-all. */
+.composer .cwrap .queue { grid-column: 1 / -1; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface-2); padding: 6px 10px 8px; font-size: 12.5px; }
+.composer .cwrap .q-head { display: flex; align-items: center; justify-content: space-between; min-height: 24px; color: var(--ah-muted); font-weight: 500; }
+.composer .cwrap .q-clear { color: var(--ah-muted); font: 500 12px var(--ah-font); padding: 2px 6px; border-radius: 6px; }
+.composer .cwrap .q-clear:hover { background: var(--ah-hover); color: var(--ah-ink); }
+.queue ul { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.queue li { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.q-kind { flex: none; display: inline-flex; align-items: center; gap: 4px; min-width: 96px; color: var(--ah-ink-2); font-size: 11.5px; }
+.q-kind svg { width: 13px; height: 13px; color: var(--ah-muted); }
+.q-kind.steer svg { color: var(--ah-accent); }
+.q-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ah-ink); }
+
+/* A stopped turn's strip, and the stop confirmation's button. */
+.strip.stopped { display: flex; align-items: center; gap: 10px; color: var(--ah-muted); font-size: 12.5px; }
+.strip.stopped .act { display: inline-flex; align-items: center; gap: 6px; }
+.strip.stopped svg { width: 12px; height: 12px; }
+.strip.stopped .clock { margin-left: auto; font: 400 12px var(--ah-mono); }
+button.danger { display: inline-flex; align-items: center; justify-content: center; min-height: 34px; padding: 0 14px; border: 1px solid var(--ah-err); border-radius: var(--ah-r-md); background: var(--ah-err); color: var(--ah-on-err); font: 600 12.5px var(--ah-font); cursor: pointer; }
+button.danger:hover { background: var(--ah-err-hover); }
+button.danger:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .composer .cwrap button { transition: none; } .composer .cwrap button:active { transform: none; } }
+
+/* ===== Send beside the field; stop and the mode pill only while Pi works ===== */
+.composer .cbox textarea { max-height: min(40vh, 268px); overflow-y: auto; }
+.composer .cwrap .c-side { padding-bottom: 4px; }
+.composer .cwrap .c-tools { grid-column: 1; display: flex; align-items: center; gap: 8px; padding: 0 2px; }
+.composer .cwrap .c-tools .c-stop { width: 30px; height: 30px; }
+.composer .cwrap .c-seg { background: var(--ah-surface); box-shadow: inset 0 0 0 1px var(--ah-line); }
+/* Kentän alla: stop at the left and the pill at the right, under the field. */
+/* Kentän yllä: the same row above the field. */
+/* Sivussa: stop stacks above send; the pill alone under the field. */
+.composer.r-v3 .cwrap .c-tools { justify-content: flex-end; }
+.page-btn { font: 500 12.5px var(--ah-font); padding: 4px 10px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-md); background: var(--ah-surface); color: var(--ah-ink); cursor: pointer; }
+.composer .cwrap .c-tools .grow { flex: 1; }
+/* Named areas, so the work-time row can sit above or below the field. */
+.composer .cwrap { grid-template-areas: "queue queue" "above ." "box side" "below ."; }
+.composer .cwrap .queue { grid-area: queue; }
+.composer .cwrap .cbox { grid-area: box; }
+.composer .cwrap .c-side { grid-area: side; }
+.composer .cwrap .c-tools { grid-area: below; }
+.composer.r-v2 .cwrap .c-tools { grid-area: above; }
