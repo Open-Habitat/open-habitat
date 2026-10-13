@@ -24,8 +24,10 @@
 .out-rail.ga .seg .icon-btn[aria-pressed="true"] { background: var(--ah-surface); color: var(--ah-ink); box-shadow: 0 0 0 1px var(--ah-line-strong); }
 .out-rail.ga .icon-btn[aria-pressed="false"] { box-shadow: none; }
 .out-rail.ga .grp:not(.seg) .icon-btn[aria-pressed="true"] { background: var(--ah-current); color: var(--ah-ink); box-shadow: 0 0 0 1px var(--ah-current-line); }
-/* Unwrapped long lines: a fade says there is more to the right. */
-.x-v1 pre.viewport.more-right, .x-v3 pre.viewport.more-right { -webkit-mask-image: linear-gradient(to left, transparent, #000 28px); mask-image: linear-gradient(to left, transparent, #000 28px); }
+/* Unwrapped long lines: an inner shadow at the edge says there is more that way. */
+.x-v1 pre.viewport.more-right, .x-v3 pre.viewport.more-right { box-shadow: inset -18px 0 14px -14px rgba(16,24,40,.22); }
+.x-v1 pre.viewport.more-left, .x-v3 pre.viewport.more-left { box-shadow: inset 18px 0 14px -14px rgba(16,24,40,.22); }
+.x-v1 pre.viewport.more-left.more-right, .x-v3 pre.viewport.more-left.more-right { box-shadow: inset -18px 0 14px -14px rgba(16,24,40,.22), inset 18px 0 14px -14px rgba(16,24,40,.22); }
 
 /* ===== V2 · Palkki: named controls under the box, no inner scrolling ===== */
 .x-v2 { gap: 0; }
