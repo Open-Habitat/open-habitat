@@ -1,5 +1,5 @@
-import { expect, test } from "./lab-host";
 import { labOrigin } from "../test-ports.mjs";
+import { expect, test } from "./lab-host";
 
 test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
 
@@ -75,12 +75,10 @@ test("@lab long native title keeps the original accessible at 390px", async ({
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     390,
   );
-  await page.getByRole("button", { name: "Tiedot" }).click();
-  await expect(page.getByRole("button", { name: "Tiedot" })).toHaveAttribute(
-    "aria-expanded",
-    "true",
-  );
-  await expect(page.locator(".ah-header-full-title")).toHaveText(title);
+  const details = page.getByRole("button", { name: "Tiedot", exact: true });
+  await details.click();
+  await expect(details).toHaveAttribute("aria-expanded", "true");
+  await expect(heading).toHaveAttribute("title", title);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     390,
   );
