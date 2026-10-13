@@ -40,14 +40,14 @@ result when the merged tree is identical. The receipt identifies the committed
 tree and gate inputs it covers. On a repeat of the **same** committed tree,
 the browser and Go/contracts phases can reuse the previous passed receipt's
 results; the new receipt lists them under `reused_phases`. Every changed tree
-runs both phases in full.
-The release preparer checks the receipt against the current clean tree rather
-than rerunning the gate. The measured candidate cold and warm runs took 287.63 s and 44.60 s;
-[the fast-gate result](issues/fast-clean-gate/result.md) has the phase breakdown. A different commit
-with an identical tree can reuse it (the release still pins and embeds its own
-commit SHA). A change to issue evidence,
-docs, code, dependencies or package inputs changes the tree and requires a new
-clean gate before release. Receipts are local evidence, not signed attestations;
+runs both phases in full. The gated release preparer checks the receipt
+against the current clean tree rather than rerunning the gate. The measured
+candidate cold and warm runs took 287.63 s and 44.60 s;
+[the fast-gate result](issues/fast-clean-gate/result.md) has the phase
+breakdown. A different commit with an identical tree can reuse it (the release
+still pins and embeds its own commit SHA). A change to issue evidence, docs,
+code, dependencies or package inputs changes the tree and requires a new clean
+gate before a gated release. Receipts are local evidence, not signed attestations;
 keep them on the machine where the gate ran. The gate prints its JSON envelope
 on the final stdout line and the receipt path on stderr.
 
@@ -89,9 +89,11 @@ workers). Lab Playwright cases use four fresh lab-mode hosts at
 `OH_PORT_BASE + 40 + parallelIndex`; manual lab remains at base + 1. A slot's
 port is reused after its previous case ends. Each host has its own scenario,
 clock, session and fake Pi state; tests in the same file can run concurrently
-on separate hosts. Set `OH_PORT_BASE` to a
-distinct value (e.g. `OH_PORT_BASE=14000 ./scripts/ci-local.sh --clean --json`)
-to run another worktree concurrently. `scripts/lab.sh start` selects a free port if its preferred lab port is busy and records it in `.cache/lab/port` for `url` and `web/lab/session.mjs`; for standalone browser checks:
+on separate hosts. Set `OH_PORT_BASE` to a distinct value (e.g.
+`OH_PORT_BASE=14000 ./scripts/ci-local.sh --clean --json`) to run another
+worktree concurrently. `scripts/lab.sh start` selects a free port if its
+preferred lab port is busy and records it in `.cache/lab/port` for `url` and
+`web/lab/session.mjs`; for standalone browser checks:
 
 ```sh
 npm ci --prefix web

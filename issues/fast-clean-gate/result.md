@@ -61,6 +61,11 @@ packaging 9 s, final checks under a second. A repeat on the identical tree
 passed in **44.60 s** (setup 5 s, dependencies 15 s, web checks 15 s,
 browser and Go/contracts reused, packaging 9 s). Its JSON and receipt both
 reported `reused_phases: ["browser", "go-and-contracts"]`; the receipt
-continued to name the committed tree. The final closed-issue tree is checked
-again after the issue metadata commit; its exact timings are in the worker
-report.
+continued to name the committed tree.
+
+Main moved while this worker ran: the test-server default became ungated and
+the clean gate stopped being a landing precondition. The rebase kept that newer
+policy in `TESTING.md` and `TODO.md`; this change accelerates the opt-in gated
+release and the once-per-round health run. The final closed-issue tree is
+checked again after the issue metadata commit; its exact timings are in the
+worker report.
