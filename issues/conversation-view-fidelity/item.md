@@ -3,7 +3,7 @@ created: 2026-10-13
 updated: 2026-10-13
 type: bug
 reporter: claude
-status: open
+status: in-progress
 priority: normal
 related: ['@conversation-actions-layout', '@recap-above-composer', '@bash-card-fidelity', '@turn-thread-fidelity']
 preparation: ready
