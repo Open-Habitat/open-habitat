@@ -92,11 +92,34 @@ const CODE = {
     if (!lang && lines.length <= 2) return `<div class="cb h compact">${pre(lines)}${copyBtn('Kopioi koodi', text)}</div>`;
     return `<figure class="cb h${long ? ' folded' : ''}"><figcaption><span class="cb-lang">${esc(langName(lang) || 'teksti')}</span><span class="cb-n">${lines.length > 1 ? `${lines.length} riviä` : ''}</span>${copyBtn('Kopioi koodi', text)}</figcaption>${pre(lines)}${long ? foldBtn(lines.length) : ''}</figure>`;
   },
+  // Ikkuna: the bash output box (edges, gap, side rail with copy, own window), language below.
+  v4: (lang, text) => {
+    const id = `cb${++cbSeq}`; CB[id] = { lang, lines: codeLines(text), view: 'edges' };
+    return `<div class="cb o" data-cb="${id}">${ikkuna(id)}</div>`;
+  },
   v3: (lang, text) => {
     const lines = codeLines(text); const long = lines.length > FOLD_AT;
     return `<figure class="cb d${long ? ' folded' : ''}${lines.length > 3 ? ' numbered' : ''}">${pre(lines, lines.length > 3)}${long ? foldBtn(lines.length) : ''}<figcaption><span class="cb-lang">${esc(langName(lang) || '')}</span><button class="quiet-btn cb-copy" type="button" data-copy="${esc(text)}" aria-label="Kopioi koodi">${ICON_COPY}<span>Kopioi</span></button></figcaption></figure>`;
   },
 };
+
+const CB = {}; let cbSeq = 0;
+function ikkuna(id) {
+  const c = CB[id]; const n = c.lines.length;
+  const html = box(c.lines, c.view, 'code', null, false);
+  const meta = [c.lang ? `<span class="cb-lang">${esc(langName(c.lang))}</span>` : '', n > 10 ? `<span>${rivit(n)}</span>` : ''].filter(Boolean).join('<span aria-hidden="true">·</span>');
+  return html.replace(/<div class="out-meta">.*?<\/div><\/div>$/, '</div>') .replace(/<\/div>$/, meta ? `<div class="out-meta">${meta}</div></div>` : '</div>');
+}
+// Rail actions of Ikkuna, ahead of the live turn's own handler.
+stage.addEventListener('click', (e) => {
+  const a = e.target.closest('.cb.o [data-act]'); if (!a) return;
+  e.stopPropagation(); e.preventDefault();
+  const host = a.closest('[data-cb]'); const c = CB[host.dataset.cb]; const act = a.dataset.act;
+  if (act === 'open') return openDialog({ name: langName(c.lang) || 'koodi', target: 'Pi:n vastaus', plain: true }, c.lines);
+  c.view = act === 'all' ? (c.view === 'all' ? 'edges' : 'all') : act;
+  host.innerHTML = ikkuna(host.dataset.cb);
+  for (const v of host.querySelectorAll('pre.viewport[data-scroll]')) v.scrollTop = v.dataset.scroll === 'start' ? 0 : v.scrollHeight;
+}, true);
 
 stage.addEventListener('click', (e) => {
   const b = e.target.closest('[data-codefold]'); if (!b) return;
@@ -118,3 +141,4 @@ function view(v) { document.querySelector('.frame').dataset.md = v; mdCode = COD
 const v1 = () => view('v1');
 const v2 = () => view('v2');
 const v3 = () => view('v3');
+const v4 = () => view('v4');

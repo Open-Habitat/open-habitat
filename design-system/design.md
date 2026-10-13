@@ -138,6 +138,11 @@ Bash-kortissa näkyvät komento ja tuloste ilman otsakkeita; pitkä komento
 näyttää ensimmäisen rivinsä ja pitkä tuloste alun ja lopun, sivupalkin
 painikkeilla alkuun, loppuun, kokonaan tai omaan ikkunaan; oma ikkuna
 tarjotaan aina, kun tuloste on yli kymmenen riviä (Jari 12.10. ja 13.10.2026).
+Sivupalkin ylimpänä on tulosteen kopiointi, myös lyhyellä tulosteella. Kun
+keskustelu avataan ja ladataan, sen bash-kortit ovat kiinni; auki ovat vain
+katselun aikana saapuvat, ja juuri katsotun keskustelun avaukset säilyvät
+(Jari 13.10.2026). Koodissa ja tulosteissa ei ole fontin ligatuureja, jotta
+näkyvä teksti on sama kuin kopioitu.
 Langan pää "PI · malli" on avausnappi, jossa on sama väkänen kuin
 työkaluriveillä, ja alun ja lopun välinen rivi on katkoviivallinen saumarivi
 laatikon sisällä, ei oma painikemöykky. Pi:n järjestetty teksti, luettava ajattelu ja työkalut muodostavat

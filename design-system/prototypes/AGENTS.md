@@ -57,6 +57,10 @@ linkkinä; hosted-sivun CSP estää upotetut fontit. Ennen näyttämistä sivu
 tarkistetaan headless-Chromiumilla työpöytä- ja puhelinleveydessä
 (`PLAYWRIGHT_BROWSERS_PATH=$PWD/.cache/ms-playwright`, Playwright
 `web/node_modules`ista), vuorovaikutukset klikattuna ja konsoli puhtaana.
+`check.mjs` tekee tämän: se käy jokaisen suunnan läpi vaaleana, tummana ja
+puhelimessa, odottaa vuoron asettumisen, klikkaa annetut valitsimet ja
+kirjoittaa kuvat omaan `dist/check-*`-hakemistoonsa (`--help`-tyyppinen ohje
+on tiedoston alussa). Yksi `node`-kutsu ilman `rm`-komentoja ei kysy lupia.
 
 ## Kun suunta valitaan
 

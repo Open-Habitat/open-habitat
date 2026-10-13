@@ -6,12 +6,12 @@ const rivit = (n) => `${n} riviä`;
 function outMeta(b, parts) { return `<div class="out-meta">${parts.filter(Boolean).join('')}</div>`; }
 function openDialog(b, lines = b.out) {
   const dlg = document.getElementById('outdlg');
-  dlg.innerHTML = `<div class="dlg-head"><span class="name">${esc(b.name)}</span><span class="target">${esc(b.target)}</span>${copyBtn('Kopioi', lines.join('\n'))}<button class="quiet-btn" type="button" data-close>Sulje</button></div><div class="dlg-body"><pre>${lines.map((l, i) => `<code><span class="lineno">${i + 1}</span>${/FAILED|Error/.test(l) ? `<span class="fail">${esc(l)}</span>` : esc(l) || ' '}</code>`).join('')}</pre></div>`;
+  dlg.innerHTML = `<div class="dlg-head"><span class="name">${esc(b.name)}</span><span class="target">${esc(b.target)}</span>${copyBtn('Kopioi', lines.join('\n'))}<button class="quiet-btn" type="button" data-close>Sulje</button></div><div class="dlg-body"><pre>${lines.map((l, i) => `<code><span class="lineno">${i + 1}</span>${!b.plain && /FAILED|Error/.test(l) ? `<span class="fail">${esc(l)}</span>` : esc(l) || ' '}</code>`).join('')}</pre></div>`;
   dlg.showModal();
 }
 document.getElementById('outdlg').addEventListener('click', (e) => { const d = e.currentTarget; if (e.target.closest('[data-close]') || e.target === d) d.close(); });
 
-// One box for any run of lines: edges (head + tail), start, end, all; a side rail of jump buttons.
+// One box for any run of lines: edges (head + tail), start, end, all; a side rail with copy and the jump buttons.
 function box(lines, view, kind, b, live, cls) {
   const n = lines.length; const long = n > 10; const pre = `viewport${cls ? ' ' + cls : ''}`;
   const act = (a, label, icon, pressed) => `<button class="icon-btn" type="button" data-act="${a}" data-for="${kind}" aria-label="${label}" title="${label}" aria-pressed="${pressed}">${icon}</button>`;
@@ -19,7 +19,9 @@ function box(lines, view, kind, b, live, cls) {
   if (!long || view === 'all') body = `<pre class="${pre} all${live ? ' stream' : ''}">${lineText(lines)}${live ? '<span class="caret"></span>' : ''}</pre>`;
   else if (view === 'edges') body = `<div><pre class="${pre} part head">${lineText(lines.slice(0, 3))}</pre><button class="gap" type="button" data-act="all" data-for="${kind}">${n - 10} riviä välistä · Näytä kaikki</button><pre class="${pre} part tail${live ? ' stream' : ''}">${lineText(lines.slice(-7))}${live ? '<span class="caret"></span>' : ''}</pre></div>`;
   else body = `<pre class="${pre}${live ? ' stream' : ''}" data-scroll="${view}">${lineText(lines)}${live ? '<span class="caret"></span>' : ''}</pre>`;
-  const rail = long ? `<div class="out-rail">${act('edges', 'Alku ja loppu', ICON_EDGES, view === 'edges')}${act('start', 'Alkuun', ICON_TOP, view === 'start')}${act('end', 'Loppuun', ICON_BOTTOM, view === 'end')}${act('all', view === 'all' ? 'Supista' : 'Näytä kaikki', view === 'all' ? ICON_SHRINK : ICON_EXPAND, view === 'all')}${act('open', 'Avaa omassa ikkunassa', ICON_OPEN, false)}</div>` : '';
+  // Copy sits in the same rail as the jump buttons, also for short output (Jari 13.10.2026).
+  const copy = copyBtn({ cmd: 'Kopioi komento', code: 'Kopioi koodi' }[kind] || 'Kopioi tuloste', lines.join('\n')).replace('class="icon-btn"', 'class="icon-btn out-copy"');
+  const rail = `<div class="out-rail">${copy}${long ? `${act('edges', 'Alku ja loppu', ICON_EDGES, view === 'edges')}${act('start', 'Alkuun', ICON_TOP, view === 'start')}${act('end', 'Loppuun', ICON_BOTTOM, view === 'end')}${act('all', view === 'all' ? 'Supista' : 'Näytä kaikki', view === 'all' ? ICON_SHRINK : ICON_EXPAND, view === 'all')}${act('open', 'Avaa omassa ikkunassa', ICON_OPEN, false)}` : ''}</div>`;
   return `<div class="out"><div class="out-win">${body}${rail}</div>${long ? outMeta(b, [`<span>${rivit(n)}</span>`]) : ''}</div>`;
 }
 const outView = (b) => b.view ?? (b.state === 'running' ? 'end' : 'edges');

@@ -10,6 +10,9 @@
 /* ===== Shared conversation language (tokens only; per-variant rules below) ===== */
 .ah-in { animation: ah-appear var(--ah-appear) both; animation-delay: calc(var(--i, 0) * 45ms); }
 button { font-family: inherit; }
+/* Code shows the characters it copies: no ligatures such as >= drawn as one glyph.
+   Important because every later `font` shorthand on a code rule resets the ligatures. */
+pre, code, .bash-cmd, .cmd-first { font-variant-ligatures: none !important; }
 .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--ah-muted); cursor: pointer; transition: background var(--ah-transition), color var(--ah-transition); }
 .icon-btn:hover { background: var(--ah-hover); color: var(--ah-ink); }
 .icon-btn:focus-visible, .quiet-btn:focus-visible, .disc:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
@@ -165,6 +168,8 @@ button { font-family: inherit; }
 .out-win { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 6px; align-items: start; }
 .out-rail { display: flex; flex-direction: column; gap: 2px; }
 .out-rail .icon-btn { width: 26px; height: 26px; }
+.out-rail .out-copy { margin-bottom: 4px; }
+.out-rail .out-copy:only-child { margin-bottom: 0; }
 .out-rail .icon-btn[aria-pressed="true"] { background: var(--ah-current); color: var(--ah-ink); box-shadow: 0 0 0 1px var(--ah-current-line); }
 .out .gap { display: flex; align-items: center; gap: 10px; width: 100%; padding: 4px 12px; border: 0; border-inline: 1px solid var(--ah-line-soft); background: var(--ah-sunken); color: var(--ah-muted); font: 500 12px var(--ah-font); cursor: pointer; }
 .out .gap::before, .out .gap::after { content: ""; flex: 1; border-top: 1px dashed var(--ah-line-strong); }

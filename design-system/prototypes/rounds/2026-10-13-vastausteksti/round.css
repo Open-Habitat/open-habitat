@@ -17,7 +17,6 @@
 .md-table th { font-weight: 600; color: var(--ah-ink-2); }
 .prose .cb { margin: 0 0 .7em; }
 .prose .cb:last-child { margin-bottom: 0; }
-.prose code { font-variant-ligatures: none; }
 .prose .cb pre { margin: 0; white-space: pre; overflow-wrap: normal; overflow-x: auto; }
 .cb.folded pre { max-height: calc(12 * 1.55 * 12.5px + 20px); overflow-y: hidden; }
 .cb.folded pre code { display: block; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 9em), transparent calc(100% - 2em)); mask-image: linear-gradient(to bottom, #000 calc(100% - 9em), transparent calc(100% - 2em)); }
@@ -84,3 +83,12 @@
 .cb.d .cb-copy { margin-left: auto; min-height: 24px; font-size: 12px; }
 .cb.d .cb-copy svg { width: 13px; height: 13px; }
 .cb.d .cb-copy[data-done] { color: var(--ah-ok); }
+
+/* ===== V4 · Ikkuna: the bash output box in the reply ===== */
+.frame[data-md="v4"] .md-table th { border-bottom: 1px solid var(--ah-line-strong); }
+.frame[data-md="v4"] .md-table td { border-bottom: 1px solid var(--ah-line-soft); }
+.frame[data-md="v4"] .prose blockquote { padding-left: 12px; border-left: 2px solid var(--ah-line-strong); color: var(--ah-ink-2); }
+.prose .cb.o pre { margin: 0; white-space: pre; overflow-wrap: normal; overflow-x: auto; }
+.prose .cb.o pre.part.head { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 0; }
+.prose .cb.o pre.part.tail { border-top-left-radius: 0; border-top-right-radius: 0; border-top: 0; }
+.cb.o .out-meta { gap: 6px; }
