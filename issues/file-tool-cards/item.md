@@ -2,7 +2,7 @@
 created: 2026-10-13
 updated: 2026-10-13
 type: improvement
-status: open
+status: in-progress
 priority: normal
 lane: web
 lane_seq: 23
