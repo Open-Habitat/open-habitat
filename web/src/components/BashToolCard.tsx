@@ -20,6 +20,21 @@ export function BashToolCard({
     remembered.get("bash"),
   );
   const [dialog, setDialog] = useState(false);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(false), 1200);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+  const copyOutput = async () => {
+    try {
+      if (onCopy) onCopy();
+      else await navigator.clipboard.writeText(output ?? "");
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  };
   const viewport = useRef<HTMLPreElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -95,35 +110,45 @@ export function BashToolCard({
                 ) : null}
               </pre>
             )}
-            {long ? (
-              <fieldset className="ah-bash-rail" aria-label="Tulosteen näkymä">
-                {(
-                  [
-                    ["edges", "Alku ja loppu", "edges"],
-                    ["start", "Alkuun", "top"],
-                    ["end", "Loppuun", "bottom"],
-                    ["all", "Näytä kaikki", "expand"],
-                  ] as const
-                ).map(([value, label, icon]) => (
+            <fieldset className="ah-bash-rail" aria-label="Tulosteen toiminnot">
+              <IconButton
+                variant="quiet"
+                className="ah-bash-copy"
+                aria-label={copied ? "Tuloste kopioitu" : "Kopioi tuloste"}
+                onPress={() => void copyOutput()}
+              >
+                <Icon name={copied ? "check" : "copy"} />
+              </IconButton>
+              {long ? (
+                <>
+                  {(
+                    [
+                      ["edges", "Alku ja loppu", "edges"],
+                      ["start", "Alkuun", "top"],
+                      ["end", "Loppuun", "bottom"],
+                      ["all", "Näytä kaikki", "expand"],
+                    ] as const
+                  ).map(([value, label, icon]) => (
+                    <IconButton
+                      variant="quiet"
+                      key={value}
+                      aria-label={label}
+                      aria-pressed={view === value}
+                      onPress={() => select(value)}
+                    >
+                      <Icon name={icon as IconName} />
+                    </IconButton>
+                  ))}
                   <IconButton
                     variant="quiet"
-                    key={value}
-                    aria-label={label}
-                    aria-pressed={view === value}
-                    onPress={() => select(value)}
+                    aria-label="Avaa omassa ikkunassa"
+                    onPress={() => setDialog(true)}
                   >
-                    <Icon name={icon as IconName} />
+                    <Icon name="external" />
                   </IconButton>
-                ))}
-                <IconButton
-                  variant="quiet"
-                  aria-label="Avaa omassa ikkunassa"
-                  onPress={() => setDialog(true)}
-                >
-                  <Icon name="external" />
-                </IconButton>
-              </fieldset>
-            ) : null}
+                </>
+              ) : null}
+            </fieldset>
           </div>
           {long ? <small>{lines.length} riviä</small> : null}
         </div>
@@ -140,10 +165,7 @@ export function BashToolCard({
             <ControlButton
               variant="quiet"
               size="compact"
-              onPress={() => {
-                if (onCopy) onCopy();
-                else void navigator.clipboard?.writeText(output ?? "");
-              }}
+              onPress={() => void copyOutput()}
             >
               Kopioi
             </ControlButton>

@@ -383,6 +383,13 @@ pre {
   font-family: var(--ah-mono);
   overflow-wrap: anywhere;
 }
+/* Font shorthands on individual code surfaces reset this property. */
+pre,
+code,
+.ah-mono {
+  /* biome-ignore lint/complexity/noImportantStyles: Code text must override later font shorthands. */
+  font-variant-ligatures: none !important;
+}
 .ah-checkbox,
 .ah-radio-group label {
   display: flex;
@@ -2600,6 +2607,12 @@ h1[tabindex="-1"]:focus {
   background: transparent;
   color: var(--ah-muted);
   cursor: pointer;
+}
+.ah-bash-rail .ah-bash-copy {
+  margin-bottom: 4px;
+}
+.ah-bash-rail .ah-bash-copy:only-child {
+  margin-bottom: 0;
 }
 .ah-bash-rail button[aria-pressed="true"] {
   color: var(--ah-ink);

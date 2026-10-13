@@ -1,5 +1,11 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { expect, it } from "vitest";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import { expect, it, vi } from "vitest";
 import { BashToolCard } from "./BashToolCard";
 
 const output = Array.from({ length: 53 }, (_, i) => `rivi ${i + 1}`).join("\n");
@@ -34,6 +40,24 @@ it("follows the end while running, then shows edges", () => {
   view.rerender(<BashToolCard command="pwd" output={`${output}\nmore`} />);
   expect(view.getByText(/44 riviä välistä/)).toBeTruthy();
 });
+it("copies all output even when only edges are shown, and shows copy on short output", async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: { writeText },
+  });
+  const view = render(<BashToolCard command="ls" output={output} />);
+  fireEvent.click(
+    within(view.container).getByRole("button", { name: "Kopioi tuloste" }),
+  );
+  expect(writeText).toHaveBeenCalledWith(output);
+  view.rerender(<BashToolCard command="ls" output="a\nb" />);
+  await waitFor(() =>
+    expect(
+      within(view.container).getByRole("button", { name: "Tuloste kopioitu" }),
+    ).toBeTruthy(),
+  );
+});
 it("offers the own window for any long output, not only very long ones", () => {
   const sixteen = Array.from({ length: 16 }, (_, i) => `rivi ${i + 1}`).join(
     "\n",
@@ -49,4 +73,7 @@ it("offers the own window for any long output, not only very long ones", () => {
       name: "Avaa omassa ikkunassa",
     }),
   ).toBeNull();
+  expect(
+    within(short.container).getByRole("button", { name: "Kopioi tuloste" }),
+  ).toBeTruthy();
 });

@@ -55,6 +55,7 @@ export class ConversationStore {
   private readonly pager: ConversationPager;
   private windows = new Map<string, WindowRecord>();
   private positions = new Map<string, { key: string; offset: number }>();
+  private toolExpansions = new Map<string, Map<string, boolean>>();
   private metadata: Metadata = {
     agents: new Map(),
     statuses: new Map(),
@@ -121,6 +122,17 @@ export class ConversationStore {
   status = (id: string): Status | undefined => this.metadata.statuses.get(id);
   statusStale = (id: string): boolean => this.metadata.staleStatuses.has(id);
   position = (id: string) => this.positions.get(id);
+  toolExpansion = (id: string, callId: string) => ({
+    get: () => this.toolExpansions.get(id)?.get(callId),
+    set: (value: boolean) => {
+      let calls = this.toolExpansions.get(id);
+      if (!calls) {
+        calls = new Map();
+        this.toolExpansions.set(id, calls);
+      }
+      calls.set(callId, value);
+    },
+  });
   savePosition = (id: string, value?: { key: string; offset: number }) => {
     if (value) this.positions.set(id, value);
     else this.positions.delete(id);
@@ -316,6 +328,7 @@ export class ConversationStore {
       if (oldest) {
         this.windows.delete(oldest[0]);
         this.positions.delete(oldest[0]);
+        this.toolExpansions.delete(oldest[0]);
       }
     }
     return record.value;
@@ -826,6 +839,7 @@ export class ConversationStore {
     this.pager.cancelAll();
     this.windows.clear();
     this.positions.clear();
+    this.toolExpansions.clear();
     this.attentionKeys.clear();
     this.visibleId = undefined;
     this.routed = undefined;

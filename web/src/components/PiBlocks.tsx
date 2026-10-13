@@ -7,8 +7,12 @@ export function PiToolUse({
   state,
   targetText,
   children,
+  initiallyExpanded = name === "bash" && state !== "forming",
+  expansion,
 }: {
   name: string;
+  initiallyExpanded?: boolean;
+  expansion?: { get: () => boolean | undefined; set: (value: boolean) => void };
   targetText?: string;
   state:
     | "forming"
@@ -20,9 +24,12 @@ export function PiToolUse({
     | "unknown";
   children?: ReactNode;
 }) {
-  const [expanded, setExpanded] = useState(
-    name === "bash" && state !== "forming",
-  );
+  const [expanded, setExpanded] = useState(() => {
+    const previous = expansion?.get();
+    if (previous !== undefined) return previous;
+    expansion?.set(initiallyExpanded);
+    return initiallyExpanded;
+  });
   const labels = {
     forming: "muodostaa kutsua…",
     called: "odottaa ajoa",
@@ -49,7 +56,10 @@ export function PiToolUse({
           state === "failed" ? "Pi ilmoitti työkalun virheestä." : undefined
         }
         expanded={expanded}
-        onToggle={() => setExpanded(!expanded)}
+        onToggle={() => {
+          expansion?.set(!expanded);
+          setExpanded(!expanded);
+        }}
       >
         {children}
       </ToolRow>

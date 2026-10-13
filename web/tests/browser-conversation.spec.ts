@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "./worker-host";
 
@@ -106,10 +107,21 @@ test("@browser-conversation saved assistant turn exposes bash command and folds 
     .fill("Tarkista tiedostot");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   const turn = page.getByRole("region", { name: "Agentin vuoro" }).first();
-  await expect(turn.getByText("$ ls")).toBeVisible({ timeout: 30000 });
+  await expect(turn.getByText("Selvä. Kysyit:", { exact: false })).toBeVisible({
+    timeout: 30000,
+  });
+  await page.reload();
+  const bash = turn.getByRole("button", { name: /bash.*valmis/ });
+  await expect(bash).toHaveAttribute("aria-expanded", "false");
+  await bash.click();
+  await expect(turn.getByText("$ ls")).toBeVisible();
   await expect(
-    turn.getByText("Selvä. Kysyit:", { exact: false }),
+    turn.getByRole("button", { name: "Kopioi tuloste" }),
   ).toBeVisible();
+  expect(
+    (await new AxeBuilder({ page }).include(".ah-bash-card").analyze())
+      .violations,
+  ).toEqual([]);
   await expect(turn.getByText("Argumentit")).toHaveCount(0);
   await expect(turn.getByText(/call_[a-z0-9]/)).toHaveCount(0);
   await turn.getByRole("button", { name: /Työ ·/ }).click();

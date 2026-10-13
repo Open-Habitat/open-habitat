@@ -62,7 +62,10 @@ it("keeps orphan results accessible without grouping and bounds large output", (
   ]);
   expect(items).toHaveLength(3);
   render(items.map((item) => <div key={item.id}>{item.content}</div>));
-  expect(screen.getAllByRole("button", { name: /bash/ })).toHaveLength(2);
+  const rows = screen.getAllByRole("button", { name: /bash/ });
+  expect(rows).toHaveLength(2);
+  expect(rows[0].getAttribute("aria-expanded")).toBe("false");
+  for (const row of rows) fireEvent.click(row);
   expect(screen.getAllByText("Näytä koko ladattu tuloste")).toHaveLength(2);
   expect(document.querySelector("script")).toBeNull();
   expect(screen.getByText(/Sisältöä ei tueta/)).toBeTruthy();
@@ -608,6 +611,8 @@ it("reads bash arguments only after opening the native call", async () => {
     content: { ...entry.content, text: "" },
   };
   render(timelineItems([call], undefined, agentId, "rev")[0].content);
+  expect(fetch).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: /bash/ }));
   expect(await screen.findByText(/\$ echo ok/)).toBeTruthy();
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(fetch.mock.calls[0][0]).toContain("limit_bytes=65536");

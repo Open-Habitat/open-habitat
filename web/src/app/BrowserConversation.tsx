@@ -597,6 +597,7 @@ export function BrowserConversation({
                         : [],
                     ),
                   ),
+                  id ? (callId) => store.toolExpansion(id, callId) : undefined,
                 ),
                 ...(sendObservation
                   ? [
@@ -684,6 +685,12 @@ export function BrowserConversation({
                                   ) : item.kind === "tool" ? (
                                     <PiToolUse
                                       name={item.name ?? "Työkalu"}
+                                      initiallyExpanded={item.name === "bash"}
+                                      expansion={
+                                        id && item.callId
+                                          ? store.toolExpansion(id, item.callId)
+                                          : undefined
+                                      }
                                       targetText={
                                         item.name === "bash"
                                           ? bashCommand(

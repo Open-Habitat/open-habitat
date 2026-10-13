@@ -384,8 +384,13 @@ function OrderedBlocks({
   results,
   liveTools,
   toolName,
+  toolExpansion,
 }: {
   blocks: HistoryBlock[];
+  toolExpansion?: (callId: string) => {
+    get: () => boolean | undefined;
+    set: (value: boolean) => void;
+  };
   toolName?: string;
   liveTools?: Map<string, LiveTool>;
   results?: Map<string, HistoryEntry>;
@@ -409,6 +414,8 @@ function OrderedBlocks({
           <PiToolUse
             key={`${entryKey}:${revision}:${block.tool_call_id}`}
             name={block.tool_name || "Työkalu"}
+            initiallyExpanded={false}
+            expansion={toolExpansion?.(block.tool_call_id)}
             targetText={
               block.tool_name === "bash"
                 ? (commands[block.tool_call_id] ??
@@ -498,8 +505,13 @@ export function Entry({
   revision,
   results,
   liveTools,
+  toolExpansion,
 }: {
   entry: HistoryEntry;
+  toolExpansion?: (callId: string) => {
+    get: () => boolean | undefined;
+    set: (value: boolean) => void;
+  };
   liveTools?: Map<string, LiveTool>;
   results?: Map<string, HistoryEntry>;
   onLogin?: () => void;
@@ -521,6 +533,7 @@ export function Entry({
               blocks={entry.blocks}
               results={results}
               liveTools={liveTools}
+              toolExpansion={toolExpansion}
               entryKey={entry.entry_key}
               agentId={agentId}
               revision={entry.native_revision ?? revision}
@@ -542,6 +555,7 @@ export function Entry({
               blocks={entry.blocks}
               results={results}
               liveTools={liveTools}
+              toolExpansion={toolExpansion}
               entryKey={entry.entry_key}
               agentId={agentId}
               revision={entry.native_revision ?? revision}
@@ -568,6 +582,7 @@ export function Entry({
       {entry.kind === "tool" ? (
         <PiToolUse
           name={entry.content.text.split("\n", 1)[0] || "Työkalu"}
+          initiallyExpanded={false}
           state={entry.is_error ? "failed" : "succeeded"}
         >
           <ResultBlocks
@@ -730,6 +745,10 @@ export function timelineItems(
   agentId?: string,
   revision?: string,
   liveTools?: Map<string, LiveTool>,
+  toolExpansion?: (callId: string) => {
+    get: () => boolean | undefined;
+    set: (value: boolean) => void;
+  },
 ) {
   const results = new Map<string, HistoryEntry>();
   const calls = new Set<string>();
@@ -781,6 +800,7 @@ export function timelineItems(
               entryKey={entry.entry_key}
               results={results}
               liveTools={liveTools}
+              toolExpansion={toolExpansion}
               agentId={agentId}
               revision={entry.native_revision ?? revision}
               onLogin={onLogin}
@@ -804,6 +824,7 @@ export function timelineItems(
                       : [{ type: "text", text: final.content.text }]
                   }
                   entryKey={final.entry_key}
+                  toolExpansion={toolExpansion}
                   agentId={agentId}
                   revision={final.native_revision ?? revision}
                   onLogin={onLogin}
@@ -846,6 +867,7 @@ export function timelineItems(
               entry={entry}
               results={results}
               liveTools={liveTools}
+              toolExpansion={toolExpansion}
               onLogin={onLogin}
               agentId={agentId}
               revision={revision}
