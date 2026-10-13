@@ -101,7 +101,7 @@ function doneThink(b) {
 }
 function liveThink(b) { const lines = b.text.split('\n').filter(Boolean); return `<div class="think-tick"><span class="lbl">Ajattelee</span><span class="line">${inline(lines[lines.length - 1] || '…')}</span></div>`; }
 function replyBubble(b, state, head) {
-  const body = md(b.text); const caret = b.live && !body.endsWith('</pre>') ? '<span class="caret"></span>' : '';
+  const body = md(b.text); const caret = b.live && !/<\/(pre|figure|div|ol|ul|blockquote)>$/.test(body) ? '<span class="caret"></span>' : '';
   return `<article class="bubble reply"><div class="bar head">${head}</div><div class="prose">${body}${caret}</div></article>`;
 }
 const replyHeadDone = () => `<span class="ok">${ICON_CHECK}Vastaus valmis</span><span class="model">${MODEL}</span>${copyBtn('Kopioi vastaus', LIVE.reply)}<time class="meta">14:37</time>`;
