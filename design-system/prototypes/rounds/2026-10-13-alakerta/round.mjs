@@ -4,6 +4,7 @@
 // and how the working-time choice between steering and queueing is made.
 export const title = 'Keskustelun alakerta · kenttä, Lähetä ja Stop';
 export const app = true;
+export const composer = false; // draws its own composer
 export const variants = [
   { name: 'Työkalurivi', axis: 'kentän alareunan rivi: Stop vasemmalla, tapa ja Lähetä oikealla', fn: 'v1' },
   { name: 'Lähetä-paikka', axis: 'yksi painike vaihtaa: Lähetä tai Stop samassa kohdassa', fn: 'v2' },

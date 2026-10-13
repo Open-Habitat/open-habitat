@@ -108,9 +108,13 @@ noudattavat yhteistä palstaa. Viimeisimpään-painike pysyy näkyvänä myös
 kirjoituskentän kasvaessa. Taustapäivitys säilyttää lukukohdan ja fokuksen
 sekä jättää luettavan sisällön näkyviin.
 
-Työn aikaiset Keskeytä, Ohjaa ja Lähetä erottuvat tehtävänsä mukaan.
-Kentän yhteydessä kerrotaan ohjaamisen ja työn jälkeen jonosta lähetettävän
-viestin ero. Jonot ovat tiiviitä rivejä, joilla on yhteinen otsake ja koko
+Levossa kirjoituskenttä on yksirivinen ja Lähetä-ikoni on sen vieressä;
+kenttä kasvaa tekstin mukana noin kahteentoista riviin ja vierittyy sitten.
+Pi:n työn ajan kentän alle tulee rivi, jossa vasemmalla on Stop ja oikealla
+valinta Ohjaa / Työn jälkeen; Lähetä tekee valitun. Stop pysäyttää heti ilman
+vahvistusta, koska agentin saa jatkamaan pyytämällä. Valinnan vihjeteksti
+kertoo ohjaamisen ja työn jälkeen lähtevän viestin eron; pikanäppäinten
+ohjeriviä kentän alla ei ole (Jari 13.10.2026). Jonot ovat tiiviitä rivejä, joilla on yhteinen otsake ja koko
 jonon tyhjennys. Hylätty lähetys jättää tekstin korjattavaksi; epävarman
 lähetyksen yhteydessä tekstin voi ottaa talteen.
 

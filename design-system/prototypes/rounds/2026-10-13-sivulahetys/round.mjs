@@ -4,6 +4,7 @@
 // differ in where they appear.
 export const title = 'Alakerta · Lähetä sivussa, Stop työn ajan';
 export const app = true;
+export const composer = false; // draws its own composer
 export const variants = [
   { name: 'Kentän alla', axis: 'työn ajan rivi kentän alla: Stop vasemmalla, pilleri oikealla', fn: 'v1' },
   { name: 'Kentän yllä', axis: 'sama rivi kentän yläpuolella', fn: 'v2' },

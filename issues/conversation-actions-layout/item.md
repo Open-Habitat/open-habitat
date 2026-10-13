@@ -43,7 +43,7 @@ hover or focus on desktop, and stays visible on touch devices.
 
 The send button sits beside the composer field, not on a row of its own;
 the current composer is too loose (agreed in the agent-turn prototype rounds,
-2026-10-12).
+2026-10-12, and settled below).
 
 ## Chosen top bar (prototype round 2026-10-13)
 
@@ -70,12 +70,14 @@ and the "+" in that draft are the issue's proposal, not yet reviewed.
   rivinvaihto") goes away; it takes too much space.
 - Stop stops at once, without a confirmation dialog: telling the agent
   "jatka" resumes the work.
-- The composer is the "Työkalurivi" direction of
-  `design-system/prototypes/rounds/2026-10-13-alakerta/`: a row in the
-  composer with stop at the left and, at the right, a pill choosing
-  "Ohjaa" / "Työn jälkeen" while Pi works, then the send icon. How that row
-  separates from the writing area is the riff
-  `design-system/prototypes/rounds/2026-10-13-tyokalurivi/`.
+- The composer (chosen over three rounds, the last
+  `design-system/prototypes/rounds/2026-10-13-sivulahetys/`, direction
+  "Kentän alla"): at rest a one-line field with the send icon beside it. The
+  field grows with its text to about twelve lines and then scrolls. While Pi
+  works a row appears under the field with stop at the left and a pill
+  choosing "Ohjaa" / "Työn jälkeen" at the right; send does the chosen one.
+  The queue is a compact list above the field with one clear-all. The draft
+  is built from `design-system/prototypes/lib/composer.*`.
 
 ## Design and verification
 
