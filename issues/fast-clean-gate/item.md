@@ -56,4 +56,4 @@ semantics in `TESTING.md` and `scripts/gate-receipt.py` stay unchanged.
 
 - [x] `./scripts/ci-local.sh --clean --json` on a warm alder finishes in under two minutes and still writes the receipt.
 - [x] Browser cases pass with parallel workers without shared-fixture interference; `TESTING.md` and `web/AGENTS.md` describe the per-worker host.
-- [ ] `release_test.py` accepts the receipt unchanged.
+- [x] `release_test.py` accepts the receipt unchanged.
