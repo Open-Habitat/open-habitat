@@ -21,7 +21,7 @@ export function LoginCard({
         <p>
           Kirjaudu GitHub-tililläsi. Pääset omiin työtiloihisi ja voit
           työskennellä niissä agenttien kanssa. Kirjautumisen jälkeen voit
-          valita repot ja yhdistää OpenAI-tilisi.
+          valita työtilasi ja yhdistää OpenAI-tilisi.
         </p>
         <Button
           label="Kirjaudu GitHubilla"
