@@ -15,6 +15,8 @@ export type IconName =
   | "question"
   | "external"
   | "edges"
+  | "scroll"
+  | "wrap"
   | "top"
   | "bottom"
   | "expand"
@@ -72,6 +74,18 @@ export function Icon({
     edges: (
       <>
         <path d="M4 4h16M4 20h16M12 7v10m-3-3 3 3 3-3M9 10l3-3 3 3" />
+      </>
+    ),
+    scroll: (
+      <>
+        <rect x="4" y="4" width="16" height="16" rx="2" />
+        <path d="M16 8v5" />
+      </>
+    ),
+    wrap: (
+      <>
+        <path d="M4 6h16M4 12h12a3 3 0 0 1 0 6h-4" />
+        <path d="m14 16-2 2 2 2M4 18h4" />
       </>
     ),
     top: (

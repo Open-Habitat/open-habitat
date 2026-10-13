@@ -58,6 +58,16 @@ it("copies all output even when only edges are shown, and shows copy on short ou
     ).toBeTruthy(),
   );
 });
+it("copies the entire command beside it, including folded lines", () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: { writeText },
+  });
+  render(<BashToolCard command={"cat <<EOF\nsecond\nEOF"} output="done" />);
+  fireEvent.click(screen.getByRole("button", { name: "Kopioi komento" }));
+  expect(writeText).toHaveBeenCalledWith("cat <<EOF\nsecond\nEOF");
+});
 it("offers the own window for any long output, not only very long ones", () => {
   const sixteen = Array.from({ length: 16 }, (_, i) => `rivi ${i + 1}`).join(
     "\n",

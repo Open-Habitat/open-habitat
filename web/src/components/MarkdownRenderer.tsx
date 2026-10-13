@@ -1,9 +1,9 @@
-import { isValidElement, useState } from "react";
+import { isValidElement } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { ExternalLink } from "./ControlElements";
-import { Button } from "./Primitives";
+import { OutputBox } from "./OutputBox";
 
 // Do not broaden this with the sanitizer's default schema: host content is untrusted.
 const schema = {
@@ -63,30 +63,19 @@ function safeUrl(url: string): string {
 }
 
 function MarkdownCode({ text, language }: { text: string; language?: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const long = text.length > 16000;
   return (
-    <figure className="ah-code ah-markdown-code">
-      <figcaption>{language || "Koodi"}</figcaption>
-      <pre>
-        <code>{long && !expanded ? `${text.slice(0, 16000)}\n…` : text}</code>
-      </pre>
-      <div className="ah-actions">
-        <Button
-          label="Kopioi koodi"
-          variant="quiet"
-          size="compact"
-          onPress={() => void navigator.clipboard?.writeText(text)}
-        />
-        {long ? (
-          <Button
-            label={expanded ? "Näytä vähemmän" : "Näytä koko koodi"}
-            variant="quiet"
-            size="compact"
-            onPress={() => setExpanded(!expanded)}
-          />
-        ) : null}
-      </div>
+    <figure className="ah-markdown-code">
+      <OutputBox
+        text={text}
+        language={
+          language === "bash" || language === "sh"
+            ? "shell"
+            : language === "py"
+              ? "python"
+              : language
+        }
+        copyLabel="Kopioi koodi"
+      />
     </figure>
   );
 }

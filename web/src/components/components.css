@@ -3193,3 +3193,201 @@ h1[tabindex="-1"]:focus {
     display: none;
   }
 }
+/* One output surface for tool results and reply code. */
+.ah-bash-command-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  gap: 6px;
+  align-items: start;
+}
+.ah-bash-command-row > button {
+  margin-top: 4px;
+}
+.ah-markdown-code {
+  margin: 12px 0;
+  max-width: 100%;
+}
+.ah-output-box {
+  min-width: 0;
+}
+.ah-output-edges {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ah-bash-window .ah-output-viewport {
+  margin: 0;
+  min-width: 0;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+  font-variant-ligatures: none;
+}
+.ah-output-viewport .ah-output-line {
+  display: block;
+  min-width: max-content;
+}
+.ah-bash-window .ah-output-wrap {
+  white-space: pre-wrap;
+  overflow-x: hidden;
+}
+.ah-output-wrap .ah-output-line {
+  min-width: 0;
+  padding-left: 3ch;
+  text-indent: -3ch;
+  overflow-wrap: anywhere;
+}
+.ah-bash-window .ah-output-scroll {
+  max-height: 13.5em;
+  overflow-y: auto;
+}
+.ah-bash-window .ah-output-all {
+  max-height: none;
+}
+.ah-bash-window .ah-output-edges .ah-bash-head {
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+}
+.ah-bash-window .ah-output-edges .ah-bash-tail {
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+}
+.ah-output-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+}
+.ah-output-group + .ah-output-group {
+  border-top: 1px solid var(--ah-line-soft);
+}
+.ah-output-selector {
+  padding: 3px;
+  margin: 4px 0;
+  border: 1px solid var(--ah-line);
+  border-radius: 8px;
+  background: var(--ah-surface-2);
+}
+.ah-output-selector + .ah-output-group {
+  border-top: 0;
+}
+.ah-bash-rail button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.ah-bash-window .ah-output-more-right {
+  box-shadow: inset -18px 0 14px -14px rgba(16, 24, 40, 0.22);
+}
+.ah-bash-window .ah-output-more-left {
+  box-shadow: inset 18px 0 14px -14px rgba(16, 24, 40, 0.22);
+}
+.ah-output-meta {
+  display: block;
+  margin: 6px 0 0 12px;
+  color: var(--ah-muted);
+  font: 500 11.5px var(--ah-mono);
+}
+.ah-markdown :is(h2, h3, h4) {
+  margin: 1.1em 0 0.4em;
+  color: var(--ah-ink);
+}
+.ah-markdown h2 {
+  font-size: 17px;
+}
+.ah-markdown h3 {
+  font-size: 15.5px;
+}
+.ah-markdown h4 {
+  font-size: 14px;
+}
+.ah-markdown ol {
+  padding-left: 1.5em;
+}
+.ah-markdown ol li::marker {
+  color: var(--ah-muted);
+}
+.ah-markdown blockquote {
+  margin: 0 0 0.7em;
+  padding-left: 12px;
+  border-left: 2px solid var(--ah-line-strong);
+  color: var(--ah-ink-2);
+}
+.ah-markdown-table :is(th, td) {
+  border: 0;
+  border-bottom: 1px solid var(--ah-line-soft);
+  padding: 6px 12px 6px 0;
+  text-align: left;
+}
+.ah-bash-rail .ah-output-group {
+  margin: 0;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  min-width: 0;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Explicitly override reply prose defaults for output. */
+.ah-markdown-code .ah-bash-window pre {
+  white-space: pre;
+  overflow-wrap: normal;
+}
+.ah-file-stat {
+  flex: none;
+  font: 400 12px var(--ah-mono);
+  color: var(--ah-muted);
+}
+.ah-file-diff-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  gap: 6px;
+  min-width: 0;
+}
+.ah-file-diff {
+  margin: 0;
+  padding: 8px 0;
+  overflow: auto;
+  max-height: 24em;
+  background: var(--ah-sunken);
+  font: 400 var(--ah-size-code) / 1.55 var(--ah-mono);
+  font-variant-ligatures: none;
+  border: 1px solid var(--ah-line-soft);
+  border-radius: 8px;
+}
+.ah-diff-line {
+  display: flex;
+  min-width: max-content;
+  padding-right: 12px;
+}
+.ah-diff-sign {
+  flex: none;
+  width: 2.2ch;
+  padding-left: 8px;
+  user-select: none;
+}
+.ah-diff-add {
+  background: var(--ah-ok-soft);
+}
+.ah-diff-remove {
+  background: var(--ah-err-soft);
+}
+.ah-diff-add .ah-diff-sign {
+  color: var(--ah-ok);
+}
+.ah-diff-remove .ah-diff-sign {
+  color: var(--ah-err);
+}
+.ah-file-diff ins {
+  text-decoration: none;
+  background: color-mix(in srgb, var(--ah-ok) 26%, transparent);
+}
+.ah-file-diff del {
+  text-decoration: none;
+  background: color-mix(in srgb, var(--ah-err) 24%, transparent);
+}
+.ah-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
