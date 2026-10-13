@@ -3,11 +3,13 @@ created: 2026-10-13
 updated: 2026-10-13
 type: improvement
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@fast-clean-gate']
 lane: release-tooling
 preparation: ready
+closed: 2026-10-13
+closed_by: claude
 ---
 
 # Make the test suite an order of magnitude faster and scopeable
