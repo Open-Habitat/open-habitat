@@ -1,0 +1,43 @@
+/* ===== Tilannekatsaus above the composer ===== */
+.recap-host { flex: none; display: flex; justify-content: center; padding: 8px var(--ah-column-pad-inline) 0; background: var(--ah-bg); }
+.recap-host[hidden] { display: none; }
+.recap-host > .recap { width: min(100%, var(--ah-conversation-width)); }
+.recap { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px 10px 14px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); font-size: 13px; animation: ui-pop 160ms ease-out; }
+.recap-host .recap .k-head { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+.k-title { font: 600 12.5px var(--ah-font); color: var(--ah-ink); }
+.k-age { color: var(--ah-muted); font-size: 12px; white-space: nowrap; }
+.k-stale { padding: 1px 7px; border: 1px dashed var(--ah-line-strong); border-radius: var(--ah-r-pill); color: var(--ah-ink-2); font-size: 11px; white-space: nowrap; }
+.k-auto { color: var(--ah-muted); font-size: 11.5px; }
+.k-grow { flex: 1; }
+.k-btn { width: 28px; height: 28px; color: var(--ah-ink-2); }
+.k-btn svg { width: 15px; height: 15px; }
+.k-btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
+.k-btn.spin svg { animation: ui-spin .9s linear infinite; }
+.k-text { margin: 0; color: var(--ah-ink); line-height: 1.5; text-wrap: pretty; }
+.k-text code, .k-next code, .k-peek code, .k-next-btn code { font: 400 var(--ah-size-code) var(--ah-mono); padding: 0 3px; border-radius: 4px; background: var(--ah-sunken); }
+.k-next { margin: 0; display: flex; gap: 10px; color: var(--ah-ink-2); }
+.k-label { flex: none; font: 600 11px var(--ah-font); letter-spacing: .06em; text-transform: uppercase; color: var(--ah-muted); padding-top: 2px; }
+.recap-host .recap .k-skel { display: flex; flex-direction: column; gap: 7px; padding: 4px 0 2px; }
+.k-skel span { height: 10px; border-radius: 5px; background: var(--ah-sunken); animation: ui-pulse 1.2s ease-in-out infinite; }
+.k-skel .short { width: 55%; }
+@media (prefers-reduced-motion: reduce) { .recap, .k-skel span, .k-btn.spin svg { animation: none; } }
+
+/* Rivi: one line that opens to the full recap. */
+.recap.row { flex-direction: row; align-items: center; gap: 4px; padding: 4px 6px 4px 8px; }
+.k-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 4px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.k-open:hover { background: var(--ah-hover); }
+.k-open:focus-visible, .k-next-btn:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 1px; }
+.k-open .chev { color: var(--ah-muted); }
+.k-peek { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ah-ink-2); }
+.k-fold .chev { transform: rotate(90deg); }
+
+/* Kentän kansi: the recap sits on the field as its lid; the suggestion moves into the field. */
+.composer .cwrap:has(> .recap-host) { grid-template-areas: "recap ." "queue queue" "box side" "below ."; }
+.composer .cwrap > .recap-host { grid-area: recap; display: block; padding: 0; background: none; }
+.k-v3 .recap { border-radius: var(--ah-r-xl) var(--ah-r-xl) 0 0; border-color: var(--ah-line-strong); border-bottom: 1px dashed var(--ah-line); background: var(--ah-surface-2); }
+.composer .cwrap > .recap-host.k-v3 { margin-bottom: -7px; }
+.composer .cwrap > .k-v3:not([hidden]) ~ .cbox { border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+.k-next-btn { align-self: flex-start; display: inline-flex; align-items: center; gap: 7px; max-width: 100%; min-height: 28px; padding: 3px 10px; border: 1px solid var(--ah-accent-line); border-radius: var(--ah-r-pill); background: var(--ah-accent-soft); color: var(--ah-accent-ink); font: 500 12.5px var(--ah-font); text-align: left; cursor: pointer; }
+.k-next-btn svg { flex: none; width: 14px; height: 14px; }
+.k-next-btn:hover { background: var(--ah-accent-line); }
+.page-btn { font: 500 12.5px var(--ah-font); padding: 4px 10px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-md); background: var(--ah-surface); color: var(--ah-ink); cursor: pointer; }
