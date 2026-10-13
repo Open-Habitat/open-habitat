@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { IconButton } from "./ControlElements";
+import { ControlButton, IconButton } from "./ControlElements";
 import { Icon } from "./Icon";
 
 type View = "edges" | "scroll" | "all";
@@ -157,13 +157,14 @@ export function OutputBox({
         {view === "edges" ? (
           <div className="ah-output-edges">
             {pre(lines.slice(0, 3), "ah-bash-head", head)}
-            <button
-              type="button"
+            <ControlButton
+              variant="quiet"
+              size="micro"
               className="ah-bash-gap"
-              onClick={() => select("all")}
+              onPress={() => select("all")}
             >
               {lines.length - 10} riviä välistä · Näytä kaikki
-            </button>
+            </ControlButton>
             {pre(lines.slice(-7), "ah-bash-tail", tail)}
           </div>
         ) : (
@@ -258,18 +259,23 @@ export function OutputBox({
         >
           <header>
             <strong>{language || "Tuloste"}</strong>
-            <button type="button" onClick={() => void copy()}>
+            <ControlButton
+              variant="quiet"
+              size="compact"
+              onPress={() => void copy()}
+            >
               Kopioi
-            </button>
-            <button
-              type="button"
-              onClick={() => {
+            </ControlButton>
+            <ControlButton
+              variant="quiet"
+              size="compact"
+              onPress={() => {
                 dialogRef.current?.close();
                 setDialog(false);
               }}
             >
               Sulje
-            </button>
+            </ControlButton>
           </header>
           <pre>
             {lines.map((line, i) => (
