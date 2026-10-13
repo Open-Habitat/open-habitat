@@ -1,6 +1,6 @@
 ---
 created: 2026-10-12
-updated: 2026-10-12
+updated: 2026-10-13
 type: improvement
 status: open
 priority: normal
@@ -45,3 +45,16 @@ Lab evidence should cover the idle trigger and duplicate prevention across
 tabs and reconnects, dismissal until a newer recap, manual refresh and the
 stale indicator. Desktop and phone views should make the card's placement,
 age and controls easy to understand.
+
+## Chosen presentation (prototype round 2026-10-13)
+
+Jari chose the full card ("Kortti") over a one-line strip and a lid joined to
+the field: the whole recap and its "Seuraavaksi" line sit in their own card
+directly above the composer. The header reads "Tilannekatsaus", the relative
+age, a dashed "uusia viestejä" mark when the conversation has moved on, and
+"luotu automaattisesti" after an idle-triggered recap; refresh (two arrows)
+and close are icon buttons at the right, and refresh is disabled with its
+reason while Pi works. Generation shows a skeleton in place of the text. The
+frozen draft is `design-system/drafts/Agentin vuoro.proto.html`, built from
+`design-system/prototypes/lib/recap.*`; the round with the rejected
+directions is `design-system/prototypes/rounds/2026-10-13-katsaus/`.

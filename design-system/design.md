@@ -108,6 +108,10 @@ noudattavat yhteistä palstaa. Viimeisimpään-painike pysyy näkyvänä myös
 kirjoituskentän kasvaessa. Taustapäivitys säilyttää lukukohdan ja fokuksen
 sekä jättää luettavan sisällön näkyviin.
 
+Tilannekatsaus on oma korttinsa suoraan kirjoituskentän yllä: otsakkeessa
+ikä ja merkki uusista viesteistä, oikealla päivitys ja sulkeminen. Suljettu
+katsaus pysyy kiinni, kunnes syntyy uudempi (Jari 13.10.2026).
+
 Levossa kirjoituskenttä on yksirivinen ja Lähetä-ikoni on sen vieressä;
 kenttä kasvaa tekstin mukana noin kahteentoista riviin ja vierittyy sitten.
 Pi:n työn ajan kentän alle tulee rivi, jossa vasemmalla on Stop ja oikealla
