@@ -176,9 +176,13 @@ it("shows an exact model ID as copyable timeline metadata, not code", () => {
     kind: "model_change" as const,
     content: { ...entry.content, text: "openai/gpt-5-codex", complete: true },
   };
-  const { container } = render(<Entry entry={model} />);
+  const { container } = render(
+    timelineItems([model]).map((item) => (
+      <div key={item.id}>{item.content}</div>
+    )),
+  );
   expect(screen.getByText("openai/gpt-5-codex").tagName).toBe("CODE");
-  expect(container.querySelector(".ah-model-change")).toBeTruthy();
+  expect(container.querySelector(".ah-session-settings")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Kopioi koodi" })).toBeNull();
   fireEvent.click(
     screen.getByRole("button", { name: "Kopioi mallin tunniste" }),
@@ -549,7 +553,7 @@ it("renders saved local command output and marker metadata without treating eith
   );
   expect(container.textContent).toContain("ei mallin kontekstissa");
   expect(container.textContent).toContain("failure");
-  expect(container.textContent).toContain("Keskustelun tieto");
+  expect(container.textContent).not.toContain("Keskustelun tieto");
   expect(container.querySelector("script")).toBeNull();
 });
 
@@ -616,4 +620,60 @@ it("reads bash arguments only after opening the native call", async () => {
   expect(await screen.findByText(/\$ echo ok/)).toBeTruthy();
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(fetch.mock.calls[0][0]).toContain("limit_bytes=65536");
+});
+
+it("merges native start settings and presents later changes and compaction as one row family", () => {
+  const model = (key: string, text: string): HistoryEntry => ({
+    ...entry,
+    entry_key: key,
+    kind: "model_change",
+    content: { ...entry.content, text },
+  });
+  const thinking = (key: string, text: string): HistoryEntry => ({
+    ...entry,
+    entry_key: key,
+    kind: "unknown",
+    entry_type: "thinking_level_change",
+    content: { ...entry.content, text },
+  });
+  const entries: HistoryEntry[] = [
+    model("m1", "provider/a"),
+    thinking("t1", "medium"),
+    { ...entry, entry_key: "user1" },
+    model("m2", "provider/b"),
+    thinking("t2", "high"),
+    {
+      ...entry,
+      entry_key: "compact",
+      kind: "unknown",
+      entry_type: "compaction",
+      content: { ...entry.content, text: "Tiivistetty" },
+    },
+    {
+      ...entry,
+      entry_key: "name",
+      kind: "unknown",
+      entry_type: "session_info",
+    },
+  ];
+  const items = timelineItems(entries);
+  expect(items.map((item) => item.id)).toEqual([
+    "m1",
+    "user1",
+    "m2",
+    "t2",
+    "compact",
+  ]);
+  const view = render(
+    items.map((item) => <div key={item.id}>{item.content}</div>),
+  );
+  expect(view.container.querySelectorAll(".ah-session-settings")).toHaveLength(
+    4,
+  );
+  expect(
+    view.container.querySelector(".ah-session-settings")?.textContent,
+  ).toContain("medium");
+  expect(view.container.textContent).toContain("provider/a →");
+  expect(view.container.textContent).toContain("medium → high");
+  expect(view.queryByText("Keskustelun tieto")).toBeNull();
 });

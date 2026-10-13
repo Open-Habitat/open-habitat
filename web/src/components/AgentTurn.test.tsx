@@ -55,7 +55,7 @@ it("keeps the reply visible when work folds and prevents folding during work", (
       toolCount={2}
     />,
   );
-  fireEvent.click(screen.getByRole("button", { name: /Työ · 1 ajatusta/ }));
+  fireEvent.click(screen.getByRole("button", { name: /PI · 1 ajatusta/ }));
   expect(view.queryByText("työ")).toBeNull();
   expect(view.getByText("vastaus")).toBeTruthy();
   view.rerender(

@@ -6,7 +6,6 @@ import {
   useState,
 } from "react";
 import {
-  AgentFacts,
   AgentHeader,
   AssistantMessage,
   Button,
@@ -15,7 +14,6 @@ import {
   ConversationTimeline,
   InlineNotice,
   Markdown,
-  ModelChange,
   UnknownEvent,
   UserMessage,
 } from "../components";
@@ -23,12 +21,14 @@ import { AgentTurn, ThinkingRow } from "../components/AgentTurn";
 import { BashToolCard } from "../components/BashToolCard";
 import { ControlButton, LinkRow } from "../components/ControlElements";
 import { ArchiveControls } from "../components/ArchiveControls";
+import { RecapCard } from "../components/RecapCard";
 import { PiBoundary, PiToolUse } from "../components/PiBlocks";
 import { type ConversationStore, useWindow } from "./conversationStore";
 import {
   continueConversation,
   historyEligibility,
   retitleHistory,
+  readRecap,
 } from "./conversations";
 import { useNavigate } from "react-router";
 import {
@@ -39,6 +39,12 @@ import {
   readHistory,
 } from "./history";
 import type { Agent } from "./snapshot";
+import {
+  hiddenSessionEntry,
+  latestSettings,
+  sessionMarkers,
+  type SessionMarker,
+} from "./sessionSettings";
 import { rowIndexOf, visibleEntryKeys } from "./useReadingPosition";
 
 // Only the daemon's explicit fallback marker is interpreted here. Unknown data
@@ -644,9 +650,6 @@ export function Entry({
           ) : null}
         </section>
       ) : null}
-      {entry.kind === "model_change" ? (
-        <ModelChange modelId={content.text} onCopy={copy} />
-      ) : null}
       {entry.kind === "unknown" ? (
         entry.entry_type || entry.blocks?.length ? (
           <aside
@@ -658,8 +661,6 @@ export function Entry({
                 {
                   compaction: "Keskustelu tiivistettiin",
                   branch_summary: "Haaran tiivistelmä",
-                  thinking_level_change: "Ajattelutaso vaihtui",
-                  session_info: "Keskustelun tieto",
                   label: "Merkintä",
                 } as Record<string, string>
               )[entry.entry_type ?? ""] ??
@@ -746,6 +747,48 @@ export type LiveTool = {
   arguments?: string;
   output?: string;
 };
+export function SessionSettingsRow({ marker }: { marker: SessionMarker }) {
+  return (
+    <aside
+      className="ah-session-settings"
+      role="note"
+      aria-label="Keskustelun asetukset"
+    >
+      {marker.compact !== undefined ? (
+        <span>Tiivistys · {marker.compact}</span>
+      ) : null}
+      {marker.model !== undefined ? (
+        <span>
+          Malli ·{" "}
+          {marker.oldModel ? (
+            <>
+              <code>{marker.oldModel}</code> →{" "}
+            </>
+          ) : null}
+          <code>{marker.model}</code>
+          <ControlButton
+            variant="quiet"
+            size="micro"
+            aria-label="Kopioi mallin tunniste"
+            title="Kopioi mallin tunniste"
+            onPress={() =>
+              void navigator.clipboard?.writeText(marker.model ?? "")
+            }
+          >
+            ⧉
+          </ControlButton>
+        </span>
+      ) : null}
+      {marker.thinking !== undefined ? (
+        <span>
+          Ajattelu · {marker.oldThinking ? `${marker.oldThinking} → ` : ""}
+          {marker.thinking}
+        </span>
+      ) : null}
+    </aside>
+  );
+}
+
 export function timelineItems(
   entries: HistoryEntry[],
   onLogin?: () => void,
@@ -771,9 +814,10 @@ export function timelineItems(
       calls.has(entry.tool_call_id)
     )
       results.set(entry.tool_call_id, entry);
+  const markers = sessionMarkers(entries);
   const visible = entries.filter(
     (entry) =>
-      entry.kind !== "recap" &&
+      !hiddenSessionEntry(entry, markers) &&
       (!entry.tool_call_id || results.get(entry.tool_call_id) !== entry),
   );
   const items: { id: string; kind: string; content: React.ReactNode }[] = [];
@@ -844,6 +888,16 @@ export function timelineItems(
     });
   };
   for (const entry of visible) {
+    const marker = markers.get(entry.entry_key);
+    if (marker) {
+      flush();
+      items.push({
+        id: entry.entry_key,
+        kind: "marker",
+        content: <SessionSettingsRow marker={marker} />,
+      });
+      continue;
+    }
     if (entry.kind === "assistant") {
       // A native assistant entry may contain tool calls before the final text.
       if (
@@ -965,7 +1019,26 @@ export function HistoryView({
     if (cached && !["loading", "error"].includes(cached.state))
       void store.reconnect(agent.agent_id);
   }, [agent.agent_id, store]);
+  const [recap, setRecap] = useState<Awaited<
+    ReturnType<typeof readRecap>
+  > | null>(null);
+  const [recapDismissed, setRecapDismissed] = useState(false);
+  useEffect(() => {
+    let active = true;
+    setRecap(null);
+    setRecapDismissed(false);
+    if (agent.history === "readable")
+      void readRecap(agent.agent_id)
+        .then((value) => {
+          if (active) setRecap(value);
+        })
+        .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [agent.agent_id, agent.history]);
   const entries = window?.entries ?? [];
+  const settings = latestSettings(entries);
   const stream = useRef<HTMLElement>(null);
   const anchor = useRef<{ key: string; offset: number } | undefined>(
     store.position(agent.agent_id),
@@ -1031,7 +1104,20 @@ export function HistoryView({
               : "unknown"
         }
         controlKind="read-only"
-        controlLabel="Vain luku · Ohjausta ei ole"
+        controlLabel="Vain luku"
+        settings={settings}
+        detailsFacts={[
+          { label: "Työtila", value: workspaceName },
+          {
+            label: "Malli",
+            value: settings.model ?? "Ei tiedossa",
+            copy: !!settings.model,
+          },
+          { label: "Ajattelutaso", value: settings.thinking ?? "Ei tiedossa" },
+          { label: "Ohjaus", value: "Vain luku" },
+          { label: "Aloitettu", value: "Ei tiedossa" },
+          { label: "Natiivi tunniste", value: agent.agent_id, copy: true },
+        ]}
         titleAction={{
           label: "Luo uusi otsikko",
           availability:
@@ -1066,6 +1152,9 @@ export function HistoryView({
         archiveControl={
           <ArchiveControls
             state={agent.archive ?? "unknown"}
+            empty={
+              state === "empty" || (state === "ready" && entries.length === 0)
+            }
             eligible={
               agent.archive === "archived"
                 ? restoreAvailable
@@ -1092,16 +1181,6 @@ export function HistoryView({
         detailsExpanded={details}
         onToggleDetails={() => setDetails(!details)}
       />
-      {details ? (
-        <AgentFacts
-          facts={[
-            { label: "Natiivi tunniste", value: agent.agent_id },
-            { label: "Historia", value: agent.history },
-            { label: "Prosessi", value: process, state: "unknown" },
-            { label: "Ohjaus", value: "Vain luku" },
-          ]}
-        />
-      ) : null}
       <ConversationStream streamRef={stream} onScroll={capture}>
         <ConversationTimeline
           state={state}
@@ -1129,6 +1208,18 @@ export function HistoryView({
         ) : null}
       </ConversationStream>
       {actionError && <InlineNotice title={actionError} tone="warning" />}
+      {!recapDismissed && recap?.latest_message ? (
+        <RecapCard
+          recap={recap.recap}
+          now={Date.now()}
+          stale={!!recap.recap && recap.recap.through !== recap.latest_message}
+          pending={false}
+          error={false}
+          unavailable
+          unavailableReason="Katsauksen luominen vaatii keskustelun jatkamista."
+          onDismiss={() => setRecapDismissed(true)}
+        />
+      ) : null}
       <div className="ah-read-only-footer">
         <div>
           <strong>Vain luku</strong>

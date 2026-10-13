@@ -2788,7 +2788,7 @@ h1[tabindex="-1"]:focus {
 }
 .ah-archive-confirm {
   position: absolute;
-  z-index: 10;
+  z-index: 20;
   right: 0;
   top: 100%;
   width: min(320px, 80vw);
@@ -3097,4 +3097,99 @@ h1[tabindex="-1"]:focus {
 .ah-agent-controls .ah-composer-entry svg {
   width: 18px;
   height: 18px;
+}
+.ah-session-settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s2) var(--ah-s4);
+  align-items: center;
+  min-height: 34px;
+  padding: 4px 12px;
+  border: 1px solid var(--ah-line);
+  border-radius: 10px;
+  background: var(--ah-surface);
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Marker rows have their own isolated content. */
+.ah-session-settings span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Marker rows have their own isolated content. */
+.ah-session-settings code {
+  color: var(--ah-ink);
+}
+/* The details belong to the header and float over the reading column. */
+/* biome-ignore lint/style/noDescendingSpecificity: Positioning the header anchors its popover. */
+.ah-agent-header {
+  position: relative;
+}
+.ah-details-popover {
+  position: absolute;
+  z-index: 15;
+  top: 100%;
+  right: var(--ah-s2);
+  width: min(360px, calc(100vw - 24px));
+  max-height: 70vh;
+  overflow: auto;
+  padding: var(--ah-s3);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+  background: var(--ah-surface);
+}
+.ah-details-popover h2 {
+  margin: 0 0 var(--ah-s2);
+  font-size: var(--ah-size-meta);
+}
+.ah-details-popover .ah-facts > div {
+  grid-template-columns: 7rem minmax(0, 1fr);
+  padding: var(--ah-s2);
+  gap: var(--ah-s2);
+}
+.ah-details-popover dd {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s1);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ah-set-chip {
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-pill);
+  padding: 4px 10px;
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  cursor: pointer;
+}
+/* Status pills use balanced inline padding, including the read-only chip. */
+/* biome-ignore lint/style/noDescendingSpecificity: Override top-bar status only. */
+.ah-agent-topline > .ah-status {
+  padding-inline: 10px;
+}
+.ah-set-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  max-width: min(240px, 35vw);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ah-set-model {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 800px) {
+  .ah-set-chip {
+    max-width: none;
+    flex: none;
+  }
+  .ah-set-chip .ah-set-model,
+  .ah-set-chip .ah-set-separator {
+    display: none;
+  }
 }

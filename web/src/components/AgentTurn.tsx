@@ -82,32 +82,23 @@ export function AgentTurn({
         >
           <span aria-hidden="true" className="ah-disclosure-chevron" />
           PI{model ? ` · ${model}` : ""}
-          {!open ? ` · ${thinkingCount} ajatusta · ${toolCount} työkalua` : ""}
+          {!working
+            ? ` · ${thinkingCount} ajatusta · ${toolCount} työkalua${duration ? ` · ${duration}` : ""}`
+            : ""}
         </ControlButton>
       </div>
       {open ? <div className="ah-turn-work">{work}</div> : null}
       {reply ? <div className="ah-turn-reply">{reply}</div> : null}
-      <div
-        className={working ? "ah-turn-strip ah-turn-working" : "ah-turn-strip"}
-      >
-        {working ? (
-          <span role="status">
-            ● {activity ?? "Työskentelee"}
-            {duration ? ` · ${duration}` : ""}
-          </span>
-        ) : (
-          <ControlButton
-            variant="quiet"
-            size="compact"
-            aria-expanded={open}
-            onPress={() => setOpen(!open)}
-          >
-            <span aria-hidden="true" className="ah-disclosure-chevron" />
-            Työ · {thinkingCount} ajatusta · {toolCount} työkalua
-            {duration ? ` · ${duration}` : ""}
-          </ControlButton>
-        )}
-      </div>
+      {working ? (
+        <div className="ah-turn-strip ah-turn-working">
+          {working ? (
+            <span role="status">
+              ● {activity ?? "Työskentelee"}
+              {duration ? ` · ${duration}` : ""}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -10,6 +10,7 @@ import {
 import type { LiveTurn } from "./conversationEvents";
 import type { ConversationStore } from "./conversationStore";
 import type { HistoryEntry } from "./history";
+import { hiddenSessionEntry, sessionMarkers } from "./sessionSettings";
 
 /** Match the native call/result rows used by timelineItems, including orphan results. */
 export function visibleEntryKeys(entries: HistoryEntry[]): string[] {
@@ -32,6 +33,7 @@ export function visibleEntryKeys(entries: HistoryEntry[]): string[] {
       calls.has(entry.tool_call_id)
     )
       joined.set(entry.tool_call_id, entry);
+  const markers = sessionMarkers(entries);
   const keys: string[] = [];
   let first: string | undefined;
   let lastText = false;
@@ -42,7 +44,7 @@ export function visibleEntryKeys(entries: HistoryEntry[]): string[] {
   };
   for (const entry of entries) {
     if (
-      entry.kind === "recap" ||
+      hiddenSessionEntry(entry, markers) ||
       (entry.tool_call_id && joined.get(entry.tool_call_id) === entry)
     )
       continue;
