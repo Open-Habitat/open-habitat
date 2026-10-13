@@ -54,4 +54,15 @@ Before (previous changed-tree warm run): elapsed 169 s, browser 129 s, Go/contra
 
 Focused diff review: production entry points `HistoryHandler` and `HistoryHandlerWithNativeRoot` still use the production constants; the unexported budget override is called only from tests. The image is 16 KiB against an 8 KiB injected block limit; a limit of 8,193 bytes is rejected. Twelve metadata-rich entries each weigh about 7.5 KiB against an 8 KiB page budget, so both directions cross the page bound and retain cursor assertions. No browser case was deleted, and no security boundary assertion was removed. The remaining risk is the retired >32 MiB record proof and actual Pi's real-time 2-second transition, which the browser tests still wait for. The fixture's `scenario` switch resets devices and the suite starts a fresh host per case, so removing pre-case 2.2-second sleeps does not grant cross-case state.
 
-<!-- Final gate timings recorded after validation. -->
+## Full gate evidence
+
+| Changed-tree `--clean --json --no-reuse` | Setup | Dependencies | Web checks | Browser | Go/contracts | Packaging | Elapsed |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Before, cold (previous run) | 5 s | 49 s | 12 s | 142 s | 157 s | 10 s | 233 s passed |
+| Before, warm (previous run) | 5 s | 14 s | 11 s | 129 s | 124 s | 10 s | 169 s passed |
+| After, cold-cache attempt on `1e5e9ae7` | 5 s | 47 s | 11 s | 139 s | 95 s | not reached | 202 s failed |
+| After, warm-cache retry on `1e5e9ae7` | 5 s | 14 s | 11 s | 124 s | 82 s | 9 s | 162.82 s passed |
+
+Cold-cache failure: the browser phase passed; the Go phase failed in `TestConversationSpontaneousExitWithInheritedStdout` and `TestPiRPCDetachedStdout` waiting for fixture holder processes under concurrent browser load. These subprocess fixtures passed in the subsequent complete gate. The failed run produced no gate receipt. These numbers are not a 10x speedup: the browser side still determines wall time, and the 82-second Go/contracts phase includes build/storybook and validators, not just the now-faster daemon bounds cases. Gate wall time improved only 6 seconds warm. The separate Go suite with pinned Pi fixture installed took 17.84 s plain and 21.07 s under `-race` with warm Go caches. Per-package times (plain → race, seconds): `cli` 0.13→10.12, `core` 0.013→1.013, `daemon` 14.27→17.68, `diagnostic` 0.003→1.022, `gateway` 0.569→2.734, `nativegh` 3.059→4.079, `provision` 7.926→8.544, `storagequota` 0.006→1.021, `transport` 1.031→2.080, `udssecure` 0.006→1.010. The all-package race check retains concurrent code coverage and adds only ~3.2 seconds wall after the large inputs were removed, so it remains in the gate.
+
+The gate receipt for `1e5e9ae7` covers its tree and has `reused_phases: []`. Documentation and issue metadata change the tree, so the final committed tree needs its own no-reuse gate receipt. The issue stays open because 163 s is nowhere near the under-60-second close threshold. Further progress needs a browser journey rewrite that removes unique cross-layer cost without losing evidence; dropping security tests or turning off `-race` would disguise the problem rather than fix it.

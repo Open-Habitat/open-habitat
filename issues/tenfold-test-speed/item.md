@@ -3,7 +3,7 @@ created: 2026-10-13
 updated: 2026-10-13
 type: improvement
 reporter: jari
-status: in-progress
+status: open
 priority: high
 related: ['@fast-focused-tests']
 lane: release-tooling
@@ -44,6 +44,6 @@ measurements are in `issues/fast-focused-tests/result.md` and `profile.md`.
 ## Acceptance Criteria
 
 - [ ] A changed-tree warm clean gate runs in a small fraction of today's 170 s; `result.md` records before and after per phase and explains any part that could not be cut.
-- [ ] `result.md` has the redundancy audit: every removed, merged or moved test with the test that now carries its proof. Security-boundary tests stay unless an equivalent test provably covers them.
-- [ ] Test-scale limits and durations come from the test harness only; production defaults are unchanged and covered by a test.
+- [x] `result.md` has the redundancy audit: every removed, merged or moved test with the test that now carries its proof. Security-boundary tests stay unless an equivalent test provably covers them.
+- [x] Test-scale limits and durations come from the test harness only; production defaults are unchanged and covered by a test.
 - [ ] The full clean gate passes and `release_test.py` accepts its receipt unchanged.

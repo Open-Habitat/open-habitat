@@ -47,7 +47,10 @@ The first changed-tree no-reuse run took 233 s, including 49 s of dependency
 installation and browser download; the browser side took 142 s and Go/contracts
 157 s concurrently. Another changed-tree run with populated caches took
 169 s (browser 129 s, Go/contracts 124 s, concurrent). [The focused-tests result](issues/fast-focused-tests/result.md)
-records the original warm-cache profile; [the test-scale result](issues/tenfold-test-speed/result.md) records updated timings, budget-crossing tests and the browser redundancy audit. The earlier sequential
+records the original warm-cache profile; [the test-scale result](issues/tenfold-test-speed/result.md)
+records the budget-crossing tests, redundancy audit and later changed-tree
+warm run: 163 s (browser 124 s, Go/contracts 82 s). This is only a six-second
+wall-time improvement; the browser phase remains dominant. The earlier sequential
 cold and identical-tree reused runs took 232.14 s and 41.89 s;
 [the fast-gate result](issues/fast-clean-gate/result.md) has that phase
 breakdown. A different commit with an identical tree can reuse it (the release

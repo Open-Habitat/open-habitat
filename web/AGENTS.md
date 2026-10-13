@@ -97,6 +97,9 @@ intervals; native fake-Pi transitions and the production interval remain real.
 new timings and per-spec redundancy audit. The revised normal browser suite
 passed 142/142 cases in each of three eight-worker runs (72.15–78.23 s,
 versus the earlier 82 s standalone run); this is not a tenfold speedup.
+A changed-tree warm no-reuse gate took 163 s (browser including lab 124 s,
+Go/contracts 82 s concurrently). Four browser workers instead of eight took
+90 s standalone for the same 142 cases; eight remains the faster setting here.
 
 UI evidence is always a screenshot paired with a static HTML snapshot from the
 synthetic lab, saved side by side in the issue folder. Use `snapshot(page, outBase)`
