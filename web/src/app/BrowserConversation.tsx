@@ -455,6 +455,7 @@ export function BrowserConversation({
             archiveControl={
               <ArchiveControls
                 state={archive?.archive ?? "unknown"}
+                blockedReason={archive ? undefined : "Ladataan arkiston tilaa."}
                 eligible={
                   !busy &&
                   !statusStale &&
