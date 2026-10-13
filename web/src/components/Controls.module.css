@@ -147,6 +147,8 @@
   padding: var(--ah-s3) var(--ah-s4);
 }
 .workspace {
+  /* Current conversation, not its parent workspace, owns the selection fill. */
+  --i-selected: transparent;
   display: block;
   flex: 1;
   min-width: 0;
@@ -238,7 +240,7 @@ textarea.fieldInput {
   line-height: 1.55;
 }
 :global(.ah-conversation-frame .ah-composer) textarea.fieldInput {
-  min-height: 72px;
+  min-height: var(--ah-composer-rest-height);
 }
 @media (max-width: 800px) {
   :global(.ah-conversation-frame) textarea.fieldInput {

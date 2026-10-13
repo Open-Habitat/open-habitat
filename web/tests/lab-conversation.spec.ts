@@ -46,6 +46,13 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
       timeout: 20000,
     });
     await expect(editor).toHaveValue("Luonnos, jota ei lähetetä");
+    const cardWidth = await card.evaluate(
+      (node) => node.getBoundingClientRect().width,
+    );
+    const editorWidth = await page
+      .locator(".ah-composer-entry")
+      .evaluate((node) => node.getBoundingClientRect().width);
+    expect(Math.abs(cardWidth - editorWidth)).toBeLessThan(1);
     await expect(
       card.getByText("Synteettinen työtila tutkittiin ja vastaus valmistui."),
     ).toBeVisible();
@@ -726,7 +733,13 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
   await expect(progress).toContainText("Käyttää työkalua bash", {
     timeout: 20000,
   });
-  await page.getByRole("button", { name: "Keskeytä" }).click();
+  const stop = page.getByRole("button", { name: "Keskeytä" });
+  await expect(stop).toHaveCSS("width", "30px");
+  await expect(page.getByRole("button", { name: "Ohjaa" })).toHaveCSS(
+    "height",
+    "26px",
+  );
+  await stop.click();
   await expect(
     page.getByRole("group", { name: "Vahvista keskeytys" }),
   ).toHaveCount(0);

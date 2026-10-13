@@ -535,7 +535,7 @@ test("@browser-conversation in-flight send remains pending through missing recei
   await expect(page.locator(".ah-send-accepted")).toHaveCount(0);
   expect(sends).toBe(1);
 });
-test("@browser-conversation settled marker needs observed native key", async ({
+test("@browser-conversation settled turn uses its native strip without a duplicate receipt", async ({
   page,
 }) => {
   await open(page);
@@ -576,9 +576,10 @@ test("@browser-conversation settled marker needs observed native key", async ({
     await route.fulfill({ response, json: body });
   });
   await refreshConversation(page);
-  await expect(page.locator(".ah-settled")).toContainText(/Vuoro valmis/);
+  await expect(page.locator(".ah-settled")).toHaveCount(0);
+  await expect(page.locator(".ah-turn-strip").first()).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.locator(".ah-settled")).toBeVisible();
+  await expect(page.locator(".ah-turn-strip").first()).toBeVisible();
   await expectPhoneComposerWithinViewport(page);
 });
 test("@browser-conversation footer and floating latest stay clear at phone width", async ({

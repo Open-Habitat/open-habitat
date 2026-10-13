@@ -644,6 +644,13 @@ export function AgentHeader({
         <div className="ah-title-row">
           <h1 title={title}>{title}</h1>
         </div>
+        <LinkRow
+          kind="header"
+          className="ah-header-workspace"
+          href={workspaceHref}
+        >
+          {workspaceLabel}
+        </LinkRow>
         {visibleActivity ? (
           <StatusMark
             label={activityLabel}
@@ -707,13 +714,6 @@ export function AgentHeader({
           <Icon name="info" />
         </ControlButton>
       </div>
-      <LinkRow
-        kind="header"
-        className="ah-header-workspace"
-        href={workspaceHref}
-      >
-        {workspaceLabel}
-      </LinkRow>
       {titleState ? <StatusMark label={titleState} tone="info" /> : null}
       {titleAction?.failureNotice ? (
         <p className="ah-inline-error">{titleAction.failureNotice}</p>

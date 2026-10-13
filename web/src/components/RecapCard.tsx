@@ -63,6 +63,7 @@ export function RecapCard({
             <ControlButton
               className="ah-recap-icon"
               variant="quiet"
+              size="micro"
               aria-label={recap ? "Päivitä katsaus" : "Luo katsaus"}
               aria-description={reason || undefined}
               isDisabled={!!reason}
@@ -76,6 +77,7 @@ export function RecapCard({
           <ControlButton
             className="ah-recap-icon"
             variant="quiet"
+            size="micro"
             aria-label="Sulje katsaus"
             onPress={onDismiss}
           >

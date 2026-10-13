@@ -12,7 +12,6 @@ import {
   Markdown,
   QueuePanel,
   SendObservation,
-  TurnSettlement,
   WorkingProgress,
 } from "../components";
 import { AgentTurn, ThinkingRow } from "../components/AgentTurn";
@@ -614,23 +613,6 @@ export function BrowserConversation({
                                 sendObservation.text,
                               )
                             }
-                          />
-                        ),
-                      },
-                    ]
-                  : []),
-                ...(current?.turn_settled?.state === "settled" &&
-                entries.some(
-                  (entry) =>
-                    entry.entry_key === current.turn_settled?.native_key,
-                )
-                  ? [
-                      {
-                        id: `settled:${current.turn_settled.native_key}`,
-                        kind: "settled",
-                        content: (
-                          <TurnSettlement
-                            observedAt={current.turn_settled.observed_at}
                           />
                         ),
                       },

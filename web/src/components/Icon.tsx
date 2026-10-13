@@ -17,7 +17,8 @@ export type IconName =
   | "edges"
   | "top"
   | "bottom"
-  | "expand";
+  | "expand"
+  | "stop";
 
 /** Decorative icon only: the adjacent control supplies its accessible name. */
 export function Icon({
@@ -27,6 +28,17 @@ export function Icon({
   const paths: Record<IconName, ReactNode> = {
     menu: <path d="M4 6h16M4 12h16M4 18h16" />,
     up: <path d="M12 20V4m-6 6 6-6 6 6" />,
+    stop: (
+      <rect
+        x="7"
+        y="7"
+        width="10"
+        height="10"
+        rx="1.5"
+        fill="currentColor"
+        stroke="none"
+      />
+    ),
     info: (
       <>
         <circle cx="12" cy="12" r="9" />

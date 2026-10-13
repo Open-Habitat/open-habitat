@@ -59,7 +59,73 @@ try {
             ? ".ah-tool-row:has(.ah-bash-card)"
             : undefined,
       });
-      if (slug === "turn-thread-fidelity") {
+      if (slug === "conversation-view-fidelity") {
+        for (const [name, region] of [
+          ["header", ".ah-agent-header"],
+          ["composer", ".ah-composer"],
+        ]) {
+          await snapshot(page, `issues/${slug}/lab-${width}-${theme}-${name}`, {
+            region,
+          });
+        }
+        await snapshot(
+          page,
+          `issues/${slug}/lab-${width}-${theme}-reply-header`,
+          { region: ".ah-message-reply header" },
+        );
+        await page.goto(`${origin}${history}`);
+        await page.evaluate(
+          (theme) => document.documentElement.setAttribute("data-theme", theme),
+          theme,
+        );
+        await page.locator(".ah-message-reply").first().waitFor();
+        await snapshot(page, `issues/${slug}/lab-${width}-${theme}-reply`, {
+          region: ".ah-message-reply",
+        });
+        await fixture("scenario?value=pi-recap");
+        await page.goto(`${origin}${workspace}`);
+        await page.evaluate(
+          (theme) => document.documentElement.setAttribute("data-theme", theme),
+          theme,
+        );
+        await page
+          .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+          .click();
+        const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+        await editor.fill("Tutki synteettinen työtila");
+        await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+        await page
+          .getByText("luotu automaattisesti")
+          .waitFor({ timeout: 30000 });
+        await snapshot(page, `issues/${slug}/lab-${width}-${theme}-recap`, {
+          region: ".ah-recap",
+        });
+        await fixture("scenario?value=pi-visual-hold");
+        await page.goto(`${origin}${workspace}`);
+        await page.evaluate(
+          (theme) => document.documentElement.setAttribute("data-theme", theme),
+          theme,
+        );
+        await page
+          .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+          .click();
+        const workingEditor = page.getByRole("textbox", {
+          name: "Viesti Pi:lle",
+        });
+        await workingEditor.fill("Näytä pitkä tuloste");
+        await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+        await page.getByRole("button", { name: "Ohjaa" }).waitFor();
+        await workingEditor.fill("Pitkä luonnos. ".repeat(50));
+        await snapshot(page, `issues/${slug}/lab-${width}-${theme}-working`, {
+          region: ".ah-composer",
+        });
+        await fixture("scenario?value=ready");
+      }
+      if (
+        slug === "turn-thread-fidelity" ||
+        slug === "conversation-view-fidelity" ||
+        slug === "bash-card-fidelity"
+      ) {
         await page.goto(`${origin}${history}`);
         await page.evaluate(
           (theme) => document.documentElement.setAttribute("data-theme", theme),
@@ -94,6 +160,12 @@ try {
           region: ".ah-agent-turn:has(.ah-live-tool-row)",
         });
         await fixture("scenario?value=ready");
+        await page
+          .getByText(/Selvä. Kysyit:/)
+          .last()
+          .waitFor({ timeout: 30000 });
+        await fixture("conversations-reset");
+        await fixture("lab-conversations-clean");
         await page.goto(`${origin}${workspace}`);
         await page.evaluate(
           (theme) => document.documentElement.setAttribute("data-theme", theme),

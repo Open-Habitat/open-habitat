@@ -108,9 +108,13 @@ function Message({
   stateTone = "neutral",
   stateAnimated = false,
   stateKind = "neutral",
+  replyComplete = false,
+  replyModel,
   onCopy,
 }: {
   speaker: string;
+  replyComplete?: boolean;
+  replyModel?: string;
   children: ReactNode;
   time?: string;
   state?: string;
@@ -121,10 +125,16 @@ function Message({
 }) {
   return (
     <article
-      className={`ah-message${stateTone === "danger" || stateTone === "warning" || stateAnimated ? " ah-message-alert" : ""}`}
+      className={`ah-message${replyComplete ? " ah-message-reply" : ""}${stateTone === "danger" || stateTone === "warning" || stateAnimated ? " ah-message-alert" : ""}`}
     >
       <header>
-        <strong>{speaker}</strong>
+        <strong>
+          {replyComplete ? <Icon name="check" /> : null}
+          {speaker}
+        </strong>
+        {replyModel ? (
+          <code className="ah-reply-model">{replyModel}</code>
+        ) : null}
         <Button
           ariaLabel={`Kopioi viesti: ${speaker}`}
           label="Kopioi"
@@ -230,14 +240,18 @@ export function AssistantMessage({
         streamState === "streaming"
           ? "Vastaa"
           : streamState === "complete"
-            ? "✓ Vastaus valmis"
+            ? "Vastaus valmis"
             : "Pi"
       }
+      replyComplete={streamState === "complete"}
+      replyModel={streamState === "complete" ? modelLabel : undefined}
       time={time}
       state={
         streamState && streamState !== "complete" && streamState !== "streaming"
           ? labels[streamState]
-          : modelLabel
+          : streamState === "complete"
+            ? undefined
+            : modelLabel
       }
       stateTone={
         streamState === "failed"
@@ -993,7 +1007,16 @@ export function Composer({
       {activity === "working" ? (
         <div className="ah-composer-work-row">
           {onInterrupt ? (
-            <Button label="Keskeytä" variant="quiet" onPress={onInterrupt} />
+            <ControlButton
+              className="ah-composer-stop"
+              variant="quiet"
+              size="micro"
+              aria-label="Keskeytä"
+              title="Keskeytä"
+              onPress={onInterrupt}
+            >
+              <Icon name="stop" />
+            </ControlButton>
           ) : null}
           <fieldset
             className="ah-composer-modes"
@@ -1001,6 +1024,7 @@ export function Composer({
           >
             <ControlButton
               variant="quiet"
+              size="micro"
               aria-pressed={selectedWorkingMode === "steer"}
               onPress={() => onModeChange("steer")}
             >
@@ -1008,6 +1032,7 @@ export function Composer({
             </ControlButton>
             <ControlButton
               variant="quiet"
+              size="micro"
               aria-pressed={selectedWorkingMode === "follow_up"}
               onPress={() => onModeChange("follow_up")}
             >

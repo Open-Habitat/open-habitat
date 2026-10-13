@@ -31,6 +31,8 @@
   --ah-topbar-pad-inline: 24px;
   --ah-composer-pad-block: 12px;
   --ah-composer-field-gap: 6px;
+  --ah-composer-rest-height: 44px;
+  --ah-composer-stop-size: 30px;
   --ah-r-nav: 9px;
   --ah-touch: 44px;
   --ah-focus-width: 2px;

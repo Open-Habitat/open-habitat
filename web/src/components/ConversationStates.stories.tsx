@@ -14,7 +14,6 @@ import {
   QueuePanel,
   SendObservation,
   SupportedQuestion,
-  TurnSettlement,
   UncertainCommandCard,
   UserMessage,
 } from "./Conversation";
@@ -87,7 +86,6 @@ const receiptStates = (
 const receipts = (narrow = false) => (
   <main style={{ maxWidth: narrow ? 390 : 960 }}>
     {receiptStates}
-    <TurnSettlement observedAt="2026-09-30T13:53:00Z" />
     <NativeQuestion
       kind="unknown"
       prompt="<b>Ei HTML:ää</b>"
@@ -433,7 +431,12 @@ export const CompletedTurn: Story = {
   render: () => (
     <main>
       <UserMessage sourceText="Tutki muutos." onCopy={noop} />
-      <AssistantMessage streamState="complete" time="13.53" onCopy={noop}>
+      <AssistantMessage
+        streamState="complete"
+        modelLabel="gpt-5-codex"
+        time="13.53"
+        onCopy={noop}
+      >
         <Markdown text="Muutos tarkistettu." />
       </AssistantMessage>
     </main>

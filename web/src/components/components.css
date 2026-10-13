@@ -1171,9 +1171,9 @@ h1[tabindex="-1"]:focus {
   background: var(--ah-bg);
 }
 .ah-conversation-frame
-  > :not(.ah-conversation-stream):not(.ah-agent-header):not(
-    .ah-floating-controls
-  ) {
+  > :not(.ah-conversation-stream):not(.ah-agent-header):not(.ah-recap):not(
+    .ah-conversation-notices
+  ):not(.ah-floating-controls) {
   flex: none;
   width: min(100%, var(--ah-conversation-width));
   margin-inline: auto;
@@ -1311,6 +1311,12 @@ h1[tabindex="-1"]:focus {
   overflow: auto;
   width: min(100%, var(--ah-conversation-width));
   margin-inline: auto;
+}
+.ah-conversation-notices:not(:empty) {
+  width: min(
+    calc(100% - 2 * var(--ah-column-pad-inline)),
+    calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline))
+  );
 }
 .ah-conversation-notices:empty {
   display: none;
@@ -1866,6 +1872,7 @@ h1[tabindex="-1"]:focus {
 }
 .ah-header-workspace {
   display: block;
+  flex: none;
   width: fit-content;
   font-family: var(--ah-mono);
   color: var(--ah-muted);
@@ -2504,6 +2511,29 @@ h1[tabindex="-1"]:focus {
 .ah-feed > li[data-kind="user"] .ah-message:not(.ah-message-alert) {
   background: var(--ah-surface-2);
 }
+/* biome-ignore lint/style/noDescendingSpecificity: Reply header intentionally overrides the generic message header. */
+.ah-message-reply header strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.ah-message-reply header strong svg {
+  width: 14px;
+  height: 14px;
+}
+.ah-message-reply header .ah-reply-model {
+  font: 400 12px var(--ah-mono);
+  color: var(--ah-muted);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Reply controls use their own order. */
+.ah-message-reply header [data-ah-primitive="button"] {
+  margin-inline-start: 0;
+}
+.ah-message-reply header time {
+  margin-inline-start: auto;
+}
 .ah-bash-card {
   display: grid;
   gap: 10px;
@@ -2675,13 +2705,17 @@ h1[tabindex="-1"]:focus {
     gap: var(--ah-s1);
   }
 }
+/* biome-ignore lint/style/noDescendingSpecificity: Bash rail icons are independent of reply marks. */
 .ah-bash-rail button svg {
   width: 15px;
   height: 15px;
 }
 /* Chosen conversation controls: one compact entry and a work-time row. */
 .ah-agent-topline .ah-title-row {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+}
+.ah-agent-topline > .ah-status:first-of-type {
+  margin-left: auto;
 }
 .ah-agent-topline > .ah-details-toggle {
   margin: 0;
@@ -2732,7 +2766,7 @@ h1[tabindex="-1"]:focus {
   margin: auto;
 }
 .ah-conversation-frame .ah-composer-entry textarea {
-  min-height: 44px;
+  min-height: var(--ah-composer-rest-height);
   max-height: min(40vh, var(--ah-composer-max-height));
   overflow-y: auto;
   resize: none;
@@ -2757,6 +2791,16 @@ h1[tabindex="-1"]:focus {
   width: min(100%, var(--ah-conversation-width));
   margin: var(--ah-s2) auto 0;
 }
+.ah-composer-stop[data-ah-primitive="button"] {
+  width: var(--ah-composer-stop-size);
+  height: var(--ah-composer-stop-size);
+  padding: 0;
+  border-radius: 50%;
+  --i-bg: var(--ah-ink);
+  --i-fg: var(--ah-bg);
+  --i-hover: var(--ah-ink-2);
+  --i-hover-fg: var(--ah-bg);
+}
 .ah-composer-modes {
   margin-left: auto;
   display: flex;
@@ -2766,11 +2810,13 @@ h1[tabindex="-1"]:focus {
   background: var(--ah-sunken);
 }
 .ah-composer-modes button {
+  min-height: 26px;
+  font-size: 12px;
   border: 0;
   border-radius: var(--ah-r-pill);
   background: transparent;
   color: var(--ah-muted);
-  padding: 5px 10px;
+  padding: 0 10px;
   cursor: pointer;
 }
 .ah-composer-modes button[aria-pressed="true"] {
@@ -2885,15 +2931,29 @@ h1[tabindex="-1"]:focus {
   min-height: 26px;
   padding: 0;
 }
+@media (max-width: 800px) {
+  .ah-agent-topline {
+    flex-wrap: wrap;
+  }
+  .ah-agent-topline .ah-title-row {
+    flex: 1 1 90px;
+    min-width: 85px;
+  }
+  .ah-agent-topline .ah-header-workspace {
+    order: 10;
+    width: 100%;
+  }
+}
 /* Recap is a dismissible card adjacent to the editor, outside the transcript scroll. */
 .ah-conversation-frame > .ah-recap {
   flex: none;
   width: min(
     calc(100% - 2 * var(--ah-column-pad-inline)),
-    var(--ah-conversation-width)
+    calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline))
   );
   max-height: min(38vh, 280px);
   overflow: auto;
+  box-sizing: border-box;
   margin: var(--ah-s2) auto 0;
   padding: var(--ah-s2) var(--ah-s3) var(--ah-s3);
   background: var(--ah-surface);
@@ -2908,6 +2968,7 @@ h1[tabindex="-1"]:focus {
 .ah-recap-heading strong {
   font-size: var(--ah-size-meta);
 }
+/* biome-ignore lint/style/noDescendingSpecificity: Recap time does not share the reply's layout. */
 .ah-recap-heading time,
 .ah-recap-auto {
   color: var(--ah-muted);
@@ -2922,6 +2983,12 @@ h1[tabindex="-1"]:focus {
 }
 .ah-recap-grow {
   flex: 1;
+}
+@media (max-width: 440px) {
+  .ah-recap-auto {
+    order: 10;
+    width: 100%;
+  }
 }
 .ah-recap-heading .ah-recap-icon[data-ah-primitive="button"] {
   width: 28px;

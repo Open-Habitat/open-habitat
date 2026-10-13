@@ -790,7 +790,9 @@ export function timelineItems(
             final ? (
               <AssistantMessage
                 streamState="complete"
-                modelLabel={final.model}
+                modelLabel={
+                  final.model ?? group.findLast((entry) => entry.model)?.model
+                }
                 onCopy={() =>
                   void navigator.clipboard?.writeText(final.content.text)
                 }
