@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: "./tests",
   testIgnore: ["synthetic-demo.spec.ts", "lab-*.spec.ts"],
   fullyParallel: true,
-  workers: 8, // Each slot starts an independent synthetic host.
+  workers: Number(process.env.OH_BROWSER_WORKERS ?? 8), // Each slot starts an independent synthetic host.
   retries: 0,
   globalSetup: "./tests/host-build.ts",
   globalTeardown: "./tests/host-teardown.ts",

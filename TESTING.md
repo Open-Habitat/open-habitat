@@ -111,7 +111,9 @@ workers). Lab Playwright cases use four fresh lab-mode hosts at
 `OH_PORT_BASE + 40 + parallelIndex`; manual lab remains at base + 1. A slot's
 port is reused after its previous case ends. Each host has its own scenario,
 clock, session and fake Pi state; tests in the same file can run concurrently
-on separate hosts. Set `OH_PORT_BASE` to a distinct value (e.g.
+on separate hosts. On a shared-UID host near its inotify instance limit, set
+`OH_BROWSER_WORKERS=2` for both suites; otherwise the default remains eight
+browser workers and four lab workers. Set `OH_PORT_BASE` to a distinct value (e.g.
 `OH_PORT_BASE=14000 ./scripts/ci-local.sh --clean --json`) to run another
 worktree concurrently. `scripts/lab.sh start` selects a free port if its
 preferred lab port is busy and records it in `.cache/lab/port` for `url` and
