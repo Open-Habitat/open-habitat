@@ -2,52 +2,9 @@
 // sen lukemisen ja muokkauksen, jossa yksi rivi muuttuu, yksi siirtyy sisennykseen ja
 // kolme tulee lisää. Pi:n edit antaa vanhan ja uuden tekstin; diffi lasketaan niistä.
 
-const STATUS_PY = `#!/usr/bin/env python3
-"""Print status.md rows from the last week as JSON."""
-import argparse
-import json
-import sys
-from datetime import date, timedelta
-
-
-def parse_table(text):
-    """Yield one dict per data row of the first Markdown table in text."""
-    lines = iter(text.splitlines())
-    for line in lines:
-        if line.lstrip().startswith("|"):
-            header = [c.strip().lower() for c in line.strip().strip("|").split("|")]
-            break
-    else:
-        return
-    for line in lines:
-        line = line.strip()
-        if not line.startswith("|"):
-            break
-        if set(line) <= set("|-: "):
-            continue
-        yield dict(zip(header, (c.strip() for c in line.strip("|").split("|"))))
-
-
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--since", type=date.fromisoformat)
-    args = parser.parse_args()
-    text = open("status.md", encoding="utf-8").read()
-    rows = select(parse_table(text), args.since)
-    print(json.dumps(rows, ensure_ascii=False, indent=2))`;
-const OLD = `    rows = select(parse_table(text), args.since)
-    print(json.dumps(rows, ensure_ascii=False, indent=2))`;
-const NEW = `    rows = select(parse_table(text), args.since, args.today)
-    if args.table:
-        print_table(rows)
-    else:
-        print(json.dumps(rows, ensure_ascii=False, indent=2))`;
-for (const m of CONVO) for (const b of m.blocks ?? []) {
-  if (b.name === 'write') { b.args.content = STATUS_PY; b.result = `Wrote ${STATUS_PY.split('\n').length} lines to scripts/status_rows.py`; }
-  if (b.name === 'edit') { b.args = { path: 'scripts/status_rows.py', oldText: OLD, newText: NEW }; }
-  if (b.name === 'read' && b.target === 'scripts/status_rows.py') b.result = STATUS_PY;
-}
-
+// The file contents now live in lib/fixture.js. Jari chose Rivit with word marks on
+// 2026-10-13 (lib/output.js editDiff); this file keeps the three directions in its own scope.
+(() => {
 // ---------- Line and word diffs ----------
 function lcs(a, b, eq = (x, y) => x === y) {
   const n = a.length, m = b.length; const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
@@ -129,6 +86,7 @@ toolRow = (b, i) => {
 };
 
 function view(v) { V = v; const html = appView(); requestAnimationFrame(() => { const d = [...stage.querySelectorAll('section.tool')].find(s => /edit/.test(s.querySelector('.name')?.textContent)); d?.querySelector('.disc')?.click(); }); return html; }
-const v1 = () => view('v1');
-const v2 = () => view('v2');
-const v3 = () => view('v3');
+window.v1 = () => view('v1');
+window.v2 = () => view('v2');
+window.v3 = () => view('v3');
+})();

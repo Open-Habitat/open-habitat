@@ -134,6 +134,54 @@ python3 scripts/status_rows.py --since 2026-10-05
   { kind: 'user', time: '14:36', md: 'Aja testit ja korjaa, mitä löytyy.' },
 ];
 
+// File tool contents (round 2026-10-13-tiedostot): the written script, its read and an edit.
+const STATUS_PY = `#!/usr/bin/env python3
+"""Print status.md rows from the last week as JSON."""
+import argparse
+import json
+import sys
+from datetime import date, timedelta
+
+
+def parse_table(text):
+    """Yield one dict per data row of the first Markdown table in text."""
+    lines = iter(text.splitlines())
+    for line in lines:
+        if line.lstrip().startswith("|"):
+            header = [c.strip().lower() for c in line.strip().strip("|").split("|")]
+            break
+    else:
+        return
+    for line in lines:
+        line = line.strip()
+        if not line.startswith("|"):
+            break
+        if set(line) <= set("|-: "):
+            continue
+        yield dict(zip(header, (c.strip() for c in line.strip("|").split("|"))))
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--since", type=date.fromisoformat)
+    args = parser.parse_args()
+    text = open("status.md", encoding="utf-8").read()
+    rows = select(parse_table(text), args.since)
+    print(json.dumps(rows, ensure_ascii=False, indent=2))`;
+const OLD = `    rows = select(parse_table(text), args.since)
+    print(json.dumps(rows, ensure_ascii=False, indent=2))`;
+const NEW = `    rows = select(parse_table(text), args.since, args.today)
+    if args.table:
+        print_table(rows)
+    else:
+        print(json.dumps(rows, ensure_ascii=False, indent=2))`;
+for (const m of CONVO) for (const b of m.blocks ?? []) {
+  if (b.name === 'write') { b.args.content = STATUS_PY; b.result = `Wrote ${STATUS_PY.split('\n').length} lines to scripts/status_rows.py`; }
+  if (b.name === 'edit') { b.args = { path: 'scripts/status_rows.py', oldText: OLD, newText: NEW }; }
+  if (b.name === 'read' && b.target === 'scripts/status_rows.py') b.result = STATUS_PY;
+}
+
+
 // The thinking level in force now: the last change in the history.
 const THINKING = [...CONVO].reverse().find(m => m.kind === 'marker' && m.t === 'thinking')?.to ?? 'medium';
 

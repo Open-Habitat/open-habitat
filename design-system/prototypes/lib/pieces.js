@@ -9,12 +9,13 @@ function userBubble(m, i) {
 }
 function toolBody(b) {
   // History bash cards open into the same output box as live ones.
-  if (b.name === 'bash') return `<div class="tool-body"><pre class="bash-cmd">${esc(b.args.command)}</pre>${xbox(`h:${b.args.command}`, b.result.split('\n'), { name: 'bash', target: b.target, copyLabel: 'Kopioi tuloste' })}</div>`;
+  if (b.name === 'bash') return `<div class="tool-body">${cmdRivi(b)}${xbox(`h:${b.args.command}`, b.result.split('\n'), { name: 'bash', target: b.target, copyLabel: 'Kopioi tuloste' })}</div>`;
+  if (['read', 'write', 'edit'].includes(b.name)) return `<div class="tool-body">${fileBody(b)}</div>`;
   const args = Object.entries(b.args).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
   return `<div class="tool-body"><div><h4>Argumentit</h4><dl>${args}</dl></div><div><h4>Tulos</h4><pre>${esc(b.result)}</pre></div></div>`;
 }
 function toolRow(b, i) {
   const id = nid();
-  return `<section class="tool ah-in" style="--i:${i}"><button class="disc" type="button" aria-expanded="false" aria-controls="${id}">${CHEV}<span class="names"><span class="name">${esc(b.name)}</span><span class="target">${esc(b.target)}</span></span>${okMark()}</button><div id="${id}" hidden>${toolBody(b)}</div></section>`;
+  return `<section class="tool ah-in" style="--i:${i}"><button class="disc" type="button" aria-expanded="false" aria-controls="${id}">${CHEV}<span class="names"><span class="name">${esc(b.name)}</span><span class="target">${esc(b.target)}</span></span>${fileStat(b) ? `<span class="tstat">${fileStat(b)}</span>` : ''}${okMark()}</button><div id="${id}" hidden>${toolBody(b)}</div></section>`;
 }
 function replyFoot(extra) { return `<div class="reply-foot"><span class="ok">${ICON_CHECK}Vastaus valmis</span>${extra || ''}</div>`; }

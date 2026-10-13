@@ -270,6 +270,25 @@ pre.cmd-rest { margin: 0; padding: 8px 12px; background: var(--ah-sunken); borde
 .out pre.viewport.more-left.more-right { box-shadow: inset -18px 0 14px -14px rgba(16,24,40,.22), inset 18px 0 14px -14px rgba(16,24,40,.22); }
 
 
+/* The command row: the command and its copy button in the rail's column. */
+.cmd-row { display: grid; grid-template-columns: minmax(0,1fr) 26px; gap: 6px; align-items: start; }
+.cmd-row > .icon-btn { width: 26px; height: 26px; margin-top: 4px; }
+
+/* ===== File tools (chosen 13.10.2026): how much in the closed row; the edit as a line diff with word marks ===== */
+.disc .tstat { flex: none; font: 400 12px var(--ah-mono); color: var(--ah-muted); margin-right: 6px; }
+.disc .tstat .s-add { color: var(--ah-ok); }
+.disc .tstat .s-del { color: var(--ah-err); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tool-body pre.diff { margin: 0; padding: 8px 0; white-space: pre; overflow-x: auto; max-height: none; font: 400 12.5px/1.55 var(--ah-mono); }
+.diff .dl { display: flex; min-width: max-content; padding-right: 12px; }
+.diff .sg { flex: none; width: 2.2ch; padding-left: 8px; color: var(--ah-muted); user-select: none; }
+.diff .dl.add { background: var(--ah-ok-soft); }
+.diff .dl.add .sg { color: var(--ah-ok); }
+.diff .dl.del { background: var(--ah-err-soft); }
+.diff .dl.del .sg { color: var(--ah-err); }
+.diff ins { text-decoration: none; background: color-mix(in srgb, var(--ah-ok) 26%, transparent); border-radius: 2px; }
+.diff del { text-decoration: none; background: color-mix(in srgb, var(--ah-err) 24%, transparent); border-radius: 2px; }
+
 @container (max-width: 800px) {
   .bubble.user { max-width: 100%; }
 }

@@ -158,8 +158,13 @@ yhden vastaukseen päättyvän langan myös peräkkäisissä agentin vuoroissa. 
 jokaisen osan edessä. Työkalun kutsu, eteneminen ja tallennettu tulos ovat
 yksi avattava käyttö samassa kohdassa; `toolCallId` yhdistää ne. Käyttäjän
 paikallinen komento erottuu Pi:n pyytämästä bash-työkalusta. Peräkkäisten
-työkalujen ryhmittely ja `edit`-diffi ovat myöhempää työtä; siihen asti edit
-näyttää sallitut argumentit. Pitkä käyttäjän viesti supistuu kahdeksaan
+työkalujen ryhmittely on myöhempää työtä. Tiedostotyökalujen suljettu rivi
+kertoo määrän (read "34 riviä", write "uusi · 34 riviä", edit "+5 −2"); read
+ja write avautuvat tulostelaatikkoon tiedoston kielellä, ja edit näyttää
+rividiffin: poistetut rivit punaisella ja lisätyt vihreällä pohjalla, ja
+muuttuneen rivin sisällä erilaiset sanat voimakkaammalla sävyllä kuten VS
+Codessa. Bash-komennon oikealla puolella on oma kopiointipainike tulosteen
+sivupalkin linjassa (Jari 13.10.2026). Pitkä käyttäjän viesti supistuu kahdeksaan
 riviin, mutta sen saa auki kokonaan.
 
 Malli ja ajattelutaso ovat yläpalkissa yhtenä merkkinä (esim. "gpt-5.5 · high"),
