@@ -1426,6 +1426,7 @@ async function endedConversation(page: import("@playwright/test").Page) {
   await expect(
     page.getByText('Selvä. Kysyit: "synthetic end then continue".'),
   ).toBeVisible();
+  await expect(editor).toBeEnabled();
   const { csrf } = await (await page.request.get("/auth/session")).json();
   const stopped = await page.request.post(
     `/api/v1/conversations/${id.slice(3)}/stop`,
@@ -2165,13 +2166,14 @@ test("@browser-conversation cursor 409 waits for a newer snapshot before reopeni
 test("@browser-conversation lost accepted reply recovers on HTTP snapshot without an event", async ({
   page,
 }) => {
-  // Keep SSE unavailable and freeze scheduled retries: the HTTP snapshot
-  // must initiate the receipt check on its own.
-  await page.route("**/api/v1/events?after=*", (route) => route.abort());
+  // Keep SSE unavailable during the lost receipt and freeze scheduled
+  // retries: the HTTP snapshot must initiate the check on its own. Let the
+  // initial conversation become writable before disabling its event stream.
   await open(page);
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
-  await expect(editor).toBeVisible();
+  await expect(editor).toBeEnabled();
+  await page.route("**/api/v1/events?after=*", (route) => route.abort());
   await page.clock.pauseAt(new Date());
   let sends = 0;
   await page.route("**/api/v1/conversations/*/send", async (route) => {
