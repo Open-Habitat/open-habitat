@@ -3,11 +3,13 @@ created: 2026-10-13
 updated: 2026-10-13
 type: improvement
 reporter: jari
-status: in-progress
+status: done
 priority: high
 lane: release-tooling
 lane_seq: 1
 preparation: ready
+closed: 2026-10-13
+closed_by: claude
 ---
 
 # Test-server release without the clean gate
@@ -39,5 +41,11 @@ Keep the gate itself unchanged; `fast-clean-gate` makes it faster separately.
 ## Acceptance Criteria
 
 - [ ] `release_test.py --ungated --dry-run` and a live `--ungated` release work from a clean pushed main without a gate receipt and the receipt says `ungated`.
-- [ ] The gated path behaves exactly as before and refuses a missing receipt.
-- [ ] Fleetrepo offline tests and the product's `scripts/test-gate-receipt.py` pass.
+- [x] The gated path behaves exactly as before and refuses a missing receipt.
+- [x] Fleetrepo offline tests and the product's `scripts/test-gate-receipt.py` pass.
+
+## Resolution
+
+### 2026-10-13T05:40:35Z · @claude
+
+Live verified pilot.25 receipt: issues/ungated-test-release/release-test-receipt-pilot25.json; Fleetrepo inventory updated; offline tests: /var/tmp/ungated-fleetrepo-tests-final.log and scripts/test-gate-receipt.py. Clean gate retry stopped by revised landing policy; first candidate gate failed in Markdown test.
