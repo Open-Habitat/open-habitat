@@ -25,7 +25,7 @@ case "$area" in
     echo 'Focused web checks; skipped: Playwright, Go, contracts, packaging, clean receipt.' >&2
     ./scripts/test-web-fast.sh;;
   browser)
-    echo 'Focused browser checks; skipped: Go, contracts, packaging, clean receipt.' >&2
+    echo 'Focused browser checks; skipped: Go, contracts, packaging, clean receipt (and lab specs unless --spec lab-*.spec.ts).' >&2
     [[ -x web/node_modules/.bin/playwright ]] || { echo 'error: run npm ci --prefix web first' >&2; exit 2; }
     args=()
     if [[ -n $spec ]]; then
@@ -40,7 +40,7 @@ case "$area" in
     fi;;
   go)
     echo 'Focused Go checks; skipped: web, browser, contracts, packaging, clean receipt.' >&2
-    go test -race "${package:-./internal/...}";;
+    go test -race -count=1 "${package:-./internal/...}";;
   contracts)
     echo 'Focused contract checks; skipped: web, browser, Go tests, packaging, clean receipt.' >&2
     ./scripts/check-generated.sh

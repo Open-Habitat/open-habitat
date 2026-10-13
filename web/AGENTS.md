@@ -82,8 +82,10 @@ proves the lock complete by reinstalling offline. The root `TESTING.md` gives th
 `./scripts/test-focused.sh --area browser --spec <name>.spec.ts` or `--tag <grep>`
 for targeted host-backed evidence; this skips Go, contracts and packaging and
 never produces a full-gate receipt. The full clean gate runs browser and
-Go/contracts checks concurrently after building shared web assets. Fresh
-per-case hosts remain in place: resetting a process-wide scenario alone would
+Go/contracts checks concurrently after building shared web assets. The first
+no-reuse changed-tree gate took 233 s (browser 142 s including lab, Go/contracts
+157 s concurrently); a standalone warm browser run took 82 s for 142 cases.
+Fresh per-case hosts remain in place: resetting a process-wide scenario alone would
 not isolate OAuth sessions, fake Pi leases and filesystem history.
 
 UI evidence is always a screenshot paired with a static HTML snapshot from the

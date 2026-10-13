@@ -42,9 +42,13 @@ tree and gate inputs it covers. On a repeat of the **same** committed tree,
 the browser and Go/contracts phases can reuse the previous passed receipt's
 results; the new receipt lists them under `reused_phases`. Every changed tree
 runs both phases in full. The gated release preparer checks the receipt
-against the current clean tree rather than rerunning the gate. The earlier measured
-rebased cold and warm runs took 232.14 s and 41.89 s;
-[the fast-gate result](issues/fast-clean-gate/result.md) has the phase
+against the current clean tree rather than rerunning the gate. Browser and Go/contracts now run concurrently after the shared web build.
+The first changed-tree no-reuse run took 233 s, including 49 s of dependency
+installation and browser download; the browser side took 142 s and Go/contracts
+157 s concurrently. [The focused-tests result](issues/fast-focused-tests/result.md)
+records the warm-cache profile and remaining bottlenecks. The earlier sequential
+cold and identical-tree reused runs took 232.14 s and 41.89 s;
+[the fast-gate result](issues/fast-clean-gate/result.md) has that phase
 breakdown. A different commit with an identical tree can reuse it (the release
 still pins and embeds its own commit SHA). A change to issue evidence, docs,
 code, dependencies or package inputs changes the tree and requires a new clean
