@@ -7,6 +7,7 @@ status: open
 priority: high
 lane: release-tooling
 preparation: ready
+lane_seq: 2
 ---
 
 # Compress the clean gate to the release's time class

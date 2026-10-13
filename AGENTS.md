@@ -49,7 +49,10 @@ carry the whole release through autonomously, including the first live use of
 a new upgrade operator. The server exists solely for testing: its users, data
 and previous product versions are disposable. An upgrade that fails can be
 fixed forward or replaced by a fresh installation; there is no need to retain
-older releases for rollback. Fleetrepo's
+older releases for rollback. For the same reason a test-server release does
+not wait for the clean gate: it may ship an ungated tree as long as the
+release receipt says so (Jari, 2026-10-13). The gate remains the health check
+of `main` and the precondition of a production release, not of a test update. Fleetrepo's
 `infra/native-agent-host-test/RELEASE-UPGRADE.md` explains the deployment and
 its trust boundaries; the private inventory and issue results record which
 bytes actually ran.
