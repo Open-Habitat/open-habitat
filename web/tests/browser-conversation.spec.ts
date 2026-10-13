@@ -2249,3 +2249,112 @@ test("@browser-conversation queued command with pending ack stays pending withou
   await expect(page.locator(".ah-send-uncertain")).toHaveCount(0);
   expect(queues).toBe(1);
 });
+
+test("@browser-conversation archive hides navigation before host reply and rolls back refusal", async ({
+  page,
+}) => {
+  await endedConversation(page);
+  const row = page
+    .getByRole("navigation")
+    .getByRole("link", { name: "synthetic end then continue" });
+  await expect(row).toBeVisible();
+  let release!: () => void;
+  let requested!: () => void;
+  const seen = new Promise<void>((resolve) => {
+    requested = resolve;
+  });
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/v1/workspaces", async (route) => {
+    if (
+      route.request().method() !== "POST" ||
+      !route.request().postData()?.includes('"conversation_archive"')
+    ) {
+      await route.continue();
+      return;
+    }
+    requested();
+    await held;
+    await route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: JSON.stringify({ error: { code: "writer_conflict" } }),
+    });
+  });
+  await page.getByRole("button", { name: "Arkistoi", exact: true }).click();
+  await page.getByRole("button", { name: "Vahvista arkistointi" }).click();
+  await seen;
+  await expect(row).toHaveCount(0);
+  await expect(
+    page.getByText("Keskustelu arkistoitu.", { exact: false }),
+  ).toHaveCount(0);
+  release();
+  await expect(row).toBeVisible();
+  await expect(
+    page
+      .getByText(/Arkistointia ei tehty|Arkistoinnin tulos on epävarma/)
+      .first(),
+  ).toBeVisible();
+});
+
+test("@browser-conversation new conversation keeps icon bar during archive fact delay", async ({
+  page,
+}) => {
+  await open(page);
+  await page.route("**/api/v1/snapshot", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    await route.continue();
+  });
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(page.locator(".ah-agent-header")).toBeVisible();
+  await expect(
+    page.locator(".ah-agent-header").getByRole("button", { name: "Arkistoi" }),
+  ).toBeVisible();
+  await expect(page.getByText("Arkiston tilaa ei voitu tarkistaa")).toHaveCount(
+    0,
+  );
+  await expect(
+    page
+      .locator(".ah-agent-header")
+      .getByRole("button", { name: "Luo uusi otsikko" }),
+  ).toBeDisabled();
+});
+
+test("@browser-conversation archive stays hidden across delayed successful host reply", async ({
+  page,
+}) => {
+  await endedConversation(page);
+  const row = page
+    .getByRole("navigation")
+    .getByRole("link", { name: "synthetic end then continue" });
+  let release!: () => void;
+  let requested!: () => void;
+  const seen = new Promise<void>((resolve) => {
+    requested = resolve;
+  });
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/v1/workspaces", async (route) => {
+    if (
+      route.request().method() !== "POST" ||
+      !route.request().postData()?.includes('"conversation_archive"')
+    ) {
+      await route.continue();
+      return;
+    }
+    requested();
+    await held;
+    await route.continue();
+  });
+  await page.getByRole("button", { name: "Arkistoi", exact: true }).click();
+  await page.getByRole("button", { name: "Vahvista arkistointi" }).click();
+  await seen;
+  await expect(row).toHaveCount(0);
+  release();
+  await expect(
+    page.getByText("Keskustelu arkistoitu.", { exact: false }),
+  ).toBeVisible();
+  await expect(row).toHaveCount(0);
+});

@@ -68,6 +68,7 @@ export function BrowserConversation({
   archive,
   onArchive,
   archiveBusy,
+  archiveAwaitingSnapshot,
   id,
   title,
   identity,
@@ -84,6 +85,7 @@ export function BrowserConversation({
   archive?: Agent;
   onArchive?: (agent: Agent, archived: boolean) => Promise<boolean>;
   archiveBusy?: boolean;
+  archiveAwaitingSnapshot?: boolean;
   id?: string;
   title?: string;
   identity: string;
@@ -455,7 +457,13 @@ export function BrowserConversation({
             archiveControl={
               <ArchiveControls
                 state={archive?.archive ?? "unknown"}
-                blockedReason={archive ? undefined : "Ladataan arkiston tilaa."}
+                blockedReason={
+                  archiveAwaitingSnapshot
+                    ? "Odotetaan arkiston tilan vahvistusta."
+                    : archive
+                      ? undefined
+                      : "Ladataan arkiston tilaa."
+                }
                 eligible={
                   !busy &&
                   !statusStale &&

@@ -170,6 +170,13 @@ export function App() {
   const [railStartError, setRailStartError] = useState("");
   const railStarting = useRef(new Set<string>());
   const [archiveBusy, setArchiveBusy] = useState(false);
+  // A local presentation mask only: the host remains authoritative and failures
+  // remove it. Retain it across stale snapshot reads until the host confirms.
+  const [pendingArchive, setPendingArchive] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const archiveInFlight = useRef(false);
+  const [archiveToast, setArchiveToast] = useState("");
   const [logoutPrompt, setLogoutPrompt] = useState(false);
   const [settingsReturn, setSettingsReturn] = useState("/workspaces");
   const returningFromSettings = useRef(false);
@@ -205,6 +212,10 @@ export function App() {
     owned.current.journal?.stop();
     owned.current.store?.dispose(); // also cancels every pending page read
     owned.current = {};
+    setPendingArchive(new Set());
+    setArchiveToast("");
+    setArchiveBusy(false);
+    archiveInFlight.current = false;
     // After a reload at the login boundary we no longer know which person
     // owned this tab. Clear only identity-scoped keys, not global onboarding.
     for (const key of Object.keys(sessionStorage))
@@ -591,6 +602,27 @@ export function App() {
               : matches.length === 0
                 ? "filtered-empty"
                 : "ready";
+  useEffect(() => {
+    if (!snapshot) return;
+    setPendingArchive((previous) => {
+      if (
+        ![...previous].some((id) =>
+          snapshot.agents.some(
+            (a) => a.agent_id === id && a.archive === "archived",
+          ),
+        )
+      )
+        return previous;
+      return new Set(
+        [...previous].filter(
+          (id) =>
+            !snapshot.agents.some(
+              (a) => a.agent_id === id && a.archive === "archived",
+            ),
+        ),
+      );
+    });
+  }, [snapshot]);
   const changeArchive = async (
     agent: NonNullable<typeof snapshot>["agents"][number],
     archived: boolean,
@@ -598,13 +630,19 @@ export function App() {
     if (
       !csrf ||
       phase !== "authenticated" ||
-      archiveBusy ||
+      archiveInFlight.current ||
+      (archived && pendingArchive.has(agent.agent_id)) ||
       !agent.observation_token ||
       agent.archive === "unknown"
     )
       return false;
+    archiveInFlight.current = true;
     setArchiveBusy(true);
     setArchiveProblem("");
+    setArchiveToast("");
+    const person = identity;
+    const fromRoute = `${location.pathname}${location.search}`;
+    if (archived) setPendingArchive((old) => new Set(old).add(agent.agent_id));
     try {
       await setArchive(
         agent.agent_id,
@@ -614,9 +652,29 @@ export function App() {
         agent.archive === "archived" ? "archived" : "active",
         csrf,
       );
+      if (currentIdentity.current !== person) return false;
+      if (!archived)
+        setPendingArchive((old) => {
+          const next = new Set(old);
+          next.delete(agent.agent_id);
+          return next;
+        });
+      else if (
+        `${window.location.pathname}${window.location.search}` === fromRoute
+      )
+        setArchiveToast(
+          "Keskustelu arkistoitu. Se löytyy työtilan Arkisto-osiosta.",
+        );
       refresh();
       return true;
     } catch (error) {
+      if (currentIdentity.current !== person) return false;
+      if (archived)
+        setPendingArchive((old) => {
+          const next = new Set(old);
+          next.delete(agent.agent_id);
+          return next;
+        });
       if ((error as Error).message === "identity_lost") requireLogin();
       setArchiveProblem(
         error instanceof NotAdmitted
@@ -626,14 +684,22 @@ export function App() {
       refresh();
       return false;
     } finally {
-      setArchiveBusy(false);
+      if (currentIdentity.current === person) {
+        archiveInFlight.current = false;
+        setArchiveBusy(false);
+      }
     }
   };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: dismiss the transient confirmation on navigation, not on archive state changes.
+  useEffect(() => {
+    setArchiveToast("");
+  }, [location.pathname, location.search]);
   const returnConversations: (ReturnConversation & { workspaceId: string })[] =
     (snapshot?.agents ?? [])
       .filter(
         (a) =>
           a.archive !== "archived" &&
+          !pendingArchive.has(a.agent_id) &&
           visible.some((w) => w.workspace_id === a.workspace_id),
       )
       .map((a) => {
@@ -837,6 +903,16 @@ export function App() {
         {!new URLSearchParams(location.search).has("conversation") ? (
           <WorkspaceDetails workspace={selected} />
         ) : null}
+        {new URLSearchParams(location.search).has("conversation") &&
+          archiveToast && <InlineNotice title={archiveToast} tone="info" />}
+        {new URLSearchParams(location.search).has("conversation") &&
+          archiveProblem && (
+            <InlineNotice
+              title="Arkiston tila epävarma"
+              description={archiveProblem}
+              tone="warning"
+            />
+          )}
         {!syntheticDemo &&
         identity &&
         conversationStore &&
@@ -858,6 +934,9 @@ export function App() {
             )}
             onArchive={changeArchive}
             archiveBusy={archiveBusy}
+            archiveAwaitingSnapshot={pendingArchive.has(
+              new URLSearchParams(location.search).get("conversation") ?? "",
+            )}
             workspace={selected}
             id={
               /^pi:[0-9a-fA-F-]{36}$/.test(
@@ -888,6 +967,7 @@ export function App() {
         ) : null}
         {!new URLSearchParams(location.search).has("conversation") ? (
           <>
+            {archiveToast && <InlineNotice title={archiveToast} tone="info" />}
             {archiveProblem && (
               <InlineNotice
                 title="Arkiston tila epävarma"
@@ -1127,6 +1207,7 @@ export function App() {
             <WorkspaceRailView
               phase={phase}
               snapshot={snapshot}
+              pendingArchive={pendingArchive}
               profile={profile}
               store={conversationStore}
               source={source}

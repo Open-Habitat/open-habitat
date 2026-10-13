@@ -30,6 +30,7 @@ export function sourceLabel(state: string) {
 export function WorkspaceRailView({
   phase,
   snapshot,
+  pendingArchive = new Set(),
   profile,
   store,
   source,
@@ -53,6 +54,7 @@ export function WorkspaceRailView({
 }: {
   phase: RootState["connection"]["phase"];
   snapshot: Snapshot;
+  pendingArchive?: ReadonlySet<string>;
   profile?: AccountProfile;
   store: ConversationStore;
   source: string;
@@ -186,7 +188,12 @@ export function WorkspaceRailView({
           agents={agents
             .filter(
               (a) =>
-                a.workspace_id === w.workspace_id && a.archive !== "archived",
+                a.workspace_id === w.workspace_id &&
+                a.archive !== "archived" &&
+                snapshot.agents.find(
+                  (current) => current.agent_id === a.agent_id,
+                )?.archive !== "archived" &&
+                !pendingArchive.has(a.agent_id),
             )
             .map((a) => ({
               agentId: a.agent_id,
