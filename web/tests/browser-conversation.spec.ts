@@ -2402,6 +2402,11 @@ test("@browser-conversation empty browser conversation closes without confirmati
   await expect(
     page.locator(".ah-agent-header").getByRole("button", { name: "Sulje" }),
   ).toHaveCount(0);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(page).toHaveURL(/\?conversation=pi:[0-9a-f-]+$/);
+  await expect(
+    page.locator(".ah-agent-header").getByRole("button", { name: "Sulje" }),
+  ).toBeEnabled();
 });
 
 test("@browser-conversation failed close restores the conversation", async ({

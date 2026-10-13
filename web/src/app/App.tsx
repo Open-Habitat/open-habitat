@@ -1006,7 +1006,9 @@ export function App() {
             onArchive={changeArchive}
             onClose={closeConversation}
             archiveBusy={archiveBusy}
-            closeBusy={pendingClose.size > 0}
+            closeBusy={[...pendingClose].some(
+              (id) => !confirmedClose.current.has(id),
+            )}
             archiveAwaitingSnapshot={pendingArchive.has(
               new URLSearchParams(location.search).get("conversation") ?? "",
             )}
