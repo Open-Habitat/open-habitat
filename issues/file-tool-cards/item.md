@@ -2,11 +2,13 @@
 created: 2026-10-13
 updated: 2026-10-13
 type: improvement
-status: in-progress
+status: done
 priority: normal
 lane: web
 lane_seq: 23
 collision: [web/]
+closed: 2026-10-13
+closed_by: claude
 ---
 
 # File tool cards: stats, read/write in the output box, edit as a line diff with word marks
