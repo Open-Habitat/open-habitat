@@ -1,0 +1,16 @@
+{
+  "dry_run": false,
+  "error": "/home/maintainer/Sources/native-agent-host/scripts/prepare-test-release.sh failed (exit 127)",
+  "failed_step": "prepare",
+  "gate": "ungated",
+  "fleetrepo_source": "2a77688c6048dfd6dfc173386f7b4f3cbc8bdb6b",
+  "schema_version": 1,
+  "source": "fe62b54964bce4996b1bc085ea8641c13cbd457c",
+  "status": "failed",
+  "steps_seconds": {
+    "pin_fleetrepo": 0.264,
+    "pin_product": 1.802
+  },
+  "total_seconds": 8.605,
+  "version": "0.0.0-pilot.28"
+}
