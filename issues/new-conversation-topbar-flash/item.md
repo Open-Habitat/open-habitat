@@ -2,13 +2,11 @@
 created: 2026-10-13
 updated: 2026-10-13
 type: bug
-status: fixed
+status: in-progress
 priority: normal
 lane: web
 lane_seq: 17
 collision: [web/]
-closed: 2026-10-13
-closed_by: claude
 ---
 
 # New conversation flashes an extra archive-state button in the top bar
@@ -31,3 +29,7 @@ and remove the transient form.
 - The flash is reproduced in the lab (slowed network or a recorded frame
   sequence) and gone after the fix; evidence in
   `issues/new-conversation-topbar-flash/`.
+
+## Reopen Notes — 2026-10-13
+
+_Add rationale for reopening here._

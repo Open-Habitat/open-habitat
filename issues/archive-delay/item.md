@@ -2,13 +2,11 @@
 created: 2026-10-13
 updated: 2026-10-13
 type: bug
-status: fixed
+status: in-progress
 priority: normal
 lane: web
 lane_seq: 16
 collision: [web/]
-closed: 2026-10-13
-closed_by: claude
 ---
 
 # Archive takes effect only after a long delay and the row misbehaves meanwhile
@@ -37,3 +35,7 @@ archived that was not.
 - The warnings Jari saw during the delay are reproduced in the lab or tests
   and no longer appear.
 - Tests cover immediate removal, success and failure rollback.
+
+## Reopen Notes — 2026-10-13
+
+_Add rationale for reopening here._
