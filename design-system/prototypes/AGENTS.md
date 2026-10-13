@@ -23,6 +23,10 @@ muotoon 12.10.2026, ja rakennettu vedos todettiin kuvavertailussa samaksi.
   `picker.js` ovat `~/.claude/skills/prototype/PICKER.md` sanatarkasti; vain
   `stage`-muuttujan määrittely on jätetty pois, koska `stage.js` antaa sen.
   `replay.js` on yhden suunnan sivun johdotus ilman valitsinta.
+  `app.js` ja `app.css` ovat sovelluskehys näyttämön ympärillä: sivupalkki,
+  keskustelun yläpalkki ja niiden toiminnot. Ne tulevat mukaan, kun kierros
+  vie `app = true`; suunnan `fn` on silloin `appView()`, ja kierros vaihtaa
+  palan korvaamalla `APP.row`- tai `APP.actions`-hookin.
 - Kierros on hakemisto: `round.mjs` vie `title`-otsikon ja `variants`-listan
   (`name`, `axis`, `fn`), ja `round.css` ja `round.js` antavat kierroksen omat
   säännöt ja piirtofunktiot. Jokainen `fn` määritellään `round.js`:ssä ja

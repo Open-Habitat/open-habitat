@@ -1,6 +1,6 @@
 ---
 created: 2026-10-12
-updated: 2026-10-12
+updated: 2026-10-13
 type: bug
 reporter: jari
 status: open
@@ -44,6 +44,20 @@ hover or focus on desktop, and stays visible on touch devices.
 The send button sits beside the composer field, not on a row of its own;
 the current composer is too loose (agreed in the agent-turn prototype rounds,
 2026-10-12).
+
+## Chosen top bar (prototype round 2026-10-13)
+
+Jari chose the icon row ("Ikonirivi") over an overflow menu and a details
+panel: new title, archive and details are always-visible icon buttons at the
+right of the top bar, after the state. The new-title icon is an "H" with the
+two-arrow refresh in its corner; while a title is generated only the arrows
+turn. Details open in a popover; archive keeps its confirmation dialog and,
+while Pi works, stays visible but disabled with its reason. On a phone the
+state shows as its mark only and the sidebar opens as a drawer from ☰. The
+frozen draft is `design-system/drafts/Agentin vuoro.proto.html`, built from
+`design-system/prototypes/lib/app.*`; the round with the rejected directions
+is `design-system/prototypes/rounds/2026-10-13-ylapalkki/`. The sidebar rows
+and the "+" in that draft are the issue's proposal, not yet reviewed.
 
 ## Design and verification
 

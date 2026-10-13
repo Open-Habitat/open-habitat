@@ -5,7 +5,8 @@
 //
 // A round is a directory: round.mjs exports `title` and `variants` ([{ name, axis, fn }]),
 // and optional round.css and round.js carry the round's own rules and render functions
-// (each `fn` must be defined there). Tokens come from ../tokens with the fonts from
+// (each `fn` must be defined there). `export const app = true` puts the conversation in the
+// application frame from lib/app.* (sidebar and top bar). Tokens come from ../tokens with the fonts from
 // ../fonts embedded; the library from lib/ is inlined before the round's own code. One
 // variant builds a draft (no picker, R replays); several build a comparison behind the
 // picker. Default output is dist/<round-dir>.html.
@@ -22,7 +23,7 @@ const roundDir = resolve(roundPath);
 const out = outIdx >= 0 ? resolve(args[outIdx + 1]) : join(here, 'dist', basename(roundDir) + '.html');
 
 const round = await import(pathToFileURL(join(roundDir, 'round.mjs')).href);
-const { title, variants } = round;
+const { title, variants, app } = round;
 const optional = (f) => existsSync(join(roundDir, f)) ? readFileSync(join(roundDir, f), 'utf8') : '';
 const css = optional('round.css'), js = optional('round.js');
 if (!title || !variants?.length) { console.error('round must export title and a non-empty variants array'); process.exit(2); }
@@ -57,6 +58,7 @@ const html = `<!doctype html>
 ${tokens}
 ${read('lib/chrome.css')}
 ${read('lib/language.css')}
+${app ? read('lib/app.css') : ''}
 ${css}
 ${many ? read('lib/picker.css') : ''}
 </style>
@@ -79,7 +81,7 @@ ${many ? read('lib/picker.css') : ''}
 </div>
 ${picker}
 <script>
-${['stage', 'fixture', 'markdown', 'icons', 'pieces', 'turn', 'output', 'live'].map(n => read(`lib/${n}.js`)).join('\n')}
+${['stage', 'fixture', 'markdown', 'icons', 'pieces', 'turn', 'output', 'live', ...(app ? ['app'] : [])].map(n => read(`lib/${n}.js`)).join('\n')}
 // ---------- Round: ${title} ----------
 ${js}
 const variants = [${variants.map(v => v.fn).join(', ')}];

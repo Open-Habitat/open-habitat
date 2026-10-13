@@ -1,1 +1,1 @@
-const chosen = () => withLive('', threadR());
+const chosen = () => appView();
