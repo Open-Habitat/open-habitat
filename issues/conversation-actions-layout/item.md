@@ -3,7 +3,7 @@ created: 2026-10-12
 updated: 2026-10-13
 type: bug
 reporter: jari
-status: open
+status: in-progress
 priority: normal
 related: ['@new-conversation-view']
 lane: web
