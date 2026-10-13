@@ -1,6 +1,6 @@
 # Testing
 
-Small changes need fast feedback, while releases need the full set of checks.
+Small changes need fast feedback, while production releases need the full set of checks.
 Run focused tests during development and the full clean gate on the final
 implementation. Match each claim to evidence: browser tests and unit tests
 alone cannot establish Linux user isolation.
@@ -40,8 +40,18 @@ clean gate before release. Receipts are local evidence, not signed attestations;
 keep them on the machine where the gate ran. The gate prints its JSON envelope
 on the final stdout line and the receipt path on stderr.
 
-After a clean pass, the Fleetrepo `infra/open-habitat-test/release_test.py`
-one-command operator checks the receipt, installs web dependencies from the
+For the disposable test server, the normal Fleetrepo operator invocation is
+`release_test.py --ungated --version <v> --output <new-dir>`. It requires a
+clean, committed, pushed product tree but does not require the clean gate.
+The output receipt and product `release-gate.json` say `gate: "ungated"` and
+record the source tree. Omit `--ungated` when clean-gate evidence is needed:
+the default refuses a missing or different-tree gate receipt and records
+`gate: "clean-gate"` with the tree. A production release still requires the
+clean gate. The clean gate remains the health check for main and should be run
+on a final implementation candidate even when deploying ungated to test.
+
+The Fleetrepo `infra/open-habitat-test/release_test.py` one-command operator
+checks the receipt in gated mode, installs web dependencies from the
 committed lockfile, prepares fresh web assets and binary,
 verifies the package, then transfers and switches the test guest. Its dry run
 stops before any guest transfer. It reports step/total timings and rejects a
