@@ -45,3 +45,9 @@ on top.
 - [x] `result.md` has a coverage map of removed, merged or moved tests with the test that now carries each removed proof.
 - [x] `ci-local.sh` (or a sibling script) accepts a caller-chosen narrower scope; the narrowed run never writes the clean-gate receipt, and `TESTING.md` describes it.
 - [ ] The clean gate still passes in full and `release_test.py` accepts its receipt unchanged.
+
+## Comments
+
+### 2026-10-13T07:40:57Z · @claude
+
+Closed with the 10x criterion unmet (warm changed-tree gate 169 s); the speed goal and the redundancy audit continue in @tenfold-test-speed.
