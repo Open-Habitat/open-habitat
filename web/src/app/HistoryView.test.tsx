@@ -704,4 +704,18 @@ it("derives settled thread duration from native user and assistant timestamps on
     ),
   );
   expect(missing.container.textContent).not.toContain("1:07");
+  missing.unmount();
+  const missingFinal = render(
+    timelineItems([
+      user,
+      {
+        ...assistant,
+        entry_key: "a1",
+        content: { ...assistant.content, text: "" },
+        blocks: [{ type: "toolCall", tool_call_id: "c1", tool_name: "read" }],
+      },
+      { ...assistant, entry_key: "a2", timestamp: undefined },
+    ]).map((item) => <div key={item.id}>{item.content}</div>),
+  );
+  expect(missingFinal.container.textContent).not.toContain("1:07");
 });

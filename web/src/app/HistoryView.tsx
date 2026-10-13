@@ -828,9 +828,7 @@ export function timelineItems(
     const group = turn;
     turn = [];
     const work = group.flatMap((entry) => entry.blocks ?? []);
-    const lastAssistantAt = group.findLast(
-      (entry) => entry.timestamp,
-    )?.timestamp;
+    const lastAssistantAt = group.at(-1)?.timestamp;
     const seconds =
       lastUserAt && lastAssistantAt
         ? Math.floor(

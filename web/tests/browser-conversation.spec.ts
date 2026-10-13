@@ -2409,6 +2409,7 @@ test("@browser-conversation failed close restores the conversation", async ({
 }) => {
   await open(page);
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(page).toHaveURL(/\?conversation=pi:[0-9a-f-]+$/);
   const before = page.url();
   await page.route("**/api/v1/conversations/*/close", (route) =>
     route.fulfill({

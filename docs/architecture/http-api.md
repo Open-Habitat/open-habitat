@@ -65,6 +65,7 @@ conversation control routes use the UUID alone.
 | `GET /api/v1/conversations/<id>/receipt?command_id=<uuid>` | look up an earlier command's receipt |
 | `POST /api/v1/conversations/<id>/send`, `.../steer`, `.../follow_up` | send a message with a client-chosen `command_id` |
 | `POST /api/v1/conversations/<id>/clear_queue`, `.../abort`, `.../stop`, `.../continue`, `.../question` | queue, lifecycle and question controls |
+| `POST /api/v1/conversations/<id>/close` | empty body; only a verified empty browser-started, idle conversation without another observed writer; stops and reaps its Pi child, removes empty native history, or refuses without unlinking |
 | `POST /api/v1/workspaces` with `action: conversation_archive` | archive or restore presentation with `workspace_id`, `observation_token`, `previous_archive` and `archived`; checks native history and workspace, rejects active writers and stale state; never moves Pi history |
 | `POST /api/v1/conversations/<id>/regenerate_title` | request a new native Pi name for a browser-controlled session; empty body, bounded synchronous `done` or `failed` result; failures include a fixed `reason` code, not provider diagnostics |
 | `POST /api/v1/conversations/<id>/history_title` | request a new native Pi name for settled history without a controller; requires `workspace_id`, checks the writer again and uses a temporary Pi child without granting browser control |
