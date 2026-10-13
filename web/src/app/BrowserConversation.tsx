@@ -18,6 +18,7 @@ import { AgentTurn, ThinkingRow } from "../components/AgentTurn";
 import { ArchiveControls } from "../components/ArchiveControls";
 import { agentPresentation } from "../components/agentPresentation";
 import { BashToolCard } from "../components/BashToolCard";
+import { FileToolCard, fileStat } from "../components/FileToolCard";
 import { PiToolUse } from "../components/PiBlocks";
 import { RecapCard } from "../components/RecapCard";
 import { UnpresentedEvents } from "../components/WorkingProgress";
@@ -751,6 +752,11 @@ export function BrowserConversation({
                                   ) : item.kind === "tool" ? (
                                     <PiToolUse
                                       name={item.name ?? "Työkalu"}
+                                      stat={fileStat(
+                                        item.name ?? "",
+                                        item.arguments ?? "",
+                                        item.output,
+                                      )}
                                       initiallyExpanded={item.name === "bash"}
                                       expansion={
                                         id && item.callId
@@ -780,10 +786,24 @@ export function BrowserConversation({
                                           output={item.output}
                                           running={item.state === "running"}
                                         />
+                                      ) : ["read", "write", "edit"].includes(
+                                          item.name ?? "",
+                                        ) ? (
+                                        <FileToolCard
+                                          name={item.name ?? ""}
+                                          argumentsText={item.arguments ?? ""}
+                                          output={item.output}
+                                        />
                                       ) : item.arguments ? (
                                         <pre>{item.arguments}</pre>
                                       ) : null}
-                                      {item.name !== "bash" && item.output ? (
+                                      {![
+                                        "bash",
+                                        "read",
+                                        "write",
+                                        "edit",
+                                      ].includes(item.name ?? "") &&
+                                      item.output ? (
                                         <pre>{item.output}</pre>
                                       ) : null}
                                     </PiToolUse>

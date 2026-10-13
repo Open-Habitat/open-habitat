@@ -649,6 +649,7 @@ export function LiveToolRow({
 export function ToolRow({
   name,
   targetText,
+  stat,
   statusLabel,
   state,
   durationText,
@@ -659,6 +660,7 @@ export function ToolRow({
 }: {
   name: string;
   targetText?: string;
+  stat?: string;
   statusLabel: string;
   state: string;
   durationText?: string;
@@ -685,6 +687,7 @@ export function ToolRow({
             </code>
           ) : null}
         </span>
+        {stat ? <span className="ah-file-stat">{stat}</span> : null}
         <StatusMark
           label={statusLabel}
           tone={errorSummary ? "danger" : "neutral"}

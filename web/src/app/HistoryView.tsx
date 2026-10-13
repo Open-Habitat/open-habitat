@@ -22,6 +22,7 @@ import { AgentTurn, ThinkingRow } from "../components/AgentTurn";
 import { ArchiveControls } from "../components/ArchiveControls";
 import { BashToolCard } from "../components/BashToolCard";
 import { ControlButton, LinkRow } from "../components/ControlElements";
+import { FileToolCard, fileStat } from "../components/FileToolCard";
 import { PiBoundary, PiToolUse } from "../components/PiBlocks";
 import { RecapCard } from "../components/RecapCard";
 import { type ConversationStore, useWindow } from "./conversationStore";
@@ -388,6 +389,152 @@ function BashCall({
     </>
   );
 }
+async function fullTextBlock(
+  agentId: string,
+  revision: string,
+  entryKey: string,
+  index: number,
+  signal: AbortSignal,
+): Promise<string> {
+  let offset = 0,
+    text = "";
+  for (;;) {
+    const url = `/api/v1/agents/${agentId}/entries/${entryKey}/blocks/${index}?${new URLSearchParams({ revision, offset: String(offset), limit_bytes: "65536" })}`;
+    const value = await readHistory(
+      await fetch(url, {
+        credentials: "same-origin",
+        cache: "no-store",
+        signal,
+      }),
+    );
+    if (
+      !("chunk" in value) ||
+      value.agent_id !== agentId ||
+      value.native_revision !== revision ||
+      value.entry_key !== entryKey ||
+      value.block_index !== index ||
+      value.offset !== offset ||
+      value.chunk.media_type !== "text/plain"
+    )
+      throw new Error("invalid block");
+    text += value.chunk.text ?? "";
+    if (text.length > 64 * 1024 * 1024) throw new Error("oversize block");
+    if (value.chunk.complete) return text;
+    if (
+      value.chunk.next_offset === undefined ||
+      value.chunk.next_offset <= offset
+    )
+      throw new Error("invalid block");
+    offset = value.chunk.next_offset;
+  }
+}
+function FileUse({
+  block,
+  index,
+  entryKey,
+  agentId,
+  revision,
+  onLogin,
+  result,
+  live,
+  expansion,
+}: {
+  block: HistoryBlock;
+  index: number;
+  entryKey: string;
+  agentId?: string;
+  revision?: string;
+  onLogin?: () => void;
+  result?: HistoryEntry;
+  live?: LiveTool;
+  expansion?: { get: () => boolean | undefined; set: (value: boolean) => void };
+}) {
+  const [argumentsText, setArgumentsText] = useState(block.text ?? "");
+  const [error, setError] = useState(false);
+  const [fullOutput, setFullOutput] = useState<string>();
+  useEffect(() => {
+    if (!block.readable || !agentId || !revision) return;
+    const controller = new AbortController();
+    void fullTextBlock(agentId, revision, entryKey, index, controller.signal)
+      .then((value) => {
+        if (!controller.signal.aborted) setArgumentsText(value);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        if ((error as Error).message === "identity_lost") onLogin?.();
+        else setError(true);
+      });
+    return () => controller.abort();
+  }, [block.readable, agentId, revision, entryKey, index, onLogin]);
+  const resultIndex =
+    result?.blocks?.findIndex((b) => b.type === "text" && b.readable) ?? -1;
+  const resultKey = result?.entry_key;
+  const resultRevision = result?.native_revision ?? revision;
+  useEffect(() => {
+    if (!agentId || !resultRevision || !resultKey || resultIndex < 0) return;
+    const controller = new AbortController();
+    void fullTextBlock(
+      agentId,
+      resultRevision,
+      resultKey,
+      resultIndex,
+      controller.signal,
+    )
+      .then((value) => {
+        if (!controller.signal.aborted) setFullOutput(value);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        if ((error as Error).message === "identity_lost") onLogin?.();
+        else setError(true);
+      });
+    return () => controller.abort();
+  }, [agentId, resultRevision, resultKey, resultIndex, onLogin]);
+  const output =
+    fullOutput ??
+    result?.blocks
+      ?.filter((b) => b.type === "text")
+      .map((b) => b.text ?? "")
+      .join("\n") ??
+    live?.output;
+  return (
+    <PiToolUse
+      name={block.tool_name ?? "Työkalu"}
+      targetText={(() => {
+        try {
+          const a: unknown = JSON.parse(argumentsText);
+          return a &&
+            typeof a === "object" &&
+            "path" in a &&
+            typeof a.path === "string"
+            ? a.path
+            : undefined;
+        } catch {
+          return undefined;
+        }
+      })()}
+      stat={fileStat(block.tool_name ?? "", argumentsText, output)}
+      state={
+        result?.is_error
+          ? "failed"
+          : result
+            ? "succeeded"
+            : toolState(live?.state)
+      }
+      initiallyExpanded={false}
+      expansion={expansion}
+    >
+      <FileToolCard
+        name={block.tool_name ?? ""}
+        argumentsText={argumentsText}
+        output={output}
+      />
+      {error ? (
+        <PiBoundary>Tiedoston tietoja ei saatu. Päivitä historia.</PiBoundary>
+      ) : null}
+    </PiToolUse>
+  );
+}
 function OrderedBlocks({
   blocks,
   entryKey,
@@ -423,10 +570,34 @@ function OrderedBlocks({
   return (
     <div className="ah-ordered-blocks">
       {blocks.map((block, index) =>
-        block.type === "toolCall" && block.tool_call_id ? (
+        block.type === "toolCall" &&
+        block.tool_call_id &&
+        ["read", "write", "edit"].includes(block.tool_name ?? "") ? (
+          <FileUse
+            key={`${entryKey}:${revision}:${block.tool_call_id}`}
+            block={block}
+            index={index}
+            entryKey={entryKey}
+            agentId={agentId}
+            revision={revision}
+            onLogin={onLogin}
+            result={results?.get(block.tool_call_id)}
+            live={liveTools?.get(block.tool_call_id)}
+            expansion={toolExpansion?.(block.tool_call_id)}
+          />
+        ) : block.type === "toolCall" && block.tool_call_id ? (
           <PiToolUse
             key={`${entryKey}:${revision}:${block.tool_call_id}`}
             name={block.tool_name || "Työkalu"}
+            stat={fileStat(
+              block.tool_name ?? "",
+              block.text ?? "",
+              results
+                ?.get(block.tool_call_id)
+                ?.blocks?.filter((b) => b.type === "text")
+                .map((b) => b.text ?? "")
+                .join("\n"),
+            )}
             initiallyExpanded={false}
             expansion={toolExpansion?.(block.tool_call_id)}
             targetText={

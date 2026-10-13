@@ -6,6 +6,7 @@ export function PiToolUse({
   name,
   state,
   targetText,
+  stat,
   children,
   initiallyExpanded = name === "bash" && state !== "forming",
   expansion,
@@ -14,6 +15,7 @@ export function PiToolUse({
   initiallyExpanded?: boolean;
   expansion?: { get: () => boolean | undefined; set: (value: boolean) => void };
   targetText?: string;
+  stat?: string;
   state:
     | "forming"
     | "called"
@@ -46,6 +48,7 @@ export function PiToolUse({
       <ToolRow
         name={name}
         targetText={targetText}
+        stat={stat}
         state={state}
         statusLabel={labels[state]}
         errorSummary={
