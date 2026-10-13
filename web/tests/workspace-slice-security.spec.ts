@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
 
 const host = hostOrigin;

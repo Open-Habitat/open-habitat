@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { expect, type Locator, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
 
 test.use({ ignoreHTTPSErrors: true });

@@ -5,6 +5,11 @@ clean=false;json=false
 while (($#));do case "$1" in --clean)clean=true;shift;;--json)json=true;shift;;*)echo "error: unknown argument $1" >&2;exit 1;;esac;done
 cd "$repo"
 if $clean && [[ -n $(git status --short) ]];then echo 'error: --clean requires a clean tree at entry' >&2;exit 1;fi
+# A prior complete gate on the identical committed tree is local evidence for
+# unchanged phase inputs. The full tree is the conservative input hash: no
+# narrower list can safely omit fixtures, scripts or package metadata.
+reuse_phases=false
+if $clean && python3 scripts/gate-receipt.py check >/dev/null 2>&1;then reuse_phases=true;fi
 # Build caches, npm installs and test children must not exhaust the /tmp tmpfs.
 export TMPDIR=/var/tmp
 tmp=$(mktemp -d)
@@ -70,9 +75,14 @@ if grep -R -E 'Alder-testifixture|Deterministinen testi: daemon' web/dist/assets
   echo 'error: test fixture content leaked into production bundle' >&2;exit 1
 fi
 phase browser
-OH_WEB_PREBUILT=1 npm run test:browser --prefix web
-(cd web && OH_WEB_PREBUILT=1 npx playwright test --config playwright.lab.config.ts)
+if ! $reuse_phases;then
+  OH_WEB_PREBUILT=1 npm run test:browser --prefix web
+  (cd web && OH_WEB_PREBUILT=1 npx playwright test --config playwright.lab.config.ts)
+else
+  echo 'ci-local phase browser: reused from passed receipt for identical committed tree' >&2
+fi
 phase go-and-contracts
+if ! $reuse_phases;then
 npm run build-storybook --prefix web
 go fmt ./...
 go vet ./...
@@ -88,6 +98,9 @@ go generate ./internal/contracts
 "$PYTHON" scripts/check-licenses.py
 "$PYTHON" scripts/test-gate-receipt.py
 ./scripts/vm-test.sh self-test --json
+else
+  echo 'ci-local phase go-and-contracts: reused from passed receipt for identical committed tree' >&2
+fi
 phase packaging
 ./scripts/native-fixture.sh create --output "$tmp/native-fixture"
 test "$(wc -l < "$tmp/native-fixture/home/.pi/agent/sessions/fixture.jsonl")" -eq 2500
@@ -105,5 +118,9 @@ phase final-checks
 issuectl doctor --json
 git diff --check
 if $clean && [[ -n $(git status --short) ]];then git status --short >&2;echo 'error: green gate changed the clean tree' >&2;exit 1;fi
-if $clean;then python3 scripts/gate-receipt.py record >&2;fi
+if $clean;then
+  receipt_args=()
+  if $reuse_phases;then receipt_args+=(--reused-phase browser --reused-phase go-and-contracts);fi
+  python3 scripts/gate-receipt.py record "${receipt_args[@]}" >&2
+fi
 if $json;then printf '{"schema_version":1,"data":{"status":"passed","clean":%s},"warnings":[]}\n' "$clean";else echo 'CI-local gate passed';fi

@@ -122,8 +122,8 @@ func main() {
 	}
 	if raw := os.Getenv("BROWSER_HOST_PORT"); raw != "" {
 		port, e = strconv.Atoi(raw)
-		if !lab || e != nil || port < 1024 || port > 65535 {
-			log.Fatal("BROWSER_HOST_PORT must be a lab port from 1024 to 65535")
+		if e != nil || port < 1024 || port > 65535 {
+			log.Fatal("BROWSER_HOST_PORT must be a port from 1024 to 65535")
 		}
 	}
 	listen := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))

@@ -37,10 +37,15 @@ once per work round on `main` so its health is known. It is:
 On success, `--clean` writes `<git common dir>/open-habitat-gate-receipts/<HEAD tree>.json`.
 That location is shared by linked worktrees, so main can reuse a worker's gate
 result when the merged tree is identical. The receipt identifies the committed
-tree and gate inputs it covers; the release
-preparer checks it against the current clean tree rather than rerunning the
-11-minute gate. A different commit with identical tree can reuse it (the
-release still pins and embeds its own commit SHA). A change to issue evidence,
+tree and gate inputs it covers. On a repeat of the **same** committed tree,
+the browser and Go/contracts phases can reuse the previous passed receipt's
+results; the new receipt lists them under `reused_phases`. Every changed tree
+runs both phases in full.
+The release preparer checks the receipt against the current clean tree rather
+than rerunning the gate. The measured cold and warm times are in
+[the fast-gate result](issues/fast-clean-gate/result.md). A different commit
+with an identical tree can reuse it (the release still pins and embeds its own
+commit SHA). A change to issue evidence,
 docs, code, dependencies or package inputs changes the tree and requires a new
 clean gate before release. Receipts are local evidence, not signed attestations;
 keep them on the machine where the gate ran. The gate prints its JSON envelope
@@ -77,7 +82,13 @@ during the run; ignored build caches may remain.
 
 The clean gate also runs the synthetic lab create→send→answer browser test against the real controller and fake Pi; `scripts/lab.sh` provides manual exploration.
 
-Browser listeners default to host 4174, lab 4175, Vite 4183 and demo 4184; set `OH_PORT_BASE` to a distinct value (e.g. `OH_PORT_BASE=14000 ./scripts/ci-local.sh --clean --json`) to run another worktree concurrently. `scripts/lab.sh start` selects a free port if its preferred lab port is busy and records it in `.cache/lab/port` for `url` and `web/lab/session.mjs`; for standalone browser checks:
+Browser listeners default to lab 4175, Vite 4183 and demo 4184. The
+parallel browser suite starts an independent synthetic host per worker at
+`OH_PORT_BASE + 20 + parallelIndex` (4194–4201 by default for eight workers).
+Each host has its own scenario, clock, session and fake Pi state; tests in the
+same file can run concurrently on separate hosts. Set `OH_PORT_BASE` to a
+distinct value (e.g. `OH_PORT_BASE=14000 ./scripts/ci-local.sh --clean --json`)
+to run another worktree concurrently. `scripts/lab.sh start` selects a free port if its preferred lab port is busy and records it in `.cache/lab/port` for `url` and `web/lab/session.mjs`; for standalone browser checks:
 
 ```sh
 npm ci --prefix web
@@ -90,8 +101,8 @@ A fresh worktree has an empty `.cache/ms-playwright`, so every browser case
 then fails to launch; install Chromium there or point
 `PLAYWRIGHT_BROWSERS_PATH` at an existing cache such as `$HOME/.cache/ms-playwright`.
 `OH_WEB_PREBUILT=1` belongs only to the gate, which has just built those assets;
-using it standalone can test stale output. Keep one Playwright worker because
-the synthetic host's scenario switch is shared across tests.
+using it standalone can test stale output. The lab inventory capture script
+still uses its single lab host and must not share that host with other captures.
 
 ## Component catalog and visual checks
 

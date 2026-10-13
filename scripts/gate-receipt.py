@@ -32,15 +32,28 @@ def receipt_path(tree):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['record', 'check'])
+    parser.add_argument('--reused-phase', action='append', choices=['browser', 'go-and-contracts'], default=[])
     args = parser.parse_args()
     try:
         commit, tree = identity()
         path = receipt_path(tree)
+        previous = None
+        if args.action == 'check' or args.reused_phase:
+            previous = json.loads(path.read_text())
+            if (previous.get('schema_version') != 1 or previous.get('status') != 'passed' or
+                previous.get('gate') != 'scripts/ci-local.sh --clean --json' or
+                previous.get('tree') != tree or
+                previous.get('gate_inputs') != {'committed_tree': tree}):
+                raise ValueError('receipt does not cover the current committed tree and gate inputs')
         if args.action == 'record':
             path.parent.mkdir(parents=True, exist_ok=True)
             payload = {'schema_version': 1, 'status': 'passed', 'gate': 'scripts/ci-local.sh --clean --json',
                        'tree': tree, 'gate_inputs': {'committed_tree': tree}, 'source_commit': commit,
-                       'completed_at': datetime.datetime.now(datetime.timezone.utc).isoformat()}
+                       'completed_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                       'reused_phases': args.reused_phase}
+            if args.reused_phase:
+                payload['phase_evidence_completed_at'] = previous.get('phase_evidence_completed_at',
+                                                                      previous['completed_at'])
             fd, tmp = tempfile.mkstemp(dir=path.parent, prefix='.receipt-')
             try:
                 with os.fdopen(fd, 'w') as f:
@@ -54,12 +67,6 @@ def main():
                     os.unlink(tmp)
             print(path)
         else:
-            receipt = json.loads(path.read_text())
-            if (receipt.get('schema_version') != 1 or receipt.get('status') != 'passed' or
-                receipt.get('gate') != 'scripts/ci-local.sh --clean --json' or
-                receipt.get('tree') != tree or
-                receipt.get('gate_inputs') != {'committed_tree': tree}):
-                raise ValueError('receipt does not cover the current committed tree and gate inputs')
             # A different commit with identical tree is safe: the gate covers content,
             # while the release separately pins and embeds the selected source commit.
             print(path)

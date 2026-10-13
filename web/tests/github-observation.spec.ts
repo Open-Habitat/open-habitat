@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
 
 const host = hostOrigin;

@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });

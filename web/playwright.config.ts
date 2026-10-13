@@ -1,12 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
-import { hostOrigin, ports, viteOrigin } from "./test-ports.mjs";
+import { ports, viteOrigin } from "./test-ports.mjs";
 export default defineConfig({
   testDir: "./tests",
   testIgnore: ["synthetic-demo.spec.ts", "lab-*.spec.ts"],
-  globalTeardown: "./tests/host-teardown.ts",
-  fullyParallel: false,
-  workers: 1, // Standalone host scenario switch is shared by tests; never run it concurrently.
+  fullyParallel: true,
+  workers: 8, // Each slot starts an independent synthetic host.
   retries: 0,
+  globalSetup: "./tests/host-build.ts",
   reporter: [["line"]],
   use: { baseURL: viteOrigin, trace: "retain-on-failure" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
@@ -16,13 +16,6 @@ export default defineConfig({
       url: viteOrigin,
       reuseExistingServer: false,
       env: { VITE_ENABLE_TEST_FIXTURES: "true" },
-    },
-    {
-      command: `${process.env.OH_WEB_PREBUILT === "1" ? "" : "npm run build && "}cd .. && PATH="$PWD/.tools/go/bin:$PATH" go build -o .cache/browser-host ./test/browser-host && BROWSER_HOST_MARKER=web/test-results/browser-host-path exec .cache/browser-host web/dist`,
-      url: `${hostOrigin}/healthz`,
-      ignoreHTTPSErrors: true,
-      reuseExistingServer: false,
-      timeout: 120000,
     },
   ],
 });

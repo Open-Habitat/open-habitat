@@ -28,8 +28,8 @@ class ReceiptTests(unittest.TestCase):
     def git(self, *args):
         return subprocess.check_output(['git', '-C', str(self.repo), *args], text=True).strip()
 
-    def run_receipt(self, action):
-        return subprocess.run(['python3', str(self.repo / 'scripts' / SCRIPT.name), action],
+    def run_receipt(self, action, *extra):
+        return subprocess.run(['python3', str(self.repo / 'scripts' / SCRIPT.name), action, *extra],
                               capture_output=True, text=True)
 
     def test_same_tree_and_different_tree(self):
@@ -44,6 +44,23 @@ class ReceiptTests(unittest.TestCase):
         self.assertNotEqual(self.run_receipt('check').returncode, 0)
         self.git('checkout', '-q', 'HEAD^')
         self.assertEqual(self.run_receipt('check').returncode, 0)
+
+    def test_reused_phase_still_requires_current_tree(self):
+        self.assertNotEqual(self.run_receipt('record', '--reused-phase', 'browser').returncode, 0)
+        self.assertEqual(self.run_receipt('record').returncode, 0)
+        self.assertEqual(self.run_receipt('record', '--reused-phase', 'browser', '--reused-phase', 'go-and-contracts').returncode, 0)
+        tree = self.git('rev-parse', 'HEAD^{tree}')
+        receipt = self.repo / '.git/open-habitat-gate-receipts' / (tree + '.json')
+        reused = json.loads(receipt.read_text())
+        self.assertEqual(reused['reused_phases'], ['browser', 'go-and-contracts'])
+        self.assertEqual(self.run_receipt('record', '--reused-phase', 'browser').returncode, 0)
+        self.assertEqual(json.loads(receipt.read_text())['phase_evidence_completed_at'],
+                         reused['phase_evidence_completed_at'])
+        self.assertEqual(self.run_receipt('check').returncode, 0)
+        (self.repo / 'input').write_text('changed')
+        self.git('add', 'input')
+        self.git('commit', '-qm', 'change')
+        self.assertNotEqual(self.run_receipt('check').returncode, 0)
 
     def test_linked_worktree_reuses_same_tree(self):
         self.assertEqual(self.run_receipt('record').returncode, 0)

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Synthetic host only; fixture scenario is process-wide. Run without parallel browsers.
+// Synthetic lab host only; this manual capture script changes its own host's scenario.
 import { execFileSync } from "node:child_process";
 import { request } from "@playwright/test";
 import { readFile, mkdir, writeFile } from "node:fs/promises";

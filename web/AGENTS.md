@@ -41,13 +41,15 @@ Three ways to run the client prove different things, and the difference matters
 when reporting evidence. `npm run dev` serves the source with Vite.
 `npm run demo` is a loopback-only rehearsal on port 4184 with in-process
 fixture snapshots, selected by `VITE_SYNTHETIC_DEMO`; it exercises the UI, not
-the host. `test/browser-host/` is a standalone Go TLS host on port 4174 that
-Playwright builds and starts against a fresh production `web/dist`. It mounts
+the host. `test/browser-host/` is a standalone Go TLS host that Playwright builds and
+starts against a fresh production `web/dist`. Each Playwright worker starts its
+own host on `OH_PORT_BASE + 20 + parallelIndex`, with its own invented homes,
+scenario, sessions, clock and fake Pi; the standalone lab stays on base + 1. It mounts
 the real gateway and daemon handlers with synthetic seams: two invented
 identities on same-UID Unix sockets under a private `/tmp/oh-browser-*`
 directory, a fake OAuth provider, and a `/fixture/` prefix through which tests
-switch scenarios and history modes and expire sessions. That switch is
-process-wide, which is why Playwright runs with one worker. The host is
+switch scenarios and history modes and expire sessions. That switch is process-wide within each worker's host; isolated hosts let the
+browser suite run eight workers, including concurrent cases in the same spec. The host is
 test-only code, never imported by `cmd/open-habitat`. Both the default browser suite and lab mode run the real daemon conversation
 controller and native-history path against a fake Pi child. This
 proves routing and the browser/host contract but not UID isolation; the two-UID systemd VM
