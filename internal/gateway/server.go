@@ -78,6 +78,10 @@ func (s *Server) ui(w http.ResponseWriter, r *http.Request) {
 	relative := strings.TrimPrefix(filepath.Clean("/"+r.URL.Path), "/")
 	candidate := filepath.Join(s.staticDir, relative)
 	if info, err := os.Stat(candidate); err == nil && info.Mode().IsRegular() {
+		if relative == "index.html" {
+			// A deploy changes the asset hashes referenced by the shell.
+			w.Header().Set("Cache-Control", "no-store")
+		}
 		http.ServeFile(w, r, candidate)
 		return
 	}
@@ -85,6 +89,7 @@ func (s *Server) ui(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	w.Header().Set("Cache-Control", "no-store")
 	http.ServeFile(w, r, filepath.Join(s.staticDir, "index.html"))
 }
 func knownUIRoute(path string) bool {

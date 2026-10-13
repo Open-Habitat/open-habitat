@@ -41,6 +41,13 @@ func TestRoutesDoNotFallbackAPIToUI(t *testing.T) {
 		if got := w.Header().Get("X-Robots-Tag"); got != wantTag {
 			t.Errorf("%s: X-Robots-Tag = %q, want %q", tc.path, got, wantTag)
 		}
+		wantCache := ""
+		if tc.body == "shell" {
+			wantCache = "no-store"
+		}
+		if got := w.Header().Get("Cache-Control"); got != wantCache {
+			t.Errorf("%s: Cache-Control = %q, want %q", tc.path, got, wantCache)
+		}
 	}
 	// HEAD returns the same static headers without content.
 	w := httptest.NewRecorder()
