@@ -60,6 +60,18 @@ frozen draft is `design-system/drafts/Agentin vuoro.proto.html`, built from
 is `design-system/prototypes/rounds/2026-10-13-ylapalkki/`. The sidebar rows
 and the "+" in that draft are the issue's proposal, not yet reviewed.
 
+## Decided for production (Jari 2026-10-13)
+
+- Send is an icon button (an up arrow), not a text button.
+- Disabled actions stay visible with their reason in production too: archive
+  while Pi works, and new title in a new conversation with nothing to name
+  yet. The new-title button is disabled there, not hidden.
+- The keyboard hint row under the field ("Enter lähettää · Shift+Enter
+  rivinvaihto") goes away; it takes too much space.
+- A stop button for the agent's work belongs to the composer; its place and
+  the steer/after-the-turn choice are prototyped in
+  `design-system/prototypes/rounds/2026-10-13-alakerta/`.
+
 ## Design and verification
 
 Use [the current design](../../design-system/design.md) and its referenced

@@ -86,7 +86,7 @@ function paintRail() {
 }
 
 // ---------- Top bar, per direction ----------
-const btn = (act, icon, label, opts = {}) => `<button class="icon-btn tb-btn${opts.cls ? ' ' + opts.cls : ''}" type="button" data-ui="${act}" aria-label="${label}" title="${opts.reason || label}"${opts.disabled ? ` aria-disabled="true" aria-describedby="arch-why"` : ''}${opts.expanded !== undefined ? ` aria-expanded="${opts.expanded}"` : ''}>${icon}</button>`;
+const btn = (act, icon, label, opts = {}) => `<button class="icon-btn tb-btn${opts.cls ? ' ' + opts.cls : ''}" type="button" data-ui="${act}" aria-label="${label}" title="${opts.reason || label}"${opts.disabled ? ` aria-disabled="true" aria-describedby="${act}-why"` : ''}${opts.expanded !== undefined ? ` aria-expanded="${opts.expanded}"` : ''}>${icon}</button>`;
 function stateChip(c) {
   if (c.archived) return `<span class="tag archived">Arkistoitu</span>`;
   if (isEmpty(c)) return '';
@@ -99,14 +99,18 @@ function titleBlock(c) {
 <div class="tb-title"><strong${UI.pending ? ' class="pending" aria-busy="true"' : ''}>${esc(c.title)}</strong><a href="#" class="tb-ws" data-ui="ws">${esc(c.ws.id)}</a></div>`;
 }
 // Ikonirivi: uusi otsikko, arkistointi ja tiedot näkyvinä ikoneina oikealla.
+// Estetty toiminto pysyy näkyvissä ja kertoo syynsä (Jari 13.10.).
+const retitleReason = 'Uudessa keskustelussa ei ole vielä mitään nimettävää.';
 function topActions(c) {
   const archOpts = UI.working && c.id === 'c1' ? { disabled: true, reason: archiveReason } : {};
-  return (!isEmpty(c) && !c.archived ? btn('retitle', ICON_RETITLE, 'Luo uusi otsikko', { cls: UI.pending ? 'spin-badge' : '' }) : '')
-    + (c.archived ? '' : btn('archive', ICON_ARCHIVE, 'Arkistoi', archOpts))
+  const titleOpts = isEmpty(c) ? { disabled: true, reason: retitleReason } : { cls: UI.pending ? 'spin-badge' : '' };
+  const why = (act, o) => o.disabled ? `<span id="${act}-why" hidden>${o.reason}</span>` : '';
+  return (c.archived ? '' : btn('retitle', ICON_RETITLE, 'Luo uusi otsikko', titleOpts) + btn('archive', ICON_ARCHIVE, 'Arkistoi', archOpts))
     + btn('info', ICON_INFO, 'Tiedot', { expanded: UI.pop })
-    + (archOpts.disabled ? `<span id="arch-why" hidden>${archiveReason}</span>` : '');
+    + why('retitle', titleOpts) + why('archive', archOpts);
 }
-const APP = { row: convRow, actions: topActions };
+// `painted` hooks run after every repaint, e.g. a round's composer following UI.working.
+const APP = { row: convRow, actions: topActions, painted: [] };
 function paintTop() {
   const c = selConv();
   uiTop.innerHTML = `${titleBlock(c)}<div class="tb-right">${stateChip(c)}<span class="tb-actions">${APP.actions(c)}</span></div>`;
@@ -128,7 +132,7 @@ function paintPop() {
   uiPop.hidden = !UI.pop;
   if (!uiPop.hidden) { uiPop.className = 'popover details'; uiPop.innerHTML = `<h3>Tiedot</h3>${detailsList(selConv())}`; }
 }
-function paint() { paintRail(); paintTop(); paintPop(); uiFrame.classList.toggle('drawer-open', UI.drawer); }
+function paint() { paintRail(); paintTop(); paintPop(); uiFrame.classList.toggle('drawer-open', UI.drawer); for (const f of APP.painted) f(); }
 
 // ---------- Stage content ----------
 function content() {
