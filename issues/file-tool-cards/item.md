@@ -44,3 +44,8 @@ grouping and file tools) and drawn in
 - History and live cards match the draft in the same states, light and dark,
   desktop and phone; tests cover the stats, the diff pairing and word marks,
   and both copy actions; lab evidence here, differences in `result.md`.
+
+## Acceptance Criteria
+
+- [x] Read/write/edit statistics, output boxes and native-or-computed edit diff work live and in saved history.
+- [x] Word marks, copy actions, accessibility and synthetic lab captures are recorded in `result.md`.

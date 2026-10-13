@@ -48,3 +48,8 @@ cards, and the "Output box (chosen 13.10.2026, Ryhmät)" rules plus the
   states, light and dark, desktop and phone; lab evidence beside the draft
   here; tests cover the view state, jump disabling after scrolling, wrap and
   copy of the full text.
+
+## Acceptance Criteria
+
+- [x] Shared output box, reply structure, grouped rail and command copy work in live and saved conversations.
+- [x] Scroll and wrap behaviour, copy, synthetic lab captures and a11y/browser checks are recorded in `result.md`.
