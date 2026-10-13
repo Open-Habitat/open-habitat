@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
@@ -41,7 +43,7 @@ func TestCloseEmptyBrowserChild(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("nonroot daemon only")
 	}
-	for _, mode := range []string{"absent", "empty", "nonempty", "terminal"} {
+	for _, mode := range []string{"absent", "empty", "nonempty", "terminal", "writer"} {
 		t.Run(mode, func(t *testing.T) {
 			home := t.TempDir()
 			id := "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
@@ -82,6 +84,21 @@ func TestCloseEmptyBrowserChild(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
+			if mode == "writer" {
+				other := exec.Command("bash", "-c", `exec -a pi sleep 30 3<"$1"`, "bash", path)
+				other.Dir = t.TempDir()
+				if err := other.Start(); err != nil {
+					t.Fatal(err)
+				}
+				defer func() { _ = other.Process.Kill(); _ = other.Wait() }()
+				deadline := time.Now().Add(time.Second)
+				for piWriter(path, home, os.Geteuid()) != "writer_present" && time.Now().Before(deadline) {
+					time.Sleep(time.Millisecond)
+				}
+				if piWriter(path, home, os.Geteuid()) != "writer_present" {
+					t.Fatal("unaccounted writer fixture did not open history")
+				}
+			}
 			c := &ConversationController{cfg: transport.Config{UID: os.Geteuid(), Home: home}, home: home, sessions: map[string]*conversation{id: {id: id, workspace: ws, cwd: home, rpc: p, owner: owner, state: "idle", commands: map[string]bool{}}}}
 			go c.watch(c.sessions[id])
 			request := httptest.NewRequest("POST", "http://unix/api/v1/conversations/"+id+"/close", strings.NewReader("")).WithContext(context.Background())
@@ -115,5 +132,28 @@ func TestCloseEmptyBrowserChild(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestCloseTerminalBegunSessionHasNoControllerAuthority(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("nonroot daemon only")
+	}
+	home := t.TempDir()
+	id := "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+	path := filepath.Join(home, historyRoot, "native.jsonl")
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatal(err)
+	}
+	body := fmt.Sprintf("{\"type\":\"session\",\"version\":3,\"id\":%q,\"cwd\":%q}\n", id, home)
+	if err := os.WriteFile(path, []byte(body), 0600); err != nil {
+		t.Fatal(err)
+	}
+	c := &ConversationController{cfg: transport.Config{UID: os.Geteuid(), Home: home}, home: home, sessions: map[string]*conversation{}}
+	w := httptest.NewRecorder()
+	c.closeEmpty(w, httptest.NewRequest("POST", "http://unix/api/v1/conversations/"+id+"/close", nil), id)
+	after, err := os.ReadFile(path)
+	if w.Code != 409 || err != nil || string(after) != body {
+		t.Fatalf("terminal session changed: %d %s %v", w.Code, string(after), err)
 	}
 }

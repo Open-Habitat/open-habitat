@@ -35,11 +35,11 @@ test("@visual unhappy states remain explicit", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByText("Tulos epävarma")).toBeVisible();
   await expect(page.getByText("Osittainen")).toBeVisible();
-  await expect(
-    page.getByText("Uusi otsikko: Capabilityä ei ole vahvistettu.", {
-      exact: true,
-    }),
-  ).toBeVisible();
+  const title = page.getByRole("button", { name: "Luo otsikko uudelleen" });
+  await expect(title).toBeDisabled();
+  await expect(title).toHaveAccessibleDescription(
+    "Capabilityä ei ole vahvistettu.",
+  );
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toHaveAttribute("readonly");

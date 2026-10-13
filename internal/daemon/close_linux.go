@@ -70,7 +70,7 @@ func emptyNativeFile(path string, uid int, id, cwd string) (os.FileInfo, error) 
 }
 
 // Close is restricted to a fresh browser child owned by this daemon. The
-// closing state fences browser sends while native source is checked and
+// stopping state fences browser sends while native source is checked and
 // the child is reaped. A terminal Pi does not honor this state; census remains
 // a conservative observation, not a promise about future terminal starts.
 func (c *ConversationController) closeEmpty(w http.ResponseWriter, r *http.Request, id string) {
@@ -86,7 +86,7 @@ func (c *ConversationController) closeEmpty(w http.ResponseWriter, r *http.Reque
 	defer release()
 	c.mu.Lock()
 	s := c.sessions[id]
-	if c.closed || s == nil || s.rpc == nil || s.owner == nil || s.dead || s.state != "idle" || len(s.commands) != 0 || s.acceptedMessages != 0 || s.aborting || s.naming || s.recapping || s.owner.id != id {
+	if c.closed || s == nil || s.rpc == nil || s.owner == nil || s.dead || s.state != "idle" || len(s.commands) != 0 || s.acceptedMessages != 0 || s.aborting || s.naming || s.recapping || s.questionID != "" || s.owner.id != id {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return
@@ -97,11 +97,11 @@ func (c *ConversationController) closeEmpty(w http.ResponseWriter, r *http.Reque
 		snapshotError(w, 409, "read_only_history")
 		return
 	}
-	s.state = "closing"
+	s.state = "stopping"
 	c.mu.Unlock()
 	defer func() {
 		c.mu.Lock()
-		if c.sessions[id] == s && s.state == "closing" {
+		if c.sessions[id] == s && s.state == "stopping" {
 			s.state = "idle"
 		}
 		c.mu.Unlock()

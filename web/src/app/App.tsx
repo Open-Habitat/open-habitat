@@ -910,7 +910,11 @@ export function App() {
       <>
         {archiveProblem && (
           <InlineNotice
-            title="Arkiston tila epävarma"
+            title={
+              archiveProblem.startsWith("Sulkemista")
+                ? "Sulkeminen epäonnistui"
+                : "Arkiston tila epävarma"
+            }
             description={archiveProblem}
             tone="warning"
           />
@@ -971,7 +975,11 @@ export function App() {
         {new URLSearchParams(location.search).has("conversation") &&
           archiveProblem && (
             <InlineNotice
-              title="Arkiston tila epävarma"
+              title={
+                archiveProblem.startsWith("Sulkemista")
+                  ? "Sulkeminen epäonnistui"
+                  : "Arkiston tila epävarma"
+              }
               description={archiveProblem}
               tone="warning"
             />
@@ -1034,7 +1042,11 @@ export function App() {
             {archiveToast && <InlineNotice title={archiveToast} tone="info" />}
             {archiveProblem && (
               <InlineNotice
-                title="Arkiston tila epävarma"
+                title={
+                  archiveProblem.startsWith("Sulkemista")
+                    ? "Sulkeminen epäonnistui"
+                    : "Arkiston tila epävarma"
+                }
                 description={archiveProblem}
                 tone="warning"
               />

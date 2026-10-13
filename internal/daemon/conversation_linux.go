@@ -592,7 +592,7 @@ func (c *ConversationController) regenerateTitle(w http.ResponseWriter, r *http.
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}
-	if c.closed || s.dead || s.naming || s.firstText == "" || s.rpc.overflow.Load() {
+	if c.closed || s.dead || s.state == "stopping" || s.naming || s.firstText == "" || s.rpc.overflow.Load() {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return
@@ -766,7 +766,7 @@ func (c *ConversationController) answerQuestion(w http.ResponseWriter, r *http.R
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}
-	if c.closed || s.dead || s.rpc.overflow.Load() || s.questionID != body.RequestID || s.spentQuestions[body.RequestID] || s.state == "uncertain" || s.aborting {
+	if c.closed || s.dead || s.rpc.overflow.Load() || s.questionID != body.RequestID || s.spentQuestions[body.RequestID] || s.state == "uncertain" || s.state == "stopping" || s.aborting {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return
