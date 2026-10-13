@@ -56,12 +56,15 @@ test("@pi-onboarding native attempt drives the production browser, never a callb
       path: testInfo.outputPath("pi-device-code.png"),
       fullPage: true,
     });
+    // The fake Pi checks this state after a two-second delay. Set it before
+    // the unrelated foreign login, whose duration can exceed that delay under
+    // a parallel, fully loaded gate.
+    await page.request.get("/fixture/pi-state?value=usable");
     await login(foreign, "Bob");
     await expect(foreign.getByText("ABCD-1234")).toHaveCount(0);
     expect(
       (await foreign.request.get("/api/v1/onboarding/pi/attempt")).status(),
     ).toBe(404);
-    await page.request.get("/fixture/pi-state?value=usable");
     await expect(
       page.getByRole("heading", { name: "Jatka siitä, mihin jäit" }),
     ).toBeVisible({
