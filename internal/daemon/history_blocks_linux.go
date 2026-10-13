@@ -9,6 +9,7 @@ import "encoding/json"
 // Image data and tool arguments are fetched only by explicit bounded block read.
 func nativeBlocks(e nativeEntry) (out historyEntry) {
 	out.Key = e.ID
+	out.Timestamp = nativeTimestamp(e.Timestamp)
 	if e.Type == "custom" {
 		var custom struct {
 			CustomType string `json:"customType"`

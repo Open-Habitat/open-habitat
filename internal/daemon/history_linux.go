@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/Open-Habitat/open-habitat/internal/transport"
@@ -31,24 +32,26 @@ var entryIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
 var blockReadPath = regexp.MustCompile(`^/api/v1/agents/(pi:[0-9a-fA-F-]{36})/entries/([A-Za-z0-9_-]{1,128})/blocks/([0-9]{1,3})$`)
 
 type nativeEntry struct {
-	ID       string          `json:"id"`
-	Type     string          `json:"type"`
-	Message  json.RawMessage `json:"message"`
-	Provider string          `json:"provider"`
-	ModelID  string          `json:"modelId"`
-	ParentID *string         `json:"parentId"`
-	Raw      json.RawMessage `json:"-"`
+	ID        string          `json:"id"`
+	Type      string          `json:"type"`
+	Message   json.RawMessage `json:"message"`
+	Provider  string          `json:"provider"`
+	ModelID   string          `json:"modelId"`
+	ParentID  *string         `json:"parentId"`
+	Raw       json.RawMessage `json:"-"`
+	Timestamp string          `json:"timestamp"`
 }
 type nativeHeader struct {
-	Type    string `json:"type"`
-	ID      string `json:"id"`
-	Cwd     string `json:"cwd"`
-	Version int    `json:"version"`
+	Type      string `json:"type"`
+	ID        string `json:"id"`
+	Cwd       string `json:"cwd"`
+	Version   int    `json:"version"`
+	Timestamp string `json:"timestamp"`
 }
 type nativeSession struct {
-	id, cwd, path, revision, state string
-	entries                        []historyEntry
-	boundaryFound, olderComplete   bool
+	id, cwd, path, revision, state, startedAt string
+	entries                                   []historyEntry
+	boundaryFound, olderComplete              bool
 }
 type recapData struct {
 	Recap       string `json:"recap"`
@@ -75,6 +78,7 @@ type historyEntry struct {
 	ExcludeFromContext bool           `json:"exclude_from_context,omitempty"`
 	TruncatedBlocks    bool           `json:"truncated_blocks,omitempty"`
 	NativeRevision     string         `json:"native_revision,omitempty"`
+	Timestamp          string         `json:"timestamp,omitempty"`
 	full               string
 	raw                json.RawMessage
 }
@@ -197,7 +201,7 @@ func readNativeHeader(path string, uid int) nativeSession {
 	if info.Size() > maxHistoryFile {
 		state = "unavailable"
 	}
-	return nativeSession{id: h.ID, cwd: h.Cwd, path: path, state: state, revision: opaque("rev_", fmt.Sprintf("%d:%d:%d", info.Size(), info.ModTime().UnixNano(), info.Mode()))}
+	return nativeSession{id: h.ID, cwd: h.Cwd, path: path, state: state, startedAt: nativeTimestamp(h.Timestamp), revision: opaque("rev_", fmt.Sprintf("%d:%d:%d", info.Size(), info.ModTime().UnixNano(), info.Mode()))}
 }
 
 // A concurrent append can change size/mtime during one read. Retry once;
@@ -251,7 +255,7 @@ func readNative(path string, uid int) nativeSession {
 	if json.Unmarshal(scanner.Bytes(), &h) != nil || h.Type != "session" || h.Version != 3 || !sessionIDPattern.MatchString(h.ID) || !filepath.IsAbs(h.Cwd) {
 		return nativeSession{}
 	}
-	result.id, result.cwd = h.ID, h.Cwd
+	result.id, result.cwd, result.startedAt = h.ID, h.Cwd, nativeTimestamp(h.Timestamp)
 	seen := map[string]bool{}
 	parents := map[string]*string{}
 	var leaf string
@@ -302,6 +306,15 @@ func readNative(path string, uid int) nativeSession {
 		result.entries = filtered
 	}
 	return result
+}
+func nativeTimestamp(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	if _, err := time.Parse(time.RFC3339Nano, raw); err != nil {
+		return ""
+	}
+	return raw
 }
 func nativeText(e nativeEntry) (string, string) {
 	switch e.Type {
@@ -843,5 +856,9 @@ func sessionFact(s nativeSession, wsid string, uid int) map[string]any {
 		title = name
 		source = "native_session"
 	}
-	return map[string]any{"agent_id": "pi:" + s.id, "workspace_id": wsid, "observation_token": opaque("obs_", s.id+":"+s.revision), "presence": "present", "history": s.state, "process": "unknown", "control": "read_only", "activity": "unknown", "capabilities": map[string]any{"agent_resume": map[string]string{"state": "unsupported", "reason_code": "read_only_slice"}}, "title": map[string]any{"display": title, "source": source, "generation_state": "not_requested", "replaceable": true}, "queue": map[string]any{"revision": opaque("qr_", s.id), "steering": []string{}, "follow_up": []string{}}, "live_tail": []any{}, "history_query": "/api/v1/agents/pi:" + s.id + "/history"}
+	fact := map[string]any{"agent_id": "pi:" + s.id, "workspace_id": wsid, "observation_token": opaque("obs_", s.id+":"+s.revision), "presence": "present", "history": s.state, "process": "unknown", "control": "read_only", "activity": "unknown", "capabilities": map[string]any{"agent_resume": map[string]string{"state": "unsupported", "reason_code": "read_only_slice"}}, "title": map[string]any{"display": title, "source": source, "generation_state": "not_requested", "replaceable": true}, "queue": map[string]any{"revision": opaque("qr_", s.id), "steering": []string{}, "follow_up": []string{}}, "live_tail": []any{}, "history_query": "/api/v1/agents/pi:" + s.id + "/history"}
+	if s.startedAt != "" {
+		fact["started_at"] = s.startedAt
+	}
+	return fact
 }

@@ -30,7 +30,8 @@ than a schema edit.
 The repository will be public and its history is permanent. Examples and
 fixtures use placeholder identities (`wid_example-a`, `ws_example123`, fixed
 UUIDs) and contain no credentials, Unix usernames, home paths or real user
-content; the wire itself carries no Unix username or absolute home path either.
+content; the wire carries no Unix username. The authenticated snapshot may carry the
+native workspace path for the details view; examples never carry a real home path.
 A real value pasted here once stays in the history for good.
 
 `python3 issues/define-host-contracts/validate_contracts.py` from the

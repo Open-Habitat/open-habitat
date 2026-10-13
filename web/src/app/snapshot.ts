@@ -29,6 +29,7 @@ export interface Fact {
 }
 export interface Workspace {
   workspace_id: string;
+  path?: string;
   observation_token?: string;
   name: string;
   display_name?: string;
@@ -43,6 +44,7 @@ export interface Workspace {
 export interface Agent {
   agent_id: string;
   workspace_id: string;
+  started_at?: string;
   archive?: "active" | "archived" | "unknown";
   observation_token?: string;
   history: "readable" | "missing" | "corrupt" | "unavailable";

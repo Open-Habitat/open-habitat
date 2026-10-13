@@ -33,8 +33,8 @@ import {
   type Status,
 } from "./conversations";
 import { timelineItems } from "./HistoryView";
-import { latestSettings } from "./sessionSettings";
 import { PiQuestion } from "./PiQuestion";
+import { latestSettings } from "./sessionSettings";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
 import { useConversation } from "./useConversation";
 import { useReadingPositionLayout } from "./useReadingPosition";
@@ -68,6 +68,7 @@ export function BrowserConversation({
   workspace,
   archive,
   onArchive,
+  onClose,
   archiveBusy,
   archiveAwaitingSnapshot,
   id,
@@ -85,6 +86,7 @@ export function BrowserConversation({
   workspace: Workspace;
   archive?: Agent;
   onArchive?: (agent: Agent, archived: boolean) => Promise<boolean>;
+  onClose?: (agent: Agent) => Promise<void>;
   archiveBusy?: boolean;
   archiveAwaitingSnapshot?: boolean;
   id?: string;
@@ -483,6 +485,19 @@ export function BrowserConversation({
                 onArchive={() => {
                   if (archive) void onArchive?.(archive, true);
                 }}
+                onClose={
+                  archive &&
+                  controlled &&
+                  csrf &&
+                  !serverUnavailable &&
+                  !statusStale &&
+                  current?.state === "idle" &&
+                  !busy
+                    ? () => {
+                        void onClose?.(archive);
+                      }
+                    : undefined
+                }
                 onRestore={() => {
                   if (archive) void onArchive?.(archive, false);
                 }}
@@ -561,7 +576,8 @@ export function BrowserConversation({
             detailsFacts={[
               {
                 label: "Työtila",
-                value: workspace.display_name ?? workspace.name,
+                value: workspace.path ?? "Ei tiedossa",
+                copy: !!workspace.path,
               },
               {
                 label: "Malli",
@@ -576,7 +592,12 @@ export function BrowserConversation({
                 label: "Ohjaus",
                 value: controlled ? "Selainohjaus" : "Ei käytettävissä",
               },
-              { label: "Aloitettu", value: "Ei tiedossa" },
+              {
+                label: "Aloitettu",
+                value: archive?.started_at
+                  ? new Date(archive.started_at).toLocaleString("fi-FI")
+                  : "Ei tiedossa",
+              },
               { label: "Natiivi tunniste", value: id, copy: true },
             ]}
             controlKind={controlled ? "neutral" : "read-only"}

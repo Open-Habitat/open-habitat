@@ -386,3 +386,18 @@ func TestTailWindowRetriesUnstableNativeReadOnce(t *testing.T) {
 		}
 	}
 }
+
+func TestNativeTimestampsComeOnlyFromNativeJSONL(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "session.jsonl")
+	id := "11111111-1111-4111-8111-111111111111"
+	data := fmt.Sprintf(`{"type":"session","version":3,"id":%q,"cwd":%q,"timestamp":"2026-10-13T10:00:00Z"}`+"\n"+`{"type":"message","id":"a","timestamp":"2026-10-13T10:01:07Z","message":{"role":"user","content":"synthetic"}}`+"\n", id, root)
+	if err := os.WriteFile(path, []byte(data), 0600); err != nil {
+		t.Fatal(err)
+	}
+	header := readNativeHeader(path, os.Getuid())
+	history := readNativeWindow(path, os.Getuid(), "", 25)
+	if header.startedAt != "2026-10-13T10:00:00Z" || history.entries[0].Timestamp != "2026-10-13T10:01:07Z" {
+		t.Fatalf("native times: %q %+v", header.startedAt, history.entries)
+	}
+}

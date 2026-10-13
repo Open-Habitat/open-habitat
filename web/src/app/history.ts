@@ -23,6 +23,7 @@ export interface HistoryBlock {
 }
 export interface HistoryEntry {
   entry_key: string;
+  timestamp?: string;
   kind:
     | "user"
     | "assistant"

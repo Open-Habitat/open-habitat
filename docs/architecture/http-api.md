@@ -134,8 +134,10 @@ Schema objects reject unknown fields, apart from the error `details` object.
 New optional fields can be added within v1, but a validator using an older
 closed schema may reject them. Removing or renaming a field, or changing a
 type, nullability or ordering guarantee, requires a new version directory
-under the contract policy. Requests and replies carry no Unix username or
-absolute home path.
+under the contract policy. Requests and replies carry no Unix username. The authenticated user's
+snapshot may carry a discovered workspace's absolute path for the conversation
+details view; it is never supplied by the browser as authority for a write.
+No path is added to an error reply or to a public example.
 
 The generated packages in `internal/contracts/` and `web/src/contracts/` carry
 a schema fingerprint. The gate detects schema edits without regeneration;

@@ -121,8 +121,8 @@ func TestSnapshotDiscoveryAndSchema(t *testing.T) {
 		if w.Code != want {
 			t.Fatalf("status %d: %s", w.Code, w.Body.String())
 		}
-		if bytes.Contains(w.Body.Bytes(), []byte(home)) || bytes.Contains(w.Body.Bytes(), []byte(u.HomeDir)) {
-			t.Fatal("absolute path leaked")
+		if bytes.Contains(w.Body.Bytes(), []byte(u.HomeDir)) {
+			t.Fatal("real home path leaked")
 		}
 		if want != 200 {
 			return nil
@@ -157,7 +157,7 @@ func TestSnapshotDiscoveryAndSchema(t *testing.T) {
 	if len(ws) != 3 {
 		t.Fatal(ws)
 	}
-	if ws[0].(map[string]any)["workspace_id"] != "ws_known123" || ws[1].(map[string]any)["kind"] != "directory" || ws[2].(map[string]any)["kind"] != "git_main_worktree" {
+	if ws[0].(map[string]any)["workspace_id"] != "ws_known123" || ws[0].(map[string]any)["path"] != filepath.Join(src, "annotated") || ws[1].(map[string]any)["kind"] != "directory" || ws[2].(map[string]any)["kind"] != "git_main_worktree" {
 		t.Fatal(ws)
 	}
 	if doc["write_state"] != "enabled" {

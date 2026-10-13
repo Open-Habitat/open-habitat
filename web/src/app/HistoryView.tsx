@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useNavigate } from "react-router";
 import {
   AgentHeader,
   AssistantMessage,
@@ -18,19 +19,18 @@ import {
   UserMessage,
 } from "../components";
 import { AgentTurn, ThinkingRow } from "../components/AgentTurn";
+import { ArchiveControls } from "../components/ArchiveControls";
 import { BashToolCard } from "../components/BashToolCard";
 import { ControlButton, LinkRow } from "../components/ControlElements";
-import { ArchiveControls } from "../components/ArchiveControls";
-import { RecapCard } from "../components/RecapCard";
 import { PiBoundary, PiToolUse } from "../components/PiBlocks";
+import { RecapCard } from "../components/RecapCard";
 import { type ConversationStore, useWindow } from "./conversationStore";
 import {
   continueConversation,
   historyEligibility,
-  retitleHistory,
   readRecap,
+  retitleHistory,
 } from "./conversations";
-import { useNavigate } from "react-router";
 import {
   type BlockChunk,
   type HistoryBlock,
@@ -38,13 +38,13 @@ import {
   type HistoryPage,
   readHistory,
 } from "./history";
-import type { Agent } from "./snapshot";
 import {
   hiddenSessionEntry,
   latestSettings,
-  sessionMarkers,
   type SessionMarker,
+  sessionMarkers,
 } from "./sessionSettings";
+import type { Agent } from "./snapshot";
 import { rowIndexOf, visibleEntryKeys } from "./useReadingPosition";
 
 // Only the daemon's explicit fallback marker is interpreted here. Unknown data
@@ -822,11 +822,25 @@ export function timelineItems(
   );
   const items: { id: string; kind: string; content: React.ReactNode }[] = [];
   let turn: HistoryEntry[] = [];
+  let lastUserAt: string | undefined;
   const flush = () => {
     if (!turn.length) return;
     const group = turn;
     turn = [];
     const work = group.flatMap((entry) => entry.blocks ?? []);
+    const lastAssistantAt = group.findLast(
+      (entry) => entry.timestamp,
+    )?.timestamp;
+    const seconds =
+      lastUserAt && lastAssistantAt
+        ? Math.floor(
+            (Date.parse(lastAssistantAt) - Date.parse(lastUserAt)) / 1000,
+          )
+        : NaN;
+    const duration =
+      Number.isFinite(seconds) && seconds >= 0
+        ? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
+        : undefined;
     const final = group.findLast(
       (entry) =>
         entry.blocks?.some((b) => b.type === "text") ||
@@ -838,6 +852,7 @@ export function timelineItems(
       content: (
         <AgentTurn
           model={final?.model ?? group.findLast((e) => e.model)?.model}
+          duration={duration}
           thinkingCount={work.filter((b) => b.type === "thinking").length}
           toolCount={work.filter((b) => b.type === "toolCall").length}
           work={group.map((entry) => (
@@ -888,6 +903,7 @@ export function timelineItems(
     });
   };
   for (const entry of visible) {
+    if (entry.kind === "user") lastUserAt = entry.timestamp;
     const marker = markers.get(entry.entry_key);
     if (marker) {
       flush();
@@ -943,6 +959,7 @@ export function timelineItems(
 export function HistoryView({
   agent,
   workspaceName,
+  workspacePath,
   workspaceId,
   onLogin,
   store,
@@ -955,6 +972,7 @@ export function HistoryView({
 }: {
   agent: Agent;
   workspaceName: string;
+  workspacePath?: string;
   workspaceId: string;
   onLogin: () => void;
   store: ConversationStore;
@@ -1107,7 +1125,11 @@ export function HistoryView({
         controlLabel="Vain luku"
         settings={settings}
         detailsFacts={[
-          { label: "Työtila", value: workspaceName },
+          {
+            label: "Työtila",
+            value: workspacePath ?? "Ei tiedossa",
+            copy: !!workspacePath,
+          },
           {
             label: "Malli",
             value: settings.model ?? "Ei tiedossa",
@@ -1115,7 +1137,12 @@ export function HistoryView({
           },
           { label: "Ajattelutaso", value: settings.thinking ?? "Ei tiedossa" },
           { label: "Ohjaus", value: "Vain luku" },
-          { label: "Aloitettu", value: "Ei tiedossa" },
+          {
+            label: "Aloitettu",
+            value: agent.started_at
+              ? new Date(agent.started_at).toLocaleString("fi-FI")
+              : "Ei tiedossa",
+          },
           { label: "Natiivi tunniste", value: agent.agent_id, copy: true },
         ]}
         titleAction={{

@@ -677,3 +677,31 @@ it("merges native start settings and presents later changes and compaction as on
   expect(view.container.textContent).toContain("medium → high");
   expect(view.queryByText("Keskustelun tieto")).toBeNull();
 });
+
+it("derives settled thread duration from native user and assistant timestamps only", () => {
+  const user: HistoryEntry = {
+    ...entry,
+    entry_key: "u",
+    timestamp: "2026-10-13T10:00:00Z",
+  };
+  const assistant: HistoryEntry = {
+    ...entry,
+    entry_key: "a",
+    kind: "assistant",
+    timestamp: "2026-10-13T10:01:07Z",
+    blocks: [{ type: "text", text: "Done" }],
+  };
+  const full = render(
+    timelineItems([user, assistant]).map((item) => (
+      <div key={item.id}>{item.content}</div>
+    )),
+  );
+  expect(full.container.textContent).toContain("1:07");
+  full.unmount();
+  const missing = render(
+    timelineItems([{ ...user, timestamp: undefined }, assistant]).map(
+      (item) => <div key={item.id}>{item.content}</div>,
+    ),
+  );
+  expect(missing.container.textContent).not.toContain("1:07");
+});
