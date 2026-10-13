@@ -5,7 +5,9 @@
 // one look. Common to all directions: the end-of-thread "Työ · N ajatusta · N työkalua"
 // strip is gone and the summary sits in the thread head; Pi's session-name entries
 // ("Keskustelun tieto · Quick Ping") are not shown, since the title is in the top bar.
-// The directions differ in where the settings live.
+// The directions differ in where the settings live. Jari chose 13.10.2026 a combination:
+// the bar chip of Yläpalkki (opening the details) and the rows of Alkurivi in the stream;
+// both are now the library.
 export const title = 'Merkinnät · malli, ajattelutaso ja muutokset';
 export const app = true;
 export const variants = [

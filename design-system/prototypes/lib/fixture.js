@@ -1,6 +1,7 @@
 // Sisältöfixture: yksi realistinen Pi-keskustelu (GPT-5.5). CONVO on historia; LIVE on
 // vuoro, joka vastaa viimeiseen käyttäjän viestiin ja soitetaan tapahtumina (script).
 const MODEL = 'GPT-5.5';
+const MODEL_ID = 'openai-codex/gpt-5.5';
 const STATUS_MD = `| Päivä | Kohde | Tila | Huomio |
 |---|---|---|---|
 | 2026-10-03 | gateway | valmis | TLS-ketju uusittu |
@@ -74,6 +75,8 @@ python3 scripts/status_rows.py --since 2026-10-06 --table
 \`\`\``;
 
 const CONVO = [
+  // Pi's own session entries: the start settings, a compaction and a thinking-level change.
+  { kind: 'marker', t: 'settings', time: '14:28', model: MODEL_ID, thinking: 'medium' },
   { kind: 'user', time: '14:28', md: 'Tee skripti, joka parsii `status.md`:n taulukon ja tulostaa viime viikon rivit JSONina.' },
   { kind: 'turn', time: '14:31', blocks: [
     { t: 'think', md: '**Planning status table parsing with Python**' },
@@ -109,6 +112,8 @@ python3 scripts/status_rows.py --since 2026-10-05
     { t: 'tool', name: 'bash', target: 'python3 scripts/status_rows.py --since 2026-10-01', args: { command: 'python3 scripts/status_rows.py --since 2026-10-01 | python3 -c "import json,sys; print(len(json.load(sys.stdin)))"' }, result: '5' },
     { t: 'reply', md: 'Ajoin vielä ilman viikkorajausta: kaikki viisi riviä tulevat läpi, joten erotinrivin ohitus toimii.' },
   ] },
+  { kind: 'marker', t: 'compaction', time: '14:33', detail: '41 viestiä tiivistettiin, 38 000 → 5 200 tokenia' },
+  { kind: 'marker', t: 'thinking', time: '14:33', from: 'medium', to: 'high' },
   { kind: 'user', time: '14:33', md: 'Hyvä. Lisää vielä `--table`-lippu, joka tulostaa saman taulukkona terminaaliin.' },
   { kind: 'turn', time: '14:34', blocks: [
     { t: 'think', md: '**Adding a table output mode**' },
@@ -128,6 +133,9 @@ python3 scripts/status_rows.py --since 2026-10-05
   ] },
   { kind: 'user', time: '14:36', md: 'Aja testit ja korjaa, mitä löytyy.' },
 ];
+
+// The thinking level in force now: the last change in the history.
+const THINKING = [...CONVO].reverse().find(m => m.kind === 'marker' && m.t === 'thinking')?.to ?? 'medium';
 
 // ---------- The live turn, as Pi events in time (ms) ----------
 const LIVE = {

@@ -154,6 +154,20 @@ työkalujen ryhmittely ja `edit`-diffi ovat myöhempää työtä; siihen asti ed
 näyttää sallitut argumentit. Pitkä käyttäjän viesti supistuu kahdeksaan
 riviin, mutta sen saa auki kokonaan.
 
+Malli ja ajattelutaso ovat yläpalkissa yhtenä merkkinä (esim. "gpt-5.5 · high"),
+joka avaa tiedot; tiedoissa on mallin koko tunniste kopioitavana ja
+ajattelutaso. Keskustelussa Pi:n omat asetusmerkinnät ovat yhtä hillittyä
+riviperhettä: alussa yksi rivi, jossa ovat malli ja ajattelutaso (ei
+"vaihtui", koska kyse on alkutilasta; eri aikaan saapuvat merkinnät täydentävät
+samaa riviä), ja myöhemmät mallin tai ajattelutason muutokset sekä
+tiivistys samanlaisina riveinä vanhasta uuteen. Kopiointi on ikoni. Pi:n
+keskustelun nimimerkintöjä ("Keskustelun tieto") ei näytetä, koska otsikko on
+yläpalkissa. Valmiin säikeen yhteenveto ("1 ajatusta · 2 työkalua") ja kesto
+ovat säikeen alussa PI-rivillä, josta työn saa kiinni; säikeen loppuun ei
+tule yhteenvetoriviä (Jari 13.10.2026). Tyhjässä keskustelussa ei ole
+säilytettävää, joten arkistoinnin tilalla on Sulje, joka poistaa keskustelun
+heti ilman vahvistusta (Jari 13.10.2026).
+
 Keskustelun sisältö esitetään samalla tavalla historiassa ja reaaliajassa.
 Esikatselun raja, Pi:n vahvistettu katkaisu, pituusraja ja keskeytys
 näytetään toisistaan erillisinä. Rajattua sisältöä voi lukea paikallaan

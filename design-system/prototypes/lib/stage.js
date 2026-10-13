@@ -22,7 +22,6 @@ stage.addEventListener('click', async (e) => {
     disc.setAttribute('aria-expanded', String(!open));
     panel.hidden = open;
     const sum = disc.parentElement.querySelector('.sum');
-    if (sum && disc.classList.contains('head-btn') && !disc.closest('.v3')) sum.hidden = !open;
     if (sum && disc.classList.contains('quiet-btn') && disc.dataset.open) { sum.hidden = !open; disc.textContent = open ? disc.dataset.closed : disc.dataset.open; }
     return;
   }

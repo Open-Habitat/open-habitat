@@ -3,24 +3,16 @@
 // tiivistys on samaa perhettä. Fixture lisää alkuasetukset, ajattelutason vaihdon ja
 // tiivistyksen historiaan.
 
-const MODEL_ID = 'openai-codex/gpt-5.5';
-const ICON_CHIP = SVG('<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>');
-const ICON_THINK = SVG('<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2.2h5c.1-1 .5-1.7 1.1-2.2A6 6 0 0 0 12 3z"/>');
-const ICON_COMPACT = SVG('<path d="M4 9h16M4 15h16"/><path d="m9 4 3 3 3-3M9 20l3-3 3 3"/>');
-
-CONVO.unshift({ kind: 'marker', t: 'settings', time: '14:28', model: MODEL_ID, thinking: 'medium' });
-const at33 = CONVO.findIndex(m => m.kind === 'user' && m.time === '14:33');
-CONVO.splice(at33, 0,
-  { kind: 'marker', t: 'compaction', time: '14:33', detail: '41 viestiä tiivistettiin, 38 000 → 5 200 tokenia' },
-  { kind: 'marker', t: 'thinking', time: '14:33', from: 'medium', to: 'high' });
+// The markers and MODEL_ID now come from lib/fixture.js; ICON_MODEL, ICON_THINK, ICON_COMPACT
+// and setting() from lib/turn.js (Alkurivi and the bar chip were chosen 13.10.2026).
+const ICON_CHIP = ICON_MODEL;
 // The thread after a change knows its settings (v2 shows them in its head).
 let thinkingNow = 'medium';
 // The level in force now: the last change in the history.
-const CURRENT = [...CONVO].reverse().find(m => m.kind === 'marker' && m.t === 'thinking')?.to ?? 'medium';
+const CURRENT = THINKING;
 
 let V = 'v1';
 const copyId = copyBtn('Kopioi mallin tunniste', MODEL_ID);
-const setting = (icon, label, value, extra = '') => `<span class="set"><span class="set-ic">${icon}</span><span class="set-l">${label}</span><span class="set-v">${value}</span>${extra}</span>`;
 
 const MARK = {
   // Alkurivi: the start settings as one row; changes and compaction as the same kind of row.

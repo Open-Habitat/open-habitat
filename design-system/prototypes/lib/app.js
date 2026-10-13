@@ -127,7 +127,9 @@ function topActions(c) {
   const archOpts = UI.working && c.id === 'c1' ? { disabled: true, reason: archiveReason } : {};
   const titleOpts = isEmpty(c) ? { disabled: true, reason: retitleReason } : { cls: UI.pending ? 'spin-badge' : '' };
   const why = (act, o) => o.disabled ? `<span id="${act}-why" hidden>${o.reason}</span>` : '';
-  return (c.archived ? '' : btn('retitle', ICON_RETITLE, 'Luo uusi otsikko', titleOpts) + btn('archive', ICON_ARCHIVE, 'Arkistoi', archOpts))
+  // Malli ja ajattelutaso näkyvät merkkinä, joka avaa tiedot (Jari 13.10.2026).
+  const chip = c.id === 'c1' ? `<button class="set-chip" type="button" data-ui="info" title="Malli ja ajattelutaso · avaa tiedot"><span class="mono">gpt-5.5</span><span class="dot" aria-hidden="true">·</span><span>${THINKING}</span></button>` : '';
+  return chip + (c.archived ? '' : btn('retitle', ICON_RETITLE, 'Luo uusi otsikko', titleOpts) + btn('archive', ICON_ARCHIVE, 'Arkistoi', archOpts))
     + btn('info', ICON_INFO, 'Tiedot', { expanded: UI.pop })
     + why('retitle', titleOpts) + why('archive', archOpts);
 }
@@ -144,7 +146,8 @@ function detailsList(c) {
   const id = '019a3c7e-5d2b-7f41-9a0e-4c1d8b2e6f90';
   return `<dl class="facts">
 <dt>Työtila</dt><dd><span class="mono">${esc(c.ws.id)}</span><span class="sub mono">${esc(c.ws.path)}</span></dd>
-<dt>Malli</dt><dd>${empty ? '<span class="sub">Pi:n oletus, valitaan ensimmäisellä viestillä</span>' : MODEL}</dd>
+<dt>Malli</dt><dd>${empty ? '<span class="sub">Pi:n oletus, valitaan ensimmäisellä viestillä</span>' : `<span class="mono">${MODEL_ID}</span>${copyBtn('Kopioi mallin tunniste', MODEL_ID)}`}</dd>
+<dt>Ajattelutaso</dt><dd>${empty ? '<span class="sub">Pi:n oletus</span>' : THINKING}</dd>
 <dt>Ohjaus</dt><dd>Selainohjaus</dd>
 <dt>Aloitettu</dt><dd>${empty ? '<span class="sub">ei vielä</span>' : '13.10. klo 14.28'}</dd>
 <dt>Natiivi tunniste</dt><dd>${empty ? '<span class="sub">syntyy ensimmäisestä viestistä</span>' : `<span class="mono id">${id}</span>${copyBtn('Kopioi tunniste', id)}`}</dd>

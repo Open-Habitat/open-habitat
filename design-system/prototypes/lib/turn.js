@@ -3,8 +3,21 @@
 // opts.meta: 'top' | 'bottom' | 'thread'   where the author/status row lives
 // opts.fold: 'head' | 'button' | 'auto'     how the work is collapsed
 // opts.runs: 'separate' | 'merged'           consecutive threads: own head each, or one rail
-// Session markers (model, thinking level, compaction) in the history; a round draws them.
-let markerR = () => '';
+// Session markers (chosen 13.10.2026, round 2026-10-13-merkinnat): the start settings,
+// later changes and compaction are rows of one family; nothing says "changed" for the start.
+const SV = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const ICON_MODEL = SV('<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>');
+const ICON_THINK = SV('<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2.2h5c.1-1 .5-1.7 1.1-2.2A6 6 0 0 0 12 3z"/>');
+const ICON_COMPACT = SV('<path d="M4 9h16M4 15h16"/><path d="m9 4 3 3 3-3M9 20l3-3 3 3"/>');
+const setting = (icon, label, value, extra = '') => `<span class="set"><span class="set-ic">${icon}</span><span class="set-l">${label}</span><span class="set-v">${value}</span>${extra}</span>`;
+let markerR = (m, i) => {
+  const row = (inner, label) => `<div class="mrow ah-in" style="--i:${i}" role="note"${label ? ` aria-label="${label}"` : ''}>${inner}<time class="meta">${m.time}</time></div>`;
+  if (m.t === 'settings') return row(setting(ICON_MODEL, 'Malli', `<span class="mono">${esc(m.model)}</span>`, copyBtn('Kopioi mallin tunniste', m.model)) + setting(ICON_THINK, 'Ajattelu', esc(m.thinking)), 'Keskustelun asetukset');
+  if (m.t === 'thinking') return row(setting(ICON_THINK, 'Ajattelu', `${esc(m.from)} <span class="arrow">→</span> <strong>${esc(m.to)}</strong>`));
+  if (m.t === 'model') return row(setting(ICON_MODEL, 'Malli', `<span class="mono">${esc(m.from)}</span> <span class="arrow">→</span> <strong class="mono">${esc(m.to)}</strong>`));
+  if (m.t === 'compaction') return row(setting(ICON_COMPACT, 'Tiivistys', esc(m.detail)));
+  return '';
+};
 function lanka(cls, opts) {
   let i = 0; const out = [];
   const summary = (m) => { const th = m.blocks.filter(b => b.t === 'think').length, to = m.blocks.filter(b => b.t === 'tool').length; return `${th} ajatusta · ${to} työkalua`; };
@@ -34,7 +47,7 @@ function lanka(cls, opts) {
       const sum = summary(group[0]);
       const folded = opts.fold === 'auto';
       let head;
-      if (opts.fold === 'head') head = `<div class="head-cell"><button class="head-btn" type="button" aria-expanded="${!folded}" aria-controls="${workId}" data-sum="${esc(sum)}">${CHEV}<span class="who">Pi</span></button><span class="model">${MODEL}</span><span class="sum" hidden>${sum}</span></div>`;
+      if (opts.fold === 'head') head = `<div class="head-cell"><button class="head-btn" type="button" aria-expanded="${!folded}" aria-controls="${workId}" data-sum="${esc(sum)}">${CHEV}<span class="who">Pi</span></button><span class="model">${MODEL}</span><span class="sum">${sum}</span></div>`;
       else if (opts.fold === 'button') head = `<div class="head-cell"><span class="who">Pi</span><span class="sum" hidden>${sum}</span><button class="quiet-btn" type="button" aria-expanded="true" aria-controls="${workId}" data-open="Tiivistä" data-closed="Näytä työ">Tiivistä</button></div>`;
       else head = `<div class="head-cell"><button class="head-btn" type="button" aria-expanded="false" aria-controls="${workId}">${CHEV}<span class="who">Pi</span></button><span class="model">${MODEL}</span><time class="meta">${group[group.length - 1].time}</time><span class="sum">${sum}</span></div>`;
       row(`<span class="node head" aria-hidden="true"></span>`, head, 'first');

@@ -220,6 +220,26 @@ pre.cmd-rest { margin: 0; padding: 8px 12px; background: var(--ah-sunken); borde
 .prose .cb.o pre.part.tail { border-top-left-radius: 0; border-top-right-radius: 0; border-top: 0; }
 .cb.o .out-meta { gap: 6px; }
 
+/* ===== Session markers (chosen 13.10.2026): one family of quiet rows; the settings chip ===== */
+.mrow { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 18px; min-height: 34px; padding: 4px 10px 4px 12px; border: 1px solid var(--ah-line-soft); border-radius: 10px; background: var(--ah-surface-2); font-size: 13px; color: var(--ah-ink-2); }
+.mrow time { margin-left: auto; }
+.set { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.set-ic svg { width: 14px; height: 14px; color: var(--ah-muted); display: block; }
+.set-l { color: var(--ah-muted); }
+.set-v { color: var(--ah-ink); overflow-wrap: anywhere; }
+.set-v .mono { font-size: 12.5px; }
+.set .icon-btn { width: 24px; height: 24px; margin-left: -2px; }
+.mrow .arrow { color: var(--ah-muted); }
+
+.set-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px; border: 1px solid var(--ah-line); border-radius: 999px; background: var(--ah-surface); color: var(--ah-ink-2); font: 500 12.5px var(--ah-font); cursor: pointer; margin-right: 6px; }
+.set-chip .mono { font-size: 12px; }
+.set-chip .dot { color: var(--ah-muted); }
+.set-chip:hover { background: var(--ah-hover); }
+.set-chip:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
+@container (max-width: 800px) { .set-chip .mono, .set-chip .dot { display: none; } }
+.head-cell .sum { font: 400 12.5px var(--ah-font); color: var(--ah-muted); }
+.mono { font-family: var(--ah-mono); }
+
 @container (max-width: 800px) {
   .bubble.user { max-width: 100%; }
 }

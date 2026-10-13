@@ -115,8 +115,9 @@ const settledStrip = (s, sum, withAuthor) => `<button class="strip-btn" type="bu
 let currentR = null;
 const threadR = (cmd = cmdRivi) => ({
   headNode: () => `<span class="node head" aria-hidden="true"></span>`,
-  head: () => `<div class="head-cell"><span class="who" style="padding-left:1px">Pi</span><span class="model">${MODEL}</span></div>`,
-  strip: (s, sum) => s.status === 'working' ? workingStrip(s, false) : settledStrip(s, sum, false), stripPos: 'end', foldOnSettle: false, block, cmd,
+  // The settled thread's summary and fold live in its head; no strip at the end (Jari 13.10.2026).
+  head: (s, sum) => `<div class="head-cell">${s.status === 'settled' ? `<button class="head-btn" type="button" data-fold aria-expanded="${s.open}">${CHEV}<span class="who">Pi</span></button>` : '<span class="who" style="padding-left:1px">Pi</span>'}<span class="model">${MODEL}</span>${s.status === 'settled' ? `<span class="sum">${sum} · ${s.dur}</span>` : ''}</div>`,
+  strip: (s) => s.status === 'working' ? workingStrip(s, false) : '', stripPos: 'end', foldOnSettle: false, block, cmd,
 });
 
 // Render the history, then play the live turn after it. Cancels a previous play first.
