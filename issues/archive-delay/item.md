@@ -2,13 +2,11 @@
 created: 2026-10-13
 updated: 2026-10-13
 type: bug
-status: fixed
+status: in-progress
 priority: normal
 lane: web
 lane_seq: 16
 collision: [web/]
-closed: 2026-10-13
-closed_by: claude
 ---
 
 # Archive takes effect only after a long delay and the row misbehaves meanwhile
@@ -41,3 +39,7 @@ archived that was not.
 ## Reopen Notes — 2026-10-13
 
 Re-stamped after the restored native-history top-bar action and the full browser spec were verified; the archive implementation and rollback remained unchanged.
+
+## Reopen Notes — 2026-10-13
+
+_Add rationale for reopening here._

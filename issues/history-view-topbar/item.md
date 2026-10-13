@@ -2,13 +2,11 @@
 created: 2026-10-13
 updated: 2026-10-13
 type: bug
-status: fixed
+status: in-progress
 priority: normal
 lane: web
 lane_seq: 15
 collision: [web/]
-closed: 2026-10-13
-closed_by: claude
 ---
 
 # Read-only history conversations still use the old top bar
@@ -43,3 +41,7 @@ if it does not, they are disabled with a reason.
 ## Reopen Notes — 2026-10-13
 
 The first pass disabled the archive icon for every native-history view, including archived conversations. The host allows restoring an archived readable history without a live controller, so the shared icon row must expose that supported action instead of leaving it in a separate button.
+
+## Reopen Notes — 2026-10-13
+
+_Add rationale for reopening here._
