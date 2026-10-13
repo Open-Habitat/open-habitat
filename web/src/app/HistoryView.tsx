@@ -961,9 +961,13 @@ export function HistoryView({
         controlLabel="Vain luku · Ohjausta ei ole"
         titleAction={{
           label: "Luo uusi otsikko",
-          availability: { state: "disabled", reason: "Vain luku · Ohjausta ei ole." },
+          availability: {
+            state: "disabled",
+            reason: "Vain luku · Ohjausta ei ole.",
+          },
           onPress: () => {},
         }}
+        archiveReason="Vain luku · Tätä keskustelua ei voi arkistoida."
         archiveControl={
           <ArchiveControls
             state={agent.archive ?? "unknown"}

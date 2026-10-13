@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { ControlButton } from "./ControlElements";
 import { Button } from "./Primitives";
 import { InlineNotice } from "./Status";
@@ -19,13 +19,16 @@ export function ArchiveControls({
   onRestore: () => void;
 }) {
   const [confirm, setConfirm] = useState(false);
-  const reason = blockedReason ?? (busy
-    ? "Pyyntö kesken."
-    : state === "unknown"
-      ? "Arkiston tila ei ole tiedossa."
-      : !eligible
-        ? "Odota Pi:n vuoron päättymistä."
-        : "");
+  const reasonId = useId();
+  const reason =
+    blockedReason ??
+    (busy
+      ? "Pyyntö kesken."
+      : state === "unknown"
+        ? "Arkiston tila ei ole tiedossa."
+        : !eligible
+          ? "Odota Pi:n vuoron päättymistä."
+          : "");
   return (
     <div
       className="ah-archive-control"
@@ -34,6 +37,7 @@ export function ArchiveControls({
       <ControlButton
         className="ah-topbar-icon"
         variant="quiet"
+        aria-describedby={reason ? reasonId : undefined}
         aria-label={state === "archived" ? "Palauta näkyviin" : "Arkistoi"}
         title={
           reason || (state === "archived" ? "Palauta näkyviin" : "Arkistoi")
@@ -55,7 +59,11 @@ export function ArchiveControls({
           <path d="M5 9v11h14V9M10 13h4" />
         </svg>
       </ControlButton>
-      {reason ? <span className="ah-visually-hidden">{reason}</span> : null}
+      {reason ? (
+        <span id={reasonId} className="ah-visually-hidden">
+          {reason}
+        </span>
+      ) : null}
       {confirm ? (
         <div
           role="alertdialog"

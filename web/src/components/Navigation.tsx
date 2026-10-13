@@ -615,6 +615,7 @@ export function AgentHeader({
   onToggleDetails,
   titleAction,
   archiveControl,
+  archiveReason,
 }: {
   title: string;
   titleState?: string;
@@ -628,6 +629,7 @@ export function AgentHeader({
   detailsExpanded: boolean;
   onToggleDetails: () => void;
   archiveControl?: ReactNode;
+  archiveReason?: string;
   titleAction?: {
     label: string;
     availability?: Availability;
@@ -636,6 +638,7 @@ export function AgentHeader({
     onPress: () => void;
   };
 }) {
+  const titleReasonId = useId();
   const visibleActivity = true;
   const visibleControl = controlKind === "read-only";
   return (
@@ -665,6 +668,11 @@ export function AgentHeader({
         {titleAction ? (
           <ControlButton
             className="ah-topbar-icon ah-retitle"
+            aria-describedby={
+              titleAction.availability && "reason" in titleAction.availability
+                ? titleReasonId
+                : undefined
+            }
             variant="quiet"
             aria-label={titleAction.label}
             title={
@@ -702,6 +710,11 @@ export function AgentHeader({
             </svg>
           </ControlButton>
         ) : null}
+        {titleAction?.availability && "reason" in titleAction.availability ? (
+          <span id={titleReasonId} className="ah-visually-hidden">
+            {titleAction.availability.reason}
+          </span>
+        ) : null}
         {archiveControl}
         <ControlButton
           className="ah-details-toggle ah-topbar-icon"
@@ -725,8 +738,11 @@ export function AgentHeader({
           {titleAction?.availability?.state !== "enabled" &&
           titleAction?.availability?.reason ? (
             <p className="ah-control-reason">
-              {titleAction.availability.reason}
+              Uusi otsikko: {titleAction.availability.reason}
             </p>
+          ) : null}
+          {archiveReason ? (
+            <p className="ah-control-reason">Arkistointi: {archiveReason}</p>
           ) : null}
         </div>
       ) : null}

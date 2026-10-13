@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
 
@@ -246,4 +247,31 @@ test("@native-history warm return paints from cache while revalidating history",
     `warm read-only return: ${Math.round(paint - start)} ms, ${requests.length} API requests`,
   );
   expect(paint - start).toBeLessThan(2000);
+});
+
+test("@native-history read-only header retains disabled actions with reasons on desktop and phone", async ({
+  page,
+}) => {
+  await fixture(page, "ready");
+  await login(page);
+  await page.goto(`/agents/${agent}`);
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    const bar = page.locator(".ah-agent-header");
+    for (const name of ["Luo uusi otsikko", "Arkistoi"]) {
+      const action = bar.getByRole("button", { name });
+      await expect(action).toBeDisabled();
+      await expect(action).toHaveAttribute("aria-describedby", /.+/);
+    }
+    const details = bar.getByRole("button", { name: "Tiedot" });
+    await expect(details).toBeEnabled();
+    if ((await details.getAttribute("aria-expanded")) === "false")
+      await details.click();
+    await expect(bar.getByText(/Uusi otsikko: Vain luku/)).toBeVisible();
+    await expect(bar.getByText(/Arkistointi: Vain luku/)).toBeVisible();
+    expect(
+      (await new AxeBuilder({ page }).include(".ah-agent-header").analyze())
+        .violations,
+    ).toEqual([]);
+  }
 });

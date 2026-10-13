@@ -55,10 +55,20 @@ describe("conversation title", () => {
           workspaceHref="/workspaces/ws_example00"
           detailsExpanded={false}
           onToggleDetails={() => {}}
+          titleAction={{
+            label: "Luo uusi otsikko",
+            availability: { state: "disabled", reason: "Vain luku" },
+            onPress: () => {},
+          }}
         />
       </MemoryRouter>,
     );
-    expect(view.queryByRole("button", { name: "Luo uusi otsikko" })).toBeNull();
+    expect(view.getByRole("button", { name: "Luo uusi otsikko" })).toBeTruthy();
+    expect(
+      view
+        .getByRole("button", { name: "Luo uusi otsikko" })
+        .hasAttribute("disabled"),
+    ).toBe(true);
   });
 
   it("keeps a long title accessible without adding a disclosure control", () => {
