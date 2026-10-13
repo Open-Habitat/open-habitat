@@ -2358,3 +2358,28 @@ test("@browser-conversation archive stays hidden across delayed successful host 
   ).toBeVisible();
   await expect(row).toHaveCount(0);
 });
+
+test("@browser-conversation archived native history restores through the same icon row", async ({
+  page,
+}) => {
+  const id = await endedConversation(page);
+  await page.getByRole("button", { name: "Arkistoi", exact: true }).click();
+  await page.getByRole("button", { name: "Vahvista arkistointi" }).click();
+  await expect(
+    page.getByText("Keskustelu arkistoitu.", { exact: false }),
+  ).toBeVisible();
+  await page.goto(`/agents/${id}`);
+  const restore = page
+    .locator(".ah-agent-header")
+    .getByRole("button", { name: "Palauta näkyviin" });
+  await expect(restore).toBeEnabled();
+  expect(
+    (await new AxeBuilder({ page }).include(".ah-agent-header").analyze())
+      .violations,
+  ).toEqual([]);
+  await restore.click();
+  await expect(restore).toHaveCount(0);
+  await expect(
+    page.locator(".ah-agent-header").getByRole("button", { name: "Arkistoi" }),
+  ).toBeDisabled();
+});

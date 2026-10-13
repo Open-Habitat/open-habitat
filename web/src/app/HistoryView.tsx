@@ -886,12 +886,18 @@ export function HistoryView({
   workspaceId,
   onLogin,
   store,
+  onRestore,
+  restoreAvailable = false,
+  archiveBusy = false,
 }: {
   agent: Agent;
   workspaceName: string;
   workspaceId: string;
   onLogin: () => void;
   store: ConversationStore;
+  onRestore?: () => void;
+  restoreAvailable?: boolean;
+  archiveBusy?: boolean;
 }) {
   const window = useWindow(store, agent.agent_id);
   const [busy, setBusy] = useState(false);
@@ -967,15 +973,25 @@ export function HistoryView({
           },
           onPress: () => {},
         }}
-        archiveReason="Vain luku · Tätä keskustelua ei voi arkistoida."
+        archiveReason={
+          agent.archive === "archived"
+            ? undefined
+            : "Vain luku · Tätä keskustelua ei voi arkistoida."
+        }
         archiveControl={
           <ArchiveControls
             state={agent.archive ?? "unknown"}
-            eligible={false}
-            busy={false}
-            blockedReason="Vain luku · Tätä keskustelua ei voi arkistoida."
+            eligible={agent.archive === "archived" && restoreAvailable}
+            busy={archiveBusy}
+            blockedReason={
+              agent.archive === "archived"
+                ? !restoreAvailable
+                  ? "Palautus ei ole käytettävissä ennen historian ja yhteyden vahvistusta."
+                  : undefined
+                : "Vain luku · Tätä keskustelua ei voi arkistoida."
+            }
             onArchive={() => {}}
-            onRestore={() => {}}
+            onRestore={() => onRestore?.()}
           />
         }
         workspaceLabel={workspaceName}

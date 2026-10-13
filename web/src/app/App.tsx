@@ -836,28 +836,6 @@ export function App() {
       </>
     ) : selectedAgent && agentWorkspace && conversationStore ? (
       <>
-        {selectedAgent.archive === "archived" && (
-          <p>
-            <Button
-              label="Palauta näkyviin"
-              onPress={() => void changeArchive(selectedAgent, false)}
-              availability={
-                archiveBusy ||
-                !csrf ||
-                phase !== "authenticated" ||
-                selectedAgent.history !== "readable"
-                  ? {
-                      state: "unknown",
-                      reason:
-                        selectedAgent.history !== "readable"
-                          ? "Historiaa ei voitu vahvistaa"
-                          : "Päivitä yhteys ennen palautusta",
-                    }
-                  : { state: "enabled" }
-              }
-            />
-          </p>
-        )}
         {archiveProblem && (
           <InlineNotice
             title="Arkiston tila epävarma"
@@ -869,6 +847,15 @@ export function App() {
           onLogin={onCurrentLogin}
           store={conversationStore}
           agent={selectedAgent}
+          archiveBusy={archiveBusy}
+          restoreAvailable={
+            !!csrf &&
+            phase === "authenticated" &&
+            selectedAgent.history === "readable" &&
+            !!selectedAgent.observation_token &&
+            !archiveBusy
+          }
+          onRestore={() => void changeArchive(selectedAgent, false)}
           workspaceName={agentWorkspace.display_name ?? agentWorkspace.name}
           workspaceId={agentWorkspace.workspace_id}
         />

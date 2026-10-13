@@ -40,4 +40,4 @@ if it does not, they are disabled with a reason.
 
 ## Reopen Notes — 2026-10-13
 
-_Add rationale for reopening here._
+The first pass disabled the archive icon for every native-history view, including archived conversations. The host allows restoring an archived readable history without a live controller, so the shared icon row must expose that supported action instead of leaving it in a separate button.
