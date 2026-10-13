@@ -3,13 +3,15 @@ created: 2026-10-12
 updated: 2026-10-13
 type: bug
 reporter: jari
-status: in-progress
+status: fixed
 priority: normal
 related: ['@new-conversation-view']
 lane: web
 lane_seq: 7
 collision: [web/]
 preparation: ready
+closed: 2026-10-13
+closed_by: claude
 ---
 
 # Unify conversation actions and sidebar layout
