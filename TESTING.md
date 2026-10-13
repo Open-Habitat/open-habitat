@@ -53,8 +53,7 @@ The output receipt and product `release-gate.json` say `gate: "ungated"` and
 record the source tree. Omit `--ungated` when clean-gate evidence is needed:
 the default refuses a missing or different-tree gate receipt and records
 `gate: "clean-gate"` with the tree. A production release still requires the
-clean gate. The clean gate remains the health check for main and should be run
-on a final implementation candidate even when deploying ungated to test.
+clean gate; a test release does not, and neither does landing on `main`.
 
 The Fleetrepo `infra/open-habitat-test/release_test.py` one-command operator
 checks the receipt in gated mode, installs web dependencies from the
