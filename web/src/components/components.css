@@ -1827,6 +1827,10 @@ h1[tabindex="-1"]:focus {
 .ah-tool-row .ah-disclosure {
   border: 0;
 }
+.ah-tool-row .ah-disclosure-panel {
+  padding: 12px;
+  border-top: 1px solid var(--ah-line-soft);
+}
 .ah-tool-row .ah-tool-output {
   margin: 0;
   border: 0;
@@ -2551,7 +2555,12 @@ h1[tabindex="-1"]:focus {
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Card styles override the generic conversation surface. */
 .ah-bash-output small {
+  margin-left: 12px;
   color: var(--ah-muted);
+}
+.ah-bash-output {
+  display: grid;
+  gap: 6px;
 }
 .ah-bash-dialog {
   position: fixed;

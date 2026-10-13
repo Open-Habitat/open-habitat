@@ -668,7 +668,13 @@ export function ToolRow({
         <StatusMark
           label={statusLabel}
           tone={errorSummary ? "danger" : "neutral"}
-          kind={errorSummary ? "error" : "neutral"}
+          kind={
+            errorSummary
+              ? "error"
+              : state === "succeeded"
+                ? "success"
+                : "neutral"
+          }
         />
         {durationText ? <small>{durationText}</small> : null}
       </DisclosureButton>

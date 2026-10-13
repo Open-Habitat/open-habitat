@@ -5,9 +5,11 @@ import { ToolRow } from "./Conversation";
 export function PiToolUse({
   name,
   state,
+  targetText,
   children,
 }: {
   name: string;
+  targetText?: string;
   state:
     | "forming"
     | "called"
@@ -40,6 +42,7 @@ export function PiToolUse({
     >
       <ToolRow
         name={name}
+        targetText={targetText}
         state={state}
         statusLabel={labels[state]}
         errorSummary={

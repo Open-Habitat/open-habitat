@@ -44,6 +44,12 @@
   min-height: 36px;
   padding-inline: var(--ah-s3);
 }
+/* Dense controls inside a tool output or composer mode switch. */
+.micro {
+  min-height: 26px;
+  padding-inline: 7px;
+  font-size: 12px;
+}
 .button kbd {
   margin-inline-start: var(--ah-s3);
 }

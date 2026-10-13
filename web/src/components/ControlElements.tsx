@@ -36,7 +36,7 @@ export function ControlButton({
 }: AriaButtonProps & {
   title?: string;
   variant?: ControlVariant;
-  size?: "compact" | "normal";
+  size?: "compact" | "micro" | "normal";
   presentation?: "icon" | "account" | "back" | "floating" | "messageIcon";
   ref?: Ref<HTMLButtonElement>;
 }) {
@@ -45,7 +45,7 @@ export function ControlButton({
       {...props}
       {...(title ? { title } : {})}
       data-ah-primitive="button"
-      className={`${styles.button} ${variants[variant]} ${size === "compact" ? styles.compact : ""} ${presentation ? styles[presentation] : ""} ah-button ah-button-${variant} ah-button-${size} ${className ?? ""}`}
+      className={`${styles.button} ${variants[variant]} ${size === "compact" ? styles.compact : size === "micro" ? styles.micro : ""} ${presentation ? styles[presentation] : ""} ah-button ah-button-${variant} ah-button-${size} ${className ?? ""}`}
     />
   );
 }

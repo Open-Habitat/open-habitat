@@ -379,6 +379,11 @@ function OrderedBlocks({
           <PiToolUse
             key={`${entryKey}:${revision}:${block.tool_call_id}`}
             name={block.tool_name || "Työkalu"}
+            targetText={
+              block.tool_name === "bash"
+                ? bashCommand(block.text ?? "").split("\n")[0]
+                : undefined
+            }
             state={
               results?.get(block.tool_call_id)?.is_error
                 ? "failed"

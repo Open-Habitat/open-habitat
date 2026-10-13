@@ -74,6 +74,7 @@ export function BashToolCard({
                 </pre>
                 <ControlButton
                   variant="quiet"
+                  size="micro"
                   className="ah-bash-gap"
                   onPress={() => select("all")}
                 >

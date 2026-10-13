@@ -702,6 +702,13 @@ export function BrowserConversation({
                                   ) : item.kind === "tool" ? (
                                     <PiToolUse
                                       name={item.name ?? "Työkalu"}
+                                      targetText={
+                                        item.name === "bash"
+                                          ? bashCommand(
+                                              item.arguments ?? "",
+                                            ).split("\n")[0]
+                                          : undefined
+                                      }
                                       state={
                                         (item.state as
                                           | "running"
