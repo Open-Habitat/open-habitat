@@ -3,6 +3,12 @@ import { ControlButton, IconButton } from "./ControlElements";
 import { Icon } from "./Icon";
 
 type View = "edges" | "scroll" | "all";
+type Shadow = { left: boolean; right: boolean };
+const noShadow = (): Record<"head" | "tail" | "single", Shadow> => ({
+  head: { left: false, right: false },
+  tail: { left: false, right: false },
+  single: { left: false, right: false },
+});
 export function OutputBox({
   text,
   language,
@@ -22,10 +28,11 @@ export function OutputBox({
   const view = long ? (mode ?? (running ? "scroll" : "edges")) : "all";
   const [wrap, setWrap] = useState(false);
   const [position, setPosition] = useState({ top: true, bottom: false });
-  const [shadow, setShadow] = useState({ left: false, right: false });
+  const [shadows, setShadows] = useState(noShadow);
   const [dialog, setDialog] = useState(false);
   const [copied, setCopied] = useState(false);
   const viewport = useRef<HTMLPreElement>(null);
+  const all = useRef<HTMLPreElement>(null);
   const head = useRef<HTMLPreElement>(null);
   const tail = useRef<HTMLPreElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -38,10 +45,17 @@ export function OutputBox({
       top: top || pre.scrollHeight <= pre.clientHeight + 1,
       bottom: bottom || pre.scrollHeight <= pre.clientHeight + 1,
     });
-    setShadow({
+    const key =
+      pre === head.current ? "head" : pre === tail.current ? "tail" : "single";
+    const next = {
       left: pre.scrollLeft > 1,
       right: pre.scrollLeft + pre.clientWidth < pre.scrollWidth - 1,
-    });
+    };
+    setShadows((previous) =>
+      previous[key].left === next.left && previous[key].right === next.right
+        ? previous
+        : { ...previous, [key]: next },
+    );
     if (view === "scroll") {
       savedTop.current = pre.scrollTop;
       follow.current = bottom;
@@ -50,18 +64,25 @@ export function OutputBox({
   // biome-ignore lint/correctness/useExhaustiveDependencies: Reconcile after content changes, not after scroll state updates.
   useLayoutEffect(() => {
     const pre = viewport.current;
-    if (!pre || view !== "scroll") return;
-    pre.scrollTop =
-      follow.current && running ? pre.scrollHeight : savedTop.current;
-    update(pre);
+    if (pre && view === "scroll")
+      pre.scrollTop =
+        follow.current && running ? pre.scrollHeight : savedTop.current;
+    for (const mounted of [head.current, tail.current, pre, all.current])
+      if (mounted) update(mounted);
   }, [text, view, wrap, running]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: Observer follows the mounted viewport only.
   useEffect(() => {
-    const pre = viewport.current;
-    if (!pre) return;
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => update(pre));
-    observer.observe(pre);
+    const mounted = [
+      head.current,
+      tail.current,
+      viewport.current,
+      all.current,
+    ].filter((pre): pre is HTMLPreElement => !!pre);
+    if (!mounted.length || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => mounted.forEach(update));
+    mounted.forEach((pre) => {
+      observer.observe(pre);
+    });
     return () => observer.disconnect();
   }, [view]);
   useEffect(() => {
@@ -87,6 +108,7 @@ export function OutputBox({
   const select = (next: View) => {
     follow.current = running && next === "scroll";
     savedTop.current = 0;
+    setShadows(noShadow());
     setMode(next);
   };
   const button = (
@@ -127,30 +149,40 @@ export function OutputBox({
     section: string[],
     className: string,
     ref?: React.Ref<HTMLPreElement>,
-  ) => (
-    <pre
-      ref={ref}
-      // biome-ignore lint/a11y/noNoninteractiveTabindex: Scrollable output is keyboard focusable.
-      tabIndex={0}
-      className={`ah-output-viewport ${className}${wrap ? " ah-output-wrap" : ""}${shadow.left ? " ah-output-more-left" : ""}${shadow.right ? " ah-output-more-right" : ""}`}
-      onScroll={(e) => {
-        const target = e.currentTarget;
-        if (view === "edges") {
-          const other = target === head.current ? tail.current : head.current;
-          if (other && other.scrollLeft !== target.scrollLeft)
-            other.scrollLeft = target.scrollLeft;
-        }
-        update(target);
-      }}
-    >
-      {content(section)}
-      {running && className === "ah-output-scroll" ? (
-        <span className="ah-bash-caret" aria-hidden="true">
-          ▏
-        </span>
-      ) : null}
-    </pre>
-  );
+  ) => {
+    const shadow =
+      shadows[
+        className === "ah-bash-head"
+          ? "head"
+          : className === "ah-bash-tail"
+            ? "tail"
+            : "single"
+      ];
+    return (
+      <pre
+        ref={ref}
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: Scrollable output is keyboard focusable.
+        tabIndex={0}
+        className={`ah-output-viewport ${className}${wrap ? " ah-output-wrap" : ""}${shadow.left ? " ah-output-more-left" : ""}${shadow.right ? " ah-output-more-right" : ""}`}
+        onScroll={(e) => {
+          const target = e.currentTarget;
+          if (view === "edges") {
+            const other = target === head.current ? tail.current : head.current;
+            if (other && other.scrollLeft !== target.scrollLeft)
+              other.scrollLeft = target.scrollLeft;
+          }
+          update(target);
+        }}
+      >
+        {content(section)}
+        {running && className === "ah-output-scroll" ? (
+          <span className="ah-bash-caret" aria-hidden="true">
+            ▏
+          </span>
+        ) : null}
+      </pre>
+    );
+  };
   return (
     <div className="ah-output-box">
       <div className="ah-bash-window">
@@ -171,7 +203,7 @@ export function OutputBox({
           pre(
             lines,
             view === "scroll" ? "ah-output-scroll" : "ah-output-all",
-            view === "scroll" ? viewport : undefined,
+            view === "scroll" ? viewport : all,
           )
         )}
         <fieldset className="ah-bash-rail" aria-label="Tulosteen toiminnot">
@@ -270,7 +302,7 @@ export function OutputBox({
               variant="quiet"
               size="compact"
               onPress={() => {
-                dialogRef.current?.close();
+                dialogRef.current?.close?.();
                 setDialog(false);
               }}
             >

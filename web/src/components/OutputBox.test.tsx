@@ -42,6 +42,24 @@ it("groups view selection separately from jumps and updates disabled state on sc
   fireEvent.click(screen.getByRole("button", { name: "Rivitä pitkät rivit" }));
   expect(container.querySelector(".ah-output-wrap")).toBeTruthy();
 });
+it("marks overflow on head and tail separately and clears stale shadows on view change", () => {
+  const { container } = render(<OutputBox text={text} />);
+  const head = container.querySelector(".ah-bash-head") as HTMLPreElement;
+  const tail = container.querySelector(".ah-bash-tail") as HTMLPreElement;
+  Object.defineProperties(head, {
+    scrollWidth: { value: 300 },
+    clientWidth: { value: 100 },
+  });
+  fireEvent.scroll(head);
+  expect(head.classList.contains("ah-output-more-right")).toBe(true);
+  expect(tail.classList.contains("ah-output-more-right")).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: "Kaikki rivit" }));
+  expect(
+    container
+      .querySelector(".ah-output-all")
+      ?.classList.contains("ah-output-more-right"),
+  ).toBe(false);
+});
 it("copies the entire text even in edges view", () => {
   const writeText = vi.fn().mockResolvedValue(undefined);
   Object.defineProperty(navigator, "clipboard", {
