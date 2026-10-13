@@ -48,9 +48,17 @@ assigns a fresh session ID so that starting a conversation creates new history.
 Before launch, the daemon acquires a lock for that session and records its
 browser origin, workspace ID and working-directory path. The lock coordinates
 browser writers: it remains held while Pi runs, including through a daemon
-crash because Pi inherits it. Terminal Pi processes do not participate in this
-lock, which is another reason their histories are not admitted for browser
-control.
+crash because Pi inherits it. Terminal Pi processes do not participate in this lock. Before continuing a
+browser-origin session or changing history presentation, the daemon checks
+same-UID Pi processes and their native session descriptors in `/proc`. An
+unidentified Pi in the same workspace, an inaccessible same-UID process that
+might own a session, or a failed census makes the result unknown and blocks
+admission. Known ptrace-restricted system services are excluded by their fixed
+command names. A nonstandard Pi launcher with no open descriptor and no
+explicit session argument may escape identification. A process of a
+different UID is never inspected beyond its process-directory ownership. This
+is an observation, not a lock against a terminal Pi launched *after* the scan;
+terminal writers do not honor the browser lock.
 
 The current implementation allows four live Pi children per daemon and retains
 up to 128 conversation handles, including ended conversations whose command
@@ -79,7 +87,9 @@ after the third accepted turn settles. Pi persists its fresh session only when a
 so naming cannot safely write at prompt acknowledgement. The name comes from
 a separate, bounded, tool-free model call through that person's Pi model
 access. A person can ask for another title beside a controlled conversation's
-name. Generation failures leave the native name or first-prompt fallback
+name. For a settled history without a controller, a separate retitle operation
+checks the writer and native file again, then starts a short-lived Pi RPC child
+to append the name without making the session browser-controllable. Generation failures leave the native name or first-prompt fallback
 untouched. The daemon checks the full current native name before naming and
 skips an automatic write if it changed during generation. Pi's RPC name setter
 has no compare-and-set, so a terminal-selector rename in the final read/write
@@ -108,8 +118,9 @@ implementation/scope difference for joint follow-up.
 
 ## Archiving presentation
 
-A browser-managed conversation with a confirmed idle controller state, or a
-positively reaped daemon child, can be archived. The daemon checks the native
+A native conversation with readable history and no observed external writer
+can be archived, including terminal-begun history. A daemon-owned child may be
+archived while it is confirmed idle; a working child blocks archiving. The daemon checks the native
 session header, workspace association and current snapshot observation token
 before updating the user's `~/.local/state/open-habitat/user-state.json`.
 Workspace visibility and archive updates share one writer lock and an atomic
@@ -120,9 +131,9 @@ state unknown without hiding native history or overwriting corrupt bytes; browse
 writes wait for the annotation state to be checked again. An archive annotation
 whose native session is missing or unreadable makes the Pi-history source unknown rather than
 presenting an empty archive; the browser warns on the home and workspace views.
-Archive requires the current daemon handle; terminal history and a lost daemon
-handle cannot prove idle or process exit. Restore changes only presentation and
-also works after a daemon restart. A separate explicit continuation rechecks
+The daemon checks same-UID native processes and its browser lock at archive
+commit time; an unknown writer state blocks the change. Restore changes only
+presentation and also works after a daemon restart. A separate explicit continuation rechecks
 native ownership and launches Pi on the same session ID. A stale archive view is
 refused rather than used to reverse another browser's action.
 

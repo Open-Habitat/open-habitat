@@ -100,7 +100,18 @@ func (c *ConversationController) continuationProof(id string) (*piOwnership, bro
 		_ = ws.Close()
 		return fail("unproven")
 	}
-	return owner, origin, ws, cwd, path, old, "eligible"
+	// The advisory lock only covers browser children. Terminal Pi writers do
+	// not take it; an undecidable process census must not admit another Pi.
+	switch c.piWriter(path, cwd) {
+	case "writer_present":
+		_ = ws.Close()
+		return fail("writer_present")
+	case "not_observed":
+		return owner, origin, ws, cwd, path, old, "eligible"
+	default:
+		_ = ws.Close()
+		return fail("unproven")
+	}
 }
 
 // continueEnded is explicit. The daemon requires its native ownership lock and

@@ -204,6 +204,11 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		agents := make([]any, 0)
 		sessions, historyErr := sessionsReader(cfg)
 		if historyErr == nil {
+			var ownPIDs map[int]bool
+			if controller != nil {
+				ownPIDs = controller.ownPiPIDs()
+			}
+			processes := snapshotPiWriters(sessions, cfg.UID, ownPIDs)
 			for _, session := range sessions {
 				for _, entry := range observation.Entries {
 					if entry.Error != "" || session.cwd != nativeHome+"/src/"+entry.Name {
@@ -213,7 +218,16 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 					if id == "" {
 						id = opaque("ws_", cfg.Provider+":"+cfg.Subject+":"+entry.Name)
 					}
-					agents = append(agents, sessionFact(session, id, cfg.UID))
+					agent := sessionFact(session, id, cfg.UID)
+					if session.state == "readable" {
+						switch processes[session.path] {
+						case "writer_present":
+							agent["process"] = "terminal_observed_live"
+						case "not_observed":
+							agent["process"] = "not_observed"
+						}
+					}
+					agents = append(agents, agent)
 					break
 				}
 			}
@@ -230,6 +244,12 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 				for _, raw := range agents {
 					if raw.(map[string]any)["agent_id"] == id {
 						found = true
+						select {
+						case <-active.rpc.exited:
+							raw.(map[string]any)["process"] = "confirmed_exited"
+						default:
+							raw.(map[string]any)["process"] = "daemon_managed_live"
+						}
 						break
 					}
 				}

@@ -7,7 +7,7 @@ import (
 	"regexp"
 )
 
-var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|regenerate_title|recap|question|abort|status|receipt|stop|continue))?$`)
+var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|regenerate_title|history_title|recap|question|abort|status|eligibility|receipt|stop|continue))?$`)
 var conversationStreamCursor = regexp.MustCompile(`^ev1:[0-9a-fA-F-]{36}:[0-9]{1,20}$`)
 var conversationUUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
@@ -20,7 +20,7 @@ func (a *Auth) conversation(w http.ResponseWriter, r *http.Request) {
 	if events {
 		match = []string{path, "", "events"}
 	}
-	if match == nil || path != r.URL.Path || (events && (r.Method != http.MethodGet || !a.exact(r, path, "after") || !conversationStreamCursor.MatchString(r.URL.Query().Get("after")))) || (!events && match[2] == "status" && !(a.exact(r, path) || (a.exact(r, path, "continuation") && r.URL.Query().Get("continuation") == "true"))) || (!events && match[2] == "receipt" && (!a.exact(r, path, "command_id") || !conversationUUID.MatchString(r.URL.Query().Get("command_id")))) || (!events && match[2] != "receipt" && match[2] != "status" && !a.exact(r, path)) || (r.Method != http.MethodGet && r.Method != http.MethodPost) || (match[1] != "" && (match[2] == "status" || match[2] == "receipt") != (r.Method == http.MethodGet)) {
+	if match == nil || path != r.URL.Path || (events && (r.Method != http.MethodGet || !a.exact(r, path, "after") || !conversationStreamCursor.MatchString(r.URL.Query().Get("after")))) || (!events && match[2] == "status" && !(a.exact(r, path) || (a.exact(r, path, "continuation") && r.URL.Query().Get("continuation") == "true"))) || (!events && match[2] == "receipt" && (!a.exact(r, path, "command_id") || !conversationUUID.MatchString(r.URL.Query().Get("command_id")))) || (!events && match[2] != "receipt" && match[2] != "status" && !a.exact(r, path)) || (r.Method != http.MethodGet && r.Method != http.MethodPost) || (match[1] != "" && (match[2] == "status" || match[2] == "eligibility" || match[2] == "receipt") != (r.Method == http.MethodGet)) {
 		safe(w, 400, "invalid_request")
 		return
 	}

@@ -26,6 +26,12 @@ import { ArchiveControls } from "../components/ArchiveControls";
 import { PiBoundary, PiToolUse } from "../components/PiBlocks";
 import { type ConversationStore, useWindow } from "./conversationStore";
 import {
+  continueConversation,
+  historyEligibility,
+  retitleHistory,
+} from "./conversations";
+import { useNavigate } from "react-router";
+import {
   type BlockChunk,
   type HistoryBlock,
   type HistoryEntry,
@@ -887,6 +893,9 @@ export function HistoryView({
   onLogin,
   store,
   onRestore,
+  onArchive,
+  onTitleComplete,
+  csrf,
   restoreAvailable = false,
   archiveBusy = false,
 }: {
@@ -896,10 +905,56 @@ export function HistoryView({
   onLogin: () => void;
   store: ConversationStore;
   onRestore?: () => void;
+  onArchive?: () => void;
+  onTitleComplete?: () => void;
+  csrf?: string;
   restoreAvailable?: boolean;
   archiveBusy?: boolean;
 }) {
   const window = useWindow(store, agent.agent_id);
+  const navigate = useNavigate();
+  const [eligibility, setEligibility] =
+    useState<Awaited<ReturnType<typeof historyEligibility>>>();
+  const [actionError, setActionError] = useState("");
+  const [continuing, setContinuing] = useState(false);
+  useEffect(() => {
+    let controller = new AbortController();
+    const probe = () => {
+      controller.abort();
+      controller = new AbortController();
+      const signal = controller.signal;
+      if (agent.history === "readable")
+        void historyEligibility(agent.agent_id, signal)
+          .then((answer) => {
+            if (!signal.aborted) setEligibility(answer);
+          })
+          .catch((error) => {
+            if (!signal.aborted) {
+              setEligibility(undefined);
+              if ((error as Error).message === "identity_lost") onLogin();
+            }
+          });
+    };
+    setEligibility(undefined);
+    probe();
+    const timer = globalThis.setInterval(probe, 5000);
+    return () => {
+      globalThis.clearInterval(timer);
+      controller.abort();
+    };
+  }, [agent.agent_id, agent.history, onLogin]);
+  // A snapshot is not a fresh write precondition. Keep actions blocked until
+  // this opening's own census has returned a positive answer.
+  const process =
+    eligibility?.continuation === "writer_present"
+      ? "writer_present"
+      : (eligibility?.process ?? "unknown");
+  const mayWrite =
+    process === "not_observed" && !!csrf && agent.history === "readable";
+  const blockedReason =
+    process === "writer_present"
+      ? "Kirjoittaja on käynnissä."
+      : "Prosessin tilaa ei voitu vahvistaa.";
   const [busy, setBusy] = useState(false);
   const [details, setDetails] = useState(false);
   useEffect(() => {
@@ -961,36 +1016,74 @@ export function HistoryView({
     <ConversationFrame>
       <AgentHeader
         title={agent.title.display}
-        activityLabel="Prosessin tila ei tiedossa"
-        activityKind="unknown"
+        activityLabel={
+          process === "not_observed"
+            ? "Ei käynnissä"
+            : process === "writer_present"
+              ? "Käynnissä"
+              : "Prosessin tila ei tiedossa"
+        }
+        activityKind={
+          process === "not_observed"
+            ? "neutral"
+            : process === "writer_present"
+              ? "working"
+              : "unknown"
+        }
         controlKind="read-only"
         controlLabel="Vain luku · Ohjausta ei ole"
         titleAction={{
           label: "Luo uusi otsikko",
-          availability: {
-            state: "disabled",
-            reason: "Vain luku · Ohjausta ei ole.",
+          availability:
+            mayWrite && entries.length > 0
+              ? { state: "enabled" }
+              : {
+                  state: "disabled",
+                  reason:
+                    entries.length === 0
+                      ? "Keskustelussa ei ole vielä nimettävää sisältöä."
+                      : blockedReason,
+                },
+          onPress: () => {
+            if (!mayWrite || !csrf || entries.length === 0 || busy) return;
+            setBusy(true);
+            setActionError("");
+            void retitleHistory(agent.agent_id, workspaceId, csrf)
+              .then(() => onTitleComplete?.())
+              .catch((error) => {
+                if ((error as Error).message === "identity_lost") onLogin();
+                else
+                  setActionError(
+                    "Otsikkoa ei voitu luoda. Tarkista tila ennen uutta yritystä.",
+                  );
+              })
+              .finally(() => setBusy(false));
           },
-          onPress: () => {},
         }}
         archiveReason={
-          agent.archive === "archived"
-            ? undefined
-            : "Vain luku · Tätä keskustelua ei voi arkistoida."
+          agent.archive === "archived" || mayWrite ? undefined : blockedReason
         }
         archiveControl={
           <ArchiveControls
             state={agent.archive ?? "unknown"}
-            eligible={agent.archive === "archived" && restoreAvailable}
+            eligible={
+              agent.archive === "archived"
+                ? restoreAvailable
+                : mayWrite && !archiveBusy
+            }
             busy={archiveBusy}
             blockedReason={
               agent.archive === "archived"
                 ? !restoreAvailable
                   ? "Palautus ei ole käytettävissä ennen historian ja yhteyden vahvistusta."
                   : undefined
-                : "Vain luku · Tätä keskustelua ei voi arkistoida."
+                : mayWrite
+                  ? undefined
+                  : blockedReason
             }
-            onArchive={() => {}}
+            onArchive={() => {
+              if (mayWrite) onArchive?.();
+            }}
             onRestore={() => onRestore?.()}
           />
         }
@@ -1004,7 +1097,7 @@ export function HistoryView({
           facts={[
             { label: "Natiivi tunniste", value: agent.agent_id },
             { label: "Historia", value: agent.history },
-            { label: "Prosessi", value: agent.process, state: "unknown" },
+            { label: "Prosessi", value: process, state: "unknown" },
             { label: "Ohjaus", value: "Vain luku" },
           ]}
         />
@@ -1035,14 +1128,50 @@ export function HistoryView({
           />
         ) : null}
       </ConversationStream>
+      {actionError && <InlineNotice title={actionError} tone="warning" />}
       <div className="ah-read-only-footer">
         <div>
           <strong>Vain luku</strong>
-          <p>Tätä keskustelua ei voi ohjata selaimesta.</p>
+          <p>
+            {eligibility?.continuation === "writer_present"
+              ? "Jatkaminen estetty: keskustelulla on aktiivinen kirjoittaja."
+              : eligibility?.continuation === "unproven"
+                ? "Jatkamisen edellytyksiä ei voitu vahvistaa. Päivitä tiedot."
+                : "Tätä keskustelua ei voi ohjata selaimesta."}
+          </p>
         </div>
-        <LinkRow href={`/workspaces/${workspaceId}`} kind="inline">
-          Uusi keskustelu
-        </LinkRow>
+        {eligibility?.continuation === "eligible" &&
+        mayWrite &&
+        agent.archive !== "archived" ? (
+          <Button
+            label={continuing ? "Jatketaan…" : "Jatka keskustelua"}
+            pending={continuing}
+            onPress={() => {
+              if (!csrf || continuing) return;
+              setContinuing(true);
+              setActionError("");
+              void continueConversation(agent.agent_id, workspaceId, csrf)
+                .then(() =>
+                  navigate(
+                    `/workspaces/${workspaceId}?conversation=${agent.agent_id}`,
+                  ),
+                )
+                .catch((error) => {
+                  if ((error as Error).message === "identity_lost") onLogin();
+                  else
+                    setActionError(
+                      "Jatkaminen ei onnistunut. Tarkista keskustelun tila ennen uutta yritystä.",
+                    );
+                  setEligibility(undefined);
+                })
+                .finally(() => setContinuing(false));
+            }}
+          />
+        ) : (
+          <LinkRow href={`/workspaces/${workspaceId}`} kind="inline">
+            Uusi keskustelu
+          </LinkRow>
+        )}
       </div>
     </ConversationFrame>
   );

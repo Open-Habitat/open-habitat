@@ -289,6 +289,8 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		c.readReceipt(w, r, parts[0])
 	case r.Method == http.MethodGet && parts[1] == "status":
 		c.observe(w, r, parts[0])
+	case r.Method == http.MethodGet && parts[1] == "eligibility":
+		c.historyEligibility(w, r, parts[0])
 	case r.Method == http.MethodPost && (parts[1] == "send" || parts[1] == "steer" || parts[1] == "follow_up" || parts[1] == "clear_queue"):
 		if parts[1] == "clear_queue" {
 			c.clearQueue(w, r, parts[0])
@@ -297,6 +299,8 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		}
 	case r.Method == http.MethodPost && parts[1] == "regenerate_title":
 		c.regenerateTitle(w, r, parts[0])
+	case r.Method == http.MethodPost && parts[1] == "history_title":
+		c.historyTitle(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "recap":
 		c.requestRecap(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "question":

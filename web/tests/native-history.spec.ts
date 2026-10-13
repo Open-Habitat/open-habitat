@@ -86,6 +86,24 @@ test("@native-history native page, continuation, unknown, reopen and no writes",
       .getByText("Synteettinen viesti 226", { exact: true }),
   ).toBeVisible();
 });
+test("@native-history unwritten terminal session can archive and restore", async ({
+  page,
+}) => {
+  await fixture(page, "ready");
+  await login(page);
+  await page.goto(`/agents/${agent}`);
+  const bar = page.locator(".ah-agent-header");
+  await expect(bar.getByRole("button", { name: "Arkistoi" })).toBeEnabled();
+  await bar.getByRole("button", { name: "Luo uusi otsikko" }).click();
+  await expect(bar).toContainText("Synteettinen otsikko");
+  await bar.getByRole("button", { name: "Arkistoi" }).click();
+  await page.getByRole("button", { name: "Vahvista arkistointi" }).click();
+  await expect(
+    bar.getByRole("button", { name: "Palauta näkyviin" }),
+  ).toBeEnabled();
+  await bar.getByRole("button", { name: "Palauta näkyviin" }).click();
+  await expect(bar.getByRole("button", { name: "Arkistoi" })).toBeEnabled();
+});
 test("@native-history empty native session is read-only", async ({ page }) => {
   await fixture(page, "empty");
   await login(page);
@@ -249,7 +267,7 @@ test("@native-history warm return paints from cache while revalidating history",
   expect(paint - start).toBeLessThan(2000);
 });
 
-test("@native-history read-only header retains disabled actions with reasons on desktop and phone", async ({
+test("@native-history read-only control retains safe history actions on desktop and phone", async ({
   page,
 }) => {
   await fixture(page, "ready");
@@ -258,17 +276,16 @@ test("@native-history read-only header retains disabled actions with reasons on 
   for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 844 });
     const bar = page.locator(".ah-agent-header");
-    for (const name of ["Luo uusi otsikko", "Arkistoi"]) {
-      const action = bar.getByRole("button", { name });
-      await expect(action).toBeDisabled();
-      await expect(action).toHaveAttribute("aria-describedby", /.+/);
-    }
+    await expect(bar).toContainText("Ei käynnissä");
+    for (const name of ["Luo uusi otsikko", "Arkistoi"])
+      await expect(bar.getByRole("button", { name })).toBeEnabled();
     const details = bar.getByRole("button", { name: "Tiedot" });
     await expect(details).toBeEnabled();
     if ((await details.getAttribute("aria-expanded")) === "false")
       await details.click();
-    await expect(bar.getByText(/Uusi otsikko: Vain luku/)).toBeVisible();
-    await expect(bar.getByText(/Arkistointi: Vain luku/)).toBeVisible();
+    await expect(page.locator(".ah-read-only-footer")).toContainText(
+      "Vain luku",
+    );
     expect(
       (await new AxeBuilder({ page }).include(".ah-agent-header").analyze())
         .violations,

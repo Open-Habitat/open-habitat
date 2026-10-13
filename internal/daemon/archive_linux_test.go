@@ -11,8 +11,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
@@ -62,8 +64,29 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 		c.archive(w, req, id)
 		return w.Code
 	}
+	writer := exec.Command("bash", "-c", "exec -a pi sleep 20 3<\"$1\"", "bash", path)
+	writer.Dir = cwd
+	if err := writer.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = writer.Process.Kill(); _ = writer.Wait() }()
+	deadline := time.Now().Add(2 * time.Second)
+	for piWriter(path, cwd, cfg.UID) != "writer_present" && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if piWriter(path, cwd, cfg.UID) != "writer_present" {
+		t.Fatal("native writer not observed")
+	}
 	if got := request(true, token); got != 409 {
-		t.Fatalf("terminal history admitted: %d", got)
+		t.Fatalf("native writer admitted to archive: %d", got)
+	}
+	_ = writer.Process.Kill()
+	_ = writer.Wait()
+	if got := request(true, token); got != 200 {
+		t.Fatalf("idle terminal history not archived: %d", got)
+	}
+	if got := request(false, token); got != 200 {
+		t.Fatalf("idle terminal history not restored: %d", got)
 	}
 	exited := make(chan struct{})
 	c.sessions[id] = &conversation{id: id, workspace: wsid, cwd: cwd, rpc: &piRPC{exited: exited}, state: "accepted"}

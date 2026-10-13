@@ -60,12 +60,14 @@ conversation control routes use the UUID alone.
 | `GET /api/v1/agents/pi:<id>/history` | a history page; `limit` bounds entry count, `before` pages back and `after` supports forward reads |
 | `GET /api/v1/agents/pi:<id>/entries/<key>/blocks/<index>` | read part of a selected block using `revision`, `offset` and `limit_bytes` |
 | `GET`, `POST /api/v1/conversations` | list controlled conversations or start Pi in a workspace |
-| `GET /api/v1/conversations/<id>/status` | observe a conversation; `continuation=true` also checks whether it can be continued |
+| `GET /api/v1/conversations/<id>/status` | observe a controlled conversation; `continuation=true` also checks whether it can be continued |
+| `GET /api/v1/conversations/<id>/eligibility` | read process observation and continuation eligibility for native history without a daemon handle; the answer is not a reservation |
 | `GET /api/v1/conversations/<id>/receipt?command_id=<uuid>` | look up an earlier command's receipt |
 | `POST /api/v1/conversations/<id>/send`, `.../steer`, `.../follow_up` | send a message with a client-chosen `command_id` |
 | `POST /api/v1/conversations/<id>/clear_queue`, `.../abort`, `.../stop`, `.../continue`, `.../question` | queue, lifecycle and question controls |
 | `POST /api/v1/workspaces` with `action: conversation_archive` | archive or restore presentation with `workspace_id`, `observation_token`, `previous_archive` and `archived`; checks native history and workspace, rejects active writers and stale state; never moves Pi history |
 | `POST /api/v1/conversations/<id>/regenerate_title` | request a new native Pi name for a browser-controlled session; empty body, bounded synchronous `done` or `failed` result; failures include a fixed `reason` code, not provider diagnostics |
+| `POST /api/v1/conversations/<id>/history_title` | request a new native Pi name for settled history without a controller; requires `workspace_id`, checks the writer again and uses a temporary Pi child without granting browser control |
 | `POST /api/v1/conversations/<id>/recap` | request a tool-free recap on a settled browser-controlled Pi session; empty body; bounded `done` or `failed`, concurrent requests refused; a lost response is resolved by reading the native result |
 | `GET /api/v1/agents/pi:<id>/recap` | read the latest native recap and latest conversation message for staleness, including terminal sessions; no Pi process is started |
 | `GET /api/v1/onboarding/github/repos` | list GitHub repositories through the user's `gh`, using `page` and `limit` |

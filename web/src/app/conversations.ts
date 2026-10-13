@@ -211,6 +211,22 @@ export async function regenerateTitle(id: string, csrf: string): Promise<void> {
     throw new Error("title generation failed");
 }
 
+export async function retitleHistory(
+  id: string,
+  workspace: string,
+  csrf: string,
+): Promise<void> {
+  if (!ws.test(workspace)) throw new Error("invalid workspace");
+  const reply = await request(
+    `${path(id)}/history_title`,
+    undefined,
+    { workspace_id: workspace },
+    csrf,
+  );
+  if (!object(reply) || reply.schema_version !== 1 || reply.state !== "done")
+    throw new Error("title generation failed");
+}
+
 export async function list(signal?: AbortSignal): Promise<Session[]> {
   const v = await request(base, signal);
   if (
@@ -243,6 +259,32 @@ function path(id: string) {
   if (!agent.test(id)) throw new Error("invalid agent");
   return `${base}/${id.slice(3)}`;
 }
+export async function historyEligibility(
+  id: string,
+  signal?: AbortSignal,
+): Promise<{
+  process: "writer_present" | "not_observed" | "unknown";
+  continuation: Status["continuation"];
+}> {
+  const v = await request(`${path(id)}/eligibility`, signal);
+  if (
+    !object(v) ||
+    v.schema_version !== 1 ||
+    v.agent_id !== id ||
+    !["writer_present", "not_observed", "unknown"].includes(
+      String(v.process),
+    ) ||
+    !["eligible", "writer_present", "read_only_history", "unproven"].includes(
+      String(v.continuation),
+    )
+  )
+    throw new Error("invalid eligibility");
+  return {
+    process: v.process as "writer_present" | "not_observed" | "unknown",
+    continuation: v.continuation as Status["continuation"],
+  };
+}
+
 export async function status(
   id: string,
   signal?: AbortSignal,

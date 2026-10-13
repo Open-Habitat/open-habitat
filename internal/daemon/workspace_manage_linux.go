@@ -199,7 +199,7 @@ func workspaceHandler(cfg transport.Config, trusted func(*http.Request) bool, co
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
-			controller.archiveInput(w, strings.TrimPrefix(in.AgentID, "pi:"), archiveRequest{WorkspaceID: in.WorkspaceID, Archived: *in.Archived, ObservationToken: in.ObservationToken, PreviousArchive: in.PreviousArchive})
+			controller.archiveInput(r.Context(), w, strings.TrimPrefix(in.AgentID, "pi:"), archiveRequest{WorkspaceID: in.WorkspaceID, Archived: *in.Archived, ObservationToken: in.ObservationToken, PreviousArchive: in.PreviousArchive})
 			return
 		}
 		if in.AgentID != "" || in.Archived != nil || in.PreviousArchive != "" {

@@ -81,13 +81,18 @@ func runFakePi(args []string) {
 	in := bufio.NewScanner(os.Stdin)
 	in.Buffer(make([]byte, 4096), 1<<20)
 	for in.Scan() {
-		var req struct{ ID, Type, Message string }
+		var req struct{ ID, Type, Message, Name string }
 		if json.Unmarshal(in.Bytes(), &req) != nil {
 			continue
 		}
 		switch req.Type {
 		case "get_state":
 			emit(map[string]any{"type": "response", "id": req.ID, "command": "get_state", "success": true})
+		case "set_session_name":
+			if req.Name != "" {
+				s.append(map[string]any{"type": "session_info", "name": req.Name})
+			}
+			emit(map[string]any{"type": "response", "id": req.ID, "command": req.Type, "success": req.Name != ""})
 		case "get_commands":
 			mode, _ := os.ReadFile(filepath.Join(filepath.Dir(home), "fakepi-scenario"))
 			commands := []any{}

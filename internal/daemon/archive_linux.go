@@ -3,6 +3,7 @@
 package daemon
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -23,9 +24,9 @@ func (c *ConversationController) archive(w http.ResponseWriter, r *http.Request,
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
-	c.archiveInput(w, id, in)
+	c.archiveInput(r.Context(), w, id, in)
 }
-func (c *ConversationController) archiveInput(w http.ResponseWriter, id string, in archiveRequest) {
+func (c *ConversationController) archiveInput(ctx context.Context, w http.ResponseWriter, id string, in archiveRequest) {
 	if !sessionIDPattern.MatchString(id) || !idPattern.MatchString(in.WorkspaceID) || len(in.ObservationToken) < 8 || len(in.ObservationToken) > 200 || (in.PreviousArchive != "active" && in.PreviousArchive != "archived") {
 		snapshotError(w, 400, "invalid_request")
 		return
@@ -72,6 +73,48 @@ func (c *ConversationController) archiveInput(w http.ResponseWriter, id string, 
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}
+	// Serialize this mutation against browser admission. The ownership lock
+	// excludes browser children after a restart; the process census also checks
+	// native terminal Pi, which does not participate in that lock.
+	releasePermit, ok := c.proofPermit(ctx)
+	if !ok {
+		snapshotError(w, 503, "native_source_unavailable")
+		return
+	}
+	defer releasePermit()
+	c.mu.Lock()
+	live := false
+	if old := c.sessions[id]; old != nil && old.rpc != nil {
+		select {
+		case <-old.rpc.exited:
+			if old.owner != nil {
+				_ = old.owner.release()
+			}
+		default:
+			live = true
+		}
+	}
+	c.mu.Unlock()
+	// A live daemon-owned child is already fenced and can be archived when
+	// idle. For every other history, take the ownership fence before the
+	// census and keep it through the annotation commit.
+	if !live {
+		owner, err := acquirePiOwnership(c.home, id)
+		if err != nil {
+			snapshotError(w, 409, "writer_conflict")
+			return
+		}
+		defer owner.release()
+	}
+	switch c.piWriter(native.path, cwd) {
+	case "writer_present":
+		snapshotError(w, 409, "writer_conflict")
+		return
+	case "not_observed":
+	default:
+		snapshotError(w, 409, "control_uncertain")
+		return
+	}
 	// Keep admission and the durable annotation commit ordered against sendKind.
 	// This is a short bounded state-file fsync under mu; releasing mu before
 	// fsync would permit a new Pi turn to start while the archive lands.
@@ -82,11 +125,11 @@ func (c *ConversationController) archiveInput(w http.ResponseWriter, id string, 
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}
-	if in.Archived && (session == nil || session.workspace != in.WorkspaceID || session.cwd != cwd) {
-		snapshotError(w, 409, "read_only_history")
+	if in.Archived && session != nil && (session.workspace != in.WorkspaceID || session.cwd != cwd) {
+		snapshotError(w, 409, "control_uncertain")
 		return
 	}
-	if in.Archived {
+	if in.Archived && session != nil {
 		// A settled turn does not prove that a process exited. Only idle or
 		// positively reaped daemon-owned processes may leave the active list.
 		select {

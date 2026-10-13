@@ -1436,6 +1436,62 @@ async function endedConversation(page: import("@playwright/test").Page) {
   return id;
 }
 
+test("@browser-conversation idle controlled Pi can archive without stopping its child", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await editor.fill("idle archive proof");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  const id = new URL(page.url()).searchParams.get("conversation");
+  await expect
+    .poll(async () => {
+      const reply = await page.request.get(
+        `/api/v1/conversations/${id?.slice(3)}/status`,
+      );
+      const state = await reply.json();
+      return state.state === "idle" && state.native_history === "present";
+    })
+    .toBe(true);
+  await refreshConversation(page);
+  const archive = page
+    .locator(".ah-agent-header")
+    .getByRole("button", { name: "Arkistoi" });
+  await expect(archive).toBeEnabled();
+  await archive.click();
+  await page.getByRole("button", { name: "Vahvista arkistointi" }).click();
+  await expect(
+    page.getByText("Keskustelu arkistoitu.", { exact: false }),
+  ).toBeVisible();
+});
+
+test("@browser-conversation restart offers native continuation and archive without a handle", async ({
+  page,
+}) => {
+  const id = await endedConversation(page);
+  expect(
+    (await page.request.get("/fixture/conversations-reset")).status(),
+  ).toBe(204);
+  await page.goto(`/agents/${id}`);
+  await expect(page.locator(".ah-agent-header")).toContainText("Ei käynnissä");
+  const bar = page.locator(".ah-agent-header");
+  await expect(bar.getByRole("button", { name: "Arkistoi" })).toBeEnabled();
+  await bar.getByRole("button", { name: "Arkistoi" }).click();
+  await page.getByRole("button", { name: "Vahvista arkistointi" }).click();
+  await expect(
+    bar.getByRole("button", { name: "Palauta näkyviin" }),
+  ).toBeEnabled();
+  await bar.getByRole("button", { name: "Palauta näkyviin" }).click();
+  await expect(
+    page.getByRole("button", { name: "Jatka keskustelua" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Jatka keskustelua" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
+});
+
 test("@browser-conversation missing archive history never appears as a confirmed empty archive", async ({
   page,
 }) => {
@@ -2381,5 +2437,5 @@ test("@browser-conversation archived native history restores through the same ic
   await expect(restore).toHaveCount(0);
   await expect(
     page.locator(".ah-agent-header").getByRole("button", { name: "Arkistoi" }),
-  ).toBeDisabled();
+  ).toBeEnabled();
 });

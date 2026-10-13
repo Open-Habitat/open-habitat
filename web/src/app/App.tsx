@@ -856,6 +856,9 @@ export function App() {
             !archiveBusy
           }
           onRestore={() => void changeArchive(selectedAgent, false)}
+          onArchive={() => void changeArchive(selectedAgent, true)}
+          onTitleComplete={refresh}
+          csrf={phase === "authenticated" ? csrf : undefined}
           workspaceName={agentWorkspace.display_name ?? agentWorkspace.name}
           workspaceId={agentWorkspace.workspace_id}
         />
