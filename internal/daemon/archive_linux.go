@@ -73,47 +73,49 @@ func (c *ConversationController) archiveInput(ctx context.Context, w http.Respon
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}
-	// Serialize this mutation against browser admission. The ownership lock
-	// excludes browser children after a restart; the process census also checks
-	// native terminal Pi, which does not participate in that lock.
-	releasePermit, ok := c.proofPermit(ctx)
-	if !ok {
-		snapshotError(w, 503, "native_source_unavailable")
-		return
-	}
-	defer releasePermit()
-	c.mu.Lock()
-	live := false
-	if old := c.sessions[id]; old != nil && old.rpc != nil {
-		select {
-		case <-old.rpc.exited:
-			if old.owner != nil {
-				_ = old.owner.release()
-			}
-		default:
-			live = true
-		}
-	}
-	c.mu.Unlock()
-	// A live daemon-owned child is already fenced and can be archived when
-	// idle. For every other history, take the ownership fence before the
-	// census and keep it through the annotation commit.
-	if !live {
-		owner, err := acquirePiOwnership(c.home, id)
-		if err != nil {
-			snapshotError(w, 409, "writer_conflict")
+	if in.Archived {
+		// Archive must be ordered against browser admission and native writers.
+		// Restore only changes presentation. A terminal Pi must not block it
+		// merely by being present; native proof still has to remain settled.
+		releasePermit, ok := c.proofPermit(ctx)
+		if !ok {
+			snapshotError(w, 503, "native_source_unavailable")
 			return
 		}
-		defer owner.release()
-	}
-	switch c.piWriter(native.path, cwd) {
-	case "writer_present":
-		snapshotError(w, 409, "writer_conflict")
-		return
-	case "not_observed":
-	default:
-		snapshotError(w, 409, "control_uncertain")
-		return
+		defer releasePermit()
+		c.mu.Lock()
+		live := false
+		if old := c.sessions[id]; old != nil && old.rpc != nil {
+			select {
+			case <-old.rpc.exited:
+				if old.owner != nil {
+					_ = old.owner.release()
+				}
+			default:
+				live = true
+			}
+		}
+		c.mu.Unlock()
+		// A live daemon-owned child is already fenced and can be archived when
+		// idle. For every other history, hold its ownership fence through the
+		// census and annotation commit.
+		if !live {
+			owner, err := acquirePiOwnership(c.home, id)
+			if err != nil {
+				snapshotError(w, 409, "writer_conflict")
+				return
+			}
+			defer owner.release()
+		}
+		switch c.piWriter(native.path, cwd) {
+		case "writer_present":
+			snapshotError(w, 409, "writer_conflict")
+			return
+		case "not_observed":
+		default:
+			snapshotError(w, 409, "control_uncertain")
+			return
+		}
 	}
 	// Keep admission and the durable annotation commit ordered against sendKind.
 	// This is a short bounded state-file fsync under mu; releasing mu before

@@ -69,7 +69,7 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 	if err := writer.Start(); err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = writer.Process.Kill(); _ = writer.Wait() }()
+	defer func(cmd *exec.Cmd) { _ = cmd.Process.Kill(); _ = cmd.Wait() }(writer)
 	deadline := time.Now().Add(2 * time.Second)
 	for piWriter(path, cwd, cfg.UID) != "writer_present" && time.Now().Before(deadline) {
 		time.Sleep(10 * time.Millisecond)
@@ -85,9 +85,26 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 	if got := request(true, token); got != 200 {
 		t.Fatalf("idle terminal history not archived: %d", got)
 	}
-	if got := request(false, token); got != 200 {
-		t.Fatalf("idle terminal history not restored: %d", got)
+	// Restoring presentation does not mutate native history and must not be
+	// blocked by a terminal writer, unlike archiving.
+	writer = exec.Command("bash", "-c", "exec -a pi sleep 20 3<\"$1\"", "bash", path)
+	writer.Dir = cwd
+	if err := writer.Start(); err != nil {
+		t.Fatal(err)
 	}
+	defer func(cmd *exec.Cmd) { _ = cmd.Process.Kill(); _ = cmd.Wait() }(writer)
+	deadline = time.Now().Add(2 * time.Second)
+	for piWriter(path, cwd, cfg.UID) != "writer_present" && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if piWriter(path, cwd, cfg.UID) != "writer_present" {
+		t.Fatal("native writer not observed on restore")
+	}
+	if got := request(false, token); got != 200 {
+		t.Fatalf("active terminal history not restored: %d", got)
+	}
+	_ = writer.Process.Kill()
+	_ = writer.Wait()
 	exited := make(chan struct{})
 	c.sessions[id] = &conversation{id: id, workspace: wsid, cwd: cwd, rpc: &piRPC{exited: exited}, state: "accepted"}
 	if got := request(true, token); got != 409 {

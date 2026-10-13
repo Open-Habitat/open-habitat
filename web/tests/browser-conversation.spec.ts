@@ -1420,6 +1420,12 @@ async function endedConversation(page: import("@playwright/test").Page) {
       return s.state === "idle" && s.native_history === "present";
     })
     .toBe(true);
+  // The host can settle before the event stream delivers the send receipt to
+  // the browser. Stopping Pi before that delivery would correctly leave the
+  // browser uncertain, not ready for this helper's continuation assertion.
+  await expect(
+    page.getByText('Selvä. Kysyit: "synthetic end then continue".'),
+  ).toBeVisible();
   const { csrf } = await (await page.request.get("/auth/session")).json();
   const stopped = await page.request.post(
     `/api/v1/conversations/${id.slice(3)}/stop`,
