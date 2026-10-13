@@ -27,6 +27,11 @@ the card's spacing and marks off from the agreed draft
   (`okMark()`), as every finished tool row does.
 - The draft has a hairline (`border-top: 1px solid var(--ah-line-soft)`)
   between the header row and the body; production has none.
+- The "11 riviä välistä · Näytä kaikki" row between the head and the tail
+  has too much empty space above and below it. In the draft it is a thin
+  row (`padding: 4px 12px`, 12px text) joining the two parts into one box;
+  production renders it through the `Button` primitive, whose own size rules
+  likely outweigh `.ah-bash-gap`'s `min-height: 0` and padding.
 - The "21 riviä" line under the output sits too close to the box above and
   too far left. In the draft the meta line is 6px below the box (`.out` gap)
   and should start where the box's text starts.
