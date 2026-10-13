@@ -36,6 +36,3 @@ and remove the transient form.
 
 Re-stamped after the native-history restore correction and final browser validation; the first-paint loading-icon fix remained unchanged.
 
-## Reopen Notes — 2026-10-13
-
-_Add rationale for reopening here._

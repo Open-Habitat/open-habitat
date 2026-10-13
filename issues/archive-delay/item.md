@@ -42,6 +42,3 @@ archived that was not.
 
 Re-stamped after the restored native-history top-bar action and the full browser spec were verified; the archive implementation and rollback remained unchanged.
 
-## Reopen Notes — 2026-10-13
-
-_Add rationale for reopening here._
