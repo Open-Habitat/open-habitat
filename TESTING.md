@@ -12,12 +12,13 @@ of these runs.
 
 ## Choose checks for the change
 
-While editing, choose checks from the behavior and boundaries touched, not from a path-only or timestamp-based selector. A change to a shared auth, contract, test fixture or build dependency can affect several packages even if only one file changed. Install web dependencies with `npm ci --prefix web` when needed. Examples:
+While editing, choose checks from the behavior and boundaries touched, not from a path-only or timestamp-based selector. A change to a shared auth, contract, test fixture or build dependency can affect several packages even if only one file changed. Install web dependencies with `npm ci --prefix web` when needed. `scripts/test-focused.sh` selects one area explicitly; it reports what it skips and **never writes a clean-gate receipt**. Use multiple runs when more than one boundary is touched. For shared fixtures, contracts, auth or build inputs choose the full gate instead. Examples:
 
 ```sh
-./scripts/test-web-fast.sh                         # web formatting, lint, types, unit + component
-npm run test:e2e --prefix web -- --grep @github-first # targeted host-backed browser journey
-go test ./internal/gateway -run TestOAuth -count=1
+./scripts/test-focused.sh --area web
+./scripts/test-focused.sh --area browser --spec github-first-onboarding.spec.ts --tag @github-first
+./scripts/test-focused.sh --area go --go-package ./internal/gateway
+./scripts/test-focused.sh --area contracts
 ```
 
 `test-web-fast.sh` checks pure client logic and rendering in seconds on an installed checkout (5.98 s versus 293.26 s for a warm full gate in the recorded single-run comparison; the gate also ran 92 browser cases). It does **not** run a browser, build production assets or check Go, generated contracts or packaging. For browser-facing changes, run the relevant Playwright specs or grep tags as well (and a11y for affected interactions); use `npm run test:browser --prefix web` when behavior crosses journeys or the affected specs are not clear. For Go changes, run the affected package tests and callers at the boundary; use the full gate when ownership/contract or release coverage is uncertain. Do not reuse an earlier result after changing runnable code, fixtures, dependencies or packaged inputs. The fast command is feedback, not a substitute for the final clean gate.
@@ -41,7 +42,7 @@ tree and gate inputs it covers. On a repeat of the **same** committed tree,
 the browser and Go/contracts phases can reuse the previous passed receipt's
 results; the new receipt lists them under `reused_phases`. Every changed tree
 runs both phases in full. The gated release preparer checks the receipt
-against the current clean tree rather than rerunning the gate. The measured
+against the current clean tree rather than rerunning the gate. The earlier measured
 rebased cold and warm runs took 232.14 s and 41.89 s;
 [the fast-gate result](issues/fast-clean-gate/result.md) has the phase
 breakdown. A different commit with an identical tree can reuse it (the release

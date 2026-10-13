@@ -74,32 +74,45 @@ npm run build --prefix web
 if grep -R -E 'Alder-testifixture|Deterministinen testi: daemon' web/dist/assets;then
   echo 'error: test fixture content leaked into production bundle' >&2;exit 1
 fi
-phase browser
+# Browser and Go/contracts read the same built assets but write separate outputs.
+# Keep separate logs so failures in either child are reported even when both fail.
+phase browser-and-go-contracts
 if ! $reuse_phases;then
-  OH_WEB_PREBUILT=1 npm run test:browser --prefix web
-  (cd web && OH_WEB_PREBUILT=1 npx playwright test --config playwright.lab.config.ts)
+  (
+    start=$SECONDS
+    trap 'echo "ci-local phase browser: $((SECONDS-start))s"' EXIT
+    OH_WEB_PREBUILT=1 npm run test:browser --prefix web
+    (cd web && OH_WEB_PREBUILT=1 npx playwright test --config playwright.lab.config.ts)
+  ) >"$tmp/browser.log" 2>&1 & browser_pid=$!
+  (
+    start=$SECONDS
+    trap 'echo "ci-local phase go-and-contracts: $((SECONDS-start))s"' EXIT
+    npm run build-storybook --prefix web
+    go fmt ./...
+    go vet ./...
+    go test -race ./...
+    CGO_ENABLED=0 go build -trimpath ./cmd/open-habitat
+    rm -f open-habitat
+    go generate ./internal/contracts
+    ./scripts/check-generated.sh
+    "$PYTHON" issues/define-host-contracts/validate_contracts.py
+    "$PYTHON" issues/plan-v1-implementation/validate_plan.py
+    "$PYTHON" issues/plan-v1-implementation/test_validate_plan.py
+    "$PYTHON" scripts/validate-project-view.py
+    "$PYTHON" scripts/check-licenses.py
+    "$PYTHON" scripts/test-gate-receipt.py
+    ./scripts/vm-test.sh self-test --json
+  ) >"$tmp/go-and-contracts.log" 2>&1 & go_pid=$!
+  browser_rc=0; go_rc=0
+  wait "$browser_pid" || browser_rc=$?
+  wait "$go_pid" || go_rc=$?
+  cat "$tmp/browser.log" "$tmp/go-and-contracts.log"
+  if ((browser_rc || go_rc));then
+    echo "error: browser exit=$browser_rc; Go/contracts exit=$go_rc" >&2
+    exit 1
+  fi
 else
-  echo 'ci-local phase browser: reused from passed receipt for identical committed tree' >&2
-fi
-phase go-and-contracts
-if ! $reuse_phases;then
-npm run build-storybook --prefix web
-go fmt ./...
-go vet ./...
-go test -race ./...
-CGO_ENABLED=0 go build -trimpath ./cmd/open-habitat
-rm -f open-habitat
-go generate ./internal/contracts
-./scripts/check-generated.sh
-"$PYTHON" issues/define-host-contracts/validate_contracts.py
-"$PYTHON" issues/plan-v1-implementation/validate_plan.py
-"$PYTHON" issues/plan-v1-implementation/test_validate_plan.py
-"$PYTHON" scripts/validate-project-view.py
-"$PYTHON" scripts/check-licenses.py
-"$PYTHON" scripts/test-gate-receipt.py
-./scripts/vm-test.sh self-test --json
-else
-  echo 'ci-local phase go-and-contracts: reused from passed receipt for identical committed tree' >&2
+  echo 'ci-local phase browser and go-and-contracts: reused from passed receipt for identical committed tree' >&2
 fi
 phase packaging
 ./scripts/native-fixture.sh create --output "$tmp/native-fixture"

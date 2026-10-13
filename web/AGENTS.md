@@ -78,7 +78,13 @@ marker text belongs in those checks too.
 Dependencies are pinned in the committed lockfile and installed with
 `npm ci --prefix web`; `npm install` rewrites the lock, and `scripts/ci-local.sh`
 proves the lock complete by reinstalling offline. The root `TESTING.md` gives the commands, scope and full-gate policy; the
-`scripts` block in `package.json` names the individual checks.
+`scripts` block in `package.json` names the individual checks. Use
+`./scripts/test-focused.sh --area browser --spec <name>.spec.ts` or `--tag <grep>`
+for targeted host-backed evidence; this skips Go, contracts and packaging and
+never produces a full-gate receipt. The full clean gate runs browser and
+Go/contracts checks concurrently after building shared web assets. Fresh
+per-case hosts remain in place: resetting a process-wide scenario alone would
+not isolate OAuth sessions, fake Pi leases and filesystem history.
 
 UI evidence is always a screenshot paired with a static HTML snapshot from the
 synthetic lab, saved side by side in the issue folder. Use `snapshot(page, outBase)`
