@@ -42,6 +42,7 @@ export function WorkspaceRailView({
   daemonSessions,
   expanded,
   onExpand,
+  onNewConversation,
   onFilter,
   onToggle,
   onRefresh,
@@ -71,6 +72,7 @@ export function WorkspaceRailView({
   daemonSessions: Session[];
   expanded: Record<string, boolean>;
   onExpand: (next: Record<string, boolean>) => void;
+  onNewConversation?: (workspaceId: string) => void;
   onFilter: (value: string) => void;
   onToggle: () => void;
   onRefresh: () => void;
@@ -247,6 +249,11 @@ export function WorkspaceRailView({
                   new URLSearchParams(search).get("conversation") ===
                     a.agent_id),
             }))}
+          onNewConversation={
+            onNewConversation
+              ? () => onNewConversation(w.workspace_id)
+              : undefined
+          }
           onToggle={() =>
             onExpand({
               ...expanded,

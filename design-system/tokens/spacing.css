@@ -45,3 +45,7 @@
     --ah-column-pad-inline: 14px;
   }
 }
+:root {
+  --ah-topbar-icon-size: 32px;
+  --ah-composer-max-height: 268px;
+}

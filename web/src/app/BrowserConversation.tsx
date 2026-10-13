@@ -124,7 +124,6 @@ export function BrowserConversation({
     setDetails,
     queueReturn,
     queuePanel,
-    stopConfirmation,
     section,
     focusedOnOpen,
     feed,
@@ -301,19 +300,6 @@ export function BrowserConversation({
     onSessionCreated,
     navigate,
   });
-  // The ref becomes populated after mount, but must not re-focus abort on the
-  // next live update after the user has moved focus to cancel.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ref contents are read only when confirmation state changes.
-  useEffect(() => {
-    if (confirmStop && current?.state === "accepted")
-      stopConfirmation.current?.querySelector("button")?.focus();
-  }, [confirmStop, current?.state]);
-  const closeStopConfirmation = () => {
-    setConfirmStop(false);
-    section.current
-      ?.querySelector<HTMLElement>(".ah-composer .ah-button")
-      ?.focus();
-  };
   const canSend =
     controlled &&
     archive?.archive !== "archived" &&
@@ -437,53 +423,84 @@ export function BrowserConversation({
       ) : (
         <ConversationFrame>
           <AgentHeader
-            title={title ?? "Uusi keskustelu"}
-            titleAction={
-              controlled &&
-              csrf &&
-              !statusStale &&
-              !serverUnavailable &&
-              !problem
-                ? {
-                    label: "Luo uusi otsikko",
-                    availability: { state: "enabled" },
-                    pending: titlePending,
-                    failureNotice: titleError
-                      ? "Otsikkoa ei voitu luoda"
-                      : undefined,
-                    onPress: () => {
-                      if (!id || titlePending) return;
-                      const key = titleActionKey;
-                      const version = generation.current;
-                      setTitleActionState({
-                        key,
-                        version,
-                        pending: true,
-                        error: false,
-                      });
-                      void regenerateTitle(id, csrf)
-                        .then(() => {
-                          if (generation.current !== version || !alive.current)
-                            return;
-                          setTitleActionState((previous) =>
-                            previous?.key === key
-                              ? { key, version, pending: false, error: false }
-                              : previous,
-                          );
-                        })
-                        .catch(() => {
-                          if (generation.current !== version || !alive.current)
-                            return;
-                          setTitleActionState((previous) =>
-                            previous?.key === key
-                              ? { key, version, pending: false, error: true }
-                              : previous,
-                          );
-                        });
-                    },
-                  }
-                : undefined
+            archiveControl={
+              <ArchiveControls
+                state={archive?.archive ?? "unknown"}
+                eligible={
+                  !busy &&
+                  !statusStale &&
+                  !serverUnavailable &&
+                  (current?.state === "idle" ||
+                    current?.continuation === "eligible")
+                }
+                busy={!!archiveBusy}
+                onArchive={() => {
+                  if (archive) void onArchive?.(archive, true);
+                }}
+                onRestore={() => {
+                  if (archive) void onArchive?.(archive, false);
+                }}
+              />
             }
+            title={title ?? "Uusi keskustelu"}
+            titleAction={{
+              label: "Luo uusi otsikko",
+              availability:
+                entries.length === 0
+                  ? {
+                      state: "disabled",
+                      reason: "Keskustelussa ei ole vielä nimettävää sisältöä.",
+                    }
+                  : !controlled ||
+                      !csrf ||
+                      statusStale ||
+                      serverUnavailable ||
+                      problem
+                    ? {
+                        state: "disabled",
+                        reason: "Ohjaus ei ole käytettävissä.",
+                      }
+                    : { state: "enabled" },
+              pending: titlePending,
+              failureNotice: titleError ? "Otsikkoa ei voitu luoda" : undefined,
+              onPress: () => {
+                if (
+                  !id ||
+                  !csrf ||
+                  !controlled ||
+                  entries.length === 0 ||
+                  titlePending
+                )
+                  return;
+                const key = titleActionKey;
+                const version = generation.current;
+                setTitleActionState({
+                  key,
+                  version,
+                  pending: true,
+                  error: false,
+                });
+                void regenerateTitle(id, csrf)
+                  .then(() => {
+                    if (generation.current !== version || !alive.current)
+                      return;
+                    setTitleActionState((previous) =>
+                      previous?.key === key
+                        ? { key, version, pending: false, error: false }
+                        : previous,
+                    );
+                  })
+                  .catch(() => {
+                    if (generation.current !== version || !alive.current)
+                      return;
+                    setTitleActionState((previous) =>
+                      previous?.key === key
+                        ? { key, version, pending: false, error: true }
+                        : previous,
+                    );
+                  });
+              },
+            }}
             activityLabel={
               presentation.operationLabel ?? presentation.activityLabel
             }
@@ -934,41 +951,6 @@ export function BrowserConversation({
               }}
             />
           ) : null}
-          {controlled && archive && !statusStale && !serverUnavailable ? (
-            <ArchiveControls
-              state={archive.archive ?? "unknown"}
-              eligible={
-                !busy &&
-                (current?.state === "idle" ||
-                  current?.continuation === "eligible")
-              }
-              busy={!!archiveBusy}
-              onArchive={() => void onArchive?.(archive, true)}
-              onRestore={() => void onArchive?.(archive, false)}
-            />
-          ) : null}
-          {confirmStop && !statusStale && current?.state === "accepted" ? (
-            <fieldset ref={stopConfirmation} aria-label="Vahvista keskeytys">
-              <p>
-                Keskeytetäänkö Pi:n vuoro? Jo käynnistyneiden työkalujen
-                päättymistä ei voida vahvistaa.
-              </p>
-              <Button
-                label="Kyllä, keskeytä vuoro"
-                onPress={() => void stopNow()}
-                availability={
-                  busy
-                    ? { state: "unknown", reason: "Pyyntö kesken" }
-                    : { state: "enabled" }
-                }
-              />
-              <Button
-                label="Jatka työskentelyä"
-                variant="quiet"
-                onPress={closeStopConfirmation}
-              />
-            </fieldset>
-          ) : null}
           {controlled &&
           (queueOpen ||
             !!(
@@ -1076,7 +1058,7 @@ export function BrowserConversation({
               }}
               onInterrupt={
                 current?.state === "accepted" && !statusStale
-                  ? () => setConfirmStop(true)
+                  ? () => void stopNow()
                   : undefined
               }
             />

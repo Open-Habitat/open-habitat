@@ -28,6 +28,7 @@ import { BrowserConversation } from "./BrowserConversation";
 import { ConversationJournal } from "./conversationJournal";
 import { ConversationStore } from "./conversationStore";
 import {
+  create as createConversation,
   list as listConversations,
   NotAdmitted,
   type Session,
@@ -166,6 +167,8 @@ export function App() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [logoutError, setLogoutError] = useState(false);
   const [archiveProblem, setArchiveProblem] = useState("");
+  const [railStartError, setRailStartError] = useState("");
+  const railStarting = useRef(new Set<string>());
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [logoutPrompt, setLogoutPrompt] = useState(false);
   const [settingsReturn, setSettingsReturn] = useState("/workspaces");
@@ -1136,6 +1139,36 @@ export function App() {
               daemonSessions={daemonSessions}
               expanded={expanded}
               onExpand={setExpanded}
+              onNewConversation={
+                csrf &&
+                phase === "authenticated" &&
+                snapshot.write_state !== "read_only"
+                  ? (workspaceId) => {
+                      if (railStarting.current.has(workspaceId)) return;
+                      railStarting.current.add(workspaceId);
+                      const startingIdentity = identity;
+                      setRailStartError("");
+                      void createConversation(workspaceId, csrf)
+                        .then((session) => {
+                          railStarting.current.delete(workspaceId);
+                          if (currentIdentity.current !== startingIdentity)
+                            return;
+                          setDaemonSessions((old) => [...old, session]);
+                          refresh();
+                          navigate(
+                            `/workspaces/${workspaceId}?conversation=${session.agent_id}`,
+                          );
+                        })
+                        .catch(() => {
+                          // A lost reply might still mean Pi started. Do not retry blindly.
+                          if (currentIdentity.current === startingIdentity)
+                            setRailStartError(
+                              "Keskustelun luontia ei voitu vahvistaa. Tarkista lista ennen uutta yritystä.",
+                            );
+                        });
+                    }
+                  : undefined
+              }
               onFilter={(v) => dispatch(filterChanged(v))}
               onToggle={() => setCollapsed(!collapsed)}
               onRefresh={manualRefresh}
@@ -1159,6 +1192,13 @@ export function App() {
               phase === "authentication_required" ? "ah-login-view" : "ah-state"
             }
           >
+            {railStartError ? (
+              <InlineNotice
+                title="Keskustelun luonnin tulos epävarma"
+                description={railStartError}
+                tone="warning"
+              />
+            ) : null}
             {main}
           </div>
         }

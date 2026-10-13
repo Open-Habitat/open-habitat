@@ -164,6 +164,7 @@ export function NavLink({
   statusText,
   displayStatusText,
   statusLabels,
+  compactMark,
 }: {
   label: string;
   href: string;
@@ -172,6 +173,7 @@ export function NavLink({
   statusText?: string;
   displayStatusText?: string;
   statusLabels?: string[];
+  compactMark?: boolean;
 }) {
   const statusId = useId();
   return (
@@ -189,25 +191,35 @@ export function NavLink({
           {displayStatusText !== undefined ? (
             <>
               {displayStatusText ? (
-                <span aria-hidden="true">
-                  <StatusMark
-                    label={displayStatusText}
-                    tone={
-                      displayStatusText === "Tieto vanhentunut" ||
-                      displayStatusText === "Ohjaus ei tiedossa"
-                        ? "warning"
-                        : "neutral"
-                    }
-                    kind={
-                      displayStatusText === "vain luku"
-                        ? "read-only"
-                        : displayStatusText === "Tieto vanhentunut" ||
-                            displayStatusText === "Ohjaus ei tiedossa"
-                          ? "unknown"
+                compactMark ? (
+                  <span
+                    className="ah-nav-mark"
+                    aria-hidden="true"
+                    title={activityLabelForMark(displayStatusText)}
+                  >
+                    {displayStatusText}
+                  </span>
+                ) : (
+                  <span aria-hidden="true">
+                    <StatusMark
+                      label={displayStatusText}
+                      tone={
+                        displayStatusText === "Tieto vanhentunut" ||
+                        displayStatusText === "Ohjaus ei tiedossa"
+                          ? "warning"
                           : "neutral"
-                    }
-                  />
-                </span>
+                      }
+                      kind={
+                        displayStatusText === "vain luku"
+                          ? "read-only"
+                          : displayStatusText === "Tieto vanhentunut" ||
+                              displayStatusText === "Ohjaus ei tiedossa"
+                            ? "unknown"
+                            : "neutral"
+                      }
+                    />
+                  </span>
+                )
               ) : null}
               <span className="ah-visually-hidden">{statusText}</span>
             </>
@@ -242,6 +254,19 @@ export function NavLink({
     </LinkRow>
   );
 }
+function activityLabelForMark(mark: string) {
+  return (
+    (
+      {
+        "●": "Uusi vastaus",
+        "◌": "Pi työskentelee",
+        "○": "Odottaa",
+        "✓": "Valmis",
+        "–": "Tila ei tiedossa",
+      } as Record<string, string>
+    )[mark] ?? "Tila ei tiedossa"
+  );
+}
 export interface AgentNavModel {
   agentId: string;
   href: string;
@@ -262,7 +287,6 @@ export function AgentNavItem({
   href,
   title,
   activityLabel,
-  activityShortLabel,
   controlLabel,
   attentionLabel,
   operationLabel,
@@ -281,6 +305,15 @@ export function AgentNavItem({
     presence === "absent" ? "Ei enää löydy" : null,
   ].filter(Boolean);
   const status = [activityLabel, ...statusParts].filter(Boolean).join(" · ");
+  const mark = attentionLabel
+    ? "●"
+    : /työ|käynnissä|working/i.test(activityLabel)
+      ? "◌"
+      : /odot|waiting/i.test(activityLabel)
+        ? "○"
+        : /valmis|päättynyt|finished/i.test(activityLabel)
+          ? "✓"
+          : "–";
   return (
     <li
       className="ah-agent-item"
@@ -294,18 +327,9 @@ export function AgentNavItem({
           href={href}
           label={title}
           current={selected ? "page" : false}
-          badgeText={attentionLabel}
           statusText={status || undefined}
-          statusLabels={[controlLabel, operationLabel, historyLabel].filter(
-            (text): text is string => !!text,
-          )}
-          displayStatusText={
-            stale || presence === "absent"
-              ? stale
-                ? "Tieto vanhentunut"
-                : "Ei enää löydy"
-              : activityShortLabel || activityLabel
-          }
+          displayStatusText={mark}
+          compactMark
         />
       </ListRow>
     </li>
@@ -320,6 +344,7 @@ export function WorkspaceSection({
   mutationState,
   agents,
   actions = [],
+  onNewConversation,
   onToggle,
 }: {
   workspaceId: string;
@@ -331,9 +356,19 @@ export function WorkspaceSection({
   mutationState?: string;
   agents: AgentNavModel[];
   actions?: Action[];
+  onNewConversation?: () => void;
   onToggle: () => void;
 }) {
   const summaryId = useId();
+  const [showFinished, setShowFinished] = useState(false);
+  const active = agents.filter(
+    (agent) =>
+      !/valmis|päättynyt|finished/i.test(agent.activityLabel) ||
+      agent.attentionLabel,
+  );
+  const finished = agents.filter((agent) => !active.includes(agent));
+  const expandedFinished =
+    showFinished || finished.some((agent) => agent.selected);
   return (
     <section className="ah-workspace">
       <div
@@ -355,7 +390,16 @@ export function WorkspaceSection({
             </ControlButton>
           }
           trailing={
-            mutationState ? (
+            onNewConversation ? (
+              <ControlButton
+                className="ah-workspace-add"
+                variant="quiet"
+                aria-label={`Uusi keskustelu työtilassa ${name}`}
+                onPress={onNewConversation}
+              >
+                +
+              </ControlButton>
+            ) : mutationState ? (
               <StatusMark label={mutationState} tone="warning" />
             ) : undefined
           }
@@ -380,9 +424,26 @@ export function WorkspaceSection({
         <>
           {agents.length ? (
             <ul>
-              {agents.map((agent) => (
+              {active.map((agent) => (
                 <AgentNavItem key={agent.agentId} {...agent} />
               ))}
+              {finished.length ? (
+                <li>
+                  <ControlButton
+                    className="ah-finished-toggle"
+                    variant="quiet"
+                    aria-expanded={expandedFinished}
+                    onPress={() => setShowFinished(!expandedFinished)}
+                  >
+                    Valmiit {finished.length}
+                  </ControlButton>
+                </li>
+              ) : null}
+              {expandedFinished
+                ? finished.map((agent) => (
+                    <AgentNavItem key={agent.agentId} {...agent} />
+                  ))
+                : null}
             </ul>
           ) : (
             <p className="ah-workspace-empty">Ei keskusteluja.</p>
@@ -553,6 +614,7 @@ export function AgentHeader({
   detailsExpanded,
   onToggleDetails,
   titleAction,
+  archiveControl,
 }: {
   title: string;
   titleState?: string;
@@ -565,6 +627,7 @@ export function AgentHeader({
   workspaceHref: string;
   detailsExpanded: boolean;
   onToggleDetails: () => void;
+  archiveControl?: ReactNode;
   titleAction?: {
     label: string;
     availability?: Availability;
@@ -580,16 +643,6 @@ export function AgentHeader({
       <div className="ah-agent-topline">
         <div className="ah-title-row">
           <h1 title={title}>{title}</h1>
-          {titleAction?.availability?.state === "enabled" ? (
-            <Button
-              label={titleAction.label}
-              ariaLabel={titleAction.label}
-              variant="quiet"
-              size="compact"
-              pending={titleAction.pending}
-              onPress={titleAction.onPress}
-            />
-          ) : null}
         </div>
         {visibleActivity ? (
           <StatusMark
@@ -602,13 +655,50 @@ export function AgentHeader({
         {visibleControl ? (
           <StatusMark label="Vain luku" tone="neutral" kind="read-only" />
         ) : null}
+        {titleAction ? (
+          <ControlButton
+            className="ah-topbar-icon ah-retitle"
+            variant="quiet"
+            aria-label={titleAction.label}
+            aria-description={
+              titleAction.availability && "reason" in titleAction.availability
+                ? titleAction.availability.reason
+                : undefined
+            }
+            isDisabled={
+              titleAction.availability?.state !== "enabled" ||
+              titleAction.pending
+            }
+            onPress={titleAction.onPress}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M0.5 13.5 0.61 12.87 2.12 12.64 3.84 2.86 2.41 2.63 2.52 2H8L7.89 2.63L6.37 2.86L5.63 7.11H9.81L10.56 2.86L9.13 2.63L9.24 2H14.74L14.62 2.63L13.1 2.86L11.37 12.64L12.81 12.87L12.7 13.5H7.21L7.32 12.87L8.84 12.64L9.64 8.05H5.46L4.65 12.64L6.08 12.87L5.97 13.5Z"
+              />
+              <g
+                className={titleAction.pending ? "ah-retitle-spin" : ""}
+                transform="translate(12.5 12) scale(.5)"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4" />
+              </g>
+            </svg>
+          </ControlButton>
+        ) : null}
+        {archiveControl}
         <ControlButton
-          className="ah-details-toggle"
+          className="ah-details-toggle ah-topbar-icon"
+          aria-label="Tiedot"
           aria-expanded={detailsExpanded}
           variant="quiet"
           onPress={onToggleDetails}
         >
-          Tiedot <Icon name="down" />
+          <Icon name="edges" />
         </ControlButton>
       </div>
       <LinkRow

@@ -10,13 +10,7 @@ import { ConversationFloatingAction } from "./ConversationFrame";
 import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
 import { Disclosure } from "./Overlays";
-import {
-  ActionRow,
-  Button,
-  RadioGroup,
-  TextArea,
-  TextField,
-} from "./Primitives";
+import { Button, RadioGroup, TextArea, TextField } from "./Primitives";
 import type { StatusKind } from "./Status";
 import { InlineNotice, StatusMark } from "./Status";
 import type { Availability, ProblemView, TimelineItem, Tone } from "./types";
@@ -956,7 +950,7 @@ export function Composer({
           value={value}
           onChange={onChange}
           availability={editorAvailability ?? availability}
-          hint="Enter lähettää valitulla tavalla. Shift+Enter tekee rivinvaihdon."
+          rows={1}
           onCommit={
             sendState === "pending" || sendAvailability.state !== "enabled"
               ? undefined
@@ -965,16 +959,11 @@ export function Composer({
         />
         <Button
           label="Lähetä"
+          ariaLabel="Lähetä"
+          icon="up"
           availability={sendAvailability}
           pending={sendState === "pending"}
-          onPress={
-            activity === "working"
-              ? () => {
-                  onModeChange("follow_up");
-                  onFollowUp();
-                }
-              : onSendNow
-          }
+          onPress={send}
         />
       </div>
       {sendState === "rejected" ? (
@@ -985,45 +974,42 @@ export function Composer({
         />
       ) : null}
 
-      <ActionRow
-        hint={
-          <>
-            {activity === "working"
-              ? `Ohjaa välissä (ei keskeytä työkalua) · Lähetä jonoon · Enter: ${selectedWorkingMode === "steer" ? "Ohjaa" : "Lähetä"} · Shift+Enter rivinvaihto`
-              : "Enter lähettää · Shift+Enter rivinvaihto"}
-            {onOpenQueue && (!queueKnown || queueOpen) ? (
-              <>
-                {" · "}
-                <ControlButton
-                  variant="quiet"
-                  size="compact"
-                  className="ah-queue-link"
-                  aria-expanded={queueOpen}
-                  onPress={onOpenQueue}
-                >
-                  {queueKnown ? queueSummary : "Jonon tila ei tiedossa"}
-                </ControlButton>
-              </>
-            ) : null}
-          </>
-        }
-      >
-        {onInterrupt ? (
-          <Button label="Keskeytä" variant="quiet" onPress={onInterrupt} />
-        ) : null}
-        {activity === "working" ? (
-          <Button
-            label="Ohjaa"
-            variant="secondary"
-            availability={sendAvailability}
-            pending={sendState === "pending"}
-            onPress={() => {
-              onModeChange("steer");
-              onSteer();
-            }}
-          />
-        ) : null}
-      </ActionRow>
+      {onOpenQueue && (!queueKnown || queueOpen) ? (
+        <ControlButton
+          className="ah-queue-link"
+          variant="quiet"
+          aria-expanded={queueOpen}
+          onPress={onOpenQueue}
+        >
+          {queueKnown ? queueSummary : "Jonon tila ei tiedossa"}
+        </ControlButton>
+      ) : null}
+      {activity === "working" ? (
+        <div className="ah-composer-work-row">
+          {onInterrupt ? (
+            <Button label="Keskeytä" variant="quiet" onPress={onInterrupt} />
+          ) : null}
+          <fieldset
+            className="ah-composer-modes"
+            aria-label="Viestin lähetysaika"
+          >
+            <ControlButton
+              variant="quiet"
+              aria-pressed={selectedWorkingMode === "steer"}
+              onPress={() => onModeChange("steer")}
+            >
+              Ohjaa
+            </ControlButton>
+            <ControlButton
+              variant="quiet"
+              aria-pressed={selectedWorkingMode === "follow_up"}
+              onPress={() => onModeChange("follow_up")}
+            >
+              Työn jälkeen
+            </ControlButton>
+          </fieldset>
+        </div>
+      ) : null}
     </section>
   );
 }

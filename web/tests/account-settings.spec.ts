@@ -1,5 +1,5 @@
-import { expect, type Page, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
+import { expect, type Page, test } from "./worker-host";
 
 const host = hostOrigin;
 test.use({
@@ -239,9 +239,7 @@ test("@account-settings compact phone drawer and settings preserve status and ra
     /Tila ei tiedossa · Vain luku/,
   );
   await expect(firstAgent).toContainText("Vain luku");
-  await expect(firstAgent.locator(".ah-status-read-only")).toHaveText(
-    "Vain luku",
-  );
+  await expect(firstAgent.locator(".ah-nav-mark")).toBeVisible();
   await page.getByRole("button", { name: /Tilivalikko/ }).click();
   await page.getByRole("menuitem", { name: "Asetukset" }).click();
   await expect(page.getByRole("radiogroup", { name: "Teema" })).toBeVisible();

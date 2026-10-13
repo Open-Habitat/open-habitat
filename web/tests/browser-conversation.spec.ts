@@ -1,5 +1,5 @@
-import { expect, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
+import { expect, test } from "./worker-host";
 
 const host = hostOrigin;
 // The host shares both controller capacity and the OAuth peer admission bucket
@@ -25,7 +25,7 @@ async function expectPhoneComposerWithinViewport(
   const bounds = await composer.evaluate((element) => {
     const box = element.getBoundingClientRect();
     const actions = element
-      .querySelector(".ah-action-row-buttons")
+      .querySelector(".ah-composer-entry")
       ?.getBoundingClientRect();
     return {
       top: box.top,
@@ -70,9 +70,7 @@ test("@browser-conversation new controller stays calm and shares settled state w
     .locator(".ah-agent-item")
     .filter({ hasText: "Uusi keskustelu" });
   await expect(header.getByText("Odottaa")).toBeVisible();
-  await expect(
-    row.locator(".ah-status").filter({ hasText: "odottaa" }),
-  ).toBeVisible();
+  await expect(row.locator(".ah-nav-mark")).toBeVisible();
   await expect(page.getByText("Historia ei luettavissa")).toHaveCount(0);
   await expect(page.getByText("Tilannekatsaus")).toHaveCount(0);
   await page
@@ -93,9 +91,7 @@ test("@browser-conversation new controller stays calm and shares settled state w
   await expect(
     page.locator(".ah-agent-header").getByText("Odottaa"),
   ).toBeVisible();
-  await expect(
-    row.locator(".ah-status").filter({ hasText: "odottaa" }),
-  ).toBeVisible();
+  await expect(row.locator(".ah-nav-mark")).toBeVisible();
   await expect(page.getByText("Tilannekatsaus")).toBeVisible();
   await expect(page.getByText("Historia ei luettavissa")).toHaveCount(0);
 });
@@ -121,6 +117,23 @@ test("@browser-conversation saved assistant turn exposes bash command and folds 
   await expect(
     turn.getByText("Selvä. Kysyit:", { exact: false }),
   ).toBeVisible();
+});
+
+test("@browser-conversation workspace plus starts one native conversation", async ({
+  page,
+}) => {
+  await open(page);
+  const plus = page.getByRole("button", {
+    name: /Uusi keskustelu työtilassa ordinary-dir/,
+  });
+  await plus.click();
+  await expect(page).toHaveURL(/conversation=pi/);
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Luo uusi otsikko" }),
+  ).toBeDisabled();
 });
 
 test("@browser-conversation create, send once, reconnect and old history stays read-only", async ({
@@ -617,55 +630,18 @@ test("@browser-conversation footer and floating latest stay clear at phone width
       }),
     )
     .toBe(true);
-  const footer = page.locator(".ah-action-row");
-  await expect(
-    footer.getByText("Enter lähettää", { exact: false }),
-  ).toBeVisible();
-  // The send button belongs to the editor; the hint follows it in the footer.
-  expect(
-    await page.locator(".ah-composer").evaluate((composer) => {
-      const hint = composer
-        .querySelector(".ah-composer-hint")
-        ?.getBoundingClientRect();
-      const button = composer
-        .querySelector(".ah-composer-entry button")
-        ?.getBoundingClientRect();
-      return Boolean(
-        hint &&
-          button &&
-          button.bottom <= hint.top &&
-          hint.bottom <= innerHeight,
-      );
-    }),
-  ).toBe(true);
-  // A 390 × 844 physical viewport at 125% browser zoom has about
-  // 312 × 675 CSS pixels. The hint may wrap within its column but cannot
-  // move outside the composer or displace the jump into the composer.
+  await expect(page.locator(".ah-composer-hint")).toHaveCount(0);
   await page.setViewportSize({ width: 312, height: 675 });
   await expect
     .poll(() =>
-      page.locator(".ah-conversation-frame").evaluate((frame) => {
-        const jump = frame
-          .querySelector(".ah-floating-controls button")
-          ?.getBoundingClientRect();
-        const composer = frame
-          .querySelector(":scope > .ah-composer")
-          ?.getBoundingClientRect();
-        const hint = frame
-          .querySelector(".ah-composer-hint")
-          ?.getBoundingClientRect();
-        const send = frame
-          .querySelector(".ah-composer-entry button")
-          ?.getBoundingClientRect();
+      page.locator(".ah-composer-entry").evaluate((node) => {
+        const field = node.querySelector("textarea")?.getBoundingClientRect();
+        const send = node.querySelector("button")?.getBoundingClientRect();
         return Boolean(
-          jump &&
-            composer &&
-            hint &&
+          field &&
             send &&
-            jump.bottom <= composer.top &&
-            composer.bottom <= innerHeight &&
-            send.bottom <= hint.top &&
-            hint.bottom <= innerHeight,
+            send.left >= field.right &&
+            send.bottom <= innerHeight,
         );
       }),
     )
@@ -699,25 +675,17 @@ test("@browser-conversation resized editor keeps actions reachable", async ({
   await open(page);
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   const composer = page.locator(".ah-conversation-frame > .ah-composer");
-  await expect
-    .poll(() =>
-      composer.evaluate((node) => {
-        const editor = node.querySelector("textarea");
-        if (editor) editor.style.height = "600px";
-        return node.scrollHeight > node.clientHeight;
-      }),
-    )
-    .toBe(true);
+  const editor = composer.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await editor.fill(
+    Array.from({ length: 20 }, (_, i) => `rivi ${i}`).join("\n"),
+  );
+  expect(
+    await editor.evaluate((node) => node.scrollHeight > node.clientHeight),
+  ).toBe(true);
+  const send = composer.getByRole("button", { name: "Lähetä" });
+  await expect(send).toBeInViewport();
   expect(
     await composer.evaluate((node) => node.getBoundingClientRect().bottom),
-  ).toBeLessThanOrEqual(720);
-  await composer.evaluate((node) => {
-    node.scrollTop = node.scrollHeight;
-  });
-  expect(
-    await composer
-      .locator(".ah-action-row-buttons")
-      .evaluate((node) => node.getBoundingClientRect().bottom),
   ).toBeLessThanOrEqual(720);
 });
 
@@ -895,6 +863,7 @@ test("@browser-conversation steer, follow-up and clear return only removed texts
   await expect(editor).toHaveValue("");
   await editor.fill("ohjaus kaksi");
   await page.getByRole("button", { name: "Ohjaa" }).click();
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(editor).toHaveValue("");
   const queuePanel = page.getByRole("region", { name: "Työskentelyjono" });
   await expect(queuePanel).toBeVisible();

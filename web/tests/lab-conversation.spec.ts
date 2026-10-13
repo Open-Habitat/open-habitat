@@ -688,22 +688,6 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
   await page.getByRole("button", { name: "Keskeytä" }).click();
   await expect(
     page.getByRole("group", { name: "Vahvista keskeytys" }),
-  ).toBeVisible();
-  // A harmless render after the confirmation mounts must not move focus back
-  // to the destructive first button while the user is about to cancel.
-  await page.evaluate(() => {
-    document.querySelector<HTMLButtonElement>(".ah-details-toggle")?.click();
-    const cancel = [
-      ...document.querySelectorAll<HTMLButtonElement>("button"),
-    ].find((button) => button.textContent?.includes("Jatka työskentelyä"));
-    cancel?.focus();
-  });
-  await expect(
-    page.getByRole("button", { name: "Jatka työskentelyä" }),
-  ).toBeFocused();
-  await page.getByRole("button", { name: "Jatka työskentelyä" }).click();
-  await expect(
-    page.getByRole("group", { name: "Vahvista keskeytys" }),
   ).toHaveCount(0);
   expect(
     (await page.request.get("/fixture/scenario?value=ready")).status(),

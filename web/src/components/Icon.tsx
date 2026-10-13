@@ -2,6 +2,7 @@ import type { ReactNode, SVGProps } from "react";
 
 export type IconName =
   | "menu"
+  | "up"
   | "home"
   | "back"
   | "forward"
@@ -24,6 +25,7 @@ export function Icon({
 }: { name: IconName } & Omit<SVGProps<SVGSVGElement>, "children">) {
   const paths: Record<IconName, ReactNode> = {
     menu: <path d="M4 6h16M4 12h16M4 18h16" />,
+    up: <path d="M12 20V4m-6 6 6-6 6 6" />,
     home: (
       <>
         <path d="m3 11 9-8 9 8" />

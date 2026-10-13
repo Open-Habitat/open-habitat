@@ -89,9 +89,8 @@ describe("conversation v2 presentation", () => {
     expect(view.queryByRole("radiogroup")).toBeNull();
     fireEvent.click(view.getByRole("button", { name: "Ohjaa" }));
     expect(mode).toHaveBeenCalledWith("steer");
-    expect(steer).toHaveBeenCalledTimes(1);
+    expect(steer).not.toHaveBeenCalled();
     fireEvent.click(view.getByRole("button", { name: "Lähetä" }));
-    expect(mode).toHaveBeenCalledWith("follow_up");
     expect(followUp).toHaveBeenCalledTimes(1);
   });
   it("leaves an unknown or open queue reachable while a known empty queue stays quiet", () => {
@@ -154,9 +153,10 @@ describe("conversation v2 presentation", () => {
         onModeChange={noop}
       />,
     );
-    expect(view.getByText(/Enter: Ohjaa/)).toBeTruthy();
-    const editor = view.getByRole("textbox", { name: "Viesti Pi:lle" });
-    expect(editor.getAttribute("aria-describedby")).toBeTruthy();
+    expect(
+      view.getByRole("button", { name: "Ohjaa", pressed: true }),
+    ).toBeTruthy();
+    expect(view.getByRole("textbox", { name: "Viesti Pi:lle" })).toBeTruthy();
   });
   it("keeps an empty ready composer quiet and prevents an empty send", () => {
     const submit = vi.fn();
