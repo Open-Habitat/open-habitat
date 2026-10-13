@@ -1,6 +1,16 @@
 #!/usr/bin/env node
+import { readFile, writeFile } from "node:fs/promises";
 // Paired screenshots and inert HTML from synthetic lab, never a live host.
 import { openLab, origin, snapshot } from "./session.mjs";
+
+async function capture(page, base, options) {
+  await snapshot(page, base, options);
+  const html = `${base}.html`;
+  await writeFile(
+    html,
+    (await readFile(html, "utf8")).replace(/[ \t]+$/gm, ""),
+  );
+}
 
 const slug = process.argv[2];
 if (
@@ -53,7 +63,7 @@ try {
         .waitFor({ timeout: 30000 });
       await page.reload();
       await page.locator(".ah-bash-card").first().waitFor();
-      await snapshot(page, `issues/${slug}/lab-${width}-${theme}-bash`, {
+      await capture(page, `issues/${slug}/lab-${width}-${theme}-bash`, {
         region:
           slug === "bash-card-fidelity"
             ? ".ah-tool-row:has(.ah-bash-card)"
@@ -64,7 +74,7 @@ try {
           ["header", ".ah-agent-header"],
           ["composer", ".ah-composer"],
         ]) {
-          await snapshot(page, `issues/${slug}/lab-${width}-${theme}-${name}`, {
+          await capture(page, `issues/${slug}/lab-${width}-${theme}-${name}`, {
             region,
           });
         }
@@ -79,7 +89,7 @@ try {
           theme,
         );
         await page.locator(".ah-message-reply").first().waitFor();
-        await snapshot(page, `issues/${slug}/lab-${width}-${theme}-reply`, {
+        await capture(page, `issues/${slug}/lab-${width}-${theme}-reply`, {
           region: ".ah-message-reply",
         });
         await fixture("scenario?value=pi-recap");
@@ -97,7 +107,7 @@ try {
         await page
           .getByText("luotu automaattisesti")
           .waitFor({ timeout: 30000 });
-        await snapshot(page, `issues/${slug}/lab-${width}-${theme}-recap`, {
+        await capture(page, `issues/${slug}/lab-${width}-${theme}-recap`, {
           region: ".ah-recap",
         });
         await fixture("scenario?value=pi-visual-hold");
@@ -116,7 +126,7 @@ try {
         await page.getByRole("button", { name: "Lähetä", exact: true }).click();
         await page.getByRole("button", { name: "Ohjaa" }).waitFor();
         await workingEditor.fill("Pitkä luonnos. ".repeat(50));
-        await snapshot(page, `issues/${slug}/lab-${width}-${theme}-working`, {
+        await capture(page, `issues/${slug}/lab-${width}-${theme}-working`, {
           region: ".ah-composer",
         });
         await fixture("scenario?value=ready");
@@ -136,7 +146,7 @@ try {
           .locator(".ah-agent-turn")
           .nth(2)
           .evaluate((el) => el.setAttribute("data-lab-capture", "groups"));
-        await snapshot(page, `issues/${slug}/lab-${width}-${theme}-groups`, {
+        await capture(page, `issues/${slug}/lab-${width}-${theme}-groups`, {
           region: "[data-lab-capture=groups]",
         });
         await fixture("scenario?value=pi-visual-hold");
@@ -156,7 +166,7 @@ try {
           .locator(".ah-live-tool-row")
           .first()
           .waitFor({ timeout: 15000 });
-        await snapshot(page, `issues/${slug}/lab-${width}-${theme}-live`, {
+        await capture(page, `issues/${slug}/lab-${width}-${theme}-live`, {
           region: ".ah-agent-turn:has(.ah-live-tool-row)",
         });
         await fixture("scenario?value=ready");
@@ -187,7 +197,7 @@ try {
           .locator('.ah-tool-row[data-state="failed"]')
           .first()
           .waitFor();
-        await snapshot(page, `issues/${slug}/lab-${width}-${theme}-failed`, {
+        await capture(page, `issues/${slug}/lab-${width}-${theme}-failed`, {
           region: '.ah-agent-turn:has(.ah-tool-row[data-state="failed"])',
         });
       }
