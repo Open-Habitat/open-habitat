@@ -3,7 +3,7 @@ created: 2026-10-13
 updated: 2026-10-13
 type: bug
 reporter: jari
-status: open
+status: in-progress
 priority: normal
 related: ['@bash-card-fidelity', '@agent-turn-layout']
 preparation: ready
