@@ -70,6 +70,7 @@ export function BrowserConversation({
   onArchive,
   onClose,
   archiveBusy,
+  closeBusy,
   archiveAwaitingSnapshot,
   id,
   title,
@@ -88,6 +89,7 @@ export function BrowserConversation({
   onArchive?: (agent: Agent, archived: boolean) => Promise<boolean>;
   onClose?: (agent: Agent) => Promise<void>;
   archiveBusy?: boolean;
+  closeBusy?: boolean;
   archiveAwaitingSnapshot?: boolean;
   id?: string;
   title?: string;
@@ -481,7 +483,7 @@ export function BrowserConversation({
                   (current?.state === "idle" ||
                     current?.continuation === "eligible")
                 }
-                busy={!!archiveBusy}
+                busy={!!archiveBusy || !!closeBusy}
                 onArchive={() => {
                   if (archive) void onArchive?.(archive, true);
                 }}

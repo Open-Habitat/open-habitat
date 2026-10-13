@@ -1006,6 +1006,7 @@ export function App() {
             onArchive={changeArchive}
             onClose={closeConversation}
             archiveBusy={archiveBusy}
+            closeBusy={pendingClose.size > 0}
             archiveAwaitingSnapshot={pendingArchive.has(
               new URLSearchParams(location.search).get("conversation") ?? "",
             )}
