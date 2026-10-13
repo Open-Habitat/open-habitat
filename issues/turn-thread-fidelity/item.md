@@ -3,13 +3,15 @@ created: 2026-10-13
 updated: 2026-10-13
 type: bug
 reporter: jari
-status: in-progress
+status: fixed
 priority: normal
 related: ['@bash-card-fidelity', '@agent-turn-layout']
 preparation: ready
 lane: web
 lane_seq: 10
 collision: [web/]
+closed: 2026-10-13
+closed_by: claude
 ---
 
 # Agent turn thread lacks block marks and breaks after the first group
