@@ -49,8 +49,9 @@ the current composer is too loose (agreed in the agent-turn prototype rounds,
 
 Jari chose the icon row ("Ikonirivi") over an overflow menu and a details
 panel: new title, archive and details are always-visible icon buttons at the
-right of the top bar, after the state. The new-title icon is an "H" with the
-two-arrow refresh in its corner; while a title is generated only the arrows
+right of the top bar, after the state. The new-title icon is a serif italic "H"
+(outline from Liberation Serif Bold Italic, OFL) with the two-arrow refresh
+circle in its corner; while a title is generated only the arrows
 turn. Details open in a popover; archive keeps its confirmation dialog and,
 while Pi works, stays visible but disabled with its reason. On a phone the
 state shows as its mark only and the sidebar opens as a drawer from ☰. The

@@ -124,5 +124,5 @@ button.secondary:focus-visible, button.primary:focus-visible { outline: 2px soli
 @media (prefers-reduced-motion: reduce) { .rail { transition: none; } }
 
 /* Retitle pending: only the corner arrows turn, the H stays still. */
-.spin-badge svg path:not(:first-child) { transform-origin: 17.5px 17px; animation: ui-spin .9s linear infinite; }
-@media (prefers-reduced-motion: reduce) { .spin-badge svg path { animation: none; } }
+.spin-badge svg .badge { transform-origin: 18.5px 18px; animation: ui-spin .9s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .spin-badge svg .badge { animation: none; } }

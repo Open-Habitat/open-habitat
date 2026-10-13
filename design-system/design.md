@@ -99,7 +99,7 @@ konflikti- ja tuntematon-tilan esimerkit ovat `ConversationStates.stories.tsx`:s
 
 Keskustelun yläpalkissa ovat otsikko, työtilan nimi, olennainen tila ja
 oikeassa reunassa keskustelun toiminnot näkyvinä ikoneina: uusi otsikko
-(H, jonka nurkassa päivityksen kiertävät nuolet), arkistointi ja tiedot.
+(kursiivi serif-H, jonka nurkassa päivityksen kaksi kiertävää nuolta), arkistointi ja tiedot.
 Tiedot avautuvat ponnahdusikkunaan, ja arkistointi vahvistetaan
 valintaikkunassa. Uutta otsikkoa ei tarjota tyhjälle keskustelulle, ja
 arkistoinnin esto kertoo syynsä. Puhelimessa tila näkyy pelkkänä merkkinä
