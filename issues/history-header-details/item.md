@@ -2,11 +2,13 @@
 created: 2026-10-13
 updated: 2026-10-13
 type: bug
-status: in-progress
+status: fixed
 priority: normal
 lane: web
 lane_seq: 19
 collision: [web/]
+closed: 2026-10-13
+closed_by: claude
 ---
 
 # Old-conversation top bar and info popover details
