@@ -3,26 +3,61 @@ import { IconButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { OutputBox } from "./OutputBox";
 
-type Args = {
-  path?: string;
-  content?: string;
-  oldText?: string;
-  newText?: string;
-};
+type Edit = { oldText: string; newText: string };
+type Args = { path?: string; content?: string; edits?: Edit[] };
+function isEdit(value: unknown): value is Edit {
+  return (
+    !!value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    typeof (value as Record<string, unknown>).oldText === "string" &&
+    typeof (value as Record<string, unknown>).newText === "string"
+  );
+}
 function argsOf(raw: string): Args | null {
   try {
     const value: unknown = JSON.parse(raw);
     if (!value || typeof value !== "object" || Array.isArray(value))
       return null;
     const o = value as Record<string, unknown>;
-    return Object.fromEntries(
-      ["path", "content", "oldText", "newText"]
-        .filter((k) => typeof o[k] === "string")
-        .map((k) => [k, o[k]]),
-    ) as Args;
+    let edits: unknown = o.edits;
+    if (typeof edits === "string") {
+      try {
+        edits = JSON.parse(edits);
+      } catch {
+        edits = undefined;
+      }
+    }
+    const valid = Array.isArray(edits)
+      ? edits.filter(isEdit)
+      : isEdit(edits)
+        ? [edits]
+        : [];
+    if (isEdit(o)) valid.push({ oldText: o.oldText, newText: o.newText });
+    return {
+      path:
+        typeof (value as Record<string, unknown>).path === "string"
+          ? (value as Record<string, string>).path
+          : undefined,
+      content:
+        typeof (value as Record<string, unknown>).content === "string"
+          ? (value as Record<string, string>).content
+          : undefined,
+      edits: valid.length ? valid : undefined,
+    };
   } catch {
     return null;
   }
+}
+// Pi read's continuation note is not a line of the file.
+function readContent(output: string): { text: string; note?: string } {
+  const match =
+    /\n\n(\[(?:Showing lines \d+-\d+ of \d+[^\n]*|\d+ more lines in file\. [^\n]*)\])$/.exec(
+      output,
+    );
+  return match
+    ? { text: output.slice(0, match.index), note: match[1] }
+    : { text: output };
 }
 const lineCount = (text: string) => text.replace(/\n$/, "").split("\n").length;
 const language = (path?: string) =>
@@ -96,16 +131,34 @@ function nativeDiff(text?: string): [" " | "-" | "+", string][] | null {
     .filter((line) => /^[ +-]/.test(line) && !/^(--- |\+\+\+ )/.test(line))
     .map((line) => [line[0] as " " | "-" | "+", line.slice(1)]);
 }
+function editOps(
+  args: Args | null,
+  output?: string,
+): [" " | "-" | "+", string][] | null {
+  const native = nativeDiff(output);
+  if (native) return native;
+  if (!args?.edits?.length) return null;
+  return args.edits.flatMap((edit, i) => [
+    ...(i ? [[" ", `⋯ muutos ${i + 1}`] as [" ", string]] : []),
+    ...editLines(edit.oldText, edit.newText),
+  ]);
+}
 export function FileToolCard({
   name,
   argumentsText,
   output,
+  failed = false,
 }: {
   name: string;
   argumentsText: string;
   output?: string;
+  failed?: boolean;
 }) {
   const args = useMemo(() => argsOf(argumentsText), [argumentsText]);
+  if (failed)
+    return (
+      <pre className="ah-file-error">{output ?? "Työkalu epäonnistui."}</pre>
+    );
   if (
     (!args &&
       !(
@@ -120,14 +173,24 @@ export function FileToolCard({
         {output ? <pre>{output}</pre> : null}
       </>
     );
-  if (name === "read")
-    return output !== undefined ? (
-      <OutputBox
-        text={output}
-        language={language(args?.path)}
-        copyLabel="Kopioi sisältö"
-      />
-    ) : null;
+  if (name === "read" && output !== undefined) {
+    const { text, note } = readContent(output);
+    return (
+      <>
+        <OutputBox
+          text={text}
+          language={language(args?.path)}
+          copyLabel="Kopioi sisältö"
+        />
+        {note ? (
+          <p role="note" className="ah-pi-boundary">
+            {note}
+          </p>
+        ) : null}
+      </>
+    );
+  }
+  if (name === "read") return null;
   if (name === "write")
     return args?.content !== undefined ? (
       <OutputBox
@@ -136,11 +199,7 @@ export function FileToolCard({
         copyLabel="Kopioi sisältö"
       />
     ) : null;
-  const ops =
-    nativeDiff(output) ??
-    (args?.oldText !== undefined && args?.newText !== undefined
-      ? editLines(args.oldText, args.newText)
-      : null);
+  const ops = editOps(args, output);
   if (!ops) return <pre>{argumentsText}</pre>;
   const rows: { type: " " | "-" | "+"; text: string; pair?: string }[] = [];
   for (let i = 0; i < ops.length; ) {
@@ -159,6 +218,7 @@ export function FileToolCard({
       rows.push({ type: "+", text, pair: removed[n] });
     });
   }
+  const replacements = args?.edits?.map((e) => e.newText);
   return (
     <div className="ah-file-diff-box">
       <pre className="ah-file-diff">
@@ -189,10 +249,16 @@ export function FileToolCard({
       <IconButton
         variant="quiet"
         aria-label={
-          args?.newText !== undefined ? "Kopioi uusi teksti" : "Kopioi diffi"
+          replacements?.length
+            ? replacements.length === 1
+              ? "Kopioi uusi teksti"
+              : "Kopioi uudet tekstit"
+            : "Kopioi diffi"
         }
         onPress={() =>
-          void navigator.clipboard.writeText(args?.newText ?? output ?? "")
+          void navigator.clipboard.writeText(
+            replacements?.join("\n\n") ?? output ?? "",
+          )
         }
       >
         <Icon name="copy" />
@@ -200,7 +266,13 @@ export function FileToolCard({
     </div>
   );
 }
-export function fileStat(name: string, argumentsText: string, output?: string) {
+export function fileStat(
+  name: string,
+  argumentsText: string,
+  output?: string,
+  failed = false,
+) {
+  if (failed) return undefined;
   const args = argsOf(argumentsText);
   if (
     !args &&
@@ -211,15 +283,11 @@ export function fileStat(name: string, argumentsText: string, output?: string) {
   )
     return undefined;
   if (name === "read" && output !== undefined)
-    return `${lineCount(output)} riviä`;
+    return `${lineCount(readContent(output).text)} riviä`;
   if (name === "write" && args?.content !== undefined)
     return `uusi · ${lineCount(args?.content)} riviä`;
   if (name === "edit") {
-    const ops =
-      nativeDiff(output) ??
-      (args?.oldText !== undefined && args?.newText !== undefined
-        ? editLines(args.oldText, args.newText)
-        : null);
+    const ops = editOps(args, output);
     if (!ops) return undefined;
     return `+${ops.filter((x) => x[0] === "+").length} −${ops.filter((x) => x[0] === "-").length}`;
   }

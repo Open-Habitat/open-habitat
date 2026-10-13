@@ -335,11 +335,15 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 		}{
 			{"read", "file-read", map[string]any{"path": "example.ts"}, "const greeting = 'hei';\nconst count = 2;"},
 			{"write", "file-write", map[string]any{"path": "new.ts", "content": "export const count = 3;\n"}, "Wrote 1 line"},
-			{"edit", "file-edit", map[string]any{"path": "example.ts", "oldText": "const count = 2;", "newText": "const count = 3;"}, "--- a/example.ts\n+++ b/example.ts\n@@ -1 +1 @@\n-const count = 2;\n+const count = 3;"},
+			{"edit", "file-edit", map[string]any{"path": "example.ts", "edits": []map[string]any{{"oldText": "const count = 2;", "newText": "const count = 3;"}}}, "Successfully replaced 1 block(s) in example.ts."},
 		} {
 			s.append(message("assistant", []map[string]any{{"type": "toolCall", "name": call.name, "id": call.id, "arguments": call.args}}, nil))
 			s.append(message("toolResult", []map[string]any{{"type": "text", "text": call.result}}, map[string]any{"toolCallId": call.id, "toolName": call.name}))
 		}
+	}
+	if strings.Contains(prompt, "virhekortti") {
+		s.append(message("assistant", []map[string]any{{"type": "toolCall", "name": "read", "id": "failed-read", "arguments": map[string]any{"path": "missing.ts"}}}, nil))
+		s.append(message("toolResult", []map[string]any{{"type": "text", "text": "ENOENT: missing.ts"}}, map[string]any{"toolCallId": "failed-read", "toolName": "read", "isError": true}))
 	}
 	if strings.Contains(prompt, "työkalut") {
 		s.append(message("assistant", []map[string]any{{"type": "toolCall", "name": "edit", "id": "call_2"}}, nil))

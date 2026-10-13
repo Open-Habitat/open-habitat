@@ -513,7 +513,12 @@ function FileUse({
           return undefined;
         }
       })()}
-      stat={fileStat(block.tool_name ?? "", argumentsText, output)}
+      stat={fileStat(
+        block.tool_name ?? "",
+        argumentsText,
+        output,
+        !!result?.is_error || live?.state === "failed",
+      )}
       state={
         result?.is_error
           ? "failed"
@@ -528,6 +533,7 @@ function FileUse({
         name={block.tool_name ?? ""}
         argumentsText={argumentsText}
         output={output}
+        failed={!!result?.is_error || live?.state === "failed"}
       />
       {error ? (
         <PiBoundary>Tiedoston tietoja ei saatu. Päivitä historia.</PiBoundary>

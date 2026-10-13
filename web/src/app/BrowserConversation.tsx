@@ -756,6 +756,7 @@ export function BrowserConversation({
                                         item.name ?? "",
                                         item.arguments ?? "",
                                         item.output,
+                                        item.state === "failed",
                                       )}
                                       initiallyExpanded={item.name === "bash"}
                                       expansion={
@@ -793,6 +794,7 @@ export function BrowserConversation({
                                           name={item.name ?? ""}
                                           argumentsText={item.arguments ?? ""}
                                           output={item.output}
+                                          failed={item.state === "failed"}
                                         />
                                       ) : item.arguments ? (
                                         <pre>{item.arguments}</pre>
