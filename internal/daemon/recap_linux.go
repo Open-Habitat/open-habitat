@@ -135,6 +135,119 @@ func latestNativeRecap(path string, uid int, id, cwd string) (recapData, string,
 	return recap, latest, true
 }
 
+// The daemon, not browser focus, observes native work. Called with c.mu held.
+func recapIdle(s *conversation) bool {
+	return s.state == "idle" || (s.state == "rejected" && s.settled)
+}
+
+func (c *ConversationController) pauseRecap(s *conversation) {
+	s.recapActivity++
+	if s.recapTimer != nil {
+		s.recapTimer.Stop()
+		s.recapTimer = nil
+	}
+}
+
+func (c *ConversationController) noteRecapActivity(s *conversation) {
+	c.pauseRecap(s)
+	s.recapLastActivity = time.Now()
+	if s.recapping {
+		s.recapReschedule = true
+	} else if s.settled && recapIdle(s) {
+		c.scheduleAutomaticRecap(s)
+	}
+}
+
+// Called after a verified native settlement, with c.mu held. One timer per
+// controlled session survives tab disconnects; its epoch fences later work.
+func (c *ConversationController) scheduleAutomaticRecap(s *conversation) {
+	if c.closed || s.dead || s.recapping || !recapIdle(s) {
+		return
+	}
+	s.recapReschedule = false
+	delay := c.recapIdleDelay
+	if delay == 0 {
+		delay = 3*time.Minute + time.Millisecond
+	}
+	// A rejected browser command did not produce a native message. Continue
+	// counting from the last real activity rather than restarting the interval.
+	if !s.recapLastActivity.IsZero() {
+		delay = max(0, delay-time.Since(s.recapLastActivity))
+	}
+	epoch := s.recapActivity
+	if s.recapTimer != nil {
+		s.recapTimer.Stop()
+	}
+	s.recapTimer = time.AfterFunc(delay, func() {
+		c.mu.Lock()
+		if s.recapping && s.recapActivity == epoch {
+			s.recapReschedule = true
+		}
+		if c.closed || c.sessions[s.id] != s || s.dead || !recapIdle(s) || !s.settled || s.recapping || s.rpc.overflow.Load() || s.recapActivity != epoch {
+			c.mu.Unlock()
+			return
+		}
+		s.recapping = true
+		c.mu.Unlock()
+		_ = c.runRecap(s, "automatic", epoch)
+		c.mu.Lock()
+		s.recapping = false
+		if s.recapReschedule && recapIdle(s) && s.settled {
+			s.recapReschedule = false
+			c.scheduleAutomaticRecap(s)
+		}
+		c.mu.Unlock()
+	})
+}
+
+func (c *ConversationController) runRecap(s *conversation, trigger string, epoch uint64) bool {
+	if c.recapGenerator != nil {
+		return c.recapGenerator(s, trigger, epoch)
+	}
+	return c.generateRecap(s, trigger, epoch)
+}
+
+// The native branch and latest message are authoritative. The RPC child and
+// extension both decline duplicates; this gate prevents parallel model calls.
+func (c *ConversationController) generateRecap(s *conversation, trigger string, epoch uint64) bool {
+	before, latest, ok := c.nativeRecap(s)
+	if !ok || latest == "" {
+		return false
+	}
+	if before.Through == latest {
+		return true
+	}
+	c.mu.Lock()
+	valid := !c.closed && c.sessions[s.id] == s && !s.dead && recapIdle(s) && s.recapActivity == epoch && (trigger != "automatic" || s.recapAttemptedThrough != latest)
+	if valid && trigger == "automatic" {
+		s.recapAttemptedThrough = latest
+	}
+	c.mu.Unlock()
+	if !valid {
+		return false
+	}
+	commands, err := s.rpc.requestQueue("get_commands", "", 4*time.Second)
+	if err != nil || !commands.Accepted || !commands.RecapCommand {
+		return false
+	}
+	c.mu.Lock()
+	valid = !c.closed && c.sessions[s.id] == s && !s.dead && recapIdle(s) && s.recapActivity == epoch
+	c.mu.Unlock()
+	if !valid {
+		return false
+	}
+	command := "/oh-conversation-recap"
+	if trigger == "automatic" {
+		command += " automatic"
+	}
+	accepted, err := s.rpc.request("prompt", command, 25*time.Second)
+	if err != nil || !accepted {
+		return false
+	}
+	after, _, ok := c.nativeRecap(s)
+	return ok && after.Through == latest && after.GeneratedAt > 0
+}
+
 func (c *ConversationController) requestRecap(w http.ResponseWriter, r *http.Request, id string) {
 	if r.ContentLength != 0 || len(r.TransferEncoding) != 0 {
 		snapshotError(w, 400, "invalid_request")
@@ -147,40 +260,25 @@ func (c *ConversationController) requestRecap(w http.ResponseWriter, r *http.Req
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}
-	if c.closed || s.dead || s.recapping || s.state != "idle" || s.rpc.overflow.Load() {
+	if c.closed || s.dead || s.recapping || !recapIdle(s) || s.rpc.overflow.Load() {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}
 	s.recapping = true
+	epoch := s.recapActivity
 	c.mu.Unlock()
-	// A disconnected tab cannot cancel the native model call. A concurrent tab
-	// gets a conflict; subsequent calls observe the persisted entry and are free.
+	// A disconnected tab cannot cancel this native model call. Other tabs see
+	// the in-flight guard and can read the persisted entry after it completes.
 	done := make(chan bool, 1)
 	go func() {
-		success := func() bool {
-			before, latest, ok := c.nativeRecap(s)
-			if !ok || latest == "" {
-				return false
-			}
-			if before.Through == latest {
-				return true
-			}
-			commands, err := s.rpc.requestQueue("get_commands", "", 4*time.Second)
-			if err != nil || !commands.Accepted || !commands.RecapCommand {
-				return false
-			}
-			accepted, err := s.rpc.request("prompt", "/oh-conversation-recap", 25*time.Second)
-			if err != nil || !accepted {
-				return false
-			}
-			after, _, ok := c.nativeRecap(s)
-			return ok && after.Through == latest && after.GeneratedAt > 0
-		}()
-		// Completion is not observable until the in-flight guard is cleared.
-		// Otherwise an immediate retry can spuriously conflict after HTTP 200.
+		success := c.runRecap(s, "manual", epoch)
 		c.mu.Lock()
 		s.recapping = false
+		if s.recapReschedule && recapIdle(s) && s.settled {
+			s.recapReschedule = false
+			c.scheduleAutomaticRecap(s)
+		}
 		c.mu.Unlock()
 		done <- success
 	}()

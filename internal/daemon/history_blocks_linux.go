@@ -17,11 +17,12 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 				Next        string `json:"next"`
 				Through     string `json:"through"`
 				GeneratedAt int64  `json:"generatedAt"`
+				Trigger     string `json:"trigger"`
 			} `json:"data"`
 		}
 		if json.Unmarshal(e.Raw, &custom) == nil && custom.CustomType == "conversation-recap" &&
 			custom.Data.Recap != "" && len(custom.Data.Recap) <= 1280 && len(custom.Data.Next) <= 640 &&
-			custom.Data.GeneratedAt > 0 {
+			custom.Data.GeneratedAt > 0 && custom.Data.GeneratedAt <= 8640000000000000 {
 			if custom.Data.Through == "" && e.ParentID != nil {
 				custom.Data.Through = *e.ParentID
 			}
@@ -30,7 +31,11 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 			}
 			out.Kind = "recap"
 			out.Content = historyContent{MediaType: "text/plain", Text: "", Complete: true}
-			out.Recap = &recapData{Recap: custom.Data.Recap, Next: custom.Data.Next, Through: custom.Data.Through, GeneratedAt: custom.Data.GeneratedAt}
+			trigger := custom.Data.Trigger
+			if trigger != "automatic" {
+				trigger = "manual"
+			}
+			out.Recap = &recapData{Recap: custom.Data.Recap, Next: custom.Data.Next, Through: custom.Data.Through, GeneratedAt: custom.Data.GeneratedAt, Trigger: trigger}
 			return
 		}
 		return

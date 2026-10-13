@@ -33,6 +33,9 @@ export function ArchiveControls({
         className="ah-topbar-icon"
         variant="quiet"
         aria-label={state === "archived" ? "Palauta näkyviin" : "Arkistoi"}
+        title={
+          reason || (state === "archived" ? "Palauta näkyviin" : "Arkistoi")
+        }
         aria-description={reason || undefined}
         isDisabled={Boolean(reason)}
         onPress={() => (state === "archived" ? onRestore() : setConfirm(true))}

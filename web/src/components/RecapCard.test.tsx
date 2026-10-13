@@ -13,6 +13,7 @@ const base = {
   error: false,
   unavailable: false,
   onRequest: vi.fn(),
+  now: recap.generated_at + 10 * 60000,
 };
 describe("native conversation recap", () => {
   it("keeps the suggestion separate from transcript and marks a newer turn stale", () => {
@@ -21,10 +22,11 @@ describe("native conversation recap", () => {
       view.getByRole("complementary", { name: "Keskustelun yhteenveto" })
         .textContent,
     ).toContain("Työ etenee.");
-    expect(
-      view.getByText(/Seuraavaksi voisi/).parentElement?.textContent,
-    ).toContain("Tarkista testit");
-    expect(view.getByText(/Vanha – uusia viestejä/)).toBeTruthy();
+    expect(view.getByText(/Seuraavaksi/).parentElement?.textContent).toContain(
+      "Tarkista testit",
+    );
+    expect(view.getByText(/uusia viestejä/)).toBeTruthy();
+    expect(view.getByText("10 min sitten")).toBeTruthy();
     fireEvent.click(view.getByRole("button", { name: "Päivitä katsaus" }));
     expect(base.onRequest).toHaveBeenCalledOnce();
   });
@@ -33,7 +35,7 @@ describe("native conversation recap", () => {
       <RecapCard {...base} recap={recap} stale={false} unverifiable={true} />,
     );
     expect(view.getByText("Työ etenee.")).toBeTruthy();
-    expect(view.getByText("Ajantasaisuus ei tiedossa")).toBeTruthy();
+    expect(view.getByText("ajantasaisuus ei tiedossa")).toBeTruthy();
     expect(view.getByRole("alert").textContent).toContain("ei voitu tarkistaa");
     view.rerender(
       <RecapCard {...base} recap={recap} stale={false} uncertain={true} />,
@@ -46,7 +48,9 @@ describe("native conversation recap", () => {
     const view = render(
       <RecapCard {...base} recap={null} stale={false} pending={true} />,
     );
-    expect(view.getByRole("status").textContent).toContain("Luodaan");
+    expect(
+      view.getByRole("status", { name: "Luodaan katsausta" }),
+    ).toBeTruthy();
     view.rerender(
       <RecapCard {...base} recap={recap} stale={false} error={true} />,
     );
@@ -54,5 +58,24 @@ describe("native conversation recap", () => {
       "ei voitu luoda",
     );
     expect(view.getByText("Työ etenee.")).toBeTruthy();
+  });
+  it("dismisses and keeps a disabled refresh visible during a running turn", () => {
+    const close = vi.fn();
+    const view = render(
+      <RecapCard
+        {...base}
+        recap={{ ...recap, trigger: "automatic" }}
+        stale={false}
+        unavailable
+        unavailableReason="Odota Pi:n vuoron päättymistä."
+        onDismiss={close}
+      />,
+    );
+    expect(view.getByText("luotu automaattisesti")).toBeTruthy();
+    expect(
+      view.getByRole("button", { name: "Päivitä katsaus" }),
+    ).toHaveProperty("disabled", true);
+    fireEvent.click(view.getByRole("button", { name: "Sulje katsaus" }));
+    expect(close).toHaveBeenCalledOnce();
   });
 });

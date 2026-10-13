@@ -3,6 +3,7 @@ import type { ReactNode, SVGProps } from "react";
 export type IconName =
   | "menu"
   | "up"
+  | "info"
   | "home"
   | "back"
   | "forward"
@@ -26,6 +27,12 @@ export function Icon({
   const paths: Record<IconName, ReactNode> = {
     menu: <path d="M4 6h16M4 12h16M4 18h16" />,
     up: <path d="M12 20V4m-6 6 6-6 6 6" />,
+    info: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 11v6m0-10h.01" />
+      </>
+    ),
     home: (
       <>
         <path d="m3 11 9-8 9 8" />

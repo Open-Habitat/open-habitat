@@ -219,6 +219,8 @@ export function BrowserConversation({
   useEffect(() => {
     // A new native history entry can make a previously current recap stale.
     if (!id || !opened || !newestKey) return;
+    // A recap is a native custom entry: revision changes without a new message key.
+    void historyRevision;
     let cancelled = false;
     void readRecap(id)
       .then((result) => {
@@ -254,8 +256,36 @@ export function BrowserConversation({
     return () => {
       cancelled = true;
     };
-  }, [id, opened, recapKey, newestKey]);
+  }, [id, opened, recapKey, newestKey, historyRevision]);
   const recapCurrent = recapView?.key === recapKey ? recapView : null;
+  const [recapNow, setRecapNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setRecapNow(Date.now()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const [dismissedRecap, setDismissedRecap] = useState("");
+  const dismissalKey = `oh:recap-dismissed:${recapKey}`;
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === dismissalKey)
+        setDismissedRecap(`${dismissalKey}:${event.newValue ?? ""}`);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [dismissalKey]);
+  const recapFingerprint = recapCurrent?.recap
+    ? `${recapCurrent.recap.through}:${recapCurrent.recap.generated_at}`
+    : "";
+  let storedDismissal = "";
+  try {
+    storedDismissal = localStorage.getItem(dismissalKey) ?? "";
+  } catch {
+    /* Browser storage can be denied. */
+  }
+  const recapDismissed =
+    !!recapFingerprint &&
+    (dismissedRecap === `${dismissalKey}:${recapFingerprint}` ||
+      storedDismissal === recapFingerprint);
   const recapBusy = recapAction?.key === recapKey && recapAction.pending;
   const recapError = recapAction?.key === recapKey && recapAction.error;
   const recapUncertain = recapAction?.key === recapKey && recapAction.uncertain;
@@ -536,115 +566,6 @@ export function BrowserConversation({
               } else captureAnchor();
             }}
           >
-            {(entries.length > 0 ||
-              recapCurrent?.recap ||
-              recapBusy ||
-              recapError ||
-              recapUncertain) && (
-              <RecapCard
-                recap={recapCurrent?.recap ?? null}
-                stale={
-                  !!recapCurrent?.recap &&
-                  (recapCurrent.recap.through !== recapCurrent.latest ||
-                    (controlled &&
-                      current?.state !== "idle" &&
-                      current?.state !== "rejected"))
-                }
-                pending={!!recapBusy}
-                error={!!recapError}
-                uncertain={!!recapUncertain}
-                unverifiable={!!recapCurrent?.unavailable}
-                unavailable={
-                  !controlled ||
-                  !csrf ||
-                  statusStale ||
-                  serverUnavailable ||
-                  !!problem ||
-                  current?.state !== "idle" ||
-                  !!recapCurrent?.unavailable
-                }
-                unavailableReason={
-                  current?.state !== "idle"
-                    ? "Odota Pi:n vuoron päättymistä."
-                    : undefined
-                }
-                onRequest={
-                  controlled && csrf && id
-                    ? () => {
-                        if (recapBusy) return;
-                        const key = recapKey;
-                        setRecapAction({
-                          key,
-                          pending: true,
-                          error: false,
-                          uncertain: false,
-                        });
-                        void requestRecap(id, csrf)
-                          .then(async () => {
-                            const result = await readRecap(id);
-                            if (!alive.current || key !== `${identity}/${id}`)
-                              return;
-                            setRecapView({
-                              key,
-                              recap: result.recap,
-                              latest: result.latest_message,
-                              unavailable: false,
-                            });
-                            setRecapAction({
-                              key,
-                              pending: false,
-                              error: false,
-                              uncertain: false,
-                            });
-                          })
-                          .catch(async (failure: unknown) => {
-                            // A lost POST reply does not mean Pi failed: check its
-                            // native entry before reporting an unknown result.
-                            try {
-                              const result = await readRecap(id);
-                              if (
-                                result.recap?.through === result.latest_message
-                              ) {
-                                if (
-                                  alive.current &&
-                                  key === `${identity}/${id}`
-                                ) {
-                                  setRecapView({
-                                    key,
-                                    recap: result.recap,
-                                    latest: result.latest_message,
-                                    unavailable: false,
-                                  });
-                                  setRecapAction({
-                                    key,
-                                    pending: false,
-                                    error: false,
-                                    uncertain: false,
-                                  });
-                                }
-                                return;
-                              }
-                            } catch {
-                              /* Native read may also be unavailable. */
-                            }
-                            if (alive.current && key === `${identity}/${id}`)
-                              setRecapAction({
-                                key,
-                                pending: false,
-                                error:
-                                  failure instanceof Error &&
-                                  failure.message === "recap generation failed",
-                                uncertain: !(
-                                  failure instanceof Error &&
-                                  failure.message === "recap generation failed"
-                                ),
-                              });
-                          });
-                      }
-                    : undefined
-                }
-              />
-            )}
             <UnpresentedEvents events={events} />
             <ConversationTimeline
               state={
@@ -978,6 +899,131 @@ export function BrowserConversation({
             />
           ) : null}
           <div className="ah-conversation-notices">{notices}</div>
+          {!recapDismissed &&
+            (recapCurrent?.recap ||
+              recapBusy ||
+              recapError ||
+              recapUncertain) && (
+              <RecapCard
+                recap={recapCurrent?.recap ?? null}
+                now={recapNow}
+                stale={
+                  !!recapCurrent?.recap &&
+                  (recapCurrent.recap.through !== recapCurrent.latest ||
+                    (controlled &&
+                      current?.state !== "idle" &&
+                      current?.state !== "rejected"))
+                }
+                pending={!!recapBusy}
+                onDismiss={
+                  recapFingerprint
+                    ? () => {
+                        setDismissedRecap(
+                          `${dismissalKey}:${recapFingerprint}`,
+                        );
+                        try {
+                          localStorage.setItem(dismissalKey, recapFingerprint);
+                        } catch {
+                          /* Keep it dismissed in this tab. */
+                        }
+                      }
+                    : undefined
+                }
+                error={!!recapError}
+                uncertain={!!recapUncertain}
+                unverifiable={!!recapCurrent?.unavailable}
+                unavailable={
+                  !controlled ||
+                  !csrf ||
+                  statusStale ||
+                  serverUnavailable ||
+                  !!problem ||
+                  (current?.state !== "idle" &&
+                    current?.state !== "rejected") ||
+                  !!recapCurrent?.unavailable
+                }
+                unavailableReason={
+                  current?.state !== "idle" && current?.state !== "rejected"
+                    ? "Odota Pi:n vuoron päättymistä."
+                    : undefined
+                }
+                onRequest={
+                  controlled && csrf && id
+                    ? () => {
+                        if (recapBusy) return;
+                        const key = recapKey;
+                        setRecapAction({
+                          key,
+                          pending: true,
+                          error: false,
+                          uncertain: false,
+                        });
+                        void requestRecap(id, csrf)
+                          .then(async () => {
+                            const result = await readRecap(id);
+                            if (!alive.current || key !== `${identity}/${id}`)
+                              return;
+                            setRecapView({
+                              key,
+                              recap: result.recap,
+                              latest: result.latest_message,
+                              unavailable: false,
+                            });
+                            setRecapAction({
+                              key,
+                              pending: false,
+                              error: false,
+                              uncertain: false,
+                            });
+                          })
+                          .catch(async (failure: unknown) => {
+                            // A lost POST reply does not mean Pi failed: check its
+                            // native entry before reporting an unknown result.
+                            try {
+                              const result = await readRecap(id);
+                              if (
+                                result.recap?.through === result.latest_message
+                              ) {
+                                if (
+                                  alive.current &&
+                                  key === `${identity}/${id}`
+                                ) {
+                                  setRecapView({
+                                    key,
+                                    recap: result.recap,
+                                    latest: result.latest_message,
+                                    unavailable: false,
+                                  });
+                                  setRecapAction({
+                                    key,
+                                    pending: false,
+                                    error: false,
+                                    uncertain: false,
+                                  });
+                                }
+                                return;
+                              }
+                            } catch {
+                              /* Native read may also be unavailable. */
+                            }
+                            if (alive.current && key === `${identity}/${id}`)
+                              setRecapAction({
+                                key,
+                                pending: false,
+                                error:
+                                  failure instanceof Error &&
+                                  failure.message === "recap generation failed",
+                                uncertain: !(
+                                  failure instanceof Error &&
+                                  failure.message === "recap generation failed"
+                                ),
+                              });
+                          });
+                      }
+                    : undefined
+                }
+              />
+            )}
           {controlled &&
           !statusStale &&
           (continuation || current?.state === "uncertain") ? (

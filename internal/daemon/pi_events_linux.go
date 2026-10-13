@@ -166,6 +166,10 @@ func (c *ConversationController) drain(s *conversation) {
 			Type string `json:"type"`
 		}
 		_ = json.Unmarshal(e, &frame)
+		switch frame.Type {
+		case "message_start", "message_update", "message_end", "tool_execution_start", "tool_execution_update", "tool_execution_end", "bash_execution_update", "queue_update", "turn_start", "agent_start":
+			c.noteRecapActivity(s)
+		}
 		raw := e
 		if len(e) > 8192 {
 			e, _ = json.Marshal(map[string]any{"type": frame.Type, "truncated": true})
@@ -353,8 +357,14 @@ func (c *ConversationController) drain(s *conversation) {
 					c.journal.appendEvent("turn.settled", "pi:"+s.id, s.settlement)
 				}
 			}
-			if c.sessions[s.id] == s && !c.closed && s.turnGeneration == turn && c.journal != nil {
-				c.journal.activity("pi:"+s.id, "idle")
+			if c.sessions[s.id] == s && !c.closed && s.turnGeneration == turn {
+				if c.journal != nil {
+					c.journal.activity("pi:"+s.id, "idle")
+				}
+				if key != "" && s.state == "idle" {
+					s.recapLastActivity = time.Now()
+					c.scheduleAutomaticRecap(s)
+				}
 			}
 			c.mu.Unlock()
 		}

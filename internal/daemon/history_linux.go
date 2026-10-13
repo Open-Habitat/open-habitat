@@ -55,6 +55,7 @@ type recapData struct {
 	Next        string `json:"next"`
 	Through     string `json:"through"`
 	GeneratedAt int64  `json:"generated_at"`
+	Trigger     string `json:"trigger,omitempty"`
 }
 
 type historyEntry struct {

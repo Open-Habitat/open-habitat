@@ -2818,3 +2818,110 @@ h1[tabindex="-1"]:focus {
   min-height: 26px;
   padding: 0;
 }
+/* Recap is a dismissible card adjacent to the editor, outside the transcript scroll. */
+.ah-conversation-frame > .ah-recap {
+  flex: none;
+  width: min(
+    calc(100% - 2 * var(--ah-column-pad-inline)),
+    var(--ah-conversation-width)
+  );
+  max-height: min(38vh, 280px);
+  overflow: auto;
+  margin: var(--ah-s2) auto 0;
+  padding: var(--ah-s2) var(--ah-s3) var(--ah-s3);
+  background: var(--ah-surface);
+}
+.ah-recap-heading {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  min-height: 28px;
+  gap: var(--ah-s2);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Recap-specific geometry follows the shared view rules. */
+.ah-recap-heading strong {
+  font-size: var(--ah-size-meta);
+}
+.ah-recap-heading time,
+.ah-recap-auto {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-recap-stale {
+  border: 1px dashed var(--ah-line-strong);
+  border-radius: var(--ah-r-pill);
+  padding: 1px var(--ah-s2);
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+.ah-recap-grow {
+  flex: 1;
+}
+.ah-recap-heading .ah-recap-icon[data-ah-primitive="button"] {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: var(--ah-s1);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Recap-specific geometry follows the shared view rules. */
+.ah-recap-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.ah-recap .ah-recap-next strong {
+  margin-right: var(--ah-s2);
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ah-recap-skeleton {
+  display: grid;
+  gap: var(--ah-s2);
+  padding: var(--ah-s2) 0;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Recap-specific geometry follows the shared view rules. */
+.ah-recap-skeleton span {
+  height: 10px;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-sunken);
+  animation: ah-recap-loading 1.2s ease-in-out infinite;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Recap-specific geometry follows the shared view rules. */
+.ah-recap-skeleton span:last-child {
+  width: 55%;
+}
+@keyframes ah-recap-loading {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-recap-skeleton span {
+    animation: none;
+  }
+}
+.ah-agent-controls .ah-composer-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--ah-s2);
+}
+.ah-agent-controls .ah-composer-entry textarea {
+  field-sizing: content;
+  min-height: 44px;
+  max-height: var(--ah-composer-max-height);
+  overflow-y: auto;
+  resize: none;
+}
+.ah-agent-controls .ah-composer-entry > [data-ah-primitive="button"] {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: var(--ah-s2);
+  border-radius: 50%;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Generic agent preview matches conversation controls. */
+.ah-agent-controls .ah-composer-entry svg {
+  width: 18px;
+  height: 18px;
+}

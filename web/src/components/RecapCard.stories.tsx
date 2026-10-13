@@ -24,7 +24,23 @@ export const Current: Story = {
     onRequest: () => {},
   },
 };
-export const Stale: Story = { args: { ...Current.args, stale: true } };
+export const Automatic: Story = {
+  args: {
+    ...Current.args,
+    recap: { ...recap, trigger: "automatic" },
+    onDismiss: () => {},
+  },
+};
+export const Stale: Story = {
+  args: { ...Current.args, stale: true, onDismiss: () => {} },
+};
+export const Working: Story = {
+  args: {
+    ...Automatic.args,
+    unavailable: true,
+    unavailableReason: "Odota Pi:n vuoron päättymistä.",
+  },
+};
 export const Generating: Story = {
   args: { ...Current.args, recap: null, pending: true },
 };

@@ -279,6 +279,8 @@ export interface AgentNavModel {
   historyLabel?: string;
   relativeTime?: string;
   selected?: boolean;
+  priority?: number; // caller ranks native state; navigation only presents it
+  finished?: boolean;
   depth?: number;
   presence?: "present" | "absent";
   stale?: boolean;
@@ -361,12 +363,10 @@ export function WorkspaceSection({
 }) {
   const summaryId = useId();
   const [showFinished, setShowFinished] = useState(false);
-  const active = agents.filter(
-    (agent) =>
-      !/valmis|päättynyt|finished/i.test(agent.activityLabel) ||
-      agent.attentionLabel,
-  );
-  const finished = agents.filter((agent) => !active.includes(agent));
+  const active = agents
+    .filter((agent) => !agent.finished)
+    .sort((a, b) => (a.priority ?? 4) - (b.priority ?? 4));
+  const finished = agents.filter((agent) => agent.finished);
   const expandedFinished =
     showFinished || finished.some((agent) => agent.selected);
   return (
@@ -660,6 +660,11 @@ export function AgentHeader({
             className="ah-topbar-icon ah-retitle"
             variant="quiet"
             aria-label={titleAction.label}
+            title={
+              titleAction.availability && "reason" in titleAction.availability
+                ? titleAction.availability.reason
+                : titleAction.label
+            }
             aria-description={
               titleAction.availability && "reason" in titleAction.availability
                 ? titleAction.availability.reason
@@ -694,11 +699,12 @@ export function AgentHeader({
         <ControlButton
           className="ah-details-toggle ah-topbar-icon"
           aria-label="Tiedot"
+          title="Tiedot"
           aria-expanded={detailsExpanded}
           variant="quiet"
           onPress={onToggleDetails}
         >
-          <Icon name="edges" />
+          <Icon name="info" />
         </ControlButton>
       </div>
       <LinkRow

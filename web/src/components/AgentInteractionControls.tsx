@@ -79,20 +79,24 @@ export function AgentInteractionControls({
 
   return (
     <section aria-label="Agentin ohjaus" className="ah-agent-controls">
-      <TextArea
-        label="Viesti Pi:lle"
-        value={draft}
-        onChange={onDraftChange}
-        hint="Enter lähettää, Shift+Enter tekee rivinvaihdon. Luonnos säilyy, kunnes lähetys on kuitattu."
-        onCommit={sendControl.state === "enabled" ? send : undefined}
-      />
-      <div className="ah-actions">
+      <div className="ah-composer-entry">
+        <TextArea
+          label="Viesti Pi:lle"
+          value={draft}
+          onChange={onDraftChange}
+          rows={1}
+          onCommit={sendControl.state === "enabled" ? send : undefined}
+        />
         <Button
           label="Lähetä"
+          ariaLabel="Lähetä"
+          icon="up"
           availability={sendControl}
           pending={sendResult === "pending"}
           onPress={send}
         />
+      </div>
+      <div className="ah-actions">
         <Button
           label="Keskeytä vuoro"
           variant="secondary"

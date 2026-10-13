@@ -71,7 +71,8 @@
                   "recap": {"type": "string", "maxLength": 1280},
                   "next": {"type": "string", "maxLength": 640},
                   "through": {"type": "string", "minLength": 1, "maxLength": 128},
-                  "generated_at": {"type": "integer", "minimum": 1}
+                  "generated_at": {"type": "integer", "minimum": 1, "maximum": 8640000000000000},
+                  "trigger": {"type": "string", "enum": ["manual", "automatic"]}
                 }
               },
               "blocks": {

@@ -222,8 +222,22 @@ export function WorkspaceRailView({
                   pendingQuestion:
                     metadata.statuses.get(a.agent_id)?.pending_question !=
                       null && !metadata.staleStatuses.has(a.agent_id),
+                  intentionallyClosed:
+                    phase !== "stale" && a.process === "confirmed_exited",
                 });
+                const isNew = managed && a.history === "missing";
+                const attention = metadata.attention.get(a.agent_id) === "new";
                 return {
+                  finished: presentation.activity === "closed" && !attention,
+                  priority: isNew
+                    ? 0
+                    : attention
+                      ? 1
+                      : presentation.activity === "working"
+                        ? 2
+                        : presentation.activity === "waiting"
+                          ? 3
+                          : 4,
                   activityLabel: presentation.activityLabel,
                   activityShortLabel: presentation.activityShortLabel,
                   controlLabel: presentation.controlLabel,

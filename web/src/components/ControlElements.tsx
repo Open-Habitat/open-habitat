@@ -31,8 +31,10 @@ export function ControlButton({
   size = "normal",
   presentation,
   className,
+  title,
   ...props
 }: AriaButtonProps & {
+  title?: string;
   variant?: ControlVariant;
   size?: "compact" | "normal";
   presentation?: "icon" | "account" | "back" | "floating" | "messageIcon";
@@ -41,6 +43,7 @@ export function ControlButton({
   return (
     <AriaButton
       {...props}
+      {...(title ? { title } : {})}
       data-ah-primitive="button"
       className={`${styles.button} ${variants[variant]} ${size === "compact" ? styles.compact : ""} ${presentation ? styles[presentation] : ""} ah-button ah-button-${variant} ah-button-${size} ${className ?? ""}`}
     />

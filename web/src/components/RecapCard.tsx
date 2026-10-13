@@ -1,6 +1,15 @@
 import type { Recap } from "../app/conversations";
-import { Button } from "./Primitives";
-import { StatusMark } from "./Status";
+import { ControlButton } from "./ControlElements";
+import { Icon } from "./Icon";
+
+export function relativeRecapAge(timestamp: number, now: number): string {
+  const minutes = Math.max(0, Math.floor((now - timestamp) / 60000));
+  if (minutes < 1) return "juuri nyt";
+  if (minutes < 60) return `${minutes} min sitten`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} t sitten`;
+  return `${Math.floor(hours / 24)} pv sitten`;
+}
 
 export function RecapCard({
   recap,
@@ -12,6 +21,8 @@ export function RecapCard({
   unavailable,
   unavailableReason,
   onRequest,
+  onDismiss,
+  now = Date.now(),
 }: {
   recap: Recap | null;
   stale: boolean;
@@ -22,59 +33,78 @@ export function RecapCard({
   unavailable: boolean;
   unavailableReason?: string;
   onRequest?: () => void;
+  onDismiss?: () => void;
+  now?: number;
 }) {
-  const age = recap ? new Date(recap.generated_at).toLocaleString() : "";
+  const reason = unavailable
+    ? (unavailableReason ?? "Yhteys tai ohjaus ei ole käytettävissä.")
+    : pending
+      ? "Katsausta luodaan."
+      : "";
   return (
     <aside className="ah-recap" aria-label="Keskustelun yhteenveto">
       <div className="ah-recap-heading">
         <strong>Tilannekatsaus</strong>
         {recap ? (
-          <StatusMark
-            label={
-              unverifiable
-                ? "Ajantasaisuus ei tiedossa"
-                : stale
-                  ? "Vanha – uusia viestejä"
-                  : `Luotu ${age}`
-            }
-            tone={unverifiable || stale ? "warning" : "neutral"}
-          />
+          <time dateTime={new Date(recap.generated_at).toISOString()}>
+            {relativeRecapAge(recap.generated_at, now)}
+          </time>
+        ) : null}
+        {stale ? <span className="ah-recap-stale">uusia viestejä</span> : null}
+        {unverifiable ? (
+          <span className="ah-recap-stale">ajantasaisuus ei tiedossa</span>
+        ) : null}
+        {recap?.trigger === "automatic" ? (
+          <span className="ah-recap-auto">luotu automaattisesti</span>
+        ) : null}
+        <span className="ah-recap-grow" />
+        {onRequest ? (
+          <span title={reason || (recap ? "Päivitä katsaus" : "Luo katsaus")}>
+            <ControlButton
+              className="ah-recap-icon"
+              variant="quiet"
+              aria-label={recap ? "Päivitä katsaus" : "Luo katsaus"}
+              aria-description={reason || undefined}
+              isDisabled={!!reason}
+              onPress={onRequest}
+            >
+              <Icon name="refresh" />
+            </ControlButton>
+          </span>
+        ) : null}
+        {onDismiss ? (
+          <ControlButton
+            className="ah-recap-icon"
+            variant="quiet"
+            aria-label="Sulje katsaus"
+            onPress={onDismiss}
+          >
+            <Icon name="cross" />
+          </ControlButton>
         ) : null}
       </div>
-      {recap ? (
+      {pending ? (
+        <div
+          className="ah-recap-skeleton"
+          role="status"
+          aria-label="Luodaan katsausta"
+        >
+          <span />
+          <span />
+          <span />
+        </div>
+      ) : recap ? (
         <>
           <p>{recap.recap}</p>
           {recap.next ? (
             <p className="ah-recap-next">
-              <strong>Seuraavaksi voisi:</strong> {recap.next}
+              <strong>Seuraavaksi</strong> {recap.next}
             </p>
           ) : null}
         </>
       ) : (
         <p className="ah-recap-empty">Pyydä lyhyt katsaus ennen kuin jatkat.</p>
       )}
-      <div className="ah-recap-actions">
-        {onRequest ? (
-          <Button
-            label={recap ? "Päivitä katsaus" : "Luo katsaus"}
-            variant="secondary"
-            pending={pending}
-            availability={
-              unavailable || pending
-                ? {
-                    state: "unknown",
-                    reason: unavailable
-                      ? (unavailableReason ??
-                        "Yhteys tai ohjaus ei ole käytettävissä.")
-                      : "Katsausta luodaan.",
-                  }
-                : { state: "enabled" }
-            }
-            onPress={onRequest}
-          />
-        ) : null}
-        {pending ? <span role="status">Luodaan katsaus…</span> : null}
-      </div>
       {error || uncertain || unverifiable ? (
         <p className="ah-inline-error" role="alert">
           {unverifiable

@@ -182,6 +182,7 @@ export type Recap = {
   next: string;
   through: string;
   generated_at: number;
+  trigger?: "manual" | "automatic";
 };
 export async function readRecap(
   id: string,

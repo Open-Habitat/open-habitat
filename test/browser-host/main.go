@@ -568,6 +568,13 @@ esac
 						return
 					}
 					scenario.Store(name)
+					for _, current := range conversationHandlers {
+						if name == "pi-recap" {
+							current.Load().(*daemon.ConversationController).FixtureSetRecapIdleDelay(600 * time.Millisecond)
+						} else {
+							current.Load().(*daemon.ConversationController).FixtureSetRecapIdleDelay(0)
+						}
+					}
 					if name == "pi-onboarding" || name == "pi-blocked" {
 						// An isolated onboarding case starts a new synthetic daemon
 						// attempt and device. A previous browser may have left a native

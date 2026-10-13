@@ -40,7 +40,7 @@ export default function (pi) {
   let pending = false;
   pi.registerCommand('oh-conversation-recap', {
     description: 'Save a brief recap outside the agent context',
-    handler: async (_args, ctx) => {
+    handler: async (args, ctx) => {
       if (pending) return;
       pending = true;
       try {
@@ -73,7 +73,7 @@ export default function (pi) {
         const current = ctx.sessionManager.getBranch();
         const latest = [...current].reverse().find(e => e.type === 'message' && ['user', 'assistant'].includes(e.message?.role));
         if (latest?.id !== lastMessage.id || current.some(e => e.type === 'custom' && e.customType === TYPE && e.data?.through === lastMessage.id)) return;
-        pi.appendEntry(TYPE, { recap, next: clean(value.next, 160), through: lastMessage.id, completedTurnCount: completedTurns(current), generatedAt: Date.now(), trigger: 'manual' });
+        pi.appendEntry(TYPE, { recap, next: clean(value.next, 160), through: lastMessage.id, completedTurnCount: completedTurns(current), generatedAt: Date.now(), trigger: args?.trim() === 'automatic' ? 'automatic' : 'manual' });
       } catch { /* HTTP caller checks the native entry, not a notification. */ }
       finally { pending = false; }
     },

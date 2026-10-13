@@ -1,5 +1,5 @@
-import { expect, test } from "./lab-host";
 import { labOrigin } from "../test-ports.mjs";
+import { expect, test } from "./lab-host";
 
 test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
 
@@ -37,16 +37,28 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
         exact: false,
       }),
     ).toBeVisible({ timeout: 20000 });
+    // A browser-only draft does not reach Pi and must not defer native idle.
+    await editor.fill("Luonnos, jota ei lähetetä");
     const card = page.getByRole("complementary", {
       name: "Keskustelun yhteenveto",
     });
-    await expect(card.getByRole("button", { name: "Luo katsaus" })).toBeEnabled(
-      { timeout: 20000 },
-    );
-    await card.getByRole("button", { name: "Luo katsaus" }).click();
+    await expect(card.getByText("luotu automaattisesti")).toBeVisible({
+      timeout: 20000,
+    });
+    await expect(editor).toHaveValue("Luonnos, jota ei lähetetä");
     await expect(
       card.getByText("Synteettinen työtila tutkittiin ja vastaus valmistui."),
     ).toBeVisible();
+    expect(
+      await card.evaluate((node) => {
+        const editor = document.querySelector(".ah-composer");
+        return (
+          editor &&
+          node.getBoundingClientRect().bottom <=
+            editor.getBoundingClientRect().top
+        );
+      }),
+    ).toBe(true);
     await expect(
       page
         .getByRole("region", { name: "Keskusteluhistoria" })
@@ -58,6 +70,14 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
       await page.request.get(`/api/v1/agents/${id}/recap`)
     ).json();
     expect(native.recap.through).toBe(native.latest_message);
+    expect(native.recap.trigger).toBe("automatic");
+    const other = await page.context().newPage();
+    await other.goto(page.url());
+    await expect(
+      other
+        .getByRole("complementary", { name: "Keskustelun yhteenveto" })
+        .getByText("luotu automaattisesti"),
+    ).toBeVisible();
     await page.reload();
     await expect(
       card.getByText("Synteettinen työtila tutkittiin ja vastaus valmistui."),
@@ -67,11 +87,29 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
       await page.request.get(`/api/v1/agents/${id}/recap`)
     ).json();
     expect(again.recap.generated_at).toBe(native.recap.generated_at);
-    await editor.fill("Uusi kysymys");
+    await editor.fill("hidas toinen viesti");
     await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-    await expect(card.getByText(/Vanha – uusia viestejä/)).toBeVisible({
+    await expect(card.getByText("uusia viestejä")).toBeVisible({
       timeout: 20000,
     });
+    await expect(
+      card.getByRole("button", { name: "Päivitä katsaus" }),
+    ).toBeDisabled();
+    await card.getByRole("button", { name: "Sulje katsaus" }).click();
+    await expect(card).toHaveCount(0);
+    await expect(
+      other.getByRole("complementary", { name: "Keskustelun yhteenveto" }),
+    ).toHaveCount(0);
+    await other.close();
+    await page.reload();
+    await expect(card).toHaveCount(0);
+    await expect(card.getByText("luotu automaattisesti")).toBeVisible({
+      timeout: 30000,
+    });
+    const newer = await (
+      await page.request.get(`/api/v1/agents/${id}/recap`)
+    ).json();
+    expect(newer.recap.through).not.toBe(native.recap.through);
   } finally {
     expect(
       (await page.request.get("/fixture/scenario?value=ready")).status(),

@@ -41,8 +41,10 @@ type ConversationController struct {
 	journal        *eventJournal
 	// A short-lived per-daemon gate prevents continuation probes from presenting
 	// each other's temporary flock as an external writer. Never hold mu across I/O.
-	proofGate chan struct{}
-	recapPath string
+	proofGate      chan struct{}
+	recapPath      string
+	recapIdleDelay time.Duration                            // test seam; zero uses the production three-minute interval
+	recapGenerator func(*conversation, string, uint64) bool // synthetic test seam
 }
 
 // A continued native session retains spent browser IDs within this daemon
@@ -72,6 +74,11 @@ type conversation struct {
 	acceptedMessages                                        uint64
 	naming, automaticFirst, automaticRefined, refinementDue bool
 	recapping                                               bool
+	recapTimer                                              *time.Timer
+	recapActivity                                           uint64 // activity fence, protected by c.mu
+	recapLastActivity                                       time.Time
+	recapReschedule                                         bool
+	recapAttemptedThrough                                   string // at most one automatic request per native message
 	automaticName                                           string // last name written by this controller, never authoritative
 	firstText, thirdText, latestText                        string
 	settlement                                              map[string]string // observed_at, native_key, state; nil means unknown
@@ -123,6 +130,15 @@ func ConversationHandlerWithFixtureRuntime(ctx context.Context, cfg transport.Co
 	return c
 }
 
+// FixtureSetRecapIdleDelay compresses the daemon timer in the synthetic host only.
+func (c *ConversationController) FixtureSetRecapIdleDelay(delay time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.fixture {
+		c.recapIdleDelay = delay
+	}
+}
+
 // FixtureSnapshot exposes the same controller/journal snapshot handoff as the
 // production daemon, using only the browser-host's disposable native root.
 func (c *ConversationController) FixtureSnapshot() http.Handler {
@@ -163,6 +179,9 @@ func (c *ConversationController) shutdown() {
 	c.closed = true
 	list := make([]*conversation, 0, len(c.sessions))
 	for _, s := range c.sessions {
+		if s.recapTimer != nil {
+			s.recapTimer.Stop()
+		}
 		s.state = "uncertain"
 		if c.journal != nil {
 			c.journal.appendInvalidation("pi:" + s.id)
@@ -408,6 +427,9 @@ func (c *ConversationController) watch(s *conversation) {
 	_ = s.rpc.out.Close()
 	c.mu.Lock()
 	s.dead = true
+	if s.recapTimer != nil {
+		s.recapTimer.Stop()
+	}
 	s.state = "uncertain"
 	if s.ack == "pending" {
 		s.ack = "uncertain"
@@ -474,6 +496,7 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 		return
 	}
 	oldState := s.state
+	wasSettled := s.settled
 	s.state = "pending"
 	s.ack = "pending"
 	s.commands[body.CommandID] = true
@@ -491,6 +514,7 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 		c.receipt(s, body.CommandID, "pending")
 	}
 	s.command = body.CommandID
+	c.pauseRecap(s)
 	if c.journal != nil {
 		c.journal.appendInvalidation("pi:" + id)
 	}
@@ -513,6 +537,10 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 			s.ack = "uncertain"
 		case !accepted:
 			s.state = "rejected"
+			if kind == "send" && wasSettled {
+				s.settled = true // No new native message reached Pi.
+				c.scheduleAutomaticRecap(s)
+			}
 			if kind != "send" {
 				s.state = oldState
 				if s.settled {

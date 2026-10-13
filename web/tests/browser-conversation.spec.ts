@@ -92,7 +92,7 @@ test("@browser-conversation new controller stays calm and shares settled state w
     page.locator(".ah-agent-header").getByText("Odottaa"),
   ).toBeVisible();
   await expect(row.locator(".ah-nav-mark")).toBeVisible();
-  await expect(page.getByText("Tilannekatsaus")).toBeVisible();
+  await expect(page.getByText("Tilannekatsaus")).toHaveCount(0);
   await expect(page.getByText("Historia ei luettavissa")).toHaveCount(0);
 });
 
