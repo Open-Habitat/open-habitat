@@ -73,6 +73,19 @@ verifies the package, then transfers and switches the test guest. Its dry run
 stops before any guest transfer. It reports step/total timings and rejects a
 live run above 100 seconds. Do not hand-edit prose receipts between steps.
 
+On Alder, the opt-in `open-habitat-test-watch@N.service` watches clean, pushed
+product `main` and serially deploys the newest commit as ungated pilot `N`,
+then advances the pilot number. Start it only after the current guest release
+has been verified and the Fleetrepo fleet unit `user/alder-open-habitat-watch`
+is applied. **Stop it with** `systemctl --user stop
+open-habitat-test-watch@N.service` (replace `N` with the number used to start
+it). The watcher records a separate receipt for each superseded commit and
+stops rather than retrying an ambiguous guest failure. It uses the full
+release path even for web-only commits: the successor requires the binary's
+embedded source to agree with the selected release. Fleetrepo's
+`infra/open-habitat-test/RELEASE-UPGRADE.md` owns the full start, inspection
+and recovery instructions.
+
 Documentation-, issue- and evidence-only changes need relevant validators and
 `git diff --check`; run `issuectl doctor --json` when issue metadata changes.
 This includes `python3 scripts/validate-project-view.py` for project documentation.
