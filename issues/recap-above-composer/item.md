@@ -25,9 +25,13 @@ with a clearly visible circular two-arrow refresh icon at the right. The icon
 has an accessible label. Empty conversations have nothing to recap, as
 described in [@new-conversation-view](../new-conversation-view/item.md).
 
-A recap should be generated automatically after more than three minutes of
-inactivity: Pi has verifiably settled and no new native message has arrived
-for that interval. Generation is useful only when the conversation contains
+A recap should be generated automatically only after both Pi and the person
+have been inactive for more than three minutes: Pi has verifiably settled, and
+neither side has written a new native message (no reply, tool activity or
+message from the person, steering and queued messages included) for that
+interval (Jari 2026-10-13). Activity that never reaches Pi, such as reading or
+an unsent draft in the browser, is not visible to the daemon and does not
+count. Generation is useful only when the conversation contains
 something newer than the latest recap. It waits while a turn runs and occurs
 once per idle period; reconnects and multiple tabs should not multiply model
 calls. These conditions keep the recap relevant without interrupting work or

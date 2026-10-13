@@ -17,7 +17,7 @@ const MORE = {
 const TIMES = { c1: 'nyt', c2: '8 min', c3: '2 t', c4: '3 t', c5: 'nyt', c6: 'ma' };
 for (const w of UI.ws) {
   for (const c of w.convs) if (TIMES[c.id]) c.t = TIMES[c.id];
-  if (MORE[w.id]) w.convs.push(...MORE[w.id]);
+  if (MORE[w.id]) w.convs.push(...MORE[w.id].filter(m => !w.convs.some(c => c.id === m.id)));
 }
 const label = (c) => STATES[convState(c)] ?? ['Ei aloitettu', '<span class="st-none"></span>'];
 const cur = (c) => c.id === UI.sel ? ' aria-current="page"' : '';
@@ -49,7 +49,7 @@ document.addEventListener('click', (e) => {
 
 function show(v) {
   APP.row = v === 'v1' ? rowRight : rowLead;
-  APP.list = v === 'v3' ? listByState : convList;
+  APP.list = v === 'v3' ? listByState : convList; // the library default is now the chosen list
   return appView();
 }
 const v1 = () => show('v1');

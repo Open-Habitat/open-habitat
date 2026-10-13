@@ -75,7 +75,10 @@ Sivupalkin Etusivu vie paluunäkymään: ensin ovat uudet huomiota vaativat
 keskustelut, sitten käynnissä olevat ja viimeksi avatut. Nähty virhe säilyy
 keskustelurivillä ilman että se jää etusivun kärkeen.
 
-Työtilat ryhmittelevät keskustelut. Työtilan nimi avaa sen oman sivun;
+Työtilat ryhmittelevät keskustelut. Työtilan sisällä ensin ovat uudet,
+uuden vastauksen saaneet, työskentelevät ja odottavat keskustelut; valmiit
+taittuvat yhden "Valmiit"-rivin taakse. Keskustelu on yksi rivi: otsikko ja
+tilamerkki oikealla (Jari 13.10.2026). Työtilan nimi avaa sen oman sivun;
 erillinen nuoli avaa ja sulkee sivupalkin ryhmän. Työtilasivulla näkyvät nimi,
 polku, uuden keskustelun aloitus ja keskustelut. Sivupalkin voi kaventaa
 kaistaksi, jossa keskeiset toiminnot säilyvät saatavilla. Puhelimessa sama

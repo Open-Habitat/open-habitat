@@ -60,6 +60,15 @@ frozen draft is `design-system/drafts/Agentin vuoro.proto.html`, built from
 is `design-system/prototypes/rounds/2026-10-13-ylapalkki/`. The sidebar rows
 and the "+" in that draft are the issue's proposal, not yet reviewed.
 
+## Chosen sidebar (prototype round 2026-10-13)
+
+Jari chose "Huomio ensin" from `design-system/prototypes/rounds/2026-10-13-sivupalkki/`,
+without the time and with the state mark kept at the right: within each
+workspace, new conversations, new replies, working and waiting ones come
+first; finished conversations fold behind one "Valmiit N" line, which opens
+by itself when the selected conversation is among them. Each conversation is
+one row: ellipsized title and the state mark at the right.
+
 ## Decided for production (Jari 2026-10-13)
 
 - Send is an icon button (an up arrow), not a text button.

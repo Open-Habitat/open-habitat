@@ -23,9 +23,13 @@ const UI = {
       { id: 'c1', title: 'Status-skripti' },
       { id: 'c2', title: 'Kuvien pakkaus WebP-muotoon', st: 'attention' },
       { id: 'c3', title: 'CI-ajon aikakatkaisu, joka toistuu vain maanantaiaamuisin', st: 'done' },
+      { id: 'c7', title: 'README:n esimerkkien päivitys', st: 'done' },
+      { id: 'c8', title: 'Aikavyöhykkeen käsittely tulosteessa', st: 'done' },
     ] },
     { id: 'issuectl', path: '~/src/issuectl', open: true, convs: [
       { id: 'c4', title: 'Riippuvuusgraafin syklin tunnistus', st: 'unknown' },
+      { id: 'c10', title: 'Hakusyntaksin negaatiot', st: 'waiting' },
+      { id: 'c11', title: 'JSON-tulosteen skeema', st: 'done' },
     ] },
     { id: 'fleetrepo', path: '~/src/fleetrepo', open: false, convs: [
       { id: 'c6', title: 'Varmuuskopioiden ajastus', st: 'done' },
@@ -74,6 +78,23 @@ uiRail.querySelector('input').addEventListener('input', (e) => { UI.filter = e.t
 
 // ---------- Sidebar ----------
 function convList(w, convs) { return convs.length ? `<ul class="convs">${convs.map(c => `<li>${APP.row(c)}</li>`).join('')}</ul>` : ''; }
+// Huomio ensin (Jari 13.10., kierros rounds/2026-10-13-sivupalkki): uudet, uusi vastaus,
+// työskentelee ja odottaa ensin; valmiit taittuvat yhden "Valmiit"-rivin taakse. Merkki
+// pysyy oikealla, aikaa ei näytetä.
+const FOLDED = {};
+const STATE_ORDER = { new: -1, attention: 0, working: 1, waiting: 2, unknown: 3 };
+function convListByState(w, convs) {
+  const active = convs.filter(c => convState(c) !== 'done').sort((a, b) => (STATE_ORDER[convState(a)] ?? 4) - (STATE_ORDER[convState(b)] ?? 4));
+  const done = convs.filter(c => convState(c) === 'done');
+  const open = FOLDED[w.id] || done.some(c => c.id === UI.sel);
+  const fold = done.length ? `<li><button type="button" class="done-fold" data-fold-done="${w.id}" aria-expanded="${open}">${CHEV}<span>Valmiit</span><span class="count">${done.length}</span></button></li>${open ? done.map(c => `<li>${APP.row(c)}</li>`).join('') : ''}` : '';
+  const rows = active.map(c => `<li>${APP.row(c)}</li>`).join('');
+  return rows || fold ? `<ul class="convs">${rows}${fold}</ul>` : '';
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-fold-done]'); if (!b) return;
+  FOLDED[b.dataset.foldDone] = b.getAttribute('aria-expanded') !== 'true'; paintRail();
+});
 function convRow(c) {
   const [label, mark] = STATES[convState(c)] ?? ['Ei aloitettu', '<span class="st-none"></span>'];
   return `<a href="#" class="conv-row" data-conv="${c.id}"${c.id === UI.sel ? ' aria-current="page"' : ''}><span class="conv-title">${esc(c.title)}</span><span class="st" role="img" aria-label="${label}" title="${label}">${mark}</span></a>`;
@@ -111,7 +132,7 @@ function topActions(c) {
     + why('retitle', titleOpts) + why('archive', archOpts);
 }
 // `painted` hooks run after every repaint, e.g. a round's composer following UI.working.
-const APP = { row: convRow, list: convList, actions: topActions, painted: [] };
+const APP = { row: convRow, list: convListByState, actions: topActions, painted: [] };
 function paintTop() {
   const c = selConv();
   uiTop.innerHTML = `${titleBlock(c)}<div class="tb-right">${stateChip(c)}<span class="tb-actions">${APP.actions(c)}</span></div>`;
