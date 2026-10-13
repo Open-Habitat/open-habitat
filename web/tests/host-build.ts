@@ -1,10 +1,11 @@
 import { execFileSync } from "node:child_process";
-import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export default function buildHost() {
-  const repo = resolve("..");
+  const repo = fileURLToPath(new URL("../../", import.meta.url));
+  const web = fileURLToPath(new URL("../", import.meta.url));
   if (process.env.OH_WEB_PREBUILT !== "1")
-    execFileSync("npm", ["run", "build"], { stdio: "inherit" });
+    execFileSync("npm", ["run", "build"], { cwd: web, stdio: "inherit" });
   execFileSync(
     "go",
     ["build", "-o", ".cache/browser-host", "./test/browser-host"],

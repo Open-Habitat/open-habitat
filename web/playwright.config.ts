@@ -7,6 +7,7 @@ export default defineConfig({
   workers: 8, // Each slot starts an independent synthetic host.
   retries: 0,
   globalSetup: "./tests/host-build.ts",
+  globalTeardown: "./tests/host-teardown.ts",
   reporter: [["line"]],
   use: { baseURL: viteOrigin, trace: "retain-on-failure" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],

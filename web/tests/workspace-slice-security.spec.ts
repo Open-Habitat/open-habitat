@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
 
@@ -8,7 +9,7 @@ test.use({ baseURL: host, ignoreHTTPSErrors: true });
 test("@workspace-slice production bundle contains no fixture controls", async ({
   page,
 }) => {
-  const assets = join(process.cwd(), "dist/assets");
+  const assets = fileURLToPath(new URL("../dist/assets/", import.meta.url));
   for (const file of readdirSync(assets).filter((f) => f.endsWith(".js"))) {
     const js = readFileSync(join(assets, file), "utf8");
     expect(js).not.toContain("Test OAuth provider");

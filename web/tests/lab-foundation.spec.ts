@@ -1,4 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./lab-host";
+import { labOrigin } from "../test-ports.mjs";
+
+test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
 import inventory from "../lab/inventory.json" with { type: "json" };
 
 // Host-backed synthetic lab, not a screenshot or a live-user session.

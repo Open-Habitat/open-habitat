@@ -37,6 +37,10 @@ test("@pi-onboarding native attempt drives the production browser, never a callb
     await page.waitForTimeout(2200);
     await page.request.get("/fixture/pi-state?value=missing");
     await login(page);
+    // Establish the foreign session before starting the timed fake Pi child.
+    // Logging in after the child starts can exceed its two-second response
+    // window or change the synthetic Pi state before Bob reaches onboarding.
+    await login(foreign, "Bob");
     await expect(
       page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
     ).toBeVisible();
@@ -56,11 +60,9 @@ test("@pi-onboarding native attempt drives the production browser, never a callb
       path: testInfo.outputPath("pi-device-code.png"),
       fullPage: true,
     });
-    // The fake Pi checks this state after a two-second delay. Set it before
-    // the unrelated foreign login, whose duration can exceed that delay under
-    // a parallel, fully loaded gate.
+    // The fake Pi checks this state after a two-second delay; do not put
+    // another OAuth journey between device-code display and this switch.
     await page.request.get("/fixture/pi-state?value=usable");
-    await login(foreign, "Bob");
     await expect(foreign.getByText("ABCD-1234")).toHaveCount(0);
     expect(
       (await foreign.request.get("/api/v1/onboarding/pi/attempt")).status(),

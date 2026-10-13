@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
-clean=false;json=false
-while (($#));do case "$1" in --clean)clean=true;shift;;--json)json=true;shift;;*)echo "error: unknown argument $1" >&2;exit 1;;esac;done
+clean=false;json=false;no_reuse=false
+while (($#));do case "$1" in --clean)clean=true;shift;;--json)json=true;shift;;--no-reuse)no_reuse=true;shift;;*)echo "error: unknown argument $1" >&2;exit 1;;esac;done
 cd "$repo"
 if $clean && [[ -n $(git status --short) ]];then echo 'error: --clean requires a clean tree at entry' >&2;exit 1;fi
 # A prior complete gate on the identical committed tree is local evidence for
 # unchanged phase inputs. The full tree is the conservative input hash: no
 # narrower list can safely omit fixtures, scripts or package metadata.
 reuse_phases=false
-if $clean && python3 scripts/gate-receipt.py check >/dev/null 2>&1;then reuse_phases=true;fi
+if $clean && ! $no_reuse && python3 scripts/gate-receipt.py check >/dev/null 2>&1;then reuse_phases=true;fi
 # Build caches, npm installs and test children must not exhaust the /tmp tmpfs.
 export TMPDIR=/var/tmp
 tmp=$(mktemp -d)
@@ -123,4 +123,8 @@ if $clean;then
   if $reuse_phases;then receipt_args+=(--reused-phase browser --reused-phase go-and-contracts);fi
   python3 scripts/gate-receipt.py record "${receipt_args[@]}" >&2
 fi
-if $json;then printf '{"schema_version":1,"data":{"status":"passed","clean":%s},"warnings":[]}\n' "$clean";else echo 'CI-local gate passed';fi
+if $json;then
+  reused_json='[]'
+  if $reuse_phases;then reused_json='["browser","go-and-contracts"]';fi
+  printf '{"schema_version":1,"data":{"status":"passed","clean":%s,"reused_phases":%s},"warnings":[]}\n' "$clean" "$reused_json"
+else echo 'CI-local gate passed';fi

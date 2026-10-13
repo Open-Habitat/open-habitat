@@ -83,10 +83,13 @@ during the run; ignored build caches may remain.
 The clean gate also runs the synthetic lab create→send→answer browser test against the real controller and fake Pi; `scripts/lab.sh` provides manual exploration.
 
 Browser listeners default to lab 4175, Vite 4183 and demo 4184. The
-parallel browser suite starts an independent synthetic host per worker at
-`OH_PORT_BASE + 20 + parallelIndex` (4194–4201 by default for eight workers).
-Each host has its own scenario, clock, session and fake Pi state; tests in the
-same file can run concurrently on separate hosts. Set `OH_PORT_BASE` to a
+parallel browser suite starts a fresh synthetic host for each case at its
+worker's `OH_PORT_BASE + 20 + parallelIndex` (4194–4201 by default for eight
+workers). Lab Playwright cases use four fresh lab-mode hosts at
+`OH_PORT_BASE + 40 + parallelIndex`; manual lab remains at base + 1. A slot's
+port is reused after its previous case ends. Each host has its own scenario,
+clock, session and fake Pi state; tests in the same file can run concurrently
+on separate hosts. Set `OH_PORT_BASE` to a
 distinct value (e.g. `OH_PORT_BASE=14000 ./scripts/ci-local.sh --clean --json`)
 to run another worktree concurrently. `scripts/lab.sh start` selects a free port if its preferred lab port is busy and records it in `.cache/lab/port` for `url` and `web/lab/session.mjs`; for standalone browser checks:
 
@@ -102,7 +105,10 @@ then fails to launch; install Chromium there or point
 `PLAYWRIGHT_BROWSERS_PATH` at an existing cache such as `$HOME/.cache/ms-playwright`.
 `OH_WEB_PREBUILT=1` belongs only to the gate, which has just built those assets;
 using it standalone can test stale output. The lab inventory capture script
-still uses its single lab host and must not share that host with other captures.
+still uses its single manual lab host and must not share it with other captures.
+Use `--no-reuse` on the clean gate when rechecking an identical tree for a
+suspected flake; otherwise the browser and Go/contracts results are reused from
+the previous passed receipt. The gate JSON reports `reused_phases` explicitly.
 
 ## Component catalog and visual checks
 

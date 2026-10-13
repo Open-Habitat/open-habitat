@@ -1,4 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./lab-host";
+import { labOrigin } from "../test-ports.mjs";
+
+test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
 
 test("@lab shell opens conversations from home and keeps narrow navigation reachable", async ({
   page,

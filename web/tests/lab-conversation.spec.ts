@@ -1,4 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./lab-host";
+import { labOrigin } from "../test-ports.mjs";
+
+test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
 
 // The real synthetic controller has a bounded live-child budget. Each browser
 // journey owns a fresh disposable daemon incarnation, not a previous test's Pi.
