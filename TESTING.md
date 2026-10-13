@@ -42,7 +42,7 @@ the browser and Go/contracts phases can reuse the previous passed receipt's
 results; the new receipt lists them under `reused_phases`. Every changed tree
 runs both phases in full. The gated release preparer checks the receipt
 against the current clean tree rather than rerunning the gate. The measured
-candidate cold and warm runs took 287.63 s and 44.60 s;
+rebased cold and warm runs took 232.14 s and 41.89 s;
 [the fast-gate result](issues/fast-clean-gate/result.md) has the phase
 breakdown. A different commit with an identical tree can reuse it (the release
 still pins and embeds its own commit SHA). A change to issue evidence, docs,

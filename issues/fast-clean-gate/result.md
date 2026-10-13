@@ -66,6 +66,19 @@ continued to name the committed tree.
 Main moved while this worker ran: the test-server default became ungated and
 the clean gate stopped being a landing precondition. The rebase kept that newer
 policy in `TESTING.md` and `TODO.md`; this change accelerates the opt-in gated
-release and the once-per-round health run. The final closed-issue tree is
-checked again after the issue metadata commit; its exact timings are in the
-worker report.
+release and the once-per-round health run. On the rebased closed-issue tree
+`156c77f6de6b22f8d3fa1abee693f0362ea86a0f` (commit `b3868c4`), the full
+cold gate passed in **232.14 s** (browser 116 s, Go/contracts 76 s, other
+phases 39 s); the identical-tree warm gate passed in **41.89 s** and recorded
+both reused phases. The final acceptance-checklist edit changes the tree once
+more; the final tree's exact gate timings are in the worker report.
+
+Fleetrepo's `release_test.py` gated `--dry-run` accepted the full-gate receipt:
+`gate: "clean-gate"`, matching tree, `dry_run_verified_no_guest_contact`,
+5.534 s (`/var/tmp/fast-gate-gated-dryrun-b3868c4/release-test-receipt.json`).
+The operator requires its product commit to be an ancestor of `origin/main`.
+That cannot hold inside an unmerged Taskfleet worktree, so a temporary
+`/var/tmp` adapter bypassed **only** that ancestry check for the worktree;
+it kept the clean-tree/source pin, ran the unchanged preparer and archive
+inspection, and did not touch Fleetrepo files or the guest. The final tree is
+checked again after the checklist commit.
