@@ -3,6 +3,8 @@
 // opts.meta: 'top' | 'bottom' | 'thread'   where the author/status row lives
 // opts.fold: 'head' | 'button' | 'auto'     how the work is collapsed
 // opts.runs: 'separate' | 'merged'           consecutive threads: own head each, or one rail
+// Session markers (model, thinking level, compaction) in the history; a round draws them.
+let markerR = () => '';
 function lanka(cls, opts) {
   let i = 0; const out = [];
   const summary = (m) => { const th = m.blocks.filter(b => b.t === 'think').length, to = m.blocks.filter(b => b.t === 'tool').length; return `${th} ajatusta · ${to} työkalua`; };
@@ -20,6 +22,7 @@ function lanka(cls, opts) {
   while (k < CONVO.length) {
     const m = CONVO[k];
     if (m.kind === 'user') { out.push(userB(m)); k++; continue; }
+    if (m.kind === 'marker') { out.push(markerR(m, i++)); k++; continue; }
     // A run of consecutive threads.
     const run = []; while (k < CONVO.length && CONVO[k].kind === 'turn') run.push(CONVO[k++]);
     const rows = [];

@@ -21,7 +21,8 @@ function playLive(host, R) {
   };
   const renderChrome = () => {
     if (R.head) { headRail.innerHTML = R.headNode(state); headCell.innerHTML = R.head(state, sum()); }
-    if (R.strip) { stripRail.innerHTML = `<span class="node strip-node" aria-hidden="true"></span>`; stripCell.innerHTML = R.strip(state, sum()); }
+    // A strip that renders nothing leaves the rail (e.g. no settled summary at the end).
+    if (R.strip) { const html = R.strip(state, sum()); stripRail.hidden = stripCell.hidden = !html; stripRail.innerHTML = html ? `<span class="node strip-node" aria-hidden="true"></span>` : ''; stripCell.innerHTML = html; }
     if (R.float) {
       if (state.status === 'working') { if (!floatEl) { floatEl = document.createElement('div'); floatEl.className = 'float-bar'; floatEl.setAttribute('role', 'status'); document.body.appendChild(floatEl); } floatEl.innerHTML = R.float(state); }
       else if (floatEl) { floatEl.remove(); floatEl = null; }
