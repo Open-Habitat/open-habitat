@@ -68,9 +68,14 @@ and the "+" in that draft are the issue's proposal, not yet reviewed.
   yet. The new-title button is disabled there, not hidden.
 - The keyboard hint row under the field ("Enter lähettää · Shift+Enter
   rivinvaihto") goes away; it takes too much space.
-- A stop button for the agent's work belongs to the composer; its place and
-  the steer/after-the-turn choice are prototyped in
-  `design-system/prototypes/rounds/2026-10-13-alakerta/`.
+- Stop stops at once, without a confirmation dialog: telling the agent
+  "jatka" resumes the work.
+- The composer is the "Työkalurivi" direction of
+  `design-system/prototypes/rounds/2026-10-13-alakerta/`: a row in the
+  composer with stop at the left and, at the right, a pill choosing
+  "Ohjaa" / "Työn jälkeen" while Pi works, then the send icon. How that row
+  separates from the writing area is the riff
+  `design-system/prototypes/rounds/2026-10-13-tyokalurivi/`.
 
 ## Design and verification
 
