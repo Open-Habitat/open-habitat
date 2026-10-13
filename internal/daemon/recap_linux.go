@@ -158,32 +158,31 @@ func (c *ConversationController) requestRecap(w http.ResponseWriter, r *http.Req
 	// gets a conflict; subsequent calls observe the persisted entry and are free.
 	done := make(chan bool, 1)
 	go func() {
-		defer func() { c.mu.Lock(); s.recapping = false; c.mu.Unlock() }()
-		before, latest, ok := c.nativeRecap(s)
-		if !ok || latest == "" {
-			done <- false
-			return
-		}
-		if before.Through == latest {
-			done <- true
-			return
-		}
-		commands, err := s.rpc.requestQueue("get_commands", "", 4*time.Second)
-		if err != nil || !commands.Accepted || !commands.RecapCommand {
-			done <- false
-			return
-		}
-		accepted, err := s.rpc.request("prompt", "/oh-conversation-recap", 25*time.Second)
-		if err != nil || !accepted {
-			done <- false
-			return
-		}
-		after, _, ok := c.nativeRecap(s)
-		if !ok {
-			done <- false
-			return
-		}
-		done <- after.Through == latest && after.GeneratedAt > 0
+		success := func() bool {
+			before, latest, ok := c.nativeRecap(s)
+			if !ok || latest == "" {
+				return false
+			}
+			if before.Through == latest {
+				return true
+			}
+			commands, err := s.rpc.requestQueue("get_commands", "", 4*time.Second)
+			if err != nil || !commands.Accepted || !commands.RecapCommand {
+				return false
+			}
+			accepted, err := s.rpc.request("prompt", "/oh-conversation-recap", 25*time.Second)
+			if err != nil || !accepted {
+				return false
+			}
+			after, _, ok := c.nativeRecap(s)
+			return ok && after.Through == latest && after.GeneratedAt > 0
+		}()
+		// Completion is not observable until the in-flight guard is cleared.
+		// Otherwise an immediate retry can spuriously conflict after HTTP 200.
+		c.mu.Lock()
+		s.recapping = false
+		c.mu.Unlock()
+		done <- success
 	}()
 	if <-done {
 		historyJSON(w, map[string]any{"schema_version": 1, "state": "done"})

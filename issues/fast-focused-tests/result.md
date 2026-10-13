@@ -15,7 +15,12 @@ changed-tree no-reuse run on commit `9eed903` with caches populated took
 169 s (setup 5 s, dependencies 14 s, web checks 11 s, concurrent browser
 129 s and Go/contracts 124 s, packaging 10 s). Relative to the earlier
 sequential 232 s run, warm-cache elapsed time fell about 27%, not 10x.
-Browser cases: 142/142 normal and 17/17 lab. Two further serial repetitions passed
+A subsequent result-tree gate exposed a real daemon recap race: a completed
+request signalled its HTTP handler before clearing `s.recapping`, so an
+immediate idempotent retry sometimes got a spurious 409 (Go test failed while
+142 browser cases passed). The daemon now clears its in-flight guard before
+signalling completion; the existing native-Pi integration test covers the
+retry. The failed gate wrote no receipt. Browser cases: 142/142 normal and 17/17 lab. Two further serial repetitions passed
 142/142 + 17/17 each (normal 1.3 and 1.2 minutes, lab 41.2 and 41.1 s).
 Separate normal and lab Playwright commands must not overlap within one
 worktree: an exploratory concurrent attempt failed because they both use
