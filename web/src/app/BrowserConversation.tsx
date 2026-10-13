@@ -494,6 +494,11 @@ export function BrowserConversation({
                   current?.state === "idle" &&
                   !busy
                     ? () => {
+                        // Close removes this view immediately. Fence in-flight
+                        // status reads before they can turn its expected 404
+                        // into a late navigation back to deleted history.
+                        alive.current = false;
+                        ++generation.current;
                         void onClose?.(archive);
                       }
                     : undefined
