@@ -1,4 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   AgentFacts,
   AgentHeader,
@@ -291,8 +297,10 @@ function BashCall({
   output,
   running,
   onLogin,
+  onCommand,
 }: {
   block: HistoryBlock;
+  onCommand?: (id: string, command: string) => void;
   index: number;
   entryKey: string;
   agentId?: string;
@@ -327,6 +335,11 @@ function BashCall({
           throw new Error("invalid block");
         if (!controller.signal.aborted) {
           setCommand(value.chunk.text ?? "");
+          if (block.tool_call_id)
+            onCommand?.(
+              block.tool_call_id,
+              bashCommand(value.chunk.text ?? "").split("\n")[0],
+            );
           setPartial(!value.chunk.complete);
         }
       })
@@ -336,7 +349,16 @@ function BashCall({
         else setError(true);
       });
     return () => controller.abort();
-  }, [block.readable, agentId, revision, entryKey, index, onLogin]);
+  }, [
+    block.readable,
+    block.tool_call_id,
+    agentId,
+    revision,
+    entryKey,
+    index,
+    onLogin,
+    onCommand,
+  ]);
   return (
     <>
       <BashToolCard
@@ -372,6 +394,14 @@ function OrderedBlocks({
   revision?: string;
   onLogin?: () => void;
 }) {
+  const [commands, setCommands] = useState<Record<string, string>>({});
+  const onCommand = useCallback(
+    (id: string, text: string) =>
+      setCommands((previous) =>
+        previous[id] === text ? previous : { ...previous, [id]: text },
+      ),
+    [],
+  );
   return (
     <div className="ah-ordered-blocks">
       {blocks.map((block, index) =>
@@ -381,7 +411,10 @@ function OrderedBlocks({
             name={block.tool_name || "Työkalu"}
             targetText={
               block.tool_name === "bash"
-                ? bashCommand(block.text ?? "").split("\n")[0]
+                ? (commands[block.tool_call_id] ??
+                  (block.text
+                    ? bashCommand(block.text).split("\n")[0]
+                    : undefined))
                 : undefined
             }
             state={
@@ -394,6 +427,7 @@ function OrderedBlocks({
           >
             {block.tool_name === "bash" ? (
               <BashCall
+                onCommand={onCommand}
                 block={block}
                 index={index}
                 entryKey={entryKey}
