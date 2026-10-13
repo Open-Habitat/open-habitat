@@ -9,6 +9,70 @@ const STATUS_MD = `| Päivä | Kohde | Tila | Huomio |
 | 2026-10-10 | provision | valmis | sysusers-malli |
 | 2026-10-11 | web | kesken | vuoron asettelu |`;
 
+// A reply with structure: headings, an ordered list, a long code block, a table, a quote
+// and a short shell block (round 2026-10-13-vastausteksti).
+const RICH = `## Miten rivit valitaan
+
+Valinta tehdään kahdessa vaiheessa: ensin taulukko luetaan riveiksi, sitten rivit suodatetaan päivämäärän mukaan. Molemmat ovat tiedostossa \`scripts/status_rows.py\`.
+
+1. \`parse_table()\` etsii ensimmäisen \`|\`-merkillä alkavan rivin ja lukee sarakeotsikot siitä.
+2. Erotinrivi ja tyhjät rivit ohitetaan, joten taulukon muotoilu ei vaikuta tulokseen.
+3. \`select()\` tulkitsee päivämäärän \`date.fromisoformat\`illa; virheellinen rivi ohitetaan *varoituksella*, ei virheellä.
+
+Ydinkohta on tämä:
+
+\`\`\`python
+def parse_table(text):
+    """Yield one dict per data row of the first Markdown table in text."""
+    lines = iter(text.splitlines())
+    for line in lines:
+        if line.lstrip().startswith("|"):
+            header = [c.strip().lower() for c in line.strip().strip("|").split("|")]
+            break
+    else:
+        return
+    for line in lines:
+        line = line.strip()
+        if not line.startswith("|"):
+            break
+        if set(line) <= set("|-: "):
+            continue
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        yield dict(zip(header, cells))
+
+
+def select(rows, since=None, today=None):
+    """Return rows whose date is on or after since, oldest first."""
+    today = today or date.today()
+    since = since or today - timedelta(days=7)
+    picked = []
+    for row in rows:
+        try:
+            day = date.fromisoformat(row["päivä"])
+        except ValueError:
+            print(f"ohitetaan rivi: virheellinen päivämäärä {row['päivä']!r} (odotettiin muotoa VVVV-KK-PP)", file=sys.stderr)
+            continue
+        if day >= since:
+            picked.append(row)
+    return sorted(picked, key=lambda r: r["päivä"])
+\`\`\`
+
+### Liput
+
+| Lippu | Oletus | Vaikutus |
+|---|---|---|
+| \`--since\` | 7 päivää sitten | alaraja, päivä mukaan lukien |
+| \`--today\` | koneen päivä | kiinteä päivä testeille |
+| \`--table\` | pois | tasattu taulukko JSONin sijaan |
+
+> \`--since\` on mukaan lukien: \`--since 2026-10-06\` ottaa myös 6.10. rivin.
+
+Kokeile:
+
+\`\`\`bash
+python3 scripts/status_rows.py --since 2026-10-06 --table
+\`\`\``;
+
 const CONVO = [
   { kind: 'user', time: '14:28', md: 'Tee skripti, joka parsii `status.md`:n taulukon ja tulostaa viime viikon rivit JSONina.' },
   { kind: 'turn', time: '14:31', blocks: [
@@ -55,6 +119,12 @@ python3 scripts/status_rows.py --since 2026-10-05
 2026-10-10  provision  valmis  sysusers-malli
 2026-10-11  web        kesken  vuoron asettelu` },
     { t: 'reply', md: 'Lisätty. `--table` tulostaa sarakkeet tasattuna; JSON pysyy oletuksena, jotta putkitus ei muutu.' },
+  ] },
+  { kind: 'user', time: '14:35', md: 'Selitä vielä lyhyesti, miten rivit valitaan, ja näytä ydinkohta koodista.' },
+  { kind: 'turn', time: '14:35', blocks: [
+    { t: 'think', md: '**Summarizing parse and select for the reader**' },
+    { t: 'tool', name: 'read', target: 'scripts/status_rows.py', args: { path: 'scripts/status_rows.py' }, result: '#!/usr/bin/env python3\n"""Print status.md rows from the last week as JSON."""\nimport argparse, datetime, json, re, sys\n…' },
+    { t: 'reply', md: RICH },
   ] },
   { kind: 'user', time: '14:36', md: 'Aja testit ja korjaa, mitä löytyy.' },
 ];

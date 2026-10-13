@@ -192,6 +192,34 @@ pre.cmd-rest { margin: 0; padding: 8px 12px; background: var(--ah-sunken); borde
 .cmd-foot { display: flex; align-items: center; gap: 10px; margin-top: 4px; font-size: 12px; color: var(--ah-muted); }
 
 
+/* ===== Reply structure (round 2026-10-13-vastausteksti): headings, lists, tables, quotes ===== */
+.prose h2, .prose h3, .prose h4 { margin: 1.1em 0 .4em; color: var(--ah-ink); line-height: 1.3; }
+.prose h2:first-child, .prose h3:first-child, .prose h4:first-child { margin-top: 0; }
+.prose h2 { font: 600 17px/1.3 var(--ah-font); }
+.prose h3 { font: 600 15.5px/1.3 var(--ah-font); }
+.prose h4 { font: 600 14px/1.3 var(--ah-font); }
+.prose ol { margin: 0 0 .6em; padding-left: 1.5em; }
+.prose ol li::marker { color: var(--ah-muted); font-variant-numeric: tabular-nums; }
+.prose a { color: var(--ah-accent-ink); text-decoration: underline; text-underline-offset: 2px; }
+.prose blockquote { margin: 0 0 .7em; }
+.prose blockquote p { margin: 0; }
+.md-table { max-width: 100%; overflow-x: auto; margin: 0 0 .7em; }
+.md-table table { border-collapse: collapse; font-size: 13.5px; }
+.md-table :is(th, td) { padding: 6px 12px 6px 0; text-align: left; vertical-align: top; }
+.md-table th { font-weight: 600; color: var(--ah-ink-2); }
+.md-table :not(pre) > code { white-space: nowrap; overflow-wrap: normal; }
+.cb-lang { font: 500 11.5px var(--ah-mono); color: var(--ah-muted); }
+
+
+/* ===== Code in a reply (chosen 13.10.2026, Ikkuna): the output box; quiet tables and quotes ===== */
+.md-table th { border-bottom: 1px solid var(--ah-line-strong); }
+.md-table td { border-bottom: 1px solid var(--ah-line-soft); }
+.prose blockquote { padding-left: 12px; border-left: 2px solid var(--ah-line-strong); color: var(--ah-ink-2); }
+.prose .cb.o pre { margin: 0; white-space: pre; overflow-wrap: normal; overflow-x: auto; }
+.prose .cb.o pre.part.head { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 0; }
+.prose .cb.o pre.part.tail { border-top-left-radius: 0; border-top-right-radius: 0; border-top: 0; }
+.cb.o .out-meta { gap: 6px; }
+
 @container (max-width: 800px) {
   .bubble.user { max-width: 100%; }
 }

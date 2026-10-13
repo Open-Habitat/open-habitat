@@ -2,7 +2,9 @@
 // wrong in live use). Production draws a fenced block as a figure with a bold "Koodi"
 // band above and a separate "Kopioi koodi" button row below. The directions differ in how
 // strongly a reply's structure (code, headings, tables, quotes) separates from the text.
-// Ikkuna was added on Jari's ask: the code block reuses the bash output box.
+// Ikkuna was added on Jari's ask: the code block reuses the bash output box. Jari chose
+// Ikkuna on 2026-10-13; it is now the library (codeBox in lib/output.js, the reply
+// structure in lib/language.css) and the other directions live only here.
 export const title = 'Vastausteksti · koodilohko ja rakenne';
 export const app = true;
 export const variants = [

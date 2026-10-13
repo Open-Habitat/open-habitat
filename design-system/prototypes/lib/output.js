@@ -39,3 +39,28 @@ const cmdRivi = (b) => {
   const open = !!b.cmdOpen;
   return `<div><div class="cmd-first${open ? ' open' : ''}">${esc(lines[0])}</div>${open ? `<pre class="cmd-rest">${lineText(lines.slice(1))}</pre>` : ''}<div class="cmd-foot"><span>${rivit(lines.length)}</span><button class="quiet-btn" type="button" data-act="cmd-toggle" aria-expanded="${open}">${open ? 'Vain ensimmäinen rivi' : 'Näytä koko komento'}</button></div></div>`;
 };
+
+// ---------- Code in a reply (chosen 13.10.2026, Ikkuna): the same box as output ----------
+// Language and line count sit under the box; the rail starts with copy.
+const langName = (l) => ({ bash: 'shell', sh: 'shell', zsh: 'shell', py: 'python' }[l] || l);
+const codeLines = (t) => t.replace(/\n$/, '').split('\n');
+const CB = {}; let cbSeq = 0;
+function codeBox(lang, text) { const id = `cb${++cbSeq}`; CB[id] = { lang, lines: codeLines(text), view: 'edges' }; return `<div class="cb o" data-cb="${id}">${ikkuna(id)}</div>`; }
+function ikkuna(id) {
+  const c = CB[id]; const n = c.lines.length;
+  const html = box(c.lines, c.view, 'code', null, false);
+  const meta = [c.lang ? `<span class="cb-lang">${esc(langName(c.lang))}</span>` : '', n > 10 ? `<span>${rivit(n)}</span>` : ''].filter(Boolean).join('<span aria-hidden="true">·</span>');
+  return html.replace(/<div class="out-meta">.*?<\/div><\/div>$/, '</div>') .replace(/<\/div>$/, meta ? `<div class="out-meta">${meta}</div></div>` : '</div>');
+}
+// Rail actions of Ikkuna, ahead of the live turn's own handler.
+stage.addEventListener('click', (e) => {
+  const a = e.target.closest('.cb.o [data-act]'); if (!a) return;
+  e.stopPropagation(); e.preventDefault();
+  const host = a.closest('[data-cb]'); const c = CB[host.dataset.cb]; const act = a.dataset.act;
+  if (act === 'open') return openDialog({ name: langName(c.lang) || 'koodi', target: 'Pi:n vastaus', plain: true }, c.lines);
+  c.view = act === 'all' ? (c.view === 'all' ? 'edges' : 'all') : act;
+  host.innerHTML = ikkuna(host.dataset.cb);
+  for (const v of host.querySelectorAll('pre.viewport[data-scroll]')) v.scrollTop = v.dataset.scroll === 'start' ? 0 : v.scrollHeight;
+}, true);
+
+mdCode = codeBox;
