@@ -2,13 +2,15 @@
 created: 2026-10-12
 updated: 2026-10-13
 type: improvement
-status: in-progress
+status: done
 priority: normal
 related: ['@add-conversation-recap', '@new-conversation-view']
 lane: web
 lane_seq: 8
 collision: [web/, internal/daemon/]
 preparation: ready
+closed: 2026-10-13
+closed_by: claude
 ---
 
 # Recap appears automatically above the composer and can be closed
