@@ -129,3 +129,41 @@ describe("workspace conversation rows", () => {
     ).toBeTruthy();
   });
 });
+
+it("shows native settings in a chip and aligned facts without loose disabled reasons", () => {
+  const view = render(
+    <MemoryRouter>
+      <AgentHeader
+        title="Otsikko"
+        activityLabel="Odottaa sinua"
+        controlLabel="Vain luku"
+        workspaceLabel="Repo"
+        workspaceHref="/workspaces/ws_example00"
+        detailsExpanded
+        onToggleDetails={() => {}}
+        settings={{ model: "provider/model", thinking: "high" }}
+        archiveReason="Estetty"
+        titleAction={{
+          label: "Luo uusi otsikko",
+          availability: { state: "disabled", reason: "Ei nimettävää" },
+          onPress: () => {},
+        }}
+      />
+    </MemoryRouter>,
+  );
+  expect(
+    view.getByRole("button", { name: "Malli ja ajattelutaso · avaa tiedot" }),
+  ).toBeTruthy();
+  expect(view.getByRole("region", { name: "Tiedot" }).textContent).toContain(
+    "provider/model",
+  );
+  expect(
+    view.getByRole("region", { name: "Tiedot" }).textContent,
+  ).not.toContain("Arkistointi:");
+  expect(
+    view
+      .getByRole("button", { name: "Luo uusi otsikko" })
+      .getAttribute("aria-describedby"),
+  ).toBeTruthy();
+  expect(view.container.textContent).toContain("Ei nimettävää");
+});

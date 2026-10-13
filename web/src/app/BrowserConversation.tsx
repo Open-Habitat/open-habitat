@@ -33,6 +33,7 @@ import {
   type Status,
 } from "./conversations";
 import { timelineItems } from "./HistoryView";
+import { latestSettings } from "./sessionSettings";
 import { PiQuestion } from "./PiQuestion";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
 import { useConversation } from "./useConversation";
@@ -457,6 +458,13 @@ export function BrowserConversation({
             archiveControl={
               <ArchiveControls
                 state={archive?.archive ?? "unknown"}
+                empty={
+                  entries.length === 0 &&
+                  !historyError &&
+                  !next &&
+                  !!current &&
+                  current.native_history !== "unavailable"
+                }
                 blockedReason={
                   archiveAwaitingSnapshot
                     ? "Odotetaan arkiston tilan vahvistusta."
@@ -549,6 +557,28 @@ export function BrowserConversation({
                   ? "unknown"
                   : "neutral"
             }
+            settings={latestSettings(entries)}
+            detailsFacts={[
+              {
+                label: "Työtila",
+                value: workspace.display_name ?? workspace.name,
+              },
+              {
+                label: "Malli",
+                value: latestSettings(entries).model ?? "Pi:n oletus",
+                copy: !!latestSettings(entries).model,
+              },
+              {
+                label: "Ajattelutaso",
+                value: latestSettings(entries).thinking ?? "Pi:n oletus",
+              },
+              {
+                label: "Ohjaus",
+                value: controlled ? "Selainohjaus" : "Ei käytettävissä",
+              },
+              { label: "Aloitettu", value: "Ei tiedossa" },
+              { label: "Natiivi tunniste", value: id, copy: true },
+            ]}
             controlKind={controlled ? "neutral" : "read-only"}
             controlLabel={
               controlled ? "Selainohjaus" : "Ohjaus ei ole käytettävissä"
@@ -558,7 +588,6 @@ export function BrowserConversation({
             detailsExpanded={details}
             onToggleDetails={() => setDetails(!details)}
           />
-          {details ? <p>Natiivi tunniste: {id}</p> : null}
           <ConversationStream
             streamRef={feed}
             onScroll={() => {

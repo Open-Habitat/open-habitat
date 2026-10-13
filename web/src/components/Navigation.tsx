@@ -615,7 +615,8 @@ export function AgentHeader({
   onToggleDetails,
   titleAction,
   archiveControl,
-  archiveReason,
+  settings,
+  detailsFacts,
 }: {
   title: string;
   titleState?: string;
@@ -630,6 +631,8 @@ export function AgentHeader({
   onToggleDetails: () => void;
   archiveControl?: ReactNode;
   archiveReason?: string;
+  settings?: { model?: string; thinking?: string };
+  detailsFacts?: { label: string; value: string; copy?: boolean }[];
   titleAction?: {
     label: string;
     availability?: Availability;
@@ -664,6 +667,25 @@ export function AgentHeader({
         ) : null}
         {visibleControl ? (
           <StatusMark label="Vain luku" tone="neutral" kind="read-only" />
+        ) : null}
+        {settings?.model || settings?.thinking ? (
+          <ControlButton
+            className="ah-set-chip"
+            variant="quiet"
+            aria-label="Malli ja ajattelutaso · avaa tiedot"
+            title="Malli ja ajattelutaso · avaa tiedot"
+            aria-expanded={detailsExpanded}
+            onPress={onToggleDetails}
+          >
+            <span className="ah-set-model">
+              {settings.model ?? "Malli ei tiedossa"}
+            </span>
+            <span className="ah-set-separator" aria-hidden="true">
+              {" "}
+              ·{" "}
+            </span>
+            <span>{settings.thinking ?? "Pi"}</span>
+          </ControlButton>
         ) : null}
         {titleAction ? (
           <ControlButton
@@ -732,19 +754,43 @@ export function AgentHeader({
         <p className="ah-inline-error">{titleAction.failureNotice}</p>
       ) : null}
       {detailsExpanded ? (
-        <div className="ah-header-facts">
-          <p className="ah-header-full-title">{title}</p>
-          <StatusMark label={controlLabel} tone="neutral" kind={controlKind} />
-          {titleAction?.availability?.state !== "enabled" &&
-          titleAction?.availability?.reason ? (
-            <p className="ah-control-reason">
-              Uusi otsikko: {titleAction.availability.reason}
-            </p>
-          ) : null}
-          {archiveReason ? (
-            <p className="ah-control-reason">Arkistointi: {archiveReason}</p>
-          ) : null}
-        </div>
+        <section className="ah-details-popover" aria-label="Tiedot">
+          <h2>Tiedot</h2>
+          <dl className="ah-facts">
+            {(
+              detailsFacts ?? [
+                { label: "Työtila", value: workspaceLabel },
+                { label: "Malli", value: settings?.model ?? "Ei tiedossa" },
+                {
+                  label: "Ajattelutaso",
+                  value: settings?.thinking ?? "Ei tiedossa",
+                },
+                { label: "Ohjaus", value: controlLabel },
+                { label: "Aloitettu", value: "Ei tiedossa" },
+              ]
+            ).map((fact) => (
+              <div key={fact.label}>
+                <dt>{fact.label}</dt>
+                <dd>
+                  <span>{fact.value}</span>
+                  {fact.copy ? (
+                    <ControlButton
+                      variant="quiet"
+                      size="micro"
+                      aria-label={`Kopioi ${fact.label.toLowerCase()}`}
+                      title={`Kopioi ${fact.label.toLowerCase()}`}
+                      onPress={() =>
+                        void navigator.clipboard?.writeText(fact.value)
+                      }
+                    >
+                      <Icon name="copy" />
+                    </ControlButton>
+                  ) : null}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
       ) : null}
     </header>
   );

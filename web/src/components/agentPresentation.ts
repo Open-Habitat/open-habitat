@@ -46,7 +46,7 @@ export function agentPresentation(facts: AgentFacts): AgentPresentation {
     : working
       ? "Työskentelee"
       : waiting
-        ? "Odottaa"
+        ? "Odottaa sinua"
         : "Tila ei tiedossa";
   const operationLabel = facts.connectionLost
     ? "Yhteys poikki"
