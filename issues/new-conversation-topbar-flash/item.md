@@ -2,11 +2,13 @@
 created: 2026-10-13
 updated: 2026-10-13
 type: bug
-status: in-progress
+status: fixed
 priority: normal
 lane: web
 lane_seq: 17
 collision: [web/]
+closed: 2026-10-13
+closed_by: claude
 ---
 
 # New conversation flashes an extra archive-state button in the top bar

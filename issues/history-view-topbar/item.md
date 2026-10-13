@@ -2,11 +2,13 @@
 created: 2026-10-13
 updated: 2026-10-13
 type: bug
-status: in-progress
+status: fixed
 priority: normal
 lane: web
 lane_seq: 15
 collision: [web/]
+closed: 2026-10-13
+closed_by: claude
 ---
 
 # Read-only history conversations still use the old top bar

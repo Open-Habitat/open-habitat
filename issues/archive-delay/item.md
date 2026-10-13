@@ -2,11 +2,13 @@
 created: 2026-10-13
 updated: 2026-10-13
 type: bug
-status: in-progress
+status: fixed
 priority: normal
 lane: web
 lane_seq: 16
 collision: [web/]
+closed: 2026-10-13
+closed_by: claude
 ---
 
 # Archive takes effect only after a long delay and the row misbehaves meanwhile
