@@ -70,10 +70,7 @@ export function createHostTest(lab = false) {
           child.kill("SIGTERM");
           if (child.exitCode === null && child.signalCode === null)
             await new Promise<void>((done) => {
-              const timer = setTimeout(() => {
-                child.kill("SIGKILL");
-                done();
-              }, 5000);
+              const timer = setTimeout(() => child.kill("SIGKILL"), 5000);
               child.once("exit", () => {
                 clearTimeout(timer);
                 done();
@@ -81,7 +78,7 @@ export function createHostTest(lab = false) {
             });
         }
       },
-      { auto: true },
+      { auto: true, timeout: 60_000 },
     ],
   });
 }
