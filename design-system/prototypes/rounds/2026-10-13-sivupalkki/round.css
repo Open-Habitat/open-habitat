@@ -1,0 +1,10 @@
+/* ===== Sidebar rows: the mark leads, time at the right ===== */
+.conv-row.lead { padding-left: 11px; gap: 9px; }
+.conv-row.lead .st { width: 12px; }
+.conv-when { flex: none; color: var(--ah-muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.conv-row.is-new .conv-title { color: var(--ah-ink); font-weight: 600; }
+/* Huomio ensin: finished conversations fold behind one quiet line. */
+.done-fold { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 28px; padding: 0 10px 0 10px; border: 0; border-radius: var(--ah-r-nav); background: transparent; color: var(--ah-muted); font: 500 12px var(--ah-font); cursor: pointer; text-align: left; }
+.done-fold:hover { background: var(--ah-hover); color: var(--ah-ink-2); }
+.done-fold:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 1px; }
+.done-fold .count { margin-left: auto; font-variant-numeric: tabular-nums; }

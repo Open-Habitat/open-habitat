@@ -26,7 +26,7 @@ muotoon 12.10.2026, ja rakennettu vedos todettiin kuvavertailussa samaksi.
   `app.js` ja `app.css` ovat sovelluskehys näyttämön ympärillä: sivupalkki,
   keskustelun yläpalkki ja niiden toiminnot. Ne tulevat mukaan, kun kierros
   vie `app = true`; suunnan `fn` on silloin `appView()`, ja kierros vaihtaa
-  palan korvaamalla `APP.row`- tai `APP.actions`-hookin. `composer.js` ja
+  palan korvaamalla `APP.row`-, `APP.list`- tai `APP.actions`-hookin. `composer.js` ja
   `composer.css` ovat valittu alakerta (kenttä, Lähetä, Stop, jono); ne
   tulevat kehyksen mukana, ja kierros, joka piirtää oman kenttänsä, vie
   `composer = false`.

@@ -73,6 +73,7 @@ const uiConfirm = document.createElement('dialog'); uiConfirm.className = 'confi
 uiRail.querySelector('input').addEventListener('input', (e) => { UI.filter = e.target.value.trim().toLowerCase(); paintRail(); });
 
 // ---------- Sidebar ----------
+function convList(w, convs) { return convs.length ? `<ul class="convs">${convs.map(c => `<li>${APP.row(c)}</li>`).join('')}</ul>` : ''; }
 function convRow(c) {
   const [label, mark] = STATES[convState(c)] ?? ['Ei aloitettu', '<span class="st-none"></span>'];
   return `<a href="#" class="conv-row" data-conv="${c.id}"${c.id === UI.sel ? ' aria-current="page"' : ''}><span class="conv-title">${esc(c.title)}</span><span class="st" role="img" aria-label="${label}" title="${label}">${mark}</span></a>`;
@@ -80,8 +81,8 @@ function convRow(c) {
 function paintRail() {
   const list = UI.ws.filter(w => !UI.filter || w.id.includes(UI.filter));
   uiRail.querySelector('.rail-list').innerHTML = list.length ? list.map(w => {
-    const rows = w.convs.filter(c => !c.archived).map(c => `<li>${APP.row(c)}</li>`).join('');
-    return `<section class="ws"><div class="ws-row"><button class="ws-tog" type="button" data-ws-tog="${w.id}" aria-expanded="${w.open}" aria-label="${w.open ? 'Piilota' : 'Näytä'} keskustelut: ${w.id}">${CHEV}</button><a href="#" class="ws-name" data-ui="ws">${esc(w.id)}</a><button class="ws-add" type="button" data-ws-add="${w.id}" aria-label="Uusi keskustelu työtilassa ${w.id}" title="Uusi keskustelu">${ICON_PLUS}</button></div>${w.open && rows ? `<ul class="convs">${rows}</ul>` : ''}</section>`;
+    const body = w.open ? APP.list(w, w.convs.filter(c => !c.archived)) : '';
+    return `<section class="ws"><div class="ws-row"><button class="ws-tog" type="button" data-ws-tog="${w.id}" aria-expanded="${w.open}" aria-label="${w.open ? 'Piilota' : 'Näytä'} keskustelut: ${w.id}">${CHEV}</button><a href="#" class="ws-name" data-ui="ws">${esc(w.id)}</a><button class="ws-add" type="button" data-ws-add="${w.id}" aria-label="Uusi keskustelu työtilassa ${w.id}" title="Uusi keskustelu">${ICON_PLUS}</button></div>${body}</section>`;
   }).join('') : `<p class="rail-empty">Ei osumia.</p>`;
 }
 
@@ -110,7 +111,7 @@ function topActions(c) {
     + why('retitle', titleOpts) + why('archive', archOpts);
 }
 // `painted` hooks run after every repaint, e.g. a round's composer following UI.working.
-const APP = { row: convRow, actions: topActions, painted: [] };
+const APP = { row: convRow, list: convList, actions: topActions, painted: [] };
 function paintTop() {
   const c = selConv();
   uiTop.innerHTML = `${titleBlock(c)}<div class="tb-right">${stateChip(c)}<span class="tb-actions">${APP.actions(c)}</span></div>`;
