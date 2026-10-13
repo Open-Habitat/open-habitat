@@ -4,7 +4,6 @@ import { hostOrigin } from "../test-ports.mjs";
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 test("@pi-onboarding cancel supersedes an in-flight poll", async ({ page }) => {
   await page.request.get("/fixture/scenario?value=pi-onboarding");
-  await page.waitForTimeout(2200);
   await page.request.get("/fixture/pi-state?value=missing");
   try {
     await page.clock.install();

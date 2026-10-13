@@ -290,8 +290,9 @@ func TestTailPageLargeNativeFileAndByteCap(t *testing.T) {
 		t.Fatal(err)
 	}
 	fmt.Fprintf(f, "{\"type\":\"session\",\"version\":3,\"id\":%q,\"cwd\":\"/synthetic\"}\n", id)
-	// More than the old 32 MiB cap; the tail request never parses this prefix.
-	large := strings.Repeat("x", 34<<20)
+	// A native record several times the test-scale 256 KiB page budget;
+	// the tail response must skip it, then the older page must chunk it.
+	large := strings.Repeat("x", 1<<20)
 	fmt.Fprintf(f, "{\"type\":\"message\",\"id\":\"first\",\"message\":{\"role\":\"user\",\"content\":%q}}\n", large)
 	for i := 0; i < 8; i++ {
 		fmt.Fprintf(f, "{\"type\":\"message\",\"id\":\"last%d\",\"message\":{\"role\":\"user\",\"content\":%q}}\n", i, strings.Repeat("y", 60000))

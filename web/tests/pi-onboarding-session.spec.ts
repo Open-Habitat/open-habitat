@@ -6,7 +6,6 @@ test("@pi-onboarding switching sessions drops device instructions and native fac
   page,
 }) => {
   await page.request.get("/fixture/scenario?value=pi-onboarding");
-  await page.waitForTimeout(2200); // Previous synthetic helper must be reaped.
   await page.request.get("/fixture/pi-state?value=missing");
   try {
     await page.goto("/workspaces");

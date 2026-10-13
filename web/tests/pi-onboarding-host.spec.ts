@@ -33,8 +33,6 @@ test("@pi-onboarding native attempt drives the production browser, never a callb
   });
   try {
     await scenario(page, "pi-onboarding");
-    // The preceding synthetic case may still be reaping its helper.
-    await page.waitForTimeout(2200);
     await page.request.get("/fixture/pi-state?value=missing");
     await login(page);
     // Establish the foreign session before starting the timed fake Pi child.
@@ -96,7 +94,6 @@ test("@pi-onboarding cancel, unknown, expiry and stale session fail closed", asy
   const page = await context.newPage();
   try {
     await scenario(page, "pi-onboarding");
-    await page.waitForTimeout(2200);
     await page.request.get("/fixture/pi-state?value=missing");
     await login(page);
     await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
@@ -149,7 +146,6 @@ test("@pi-onboarding code disappearance stays uncertain through polling, focus a
   });
   try {
     await scenario(page, "pi-onboarding");
-    await page.waitForTimeout(2200);
     await page.request.get("/fixture/pi-state?value=missing");
     await login(page);
     await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
@@ -195,12 +191,12 @@ test("@pi-onboarding code disappearance stays uncertain through polling, focus a
     });
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
     await expect.poll(() => slowReads).toBe(1);
-    await page.waitForTimeout(3600); // One interval passes while the read is still in flight.
+    await page.clock.fastForward(3600); // One poll interval while the read is still in flight.
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
     expect(slowReads).toBe(1); // Single-flight; focus does not launch another read.
     await expect(page.getByText("Kirjautumisyritys päättyi")).toBeVisible();
     release?.();
-    await page.waitForTimeout(6500); // Two more native poll intervals.
+    await page.clock.fastForward(6500); // Two more poll intervals.
     await expect(page.getByText("Kirjautumisyritys päättyi")).toBeVisible();
     expect(
       await page.evaluate(

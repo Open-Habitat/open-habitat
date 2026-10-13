@@ -8,7 +8,6 @@ test("@pi-onboarding delayed old-session response cannot restore code after focu
   const a = await context.newPage();
   const b = await context.newPage();
   await a.request.get("/fixture/scenario?value=pi-onboarding");
-  await a.waitForTimeout(2200); // Prior synthetic helper is reaped.
   await a.request.get("/fixture/pi-state?value=missing");
   try {
     await a.goto("/workspaces");

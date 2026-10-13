@@ -391,7 +391,16 @@ func HistoryHandler(cfg transport.Config, trusted func(*http.Request) bool) http
 func HistoryHandlerWithNativeRoot(cfg transport.Config, trusted func(*http.Request) bool, root string) http.Handler {
 	return historyHandlerWithReader(cfg, trusted, func(c transport.Config) ([]nativeSession, error) { c.Home = root; return nativeSessions(c) })
 }
+
+const historyPageBudget = 256 * 1024
+const historyBlockBudget = 1 << 20
+
 func historyHandlerWithReader(cfg transport.Config, trusted func(*http.Request) bool, sessionsReader func(transport.Config) ([]nativeSession, error)) http.Handler {
+	return historyHandlerWithBudget(cfg, trusted, sessionsReader, historyPageBudget, historyBlockBudget)
+}
+
+// historyHandlerWithBudget is an unexported test seam; runtime callers always use production budgets.
+func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) bool, sessionsReader func(transport.Config) ([]nativeSession, error), pageBudget, blockBudget int) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !historyAuthorized(cfg, trusted, r) || r.Method != "GET" || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
 			snapshotError(w, 403, "cross_user_denied")
@@ -511,7 +520,7 @@ func historyHandlerWithReader(cfg transport.Config, trusted func(*http.Request) 
 						snapshotError(w, 503, "native_source_unavailable")
 						return
 					}
-					if start < len(entries) && pageBytes+len(wire) > 256*1024 {
+					if start < len(entries) && pageBytes+len(wire) > pageBudget {
 						break
 					}
 					pageBytes += len(wire)
@@ -564,7 +573,7 @@ func historyHandlerWithReader(cfg transport.Config, trusted func(*http.Request) 
 					snapshotError(w, 503, "native_source_unavailable")
 					return
 				}
-				if len(entries) > 0 && pageBytes+len(wire) > 256*1024 {
+				if len(entries) > 0 && pageBytes+len(wire) > pageBudget {
 					break
 				}
 				pageBytes += len(wire)
@@ -590,7 +599,7 @@ func historyHandlerWithReader(cfg transport.Config, trusted func(*http.Request) 
 			}
 			offset, e1 := strconv.Atoi(q.Get("offset"))
 			limit, e2 := strconv.Atoi(q.Get("limit_bytes"))
-			if e1 != nil || e2 != nil || offset < 0 || limit < 1 || limit > 1<<20 || index < 0 || index >= 128 {
+			if e1 != nil || e2 != nil || offset < 0 || limit < 1 || limit > blockBudget || index < 0 || index >= 128 {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}

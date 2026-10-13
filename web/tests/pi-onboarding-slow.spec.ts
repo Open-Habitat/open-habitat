@@ -8,7 +8,6 @@ test("@pi-onboarding slow native reads finish across multiple poll intervals wit
 }) => {
   test.setTimeout(60000);
   await page.request.get("/fixture/scenario?value=pi-onboarding");
-  await page.waitForTimeout(2200);
   await page.request.get("/fixture/pi-state?value=missing");
   let posts = 0;
   try {
@@ -78,7 +77,6 @@ test("@pi-onboarding lost write reply is uncertain and read-only recheck recover
   page,
 }) => {
   await page.request.get("/fixture/scenario?value=pi-onboarding");
-  await page.waitForTimeout(2200);
   await page.request.get("/fixture/pi-state?value=missing");
   let posts = 0;
   try {

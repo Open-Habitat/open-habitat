@@ -88,7 +88,15 @@ no-reuse changed-tree gate took 233 s (browser 142 s including lab, Go/contracts
 (browser 129 s, Go/contracts 124 s), and a standalone warm browser run took
 82 s for 142 cases.
 Fresh per-case hosts remain in place: resetting a process-wide scenario alone would
-not isolate OAuth sessions, fake Pi leases and filesystem history.
+not isolate OAuth sessions, fake Pi leases and filesystem history. Pi onboarding
+browser cases no longer sleep 2.2 seconds before setting their synthetic state:
+that wait assumed a previous case's helper could affect this case's fresh host.
+The poll single-flight case advances the browser clock through its 2-second
+intervals; native fake-Pi transitions and the production interval remain real.
+[The test-scale result](../issues/tenfold-test-speed/result.md) records the
+new timings and per-spec redundancy audit. The revised normal browser suite
+passed 142/142 cases in each of three eight-worker runs (72.15–78.23 s,
+versus the earlier 82 s standalone run); this is not a tenfold speedup.
 
 UI evidence is always a screenshot paired with a static HTML snapshot from the
 synthetic lab, saved side by side in the issue folder. Use `snapshot(page, outBase)`
