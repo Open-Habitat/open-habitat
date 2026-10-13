@@ -2,13 +2,11 @@
 created: 2026-10-13
 updated: 2026-10-13
 type: bug
-status: fixed
+status: in-progress
 priority: normal
 lane: web
 lane_seq: 15
 collision: [web/]
-closed: 2026-10-13
-closed_by: claude
 ---
 
 # Read-only history conversations still use the old top bar
@@ -39,3 +37,7 @@ if it does not, they are disabled with a reason.
 - An old native-history conversation and a browser-controlled one show the
   same bar layout; lab captures of both beside the draft in
   `issues/history-view-topbar/`, differences explained in `result.md`.
+
+## Reopen Notes — 2026-10-13
+
+_Add rationale for reopening here._
