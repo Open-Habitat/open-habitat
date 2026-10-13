@@ -2315,6 +2315,17 @@ h1[tabindex="-1"]:focus {
   column-gap: 10px;
   row-gap: 10px;
   min-width: 0;
+  position: relative;
+}
+/* The rail belongs to the entire turn, not the first row of a work subgrid. */
+.ah-agent-turn::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 14px;
+  bottom: 14px;
+  width: 2px;
+  background: var(--ah-line);
 }
 .ah-turn-head,
 .ah-turn-work,
@@ -2364,6 +2375,8 @@ h1[tabindex="-1"]:focus {
 }
 .ah-turn-node {
   grid-column: 1;
+  position: relative;
+  background: var(--ah-surface);
   width: 12px;
   height: 12px;
   margin: 8px auto;
@@ -2374,15 +2387,60 @@ h1[tabindex="-1"]:focus {
   gap: 10px;
   position: relative;
 }
-.ah-turn-work::before,
-.ah-turn-reply::before {
+.ah-turn-work .ah-live-work {
+  grid-column: 2;
+}
+.ah-turn-work .ah-ordered-blocks > *,
+.ah-turn-work .ah-live-work {
+  position: relative;
+}
+.ah-turn-work .ah-ordered-blocks > *::before,
+.ah-turn-work .ah-live-work::before,
+.ah-turn-reply::before,
+.ah-turn-strip::before {
   content: "";
-  grid-column: 1;
-  grid-row: 1;
-  width: 2px;
-  height: 100%;
-  margin: auto;
-  background: var(--ah-line);
+  position: absolute;
+  left: -26px;
+  top: 8px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--ah-line-strong);
+  border-radius: 50%;
+  background: var(--ah-surface);
+  box-sizing: border-box;
+  z-index: 1;
+}
+.ah-turn-reply::before,
+.ah-turn-strip::before {
+  left: 7px;
+  border-color: var(--ah-ok);
+  background: var(--ah-ok);
+}
+.ah-turn-strip::before {
+  width: 10px;
+  height: 10px;
+  left: 6px;
+  border-color: var(--ah-accent);
+  background: var(--ah-surface);
+}
+.ah-turn-work .ah-ordered-blocks > :has(.ah-tool-row)::before,
+.ah-turn-work .ah-live-work:has(.ah-tool-row)::before {
+  border-radius: 2px;
+}
+.ah-turn-work
+  .ah-ordered-blocks
+  > :has(.ah-tool-row[data-state="succeeded"])::before,
+.ah-turn-work .ah-live-work:has(.ah-tool-row[data-state="succeeded"])::before {
+  border-color: var(--ah-ok);
+  background: var(--ah-ok);
+}
+.ah-turn-work .ah-live-work:has(.ah-live-tool-row)::before {
+  border-color: var(--ah-accent);
+  background: var(--ah-accent);
+}
+.ah-turn-reply,
+.ah-turn-strip {
+  position: relative;
 }
 .ah-turn-work .ah-ordered-blocks {
   grid-column: 2;

@@ -307,15 +307,19 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 		}
 		listing = strings.Join(lines, "\n")
 	}
+	failed := strings.Contains(prompt, "epäonnistu")
+	if failed {
+		listing = "synteettinen komento epäonnistui"
+	}
 	if stream {
 		emit(map[string]any{"type": "tool_execution_update", "toolCallId": callID, "toolName": "bash", "args": map[string]any{"command": command}, "partialResult": map[string]any{"content": []map[string]any{{"type": "text", "text": listing}}}})
 		time.Sleep(step)
 	}
-	s.append(message("toolResult", []map[string]any{{"type": "text", "text": listing}}, map[string]any{"toolCallId": callID, "toolName": "bash", "isError": false}))
+	s.append(message("toolResult", []map[string]any{{"type": "text", "text": listing}}, map[string]any{"toolCallId": callID, "toolName": "bash", "isError": failed}))
 	end := map[string]any{"type": "tool_execution_end", "toolName": "bash", "toolCallId": callID}
 	if stream {
 		end["result"] = map[string]any{"content": []map[string]any{{"type": "text", "text": listing}}}
-		end["isError"] = false
+		end["isError"] = failed
 	}
 	emit(end)
 	if strings.Contains(prompt, "työkalut") {

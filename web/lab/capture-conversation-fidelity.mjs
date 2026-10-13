@@ -23,6 +23,12 @@ try {
     .first()
     .getAttribute("href");
   if (!workspace) throw Error("Missing synthetic workspace");
+  const history = await page
+    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
+    .locator('a[href*="a1a1a1a1-0000-4000-8000-000000000001"]')
+    .first()
+    .getAttribute("href");
+  if (!history) throw Error("Missing synthetic multi-group history");
   for (const width of [1440, 390])
     for (const theme of ["light", "dark"]) {
       await fixture("scenario?value=ready");
@@ -53,6 +59,66 @@ try {
             ? ".ah-tool-row:has(.ah-bash-card)"
             : undefined,
       });
+      if (slug === "turn-thread-fidelity") {
+        await page.goto(`${origin}${history}`);
+        await page.evaluate(
+          (theme) => document.documentElement.setAttribute("data-theme", theme),
+          theme,
+        );
+        await page.locator(".ah-agent-turn").last().waitFor();
+        await page
+          .locator(".ah-agent-turn")
+          .nth(2)
+          .evaluate((el) => el.setAttribute("data-lab-capture", "groups"));
+        await snapshot(page, `issues/${slug}/lab-${width}-${theme}-groups`, {
+          region: "[data-lab-capture=groups]",
+        });
+        await fixture("scenario?value=pi-visual-hold");
+        await page.goto(`${origin}${workspace}`);
+        await page.evaluate(
+          (theme) => document.documentElement.setAttribute("data-theme", theme),
+          theme,
+        );
+        await page
+          .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+          .click();
+        await page
+          .getByRole("textbox", { name: "Viesti Pi:lle" })
+          .fill("Näytä pitkä tuloste");
+        await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+        await page
+          .locator(".ah-live-tool-row")
+          .first()
+          .waitFor({ timeout: 15000 });
+        await snapshot(page, `issues/${slug}/lab-${width}-${theme}-live`, {
+          region: ".ah-agent-turn:has(.ah-live-tool-row)",
+        });
+        await fixture("scenario?value=ready");
+        await page.goto(`${origin}${workspace}`);
+        await page.evaluate(
+          (theme) => document.documentElement.setAttribute("data-theme", theme),
+          theme,
+        );
+        await page
+          .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+          .click();
+        await page
+          .getByRole("textbox", { name: "Viesti Pi:lle" })
+          .fill("Näytä komento joka epäonnistuu");
+        await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+        await page
+          .getByText(/Selvä. Kysyit:/)
+          .last()
+          .waitFor({ timeout: 30000 });
+        await page.reload();
+        await page
+          .locator('.ah-tool-row[data-state="failed"]')
+          .first()
+          .waitFor();
+        await snapshot(page, `issues/${slug}/lab-${width}-${theme}-failed`, {
+          region: '.ah-agent-turn:has(.ah-tool-row[data-state="failed"])',
+        });
+      }
     }
 } finally {
   await browser.close();

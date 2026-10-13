@@ -153,7 +153,10 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
       .getByText("Tutki synteettinen työtila", { exact: true }),
   ).toBeVisible({ timeout: 20000 });
   await expect(
-    page.getByText("Katson ensin, mitä työtilassa on.", { exact: true }),
+    page
+      .getByRole("region", { name: "Agentin vuoro" })
+      .getByText("Katson ensin, mitä työtilassa on.", { exact: true })
+      .first(),
   ).toBeVisible({ timeout: 20000 });
   await expect(page.getByText("Selvä. Kysyit:", { exact: false })).toBeVisible({
     timeout: 20000,
