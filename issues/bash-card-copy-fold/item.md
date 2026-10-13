@@ -2,11 +2,13 @@
 created: 2026-10-13
 updated: 2026-10-13
 type: improvement
-status: in-progress
+status: done
 priority: normal
 lane: web
 lane_seq: 12
 collision: [web/]
+closed: 2026-10-13
+closed_by: claude
 ---
 
 # Bash card: copy in the output rail, closed in loaded history, no code ligatures
