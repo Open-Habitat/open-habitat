@@ -69,7 +69,9 @@ export function BashToolCard({
           <div className="ah-bash-window">
             {long && view === "edges" && !running ? (
               <div>
-                <pre>{lines.slice(0, 3).join("\n")}</pre>
+                <pre className="ah-bash-head">
+                  {lines.slice(0, 3).join("\n")}
+                </pre>
                 <ControlButton
                   variant="quiet"
                   className="ah-bash-gap"
@@ -77,7 +79,7 @@ export function BashToolCard({
                 >
                   {lines.length - 10} riviä välistä · Näytä kaikki
                 </ControlButton>
-                <pre>{lines.slice(-7).join("\n")}</pre>
+                <pre className="ah-bash-tail">{lines.slice(-7).join("\n")}</pre>
               </div>
             ) : (
               <pre
@@ -112,15 +114,13 @@ export function BashToolCard({
                     <Icon name={icon as IconName} />
                   </IconButton>
                 ))}
-                {lines.length > 40 ? (
-                  <IconButton
-                    variant="quiet"
-                    aria-label="Avaa omassa ikkunassa"
-                    onPress={() => setDialog(true)}
-                  >
-                    <Icon name="external" />
-                  </IconButton>
-                ) : null}
+                <IconButton
+                  variant="quiet"
+                  aria-label="Avaa omassa ikkunassa"
+                  onPress={() => setDialog(true)}
+                >
+                  <Icon name="external" />
+                </IconButton>
               </fieldset>
             ) : null}
           </div>

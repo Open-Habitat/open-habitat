@@ -2335,6 +2335,20 @@ h1[tabindex="-1"]:focus {
   text-align: left;
   font: 500 var(--ah-size-meta) var(--ah-font);
 }
+.ah-turn-head > button,
+.ah-turn-strip > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.ah-turn-head > button > .ah-disclosure-chevron,
+.ah-turn-strip > button > .ah-disclosure-chevron {
+  margin-top: -2px;
+  color: var(--ah-muted);
+}
+.ah-turn-head > button:disabled > .ah-disclosure-chevron {
+  visibility: hidden;
+}
 .ah-turn-head > button:not(:disabled),
 .ah-turn-strip > button {
   cursor: pointer;
@@ -2500,14 +2514,40 @@ h1[tabindex="-1"]:focus {
   background: var(--ah-current);
   box-shadow: 0 0 0 1px var(--ah-current-line);
 }
-.ah-bash-gap {
+/* The edges view is one box: head, a hairline gap row, tail. */
+.ah-bash-window pre.ah-bash-head {
+  border-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.ah-bash-window pre.ah-bash-tail {
+  border-top: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.ah-bash-window .ah-bash-gap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   width: 100%;
   min-height: 0;
-  border: 1px solid var(--ah-line-soft);
+  padding: 4px 12px;
+  border: 0;
+  border-inline: 1px solid var(--ah-line-soft);
+  border-radius: 0;
   background: var(--ah-sunken);
   color: var(--ah-muted);
+  font: 500 var(--ah-size-meta) var(--ah-font);
   cursor: pointer;
-  padding: 4px;
+}
+.ah-bash-window .ah-bash-gap::before,
+.ah-bash-window .ah-bash-gap::after {
+  content: "";
+  flex: 1;
+  border-top: 1px dashed var(--ah-line-strong);
+}
+.ah-bash-window .ah-bash-gap:hover {
+  color: var(--ah-ink-2);
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Card styles override the generic conversation surface. */
 .ah-bash-output small {

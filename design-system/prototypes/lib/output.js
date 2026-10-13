@@ -1,10 +1,9 @@
 // Tulosteen ja komennon laatikot (valittu kierroksilla 5 ja 6).
-const BIG = 40; // lines: beyond this the output is also offered in its own window
+// The own window is offered for every long output (Jari 13.10.2026); the earlier forty-line threshold hid it.
 const liveCaret = (b) => b.state === 'running' ? '<span class="caret"></span>' : '';
 const lineText = (lines) => esc(lines.join('\n'));
 const rivit = (n) => `${n} riviä`;
 function outMeta(b, parts) { return `<div class="out-meta">${parts.filter(Boolean).join('')}</div>`; }
-const openBtn = (b) => b.out.length > BIG ? `<button class="quiet-btn" type="button" data-act="open">${ICON_OPEN}Avaa omassa ikkunassa</button>` : '';
 function openDialog(b, lines = b.out) {
   const dlg = document.getElementById('outdlg');
   dlg.innerHTML = `<div class="dlg-head"><span class="name">${esc(b.name)}</span><span class="target">${esc(b.target)}</span>${copyBtn('Kopioi', lines.join('\n'))}<button class="quiet-btn" type="button" data-close>Sulje</button></div><div class="dlg-body"><pre>${lines.map((l, i) => `<code><span class="lineno">${i + 1}</span>${/FAILED|Error/.test(l) ? `<span class="fail">${esc(l)}</span>` : esc(l) || ' '}</code>`).join('')}</pre></div>`;
@@ -20,7 +19,7 @@ function box(lines, view, kind, b, live, cls) {
   if (!long || view === 'all') body = `<pre class="${pre} all${live ? ' stream' : ''}">${lineText(lines)}${live ? '<span class="caret"></span>' : ''}</pre>`;
   else if (view === 'edges') body = `<div><pre class="${pre} part head">${lineText(lines.slice(0, 3))}</pre><button class="gap" type="button" data-act="all" data-for="${kind}">${n - 10} riviä välistä · Näytä kaikki</button><pre class="${pre} part tail${live ? ' stream' : ''}">${lineText(lines.slice(-7))}${live ? '<span class="caret"></span>' : ''}</pre></div>`;
   else body = `<pre class="${pre}${live ? ' stream' : ''}" data-scroll="${view}">${lineText(lines)}${live ? '<span class="caret"></span>' : ''}</pre>`;
-  const rail = long ? `<div class="out-rail">${act('edges', 'Alku ja loppu', ICON_EDGES, view === 'edges')}${act('start', 'Alkuun', ICON_TOP, view === 'start')}${act('end', 'Loppuun', ICON_BOTTOM, view === 'end')}${act('all', view === 'all' ? 'Supista' : 'Näytä kaikki', view === 'all' ? ICON_SHRINK : ICON_EXPAND, view === 'all')}${n > BIG ? act('open', 'Avaa omassa ikkunassa', ICON_OPEN, false) : ''}</div>` : '';
+  const rail = long ? `<div class="out-rail">${act('edges', 'Alku ja loppu', ICON_EDGES, view === 'edges')}${act('start', 'Alkuun', ICON_TOP, view === 'start')}${act('end', 'Loppuun', ICON_BOTTOM, view === 'end')}${act('all', view === 'all' ? 'Supista' : 'Näytä kaikki', view === 'all' ? ICON_SHRINK : ICON_EXPAND, view === 'all')}${act('open', 'Avaa omassa ikkunassa', ICON_OPEN, false)}</div>` : '';
   return `<div class="out"><div class="out-win">${body}${rail}</div>${long ? outMeta(b, [`<span>${rivit(n)}</span>`]) : ''}</div>`;
 }
 const outView = (b) => b.view ?? (b.state === 'running' ? 'end' : 'edges');

@@ -120,8 +120,11 @@ elävyys on yhdessä tilanauhassa langan lopussa (mitä agentti tekee ja kauanko
 on kestänyt), ja valmistuttuaan nauha on rivi, josta työn saa kiinni.
 Bash-kortissa näkyvät komento ja tuloste ilman otsakkeita; pitkä komento
 näyttää ensimmäisen rivinsä ja pitkä tuloste alun ja lopun, sivupalkin
-painikkeilla alkuun, loppuun, kokonaan tai omaan ikkunaan
-(Jari 12.10.2026). Pi:n järjestetty teksti, luettava ajattelu ja työkalut muodostavat
+painikkeilla alkuun, loppuun, kokonaan tai omaan ikkunaan; oma ikkuna
+tarjotaan aina, kun tuloste on yli kymmenen riviä (Jari 12.10. ja 13.10.2026).
+Langan pää "PI · malli" on avausnappi, jossa on sama väkänen kuin
+työkaluriveillä, ja alun ja lopun välinen rivi on katkoviivallinen saumarivi
+laatikon sisällä, ei oma painikemöykky. Pi:n järjestetty teksti, luettava ajattelu ja työkalut muodostavat
 yhden vastaukseen päättyvän langan myös peräkkäisissä agentin vuoroissa. PI-otsake ei toistu
 jokaisen osan edessä. Työkalun kutsu, eteneminen ja tallennettu tulos ovat
 yksi avattava käyttö samassa kohdassa; `toolCallId` yhdistää ne. Käyttäjän

@@ -39,8 +39,9 @@ header idea:
 - An output of more than ten lines opens in the "Alku ja loppu" view: the
   first three and last seven lines with a divider "43 riviä välistä · Näytä
   kaikki". A side rail of icon buttons offers Alku ja loppu, Alkuun, Loppuun
-  (a ten-line window scrolled to that end) and Näytä kaikki; beyond forty
-  lines also Avaa omassa ikkunassa, which opens the whole output in a dialog
+  (a ten-line window scrolled to that end), Näytä kaikki and Avaa omassa
+  ikkunassa (offered for every long output since Jari's 13.10. review; the
+  prototype's forty-line threshold hid it from ordinary outputs), which opens the whole output in a dialog
   with line numbers and a copy action. While the tool runs, the box follows
   the end of the output and switches to the edges view when it completes.
   A short output shows plainly without controls.

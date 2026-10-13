@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { expect, it } from "vitest";
 import { BashToolCard } from "./BashToolCard";
 
@@ -33,4 +33,20 @@ it("follows the end while running, then shows edges", () => {
   expect(pre.scrollTop).toBe(400);
   view.rerender(<BashToolCard command="pwd" output={`${output}\nmore`} />);
   expect(view.getByText(/44 riviä välistä/)).toBeTruthy();
+});
+it("offers the own window for any long output, not only very long ones", () => {
+  const sixteen = Array.from({ length: 16 }, (_, i) => `rivi ${i + 1}`).join(
+    "\n",
+  );
+  render(<BashToolCard command="ls" output={sixteen} />);
+  expect(screen.getByText(/6 riviä välistä/)).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: "Avaa omassa ikkunassa" }),
+  ).toBeTruthy();
+  const short = render(<BashToolCard command="ls" output={"a\nb"} />);
+  expect(
+    within(short.container).queryByRole("button", {
+      name: "Avaa omassa ikkunassa",
+    }),
+  ).toBeNull();
 });

@@ -80,6 +80,7 @@ export function AgentTurn({
           aria-expanded={open}
           onPress={() => setOpen(!open)}
         >
+          <span aria-hidden="true" className="ah-disclosure-chevron" />
           PI{model ? ` · ${model}` : ""}
           {!open ? ` · ${thinkingCount} ajatusta · ${toolCount} työkalua` : ""}
         </ControlButton>
@@ -101,6 +102,7 @@ export function AgentTurn({
             aria-expanded={open}
             onPress={() => setOpen(!open)}
           >
+            <span aria-hidden="true" className="ah-disclosure-chevron" />
             Työ · {thinkingCount} ajatusta · {toolCount} työkalua
             {duration ? ` · ${duration}` : ""}
           </ControlButton>
