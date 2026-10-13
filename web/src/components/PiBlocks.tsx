@@ -41,11 +41,7 @@ export function PiToolUse({
   };
   return (
     <div
-      className={
-        state === "running" || state === "forming" || state === "called"
-          ? "ah-live-tool-row"
-          : undefined
-      }
+      className={`ah-pi-tool-use${state === "running" || state === "forming" || state === "called" ? " ah-live-tool-row" : ""}`}
     >
       <ToolRow
         name={name}

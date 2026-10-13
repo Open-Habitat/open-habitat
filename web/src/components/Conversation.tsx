@@ -677,8 +677,14 @@ export function ToolRow({
           name="forward"
           className={expanded ? "ah-icon-expanded" : undefined}
         />
-        <span className="ah-tool-name">{name}</span>
-        {targetText ? <code>{targetText}</code> : null}
+        <span className="ah-tool-names">
+          <span className="ah-tool-name">{name}</span>
+          {targetText ? (
+            <code className="ah-tool-target">
+              {targetText.split(/\r?\n/, 1)[0]}
+            </code>
+          ) : null}
+        </span>
         <StatusMark
           label={statusLabel}
           tone={errorSummary ? "danger" : "neutral"}

@@ -8,6 +8,7 @@ import {
   LiveToolRow,
   NativeQuestion,
   QueuePanel,
+  ToolRow,
   UserMessage,
 } from "./Conversation";
 import { ConversationFrame } from "./ConversationFrame";
@@ -68,6 +69,26 @@ describe("conversation v2 presentation", () => {
     expect(row.textContent).toBe("bashajossa");
     expect(row.querySelector("code")).toBeNull();
     expect(row.textContent).not.toMatch(/\d+ s/);
+  });
+  it("keeps the whole tool name and only the first command line in the header", () => {
+    const view = mount(
+      <ToolRow
+        name="bash"
+        targetText={"echo first line\necho second line"}
+        statusLabel="valmis"
+        state="succeeded"
+        expanded={false}
+        onToggle={noop}
+      />,
+    );
+    const names = view.container.querySelector(".ah-tool-names");
+    expect(names?.querySelector(".ah-tool-name")?.textContent).toBe("bash");
+    expect(names?.querySelector(".ah-tool-target")?.textContent).toBe(
+      "echo first line",
+    );
+    expect(
+      view.getByRole("button", { name: /bash.*echo first line/ }),
+    ).toBeTruthy();
   });
   it("keeps explicit working intents and Enter's last selected mode without a radio group", () => {
     const steer = vi.fn();

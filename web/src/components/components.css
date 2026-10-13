@@ -1942,11 +1942,33 @@ h1[tabindex="-1"]:focus {
   margin: 0;
   overflow-wrap: anywhere;
 }
+.ah-pi-tool-use {
+  min-width: 0;
+  width: 100%;
+}
+.ah-tool-row .ah-tool-names {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+}
 .ah-tool-row .ah-tool-name {
+  flex: none;
+}
+.ah-tool-row .ah-tool-target {
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--ah-muted);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Tool header status sizing is independent of sidebar status. */
+.ah-tool-row .ah-status,
+.ah-tool-row .ah-disclosure small {
+  flex: none;
 }
 .ah-conversation-frame .ah-composer {
   background: transparent;
