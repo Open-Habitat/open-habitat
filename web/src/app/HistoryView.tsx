@@ -22,6 +22,7 @@ import {
 import { AgentTurn, ThinkingRow } from "../components/AgentTurn";
 import { BashToolCard } from "../components/BashToolCard";
 import { ControlButton, LinkRow } from "../components/ControlElements";
+import { ArchiveControls } from "../components/ArchiveControls";
 import { PiBoundary, PiToolUse } from "../components/PiBlocks";
 import { type ConversationStore, useWindow } from "./conversationStore";
 import {
@@ -958,6 +959,21 @@ export function HistoryView({
         activityKind="unknown"
         controlKind="read-only"
         controlLabel="Vain luku · Ohjausta ei ole"
+        titleAction={{
+          label: "Luo uusi otsikko",
+          availability: { state: "disabled", reason: "Vain luku · Ohjausta ei ole." },
+          onPress: () => {},
+        }}
+        archiveControl={
+          <ArchiveControls
+            state={agent.archive ?? "unknown"}
+            eligible={false}
+            busy={false}
+            blockedReason="Vain luku · Tätä keskustelua ei voi arkistoida."
+            onArchive={() => {}}
+            onRestore={() => {}}
+          />
+        }
         workspaceLabel={workspaceName}
         workspaceHref={`/workspaces/${workspaceId}`}
         detailsExpanded={details}

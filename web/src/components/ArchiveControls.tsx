@@ -9,7 +9,9 @@ export function ArchiveControls({
   busy,
   onArchive,
   onRestore,
+  blockedReason,
 }: {
+  blockedReason?: string;
   state: "active" | "archived" | "unknown";
   eligible: boolean;
   busy: boolean;
@@ -17,13 +19,13 @@ export function ArchiveControls({
   onRestore: () => void;
 }) {
   const [confirm, setConfirm] = useState(false);
-  const reason = busy
+  const reason = blockedReason ?? (busy
     ? "Pyyntö kesken."
     : state === "unknown"
       ? "Arkiston tila ei ole tiedossa."
       : !eligible
         ? "Odota Pi:n vuoron päättymistä."
-        : "";
+        : "");
   return (
     <div
       className="ah-archive-control"
@@ -82,7 +84,7 @@ export function ArchiveControls({
           />
         </div>
       ) : null}
-      {state === "unknown" ? (
+      {state === "unknown" && !blockedReason ? (
         <InlineNotice
           title="Arkiston tilaa ei voitu tarkistaa"
           tone="warning"
