@@ -2731,6 +2731,8 @@ h1[tabindex="-1"]:focus {
 }
 .ah-conversation-frame .ah-composer-entry .ah-field {
   min-width: 0;
+  margin-block: 0;
+  gap: 0;
 }
 .ah-conversation-frame .ah-composer-entry > [data-ah-primitive="button"] {
   margin-bottom: var(--ah-s2);
@@ -2803,6 +2805,8 @@ h1[tabindex="-1"]:focus {
 .ah-conversation-frame .ah-composer-entry textarea {
   min-height: var(--ah-composer-rest-height);
   max-height: min(40vh, var(--ah-composer-max-height));
+  padding: 11px 14px;
+  line-height: 1.45;
   overflow-y: auto;
   resize: none;
   field-sizing: content;

@@ -1,0 +1,9 @@
+# Result — composer-text-centering
+
+The production composer removes the generic field's vertical margins and uses the draft's 11px/14px textarea padding and 1.45 line-height. Empty and one-line text is vertically centered beside Send; content-sized text still grows and scrolls at the existing 268px/40vh limit.
+
+Synthetic-lab screenshot/static-HTML pairs: `lab-{1440,390}-{light,dark}-{empty,one,several}.{png,html}`, with matching `draft-…png` screenshots from the local prototype. The eight-line text is invented. The draft's working-time controls were hidden in the comparison because the lab state is idle; the production composer keeps those controls in their existing working state.
+
+Remaining differences: the draft's focused textarea has an accent outline, whereas the lab captures show the existing production border/focus treatment; the draft's composer region has different horizontal inset (328px versus 362px at 390px viewport), background and Send-button color. The lab empty/one-line composer region is 48px high versus the draft's 61px, in part because the draft's cwrap includes its grid row gap even without a visible work row; the textarea itself rests at 44px in both. These are separate shell/control visual choices, not a text-centering difference.
+
+Validation: `./scripts/test-focused.sh --area web` passed (111 unit, 97 component tests); browser focus runs passed: `browser-conversation.spec.ts` 61, `lab-conversation.spec.ts` 12, `shell-accessibility.spec.ts` 3 (with `PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright OH_PORT_BASE=14900`). The new conversation test checks empty, one-line and 20-line text at desktop and phone widths, including alignment and scroll limit; shell accessibility includes axe on the narrow shell. The synthetic lab is not live-host proof. Focused self-review was proportionate to the bounded CSS fix; visual approval follows release.

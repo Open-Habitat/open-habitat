@@ -61,6 +61,51 @@ async function open(page: import("@playwright/test").Page) {
     page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
   ).toBeEnabled();
 }
+test("@browser-conversation composer centers one line and grows to its scroll limit", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+    for (const text of ["", "Yksi rivi"]) {
+      await editor.fill(text);
+      const geometry = await editor.evaluate((node) => {
+        const field = node as HTMLTextAreaElement;
+        const rect = field.getBoundingClientRect();
+        const send = document
+          .querySelector(".ah-composer-entry > button")
+          ?.getBoundingClientRect();
+        const style = getComputedStyle(field);
+        const line = parseFloat(style.lineHeight);
+        const textCenter =
+          rect.top +
+          parseFloat(style.borderTopWidth) +
+          parseFloat(style.paddingTop) +
+          line / 2;
+        return {
+          height: rect.height,
+          line,
+          textCenter,
+          buttonCenter: send ? send.top + send.height / 2 : 0,
+        };
+      });
+      expect(geometry.height).toBeGreaterThanOrEqual(44);
+      expect(geometry.height).toBeLessThan(50);
+      expect(
+        Math.abs(geometry.textCenter - geometry.buttonCenter),
+      ).toBeLessThan(3);
+    }
+    await editor.fill(
+      Array.from({ length: 20 }, (_, i) => `rivi ${i}`).join("\n"),
+    );
+    expect(
+      await editor.evaluate((node) => node.scrollHeight > node.clientHeight),
+    ).toBe(true);
+  }
+});
+
 test("@browser-conversation new controller stays calm and shares settled state with navigation", async ({
   page,
 }) => {
@@ -129,6 +174,64 @@ test("@browser-conversation saved assistant turn exposes bash command and folds 
   await expect(
     turn.getByText("Selvä. Kysyit:", { exact: false }),
   ).toBeVisible();
+});
+
+test("@browser-conversation tool headers keep the name and ellipsize long targets", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .fill("Tarkista tiedostot");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  const turn = page.getByRole("region", { name: "Agentin vuoro" }).first();
+  await expect(turn.getByText("Selvä. Kysyit:", { exact: false })).toBeVisible({
+    timeout: 30000,
+  });
+  for (const history of [false, true]) {
+    if (history) await page.reload();
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      const row = turn.locator(".ah-tool-row").first();
+      await expect(row).toBeVisible();
+      for (const target of [
+        `find /synthetic/${"long-path/".repeat(20)} -type f`,
+        `/synthetic/${"deep-directory/".repeat(20)}file.txt`,
+      ]) {
+        const geometry = await row.evaluate((node, text) => {
+          const names = node.querySelector(".ah-tool-names") as HTMLElement;
+          let target = names.querySelector(
+            ".ah-tool-target",
+          ) as HTMLElement | null;
+          // The synthetic host's saved call may omit arguments until the card opens.
+          // Inject invented target text to exercise the real header layout in both states.
+          if (!target) {
+            target = document.createElement("code");
+            target.className = "ah-tool-target";
+            names.append(target);
+          }
+          target.textContent = text;
+          const name = node.querySelector(".ah-tool-name") as HTMLElement;
+          const button = node.querySelector("button") as HTMLElement;
+          return {
+            name: name.textContent,
+            targetWidth: target.clientWidth,
+            targetScroll: target.scrollWidth,
+            nameWidth: name.getBoundingClientRect().width,
+            nameScroll: name.scrollWidth,
+            height: button.getBoundingClientRect().height,
+            right: button.getBoundingClientRect().right,
+          };
+        }, target);
+        expect(geometry.name).toBe("bash");
+        expect(geometry.nameWidth).toBeGreaterThanOrEqual(geometry.nameScroll);
+        expect(geometry.targetScroll).toBeGreaterThan(geometry.targetWidth);
+        expect(geometry.height).toBeLessThan(45);
+        expect(geometry.right).toBeLessThanOrEqual(width);
+      }
+    }
+  }
 });
 
 test("@browser-conversation workspace plus starts one native conversation", async ({
