@@ -138,7 +138,15 @@ Bash-kortissa näkyvät komento ja tuloste ilman otsakkeita; pitkä komento
 näyttää ensimmäisen rivinsä ja pitkä tuloste alun ja lopun, sivupalkin
 painikkeilla alkuun, loppuun, kokonaan tai omaan ikkunaan; oma ikkuna
 tarjotaan aina, kun tuloste on yli kymmenen riviä (Jari 12.10. ja 13.10.2026).
-Työkalurivin otsakkeessa työkalun nimi näkyy aina kokonaan, ja komento tai kohde pysyy yhdellä rivillä ja päättyy tarvittaessa "…"-merkkiin; koko komento näkyy avatussa kortissa (Jari 13.10.2026). Sivupalkin ylimpänä on tulosteen kopiointi, myös lyhyellä tulosteella. Kun
+Työkalurivin otsakkeessa työkalun nimi näkyy aina kokonaan, ja komento tai kohde pysyy yhdellä rivillä ja päättyy tarvittaessa "…"-merkkiin; koko komento näkyy avatussa kortissa (Jari 13.10.2026). Sivupalkin ylimpänä on tulosteen kopiointi, myös lyhyellä tulosteella. Sama
+laatikko näyttää myös vastauksen koodin (kieli ja rivimäärä laatikon alla).
+Laatikon sivupalkki on ryhmitelty: kopiointi · näkymä (alku ja loppu,
+vieritettävä ikkuna, kaikki rivit) yhtenä valitsimena · Alkuun ja Loppuun
+vain vieritettävässä ikkunassa · rivitys ja oma ikkuna. Näkymä on ainoa
+painettuna näkyvä tila; Alkuun ja Loppuun ovat tekoja, jotka estyvät, kun
+laatikko on jo siinä päässä, joten mikään ei jää korostetuksi vierityksen
+jälkeen. Pitkiä rivejä ei rivitetä oletuksena: reunan varjo kertoo rivin
+jatkuvan, ja rivitys sisentää jatkorivin (Jari 13.10.2026). Kun
 keskustelu avataan ja ladataan, sen bash-kortit ovat kiinni; auki ovat vain
 katselun aikana saapuvat, ja juuri katsotun keskustelun avaukset säilyvät
 (Jari 13.10.2026). Koodissa ja tulosteissa ei ole fontin ligatuureja, jotta

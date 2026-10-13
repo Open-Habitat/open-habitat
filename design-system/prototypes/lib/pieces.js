@@ -8,7 +8,8 @@ function userBubble(m, i) {
   return `<article class="bubble user ah-in" style="--i:${i}"><div class="bubble-head"><span class="who">Sinä</span>${copyBtn('Kopioi viesti', m.md)}<time class="meta">${m.time}</time></div><div class="prose">${md(m.md)}</div></article>`;
 }
 function toolBody(b) {
-  if (b.name === 'bash') return `<div class="tool-body"><pre class="bash-cmd">${esc(b.args.command)}</pre><pre>${esc(b.result)}</pre></div>`;
+  // History bash cards open into the same output box as live ones.
+  if (b.name === 'bash') return `<div class="tool-body"><pre class="bash-cmd">${esc(b.args.command)}</pre>${xbox(`h:${b.args.command}`, b.result.split('\n'), { name: 'bash', target: b.target, copyLabel: 'Kopioi tuloste' })}</div>`;
   const args = Object.entries(b.args).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
   return `<div class="tool-body"><div><h4>Argumentit</h4><dl>${args}</dl></div><div><h4>Tulos</h4><pre>${esc(b.result)}</pre></div></div>`;
 }

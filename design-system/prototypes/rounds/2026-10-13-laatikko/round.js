@@ -4,6 +4,9 @@
 // Laatikon tila on BX:ssä avaimella; elävän vuoron laatikko piirtyy uudelleen lib/live.js:n
 // patchilla, muut tämä tiedosto piirtää itse.
 
+// Jari chose Ryhmät on 2026-10-13; it is now the library box (xbox in lib/output.js). This
+// file keeps all three directions in its own scope so the round still builds.
+(() => {
 const ICON_SCROLLWIN = SVG('<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M16 8v5"/>');
 const ICON_WRAP = SVG('<path d="M4 6h16M4 12h12a3 3 0 0 1 0 6h-4"/><path d="m14 16-2 2 2 2"/><path d="M4 18h4"/>');
 const ICON_VIEW = SVG('<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>');
@@ -138,6 +141,7 @@ document.addEventListener('click', async (e) => {
 }, true);
 
 function view(v) { V = v; for (const k in BX) delete BX[k]; return appView(); }
-const v1 = () => view('v1');
-const v2 = () => view('v2');
-const v3 = () => view('v3');
+window.v1 = () => view('v1');
+window.v2 = () => view('v2');
+window.v3 = () => view('v3');
+})();

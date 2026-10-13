@@ -240,6 +240,36 @@ pre.cmd-rest { margin: 0; padding: 8px 12px; background: var(--ah-sunken); borde
 .head-cell .sum { font: 400 12.5px var(--ah-font); color: var(--ah-muted); }
 .mono { font-family: var(--ah-mono); }
 
+/* ===== Output box (chosen 13.10.2026, Ryhmät): lines, wrapping, edge shadows, grouped rail ===== */
+.out pre.viewport { white-space: pre; overflow-wrap: normal; overflow-x: auto; }
+.out pre.viewport .ln { display: block; min-width: max-content; }
+.out pre.viewport.wrap { white-space: pre-wrap; overflow-x: hidden; }
+/* A wrapped line hangs its continuation, so it reads as one line. */
+.out pre.viewport.wrap .ln { min-width: 0; padding-left: 3ch; text-indent: -3ch; overflow-wrap: anywhere; }
+.out pre.viewport:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
+.out .edges { display: flex; flex-direction: column; min-width: 0; }
+.out .vp { position: relative; min-width: 0; }
+.out .vp pre.viewport { max-height: calc(10 * 1.55 * 12.5px + 20px); overflow-y: auto; }
+.icon-btn[aria-disabled="true"] { opacity: .35; cursor: default; }
+.icon-btn[aria-disabled="true"]:hover { background: transparent; color: var(--ah-muted); }
+
+
+.out-rail.ga { gap: 0; }
+.out-rail.ga .grp { display: flex; flex-direction: column; gap: 2px; padding: 4px 0; }
+.out-rail.ga .grp + .grp { border-top: 1px solid var(--ah-line-soft); }
+.out-rail.ga .grp:first-child { padding-top: 0; }
+.out-rail.ga .seg { padding: 3px; margin: 4px 0; border: 1px solid var(--ah-line); border-radius: 8px; background: var(--ah-surface-2); }
+.out-rail.ga .seg + .grp { border-top: 0; }
+.out-rail.ga .seg .icon-btn { width: 24px; height: 24px; }
+.out-rail.ga .seg .icon-btn[aria-pressed="true"] { background: var(--ah-surface); color: var(--ah-ink); box-shadow: 0 0 0 1px var(--ah-line-strong); }
+.out-rail.ga .icon-btn[aria-pressed="false"] { box-shadow: none; }
+.out-rail.ga .grp:not(.seg) .icon-btn[aria-pressed="true"] { background: var(--ah-current); color: var(--ah-ink); box-shadow: 0 0 0 1px var(--ah-current-line); }
+/* Unwrapped long lines: an inner shadow at the edge says there is more that way. */
+.out pre.viewport.more-right { box-shadow: inset -18px 0 14px -14px rgba(16,24,40,.22); }
+.out pre.viewport.more-left { box-shadow: inset 18px 0 14px -14px rgba(16,24,40,.22); }
+.out pre.viewport.more-left.more-right { box-shadow: inset -18px 0 14px -14px rgba(16,24,40,.22), inset 18px 0 14px -14px rgba(16,24,40,.22); }
+
+
 @container (max-width: 800px) {
   .bubble.user { max-width: 100%; }
 }
