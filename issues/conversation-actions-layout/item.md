@@ -9,7 +9,7 @@ related: ['@new-conversation-view']
 lane: web
 lane_seq: 7
 collision: [web/]
-preparation: pending
+preparation: ready
 ---
 
 # Unify conversation actions and sidebar layout
