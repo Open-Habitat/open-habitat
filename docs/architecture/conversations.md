@@ -71,7 +71,12 @@ history source independently of the retained handles.
 The daemon supports sending a prompt, steering an active turn, queueing a
 follow-up and clearing those queues. Aborting asks Pi to interrupt the current
 turn while keeping the process available for another message. Stopping closes
-the RPC channel. [HTTP API](http-api.md) lists the routes and message contracts.
+the RPC channel. Close of a freshly browser-started, still-empty conversation
+stops and reaps its direct Pi child, checks the complete native session (every
+branch) for user messages, and removes only that verified-empty file. An
+unknown writer, an unowned session or changed history refuses the deletion.
+Like continuation admission, the same-UID terminal process census cannot fence
+a terminal Pi started after the check. [HTTP API](http-api.md) lists the routes and message contracts.
 
 Message commands have client-generated IDs so the browser can look up their
 receipts after a lost reply. A receipt distinguishes pending, accepted,

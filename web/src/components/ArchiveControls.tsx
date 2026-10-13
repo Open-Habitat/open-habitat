@@ -1,8 +1,8 @@
 import { useId, useState } from "react";
 import { ControlButton } from "./ControlElements";
+import { Icon } from "./Icon";
 import { Button } from "./Primitives";
 import { InlineNotice } from "./Status";
-import { Icon } from "./Icon";
 
 export function ArchiveControls({
   state,
@@ -10,6 +10,7 @@ export function ArchiveControls({
   busy,
   onArchive,
   onRestore,
+  onClose,
   blockedReason,
   empty = false,
 }: {
@@ -20,6 +21,7 @@ export function ArchiveControls({
   busy: boolean;
   onArchive: () => void;
   onRestore: () => void;
+  onClose?: () => void;
 }) {
   const [confirm, setConfirm] = useState(false);
   const reasonId = useId();
@@ -32,25 +34,28 @@ export function ArchiveControls({
         : !eligible
           ? "Odota Pi:n vuoron päättymistä."
           : "");
-  if (empty && state !== "archived")
+  if (empty && state !== "archived") {
+    const closeReason =
+      blockedReason ??
+      (!onClose
+        ? "Vain selaimessa aloitettu tyhjä keskustelu voidaan sulkea."
+        : reason);
     return (
-      <div
-        className="ah-archive-control"
-        title="Sulkeminen ei ole vielä käytettävissä: natiivia Pi-prosessia ei voida turvallisesti poistaa."
-      >
+      <div className="ah-archive-control" title={closeReason || "Sulje"}>
         <ControlButton
           className="ah-topbar-icon"
           variant="quiet"
           aria-label="Sulje"
-          title="Sulkeminen ei ole vielä käytettävissä: natiivia Pi-prosessia ei voida turvallisesti poistaa."
-          aria-description="Sulkeminen ei ole vielä käytettävissä: natiivia Pi-prosessia ei voida turvallisesti poistaa."
-          isDisabled
-          onPress={() => {}}
+          title={closeReason || "Sulje"}
+          aria-description={closeReason || undefined}
+          isDisabled={Boolean(closeReason)}
+          onPress={() => onClose?.()}
         >
           <Icon name="cross" />
         </ControlButton>
       </div>
     );
+  }
   return (
     <div
       className="ah-archive-control"

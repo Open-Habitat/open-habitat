@@ -311,6 +311,8 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		c.continueEnded(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "stop":
 		c.stop(w, r, parts[0])
+	case r.Method == http.MethodPost && parts[1] == "close":
+		c.closeEmpty(w, r, parts[0])
 	default:
 		snapshotError(w, 404, "resource_not_found")
 	}

@@ -28,6 +28,7 @@ import { BrowserConversation } from "./BrowserConversation";
 import { ConversationJournal } from "./conversationJournal";
 import { ConversationStore } from "./conversationStore";
 import {
+  closeEmpty,
   create as createConversation,
   list as listConversations,
   NotAdmitted,
@@ -175,6 +176,11 @@ export function App() {
   const [pendingArchive, setPendingArchive] = useState<Set<string>>(
     () => new Set(),
   );
+  const [pendingClose, setPendingClose] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const closeInFlight = useRef(false);
+  const confirmedClose = useRef(new Set<string>());
   const archiveInFlight = useRef(false);
   const [archiveToast, setArchiveToast] = useState("");
   const [logoutPrompt, setLogoutPrompt] = useState(false);
@@ -213,6 +219,9 @@ export function App() {
     owned.current.store?.dispose(); // also cancels every pending page read
     owned.current = {};
     setPendingArchive(new Set());
+    setPendingClose(new Set());
+    closeInFlight.current = false;
+    confirmedClose.current.clear();
     setArchiveToast("");
     setArchiveBusy(false);
     archiveInFlight.current = false;
@@ -623,6 +632,68 @@ export function App() {
       );
     });
   }, [snapshot]);
+  const closeConversation = async (
+    agent: NonNullable<typeof snapshot>["agents"][number],
+  ) => {
+    if (
+      !csrf ||
+      phase !== "authenticated" ||
+      closeInFlight.current ||
+      !agent.agent_id.startsWith("pi:")
+    )
+      return;
+    closeInFlight.current = true;
+    const person = identity;
+    const route = `${location.pathname}${location.search}`;
+    setArchiveProblem("");
+    setPendingClose((old) => new Set(old).add(agent.agent_id));
+    navigate(`/workspaces/${agent.workspace_id}`, { replace: true });
+    try {
+      await closeEmpty(agent.agent_id, csrf);
+      if (currentIdentity.current !== person) return;
+      confirmedClose.current.add(agent.agent_id);
+      setDaemonSessions((old) =>
+        old.filter((s) => s.agent_id !== agent.agent_id),
+      );
+      refresh();
+    } catch (error) {
+      if (currentIdentity.current !== person) return;
+      setPendingClose((old) => {
+        const next = new Set(old);
+        next.delete(agent.agent_id);
+        return next;
+      });
+      if ((error as Error).message === "identity_lost") requireLogin();
+      setArchiveProblem(
+        error instanceof NotAdmitted
+          ? "Sulkemista ei tehty: keskustelussa on sisältöä tai kirjoittajaa ei voida sulkea turvallisesti."
+          : "Sulkemista ei voitu vahvistaa. Keskustelu palautettiin näkyviin; tarkista natiivi tila.",
+      );
+      if (
+        `${window.location.pathname}${window.location.search}` ===
+        `/workspaces/${agent.workspace_id}`
+      )
+        navigate(route, { replace: true });
+      refresh();
+    } finally {
+      if (currentIdentity.current === person) closeInFlight.current = false;
+    }
+  };
+  useEffect(() => {
+    if (!snapshot) return;
+    setPendingClose((old) => {
+      const next = new Set(
+        [...old].filter(
+          (id) =>
+            !confirmedClose.current.has(id) ||
+            snapshot.agents.some((a) => a.agent_id === id),
+        ),
+      );
+      for (const id of confirmedClose.current)
+        if (!next.has(id)) confirmedClose.current.delete(id);
+      return next.size === old.size ? old : next;
+    });
+  }, [snapshot]);
   const changeArchive = async (
     agent: NonNullable<typeof snapshot>["agents"][number],
     archived: boolean,
@@ -700,6 +771,7 @@ export function App() {
         (a) =>
           a.archive !== "archived" &&
           !pendingArchive.has(a.agent_id) &&
+          !pendingClose.has(a.agent_id) &&
           visible.some((w) => w.workspace_id === a.workspace_id),
       )
       .map((a) => {
@@ -860,6 +932,7 @@ export function App() {
           onTitleComplete={refresh}
           csrf={phase === "authenticated" ? csrf : undefined}
           workspaceName={agentWorkspace.display_name ?? agentWorkspace.name}
+          workspacePath={agentWorkspace.path}
           workspaceId={agentWorkspace.workspace_id}
         />
       </>
@@ -923,6 +996,7 @@ export function App() {
                 new URLSearchParams(location.search).get("conversation"),
             )}
             onArchive={changeArchive}
+            onClose={closeConversation}
             archiveBusy={archiveBusy}
             archiveAwaitingSnapshot={pendingArchive.has(
               new URLSearchParams(location.search).get("conversation") ?? "",
@@ -1197,7 +1271,7 @@ export function App() {
             <WorkspaceRailView
               phase={phase}
               snapshot={snapshot}
-              pendingArchive={pendingArchive}
+              pendingArchive={new Set([...pendingArchive, ...pendingClose])}
               profile={profile}
               store={conversationStore}
               source={source}

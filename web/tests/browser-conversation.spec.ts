@@ -42,7 +42,7 @@ async function expectPhoneComposerWithinViewport(
 }
 async function refreshConversation(page: import("@playwright/test").Page) {
   const check = page.getByRole("button", { name: "Tarkista keskustelun tila" });
-  const details = page.getByRole("button", { name: "Tiedot" });
+  const details = page.getByRole("button", { name: "Tiedot", exact: true });
   if ((await details.getAttribute("aria-expanded")) === "false")
     await details.click();
   await expect(check).toBeVisible();
@@ -2383,6 +2383,47 @@ test("@browser-conversation new conversation keeps icon bar during archive fact 
       .locator(".ah-agent-header")
       .getByRole("button", { name: "Luo uusi otsikko" }),
   ).toBeDisabled();
+});
+
+test("@browser-conversation empty browser conversation closes without confirmation", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const close = page
+    .locator(".ah-agent-header")
+    .getByRole("button", { name: "Sulje" });
+  await expect(close).toBeEnabled();
+  await close.click();
+  await expect(page).toHaveURL(/\/workspaces\/ws_/);
+  await expect(page.getByRole("alertdialog", { name: /arkist/i })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.locator(".ah-agent-header").getByRole("button", { name: "Sulje" }),
+  ).toHaveCount(0);
+});
+
+test("@browser-conversation failed close restores the conversation", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const before = page.url();
+  await page.route("**/api/v1/conversations/*/close", (route) =>
+    route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: '{"schema_version":1,"code":"control_uncertain"}',
+    }),
+  );
+  const close = page
+    .locator(".ah-agent-header")
+    .getByRole("button", { name: "Sulje" });
+  await expect(close).toBeEnabled();
+  await close.click();
+  await expect(page).toHaveURL(before);
+  await expect(page.locator(".ah-agent-header")).toBeVisible();
 });
 
 test("@browser-conversation archive stays hidden across delayed successful host reply", async ({

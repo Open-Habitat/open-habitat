@@ -489,6 +489,12 @@ export async function abortTurn(id: string, commandId: string, csrf: string) {
     throw new Error("invalid abort");
 }
 
+export async function closeEmpty(id: string, csrf: string): Promise<void> {
+  const v = await request(`${path(id)}/close`, undefined, undefined, csrf);
+  if (!object(v) || v.schema_version !== 1 || v.state !== "closed")
+    throw new Error("invalid close result");
+}
+
 export async function stop(id: string, csrf: string) {
   const v = await request(`${path(id)}/stop`, undefined, undefined, csrf);
   if (!object(v) || v.schema_version !== 1 || v.state !== "termination_unknown")
