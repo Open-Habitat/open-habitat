@@ -2,6 +2,7 @@ import { useId, useState } from "react";
 import { ControlButton } from "./ControlElements";
 import { Button } from "./Primitives";
 import { InlineNotice } from "./Status";
+import { Icon } from "./Icon";
 
 export function ArchiveControls({
   state,
@@ -10,8 +11,10 @@ export function ArchiveControls({
   onArchive,
   onRestore,
   blockedReason,
+  empty = false,
 }: {
   blockedReason?: string;
+  empty?: boolean;
   state: "active" | "archived" | "unknown";
   eligible: boolean;
   busy: boolean;
@@ -29,6 +32,25 @@ export function ArchiveControls({
         : !eligible
           ? "Odota Pi:n vuoron päättymistä."
           : "");
+  if (empty && state !== "archived")
+    return (
+      <div
+        className="ah-archive-control"
+        title="Sulkeminen ei ole vielä käytettävissä: natiivia Pi-prosessia ei voida turvallisesti poistaa."
+      >
+        <ControlButton
+          className="ah-topbar-icon"
+          variant="quiet"
+          aria-label="Sulje"
+          title="Sulkeminen ei ole vielä käytettävissä: natiivia Pi-prosessia ei voida turvallisesti poistaa."
+          aria-description="Sulkeminen ei ole vielä käytettävissä: natiivia Pi-prosessia ei voida turvallisesti poistaa."
+          isDisabled
+          onPress={() => {}}
+        >
+          <Icon name="cross" />
+        </ControlButton>
+      </div>
+    );
   return (
     <div
       className="ah-archive-control"

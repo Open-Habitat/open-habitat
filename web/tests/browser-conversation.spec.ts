@@ -169,7 +169,7 @@ test("@browser-conversation saved assistant turn exposes bash command and folds 
   ).toEqual([]);
   await expect(turn.getByText("Argumentit")).toHaveCount(0);
   await expect(turn.getByText(/call_[a-z0-9]/)).toHaveCount(0);
-  await turn.getByRole("button", { name: /Työ ·/ }).click();
+  await turn.getByRole("button", { name: /PI.*ajatusta/ }).click();
   await expect(turn.getByText("$ ls")).toHaveCount(0);
   await expect(
     turn.getByText("Selvä. Kysyit:", { exact: false }),
@@ -692,9 +692,9 @@ test("@browser-conversation settled turn uses its native strip without a duplica
   });
   await refreshConversation(page);
   await expect(page.locator(".ah-settled")).toHaveCount(0);
-  await expect(page.locator(".ah-turn-strip").first()).toBeVisible();
+  await expect(page.locator(".ah-turn-head").first()).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.locator(".ah-turn-strip").first()).toBeVisible();
+  await expect(page.locator(".ah-turn-head").first()).toBeVisible();
   await expectPhoneComposerWithinViewport(page);
 });
 test("@browser-conversation footer and floating latest stay clear at phone width", async ({
@@ -2373,8 +2373,8 @@ test("@browser-conversation new conversation keeps icon bar during archive fact 
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await expect(page.locator(".ah-agent-header")).toBeVisible();
   await expect(
-    page.locator(".ah-agent-header").getByRole("button", { name: "Arkistoi" }),
-  ).toBeVisible();
+    page.locator(".ah-agent-header").getByRole("button", { name: "Sulje" }),
+  ).toBeDisabled();
   await expect(page.getByText("Arkiston tilaa ei voitu tarkistaa")).toHaveCount(
     0,
   );
