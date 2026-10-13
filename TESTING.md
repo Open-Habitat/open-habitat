@@ -45,7 +45,8 @@ runs both phases in full. The gated release preparer checks the receipt
 against the current clean tree rather than rerunning the gate. Browser and Go/contracts now run concurrently after the shared web build.
 The first changed-tree no-reuse run took 233 s, including 49 s of dependency
 installation and browser download; the browser side took 142 s and Go/contracts
-157 s concurrently. [The focused-tests result](issues/fast-focused-tests/result.md)
+157 s concurrently. Another changed-tree run with populated caches took
+169 s (browser 129 s, Go/contracts 124 s, concurrent). [The focused-tests result](issues/fast-focused-tests/result.md)
 records the warm-cache profile and remaining bottlenecks. The earlier sequential
 cold and identical-tree reused runs took 232.14 s and 41.89 s;
 [the fast-gate result](issues/fast-clean-gate/result.md) has that phase

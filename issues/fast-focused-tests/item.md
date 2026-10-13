@@ -40,6 +40,6 @@ on top.
 ## Acceptance Criteria
 
 - [ ] The browser and Go/contracts phases of a changed-tree clean gate run concurrently, and the whole gate on a changed tree is far below its current 235–290 s; the result records the measured phase times before and after.
-- [ ] `result.md` has a coverage map of removed, merged or moved tests with the test that now carries each removed proof.
-- [ ] `ci-local.sh` (or a sibling script) accepts a caller-chosen narrower scope; the narrowed run never writes the clean-gate receipt, and `TESTING.md` describes it.
+- [x] `result.md` has a coverage map of removed, merged or moved tests with the test that now carries each removed proof.
+- [x] `ci-local.sh` (or a sibling script) accepts a caller-chosen narrower scope; the narrowed run never writes the clean-gate receipt, and `TESTING.md` describes it.
 - [ ] The clean gate still passes in full and `release_test.py` accepts its receipt unchanged.

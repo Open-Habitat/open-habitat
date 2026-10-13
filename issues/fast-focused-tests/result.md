@@ -10,8 +10,12 @@ Pi-device-test dependency install (ETIMEDOUT after 35 s); this was an external
 fetch failure, not a passing or failing test. The first changed-tree full
 `--clean --json --no-reuse` gate on commit `55e9573` passed in 233 s (setup
 5 s, dependencies 49 s including browser download, web checks 12 s,
-concurrent browser 142 s and Go/contracts 157 s, packaging 10 s). Browser
-cases: 142/142 normal and 17/17 lab. Two further serial repetitions passed
+concurrent browser 142 s and Go/contracts 157 s, packaging 10 s). A second
+changed-tree no-reuse run on commit `9eed903` with caches populated took
+169 s (setup 5 s, dependencies 14 s, web checks 11 s, concurrent browser
+129 s and Go/contracts 124 s, packaging 10 s). Relative to the earlier
+sequential 232 s run, warm-cache elapsed time fell about 27%, not 10x.
+Browser cases: 142/142 normal and 17/17 lab. Two further serial repetitions passed
 142/142 + 17/17 each (normal 1.3 and 1.2 minutes, lab 41.2 and 41.1 s).
 Separate normal and lab Playwright commands must not overlap within one
 worktree: an exploratory concurrent attempt failed because they both use

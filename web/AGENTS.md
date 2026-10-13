@@ -84,7 +84,9 @@ for targeted host-backed evidence; this skips Go, contracts and packaging and
 never produces a full-gate receipt. The full clean gate runs browser and
 Go/contracts checks concurrently after building shared web assets. The first
 no-reuse changed-tree gate took 233 s (browser 142 s including lab, Go/contracts
-157 s concurrently); a standalone warm browser run took 82 s for 142 cases.
+157 s concurrently); the next changed tree with warm caches took 169 s
+(browser 129 s, Go/contracts 124 s), and a standalone warm browser run took
+82 s for 142 cases.
 Fresh per-case hosts remain in place: resetting a process-wide scenario alone would
 not isolate OAuth sessions, fake Pi leases and filesystem history.
 
