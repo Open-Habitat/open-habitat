@@ -73,3 +73,7 @@ saman tarkkuuden kuin sillä oli suuntaluokan alla. Sen jälkeen
 omistavaan issueen ja `../design.md`:hen. Prototyypin omat tokenit
 (`--ah-sunken`, `--ah-hover`) ovat `language.css`:n alussa, kunnes toteutus
 vie ne `../tokens/`-hakemistoon.
+Kirjastoon siirretty kierros määrittelee usein samoja nimiä kuin kirjasto
+(`const`-nimet törmäävät eikä kierros enää rakennu). Kierroksen koodi
+kääritään silloin omaan näkyvyysalueeseensa, `(() => { … window.v1 = … })()`,
+jotta hylätyt suunnat voi yhä avata.
