@@ -5,12 +5,14 @@ import { catalog, clone, type Repo } from "./github";
 export function NewWorkspace({
   csrf,
   token,
+  available,
   onClose,
   onCreated,
   refresh,
 }: {
   csrf: string;
   token?: string;
+  available: boolean;
   onClose: () => void;
   onCreated: (name: string) => void;
   refresh: () => void;
@@ -37,7 +39,7 @@ export function NewWorkspace({
     };
   }, []);
   const submit = async () => {
-    if (busy) return;
+    if (busy || !available) return;
     const name = value.trim();
     if (
       mode === "github"
@@ -156,6 +158,9 @@ export function NewWorkspace({
           ? "Kloonataan hakemistoon ~/src/<repo> sinun GitHub-tunnuksillasi."
           : "Luodaan ~/src/<nimi> ja alustetaan Git-repoksi."}
       </p>
+      {!available && (
+        <p role="status">Yhteys pitää vahvistaa ennen työtilan luontia.</p>
+      )}
       {error && <p role="alert">{error}</p>}
       <div className="ah-new-footer">
         <ControlButton type="button" isDisabled={busy} onClick={onClose}>
@@ -163,7 +168,7 @@ export function NewWorkspace({
         </ControlButton>
         <ControlButton
           type="button"
-          isDisabled={busy || !value.trim()}
+          isDisabled={!available || busy || !value.trim()}
           onClick={() => void submit()}
         >
           {busy ? "Luodaan…" : "Luo työtila"}

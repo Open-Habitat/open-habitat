@@ -1234,6 +1234,11 @@ export function App() {
         {newWorkspace && csrf && (
           <NewWorkspace
             csrf={csrf}
+            available={
+              phase === "authenticated" &&
+              source === "confirmed" &&
+              snapshot?.write_state !== "read_only"
+            }
             token={snapshot?.user_observation_token}
             refresh={refresh}
             onClose={() => setNewWorkspace(false)}
