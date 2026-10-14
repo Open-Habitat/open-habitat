@@ -33,7 +33,7 @@ Also in scope (same code path): **the recap closes when the user sends a message
 
 ## Acceptance Criteria
 
-- [ ] A lab journey reproduces the completed-turn state (live turn ends, native history catches up) and shows no forward pager. The recap sits directly above the composer.
-- [ ] Any pager that is shown has the conversation column's width and left edge (element-rectangle check).
-- [ ] The empty composer is one line after a completed turn.
-- [ ] Sending a message hides the current recap (browser test).
+- [x] A lab journey reproduces the completed-turn state (live turn ends, native history catches up) and shows no forward pager. The recap sits directly above the composer.
+- [x] Any pager that is shown has the conversation column's width and left edge (element-rectangle check).
+- [x] The empty composer is one line after a completed turn.
+- [x] Sending a message hides the current recap (browser test).
