@@ -5,9 +5,9 @@ import { demoOrigin, ports } from "../test-ports.mjs";
 const base = demoOrigin;
 test.use({ baseURL: base, viewport: { width: 1280, height: 720 } });
 for (const [scenario, heading] of [
-  ["ready", "Jatka siitä, mihin jäit"],
+  ["ready", "Työtilat"],
   ["empty", "Työtilat"],
-  ["partial", "Jatka siitä, mihin jäit"],
+  ["partial", "Työtilat"],
   ["missing", "Työtilat"],
   ["unavailable", "Yhteyttä ei saatu"],
   ["login", "Tervetuloa Open Habitatiin"],

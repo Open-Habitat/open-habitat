@@ -1,6 +1,6 @@
+import { hostOrigin } from "../test-ports.mjs";
 import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
-import { hostOrigin } from "../test-ports.mjs";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
@@ -163,9 +163,7 @@ test("@first-use a slow status read does not delay the device-code start, and co
     await page.unrouteAll({ behavior: "ignoreErrors" });
     const started = Date.now();
     await page.request.get("/fixture/pi-state?value=usable");
-    await expect(
-      page.getByRole("heading", { name: "Jatka siitä, mihin jäit" }),
-    ).toBeVisible({
+    await expect(page.getByRole("heading", { name: "Työtilat" })).toBeVisible({
       timeout: 4500,
     });
     expect(Date.now() - started).toBeLessThan(4500);

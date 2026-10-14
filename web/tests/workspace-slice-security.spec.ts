@@ -1,8 +1,8 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { expect, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
+import { expect, test } from "./worker-host";
 
 const host = hostOrigin;
 test.use({ baseURL: host, ignoreHTTPSErrors: true });
@@ -202,5 +202,5 @@ test("@workspace-slice browser retains workspaces past 512 and accepts a large p
   await page
     .getByRole("textbox", { name: "Suodata työtiloja" })
     .fill("project-2499");
-  await expect(page.getByText("project-2499")).toBeVisible();
+  await expect(page.getByText("project-2499").first()).toBeVisible();
 });

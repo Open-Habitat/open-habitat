@@ -20,6 +20,7 @@ import {
 } from "../components";
 import { accountLabel } from "../components/Account";
 import { LinkRow } from "../components/ControlElements";
+import { HomeWorkspaces } from "../components/HomeWorkspaces";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import type { ReturnConversation } from "../components/ReturnView";
 import { ReturnView } from "../components/ReturnView";
@@ -37,6 +38,7 @@ import {
 } from "./conversations";
 import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
+import { NewWorkspace } from "./NewWorkspace";
 import { PersonalStorage } from "./PersonalStorage";
 import {
   type AccountProfile,
@@ -144,6 +146,7 @@ export function App() {
     (s: RootState) => s.connection,
   );
   const [refreshKey, setRefreshKey] = useState(0);
+  const [newWorkspace, setNewWorkspace] = useState(false);
   const [piCheckFailed, setPiCheckFailed] = useState(false);
   const [settingsPiState, setSettingsPiState] = useState<
     PiState | "checking" | "unavailable"
@@ -217,6 +220,7 @@ export function App() {
     owned.current.journal?.stop();
     owned.current.store?.dispose(); // also cancels every pending page read
     owned.current = {};
+    setNewWorkspace(false);
     setPendingArchive(new Set());
     setPendingClose(new Set());
     closeInFlight.current = false;
@@ -540,16 +544,10 @@ export function App() {
       .includes(filter.toLocaleLowerCase()),
   );
   const source = snapshot ? sourceState(snapshot) : "unknown";
-  const firstVisible = visible[0]?.workspace_id;
   useEffect(() => {
-    if (
-      snapshot &&
-      location.pathname === "/" &&
-      phase === "authenticated" &&
-      firstVisible
-    )
-      navigate(`/workspaces/${firstVisible}`, { replace: true });
-  }, [snapshot, firstVisible, location.pathname, navigate, phase]);
+    if (snapshot && location.pathname === "/" && phase === "authenticated")
+      navigate("/workspaces", { replace: true });
+  }, [snapshot, location.pathname, navigate, phase]);
   const selectedId = /^\/workspaces\/(ws_[A-Za-z0-9_-]{8,80})$/.exec(
     location.pathname,
   )?.[1];
@@ -756,6 +754,27 @@ export function App() {
       }
     }
   };
+  const startFromHome = (workspaceId: string) => {
+    if (!csrf || railStarting.current.has(workspaceId)) return;
+    railStarting.current.add(workspaceId);
+    const startingIdentity = identity;
+    setRailStartError("");
+    void createConversation(workspaceId, csrf)
+      .then((session) => {
+        railStarting.current.delete(workspaceId);
+        if (currentIdentity.current !== startingIdentity) return;
+        setDaemonSessions((old) => [...old, session]);
+        refresh();
+        navigate(`/workspaces/${workspaceId}?conversation=${session.agent_id}`);
+      })
+      .catch(() => {
+        railStarting.current.delete(workspaceId);
+        if (currentIdentity.current === startingIdentity)
+          setRailStartError(
+            "Keskustelun luontia ei voitu vahvistaa. Tarkista lista ennen uutta yritystä.",
+          );
+      });
+  };
   const returnConversations: (ReturnConversation & { workspaceId: string })[] =
     (snapshot?.agents ?? [])
       .filter(
@@ -775,6 +794,7 @@ export function App() {
         return {
           id: a.agent_id,
           workspaceId: a.workspace_id,
+          revision: a.observation_token,
           href: daemonSession
             ? `/workspaces/${a.workspace_id}?conversation=${a.agent_id}`
             : `/agents/${a.agent_id}`,
@@ -783,6 +803,21 @@ export function App() {
           browserSession: daemonSession,
           history: a.history,
           process: phase === "stale" ? "stale" : a.process,
+          command:
+            phase === "stale"
+              ? undefined
+              : a.activity === "running"
+                ? "accepted"
+                : a.activity === "idle"
+                  ? "idle"
+                  : undefined,
+          liveActivity:
+            phase === "stale"
+              ? undefined
+              : a.activity === "running"
+                ? a.live_tail.at(-1)?.kind
+                : undefined,
+          pendingQuestion: phase !== "stale" && !!a.pending_question,
         };
       });
   const main =
@@ -1174,25 +1209,37 @@ export function App() {
             tone="warning"
           />
         )}
-        {visible.length > 0 ? (
-          <ReturnView
-            store={conversationStore}
-            conversations={returnConversations}
+        <HomeWorkspaces
+          key={identity}
+          workspaces={visible}
+          conversations={returnConversations}
+          store={conversationStore}
+          onNew={
+            phase === "authenticated" &&
+            csrf &&
+            snapshot?.write_state !== "read_only"
+              ? startFromHome
+              : undefined
+          }
+          onCreate={
+            !syntheticDemo &&
+            phase === "authenticated" &&
+            csrf &&
+            source === "confirmed" &&
+            snapshot?.write_state !== "read_only"
+              ? () => setNewWorkspace(true)
+              : undefined
+          }
+        />
+        {newWorkspace && csrf && (
+          <NewWorkspace
+            csrf={csrf}
+            token={snapshot?.user_observation_token}
+            refresh={refresh}
+            onClose={() => setNewWorkspace(false)}
+            onCreated={() => {}}
           />
-        ) : (
-          <h1>Työtilat</h1>
         )}
-        {!syntheticDemo &&
-          phase === "authenticated" &&
-          source === "confirmed" && (
-            <WorkspaceManagement
-              csrf={csrf}
-              workspaces={snapshot?.workspaces}
-              userObservationToken={snapshot?.user_observation_token}
-              refresh={refresh}
-              onCreated={(id) => navigate(`/workspaces/${id}`)}
-            />
-          )}
         {source === "absent" ? (
           <InlineNotice
             title="Työtilakansiota ei löydy"

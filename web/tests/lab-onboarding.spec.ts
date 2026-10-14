@@ -1,5 +1,5 @@
-import { confirmGitIdentity } from "./git-identity-helper";
 import { labOrigin } from "../test-ports.mjs";
+import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, test } from "./lab-host";
 
 test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
@@ -12,15 +12,15 @@ test("@lab shell opens conversations from home and keeps narrow navigation reach
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
   await expect(
-    page.getByRole("heading", { name: "Jatka siitä, mihin jäit", exact: true }),
+    page.getByRole("heading", { name: "Työtilat", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".ah-connection")).toHaveCount(0);
   await expect(page.locator("main .ah-workspace-card")).toHaveCount(0);
   // The return view keeps all observed rows instead of dropping everything
   // beyond an arbitrary three-item cutoff.
-  expect(await page.locator(".ah-continue-list li").count()).toBeGreaterThan(3);
+  expect(await page.locator(".ah-home-card").count()).toBeGreaterThan(3);
   await expect(
-    page.locator(".ah-continue-list a[href^='/agents/']").first(),
+    page.locator(".ah-home-card-head a[href^='/agents/']").first(),
   ).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
@@ -43,7 +43,7 @@ test("@lab shell opens conversations from home and keeps narrow navigation reach
     page.getByRole("button", { name: "Avaa navigaatio" }),
   ).toBeVisible();
   await page.locator(".ah-back-link").click();
-  await page.locator(".ah-continue-list a[href^='/agents/']").first().click();
+  await page.locator(".ah-home-card-head a[href^='/agents/']").first().click();
   await expect(page).toHaveURL(/\/agents\/pi:/);
 });
 
@@ -64,7 +64,7 @@ test("@lab long native title keeps the original accessible at 390px", async ({
   await page.getByRole("link", { name: "Alice" }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   // Grouping follows observed state, so the target is not necessarily first.
-  const titledLink = page.locator(".ah-continue-list a", { hasText: title });
+  const titledLink = page.locator(".ah-home-card-head a", { hasText: title });
   await expect(titledLink).toBeVisible();
   await titledLink.click();
   const heading = page.getByRole("heading", { level: 1, name: title });
@@ -114,9 +114,7 @@ test("@lab GitHub chooser, synthetic clone and Pi onboarding", async ({
     ).toBe("confirmed");
     await page.request.get("/fixture/pi-state?value=usable");
     await page.reload();
-    await expect(
-      page.getByRole("heading", { name: "Jatka siitä, mihin jäit" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Työtilat" })).toBeVisible();
   } finally {
     await page.request.get("/fixture/scenario?value=ready");
   }
@@ -129,10 +127,12 @@ test("@lab cloned GitHub checkout hides publication; local Git checkout keeps it
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
-  await page.getByRole("button", { name: "Näytä repot" }).click();
-  await page.locator("main select").selectOption("fixture/last");
-  await page.getByRole("button", { name: "Tuo työtilaksi" }).click();
-  await expect(page.getByText("Repo tuotu työtilaksi.")).toBeVisible();
+  await page.getByRole("button", { name: "Uusi työtila" }).click();
+  await page.getByRole("textbox", { name: "Repositorio" }).fill("fixture/last");
+  await page.getByRole("button", { name: "Luo työtila" }).click();
+  await expect(
+    page.getByRole("link", { name: "last", exact: true }).first(),
+  ).toBeVisible();
   const workspaces = (await (await page.request.get("/api/v1/snapshot")).json())
     .workspaces;
   const cloned = workspaces.find((w: { name: string }) => w.name === "last");

@@ -127,6 +127,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		}
 		visibility, visibilityErr := loadVisibility(nativeHome)
 		workspaces := make([]any, 0, len(observation.Entries))
+		gitEntries := make([]Workspace, 0, len(observation.Entries))
 		// Bound remote inspection for the entire catalog, not per repository.
 		// Uninspected entries remain unknown rather than becoming publishable.
 		remoteCtx, stopRemote := context.WithTimeout(r.Context(), 2*time.Second)
@@ -198,6 +199,18 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 				}
 			}
 			workspaces = append(workspaces, ws)
+			gitEntries = append(gitEntries, entry)
+		}
+		// Prioritize the existing remote classification. Git status can walk a
+		// large tree; give home-only hints a separate, bounded catalog budget.
+		summaryCtx, stopSummary := context.WithTimeout(r.Context(), 1500*time.Millisecond)
+		defer stopSummary()
+		for i, entry := range gitEntries {
+			if entry.Kind == "git_main_worktree" || entry.Kind == "git_linked_worktree" {
+				if summary, ok := workspaceGitSummary(summaryCtx, nativeHome, entry); ok {
+					workspaces[i].(map[string]any)["git_summary"] = summary
+				}
+			}
 		}
 		// Associate only the native header's exact cwd with a freshly confirmed
 		// immediate workspace. History is independent of process observation.

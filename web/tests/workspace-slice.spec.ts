@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, type Page, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
+import { expect, type Page, test } from "./worker-host";
 
 const host = hostOrigin;
 test.use({
@@ -86,7 +86,11 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   await login(page);
   expect(providerRequests).toHaveLength(1);
   await page.goto("/");
-  await expect(page).toHaveURL(/\/workspaces\/ws_/);
+  await expect(page).toHaveURL(/\/workspaces$/);
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "git-project" })
+    .click();
   await expect(page.locator("main h1")).toContainText("git-project");
   expect(
     await page
@@ -129,7 +133,7 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   await page.getByRole("button", { name: "Päivitä" }).click();
   await expect(page.getByRole("link", { name: "ordinary-dir" })).toBeVisible();
   await page.getByRole("link", { name: "Etusivu" }).click();
-  await expect(page.locator("main h1")).toHaveText("Jatka siitä, mihin jäit");
+  await expect(page.locator("main h1")).toHaveText("Työtilat");
   await page.keyboard.press("Tab");
   await page.getByRole("link", { name: "Siirry sisältöön" }).focus();
   await page.keyboard.press("Enter");
@@ -159,7 +163,11 @@ test("@workspace-slice confirmed empty, missing, failure, partial and deep link 
   await page.goto("/workspaces");
   await login(page);
   await page.goto("/");
-  await expect(page).toHaveURL(/\/workspaces\/ws_/);
+  await expect(page).toHaveURL(/\/workspaces$/);
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "git-project" })
+    .click();
   const deep = new URL(page.url()).pathname;
   await scenario(page, "empty");
   await page.goto("/workspaces");

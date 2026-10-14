@@ -1,7 +1,7 @@
-import { confirmGitIdentity } from "./git-identity-helper";
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
+import { confirmGitIdentity } from "./git-identity-helper";
+import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
@@ -12,7 +12,7 @@ async function signIn(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
   await expect(
-    page.getByRole("heading", { name: "Jatka siitä, mihin jäit", exact: true }),
+    page.getByRole("heading", { name: "Työtilat", exact: true }),
   ).toBeFocused();
 }
 

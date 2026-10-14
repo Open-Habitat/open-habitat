@@ -1,0 +1,293 @@
+.ah-home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s6);
+  max-width: 1100px;
+  margin: auto;
+  padding: 0;
+  color: var(--ah-ink);
+}
+.ah-home-head,
+.ah-home-workspace-head,
+.ah-home-row,
+.ah-home-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s3);
+  min-width: 0;
+}
+.ah-home-head {
+  justify-content: space-between;
+}
+.ah-home h1 {
+  margin: 0;
+}
+.ah-home-head p,
+.ah-home-git,
+.ah-home-row,
+.ah-home-card time,
+.ah-home-pending {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-home-primary {
+  background: var(--ah-accent);
+  color: var(--ah-on-accent);
+  border: 1px solid var(--ah-accent);
+  border-radius: var(--ah-r-md);
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.ah-home-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s3);
+}
+.ah-home-workspace-head {
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--ah-line-soft);
+}
+.ah-home-name,
+.ah-home-git {
+  font-family: var(--ah-mono);
+}
+.ah-home-name {
+  font-weight: 600;
+  color: var(--ah-ink);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.ah-home-grow {
+  flex: 1;
+}
+.ah-home-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ah-s3);
+  align-items: start;
+}
+.ah-home-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid var(--ah-line);
+  background: var(--ah-surface);
+  border-radius: var(--ah-r-lg);
+  padding: 12px 14px;
+  font-size: 13px;
+}
+.ah-home-card-new {
+  border-left: 3px solid var(--ah-accent);
+  padding-left: 12px;
+}
+.ah-home-card-head {
+  flex-wrap: wrap;
+}
+.ah-home-card-head a {
+  color: var(--ah-ink);
+  font-weight: 600;
+  text-decoration: none;
+  flex: 1;
+  min-width: 180px;
+}
+.ah-home-card-head a:hover {
+  background: var(--ah-surface-hover);
+}
+.ah-home-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+.ah-home-0 {
+  background: var(--ah-accent-ink);
+}
+.ah-home-stale {
+  border: 1px dashed var(--ah-line-strong);
+  border-radius: var(--ah-r-pill);
+  padding: 1px 6px;
+  font-size: 11px;
+}
+.ah-home-card p {
+  margin: 0;
+}
+.ah-home-recap {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+.ah-home-next {
+  display: flex;
+  gap: 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ah-home-next strong {
+  font-size: 11px;
+  text-transform: uppercase;
+  flex: none;
+  color: var(--ah-muted);
+}
+.ah-home-live,
+.ah-home-open {
+  color: var(--ah-accent-ink);
+}
+.ah-home-open {
+  align-self: flex-end;
+  font-weight: 600;
+  text-decoration: none;
+}
+.ah-home-quiet {
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+}
+.ah-home-row {
+  min-height: 42px;
+  padding: 4px 12px;
+}
+.ah-home-row + .ah-home-row {
+  border-top: 1px solid var(--ah-line-soft);
+}
+.ah-home-actions {
+  display: flex;
+  position: relative;
+}
+.ah-home-actions > button {
+  background: transparent;
+  border: 0;
+  color: var(--ah-ink);
+  cursor: pointer;
+  padding: 5px 8px;
+  font-size: 18px;
+}
+.ah-home-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  min-width: 215px;
+  padding: 8px;
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  box-shadow: 0 8px 24px #0002;
+}
+.ah-home-menu a,
+.ah-home-menu button {
+  text-align: left;
+  padding: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--ah-ink);
+  text-decoration: none;
+  font: inherit;
+  cursor: pointer;
+}
+.ah-home-menu :disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.ah-home-menu small {
+  padding: 4px 8px;
+  color: var(--ah-muted);
+}
+@media (max-width: 700px) {
+  .ah-home-grid {
+    grid-template-columns: 1fr;
+  }
+  .ah-home-git {
+    display: none;
+  }
+  .ah-home-head {
+    align-items: flex-start;
+  }
+  .ah-home-primary {
+    flex: none;
+  }
+}
+.ah-home :is(button, a):focus-visible,
+.ah-new-workspace :is(button, input):focus-visible {
+  outline: 2px solid var(--ah-focus);
+  outline-offset: 2px;
+}
+.ah-new-workspace::backdrop {
+  background: var(--ah-scrim);
+}
+.ah-new-workspace {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(92vw, 440px);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px;
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  box-shadow: 0 16px 48px #0004;
+}
+.ah-new-workspace h2,
+.ah-new-workspace p {
+  margin: 0;
+}
+.ah-new-workspace input {
+  padding: 9px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font-family: var(--ah-mono);
+}
+.ah-new-options,
+.ah-new-footer {
+  display: flex;
+  gap: 8px;
+}
+.ah-new-options button,
+.ah-new-footer button {
+  padding: 8px 10px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+  color: var(--ah-ink);
+  cursor: pointer;
+}
+.ah-new-options [aria-pressed="true"],
+.ah-new-footer button:last-child {
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+}
+.ah-new-dismiss {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--ah-ink);
+  cursor: pointer;
+}
+.ah-new-footer {
+  justify-content: flex-end;
+}
+.ah-new-suggestions {
+  max-height: 130px;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ah-new-suggestions button {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: var(--ah-ink);
+  padding: 5px;
+  cursor: pointer;
+}

@@ -7,7 +7,6 @@ import event from "../../../contracts/v1/event.schema.json";
 import history from "../../../contracts/v1/history.schema.json";
 import operation from "../../../contracts/v1/operation.schema.json";
 import schema from "../../../contracts/v1/snapshot.schema.json";
-import type { Event } from "../contracts/v1.generated";
 
 const ajv = new Ajv({ strict: false, allErrors: false });
 addFormats(ajv);
@@ -35,6 +34,7 @@ export interface Workspace {
   display_name?: string;
   kind: string;
   git_remote?: "github" | "other" | "none" | "unknown";
+  git_summary?: { branch: string; dirty_count: number; github_repo?: string };
   publish_continuation?: boolean;
   visibility: string;
   mutation_state: string;
@@ -51,10 +51,13 @@ export interface Agent {
   process: string;
   control: string;
   title: { display: string };
-  live_tail: Event[];
+  live_tail: { kind: string }[];
+  activity?: "idle" | "running" | "settling" | "unknown";
+  pending_question?: unknown;
 }
 export interface Snapshot {
   schema_version: 1;
+  snapshot_id?: string;
   event_cursor: string;
   user_observation_token?: string;
   server_instance_id: string;

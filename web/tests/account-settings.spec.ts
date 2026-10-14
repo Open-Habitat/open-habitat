@@ -54,6 +54,7 @@ test("@account-settings verified native state, route return and explicit disconn
   });
   await page.keyboard.press("Escape");
   await page.locator(".ah-workspace-link").first().click();
+  await expect(page.locator("main h1")).toHaveText("git-project");
   const returnPath = new URL(page.url()).pathname;
   await settings(page);
   await expect(

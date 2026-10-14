@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { expect, type Locator, type Page, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
+import { expect, type Locator, type Page, test } from "./worker-host";
 
 test.use({ ignoreHTTPSErrors: true });
 
@@ -33,7 +33,7 @@ test("production controls are constructed only in ControlElements", () => {
   expect(css).not.toMatch(
     /biome-ignore-all|\.ah-button\s*\{|\.ah-account-shelf\s*>\s*\.ah-button|\.ah-control\b(?!-reason)/,
   );
-  expect(css).not.toMatch(/\.ah-continue-list a(?:\s*\{|:hover)/);
+  expect(css).not.toMatch(/\.ah-home-card-head a(?:\s*\{|:hover)/);
   expect(css).toContain(".ah-tool-row .ah-tool-output {");
   expect(css).toContain(".ah-conversation-frame .ah-composer {");
   expect(css).not.toContain(".ah-tool-row .ah-tool-row .ah-tool-output");
@@ -78,7 +78,7 @@ test("@control-states shared feedback on navigation, list, button and menu in bo
     await page.evaluate((value) => {
       document.documentElement.dataset.theme = value;
     }, theme);
-    await feedback(page.locator(".ah-continue-list a").first(), page);
+    await feedback(page.locator(".ah-home-card-head a").first(), page);
     await feedback(page.locator(".ah-agent-item .ah-nav-link").first(), page);
     await expect(page.locator(".ah-workspace-row").first()).toHaveAttribute(
       "title",
@@ -103,13 +103,13 @@ test("@control-states shared feedback on navigation, list, button and menu in bo
     ),
   );
   for (const target of [
-    page.locator(".ah-continue-list a").first(),
+    page.locator(".ah-home-card-head a").first(),
     page.locator(".ah-agent-item .ah-nav-link").first(),
   ]) {
     await target.hover();
     await expect(target).toHaveCSS("background-color", "rgb(12, 78, 92)");
   }
-  await page.locator(".ah-continue-list a").first().click();
+  await page.locator(".ah-home-card-head a").first().click();
   await expect(page.locator(".ah-conversation-frame")).toBeVisible();
   await page
     .getByRole("navigation")
@@ -157,7 +157,7 @@ test("@control-states migrated rail, drawer and text links retain their layout",
       );
     }),
   ).toBe(true);
-  await page.locator(".ah-continue-list a").first().click();
+  await page.locator(".ah-home-card-head a").first().click();
   await expect(page.locator(".ah-header-workspace")).toHaveCSS(
     "padding-left",
     "0px",

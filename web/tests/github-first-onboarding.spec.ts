@@ -1,5 +1,5 @@
-import { expect, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
+import { expect, test } from "./worker-host";
 
 const host = hostOrigin;
 test.use({ baseURL: host, ignoreHTTPSErrors: true });
@@ -108,9 +108,7 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
   ).toBeVisible();
   await page.request.get("/fixture/pi-state?value=usable");
   await page.reload();
-  await expect(
-    page.getByRole("heading", { name: "Jatka siitä, mihin jäit" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Työtilat" })).toBeVisible();
   await page.request.get("/fixture/pi-state?value=missing");
   await page.reload();
   await identity(page);

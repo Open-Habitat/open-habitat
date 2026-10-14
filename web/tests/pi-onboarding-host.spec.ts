@@ -1,6 +1,6 @@
+import { hostOrigin } from "../test-ports.mjs";
 import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, type Page, test } from "./worker-host";
-import { hostOrigin } from "../test-ports.mjs";
 
 const host = hostOrigin;
 test.use({ baseURL: host, ignoreHTTPSErrors: true });
@@ -67,9 +67,7 @@ test("@pi-onboarding native attempt drives the production browser, never a callb
     expect(
       (await foreign.request.get("/api/v1/onboarding/pi/attempt")).status(),
     ).toBe(404);
-    await expect(
-      page.getByRole("heading", { name: "Jatka siitä, mihin jäit" }),
-    ).toBeVisible({
+    await expect(page.getByRole("heading", { name: "Työtilat" })).toBeVisible({
       timeout: 12000,
     });
     await expect(page.getByText("ABCD-1234")).toHaveCount(0);

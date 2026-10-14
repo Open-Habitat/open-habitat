@@ -17,6 +17,7 @@ export interface ReturnConversation {
   /** Only positively observed native process states may show a running mark. */
   process: string;
   command?: string;
+  liveActivity?: string;
   attention?: "new" | "seen";
   pendingQuestion?: boolean;
   history?: "readable" | "missing" | "corrupt" | "unavailable";
