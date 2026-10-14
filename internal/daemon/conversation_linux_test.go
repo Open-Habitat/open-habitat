@@ -188,7 +188,9 @@ func TestConversationSpontaneousExitWithInheritedStdout(t *testing.T) {
 		b, e := os.ReadFile(filepath.Join(home, "holder.pid"))
 		if e == nil {
 			pid, _ = strconv.Atoi(strings.TrimSpace(string(b)))
-			break
+			if pid > 0 {
+				break
+			}
 		}
 		time.Sleep(time.Millisecond)
 	}
