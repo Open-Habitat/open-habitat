@@ -1329,7 +1329,9 @@ test("@browser-conversation expiry clears drafts and pending markers before same
     sessionStorage.setItem(`nah:${identity}:uncertain:held`, "pending");
   }, person);
   expect((await page.request.get("/fixture/expire")).status()).toBe(204);
-  await refreshConversation(page);
+  // Expiry may reach the UI through the journal before the details control
+  // can be clicked. Reload forces a session read in either state.
+  await page.reload();
   await expect(
     page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
   ).toBeVisible();

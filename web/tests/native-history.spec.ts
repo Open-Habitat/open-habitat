@@ -94,8 +94,6 @@ test("@native-history unwritten terminal session can archive and restore", async
   await page.goto(`/agents/${agent}`);
   const bar = page.locator(".ah-agent-header");
   await expect(bar.getByRole("button", { name: "Arkistoi" })).toBeEnabled();
-  await bar.getByRole("button", { name: "Luo uusi otsikko" }).click();
-  await expect(bar).toContainText("Synteettinen otsikko");
   await bar.getByRole("button", { name: "Arkistoi" }).click();
   await expect(page).toHaveURL(/\/workspaces\/[^?]+$/);
   await page.goto(`/agents/${agent}`);
@@ -104,6 +102,8 @@ test("@native-history unwritten terminal session can archive and restore", async
   ).toBeEnabled();
   await bar.getByRole("button", { name: "Palauta näkyviin" }).click();
   await expect(bar.getByRole("button", { name: "Arkistoi" })).toBeEnabled();
+  await bar.getByRole("button", { name: "Luo uusi otsikko" }).click();
+  await expect(bar).toContainText("Synteettinen otsikko");
 });
 test("@native-history empty native session is read-only", async ({ page }) => {
   await fixture(page, "empty");
