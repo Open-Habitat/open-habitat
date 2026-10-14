@@ -99,8 +99,10 @@ export function OutputBox({
       if (mounted) update(mounted);
     checkOverflow();
   }, [text, view, wrap, running]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Observer follows the mounted viewport only.
-  useEffect(() => {
+  // Recreate the observer when measurement inputs change so its callback does
+  // not use the pre-wrap state after a wrapped viewport resizes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Recapture the current measurement inputs, not the per-render callback identities.
+  useLayoutEffect(() => {
     const mounted = [
       head.current,
       tail.current,
@@ -116,7 +118,7 @@ export function OutputBox({
       observer.observe(pre);
     });
     return () => observer.disconnect();
-  }, [view]);
+  }, [view, wrap, text]);
   useEffect(() => {
     if (!dialog || !dialogRef.current) return;
     if (typeof dialogRef.current.showModal === "function")
