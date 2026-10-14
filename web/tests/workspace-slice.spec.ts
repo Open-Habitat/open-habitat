@@ -112,9 +112,9 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   expect(
     await selectedRow.evaluate((el) => el.getBoundingClientRect().height),
   ).toBeLessThanOrEqual(36);
-  await expect(page.getByRole("button", { name: "Uusi työtila" })).toHaveCount(
-    0,
-  );
+  await expect(
+    page.locator("main").getByRole("button", { name: "Uusi työtila" }),
+  ).toHaveCount(0);
   await shot(page, "ready");
   await page.getByRole("button", { name: "Sulje navigaatio" }).click();
   await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeVisible();

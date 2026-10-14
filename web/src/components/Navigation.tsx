@@ -346,7 +346,7 @@ export function WorkspaceSection({
   mutationState,
   agents,
   actions = [],
-  onNewConversation,
+  workspaceMenu,
   onToggle,
 }: {
   workspaceId: string;
@@ -358,7 +358,7 @@ export function WorkspaceSection({
   mutationState?: string;
   agents: AgentNavModel[];
   actions?: Action[];
-  onNewConversation?: () => void;
+  workspaceMenu?: ReactNode;
   onToggle: () => void;
 }) {
   const summaryId = useId();
@@ -390,18 +390,12 @@ export function WorkspaceSection({
             </ControlButton>
           }
           trailing={
-            onNewConversation ? (
-              <ControlButton
-                className="ah-workspace-add"
-                variant="quiet"
-                aria-label={`Uusi keskustelu työtilassa ${name}`}
-                onPress={onNewConversation}
-              >
-                +
-              </ControlButton>
-            ) : mutationState ? (
-              <StatusMark label={mutationState} tone="warning" />
-            ) : undefined
+            <>
+              {mutationState ? (
+                <StatusMark label={mutationState} tone="warning" />
+              ) : null}
+              {workspaceMenu}
+            </>
           }
         >
           <LinkRow
@@ -478,6 +472,7 @@ export function WorkspaceRail({
   filterValue,
   resultSummary,
   summaryAction,
+  onCreateWorkspace,
   listState,
   children,
   sessionActions,
@@ -495,6 +490,7 @@ export function WorkspaceRail({
   filterValue: string;
   resultSummary: string;
   summaryAction?: ReactNode;
+  onCreateWorkspace?: () => void;
   listState: AsyncState | "source-absent" | "filtered-empty";
   children?: ReactNode;
   sessionActions?: ReactNode;
@@ -570,6 +566,19 @@ export function WorkspaceRail({
               <span className="ah-rail-refresh">
                 <RefreshIconButton onPress={onRefresh} />
               </span>
+            </div>
+            <div className="ah-rail-section-head">
+              <strong>Työtilat</strong>
+              {onCreateWorkspace ? (
+                <ControlButton
+                  variant="quiet"
+                  aria-label="Uusi työtila"
+                  title="Uusi työtila"
+                  onPress={onCreateWorkspace}
+                >
+                  <Icon name="folderPlus" />
+                </ControlButton>
+              ) : null}
             </div>
             <div className="ah-rail-summary">
               <span role="status">{resultSummary}</span>

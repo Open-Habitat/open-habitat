@@ -164,13 +164,17 @@ export function Menu({
   onAction,
   popoverClassName,
   triggerPresentation,
+  triggerClassName,
+  placement,
 }: {
   label: string;
   triggerLabel?: string;
   trigger?: ReactNode;
   heading?: ReactNode;
   popoverClassName?: string;
-  triggerPresentation?: "account";
+  triggerPresentation?: "account" | "icon";
+  triggerClassName?: string;
+  placement?: "top start" | "end top";
   items: {
     id: string;
     label: string;
@@ -194,12 +198,14 @@ export function Menu({
         ref={triggerRef}
         variant="secondary"
         presentation={triggerPresentation}
+        className={triggerClassName}
         aria-label={triggerLabel ?? label}
       >
         {trigger ?? label}
         <span aria-hidden="true" className="ah-menu-chevron" />
       </ControlButton>
       <Popover
+        placement={placement}
         className={`ah-popover${popoverClassName ? ` ${popoverClassName}` : ""}`}
       >
         {heading ? <div className="ah-menu-heading">{heading}</div> : null}

@@ -3443,3 +3443,64 @@ h1[tabindex="-1"]:focus {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* Account controls stay outside the only scrolling region of the rail. */
+.ah-rail-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+  color: var(--ah-muted);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: New-workspace control intentionally overrides the generic rail button. */
+.ah-rail-section-head [data-ah-primitive="button"] {
+  width: 28px;
+  height: 28px;
+  padding: 4px;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Icon sizing belongs to the header. */
+.ah-rail-section-head svg {
+  width: 16px;
+  height: 16px;
+}
+.ah-workspace-more {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0;
+  opacity: 0;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Suppress the generic chevron in icon triggers. */
+.ah-workspace-more .ah-menu-chevron,
+/* biome-ignore lint/style/noDescendingSpecificity: Suppress the generic chevron in icon triggers. */
+.ah-home-more .ah-menu-chevron {
+  display: none;
+}
+.ah-workspace-row:hover .ah-workspace-more,
+.ah-workspace-row:focus-within .ah-workspace-more,
+.ah-workspace-more[aria-expanded="true"] {
+  opacity: 1;
+}
+@media (hover: none) {
+  .ah-workspace-more {
+    opacity: 1;
+  }
+}
+.ah-home-more {
+  min-width: 30px;
+  min-height: 30px;
+}
+.ah-workspace-menu {
+  min-width: 230px;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Rail footer stays fixed below the list. */
+.ah-rail-foot {
+  flex: none;
+}
+.ah-rail-content {
+  overscroll-behavior: contain;
+}

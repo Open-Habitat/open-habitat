@@ -5,6 +5,7 @@ export type IconName =
   | "up"
   | "info"
   | "home"
+  | "folderPlus"
   | "back"
   | "forward"
   | "down"
@@ -51,6 +52,12 @@ export function Icon({
       <>
         <path d="m3 11 9-8 9 8" />
         <path d="M5 10v11h14V10M9 21v-7h6v7" />
+      </>
+    ),
+    folderPlus: (
+      <>
+        <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+        <path d="M12 11v5m-2.5-2.5h5" />
       </>
     ),
     back: <path d="m15 5-7 7 7 7" />,

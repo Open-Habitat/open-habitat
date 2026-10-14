@@ -127,7 +127,10 @@ test("@lab cloned GitHub checkout hides publication; local Git checkout keeps it
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
-  await page.getByRole("button", { name: "Uusi työtila" }).click();
+  await page
+    .locator("main")
+    .getByRole("button", { name: "Uusi työtila" })
+    .click();
   await page.getByRole("textbox", { name: "Repositorio" }).fill("fixture/last");
   await page.getByRole("button", { name: "Luo työtila" }).click();
   await expect(

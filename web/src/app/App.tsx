@@ -896,9 +896,6 @@ export function App() {
     ) : phase === "daemon_unavailable" ? (
       <>
         <h1>Yhteyttä ei saatu</h1>
-        <LinkRow href="/administration" kind="inline">
-          Palvelimen ylläpito
-        </LinkRow>
         <InlineNotice
           title="Työtiloja ei voitu näyttää"
           description="Tietoja ei voitu tarkistaa. Tämä ei tarkoita, että työtilasi olisivat kadonneet. Tarkista yhteys ja yritä uudelleen."
@@ -1231,20 +1228,6 @@ export function App() {
               : undefined
           }
         />
-        {newWorkspace && csrf && (
-          <NewWorkspace
-            csrf={csrf}
-            available={
-              phase === "authenticated" &&
-              source === "confirmed" &&
-              snapshot?.write_state !== "read_only"
-            }
-            token={snapshot?.user_observation_token}
-            refresh={refresh}
-            onClose={() => setNewWorkspace(false)}
-            onCreated={() => {}}
-          />
-        )}
         {source === "absent" ? (
           <InlineNotice
             title="Työtilakansiota ei löydy"
@@ -1343,30 +1326,16 @@ export function App() {
                 csrf &&
                 phase === "authenticated" &&
                 snapshot.write_state !== "read_only"
-                  ? (workspaceId) => {
-                      if (railStarting.current.has(workspaceId)) return;
-                      railStarting.current.add(workspaceId);
-                      const startingIdentity = identity;
-                      setRailStartError("");
-                      void createConversation(workspaceId, csrf)
-                        .then((session) => {
-                          railStarting.current.delete(workspaceId);
-                          if (currentIdentity.current !== startingIdentity)
-                            return;
-                          setDaemonSessions((old) => [...old, session]);
-                          refresh();
-                          navigate(
-                            `/workspaces/${workspaceId}?conversation=${session.agent_id}`,
-                          );
-                        })
-                        .catch(() => {
-                          // A lost reply might still mean Pi started. Do not retry blindly.
-                          if (currentIdentity.current === startingIdentity)
-                            setRailStartError(
-                              "Keskustelun luontia ei voitu vahvistaa. Tarkista lista ennen uutta yritystä.",
-                            );
-                        });
-                    }
+                  ? startFromHome
+                  : undefined
+              }
+              onCreateWorkspace={
+                !syntheticDemo &&
+                phase === "authenticated" &&
+                csrf &&
+                source === "confirmed" &&
+                snapshot.write_state !== "read_only"
+                  ? () => setNewWorkspace(true)
                   : undefined
               }
               onFilter={(v) => dispatch(filterChanged(v))}
@@ -1374,17 +1343,34 @@ export function App() {
               onRefresh={manualRefresh}
               onSettings={openSettings}
               onLogout={() => setLogoutPrompt(true)}
+              onAdministration={() => navigate("/administration")}
               pathname={location.pathname}
               search={location.search}
             />
           ) : undefined
         }
         overlays={
-          <AccountLogoutDialog
-            open={logoutPrompt && phase === "authenticated"}
-            onClose={() => setLogoutPrompt(false)}
-            onConfirm={logout}
-          />
+          <>
+            <AccountLogoutDialog
+              open={logoutPrompt && phase === "authenticated"}
+              onClose={() => setLogoutPrompt(false)}
+              onConfirm={logout}
+            />
+            {newWorkspace && csrf && (
+              <NewWorkspace
+                csrf={csrf}
+                available={
+                  phase === "authenticated" &&
+                  source === "confirmed" &&
+                  snapshot?.write_state !== "read_only"
+                }
+                token={snapshot?.user_observation_token}
+                refresh={refresh}
+                onClose={() => setNewWorkspace(false)}
+                onCreated={() => {}}
+              />
+            )}
+          </>
         }
         main={
           <div

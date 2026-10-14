@@ -7,7 +7,8 @@ import type { Recap } from "../app/conversations";
 import { readRecap } from "../app/conversations";
 import type { Workspace } from "../app/snapshot";
 import { agentPresentation } from "./agentPresentation";
-import { ControlButton, ExternalLink, LinkRow } from "./ControlElements";
+import { ControlButton, LinkRow } from "./ControlElements";
+import { WorkspaceActions } from "./WorkspaceActions";
 import { relativeRecapAge } from "./RecapCard";
 import type { ReturnConversation } from "./ReturnView";
 import { StatusMark } from "./Status";
@@ -133,85 +134,6 @@ function HomeCard({ conversation }: { conversation: HomeConversation }) {
         </LinkRow>
       )}
     </article>
-  );
-}
-function WorkspaceActions({
-  workspace,
-  onNew,
-}: {
-  workspace: Workspace;
-  onNew?: (id: string) => void;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  return (
-    <div className="ah-home-actions">
-      <ControlButton
-        type="button"
-        title="Uusi keskustelu"
-        aria-label={`Uusi keskustelu työtilassa ${workspace.name}`}
-        isDisabled={!onNew}
-        onClick={() => onNew?.(workspace.workspace_id)}
-      >
-        +
-      </ControlButton>
-      <ControlButton
-        type="button"
-        title="Toiminnot"
-        aria-label={`Työtilan ${workspace.name} toiminnot`}
-        aria-expanded={expanded}
-        onClick={() => setExpanded(!expanded)}
-      >
-        ···
-      </ControlButton>
-      {expanded && (
-        <div className="ah-home-menu">
-          <ControlButton
-            type="button"
-            onClick={() => {
-              setExpanded(false);
-              onNew?.(workspace.workspace_id);
-            }}
-            isDisabled={!onNew}
-          >
-            Uusi keskustelu
-          </ControlButton>
-          <LinkRow href={`/workspaces/${workspace.workspace_id}`}>
-            Avaa työtilasivu
-          </LinkRow>
-          <ControlButton
-            type="button"
-            isDisabled={!workspace.path || !navigator.clipboard}
-            onClick={() => {
-              if (workspace.path)
-                void navigator.clipboard.writeText(workspace.path);
-              setExpanded(false);
-            }}
-          >
-            Kopioi polku
-          </ControlButton>
-          {workspace.git_summary?.github_repo && (
-            <ExternalLink
-              href={`https://github.com/${workspace.git_summary.github_repo}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Avaa GitHubissa
-            </ExternalLink>
-          )}
-          <ControlButton
-            type="button"
-            isDisabled
-            title="Palautettava poisto suunnitellaan ensin (recoverable-workspace-deletion)."
-          >
-            Poista työtila… · tulossa
-          </ControlButton>
-          <small>
-            Poisto ei ole vielä käytettävissä: palautettava poisto suunnitellaan
-            ensin.
-          </small>
-        </div>
-      )}
-    </div>
   );
 }
 function GitLine({ workspace }: { workspace: Workspace }) {

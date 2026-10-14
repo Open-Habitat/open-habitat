@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AccountShelf, WorkspaceRail, WorkspaceSection } from "../components";
 import { agentPresentation } from "../components/agentPresentation";
-import { LinkRow } from "../components/ControlElements";
+import { WorkspaceActions } from "../components/WorkspaceActions";
 import {
   type ConversationStore,
   unreadableHistory,
@@ -44,11 +44,13 @@ export function WorkspaceRailView({
   expanded,
   onExpand,
   onNewConversation,
+  onCreateWorkspace,
   onFilter,
   onToggle,
   onRefresh,
   onSettings,
   onLogout,
+  onAdministration,
   pathname,
   search,
 }: {
@@ -75,11 +77,13 @@ export function WorkspaceRailView({
   expanded: Record<string, boolean>;
   onExpand: (next: Record<string, boolean>) => void;
   onNewConversation?: (workspaceId: string) => void;
+  onCreateWorkspace?: () => void;
   onFilter: (value: string) => void;
   onToggle: () => void;
   onRefresh: () => void;
   onSettings: () => void;
   onLogout: () => void;
+  onAdministration: () => void;
   pathname: string;
   search: string;
 }) {
@@ -129,6 +133,9 @@ export function WorkspaceRailView({
             }
           }
           onSettings={onSettings}
+          onAdministration={
+            server?.administrator ? onAdministration : undefined
+          }
           onLogout={onLogout}
         />
       }
@@ -156,16 +163,12 @@ export function WorkspaceRailView({
       filterValue={filter}
       resultSummary={`${matches.length} ${source === "confirmed" ? "työtilaa" : "löydettyä työtilaa"}`}
       summaryAction={undefined}
+      onCreateWorkspace={onCreateWorkspace}
       listState={railState}
       onToggle={onToggle}
       onFilter={onFilter}
       onRefresh={onRefresh}
     >
-      {server?.administrator && (
-        <LinkRow href="/administration" kind="inline">
-          Palvelimen ylläpito
-        </LinkRow>
-      )}
       {matches.map((w) => (
         <WorkspaceSection
           key={w.workspace_id}
@@ -270,10 +273,8 @@ export function WorkspaceRailView({
                   new URLSearchParams(search).get("conversation") ===
                     a.agent_id),
             }))}
-          onNewConversation={
-            onNewConversation
-              ? () => onNewConversation(w.workspace_id)
-              : undefined
+          workspaceMenu={
+            <WorkspaceActions workspace={w} onNew={onNewConversation} rail />
           }
           onToggle={() =>
             onExpand({

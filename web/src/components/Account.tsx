@@ -76,11 +76,13 @@ export function AccountShelf({
   profile,
   name,
   onSettings,
+  onAdministration,
   onLogout,
 }: {
   profile?: AccountProfile;
   name?: string;
   onSettings: () => void;
+  onAdministration?: () => void;
   onLogout: () => void;
 }) {
   const theme = useThemeChoice();
@@ -107,8 +109,12 @@ export function AccountShelf({
         }
         heading={<AccountIdentity profile={person} />}
         popoverClassName="ah-account-menu"
+        placement="top start"
         items={[
           { id: "settings", label: "Asetukset" },
+          ...(onAdministration
+            ? [{ id: "administration", label: "Palvelimen ylläpito" }]
+            : []),
           ...themes.map(({ id, label }) => ({
             id: `theme-${id}`,
             label: `Teema: ${label}${theme === id ? " (valittu)" : ""}`,
@@ -124,6 +130,7 @@ export function AccountShelf({
             setThemeChoice(choice);
           }
           if (id === "settings") onSettings();
+          if (id === "administration") onAdministration?.();
           if (id === "logout") onLogout();
         }}
       />

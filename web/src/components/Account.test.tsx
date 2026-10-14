@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { getThemeChoice, setThemeChoice } from "../theme";
 import {
@@ -116,6 +122,37 @@ describe("account presentation", () => {
     } finally {
       act(() => setThemeChoice("system"));
     }
+  });
+  it("only presents administration from the host-granted callback and returns focus on Escape", async () => {
+    const onAdministration = vi.fn();
+    const { rerender } = render(
+      <AccountShelf
+        name="Alice Example"
+        onSettings={() => {}}
+        onLogout={() => {}}
+      />,
+    );
+    const trigger = screen.getByRole("button", { name: /Alice, Tilivalikko/ });
+    fireEvent.click(trigger);
+    expect(
+      screen.queryByRole("menuitem", { name: "Palvelimen ylläpito" }),
+    ).toBeNull();
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+    rerender(
+      <AccountShelf
+        name="Alice Example"
+        onSettings={() => {}}
+        onAdministration={onAdministration}
+        onLogout={() => {}}
+      />,
+    );
+    fireEvent.click(trigger);
+    const admin = await screen.findByRole("menuitem", {
+      name: "Palvelimen ylläpito",
+    });
+    fireEvent.click(admin);
+    expect(onAdministration).toHaveBeenCalledOnce();
   });
   it("explains what logout removes and supports cancellation", () => {
     const onClose = vi.fn();

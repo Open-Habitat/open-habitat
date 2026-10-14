@@ -112,7 +112,7 @@ describe("workspace conversation rows", () => {
             agent("working", 2),
           ]}
           onToggle={() => {}}
-          onNewConversation={() => {}}
+          workspaceMenu={<button type="button">Työtilan toiminnot</button>}
         />
       </MemoryRouter>,
     );
@@ -125,7 +125,7 @@ describe("workspace conversation rows", () => {
     fireEvent.click(view.getByRole("button", { name: "Valmiit 1" }));
     expect(view.getByRole("link", { name: "finished" })).toBeTruthy();
     expect(
-      view.getByRole("button", { name: "Uusi keskustelu työtilassa source" }),
+      view.getByRole("button", { name: "Työtilan toiminnot" }),
     ).toBeTruthy();
   });
 });

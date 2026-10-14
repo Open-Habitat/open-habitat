@@ -1,0 +1,22 @@
+# Sidebar account menu and workspace actions — result
+
+The sidebar now keeps the account trigger outside its scrolling workspace list. Its upward menu presents the signed-in profile, settings, the administration link only when `/api/v1/server` reports `administrator: true`, the existing device-local theme choices, and the existing logout confirmation. The inline administration link was removed. The rail's Työtilat header opens the same `NewWorkspace` dialog as home; both home and rail use the same `WorkspaceActions` menu for new conversation, workspace page, path copy, conditional GitHub link, and disabled deletion with an explanation. The phone drawer uses these same components.
+
+## Evidence
+
+- `npm ci --prefix web` succeeded.
+- `./scripts/test-focused.sh --area web` passed after implementation and test edits (19 unit files / 118 tests; 20 component files / 116 tests).
+- Browser specs: `web/tests/lab-sidebar-account.spec.ts` checks administrator and non-administrator server-info fixtures, Escape focus, arrow navigation, disabled deletion, creation dialog, long-list rectangle, drawer and screenshots. `web/tests/home-workspace-sections.spec.ts` checks the shared home actions. Focused browser runs passed: both lab-sidebar-account cases and both home-workspace-sections cases. The full gate result is recorded in a follow-up validation commit.
+- Compared `web/test-results/evidence/sidebar-account-{desktop,phone}-{light,dark}.png` with `sidebar-draft-{desktop,phone}-{light,dark}.png`, captured from `design-system/drafts/Etusivu.proto.html` in the same menu-open theme/width states. These are local untracked test artifacts.
+
+## Visual differences from the draft
+
+- The draft uses a fictional admin Jari and eight fabricated workspaces; lab screenshots use the authenticated synthetic Alice account, five host-backed workspaces and their real host statuses. The admin screenshot fixture overlays only the host `/api/v1/server` administrator response; the non-admin fixture checks absence separately. These identity, content and host-state differences are fixture data, not layout changes.
+- The production menu inherits existing React Aria menu rows, avatar, text-labeled theme group, focus styling and logout ellipsis/confirmation; the prototype uses pictogram menu rows, a compact three-icon theme switch and immediate logout. Preserving the existing accessible theme and confirmation behaviours avoids replacing tested account controls with a second implementation.
+- The prototype's desktop frame is 1080px wide with a dedicated topbar and 288px rail; the production captures use the real 1280px shell, 296px rail and actual home/phone toolbar. Phone draft screenshot is a simulated 390px frame with the drawer open; production screenshot uses a 390px browser viewport and the real drawer. The account menu opens above the anchored trigger in both, while the list scrolls independently.
+- Prototype displays an always-visible `+` beside each workspace, whereas production places new conversation in the shared `…` menu, as requested in the issue; the home view keeps its existing separate new-conversation shortcut. Deletion remains disabled with the recovery reason.
+
+## Decisions for later review
+
+- When the daemon is unavailable or Pi onboarding prevents a snapshot, the rail is not mounted, so there is no account menu and no administration entry. The old fallback inline link was removed to honor “administration only in the account menu.” Direct navigation to `/administration` remains possible and authorization is enforced by the host. Alternatives: retain a fallback link on the outage page (violates the account-only rule), or render a minimal account control without a workspace snapshot (more shell state). The current choice is the narrowest interpretation of the agreed design; revisit if administrators need discoverable recovery access during outages.
+- The existing `/api/v1/server` response, rather than a browser-side role inference or a new snapshot field, owns admin visibility. That endpoint already supplies the administration page's role; reuse avoids a competing role source. The backend still authorizes all administration requests independently.

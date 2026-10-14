@@ -18,11 +18,14 @@ test("@lab home sections, workspace menu and directory creation", async ({
     .getByRole("button", { name: /Työtilan .* toiminnot/ })
     .first();
   await menu.click();
-  await expect(page.getByText("Poista työtila… · tulossa")).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Poista työtila… · tulossa" }),
-  ).toBeDisabled();
-  await page.getByRole("button", { name: "Uusi työtila" }).click();
+    page.getByRole("menuitem", { name: "Poista työtila… · tulossa" }),
+  ).toHaveAttribute("aria-disabled", "true");
+  await page.keyboard.press("Escape");
+  await page
+    .locator("main")
+    .getByRole("button", { name: "Uusi työtila" })
+    .click();
   await expect(
     page.getByRole("dialog", { name: "Uusi työtila" }),
   ).toBeVisible();
@@ -39,7 +42,10 @@ test("@lab home clone uses existing GitHub path", async ({ page }) => {
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
-  await page.getByRole("button", { name: "Uusi työtila" }).click();
+  await page
+    .locator("main")
+    .getByRole("button", { name: "Uusi työtila" })
+    .click();
   await page.getByRole("textbox", { name: "Repositorio" }).fill("fixture/last");
   await page.getByRole("button", { name: "Luo työtila" }).click();
   await expect(
