@@ -9,7 +9,7 @@ export default defineConfig({
   fullyParallel: true,
   workers: Number(process.env.OH_BROWSER_WORKERS ?? 4),
   globalSetup: "./tests/host-build.ts",
-  globalTeardown: "./tests/host-teardown.ts",
+  globalTeardown: "./tests/lab-host-teardown.ts",
   reporter: [["line"]],
   use: {
     baseURL: labOrigin,

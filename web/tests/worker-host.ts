@@ -22,7 +22,7 @@ export function createHostTest(lab = false) {
           throw new Error(`Worker host port ${port} is out of range`);
         const marker = fileURLToPath(
           new URL(
-            `../test-results/browser-host-marker-${createHash("sha256").update(`${testInfo.testId}:${testInfo.retry}`).digest("hex").slice(0, 16)}`,
+            `../${lab ? "test-results-lab" : "test-results"}/browser-host-marker-${createHash("sha256").update(`${testInfo.testId}:${testInfo.retry}`).digest("hex").slice(0, 16)}`, 
             import.meta.url,
           ),
         );

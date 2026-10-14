@@ -84,8 +84,8 @@ if ! $reuse_phases;then
     # Both suites use distinct worker ports. Build their common host once,
     # then overlap the 20-second lab heartbeat with the normal browser run.
     go build -o .cache/browser-host ./test/browser-host
-    OH_WEB_PREBUILT=1 OH_BROWSER_HOST_PREBUILT=1 npm run test:browser --prefix web >"$tmp/browser-normal.log" 2>&1 & normal_pid=$!
-    (cd web && OH_WEB_PREBUILT=1 OH_BROWSER_HOST_PREBUILT=1 npx playwright test --config playwright.lab.config.ts) >"$tmp/browser-lab.log" 2>&1 & lab_pid=$!
+    OH_WEB_PREBUILT=1 OH_BROWSER_HOST_PREBUILT=1 OH_BROWSER_WORKERS="${OH_BROWSER_WORKERS:-4}" npm run test:browser --prefix web >"$tmp/browser-normal.log" 2>&1 & normal_pid=$!
+    (cd web && OH_WEB_PREBUILT=1 OH_BROWSER_HOST_PREBUILT=1 OH_BROWSER_WORKERS="${OH_LAB_WORKERS:-2}" npx playwright test --config playwright.lab.config.ts) >"$tmp/browser-lab.log" 2>&1 & lab_pid=$!
     normal_rc=0; lab_rc=0
     wait "$normal_pid" || normal_rc=$?
     wait "$lab_pid" || lab_rc=$?

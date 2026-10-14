@@ -229,7 +229,7 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	// native phases observable without making every UI journey wait for a model.
 	step := 200 * time.Millisecond
 	if strings.Contains(prompt, "hidas") {
-		step = 2 * time.Second
+		step = 4 * time.Second
 	}
 	emit(map[string]any{"type": "agent_start"})
 	// The controller passes a deliberately minimal environment to Pi. The lab
