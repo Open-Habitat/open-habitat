@@ -1,9 +1,10 @@
 ---
 created: 2026-10-07
-updated: 2026-10-07
+updated: 2026-10-14
 type: task
-status: open
+status: done
 priority: normal
+closed: 2026-10-14
 ---
 
 # Night stint 5–6 October 2026
@@ -17,20 +18,22 @@ along the way and why the session kept stopping.
 [interruptions.md](interruptions.md) lists the run, session and instruction
 references for tracing each interruption.
 
-## Remaining acceptance work (Jari, 13 October 2026)
+## Reception completed (13 October 2026)
 
-Jari confirmed that the design review, live happy-path testing and investigation
-and repair of the stint's interruptions are handled. The remaining task is a
-post-stint documentation review: compare the product and architecture pages to
-what landed, update stale descriptions, and verify links and navigation. Feature
-work since the stint has already updated individual pages; this review checks
-the whole current documentation rather than assuming none of it changed.
-Design work is tracked separately and is not a condition for closing this
-session record. The review covers `docs/product.md`, `docs/index.md`, and
-`docs/architecture/` (components, identity, workspaces, conversations, events,
-HTTP API and deployment), against their implemented behavior. It began by
-correcting the stale in-memory-session description and the overstrong
-one-writer claim; the other pages still need a source-grounded pass. Close this
-issue after that pass, not merely after the link check. The original stint and
-its interruption evidence remain in [result.md](result.md) and
+Jari confirmed that the design review, live happy-path testing and the
+investigation and repair of the stint's interruptions are handled. The
+post-stint documentation pass compared `docs/product.md`, the documentation
+entry points and `docs/architecture/` with the implemented behavior. It
+corrected the test admission description, the native-writer and session
+claims, and the presentation of planned versus available actions, while
+removing unnecessary implementation detail. Links and navigation validate.
+The separate installation and operations guide remains its own issue, not
+unfinished acceptance work for this stint. The original stint and its
+interruption evidence remain in [result.md](result.md) and
 [interruptions.md](interruptions.md).
+
+## Resolution
+
+### 2026-10-14T06:41:28Z · @issuectl
+
+Jari confirmed design, happy-path and interruption follow-up complete. The remaining docs review landed: product, architecture and navigation now distinguish shipped behavior from future work; project-view validation passed. Installation/operations guide is separately tracked.
