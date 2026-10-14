@@ -41,6 +41,53 @@ test("@file-tool-cards live and saved file rows retain counts, content and acces
   await expect(tool("edit").locator("ins")).toHaveText("3");
   await expect(tool("edit").getByText("poistettu:")).toHaveCount(1);
   await expect(tool("edit").getByText("lisätty:")).toHaveCount(1);
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    const geometry = await tool("write").evaluate((node) => {
+      const row = node.getBoundingClientRect();
+      const marker = node
+        .closest(".ah-agent-turn")
+        ?.querySelector(".ah-turn-head");
+      const reply = node
+        .closest(".ah-agent-turn")
+        ?.querySelector(".ah-turn-reply .ah-message");
+      const inner = node.querySelector(".ah-disclosure-panel");
+      return {
+        right: row.right,
+        markerRight: marker?.getBoundingClientRect().right,
+        replyRight: reply?.getBoundingClientRect().right,
+        padding: inner ? getComputedStyle(inner).paddingLeft : "",
+        replyPadding: reply ? getComputedStyle(reply).paddingLeft : "",
+      };
+    });
+    expect(Math.abs(geometry.right - (geometry.markerRight ?? 0))).toBeLessThan(
+      1,
+    );
+    expect(Math.abs(geometry.right - (geometry.replyRight ?? 0))).toBeLessThan(
+      1,
+    );
+    expect(geometry.padding).toBe(geometry.replyPadding);
+  }
+  const box = tool("write").locator(".ah-output-box");
+  await expect(
+    box.getByRole("button", { name: "Rivitä pitkät rivit" }),
+  ).toHaveCount(0);
+  await box.evaluate((node) => {
+    (node as HTMLElement).style.width = "110px";
+  });
+  await expect(
+    box.getByRole("button", { name: "Rivitä pitkät rivit" }),
+  ).toBeVisible();
+  await box.getByRole("button", { name: "Rivitä pitkät rivit" }).click();
+  await expect(
+    box.getByRole("button", { name: "Älä rivitä pitkiä rivejä" }),
+  ).toBeVisible();
+  await box.evaluate((node) => {
+    (node as HTMLElement).style.width = "";
+  });
+  await expect(
+    box.getByRole("button", { name: "Älä rivitä pitkiä rivejä" }),
+  ).toHaveCount(0);
   expect(
     (await new AxeBuilder({ page }).include(".ah-file-diff-box").analyze())
       .violations,

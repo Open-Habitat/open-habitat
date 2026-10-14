@@ -2206,7 +2206,8 @@ h1[tabindex="-1"]:focus {
   padding: 10px 12px;
 }
 .ah-tool-row {
-  max-width: min(var(--ah-measure), 100%);
+  width: 100%;
+  max-width: none;
   background: var(--ah-surface);
   border-radius: 10px;
 }
@@ -2352,6 +2353,7 @@ h1[tabindex="-1"]:focus {
 
 /* Native turn: work, answer and liveness share one vertical rail. */
 .ah-agent-turn {
+  --ah-card-inner-pad: var(--ah-s4);
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr);
   column-gap: 10px;
@@ -2492,6 +2494,19 @@ h1[tabindex="-1"]:focus {
 .ah-turn-reply > .ah-message {
   grid-column: 2;
   min-width: 0;
+  width: 100%;
+  max-width: none;
+}
+/* Override the older assistant bubble's zero inline padding as well. */
+.ah-reading-view
+  .ah-feed
+  > li[data-kind="assistant"]
+  .ah-turn-reply
+  > .ah-message:not(.ah-message-alert) {
+  padding: var(--ah-card-inner-pad);
+}
+.ah-agent-turn .ah-tool-row .ah-disclosure-panel {
+  padding: var(--ah-card-inner-pad);
 }
 .ah-turn-strip {
   color: var(--ah-muted);
@@ -2840,6 +2855,8 @@ h1[tabindex="-1"]:focus {
   margin: var(--ah-s2) auto 0;
 }
 .ah-composer-stop[data-ah-primitive="button"] {
+  display: grid;
+  place-items: center;
   width: var(--ah-composer-stop-size);
   height: var(--ah-composer-stop-size);
   padding: 0;

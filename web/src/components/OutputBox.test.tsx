@@ -7,7 +7,7 @@ const text = Array.from(
   (_, i) => `line ${i} content ${"x".repeat(70)}`,
 ).join("\n");
 it("groups view selection separately from jumps and updates disabled state on scroll", () => {
-  const { container } = render(<OutputBox text={text} />);
+  const { container, rerender } = render(<OutputBox text={text} />);
   expect(
     screen
       .getByRole("button", { name: "Alku ja loppu" })
@@ -18,6 +18,8 @@ it("groups view selection separately from jumps and updates disabled state on sc
   Object.defineProperties(pre, {
     scrollHeight: { value: 300 },
     clientHeight: { value: 100 },
+    scrollWidth: { value: 300 },
+    clientWidth: { value: 100 },
   });
   fireEvent.scroll(pre);
   expect(
@@ -39,6 +41,18 @@ it("groups view selection separately from jumps and updates disabled state on sc
       .getByRole("button", { name: "Vieritettävä ikkuna" })
       .getAttribute("aria-pressed"),
   ).toBe("true");
+  expect(
+    screen.queryByRole("button", { name: "Rivitä pitkät rivit" }),
+  ).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Kaikki rivit" }));
+  const all = container.querySelector(".ah-output-all") as HTMLPreElement;
+  Object.defineProperties(all, {
+    scrollWidth: { value: 300 },
+    clientWidth: { value: 100 },
+  });
+  fireEvent.scroll(all);
+  // Layout observers handle resize; rerender also reconciles changed content.
+  rerender(<OutputBox text={`${text}x`} />);
   fireEvent.click(screen.getByRole("button", { name: "Rivitä pitkät rivit" }));
   expect(container.querySelector(".ah-output-wrap")).toBeTruthy();
 });

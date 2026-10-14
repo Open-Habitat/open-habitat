@@ -1,0 +1,52 @@
+{
+  "recap": {
+    "left": 502,
+    "right": 1234,
+    "width": 732,
+    "height": 106.6875,
+    "top": 725.3125,
+    "bottom": 832
+  },
+  "composer": {
+    "left": 502,
+    "right": 1234,
+    "width": 732,
+    "height": 44,
+    "top": 844,
+    "bottom": 888
+  },
+  "editor": {
+    "left": 502,
+    "right": 1192,
+    "width": 690,
+    "height": 44,
+    "top": 844,
+    "bottom": 888
+  },
+  "marker": {
+    "left": 502,
+    "right": 1234,
+    "width": 732,
+    "height": 28,
+    "top": 183.6875,
+    "bottom": 211.6875
+  },
+  "bash": {
+    "left": 534,
+    "right": 1234,
+    "width": 700,
+    "height": 239.46875,
+    "top": 270.875,
+    "bottom": 510.34375
+  },
+  "reply": {
+    "left": 534,
+    "right": 1234,
+    "width": 700,
+    "height": 145.5625,
+    "top": 530.34375,
+    "bottom": 675.90625
+  },
+  "bashPadding": "12px",
+  "replyPadding": "12px"
+}

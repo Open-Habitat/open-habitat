@@ -27,6 +27,7 @@ export function OutputBox({
   const [mode, setMode] = useState<View | null>(null);
   const view = long ? (mode ?? (running ? "scroll" : "edges")) : "all";
   const [wrap, setWrap] = useState(false);
+  const [overflows, setOverflows] = useState(false);
   const [position, setPosition] = useState({ top: true, bottom: false });
   const [shadows, setShadows] = useState(noShadow);
   const [dialog, setDialog] = useState(false);
@@ -61,6 +62,33 @@ export function OutputBox({
       follow.current = bottom;
     }
   };
+  const checkOverflow = () => {
+    const mounted = [
+      head.current,
+      tail.current,
+      viewport.current,
+      all.current,
+    ].filter((pre): pre is HTMLPreElement => !!pre);
+    setOverflows(
+      mounted.some((pre) => {
+        if (!wrap || typeof CanvasRenderingContext2D === "undefined")
+          return pre.scrollWidth > pre.clientWidth + 1;
+        // Wrapped scrollWidth conceals the unwrapped line. Measure in the
+        // viewport's own font so the control remains available to undo wrap.
+        const context = document.createElement("canvas").getContext("2d");
+        if (!context) return false;
+        const style = getComputedStyle(pre);
+        context.font = style.font;
+        const available =
+          pre.clientWidth -
+          parseFloat(style.paddingLeft) -
+          parseFloat(style.paddingRight);
+        return lines.some(
+          (line) => context.measureText(line).width > available + 1,
+        );
+      }),
+    );
+  };
   // biome-ignore lint/correctness/useExhaustiveDependencies: Reconcile after content changes, not after scroll state updates.
   useLayoutEffect(() => {
     const pre = viewport.current;
@@ -69,6 +97,7 @@ export function OutputBox({
         follow.current && running ? pre.scrollHeight : savedTop.current;
     for (const mounted of [head.current, tail.current, pre, all.current])
       if (mounted) update(mounted);
+    checkOverflow();
   }, [text, view, wrap, running]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: Observer follows the mounted viewport only.
   useEffect(() => {
@@ -79,7 +108,10 @@ export function OutputBox({
       all.current,
     ].filter((pre): pre is HTMLPreElement => !!pre);
     if (!mounted.length || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => mounted.forEach(update));
+    const observer = new ResizeObserver(() => {
+      mounted.forEach(update);
+      checkOverflow();
+    });
     mounted.forEach((pre) => {
       observer.observe(pre);
     });
@@ -261,12 +293,14 @@ export function OutputBox({
             </fieldset>
           ) : null}
           <div className="ah-output-group">
-            {button(
-              wrap ? "Älä rivitä pitkiä rivejä" : "Rivitä pitkät rivit",
-              "wrap",
-              () => setWrap(!wrap),
-              wrap,
-            )}
+            {overflows
+              ? button(
+                  wrap ? "Älä rivitä pitkiä rivejä" : "Rivitä pitkät rivit",
+                  "wrap",
+                  () => setWrap(!wrap),
+                  wrap,
+                )
+              : null}
             {long
               ? button("Avaa omassa ikkunassa", "external", () =>
                   setDialog(true),

@@ -746,6 +746,23 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
   await expect(progress).toContainText("Käyttää työkalua bash", {
     timeout: 20000,
   });
+  const stopOffset = await page
+    .getByRole("button", { name: "Keskeytä" })
+    .evaluate((button) => {
+      const outer = button.getBoundingClientRect();
+      const square = button.querySelector("rect")?.getBoundingClientRect();
+      if (!square) throw new Error("Missing Stop square");
+      return {
+        dx: Math.abs(
+          (outer.left + outer.right) / 2 - (square.left + square.right) / 2,
+        ),
+        dy: Math.abs(
+          (outer.top + outer.bottom) / 2 - (square.top + square.bottom) / 2,
+        ),
+      };
+    });
+  expect(stopOffset.dx).toBeLessThanOrEqual(0.5);
+  expect(stopOffset.dy).toBeLessThanOrEqual(0.5);
   const stop = page.getByRole("button", { name: "Keskeytä" });
   await expect(stop).toHaveCSS("width", "30px");
   await expect(page.getByRole("button", { name: "Ohjaa" })).toHaveCSS(
