@@ -3,12 +3,14 @@ created: 2026-10-14
 updated: 2026-10-14
 type: improvement
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 related: ['@sidebar-account-menu']
 lane: web
 lane_seq: 32
 collision: [web/]
+closed: 2026-10-14
+closed_by: claude
 ---
 
 # Account menu on pages without a workspace snapshot
