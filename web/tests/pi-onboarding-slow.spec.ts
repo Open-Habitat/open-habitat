@@ -85,6 +85,7 @@ test("@pi-onboarding lost write reply is uncertain and read-only recheck recover
     await page.goto("/workspaces");
     await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await page.getByRole("link", { name: "Alice" }).click();
+    await confirmGitIdentity(page);
     await page.getByRole("button", { name: /jatka/i }).click();
     await expect(
       page.getByRole("button", { name: "Aloita kirjautuminen" }),

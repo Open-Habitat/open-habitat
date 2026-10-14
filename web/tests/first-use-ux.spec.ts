@@ -122,6 +122,7 @@ test("@first-use code preparation never flashes a failure, while a rejected star
     // Recreate a fresh synthetic daemon attempt for an independently failed start.
     await page.request.get("/fixture/scenario?value=pi-onboarding");
     await page.reload();
+    await confirmGitIdentity(page);
     await page.getByRole("button", { name: /jatka/i }).click();
     await expect(
       page.getByRole("button", { name: "Aloita kirjautuminen" }),

@@ -1,3 +1,4 @@
+import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
 
@@ -51,6 +52,7 @@ test("@github-first logout and new cookie erase in-flight catalog", async ({
     // An old-session response can require a fresh load instead of silently
     // rebinding old selections to Bob. The new cookie's catalog starts empty.
     await page.reload();
+    await confirmGitIdentity(page);
     await expect(page.getByText("fixture/bob-only")).toBeVisible();
     await expect(page.getByText("Valittu 0 repoa.")).toBeVisible();
   } finally {

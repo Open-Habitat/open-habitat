@@ -472,6 +472,21 @@ export function GitHubOnboarding({
           setStep("github");
         }}
       />
+      <div className="ah-onboarding-exit">
+        <Button
+          label="Keskeytä käyttöönotto ja kirjaudu ulos"
+          variant="quiet"
+          onPress={() => setExitOpen(true)}
+        />
+      </div>
+      <AccountLogoutDialog
+        open={exitOpen}
+        onClose={() => setExitOpen(false)}
+        onConfirm={() => {
+          reset();
+          void onLogout();
+        }}
+      />
     </main>
   ) : step === "loading" && !error ? (
     <p role="status">Varmistetaan istunto…</p>

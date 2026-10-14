@@ -24,10 +24,11 @@ async function aligned(page: Page, notice: string) {
   ).toBeLessThanOrEqual(1);
 }
 
-async function login(page: Page) {
+async function login(page: Page, catalogReady = true) {
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
+  if (!catalogReady) return;
   await confirmGitIdentity(page);
   await expect(
     page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
@@ -70,6 +71,7 @@ test("@a11y failed session check offers reload under the repository card", async
     }
     await page.unrouteAll();
     await page.getByRole("button", { name: "Lataa sivu uudelleen" }).click();
+    await confirmGitIdentity(page);
     await expect(
       page.getByRole("list", { name: "GitHub-repot" }),
     ).toBeVisible();
@@ -92,7 +94,7 @@ test("catalog notice retries a read, not a clone", async ({ page }) => {
           body: '{"error":"native_source_unavailable"}',
         }),
     );
-    await login(page);
+    await login(page, false);
     const before = await (
       await page.request.get("/fixture/clone-count")
     ).text();
@@ -101,6 +103,7 @@ test("catalog notice retries a read, not a clone", async ({ page }) => {
     await page
       .getByRole("button", { name: "Tarkista repot uudelleen" })
       .click();
+    await confirmGitIdentity(page);
     await expect(
       page.getByRole("list", { name: "GitHub-repot" }),
     ).toBeVisible();

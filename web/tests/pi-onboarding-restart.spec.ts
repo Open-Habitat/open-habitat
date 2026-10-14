@@ -43,6 +43,7 @@ test("@pi-onboarding expired lease drops code and offers retry", async ({
     await page.goto("/workspaces");
     await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await page.getByRole("link", { name: "Alice" }).click();
+    await confirmGitIdentity(page);
     await page.getByRole("button", { name: /jatka/i }).click();
     await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
     await expect(page.getByText("ABCD-1234")).toBeVisible();
