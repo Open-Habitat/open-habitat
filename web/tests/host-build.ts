@@ -6,6 +6,7 @@ export default function buildHost() {
   const web = fileURLToPath(new URL("../", import.meta.url));
   if (process.env.OH_WEB_PREBUILT !== "1")
     execFileSync("npm", ["run", "build"], { cwd: web, stdio: "inherit" });
+  if (process.env.OH_BROWSER_HOST_PREBUILT === "1") return;
   execFileSync(
     "go",
     ["build", "-o", ".cache/browser-host", "./test/browser-host"],
