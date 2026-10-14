@@ -71,8 +71,16 @@ yläreunan ilmoituksessa, ja aiempi sisältö jää luettavaksi.
 
 ## Sovelluskehys
 
-Sivupalkin Etusivu vie paluunäkymään: ensin ovat uudet huomiota vaativat
-keskustelut, sitten käynnissä olevat ja viimeksi avatut. Nähty virhe säilyy
+Sivupalkin Etusivu vie työtilojen etusivulle ([vedos](drafts/Etusivu.proto.html),
+Jari 14.10.2026, kierros `prototypes/rounds/2026-10-14-katsaukset`, suunta
+Työtilaosiot). Työtila on osion otsikko: nimi, Git-haara ja muuttuneiden
+tiedostojen määrä, valmiiden lukumäärä, uusi keskustelu ja `…`-valikko
+työtilan hallintaan. Sen alla avoimet keskustelut ovat kahden palstan
+kortteina huomiojärjestyksessä, ja kussakin on keskustelun tilannekatsaus
+kokonaan ja sanatarkasti Seuraavaksi-riveineen. Juuri valmistunut
+keskustelu, jolla ei vielä ole katsausta, näkyy pelkällä nimellä. Työtilat,
+joissa ei ole avointa työtä, ovat tiiviinä rivilistana alimpana. Uusi työtila
+luodaan kloonaamalla GitHubista tai uutena hakemistona. Nähty virhe säilyy
 keskustelurivillä ilman että se jää etusivun kärkeen.
 
 Työtilat ryhmittelevät keskustelut. Työtilan sisällä ensin ovat uudet,

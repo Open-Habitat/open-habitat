@@ -7,7 +7,7 @@ status: open
 priority: normal
 related: ['@choose-syntax-highlighter']
 lane: web
-lane_seq: 29
+lane_seq: 30
 collision: [web/]
 ---
 
