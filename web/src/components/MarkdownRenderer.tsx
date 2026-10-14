@@ -62,6 +62,20 @@ function safeUrl(url: string): string {
   return "";
 }
 
+// The parser gives each fence its own source range; counting fence-like lines
+// across the whole answer misclassifies backticks inside code and open streams.
+function fenceComplete(source: string, start?: number, end?: number): boolean {
+  if (start === undefined || end === undefined) return false;
+  const block = source.slice(start, end);
+  const opening = /^ {0,3}(`{3,}|~{3,})[^\n]*\n/.exec(block);
+  if (!opening) return false;
+  const mark = opening[1][0];
+  const width = opening[1].length;
+  const last = block.trimEnd().split("\n").at(-1) ?? "";
+  const closing = /^ {0,3}(`+|~+)\s*$/.exec(last);
+  return !!closing && closing[1][0] === mark && closing[1].length >= width;
+}
+
 function MarkdownCode({
   text,
   language,
@@ -109,7 +123,7 @@ export default function MarkdownRenderer({ text }: { text: string }) {
               {children}
             </ExternalLink>
           ),
-          pre: ({ children }) => {
+          pre: ({ children, node }) => {
             if (
               isValidElement<{ className?: string; children?: unknown }>(
                 children,
@@ -124,9 +138,11 @@ export default function MarkdownRenderer({ text }: { text: string }) {
                   <MarkdownCode
                     text={content}
                     language={language}
-                    complete={
-                      (text.match(/^ {0,3}```/gm)?.length ?? 0) % 2 === 0
-                    }
+                    complete={fenceComplete(
+                      text,
+                      node?.position?.start?.offset,
+                      node?.position?.end?.offset,
+                    )}
                   />
                 );
             }

@@ -350,20 +350,19 @@ export function OutputBox({
               Sulje
             </ControlButton>
           </header>
-          <pre>
-            {lines.map((line, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: Render-only line numbers.
-              <code key={i}>
-                <span>{i + 1}</span>
-                <SyntaxCode
-                  text={`${line || " "}\n`}
-                  language={language}
-                  complete={complete}
-                  detect={detect}
-                />
-              </code>
-            ))}
-          </pre>
+          <div className="ah-bash-dialog-code">
+            <pre className="ah-bash-dialog-numbers" aria-hidden="true">
+              {lines.map((_, i) => `${i + 1}\n`).join("")}
+            </pre>
+            <pre>
+              <SyntaxCode
+                text={text}
+                language={language}
+                complete={complete}
+                detect={detect}
+              />
+            </pre>
+          </div>
         </dialog>
       ) : null}
     </div>

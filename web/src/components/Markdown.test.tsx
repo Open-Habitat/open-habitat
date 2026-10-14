@@ -48,6 +48,18 @@ describe("untrusted conversation Markdown", () => {
     expect(container.textContent).not.toContain("alert(1)");
   });
 
+  it("detects only a closed unlabelled fence, not a growing partial fence", async () => {
+    const code = 'def hello():\n  return "hello"\n'.repeat(8);
+    const { container, rerender } = render(<Markdown text={`~~~\n${code}`} />);
+    await screen.findByRole("button", { name: "Kopioi koodi" });
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    expect(container.querySelector(".hljs-keyword")).toBeNull();
+    rerender(<Markdown text={`~~~\n${code}~~~`} />);
+    await waitFor(() =>
+      expect(container.querySelector(".hljs-keyword")).not.toBeNull(),
+    );
+  });
+
   it("rejects dangerous URLs and retains only safe external links", async () => {
     const { container } = render(
       <Markdown

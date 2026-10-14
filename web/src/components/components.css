@@ -2732,15 +2732,17 @@ h1[tabindex="-1"]:focus {
 .ah-bash-dialog header button:first-of-type {
   margin-left: auto;
 }
-/* biome-ignore lint/style/noDescendingSpecificity: Card styles override the generic conversation surface. */
-.ah-bash-dialog code {
-  display: block;
+.ah-bash-dialog-code {
+  display: flex;
+  overflow: auto;
+  gap: 12px;
 }
-.ah-bash-dialog code span {
+/* biome-ignore lint/style/noDescendingSpecificity: Dialog code layout overrides the prose code styles. */
+.ah-bash-dialog-code pre {
+  margin: 0;
+}
+.ah-bash-dialog-numbers {
   color: var(--ah-muted);
-  display: inline-block;
-  width: 4ch;
-  margin-right: 12px;
   text-align: right;
   user-select: none;
 }
@@ -3237,19 +3239,9 @@ h1[tabindex="-1"]:focus {
   overflow-x: auto;
   font-variant-ligatures: none;
 }
-.ah-output-viewport .ah-output-line {
-  display: block;
-  min-width: max-content;
-}
 .ah-bash-window .ah-output-wrap {
   white-space: pre-wrap;
   overflow-x: hidden;
-}
-.ah-output-wrap .ah-output-line {
-  min-width: 0;
-  padding-left: 3ch;
-  text-indent: -3ch;
-  overflow-wrap: anywhere;
 }
 .ah-bash-window .ah-output-scroll {
   max-height: 13.5em;
@@ -3440,4 +3432,9 @@ h1[tabindex="-1"]:focus {
 .ah-output-viewport > .ah-syntax {
   display: block;
   min-width: max-content;
+}
+
+.ah-output-wrap > .ah-syntax {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

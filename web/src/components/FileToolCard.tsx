@@ -71,6 +71,16 @@ const language = (path?: string) =>
     sh: "shell",
     go: "go",
     json: "json",
+    rs: "rust",
+    yaml: "yaml",
+    yml: "yaml",
+    toml: "toml",
+    css: "css",
+    html: "html",
+    xml: "xml",
+    ini: "ini",
+    diff: "diff",
+    patch: "diff",
   })[path?.split(".").pop() ?? ""] ?? "";
 function lcs<T>(a: T[], b: T[]): [" " | "-" | "+", T][] {
   // Bound quadratic work on large files; diff view is only a display aid.

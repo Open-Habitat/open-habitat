@@ -6,7 +6,8 @@ Implemented highlight.js core with individually imported local grammars in answe
 
 - `npm ci --prefix web`; `./scripts/test-focused.sh --area web` passed (39 test files / 232 tests). Vitest covers aliases, hostile markup, incomplete fences, unknown languages, size limits and lazy rendering.
 - Production `npm run build --prefix web` emitted individual `/assets/{python,rust,json,yaml,bash,markdown,typescript,javascript,go,xml,css,ini,diff}-*.js` chunks, referenced by same-origin Vite dynamic imports; no runtime CDN or inline evaluation. These paths use the same origin as the main module and work under a same-origin `script-src` CSP. The app's built HTML has no restrictive CSP header of its own; deployment CSP must allow its existing Vite module assets.
-- Browser `@file-tool-cards` specs passed. Host-backed screenshots: `lab-file-card-light.png`, `lab-file-card-dark.png` (both in this folder).
+- Browser `@file-tool-cards` specs passed. Host-backed screenshots: `lab-file-card-light.png`, `lab-file-card-dark.png` (both in this folder). Browser wrap test now checks actual scroll width rather than just the button state.
+- Clean gate attempt 1 stopped at screenshot-spec formatting; fixed. Attempt 2 ran 159/160 browser cases successfully; `ended browser conversation continues explicitly without reposting` timed out after its button detached and passed on the one isolated rerun (`/var/tmp/syntax-gate-retry.log`, `/var/tmp/syntax-flaky-rerun.log`). After review fixes the final clean gate is rerun.
 - WCAG contrast against `--ah-sunken`: light syntax token minimum 5.22:1; dark minimum 7.74:1, computed using sRGB relative luminance. The diff tint remains on its outer line and word spans.
 
 ## Decisions for later review

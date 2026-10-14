@@ -182,7 +182,14 @@ export function SyntaxCode({
     return () => observer.disconnect();
   }, [active]);
   useEffect(() => {
-    if (!active || !visible || !text || text.length > MAX_HIGHLIGHT) return;
+    if (
+      !active ||
+      !visible ||
+      (result?.text === text && result.language === language) ||
+      !text ||
+      text.length > MAX_HIGHLIGHT
+    )
+      return;
     const selected = syntaxLanguage(language);
     if (
       selected === "plain" ||
@@ -226,13 +233,10 @@ export function SyntaxCode({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [text, language, complete, active, detect, visible]);
+  }, [text, language, complete, active, detect, visible, result]);
   return (
     <code ref={ref} className="ah-syntax">
-      {active &&
-      visible &&
-      result?.text === text &&
-      result.language === language
+      {active && result?.text === text && result.language === language
         ? result.nodes
         : text}
     </code>
