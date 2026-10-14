@@ -3,11 +3,13 @@ created: 2026-10-14
 updated: 2026-10-14
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 lane: web
 lane_seq: 28
 collision: [web/, internal/daemon, contracts/v1]
+closed: 2026-10-14
+closed_by: claude
 ---
 
 # Configure the user's git identity from GitHub at onboarding
@@ -23,7 +25,7 @@ Conductor's recommendation (2026-10-14; Jari may redirect):
 
 ## Acceptance Criteria
 
-- [ ] After onboarding, `git config --global user.name` and `user.email` are set for a fresh user (Go test with a disposable HOME, and a lab journey).
-- [ ] An existing identity is never overwritten (test).
-- [ ] Account settings show the current identity and allow changing it.
-- [ ] The contract change is in `contracts/v1/`, with generated code regenerated.
+- [x] After onboarding, `git config --global user.name` and `user.email` are set for a fresh user (Go test with a disposable HOME, and a lab journey).
+- [x] An existing identity is never overwritten (test).
+- [x] Account settings show the current identity and allow changing it.
+- [x] The contract change is in `contracts/v1/`, with generated code regenerated.
