@@ -16,7 +16,7 @@ flowchart TB
   D -->|"RPC"| Pi["Pi child process"]
   D --> GH["gh, git"]
   D --> FS["User's workspaces and Pi history"]
-  Op["Operator CLI"] -->|"revoke web sessions"| G
+  Op["Operator CLI"] -->|"revoke sessions and administer server"| G
 ```
 
 ## Browser and gateway
@@ -28,11 +28,14 @@ source of conversation history; the browser's copy makes switching between
 conversations immediate. [Events and recovery](events-and-recovery.md)
 describes how this view stays current.
 
-The gateway serves the browser application, handles GitHub login and holds web
-sessions in memory. It selects the daemon socket from the signed-in session,
-checks access to each request and forwards commands and replies. It runs as the
-unprivileged `open-habitat-gateway` account with home access disabled by
-systemd. Native file access and tool execution belong to the daemon.
+The gateway serves the browser application, handles GitHub login and persists
+web sessions in gateway-private state across restarts. It owns the server name,
+browser administrator roles and default storage limit; the root broker owns
+native quota limits and usage. The gateway selects the daemon socket from the
+signed-in session, checks access to each request and forwards commands and
+replies. It runs as the unprivileged `open-habitat-gateway` account with home
+access disabled by systemd. Native file access and tool execution belong to
+the daemon.
 
 ## Provisioning broker
 
@@ -53,7 +56,8 @@ One daemon runs as each bound Linux user. It loads that user's binding at
 startup, discovers workspaces, reads Pi history and starts Pi in the selected
 workspace. It handles conversation commands and events, coordinates the single
 writer for each browser conversation, and retains running-conversation state
-and a bounded event journal in memory.
+and a bounded event journal in memory. Its browser writer lock does not bind a
+terminal Pi started after the daemon's native-process check.
 
 Pi executes tools, reads its credentials and writes its own history. The daemon
 communicates with its Pi children through RPC. It also uses `gh` for the user's
@@ -79,7 +83,9 @@ covers the operator commands and service setup.
 | Workspace ID and display name | Optional `.agent-host/workspace.json`; otherwise derived from the directory |
 | Git checkout or linked worktree hint | The workspace's `.git` entry; Git owns repository state |
 | Conversations, their workspace and history | Pi's session files and their recorded working directory |
-| Conversation writer and live progress | The writer lock, the daemon's child tracking and Pi RPC events |
+| Conversation writer and live progress | The browser writer lock, daemon's child tracking, native process observation and Pi RPC events |
+| Browser sessions and administrator roles | Gateway-private durable state |
+| Storage use and hard limits | Native Linux user quotas, read and changed through the root broker |
 | GitHub credentials | The user's native `gh` authorization |
 | Model-provider credentials | Pi's credential store in the user's home |
 

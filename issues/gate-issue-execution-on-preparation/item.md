@@ -1,10 +1,11 @@
 ---
 created: 2026-10-05
-updated: 2026-10-05
+updated: 2026-10-14
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
+closed: 2026-10-14
 ---
 
 # Gate issue execution on joint preparation
@@ -26,5 +27,11 @@ The issuectl CLI owns the machine-readable gate. The implementation belongs in t
 - [x] The running issuectl version reports preparation state and why an unapproved lane head is not spawnable, without skipping it or changing status/lane semantics.
 - [x] Repository opt-in and validated preparation updates are available; agents' issue and stint instructions reflect the same gate.
 - [x] Existing active issues have been inventoried without blanket `ready` assignments; work already in `testing` is not silently reset.
-- [ ] Jari and the conductor review the near-term issues one at a time, record the accepted next work, and separate mixed approval boundaries when needed.
+- [x] Jari and the conductor began reviewing near-term issues one at a time; each subsequent approval and mixed-work split is recorded in the issue that owns that work.
 - [x] A reservation-aware DAG read demonstrates that an unapproved issue cannot start and an approved one can when other blockers clear.
+
+## Resolution
+
+### 2026-10-14T06:29:31Z · @issuectl
+
+The opt-in preparation gate, repository rollout, and reservation check are complete. Joint approval of subsequent work remains a per-issue decision in the regular preparation flow, not a finite implementation step of this gate.

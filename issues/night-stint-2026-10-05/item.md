@@ -17,30 +17,20 @@ along the way and why the session kept stopping.
 [interruptions.md](interruptions.md) lists the run, session and instruction
 references for tracing each interruption.
 
-## Next steps (Jari, 7 October 2026)
+## Remaining acceptance work (Jari, 13 October 2026)
 
-The goal is to close this issue once every step below has been done.
-
-These are the standard steps for taking in a stint's changes, now described in
-[AGENTS-WORKFLOW.md](../../AGENTS-WORKFLOW.md#taking-in-a-stints-changes);
-this stint is their first use.
-
-1. Go through the stint's commit messages and analyse every document that
-   changed.
-2. Analyse how the contents of `docs/` and `design-system/` need to be
-   updated (a general documentation update), list those documents, and run
-   a rethink on each of them.
-3. Jari signs in by hand; an agent then tests every button and the basic
-   behaviour live.
-4. Go through every user interface and produce a document with a screenshot
-   of each view, plus a slide show of it for Jari (see how the contoso
-   repository builds its slide show and reuse that approach, or give the
-   slide show its own look).
-5. After Jari's comments, build the corresponding package for the designer
-   to comment on, with selected DOM trees instead of screenshots. Reduce
-   repetition so the package carries no unnecessary tokens.
-6. A list of happy-path flows for Jari to test, saying where each one is
-   found.
-7. Check why the agent interrupted the installation. The first findings are
-   in [result.md](result.md) under “Miksi työ pysähteli”; verify them and
-   go deeper where needed.
+Jari confirmed that the design review, live happy-path testing and investigation
+and repair of the stint's interruptions are handled. The remaining task is a
+post-stint documentation review: compare the product and architecture pages to
+what landed, update stale descriptions, and verify links and navigation. Feature
+work since the stint has already updated individual pages; this review checks
+the whole current documentation rather than assuming none of it changed.
+Design work is tracked separately and is not a condition for closing this
+session record. The review covers `docs/product.md`, `docs/index.md`, and
+`docs/architecture/` (components, identity, workspaces, conversations, events,
+HTTP API and deployment), against their implemented behavior. It began by
+correcting the stale in-memory-session description and the overstrong
+one-writer claim; the other pages still need a source-grounded pass. Close this
+issue after that pass, not merely after the link check. The original stint and
+its interruption evidence remain in [result.md](result.md) and
+[interruptions.md](interruptions.md).

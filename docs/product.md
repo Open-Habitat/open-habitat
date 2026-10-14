@@ -87,9 +87,11 @@ jonka tietoja ei juuri nyt pystytä lukemaan.
 Historian avaaminen ei käynnistä agenttia. Uusi keskustelu aloitetaan
 erikseen. Päättynyttä selainkeskustelua voi jatkaa samalla historialla,
 kun aiemman työn tiedetään päättyneen. Terminaalissa aloitetut keskustelut
-ovat selaimessa vain luettavia. Samaa keskustelua ohjaa yksi kirjoittaja
-kerrallaan, jotta toisistaan riippumattomat ohjaajat eivät kirjoita samaan
-historiaan yhtä aikaa.
+ovat selaimessa vain luettavia. Selaimen käynnistämät kirjoittajat käyttävät
+yhteistä lukkoa. Ennen päättyneen selainkeskustelun jatkamista daemon tarkistaa
+saman käyttäjän Pi-prosessit ja estää jatkamisen, jos kirjoittajasta ei saada
+varmuutta. Terminaalissa tarkistuksen jälkeen käynnistyvä Pi ei kuitenkaan
+noudata selaimen lukkoa; eri kirjoittajien ehdotonta poissulkemista ei luvata.
 
 ## Keskustelu ja työn ohjaus
 
