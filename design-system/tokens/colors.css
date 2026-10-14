@@ -3,6 +3,12 @@
 
 :root,
 [data-theme="light"] {
+  --ah-syntax-keyword: #71419b;
+  --ah-syntax-string: #216142;
+  --ah-syntax-number: #8a4b16;
+  --ah-syntax-title: #185e87;
+  --ah-syntax-comment: #61676f;
+  --ah-syntax-deletion: #a3412b;
   --ah-sunken: #f3f5f7;
   --ah-hover: rgba(16, 24, 40, .06);
   --ah-bg: #f6f7f8;
@@ -47,6 +53,12 @@
 }
 
 [data-theme="dark"] {
+  --ah-syntax-keyword: #c7a3ed;
+  --ah-syntax-string: #93d3ad;
+  --ah-syntax-number: #edba8d;
+  --ah-syntax-title: #9acced;
+  --ah-syntax-comment: #a3abb3;
+  --ah-syntax-deletion: #e8a08a;
   --ah-sunken: #14171a;
   --ah-hover: rgba(255, 255, 255, .07);
   --ah-bg: #14171a;

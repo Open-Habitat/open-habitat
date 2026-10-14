@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ControlButton, IconButton } from "./ControlElements";
 import { Icon } from "./Icon";
+import { SyntaxCode } from "./SyntaxCode";
 
 type View = "edges" | "scroll" | "all";
 type Shadow = { left: boolean; right: boolean };
@@ -13,12 +14,16 @@ export function OutputBox({
   text,
   language,
   running = false,
+  complete = !running,
+  detect = false,
   copyLabel = "Kopioi tuloste",
   onCopy,
 }: {
   text: string;
   language?: string;
   running?: boolean;
+  complete?: boolean;
+  detect?: boolean;
   copyLabel?: string;
   onCopy?: () => void;
 }) {
@@ -171,14 +176,14 @@ export function OutputBox({
       <Icon name={icon} />
     </IconButton>
   );
-  const content = (section: string[]) =>
-    section.map((line, i) => (
-      // biome-ignore lint/suspicious/noArrayIndexKey: Render-only line sequence.
-      <span className="ah-output-line" key={i}>
-        {line || " "}
-        {"\n"}
-      </span>
-    ));
+  const content = (section: string[]) => (
+    <SyntaxCode
+      text={`${section.join("\n")}\n`}
+      language={language}
+      complete={complete}
+      detect={detect}
+    />
+  );
   const pre = (
     section: string[],
     className: string,
@@ -350,8 +355,12 @@ export function OutputBox({
               // biome-ignore lint/suspicious/noArrayIndexKey: Render-only line numbers.
               <code key={i}>
                 <span>{i + 1}</span>
-                {line || " "}
-                {"\n"}
+                <SyntaxCode
+                  text={`${line || " "}\n`}
+                  language={language}
+                  complete={complete}
+                  detect={detect}
+                />
               </code>
             ))}
           </pre>

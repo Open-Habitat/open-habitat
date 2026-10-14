@@ -112,6 +112,11 @@ test("@file-tool-cards live and saved file rows retain counts, content and acces
     (await new AxeBuilder({ page }).include(".ah-file-diff-box").analyze())
       .violations,
   ).toEqual([]);
+  for (const theme of ["light", "dark"]) {
+    await page.locator("html").evaluate((node, value) => node.setAttribute("data-theme", value), theme);
+    await tool("write").scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `../issues/syntax-highlighting/lab-file-card-${theme}.png` });
+  }
 });
 
 test("@file-tool-cards failed read shows the native error without a file count", async ({

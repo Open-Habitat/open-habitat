@@ -9,6 +9,7 @@ import { ControlButton, DisclosureButton } from "./ControlElements";
 import { ConversationFloatingAction } from "./ConversationFrame";
 import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
+import { SyntaxCode } from "./SyntaxCode";
 import { Disclosure } from "./Overlays";
 import { Button, RadioGroup, TextArea, TextField } from "./Primitives";
 import type { StatusKind } from "./Status";
@@ -492,7 +493,12 @@ export function CodeBlock({
         <p>Pitkä sisältö on supistettu.</p>
       ) : (
         <pre>
-          <code>{text}</code>
+          <SyntaxCode
+            text={text}
+            language={languageLabel}
+            complete={sourceState === "complete"}
+            detect={!languageLabel}
+          />
         </pre>
       )}
       <div className="ah-actions">

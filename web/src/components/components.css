@@ -3405,3 +3405,39 @@ h1[tabindex="-1"]:focus {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* Syntax scopes colour only code text, never the surrounding diff surfaces. */
+.ah-syntax .hljs-keyword,
+.ah-syntax .hljs-selector-tag,
+.ah-syntax .hljs-built_in,
+.ah-syntax .hljs-type {
+  color: var(--ah-syntax-keyword);
+}
+.ah-syntax .hljs-string,
+.ah-syntax .hljs-attr,
+.ah-syntax .hljs-addition {
+  color: var(--ah-syntax-string);
+}
+.ah-syntax .hljs-number,
+.ah-syntax .hljs-literal,
+.ah-syntax .hljs-symbol {
+  color: var(--ah-syntax-number);
+}
+.ah-syntax .hljs-title,
+.ah-syntax .hljs-name,
+.ah-syntax .hljs-section,
+.ah-syntax .hljs-property {
+  color: var(--ah-syntax-title);
+}
+.ah-syntax .hljs-comment,
+.ah-syntax .hljs-quote,
+.ah-syntax .hljs-meta {
+  color: var(--ah-syntax-comment);
+}
+.ah-syntax .hljs-deletion {
+  color: var(--ah-syntax-deletion);
+}
+.ah-output-viewport > .ah-syntax {
+  display: block;
+  min-width: max-content;
+}

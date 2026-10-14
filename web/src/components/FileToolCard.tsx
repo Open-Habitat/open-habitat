@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { IconButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { OutputBox } from "./OutputBox";
+import { SyntaxCode } from "./SyntaxCode";
 
 type Edit = { oldText: string; newText: string };
 type Args = { path?: string; content?: string; edits?: Edit[] };
@@ -237,11 +238,18 @@ export function FileToolCard({
               ) : type === "+" ? (
                 <span className="ah-sr-only">lisätty: </span>
               ) : null}
-              {pair !== undefined
-                ? type === "-"
-                  ? marked(text, pair, "-")
-                  : marked(pair, text, "+")
-                : text || " "}
+              {pair !== undefined ? (
+                type === "-" ? (
+                  marked(text, pair, "-")
+                ) : (
+                  marked(pair, text, "+")
+                )
+              ) : (
+                <SyntaxCode
+                  text={text || " "}
+                  language={language(args?.path)}
+                />
+              )}
             </span>
           </span>
         ))}

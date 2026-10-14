@@ -62,7 +62,15 @@ function safeUrl(url: string): string {
   return "";
 }
 
-function MarkdownCode({ text, language }: { text: string; language?: string }) {
+function MarkdownCode({
+  text,
+  language,
+  complete,
+}: {
+  text: string;
+  language?: string;
+  complete: boolean;
+}) {
   return (
     <figure className="ah-markdown-code">
       <OutputBox
@@ -75,6 +83,8 @@ function MarkdownCode({ text, language }: { text: string; language?: string }) {
               : language
         }
         copyLabel="Kopioi koodi"
+        complete={complete}
+        detect={!language}
       />
     </figure>
   );
@@ -110,7 +120,15 @@ export default function MarkdownRenderer({ text }: { text: string }) {
               )?.[1];
               const content = children.props.children;
               if (typeof content === "string")
-                return <MarkdownCode text={content} language={language} />;
+                return (
+                  <MarkdownCode
+                    text={content}
+                    language={language}
+                    complete={
+                      (text.match(/^ {0,3}```/gm)?.length ?? 0) % 2 === 0
+                    }
+                  />
+                );
             }
             return <pre>{children}</pre>;
           },
