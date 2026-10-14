@@ -3,7 +3,7 @@ created: 2026-10-14
 updated: 2026-10-14
 type: bug
 reporter: jari
-status: open
+status: in-progress
 priority: normal
 lane: web
 lane_seq: 26
