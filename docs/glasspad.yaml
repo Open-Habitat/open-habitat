@@ -85,3 +85,6 @@ groups:
       - slug: decisions/adr-0014-open-test-admission
         title: ADR 0014 — Open test admission
         desc: The disposable test installation accepts any verified GitHub identity without Cloudflare Access.
+      - slug: decisions/adr-0015-browser-code-highlighting
+        title: ADR 0015 — Browser code highlighting (proposed)
+        desc: Compare browser syntax highlighters and propose highlight.js pending approval.

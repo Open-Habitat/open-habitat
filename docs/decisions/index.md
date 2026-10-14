@@ -22,3 +22,4 @@ and implementation work belong in issues.
 | [ADR 0012](adr-0012-per-user-storage-quotas.md) | Per-user storage limits are Linux quotas over the whole home, set through the broker and shown by the gateway |
 | [ADR 0013](adr-0013-service-logging.md) | Consistent, readable service logs on stderr/journald, using existing IDs when available |
 | [ADR 0014](adr-0014-open-test-admission.md) | The disposable test installation admits any verified GitHub account without Cloudflare Access |
+| [ADR 0015](adr-0015-browser-code-highlighting.md) | Proposed: highlight.js for on-demand browser code highlighting; approval pending |
