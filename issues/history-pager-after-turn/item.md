@@ -3,11 +3,13 @@ created: 2026-10-14
 updated: 2026-10-14
 type: bug
 reporter: jari
-status: in-progress
+status: fixed
 priority: high
 lane: web
 lane_seq: 24
 collision: [web/]
+closed: 2026-10-14
+closed_by: claude
 ---
 
 # Completed turn shows a misplaced forward history pager and stale recap
