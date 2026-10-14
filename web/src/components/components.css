@@ -3438,3 +3438,8 @@ h1[tabindex="-1"]:focus {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+/* Reply prose must not undo the explicit wrap control inside fenced code. */
+.ah-message .ah-prose .ah-markdown-code .ah-bash-window pre.ah-output-wrap {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
