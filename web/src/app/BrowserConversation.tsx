@@ -293,6 +293,15 @@ export function BrowserConversation({
     !!recapFingerprint &&
     (dismissedRecap === `${dismissalKey}:${recapFingerprint}` ||
       storedDismissal === recapFingerprint);
+  const dismissRecapOnSend = () => {
+    if (!recapFingerprint) return;
+    setDismissedRecap(`${dismissalKey}:${recapFingerprint}`);
+    try {
+      localStorage.setItem(dismissalKey, recapFingerprint);
+    } catch {
+      /* Keep it dismissed in this tab. */
+    }
+  };
   const recapBusy = recapAction?.key === recapKey && recapAction.pending;
   const recapError = recapAction?.key === recapKey && recapAction.error;
   const recapUncertain = recapAction?.key === recapKey && recapAction.uncertain;
@@ -632,6 +641,17 @@ export function BrowserConversation({
               } else captureAnchor();
             }}
           >
+            {next ? (
+              <div className="ah-history-pager">
+                <Button
+                  label="Lataa vanhempi historiasivu"
+                  onPress={() => {
+                    captureAnchor();
+                    void store.older(id);
+                  }}
+                />
+              </div>
+            ) : null}
             <UnpresentedEvents events={events} />
             <ConversationTimeline
               state={
@@ -887,15 +907,6 @@ export function BrowserConversation({
                 )?.name
               }
             />
-            {next ? (
-              <Button
-                label="Lataa seuraava historiasivu"
-                onPress={() => {
-                  captureAnchor();
-                  void store.older(id);
-                }}
-              />
-            ) : null}
             {current?.auth_error === "pi_auth_failed" ? (
               <InlineNotice
                 title="Kielimallikirjautuminen ei ole kunnossa"
@@ -1159,9 +1170,18 @@ export function BrowserConversation({
                                 : "Odota vahvistettua joutotilaa; epävarmaa viestiä ei lähetetä uudelleen.",
                     }
               }
-              onSendNow={() => void submit()}
-              onSteer={() => void submitQueue("steer")}
-              onFollowUp={() => void submitQueue("follow_up")}
+              onSendNow={() => {
+                if (draft.trim() && canSend) dismissRecapOnSend();
+                void submit();
+              }}
+              onSteer={() => {
+                if (draft.trim()) dismissRecapOnSend();
+                void submitQueue("steer");
+              }}
+              onFollowUp={() => {
+                if (draft.trim()) dismissRecapOnSend();
+                void submitQueue("follow_up");
+              }}
               onModeChange={setWorkingMode}
               onOpenQueue={() => {
                 if (queueOpen) {

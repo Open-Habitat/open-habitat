@@ -53,6 +53,23 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
       .locator(".ah-composer-entry")
       .evaluate((node) => node.getBoundingClientRect().width);
     expect(Math.abs(cardWidth - editorWidth)).toBeLessThan(1);
+    const layout = await page.evaluate(() => {
+      const rect = (selector: string) =>
+        document.querySelector(selector)?.getBoundingClientRect();
+      return {
+        markerRight: rect(".ah-turn-head")?.right,
+        recapRight: rect(".ah-recap")?.right,
+        composerRight: rect(".ah-composer-entry")?.right,
+        editorHeight: rect(".ah-composer-entry textarea")?.height,
+      };
+    });
+    expect(
+      Math.abs((layout.markerRight ?? 0) - (layout.recapRight ?? 0)),
+    ).toBeLessThan(1);
+    expect(
+      Math.abs((layout.composerRight ?? 0) - (layout.recapRight ?? 0)),
+    ).toBeLessThan(1);
+    expect(layout.editorHeight).toBeLessThanOrEqual(46);
     await expect(
       card.getByText("Synteettinen työtila tutkittiin ja vastaus valmistui."),
     ).toBeVisible();
@@ -96,14 +113,10 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
     expect(again.recap.generated_at).toBe(native.recap.generated_at);
     await editor.fill("hidas toinen viesti");
     await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-    await expect(card.getByText("uusia viestejä")).toBeVisible({
-      timeout: 20000,
-    });
-    await expect(
-      card.getByRole("button", { name: "Päivitä katsaus" }),
-    ).toBeDisabled();
-    await card.getByRole("button", { name: "Sulje katsaus" }).click();
     await expect(card).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Lataa seuraava historiasivu" }),
+    ).toHaveCount(0);
     await expect(
       other.getByRole("complementary", { name: "Keskustelun yhteenveto" }),
     ).toHaveCount(0);

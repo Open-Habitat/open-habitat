@@ -31,7 +31,7 @@ try {
   while (!(await reply(1).count())) {
     const count = await page.locator(".ah-feed > li").count();
     await page
-      .getByRole("button", { name: "Lataa seuraava historiasivu" })
+      .getByRole("button", { name: "Lataa vanhempi historiasivu" })
       .click();
     await expect
       .poll(() => page.locator(".ah-feed > li").count())

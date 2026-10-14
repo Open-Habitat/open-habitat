@@ -1236,8 +1236,14 @@ h1[tabindex="-1"]:focus {
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
 .ah-conversation-stream > * {
-  width: min(100%, var(--ah-conversation-width));
+  width: min(
+    100%,
+    calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline))
+  );
   margin-inline: auto;
+}
+.ah-history-pager > button {
+  width: 100%;
 }
 .ah-conversation-stream > .ah-recap {
   position: sticky;
@@ -2810,6 +2816,9 @@ h1[tabindex="-1"]:focus {
   overflow-y: auto;
   resize: none;
   field-sizing: content;
+}
+.ah-conversation-frame .ah-composer-entry textarea:placeholder-shown {
+  height: var(--ah-composer-rest-height);
 }
 .ah-conversation-frame .ah-composer-entry > [data-ah-primitive="button"] {
   width: 36px;
