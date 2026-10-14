@@ -192,14 +192,16 @@ varmistamista. Puuttuva käyttöoikeus tai epäonnistunut valmistelu näkyy syin
 jotta käyttäjä voi korjata sen. Kirjautuminen yksin ei todista, että agentti
 pystyy käyttämään kyseistä repoa.
 
-Agentille voi valmistella oman työhaaran Git-työtilasta. Taskfleet luo ja
-hallitsee sitä varten erillisen työhakemiston eli worktreen. Muualta löydetyt
-worktreet voivat näkyä havaintoina; niiden hallinta ei siirry selaimelle.
-Taskfleet määrää lopullisen haaran nimen.
+Suunnitellussa agenttityössä agentille voi valmistella oman työhaaran
+Git-työtilasta. Taskfleet luo ja hallitsee sitä varten erillisen työhakemiston
+eli worktreen. Muualta löydetyt worktreet voivat näkyä havaintoina; niiden
+hallinta ei siirry selaimelle. Taskfleet määrää lopullisen haaran nimen.
+Tätä selainohjausta ei ole vielä toteutettu.
 
 Työtilan piilotus poistaa sen tavallisesta listasta ja jättää tiedostot
-paikalleen. Piilotuksen voi perua. Poisto näyttää työtilan sekä siihen
-liittyvät prosessit ja worktreet ennen vahvistusta. Epäselvä vaikutus,
+paikalleen. Piilotuksen voi perua. Poisto ei ole vielä käytössä. Suunniteltu
+poisto näyttää työtilan sekä siihen liittyvät prosessit ja worktreet ennen
+vahvistusta. Epäselvä vaikutus,
 pysäyttämätön prosessi tai jäljellä oleva linkitetty worktree estää poiston.
 Taskfleet purkaa omat worktreensä; työtilan ulkopuolisia hakemistoja ei
 poisteta hiljaisesti. Symlinkit ja muualta löydetyt worktreet voivat näkyä
@@ -256,10 +258,11 @@ talteen; viestiä ei lähetetä automaattisesti uudelleen, sillä sama työ vois
 muuten käynnistyä kahdesti. Luonnos ja lukukohta säilyvät yhteyden
 palautuessa.
 
-Työtilan luonti, GitHub-toiminto, Taskfleet-worktree ja poisto voivat onnistua
-vain osittain. Käyttäjä näkee valmistuneet vaiheet, virheen ja jäljelle jääneet
-vaikutukset. Uusinta perustuu tuoreeseen natiiviin tilanteeseen. Peruuttaminen
-ei tarkoita, että jo tehdyt muutokset olisi kumottu.
+Työtilan luonti ja GitHub-toiminnot voivat onnistua vain osittain;
+suunnitellussa Taskfleet-worktree- ja poistotoiminnossa pätee sama periaate.
+Käyttäjä näkee valmistuneet vaiheet, virheen ja jäljelle jääneet vaikutukset.
+Uusinta perustuu tuoreeseen natiiviin tilanteeseen. Peruuttaminen ei tarkoita,
+että jo tehdyt muutokset olisi kumottu.
 
 GitHub-kloonauksen vaihevirralla on oma
 [katkokäytöksensä](architecture/workspaces.md): selainyhteyden katkeaminen

@@ -17,8 +17,10 @@ flowchart LR
 
 ## Requests and responsibilities
 
-Native reads use `GET`; writes use `POST` or `DELETE`. The gateway checks the
-session cookie and, for writes, the configured origin and session's CSRF header.
+Native reads use `GET`; native writes use `POST` or `DELETE`. Gateway-owned
+administrator changes to server settings and storage limits use `PUT`. The
+gateway checks the session cookie and, for writes, the configured origin and
+session's CSRF header.
 It checks the route and bounds the request before forwarding it. The daemon
 validates native operation inputs. [Identity and trust](identity-and-trust.md)
 explains how the session selects the daemon and how the socket peers are checked.
