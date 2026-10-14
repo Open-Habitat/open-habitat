@@ -3,11 +3,13 @@ created: 2026-10-14
 updated: 2026-10-14
 type: bug
 reporter: jari
-status: in-progress
+status: fixed
 priority: normal
 lane: web
 lane_seq: 26
 collision: [web/]
+closed: 2026-10-14
+closed_by: claude
 ---
 
 # Open tool card flickers while later blocks stream
@@ -18,5 +20,5 @@ Find the cause with React profiling or a lab test (a changing key, a remount of 
 
 ## Acceptance Criteria
 
-- [ ] A lab test opens a write/edit card and streams further blocks. The open card's DOM node identity is preserved and its expanded state and scroll position stay put.
-- [ ] No visible flicker in a lab recording of the same scenario. Note the method in result.md.
+- [x] A lab test opens a write/edit card and streams further blocks. The open card's DOM node identity is preserved and its expanded state and scroll position stay put.
+- [x] No visible flicker in a lab recording of the same scenario. Note the method in result.md.
