@@ -30,14 +30,30 @@ test("@file-tool-cards live and saved file rows retain counts, content and acces
   await expect(tool("read")).toContainText("2 riviä", { timeout: 25000 });
   await expect(tool("write")).toContainText("uusi · 1 riviä");
   await expect(tool("edit")).toContainText("+1 −1");
+  const savedHistory = page.waitForResponse(
+    (response) => response.url().includes("/history?limit=25") && response.ok(),
+  );
   await page.reload();
-  for (const name of ["read", "write", "edit"])
-    await tool(name).locator("button").first().click();
+  await savedHistory;
+  // Reload can first paint provisional output; wait for the saved native reply
+  // before opening its disclosures.
+  await expect(page.getByText('Selvä. Kysyit: "näytä kortit".')).toBeVisible();
+  for (const name of ["read", "write", "edit"]) {
+    const toggle = tool(name).locator("button").first();
+    if ((await toggle.getAttribute("aria-expanded")) === "false")
+      await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  }
   await expect(
     tool("read").getByRole("button", { name: "Kopioi sisältö" }),
   ).toBeVisible();
   await expect(tool("write").getByText("typescript")).toBeVisible();
-  await expect(tool("edit").locator("del")).toHaveText("2");
+  await expect(async () => {
+    const toggle = tool("edit").locator("button").first();
+    if ((await toggle.getAttribute("aria-expanded")) === "false")
+      await toggle.click();
+    await expect(tool("edit").locator("del")).toHaveText("2");
+  }).toPass({ timeout: 15000 });
   await expect(tool("edit").locator("ins")).toHaveText("3");
   await expect(tool("edit").getByText("poistettu:")).toHaveCount(1);
   await expect(tool("edit").getByText("lisätty:")).toHaveCount(1);
