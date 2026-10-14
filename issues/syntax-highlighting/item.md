@@ -3,12 +3,14 @@ created: 2026-10-14
 updated: 2026-10-14
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 related: ['@choose-syntax-highlighter']
 lane: web
 lane_seq: 30
 collision: [web/]
+closed: 2026-10-14
+closed_by: claude
 ---
 
 # Highlight code blocks with highlight.js
@@ -17,8 +19,8 @@ Implement ADR 0015 (`docs/decisions/adr-0015-browser-code-highlighting.md`, acce
 
 ## Acceptance Criteria
 
-- [ ] Languages: plain text, python, rust, json, yaml, shell/bash, markdown, typescript/javascript, go, html (xml), css, toml (via ini, documented as a limitation) and diff, with a stable alias map. Grammars are bundled locally and lazy-loaded, with no runtime network access (production Vite build and CSP checked).
-- [ ] Token colours come from design tokens in light and dark themes, with contrast checked. File-card diff backgrounds and word-level emphasis remain the outer presentation.
-- [ ] Streaming blocks re-highlight throttled. Collapsed or offscreen blocks are not highlighted. Large blocks are bounded. Untagged fences are detected only when complete, with a confidence threshold.
-- [ ] No unsanitized `innerHTML`. Copy and accessibility use the original source.
-- [ ] Tests: Vitest for aliases, escaping, partial fences, unknown languages; lab screenshots for both themes.
+- [x] Languages: plain text, python, rust, json, yaml, shell/bash, markdown, typescript/javascript, go, html (xml), css, toml (via ini, documented as a limitation) and diff, with a stable alias map. Grammars are bundled locally and lazy-loaded, with no runtime network access (production Vite build and CSP checked).
+- [x] Token colours come from design tokens in light and dark themes, with contrast checked. File-card diff backgrounds and word-level emphasis remain the outer presentation.
+- [x] Streaming blocks re-highlight throttled. Collapsed or offscreen blocks are not highlighted. Large blocks are bounded. Untagged fences are detected only when complete, with a confidence threshold.
+- [x] No unsanitized `innerHTML`. Copy and accessibility use the original source.
+- [x] Tests: Vitest for aliases, escaping, partial fences, unknown languages; lab screenshots for both themes.
