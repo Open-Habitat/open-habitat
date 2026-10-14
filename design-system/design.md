@@ -92,8 +92,17 @@ polku, uuden keskustelun aloitus ja keskustelut. Sivupalkin voi kaventaa
 kaistaksi, jossa keskeiset toiminnot säilyvät saatavilla. Puhelimessa sama
 navigaatiosisältö avautuu valikkolaatikkoon keskustelun päälle.
 
-Tilipainikkeessa näkyvät etunimi ja profiilikuva tai sen varaesitys.
-Avattu tilinäkymä näyttää sähköpostin. Asetusten osiot ovat Tili,
+Tilipainike on kiinteästi sivupalkin alareunassa, ja vain työtilojen lista
+vierii sen yläpuolella. Painikkeessa näkyvät etunimi ja profiilikuva tai sen
+varaesitys. Se avaa ylöspäin valikon: koko nimi ja sähköposti, Asetukset,
+Palvelimen ylläpito vain ylläpitäjälle, teeman valinta (Järjestelmä, Vaalea,
+Tumma) ja Kirjaudu ulos. Palvelimen ylläpidolla ei ole muuta linkkiä
+sivupalkissa. Työtilat-otsikon vieressä on Uusi työtila, ja työtilarivin
+`…`-valikossa ovat Uusi keskustelu, Avaa työtilasivu, Kopioi polku, Avaa
+GitHubissa ja Poista työtila, joka on estetty, kunnes palautettava poisto on
+toteutettu. Valikko pysyy auki, vaikka keskustelu vierii (Jari 14.10.2026,
+kierros `prototypes/rounds/2026-10-14-palkki`, suunta Tilivalikko alhaalla;
+kirjastossa `lib/account.*`). Asetusten osiot ovat Tili,
 Yhteydet tällä palvelimella, Ulkoasu ja Istunto.
 
 ## Keskustelun arkisto

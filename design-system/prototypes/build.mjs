@@ -8,7 +8,8 @@
 // (each `fn` must be defined there). `export const app = true` puts the conversation in the
 // application frame from lib/app.* (sidebar and top bar) and the composer from
 // lib/composer.* with the recap card from lib/recap.*; a round that draws its own composer
-// or recap exports `composer = false` or `recap = false`. Tokens come from ../tokens with the fonts from
+// or recap exports `composer = false` or `recap = false`, and one that draws its own
+// sidebar controls exports `account = false`. Tokens come from ../tokens with the fonts from
 // ../fonts embedded; the library from lib/ is inlined before the round's own code. One
 // variant builds a draft (no picker, R replays); several build a comparison behind the
 // picker. Default output is dist/<round-dir>.html.
@@ -28,6 +29,7 @@ const round = await import(pathToFileURL(join(roundDir, 'round.mjs')).href);
 const { title, variants, app } = round;
 const composer = app && round.composer !== false;
 const recap = composer && round.recap !== false;
+const account = app && round.account !== false;
 const optional = (f) => existsSync(join(roundDir, f)) ? readFileSync(join(roundDir, f), 'utf8') : '';
 const css = optional('round.css'), js = optional('round.js');
 if (!title || !variants?.length) { console.error('round must export title and a non-empty variants array'); process.exit(2); }
@@ -63,6 +65,7 @@ ${tokens}
 ${read('lib/chrome.css')}
 ${read('lib/language.css')}
 ${app ? read('lib/app.css') : ''}
+${account ? read('lib/account.css') : ''}
 ${composer ? read('lib/composer.css') : ''}
 ${recap ? read('lib/recap.css') : ''}
 ${css}
@@ -87,7 +90,7 @@ ${many ? read('lib/picker.css') : ''}
 </div>
 ${picker}
 <script>
-${['stage', 'fixture', 'markdown', 'icons', 'pieces', 'turn', 'output', 'live', ...(app ? ['app'] : []), ...(composer ? ['composer'] : []), ...(recap ? ['recap'] : [])].map(n => read(`lib/${n}.js`)).join('\n')}
+${['stage', 'fixture', 'markdown', 'icons', 'pieces', 'turn', 'output', 'live', ...(app ? ['app'] : []), ...(account ? ['account'] : []), ...(composer ? ['composer'] : []), ...(recap ? ['recap'] : [])].map(n => read(`lib/${n}.js`)).join('\n')}
 // ---------- Round: ${title} ----------
 ${js}
 const variants = [${variants.map(v => v.fn).join(', ')}];

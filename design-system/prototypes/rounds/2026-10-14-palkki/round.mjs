@@ -4,6 +4,7 @@
 // the sidebar. The directions differ in where the account and server live.
 export const title = 'Vasen palkki · tili ja työtilat';
 export const app = true;
+export const account = false; // the round draws its own; direction 1 is now lib/account.*
 export const variants = [
   { name: 'Tilivalikko alhaalla', axis: 'tili ja ylläpito yhdessä valikossa palkin alareunassa', fn: 'v1' },
   { name: 'Palvelin ylhäällä', axis: 'palvelin ja sen ylläpito ylhäällä, oma tili alhaalla', fn: 'v2' },
