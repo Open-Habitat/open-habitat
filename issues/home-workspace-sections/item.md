@@ -3,11 +3,13 @@ created: 2026-10-14
 updated: 2026-10-14
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: high
 lane: web
 lane_seq: 29
 collision: [web/, internal/daemon, contracts/v1]
+closed: 2026-10-14
+closed_by: claude
 ---
 
 # Home page as workspace sections with full recaps
