@@ -3504,3 +3504,11 @@ h1[tabindex="-1"]:focus {
 .ah-rail-content {
   overscroll-behavior: contain;
 }
+/* Match the rail's existing 30px row despite the generic 44px touch button. */
+.ah-workspace-row .ah-workspace-more[data-ah-primitive="button"] {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0;
+}

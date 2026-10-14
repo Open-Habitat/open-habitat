@@ -234,14 +234,14 @@ test("@browser-conversation tool headers keep the name and ellipsize long target
   }
 });
 
-test("@browser-conversation workspace plus starts one native conversation", async ({
+test("@browser-conversation workspace menu starts one native conversation", async ({
   page,
 }) => {
   await open(page);
-  const plus = page.getByRole("button", {
-    name: /Uusi keskustelu työtilassa ordinary-dir/,
-  });
-  await plus.click();
+  await page
+    .getByRole("button", { name: "Työtilan ordinary-dir toiminnot" })
+    .click();
+  await page.getByRole("menuitem", { name: "Uusi keskustelu" }).click();
   await expect(page).toHaveURL(/conversation=pi/);
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
