@@ -1,0 +1,7 @@
+# Result
+
+The provisional turn's React key previously came from its *first visible block*. When native history retired that block while subsequent blocks were streaming, the key changed and React unmounted the entire turn, including any open tool card. The turn now keys from its `turn_start` event id while that turn is live; retiring an individual block no longer changes the turn identity.
+
+The synthetic lab's verified combined-SSE browser case opens a write card, appends a later assistant block and checks the card and its disclosure panel are the same DOM nodes afterward. It also verifies expanded state and an intentionally scrolled panel remain unchanged. This is a DOM-identity/follow-scroll test of the real browser rendering path, not a React Profiler capture. `open-write.png` and its static HTML twin show the open file card after a synthetic turn. `streamed-write.webm` records the same synthetic lab transition: the recorder replaces EventSource only in its browser context, injects verified-sequence fake SSE frames for a write card then a later assistant block, checks the open card's DOM identity and records the post-append frame. There is no remount/blank frame in that recording; the browser assertion separately verifies scroll and expansion state.
+
+Checks: `lab-conversation.spec.ts` and web focused tests; full clean gate is recorded in the worker report. Native saved history replaces a provisional card when it becomes authoritative; this intentionally can change the underlying block representation, but appending unrelated later blocks does not.

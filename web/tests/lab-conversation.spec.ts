@@ -420,13 +420,10 @@ test("@lab browser renders provisional delta and tool from verified combined SSE
     .getByRole("navigation")
     .getByRole("link", { name: "aurinkokello" })
     .click();
-  const refreshed = page.waitForResponse(
-    (response) =>
-      new URL(response.url()).pathname === "/api/v1/snapshot" &&
-      response.status() === 200,
-  );
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const newSnapshot = await (await refreshed).json();
+  // Request our own body: Chromium may discard an in-page snapshot response
+  // when the creation action navigates to the new conversation.
+  const newSnapshot = await (await page.request.get("/api/v1/snapshot")).json();
   const agentId = new URL(page.url()).searchParams.get("conversation");
   expect(
     newSnapshot.agents.some(
@@ -458,7 +455,11 @@ test("@lab browser renders provisional delta and tool from verified combined SSE
       [
         2,
         "tool.started",
-        { tool_call_id: "synthetic-tool", tool_name: "bash", state: "running" },
+        {
+          tool_call_id: "synthetic-tool",
+          tool_name: "write",
+          state: "running",
+        },
       ],
     ] as const) {
       const sequence = Number(parts[2]) + index;
@@ -485,6 +486,69 @@ test("@lab browser renders provisional delta and tool from verified combined SSE
   await expect(
     page.locator(".ah-live-tool-row").getByText("ajossa"),
   ).toBeVisible();
+  const tool = page.locator(".ah-live-tool-row .ah-tool-row");
+  const toggle = tool.getByRole("button").first();
+  if ((await toggle.getAttribute("aria-expanded")) === "false")
+    await toggle.click();
+  await expect(tool).toHaveAttribute("data-state", "running");
+  await expect(tool.locator(".ah-disclosure-panel")).toBeVisible();
+  await tool.evaluate((node) => {
+    (window as unknown as { openTool: Element }).openTool = node;
+    const panel = node.querySelector(".ah-disclosure-panel") as HTMLElement;
+    (window as unknown as { openPanel: Element }).openPanel = panel;
+    panel.style.height = "20px";
+    panel.style.overflow = "auto";
+    const spacer = document.createElement("div");
+    spacer.style.height = "100px";
+    panel.append(spacer);
+    panel.scrollTop = 12;
+  });
+  await page.evaluate(() => {
+    const source = (window as unknown as { testStream: EventSource })
+      .testStream;
+    const after =
+      new URL(source.url, location.href).searchParams.get("after") ?? "";
+    const parts = /^ev1:([0-9a-f-]{36}):(\d+)$/.exec(after);
+    if (!parts) throw new Error("missing cursor");
+    const cursor = `ev1:${parts[1]}:${Number(parts[2]) + 3}`;
+    source.dispatchEvent(
+      new MessageEvent("assistant.delta", {
+        lastEventId: cursor,
+        data: JSON.stringify({
+          schema_version: 1,
+          event_id: "evt_abcdefgh3",
+          cursor,
+          server_instance_id: parts[1],
+          sequence: Number(parts[2]) + 3,
+          emitted_at: "2026-09-30T20:00:01Z",
+          kind: "assistant.delta",
+          resource: {
+            agent_id: new URL(location.href).searchParams.get("conversation"),
+          },
+          payload: { text: "Myöhempi lohko", content_index: 1 },
+        }),
+      }),
+    );
+  });
+  await expect(page.getByText("Myöhempi lohko")).toBeVisible();
+  expect(
+    await tool.evaluate(
+      (node) => node === (window as unknown as { openTool: Element }).openTool,
+    ),
+  ).toBe(true);
+  expect(
+    await tool.evaluate((node) => {
+      const panel = node.querySelector(".ah-disclosure-panel") as HTMLElement;
+      return (
+        panel === (window as unknown as { openPanel: Element }).openPanel &&
+        panel.scrollTop === 12
+      );
+    }),
+  ).toBe(true);
+  await expect(tool.getByRole("button").first()).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
 });
 
 test("@lab expired combined cursor waits for a newer snapshot without another send", async ({

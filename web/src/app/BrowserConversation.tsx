@@ -728,7 +728,9 @@ export function BrowserConversation({
                 ...(provisional.length
                   ? [
                       {
-                        id: `live-turn-${provisional[0].id}`,
+                        // The first provisional block may be retired when native
+                        // history catches up; it is not the identity of the turn.
+                        id: `live-turn-${started?.event_id ?? provisional[0].id}`,
                         kind: "assistant",
                         content: (
                           <AgentTurn
