@@ -65,3 +65,8 @@
 .p-v3 .rail-list { margin-top: 4px; }
 :is(.p-user, .p-srvbtn, .p-me, .p-newws, .ws-more, .p-add):focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 1px; }
 @media (prefers-reduced-motion: reduce) { .p-menu { animation: none; } }
+/* The sidebar's head and foot stay put; only the workspace list scrolls (Jari 14.10.). */
+.rail { overflow: hidden; }
+.rail .rail-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin-right: -4px; padding-right: 4px; }
+.rail-head, .home-row, .rail-filter, .p-section, .p-newws, .rail-foot { flex: none; }
+.rail-foot { margin-top: 0; }

@@ -138,7 +138,8 @@ document.addEventListener('keydown', (e) => {
     bs[(i + (e.key === 'ArrowDown' ? 1 : -1) + bs.length) % bs.length]?.focus();
   }
 }, true);
-uiFrame.addEventListener('scroll', closeMenu, true);
+// Menus stay open while the live turn scrolls the stage; only the sidebar's own scroll closes them.
+uiRail.addEventListener('scroll', (e) => { if (e.target.classList?.contains('rail-list')) closeMenu(); }, true);
 
 const show = (v) => () => { CUR = v; build(v); return appView(); };
 window.v1 = show('v1'); window.v2 = show('v2'); window.v3 = show('v3');
