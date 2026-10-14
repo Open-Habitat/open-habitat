@@ -3,11 +3,13 @@ created: 2026-10-14
 updated: 2026-10-14
 type: improvement
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 lane: web
 lane_seq: 25
 collision: [web/]
+closed: 2026-10-14
+closed_by: claude
 ---
 
 # Give conversation cards one inner padding and one right edge
@@ -25,7 +27,7 @@ Jari also finds the overall spacing too loose (gaps between blocks and the card 
 
 ## Acceptance Criteria
 
-- [ ] Bash, file and answer cards share one inner-padding token, and no content touches a card edge (lab screenshots, desktop and phone width).
-- [ ] Every full-width block in a turn ends at the same right edge as the marker row, the recap card and the composer (measured in the lab with element rectangles, not by eye).
-- [ ] The Stop square is centred (rectangle centres within 0.5 px).
-- [ ] The wrap toggle appears only when a line overflows, and it disappears or appears correctly on resize.
+- [x] Bash, file and answer cards share one inner-padding token, and no content touches a card edge (lab screenshots, desktop and phone width).
+- [x] Every full-width block in a turn ends at the same right edge as the marker row, the recap card and the composer (measured in the lab with element rectangles, not by eye).
+- [x] The Stop square is centred (rectangle centres within 0.5 px).
+- [x] The wrap toggle appears only when a line overflows, and it disappears or appears correctly on resize.
