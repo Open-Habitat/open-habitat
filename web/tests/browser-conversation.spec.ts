@@ -1438,6 +1438,9 @@ async function endedConversation(page: import("@playwright/test").Page) {
   );
   expect(stopped.status()).toBe(200);
   await refreshConversation(page);
+  // A stop can initially be observed as uncertain. The explicit read-only
+  // check proves the terminal history before this helper promises continuation.
+  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
   await expect(
     page.getByRole("button", { name: "Jatka keskustelua" }),
   ).toBeVisible();

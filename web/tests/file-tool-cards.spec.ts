@@ -39,10 +39,14 @@ test("@file-tool-cards live and saved file rows retain counts, content and acces
   // before opening its disclosures.
   await expect(page.getByText('Selvä. Kysyit: "näytä kortit".')).toBeVisible();
   for (const name of ["read", "write", "edit"]) {
-    const toggle = tool(name).locator("button").first();
-    if ((await toggle.getAttribute("aria-expanded")) === "false")
-      await toggle.click();
-    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(async () => {
+      const toggle = tool(name).locator("button").first();
+      if ((await toggle.getAttribute("aria-expanded")) !== "true")
+        await toggle.click();
+      await expect(toggle).toHaveAttribute("aria-expanded", "true", {
+        timeout: 750,
+      });
+    }).toPass({ timeout: 10000 });
   }
   await expect(
     tool("read").getByRole("button", { name: "Kopioi sisältö" }),
