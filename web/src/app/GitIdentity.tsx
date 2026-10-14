@@ -8,7 +8,7 @@ type Identity = {
   schema_version: 1;
   name: string;
   email: string;
-  source: "~/.gitconfig";
+  source: "~/.gitconfig" | "~/.config/git/config" | "Gitin globaali asetus";
   suggested_name: string;
   suggested_email: string;
   emails: string[];

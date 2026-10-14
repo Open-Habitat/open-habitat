@@ -9,7 +9,7 @@
     "schema_version": {"const": 1},
     "name": {"type": "string", "maxLength": 200},
     "email": {"type": "string", "maxLength": 254},
-    "source": {"const": "~/.gitconfig"},
+    "source": {"enum": ["~/.gitconfig", "~/.config/git/config", "Gitin globaali asetus"]},
     "suggested_name": {"type": "string", "maxLength": 200},
     "suggested_email": {"type": "string", "maxLength": 254},
     "emails": {"type": "array", "uniqueItems": true, "items": {"type": "string", "maxLength": 254}}

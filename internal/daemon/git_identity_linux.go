@@ -43,6 +43,7 @@ func GitIdentityHandler(cfg transport.Config, trusted func(*http.Request) bool) 
 
 // GitIdentityHandlerWithFixturePrograms runs against a synthetic home and gh binary.
 func GitIdentityHandlerWithFixturePrograms(cfg transport.Config, trusted func(*http.Request) bool, home, ghProgram, gitProgram string) http.Handler {
+	cfg.Home = home // synthetic home is the native command's actual HOME
 	return gitIdentityHandler(cfg, trusted, func(ctx context.Context, args ...string) ([]byte, error) {
 		return runRepoGHProgram(ctx, home, ghProgram, args...)
 	}, func(ctx context.Context, args ...string) ([]byte, error) {
@@ -55,7 +56,12 @@ func runIdentityGit(ctx context.Context, home, program string, args ...string) (
 	defer cancel()
 	cmd := exec.CommandContext(ctx, program, args...)
 	cmd.Dir = home
-	cmd.Env = []string{"HOME=" + home, "GIT_CONFIG_GLOBAL=" + filepath.Join(home, ".gitconfig"), "XDG_CONFIG_HOME=" + filepath.Join(home, ".config"), "PATH=/usr/bin:/bin", "GIT_CONFIG_NOSYSTEM=1", "GIT_TERMINAL_PROMPT=0"}
+	cmd.Env = []string{"HOME=" + home, "XDG_CONFIG_HOME=" + filepath.Join(home, ".config"), "PATH=/usr/bin:/bin", "GIT_CONFIG_NOSYSTEM=1", "GIT_TERMINAL_PROMPT=0"}
+	// Reads must observe all native global values (including XDG and includes).
+	// A new write, once proven unset, is pinned to the promised ~/.gitconfig.
+	if len(args) == 4 && args[0] == "config" && args[1] == "--global" && args[2] != "--get" {
+		cmd.Env = append(cmd.Env, "GIT_CONFIG_GLOBAL="+filepath.Join(home, ".gitconfig"))
+	}
 	out := &limitedRepoWriter{}
 	cmd.Stdout = out
 	cmd.Stderr = io.Discard
@@ -75,6 +81,25 @@ func gitValue(ctx context.Context, run func(context.Context, ...string) ([]byte,
 		return "", e
 	}
 	return strings.TrimSuffix(string(b), "\n"), nil
+}
+
+func gitSource(ctx context.Context, run func(context.Context, ...string) ([]byte, error), home, key string) string {
+	b, e := run(ctx, "config", "--global", "--show-origin", "--get", key)
+	if e != nil {
+		return "Gitin globaali asetus"
+	}
+	path, _, found := strings.Cut(strings.TrimSuffix(string(b), "\n"), "\t")
+	if !found {
+		return "Gitin globaali asetus"
+	}
+	switch path {
+	case "file:" + filepath.Join(home, ".gitconfig"):
+		return "~/.gitconfig"
+	case "file:" + filepath.Join(home, ".config/git/config"):
+		return "~/.config/git/config"
+	default:
+		return "Gitin globaali asetus"
+	}
 }
 
 func validGitValue(s string, max int) bool {
@@ -151,7 +176,18 @@ func gitIdentityHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 			snapshotError(w, 503, "native_source_unavailable")
 			return
 		}
-		reply := gitIdentity{SchemaVersion: 1, Name: name, Email: email, Source: "~/.gitconfig", Emails: []string{}}
+		source := "~/.gitconfig"
+		if name != "" || email != "" {
+			key := "user.name"
+			if name == "" {
+				key = "user.email"
+			}
+			source = gitSource(ctx, git, cfg.Home, key)
+			if name != "" && email != "" && gitSource(ctx, git, cfg.Home, "user.email") != source {
+				source = "Gitin globaali asetus"
+			}
+		}
+		reply := gitIdentity{SchemaVersion: 1, Name: name, Email: email, Source: source, Emails: []string{}}
 		if r.Method == "GET" {
 			if r.ContentLength > 0 {
 				snapshotError(w, 400, "invalid_request")
