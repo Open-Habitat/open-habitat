@@ -1,9 +1,9 @@
 ---
 created: 2026-10-13
-updated: 2026-10-13
+updated: 2026-10-14
 type: improvement
 reporter: jari
-status: open
+status: in-progress
 priority: high
 related: ['@fast-focused-tests']
 lane: release-tooling
