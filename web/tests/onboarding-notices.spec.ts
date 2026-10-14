@@ -1,3 +1,4 @@
+import { confirmGitIdentity } from "./git-identity-helper";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
@@ -27,6 +28,7 @@ async function login(page: Page) {
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
+  await confirmGitIdentity(page);
   await expect(
     page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
   ).toBeVisible();

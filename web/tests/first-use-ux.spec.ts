@@ -1,3 +1,4 @@
+import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
 
@@ -9,6 +10,7 @@ async function picker(page: import("@playwright/test").Page) {
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
+  await confirmGitIdentity(page);
   await expect(
     page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
   ).toBeVisible();

@@ -1,3 +1,4 @@
+import { confirmGitIdentity } from "./git-identity-helper";
 import { labOrigin } from "../test-ports.mjs";
 import { expect, test } from "./lab-host";
 
@@ -93,6 +94,7 @@ test("@lab GitHub chooser, synthetic clone and Pi onboarding", async ({
     await page.goto("/workspaces");
     await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await page.getByRole("link", { name: "Alice" }).click();
+    await confirmGitIdentity(page);
     await expect(
       page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
     ).toBeVisible();

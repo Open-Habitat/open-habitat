@@ -65,6 +65,9 @@ test("@pi-onboarding delayed old-session response cannot restore code after focu
             .isVisible()) ||
           (await a
             .getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" })
+            .isVisible()) ||
+          (await a
+            .getByRole("heading", { name: "Git-identiteetti", level: 1 })
             .isVisible()),
       )
       .toBe(true);
