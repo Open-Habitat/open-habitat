@@ -1,0 +1,53 @@
+/* Kierros 14.10.2026: tiheys. Nykyinen = kirjasto sellaisenaan. */
+
+/* ---------- Kevyempi: ~25 % pienemmät välit ---------- */
+[data-density="kevyempi"] .stream { gap: 12px; padding-top: 16px; }
+[data-density="kevyempi"] .vwrap { gap: 12px; }
+[data-density="kevyempi"] .turn { row-gap: 6px; }
+[data-density="kevyempi"] .bubble { gap: 6px; padding: 8px 12px 10px; }
+[data-density="kevyempi"] .bubble-head, [data-density="kevyempi"] .bar { min-height: 24px; }
+[data-density="kevyempi"] .bar.foot { padding-top: 6px; }
+[data-density="kevyempi"] .disc { min-height: 30px; padding: 4px 12px; }
+[data-density="kevyempi"] .tool-body { gap: 8px; padding: 10px 12px; }
+[data-density="kevyempi"] .prose p, [data-density="kevyempi"] .prose ul, [data-density="kevyempi"] .prose ol, [data-density="kevyempi"] .prose pre { margin-bottom: .45em; }
+[data-density="kevyempi"] :is(.strip, .strip-btn) { min-height: 26px; padding-block: 2px; }
+[data-density="kevyempi"] :is(.head-cell, .think-row, .think-tick) { min-height: 22px; }
+[data-density="kevyempi"] .recap { gap: 4px; padding: 6px 10px 8px 12px; }
+
+/* ---------- Tiivis: välit puoleen, pienempi teksti ---------- */
+[data-density="tiivis"] .stream { gap: 8px; padding-top: 12px; }
+[data-density="tiivis"] .vwrap { gap: 8px; }
+[data-density="tiivis"] .turn { row-gap: 3px; column-gap: 8px; grid-template-columns: 18px minmax(0,1fr); }
+[data-density="tiivis"] .node { margin-top: 7px; }
+[data-density="tiivis"] .node.head { margin-top: 5px; }
+[data-density="tiivis"] .bubble { gap: 4px; padding: 6px 10px 8px; font-size: 13.5px; }
+[data-density="tiivis"] .prose { font-size: 13.5px; line-height: 1.5; }
+[data-density="tiivis"] .bubble-head, [data-density="tiivis"] .bar { min-height: 22px; }
+[data-density="tiivis"] .bar.foot { padding-top: 4px; margin-top: 0; }
+[data-density="tiivis"] .disc { min-height: 28px; padding: 2px 10px; }
+[data-density="tiivis"] .tool-body { gap: 6px; padding: 8px 10px; }
+[data-density="tiivis"] :is(.tool-body pre, .prose pre, .bash-cmd, .cmd-first, pre.cmd-rest) { padding: 6px 10px; font-size: 12px; }
+[data-density="tiivis"] .prose p, [data-density="tiivis"] .prose ul, [data-density="tiivis"] .prose ol, [data-density="tiivis"] .prose pre { margin-bottom: .35em; }
+[data-density="tiivis"] :is(.strip, .strip-btn) { min-height: 24px; padding-block: 1px; }
+[data-density="tiivis"] :is(.head-cell, .think-row, .think-tick) { min-height: 20px; font-size: 13px; }
+[data-density="tiivis"] .think-quote { font-size: 13px; line-height: 1.5; }
+[data-density="tiivis"] .topbar { min-height: 44px; padding-block: 6px; }
+[data-density="tiivis"] .recap { gap: 3px; padding: 5px 8px 7px 10px; font-size: 12.5px; }
+[data-density="tiivis"] .conv-row, [data-density="tiivis"] .ws-row, [data-density="tiivis"] .home-row { min-height: 28px; }
+
+/* ---------- Kortiton: rakenne ilman korttireunoja ---------- */
+[data-density="kortiton"] .stream { gap: 10px; padding-top: 14px; }
+[data-density="kortiton"] .vwrap { gap: 10px; }
+[data-density="kortiton"] .turn { row-gap: 4px; }
+[data-density="kortiton"] .bubble.reply { border: 0; background: transparent; padding: 2px 0 0; gap: 4px; }
+[data-density="kortiton"] .bubble.reply .bar.foot { border-top: 0; padding-top: 0; }
+[data-density="kortiton"] .bubble.user { padding: 6px 10px 8px; gap: 4px; }
+[data-density="kortiton"] .tool:not(.node) { border: 0; border-radius: 0; background: transparent; overflow: visible; }
+[data-density="kortiton"] .tool:not(.node) .disc { min-height: 26px; padding: 2px 0; }
+[data-density="kortiton"] .tool:not(.node) .disc:hover { background: transparent; }
+[data-density="kortiton"] .tool:not(.node) .disc:hover .name { text-decoration: underline; }
+[data-density="kortiton"] .tool-body { border-top: 0; border-left: 2px solid var(--ah-line); margin: 2px 0 4px 4px; padding: 4px 0 4px 12px; gap: 6px; }
+[data-density="kortiton"] .prose p, [data-density="kortiton"] .prose ul, [data-density="kortiton"] .prose ol, [data-density="kortiton"] .prose pre { margin-bottom: .45em; }
+[data-density="kortiton"] :is(.strip, .strip-btn) { min-height: 24px; padding-block: 1px; }
+[data-density="kortiton"] :is(.head-cell, .think-row, .think-tick) { min-height: 22px; }
+[data-density="kortiton"] .bubble-head, [data-density="kortiton"] .bar { min-height: 22px; }
