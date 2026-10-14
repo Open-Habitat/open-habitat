@@ -182,7 +182,6 @@ export function App() {
   const closeInFlight = useRef(false);
   const confirmedClose = useRef(new Set<string>());
   const archiveInFlight = useRef(false);
-  const [archiveToast, setArchiveToast] = useState("");
   const [logoutPrompt, setLogoutPrompt] = useState(false);
   const [settingsReturn, setSettingsReturn] = useState("/workspaces");
   const returningFromSettings = useRef(false);
@@ -222,7 +221,6 @@ export function App() {
     setPendingClose(new Set());
     closeInFlight.current = false;
     confirmedClose.current.clear();
-    setArchiveToast("");
     setArchiveBusy(false);
     archiveInFlight.current = false;
     // After a reload at the login boundary we no longer know which person
@@ -710,7 +708,6 @@ export function App() {
     archiveInFlight.current = true;
     setArchiveBusy(true);
     setArchiveProblem("");
-    setArchiveToast("");
     const person = identity;
     const fromRoute = `${location.pathname}${location.search}`;
     if (archived) setPendingArchive((old) => new Set(old).add(agent.agent_id));
@@ -733,9 +730,7 @@ export function App() {
       else if (
         `${window.location.pathname}${window.location.search}` === fromRoute
       )
-        setArchiveToast(
-          "Keskustelu arkistoitu. Se löytyy työtilan Arkisto-osiosta.",
-        );
+        navigate(`/workspaces/${agent.workspace_id}`);
       refresh();
       return true;
     } catch (error) {
@@ -761,10 +756,6 @@ export function App() {
       }
     }
   };
-  // biome-ignore lint/correctness/useExhaustiveDependencies: dismiss the transient confirmation on navigation, not on archive state changes.
-  useEffect(() => {
-    setArchiveToast("");
-  }, [location.pathname, location.search]);
   const returnConversations: (ReturnConversation & { workspaceId: string })[] =
     (snapshot?.agents ?? [])
       .filter(
@@ -971,8 +962,6 @@ export function App() {
           <WorkspaceDetails workspace={selected} />
         ) : null}
         {new URLSearchParams(location.search).has("conversation") &&
-          archiveToast && <InlineNotice title={archiveToast} tone="info" />}
-        {new URLSearchParams(location.search).has("conversation") &&
           archiveProblem && (
             <InlineNotice
               title={
@@ -1042,7 +1031,6 @@ export function App() {
         ) : null}
         {!new URLSearchParams(location.search).has("conversation") ? (
           <>
-            {archiveToast && <InlineNotice title={archiveToast} tone="info" />}
             {archiveProblem && (
               <InlineNotice
                 title={

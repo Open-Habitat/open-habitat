@@ -1467,10 +1467,26 @@ test("@browser-conversation idle controlled Pi can archive without stopping its 
     .getByRole("button", { name: "Arkistoi" });
   await expect(archive).toBeEnabled();
   await archive.click();
-  await page.getByRole("button", { name: "Vahvista arkistointi" }).click();
+  await expect(page).toHaveURL(/\/workspaces\/[^?]+$/);
+});
+
+test("@browser-conversation phone archives directly into its workspace", async ({
+  page,
+}) => {
+  const id = await endedConversation(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Arkistoi", exact: true }).click();
   await expect(
-    page.getByText("Keskustelu arkistoitu.", { exact: false }),
-  ).toBeVisible();
+    page.getByRole("alertdialog", { name: "Vahvista arkistointi" }),
+  ).toHaveCount(0);
+  await expect(page).toHaveURL(/\/workspaces\/[^?]+$/);
+  await expect(
+    page.getByRole("region", { name: "Työtilan arkisto" }),
+  ).toContainText("synthetic end then continue");
+  await page.goto(`/agents/${id}`);
+  await expect(
+    page.getByRole("button", { name: "Palauta näkyviin" }),
+  ).toBeEnabled();
 });
 
 test("@browser-conversation restart offers native continuation and archive without a handle", async ({
@@ -1485,7 +1501,7 @@ test("@browser-conversation restart offers native continuation and archive witho
   const bar = page.locator(".ah-agent-header");
   await expect(bar.getByRole("button", { name: "Arkistoi" })).toBeEnabled();
   await bar.getByRole("button", { name: "Arkistoi" }).click();
-  await page.getByRole("button", { name: "Vahvista arkistointi" }).click();
+  await page.goto(`/agents/${id}`);
   await expect(
     bar.getByRole("button", { name: "Palauta näkyviin" }),
   ).toBeEnabled();
@@ -1530,10 +1546,7 @@ test("@browser-conversation archive restores visibility before native continuati
     page.getByRole("button", { name: "Arkistoi", exact: true }),
   ).toBeEnabled();
   await page.getByRole("button", { name: "Arkistoi", exact: true }).click();
-  await page.getByRole("button", { name: "Vahvista arkistointi" }).click();
-  await expect(
-    page.getByRole("button", { name: "Palauta näkyviin" }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(/\/workspaces\/[^?]+$/);
   await page.getByRole("link", { name: "Etusivu" }).click();
   await expect(
     page
@@ -2349,7 +2362,6 @@ test("@browser-conversation archive hides navigation before host reply and rolls
     });
   });
   await page.getByRole("button", { name: "Arkistoi", exact: true }).click();
-  await page.getByRole("button", { name: "Vahvista arkistointi" }).click();
   await seen;
   await expect(row).toHaveCount(0);
   await expect(
@@ -2462,13 +2474,10 @@ test("@browser-conversation archive stays hidden across delayed successful host 
     await route.continue();
   });
   await page.getByRole("button", { name: "Arkistoi", exact: true }).click();
-  await page.getByRole("button", { name: "Vahvista arkistointi" }).click();
   await seen;
   await expect(row).toHaveCount(0);
   release();
-  await expect(
-    page.getByText("Keskustelu arkistoitu.", { exact: false }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(/\/workspaces\/[^?]+$/);
   await expect(row).toHaveCount(0);
 });
 
@@ -2477,10 +2486,7 @@ test("@browser-conversation archived native history restores through the same ic
 }) => {
   const id = await endedConversation(page);
   await page.getByRole("button", { name: "Arkistoi", exact: true }).click();
-  await page.getByRole("button", { name: "Vahvista arkistointi" }).click();
-  await expect(
-    page.getByText("Keskustelu arkistoitu.", { exact: false }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(/\/workspaces\/[^?]+$/);
   await page.goto(`/agents/${id}`);
   const restore = page
     .locator(".ah-agent-header")

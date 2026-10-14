@@ -1,7 +1,6 @@
-import { useId, useState } from "react";
+import { useId } from "react";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
-import { Button } from "./Primitives";
 import { InlineNotice } from "./Status";
 
 export function ArchiveControls({
@@ -23,7 +22,6 @@ export function ArchiveControls({
   onRestore: () => void;
   onClose?: () => void;
 }) {
-  const [confirm, setConfirm] = useState(false);
   const reasonId = useId();
   const reason =
     blockedReason ??
@@ -71,7 +69,7 @@ export function ArchiveControls({
         }
         aria-description={reason || undefined}
         isDisabled={Boolean(reason)}
-        onPress={() => (state === "archived" ? onRestore() : setConfirm(true))}
+        onPress={() => (state === "archived" ? onRestore() : onArchive())}
       >
         <svg
           aria-hidden="true"
@@ -90,34 +88,6 @@ export function ArchiveControls({
         <span id={reasonId} className="ah-visually-hidden">
           {reason}
         </span>
-      ) : null}
-      {confirm ? (
-        <div
-          role="alertdialog"
-          aria-label="Vahvista arkistointi"
-          className="ah-archive-confirm"
-        >
-          <p>
-            Arkistointi piilottaa keskustelun listasta. Pi:n historia säilyy.
-          </p>
-          <Button
-            label="Vahvista arkistointi"
-            onPress={() => {
-              setConfirm(false);
-              onArchive();
-            }}
-            availability={
-              eligible && !busy
-                ? { state: "enabled" }
-                : { state: "disabled", reason: "Odota vahvistettua tilaa." }
-            }
-          />
-          <Button
-            label="Peruuta"
-            variant="quiet"
-            onPress={() => setConfirm(false)}
-          />
-        </div>
       ) : null}
       {state === "unknown" && !blockedReason ? (
         <InlineNotice

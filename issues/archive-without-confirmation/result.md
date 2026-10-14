@@ -1,0 +1,7 @@
+# Result
+
+The archive icon now sends the archive request immediately on desktop and phone. After a confirmed successful reply, the app navigates to that conversation's workspace (without a `conversation` query); its archived group remains the route back. The interim “Keskustelu arkistoitu” inline notice was removed rather than introducing an unapproved floating notice. On refusal the optimistic sidebar mask is removed, the current conversation remains selected, and the existing warning is shown.
+
+Synthetic lab `archived-workspace.{png,html}` shows the workspace archive after a direct archive action on an invented native conversation. The browser tests cover an ordinary controlled conversation, phone-width direct archive and restore, a native history view, delayed success, and a refused archive that stays on the conversation with its existing warning. No production data or real writer was used. The prototype's confirmation dialog is deliberately superseded by Jari's 14.10. pilot feedback; a restore notice waits for its own prototype round.
+
+Checks: `browser-conversation.spec.ts`, `native-history.spec.ts`, web focused tests and the final full clean gate (reported by the worker).

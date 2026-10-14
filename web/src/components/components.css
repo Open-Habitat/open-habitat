@@ -2807,18 +2807,6 @@ h1[tabindex="-1"]:focus {
 .ah-archive-control {
   position: relative;
 }
-.ah-archive-confirm {
-  position: absolute;
-  z-index: 20;
-  right: 0;
-  top: 100%;
-  width: min(320px, 80vw);
-  padding: var(--ah-s3);
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-lg);
-  background: var(--ah-surface);
-  box-shadow: var(--ah-shadow-dialog);
-}
 .ah-conversation-frame .ah-composer-entry {
   width: min(100%, var(--ah-conversation-width));
   margin: auto;
