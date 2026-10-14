@@ -1642,6 +1642,8 @@ for (const [proof, reason] of [
       page.getByRole("button", { name: "Jatka keskustelua" }),
     ).toHaveCount(0);
     expect(posts).toBe(0);
+    // Refresh can leave a background status request in flight at test exit.
+    await page.unrouteAll({ behavior: "ignoreErrors" });
   });
 
 test("@browser-conversation ended browser conversation continues explicitly without reposting", async ({
