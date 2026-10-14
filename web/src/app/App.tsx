@@ -188,6 +188,7 @@ export function App() {
   const archiveInFlight = useRef(false);
   const [logoutPrompt, setLogoutPrompt] = useState(false);
   const [settingsReturn, setSettingsReturn] = useState("/workspaces");
+  const [settingsFromMenu, setSettingsFromMenu] = useState(false);
   const returningFromSettings = useRef(false);
   useEffect(() => {
     if (location.pathname !== "/settings" && returningFromSettings.current) {
@@ -249,6 +250,7 @@ export function App() {
         sessionStorage.removeItem(key);
     setJournalOffline(false);
     setSettingsReturn("/workspaces");
+    setSettingsFromMenu(false);
     returningFromSettings.current = false;
     setExpanded({});
     setDaemonSessions([]);
@@ -265,6 +267,7 @@ export function App() {
     if (identity) priorIdentity.current = identity;
   }, [identity, clearPerson]);
   const openSettings = () => {
+    setSettingsFromMenu(true);
     setSettingsPiState("checking");
     setSettingsReturn(
       safeRoute(location.pathname) === "/settings"
@@ -891,7 +894,8 @@ export function App() {
         onLogin={requireLogin}
         onSkip={() => setProfileSkipped(true)}
       />
-    ) : location.pathname === "/settings" ? (
+    ) : location.pathname === "/settings" &&
+      (phase === "authenticated" || phase === "stale" || settingsFromMenu) ? (
       <>
         <AccountSettings
           profile={
@@ -910,6 +914,7 @@ export function App() {
           onDisconnect={refresh}
           onBack={() => {
             returningFromSettings.current = true;
+            setSettingsFromMenu(false);
             navigate(settingsReturn);
           }}
         />
