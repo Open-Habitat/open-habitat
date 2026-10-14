@@ -3,10 +3,8 @@ import { fileURLToPath } from "node:url";
 
 // A worker killed before its fixture cleanup can leave its private host tree.
 // Never follow arbitrary marker contents or remove another user's directory.
-export function teardown(lab = false) {
-  const results = fileURLToPath(
-    new URL(lab ? "../test-results-lab/" : "../test-results/", import.meta.url),
-  );
+export default function teardown() {
+  const results = fileURLToPath(new URL("../test-results/", import.meta.url));
   let names: string[];
   try {
     names = readdirSync(results).filter((name) =>
@@ -31,5 +29,3 @@ export function teardown(lab = false) {
     rmSync(marker, { force: true });
   }
 }
-
-export default teardown;

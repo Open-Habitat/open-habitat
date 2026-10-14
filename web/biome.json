@@ -7,7 +7,6 @@
       "!storybook-static",
       "!node_modules",
       "!test-results",
-      "!test-results-lab",
       "!playwright-report"
     ]
   },
