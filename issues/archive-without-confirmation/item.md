@@ -3,11 +3,13 @@ created: 2026-10-14
 updated: 2026-10-14
 type: improvement
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 lane: web
 lane_seq: 27
 collision: [web/]
+closed: 2026-10-14
+closed_by: claude
 ---
 
 # Archive without confirmation and return to the workspace view
@@ -20,6 +22,6 @@ A floating notice ("Arkistoitu" with a Palauta button) replaces the confirmation
 
 ## Acceptance Criteria
 
-- [ ] The archive action has no confirmation step (desktop and phone).
-- [ ] After a successful archive, the app navigates to the workspace view, and the archived conversation is in the archived group.
-- [ ] A failed archive keeps the user on the conversation and shows the existing error.
+- [x] The archive action has no confirmation step (desktop and phone).
+- [x] After a successful archive, the app navigates to the workspace view, and the archived conversation is in the archived group.
+- [x] A failed archive keeps the user on the conversation and shows the existing error.
