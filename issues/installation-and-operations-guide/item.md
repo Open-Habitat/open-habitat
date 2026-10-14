@@ -2,12 +2,14 @@
 created: 2026-09-21
 updated: 2026-10-14
 type: task
-status: in-progress
+status: done
 priority: normal
 epic: native-agent-host-architecture
 lane: operations-docs
 preparation: ready
 collision: [docs/, AGENTS.md]
+closed: 2026-10-14
+closed_by: claude
 ---
 
 # Deliver the installation and operations guide
