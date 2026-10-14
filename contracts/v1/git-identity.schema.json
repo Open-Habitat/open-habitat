@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/git-identity.schema.json",
+  "title": "Native global git identity and GitHub suggestions",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "name", "email", "source", "suggested_name", "suggested_email", "emails"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "name": {"type": "string", "maxLength": 200},
+    "email": {"type": "string", "maxLength": 254},
+    "source": {"const": "~/.gitconfig"},
+    "suggested_name": {"type": "string", "maxLength": 200},
+    "suggested_email": {"type": "string", "maxLength": 254},
+    "emails": {"type": "array", "uniqueItems": true, "items": {"type": "string", "maxLength": 254}}
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/git-identity-update.schema.json",
+  "title": "Explicit native global git identity write",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "email", "mode"],
+  "properties": {
+    "name": {"type": "string", "minLength": 1, "maxLength": 200},
+    "email": {"type": "string", "minLength": 3, "maxLength": 254},
+    "mode": {"enum": ["onboarding", "settings"]}
+  }
+}

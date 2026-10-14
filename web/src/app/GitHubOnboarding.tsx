@@ -9,6 +9,7 @@ import { Button } from "../components/Primitives";
 import { InlineNotice } from "../components/Status";
 import { catalog, cloneStream, GitHubError, observe } from "./github";
 import { PiOnboarding } from "./PiOnboarding";
+import { GitIdentity } from "./GitIdentity";
 import { sessionCSRF } from "./pi";
 
 const marker = "nah:github-step";
@@ -49,11 +50,17 @@ export function GitHubOnboarding({
   onLogout: () => Promise<void>;
 }) {
   const [exitOpen, setExitOpen] = useState(false);
-  const [step, setStep] = useState<"loading" | "github" | "pi">("loading");
+  const [step, setStep] = useState<"loading" | "identity" | "github" | "pi">(
+    "loading",
+  );
   useEffect(() => {
     if (step === "loading") return;
     const heading = document.getElementById(
-      step === "github" ? "github-chooser-title" : "pi-device-title",
+      step === "identity"
+        ? "git-identity-title"
+        : step === "github"
+          ? "github-chooser-title"
+          : "pi-device-title",
     );
     heading?.focus({ preventScroll: true });
   }, [step]);
@@ -73,6 +80,7 @@ export function GitHubOnboarding({
   const rechecking = useRef(false);
   const pending = useRef<string[]>([]);
   const locked = useRef(false);
+  const identityDone = useRef(false);
   const current = useCallback((n: number) => generation.current === n, []);
   const reset = useCallback(() => {
     ++generation.current;
@@ -84,6 +92,7 @@ export function GitHubOnboarding({
     writing.current = false;
     rechecking.current = false;
     locked.current = false;
+    identityDone.current = false;
     setSelected([]);
     setReceipts([]);
     setCheckout({ phase: "idle" });
@@ -130,6 +139,9 @@ export function GitHubOnboarding({
                 a.full_name.localeCompare(b.full_name),
             );
             setView({ phase: "catalog", repositories });
+            setStep((old) =>
+              old === "github" && !identityDone.current ? "identity" : old,
+            );
             setError("");
             return;
           }
@@ -443,6 +455,24 @@ export function GitHubOnboarding({
       onLogout={onLogout}
       onBack={backToPicker}
     />
+  ) : step === "identity" ? (
+    <main className="ah-account-onboarding">
+      <h1 id="git-identity-title" tabIndex={-1}>
+        Git-identiteetti
+      </h1>
+      <p>
+        Vahvista nimi ja sähköposti ennen repoja. Olemassa olevia Git-asetuksia
+        ei muuteta.
+      </p>
+      <GitIdentity
+        csrf={bound.current}
+        onboarding
+        onContinue={() => {
+          identityDone.current = true;
+          setStep("github");
+        }}
+      />
+    </main>
   ) : step === "loading" && !error ? (
     <p role="status">Varmistetaan istunto…</p>
   ) : (

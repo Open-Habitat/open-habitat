@@ -3,10 +3,32 @@ import { hostOrigin } from "../test-ports.mjs";
 
 const host = hostOrigin;
 test.use({ baseURL: host, ignoreHTTPSErrors: true });
+async function identity(page: import("@playwright/test").Page) {
+  await expect(
+    page.getByRole("heading", { name: "Git-identiteetti", level: 1 }),
+  ).toBeVisible();
+  const confirm = page.getByRole("button", {
+    name: "Vahvista Git-identiteetti",
+  });
+  await expect(
+    page.getByRole("button", {
+      name: /Vahvista Git-identiteetti|Jatka repoihin/,
+    }),
+  ).toBeVisible();
+  if (await confirm.isVisible()) {
+    await expect(page.getByRole("combobox")).toHaveValue(
+      /@users.noreply.github.com/,
+    );
+    await confirm.click();
+  } else {
+    await page.getByRole("button", { name: "Jatka repoihin" }).click();
+  }
+}
 async function login(page: import("@playwright/test").Page) {
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
+  await identity(page);
   await expect(
     page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
   ).toBeVisible();
@@ -58,6 +80,7 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
   );
   expect((await observation.json()).state).toBe("confirmed");
   await page.reload();
+  await identity(page);
   await expect(
     page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
   ).toBeVisible();
@@ -90,6 +113,7 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
   ).toBeVisible();
   await page.request.get("/fixture/pi-state?value=missing");
   await page.reload();
+  await identity(page);
   await expect(
     page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
   ).toBeVisible();
@@ -176,6 +200,7 @@ test("@github-first incomplete catalog never permits selection or checkout", asy
     await expect(page.getByRole("button", { name: /jatka/i })).toHaveCount(0);
     await page.unrouteAll();
     await page.getByRole("button", { name: "Tarkista uudelleen" }).click();
+    await identity(page);
     await expect(
       page.getByRole("list", { name: "GitHub-repot" }).getByRole("checkbox"),
     ).toHaveCount(52);

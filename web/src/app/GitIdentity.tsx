@@ -1,0 +1,195 @@
+import Ajv from "ajv/dist/2020.js";
+import { useEffect, useState } from "react";
+import schema from "../../../contracts/v1/git-identity.schema.json";
+import { Button } from "../components/Primitives";
+
+const valid = new Ajv({ strict: false }).compile(schema);
+type Identity = {
+  schema_version: 1;
+  name: string;
+  email: string;
+  source: "~/.gitconfig";
+  suggested_name: string;
+  suggested_email: string;
+  emails: string[];
+};
+const path = "/api/v1/account/git-identity";
+
+export function GitIdentity({
+  csrf,
+  onboarding = false,
+  onContinue,
+}: {
+  csrf?: string;
+  onboarding?: boolean;
+  onContinue?: () => void;
+}) {
+  const [identity, setIdentity] = useState<Identity>();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    // Re-read after a session binding changes, never reuse another person's values.
+    void csrf;
+    const controller = new AbortController();
+    setIdentity(undefined);
+    setError("");
+    void fetch(path, {
+      credentials: "same-origin",
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (r) => {
+        if (!r.ok) throw new Error("read");
+        const data: unknown = await r.json();
+        if (!valid(data)) throw new Error("contract");
+        return data as Identity;
+      })
+      .then((data) => {
+        if (controller.signal.aborted) return;
+        setIdentity(data);
+        setName(data.name || data.suggested_name);
+        setEmail(data.email || data.suggested_email);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted)
+          setError(
+            "Git-identiteettiä ei voitu tarkistaa. Yritä uudelleen lataamalla sivu.",
+          );
+      });
+    return () => controller.abort();
+  }, [csrf]);
+  const existing = Boolean(identity?.name || identity?.email);
+  const save = async () => {
+    if (!csrf || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const r = await fetch(path, {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Agent-Host-CSRF": csrf,
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          mode: onboarding ? "onboarding" : "settings",
+        }),
+      });
+      if (!r.ok) throw new Error("write");
+      const data: unknown = await r.json();
+      if (!valid(data)) throw new Error("contract");
+      setIdentity(data as Identity);
+      setEditing(false);
+      if (onboarding) onContinue?.();
+    } catch {
+      setError(
+        "Git-identiteettiä ei voitu vahvistaa. Tarkista nykyinen arvo ennen uutta yritystä.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="ah-account-panel" aria-label="Git-identiteetti">
+      <h3>Git-identiteetti</h3>
+      {error && <p role="alert">{error}</p>}
+      {!identity ? (
+        <p>Tarkistetaan Git-asetukset…</p>
+      ) : (
+        <>
+          {existing && (onboarding || !editing) ? (
+            <p>
+              <strong>{identity.name || "Nimi puuttuu"}</strong> ·{" "}
+              {identity.email || "Sähköposti puuttuu"}
+              <br />
+              Lähde: <code>{identity.source}</code>
+            </p>
+          ) : (
+            <>
+              <label>
+                Gitissä näkyvä nimi{" "}
+                <input
+                  value={name}
+                  maxLength={200}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </label>
+              <label htmlFor="git-identity-email">
+                Gitissä näkyvä sähköposti{" "}
+                {onboarding ? (
+                  <select
+                    id="git-identity-email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  >
+                    {identity.emails.map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    id="git-identity-email"
+                    type="email"
+                    value={email}
+                    maxLength={254}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                )}
+              </label>
+              {!onboarding && (
+                <p>
+                  Asetus tallennetaan tämän käyttäjän globaaliin
+                  ~/.gitconfig-tiedostoon.
+                </p>
+              )}
+            </>
+          )}
+          {onboarding ? (
+            existing ? (
+              <Button label="Jatka repoihin" onPress={() => onContinue?.()} />
+            ) : (
+              <Button
+                label={busy ? "Tallennetaan…" : "Vahvista Git-identiteetti"}
+                availability={
+                  busy ||
+                  !name.trim() ||
+                  !email ||
+                  !identity.emails.includes(email)
+                    ? { state: "disabled", reason: "" }
+                    : { state: "enabled" }
+                }
+                onPress={() => void save()}
+              />
+            )
+          ) : editing ? (
+            <>
+              <Button
+                label="Tallenna Git-identiteetti"
+                availability={
+                  busy || !name.trim() || !email
+                    ? { state: "disabled", reason: "" }
+                    : { state: "enabled" }
+                }
+                onPress={() => void save()}
+              />
+              <Button label="Peruuta" onPress={() => setEditing(false)} />
+            </>
+          ) : (
+            <Button
+              label="Muokkaa Git-identiteettiä"
+              onPress={() => setEditing(true)}
+            />
+          )}
+        </>
+      )}
+    </section>
+  );
+}

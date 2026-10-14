@@ -73,6 +73,8 @@ conversation control routes use the UUID alone.
 | `POST /api/v1/conversations/<id>/history_title` | request a new native Pi name for settled history without a controller; requires `workspace_id`, checks the writer again and uses a temporary Pi child without granting browser control |
 | `POST /api/v1/conversations/<id>/recap` | request a tool-free recap on a settled browser-controlled Pi session; empty body; bounded `done` or `failed`, concurrent requests refused; a lost response is resolved by reading the native result |
 | `GET /api/v1/agents/pi:<id>/recap` | read the latest native recap and latest conversation message for staleness, including terminal sessions; no Pi process is started |
+| `GET /api/v1/account/git-identity` | read `git config --global` as the mapped user and offer GitHub profile suggestions when native `gh` is available ([reply](../../contracts/v1/git-identity.schema.json)) |
+| `POST /api/v1/account/git-identity` | explicit confirmation in onboarding (only when both values are unset) or explicit settings edit, written by the mapped daemon to global Git config ([input](../../contracts/v1/git-identity-update.schema.json)); existing values are never overwritten by onboarding |
 | `GET /api/v1/onboarding/github/repos` | list GitHub repositories through the user's `gh`, using `page` and `limit` |
 | `POST /api/v1/onboarding/github/clone/stream` | clone a repository and stream progress in the response |
 | `POST /api/v1/onboarding/github/clone` | clone with a single JSON result |

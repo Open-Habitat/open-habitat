@@ -273,7 +273,8 @@ esac
 		ghProgram := filepath.Join(tmp, "synthetic-gh-"+m.Username)
 		ghScript := `#!/bin/sh
 case "$4" in
- /user) printf '{"id":` + m.Subject + `}\n' ;;
+ /user) printf '{"id":` + m.Subject + `,"login":"fixture","name":"Fixture Person"}\n' ;;
+ /user/emails*) exit 1 ;;
  /user/repos*)
    case "$4" in
     *page=1*)
@@ -312,6 +313,7 @@ esac
 			return "usable"
 		}
 		mux.Handle(daemon.RepoCatalogPath, daemon.RepoCatalogHandlerWithFixtureGH(cfg, trusted, ghProgram, home))
+		mux.Handle(daemon.GitIdentityPath, daemon.GitIdentityHandlerWithFixturePrograms(cfg, trusted, home, ghProgram, "/usr/bin/git"))
 		cloneHandler := daemon.RepoCloneHandlerWithFixturePrograms(cfg, trusted, home, home, ghProgram, gitProgram)
 		mux.Handle(daemon.RepoClonePath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cloneCalls.Add(1)

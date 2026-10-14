@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { NativeDisconnect } from "./NativeDisconnect";
+import { GitIdentity } from "../app/GitIdentity";
 import {
   Dialog as AriaDialog,
   Heading,
@@ -210,6 +211,7 @@ export function AccountSettings({
         <div className="ah-account-identity">
           <AccountIdentity profile={person} />
         </div>
+        <GitIdentity csrf={csrf} />
       </section>
       <section
         className="ah-account-section"
