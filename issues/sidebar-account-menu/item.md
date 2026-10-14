@@ -3,12 +3,14 @@ created: 2026-10-14
 updated: 2026-10-14
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 related: ['@home-workspace-sections']
 lane: web
 lane_seq: 31
 collision: [web/]
+closed: 2026-10-14
+closed_by: claude
 ---
 
 # Sidebar account menu and workspace actions
@@ -22,8 +24,8 @@ Jari chose the sidebar's account and workspace controls on 2026-10-14: direction
 
 ## Acceptance Criteria
 
-- [ ] Lab screenshots match the draft at desktop and phone width in light and dark themes, compared in the same states. Each deviation is justified in result.md.
-- [ ] The administration entry is only in the account menu, and only for administrators (browser test with an admin and a non-admin fixture).
-- [ ] The account button stays visible with a long workspace list (element-rectangle check).
-- [ ] The workspace `…` menu and Uusi työtila work, with delete disabled and its reason shown.
-- [ ] result.md has a "Decisions for later review" section (AGENTS-WORKFLOW.md).
+- [x] Lab screenshots match the draft at desktop and phone width in light and dark themes, compared in the same states. Each deviation is justified in result.md.
+- [x] The administration entry is only in the account menu, and only for administrators (browser test with an admin and a non-admin fixture).
+- [x] The account button stays visible with a long workspace list (element-rectangle check).
+- [x] The workspace `…` menu and Uusi työtila work, with delete disabled and its reason shown.
+- [x] result.md has a "Decisions for later review" section (AGENTS-WORKFLOW.md).
