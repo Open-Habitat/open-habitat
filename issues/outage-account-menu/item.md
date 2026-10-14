@@ -19,6 +19,6 @@ Show the same account button and menu (`AccountMenu` from `sidebar-account-menu`
 
 ## Acceptance Criteria
 
-- [ ] On the "Yhteyttä ei saatu" page and during Pi onboarding, the account button is visible. An administrator fixture sees Palvelimen ylläpito; a non-admin does not (browser tests).
-- [ ] No other link to administration is reintroduced.
-- [ ] result.md has a "Decisions for later review" section.
+- [x] On the "Yhteyttä ei saatu" page and during Pi onboarding, the account button is visible. An administrator fixture sees Palvelimen ylläpito; a non-admin does not (browser tests).
+- [x] No other link to administration is reintroduced.
+- [x] result.md has a "Decisions for later review" section.

@@ -1,0 +1,15 @@
+# Account menu without a workspace snapshot — result
+
+The session account menu now remains available on the daemon-unavailable and Pi onboarding screens. It uses the same `AccountShelf` as the workspace rail, including the session profile, settings, local theme selection and logout confirmation. It reads administrator visibility from the existing host `/api/v1/server` endpoint; an unreadable role leaves the administration item hidden. No inline administration link was added.
+
+## Decisions for later review
+
+- With no snapshot, mount only the session account control, not a placeholder workspace sidebar. On desktop it sits at the lower left where the sidebar footer normally sits, leaving the error/onboarding content readable. On phones it occupies the right end of the top toolbar, without an empty navigation drawer. The menu itself stays the same React Aria control on both widths.
+- Show it only after the account session supplies a profile, and only for Pi onboarding or a daemon-unavailable state. Loading and logged-out states do not claim a signed-in account. The role is re-read on route changes, matching the existing rail; a failed role read hides the entry. Server-side authorization remains authoritative.
+
+## Evidence
+
+- `npm ci --prefix web` passed.
+- `./scripts/test-focused.sh --area web` passed: 19 unit files / 118 tests and 20 component files / 116 tests, plus format/lint/typecheck.
+- `OH_PORT_BASE=15000 OH_BROWSER_WORKERS=2 PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/ms-playwright" npm run test:browser --prefix web -- --config playwright.lab.config.ts tests/lab-outage-account.spec.ts` passed five lab cases: admin/non-admin on both outage and Pi onboarding at desktop and phone widths, plus a failed server-role read. The tests check the profile, menu actions, placement, lack of an inline link, settings navigation and return, and navigation to administration for admins. Earlier browser attempts failed on test assumptions: Pi onboarding starts at Git identity, account identity is a popover heading outside the menu role, and the Alice fixture email is `alice@example.invalid`; the corrected spec passed. Logs: `/var/tmp/outage-browser.log`, `/var/tmp/outage-browser-retry.log`, `/var/tmp/outage-browser-final.log`.
+- Clean full gate: pending.

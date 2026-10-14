@@ -67,6 +67,23 @@
 }
 .ah-shell-no-rail {
   grid-template-columns: minmax(0, 1fr);
+  position: relative;
+}
+/* Keep the session control at the rail-foot position without mounting the rail. */
+.ah-fallback-account {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  width: var(--ah-rail-width);
+  padding: 8px 10px;
+  border-top: 1px solid var(--ah-line-soft);
+  border-right: 1px solid var(--ah-line);
+  background: var(--ah-rail);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: This no-rail layout does not share the rail selector's main element. */
+.ah-shell-no-rail:has(.ah-fallback-account) > main {
+  padding-left: max(calc(var(--ah-rail-width) + var(--ah-s7)), 4vw);
 }
 .ah-shell-no-rail > main:has(.ah-login-view) {
   max-width: none;
@@ -1385,6 +1402,28 @@ h1[tabindex="-1"]:focus {
   display: none;
 }
 @media (max-width: 800px) {
+  .ah-shell-no-rail:has(.ah-fallback-account) > main {
+    padding: 0 var(--ah-s4) var(--ah-s7);
+  }
+  .ah-shell-no-rail:has(.ah-fallback-account) .ah-mobile-toolbar {
+    margin-inline: calc(-1 * var(--ah-s4));
+    padding-right: 100px;
+  }
+  .ah-fallback-account {
+    position: absolute;
+    top: 0;
+    right: var(--ah-s2);
+    bottom: auto;
+    left: auto;
+    width: auto;
+    padding: 2px 0;
+    border: 0;
+    background: transparent;
+  }
+  .ah-fallback-account .ah-rail-identity,
+  .ah-fallback-account .ah-menu-chevron {
+    display: none;
+  }
   .ah-app-shell:has(.ah-rail) {
     height: 100dvh;
   }
@@ -1441,6 +1480,7 @@ h1[tabindex="-1"]:focus {
     border: 0;
     border-radius: 0;
   }
+  /* biome-ignore lint/style/noDescendingSpecificity: The fallback toolbar has a distinct no-rail layout. */
   .ah-mobile-toolbar {
     display: flex;
     align-items: center;

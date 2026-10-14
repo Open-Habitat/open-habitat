@@ -36,6 +36,7 @@ import {
   type Session,
   setArchive,
 } from "./conversations";
+import { FallbackAccount } from "./FallbackAccount";
 import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
 import { NewWorkspace } from "./NewWorkspace";
@@ -191,10 +192,20 @@ export function App() {
   useEffect(() => {
     if (location.pathname !== "/settings" && returningFromSettings.current) {
       returningFromSettings.current = false;
-      (window.matchMedia("(max-width: 800px)").matches
-        ? document.querySelector<HTMLElement>("[aria-label='Avaa navigaatio']")
-        : document.querySelector<HTMLElement>("[data-account-controls] button")
-      )?.focus();
+      // Onboarding focuses its newly mounted heading in an effect; return focus afterwards.
+      requestAnimationFrame(() => {
+        (window.matchMedia("(max-width: 800px)").matches
+          ? (document.querySelector<HTMLElement>(
+              "[aria-label='Avaa navigaatio']",
+            ) ??
+            document.querySelector<HTMLElement>(
+              "[data-account-controls] button",
+            ))
+          : document.querySelector<HTMLElement>(
+              "[data-account-controls] button",
+            )
+        )?.focus();
+      });
     }
   }, [location.pathname]);
   const [profile, setProfile] = useState<AccountProfile>();
@@ -880,29 +891,6 @@ export function App() {
         onLogin={requireLogin}
         onSkip={() => setProfileSkipped(true)}
       />
-    ) : phase === "pi_required" ? (
-      <GitHubOnboarding
-        skipChooser={
-          piCheckFailed ||
-          (location.pathname !== "/" && location.pathname !== "/workspaces")
-        }
-        onUsable={() => {
-          piChecked.current = true;
-          refresh();
-        }}
-        onLogin={requireLogin}
-        onLogout={logout}
-      />
-    ) : phase === "daemon_unavailable" ? (
-      <>
-        <h1>Yhteyttä ei saatu</h1>
-        <InlineNotice
-          title="Työtiloja ei voitu näyttää"
-          description="Tietoja ei voitu tarkistaa. Tämä ei tarkoita, että työtilasi olisivat kadonneet. Tarkista yhteys ja yritä uudelleen."
-          tone="danger"
-          actions={[{ label: "Yritä uudelleen", onPress: refresh }]}
-        />
-      </>
     ) : location.pathname === "/settings" ? (
       <>
         <AccountSettings
@@ -927,6 +915,29 @@ export function App() {
         />
         <PersonalStorage
           key={snapshot?.identity.web_identity_id ?? "account"}
+        />
+      </>
+    ) : phase === "pi_required" ? (
+      <GitHubOnboarding
+        skipChooser={
+          piCheckFailed ||
+          (location.pathname !== "/" && location.pathname !== "/workspaces")
+        }
+        onUsable={() => {
+          piChecked.current = true;
+          refresh();
+        }}
+        onLogin={requireLogin}
+        onLogout={logout}
+      />
+    ) : phase === "daemon_unavailable" ? (
+      <>
+        <h1>Yhteyttä ei saatu</h1>
+        <InlineNotice
+          title="Työtiloja ei voitu näyttää"
+          description="Tietoja ei voitu tarkistaa. Tämä ei tarkoita, että työtilasi olisivat kadonneet. Tarkista yhteys ja yritä uudelleen."
+          tone="danger"
+          actions={[{ label: "Yritä uudelleen", onPress: refresh }]}
         />
       </>
     ) : selectedAgent && agentWorkspace && conversationStore ? (
@@ -1273,6 +1284,17 @@ export function App() {
           (selected ? (selected.display_name ?? selected.name) : undefined) ??
           (location.pathname === "/settings" ? "Asetukset" : "Etusivu")
         }
+        fallbackAccount={
+          profile &&
+          (phase === "pi_required" || phase === "daemon_unavailable") ? (
+            <FallbackAccount
+              profile={profile}
+              onSettings={openSettings}
+              onAdministration={() => navigate("/administration")}
+              onLogout={() => setLogoutPrompt(true)}
+            />
+          ) : undefined
+        }
         connection={
           <>
             {syntheticDemo ? (
@@ -1352,7 +1374,12 @@ export function App() {
         overlays={
           <>
             <AccountLogoutDialog
-              open={logoutPrompt && phase === "authenticated"}
+              open={
+                logoutPrompt &&
+                (phase === "authenticated" ||
+                  phase === "pi_required" ||
+                  phase === "daemon_unavailable")
+              }
               onClose={() => setLogoutPrompt(false)}
               onConfirm={logout}
             />

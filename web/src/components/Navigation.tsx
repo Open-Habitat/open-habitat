@@ -15,9 +15,11 @@ export function AppShell({
   overlays,
   toast,
   mobileTitle,
+  fallbackAccount,
 }: {
   connection?: ReactNode;
   mobileTitle?: string;
+  fallbackAccount?: ReactNode;
   rail?: ReactNode;
   main: ReactNode;
   overlays?: ReactNode;
@@ -123,25 +125,32 @@ export function AppShell({
             ) : null}
           </div>
         ) : null}
+        {fallbackAccount && !rail ? (
+          <aside className="ah-fallback-account" aria-label="Tili">
+            {fallbackAccount}
+          </aside>
+        ) : null}
         <main id="main" tabIndex={-1} inert={drawerActive}>
-          {rail ? (
+          {rail || fallbackAccount ? (
             <div className="ah-mobile-toolbar">
-              <ControlButton
-                variant="quiet"
-                ref={mobileTrigger}
-                aria-label="Avaa navigaatio"
-                aria-expanded={drawerActive}
-                onPress={() => {
-                  setOpenedAtKey(location.key);
-                  setMobileOpen(true);
-                }}
-              >
-                <Icon name="menu" />
-              </ControlButton>
+              {rail ? (
+                <ControlButton
+                  variant="quiet"
+                  ref={mobileTrigger}
+                  aria-label="Avaa navigaatio"
+                  aria-expanded={drawerActive}
+                  onPress={() => {
+                    setOpenedAtKey(location.key);
+                    setMobileOpen(true);
+                  }}
+                >
+                  <Icon name="menu" />
+                </ControlButton>
+              ) : null}
               <span className="ah-mobile-title" title={mobileTitle}>
                 {mobileTitle ?? "Etusivu"}
               </span>
-              {location.pathname !== "/workspaces" ? (
+              {rail && location.pathname !== "/workspaces" ? (
                 <LinkRow href="/workspaces" aria-label="Etusivu">
                   <Icon name="home" />
                 </LinkRow>
