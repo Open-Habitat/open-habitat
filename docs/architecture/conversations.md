@@ -45,38 +45,29 @@ The daemon resolves the selected workspace, opens its directory and starts Pi
 there as the user's process, with their home and native configuration. It
 assigns a fresh session ID so that starting a conversation creates new history.
 
-Before launch, the daemon acquires a lock for that session and records its
-browser origin, workspace ID and working-directory path. The lock coordinates
-browser writers: it remains held while Pi runs, including through a daemon
-crash because Pi inherits it. Terminal Pi processes do not participate in this lock. Before continuing a
-browser-origin session or changing history presentation, the daemon checks
-same-UID Pi processes and their native session descriptors in `/proc`. An
-unidentified Pi in the same workspace, an inaccessible same-UID process that
-might own a session, or a failed census makes the result unknown and blocks
-admission. Known ptrace-restricted system services are excluded by their fixed
-command names. A nonstandard Pi launcher with no open descriptor and no
-explicit session argument may escape identification. A process of a
-different UID is never inspected beyond its process-directory ownership. This
-is an observation, not a lock against a terminal Pi launched *after* the scan;
-terminal writers do not honor the browser lock.
+The daemon records a browser conversation's workspace and locks its session
+while its Pi child runs. The lock survives a daemon crash with the Pi process,
+but terminal Pi does not take it. Before continuing or changing saved-history
+presentation, the daemon checks processes belonging to the same Unix user
+for a native writer. An uncertain observation blocks the write. This is not
+an atomic promise: a terminal Pi started after the check, or an unrecognized
+launcher without an identifiable session, can still write. The daemon never
+reads another user's process details. [The accepted limit](../../issues/native-writer-guarantee/item.md)
+does not promise a shared terminal/browser lock.
 
-The current implementation allows four live Pi children per daemon and retains
-up to 128 conversation handles, including ended conversations whose command
-receipts remain available. Reaching either applicable limit prevents another
-start. These are implementation limits; native session files remain the
-history source independently of the retained handles.
+The daemon bounds its running Pi children and retained handles. Reaching a
+limit blocks another start, but native session files remain readable.
 
 ## Commands and progress
 
 The daemon supports sending a prompt, steering an active turn, queueing a
 follow-up and clearing those queues. Aborting asks Pi to interrupt the current
 turn while keeping the process available for another message. Stopping closes
-the RPC channel. Close of a freshly browser-started, still-empty conversation
-stops and reaps its direct Pi child, checks the complete native session (every
-branch) for user messages, and removes only that verified-empty file. An
-unknown writer, an unowned session or changed history refuses the deletion.
-Like continuation admission, the same-UID terminal process census cannot fence
-a terminal Pi started after the check. [HTTP API](http-api.md) lists the routes and message contracts.
+the RPC channel. Closing a freshly started, still-empty browser conversation
+also removes its native session file, but only after reaping Pi and verifying
+that no user message was saved on any branch. An unknown writer or changed
+history prevents removal. The terminal-writer observation has the same race
+as continuation. [HTTP API](http-api.md) lists the routes.
 
 Message commands have client-generated IDs so the browser can look up their
 receipts after a lost reply. A receipt distinguishes pending, accepted,
@@ -86,22 +77,21 @@ so a missing receipt after restart cannot establish rejection. The browser
 does not automatically resend an uncertain command, because Pi may already
 have acted on it.
 
-The daemon can give a new browser-owned conversation a native Pi session name
-after its first turn settles, then refine a successfully generated name once
-after the third accepted turn settles. Pi persists its fresh session only when an assistant message exists,
-so naming cannot safely write at prompt acknowledgement. The name comes from
-a separate, bounded, tool-free model call through that person's Pi model
-access. A person can ask for another title beside a controlled conversation's
-name. For a settled history without a controller, a separate retitle operation
-checks the writer and native file again, then starts a short-lived Pi RPC child
-to append the name without making the session browser-controllable. Generation failures leave the native name or first-prompt fallback
-untouched. The daemon checks the full current native name before naming and
-skips an automatic write if it changed during generation. Pi's RPC name setter
-has no compare-and-set, so a terminal-selector rename in the final read/write
-window can still be overwritten; [the title issue](../../issues/generate-conversation-titles/item.md)
-tracks that remaining guarantee. No host title store exists.
+After a turn settles, the daemon can ask the person's Pi model for a name and
+save it as the native Pi session name. A person can request another name. For
+settled history without a controller, a short-lived Pi child can write the
+name after another writer check without making that conversation browser-
+controllable. A failed model call leaves the existing name or first-prompt
+fallback intact. Pi's name setter has no compare-and-set, so a terminal rename
+in the final read/write window can still be overwritten. The host has no
+separate title store.
 
-Browser-owned Pi processes load the host's recap extension. A manual request invokes its command through the existing RPC child, without inserting a user message or an agent turn. The daemon also schedules one automatic request after a verified native turn has settled and both sides have been inactive for more than three minutes. New native message, tool or queue activity cancels that timer; browser focus, reading and unsent drafts do not count. The controller's per-session guard and native branch's last-message key prevent concurrent tabs and reconnects from multiplying model calls. An attempt is made only when the latest native message is newer than the recap, once per idle period. The extension bounds a separate model call and appends a `conversation-recap` custom entry through Pi, marking its trigger as manual or automatic. The browser reads the latest entry directly from native history, outside the transcript, and compares its last-message key with the newest native message to label it stale; the card sits above the composer and can be dismissed until a newer entry appears. Terminal sessions' existing recaps are readable, but the daemon cannot run a command in a terminal-owned Pi process.
+Browser-owned Pi processes load the host's recap extension. A person can
+request a recap, or the daemon can request one after a completed turn has been
+idle. Pi saves the result in native history rather than in a host summary
+store. The browser shows it outside the transcript and marks it stale when
+new messages have appeared. Existing terminal recaps are readable, but the
+daemon cannot request one from a terminal-owned Pi process.
 
 Pi's events carry response text, thinking, tool progress and activity to the
 browser. When Pi reports that it has settled, the daemon reads native history
@@ -123,24 +113,15 @@ implementation/scope difference for joint follow-up.
 
 ## Archiving presentation
 
-A native conversation with readable history and no observed external writer
-can be archived, including terminal-begun history. A daemon-owned child may be
-archived while it is confirmed idle; a working child blocks archiving. The daemon checks the native
-session header, workspace association and current snapshot observation token
-before updating the user's `~/.local/state/open-habitat/user-state.json`.
-Workspace visibility and archive updates share one writer lock and an atomic
-rename; Pi history is neither moved nor copied. The snapshot reports `active`,
-`archived` or `unknown` per conversation. Archived browser conversations do not
-accept another browser send until restored. An unreadable state file makes archive
-state unknown without hiding native history or overwriting corrupt bytes; browser
-writes wait for the annotation state to be checked again. An archive annotation
-whose native session is missing or unreadable makes the Pi-history source unknown rather than
-presenting an empty archive; the browser warns on the home and workspace views.
-The daemon checks same-UID native processes and its browser lock at archive
-commit time; an unknown writer state blocks the change. Restore changes only
-presentation and also works after a daemon restart. A separate explicit continuation rechecks
-native ownership and launches Pi on the same session ID. A stale archive view is
-refused rather than used to reverse another browser's action.
+A settled native conversation can be archived, including one begun in a
+terminal. Archiving changes only its visibility in user presentation state;
+Pi history stays in place. The daemon checks the workspace, history and
+writer again before making the change. A working or uncertain writer blocks
+archiving, while restoring visibility is possible after a daemon restart.
+Archived browser conversations must be restored before sending again; an
+explicit continuation still checks native ownership before starting Pi.
+Unreadable presentation state or missing native history is shown as unknown,
+not silently replaced with an empty archive.
 
 ## Ending and continuing
 

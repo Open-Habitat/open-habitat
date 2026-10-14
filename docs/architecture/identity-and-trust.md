@@ -39,9 +39,12 @@ change an existing binding. The gateway ties the OAuth callback to the browser t
 started it using a flow cookie, one-use state and PKCE.
 
 The broker trusts the gateway to authenticate the remote person. By default it
-checks the ID against the operator's allowlist; the test installation can
-explicitly admit any gateway-authenticated GitHub ID after signed Access
-assertions are enforced at the gateway. It owns the binding to a Unix account.
+checks the ID against the operator's allowlist. The disposable test installation
+instead admits any verified GitHub identity without Cloudflare Access, as
+[ADR 0014](../decisions/adr-0014-open-test-admission.md) specifies. The gateway
+can verify signed Access assertions for installations that configure it; Access
+is not a prerequisite for open test admission. The broker owns the binding to a
+Unix account.
 For a new admitted identity it creates a private account and home, prepares the
 daemon binding and socket, and verifies them before publishing the route.
 Later logins reuse that binding. An occupied or unsuitable username requires
@@ -138,4 +141,4 @@ underlying authority of a process running as the user. The daemon controls Pi
 children it started; observing a terminal process does not give it ownership
 of that process.
 
-Decisions behind this page: ADR 0003, ADR 0004, ADR 0006.
+Decisions behind this page: ADR 0003, ADR 0004, ADR 0006, ADR 0014.

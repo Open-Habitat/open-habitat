@@ -20,20 +20,14 @@ flowchart LR
 
 ## Finding and identifying workspaces
 
-Discovery reads the immediate directories under `~/src`; it does not search
-nested directories or other locations. It follows no symlinks and crosses no
-mounts inside a workspace. `~/src` stays on the filesystem containing the user's home; a source on a different filesystem is not eligible for quota-backed cloning. Unreadable or changing entries are
-reported as incomplete observations rather than treated as absent.
-
-Discovery reads the whole immediate collection in bounded batches of 512 entries;
-files and hidden entries do not consume a workspace allowance. Entries that
-cannot be inspected leave the observation incomplete, while confirmed
-workspaces remain visible. A failed directory read likewise cannot establish
-that an omitted name is absent. Snapshot responses have a 16 MiB transport
-bound; if exceeded, the request fails rather than publishing a truncated list.
-Clone destination checks scan all names, including case-insensitive matches,
-before reserving a directory. A read failure blocks cloning rather than
-assuming the destination is available.
+Discovery reads immediate directories under `~/src`, not nested paths or
+symlinks. The source must be on the filesystem containing the user's home so
+quota-backed writes apply. It scans the whole collection in bounded batches;
+there is no fixed workspace-count cutoff. Unreadable or changing entries leave
+the observation incomplete, while confirmed workspaces remain visible. The
+daemon does not treat an incomplete listing as proof that a clone destination
+is free. It checks all names, including case-insensitive matches, before
+creating a destination.
 
 The `.git` entry distinguishes a plain directory from a Git checkout or a
 linked worktree. This is a filesystem hint, not a check of Git's repository
@@ -61,11 +55,10 @@ to clone the selected repository into `~/src/<repository-name>`. Both `gh` and
 Git run as the user. Existing destinations, including partial earlier clones
 and names differing only in case, prevent a new clone.
 
-The daemon runs one clone at a time and streams Git's stages to the browser.
-It reports a percentage only when Git supplies a usable measurement. The
-streaming attempt has a 45-minute deadline; the non-streaming API has a shorter
-90-second request deadline. The clone stream has no replay cursor or persisted
-job. [HTTP API](http-api.md) describes the routes.
+The daemon runs one clone at a time and streams Git's progress to the browser.
+A percentage appears only when Git supplies one. The request is bounded; it
+is not a persistent job that can be resumed after the browser disconnects.
+[HTTP API](http-api.md) describes the routes.
 
 The home filesystem has a Linux user quota for the account. Clone admission
 checks the daemon's own effective UID limit, current usage and filesystem free
@@ -89,58 +82,31 @@ Git origin, a clean checkout and a HEAD commit. An empty repository without a
 first commit remains uncertain because that observation cannot distinguish it
 from an interrupted clone.
 
-The workspace UI lists native `gh` repositories for import into the user's
-`~/src` and offers publishing a local main Git checkout with no observed remote
-to the signed-in GitHub account. The snapshot classifies remotes through bounded
-native Git reads without returning a remote URL (which may contain credentials).
-An existing or unreadable remote does not enable the creation form. A GitHub
-origin with a local commit and no observed origin-tracking refs instead offers
-a separate continuation check, so an interrupted origin-to-push step can be
-resumed without presenting cloned checkouts as new repositories. This display
-observation is not a write precondition. Publishing uses a two-minute, single-use
-daemon observation challenge for an exact `owner/repository` and visibility.
-It separately creates
-the remote via `gh api`, adds an HTTPS `origin` only if the observed remote
-has no branches, and pushes `HEAD` with ordinary Git only when its effective
-push URL is exactly the confirmed target (one URL, no alternate push URL).
-The import UI shows the native clone stage and bounded progress, and cancels
-its stream on view loss. The publish observation shows local HEAD and whether
-the working tree has changes, without returning paths. The browser must
-explicitly observe and confirm each next stage; a lost or failed receipt is
-uncertain, not a retry instruction. The daemon never sends
-credentials to the browser. Publishing is limited to repositories owned by the
-mapped GitHub login; collaboration and organization creation are not inferred
-from a browser-provided owner.
+The workspace UI imports repositories listed through the user's native `gh`
+authorization. It also offers publishing a local main Git checkout to that
+person's GitHub account. The daemon checks the repository and remote again at
+each write; a displayed opportunity alone is not permission to publish. It
+creates the GitHub repository through `gh`, then adds and verifies the Git
+remote before pushing. An interrupted publication is observed before the
+person explicitly continues it, rather than blindly creating or pushing
+again. Existing or unreadable remotes do not enable a new publication, and
+the daemon never sends credential-bearing remote URLs to the browser.
+Publishing is limited to repositories owned by the mapped GitHub login.
 
-The daemon also manages local workspace creation, optional `git init`, display
-names and hide/restore. It reobserves the source directory before each write,
-opens entries with no-follow descriptors and checks the observed target again
-before acknowledging the result. Creation requires the user's source observation
-token; target writes require the workspace inode token. First annotation gives an
-unannotated directory a new stable ID rather than persisting its name-derived
-fallback ID. An unrelated corrupt entry does not disable clean targets if the
-source listing itself was complete; unreadable listings and replaced sources
-still block writes. A partial result requires a fresh snapshot;
-the browser does not repeat a failed native write automatically. Optional
-`.agent-host/workspace.json` keeps the stable ID and display name with the
-workspace. For main Git worktrees the daemon adds `.agent-host/` to the
-checkout's local Git exclude instead of changing `.gitignore`. Hidden state is
-presentation-only in the user's
-`~/.local/state/open-habitat/user-state.json`, keyed by that ID. Corrupt
-state and unknown workspace annotations are not overwritten.
+The daemon also creates local workspaces, initializes Git, changes display
+names and hides or restores workspaces. It checks the observed source and
+target again before writing; an incomplete listing or a replaced directory
+blocks the change. A newly annotated directory gains a stable workspace ID
+in `.agent-host/workspace.json`. The daemon excludes this metadata locally
+from the Git checkout without changing its `.gitignore`. Hidden state lives
+in user presentation state, not in Pi history or the workspace directory.
+A partial result requires a fresh observation rather than an automatic retry.
 
-Deletion is **not enabled**. Even with descriptor-pinned traversal and a
-per-user quarantine, Linux pathname rename cannot atomically compare the
-source inode with an expected inode: a same-UID replacement can move another
-directory. The adopted guarantee permits that move, provided contents of the
-replacement are never deleted and it can be recovered after a crash. Shipping
-that guarantee still requires a recovery protocol and reliable observations of
-processes, linked worktrees outside `~/src`, and mounts; unknown worktrees and
-unowned processes must block cleanup. Those adapters are not yet verified, so
-no delete route is mounted and the browser explains why deletion is unavailable.
-A future implementation can move to quarantine, revalidate there and remove
-only the confirmed target; a mismatch must restore a moved replacement and
-report the residual operation if restoration cannot complete.
+Deletion is not enabled. A safe implementation would need to recover from a
+same-UID process replacing a workspace path and establish which native
+processes, worktrees and mounts still depend on it. Until that work is done,
+the browser explains why deletion is unavailable. [The deletion issue](../../issues/recoverable-workspace-deletion/item.md)
+records the proposed recovery behavior.
 
 ## Pi sign-in during onboarding
 

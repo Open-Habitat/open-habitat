@@ -24,7 +24,7 @@ groups:
         desc: First login, provisioning, sessions, socket checks and revocation.
       - slug: architecture/conversations
         title: Conversations
-        desc: Identity, start, control, one writer, ending and continuation.
+        desc: Native Pi history, browser control, writer limits and continuation.
       - slug: architecture/events-and-recovery
         title: Events and recovery
         desc: Snapshot, event journal, browser state, disconnection and restart.

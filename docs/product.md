@@ -23,8 +23,8 @@ työn tilanne ja avoimet valinnat ovat [TODO.md](../TODO.md)-tiedostossa ja issu
 Palvelimen osoite määrää, mihin käyttäjä kirjautuu. GitHub-kirjautuminen
 valmistelee sekä selainistunnon että käyttäjän natiivin GitHub-käytön.
 Palvelimen ylläpitäjä päättää pääsystä; käyttäjä ei valitse Linux-tunnusta
-selaimessa. Valinnainen Google-kirjautuminen näkyy vain, kun se on otettu
-käyttöön. Se tunnistaa käyttäjän selainta varten eikä korvaa natiivien
+selaimessa. Suunniteltu valinnainen Google-kirjautuminen ei ole vielä
+käytössä; se tunnistaisi käyttäjän selainta varten eikä korvaisi natiivien
 palvelujen kirjautumisia.
 
 Kirjautuminen säilyy tavallisessa käytössä sekä gatewayn uudelleenkäynnistysten
@@ -34,9 +34,9 @@ Istunto säilyy selaimen sulkemisen jälkeenkin: käyttämättömyyden raja on
 ylläpitäjän istuntojen peruutus päättää sen. Jos palvelimen yksityinen
 istuntotiedosto katoaa tai ei ole luettavissa, vanhat istunnot lakkaavat
 toimimasta ja käyttäjät kirjautuvat uudelleen.
-Käyttäjän poistaminen, uloskirjautumisen kokonaisuus ja pääsyn peruuttaminen
-suunnitellaan erikseen myöhemmin. Niitä ei nyt laajenneta nykyisistä
-uloskirjautumis- ja operaattoritoiminnoista.
+Käyttäjän poistaminen ja pääsyn peruuttaminen ovat erillistä myöhempää
+työtä. Nykyinen uloskirjautuminen päättää selainistunnon, ei natiivien
+työkalujen kirjautumisia.
 
 GitHubilla aloittavan käyttäjän käyttöönotto etenee repoista OpenAI-
 kirjautumiseen. Käyttäjä valitsee GitHub-repot, jotka tuodaan työtiloiksi
@@ -132,6 +132,11 @@ eikä otsikointi estä keskustelua. Otsikko on Pi:n natiivi istuntonimi, joten
 sama nimi näkyy myös terminaalin istuntolistassa. Olemassa olevaa nimeä ei
 vaihdeta automaattisesti. Tarkempi toiminta on
 [otsikointityössä](../issues/generate-conversation-titles/item.md).
+
+Käyttäjä voi pyytää keskustelusta tiivistelmän. Pi voi tehdä sellaisen myös
+työn rauhoituttua. Se näkyy viestikentän yläpuolella, ja uudet viestit
+merkitsevät vanhan tiivistelmän vanhentuneeksi. Tiivistelmä tallentuu Pi:n
+historiaan, ei erilliseen selaimen muistioon.
 
 ## Sisällön lukeminen ja agentin tila
 

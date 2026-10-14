@@ -25,13 +25,9 @@ recent provisional output for active turns and an event cursor: the point
 from which the browser can follow subsequent changes. A daemon-instance ID
 lets the browser distinguish a restart from a temporary connection break.
 
-Reading native files is not atomic with observing running agents. The daemon
-records the native-change generation before discovery, then captures the
-controlled state, live tails and journal cursor together after discovery.
-If the native-change generation advanced during the read, it publishes an
-invalidation after that cursor so the browser reads again. This recovery
-notification does not itself count as a native change, avoiding repeated
-refreshes caused by concurrent snapshots in different tabs.
+Reading native files and observing a running agent are not atomic. When files
+change during a snapshot, the daemon tells the browser to refresh after that
+snapshot's event cursor rather than presenting the incomplete read as final.
 
 The browser reads history from the newest entries first and loads older pages
 as the person scrolls back. Application state, including the current snapshot
@@ -40,11 +36,12 @@ windows live in a separate in-memory store. Components subscribe to individual
 conversations, so a streaming answer updates its own view without rerendering
 the sidebar.
 
-The store currently retains the 50 most recently viewed conversation windows,
-including their reading positions. Returning to a retained window shows it
-immediately; a read-only terminal history is also refreshed on opening because
-it may have changed without controller events. Opening a controlled conversation
-that is not retained first checks its status before loading history.
+The store retains recently viewed conversation windows and their reading
+positions so switching back is immediate. A terminal conversation is
+refreshed on opening because it may have changed outside browser control;
+a conversation no longer retained is read again. The current store bounds
+the number of windows, not their total bytes. [Retention tuning](../../issues/tune-conversation-retention/item.md)
+will measure whether this needs changing.
 
 Each store belongs to one identity in one tab. A new session for the same
 person can retain it; logout, session expiry or a different identity clears
@@ -60,24 +57,15 @@ thinking, tool activity, command receipts and hints that native state has
 changed. The [HTTP API](http-api.md) and `contracts/v1/` define the messages.
 
 Streamed output is provisional: Pi does not give each fragment a durable
-history key. When saved content becomes available, the browser replaces the
-corresponding live presentation. Saved assistant content supersedes streamed
-assistant blocks, a saved tool result replaces that call's progress by call ID,
-and a saved local command replaces its provisional output. Saved entries are
-joined by native key, rather than by comparing their text. Large saved blocks
-can be read separately instead of being sent in full through the event stream.
+history key. When saved content appears, the browser replaces its live
+presentation using native entry keys and tool call IDs, not text comparison.
+Large blocks can be fetched separately from native history.
 
-Two bounded buffers serve different purposes. The daemon's replay journal
-retains up to 1024 events or 16 MiB, allowing a disconnected tab to catch up.
-The provisional tail for each agent retains up to 128 frames or 128 KiB,
-allowing a newly opened view to display an active turn. Repeated cumulative
-tool updates replace the earlier preview in that tail.
-
-When a provisional tail exceeds its limit, the daemon asks the browser to
-reread that conversation's history through a `ring_truncated` invalidation.
-An event too large to publish also becomes an invalidation. This is distinct
-from an expired replay cursor, which requires a new snapshot. These are
-current implementation limits, not limits on the history Pi can save.
+The daemon keeps a bounded event journal for reconnecting tabs and a separate
+bounded tail of provisional output for newly opened views. If a tail is
+truncated, the browser rereads that conversation's history. If a replay cursor
+has expired or belongs to a previous daemon instance, it takes a new snapshot.
+These limits do not truncate Pi's saved history.
 
 ## Changes made from a terminal
 
