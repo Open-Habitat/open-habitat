@@ -80,7 +80,8 @@ test("@lab v2 shared conversation metrics in both themes and at phone width", as
       }, inventory.foundation_metrics);
       if (width === 1440) {
         expect(values.railWidth).toBe(296);
-        expect(values.renderedColumnWidth).toBe(780);
+        // Tool and reply cards share the stream's inset 732px reading column.
+        expect(values.renderedColumnWidth).toBe(732);
       }
       expect(values.streamScrolls).toBe(true);
       expect(values.mainScrolls).toBe(false);
