@@ -11,6 +11,12 @@ groups:
         title: Tavoite ja käyttökulut
         desc: Tuotteen tavoite, toiminnot ja käyttäjän käyttökulut.
 
+  - label: Operations
+    members:
+      - slug: operations
+        title: Install and operate
+        desc: Prerequisites, site policy, first use, upgrades and recovery.
+
   - label: Architecture
     members:
       - slug: architecture/index

@@ -19,7 +19,9 @@ tuotantokomponentteihin.
 [Arkkitehtuuri](architecture/index.md) kuvaa järjestelmän sellaisena kuin se
 nyt on, englanniksi: komponentit ja niiden valtuudet, kirjautuminen ja
 luottamusrajat, keskustelut, tapahtumavirta ja katkoista palautuminen, työtilat,
-HTTP-rajapinta sekä asennus.
+HTTP-rajapinta sekä käyttöönoton rakenne. Oman Linux-palvelimen
+[asennus- ja ylläpito-opas](operations.md) kertoo käytännön vaiheet ja
+nykyisen jakelun rajoitukset.
 
 [Päätökset](decisions/index.md) kokoaa arkkitehtuuripäätösten tallenteet.
 Ne kertovat, mitä päätettiin ja miksi. Hyväksytty päätös voi vielä odottaa
