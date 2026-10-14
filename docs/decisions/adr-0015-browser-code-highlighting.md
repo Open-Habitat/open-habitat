@@ -1,6 +1,6 @@
 # ADR 0015: Use highlight.js for browser code blocks
 
-**Status:** Proposed — Jari has not approved this dependency.
+**Status:** Accepted (Jari, 2026-10-14). TOML is highlighted with the INI grammar as a known limitation.
 
 **Date:** 2026-10-14
 
@@ -28,7 +28,7 @@ The full-block work grows with input size; no candidate makes re-highlighting on
 
 CodeMirror/Lezer is a credible choice for an *editor* with incremental parsing and maintained syntax trees. This surface is read-only, often short and streamed; taking on editor language packages and adapters just for display is not justified by this spike. No CodeMirror bundle number is claimed because it was not built in the three-candidate comparison.
 
-## Proposed decision
+## Decision
 
 Use **highlight.js core with explicit per-language imports**, loaded only when a visible block needs one. Its 28.2 kB total measured language set is much smaller than the Shiki configuration, supports opt-in detection for unlabelled fences, and is fast enough for bounded, debounced re-highlighting of ordinary blocks. Choose its quality/size balance over Prism's lower byte and CPU cost because the issue explicitly asks for untagged-fence handling and we do not want a second detector. If TOML fidelity is more important than detection, choose Prism instead; Jari should settle that trade-off before implementation.
 
@@ -41,4 +41,4 @@ An explicit, recognized fence takes precedence over detection. For untagged fenc
 - Apply scoped token classes to the *code text inside* file cards, leaving add/delete backgrounds, word-level diff emphasis and accessible diff text as the outer presentation. Test both themes for legibility and contrast, plus language aliases, HTML escaping, partial fences, unknown languages, streaming and long blocks.
 - highlight.js is BSD-3-Clause; Shiki and Prism are MIT. All three are maintained third-party packages as of this comparison, but the dependency and registered grammars still need normal version/security updates. The extra parsed spans and grammar chunks cost memory; the INI-for-TOML approximation is a known quality compromise.
 
-Only this ADR is proposed; implementation is not authorized or filed until Jari approves the dependency. [Selection issue](../../issues/choose-syntax-highlighter/item.md).
+Implementation: [`syntax-highlighting`](../../issues/syntax-highlighting/item.md). [Selection issue](../../issues/choose-syntax-highlighter/item.md).

@@ -3,9 +3,11 @@ created: 2026-10-14
 updated: 2026-10-14
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: unlaned
+closed: 2026-10-14
+closed_by: claude
 ---
 
 # Choose a syntax-highlighting component for code blocks
