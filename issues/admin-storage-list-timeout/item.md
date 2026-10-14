@@ -1,9 +1,9 @@
 ---
 created: 2026-10-12
-updated: 2026-10-12
+updated: 2026-10-14
 type: bug
 reporter: agent
-status: untriaged
+status: open
 priority: normal
 provenance: ai-review
 source_ref: review:storage-quotas/finding:sha1:685ab43ea0f55b30cfcf8e347228b6ed4f2319bf
@@ -13,6 +13,8 @@ originating_run_kind: spinoff
 review_target: internal/gateway/quota.go
 assessment_classification: SPIN_OFF
 assessment_outcome: confirmed
+lane: server-admin
+preparation: pending
 ---
 
 # Administrator storage list times out as bound users grow

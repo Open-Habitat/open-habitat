@@ -1,14 +1,15 @@
 ---
 created: 2026-10-02
-updated: 2026-10-05
+updated: 2026-10-14
 type: improvement
-status: deferred
+status: open
 priority: normal
 provenance: other
 source_ref: taskfleet:01m3xj0rdnnfgsm45yabgh5bpq/follow-up:conversation-retention
 originating_run: 01m3xj0rdnnfgsm45yabgh5bpq
 originating_run_kind: spinoff
-disposition_note: 'Later optimization: measure realistic long conversation memory and switching latency first; revisit only if those observations justify a changed retention policy.'
+lane: post-mvp-design
+preparation: pending
 ---
 
 # Tune browser conversation retention and eviction after measurements

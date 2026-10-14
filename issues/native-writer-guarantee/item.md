@@ -1,9 +1,10 @@
 ---
 created: 2026-10-13
-updated: 2026-10-13
+updated: 2026-10-14
 type: task
-status: open
+status: wontfix
 priority: normal
+closed: 2026-10-14
 ---
 
 # Decide whether a second-writer guarantee for native conversations needs a writer protocol
@@ -25,3 +26,9 @@ second writer while the browser continues the same conversation.
   provide.
 
 The details and test evidence are in `issues/history-conversation-control/result.md`.
+
+## Resolution
+
+### 2026-10-14T06:25:17Z · @issuectl
+
+Accept the documented best-effort same-UID writer observation for pre-release. Reopen if concurrent writers cause observed harm to native session history or if a strict one-writer guarantee is adopted; that would require Pi and terminal writers to share a protocol.
