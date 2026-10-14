@@ -123,3 +123,40 @@ it("edits the global identity only after an explicit settings action", async () 
     mode: "settings",
   });
 });
+
+it("offers retry if native GitHub suggestions are temporarily unavailable", async () => {
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        schema_version: 1,
+        name: "",
+        email: "",
+        source: "~/.gitconfig",
+        suggested_name: "",
+        suggested_email: "",
+        emails: [],
+      }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        schema_version: 1,
+        name: "",
+        email: "",
+        source: "~/.gitconfig",
+        suggested_name: "Alice",
+        suggested_email: "42+alice@users.noreply.github.com",
+        emails: ["42+alice@users.noreply.github.com"],
+      }),
+    });
+  vi.stubGlobal("fetch", fetcher);
+  render(<GitIdentity csrf="csrf" onboarding />);
+  await screen.findByRole("button", { name: "Yritä uudelleen" });
+  expect(
+    screen.queryByRole("button", { name: "Vahvista Git-identiteetti" }),
+  ).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Yritä uudelleen" }));
+  await screen.findByRole("button", { name: "Vahvista Git-identiteetti" });
+});

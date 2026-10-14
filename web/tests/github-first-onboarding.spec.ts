@@ -122,6 +122,32 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
     page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
   ).toBeVisible();
   await page.request.get("/fixture/scenario?value=ready");
+  await page.request.get("/fixture/pi-state?value=usable");
+  await page.goto("/settings");
+  await expect(
+    page
+      .getByRole("region", { name: "Git-identiteetti" })
+      .getByText("Fixture Person"),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Muokkaa Git-identiteettiä" }).click();
+  await page
+    .getByRole("textbox", { name: "Gitissä näkyvä nimi" })
+    .fill("Fixture Edited");
+  await page
+    .getByRole("textbox", { name: "Gitissä näkyvä sähköposti" })
+    .fill("edited@example.invalid");
+  await page.getByRole("button", { name: "Tallenna Git-identiteetti" }).click();
+  await expect(
+    page
+      .getByRole("region", { name: "Git-identiteetti" })
+      .getByText("Fixture Edited"),
+  ).toBeVisible();
+  const configured = await page.request.get("/api/v1/account/git-identity");
+  expect(await configured.json()).toMatchObject({
+    name: "Fixture Edited",
+    email: "edited@example.invalid",
+    source: "~/.gitconfig",
+  });
 });
 
 test("@github-first narrow catalog keeps count and action reachable by keyboard after scrolling", async ({

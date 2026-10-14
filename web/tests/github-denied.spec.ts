@@ -1,3 +1,4 @@
+import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
 
@@ -11,6 +12,7 @@ test("@github-first denied write stays uncertain until explicit read-only rechec
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
+  await confirmGitIdentity(page);
   await page.getByRole("checkbox").first().check();
   const before = Number(
     await (await page.request.get("/fixture/clone-count")).text(),

@@ -1,3 +1,4 @@
+import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
 
@@ -10,6 +11,7 @@ test("@pi-onboarding cancel supersedes an in-flight poll", async ({ page }) => {
     await page.goto("/workspaces");
     await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await page.getByRole("link", { name: "Alice" }).click();
+    await confirmGitIdentity(page);
     await page.getByRole("button", { name: /jatka/i }).click();
     await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
     await expect(page.getByText("ABCD-1234")).toBeVisible();

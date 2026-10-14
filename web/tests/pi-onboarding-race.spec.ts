@@ -1,3 +1,4 @@
+import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
 
@@ -13,6 +14,7 @@ test("@pi-onboarding delayed old-session response cannot restore code after focu
     await a.goto("/workspaces");
     await a.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await a.getByRole("link", { name: "Alice" }).click();
+    await confirmGitIdentity(a);
     await a.getByRole("button", { name: /jatka/i }).click();
     await a.getByRole("button", { name: "Aloita kirjautuminen" }).click();
     await expect(a.getByText("ABCD-1234")).toBeVisible();
@@ -45,6 +47,7 @@ test("@pi-onboarding delayed old-session response cannot restore code after focu
     await b.getByRole("button", { name: "Kirjaudu ulos", exact: true }).click();
     await b.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await b.getByRole("link", { name: "Bob" }).click();
+    await confirmGitIdentity(b);
     await b.getByRole("button", { name: /jatka/i }).click();
     await a.bringToFront();
     release();
@@ -95,6 +98,7 @@ test("@pi-onboarding does not offer an action before its session is bound", asyn
     await page.goto("/workspaces");
     await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await page.getByRole("link", { name: "Alice" }).click();
+    await confirmGitIdentity(page);
     await expect(page.getByRole("button", { name: /jatka/i })).toBeVisible();
     let release!: () => void;
     const blocked = new Promise<void>((resolve) => {

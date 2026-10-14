@@ -25,6 +25,14 @@ func TestGitIdentityFreshAndNeverOverwrite(t *testing.T) {
 	git := func(ctx context.Context, args ...string) ([]byte, error) {
 		return runIdentityGit(ctx, home, "/usr/bin/git", args...)
 	}
+	// Even with an XDG Git config present, this flow targets ~/.gitconfig.
+	xdg := filepath.Join(home, ".config", "git")
+	if err := os.MkdirAll(xdg, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(xdg, "config"), []byte("[user]\n\tname = XDG Person\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	h := gitIdentityHandler(cfg, func(*http.Request) bool { return true }, gh, git)
 	request := func(method, body string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest(method, "http://unix"+GitIdentityPath, strings.NewReader(body))
@@ -36,7 +44,12 @@ func TestGitIdentityFreshAndNeverOverwrite(t *testing.T) {
 		h.ServeHTTP(w, r)
 		return w
 	}
+	// A long-running clone must not block reading Git identity in settings.
+	if !cloneWriter.TryLock() {
+		t.Fatal("clone lock busy")
+	}
 	w := request("GET", "")
+	cloneWriter.Unlock()
 	if w.Code != 200 {
 		t.Fatalf("get: %d %s", w.Code, w.Body)
 	}
@@ -73,6 +86,10 @@ func TestGitIdentityFreshAndNeverOverwrite(t *testing.T) {
 	}
 	if _, e := os.Stat(filepath.Join(home, ".gitconfig")); e != nil {
 		t.Fatal(e)
+	}
+	contents, e := os.ReadFile(filepath.Join(xdg, "config"))
+	if e != nil || !strings.Contains(string(contents), "XDG Person") || strings.Contains(string(contents), "Alice") {
+		t.Fatalf("XDG config changed: %q %v", contents, e)
 	}
 	n, _ = gitValue(context.Background(), git, "user.name")
 	if n != "Alice Edited" {

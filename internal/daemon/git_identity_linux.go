@@ -55,7 +55,7 @@ func runIdentityGit(ctx context.Context, home, program string, args ...string) (
 	defer cancel()
 	cmd := exec.CommandContext(ctx, program, args...)
 	cmd.Dir = home
-	cmd.Env = []string{"HOME=" + home, "XDG_CONFIG_HOME=" + filepath.Join(home, ".config"), "PATH=/usr/bin:/bin", "GIT_CONFIG_NOSYSTEM=1", "GIT_TERMINAL_PROMPT=0"}
+	cmd.Env = []string{"HOME=" + home, "GIT_CONFIG_GLOBAL=" + filepath.Join(home, ".gitconfig"), "XDG_CONFIG_HOME=" + filepath.Join(home, ".config"), "PATH=/usr/bin:/bin", "GIT_CONFIG_NOSYSTEM=1", "GIT_TERMINAL_PROMPT=0"}
 	out := &limitedRepoWriter{}
 	cmd.Stdout = out
 	cmd.Stderr = io.Discard
@@ -129,11 +129,13 @@ func gitIdentityHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
-		if !cloneWriter.TryLock() {
-			snapshotError(w, 409, "workspace_busy")
-			return
+		if r.Method == "POST" {
+			if !cloneWriter.TryLock() {
+				snapshotError(w, 409, "workspace_busy")
+				return
+			}
+			defer cloneWriter.Unlock()
 		}
-		defer cloneWriter.Unlock()
 		ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
 		defer cancel()
 		read := func() (string, string, bool) {

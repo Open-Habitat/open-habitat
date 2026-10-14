@@ -1,3 +1,4 @@
+import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
 
@@ -14,6 +15,7 @@ test("@pi-onboarding slow native reads finish across multiple poll intervals wit
     await page.goto("/workspaces");
     await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await page.getByRole("link", { name: "Alice" }).click();
+    await confirmGitIdentity(page);
     await page.getByRole("button", { name: /jatka/i }).click();
     await expect(page.getByText("Ladataan palvelimen tilaa")).toHaveCount(0);
     await expect(page.getByText("Käyttöönotto", { exact: true })).toBeVisible();

@@ -30,9 +30,11 @@ export function GitIdentity({
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [refresh, setRefresh] = useState(0);
   useEffect(() => {
     // Re-read after a session binding changes, never reuse another person's values.
     void csrf;
+    void refresh;
     const controller = new AbortController();
     setIdentity(undefined);
     setError("");
@@ -55,12 +57,10 @@ export function GitIdentity({
       })
       .catch(() => {
         if (!controller.signal.aborted)
-          setError(
-            "Git-identiteettiä ei voitu tarkistaa. Yritä uudelleen lataamalla sivu.",
-          );
+          setError("Git-identiteettiä ei voitu tarkistaa. Yritä uudelleen.");
       });
     return () => controller.abort();
-  }, [csrf]);
+  }, [csrf, refresh]);
   const existing = Boolean(identity?.name || identity?.email);
   const save = async () => {
     if (!csrf || busy) return;
@@ -88,9 +88,9 @@ export function GitIdentity({
       setEditing(false);
       if (onboarding) onContinue?.();
     } catch {
-      setError(
-        "Git-identiteettiä ei voitu vahvistaa. Tarkista nykyinen arvo ennen uutta yritystä.",
-      );
+      // A lost response may follow a completed write. Observe Git instead of
+      // retrying the POST, which would be a second native mutation.
+      setRefresh((old) => old + 1);
     } finally {
       setBusy(false);
     }
@@ -100,7 +100,24 @@ export function GitIdentity({
       <h3>Git-identiteetti</h3>
       {error && <p role="alert">{error}</p>}
       {!identity ? (
-        <p>Tarkistetaan Git-asetukset…</p>
+        <p>
+          {error ? (
+            <Button
+              label="Yritä uudelleen"
+              onPress={() => setRefresh((old) => old + 1)}
+            />
+          ) : (
+            "Tarkistetaan Git-asetukset…"
+          )}
+        </p>
+      ) : onboarding && !existing && identity.emails.length === 0 ? (
+        <>
+          <p role="alert">GitHub-ehdotuksia ei saatu. Yritä uudelleen.</p>
+          <Button
+            label="Yritä uudelleen"
+            onPress={() => setRefresh((old) => old + 1)}
+          />
+        </>
       ) : (
         <>
           {existing && (onboarding || !editing) ? (
@@ -180,7 +197,14 @@ export function GitIdentity({
                 }
                 onPress={() => void save()}
               />
-              <Button label="Peruuta" onPress={() => setEditing(false)} />
+              <Button
+                label="Peruuta"
+                onPress={() => {
+                  setName(identity.name || identity.suggested_name);
+                  setEmail(identity.email || identity.suggested_email);
+                  setEditing(false);
+                }}
+              />
             </>
           ) : (
             <Button
