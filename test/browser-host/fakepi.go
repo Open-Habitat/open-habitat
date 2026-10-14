@@ -225,9 +225,11 @@ func message(role string, content any, extra map[string]any) map[string]any {
 }
 
 func (s *fakeSession) turn(prompt string, emit func(any)) {
-	step := 400 * time.Millisecond
+	// This child is only used by the synthetic browser host. Keep distinct
+	// native phases observable without making every UI journey wait for a model.
+	step := 100 * time.Millisecond
 	if strings.Contains(prompt, "hidas") {
-		step = 4 * time.Second
+		step = 2 * time.Second
 	}
 	emit(map[string]any{"type": "agent_start"})
 	// The controller passes a deliberately minimal environment to Pi. The lab
