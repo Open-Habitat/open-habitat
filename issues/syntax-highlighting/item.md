@@ -3,7 +3,7 @@ created: 2026-10-14
 updated: 2026-10-14
 type: feature
 reporter: jari
-status: open
+status: in-progress
 priority: normal
 related: ['@choose-syntax-highlighter']
 lane: web
