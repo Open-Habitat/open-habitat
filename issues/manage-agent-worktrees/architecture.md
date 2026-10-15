@@ -46,7 +46,7 @@ needs the **exclusive** writer lease, and each host Pi generation holds that lea
 **shared** for its whole lifetime. A self-merging agent runs *inside* that Pi.
 Today its `run merge` call would record the intent and then fail with
 `writer_active`, because its own process holds the shared lease. Self-merging
-needs four additions:
+needs five additions:
 
 1. **Intent completed by the supervisor.** When the agent asks to merge, Taskfleet
    records the merge intent with an operation key derived from the run, node and
@@ -55,20 +55,32 @@ needs four additions:
    the daemon) completes the recorded intent once the exclusive lease becomes free.
    The completion is the existing Rust merge transaction: rebase, source-OID CAS,
    report `via: explicit-merge`, then Git-only cleanup. No new merge path.
-2. **A failed attempt ends the intent.** A sticky intent blocks every later launch.
-   If the supervisor's merge fails (a conflict, a dirty target checkout, a moved
-   source that cannot be rebased), the intent must end in a durable
-   `merge.failed` event with its reason. Work is preserved and the run stays open.
-   Otherwise the agent could never be resumed to resolve the conflict. Only
-   explicit `cancel` or `discard` may end the run after that.
+2. **A failed attempt before integration ends the intent.** A sticky intent
+   blocks every later launch. If the supervisor's merge fails *before Git has
+   moved any ref* (a rebase conflict, a dirty target checkout refused, a source-OID
+   CAS miss), Taskfleet retires that attempt under the exclusive lease. It records
+   a durable `merge.failed` event with the reason and the retired intent's key. Work
+   is preserved, the run stays open, and launch admission reopens, so the agent can
+   be resumed to resolve the conflict. A failure *after* a ref moved, or one whose
+   effect cannot be proved (`merge_recovery_unverifiable`), keeps the intent and
+   the fence, as `writer-fence.md` requires, until immutable-OID recovery resolves
+   it. Retries and recovery reject a retired key. Only explicit `cancel` or
+   `discard` may end the run after a retired attempt.
 3. **Identity in the agent's environment.** The daemon starts Pi with the full run
    ID and node ID (for example `TASKFLEET_RUN_ID` and `TASKFLEET_NODE_ID`).
    Taskfleet returns these at creation. The agent never derives them from the
    branch name. `taskfleet run show --current` already resolves the owning run
    from durable node metadata, so it can check them.
 4. **The policy on the run** (above), visible in `run show` and `run wait` output.
+5. **A wait that does not mistake the handoff for a stop.** Taskfleet's proposed
+   `run wait` predicate settles on a current-generation `caller.pi.exited`
+   (`stopped-unmerged`). During self-merge the daemon records exactly that exit
+   before the supervisor merges. While a merge intent is active, the predicate
+   must instead wait for terminal settlement, a retired attempt (`merge.failed`),
+   a supervisor stall or the timeout. With no active intent, exit attention
+   behaves as proposed.
 
-With these, a calling agent's `taskfleet run wait <run-id>` works without anyone
+With these five, a calling agent's `taskfleet run wait <run-id>` works without anyone
 acting: a self-merging child reaches `done`/merged/landed on its own. An
 "asks first" child stays open until the person answers. That is the intended
 meaning, and the bounded `--timeout` keeps the caller's own wait honest. Taskfleet
@@ -136,7 +148,8 @@ Browser states derived from these facts:
 | Waiting for you | open, no intent | idle and controlled ("asks first", or the agent asked something) |
 | Merging | merge intent recorded | Pi shutting down or exited; composer closed |
 | Merged | done, merged; cleanup pending or complete | no Pi; history read-only |
-| Not merged · work preserved | open; last attempt `merge.failed` with reason | idle, or exited and restartable |
+| Not merged · work preserved | open; last attempt retired as `merge.failed` with reason | idle, or exited and restartable |
+| Merging (recovery) | intent kept after a ref moved; recovery pending | no Pi; continuing refused until Taskfleet resolves |
 | Agent stopped | open, no intent | no control: daemon restarted or Pi died; *Continue* starts a new generation in the same checkout and session |
 | In the terminal · read-only | ordinary Taskfleet-owned run | terminal Pi; the browser does not control it |
 
