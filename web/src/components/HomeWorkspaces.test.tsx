@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Workspace } from "../app/snapshot";
@@ -35,6 +35,50 @@ const conversation = (
 });
 afterEach(() => vi.unstubAllGlobals());
 describe("workspace home", () => {
+  it("keeps failed archive feedback on its card and blocks work with a reason", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("recap unavailable")),
+    );
+    const onArchive = vi.fn().mockResolvedValue(false);
+    const show = (working: boolean) => (
+      <MemoryRouter>
+        <HomeWorkspaces
+          workspaces={[workspace("one")]}
+          conversations={[
+            conversation("one-agent", "one", {
+              title: "Työ",
+              command: working ? "accepted" : "idle",
+            }),
+          ]}
+          archiveReason={(c) =>
+            c.command === "accepted" ? "Odota Pi:n vuoron päättymistä." : ""
+          }
+          onArchive={onArchive}
+        />
+      </MemoryRouter>
+    );
+    const view = render(show(true));
+    const archive = screen.getByRole("button", { name: "Arkistoi" });
+    expect(archive).toHaveProperty("disabled", true);
+    expect(archive.parentElement?.getAttribute("title")).toBe(
+      "Odota Pi:n vuoron päättymistä.",
+    );
+    const reasonId = archive.getAttribute("aria-describedby");
+    expect(reasonId).toBeTruthy();
+    expect(document.getElementById(reasonId ?? "")?.textContent).toBe(
+      "Odota Pi:n vuoron päättymistä.",
+    );
+    view.rerender(show(false));
+    fireEvent.click(archive);
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toContain(
+        "Arkistointia ei voitu vahvistaa",
+      ),
+    );
+    expect(screen.getByText("Työ")).toBeTruthy();
+    expect(onArchive).toHaveBeenCalledTimes(1);
+  });
   it("groups by workspace and orders attention ahead of waiting, working and unknown without hiding just-finished work", () => {
     const sections = homeSections(
       [workspace("one"), workspace("two")],

@@ -707,6 +707,7 @@ export function App() {
   const changeArchive = async (
     agent: NonNullable<typeof snapshot>["agents"][number],
     archived: boolean,
+    origin: "conversation" | "home" = "conversation",
   ) => {
     if (
       !csrf ||
@@ -740,6 +741,7 @@ export function App() {
           return next;
         });
       else if (
+        origin !== "home" &&
         `${window.location.pathname}${window.location.search}` === fromRoute
       )
         navigate(`/workspaces/${agent.workspace_id}`);
@@ -754,11 +756,12 @@ export function App() {
           return next;
         });
       if ((error as Error).message === "identity_lost") requireLogin();
-      setArchiveProblem(
-        error instanceof NotAdmitted
-          ? "Arkistointia ei tehty: keskustelun tila muuttui tai kirjoittaja on aktiivinen. Päivitä tiedot."
-          : "Arkistoinnin tulos on epävarma. Päivitä tilanne ennen uutta yritystä.",
-      );
+      if (origin !== "home")
+        setArchiveProblem(
+          error instanceof NotAdmitted
+            ? "Arkistointia ei tehty: keskustelun tila muuttui tai kirjoittaja on aktiivinen. Päivitä tiedot."
+            : "Arkistoinnin tulos on epävarma. Päivitä tilanne ennen uutta yritystä.",
+        );
       refresh();
       return false;
     } finally {
@@ -1241,6 +1244,39 @@ export function App() {
           workspaces={visible}
           conversations={returnConversations}
           store={conversationStore}
+          archiveReason={(conversation) => {
+            const agent = snapshot?.agents.find(
+              (a) => a.agent_id === conversation.id,
+            );
+            if (
+              !csrf ||
+              phase !== "authenticated" ||
+              snapshot?.write_state === "read_only"
+            )
+              return "Arkistointi ei ole käytettävissä.";
+            if (archiveBusy) return "Arkistointi kesken.";
+            if (!agent?.observation_token || agent.archive !== "active")
+              return "Arkiston tilaa ei voida vahvistaa.";
+            if (conversation.process === "terminal_observed_live")
+              return "Kirjoittaja on käynnissä.";
+            if (
+              conversation.command === "accepted" ||
+              agent.activity === "running"
+            )
+              return "Odota Pi:n vuoron päättymistä.";
+            if (
+              conversation.process === "daemon_managed_live" &&
+              conversation.command !== "idle"
+            )
+              return "Prosessin tilaa ei voitu vahvistaa.";
+            return "";
+          }}
+          onArchive={(id) => {
+            const agent = snapshot?.agents.find((a) => a.agent_id === id);
+            return agent
+              ? changeArchive(agent, true, "home")
+              : Promise.resolve(false);
+          }}
           onNew={
             phase === "authenticated" &&
             csrf &&

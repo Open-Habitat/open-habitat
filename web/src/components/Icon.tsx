@@ -24,7 +24,8 @@ export type IconName =
   | "stop"
   | "system"
   | "sun"
-  | "moon";
+  | "moon"
+  | "archive";
 
 /** Decorative icon only: the adjacent control supplies its accessible name. */
 export function Icon({
@@ -33,6 +34,12 @@ export function Icon({
 }: { name: IconName } & Omit<SVGProps<SVGSVGElement>, "children">) {
   const paths: Record<IconName, ReactNode> = {
     menu: <path d="M4 6h16M4 12h16M4 18h16" />,
+    archive: (
+      <>
+        <rect x="3" y="4" width="18" height="5" rx="1" />
+        <path d="M5 9v11h14V9M10 13h4" />
+      </>
+    ),
     system: (
       <>
         <rect x="3" y="4" width="18" height="12" rx="2" />

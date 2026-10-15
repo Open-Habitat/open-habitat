@@ -94,6 +94,18 @@
 .ah-home-card-head a:hover {
   background: var(--ah-surface-hover);
 }
+.ah-home-card-head .ah-home-archive {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+}
+.ah-home-card-head .ah-home-archive svg {
+  width: 16px;
+  height: 16px;
+}
 .ah-home-dot {
   display: inline-block;
   width: 8px;

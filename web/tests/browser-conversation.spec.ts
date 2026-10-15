@@ -2391,6 +2391,71 @@ test("@browser-conversation queued command with pending ack stays pending withou
   expect(queues).toBe(1);
 });
 
+test("@browser-conversation home card blocks archive during Pi work, shows failure and removes on success", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .fill("hidas päätyö");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(page.getByText("Selvä. Kysyit:", { exact: false })).toBeVisible({
+    timeout: 30000,
+  });
+  const agentId = new URL(page.url()).searchParams.get("conversation");
+  await page.route("**/api/v1/snapshot", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    const agent = body.agents?.find(
+      (a: { agent_id: string }) => a.agent_id === agentId,
+    );
+    if (agent) agent.activity = "running";
+    await route.fulfill({ response, json: body });
+  });
+  await page.getByRole("link", { name: "Etusivu", exact: true }).click();
+  await page.reload();
+  const card = page
+    .locator(".ah-home-card")
+    .filter({ hasText: "hidas päätyö" });
+  const archive = card.getByRole("button", { name: "Arkistoi" });
+  await expect(card).toBeVisible();
+  await expect(archive).toBeDisabled();
+  await expect(archive.locator("..")).toHaveAttribute(
+    "title",
+    "Odota Pi:n vuoron päättymistä.",
+  );
+  await page.unroute("**/api/v1/snapshot");
+  await page.reload();
+  await expect(archive).toBeEnabled({ timeout: 30000 });
+  let refused = false;
+  await page.route("**/api/v1/workspaces", async (route) => {
+    if (
+      !refused &&
+      route.request().method() === "POST" &&
+      route.request().postData()?.includes('"conversation_archive"')
+    ) {
+      refused = true;
+      await route.fulfill({
+        status: 409,
+        contentType: "application/json",
+        body: JSON.stringify({ error: { code: "writer_conflict" } }),
+      });
+    } else await route.continue();
+  });
+  await archive.click();
+  await expect(card).toBeVisible();
+  await expect(card.getByRole("alert")).toContainText(
+    "Arkistointia ei voitu vahvistaa",
+  );
+  await page.locator(".ah-home-name").first().click();
+  await expect(page.getByText("Arkiston tila epävarma")).toHaveCount(0);
+  await page.getByRole("link", { name: "Etusivu", exact: true }).click();
+  await archive.click();
+  await expect(card).toHaveCount(0);
+  await expect(page).toHaveURL(/\/workspaces$/);
+});
+
 test("@browser-conversation archive hides navigation before host reply and rolls back refusal", async ({
   page,
 }) => {

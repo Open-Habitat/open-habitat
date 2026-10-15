@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import {
   type ConversationStore,
   useConversationMetadata,
@@ -8,6 +8,7 @@ import { readRecap } from "../app/conversations";
 import type { Workspace } from "../app/snapshot";
 import { agentPresentation } from "./agentPresentation";
 import { ControlButton, LinkRow } from "./ControlElements";
+import { Icon } from "./Icon";
 import { WorkspaceActions } from "./WorkspaceActions";
 import { relativeRecapAge } from "./RecapCard";
 import type { ReturnConversation } from "./ReturnView";
@@ -49,12 +50,23 @@ function score(items: HomeConversation[]) {
   return items.reduce((sum, c) => sum + [100, 10, 1, 0][rank(c)], 0);
 }
 
-function HomeCard({ conversation }: { conversation: HomeConversation }) {
+function HomeCard({
+  conversation,
+  onArchive,
+  archiveReason,
+  archiveError,
+}: {
+  conversation: HomeConversation;
+  onArchive?: () => void;
+  archiveReason?: string;
+  archiveError: boolean;
+}) {
   const [state, setState] = useState<{
     recap: Recap | null;
     latest_message: string;
   }>();
   const [error, setError] = useState(false);
+  const archiveReasonId = useId();
   useEffect(() => {
     let active = true;
     // A native JSONL append changes the token even when the ID is stable.
@@ -101,6 +113,24 @@ function HomeCard({ conversation }: { conversation: HomeConversation }) {
         {state?.recap && state.recap.through !== state.latest_message && (
           <span className="ah-home-stale">uusia viestejä</span>
         )}
+        <span title={archiveReason || "Arkistoi"}>
+          <ControlButton
+            className="ah-home-archive"
+            variant="quiet"
+            size="micro"
+            aria-label="Arkistoi"
+            aria-describedby={archiveReason ? archiveReasonId : undefined}
+            isDisabled={!onArchive || !!archiveReason}
+            onPress={onArchive}
+          >
+            <Icon name="archive" />
+          </ControlButton>
+          {archiveReason ? (
+            <span id={archiveReasonId} className="ah-visually-hidden">
+              {archiveReason}
+            </span>
+          ) : null}
+        </span>
       </div>
       {state?.recap ? (
         <>
@@ -115,6 +145,11 @@ function HomeCard({ conversation }: { conversation: HomeConversation }) {
       ) : state && conversation.attention === "new" ? (
         <p className="ah-home-pending">valmistui juuri · katsaus syntyy pian</p>
       ) : null}
+      {archiveError && (
+        <p className="ah-inline-error" role="alert">
+          Arkistointia ei voitu vahvistaa. Päivitä tilanne ennen uutta yritystä.
+        </p>
+      )}
       {activity === "working" && (
         <p className="ah-home-live">
           Pi työskentelee
@@ -157,13 +192,19 @@ export function HomeWorkspaces({
   store,
   onNew,
   onCreate,
+  onArchive,
+  archiveReason,
 }: {
   workspaces: Workspace[];
   conversations: HomeConversation[];
   store?: ConversationStore;
   onNew?: (id: string) => void;
   onCreate?: () => void;
+  onArchive?: (id: string) => Promise<boolean>;
+  archiveReason?: (conversation: HomeConversation) => string;
 }) {
+  const [archiveErrorId, setArchiveErrorId] = useState<string | null>(null);
+  const [archivePendingId, setArchivePendingId] = useState<string | null>(null);
   const metadata = useConversationMetadata(store);
   conversations = conversations.map((c) => ({
     ...c,
@@ -223,7 +264,29 @@ export function HomeWorkspaces({
             </header>
             <div className="ah-home-grid">
               {open.map((c) => (
-                <HomeCard key={c.id} conversation={c} />
+                <HomeCard
+                  key={c.id}
+                  conversation={c}
+                  archiveError={archiveErrorId === c.id}
+                  archiveReason={
+                    archivePendingId === c.id
+                      ? "Arkistointi kesken."
+                      : (archiveReason?.(c) ??
+                        (onArchive ? "" : "Arkistointi ei ole käytettävissä."))
+                  }
+                  onArchive={
+                    onArchive
+                      ? () => {
+                          setArchiveErrorId(null);
+                          setArchivePendingId(c.id);
+                          void onArchive(c.id).then((ok) => {
+                            setArchivePendingId(null);
+                            if (!ok) setArchiveErrorId(c.id);
+                          });
+                        }
+                      : undefined
+                  }
+                />
               ))}
             </div>
           </section>
