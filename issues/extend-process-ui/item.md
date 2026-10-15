@@ -1,15 +1,14 @@
 ---
 created: 2026-09-20
-updated: 2026-10-05
+updated: 2026-10-15
 type: task
 status: open
 priority: normal
 epic: native-agent-host-architecture
-blocked_by: ['@review-mvp']
-lane: post-mvp-design
-lane_seq: 40
+lane: processes
+lane_seq: 1
 collision: [docs/, design-system/]
-preparation: pending
+preparation: ready
 ---
 
 # Extend process visibility and controls after v1
@@ -62,3 +61,5 @@ belong in this issue directory.
 ### 2026-09-30T17:41:12Z · @claude
 
 Rethink-night 30.9.: rethink-instructions (gpt-6-astra) tiivisti toteuttajalle suunnatun tehtävän tavoitteeksi ja valmiin työn kuvaukseksi. Ilman Jaria säilytettiin ensimmäisenä lukutilan inventaario ja yhden prosessin loki, toteutusta edeltävä design-katselmointi sekä L1–L5:n pilkkominen; extensionin kyvyt jätettiin todennettaviksi. fact-check-instructions (claude-opus-5-5) korjasi vanhentuneen post-MVP-rajan Jarin 28.9. päätöksen perusteella ja päivitti updated-päivän. @review-mvp on obsolete, mutta blocked_by ja kaista jätettiin toimeksiannon mukaisesti ennalleen; niiden aikatauluvaikutusta ei ratkaistu tässä. Ei ristiriitaa säilytetyn Jarin päätöstekstin kanssa.
+
+Jari 15.10.2026: process support is wanted now, modelled on the Pi extension he uses in the terminal, `npm:@aliou/pi-processes`. `review-mvp` is obsolete, so its block was removed and the issue moved to its own lane. First step: what the extension records natively and how the daemon can read it as the mapped user; then a prototype round for the UI.
