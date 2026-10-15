@@ -211,3 +211,20 @@ recovery and 600-workspace partial snapshot passed 5/5 in 18.2 s at
 drains its held snapshot route after the 401 assertion before teardown;
 that changes no authorization assertion and avoids disposing the response
 while `route.fetch()` is still in flight.
+
+The first committed-tree clean, no-reuse gate on `0d6080c6` **failed** after
+319 s (setup 6 s, dependencies 59 s, web checks 27 s, browser 194 s,
+Go/contracts 227 s concurrently; packaging not reached). Go/contracts passed;
+normal browser had 160 passed, two capture-only skipped and two failures:
+`pi-onboarding-race` never displayed Alice's device code (the page showed
+"Tilaa ei voitu vahvistaa" under load), and the 600-row partial snapshot
+still showed only "Ladataan" after five seconds. This is not a comparable
+passing speed measurement. The output is local scratch in
+`/var/tmp/oh-tenfold-gate-1.log` (the Playwright trace in the old worktree may
+be overwritten by later runs). The salvaged browser case uses 513 rows: the
+old bug truncated at 512, so the 513th row retains the exact boundary assertion
+and reduces unnecessary DOM/input work. It waits up to 15 seconds for the
+specific partial-source notice rather than mistaking an in-progress loading
+view for an empty catalog. This is a longer *bound*, not a 15-second fixed
+sleep. The separate Vitest reader still exercises a valid >1 MiB wire response.
+No Pi race assertion or production authority code was removed.

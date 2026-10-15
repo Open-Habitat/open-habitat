@@ -172,7 +172,8 @@ test("@workspace-slice browser retains workspaces past 512 in a partial snapshot
   const base = await response.json();
   const original = base.workspaces[0];
   expect(original).toBeDefined();
-  const workspaces = Array.from({ length: 600 }, (_, i) => ({
+  // 513 is the first cardinality beyond the old 512-row truncation boundary.
+  const workspaces = Array.from({ length: 513 }, (_, i) => ({
     ...original,
     workspace_id: `ws_${String(i).padStart(8, "0")}`,
     observation_token: `obs_${String(i).padStart(8, "0")}`,
@@ -197,9 +198,13 @@ test("@workspace-slice browser retains workspaces past 512 in a partial snapshot
     });
   });
   await page.reload();
-  await expect(page.getByText("Työtiloja ei voitu vahvistaa")).toBeVisible();
+  // Wait for the large authenticated snapshot to finish validation/rendering;
+  // "Ladataan" is an in-progress state, not evidence that the list is empty.
+  await expect(page.getByText("Työtiloja ei voitu vahvistaa")).toBeVisible({
+    timeout: 15_000,
+  });
   await page
     .getByRole("textbox", { name: "Suodata työtiloja" })
-    .fill("project-599");
-  await expect(page.getByText("project-599").first()).toBeVisible();
+    .fill("project-512");
+  await expect(page.getByText("project-512").first()).toBeVisible();
 });
