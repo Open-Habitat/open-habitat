@@ -47,8 +47,19 @@ test("@pi-onboarding delayed old-session response cannot restore code after focu
     await b.getByRole("button", { name: "Kirjaudu ulos", exact: true }).click();
     await b.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await b.getByRole("link", { name: "Bob" }).click();
-    await confirmGitIdentity(b);
-    await b.getByRole("button", { name: /jatka/i }).click();
+    await expect(
+      b.getByRole("button", { name: "Bob, Tilivalikko" }),
+    ).toBeVisible();
+    // Bob may already be at Pi onboarding; only advance the Git steps when
+    // the new session actually presents them.
+    if (
+      await b
+        .getByRole("heading", { name: "Git-identiteetti", level: 1 })
+        .isVisible()
+    )
+      await confirmGitIdentity(b);
+    if (await b.getByRole("button", { name: /jatka/i }).isVisible())
+      await b.getByRole("button", { name: /jatka/i }).click();
     await a.bringToFront();
     release();
     await expect(a.getByText("ABCD-1234")).toHaveCount(0);
@@ -74,12 +85,22 @@ test("@pi-onboarding delayed old-session response cannot restore code after focu
             .isVisible()),
       )
       .toBe(true);
-    if (
-      await a
-        .getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" })
-        .isVisible()
-    )
-      await expect(a.getByText("fixture/bob-only")).toBeVisible();
+    if (await a.getByText("Bobin synteettinen viesti 0").first().isVisible()) {
+      await expect(
+        a.getByRole("button", { name: "Bob, Tilivalikko" }),
+      ).toBeVisible();
+      await expect(
+        a.getByRole("button", { name: "Alice, Tilivalikko" }),
+      ).toHaveCount(0);
+    }
+    // The chooser may still switch to Bob's Git-identity step after its
+    // catalog loads. Do not mistake that normal transition for an Alice repo.
+    await expect(a.getByText("fixture/first")).toHaveCount(0);
+    if (await a.getByRole("button", { name: /Tilivalikko/ }).isVisible()) {
+      await expect(
+        a.getByRole("button", { name: "Bob, Tilivalikko" }),
+      ).toBeVisible();
+    }
     expect(
       (await a.request.get("/api/v1/onboarding/pi/attempt")).status(),
     ).toBe(404);

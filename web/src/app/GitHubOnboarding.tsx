@@ -40,6 +40,7 @@ export function GitHubOnboarding({
   onUsable,
   onLogin,
   onLogout,
+  onSessionChanged,
   skipChooser = false,
   forceSignIn = false,
 }: {
@@ -48,6 +49,7 @@ export function GitHubOnboarding({
   forceSignIn?: boolean;
   onLogin: () => void;
   onLogout: () => Promise<void>;
+  onSessionChanged: () => void;
 }) {
   const [exitOpen, setExitOpen] = useState(false);
   const [step, setStep] = useState<"loading" | "identity" | "github" | "pi">(
@@ -191,6 +193,11 @@ export function GitHubOnboarding({
           );
           return;
         }
+        if (bound.current && bound.current !== csrf) {
+          reset();
+          onSessionChanged();
+          return;
+        }
         reset();
         const n = generation.current;
         const digest = await sessionKey(csrf);
@@ -230,7 +237,7 @@ export function GitHubOnboarding({
       window.clearInterval(timer);
       window.removeEventListener("focus", focus);
     };
-  }, [load, onLogin, reset, current, skipChooser]);
+  }, [load, onLogin, onSessionChanged, reset, current, skipChooser]);
   const verifySession = async (n: number) => {
     try {
       const csrf = await sessionCSRF();

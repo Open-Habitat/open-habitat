@@ -47,6 +47,7 @@ import {
   accountSession,
   type PiState,
   piStatus,
+  sessionCSRF,
 } from "./pi";
 import { ServerAdministration } from "./ServerAdministration";
 import { readSnapshot, sourceState, type Workspace } from "./snapshot";
@@ -159,6 +160,9 @@ export function App() {
   const [csrf, setCSRF] = useState<string>();
   // First load only. A successful onboarding attempt has already checked Pi.
   const piChecked = useRef(false);
+  // The cookie is HttpOnly. Its session-bound CSRF is the browser's observable
+  // fence across a logout/login in another tab, including while Pi is missing.
+  const sessionBinding = useRef<string | undefined>(undefined);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileLayout, setMobileLayout] = useState(
     () => window.matchMedia?.("(max-width: 800px)").matches ?? false,
@@ -292,6 +296,7 @@ export function App() {
     if (loginFenced.current) return;
     loginFenced.current = true;
     clearPerson(priorIdentity.current);
+    sessionBinding.current = undefined;
     dispatch(authenticationRequired());
   }, [clearPerson, dispatch]);
   // Separate from the first-load gate: report the current native credential
@@ -316,6 +321,12 @@ export function App() {
       });
     return () => controller.abort();
   }, [location.pathname, phase, identity, requireLogin]);
+  const sessionChanged = useCallback(() => {
+    clearPerson(priorIdentity.current);
+    sessionBinding.current = undefined;
+    dispatch(loading());
+    setRefreshKey((n) => n + 1);
+  }, [clearPerson, dispatch]);
   const activeId = useRef<string | undefined>(undefined);
   const routeAgent =
     new URLSearchParams(location.search).get("conversation") ??
@@ -439,14 +450,40 @@ export function App() {
     const load = async () => {
       if (!ready()) return;
       try {
+        // Read the session on every refresh, not only the first Pi check:
+        // another tab can replace the cookie without notifying this tab.
+        const session = syntheticDemo
+          ? undefined
+          : await accountSession(controller.signal);
+        if (!ready()) return;
+        if (session === "login") return fail("login");
+        if (
+          session &&
+          sessionBinding.current &&
+          sessionBinding.current !== session.csrf
+        ) {
+          clearPerson(priorIdentity.current);
+          dispatch(loading());
+          sessionBinding.current = session.csrf;
+          setRefreshKey((n) => n + 1);
+          return;
+        }
+        if (session) sessionBinding.current = session.csrf;
+        const stillBound = async () => {
+          if (!session) return true;
+          const current = await sessionCSRF(controller.signal);
+          if (!ready()) return false;
+          if (current === session.csrf) return true;
+          clearPerson(priorIdentity.current);
+          dispatch(loading());
+          sessionBinding.current = current === "login" ? undefined : current;
+          setRefreshKey((n) => n + 1);
+          return false;
+        };
         if (!syntheticDemo && !piChecked.current) {
-          const session = await accountSession(controller.signal);
-          if (!ready()) return;
-          if (session === "login") return fail("login");
-          setCSRF(session.csrf);
-          setProfile(session.profile);
           const status = await piStatus(controller.signal);
           if (!ready()) return;
+          if (!(await stillBound())) return;
           if (status === "login") return fail("login");
           if (
             status === "missing" ||
@@ -455,6 +492,8 @@ export function App() {
           ) {
             if (status === "missing")
               sessionStorage.removeItem("nah:github-step");
+            setCSRF(session?.csrf);
+            setProfile(session?.profile);
             setPiCheckFailed(status !== "missing");
             return fail("pi");
           }
@@ -481,7 +520,9 @@ export function App() {
         )
           throw new Error("unavailable");
         const next = await readSnapshot(response);
-        if (!ready()) return;
+        if (!ready() || !(await stillBound())) return;
+        setCSRF(session?.csrf);
+        setProfile(session?.profile);
         setPiCheckFailed(false);
         dispatch(authenticated(next));
         if (!syntheticDemo) {
@@ -502,11 +543,19 @@ export function App() {
       active = false;
       controller.abort();
     };
-  }, [dispatch, refreshKey, fixtureName, syntheticDemo, requireLogin]);
+  }, [
+    dispatch,
+    refreshKey,
+    fixtureName,
+    syntheticDemo,
+    requireLogin,
+    clearPerson,
+  ]);
   const logout = async () => {
     setLogoutPrompt(false);
     loginFenced.current = true;
     clearPerson(priorIdentity.current);
+    sessionBinding.current = undefined;
     setLogoutError(false);
     if (syntheticDemo) {
       dispatch(clearIdentity());
@@ -844,6 +893,7 @@ export function App() {
       <GitHubOnboarding
         skipChooser
         forceSignIn
+        onSessionChanged={sessionChanged}
         onUsable={() => {
           const params = new URLSearchParams(location.search);
           const conversation = params.get("conversation");
@@ -943,6 +993,7 @@ export function App() {
       </>
     ) : phase === "pi_required" ? (
       <GitHubOnboarding
+        onSessionChanged={sessionChanged}
         skipChooser={
           piCheckFailed ||
           (location.pathname !== "/" && location.pathname !== "/workspaces")
