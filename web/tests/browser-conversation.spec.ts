@@ -2133,12 +2133,38 @@ test("@browser-conversation queue-clear 401 reaches login", async ({
   const intercepted = new Promise<void>((resolve) => {
     started = resolve;
   });
-  await page.route("**/api/v1/snapshot", async (route) => {
-    const response = await route.fetch();
-    started();
-    await held;
-    await route.fulfill({ response });
+  let finish!: (outcome: "delivered" | "cancelled" | Error) => void;
+  const finished = new Promise<"delivered" | "cancelled" | Error>((resolve) => {
+    finish = resolve;
   });
+  let signedOut = false;
+  let routeStarted = false;
+  await page.route("**/api/v1/snapshot", async (route) => {
+    routeStarted = true;
+    try {
+      const response = await route.fetch();
+      expect(response.status()).toBe(200);
+      started();
+      await held;
+      await route.fulfill({ response });
+      finish("delivered");
+    } catch (error) {
+      started(); // Also unblock the test if the upstream snapshot fetch failed.
+      // Navigation on expiry may auto-handle an intercepted request. Only that
+      // specific cancellation *after* login is expected; surface every other
+      // route/fetch failure rather than hiding it during fixture teardown.
+      if (
+        signedOut &&
+        error instanceof Error &&
+        /Route is already handled!/.test(error.message)
+      ) {
+        finish("cancelled");
+      } else {
+        finish(error instanceof Error ? error : new Error(String(error)));
+      }
+    }
+  });
+  let routeOutcome: "delivered" | "cancelled" | Error | undefined;
   try {
     await page.getByRole("button", { name: "Päivitä" }).click();
     await intercepted;
@@ -2149,15 +2175,24 @@ test("@browser-conversation queue-clear 401 reaches login", async ({
     await expect(
       page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
     ).toBeVisible();
+    signedOut = true;
     release();
+    routeOutcome = await finished;
+    if (routeOutcome instanceof Error) throw routeOutcome;
+    // If navigation cancelled the old response there is nothing to deliver;
+    // otherwise the late successful snapshot must not resurrect the session.
     await expect(
       page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
     ).toBeVisible();
+    await expect(editor).toHaveCount(0);
   } finally {
     release();
-    // The held fetch must settle before the page/host fixture is torn down.
+    // Wait for the specific handler, not all routes on the page. Never dispose
+    // its fetched response while it is still in flight.
+    if (routeStarted) routeOutcome = await finished;
     await page.unrouteAll({ behavior: "wait" });
   }
+  if (routeOutcome instanceof Error) throw routeOutcome;
 });
 
 test("@browser-conversation cursor 409 waits for a newer snapshot before reopening", async ({

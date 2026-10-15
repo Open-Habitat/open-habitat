@@ -302,3 +302,44 @@ the unchanged default unit suite passed again (126/126, 39.99 s under a busier
 load), as did the component suite (115/115), typecheck, lint, format check,
 project-view validation and `git diff --check`. There was no changed-tree
 clean gate, browser run or separate-UID test.
+
+## Queue-clear 401 browser-route teardown (2026-10-15)
+
+On `69bf63a2`, the conductor's no-reuse clean gate ended after 197 s with
+normal browser 162 passed, two skipped and one failed: queue-clear 401/login
+threw `route.fulfill: Route is already handled!` after the old `/api/v1/snapshot`
+response was held. Earlier standalone evidence also saw `route.fetch: Test
+ended`. The log is `/var/tmp/oh-night-gate-after-install.jsonl`; the retained
+trace was at `web/test-results/browser-conversation--brow-833ea-eue-clear-401-reaches-login-chromium/trace.zip` (subsequent tests may overwrite it).
+Neither run is a passing speed baseline.
+
+The browser can cancel/auto-handle the pending snapshot during the 401 login
+transition. `release()` plus `unrouteAll({ behavior: "wait" })` alone does not
+make a later `route.fulfill` legal. The test now explicitly observes its held
+route's terminal outcome: a successful old response delivered after login, or
+Playwright's specific `Route is already handled!` cancellation **after** login
+is visible. A fetch error, non-200 upstream snapshot or any other route error
+fails the test instead of being suppressed by blanket `ignoreErrors`. The test
+waits for that route to settle before disposing routes/closing the fixture,
+then checks login remains visible and the former editor is absent. It still
+requires the actual queue-clear write to return 401, and it never releases the
+successful old snapshot until the signed-out UI is visible. App snapshot reads
+use an abort signal and a `ready()` guard before dispatch, while
+`authenticationRequired` clears the snapshot (`web/src/app/App.tsx`, `store.ts`).
+The browser may cancel the request rather than deliver it; this case cannot
+claim that every repeat exercised delivery. No production or Go changes were
+made. This is a reliability fix, **not** a measured gate speedup.
+
+Validation on the changed test tree (from `69bf63a2`): installed pinned web
+dependencies with `npm ci --prefix web --no-audit --no-fund`. Standalone
+Playwright with `TMPDIR=/var/tmp`, `PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright`,
+`OH_BROWSER_WORKERS=2`: the queue-clear case passed 10/10 at
+`OH_PORT_BASE=34700` (34.3 s); the final run at `OH_PORT_BASE=34800` passed
+50/50 in 1.7 min (`--repeat-each=10` for queue-clear, status 401, changed
+snapshot identity, workspace identity isolation/expiry and explicit-retry
+expiry). The final run used the finished test edits. Web typecheck, lint and
+format check, `python3 scripts/validate-project-view.py` and `git diff --check`
+passed.
+These are same-UID synthetic host/browser checks, not a clean gate, separate-UID
+security proof, or comparable elapsed-time measurement. The conductor owns
+the next changed-tree clean gate.
