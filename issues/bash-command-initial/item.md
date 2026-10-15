@@ -3,11 +3,13 @@ created: 2026-10-15
 updated: 2026-10-15
 type: bug
 reporter: jari
-status: in-progress
+status: fixed
 priority: normal
 lane: web
 lane_seq: 33
 collision: [web/]
+closed: 2026-10-15
+closed_by: claude
 ---
 
 # Bash card hides its command until toggled
