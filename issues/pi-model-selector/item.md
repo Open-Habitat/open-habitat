@@ -3,11 +3,13 @@ created: 2026-10-15
 updated: 2026-10-15
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: high
 related: ['@conversation-stuck-reauth']
 lane: reauth
 collision: [internal/daemon]
+closed: 2026-10-15
+closed_by: claude
 ---
 
 # Choose Pi's model in the browser
@@ -22,7 +24,7 @@ The model is Pi's own native setting in the user's home. The daemon, running as 
 Whether a running conversation can switch model depends on Pi. If it cannot, say so and offer a new conversation.
 
 ## Acceptance Criteria
-- [ ] The person can see the available models and choose the default for new conversations. Pi's native setting changes as the user (Go test with a disposable HOME and a Pi fixture).
-- [ ] The unsupported-model notice offers the choice, and a new conversation with the chosen model works (browser journey with a fixture).
-- [ ] No new store: the truth is Pi's own setting, read back.
-- [ ] result.md has a "Decisions for later review" section.
+- [x] The person can see the available models and choose the default for new conversations. Pi's native setting changes as the user (Go test with a disposable HOME and a Pi fixture).
+- [x] The unsupported-model notice offers the choice, and a new conversation with the chosen model works (browser journey with a fixture).
+- [x] No new store: the truth is Pi's own setting, read back.
+- [x] result.md has a "Decisions for later review" section.
