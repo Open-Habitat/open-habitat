@@ -1,0 +1,13 @@
+/* Kierros 15.10.2026: koodilohkon otsake. */
+.out-win { position: relative; }
+/* V1: on the top border line, like a fieldset legend; it takes no row of its own. */
+.out-meta.on-edge { position: absolute; top: -7px; left: 10px; z-index: 1; gap: 4px !important; padding: 0 5px; line-height: 13px; font-size: 11px !important; background: var(--ah-surface); border-radius: 4px; pointer-events: none; }
+.tool .out-meta.on-edge, .cell > .out .out-meta.on-edge { background: var(--ah-bg); }
+.out-meta.on-edge .cb-lang { font-size: 11px; }
+.out:has(.on-edge) { padding-top: 2px; }
+.out-win:has(.on-edge) pre.viewport:is(.all, .head), .out-win:has(.on-edge) .vp pre.viewport { padding-top: 13px; }
+/* V2: faint, inside the box's top right corner, clear of the scrollbar. */
+.out-meta.in-corner { position: absolute; top: 5px; right: 46px; z-index: 1; gap: 4px !important; padding: 1px 6px; font-size: 11px !important; color: var(--ah-muted); background: color-mix(in srgb, var(--ah-sunken) 88%, transparent); border-radius: 4px; pointer-events: none; opacity: .85; transition: opacity 140ms ease-out; }
+.out-win:hover .out-meta.in-corner, .out-win:focus-within .out-meta.in-corner { opacity: 0; }
+.out-meta.in-corner .cb-lang { font-size: 11px; }
+@media (prefers-reduced-motion: reduce) { .out-meta.in-corner { transition: none; } }
