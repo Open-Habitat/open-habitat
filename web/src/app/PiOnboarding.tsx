@@ -253,6 +253,7 @@ export function PiOnboarding({
           if (csrf === bound.current) return;
           discardOldReply();
           if (csrf === "login") latest.current.onLogin();
+          else if (latest.current.forceSignIn) void check("GET", true);
           else latest.current.onUsable();
         })
         .catch(() => {

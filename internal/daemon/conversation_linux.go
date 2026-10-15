@@ -983,8 +983,26 @@ func (c *ConversationController) stop(w http.ResponseWriter, r *http.Request, id
 	historyJSON(w, map[string]any{"schema_version": 1, "state": "termination_unknown"})
 }
 
-// Pi's assistant error text is used only for classification and never leaves
-// the daemon. Match authentication failures, not arbitrary provider errors.
+// A completed Pi device login has been checked against native credentials.
+// Clearing only login failures leaves unrelated provider/model failures intact.
+func (c *ConversationController) ClearPiAuthFailures() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, s := range c.sessions {
+		if s.authError == "pi_auth_failed" {
+			s.authError = ""
+		}
+	}
+}
+
+// Pi's native error stays in history; expose only a fixed classification.
+// An unsupported account model cannot be repaired by signing in again.
+func modelUnsupported(text string) bool {
+	lower := strings.ToLower(text)
+	return strings.Contains(lower, "model") && strings.Contains(lower, "not supported") && strings.Contains(lower, "account")
+}
+
+// Match authentication failures, not arbitrary provider errors.
 func modelAuthFailure(text string) bool {
 	lower := strings.ToLower(text)
 	return strings.Contains(lower, "401") || strings.Contains(lower, "403") || strings.Contains(lower, "unauthorized") || strings.Contains(lower, "authentication failed") || strings.Contains(lower, "invalid api key") || strings.Contains(lower, "invalid_api_key")

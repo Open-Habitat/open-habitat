@@ -841,7 +841,21 @@ export function App() {
         skipChooser
         forceSignIn
         onUsable={() => {
-          navigate("/workspaces", { replace: true });
+          const params = new URLSearchParams(location.search);
+          const conversation = params.get("conversation");
+          if (conversation) conversationStore?.discardStatus(conversation);
+          navigate(
+            conversation &&
+              /^\/workspaces\/ws_[A-Za-z0-9_-]{8,64}$/.test(
+                location.pathname,
+              ) &&
+              /^pi:[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$/.test(
+                conversation,
+              )
+              ? `${location.pathname}?conversation=${encodeURIComponent(conversation)}`
+              : "/workspaces",
+            { replace: true },
+          );
           refresh();
         }}
         onLogin={requireLogin}

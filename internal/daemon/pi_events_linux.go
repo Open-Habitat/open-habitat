@@ -194,6 +194,8 @@ func (c *ConversationController) drain(s *conversation) {
 					if c.journal != nil {
 						c.journal.reset("pi:"+s.id, "unknown")
 					}
+				} else if modelUnsupported(result.Message.ErrorMessage) {
+					s.authError = "pi_model_unsupported"
 				}
 				e = []byte(`{"type":"message_end","message":{"role":"assistant","stopReason":"error"}}`)
 			}

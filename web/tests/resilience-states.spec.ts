@@ -216,6 +216,22 @@ test("@resilience active conversation stays readable and blocks writes during sn
   await expect(
     page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toBeDisabled();
+  const { fieldRect, send } = await page
+    .locator(".ah-composer-entry")
+    .evaluate((node) => {
+      const field = node.querySelector("textarea")?.getBoundingClientRect();
+      const button = node.querySelector("button")?.getBoundingClientRect();
+      if (!field || !button) throw new Error("composer geometry missing");
+      return {
+        fieldRect: { top: field.top, height: field.height },
+        send: { top: button.top, height: button.height },
+      };
+    });
+  expect(
+    Math.abs(
+      fieldRect.top + fieldRect.height / 2 - (send.top + send.height / 2),
+    ),
+  ).toBeLessThan(5);
   await expect(page.getByRole("button", { name: "Keskeytä" })).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
   const composer = page.locator(".ah-conversation-frame > .ah-composer");

@@ -8,7 +8,10 @@ globalThis.fetch = async (input, init) => {
     if (process.env.MOCK_HOLD) await new Promise((_,reject) => init.signal.addEventListener('abort', () => reject(new Error('synthetic abort')), {once:true}));
     return {ok:true, json: async () => ({authorization_code:'synthetic-code',code_verifier:'synthetic-verifier'})};
   }
-  if (url === 'https://auth.openai.com/oauth/token')
+  if (url === 'https://auth.openai.com/oauth/token') {
+    if (process.env.MOCK_REFRESH_FAIL && String(init?.body).includes('refresh_token'))
+      return {ok:false, status:401, json:async()=>({error:'invalid_grant'})};
     return {ok:true, json: async () => ({access_token:jwt,refresh_token:'SYNTHETIC-REFRESH-SECRET',expires_in:3600})};
+  }
   throw new Error('unexpected network request');
 };

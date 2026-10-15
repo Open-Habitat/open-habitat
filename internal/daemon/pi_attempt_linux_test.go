@@ -54,7 +54,7 @@ esac
 	}
 	token := strings.Repeat("A", 43)
 	other := strings.Repeat("B", 43)
-	h := a.handler(cfg, func(*http.Request) bool { return true })
+	h := a.handler(cfg, func(*http.Request) bool { return true }, nil)
 	started := time.Now()
 	if w := request(h, "POST", token); w.Code != 200 || w.Header().Get("Cache-Control") != "no-store" {
 		t.Fatalf("start: %d %s", w.Code, w.Body.String())
@@ -84,7 +84,7 @@ esac
 	if w := request(h, "GET", token); w.Code != 200 || strings.Contains(w.Body.String(), "SYNTHETIC-REFRESH-SECRET") {
 		t.Fatalf("owner status: %d %s", w.Code, w.Body.String())
 	}
-	if w := request((&piAttempt{device: p}).handler(cfg, func(*http.Request) bool { return true }), "GET", token); w.Code != 404 {
+	if w := request((&piAttempt{device: p}).handler(cfg, func(*http.Request) bool { return true }, nil), "GET", token); w.Code != 404 {
 		t.Fatalf("restart: %d", w.Code)
 	}
 	if w := request(h, "DELETE", token); w.Code != 200 || !strings.Contains(w.Body.String(), `"state":"unknown"`) {

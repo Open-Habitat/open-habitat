@@ -2865,15 +2865,33 @@ h1[tabindex="-1"]:focus {
 .ah-conversation-frame .ah-composer-entry textarea:placeholder-shown {
   height: var(--ah-composer-rest-height);
 }
-.ah-conversation-frame .ah-composer-entry > [data-ah-primitive="button"] {
+/* Disabled buttons are wrapped in a stack. Anchor both forms to the editor,
+   not the variable-height disabled reason below it. */
+.ah-conversation-frame .ah-composer-entry > .ah-button-stack {
+  align-self: start;
+  margin-top: calc((var(--ah-composer-rest-height) - 36px) / 2);
+}
+.ah-conversation-frame .ah-composer-entry > [data-ah-primitive="button"],
+.ah-conversation-frame
+  .ah-composer-entry
+  > .ah-button-stack
+  > [data-ah-primitive="button"] {
   width: 36px;
   height: 36px;
   min-height: 0;
   border-radius: 50%;
   padding: var(--ah-s2);
-  margin-bottom: 4px;
+  align-self: start;
+  margin-top: calc((var(--ah-composer-rest-height) - 36px) / 2);
+  margin-bottom: 0;
 }
-.ah-conversation-frame .ah-composer-entry > [data-ah-primitive="button"] svg {
+.ah-conversation-frame
+  .ah-composer-entry
+  > .ah-button-stack
+  > [data-ah-primitive="button"] {
+  margin-top: 0;
+}
+.ah-conversation-frame .ah-composer-entry [data-ah-primitive="button"] svg {
   width: 18px;
   height: 18px;
 }
@@ -3142,6 +3160,7 @@ h1[tabindex="-1"]:focus {
   overflow-y: auto;
   resize: none;
 }
+/* biome-ignore lint/style/noDescendingSpecificity: The preview controls intentionally override the conversation button geometry. */
 .ah-agent-controls .ah-composer-entry > [data-ah-primitive="button"] {
   width: 36px;
   height: 36px;

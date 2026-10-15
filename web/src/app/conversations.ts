@@ -17,7 +17,7 @@ export type Status = Session & {
   event_cursor: number;
   events: unknown[];
   event_loss: boolean;
-  auth_error?: "" | "pi_auth_failed";
+  auth_error?: "" | "pi_auth_failed" | "pi_model_unsupported";
   native_history: string;
   continuation:
     | "eligible"
@@ -319,7 +319,8 @@ export function parseStatus(v: unknown, id: string): Status {
     typeof v.event_loss !== "boolean" ||
     (v.auth_error !== undefined &&
       v.auth_error !== "" &&
-      v.auth_error !== "pi_auth_failed") ||
+      v.auth_error !== "pi_auth_failed" &&
+      v.auth_error !== "pi_model_unsupported") ||
     !["missing", "unavailable", "present"].includes(String(v.native_history)) ||
     !["eligible", "writer_present", "read_only_history", "unproven"].includes(
       String(v.continuation),

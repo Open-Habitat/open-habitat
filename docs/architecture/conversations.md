@@ -99,7 +99,11 @@ and associates completion with a saved assistant entry. If that entry cannot
 be verified, completion remains unknown. This establishes that the turn
 settled, not the quality of its result. Authentication failures are reported
 with a fixed status code so the browser can offer Pi sign-in without replaying
-the message. [Events and recovery](events-and-recovery.md) describes how live
+the message. A completed, natively verified device sign-in clears that failure
+from the user's live controllers. Pi's unsupported-model error is classified
+separately: signing in again cannot change account entitlement or the model
+selected in a running Pi session, so the browser directs the person to change
+Pi's native default and start a new conversation instead. [Events and recovery](events-and-recovery.md) describes how live
 updates and saved history reach the browser and recover after a disconnection.
 
 The implementation also displays pending Pi extension questions and provides

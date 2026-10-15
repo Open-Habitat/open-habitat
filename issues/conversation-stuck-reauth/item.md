@@ -21,7 +21,7 @@ Jari's decision: if the cause is an expired or failed provider login, **implemen
 Investigate the actual cause first. Read the test server's daemon and Pi state for Jari's user, read-only, through the documented operator access (Fleetrepo `infra/open-habitat-test/`). The cause may also be a host bug in the continuation or status path. Fix what is found.
 
 ## Acceptance Criteria
-- [ ] Root cause recorded in result.md with evidence (redacted: no tokens, no private conversation content).
-- [ ] If auth: an expired or invalid provider login is detected and shown as such, with a working re-login flow (Go tests plus a browser journey with a fixture that expires the credential).
-- [ ] "Jatka keskustelua" activates a resumable conversation, or explains truthfully once why not. No repeated notices. Composer and Lähetä are aligned (element rectangles).
-- [ ] result.md has a "Decisions for later review" section.
+- [x] Root cause recorded in result.md with evidence (redacted: no tokens, no private conversation content).
+- [x] If auth: an expired or invalid provider login is detected and shown as such, with a working re-login flow (Go tests plus a browser journey with a fixture that expires the credential).
+- [x] "Jatka keskustelua" activates a resumable conversation, or explains truthfully once why not. No repeated notices. Composer and Lähetä are aligned (element rectangles).
+- [x] result.md has a "Decisions for later review" section.

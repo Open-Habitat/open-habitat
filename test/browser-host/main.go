@@ -166,6 +166,7 @@ esac
 	peers := map[string]int{}
 	var servers []*http.Server
 	var attempts []*atomic.Value
+	var clearAuth []func()
 	var devices []*daemon.PiDevice
 	var configs []transport.Config
 	var trusters []func(*http.Request) bool
@@ -326,7 +327,10 @@ esac
 		mux.Handle(daemon.RepoObservePath, daemon.RepoObserveHandlerWithFixtureGit(cfg, trusted, home, gitProgram))
 		mux.Handle("GET /api/v1/onboarding/pi/status", daemon.PiStatusHandler(cfg, trusted, status))
 		attempt := &atomic.Value{}
-		attempt.Store(daemon.PiAttemptHandler(cfg, trusted, device))
+		current := &atomic.Value{}
+		clear := func() { current.Load().(*daemon.ConversationController).ClearPiAuthFailures() }
+		attempt.Store(daemon.PiAttemptHandler(cfg, trusted, device, clear))
+		clearAuth = append(clearAuth, clear)
 		attempts = append(attempts, attempt)
 		devices = append(devices, device)
 		configs = append(configs, cfg)
@@ -341,7 +345,6 @@ esac
 			return daemon.ConversationHandlerWithFixtureRuntime(ctx, cfg, trusted, status, home, &core.PiRuntimeConfig{Node: self, Entry: "/synthetic/pi/dist/index.js", Manifest: "/synthetic/pi/package.json"}), cancel
 		}
 		conversations, cancel := newConversations()
-		current := &atomic.Value{}
 		current.Store(conversations)
 		conversationHandlers = append(conversationHandlers, current)
 		conversationCancels = append(conversationCancels, cancel)
@@ -357,7 +360,7 @@ esac
 		mux.Handle("/api/v1/conversations", serveConversation)
 		mux.Handle("/api/v1/conversations/", serveConversation)
 		mux.Handle("/api/v1/events", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if scenario.Load() != "ready" && scenario.Load() != "pi-deltas" && scenario.Load() != "pi-typed" && scenario.Load() != "pi-visual-hold" && scenario.Load() != "pi-auth-failure" && scenario.Load() != "pi-recap" {
+			if scenario.Load() != "ready" && scenario.Load() != "pi-deltas" && scenario.Load() != "pi-typed" && scenario.Load() != "pi-visual-hold" && scenario.Load() != "pi-auth-failure" && scenario.Load() != "pi-model-unsupported" && scenario.Load() != "pi-recap" {
 				http.NotFound(w, r) // Fault scenarios exercise the HTTP fallback.
 				return
 			}
@@ -377,7 +380,7 @@ esac
 				return
 			case "delay":
 				time.Sleep(650 * time.Millisecond)
-			case "ready", "pi-deltas", "pi-typed", "pi-visual-hold", "pi-auth-failure", "pi-recap":
+			case "ready", "pi-deltas", "pi-typed", "pi-visual-hold", "pi-auth-failure", "pi-model-unsupported", "pi-recap":
 				current.Load().(*daemon.ConversationController).FixtureSnapshot().ServeHTTP(w, r)
 				return
 
@@ -558,7 +561,7 @@ esac
 			case "/fixture/scenario":
 				name := r.URL.Query().Get("value")
 				switch name {
-				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "pi-blocked", "pi-onboarding", "pi-deltas", "pi-typed", "pi-visual-hold", "pi-auth-failure", "pi-recap":
+				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "pi-blocked", "pi-onboarding", "pi-deltas", "pi-typed", "pi-visual-hold", "pi-auth-failure", "pi-model-unsupported", "pi-recap":
 					// Read by the fake Pi child at turn start. Switching back to ready
 					// keeps subsequent lab cases on the old, faster fixture.
 					if err := os.Remove(filepath.Join(tmp, "fakepi-visual-phase")); err != nil && !os.IsNotExist(err) {
@@ -585,7 +588,7 @@ esac
 						for i, attempt := range attempts {
 							previous := devices[i]
 							devices[i] = &daemon.PiDevice{Home: previous.Home, Node: previous.Node, Entry: previous.Entry, Manifest: previous.Manifest, FixtureHome: previous.FixtureHome}
-							attempt.Store(daemon.PiAttemptHandler(configs[i], trusters[i], devices[i]))
+							attempt.Store(daemon.PiAttemptHandler(configs[i], trusters[i], devices[i], clearAuth[i]))
 						}
 					}
 				default:
@@ -607,7 +610,7 @@ esac
 			case "/fixture/pi-restart":
 				// Replace ephemeral leases as if each synthetic daemon restarted.
 				for i, attempt := range attempts {
-					attempt.Store(daemon.PiAttemptHandler(configs[i], trusters[i], devices[i]))
+					attempt.Store(daemon.PiAttemptHandler(configs[i], trusters[i], devices[i], clearAuth[i]))
 				}
 				w.WriteHeader(204)
 			case "/fixture/pi-state":

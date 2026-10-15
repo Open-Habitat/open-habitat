@@ -289,9 +289,13 @@ export function AccountSettings({
                   ? "Tarkistetaan palvelimen Pi-kirjautumistietoja."
                   : "Palvelimen Pi-kirjautumistietojen tilaa ei tiedetä. Yhteyttä ei ole vahvistettu."}
           </p>
-          {piState === "missing" && onPiSignIn ? (
+          {onPiSignIn ? (
             <Button
-              label="Kirjaudu Pi:hin"
+              label={
+                piState === "missing"
+                  ? "Kirjaudu Pi:hin"
+                  : "Kirjaudu Pi:hin uudelleen"
+              }
               variant="secondary"
               onPress={onPiSignIn}
             />

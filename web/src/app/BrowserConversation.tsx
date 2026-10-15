@@ -909,15 +909,32 @@ export function BrowserConversation({
                 )?.name
               }
             />
-            {current?.auth_error === "pi_auth_failed" ? (
+            {!statusStale && current?.auth_error === "pi_auth_failed" ? (
               <InlineNotice
                 title="Kielimallikirjautuminen ei ole kunnossa"
-                description="Kirjaudu OpenAI-tilillesi uudelleen ja jatka sitten keskustelua. Viestiä ei lähetetä automaattisesti uudelleen."
+                description="Kirjaudu OpenAI-tilillesi uudelleen ja jatka sitten keskustelua. Viestiä ei lähetetä automaattisesti uudelleen; luonnos säilyy."
                 tone="danger"
                 actions={[
                   {
-                    label: "Kirjaudu",
-                    onPress: () => navigate("/workspaces?pi_sign_in=1"),
+                    label: "Kirjaudu uudelleen",
+                    onPress: () =>
+                      navigate(
+                        `/workspaces/${workspace.workspace_id}?conversation=${encodeURIComponent(id ?? "")}&pi_sign_in=1`,
+                      ),
+                  },
+                ]}
+              />
+            ) : null}
+            {!statusStale && current?.auth_error === "pi_model_unsupported" ? (
+              <InlineNotice
+                title="Valittu kielimalli ei ole käytettävissä"
+                description="Pi ilmoitti, ettei valittu malli ole tuettu tällä ChatGPT-tilillä. Kirjautuminen uudelleen ei ratkaise tätä. Vaihda Pi:n oletusmalli tilillesi sopivaksi ja aloita uusi keskustelu. Tämän keskustelun luonnos säilyy."
+                tone="danger"
+                actions={[
+                  {
+                    label: "Uusi keskustelu",
+                    onPress: () =>
+                      navigate(`/workspaces/${workspace.workspace_id}`),
                   },
                 ]}
               />
@@ -927,16 +944,30 @@ export function BrowserConversation({
                 title="Keskustelun tila vanhentui"
                 description="Näytetään viimeisin tunnettu historia. Tarkista tila ennen ohjaamista."
                 tone="warning"
+                actions={[
+                  {
+                    label: "Tarkista tila",
+                    onPress: () => {
+                      if (
+                        continuation &&
+                        continuation !== "uncertain" &&
+                        continuation !== "pending"
+                      )
+                        setContinuation(undefined);
+                      void refresh(true, true);
+                    },
+                  },
+                ]}
               />
             ) : null}
-            {journalOffline ? (
+            {journalOffline && !statusStale ? (
               <InlineNotice
                 title="Tapahtumayhteys katkesi"
                 description="Tila ja natiivi historia tarkistetaan uudelleen. Viestiä ei lähetetä uudelleen."
                 tone="warning"
               />
             ) : null}
-            {showMissedEvents(!!live?.truncated, current) ? (
+            {!statusStale && showMissedEvents(!!live?.truncated, current) ? (
               <InlineNotice
                 title="Tapahtumia jäi väliin"
                 description="Live-tapahtumien häntä ei ole täydellinen. Tarkista natiivi historia."
@@ -949,12 +980,12 @@ export function BrowserConversation({
               </p>
             ) : null}
           </ConversationStream>
-          {ambiguous ||
-          statusStale ||
-          current?.state === "uncertain" ||
-          historyError ||
-          (continuation && !["ready", "pending"].includes(continuation)) ||
-          details ? (
+          {!statusStale &&
+          (ambiguous ||
+            current?.state === "uncertain" ||
+            historyError ||
+            (continuation && !["ready", "pending"].includes(continuation)) ||
+            details) ? (
             <Button
               label="Tarkista keskustelun tila"
               variant="quiet"
@@ -995,7 +1026,9 @@ export function BrowserConversation({
               onClearAll={() => void clearNativeQueue()}
             />
           ) : null}
-          <div className="ah-conversation-notices">{notices}</div>
+          <div className="ah-conversation-notices">
+            {statusStale ? null : notices}
+          </div>
           {!recapDismissed &&
             (recapCurrent?.recap ||
               recapBusy ||

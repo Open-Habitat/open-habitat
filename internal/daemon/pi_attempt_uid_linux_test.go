@@ -151,7 +151,7 @@ func servePiUID(t *testing.T) {
 	trusted := func(r *http.Request) bool { return r.Context().Value("peer") == 21003 }
 	device := &daemon.PiDevice{Home: home, Node: filepath.Join(home, "fake-node"), Entry: "/synthetic/entry", Manifest: "/synthetic/manifest"}
 	mux := http.NewServeMux()
-	mux.Handle("/api/v1/onboarding/pi/attempt", daemon.PiAttemptHandler(cfg, trusted, device))
+	mux.Handle("/api/v1/onboarding/pi/attempt", daemon.PiAttemptHandler(cfg, trusted, device, nil))
 	mux.Handle("/api/v1/snapshot", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !trusted(r) {
 			w.WriteHeader(403)

@@ -271,6 +271,11 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 		emit(map[string]any{"type": "agent_end"})
 		return
 	}
+	if strings.TrimSpace(string(mode)) == "pi-model-unsupported" {
+		emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant", "stopReason": "error", "errorMessage": "The model gpt-example is not supported with this ChatGPT account secret=synthetic-secret"}})
+		emit(map[string]any{"type": "agent_end"})
+		return
+	}
 	start := map[string]any{"type": "tool_execution_start", "toolName": "bash", "toolCallId": callID}
 	if stream {
 		start["args"] = map[string]any{"command": command}

@@ -12,7 +12,7 @@ const entry = join(pkg,'dist/index.js'), manifest=join(pkg,'package.json');
 const mock = join(here,'mock.mjs');
 async function run(home, action, options = {}) {
   const proc=spawn(process.execPath,['--import',mock,helper,entry,manifest,action],{
-    env:{HOME:home, PATH:process.env.PATH, PI_OFFLINE:'1'}, stdio:['pipe','pipe','pipe']});
+    env:{HOME:home, PATH:process.env.PATH, PI_OFFLINE:'1', ...options.env}, stdio:['pipe','pipe','pipe']});
   // Keep parent lifetime pipe open until the helper exits.
   let stdout='',stderr='';
   for (const [stream, append] of [[proc.stdout,s=>stdout+=s],[proc.stderr,s=>stderr+=s]]) stream.on('data', append);
@@ -32,6 +32,15 @@ test('native device-code exchange, native file and redacted frames under disposa
     assert.equal((await stat(join(home,'.pi/agent/auth.json'))).mode&0o777,0o600);
     assert.ok(!login.stdout.includes('SYNTHETIC-REFRESH-SECRET'));
     assert.ok(!login.stdout.includes('synthetic-code'));
+    assert.deepEqual((await run(home,'status')).frames,[{type:'status',state:'usable'}]);
+    const expired=JSON.parse(auth);
+    expired['openai-codex'].expires=1;
+    await writeFile(join(home,'.pi/agent/auth.json'),JSON.stringify(expired),{mode:0o600});
+    const failure=await run(home,'status',{env:{MOCK_REFRESH_FAIL:'1'}});
+    assert.deepEqual(failure.frames,[{type:'unknown'}]);
+    assert.ok(!failure.stdout.includes('SYNTHETIC-REFRESH-SECRET'));
+    // Pi's login, not the host, repairs the native credential.
+    assert.equal((await run(home,'login')).code,0);
     assert.deepEqual((await run(home,'status')).frames,[{type:'status',state:'usable'}]);
     const malformed=JSON.parse(auth);
     malformed['openai-codex'].access='';

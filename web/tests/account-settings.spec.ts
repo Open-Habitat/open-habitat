@@ -169,8 +169,8 @@ test("@account-settings Pi credentials change while the page is open; uncertaint
   await page.getByRole("menuitem", { name: "Asetukset" }).click();
   await expect(page.getByText("Pi-tilaa ei voitu vahvistaa")).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Kirjaudu Pi:hin" }),
-  ).toHaveCount(0);
+    page.getByRole("button", { name: "Kirjaudu Pi:hin uudelleen" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Takaisin" }).click();
   await page.unrouteAll();
   await page.route("**/api/v1/onboarding/pi/status", (route) =>

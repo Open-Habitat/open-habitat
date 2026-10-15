@@ -66,10 +66,10 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 
 	mux.Handle(RepoPublishPath, RepoPublishHandler(cfg, server.TrustedPeer))
 	mux.Handle(RepoDisconnectPath, RepoDisconnectHandler(cfg, server.TrustedPeer, adapter))
-	mux.Handle("/api/v1/onboarding/pi/attempt", PiAttemptHandler(cfg, server.TrustedPeer, pi))
 	journal := newEventJournal()
 	controller := newConversationController(ctx, cfg, runtime, server.TrustedPeer, piStatus)
 	controller.journal = journal
+	mux.Handle("/api/v1/onboarding/pi/attempt", PiAttemptHandler(cfg, server.TrustedPeer, pi, controller.ClearPiAuthFailures))
 	mux.Handle(WorkspacePath, WorkspaceHandlerWithArchive(cfg, server.TrustedPeer, controller))
 	go watchNativeHistory(ctx, cfg, journal, nil)
 	mux.Handle(SnapshotPath, snapshotHandlerWithController(cfg, server.TrustedPeer, Discover, nativeSessions, cfg.Home, adapter.Status, journal, controller))

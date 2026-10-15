@@ -66,6 +66,18 @@ function setup() {
 }
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 describe("recent conversation windows", () => {
+  it("drops the pre-login controller status so reopening reads native state", () => {
+    const { store } = setup();
+    const agent = id(14);
+    store.applyStatus(agent, {
+      agent_id: agent,
+      state: "idle",
+      auth_error: "pi_auth_failed",
+    } as never);
+    expect(store.status(agent)?.auth_error).toBe("pi_auth_failed");
+    store.discardStatus(agent);
+    expect(store.status(agent)).toBeUndefined();
+  });
   it("keeps confirmed missing history empty when a speculative tail 404 races status", async () => {
     let reject!: (error: Error) => void;
     const pager = {

@@ -120,6 +120,17 @@ export class ConversationStore {
   }
   readMetadata = (): Metadata => this.metadata;
   status = (id: string): Status | undefined => this.metadata.statuses.get(id);
+  // A native credential change invalidates the cached controller status.
+  // The next view must read the daemon again, not replay the pre-login error.
+  discardStatus(id: string) {
+    this.statusVersions.set(id, (this.statusVersions.get(id) ?? 0) + 1);
+    const statuses = new Map(this.metadata.statuses);
+    statuses.delete(id);
+    this.metadata = { ...this.metadata, statuses };
+    this.metaListeners.forEach((listener) => {
+      listener();
+    });
+  }
   statusStale = (id: string): boolean => this.metadata.staleStatuses.has(id);
   position = (id: string) => this.positions.get(id);
   toolExpansion = (id: string, callId: string) => ({

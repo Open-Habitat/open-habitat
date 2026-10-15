@@ -27,11 +27,11 @@ var sessionToken = regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`)
 
 // PiAttemptHandler binds one ephemeral attempt lease to a daemon instance.
 // The caller must mount the returned handler only on its trusted peer socket.
-func PiAttemptHandler(cfg transport.Config, trusted func(*http.Request) bool, device *PiDevice) http.Handler {
-	return (&piAttempt{device: device}).handler(cfg, trusted)
+func PiAttemptHandler(cfg transport.Config, trusted func(*http.Request) bool, device *PiDevice, onAuthenticated func()) http.Handler {
+	return (&piAttempt{device: device}).handler(cfg, trusted, onAuthenticated)
 }
 
-func (a *piAttempt) handler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
+func (a *piAttempt) handler(cfg transport.Config, trusted func(*http.Request) bool, onAuthenticated func()) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := "/api/v1/onboarding/pi/attempt"
 		if (r.Method != "GET" && r.Method != "POST" && r.Method != "DELETE") || r.RequestURI != path || r.URL.RawQuery != "" || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || !historyAuthorized(cfg, trusted, r) {
@@ -127,6 +127,9 @@ func (a *piAttempt) handler(cfg transport.Config, trusted func(*http.Request) bo
 			result.Attempt.UserCode = a.code
 		}
 		a.mu.Unlock()
+		if result.Attempt.State == "completed" && state == "usable" && onAuthenticated != nil {
+			onAuthenticated()
+		}
 		historyJSON(w, result)
 	})
 }

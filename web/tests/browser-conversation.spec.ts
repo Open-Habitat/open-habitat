@@ -1880,7 +1880,13 @@ test("@browser-conversation model authentication error offers sign-in without le
   expect(await page.locator("main").innerText()).not.toContain(
     "synthetic-secret",
   );
-  await page.getByRole("button", { name: "Kirjaudu", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .fill("säilyvä luonnos");
+  const conversationURL = new URL(page.url());
+  await page
+    .getByRole("button", { name: "Kirjaudu uudelleen", exact: true })
+    .click();
   await expect(
     page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
   ).toBeVisible();
@@ -1890,7 +1896,37 @@ test("@browser-conversation model authentication error offers sign-in without le
   await expect(
     page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
   ).toHaveCount(0, { timeout: 12000 });
-  await expect(page.getByText("ordinary-dir").first()).toBeVisible();
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("conversation"))
+    .toBe(conversationURL.searchParams.get("conversation"));
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toHaveValue("säilyvä luonnos");
+  await expect(
+    page.getByText("Kielimallikirjautuminen ei ole kunnossa"),
+  ).toHaveCount(0);
+});
+
+test("@browser-conversation unsupported account model is not mistaken for expired login", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page.request.get("/fixture/scenario?value=pi-model-unsupported");
+  await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("kokeilu");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(
+    page.getByText("Valittu kielimalli ei ole käytettävissä"),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Kirjaudu uudelleen" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Uusi keskustelu" }),
+  ).toBeVisible();
+  expect(await page.locator("main").innerText()).not.toContain(
+    "synthetic-secret",
+  );
 });
 
 test("@browser-conversation cold open waits for status before reading history", async ({

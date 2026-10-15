@@ -168,7 +168,7 @@ describe("account presentation", () => {
     expect(onClose).toHaveBeenCalledOnce();
     expect(onConfirm).not.toHaveBeenCalled();
   });
-  it("distinguishes native Pi credential evidence from OpenAI identity and offers sign-in only when missing", () => {
+  it("distinguishes native Pi credential evidence from OpenAI identity and allows re-login", () => {
     const signIn = vi.fn();
     const { rerender } = render(
       <AccountSettings
@@ -179,9 +179,10 @@ describe("account presentation", () => {
     );
     expect(screen.getByText("Pi-tunnukset käytettävissä")).toBeTruthy();
     expect(screen.getByText(/Tämä ei vahvista OpenAI-tiliä/)).toBeTruthy();
-    expect(
-      screen.queryByRole("button", { name: "Kirjaudu Pi:hin" }),
-    ).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Kirjaudu Pi:hin uudelleen" }),
+    );
+    expect(signIn).toHaveBeenCalledOnce();
     rerender(
       <AccountSettings
         piState="missing"
@@ -191,7 +192,7 @@ describe("account presentation", () => {
     );
     expect(screen.getByText("Pi-kirjautuminen puuttuu")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Kirjaudu Pi:hin" }));
-    expect(signIn).toHaveBeenCalledOnce();
+    expect(signIn).toHaveBeenCalledTimes(2);
     for (const piState of ["unknown", "unavailable", "checking"] as const) {
       rerender(
         <AccountSettings
@@ -201,8 +202,8 @@ describe("account presentation", () => {
         />,
       );
       expect(
-        screen.queryByRole("button", { name: "Kirjaudu Pi:hin" }),
-      ).toBeNull();
+        screen.getByRole("button", { name: "Kirjaudu Pi:hin uudelleen" }),
+      ).toBeTruthy();
       expect(screen.queryByText("Pi-tunnukset käytettävissä")).toBeNull();
     }
     expect(screen.getByText("Tarkistetaan Pi-tilaa")).toBeTruthy();
