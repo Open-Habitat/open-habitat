@@ -3,11 +3,13 @@ created: 2026-10-15
 updated: 2026-10-15
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 lane: web
 lane_seq: 37
 collision: [web/]
+closed: 2026-10-15
+closed_by: claude
 ---
 
 # Archive a conversation from its home-page card
