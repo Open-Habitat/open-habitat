@@ -92,7 +92,9 @@ export function ConversationTimeline({
                 : "Viimeisimpään"
             }
             variant="secondary"
-            trailingIcon="down"
+            ariaLabel={newContentCount > 0 ? undefined : "Viimeisimpään"}
+            icon={newContentCount > 0 ? undefined : "down"}
+            trailingIcon={newContentCount > 0 ? "down" : undefined}
             presentation="floating"
             onPress={onJumpToLatest}
           />

@@ -177,6 +177,31 @@ test("@browser-conversation saved assistant turn exposes bash command and folds 
   ).toBeVisible();
 });
 
+test("@browser-conversation latest action tracks expanded height and centers its arrow", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1500 });
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("pitkä tuloste");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(page.getByText("Selvä. Kysyit:", { exact: false })).toBeVisible({ timeout: 30000 });
+  await page.reload();
+  const bash = page.getByRole("button", { name: /bash.*valmis/ });
+  await expect(bash).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("button", { name: "Viimeisimpään" })).toHaveCount(0);
+  await bash.click();
+  await page.getByRole("button", { name: "Kaikki rivit" }).evaluate((button: HTMLButtonElement) => button.click());
+  const latest = page.getByRole("button", { name: "Viimeisimpään" });
+  await expect(latest).toBeVisible();
+  const alignment = await latest.evaluate((button) => {
+    const outer = button.getBoundingClientRect();
+    const icon = button.querySelector("svg")!.getBoundingClientRect();
+    return Math.abs((outer.left + outer.right - icon.left - icon.right) / 2);
+  });
+  expect(alignment).toBeLessThanOrEqual(0.5);
+  await bash.click();
+  await expect(latest).toHaveCount(0);
+});
+
 test("@browser-conversation tool headers keep the name and ellipsize long targets", async ({
   page,
 }) => {

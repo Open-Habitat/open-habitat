@@ -20,5 +20,5 @@ Jari, pilot.65 (2026-10-15), the "Viimeisimpään" (jump to latest) button:
 Visibility must follow content height changes (expand/collapse, streaming, images loading), not only scroll events. The arrow is centred. The button's overall design is queued for its own prototype round (TODO.md).
 
 ## Acceptance Criteria
-- [ ] Expanding blocks past the viewport shows the button without scrolling; collapsing until the end is visible hides it (browser test).
-- [ ] The icon is centred within 0.5 px (element rectangles).
+- [x] Expanding blocks past the viewport shows the button without scrolling; collapsing until the end is visible hides it (browser test).
+- [x] The icon is centred within 0.5 px (element rectangles).

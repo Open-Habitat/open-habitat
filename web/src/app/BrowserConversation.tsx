@@ -185,6 +185,25 @@ export function BrowserConversation({
     setUnseen,
   });
   useEffect(() => {
+    const viewport = feed.current;
+    if (!viewport) return;
+    const update = () => {
+      // Layout changes do not necessarily dispatch scroll (disclosures, images,
+      // streaming text or a resized composer can all change the visible end).
+      const away =
+        viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight >=
+        60;
+      setAwayFromLatest(away);
+      if (!away) wasAtBottom.current = true;
+      else wasAtBottom.current = false;
+    };
+    const observer = new ResizeObserver(update);
+    observer.observe(viewport);
+    for (const child of viewport.children) observer.observe(child);
+    update();
+    return () => observer.disconnect();
+  }, [feed, id, opened, entries.length, setAwayFromLatest, wasAtBottom]);
+  useEffect(() => {
     if (!finishedInBackground) return;
     const old = document.title;
     document.title = `Pi tarvitsee huomiota · ${old}`;
