@@ -3,12 +3,13 @@ created: 2026-10-15
 updated: 2026-10-15
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: agents
 lane_seq: 1
 collision: [docs/decisions/]
 preparation: ready
+closed: 2026-10-15
 ---
 
 # Decide how Claude runs with a subscription
@@ -43,5 +44,11 @@ recommendation he can accept or redirect; implementation is a later issue.
 
 ## Acceptance Criteria
 
-- [ ] `analysis.md` in this folder answers the questions above with sources.
-- [ ] A draft ADR under `docs/decisions/` with status "proposed", awaiting Jari.
+- [x] `analysis.md` in this folder answers the questions above with sources.
+- [x] A draft ADR under `docs/decisions/` with status "proposed", awaiting Jari.
+
+## Resolution
+
+### 2026-10-15T17:14:18Z · @issuectl
+
+Research and proposed ADR delivered; Anthropic approval required for hosted Claude subscription use, and OpenAI hosted authentication needs clarification. Decision remains with Jari.

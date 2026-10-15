@@ -23,3 +23,4 @@ and implementation work belong in issues.
 | [ADR 0013](adr-0013-service-logging.md) | Consistent, readable service logs on stderr/journald, using existing IDs when available |
 | [ADR 0014](adr-0014-open-test-admission.md) | The disposable test installation admits any verified GitHub account without Cloudflare Access |
 | [ADR 0015](adr-0015-browser-code-highlighting.md) | Accepted: highlight.js for on-demand browser code highlighting |
+| [ADR 0016](adr-0016-native-harnesses-and-subscription-authorization.md) | Proposed: run separate native harnesses; subscription use requires provider authorization |

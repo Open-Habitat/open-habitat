@@ -94,3 +94,6 @@ groups:
       - slug: decisions/adr-0015-browser-code-highlighting
         title: ADR 0015 — Browser code highlighting (proposed)
         desc: Compare browser syntax highlighters and propose highlight.js pending approval.
+      - slug: decisions/adr-0016-native-harnesses-and-subscription-authorization
+        title: ADR 0016 — Native harnesses (proposed)
+        desc: Proposed native harness adapters; subscription support awaits provider authorization and Jari's decision.
