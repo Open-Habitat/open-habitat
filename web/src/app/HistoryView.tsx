@@ -605,6 +605,7 @@ function OrderedBlocks({
                 .join("\n"),
             )}
             initiallyExpanded={false}
+            keepMounted={block.tool_name === "bash"}
             expansion={toolExpansion?.(block.tool_call_id)}
             targetText={
               block.tool_name === "bash"

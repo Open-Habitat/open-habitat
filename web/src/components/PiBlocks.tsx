@@ -10,9 +10,11 @@ export function PiToolUse({
   children,
   initiallyExpanded = name === "bash" && state !== "forming",
   expansion,
+  keepMounted = false,
 }: {
   name: string;
   initiallyExpanded?: boolean;
+  keepMounted?: boolean;
   expansion?: { get: () => boolean | undefined; set: (value: boolean) => void };
   targetText?: string;
   stat?: string;
@@ -55,6 +57,7 @@ export function PiToolUse({
           state === "failed" ? "Pi ilmoitti työkalun virheestä." : undefined
         }
         expanded={expanded}
+        keepMounted={keepMounted}
         onToggle={() => {
           expansion?.set(!expanded);
           setExpanded(!expanded);

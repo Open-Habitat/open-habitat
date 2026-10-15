@@ -158,6 +158,7 @@ test("@browser-conversation saved assistant turn exposes bash command and folds 
   await page.reload();
   const bash = turn.getByRole("button", { name: /bash.*valmis/ });
   await expect(bash).toHaveAttribute("aria-expanded", "false");
+  await expect(bash.locator(".ah-tool-target")).toHaveText("ls");
   await bash.click();
   await expect(turn.getByText("$ ls")).toBeVisible();
   await expect(

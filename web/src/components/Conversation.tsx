@@ -661,6 +661,7 @@ export function ToolRow({
   durationText,
   expanded,
   errorSummary,
+  keepMounted = false,
   onToggle,
   children,
 }: {
@@ -672,6 +673,7 @@ export function ToolRow({
   durationText?: string;
   expanded: boolean;
   errorSummary?: string;
+  keepMounted?: boolean;
   onToggle: () => void;
   children?: ReactNode;
 }) {
@@ -707,8 +709,8 @@ export function ToolRow({
         />
         {durationText ? <small>{durationText}</small> : null}
       </DisclosureButton>
-      {expanded ? (
-        <div className="ah-disclosure-panel">
+      {expanded || keepMounted ? (
+        <div className="ah-disclosure-panel" hidden={!expanded}>
           {errorSummary ? (
             <InlineNotice
               title="Työkalu epäonnistui"
