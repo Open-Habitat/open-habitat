@@ -159,3 +159,18 @@ The archive failure's trace recorded a 409 response with no available body (`siz
 
 Changed-tree validation with `OH_PORT_BASE=55000`, `TMPDIR=/var/tmp`, cached Chromium, two browser workers: both focused cases passed 10/10 each (`--repeat-each=10`, 20/20, 46.7 s). `npm run typecheck --prefix web`, `lint`, `format:check`, `git diff --check`, and project-view validation passed. No full gate, distinct-UID or live Pi proof was run in this worker; the earlier gate remains failed evidence rather than a passing receipt.
 The adjacent once-only send, explicit restart, writer-conflict refusal, lost accepted continuation reply, late status/reply, stale recovery, lost send acknowledgement and daemon-restart cases passed 8/8 (17.6 s) in a separate focused run with the same port/cache settings. These checks do not manufacture a `control_uncertain` response in every repetition; the observed gate trace establishes that classification, while the changed test's retry branch remains conditional on a definite upstream code.
+
+## Later gate-speed disposition (2026-10-15)
+
+The case-by-case audit in [quality-audit.md](quality-audit.md) removed redundant
+browser journeys, moved layout-only proof to a fixture, shortened one
+post-settlement synthetic turn, and kept distinct native, UID and uncertain
+write tests. The second cache-only offline `npm ci` was removed; locked
+installation remains. Focused passing case timings show savings locally, but
+case-seconds cannot be added as gate wall time. A serial heavy-phase pilot is
+recorded in [phase-schedule.md](phase-schedule.md): two clean no-reuse serial
+gates passed on different changed trees in 238 s and 257 s, while parallel
+comparators on those same trees failed, so there is still **no passing,
+comparable before/after gate speedup**. The opt-in scheduler remains opt-in;
+the under-60-second target remains unmet. Intermittent native writer census
+uncertainty is fail-closed and was not removed to make a benchmark green.

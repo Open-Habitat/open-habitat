@@ -600,3 +600,18 @@ Final edited-tree repeat: the late-reply case passed 10/10 in 22.6 s at the
 same port base and two-worker limit. Neither focused run demonstrates the
 full-gate behavior under serial-gate load, nor establishes an elapsed-time
 speedup; keeping the case deliberately retains its per-case host cost.
+
+## Identity-boundary finding during the speed pass
+
+The parallel comparator exposed a real cross-tab browser composition defect,
+not a duplicate test: a late Alice Pi-onboarding response could leave Alice's
+account label visible alongside Bob's snapshot. The isolated 20-repeat probe
+and preserved trace are recorded in
+[security-race-analysis.md](security-race-analysis.md); the contained client
+fix (`f79a482b`) fences session profile and snapshot binding. Its first
+changed-tree serial gate then caught loss of the authenticated account menu
+when the snapshot source was offline. That regression was corrected in
+`0a6423fd`, preserving the menu only for the currently validated session;
+the five affected lab cases and the cross-user focused repeats passed. The
+clean serial gate on `0a6423fd` passed without phase reuse (257 s). These
+changes protect correctness, not a demonstrated test-speed improvement.
