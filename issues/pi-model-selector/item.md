@@ -3,7 +3,7 @@ created: 2026-10-15
 updated: 2026-10-15
 type: feature
 reporter: jari
-status: open
+status: in-progress
 priority: high
 related: ['@conversation-stuck-reauth']
 lane: reauth
