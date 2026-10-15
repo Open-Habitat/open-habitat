@@ -51,7 +51,9 @@ func TestPiModelsNativeDefault(t *testing.T) {
 		t.Fatal(err)
 	}
 	previous, err := p.models(context.Background(), "")
-	if err != nil || previous.DefaultProvider == nil || *previous.DefaultProvider != "anthropic" || previous.DefaultModel == nil || *previous.DefaultModel != "old" { t.Fatalf("lost other provider's default: %+v, %v", previous, err) }
+	if err != nil || previous.DefaultProvider == nil || *previous.DefaultProvider != "anthropic" || previous.DefaultModel == nil || *previous.DefaultModel != "old" {
+		t.Fatalf("lost other provider's default: %+v, %v", previous, err)
+	}
 	chosen, err := p.models(context.Background(), model)
 	if err != nil {
 		t.Fatal(err)

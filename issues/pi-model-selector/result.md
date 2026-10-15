@@ -1,6 +1,6 @@
 # Pi model selection
 
-The browser reads Pi 0.85.1's OpenAI Codex model availability and the global default through the mapped-user daemon. Choosing a model calls Pi's `SettingsManager.setDefaultModelAndProvider`, flushes, and reads the native settings back. The same selector appears in account settings and the conversation details; the unsupported-model notice opens the details. A newly started conversation reads the selected global default through Pi. No host model setting is stored.
+The browser reads Pi 0.85.1's OpenAI Codex model availability and the global default through the mapped-user daemon. Choosing a model calls Pi's `SettingsManager.setDefaultModelAndProvider`, flushes, and reads the native settings back. The same selector appears in account settings and, on demand, the conversation details; the unsupported-model notice opens the details with the choice expanded. A newly started conversation reads the selected global default through Pi. No host model setting is stored.
 
 ## Decisions for later review
 
@@ -11,4 +11,4 @@ The browser reads Pi 0.85.1's OpenAI Codex model availability and the global def
 
 ## Validation
 
-The disposable Pi native-home test exercises missing credentials, a native device sign-in, a cached model entry, selection, readback from `settings.json`, another provider's existing default, unknown-model rejection and a settings symlink refusal. Browser coverage opens the selector from an unsupported-model notice, writes the fixture user's Pi-shaped native settings, and starts a new fake Pi session whose saved assistant metadata identifies the selected model. The browser fixture does not run inference; the native-home test proves the real SDK write/readback.
+The disposable Pi native-home test exercises missing credentials, a native device sign-in, a cached model entry, selection, readback from `settings.json`, another provider's existing default, unknown-model rejection and a settings symlink refusal. Browser coverage opens the selector from an unsupported-model notice, writes the fixture user's Pi-shaped native settings, and starts a new fake Pi session whose saved assistant metadata identifies the selected model. The browser fixture does not run inference; the native-home test proves the real SDK write/readback. The first full clean gate passed Go/contracts and 158 of 159 browser cases, but the longer details popover intercepted the unrelated status-check button in a receipt-recovery case. The model choices now expand only on demand; both the receipt-recovery case and unsupported-model journey pass in a focused rerun.

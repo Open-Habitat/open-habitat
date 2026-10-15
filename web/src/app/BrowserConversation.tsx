@@ -169,6 +169,7 @@ export function BrowserConversation({
     onStatusEvent,
     onLogin,
   });
+  const [modelExpanded, setModelExpanded] = useState(false);
   useReadingPositionLayout({
     entries,
     live,
@@ -611,7 +612,21 @@ export function BrowserConversation({
                   : "neutral"
             }
             settings={latestSettings(entries)}
-            detailsExtra={<PiModelSelector csrf={csrf} />}
+            detailsExtra={
+              <>
+                <Button
+                  label={
+                    modelExpanded
+                      ? "Piilota mallin valinta"
+                      : "Valitse oletusmalli"
+                  }
+                  variant="quiet"
+                  size="compact"
+                  onPress={() => setModelExpanded(!modelExpanded)}
+                />
+                {modelExpanded ? <PiModelSelector csrf={csrf} /> : null}
+              </>
+            }
             detailsFacts={[
               {
                 label: "Työtila",
@@ -646,7 +661,10 @@ export function BrowserConversation({
             workspaceLabel={workspace.display_name ?? workspace.name}
             workspaceHref={`/workspaces/${workspace.workspace_id}`}
             detailsExpanded={details}
-            onToggleDetails={() => setDetails(!details)}
+            onToggleDetails={() => {
+              setDetails(!details);
+              setModelExpanded(false);
+            }}
           />
           <ConversationStream
             streamRef={feed}
@@ -955,7 +973,10 @@ export function BrowserConversation({
                 actions={[
                   {
                     label: "Valitse toinen malli",
-                    onPress: () => setDetails(true),
+                    onPress: () => {
+                      setDetails(true);
+                      setModelExpanded(true);
+                    },
                   },
                 ]}
               />
