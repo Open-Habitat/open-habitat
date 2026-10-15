@@ -83,6 +83,7 @@ test("@lab long native title keeps the original accessible at 390px", async ({
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     390,
   );
+  await page.unrouteAll({ behavior: "wait" });
 });
 
 test("@lab GitHub chooser, synthetic clone and Pi onboarding", async ({
