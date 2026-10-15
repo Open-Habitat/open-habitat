@@ -1,0 +1,3 @@
+/* Kierros 15.10.2026: liike. Kirjaston oma saapumisanimaatio pois, jotta suunnan oma näkyy. */
+.turn.live .ah-in { animation: none; }
+.m-ghost { position: absolute; inset: 0; pointer-events: none; background: var(--ah-bg); }

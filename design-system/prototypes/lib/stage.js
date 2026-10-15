@@ -1,8 +1,22 @@
 // Näyttämö: vierityspalsta, teema, puhelinkehys ja kuvan sisäiset vuorovaikutukset.
 const stage = document.getElementById('stage');
 // Follow the newest content until the person scrolls up; resume when they return to the bottom.
-let following = true; let lastTop = 0;
-stage.addEventListener('scroll', () => { const gap = stage.scrollHeight - stage.scrollTop - stage.clientHeight; if (stage.scrollTop < lastTop - 1) following = false; else if (gap < 40) following = true; lastTop = stage.scrollTop; });
+// Only the reader's own scrolling (wheel, touch, keys, scrollbar) stops following: content that
+// shrinks when blocks close also lowers scrollTop, and must not count (Jari 15.10.2026).
+let following = true; let lastTop = 0; let intentAt = -Infinity;
+const intent = () => { intentAt = performance.now(); };
+stage.addEventListener('wheel', intent, { passive: true });
+stage.addEventListener('touchmove', intent, { passive: true });
+stage.addEventListener('pointerdown', (e) => { if (e.target === stage) intent(); });
+stage.addEventListener('keydown', (e) => { if (/^(ArrowUp|ArrowDown|PageUp|PageDown|Home|End| )$/.test(e.key)) intent(); });
+stage.addEventListener('scroll', () => {
+  const gap = stage.scrollHeight - stage.scrollTop - stage.clientHeight;
+  const byReader = performance.now() - intentAt < 500;
+  if (byReader && stage.scrollTop < lastTop - 1) following = false; else if (gap < 40) following = true;
+  lastTop = stage.scrollTop;
+});
+// Height changes (blocks opening, closing, streaming) keep a following view at the bottom.
+{ let q = false; new MutationObserver(() => { if (!following || q) return; q = true; requestAnimationFrame(() => { q = false; if (following) { stage.scrollTop = stage.scrollHeight; lastTop = stage.scrollTop; } }); }).observe(stage, { subtree: true, childList: true, attributes: true, attributeFilter: ['hidden', 'class', 'aria-expanded', 'style'] }); }
 
 // ---------- Interactions inside the stage (event delegation) ----------
 stage.addEventListener('click', async (e) => {
