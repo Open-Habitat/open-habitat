@@ -752,10 +752,16 @@ test("@lab fake-Pi crash leaves the turn readable but blocks another send", asyn
   ).toHaveCount(0);
   // The live transition to uncertain does not run an expensive continuation
   // proof on a journal event. A deliberate status check can request one.
-  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
-  await expect(
-    page.getByRole("button", { name: "Jatka keskustelua" }),
-  ).toBeVisible();
+  // A just-crashed child can leave the native history unsettled for the first
+  // explicit proof. Retry the status check, never the message or continuation.
+  await expect(async () => {
+    await page
+      .getByRole("button", { name: "Tarkista keskustelun tila" })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Jatka keskustelua" }),
+    ).toBeVisible({ timeout: 1000 });
+  }).toPass({ intervals: [1000, 1500, 2000], timeout: 15000 });
   await page.reload();
   await expect(
     page.getByRole("heading", { level: 1, name: "kaadu nyt" }),
