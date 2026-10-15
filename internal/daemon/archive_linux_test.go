@@ -119,6 +119,20 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 	}
 	_ = writer.Process.Kill()
 	_ = writer.Wait()
+	// The second writer can also leave /proc enumeration temporarily unknown.
+	// Archive only after the census affirmatively observes its absence.
+	deadline = time.Now().Add(3 * time.Second)
+	observed = ""
+	for time.Now().Before(deadline) {
+		observed = piWriter(path, cwd, cfg.UID)
+		if observed == "not_observed" {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if observed != "not_observed" {
+		t.Fatalf("writer absence not established after restore: %s", observed)
+	}
 	exited := make(chan struct{})
 	c.sessions[id] = &conversation{id: id, workspace: wsid, cwd: cwd, rpc: &piRPC{exited: exited}, state: "accepted"}
 	if got := request(true, token); got != 409 {
