@@ -97,3 +97,27 @@ Kirjastoon siirretty kierros määrittelee usein samoja nimiä kuin kirjasto
 (`const`-nimet törmäävät eikä kierros enää rakennu). Kierroksen koodi
 kääritään silloin omaan näkyvyysalueeseensa, `(() => { … window.v1 = … })()`,
 jotta hylätyt suunnat voi yhä avata.
+
+## Prototyyppiworker
+
+Uusista ominaisuuksista tehdään prototyyppi ennen toteutusta, ja Jarin
+hyväksymä toimiva prototyyppi on ominaisuuden speksi (Jari 15.10.2026).
+Kierrokset tehdään omissa worktreeissään, jotta kapellimestarin konteksti
+säästyy; Jari arvioi ne. Workerin kierros:
+
+- Lue nykytila ennen suuntia: tuotannon näkymä labissa (`web/AGENTS.md`,
+  `scripts/lab.sh`, `web/lab/session.mjs`; oma `OH_PORT_BASE`), sen
+  komponenttikoodi, `../design.md` ja issueen kirjattu arkkitehtuurivedos.
+  Kolme suuntaa yhdellä nimetyllä akselilla, sisältö samaa kaikissa.
+- Kirjoita vain oma kierroshakemistosi `rounds/<pvm>-<nimi>/`. Kirjasto
+  (`lib/`) on yhteinen ja muut workerit ajavat rinnakkain; jos kierros
+  tarvitsee kirjastomuutoksen, tee se kierroksen omana ohituksena ja kirjaa
+  ehdotus issueen.
+- Älä lue rakennettua HTML:ää, `dist/`-hakemistoa, vedoksia tai
+  `lib/vendor/`-tiedostoja kokonaan: ne ovat satoja kilotavuja. Käytä
+  `grep`iä, `head`iä ja `check.mjs`:ää, ja katso vain muutama ruutukaappaus.
+- Tarkista `check.mjs`:llä (vaalea, tumma, puhelin, vuorovaikutukset
+  klikattuina, konsoli puhdas). Commitoi kierroshakemisto; `dist/` ei ole
+  versionhallinnassa, joten raportoi rakennuskomento ja suuntien nimet.
+- Kirjaa issueen `result.md`: akseli, suunnat, mitä kukin päättää, mitä
+  host-tietoja näkymä olettaa, ja kysymykset Jarille.
