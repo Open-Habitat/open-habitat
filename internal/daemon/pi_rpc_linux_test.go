@@ -201,12 +201,14 @@ func TestPiRPCDetachedStdout(t *testing.T) {
 		t.Fatal(err)
 	}
 	var pid int
-	until := time.Now().Add(time.Second)
+	until := time.Now().Add(2 * time.Second)
 	for time.Now().Before(until) {
 		b, readErr := os.ReadFile(filepath.Join(home, "holder.pid"))
 		if readErr == nil {
 			pid, _ = strconv.Atoi(strings.TrimSpace(string(b)))
-			break
+			if pid > 0 { // The file can exist before the shell writes its PID.
+				break
+			}
 		}
 		time.Sleep(time.Millisecond)
 	}
