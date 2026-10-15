@@ -799,42 +799,6 @@ test("@lab fake-Pi crash leaves the turn readable but blocks another send", asyn
   ).toBeVisible();
 });
 
-test("@lab intermediate assistant message does not claim turn completion", async ({
-  page,
-}) => {
-  expect(
-    (await page.request.get("/fixture/scenario?value=pi-visual-hold")).status(),
-  ).toBe(204);
-  await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
-  await page
-    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
-    .getByRole("link", { name: "aurinkokello" })
-    .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
-    .fill("hidas tarkistus");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  const intermediate = page
-    .locator(".ah-turn-reply > .ah-message")
-    .filter({
-      hasText: "Katson ensin, mitä työtilassa on.",
-    })
-    .last();
-  await expect(intermediate).toBeVisible({ timeout: 20000 });
-  await expect(
-    page.getByRole("status", { name: "Pi:n työn eteneminen" }),
-  ).toContainText(
-    /Käyttää työkalua|Odottaa Pi:n seuraavaa vaihetta|Valmistelee seuraavaa vaihetta/,
-  );
-  await expect(intermediate.locator("header")).toHaveText("Vastaa");
-  expect(
-    (await page.request.get("/fixture/scenario?value=ready")).status(),
-  ).toBe(204);
-});
-
 test("@lab slow turn explains work and stop requires an explicit confirmation", async ({
   page,
 }) => {
@@ -849,10 +813,16 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
     .getByRole("link", { name: "aurinkokello" })
     .click();
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
-    .fill("hidas kaadu");
+  await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("kaadu");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  // The visual-hold scenario stops native Pi at tool start until the fixture
+  // releases it below. Inspect the intermediate reply while the turn is live.
+  const intermediate = page
+    .locator(".ah-turn-reply > .ah-message")
+    .filter({ hasText: "Katson ensin, mitä työtilassa on." })
+    .last();
+  await expect(intermediate).toBeVisible({ timeout: 20000 });
+  await expect(intermediate.locator("header")).toHaveText("Vastaa");
   const progress = page.getByRole("status", { name: "Pi:n työn eteneminen" });
   await expect(progress).toContainText(
     /Käyttää työkalua|Odottaa Pi:n seuraavaa vaihetta|Valmistelee seuraavaa vaihetta/,

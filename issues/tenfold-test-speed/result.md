@@ -90,3 +90,53 @@ The no-reuse gate at `69bf63a2` failed in two daemon fixtures while Go and brows
 The clone deadline fixture previously allowed 60 ms from the start of the Go call for a shell child to run `mkdir .git`. On the failing gate the deadline won before the child created `.git`, so the test's partial-checkout precondition was false. The replacement waits for the native child to create `.git` and signal readiness before triggering a test-controlled deadline context, then checks that the command returns `DeadlineExceeded` promptly and `.git` remains. A 5 s real timeout caps a broken fixture; it does not substitute for readiness. The injected context uses a real cancellation channel and reports `DeadlineExceeded` through `Err`, testing the deadline branch and process-group termination without using scheduler time as the start signal. The fixture now starts a separate sleep child and checks its `/proc` state after the deadline; a dead leader with a live sleep child fails. An orphaned zombie is counted as dead.
 
 Validation: `TMPDIR=/var/tmp go test -race ./internal/daemon -run '^(TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters|TestCloneNativeDeadlineKillsSlowProcessGroup)$' -count=10` passed (6.18 s package). Under `GOMAXPROCS=2`, the original replacement passed 20 repetitions (15.22 s package); after adding explicit child-process proof, both focused race tests passed another 10 repetitions (4.69 s package). `gofmt`, `TMPDIR=/var/tmp go vet ./internal/daemon`, and `git diff --check` passed. These constrained/repeated runs are not a reproduction of full browser concurrency. No full gate was started here; the conductor will run it after landing.
+
+## Lab visual-hold journey consolidation (2026-10-15)
+
+`web/tests/lab-conversation.spec.ts` had two independent hosts that logged in,
+created a conversation, selected `pi-visual-hold` and sent a prompt to inspect
+one in-flight tool phase. The intermediate-message case asserted that the
+partial native assistant reply has a `Vastaa` header while progress still says
+working; the stop case asserted the bash-progress label, geometry and explicit
+stop confirmation outcome. The stop case now checks the intermediate reply
+*before* its existing progress, geometry and stop checks. The fake Pi's
+`pi-visual-hold` mode stops at `tool_execution_start` until the test flips the
+scenario to `ready`, so the merged observation remains a real native in-flight
+turn, not a settled-output substitute. It does not use `hidas`: the fixed
+2-second phases added delay before reaching the already-held tool but did not
+strengthen the assertion. The crash-after-release (`kaadu`) remains to exercise
+the unconfirmed-stop path. No simulator, controller or production behavior was
+changed. The retained dedicated typed-fragment case still uses `hidas` because
+it must see thinking and tool-call fragments *before* the answer is saved; its
+2-second phases provide an observable pre-settlement window. Its later
+reconnect/gap assertions do not alone justify removing that window. Recap
+invalidation remains a separate two-tab case: its second turn must be live
+while stale recap disappears, which the visual-hold journey does not cover.
+
+Before the edit, a focused standalone lab run on `04420f90` passed 3/3
+(typed 22,350 ms, intermediate 7,976 ms, stop 9,517 ms case durations;
+31.75 s elapsed). Same port base 55000, two workers, pinned installed web
+dependencies, browser cache `$HOME/.cache/ms-playwright`, disk-backed
+`TMPDIR=/var/tmp`. The three case durations are summed work, not wall time;
+two independent hosts run concurrently. After-edit timings and repeated
+results follow below. This worker did not run the full gate, UID isolation or
+real model Pi; synthetic fake Pi runs via the real host controller and writes
+native history.
+
+After the edit, the same focused command with `--repeat-each=2` passed 4/4
+(two typed: 21,957 and 22,448 ms; two merged visual-hold: 4,534 and
+3,969 ms; 39.74 s elapsed for two repetitions scheduled across two hosts).
+The typed journey's saved blocks, injected sequence gap and recovery snapshot
+checks all passed twice. A separate single-repeat comparable wall measurement
+follows. Web typecheck and lint passed. The first format check reported only a
+new line-wrap mismatch; formatting was corrected and `format:check` plus
+`git diff --check` then passed. Project-view validation passed (28 pages).
+The comparable single-repeat after run passed 2/2 (typed 21,970 ms,
+merged hold 3,919 ms, **28.26 s wall**). Against the passing 3/3 before run
+(31.75 s wall), that is 3.49 s less elapsed in this pair, while summed
+individual case time falls from 39,843 to 25,889 ms. These are standalone
+runs under the same port/caches, not a controlled full-suite speedup: the
+hosts overlap and scheduling/build/load vary. The before command initially
+could not start because this fresh worktree lacked `web/node_modules`; after
+`npm ci --prefix web`, the correctly configured baseline passed. No failing
+attempt is included as timing evidence.
