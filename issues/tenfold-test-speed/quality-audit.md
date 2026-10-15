@@ -228,3 +228,22 @@ specific partial-source notice rather than mistaking an in-progress loading
 view for an empty catalog. This is a longer *bound*, not a 15-second fixed
 sleep. The separate Vitest reader still exercises a valid >1 MiB wire response.
 No Pi race assertion or production authority code was removed.
+
+## Landed slice validation (2026-10-15)
+
+The two preserved commits above were cherry-picked onto `9b1d6d9d` as
+`8876556c` and `d742aa06`. After those commits, with disk-backed
+`TMPDIR=/var/tmp`, an unused `OH_PORT_BASE=39000` checked with `ss -ltnp`,
+and `PLAYWRIGHT_BROWSERS_PATH=$PWD/.cache/ms-playwright`, focused Playwright
+cases passed 4/4: native restart/archive/restore/continue, focus/explicit
+continue without repost, queue-clear 401/login, and partial 513-row snapshot.
+`npm run typecheck --prefix web`, `npm run lint --prefix web`, and
+`git diff 9b1d6d9d..HEAD --check` passed. Targeted Vitest snapshot and
+conversation tests passed 7/7, including the >1 MiB wire acceptance and the
+four refusal-code classifications. Final diff review found the once-only
+continue/send counts, CSRF and empty POST body, queue 401, archived header
+axe and restore-state assertions still in the retained real-host cases; the
+513th workspace remains visible and the byte limit remains covered separately.
+No full clean gate or comparable before/after timing was run for this slice;
+**no wall-clock speedup is claimed**. Distinct-UID security scenarios were
+not run and cannot be inferred from the focused browser tests.
