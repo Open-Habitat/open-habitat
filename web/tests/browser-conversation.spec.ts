@@ -1404,13 +1404,17 @@ test("@browser-conversation restart replaces an in-place running turn with nativ
 test("@browser-conversation restart offers native continuation and archive without a handle", async ({
   page,
 }) => {
+  test.setTimeout(60000);
   const id = await endedConversation(page);
   expect(
     (await page.request.get("/fixture/conversations-reset")).status(),
   ).toBe(204);
   await page.goto(`/agents/${id}`);
-  await expect(page.locator(".ah-agent-header")).toContainText("Ei käynnissä");
   const bar = page.locator(".ah-agent-header");
+  // The reopened native history requires its own positive writer census. An
+  // unknown census is fail-closed and the view rechecks it every five seconds;
+  // wait for the real view to settle rather than treating unknown as idle.
+  await expect(bar).toContainText("Ei käynnissä", { timeout: 20000 });
   await expect(bar.getByRole("button", { name: "Arkistoi" })).toBeEnabled();
   await bar.getByRole("button", { name: "Arkistoi" }).click();
   await page.goto(`/agents/${id}`);
@@ -1426,7 +1430,30 @@ test("@browser-conversation restart offers native continuation and archive witho
   await expect(
     page.getByRole("button", { name: "Jatka keskustelua" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Jatka keskustelua" }).click();
+  // The write makes a fresh census of its own. A previously eligible view
+  // can race a transient unknown census; retry only that explicit fail-closed
+  // refusal after the view has observed a new positive result.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const reply = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname ===
+          `/api/v1/conversations/${id.slice(3)}/continue`,
+    );
+    await page.getByRole("button", { name: "Jatka keskustelua" }).click();
+    const response = await reply;
+    if (response.status() === 200) break;
+    expect(response.status()).toBe(409);
+    expect((await response.json()).error.code).toBe("control_uncertain");
+    expect(attempt).toBeLessThan(2);
+    await expect(
+      page.getByText("Jatkaminen ei onnistunut.", { exact: false }),
+    ).toBeVisible();
+    await expect(bar).toContainText("Ei käynnissä", { timeout: 20000 });
+    await expect(
+      page.getByRole("button", { name: "Jatka keskustelua" }),
+    ).toBeVisible();
+  }
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toBeVisible();
