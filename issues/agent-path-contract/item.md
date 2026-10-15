@@ -3,11 +3,13 @@ created: 2026-10-15
 updated: 2026-10-15
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 related: ['@test-server-tooling']
 lane: daemon
 collision: [internal/daemon]
+closed: 2026-10-15
+closed_by: claude
 ---
 
 # Agent PATH with each user's own bin and the administrator's shared tools
