@@ -21,11 +21,29 @@ numbers. Chromium hosts are per case; independent case durations overlap in
 eight workers. Building the web, building Storybook, dependency installation,
 Go race, contracts and packaging also cost time independently of case count.
 
-The full gate deliberately performs a second offline `npm ci` after deleting
-`web/node_modules`, to prove the lockfile is complete offline (see
-[web/AGENTS.md](../../web/AGENTS.md)). It is a fixed cost, not an example of
-an obvious unit test to delete. This pass did not alter the release gate or
-its receipt semantics.
+The full gate used to delete `web/node_modules` and repeat `npm ci --offline`
+after a successful locked install. No consumer needs an air-gapped install of
+the entire web lockfile: `scripts/prepare-test-release.sh` reinstalls with
+`npm ci --prefix web --no-audit --no-fund` and packages built assets, not
+`node_modules`; `scripts/package-release.sh` copies `web/dist`. The first
+`npm ci` already checks lock/manifest consistency and installs the pinned tree.
+The second install only showed that this same checkout's *just-warmed local npm
+cache* could reinstall; it did not establish a cold offline release path. We
+removed that reset and reinstall without changing other gate checks or receipt
+semantics.
+
+Local sequential timing in this disposable worktree (2026-10-15, Node/npm
+22.23.2/10.9.8, `TMPDIR=/var/tmp`, checkout-local
+`NPM_CONFIG_CACHE=$PWD/.cache/ci-local/npm`): after a successful warm-up
+`npm ci` (28.16 s), one warmed `npm ci --prefix web --no-audit --no-fund`
+took 27.84 s. The old pair, measured next against the warmed cache, took
+23.29 s for `npm ci --prefix web` and 19.28 s for the offline second install
+(after `rm -rf web/node_modules`), or 42.57 s excluding the reset. The extra
+install cost 19.28 s in that pair; the single and pair used slightly different
+npm audit/fund flags, as the gate does, and were sequential rather than
+randomized. Host contention and cache state vary, so these are local install
+costs, **not** a passing clean-gate wall-time comparison or a claimed end-to-end
+speedup.
 
 ## Decisions made against code
 

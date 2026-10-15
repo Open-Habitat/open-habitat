@@ -76,8 +76,11 @@ the host would ship test seams to the internet, so a new fixture with new
 marker text belongs in those checks too.
 
 Dependencies are pinned in the committed lockfile and installed with
-`npm ci --prefix web`; `npm install` rewrites the lock, and `scripts/ci-local.sh`
-proves the lock complete by reinstalling offline. The root `TESTING.md` gives the commands, scope and full-gate policy; the
+`npm ci --prefix web`; `npm install` rewrites the lock. The gate checks that
+the committed lock and manifest permit a fresh install, but does not promise
+an air-gapped install: the release preparer also installs from the lockfile
+with network access available and packages built assets, not npm dependencies.
+The root `TESTING.md` gives the commands, scope and full-gate policy; the
 `scripts` block in `package.json` names the individual checks. Use
 `./scripts/test-focused.sh --area browser --spec <name>.spec.ts` or `--tag <grep>`
 for targeted host-backed evidence; this skips Go, contracts and packaging and
