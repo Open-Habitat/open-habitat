@@ -3,12 +3,13 @@ created: 2026-10-15
 updated: 2026-10-15
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: proto-workspace
 lane_seq: 1
 collision: [design-system/prototypes/rounds/proto-workspace-page]
 preparation: ready
+closed: 2026-10-15
 ---
 
 # Prototype: workspace page and the + menu
@@ -18,4 +19,4 @@ Jari 15.10.2026: every new feature is prototyped first; the working prototype Ja
 From the prototype queue (TODO.md): the workspace page (what a workspace shows: conversations, worktree agents, Git state) and the workspace "+" menu as its own layer. Keep it consistent with `proto-worktree-agents`, which may add worktree work to the same page; read its round if it has landed. No architecture sketch is needed unless the page needs host facts that do not exist yet.
 
 ## Acceptance Criteria
-- [ ] Round verified with check.mjs; `result.md` per the prototype worker rules.
+- [x] Round verified with check.mjs; `result.md` per the prototype worker rules.
