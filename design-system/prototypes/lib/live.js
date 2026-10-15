@@ -3,7 +3,7 @@
 let run = 0;
 function playLive(host, R) {
   const token = ++run;
-  const state = { status: 'idle', blocks: [], t0: 0, dur: 0, open: true };
+  const state = { status: 'idle', blocks: [], t0: 0, dur: 0, open: R.startOpen !== false };
   const rows = new Map();
   const turn = document.createElement('div'); turn.className = 'turn live'; host.appendChild(turn);
   let headRail, headCell;
