@@ -12,7 +12,7 @@ async function openFileWork(page: import("@playwright/test").Page) {
   else if ((await saved.getAttribute("aria-expanded")) === "false")
     await saved.click();
 }
-test("@file-tool-cards live and saved file rows retain counts, content and accessible diff", async ({
+test("@file-tool-cards saved file rows retain counts, content and accessible diff", async ({
   page,
 }) => {
   expect(
@@ -31,6 +31,9 @@ test("@file-tool-cards live and saved file rows retain counts, content and acces
     .getByRole("textbox", { name: "Viesti Pi:lle" })
     .fill("näytä kortit");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  // The fake Pi writes these extra cards into native history; it does not
+  // stream them as live tool events. Wait for settlement before inspecting.
+  await expect(page.getByText('Selvä. Kysyit: "näytä kortit".')).toBeVisible();
   await openFileWork(page);
   const tool = (name: string) =>
     page

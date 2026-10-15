@@ -41,7 +41,11 @@ describe("untrusted conversation Markdown", () => {
         }
       />,
     );
-    expect((await screen.findByText("Vahva")).tagName).toBe("STRONG");
+    // The lazy renderer chunk can take longer than Testing Library's 1 s
+    // default to load while the clean gate is installing/building in parallel.
+    expect(
+      (await screen.findByText("Vahva", {}, { timeout: 10000 })).tagName,
+    ).toBe("STRONG");
     expect(screen.getByText("pois").tagName).toBe("DEL");
     expect(screen.getByRole("button", { name: "Kopioi koodi" })).toBeTruthy();
     expect(container.querySelector("script")).toBeNull();
