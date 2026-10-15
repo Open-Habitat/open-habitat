@@ -110,7 +110,7 @@ document.addEventListener('click', async (e) => {
   if (e.target.closest('.proto-picker')) return;
   const m = e.target.closest('[data-menu]');
   if (m) { e.preventDefault(); e.stopPropagation(); return openMenu(m.dataset.menu, m, m.dataset.place); }
-  const th = e.target.closest('[data-theme]');
+  const th = e.target.closest('.p-theme [data-theme]');
   if (th) { e.stopPropagation(); const s = document.getElementById('theme'); s.value = th.dataset.theme; s.dispatchEvent(new Event('change')); pop.querySelectorAll('[data-theme]').forEach(b => b.setAttribute('aria-pressed', b === th)); return; }
   const dis = e.target.closest('.p-menu [aria-disabled="true"]');
   if (dis) { e.stopPropagation(); return toast(dis.title); }

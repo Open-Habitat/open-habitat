@@ -1,0 +1,22 @@
+/* Keskustelunäkymän tiheys: Tiivis (Jari 15.10.2026, kierros rounds/2026-10-14-tiheys).
+   Välit noin puolet aiemmasta, pienempi teksti ja matalammat rivit. Siirretään tokeneiksi toteutuksessa. */
+.frame .stream { gap: 8px; padding-top: 12px; }
+.frame .vwrap { gap: 8px; }
+.frame .turn { row-gap: 3px; column-gap: 8px; grid-template-columns: 18px minmax(0,1fr); }
+.frame .node { margin-top: 7px; }
+.frame .node.head { margin-top: 5px; }
+.frame .bubble { gap: 4px; padding: 6px 10px 8px; font-size: 13.5px; }
+.frame .prose { font-size: 13.5px; line-height: 1.5; }
+.frame .bubble-head, .frame .bar { min-height: 22px; }
+.frame .bar.foot { padding-top: 4px; margin-top: 0; }
+.frame .disc { min-height: 28px; padding: 2px 10px; }
+.frame .tool-body { gap: 6px; padding: 8px 10px; }
+.frame :is(.tool-body pre, .prose pre, .bash-cmd, .cmd-first, pre.cmd-rest) { padding: 6px 10px; font-size: 12px; }
+.frame .prose p, .frame .prose ul, .frame .prose ol, .frame .prose pre { margin-bottom: .35em; }
+.frame :is(.strip, .strip-btn) { min-height: 24px; padding-block: 1px; }
+.frame :is(.head-cell, .think-row, .think-tick) { min-height: 20px; font-size: 13px; }
+.frame .think-quote { font-size: 13px; line-height: 1.5; }
+.frame .topbar { min-height: 44px; padding-block: 6px; }
+.frame .recap { gap: 3px; padding: 5px 8px 7px 10px; font-size: 12.5px; }
+.frame .conv-row, .frame .ws-row, .frame .home-row { min-height: 28px; }
+

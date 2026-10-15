@@ -4,6 +4,7 @@
 // today's library as the reference; the others tighten in different ways.
 export const title = 'Keskustelu · tiheys';
 export const app = true;
+export const density = false; // the round compares densities; Tiivis is now lib/density.css
 export const variants = [
   { name: 'Nykyinen', axis: 'vertailukohta: kirjaston nykyiset välit', fn: 'v1' },
   { name: 'Kevyempi', axis: 'samat kortit, välit ja sisäreunat noin neljänneksen pienempiä', fn: 'v2' },

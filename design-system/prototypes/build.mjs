@@ -64,6 +64,7 @@ const html = `<!doctype html>
 ${tokens}
 ${read('lib/chrome.css')}
 ${read('lib/language.css')}
+${round.density !== false ? read('lib/density.css') : ''}
 ${app ? read('lib/app.css') : ''}
 ${account ? read('lib/account.css') : ''}
 ${composer ? read('lib/composer.css') : ''}
