@@ -29,7 +29,21 @@ muotoon 12.10.2026, ja rakennettu vedos todettiin kuvavertailussa samaksi.
   palan korvaamalla `APP.row`-, `APP.list`- tai `APP.actions`-hookin. `composer.js` ja
   `composer.css` ovat valittu alakerta (kenttä, Lähetä, Stop, jono); ne
   tulevat kehyksen mukana, ja kierros, joka piirtää oman kenttänsä, vie
-  `composer = false`.
+  `composer = false`. `account.js` ja `account.css` ovat valittu sivupalkin
+  tilivalikko ja työtilarivin `…`-valikko, ja `density.css` on valittu
+  Tiivis tiheys. Kierros, joka piirtää omansa, vie `account = false` tai
+  `density = false`. `R.startOpen = false` saa elävän vuoron alkamaan työ
+  piilossa.
+- `stage.js`:n seuranta katkeaa vain lukijan omasta vierityksestä (rulla,
+  kosketus, näppäimet, vierityspalkki). Sisällön kutistuminen laskee myös
+  `scrollTop`ia, joten kierros ei saa tulkita sitä lukijan teoksi.
+- Valitsin, joka hakee ylöspäin attribuutilla, kuten `closest('[data-theme]')`,
+  osuu myös sivun juureen, jolla on sama attribuutti. Dokumenttitason
+  kuuntelija nielee silloin kaikki klikkaukset, joten valitsin rajataan
+  omaan komponenttiinsa (`.p-theme [data-theme]`).
+- Elävää riviä, jossa on painike, ei piirretä kokonaan uudelleen kellon
+  takia: vaihtuva elementti hukkaa painallukset ja välkyttää korostusta.
+  Päivitä vain muuttuva teksti.
 - Kierros on hakemisto: `round.mjs` vie `title`-otsikon ja `variants`-listan
   (`name`, `axis`, `fn`), ja `round.css` ja `round.js` antavat kierroksen omat
   säännöt ja piirtofunktiot. Jokainen `fn` määritellään `round.js`:ssä ja
