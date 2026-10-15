@@ -3,13 +3,14 @@ created: 2026-10-15
 updated: 2026-10-15
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: proto-agents
 lane_seq: 1
 blocked_by: ['@claude-subscription-path']
 collision: [design-system/prototypes/rounds/proto-agent-harnesses]
 preparation: ready
+closed: 2026-10-15
 ---
 
 # Prototype: Claude and Codex next to Pi
