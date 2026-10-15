@@ -52,8 +52,13 @@ for (const situation of ["outage", "pi-onboarding"] as const) {
         await expect(page.getByRole("navigation")).toHaveCount(0);
         for (const width of [1280, 390]) {
           await page.setViewportSize({ width, height: 720 });
-          const account = page.getByRole("button", { name: /Tilivalikko/ });
+          const account = page.getByRole("button", {
+            name: "Alice, Tilivalikko",
+          });
           await expect(account).toBeVisible();
+          await expect(
+            page.getByRole("button", { name: "Bob, Tilivalikko" }),
+          ).toHaveCount(0);
           const box = await account.boundingBox();
           if (!box) throw new Error("Account button has no visible rectangle");
           if (width === 390) {

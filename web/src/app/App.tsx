@@ -468,7 +468,14 @@ export function App() {
           setRefreshKey((n) => n + 1);
           return;
         }
-        if (session) sessionBinding.current = session.csrf;
+        if (session) {
+          sessionBinding.current = session.csrf;
+          // The session is authoritative for account controls even when the
+          // daemon snapshot cannot be read. A changed binding was cleared above
+          // before this profile can be presented with any retained snapshot.
+          setCSRF(session.csrf);
+          setProfile(session.profile);
+        }
         const stillBound = async () => {
           if (!session) return true;
           const current = await sessionCSRF(controller.signal);

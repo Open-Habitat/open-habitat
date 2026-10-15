@@ -85,6 +85,10 @@ test("@pi-onboarding delayed old-session response cannot restore code after focu
             .isVisible()),
       )
       .toBe(true);
+    // Whichever of Bob's possible views appears, the old account is gone.
+    await expect(
+      a.getByRole("button", { name: "Alice, Tilivalikko" }),
+    ).toHaveCount(0);
     if (await a.getByText("Bobin synteettinen viesti 0").first().isVisible()) {
       await expect(
         a.getByRole("button", { name: "Bob, Tilivalikko" }),
