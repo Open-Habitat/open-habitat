@@ -5,6 +5,8 @@
 // opening in its place. When the turn ends its thread closes by the default.
 export const title = 'Keskustelu · säikeet kiinni';
 export const app = true;
+// The round draws its own quiet work; lib/quiet.* has the chosen version since 15.10.
+export const quiet = false;
 export const variants = [
   { name: 'Säikeet kiinni', axis: 'säie oletuksena kiinni; käynnissä oleva blokki auki, valmis kiinni', fn: 'v1' },
 ];

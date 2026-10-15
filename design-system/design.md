@@ -139,9 +139,11 @@ tai käynnissä olevassa säikeessä striimautuva blokki on auki ja sulkeutuu
 valmistuttuaan (kierros `2026-10-15-saikeet`). Näkymä seuraa uusinta
 sisältöä, kunnes lukija itse vierittää ylös; blokkien sulkeutuminen ei
 katkaise seurantaa. Tiheys on Tiivis (`prototypes/lib/density.css`, kierros
-`2026-10-14-tiheys`). Painikkeen avautumisliike on vielä valitsematta, ja
-sen ehto on, ettei inforiviä piirretä uudelleen kellon tikittäessä, koska
-uudelleenpiirto hukkaa painalluksia ja välkyttää korostusta.
+`2026-10-14-tiheys`). Näytä työ -painike pysyy osoittimen alla: työ
+ilmestyy sen yläpuolelle ja vaiheet tulevat näkyviin porrastetusti (kierros
+`2026-10-15-nayta-tyo`, suunta Porrastettu). Inforiviä ei piirretä uudelleen
+kellon tikittäessä, koska uudelleenpiirto hukkaa painalluksia ja välkyttää
+korostusta; vain kello ja vaihe päivittyvät.
 
 Tilannekatsaus on oma korttinsa suoraan kirjoituskentän yllä: otsakkeessa
 ikä ja merkki uusista viesteistä, oikealla päivitys ja sulkeminen. Suljettu

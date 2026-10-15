@@ -5,6 +5,8 @@
 // chosen Tiivis (lib/density.css).
 export const title = 'Keskustelu · blokkien avaus';
 export const app = true;
+// The round draws its own quiet work; lib/quiet.* has the chosen version since 15.10.
+export const quiet = false;
 export const variants = [
   { name: 'Muistaa lajin', axis: 'avattu laji (bash, edit, ajattelu…) tulee jatkossa auki; suljettu laji kiinni', fn: 'v1' },
   { name: 'Vuoro kerrallaan', axis: 'avaus koskee käynnissä olevaa vuoroa; vuoron päättyessä sen blokit sulkeutuvat', fn: 'v2' },

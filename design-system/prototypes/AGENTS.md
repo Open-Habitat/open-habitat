@@ -31,9 +31,11 @@ muotoon 12.10.2026, ja rakennettu vedos todettiin kuvavertailussa samaksi.
   tulevat kehyksen mukana, ja kierros, joka piirtää oman kenttänsä, vie
   `composer = false`. `account.js` ja `account.css` ovat valittu sivupalkin
   tilivalikko ja työtilarivin `…`-valikko, ja `density.css` on valittu
-  Tiivis tiheys. Kierros, joka piirtää omansa, vie `account = false` tai
-  `density = false`. `R.startOpen = false` saa elävän vuoron alkamaan työ
-  piilossa.
+  Tiivis tiheys. `quiet.js` ja `quiet.css` ovat valittu hiljainen työ:
+  säikeet kiinni, inforivi ja sen alussa Näytä työ -painike, joka pysyy
+  osoittimen alla, sekä tilivalikon "Agentin työ". Kierros, joka piirtää
+  omansa, vie `account = false`, `density = false` tai `quiet = false`.
+  `R.startOpen = false` saa elävän vuoron alkamaan työ piilossa.
 - `stage.js`:n seuranta katkeaa vain lukijan omasta vierityksestä (rulla,
   kosketus, näppäimet, vierityspalkki). Sisällön kutistuminen laskee myös
   `scrollTop`ia, joten kierros ei saa tulkita sitä lukijan teoksi.

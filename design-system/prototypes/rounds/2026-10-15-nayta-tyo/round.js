@@ -42,8 +42,10 @@ stage.addEventListener('click', (e) => {
   const top0 = btn.getBoundingClientRect().top; const h0 = turn.offsetHeight;
   const before = new Set([...turn.children].filter(c => !c.hidden));
   const k = slow();
-  // The library flips the work synchronously in its capture listener on the turn.
-  requestAnimationFrame(() => {
+  // The library flips the work in its capture listener on the turn, which runs after this
+  // one. A listener added to the turn now runs right after it, before the frame is painted,
+  // so the scroll compensation never shows the button out of place.
+  turn.addEventListener('click', () => {
     const nb = turn.querySelector('.show-work');
     if (P.style !== 'v1') {
       // Keep the button under the pointer: compensate the scroll for what appeared above it.
@@ -59,7 +61,7 @@ stage.addEventListener('click', (e) => {
       const shown = [...turn.children].filter(c => !c.hidden && !before.has(c) && c.classList.contains('cell'));
       shown.forEach((c, i) => c.animate([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 160 * k, delay: (P.style === 'v3' ? i * 45 : 0) * k, easing: 'ease-out', fill: 'backwards' }));
     }
-  });
+  }, { capture: true, once: true });
 }, true);
 const libContent = content;
 window.content = function () {

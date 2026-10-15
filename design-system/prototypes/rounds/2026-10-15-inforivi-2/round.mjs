@@ -2,6 +2,8 @@
 // Jari likes the button but finds it hidden at the far right. Where it sits instead.
 export const title = 'Keskustelu · Näytä työ -painikkeen paikka';
 export const app = true;
+// The round draws its own quiet work; lib/quiet.* has the chosen version since 15.10.
+export const quiet = false;
 export const variants = [
   { name: 'Tekstin perässä', axis: 'painike heti tilatekstin jälkeen, kello oikealla', fn: 'v1' },
   { name: 'Rivin alussa', axis: 'painike rivin alussa ennen tilatekstiä', fn: 'v2' },

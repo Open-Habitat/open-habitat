@@ -4,6 +4,8 @@
 // with a small animation. "Hidastettu" in the page bar slows the motion threefold.
 export const title = 'Keskustelu · liike';
 export const app = true;
+// The round draws its own quiet work; lib/quiet.* has the chosen version since 15.10.
+export const quiet = false;
 export const variants = [
   { name: 'Liuku', axis: 'korkeus liukuu kiinni ja auki; uusi blokki nousee esiin', fn: 'v1' },
   { name: 'Kuittaus', axis: 'sulkeutuessa otsake välähtää ja valmis-merkki ponnahtaa; uusi kasvaa korkeudesta', fn: 'v2' },
