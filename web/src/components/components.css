@@ -1298,6 +1298,21 @@ h1[tabindex="-1"]:focus {
   min-width: 0;
   margin: 0;
 }
+/* The notice is the visible account of the outage. Retain the control's
+   description for assistive technology without creating another warning. */
+.ah-conversation-frame
+  .ah-composer-notice-explains-block
+  .ah-field
+  .ah-control-reason {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
 /* The editor already exposes the disabled reason; do not repeat it beside the send button. */
 .ah-conversation-frame
   .ah-composer:has(.ah-field .ah-control-reason)
@@ -3025,6 +3040,8 @@ h1[tabindex="-1"]:focus {
 /* Disabled buttons are wrapped in a stack. Anchor both forms to the editor,
    not the variable-height disabled reason below it. */
 .ah-conversation-frame .ah-composer-entry > .ah-button-stack {
+  grid-row: 1;
+  grid-column: 2;
   align-self: start;
   margin-top: calc((var(--ah-composer-rest-height) - 36px) / 2);
 }

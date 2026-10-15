@@ -1057,7 +1057,7 @@ export function BrowserConversation({
                 ]}
               />
             ) : null}
-            {statusStale ? (
+            {statusStale && !serverUnavailable ? (
               <InlineNotice
                 title="Keskustelun tila vanhentui"
                 description="Näytetään viimeisin tunnettu historia. Tarkista tila ennen ohjaamista."
@@ -1078,14 +1078,16 @@ export function BrowserConversation({
                 ]}
               />
             ) : null}
-            {journalOffline && !statusStale ? (
+            {journalOffline && !statusStale && !serverUnavailable ? (
               <InlineNotice
                 title="Tapahtumayhteys katkesi"
                 description="Tila ja natiivi historia tarkistetaan uudelleen. Viestiä ei lähetetä uudelleen."
                 tone="warning"
               />
             ) : null}
-            {!statusStale && showMissedEvents(!!live?.truncated, current) ? (
+            {!statusStale &&
+            !serverUnavailable &&
+            showMissedEvents(!!live?.truncated, current) ? (
               <InlineNotice
                 title="Tapahtumia jäi väliin"
                 description="Live-tapahtumien häntä ei ole täydellinen. Tarkista natiivi historia."
@@ -1306,6 +1308,17 @@ export function BrowserConversation({
               queueKnown={!!current?.queue}
               queueOpen={queueOpen}
               sendState={busy ? "pending" : ambiguous ? "uncertain" : "idle"}
+              // The outage/status notice already explains the block and its remedy.
+              // Keep the control's reason accessible, but do not show a second warning.
+              suppressAvailabilityReason={
+                archive?.archive !== "archived" &&
+                archive?.archive !== "unknown" &&
+                (serverUnavailable ||
+                  statusStale ||
+                  journalOffline ||
+                  showMissedEvents(!!live?.truncated, current) ||
+                  Boolean(ambiguous && sendObservation?.state === "uncertain"))
+              }
               availability={
                 canSend
                   ? { state: "enabled" }

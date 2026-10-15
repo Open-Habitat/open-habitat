@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
 
@@ -216,6 +217,18 @@ test("@resilience active conversation stays readable and blocks writes during sn
   await expect(
     page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toBeDisabled();
+  expect(
+    await page
+      .locator(".ah-composer .ah-control-reason")
+      .evaluateAll((nodes) =>
+        nodes.every(
+          (node) =>
+            getComputedStyle(node).display === "none" ||
+            (node.getBoundingClientRect().width <= 1 &&
+              getComputedStyle(node).overflow === "hidden"),
+        ),
+      ),
+  ).toBe(true);
   const { fieldRect, send } = await page
     .locator(".ah-composer-entry")
     .evaluate((node) => {
@@ -250,6 +263,65 @@ test("@resilience active conversation stays readable and blocks writes during sn
   await expect(
     page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
   ).toHaveCount(0);
+});
+
+test("@resilience working composer has one outage warning and the send stays at editor height", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/conversations-reset");
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "ordinary-dir" })
+    .click();
+  await page.request.get("/fixture/scenario?value=pi-visual-hold");
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await editor.fill("Näytä pitkä tuloste");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Ohjaa" })).toBeVisible();
+  await editor.fill("Luonnos säilyy katkossa");
+  await page.route("**/api/v1/snapshot", (route) =>
+    route.fulfill({ status: 500, body: "host stopped" }),
+  );
+  await page.getByRole("button", { name: "Päivitä", exact: true }).click();
+  await expect(
+    page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
+  ).toHaveCount(1);
+  expect(
+    await page
+      .locator(".ah-composer .ah-control-reason")
+      .evaluateAll((nodes) =>
+        nodes.every(
+          (node) =>
+            getComputedStyle(node).display === "none" ||
+            (node.getBoundingClientRect().width <= 1 &&
+              getComputedStyle(node).overflow === "hidden"),
+        ),
+      ),
+  ).toBe(true);
+  await expect(editor).toHaveAttribute(
+    "placeholder",
+    "Ohjaa tai lähetä jonoon…",
+  );
+  await expect(
+    page.getByRole("button", { name: "Lähetä", exact: true }),
+  ).toBeDisabled();
+  const centers = await page.locator(".ah-composer-entry").evaluate((node) => {
+    const editor = node.querySelector("textarea")?.getBoundingClientRect();
+    const send = node.querySelector("button")?.getBoundingClientRect();
+    if (!editor || !send) throw new Error("composer geometry missing");
+    return [editor.top + editor.height / 2, send.top + send.height / 2];
+  });
+  expect(Math.abs(centers[0] - centers[1])).toBeLessThan(5);
+  const accessibility = await new AxeBuilder({ page })
+    .include(".ah-composer")
+    .analyze();
+  expect(accessibility.violations).toEqual([]);
+  await page.unroute("**/api/v1/snapshot");
 });
 
 test("@resilience restored network retries a failed read without resending work", async ({

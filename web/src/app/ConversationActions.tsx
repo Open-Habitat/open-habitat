@@ -361,7 +361,11 @@ export function useConversationActions({
       ) ? (
         <InlineNotice title={receipt} tone="warning" />
       ) : null}
-      {problem ? <InlineNotice title={problem} tone="danger" /> : null}
+      {problem &&
+      (!serverUnavailable ||
+        problem !== "Yhteys katkesi. Näytetään viimeisin tunnettu tila.") ? (
+        <InlineNotice title={problem} tone="danger" />
+      ) : null}
       {ambiguous && sendObservation?.state === "uncertain" ? (
         <InlineNotice
           title={

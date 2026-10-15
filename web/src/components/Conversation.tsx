@@ -928,6 +928,7 @@ export function Composer({
   activity,
   selectedWorkingMode,
   sendState,
+  suppressAvailabilityReason = false,
   queueSummary,
   queueKnown = true,
   queueOpen = false,
@@ -945,6 +946,7 @@ export function Composer({
   activity: "idle" | "working" | "settling";
   selectedWorkingMode: "steer" | "follow_up";
   sendState?: "idle" | "pending" | "rejected" | "uncertain";
+  suppressAvailabilityReason?: boolean;
   queueSummary?: string;
   queueKnown?: boolean;
   queueOpen?: boolean;
@@ -968,7 +970,7 @@ export function Composer({
       : onSendNow;
   return (
     <section
-      className={`ah-composer${!value.trim() && availability.state === "enabled" ? " ah-composer-empty" : ""}`}
+      className={`ah-composer${!value.trim() && availability.state === "enabled" ? " ah-composer-empty" : ""}${suppressAvailabilityReason ? " ah-composer-notice-explains-block" : ""}`}
       aria-label="Kirjoita viesti"
     >
       <div className="ah-composer-entry">

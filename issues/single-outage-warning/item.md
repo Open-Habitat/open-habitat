@@ -3,13 +3,14 @@ created: 2026-10-15
 updated: 2026-10-15
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: reauth
 lane_seq: 11
 collision: [web/src/app/, web/src/components/]
 preparation: ready
 related: ['@pi-not-answering-live', '@conversation-stuck-reauth']
+closed: 2026-10-15
 ---
 
 # One connection warning, and the send button aligned to the field
@@ -28,10 +29,10 @@ believed running, composer in steer mode).
 
 ## Acceptance Criteria
 
-- [ ] In every outage/uncertain state the person sees one warning that says
+- [x] In every outage/uncertain state the person sees one warning that says
       what happened and what they can do; the composer carries at most the
       disabled reason for its own button, not a second account of the outage.
-- [ ] The send button stays aligned with the field's editor rectangle whatever
+- [x] The send button stays aligned with the field's editor rectangle whatever
       text appears under the field (browser test with geometry, as in
       `resilience-states.spec.ts`).
-- [ ] Lab screenshots of the disconnected-while-working state before and after.
+- [x] Lab screenshots of the disconnected-while-working state before and after.
