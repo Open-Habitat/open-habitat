@@ -2,6 +2,11 @@
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
 clean=false;json=false;no_reuse=false
+case ${OH_GATE_SERIAL_HEAVY-0} in
+  0) serial_heavy=false ;;
+  1) serial_heavy=true ;;
+  *) printf 'error: OH_GATE_SERIAL_HEAVY must be 0 or 1 (got %q)\n' "$OH_GATE_SERIAL_HEAVY" >&2; exit 1 ;;
+esac
 while (($#));do case "$1" in --clean)clean=true;shift;;--json)json=true;shift;;--no-reuse)no_reuse=true;shift;;*)echo "error: unknown argument $1" >&2;exit 1;;esac;done
 cd "$repo"
 if $clean && [[ -n $(git status --short) ]];then echo 'error: --clean requires a clean tree at entry' >&2;exit 1;fi
@@ -82,6 +87,9 @@ if ! $reuse_phases;then
     OH_WEB_PREBUILT=1 npm run test:browser --prefix web
     (cd web && OH_WEB_PREBUILT=1 npx playwright test --config playwright.lab.config.ts)
   ) >"$tmp/browser.log" 2>&1 & browser_pid=$!
+  browser_rc=0; go_rc=0
+  # Pilot only: stagger heavy jobs without skipping Go/contracts on browser failure.
+  if $serial_heavy;then wait "$browser_pid" || browser_rc=$?;fi
   (
     start=$SECONDS
     trap 'echo "ci-local phase go-and-contracts: $((SECONDS-start))s"' EXIT
@@ -101,8 +109,7 @@ if ! $reuse_phases;then
     "$PYTHON" scripts/test-gate-receipt.py
     ./scripts/vm-test.sh self-test --json
   ) >"$tmp/go-and-contracts.log" 2>&1 & go_pid=$!
-  browser_rc=0; go_rc=0
-  wait "$browser_pid" || browser_rc=$?
+  if ! $serial_heavy;then wait "$browser_pid" || browser_rc=$?;fi
   wait "$go_pid" || go_rc=$?
   cat "$tmp/browser.log" "$tmp/go-and-contracts.log"
   if ((browser_rc || go_rc));then

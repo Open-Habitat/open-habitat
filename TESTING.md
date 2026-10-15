@@ -67,7 +67,13 @@ tree and gate inputs it covers. On a repeat of the **same** committed tree,
 the browser and Go/contracts phases can reuse the previous passed receipt's
 results; the new receipt lists them under `reused_phases`. Every changed tree
 runs both phases in full. The gated release preparer checks the receipt
-against the current clean tree rather than rerunning the gate. Browser and Go/contracts now run concurrently after the shared web build.
+against the current clean tree rather than rerunning the gate. Browser and Go/contracts run concurrently by default after the shared web build.
+For a scheduling experiment only, set `OH_GATE_SERIAL_HEAVY=1` to finish the
+unchanged browser phase (normal then lab) before starting the unchanged
+Go/contracts phase. Both phases still run and report separate logs/exit codes
+if either fails; setup, web checks, packaging, receipt and reuse behavior do
+not change. Unset or `0` keeps parallel scheduling; other values are rejected.
+This opt-in is not a demonstrated speedup; see the [scheduling pilot](issues/tenfold-test-speed/phase-schedule.md).
 The first changed-tree no-reuse run took 233 s, including 49 s of dependency
 installation and browser download; the browser side took 142 s and Go/contracts
 157 s concurrently. Another changed-tree run with populated caches took
