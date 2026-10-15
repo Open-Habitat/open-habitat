@@ -65,7 +65,10 @@ esac
 				PiState string `json:"pi_state"`
 			} `json:"attempt"`
 		}
-		if json.Unmarshal(w.Body.Bytes(), &reply) != nil || reply.Attempt.State != "pending" || reply.Attempt.PiState != "unknown" {
+		// The device-code goroutine can publish before the POST is encoded.
+		// Neither state requires a native status read; elapsed time below
+		// checks that the response did not wait for one.
+		if json.Unmarshal(w.Body.Bytes(), &reply) != nil || (reply.Attempt.State != "pending" && reply.Attempt.State != "device_code") || reply.Attempt.PiState != "unknown" {
 			t.Fatalf("start must not wait for a native status read: %s", w.Body.String())
 		}
 	}

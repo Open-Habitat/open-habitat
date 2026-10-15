@@ -3,6 +3,15 @@ import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
+async function openFileWork(page: import("@playwright/test").Page) {
+  const turn = page.getByRole("region", { name: "Agentin vuoro" }).first();
+  const live = turn.getByRole("button", { name: "Näytä työ" });
+  const saved = turn.getByRole("button", { name: /PI.*työkalua/ });
+  await expect(live.or(saved)).toBeVisible({ timeout: 25000 });
+  if (await live.isVisible()) await live.click();
+  else if ((await saved.getAttribute("aria-expanded")) === "false")
+    await saved.click();
+}
 test("@file-tool-cards live and saved file rows retain counts, content and accessible diff", async ({
   page,
 }) => {
@@ -22,6 +31,7 @@ test("@file-tool-cards live and saved file rows retain counts, content and acces
     .getByRole("textbox", { name: "Viesti Pi:lle" })
     .fill("näytä kortit");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await openFileWork(page);
   const tool = (name: string) =>
     page
       .locator(".ah-tool-row")
@@ -38,6 +48,7 @@ test("@file-tool-cards live and saved file rows retain counts, content and acces
   // Reload can first paint provisional output; wait for the saved native reply
   // before opening its disclosures.
   await expect(page.getByText('Selvä. Kysyit: "näytä kortit".')).toBeVisible();
+  await openFileWork(page);
   for (const name of ["read", "write", "edit"]) {
     await expect(async () => {
       const toggle = tool(name).locator("button").first();
@@ -139,6 +150,7 @@ test("@file-tool-cards failed read shows the native error without a file count",
     .getByRole("textbox", { name: "Viesti Pi:lle" })
     .fill("virhekortti");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await openFileWork(page);
   const row = page
     .locator(".ah-tool-row")
     .filter({ has: page.locator(".ah-tool-name", { hasText: "read" }) })
