@@ -309,12 +309,8 @@ test("@browser-conversation transient status failure retries with healthy journa
 
 // The synthetic Pi has no receipt/question/settlement scenario yet. Intercept
 // validated private gateway responses after the real TLS login/create/send path.
-for (const outcome of [
-  "pending",
-  "accepted",
-  "rejected",
-  "uncertain",
-] as const) {
+// Ordinary acceptance is covered by the native send/reload and lost-ack journeys.
+for (const outcome of ["pending", "rejected", "uncertain"] as const) {
   test(`@browser-conversation validated ${outcome} send receipt never reposts`, async ({
     page,
   }) => {
@@ -358,12 +354,7 @@ for (const outcome of [
       .getByRole("textbox", { name: "Viesti Pi:lle" })
       .fill(`Synteettinen ${outcome}`);
     await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-    if (outcome === "accepted") {
-      await expect(
-        page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-      ).toHaveValue("");
-      await expect(page.locator(".ah-send-accepted")).toHaveCount(0);
-    } else await expect(page.locator(`.ah-send-${outcome}`)).toBeVisible();
+    await expect(page.locator(`.ah-send-${outcome}`)).toBeVisible();
     await expectPhoneComposerWithinViewport(page);
     if (outcome === "uncertain") {
       await expect(
@@ -376,66 +367,13 @@ for (const outcome of [
     expect(sends).toBe(1);
     const before = lookups;
     await refreshConversation(page);
-    if (outcome === "accepted") {
-      await expect(
-        page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-      ).toHaveValue("");
-      await expect(page.locator(".ah-send-accepted")).toHaveCount(0);
-    } else await expect(page.locator(`.ah-send-${outcome}`)).toBeVisible();
+    await expect(page.locator(`.ah-send-${outcome}`)).toBeVisible();
     expect(lookups).toBe(before); // matching status receipt avoids an extra request
     // The page still polls status. Let intercepted fetches finish before
     // Playwright disposes their responses during page teardown.
     await page.unrouteAll({ behavior: "wait" });
   });
 }
-test("@browser-conversation lost reply looks up matching command without repost", async ({
-  page,
-}) => {
-  await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-  ).toBeVisible();
-  let lookups = 0;
-  await page.route("**/api/v1/conversations/*/status", async (route) => {
-    const response = await route.fetch();
-    const body = await response.json();
-    if (body.command_id) delete body.send_receipt; // force command-ID lookup
-    await route.fulfill({ response, json: body });
-  });
-  await page.route(
-    "**/api/v1/conversations/*/receipt?command_id=*",
-    async (route) => {
-      lookups++;
-      const command_id = new URL(route.request().url()).searchParams.get(
-        "command_id",
-      );
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          schema_version: 1,
-          command_id,
-          state: "accepted",
-        }),
-      });
-    },
-  );
-  let sends = 0;
-  page.on("request", (request) => {
-    if (request.url().endsWith("/send")) sends++;
-  });
-  await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
-    .fill("Vain kerran");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-  ).toHaveValue("");
-  await expect(page.locator(".ah-send-accepted")).toHaveCount(0);
-  expect(lookups).toBe(0); // matching status ack is authoritative
-  expect(sends).toBe(1);
-});
 test("@browser-conversation safe question and settled boundary require validated status and native key", async ({
   page,
 }) => {

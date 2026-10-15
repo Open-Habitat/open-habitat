@@ -381,3 +381,41 @@ passed. Final diff review: the only assertion-related change is matching the
 home card's new prompt text; answer-settlement still precedes the fabricated
 running snapshot, and all archive transitions are still asserted. No lab case
 was changed, so no lab run was needed for this slice.
+
+## Receipt and continuation case-level pass (2026-10-15)
+
+The edited-tree browser JSON at `/var/tmp/oh-speed-edited-browser.json` starts
+with an npm build preamble before the Playwright JSON. It records individual
+*passing* cases on a **failing** 151.8 s run, so its durations are cost
+orientation only, not a passing before baseline. This pass removed two cases,
+not the pending/rejected/uncertain or lost-ack matrix:
+
+| Removed browser case (edited-tree case duration) | Distinguishing incorrect implementation and retained proof |
+| --- | --- |
+| `validated accepted send receipt never reposts` (5,786 ms) | A matching accepted status might fail to clear a submitted draft or repost on manual refresh. The normal `create, send once, reconnect and old history stays read-only` journey checks native acceptance, cleared draft, one POST and reload; `a lost accepted send resolves on reload without another write` checks that the *same native write* reconciles to an empty editor with exactly one POST even when its HTTP reply is lost. The accepted-specific static marker (`.ah-send-accepted` absent) is no longer pinned directly; the retained native send/reload case instead checks that the pending notice disappears and the editor stays usable. Rendering a redundant accepted marker without changing delivery is a presentation regression, not an additional once-only write failure. The retained pending/rejected/uncertain receipt cases still cover the intercepted status path, `refreshConversation`, no repost and the shared matching-status/no-additional-lookup branch. |
+| `lost reply looks up matching command without repost` (5,871 ms) | Despite its name, this case deleted `send_receipt` from status but did **not** delete the accepted `ack`; it asserted `lookups === 0`, not a fallback lookup. In `useConversation.ts` a matching command falls back to `ack` before doing a receipt GET. The retained native send/reload and lost-accepted-reply recovery cases catch failure to accept without repost; the remaining receipt variants check no unnecessary lookup when status is matched. This did not exercise the missing-command-ID fallback. The exact accepted-ack preference over an extra GET is no longer directly pinned, but an extra read alone is not a correctness/security failure and does not justify another synthetic host. |
+
+The pending receipt variant stays because a validated `pending` **status** is
+not the same as the in-flight 404 receipt or a pending follow-up ack. Rejected
+stays because it must retain the unsent text instead of clearing it. Uncertain
+stays for copy/disabled controls. The accepted lost reply via reload and via
+HTTP snapshot without SSE are separate recovery paths; daemon 404 versus
+missing command receipt (unknown, not rejected) are separate failure states.
+The held late-continuation reply, snapshot-stale continuation, writer-conflict
+refusal, and native restart/restore cases retain different race/ownership
+assertions. None is replaced with a same-UID component mock, and none of this
+establishes distinct-UID user isolation.
+
+Focused verification on this changed tree (`OH_PORT_BASE=53000`, two browser
+workers, cached Chromium, disk-backed `/var/tmp`) passed 7/7: the three
+retained receipt outcomes, native send/reload, lost accepted reply/reload,
+writer-conflict continuation refusal/reload and lost continuation reply/HTTP
+recovery. Their summed Playwright case durations were 43,055 ms; the same
+seven titles totalled 53,118 ms in the earlier failed full-run JSON, plus
+11,657 ms for the two now-deleted cases (64,775 ms for those nine). Different
+host load and scheduling, and especially the earlier **failed** run, prevent
+calling that difference a passing-suite speedup. No clean gate or separate-UID
+scenario ran here; the conductor owns the clean gate. Web typecheck, lint,
+format check, focused conversation Vitest (6/6), complete web unit suite
+(126/126 across 21 files), project-view validation and `git diff --check`
+passed.
