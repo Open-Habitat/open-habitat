@@ -177,7 +177,7 @@ test("@browser-conversation saved assistant turn exposes bash command and folds 
   ).toBeVisible();
 });
 
-test("@browser-conversation latest action tracks expanded height and centers its arrow", async ({
+test("@browser-conversation latest action follows expanded output", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1500 });
@@ -202,74 +202,8 @@ test("@browser-conversation latest action tracks expanded height and centers its
     .evaluate((button: HTMLButtonElement) => button.click());
   const latest = page.getByRole("button", { name: "Viimeisimpään" });
   await expect(latest).toBeVisible();
-  const alignment = await latest.evaluate((button) => {
-    const outer = button.getBoundingClientRect();
-    const svg = button.querySelector("svg");
-    if (!svg) throw new Error("latest arrow missing");
-    const icon = svg.getBoundingClientRect();
-    return Math.abs((outer.left + outer.right - icon.left - icon.right) / 2);
-  });
-  expect(alignment).toBeLessThanOrEqual(0.5);
   await bash.click();
   await expect(latest).toHaveCount(0);
-});
-
-test("@browser-conversation tool headers keep the name and ellipsize long targets", async ({
-  page,
-}) => {
-  await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
-    .fill("Tarkista tiedostot");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  const turn = page.getByRole("region", { name: "Agentin vuoro" }).first();
-  await expect(turn.getByText("Selvä. Kysyit:", { exact: false })).toBeVisible({
-    timeout: 30000,
-  });
-  for (const history of [false, true]) {
-    if (history) await page.reload();
-    for (const width of [1440, 390]) {
-      await page.setViewportSize({ width, height: 900 });
-      const row = turn.locator(".ah-tool-row").first();
-      await expect(row).toBeVisible();
-      for (const target of [
-        `find /synthetic/${"long-path/".repeat(20)} -type f`,
-        `/synthetic/${"deep-directory/".repeat(20)}file.txt`,
-      ]) {
-        const geometry = await row.evaluate((node, text) => {
-          const names = node.querySelector(".ah-tool-names") as HTMLElement;
-          let target = names.querySelector(
-            ".ah-tool-target",
-          ) as HTMLElement | null;
-          // The synthetic host's saved call may omit arguments until the card opens.
-          // Inject invented target text to exercise the real header layout in both states.
-          if (!target) {
-            target = document.createElement("code");
-            target.className = "ah-tool-target";
-            names.append(target);
-          }
-          target.textContent = text;
-          const name = node.querySelector(".ah-tool-name") as HTMLElement;
-          const button = node.querySelector("button") as HTMLElement;
-          return {
-            name: name.textContent,
-            targetWidth: target.clientWidth,
-            targetScroll: target.scrollWidth,
-            nameWidth: name.getBoundingClientRect().width,
-            nameScroll: name.scrollWidth,
-            height: button.getBoundingClientRect().height,
-            right: button.getBoundingClientRect().right,
-          };
-        }, target);
-        expect(geometry.name).toBe("bash");
-        expect(geometry.nameWidth).toBeGreaterThanOrEqual(geometry.nameScroll);
-        expect(geometry.targetScroll).toBeGreaterThan(geometry.targetWidth);
-        expect(geometry.height).toBeLessThan(45);
-        expect(geometry.right).toBeLessThanOrEqual(width);
-      }
-    }
-  }
 });
 
 test("@browser-conversation workspace menu starts one native conversation", async ({

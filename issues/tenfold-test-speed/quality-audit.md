@@ -83,16 +83,19 @@ been measured.
    continuation refusal variants were consolidated after inspecting the
    common path and the exact status/code differences. Do not delete further
    without inspecting the distinct error behavior and boundary.
-2. `web/tests/design-system.spec.ts` writes happy/unhappy-state screenshots
-   with visibility assertions but does not compare pixels. Separate review
-   captures from green automated visual assertions; decide which cases must
-   run in the gate and which belong to a visual-review command. The catalog
-   axe test had a 12.49 s case in the older profile; compare its actual states
-   to production-shell axe coverage before removing or shrinking it.
-3. `web/tests/lab-conversation.spec.ts`: the journal heartbeat case waits for
-   a real ~20 s deadline and asserts the duration. It cannot be removed as
-   an idle sleep. Decide whether one such production-deadline check suffices,
-   while smaller-scaled tests prove other journal behavior.
+2. `web/tests/design-system.spec.ts`: the two happy-state screenshots do not
+   compare pixels. They now run only through `test:visual` for human review;
+   the unhappy-state assertions remain in the gate, but its screenshot is
+   manual-only too. The catalog axe test had a 12.49 s case in the older
+   profile; compare its actual states to production-shell axe coverage before
+   removing or shrinking it.
+3. `web/tests/lab-conversation.spec.ts`: removed the ~20 s heartbeat case.
+   It chiefly checked that a 20 s ticker produced a comment after ~20 s; it
+   did not show that a real proxy kept an idle connection alive. The Go test
+   proves that SSE opens before the first heartbeat and the browser idle/blur
+   case checks absence of redundant network requests on a sped-up clock.
+   This deliberately drops exact live-heartbeat-interval regression coverage;
+   if proxy liveness becomes a requirement, test the proxy behavior directly.
 4. Audit short component tests assertion by assertion; `RecapCard` mixes
    uncertainty checks with echoes of input text. Audit Go package-by-package
    afterward, preserving actual UID, root, socket and protocol checks. The earlier
@@ -136,5 +139,19 @@ scratch results are `/var/tmp/oh-quality-normal-{after,confirm}.json`. These
 runs cannot establish either a full-suite pass or a speedup. Another full
 rerun would spend two minutes without addressing either failure; treat the
 harness race/timeout as separate test reliability work rather than deleting
-those behavioral cases. No full clean gate or distinct-UID scenario was run;
+those behavioral cases. The latest cleanup also removed the arrow's half-pixel alignment check from
+`latest action` (the actual appearance/disappearance behavior stays) and
+replaced the browser journey that injected long tool target text with a short
+Playwright test of production `ToolRow` in a catalog fixture, at desktop and
+mobile widths. The prior DOM unit test still checks that the component emits
+its name and first command line; the layout test measures real CSS without
+starting Pi. `test:visual` opts into screenshots and the normal browser suite
+skips the two capture-only cases. After this pass, `typecheck`, `lint`, `format:check`, and component tests
+(113/113) passed. A full normal browser run passed 159 cases with the two
+capture-only cases skipped (1.6 min), and a sequential lab run passed 24/24
+(29.0 s); both used `OH_PORT_BASE=16100` and disk-backed `/var/tmp` scratch.
+A separate opt-in capture run passed both screenshots and the retained latest
+button behavior (3/3). The earlier 129.6 s browser / 42.9 s lab runs came
+from a different tree and conditions, so this is a passing gate result, not
+an isolated, comparable speedup measurement. No distinct-UID scenario was run;
 this document is not a full-gate receipt.

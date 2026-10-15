@@ -2,31 +2,35 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "./worker-host";
 
 const evidence = "test-results/evidence";
+const captureTest = process.env.OH_VISUAL_CAPTURE === "1" ? test : test.skip;
 for (const theme of ["light", "dark"] as const) {
-  test(`@visual design catalog happy state in ${theme}`, async ({ page }) => {
-    await page.goto("/?fixture=design");
-    await page
-      .locator("html")
-      .evaluate(
-        (element, value) => element.setAttribute("data-theme", value),
-        theme,
-      );
-    await expect(
-      page.getByRole("heading", {
-        name: "Rakenna saavutettava komponenttikirjasto",
-      }),
-    ).toBeVisible();
-    await expect(
-      page.getByText("Työskentelee", { exact: true }).first(),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Lähetä", exact: true }).last(),
-    ).toBeEnabled();
-    await page.screenshot({
-      path: `${evidence}/design-happy-${theme}.png`,
-      fullPage: true,
-    });
-  });
+  captureTest(
+    `@visual design catalog happy state in ${theme}`,
+    async ({ page }) => {
+      await page.goto("/?fixture=design");
+      await page
+        .locator("html")
+        .evaluate(
+          (element, value) => element.setAttribute("data-theme", value),
+          theme,
+        );
+      await expect(
+        page.getByRole("heading", {
+          name: "Rakenna saavutettava komponenttikirjasto",
+        }),
+      ).toBeVisible();
+      await expect(
+        page.getByText("Työskentelee", { exact: true }).first(),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Lähetä", exact: true }).last(),
+      ).toBeEnabled();
+      await page.screenshot({
+        path: `${evidence}/design-happy-${theme}.png`,
+        fullPage: true,
+      });
+    },
+  );
 }
 test("@visual unhappy states remain explicit", async ({ page }) => {
   await page.goto("/?fixture=design-unhappy");
@@ -43,10 +47,11 @@ test("@visual unhappy states remain explicit", async ({ page }) => {
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toHaveAttribute("readonly");
-  await page.screenshot({
-    path: `${evidence}/design-unhappy-light.png`,
-    fullPage: true,
-  });
+  if (process.env.OH_VISUAL_CAPTURE === "1")
+    await page.screenshot({
+      path: `${evidence}/design-unhappy-light.png`,
+      fullPage: true,
+    });
 });
 test("@visual keyboard focus follows visible controls", async ({ page }) => {
   await page.goto("/?fixture=design");

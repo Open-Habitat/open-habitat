@@ -4,6 +4,7 @@ import {
   ConversationTimeline,
   DiffView,
   QueuePanel,
+  ToolRow,
   UncertainCommandCard,
   UserMessage,
   AssistantMessage,
@@ -21,8 +22,10 @@ import { ConnectionBanner } from "../components/Status";
 const noop = () => {};
 export default function CatalogPreview({
   scenario = "happy",
+  toolLayout = false,
 }: {
   scenario?: "happy" | "unhappy";
+  toolLayout?: boolean;
 }) {
   const [filter, setFilter] = useState("");
   const [value, setValue] = useState(
@@ -86,6 +89,23 @@ export default function CatalogPreview({
         />
       ),
     },
+    ...(toolLayout
+      ? [
+          {
+            id: "tool-layout",
+            content: (
+              <ToolRow
+                name="bash"
+                targetText={`find /synthetic/${"long-path/".repeat(20)} -type f`}
+                statusLabel="valmis"
+                state="succeeded"
+                expanded={false}
+                onToggle={noop}
+              />
+            ),
+          },
+        ]
+      : []),
     {
       id: "assistant",
       content: (

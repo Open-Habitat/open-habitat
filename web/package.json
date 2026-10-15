@@ -21,7 +21,7 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build --quiet",
     "storybook:test": "storybook build --quiet",
-    "test:visual": "playwright test --grep @visual"
+    "test:visual": "OH_VISUAL_CAPTURE=1 playwright test --grep @visual"
   },
   "dependencies": {
     "@reduxjs/toolkit": "2.12.0",

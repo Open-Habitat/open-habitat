@@ -167,7 +167,11 @@ Storybook uses the same production components as the application; the
 [component map](design-system/components.md) explains how to open it.
 `storybook:test` builds the catalog. Its interactive accessibility addon
 shows Axe findings, while `test:a11y` runs browser assertions against the
-production preview fixtures. Visual captures complement behavioral assertions.
+production preview fixtures. `test:visual` opts into the light/dark catalog
+screenshots for human comparison; those two capture-only cases are skipped by
+the normal browser gate. The unhappy-state and focus/zoom checks still run in
+the gate because they assert behavior. A captured image is not an automated
+visual comparison.
 
 Compare the design drafts and production side by side in the synthetic lab;
 correct differences in shared components and tokens. The comparison fixture
