@@ -22,8 +22,8 @@ Implement the daemon's command search path for browser-started Pi and the proces
 The host's own fixed subprocesses (`gh` for host GitHub actions, git calls) keep their absolute paths and sanitized environment. The PATH must match what the same user gets in a native SSH login shell, so that agents find the same tools in both.
 
 ## Acceptance Criteria
-- [ ] Browser-started Pi finds an executable placed in the user's `~/.local/bin` and in `/usr/local/bin` (Go test with a disposable HOME, plus a lab or browser journey).
-- [ ] A user's `~/.local/bin` never appears in another user's PATH or in root/gateway/broker processes (test with two UIDs, or the closest synthetic proof, stating its limits).
-- [ ] Host-fixed subprocesses still use their absolute paths (test).
-- [ ] The operations guide (`docs/operations.md`) gets a short section: where users install their own tools, and how administrators add shared ones.
-- [ ] result.md has a "Decisions for later review" section.
+- [x] Browser-started Pi finds an executable placed in the user's `~/.local/bin` and in `/usr/local/bin` (Go test with a disposable HOME, plus a lab or browser journey).
+- [x] A user's `~/.local/bin` never appears in another user's PATH or in root/gateway/broker processes (test with two UIDs, or the closest synthetic proof, stating its limits).
+- [x] Host-fixed subprocesses still use their absolute paths (test).
+- [x] The operations guide (`docs/operations.md`) gets a short section: where users install their own tools, and how administrators add shared ones.
+- [x] result.md has a "Decisions for later review" section.

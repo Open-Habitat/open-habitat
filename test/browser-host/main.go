@@ -215,6 +215,13 @@ esac
 		if e := os.MkdirAll(filepath.Join(home, "src"), 0700); e != nil {
 			log.Fatal(e)
 		}
+		bin := filepath.Join(home, ".local", "bin")
+		if e := os.MkdirAll(bin, 0700); e != nil {
+			log.Fatal(e)
+		}
+		if e := os.WriteFile(filepath.Join(bin, "agent-probe"), []byte("#!/bin/sh\nprintf '%s\\n' '"+m.Username+"'\n"), 0700); e != nil {
+			log.Fatal(e)
+		}
 		for _, name := range []string{"git-project", "ordinary-dir", "without-metadata"} {
 			if e := os.Mkdir(filepath.Join(home, "src", name), 0700); e != nil {
 				log.Fatal(e)

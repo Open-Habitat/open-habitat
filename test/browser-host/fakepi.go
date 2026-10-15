@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -305,7 +306,16 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 		os.Exit(3)
 	}
 	listing := "README.md\nsrc\n"
-	if entries, err := os.ReadDir("."); err == nil {
+	if strings.Contains(prompt, "agent path probe") {
+		// The fake Pi crosses the same child-exec boundary as a native tool call.
+		// Its answer is visible through the real browser conversation route.
+		out, err := exec.Command("agent-probe").Output()
+		if err != nil {
+			listing = "agent-probe unavailable"
+		} else {
+			listing = "agent-probe: " + strings.TrimSpace(string(out))
+		}
+	} else if entries, err := os.ReadDir("."); err == nil {
 		names := []string{}
 		for _, e := range entries {
 			names = append(names, e.Name())

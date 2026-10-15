@@ -407,7 +407,7 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
-	p, err := launchPiRPCCommand(c.runtime.Node, prefix, c.home, cwd, []string{"PATH=/usr/bin:/bin", "USER=" + c.cfg.Username}, owner, ws)
+	p, err := launchPiRPCCommand(c.runtime.Node, prefix, c.home, cwd, []string{agentPath(c.home), "USER=" + c.cfg.Username}, owner, ws)
 	if err != nil {
 		c.mu.Unlock()
 		snapshotError(w, 503, "native_source_unavailable")
