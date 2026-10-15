@@ -579,7 +579,7 @@ it("keeps consecutive native replies as separate foldable threads", () => {
   );
 });
 
-it("reads bash arguments only after opening the native call", async () => {
+it("reads bash arguments for the collapsed native call header", async () => {
   const agentId = "pi:11111111-1111-4111-8111-111111111111";
   const response = {
     schema_version: 1,
@@ -615,7 +615,7 @@ it("reads bash arguments only after opening the native call", async () => {
     content: { ...entry.content, text: "" },
   };
   render(timelineItems([call], undefined, agentId, "rev")[0].content);
-  expect(fetch).not.toHaveBeenCalled();
+  expect(await screen.findByText("echo ok")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: /bash/ }));
   expect(await screen.findByText(/\$ echo ok/)).toBeTruthy();
   expect(fetch).toHaveBeenCalledTimes(1);

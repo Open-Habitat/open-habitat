@@ -2,6 +2,18 @@ import { fireEvent, render, within } from "@testing-library/react";
 import { expect, it } from "vitest";
 import { PiToolUse } from "./PiBlocks";
 
+it("keeps the failed status and output without a duplicate notice", () => {
+  const view = render(
+    <PiToolUse name="bash" state="failed" initiallyExpanded>
+      <pre>Permission denied</pre>
+    </PiToolUse>,
+  );
+  expect(view.getByRole("button", { name: /bash.*epäonnistui/ })).toBeTruthy();
+  expect(view.getByText("Permission denied")).toBeTruthy();
+  expect(view.queryByText("Työkalu epäonnistui")).toBeNull();
+  expect(view.queryByText("Pi ilmoitti työkalun virheestä.")).toBeNull();
+});
+
 it("starts loaded bash closed and live bash open, retaining a person's toggle", () => {
   const choices = new Map<string, boolean>();
   const expansion = {

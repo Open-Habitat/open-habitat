@@ -711,13 +711,6 @@ export function ToolRow({
       </DisclosureButton>
       {expanded || keepMounted ? (
         <div className="ah-disclosure-panel" hidden={!expanded}>
-          {errorSummary ? (
-            <InlineNotice
-              title="Työkalu epäonnistui"
-              description={errorSummary}
-              tone="danger"
-            />
-          ) : null}
           {children}
         </div>
       ) : null}
