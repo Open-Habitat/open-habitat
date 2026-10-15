@@ -54,7 +54,11 @@ The [architecture](../../docs/architecture.md),
 [design package](../native-agent-host-architecture/ui-design-package.md) and
 [conversation v1 brief](../native-agent-host-architecture/ui-design-conversation.md)
 provide the surrounding decisions. Detailed plans, contract evidence and results
-belong in this issue directory.
+belong in this issue directory. The [native process evidence](native-processes.md)
+records the installed extension's current limits.
+
+Next: prototype a read-only bridge from a live daemon-owned Pi RPC child to
+inventory and one combined-output follow in a real browser conversation.
 
 ## Decisions
 
