@@ -292,3 +292,17 @@ pre.cmd-rest { margin: 0; padding: 8px 12px; background: var(--ah-sunken); borde
 @container (max-width: 800px) {
   .bubble.user { max-width: 100%; }
 }
+
+/* Kieli ja rivimäärä laatikon oikeassa yläkulmassa (Jari 15.10.2026, Kulmassa). */
+.out-win { position: relative; }
+.out-meta.in-corner { position: absolute; top: 5px; right: 46px; z-index: 1; gap: 4px !important; padding: 1px 6px; font-size: 11px !important; color: var(--ah-muted); background: color-mix(in srgb, var(--ah-sunken) 88%, transparent); border-radius: 4px; pointer-events: none; opacity: .85; transition: opacity 140ms ease-out; }
+.out-win:hover .out-meta.in-corner, .out-win:focus-within .out-meta.in-corner { opacity: 0; }
+.out-meta.in-corner .cb-lang { font-size: 11px; }
+@media (prefers-reduced-motion: reduce) { .out-meta.in-corner { transition: none; } }
+/* Syntaksikorostus kuten tuotannossa (ADR 0015, --ah-syntax-*). */
+pre.syntax .hljs-keyword, pre.syntax .hljs-selector-tag, pre.syntax .hljs-built_in, pre.syntax .hljs-type { color: var(--ah-syntax-keyword); }
+pre.syntax .hljs-string, pre.syntax .hljs-attr, pre.syntax .hljs-addition { color: var(--ah-syntax-string); }
+pre.syntax .hljs-number, pre.syntax .hljs-literal, pre.syntax .hljs-symbol { color: var(--ah-syntax-number); }
+pre.syntax .hljs-title, pre.syntax .hljs-name, pre.syntax .hljs-section, pre.syntax .hljs-property { color: var(--ah-syntax-title); }
+pre.syntax .hljs-comment, pre.syntax .hljs-quote, pre.syntax .hljs-meta { color: var(--ah-syntax-comment); }
+pre.syntax .hljs-deletion { color: var(--ah-syntax-deletion); }

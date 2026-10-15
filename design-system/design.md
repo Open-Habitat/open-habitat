@@ -173,7 +173,10 @@ näyttää ensimmäisen rivinsä ja pitkä tuloste alun ja lopun, sivupalkin
 painikkeilla alkuun, loppuun, kokonaan tai omaan ikkunaan; oma ikkuna
 tarjotaan aina, kun tuloste on yli kymmenen riviä (Jari 12.10. ja 13.10.2026).
 Työkalurivin otsakkeessa työkalun nimi näkyy aina kokonaan, ja komento tai kohde pysyy yhdellä rivillä ja päättyy tarvittaessa "…"-merkkiin; koko komento näkyy avatussa kortissa (Jari 13.10.2026). Sivupalkin ylimpänä on tulosteen kopiointi, myös lyhyellä tulosteella. Sama
-laatikko näyttää myös vastauksen koodin (kieli ja rivimäärä laatikon alla).
+laatikko näyttää myös vastauksen koodin. Kieli ja rivimäärä ovat himmeänä
+laatikon sisällä oikeassa yläkulmassa ja väistyvät, kun osoitin tai fokus on
+laatikossa; omaa riviä laatikon alla ei ole (Jari 15.10.2026, kierros
+`prototypes/rounds/2026-10-15-koodiotsake`, Kulmassa).
 Laatikon sivupalkki on ryhmitelty: kopiointi · näkymä (alku ja loppu,
 vieritettävä ikkuna, kaikki rivit) yhtenä valitsimena · Alkuun ja Loppuun
 vain vieritettävässä ikkunassa · rivitys ja oma ikkuna. Näkymä on ainoa

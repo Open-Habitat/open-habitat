@@ -36,6 +36,10 @@ muotoon 12.10.2026, ja rakennettu vedos todettiin kuvavertailussa samaksi.
   osoittimen alla, sekä tilivalikon "Agentin työ". Kierros, joka piirtää
   omansa, vie `account = false`, `density = false` tai `quiet = false`.
   `R.startOpen = false` saa elävän vuoron alkamaan työ piilossa.
+- `lib/vendor/hljs.js` on highlight.js tuotannon kielillä, ja `output.js`
+  korostaa laatikoiden koodin `--ah-syntax-*`-tokeneilla kuten tuotanto
+  (ADR 0015). `node vendor-hljs.mjs` tekee tiedoston uudelleen, kun tuotannon
+  kielilista (`web/src/components/SyntaxCode.tsx`) muuttuu.
 - `stage.js`:n seuranta katkeaa vain lukijan omasta vierityksestä (rulla,
   kosketus, näppäimet, vierityspalkki). Sisällön kutistuminen laskee myös
   `scrollTop`ia, joten kierros ei saa tulkita sitä lukijan teoksi.

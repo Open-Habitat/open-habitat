@@ -94,7 +94,7 @@ ${many ? read('lib/picker.css') : ''}
 </div>
 ${picker}
 <script>
-${['stage', 'fixture', 'markdown', 'icons', 'pieces', 'turn', 'output', 'live', ...(app ? ['app'] : []), ...(account ? ['account'] : []), ...(composer ? ['composer'] : []), ...(recap ? ['recap'] : []), ...(quiet ? ['quiet'] : [])].map(n => read(`lib/${n}.js`)).join('\n')}
+${['vendor/hljs', 'stage', 'fixture', 'markdown', 'icons', 'pieces', 'turn', 'output', 'live', ...(app ? ['app'] : []), ...(account ? ['account'] : []), ...(composer ? ['composer'] : []), ...(recap ? ['recap'] : []), ...(quiet ? ['quiet'] : [])].map(n => read(`lib/${n}.js`)).join('\n')}
 // ---------- Round: ${title} ----------
 ${js}
 const variants = [${variants.map(v => v.fn).join(', ')}];

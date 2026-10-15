@@ -24,12 +24,29 @@ const BX = {}; const REG = {};
 const bx = (key) => (BX[key] ??= { mode: null, wrap: null, pos: 0, follow: true });
 const BOX_MODES = { edges: ['Alku ja loppu', ICON_EDGES], scroll: ['Vieritettävä ikkuna', ICON_SCROLLWIN], all: ['Kaikki rivit', ICON_EXPAND] };
 const boxBtn = (act, label, icon, x = {}) => `<button class="icon-btn" type="button" data-act="${act}"${x.mode ? ` data-mode="${x.mode}"` : ''} aria-label="${label}" title="${label}"${x.pressed !== undefined ? ` aria-pressed="${x.pressed}"` : ''}${x.disabled ? ' aria-disabled="true"' : ''}>${icon}</button>`;
-function boxBody(key, lines, mode, wrap, live) {
+// Syntax highlighting as in production (ADR 0015): highlight.js with production's
+// languages (lib/vendor/hljs.js) and the --ah-syntax-* tokens. The whole text is
+// highlighted at once and split into lines, reopening spans that cross a line break.
+const hlLang = (lang) => lang && window.hljs?.getLanguage(lang) ? lang : null;
+function hlLines(lines, lang) {
+  if (!hlLang(lang)) return lines.map(esc);
+  const html = hljs.highlight(lines.join('\n'), { language: lang, ignoreIllegals: true }).value;
+  const out = []; let cur = ''; const open = [];
+  for (const part of html.split(/(<span[^>]*>|<\/span>|\n)/)) {
+    if (part === '\n') { out.push(cur + '</span>'.repeat(open.length)); cur = open.join(''); }
+    else if (part.startsWith('<span')) { open.push(part); cur += part; }
+    else if (part === '</span>') { open.pop(); cur += part; }
+    else cur += part;
+  }
+  out.push(cur); return out;
+}
+function boxBody(key, lines, mode, wrap, live, lang) {
   const w = wrap ? ' wrap' : ''; const caret = live ? '<span class="caret"></span>' : '';
-  const pre = (cls, arr, c = '') => `<pre class="viewport ${cls}${w}${live ? ' stream' : ''}" data-bx="${key}" tabindex="0">${arr.map(l => `<span class="ln">${esc(l) || ' '}</span>`).join('')}${c}</pre>`;
-  if (mode === 'all') return pre('all', lines, caret);
-  if (mode === 'scroll') return `<div class="vp">${pre('', lines, caret)}</div>`;
-  return `<div class="edges">${pre('part head', lines.slice(0, 3))}<button class="gap" type="button" data-act="x-mode" data-mode="all">${lines.length - 10} riviä välistä · Näytä kaikki</button>${pre('part tail', lines.slice(-7), caret)}</div>`;
+  const html = hlLines(lines, lang); const syn = hlLang(lang) ? ' syntax' : '';
+  const pre = (cls, arr, c = '') => `<pre class="viewport ${cls}${w}${syn}${live ? ' stream' : ''}" data-bx="${key}" tabindex="0">${arr.map(l => `<span class="ln">${l || ' '}</span>`).join('')}${c}</pre>`;
+  if (mode === 'all') return pre('all', html, caret);
+  if (mode === 'scroll') return `<div class="vp">${pre('', html, caret)}</div>`;
+  return `<div class="edges">${pre('part head', html.slice(0, 3))}<button class="gap" type="button" data-act="x-mode" data-mode="all">${lines.length - 10} riviä välistä · Näytä kaikki</button>${pre('part tail', html.slice(-7), caret)}</div>`;
 }
 function xbox(key, lines, o) {
   REG[key] = { lines, o };
@@ -40,7 +57,9 @@ function xbox(key, lines, o) {
   const seg = long ? `<div class="grp seg" role="group" aria-label="Näkymä">${Object.entries(BOX_MODES).map(([m, [label, icon]]) => boxBtn('x-mode', label, icon, { mode: m, pressed: mode === m })).join('')}</div>` : '';
   const jumps = mode === 'scroll' ? `<div class="grp jumps" role="group" aria-label="Siirry">${boxBtn('x-top', 'Alkuun', ICON_TOP, { disabled: true })}${boxBtn('x-bottom', 'Loppuun', ICON_BOTTOM, { disabled: true })}</div>` : '';
   const tail = `<div class="grp">${boxBtn('x-wrap', wrap ? 'Älä rivitä pitkiä rivejä' : 'Rivitä pitkät rivit', ICON_WRAP, { pressed: wrap })}${long ? boxBtn('open', 'Avaa omassa ikkunassa', ICON_OPEN) : ''}</div>`;
-  return `<div class="out" data-key="${esc(key)}"><div class="out-win">${boxBody(key, lines, mode, wrap, o.live)}<div class="out-rail ga"><div class="grp">${copy}</div>${seg}${jumps}${tail}</div></div>${meta ? `<div class="out-meta">${meta}</div>` : ''}</div>`;
+  // Language and line count sit faintly in the box's top right corner, not on a row below
+  // (Jari 15.10.2026, round 2026-10-15-koodiotsake, Kulmassa).
+  return `<div class="out" data-key="${esc(key)}"><div class="out-win">${meta ? `<div class="out-meta in-corner">${meta}</div>` : ''}${boxBody(key, lines, mode, wrap, o.live, o.hl ?? o.lang)}<div class="out-rail ga"><div class="grp">${copy}</div>${seg}${jumps}${tail}</div></div></div>`;
 }
 // Callers: the live turn passes its block; the box keeps its own view state by key.
 function box(lines, view, kind, b, live) {
@@ -132,7 +151,7 @@ const langName = (l) => ({ bash: 'shell', sh: 'shell', zsh: 'shell', py: 'python
 const codeLines = (t) => t.replace(/\n$/, '').split('\n');
 const CB = {}; let cbSeq = 0;
 function codeBox(lang, text) { const id = `cb${++cbSeq}`; CB[id] = { lang, lines: codeLines(text) }; return `<div class="cb o" data-cb="${id}">${ikkuna(id)}</div>`; }
-function ikkuna(id) { const c = CB[id]; return xbox(`cb:${id}`, c.lines, { lang: langName(c.lang), name: langName(c.lang) || 'koodi', target: 'Pi:n vastaus', plain: true, copyLabel: 'Kopioi koodi' }); }
+function ikkuna(id) { const c = CB[id]; return xbox(`cb:${id}`, c.lines, { lang: langName(c.lang), hl: c.lang, name: langName(c.lang) || 'koodi', target: 'Pi:n vastaus', plain: true, copyLabel: 'Kopioi koodi' }); }
 mdCode = codeBox;
 
 // ---------- File tools (chosen 13.10.2026, round 2026-10-13-tiedostot: Rivit with word marks) ----------
@@ -176,6 +195,6 @@ function fileStat(b) {
 function fileBody(b) {
   if (b.name === 'read') return xbox(`h:read:${b.target}:${b.result.length}`, b.result.split('\n'), { lang: langOf(b.args.path), name: 'read', target: b.target, copyLabel: 'Kopioi sisältö' });
   if (b.name === 'write') return xbox(`h:write:${b.target}`, b.args.content.split('\n'), { lang: langOf(b.args.path), name: 'write', target: b.target, copyLabel: 'Kopioi sisältö' });
-  if (b.name === 'edit') return `<div class="out"><div class="out-win">${editDiff(b.args.oldText, b.args.newText).html}<div class="out-rail ga"><div class="grp"><button class="icon-btn" type="button" data-tcopy="${esc(b.args.newText)}" aria-label="Kopioi uusi teksti" title="Kopioi uusi teksti">${ICON_COPY}</button></div></div></div>${langOf(b.args.path) ? `<div class="out-meta"><span class="cb-lang">${esc(langOf(b.args.path))}</span></div>` : ''}</div>`;
+  if (b.name === 'edit') return `<div class="out"><div class="out-win">${langOf(b.args.path) ? `<div class="out-meta in-corner"><span class="cb-lang">${esc(langOf(b.args.path))}</span></div>` : ''}${editDiff(b.args.oldText, b.args.newText).html}<div class="out-rail ga"><div class="grp"><button class="icon-btn" type="button" data-tcopy="${esc(b.args.newText)}" aria-label="Kopioi uusi teksti" title="Kopioi uusi teksti">${ICON_COPY}</button></div></div></div></div>`;
   return '';
 }
