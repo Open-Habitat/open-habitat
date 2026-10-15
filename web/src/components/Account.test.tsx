@@ -111,10 +111,13 @@ describe("account presentation", () => {
       fireEvent.click(
         screen.getByRole("button", { name: /Oma tili, Tilivalikko/ }),
       );
-      const option = await screen.findByRole("menuitem", {
-        name: /Teema: Tumma/,
-      });
-      expect(option.getAttribute("data-group-selected")).toBe("true");
+      const option = await screen.findByRole("button", { name: "Tumma" });
+      expect(option.getAttribute("aria-pressed")).toBe("true");
+      expect(option.getAttribute("title")).toBe("Tumma");
+      for (const name of ["Järjestelmä", "Vaalea", "Tumma"])
+        expect(screen.getByRole("button", { name }).getAttribute("title")).toBe(
+          name,
+        );
       expect(screen.getByRole("menuitem", { name: "Asetukset" })).toBeTruthy();
       expect(
         screen.getByRole("menuitem", { name: "Kirjaudu ulos…" }),
@@ -137,7 +140,7 @@ describe("account presentation", () => {
     expect(
       screen.queryByRole("menuitem", { name: "Palvelimen ylläpito" }),
     ).toBeNull();
-    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+    fireEvent.keyDown(screen.getAllByRole("menu")[0], { key: "Escape" });
     await waitFor(() => expect(document.activeElement).toBe(trigger));
     rerender(
       <AccountShelf

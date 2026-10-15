@@ -184,6 +184,7 @@ export function BrowserConversation({
     restoreAnchor,
     setUnseen,
   });
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Rebind when native entries mount the stream; the ref itself is stable.
   useEffect(() => {
     const viewport = feed.current;
     if (!viewport) return;

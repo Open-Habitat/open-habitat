@@ -8,6 +8,7 @@ import {
   ModalOverlay,
 } from "react-aria-components";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
+import { Icon } from "./Icon";
 import { Menu } from "./Overlays";
 import { Button, ListRow, RadioGroup } from "./Primitives";
 import { StatusMark } from "./Status";
@@ -91,10 +92,14 @@ export function AccountShelf({
     accountLabel(person.name) === "Oma tili"
       ? "Oma tili"
       : accountLabel(person.name).split(/\s+/)[0];
-  const themes: { id: ThemeChoice; label: string }[] = [
-    { id: "system", label: "Järjestelmä" },
-    { id: "light", label: "Vaalea" },
-    { id: "dark", label: "Tumma" },
+  const themes: {
+    id: ThemeChoice;
+    label: string;
+    icon: "system" | "sun" | "moon";
+  }[] = [
+    { id: "system", label: "Järjestelmä", icon: "system" },
+    { id: "light", label: "Vaalea", icon: "sun" },
+    { id: "dark", label: "Tumma", icon: "moon" },
   ];
   return (
     <div className="ah-account-shelf" data-account-controls>
@@ -108,6 +113,25 @@ export function AccountShelf({
           </span>
         }
         heading={<AccountIdentity profile={person} />}
+        betweenItems={
+          <div className="ah-account-menu-theme-row">
+            <span>Teema</span>
+            <fieldset className="ah-account-menu-theme" aria-label="Teema">
+              {themes.map(({ id, label, icon }) => (
+                <button
+                  type="button"
+                  key={id}
+                  aria-label={label}
+                  title={label}
+                  aria-pressed={theme === id}
+                  onClick={() => setThemeChoice(id)}
+                >
+                  <Icon name={icon} />
+                </button>
+              ))}
+            </fieldset>
+          </div>
+        }
         popoverClassName="ah-account-menu"
         placement="top start"
         items={[
@@ -115,20 +139,9 @@ export function AccountShelf({
           ...(onAdministration
             ? [{ id: "administration", label: "Palvelimen ylläpito" }]
             : []),
-          ...themes.map(({ id, label }) => ({
-            id: `theme-${id}`,
-            label: `Teema: ${label}${theme === id ? " (valittu)" : ""}`,
-            selected: theme === id,
-            group: "theme",
-            displayLabel: label,
-          })),
           { id: "logout", label: "Kirjaudu ulos…", danger: true },
         ]}
         onAction={(id) => {
-          if (id.startsWith("theme-")) {
-            const choice = id.slice(6) as ThemeChoice;
-            setThemeChoice(choice);
-          }
           if (id === "settings") onSettings();
           if (id === "administration") onAdministration?.();
           if (id === "logout") onLogout();

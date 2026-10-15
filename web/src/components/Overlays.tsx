@@ -161,6 +161,7 @@ export function Menu({
   trigger,
   heading,
   items,
+  betweenItems,
   onAction,
   popoverClassName,
   triggerPresentation,
@@ -175,6 +176,7 @@ export function Menu({
   triggerPresentation?: "account" | "icon";
   triggerClassName?: string;
   placement?: "top start" | "end top";
+  betweenItems?: ReactNode;
   items: {
     id: string;
     label: string;
@@ -210,7 +212,7 @@ export function Menu({
       >
         {heading ? <div className="ah-menu-heading">{heading}</div> : null}
         <AriaMenu aria-label={label} onAction={(key) => onAction(String(key))}>
-          {items.map((item) => (
+          {(betweenItems ? items.slice(0, -1) : items).map((item) => (
             <ControlMenuItem
               danger={item.danger}
               className={item.danger ? "ah-menu-danger" : undefined}
@@ -230,6 +232,26 @@ export function Menu({
             </ControlMenuItem>
           ))}
         </AriaMenu>
+        {betweenItems ? (
+          <>
+            {betweenItems}
+            <AriaMenu
+              aria-label={`${label}: loppu`}
+              onAction={(key) => onAction(String(key))}
+            >
+              <ControlMenuItem
+                id={items[items.length - 1].id}
+                danger={items[items.length - 1].danger}
+                className={
+                  items[items.length - 1].danger ? "ah-menu-danger" : undefined
+                }
+                textValue={items[items.length - 1].label}
+              >
+                {items[items.length - 1].label}
+              </ControlMenuItem>
+            </AriaMenu>
+          </>
+        ) : null}
       </Popover>
     </MenuTrigger>
   );

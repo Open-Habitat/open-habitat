@@ -11,7 +11,13 @@ async function login(page: import("@playwright/test").Page) {
 }
 async function select(page: import("@playwright/test").Page, name: string) {
   await page.getByRole("button", { name: /Tilivalikko/ }).click();
-  await page.getByRole("menuitem", { name: `Teema: ${name}` }).click();
+  const option = page
+    .getByRole("group", { name: "Teema" })
+    .getByRole("button", { name });
+  await expect(option).toHaveAttribute("title", name);
+  await option.click();
+  await expect(option).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("Escape");
 }
 
 test("production theme follows the system, persists an explicit device choice, and responds live", async ({

@@ -1745,8 +1745,51 @@ h1[tabindex="-1"]:focus {
   padding: var(--ah-s2);
 }
 .ah-account-menu [role="menu"] {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
+}
+.ah-account-menu-theme-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 6px 0 10px;
+  color: var(--ah-ink-2);
+}
+.ah-account-menu-theme {
+  border: 0;
+  min-width: 0;
+  margin-left: auto;
+  display: inline-flex;
   gap: 2px;
+  padding: 2px;
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+}
+.ah-account-menu-theme button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ah-muted);
+  cursor: pointer;
+}
+.ah-account-menu-theme button svg {
+  width: 15px;
+  height: 15px;
+}
+.ah-account-menu-theme button[aria-pressed="true"] {
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  box-shadow: var(--ah-shadow-menu);
+}
+.ah-account-menu-theme button:focus-visible {
+  outline: 2px solid var(--ah-focus);
+  outline-offset: 1px;
 }
 @media (max-width: 800px) {
   /* Keep all observed status words, but put them alongside the title rather

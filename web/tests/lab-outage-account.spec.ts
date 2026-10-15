@@ -75,7 +75,9 @@ for (const situation of ["outage", "pi-onboarding"] as const) {
             page.getByRole("menuitem", { name: "Palvelimen ylläpito" }),
           ).toHaveCount(administrator ? 1 : 0);
           await expect(
-            page.getByRole("menuitem", { name: "Teema: Vaalea" }),
+            page
+              .getByRole("group", { name: "Teema" })
+              .getByRole("button", { name: "Vaalea" }),
           ).toBeVisible();
           await expect(
             page.getByRole("menuitem", { name: "Kirjaudu ulos…" }),
