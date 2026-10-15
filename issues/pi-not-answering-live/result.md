@@ -1,0 +1,25 @@
+# Pi answers with a supported model; restart recovery
+
+## Primary evidence (2026-10-15 UTC)
+
+Read-only inspection over the inventory-pinned guest SSH key identified the mapped account `maintainer` (UID 21032). The Pi native session created at 16:57:58 has an assistant turn at 16:58:04 with `stopReason=error`, provider `openai-codex`, model `gpt-5.5`. Its provider-error classification and SHA-256 matched the earlier 05:16 unsupported-model error: the model is not supported for this ChatGPT account. No session message or credential value was printed. Before repair there was **no** `~/.pi/agent/settings.json`, so the browser model selector had not changed this account's native default; Pi kept choosing `gpt-5.5`. Its `auth.json` had an OpenAI OAuth entry expiring 2026-10-22 11:21 UTC, not an expired credential. The native Pi catalog lists `gpt-5.5`, but listing a model does not establish account entitlement.
+
+The guest journal shows gateway and mapped daemon stops/starts at 16:39:53 and 16:45:53 (release switches), then again at 17:06:45. It does **not** show a switch at 16:58. The screenshot's connection-loss/stale working view can result from losing an old controller handle across a release; it is not evidence that the 16:58 provider failure was caused by that restart. At inspection `quotaon -puv /` said enforced; `repquota -u /` showed the mapped account at 155,560 KiB usage with an 8,388,608 KiB hard limit (8 GiB). The earlier temporary 1 MiB limit had been restored; the 16:58 native error classified as unsupported model, not EDQUOT.
+
+## Repair and proof
+
+Native CLI probes as the mapped user, in the user's home, with `--no-session --no-tools --no-extensions --no-skills --no-context-files --print` and a trivial prompt, showed that `gpt-5.4-mini` and `gpt-5.4` were **also** rejected as unsupported, while `openai-codex/gpt-6-astra` returned exactly `OK`. The probes wrote no conversation session. Using the shipped Pi 0.85.1 `SettingsManager` through the same helper used by the browser model selector, running as the mapped user, selected `openai-codex/gpt-6-astra`, flushed, and read back the native `settings.json`. A second disposable native prompt with **no `--model` flag**, after that readback, also returned exactly `OK`, proving the new default is applied to new native turns. This is Pi's own global default for **new** conversations; an existing `gpt-5.5` conversation still needs a fresh start. No Fleetrepo misconfiguration was found and no guest service was manually restarted.
+
+The browser now checks a stale controller on a successful recovery snapshot even if no send receipt is pending. A 404 after daemon replacement returns a settled, readable session to the native history view instead of retaining the old working composer. Pending delivery remains uncertain and is never replayed. The synthetic browser test holds controller status requests until the restart snapshot is received, disconnects the old event stream, and proves the in-place route returns to native history and offers continuation. Removing the new stale-status recovery condition makes that test fail (the page remains on the stale working route). This also avoids treating a transient offline status as proof that Pi stopped.
+
+The mapped-user native prompt demonstrates live provider authorization and an answer without synthetic sign-in. A signed-in browser send, the post-release UI on the guest, and a genuine restart in Jari's browser remain for Jari to verify; no synthetic sign-in was created. The new browser code only reaches the guest after its commit lands on pushed main and the watcher verifies the release.
+
+## Decisions for later review
+
+- Set the mapped user's Pi-native default to the **proven** working `gpt-6-astra` rather than another model merely listed by the catalog. This changes no host-owned preference and does not switch old conversations.
+- Preserve uncertain sends across restart. After a confirmed loss of the old controller, do not silently replay a message or turn a lost receipt into a rejected send. The person may start a new conversation; the native history remains inspectable.
+- Do not add an entitlement cache or automatically probe every available model. Catalog entries are not entitlement evidence; one disposable native prompt was enough to establish a viable choice here.
+
+## Validation and review
+
+Focused web static/unit/component checks passed (127 unit, 115 component tests). The focused browser restart case passed; a mutation removing this fix failed the case. Independent `/llm-review` finder `claude-fable-5-1` found two defects in the first diff: clearing status stranded loading and the initial browser test could pass without exercising snapshot recovery. Both were repaired; verifier `gpt-6-astra` refuted the first after repair and identified a remaining test-order gap that was resolved by disconnecting the old event stream and mutation-testing. Assessment: `history/assessment-pi-not-answering.{json,md}` (ignored local scratch). The full clean gate result is reported in the closing node receipt; the test watcher can deploy the browser fix only after merge to pushed main.

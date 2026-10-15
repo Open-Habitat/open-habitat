@@ -1403,6 +1403,66 @@ test("@browser-conversation phone archives directly into its workspace", async (
   ).toBeEnabled();
 });
 
+test("@browser-conversation restart replaces an in-place running turn with native history", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await editor.fill("native reply before restart");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(
+    page
+      .getByRole("region", { name: "Keskusteluhistoria" })
+      .getByText("native reply before restart", { exact: true }),
+  ).toBeVisible();
+  // Reload the controlled view with its native history, but prevent the old
+  // stream from issuing a status event when the fixture replaces the daemon.
+  await page.route("**/api/v1/events*", (route) => route.abort("failed"));
+  await page.reload();
+  await expect(editor).toBeVisible();
+  let releaseStatus!: () => void;
+  const heldStatus = new Promise<void>((resolve) => {
+    releaseStatus = resolve;
+  });
+  await page.route("**/api/v1/conversations/*/status*", async (route) => {
+    await heldStatus;
+    await route.fulfill({ status: 404 });
+  });
+  try {
+    expect(
+      (await page.request.get("/fixture/conversations-reset")).status(),
+    ).toBe(204);
+    const snapshotRead = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/api/v1/snapshot" &&
+        response.ok(),
+    );
+    await page.getByRole("button", { name: "Päivitä", exact: true }).click();
+    await snapshotRead;
+    await expect(
+      page.getByText("Keskustelun tila vanhentui", { exact: true }),
+    ).toBeVisible();
+    await expect(page).toHaveURL(/conversation=pi:/);
+    releaseStatus();
+    await expect(page).toHaveURL(/\/agents\/pi:/);
+    await expect(page.locator(".ah-agent-header")).toContainText(
+      "Ei käynnissä",
+    );
+  } finally {
+    releaseStatus();
+  }
+  await expect(editor).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Jatka keskustelua" }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "Keskusteluhistoria" })
+      .getByText("native reply before restart", { exact: true }),
+  ).toBeVisible();
+});
+
 test("@browser-conversation restart offers native continuation and archive without a handle", async ({
   page,
 }) => {

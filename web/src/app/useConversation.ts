@@ -469,11 +469,17 @@ export function useConversation({
   );
   latestRefresh.current = refresh;
   // A successful HTTP snapshot is a connectivity proof even if no SSE event
-  // follows it. Recheck the original command, including on a cached open.
+  // follows it. A restarted daemon has no old controller handle: check it
+  // even without a pending send, so the view can return to native history.
+  const statusStale = id ? metadata.staleStatuses.has(id) : false;
   useEffect(() => {
-    if (recoverySnapshot && id && sessionStorage.getItem(sendKey))
+    if (
+      id &&
+      recoverySnapshot &&
+      (statusStale || sessionStorage.getItem(sendKey))
+    )
       void latestRefresh.current();
-  }, [recoverySnapshot, id, sendKey]);
+  }, [recoverySnapshot, id, sendKey, statusStale]);
   // A tab-wide journal dispatches active status events here; background status
   // observations are owned by the store and never trigger reads on switch.
   useEffect(
