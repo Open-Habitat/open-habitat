@@ -6,8 +6,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/Open-Habitat/open-habitat/internal/transport"
-	"golang.org/x/sys/unix"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -15,6 +13,9 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"golang.org/x/sys/unix"
 )
 
 func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
@@ -50,7 +51,7 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 	}
 	native := readNativeHeader(path, cfg.UID)
 	token := opaque("obs_", id+":"+native.revision)
-	request := func(archived bool, observation string) int {
+	requestDetail := func(archived bool, observation string) (int, string) {
 		t.Helper()
 		body, _ := json.Marshal(map[string]any{"workspace_id": wsid, "archived": archived, "previous_archive": func() string {
 			if archived {
@@ -62,7 +63,50 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		c.archive(w, req, id)
-		return w.Code
+		var response struct {
+			Error struct {
+				Code string `json:"code"`
+			} `json:"error"`
+		}
+		_ = json.Unmarshal(w.Body.Bytes(), &response)
+		return w.Code, response.Error.Code
+	}
+	request := func(archived bool, observation string) int {
+		status, _ := requestDetail(archived, observation)
+		return status
+	}
+	// The handler takes its own /proc census; a clean census before a
+	// request cannot guarantee the next one is clean under concurrent load.
+	// Retry only while a new census affirmatively finds no writer and the
+	// native header supplies a fresh observation. A persistent conflict fails.
+	archiveWhenAbsent := func(label string) {
+		t.Helper()
+		deadline := time.Now().Add(3 * time.Second)
+		last := "no attempt"
+		for time.Now().Before(deadline) {
+			census := piWriter(path, cwd, cfg.UID)
+			if census != "not_observed" {
+				last = "writer census: " + census
+				time.Sleep(10 * time.Millisecond)
+				continue
+			}
+			header := readNativeHeader(path, cfg.UID)
+			if header.state != "readable" {
+				t.Fatalf("%s: native history not readable: %s", label, header.state)
+			}
+			fresh := opaque("obs_", id+":"+header.revision)
+			status, code := requestDetail(true, fresh)
+			if status == http.StatusOK {
+				token = fresh
+				return
+			}
+			last = fmt.Sprintf("status %d (%s), writer census: %s", status, code, piWriter(path, cwd, cfg.UID))
+			if status != http.StatusConflict || code != "control_uncertain" {
+				t.Fatalf("%s: archive rejected: %s", label, last)
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		t.Fatalf("%s: idle terminal history not archived before deadline: %s", label, last)
 	}
 	writer := exec.Command("bash", "-c", "exec -a pi sleep 20 3<\"$1\"", "bash", path)
 	writer.Dir = cwd
@@ -77,28 +121,12 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 	if piWriter(path, cwd, cfg.UID) != "writer_present" {
 		t.Fatal("native writer not observed")
 	}
-	if got := request(true, token); got != 409 {
-		t.Fatalf("native writer admitted to archive: %d", got)
+	if status, code := requestDetail(true, token); status != 409 || code != "writer_conflict" {
+		t.Fatalf("native writer archive rejection: %d (%s)", status, code)
 	}
 	_ = writer.Process.Kill()
 	_ = writer.Wait()
-	// A concurrent same-UID process can disappear during /proc enumeration.
-	// Wait for affirmative absence, never treat an unknown census as absence.
-	deadline = time.Now().Add(3 * time.Second)
-	observed := ""
-	for time.Now().Before(deadline) {
-		observed = piWriter(path, cwd, cfg.UID)
-		if observed == "not_observed" {
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	if observed != "not_observed" {
-		t.Fatalf("writer absence not established after exit: %s", observed)
-	}
-	if got := request(true, token); got != 200 {
-		t.Fatalf("idle terminal history not archived: %d (writer census: %s)", got, piWriter(path, cwd, cfg.UID))
-	}
+	archiveWhenAbsent("first writer exit")
 	// Restoring presentation does not mutate native history and must not be
 	// blocked by a terminal writer, unlike archiving.
 	writer = exec.Command("bash", "-c", "exec -a pi sleep 20 3<\"$1\"", "bash", path)
@@ -120,37 +148,48 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 	_ = writer.Process.Kill()
 	_ = writer.Wait()
 	// The second writer can also leave /proc enumeration temporarily unknown.
-	// Archive only after the census affirmatively observes its absence.
+	// The active-child and stale-token checks below still run before archiving.
+	exited := make(chan struct{})
+	c.sessions[id] = &conversation{id: id, workspace: wsid, cwd: cwd, rpc: &piRPC{exited: exited}, state: "accepted"}
+	// The live-child rejection is downstream of the independent /proc census.
+	// Require an actual writer_conflict rather than accepting a transient
+	// control_uncertain as proof that the live-child fence held.
 	deadline = time.Now().Add(3 * time.Second)
-	observed = ""
+	activeRejection := "no attempt"
+	activeRejected := false
 	for time.Now().Before(deadline) {
-		observed = piWriter(path, cwd, cfg.UID)
-		if observed == "not_observed" {
+		census := piWriter(path, cwd, cfg.UID)
+		if census != "not_observed" {
+			activeRejection = "writer census: " + census
+			time.Sleep(10 * time.Millisecond)
+			continue
+		}
+		fresh := opaque("obs_", id+":"+readNativeHeader(path, cfg.UID).revision)
+		status, code := requestDetail(true, fresh)
+		if status == 409 && code == "writer_conflict" {
+			activeRejected = true
 			break
+		}
+		activeRejection = fmt.Sprintf("status %d (%s)", status, code)
+		if status != 409 || code != "control_uncertain" {
+			t.Fatalf("active writer archive rejection: %s", activeRejection)
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	if observed != "not_observed" {
-		t.Fatalf("writer absence not established after restore: %s", observed)
-	}
-	exited := make(chan struct{})
-	c.sessions[id] = &conversation{id: id, workspace: wsid, cwd: cwd, rpc: &piRPC{exited: exited}, state: "accepted"}
-	if got := request(true, token); got != 409 {
-		t.Fatalf("active writer admitted: %d", got)
+	if !activeRejected {
+		t.Fatalf("active writer conflict not observed before deadline: %s", activeRejection)
 	}
 	c.sessions[id].state = "idle"
-	if got := request(true, "obs_stale123"); got != 409 {
-		t.Fatalf("stale view admitted: %d", got)
+	if status, code := requestDetail(true, "obs_stale123"); status != 409 || code != "control_uncertain" {
+		t.Fatalf("stale view archive rejection: %d (%s)", status, code)
 	}
-	if got := request(true, token); got != 200 {
-		t.Fatalf("archive: %d", got)
-	}
+	archiveWhenAbsent("idle child")
 	state, err := loadVisibility(home)
 	if err != nil || archiveFact(state, nil, "pi:"+id) != "archived" {
 		t.Fatalf("archive missing: %v %v", state, err)
 	}
-	if got := request(true, token); got != 409 {
-		t.Fatalf("stale archive view changed state: %d", got)
+	if status, code := requestDetail(true, token); status != 409 || code != "control_uncertain" {
+		t.Fatalf("stale archive view rejection: %d (%s)", status, code)
 	}
 	message := httptest.NewRequest("POST", "http://unix/send", bytes.NewBufferString(`{"message":"should stay hidden","command_id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"}`))
 	message.Header.Set("Content-Type", "application/json")
