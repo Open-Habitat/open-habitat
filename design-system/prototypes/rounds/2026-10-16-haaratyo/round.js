@@ -18,7 +18,7 @@ const ICON_DOWN = SVG('<path d="m6 9 6 6 6-6"/>');
 // ---------- Fixture: one workspace, six worktree runs in every state ----------
 const WSID = 'aurinkokello';
 const SRC = { branch: 'main', head: 'a41c9e0', dirty: 2, path: '~/src/aurinkokello' };
-const WTROOT = '~/src/aurinkokello__worktrees';
+const WTROOT = '~/src/aurinkokello__wt-';
 const RUNS = [
   { id: 'r1', mode: 'ask', st: 'waiting', title: 'JSON-tuloste statusriveille', slug: 'k4x-json-tuloste', t: '6 min',
     rid: '01m51c7k2qv8d4hx9tbn3fr6wa', pi: '6f1d2a90-3c4b-4e7a-9d21-0b8e5f7c3a14', started: '15.10. klo 13.40',
@@ -84,7 +84,7 @@ let CUR = 'v1', VIEW = 'ws', RUN = null, MENU = false, MADE = 0, WTFOLD = true, 
 const runOf = (id) => RUNS.find(r => r.id === id);
 const ws = () => UI.ws.find(w => w.id === WSID);
 const branch = (r) => `wt/${r.slug}`;
-const wtPath = (r) => `${WTROOT}/wt-${r.slug}`;
+const wtPath = (r) => `${WTROOT}${r.slug}`;
 const mark = (r) => `<span class="st" role="img" aria-label="${RS[r.st][0]}" title="${RS[r.st][0]}">${RS[r.st][1]}</span>`;
 const brTag = (r, cls = '') => `<span class="wt-br mono ${cls}" title="Haara ${branch(r)}">${ICON_BRANCH}<span>${esc(r.slug)}</span></span>`;
 const modeTag = (r, label = true) => { const [l, ic, tip] = MODES[r.mode]; return `<span class="wt-mode ${r.mode}" title="${tip}"${label ? '' : ` role="img" aria-label="${l}"`}>${ic}${label ? `<span>${l}</span>` : ''}</span>`; };
