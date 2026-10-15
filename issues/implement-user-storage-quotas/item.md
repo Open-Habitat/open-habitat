@@ -1,9 +1,9 @@
 ---
 created: 2026-10-05
-updated: 2026-10-06
+updated: 2026-10-15
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-05:storage-quota-rethink:implementation
@@ -14,6 +14,8 @@ blocked_by: ['@named-server-admin-settings', '@server-administration-cli']
 preparation: ready
 lane: server-admin
 collision: [internal/provision/, internal/gateway/, internal/daemon/, web/, docs/]
+closed: 2026-10-15
+closed_by: jari
 ---
 
 # Implement per-user storage quotas
@@ -55,7 +57,13 @@ ADR 0005 and the workspaces page.
 
 ## Acceptance Criteria
 
-- [ ] On the test server, quota enforcement rejects writes beyond the limit from Git, Pi and a shell across the user's home, without per-user `~/src` images.
-- [ ] The administrator sees usage and limits in the browser and CLI, can change a limit including below current usage, and newly provisioned accounts receive the configured default. The browser also shows filesystem capacity, free space and an overcommit warning when applicable.
-- [ ] A person sees their own usage and limit; clone admission uses the quota without a separate `~/src` filesystem, and a larger `~/src` no longer hides workspaces.
-- [ ] The documentation describes the implemented quota behavior rather than the fixed-volume policy, and the result records the product and Fleetrepo changes verified on the test server.
+- [x] On the test server, quota enforcement rejects writes beyond the limit from Git, Pi and a shell across the user's home, without per-user `~/src` images.
+- [x] The administrator sees usage and limits in the browser and CLI, can change a limit including below current usage, and newly provisioned accounts receive the configured default. The browser also shows filesystem capacity, free space and an overcommit warning when applicable.
+- [x] A person sees their own usage and limit; clone admission uses the quota without a separate `~/src` filesystem, and a larger `~/src` no longer hides workspaces.
+- [x] The documentation describes the implemented quota behavior rather than the fixed-volume policy, and the result records the product and Fleetrepo changes verified on the test server.
+
+## Resolution
+
+### 2026-10-15T16:48:05Z · @jari
+
+Live mapped-user EDQUOT and root administration proved on pilot.90; signed-in browser and a new voluntary sign-in remain Jari-only checks, covered meanwhile by host/UI tests and recorded in KOKEILTAVAA.md.

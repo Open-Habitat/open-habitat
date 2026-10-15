@@ -3,6 +3,63 @@ import { MemoryRouter } from "react-router";
 import { afterEach, expect, it, vi } from "vitest";
 import { ServerAdministration } from "./ServerAdministration";
 afterEach(() => vi.restoreAllMocks());
+it("renders quota usage, capacity, overcommit and the bound user's limit", async () => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(
+    async (input) =>
+      new Response(
+        JSON.stringify(
+          String(input).endsWith("/storage")
+            ? {
+                schema_version: 1,
+                users: [
+                  {
+                    id: "42",
+                    username: "alice",
+                    administrator: true,
+                    usage_bytes: 2 ** 30,
+                    limit_bytes: 8 * 2 ** 30,
+                  },
+                ],
+                filesystem: {
+                  capacity_bytes: 4 * 2 ** 30,
+                  free_bytes: 2 ** 30,
+                },
+                overcommitted: true,
+              }
+            : {
+                schema_version: 1,
+                default_limit_bytes: 8 * 2 ** 30,
+                name: "Example",
+                users: [{ id: "42", username: "alice", administrator: true }],
+              },
+        ),
+        { status: 200 },
+      ),
+  );
+  render(
+    <MemoryRouter>
+      <ServerAdministration csrf="csrf" />
+    </MemoryRouter>,
+  );
+  expect(
+    await screen.findByText(/alice: käytössä 1 GiB \/ 8 GiB/),
+  ).toBeTruthy();
+  expect(
+    screen.getByText(
+      (_, element) =>
+        element?.tagName === "P" &&
+        element.textContent?.includes(
+          "Levytilaa yhteensä 4 GiB, vapaana 1 GiB.",
+        ) === true,
+    ),
+  ).toBeTruthy();
+  expect(screen.getByRole("status").textContent).toContain(
+    "ylittää levyn kapasiteetin",
+  );
+  expect(
+    screen.getByRole("textbox", { name: "alice: raja (GiB)" }),
+  ).toHaveProperty("value", "8");
+});
 it("lists only bound identities and refreshes after a role update", async () => {
   let admin = false;
   const fetchMock = vi
