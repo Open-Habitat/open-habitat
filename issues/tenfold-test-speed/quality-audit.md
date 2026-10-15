@@ -343,3 +343,41 @@ passed.
 These are same-UID synthetic host/browser checks, not a clean gate, separate-UID
 security proof, or comparable elapsed-time measurement. The conductor owns
 the next changed-tree clean gate.
+
+## Synthetic slow-turn prompt audit (2026-10-15)
+
+The fake Pi in `test/browser-host/fakepi.go` sleeps 2 s per phase for prompts
+containing `hidas`, versus 200 ms per phase otherwise. Inspected each occurrence
+in `browser-conversation.spec.ts` and `lab-conversation.spec.ts`; changed only
+`home card blocks archive during Pi work, shows failure and removes on success`.
+That case waits for the native answer before injecting `activity: "running"`
+into a subsequent snapshot. Its disabled archive assertion tests the injected
+snapshot, not an actual live slow turn; its re-enabled archive, refusal and
+success assertions remain unchanged. The prompt and card selector now use
+`päätyö` instead of `hidas päätyö`.
+
+Retained the other browser slow prompts: steer/queue/clear and queue-clear 401
+need a real working queue; the stale-working-view case holds a follow-up request
+until the original turn goes idle; switching-agent drafts checks an unsent draft
+while streaming; the pending-ack case needs the queued command to remain pending.
+Retained the lab slow prompts: recap invalidation checks the stale card vanish
+in both tabs while the second turn is underway; the real-controller case checks
+live progress before settlement; typed-journey checks transient thinking/tool
+fragments before saved blocks; intermediate-message and stop-confirmation cases
+check working progress before the visual-hold turn completes. No fake-Pi timer,
+production behavior, deadline or concurrency setting changed.
+
+Focused Playwright before/after on this worker, one worker, same
+`OH_PORT_BASE=52300`, installed pinned dependencies and warm browser/build caches:
+`home card blocks archive during Pi work, shows failure and removes on success`
+passed in **9,397 ms** before and **3,828 ms** after (Playwright JSON case
+durations; standalone runs sequentially). The case saved 5,569 ms of measured
+case time in this pair, not a full-gate wall-time improvement; host contention,
+build/cache state and scheduling can vary. Both runs built and used the
+synthetic browser host; neither is distinct-UID or real-Pi evidence. The
+conductor owns the full clean gate.
+Web typecheck, lint and format check passed after the edit; `git diff --check`
+passed. Final diff review: the only assertion-related change is matching the
+home card's new prompt text; answer-settlement still precedes the fabricated
+running snapshot, and all archive transitions are still asserted. No lab case
+was changed, so no lab run was needed for this slice.

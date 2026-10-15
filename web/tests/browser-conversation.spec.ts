@@ -2379,9 +2379,7 @@ test("@browser-conversation home card blocks archive during Pi work, shows failu
 }) => {
   await open(page);
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
-    .fill("hidas päätyö");
+  await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("päätyö");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(page.getByText("Selvä. Kysyit:", { exact: false })).toBeVisible({
     timeout: 30000,
@@ -2398,9 +2396,7 @@ test("@browser-conversation home card blocks archive during Pi work, shows failu
   });
   await page.getByRole("link", { name: "Etusivu", exact: true }).click();
   await page.reload();
-  const card = page
-    .locator(".ah-home-card")
-    .filter({ hasText: "hidas päätyö" });
+  const card = page.locator(".ah-home-card").filter({ hasText: "päätyö" });
   const archive = card.getByRole("button", { name: "Arkistoi" });
   await expect(card).toBeVisible();
   await expect(archive).toBeDisabled();
