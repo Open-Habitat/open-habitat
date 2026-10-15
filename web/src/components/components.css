@@ -3541,7 +3541,7 @@ h1[tabindex="-1"]:focus {
   position: absolute;
   z-index: 1;
   top: var(--ah-s1);
-  right: calc(var(--ah-output-rail-width) + var(--ah-s2) + var(--ah-s4));
+  right: calc(var(--ah-output-rail-width) + var(--ah-s2) + var(--ah-s6));
   max-width: calc(100% - var(--ah-output-rail-width) - 2 * var(--ah-s4));
   overflow: hidden;
   text-overflow: ellipsis;
