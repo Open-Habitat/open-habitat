@@ -3,12 +3,13 @@ created: 2026-10-15
 updated: 2026-10-15
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: proto-worktrees
 lane_seq: 1
 collision: [design-system/prototypes/rounds/proto-worktree-agents]
 preparation: ready
+closed: 2026-10-15
 ---
 
 # Prototype: worktree agents through Taskfleet
