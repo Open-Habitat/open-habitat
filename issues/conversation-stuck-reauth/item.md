@@ -3,10 +3,12 @@ created: 2026-10-15
 updated: 2026-10-15
 type: bug
 reporter: jari
-status: in-progress
+status: fixed
 priority: high
 lane: reauth
 collision: [internal/daemon, web/src/app/GitHubOnboarding.tsx]
+closed: 2026-10-15
+closed_by: claude
 ---
 
 # New conversation stuck and continue leaves a stale, repeated state
