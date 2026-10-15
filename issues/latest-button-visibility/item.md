@@ -3,11 +3,13 @@ created: 2026-10-15
 updated: 2026-10-15
 type: bug
 reporter: jari
-status: in-progress
+status: fixed
 priority: normal
 lane: web
 lane_seq: 35
 collision: [web/]
+closed: 2026-10-15
+closed_by: claude
 ---
 
 # Jump-to-latest button ignores content height changes
