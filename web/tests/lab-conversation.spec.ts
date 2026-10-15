@@ -15,13 +15,19 @@ test("@lab browser Pi resolves the user's own executable", async ({ page }) => {
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
-  await page.getByRole("navigation").getByRole("link", { name: "aurinkokello" }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "aurinkokello" })
+    .click();
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("agent path probe");
+  await page
+    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .fill("agent path probe");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   const bash = page.getByRole("button", { name: /bash.*valmis/ });
   await expect(bash).toBeVisible({ timeout: 20000 });
-  if ((await bash.getAttribute("aria-expanded")) === "false") await bash.click();
+  if ((await bash.getAttribute("aria-expanded")) === "false")
+    await bash.click();
   await expect(page.getByText("agent-probe: alice")).toBeVisible();
 });
 
