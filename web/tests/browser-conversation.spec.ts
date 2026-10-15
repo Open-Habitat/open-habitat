@@ -465,6 +465,9 @@ for (const outcome of [
       await expect(page.locator(".ah-send-accepted")).toHaveCount(0);
     } else await expect(page.locator(`.ah-send-${outcome}`)).toBeVisible();
     expect(lookups).toBe(before); // matching status receipt avoids an extra request
+    // The page still polls status. Let intercepted fetches finish before
+    // Playwright disposes their responses during page teardown.
+    await page.unrouteAll({ behavior: "wait" });
   });
 }
 test("@browser-conversation lost reply looks up matching command without repost", async ({

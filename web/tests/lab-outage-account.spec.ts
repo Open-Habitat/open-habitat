@@ -105,6 +105,8 @@ for (const situation of ["outage", "pi-onboarding"] as const) {
           ).toBeFocused();
         }
       } finally {
+        // Drain intercepted server responses while the page is still alive.
+        await page.unrouteAll({ behavior: "wait" });
         await page.request.get("/fixture/pi-state?value=usable");
         await page.request.get("/fixture/scenario?value=ready");
       }
