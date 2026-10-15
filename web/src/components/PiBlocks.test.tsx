@@ -4,11 +4,13 @@ import { PiToolUse } from "./PiBlocks";
 
 it("keeps the failed status and output without a duplicate notice", () => {
   const view = render(
-    <PiToolUse name="bash" state="failed" initiallyExpanded>
+    <PiToolUse name="bash" state="failed">
       <pre>Permission denied</pre>
     </PiToolUse>,
   );
   expect(view.getByRole("button", { name: /bash.*epäonnistui/ })).toBeTruthy();
+  expect(view.queryByText("Permission denied")).toBeNull();
+  fireEvent.click(view.getByRole("button", { name: /bash.*epäonnistui/ }));
   expect(view.getByText("Permission denied")).toBeTruthy();
   expect(view.queryByText("Työkalu epäonnistui")).toBeNull();
   expect(view.queryByText("Pi ilmoitti työkalun virheestä.")).toBeNull();
@@ -23,12 +25,7 @@ it("starts loaded bash closed and live bash open, retaining a person's toggle", 
     },
   };
   const loaded = render(
-    <PiToolUse
-      name="bash"
-      state="succeeded"
-      initiallyExpanded={false}
-      expansion={expansion}
-    >
+    <PiToolUse name="bash" state="succeeded" expansion={expansion}>
       <p>Output</p>
     </PiToolUse>,
   );
@@ -39,19 +36,14 @@ it("starts loaded bash closed and live bash open, retaining a person's toggle", 
   expect(loaded.getByText("Output")).toBeTruthy();
   loaded.unmount();
   const returned = render(
-    <PiToolUse
-      name="bash"
-      state="succeeded"
-      initiallyExpanded={false}
-      expansion={expansion}
-    >
+    <PiToolUse name="bash" state="succeeded" expansion={expansion}>
       <p>Output</p>
     </PiToolUse>,
   );
   expect(returned.getByText("Output")).toBeTruthy();
   returned.unmount();
   const live = render(
-    <PiToolUse name="bash" state="running" initiallyExpanded>
+    <PiToolUse name="bash" state="running">
       <p>Live output</p>
     </PiToolUse>,
   );
@@ -65,26 +57,42 @@ it("starts loaded bash closed and live bash open, retaining a person's toggle", 
     },
   };
   const arriving = render(
-    <PiToolUse
-      name="bash"
-      state="running"
-      initiallyExpanded
-      expansion={carried}
-    >
+    <PiToolUse name="bash" state="running" expansion={carried}>
       <p>Running</p>
     </PiToolUse>,
   );
   expect(arriving.getByText("Running")).toBeTruthy();
   arriving.unmount();
   const saved = render(
-    <PiToolUse
-      name="bash"
-      state="succeeded"
-      initiallyExpanded={false}
-      expansion={carried}
-    >
+    <PiToolUse name="bash" state="succeeded" expansion={carried}>
       <p>Saved</p>
     </PiToolUse>,
   );
+  expect(saved.queryByText("Saved")).toBeNull();
+  fireEvent.click(
+    within(saved.container).getByRole("button", { name: /bash/ }),
+  );
   expect(saved.getByText("Saved")).toBeTruthy();
+});
+
+it("closes a streaming block on completion unless the reader chose to open it", () => {
+  const view = render(
+    <PiToolUse name="bash" state="running">
+      <p>Running output</p>
+    </PiToolUse>,
+  );
+  expect(view.getByText("Running output")).toBeTruthy();
+  view.rerender(
+    <PiToolUse name="bash" state="succeeded">
+      <p>Saved output</p>
+    </PiToolUse>,
+  );
+  expect(view.queryByText("Saved output")).toBeNull();
+  fireEvent.click(view.getByRole("button", { name: /bash.*valmis/ }));
+  view.rerender(
+    <PiToolUse name="bash" state="succeeded">
+      <p>Saved output</p>
+    </PiToolUse>,
+  );
+  expect(view.getByText("Saved output")).toBeTruthy();
 });

@@ -859,7 +859,7 @@ h1[tabindex="-1"]:focus {
 }
 /* The transcript presentation is owned by its messages, not the reading-view ancestor. */
 .ah-reading-view .ah-feed {
-  gap: var(--ah-s3);
+  gap: var(--ah-feed-gap);
 }
 .ah-send-observation,
 .ah-native-question {
@@ -1785,6 +1785,11 @@ h1[tabindex="-1"]:focus {
   color: var(--ah-muted);
   cursor: pointer;
 }
+.ah-work-choice .ah-button {
+  width: auto;
+  padding: 0 8px;
+  font-size: 12px;
+}
 .ah-account-menu-theme button svg {
   width: 15px;
   height: 15px;
@@ -2446,11 +2451,11 @@ h1[tabindex="-1"]:focus {
 
 /* Native turn: work, answer and liveness share one vertical rail. */
 .ah-agent-turn {
-  --ah-card-inner-pad: var(--ah-s4);
+  --ah-card-inner-pad: var(--ah-turn-card-padding);
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
-  column-gap: 10px;
-  row-gap: 10px;
+  grid-template-columns: 18px minmax(0, 1fr);
+  column-gap: var(--ah-turn-column-gap);
+  row-gap: var(--ah-turn-gap);
   min-width: 0;
   position: relative;
 }
@@ -2521,7 +2526,7 @@ h1[tabindex="-1"]:focus {
   border-radius: 50%;
 }
 .ah-turn-work {
-  gap: 10px;
+  gap: var(--ah-turn-work-gap);
   position: relative;
 }
 .ah-turn-work .ah-live-work {
@@ -2604,12 +2609,111 @@ h1[tabindex="-1"]:focus {
 .ah-turn-strip {
   color: var(--ah-muted);
 }
-/* biome-ignore lint/style/noDescendingSpecificity: Turn styles override generic component rules. */
-.ah-turn-working > span {
-  width: 100%;
-  background: var(--ah-accent-soft);
+.ah-turn-working {
+  align-items: center;
+  grid-template-columns: 18px minmax(0, 1fr);
+}
+.ah-turn-working > .ah-show-work {
+  grid-column: 2;
+  grid-row: 1;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 104px;
+  min-height: 26px;
+  padding: 0 6px 0 10px;
+  border: 1px solid var(--ah-accent-line);
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-surface);
   color: var(--ah-accent-ink);
-  border-radius: 7px;
+  font: 500 12px var(--ah-font);
+}
+.ah-turn-working > .ah-show-work:hover,
+.ah-turn-working > .ah-show-work[aria-expanded="true"] {
+  background: var(--ah-accent-soft);
+}
+.ah-turn-working > button.ah-show-work .ah-disclosure-chevron {
+  transition: transform 180ms ease-out;
+}
+.ah-turn-working
+  > button.ah-show-work[aria-expanded="true"]
+  .ah-disclosure-chevron {
+  transform: rotate(90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-show-work .ah-disclosure-chevron {
+    transition: none;
+  }
+}
+.ah-work-label {
+  min-width: 69px;
+}
+.ah-turn-working > .ah-turn-status {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding-left: 116px;
+  color: var(--ah-accent-ink);
+  font-size: var(--ah-size-meta);
+}
+.ah-turn-status-name {
+  white-space: nowrap;
+  font-weight: 600;
+}
+.ah-turn-activity {
+  color: var(--ah-muted);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-turn-clock {
+  margin-left: auto;
+  font: 12px var(--ah-mono);
+  font-variant-numeric: tabular-nums;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Reveal only newly mounted work. */
+.ah-work-revealing > * {
+  animation: ah-work-reveal 160ms ease-out backwards;
+}
+.ah-work-revealing > *:nth-child(2) {
+  animation-delay: 45ms;
+}
+.ah-work-revealing > *:nth-child(3) {
+  animation-delay: 90ms;
+}
+.ah-work-revealing > *:nth-child(n + 4) {
+  animation-delay: 135ms;
+}
+@keyframes ah-work-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-work-revealing > * {
+    animation: none;
+  }
+}
+@media (max-width: 480px) {
+  .ah-turn-working > .ah-turn-status {
+    flex-wrap: wrap;
+    gap: 2px 8px;
+  }
+  .ah-turn-status-name {
+    font-size: 11px;
+  }
 }
 .ah-think-row {
   display: flex;

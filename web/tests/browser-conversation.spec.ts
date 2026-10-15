@@ -142,6 +142,25 @@ test("@browser-conversation new controller stays calm and shares settled state w
   await expect(page.getByText("Historia ei luettavissa")).toHaveCount(0);
 });
 
+test("@browser-conversation agent work default is a device preference that survives reload", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: /Tilivalikko/ }).click();
+  const choice = page.getByRole("group", { name: "Agentin työ" });
+  await choice.getByRole("button", { name: "Näkyvissä" }).click();
+  await expect(
+    choice.getByRole("button", { name: "Näkyvissä" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.reload();
+  await page.getByRole("button", { name: /Tilivalikko/ }).click();
+  await expect(
+    page
+      .getByRole("group", { name: "Agentin työ" })
+      .getByRole("button", { name: "Näkyvissä" }),
+  ).toHaveAttribute("aria-pressed", "true");
+});
+
 test("@browser-conversation saved assistant turn exposes bash command and folds work without hiding reply", async ({
   page,
 }) => {
@@ -156,6 +175,7 @@ test("@browser-conversation saved assistant turn exposes bash command and folds 
     timeout: 30000,
   });
   await page.reload();
+  await turn.getByRole("button", { name: /PI.*ajatusta/ }).click();
   const bash = turn.getByRole("button", { name: /bash.*valmis/ });
   await expect(bash).toHaveAttribute("aria-expanded", "false");
   await expect(bash.locator(".ah-tool-target")).toHaveText("ls");
@@ -180,7 +200,7 @@ test("@browser-conversation saved assistant turn exposes bash command and folds 
 test("@browser-conversation latest action follows expanded output", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1440, height: 1500 });
+  await page.setViewportSize({ width: 1440, height: 800 });
   await open(page);
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await page
@@ -191,6 +211,7 @@ test("@browser-conversation latest action follows expanded output", async ({
     timeout: 30000,
   });
   await page.reload();
+  await page.getByRole("button", { name: /PI.*ajatusta/ }).click();
   const bash = page.getByRole("button", { name: /bash.*valmis/ });
   await expect(bash).toHaveAttribute("aria-expanded", "false");
   await expect(page.getByRole("button", { name: "Viimeisimpään" })).toHaveCount(
@@ -200,8 +221,16 @@ test("@browser-conversation latest action follows expanded output", async ({
   await page
     .getByRole("button", { name: "Kaikki rivit" })
     .evaluate((button: HTMLButtonElement) => button.click());
+  await page.locator(".ah-conversation-stream").evaluate((node) => {
+    node.dispatchEvent(
+      new WheelEvent("wheel", { deltaY: -400, bubbles: true }),
+    );
+    node.scrollTop = 0;
+    node.dispatchEvent(new Event("scroll", { bubbles: true }));
+  });
   const latest = page.getByRole("button", { name: "Viimeisimpään" });
   await expect(latest).toBeVisible();
+  await latest.click();
   await bash.click();
   await expect(latest).toHaveCount(0);
 });
@@ -672,6 +701,64 @@ test("@browser-conversation settled turn uses its native strip without a duplica
   await expect(page.locator(".ah-turn-head").first()).toBeVisible();
   await expectPhoneComposerWithinViewport(page);
 });
+test("@browser-conversation only reader scroll suspends following and returning to end resumes it", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const stream = page.locator(".ah-conversation-stream");
+  await page.addStyleTag({
+    content: ".ah-feed { min-height: 4000px !important; }",
+  });
+  await stream.evaluate((node) => {
+    node.scrollTop = node.scrollHeight;
+  });
+  await expect
+    .poll(() =>
+      stream.evaluate((n) => n.scrollHeight - n.scrollTop - n.clientHeight),
+    )
+    .toBeLessThan(2);
+  await stream.evaluate((node) =>
+    node.dispatchEvent(new WheelEvent("wheel", { deltaY: 200, bubbles: true })),
+  );
+  const grow = () =>
+    stream.evaluate((node) => {
+      const li = document.createElement("li");
+      li.style.height = "300px";
+      node.querySelector(".ah-timeline")?.append(li);
+    });
+  await grow();
+  await expect
+    .poll(() =>
+      stream.evaluate((n) => n.scrollHeight - n.scrollTop - n.clientHeight),
+    )
+    .toBeLessThan(2);
+  await stream.evaluate((node) => {
+    node.dispatchEvent(
+      new WheelEvent("wheel", { deltaY: -400, bubbles: true }),
+    );
+    node.scrollTop = 0;
+  });
+  await expect(
+    page.getByRole("button", { name: "Viimeisimpään" }),
+  ).toBeVisible();
+  await stream.evaluate((node) => {
+    node.dispatchEvent(
+      new WheelEvent("wheel", { deltaY: 4000, bubbles: true }),
+    );
+    node.scrollTop = node.scrollHeight;
+  });
+  await expect(page.getByRole("button", { name: "Viimeisimpään" })).toHaveCount(
+    0,
+  );
+  await grow();
+  await expect
+    .poll(() =>
+      stream.evaluate((n) => n.scrollHeight - n.scrollTop - n.clientHeight),
+    )
+    .toBeLessThan(2);
+});
+
 test("@browser-conversation footer and floating latest stay clear at phone width", async ({
   page,
 }) => {
@@ -690,10 +777,16 @@ test("@browser-conversation footer and floating latest stay clear at phone width
     stream.scrollTo({ top: stream.scrollHeight });
   });
   const stream = page.locator(".ah-conversation-stream");
-  const scrollable = await stream.evaluate((node) => {
+  const scrollable = await stream.evaluate((node) => ({
+    height: node.scrollHeight,
+    client: node.clientHeight,
+  }));
+  await stream.evaluate((node) => {
+    node.dispatchEvent(
+      new WheelEvent("wheel", { deltaY: -4000, bubbles: true }),
+    );
     node.scrollTop = 0;
     node.dispatchEvent(new Event("scroll", { bubbles: true }));
-    return { height: node.scrollHeight, client: node.clientHeight };
   });
   expect(scrollable.height).toBeGreaterThan(scrollable.client + 60);
   const latest = page.getByRole("button", { name: "Viimeisimpään" });

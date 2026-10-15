@@ -2,6 +2,15 @@ import { labOrigin } from "../test-ports.mjs";
 import { expect, test } from "./lab-host";
 
 test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
+async function openTurnWork(page: import("@playwright/test").Page) {
+  const turn = page.getByRole("region", { name: "Agentin vuoro" }).last();
+  const live = turn.getByRole("button", { name: "Näytä työ" });
+  const settled = turn.getByRole("button", { name: /PI.*ajatusta/ });
+  await expect(live.or(settled)).toBeVisible({ timeout: 20000 });
+  if (await live.isVisible()) await live.click();
+  else if ((await settled.getAttribute("aria-expanded")) === "false")
+    await settled.click();
+}
 
 // The real synthetic controller has a bounded live-child budget. Each browser
 // journey owns a fresh disposable daemon incarnation, not a previous test's Pi.
@@ -24,7 +33,12 @@ test("@lab browser Pi resolves the user's own executable", async ({ page }) => {
     .getByRole("textbox", { name: "Viesti Pi:lle" })
     .fill("agent path probe");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  const bash = page.getByRole("button", { name: /bash.*valmis/ });
+  const turn = page.getByRole("region", { name: "Agentin vuoro" }).last();
+  await expect(turn.getByRole("button", { name: /PI.*ajatusta/ })).toBeVisible({
+    timeout: 20000,
+  });
+  await turn.getByRole("button", { name: /PI.*ajatusta/ }).click();
+  const bash = turn.getByRole("button", { name: /bash.*valmis/ });
   await expect(bash).toBeVisible({ timeout: 20000 });
   if ((await bash.getAttribute("aria-expanded")) === "false")
     await bash.click();
@@ -201,7 +215,11 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   await expect(page.getByText("Selvä. Kysyit:", { exact: false })).toBeVisible({
     timeout: 20000,
   });
-  const bash = page.getByRole("button", { name: /bash.*valmis/ });
+  const settledTurn = page
+    .getByRole("region", { name: "Agentin vuoro" })
+    .last();
+  await settledTurn.getByRole("button", { name: /PI.*ajatusta/ }).click();
+  const bash = settledTurn.getByRole("button", { name: /bash.*valmis/ });
   if ((await bash.getAttribute("aria-expanded")) === "false")
     await bash.click();
   await expect(
@@ -342,6 +360,7 @@ test("@lab typed Pi fragments converge to saved blocks across paging, reconnect 
     const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
     await editor.fill("hidas typed-journey");
     await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+    await openTurnWork(page);
     await expect(page.getByText("Synteettinen pohdinta")).toBeVisible({
       timeout: 20000,
     });
@@ -354,6 +373,7 @@ test("@lab typed Pi fragments converge to saved blocks across paging, reconnect 
     await expect(page.locator(".ah-live-tool-row")).toHaveCount(0, {
       timeout: 30000,
     });
+    await openTurnWork(page);
     await expect(page.getByText("Synteettinen pohdinta")).toHaveCount(1);
     let gapInjected = false;
     let recoveryReads = 0;
@@ -377,6 +397,7 @@ test("@lab typed Pi fragments converge to saved blocks across paging, reconnect 
       });
     });
     await page.reload();
+    await openTurnWork(page);
     await expect.poll(() => gapInjected).toBe(true);
     await expect.poll(() => recoveryReads).toBeGreaterThan(1);
     await expect(page.getByText("must not appear")).toHaveCount(0);
@@ -388,6 +409,7 @@ test("@lab typed Pi fragments converge to saved blocks across paging, reconnect 
       .getByRole("link", { name: "aurinkokello" })
       .click();
     await page.goto(conversation);
+    await openTurnWork(page);
     await expect(page.getByText("Synteettinen pohdinta")).toHaveCount(1);
     await expect(page.locator(".ah-live-tool-row")).toHaveCount(0);
   } finally {
@@ -502,6 +524,7 @@ test("@lab browser renders provisional delta and tool from verified combined SSE
       );
     }
   });
+  await openTurnWork(page);
   await expect(page.getByText("Synteettinen live-teksti")).toBeVisible();
   await expect(
     page.locator(".ah-live-tool-row").getByText("ajossa"),

@@ -1331,6 +1331,7 @@ export function App() {
         <CatalogPreview
           scenario={fixtureName === "design-unhappy" ? "unhappy" : "happy"}
           toolLayout={fixtureName === "design-tool-layout"}
+          quietTurn={fixtureName === "design-quiet-turn"}
         />
       </Suspense>
     );

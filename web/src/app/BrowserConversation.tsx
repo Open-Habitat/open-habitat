@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AgentHeader,
   AssistantMessage,
@@ -34,8 +34,8 @@ import {
   type Status,
 } from "./conversations";
 import { timelineItems } from "./HistoryView";
-import { PiQuestion } from "./PiQuestion";
 import { PiModelSelector } from "./PiModelSelector";
+import { PiQuestion } from "./PiQuestion";
 import { latestSettings } from "./sessionSettings";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
 import { useConversation } from "./useConversation";
@@ -186,26 +186,83 @@ export function BrowserConversation({
     restoreAnchor,
     setUnseen,
   });
+  const userScrollIntent = useRef(0);
+  // Only reader input can suspend following. Layout-induced scrolls (including
+  // the browser clamping scrollTop when work collapses) are not reader input.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: opened binds listeners when the stream mounts.
+  useEffect(() => {
+    const viewport = feed.current;
+    if (!viewport) return;
+    let intentTimer: number | undefined;
+    const intent = () => {
+      userScrollIntent.current = Date.now();
+      window.clearTimeout(intentTimer);
+      intentTimer = window.setTimeout(() => {
+        if (wasAtBottom.current) viewport.scrollTop = viewport.scrollHeight;
+        userScrollIntent.current = 0;
+      }, 650);
+    };
+    const atEnd = () =>
+      viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 1;
+    const wheel = (event: WheelEvent) => {
+      if (event.deltaY < 0 || !atEnd()) intent();
+    };
+    let touchY = 0;
+    const touchstart = (event: TouchEvent) => {
+      touchY = event.touches[0]?.clientY ?? 0;
+    };
+    const touchmove = (event: TouchEvent) => {
+      const y = event.touches[0]?.clientY ?? 0;
+      if (y > touchY || !atEnd()) intent();
+      touchY = y;
+    };
+    const keys = (event: KeyboardEvent) => {
+      if (
+        ["ArrowUp", "PageUp", "Home"].includes(event.key) ||
+        (["ArrowDown", "PageDown", "End", " "].includes(event.key) && !atEnd())
+      )
+        intent();
+    };
+    const toggle = () => {
+      userScrollIntent.current = 0;
+      wasAtBottom.current = false;
+      setAwayFromLatest(true);
+    };
+    const scrollbar = (event: PointerEvent) => {
+      if (event.target === viewport) intent();
+    };
+    viewport.addEventListener("wheel", wheel, { passive: true });
+    viewport.addEventListener("touchstart", touchstart, { passive: true });
+    viewport.addEventListener("touchmove", touchmove, { passive: true });
+    viewport.addEventListener("pointerdown", scrollbar);
+    viewport.addEventListener("keydown", keys);
+    viewport.addEventListener("ah:work-toggle", toggle);
+    return () => {
+      window.clearTimeout(intentTimer);
+      viewport.removeEventListener("wheel", wheel);
+      viewport.removeEventListener("touchstart", touchstart);
+      viewport.removeEventListener("touchmove", touchmove);
+      viewport.removeEventListener("pointerdown", scrollbar);
+      viewport.removeEventListener("keydown", keys);
+      viewport.removeEventListener("ah:work-toggle", toggle);
+    };
+  }, [feed, id, opened, wasAtBottom, setAwayFromLatest]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: Rebind when native entries mount the stream; the ref itself is stable.
   useEffect(() => {
     const viewport = feed.current;
     if (!viewport) return;
     const update = () => {
-      // Layout changes do not necessarily dispatch scroll (disclosures, images,
-      // streaming text or a resized composer can all change the visible end).
-      const away =
-        viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight >=
-        60;
-      setAwayFromLatest(away);
-      if (!away) wasAtBottom.current = true;
-      else wasAtBottom.current = false;
+      // Growth keeps a following view at the bottom. A stale intent without a
+      // resulting scroll expires, such as a downward wheel nudge at the end.
+      if (wasAtBottom.current && Date.now() - userScrollIntent.current >= 600)
+        viewport.scrollTop = viewport.scrollHeight;
     };
     const observer = new ResizeObserver(update);
     observer.observe(viewport);
     for (const child of viewport.children) observer.observe(child);
     update();
     return () => observer.disconnect();
-  }, [feed, id, opened, entries.length, setAwayFromLatest, wasAtBottom]);
+  }, [feed, id, opened, entries.length, wasAtBottom]);
   useEffect(() => {
     if (!finishedInBackground) return;
     const old = document.title;
@@ -416,7 +473,7 @@ export function BrowserConversation({
   );
   const [clockNow, setClockNow] = useState(() => Date.now());
   useEffect(() => {
-    if (current?.state !== "accepted") return;
+    if (current?.state !== "accepted" && current?.state !== "working") return;
     const timer = window.setInterval(() => setClockNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [current?.state]);
@@ -424,10 +481,21 @@ export function BrowserConversation({
     (event) =>
       event.kind === "pi.lifecycle" && event.payload.signal === "turn_start",
   );
-  const elapsed = started
+  const fallbackClock = useRef({ key: "", at: Date.now() });
+  const turnClockKey = `${id ?? ""}:${current?.command_id || started?.event_id || provisional[0]?.id || ""}`;
+  if (fallbackClock.current.key !== turnClockKey)
+    fallbackClock.current = { key: turnClockKey, at: Date.now() };
+  const nativeStart = started ? Date.parse(started.emitted_at) : NaN;
+  const elapsed = provisional.length
     ? Math.max(
         0,
-        Math.floor((clockNow - Date.parse(started.emitted_at)) / 1000),
+        Math.floor(
+          (clockNow -
+            (Number.isFinite(nativeStart)
+              ? nativeStart
+              : fallbackClock.current.at)) /
+            1000,
+        ),
       )
     : undefined;
   const duration =
@@ -671,14 +739,23 @@ export function BrowserConversation({
             onScroll={() => {
               const el = feed.current;
               if (!el) return;
-              wasAtBottom.current =
+              const atBottom =
                 el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-              setAwayFromLatest(!wasAtBottom.current);
-              if (wasAtBottom.current) {
+              if (atBottom) {
+                wasAtBottom.current = true;
+                setAwayFromLatest(false);
+                userScrollIntent.current = 0;
                 readingAnchor.current = undefined;
                 if (id) store.savePosition(id);
                 setUnseen(0);
-              } else captureAnchor();
+              } else {
+                if (Date.now() - userScrollIntent.current < 600) {
+                  userScrollIntent.current = 0;
+                  wasAtBottom.current = false;
+                  setAwayFromLatest(true);
+                }
+                captureAnchor();
+              }
             }}
           >
             {next ? (
@@ -770,7 +847,7 @@ export function BrowserConversation({
                       {
                         // The first provisional block may be retired when native
                         // history catches up; it is not the identity of the turn.
-                        id: `live-turn-${started?.event_id ?? provisional[0].id}`,
+                        id: `live-turn-${current?.command_id || started?.event_id || provisional[0].id}`,
                         kind: "assistant",
                         content: (
                           <AgentTurn
@@ -820,7 +897,6 @@ export function BrowserConversation({
                                         item.output,
                                         item.state === "failed",
                                       )}
-                                      initiallyExpanded={item.name === "bash"}
                                       expansion={
                                         id && item.callId
                                           ? store.toolExpansion(id, item.callId)

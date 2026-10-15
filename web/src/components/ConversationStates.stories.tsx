@@ -525,6 +525,32 @@ export const ArchiveAnnotationUnavailable: Story = {
   ),
 };
 
+export const SettledTurn: Story = {
+  render: () => (
+    <main style={{ maxWidth: 800, padding: 24 }}>
+      <AgentTurn
+        model="fake-pi"
+        duration="0:08"
+        thinkingCount={1}
+        toolCount={1}
+        work={
+          <>
+            <ThinkingRow text="Tarkistin hakemiston" />
+            <PiToolUse name="bash" state="succeeded">
+              <BashToolCard command="ls" output="README.md" />
+            </PiToolUse>
+          </>
+        }
+        reply={
+          <AssistantMessage streamState="complete" onCopy={noop}>
+            <Markdown text="Tässä on vastaus." />
+          </AssistantMessage>
+        }
+      />
+    </main>
+  ),
+};
+
 export const WorkingTurn: Story = {
   render: () => (
     <main style={{ maxWidth: 800, padding: 24 }}>

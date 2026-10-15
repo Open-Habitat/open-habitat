@@ -37,6 +37,12 @@
   --ah-touch: 44px;
   --ah-focus-width: 2px;
   --ah-focus-offset: 2px;
+  /* Tiivis conversation rhythm. Shared by live and saved turns. */
+  --ah-turn-gap: 3px;
+  --ah-turn-column-gap: 8px;
+  --ah-turn-work-gap: 6px;
+  --ah-feed-gap: 8px;
+  --ah-turn-card-padding: 8px 10px;
 }
 
 @media (max-width: 800px) {

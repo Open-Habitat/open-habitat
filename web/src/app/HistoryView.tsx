@@ -526,7 +526,6 @@ function FileUse({
             ? "succeeded"
             : toolState(live?.state)
       }
-      initiallyExpanded={false}
       expansion={expansion}
     >
       <FileToolCard
@@ -604,7 +603,6 @@ function OrderedBlocks({
                 .map((b) => b.text ?? "")
                 .join("\n"),
             )}
-            initiallyExpanded={false}
             keepMounted={block.tool_name === "bash"}
             expansion={toolExpansion?.(block.tool_call_id)}
             targetText={
@@ -773,7 +771,6 @@ export function Entry({
       {entry.kind === "tool" ? (
         <PiToolUse
           name={entry.content.text.split("\n", 1)[0] || "Työkalu"}
-          initiallyExpanded={false}
           state={entry.is_error ? "failed" : "succeeded"}
         >
           <ResultBlocks

@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { AgentTurn, ThinkingRow } from "../components/AgentTurn";
 import {
+  AssistantMessage,
   Composer,
   ConversationTimeline,
   DiffView,
@@ -7,8 +9,11 @@ import {
   ToolRow,
   UncertainCommandCard,
   UserMessage,
-  AssistantMessage,
 } from "../components/Conversation";
+import {
+  ConversationFrame,
+  ConversationStream,
+} from "../components/ConversationFrame";
 import {
   AgentFacts,
   AgentHeader,
@@ -20,12 +25,55 @@ import { OperationProgress } from "../components/Operations";
 import { ConnectionBanner } from "../components/Status";
 
 const noop = () => {};
+function QuietTurnPreview() {
+  const [ticks, setTicks] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setTicks((n) => n + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return (
+    <div style={{ height: 550 }}>
+      <ConversationFrame>
+        <ConversationStream>
+          <div style={{ minHeight: 700 }} aria-hidden="true" />
+          <AgentTurn
+            working
+            activity={ticks % 2 ? "Ajaa bash" : "Ajattelee"}
+            duration={`0:${String(ticks).padStart(2, "0")}`}
+            thinkingCount={1}
+            toolCount={1}
+            work={
+              <>
+                <ThinkingRow text="Tarkistan tiedostoja" />
+                <p>Synteettinen vaihe yksi</p>
+                <p>Synteettinen vaihe kaksi</p>
+              </>
+            }
+            reply={<p>Vastaus virtaa tänne.</p>}
+          />
+        </ConversationStream>
+      </ConversationFrame>
+    </div>
+  );
+}
 export default function CatalogPreview({
   scenario = "happy",
   toolLayout = false,
+  quietTurn = false,
 }: {
   scenario?: "happy" | "unhappy";
   toolLayout?: boolean;
+  quietTurn?: boolean;
+}) {
+  if (quietTurn) return <QuietTurnPreview />;
+  return <CatalogContents scenario={scenario} toolLayout={toolLayout} />;
+}
+function CatalogContents({
+  scenario,
+  toolLayout,
+}: {
+  scenario: "happy" | "unhappy";
+  toolLayout: boolean;
 }) {
   const [filter, setFilter] = useState("");
   const [value, setValue] = useState(

@@ -3,12 +3,13 @@ created: 2026-10-15
 updated: 2026-10-15
 type: feature
 reporter: jari
-status: open
+status: done
 priority: high
 lane: web
 lane_seq: 38
 collision: [web/]
 preparation: ready
+closed: 2026-10-15
 ---
 
 # Quiet agent work: hidden by default behind the information row
@@ -59,18 +60,18 @@ code.
 
 ## Acceptance Criteria
 
-- [ ] The lab shows a working turn closed behind the information row, and the
+- [x] The lab shows a working turn closed behind the information row, and the
       button toggles the work on every click while the clock runs (browser
       test holding the same element across at least two ticks).
-- [ ] Opening keeps the button's viewport position within 1 px in the frame
+- [x] Opening keeps the button's viewport position within 1 px in the frame
       after the click (browser test).
-- [ ] History and settled threads start closed; a reader's open/close choice
+- [x] History and settled threads start closed; a reader's open/close choice
       survives new events in that conversation.
-- [ ] Following stops only on the reader's own scroll, not on content
+- [x] Following stops only on the reader's own scroll, not on content
       shrinking.
-- [ ] Tiivis density is in the tokens; the account menu switch changes the
+- [x] Tiivis density is in the tokens; the account menu switch changes the
       default and survives a reload.
-- [ ] Lab screenshots compared with the draft in the same states (working
+- [x] Lab screenshots compared with the draft in the same states (working
       closed, working open, settled, phone width), every deviation fixed or
       justified in `result.md`.
-- [ ] `result.md` has a "Decisions for later review" section.
+- [x] `result.md` has a "Decisions for later review" section.

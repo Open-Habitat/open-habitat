@@ -100,6 +100,7 @@ it("joins native call and saved result at the call position without reordering c
   const items = timelineItems([assistant, result]);
   expect(items).toHaveLength(1);
   const { container } = render(items[0].content);
+  fireEvent.click(screen.getByRole("button", { name: /PI · 1 ajatusta/ }));
   expect(container.textContent).toMatch(/Ensin.*Ajattelu.*read.*Sitten/s);
   expect(screen.getAllByRole("button", { name: /read/ })).toHaveLength(1);
   fireEvent.click(screen.getByRole("button", { name: /read/ }));
@@ -615,6 +616,7 @@ it("reads bash arguments for the collapsed native call header", async () => {
     content: { ...entry.content, text: "" },
   };
   render(timelineItems([call], undefined, agentId, "rev")[0].content);
+  fireEvent.click(screen.getByRole("button", { name: /PI · 0 ajatusta/ }));
   expect(await screen.findByText("echo ok")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: /bash/ }));
   expect(await screen.findByText(/\$ echo ok/)).toBeTruthy();

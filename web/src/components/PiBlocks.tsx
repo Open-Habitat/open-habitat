@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ToolRow } from "./Conversation";
 
 /** One visual use, from call formation through the native saved result. */
@@ -8,12 +8,10 @@ export function PiToolUse({
   targetText,
   stat,
   children,
-  initiallyExpanded = name === "bash" && state !== "forming",
   expansion,
   keepMounted = false,
 }: {
   name: string;
-  initiallyExpanded?: boolean;
   keepMounted?: boolean;
   expansion?: { get: () => boolean | undefined; set: (value: boolean) => void };
   targetText?: string;
@@ -28,12 +26,14 @@ export function PiToolUse({
     | "unknown";
   children?: ReactNode;
 }) {
-  const [expanded, setExpanded] = useState(() => {
-    const previous = expansion?.get();
-    if (previous !== undefined) return previous;
-    expansion?.set(initiallyExpanded);
-    return initiallyExpanded;
-  });
+  const streaming =
+    state === "forming" || state === "called" || state === "running";
+  const [expanded, setExpanded] = useState(() => expansion?.get() ?? streaming);
+  const userChoice = useRef(false);
+  useEffect(() => {
+    if (userChoice.current || expansion?.get() !== undefined) return;
+    setExpanded(streaming);
+  }, [streaming, expansion]);
   const labels = {
     forming: "muodostaa kutsua…",
     called: "odottaa ajoa",
@@ -59,6 +59,7 @@ export function PiToolUse({
         expanded={expanded}
         keepMounted={keepMounted}
         onToggle={() => {
+          userChoice.current = true;
           expansion?.set(!expanded);
           setExpanded(!expanded);
         }}

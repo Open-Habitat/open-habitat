@@ -1,19 +1,20 @@
 import { useEffect, useRef, useState } from "react";
-import { NativeDisconnect } from "./NativeDisconnect";
-import { GitIdentity } from "../app/GitIdentity";
 import {
   Dialog as AriaDialog,
   Heading,
   Modal,
   ModalOverlay,
 } from "react-aria-components";
+import { GitIdentity } from "../app/GitIdentity";
+import type { AccountProfile, PiState } from "../app/pi";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
+import { getWorkPreference, setWorkPreference } from "../workPreference";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
+import { NativeDisconnect } from "./NativeDisconnect";
 import { Menu } from "./Overlays";
 import { Button, ListRow, RadioGroup } from "./Primitives";
 import { StatusMark } from "./Status";
-import type { AccountProfile, PiState } from "../app/pi";
 
 /** Provider subject numbers are not a useful person-facing name. */
 export function accountLabel(displayName: string): string {
@@ -88,6 +89,12 @@ export function AccountShelf({
   onLogout: () => void;
 }) {
   const theme = useThemeChoice();
+  const [workChoice, setWorkChoice] = useState(getWorkPreference);
+  useEffect(() => {
+    const sync = () => setWorkChoice(getWorkPreference());
+    window.addEventListener("nah:work-change", sync);
+    return () => window.removeEventListener("nah:work-change", sync);
+  }, []);
   const person = profile ?? { name: name ?? "", email: "", avatar_url: "" };
   const compactName =
     accountLabel(person.name) === "Oma tili"
@@ -115,29 +122,50 @@ export function AccountShelf({
         }
         heading={<AccountIdentity profile={person} />}
         betweenItems={
-          <div className="ah-account-menu-theme-row">
-            <span>Teema</span>
-            <fieldset className="ah-account-menu-theme" aria-label="Teema">
-              {themes.map(({ id, label, icon }) => (
-                <span
-                  key={id}
-                  className="ah-account-theme-option"
-                  title={label}
-                >
+          <>
+            <div className="ah-account-menu-theme-row">
+              <span>Teema</span>
+              <fieldset className="ah-account-menu-theme" aria-label="Teema">
+                {themes.map(({ id, label, icon }) => (
+                  <span
+                    key={id}
+                    className="ah-account-theme-option"
+                    title={label}
+                  >
+                    <ControlButton
+                      variant="quiet"
+                      size="micro"
+                      type="button"
+                      aria-label={label}
+                      aria-pressed={theme === id}
+                      onPress={() => setThemeChoice(id)}
+                    >
+                      <Icon name={icon} />
+                    </ControlButton>
+                  </span>
+                ))}
+              </fieldset>
+            </div>
+            <div className="ah-account-menu-theme-row">
+              <span>Agentin työ</span>
+              <fieldset
+                className="ah-account-menu-theme ah-work-choice"
+                aria-label="Agentin työ"
+              >
+                {(["hidden", "visible"] as const).map((choice) => (
                   <ControlButton
+                    key={choice}
                     variant="quiet"
                     size="micro"
-                    type="button"
-                    aria-label={label}
-                    aria-pressed={theme === id}
-                    onPress={() => setThemeChoice(id)}
+                    aria-pressed={workChoice === choice}
+                    onPress={() => setWorkPreference(choice)}
                   >
-                    <Icon name={icon} />
+                    {choice === "hidden" ? "Piilossa" : "Näkyvissä"}
                   </ControlButton>
-                </span>
-              ))}
-            </fieldset>
-          </div>
+                ))}
+              </fieldset>
+            </div>
+          </>
         }
         popoverClassName="ah-account-menu"
         placement="top start"
