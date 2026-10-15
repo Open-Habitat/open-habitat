@@ -1712,36 +1712,78 @@ test("@browser-conversation status reconciles before a late continuation reply",
   const held = new Promise<void>((resolve) => {
     release = resolve;
   });
-  let wrote!: () => void;
-  const written = new Promise<void>((resolve) => {
-    wrote = resolve;
-  });
+  let observed!: (response: import("@playwright/test").APIResponse) => void;
+  let failed!: (error: unknown) => void;
+  let result = new Promise<import("@playwright/test").APIResponse>(
+    (resolve, reject) => {
+      observed = resolve;
+      failed = reject;
+    },
+  );
   let attempts = 0;
   await page.route(
     `**/api/v1/conversations/${id.slice(3)}/continue`,
     async (route) => {
       attempts++;
-      const response = await route.fetch(); // daemon has started the new child
-      expect(response.status()).toBe(200);
-      wrote();
-      await held;
-      await route.fulfill({ response });
+      try {
+        const response = await route.fetch(); // native write or definite refusal
+        observed(response);
+        if (response.status() === 200) await held;
+        await route.fulfill({ response });
+      } catch (error) {
+        failed(error);
+        throw error;
+      }
     },
   );
   try {
-    await page.getByRole("button", { name: "Jatka keskustelua" }).click();
-    await written;
-    // The journal may already have removed the manual status button. Focus
-    // refreshes the mounted view without requiring that presentation control.
-    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-    release();
-    await expect(
-      page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-    ).toBeEnabled();
-    await expect(
-      page.getByText("Jatkamisen tulos epävarma", { exact: true }),
-    ).toHaveCount(0);
-    expect(attempts).toBe(1);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const delivered = page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          new URL(response.url()).pathname ===
+            `/api/v1/conversations/${id.slice(3)}/continue`,
+      );
+      await page.getByRole("button", { name: "Jatka keskustelua" }).click();
+      const response = await result;
+      if (response.status() === 200) {
+        // Status can settle from the journal before this successful HTTP reply.
+        await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+        release();
+        expect((await delivered).status()).toBe(200);
+        await expect(
+          page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+        ).toBeEnabled();
+        await expect(
+          page.getByText("Jatkamisen tulos epävarma", { exact: true }),
+        ).toHaveCount(0);
+        expect(attempts).toBe(attempt + 1); // no browser retry or duplicate POST
+        break;
+      }
+      // A refused write did not start a child. Only control_uncertain may be
+      // retried, and only after a fresh affirmative native census in the UI.
+      expect(response.status()).toBe(409);
+      expect((await response.json()).error.code).toBe("control_uncertain");
+      expect((await delivered).status()).toBe(409);
+      expect(attempt).toBeLessThan(2);
+      await expect(
+        page.getByText("Jatkaminen estetty", { exact: true }),
+      ).toBeVisible();
+      await refreshConversation(page);
+      await expect(page.locator(".ah-agent-header")).toContainText(
+        "Ei käynnissä",
+        {
+          timeout: 20000,
+        },
+      );
+      await expect(
+        page.getByRole("button", { name: "Jatka keskustelua" }),
+      ).toBeVisible();
+      result = new Promise((resolve, reject) => {
+        observed = resolve;
+        failed = reject;
+      });
+    }
   } finally {
     release();
   }

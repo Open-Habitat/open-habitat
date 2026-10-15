@@ -549,3 +549,54 @@ archive refusal result. The serial rerun (`OH_PORT_BASE=56000`,
 `TMPDIR=/var/tmp`, two workers, `--repeat-each=10`) passed both cases
 **20/20** in 37 s. No full gate, loaded pilot reproduction, real Pi, or
 separate-UID test ran here; the conductor owns the loaded gate.
+
+## Held continuation reply versus post-failure reconciliation (2026-10-15)
+
+The serial clean gate on `f79a482b` failed `status reconciles before a late
+continuation reply`: its intercepted native `/continue` returned 409 where the
+case required 200, before the test could hold the successful HTTP reply. The
+recorded assertion alone does not identify the 409 error code; the controller
+may fail closed on an uncertain census. It is not evidence of a duplicate POST
+or a browser reconciliation failure.
+
+Keep this case rather than remove another native create/send/stop journey. The
+lost-reply case delivers a synthetic 503 **after** a successful native write and
+then reconciles on explicit refresh without a second POST. The stale-recovery
+case releases the successful reply **during a disconnected snapshot** and
+checks that reconnect restores controls. Neither orders a successful HTTP
+reply behind a foreground focus/status update while the view stays mounted;
+the late-reply case checks that a belated success does not reintroduce an
+uncertain continuation or strand the composer. The `conversations.test.tsx`
+unit checks refusal-code classification and lack of automatic retries in the
+API wrapper, not this mounted race. None of these same-UID synthetic journeys
+replaces distinct-UID, real Pi or security proof.
+
+The retained case now forwards a definite 409 to the browser and permits a
+*test-driven* retry only for `control_uncertain`, after the refusal appears and
+an explicit read-only check yields an affirmative idle census and visible
+Continue action. Up to three views are allowed; any other status/code, missing
+response, or persistent uncertainty fails. It still holds only a genuine 200
+reply, releases it after the focus event, requires the editor to become enabled
+without an uncertain notice, and counts each browser POST: no automatic retry
+or duplicate write is treated as success. This is test stabilization, not a
+production change or a claim that a refused write succeeded.
+
+Focused synthetic host/browser check: the late-reply, lost-reply and
+stale-recovery cases passed 30/30 (`--repeat-each=10`, two workers,
+`OH_PORT_BASE=53000`, `TMPDIR=/var/tmp`, cached Chromium). This run started
+before the final refusal-notice selector was corrected, so a final ten-repeat
+run of the changed late-reply case is required and recorded separately below.
+The focused conversation/store Vitest tests passed 40/40. Web build, typecheck,
+lint, format check, project-view validator and `git diff --check` passed.
+No full gate or separate-UID scenario ran; the conductor owns the clean gate.
+
+Scope of the ordering assertion: the case dispatches focus while the successful
+reply is held; it does not wait for a particular status response or prove that
+status reconciliation *completed* before reply delivery on every run. The
+remaining distinct regression it pins is that a held success interleaved with
+foreground refresh does not leave the mounted controls uncertain or repost.
+
+Final edited-tree repeat: the late-reply case passed 10/10 in 22.6 s at the
+same port base and two-worker limit. Neither focused run demonstrates the
+full-gate behavior under serial-gate load, nor establishes an elapsed-time
+speedup; keeping the case deliberately retains its per-case host cost.
