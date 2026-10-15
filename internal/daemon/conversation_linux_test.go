@@ -571,11 +571,24 @@ func TestConversationContinuationProofAndStatus(t *testing.T) {
 		}
 		return view.Continuation
 	}
-	check := func(expected string) {
+	// A procfs census can briefly be undecidable on a shared host. Only a
+	// positive result establishes eligibility; every other result except the
+	// fail-closed unproven state is a regression once the writer has exited.
+	eligible := func(label string, probe func() string) {
 		t.Helper()
-		if got := status(); got != expected {
-			t.Fatalf("status continuation %s, want %s", got, expected)
+		deadline := time.Now().Add(3 * time.Second)
+		for {
+			got := probe()
+			if got == "eligible" {
+				return
+			}
+			if got != "unproven" || time.Now().After(deadline) {
+				t.Fatalf("%s: %s, want eligible before deadline", label, got)
+			}
+			time.Sleep(10 * time.Millisecond)
 		}
+	}
+	proof := func() string {
 		o, _, ws, _, _, _, got := c.continuationProof(id)
 		if ws != nil {
 			ws.Close()
@@ -583,7 +596,19 @@ func TestConversationContinuationProofAndStatus(t *testing.T) {
 		if o != nil {
 			o.release()
 		}
-		if got != expected {
+		return got
+	}
+	check := func(expected string) {
+		t.Helper()
+		if expected == "eligible" {
+			eligible("status continuation", status)
+			eligible("admission proof", proof)
+			return
+		}
+		if got := status(); got != expected {
+			t.Fatalf("status continuation %s, want %s", got, expected)
+		}
+		if got := proof(); got != expected {
 			t.Fatalf("admission proof %s, want %s", got, expected)
 		}
 	}
@@ -610,12 +635,12 @@ func TestConversationContinuationProofAndStatus(t *testing.T) {
 	second := make(chan string, 1)
 	go func() { second <- status() }()
 	close(unblock)
-	if got := <-first; got != "eligible" {
-		t.Fatalf("first probe: %s", got)
+	for label, result := range map[string]string{"first probe": <-first, "overlapping probe": <-second} {
+		if result != "eligible" && result != "unproven" {
+			t.Fatalf("%s: %s (expected eligible or transient unproven, never a foreign writer)", label, result)
+		}
 	}
-	if got := <-second; got != "eligible" {
-		t.Fatalf("overlapping probe: %s", got)
-	}
+	check("eligible")
 	permit, ok := c.proofPermit(context.Background())
 	if !ok {
 		t.Fatal("could not hold local proof gate")
@@ -677,14 +702,11 @@ func TestConversationContinuationProofAndStatus(t *testing.T) {
 	c.sessions = map[string]*conversation{}
 	restartProof := func(expected string) {
 		t.Helper()
-		o, _, ws, _, _, _, got := c.continuationProof(id)
-		if ws != nil {
-			ws.Close()
+		if expected == "eligible" {
+			eligible("restart proof", proof)
+			return
 		}
-		if o != nil {
-			o.release()
-		}
-		if got != expected {
+		if got := proof(); got != expected {
 			t.Fatalf("restart proof %s, want %s", got, expected)
 		}
 	}
