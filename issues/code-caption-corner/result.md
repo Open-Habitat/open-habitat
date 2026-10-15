@@ -11,6 +11,6 @@ Synthetic lab captures of reply code: [light desktop](lab-1440-light-reply-code.
 - `./scripts/test-web-fast.sh`: passed after a transient Markdown lazy-import timeout on the first complete attempt; retry passed.
 - `OH_PORT_BASE=16500 PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright ./scripts/test-focused.sh --area browser --spec file-tool-cards.spec.ts`: passed (2 cases); browser geometry exercises read/write/edit, fade and rail clearance.
 - `OH_PORT_BASE=16600 PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright ./scripts/test-focused.sh --area browser --spec syntax-wrap.spec.ts`: passed.
-- Full committed-tree clean gate: `./scripts/ci-local.sh --clean --json` is required for this delivery; its receipt is the authoritative outcome.
+- Full committed-tree clean gate: `./scripts/ci-local.sh --clean --json` is required for this delivery; its receipt is the authoritative outcome. The first run passed web/Go/contracts but one browser case timed out clicking a live work row as that row was being replaced by the saved one; the test now retries against the current row. A new gate on this committed tree is required.
 
 The screenshots and browser tests use invented lab identities and content, not a live host. They do not establish separate-UID behavior.
