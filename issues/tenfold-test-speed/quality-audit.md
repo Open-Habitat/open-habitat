@@ -419,3 +419,46 @@ scenario ran here; the conductor owns the clean gate. Web typecheck, lint,
 format check, focused conversation Vitest (6/6), complete web unit suite
 (126/126 across 21 files), project-view validation and `git diff --check`
 passed.
+
+## Native history title after archive/restore (2026-10-15)
+
+The clean gate on `5cb58dd3` failed the combined archive/restore/title browser
+case while 160+ other normal cases passed. Its retained trace (in the main
+checkout's `web/test-results/native-history--native-his-6eed2-ion-can-archive-and-restore-chromium/trace.zip`)
+shows the exact title POST at 18:39:56 UTC:
+`/api/v1/conversations/11111111-1111-4111-8111-111111111111/history_title`
+returned **409 Conflict** in 519 ms. It had the authenticated browser cookie,
+CSRF header and `workspace_id` JSON body; snapshot reads immediately before
+and after archive/restore showed active → archived → active, readable native
+history, a first-prompt fallback title and `process: not_observed`. The
+browser then displayed its explicit “Otsikkoa ei voitu luoda” warning. The
+trace does not retain the 409 response body, so it cannot distinguish the
+controller's `control_uncertain` from `writer_conflict` precondition or prove
+which internal check changed. It *does* rule out a five-second model latency,
+missing auth, or a title-generation success whose UI simply lagged. The
+fixture seeds 251 readable native entries and the test controller uses a
+fixed synthetic title rather than a provider; no malformed synthetic title or
+real model request was observed. A native write may be refused when its
+ownership/revision proof cannot be re-established; that is a legitimate
+non-success, not a product promise of a successful rename after every restore.
+
+The archive/restore test still exercises both real actions and clicks the
+actual title control. It now distinguishes a 409 refusal (must show the warning
+and **not** claim the title) from a 200 successful rename (must display the
+native title). A separate settled-history browser case requires a 200 title
+POST *and* the refreshed native header to show “Synteettinen otsikko”; this
+keeps the successful Pi naming path mandatory instead of accepting all 409s
+as a substitute. No production code, fake Pi, synthetic history or timeouts
+were changed. The test checks status and visible outcome, not Playwright's
+`response.json()` after navigation: a first diagnostic run passed 10/12 but
+two successes lost the CDP response body when the app refreshed immediately.
+The initial unmodified test passed 10/10 in isolation (26.5 s), which did not
+explain the gate's refusal. Those are not full-gate or real-provider results.
+
+On the final edited tree, the two focused Playwright cases passed **20/20**
+(`--repeat-each=10`, two workers, `OH_PORT_BASE=59000`, disk-backed
+`TMPDIR=/var/tmp`, cached Chromium; 38.5 s). Each of the ten settled-history
+cases required the real title POST and visible name. Web typecheck, lint,
+format check, project-view validation and `git diff --check` passed. The
+conductor owns the full clean gate; these isolated same-UID synthetic checks
+cannot establish behavior under full-suite host load or distinct-UID isolation.

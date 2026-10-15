@@ -83,7 +83,46 @@ test("@native-history unwritten terminal session can archive and restore", async
   ).toBeEnabled();
   await bar.getByRole("button", { name: "Palauta näkyviin" }).click();
   await expect(bar.getByRole("button", { name: "Arkistoi" })).toBeEnabled();
+  const titleReply = page.waitForResponse(
+    (response) =>
+      response
+        .url()
+        .endsWith(`/api/v1/conversations/${agent.slice(3)}/history_title`) &&
+      response.request().method() === "POST",
+  );
   await bar.getByRole("button", { name: "Luo uusi otsikko" }).click();
+  const response = await titleReply;
+  if (response.status() === 409) {
+    // A native proof can become uncertain after restore. The browser must not
+    // claim a rename when the daemon refuses the write.
+    await expect(
+      page.getByText("Otsikkoa ei voitu luoda.", { exact: false }),
+    ).toBeVisible();
+    await expect(bar).not.toContainText("Synteettinen otsikko");
+  } else {
+    expect(response.status()).toBe(200);
+    await expect(bar).toContainText("Synteettinen otsikko");
+  }
+});
+test("@native-history settled terminal history can be titled through Pi", async ({
+  page,
+}) => {
+  await fixture(page, "ready");
+  await login(page);
+  await page.goto(`/agents/${agent}`);
+  const bar = page.locator(".ah-agent-header");
+  const title = bar.getByRole("button", { name: "Luo uusi otsikko" });
+  await expect(title).toBeEnabled();
+  const titleReply = page.waitForResponse(
+    (response) =>
+      response
+        .url()
+        .endsWith(`/api/v1/conversations/${agent.slice(3)}/history_title`) &&
+      response.request().method() === "POST",
+  );
+  await title.click();
+  const response = await titleReply;
+  expect(response.status()).toBe(200);
   await expect(bar).toContainText("Synteettinen otsikko");
 });
 test("@native-history empty native session is read-only", async ({ page }) => {
