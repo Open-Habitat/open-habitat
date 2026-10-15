@@ -3,7 +3,7 @@ created: 2026-10-15
 updated: 2026-10-15
 type: feature
 reporter: jari
-status: open
+status: in-progress
 priority: normal
 related: ['@test-server-tooling']
 lane: daemon
