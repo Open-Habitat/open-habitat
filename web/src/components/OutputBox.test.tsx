@@ -74,6 +74,18 @@ it("marks overflow on head and tail separately and clears stale shadows on view 
       ?.classList.contains("ah-output-more-right"),
   ).toBe(false);
 });
+it("keeps language and line count in the box's corner across views", () => {
+  const { container } = render(<OutputBox text={text} language="python" />);
+  const label = container.querySelector(".ah-bash-window > .ah-output-meta");
+  expect(label?.textContent).toBe("python · 18 riviä");
+  expect(
+    container.querySelector(".ah-output-box > .ah-output-meta"),
+  ).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Kaikki rivit" }));
+  expect(
+    container.querySelector(".ah-bash-window > .ah-output-meta")?.textContent,
+  ).toBe("python · 18 riviä");
+});
 it("copies the entire text even in edges view", () => {
   const writeText = vi.fn().mockResolvedValue(undefined);
   Object.defineProperty(navigator, "clipboard", {

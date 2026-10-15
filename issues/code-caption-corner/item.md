@@ -3,12 +3,13 @@ created: 2026-10-15
 updated: 2026-10-15
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: web
 lane_seq: 39
 collision: [web/src/components/]
 preparation: ready
+closed: 2026-10-15
 ---
 
 # Code box caption in the top right corner
@@ -26,10 +27,10 @@ read/write/edit cards). The prototype code is `prototypes/lib/output.js`
 
 ## Acceptance Criteria
 
-- [ ] Reply code, bash output with a language, and read/write/edit cards show
+- [x] Reply code, bash output with a language, and read/write/edit cards show
       the caption in the corner; no caption row remains below any box.
-- [ ] The caption never covers the rail, the scrollbar or the first line's
+- [x] The caption never covers the rail, the scrollbar or the first line's
       text in a way that hides it (it fades on hover/focus); highlighting state
       ("Korostus odottaa/epäonnistui") stays visible where it is shown today.
-- [ ] Lab screenshots light/dark/phone compared with the draft; deviations
+- [x] Lab screenshots light/dark/phone compared with the draft; deviations
       fixed or justified in `result.md`.

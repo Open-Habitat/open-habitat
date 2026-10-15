@@ -2831,9 +2831,11 @@ h1[tabindex="-1"]:focus {
   cursor: pointer;
 }
 .ah-bash-window {
+  --ah-output-rail-width: 28px;
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 6px;
+  gap: var(--ah-s2);
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Card styles override the generic conversation surface. */
 .ah-bash-window > pre {
@@ -3533,11 +3535,41 @@ h1[tabindex="-1"]:focus {
 .ah-bash-window .ah-output-more-left {
   box-shadow: inset 18px 0 14px -14px rgba(16, 24, 40, 0.22);
 }
+/* The label lives over reserved space inside the surface, never over the first
+   line, the scrolling edge or the controls. It is not an extra row below it. */
 .ah-output-meta {
-  display: block;
-  margin: 6px 0 0 12px;
+  position: absolute;
+  z-index: 1;
+  top: var(--ah-s1);
+  right: calc(var(--ah-output-rail-width) + var(--ah-s2) + var(--ah-s4));
+  max-width: calc(100% - var(--ah-output-rail-width) - 2 * var(--ah-s4));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  padding: 1px var(--ah-s2);
+  border-radius: var(--ah-r-sm);
+  background: color-mix(in srgb, var(--ah-sunken) 88%, transparent);
   color: var(--ah-muted);
-  font: 500 11.5px var(--ah-mono);
+  font: 500 var(--ah-size-label) var(--ah-mono);
+  opacity: 0.85;
+  transition: opacity var(--ah-transition);
+}
+.ah-bash-window:hover > .ah-output-meta,
+.ah-bash-window:focus-within > .ah-output-meta,
+.ah-file-diff-box:hover > .ah-output-meta,
+.ah-file-diff-box:focus-within > .ah-output-meta {
+  opacity: 0;
+}
+.ah-bash-window:has(> .ah-output-meta) .ah-output-viewport.ah-output-all,
+.ah-bash-window:has(> .ah-output-meta) .ah-output-viewport.ah-output-scroll,
+.ah-bash-window:has(> .ah-output-meta) .ah-output-viewport.ah-bash-head {
+  padding-top: calc(2 * var(--ah-s4));
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-output-meta {
+    transition: none;
+  }
 }
 .ah-markdown :is(h2, h3, h4) {
   margin: 1.1em 0 0.4em;
@@ -3588,9 +3620,11 @@ h1[tabindex="-1"]:focus {
   color: var(--ah-muted);
 }
 .ah-file-diff-box {
+  --ah-output-rail-width: 28px;
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 28px;
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) var(--ah-output-rail-width);
+  gap: var(--ah-s2);
   min-width: 0;
 }
 .ah-file-diff {
@@ -3603,6 +3637,9 @@ h1[tabindex="-1"]:focus {
   font-variant-ligatures: none;
   border: 1px solid var(--ah-line-soft);
   border-radius: 8px;
+}
+.ah-file-diff-box:has(> .ah-output-meta) .ah-file-diff {
+  padding-top: calc(2 * var(--ah-s4));
 }
 .ah-diff-line {
   display: flex;

@@ -64,6 +64,36 @@ test("@file-tool-cards saved file rows retain counts, content and accessible dif
     tool("read").getByRole("button", { name: "Kopioi sisältö" }),
   ).toBeVisible();
   await expect(tool("write").getByText("typescript")).toBeVisible();
+  // The label is inside the surface, above its first line and left of the rail.
+  // Hovering or keyboard focus lets the reader see the code unobstructed.
+  for (const name of ["read", "write", "edit"]) {
+    const box = tool(name).locator(
+      name === "edit" ? ".ah-file-diff-box" : ".ah-output-box",
+    );
+    const label = box.locator(".ah-output-meta");
+    await expect(label).toHaveCount(1);
+    const layout = await box.evaluate((node, name) => {
+      const surface = node.querySelector("pre");
+      const caption = node.querySelector(".ah-output-meta");
+      const rail = node.querySelector(
+        name === "edit" ? "button" : ".ah-bash-rail",
+      );
+      if (!surface || !caption || !rail) return null;
+      const firstLineTop =
+        surface.getBoundingClientRect().top +
+        parseFloat(getComputedStyle(surface).paddingTop);
+      const c = caption.getBoundingClientRect();
+      return {
+        inside:
+          c.top >= surface.getBoundingClientRect().top &&
+          c.bottom < firstLineTop,
+        clearRail: c.right < rail.getBoundingClientRect().left,
+      };
+    }, name);
+    expect(layout).toEqual({ inside: true, clearRail: true });
+    await box.hover();
+    await expect(label).toHaveCSS("opacity", "0");
+  }
   await expect(async () => {
     const toggle = tool("edit").locator("button").first();
     if ((await toggle.getAttribute("aria-expanded")) === "false")
@@ -75,6 +105,15 @@ test("@file-tool-cards saved file rows retain counts, content and accessible dif
   await expect(tool("edit").getByText("lisätty:")).toHaveCount(1);
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
+    const caption = tool("write").locator(".ah-output-meta");
+    const viewport = tool("write").locator(".ah-output-viewport");
+    const labelRect = await caption.boundingBox();
+    const surfaceRect = await viewport.boundingBox();
+    expect(
+      labelRect &&
+        surfaceRect &&
+        labelRect.x + labelRect.width < surfaceRect.x + surfaceRect.width,
+    ).toBe(true);
     const geometry = await tool("write").evaluate((node) => {
       const row = node.getBoundingClientRect();
       const marker = node

@@ -232,6 +232,9 @@ export function FileToolCard({
   const replacements = args?.edits?.map((e) => e.newText);
   return (
     <div className="ah-file-diff-box">
+      {language(args?.path) ? (
+        <small className="ah-output-meta">{language(args?.path)}</small>
+      ) : null}
       <pre className="ah-file-diff">
         {rows.map(({ type, text, pair }, i) => (
           <span

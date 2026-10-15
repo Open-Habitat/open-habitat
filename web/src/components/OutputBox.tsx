@@ -225,6 +225,13 @@ export function OutputBox({
   return (
     <div className="ah-output-box">
       <div className="ah-bash-window">
+        {language || long ? (
+          <small className="ah-output-meta">
+            {language}
+            {language && long ? " · " : ""}
+            {long ? `${lines.length} riviä` : ""}
+          </small>
+        ) : null}
         {view === "edges" ? (
           <div className="ah-output-edges">
             {pre(lines.slice(0, 3), "ah-bash-head", head)}
@@ -316,13 +323,6 @@ export function OutputBox({
           </div>
         </fieldset>
       </div>
-      {language || long ? (
-        <small className="ah-output-meta">
-          {language}
-          {language && long ? " · " : ""}
-          {long ? `${lines.length} riviä` : ""}
-        </small>
-      ) : null}
       {dialog ? (
         <dialog
           ref={dialogRef}
