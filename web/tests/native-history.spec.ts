@@ -31,7 +31,7 @@ async function login(page: import("@playwright/test").Page) {
 test("@native-history native page, continuation, unknown, reopen and no writes", async ({
   page,
 }) => {
-  await fixture(page, "ready");
+  await fixture(page, "short");
   const writes: string[] = [];
   page.on("request", (r) => {
     if (r.method() !== "GET") writes.push(r.url());
@@ -46,34 +46,15 @@ test("@native-history native page, continuation, unknown, reopen and no writes",
   await expect(
     page
       .locator(".ah-feed")
-      .getByText("Synteettinen viesti 226", { exact: true }),
+      .getByText("Synteettinen viesti 26", { exact: true }),
   ).toBeVisible();
   await expect(page.locator(".ah-read-only-footer")).toContainText("Vain luku");
-  await page.screenshot({
-    path: "test-results/evidence/history-happy.png",
-    fullPage: true,
-  });
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send("Performance.enable");
-  const heap = async () => {
-    const result = await cdp.send("Performance.getMetrics");
-    return result.metrics.find((metric) => metric.name === "JSHeapUsedSize")
-      ?.value;
-  };
-  const heapTail = await heap();
-  for (let i = 1; i < 11; i++)
+  for (let i = 0; i < 2; i++)
     await page.getByRole("button", { name: "Lataa seuraava sivu" }).click();
-  console.log(
-    `synthetic 25→251 entry heap: ${heapTail}→${await heap()} bytes (CDP live heap, includes whole app; not a retained-size benchmark)`,
-  );
-  await expect(page.locator(".ah-feed li")).toHaveCount(251);
+  await expect(page.locator(".ah-feed li")).toHaveCount(51);
   await expect(page.getByText("Tuntematon tapahtuma")).toBeVisible();
-  await page.screenshot({
-    path: "test-results/evidence/history-long-unknown.png",
-    fullPage: false,
-  });
   await page.getByRole("button", { name: "Lataa lohkon sisältö" }).click();
-  await expect(page.locator(".ah-feed li").nth(248)).not.toContainText(
+  await expect(page.locator(".ah-feed li").nth(48)).not.toContainText(
     "<script>alert('bad')</script>",
   );
   expect(await page.locator(".ah-feed script").count()).toBe(0);
@@ -83,7 +64,7 @@ test("@native-history native page, continuation, unknown, reopen and no writes",
   await expect(
     page
       .locator(".ah-feed")
-      .getByText("Synteettinen viesti 226", { exact: true }),
+      .getByText("Synteettinen viesti 26", { exact: true }),
   ).toBeVisible();
 });
 test("@native-history unwritten terminal session can archive and restore", async ({
@@ -113,10 +94,6 @@ test("@native-history empty native session is read-only", async ({ page }) => {
     page.getByText("Natiivissa historiassa ei ole vielä viestejä."),
   ).toBeVisible();
   await expect(page.locator(".ah-feed li")).toHaveCount(0);
-  await page.screenshot({
-    path: "test-results/evidence/history-empty.png",
-    fullPage: true,
-  });
   await fixture(page, "ready");
 });
 test("@native-history mapped identity isolates native content", async ({

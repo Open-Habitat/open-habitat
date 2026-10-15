@@ -5,11 +5,9 @@ import { expect, test } from "./worker-host";
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 async function openFileWork(page: import("@playwright/test").Page) {
   const turn = page.getByRole("region", { name: "Agentin vuoro" }).first();
-  const live = turn.getByRole("button", { name: "Näytä työ" });
   const saved = turn.getByRole("button", { name: /PI.*työkalua/ });
-  await expect(live.or(saved)).toBeVisible({ timeout: 25000 });
-  if (await live.isVisible()) await live.click();
-  else if ((await saved.getAttribute("aria-expanded")) === "false")
+  await expect(saved).toBeVisible({ timeout: 25000 });
+  if ((await saved.getAttribute("aria-expanded")) === "false")
     await saved.click();
 }
 test("@file-tool-cards saved file rows retain counts, content and accessible diff", async ({

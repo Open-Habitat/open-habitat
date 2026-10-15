@@ -234,7 +234,7 @@ esac
 		}
 		historyPath := filepath.Join(sessionRoot, "synthetic.jsonl")
 		histories[m.Username] = historyPath
-		if e := seedBrowserHistory(historyPath, filepath.Join(home, "src", "ordinary-dir")); e != nil {
+		if e := seedBrowserHistory(historyPath, filepath.Join(home, "src", "ordinary-dir"), 251); e != nil {
 			log.Fatal(e)
 		}
 		if lab {
@@ -549,8 +549,12 @@ esac
 						http.Error(w, "fixture failed", 500)
 						return
 					}
-				} else if mode == "ready" {
-					if e := seedBrowserHistory(path, filepath.Join(tmp, "alice", "src", "ordinary-dir")); e != nil {
+				} else if mode == "ready" || mode == "short" {
+					count := 251
+					if mode == "short" {
+						count = 51 // Two page transitions still reach the untrusted oldest rows.
+					}
+					if e := seedBrowserHistory(path, filepath.Join(tmp, "alice", "src", "ordinary-dir"), count); e != nil {
 						http.Error(w, "fixture failed", 500)
 						return
 					}
@@ -674,7 +678,7 @@ func (b fixtureBroker) Exchange(_ context.Context, r gateway.BrokerRequest) (gat
 	return gateway.BrokerReply{}, errors.New("not allowlisted")
 }
 
-func seedBrowserHistory(path, cwd string) error {
+func seedBrowserHistory(path, cwd string, count int) error {
 	f, e := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if e != nil {
 		return e
@@ -684,16 +688,16 @@ func seedBrowserHistory(path, cwd string) error {
 	if e := encode.Encode(map[string]any{"type": "session", "version": 3, "id": "11111111-1111-4111-8111-111111111111", "cwd": cwd}); e != nil {
 		return e
 	}
-	for i := 0; i < 251; i++ {
+	for i := 0; i < count; i++ {
 		content := fmt.Sprintf("Synteettinen viesti %d", i)
 		if strings.Contains(cwd, "/bob/") {
 			content = fmt.Sprintf("Bobin synteettinen viesti %d", i)
 		}
-		if i == 248 {
+		if i == count-3 {
 			content = strings.Repeat("ä", 40000) + "<script>alert('bad')</script>"
 		}
 		row := map[string]any{"type": "message", "id": fmt.Sprintf("native%04d", i), "message": map[string]any{"role": "user", "content": content}}
-		if i == 250 {
+		if i == count-1 {
 			row["type"] = "unknown_fixture"
 		}
 		if e := encode.Encode(row); e != nil {

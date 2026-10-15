@@ -82,8 +82,22 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 	}
 	_ = writer.Process.Kill()
 	_ = writer.Wait()
+	// A concurrent same-UID process can disappear during /proc enumeration.
+	// Wait for affirmative absence, never treat an unknown census as absence.
+	deadline = time.Now().Add(3 * time.Second)
+	observed := ""
+	for time.Now().Before(deadline) {
+		observed = piWriter(path, cwd, cfg.UID)
+		if observed == "not_observed" {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if observed != "not_observed" {
+		t.Fatalf("writer absence not established after exit: %s", observed)
+	}
 	if got := request(true, token); got != 200 {
-		t.Fatalf("idle terminal history not archived: %d", got)
+		t.Fatalf("idle terminal history not archived: %d (writer census: %s)", got, piWriter(path, cwd, cfg.UID))
 	}
 	// Restoring presentation does not mutate native history and must not be
 	// blocked by a terminal writer, unlike archiving.

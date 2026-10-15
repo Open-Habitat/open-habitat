@@ -53,6 +53,27 @@ test("@visual unhappy states remain explicit", async ({ page }) => {
       fullPage: true,
     });
 });
+test("@visual multiline composer keeps send reachable on a phone", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/?fixture=design");
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await editor.fill(
+    Array.from({ length: 20 }, (_, i) => `rivi ${i}`).join("\n"),
+  );
+  expect(
+    await editor.evaluate((node) => node.scrollHeight > node.clientHeight),
+  ).toBe(true);
+  await expect(
+    page.getByRole("button", { name: "Lähetä", exact: true }).last(),
+  ).toBeInViewport();
+  await page.setViewportSize({ width: 312, height: 675 });
+  await expect(
+    page.getByRole("button", { name: "Lähetä", exact: true }).last(),
+  ).toBeInViewport();
+});
+
 test("@visual keyboard focus follows visible controls", async ({ page }) => {
   await page.goto("/?fixture=design");
   await expect(
@@ -91,11 +112,11 @@ test("@visual reduced motion removes running animation without hiding status", a
     "none",
   );
 });
-test("@a11y design catalog themes and unhappy state have no axe violations", async ({
-  page,
-}) => {
-  for (const fixture of ["design", "design-unhappy"]) {
-    for (const theme of ["light", "dark"]) {
+for (const fixture of ["design", "design-unhappy"] as const) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`@a11y ${fixture} in ${theme} has no axe violations`, async ({
+      page,
+    }) => {
       await page.goto(`/?fixture=${fixture}`);
       await page
         .locator("html")
@@ -105,7 +126,7 @@ test("@a11y design catalog themes and unhappy state have no axe violations", asy
         );
       await expect(page.locator("main#main")).toBeVisible();
       const results = await new AxeBuilder({ page }).analyze();
-      expect(results.violations, `${fixture}-${theme}`).toEqual([]);
-    }
+      expect(results.violations).toEqual([]);
+    });
   }
-});
+}

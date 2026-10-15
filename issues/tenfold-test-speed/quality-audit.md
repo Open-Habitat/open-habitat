@@ -155,3 +155,34 @@ button behavior (3/3). The earlier 129.6 s browser / 42.9 s lab runs came
 from a different tree and conditions, so this is a passing gate result, not
 an isolated, comparable speedup measurement. No distinct-UID scenario was run;
 this document is not a full-gate receipt.
+
+## Case-cost pass (2026-10-15, current tree)
+
+The cancelled speed worker's useful commits were carried onto main: the nine
+short-lived socket activation child processes no longer wait for the race
+runtime's post-assertion one-second exit grace; the lab forced-gap check uses
+an ordinary native turn because its gap is injected *after* settlement. Its
+file-card tests now wait for saved content rather than describing synthetic
+extra cards as live events (the fake Pi never streams those cards), and a PID
+fixture waits for a populated file. The previously uncommitted archive test
+waits for affirmative writer absence after its writer has exited, without
+turning an unknown `/proc` census into absence. Real Go race coverage and
+production fake-Pi/daemon timing remain unchanged.
+
+| Change | What still proves the distinct behavior |
+| --- | --- |
+| Removed three host-backed `browser-conversation` geometry cases (`composer centers`, `footer and floating latest`, `resized editor`) | A short browser case renders production `Composer` in the design fixture, enters 20 lines and checks a scrollable editor and usable send on narrow screens. `only reader scroll suspends following` and `latest action follows expanded output` still prove the scroll/jump control with the actual conversation. The dropped half-pixel alignment, forced CSS min-height, injected notice markup and exact editor height did not prove native host interaction. |
+| Reduced `control-states` shared feedback case from two themes/six controls plus CSS token injection to a production link and account menu | Its focus and hover assertions still use real controls; keyboard/zoom/axe and theme contrast are checked by `shell-accessibility`, `design-system` and `theme`. An injected hover-token literal and identical interactions in a second theme did not establish distinct behavior. |
+| First `native-history` case uses a 51-entry synthetic history rather than loading all 251 entries over 10 clicks | Two real older-page loads still cross the 25-row boundary, reach the unknown native event and untrusted 40k-character message, keep it non-executable, reject writes, and prove reload restores the first page. Go's history page-budget tests cover cursor/response bounds; the browser `older page keeps the visible native row anchored` checks paging layout. The old CDP heap number was only printed, not asserted or a retained-size benchmark, and its screenshots were never compared. Other native-history cases still use the 251-entry fixture. |
+| Split the four catalog state/theme axe scans into independently scheduled cases | Same four scans and assertions; no axe state removed. This can shorten the suite's critical path but does not reduce total scan CPU. |
+
+The attempted current-tree standalone browser baseline at `de1a75a9` ran
+165 cases in 154.1 s but failed three: both file-card cases clicked a
+transient live disclosure just as it disappeared, and the external terminal
+append case timed out under concurrent load. This **is not a passing baseline**
+or evidence of a speedup. The settled saved-card selector now fixes the first
+race instead of increasing its timeout. Focused browser checks after the
+case-cost edits passed 9/9 (including all four axe combinations and the
+short native history); focused race tests for archive, Pi PID and activation
+passed twice each. The full suite and a comparable before/after wall-time
+measurement remain to be done.
