@@ -126,5 +126,15 @@ the older 142-case suite as though they were identical populations. Following
 the continuation consolidation, its focused browser case passed (1/1),
 `test:unit` passed (123/123), `test:component` passed (111/111), format/lint/
 typecheck passed, and affected Go daemon tests passed with `-race`. Project
-view validation and `issuectl doctor --json` passed. No full clean gate or
-distinct-UID scenario was run; this document is not a full-gate receipt.
+view validation and `issuectl doctor --json` passed. Two full normal browser
+reruns after the three-case consolidation did **not** pass: one finished
+156/157 with an archive/restore button disabled at a five-second assertion
+(three isolated repeats of that same case passed), and one finished 156/157
+with a fresh host unable to bind its worker port (15823 already in use at the
+instant of spawn; the port was free on subsequent inspection). Their JSON
+scratch results are `/var/tmp/oh-quality-normal-{after,confirm}.json`. These
+runs cannot establish either a full-suite pass or a speedup. Another full
+rerun would spend two minutes without addressing either failure; treat the
+harness race/timeout as separate test reliability work rather than deleting
+those behavioral cases. No full clean gate or distinct-UID scenario was run;
+this document is not a full-gate receipt.
