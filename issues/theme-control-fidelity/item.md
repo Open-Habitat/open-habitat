@@ -3,13 +3,11 @@ created: 2026-10-15
 updated: 2026-10-15
 type: bug
 reporter: jari
-status: fixed
+status: open
 priority: normal
 lane: web
 lane_seq: 36
 collision: [web/]
-closed: 2026-10-15
-closed_by: claude
 ---
 
 # Account menu theme control does not match the draft
@@ -18,3 +16,7 @@ Jari, pilot.65 (2026-10-15): the theme control in the account menu does not matc
 
 ## Acceptance Criteria
 - [x] The account menu's theme row matches the draft in light and dark themes (paired screenshots), with each option's name available to assistive technology and as a tooltip.
+
+## Reopen Notes — 2026-10-15
+
+_Add rationale for reopening here._
