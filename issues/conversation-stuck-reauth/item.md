@@ -3,7 +3,7 @@ created: 2026-10-15
 updated: 2026-10-15
 type: bug
 reporter: jari
-status: open
+status: in-progress
 priority: high
 lane: reauth
 collision: [internal/daemon, web/src/app/GitHubOnboarding.tsx]
