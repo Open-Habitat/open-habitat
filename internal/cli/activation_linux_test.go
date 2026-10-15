@@ -111,7 +111,10 @@ func TestActivatedSocketFD3(t *testing.T) {
 			defer f.Close()
 			cmd := exec.Command(os.Args[0], "-test.run=^TestActivationChild$")
 			cmd.ExtraFiles = []*os.File{f}
-			cmd.Env = append(os.Environ(), "ACTIVATION_HELPER=1", "ACTIVATION_PATH="+path, "ACTIVATION_CASE="+tc.name, "ACTIVATION_COUNT="+tc.count, "ACTIVATION_NAME="+tc.fdname)
+			// Each child has completed its socket assertion before exiting. Keep the
+			// race detector enabled, but do not pay its one-second exit grace
+			// period nine times for processes with no work left to observe.
+			cmd.Env = append(os.Environ(), "GORACE=atexit_sleep_ms=0", "ACTIVATION_HELPER=1", "ACTIVATION_PATH="+path, "ACTIVATION_CASE="+tc.name, "ACTIVATION_COUNT="+tc.count, "ACTIVATION_NAME="+tc.fdname)
 			out, e := cmd.CombinedOutput()
 			if e != nil {
 				t.Fatalf("%v: %s", e, strings.TrimSpace(string(out)))

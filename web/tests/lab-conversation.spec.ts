@@ -650,14 +650,16 @@ test("@lab combined stream reconciles a forced gap without reposting", async ({
     .click();
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
-  await editor.fill("hidas stream-tarkistus");
+  // Recovery is injected only after the native answer has settled. This case
+  // does not need the deliberately slow Pi turn used by in-flight races.
+  await editor.fill("stream-tarkistus");
   let sends = 0;
   page.on("request", (request) => {
     if (request.url().endsWith("/send")) sends++;
   });
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
-    page.getByText('Selvä. Kysyit: "hidas stream-tarkistus".', {
+    page.getByText('Selvä. Kysyit: "stream-tarkistus".', {
       exact: false,
     }),
   ).toBeVisible({ timeout: 30000 });
@@ -705,7 +707,7 @@ test("@lab combined stream reconciles a forced gap without reposting", async ({
   expect(streamReads).toBe(1);
   await expect(page.getByText("This frame must not appear")).toHaveCount(0);
   await expect(
-    page.getByText('Selvä. Kysyit: "hidas stream-tarkistus".', {
+    page.getByText('Selvä. Kysyit: "stream-tarkistus".', {
       exact: false,
     }),
   ).toBeVisible();

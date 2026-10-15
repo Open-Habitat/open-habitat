@@ -150,6 +150,9 @@ test("@file-tool-cards failed read shows the native error without a file count",
     .getByRole("textbox", { name: "Viesti Pi:lle" })
     .fill("virhekortti");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  // This case asserts the saved failure, not the transient live disclosure.
+  // Wait for settlement so the live button cannot disappear during its click.
+  await expect(page.getByText('Selvä. Kysyit: "virhekortti".')).toBeVisible();
   await openFileWork(page);
   const row = page
     .locator(".ah-tool-row")
