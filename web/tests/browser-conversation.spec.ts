@@ -1416,10 +1416,15 @@ test("@browser-conversation restart offers native continuation and archive witho
   await expect(bar.getByRole("button", { name: "Arkistoi" })).toBeEnabled();
   await bar.getByRole("button", { name: "Arkistoi" }).click();
   await page.goto(`/agents/${id}`);
-  await expect(
-    bar.getByRole("button", { name: "Palauta näkyviin" }),
-  ).toBeEnabled();
-  await bar.getByRole("button", { name: "Palauta näkyviin" }).click();
+  const restore = bar.getByRole("button", { name: "Palauta näkyviin" });
+  await expect(restore).toBeEnabled();
+  expect(
+    (await new AxeBuilder({ page }).include(".ah-agent-header").analyze())
+      .violations,
+  ).toEqual([]);
+  await restore.click();
+  await expect(restore).toHaveCount(0);
+  await expect(bar.getByRole("button", { name: "Arkistoi" })).toBeEnabled();
   await expect(
     page.getByRole("button", { name: "Jatka keskustelua" }),
   ).toBeVisible();
@@ -1485,16 +1490,6 @@ test("@browser-conversation archive restores visibility before native continuati
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toBeVisible();
   expect(new URL(page.url()).searchParams.get("conversation")).toBe(id);
-});
-
-test("@browser-conversation ordinary refresh keeps an explicit continuation proof", async ({
-  page,
-}) => {
-  await endedConversation(page);
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect(
-    page.getByRole("button", { name: "Jatka keskustelua" }),
-  ).toBeVisible();
 });
 
 test("@browser-conversation an opening continuation proof retries after HTTP failure", async ({
@@ -1577,6 +1572,11 @@ test("@browser-conversation ended browser conversation continues explicitly with
   page,
 }) => {
   const id = await endedConversation(page);
+  // A normal focus refresh must not revoke a proven continuation before use.
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(
+    page.getByRole("button", { name: "Jatka keskustelua" }),
+  ).toBeVisible();
   let continuations = 0,
     sends = 0;
   page.on("request", (r) => {
@@ -2095,6 +2095,8 @@ test("@browser-conversation queue-clear 401 reaches login", async ({
     ).toBeVisible();
   } finally {
     release();
+    // The held fetch must settle before the page/host fixture is torn down.
+    await page.unrouteAll({ behavior: "wait" });
   }
 });
 
@@ -2492,26 +2494,4 @@ test("@browser-conversation archive stays hidden across delayed successful host 
   release();
   await expect(page).toHaveURL(/\/workspaces\/[^?]+$/);
   await expect(row).toHaveCount(0);
-});
-
-test("@browser-conversation archived native history restores through the same icon row", async ({
-  page,
-}) => {
-  const id = await endedConversation(page);
-  await page.getByRole("button", { name: "Arkistoi", exact: true }).click();
-  await expect(page).toHaveURL(/\/workspaces\/[^?]+$/);
-  await page.goto(`/agents/${id}`);
-  const restore = page
-    .locator(".ah-agent-header")
-    .getByRole("button", { name: "Palauta näkyviin" });
-  await expect(restore).toBeEnabled();
-  expect(
-    (await new AxeBuilder({ page }).include(".ah-agent-header").analyze())
-      .violations,
-  ).toEqual([]);
-  await restore.click();
-  await expect(restore).toHaveCount(0);
-  await expect(
-    page.locator(".ah-agent-header").getByRole("button", { name: "Arkistoi" }),
-  ).toBeEnabled();
 });

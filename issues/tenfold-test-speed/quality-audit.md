@@ -186,3 +186,28 @@ case-cost edits passed 9/9 (including all four axe combinations and the
 short native history); focused race tests for archive, Pi PID and activation
 passed twice each. The full suite and a comparable before/after wall-time
 measurement remain to be done.
+
+## Native journey consolidation (2026-10-15)
+
+Two more cases repeated the expensive `endedConversation` native create/send/stop
+journey solely to check states already reached by other cases:
+
+| Removed case | Replacement and preserved distinguishing assertion |
+| --- | --- |
+| `ordinary refresh keeps an explicit continuation proof` | `ended browser conversation continues explicitly without reposting` now dispatches focus after the native proof and verifies the Continue button remains visible before posting once. This tests the ordinary focus path, not only an HTTP-failure retry. |
+| `archived native history restores through the same icon row` | `restart offers native continuation and archive without a handle` already archives, opens the native URL, restores through the header action, and continues after daemon reset. It now checks that the restore is enabled, the archived header passes axe, the restore action disappears after the click and the archive action becomes enabled. The separate workspace-archive and phone cases still cover their different entry points. |
+
+The earlier edited-tree browser JSON (`/var/tmp/oh-speed-edited-browser.json`)
+records 9.095 s and 8.856 s respectively for these two passing *individual*
+cases, in a failing 151.8 s full run. These 17.951 case-seconds are a
+potential reduction in aggregate work, **not** a demonstrated wall-clock
+saving: remaining cases gained assertions, parallel scheduling varies, and
+that run was not a passing baseline. No native/security case, UID boundary,
+write recovery, or axe state/theme scan was removed. The archive and focus
+assertions have the same real host boundaries in the retained cases. A focused
+browser run of the two retained journeys plus the queue-clear 401, lost-reply
+recovery and 600-workspace partial snapshot passed 5/5 in 18.2 s at
+`OH_PORT_BASE=32000` (standalone, not a clean-gate timing). Queue-clear now
+drains its held snapshot route after the 401 assertion before teardown;
+that changes no authorization assertion and avoids disposing the response
+while `route.fetch()` is still in flight.
