@@ -247,3 +247,40 @@ axe and restore-state assertions still in the retained real-host cases; the
 No full clean gate or comparable before/after timing was run for this slice;
 **no wall-clock speedup is claimed**. Distinct-UID security scenarios were
 not run and cannot be inferred from the focused browser tests.
+
+## Vitest jsdom/worker investigation (2026-10-15)
+
+After the no-reuse gate on `7b02273a` failed one recap test at Vitest's
+five-second default under host load (21 files, 68.32 s, 195.18 summed jsdom
+environment-seconds), we measured options on the same **unchanged** web tree
+at `b5a0b52d` with installed pinned dependencies and warm caches. Each wall
+time below is a separate passing standalone unit run (`/usr/bin/time`, seconds):
+
+| Configuration | Run 1 | Run 2 | Result |
+| --- | ---: | ---: | --- |
+| Existing default forks/isolation | 27.02 | 19.76 | 21 files, 126 tests passed twice |
+| `--pool threads` with isolation | 21.46 | 22.12 | Passed twice, no clear saving |
+| Default forks with `--maxWorkers 4` | 22.95 | 23.03 | Passed twice, no clear saving |
+
+Vitest 5's own warning attributes much of the tracked work to creating 21
+jsdom environments (62.20/80.41 summed seconds in the two default runs),
+but the elapsed wall times overlap across workers and do **not** add up to
+that figure. `--pool vmThreads` kept per-file isolation and ran in 14.88 s,
+but failed two tests (124/126 passed): `ReadableStream is not defined` in
+`AccountProfileOnboarding.test.tsx` and `github.test.tsx`. It also raised the
+`time`-reported command max RSS from ~233 MiB with forks to ~1.6 GiB
+(not aggregate memory across child workers). This is not a passing benchmark
+or a safe substitution; sharing jsdom between
+files via `--no-isolate` would instead discard the required per-file boundary.
+
+The host was busy (load average roughly 22–37 on eight cores, with other
+browser/build workers active), so these small, sequential samples are not
+proof of a clean-gate speedup or reproducible capacity improvement. The
+forks/4 and threads options were within baseline run-to-run spread. No Vitest
+configuration, timeout or test assertion was changed. The next improvement
+would need to preserve file isolation and DOM/stream semantics while passing
+under concurrent gate load before changing the default. After the measurements,
+the unchanged default unit suite passed again (126/126, 39.99 s under a busier
+load), as did the component suite (115/115), typecheck, lint, format check,
+project-view validation and `git diff --check`. There was no changed-tree
+clean gate, browser run or separate-UID test.
