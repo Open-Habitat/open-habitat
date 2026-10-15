@@ -5,7 +5,7 @@ import { expect, test } from "./lab-host";
 test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
 
 // Host-backed synthetic lab, not a screenshot or a live-user session.
-test("@lab v2 shared conversation metrics in both themes and at phone width", async ({
+test("@lab conversation remains usable at desktop and phone widths", async ({
   page,
 }) => {
   await page.goto("/workspaces");
@@ -13,131 +13,46 @@ test("@lab v2 shared conversation metrics in both themes and at phone width", as
   await page.getByRole("link", { name: "Alice" }).click();
   await page.goto("/agents/pi:a1a1a1a1-0000-4000-8000-000000000001");
   await expect(page.locator(inventory.foundation_metrics.frame)).toBeVisible();
-  for (const theme of ["light", "dark"]) {
-    await page.evaluate((value) => {
-      document.documentElement.dataset.theme = value;
-    }, theme);
-    for (const width of [1440, 390]) {
-      await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
-      const values = await page.evaluate((selectors) => {
-        const q = (key: keyof typeof selectors) => selectors[key];
-        const style = (selector: string) =>
-          getComputedStyle(
-            document.querySelector(selector) ?? document.documentElement,
-          );
-        const rail =
-          document.querySelector(q("rail")) ?? document.documentElement;
-        const header = style(q("header"));
-        const stream = style(q("stream"));
-        const button = style(q("button"));
-        const heading = style(q("heading"));
-        const message = style(q("message"));
-        const root = getComputedStyle(document.documentElement);
-        return {
-          railWidth: Math.round(rail.getBoundingClientRect().width),
-          topPadding: header.paddingTop,
-          sidePadding: header.paddingRight,
-          headerLeadingPadding: header.paddingLeft,
-          columnWidth: root.getPropertyValue("--ah-conversation-width").trim(),
-          streamPadding: stream.paddingLeft,
-          titleSize: heading.fontSize,
-          bodySize: message.fontSize,
-          buttonRadius: button.borderRadius,
-          focusWidth: root.getPropertyValue("--ah-focus-width").trim(),
-          focusOffset: root.getPropertyValue("--ah-focus-offset").trim(),
-          frameWidth: (
-            document.querySelector(q("frame")) ?? document.documentElement
-          ).getBoundingClientRect().width,
-          renderedColumnWidth: (
-            document.querySelector(q("column")) ?? document.documentElement
-          ).getBoundingClientRect().width,
-          streamScrolls:
-            (document.querySelector(q("stream"))?.scrollHeight ?? 0) >
-            (document.querySelector(q("stream"))?.clientHeight ?? 0),
-          speakerSize: style(q("speaker")).fontSize,
-          copyIcon: Boolean(document.querySelector(q("copyIcon"))),
-          toolBorder: style(q("tool")).borderTopWidth,
-          detailsVisible: Boolean(document.querySelector(q("detailsIcon"))),
-          mainScrolls:
-            (document.querySelector(q("main"))?.scrollHeight ?? 0) >
-            (document.querySelector(q("main"))?.clientHeight ?? 0),
-          streamBlockPadding: stream.paddingTop,
-          composerBlockPadding: style(q("composer")).paddingTop,
-          composerBottom:
-            document.querySelector(q("composer"))?.getBoundingClientRect()
-              .bottom ?? 9999,
-          composerActionsBottom:
-            document.querySelector(q("actions"))?.getBoundingClientRect()
-              .bottom ?? 9999,
-          composerPresent: Boolean(document.querySelector(q("composer"))),
-          streamBottom:
-            document.querySelector(q("stream"))?.getBoundingClientRect()
-              .bottom ?? 9999,
-          composerScrolls:
-            (document.querySelector(q("composer"))?.scrollHeight ?? 0) >
-            (document.querySelector(q("composer"))?.clientHeight ?? 0),
-        };
-      }, inventory.foundation_metrics);
-      if (width === 1440) {
-        expect(values.railWidth).toBe(296);
-        // Tool and reply cards share the stream's inset 732px reading column.
-        expect(values.renderedColumnWidth).toBe(732);
-      }
-      expect(values.streamScrolls).toBe(true);
-      expect(values.mainScrolls).toBe(false);
-      expect(values.topPadding).toBe(width === 390 ? "6px" : "13px");
-      expect(values.sidePadding).toBe(width === 390 ? "14px" : "24px");
-      expect(values.headerLeadingPadding).toBe(
-        width === 390 ? "100px" : "24px",
-      );
-      expect(values.columnWidth).toBe("780px");
-      expect(values.streamPadding).toBe(width === 390 ? "14px" : "24px");
-      expect(values.streamBlockPadding).toBe(width === 390 ? "12px" : "22px");
-      if (width === 390 && !values.composerPresent) {
-        expect(values.streamBottom).toBeLessThanOrEqual(844);
-        await expect(
-          page.locator(inventory.foundation_metrics.composer),
-        ).toHaveCount(0);
-      }
-      if (values.composerPresent) {
-        expect(values.composerBlockPadding).toBe("12px");
-        expect(values.composerScrolls).toBe(false);
-        expect(values.composerActionsBottom).toBeLessThanOrEqual(
-          values.composerBottom,
-        );
-        expect(values.composerBottom).toBeLessThanOrEqual(
-          width === 390 ? 844 : 900,
-        );
-      }
-      expect(values.titleSize).toBe("15.5px");
-      expect(values.bodySize).toBe(width === 390 ? "15px" : "14.5px");
-      expect(values.buttonRadius).toBe("8px");
-      expect(values.speakerSize).toBe("11px");
-      expect(values.copyIcon).toBe(true);
-      expect(values.toolBorder).toBe("1px");
-      expect(values.detailsVisible).toBe(true);
-      expect(values.focusWidth).toBe("2px");
-      expect(values.focusOffset).toBe("2px");
-      expect(values.frameWidth).toBeLessThanOrEqual(width);
-    }
+  // Check usable space, not a second copy of the CSS token values. Both
+  // themes share the same layout; a visual comparison belongs to capture.
+  for (const width of [1440, 390]) {
+    const height = width === 390 ? 844 : 900;
+    await page.setViewportSize({ width, height });
+    const layout = await page.evaluate((selectors) => {
+      const root = document.documentElement;
+      const stream = document.querySelector(selectors.stream);
+      const main = document.querySelector(selectors.main);
+      const composer = document.querySelector(selectors.composer);
+      const actions = document.querySelector(selectors.actions);
+      return {
+        pageFits: root.scrollWidth <= root.clientWidth + 1,
+        streamScrolls: !!stream && stream.scrollHeight > stream.clientHeight,
+        mainScrolls: !!main && main.scrollHeight > main.clientHeight,
+        composerFits:
+          !composer ||
+          (composer.scrollHeight <= composer.clientHeight &&
+            composer.getBoundingClientRect().bottom <= window.innerHeight &&
+            !!actions &&
+            actions.getBoundingClientRect().bottom <=
+              composer.getBoundingClientRect().bottom),
+      };
+    }, inventory.foundation_metrics);
+    expect(layout.pageFits).toBe(true);
+    expect(layout.streamScrolls).toBe(true);
+    expect(layout.mainScrolls).toBe(false);
+    expect(layout.composerFits).toBe(true);
   }
   await page.setViewportSize({ width: 1440, height: 900 });
   const focusTarget = page.locator(inventory.foundation_metrics.button).first();
   await focusTarget.focus();
   await expect
     .poll(() =>
-      focusTarget.evaluate((node) => getComputedStyle(node).outlineWidth),
+      focusTarget.evaluate((node) => getComputedStyle(node).outlineStyle),
     )
-    .toBe("2px");
-  await expect
-    .poll(() =>
-      focusTarget.evaluate((node) => getComputedStyle(node).outlineOffset),
-    )
-    .toBe("2px");
+    .not.toBe("none");
   await page.getByRole("button", { name: "Sulje navigaatio" }).click();
-  await expect(page.locator(inventory.foundation_metrics.rail)).toHaveCSS(
-    "width",
-    "52px",
+  await expect(page.locator(inventory.foundation_metrics.rail)).toHaveClass(
+    /ah-rail-collapsed/,
   );
   await page.setViewportSize({ width: 390, height: 844 });
   const trigger = page.getByRole("button", { name: "Avaa navigaatio" });

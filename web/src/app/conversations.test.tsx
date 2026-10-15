@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { questionTextFits, readRecap } from "./conversations";
+import {
+  ContinuationRefused,
+  continueConversation,
+  questionTextFits,
+  readRecap,
+} from "./conversations";
 
 describe("native recap read", () => {
   it("accepts bounded native data and rejects unknown fields", async () => {
@@ -35,6 +40,41 @@ describe("native recap read", () => {
     ).rejects.toThrow("invalid recap");
     fetch.mockRestore();
   });
+});
+
+describe("native continuation refusals", () => {
+  it.each([
+    ["writer_conflict", 409],
+    ["read_only_history", 409],
+    ["control_uncertain", 409],
+    ["capacity_exceeded", 429],
+  ] as const)(
+    "preserves %s from the host instead of retrying",
+    async (code, status) => {
+      const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ schema_version: 1, error: { code } }), {
+          status,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+      try {
+        try {
+          await continueConversation(
+            "pi:11111111-1111-4111-8111-111111111111",
+            "ws_abcdefgh",
+            "csrf",
+          );
+          throw new Error("continuation was accepted");
+        } catch (error) {
+          expect(error).toBeInstanceOf(ContinuationRefused);
+          expect((error as ContinuationRefused).code).toBe(code);
+        }
+        expect(fetch).toHaveBeenCalledOnce();
+      } finally {
+        fetch.mockRestore();
+      }
+    },
+  );
 });
 
 describe("Pi dialog request body", () => {

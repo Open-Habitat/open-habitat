@@ -1,45 +1,7 @@
-import { readdirSync, readFileSync } from "node:fs";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Locator, type Page, test } from "./worker-host";
 
 test.use({ ignoreHTTPSErrors: true });
-
-test("production controls are constructed only in ControlElements", () => {
-  for (const dir of ["components", "app"]) {
-    const root = new URL(`../src/${dir}/`, import.meta.url);
-    for (const name of readdirSync(root).filter(
-      (entry) =>
-        entry.endsWith(".tsx") && !/\.(test|stories)\.tsx$/i.test(entry),
-    )) {
-      if (dir === "components" && name === "ControlElements.tsx") continue;
-      const source = readFileSync(new URL(name, root), "utf8");
-      expect(source, `${dir}/${name}`).not.toMatch(
-        /<(?:button|a|AriaButton)\b/g,
-      );
-    }
-  }
-  expect(
-    readFileSync(new URL("../src/main.tsx", import.meta.url), "utf8"),
-  ).not.toMatch(/<(?:button|a|AriaButton)\b/g);
-  const conversation = readFileSync(
-    new URL("../src/components/Conversation.tsx", import.meta.url),
-    "utf8",
-  );
-  expect(conversation).toContain("<DisclosureButton tool");
-  const css = readFileSync(
-    new URL("../src/components/components.css", import.meta.url),
-    "utf8",
-  );
-  expect(css).not.toMatch(
-    /biome-ignore-all|\.ah-button\s*\{|\.ah-account-shelf\s*>\s*\.ah-button|\.ah-control\b(?!-reason)/,
-  );
-  expect(css).not.toMatch(/\.ah-home-card-head a(?:\s*\{|:hover)/);
-  expect(css).toContain(".ah-tool-row .ah-tool-output {");
-  expect(css).toContain(".ah-conversation-frame .ah-composer {");
-  expect(css).not.toContain(".ah-tool-row .ah-tool-row .ah-tool-output");
-  expect(css).not.toContain(".ah-tool-row .ah-conversation-frame .ah-composer");
-  expect(css).toContain(".ah-account-trigger {");
-});
 
 async function feedback(control: Locator, page: Page, press = true) {
   await expect(control).toHaveAttribute(

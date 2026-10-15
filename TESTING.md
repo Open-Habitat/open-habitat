@@ -10,6 +10,31 @@ All repository tests use synthetic homes, histories, identities and credentials.
 Real homes, Pi history, SSH agents, browser profiles and the live host stay out
 of these runs.
 
+## Test value, not test count
+
+A new test must make a plausible incorrect implementation fail while allowing a
+correct refactor to pass. Prefer a failure/boundary case, an invariant, a past
+regression, or a real interaction between components to a second transcription
+of the implementation. Before adding a case, check whether an existing test
+already proves the same behavior at the same boundary; extend it instead of
+adding another journey. A test whose only assertion is that a supplied label
+appears, a callback passes through a wrapper, a private CSS selector has an
+exact value, or a source file contains a particular string needs a separate
+reason to exist. Do not calculate the expected value with the code under test.
+
+Each host-backed browser case starts an isolated host and Chromium page. Put
+pure logic in the cheaper layer; reserve browser cases for actual browser or
+host behavior (layout, focus, routing, concurrency, security boundaries).
+Do not replace distinct-UID, gateway/daemon or native Pi evidence with a
+same-UID browser mock. A literal value can be justified when it is an external
+contract or an independently agreed design dimension, but duplicating current
+CSS tokens is not such a contract. A screenshot written to disk is review
+material, not a passing visual comparison assertion. When removing tests,
+record what distinguishing failure they would have caught and where it is
+still covered; do not claim elapsed-time savings without timing the changed
+suite. The ongoing audit is in
+[issues/tenfold-test-speed/quality-audit.md](issues/tenfold-test-speed/quality-audit.md).
+
 ## Choose checks for the change
 
 While editing, choose checks from the behavior and boundaries touched, not from a path-only or timestamp-based selector. A change to a shared auth, contract, test fixture or build dependency can affect several packages even if only one file changed. Install web dependencies with `npm ci --prefix web` when needed. `scripts/test-focused.sh` selects one area explicitly; it reports what it skips and **never writes a clean-gate receipt**. Use multiple runs when more than one boundary is touched. For shared fixtures, contracts, auth or build inputs choose the full gate instead. Examples:

@@ -185,9 +185,3 @@ func TestTypedHistoryPageBoundsMetadata(t *testing.T) {
 		t.Fatal("lost forward page cursor")
 	}
 }
-
-func TestHistoryPageBudgetProductionDefault(t *testing.T) {
-	if historyPageBudget != 256*1024 || historyBlockBudget != 1<<20 || maxLegacyHistoryFile != 32<<20 || maxHistoryFile != 512<<20 {
-		t.Fatalf("production page budget changed: %d", historyPageBudget)
-	}
-}

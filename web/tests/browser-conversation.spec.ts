@@ -1700,56 +1700,39 @@ test("@browser-conversation ended browser conversation continues explicitly with
   ).toHaveCount(0);
 });
 
-for (const code of [
-  "writer_conflict",
-  "read_only_history",
-  "control_uncertain",
-  "capacity_exceeded",
-] as const) {
-  test(`@browser-conversation continuation ${code} never reposts`, async ({
-    page,
-  }) => {
-    const id = await endedConversation(page);
-    let attempts = 0;
-    await page.route(
-      `**/api/v1/conversations/${id.slice(3)}/continue`,
-      (route) => {
-        attempts++;
-        return route.fulfill({
-          status: code === "capacity_exceeded" ? 429 : 409,
-          contentType: "application/json",
-          body: JSON.stringify({
-            schema_version: 1,
-            error: {
-              code,
-              message: "not available",
-              retryable: false,
-              correlation_id: "req_00000000",
-            },
-          }),
-        });
-      },
-    );
-    await page.getByRole("button", { name: "Jatka keskustelua" }).click();
-    const phrase =
-      code === "writer_conflict"
-        ? "aktiivinen kirjoittaja"
-        : code === "capacity_exceeded"
-          ? "raja on täynnä"
-          : code === "read_only_history"
-            ? "terminaalin historiaa"
-            : code === "control_uncertain"
-              ? "turvalliseksi jatkaa"
-              : "Jatkamisen tulos on epävarma";
-    await expect(page.getByText(new RegExp(phrase))).toBeVisible();
-    await page.reload();
-    await expect(
-      page.getByRole("button", { name: "Jatka keskustelua" }),
-    ).toHaveCount(1);
-    await refreshConversation(page);
-    expect(attempts).toBe(1);
-  });
-}
+test("@browser-conversation refused continuation never reposts after reload", async ({
+  page,
+}) => {
+  const id = await endedConversation(page);
+  let attempts = 0;
+  await page.route(
+    `**/api/v1/conversations/${id.slice(3)}/continue`,
+    (route) => {
+      attempts++;
+      return route.fulfill({
+        status: 409,
+        contentType: "application/json",
+        body: JSON.stringify({
+          schema_version: 1,
+          error: {
+            code: "writer_conflict",
+            message: "not available",
+            retryable: false,
+            correlation_id: "req_00000000",
+          },
+        }),
+      });
+    },
+  );
+  await page.getByRole("button", { name: "Jatka keskustelua" }).click();
+  await expect(page.getByText(/aktiivinen kirjoittaja/)).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Jatka keskustelua" }),
+  ).toHaveCount(1);
+  await refreshConversation(page);
+  expect(attempts).toBe(1);
+});
 
 test("@browser-conversation lost continuation reply reconciles status and history without another POST", async ({
   page,
