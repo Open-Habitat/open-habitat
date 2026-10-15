@@ -20,9 +20,10 @@ function playLive(host, R) {
     cells.forEach((c, i) => { c.classList.toggle('first', i === 0); c.classList.toggle('last', state.status === 'settled' && i === cells.length - 1); c.classList.toggle('tail', state.status === 'working' && i === cells.length - 1); });
   };
   const renderChrome = () => {
-    if (R.head) { headRail.innerHTML = R.headNode(state); headCell.innerHTML = R.head(state, sum()); }
+    // Morph rather than replace: a button that survives the clock tick keeps its clicks and hover.
+    if (R.head) { morph(headRail, R.headNode(state)); morph(headCell, R.head(state, sum())); }
     // A strip that renders nothing leaves the rail (e.g. no settled summary at the end).
-    if (R.strip) { const html = R.strip(state, sum()); stripRail.hidden = stripCell.hidden = !html; stripRail.innerHTML = html ? `<span class="node strip-node" aria-hidden="true"></span>` : ''; stripCell.innerHTML = html; }
+    if (R.strip) { const html = R.strip(state, sum()); stripRail.hidden = stripCell.hidden = !html; morph(stripRail, html ? `<span class="node strip-node" aria-hidden="true"></span>` : ''); morph(stripCell, html); }
     if (R.float) {
       if (state.status === 'working') { if (!floatEl) { floatEl = document.createElement('div'); floatEl.className = 'float-bar'; floatEl.setAttribute('role', 'status'); document.body.appendChild(floatEl); } floatEl.innerHTML = R.float(state); }
       else if (floatEl) { floatEl.remove(); floatEl = null; }
@@ -77,6 +78,23 @@ function playLive(host, R) {
 }
 
 // ---------- Shared live pieces ----------
+// Bring `el`'s children to `html` in place: same-shaped elements are kept and only
+// their attributes and text change, so a live row's button stays the same element.
+function morph(el, html) {
+  const t = document.createElement('template'); t.innerHTML = html; sync(el, t.content);
+}
+function sync(cur, next) {
+  const a = [...cur.childNodes], b = [...next.childNodes];
+  b.forEach((n, i) => {
+    const o = a[i];
+    if (!o || o.nodeType !== n.nodeType || o.nodeName !== n.nodeName) { o ? cur.replaceChild(n, o) : cur.appendChild(n); return; }
+    if (n.nodeType !== 1) { if (o.nodeValue !== n.nodeValue) o.nodeValue = n.nodeValue; return; }
+    for (const { name } of [...o.attributes]) if (!n.hasAttribute(name)) o.removeAttribute(name);
+    for (const { name, value } of [...n.attributes]) if (o.getAttribute(name) !== value) o.setAttribute(name, value);
+    sync(o, n);
+  });
+  for (const o of a.slice(b.length)) o.remove();
+}
 const elapsed = (state) => { const s = Math.max(0, Math.round((performance.now() - state.t0) / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 const activity = (state) => { const b = state.blocks[state.blocks.length - 1]; if (!b) return 'Aloittaa'; if (b.t === 'think') return 'Ajattelee'; if (b.t === 'tool') return b.state === 'forming' ? `Muodostaa ${b.name}-kutsua` : b.state === 'running' ? `Ajaa ${b.name}` : 'Jatkaa'; return b.live ? 'Vastaa' : 'Viimeistelee'; };
 const toolLabels = { forming: 'muodostaa kutsua…', running: 'ajossa', done: 'valmis' };
