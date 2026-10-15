@@ -3,11 +3,13 @@ created: 2026-10-15
 updated: 2026-10-15
 type: improvement
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 lane: web
 lane_seq: 34
 collision: [web/]
+closed: 2026-10-15
+closed_by: claude
 ---
 
 # Drop the redundant failure notice from failed tool cards
