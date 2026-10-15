@@ -16,6 +16,17 @@ Add non-Pi agents as **separate native harnesses**, rather than run Claude Code 
 
 **Provider authorization is a prerequisite to subscription support, not an implementation detail.** Do not expose Anthropic claude.ai login or subscription limits in this hosted product without Anthropic's explicit approval for this use, including the CLI-vs-SDK distinction. Do not extend Codex app-server subscription authentication to the hosted product on the strength of its local sign-in documentation; obtain OpenAI's applicable Sign in with ChatGPT/partner authorization and review the existing Pi/Codex OAuth path with OpenAI. API-key billing is a separate commercial route to evaluate, not a substitute description for a subscription.
 
+## Refinements from the prototype
+
+The [browser prototype](../../issues/proto-agent-harnesses/result.md) (16 October 2026) keeps this decision and makes the following parts of it concrete:
+
+- **One harness per conversation, fixed at the first message.** A conversation is one native session, so its agent is chosen before the first message and does not change afterwards. Its harness, model and capability gaps are shown in the conversation.
+- **Defaults live in each harness.** Each harness keeps its default model in its own configuration. The "agent used last" preference is a per-browser convenience or derived from native histories, never a host store.
+- **Credentials pass through, never stay.** The browser can start a harness's own login, and the daemon relays the result to that harness under the user's account. An API key typed in the browser goes once to the harness's own native login, such as stdin to `codex login --with-api-key`. The gateway and daemon keep no copy and do not log it. Where a harness has no native place to store an API key, the gap is reported rather than filled with a host-owned credential file.
+- **Subscription sign-in is gated per installation.** Until the provider authorizes this hosted use, the subscription route appears disabled with its reason, and the API-key route remains available. Enabling it is an operator-declared installation setting made after written approval, not a per-user toggle.
+- **Permissions stay with the harness.** Pi's in-browser questions are not imitated. A browser-started Claude Code or Codex uses the person's own permission settings for that harness. The daemon never adds a bypass flag such as Claude Code's `--dangerously-skip-permissions` or Codex's `--dangerously-bypass-approvals-and-sandbox`, so a denied tool fails visibly instead of being granted silently.
+- **Capabilities are explicit.** Recap is a Pi extension and stays Pi-only. Claude Code's live steering is shown as unavailable until an experiment shows it works. Codex steering (`turn/steer`) and stop are expected to work, but each adapter must still verify them before advertising them.
+
 ## Consequences and alternatives
 
 Native harnesses preserve the same history, configuration and credentials for SSH and browser use, at the cost of separate controllers, native history readers, capability-aware contract changes and testing against upstream releases. The current `pi:<uuid>` browser ID and Pi-specific command/onboarding types cannot be silently relabeled as generic. Live steering in Claude Code and safe continuation of both harnesses require validation, not assumption.
