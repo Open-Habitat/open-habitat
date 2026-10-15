@@ -1602,21 +1602,63 @@ test("@browser-conversation ended browser conversation continues explicitly with
     page.getByRole("button", { name: "Jatka keskustelua" }),
   ).toBeVisible();
   let continuations = 0,
+    accepted = 0,
+    refused = 0,
     sends = 0;
+  let refusal: string | undefined;
   page.on("request", (r) => {
-    if (r.url().endsWith("/continue")) continuations++;
+    if (r.url().endsWith("/continue")) {
+      continuations++;
+      expect(r.postData()).toBeNull();
+      expect(r.headers()["x-agent-host-csrf"]).toBeTruthy();
+    }
     if (r.url().endsWith("/send")) sends++;
   });
-  const posted = page.waitForRequest((r) => r.url().endsWith("/continue"));
-  await page.getByRole("button", { name: "Jatka keskustelua" }).click();
-  const request = await posted;
-  expect(request.postData()).toBeNull();
-  expect(request.headers()["x-agent-host-csrf"]).toBeTruthy();
+  // Read the definitive refusal before the browser can navigate away from a
+  // response body. A failed read or any other denial must not cause a retry.
+  await page.route(
+    `**/api/v1/conversations/${id.slice(3)}/continue`,
+    async (route) => {
+      const upstream = await route.fetch();
+      if (upstream.status() === 200) accepted++;
+      if (upstream.status() === 409) {
+        refused++;
+        refusal = (await upstream.json()).error?.code;
+      }
+      await route.fulfill({ response: upstream });
+    },
+  );
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const delivered = page.waitForResponse(
+      (r) =>
+        r.request().method() === "POST" &&
+        new URL(r.url()).pathname ===
+          `/api/v1/conversations/${id.slice(3)}/continue`,
+    );
+    await page.getByRole("button", { name: "Jatka keskustelua" }).click();
+    const response = await delivered;
+    if (response.status() === 200) break;
+    expect(response.status()).toBe(409);
+    expect(refusal).toBe("control_uncertain");
+    expect(attempt).toBeLessThan(2);
+    await expect(
+      page.getByText("Jatkaminen estetty", { exact: true }),
+    ).toBeVisible();
+    await refreshConversation(page);
+    await expect(page.locator(".ah-agent-header")).toContainText(
+      "Ei käynnissä",
+      { timeout: 20000 },
+    );
+    await expect(
+      page.getByRole("button", { name: "Jatka keskustelua" }),
+    ).toBeVisible();
+  }
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toBeVisible();
   await expect(page.getByText(/Jatkaminen kuitattiin/)).toBeVisible();
-  expect(continuations).toBe(1);
+  expect(accepted).toBe(1);
+  expect(refused).toBe(continuations - 1);
   expect(sends).toBe(0);
   const status = await (
     await page.request.get(`/api/v1/conversations/${id.slice(3)}/status`)

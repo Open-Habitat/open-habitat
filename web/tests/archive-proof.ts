@@ -22,14 +22,23 @@ export async function archiveFromConfirmedView(
       continue;
     }
     let sent = false;
-    const watch = (request: import("@playwright/test").Request) => {
-      if (
-        request.method() === "POST" &&
-        new URL(request.url()).pathname === "/api/v1/workspaces"
-      )
-        sent = true;
-    };
-    page.on("request", watch);
+    let refusal: string | undefined;
+    // Capture the refusal before delivering it to the app: response.json() on
+    // the page response can wait forever when the page navigates during reply.
+    // An unreadable or unfamiliar refusal is never permission to retry.
+    await page.route("**/api/v1/workspaces", async (route) => {
+      if (route.request().method() !== "POST") return route.continue();
+      sent = true;
+      const upstream = await route.fetch();
+      if (upstream.status() === 409) {
+        try {
+          refusal = (await upstream.json()).error?.code;
+        } catch {
+          refusal = undefined;
+        }
+      }
+      await route.fulfill({ response: upstream });
+    });
     try {
       const response = page
         .waitForResponse(
@@ -61,14 +70,14 @@ export async function archiveFromConfirmedView(
         return;
       }
       expect(reply.status()).toBe(409);
-      expect((await reply.json()).error.code).toBe("control_uncertain");
+      expect(refusal).toBe("control_uncertain");
       await expect(
         page.getByText("Arkistointia ei tehty:", { exact: false }),
       ).toBeVisible();
       if (attempt === 2)
         throw new Error("archive census stayed uncertain after rediscovery");
     } finally {
-      page.off("request", watch);
+      await page.unroute("**/api/v1/workspaces");
     }
   }
 }
