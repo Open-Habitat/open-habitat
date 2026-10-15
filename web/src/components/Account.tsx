@@ -8,6 +8,7 @@ import {
   ModalOverlay,
 } from "react-aria-components";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
+import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { Menu } from "./Overlays";
 import { Button, ListRow, RadioGroup } from "./Primitives";
@@ -118,16 +119,22 @@ export function AccountShelf({
             <span>Teema</span>
             <fieldset className="ah-account-menu-theme" aria-label="Teema">
               {themes.map(({ id, label, icon }) => (
-                <button
-                  type="button"
+                <span
                   key={id}
-                  aria-label={label}
+                  className="ah-account-theme-option"
                   title={label}
-                  aria-pressed={theme === id}
-                  onClick={() => setThemeChoice(id)}
                 >
-                  <Icon name={icon} />
-                </button>
+                  <ControlButton
+                    variant="quiet"
+                    size="micro"
+                    type="button"
+                    aria-label={label}
+                    aria-pressed={theme === id}
+                    onPress={() => setThemeChoice(id)}
+                  >
+                    <Icon name={icon} />
+                  </ControlButton>
+                </span>
               ))}
             </fieldset>
           </div>

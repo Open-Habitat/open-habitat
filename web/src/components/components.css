@@ -1766,12 +1766,19 @@ h1[tabindex="-1"]:focus {
   border-radius: var(--ah-r-md);
   background: var(--ah-surface-2);
 }
+.ah-account-theme-option {
+  display: flex;
+  align-items: center;
+  height: 26px;
+}
 .ah-account-menu-theme button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 30px;
   height: 26px;
+  min-height: 26px;
+  padding: 0;
   border: 0;
   border-radius: 6px;
   background: transparent;
