@@ -4,6 +4,7 @@ package daemon
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -299,7 +301,9 @@ func TestCloneNativeDeadlineKillsSlowProcessGroup(t *testing.T) {
 	// An orphaned child may briefly be a zombie awaiting reaping; Z is dead.
 	for until := time.Now().Add(3 * time.Second); ; {
 		stat, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
-		if os.IsNotExist(err) {
+		// procfs can report ESRCH when the process disappears between
+		// opening and reading stat; that also proves the child has exited.
+		if os.IsNotExist(err) || errors.Is(err, syscall.ESRCH) {
 			break
 		}
 		if err == nil {

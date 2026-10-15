@@ -174,3 +174,10 @@ comparators on those same trees failed, so there is still **no passing,
 comparable before/after gate speedup**. The opt-in scheduler remains opt-in;
 the under-60-second target remains unmet. Intermittent native writer census
 uncertainty is fail-closed and was not removed to make a benchmark green.
+
+The first clean no-reuse serial gate on the documentation-updated tree
+`7b0c2a81` passed all browser cases but failed the Go clone-deadline fixture:
+procfs returned `ESRCH` while reading a child that had already exited. The
+fixture now accepts either `ENOENT` or `ESRCH` as evidence of child disappearance,
+without relaxing its process-group or partial-tree assertions; the focused
+race test passed 30/30. This failed full gate is not a speed measurement.
