@@ -128,6 +128,21 @@ noudattavat yhteistä palstaa. Viimeisimpään-painike pysyy näkyvänä myös
 kirjoituskentän kasvaessa. Taustapäivitys säilyttää lukukohdan ja fokuksen
 sekä jättää luettavan sisällön näkyviin.
 
+Agentin työ on oletuksena piilossa (Jari 15.10.2026, kierros
+`prototypes/rounds/2026-10-15-hiljainen`). Pi:n vuoron säie pysyy kiinni:
+työn ajan näkyy yksi inforivi "Agentti työskentelee", nykyinen vaihe ja
+kello, ja vastaus tulee sen alle. Inforivin alussa on painike "Näytä työ"
+(kierros `2026-10-15-inforivi-2`, suunta Rivin alussa). Valmis säie näkyy
+yhteenvetorivinä ja aukeaa painamalla; itse suljettu pysyy kiinni.
+Tilivalikon "Agentin työ: Piilossa / Näkyvissä" vaihtaa oletuksen. Avatussa
+tai käynnissä olevassa säikeessä striimautuva blokki on auki ja sulkeutuu
+valmistuttuaan (kierros `2026-10-15-saikeet`). Näkymä seuraa uusinta
+sisältöä, kunnes lukija itse vierittää ylös; blokkien sulkeutuminen ei
+katkaise seurantaa. Tiheys on Tiivis (`prototypes/lib/density.css`, kierros
+`2026-10-14-tiheys`). Painikkeen avautumisliike on vielä valitsematta, ja
+sen ehto on, ettei inforiviä piirretä uudelleen kellon tikittäessä, koska
+uudelleenpiirto hukkaa painalluksia ja välkyttää korostusta.
+
 Tilannekatsaus on oma korttinsa suoraan kirjoituskentän yllä: otsakkeessa
 ikä ja merkki uusista viesteistä, oikealla päivitys ja sulkeminen. Suljettu
 katsaus pysyy kiinni, kunnes syntyy uudempi (Jari 13.10.2026).
