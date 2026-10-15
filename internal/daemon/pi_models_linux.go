@@ -28,9 +28,10 @@ type piModel struct {
 	Name string `json:"name"`
 }
 type piModelsResponse struct {
-	SchemaVersion int       `json:"schema_version"`
-	DefaultModel  *string   `json:"default_model"`
-	Models        []piModel `json:"models"`
+	SchemaVersion   int       `json:"schema_version"`
+	DefaultProvider *string   `json:"default_provider"`
+	DefaultModel    *string   `json:"default_model"`
+	Models          []piModel `json:"models"`
 }
 
 // Models are Pi's catalog and default, never a host-owned preference.

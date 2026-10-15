@@ -60,6 +60,15 @@ func runFakePi(args []string) {
 		os.Stdout.Write(append(b, '\n'))
 	}
 	s := &fakeSession{id: id, cwd: cwd, dir: dir, path: path, started: existing != ""}
+	if b, err := os.ReadFile(filepath.Join(home, ".pi", "agent", "settings.json")); err == nil {
+		var settings struct {
+			DefaultProvider string `json:"defaultProvider"`
+			DefaultModel    string `json:"defaultModel"`
+		}
+		if json.Unmarshal(b, &settings) == nil && settings.DefaultProvider == "openai-codex" && settings.DefaultModel != "" {
+			s.model = settings.DefaultModel
+		}
+	}
 	if existing != "" {
 		// Continue the same native chain; never overwrite an existing session.
 		data, err := os.ReadFile(existing)
@@ -179,6 +188,7 @@ type fakeSession struct {
 	id, cwd, dir, path             string
 	parent, lastMessage, lastRecap string
 	started                        bool
+	model                          string
 }
 
 func (s *fakeSession) append(v map[string]any) {
@@ -381,7 +391,11 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 		delta(answer[middle:])
 		time.Sleep(step)
 	}
-	s.append(message("assistant", []map[string]any{{"type": "text", "text": answer}}, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "stop"}))
+	model, provider := "fake-pi", "synthetic"
+	if s.model != "" {
+		model, provider = s.model, "openai-codex"
+	}
+	s.append(message("assistant", []map[string]any{{"type": "text", "text": answer}}, map[string]any{"provider": provider, "model": model, "stopReason": "stop"}))
 	emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant"}})
 	emit(map[string]any{"type": "agent_end"})
 }

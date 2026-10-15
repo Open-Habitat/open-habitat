@@ -333,6 +333,7 @@ esac
 		}))
 		mux.Handle(daemon.RepoObservePath, daemon.RepoObserveHandlerWithFixtureGit(cfg, trusted, home, gitProgram))
 		mux.Handle("GET /api/v1/onboarding/pi/status", daemon.PiStatusHandler(cfg, trusted, status))
+		mux.Handle("/api/v1/pi/models", piModelsFixture(home, trusted))
 		attempt := &atomic.Value{}
 		current := &atomic.Value{}
 		clear := func() { current.Load().(*daemon.ConversationController).ClearPiAuthFailures() }
@@ -435,6 +436,13 @@ esac
 				w.WriteHeader(http.StatusNoContent)
 				return
 			case "/fixture/conversations-reset":
+				// Each browser case starts from Pi's native unset default.
+				for _, user := range []string{"alice", "bob"} {
+					if err := os.Remove(filepath.Join(tmp, user, ".pi", "agent", "settings.json")); err != nil && !os.IsNotExist(err) {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
+				}
 				// Tests explicitly discard the previous synthetic daemon incarnation.
 				for i, current := range conversationHandlers {
 					conversations, cancel := conversationFactories[i]()

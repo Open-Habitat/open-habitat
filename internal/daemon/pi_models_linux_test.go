@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -26,6 +27,14 @@ func TestPiModelsNativeDefault(t *testing.T) {
 	}
 	for range events {
 	}
+	// A native cached catalog entry must remain visible without network access.
+	catalog, _ := json.Marshal(map[string]any{"openai-codex": map[string]any{
+		"lastModified": int64(4102444800000),
+		"models":       []any{map[string]any{"provider": "openai-codex", "id": "fixture-cached", "name": "Cached fixture", "api": "openai-codex-responses", "input": []string{"text"}, "contextWindow": 128000, "maxTokens": 4096}},
+	}})
+	if err := os.WriteFile(filepath.Join(home, ".pi", "agent", "models-store.json"), catalog, 0600); err != nil {
+		t.Fatal(err)
+	}
 	available, err := p.models(context.Background(), "")
 	if err != nil {
 		t.Fatal(err)
@@ -33,11 +42,16 @@ func TestPiModelsNativeDefault(t *testing.T) {
 	if len(available.Models) == 0 {
 		t.Fatal("no native models")
 	}
-	model := available.Models[0].ID
+	model := "fixture-cached"
+	if !slices.ContainsFunc(available.Models, func(m piModel) bool { return m.ID == model }) {
+		t.Fatalf("Pi cached model absent: %+v", available.Models)
+	}
 	settingsPath := filepath.Join(home, ".pi", "agent", "settings.json")
-	if err := os.WriteFile(settingsPath, []byte(`{"theme":"dark","defaultModel":"old"}`), 0600); err != nil {
+	if err := os.WriteFile(settingsPath, []byte(`{"theme":"dark","defaultProvider":"anthropic","defaultModel":"old"}`), 0600); err != nil {
 		t.Fatal(err)
 	}
+	previous, err := p.models(context.Background(), "")
+	if err != nil || previous.DefaultProvider == nil || *previous.DefaultProvider != "anthropic" || previous.DefaultModel == nil || *previous.DefaultModel != "old" { t.Fatalf("lost other provider's default: %+v, %v", previous, err) }
 	chosen, err := p.models(context.Background(), model)
 	if err != nil {
 		t.Fatal(err)

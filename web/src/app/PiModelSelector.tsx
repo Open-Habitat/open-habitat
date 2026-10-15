@@ -5,6 +5,7 @@ import Ajv from "ajv/dist/2020.js";
 const valid = new Ajv({ strict: false }).compile(schema);
 type Models = {
   schema_version: 1;
+  default_provider: string | null;
   default_model: string | null;
   models: { id: string; name: string }[];
 };
@@ -52,10 +53,15 @@ export function PiModelSelector({ csrf }: { csrf?: string }) {
         <select
           id="ah-pi-default-model"
           className="ah-native-select"
-          value={data.default_model ?? ""}
+          value={
+            data.default_provider === "openai-codex"
+              ? (data.default_model ?? "")
+              : ""
+          }
           disabled={busy || !csrf}
           onChange={async (e) => {
             const model = e.target.value;
+            if (!model) return;
             setBusy(true);
             setError(false);
             try {
@@ -78,8 +84,8 @@ export function PiModelSelector({ csrf }: { csrf?: string }) {
             }
           }}
         >
-          <option value="">
-            {data.default_model ? "Valitse malli" : "Pi:n oletus / ei valintaa"}
+          <option value="" disabled>
+            Valitse malli
           </option>
           {data.models.map((m) => (
             <option key={m.id} value={m.id}>
@@ -94,8 +100,14 @@ export function PiModelSelector({ csrf }: { csrf?: string }) {
             : "Ladataan Pi:n malleja…"}
         </p>
       )}
-      {data?.default_model &&
-      !data.models.some((m) => m.id === data.default_model) ? (
+      {data?.default_provider && data.default_provider !== "openai-codex" ? (
+        <p className="ah-pi-model-note">
+          Nykyinen Pi:n oletus on toisen palveluntarjoajan malli:{" "}
+          {data.default_provider}/{data.default_model ?? "tuntematon"}.
+        </p>
+      ) : data?.default_provider === "openai-codex" &&
+        data.default_model &&
+        !data.models.some((m) => m.id === data.default_model) ? (
         <p className="ah-pi-model-note">
           Nykyinen oletusmalli ei ole käytettävissä: {data.default_model}
         </p>
