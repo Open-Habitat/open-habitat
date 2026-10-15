@@ -635,6 +635,7 @@ export function AgentHeader({
   archiveControl,
   settings,
   detailsFacts,
+  detailsExtra,
 }: {
   title: string;
   titleState?: string;
@@ -651,6 +652,7 @@ export function AgentHeader({
   archiveReason?: string;
   settings?: { model?: string; thinking?: string };
   detailsFacts?: { label: string; value: string; copy?: boolean }[];
+  detailsExtra?: ReactNode;
   titleAction?: {
     label: string;
     availability?: Availability;
@@ -808,6 +810,7 @@ export function AgentHeader({
               </div>
             ))}
           </dl>
+          {detailsExtra}
         </section>
       ) : null}
     </header>

@@ -35,6 +35,7 @@ import {
 } from "./conversations";
 import { timelineItems } from "./HistoryView";
 import { PiQuestion } from "./PiQuestion";
+import { PiModelSelector } from "./PiModelSelector";
 import { latestSettings } from "./sessionSettings";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
 import { useConversation } from "./useConversation";
@@ -610,6 +611,7 @@ export function BrowserConversation({
                   : "neutral"
             }
             settings={latestSettings(entries)}
+            detailsExtra={<PiModelSelector csrf={csrf} />}
             detailsFacts={[
               {
                 label: "Työtila",
@@ -948,13 +950,12 @@ export function BrowserConversation({
             {!statusStale && current?.auth_error === "pi_model_unsupported" ? (
               <InlineNotice
                 title="Valittu kielimalli ei ole käytettävissä"
-                description="Pi ilmoitti, ettei valittu malli ole tuettu tällä ChatGPT-tilillä. Kirjautuminen uudelleen ei ratkaise tätä. Vaihda Pi:n oletusmalli tilillesi sopivaksi ja aloita uusi keskustelu. Tämän keskustelun luonnos säilyy."
+                description="Pi ilmoitti, ettei valittu malli ole tuettu tällä ChatGPT-tilillä. Kirjautuminen uudelleen ei ratkaise tätä. Valitse toinen oletusmalli ja aloita uusi keskustelu; tämä keskustelu ei vaihda mallia. Luonnos säilyy."
                 tone="danger"
                 actions={[
                   {
-                    label: "Uusi keskustelu",
-                    onPress: () =>
-                      navigate(`/workspaces/${workspace.workspace_id}`),
+                    label: "Valitse toinen malli",
+                    onPress: () => setDetails(true),
                   },
                 ]}
               />

@@ -196,6 +196,7 @@ export function AccountSettings({
   nativeLogin,
   piState = "checking",
   onPiSignIn,
+  modelSelector,
   onBack,
   onLogout,
   csrf,
@@ -209,6 +210,7 @@ export function AccountSettings({
   nativeLogin?: string;
   piState?: PiState | "checking" | "unavailable";
   onPiSignIn?: () => void;
+  modelSelector?: React.ReactNode;
   onBack: () => void;
   onLogout?: () => void;
 }) {
@@ -309,6 +311,7 @@ export function AccountSettings({
                   ? "Tarkistetaan palvelimen Pi-kirjautumistietoja."
                   : "Palvelimen Pi-kirjautumistietojen tilaa ei tiedetä. Yhteyttä ei ole vahvistettu."}
           </p>
+          {modelSelector}
           {onPiSignIn ? (
             <Button
               label={

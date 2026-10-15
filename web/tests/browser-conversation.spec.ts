@@ -1951,6 +1951,24 @@ test("@browser-conversation model authentication error offers sign-in without le
 test("@browser-conversation unsupported account model is not mistaken for expired login", async ({
   page,
 }) => {
+  let defaultModel = "gpt-5.5";
+  await page.route("**/api/v1/pi/models", async (route) => {
+    if (route.request().method() === "POST") {
+      expect(route.request().headers()["x-agent-host-csrf"]).toBeTruthy();
+      defaultModel = (route.request().postDataJSON() as { model: string })
+        .model;
+    }
+    await route.fulfill({
+      json: {
+        schema_version: 1,
+        default_model: defaultModel,
+        models: [
+          { id: "gpt-5.5", name: "GPT 5.5" },
+          { id: "gpt-5.4", name: "GPT 5.4" },
+        ],
+      },
+    });
+  });
   await open(page);
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await page.request.get("/fixture/scenario?value=pi-model-unsupported");
@@ -1962,8 +1980,21 @@ test("@browser-conversation unsupported account model is not mistaken for expire
   await expect(
     page.getByRole("button", { name: "Kirjaudu uudelleen" }),
   ).toHaveCount(0);
+  await page.getByRole("button", { name: "Valitse toinen malli" }).click();
+  const selector = page.getByLabel("Pi:n oletusmalli uusille keskusteluille");
+  await expect(selector).toHaveValue("gpt-5.5");
+  await selector.selectOption("gpt-5.4");
+  await expect(selector).toHaveValue("gpt-5.4");
+  expect(defaultModel).toBe("gpt-5.4");
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.getByRole("link", { name: "ordinary-dir" }).first().click();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("uusi malli");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "Uusi keskustelu" }),
+    page
+      .getByRole("region", { name: "Keskusteluhistoria" })
+      .getByText("uusi malli"),
   ).toBeVisible();
   expect(await page.locator("main").innerText()).not.toContain(
     "synthetic-secret",

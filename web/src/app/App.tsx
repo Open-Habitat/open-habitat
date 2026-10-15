@@ -41,6 +41,7 @@ import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
 import { NewWorkspace } from "./NewWorkspace";
 import { PersonalStorage } from "./PersonalStorage";
+import { PiModelSelector } from "./PiModelSelector";
 import {
   type AccountProfile,
   accountSession,
@@ -927,6 +928,7 @@ export function App() {
           nativeLogin={snapshot?.auth?.native_github.login}
           piState={settingsPiState}
           onPiSignIn={() => navigate("/settings?pi_sign_in=1")}
+          modelSelector={<PiModelSelector csrf={csrf} />}
           csrf={csrf}
           onDisconnect={refresh}
           onBack={() => {

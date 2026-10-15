@@ -80,6 +80,7 @@ conversation control routes use the UUID alone.
 | `POST /api/v1/onboarding/github/clone` | clone with a single JSON result |
 | `GET /api/v1/onboarding/github/checkout?full_name=<owner/repo>` | observe the local checkout after cloning |
 | `GET /api/v1/onboarding/pi/status` | resolve Pi's stored authorization; this does not test a model request |
+| `GET`, `POST /api/v1/pi/models` | list the authenticated OpenAI Codex models Pi reports and read its global default, or choose a listed model ([input](../../contracts/v1/pi-model-update.schema.json)); Pi's settings manager writes and reads back the default as the mapped user ([reply](../../contracts/v1/pi-models.schema.json)); the available list does not prove account entitlement, and a running conversation retains its model |
 | `POST`, `GET`, `DELETE /api/v1/onboarding/pi/attempt` | start, poll or cancel a Pi device login |
 
 [Conversations](conversations.md) explains the controls and their lifecycle;

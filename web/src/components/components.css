@@ -3268,6 +3268,19 @@ h1[tabindex="-1"]:focus {
   box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
   background: var(--ah-surface);
 }
+.ah-pi-model-selector {
+  display: grid;
+  gap: var(--ah-s2);
+  padding: var(--ah-s2);
+  font-size: var(--ah-size-ui);
+}
+.ah-pi-model-label {
+  font-weight: 600;
+}
+.ah-pi-model-note {
+  margin: 0;
+  color: var(--ah-ink-2);
+}
 .ah-details-popover h2 {
   margin: 0 0 var(--ah-s2);
   font-size: var(--ah-size-meta);

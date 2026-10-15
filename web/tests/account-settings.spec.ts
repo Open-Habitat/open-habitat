@@ -142,6 +142,36 @@ test("@account-settings partial, unknown and logout/user switch", async ({
   await page.goto("/settings");
   await expect(page.getByText("Tilaa ei tiedetä")).toBeVisible();
 });
+test("@account-settings Pi default model is read from native models and saved", async ({
+  page,
+}) => {
+  let stored = "gpt-5.5";
+  await page.route("**/api/v1/pi/models", async (route) => {
+    if (route.request().method() === "POST")
+      stored = (route.request().postDataJSON() as { model: string }).model;
+    await route.fulfill({
+      json: {
+        schema_version: 1,
+        default_model: stored,
+        models: [
+          { id: "gpt-5.5", name: "GPT 5.5" },
+          { id: "gpt-5.4", name: "GPT 5.4" },
+        ],
+      },
+    });
+  });
+  await login(page);
+  await settings(page);
+  const selector = page.getByLabel("Pi:n oletusmalli uusille keskusteluille");
+  await expect(selector).toHaveValue("gpt-5.5");
+  await selector.selectOption("gpt-5.4");
+  await expect(selector).toHaveValue("gpt-5.4");
+  await page.reload();
+  await expect(
+    page.getByLabel("Pi:n oletusmalli uusille keskusteluille"),
+  ).toHaveValue("gpt-5.4");
+});
+
 test("@account-settings Pi credentials change while the page is open; uncertainty is not success", async ({
   page,
 }) => {

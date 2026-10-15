@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/pi-model-update.schema.json",
+  "title": "Choose Pi's global default model",
+  "type": "object",
+  "required": ["model"],
+  "properties": {"model": {"type": "string", "minLength": 1, "maxLength": 160}},
+  "additionalProperties": false
+}
