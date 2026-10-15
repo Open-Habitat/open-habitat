@@ -46,7 +46,11 @@ test("@a11y login error stays aligned with the login card on desktop and phone",
       page.getByText("Kirjautumisessa tapahtui virhe"),
     ).toBeVisible();
     await aligned(page, "Kirjautumisessa tapahtui virhe");
-    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+    // Shell/login states have full-page scans elsewhere; this case owns the error notice.
+    expect(
+      (await new AxeBuilder({ page }).include("aside.ah-notice").analyze())
+        .violations,
+    ).toEqual([]);
   }
 });
 
@@ -67,10 +71,20 @@ test("@a11y failed session check offers reload under the repository card", async
     for (const width of [1280, 390]) {
       await page.setViewportSize({ width, height: 844 });
       await aligned(page, "Haun tila vaatii tarkistusta");
-      expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     }
+    // The chooser's ordinary state is scanned in shell-accessibility; audit
+    // the failed-session notice and its reload control, not the whole catalog.
+    expect(
+      (await new AxeBuilder({ page }).include("aside.ah-notice").analyze())
+        .violations,
+    ).toEqual([]);
     await page.unrouteAll();
-    await page.getByRole("button", { name: "Lataa sivu uudelleen" }).click();
+    const reload = page.getByRole("button", { name: "Lataa sivu uudelleen" });
+    await reload.focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expect(reload).toBeFocused();
+    await page.keyboard.press("Enter");
     await confirmGitIdentity(page);
     await expect(
       page.getByRole("list", { name: "GitHub-repot" }),

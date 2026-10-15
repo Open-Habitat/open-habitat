@@ -462,3 +462,51 @@ cases required the real title POST and visible name. Web typecheck, lint,
 format check, project-view validation and `git diff --check` passed. The
 conductor owns the full clean gate; these isolated same-UID synthetic checks
 cannot establish behavior under full-suite host load or distinct-UID isolation.
+
+## Onboarding notice accessibility scope (2026-10-15)
+
+The clean gate on `b3c0a5d1` failed `@a11y failed session check offers reload
+under the repository card` at the 30 s test deadline. The error pointed at
+`finally`'s fixture reset, but the retained trace in the main checkout's
+`web/test-results/onboarding-notices--a11y-f-935da-d-under-the-repository-card-chromium/trace.zip`
+shows that reset was only where the expired deadline surfaced: the reload
+`locator.click()` began after the two full-page axe scans, resolved the button,
+then saw it detach while waiting for click actionability and did not complete
+before timeout. The trace does not establish whether the detach was a background
+rerender or the start of the reload. Swallowing cleanup or lengthening the
+30 s deadline would not establish that the reload worked.
+
+`onboarding-notices.spec.ts` now scopes its two login-error scans to the error
+`aside.ah-notice` and its failed-session scan to the repository notice at phone
+width. Both cases still measure the notice against its card at desktop (1280)
+and phone (390), including page overflow. The failed-session case still requires
+the actual 503 session failure and its message, checks the notice/reload control
+with axe, tabs away and back to establish keyboard reachability, activates reload
+with Enter, and requires the restored GitHub catalog. Keyboard activation also
+avoids Playwright click actionability waiting across a potentially remounting
+reload button. The separate catalog-retry case still checks read-only retry
+without clone.
+
+Lost proof: full-page axe at both widths for the login-error and failed-session
+screens (four scans), including any issues outside the notice introduced only
+in those states; the failed-session notice is now scanned at phone width only.
+Retained/overlapping proof: `shell-accessibility.spec.ts` scans the signed-out
+page, shell at desktop/640, chooser and next first-use step; `design-system.spec.ts`
+scans the catalog in happy/unhappy states and both themes;
+`workspace-slice.spec.ts` scans multiple host-backed catalog states for
+serious/critical violations. None scans this particular failed-session notice,
+so its scoped zero-violations assertion stays. An issue confined to desktop
+notice color contrast could escape the phone-only axe scan; contrast tokens
+and the notice component are shared between widths, while alignment remains
+checked at both. No exact-pixel style checks were changed.
+
+On this worker with pinned dependencies, cached Chromium, `TMPDIR=/var/tmp`,
+`OH_PORT_BASE=52000`: the unchanged failed-session case passed in **3,093 ms**
+(standalone Playwright JSON case duration, warm build); the changed case passed
+in **3,467 ms** (same case in a three-case passing spec, 3/3). These are
+passing before/after case seconds, **not a measured speedup**: schedule,
+contention and spec composition differ. The changed case passed 10/10 repeats
+(two workers, case durations 2,815–4,209 ms, 25.6 s whole run); all three
+cases passed together. Web typecheck, lint and format check passed. This is
+synthetic same-UID browser-host evidence, not a changed-tree clean gate,
+real-provider evidence or distinct-UID proof. The conductor owns the gate.
