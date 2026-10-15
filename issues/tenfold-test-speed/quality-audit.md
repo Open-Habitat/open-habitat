@@ -510,3 +510,42 @@ contention and spec composition differ. The changed case passed 10/10 repeats
 cases passed together. Web typecheck, lint and format check passed. This is
 synthetic same-UID browser-host evidence, not a changed-tree clean gate,
 real-provider evidence or distinct-UID proof. The conductor owns the gate.
+
+## Native archive UI census race (2026-10-15)
+
+The serial-gate pilot's two otherwise mostly passing runs each failed a different
+archive assertion: the unwritten native history header stayed disabled at the
+five-second eligibility check; the ended-conversation header was enabled but
+remained on its conversation URL after click. The second retained Playwright
+trace records a `POST /api/v1/workspaces` returning **409** (104 ms), so that
+failure was a refused write rather than a missing click or slow navigation.
+The trace does not preserve the error response body and cannot establish which
+409 code it was. The first failure had no archive click. The host's archive
+controller can refuse a changed observation with `control_uncertain`, and the
+UI disables archive when native archive state is unknown; neither is proof of
+writer absence.
+
+The two real-host cases now use `archiveFromConfirmedView`: require an enabled
+archive control, observe the archive POST, accept only a 200 with the workspace
+navigation, or retry after a **409 `control_uncertain`** and visible refusal.
+A missing HTTP response is retried only when no POST was observed and the
+control actually reverted to its unknown-archive disabled state. Each retry
+reloads the view for a fresh affirmative census; after three views, a
+persistent unknown fails. A different 409 code, a sent request without a
+reply, or any other HTTP status fails rather than silently accepting a missed
+archive. Restore, title refusal/success, and native continuation assertions
+are unchanged. This test-only change does not relax production's fail-closed
+writer/unknown rules. The trace's absent response body means it cannot by
+itself prove that the pilot's 409 would satisfy the helper's narrowly allowed
+code; the repeated tests and conductor's next loaded gate must establish that.
+
+Validation: web format check, typecheck and lint passed. Six adjacent native
+archive/title/conversation cases passed (6/6, `OH_PORT_BASE=57000`). The first
+20-case repeat attempt reported 19 passing and one timeout with Playwright
+`ENOENT` in `.playwright-artifacts-16` while a second Playwright invocation
+was running against the **same `web/test-results` directory**. This was a
+harness artifact collision caused by overlapping validation runs, not an
+archive refusal result. The serial rerun (`OH_PORT_BASE=56000`,
+`TMPDIR=/var/tmp`, two workers, `--repeat-each=10`) passed both cases
+**20/20** in 37 s. No full gate, loaded pilot reproduction, real Pi, or
+separate-UID test ran here; the conductor owns the loaded gate.

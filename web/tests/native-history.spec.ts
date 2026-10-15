@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
+import { archiveFromConfirmedView } from "./archive-proof";
 import { expect, test } from "./worker-host";
 
 const host = hostOrigin;
@@ -74,9 +75,9 @@ test("@native-history unwritten terminal session can archive and restore", async
   await login(page);
   await page.goto(`/agents/${agent}`);
   const bar = page.locator(".ah-agent-header");
-  await expect(bar.getByRole("button", { name: "Arkistoi" })).toBeEnabled();
-  await bar.getByRole("button", { name: "Arkistoi" }).click();
-  await expect(page).toHaveURL(/\/workspaces\/[^?]+$/);
+  await archiveFromConfirmedView(page, () =>
+    bar.getByRole("button", { name: "Arkistoi" }),
+  );
   await page.goto(`/agents/${agent}`);
   await expect(
     bar.getByRole("button", { name: "Palauta näkyviin" }),

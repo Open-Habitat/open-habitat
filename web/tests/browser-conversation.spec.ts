@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
+import { archiveFromConfirmedView } from "./archive-proof";
 import { expect, test } from "./worker-host";
 
 const host = hostOrigin;
@@ -1486,11 +1487,9 @@ test("@browser-conversation archive restores visibility before native continuati
   page,
 }) => {
   const id = await endedConversation(page);
-  await expect(
+  await archiveFromConfirmedView(page, () =>
     page.getByRole("button", { name: "Arkistoi", exact: true }),
-  ).toBeEnabled();
-  await page.getByRole("button", { name: "Arkistoi", exact: true }).click();
-  await expect(page).toHaveURL(/\/workspaces\/[^?]+$/);
+  );
   await page.getByRole("link", { name: "Etusivu" }).click();
   await expect(
     page
