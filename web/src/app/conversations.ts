@@ -444,6 +444,7 @@ export async function send(
   message: string,
   commandId: string,
   csrf: string,
+  choice?: { provider?: string; model: string; thinking?: string },
 ) {
   if (
     !message ||
@@ -454,7 +455,11 @@ export async function send(
   const v = await request(
     `${path(id)}/send`,
     undefined,
-    { message, command_id: commandId },
+    {
+      message,
+      command_id: commandId,
+      ...(choice ? { first_choice: choice } : {}),
+    },
     csrf,
   );
   if (

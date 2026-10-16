@@ -527,12 +527,19 @@ func (c *ConversationController) send(w http.ResponseWriter, r *http.Request, id
 }
 func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request, id, kind string) {
 	var body struct {
-		Message   string `json:"message"`
-		CommandID string `json:"command_id"`
+		Message     string           `json:"message"`
+		CommandID   string           `json:"command_id"`
+		FirstChoice *piStartupChoice `json:"first_choice,omitempty"`
 	}
 	if decodeControl(r, &body, 66000) != nil || body.Message == "" || len(body.Message) > 65536 || !sessionIDPattern.MatchString(body.CommandID) {
 		snapshotError(w, 400, "invalid_request")
 		return
+	}
+	if body.FirstChoice != nil {
+		if kind != "send" || !c.validFirstChoice(r.Context(), body.FirstChoice) {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
 	}
 	c.mu.Lock()
 	s := c.sessions[id]
@@ -547,6 +554,11 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 		archiveState = archiveFact(annotations, annotationErr, "pi:"+id)
 	}
 	if archiveState != "active" || c.closed || s.aborting || (kind == "send" && s.state != "idle" && s.state != "rejected") || (kind != "send" && s.state != "accepted") || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= maxConversationCommands {
+		c.mu.Unlock()
+		snapshotError(w, 409, "control_uncertain")
+		return
+	}
+	if body.FirstChoice != nil && (s.state != "idle" || len(s.commands) != 0 || s.acceptedMessages != 0 || s.dead || s.naming || s.recapping || s.questionID != "") {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return
@@ -581,7 +593,14 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 		if rpcKind == "send" {
 			rpcKind = "prompt"
 		}
-		accepted, err := s.rpc.request(rpcKind, body.Message, 15*time.Second)
+		var accepted bool
+		var err error
+		if body.FirstChoice != nil {
+			err = c.applyFirstChoice(s, body.FirstChoice)
+		}
+		if err == nil {
+			accepted, err = s.rpc.request(rpcKind, body.Message, 15*time.Second)
+		}
 		c.mu.Lock()
 		defer c.mu.Unlock()
 		if s.state != "pending" {

@@ -1,4 +1,3 @@
-import { ArchiveNotice } from "../components/ArchiveNotice";
 import {
   lazy,
   Suspense,
@@ -20,6 +19,7 @@ import {
   InlineNotice,
 } from "../components";
 import { accountLabel } from "../components/Account";
+import { ArchiveNotice } from "../components/ArchiveNotice";
 import { LinkRow } from "../components/ControlElements";
 import { HomeWorkspaces } from "../components/HomeWorkspaces";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
@@ -43,6 +43,7 @@ import { HistoryView } from "./HistoryView";
 import { NewWorkspace } from "./NewWorkspace";
 import { type Choice, loadPiModels, PiModelSelector } from "./PiModelSelector";
 import { refused } from "../components/ModelPicker";
+import { PiModelsProvider } from "./PiModels";
 import {
   type AccountProfile,
   accountSession,
@@ -1532,7 +1533,7 @@ export function App() {
       </Suspense>
     );
   return (
-    <div key={identity}>
+    <PiModelsProvider key={identity} enabled={!!identity}>
       <AppShell
         mobileTitle={
           selectedAgent?.title.display ??
@@ -1679,6 +1680,6 @@ export function App() {
           </div>
         }
       />
-    </div>
+    </PiModelsProvider>
   );
 }

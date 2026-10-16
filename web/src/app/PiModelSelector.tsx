@@ -1,68 +1,12 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
-import { useEffect, useState } from "react";
-import schema from "../../../contracts/v1/pi-models.schema.json";
-import {
-  type ModelChoice,
-  ModelPicker,
-  refused,
-} from "../components/ModelPicker";
-
-const validator = new Ajv({ strict: false });
-addFormats(validator);
-const valid = validator.compile(schema);
-export type Models = {
-  schema_version: 1;
-  default_provider: string | null;
-  default_model: string | null;
-  default_thinking?: string;
-  catalog_status?: "native_cached" | "unavailable";
-  models: ModelChoice[];
-};
+import { useEffect, useLayoutEffect, useState } from "react";
+import { ModelPicker, refused } from "../components/ModelPicker";
+import { readModels, usePiModels } from "./PiModels";
+export { type Models, loadPiModels } from "./PiModels";
 export type Choice = {
   provider?: "openai-codex" | "openai" | "claude-bridge";
   model: string;
   thinking?: string;
 };
-async function read(response: Response): Promise<Models> {
-  if (
-    !response.ok ||
-    response.headers.get("content-type")?.split(";")[0] !== "application/json"
-  )
-    throw Error("unavailable");
-  const reader = response.body?.getReader();
-  if (!reader) throw Error("unavailable");
-  let text = "";
-  let size = 0;
-  const decoder = new TextDecoder("utf-8", { fatal: true });
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > 65536) {
-        await reader.cancel();
-        throw Error("oversize");
-      }
-      text += decoder.decode(value, { stream: true });
-    }
-    text += decoder.decode();
-  } finally {
-    reader.releaseLock();
-  }
-  const value: unknown = JSON.parse(text);
-  if (!valid(value)) throw Error("invalid model response");
-  return value as Models;
-}
-export async function loadPiModels(signal: AbortSignal): Promise<Models> {
-  return read(
-    await fetch("/api/v1/pi/models", {
-      credentials: "same-origin",
-      cache: "no-store",
-      signal,
-    }),
-  );
-}
 /** A selection is either Pi's global default or an explicit new-session intent. */
 export function PiModelSelector({
   csrf,
@@ -73,74 +17,71 @@ export function PiModelSelector({
   onBlocked,
 }: {
   csrf?: string;
-  scope?: "default" | "new" | "recovery" | "conversation";
+  scope?: "default" | "new" | "recovery" | "conversation" | "empty";
   current?: string;
   currentThinking?: string;
-  onChoice?: (choice: Choice) => void;
+  onChoice?: (choice: Choice) => void | Promise<void>;
   onBlocked?: (blocked: boolean) => void;
 }) {
   const [provider, setProvider] = useState<
     "openai-codex" | "openai" | "claude-bridge"
   >("openai-codex");
-  const [data, setData] = useState<Models>();
+  const { data, error: loadError, refresh, update } = usePiModels();
   const [selected, setSelected] = useState<string>();
   const [thinking, setThinking] = useState<string>();
   const [also, setAlso] = useState(true);
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
-    const controller = new AbortController();
-    void loadPiModels(controller.signal)
-      .then((value) => {
-        if (controller.signal.aborted) return;
-        setData(value);
-        setProvider(
-          current?.startsWith("claude-bridge/")
-            ? "claude-bridge"
-            : current?.startsWith("openai/")
-              ? "openai"
-              : !current && value.default_provider === "claude-bridge"
-                ? "claude-bridge"
-                : !current?.startsWith("openai-codex/") &&
-                    value.default_provider === "openai"
-                  ? "openai"
-                  : "openai-codex",
-        );
-        setSelected(
-          current?.replace(/^(openai-codex|openai|claude-bridge)\//, "") ??
-            value.default_model ??
-            undefined,
-        );
-        setThinking(currentThinking ?? value.default_thinking ?? "off");
-        onBlocked?.(
-          refused(
-            value.models.find(
-              (m) =>
-                (m.provider ?? "openai-codex") ===
-                  (current?.startsWith("claude-bridge/")
-                    ? "claude-bridge"
-                    : current?.startsWith("openai/")
-                      ? "openai"
-                      : current?.startsWith("openai-codex/")
-                        ? "openai-codex"
-                        : (value.default_provider ?? "openai-codex")) &&
-                m.id ===
-                  (current?.replace(
-                    /^(openai-codex|openai|claude-bridge)\//,
-                    "",
-                  ) ?? value.default_model),
-            ),
-          ),
-        );
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setError(true);
-      });
-    return () => controller.abort();
-  }, [current, currentThinking, onBlocked]);
+    refresh();
+  }, [refresh]);
+  // Initialize before the preloaded rows become interactive.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only defaults initialize selection, not observations.
+  useLayoutEffect(() => {
+    if (!data) return;
+    setProvider(
+      current?.startsWith("claude-bridge/")
+        ? "claude-bridge"
+        : current?.startsWith("openai/")
+          ? "openai"
+          : current?.startsWith("openai-codex/")
+            ? "openai-codex"
+            : (data.default_provider ?? "openai-codex"),
+    );
+    setSelected(
+      current?.replace(/^(openai-codex|openai|claude-bridge)\//, "") ??
+        data.default_model ??
+        undefined,
+    );
+    setThinking(currentThinking ?? data.default_thinking ?? "off");
+    // Catalog refreshes must not discard an unconfirmed selection.
+  }, [
+    current,
+    currentThinking,
+    data?.default_provider,
+    data?.default_model,
+    data?.default_thinking,
+  ]);
+  useEffect(() => {
+    if (!data) return;
+    const appliedProvider =
+      current?.split("/")[0] ?? data.default_provider ?? "openai-codex";
+    const appliedModel =
+      current?.replace(/^(openai-codex|openai|claude-bridge)\//, "") ??
+      data.default_model;
+    onBlocked?.(
+      refused(
+        data.models.find(
+          (m) =>
+            (m.provider ?? "openai-codex") === appliedProvider &&
+            m.id === appliedModel,
+        ),
+      ),
+    );
+  }, [data, current, onBlocked]);
   const save = async (choice: Choice) => {
     if (!csrf) throw Error("unavailable");
-    const next = await read(
+    const next = await readModels(
       await fetch("/api/v1/pi/models", {
         method: "POST",
         credentials: "same-origin",
@@ -154,7 +95,7 @@ export function PiModelSelector({
         }),
       }),
     );
-    setData(next);
+    update(next);
   };
   const commit = async (choice: Choice) => {
     setBusy(true);
@@ -164,7 +105,7 @@ export function PiModelSelector({
         await save(choice);
       setSelected(choice.model);
       setThinking(choice.thinking);
-      onChoice?.({ ...choice, provider: choice.provider ?? provider });
+      await onChoice?.({ ...choice, provider: choice.provider ?? provider });
       onBlocked?.(false);
     } catch {
       setError(true);
@@ -286,12 +227,20 @@ export function PiModelSelector({
               Tee siitä myös uusien keskustelujen oletus
             </label>
           ) : null}
-          {scope === "conversation" || scope === "recovery" ? (
+          {scope === "conversation" ||
+          scope === "recovery" ||
+          scope === "empty" ? (
             <>
-              <p className="md-note">
-                Tämän keskustelun mallia ei vaihdeta. Aiemmin lähetettyä viestiä
-                ei toisteta. Luonnos säilyy.
-              </p>
+              {scope !== "empty" ? (
+                <p className="md-note">
+                  Tämän keskustelun mallia ei vaihdeta. Aiemmin lähetettyä
+                  viestiä ei toisteta. Luonnos säilyy.
+                </p>
+              ) : (
+                <p className="md-note">
+                  Vain tähän keskusteluun. Oletus ei muutu.
+                </p>
+              )}
               <button
                 type="button"
                 className="md-btn primary"
@@ -306,7 +255,9 @@ export function PiModelSelector({
                   if (selected) void commit({ model: selected, thinking });
                 }}
               >
-                Aloita uusi keskustelu mallilla {selected ?? "…"}
+                {scope === "empty"
+                  ? "Valitse"
+                  : `Aloita uusi keskustelu mallilla ${selected ?? "…"}`}
               </button>
             </>
           ) : null}
@@ -324,7 +275,7 @@ export function PiModelSelector({
         </>
       ) : (
         <p className="md-note">
-          {error
+          {error || loadError
             ? "Pi:n malleja ei saada. Tarkista kirjautuminen."
             : "Ladataan Pi:n malleja…"}
         </p>

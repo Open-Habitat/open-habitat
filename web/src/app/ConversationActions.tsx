@@ -23,6 +23,7 @@ type Observation = {
 };
 // Write outcomes stay distinct: an unacknowledged send must not be retried automatically.
 export function useConversationActions({
+  firstChoice,
   workspace,
   id,
   csrf,
@@ -54,6 +55,7 @@ export function useConversationActions({
   onSessionCreated,
   navigate,
 }: {
+  firstChoice?: { provider?: string; model: string; thinking?: string };
   workspace: Workspace;
   id?: string;
   csrf?: string;
@@ -224,7 +226,7 @@ export function useConversationActions({
       inFlightSend.current = command;
       setSendObservation({ text, state: "pending" });
       setReceipt("Viesti odottaa kuittausta");
-      await send(current.agent_id, text, command, token);
+      await send(current.agent_id, text, command, token, firstChoice);
       inFlightSend.current = undefined;
       if (!alive.current) return;
       setReceipt("Viesti odottaa natiivia hyväksyntää");

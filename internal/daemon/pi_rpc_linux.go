@@ -175,7 +175,7 @@ type piReply struct {
 // retry the prompt automatically. The controller drains native events from a
 // separate bounded queue; overflow poisons the transport.
 func (p *piRPC) requestQueue(kind, message string, timeout time.Duration) (piReply, error) {
-	if kind != "get_state" && kind != "prompt" && kind != "steer" && kind != "follow_up" && kind != "clear_queue" && kind != "abort" && kind != "set_session_name" && kind != "get_commands" {
+	if kind != "get_state" && kind != "prompt" && kind != "steer" && kind != "follow_up" && kind != "clear_queue" && kind != "abort" && kind != "set_session_name" && kind != "get_commands" && kind != "set_model" && kind != "set_thinking_level" {
 		return piReply{}, errors.New("unsupported Pi RPC request")
 	}
 	if ((kind == "prompt" || kind == "steer" || kind == "follow_up") && (message == "" || len(message) > 65536)) || (kind == "set_session_name" && (message == "" || len(message) > 200)) {
@@ -199,6 +199,19 @@ func (p *piRPC) requestQueue(kind, message string, timeout time.Duration) (piRep
 	}
 	if kind == "set_session_name" {
 		wire["name"] = message
+	}
+	if kind == "set_model" {
+		var choice piStartupChoice
+		if json.Unmarshal([]byte(message), &choice) != nil || choice.Model == "" || (choice.Provider != "openai-codex" && choice.Provider != "openai" && choice.Provider != "claude-bridge") {
+			return piReply{}, errors.New("invalid model choice")
+		}
+		wire["provider"], wire["modelId"] = choice.Provider, choice.Model
+	}
+	if kind == "set_thinking_level" {
+		if !validThinking(message) {
+			return piReply{}, errors.New("invalid thinking level")
+		}
+		wire["level"] = message
 	}
 	b, _ := json.Marshal(wire)
 	b = append(b, '\n')

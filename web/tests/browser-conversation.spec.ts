@@ -2710,34 +2710,107 @@ test("@browser-conversation explicit new-conversation choice leaves native defau
   await expect(pop).toContainText("Aiemmin lähetettyä viestiä ei toisteta");
 });
 
-test("@browser-conversation empty composer replacement releases its previous native child", async ({
-  page,
-}) => {
-  await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  for (const model of ["Astra", "Nova", "Astra", "Nova"]) {
-    const previous = page.url();
-    const composer = page.getByRole("region", { name: "Kirjoita viesti" });
-    await composer.locator(".md-new > summary").click();
-    await composer
-      .getByRole("radio", { name: new RegExp(`GPT-6 ${model}`) })
-      .check();
-    await composer
-      .getByRole("button", { name: /Aloita uusi keskustelu mallilla/ })
+for (const width of [1280, 390]) {
+  test(`@model-controls empty choice stays in this conversation at ${width}px`, async ({
+    page,
+  }) => {
+    await open(page);
+    await page.setViewportSize({ width, height: 844 });
+    // Select a real native default so the empty header can name it before history exists.
+    const saved = await page.request.post("/api/v1/pi/models", {
+      headers: {
+        Origin: new URL(page.url()).origin,
+        "X-Agent-Host-CSRF": (
+          await (await page.request.get("/auth/session")).json()
+        ).csrf,
+      },
+      data: {
+        provider: "openai-codex",
+        model: "gpt-6.1-sol",
+        thinking: "high",
+      },
+    });
+    expect(saved.status()).toBe(200);
+    await page.reload();
+    await expect(page.locator(".md-new > summary")).toContainText(
+      "gpt-6.1-sol",
+    );
+    await page
+      .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
       .click();
-    await expect(page).not.toHaveURL(previous);
-    await expect(
-      page.getByRole("button", { name: "Lähetä", exact: true }),
-    ).not.toHaveAttribute("aria-busy", "true");
+    await expect(page).toHaveURL(/\?conversation=pi:/);
+    const original = page.url();
+    const header = page.locator(".ah-agent-header .ah-set-chip");
+    await expect(header).toHaveText("gpt-6.1-sol · high");
+    await expect(page.locator(".md-chip-picker")).toHaveCount(0);
+    const draft = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+    await draft.fill("Keep this draft and use Nova");
+    const pill = page.locator(".md-pill");
+    const box = await pill.boundingBox();
+    if (!box) throw new Error("missing pill");
+    expect(box.height).toBeLessThanOrEqual(36);
+    expect(box.width).toBeLessThan(300);
+    // A slow background refresh must not replace preloaded choices with a spinner.
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route("**/api/v1/pi/models", async (route) => {
+      await held;
+      await route.continue();
+    });
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await pill.click();
+    const picker = page.locator(".md-empty-picker .md-pop");
+    await expect(picker.getByRole("radio", { name: /GPT-6 Nova/ })).toBeVisible(
+      { timeout: 1000 },
+    );
+    await expect(picker).not.toContainText("Ladataan");
+    expect(
+      (await new AxeBuilder({ page }).include(".md-empty-picker").analyze())
+        .violations,
+    ).toEqual([]);
+    const panel = await picker.boundingBox();
+    if (!panel) throw new Error("missing panel");
+    expect(panel.x).toBeGreaterThanOrEqual(0);
+    expect(panel.x + panel.width).toBeLessThanOrEqual(width);
+    await picker.getByRole("radio", { name: /GPT-6 Nova/ }).check();
+    await picker.getByRole("button", { name: "high", exact: true }).click();
+    await picker.getByRole("button", { name: "Valitse", exact: true }).click();
+    release();
+    await expect(page).toHaveURL(original);
+    await expect(draft).toHaveValue("Keep this draft and use Nova");
+    await expect(header).toHaveText("gpt-6-nova · high");
+    await expect(pill).toBeFocused();
+    expect(
+      (await (await page.request.get("/api/v1/conversations")).json()).sessions,
+    ).toHaveLength(1);
+    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+    await expect(page.locator(".ah-agent-header .ah-set-chip")).toContainText(
+      "gpt-6-nova",
+    );
+    const id = new URL(original).searchParams.get("conversation")?.slice(3);
     await expect
       .poll(
         async () =>
-          (await (await page.request.get("/api/v1/conversations")).json())
-            .sessions.length,
+          (
+            await (
+              await page.request.get(`/api/v1/conversations/${id}/status`)
+            ).json()
+          ).state,
       )
-      .toBe(1);
-  }
-});
+      .toBe("idle");
+    await page.reload();
+    await expect(page.locator(".ah-agent-header .ah-set-chip")).toContainText(
+      "gpt-6-nova",
+    );
+    await expect(page).toHaveURL(original);
+    expect(
+      (await (await page.request.get("/api/v1/pi/models")).json())
+        .default_model,
+    ).toBe("gpt-6.1-sol");
+  });
+}
 
 test("@conversation-details archive undo returns to conversation; offer pauses and expires", async ({
   page,

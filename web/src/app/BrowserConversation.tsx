@@ -8,6 +8,7 @@ import {
   ConversationStream,
   ConversationTimeline,
   EndedConversationControl,
+  Icon,
   InlineNotice,
   Markdown,
   QueuePanel,
@@ -35,6 +36,7 @@ import {
 } from "./conversations";
 import { timelineItems } from "./HistoryView";
 import { type Choice, PiModelSelector } from "./PiModelSelector";
+import { shortModel, usePiModels } from "./PiModels";
 import { PiQuestion } from "./PiQuestion";
 import { latestSettings } from "./sessionSettings";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
@@ -174,13 +176,32 @@ export function BrowserConversation({
   const [modelChoice, setModelChoice] = useState<Choice>();
   const [modelBlocked, setModelBlocked] = useState(false);
   const [chipOpen, setChipOpen] = useState(false);
-  const [pickerEpoch, setPickerEpoch] = useState(0);
+  const { data: models } = usePiModels();
+  const emptyConversation = !entries.some((e) => e.kind === "user");
+  const selectedModel =
+    (emptyConversation && modelChoice
+      ? `${modelChoice.provider ?? "openai-codex"}/${modelChoice.model}`
+      : undefined) ??
+    nativeSettings.model ??
+    (current?.startup_choice
+      ? `${current.startup_choice.provider ?? "openai-codex"}/${current.startup_choice.model}`
+      : undefined);
+  const displayModel =
+    shortModel(selectedModel ?? models?.default_model ?? undefined) ??
+    "Malli ei tiedossa";
+  const selectedThinking =
+    (emptyConversation ? modelChoice?.thinking : undefined) ??
+    nativeSettings.thinking ??
+    current?.startup_choice?.thinking ??
+    models?.default_thinking;
+  const emptyPicker = useRef<HTMLDetailsElement>(null);
   // Choices are transient intents, never preferences shared across workspaces.
   // biome-ignore lint/correctness/useExhaustiveDependencies: route change resets local picker state.
   useEffect(() => {
     setModelChoice(undefined);
     setModelBlocked(false);
     setModelExpanded(false);
+    setChipOpen(false);
   }, [workspace.workspace_id, id]);
   useReadingPositionLayout({
     entries,
@@ -413,6 +434,7 @@ export function BrowserConversation({
     stopNow,
     notices,
   } = useConversationActions({
+    firstChoice: emptyConversation ? modelChoice : undefined,
     workspace,
     id,
     csrf,
@@ -531,12 +553,13 @@ export function BrowserConversation({
           <h2>Pi-keskustelut</h2>
           <details className="md-new">
             <summary className="md-btn">
-              {modelChoice?.model ?? "Pi:n oletusmalli"} ·{" "}
-              {modelChoice?.thinking ?? "ajattelutaso"}
+              {displayModel} · {selectedThinking ?? "Pi"}
             </summary>
             <PiModelSelector
               csrf={csrf}
               scope="new"
+              current={selectedModel}
+              currentThinking={selectedThinking}
               onChoice={setModelChoice}
               onBlocked={setModelBlocked}
             />
@@ -720,54 +743,52 @@ export function BrowserConversation({
             }
             settings={nativeSettings}
             modelPicker={
-              // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Native details closes on Escape bubbling from its controls.
-              <details
-                className="md-chip-picker"
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") {
-                    event.currentTarget.open = false;
-                    setChipOpen(false);
-                    event.currentTarget.querySelector("summary")?.focus();
-                  }
-                }}
-                onToggle={(event) => setChipOpen(event.currentTarget.open)}
-              >
-                <summary className="ah-set-chip">
-                  {nativeSettings.model ??
-                    (current?.startup_choice
-                      ? `${current.startup_choice.provider ?? "openai-codex"}/${current.startup_choice.model}`
-                      : undefined) ??
-                    "Pi:n oletus"}{" "}
-                  ·{" "}
-                  {nativeSettings.thinking ??
-                    current?.startup_choice?.thinking ??
-                    "Pi"}
-                </summary>
-                <div className="md-pop">
-                  {chipOpen ? (
-                    <PiModelSelector
-                      csrf={csrf}
-                      scope="conversation"
-                      current={
-                        nativeSettings.model ??
-                        (current?.startup_choice
-                          ? `${current.startup_choice.provider ?? "openai-codex"}/${current.startup_choice.model}`
-                          : undefined)
-                      }
-                      currentThinking={
-                        nativeSettings.thinking ??
-                        current?.startup_choice?.thinking
-                      }
-                      onChoice={(choice) =>
-                        void start(
-                          choice,
-                          !entries.some((e) => e.kind === "user"),
-                        )
-                      }
-                    />
-                  ) : null}
-                </div>
-              </details>
+              emptyConversation ? (
+                <span className="ah-set-chip">
+                  {displayModel} · {selectedThinking ?? "Pi"}
+                </span>
+              ) : (
+                // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Native details closes on Escape bubbling from its controls.
+                <details
+                  className="md-chip-picker"
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.currentTarget.open = false;
+                      setChipOpen(false);
+                      event.currentTarget.querySelector("summary")?.focus();
+                    }
+                  }}
+                  onToggle={(event) => setChipOpen(event.currentTarget.open)}
+                >
+                  <summary className="ah-set-chip">
+                    {displayModel} · {selectedThinking ?? "Pi"}
+                  </summary>
+                  <div className="md-pop">
+                    {chipOpen ? (
+                      <PiModelSelector
+                        csrf={csrf}
+                        scope="conversation"
+                        current={
+                          nativeSettings.model ??
+                          (current?.startup_choice
+                            ? `${current.startup_choice.provider ?? "openai-codex"}/${current.startup_choice.model}`
+                            : undefined)
+                        }
+                        currentThinking={
+                          nativeSettings.thinking ??
+                          current?.startup_choice?.thinking
+                        }
+                        onChoice={(choice) =>
+                          void start(
+                            choice,
+                            !entries.some((e) => e.kind === "user"),
+                          )
+                        }
+                      />
+                    ) : null}
+                  </div>
+                </details>
+              )
             }
             detailsExtra={
               <Button
@@ -1418,39 +1439,43 @@ export function BrowserConversation({
           ) : controlled ? (
             <Composer
               modelPicker={
-                !entries.some((e) => e.kind === "user") ? (
+                emptyConversation ? (
+                  // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Escape closes the native disclosure and returns focus.
                   <details
-                    className="md-new"
-                    onToggle={(event) => {
-                      if (event.currentTarget.open)
-                        setPickerEpoch((value) => value + 1);
+                    className="md-empty-picker"
+                    ref={emptyPicker}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") {
+                        event.currentTarget.open = false;
+                        event.currentTarget.querySelector("summary")?.focus();
+                      }
                     }}
                   >
-                    <summary className="md-btn">
-                      Uuden keskustelun malli
+                    <summary
+                      className="md-pill"
+                      aria-label="Uuden keskustelun malli"
+                    >
+                      {displayModel} · {selectedThinking ?? "Pi"}{" "}
+                      <Icon name="down" />
                     </summary>
-                    <PiModelSelector
-                      csrf={csrf}
-                      scope="conversation"
-                      key={pickerEpoch}
-                      onBlocked={setModelBlocked}
-                      current={
-                        nativeSettings.model ??
-                        (current?.startup_choice
-                          ? `${current.startup_choice.provider ?? "openai-codex"}/${current.startup_choice.model}`
-                          : undefined)
-                      }
-                      currentThinking={
-                        nativeSettings.thinking ??
-                        current?.startup_choice?.thinking
-                      }
-                      onChoice={(choice) =>
-                        void start(
-                          choice,
-                          !entries.some((e) => e.kind === "user"),
-                        )
-                      }
-                    />
+                    <div className="md-pop md-pop-up">
+                      <PiModelSelector
+                        csrf={csrf}
+                        scope="empty"
+                        onBlocked={setModelBlocked}
+                        current={selectedModel}
+                        currentThinking={selectedThinking}
+                        onChoice={(choice) => {
+                          setModelChoice(choice);
+                          if (emptyPicker.current) {
+                            emptyPicker.current.open = false;
+                            emptyPicker.current
+                              .querySelector("summary")
+                              ?.focus();
+                          }
+                        }}
+                      />
+                    </div>
                   </details>
                 ) : undefined
               }

@@ -104,11 +104,17 @@ func runFakePi(args []string) {
 	in := bufio.NewScanner(os.Stdin)
 	in.Buffer(make([]byte, 4096), 1<<20)
 	for in.Scan() {
-		var req struct{ ID, Type, Message, Name string }
+		var req struct{ ID, Type, Message, Name, Provider, ModelId, Level string }
 		if json.Unmarshal(in.Bytes(), &req) != nil {
 			continue
 		}
 		switch req.Type {
+		case "set_model":
+			s.model = req.ModelId
+			emit(map[string]any{"type": "response", "id": req.ID, "command": req.Type, "success": true})
+		case "set_thinking_level":
+			s.thinking = req.Level
+			emit(map[string]any{"type": "response", "id": req.ID, "command": req.Type, "success": true})
 		case "get_state":
 			emit(map[string]any{"type": "response", "id": req.ID, "command": "get_state", "success": true})
 		case "set_session_name":

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/pi-message.schema.json",
+  "title": "Native Pi message, with optional first-message-only model intent",
+  "type": "object",
+  "required": [
+    "message",
+    "command_id"
+  ],
+  "properties": {
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 65536
+    },
+    "command_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "first_choice": {
+      "allOf": [
+        {
+          "$ref": "pi-startup-choice.schema.json"
+        },
+        {
+          "type": "object",
+          "required": [
+            "thinking"
+          ]
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

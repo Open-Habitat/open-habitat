@@ -46,8 +46,16 @@ there as the user's process, with their home and native configuration. It
 assigns a fresh session ID so that starting a conversation creates new history.
 
 A new session can explicitly select a catalog model and supported thinking level
-through native Pi startup flags. This does not change the person's global Pi
-default. Until Pi persists its first native settings entries, the controller
+through native Pi startup flags. In an empty conversation, the composer's pill
+can retain a different choice in browser memory until the first message. That
+message carries the intent to the same child: the daemon reserves control,
+checks that no browser command or native content has preceded it, validates the
+native catalog and sends correlated `set_model` and `set_thinking_level` RPCs
+before the prompt. Pi 1.3 does not persist these setters as global defaults.
+An uncertain setter prevents sending the prompt and leaves control uncertain;
+neither the intent nor the prompt is automatically replayed. This is not a
+model switch for an existing conversation with messages. Neither startup flags
+nor the first-message choice changes Pi's global default. Until Pi persists its first native settings entries, the controller
 retains that child's explicit startup choice in memory and includes it in
 status/list replies. This is launch intent, not a second settings or history
 store; native history takes precedence when present, and daemon restart loses
@@ -120,9 +128,16 @@ the message. A completed, natively verified device sign-in clears that failure
 from the user's live controllers. Pi's unsupported-model error is classified
 separately: signing in again cannot change account entitlement or the model
 selected in a running Pi session, so the browser offers an inline model picker and an explicit new conversation
-instead. Its optional default checkbox is initially on. There is no automatic
-message replay or native in-session model mutation. The top-bar picker uses the
-same new-session fallback until safe native switching is established. [Events and recovery](events-and-recovery.md) describes how live
+instead. Its optional default checkbox is initially on. Recovery neither replays
+messages nor mutates the used session's model.
+
+An empty conversation's top bar names the model without offering a picker;
+only the composer chooses its first-message intent. Once there are messages,
+the top-bar picker uses the same new-session fallback until safe native
+switching for used sessions is established. The authenticated tab preloads
+Pi's catalog into identity-scoped memory and refreshes it in the background;
+opening a picker retains those rows while refreshing. Logout/identity changes
+throw the catalog away, and no model cache is stored on the host. [Events and recovery](events-and-recovery.md) describes how live
 updates and saved history reach the browser and recover after a disconnection.
 
 The implementation also displays pending Pi extension questions and provides

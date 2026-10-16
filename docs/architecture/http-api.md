@@ -66,7 +66,7 @@ conversation control routes use the UUID alone.
 | `GET /api/v1/conversations/<id>/status` | observe a controlled conversation; `continuation=true` also checks whether it can be continued |
 | `GET /api/v1/conversations/<id>/eligibility` | read process observation and continuation eligibility for native history without a daemon handle; the answer is not a reservation |
 | `GET /api/v1/conversations/<id>/receipt?command_id=<uuid>` | look up an earlier command's receipt |
-| `POST /api/v1/conversations/<id>/send`, `.../steer`, `.../follow_up` | send a message with a client-chosen `command_id` |
+| `POST /api/v1/conversations/<id>/send`, `.../steer`, `.../follow_up` | send a [message](../../contracts/v1/pi-message.schema.json) with a client-chosen `command_id`; only `send` accepts `first_choice`, a transient model/thinking choice applied through native non-persisting RPC before the first prompt of a fresh empty child |
 | `POST /api/v1/conversations/<id>/clear_queue`, `.../abort`, `.../stop`, `.../continue`, `.../question` | queue, lifecycle and question controls |
 | `POST /api/v1/conversations/<id>/close` | empty body; only a verified empty browser-started, idle conversation without another observed writer; stops and reaps its Pi child, removes empty native history, or refuses without unlinking |
 | `POST /api/v1/workspaces` with `action: conversation_archive` | archive or restore presentation with `workspace_id`, `observation_token`, `previous_archive` and `archived`; checks native history and workspace, rejects active writers and stale state; never moves Pi history |

@@ -55,7 +55,7 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 	}
 	models := map[string]any{"providers": map[string]any{"openai": map[string]any{
 		"baseUrl": provider.URL + "/v1", "api": "openai-completions", "authHeader": true,
-		"models": []any{map[string]any{"id": "fake", "name": "Fake", "reasoning": true}},
+		"models": []any{map[string]any{"id": "initial", "name": "Initial", "reasoning": true}, map[string]any{"id": "fake", "name": "Fake", "reasoning": true}},
 	}}}
 	data, _ := json.Marshal(models)
 	if err := os.WriteFile(filepath.Join(home, ".pi", "agent", "models.json"), data, 0600); err != nil {
@@ -88,7 +88,7 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer ws.Close()
-	p, err := launchPiRPCCommand("/usr/bin/node", []string{cli, "--provider", "openai", "--model", "fake", "--thinking", "low"}, home, cwd, []string{"PATH=/usr/bin:/bin"}, owner, ws)
+	p, err := launchPiRPCCommand("/usr/bin/node", []string{cli, "--provider", "openai", "--model", "initial", "--thinking", "off"}, home, cwd, []string{"PATH=/usr/bin:/bin"}, owner, ws)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,6 +97,14 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 	// this is why automatic naming waits for native settlement.
 	if initial, err := nativeSessions(transport.Config{Home: home, UID: os.Geteuid()}); err != nil || len(initial) != 0 {
 		t.Fatalf("fresh Pi history before first reply: %+v, %v", initial, err)
+	}
+	// The first-message choice uses native non-persisting RPC setters on this
+	// same child/session, not a replacement session or global settings write.
+	c := &ConversationController{home: home, cfg: transport.Config{Home: home, UID: os.Geteuid()}, sessions: map[string]*conversation{}}
+	child := &conversation{id: id, cwd: cwd, rpc: p, owner: owner}
+	c.sessions[id] = child
+	if err := c.applyFirstChoice(child, &piStartupChoice{Provider: "openai", Model: "fake", Thinking: "low"}); err != nil {
+		t.Fatal(err)
 	}
 	accepted, err := p.request("prompt", "Say hello", 15*time.Second)
 	if err != nil || !accepted {

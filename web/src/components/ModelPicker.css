@@ -202,3 +202,68 @@
   padding-top: 12px;
   border-top: 1px solid var(--ah-line-soft);
 }
+
+/* Direction 1: compact composer pill, independent of the sheet's dimensions. */
+.md-empty-picker {
+  position: relative;
+  align-self: flex-start;
+  max-width: 100%;
+}
+.md-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 8px 0 10px;
+  border-radius: var(--ah-r-pill);
+  border: 1px solid var(--ah-line);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font: 500 12.5px var(--ah-font);
+  cursor: pointer;
+  list-style: none;
+}
+.md-pill::-webkit-details-marker {
+  display: none;
+}
+.md-pill:hover {
+  background: var(--ah-hover);
+}
+.md-pill:focus-visible {
+  outline: 2px solid var(--ah-focus);
+  outline-offset: 1px;
+}
+.md-pop.md-pop-up {
+  top: auto;
+  bottom: calc(100% + 8px);
+  left: 0;
+  right: auto;
+}
+@media (max-width: 760px) {
+  .md-pop.md-pop-up {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+  }
+}
+/* The composer normally scrolls long drafts. Its open menu must escape that
+   clip, above the stream; the menu itself owns its bounded scrolling. */
+.ah-conversation-frame .ah-composer:has(.md-empty-picker[open]) {
+  overflow: visible;
+  z-index: 12;
+}
+.md-pill svg {
+  width: 14px;
+  height: 14px;
+  color: var(--ah-muted);
+}
+/* A picker is a narrow panel, even on a wide settings page. */
+.ah-pi-model-selector > .s-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 0;
+  margin-bottom: 12px;
+}

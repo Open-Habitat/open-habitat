@@ -1,0 +1,9 @@
+{
+  "message": "A synthetic first message",
+  "command_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "first_choice": {
+    "provider": "openai-codex",
+    "model": "gpt-example",
+    "thinking": "high"
+  }
+}
