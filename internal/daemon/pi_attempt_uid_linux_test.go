@@ -192,7 +192,8 @@ func probePiUID(t *testing.T) {
 	hash := sha256.Sum256([]byte("github:" + subject))
 	method := os.Getenv("PI_METHOD")
 	endpoint := "/api/v1/onboarding/pi/attempt"
-	if method == "NATIVE" {
+	native := method == "NATIVE"
+	if native {
 		method = "GET"
 		endpoint = "/api/v1/snapshot"
 	}
@@ -216,7 +217,11 @@ func probePiUID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.StatusCode != expected || strings.Contains(string(body), "NATIVE-SECRET") || strings.Contains(string(body), "ABCD-1234") && expected != 200 {
+	// The NATIVE probe explicitly proves the mapped gateway retains access to
+	// its own native data. The sentinel is forbidden on device-login replies,
+	// but requiring it here makes the positive native-data boundary meaningful.
+	badNative := native && string(body) != "NATIVE-SECRET" || !native && strings.Contains(string(body), "NATIVE-SECRET")
+	if res.StatusCode != expected || badNative || strings.Contains(string(body), "ABCD-1234") && expected != 200 {
 		t.Fatalf("response %d, expected %d", res.StatusCode, expected)
 	}
 }
