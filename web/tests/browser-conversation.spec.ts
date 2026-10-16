@@ -2120,7 +2120,7 @@ test("@browser-conversation changed snapshot identity discards late previous sta
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-  ).toBeVisible();
+  ).toBeEnabled();
   let release!: () => void;
   const held = new Promise<void>((resolve) => {
     release = resolve;
@@ -2172,7 +2172,7 @@ test("@browser-conversation a lost accepted send resolves on reload without anot
   await open(page);
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
-  await expect(editor).toBeVisible();
+  await expect(editor).toBeEnabled();
   let sends = 0;
   // Keep the receipt unavailable until reload; the daemon still accepts the write.
   await page.route("**/api/v1/conversations/*/status", (route) =>

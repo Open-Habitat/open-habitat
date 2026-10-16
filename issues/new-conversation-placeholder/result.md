@@ -31,3 +31,7 @@ Rebased onto `origin/main` at `f04d0bd0`, including the parallel reconnect fix. 
 Final integrated focused checks and full gate are recorded below.
 
 Focused self-review covered identity fencing, no speculative native state, navigation away/back, lost replies/reload, empty versus unavailable inventories, and composer geometry. Moving the existing process accessibility check before clearing the tray exposed its skipped heading level; process group headings now use h2 under the conversation h1.
+
+Integrated checks passed with `OH_PORT_BASE=28500 OH_BROWSER_WORKERS=2 CHOKIDAR_USEPOLLING=true`: placeholder 3/3, reconnect recovery 5/5, process tray 3/3, plus formatting/lint/typecheck and 140 unit + 133 component tests.
+
+First clean gate on `de6fe5ef` (tree `edc3fa633d16c83281b45b9a89540eb48d8cf91d`) failed: Go/contracts passed; normal browser suite had 187 passes, 2 intentional visual-capture skips and 2 readiness races. The identity-fencing and lost-send/reload tests had waited only for the now-visible placeholder editor before installing their status fault fixtures, intercepting the initial opening read. Changed those setup waits to require an enabled editor. Both cases then passed in isolation, and fast web checks passed again. This was not treated as an unrelated timeout or a passed gate. Lab and packaging were not reached in that run.
