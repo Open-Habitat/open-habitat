@@ -317,7 +317,15 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
     .getByRole("button", { name: "Päivitä", exact: true })
     .click();
   await expect(
-    page.locator(".ah-home-card").filter({ hasText: "Prosessikoe" }),
+    page
+      .locator(".ah-home-card")
+      .filter({ hasText: "Prosessikoe" })
+      .getByRole("link", { name: "Vastaa →" }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("navigation")
+      .getByRole("link", { name: "Prosessikoe", exact: true }),
   ).toContainText("Odottaa sinua");
   await expect(page.locator(".ah-home-head")).not.toContainText(
     "odottaa prosessia tai spinoffia",
