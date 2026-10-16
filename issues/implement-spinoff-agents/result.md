@@ -152,3 +152,23 @@ That CSS was corrected, the geometry assertion counts both visible inventories
 as content rather than whitespace, and the focused lab regression passed at
 both widths. A subsequent focused run passed the spinoff/process journeys,
 transport-stale indicators and the recap geometry case together.
+
+## Final clean gate
+
+`./scripts/ci-local.sh --clean --json` **passed** on commit
+`9ef8ab790168fe0e2c91e22a89c43832efc8134f`, tree
+`f517c30d5e740d488e1eda1f2cc7b111f36b37ae`, without reused phases. The run used
+`OH_PORT_BASE=18400`, two browser workers, `OH_GATE_SERIAL_HEAVY=1` and
+`CHOKIDAR_USEPOLLING=1` to stay within Alder's shared inotify capacity; no system
+limits or unrelated services were changed. Evidence: **188 normal browser tests
+passed**, 2 capture-only skips, **31 lab tests passed**, 140 web unit and 133
+component tests, all Go/race/contracts/docs checks, Storybook, reproducible
+packaging and package-socket/tamper regression checks. Total 418 seconds.
+Receipt: `<git-common-dir>/open-habitat-gate-receipts/f517c30d5e740d488e1eda1f2cc7b111f36b37ae.json`.
+Local full log: `/var/tmp/oh-spinoff-integrated-final-gate.log`.
+
+The result/closure evidence appended after this run is documentation-only;
+the receipt identifies the exact tested tree, not a claim of a later tree's
+receipt. Live browser/provider sign-in and restarting the actual product daemon
+remain manual checks in KOKEILTAVAA.md; the guest's dedicated equivalent parent
+service established native lifetime without disrupting the product daemon.
