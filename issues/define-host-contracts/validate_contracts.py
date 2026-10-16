@@ -162,7 +162,9 @@ must_reject("pi-model-update.schema.json", {"model":"example","thinking":"unlimi
 
 must_reject("pi-startup-choice.schema.json", {"model":"example","thinking":"unlimited"})
 
-print(f"Host contracts valid: {len(SCHEMA_FILES)} schemas, {len(checks) + 2} fixture files, {len(scenarios)} scenarios, 10 negative checks.")
+
 
 must_reject("claude-login.schema.json", {"schema_version":1,"state":"code","attempt_id":"20261016T120000.000000001","verification_uri":"https://evil.invalid/"})
 must_reject("claude-login-code.schema.json", {"attempt_id":"20261016T120000.000000001","code":"line1\nline2"})
+
+print(f"Host contracts valid: {len(SCHEMA_FILES)} schemas, {len(checks) + 2} fixture files, {len(scenarios)} scenarios, 12 negative checks.")

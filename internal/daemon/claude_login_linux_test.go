@@ -87,6 +87,31 @@ esac
 	if w = request(h, "GET", other, ""); strings.Contains(w.Body.String(), "verification_uri") || strings.Contains(w.Body.String(), started.AttemptID) {
 		t.Fatal("foreign lease leaked", w.Body)
 	}
+	oldID := started.AttemptID
+	if w = request(h, "DELETE", token, `{"attempt_id":"`+oldID+`"}`); w.Code != 200 || !strings.Contains(w.Body.String(), `"state":"unknown"`) {
+		t.Fatal("cancel", w.Code, w.Body)
+	}
+	if w = request(h, "POST", token, ""); w.Code != 200 {
+		t.Fatal("replacement", w.Code, w.Body)
+	}
+	_ = json.Unmarshal(w.Body.Bytes(), &started)
+	if started.AttemptID == oldID {
+		t.Fatal("attempt generation reused")
+	}
+	deadline = time.Now().Add(3 * time.Second)
+	for {
+		w = request(h, "GET", token, "")
+		if strings.Contains(w.Body.String(), `"state":"code"`) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("no replacement URL", w.Body)
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if w = request(h, "PUT", token, `{"attempt_id":"`+oldID+`","code":"synthetic-code#state"}`); w.Code != 404 {
+		t.Fatal("cancelled generation accepted", w.Code)
+	}
 	body := `{"attempt_id":"` + started.AttemptID + `","code":"synthetic-code#state"}`
 	if w = request(h, "PUT", other, body); w.Code != 404 {
 		t.Fatal("foreign submission", w.Code)
