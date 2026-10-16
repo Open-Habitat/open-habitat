@@ -3,13 +3,14 @@ created: 2026-10-16
 updated: 2026-10-16
 type: feature
 reporter: jari
-status: testing
+status: done
 priority: high
 lane: pi-runtime
 lane_seq: 2
 collision: [internal/daemon, contracts/v1, web/src/app/, web/src/components/]
 blocked_by: ['@upgrade-pi-1x']
 preparation: ready
+closed: 2026-10-16
 ---
 
 # Implement model choice (Käytön merkit)
@@ -29,4 +30,4 @@ Depends on `upgrade-pi-1x` (the Pi 1.3 catalog and APIs).
 - [x] The views match the prototype's direction 1 in lab screenshots (desktop and phone, light and dark), and every deviation is justified.
 - [x] The daemon reads the catalog and per-model marks from native Pi state as the mapped user, with no new store. The contract additions are in `contracts/v1`.
 - [x] Browser tests cover the default change, the per-conversation choice, notice recovery and the "Vanhemmat" grouping.
-- [ ] Deployed to the test server, with the remaining live checks listed for Jari in KOKEILTAVAA.md.
+- [x] Deployed to the test server, with the remaining live checks listed for Jari in KOKEILTAVAA.md.

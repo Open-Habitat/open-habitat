@@ -76,3 +76,7 @@ This final evidence/closing-note commit changes documentation only after that te
 ## Closing sequence
 
 `taskfleet run merge 01m51djf7yx1ptgdnwqxq759gh` ends this worker. A one-shot transient user service carries that exact merge, the required fetch/rebase/non-force main push, verified watcher/operator receipt checks, and final issue closure through teardown. It waits boundedly for unrelated main edits without stashing or committing them. Only this issue's own status/evidence are staged after a verified deployment; signed-in/browser/provider checks remain for Jari. The continuation's receipt-validation path was exercised read-only against already verified pilot.129 and public HTTP 200 before starting it. Its local log is `/var/tmp/model-choice-finish.log`, with verified release summaries `/var/tmp/model-choice-deployed.json` and `/var/tmp/model-choice-final-deployed.json`. A failure notifies Jari and never claims an unverified deployment or blindly retries an ambiguous guest stage. No household service is restarted.
+
+## Verified test deployment
+
+Watcher deployment **0.0.0-pilot.130** verified source `6971a5a9a33f885ac1369ab9e95d135ae694d7f5` (tree `b2d758642ee17e7e329f7c23574034b0d659d29e`), gate `ungated`, acceptance `within_limit`. Public root returned HTTP 200. Watcher and operator receipts agree on source/version/tree; local receipt summary is `/var/tmp/model-choice-deployed.json`. Signed-in browser/provider and SSH settings checks are not claimed; they remain in `KOKEILTAVAA.md`.
