@@ -39,3 +39,22 @@ I compared the production pill, upward menu, phone sheet, rows and thinking cont
 ## Live checks
 
 `KOKEILTAVAA.md` has desktop/phone checks for the initial short name, immediate cached opening, same-conversation “Valitse”, preserved draft/URL, first reply/reload and unchanged SSH Pi default. No signed-in live-server or real-account entitlement check is claimed here.
+
+## Full gate and integrated follow-up
+
+`OH_PORT_BASE=27800 OH_BROWSER_WORKERS=2 TMPDIR=/var/tmp ./scripts/ci-local.sh --clean --json` was run on `55984b922c7ceae6343e627bb4de8baaceb6f455`, tree `2496de27aed0ed03f37d762487c7165dce93bf6f`. **It did not pass and produced no clean-gate receipt.** The first attempt had stopped on a test-only unsupported Testing Library option; that was corrected before this attempt.
+
+The 511-second attempt passed the seven pinned-SDK tests, formatting/lint/TypeScript, 134 app tests, 119 component tests and Storybook. Normal browsers: **173 passed, two opt-in captures skipped, three failures**. Both new model-control journeys passed. The failures were continuation recovery waiting for its button, archive-notice expiry, and home cloning unable to bind port 27840. Go passed the daemon (including the new native model path) but failed `TestConversationGatewaySessionBoundary` with a synthetic abort route returning 503. The subsequent lab, packaging and final receipt stages were not completed. Logs are retained locally as `/var/tmp/model-controls-gate-55984b92.{stdout,stderr}.log`.
+
+Isolation after rebasing onto `e39e16e1`:
+
+- Gateway boundary: five race-enabled runs passed.
+- Continuation recovery, home clone and five affected model/settings journeys passed with one browser worker.
+- Port 27840 belonged to PID 854738, a synthetic host left since September 29 in a **deleted** `wt-b12dbz20jv-pi-working-experience` worktree. Its command/cwd established that ownership before I stopped just that disposable host; no household service was touched.
+- Archive expiry still failed in isolation. Temporarily substituting the changed production web files with their exact `main` versions made it pass, then the worker files were restored byte-for-byte. This was investigated rather than labelled an unrelated timeout without evidence.
+
+The final focused checks and archive-clock investigation are recorded below. Per `TESTING.md`, a failed full gate is not represented as a pass or a production-release receipt; landing still requires the affected checks.
+
+The archive failure was a **test clock mismatch**, not an archive expiry change: React's scheduler captures `performance`/`setTimeout` when its module loads (`scheduler.production.js`), while the test installed fake time only after loading the application. Installing before the archive action was still too late. Installing **before navigation/React initialization**, then advancing with `runFor`, makes the expiry assertion pass. No production archive code was changed. The provider preload had changed scheduling enough to expose the existing mixed-clock assumption. The model journeys also now assert that the pill's corner radius is at least half its height, not merely that its rectangle is small.
+
+The corrected expiry case and both model-control cases pass together (**3/3**); the complete synthetic lab suite then passed **24/24**. The lab manual host was stopped after captures. Rebased fast web checks and contract validators also passed. The failed gate remains explicitly failed: no clean receipt is claimed, and its infrastructure/scheduling failures are not all described as timeout-only flakes.
