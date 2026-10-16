@@ -4,7 +4,7 @@
 
 The composer now uses direction 1's compact rounded pill and an upward popover (a bounded scrolling sheet on phones). Opening the picker no longer expands the composer. The menu escapes the composer's draft-scroll clipping; desktop browser testing caught and verified that additional layout defect. Its chevron uses the bundled SVG icon, not a glyph missing from the font.
 
-An empty conversation's top bar is informational. It uses the same short model identifier as the pill, from the explicit session choice or Pi's native default, without the provider prefix. Native history takes precedence once available. An unknown native default is labelled unknown, not invented.
+An empty conversation's top bar is informational. It uses the same short model identifier as the pill, from the running child's native settings, without the provider prefix. Native history takes precedence once available. The controller reads the child's native `get_state` before admitting its first send and retains that observation in its existing per-child startup field. A later settings/SSH global-default change cannot relabel that already-running empty session. Unknown native state is labelled unknown, not guessed from a cached global default.
 
 “Valitse” keeps the choice and unsent draft in this conversation, without a create request, replacement child, close request or navigation. The choice is transient browser intent until the first send. That send passes `first_choice` to the existing controller. The daemon validates Pi's catalog, reserves the child's pending state, checks that no browser command or native conversation content has preceded it, and applies Pi 1.3's correlated non-persisting `set_model` / `set_thinking_level` RPCs before the prompt. A failed or uncertain setter prevents the prompt and leaves control uncertain; nothing is replayed. Used conversations retain the existing explicit-new-conversation fallback.
 
@@ -55,6 +55,33 @@ Isolation after rebasing onto `e39e16e1`:
 
 The final focused checks and archive-clock investigation are recorded below. Per `TESTING.md`, a failed full gate is not represented as a pass or a production-release receipt; landing still requires the affected checks.
 
-The archive failure was a **test clock mismatch**, not an archive expiry change: React's scheduler captures `performance`/`setTimeout` when its module loads (`scheduler.production.js`), while the test installed fake time only after loading the application. Installing before the archive action was still too late. Installing **before navigation/React initialization**, then advancing with `runFor`, makes the expiry assertion pass. No production archive code was changed. The provider preload had changed scheduling enough to expose the existing mixed-clock assumption. The model journeys also now assert that the pill's corner radius is at least half its height, not merely that its rectangle is small.
+The archive case was investigated as a clock/scheduling problem. Moving clock
+installation before React initialization and using `runFor` passed once with one
+worker, but failed again with two workers. That experiment did **not** establish
+a complete fix and the original expiry test was restored. No production archive
+code was changed. The model journeys now independently assert that the pill's
+corner radius is at least half its height, not merely that its rectangle is small.
 
-The corrected expiry case and both model-control cases pass together (**3/3**); the complete synthetic lab suite then passed **24/24**. The lab manual host was stopped after captures. Rebased fast web checks and contract validators also passed. The failed gate remains explicitly failed: no clean receipt is claimed, and its infrastructure/scheduling failures are not all described as timeout-only flakes.
+The experimental expiry case and both model-control cases passed together once (**3/3**); the complete synthetic lab suite then passed **24/24**. The lab manual host was stopped after captures. Rebased fast web checks and contract validators also passed. The failed gate remains explicitly failed: no clean receipt is claimed, and its infrastructure/scheduling failures are not all described as timeout-only flakes.
+
+A real-clock control run of the existing expiry journey (no fake-clock installation or jump, 11-second assertion deadline), repeated three times, passed **3/3**. The temporary test variant was restored afterwards. This independently checks actual expiry while retaining the original test for its owning `implement-conversation-details` work; the inconsistent fake-clock assertion remains a gate-health follow-up, not a claimed production timer fix.
+
+Self-review also caught and fixed a genuine remaining model-label defect: an empty running child could have been relabelled from a later global default. Creation now waits for that child's correlated native `get_state` before admitting a send, retaining only its bounded model/thinking observation in the existing startup field. A browser regression changes the native default after starting an empty Sol session, reloads, sends and reloads again: the session stays Sol while the default remains Nova. The pinned real-Pi test additionally verifies the initial native state reply. Full race-enabled daemon/gateway/contracts tests and seven focused model/settings/recovery browser cases pass with this stronger source-of-truth fix.
+
+## Final scoped result
+
+Final runnable commit: `30e65bccee1653777123962bd19cfe1ad72071b0` (tree `1e4a3b9b77cf94a103fea4caa99cbf343c48655a`), rebased onto current `main` including the settings, thinking-title and open-at-latest work. Final checks:
+
+- Fast web: **136 app + 126 component tests**, formatting, lint and TypeScript passed.
+- Focused host-backed model/settings/recovery browsers: **7/7 passed**.
+- Full synthetic lab after the final UI changes: **27/27 passed**.
+- Race-enabled daemon/gateway/contracts packages passed after the native startup-observation change; their runnable source is unchanged by the final UI-only fixes.
+- Contract drift/schema examples, project-view validator and whitespace checks passed.
+
+A final focused run exposed another genuine picker race: late native history could change the applied label from provider-qualified to bare, resetting an unconfirmed radio choice. Staged edits now survive native/catalog refreshes, while disclosures are keyed by conversation so those edits cannot migrate to another conversation. A unit regression independently exercises that late-prop update. Once the first send begins, the composer no longer offers or resubmits a first-model intent; the browser regression checks the pill disappears then.
+
+The combined-SSE lab journey also now waits for creation's asynchronous navigation before reading its reference snapshot/cursor. Creation publishes one ready-state invalidation after observing Pi, not an unnecessary intermediate model update. Its provisional/delta/replay assertions remain intact and the complete lab passes.
+
+The full gate remains **failed**, as detailed above, with no receipt or production-release claim. The real-clock archive control passed three repetitions; the original fake-clock case is left unchanged for the existing conversation-details work. This is not described as a timeout-only clean-gate exception. Landing follows `TESTING.md`'s affected-check policy.
+
+Closing uses exact run `01m51sh2vsbcs2v4r1z02ej8yj`. A teardown-safe one-shot user unit performs `/worktree-merge` and the required fetch/rebase/non-force main push, boundedly waiting for unrelated main-worktree edits without touching them. Its log is `/var/tmp/model-controls-finish-01m51sh2vsbcs2v4r1z02ej8yj.log`; a successful push writes `/var/tmp/model-controls-finished-01m51sh2vsbcs2v4r1z02ej8yj.json`. The existing test-release watcher was observed active. Signed-in live checks remain with Jari; no deployment receipt is claimed by these synthetic tests.

@@ -3,11 +3,13 @@ created: 2026-10-16
 updated: 2026-10-16
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
+closed: 2026-10-16
+closed_by: pi
 ---
 
 # New-conversation model controls: broken pill, slow loading, wrong labels
@@ -22,7 +24,7 @@ Jari on the test server, 2026-10-16, about the model choice from `implement-mode
 - The top bar first shows the full identifier (`openai-codex/gpt-6.1-sol`, `ylapalkki-pitka.png`) and only after the first reply switches to the normal short form (`ylapalkki-lyhyt.png`). It should show the short form from the start.
 
 ## Acceptance Criteria
-- [ ] The composer pill is a proper pill per the prototype (`rounds/2026-10-16-mallit`, direction 1) and works, on desktop and phone.
-- [ ] An empty conversation: the top bar shows the short model name, offers no choice, and the composer pill opens instantly with no "Ladataan" wait. Choosing a model applies to this conversation ("Valitse"), with no navigation to a nonexistent conversation.
-- [ ] The short model label is consistent from the start.
-- [ ] Browser tests for each point.
+- [x] The composer pill is a proper pill per the prototype (`rounds/2026-10-16-mallit`, direction 1) and works, on desktop and phone.
+- [x] An empty conversation: the top bar shows the short model name, offers no choice, and the composer pill opens instantly with no "Ladataan" wait. Choosing a model applies to this conversation ("Valitse"), with no navigation to a nonexistent conversation.
+- [x] The short model label is consistent from the start.
+- [x] Browser tests for each point.
