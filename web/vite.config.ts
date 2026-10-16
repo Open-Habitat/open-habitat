@@ -22,7 +22,7 @@ export default defineConfig(({ command }) => {
     test: {
       environment: "jsdom",
       globals: true,
-      include: ["src/**/*.test.tsx"],
+      include: ["src/**/*.test.tsx", "src/**/*.test.ts"],
     },
   };
 });
