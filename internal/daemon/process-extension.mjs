@@ -22,9 +22,8 @@ export default function (pi) {
     if (Buffer.byteLength(line) > maxFrame || socket.writableLength > maxFrame) { socket.destroy(); return; }
     socket.write(line);
   }
-  function wakes(p) {
+  function wakes(p, branch) {
     // Only this child's native start results count. Never rehydrate old owners.
-    const branch = context.sessionManager.getBranch();
     for (let i = branch.length - 1; i >= 0; --i) {
       const m = branch[i].message;
       const d = m?.details;
@@ -39,7 +38,13 @@ export default function (pi) {
     if (q.op === 'list') {
       const records = await ask('request:list');
       if (!Array.isArray(records) || records.length > 200) throw new Error('inventory_unavailable');
-      return { records: records.map(p => ({ ...p, wakes_agent: wakes(p) })), protocol: 1, extension_version: extensionVersion };
+      const branch = context.sessionManager.getBranch();
+      return { records: records.map(p => ({
+        id: p.id, name: p.name, command: String(p.command ?? '').slice(0, 8192),
+        startTime: p.startTime, endTime: p.endTime, status: p.status,
+        exitCode: p.exitCode, signal: p.signal, endReason: p.endReason,
+        wakes_agent: wakes(p, branch),
+      })), protocol: 1, extension_version: extensionVersion };
     }
     if (q.op === 'clear') { await ask('command:clear'); return { result: 'cleared' }; }
     if (q.op === 'shutdown') {
@@ -62,14 +67,18 @@ export default function (pi) {
       if (!Number.isInteger(q.tail_lines) || q.tail_lines < 1 || q.tail_lines > 2000) throw new Error('invalid_request');
       const all = await ask('request:combined_output', { id: q.id, tailLines: q.tail_lines });
       if (!Array.isArray(all)) throw new Error('output_unavailable');
-      let bytes = 0;
+      let bytes = 0, wireBytes = 0;
       const lines = [];
       for (const l of all.slice(-q.tail_lines).reverse()) {
         if (!['stdout', 'stderr'].includes(l.type) || typeof l.text !== 'string') continue;
         const text = Buffer.from(l.text).subarray(0, 16384).toString('utf8');
         if (bytes + Buffer.byteLength(text) > 128 * 1024) break;
+        const line = { stream: l.type, text };
+        const encoded = Buffer.byteLength(JSON.stringify(line)) + 1;
+        if (wireBytes + encoded > maxFrame - 4096) break;
         bytes += Buffer.byteLength(text);
-        lines.unshift({ stream: l.type, text });
+        wireBytes += encoded;
+        lines.unshift(line);
       }
       return { lines, omitted_before: null, retention_restarted: lines.some(l => l.text === '[log truncated at 64 MB — earlier output discarded]') ? true : null };
     }
