@@ -134,6 +134,7 @@ export function InlineNotice({
 export type ConnectionState =
   | "loading"
   | "online"
+  | "connecting"
   | "reconnecting"
   | "stale"
   | "resnapshot-required"
@@ -143,12 +144,14 @@ export type ConnectionState =
 export function ConnectionBanner({
   state,
   lastConfirmedAt,
+  connectionDetail,
   hostWriteState = "writable",
   problem,
   onRetry,
 }: {
   state: ConnectionState;
   lastConfirmedAt?: string;
+  connectionDetail?: string;
   hostWriteState?: "writable" | "read_only";
   problem?: ProblemView;
   onRetry?: () => void;
@@ -164,6 +167,11 @@ export function ConnectionBanner({
     loading: {
       title: "Ladataan palvelimen tilaa",
       detail: "Haetaan tuoreita tietoja…",
+      tone: "neutral",
+    },
+    connecting: {
+      title: "Yhdistetään…",
+      detail: "Tarkistetaan palvelimen tila ja avataan tapahtumayhteys.",
       tone: "neutral",
     },
     reconnecting: {
@@ -211,7 +219,7 @@ export function ConnectionBanner({
     >
       <strong>{value.title}</strong>
       <span>
-        {value.detail}
+        {connectionDetail ?? value.detail}
         {hostWriteState === "read_only" &&
         visibleState !== "host-read-only" &&
         visibleState !== "stale"
@@ -227,12 +235,15 @@ export function ConnectionBanner({
       {onRetry ? (
         <Button
           label={
-            state === "stale" || state === "reconnecting"
+            state === "stale" ||
+            state === "reconnecting" ||
+            state === "connecting"
               ? "Yhdistä"
               : "Yritä uudelleen"
           }
           variant="secondary"
           size="compact"
+          pending={state === "connecting"}
           onPress={onRetry}
         />
       ) : null}

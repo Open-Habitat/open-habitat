@@ -437,14 +437,18 @@ esac
 		log.Fatal(err)
 	}
 	broker := &fixtureBroker{identities: identities}
-	auth, e := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: origin, CallbackURL: origin + "/auth/github/callback"}, gateway.AuthOptions{Version: "0.0.0-lab", Provider: fixtureProvider, Sink: sink{&scenario}, Broker: broker, AdminFile: adminPath, Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Hour) }, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
-		return (&net.Dialer{}).DialContext(ctx, "unix", paths[p])
-	}, SnapshotPeerUID: func(c *net.UnixConn) int { return peers[c.RemoteAddr().String()] }})
-	if e != nil {
-		log.Fatal(e)
+	newProduct := func() http.Handler {
+		auth, err := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: origin, CallbackURL: origin + "/auth/github/callback"}, gateway.AuthOptions{Version: "0.0.0-lab", Provider: fixtureProvider, Sink: sink{&scenario}, Broker: broker, AdminFile: adminPath, SessionFile: filepath.Join(tmp, "sessions.json"), Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Hour) }, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, "unix", paths[p])
+		}, SnapshotPeerUID: func(c *net.UnixConn) int { return peers[c.RemoteAddr().String()] }})
+		if err != nil {
+			log.Fatal(err)
+		}
+		return gateway.NewWithAuth(os.Args[1], auth)
 	}
-	product := gateway.NewWithAuth(os.Args[1], auth)
-	ts.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	product := newProduct()
+	gatewayRestart := make(chan struct{}, 1)
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/fixture/") {
 			switch r.URL.Path {
 			case "/fixture/lab-marker":
@@ -453,6 +457,11 @@ esac
 					return
 				}
 				w.WriteHeader(http.StatusNoContent)
+				return
+			case "/fixture/gateway-restart":
+				w.WriteHeader(http.StatusNoContent)
+				w.(http.Flusher).Flush()
+				gatewayRestart <- struct{}{}
 				return
 			case "/fixture/daemon-restart":
 				// Restart the actual Unix HTTP servers as well as their controller
@@ -713,14 +722,36 @@ esac
 		}
 		product.ServeHTTP(w, r)
 	})
+	ts.Config.Handler = handler
 	ts.TLS = &tls.Config{MinVersion: tls.VersionTLS12}
 	ts.StartTLS()
-	defer ts.Close()
+	defer func() { ts.CloseClientConnections(); ts.Close() }()
 	fmt.Println("BROWSER_HOST_READY " + ts.URL)
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-	<-stop
-	signal.Stop(stop)
+
+	defer signal.Stop(stop)
+	for {
+		select {
+		case <-stop:
+			return
+		case <-gatewayRestart:
+			// Replace the real TLS listener/server and the production gateway auth
+			// instance. Only the durable session file and invented homes survive.
+			address := ts.Listener.Addr().String()
+			ts.CloseClientConnections()
+			ts.Close()
+			product = newProduct()
+			ts = httptest.NewUnstartedServer(handler)
+			_ = ts.Listener.Close()
+			ts.Listener, e = net.Listen("tcp", address)
+			if e != nil {
+				log.Fatal(e)
+			}
+			ts.TLS = &tls.Config{MinVersion: tls.VersionTLS12}
+			ts.StartTLS()
+		}
+	}
 }
 
 type fixtureBroker struct {

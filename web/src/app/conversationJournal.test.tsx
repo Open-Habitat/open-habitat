@@ -55,14 +55,16 @@ const setup = (activeId?: string) => {
   } as unknown as ConversationStore;
   const onSnapshotNeeded = vi.fn();
   const onStatusChange = vi.fn();
+  const onConnection = vi.fn();
   const journal = new ConversationJournal(store, {
     activeId: () => activeId,
     onSnapshotNeeded,
     onStatusChange,
     onLogin: vi.fn(),
     onOffline: vi.fn(),
+    onConnection,
   });
-  return { journal, store, onSnapshotNeeded, onStatusChange };
+  return { journal, store, onSnapshotNeeded, onStatusChange, onConnection };
 };
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -145,12 +147,25 @@ describe("one tab-wide journal", () => {
     journal.start(snapshot(0));
     journal.route(event(1) as never);
     journal.route(event(3) as never);
-    journal.resume(snapshot(1));
+    journal.resume(snapshot(0));
     expect(onSnapshotNeeded).toHaveBeenCalledTimes(2);
     expect(FakeSource.all).toHaveLength(1);
     expect(store.reseed).not.toHaveBeenCalled();
     journal.resume(snapshot(3));
     expect(FakeSource.all).toHaveLength(2);
+    journal.stop();
+  });
+  it("recovers from a conflicting duplicate at an unchanged snapshot cursor", () => {
+    vi.stubGlobal("EventSource", FakeSource);
+    const { journal, store } = setup();
+    journal.start(snapshot(0));
+    journal.route(event(1) as never);
+    journal.route({ ...event(1), event_id: "evt_conflict" } as never);
+    journal.resume(snapshot(1));
+    expect(FakeSource.all).toHaveLength(2);
+    expect(store.reseed).toHaveBeenCalledTimes(1);
+    journal.route(event(2) as never);
+    expect(store.routeEvent).toHaveBeenCalledTimes(2);
     journal.stop();
   });
   it("retains the cursor after agent tail truncation, without a global snapshot", () => {
@@ -199,6 +214,7 @@ describe("one tab-wide journal", () => {
       FakeSource.all[0].onerror?.();
       for (let i = 0; i < 5; i++) await Promise.resolve();
       journal.resume(snapshot(1));
+      FakeSource.all[1].onopen?.();
       await vi.advanceTimersByTimeAsync(30000);
       expect(FakeSource.all).toHaveLength(2);
       expect(FakeSource.all[0].closed).toBe(true);
@@ -224,11 +240,38 @@ describe("one tab-wide journal", () => {
       expect(FakeSource.all).toHaveLength(1);
       journal.retry();
       expect(FakeSource.all[1].url).toContain(encodeURIComponent(cursor(1)));
+      FakeSource.all[1].onopen?.();
       await vi.advanceTimersByTimeAsync(30000);
       expect(FakeSource.all).toHaveLength(2);
       journal.stop();
       journal.retry();
       expect(FakeSource.all).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("bounds a silent EventSource handshake and clears its watchdog on open", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("EventSource", FakeSource);
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({ status: 503, ok: false }),
+      );
+      const { journal, onConnection } = setup();
+      journal.start(snapshot(0));
+      await vi.advanceTimersByTimeAsync(8000);
+      expect(FakeSource.all[0].closed).toBe(true);
+      expect(onConnection).toHaveBeenLastCalledWith(
+        "failed",
+        expect.stringContaining("ei ole käytettävissä"),
+      );
+      journal.retry();
+      FakeSource.all[1].onopen?.();
+      await vi.advanceTimersByTimeAsync(30000);
+      expect(FakeSource.all).toHaveLength(2);
+      expect(onConnection).toHaveBeenLastCalledWith("online");
+      journal.stop();
     } finally {
       vi.useRealTimers();
     }

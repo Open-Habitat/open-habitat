@@ -332,6 +332,10 @@ export function App() {
     [],
   );
   const [journalOffline, setJournalOffline] = useState(false);
+  const [journalConnection, setJournalConnection] = useState<{
+    state: "connecting" | "online" | "failed";
+    reason?: string;
+  }>({ state: "online" });
   // Callbacks read the latest render; the journal itself belongs to the store,
   // not the selected route or a particular snapshot response.
   const journalCallbacks = useRef({
@@ -360,6 +364,8 @@ export function App() {
               journalCallbacks.current.onStatusChange(id, kind, payload),
             onLogin: () => journalCallbacks.current.onLogin(),
             onOffline: (value) => journalCallbacks.current.onOffline(value),
+            onConnection: (state, reason) =>
+              setJournalConnection({ state, reason }),
           })
         : undefined,
     [conversationStore],
@@ -1655,14 +1661,23 @@ export function App() {
                     ? manualRefresh
                     : undefined
                 }
+                connectionDetail={
+                  journalConnection.reason ??
+                  (phase === "stale" && journalConnection.state !== "connecting"
+                    ? "Palvelimen tilaa ei saatu tarkistettua. Näet viimeksi vahvistetut tiedot."
+                    : undefined)
+                }
                 state={
-                  phase === "stale"
-                    ? "stale"
-                    : phase === "authenticated"
-                      ? journalOffline
-                        ? "reconnecting"
-                        : "online"
-                      : "loading"
+                  (phase === "stale" || journalOffline) &&
+                  journalConnection.state === "connecting"
+                    ? "connecting"
+                    : phase === "stale"
+                      ? "stale"
+                      : phase === "authenticated"
+                        ? journalOffline
+                          ? "reconnecting"
+                          : "online"
+                        : "loading"
                 }
                 hostWriteState={
                   snapshot?.write_state === "read_only"

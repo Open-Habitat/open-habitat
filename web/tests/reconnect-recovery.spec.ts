@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Page, test } from "./worker-host";
 
@@ -65,6 +66,113 @@ for (const restart of [false, true]) {
     ).toBeEnabled();
   });
 }
+
+test("@reconnect reports progress and failure, then recovers across TLS gateway and daemon restarts", async ({
+  page,
+}) => {
+  await open(page);
+  await page.clock.install();
+  await page.clock.pauseAt(new Date());
+  await page.route("**/api/v1/events*", (route) =>
+    route.fulfill({ status: 503 }),
+  );
+  await page.request.get("/fixture/daemon-restart");
+  await expect(
+    page.getByRole("button", { name: "Yhdistä", exact: true }),
+  ).toBeVisible();
+  // Recreate the production gateway auth from its durable session file, and
+  // replace the actual TLS server/listener. This is not a mocked HTTP response.
+  await page.request.get("/fixture/gateway-restart");
+  await expect
+    .poll(async () => {
+      try {
+        return (await page.request.get("/healthz")).status();
+      } catch {
+        return 0;
+      }
+    })
+    .toBe(200);
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.unroute("**/api/v1/events*");
+  await page.route("**/api/v1/events*", async (route) => {
+    await held;
+    await route.fulfill({ status: 503 });
+  });
+  await page.getByRole("button", { name: "Yhdistä", exact: true }).click();
+  await expect(page.getByText("Yhdistetään…", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Yhdistä…", exact: true }),
+  ).toBeDisabled();
+  // Axe's async checks need browser timers; backoff was frozen above only to
+  // distinguish a manual retry from the automatic one.
+  await page.clock.resume();
+  expect(
+    (await new AxeBuilder({ page }).include(".ah-connection").analyze())
+      .violations,
+  ).toEqual([]);
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000);
+  release();
+  await expect(
+    page.getByText(
+      "Palvelimen tapahtumayhteys ei ole käytettävissä. Yritä uudelleen.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await page.unroute("**/api/v1/events*");
+  const stream = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/v1/events" && response.ok(),
+  );
+  await page.getByRole("button", { name: "Yhdistä", exact: true }).click();
+  await stream;
+  await expect(page.locator(".ah-connection")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+  ).toBeEnabled();
+});
+
+test("@reconnect an invalid frame does not trap recovery at an unchanged native cursor", async ({
+  page,
+}) => {
+  await open(page);
+  const before = await (await page.request.get("/api/v1/snapshot")).json();
+  let injected = false;
+  await page.route("**/api/v1/events*", (route) => {
+    // The journal also probes this URL with fetch after a transport error.
+    // Corrupt only the real EventSource, never that diagnostic probe.
+    if (injected || route.request().resourceType() !== "eventsource")
+      return route.continue();
+    injected = true;
+    return route.fulfill({
+      contentType: "text/event-stream",
+      headers: { "X-Synthetic-Broken": "1" },
+      body: "event: snapshot.invalidated\ndata: {}\n\n",
+    });
+  });
+  const reopened = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/v1/events" &&
+      response.ok() &&
+      response.headers()["content-type"] === "text/event-stream" &&
+      response.request().resourceType() === "eventsource" &&
+      injected &&
+      !response.headers()["x-synthetic-broken"],
+  );
+  await page.request.get("/fixture/daemon-restart?transport_only=1");
+  await reopened;
+  await expect
+    .poll(async () =>
+      (await page.request.get("/api/v1/snapshot"))
+        .json()
+        .then((value) => value.event_cursor),
+    )
+    .toBe(before.event_cursor);
+  await expect(page.locator(".ah-connection")).toHaveCount(0);
+  expect(injected).toBe(true);
+});
 
 for (const created of [false, true]) {
   test(`@reconnect uncertain creation recheck ${created ? "discovers the created conversation" : "allows retry when no conversation was created"}`, async ({

@@ -39,6 +39,7 @@ export class ConversationJournal {
   private seenIds = new Set<string>();
   private source?: EventSource;
   private timer?: number;
+  private connectTimer?: ReturnType<typeof setTimeout>;
   private probe?: AbortController;
   private generation = 0;
   private stopped = true;
@@ -58,6 +59,10 @@ export class ConversationJournal {
       activeId: () => string | undefined;
       onLogin: () => void;
       onOffline: (offline: boolean) => void;
+      onConnection?: (
+        state: "connecting" | "online" | "failed",
+        reason?: string,
+      ) => void;
     },
   ) {}
   private setOffline(value: boolean) {
@@ -88,9 +93,10 @@ export class ConversationJournal {
       return;
     const next = cursorParts(snapshot.event_cursor);
     if (this.recovering) {
-      // An in-flight snapshot from before the gap is not a recovery point.
-      // Replaying it would loop on the same malformed/missing event.
-      if (next.instance === this.instance && next.sequence <= this.sequence) {
+      // Never rewind accepted events. An equal cursor is a valid recovery
+      // point: replay starts after it, even when an invalid duplicate
+      // caused recovery without any new native event.
+      if (next.instance === this.instance && next.sequence < this.sequence) {
         this.callbacks.onSnapshotNeeded();
         return;
       }
@@ -184,6 +190,7 @@ export class ConversationJournal {
     this.recovering = true;
     this.source?.close();
     this.source = undefined;
+    clearTimeout(this.connectTimer);
     ++this.generation;
     this.probe?.abort();
     if (this.timer !== undefined) clearTimeout(this.timer);
@@ -193,15 +200,20 @@ export class ConversationJournal {
   }
   private connect() {
     if (this.stopped || this.recovering) return;
+    clearTimeout(this.connectTimer);
+    this.callbacks.onConnection?.("connecting");
     const epoch = ++this.generation;
     const source = new EventSource(
       `/api/v1/events?after=${encodeURIComponent(this.cursor)}`,
     );
     this.source = source;
     source.onopen = () => {
-      if (this.stopped || epoch !== this.generation) return;
+      if (this.stopped || epoch !== this.generation || this.source !== source)
+        return;
+      clearTimeout(this.connectTimer);
       this.failures = 0;
       this.setOffline(false);
+      this.callbacks.onConnection?.("online");
     };
     for (const kind of kinds)
       source.addEventListener(kind, (message) => {
@@ -216,10 +228,16 @@ export class ConversationJournal {
         }
       });
     source.onerror = () => {
-      if (this.stopped || epoch !== this.generation) return;
+      if (this.stopped || epoch !== this.generation || this.source !== source)
+        return;
+      clearTimeout(this.connectTimer);
       source.close();
       this.source = undefined;
       this.setOffline(true);
+      this.callbacks.onConnection?.(
+        "failed",
+        "Tapahtumayhteyttä ei saatu. Tarkista verkkoyhteys tai yritä uudelleen.",
+      );
       const probe = new AbortController();
       this.probe = probe;
       const timeout = setTimeout(() => probe.abort(), 5000);
@@ -238,6 +256,17 @@ export class ConversationJournal {
           if (response.status === 401) {
             this.callbacks.onLogin();
             return;
+          }
+          if (response.status === 403) {
+            this.callbacks.onConnection?.(
+              "failed",
+              "Palvelin ei sallinut tapahtumayhteyttä.",
+            );
+          } else if (response.status >= 500) {
+            this.callbacks.onConnection?.(
+              "failed",
+              "Palvelimen tapahtumayhteys ei ole käytettävissä. Yritä uudelleen.",
+            );
           }
           if (response.status === 409) {
             this.recover();
@@ -263,21 +292,37 @@ export class ConversationJournal {
           );
       })();
     };
+    // A proxy can leave EventSource CONNECTING without ever sending headers.
+    this.connectTimer = setTimeout(
+      () => source.onerror?.(new Event("error")),
+      8000,
+    );
   }
   /** Explicit reconnect bypasses transport backoff without rewinding the cursor. */
   retry() {
     if (this.stopped) return;
     this.source?.close();
     this.source = undefined;
+    clearTimeout(this.connectTimer);
     ++this.generation;
     this.probe?.abort();
     if (this.timer !== undefined) clearTimeout(this.timer);
     this.timer = undefined;
-    if (this.recovering) this.callbacks.onSnapshotNeeded();
-    else this.connect();
+    if (this.recovering) {
+      this.callbacks.onConnection?.("connecting");
+      this.connectTimer = setTimeout(() => {
+        if (!this.stopped)
+          this.callbacks.onConnection?.(
+            "failed",
+            "Palvelimen tilaa ei saatu tarkistettua. Yritä uudelleen.",
+          );
+      }, 8000);
+      this.callbacks.onSnapshotNeeded();
+    } else this.connect();
   }
   stop() {
     this.stopped = true;
+    clearTimeout(this.connectTimer);
     ++this.generation;
     this.source?.close();
     this.source = undefined;
