@@ -171,8 +171,9 @@ export function WorkspaceRailView({
                   command: metadata.staleStatuses.has(a.agent_id)
                     ? undefined
                     : metadata.statuses.get(a.agent_id)?.state,
-                  pendingQuestion: !!metadata.statuses.get(a.agent_id)
-                    ?.pending_question,
+                  pendingQuestion:
+                    !!metadata.statuses.get(a.agent_id)?.pending_question ||
+                    !!a.pending_question,
                 }).activity === "working",
             ).length
           : undefined
@@ -254,8 +255,10 @@ export function WorkspaceRailView({
                   connectionLost: phase === "stale",
                   attention: metadata.attention.get(a.agent_id),
                   pendingQuestion:
-                    metadata.statuses.get(a.agent_id)?.pending_question !=
-                      null && !metadata.staleStatuses.has(a.agent_id),
+                    !!a.pending_question ||
+                    (metadata.statuses.get(a.agent_id)?.pending_question !=
+                      null &&
+                      !metadata.staleStatuses.has(a.agent_id)),
                   intentionallyClosed:
                     phase !== "stale" && a.process === "confirmed_exited",
                 });

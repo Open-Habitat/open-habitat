@@ -140,7 +140,7 @@ test("@process-tray unavailable native inventory is not an empty list", async ({
 test("@process-tray waiting facts flow through header, recap, home and typed completion, then a native wake becomes steerable", async ({
   page,
 }) => {
-  let phase: "process" | "spinoff" | "working" = "process";
+  let phase: "process" | "spinoff" | "question" | "working" = "process";
   const inventory = structuredClone(inventoryFixture) as ProcessInventory;
   const record = inventory.processes[0];
   const runId = "01m51veyk0hsa1br34epkr2rpg";
@@ -155,7 +155,16 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
     const response = await route.fetch();
     const body = await response.json();
     body.state = phase === "working" ? "accepted" : "idle";
-    body.run_active = phase === "working";
+    body.run_active = phase === "working" || phase === "question";
+    body.pending_question =
+      phase === "question"
+        ? {
+            request_id: "q",
+            question_kind: "input",
+            prompt: "Valitse jatko",
+            choices: [],
+          }
+        : null;
     body.native_history = "present";
     body.native_revision = "synthetic-process-revision";
     await route.fulfill({ response, json: body });
@@ -172,7 +181,16 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
       agent.control = "owned";
       agent.title.display = "Prosessikoe";
       agent.history = "readable";
-      agent.run_active = phase === "working";
+      agent.run_active = phase === "working" || phase === "question";
+      agent.pending_question =
+        phase === "question"
+          ? {
+              request_id: "q",
+              question_kind: "input",
+              prompt: "Valitse jatko",
+              choices: [],
+            }
+          : null;
       agent.activity = phase === "working" ? "running" : "idle";
       agent.waiting_on = [
         {
@@ -293,6 +311,17 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
   await expect(
     page.locator(".ah-home-card").filter({ hasText: "Prosessikoe" }),
   ).toContainText("Odottaa spinoffia");
+  phase = "question";
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: "Päivitä", exact: true })
+    .click();
+  await expect(
+    page.locator(".ah-home-card").filter({ hasText: "Prosessikoe" }),
+  ).toContainText("Odottaa sinua");
+  await expect(page.locator(".ah-home-head")).not.toContainText(
+    "odottaa prosessia tai spinoffia",
+  );
   phase = "working";
   await page.goto(agentUrl);
   await page

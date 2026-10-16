@@ -6,7 +6,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"golang.org/x/sys/unix"
 	"net"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
@@ -293,5 +296,33 @@ func TestProcessUnavailableRetainsBrowserOriginWithoutCreatingOwners(t *testing.
 	os.WriteFile(filepath.Join(dir, id+".lock"), []byte(`{"workspace":"ws_example123","cwd":"/synthetic"}`), 0600)
 	if !processBrowserOrigin(home, id) {
 		t.Fatal("saved browser origin lost after daemon restart")
+	}
+}
+
+func TestProcessSnapshotKeepsPendingQuestionDuringNativeRun(t *testing.T) {
+	home := t.TempDir()
+	os.MkdirAll(filepath.Join(home, "src", "workspace"), 0700)
+	cfg := transport.Config{UID: os.Geteuid(), GatewayUID: os.Geteuid(), Username: "synthetic", Home: home, Provider: "github", Subject: "42", Socket: "/run/open-habitat/users/synthetic/daemon.sock"}
+	id := ownershipTestID
+	workspace := opaque("ws_", "github:42:workspace")
+	question := map[string]any{"request_id": "q", "question_kind": "input", "prompt": "Choose", "choices": []string{}}
+	c := &ConversationController{cfg: cfg, home: home, fixture: true, trusted: func(*http.Request) bool { return true }, discover: func(cfg transport.Config) Discovery { return scan(home, cfg.UID, unix.Openat2) }, sessions: map[string]*conversation{id: {id: id, workspace: workspace, rpc: &piRPC{exited: make(chan struct{})}, runActive: true, questionID: "q", question: question}}, journal: newEventJournal()}
+	request := httptest.NewRequest("GET", "http://unix/api/v1/snapshot", nil)
+	request.RequestURI = SnapshotPath
+	w := httptest.NewRecorder()
+	c.FixtureSnapshot().ServeHTTP(w, request)
+	if w.Code != 200 {
+		t.Fatal(w.Code, w.Body.String())
+	}
+	var snapshot struct {
+		Agents []struct {
+			Active   bool `json:"run_active"`
+			Question struct {
+				ID string `json:"request_id"`
+			} `json:"pending_question"`
+		} `json:"agents"`
+	}
+	if json.Unmarshal(w.Body.Bytes(), &snapshot) != nil || len(snapshot.Agents) != 1 || !snapshot.Agents[0].Active || snapshot.Agents[0].Question.ID != "q" {
+		t.Fatal("snapshot lost question precedence", w.Body.String())
 	}
 }

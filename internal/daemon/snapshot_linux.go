@@ -284,6 +284,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 				id := strings.TrimPrefix(agent["agent_id"].(string), "pi:")
 				if active := controller.sessions[id]; active != nil {
 					agent["run_active"] = active.runActive
+					agent["pending_question"] = active.question
 					if !active.runActive && active.questionID == "" {
 						if waiting, ok := waitingViews[id]; ok {
 							agent["waiting_on"] = waiting
