@@ -178,3 +178,7 @@ its own credential store under `~/.claude`; no host or Pi token copy is made.
 The optional declared bridge runtime loads in both Pi RPC and catalog discovery;
 while absent during rollout, ordinary Pi remains usable. The picker carries
 `claude-bridge` as a provider-qualified model identity, not a separate harness.
+Explicitly selecting a Claude default also registers the trusted extension path
+through Pi SettingsManager, preserving other extension preferences, so native
+SSH Pi can use that same default. Installing the runtime alone does not rewrite
+a person's settings.

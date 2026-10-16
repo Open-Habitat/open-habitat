@@ -522,6 +522,26 @@ test("@account-settings Claude native code sign-in and provider-qualified picker
   await expect(
     page.getByRole("link", { name: "Avaa Claude-kirjautuminen" }),
   ).toHaveAttribute("href", /^https:\/\/claude\.com\//);
+  if (process.env.OH_CLAUDE_CAPTURE_DIR) {
+    const { mkdir } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    await mkdir(process.env.OH_CLAUDE_CAPTURE_DIR, { recursive: true });
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: 1000 });
+      for (const colorScheme of ["light", "dark"] as const) {
+        await page.emulateMedia({ colorScheme });
+        await page
+          .getByRole("region", { name: "Claude (Pi)", exact: true })
+          .screenshot({
+            path: join(
+              process.env.OH_CLAUDE_CAPTURE_DIR,
+              `${width}-${colorScheme}.png`,
+            ),
+            animations: "disabled",
+          });
+      }
+    }
+  }
   await page
     .getByLabel("Clauden palauttama koodi")
     .fill("synthetic-code#state");

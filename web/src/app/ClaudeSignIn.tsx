@@ -1,6 +1,7 @@
 import Ajv from "ajv/dist/2020.js";
 import { useEffect, useRef, useState } from "react";
 import schema from "../../../contracts/v1/claude-login.schema.json";
+import { ControlButton } from "../components/ControlElements";
 const valid = new Ajv({ strict: false }).compile(schema);
 type Login = {
   schema_version: 1;
@@ -193,12 +194,13 @@ export function ClaudeSignIn({
             </a>
             {!submitted ? (
               <form
+                className="s-editor"
                 onSubmit={(event) => {
                   event.preventDefault();
                   void action("PUT");
                 }}
               >
-                <label>
+                <label className="s-field">
                   Clauden palauttama koodi
                   <input
                     type="password"
@@ -208,16 +210,16 @@ export function ClaudeSignIn({
                     onChange={(event) => setCode(event.target.value)}
                   />
                 </label>
-                <button
+                <ControlButton
                   type="submit"
-                  disabled={
+                  isDisabled={
                     busy ||
                     !csrf ||
                     !/^[A-Za-z0-9_~.\-#]{8,2048}$/.test(code.trim())
                   }
                 >
                   Vahvista Claude-koodi
-                </button>
+                </ControlButton>
               </form>
             ) : (
               <p>
@@ -227,32 +229,34 @@ export function ClaudeSignIn({
           </>
         ) : null}
         {active ? (
-          <button
+          <ControlButton
             type="button"
-            disabled={busy || !csrf}
-            onClick={() => void action("DELETE")}
+            isDisabled={busy || !csrf}
+            onPress={() => void action("DELETE")}
           >
             Keskeytä Claude-kirjautuminen
-          </button>
+          </ControlButton>
         ) : (
-          <button
+          <ControlButton
             type="button"
-            disabled={busy || !csrf || !login || login.state === "unavailable"}
-            onClick={() => void action("POST")}
+            isDisabled={
+              busy || !csrf || !login || login.state === "unavailable"
+            }
+            onPress={() => void action("POST")}
           >
             {login?.state === "completed"
               ? "Kirjaudu Claudeen uudelleen"
               : "Kirjaudu Claudeen"}
-          </button>
+          </ControlButton>
         )}
         {failed ? (
-          <button
+          <ControlButton
             type="button"
-            disabled={busy}
-            onClick={() => void action("GET")}
+            isDisabled={busy}
+            onPress={() => void action("GET")}
           >
             Tarkista Claude-kirjautuminen
-          </button>
+          </ControlButton>
         ) : null}
         {failed ? (
           <p role="alert">
