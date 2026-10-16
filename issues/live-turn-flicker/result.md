@@ -55,9 +55,15 @@ browser assertions, rather than screenshot filenames, establish streaming.
 
 Comparison decisions and deviations:
 
-- The fixed view retains the prototype's single quiet work row and folded work.
-  Removing the duplicate status below the answer restores that design rather
-  than adding a new progress treatment.
+- The fixed live header retains the prototype's quiet work row and folded work.
+  Removing the duplicate status below the answer restores that treatment rather
+  than adding a new progress treatment. **There is still a separate pre-existing
+  native/provisional join defect**: both tool-phase captures show a native turn
+  falsely labelled `Vastaus valmis` above the still-running provisional copy.
+  That does not match the prototype and is not justified as a design choice.
+  It is recorded with the paired evidence in unlaned @relatively-dazzling-station.
+  This patch does not claim to eliminate all timeline insertions or fix that
+  identity/turn-joining bug; its ≤2 px invariant concerns the editor.
 - The prototype contains previous history, an old recap and a known model;
   this first-turn lab starts without those facts. It must not invent them to
   look identical. The lab recap appears only after the synthetic idle trigger;
@@ -145,7 +151,31 @@ activity from the unfiltered live tool set.
   layout/failure regression 1/1 passed (22.4 s). Refreshed final lab captures
   include the corrected running-tool activity label.
 
-Further browser/gate results are recorded below after completion.
+## Full clean-gate attempt
+
+`OH_PORT_BASE=29000 OH_BROWSER_WORKERS=2 ./scripts/ci-local.sh --clean --json`
+ran on committed tree `eeb2eb94523f445d5d90fbda9a7dfdd76d93ada9` after
+waiting for memory (3 GiB free / 6 GiB available at start). It **failed**, not a
+clean-gate pass: 601 s wall time under shared-host load.
+
+- Web format/lint/typecheck, 141 unit and 133 component tests passed.
+- Storybook, Go vet/race tests, generated-contract drift and validation,
+  documentation/license checks and offline VM recipe checks passed (124 s
+  Go/contracts phase).
+- Normal browser suite: 188 passed, 2 opt-in visual captures skipped, 3 failed
+  (538 s). Failures were warm-return request quiescence, a missing archive
+  summary while navigating, and a detached Tiedot button during the 401 journey.
+  All three passed in the earlier focused conversation-suite run and again
+  together in isolation after the gate: **3/3 passed in 24.3 s**, one worker.
+  The failures are recorded as batch timeouts, not a passing gate.
+- The gate stopped before its lab and release-packaging phases. Those phases
+  have **not** earned a passing receipt. Focused live-turn/stop/recap evidence
+  above is separate, not a substitute receipt. In particular the two baseline
+  automatic-recap failures remain tracked in @seriously-eight-map.
+
+This issue's delivery relies on the focused regressions, final web checks and
+paired synthetic evidence. It does not claim that main has a clean gate or
+that the live server has been verified.
 
 ## Focused self-review
 
