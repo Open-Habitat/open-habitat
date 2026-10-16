@@ -102,7 +102,32 @@ with `node design-system/prototypes/build.mjs design-system/prototypes/rounds/20
   No test timeout was increased or assertion removed.
 - `./scripts/test-web-fast.sh`: format, lint, TypeScript, 26 unit files / 144 tests and 20 component files / 133 tests passed.
 - `git diff --check`, `issuectl doctor --json`, and `python3 scripts/validate-project-view.py` passed (doctor retains repository-wide pre-existing advisories).
-- Full clean gate: pending on the committed implementation below; result will be appended after completion.
+- Full clean gate **failed**, no passed receipt: implementation commit
+  `919dcf0c89207ad869670e14acd0ee39e204859d`, tree
+  `17e51a8a643348571867ec254be3cf487b64496d`. Waited for >=2 GiB available
+  before starting, used two browser workers. Static/unit/component checks passed;
+  normal browser suite: 194 passed, 2 optional visual captures skipped, 3 timed
+  out (credential-settings key removal, tray Axe scan, new tray case navigating
+  to ordinary-dir). The browser phase stopped before lab cases. Many Go fixture
+  checks rejected native homes/runtime directories under inherited `umask 0002`.
+- Isolation rechecks: one browser worker, all 5 process-tray cases passed (33.5 s),
+  and the credential-settings `native key add` case passed (14.2 s). Neither
+  timeout was worked around by increasing time limits or weakening assertions.
+- `umask 077; TMPDIR=/var/tmp go test -race ./internal/daemon ./internal/gateway`:
+  gateway passed; daemon had only one residual failure, the unrelated
+  `TestCloseEmptyBrowserChild/empty` returning 409 control_uncertain. The earlier
+  home/runtime permission refusals disappeared. Go's testing.TempDir creates its
+  numbered leaf with mode 0777 filtered by umask; these native-boundary tests
+  require private homes. No production permission check was weakened.
+- Rebased onto origin/main without conflicts; production tray files and its
+  regression spec are byte-identical to the gated implementation. Final focused
+  rechecks of this rebased state passed:
+  `umask 077; TMPDIR=/var/tmp go test -race ./internal/daemon -run '^TestCloseEmptyBrowserChild$' -count=3`;
+  one-worker production browser run of `process-tray.spec.ts` + `spinoffs.spec.ts`
+  (6/6, including Axe and read-only spinoff navigation); and
+  `lab-conversation.spec.ts` (12/12, real controller + fake Pi). These isolated
+  passes do not turn the earlier gate into a pass. Per the task brief, unrelated
+  intermittent failures passing in isolation are recorded, not landing blockers.
 
 Focused self-review: native recognition survives missing enrichment; display-only
 filtering cannot stop a waiter; all tray calculations share the filter; cleanup
