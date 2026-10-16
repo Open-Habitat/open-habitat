@@ -233,7 +233,9 @@ func TestProcessRPCDeltaAndAggregateStatusNeverLeakNativeDetails(t *testing.T) {
 	c := &ConversationController{sessions: map[string]*conversation{id: s}, journal: newEventJournal()}
 	frames := []string{
 		`{"type":"agent_start"}`,
+		`{"type":"message_end","message":{"role":"custom","customType":"ad-process:notification","details":{"kind":"success","processId":"proc_abcd","processName":"first","timestamp":1}}}`,
 		`{"type":"message_start","message":{"role":"assistant","content":[]}}`,
+		`{"type":"message_end","message":{"role":"custom","customType":"ad-process:notification","details":{"kind":"success","processId":"proc_bcde","processName":"during-first-stream","timestamp":2}}}`,
 		`{"type":"message_update","assistantMessageEvent":{"type":"toolcall_start","contentIndex":0,"toolName":"process","id":"call1"}}`,
 		`{"type":"message_update","assistantMessageEvent":{"type":"toolcall_delta","contentIndex":0,"delta":"{\"command\":\"TOKEN=synthetic-secret sleep 1\"}"}}`,
 		`{"type":"message_update","assistantMessageEvent":{"type":"toolcall_end","contentIndex":0,"toolCall":{"id":"call1","name":"process","arguments":{"action":"start","command":"TOKEN=synthetic-secret sleep 1"}}}}`,
@@ -259,6 +261,9 @@ func TestProcessRPCDeltaAndAggregateStatusNeverLeakNativeDetails(t *testing.T) {
 		if strings.Contains(string(status), private) || strings.Contains(string(journal), private) {
 			t.Fatal("private process RPC field escaped", private, string(status), string(journal))
 		}
+	}
+	if !bytes.Contains(journal, []byte(`"delivery":"wake"`)) || !bytes.Contains(journal, []byte(`"delivery":"steer"`)) {
+		t.Fatal("initial wake and concurrent first-assistant notification were not distinguished", string(journal))
 	}
 	if !strings.Contains(string(journal), "public.md") {
 		t.Fatal("non-process argument deltas lost after message reset")

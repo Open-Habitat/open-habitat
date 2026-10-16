@@ -197,6 +197,9 @@ func (c *ConversationController) drain(s *conversation) {
 		if frame.Type == "agent_start" || frame.Type == "message_start" && callFrame.Message.Role == "assistant" {
 			toolNames = map[int]string{}
 		}
+		if frame.Type == "message_start" && callFrame.Message.Role == "assistant" {
+			s.runInitial = false
+		}
 		if frame.Type == "message_update" && callFrame.Assistant.Type == "toolcall_start" && callFrame.Assistant.Index >= 0 && callFrame.Assistant.Index < 128 {
 			toolNames[callFrame.Assistant.Index] = callFrame.Assistant.Name
 		}
