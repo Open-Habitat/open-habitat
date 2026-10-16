@@ -1,6 +1,6 @@
 # ADR 0016: Claude subscriptions through Pi first
 
-**Status:** Proposed — awaiting Jari's review of this rewrite
+**Status:** Accepted — Jari, 2026-10-16
 
 **Date:** 2026-10-15; clarified on Jari's word of 2026-10-16
 
@@ -35,6 +35,10 @@ Claude credentials stay in Claude Code's native store (on Linux,
 `~/.claude/.credentials.json`, per the research below), under the person's
 Unix account. These are native-tool stores, not a parallel host history or
 credential store, preserving [ADR 0001](adr-0001-unix-native-agent-host.md).
+
+## Revisit condition
+
+Jari, 2026-10-16: “Näin me mennään, ja jos Anthropic nukettaa sen SDK-bridgen, niin sit katotaan mitä tehdään.” If Anthropic shuts down the SDK bridge, revisit the route then.
 
 ## Provider terms: context, not the decision criterion
 
