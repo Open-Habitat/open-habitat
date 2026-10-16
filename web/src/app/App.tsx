@@ -23,8 +23,8 @@ import { ArchiveNotice } from "../components/ArchiveNotice";
 import { LinkRow } from "../components/ControlElements";
 import { HomeWorkspaces } from "../components/HomeWorkspaces";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
+import { refused } from "../components/ModelPicker";
 import type { ReturnConversation } from "../components/ReturnView";
-
 import { AccountProfileOnboarding } from "./AccountProfileOnboarding";
 import { BrowserConversation } from "./BrowserConversation";
 import { ConversationJournal } from "./conversationJournal";
@@ -42,7 +42,6 @@ import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
 import { NewWorkspace } from "./NewWorkspace";
 import { type Choice, loadPiModels, PiModelSelector } from "./PiModelSelector";
-import { refused } from "../components/ModelPicker";
 import { PiModelsProvider } from "./PiModels";
 import {
   type AccountProfile,

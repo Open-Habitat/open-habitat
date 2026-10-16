@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ModelPicker, refused } from "../components/ModelPicker";
 import { readModels, usePiModels } from "./PiModels";
-export { type Models, loadPiModels } from "./PiModels";
+
+export { loadPiModels, type Models } from "./PiModels";
 export type Choice = {
   provider?: "openai-codex" | "openai" | "claude-bridge";
   model: string;

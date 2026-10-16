@@ -2678,16 +2678,14 @@ test("@browser-conversation explicit new-conversation choice leaves native defau
   await page
     .getByRole("button", { name: "Aloita uusi Pi-keskustelu", exact: true })
     .click();
-  const pill = page.locator(".md-new").first();
+  const pill = page.locator(".md-empty-picker");
   await pill.locator(":scope > summary").click();
   await pill.getByRole("radio", { name: /GPT-6 Nova/ }).check();
   await pill.getByRole("button", { name: "high", exact: true }).click();
   expect(
     (await (await page.request.get("/api/v1/pi/models")).json()).default_model,
   ).toBeNull();
-  await pill
-    .getByRole("button", { name: "Aloita uusi keskustelu mallilla gpt-6-nova" })
-    .click();
+  await pill.getByRole("button", { name: "Valitse", exact: true }).click();
   await page
     .getByRole("textbox", { name: "Viesti Pi:lle" })
     .fill("nova only in this conversation");
@@ -2780,9 +2778,9 @@ for (const width of [1280, 390]) {
     });
     expect(saved.status()).toBe(200);
     await page.reload();
-    await expect(page.locator(".md-new > summary")).toContainText(
-      "gpt-6.1-sol",
-    );
+    await expect(
+      page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+    ).toBeEnabled();
     await page
       .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
       .click();

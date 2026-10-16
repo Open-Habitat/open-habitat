@@ -56,7 +56,13 @@ export async function readModels(response: Response): Promise<Models> {
 
 /** Fresh authoritative read for workspace direct-start admission; not a cache. */
 export async function loadPiModels(signal: AbortSignal): Promise<Models> {
-  return readModels(await fetch("/api/v1/pi/models", {credentials:"same-origin", cache:"no-store", signal}));
+  return readModels(
+    await fetch("/api/v1/pi/models", {
+      credentials: "same-origin",
+      cache: "no-store",
+      signal,
+    }),
+  );
 }
 
 const Context = createContext<{
@@ -88,12 +94,7 @@ export function PiModelsProvider({
     const controller = new AbortController();
     pending.current = controller;
     const epoch = version.current;
-    void fetch("/api/v1/pi/models", {
-      credentials: "same-origin",
-      cache: "no-store",
-      signal: controller.signal,
-    })
-      .then(readModels)
+    void loadPiModels(controller.signal)
       .then((value) => {
         if (
           active.current &&
