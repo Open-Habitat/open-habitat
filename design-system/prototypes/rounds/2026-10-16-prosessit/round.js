@@ -47,7 +47,7 @@ function procs0() {
     { id: 'proc_3f1a', name: 'sivu', cmd: 'python3 -u -m http.server 8000 --directory site', start: at(14, 34, 18), status: 'running', omitted: 0,
       lines: [{ s: 'out', t: 'Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...' }, access(at(14, 34, 20), '/'), access(at(14, 34, 20), '/status.css'),
         { s: 'err', t: `127.0.0.1 - - [13/Oct/2026 ${hms(at(14, 34, 21))}] code 404, message File not found` }, access(at(14, 34, 21), '/favicon.ico', 404),
-        ...Array.from({ length: 14 }, (_, i) => access(at(14, 34, 24) + i * 11, '/status.json'))] },
+        ...Array.from({ length: 52 }, (_, i) => access(at(14, 34, 24) + i * 3, '/status.json'))] },
     // The agent wrote the token into the command; the host shows it redacted.
     { id: 'proc_51d0', name: 'haku', cmd: 'GITHUB_TOKEN=••• python3 scripts/fetch_status.py --since 2026-09-01', start: at(14, 34, 30), end: at(14, 35, 11), status: 'exited', code: 0, omitted: 1186,
       lines: [...Array.from({ length: 56 }, (_, i) => ({ s: 'out', t: `#${1185 + i}  ${ISSUES[i % ISSUES.length].padEnd(32)} ${i % 3 ? 'valmis' : 'kesken'}` })),
