@@ -1,14 +1,15 @@
 ---
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-16
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: proto-details
 lane_seq: 1
 collision: [design-system/prototypes/rounds/proto-conversation-details]
 preparation: ready
+closed: 2026-10-16
 ---
 
 # Prototype: archive notice, Viimeisimpään button, failed bash card
@@ -18,4 +19,4 @@ Jari 15.10.2026: every new feature is prototyped first; the working prototype Ja
 From the prototype queue (TODO.md): the floating notice after archiving a conversation, the Viimeisimpään (jump to latest) button as a whole, and the failed bash card. One round per item or one round with three axes, whichever reads better for Jari. No architecture sketch is needed.
 
 ## Acceptance Criteria
-- [ ] Round(s) verified with check.mjs; `result.md` per the prototype worker rules.
+- [x] Round(s) verified with check.mjs; `result.md` per the prototype worker rules.
