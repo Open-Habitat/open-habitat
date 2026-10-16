@@ -52,6 +52,11 @@ func runFakePi(args []string) {
 		os.Exit(2)
 	}
 	home := os.Getenv("HOME")
+	// pi-start-fail: Pi exits before it is ready, as a broken install or
+	// extension would. The test switches the scenario off to retry.
+	if mode, _ := os.ReadFile(filepath.Join(filepath.Dir(home), "fakepi-scenario")); strings.TrimSpace(string(mode)) == "pi-start-fail" {
+		os.Exit(3)
+	}
 	dir := filepath.Join(home, ".pi", "agent", "sessions", "--"+strings.ReplaceAll(strings.Trim(cwd, "/"), "/", "-")+"--")
 	path := filepath.Join(dir, time.Now().UTC().Format("2006-01-02T15-04-05-000Z")+"_"+id+".jsonl")
 	if existing != "" {

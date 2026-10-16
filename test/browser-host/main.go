@@ -380,7 +380,7 @@ esac
 		mux.Handle("/api/v1/conversations", serveConversation)
 		mux.Handle("/api/v1/conversations/", serveConversation)
 		mux.Handle("/api/v1/events", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if scenario.Load() != "ready" && scenario.Load() != "pi-deltas" && scenario.Load() != "pi-typed" && scenario.Load() != "pi-visual-hold" && scenario.Load() != "pi-auth-failure" && scenario.Load() != "pi-model-unsupported" && scenario.Load() != "pi-recap" && scenario.Load() != "pi-recap-unsupported" && scenario.Load() != "pi-slow-start" {
+			if scenario.Load() != "ready" && scenario.Load() != "pi-deltas" && scenario.Load() != "pi-typed" && scenario.Load() != "pi-visual-hold" && scenario.Load() != "pi-auth-failure" && scenario.Load() != "pi-model-unsupported" && scenario.Load() != "pi-recap" && scenario.Load() != "pi-recap-unsupported" && scenario.Load() != "pi-slow-start" && scenario.Load() != "pi-start-fail" {
 				http.NotFound(w, r) // Fault scenarios exercise the HTTP fallback.
 				return
 			}
@@ -400,7 +400,7 @@ esac
 				return
 			case "delay":
 				time.Sleep(650 * time.Millisecond)
-			case "ready", "pi-deltas", "pi-typed", "pi-visual-hold", "pi-auth-failure", "pi-model-unsupported", "pi-recap", "pi-recap-unsupported", "pi-slow-start":
+			case "ready", "pi-deltas", "pi-typed", "pi-visual-hold", "pi-auth-failure", "pi-model-unsupported", "pi-recap", "pi-recap-unsupported", "pi-slow-start", "pi-start-fail":
 				current.Load().(*daemon.ConversationController).FixtureSnapshot().ServeHTTP(w, r)
 				return
 
@@ -645,7 +645,7 @@ esac
 			case "/fixture/scenario":
 				name := r.URL.Query().Get("value")
 				switch name {
-				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "pi-blocked", "pi-onboarding", "pi-deltas", "pi-typed", "pi-visual-hold", "pi-auth-failure", "pi-model-unsupported", "pi-recap", "pi-recap-unsupported", "pi-slow-start":
+				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "pi-blocked", "pi-onboarding", "pi-deltas", "pi-typed", "pi-visual-hold", "pi-auth-failure", "pi-model-unsupported", "pi-recap", "pi-recap-unsupported", "pi-slow-start", "pi-start-fail":
 					// Read by the fake Pi child at turn start. Switching back to ready
 					// keeps subsequent lab cases on the old, faster fixture.
 					if err := os.Remove(filepath.Join(tmp, "fakepi-visual-phase")); err != nil && !os.IsNotExist(err) {

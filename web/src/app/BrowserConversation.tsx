@@ -197,7 +197,6 @@ function BrowserConversationContent({
     generation,
     submittedKey,
     sendKey,
-    continuationKey,
     uncertainKey,
     inFlightSend,
     changeDraft,
@@ -497,24 +496,20 @@ function BrowserConversationContent({
       ambiguous,
       busy,
       current,
-      continuation,
       draft,
       receipt,
       sendObservation,
       problem,
-      controlled: controlled && !statusStale,
       serverUnavailable,
       alive,
       generation,
       submittedKey,
       sendKey,
-      continuationKey,
       uncertainKey,
       inFlightSend,
       setBusy,
       setReceipt,
       setSendObservation,
-      setContinuation,
       setConfirmStop,
       changeDraft,
       refresh,
@@ -732,6 +727,7 @@ function BrowserConversationContent({
                   !statusStale &&
                   !serverUnavailable &&
                   (current?.state === "idle" ||
+                    (current?.state === "stopped" && !held.waiting.length) ||
                     current?.continuation === "eligible")
                 }
                 busy={!!archiveBusy || !!closeBusy}
@@ -1291,6 +1287,10 @@ function BrowserConversationContent({
                 that mounts/unmounts beneath streaming content. */}
             {current?.state === "stopping" || current?.state === "uncertain" ? (
               <WorkingProgress state={current.state} events={events} />
+            ) : current?.state === "stopped" &&
+              current.interrupted &&
+              !held.waiting.length ? (
+              <WorkingProgress state="uncertain" events={events} />
             ) : null}
             {statusStale && !serverUnavailable ? (
               <InlineNotice
@@ -1616,6 +1616,7 @@ function BrowserConversationContent({
                 value={draft}
                 onChange={changeDraft}
                 activity={
+                  !notStarted &&
                   (current?.run_active ?? current?.state === "accepted")
                     ? "working"
                     : "idle"

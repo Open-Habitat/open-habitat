@@ -229,7 +229,7 @@ func (c *ConversationController) resume(id string, old *conversation) (*conversa
 		s.commands = old.commands
 		s.receipts = old.receipts
 		s.command = old.command
-		s.held, s.heldChoice, s.lazy = old.held, old.heldChoice, old.lazy
+		s.held, s.heldChoice, s.lazy, s.interrupted = old.held, old.heldChoice, old.lazy, old.interrupted
 		old.held, old.heldChoice = nil, nil
 	}
 	c.sessions[id] = s

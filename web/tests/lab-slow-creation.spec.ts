@@ -43,19 +43,22 @@ for (const surface of ["home", "workspace", "sidebar"] as const) {
         r.url().endsWith("/api/v1/conversations") &&
         r.request().method() === "POST",
     );
+    const began = Date.now();
     await button.click();
-    await expect(page).toHaveURL(/conversation=new$/);
-    await expect(
-      page.locator(".ah-conversation-frame").getByRole("status"),
-    ).toHaveText("Luodaan keskustelua…");
+    await expect(page).toHaveURL(/conversation=(new|pi:)/);
+    // No creation status, and the field is usable at once (Jari 16.10.2026).
+    await expect(page.getByText("Luodaan keskustelua")).toHaveCount(0);
     await expect(
       page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-    ).toBeDisabled();
-    // This reply crosses a real five-second Unix HTTP response deadline.
-    // Delaying Playwright's route.continue would not exercise that boundary.
+    ).toBeEnabled();
+    // Pi's own start takes six seconds here, beyond the real five-second Unix
+    // HTTP response deadline. The creation reply no longer waits for it: the
+    // daemon replies once the child exists and holds messages until Pi runs.
     const created = await response;
     expect(created.status()).toBe(200);
+    expect(Date.now() - began).toBeLessThan(4000);
     const session = await created.json();
+    expect(session.state).toBe("starting");
     await page.request.get("/fixture/scenario?value=ready");
     await expect(page).toHaveURL(
       new RegExp(`conversation=${session.agent_id}$`),

@@ -56,6 +56,8 @@ export type Status = Session & {
   held?: HeldMessage[];
   /** Fixed code of a failed Pi start; the held messages are kept. */
   start_problem?: string;
+  /** Pi ended during a turn; whether that work finished is not known. */
+  interrupted?: boolean;
   send_receipt?: "" | "pending" | "accepted" | "rejected" | "uncertain";
   turn_settled?: {
     state: "settled" | "unknown";
@@ -420,6 +422,7 @@ export function parseStatus(v: unknown, id: string): Status {
         ))) ||
     v.history_query !== `/api/v1/agents/${id}/history` ||
     (v.held !== undefined && !validHeldList(v.held)) ||
+    (v.interrupted !== undefined && typeof v.interrupted !== "boolean") ||
     (v.start_problem !== undefined &&
       (typeof v.start_problem !== "string" ||
         !/^(|[a-z][a-z0-9_]{2,63})$/.test(v.start_problem))) ||

@@ -1394,6 +1394,15 @@ export function App() {
                 replace
                 to={`/workspaces/${selected.workspace_id}?conversation=${creationViews[selected.workspace_id].session?.agent_id}`}
               />
+            ) : !creationViews[selected.workspace_id] &&
+              !createPending.has(selected.workspace_id) &&
+              !sessionStorage.getItem(
+                `nah:${identity}:uncertain:${selected.workspace_id}`,
+              ) ? (
+              // Nothing is being created and no earlier creation is uncertain
+              // (for example, it was reconciled just before a reload): there
+              // is no conversation to wait for here.
+              <Navigate replace to={`/workspaces/${selected.workspace_id}`} />
             ) : (
               <CreatingConversation
                 workspace={selected}

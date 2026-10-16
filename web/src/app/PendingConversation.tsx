@@ -129,7 +129,11 @@ export function CreatingConversation({
   );
   const [notice, setNotice] = useState("");
   const section = useRef<HTMLDivElement>(null);
-  useOpeningFocus(section);
+  // The person just asked for this conversation: the field takes focus from
+  // the + or workspace button so they can type at once.
+  useEffect(() => {
+    section.current?.querySelector("textarea")?.focus({ preventScroll: true });
+  }, []);
   const setDraft = (value: string) => {
     setDraftState(value);
     if (value) sessionStorage.setItem(keys.draft, value);
@@ -209,13 +213,26 @@ export function CreatingConversation({
           </div>
         ) : null}
         <Composer
+          modelPicker={
+            <span className="md-pill" aria-disabled="true">
+              Pi
+            </span>
+          }
           value={draft}
-          availability={{ state: "enabled" }}
+          availability={
+            problem
+              ? {
+                  state: "disabled",
+                  reason: "Keskustelun luontia ei voitu vahvistaa.",
+                }
+              : { state: "enabled" }
+          }
+          editorAvailability={{ state: "enabled" }}
           activity="idle"
           selectedWorkingMode="follow_up"
           onChange={setDraft}
           onSendNow={() => {
-            if (!draft.trim()) return;
+            if (!draft.trim() || problem) return;
             setHeld([
               ...waiting,
               { command_id: crypto.randomUUID(), text: draft, posted: false },

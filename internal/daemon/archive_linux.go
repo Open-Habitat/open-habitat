@@ -131,6 +131,11 @@ func (c *ConversationController) archiveInput(ctx context.Context, w http.Respon
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}
+	if in.Archived && session != nil && (len(session.held) > 0 || session.state == "starting") {
+		// Messages wait for a Pi that is starting; archiving would hide them.
+		snapshotError(w, 409, "writer_conflict")
+		return
+	}
 	if in.Archived && session != nil {
 		// A settled turn does not prove that a process exited. Only idle or
 		// positively reaped daemon-owned processes may leave the active list.

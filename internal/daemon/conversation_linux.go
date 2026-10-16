@@ -110,6 +110,7 @@ type conversation struct {
 	created      bool             // started fresh in this incarnation, so no native file is required yet
 	lazy         bool             // Pi was started by a held send; it is closed again if nothing is left to deliver
 	launchChoice *piStartupChoice // explicit model flags of a created conversation, reused if its first start fails
+	interrupted  bool             // the child ended during a turn; its end is unconfirmed until the next prompt
 }
 
 type heldMessage struct {
@@ -517,6 +518,8 @@ func (c *ConversationController) watch(s *conversation) {
 	_ = s.rpc.out.Close()
 	c.mu.Lock()
 	s.dead = true
+	s.interrupted = s.runActive || s.state == "pending" || s.state == "accepted"
+	s.runActive = false // a reaped child runs nothing, whatever its last event said
 	if s.recapTimer != nil {
 		s.recapTimer.Stop()
 	}
@@ -667,6 +670,7 @@ func (c *ConversationController) beginPrompt(s *conversation, kind string, ids [
 	s.ack = "pending"
 	if kind == "send" {
 		s.turnGeneration++
+		s.interrupted = false
 		s.settled = false
 		s.settlement = nil
 		s.authError = ""
@@ -823,7 +827,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 	c.mu.Lock()
 	runActive := s.runActive
 	held := heldView(s.held)
-	startProblem := s.startProblem
+	startProblem, interrupted := s.startProblem, s.interrupted
 	state, command, ack, cursor, lost := s.state, s.command, s.ack, s.cursor, s.lost
 	settlement := s.settlement
 	question := s.question
@@ -834,7 +838,10 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 	queueSteering, queueFollowUp, queueRevision := append([]string{}, s.queueSteering...), append([]string{}, s.queueFollowUp...), s.queueRevision
 	events := append([]json.RawMessage{}, s.events...)
 	cwd, path := s.cwd, s.historyPath
-	if s.rpc.overflow.Load() {
+	// A lost frame makes a live child's control uncertain. A reaped child's
+	// stream always ends in a read error; its receipts already say what is
+	// uncertain, and the conversation is simply stopped.
+	if s.rpc.overflow.Load() && !s.dead {
 		state = "uncertain"
 		lost = true
 		s.state = state
@@ -920,7 +927,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 		continuation = "unproven"
 	}
 	c.mu.Unlock()
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "run_active": runActive, "startup_choice": s.startupChoice, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "auth_error": s.authError, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}, "held": held, "start_problem": startProblem})
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "run_active": runActive, "startup_choice": s.startupChoice, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "auth_error": s.authError, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}, "held": held, "start_problem": startProblem, "interrupted": interrupted})
 }
 
 // answerQuestion spends the native request ID before touching Pi. This uncorrelated

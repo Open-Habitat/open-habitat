@@ -51,10 +51,11 @@ test("@placeholder @a11y sidebar + opens a stable conversation before creation r
     await expect(
       frame.getByRole("heading", { name: "Uusi keskustelu", exact: true }),
     ).toBeVisible();
-    await expect(frame.getByRole("status")).toHaveText("Luodaan keskustelua…");
+    // No creation status text: the field is usable at once (Jari 16.10.2026).
+    await expect(frame.getByText("Luodaan keskustelua")).toHaveCount(0);
     await expect(
       page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-    ).toBeDisabled();
+    ).toBeEnabled();
     const headerBefore = await frame.locator(".ah-agent-header").boundingBox();
     const composerBefore = await frame.locator(".ah-composer").boundingBox();
     expect(create.posts()).toBe(1);
@@ -94,8 +95,10 @@ test("@placeholder lost creation reply stays in the conversation, including relo
       .getByText(/Luonnin tulos epävarma/),
   ).toBeVisible();
   await expect(page).toHaveURL(/conversation=new$/);
+  // Typing stays possible, but nothing can be sent to an unconfirmed creation.
+  await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("odottaa");
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toBeDisabled();
   await page.reload();
   // The reconnect fix reconciles settled creation on a successful reload read.
@@ -198,9 +201,10 @@ for (const entry of ["home", "sidebar", "workspace"] as const) {
         .getByRole("button", { name: "Aloita keskustelu valitulla mallilla" })
         .click();
       await expect(page).toHaveURL(/conversation=new$/);
+      // The field is usable while the chosen-model conversation is created.
       await expect(
         page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-      ).toBeDisabled();
+      ).toBeEnabled();
       create.release();
       await expect(page).toHaveURL(/conversation=pi:/);
       await expect(

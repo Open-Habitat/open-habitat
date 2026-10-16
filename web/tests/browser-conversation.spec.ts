@@ -1285,7 +1285,7 @@ test("@browser-conversation expiry across reload clears unknown prior person's d
   await expect(page.getByText("private across reload")).toHaveCount(0);
 });
 
-async function endedConversation(page: import("@playwright/test").Page) {
+async function stoppedConversation(page: import("@playwright/test").Page) {
   await open(page);
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await expect(page).toHaveURL(/conversation=pi/);
@@ -1319,13 +1319,21 @@ async function endedConversation(page: import("@playwright/test").Page) {
   );
   expect(stopped.status()).toBe(200);
   await refreshConversation(page);
-  // A stop can initially be observed as uncertain. The explicit read-only
-  // check proves the terminal history before this helper promises continuation.
-  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
+  // A conversation without a running Pi stays writable: no read-only state
+  // and no explicit continuation. Pi starts again only on the next send.
+  await expect
+    .poll(async () => {
+      const r = await page.request.get(
+        `/api/v1/conversations/${id.slice(3)}/status`,
+      );
+      return (await r.json()).state;
+    })
+    .toBe("stopped");
+  await refreshConversation(page);
   await expect(
     page.getByRole("button", { name: "Jatka keskustelua" }),
-  ).toBeVisible();
-  await expect(editor).toHaveCount(0);
+  ).toHaveCount(0);
+  await expect(editor).toBeEnabled();
   return id;
 }
 
@@ -1359,7 +1367,7 @@ test("@browser-conversation idle controlled Pi can archive without stopping its 
 test("@browser-conversation phone archives directly into its workspace", async ({
   page,
 }) => {
-  const id = await endedConversation(page);
+  const id = await stoppedConversation(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Arkistoi", exact: true }).click();
   await expect(
@@ -1428,7 +1436,7 @@ test("@browser-conversation restart replaces an in-place running turn with nativ
   await expect(editor).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Jatka keskustelua" }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await expect(
     page
       .getByRole("region", { name: "Keskusteluhistoria" })
@@ -1436,20 +1444,21 @@ test("@browser-conversation restart replaces an in-place running turn with nativ
   ).toBeVisible();
 });
 
-test("@browser-conversation restart offers native continuation and archive without a handle", async ({
+test("@browser-conversation restart keeps a browser conversation writable and archivable without a handle", async ({
   page,
 }) => {
   test.setTimeout(60000);
-  const id = await endedConversation(page);
+  const id = await stoppedConversation(page);
   expect(
     (await page.request.get("/fixture/conversations-reset")).status(),
   ).toBe(204);
+  // An old read-only link opens the conversation itself, with its composer.
   await page.goto(`/agents/${id}`);
+  await expect(page).toHaveURL(new RegExp(`conversation=${id}`));
   const bar = page.locator(".ah-agent-header");
-  // The reopened native history requires its own positive writer census. An
-  // unknown census is fail-closed and the view rechecks it every five seconds;
-  // wait for the real view to settle rather than treating unknown as idle.
-  await expect(bar).toContainText("Ei käynnissä", { timeout: 20000 });
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await expect(editor).toBeEnabled();
+  await expect(bar).not.toContainText("Vain luku");
   await expect(bar.getByRole("button", { name: "Arkistoi" })).toBeEnabled();
   await bar.getByRole("button", { name: "Arkistoi" }).click();
   await page.goto(`/agents/${id}`);
@@ -1460,38 +1469,16 @@ test("@browser-conversation restart offers native continuation and archive witho
       .violations,
   ).toEqual([]);
   await restore.click();
-  await expect(restore).toHaveCount(0);
-  await expect(bar.getByRole("button", { name: "Arkistoi" })).toBeEnabled();
+  // Visible again, the conversation returns to its composer; nothing started Pi.
+  await expect(page).toHaveURL(new RegExp(`conversation=${id}`));
+  await expect(editor).toBeEnabled();
   await expect(
     page.getByRole("button", { name: "Jatka keskustelua" }),
-  ).toBeVisible();
-  // The write makes a fresh census of its own. A previously eligible view
-  // can race a transient unknown census; retry only that explicit fail-closed
-  // refusal after the view has observed a new positive result.
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const reply = page.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        new URL(response.url()).pathname ===
-          `/api/v1/conversations/${id.slice(3)}/continue`,
-    );
-    await page.getByRole("button", { name: "Jatka keskustelua" }).click();
-    const response = await reply;
-    if (response.status() === 200) break;
-    expect(response.status()).toBe(409);
-    expect((await response.json()).error.code).toBe("control_uncertain");
-    expect(attempt).toBeLessThan(2);
-    await expect(
-      page.getByText("Jatkaminen ei onnistunut.", { exact: false }),
-    ).toBeVisible();
-    await expect(bar).toContainText("Ei käynnissä", { timeout: 20000 });
-    await expect(
-      page.getByRole("button", { name: "Jatka keskustelua" }),
-    ).toBeVisible();
-  }
-  await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-  ).toBeVisible();
+  ).toHaveCount(0);
+  const status = await page.request.get(
+    `/api/v1/conversations/${id.slice(3)}/status`,
+  );
+  expect((await status.json()).state).toBe("stopped");
 });
 
 test("@browser-conversation missing archive history never appears as a confirmed empty archive", async ({
@@ -1518,10 +1505,10 @@ test("@browser-conversation missing archive history never appears as a confirmed
   ).toBeVisible();
 });
 
-test("@browser-conversation archive restores visibility before native continuation", async ({
+test("@browser-conversation archive restore makes a stopped conversation writable again", async ({
   page,
 }) => {
-  const id = await endedConversation(page);
+  const id = await stoppedConversation(page);
   await archiveFromConfirmedView(page, () =>
     page.getByRole("button", { name: "Arkistoi", exact: true }),
   );
@@ -1544,376 +1531,10 @@ test("@browser-conversation archive restores visibility before native continuati
     archive.getByRole("button", { name: "Palauta näkyviin" }),
   ).toHaveCount(0);
   await page.goto(`${workspaceURL}?conversation=${id}`);
-  await refreshConversation(page);
-  await page.getByRole("button", { name: "Jatka keskustelua" }).click();
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-  ).toBeVisible();
+  ).toBeEnabled();
   expect(new URL(page.url()).searchParams.get("conversation")).toBe(id);
-});
-
-test("@browser-conversation an opening continuation proof retries after HTTP failure", async ({
-  page,
-}) => {
-  let proofRequests = 0;
-  await page.route(
-    "**/api/v1/conversations/*/status?continuation=true",
-    (route) => {
-      if (++proofRequests === 1)
-        return route.fulfill({ status: 503, body: "unavailable" });
-      return route.continue();
-    },
-  );
-  await endedConversation(page);
-  expect(proofRequests).toBeGreaterThan(1);
-});
-
-for (const [proof, reason] of [
-  ["writer_present", /Keskustelulla on yhä aktiivinen kirjoittaja/],
-  ["read_only_history", /terminaalin historiaa/],
-  ["unproven", /turvalliseksi jatkaa/],
-] as const)
-  test(`@browser-conversation uncertain native file ${proof} cannot continue`, async ({
-    page,
-  }) => {
-    await open(page);
-    await page
-      .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
-      .click();
-    await expect(page).toHaveURL(/conversation=pi/);
-    const id = new URL(page.url()).searchParams.get("conversation");
-    expect(id).toMatch(/^pi:/);
-    await page
-      .getByRole("textbox", { name: "Viesti Pi:lle" })
-      .fill("synthetic live child");
-    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-    await expect
-      .poll(async () => {
-        const response = await page.request.get(
-          `/api/v1/conversations/${id?.slice(3)}/status`,
-        );
-        const observed = await response.json();
-        return observed.native_history;
-      })
-      .toBe("present");
-    let posts = 0;
-    page.on("request", (request) => {
-      if (request.url().endsWith("/continue")) posts++;
-    });
-    await page.route(
-      `**/api/v1/conversations/${id?.slice(3)}/status*`,
-      async (route) => {
-        const response = await route.fetch();
-        const data = await response.json();
-        // A present JSONL and uncertain RPC state do not constitute proof
-        // that the owner fence can be reacquired.
-        await route.fulfill({
-          response,
-          json: {
-            ...data,
-            state: "uncertain",
-            native_history: "present",
-            continuation: proof,
-          },
-        });
-      },
-    );
-    await refreshConversation(page);
-    await expect(page.getByText(reason)).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Jatka keskustelua" }),
-    ).toHaveCount(0);
-    expect(posts).toBe(0);
-    // Refresh can leave a background status request in flight at test exit.
-    await page.unrouteAll({ behavior: "ignoreErrors" });
-  });
-
-test("@browser-conversation ended browser conversation continues explicitly without reposting", async ({
-  page,
-}) => {
-  const id = await endedConversation(page);
-  // A normal focus refresh must not revoke a proven continuation before use.
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect(
-    page.getByRole("button", { name: "Jatka keskustelua" }),
-  ).toBeVisible();
-  let continuations = 0,
-    accepted = 0,
-    refused = 0,
-    sends = 0;
-  let refusal: string | undefined;
-  page.on("request", (r) => {
-    if (r.url().endsWith("/continue")) {
-      continuations++;
-      expect(r.postData()).toBeNull();
-      expect(r.headers()["x-agent-host-csrf"]).toBeTruthy();
-    }
-    if (r.url().endsWith("/send")) sends++;
-  });
-  // Read the definitive refusal before the browser can navigate away from a
-  // response body. A failed read or any other denial must not cause a retry.
-  await page.route(
-    `**/api/v1/conversations/${id.slice(3)}/continue`,
-    async (route) => {
-      const upstream = await route.fetch();
-      if (upstream.status() === 200) accepted++;
-      if (upstream.status() === 409) {
-        refused++;
-        refusal = (await upstream.json()).error?.code;
-      }
-      await route.fulfill({ response: upstream });
-    },
-  );
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const delivered = page.waitForResponse(
-      (r) =>
-        r.request().method() === "POST" &&
-        new URL(r.url()).pathname ===
-          `/api/v1/conversations/${id.slice(3)}/continue`,
-    );
-    await page.getByRole("button", { name: "Jatka keskustelua" }).click();
-    const response = await delivered;
-    if (response.status() === 200) break;
-    expect(response.status()).toBe(409);
-    expect(refusal).toBe("control_uncertain");
-    expect(attempt).toBeLessThan(2);
-    await expect(
-      page.getByText("Jatkaminen estetty", { exact: true }),
-    ).toBeVisible();
-    await refreshConversation(page);
-    await expect(page.locator(".ah-agent-header")).toContainText(
-      "Ei käynnissä",
-      { timeout: 20000 },
-    );
-    await expect(
-      page.getByRole("button", { name: "Jatka keskustelua" }),
-    ).toBeVisible();
-  }
-  await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-  ).toBeVisible();
-  await expect(page.getByText(/Jatkaminen kuitattiin/)).toBeVisible();
-  expect(accepted).toBe(1);
-  expect(refused).toBe(continuations - 1);
-  expect(sends).toBe(0);
-  const status = await (
-    await page.request.get(`/api/v1/conversations/${id.slice(3)}/status`)
-  ).json();
-  expect(status.state).toBe("idle");
-  await page.goto("/agents/pi:11111111-1111-4111-8111-111111111111");
-  await expect(
-    page
-      .locator(".ah-read-only-footer")
-      .getByText("Vain luku", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Jatka keskustelua" }),
-  ).toHaveCount(0);
-});
-
-test("@browser-conversation refused continuation never reposts after reload", async ({
-  page,
-}) => {
-  const id = await endedConversation(page);
-  let attempts = 0;
-  await page.route(
-    `**/api/v1/conversations/${id.slice(3)}/continue`,
-    (route) => {
-      attempts++;
-      return route.fulfill({
-        status: 409,
-        contentType: "application/json",
-        body: JSON.stringify({
-          schema_version: 1,
-          error: {
-            code: "writer_conflict",
-            message: "not available",
-            retryable: false,
-            correlation_id: "req_00000000",
-          },
-        }),
-      });
-    },
-  );
-  await page.getByRole("button", { name: "Jatka keskustelua" }).click();
-  await expect(page.getByText(/aktiivinen kirjoittaja/)).toBeVisible();
-  await page.reload();
-  await expect(
-    page.getByRole("button", { name: "Jatka keskustelua" }),
-  ).toHaveCount(1);
-  await refreshConversation(page);
-  expect(attempts).toBe(1);
-});
-
-test("@browser-conversation lost continuation reply reconciles status and history without another POST", async ({
-  page,
-}) => {
-  const id = await endedConversation(page);
-  let attempts = 0;
-  await page.route(
-    `**/api/v1/conversations/${id.slice(3)}/continue`,
-    async (route) => {
-      attempts++;
-      const response = await route.fetch(); // native write succeeded, browser reply lost
-      expect(response.status()).toBe(200);
-      await route.fulfill({
-        status: 503,
-        contentType: "application/json",
-        body: "{}",
-      });
-    },
-  );
-  await page.route(`**/api/v1/agents/${id}/history*`, (route) =>
-    route.fulfill({ status: 503, contentType: "application/json", body: "{}" }),
-  );
-  await page.getByRole("button", { name: "Jatka keskustelua" }).click();
-  await expect(
-    page.getByText("Jatkamisen tulos epävarma", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-  ).toHaveCount(0);
-  await page.unroute(`**/api/v1/agents/${id}/history*`);
-  await refreshConversation(page);
-  await expect(page.getByText(/Jatkaminen kuitattiin/)).toBeVisible();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-  ).toBeVisible();
-  expect(attempts).toBe(1);
-});
-
-test("@browser-conversation status reconciles before a late continuation reply", async ({
-  page,
-}) => {
-  const id = await endedConversation(page);
-  let release!: () => void;
-  const held = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  let observed!: (response: import("@playwright/test").APIResponse) => void;
-  let failed!: (error: unknown) => void;
-  let result = new Promise<import("@playwright/test").APIResponse>(
-    (resolve, reject) => {
-      observed = resolve;
-      failed = reject;
-    },
-  );
-  let attempts = 0;
-  await page.route(
-    `**/api/v1/conversations/${id.slice(3)}/continue`,
-    async (route) => {
-      attempts++;
-      try {
-        const response = await route.fetch(); // native write or definite refusal
-        observed(response);
-        if (response.status() === 200) await held;
-        await route.fulfill({ response });
-      } catch (error) {
-        failed(error);
-        throw error;
-      }
-    },
-  );
-  try {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const delivered = page.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          new URL(response.url()).pathname ===
-            `/api/v1/conversations/${id.slice(3)}/continue`,
-      );
-      await page.getByRole("button", { name: "Jatka keskustelua" }).click();
-      const response = await result;
-      if (response.status() === 200) {
-        // Status can settle from the journal before this successful HTTP reply.
-        await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-        release();
-        expect((await delivered).status()).toBe(200);
-        await expect(
-          page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-        ).toBeEnabled();
-        await expect(
-          page.getByText("Jatkamisen tulos epävarma", { exact: true }),
-        ).toHaveCount(0);
-        expect(attempts).toBe(attempt + 1); // no browser retry or duplicate POST
-        break;
-      }
-      // A refused write did not start a child. Only control_uncertain may be
-      // retried, and only after a fresh affirmative native census in the UI.
-      expect(response.status()).toBe(409);
-      expect((await response.json()).error.code).toBe("control_uncertain");
-      expect((await delivered).status()).toBe(409);
-      expect(attempt).toBeLessThan(2);
-      await expect(
-        page.getByText("Jatkaminen estetty", { exact: true }),
-      ).toBeVisible();
-      await refreshConversation(page);
-      await expect(page.locator(".ah-agent-header")).toContainText(
-        "Ei käynnissä",
-        {
-          timeout: 20000,
-        },
-      );
-      await expect(
-        page.getByRole("button", { name: "Jatka keskustelua" }),
-      ).toBeVisible();
-      result = new Promise((resolve, reject) => {
-        observed = resolve;
-        failed = reject;
-      });
-    }
-  } finally {
-    release();
-  }
-});
-
-test("@browser-conversation stale recovery during continuation never strands controls or reposts", async ({
-  page,
-}) => {
-  const id = await endedConversation(page);
-  let release!: () => void;
-  const held = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  let wrote!: () => void;
-  const written = new Promise<void>((resolve) => {
-    wrote = resolve;
-  });
-  let posts = 0;
-  await page.route(
-    `**/api/v1/conversations/${id.slice(3)}/continue`,
-    async (route) => {
-      posts++;
-      const response = await route.fetch();
-      expect(response.status()).toBe(200);
-      wrote();
-      await held;
-      await route.fulfill({ response });
-    },
-  );
-  try {
-    await page.getByRole("button", { name: "Jatka keskustelua" }).click();
-    await written;
-    await page.route("**/api/v1/snapshot", (route) =>
-      route.fulfill({ status: 503, body: "unavailable" }),
-    );
-    await page.getByRole("button", { name: "Päivitä", exact: true }).click();
-    await expect(
-      page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
-    ).toBeVisible();
-    release(); // response settles during stale: the old finally cannot clear busy
-    await page.unroute("**/api/v1/snapshot");
-    await page.getByRole("button", { name: /Yhdistä|Yritä uudelleen/ }).click();
-    await expect(
-      page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
-    ).toHaveCount(0);
-    await expect(
-      page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-    ).toBeEnabled();
-    expect(posts).toBe(1);
-  } finally {
-    release();
-  }
 });
 
 test("@browser-conversation model authentication error offers sign-in without leaking provider text", async ({
@@ -2569,7 +2190,7 @@ test("@browser-conversation home card blocks archive during Pi work, shows failu
 test("@browser-conversation archive hides navigation before host reply and rolls back refusal", async ({
   page,
 }) => {
-  await endedConversation(page);
+  await stoppedConversation(page);
   const row = page
     .getByRole("navigation")
     .getByRole("link", { name: "synthetic end then continue" });
@@ -2686,7 +2307,7 @@ test("@browser-conversation failed close restores the conversation", async ({
 test("@browser-conversation archive stays hidden across delayed successful host reply", async ({
   page,
 }) => {
-  await endedConversation(page);
+  await stoppedConversation(page);
   const row = page
     .getByRole("navigation")
     .getByRole("link", { name: "synthetic end then continue" });
@@ -2942,7 +2563,7 @@ for (const width of [1280, 390]) {
 test("@conversation-details archive undo returns to conversation; offer pauses and expires", async ({
   page,
 }) => {
-  const id = await endedConversation(page);
+  const id = await stoppedConversation(page);
   await page.clock.install();
   await archiveFromConfirmedView(page, () =>
     page.getByRole("button", { name: "Arkistoi", exact: true }),
@@ -2969,7 +2590,7 @@ test("@conversation-details archive undo returns to conversation; offer pauses a
 test("@conversation-details archive offer expires after eight unpaused seconds", async ({
   page,
 }) => {
-  await endedConversation(page);
+  await stoppedConversation(page);
   // Install before the toast schedules its timeout: a later installation does
   // not move already-scheduled native timers onto Playwright's clock.
   await page.clock.install();

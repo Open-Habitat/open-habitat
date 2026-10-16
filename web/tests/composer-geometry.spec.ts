@@ -59,9 +59,10 @@ for (const width of [1440, 390]) {
       await plus.click();
       const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
       try {
-        await expect(editor).toBeDisabled();
-        // The embedded picker and textarea are one surface even when the
-        // editor is unavailable; no square disabled slab inside the wrapper.
+        // While the conversation is created the field is already usable, and
+        // the embedded picker and textarea are one surface (no inner slab).
+        await expect(editor).toBeEnabled();
+        await expect(editor).toBeFocused();
         expect(
           await editor.evaluate((e) => getComputedStyle(e).backgroundColor),
         ).toBe("rgba(0, 0, 0, 0)");

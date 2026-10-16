@@ -132,6 +132,32 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
     // Measure the visible surfaces, not the composer's padded wrapper. The
     // same card-to-control rhythm must survive both footer types and widths.
     const history = await page.context().newPage();
+    // A browser conversation opens with its composer; present this one as
+    // terminal history so the read-only footer can be measured beside it.
+    await history.route("**/api/v1/snapshot", async (route) => {
+      const response = await route.fetch();
+      const body = await response.json();
+      for (const agent of body.agents)
+        if (agent.agent_id === id) {
+          agent.control = "read_only";
+          agent.capabilities = {
+            agent_resume: {
+              state: "unsupported",
+              reason_code: "read_only_slice",
+            },
+          };
+        }
+      await route.fulfill({ response, json: body });
+    });
+    await history.route("**/api/v1/conversations", async (route) => {
+      if (route.request().method() !== "GET") return route.continue();
+      const response = await route.fetch();
+      const body = await response.json();
+      body.sessions = body.sessions.filter(
+        (s: { agent_id: string }) => s.agent_id !== id,
+      );
+      await route.fulfill({ response, json: body });
+    });
     await history.goto(`/agents/${id}`);
     await expect(history.locator(".ah-read-only-footer")).toBeVisible();
     await expect(history.locator(".ah-recap")).toBeVisible();
@@ -309,6 +335,8 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
   await expect(editor).toBeVisible();
+  // The field is usable before creation replies; the route then names Pi's ID.
+  await expect(page).toHaveURL(/conversation=pi:/);
   const agent = new URL(page.url()).searchParams.get("conversation");
   expect(agent).toMatch(/^pi:/);
   await editor.fill("Tutki synteettinen työtila");
@@ -919,7 +947,11 @@ test("@lab fresh replies and exhausted older history survive paging and recovery
     204,
   );
   await reconnected;
-  await expect(editor).not.toBeVisible({ timeout: 20000 });
+  // Without its Pi the conversation stays writable; nothing restarts Pi yet.
+  await expect(editor).toBeEnabled({ timeout: 20000 });
+  await expect(
+    page.getByRole("button", { name: "Jatka keskustelua" }),
+  ).toHaveCount(0);
   await expect(
     page
       .getByRole("region", { name: "Keskusteluhistoria" })
@@ -928,9 +960,10 @@ test("@lab fresh replies and exhausted older history survive paging and recovery
   await expect(older).toHaveCount(0);
 });
 
-test("@lab fake-Pi crash leaves the turn readable but blocks another send", async ({
+test("@lab fake-Pi crash leaves the turn readable and the next send starts Pi again", async ({
   page,
 }) => {
+  test.setTimeout(60000);
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
@@ -949,34 +982,22 @@ test("@lab fake-Pi crash leaves the turn readable but blocks another send", asyn
   ).toBeVisible({
     timeout: 20000,
   });
-  await expect(page.locator("main").getByText("Lähetys epävarma")).toBeVisible({
-    timeout: 20000,
-  });
+  // The crashed turn's outcome stays uncertain and is never resent, but the
+  // conversation is not read-only: there is no explicit continuation.
+  await expect(editor).toBeEnabled({ timeout: 20000 });
   await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }),
+    page.getByRole("button", { name: "Jatka keskustelua" }),
   ).toHaveCount(0);
-  // The live transition to uncertain does not run an expensive continuation
-  // proof on a journal event. A deliberate status check can request one.
-  // A just-crashed child can leave the native history unsettled for the first
-  // explicit proof. Retry the status check, never the message or continuation.
-  await expect(async () => {
-    await page
-      .getByRole("button", { name: "Tarkista keskustelun tila" })
-      .click();
-    await expect(
-      page.getByRole("button", { name: "Jatka keskustelua" }),
-    ).toBeVisible({ timeout: 1000 });
-  }).toPass({ intervals: [1000, 1500, 2000], timeout: 15000 });
   await page.reload();
   await expect(
     page.getByRole("heading", { level: 1, name: "kaadu nyt" }),
   ).toBeVisible();
+  await expect(editor).toBeEnabled();
+  await editor.fill("jatketaan");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "Jatka keskustelua" }),
-  ).toBeVisible();
+    page.getByText('Selvä. Kysyit: "jatketaan".', { exact: false }),
+  ).toBeVisible({ timeout: 30000 });
 });
 
 test("@lab slow turn explains work and stop requires an explicit confirmation", async ({

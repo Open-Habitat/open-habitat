@@ -8,7 +8,6 @@ import {
   AssistantMessage,
   Composer,
   ConversationTimeline,
-  EndedConversationControl,
   LiveToolRow,
   NativeQuestion,
   QueuePanel,
@@ -16,10 +15,12 @@ import {
   SupportedQuestion,
   UncertainCommandCard,
   UserMessage,
+  WaitingMessage,
 } from "./Conversation";
 import { Markdown } from "./Markdown";
 import { AgentHeader } from "./Navigation";
 import { PiToolUse } from "./PiBlocks";
+import { InlineNotice } from "./Status";
 import { WorkingProgress } from "./WorkingProgress";
 
 const noop = () => {};
@@ -324,13 +325,45 @@ export const InterruptedStreamDark: Story = {
   render: disconnectedComposer,
   globals: { theme: "dark" },
 };
-// Both themes render the production continuation control, never a story-only copy.
-export const EndedBrowserConversationLight: Story = {
-  render: () => <EndedConversationControl state="ready" onContinue={noop} />,
+// Messages sent before Pi runs: the production waiting bubbles and the
+// composer's Stop, in both themes (Kupla odottaa, Jari 16.10.2026).
+const waitingForPi = () => (
+  <main className="ah-conversation-frame" style={{ minHeight: 360 }}>
+    <ol className="ah-feed">
+      <li data-kind="user">
+        <WaitingMessage
+          text="Aja testit ja korjaa, mitä löytyy."
+          state="waiting"
+          onCopy={noop}
+        />
+      </li>
+      <li data-kind="user">
+        <WaitingMessage
+          text="Lisää README:hen esimerkki."
+          state="waiting"
+          onCopy={noop}
+        />
+      </li>
+    </ol>
+    <Composer
+      value=""
+      activity="idle"
+      selectedWorkingMode="follow_up"
+      onChange={noop}
+      onSendNow={noop}
+      onSteer={noop}
+      onFollowUp={noop}
+      onModeChange={noop}
+      onStopWaiting={noop}
+    />
+  </main>
+);
+export const WaitingForPiLight: Story = {
+  render: waitingForPi,
   globals: { theme: "light" },
 };
-export const EndedBrowserConversationDark: Story = {
-  render: () => <EndedConversationControl state="ready" onContinue={noop} />,
+export const WaitingForPiDark: Story = {
+  render: waitingForPi,
   globals: { theme: "dark" },
 };
 // The header, queue and footer use the same production components in both themes.
@@ -406,24 +439,41 @@ export const V2WorkingDark: Story = {
   render: v2Conversation,
   globals: { theme: "dark" },
 };
-export const WriterConflict: Story = {
+export const PiStartFailed: Story = {
   render: () => (
-    <EndedConversationControl state="writer_conflict" onContinue={noop} />
+    <main>
+      <ol className="ah-feed">
+        <li data-kind="user">
+          <WaitingMessage
+            text="Aja testit ja korjaa, mitä löytyy."
+            state="failed"
+            onCopy={noop}
+          />
+        </li>
+      </ol>
+      <InlineNotice
+        title="Pi ei käynnistynyt."
+        description="Viesti on tallessa."
+        tone="danger"
+        actions={[
+          { label: "Yritä uudelleen", onPress: noop },
+          { label: "Muokkaa", onPress: noop },
+        ]}
+      />
+    </main>
   ),
 };
-export const TerminalHistory: Story = {
+export const UncertainDelivery: Story = {
   render: () => (
-    <EndedConversationControl state="read_only_history" onContinue={noop} />
-  ),
-};
-export const UnprovenControl: Story = {
-  render: () => (
-    <EndedConversationControl state="control_uncertain" onContinue={noop} />
-  ),
-};
-export const UncertainContinuation: Story = {
-  render: () => (
-    <EndedConversationControl state="uncertain" onContinue={noop} />
+    <ol className="ah-feed">
+      <li data-kind="user">
+        <WaitingMessage
+          text="Viesti, jonka toimitusta daemonin uudelleenkäynnistys ei kertonut."
+          state="uncertain"
+          onCopy={noop}
+        />
+      </li>
+    </ol>
   ),
 };
 // Every story uses the production components and the Storybook light/dark toolbar.

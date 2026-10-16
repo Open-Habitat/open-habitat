@@ -3,11 +3,8 @@ import type { NavigateFunction } from "react-router";
 import { InlineNotice } from "../components";
 import {
   abortTurn,
-  ContinuationRefused,
-  type ContinueRefusal,
   clearQueue,
   closeEmpty,
-  continueConversation,
   createTracked,
   NotAdmitted,
   queueMessage,
@@ -30,24 +27,20 @@ export function useConversationActions({
   ambiguous,
   busy,
   current,
-  continuation,
   draft,
   receipt,
   sendObservation,
   problem,
-  controlled,
   serverUnavailable,
   alive,
   generation,
   submittedKey,
   sendKey,
-  continuationKey,
   uncertainKey,
   inFlightSend,
   setBusy,
   setReceipt,
   setSendObservation,
-  setContinuation,
   setConfirmStop,
   changeDraft,
   refresh,
@@ -62,26 +55,20 @@ export function useConversationActions({
   ambiguous: string | null;
   busy: boolean;
   current?: Status;
-  continuation?: "pending" | "uncertain" | ContinueRefusal;
   draft: string;
   receipt: string;
   sendObservation?: Observation;
   problem: string;
-  controlled: boolean;
   serverUnavailable: boolean;
   alive: RefObject<boolean>;
   generation: RefObject<number>;
   submittedKey: string;
   sendKey: string;
-  continuationKey: string;
   uncertainKey: string;
   inFlightSend: RefObject<string | undefined>;
   setBusy: Dispatch<SetStateAction<boolean>>;
   setReceipt: Dispatch<SetStateAction<string>>;
   setSendObservation: Dispatch<SetStateAction<Observation | undefined>>;
-  setContinuation: Dispatch<
-    SetStateAction<"pending" | "uncertain" | ContinueRefusal | undefined>
-  >;
   setConfirmStop: Dispatch<SetStateAction<boolean>>;
   changeDraft: (value: string) => void;
   refresh: (proof?: boolean, history?: boolean) => Promise<void>;
@@ -146,59 +133,6 @@ export function useConversationActions({
       if (alive.current && !handedOff) setBusy(false);
     }
   };
-  const continueEnded = async () => {
-    if (
-      busy ||
-      !csrf ||
-      !id ||
-      !current ||
-      current.continuation !== "eligible" ||
-      continuation ||
-      !controlled ||
-      serverUnavailable
-    )
-      return;
-    const version = generation.current;
-    setBusy(true);
-    let sent = false;
-    try {
-      const token = csrf;
-      if (!alive.current || version !== generation.current) return;
-      // Persist before the native write; reload must not quietly repost it.
-      sessionStorage.setItem(continuationKey, "uncertain");
-      setContinuation("pending");
-      sent = true;
-      await continueConversation(id, workspace.workspace_id, token);
-      if (
-        !alive.current ||
-        version !== generation.current ||
-        sessionStorage.getItem(continuationKey) !== "uncertain"
-      )
-        return;
-      setContinuation("uncertain");
-      setReceipt(
-        "Jatkaminen kuitattiin. Tarkistetaan tila ja historia; aiemman vuoron tulos on epävarma.",
-      );
-      void refresh(false, true);
-    } catch (error) {
-      if ((error as Error).message === "identity_lost") onLogin();
-      if (!alive.current || version !== generation.current) return;
-      if (sent && sessionStorage.getItem(continuationKey) !== "uncertain")
-        return;
-      if (error instanceof ContinuationRefused) {
-        // A 409 is a definite refusal, not an ambiguous write. Retain its
-        // explanation until the person's next explicit status check.
-        sessionStorage.removeItem(continuationKey);
-        setContinuation(error.code);
-      } else if (sent) {
-        setContinuation("uncertain");
-      } else {
-        setReceipt("Istuntoa ei voitu vahvistaa. Jatkamista ei lähetetty.");
-      }
-    } finally {
-      if (alive.current && version === generation.current) setBusy(false);
-    }
-  };
   const submit = async () => {
     if (
       busy ||
@@ -207,7 +141,6 @@ export function useConversationActions({
       (current.state !== "idle" && current.state !== "rejected") ||
       !draft.trim() ||
       ambiguous ||
-      continuation ||
       serverUnavailable ||
       problem ||
       sessionStorage.getItem(sendKey) ||
@@ -417,7 +350,6 @@ export function useConversationActions({
   );
   return {
     start,
-    continueEnded,
     submit,
     submitQueue,
     clearNativeQueue,

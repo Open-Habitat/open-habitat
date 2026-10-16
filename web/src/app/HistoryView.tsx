@@ -6,7 +6,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { useNavigate } from "react-router";
 import {
   AgentHeader,
   AssistantMessage,
@@ -35,12 +34,7 @@ import {
 import { RecapCard } from "../components/RecapCard";
 import type { BashFailure } from "./bashFailure";
 import { type ConversationStore, useWindow } from "./conversationStore";
-import {
-  continueConversation,
-  historyEligibility,
-  readRecap,
-  retitleHistory,
-} from "./conversations";
+import { historyEligibility, readRecap, retitleHistory } from "./conversations";
 import {
   type BlockChunk,
   type HistoryBlock,
@@ -1290,11 +1284,9 @@ function HistoryViewContent({
   archiveBusy?: boolean;
 }) {
   const window = useWindow(store, agent.agent_id);
-  const navigate = useNavigate();
   const [eligibility, setEligibility] =
     useState<Awaited<ReturnType<typeof historyEligibility>>>();
   const [actionError, setActionError] = useState("");
-  const [continuing, setContinuing] = useState(false);
   useEffect(() => {
     let controller = new AbortController();
     const probe = () => {
@@ -1629,38 +1621,11 @@ function HistoryViewContent({
                 : "Tätä keskustelua ei voi ohjata selaimesta."}
           </p>
         </div>
-        {eligibility?.continuation === "eligible" &&
-        mayWrite &&
-        agent.archive !== "archived" ? (
-          <Button
-            label={continuing ? "Jatketaan…" : "Jatka keskustelua"}
-            pending={continuing}
-            onPress={() => {
-              if (!csrf || continuing) return;
-              setContinuing(true);
-              setActionError("");
-              void continueConversation(agent.agent_id, workspaceId, csrf)
-                .then(() =>
-                  navigate(
-                    `/workspaces/${workspaceId}?conversation=${agent.agent_id}`,
-                  ),
-                )
-                .catch((error) => {
-                  if ((error as Error).message === "identity_lost") onLogin();
-                  else
-                    setActionError(
-                      "Jatkaminen ei onnistunut. Tarkista keskustelun tila ennen uutta yritystä.",
-                    );
-                  setEligibility(undefined);
-                })
-                .finally(() => setContinuing(false));
-            }}
-          />
-        ) : (
-          <LinkRow href={`/workspaces/${workspaceId}`} kind="inline">
-            Uusi keskustelu
-          </LinkRow>
-        )}
+        {/* A browser conversation is never continued from here: once it is
+            visible again it opens with its composer, and Pi starts on send. */}
+        <LinkRow href={`/workspaces/${workspaceId}`} kind="inline">
+          Uusi keskustelu
+        </LinkRow>
       </div>
       <ProcessTraySlot />
     </ConversationFrame>

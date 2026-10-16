@@ -86,7 +86,7 @@ function Example({ theme }: { theme: "light" | "dark" }) {
         Agentti
       </LinkRow>
       <LinkRow href="/agents/example" kind="return">
-        Jatka keskustelua
+        Palaa keskusteluun
       </LinkRow>
       <Menu
         label="Tilivalikko"

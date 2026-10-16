@@ -4,12 +4,12 @@ A conversation is a Pi session, identified by Pi's session ID and saved in a
 JSONL file in the user's home. The daemon starts Pi in a workspace and controls
 it through RPC. The browser sends commands through the daemon and follows the
 response while Pi writes its own history. Closing the browser leaves Pi
-working; after the daemon ends, the person can explicitly continue a browser
-conversation from its saved history.
+working. When the daemon ends, a browser conversation stays readable and
+writable: the next message the person sends starts Pi on its saved history.
 
 ```mermaid
 flowchart LR
-  B["Browser"] -->|"start, send, interrupt, continue"| D["User's daemon"]
+  B["Browser"] -->|"start, send, interrupt, take back"| D["User's daemon"]
   D -->|"RPC"| P["Pi child in workspace"]
   P -->|"writes"| H["Native session history"]
   T["Pi in terminal"] -->|"writes its own sessions"| H
@@ -55,9 +55,11 @@ neither the intent nor the prompt is automatically replayed. This is not a
 model switch for an existing conversation with messages. Neither startup flags
 nor the first-message choice changes Pi's global default.
 
-Before admitting the first send, the controller reads the new child's native
-`get_state` model and thinking level. It retains that observation in the existing
-per-child `startup_choice` field until native history supplies the settings.
+Creation replies as soon as the child exists; Pi's own start can take many
+seconds and nobody waits for it. Before delivering the first message, the
+controller reads the new child's native `get_state` model and thinking level.
+It retains that observation in the existing per-child `startup_choice` field
+until native history supplies the settings.
 A later global-default change therefore cannot relabel an already-running empty
 session. Unknown native state is shown as unknown, not inferred from a browser
 catalog. This is transient control state, not a second settings/history store;
@@ -73,7 +75,7 @@ started while authentication is unavailable.
 
 The daemon records a browser conversation's workspace and locks its session
 while its Pi child runs. The lock survives a daemon crash with the Pi process,
-but terminal Pi does not take it. Before continuing or changing saved-history
+but terminal Pi does not take it. Before resuming Pi or changing saved-history
 presentation, the daemon checks processes belonging to the same Unix user
 for a native writer. An uncertain observation blocks the write. This is not
 an atomic promise: a terminal Pi started after the check, or an unrecognized
@@ -93,11 +95,11 @@ the RPC channel. Closing a freshly started, still-empty browser conversation
 also removes its native session file, but only after reaping Pi and verifying
 that no user message was saved on any branch. An unknown writer or changed
 history prevents removal. The terminal-writer observation has the same race
-as continuation. [HTTP API](http-api.md) lists the routes.
+as resuming on send. [HTTP API](http-api.md) lists the routes.
 
 Message commands have client-generated IDs so the browser can look up their
-receipts after a lost reply. A receipt distinguishes pending, accepted,
-rejected and uncertain outcomes. Acceptance means Pi accepted the command;
+receipts after a lost reply. A receipt distinguishes held, pending, accepted,
+rejected, cancelled and uncertain outcomes. Acceptance means Pi accepted the command;
 it does not establish that the turn finished. Receipts live in daemon memory,
 so a missing receipt after restart cannot establish rejection. The browser
 does not automatically resend an uncertain command, because Pi may already
@@ -173,36 +175,65 @@ terminal. Archiving changes only its visibility in user presentation state;
 Pi history stays in place. The daemon checks the workspace, history and
 writer again before making the change. A working or uncertain writer blocks
 archiving, while restoring visibility is possible after a daemon restart.
-Archived browser conversations must be restored before sending again; an
-explicit continuation still checks native ownership before starting Pi.
+Archived browser conversations must be restored before sending again; the
+send that starts Pi again still checks native ownership. A conversation whose
+messages wait for a starting Pi cannot be archived.
 Unreadable presentation state or missing native history is shown as unknown,
 not silently replaced with an empty archive.
 
-## Ending and continuing
+## Sending before Pi runs
+
+A message can be sent while Pi is not running: while a new conversation is
+being created, while its Pi starts, after a daemon restart, or after Pi
+stopped or crashed. The daemon holds such messages in order under the
+browser's command IDs and starts Pi if nothing is starting it. When Pi is
+ready, it receives the held texts joined by blank lines as **one** prompt, and
+every held command's receipt takes that prompt's outcome. Later messages,
+sent while Pi works, are steering or follow-ups as usual. The joined text
+shares Pi's prompt limit, so the daemon refuses a message that would exceed
+it; a refused message's text goes back to the person.
+
+Held messages are visible in the conversation status, so another tab or a
+reload draws the same waiting messages, and the browser resolves its own only
+from that list and the receipts (`held`, `pending`, `accepted`, `rejected`,
+`cancelled`). A command ID is spent when the daemon first sees it, so a
+repeated post is refused rather than held twice. Taking the messages back
+before Pi runs (`cancel_held`) returns exactly the texts the daemon still held
+and stops a Pi that was started only for them; a new conversation's own start
+continues. If Pi fails to start, the messages stay held and the conversation
+reports `start_failed`; a retry or the next message starts Pi again. Like
+receipts, held messages live only in the daemon's memory. A daemon restart
+loses them, and the browser then shows such a message as uncertain and never
+resends it.
+
+## Ending and resuming on send
 
 Browser or gateway loss leaves Pi running. A daemon restart loses its handles
 and receipts, and systemd cleans up its service processes, including Pi.
 An independently detached tool may outlive that cleanup or an interruption;
 the host does not claim that all effects of the previous work have stopped.
-Native history remains readable.
+Native history remains readable. A child that ends during a turn leaves the
+conversation `stopped` and `interrupted`: whether that work finished is not
+known, and the browser says so until the next prompt.
 
-Continuing an ended browser conversation is an explicit action. The daemon
-checks that its previous Pi child has exited, the session lock is available,
-and the recorded browser origin identifies a discoverable workspace with the
-same ID and working-directory path. This checks the current path association;
-it does not preserve a filesystem identity across directory replacement.
-The daemon also requires one readable native session with the matching ID and
-working directory, and stable content across repeated reads.
+A browser-started conversation without a running Pi opens as its readable
+native history with an enabled composer. The daemon recognises it from the
+browser-origin marker its Pi lock file carries, and the snapshot offers it as
+resumable. Opening, reading, scrolling or reconnecting never starts Pi, and
+the status read takes no lock. The next send starts Pi: the daemon checks that
+any previous child has exited, the session lock is available, and the
+recorded browser origin identifies a discoverable workspace with the same ID
+and working-directory path. This checks the current path association; it does
+not preserve a filesystem identity across directory replacement. The daemon
+also requires one readable native session with the matching ID and working
+directory, and stable content across repeated reads. It holds the lock through
+launch, and a new Pi child opens the existing session file. If ownership or
+history cannot be established, the start fails and the message stays held.
+Terminal history has no browser origin and stays read-only.
 
-The browser probes eligibility when opening an ended conversation. The daemon
-repeats these checks on the continuation request and holds the lock through
-launch, so a successful probe alone does not reserve a writer. If the checks
-succeed, a new Pi child opens the existing session file. The earlier command's
-outcome remains uncertain and no message is resent. If ownership or history
-cannot be established, the conversation stays readable without control.
-
-Implementation: `internal/daemon` owns discovery, RPC control, writer locks and
-continuation; `web/src/app` owns browser commands and their displayed outcomes.
+Implementation: `internal/daemon` owns discovery, RPC control, writer locks,
+held messages and resuming; `web/src/app` owns browser commands and their
+displayed outcomes.
 
 Decisions behind this page: ADR 0001, ADR 0003, ADR 0010.
 
