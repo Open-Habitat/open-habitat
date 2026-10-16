@@ -59,7 +59,7 @@ failures (archive restore observation and host-outage reconnect). Both failed
 cases passed together in isolation (one worker, 9 seconds) with no code change.
 Per the worker brief, these isolated transient failures do not block landing.
 This is not a clean-gate pass or receipt. Focused browser suite: 5/5 passed;
-fast web checks passed. Deployment awaits final merge/push. Live checks
+fast web checks passed. The first deployment is recorded below. Live checks
 are listed in KOKEILTAVAA.md; no live-user screenshots were captured.
 
 
@@ -75,3 +75,14 @@ This is release/route evidence, not a claim that real provider use or browser
 sign-in was tested. Later workspace integration retains this feature and fixes
 its query-only archive focus timing; final combined validation is recorded with
 @implement-workspace-page.
+
+
+## Final combined validation
+
+The later workspace integration passed the complete clean gate on `d8a7d74c`,
+tree `7929411c7af6aa12b07869287f509f405264db0a`: 133 app tests, 126 component
+tests, 176 normal browser cases (two intentional visual skips), all 31 lab cases,
+Go/race/contracts/docs/Storybook and packaging. No phase was reused. Its matching
+workspace deployment **pilot.147** was verified in 41.408 s and retains these
+conversation details, including the query-only archive focus repair and unseen
+count during work. Exact receipt and limits are in @implement-workspace-page.

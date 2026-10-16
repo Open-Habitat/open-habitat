@@ -2,7 +2,9 @@
 
 Implemented direction 1, **Keskustelut edellä**, from the accepted workspace
 round. The page leads with the same native recap cards as home, ordered by
-attention. Valmiit and Arkisto are folded. There is no worktree-agent placeholder
+attention. Valmiit and Arkisto are folded. The archive remains in App's existing
+source-aware workspace section (outside WorkspacePage), retaining its observation-
+token, unreadable-history and restore guards; restoration does not start Pi. There is no worktree-agent placeholder
 group or + chooser: the page and sidebar + create a default-agent conversation
 directly. The shared … menu offers copy path, GitHub (when observed), display
 name, hide, and disabled deletion with its reason. Sidebar/home settings intents
@@ -111,8 +113,7 @@ shared UID's inotify-instance limit (Vite EMFILE), not an assertion failure;
 its retry uses polling and reduced browser concurrency. With available RAM
 below 2 GiB, further heavy checks wait rather than changing shared services.
 
-Full clean gate, feature merges, push and test-server deployment are recorded
-below once verified. This result claims synthetic same-UID/browser evidence,
+The final clean gate and delivery evidence follow below. This result claims synthetic same-UID/browser evidence,
 not distinct-UID isolation, real provider behavior or live sign-in.
 
 ## Final integration iterations
@@ -147,3 +148,54 @@ RAM was checked before heavy runs (6–7 GiB available for the final iterations)
 Private polling avoids the shared inotify limit; serial heavy phases avoid
 adding our own Go process churn during browser native-source census. No machine
 limit, household service or other worker's processes were changed.
+
+
+## Final clean gate
+
+The complete clean gate **passed** on commit
+`d8a7d74c0b3d4ef996767ca95cecada7c4daaeaf`, tree
+`7929411c7af6aa12b07869287f509f405264db0a`, in **526 s**, with no phase reuse:
+
+- 133 app tests and 126 component tests; format, lint and typecheck.
+- 176 normal browser cases passed, two intentional opt-in visual skips.
+- All 31 lab cases passed, including publication, drawer navigation, Git layer,
+  direct creation, archive geometry and the integrated opening/extension fixes.
+- Go/race, generated contracts, fixtures, docs, licenses, Storybook and the VM
+  fixture self-test passed. Root-only live VM boot/isolation is not implied.
+- Packaging: 2500-entry native fixture, byte-identical archives, verification,
+  re-signed unsafe unit/inventory rejection, relocation and tamper rejection.
+- Issue doctor, generated drift and clean-tree checks passed.
+
+Command: `CHOKIDAR_USEPOLLING=1 OH_GATE_SERIAL_HEAVY=1 OH_PORT_BASE=27700
+OH_BROWSER_WORKERS=2 ./scripts/ci-local.sh --clean --json` (one shell command).
+Receipt in the shared Git directory:
+`open-habitat-gate-receipts/7929411c7af6aa12b07869287f509f405264db0a.json`.
+Detailed local log: `/var/tmp/oh-workspace-complete-clean-gate.log`.
+Later evidence/closure commits are documentation-only, not a claim of a clean
+gate receipt for a different tree.
+
+
+## Delivery
+
+The conversation feature was delivered first at `05775a7f` / pilot.140. The
+workspace feature followed as a guarded fast-forward into clean main and a
+non-force fetch/rebase/push of **d8a7d74c0b3d4ef996767ca95cecada7c4daaeaf**. The standing watcher deployed
+it as **0.0.0-pilot.147**: `verified`, `ungated`, `within_limit`,
+**41.408 s**. The exact deployed tree matches the clean gate above.
+The watcher's normal disposable-test policy is ungated even though this runnable
+tree has a clean gate receipt.
+
+Archive SHA-256: `51a1b8c80f5d0ee5f48bc92586e4448d269e7f184aa1cdfde35a92f1cee1c7ff`.
+Manifest SHA-256: `1bc6947c2d04b56f2fd3df718988ebeae3cd225713e0daa28bb4bb0905bfcb4b`.
+Operator receipt:
+`~/.local/state/open-habitat-test-watch/release-d8a7d74c0b3d4ef996767ca95cecada7c4daaeaf-attempt-4/release-test-receipt.json`.
+Three pre-staging attempts were refused by transient Fleetrepo cleanliness;
+automatic watcher backoff recovered without touching another worker's edits or
+starting a second operator. No guest stage had run in those refused attempts.
+Anonymous public curl probes returned **200** for `/healthz` and `/`. Python's
+default urllib client received an edge 403; no access policy was changed.
+These are deployment/public-route checks, not real browser login or provider
+turns. Jari's remaining authenticated checks are in `KOKEILTAVAA.md`.
+
+No follow-up issue was filed. The final Taskfleet merge closes exact run
+`01m51na4j4jxs0v685269kx0re` after these evidence-only updates are pushed.

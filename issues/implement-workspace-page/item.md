@@ -3,13 +3,17 @@ created: 2026-10-16
 updated: 2026-10-16
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: high
 lane: web
 lane_seq: 4
 collision: [web/src/app/, web/src/components/]
 blocked_by: ['@implement-conversation-details']
 preparation: ready
+commits:
+- hash: d8a7d74c0b3d4ef996767ca95cecada7c4daaeaf
+  summary: verified sequential test-server delivery
+closed: 2026-10-16
 ---
 
 # Implement workspace page (Keskustelut edellä)
@@ -22,6 +26,6 @@ Implement the workspace page that Jari accepted on 2026-10-16: direction 1, **Ke
 - The … menu is as prototyped.
 
 ## Acceptance Criteria
-- [ ] Matches the round in lab screenshots (desktop and phone, light and dark), with deviations justified.
-- [ ] Browser tests for the Git pill and layer, + creating a conversation directly, and the … menu.
-- [ ] Deployed, with live checks in KOKEILTAVAA.md.
+- [x] Matches the round in lab screenshots (desktop and phone, light and dark), with deviations justified.
+- [x] Browser tests for the Git pill and layer, + creating a conversation directly, and the … menu.
+- [x] Deployed, with live checks in KOKEILTAVAA.md.
