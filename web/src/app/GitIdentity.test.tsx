@@ -164,20 +164,18 @@ it("offers retry if native GitHub suggestions are temporarily unavailable", asyn
 it("does not open an unset settings identity as an editable form", async () => {
   vi.stubGlobal(
     "fetch",
-    vi
-      .fn()
-      .mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          schema_version: 1,
-          name: "",
-          email: "",
-          source: "~/.gitconfig",
-          suggested_name: "Alice",
-          suggested_email: "alice@example.invalid",
-          emails: ["alice@example.invalid"],
-        }),
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        schema_version: 1,
+        name: "",
+        email: "",
+        source: "~/.gitconfig",
+        suggested_name: "Alice",
+        suggested_email: "alice@example.invalid",
+        emails: ["alice@example.invalid"],
       }),
+    }),
   );
   render(<GitIdentity csrf="csrf" />);
   fireEvent.click(
