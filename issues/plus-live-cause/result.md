@@ -137,3 +137,9 @@ creation. Those waits now require an enabled composer before recording the
 first route and measuring warm navigation. The final paint assertion remains a
 visibility assertion: the performance test is still measuring visible retained
 content, not waiting for a new status read. No request budget was relaxed.
+
+The warm-return case passed unchanged in isolation (1/1). Its setup was corrected
+anyway rather than treating that isolated pass as a green full gate. Rebased
+cleanly onto `origin/main` at `883bfaa0`; incoming changes were issue/research
+prose only and there were no conflicts. The rebased implementation is
+`834245ca`, with the test-readiness correction in `3e72ce45`.
