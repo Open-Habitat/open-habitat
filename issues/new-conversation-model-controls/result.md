@@ -85,3 +85,39 @@ The combined-SSE lab journey also now waits for creation's asynchronous navigati
 The full gate remains **failed**, as detailed above, with no receipt or production-release claim. The real-clock archive control passed three repetitions; the original fake-clock case is left unchanged for the existing conversation-details work. This is not described as a timeout-only clean-gate exception. Landing follows `TESTING.md`'s affected-check policy.
 
 Closing uses exact run `01m51sh2vsbcs2v4r1z02ej8yj`. A teardown-safe one-shot user unit performs `/worktree-merge` and the required fetch/rebase/non-force main push, boundedly waiting for unrelated main-worktree edits without touching them. Its log is `/var/tmp/model-controls-finish-01m51sh2vsbcs2v4r1z02ej8yj.log`; a successful push writes `/var/tmp/model-controls-finished-01m51sh2vsbcs2v4r1z02ej8yj.json`. The existing test-release watcher was observed active. Signed-in live checks remain with Jari; no deployment receipt is claimed by these synthetic tests.
+
+## Workspace-page integration and landing validation
+
+The workspace-page work landed immediately before closing. I rebased rather than
+reverting its new flow. Conflicts in `App.tsx` and `PiModelSelector.tsx` were
+resolved by retaining the new workspace page, identity-fenced `createTracked`
+path, fresh native refusal/unavailability admission checks and archive-focus
+handling, while keeping the identity-scoped picker cache. Its `loadPiModels`
+export remains available on the shared schema-validating reader; admission still
+requests a fresh native observation rather than trusting cached eligibility.
+The Git and Pi-message schemas/examples were both retained and generated Go/TS
+fingerprints regenerated from their union. Both sides of the creation/cleanup
+fences remain in `ConversationActions.tsx`.
+
+The only browser-journey adaptation is to choose a per-session model in the
+newly created empty composer: the new workspace page no longer presents the old
+pre-start picker. The existing conversation-details worker's archive-focus and
+clock-test changes were preserved, not replaced by this worker's unsuccessful
+clock experiment. No feature commit was dropped. `git range-diff` was checked;
+the final rebase onto `18d3b2dc` changed only other issues/docs, with **no runnable
+file changes** relative to the tested integration commit below.
+
+Tested integration commit: `be137fdae2926b7e03b2ab1a4bdd57cf8fe66d43`, tree
+`cd69880cf6a7ab879db3e89349192a5545a7774c`:
+
+- Fast web: **137 app + 126 component tests**, formatting/lint/TypeScript passed.
+- Contract drift and validation: **37 schemas, 23 examples**, passed.
+- Focused browser selection: **9/9 passed**, including all model regressions,
+  native defaults, unsupported-model recovery, warm return and the original
+  archive expiry check with the owning worker's integration fixes.
+- Complete synthetic lab, including the new workspace page: **31/31 passed**.
+- Full daemon/gateway/contracts package race tests: passed.
+
+The earlier failed full gate is still not a clean-gate receipt for this newer
+integrated tree. All affected checks pass; live account/provider and SSH checks
+remain explicitly unverified in `KOKEILTAVAA.md`.
