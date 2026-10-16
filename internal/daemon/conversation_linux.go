@@ -67,6 +67,8 @@ type conversation struct {
 	owner                                                   *piOwnership
 	state                                                   string // idle, pending, accepted, rejected, uncertain, stopping
 	ack                                                     string // last command: pending, accepted, rejected, uncertain
+	runInitial                                              bool
+	runActive                                               bool
 	settled                                                 bool
 	dead                                                    bool
 	queueSteering, queueFollowUp                            []string
@@ -273,6 +275,12 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		snapshotError(w, 403, "cross_user_denied")
 		return
 	}
+	// Process operations have their own exact query grammar.
+	processParts := strings.Split(strings.TrimPrefix(strings.TrimPrefix(r.URL.Path, "/api/v1/conversations"), "/"), "/")
+	if len(processParts) >= 2 && processParts[1] == "processes" {
+		c.processRoutes(w, r, processParts)
+		return
+	}
 	if (r.URL.RawQuery != "" && !(r.Method == http.MethodGet && ((strings.HasSuffix(r.URL.Path, "/receipt") && len(r.URL.Query()) == 1 && len(r.URL.Query()["command_id"]) == 1 && sessionIDPattern.MatchString(r.URL.Query().Get("command_id"))) || (strings.HasSuffix(r.URL.Path, "/status") && len(r.URL.Query()) == 1 && r.URL.Query().Get("continuation") == "true" && len(r.URL.Query()["continuation"]) == 1)))) || r.URL.EscapedPath() != r.URL.Path || r.RequestURI != r.URL.RequestURI() {
 		snapshotError(w, 400, "invalid_request")
 		return
@@ -472,13 +480,18 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 	// stopped sessions stay as uncertain tombstones for lost-request lookup.
 	go c.watch(s)
 	go c.drain(s)
+	go c.watchProcesses(s)
 	// Pi may choose a model even when no explicit startup flag was supplied.
 	// Observe this child before admitting its first send; a later global default
 	// is not evidence of which model this already-running session uses.
 	initial, initialErr := p.requestQueue("get_state", "", 15*time.Second)
 	c.mu.Lock()
 	if initialErr == nil && initial.Accepted && !s.dead && s.state == "pending" {
-		s.state = "idle"
+		if s.runActive {
+			s.state = "accepted"
+		} else {
+			s.state = "idle"
+		}
 		if initial.Choice != nil {
 			s.startupChoice = initial.Choice
 		}
@@ -491,6 +504,7 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 	}
 	c.mu.Unlock()
 	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": body.WorkspaceID, "state": state, "startup_choice": choice})
+
 }
 
 func (c *ConversationController) watch(s *conversation) {
@@ -733,6 +747,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 		return
 	}
 	c.mu.Lock()
+	runActive := s.runActive
 	state, command, ack, cursor, lost := s.state, s.command, s.ack, s.cursor, s.lost
 	settlement := s.settlement
 	question := s.question
@@ -829,7 +844,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 		continuation = "unproven"
 	}
 	c.mu.Unlock()
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "startup_choice": s.startupChoice, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "auth_error": s.authError, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}})
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "run_active": runActive, "startup_choice": s.startupChoice, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "auth_error": s.authError, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}})
 }
 
 // answerQuestion spends the native request ID before touching Pi. This uncorrelated

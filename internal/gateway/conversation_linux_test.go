@@ -296,3 +296,42 @@ func TestConversationRoutesToMappedUserOnly(t *testing.T) {
 		t.Fatalf("foreign user routed to alice: %d %s", w.Code, w.Body.String())
 	}
 }
+
+func TestProcessGatewayRequiresSessionAndCSRF(t *testing.T) {
+	var calls atomic.Int32
+	h, _ := proxyFixture(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		io.WriteString(w, `{"schema_version":1,"result":"cleared"}`)
+	}))
+	base := "/api/v1/conversations/11111111-1111-4111-8111-111111111111/processes"
+	for _, tc := range []struct{ method, path string }{{"GET", base}, {"GET", base + "/proc_abcd/output?owner_generation=g&process_token=pt_1&tail_lines=20"}, {"POST", base + "/proc_abcd/stop"}, {"POST", base + "/clear-finished"}} {
+		if w := proxyCall(h, tc.method, tc.path, `{}`); w.Code != 200 {
+			t.Fatalf("valid %s %s: %d %s", tc.method, tc.path, w.Code, w.Body.String())
+		}
+	}
+	before := calls.Load()
+	for _, path := range []string{base + "/proc_abcd/stop", base + "/clear-finished"} {
+		r := httptest.NewRequest("POST", "https://host.test"+path, strings.NewReader(`{}`))
+		r.AddCookie(&http.Cookie{Name: cookieName, Value: "browser"})
+		r.Header.Set("Origin", "https://host.test")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Code != 403 {
+			t.Fatalf("missing CSRF %d", w.Code)
+		}
+	}
+	for _, tc := range []struct{ method, path string }{{"GET", base + "/clear-finished"}, {"POST", base}, {"GET", base + "/proc_abcd/output?tail_lines=20"}, {"GET", base + "/proc_abcd/output?owner_generation=x&process_token=y&tail_lines=20&tail_lines=30"}, {"GET", base + "/../processes"}, {"POST", base + "/proc_abcd/stop/extra"}} {
+		if w := proxyCall(h, tc.method, tc.path, `{}`); w.Code == 200 {
+			t.Fatalf("invalid route forwarded: %s", tc.path)
+		}
+	}
+	if calls.Load() != before {
+		t.Fatal("denied process operation reached mapped daemon")
+	}
+	r := httptest.NewRequest("GET", "https://host.test"+base, nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != 401 {
+		t.Fatal("anonymous inventory exposed")
+	}
+}

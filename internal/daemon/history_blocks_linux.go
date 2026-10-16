@@ -11,6 +11,9 @@ import (
 // provider metadata and extension details never enter the browser contract.
 // Image data and tool arguments are fetched only by explicit bounded block read.
 func nativeBlocks(e nativeEntry) (out historyEntry) {
+	if notification, ok := nativeProcessNotification(e); ok {
+		return notification
+	}
 	out.Key = e.ID
 	out.Timestamp = nativeTimestamp(e.Timestamp)
 	if e.Type == "custom" {

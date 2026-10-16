@@ -12,5 +12,5 @@ podman run --rm --network none \
     printf "agent-a:x:21001:21001::/tmp/agent-a:/bin/sh\nagent-b:x:21002:21002::/tmp/agent-b:/bin/sh\nfixture-gateway:x:21003:21003::/tmp/gateway:/bin/sh\n" >>/etc/passwd
     cp /opt/pi-attempt-uid.test /tmp/pi-attempt-uid.test
     chmod 755 /tmp/pi-attempt-uid.test
-    PI_UID_CONTAINER=1 /tmp/pi-attempt-uid.test -test.run "^Test(PiAttempt|PiDialog)DistinctUIDs$" -test.v
+    PI_UID_CONTAINER=1 /tmp/pi-attempt-uid.test -test.run "^Test(PiAttempt|PiDialog|Process)DistinctUIDs$" -test.v
   '

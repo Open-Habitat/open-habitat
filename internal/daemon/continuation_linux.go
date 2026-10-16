@@ -206,6 +206,7 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 	c.mu.Unlock()
 	go c.watch(s)
 	go c.drain(s)
+	go c.watchProcesses(s)
 	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": origin.Workspace, "state": "idle", "prior_outcome": "uncertain"})
 }
 

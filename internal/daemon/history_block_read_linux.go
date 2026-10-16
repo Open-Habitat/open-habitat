@@ -10,6 +10,18 @@ import (
 // Only explicitly displayable native fields are selectable. Never serialize a
 // native block or extension metadata directly into a browser response.
 func nativeBlockChunk(raw json.RawMessage, index, offset, limit int) (map[string]any, bool) {
+	var probe struct {
+		Type    string          `json:"type"`
+		Message json.RawMessage `json:"message"`
+	}
+	_ = json.Unmarshal(raw, &probe)
+	candidate := raw
+	if probe.Type == "message" {
+		candidate = probe.Message
+	}
+	if _, recognised := projectProcessNotification(candidate, nil); recognised {
+		return nil, false
+	}
 	var entry struct {
 		Type    string `json:"type"`
 		Message struct {

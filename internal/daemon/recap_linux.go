@@ -26,11 +26,21 @@ func (c *ConversationController) piArgs() ([]string, error) {
 	if info, err := os.Stat(bridge); err == nil && info.Mode().IsRegular() {
 		args = append(args, "--extension", bridge)
 	}
+	// Product tolerates either guest runtime during rollout. Only load the core
+	// native owner, not terminal UI extensions. Never rewrite user settings.
+	processes := filepath.Join(filepath.Dir(filepath.Dir(c.runtime.Node)), "node_modules/@aliou/pi-processes/extensions/processes/index.ts")
+	if info, err := os.Stat(processes); err == nil && info.Mode().IsRegular() {
+		args = append(args, "--extension", processes)
+	}
 	// The tmpfiles service can remove a stale /var/tmp directory during a
 	// long-lived daemon. Recreate the bridge before launching the next child.
 	if c.recapPath != "" {
 		if info, err := os.Lstat(c.recapPath); err == nil && info.Mode().IsRegular() {
-			return append(args, "--extension", c.recapPath), nil
+			companion, err := installProcessExtension(filepath.Dir(c.recapPath))
+			if err != nil {
+				return nil, err
+			}
+			return append(args, "--extension", c.recapPath, "--extension", companion), nil
 		}
 	}
 	dir, err := os.MkdirTemp("/var/tmp", "oh-recap-")
@@ -43,7 +53,11 @@ func (c *ConversationController) piArgs() ([]string, error) {
 		return nil, err
 	}
 	c.recapPath = path
-	return append(args, "--extension", path), nil
+	companion, err := installProcessExtension(dir)
+	if err != nil {
+		return nil, err
+	}
+	return append(args, "--extension", path, "--extension", companion), nil
 }
 
 // nativeRecap reads the current branch of the user's own native history.

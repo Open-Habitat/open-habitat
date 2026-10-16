@@ -18,7 +18,13 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 			Type         string `json:"type"`
 			Delta        string `json:"delta"`
 			ContentIndex int    `json:"contentIndex"`
-			ToolCall     struct {
+			Partial      struct {
+				Content []struct {
+					Type string `json:"type"`
+					Name string `json:"name"`
+				} `json:"content"`
+			} `json:"partial"`
+			ToolCall struct {
 				ID        string          `json:"id"`
 				Name      string          `json:"name"`
 				Arguments json.RawMessage `json:"arguments"`
@@ -92,6 +98,9 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 		case "text_delta":
 			c.journal.delta(agent, "assistant.delta", e.AssistantMessageEvent.Delta, e.AssistantMessageEvent.ContentIndex)
 		case "toolcall_delta":
+			if i := e.AssistantMessageEvent.ContentIndex; i < len(e.AssistantMessageEvent.Partial.Content) && e.AssistantMessageEvent.Partial.Content[i].Name == "process" {
+				return
+			}
 			if text := liveText(e.AssistantMessageEvent.Delta); text != "" {
 				c.journal.delta(agent, "assistant.toolcall.delta", text, e.AssistantMessageEvent.ContentIndex)
 			}
@@ -99,7 +108,7 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 			call := e.AssistantMessageEvent.ToolCall
 			if validLiveID(call.ID) && validLiveID(call.Name) {
 				payload := map[string]any{"content_index": e.AssistantMessageEvent.ContentIndex, "tool_call_id": call.ID, "tool_name": call.Name}
-				if text := liveJSON(call.Arguments); text != "" {
+				if text := liveJSON(call.Arguments); text != "" && call.Name != "process" {
 					payload["text"] = text
 				}
 				c.journal.progress(agent, "assistant.toolcall.end", payload)
@@ -121,14 +130,14 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 			}
 		}
 		payload := map[string]any{"tool_call_id": e.ToolCallID, "tool_name": e.ToolName, "state": state}
-		if text := liveJSON(e.Args); text != "" {
+		if text := liveJSON(e.Args); text != "" && e.ToolName != "process" {
 			payload["arguments"] = text
 		}
 		result := e.PartialResult
 		if e.Type == "tool_execution_end" {
 			result = e.Result
 		}
-		if text := liveResult(result); text != "" {
+		if text := liveResult(result); text != "" && e.ToolName != "process" {
 			payload["text"] = text
 		}
 		if e.Type == "tool_execution_end" {
@@ -199,6 +208,15 @@ func (c *ConversationController) drain(s *conversation) {
 				}
 				e = []byte(`{"type":"message_end","message":{"role":"assistant","stopReason":"error"}}`)
 			}
+		}
+		// Status tail never carries process XML or registry/log paths.
+		var processFrame struct {
+			Message  json.RawMessage `json:"message"`
+			ToolName string          `json:"toolName"`
+		}
+		_ = json.Unmarshal(raw, &processFrame)
+		if _, recognised := projectProcessNotification(processFrame.Message, nil); recognised || processFrame.ToolName == "process" || frameContainsProcessCall(raw) {
+			e, _ = json.Marshal(map[string]string{"type": frame.Type})
 		}
 		s.events = append(s.events, e)
 		if c.journal != nil {
@@ -330,9 +348,43 @@ func (c *ConversationController) drain(s *conversation) {
 			}
 		}
 
+		if frame.Type == "agent_start" {
+			s.runActive = true
+			s.runInitial = s.state != "pending" && s.state != "accepted"
+			s.settled = false
+			// Native wake-ups have no browser receipt. They still own an active run
+			// and sends must steer instead of prompting a streaming Pi.
+			if s.state == "idle" || s.state == "rejected" {
+				s.state = "accepted"
+				s.turnGeneration++
+			}
+		}
+		if frame.Type == "message_end" {
+			delivery := "context"
+			if s.runActive {
+				delivery = "steer"
+				if s.runInitial {
+					delivery = "wake"
+				}
+			}
+			if notification, recognised := projectProcessNotification(processFrame.Message, &delivery); recognised && notification != nil && c.journal != nil {
+				c.journal.appendEvent("process.notification", "pi:"+s.id, notification)
+			}
+			var role struct {
+				Role string `json:"role"`
+			}
+			_ = json.Unmarshal(processFrame.Message, &role)
+			if role.Role == "assistant" || role.Role == "toolResult" {
+				s.runInitial = false
+			}
+		}
+		if frame.Type == "tool_execution_end" {
+			s.runInitial = false
+		}
 		settled := frame.Type == "agent_settled"
 		turn := s.turnGeneration
 		if settled {
+			s.runActive = false
 			s.question = nil // any unanswered UI request is no longer pending after Pi settled
 			s.questionID = ""
 			s.queuedQuestions = nil

@@ -5,12 +5,14 @@ package daemon
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -21,16 +23,17 @@ import (
 // browser-owned controller uses it; it does not fence a terminal TUI.
 // A caller must not expose it as an agent capability until that fence exists.
 type piRPC struct {
-	cmd      *exec.Cmd
-	in, out  *os.File
-	mu       sync.Mutex           // serializes requests; does not guard close
-	frames   chan json.RawMessage // correlated responses only
-	events   chan json.RawMessage // bounded native events, consumed separately
-	overflow atomic.Bool          // an event was lost: never report acceptance as certain
-	done     chan struct{}        // reader done, NOT process exit proof
-	exited   chan struct{}        // direct child reaped independently of pipe EOF
-	closing  atomic.Bool
-	poisoned bool // guarded by mu
+	processSocket, processDir, processGeneration string
+	cmd                                          *exec.Cmd
+	in, out                                      *os.File
+	mu                                           sync.Mutex           // serializes requests; does not guard close
+	frames                                       chan json.RawMessage // correlated responses only
+	events                                       chan json.RawMessage // bounded native events, consumed separately
+	overflow                                     atomic.Bool          // an event was lost: never report acceptance as certain
+	done                                         chan struct{}        // reader done, NOT process exit proof
+	exited                                       chan struct{}        // direct child reaped independently of pipe EOF
+	closing                                      atomic.Bool
+	poisoned                                     bool // guarded by mu
 }
 
 // launchPiRPC is a fixture bridge. The production controller requires a fresh
@@ -90,6 +93,27 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 		cmd.ExtraFiles = []*os.File{owner.file}
 	}
 	cmd.Env = append(append([]string(nil), env...), "HOME="+home)
+	processDir, err := os.MkdirTemp("", "oh-process-")
+	if err != nil {
+		return nil, err
+	}
+	cleanupProcessDir := true
+	defer func() {
+		if cleanupProcessDir {
+			_ = os.RemoveAll(processDir)
+		}
+	}()
+	processSocket := filepath.Join(processDir, "bridge.sock")
+	generation, ok := uuid()
+	if !ok {
+		return nil, errors.New("process generation unavailable")
+	}
+	cmd.Env = append(cmd.Env, "OH_PROCESS_SOCKET="+processSocket)
+	for i, arg := range prefix {
+		if i > 0 && prefix[i-1] == "--extension" && strings.HasSuffix(arg, "/@aliou/pi-processes/extensions/processes/index.ts") {
+			cmd.Env = append(cmd.Env, "OH_PROCESS_PACKAGE="+filepath.Clean(filepath.Join(filepath.Dir(arg), "../../package.json")))
+		}
+	}
 	// nil stderr sends Pi output to the null device without an os/exec
 	// copy goroutine that detached tools could keep open indefinitely.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL, Setpgid: true}
@@ -104,7 +128,7 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 		return nil, err
 	}
 	cmd.Stdout, cmd.Stdin = outW, inR
-	p := &piRPC{cmd: cmd, in: inW, out: outR, frames: make(chan json.RawMessage, 8), events: make(chan json.RawMessage, 128), done: make(chan struct{}), exited: make(chan struct{})}
+	p := &piRPC{processSocket: processSocket, processDir: processDir, processGeneration: generation, cmd: cmd, in: inW, out: outR, frames: make(chan json.RawMessage, 8), events: make(chan json.RawMessage, 128), done: make(chan struct{}), exited: make(chan struct{})}
 	if err = cmd.Start(); err != nil {
 		inR.Close()
 		inW.Close()
@@ -112,6 +136,7 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 		outW.Close()
 		return nil, err
 	}
+	cleanupProcessDir = false
 	inR.Close()
 	outW.Close()
 	go func() { _ = cmd.Wait(); close(p.exited) }()
@@ -322,7 +347,14 @@ func (p *piRPC) requestQueue(kind, message string, timeout time.Duration) (piRep
 // claim that the tool stopped, nor that Pi settled its native history. The
 // service's cgroup cleanup handles remaining processes on daemon stop/crash.
 func (p *piRPC) close() error {
+	// Stop detached groups through their native owner before closing RPC.
+	if !p.closing.Load() && p.processSocket != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		_ = p.processRequest(ctx, map[string]string{"op": "shutdown"}, nil)
+		cancel()
+	}
 	p.closing.Store(true)
+	defer os.RemoveAll(p.processDir)
 	_ = p.in.Close()
 	_ = p.out.Close()
 	// A negative PID could name a recycled, unrelated group once Pi has
@@ -332,7 +364,7 @@ func (p *piRPC) close() error {
 	}
 	select {
 	case <-p.exited:
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(4 * time.Second):
 		if p.cmd.Process != nil {
 			_ = p.cmd.Process.Kill()
 		}

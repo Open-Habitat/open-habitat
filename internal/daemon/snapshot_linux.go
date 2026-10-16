@@ -249,6 +249,10 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 			agent := raw.(map[string]any)
 			agent["archive"] = archiveFact(visibility, visibilityErr, agent["agent_id"].(string))
 		}
+		waitingViews := map[string][]waitingProcess{}
+		if controller != nil {
+			waitingViews = controller.processWaitingViews(r.Context())
+		}
 		if controller != nil {
 			controller.mu.Lock()
 			for _, active := range controller.sessions {
@@ -271,6 +275,20 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 					agent["history"] = "missing"
 					agent["archive"] = archiveFact(visibility, visibilityErr, id)
 					agents = append(agents, agent)
+				}
+			}
+		}
+		if controller != nil {
+			for _, raw := range agents {
+				agent := raw.(map[string]any)
+				id := strings.TrimPrefix(agent["agent_id"].(string), "pi:")
+				if active := controller.sessions[id]; active != nil {
+					agent["run_active"] = active.runActive
+					if !active.runActive && active.questionID == "" {
+						if waiting, ok := waitingViews[id]; ok {
+							agent["waiting_on"] = waiting
+						}
+					}
 				}
 			}
 		}

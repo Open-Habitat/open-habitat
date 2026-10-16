@@ -1,0 +1,121 @@
+// Product companion. pi-processes remains the sole registry, log and signal owner.
+import net from 'node:net';
+import { chmodSync, readFileSync } from 'node:fs';
+
+const live = p => ['running', 'terminating', 'terminate_timeout'].includes(p.status);
+const token = p => `pt_${p.startTime}`;
+const maxFrame = 256 * 1024;
+export default function (pi) {
+  let server, context, extensionVersion = null, shuttingDown = false;
+  const launchedAt = Date.now();
+  const sockets = new Set();
+  const watchers = new Set();
+  const ask = (channel, args = {}) => new Promise((resolve, reject) => {
+    let done = false;
+    const timer = setTimeout(() => { if (!done) { done = true; reject(new Error('extension_missing')); } }, channel === 'command:kill' ? 4500 : 200);
+    pi.events.emit(`processes:${channel}`, { ...args, reply(value) {
+      if (!done) { done = true; clearTimeout(timer); resolve(value); }
+    } });
+  });
+  function send(socket, value) {
+    const line = JSON.stringify(value) + '\n';
+    if (Buffer.byteLength(line) > maxFrame || socket.writableLength > maxFrame) { socket.destroy(); return; }
+    socket.write(line);
+  }
+  function wakes(p) {
+    // Only this child's native start results count. Never rehydrate old owners.
+    const branch = context.sessionManager.getBranch();
+    for (let i = branch.length - 1; i >= 0; --i) {
+      const m = branch[i].message;
+      const d = m?.details;
+      if (m?.role !== 'toolResult' || m.toolName !== 'process' || d?.action !== 'start') continue;
+      if (d.process?.id === p.id && d.process?.startTime === p.startTime && p.startTime >= launchedAt) {
+        return d.notify?.onSuccess === 'turn' || d.notify?.onFailure === 'turn';
+      }
+    }
+    return null; // Pending log watches are not observable in 0.10.9.
+  }
+  async function operation(q) {
+    if (q.op === 'list') {
+      const records = await ask('request:list');
+      if (!Array.isArray(records) || records.length > 200) throw new Error('inventory_unavailable');
+      return { records: records.map(p => ({ ...p, wakes_agent: wakes(p) })), protocol: 1, extension_version: extensionVersion };
+    }
+    if (q.op === 'clear') { await ask('command:clear'); return { result: 'cleared' }; }
+    if (q.op === 'shutdown') {
+      shuttingDown = true;
+      const records = await ask('request:list');
+      await Promise.all(records.filter(live).map(p => ask('command:kill', { id: p.id, signal: 'SIGKILL', timeoutMs: 3000 })));
+      return { result: 'stopped' };
+    }
+    if (!/^proc_[a-f0-9]{4}$/.test(q.id ?? '') || typeof q.token !== 'string') throw new Error('invalid_request');
+    const p = await ask('request:get', { id: q.id });
+    if (!p || token(p) !== q.token) throw new Error('stale_process');
+    // No await between the comparison and bus dispatch: an ID cannot be reissued
+    // on the JS event loop in this critical section.
+    if (q.op === 'stop') {
+      if (typeof q.force !== 'boolean') throw new Error('invalid_request');
+      const r = await ask('command:kill', { id: q.id, signal: q.force ? 'SIGKILL' : 'SIGTERM', timeoutMs: 3000 });
+      return { result: r.ok ? 'killed' : r.reason === 'timeout' ? 'terminate_timeout' : r.reason === 'not_found' ? 'not_found' : 'error' };
+    }
+    if (q.op === 'output') {
+      if (!Number.isInteger(q.tail_lines) || q.tail_lines < 1 || q.tail_lines > 2000) throw new Error('invalid_request');
+      const all = await ask('request:combined_output', { id: q.id, tailLines: q.tail_lines });
+      if (!Array.isArray(all)) throw new Error('output_unavailable');
+      let bytes = 0;
+      const lines = [];
+      for (const l of all.slice(-q.tail_lines).reverse()) {
+        if (!['stdout', 'stderr'].includes(l.type) || typeof l.text !== 'string') continue;
+        const text = Buffer.from(l.text).subarray(0, 16384).toString('utf8');
+        if (bytes + Buffer.byteLength(text) > 128 * 1024) break;
+        bytes += Buffer.byteLength(text);
+        lines.unshift({ stream: l.type, text });
+      }
+      return { lines, omitted_before: null, retention_restarted: lines.some(l => l.text === '[log truncated at 64 MB — earlier output discarded]') ? true : null };
+    }
+    throw new Error('invalid_request');
+  }
+  const hint = (kind, id) => {
+    for (const s of watchers) send(s, { kind, ...(id ? { process_id: id } : {}) });
+  };
+  pi.on('tool_call', event => {
+    if (shuttingDown && event.toolName === 'process' && event.input?.action === 'start') return { block: true, reason: 'Pi is shutting down' };
+  });
+  pi.events.on('processes:changed', () => hint('process.changed'));
+  pi.events.on('processes:output_changed', e => hint('process.output', e.id));
+  pi.on('session_start', async (_event, ctx) => {
+    context = ctx;
+    try { extensionVersion = JSON.parse(readFileSync(process.env.OH_PROCESS_PACKAGE, 'utf8')).version; } catch { extensionVersion = null; }
+    const path = process.env.OH_PROCESS_SOCKET;
+    if (!path || server) return;
+    server = net.createServer(socket => {
+      if (sockets.size >= 8) { socket.destroy(); return; }
+      sockets.add(socket);
+      socket.on('error', () => {});
+      socket.on('close', () => { sockets.delete(socket); watchers.delete(socket); });
+      socket.setTimeout(6000, () => socket.destroy());
+      let input = '';
+      socket.on('data', chunk => {
+        input += chunk.toString('utf8');
+        if (Buffer.byteLength(input) > 8192) { socket.destroy(); return; }
+        const n = input.indexOf('\n');
+        if (n < 0) return;
+        socket.removeAllListeners('data');
+        let q;
+        try { q = JSON.parse(input.slice(0, n)); } catch { socket.destroy(); return; }
+        if (q?.op === 'watch') {
+          watchers.add(socket); socket.setTimeout(0); send(socket, { kind: 'process.changed' }); return;
+        }
+        operation(q).then(data => { send(socket, { ok: true, data }); socket.end(); }, e => {
+          send(socket, { ok: false, error: ['stale_process', 'invalid_request', 'extension_missing'].includes(e.message) ? e.message : 'bridge_unavailable' }); socket.end();
+        });
+      });
+    });
+    server.on('error', () => { for (const socket of sockets) socket.destroy(); });
+    await new Promise(resolve => server.listen(path, () => { chmodSync(path, 0o600); resolve(); }));
+  });
+  pi.on('session_shutdown', () => {
+    for (const socket of sockets) socket.destroy();
+    server?.close(); server = undefined;
+  });
+}

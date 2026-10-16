@@ -84,13 +84,14 @@ type historyEntry struct {
 	raw                json.RawMessage
 }
 type historyBlock struct {
-	Type       string `json:"type"`
-	Text       string `json:"text,omitempty"`
-	Redacted   bool   `json:"redacted,omitempty"`
-	MimeType   string `json:"mime_type,omitempty"`
-	ToolCallID string `json:"tool_call_id,omitempty"`
-	ToolName   string `json:"tool_name,omitempty"`
-	Readable   bool   `json:"readable,omitempty"`
+	ProcessEvent *processEvent `json:"process_event,omitempty"`
+	Type         string        `json:"type"`
+	Text         string        `json:"text,omitempty"`
+	Redacted     bool          `json:"redacted,omitempty"`
+	MimeType     string        `json:"mime_type,omitempty"`
+	ToolCallID   string        `json:"tool_call_id,omitempty"`
+	ToolName     string        `json:"tool_name,omitempty"`
+	Readable     bool          `json:"readable,omitempty"`
 }
 type historyContent struct {
 	MediaType string `json:"media_type"`
