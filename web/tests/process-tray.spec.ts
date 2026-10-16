@@ -412,7 +412,7 @@ test("@process-tray @a11y compact tray, inventory and output match the selected 
           .evaluate((el) => parseFloat(getComputedStyle(el).fontSize)),
       ).toBeLessThanOrEqual(13);
       await expect(
-        group.getByRole("button", { name: "Poista päättyneet" }),
+        tray.getByRole("button", { name: "Poista päättyneet" }),
       ).toBeVisible();
       await expect(
         tray.getByRole("button", { name: "Pysäytä", exact: true }),
@@ -459,4 +459,111 @@ test("@process-tray @a11y compact tray, inventory and output match the selected 
           .violations,
       ).toEqual([]);
     }
+});
+
+test("@process-tray recognised waits stay out of the tray and collapsed cleanup preserves running work", async ({
+  page,
+}) => {
+  const inventory = structuredClone(inventoryFixture) as ProcessInventory;
+  const ordinary = inventory.processes[0];
+  // A command mentioning Taskfleet is not recognition: only native run_ids are.
+  ordinary.command_preview = "echo 'taskfleet run wait is not this process'";
+  const finished = {
+    ...ordinary,
+    id: "finished",
+    process_token: "pt_finished",
+    name: "valmis-testi",
+    status: "exited" as const,
+    ended_at: Date.now(),
+    exit_code: 0,
+  };
+  const runID = "01m521vczarx5bkx086n64t1t2";
+  inventory.processes.push(
+    finished,
+    ...["running", "exited"].map((status, i) => ({
+      ...ordinary,
+      id: `wait_${i}`,
+      process_token: `pt_wait_${i}`,
+      name: `odota-spinoff-${i}`,
+      command_preview: `taskfleet run wait ${runID} --output json`,
+      status: status as "running" | "exited",
+      run_ids: [runID],
+      // No spinoff enrichment: a failed run-show must not resurrect duplicates.
+    })),
+  );
+  await page.route("**/api/v1/agents/pi:*/spinoffs**", (route) =>
+    route.fulfill({
+      json: {
+        schema_version: 1,
+        parent_id: new URL(route.request().url()).pathname
+          .split("/agents/")[1]
+          .split("/spinoffs")[0],
+        availability: "available",
+        runs: [
+          {
+            run_id: runID,
+            title: "UI hidas spinoff",
+            created_at: "2026-10-16T10:00:05Z",
+            state: "working",
+            summary: "",
+            preserved: false,
+            branch: "",
+            worktree: "",
+            source_branch: "main",
+          },
+        ],
+        transcripts: [],
+      },
+    }),
+  );
+  let clears = 0;
+  await page.route("**/api/v1/conversations/*/processes**", async (route) => {
+    if (route.request().url().endsWith("/clear-finished")) {
+      expect(route.request().postDataJSON()).toEqual({
+        owner_generation: "og_example",
+      });
+      expect(route.request().headers()["x-agent-host-csrf"]).toBeTruthy();
+      clears++;
+      inventory.processes = inventory.processes.filter(
+        (p) => p.status === "running",
+      );
+      await route.fulfill({ json: { schema_version: 1, result: "cleared" } });
+    } else await route.fulfill({ json: inventory });
+  });
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "ordinary-dir" })
+    .click();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const tray = page.getByRole("complementary", { name: "Agentin prosessit" });
+  const bar = tray.getByRole("button", { name: /Prosessit ·/ });
+  await expect(bar).toContainText("1 käynnissä");
+  await expect(bar).toContainText("1 päättynyt");
+  await bar.click();
+  await expect(
+    tray.getByRole("button", { name: ordinary.name, exact: true }),
+  ).toBeVisible();
+  await expect(
+    tray.getByRole("button", { name: finished.name, exact: true }),
+  ).toBeVisible();
+  await expect(tray).not.toContainText("odota-spinoff");
+  await expect(tray).not.toContainText(runID);
+  await bar.click();
+  await expect(bar).toHaveAttribute("aria-expanded", "false");
+  await tray.getByRole("button", { name: "Poista päättyneet" }).click();
+  expect(clears).toBe(1);
+  await expect(
+    tray.getByRole("button", { name: "Poista päättyneet" }),
+  ).toHaveCount(0);
+  await expect(bar).toContainText("1 käynnissä");
+  // Only the native waiter remains: no empty/zero-process tray.
+  inventory.processes = inventory.processes.filter((p) => p.run_ids.length);
+  await expect(tray).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: /UI hidas spinoff.*Työskentelee/ }),
+  ).toBeVisible();
 });

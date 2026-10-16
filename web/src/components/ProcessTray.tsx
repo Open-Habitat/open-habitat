@@ -195,7 +195,12 @@ function ProcessTrayView({
   }, []);
   const [notice, setNotice] = useState("");
   const inventory = value.inventory;
-  const records = inventory?.processes ?? [];
+  // run_ids are daemon recognition of a Taskfleet wait, independent of whether
+  // Taskfleet enrichment succeeds. Keep the full inventory for native wake facts
+  // and history joins, but never list a spinoff's waiter as another process.
+  const records = (inventory?.processes ?? []).filter(
+    (p) => p.run_ids.length === 0,
+  );
   const available = inventory?.availability === "available";
   const owner = inventory?.owner_generation;
   const action = async (p?: ProcessRecord, force = false) => {
@@ -245,39 +250,53 @@ function ProcessTrayView({
   if (available && records.length === 0) return null;
   const node = (
     <aside className="ah-process-tray" aria-label="Agentin prosessit">
-      <ControlButton
-        className="ah-process-bar"
-        variant="quiet"
-        aria-expanded={open}
-        onPress={() => setOpen(!open)}
-      >
-        <Icon name="forward" className="ah-process-chevron" />
-        <Icon name="terminal" />
-        <span className="ah-process-summary">
-          {available ? (
-            <>
-              <strong>
-                Prosessit · {records.filter(processLive).length} käynnissä
-              </strong>
-              <span className="ah-process-names">
-                {records
-                  .filter(processLive)
-                  .map((p) => p.name)
-                  .join(", ")}
-              </span>
-            </>
-          ) : inventory || value.failed ? (
-            unavailable
-          ) : (
-            "Ladataan prosesseja…"
-          )}
-        </span>
-        {available && records.some((p) => !processLive(p)) ? (
-          <span className="ah-process-done">
-            {records.filter((p) => !processLive(p)).length} päättynyt
+      <div className="ah-process-bar-heading" data-open={open}>
+        <ControlButton
+          className="ah-process-bar"
+          variant="quiet"
+          aria-expanded={open}
+          onPress={() => setOpen(!open)}
+        >
+          <Icon name="forward" className="ah-process-chevron" />
+          <Icon name="terminal" />
+          <span className="ah-process-summary">
+            {available ? (
+              <>
+                <strong>
+                  Prosessit · {records.filter(processLive).length} käynnissä
+                </strong>
+                <span className="ah-process-names">
+                  {records
+                    .filter(processLive)
+                    .map((p) => p.name)
+                    .join(", ")}
+                </span>
+              </>
+            ) : inventory || value.failed ? (
+              unavailable
+            ) : (
+              "Ladataan prosesseja…"
+            )}
           </span>
+          {available && records.some((p) => !processLive(p)) ? (
+            <span className="ah-process-done">
+              {records.filter((p) => !processLive(p)).length} päättynyt
+            </span>
+          ) : null}
+        </ControlButton>
+        {available && records.some((p) => !processLive(p)) ? (
+          <ControlButton
+            className="ah-process-clear"
+            size="micro"
+            variant="quiet"
+            isDisabled={!csrf || pending}
+            onPress={() => void action()}
+            title="Poistaa päättyneet prosessit ja niiden lokit. Keskustelun historia säilyy."
+          >
+            Poista päättyneet
+          </ControlButton>
         ) : null}
-      </ControlButton>
+      </div>
       {open ? (
         <div className="ah-process-list">
           {!available ? (
@@ -303,18 +322,6 @@ function ProcessTrayView({
                   <section key={label} aria-label={label}>
                     <div className="ah-process-group-heading">
                       <h2>{label}</h2>
-                      {label === "Päättyneet" ? (
-                        <ControlButton
-                          className="ah-process-clear"
-                          size="micro"
-                          variant="quiet"
-                          isDisabled={!csrf || pending}
-                          onPress={() => void action()}
-                          title="Poistaa päättyneet prosessit ja niiden lokit. Keskustelun historia säilyy."
-                        >
-                          Poista päättyneet
-                        </ControlButton>
-                      ) : null}
                     </div>
                     {group.map((p) => (
                       <div
