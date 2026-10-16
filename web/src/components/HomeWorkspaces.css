@@ -373,3 +373,17 @@
     animation: none;
   }
 }
+.ah-home-card-head .ah-home-archive:disabled {
+  background: transparent;
+  border-color: transparent;
+  opacity: 0.35;
+}
+.ah-home-card-meta > span:first-child {
+  color: var(--ah-ink-2);
+}
+.ah-home-card-new .ah-home-card-meta > span:first-child,
+.ah-home-card-waiting .ah-home-card-meta > span:first-child,
+.ah-home-card-waiting_process .ah-home-card-meta > span:first-child,
+.ah-home-card-waiting_spinoff .ah-home-card-meta > span:first-child {
+  color: var(--ah-accent-ink);
+}

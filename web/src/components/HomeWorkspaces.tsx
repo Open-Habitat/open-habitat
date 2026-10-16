@@ -152,9 +152,9 @@ export function HomeCard({
       </div>
       {activity === "waiting_process" || activity === "waiting_spinoff" ? (
         <p className="ah-home-live">
-          {agentPresentation(conversation).activityLabel}
+          {activity === "waiting_spinoff" ? "Odotan spinoffia" : "Odotan:"}
           {conversation.waitingOn?.length
-            ? ` · ${conversation.waitingOn.map(waitingName).join(", ")} · jatkan itse, kun odotus päättyy.`
+            ? ` ${conversation.waitingOn.map(waitingName).join(", ")} · jatkan itse, kun odotus päättyy.`
             : ""}
         </p>
       ) : null}

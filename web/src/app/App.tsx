@@ -988,10 +988,13 @@ export function App() {
           a.archive !== "archived" &&
           !pendingArchive.has(a.agent_id) &&
           !pendingClose.has(a.agent_id) &&
-          visible.some((w) => w.workspace_id === a.workspace_id),
+          snapshot?.workspaces.some(
+            (w) =>
+              w.workspace_id === a.workspace_id && w.presence === "present",
+          ),
       )
       .map((a) => {
-        const workspace = visible.find(
+        const workspace = snapshot?.workspaces.find(
           (w) => w.workspace_id === a.workspace_id,
         );
         const daemonSession = daemonSessions.some(
@@ -1537,7 +1540,9 @@ export function App() {
         <HomeWorkspaces
           key={identity}
           workspaces={visible}
-          conversations={returnConversations}
+          conversations={returnConversations.filter((c) =>
+            visible.some((w) => w.workspace_id === c.workspaceId),
+          )}
           newReason={createReason}
           store={conversationStore}
           archiveReason={cardArchiveReason}

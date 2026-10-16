@@ -148,6 +148,8 @@ test("@workspace-page sidebar plus creates directly; rename and hide use current
     page.getByRole("heading", { name: "Uusi nimi", exact: true }),
   ).toBeVisible();
   const workspaceURL = page.url();
+  const titles = await page.locator(".ah-home-card-title").allTextContents();
+  expect(titles.length).toBeGreaterThan(0);
   await page
     .locator("main")
     .getByRole("button", { name: "Piilota sivupalkista", exact: true })
@@ -164,6 +166,7 @@ test("@workspace-page sidebar plus creates directly; rename and hide use current
       .getByRole("navigation")
       .getByRole("link", { name: "Uusi nimi", exact: true }),
   ).toHaveCount(0);
+  await expect(page.locator(".ah-home-card-title")).toHaveText(titles);
   await page.getByRole("button", { name: "Kumoa", exact: true }).click();
   await expect(
     page
@@ -175,6 +178,13 @@ test("@workspace-page sidebar plus creates directly; rename and hide use current
     .click();
   await page.reload();
   await expect(page.locator(".ah-workspace-hidden")).toBeVisible();
+  await expect(page.locator(".ah-home-card-title")).toHaveText(titles);
+  await page.goto("/workspaces");
+  await expect(
+    page.locator("main").getByRole("link", { name: "Uusi nimi", exact: true }),
+  ).toHaveCount(0);
+  await page.goto(workspaceURL);
+  await expect(page.locator(".ah-home-card-title")).toHaveText(titles);
   await page
     .getByRole("button", { name: "Näytä sivupalkissa", exact: true })
     .click();
