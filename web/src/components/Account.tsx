@@ -8,6 +8,7 @@ import {
 import "./Settings.css";
 import { GitIdentity } from "../app/GitIdentity";
 import { PersonalStorage } from "../app/PersonalStorage";
+import { ClaudeSignIn } from "../app/ClaudeSignIn";
 import { PiCredentials } from "../app/PiCredentials";
 import type { AccountProfile, PiState } from "../app/pi";
 import { ServerAdministration } from "../app/ServerAdministration";
@@ -276,7 +277,7 @@ export function AccountSettings({
   }, [section, detail]);
   const sections = [
     ["tili", "Tili"],
-    ["agentti", "Agentti"],
+    ["agentti", "Agentit"],
     ["yhteydet", "Yhteydet"],
     ["ulkoasu", "Ulkoasu"],
     ["tila", "Tallennustila"],
@@ -366,6 +367,8 @@ export function AccountSettings({
         )}
         {section === "agentti" && (
           <div className="s-card">
+            <h3>Pi</h3>
+            <ClaudeSignIn csrf={csrf} />
             <div className="s-model">
               <h3>Oletusmalli</h3>
               {modelSelector}

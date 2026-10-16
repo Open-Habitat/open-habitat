@@ -8,10 +8,10 @@ import {fileURLToPath} from 'node:url';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const pkg = resolve(here, 'node_modules/@earendil-works/pi-coding-agent');
-function run(home, action, selected = '', thinking = '') {
+function run(home, action, selected = '', thinking = '', provider = '') {
   const child = spawnSync(process.execPath, ['--import', join(here, 'mock.mjs'), resolve(here, '../pi_models_helper.mjs'),
     join(pkg, 'dist/index.js'), join(pkg, 'package.json'), action, selected],
-    {env: {HOME: home, PATH: process.env.PATH, PI_OFFLINE: '1', OH_PI_THINKING: thinking}, encoding: 'utf8', timeout: 12000});
+    {env: {HOME: home, PATH: process.env.PATH, PI_OFFLINE: '1', OH_PI_THINKING: thinking, OH_PI_PROVIDER: provider}, encoding: 'utf8', timeout: 12000});
   assert.equal(child.stderr, '');
   return {code: child.status, result: JSON.parse(child.stdout)};
 }
@@ -62,4 +62,25 @@ test('Pi 1.3 persists assistant refusal model/provider/error in native session h
     assert.match(last.message.errorMessage,/not supported.*account/);
     assert.ok(Number.isFinite(Date.parse(last.timestamp)));
   } finally {await rm(home,{recursive:true,force:true})}
+});
+
+// No synthetic token is copied to Pi. The catalog is not an entitlement claim.
+test('declared bridge loads with pinned Pi 1.3 and writes a provider-qualified native default', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'pi-claude-models-'));
+  try {
+    const listed = run(home, 'list');
+    assert.equal(listed.code, 0);
+    const models = listed.result.models.filter(m => m.provider === 'claude-bridge');
+    assert.ok(models.some(m => m.id === 'claude-fable-5-1'));
+    assert.ok(models.every(m => !/-20\d{6}$/.test(m.id)));
+    const model = models.find(m => m.id === 'claude-fable-5-1');
+    const selected = run(home, 'select', model.id, model.thinking_levels[0], 'claude-bridge');
+    assert.equal(selected.code, 0);
+    assert.equal(selected.result.default_provider, 'claude-bridge');
+    assert.equal(selected.result.default_model, model.id);
+    const settings = JSON.parse(await readFile(join(home,'.pi/agent/settings.json'),'utf8'));
+    assert.equal(settings.defaultProvider, 'claude-bridge');
+    assert.deepEqual(JSON.parse(await readFile(join(home,'.pi/agent/auth.json'),'utf8')), {});
+    await assert.rejects(readFile(join(home,'.claude/.credentials.json')), {code:'ENOENT'});
+  } finally { await rm(home,{recursive:true,force:true}); }
 });

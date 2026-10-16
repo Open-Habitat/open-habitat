@@ -17,6 +17,11 @@ import (
 )
 
 func TestPiAttemptAuthenticatedMappedSocket(t *testing.T) {
+	for _, path := range []string{piAttemptPath, "/api/v1/pi/claude-login"} {
+		t.Run(path, func(t *testing.T) { testNativeLoginMappedSocket(t, path) })
+	}
+}
+func testNativeLoginMappedSocket(t *testing.T, path string) {
 	now := time.Now()
 	uid := os.Getuid()
 	m := Identity{"github", "42", uid, "alice", "/run/open-habitat/users/alice/daemon.sock"}
@@ -36,7 +41,7 @@ func TestPiAttemptAuthenticatedMappedSocket(t *testing.T) {
 			w.WriteHeader(403)
 			return
 		}
-		if r.Host != "unix" || r.URL.Path != piAttemptPath || r.Header.Get("X-Agent-Host-Identity") != "" || r.Header.Get("X-Agent-Host-Socket") != "" || r.Header.Get("Cookie") != "" || r.Header.Get("Origin") != "" || r.Header.Get("X-Agent-Host-CSRF") != "" {
+		if r.Host != "unix" || r.URL.Path != path || r.Header.Get("X-Agent-Host-Identity") != "" || r.Header.Get("X-Agent-Host-Socket") != "" || r.Header.Get("Cookie") != "" || r.Header.Get("Origin") != "" || r.Header.Get("X-Agent-Host-CSRF") != "" {
 			w.WriteHeader(403)
 			return
 		}
@@ -58,8 +63,8 @@ func TestPiAttemptAuthenticatedMappedSocket(t *testing.T) {
 	}
 	h := NewWithAuth("", a)
 	send := func(method, id string, headers map[string]string) *httptest.ResponseRecorder {
-		r := httptest.NewRequest(method, "https://host.test"+piAttemptPath, nil)
-		r.RequestURI = piAttemptPath
+		r := httptest.NewRequest(method, "https://host.test"+path, nil)
+		r.RequestURI = path
 		if id != "" {
 			r.AddCookie(&http.Cookie{Name: cookieName, Value: id})
 		}

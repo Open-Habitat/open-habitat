@@ -185,6 +185,14 @@ func (p *PiDevice) StatusContext(ctx context.Context) string {
 		return "unknown"
 	}
 	state, err := p.status(ctx)
+	if state != "usable" && ctx.Err() == nil {
+		bridge := filepath.Join(filepath.Dir(filepath.Dir(p.Node)), "node_modules/pi-claude-bridge/src/index.ts")
+		if info, statErr := os.Stat(bridge); statErr == nil && info.Mode().IsRegular() {
+			if (&claudeLogin{device: p}).status(ctx) == "completed" {
+				return "usable"
+			}
+		}
+	}
 	if err != nil {
 		return "unknown"
 	}

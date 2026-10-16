@@ -159,3 +159,22 @@ only for an explicitly failed `bash` result, both in history and live events.
 Unrecognized output remains a plain failure. This hint does not establish process
 or control state; native output is retained verbatim and the browser hides only
 the recognized terminal line, keeping it in the corner tooltip.
+
+## Claude subscription through Pi
+
+`/api/v1/pi/claude-login` runs Claude Code's own `auth login --claudeai`
+as the mapped Unix user. GET reads native status or the caller's active lease;
+POST starts a five-minute lease; PUT hands one returned code to its native
+stdin; DELETE cancels that attempt without asserting logout. PUT requires
+`attempt_id` and `code`; DELETE requires only `attempt_id`. Writes require
+the normal same-origin CSRF proof. The gateway derives an opaque session
+binding, never accepting a browser-supplied owner. A different browser session
+cannot read, submit to or cancel another lease. Restart loses the lease, not
+native credentials. An uncertain code submission is never automatically replayed.
+
+The daemon publishes only the validated Claude authorization URL and coarse
+status. Tokens and native errors never cross the contract. Claude Code writes
+its own credential store under `~/.claude`; no host or Pi token copy is made.
+The optional declared bridge runtime loads in both Pi RPC and catalog discovery;
+while absent during rollout, ordinary Pi remains usable. The picker carries
+`claude-bridge` as a provider-qualified model identity, not a separate harness.

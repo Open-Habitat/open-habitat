@@ -52,6 +52,7 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc("/api/v1/pi/credentials", s.auth.piCredentials)
 		mux.HandleFunc("/api/v1/pi/credentials/openai", s.auth.piCredentials)
 		mux.HandleFunc("/api/v1/pi/models", s.auth.piModels)
+		mux.HandleFunc("/api/v1/pi/claude-login", s.auth.claudeLogin)
 		mux.HandleFunc("/api/v1/onboarding/github/repos", s.auth.githubRepos)
 		mux.HandleFunc("/api/v1/onboarding/github/clone", s.auth.githubClone)
 		mux.HandleFunc("/api/v1/onboarding/github/clone/stream", s.auth.githubCloneStream)

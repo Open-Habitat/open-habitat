@@ -20,7 +20,7 @@ type Models = {
   models: ModelChoice[];
 };
 export type Choice = {
-  provider?: "openai-codex" | "openai";
+  provider?: "openai-codex" | "openai" | "claude-bridge";
   model: string;
   thinking?: string;
 };
@@ -70,9 +70,9 @@ export function PiModelSelector({
   onChoice?: (choice: Choice) => void;
   onBlocked?: (blocked: boolean) => void;
 }) {
-  const [provider, setProvider] = useState<"openai-codex" | "openai">(
-    "openai-codex",
-  );
+  const [provider, setProvider] = useState<
+    "openai-codex" | "openai" | "claude-bridge"
+  >("openai-codex");
   const [data, setData] = useState<Models>();
   const [selected, setSelected] = useState<string>();
   const [thinking, setThinking] = useState<string>();
@@ -91,15 +91,19 @@ export function PiModelSelector({
         if (controller.signal.aborted) return;
         setData(value);
         setProvider(
-          current?.startsWith("openai/")
-            ? "openai"
-            : !current?.startsWith("openai-codex/") &&
-                value.default_provider === "openai"
+          current?.startsWith("claude-bridge/")
+            ? "claude-bridge"
+            : current?.startsWith("openai/")
               ? "openai"
-              : "openai-codex",
+              : !current && value.default_provider === "claude-bridge"
+                ? "claude-bridge"
+                : !current?.startsWith("openai-codex/") &&
+                    value.default_provider === "openai"
+                  ? "openai"
+                  : "openai-codex",
         );
         setSelected(
-          current?.replace(/^(openai-codex|openai)\//, "") ??
+          current?.replace(/^(openai-codex|openai|claude-bridge)\//, "") ??
             value.default_model ??
             undefined,
         );
@@ -109,14 +113,18 @@ export function PiModelSelector({
             value.models.find(
               (m) =>
                 (m.provider ?? "openai-codex") ===
-                  (current?.startsWith("openai/")
-                    ? "openai"
-                    : current?.startsWith("openai-codex/")
-                      ? "openai-codex"
-                      : (value.default_provider ?? "openai-codex")) &&
+                  (current?.startsWith("claude-bridge/")
+                    ? "claude-bridge"
+                    : current?.startsWith("openai/")
+                      ? "openai"
+                      : current?.startsWith("openai-codex/")
+                        ? "openai-codex"
+                        : (value.default_provider ?? "openai-codex")) &&
                 m.id ===
-                  (current?.replace(/^(openai-codex|openai)\//, "") ??
-                    value.default_model),
+                  (current?.replace(
+                    /^(openai-codex|openai|claude-bridge)\//,
+                    "",
+                  ) ?? value.default_model),
             ),
           ),
         );
@@ -200,44 +208,50 @@ export function PiModelSelector({
               className="s-seg"
               aria-label="Uusien keskustelujen tunnus"
             >
-              {(["openai-codex", "openai"] as const).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  aria-pressed={provider === p}
-                  disabled={
-                    busy ||
-                    !csrf ||
-                    data.catalog_status === "unavailable" ||
-                    !data.models.some(
-                      (m) =>
-                        (m.provider ?? "openai-codex") === p && !refused(m),
-                    )
-                  }
-                  onClick={() => {
-                    const models = data.models.filter(
-                      (m) =>
-                        (m.provider ?? "openai-codex") === p && !refused(m),
-                    );
-                    const next =
-                      models.find((m) => m.id === selected) ?? models[0];
-                    if (!next) return;
-                    setProvider(p);
-                    if (scope === "default" || scope === "new")
-                      void commit({
-                        provider: p,
-                        model: next.id,
-                        thinking: next.thinking_levels?.[0],
-                      });
-                    else {
-                      setSelected(next.id);
-                      setThinking(next.thinking_levels?.[0]);
+              {(["openai-codex", "openai", "claude-bridge"] as const).map(
+                (p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    aria-pressed={provider === p}
+                    disabled={
+                      busy ||
+                      !csrf ||
+                      data.catalog_status === "unavailable" ||
+                      !data.models.some(
+                        (m) =>
+                          (m.provider ?? "openai-codex") === p && !refused(m),
+                      )
                     }
-                  }}
-                >
-                  {p === "openai" ? "API-avain" : "ChatGPT-tilaus"}
-                </button>
-              ))}
+                    onClick={() => {
+                      const models = data.models.filter(
+                        (m) =>
+                          (m.provider ?? "openai-codex") === p && !refused(m),
+                      );
+                      const next =
+                        models.find((m) => m.id === selected) ?? models[0];
+                      if (!next) return;
+                      setProvider(p);
+                      if (scope === "default" || scope === "new")
+                        void commit({
+                          provider: p,
+                          model: next.id,
+                          thinking: next.thinking_levels?.[0],
+                        });
+                      else {
+                        setSelected(next.id);
+                        setThinking(next.thinking_levels?.[0]);
+                      }
+                    }}
+                  >
+                    {p === "claude-bridge"
+                      ? "Claude-tilaus"
+                      : p === "openai"
+                        ? "API-avain"
+                        : "ChatGPT-tilaus"}
+                  </button>
+                ),
+              )}
             </fieldset>
           </div>
           {data.default_model &&
@@ -299,12 +313,6 @@ export function PiModelSelector({
                 joten sama malli on käytössä myös SSH:lla. Avoimet keskustelut
                 eivät vaihdu.
               </p>
-              <div className="md-group-off">
-                <strong>Claude</strong>
-                <p className="md-note">
-                  Claude tulee omana agenttinaan, ei Pi:n mallina.
-                </p>
-              </div>
             </div>
           ) : scope === "new" ? (
             <p className="md-note">Vain tähän keskusteluun. Oletus ei muutu.</p>

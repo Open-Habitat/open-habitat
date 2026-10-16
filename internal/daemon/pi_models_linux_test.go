@@ -22,7 +22,7 @@ func TestPiModelsNativeDefault(t *testing.T) {
 		t.Fatal("accepted model without credentials")
 	}
 	missing, err := p.models(context.Background(), "")
-	if err != nil || missing.CatalogStatus != "unavailable" {
+	if err != nil || missing.CatalogStatus != "native_cached" || !slices.ContainsFunc(missing.Models, func(m piModel) bool { return m.Provider == "claude-bridge" }) {
 		t.Fatalf("missing auth: %+v %v", missing, err)
 	}
 	_, events, err := p.Start()

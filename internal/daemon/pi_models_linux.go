@@ -117,11 +117,20 @@ func (p *PiDevice) models(ctx context.Context, selected string, thinking ...stri
 			if len(result.Models) >= 100 {
 				break
 			}
-			result.Models = append(result.Models, piModel{ID: id, Name: id, Outcome: o.Outcome, ObservedAt: o.At})
+			provider := "openai-codex"
+			if strings.HasPrefix(id, "claude-bridge/") {
+				provider = "claude-bridge"
+				id = strings.TrimPrefix(id, "claude-bridge/")
+			}
+			result.Models = append(result.Models, piModel{Provider: provider, ID: id, Name: id, Outcome: o.Outcome, ObservedAt: o.At})
 		}
 	}
 	for i := range result.Models {
-		if o, ok := observations[result.Models[i].ID]; ok && result.Models[i].Provider != "openai" {
+		key := result.Models[i].ID
+		if result.Models[i].Provider == "claude-bridge" {
+			key = "claude-bridge/" + key
+		}
+		if o, ok := observations[key]; ok && result.Models[i].Provider != "openai" {
 			result.Models[i].Outcome = o.Outcome
 			result.Models[i].ObservedAt = o.At
 		}
@@ -163,7 +172,7 @@ func PiModelsHandler(cfg transport.Config, trusted func(*http.Request) bool, pi 
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
-			if input.Provider != "" && input.Provider != "openai" && input.Provider != "openai-codex" {
+			if input.Provider != "" && input.Provider != "openai" && input.Provider != "openai-codex" && input.Provider != "claude-bridge" {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}

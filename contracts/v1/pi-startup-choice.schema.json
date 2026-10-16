@@ -29,7 +29,8 @@
     "provider": {
       "enum": [
         "openai-codex",
-        "openai"
+        "openai",
+        "claude-bridge"
       ]
     }
   },

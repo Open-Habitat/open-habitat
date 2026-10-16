@@ -19,6 +19,7 @@ import (
 )
 
 var modelFamily = regexp.MustCompile(`^gpt-([0-9]+(?:\.[0-9]+)*)-([a-z]+)$`)
+var claudeFamily = regexp.MustCompile(`^claude-([a-z]+)-([0-9]+(?:-[0-9]+)*)$`)
 var modelGeneration = regexp.MustCompile(`^gpt-([0-9]+)(?:\.|-|$)`)
 
 // Unknown names remain offered: a future family must not require a host release.
@@ -27,6 +28,11 @@ func groupModels(models []piModel) {
 	for i := range models {
 		models[i].Older = false
 		parts := modelFamily.FindStringSubmatch(models[i].ID)
+		if models[i].Provider == "claude-bridge" {
+			if match := claudeFamily.FindStringSubmatch(models[i].ID); match != nil {
+				parts = []string{match[0], strings.ReplaceAll(match[2], "-", "."), match[1]}
+			}
+		}
 		if parts == nil {
 			if generation := modelGeneration.FindStringSubmatch(models[i].ID); generation != nil {
 				major, _ := strconv.Atoi(generation[1])
@@ -38,7 +44,7 @@ func groupModels(models []piModel) {
 		// The real Pi 1.3 catalog's newest Terra is 5.6, not the
 		// prototype's invented 6.0. Known families compete across versions;
 		// pre-6 legacy suffixes such as mini remain in the older group.
-		known := parts[2] == "luna" || parts[2] == "terra" || parts[2] == "sol" || parts[2] == "astra"
+		known := models[i].Provider == "claude-bridge" || parts[2] == "luna" || parts[2] == "terra" || parts[2] == "sol" || parts[2] == "astra"
 		if major < 6 && !known {
 			models[i].Older = true
 			continue
@@ -50,6 +56,10 @@ func groupModels(models []piModel) {
 			continue
 		}
 		previous := modelFamily.FindStringSubmatch(models[old].ID)
+		if models[old].Provider == "claude-bridge" {
+			match := claudeFamily.FindStringSubmatch(models[old].ID)
+			previous = []string{match[0], strings.ReplaceAll(match[2], "-", "."), match[1]}
+		}
 		if compareModelVersions(parts[1], previous[1]) > 0 {
 			models[old].Older = true
 			best[family] = i
@@ -170,7 +180,7 @@ func scanModelObservations(path string, result map[string]modelObservation) {
 				} `json:"content"`
 			} `json:"message"`
 		}
-		if json.Unmarshal(scanner.Bytes(), &e) != nil || e.Type != "message" || e.Message.Role != "assistant" || e.Message.Provider != "openai-codex" || e.Message.Model == "" || len(e.Message.Model) > 160 {
+		if json.Unmarshal(scanner.Bytes(), &e) != nil || e.Type != "message" || e.Message.Role != "assistant" || (e.Message.Provider != "openai-codex" && e.Message.Provider != "claude-bridge") || e.Message.Model == "" || len(e.Message.Model) > 160 {
 			continue
 		}
 		at, err := time.Parse(time.RFC3339Nano, e.Timestamp)
@@ -192,9 +202,13 @@ func scanModelObservations(path string, result map[string]modelObservation) {
 			continue
 		}
 		observation := modelObservation{Outcome: outcome, At: at.UTC().Format(time.RFC3339Nano)}
-		previous := found[e.Message.Model]
+		key := e.Message.Model
+		if e.Message.Provider == "claude-bridge" {
+			key = "claude-bridge/" + key
+		}
+		previous := found[key]
 		if previous.At == "" || newerObservation(observation, previous) {
-			found[e.Message.Model] = observation
+			found[key] = observation
 		}
 	}
 	after, err := f.Stat()

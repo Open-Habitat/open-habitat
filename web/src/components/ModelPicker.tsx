@@ -1,7 +1,7 @@
 import "./ModelPicker.css";
 import { useId } from "react";
 export type ModelChoice = {
-  provider?: "openai-codex" | "openai";
+  provider?: "openai-codex" | "openai" | "claude-bridge";
   id: string;
   name: string;
   older?: boolean;
@@ -26,7 +26,7 @@ export function ModelPicker({
   onThinking,
 }: {
   models: ModelChoice[];
-  provider?: "openai-codex" | "openai";
+  provider?: "openai-codex" | "openai" | "claude-bridge";
   selected?: string;
   thinking?: string;
   busy?: boolean;
@@ -41,7 +41,7 @@ export function ModelPicker({
       className={`md-row ${m.outcome === "answered" ? "k-ok" : m.outcome === "refused" ? "k-no" : ""}`}
       title={
         refused(m)
-          ? "OpenAI torjui mallin tällä ChatGPT-tilillä. Valitse toinen malli."
+          ? "Palveluntarjoaja torjui mallin tällä tunnuksella. Valitse toinen malli."
           : undefined
       }
     >
@@ -86,7 +86,11 @@ export function ModelPicker({
   return (
     <div className="md-pick">
       <div className="md-gh">
-        {provider === "openai" ? "OpenAI API-avain" : "ChatGPT-tilaus"}{" "}
+        {provider === "claude-bridge"
+          ? "Claude-tilaus · Pi"
+          : provider === "openai"
+            ? "OpenAI API-avain"
+            : "ChatGPT-tilaus"}{" "}
         <span className="md-id">{provider}</span>
       </div>
       <p className="md-src">

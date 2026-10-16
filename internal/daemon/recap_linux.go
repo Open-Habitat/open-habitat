@@ -21,6 +21,11 @@ func (c *ConversationController) piArgs() ([]string, error) {
 	if c.fixture {
 		return args, nil
 	}
+	// Optional during rollout: the product works with either guest runtime.
+	bridge := filepath.Join(filepath.Dir(filepath.Dir(c.runtime.Node)), "node_modules/pi-claude-bridge/src/index.ts")
+	if info, err := os.Stat(bridge); err == nil && info.Mode().IsRegular() {
+		args = append(args, "--extension", bridge)
+	}
 	// The tmpfiles service can remove a stale /var/tmp directory during a
 	// long-lived daemon. Recreate the bridge before launching the next child.
 	if c.recapPath != "" {

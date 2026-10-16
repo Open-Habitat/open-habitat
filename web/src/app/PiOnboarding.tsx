@@ -5,6 +5,7 @@ import {
   type PiDeviceSignInView,
 } from "../components/PiDeviceSignIn";
 import { Button } from "../components/Primitives";
+import { ClaudeSignIn } from "./ClaudeSignIn";
 import { PiCredentials } from "./PiCredentials";
 import { type Attempt, piAttempt, piStatus, sessionCSRF } from "./pi";
 
@@ -334,6 +335,7 @@ export function PiOnboarding({
             : undefined
         }
       />
+      <ClaudeSignIn csrf={bound.current} onSignedIn={onUsable} />
       {!forceSignIn && (
         <div className="s-card">
           <PiCredentials

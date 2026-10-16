@@ -20,7 +20,7 @@ export type Session = {
   workspace_id: string;
   state: string;
   startup_choice?: {
-    provider?: "openai" | "openai-codex";
+    provider?: "openai" | "openai-codex" | "claude-bridge";
     model: string;
     thinking?: string;
   } | null;
@@ -258,7 +258,7 @@ export async function create(
   workspace: string,
   csrf: string,
   choice?: {
-    provider?: "openai" | "openai-codex";
+    provider?: "openai" | "openai-codex" | "claude-bridge";
     model: string;
     thinking?: string;
   },

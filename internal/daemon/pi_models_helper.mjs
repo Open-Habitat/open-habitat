@@ -1,6 +1,6 @@
 // Invoked by the mapped-UID daemon with trusted Pi paths. Never print Pi errors or credentials.
 import { pathToFileURL } from 'node:url';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const [entry, manifest, action, selected = ''] = process.argv.slice(-4);
@@ -22,6 +22,18 @@ try {
       const refreshed = await runtime.refresh({ allowNetwork: false, providers: [provider] });
       if (refreshed.errors?.has(provider)) continue;
       models.push(...(await runtime.getAvailable(provider)).filter(m => m.provider === provider && m.input?.includes('text')));
+    }
+    // Load only the declared bridge extension, not arbitrary user extensions or
+    // unrelated credential resolvers. Pinned Pi's loader queues provider registrations.
+    const bridge = new URL('../../../pi-claude-bridge/src/index.ts', pathToFileURL(entry));
+    if (existsSync(bridge)) {
+      const { loadExtensions } = await import(new URL('./core/extensions/loader.js', pathToFileURL(entry)).href);
+      const loaded = await loadExtensions([bridge.pathname], process.env.HOME);
+      if (loaded.errors.length) throw Error('bridge');
+      for (const registration of loaded.runtime.pendingProviderRegistrations) {
+        if (registration.name === 'claude-bridge') runtime.registerProvider(registration.name, registration.config);
+      }
+      models.push(...runtime.getModels('claude-bridge').filter(m => m.input?.includes('text')));
     }
     models = models.slice(0, 100);
     if (!models.length) throw Error('auth');

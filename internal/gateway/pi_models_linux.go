@@ -43,3 +43,22 @@ func (a *Auth) piCredentials(w http.ResponseWriter, r *http.Request) {
 	}
 	a.proxy(w, r, s, false)
 }
+
+func (a *Auth) claudeLogin(w http.ResponseWriter, r *http.Request) {
+	if (r.Method != "GET" && r.Method != "POST" && r.Method != "PUT" && r.Method != "DELETE") || !a.exact(r, "/api/v1/pi/claude-login") {
+		safe(w, 400, "invalid_request")
+		return
+	}
+	s, ok := a.authenticated(r)
+	if !ok {
+		safe(w, 401, "authentication_required")
+		return
+	}
+	if r.Method != "GET" {
+		if denied := a.authorizeWrite(r, s); denied != "" {
+			safe(w, 403, denied)
+			return
+		}
+	}
+	a.proxy(w, r, s, false)
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/claude-login.schema.json",
+  "title": "Ephemeral native Claude Code subscription login",
+  "type": "object",
+  "required": ["schema_version", "state"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "state": {"enum": ["missing", "unavailable", "unknown", "pending", "code", "completed"]},
+    "attempt_id": {"type": "string", "pattern": "^[0-9]{8}T[0-9]{6}\\.[0-9]{9}$"},
+    "verification_uri": {"type": "string", "maxLength": 4096, "pattern": "^https://claude\\.com/cai/oauth/authorize\\?"}
+  },
+  "allOf": [{"if": {"properties": {"state": {"const": "code"}}}, "then": {"required": ["attempt_id", "verification_uri"]}, "else": {"not": {"required": ["verification_uri"]}}}],
+  "additionalProperties": false
+}

@@ -153,7 +153,7 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	if r.URL.Path == githubDisconnectPath && s.absolute.Sub(a.now()) > sessionAbsolute-5*time.Minute {
 		req.Header.Set("X-Agent-Host-Recent-Login", "1")
 	}
-	if c, e := r.Cookie(cookieName); e == nil && r.URL.Path == piAttemptPath {
+	if c, e := r.Cookie(cookieName); e == nil && (r.URL.Path == piAttemptPath || r.URL.Path == "/api/v1/pi/claude-login") {
 		hash := sha256.Sum256([]byte("pi-attempt-owner\x00" + c.Value))
 		req.Header.Set("X-Agent-Host-Session", base64.RawURLEncoding.EncodeToString(hash[:]))
 	}

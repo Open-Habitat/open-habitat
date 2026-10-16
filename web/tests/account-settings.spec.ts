@@ -158,14 +158,14 @@ test("@account-settings Pi default model is read from native models and saved", 
 }) => {
   await login(page);
   await settings(page);
-  await page.getByRole("button", { name: "Agentti", exact: true }).click();
+  await page.getByRole("button", { name: "Agentit", exact: true }).click();
   const older = page.getByText("Vanhemmat mallit (3)");
   await expect(page.getByRole("radio", { name: /GPT 5.4/ })).not.toBeVisible();
   await older.click();
   await page.getByRole("radio", { name: /GPT 5.4/ }).click();
   await expect(page.getByRole("radio", { name: /GPT 5.4/ })).toBeChecked();
   await page.reload();
-  await page.getByRole("button", { name: "Agentti", exact: true }).click();
+  await page.getByRole("button", { name: "Agentit", exact: true }).click();
   await expect(page.getByRole("radio", { name: /GPT 5.4/ })).toBeChecked();
   await expect(page.getByRole("radio", { name: /GPT 5.4/ })).toBeVisible();
 });
@@ -312,7 +312,7 @@ test("@account-settings refused defaults and observation-only fallback cannot wr
     ).status(),
   ).toBe(200);
   await settings(page);
-  await page.getByRole("button", { name: "Agentti", exact: true }).click();
+  await page.getByRole("button", { name: "Agentit", exact: true }).click();
   await expect(page.getByRole("radio", { name: /GPT 5.5/ })).toBeChecked();
   await expect(
     page.getByRole("button", { name: "high", exact: true }),
@@ -363,7 +363,7 @@ test("@account-settings refused defaults and observation-only fallback cannot wr
     }),
   );
   await page.goto("/settings");
-  await page.getByRole("button", { name: "Agentti", exact: true }).click();
+  await page.getByRole("button", { name: "Agentit", exact: true }).click();
   await expect(
     page.getByRole("radio", { name: /Observed Astra/ }),
   ).toBeDisabled();
@@ -396,7 +396,7 @@ test.describe("credential settings", () => {
       await page.request.get("/api/v1/pi/credentials")
     ).json();
     expect(JSON.stringify(credentials).includes(key)).toBe(false);
-    await page.getByRole("button", { name: "Agentti", exact: true }).click();
+    await page.getByRole("button", { name: "Agentit", exact: true }).click();
     await expect(
       page.getByRole("button", { name: "API-avain", exact: true }),
     ).toHaveAttribute("aria-pressed", "true");
@@ -467,4 +467,95 @@ test("@account-settings administration is host-authorized, not only hidden", asy
       .filter({ hasText: "Ylläpito on vain ylläpitäjille" }),
   ).toBeVisible();
   await expect(page.getByRole("table")).toHaveCount(0);
+});
+
+test("@account-settings Claude native code sign-in and provider-qualified picker", async ({
+  page,
+}) => {
+  await login(page);
+  const attempt = "20261016T120000.000000001";
+  let signedIn = false;
+  let started = false;
+  let submissions = 0;
+  await page.route("**/api/v1/pi/claude-login", async (route) => {
+    const request = route.request();
+    if (request.method() === "POST") started = true;
+    if (request.method() === "PUT") {
+      expect(request.headers()["x-agent-host-csrf"]).toBeTruthy();
+      expect(request.postDataJSON()).toEqual({
+        attempt_id: attempt,
+        code: "synthetic-code#state",
+      });
+      submissions++;
+      signedIn = true;
+    }
+    await route.fulfill({
+      json: {
+        schema_version: 1,
+        state: signedIn ? "completed" : started ? "code" : "missing",
+        ...(started ? { attempt_id: attempt } : {}),
+        ...(started && !signedIn
+          ? {
+              verification_uri:
+                "https://claude.com/cai/oauth/authorize?code=true&state=synthetic",
+            }
+          : {}),
+      },
+    });
+  });
+  await page.route("**/api/v1/pi/models", async (route) => {
+    const original = await route.fetch();
+    const json = await original.json();
+    json.models.push({
+      provider: "claude-bridge",
+      id: "claude-fable-5-1",
+      name: "Claude Fable 5.1",
+      thinking_levels: ["low", "high"],
+    });
+    await route.fulfill({ response: original, json });
+  });
+  await settings(page);
+  await page.getByRole("button", { name: "Agentit", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Kirjaudu Claudeen", exact: true })
+    .click();
+  await expect(
+    page.getByRole("link", { name: "Avaa Claude-kirjautuminen" }),
+  ).toHaveAttribute("href", /^https:\/\/claude\.com\//);
+  await page
+    .getByLabel("Clauden palauttama koodi")
+    .fill("synthetic-code#state");
+  await page.getByRole("button", { name: "Vahvista Claude-koodi" }).click();
+  await expect(page.getByText(/Claude-tilaus on kirjautunut/)).toBeVisible();
+  await expect(page.getByLabel("Clauden palauttama koodi")).toHaveCount(0);
+  expect(submissions).toBe(1);
+  const writes: unknown[] = [];
+  await page.route("**/api/v1/pi/models", async (route) => {
+    if (route.request().method() === "POST")
+      writes.push(route.request().postDataJSON());
+    await route.fulfill({
+      json: {
+        schema_version: 1,
+        default_provider: "claude-bridge",
+        default_model: "claude-fable-5-1",
+        models: [
+          {
+            provider: "claude-bridge",
+            id: "claude-fable-5-1",
+            name: "Claude Fable 5.1",
+            thinking_levels: ["low", "high"],
+          },
+        ],
+      },
+    });
+  });
+  await page
+    .getByRole("button", { name: "Claude-tilaus", exact: true })
+    .click();
+  await expect(
+    page.getByRole("radio", { name: /Claude Fable 5.1/ }),
+  ).toBeChecked();
+  expect(writes).toEqual([
+    { provider: "claude-bridge", model: "claude-fable-5-1", thinking: "low" },
+  ]);
 });
