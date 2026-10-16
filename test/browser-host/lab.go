@@ -226,7 +226,12 @@ func seedOpeningHistory(home string) error {
 		}
 	}
 	for _, content := range []string{"", "<process_event type=\"lifecycle\" kind=\"success\" process_id=\"proc_example\" process_name=\"test\" status=\"exited\">\n  <summary>Synteettinen testi valmistui</summary>\n  <command>npm test</command>\n  <exit_code>0</exit_code>\n</process_event>"} {
-		if err := write(map[string]any{"type": "custom_message", "customType": "ad-process:notification", "display": true, "content": content, "details": map[string]any{"private": "not for the browser"}}); err != nil {
+		if err := write(map[string]any{"type": "custom_message", "customType": "ad-process:notification", "display": true, "content": content, "details": func() map[string]any {
+			if content == "" {
+				return map[string]any{"private": "not for the browser"}
+			}
+			return map[string]any{"kind": "success", "processId": "proc_abcd", "processName": "test", "command": "npm test", "exitCode": 0, "timestamp": time.Now().UnixMilli(), "private": "not for the browser"}
+		}()}); err != nil {
 			return err
 		}
 	}

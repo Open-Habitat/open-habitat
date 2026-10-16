@@ -147,7 +147,18 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
         const cardBox = await view.locator(".ah-recap").boundingBox();
         const controlBox = await view.locator(surface).boundingBox();
         if (!cardBox || !controlBox) throw new Error("Missing footer geometry");
-        const gap = controlBox.y - (cardBox.y + cardBox.height);
+        // A controlled Pi now has a process tray above its composer. Preserve
+        // the surrounding spacing rhythm without counting that visible surface
+        // as whitespace; the read-only footer has no intervening tray.
+        const tray = await view.locator(".ah-process-tray").boundingBox();
+        const interveningTray =
+          tray &&
+          tray.y >= cardBox.y + cardBox.height &&
+          tray.y + tray.height <= controlBox.y;
+        const gap =
+          controlBox.y -
+          (cardBox.y + cardBox.height) -
+          (interveningTray ? tray.height : 0);
         expect(gap).toBeGreaterThan(0);
         gaps.push(gap);
       }

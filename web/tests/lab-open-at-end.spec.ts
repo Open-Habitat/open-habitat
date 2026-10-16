@@ -69,20 +69,23 @@ test("@lab native extension messages keep process summaries and omit empty cards
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice", exact: true }).click();
   await page.goto("/agents/pi:a1a1a1a1-0000-4000-8000-000000000001");
-  // Wait for the lazy Markdown renderer so its plain-text fallback cannot mask
-  // the regression where raw HTML filtering drops the notification's summary.
-  await page.locator(".ah-markdown p").first().waitFor();
-  // Real process notification text must not disappear as Markdown raw HTML.
+  // Native structured details, never XML, determine the completion block.
   const notification = page
     .getByRole("note")
-    .filter({ hasText: "Prosessin ilmoitus" });
-  await expect(notification).toContainText("Synteettinen testi valmistui");
-  await expect(notification.locator("p")).toBeVisible();
-  await expect(notification.locator("pre")).toBeHidden();
-  await notification.getByText("Ilmoituksen sisältö", { exact: true }).click();
-  await expect(notification.locator("pre")).toBeVisible();
-  await expect(notification.locator("process_event")).toHaveCount(0);
-  await notification.getByText("Ilmoituksen sisältö", { exact: true }).click();
+    .filter({ hasText: "test · valmis" });
+  await expect(notification).toHaveCount(1);
+  const toggle = notification.getByRole("button", {
+    name: "test · valmis · koodi 0",
+  });
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await toggle.click();
+  await expect(
+    notification.getByText(/Merkintä säilyy historiassa/),
+  ).toBeVisible();
+  await expect(notification.locator("pre, process_event")).toHaveCount(0);
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator(".ah-feed")).not.toContainText("<process_event");
   await expect(
     page.getByText("Laajennuksen viesti", { exact: true }),
   ).toHaveCount(0);

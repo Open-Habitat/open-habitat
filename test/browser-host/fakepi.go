@@ -300,6 +300,7 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	time.Sleep(step)
 	if typed {
 		emit(map[string]any{"type": "message_update", "assistantMessageEvent": map[string]any{"type": "thinking_delta", "contentIndex": 1, "delta": "Synteettinen pohdinta", "partial": map[string]any{"content": []map[string]any{{"type": "text"}, {"type": "thinking", "redacted": false}}}}})
+		emit(map[string]any{"type": "message_update", "assistantMessageEvent": map[string]any{"type": "toolcall_start", "contentIndex": 2, "toolName": "bash", "id": callID}})
 		emit(map[string]any{"type": "message_update", "assistantMessageEvent": map[string]any{"type": "toolcall_delta", "contentIndex": 2, "delta": "{\"command\":\"ls\""}})
 	}
 	if stream {
