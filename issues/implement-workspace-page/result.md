@@ -114,3 +114,36 @@ below 2 GiB, further heavy checks wait rather than changing shared services.
 Full clean gate, feature merges, push and test-server deployment are recorded
 below once verified. This result claims synthetic same-UID/browser evidence,
 not distinct-UID isolation, real provider behavior or live sign-in.
+
+## Final integration iterations
+
+Rebased without dropping or combining feature commits onto the settings refresh,
+reasoning-title, and open-at-end/extension-message fixes. Their server-name
+invalidation, new-opening-at-latest semantics, readable process summaries and
+native empty-message filtering remain intact. The unread counter still counts
+new visible text messages, not tool results or older-page insertion.
+
+The clean gate exposed two obsolete onboarding-lab assertions: the workspace
+page's former back-link class and former empty-state wording. The journey now
+returns through the accessible phone drawer and checks the accepted open-section
+empty state. The next lab run caught a real omission: the existing guarded
+GitHub publication workflow was no longer reachable. It is retained inside the
+Git layer for eligible local repositories, rather than placing a form ahead of
+conversations; clones still do not offer publication. The desktop/phone lab
+checks the actual open layer, not merely absence of a hidden form.
+
+The normal suite also exposed an existing empty-composer replacement race:
+late status 404s from the child just closed could redirect the new view into
+missing native history before route-effect cleanup. It initially passed 3/3
+isolated repetitions but failed again after integration, so it was fixed rather
+than waived as a timeout. The old view epoch is now fenced synchronously before
+handoff/cleanup, and its completion cannot clear the new view's busy state. A
+new ownership regression fails on the old implementation and passes on the fix.
+Five browser repetitions then passed. Stress repetitions also encountered native
+close refusals; their conservative writer/empty-history checks were not weakened
+or retried. Temporary diagnostic instrumentation was removed byte-for-byte.
+
+RAM was checked before heavy runs (6–7 GiB available for the final iterations).
+Private polling avoids the shared inotify limit; serial heavy phases avoid
+adding our own Go process churn during browser native-source census. No machine
+limit, household service or other worker's processes were changed.

@@ -18,6 +18,7 @@ import {
 } from "./conversationStore";
 import type { Workspace } from "./snapshot";
 import { type Choice, PiModelSelector } from "./PiModelSelector";
+import { WorkspaceGitHub } from "./WorkspaceGitHub";
 import { mutateWorkspace } from "./WorkspaceManagement";
 import { type WorkspaceGit, workspaceGit } from "./workspaceGit";
 import "./WorkspacePage.css";
@@ -301,6 +302,18 @@ export function WorkspacePage({
             >
               Päivitä Git-tila
             </ControlButton>
+            {workspace.kind === "git_main_worktree" &&
+            (workspace.git_remote === "none" ||
+              workspace.publish_continuation) ? (
+              <WorkspaceGitHub
+                workspace={workspace}
+                csrf={csrf}
+                refresh={() => {
+                  refresh();
+                  setGitRead((value) => value + 1);
+                }}
+              />
+            ) : null}
           </WorkspaceGitLayer>
         </div>
       ) : (

@@ -155,18 +155,34 @@ test("@lab cloned GitHub checkout hides publication; local Git checkout keeps it
     await expect(
       page.getByRole("heading", { name: "last", level: 1 }),
     ).toBeVisible();
+    await page.locator(".ah-workspace-git").getByRole("button").click();
     await expect(
       page.getByRole("heading", { name: "Julkaise GitHubiin" }),
     ).toHaveCount(0);
+    await expect(page.getByRole("textbox", { name: "Omistaja" })).toHaveCount(
+      0,
+    );
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Sulje", exact: true })
+      .click();
     await expect(
       page.getByText("Ei avoimia keskusteluja. Aloita uusi keskustelu +:sta."),
     ).toBeVisible();
     await expect(page.getByRole("heading", { name: "Arkisto" })).toHaveCount(0);
     await page.goto(`/workspaces/${local.workspace_id}`);
+    await page.locator(".ah-workspace-git").getByRole("button").click();
     await expect(
       page.getByRole("heading", { name: "Julkaise GitHubiin" }),
     ).toBeVisible();
     await expect(page.getByRole("textbox", { name: "Omistaja" })).toBeVisible();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(width);
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Sulje", exact: true })
+      .click();
     await expect(
       page.getByText("Ei avoimia keskusteluja. Aloita uusi keskustelu +:sta."),
     ).toBeVisible();
