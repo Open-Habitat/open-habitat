@@ -43,10 +43,19 @@ fix, not a claim that the after image is the unchanged base tree.
   and absence of navigation/reload. Layout test measures actual rendered text
   lines, card containment and reachable actions at 1280, 1024 and 390px, including
   opening the quota editor.
-- `shell-accessibility.spec.ts`: passed.
-- Broader account settings: initial run passed 10/11; the unrelated native-key
-  test timed out looking for “Lisää avain”. Isolation result and final checks
-  are recorded below.
+- `shell-accessibility.spec.ts`: 3/3 passed.
+- `account-settings.spec.ts`: 11/11 passed after installing the pinned native
+  test fixture with `npm ci --prefix internal/daemon/pi-device-test
+  --ignore-scripts --no-audit --no-fund`. Initial 10/11 and isolated credential
+  failures were a missing prerequisite, not a flaky pass: the fixture's missing
+  SDK made credentials return unavailable, so “Lisää avain” was correctly absent.
+- `./scripts/test-focused.sh --area web`: format, lint, typecheck, 131 unit and
+  119 component tests passed.
+- `python3 scripts/validate-project-view.py` and `git diff --check`: passed.
+  `issuectl doctor --json` completed; its existing `superseded_by` unknown-key
+  warning concerns `raw-thinking-history-blocks`, not this issue.
+- Rebased cleanly onto `origin/main` (`c0bf1918`); implementation commit is
+  `0d316589`. Full clean-gate outcome follows in the final validation record.
 
 Focused self-review: notification carries no user data and adds no cache or
 persistent state; name/role still come from the host's validated server read.
