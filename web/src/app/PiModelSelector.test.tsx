@@ -92,7 +92,7 @@ it("does not unblock the applied refused model until an empty-conversation choic
   fireEvent.click(radio);
   expect(onBlocked).toHaveBeenLastCalledWith(true);
   expect(onChoice).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", { name: "Valitse", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Valitse" }));
   await waitFor(() => expect(onBlocked).toHaveBeenLastCalledWith(false));
   expect(onChoice).toHaveBeenCalledWith({
     provider: "openai-codex",
