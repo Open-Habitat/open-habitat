@@ -3,7 +3,7 @@ created: 2026-10-16
 updated: 2026-10-16
 type: bug
 reporter: jari
-status: open
+status: testing
 priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]

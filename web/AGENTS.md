@@ -54,7 +54,12 @@ switch scenarios and history modes and expire sessions. That switch is process-w
 cross-worker interference and leaked fixture state between cases on the same
 worker. The default suite runs eight workers and the lab suite four, including
 concurrent cases in one spec. The host is
-test-only code, never imported by `cmd/open-habitat`. Both the default browser suite and lab mode run the real daemon conversation
+test-only code, never imported by `cmd/open-habitat`. Its Unix HTTP server uses
+the production daemon's five-second write deadline, including after fixture
+restarts; native-operation handlers must extend that deadline themselves.
+The `pi-slow-start` scenario delays fake Pi's initial state response beyond
+five seconds rather than delaying a browser route, so tests exercise the actual
+socket response budget. Both the default browser suite and lab mode run the real daemon conversation
 controller and native-history path against a fake Pi child. This
 proves routing and the browser/host contract but not UID isolation; the two-UID systemd VM
 scenarios in `scripts/vm-test.sh` prove that. A browser test passing here is

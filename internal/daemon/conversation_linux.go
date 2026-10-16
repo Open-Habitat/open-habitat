@@ -385,6 +385,12 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
+	// The socket server's default write deadline is five seconds. Native catalog
+	// validation can take twelve seconds and the child's initial get_state up to
+	// fifteen; retain the create reply instead of losing an already-created
+	// session to that shorter transport deadline. Stay below the gateway's
+	// sixty-second finite-request ceiling.
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(45 * time.Second))
 	// Validate against this person's native catalog without changing their default.
 	if body.Model != "" && !c.fixture {
 		device := &PiDevice{Home: c.home, Node: c.runtime.Node, Entry: c.runtime.Entry, Manifest: c.runtime.Manifest, TrustedRuntime: true}

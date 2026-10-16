@@ -380,7 +380,7 @@ esac
 		mux.Handle("/api/v1/conversations", serveConversation)
 		mux.Handle("/api/v1/conversations/", serveConversation)
 		mux.Handle("/api/v1/events", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if scenario.Load() != "ready" && scenario.Load() != "pi-deltas" && scenario.Load() != "pi-typed" && scenario.Load() != "pi-visual-hold" && scenario.Load() != "pi-auth-failure" && scenario.Load() != "pi-model-unsupported" && scenario.Load() != "pi-recap" && scenario.Load() != "pi-recap-unsupported" {
+			if scenario.Load() != "ready" && scenario.Load() != "pi-deltas" && scenario.Load() != "pi-typed" && scenario.Load() != "pi-visual-hold" && scenario.Load() != "pi-auth-failure" && scenario.Load() != "pi-model-unsupported" && scenario.Load() != "pi-recap" && scenario.Load() != "pi-recap-unsupported" && scenario.Load() != "pi-slow-start" {
 				http.NotFound(w, r) // Fault scenarios exercise the HTTP fallback.
 				return
 			}
@@ -400,14 +400,16 @@ esac
 				return
 			case "delay":
 				time.Sleep(650 * time.Millisecond)
-			case "ready", "pi-deltas", "pi-typed", "pi-visual-hold", "pi-auth-failure", "pi-model-unsupported", "pi-recap", "pi-recap-unsupported":
+			case "ready", "pi-deltas", "pi-typed", "pi-visual-hold", "pi-auth-failure", "pi-model-unsupported", "pi-recap", "pi-recap-unsupported", "pi-slow-start":
 				current.Load().(*daemon.ConversationController).FixtureSnapshot().ServeHTTP(w, r)
 				return
 
 			}
 			handler.ServeHTTP(w, r)
 		}))
-		srv := &http.Server{Handler: mux, ConnContext: func(ctx context.Context, c net.Conn) context.Context {
+		// Match the production daemon's response deadline. A deadline-free lab
+		// hid lost creation replies when native Pi startup exceeded five seconds.
+		srv := &http.Server{Handler: mux, WriteTimeout: 5 * time.Second, ConnContext: func(ctx context.Context, c net.Conn) context.Context {
 			uc, ok := c.(*net.UnixConn)
 			if !ok {
 				return ctx
@@ -472,7 +474,7 @@ esac
 						http.Error(w, "fixture listen failed", 500)
 						return
 					}
-					next := &http.Server{Handler: srv.Handler, ConnContext: srv.ConnContext}
+					next := &http.Server{Handler: srv.Handler, WriteTimeout: srv.WriteTimeout, ConnContext: srv.ConnContext}
 					servers[i] = next
 					go next.Serve(ln)
 				}
@@ -634,7 +636,7 @@ esac
 			case "/fixture/scenario":
 				name := r.URL.Query().Get("value")
 				switch name {
-				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "pi-blocked", "pi-onboarding", "pi-deltas", "pi-typed", "pi-visual-hold", "pi-auth-failure", "pi-model-unsupported", "pi-recap", "pi-recap-unsupported":
+				case "ready", "empty", "missing", "error", "partial", "malformed", "oversize", "delay", "native-error", "pi-blocked", "pi-onboarding", "pi-deltas", "pi-typed", "pi-visual-hold", "pi-auth-failure", "pi-model-unsupported", "pi-recap", "pi-recap-unsupported", "pi-slow-start":
 					// Read by the fake Pi child at turn start. Switching back to ready
 					// keeps subsequent lab cases on the old, faster fixture.
 					if err := os.Remove(filepath.Join(tmp, "fakepi-visual-phase")); err != nil && !os.IsNotExist(err) {

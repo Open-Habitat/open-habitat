@@ -123,6 +123,12 @@ func runFakePi(args []string) {
 			s.thinking = req.Level
 			emit(map[string]any{"type": "response", "id": req.ID, "command": req.Type, "success": true})
 		case "get_state":
+			mode, _ := os.ReadFile(filepath.Join(filepath.Dir(home), "fakepi-scenario"))
+			if strings.TrimSpace(string(mode)) == "pi-slow-start" {
+				// Native extension initialization can outlast the socket server's
+				// five-second default deadline. Delay the RPC, not the HTTP client.
+				time.Sleep(6 * time.Second)
+			}
 			level := s.thinking
 			if level == "" {
 				level = "off"
