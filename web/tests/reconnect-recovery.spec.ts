@@ -135,3 +135,64 @@ for (const created of [false, true]) {
     }
   });
 }
+
+test("@reconnect explicit refresh releases legacy creation guards across pages and reloads without clearing sends", async ({
+  page,
+}) => {
+  await open(page);
+  const snapshotResponse = await page.request.get("/api/v1/snapshot");
+  const snapshot = await snapshotResponse.json();
+  const identity = snapshot.identity.web_identity_id;
+  const firstId = new URL(page.url()).pathname.split("/").at(-1);
+  if (!firstId) throw new Error("missing workspace route");
+  const other = snapshot.workspaces.find(
+    (workspace: { workspace_id: string; mutation_state?: string }) =>
+      workspace.workspace_id !== firstId &&
+      workspace.mutation_state === "allowed",
+  );
+  expect(other).toBeTruthy();
+  const firstKey = `nah:${identity}:uncertain:${firstId}`;
+  const otherKey = `nah:${identity}:uncertain:${other.workspace_id}`;
+  const sendKey = `nah:${identity}:uncertain:pi:11111111-1111-4111-8111-111111111111`;
+  await page.evaluate(
+    ({ firstKey, otherKey, sendKey }) => {
+      sessionStorage.setItem(firstKey, "create");
+      sessionStorage.setItem(otherKey, "create");
+      sessionStorage.setItem(sendKey, "synthetic-send-command");
+    },
+    { firstKey, otherKey, sendKey },
+  );
+  let writes = 0;
+  await page.route("**/api/v1/conversations", (route) => {
+    if (route.request().method() === "POST") writes++;
+    return route.continue();
+  });
+  await page.reload();
+  const start = page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" });
+  await expect(start).toBeDisabled();
+  await page.goto(`/workspaces/${other.workspace_id}`);
+  await expect(start).toBeDisabled();
+  await page.reload();
+  await expect(start).toBeDisabled();
+  const list = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/v1/conversations" &&
+      response.ok(),
+  );
+  await page.getByRole("button", { name: "Päivitä", exact: true }).click();
+  await list;
+  await expect(start).toBeEnabled();
+  expect(
+    await page.evaluate(
+      ({ firstKey, otherKey, sendKey }) => [
+        sessionStorage.getItem(firstKey),
+        sessionStorage.getItem(otherKey),
+        sessionStorage.getItem(sendKey),
+      ],
+      { firstKey, otherKey, sendKey },
+    ),
+  ).toEqual([null, null, "synthetic-send-command"]);
+  await page.goto(`/workspaces/${firstId}`);
+  await expect(start).toBeEnabled();
+  expect(writes).toBe(0);
+});
