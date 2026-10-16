@@ -776,6 +776,7 @@ export function AgentHeader({
       {detailsExpanded ? (
         <section className="ah-details-popover" aria-label="Tiedot">
           <h2>Tiedot</h2>
+          {detailsExtra}
           <dl className="ah-facts">
             {(
               detailsFacts ?? [
@@ -810,7 +811,6 @@ export function AgentHeader({
               </div>
             ))}
           </dl>
-          {detailsExtra}
         </section>
       ) : null}
     </header>

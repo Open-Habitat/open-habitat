@@ -1363,8 +1363,20 @@ h1[tabindex="-1"]:focus {
     calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline))
   );
 }
-.ah-conversation-notices:empty {
+.ah-conversation-notices:empty,
+.ah-actionable-notices:empty {
   display: none;
+}
+/* An actionable error stays outside the shrinking history scroll when a recap arrives. */
+.ah-conversation-frame > .ah-actionable-notices:not(:empty) {
+  flex: none;
+  width: min(
+    calc(100% - 2 * var(--ah-column-pad-inline)),
+    calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline))
+  );
+  max-height: min(40vh, 24rem);
+  overflow: auto;
+  margin-inline: auto;
 }
 @media (max-height: 600px) {
   .ah-conversation-frame .ah-composer {

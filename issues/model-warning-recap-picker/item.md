@@ -3,12 +3,14 @@ created: 2026-10-16
 updated: 2026-10-16
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: web
 lane_seq: 1
 collision: [web/src/app/, web/src/components/]
 preparation: ready
+closed: 2026-10-16
+closed_by: agent
 ---
 
 # Recap hides model warning and closes popover; model cannot be chosen from the warning
@@ -24,7 +26,13 @@ Expected: the warning stays visible until resolved, recap arrival does not close
 Context: why gpt-5.5 is rejected (OpenAI's Codex route refuses it for this ChatGPT account, and Codex CLI 0.156.1 gets the same refusal) is a separate matter, covered by `model-discovery`.
 
 ## Acceptance Criteria
-- [ ] Recap arrival keeps the unsupported-model notice (and other actionable notices) visible; covered by a browser test.
-- [ ] Recap arrival, or other live updates, do not close an open model popover; covered by a browser test.
-- [ ] "Valitse toinen malli" opens a modal where a model can be chosen and saved; covered by a browser test.
-- [ ] Lab screenshots before and after in this issue directory.
+- [x] Recap arrival keeps the unsupported-model notice (and other actionable notices) visible; covered by a browser test.
+- [x] Recap arrival, or other live updates, do not close an open model popover; covered by a browser test.
+- [x] "Valitse toinen malli" opens a modal where a model can be chosen and saved; covered by a browser test.
+- [x] Lab screenshots before and after in this issue directory.
+
+## Resolution
+
+### 2026-10-16T03:40:23Z · @agent
+
+Fixed notice placement and picker reachability; lab regression covers recap while popover open. Full gate was inconclusive on isolated unrelated failures; see result.md.

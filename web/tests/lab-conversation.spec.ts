@@ -171,6 +171,69 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
   }
 });
 
+test("@lab unsupported-model action remains usable when a native recap arrives", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  await page.setViewportSize({ width: 1100, height: 600 });
+  expect(
+    (
+      await page.request.get("/fixture/scenario?value=pi-recap-unsupported")
+    ).status(),
+  ).toBe(204);
+  try {
+    await page.goto("/workspaces");
+    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+    await page.getByRole("link", { name: "Alice" }).click();
+    await page
+      .getByRole("navigation")
+      .getByRole("link", { name: "aurinkokello" })
+      .click();
+    await page
+      .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+      .click();
+    await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("kokeilu");
+    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+    const warning = page.getByText("Valittu kielimalli ei ole käytettävissä");
+    await expect(warning).toBeVisible();
+    await page.getByRole("button", { name: "Valitse toinen malli" }).click();
+    const selector = page.getByLabel("Pi:n oletusmalli uusille keskusteluille");
+    await expect(selector).toBeVisible();
+    const id = new URL(page.url()).searchParams.get("conversation")?.slice(3);
+    expect(id).toBeTruthy();
+    const { csrf } = await (await page.request.get("/auth/session")).json();
+    const response = await page.request.post(
+      `/api/v1/conversations/${id}/recap`,
+      {
+        headers: {
+          "X-Agent-Host-CSRF": csrf,
+          Origin: new URL(page.url()).origin,
+        },
+      },
+    );
+    expect(response.status()).toBe(200);
+    await expect(
+      page.getByRole("complementary", { name: "Keskustelun yhteenveto" }),
+    ).toBeVisible();
+    await expect(page.getByRole("region", { name: "Tiedot" })).toBeVisible();
+    await expect(warning).toBeInViewport();
+    await expect(selector).toBeInViewport();
+    await selector.selectOption("gpt-5.4");
+    await expect(selector).toHaveValue("gpt-5.4");
+    await expect
+      .poll(
+        async () =>
+          (await (await page.request.get("/api/v1/pi/models")).json())
+            .default_model,
+      )
+      .toBe("gpt-5.4");
+  } finally {
+    expect(
+      (await page.request.get("/fixture/scenario?value=ready")).status(),
+    ).toBe(204);
+  }
+});
+
 test("@lab real controller creates and persists a fake-Pi turn", async ({
   page,
 }) => {

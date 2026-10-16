@@ -1025,38 +1025,6 @@ export function BrowserConversation({
                 )?.name
               }
             />
-            {!statusStale && current?.auth_error === "pi_auth_failed" ? (
-              <InlineNotice
-                title="Kielimallikirjautuminen ei ole kunnossa"
-                description="Kirjaudu OpenAI-tilillesi uudelleen ja jatka sitten keskustelua. Viestiä ei lähetetä automaattisesti uudelleen; luonnos säilyy."
-                tone="danger"
-                actions={[
-                  {
-                    label: "Kirjaudu uudelleen",
-                    onPress: () =>
-                      navigate(
-                        `/workspaces/${workspace.workspace_id}?conversation=${encodeURIComponent(id ?? "")}&pi_sign_in=1`,
-                      ),
-                  },
-                ]}
-              />
-            ) : null}
-            {!statusStale && current?.auth_error === "pi_model_unsupported" ? (
-              <InlineNotice
-                title="Valittu kielimalli ei ole käytettävissä"
-                description="Pi ilmoitti, ettei valittu malli ole tuettu tällä ChatGPT-tilillä. Kirjautuminen uudelleen ei ratkaise tätä. Valitse toinen oletusmalli ja aloita uusi keskustelu; tämä keskustelu ei vaihda mallia. Luonnos säilyy."
-                tone="danger"
-                actions={[
-                  {
-                    label: "Valitse toinen malli",
-                    onPress: () => {
-                      setDetails(true);
-                      setModelExpanded(true);
-                    },
-                  },
-                ]}
-              />
-            ) : null}
             {statusStale && !serverUnavailable ? (
               <InlineNotice
                 title="Keskustelun tila vanhentui"
@@ -1100,6 +1068,40 @@ export function BrowserConversation({
               </p>
             ) : null}
           </ConversationStream>
+          <div className="ah-actionable-notices">
+            {!statusStale && current?.auth_error === "pi_auth_failed" ? (
+              <InlineNotice
+                title="Kielimallikirjautuminen ei ole kunnossa"
+                description="Kirjaudu OpenAI-tilillesi uudelleen ja jatka sitten keskustelua. Viestiä ei lähetetä automaattisesti uudelleen; luonnos säilyy."
+                tone="danger"
+                actions={[
+                  {
+                    label: "Kirjaudu uudelleen",
+                    onPress: () =>
+                      navigate(
+                        `/workspaces/${workspace.workspace_id}?conversation=${encodeURIComponent(id ?? "")}&pi_sign_in=1`,
+                      ),
+                  },
+                ]}
+              />
+            ) : null}
+            {!statusStale && current?.auth_error === "pi_model_unsupported" ? (
+              <InlineNotice
+                title="Valittu kielimalli ei ole käytettävissä"
+                description="Pi ilmoitti, ettei valittu malli ole tuettu tällä ChatGPT-tilillä. Kirjautuminen uudelleen ei ratkaise tätä. Valitse toinen oletusmalli ja aloita uusi keskustelu; tämä keskustelu ei vaihda mallia. Luonnos säilyy."
+                tone="danger"
+                actions={[
+                  {
+                    label: "Valitse toinen malli",
+                    onPress: () => {
+                      setDetails(true);
+                      setModelExpanded(true);
+                    },
+                  },
+                ]}
+              />
+            ) : null}
+          </div>
           {!statusStale &&
           (ambiguous ||
             current?.state === "uncertain" ||

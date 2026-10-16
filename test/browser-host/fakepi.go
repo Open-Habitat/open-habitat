@@ -106,7 +106,7 @@ func runFakePi(args []string) {
 		case "get_commands":
 			mode, _ := os.ReadFile(filepath.Join(filepath.Dir(home), "fakepi-scenario"))
 			commands := []any{}
-			if strings.TrimSpace(string(mode)) == "pi-recap" {
+			if strings.TrimSpace(string(mode)) == "pi-recap" || strings.TrimSpace(string(mode)) == "pi-recap-unsupported" {
 				commands = append(commands, map[string]any{"name": "oh-conversation-recap", "source": "extension"})
 			}
 			emit(map[string]any{"type": "response", "id": req.ID, "command": "get_commands", "success": true, "data": map[string]any{"commands": commands}})
@@ -133,7 +133,7 @@ func runFakePi(args []string) {
 		case "prompt":
 			if req.Message == "/oh-conversation-recap" || req.Message == "/oh-conversation-recap automatic" {
 				mode, _ := os.ReadFile(filepath.Join(filepath.Dir(home), "fakepi-scenario"))
-				if strings.TrimSpace(string(mode)) == "pi-recap" && s.lastMessage != "" && s.lastRecap != s.lastMessage {
+				if (strings.TrimSpace(string(mode)) == "pi-recap" || strings.TrimSpace(string(mode)) == "pi-recap-unsupported") && s.lastMessage != "" && s.lastRecap != s.lastMessage {
 					trigger := "manual"
 					if strings.HasSuffix(req.Message, " automatic") {
 						trigger = "automatic"
@@ -282,7 +282,7 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 		emit(map[string]any{"type": "agent_end"})
 		return
 	}
-	if strings.TrimSpace(string(mode)) == "pi-model-unsupported" {
+	if strings.TrimSpace(string(mode)) == "pi-model-unsupported" || strings.TrimSpace(string(mode)) == "pi-recap-unsupported" {
 		emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant", "stopReason": "error", "errorMessage": "The model gpt-example is not supported with this ChatGPT account secret=synthetic-secret"}})
 		emit(map[string]any{"type": "agent_end"})
 		return
