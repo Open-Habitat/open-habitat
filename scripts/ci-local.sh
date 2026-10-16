@@ -63,7 +63,7 @@ export GOPROXY=off
 npm ci --prefix web
 # The mapped-UID Pi helper runs the pinned native SDK against a network-trapped synthetic provider.
 npm ci --prefix internal/daemon/pi-device-test --ignore-scripts --no-audit --no-fund
-node --test internal/daemon/pi-device-test/helper.test.mjs
+node --test internal/daemon/pi-device-test/*.test.mjs
 npm exec --prefix web playwright install chromium
 phase web-checks
 npm run format:check --prefix web

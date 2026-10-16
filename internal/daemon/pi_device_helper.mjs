@@ -15,7 +15,7 @@ process.stdin.on('end', () => abort.abort());
 process.stdin.on('error', () => abort.abort());
 try {
   if (action !== 'login' && action !== 'status') throw new Error('invalid action');
-  if (JSON.parse(readFileSync(manifest, 'utf8')).version !== '0.85.1') throw new Error('unsupported Pi version');
+  if (JSON.parse(readFileSync(manifest, 'utf8')).version !== '1.3.0') throw new Error('unsupported Pi version');
   const { ModelRuntime } = await import(pathToFileURL(entry).href);
   // Avoid Pi's create-time scan of unrelated providers (which can execute
   // configured API-key shell resolvers). Login synchronizes its own provider.

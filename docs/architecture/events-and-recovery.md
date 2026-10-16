@@ -54,7 +54,10 @@ session storage so they survive a page reload.
 Each daemon keeps one ordered, in-memory event journal for its user. All
 connected tabs follow that journal independently. It carries live text,
 thinking, tool activity, command receipts and hints that native state has
-changed. The [HTTP API](http-api.md) and `contracts/v1/` define the messages.
+changed. Pi 1.3 wire updates are delta-only; the daemon forwards visible
+thinking text but never signatures or opaque redacted payloads. Completed
+message blocks are not emitted a second time into the live tail. The
+[HTTP API](http-api.md) and `contracts/v1/` define the messages.
 
 Streamed output is provisional: Pi does not give each fragment a durable
 history key. When saved content appears, the browser replaces its live

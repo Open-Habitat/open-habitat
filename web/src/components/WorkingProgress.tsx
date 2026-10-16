@@ -19,7 +19,7 @@ export function progressLabel(events: unknown[]): string {
   return "Odottaa Pi:n seuraavaa vaihetta";
 }
 
-// Pi 0.85.1 AgentSessionEvent (pi-agent-core AgentEvent) and RPC response
+// Pi 1.3.0 AgentSessionEvent (pi-agent-core AgentEvent) and RPC response
 // frames: these are turn lifecycle, queue or metadata, not new user-facing
 // messages. Message and tool content is read from native history instead.
 // Do not wildcard by prefix: extensions and future event types still need a

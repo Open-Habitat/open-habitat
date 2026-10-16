@@ -18,12 +18,7 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 			Type         string `json:"type"`
 			Delta        string `json:"delta"`
 			ContentIndex int    `json:"contentIndex"`
-			Partial      struct {
-				Content []struct {
-					Redacted bool `json:"redacted"`
-				} `json:"content"`
-			} `json:"partial"`
-			ToolCall struct {
+			ToolCall     struct {
 				ID        string          `json:"id"`
 				Name      string          `json:"name"`
 				Arguments json.RawMessage `json:"arguments"`
@@ -89,6 +84,11 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 			return
 		}
 		switch e.AssistantMessageEvent.Type {
+		case "thinking_delta":
+			// Pi 1.3 wire events are delta-only. Providers keep opaque
+			// signatures/redacted payloads outside delta; only visible text
+			// (or the literal redaction placeholder) reaches this field.
+			c.journal.delta(agent, "assistant.thinking.delta", e.AssistantMessageEvent.Delta, e.AssistantMessageEvent.ContentIndex)
 		case "text_delta":
 			c.journal.delta(agent, "assistant.delta", e.AssistantMessageEvent.Delta, e.AssistantMessageEvent.ContentIndex)
 		case "toolcall_delta":
@@ -103,11 +103,6 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 					payload["text"] = text
 				}
 				c.journal.progress(agent, "assistant.toolcall.end", payload)
-			}
-		case "thinking_delta":
-			index := e.AssistantMessageEvent.ContentIndex
-			if index < len(e.AssistantMessageEvent.Partial.Content) && !e.AssistantMessageEvent.Partial.Content[index].Redacted {
-				c.journal.delta(agent, "assistant.thinking.delta", e.AssistantMessageEvent.Delta, index)
 			}
 		}
 	case "tool_execution_start", "tool_execution_update", "tool_execution_end":

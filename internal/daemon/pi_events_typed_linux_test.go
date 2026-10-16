@@ -13,9 +13,9 @@ func TestThinkingDeltasStayTypedAndRespectRedaction(t *testing.T) {
 	c := &ConversationController{journal: j}
 	agent := "pi:11111111-1111-4111-8111-111111111111"
 	for _, event := range []string{
-		`{"type":"message_update","assistantMessageEvent":{"type":"thinking_delta","contentIndex":0,"delta":"think","partial":{"content":[{"type":"thinking","redacted":false}]}}}`,
-		`{"type":"message_update","assistantMessageEvent":{"type":"thinking_delta","contentIndex":0,"delta":" secret","partial":{"content":[{"type":"thinking","redacted":true}]}}}`,
+		`{"type":"message_update","assistantMessageEvent":{"type":"thinking_delta","contentIndex":0,"delta":"think"}}`,
 		`{"type":"message_update","assistantMessageEvent":{"type":"text_delta","contentIndex":1,"delta":"answer"}}`,
+		`{"type":"message_end","message":{"role":"assistant","stopReason":"stop","content":[{"type":"thinking","thinking":"think","thinkingSignature":"secret"},{"type":"thinking","thinking":"[Reasoning redacted]","thinkingSignature":"redacted secret","redacted":true}]}}`,
 	} {
 		c.publishDelta(agent, json.RawMessage(event))
 	}
@@ -28,6 +28,44 @@ func TestThinkingDeltasStayTypedAndRespectRedaction(t *testing.T) {
 		if strings.Contains(string(frame), "secret") {
 			t.Fatalf("redacted content escaped: %s", frame)
 		}
+	}
+}
+
+func TestPi13ThinkingChunksDoNotOverflowOnFinalMessage(t *testing.T) {
+	j := newEventJournal()
+	c := &ConversationController{journal: j}
+	agent := "pi:11111111-1111-4111-8111-111111111111"
+	// Actual wire order: small deltas followed by a potentially large final
+	// message. Re-emitting that final block would overflow the live tail.
+	for range 8 {
+		raw, _ := json.Marshal(map[string]any{"type": "message_update", "assistantMessageEvent": map[string]any{"type": "thinking_delta", "contentIndex": 0, "delta": strings.Repeat("x", 1024)}})
+		c.publishDelta(agent, raw)
+	}
+	c.publishDelta(agent, json.RawMessage(`{"type":"message_update","assistantMessageEvent":{"type":"text_delta","contentIndex":1,"delta":"answer"}}`))
+	final, _ := json.Marshal(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant", "stopReason": "stop", "content": []any{map[string]any{"type": "thinking", "thinking": strings.Repeat("x", 8192)}}}})
+	c.publishDelta(agent, final)
+	_, _, _, tails := j.turnView()
+	frames := tails[agent].frames
+	thinking, answer := "", ""
+	for _, frame := range frames {
+		var event struct {
+			Kind    string `json:"kind"`
+			Payload struct {
+				Text string `json:"text"`
+			} `json:"payload"`
+		}
+		if err := json.Unmarshal(frame, &event); err != nil {
+			t.Fatal(err)
+		}
+		if event.Kind == "assistant.thinking.delta" {
+			thinking += event.Payload.Text
+		}
+		if event.Kind == "assistant.delta" {
+			answer += event.Payload.Text
+		}
+	}
+	if thinking != strings.Repeat("x", 8192) || answer != "answer" || !strings.Contains(string(frames[0]), `"kind":"assistant.thinking.delta"`) {
+		t.Fatalf("lost or reordered live thinking/answer after final message: %d thinking bytes, answer %q", len(thinking), answer)
 	}
 }
 
