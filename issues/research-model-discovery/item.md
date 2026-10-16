@@ -3,12 +3,14 @@ created: 2026-10-16
 updated: 2026-10-16
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: research-models
 lane_seq: 1
 collision: [issues/research-model-discovery]
 preparation: ready
+closed: 2026-10-16
+closed_by: agent
 ---
 
 # Research: discovering entitled models natively
@@ -25,5 +27,11 @@ Questions:
 Deliver `issues/research-model-discovery/report.md` with sources and a recommendation, plus a proposed architecture sketch `issues/research-model-discovery/architecture.md` (proposal for Jari, not an ADR).
 
 ## Acceptance Criteria
-- [ ] report.md with sourced findings and a recommendation.
-- [ ] architecture.md: discovery mechanism, where results live, contract additions, failure and staleness handling.
+- [x] report.md with sourced findings and a recommendation.
+- [x] architecture.md: discovery mechanism, where results live, contract additions, failure and staleness handling.
+
+## Resolution
+
+### 2026-10-16T03:23:16Z · @agent
+
+Research and proposed architecture are in report.md and architecture.md; recommends Pi-native catalog as candidates, not entitlement, and a separately tested upgrade.
