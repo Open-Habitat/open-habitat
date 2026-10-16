@@ -3,12 +3,13 @@ created: 2026-10-16
 updated: 2026-10-16
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: proto-workspace
 lane_seq: 2
 collision: [design-system/prototypes/rounds/proto-workspace-page-2]
 preparation: ready
+closed: 2026-10-16
 ---
 
 # Prototype: the whole workspace page, without context menus
@@ -21,4 +22,4 @@ Jari, 2026-10-16 afternoon, after using the implemented workspace page (`impleme
 Prototype the **whole workspace page** again, starting from what is live now and from Jari's earlier decisions, which still hold: the Git pill-button in the head that opens the Git layer; + creating a conversation directly with no menu; worktree agents not a group of their own (spinoffs show under their parent, Langassa); and archive with the Hetki alhaalla notice. Three directions on one named axis, for example how the workspace's own actions (copy path, open in GitHub, rename, hide from sidebar, delete) are shown without a context menu, and how the page is organised around open conversations, recaps, waiting states (Odotan …), Valmiit and Arkisto. Keep the sidebar workspace row as name plus + only, in all directions. Consistent with `2026-10-16-spinoffit` and `2026-10-16-prosessilohkot`.
 
 ## Acceptance Criteria
-- [ ] Round verified with check.mjs (light, dark, phone, interactions); result.md per the prototype worker rules.
+- [x] Round verified with check.mjs (light, dark, phone, interactions); result.md per the prototype worker rules.
