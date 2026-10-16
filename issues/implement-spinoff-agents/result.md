@@ -172,3 +172,13 @@ the receipt identifies the exact tested tree, not a claim of a later tree's
 receipt. Live browser/provider sign-in and restarting the actual product daemon
 remain manual checks in KOKEILTAVAA.md; the guest's dedicated equivalent parent
 service established native lifetime without disrupting the product daemon.
+
+After the passing gate, concurrent creation-placeholder/reconnect changes landed
+on main. The worker rebased cleanly onto them and reran all fast web checks,
+generated-contract drift and the affected spinoff, process, reconnect,
+warm-return, identity-change and placeholder/opening-proof browser journeys.
+All selected post-rebase browser cases passed; log:
+`/var/tmp/oh-spinoff-post-rebase-browser.log`. No foreign uncommitted main files
+were edited. Publication is verified before Taskfleet teardown so killing the
+worker cannot interrupt the push; the native merge then lands the same commits
+in the source worktree.
