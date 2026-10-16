@@ -80,6 +80,10 @@ test('declared bridge loads with pinned Pi 1.3 and writes a provider-qualified n
     assert.equal(selected.result.default_model, model.id);
     const settings = JSON.parse(await readFile(join(home,'.pi/agent/settings.json'),'utf8'));
     assert.equal(settings.defaultProvider, 'claude-bridge');
+    const cli = spawnSync(process.execPath, [join(pkg,'dist/bundle/cli.js'),'--list-models','claude-bridge'],
+      {env:{HOME:home,PATH:process.env.PATH,PI_OFFLINE:'1'},encoding:'utf8',timeout:12000});
+    assert.equal(cli.status,0,cli.stderr);
+    assert.match(cli.stdout,/claude-fable-5-1/);
     assert.deepEqual(JSON.parse(await readFile(join(home,'.pi/agent/auth.json'),'utf8')), {});
     await assert.rejects(readFile(join(home,'.claude/.credentials.json')), {code:'ENOENT'});
   } finally { await rm(home,{recursive:true,force:true}); }

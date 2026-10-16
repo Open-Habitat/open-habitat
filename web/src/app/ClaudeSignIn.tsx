@@ -242,8 +242,8 @@ export function ClaudeSignIn({
         ) : null}
         {failed ? (
           <p role="alert">
-            Claude-kirjautumisen tilaa ei voitu vahvistaa. Tarkistetaan tila
-            uudelleen; koodia ei toisteta.
+            Claude-yhteyden tarkistus epäonnistui. Tarkistetaan tila uudelleen;
+            koodia ei toisteta.
           </p>
         ) : null}
       </div>

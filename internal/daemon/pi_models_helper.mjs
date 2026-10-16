@@ -12,6 +12,7 @@ try {
   // unrelated providers or executing their configured API-key resolvers.
   let catalogStatus = 'native_cached';
   let models = [];
+  let bridgePath;
   const { getSupportedThinkingLevels } = await import(new URL('../../pi-ai/dist/models.js', pathToFileURL(entry)).href);
   try {
     const runtime = await ModelRuntime.create({ allowModelNetwork: false, refreshOnCreate: false,
@@ -27,6 +28,7 @@ try {
     // unrelated credential resolvers. Pinned Pi's loader queues provider registrations.
     const bridge = new URL('../../../pi-claude-bridge/src/index.ts', pathToFileURL(entry));
     if (existsSync(bridge)) {
+      bridgePath = bridge.pathname;
       const { loadExtensions } = await import(new URL('./core/extensions/loader.js', pathToFileURL(entry)).href);
       const loaded = await loadExtensions([bridge.pathname], process.env.HOME);
       if (loaded.errors.length) throw Error('bridge');
@@ -46,6 +48,13 @@ try {
     if (!model) throw Error('model');
     const thinking = process.env.OH_PI_THINKING || '';
     if (thinking && !levels(model).includes(thinking)) throw Error('thinking');
+    // Explicitly selecting this installed provider also makes the same native
+    // default usable over SSH. Preserve all other native extension preferences.
+    if (model.provider === 'claude-bridge') {
+      if (!bridgePath) throw Error('bridge');
+      const paths = settings.getExtensionPaths();
+      if (!paths.includes(bridgePath)) settings.setExtensionPaths([...paths, bridgePath]);
+    }
     settings.setDefaultModelAndProvider(model.provider, model.id);
     if (thinking) {
       settings.setDefaultThinkingLevel(thinking);
