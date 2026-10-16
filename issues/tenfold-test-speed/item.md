@@ -1,13 +1,14 @@
 ---
 created: 2026-10-13
-updated: 2026-10-14
+updated: 2026-10-16
 type: improvement
 reporter: jari
-status: in-progress
+status: wontfix
 priority: high
 related: ['@fast-focused-tests']
 lane: release-tooling
 preparation: ready
+closed: 2026-10-16
 ---
 
 # Reach an order-of-magnitude faster gate with test-scale limits and a redundancy audit
@@ -47,3 +48,9 @@ measurements are in `issues/fast-focused-tests/result.md` and `profile.md`.
 - [x] `result.md` has the redundancy audit: every removed, merged or moved test with the test that now carries its proof. Security-boundary tests stay unless an equivalent test provably covers them.
 - [x] Test-scale limits and durations come from the test harness only; production defaults are unchanged and covered by a test.
 - [x] The full clean gate passes and `release_test.py` accepts its receipt unchanged.
+
+## Resolution
+
+### 2026-10-16T03:12:34Z · @issuectl
+
+Closing the remaining order-of-magnitude target at Jari’s request. The redundancy audit, test-scale limits and clean gate receipt were delivered; the unchecked small-fraction (<60 s) target was not. On the final unchanged tree, two passing no-reuse clean gates took 203 s in the default parallel mode and 224 s in optional serial mode; neither is a comparable passing before/after speedup against the original tree. Further deletion of the expensive Pi, uncertain-write, identity/UID and recovery journeys would discard distinct fault evidence, so we are not scheduling more test-pruning work under this issue. The evidence and limits are in result.md, quality-audit.md and phase-schedule.md.
