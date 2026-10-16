@@ -5,6 +5,7 @@ package daemon
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -13,6 +14,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/Open-Habitat/open-habitat/internal/nativegh"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 )
@@ -35,15 +37,14 @@ type gitRepoKey struct {
 // worktree, its Git directory or its common directory moves gen; facts are
 // answered only while factsGen still equals gen.
 type gitRepo struct {
-	gen       uint64
-	stale     bool // the watch set no longer covers the tree and must be rebuilt
-	broken    bool // cannot be watched within the limits: observe on every snapshot
-	brokenFor string
-	wds       map[int]bool
-	facts     *gitFacts
-	factsGen  uint64
-	global    string
-	seen      bool
+	gen      uint64
+	stale    bool // the watch set no longer covers the tree and must be rebuilt
+	broken   bool // cannot be watched within the limits: observe until Git's configuration changes
+	wds      map[int]bool
+	facts    *gitFacts
+	factsGen uint64
+	global   string
+	seen     bool
 }
 
 const (
@@ -165,7 +166,10 @@ func (w *gitWatch) applyLocked(buf []byte) {
 		}
 		restructure := event.Mask&(unix.IN_DELETE_SELF|unix.IN_MOVE_SELF|unix.IN_IGNORED|unix.IN_UNMOUNT) != 0 ||
 			event.Mask&unix.IN_ISDIR != 0 && event.Mask&(unix.IN_CREATE|unix.IN_MOVED_TO|unix.IN_DELETE|unix.IN_MOVED_FROM) != 0 ||
-			name == ".gitignore" || name == "exclude"
+			// What Git ignores decides which directories are watched: an
+			// ignore rule, a force-added file (index) or core.excludesFile
+			// (config) can make an unwatched directory count.
+			name == ".gitignore" || name == "exclude" || name == "index" || name == "config"
 		owners := w.byWD[int(event.Wd)]
 		for repo := range owners {
 			repo.gen++
@@ -203,8 +207,10 @@ func (w *gitWatch) facts(ctx context.Context, home string, entry Workspace, glob
 		w.mu.Unlock()
 		return facts
 	}
-	if repo.broken && repo.brokenFor != global {
-		repo.broken = false // Git's configuration changed: its ignore rules may now fit
+	if repo.global != global {
+		// Git's configuration changed: its ignore rules, and so the
+		// directories that need watching, may have changed too.
+		repo.stale, repo.broken = true, false
 	}
 	watchable := w.fd >= 0 && !repo.broken
 	needsWatch := watchable && repo.stale
@@ -218,8 +224,9 @@ func (w *gitWatch) facts(ctx context.Context, home string, entry Workspace, glob
 	}
 	w.mu.Lock()
 	if needsWatch && watchable {
-		watchable = w.rewatch(repo, home, entry, roots, global)
+		watchable = w.rewatch(repo, home, entry, roots)
 	}
+	repo.global = global
 	gen := repo.gen
 	w.mu.Unlock()
 	facts, complete := observe()
@@ -229,9 +236,9 @@ func (w *gitWatch) facts(ctx context.Context, home string, entry Workspace, glob
 	w.mu.Lock()
 	w.drainLocked()
 	// An event during the observation moved gen: the facts may predate it.
-	if w.fd >= 0 && !repo.stale && repo.gen == gen {
+	if w.fd >= 0 && !repo.stale && repo.gen == gen && repo.global == global {
 		stored := facts
-		repo.facts, repo.factsGen, repo.global = &stored, gen, global
+		repo.facts, repo.factsGen = &stored, gen
 	}
 	w.mu.Unlock()
 	return facts
@@ -276,12 +283,12 @@ type gitWatchRoot struct {
 // rewatch runs with w.mu held, so events read meanwhile wait for the new
 // registrations. Each directory is watched before it is listed: a child
 // created after the listing produces an event, one created before is walked.
-func (w *gitWatch) rewatch(repo *gitRepo, home string, entry Workspace, roots []gitWatchRoot, global string) bool {
+func (w *gitWatch) rewatch(repo *gitRepo, home string, entry Workspace, roots []gitWatchRoot) bool {
 	w.unwatch(repo)
 	repo.facts = nil
 	fail := func() bool {
 		w.unwatch(repo)
-		repo.broken, repo.brokenFor = true, global
+		repo.broken = true
 		return false
 	}
 	count := 0
@@ -406,16 +413,15 @@ func gitWatchRoots(ctx context.Context, home string, entry Workspace) ([]gitWatc
 }
 
 // gitGlobalStamp covers the configuration every Git command here reads
-// besides the repository's own (GIT_CONFIG_NOSYSTEM=1 leaves out /etc).
+// besides the repository's own (GIT_CONFIG_NOSYSTEM=1 leaves out /etc),
+// including symlink targets and included files, and Git itself. When it
+// cannot be made, every snapshot gets a stamp of its own: nothing is reused.
 func gitGlobalStamp(home string) string {
-	var b strings.Builder
-	for _, p := range []string{filepath.Join(home, ".gitconfig"), filepath.Join(home, ".config", "git", "config"), filepath.Join(home, ".config", "git", "ignore"), filepath.Join(home, ".config", "git", "attributes"), "/usr/bin/git"} {
-		s, err := stampOf(p)
-		if err != nil {
-			b.WriteString("-;")
-			continue
-		}
-		b.WriteString(strconv.FormatUint(s.ino, 10) + ":" + strconv.FormatUint(s.size, 10) + ":" + strconv.FormatInt(s.mtime.Nano(), 10) + ":" + strconv.FormatInt(s.ctime.Nano(), 10) + ":" + strconv.FormatUint(uint64(s.mode), 8) + ";")
+	config, ok := nativegh.GitConfigStamp(home)
+	program, err := stampOf("/usr/bin/git")
+	if !ok || err != nil {
+		id, _ := uuid()
+		return "unstamped:" + id
 	}
-	return b.String()
+	return config + fmt.Sprintf("%v", program)
 }

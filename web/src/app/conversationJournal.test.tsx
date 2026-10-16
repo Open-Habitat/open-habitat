@@ -120,7 +120,8 @@ describe("one tab-wide journal", () => {
     expect(onSnapshotNeeded).toHaveBeenCalledTimes(1);
     journal.stop();
   });
-  it("recovers a daemon restart and never rewinds after a concurrent snapshot", () => {
+  it("recovers a daemon restart and never rewinds after a concurrent snapshot", async () => {
+    vi.useFakeTimers();
     vi.stubGlobal("EventSource", FakeSource);
     const { journal, store, onSnapshotNeeded } = setup();
     journal.start(snapshot(0));
@@ -133,6 +134,8 @@ describe("one tab-wide journal", () => {
       }) as never,
     );
     journal.resume(snapshot(1)); // older than the invalidation: retry snapshot
+    await vi.advanceTimersByTimeAsync(1000); // an agent hint's retry is paced
+    vi.useRealTimers();
     expect(onSnapshotNeeded).toHaveBeenCalledTimes(2);
     journal.route(event(3, "assistant.delta", other) as never);
     expect(store.markAllStale).toHaveBeenCalledTimes(1);
@@ -341,11 +344,37 @@ describe("agent-scoped invalidations during a turn", () => {
       const calls = onSnapshotNeeded.mock.calls.length;
       // A snapshot older than the last write cannot answer it.
       journal.resume(snapshot(8));
+      await vi.advanceTimersByTimeAsync(1000);
       expect(onSnapshotNeeded).toHaveBeenCalledTimes(calls + 1);
       journal.resume(snapshot(9));
       expect(store.reconcileStale).toHaveBeenCalled();
       await vi.advanceTimersByTimeAsync(5000);
       expect(onSnapshotNeeded).toHaveBeenCalledTimes(calls + 1);
+      journal.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("paces retries for stale snapshot answers during a burst", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("EventSource", FakeSource);
+      const { journal, onSnapshotNeeded } = setup();
+      journal.start(snapshot(0));
+      // Each answer arrives just after the next write: always one behind.
+      for (let n = 1; n <= 12; n++) {
+        journal.route(invalidation(n));
+        await vi.advanceTimersByTimeAsync(100);
+        journal.resume(snapshot(n - 1));
+        await vi.advanceTimersByTimeAsync(150);
+      }
+      // Three seconds of writes: the first request and at most one a second.
+      expect(onSnapshotNeeded.mock.calls.length).toBeLessThanOrEqual(4);
+      journal.resume(snapshot(12));
+      await vi.advanceTimersByTimeAsync(5000);
+      const settled = onSnapshotNeeded.mock.calls.length;
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(onSnapshotNeeded).toHaveBeenCalledTimes(settled);
       journal.stop();
     } finally {
       vi.useRealTimers();

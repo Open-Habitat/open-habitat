@@ -159,6 +159,31 @@ func TestSnapshotGitFactsFollowNativeInputs(t *testing.T) {
 	f.write(filepath.Join(f.home, ".config", "git", "ignore"), "*.log\n")
 	expect("global ignore", "feature", 0, "fixture/repo")
 
+	// A directory ignored only by the global rules becomes visible, and
+	// later files in it still count.
+	f.write(filepath.Join(f.home, ".config", "git", "ignore"), "*.log\nvendor/\n")
+	f.write(filepath.Join(repo, "vendor", "a.go"), "a\n")
+	expect("globally ignored directory", "feature", 0, "fixture/repo")
+	f.write(filepath.Join(f.home, ".config", "git", "ignore"), "*.log\n")
+	expect("global rule removed", "feature", 1, "fixture/repo")
+	f.write(filepath.Join(repo, "vendor", "b.go"), "b\n")
+	expect("file in the formerly ignored directory", "feature", 2, "fixture/repo")
+	if err := os.RemoveAll(filepath.Join(repo, "vendor")); err != nil {
+		t.Fatal(err)
+	}
+	// A force-added file in an ignored directory is tracked, so its edits count.
+	f.write(filepath.Join(repo, ".gitignore"), "gen/\n")
+	f.write(filepath.Join(repo, "gen", "out.txt"), "1\n")
+	f.git(repo, "add", ".gitignore")
+	f.git(repo, "commit", "-qm", "ignore gen")
+	expect("ignored generated file", "feature", 0, "fixture/repo")
+	f.git(repo, "add", "-f", "gen/out.txt")
+	f.git(repo, "commit", "-qm", "force-add")
+	expect("force-added", "feature", 0, "fixture/repo")
+	f.write(filepath.Join(repo, "gen", "out.txt"), "2\n")
+	expect("edit of a force-added file", "feature", 1, "fixture/repo")
+	f.git(repo, "checkout", "-q", "--", "gen/out.txt")
+
 	linked := filepath.Join(f.src, "linked")
 	f.git(repo, "worktree", "add", "-q", "-b", "side", linked)
 	if ws := workspaceNamed(f.snapshot(), "linked"); ws == nil || ws["kind"] != "git_linked_worktree" {

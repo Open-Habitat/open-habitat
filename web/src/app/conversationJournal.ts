@@ -56,6 +56,9 @@ export class ConversationJournal {
   private invalidation = 0;
   private offline = false;
   private agentSnapshotAt = Number.NEGATIVE_INFINITY;
+  // Whether every invalidation since the last discharging snapshot was an
+  // agent hint, so a retry for it can be paced.
+  private agentOnlyInvalidation = false;
   private agentSnapshotTimer?: ReturnType<typeof setTimeout>;
   constructor(
     private readonly store: ConversationStore,
@@ -141,12 +144,15 @@ export class ConversationJournal {
       this.connect();
     }
     this.store.applySnapshot(snapshot);
-    // A stale snapshot taken before an invalidation cannot discharge it.
+    // A stale snapshot taken before an invalidation cannot discharge it. One
+    // left only by agent hints waits its turn like the hints themselves.
     if (next.instance === this.instance && next.sequence < this.invalidation)
-      this.callbacks.onSnapshotNeeded();
+      if (this.agentOnlyInvalidation) this.agentSnapshot();
+      else this.snapshotNow();
     else {
       if (this.invalidation) this.store.reconcileStale();
       this.invalidation = 0;
+      this.agentOnlyInvalidation = false;
     }
   }
   route(event: ConversationEvent, sseId = event.cursor) {
@@ -179,10 +185,12 @@ export class ConversationJournal {
       ) {
         // The store reconciles only this agent’s open window; unopened agents need no read.
       } else if (event.resource.agent_id) {
+        if (!this.invalidation) this.agentOnlyInvalidation = true;
         this.invalidation = event.sequence;
         this.agentSnapshot();
       } else {
         this.invalidation = event.sequence;
+        this.agentOnlyInvalidation = false;
         this.snapshotNow();
       }
     } else if (
@@ -195,6 +203,7 @@ export class ConversationJournal {
       ].includes(event.kind)
     ) {
       this.invalidation = event.sequence;
+      this.agentOnlyInvalidation = false;
       this.snapshotNow();
     }
     const statusAgent =

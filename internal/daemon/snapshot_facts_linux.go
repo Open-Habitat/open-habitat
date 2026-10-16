@@ -179,7 +179,9 @@ func taskfleetStamp(home, binary string) (string, bool) {
 			b.WriteString("-;")
 			return true
 		}
-		if err != nil {
+		// A symlinked record would be listed through its target: not a
+		// layout this stamp knows, so the listing is not reused.
+		if err != nil || s.mode&unix.S_IFMT == unix.S_IFLNK && path != binary {
 			return false
 		}
 		fmt.Fprintf(&b, "%v;", s)

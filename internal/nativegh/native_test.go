@@ -624,3 +624,109 @@ func TestObservedStatusFollowsNativeInputs(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+// Git reads ~/.gitconfig through a dotfiles symlink and follows include.path;
+// an edit in either target is a credential input like the file itself.
+func TestObservedStatusFollowsSymlinkedAndIncludedGitConfig(t *testing.T) {
+	a, f, home := fixture(t, false)
+	f.logged = true
+	dotfiles := filepath.Join(home, "dotfiles")
+	if err := os.Mkdir(dotfiles, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dotfiles, "gitconfig"), []byte("[include]\n\tpath = credentials.inc\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dotfiles, "credentials.inc"), []byte("[credential]\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(dotfiles, "gitconfig"), filepath.Join(home, ".gitconfig")); err != nil {
+		t.Fatal(err)
+	}
+	if got := a.ObservedStatus(context.Background()); got != "connected" {
+		t.Fatal(got)
+	}
+	f.helper = "!/tmp/untrusted helper\n"
+	if err := os.WriteFile(filepath.Join(dotfiles, "credentials.inc"), []byte("[credential]\n\thelper = untrusted\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got := a.ObservedStatus(context.Background()); got != "partial" {
+		t.Fatalf("included file edit: %s", got)
+	}
+	f.helper = ""
+	if err := os.WriteFile(filepath.Join(dotfiles, "gitconfig"), []byte("[credential]\n\thelper = !gh auth git-credential\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got := a.ObservedStatus(context.Background()); got != "connected" {
+		t.Fatalf("symlink target edit: %s", got)
+	}
+}
+
+// Locking a keyring writes no file, so a keyring-backed answer is never kept.
+func TestObservedStatusDoesNotKeepKeyringAnswers(t *testing.T) {
+	a, f, _ := fixture(t, true)
+	f.logged = true
+	for range 2 {
+		if got := a.ObservedStatus(context.Background()); got != "connected" {
+			t.Fatal(got)
+		}
+	}
+	n := 0
+	for _, c := range f.log {
+		if strings.HasPrefix(c, "gh api user") {
+			n++
+		}
+	}
+	if n != 2 {
+		t.Fatalf("keyring-backed status answered from memory: %d observations", n)
+	}
+}
+
+// A caller whose inputs changed while an older observation was in flight
+// gets an observation that began after the change, not the older answer.
+func TestObservedStatusDoesNotJoinAnOlderFlight(t *testing.T) {
+	_, f, home := fixture(t, false)
+	f.logged = true
+	r := &blockAfterIdentity{fake: f, entered: make(chan struct{}), release: make(chan struct{})}
+	a, err := New(home, "42", r, attest(false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	older := make(chan string, 1)
+	go func() { older <- a.Status(context.Background()) }()
+	<-r.entered // the older flight has read identity 42
+	f.id = "43"
+	if err := os.WriteFile(filepath.Join(home, ".config", "gh", "hosts.yml"), []byte("github.com:\n  oauth_token: fake-other\n  user: other\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	newer := make(chan string, 1)
+	go func() { newer <- a.ObservedStatus(context.Background()) }()
+	time.Sleep(50 * time.Millisecond)
+	close(r.release)
+	if got := <-older; got != "connected" {
+		t.Fatalf("older flight: %s", got)
+	}
+	if got := <-newer; got != "disconnected" {
+		t.Fatalf("caller after the change got %s", got)
+	}
+}
+
+type blockAfterIdentity struct {
+	mu               sync.Mutex
+	fake             *fake
+	entered, release chan struct{}
+	once             sync.Once
+}
+
+func (s *blockAfterIdentity) Run(ctx context.Context, c Command) ([]byte, error) {
+	if c.Program == "gh" && len(c.Args) > 0 && c.Args[0] == "config" {
+		first := false
+		s.once.Do(func() { first = true; close(s.entered) })
+		if first {
+			<-s.release
+		}
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.fake.Run(ctx, c)
+}

@@ -229,6 +229,8 @@ type statusFlight struct {
 	done  chan struct{}
 	state string
 	busy  bool // a mutation held the adapter; the answer says nothing
+	stamp string
+	gen   uint64
 }
 
 // observedStatus is the last completed observation and the native inputs it
@@ -242,7 +244,8 @@ type observedStatus struct {
 
 // A credential change on this machine is seen through its files. A change only
 // GitHub knows about (a token revoked on github.com) has no local input, so a
-// remembered observation is rechecked in the background after this long.
+// remembered observation is rechecked in the background after this long. A
+// keyring-backed login is never remembered: locking the keyring writes nothing.
 const (
 	observedRecheck        = 5 * time.Minute
 	observedUnknownRecheck = 30 * time.Second
@@ -267,10 +270,11 @@ func (a *Adapter) ObservedStatus(ctx context.Context) string {
 		return "unknown"
 	}
 	stamp, ok := credentialStamp(a.home)
+	gen := a.mutations.Load()
 	a.flightMu.Lock()
 	o := a.observed
 	a.flightMu.Unlock()
-	if ok && o != nil && o.stamp == stamp && o.gen == a.mutations.Load() {
+	if ok && o != nil && o.stamp == stamp && o.gen == gen {
 		recheck := observedRecheck
 		if o.state == "unknown" {
 			recheck = observedUnknownRecheck
@@ -280,7 +284,17 @@ func (a *Adapter) ObservedStatus(ctx context.Context) string {
 		}
 		return o.state
 	}
-	return a.wait(ctx, a.start())
+	// A flight already under way may have read the inputs before they
+	// changed; its answer is not this caller's. The next flight starts after
+	// this call began, so it is.
+	f := a.start()
+	if !ok || f.stamp != stamp || f.gen != gen {
+		if a.wait(ctx, f); ctx.Err() != nil {
+			return "unknown"
+		}
+		f = a.start()
+	}
+	return a.wait(ctx, f)
 }
 
 func (a *Adapter) start() *statusFlight {
@@ -289,21 +303,23 @@ func (a *Adapter) start() *statusFlight {
 	if a.flight != nil {
 		return a.flight
 	}
-	f := &statusFlight{done: make(chan struct{})}
+	stamp, stamped := credentialStamp(a.home)
+	f := &statusFlight{done: make(chan struct{}), stamp: stamp, gen: a.mutations.Load()}
 	a.flight = f
 	// One independent bounded observation serves concurrent callers: a
 	// canceled tab cannot cancel another tab's status check.
 	go func() {
-		gen := a.mutations.Load()
-		stamp, stamped := credentialStamp(a.home)
 		budget, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 		defer cancel()
-		f.state, f.busy = a.checkStatus(budget)
+		var remember bool
+		f.state, f.busy, remember = a.checkStatus(budget)
 		after, still := credentialStamp(a.home)
 		a.flightMu.Lock()
 		// Remember only an observation whose inputs did not move under it.
-		if !f.busy && stamped && still && after == stamp && gen == a.mutations.Load() {
-			a.observed = &observedStatus{state: f.state, stamp: stamp, gen: gen, at: time.Now()}
+		if remember && !f.busy && stamped && still && after == f.stamp && f.gen == a.mutations.Load() {
+			a.observed = &observedStatus{state: f.state, stamp: f.stamp, gen: f.gen, at: time.Now()}
+		} else if !remember {
+			a.observed = nil
 		}
 		a.flight = nil
 		close(f.done)
@@ -325,9 +341,9 @@ func (a *Adapter) wait(ctx context.Context, f *statusFlight) string {
 
 // credentialStamp names every local input of checkStatus: gh's configuration
 // and token file, Git's global configuration that holds the credential
-// helper, the keyring's files, the directories whose permissions storage()
-// checks, and the gh and git programs themselves. Directory timestamps of
-// home and ~/.config are left out: unrelated programs touch them constantly.
+// helper, the directories whose permissions storage() checks, and the gh and
+// git programs themselves. Directory timestamps of home and ~/.config are
+// left out: unrelated programs touch them constantly.
 func credentialStamp(home string) (string, bool) {
 	var b strings.Builder
 	for _, p := range []struct {
@@ -339,10 +355,6 @@ func credentialStamp(home string) (string, bool) {
 		{filepath.Join(home, ".config", "gh"), true},
 		{filepath.Join(home, ".config", "gh", "hosts.yml"), true},
 		{filepath.Join(home, ".config", "gh", "config.yml"), true},
-		{filepath.Join(home, ".gitconfig"), true},
-		{filepath.Join(home, ".config", "git"), true},
-		{filepath.Join(home, ".config", "git", "config"), true},
-		{filepath.Join(home, ".local", "share", "keyrings"), true},
 		{"/usr/bin/gh", true},
 		{"/usr/bin/git", true},
 		{"/bin/gh", true},
@@ -356,39 +368,118 @@ func credentialStamp(home string) (string, bool) {
 		case err != nil:
 			return "", false
 		case p.times:
-			fmt.Fprintf(&b, "%d:%d:%o:%d:%d:%d.%d:%d.%d;", st.Dev, st.Ino, st.Mode, st.Uid, st.Size, st.Mtim.Sec, st.Mtim.Nsec, st.Ctim.Sec, st.Ctim.Nsec)
+			writeStat(&b, &st)
 		default:
 			fmt.Fprintf(&b, "%d:%d:%o:%d;", st.Dev, st.Ino, st.Mode, st.Uid)
+		}
+	}
+	git, ok := GitConfigStamp(home)
+	return b.String() + git, ok
+}
+
+func writeStat(b *strings.Builder, st *unix.Stat_t) {
+	fmt.Fprintf(b, "%d:%d:%o:%d:%d:%d.%d:%d.%d;", st.Dev, st.Ino, st.Mode, st.Uid, st.Size, st.Mtim.Sec, st.Mtim.Nsec, st.Ctim.Sec, st.Ctim.Nsec)
+}
+
+var gitConfigPathKey = regexp.MustCompile(`(?im)^\s*(?:path|excludesfile|attributesfile)\s*=\s*(.+?)\s*$`)
+
+// GitConfigStamp changes whenever Git's global configuration as Git reads it
+// can have changed: ~/.gitconfig and ~/.config/git/{config,ignore,attributes},
+// the targets of those that are symlinks (a dotfiles checkout), and every
+// file they name with include.path, includeIf, core.excludesFile or
+// core.attributesFile, recursively. The system file is never read here
+// (GIT_CONFIG_NOSYSTEM=1). A stamp that cannot be made is not a stamp.
+func GitConfigStamp(home string) (string, bool) {
+	var b strings.Builder
+	seen := map[string]bool{}
+	var add func(path string, depth int) bool
+	add = func(path string, depth int) bool {
+		if seen[path] || len(seen) > 64 || depth > 8 {
+			return depth <= 8 && len(seen) <= 64
+		}
+		seen[path] = true
+		b.WriteString(path + "=")
+		var st unix.Stat_t
+		err := unix.Lstat(path, &st)
+		if errors.Is(err, unix.ENOENT) || errors.Is(err, unix.ENOTDIR) {
+			b.WriteString("-;")
+			return true
+		}
+		if err != nil {
+			return false
+		}
+		writeStat(&b, &st)
+		if st.Mode&unix.S_IFMT == unix.S_IFLNK {
+			if err := unix.Stat(path, &st); errors.Is(err, unix.ENOENT) {
+				b.WriteString("-;")
+				return true
+			} else if err != nil {
+				return false
+			}
+			writeStat(&b, &st)
+		}
+		if st.Mode&unix.S_IFMT != unix.S_IFREG || st.Size > 1<<20 {
+			return st.Mode&unix.S_IFMT != unix.S_IFREG
+		}
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return false
+		}
+		for _, m := range gitConfigPathKey.FindAllSubmatch(content, -1) {
+			named := strings.Trim(string(m[1]), `"`)
+			switch {
+			case strings.HasPrefix(named, "~/"):
+				named = filepath.Join(home, named[2:])
+			case !filepath.IsAbs(named):
+				// Relative to the including file, through a symlink or not.
+				if real, err := filepath.EvalSymlinks(path); err == nil && !add(filepath.Join(filepath.Dir(real), named), depth+1) {
+					return false
+				}
+				named = filepath.Join(filepath.Dir(path), named)
+			}
+			if !add(named, depth+1) {
+				return false
+			}
+		}
+		return true
+	}
+	for _, p := range []string{".gitconfig", ".config/git/config", ".config/git/ignore", ".config/git/attributes"} {
+		if !add(filepath.Join(home, p), 0) {
+			return "", false
 		}
 	}
 	return b.String(), true
 }
 
-func (a *Adapter) checkStatus(ctx context.Context) (string, bool) {
+// checkStatus reports the state, whether a mutation made the answer
+// meaningless, and whether its inputs are all files credentialStamp covers.
+func (a *Adapter) checkStatus(ctx context.Context) (string, bool, bool) {
 	if !a.mu.TryLock() {
-		return "unknown", true // mutation in progress; cannot infer its eventual outcome
+		return "unknown", true, false // mutation in progress; cannot infer its eventual outcome
 	}
 	defer a.mu.Unlock()
 	login, match, mismatch, absent := a.identityDetail(ctx)
 	if ctx.Err() != nil {
-		return "unknown", false
+		return "unknown", false, true
 	}
 	if absent || mismatch {
-		return "disconnected", false
+		return "disconnected", false, true
 	}
 	if !match {
-		return "unknown", false
+		return "unknown", false, true
 	}
 	_, _, ok := a.observeWithLogin(ctx, login)
+	// Without a token in hosts.yml, gh and the observation consult the
+	// keyring, whose lock state is not a file: such an answer is not kept.
+	remember := fileToken(a.home)
 	if ctx.Err() != nil {
-		return "unknown", false
+		return "unknown", false, remember
 	}
 	if !ok {
-		return "partial", false
+		return "partial", false, remember
 	}
-	return "connected", false
+	return "connected", false, remember
 }
-
 func (a *Adapter) storage(ctx context.Context, login string) (Storage, bool) {
 	// Resolve parent components first; the final path is opened with O_NOFOLLOW.
 	// A later pathname swap cannot change the already-open file descriptor.
@@ -445,6 +536,14 @@ func (a *Adapter) storage(ctx context.Context, login string) (Storage, bool) {
 		return Keyring, true
 	}
 	return Unknown, false
+}
+func fileToken(home string) bool {
+	fd, err := unix.Open(filepath.Join(home, ".config", "gh", "hosts.yml"), unix.O_RDONLY|unix.O_CLOEXEC|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0)
+	if err != nil {
+		return false
+	}
+	defer unix.Close(fd)
+	return validFD(fd, false, -1) && tokenMarker(fd)
 }
 func validFD(fd int, dir bool, mode int) bool {
 	var st unix.Stat_t
