@@ -23,3 +23,9 @@ Prototype the **whole workspace page** again, starting from what is live now and
 
 ## Acceptance Criteria
 - [x] Round verified with check.mjs (light, dark, phone, interactions); result.md per the prototype worker rules.
+
+## Decisions
+
+### 2026-10-16T12:35:19Z · @jari
+
+Jari 2026-10-16: direction 2, Ikonirivi. A conversation may not be archived before its agent is done (also while it waits for a process or a spinoff).
