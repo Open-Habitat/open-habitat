@@ -5,7 +5,9 @@ package daemon
 import (
 	"context"
 	"errors"
+	"golang.org/x/sys/unix"
 	"net/http"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -217,8 +219,12 @@ func (c *ConversationController) processRoutes(w http.ResponseWriter, r *http.Re
 	s := c.sessions[parts[0]]
 	c.mu.Unlock()
 	if s == nil {
-		if r.Method == http.MethodGet && len(parts) == 2 && r.URL.RawQuery == "" {
-			historyJSON(w, unavailableProcesses("terminal_control"))
+		if r.Method == http.MethodGet && len(parts) == 2 && r.URL.RawQuery == "" && r.ContentLength <= 0 && len(r.TransferEncoding) == 0 {
+			reason := "terminal_control"
+			if processBrowserOrigin(c.home, parts[0]) {
+				reason = "pi_not_running"
+			}
+			historyJSON(w, unavailableProcesses(reason))
 		} else {
 			snapshotError(w, 404, "resource_not_found")
 		}
@@ -368,4 +374,29 @@ func (c *ConversationController) processWaitingViews(parent context.Context) map
 	}
 	wg.Wait()
 	return result
+}
+
+// Display-only origin observation, not admission or a lock acquisition. Never
+// create an ownership file just to answer an inventory query for native history.
+func processBrowserOrigin(home, id string) bool {
+	if !filepath.IsAbs(home) || !sessionIDPattern.MatchString(id) {
+		return false
+	}
+	fd, err := unix.Open(filepath.Join(home, "pi-owners", id+".lock"), unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return false
+	}
+	file := os.NewFile(uintptr(fd), "origin")
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() || info.Mode().Perm() != 0600 {
+		return false
+	}
+	uid, ok := fileOwner(info)
+	if !ok || uid != os.Geteuid() {
+		return false
+	}
+	owner := piOwnership{file: file, id: id}
+	_, err = owner.browserOrigin()
+	return err == nil
 }

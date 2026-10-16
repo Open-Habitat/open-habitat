@@ -137,7 +137,8 @@ export function ProcessProvider({
     refresh,
     select: (p) => {
       setOpen(true);
-      setSelected(p.id);
+      if (inventory?.owner_generation)
+        setSelected(processSelection(inventory.owner_generation, p));
     },
   };
   value.tray = (
@@ -234,7 +235,9 @@ function ProcessTrayView({
         bridge_unavailable: "Prosessiyhteys ei ole saatavilla",
         error: "Prosessitietoja ei saatu",
       }[inventory?.unavailable_reason ?? "error"];
-  const selectedRecord = records.find((p) => p.id === selected);
+  const selectedRecord = records.find(
+    (p) => processSelection(owner, p) === selected,
+  );
   const node = (
     <aside className="ah-process-tray" aria-label="Agentin prosessit">
       <ControlButton
@@ -289,9 +292,15 @@ function ProcessTrayView({
                         <div className="ah-process-heading">
                           <ControlButton
                             variant="quiet"
-                            aria-expanded={selected === p.id}
+                            aria-expanded={
+                              selected === processSelection(owner, p)
+                            }
                             onPress={() =>
-                              setSelected(selected === p.id ? undefined : p.id)
+                              setSelected(
+                                selected === processSelection(owner, p)
+                                  ? undefined
+                                  : processSelection(owner, p),
+                              )
                             }
                           >
                             {p.spinoff?.length
@@ -340,7 +349,9 @@ function ProcessTrayView({
                             </ControlButton>
                           ) : null}
                         </div>
-                        {selected === p.id && id && owner ? (
+                        {selected === processSelection(owner, p) &&
+                        id &&
+                        owner ? (
                           <ProcessOutputView
                             key={`${owner}:${p.process_token}`}
                             id={id}
@@ -744,4 +755,11 @@ export function ProcessWaitingChip({ label }: { label: string }) {
       {awaited && awaited.length > 1 ? ` +${awaited.length - 1}` : ""}
     </ControlButton>
   );
+}
+
+function processSelection(
+  owner: string | null | undefined,
+  p: ProcessRecord,
+): string {
+  return JSON.stringify([owner, p.id, p.process_token]);
 }

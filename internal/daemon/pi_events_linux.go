@@ -18,12 +18,7 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 			Type         string `json:"type"`
 			Delta        string `json:"delta"`
 			ContentIndex int    `json:"contentIndex"`
-			Partial      struct {
-				Content []struct {
-					Type string `json:"type"`
-					Name string `json:"name"`
-				} `json:"content"`
-			} `json:"partial"`
+
 			ToolCall struct {
 				ID        string          `json:"id"`
 				Name      string          `json:"name"`
@@ -98,9 +93,6 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 		case "text_delta":
 			c.journal.delta(agent, "assistant.delta", e.AssistantMessageEvent.Delta, e.AssistantMessageEvent.ContentIndex)
 		case "toolcall_delta":
-			if i := e.AssistantMessageEvent.ContentIndex; i < len(e.AssistantMessageEvent.Partial.Content) && e.AssistantMessageEvent.Partial.Content[i].Name == "process" {
-				return
-			}
 			if text := liveText(e.AssistantMessageEvent.Delta); text != "" {
 				c.journal.delta(agent, "assistant.toolcall.delta", text, e.AssistantMessageEvent.ContentIndex)
 			}
@@ -168,6 +160,9 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 }
 
 func (c *ConversationController) drain(s *conversation) {
+	// Pi RPC deltas omit cumulative partials. Identity comes from toolcall_start
+	// and is scoped to one assistant message, not inferred from argument text.
+	toolNames := map[int]string{}
 	for e := range s.rpc.events {
 		c.mu.Lock()
 		if s.dead || (c.sessions[s.id] != nil && c.sessions[s.id] != s) {
@@ -188,6 +183,24 @@ func (c *ConversationController) drain(s *conversation) {
 			c.noteRecapActivity(s)
 		}
 		raw := e
+		var callFrame struct {
+			Message struct {
+				Role string `json:"role"`
+			} `json:"message"`
+			Assistant struct {
+				Type  string `json:"type"`
+				Name  string `json:"toolName"`
+				Index int    `json:"contentIndex"`
+			} `json:"assistantMessageEvent"`
+		}
+		_ = json.Unmarshal(raw, &callFrame)
+		if frame.Type == "agent_start" || frame.Type == "message_start" && callFrame.Message.Role == "assistant" {
+			toolNames = map[int]string{}
+		}
+		if frame.Type == "message_update" && callFrame.Assistant.Type == "toolcall_start" && callFrame.Assistant.Index >= 0 && callFrame.Assistant.Index < 128 {
+			toolNames[callFrame.Assistant.Index] = callFrame.Assistant.Name
+		}
+		hideArguments := frame.Type == "message_update" && callFrame.Assistant.Type == "toolcall_delta" && (toolNames[callFrame.Assistant.Index] == "" || toolNames[callFrame.Assistant.Index] == "process")
 		if len(e) > 8192 {
 			e, _ = json.Marshal(map[string]any{"type": frame.Type, "truncated": true})
 			s.lost = true
@@ -223,16 +236,17 @@ func (c *ConversationController) drain(s *conversation) {
 			ToolName string          `json:"toolName"`
 		}
 		_ = json.Unmarshal(raw, &processFrame)
-		if _, recognised := projectProcessNotification(processFrame.Message, nil); recognised || processFrame.ToolName == "process" || frameContainsProcessCall(raw) {
-			e, _ = json.Marshal(map[string]string{"type": frame.Type})
-		}
+		// Diagnostic status is an allowlisted signal tail, never a second raw RPC
+		// transport. Aggregate agent_end/turn_end messages can contain full tool
+		// results, and nested message_start/end can contain raw registry details.
+		e = diagnosticPiFrame(raw)
 		s.events = append(s.events, e)
 		if c.journal != nil {
 			if piEventChangesNative(frame.Type) {
 				c.journal.invalidateNative()
 			}
 		}
-		if c.journal != nil {
+		if c.journal != nil && !hideArguments {
 			c.publishDelta("pi:"+s.id, raw)
 		}
 		if frame.Type == "queue_update" {
@@ -504,4 +518,27 @@ func liveResult(raw json.RawMessage) string {
 		}
 	}
 	return liveText(strings.Join(parts, "\n"))
+}
+
+// Status consumers need lifecycle and a known tool label for progress. Native
+// text uses the journal/history projections; unknown RPC fields never escape.
+func diagnosticPiFrame(raw json.RawMessage) json.RawMessage {
+	var frame struct {
+		Type     string `json:"type"`
+		ToolName string `json:"toolName"`
+	}
+	_ = json.Unmarshal(raw, &frame)
+	if !safeNativeType(frame.Type) {
+		frame.Type = "unknown_native"
+	}
+	projected := map[string]string{"type": frame.Type}
+	switch frame.Type {
+	case "tool_execution_start", "tool_execution_update", "tool_execution_end":
+		switch frame.ToolName {
+		case "process", "bash", "read", "write", "edit", "grep", "find", "ls":
+			projected["toolName"] = frame.ToolName
+		}
+	}
+	wire, _ := json.Marshal(projected)
+	return wire
 }

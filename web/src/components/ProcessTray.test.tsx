@@ -231,3 +231,53 @@ it("keeps observed live delivery across a history refresh without inventing hist
   ).not.toContain("herätti");
   ui.unmount();
 });
+
+it.each(["token", "owner"])(
+  "does not transfer a selected output to a replacement %s lifetime",
+  async (replacement) => {
+    let next = structuredClone(inventory);
+    const outputs: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url.includes("/output?")) {
+          outputs.push(url);
+          return reply({
+            ...output,
+            owner_generation: next.owner_generation,
+            process_token: next.processes[0].process_token,
+            lines: [
+              {
+                stream: "stdout",
+                text:
+                  outputs.length === 1
+                    ? "original output"
+                    : "replacement output",
+              },
+            ],
+          });
+        }
+        return reply(next);
+      }),
+    );
+    const ui = view();
+    fireEvent.click(await screen.findByRole("button", { name: /Prosessit ·/ }));
+    fireEvent.click(screen.getByRole("button", { name: "testit" }));
+    await screen.findByText("original output");
+    if (replacement === "owner")
+      next = { ...next, owner_generation: "og_replacement" };
+    else
+      next = {
+        ...next,
+        processes: [{ ...next.processes[0], process_token: "pt_replacement" }],
+      };
+    await act(async () => listener(id, "process.changed"));
+    await screen.findByText(/Tulostetta ei ole enää saatavilla/);
+    expect(outputs.some((url) => url.includes("replacement"))).toBe(false);
+    expect(screen.queryByText("original output")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "testit" }));
+    await screen.findByText("replacement output");
+    expect(outputs.at(-1)).toContain("replacement");
+    ui.unmount();
+  },
+);

@@ -3,6 +3,7 @@
 package daemon
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net"
@@ -222,5 +223,70 @@ func TestProcessSuppressedLogMessageRemainsVisibleWithoutRawContent(t *testing.T
 	wire, _ := json.Marshal(entry)
 	if strings.Contains(string(wire), "raw secret") {
 		t.Fatal(string(wire))
+	}
+}
+
+func TestProcessRPCDeltaAndAggregateStatusNeverLeakNativeDetails(t *testing.T) {
+	const id = "11111111-1111-4111-8111-111111111111"
+	rpc := &piRPC{events: make(chan json.RawMessage, 20)}
+	s := &conversation{id: id, rpc: rpc, state: "idle"}
+	c := &ConversationController{sessions: map[string]*conversation{id: s}, journal: newEventJournal()}
+	frames := []string{
+		`{"type":"agent_start"}`,
+		`{"type":"message_start","message":{"role":"assistant","content":[]}}`,
+		`{"type":"message_update","assistantMessageEvent":{"type":"toolcall_start","contentIndex":0,"toolName":"process","id":"call1"}}`,
+		`{"type":"message_update","assistantMessageEvent":{"type":"toolcall_delta","contentIndex":0,"delta":"{\"command\":\"TOKEN=synthetic-secret sleep 1\"}"}}`,
+		`{"type":"message_update","assistantMessageEvent":{"type":"toolcall_end","contentIndex":0,"toolCall":{"id":"call1","name":"process","arguments":{"action":"start","command":"TOKEN=synthetic-secret sleep 1"}}}}`,
+		`{"type":"message_start","message":{"role":"toolResult","toolName":"process","content":[{"type":"text","text":"pid 123 /private-log"}],"details":{"process":{"command":"synthetic-secret","pid":123,"stdoutFile":"/private-log"}}}}`,
+		`{"type":"message_end","message":{"role":"toolResult","toolName":"process","details":{"process":{"command":"synthetic-secret","pid":123,"stdoutFile":"/private-log"}}}}`,
+		`{"type":"turn_end","messages":[{"role":"toolResult","details":{"command":"synthetic-secret","pid":123,"stdoutFile":"/private-log"}}]}`,
+		`{"type":"agent_end","messages":[{"role":"toolResult","details":{"command":"synthetic-secret","pid":123,"stdoutFile":"/private-log"}}]}`,
+		`{"type":"message_start","message":{"role":"assistant","content":[]}}`,
+		`{"type":"message_update","assistantMessageEvent":{"type":"toolcall_start","contentIndex":0,"toolName":"read","id":"call2"}}`,
+		`{"type":"message_update","assistantMessageEvent":{"type":"toolcall_delta","contentIndex":0,"delta":"public.md"}}`,
+		`{"type":"message_update","assistantMessageEvent":{"type":"toolcall_end","contentIndex":0,"toolCall":{"id":"call2","name":"read","arguments":{"path":"public.md"}}}}`,
+	}
+	for _, frame := range frames {
+		rpc.events <- json.RawMessage(frame)
+	}
+	close(rpc.events)
+	c.drain(s)
+	status, _ := json.Marshal(s.events)
+	c.journal.mu.Lock()
+	journal := bytes.Join(c.journal.frames, []byte("\n"))
+	c.journal.mu.Unlock()
+	for _, private := range []string{"synthetic-secret", "/private-log", "stdoutFile", "\"pid\""} {
+		if strings.Contains(string(status), private) || strings.Contains(string(journal), private) {
+			t.Fatal("private process RPC field escaped", private, string(status), string(journal))
+		}
+	}
+	if !strings.Contains(string(journal), "public.md") {
+		t.Fatal("non-process argument deltas lost after message reset")
+	}
+	for _, raw := range s.events {
+		var frame map[string]any
+		json.Unmarshal(raw, &frame)
+		for field := range frame {
+			if field != "type" && field != "toolName" {
+				t.Fatal("unchecked diagnostic field", field)
+			}
+		}
+	}
+}
+
+func TestProcessUnavailableRetainsBrowserOriginWithoutCreatingOwners(t *testing.T) {
+	home := t.TempDir()
+	id := ownershipTestID
+	if processBrowserOrigin(home, id) {
+		t.Fatal("absent origin invented")
+	}
+	if _, err := os.Stat(filepath.Join(home, "pi-owners")); !os.IsNotExist(err) {
+		t.Fatal("inventory created native ownership state")
+	}
+	dir := filepath.Join(home, "pi-owners")
+	os.Mkdir(dir, 0700)
+	os.WriteFile(filepath.Join(dir, id+".lock"), []byte(`{"workspace":"ws_example123","cwd":"/synthetic"}`), 0600)
+	if !processBrowserOrigin(home, id) {
+		t.Fatal("saved browser origin lost after daemon restart")
 	}
 }

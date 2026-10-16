@@ -2900,6 +2900,8 @@ test("@conversation-details archive offer expires after eight unpaused seconds",
   page,
 }) => {
   await endedConversation(page);
+  // Install before the toast schedules its timeout: a later installation does
+  // not move already-scheduled native timers onto Playwright's clock.
   await page.clock.install();
   await archiveFromConfirmedView(page, () =>
     page.getByRole("button", { name: "Arkistoi", exact: true }),

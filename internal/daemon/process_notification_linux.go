@@ -101,34 +101,3 @@ func nativeProcessNotification(e nativeEntry) (historyEntry, bool) {
 	}
 	return out, true
 }
-
-func frameContainsProcessCall(raw json.RawMessage) bool {
-	var frame struct {
-		Message struct {
-			Content []struct {
-				Name string `json:"name"`
-			} `json:"content"`
-		} `json:"message"`
-		Update struct {
-			Partial struct {
-				Content []struct {
-					Name string `json:"name"`
-				} `json:"content"`
-			} `json:"partial"`
-		} `json:"assistantMessageEvent"`
-	}
-	if json.Unmarshal(raw, &frame) != nil {
-		return false
-	}
-	for _, block := range frame.Message.Content {
-		if block.Name == "process" {
-			return true
-		}
-	}
-	for _, block := range frame.Update.Partial.Content {
-		if block.Name == "process" {
-			return true
-		}
-	}
-	return false
-}

@@ -50,6 +50,7 @@ func TestProcessPinnedPiBridgeAndWake(t *testing.T) {
 			if n == 4 {
 				command = "sleep 90"
 			}
+			command = "TOKEN=synthetic-process-secret " + command
 			args, _ := json.Marshal(map[string]any{"action": "start", "name": "synthetic-build", "command": command, "notify": map[string]string{"onSuccess": "turn", "onFailure": "turn"}})
 			encoded, _ := json.Marshal(string(args))
 			fmt.Fprintf(w, "data: {\"id\":\"s\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"fake\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"tool_calls\":[{\"index\":0,\"id\":\"call%d\",\"type\":\"function\",\"function\":{\"name\":\"process\",\"arguments\":%s}}]},\"finish_reason\":null}]}\n\n", n, encoded)
@@ -126,6 +127,17 @@ func TestProcessPinnedPiBridgeAndWake(t *testing.T) {
 	c.journal.mu.Lock()
 	events := append([][]byte{}, c.journal.frames...)
 	c.journal.mu.Unlock()
+	c.mu.Lock()
+	diagnostics, _ := json.Marshal(s.events)
+	c.mu.Unlock()
+	if strings.Contains(string(diagnostics), "synthetic-process-secret") || strings.Contains(string(diagnostics), "stdoutFile") {
+		t.Fatal("native status retained private process metadata")
+	}
+	for _, event := range events {
+		if strings.Contains(string(event), "synthetic-process-secret") {
+			t.Fatal("serialized Pi process argument leaked into journal")
+		}
+	}
 	wakeSeen := false
 	for _, event := range events {
 		if strings.Contains(string(event), `"kind":"process.notification"`) && strings.Contains(string(event), `"delivery":"wake"`) {
