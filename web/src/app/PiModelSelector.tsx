@@ -41,6 +41,12 @@ export function PiModelSelector({
   const edited = useRef(false);
   useEffect(() => {
     refresh();
+  }, [refresh]);
+  const hasClaudeModels = !!data?.models.some(
+    (model) => model.provider === "claude-bridge",
+  );
+  useEffect(() => {
+    if (!hasClaudeModels) return;
     const controller = new AbortController();
     void fetch("/api/v1/pi/claude-login", {
       credentials: "same-origin",
@@ -54,7 +60,7 @@ export function PiModelSelector({
       })
       .catch(() => {});
     return () => controller.abort();
-  }, [refresh]);
+  }, [hasClaudeModels]);
   // Initialize before the preloaded rows become interactive.
   // biome-ignore lint/correctness/useExhaustiveDependencies: only defaults initialize selection, not observations.
   useLayoutEffect(() => {

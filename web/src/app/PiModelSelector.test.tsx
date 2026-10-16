@@ -51,7 +51,7 @@ it("browses a provider without choosing even when model ids collide, then publis
     "checked",
     true,
   );
-  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(fetcher).toHaveBeenCalledTimes(1);
   expect(fetcher.mock.calls[0][1]?.method).toBeUndefined();
 });
 it("does not unblock the applied refused model until an empty-conversation choice is confirmed", async () => {

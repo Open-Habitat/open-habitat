@@ -6,7 +6,7 @@ The provider buttons were not tabs in behavior: their click handler chose the fi
 
 Provider browsing now changes only the displayed catalog. The selected provider/model is tracked separately, so matching model IDs across providers cannot look selected accidentally. Only an explicit model or thinking-level click commits. The old confirmed choice stays selected during a write and after a failure; the selector shows pending and confirmation/error feedback, disables conflicting writes, and leaves unrelated settings responsive. Native model discovery/write latency has not been removed or measured on the live host.
 
-A catalog entry is not proof of Claude sign-in. The picker now checks the existing validated Claude login endpoint, enables Claude only for `completed`, and otherwise shows a reason and a working Yhteydet link (including the compact settings detail view). The redundant Pi heading is removed, including the provider-list suffix. The gateway exposes its actual binary version through the existing authenticated server-information response; settings show it below every section, including Palvelin, without requiring administrator privileges to read the version. Missing information is reported as unavailable, not invented from the web bundle.
+A catalog entry is not proof of Claude sign-in. When the catalog contains Claude candidates, the picker now checks the existing validated Claude login endpoint, enables Claude only for `completed`, and otherwise shows a reason and a working Yhteydet link (including the compact settings detail view). The redundant Pi heading is removed, including the provider-list suffix. The gateway exposes its actual binary version through the existing authenticated server-information response; settings show it below every section, including Palvelin, without requiring administrator privileges to read the version. Missing information is reported as unavailable, not invented from the web bundle.
 
 ## Reproduction and visual comparison
 
@@ -42,7 +42,13 @@ Initial environment failures were diagnosed, not treated as product passes: the 
 - Focused self-review: checked provider-qualified selection across same-ID catalogs, explicit-only write call sites, late default initialization, write serialization/failure rollback, fail-closed Claude login parsing, hash navigation on desktop/mobile, and version ownership in the gateway composition root. No authority moves or sidebar/workspace changes.
 - `python3 scripts/validate-project-view.py`, `issuectl doctor --json`, `git diff --check`: passed (doctor's existing evidence-format advisories are not functional failures).
 
-Full clean gate follows on the committed tree; its result will be appended after it finishes.
+### Full-gate attempts
+
+The first `umask 077; OH_PORT_BASE=29500 scripts/ci-local.sh --clean --json` stopped during dependency setup with an npm registry `ETIMEDOUT` (20 s); no tests or receipt. The retry on commit `dbf78405` completed web checks/Storybook but failed overall (418 s): browser 179 passed, 20 failed, 2 skipped; native history watcher could not start and provision synchronization tests timed out. Shared-UID inotify allowance is only 128 instances on this host; no system setting or other session was changed. Packaging/receipt were not reached.
+
+That run also exposed two local issues, fixed before the final rerun: the slow-response browser test could release the preceding request's resolver before the next interception had arrived; it now waits for the specific POST to enter before releasing it. The selector also read Claude login on every mount even in Codex-only catalogs. It now checks native Claude status only when Claude candidates exist, avoiding needless native work and preserving warm Codex navigation's read budget. These are not dismissed as unrelated timeouts.
+
+The final rerun uses the documented `OH_BROWSER_WORKERS=2` reduced-concurrency setting and private fixture umask. Final outcome is recorded below after execution.
 
 ## Limits / live check
 

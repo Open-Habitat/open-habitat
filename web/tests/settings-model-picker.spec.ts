@@ -102,11 +102,13 @@ test("one click saves model and thinking with visible pending, confirmation and 
   await expect(nova).toBeDisabled();
   // The rest of settings stays responsive while the host is outstanding.
   await page.getByRole("button", { name: "Näkyvissä", exact: true }).click();
+  await expect.poll(() => writes).toBe(1);
   release();
   await expect(sol).toBeChecked();
   await expect(page.getByText("Valinta vahvistettu.")).toBeVisible();
   await page.getByRole("button", { name: "high", exact: true }).click();
   await expect(page.getByText("Tallennetaan valintaa…")).toBeVisible();
+  await expect.poll(() => writes).toBe(2);
   release();
   await expect(
     page.getByRole("button", { name: "high", exact: true }),
@@ -115,6 +117,7 @@ test("one click saves model and thinking with visible pending, confirmation and 
   fail = true;
   await nova.click();
   await expect(page.getByText("Tallennetaan valintaa…")).toBeVisible();
+  await expect.poll(() => writes).toBe(3);
   release();
   await expect(
     page.getByRole("alert").filter({ hasText: "Mallin tallennusta" }),
