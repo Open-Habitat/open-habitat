@@ -167,3 +167,66 @@ packaged socket smoke, relocated verification, tamper rejection, issue doctor
 and clean-tree checks (`/var/tmp/oh-process-packaging.log`). No passed clean-gate
 receipt is invented. The disposable test release may use the authorized
 `--ungated` path; product release is required before the guest runtime switch.
+
+### Completed validation and live rollout
+
+The complete lab suite passed **31/31** serially on the same runnable process
+code (`/var/tmp/oh-process-lab-serial.log`); the parallel recap/CDP failures
+above remain recorded, not relabelled as a green command. The later composer
+worker obtained a full, non-reused clean gate on `ce92895a` including this whole
+process delivery: **181 regular + 31 lab cases**, Go/contracts, Storybook and
+packaging/socket checks. Its receipt is documented in
+`../new-conversation-model-controls/result.md`. Final `7baa010e` additionally
+contains the independently tested system-prompt omission; all four changed
+source/fixture files since that gate received daemon, fast-web, contracts and
+13 affected browser checks, documented in
+`../open-at-end-extension-message/result.md`. These are distinct evidence, not
+a fabricated same-tree gate receipt.
+
+Fleetrepo live child `01m521tccvcpzn6c8r71hwvx2v` first verified product
+pilot.151 / `1f4240e3`, then pilot.152 / `529011fb`. Installation refused the
+concurrently declared Taskfleet Pi wrapper before changing runtime/selector.
+The incomplete first bundle transfer was retained separately; the complete
+retry matched the approved digest. Its failed branch/evidence `aa10ab93` is
+preserved, not silently treated as a successful child.
+
+Recovery child `01m522ehxck6j91dexx5exd4m2` landed/pushed authenticated-wrapper
+coexistence (`875cdaeb`), then repaired an observed pre-switch selector guard
+and added exact authenticated recovery (`cd5fcd26`) before live use. Negative
+admission/recovery tests and two scoped security reviews preserved rejection of
+foreign/modified state. A newline-less synthetic output assertion was corrected
+against native line buffering; no product workaround was introduced. Final
+Fleetrepo tests/evidence are pushed through `a58281bb`: **273 operator tests**.
+Both child waits used native `taskfleet run wait`; the second is done/landed.
+
+**Verified selected product:** `0.0.0-pilot.154`, source
+`7baa010e0f91116fe4b1f7af5c0591da2aa795a7`, a pushed descendant of the required
+process delivery. Product release preceded runtime selection.
+
+**Verified selected runtime:** Pi **1.3.0**, pi-processes **0.10.9**, licensed
+parser **0.3.4**, Claude bridge **0.9.3**, Node **22.21.1**. Runtime receipt
+SHA-256 `f270c85b919b812154074bf5755e288ab3b21cb8e039bef327afb30fc4d94659`;
+selector receipt `bf1a85bc98270350b8f7d41d4b90672aa6e42bd339569de5e7deba5c5b3bdfc8`.
+The selected-source companion hash is
+`78c3d16d77cddbe6c6f631471a15963931fc2ba513521a616c33285e89ad0a93`.
+
+A fresh synthetic HOME as the mapped UID passed native core registration,
+owned 0600 companion socket, empty list, start, active list, output, force-stop,
+terminal list and clear. Ordinary Pi reports 1.3.0; optional Claude exposes 14
+catalog models and native Claude 2.1.301. Only the relevant guest mapped daemon
+was restarted once; daemon/socket/gateway/broker were active afterwards. No
+household service, real credentials, histories or user settings were touched.
+Neutral receipts/checks: Fleetrepo `infra/open-habitat-test/GUEST-PROCESSES-RESULT.md`
+and `evidence/processes-runtime/live-result.json`.
+
+**Not claimed:** signed-in live browser controls, live provider authorization or
+a real model turn, reboot persistence or live two-user isolation. Local browser,
+real pinned-Pi synthetic-provider and distinct-kernel-UID tests cover their
+stated scopes; live manual acceptance remains in `KOKEILTAVAA.md`.
+
+Review/assessment outputs were copied byte-for-byte out of this disposable
+worktree to canonical checkout
+`history/process-ui-01m51veyk0hsa1br34epkr2rpg/` before closing. They remain
+machine-local ignored evidence, not public artifacts. Optional model-corpus
+publication remains blocked by the known Alder self-SSH issue, not by review or
+feature verification.

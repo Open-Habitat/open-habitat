@@ -2,13 +2,15 @@
 created: 2026-09-20
 updated: 2026-10-16
 type: task
-status: in-progress
+status: done
 priority: normal
 epic: native-agent-host-architecture
 lane: processes
 lane_seq: 1
 collision: [docs/, design-system/]
 preparation: ready
+closed: 2026-10-16
+closed_by: pi
 ---
 
 # Extend process visibility and controls after v1
@@ -57,8 +59,10 @@ provide the surrounding decisions. Detailed plans, contract evidence and results
 belong in this issue directory. The [native process evidence](native-processes.md)
 records the installed extension's current limits.
 
-Next: prototype a read-only bridge from a live daemon-owned Pi RPC child to
-inventory and one combined-output follow in a real browser conversation.
+Delivered: the accepted tray, typed notifications, native waiting/wake states
+and fenced controls are implemented and released. [result.md](result.md) records
+the verified runtime, tests and limits; `KOKEILTAVAA.md` retains live manual checks.
+Log-watch conditions, search, filters, pinning and dock remain outside this slice.
 
 ## Decisions
 
