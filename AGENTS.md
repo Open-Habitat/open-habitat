@@ -52,7 +52,14 @@ fixed forward or replaced by a fresh installation; there is no need to retain
 older releases for rollback. For the same reason a test-server release does
 not wait for the clean gate: it may ship an ungated tree as long as the
 release receipt says so (Jari, 2026-10-13). The gate remains the health check
-of `main` and the precondition of a production release, not of a test update. Fleetrepo's
+of `main` and the precondition of a production release, not of a test update.
+
+The test server is kept working without asking. When its route breaks
+because Alder's changing public address (ISP) falls outside the test
+VM's SSH firewall and key restrictions, the agent repairs it at once with
+Fleetrepo's egress operator: it adds the newly observed exact address and keeps
+the earlier ones. The same applies to other maintenance blockers of this
+disposable server, such as a stopped release watcher (Jari, 2026-10-16). Fleetrepo's
 `infra/native-agent-host-test/RELEASE-UPGRADE.md` explains the deployment and
 its trust boundaries; the private inventory and issue results record which
 bytes actually ran.
