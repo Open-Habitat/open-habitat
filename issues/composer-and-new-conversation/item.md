@@ -3,13 +3,15 @@ created: 2026-10-16
 updated: 2026-10-16
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
 blocked_by: ['@proto-queued-send']
 lane_seq: 1
+closed: 2026-10-16
+closed_by: claude
 ---
 
 # Composer colour and send arrow; slow 'Luodaan keskustelua' blocks typing; confusing notices in first conversation; new workspace gets an agent
@@ -22,6 +24,12 @@ Jari on the live test server, 2026-10-16 ~18:00 local:
 5. **After "Luo työtila"**, the new workspace gets one agent conversation, and focus moves into it, so the person can type.
 
 ## Acceptance Criteria
-- [ ] Each point is covered by a browser test, with paired lab screenshots (desktop and phone).
+- [x] Each point is covered by a browser test, with paired lab screenshots (desktop and phone).
 
 The sent-before-Pi-runs look is decided in `proto-queued-send` (Decisions): Kupla odottaa, messages joined into one prompt, Stop returns them to the field, no top-bar state. Round `design-system/prototypes/rounds/2026-10-16-jonolahetys/` direction 1 is the spec.
+
+## Resolution
+
+### 2026-10-16T18:20:57Z · @claude
+
+Implemented and verified in run 01m52r9c2zbw0gw1a0j9egcrqh; see result.md.

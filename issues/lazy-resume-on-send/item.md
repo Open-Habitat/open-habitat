@@ -3,13 +3,15 @@ created: 2026-10-16
 updated: 2026-10-16
 type: feature
 reporter: jari
-status: open
+status: done
 priority: high
 lane: web
 collision: [web/src/app/, web/src/components/, internal/daemon]
 preparation: ready
 blocked_by: ['@proto-queued-send']
 lane_seq: 2
+closed: 2026-10-16
+closed_by: claude
 ---
 
 # Resume a stopped conversation lazily on send; no read-only state
@@ -19,8 +21,14 @@ Jari, 2026-10-16: releases restart the daemon, which ends a conversation's Pi pr
 So: a conversation without a running Pi opens as its readable native history, with the composer enabled and no "Vain luku" bar and no "Jatka keskustelua" button. Sending a message starts (resumes) the native Pi session and delivers that message, visibly queued while Pi starts, never lost and never sent twice. Opening, reading, scrolling, or a reconnect never starts Pi.
 
 ## Acceptance Criteria
-- [ ] After a daemon restart, an open conversation shows no read-only state; the first send resumes Pi and delivers exactly once. Host-backed browser test across a real restart.
-- [ ] Opening a stopped conversation does not start Pi (test).
-- [ ] Coordinated with `composer-and-new-conversation` (the field is enabled while creating).
+- [x] After a daemon restart, an open conversation shows no read-only state; the first send resumes Pi and delivers exactly once. Host-backed browser test across a real restart.
+- [x] Opening a stopped conversation does not start Pi (test).
+- [x] Coordinated with `composer-and-new-conversation` (the field is enabled while creating).
 
 The sent-before-Pi-runs look is decided in `proto-queued-send` (Decisions): Kupla odottaa, messages joined into one prompt, Stop returns them to the field, no top-bar state. Round `design-system/prototypes/rounds/2026-10-16-jonolahetys/` direction 1 is the spec.
+
+## Resolution
+
+### 2026-10-16T18:20:57Z · @claude
+
+Implemented and verified in run 01m52r9c2zbw0gw1a0j9egcrqh; see result.md.
