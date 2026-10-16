@@ -5,7 +5,7 @@ with an enabled field: no "Vain luku" bar and no "Jatka keskustelua" anywhere
 (the explicit continuation control and its browser path are removed). The next
 send starts Pi on the saved session and delivers the message once. Opening,
 reading, scrolling or reconnecting never starts Pi. Terminal-origin history
-stays read-only. Jari's decision is recorded as ADR 0018.
+stays read-only. Jari's decision is recorded as ADR 0020.
 
 ## How
 

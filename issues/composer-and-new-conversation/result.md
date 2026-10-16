@@ -20,7 +20,7 @@ run `01m52qdasz0zmd2rx0bmfbd310` left after points 1 and 2 (commit 046d9259).
    top-bar state or Pi-start text is shown. The contract is
    `contracts/v1/pi-held.schema.json`; the architecture is in
    `docs/architecture/conversations.md` ("Sending before Pi runs") and
-   ADR 0018.
+   ADR 0020.
 4. **Notices in a fresh conversation.** "Tapahtumia jäi väliin" appears only
    while a turn is live (only the live tail can miss events; settled history is
    read natively). "Spinoffien tilaa ei saada" appears only when spinoffs are
