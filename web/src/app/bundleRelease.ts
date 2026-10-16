@@ -33,6 +33,8 @@ let state: BundleState = { status: "unknown", dismissed: false };
 let servedKey = "";
 let dismissedKey = "";
 const listeners = new Set<() => void>();
+/** Fires "checked" after every successful check, so open views can re-read the server version. */
+export const bundleChecks = new EventTarget();
 
 function publish(next: BundleState) {
   if (next.status === state.status && next.dismissed === state.dismissed)
@@ -47,6 +49,8 @@ async function servedIndexKey(): Promise<string> {
     credentials: "same-origin",
     cache: "no-store",
     redirect: "manual",
+    // Covers the body read too; a stalled request must not block later checks.
+    signal: AbortSignal.timeout(10_000),
   });
   if (r.status !== 200 || !r.body) throw new Error("index unavailable");
   const reader = r.body.getReader();
@@ -87,6 +91,7 @@ export function checkBundle(): Promise<void> {
   inFlight ??= servedIndexKey()
     .then((key) => {
       servedKey = key;
+      bundleChecks.dispatchEvent(new Event("checked"));
       publish({
         status: key === ownKey ? "current" : "newer",
         dismissed: key === dismissedKey,

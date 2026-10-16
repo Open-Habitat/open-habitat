@@ -6,7 +6,7 @@ import {
   ModalOverlay,
 } from "react-aria-components";
 import "./Settings.css";
-import { useBundleState } from "../app/bundleRelease";
+import { bundleChecks } from "../app/bundleRelease";
 import { ClaudeSignIn } from "../app/ClaudeSignIn";
 import { GitIdentity } from "../app/GitIdentity";
 import { PersonalStorage } from "../app/PersonalStorage";
@@ -270,15 +270,21 @@ export function AccountSettings({
   const [release, setRelease] = useState<
     Pick<ServerInfo, "version" | "commit">
   >({});
-  // A newly served bundle means the server was upgraded: read its version again.
-  const bundleStatus = useBundleState().status;
+  // Each bundle check is also when the server may have been upgraded, with or
+  // without a new bundle: read its version again.
+  const [checks, setChecks] = useState(0);
+  useEffect(() => {
+    const next = () => setChecks((n) => n + 1);
+    bundleChecks.addEventListener("checked", next);
+    return () => bundleChecks.removeEventListener("checked", next);
+  }, []);
   const [admin, setAdmin] = useState(false);
   const [work, setWork] = useState(getWorkPreference);
   const [disconnectNotice, setDisconnectNotice] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const navHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
-    void bundleStatus;
+    void checks;
     const controller = new AbortController();
     void serverInfo(controller.signal)
       .then((info) => {
@@ -289,7 +295,7 @@ export function AccountSettings({
       })
       .catch(() => {});
     return () => controller.abort();
-  }, [bundleStatus]);
+  }, [checks]);
   useEffect(() => {
     void section;
     if (detail) heading.current?.focus();

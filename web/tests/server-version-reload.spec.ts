@@ -9,7 +9,7 @@ async function signIn(page: Page) {
   await page.getByRole("link", { name: "Alice", exact: true }).click();
 }
 
-test("@version Palvelin shows the running release and that this tab is current", async ({
+test("@version open settings follow the running release across upgrades", async ({
   page,
 }) => {
   await signIn(page);
@@ -23,6 +23,20 @@ test("@version Palvelin shows the running release and that this tab is current",
   await expect(page.locator(".s-version-line")).toContainText(
     "Palvelimen versio: 0.0.0-lab (0000000)",
   );
+  // Settings stay mounted through two releases; each check re-reads the version.
+  await page.getByRole("button", { name: "Palvelin", exact: true }).click();
+  for (const n of [1, 2]) {
+    await page.request.get("/fixture/upgrade");
+    await page.evaluate(() =>
+      document.dispatchEvent(new Event("visibilitychange")),
+    );
+    await expect(
+      row.getByText(`0.0.0-lab.${n} (${String(n).repeat(7)})`),
+    ).toBeVisible();
+    await expect(
+      row.getByText("Tämä välilehti käyttää vanhempaa versiota."),
+    ).toBeVisible();
+  }
 });
 
 test("@version an open tab asks to reload after an upgrade, and the draft survives", async ({

@@ -70,15 +70,81 @@ the reload; the browser test proves it across a simulated upgrade.
 **Where the version is shown.** Asetukset → Palvelin gets a "Versio" row in
 the server card: release version, short commit, and this tab's state ("Tämä
 välilehti on ajan tasalla" or "Tämä välilehti käyttää vanhempaa versiota" with
-a reload button). The bottom of every settings section keeps a line with the
-same facts for non-administrators. A tab whose bundle predates this change
-shows neither, which itself is now the tell.
+a reload button). The bottom of every other settings section, and of
+Palvelin for a non-administrator, keeps a line with the same facts. Open
+settings re-read the server version after every bundle check, so a release
+that does not change the bundle still shows up there. A tab whose bundle
+predates this change shows neither, which itself is now the tell.
 
 **Daemon version.** Not needed: the release switch (`release_fresh_next.py`)
 stops every product unit, including every `open-habitat-daemon@` instance,
 before selecting the new release, and the broker restores the sockets from the
 new binary. A daemon process older than the gateway cannot survive an upgrade,
 so no daemon version endpoint or admin warning was added.
+
+## Implementation
+
+- `internal/gateway`: `AuthOptions.Commit`; `GET /api/v1/server` returns
+  `commit` when known. `internal/cli` passes the binary's 40-hex build commit
+  (the same provenance as `open-habitat --json version`).
+- `contracts/v1/server.schema.json`: optional `commit` (`^[0-9a-f]{40}$`),
+  regenerated; the browser validator checks it too.
+- `web/src/app/bundleRelease.ts`: own-bundle key captured at module load,
+  single-flight check of `/` with a 10 s deadline, `useBundleState`,
+  `bundleChecks` event for views that re-read the version, `watchBundle`
+  started by `App`.
+- `NewVersionBanner` (`components/Status.tsx`) in the shell's connection slot;
+  `ServerVersionRow`/`ServerVersionLine` (`app/ServerVersion.tsx`) in settings.
+- `test/browser-host`: `/fixture/upgrade` links the built bundle into a new
+  directory with `?release=N` on its asset references, then restarts the real
+  gateway under `0.0.0-lab.N` and commit `NNNN…`, as a release switch would.
+
+## Evidence
+
+Synthetic lab captures (`capture.mjs` recreates them against `scripts/lab.sh`),
+each a PNG with its static HTML twin, desktop 1440 px and phone 390 px, light
+and dark:
+
+| State | Files |
+| --- | --- |
+| Palvelin, tab current | `lab-palvelin-{desktop,phone}-{light,dark}` |
+| Palvelin after an upgrade, prompt dismissed | `lab-palvelin-stale-{desktop,phone}-{light,dark}` |
+| Workspace with a draft, reload prompt | `lab-banner-{desktop,phone}-{light,dark}` |
+
+Lab version numbers (`0.0.0-lab.N`) count the capture's own upgrades; they are
+not deployed releases. There was no live reference or designer draft for these
+two new elements; the banner reuses the connection banner's layout and tokens,
+and the version row the existing settings row.
+
+## Checks
+
+- `web/tests/server-version-reload.spec.ts` (host-backed synthetic): Palvelin
+  shows `0.0.0-lab (0000000)` and the current-tab state; with settings left
+  mounted across two real gateway upgrades it shows `lab.1` then `lab.2` and the
+  older-tab state. An open workspace tab with a typed draft shows the prompt
+  after an upgrade; "Lataa uudelleen" loads the `?release=1` bundle and the draft
+  is still in the field. Mutation: forcing the comparison to "current" fails the
+  upgrade case; the old status-keyed version refresh could not pass the `lab.2`
+  step.
+- `bundleRelease.test.tsx` (5 cases): reordered references and lazily added
+  links are the same bundle; a stylesheet-only change is newer; a 503,
+  redirect, login page or oversize body keeps the last answer; "Myöhemmin" lasts
+  until another bundle; no entry assets means no check.
+- Browser specs settings-model-picker, settings-name-and-storage,
+  account-settings, reconnect-recovery, shell-accessibility, resilience-states,
+  workspace-slice-security: pass, except the known pre-existing account-settings
+  "native key add" failure.
+- `scripts/test-web-fast.sh`, `go test ./internal/gateway ./internal/cli`
+  (umask 077, TMPDIR under /var/tmp), `scripts/test-focused.sh --area contracts`:
+  pass.
+- Review: `/llm-review` (finder GPT-6 Astra, local verification, no verifier
+  call; routine rigor). Two confirmed should-fix findings, both fixed: open
+  settings did not re-read the version across a second upgrade or a
+  server-only release, and a stalled index request had no deadline and would
+  have blocked later checks.
+
+Not verified: the live test server, where the gateway sits behind its access
+ingress. A redirect there is a failed check by design and never prompts.
 
 ## Decisions for later review
 

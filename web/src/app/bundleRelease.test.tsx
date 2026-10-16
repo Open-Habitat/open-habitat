@@ -42,6 +42,7 @@ it("treats the same entry assets in another order as the same bundle", async () 
   expect(fetchMock.mock.calls[0][1]).toMatchObject({
     cache: "no-store",
     redirect: "manual",
+    signal: expect.any(AbortSignal),
   });
   expect((await stateOf(m)).status).toBe("current");
 });

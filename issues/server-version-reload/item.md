@@ -3,12 +3,13 @@ created: 2026-10-16
 updated: 2026-10-16
 type: feature
 reporter: jari
-status: open
+status: done
 priority: high
 lane: web
 collision: [web/src/app/, web/src/components/, internal/gateway]
 preparation: ready
 lane_seq: 2
+closed: 2026-10-16
 ---
 
 # Show the server version in Palvelin settings; notice a new version and ask to reload
@@ -20,5 +21,5 @@ Jari, 2026-10-16 evening. Two related wishes:
 Authority: the version is non-secret release metadata, shown to every signed-in user is fine; the gateway serves it, the daemon is not involved unless its own version differs (if a running daemon is older than the gateway, say so in the admin view).
 
 ## Acceptance Criteria
-- [ ] Palvelin settings show the running version (browser test).
-- [ ] A tab with an older bundle shows a reload prompt after the server version changes; drafts survive the reload (browser test across a simulated upgrade).
+- [x] Palvelin settings show the running version (browser test).
+- [x] A tab with an older bundle shows a reload prompt after the server version changes; drafts survive the reload (browser test across a simulated upgrade).
