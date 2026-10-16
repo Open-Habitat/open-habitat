@@ -29,6 +29,7 @@ export type IconName =
   | "bottom"
   | "expand"
   | "stop"
+  | "terminal"
   | "system"
   | "sun"
   | "moon"
@@ -88,6 +89,12 @@ export function Icon({
       <>
         <rect x="3" y="4" width="18" height="5" rx="1" />
         <path d="M5 9v11h14V9M10 13h4" />
+      </>
+    ),
+    terminal: (
+      <>
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <path d="m7 8 4 4-4 4M14 16h3" />
       </>
     ),
     system: (

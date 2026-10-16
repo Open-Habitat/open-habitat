@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useRef,
+  useId,
   useState,
 } from "react";
 import {
@@ -21,6 +22,7 @@ import {
   processLabel,
   processLive,
 } from "../app/processes";
+import { Icon } from "./Icon";
 import { ControlButton } from "./ControlElements";
 import { PiToolUse } from "./PiBlocks";
 
@@ -182,6 +184,7 @@ function ProcessTrayView({
   setSelected: (v?: string) => void;
   outputTick: number;
 }) {
+  const stateLabelId = useId();
   const [pending, setPending] = useState(false);
   const alive = useRef(true);
   useEffect(() => {
@@ -243,17 +246,37 @@ function ProcessTrayView({
   const node = (
     <aside className="ah-process-tray" aria-label="Agentin prosessit">
       <ControlButton
+        className="ah-process-bar"
         variant="quiet"
         aria-expanded={open}
         onPress={() => setOpen(!open)}
       >
-        {available
-          ? records.length
-            ? `Prosessit · ${records.filter(processLive).length} käynnissä · ${records.filter((p) => !processLive(p)).length} päättynyt`
-            : "Ei prosesseja"
-          : inventory || value.failed
-            ? unavailable
-            : "Ladataan prosesseja…"}
+        <Icon name="forward" className="ah-process-chevron" />
+        <Icon name="terminal" />
+        <span className="ah-process-summary">
+          {available ? (
+            <>
+              <strong>
+                Prosessit · {records.filter(processLive).length} käynnissä
+              </strong>
+              <span className="ah-process-names">
+                {records
+                  .filter(processLive)
+                  .map((p) => p.name)
+                  .join(", ")}
+              </span>
+            </>
+          ) : inventory || value.failed ? (
+            unavailable
+          ) : (
+            "Ladataan prosesseja…"
+          )}
+        </span>
+        {available && records.some((p) => !processLive(p)) ? (
+          <span className="ah-process-done">
+            {records.filter((p) => !processLive(p)).length} päättynyt
+          </span>
+        ) : null}
       </ControlButton>
       {open ? (
         <div className="ah-process-list">
@@ -278,21 +301,42 @@ function ProcessTrayView({
               ).map(([label, group]) =>
                 group.length ? (
                   <section key={label} aria-label={label}>
-                    <h2>{label}</h2>
-                    {label === "Päättyneet" ? (
-                      <ControlButton
-                        variant="quiet"
-                        isDisabled={!csrf || pending}
-                        onPress={() => void action()}
-                        title="Poistaa päättyneet prosessit ja niiden lokit. Keskustelun historia säilyy."
-                      >
-                        Poista päättyneet
-                      </ControlButton>
-                    ) : null}
+                    <div className="ah-process-group-heading">
+                      <h2>{label}</h2>
+                      {label === "Päättyneet" ? (
+                        <ControlButton
+                          className="ah-process-clear"
+                          size="micro"
+                          variant="quiet"
+                          isDisabled={!csrf || pending}
+                          onPress={() => void action()}
+                          title="Poistaa päättyneet prosessit ja niiden lokit. Keskustelun historia säilyy."
+                        >
+                          Poista päättyneet
+                        </ControlButton>
+                      ) : null}
+                    </div>
                     {group.map((p) => (
-                      <div className="ah-process-row" key={p.process_token}>
+                      <div
+                        className="ah-process-row"
+                        data-state={p.status}
+                        data-failed={p.exit_code !== null && p.exit_code !== 0}
+                        key={p.process_token}
+                      >
                         <div className="ah-process-heading">
                           <ControlButton
+                            className="ah-process-select"
+                            aria-label={
+                              p.spinoff?.length
+                                ? p.spinoff
+                                    .map(
+                                      (run) =>
+                                        `${run.title || run.run_id} · ${spinoffLabel(run)}`,
+                                    )
+                                    .join(", ")
+                                : p.name
+                            }
+                            aria-describedby={`${stateLabelId}-${p.process_token}`}
                             variant="quiet"
                             aria-expanded={
                               selected === processSelection(owner, p)
@@ -305,32 +349,65 @@ function ProcessTrayView({
                               )
                             }
                           >
-                            {p.spinoff?.length
-                              ? p.spinoff
-                                  .map(
-                                    (run) =>
-                                      `${run.title || run.run_id} · ${spinoffLabel(run)}`,
-                                  )
-                                  .join(", ")
-                              : p.name}
-                            {p.run_ids.length && processLive(p)
-                              ? " · odottaa spinoffia"
-                              : ""}
+                            <Icon
+                              name="forward"
+                              className="ah-process-chevron"
+                            />
+                            <ProcessMark process={p} />
+                            <span className="ah-process-name">
+                              {p.spinoff?.length
+                                ? p.spinoff
+                                    .map(
+                                      (run) =>
+                                        `${run.title || run.run_id} · ${spinoffLabel(run)}`,
+                                    )
+                                    .join(", ")
+                                : p.name}
+                              {p.run_ids.length && processLive(p)
+                                ? " · odottaa spinoffia"
+                                : ""}
+                            </span>
+                            <span
+                              className="ah-process-meta"
+                              id={`${stateLabelId}-${p.process_token}`}
+                            >
+                              {processLabel(p)}
+                              {" · "}
+                              <time
+                                dateTime={new Date(p.started_at).toISOString()}
+                              >
+                                {Math.max(
+                                  0,
+                                  Math.floor(
+                                    ((p.ended_at ?? Date.now()) -
+                                      p.started_at) /
+                                      1000,
+                                  ),
+                                )}{" "}
+                                s
+                              </time>
+                            </span>
+                            <code className="ah-process-command">
+                              {p.command_preview}
+                            </code>
                           </ControlButton>
-                          <span>{processLabel(p)}</span>
-                          <time dateTime={new Date(p.started_at).toISOString()}>
-                            {Math.max(
-                              0,
-                              Math.floor(
-                                ((p.ended_at ?? Date.now()) - p.started_at) /
-                                  1000,
-                              ),
-                            )}{" "}
-                            s
-                          </time>
+                          {p.wakes_agent && processLive(p) ? (
+                            <span
+                              className="ah-process-wake"
+                              title="Ilmoittaa agentille"
+                            >
+                              <Icon name="agent" />
+                            </span>
+                          ) : null}
                           {processLive(p) ? (
                             <ControlButton
-                              variant="quiet"
+                              className="ah-process-stop"
+                              size="micro"
+                              variant={
+                                p.status === "terminate_timeout"
+                                  ? "danger-subtle"
+                                  : "quiet"
+                              }
                               isDisabled={
                                 !csrf || pending || p.status === "terminating"
                               }
@@ -343,6 +420,7 @@ function ProcessTrayView({
                                   : "Pysäyttää prosessin. Agentti ei saa tästä ilmoitusta."
                               }
                             >
+                              <Icon name="stop" />
                               {p.status === "terminate_timeout"
                                 ? "Pakota lopetus"
                                 : p.run_ids.length
@@ -376,7 +454,7 @@ function ProcessTrayView({
               Pi on käynnistetty uudelleen.
             </p>
           ) : null}
-          <p>
+          <p className="ah-process-life">
             Selaimen sulkeminen tai agentin vuoron päättyminen ei pysäytä
             prosesseja.
           </p>
@@ -386,6 +464,27 @@ function ProcessTrayView({
     </aside>
   );
   return id ? node : null;
+}
+function ProcessMark({ process }: { process: ProcessRecord }) {
+  return (
+    <span className="ah-process-mark" aria-hidden="true">
+      {process.status === "running" ? (
+        <span className="ah-process-dot" />
+      ) : (
+        <Icon
+          name={
+            process.status === "exited" && process.exit_code === 0
+              ? "check"
+              : processLive(process)
+                ? "refresh"
+                : process.status === "exited"
+                  ? "cross"
+                  : "stop"
+          }
+        />
+      )}
+    </span>
+  );
 }
 function ProcessOutputView({
   id,
@@ -460,20 +559,23 @@ function ProcessOutputView({
   }, [follow, output]);
   return (
     <div className="ah-process-output">
-      <code>{process.command_preview}</code>
-      {process.run_ids.length ? (
-        <p>
-          Spinoff-ajot: {process.run_ids.join(", ")}. Odotuksen lopettaminen ei
-          pysäytä ajoja.
-        </p>
-      ) : null}
-      <ControlButton
-        variant="quiet"
-        aria-pressed={!follow}
-        onPress={() => setFollow(!follow)}
-      >
-        {follow ? "Pysäytä seuraaminen" : "Seuraa loppua"}
-      </ControlButton>
+      <div className="ah-process-output-head">
+        <code>{process.command_preview}</code>
+        {process.run_ids.length ? (
+          <p>
+            Spinoff-ajot: {process.run_ids.join(", ")}. Odotuksen lopettaminen
+            ei pysäytä ajoja.
+          </p>
+        ) : null}
+        <ControlButton
+          size="micro"
+          variant="quiet"
+          aria-pressed={!follow}
+          onPress={() => setFollow(!follow)}
+        >
+          {follow ? "Pysäytä seuraaminen" : "Seuraa loppua"}
+        </ControlButton>
+      </div>
       {!follow ? (
         <p>
           Seuraaminen tauolla. Prosessi jatkaa; jatkaminen hakee uuden
@@ -499,7 +601,10 @@ function ProcessOutputView({
                 ? "Lokin aiempi säilytys ei ole tiedossa."
                 : ""}
           </p>
+          {/* biome-ignore lint/a11y/useSemanticElements: Named scroll region for preformatted native output. */}
           <pre
+            role="region"
+            aria-label="Prosessin tuloste"
             ref={body}
             // biome-ignore lint/a11y/noNoninteractiveTabindex: Scrollable native output must be keyboard focusable.
             tabIndex={0}
@@ -551,12 +656,15 @@ export function ProcessCompletion({ event }: { event: ProcessEvent }) {
         : ordinaryLabel;
   return (
     <div className="ah-process-completion" role="note">
+      <Icon name={event.kind === "success" ? "check" : "system"} />
       <ControlButton
+        size="micro"
         variant="quiet"
         aria-expanded={expanded}
         onPress={() => setExpanded(!expanded)}
       >
-        {event.process_name} · {label}
+        <span className="ah-process-completion-name">{event.process_name}</span>{" "}
+        · {label}
         {event.exit_code !== null ? ` · koodi ${event.exit_code}` : ""}
         {delivery === "wake"
           ? " · herätti agentin"

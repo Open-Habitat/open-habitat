@@ -68,7 +68,7 @@ test("@process-tray @a11y follows bounded output, handles stale controls, and ke
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   const tray = page.getByRole("complementary", { name: "Agentin prosessit" });
   await tray.getByRole("button", { name: /Prosessit ·/ }).click();
-  await tray.getByRole("button", { name: "testit" }).click();
+  await tray.getByRole("button", { name: "testit", exact: true }).click();
   await expect(tray.getByText(/ensimmäinen loppuosa/)).toBeVisible();
   await tray.getByRole("button", { name: "Pysäytä seuraaminen" }).click();
   tail = "uusi loppuosa";
@@ -345,4 +345,118 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
   await expect(
     header.getByRole("button", { name: /Odottaa spinoffia/ }),
   ).toHaveCount(0);
+});
+
+// Agreed Kentän yllä dimensions are independent of the implementation: a quiet
+// 34px bar, a bounded conversation column and a separately scrolling output.
+// Exercise the built bundle: a missing import or the former minimal CSS must fail.
+test("@process-tray @a11y compact tray, inventory and output match the selected layout in both themes and widths", async ({
+  page,
+}) => {
+  const inventory = structuredClone(inventoryFixture) as ProcessInventory;
+  inventory.processes[0].started_at = Date.now() - 5000;
+  const finished = {
+    ...inventory.processes[0],
+    id: "finished",
+    process_token: "pt_finished",
+    name: "viiden-sekunnin-demo",
+    status: "exited" as const,
+    ended_at: Date.now(),
+    exit_code: 0,
+  };
+  inventory.processes.push(finished);
+  await page.route("**/api/v1/conversations/*/processes**", (route) =>
+    route.fulfill({
+      json: route.request().url().includes("/output?")
+        ? {
+            ...outputFixture,
+            process_id: finished.id,
+            process_token: finished.process_token,
+            lines: Array.from({ length: 80 }, (_, i) => ({
+              stream: "stdout",
+              text: `${i} ${"output ".repeat(35)}`,
+            })),
+          }
+        : inventory,
+    }),
+  );
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "ordinary-dir" })
+    .click();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const tray = page.getByRole("complementary", { name: "Agentin prosessit" });
+  const bar = tray.getByRole("button", { name: /Prosessit ·/ });
+  const composer = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  for (const width of [1280, 390])
+    for (const theme of ["light", "dark"]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.evaluate((theme) => {
+        document.documentElement.dataset.theme = theme;
+      }, theme);
+      if ((await bar.getAttribute("aria-expanded")) === "true")
+        await bar.click();
+      const barBox = await bar.boundingBox();
+      if (!barBox) throw new Error("Bar is not laid out");
+      expect(barBox.height).toBeLessThanOrEqual(40);
+      expect(barBox.width).toBeLessThanOrEqual(780);
+      await bar.click();
+      const group = tray.getByRole("region", { name: "Päättyneet" });
+      expect(
+        await group
+          .getByRole("heading")
+          .evaluate((el) => parseFloat(getComputedStyle(el).fontSize)),
+      ).toBeLessThanOrEqual(13);
+      await expect(
+        group.getByRole("button", { name: "Poista päättyneet" }),
+      ).toBeVisible();
+      await expect(
+        tray.getByRole("button", { name: "Pysäytä", exact: true }),
+      ).toBeVisible();
+      const select = tray.getByRole("button", {
+        name: finished.name,
+        exact: true,
+      });
+      if ((await select.getAttribute("aria-expanded")) !== "true")
+        await select.click();
+      const output = tray.getByLabel("Prosessin tuloste");
+      await expect(output).toBeVisible();
+      expect(
+        await output.evaluate((el) => ({
+          scrolls:
+            el.scrollHeight > el.clientHeight &&
+            el.scrollWidth > el.clientWidth,
+          bounded: el.clientHeight <= 240,
+          distinctSurface:
+            getComputedStyle(el).backgroundColor !==
+            getComputedStyle(
+              el.closest("aside")?.querySelector("button") as HTMLElement,
+            ).backgroundColor,
+          mono: getComputedStyle(el).fontFamily.includes("Mono"),
+        })),
+      ).toEqual({
+        scrolls: true,
+        bounded: true,
+        distinctSurface: true,
+        mono: true,
+      });
+      await expect(composer).toBeInViewport();
+      const outputBox = await output.boundingBox();
+      const composerBox = await composer.boundingBox();
+      if (!outputBox || !composerBox) throw new Error("Missing layout");
+      expect(outputBox.y + outputBox.height).toBeLessThan(composerBox.y);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      expect(
+        (await new AxeBuilder({ page }).include(".ah-process-tray").analyze())
+          .violations,
+      ).toEqual([]);
+    }
 });

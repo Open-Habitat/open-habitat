@@ -1,62 +1,301 @@
-/* Disposable native-process inventory, in the conversation column above the composer. */
+/* Shared production presentation of Kentän yllä / Merkintänä (16 Oct rounds).
+   Controls remain the shared React Aria primitive; these are its process roles. */
 .ah-process-tray {
-  border-top: 1px solid var(--ah-line);
-  background: var(--ah-surface);
-  max-height: 45vh;
-  overflow: auto;
-  font-size: 0.875rem;
+  flex: none;
+  min-width: 0;
+  padding: 0 var(--ah-column-pad-inline) var(--ah-s2);
+  font-size: 12.5px;
+}
+.ah-process-tray > * {
+  width: min(100%, var(--ah-conversation-width));
+  margin-inline: auto;
+}
+.ah-process-tray .ah-process-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s3);
+  min-height: 34px;
+  padding: var(--ah-s1) var(--ah-s4);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  --i-bg: var(--ah-surface);
+  --i-fg: var(--ah-ink-2);
+  font-size: inherit;
+  font-weight: 400;
+  text-align: left;
+}
+.ah-process-tray svg,
+.ah-process-completion > svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.ah-process-chevron {
+  color: var(--ah-muted);
+  transition: transform var(--ah-transition);
+}
+[aria-expanded="true"] > .ah-process-chevron {
+  transform: rotate(90deg);
+}
+.ah-process-bar[aria-expanded="true"] {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.ah-process-summary {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: var(--ah-s3);
+  align-items: baseline;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.ah-process-summary strong {
+  font-weight: 600;
+  color: var(--ah-ink);
+}
+.ah-process-names {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font: 12px var(--ah-mono);
+  color: var(--ah-muted);
+}
+.ah-process-done {
+  flex: none;
+  color: var(--ah-muted);
+  font-size: 12px;
 }
 .ah-process-list {
-  padding: 0.5rem 1rem;
+  max-height: min(52vh, 460px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: var(--ah-s2);
+  border: 1px solid var(--ah-line);
+  border-top: 0;
+  border-radius: 0 0 var(--ah-r-lg) var(--ah-r-lg);
+  background: var(--ah-surface);
 }
-.ah-process-list h3 {
-  font-size: 0.75rem;
+.ah-process-group-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ah-s3);
+}
+.ah-process-group-heading h2 {
+  margin: var(--ah-s4) 0 var(--ah-s1);
+  padding-inline: var(--ah-s3);
+  font: 600 11px var(--ah-font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--ah-muted);
-  margin: 0.75rem 0 0.25rem;
+}
+.ah-process-tray .ah-process-clear {
+  --i-fg: var(--ah-muted);
+  font-weight: 500;
 }
 .ah-process-heading {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  gap: 2px;
+  border-radius: var(--ah-r-md);
 }
-.ah-process-heading > span {
-  margin-left: auto;
+.ah-process-heading:has([aria-expanded="true"]) {
+  background: var(--ah-current);
+  box-shadow: inset 0 0 0 1px var(--ah-current-line);
 }
-.ah-process-heading time {
+.ah-process-tray .ah-process-select {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-areas: "chevron mark name meta" ". . command command";
+  align-items: center;
+  gap: 1px 0;
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+  padding: var(--ah-s2) var(--ah-s3);
+  --i-fg: var(--ah-ink);
+  font-weight: 400;
+  text-align: left;
+}
+.ah-process-select > .ah-process-chevron {
+  grid-area: chevron;
+  margin-right: var(--ah-s1);
+  width: 12px;
+}
+.ah-process-mark {
+  grid-area: mark;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  margin-right: var(--ah-s3);
   color: var(--ah-muted);
+}
+[data-state="exited"] .ah-process-mark {
+  color: var(--ah-ok);
+}
+.ah-process-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-accent);
+  box-shadow: 0 0 0 3px var(--ah-accent-soft);
+}
+.ah-process-name {
+  grid-area: name;
+  font: 500 12.5px var(--ah-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-process-meta {
+  grid-area: meta;
+  margin-left: var(--ah-s3);
+  color: var(--ah-ink-2);
+  font-size: 12px;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-.ah-process-row {
-  border-bottom: 1px solid var(--ah-line);
+[data-failed="true"] .ah-process-mark,
+[data-failed="true"] .ah-process-meta {
+  color: var(--ah-err);
+}
+[data-state="terminate_timeout"] .ah-process-meta {
+  color: var(--ah-err);
+}
+.ah-process-meta time {
+  color: var(--ah-muted);
+}
+.ah-process-command {
+  grid-area: command;
+  min-width: 0;
+  font: 11.5px var(--ah-mono);
+  color: var(--ah-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-process-wake {
+  display: inline-flex;
+  color: var(--ah-accent-ink);
+  margin-right: var(--ah-s1);
+}
+.ah-process-tray .ah-process-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s1);
+  flex: none;
+  --i-fg: var(--ah-ink-2);
+}
+.ah-process-tray .ah-process-stop.ah-button-danger-subtle {
+  --i-fg: var(--ah-err);
+}
+.ah-process-tray .ah-process-stop:hover {
+  --i-fg: var(--ah-err);
+  --i-hover: var(--ah-err-soft);
+}
+.ah-process-output {
+  margin: 2px 0 var(--ah-s3) var(--ah-s6);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  overflow: hidden;
+}
+.ah-process-output-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ah-s2);
+  padding: var(--ah-s2) var(--ah-s3);
+}
+.ah-process-output-head code {
+  flex: 1;
+  min-width: 0;
+  font: 11.5px var(--ah-mono);
+  color: var(--ah-ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-process-output-head .ah-button {
+  --i-fg: var(--ah-ink-2);
+  font-weight: 500;
+}
+.ah-process-output-head [aria-pressed="true"] {
+  --i-bg: var(--ah-surface-press);
+}
+.ah-process-output p,
+.ah-process-list > p,
+.ah-process-tray > p {
+  margin: var(--ah-s2) var(--ah-s3);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ah-muted);
 }
 .ah-process-output pre {
-  max-height: 15rem;
+  height: 240px;
   overflow: auto;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  background: var(--ah-surface);
-  padding: 0.75rem;
+  overscroll-behavior: contain;
+  white-space: pre;
+  margin: 0;
+  padding: var(--ah-s3) var(--ah-s4);
+  border-block: 1px solid var(--ah-line-soft);
+  background: var(--ah-sunken);
+  font: 12px / 1.55 var(--ah-mono);
+  font-variant-ligatures: none;
+  color: var(--ah-ink);
 }
-.ah-process-output code {
-  display: block;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+.ah-process-output pre:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: -2px;
 }
 .ah-process-stderr {
-  color: var(--ah-error);
+  box-shadow: inset 2px 0 var(--ah-line-strong);
 }
 .ah-process-completion {
-  font-size: 0.875rem;
-  border-left: 2px solid var(--ah-line);
-  padding-left: 0.5rem;
-  margin: 0.5rem 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ah-s1) var(--ah-s3);
+  min-height: 34px;
+  padding: var(--ah-s1) var(--ah-s4);
+  border: 1px solid var(--ah-line-soft);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface-2);
+  font-size: 13px;
+  color: var(--ah-ink-2);
 }
-.ah-process-completion p,
-.ah-process-list p {
+.ah-process-completion > .ah-button {
+  --i-fg: var(--ah-ink-2);
+  padding-inline: 0;
+  font-weight: 500;
+  text-align: left;
+}
+.ah-process-completion-name {
+  font: 500 12.5px var(--ah-mono);
+  color: var(--ah-ink);
+}
+.ah-process-completion > div {
+  flex-basis: 100%;
+}
+.ah-process-completion p {
   color: var(--ah-muted);
 }
 .ah-process-start pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .ah-process-names {
+    display: none;
+  }
+  .ah-process-output {
+    margin-left: 0;
+  }
+  .ah-process-output pre {
+    height: 200px;
+  }
+  .ah-process-tray .ah-process-stop {
+    font-size: 11px;
+    padding-inline: var(--ah-s1);
+  }
 }
