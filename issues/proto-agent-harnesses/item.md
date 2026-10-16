@@ -1,6 +1,6 @@
 ---
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-16
 type: task
 reporter: jari
 status: done
@@ -22,3 +22,9 @@ Jari: a big one, Claude through a subscription, either via a Pi extension on the
 ## Acceptance Criteria
 - [ ] The architecture sketch is the proposed ADR from the research, updated if the prototype changes it.
 - [ ] Round verified with check.mjs; `result.md` per the prototype worker rules.
+
+## Decisions
+
+### 2026-10-16T05:57:30Z · @jari
+
+Jari 2026-10-16: no menu on the + button; it opens a conversation with the default agent. The field selector (Kentän valitsin) is fine. The Pi extension alternative is close to the field selector in the UI, and it is what we really want: only Pi underneath if at all possible. Claude Code as a separate harness may be needed if a Pi extension does not work properly with an Anthropic subscription. Codex is not needed, probably ever. If a separate harness is adopted, its permission prompts must be shown in the browser. The default model and default thinking level deserve their own larger settings item (see implement-model-choice / implement-settings-osiot). ADR 0016 goes through /rethink-document before Jari reviews it.
