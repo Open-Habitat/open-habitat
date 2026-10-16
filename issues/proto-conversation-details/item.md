@@ -30,3 +30,7 @@ Jari 2026-10-16: failed bash card, direction 'Syy kulmassa'. This implies that t
 ### 2026-10-16T06:08:34Z · @jari
 
 Jari 2026-10-16: archive notice, direction 1 'Hetki alhaalla' (8 s, pauses on hover/focus; the prototype's timer bug is being fixed). Palauta returns to the conversation.
+
+### 2026-10-16T06:09:56Z · @jari
+
+Jari 2026-10-16: Viimeisimpään, direction 'Kertova'. Its words replace the count.
