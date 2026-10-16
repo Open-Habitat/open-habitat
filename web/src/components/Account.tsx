@@ -255,6 +255,17 @@ export function AccountSettings({
   const state = states[nativeState ?? "unknown"];
   const [section, setSection] = useState(administration ? "palvelin" : "tili");
   const [detail, setDetail] = useState(administration);
+  useEffect(() => {
+    const openConnections = () => {
+      if (window.location.hash !== "#yhteydet") return;
+      setSection("yhteydet");
+      setDetail(true);
+    };
+    openConnections();
+    window.addEventListener("hashchange", openConnections);
+    return () => window.removeEventListener("hashchange", openConnections);
+  }, []);
+  const [serverVersion, setServerVersion] = useState<string>();
   const [admin, setAdmin] = useState(false);
   const [work, setWork] = useState(getWorkPreference);
   const [disconnectNotice, setDisconnectNotice] = useState(false);
@@ -265,7 +276,10 @@ export function AccountSettings({
     setAdmin(false);
     void serverInfo(controller.signal)
       .then((info) => {
-        if (!controller.signal.aborted) setAdmin(info.administrator);
+        if (!controller.signal.aborted) {
+          setAdmin(info.administrator);
+          setServerVersion(info.version);
+        }
       })
       .catch(() => {});
     return () => controller.abort();
@@ -367,7 +381,6 @@ export function AccountSettings({
         )}
         {section === "agentti" && (
           <div className="s-card">
-            <h3>Pi</h3>
             <div className="s-row">
               <div className="s-lbl">
                 <strong>Kirjautumiset</strong>
@@ -532,6 +545,9 @@ export function AccountSettings({
           ) : (
             <p role="alert">Ylläpito on vain ylläpitäjille.</p>
           ))}
+        <p className="md-note">
+          Palvelimen versio: {serverVersion || "ei saatu"}
+        </p>
       </div>
     </section>
   );

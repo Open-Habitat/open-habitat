@@ -87,7 +87,7 @@ export function ModelPicker({
     <div className="md-pick">
       <div className="md-gh">
         {provider === "claude-bridge"
-          ? "Claude-tilaus · Pi"
+          ? "Claude-tilaus"
           : provider === "openai"
             ? "OpenAI API-avain"
             : "ChatGPT-tilaus"}{" "}

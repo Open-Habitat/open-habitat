@@ -2,6 +2,7 @@ import Ajv from "ajv/dist/2020.js";
 import { useEffect, useRef, useState } from "react";
 import schema from "../../../contracts/v1/claude-login.schema.json";
 import { ControlButton } from "../components/ControlElements";
+
 const valid = new Ajv({ strict: false }).compile(schema);
 type Login = {
   schema_version: 1;
@@ -15,7 +16,7 @@ type Login = {
   attempt_id?: string;
   verification_uri?: string;
 };
-const read = async (response: Response): Promise<Login> => {
+export const read = async (response: Response): Promise<Login> => {
   if (
     !response.ok ||
     response.headers.get("content-type")?.split(";")[0] !== "application/json"

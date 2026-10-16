@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ModelPicker, refused } from "../components/ModelPicker";
+import { read as readClaudeLogin } from "./ClaudeSignIn";
 import { readModels, usePiModels } from "./PiModels";
 
 export { loadPiModels, type Models } from "./PiModels";
@@ -28,6 +29,10 @@ export function PiModelSelector({
     "openai-codex" | "openai" | "claude-bridge"
   >("openai-codex");
   const { data, error: loadError, refresh, update } = usePiModels();
+  const [choiceProvider, setChoiceProvider] = useState(provider);
+  const [claudeReady, setClaudeReady] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const writing = useRef(false);
   const [selected, setSelected] = useState<string>();
   const [thinking, setThinking] = useState<string>();
   const [also, setAlso] = useState(true);
@@ -36,20 +41,33 @@ export function PiModelSelector({
   const edited = useRef(false);
   useEffect(() => {
     refresh();
+    const controller = new AbortController();
+    void fetch("/api/v1/pi/claude-login", {
+      credentials: "same-origin",
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(readClaudeLogin)
+      .then((login) => {
+        if (!controller.signal.aborted)
+          setClaudeReady(login.state === "completed");
+      })
+      .catch(() => {});
+    return () => controller.abort();
   }, [refresh]);
   // Initialize before the preloaded rows become interactive.
   // biome-ignore lint/correctness/useExhaustiveDependencies: only defaults initialize selection, not observations.
   useLayoutEffect(() => {
     if (!data || edited.current) return;
-    setProvider(
-      current?.startsWith("claude-bridge/")
-        ? "claude-bridge"
-        : current?.startsWith("openai/")
-          ? "openai"
-          : current?.startsWith("openai-codex/")
-            ? "openai-codex"
-            : (data.default_provider ?? "openai-codex"),
-    );
+    const initialProvider = current?.startsWith("claude-bridge/")
+      ? "claude-bridge"
+      : current?.startsWith("openai/")
+        ? "openai"
+        : current?.startsWith("openai-codex/")
+          ? "openai-codex"
+          : (data.default_provider ?? "openai-codex");
+    setProvider(initialProvider);
+    setChoiceProvider(initialProvider);
     setSelected(
       current?.replace(/^(openai-codex|openai|claude-bridge)\//, "") ??
         data.default_model ??
@@ -100,18 +118,24 @@ export function PiModelSelector({
     update(next);
   };
   const commit = async (choice: Choice) => {
+    if (writing.current) return;
+    writing.current = true;
     setBusy(true);
+    setConfirmed(false);
     setError(false);
     try {
       if (scope === "default" || (scope === "recovery" && also))
         await save(choice);
-      setSelected(choice.model);
-      setThinking(choice.thinking);
       await onChoice?.({ ...choice, provider: choice.provider ?? provider });
+      setSelected(choice.model);
+      setChoiceProvider(choice.provider ?? provider);
+      setThinking(choice.thinking);
+      setConfirmed(true);
       onBlocked?.(false);
     } catch {
       setError(true);
     } finally {
+      writing.current = false;
       setBusy(false);
     }
   };
@@ -120,6 +144,8 @@ export function PiModelSelector({
     [];
   const choose = (model: string, level = thinking) => {
     if (
+      busy ||
+      (provider === "claude-bridge" && !claudeReady) ||
       data?.catalog_status === "unavailable" ||
       refused(candidates.find((m) => m.id === model))
     )
@@ -127,15 +153,16 @@ export function PiModelSelector({
     const supported = candidates.find((m) => m.id === model)?.thinking_levels;
     const next = supported?.includes(level ?? "") ? level : supported?.[0];
     if (scope === "default" || scope === "new")
-      void commit({ model, thinking: next });
+      void commit({ provider, model, thinking: next });
     else {
       edited.current = true;
+      setChoiceProvider(provider);
       setSelected(model);
       setThinking(next);
     }
   };
   return (
-    <div className="ah-pi-model-selector">
+    <div className="ah-pi-model-selector" aria-busy={busy}>
       {data ? (
         <>
           {data.catalog_status === "unavailable" ? (
@@ -164,6 +191,7 @@ export function PiModelSelector({
                     aria-pressed={provider === p}
                     disabled={
                       busy ||
+                      (p === "claude-bridge" && !claudeReady) ||
                       !csrf ||
                       data.catalog_status === "unavailable" ||
                       !data.models.some(
@@ -172,25 +200,8 @@ export function PiModelSelector({
                       )
                     }
                     onClick={() => {
-                      const models = data.models.filter(
-                        (m) =>
-                          (m.provider ?? "openai-codex") === p && !refused(m),
-                      );
-                      const next =
-                        models.find((m) => m.id === selected) ?? models[0];
-                      if (!next) return;
+                      // Browsing credentials is not a model-selection intent.
                       setProvider(p);
-                      if (scope === "default" || scope === "new")
-                        void commit({
-                          provider: p,
-                          model: next.id,
-                          thinking: next.thinking_levels?.[0],
-                        });
-                      else {
-                        edited.current = true;
-                        setSelected(next.id);
-                        setThinking(next.thinking_levels?.[0]);
-                      }
                     }}
                   >
                     {p === "claude-bridge"
@@ -203,6 +214,12 @@ export function PiModelSelector({
               )}
             </fieldset>
           </div>
+          {!claudeReady ? (
+            <p className="md-note">
+              Claude-tilaus ei ole käytettävissä: kirjautumista ei ole
+              vahvistettu. <a href="/settings#yhteydet">Yhteydet</a>
+            </p>
+          ) : null}
           {data.default_model &&
           !candidates.some((m) => m.id === data.default_model) ? (
             <p className="md-note">
@@ -211,14 +228,21 @@ export function PiModelSelector({
             </p>
           ) : null}
           <ModelPicker
+            key={provider}
             models={candidates}
             provider={provider}
-            selected={selected}
-            thinking={thinking}
-            busy={busy || !csrf || data.catalog_status === "unavailable"}
+            selected={choiceProvider === provider ? selected : undefined}
+            thinking={choiceProvider === provider ? thinking : undefined}
+            busy={
+              busy ||
+              !csrf ||
+              data.catalog_status === "unavailable" ||
+              (provider === "claude-bridge" && !claudeReady)
+            }
             onSelect={choose}
             onThinking={(level) => {
-              if (selected) choose(selected, level);
+              if (selected && choiceProvider === provider)
+                choose(selected, level);
             }}
           />
           {scope === "recovery" ? (
@@ -252,6 +276,8 @@ export function PiModelSelector({
                   busy ||
                   !csrf ||
                   !selected ||
+                  choiceProvider !== provider ||
+                  (provider === "claude-bridge" && !claudeReady) ||
                   data.catalog_status === "unavailable" ||
                   refused(candidates.find((m) => m.id === selected))
                 }
@@ -284,6 +310,13 @@ export function PiModelSelector({
             : "Ladataan Pi:n malleja…"}
         </p>
       )}
+      <p role="status" className="md-note">
+        {busy
+          ? "Tallennetaan valintaa…"
+          : confirmed
+            ? "Valinta vahvistettu."
+            : ""}
+      </p>
       {error && data ? (
         <p role="alert">
           Mallin tallennusta ei voitu vahvistaa. Yritä uudelleen.

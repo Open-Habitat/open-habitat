@@ -108,6 +108,7 @@ type Broker interface {
 	Exchange(context.Context, BrokerRequest) (BrokerReply, error)
 }
 type AuthOptions struct {
+	Version     string // running gateway binary version, supplied by the composition root
 	Broker      Broker
 	AdminFile   string // gateway-private name and browser roles; empty only in synthetic tests
 	SessionFile string // gateway-private persistent state; empty only in synthetic tests
@@ -135,6 +136,7 @@ type session struct {
 	absolute    time.Time
 }
 type Auth struct {
+	version          string
 	cfg              OAuthConfig
 	provider         Provider
 	sink             TokenSink
@@ -198,7 +200,7 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	if err != nil {
 		return nil, err
 	}
-	a := &Auth{sessionFile: opts.SessionFile, cfg: cfg, provider: opts.Provider, sink: opts.Sink, broker: opts.Broker, now: opts.Now, random: opts.Random, log: opts.Log, pending: map[string]pending{}, sessions: map[string]session{}, admission: map[string]admission{}, snapshotDial: opts.SnapshotDial, snapshotPeerUID: opts.SnapshotPeerUID, access: access}
+	a := &Auth{version: opts.Version, sessionFile: opts.SessionFile, cfg: cfg, provider: opts.Provider, sink: opts.Sink, broker: opts.Broker, now: opts.Now, random: opts.Random, log: opts.Log, pending: map[string]pending{}, sessions: map[string]session{}, admission: map[string]admission{}, snapshotDial: opts.SnapshotDial, snapshotPeerUID: opts.SnapshotPeerUID, access: access}
 	if err := a.loadAdministration(opts.AdminFile); err != nil {
 		return nil, err
 	}

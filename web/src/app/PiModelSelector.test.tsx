@@ -4,7 +4,7 @@ import { PiModelSelector } from "./PiModelSelector";
 import { PiModelsProvider } from "./PiModels";
 
 afterEach(() => vi.restoreAllMocks());
-it("publishes a new-conversation provider toggle even when model ids collide, without changing defaults", async () => {
+it("browses a provider without choosing even when model ids collide, then publishes the explicit choice", async () => {
   const fetcher = vi.spyOn(globalThis, "fetch").mockResolvedValue(
     new Response(
       JSON.stringify({
@@ -38,6 +38,8 @@ it("publishes a new-conversation provider toggle even when model ids collide, wi
     </PiModelsProvider>,
   );
   fireEvent.click(await screen.findByRole("button", { name: /^API-avain$/ }));
+  expect(onChoice).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("radio", { name: /Luna API/ }));
   await waitFor(() =>
     expect(onChoice).toHaveBeenCalledWith({
       provider: "openai",
@@ -49,7 +51,7 @@ it("publishes a new-conversation provider toggle even when model ids collide, wi
     "checked",
     true,
   );
-  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(fetcher).toHaveBeenCalledTimes(2);
   expect(fetcher.mock.calls[0][1]?.method).toBeUndefined();
 });
 it("does not unblock the applied refused model until an empty-conversation choice is confirmed", async () => {

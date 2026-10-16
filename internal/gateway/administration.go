@@ -300,7 +300,8 @@ func (a *Auth) adminHTTP(w http.ResponseWriter, r *http.Request) {
 			Version       int    `json:"schema_version"`
 			Name          string `json:"name"`
 			Administrator bool   `json:"administrator"`
-		}{1, v.Name, a.isAdministrator(s.identity.Subject)})
+			BuildVersion  string `json:"version"`
+		}{1, v.Name, a.isAdministrator(s.identity.Subject), a.version})
 		return
 	}
 	if !a.isAdministrator(s.identity.Subject) {

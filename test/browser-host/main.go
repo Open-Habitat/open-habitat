@@ -437,7 +437,7 @@ esac
 		log.Fatal(err)
 	}
 	broker := &fixtureBroker{identities: identities}
-	auth, e := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: origin, CallbackURL: origin + "/auth/github/callback"}, gateway.AuthOptions{Provider: fixtureProvider, Sink: sink{&scenario}, Broker: broker, AdminFile: adminPath, Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Hour) }, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
+	auth, e := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: origin, CallbackURL: origin + "/auth/github/callback"}, gateway.AuthOptions{Version: "0.0.0-lab", Provider: fixtureProvider, Sink: sink{&scenario}, Broker: broker, AdminFile: adminPath, Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Hour) }, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, "unix", paths[p])
 	}, SnapshotPeerUID: func(c *net.UnixConn) int { return peers[c.RemoteAddr().String()] }})
 	if e != nil {

@@ -407,6 +407,7 @@ test.describe("credential settings", () => {
     await page
       .getByRole("button", { name: "ChatGPT-tilaus", exact: true })
       .click();
+    await page.getByRole("radio", { name: /GPT-6.1 Sol/ }).click();
     await expect
       .poll(
         async () =>
@@ -587,9 +588,17 @@ test("@account-settings Claude native code sign-in and provider-qualified picker
   await expect(
     page.getByRole("radio", { name: /Claude Fable 5.1/ }),
   ).toBeChecked();
-  expect(writes).toEqual([
-    { provider: "claude-bridge", model: "claude-fable-5-1", thinking: "low" },
-  ]);
+  expect(writes).toEqual([]);
+  await page.getByRole("button", { name: "high", exact: true }).click();
+  await expect
+    .poll(() => writes)
+    .toEqual([
+      {
+        provider: "claude-bridge",
+        model: "claude-fable-5-1",
+        thinking: "high",
+      },
+    ]);
 });
 
 test("@account-settings Claude sign-in remains findable without a native runtime on mobile", async ({
