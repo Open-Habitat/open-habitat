@@ -147,3 +147,29 @@ Go/race had many native-home/credential ownership refusals: Go 1.27's
 shell's 002 that becomes 775, which deliberately fails native-home checks.
 The next gate uses `umask 077` for the whole command. This changes only the
 command's disposable test environment; no security check is bypassed.
+
+### Restrictive-environment results
+
+After the discovery guard correction (rebased implementation `ac1ac4b9`):
+new regression **3/3**, warm-return budget **1/1**, native key-add **1/1**, full
+workspace-slice **4/4**, fast web **144 unit + 133 component** passed. The
+SDK/credential failure was resolved without changing native validation.
+
+Third clean gate on `ac1ac4b9` with `umask 077`: **failed**, 624 seconds, no
+receipt. Available memory before start was 5 GiB. Static/web/unit/component and
+Storybook passed. Normal browser **193 passed, two intentional visual skips,
+three failures**: native-history retitle returned 409 instead of 200, and two
+process-tray cases timed out waiting for the workspace navigation link. The
+previous four browser failures all passed in this gate, including the fixed
+warm-return budget. Native ownership/credential failures disappeared. Go/race
+failed only empty-child close (writer-conflict 409) and gateway session-boundary
+(second-login abort 503). Lab/packaging were not reached. These unrelated
+native/process failures are rerun unchanged in isolation below; this gate is
+not reported as passed.
+
+Unchanged isolation reruns with `umask 077` all passed: native retitle **1/1**,
+full process-tray spec **3/3**, `go test -race -count=1 ./internal/daemon -run
+'^TestCloseEmptyBrowserChild$'`, and the gateway equivalent for
+`TestConversationGatewaySessionBoundary`. No assertion, native security guard,
+request budget or timeout was relaxed. Landing uses focused evidence and these
+isolated reruns; there is no successful clean-gate receipt.
