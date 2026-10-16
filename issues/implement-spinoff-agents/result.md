@@ -15,7 +15,8 @@ reduced motion is requested.
   native list state; terminal/selected rows read show for verified landing,
   reports and preserved work. Reads have an overall command budget and expose
   partial/unavailable rather than interpreting failures as no children. The
-  twenty newest direct spinoffs are shown; selected older children remain
+  twenty newest direct spinoffs are shown (including Taskfleet research,
+  technical-decision and fan-out workers; caller-owned runs are excluded); selected older children remain
   directly readable by full ID. Envelope warnings and deadline expiry degrade
   availability. No registry, cache or archive is written by the daemon.
 - Creator attribution must also match the actual source checkout. Taskfleet
@@ -39,9 +40,15 @@ reduced motion is requested.
   Thinking-only/tool-call-only turns and native argument expansion are not
   presented. Claude transcripts remain unsupported, with the result visible.
 - No merge SHA, diffstat or commit count is invented from `report.origin.worker_oid`:
-  Taskfleet documents that as **pre-rebase**, not a guaranteed merge commit.
-  This release shows verified landing, the native result and recorded retained
-  paths. Exact Git change details await a reliable integrated-object contract.
+  Taskfleet documents that as **pre-rebase**, not a guaranteed integrated object.
+  The retained `merge.rebased` event initially looked usable, but producer-source
+  review established that **only caller-owned runs emit it**. Ordinary
+  Taskfleet-owned spinoffs use a no-op callback instead. A proposed event-to-Git
+  helper and its manufactured fixture were therefore removed, not shipped as
+  imaginary coverage. Current results show verified landing, the native report
+  and retained paths; exact Git details need the producer contract follow-up
+  recorded below. This limitation does not make native results/transcripts
+  unavailable.
 - Native worktree paths exclude spinoff checkouts and their unannotated immediate
   `src` containers from the workspace snapshot. A name like `__worktrees` alone
   never hides a directory; ordinary annotated/root Git workspaces are retained.
@@ -78,8 +85,12 @@ cannot break the existing browser.
   `group-light`, `group-dark`, `desktop`, `desktop-dark` and `phone` AVIF/HTML
   pairs are synthetic-lab views with explicit wire fixtures, not live data or
   automated visual comparisons. The HTML twins embed assets and are inert.
-- Final integrated clean-gate result is recorded below after the committed tree
-  is tested. No real provider prompt or distinct-UID browser-to-spinoff journey
+- The first full clean gate caught a missing shared lab-helper type declaration;
+  the second passed all Go/race/contracts and 181 browser cases, with one
+  warm-return assertion needing the new independent spinoff inventory read
+  allowlisted (2 capture-only skips). Both defects are corrected. The final
+  integrated clean-gate result is recorded below after the committed tree is
+  tested. No real provider prompt or distinct-UID browser-to-spinoff journey
   is claimed by these synthetic checks.
 
 Early setup/fixture failures were corrected, not counted as passes: missing

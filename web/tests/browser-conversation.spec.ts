@@ -988,6 +988,7 @@ test("@browser-conversation warm controlled return reads neither status nor hist
       (path) =>
         path !== "/api/v1/pi/models" &&
         !path.endsWith("/recap") &&
+        !/^\/api\/v1\/agents\/pi:[0-9a-fA-F-]{36}\/spinoffs$/.test(path) &&
         !/\/conversations\/[^/]+\/processes$/.test(path),
     ),
   ).toEqual([]);

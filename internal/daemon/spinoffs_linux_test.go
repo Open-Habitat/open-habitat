@@ -115,7 +115,7 @@ func TestSpinoffAttributionAndReadOnlyHTTP(t *testing.T) {
 			case "nested":
 				r.CreatorRun = strptr(spinoffFixtureID)
 			case "other-kind":
-				r.Kind = "research"
+				r.Kind = "unknown-kind"
 			case "malformed-id":
 				r.ID = "--help"
 			}
@@ -123,6 +123,18 @@ func TestSpinoffAttributionAndReadOnlyHTTP(t *testing.T) {
 				t.Fatal("incorrect grouping")
 			}
 		})
+	}
+	for _, kind := range []string{"research", "technical-decision", "fan-out"} {
+		r := run
+		r.Kind = kind
+		if !belongsSpinoff(r, parent) {
+			t.Fatalf("direct native worker kind hidden: %s", kind)
+		}
+	}
+	caller := run
+	caller.AgentOwner = "caller"
+	if belongsSpinoff(caller, parent) {
+		t.Fatal("caller-owned run treated as Taskfleet worker")
 	}
 	bin := filepath.Join(cfg.Home, ".local", "bin", "taskfleet")
 	if e := os.MkdirAll(filepath.Dir(bin), 0700); e != nil {
@@ -159,11 +171,18 @@ func TestSpinoffAttributionAndReadOnlyHTTP(t *testing.T) {
 		t.Fatal(w.Code)
 	}
 }
-func TestSpinoffMissingTaskfleet(t *testing.T) {
-	t.Setenv("PATH", t.TempDir())
+func TestSpinoffUnavailableTaskfleet(t *testing.T) {
+	home := t.TempDir()
+	binary := filepath.Join(home, ".local", "bin", "taskfleet")
+	if err := os.MkdirAll(filepath.Dir(binary), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(binary, []byte("#!/bin/sh\nexit 127\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
 	var result any
-	if taskfleetRead(context.Background(), t.TempDir(), []string{"run", "list", "--output", "json"}, &result) {
-		t.Fatal("missing binary appeared available")
+	if taskfleetRead(context.Background(), home, []string{"run", "list", "--output", "json"}, &result) {
+		t.Fatal("unavailable native reader appeared available")
 	}
 }
 func TestSpinoffStateHonesty(t *testing.T) {

@@ -46,6 +46,7 @@ type spinoffPreserved struct {
 	WorktreePresent bool    `json:"worktree_present"`
 }
 type nativeSpinoff struct {
+	AgentOwner   string             `json:"agent_owner"`
 	Preserved    []spinoffPreserved `json:"preserved_work"`
 	SourceBranch string             `json:"source_branch"`
 	Supervisor   struct {
@@ -143,7 +144,7 @@ func spinoffState(r nativeSpinoff) string {
 	return "unknown"
 }
 func belongsSpinoff(r nativeSpinoff, parent nativeSession) bool {
-	return taskfleetIDPattern.MatchString(r.ID) && r.Kind == "spinoff" && r.CreatorRun == nil && r.Creator != nil && r.Creator.Harness == "pi" && r.Creator.SessionID == parent.id && filepath.IsAbs(r.SourceRepo) && filepath.Clean(r.SourceRepo) == filepath.Clean(parent.cwd)
+	return taskfleetIDPattern.MatchString(r.ID) && observedTaskfleetKind(r.Kind) && r.AgentOwner != "caller" && r.CreatorRun == nil && r.Creator != nil && r.Creator.Harness == "pi" && r.Creator.SessionID == parent.id && filepath.IsAbs(r.SourceRepo) && filepath.Clean(r.SourceRepo) == filepath.Clean(parent.cwd)
 }
 func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Config, sessions []nativeSession) bool {
 	path := req.URL.EscapedPath()
@@ -458,7 +459,7 @@ func filterTaskfleetWorkspaces(home string, entries []Workspace, runs []nativeSp
 	src := filepath.Join(home, "src")
 	hidden := map[string]bool{}
 	for _, r := range runs {
-		if r.Kind != "spinoff" || !taskfleetIDPattern.MatchString(r.ID) {
+		if !observedTaskfleetKind(r.Kind) || r.AgentOwner == "caller" || !taskfleetIDPattern.MatchString(r.ID) {
 			continue
 		}
 		for _, n := range r.Nodes {
@@ -487,4 +488,12 @@ func filterTaskfleetWorkspaces(home string, entries []Workspace, runs []nativeSp
 		result = append(result, e)
 	}
 	return result
+}
+
+func observedTaskfleetKind(kind string) bool {
+	switch kind {
+	case "spinoff", "research", "technical-decision", "fan-out":
+		return true
+	}
+	return false
 }
