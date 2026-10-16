@@ -193,6 +193,19 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* A cut-off process has no controls or log: a static row, reason on its own line. */
+.ah-process-heading.ah-process-interrupted {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "mark name" ". meta" ". command";
+  gap: 1px 0;
+  padding: var(--ah-s2) var(--ah-s3) var(--ah-s2)
+    calc(var(--ah-s3) + 12px + var(--ah-s1));
+}
+.ah-process-interrupted .ah-process-meta {
+  margin-left: 0;
+  white-space: normal;
+}
 .ah-process-wake {
   display: inline-flex;
   color: var(--ah-accent-ink);

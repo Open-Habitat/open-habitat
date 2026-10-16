@@ -284,3 +284,38 @@ it.each(["token", "owner"])(
     ui.unmount();
   },
 );
+it("shows what a restart cut off while Pi is stopped, without controls, and leaves a cut-off wait to its spinoff", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      reply({
+        schema_version: 1,
+        owner_generation: null,
+        availability: "unavailable",
+        unavailable_reason: "pi_not_running",
+        processes: [],
+        interrupted: [
+          ...inventory.interrupted,
+          {
+            ...inventory.interrupted[0],
+            id: "proc_0001",
+            name: "spinoff-odotus",
+            run_ids: ["01m531x6y92ggdqcmb1exzmnya"],
+          },
+        ],
+      }),
+    ),
+  );
+  const ui = view();
+  fireEvent.click(
+    await screen.findByRole("button", { name: /Prosessit · 1 katkesi/ }),
+  );
+  expect(screen.getByText("kehityspalvelin")).toBeTruthy();
+  expect(
+    screen.getByText(/Katkesi palvelimen uudelleenkäynnistyksessä/),
+  ).toBeTruthy();
+  expect(screen.queryByText("spinoff-odotus")).toBeNull();
+  expect(screen.queryByRole("button", { name: /Pysäytä/ })).toBeNull();
+  expect(screen.queryByText(/Puuttuva tieto/)).toBeNull();
+  ui.unmount();
+});

@@ -47,6 +47,9 @@ type ConversationController struct {
 	recapPath      string
 	recapIdleDelay time.Duration                            // test seam; zero uses the production three-minute interval
 	recapGenerator func(*conversation, string, uint64) bool // synthetic test seam
+	// started tells a process cut off by this daemon's restart from one cut
+	// off by a Pi stop since (process_interrupted_linux.go). Unix ms.
+	started int64
 }
 
 // A continued native session retains spent browser IDs within this daemon
@@ -137,7 +140,7 @@ func (c *ConversationController) showQuestion(s *conversation, q pendingQuestion
 }
 
 func newConversationController(ctx context.Context, cfg transport.Config, runtime *core.PiRuntimeConfig, trusted func(*http.Request) bool, status func(context.Context) string) *ConversationController {
-	c := &ConversationController{cfg: cfg, runtime: runtime, trusted: trusted, status: status, sessions: make(map[string]*conversation), home: cfg.Home, discover: Discover, facts: newSnapshotFacts(ctx)}
+	c := &ConversationController{started: time.Now().UnixMilli(), cfg: cfg, runtime: runtime, trusted: trusted, status: status, sessions: make(map[string]*conversation), home: cfg.Home, discover: Discover, facts: newSnapshotFacts(ctx)}
 	go func() { <-ctx.Done(); c.shutdown() }()
 	return c
 }

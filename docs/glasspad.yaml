@@ -109,3 +109,6 @@ groups:
       - slug: decisions/adr-0020-resume-on-send
         title: ADR 0020 — Resume on send
         desc: A stopped browser conversation starts Pi when the person sends; held messages join into one prompt.
+      - slug: decisions/adr-0021-resume-catch-up
+        title: ADR 0021 — Catch-up on resume
+        desc: The first turn after Pi starts again learns which processes were cut off and which spinoffs settled.

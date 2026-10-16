@@ -3,6 +3,7 @@
 package daemon
 
 import (
+	"fmt"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -329,5 +330,30 @@ func TestProcessSnapshotKeepsPendingQuestionDuringNativeRun(t *testing.T) {
 	}
 	if json.Unmarshal(w.Body.Bytes(), &snapshot) != nil || len(snapshot.Agents) != 1 || !snapshot.Agents[0].Active || snapshot.Agents[0].Question.ID != "q" {
 		t.Fatal("snapshot lost question precedence", w.Body.String())
+	}
+}
+
+// Only the current leaf's ancestry counts, and the process start time against
+// this daemon's and this Pi's start says why a process was cut off.
+func TestProcessInterruptedFromActiveBranch(t *testing.T) {
+	start := func(id, parent, proc string, at int64, command string) string {
+		return fmt.Sprintf(`{"type":"message","id":%q,"parentId":%q,"message":{"role":"toolResult","toolName":"process","details":{"action":"start","process":{"id":%q,"name":"n","command":%q,"startTime":%d},"notify":{"onSuccess":"turn","onFailure":"turn"}}}}`, id, parent, proc, command, at)
+	}
+	lines := []string{
+		`{"type":"session","version":3,"id":"00000000-0000-4000-8000-000000000001","cwd":"/w"}`,
+		start("a", "", "proc_aaaa", 100, "taskfleet run wait 01m531x6y92ggdqcmb1exzmnya --output json"),
+		start("b", "a", "proc_bbbb", 200, "export TOKEN=secret; sleep 9"),
+		start("abandoned", "b", "proc_cccc", 250, "sleep 9"), // a branch the leaf left behind
+		start("c", "b", "proc_dddd", 300, "sleep 9"),
+		`{"type":"custom_message","id":"d","parentId":"c","customType":"oh-resume-catch-up","details":{"processes":[{"id":"proc_dddd","startTime":300}]}}`,
+		start("e", "d", "proc_eeee", 400, "sleep 9"),
+	}
+	open := scanBranchProcesses([]byte(strings.Join(lines, "\n") + "\n"))
+	got := interruptedProcesses(open, 400, 150)
+	if len(got) != 2 || got[0].ID != "proc_bbbb" || got[0].Reason != "pi_stopped" || got[1].ID != "proc_aaaa" || got[1].Reason != "server_restart" {
+		t.Fatalf("interrupted: %+v", got)
+	}
+	if len(got[1].RunIDs) != 1 || strings.Contains(got[0].Preview, "secret") {
+		t.Fatalf("projection: %+v", got)
 	}
 }

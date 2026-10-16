@@ -1765,6 +1765,7 @@ test("@browser-conversation changed snapshot identity discards late previous sta
         availability: "unavailable",
         unavailable_reason: "extension_missing",
         processes: [],
+        interrupted: [],
       },
     }),
   );

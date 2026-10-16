@@ -224,34 +224,42 @@ func readNativeSettled(path string, uid int) nativeSession {
 	return s
 }
 func readNative(path string, uid int) nativeSession {
-	var result nativeSession
+	b, ok := readNativeBytes(path, uid)
+	if !ok {
+		return nativeSession{}
+	}
+	return decodeNative(b, path)
+}
+
+// readNativeBytes reads one stable, owned, bounded native session file.
+func readNativeBytes(path string, uid int) ([]byte, bool) {
 	before, err := os.Lstat(path)
 	if err != nil || !before.Mode().IsRegular() || before.Size() > maxLegacyHistoryFile || before.Size() < 1 {
-		return result
+		return nil, false
 	}
 	if uid >= 0 {
 		if owner, ok := fileOwner(before); !ok || owner != uid {
-			return result
+			return nil, false
 		}
 	}
 	f, err := os.Open(path)
 	if err != nil {
-		return result
+		return nil, false
 	}
 	defer f.Close()
 	opened, err := f.Stat()
 	if err != nil || !os.SameFile(before, opened) {
-		return result
+		return nil, false
 	}
 	b, err := io.ReadAll(io.LimitReader(f, maxLegacyHistoryFile+1))
 	if err != nil || len(b) > maxLegacyHistoryFile || !utf8.Valid(b) {
-		return result
+		return nil, false
 	}
 	after, err := os.Lstat(path)
 	if err != nil || !os.SameFile(before, after) || opened.Size() != after.Size() || !opened.ModTime().Equal(after.ModTime()) || int64(len(b)) != after.Size() {
-		return result
+		return nil, false
 	}
-	return decodeNative(b, path)
+	return b, true
 }
 
 func decodeNative(b []byte, path string) nativeSession {

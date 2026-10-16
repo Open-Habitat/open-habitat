@@ -121,6 +121,8 @@ type processInventory struct {
 	Availability string          `json:"availability"`
 	Reason       *string         `json:"unavailable_reason"`
 	Processes    []processRecord `json:"processes"`
+	// Interrupted is read from the native branch and needs no running Pi.
+	Interrupted []interruptedProcess `json:"interrupted"`
 }
 type waitingProcess struct {
 	Spinoff []processSpinoff `json:"spinoff,omitempty"`
@@ -131,7 +133,7 @@ type waitingProcess struct {
 }
 
 func unavailableProcesses(reason string) processInventory {
-	return processInventory{Schema: 1, Availability: "unavailable", Reason: &reason, Processes: []processRecord{}}
+	return processInventory{Schema: 1, Availability: "unavailable", Reason: &reason, Processes: []processRecord{}, Interrupted: []interruptedProcess{}}
 }
 func (p *piRPC) inventory(ctx context.Context) processInventory {
 	result := unavailableProcesses("bridge_unavailable")
@@ -188,7 +190,7 @@ func (p *piRPC) inventory(ctx context.Context) processInventory {
 			records[i].Spinoff = readProcessSpinoffs(ctx, home, env, records[i].RunIDs, nativeSession{id: p.processParentID, cwd: p.processWorkspace})
 		}
 	}
-	return processInventory{1, &p.processGeneration, "available", nil, records}
+	return processInventory{1, &p.processGeneration, "available", nil, records, []interruptedProcess{}}
 }
 func inventoryWaiting(inv processInventory) []waitingProcess {
 	waiting := []waitingProcess{}
@@ -220,11 +222,13 @@ func (c *ConversationController) processRoutes(w http.ResponseWriter, r *http.Re
 	c.mu.Unlock()
 	if s == nil {
 		if r.Method == http.MethodGet && len(parts) == 2 && r.URL.RawQuery == "" && r.ContentLength <= 0 && len(r.TransferEncoding) == 0 {
-			reason := "terminal_control"
+			// A terminal Pi may still own its processes; never call them cut off.
+			inv := unavailableProcesses("terminal_control")
 			if processBrowserOrigin(c.home, parts[0]) {
-				reason = "pi_not_running"
+				inv = unavailableProcesses("pi_not_running")
+				inv.Interrupted = c.interruptedFor(parts[0], "", time.Now().UnixMilli())
 			}
-			historyJSON(w, unavailableProcesses(reason))
+			historyJSON(w, inv)
 		} else {
 			snapshotError(w, 404, "resource_not_found")
 		}
@@ -233,7 +237,18 @@ func (c *ConversationController) processRoutes(w http.ResponseWriter, r *http.Re
 	if r.Method == http.MethodGet && r.ContentLength <= 0 && len(r.TransferEncoding) == 0 && len(parts) == 2 && r.URL.RawQuery == "" {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
-		historyJSON(w, s.rpc.inventory(ctx))
+		inv := s.rpc.inventory(ctx)
+		before := s.rpc.launched
+		select {
+		case <-s.rpc.exited:
+			before = time.Now().UnixMilli()
+		default:
+		}
+		c.mu.Lock()
+		path := s.historyPath
+		c.mu.Unlock()
+		inv.Interrupted = c.interruptedFor(s.id, path, before)
+		historyJSON(w, inv)
 		return
 	}
 	var q struct {
@@ -342,6 +357,37 @@ func (c *ConversationController) processRoutes(w http.ResponseWriter, r *http.Re
 	if op != "output" && c.journal != nil {
 		c.journal.appendInvalidation("pi:" + s.id)
 	}
+}
+
+// interruptedFor reads the conversation's own native branch as the mapped user.
+// Missing or unreadable history yields none: absence is not shown as an end.
+// A known path (a continued conversation) avoids listing every session.
+func (c *ConversationController) interruptedFor(id, path string, before int64) []interruptedProcess {
+	if c.facts == nil {
+		return []interruptedProcess{}
+	}
+	if path == "" {
+		sessions, err := c.facts.sessions.read(c.nativeCfg())
+		if err != nil {
+			return []interruptedProcess{}
+		}
+		for _, h := range sessions {
+			if h.id == id && h.state == "readable" {
+				if path != "" {
+					return []interruptedProcess{}
+				}
+				path = h.path
+			}
+		}
+	}
+	if path == "" {
+		return []interruptedProcess{}
+	}
+	open, ok := c.facts.sessions.processes(path, c.cfg.UID)
+	if !ok {
+		return []interruptedProcess{}
+	}
+	return interruptedProcesses(open, before, c.started)
 }
 
 // Per-snapshot observation only. No registry/cache, and no controller lock held

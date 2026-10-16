@@ -34,6 +34,7 @@ type piRPC struct {
 	done                                         chan struct{}        // reader done, NOT process exit proof
 	exited                                       chan struct{}        // direct child reaped independently of pipe EOF
 	closing                                      atomic.Bool
+	launched                                     int64 // Unix ms before Pi started: earlier process starts belong to an earlier Pi
 	poisoned                                     bool // guarded by mu
 }
 
@@ -132,7 +133,7 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 		return nil, err
 	}
 	cmd.Stdout, cmd.Stdin = outW, inR
-	p := &piRPC{processWorkspace: cwd, processSocket: processSocket, processDir: processDir, processGeneration: generation, cmd: cmd, in: inW, out: outR, frames: make(chan json.RawMessage, 8), events: make(chan json.RawMessage, 128), done: make(chan struct{}), exited: make(chan struct{})}
+	p := &piRPC{launched: time.Now().UnixMilli(), processWorkspace: cwd, processSocket: processSocket, processDir: processDir, processGeneration: generation, cmd: cmd, in: inW, out: outR, frames: make(chan json.RawMessage, 8), events: make(chan json.RawMessage, 128), done: make(chan struct{}), exited: make(chan struct{})}
 	if owner != nil {
 		p.processParentID = owner.id
 	}

@@ -413,6 +413,13 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 			s.append(message("toolResult", []map[string]any{{"type": "text", "text": call.result}}, map[string]any{"toolCallId": call.id, "toolName": call.name}))
 		}
 	}
+	if strings.Contains(prompt, "taustaprosessi") {
+		// A native pi-processes start result; the process itself does not exist,
+		// so a daemon restart leaves exactly the branch evidence a real one would.
+		process := map[string]any{"id": "proc_c0de", "name": "kehityspalvelin", "command": "npm run dev", "startTime": time.Now().UnixMilli(), "status": "running"}
+		s.append(message("assistant", []map[string]any{{"type": "toolCall", "name": "process", "id": "process-start", "arguments": map[string]any{"action": "start", "name": "kehityspalvelin", "command": "npm run dev"}}}, nil))
+		s.append(message("toolResult", []map[string]any{{"type": "text", "text": "Started process kehityspalvelin (proc_c0de)."}}, map[string]any{"toolCallId": "process-start", "toolName": "process", "details": map[string]any{"action": "start", "process": process, "notify": map[string]any{"onSuccess": "turn", "onFailure": "turn", "onKilled": "context"}}}))
+	}
 	if strings.Contains(prompt, "virhekortti") {
 		s.append(message("assistant", []map[string]any{{"type": "toolCall", "name": "read", "id": "failed-read", "arguments": map[string]any{"path": "missing.ts"}}}, nil))
 		s.append(message("toolResult", []map[string]any{{"type": "text", "text": "ENOENT: missing.ts"}}, map[string]any{"toolCallId": "failed-read", "toolName": "read", "isError": true}))

@@ -1,16 +1,122 @@
 // Product companion. pi-processes remains the sole registry, log and signal owner.
 import net from 'node:net';
+import { execFile } from 'node:child_process';
 import { chmodSync, readFileSync } from 'node:fs';
 
 const live = p => ['running', 'terminating', 'terminate_timeout'].includes(p.status);
 const token = p => `pt_${p.startTime}`;
 const maxFrame = 256 * 1024;
+const catchUpType = 'oh-resume-catch-up';
+const runPattern = /^[0-9a-hjkmnp-tv-z]{26}$/;
+const key = p => `${p.id}:${p.startTime}`;
+// The daemon's narrow Taskfleet wait grammar (processes_linux.go taskfleetWait).
+export function waitRuns(command) {
+  if (typeof command !== 'string' || /[|&;<>($`\\"'\n\r)]/.test(command)) return [];
+  const words = command.trim().split(/\s+/);
+  const bin = words[0] ?? '';
+  if (words.length < 4 || !(bin === 'taskfleet' || bin.startsWith('/') && bin.endsWith('/taskfleet')) || words[1] !== 'run' || words[2] !== 'wait') return [];
+  const ids = [];
+  for (let i = 3; i < words.length; ++i) {
+    const w = words[i];
+    if (['--all', '--any', '--fail-on-error', '--progress', '--json'].includes(w)) continue;
+    if (['--timeout', '--poll-interval', '--output'].includes(w)) {
+      const v = words[++i];
+      if (v === undefined || w === '--output' && !['json', 'jsonl', 'text'].includes(v)) return [];
+      if (w !== '--output' && !/^[1-9][0-9]*$|^[0-9.]+(ns|us|µs|ms|s|m|h)([0-9.]+(ns|us|µs|ms|s|m|h))*$/.test(v)) return [];
+      continue;
+    }
+    if (!runPattern.test(w) || ids.length >= 20) return [];
+    ids.push(w);
+  }
+  return ids;
+}
+// What the branch says about process lifetimes and earlier catch-ups. Same
+// rule as the daemon's tray (process_interrupted_linux.go): a start without an
+// end notification or stop result. Graceful shutdown stops leave no record.
+export function branchFacts(branch) {
+  const open = new Map(), order = [], reported = new Set(), runs = new Set();
+  for (const entry of branch) {
+    const m = entry?.message;
+    const custom = entry?.type === 'custom_message' ? entry : m?.role === 'custom' ? m : null;
+    if (m?.role === 'toolResult' && m.toolName === 'process') {
+      const d = m.details;
+      if (d?.action === 'start' && /^proc_[a-f0-9]{4}$/.test(d.process?.id ?? '') && d.process.startTime > 0) {
+        open.delete(d.process.id);
+        if (d.notify?.onSuccess === 'ignore') continue; // a silent success leaves no record
+        const p = { id: d.process.id, name: String(d.process.name ?? ''), command: String(d.process.command ?? ''), startTime: d.process.startTime, wakes: d.notify?.onSuccess === 'turn' || d.notify?.onFailure === 'turn' };
+        open.set(p.id, p); order.push(p);
+      } else if (d?.action === 'stop' && d.result?.info?.id) open.delete(d.result.info.id);
+    } else if (custom?.customType === 'ad-process:notification') {
+      if (['success', 'failure', 'crash', 'killed'].includes(custom.details?.kind)) open.delete(custom.details.processId);
+    } else if (custom?.customType === catchUpType) {
+      for (const p of custom.details?.processes ?? []) reported.add(key(p));
+      for (const r of custom.details?.spinoffs ?? []) runs.add(`${r.run_id}:${r.state}`);
+    }
+  }
+  return { open: order.filter(p => open.get(p.id) === p), reported, runs };
+}
+function taskfleet(args, cwd) {
+  return new Promise(resolve => execFile('taskfleet', args, { cwd, timeout: 2500, maxBuffer: 4 << 20, env: process.env }, (error, stdout) => {
+    if (error) { resolve(null); return; }
+    try { const v = JSON.parse(stdout); resolve(v?.schema_version === 1 ? v.data : null); } catch { resolve(null); }
+  }));
+}
+function spinoffState(r) {
+  if (r.landed) return 'merged';
+  if (r.stalled) return 'stalled';
+  if (r.attention_required || r.awaiting_input) return 'awaiting';
+  return { done: 'not_merged', failed: 'failed', cancelled: 'cancelled' }[r.status] ?? null;
+}
+// Only the user's own Taskfleet records: runs this conversation created that
+// settled after the branch's last entry, and running ones it was waiting for.
+export async function readSpinoffs({ sessionId, cwd, since, waited, reported, read = taskfleet }) {
+  const result = { settled: [], rearm: [] };
+  const list = await read(['run', 'list', '--repo', cwd, '--output', 'json'], cwd);
+  if (!Array.isArray(list?.runs)) return result;
+  const mine = list.runs.filter(r => runPattern.test(r?.run_id ?? '') && ['spinoff', 'research', 'technical-decision', 'fan-out'].includes(r.kind) && r.agent_owner !== 'caller' && r.created_by_run_id == null && r.created_by_session?.harness === 'pi' && r.created_by_session.session_id === sessionId && r.source_repo === cwd)
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 20);
+  await Promise.all(mine.map(async r => {
+    const title = String(r.title ?? '').slice(0, 200);
+    if (['pending', 'running'].includes(r.status) && !r.attention_required && !r.awaiting_input && !r.stalled) {
+      if (waited.has(r.run_id)) result.rearm.push({ run_id: r.run_id, title });
+      return;
+    }
+    // List is inventory; show carries the verified landed flag and update time.
+    const d = await read(['run', 'show', r.run_id, '--output', 'json'], cwd);
+    const state = d?.run_id === r.run_id ? spinoffState(d) : null;
+    if (!state || !(Date.parse(d.manifest?.updated_at ?? '') > since) || reported.has(`${r.run_id}:${state}`)) return;
+    result.settled.push({ run_id: r.run_id, title, state });
+  }));
+  return result;
+}
+const stateText = { merged: 'finished and merged', not_merged: 'finished, not merged', failed: 'failed', cancelled: 'cancelled', awaiting: 'is waiting for you (needs attention)', stalled: 'stalled (its supervisor stopped)' };
+export function catchUpMessage(processes, spinoffs) {
+  if (!processes.length && !spinoffs.settled.length) return null;
+  const lines = ['[Open Habitat] This conversation\'s Pi had stopped (for example a server restart) and was started again for the message that follows. While it was stopped:'];
+  if (processes.length) {
+    lines.push('', 'Background processes that were cut off when Pi stopped (they are no longer running and their output is gone):');
+    for (const p of processes) lines.push(`- ${p.id} "${p.name.slice(0, 200)}": ${p.command.slice(0, 300)}`);
+  }
+  if (spinoffs.settled.length) {
+    lines.push('', 'Spinoffs that settled:');
+    for (const r of spinoffs.settled) lines.push(`- ${r.run_id} "${r.title}" ${stateText[r.state]}`);
+  }
+  if (spinoffs.rearm.length) {
+    const ids = spinoffs.rearm.map(r => r.run_id).join(' ');
+    lines.push('', `Still running, and your wait for them was cut off: ${spinoffs.rearm.map(r => `${r.run_id} "${r.title}"`).join(', ')}. Nothing will tell you when they settle unless you wait again: start \`taskfleet run wait ${ids} --output json\` with the process tool (notify on exit), as you did before.`);
+  }
+  return {
+    customType: catchUpType, display: true, content: lines.join('\n'),
+    details: { schema_version: 1, processes: processes.map(p => ({ id: p.id, startTime: p.startTime })), spinoffs: spinoffs.settled.map(r => ({ run_id: r.run_id, state: r.state })), rearm: spinoffs.rearm.map(r => r.run_id) },
+  };
+}
 export default function (pi) {
   let server, context, extensionVersion = null, shuttingDown = false;
   const launchedAt = Date.now();
   const sockets = new Set();
   const watchers = new Set();
   const outputLeases = new Map();
+  let catchUp = null; // this Pi's first run learns what happened while it was stopped
   const ask = (channel, args = {}, allOwners = false) => new Promise((resolve, reject) => {
     let done = false;
     const replies = [];
@@ -114,6 +220,7 @@ export default function (pi) {
   pi.events.on('processes:output_changed', e => hint('process.output', e.id));
   pi.on('session_start', async (_event, ctx) => {
     context = ctx;
+    catchUp = prepareCatchUp(ctx);
     try { extensionVersion = JSON.parse(readFileSync(process.env.OH_PROCESS_PACKAGE, 'utf8')).version; } catch { extensionVersion = null; }
     const path = process.env.OH_PROCESS_SOCKET;
     if (!path || server) return;
@@ -142,6 +249,33 @@ export default function (pi) {
     });
     server.on('error', () => { for (const socket of sockets) socket.destroy(); });
     await new Promise(resolve => server.listen(path, () => { chmodSync(path, 0o600); resolve(); }));
+  });
+  // ADR 0017 as amended: a non-triggering context message on the first run,
+  // which only the person's send starts after a restart (ADR 0020).
+  function prepareCatchUp(ctx) {
+    try {
+      const branch = ctx.sessionManager.getBranch();
+      if (!branch?.length) return null;
+      const facts = branchFacts(branch);
+      const processes = facts.open.filter(p => p.startTime < launchedAt && !facts.reported.has(key(p))).slice(-20);
+      const waited = new Set(processes.filter(p => p.wakes).flatMap(p => waitRuns(p.command)));
+      const sessionId = ctx.sessionManager.getSessionId?.();
+      const since = branch.reduce((t, e) => Math.max(t, Date.parse(e?.timestamp ?? '') || 0), 0);
+      const spinoffs = typeof sessionId === 'string' && sessionId && ctx.cwd
+        ? readSpinoffs({ sessionId, cwd: ctx.cwd, since, waited, reported: facts.runs }).catch(() => ({ settled: [], rearm: [] }))
+        : Promise.resolve({ settled: [], rearm: [] });
+      return { processes, spinoffs };
+    } catch { return null; }
+  }
+  pi.on('before_agent_start', async () => {
+    const pending = catchUp;
+    catchUp = null;
+    if (!pending) return;
+    let timer;
+    const spinoffs = await Promise.race([pending.spinoffs, new Promise(resolve => { timer = setTimeout(() => resolve({ settled: [], rearm: [] }), 3000); })]);
+    clearTimeout(timer);
+    const message = catchUpMessage(pending.processes, spinoffs);
+    return message ? { message } : undefined;
   });
   pi.on('session_shutdown', () => {
     for (const socket of sockets) socket.destroy();

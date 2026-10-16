@@ -18,5 +18,16 @@
       "wakes_agent": true,
       "run_ids": []
     }
+  ],
+  "interrupted": [
+    {
+      "id": "proc_c0de",
+      "name": "kehityspalvelin",
+      "command_preview": "npm run dev",
+      "started_at": 1779990000000,
+      "reason": "server_restart",
+      "wakes_agent": false,
+      "run_ids": []
+    }
   ]
 }

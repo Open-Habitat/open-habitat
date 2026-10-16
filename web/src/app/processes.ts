@@ -63,6 +63,16 @@ export interface ProcessEvent {
   delivery: "steer" | "wake" | "context" | null;
   run_ids: string[];
 }
+/** A process an earlier Pi started and never saw end; read from the branch. */
+export interface InterruptedProcess {
+  id: string;
+  name: string;
+  command_preview: string;
+  started_at: number;
+  reason: "server_restart" | "pi_stopped";
+  wakes_agent: boolean;
+  run_ids: string[];
+}
 export interface ProcessInventory {
   schema_version: 1;
   owner_generation: string | null;
@@ -75,6 +85,7 @@ export interface ProcessInventory {
     | "bridge_unavailable"
     | "error";
   processes: ProcessRecord[];
+  interrupted: InterruptedProcess[];
 }
 export interface ProcessOutput {
   schema_version: 1;
@@ -229,6 +240,10 @@ export async function controlProcess(
 }
 export const processLive = (p: ProcessRecord) =>
   ["running", "terminating", "terminate_timeout"].includes(p.status);
+export const interruptedLabel = (p: InterruptedProcess) =>
+  p.reason === "server_restart"
+    ? "Katkesi palvelimen uudelleenkäynnistyksessä"
+    : "Katkesi, kun Pi pysähtyi";
 export function processLabel(p: ProcessRecord) {
   return {
     running: "Käynnissä",

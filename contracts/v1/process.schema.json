@@ -21,7 +21,8 @@
         "owner_generation",
         "availability",
         "unavailable_reason",
-        "processes"
+        "processes",
+        "interrupted"
       ],
       "properties": {
         "schema_version": {
@@ -152,6 +153,63 @@
               },
               "spinoff": {
                 "$ref": "process-event.schema.json#/$defs/spinoff"
+              }
+            }
+          }
+        },
+        "interrupted": {
+          "description": "Processes the conversation's native Pi branch saw start under an earlier Pi and never saw end, which the agent has not yet been told about. Derived from the branch; never controllable.",
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "command_preview",
+              "started_at",
+              "reason",
+              "wakes_agent",
+              "run_ids"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "command_preview": {
+                "type": "string",
+                "maxLength": 1000
+              },
+              "started_at": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 8640000000000000
+              },
+              "reason": {
+                "enum": [
+                  "server_restart",
+                  "pi_stopped"
+                ]
+              },
+              "wakes_agent": {
+                "type": "boolean"
+              },
+              "run_ids": {
+                "type": "array",
+                "maxItems": 20,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
               }
             }
           }

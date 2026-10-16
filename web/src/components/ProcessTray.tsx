@@ -14,6 +14,8 @@ import {
   controlProcess,
   fetchProcesses,
   fetchProcessOutput,
+  type InterruptedProcess,
+  interruptedLabel,
   type ProcessEvent,
   type ProcessInventory,
   type ProcessOutput,
@@ -201,6 +203,10 @@ function ProcessTrayView({
   const records = (inventory?.processes ?? []).filter(
     (p) => p.run_ids.length === 0,
   );
+  // A cut-off wait's spinoff already shows in its group, as a live wait does.
+  const interrupted = (inventory?.interrupted ?? []).filter(
+    (p) => p.run_ids.length === 0,
+  );
   const available = inventory?.availability === "available";
   const owner = inventory?.owner_generation;
   const action = async (p?: ProcessRecord, force = false) => {
@@ -249,9 +255,12 @@ function ProcessTrayView({
   );
   // Without a running Pi there is no inventory to show, and saying that Pi
   // is not running only repeats what sending a message changes.
+  // What a restart cut off stays visible until the agent has been told.
+  const piStopped = inventory?.unavailable_reason === "pi_not_running";
   if (
     records.length === 0 &&
-    (available || inventory?.unavailable_reason === "pi_not_running")
+    interrupted.length === 0 &&
+    (available || piStopped)
   )
     return null;
   const node = (
@@ -266,10 +275,13 @@ function ProcessTrayView({
           <Icon name="forward" className="ah-process-chevron" />
           <Icon name="terminal" />
           <span className="ah-process-summary">
-            {available ? (
+            {available || (piStopped && interrupted.length) ? (
               <>
                 <strong>
-                  Prosessit · {records.filter(processLive).length} käynnissä
+                  Prosessit ·{" "}
+                  {available
+                    ? `${records.filter(processLive).length} käynnissä`
+                    : `${interrupted.length} katkesi`}
                 </strong>
                 <span className="ah-process-names">
                   {records
@@ -289,6 +301,11 @@ function ProcessTrayView({
               {records.filter((p) => !processLive(p)).length} päättynyt
             </span>
           ) : null}
+          {available && interrupted.length ? (
+            <span className="ah-process-done">
+              {interrupted.length} katkesi
+            </span>
+          ) : null}
         </ControlButton>
         {available && records.some((p) => !processLive(p)) ? (
           <ControlButton
@@ -305,10 +322,13 @@ function ProcessTrayView({
       </div>
       {open ? (
         <div className="ah-process-list">
-          {!available ? (
+          {!available && !piStopped ? (
             <p>
               {unavailable}. Puuttuva tieto ei tarkoita, ettei prosesseja ole.
             </p>
+          ) : null}
+          {interrupted.length ? (
+            <InterruptedProcesses processes={interrupted} />
           ) : null}
           {available
             ? (
@@ -477,6 +497,51 @@ function ProcessTrayView({
     </aside>
   );
   return id ? node : null;
+}
+// No output or controls: the process and its log ended with the earlier Pi.
+function InterruptedProcesses({
+  processes,
+}: {
+  processes: InterruptedProcess[];
+}) {
+  return (
+    <>
+      <section aria-label="Katkenneet">
+        <div className="ah-process-group-heading">
+          <h2>Katkenneet</h2>
+        </div>
+        {processes.map((p) => (
+          <div
+            className="ah-process-row"
+            data-state="interrupted"
+            key={`${p.id}:${p.started_at}`}
+          >
+            <div className="ah-process-heading ah-process-interrupted">
+              <span className="ah-process-mark" aria-hidden="true">
+                <Icon name="stop" />
+              </span>
+              <span className="ah-process-name">{p.name}</span>
+              <span className="ah-process-meta">
+                {interruptedLabel(p)}
+                {" · "}
+                <time dateTime={new Date(p.started_at).toISOString()}>
+                  aloitettu{" "}
+                  {new Date(p.started_at).toLocaleTimeString("fi-FI", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </time>
+              </span>
+              <code className="ah-process-command">{p.command_preview}</code>
+            </div>
+          </div>
+        ))}
+      </section>
+      <p>
+        Agentti kuulee katkenneista prosesseista seuraavan viestisi yhteydessä.
+      </p>
+    </>
+  );
 }
 function ProcessMark({ process }: { process: ProcessRecord }) {
   return (

@@ -235,7 +235,7 @@ Implementation: `internal/daemon` owns discovery, RPC control, writer locks,
 held messages and resuming; `web/src/app` owns browser commands and their
 displayed outcomes.
 
-Decisions behind this page: ADR 0001, ADR 0003, ADR 0010, ADR 0020.
+Decisions behind this page: ADR 0001, ADR 0003, ADR 0010, ADR 0020, ADR 0021.
 
 ## Observing spinoffs
 
@@ -261,6 +261,19 @@ a read-only child without making that child's native session a controllable
 conversation. The status above the composer links to children; the existing
 native process inventory remains the authority for waiting and wake-ups.
 `Odottaa spinoffia` has a blinking sidebar dot (static with reduced motion).
+
+A daemon restart ends the parent's Pi and with it its `taskfleet run wait`;
+the spinoff runs on. When the person's next send starts Pi again, the
+companion extension (`process-extension.mjs`) reads the branch and the user's
+Taskfleet records from inside that Pi and adds one non-triggering context
+message to the run: processes cut off when the earlier Pi stopped, children
+of this conversation whose records changed to a settled state after the
+branch's last entry, and still-running children whose wait was cut off, with
+the literal wait command to start again. The agent restarts that wait with
+its `process` tool, so pi-processes stays the only owner of background
+processes and the restored wait wakes it as before. Earlier messages' details
+keep it from repeating itself
+([ADR 0021](../decisions/adr-0021-resume-catch-up.md)).
 
 Pi transcript reads use Taskfleet's exact node/attempt/session identity. The
 original archive is preferred, then the live file. Opens are confined beneath

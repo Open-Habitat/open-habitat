@@ -26,6 +26,7 @@ test("@process-tray @a11y follows bounded output, handles stale controls, and ke
   page,
 }) => {
   const inventory = structuredClone(inventoryFixture) as ProcessInventory;
+  inventory.interrupted = [];
   let tail = "ensimmäinen loppuosa";
   const stops: unknown[] = [];
   await page.route("**/api/v1/conversations/*/processes**", async (route) => {
@@ -112,6 +113,7 @@ test("@process-tray unavailable native inventory is not an empty list", async ({
         availability: "unavailable",
         unavailable_reason: "extension_missing",
         processes: [],
+        interrupted: [],
       },
     }),
   );
@@ -137,6 +139,7 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
 }) => {
   let phase: "process" | "spinoff" | "question" | "working" = "process";
   const inventory = structuredClone(inventoryFixture) as ProcessInventory;
+  inventory.interrupted = [];
   const record = inventory.processes[0];
   const runId = "01m51veyk0hsa1br34epkr2rpg";
   await page.route("**/api/v1/conversations/*/processes**", (route) =>
@@ -354,6 +357,7 @@ test("@process-tray @a11y compact tray, inventory and output match the selected 
   page,
 }) => {
   const inventory = structuredClone(inventoryFixture) as ProcessInventory;
+  inventory.interrupted = [];
   inventory.processes[0].started_at = Date.now() - 5000;
   const finished = {
     ...inventory.processes[0],
@@ -465,6 +469,7 @@ test("@process-tray recognised waits stay out of the tray and collapsed cleanup 
   page,
 }) => {
   const inventory = structuredClone(inventoryFixture) as ProcessInventory;
+  inventory.interrupted = [];
   const ordinary = inventory.processes[0];
   // A command mentioning Taskfleet is not recognition: only native run_ids are.
   ordinary.command_preview = "echo 'taskfleet run wait is not this process'";
@@ -566,4 +571,51 @@ test("@process-tray recognised waits stay out of the tray and collapsed cleanup 
   await expect(
     page.getByRole("button", { name: /UI hidas spinoff.*Työskentelee/ }),
   ).toBeVisible();
+});
+
+// Real gateway, controller and fake Pi; no process route is mocked. The fake
+// Pi leaves a native process start in its branch, the daemon restarts, and
+// the tray reads what was cut off from that branch while Pi is not running.
+test("@process-tray a process cut off by a daemon restart shows as ended by the restart", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  expect(
+    (await page.request.get("/fixture/conversations-reset")).status(),
+  ).toBe(204);
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "ordinary-dir" })
+    .click();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await editor.fill("käynnistä taustaprosessi");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(
+    page.getByText('Selvä. Kysyit: "käynnistä taustaprosessi".'),
+  ).toBeVisible({ timeout: 20000 });
+  const tray = page.getByRole("complementary", { name: "Agentin prosessit" });
+  // A process of the running Pi is never presented as cut off.
+  await expect(tray.getByText(/katkesi/)).toHaveCount(0);
+  expect((await page.request.get("/fixture/daemon-restart")).status()).toBe(
+    204,
+  );
+  await page.reload();
+  await expect(editor).toBeEnabled({ timeout: 20000 });
+  await tray.getByRole("button", { name: "Prosessit · 1 katkesi" }).click();
+  const row = tray.getByRole("region", { name: "Katkenneet" });
+  await expect(row.getByText("kehityspalvelin")).toBeVisible();
+  await expect(
+    row.getByText(/Katkesi palvelimen uudelleenkäynnistyksessä/),
+  ).toBeVisible();
+  await expect(row.getByText("npm run dev")).toBeVisible();
+  await expect(row.getByRole("button")).toHaveCount(0);
+  const accessibility = await new AxeBuilder({ page })
+    .include(".ah-process-tray")
+    .analyze();
+  expect(accessibility.violations).toEqual([]);
 });

@@ -215,6 +215,16 @@ and carries null. Waiting states derive from current native records and their
 start-result exit attention, not from a second host store. Log watches do not
 count until upstream reports their remaining wake conditions.
 
+A daemon restart or a Pi stop ends every process of that Pi, and pi-processes
+records no end for such a stop. The inventory's `interrupted` list therefore
+comes from the conversation's native branch: a start from an earlier Pi with
+no end notification or stop result, labelled a server restart when it started
+before this daemon did. It is shown even without a running Pi and only until
+the companion's resume message has told the agent about it (see
+[ADR 0017](../decisions/adr-0017-observe-taskfleet-spinoffs.md)). A browser
+stop is an intentional native stop with no record either, so after a restart
+it is indistinguishable from a cut-off process.
+
 ### Browser views and recovery
 
 The [reply](../../contracts/v1/process.schema.json),

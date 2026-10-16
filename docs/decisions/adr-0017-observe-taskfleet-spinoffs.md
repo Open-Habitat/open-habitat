@@ -18,3 +18,8 @@ avoids a second agent-control path for a person who does not need one.
 The [integration sketch](../../issues/manage-agent-worktrees/architecture.md)
 holds the details; [implement-spinoff-agents](../../issues/implement-spinoff-agents/item.md)
 tracks implementation.
+
+Amended by [ADR 0021](adr-0021-resume-catch-up.md) (16 October 2026): the
+companion extension inside the parent's own Pi may tell a resumed parent which
+of its spinoffs settled, and which waits were cut off, while its Pi was
+stopped. The daemon still never writes into a conversation.

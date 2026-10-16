@@ -29,7 +29,7 @@ type snapshotFacts struct {
 }
 
 func newSnapshotFacts(ctx context.Context) *snapshotFacts {
-	return &snapshotFacts{sessions: &sessionFileFacts{files: map[string]*sessionFile{}}, taskfleet: &taskfleetRunFacts{}, git: newGitWatch(ctx)}
+	return &snapshotFacts{sessions: &sessionFileFacts{files: map[string]*sessionFile{}, procs: map[string]*sessionProcesses{}}, taskfleet: &taskfleetRunFacts{}, git: newGitWatch(ctx)}
 }
 
 // fileStamp changes with every write, rename, truncation or permission
@@ -54,6 +54,13 @@ func stampOf(path string) (fileStamp, error) {
 type sessionFileFacts struct {
 	mu    sync.Mutex
 	files map[string]*sessionFile
+	procs map[string]*sessionProcesses
+}
+
+// sessionProcesses is the branch's open process starts (process_interrupted_linux.go).
+type sessionProcesses struct {
+	stamp fileStamp
+	open  []branchProcess
 }
 
 type sessionFile struct {
@@ -75,6 +82,11 @@ func (f *sessionFileFacts) read(cfg transport.Config) ([]nativeSession, error) {
 		for path := range f.files {
 			if !seen[path] {
 				delete(f.files, path)
+			}
+		}
+		for path := range f.procs {
+			if !seen[path] {
+				delete(f.procs, path)
 			}
 		}
 		f.mu.Unlock()
@@ -100,6 +112,32 @@ func (f *sessionFileFacts) header(path string, uid int) nativeSession {
 		f.mu.Unlock()
 	}
 	return s
+}
+
+// processes scans the whole file, so the process tray's two-second poll reads
+// it again only after Pi wrote to it.
+func (f *sessionFileFacts) processes(path string, uid int) ([]branchProcess, bool) {
+	before, err := stampOf(path)
+	if err != nil {
+		return nil, false
+	}
+	f.mu.Lock()
+	if c := f.procs[path]; c != nil && c.stamp == before {
+		f.mu.Unlock()
+		return c.open, true
+	}
+	f.mu.Unlock()
+	b, ok := readNativeBytes(path, uid)
+	if !ok {
+		return nil, false
+	}
+	open := scanBranchProcesses(b)
+	if after, err := stampOf(path); err == nil && after == before {
+		f.mu.Lock()
+		f.procs[path] = &sessionProcesses{stamp: before, open: open}
+		f.mu.Unlock()
+	}
+	return open, true
 }
 
 // title returns the first prompt and the native session name. Both can need
