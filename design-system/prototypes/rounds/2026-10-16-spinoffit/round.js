@@ -27,7 +27,7 @@ const ICON_DOWN = SVG('<path d="M12 5v14"/><path d="m6 13 6 6 6-6"/>');
 const WSID = 'aurinkokello', PID = 'p1', SRC = { branch: 'main', head: '7d03b18' };
 const PARENT = { id: PID, title: 'Julkaisu 0.4: valmistelu', st: 'spinwait' };
 UI.ws.find(w => w.id === WSID).convs.unshift(PARENT);
-const WTROOT = '~/src/aurinkokello__wt-';
+const WTROOT = '~/src/aurinkokello__worktrees/wt-'; // Taskfleet's own placement
 // Spinoff runs as Taskfleet reports them; the transcript is the spinoff's own Pi session.
 const SPIN0 = () => [
   { id: 's1', rid: '01m50y9e4rk2n8bw6dq3tg7hsm', slug: 'a2c-readme', title: 'README-esimerkit ajan tasalle', st: 'merged', self: true, started: '14.06', t: '14.22',
