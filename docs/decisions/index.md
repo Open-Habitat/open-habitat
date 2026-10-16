@@ -26,3 +26,4 @@ and implementation work belong in issues.
 | [ADR 0016](adr-0016-native-harnesses-and-subscription-authorization.md) | Proposed: Claude subscriptions through pi-claude-bridge first; separate Claude Code only as a technical fallback |
 | [ADR 0017](adr-0017-observe-taskfleet-spinoffs.md) | Observe Taskfleet-owned spinoffs read-only; defer caller-owned browser worktree agents |
 | [ADR 0018](adr-0018-phone-sign-in-by-qr.md) | Proposed: sign a phone in from a desktop session with a one-minute, single-use QR link minted by the gateway; persons can list and revoke their sessions |
+| [ADR 0019](adr-0019-workspace-deletion.md) | Proposed: delete a workspace by moving it to the freedesktop Trash; restore from there; permanent deletion only from the Trash on explicit request |

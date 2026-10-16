@@ -103,3 +103,6 @@ groups:
       - slug: decisions/adr-0018-phone-sign-in-by-qr
         title: ADR 0018 — Phone sign-in by QR (proposed)
         desc: Proposed one-minute, single-use QR link from a desktop session; personal session list and revocation.
+      - slug: decisions/adr-0019-workspace-deletion
+        title: ADR 0019 — Workspace deletion via Trash (proposed)
+        desc: Proposed guarded move to the freedesktop Trash with restore; permanent deletion only from the Trash.

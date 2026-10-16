@@ -1,3 +1,11 @@
+## Yhteenveto Jarille (2026-10-16)
+
+Suositus ([ADR 0019](../../docs/decisions/adr-0019-workspace-deletion.md)): poisto siirtää työtilan freedesktop-roskakoriin (`~/.local/share/Trash`) yhdellä `rename`-kutsulla, ja selain osaa myös palauttaa sen. Mitään ei poisteta lopullisesti ilman nimenomaista "Poista pysyvästi" -valintaa roskakorista, eikä automaattista tyhjennystä ole.
+Poisto estetään, jos työtilassa on käynnissä Pi, jokin muu prosessi (esimerkiksi tmux-shell), keskeneräinen Taskfleet-ajo, elävä linkitetty worktree tai mount, tai jos roskakori on eri levyllä. Git-muutokset ja pushaamattomat commitit näytetään, mutta ne eivät estä poistoa.
+Aiemman karanteenin päiväkirja, vaiheiden jatkaminen ja kilpatilanteet katoavat, koska siirto ei tuhoa mitään: virheellinen siirto jää roskakoriin palautettavaksi.
+Päätettävää: (1) hyväksytkö roskakorimallin karanteenin sijaan, ja (2) riittääkö, että asettuneet mutta avoimet keskustelut eivät estä poistoa (suositus: eivät estä, koska Pi-historia ei ole työtilassa ja palaa näkyviin palautuksessa).
+Kustannus: yksi toteutusissue (daemoniin kolme toimintoa olemassa olevalle reitille, roskakorinäkymä selaimeen ja deterministiset race- ja kaatumistestit). Roskakori kuluttaa kiintiötä, kunnes se tyhjennetään.
+
 # Recoverable workspace deletion — blocked, not shipped
 
 This run did not enable deletion or close the issue. It prototyped the quarantine and native-effect observer locally, then discarded the uncommitted runtime changes when source inspection exposed gaps that would make an enabled delete unsafe. The existing disabled UI and no-delete route remain intact.
