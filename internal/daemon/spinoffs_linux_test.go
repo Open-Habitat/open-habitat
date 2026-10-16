@@ -141,6 +141,8 @@ func TestSpinoffAttributionAndReadOnlyHTTP(t *testing.T) {
 		t.Fatal(e)
 	}
 	b, _ := json.Marshal(map[string]any{"schema_version": 1, "data": map[string]any{"runs": []nativeSpinoff{run}}})
+	run.Report.Reason = "Synthetic merge conflict"
+	run.WorktreePath = "/invented/worker-checkout"
 	detail, _ := json.Marshal(map[string]any{"schema_version": 1, "data": run})
 	script := "#!/bin/sh\ncase \"$1\" in version) printf '%s' '{\"schema_version\":1,\"data\":{\"version\":\"0.15.0\"}}';; *) if [ \"$2\" = show ]; then printf '%s' '" + string(detail) + "'; else printf '%s' '" + string(b) + "'; fi;; esac\n"
 	if e := os.WriteFile(bin, []byte(script), 0700); e != nil {
@@ -160,6 +162,11 @@ func TestSpinoffAttributionAndReadOnlyHTTP(t *testing.T) {
 		} else if w.Code == 200 {
 			t.Fatal("spinoff write accepted")
 		}
+	}
+	selected := httptest.NewRecorder()
+	h.ServeHTTP(selected, httptest.NewRequest("GET", "http://unix/api/v1/agents/pi:"+spinoffParent+"/spinoffs?run="+spinoffFixtureID, nil))
+	if selected.Code != 200 || !strings.Contains(selected.Body.String(), "Synthetic merge conflict") || !strings.Contains(selected.Body.String(), "/invented/worker-checkout") {
+		t.Fatalf("native result fields lost: %d %s", selected.Code, selected.Body.String())
 	}
 	h = historyHandlerWithReader(cfg, func(*http.Request) bool { return false }, func(transport.Config) ([]nativeSession, error) {
 		t.Fatal("read before peer authorization")

@@ -2117,6 +2117,33 @@ test("@browser-conversation changed snapshot identity discards late previous sta
   page,
   context,
 }) => {
+  // This journey deliberately holds the old status until the manual snapshot
+  // observes Bob. Independent native inventories must not win that race by
+  // correctly observing the temporary logged-out cookie in the other tab.
+  await page.route("**/api/v1/agents/pi:*/spinoffs", (route) =>
+    route.fulfill({
+      json: {
+        schema_version: 1,
+        parent_id: new URL(route.request().url()).pathname
+          .split("/agents/")[1]
+          .split("/spinoffs")[0],
+        availability: "unavailable",
+        runs: [],
+        transcripts: [],
+      },
+    }),
+  );
+  await page.route("**/api/v1/conversations/*/processes", (route) =>
+    route.fulfill({
+      json: {
+        schema_version: 1,
+        owner_generation: null,
+        availability: "unavailable",
+        unavailable_reason: "extension_missing",
+        processes: [],
+      },
+    }),
+  );
   await open(page);
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await expect(

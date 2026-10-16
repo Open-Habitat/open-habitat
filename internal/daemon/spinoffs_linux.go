@@ -49,6 +49,7 @@ type nativeSpinoff struct {
 	AgentOwner   string             `json:"agent_owner"`
 	Preserved    []spinoffPreserved `json:"preserved_work"`
 	SourceBranch string             `json:"source_branch"`
+	WorktreePath string             `json:"worktree_path"`
 	Supervisor   struct {
 		State string `json:"state"`
 	} `json:"supervisor"`
@@ -70,6 +71,7 @@ type nativeSpinoff struct {
 	Landed     bool          `json:"landed"`
 	Report     struct {
 		Summary string `json:"summary"`
+		Reason  string `json:"reason"`
 	} `json:"report"`
 }
 type spinoffRow struct {
@@ -227,6 +229,7 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 			if taskfleetRead(ctx, cfg.Home, []string{"run", "show", r.ID, "--output", "json"}, &detail) && detail.Schema == 1 && detail.Data.ID == r.ID && belongsSpinoffInCheckout(ctx, cfg.Home, detail.Data, *parent) {
 				row.State = spinoffState(detail.Data)
 				row.SourceBranch = prefixBytes(detail.Data.SourceBranch, 200)
+				row.Worktree = prefixBytes(detail.Data.WorktreePath, 1024)
 				for _, p := range detail.Data.Preserved {
 					row.Preserved = row.Preserved || p.BranchPresent || p.WorktreePresent
 					if p.Branch != nil {
@@ -238,7 +241,14 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 					break
 				}
 				if runID == r.ID {
-					row.Summary = prefixBytes(detail.Data.Report.Summary, 16000)
+					summary := detail.Data.Report.Summary
+					if reason := detail.Data.Report.Reason; reason != "" && reason != summary {
+						if summary != "" {
+							summary += "\n\n"
+						}
+						summary += reason
+					}
+					row.Summary = prefixBytes(summary, 16000)
 					budget := 256 * 1024
 					messagesLeft := 500
 					for _, n := range detail.Data.Nodes {

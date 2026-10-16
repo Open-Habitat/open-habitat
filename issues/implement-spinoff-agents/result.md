@@ -112,5 +112,31 @@ a writer capability. Native containment and ownership denial fixtures passed.
 Scratch review/assessment artifacts are `history/review-spinoff-native-reads.md`
 and `history/assessment-spinoff-native-reads.{json,md}`. Durable decisions are in
 this result and the architecture docs. Model-performance logging was attempted
-once and failed with the known `ssh alder: Permission denied` self-SSH problem;
+for both review passes and failed with the known `ssh alder: Permission denied`
+self-SSH problem;
 this optional telemetry failure does not affect the independent review.
+
+
+## Producer-contract follow-up
+
+A second, narrow event-to-Git review (gpt-6-astra finder, claude-fable-5-1 verifier)
+confirmed that the apparent integrated-OID event is caller-owned-only. Local
+source checks also confirmed this at the released guest commit, not just current
+Taskfleet main. The rejected helper and fabricated fixture were removed before
+committing. `/assess-findings` retained one confirmed producer-contract SPIN_OFF,
+not a speculative consumer workaround.
+
+Taskfleet issue **particularly-cooperative-chalk**, “Expose the integrated merge
+OID for Taskfleet-owned runs”, was filed **untriaged and unlaned** with this
+worker's exact origin, both model labels and all available review metadata.
+Its self-contained evidence and acceptance criteria are pushed in Taskfleet
+`142d35c5`. Prefer a native optional integrated OID on the ordinary merge report;
+the Taskfleet maintainer chooses the contract without changing caller-owned
+intent authority. Current browser landing/report/transcript remain useful and
+honest while that narrower enhancement waits for scheduling.
+
+The later gate's cross-tab identity timeout was a test race: an independent
+native inventory could correctly observe the temporary logout before the test
+manually refreshed the old tab. That test now supplies deterministic unavailable
+inventories while keeping its held late-status and real snapshot identity fence.
+Its purpose is not to suppress production 401 handling, which is unchanged.
