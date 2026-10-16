@@ -1,3 +1,4 @@
+import { SpinoffProvider } from "./SpinoffConversation";
 import {
   useCallback,
   useEffect,
@@ -1244,15 +1245,21 @@ export function timelineItems(
 const noProcessEvents = () => () => {};
 export function HistoryView(props: Parameters<typeof HistoryViewContent>[0]) {
   return (
-    <ProcessProvider
-      key={props.agent.agent_id}
-      id={props.agent.agent_id}
-      csrf={props.csrf}
+    <SpinoffProvider
+      key={`${props.store.identity}:${props.agent.agent_id}`}
+      parent={props.agent.agent_id}
       onLogin={props.onLogin}
-      onStatusEvent={noProcessEvents}
     >
-      <HistoryViewContent {...props} />
-    </ProcessProvider>
+      <ProcessProvider
+        key={props.agent.agent_id}
+        id={props.agent.agent_id}
+        csrf={props.csrf}
+        onLogin={props.onLogin}
+        onStatusEvent={noProcessEvents}
+      >
+        <HistoryViewContent {...props} />
+      </ProcessProvider>
+    </SpinoffProvider>
   );
 }
 function HistoryViewContent({
@@ -1571,6 +1578,7 @@ function HistoryViewContent({
       />
       <ConversationStream streamRef={stream} onScroll={() => capture()}>
         <ConversationTimeline
+          nativeEntries={entries}
           state={state}
           items={timelineItems(
             entries,

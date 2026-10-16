@@ -274,7 +274,7 @@ func (c *ConversationController) publishNativeHistoryForTurn(s *conversation, tu
 				lastKey = entry.Key
 			}
 			inline(&native, &entry)
-			enrichProcessEntry(projectionCtx, c.home, &entry)
+			enrichProcessEntry(projectionCtx, c.home, native, &entry)
 			entry.NativeRevision = native.revision
 			// Continuation can replace a reaped handle while native reads
 			// complete. Never publish a superseded controller's tail.

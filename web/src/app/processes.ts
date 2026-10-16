@@ -3,6 +3,8 @@ import eventSchema from "../../../contracts/v1/process-event.schema.json";
 import schema from "../../../contracts/v1/process.schema.json";
 
 export interface ProcessSpinoff {
+  state?: import("./spinoffs").Spinoff["state"];
+  preserved?: boolean;
   run_id: string;
   title: string;
   status: "pending" | "running" | "done" | "failed" | "cancelled";
@@ -10,6 +12,14 @@ export interface ProcessSpinoff {
   commit: string | null;
 }
 export function spinoffLabel(run: ProcessSpinoff): string {
+  if (run.state)
+    return {
+      working: "Työskentelee",
+      waiting_parent: "Odottaa pääagenttia",
+      merged: "Mergetty",
+      unmerged: run.preserved ? "Ei mergetty · työ tallessa" : "Ei mergetty",
+      unknown: "Tila ei tiedossa",
+    }[run.state];
   return run.status === "pending" || run.status === "running"
     ? "Työskentelee"
     : run.landed

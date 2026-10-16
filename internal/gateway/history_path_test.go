@@ -33,3 +33,16 @@ func TestHistoryGatewayBackwardQuery(t *testing.T) {
 		}
 	}
 }
+
+func TestSpinoffGatewayReadPath(t *testing.T) {
+	path := "/api/v1/agents/pi:11111111-1111-4111-8111-111111111111/spinoffs"
+	for _, tc := range []struct {
+		q     string
+		valid bool
+	}{{"", true}, {"run=01m521vczarx5bkx086n64t1t2", true}, {"run=../outside", false}, {"run=--help", false}, {"run=01m521vczarx5bkx086n64t1t2&run=01m521vczarx5bkx086n64t1t2", false}, {"node=n-0001", false}, {"run=01m521vczarx5bkx086n64t1t2&write=yes", false}} {
+		q, _ := url.ParseQuery(tc.q)
+		if historyGatewayPath(path, q) != tc.valid {
+			t.Errorf("query %s", tc.q)
+		}
+	}
+}

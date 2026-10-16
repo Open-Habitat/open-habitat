@@ -1,0 +1,121 @@
+.ah-spinoff-group {
+  border: 1px solid var(--ah-line);
+  border-radius: 8px;
+  margin-block: 16px;
+  overflow: hidden;
+}
+.ah-spinoff-group h3 {
+  font-size: inherit;
+  margin: 0;
+  padding: 12px 16px;
+}
+.ah-spinoff-group small {
+  opacity: 0.65;
+}
+.ah-spinoff-row {
+  display: grid;
+  grid-template-columns: 20px 1fr auto 20px;
+  gap: 12px;
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--ah-line);
+  background: transparent;
+  color: inherit;
+  padding: 12px 16px;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.ah-spinoff-row:hover {
+  background: var(--ah-surface);
+}
+.ah-spinoff-row span:nth-child(3) {
+  font-size: 0.85em;
+  opacity: 0.75;
+}
+.ah-spinoff-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 20px;
+}
+.ah-spinoff-status button {
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85em;
+  cursor: pointer;
+}
+.ah-spinoff-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 24px;
+  gap: 16px;
+  overflow: auto;
+}
+.ah-spinoff-view header {
+  border-bottom: 1px solid var(--ah-line);
+  padding-bottom: 16px;
+}
+.ah-spinoff-view header > span {
+  margin-left: 20px;
+  opacity: 0.65;
+}
+.ah-spinoff-transcript {
+  flex: 1;
+}
+.ah-spinoff-transcript article {
+  margin: 16px auto;
+  max-width: 760px;
+  padding: 12px;
+}
+.ah-spinoff-transcript article[data-kind="user"] {
+  border-inline-start: 2px solid var(--ah-line);
+}
+.ah-spinoff-transcript article[data-kind="tool"] {
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+.ah-spinoff-view footer {
+  border: 1px dashed var(--ah-line);
+  border-radius: 8px;
+  padding: 16px;
+}
+.ah-waiting-spinoff .ah-sidebar-agent-row::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ah-accent);
+  animation: ah-spinoff-blink 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes ah-spinoff-blink {
+  50% {
+    opacity: 0.2;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-waiting-spinoff .ah-sidebar-agent-row::after {
+    animation: none;
+  }
+}
+@media (max-width: 600px) {
+  .ah-spinoff-row {
+    grid-template-columns: 16px 1fr 16px;
+    gap: 8px;
+  }
+  .ah-spinoff-row span:nth-child(3) {
+    grid-column: 2;
+  }
+  .ah-spinoff-row span:last-child {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .ah-spinoff-view {
+    padding: 12px;
+  }
+}

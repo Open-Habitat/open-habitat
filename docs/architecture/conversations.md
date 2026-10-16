@@ -34,10 +34,8 @@ but does not grant browser control.
 
 Terminal conversations are readable and their open views follow changes to
 the session files. Pi's RPC interface cannot attach to a running terminal
-session, and the host does not take it over. The agreed
-[Taskfleet integration](../../issues/manage-agent-worktrees/item.md) will bring
-worktree agents into browser control by having the daemon start their Pi
-processes; that integration is not implemented yet.
+session, and the host does not take it over. Taskfleet spinoffs are instead observed read-only under their parent, as
+described below. Browser-controlled worktree agents remain deferred.
 
 ## Starting Pi and keeping one writer
 
@@ -207,3 +205,38 @@ Implementation: `internal/daemon` owns discovery, RPC control, writer locks and
 continuation; `web/src/app` owns browser commands and their displayed outcomes.
 
 Decisions behind this page: ADR 0001, ADR 0003, ADR 0010.
+
+## Observing spinoffs
+
+A browser parent starts Taskfleet work in its ordinary native tools. The daemon
+supplies `TASKFLEET_CREATOR_SESSION=pi:<session-id>` on fresh and continued Pi
+launches. Taskfleet owns the independent user unit, worktree, settlement and
+retained evidence. The daemon never starts, merges or writes to a spinoff for
+the browser ([ADR 0017](../decisions/adr-0017-observe-taskfleet-spinoffs.md)).
+
+The open parent reads its direct children from Taskfleet 0.15 or newer, matching
+both the recorded creator session and exact source checkout. Nested creator-run
+records are not flattened into the browser parent. Native node worktree paths
+also exclude direct spinoff checkouts and their unannotated immediate `src`
+containers from the workspace snapshot; a directory name alone never hides it. List is inventory; bounded
+`run show` reads supply the landing verdict and retained report. Failed reads
+remain unknown or partial, and absence of a supported executable is unavailable,
+not an empty inventory. The user's `~/.local/bin`, `/usr/local/bin` and `/usr/bin`
+are the runtime search locations. No host registry or history copy is written.
+
+The browser places groups beside the native parent turn preceding creation,
+refreshing every three seconds while open. Its `spinoff` query parameter selects
+a read-only child without making that child's native session a controllable
+conversation. The status above the composer links to children; the existing
+native process inventory remains the authority for waiting and wake-ups.
+`Odottaa spinoffia` has a blinking sidebar dot (static with reduced motion).
+
+Pi transcript reads use Taskfleet's exact node/attempt/session identity. The
+original archive is preferred, then the live file. Opens are confined beneath
+the mapped home and fixed `.taskfleet` root with no symlinks, and require a
+regular file owned by the mapped UID. Native session type/version/ID and the
+recorded original/live cwd must agree. Only projected text is returned; native
+tool metadata is not serialized. Unsupported harnesses explicitly show that
+history is unavailable. There is no continuation or control endpoint for these
+sessions. The independent Taskfleet user manager requires deployment-provided
+lingering; the daemon does not widen Pi's systemd environment.

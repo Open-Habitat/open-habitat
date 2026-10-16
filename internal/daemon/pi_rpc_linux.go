@@ -23,6 +23,7 @@ import (
 // browser-owned controller uses it; it does not fence a terminal TUI.
 // A caller must not expose it as an agent capability until that fence exists.
 type piRPC struct {
+	processParentID, processWorkspace            string
 	processSocket, processDir, processGeneration string
 	cmd                                          *exec.Cmd
 	in, out                                      *os.File
@@ -93,6 +94,9 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 		cmd.ExtraFiles = []*os.File{owner.file}
 	}
 	cmd.Env = append(append([]string(nil), env...), "HOME="+home)
+	if owner != nil && taskfleetCreatorSessionIDPattern.MatchString(owner.id) {
+		cmd.Env = append(cmd.Env, "TASKFLEET_CREATOR_SESSION=pi:"+owner.id)
+	}
 	processDir, err := os.MkdirTemp("", "oh-process-")
 	if err != nil {
 		return nil, err
@@ -128,7 +132,10 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 		return nil, err
 	}
 	cmd.Stdout, cmd.Stdin = outW, inR
-	p := &piRPC{processSocket: processSocket, processDir: processDir, processGeneration: generation, cmd: cmd, in: inW, out: outR, frames: make(chan json.RawMessage, 8), events: make(chan json.RawMessage, 128), done: make(chan struct{}), exited: make(chan struct{})}
+	p := &piRPC{processWorkspace: cwd, processSocket: processSocket, processDir: processDir, processGeneration: generation, cmd: cmd, in: inW, out: outR, frames: make(chan json.RawMessage, 8), events: make(chan json.RawMessage, 128), done: make(chan struct{}), exited: make(chan struct{})}
+	if owner != nil {
+		p.processParentID = owner.id
+	}
 	if err = cmd.Start(); err != nil {
 		inR.Close()
 		inW.Close()

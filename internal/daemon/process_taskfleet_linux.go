@@ -14,11 +14,13 @@ import (
 )
 
 type processSpinoff struct {
-	RunID  string  `json:"run_id"`
-	Title  string  `json:"title"`
-	Status string  `json:"status"`
-	Landed bool    `json:"landed"`
-	Commit *string `json:"commit"`
+	State     string  `json:"state,omitempty"`
+	Preserved bool    `json:"preserved"`
+	RunID     string  `json:"run_id"`
+	Title     string  `json:"title"`
+	Status    string  `json:"status"`
+	Landed    bool    `json:"landed"`
+	Commit    *string `json:"commit"`
 }
 type processReadBuffer struct{ bytes.Buffer }
 
@@ -31,7 +33,7 @@ func (b *processReadBuffer) Write(p []byte) (int, error) {
 
 // Read only the mapped user's native Taskfleet state, with fixed argv and
 // validated IDs. No run registry, report content or native paths cross to UI.
-func readProcessSpinoffs(ctx context.Context, home string, env []string, ids []string) []processSpinoff {
+func readProcessSpinoffs(ctx context.Context, home string, env []string, ids []string, parent nativeSession) []processSpinoff {
 	runs := []processSpinoff{}
 	if !filepath.IsAbs(home) || len(ids) > 20 {
 		return runs
@@ -41,8 +43,13 @@ func readProcessSpinoffs(ctx context.Context, home string, env []string, ids []s
 			continue
 		}
 		child, cancel := context.WithTimeout(ctx, 350*time.Millisecond)
-		cmd := exec.CommandContext(child, "taskfleet", "run", "show", id, "--output", "json")
-		cmd.Env = append(append([]string{}, env...), "HOME="+home)
+		binary := taskfleetBinary(home)
+		if binary == "" {
+			cancel()
+			continue
+		}
+		cmd := exec.CommandContext(child, binary, "run", "show", id, "--output", "json")
+		cmd.Env = append(append([]string{}, env...), "HOME="+home, "TASKFLEET_HOME="+filepath.Join(home, ".taskfleet"))
 		cmd.Dir = home
 		cmd.WaitDelay = 100 * time.Millisecond
 		var output processReadBuffer
@@ -55,10 +62,7 @@ func readProcessSpinoffs(ctx context.Context, home string, env []string, ids []s
 		var reply struct {
 			Schema int `json:"schema_version"`
 			Data   struct {
-				ID     string `json:"run_id"`
-				Title  string `json:"title"`
-				Status string `json:"status"`
-				Landed bool   `json:"landed"`
+				nativeSpinoff
 				Report struct {
 					Origin struct {
 						OID string `json:"worker_oid"`
@@ -66,7 +70,7 @@ func readProcessSpinoffs(ctx context.Context, home string, env []string, ids []s
 				} `json:"report"`
 			} `json:"data"`
 		}
-		if json.Unmarshal(output.Bytes(), &reply) != nil || reply.Schema != 1 || reply.Data.ID != id {
+		if json.Unmarshal(output.Bytes(), &reply) != nil || reply.Schema != 1 || reply.Data.ID != id || !belongsSpinoffInCheckout(ctx, home, reply.Data.nativeSpinoff, parent) {
 			continue
 		}
 		d := reply.Data
@@ -80,7 +84,11 @@ func readProcessSpinoffs(ctx context.Context, home string, env []string, ids []s
 			v := d.Report.Origin.OID
 			commit = &v
 		}
-		runs = append(runs, processSpinoff{id, prefixBytes(d.Title, 200), d.Status, d.Landed, commit})
+		preserved := false
+		for _, p := range d.Preserved {
+			preserved = preserved || p.BranchPresent || p.WorktreePresent
+		}
+		runs = append(runs, processSpinoff{spinoffState(d.nativeSpinoff), preserved, id, prefixBytes(d.Title, 200), d.Status, d.Landed, commit})
 	}
 	return runs
 }
@@ -105,13 +113,13 @@ func taskfleetPending(runs []processSpinoff) bool {
 	return false
 }
 
-func enrichProcessEntry(parent context.Context, home string, entry *historyEntry) {
+func enrichProcessEntry(parent context.Context, home string, session nativeSession, entry *historyEntry) {
 	ctx, cancel := context.WithTimeout(parent, 500*time.Millisecond)
 	defer cancel()
 	for i := range entry.Blocks {
 		event := entry.Blocks[i].ProcessEvent
 		if event != nil && len(event.RunIDs) > 0 {
-			event.Spinoff = readProcessSpinoffs(ctx, home, []string{"PATH=/usr/local/bin:/usr/bin:/bin"}, event.RunIDs)
+			event.Spinoff = readProcessSpinoffs(ctx, home, []string{"PATH=/usr/local/bin:/usr/bin:/bin"}, event.RunIDs, session)
 		}
 	}
 }

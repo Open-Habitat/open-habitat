@@ -244,6 +244,11 @@ func readNative(path string, uid int) nativeSession {
 	if err != nil || !os.SameFile(before, after) || opened.Size() != after.Size() || !opened.ModTime().Equal(after.ModTime()) || int64(len(b)) != after.Size() {
 		return result
 	}
+	return decodeNative(b, path)
+}
+
+func decodeNative(b []byte, path string) nativeSession {
+	var result nativeSession
 	sum := sha256.Sum256(b)
 	result.revision = base64.RawURLEncoding.EncodeToString(sum[:18])
 	result.path = path
@@ -432,6 +437,9 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 			snapshotError(w, 503, "native_source_unavailable")
 			return
 		}
+		if serveSpinoffs(w, r, cfg, sessions) {
+			return
+		}
 		if strings.HasPrefix(path, "/api/v1/agents/") && strings.HasSuffix(path, "/recap") {
 			id := strings.TrimSuffix(strings.TrimPrefix(path, "/api/v1/agents/"), "/recap")
 			if !strings.HasPrefix(id, "pi:") || !sessionIDPattern.MatchString(strings.TrimPrefix(id, "pi:")) || r.URL.RawQuery != "" || r.URL.Path != path {
@@ -535,7 +543,7 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 				start := len(entries)
 				for i := len(entries) - 1; i >= 0; i-- {
 					inline(&loaded, &entries[i])
-					enrichProcessEntry(processProjectionCtx, cfg.Home, &entries[i])
+					enrichProcessEntry(processProjectionCtx, cfg.Home, *s, &entries[i])
 					wire, err := json.Marshal(entries[i])
 					if err != nil {
 						snapshotError(w, 503, "native_source_unavailable")
@@ -589,7 +597,7 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 			pageBytes := 0
 			for _, e := range s.entries[start:end] {
 				inline(s, &e)
-				enrichProcessEntry(processProjectionCtx, cfg.Home, &e)
+				enrichProcessEntry(processProjectionCtx, cfg.Home, *s, &e)
 				wire, err := json.Marshal(e)
 				if err != nil {
 					snapshotError(w, 503, "native_source_unavailable")

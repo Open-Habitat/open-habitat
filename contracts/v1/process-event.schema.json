@@ -132,6 +132,18 @@
               "null"
             ],
             "pattern": "^[a-f0-9]{40}$"
+          },
+          "state": {
+            "enum": [
+              "working",
+              "waiting_parent",
+              "merged",
+              "unmerged",
+              "unknown"
+            ]
+          },
+          "preserved": {
+            "type": "boolean"
           }
         }
       }

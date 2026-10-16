@@ -1,3 +1,5 @@
+import { SpinoffStatusLine } from "../components/Spinoffs";
+import { SpinoffProvider } from "./SpinoffConversation";
 import { useEffect, useRef, useState } from "react";
 import {
   AgentHeader,
@@ -82,15 +84,21 @@ export function BrowserConversation(
   props: Parameters<typeof BrowserConversationContent>[0],
 ) {
   return (
-    <ProcessProvider
+    <SpinoffProvider
       key={`${props.identity}:${props.id}`}
-      id={props.id}
-      csrf={props.csrf}
+      parent={props.id}
       onLogin={props.onLogin}
-      onStatusEvent={props.onStatusEvent}
     >
-      <BrowserConversationContent {...props} />
-    </ProcessProvider>
+      <ProcessProvider
+        key={`${props.identity}:${props.id}`}
+        id={props.id}
+        csrf={props.csrf}
+        onLogin={props.onLogin}
+        onStatusEvent={props.onStatusEvent}
+      >
+        <BrowserConversationContent {...props} />
+      </ProcessProvider>
+    </SpinoffProvider>
   );
 }
 function BrowserConversationContent({
@@ -916,6 +924,7 @@ function BrowserConversationContent({
             ) : null}
             <UnpresentedEvents events={events} />
             <ConversationTimeline
+              nativeEntries={entries}
               state={
                 historyError
                   ? entries.length
@@ -1496,6 +1505,13 @@ function BrowserConversationContent({
           ) : controlled ? (
             <>
               <ProcessTraySlot />
+              {presentation.activity === "waiting_spinoff" ? (
+                <div className="ah-spinoff-status">
+                  <ProcessWaitingChip label="Odotan spinoffia" />
+                </div>
+              ) : (
+                <SpinoffStatusLine />
+              )}
               <Composer
                 modelPicker={
                   canChooseFirstModel ? (

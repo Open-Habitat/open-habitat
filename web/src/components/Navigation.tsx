@@ -327,7 +327,7 @@ export function AgentNavItem({
           : "–";
   return (
     <li
-      className="ah-agent-item"
+      className={`ah-agent-item${/odottaa spinoffia/i.test(activityLabel) ? " ah-waiting-spinoff" : ""}`}
       style={{ "--ah-depth": depth } as React.CSSProperties}
     >
       <ListRow

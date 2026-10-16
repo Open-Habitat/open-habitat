@@ -125,6 +125,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		fact := func(source, value string) map[string]string {
 			return map[string]string{"source": source, "state": value, "observed_at": at}
 		}
+		observation.Entries = excludeTaskfleetWorkspaces(r.Context(), nativeHome, observation.Entries)
 		visibility, visibilityErr := loadVisibility(nativeHome)
 		workspaces := make([]any, 0, len(observation.Entries))
 		gitEntries := make([]Workspace, 0, len(observation.Entries))

@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "parent_id": "pi:11111111-1111-4111-8111-111111111111",
+  "availability": "available",
+  "runs": [
+    {
+      "run_id": "01m521vczarx5bkx086n64t1t2",
+      "title": "README examples",
+      "created_at": "2026-10-16T10:00:00Z",
+      "state": "merged",
+      "summary": "Updated examples.",
+      "preserved": false,
+      "branch": "",
+      "worktree": "",
+      "source_branch": "main"
+    }
+  ],
+  "transcripts": [
+    {
+      "node_id": "n-0001",
+      "availability": "available",
+      "truncated": false,
+      "messages": [
+        {
+          "key": "fixture:one",
+          "kind": "assistant",
+          "text": "Updated the examples."
+        }
+      ]
+    }
+  ]
+}

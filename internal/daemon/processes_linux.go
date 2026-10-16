@@ -185,7 +185,7 @@ func (p *piRPC) inventory(ctx context.Context) processInventory {
 	home, env := processRunHome(p)
 	for i := range records {
 		if len(records[i].RunIDs) > 0 {
-			records[i].Spinoff = readProcessSpinoffs(ctx, home, env, records[i].RunIDs)
+			records[i].Spinoff = readProcessSpinoffs(ctx, home, env, records[i].RunIDs, nativeSession{id: p.processParentID, cwd: p.processWorkspace})
 		}
 	}
 	return processInventory{1, &p.processGeneration, "available", nil, records}

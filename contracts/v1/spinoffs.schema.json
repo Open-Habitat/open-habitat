@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/spinoffs.schema.json",
+  "title": "Read-only native Taskfleet children",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "parent_id",
+    "availability",
+    "runs",
+    "transcripts"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "parent_id": {
+      "type": "string",
+      "pattern": "^pi:[0-9a-fA-F-]{36}$"
+    },
+    "availability": {
+      "enum": [
+        "available",
+        "unavailable",
+        "partial"
+      ]
+    },
+    "runs": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "run_id",
+          "title",
+          "created_at",
+          "state",
+          "summary",
+          "preserved",
+          "branch",
+          "worktree",
+          "source_branch"
+        ],
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "pattern": "^[0-9a-hjkmnp-tv-z]{26}$"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "created_at": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "state": {
+            "enum": [
+              "working",
+              "waiting_parent",
+              "merged",
+              "unmerged",
+              "unknown"
+            ]
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 16000
+          },
+          "preserved": {
+            "type": "boolean"
+          },
+          "branch": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "worktree": {
+            "type": "string",
+            "maxLength": 1024
+          },
+          "source_branch": {
+            "type": "string",
+            "maxLength": 200
+          }
+        }
+      }
+    },
+    "transcripts": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "node_id",
+          "availability",
+          "truncated",
+          "messages"
+        ],
+        "properties": {
+          "node_id": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "availability": {
+            "enum": [
+              "available",
+              "unavailable",
+              "unsupported"
+            ]
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "messages": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "text",
+                "key"
+              ],
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "user",
+                    "assistant",
+                    "tool"
+                  ]
+                },
+                "text": {
+                  "type": "string",
+                  "maxLength": 4000
+                },
+                "key": {
+                  "type": "string",
+                  "maxLength": 200
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

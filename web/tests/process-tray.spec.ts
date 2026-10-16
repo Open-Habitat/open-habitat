@@ -298,6 +298,13 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
       name: /Odottaa spinoffia.*README.*Työskentelee/,
     }),
   ).toBeVisible();
+  const waitingRow = page.locator(".ah-waiting-spinoff");
+  await expect(waitingRow).toHaveCount(1);
+  expect(
+    await waitingRow
+      .locator(".ah-sidebar-agent-row")
+      .evaluate((el) => getComputedStyle(el, "::after").animationName),
+  ).toBe("ah-spinoff-blink");
   const agentUrl = page.url();
   await page.getByRole("link", { name: "Etusivu", exact: true }).click();
   await expect(page.locator(".ah-home-head")).toContainText(

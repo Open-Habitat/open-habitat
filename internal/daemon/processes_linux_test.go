@@ -173,18 +173,19 @@ func TestProcessToolProjectionJoinsWithoutPrivateFields(t *testing.T) {
 
 func TestProcessTaskfleetReadsOnlyValidatedRunAsNativeUser(t *testing.T) {
 	home := t.TempDir()
-	binary := filepath.Join(home, "taskfleet")
+	binary := filepath.Join(home, ".local", "bin", "taskfleet")
+	os.MkdirAll(filepath.Dir(binary), 0700)
 	script := `#!/bin/sh
 [ "$1" = run ] && [ "$2" = show ] && [ "$4" = --output ] && [ "$5" = json ] || exit 1
 printf '%s\n' "$3" >> "$HOME/queried"
-printf '{"schema_version":1,"data":{"run_id":"%s","title":"Synthetic work","status":"%s","landed":false,"report":{"secret":"must not cross"}}}\n' "$3" "$FIXTURE_STATUS"
+printf '{"schema_version":1,"data":{"run_id":"%s","kind":"spinoff","source_repo":"/synthetic/source","created_by_session":{"harness":"pi","session_id":"11111111-1111-4111-8111-111111111111"},"title":"Synthetic work","status":"%s","landed":false,"report":{"secret":"must not cross"}}}\n' "$3" "$FIXTURE_STATUS"
 `
 	if err := os.WriteFile(binary, []byte(script), 0700); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", home)
 	id := "01m51veyk0hsa1br34epkr2rpg"
-	runs := readProcessSpinoffs(context.Background(), home, []string{"FIXTURE_STATUS=running"}, []string{id, "bad;command"})
+	runs := readProcessSpinoffs(context.Background(), home, []string{"FIXTURE_STATUS=running"}, []string{id, "bad;command"}, nativeSession{id: "11111111-1111-4111-8111-111111111111", cwd: "/synthetic/source"})
 	if len(runs) != 1 || !taskfleetPending(runs) || runs[0].Title != "Synthetic work" {
 		t.Fatal(runs)
 	}
@@ -196,7 +197,7 @@ printf '{"schema_version":1,"data":{"run_id":"%s","title":"Synthetic work","stat
 	if string(queried) != id+"\n" {
 		t.Fatal("invalid ID executed", string(queried))
 	}
-	done := readProcessSpinoffs(context.Background(), home, []string{"FIXTURE_STATUS=done"}, []string{id})
+	done := readProcessSpinoffs(context.Background(), home, []string{"FIXTURE_STATUS=done"}, []string{id}, nativeSession{id: "11111111-1111-4111-8111-111111111111", cwd: "/synthetic/source"})
 	if taskfleetPending(done) {
 		t.Fatal("finished runs presented as working")
 	}

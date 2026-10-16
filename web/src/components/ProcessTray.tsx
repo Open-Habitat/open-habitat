@@ -1,3 +1,4 @@
+import { useOpenSpinoff } from "./Spinoffs";
 import "./ProcessTray.css";
 import {
   createContext,
@@ -730,6 +731,7 @@ function joinProcess(
 }
 
 export function ProcessWaitingChip({ label }: { label: string }) {
+  const openSpinoff = useOpenSpinoff();
   const context = useContext(Context);
   const awaited = context?.inventory?.processes.filter(
     (p) => p.status === "running" && p.wakes_agent,
@@ -748,7 +750,11 @@ export function ProcessWaitingChip({ label }: { label: string }) {
       variant="quiet"
       title="Näytä mitä agentti odottaa"
       onPress={() =>
-        first ? context?.select(first) : context?.showInventory()
+        first
+          ? first.run_ids.some((id) => openSpinoff(id))
+            ? undefined
+            : context?.select(first)
+          : context?.showInventory()
       }
     >
       {label}

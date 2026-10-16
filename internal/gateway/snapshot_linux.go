@@ -31,6 +31,9 @@ func (a *Auth) snapshotOrPiStatus(w http.ResponseWriter, r *http.Request, path s
 // The gateway accepts only canonical, bounded read paths. It never chooses a UID
 // or copies browser headers to the daemon.
 func historyGatewayPath(path string, q url.Values) bool {
+	if spinoffPath.MatchString(path) {
+		return len(q) == 0 || len(q) == 1 && len(q["run"]) == 1 && spinoffRunID.MatchString(q.Get("run"))
+	}
 	if recapPath.MatchString(path) {
 		return len(q) == 0
 	}
@@ -51,6 +54,8 @@ func historyGatewayPath(path string, q url.Values) bool {
 	return false
 }
 
+var spinoffPath = regexp.MustCompile(`^/api/v1/agents/pi:[0-9a-fA-F-]{36}/spinoffs$`)
+var spinoffRunID = regexp.MustCompile(`^[0-9a-hjkmnp-tv-z]{26}$`)
 var recapPath = regexp.MustCompile(`^/api/v1/agents/pi:[0-9a-fA-F-]{36}/recap$`)
 var historyPath = regexp.MustCompile(`^/api/v1/agents/pi:[0-9a-fA-F-]{36}/history$`)
 var blockReadPath = regexp.MustCompile(`^/api/v1/agents/pi:[0-9a-fA-F-]{36}/entries/[A-Za-z0-9_-]{1,128}/blocks/[0-9]{1,3}$`)

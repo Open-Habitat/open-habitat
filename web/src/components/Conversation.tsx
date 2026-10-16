@@ -1,3 +1,4 @@
+import { useSpinoffGroups } from "./Spinoffs";
 import {
   type ReactNode,
   type Ref,
@@ -18,6 +19,7 @@ import type { Availability, ProblemView, TimelineItem, Tone } from "./types";
 import { enabled } from "./types";
 
 export function ConversationTimeline({
+  nativeEntries = [],
   state,
   items,
   newContentCount = 0,
@@ -32,6 +34,7 @@ export function ConversationTimeline({
 }: {
   state: "loading" | "ready" | "empty" | "error" | "stale" | "unavailable";
   items: (TimelineItem & { kind?: string })[];
+  nativeEntries?: { entry_key: string; timestamp?: string }[];
   newContentCount?: number;
   showJumpToLatest?: boolean;
   latestWorking?: boolean;
@@ -42,6 +45,7 @@ export function ConversationTimeline({
   onJumpToLatest: () => void;
   onHistoryModeChange?: (mode: "virtualized" | "pagedAccessible") => void;
 }) {
+  const groupedItems = useSpinoffGroups(items, nativeEntries);
   return (
     <section aria-label="Keskusteluhistoria" className="ah-timeline">
       {onHistoryModeChange ? (
@@ -81,7 +85,7 @@ export function ConversationTimeline({
         />
       ) : null}
       <ol className="ah-feed">
-        {items.map((item) => (
+        {groupedItems.map((item) => (
           <li key={item.id} data-kind={item.kind}>
             {item.content}
           </li>
