@@ -143,3 +143,21 @@ anyway rather than treating that isolated pass as a green full gate. Rebased
 cleanly onto `origin/main` at `883bfaa0`; incoming changes were issue/research
 prose only and there were no conflicts. The rebased implementation is
 `834245ca`, with the test-readiness correction in `3e72ce45`.
+
+### Second gate and integration
+
+The full standalone lab suite passed **34/34** before integration. A second
+committed-tree clean gate on `0fd6b965` used `OH_GATE_SERIAL_HEAVY=1` (same two
+browser workers; 6 GiB available before starting). It **failed**, 381 seconds,
+with no receipt: all web/unit/component checks and Go/race/contracts/Storybook/
+offline VM checks passed; normal browser had **190 passes**, two intentional
+capture skips, and one timeout in the existing Unix-daemon-restart reconnect
+case. That case lost its `Yhdistä` target during click actionability (the button
+was detached by automatic recovery). The corrected warm-return measurement
+passed. Lab and packaging were again not reached by the full gate.
+
+Rebased cleanly onto local `main` at `a0154d96`, incorporating the other three
+workers' settings, process UI and live-turn corrections. There were no conflicts
+and no edits to their `web/src/` implementations. Final integration checks below
+cover that combined runnable tree; no gate receipt from the earlier tree is
+claimed for it.
