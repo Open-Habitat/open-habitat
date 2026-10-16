@@ -13,6 +13,7 @@ originating_run_kind: spinoff
 lane: workspace-deletion
 collision: [internal/daemon/, docs/]
 preparation: pending
+blocked_by: ['@implement-workspace-trash']
 ---
 
 # Implement recoverable local workspace deletion
@@ -49,3 +50,7 @@ starts from that design rather than repeating the implementation attempt.
 ### 2026-10-16T16:05:00Z · @jari
 
 Jari ~19:05: wanted to delete his test workspace (a plain directory he created) and a freshly cloned Git workspace; the trash is disabled in both. Deletion is now wanted in practice; raised to high. Still needs the design first (see result.md).
+
+### 2026-10-16T17:00:00Z · @jari
+
+Accepted ADR 0019's Trash model, amended: a Git repository that is clean and fully pushed may be deleted permanently at once. Settled-but-open conversations never block. Implementation: `implement-workspace-trash`.

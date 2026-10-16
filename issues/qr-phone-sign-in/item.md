@@ -3,8 +3,9 @@ created: 2026-10-16
 updated: 2026-10-16
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
+closed: 2026-10-16
 ---
 
 # Sign in on a phone by scanning a QR code from Settings
@@ -16,3 +17,7 @@ This moves sign-in authority: a QR code that carries a login is a bearer credent
 ## Acceptance Criteria
 - [ ] ADR with Jari's decision on the flow and its threat model.
 - [ ] Implementation per the ADR with gateway tests for expiry, single use and revocation, and a browser test of the phone sign-in.
+
+## Decisions
+
+Jari, 2026-10-16 ~20:00: (1) direction A, QR from the desktop; (2) no new GitHub sign-in needed to show the code. Implementation: `implement-phone-sign-in`.
