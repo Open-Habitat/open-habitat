@@ -1,5 +1,6 @@
 import Ajv from "ajv/dist/2020.js";
 import schema from "../../../contracts/v1/workspace-git.schema.json";
+
 const validate = new Ajv({ strict: false }).compile(schema);
 export type WorkspaceGit = {
   schema_version: 1;

@@ -1,5 +1,5 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
 import hljs from "highlight.js/lib/core";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 const grammars = {
   python: () => import("highlight.js/lib/languages/python"),

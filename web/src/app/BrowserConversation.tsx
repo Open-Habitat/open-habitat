@@ -1,5 +1,3 @@
-import { SpinoffStatusLine } from "../components/Spinoffs";
-import { SpinoffProvider } from "./SpinoffConversation";
 import { useEffect, useRef, useState } from "react";
 import {
   AgentHeader,
@@ -9,6 +7,7 @@ import {
   ConversationFrame,
   ConversationStream,
   ConversationTimeline,
+  HeldStartFailure,
   Icon,
   InlineNotice,
   Markdown,
@@ -33,6 +32,7 @@ import {
   ProcessWaitingChip,
 } from "../components/ProcessTray";
 import { RecapCard } from "../components/RecapCard";
+import { SpinoffStatusLine } from "../components/Spinoffs";
 import { UnpresentedEvents } from "../components/WorkingProgress";
 import { useConversationActions } from "./ConversationActions";
 import { provisionalItems } from "./conversationEvents";
@@ -45,12 +45,13 @@ import {
   type Session,
   type Status,
 } from "./conversations";
-import { piNotRunning, useHeldMessages } from "./heldMessages";
 import { timelineItems } from "./HistoryView";
+import { piNotRunning, useHeldMessages } from "./heldMessages";
+import { PendingConversation } from "./PendingConversation";
 import { type Choice, PiModelSelector } from "./PiModelSelector";
 import { shortModel, usePiModels } from "./PiModels";
-import { PendingConversation } from "./PendingConversation";
 import { PiQuestion } from "./PiQuestion";
+import { SpinoffProvider } from "./SpinoffConversation";
 import { latestSettings } from "./sessionSettings";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
 import { useConversation } from "./useConversation";
@@ -1042,24 +1043,10 @@ function BrowserConversationContent({
                         id: "held-start-failure",
                         kind: "receipt",
                         content: (
-                          <InlineNotice
-                            title="Pi ei käynnistynyt."
-                            description={
-                              held.waiting.length > 1
-                                ? "Viestit ovat tallessa."
-                                : "Viesti on tallessa."
-                            }
-                            tone="danger"
-                            actions={[
-                              {
-                                label: "Yritä uudelleen",
-                                onPress: () => void held.retry(),
-                              },
-                              {
-                                label: "Muokkaa",
-                                onPress: () => void held.cancel(),
-                              },
-                            ]}
+                          <HeldStartFailure
+                            count={held.waiting.length}
+                            onRetry={() => void held.retry()}
+                            onEdit={() => void held.cancel()}
                           />
                         ),
                       },

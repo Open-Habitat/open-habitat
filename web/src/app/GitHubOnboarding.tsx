@@ -7,9 +7,9 @@ import {
 } from "../components/GitHubRepoChooser";
 import { Button } from "../components/Primitives";
 import { InlineNotice } from "../components/Status";
+import { GitIdentity } from "./GitIdentity";
 import { catalog, cloneStream, GitHubError, observe } from "./github";
 import { PiOnboarding } from "./PiOnboarding";
-import { GitIdentity } from "./GitIdentity";
 import { sessionCSRF } from "./pi";
 
 const marker = "nah:github-step";

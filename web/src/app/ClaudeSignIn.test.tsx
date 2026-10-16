@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { ClaudeSignIn } from "./ClaudeSignIn";
+
 afterEach(() => vi.restoreAllMocks());
 const attempt = "20261016T120000.000000001";
 const reply = (state: string) =>

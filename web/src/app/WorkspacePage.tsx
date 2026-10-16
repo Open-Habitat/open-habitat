@@ -1,25 +1,25 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
+import { ArchiveNotice } from "../components/ArchiveNotice";
+import { agentPresentation } from "../components/agentPresentation";
 import { ControlButton, LinkRow } from "../components/ControlElements";
 import {
-  HomeConversationGrid,
   type HomeConversation,
+  HomeConversationGrid,
   homeSections,
   useCardArchiveAction,
 } from "../components/HomeWorkspaces";
 import { Dialog } from "../components/Overlays";
 import { TextField } from "../components/Primitives";
 import { relativeRecapAge } from "../components/RecapCard";
-import { WorkspaceGitLayer } from "../components/WorkspaceGitLayer";
-import { agentPresentation } from "../components/agentPresentation";
-import { ArchiveNotice } from "../components/ArchiveNotice";
 import { WorkspaceActions } from "../components/WorkspaceActions";
+import { WorkspaceGitLayer } from "../components/WorkspaceGitLayer";
 import {
   type ConversationStore,
   useConversationMetadata,
 } from "./conversationStore";
-import type { Workspace } from "./snapshot";
 import { type Choice, PiModelSelector } from "./PiModelSelector";
+import type { Workspace } from "./snapshot";
 import { WorkspaceGitHub } from "./WorkspaceGitHub";
 import { mutateWorkspace } from "./WorkspaceManagement";
 import { type WorkspaceGit, workspaceGit } from "./workspaceGit";

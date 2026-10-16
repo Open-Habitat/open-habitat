@@ -6,8 +6,8 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useRef,
   useId,
+  useRef,
   useState,
 } from "react";
 import {
@@ -18,12 +18,12 @@ import {
   type ProcessInventory,
   type ProcessOutput,
   type ProcessRecord,
-  spinoffLabel,
   processLabel,
   processLive,
+  spinoffLabel,
 } from "../app/processes";
-import { Icon } from "./Icon";
 import { ControlButton } from "./ControlElements";
+import { Icon } from "./Icon";
 import { PiToolUse } from "./PiBlocks";
 
 interface ProcessView {

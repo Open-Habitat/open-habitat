@@ -1,8 +1,8 @@
 import Ajv from "ajv/dist/2020.js";
-import reposSchema from "../../../contracts/v1/github-repos.schema.json";
-import cloneSchema from "../../../contracts/v1/github-clone.schema.json";
 import checkoutSchema from "../../../contracts/v1/github-checkout.schema.json";
+import cloneSchema from "../../../contracts/v1/github-clone.schema.json";
 import cloneProgressSchema from "../../../contracts/v1/github-clone-progress.schema.json";
+import reposSchema from "../../../contracts/v1/github-repos.schema.json";
 
 const ajv = new Ajv({ strict: false });
 const reposValid = ajv.compile(reposSchema);

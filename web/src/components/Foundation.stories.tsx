@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button } from "./Primitives";
 import { ConversationFrame, ConversationStream } from "./ConversationFrame";
-import { AgentHeader } from "./Navigation";
-import { StatusMark } from "./Status";
 import { Icon } from "./Icon";
+import { AgentHeader } from "./Navigation";
+import { Button } from "./Primitives";
+import { StatusMark } from "./Status";
 
 const meta = {
   title: "Production/V2 foundation",

@@ -4,8 +4,8 @@ import {
   type Spinoffs,
   spinoffStateLabel,
 } from "../app/spinoffs";
-import { Button } from "./Primitives";
 import { Markdown } from "./Markdown";
+import { Button } from "./Primitives";
 import "./Spinoffs.css";
 export const SpinoffContext = createContext<{
   data?: Spinoffs;

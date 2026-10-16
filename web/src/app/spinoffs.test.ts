@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fixture from "../../../contracts/v1/examples/spinoffs.json";
 import { parseSpinoffs } from "./spinoffs";
+
 describe("native spinoff wire boundary", () => {
   it("rejects ambiguous identity, unexpected native fields and nonliteral run ids", () => {
     expect(parseSpinoffs(fixture).runs[0].state).toBe("merged");

@@ -271,7 +271,9 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 						found = true
 						select {
 						case <-active.rpc.exited:
-							raw.(map[string]any)["process"] = "confirmed_exited"
+							// A reaped child leaves the conversation as it is after a
+							// daemon restart: resumable on send, not finished. Keep the
+							// native process census.
 						default:
 							raw.(map[string]any)["process"] = "daemon_managed_live"
 						}

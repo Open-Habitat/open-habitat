@@ -4,6 +4,7 @@ import {
   ownStorage,
   storageAdministration,
 } from "./storageQuota";
+
 afterEach(() => vi.restoreAllMocks());
 it("reads own quota without selecting a subject", async () => {
   const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(

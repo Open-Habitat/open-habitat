@@ -1,5 +1,5 @@
-import { type BashFailure, bashOutput } from "../app/bashFailure";
 import { useState } from "react";
+import { type BashFailure, bashOutput } from "../app/bashFailure";
 import { ControlButton, IconButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { OutputBox } from "./OutputBox";

@@ -1,6 +1,6 @@
 import Ajv from "ajv/dist/2020.js";
-import eventSchema from "../../../contracts/v1/process-event.schema.json";
 import schema from "../../../contracts/v1/process.schema.json";
+import eventSchema from "../../../contracts/v1/process-event.schema.json";
 
 export interface ProcessSpinoff {
   state?: import("./spinoffs").Spinoff["state"];

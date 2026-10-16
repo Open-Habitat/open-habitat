@@ -8,6 +8,7 @@ import {
   AssistantMessage,
   Composer,
   ConversationTimeline,
+  HeldStartFailure,
   LiveToolRow,
   NativeQuestion,
   QueuePanel,
@@ -20,7 +21,6 @@ import {
 import { Markdown } from "./Markdown";
 import { AgentHeader } from "./Navigation";
 import { PiToolUse } from "./PiBlocks";
-import { InlineNotice } from "./Status";
 import { WorkingProgress } from "./WorkingProgress";
 
 const noop = () => {};
@@ -451,15 +451,7 @@ export const PiStartFailed: Story = {
           />
         </li>
       </ol>
-      <InlineNotice
-        title="Pi ei käynnistynyt."
-        description="Viesti on tallessa."
-        tone="danger"
-        actions={[
-          { label: "Yritä uudelleen", onPress: noop },
-          { label: "Muokkaa", onPress: noop },
-        ]}
-      />
+      <HeldStartFailure count={1} onRetry={noop} onEdit={noop} />
     </main>
   ),
 };

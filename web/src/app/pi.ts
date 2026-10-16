@@ -1,6 +1,6 @@
 import Ajv from "ajv/dist/2020.js";
-import statusSchema from "../../../contracts/v1/pi-status.schema.json";
 import attemptSchema from "../../../contracts/v1/pi-attempt.schema.json";
+import statusSchema from "../../../contracts/v1/pi-status.schema.json";
 
 const ajv = new Ajv({ strict: false });
 const statusValid = ajv.compile(statusSchema);

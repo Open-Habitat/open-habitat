@@ -1,5 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { catalog, clone, cloneStream, observe } from "./github";
+
 const reply = (value: unknown) =>
   new Response(JSON.stringify(value), {
     headers: { "content-type": "application/json" },

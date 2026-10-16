@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bashOutput, failureLabel } from "./bashFailure";
+
 describe("bash failure presentation", () => {
   it("removes only the recognized terminal line and preserves earlier identical output", () => {
     const cause = {

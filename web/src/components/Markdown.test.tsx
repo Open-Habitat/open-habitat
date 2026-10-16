@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { Markdown } from "./Markdown";
 import { ConversationTimeline, UserMessage } from "./Conversation";
+import { Markdown } from "./Markdown";
 
 describe("untrusted conversation Markdown", () => {
   it("marks transcript rows by kind without erasing exceptional or tool content", () => {

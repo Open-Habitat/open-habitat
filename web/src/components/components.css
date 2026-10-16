@@ -3899,7 +3899,11 @@ h1[tabindex="-1"]:focus {
 
 /* A message the daemon holds until Pi runs: the dashed, muted bubble of the
    chosen "Kupla odottaa" direction (Jari 16.10.2026, round 2026-10-16-jonolahetys). */
-.ah-feed > li[data-kind="user"] .ah-message.ah-waiting-message {
+/* :is() matches the reading view's bubble rule, inside and outside that view. */
+:is(.ah-reading-view, html)
+  .ah-feed
+  > li[data-kind="user"]
+  .ah-message.ah-waiting-message {
   border-style: dashed;
   border-color: var(--ah-line-strong);
   background: transparent;
@@ -3911,7 +3915,10 @@ h1[tabindex="-1"]:focus {
 .ah-waiting-message > header .ah-status {
   margin-left: auto;
 }
-.ah-feed > li[data-kind="user"] .ah-message.ah-waiting-failed {
+:is(.ah-reading-view, html)
+  .ah-feed
+  > li[data-kind="user"]
+  .ah-message.ah-waiting-failed {
   border-style: solid;
   border-color: var(--ah-err-line);
   background: var(--ah-err-soft);
@@ -3922,4 +3929,27 @@ h1[tabindex="-1"]:focus {
 /* A focus scope only: the pending view keeps the conversation frame's layout. */
 .ah-pending-conversation {
   display: contents;
+}
+/* A failed Pi start: one line beside the kept message, as in the round. */
+.ah-held-failure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ah-s2) var(--ah-s3);
+  font-size: var(--ah-size-ui);
+  color: var(--ah-ink);
+}
+.ah-held-failure-text {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s2);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: The failure icon is scoped to its own line. */
+.ah-held-failure-text svg {
+  color: var(--ah-err);
+  flex: none;
+}
+.ah-held-failure-actions {
+  display: inline-flex;
+  gap: var(--ah-s2);
 }

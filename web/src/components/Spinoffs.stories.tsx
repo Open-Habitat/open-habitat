@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import fixture from "../../../contracts/v1/examples/spinoffs.json";
 import { parseSpinoffs, type Spinoff } from "../app/spinoffs";
 import { SpinoffContext, SpinoffGroup, SpinoffReadOnly } from "./Spinoffs";
+
 const meta = {
   title: "Production/Spinoffs",
   parameters: { layout: "fullscreen" },

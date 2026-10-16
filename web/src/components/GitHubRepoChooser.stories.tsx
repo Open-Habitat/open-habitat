@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { GitHubRepoChooser, type GitHubRepoChoice } from "./GitHubRepoChooser";
+import { type GitHubRepoChoice, GitHubRepoChooser } from "./GitHubRepoChooser";
 import { Button } from "./Primitives";
 
 const repos: GitHubRepoChoice[] = [

@@ -1,4 +1,3 @@
-import { useSpinoffGroups } from "./Spinoffs";
 import {
   type ReactNode,
   type Ref,
@@ -12,6 +11,7 @@ import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
 import { Disclosure } from "./Overlays";
 import { Button, RadioGroup, TextArea, TextField } from "./Primitives";
+import { useSpinoffGroups } from "./Spinoffs";
 import type { StatusKind } from "./Status";
 import { InlineNotice, StatusMark } from "./Status";
 import { SyntaxCode } from "./SyntaxCode";
@@ -349,10 +349,46 @@ export function WaitingMessage({
           }
         />
       </header>
-      <div className="ah-user-content">
-        <Markdown text={text} />
+      <div className="ah-prose">
+        <div className="ah-user-content">
+          <Markdown text={text} />
+        </div>
       </div>
     </article>
+  );
+}
+/** Pi did not start: the held messages are kept, with one primary retry and
+ * a way to take them back for editing (Jari 16.10.2026, Kupla odottaa). */
+export function HeldStartFailure({
+  count,
+  onRetry,
+  onEdit,
+}: {
+  count: number;
+  onRetry: () => void;
+  onEdit: () => void;
+}) {
+  return (
+    <div className="ah-held-failure" role="alert">
+      <span className="ah-held-failure-text">
+        <Icon name="cross" />
+        Pi ei käynnistynyt. {count > 1 ? "Viestit ovat" : "Viesti on"} tallessa.
+      </span>
+      <span className="ah-held-failure-actions">
+        <Button
+          label="Yritä uudelleen"
+          variant="primary"
+          size="compact"
+          onPress={onRetry}
+        />
+        <Button
+          label="Muokkaa"
+          variant="secondary"
+          size="compact"
+          onPress={onEdit}
+        />
+      </span>
+    </div>
   );
 }
 export function SendObservation({

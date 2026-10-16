@@ -4,6 +4,7 @@ import {
   type PayloadAction,
 } from "@reduxjs/toolkit";
 import type { Snapshot } from "./snapshot";
+
 type State = {
   phase:
     | "loading"

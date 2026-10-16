@@ -7,6 +7,7 @@ import "../../design-system/styles.css";
 import "./app.css";
 import { App } from "./app/App";
 import { store } from "./app/store";
+
 const root = document.getElementById("root");
 if (!root) throw new Error("missing #root application mount");
 ReactDOM.createRoot(root).render(

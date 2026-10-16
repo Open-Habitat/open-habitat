@@ -183,6 +183,8 @@ test("@lazy-resume Stop before Pi runs returns the waiting message to the field 
   const bubble = waiting(page).filter({ hasText: "tämä ei saa lähteä" });
   await expect(bubble).toHaveAttribute("data-waiting", "waiting");
   await expect(bubble).toContainText("Odottaa Pi:tä");
+  // The agreed waiting look (Kupla odottaa): a dashed bubble, not a sent one.
+  await expect(bubble).toHaveCSS("border-top-style", "dashed");
   await expect(editor(page)).toHaveValue("");
   await expect(editor(page)).toBeEnabled();
   // No top-bar state while it waits and no account of Pi starting.

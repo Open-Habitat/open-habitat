@@ -41,10 +41,10 @@ import {
 import { FallbackAccount } from "./FallbackAccount";
 import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
-import { NewWorkspace } from "./NewWorkspace";
-import { NewConversationModelDialog } from "./NewConversationModelDialog";
-import { CreatingConversation } from "./PendingConversation";
 import { adoptCreation } from "./heldMessages";
+import { NewConversationModelDialog } from "./NewConversationModelDialog";
+import { NewWorkspace } from "./NewWorkspace";
+import { CreatingConversation } from "./PendingConversation";
 import { type Choice, loadPiModels, PiModelSelector } from "./PiModelSelector";
 import { PiModelsProvider } from "./PiModels";
 import {

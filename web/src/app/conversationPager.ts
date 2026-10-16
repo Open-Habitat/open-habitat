@@ -1,4 +1,4 @@
-import { readHistory, type HistoryPage } from "./history";
+import { type HistoryPage, readHistory } from "./history";
 
 /** Network-only pager. The consumer owns the contiguous window and scroll position. */
 export class ConversationPager {

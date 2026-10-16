@@ -669,7 +669,9 @@ export function AgentHeader({
   };
 }) {
   const titleReasonId = useId();
-  const visibleActivity = true;
+  // An empty label means no state to show (for example while messages wait
+  // for Pi to start); the header then carries no mark at all.
+  const visibleActivity = !!activityLabel || !!activityControl;
   const visibleControl = controlKind === "read-only";
   return (
     <header className="ah-agent-header">
