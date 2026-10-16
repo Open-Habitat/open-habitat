@@ -1,6 +1,8 @@
 # Agent processes in the browser: architecture sketch
 
-A proposal for Jari, not an accepted ADR. It says how the host would serve the
+Accepted by Jari on 16 October 2026; implemented in [result.md](result.md).
+This records the agreed direction. The result records bounded implementation
+refinements and the current schemas remain the wire authority. It serves the
 prototype rounds `design-system/prototypes/rounds/2026-10-16-prosessit/`
 (issue `proto-processes`; Jari chose direction 3, *Kentän yllä*) and
 `rounds/2026-10-16-prosessilohkot/` (issue `proto-processes-blocks`: the
@@ -64,7 +66,8 @@ should not wait for it.
 
 ## What crosses to the browser
 
-Proposed additions to `contracts/v1/`; nothing is edited yet.
+The implemented additions are in `contracts/v1/`; the examples below record
+the accepted design, while those schemas define the exact shipped types.
 
 `GET /api/v1/conversations/{id}/processes`
 

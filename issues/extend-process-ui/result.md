@@ -24,7 +24,83 @@ The companion joins live process IDs **and start times** to this child's native 
 
 - `go test -race ./internal/daemon ./internal/gateway -run 'TestProcess|TestConversation|TestNativeBlocks|TestCustomMessage' -count=1`: passed, including real pinned Pi/core/companion with synthetic HOME and synthetic provider. Verified idle completion wake, working state, list during a model request without another prompt, stop and clear.
 - `node --test internal/daemon/pi-device-test/process-extension.test.mjs`: passed. Checks missing extension vs empty, reused-ID rejection before kill, current-token force stop, native clear/shutdown and bounded hostile output.
-- New `TestProcessDistinctUIDs`: passed in the disposable rootless Ubuntu fixture, own UID allowed and foreign/gateway UIDs denied. Existing dialog isolation passed there too. The broader script's older device-login test failed its native-secret assertion (HTTP status matched); that is not evidence against the new process boundary.
+- New `TestProcessDistinctUIDs`: passed in the disposable rootless Ubuntu fixture, own UID allowed and foreign/gateway UIDs denied. Dialog and device-login isolation also pass after repairing the contradictory positive-probe assertion described below.
 - A full affected-package run with `TMPDIR=/var/tmp/oh-process-build` passed daemon tests but hit existing gateway Unix-socket path-length limits. Subsequent tests use the shorter disk-backed `/var/tmp`.
 
-Browser, final gate, review and live release evidence are recorded below when completed.
+## Browser and cross-surface integration
+
+Browser child `01m51vhpd0cve74tvq1tmyky7v` landed the accepted tray, fenced
+start joins, typed completion markers, waiting activities and generated
+contracts. [browser-result.md](browser-result.md) records its checks and paired
+synthetic screenshot/HTML; these are synthetic UI evidence, not a live capture.
+Subsequent integration added the actionable waiting chip, first-person *Odotan*
+recap line, bounded current Taskfleet facts and live-delivery correlation. An
+additional host-backed wire-fixtured browser journey verifies waiting-process →
+waiting-spinoff across header, recap and home, the typed historical completion,
+and a Pi-started run with steering/Stop instead of waiting. It passed; its first
+fixture attempt omitted the live-process fact of a still-empty fake Pi, which
+was corrected explicitly rather than weakening the presentation assertions.
+
+Taskfleet metadata is read with validated IDs and fixed `run show` argv as the
+mapped user, bounded by a shared projection deadline. Missing/pruned runs are
+not invented. A timeout/failure of the wait is kept distinct from the spinoff's
+current state. Readable unfinished runs establish `waiting_spinoff`; absent
+Taskfleet observations remain ordinary process waiting. This does not implement
+spinoff creation, attribution or transcript navigation from the separate
+`implement-spinoff-agents` issue.
+
+## Review and assessed fixes
+
+One critical `/llm-review` used finder `claude-fable-5-1` and independent verifier
+`gpt-6-astra` (two calls). `/assess-findings` classified seven confirmed fixes,
+no design spin-offs, and two dropped claims. Machine-local artifacts are
+`history/review-process-ui.md` and `history/assessment-process-ui.{json,md}`.
+No residual review issue was filed.
+
+The fixes: output-read leases suppress unobserved log traffic and coalesce active
+hints; duplicate extension managers fail closed before controls (and a configured
+native package avoids adding a second product core); Unicode names are bounded
+without hiding the inventory; native suppressed-log notices remain visible;
+serialized Pi argument deltas use toolcall_start identity rather than the
+stripped `partial`; diagnostic status is signal-only, including aggregate
+messages; and an open output selection keeps owner + ID + record token rather
+than transferring to a recycled ID. The verifier checked real Pi serialization,
+and the repaired real-Pi test places a synthetic secret in its process command.
+No command/PID/log-path metadata may leak through those default surfaces.
+
+Last-browser-command receipts deliberately remain acceptance evidence during a
+native wake; they are not run identities or completion evidence. Silently
+truncating a live inventory was rejected: unavailable is more truthful than
+omitting a process that may wake the agent.
+
+The optional model-performance append was attempted once and failed with the
+known Alder SSH-to-self refusal (`Permission denied (publickey,password)`, helper
+exit 3). The two review outputs and assessment exist locally; no review call was
+skipped and feature verification does not depend on corpus publication.
+
+## Recovered validation failures
+
+- The first clean gate was deliberately stopped after the verifier found the
+  RPC disclosure/lifetime defects. It is not counted as a passed gate.
+- A new secret-marker regression initially used an invalid environment prefix
+  before a shell compound loop. The fixture now uses a valid export; its held
+  fake-provider response is released before httptest shutdown, so an assertion
+  cannot hang cleanup. The real pinned-Pi regression then passed.
+- The distinct-UID script exposed an old contradictory test: its explicit
+  positive own-native-data probe returned its expected sentinel, then rejected
+  that sentinel unconditionally. The test now requires it on that positive
+  probe and forbids it on login replies. All three isolation cases pass.
+- The browser child's independently reproduced baseline archive-expiry failure
+  was a clock fixture issue. The clock is now installed before toast creation
+  and advanced through callbacks, rather than jumping over React's timer
+  cleanup/rescheduling. The eight-unpaused-second and archive-state assertions
+  remain; the isolated process-tray + expiry run passes 3/3.
+- A long build TMPDIR made old gateway Unix socket fixtures exceed the kernel
+  path limit. Repeating with the short, disk-backed `TMPDIR=/var/tmp` passes.
+
+## Final verification and release
+
+`46f170db` and the following test-only changes retain the repaired product code:
+full affected Go packages with `-race` passed, companion tests passed, and all
+fast web checks passed (`/var/tmp/oh-process-final-focused.log`). The final clean
+gate and selected live product/runtime receipts are recorded at completion.

@@ -71,3 +71,9 @@ Jari 15.10.2026: process support is wanted now, modelled on the Pi extension he 
 ### 2026-10-16T05:48:06Z · @jari
 
 Jari 2026-10-16: architecture accepted. We ship our own Pi extension, in the same way the pi-processes extension is used in Jari's Pi today; the daemon talks to it over a private socket inside the daemon service. No wait for an upstream RPC command.
+
+## Acceptance Criteria
+
+- [x] Native process ownership, private socket relay and lifetime-fenced controls are implemented without a host process/log store.
+- [x] The chosen tray, typed markers, native wake-up runs and derived waiting activities are implemented and covered by focused tests.
+- [x] Product companion shipment, optional pinned guest runtime and the approved upstream request are recorded in result.md.
