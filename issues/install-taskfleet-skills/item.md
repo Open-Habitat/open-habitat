@@ -30,3 +30,7 @@ The native Pi default of the mapped user became openai-codex/gpt-5.3-codex-spark
 ### 2026-10-16T14:58:49Z · @conductor
 
 Correction: Jari found that the settings model picker selects a model by itself when switching provider tabs (settings-model-picker-autoselect). That, not this proof, is the likely cause of the gpt-5.3-codex-spark default. Keep only the general rule that a proof must not change saved defaults.
+
+### 2026-10-16T15:11:21Z · @jari
+
+Jari 17:59 local (sidebar screenshot copied here as proof-clutter.png): the proof left a workspace 'taskfleet-skills-proo…' with three 'This is an authorized, tiny runtime acc…' conversations in his account. Remove the proof workspace and its native sessions after the proof (they are disposable test artefacts created by this issue), and in future run proofs so that they do not appear in his workspace list.
