@@ -46,6 +46,24 @@ its Pi session header exactly matches that workspace's path. A stable
 workspace ID does not change this path-based association.
 [Conversations](conversations.md) describes native session identity and history.
 
+## Reading the workspace page
+
+The page leads with the workspace's open conversations and their native recaps.
+Completed conversations and the archive are folded. The + starts a conversation
+with the default agent directly; worktree-agent presentation is separate work.
+
+The Git pill opens a read-only layer. Its details are read on demand, as the
+mapped user, from the freshly discovered directory through an inode-checked
+descriptor. Git's NUL-delimited status preserves filenames and rename pairs;
+only bounded changed-path lists and recent commit subjects enter the contract.
+Upstream counts and per-commit publication marks reflect local remote-tracking
+refs, not the current server: this operation never fetches. The main checkout's
+safely opened FETCH_HEAD mtime supplies the last recorded fetch when available;
+linked worktrees and missing/unsafe records leave that time unknown. Missing upstream or
+log information is shown as unknown, not as clean or synchronized. No new store,
+credential handling or authority is involved. The browser validates the reply
+before rendering any native text.
+
 ## Cloning a GitHub repository
 
 During onboarding the browser lists repositories using the user's native `gh`

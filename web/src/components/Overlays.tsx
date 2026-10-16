@@ -166,6 +166,7 @@ export function Menu({
   popoverClassName,
   triggerPresentation,
   triggerClassName,
+  buttonRef,
   placement,
 }: {
   label: string;
@@ -175,6 +176,7 @@ export function Menu({
   popoverClassName?: string;
   triggerPresentation?: "account" | "icon";
   triggerClassName?: string;
+  buttonRef?: RefObject<HTMLButtonElement | null>;
   placement?: "top start" | "end top";
   betweenItems?: ReactNode;
   items: {
@@ -189,7 +191,8 @@ export function Menu({
   }[];
   onAction: (id: string) => void;
 }) {
-  const triggerRef = useRef<HTMLButtonElement>(null);
+  const ownTriggerRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = buttonRef ?? ownTriggerRef;
   return (
     <MenuTrigger
       onOpenChange={(open) => {

@@ -57,6 +57,7 @@ conversation control routes use the UUID alone.
 | Route | Meaning |
 |---|---|
 | `GET /api/v1/snapshot` | workspaces, native and controlled conversations, event cursor and native `gh` state |
+| `GET /api/v1/workspaces/git?workspace_id=<id>` | bounded read-only Git observation for one freshly discovered workspace: changed paths, upstream counts and recent commits; never fetches or mutates Git; [reply](../../contracts/v1/workspace-git.schema.json) |
 | `POST /api/v1/workspaces` | create a local directory (optionally initialize Git), edit its display name, initialize Git later, or hide/restore it. The mapped daemon reobserves the source and target; deletion is disabled. [Workspaces](workspaces.md) describes the safety boundary. |
 | `GET /api/v1/events?after=<cursor>` | the user's event stream; `Last-Event-ID` takes precedence over the query cursor |
 | `GET /api/v1/agents/pi:<id>/history` | a history page; `limit` bounds entry count, `before` pages back and `after` supports forward reads |

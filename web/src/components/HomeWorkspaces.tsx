@@ -50,16 +50,18 @@ function score(items: HomeConversation[]) {
   return items.reduce((sum, c) => sum + [100, 10, 1, 0][rank(c)], 0);
 }
 
-function HomeCard({
+export function HomeCard({
   conversation,
   onArchive,
   archiveReason,
   archiveError,
+  showArchive = true,
 }: {
   conversation: HomeConversation;
   onArchive?: () => void;
   archiveReason?: string;
   archiveError: boolean;
+  showArchive?: boolean;
 }) {
   const [state, setState] = useState<{
     recap: Recap | null;
@@ -113,24 +115,26 @@ function HomeCard({
         {state?.recap && state.recap.through !== state.latest_message && (
           <span className="ah-home-stale">uusia viestejä</span>
         )}
-        <span title={archiveReason || "Arkistoi"}>
-          <ControlButton
-            className="ah-home-archive"
-            variant="quiet"
-            size="micro"
-            aria-label="Arkistoi"
-            aria-describedby={archiveReason ? archiveReasonId : undefined}
-            isDisabled={!onArchive || !!archiveReason}
-            onPress={onArchive}
-          >
-            <Icon name="archive" />
-          </ControlButton>
-          {archiveReason ? (
-            <span id={archiveReasonId} className="ah-visually-hidden">
-              {archiveReason}
-            </span>
-          ) : null}
-        </span>
+        {showArchive ? (
+          <span title={archiveReason || "Arkistoi"}>
+            <ControlButton
+              className="ah-home-archive"
+              variant="quiet"
+              size="micro"
+              aria-label="Arkistoi"
+              aria-describedby={archiveReason ? archiveReasonId : undefined}
+              isDisabled={!onArchive || !!archiveReason}
+              onPress={onArchive}
+            >
+              <Icon name="archive" />
+            </ControlButton>
+            {archiveReason ? (
+              <span id={archiveReasonId} className="ah-visually-hidden">
+                {archiveReason}
+              </span>
+            ) : null}
+          </span>
+        ) : null}
       </div>
       {state?.recap ? (
         <>
@@ -191,6 +195,7 @@ export function HomeWorkspaces({
   conversations,
   store,
   onNew,
+  onWorkspaceAction,
   onCreate,
   onArchive,
   archiveReason,
@@ -199,6 +204,7 @@ export function HomeWorkspaces({
   conversations: HomeConversation[];
   store?: ConversationStore;
   onNew?: (id: string) => void;
+  onWorkspaceAction?: (id: string, action: "rename" | "hide") => void;
   onCreate?: () => void;
   onArchive?: (id: string) => Promise<boolean>;
   archiveReason?: (conversation: HomeConversation) => string;
@@ -260,7 +266,23 @@ export function HomeWorkspaces({
               <GitLine workspace={workspace} />
               <span className="ah-home-grow" />
               {done > 0 && <span>{done} valmista</span>}
-              <WorkspaceActions workspace={workspace} onNew={onNew} />
+              <WorkspaceActions
+                workspace={workspace}
+                onNew={onNew}
+                onRename={
+                  onWorkspaceAction
+                    ? () => onWorkspaceAction(workspace.workspace_id, "rename")
+                    : undefined
+                }
+                onHide={
+                  onWorkspaceAction
+                    ? () => onWorkspaceAction(workspace.workspace_id, "hide")
+                    : undefined
+                }
+                settingsAvailable={
+                  !!onWorkspaceAction && workspace.mutation_state === "allowed"
+                }
+              />
             </header>
             <div className="ah-home-grid">
               {open.map((c) => (
@@ -308,7 +330,26 @@ export function HomeWorkspaces({
                   <GitLine workspace={workspace} />
                   <span className="ah-home-grow" />
                   {done ? `${done} valmista` : "ei keskusteluja"}
-                  <WorkspaceActions workspace={workspace} onNew={onNew} />
+                  <WorkspaceActions
+                    workspace={workspace}
+                    onNew={onNew}
+                    onRename={
+                      onWorkspaceAction
+                        ? () =>
+                            onWorkspaceAction(workspace.workspace_id, "rename")
+                        : undefined
+                    }
+                    onHide={
+                      onWorkspaceAction
+                        ? () =>
+                            onWorkspaceAction(workspace.workspace_id, "hide")
+                        : undefined
+                    }
+                    settingsAvailable={
+                      !!onWorkspaceAction &&
+                      workspace.mutation_state === "allowed"
+                    }
+                  />
                 </div>
               ))}
           </div>

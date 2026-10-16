@@ -5,7 +5,10 @@ import type { Workspace } from "./snapshot";
 import { WorkspaceGitHub } from "./WorkspaceGitHub";
 
 type Action = "create" | "settings" | "visibility" | "git_init";
-async function mutate(input: Record<string, unknown>, csrf: string) {
+export async function mutateWorkspace(
+  input: Record<string, unknown>,
+  csrf: string,
+) {
   const r = await fetch("/api/v1/workspaces", {
     method: "POST",
     credentials: "same-origin",
@@ -69,7 +72,7 @@ export function WorkspaceManagement({
     setBusy(true);
     setError("");
     try {
-      const resultId = await mutate(
+      const resultId = await mutateWorkspace(
         {
           action,
           ...(action === "create"

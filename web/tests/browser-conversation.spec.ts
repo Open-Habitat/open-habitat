@@ -191,14 +191,17 @@ test("@browser-conversation latest action follows expanded output", async ({
   await expect(latest).toHaveCount(0);
 });
 
-test("@browser-conversation workspace menu starts one native conversation", async ({
+test("@browser-conversation workspace plus starts one native conversation", async ({
   page,
 }) => {
   await open(page);
   await page
-    .getByRole("button", { name: "Työtilan ordinary-dir toiminnot" })
+    .getByRole("navigation")
+    .getByRole("button", {
+      name: "Uusi keskustelu työtilassa ordinary-dir",
+      exact: true,
+    })
     .click();
-  await page.getByRole("menuitem", { name: "Uusi keskustelu" }).click();
   await expect(page).toHaveURL(/conversation=pi/);
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
@@ -1336,6 +1339,7 @@ test("@browser-conversation phone archives directly into its workspace", async (
     page.getByRole("alertdialog", { name: "Vahvista arkistointi" }),
   ).toHaveCount(0);
   await expect(page).toHaveURL(/\/workspaces\/[^?]+$/);
+  await page.locator(".ah-workspace-archive > summary").click();
   await expect(
     page.getByRole("region", { name: "Työtilan arkisto" }),
   ).toContainText("synthetic end then continue");
@@ -1477,6 +1481,7 @@ test("@browser-conversation missing archive history never appears as a confirmed
     await route.fulfill({ response, json: body });
   });
   await page.reload();
+  await page.locator(".ah-workspace-archive > summary").click();
   await expect(
     page.getByRole("region", { name: "Työtilan arkisto" }),
   ).toContainText("Arkisto voi olla puutteellinen");
@@ -1504,6 +1509,7 @@ test("@browser-conversation archive restores visibility before native continuati
     .getByRole("link", { name: "ordinary-dir" })
     .click();
   const workspaceURL = page.url();
+  await page.locator(".ah-workspace-archive > summary").click();
   const archive = page.getByRole("region", { name: "Työtilan arkisto" });
   await expect(archive).toContainText("synthetic end then continue");
   await archive.getByRole("button", { name: "Palauta näkyviin" }).click();
@@ -2714,12 +2720,16 @@ test("@conversation-details archive undo returns to conversation; offer pauses a
   page,
 }) => {
   const id = await endedConversation(page);
+  await page.clock.install();
   await archiveFromConfirmedView(page, () =>
     page.getByRole("button", { name: "Arkistoi", exact: true }),
   );
   const notice = page.locator(".ah-archive-notice");
   await expect(notice).toBeVisible();
-  await page.clock.install();
+  await expect(page.locator("main h1")).toBeFocused();
+  await expect(
+    notice.getByRole("button", { name: "Palauta", exact: true }),
+  ).toBeEnabled();
   await notice.hover();
   await page.clock.fastForward(9000);
   await expect(notice).toBeVisible();
@@ -2737,15 +2747,19 @@ test("@conversation-details archive offer expires after eight unpaused seconds",
   page,
 }) => {
   await endedConversation(page);
+  await page.clock.install();
   await archiveFromConfirmedView(page, () =>
     page.getByRole("button", { name: "Arkistoi", exact: true }),
   );
   const notice = page.locator(".ah-archive-notice");
   await expect(notice).toBeVisible();
-  await page.clock.install();
+  await expect(
+    notice.getByRole("button", { name: "Palauta", exact: true }),
+  ).toBeEnabled();
   await page.mouse.move(0, 0);
   await page.clock.fastForward(8100);
   await expect(notice).toHaveCount(0);
+  await page.locator(".ah-workspace-archive > summary").click();
   await expect(
     page.getByRole("button", { name: "Palauta näkyviin" }),
   ).toBeVisible();
@@ -2778,21 +2792,34 @@ test("@conversation-details latest pill names working and unread reply with its 
 }) => {
   await open(page);
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  // Layout makes it possible to leave the end during this short synthetic turn.
+  // Establish a native baseline before leaving the end, then send a second turn.
+  await page
+    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .fill("unread baseline");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(
+    page.getByText('Selvä. Kysyit: "unread baseline".', { exact: true }),
+  ).toBeVisible();
   await page.addStyleTag({
     content: ".ah-feed { min-height: 4000px !important; }",
   });
   await page
     .getByRole("textbox", { name: "Viesti Pi:lle" })
     .fill("unread reply");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   const stream = page.locator(".ah-conversation-stream");
+  await expect
+    .poll(() => stream.evaluate((node) => node.scrollTop))
+    .toBeGreaterThan(0);
   await stream.evaluate((node) => {
     node.dispatchEvent(
       new WheelEvent("wheel", { deltaY: -400, bubbles: true }),
     );
     node.scrollTop = 0;
   });
+  await expect(
+    page.getByRole("button", { name: "Viimeisimpään", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Viimeisimpään, Pi työskentelee" }),
   ).toBeVisible();

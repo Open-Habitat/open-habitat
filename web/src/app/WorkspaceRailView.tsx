@@ -44,6 +44,7 @@ export function WorkspaceRailView({
   expanded,
   onExpand,
   onNewConversation,
+  onWorkspaceAction,
   onCreateWorkspace,
   onFilter,
   onToggle,
@@ -77,6 +78,7 @@ export function WorkspaceRailView({
   expanded: Record<string, boolean>;
   onExpand: (next: Record<string, boolean>) => void;
   onNewConversation?: (workspaceId: string) => void;
+  onWorkspaceAction?: (id: string, action: "rename" | "hide") => void;
   onCreateWorkspace?: () => void;
   onFilter: (value: string) => void;
   onToggle: () => void;
@@ -286,7 +288,24 @@ export function WorkspaceRailView({
                     a.agent_id),
             }))}
           workspaceMenu={
-            <WorkspaceActions workspace={w} onNew={onNewConversation} rail />
+            <WorkspaceActions
+              workspace={w}
+              onNew={onNewConversation}
+              rail
+              onRename={
+                onWorkspaceAction
+                  ? () => onWorkspaceAction(w.workspace_id, "rename")
+                  : undefined
+              }
+              onHide={
+                onWorkspaceAction
+                  ? () => onWorkspaceAction(w.workspace_id, "hide")
+                  : undefined
+              }
+              settingsAvailable={
+                !!onWorkspaceAction && w.mutation_state === "allowed"
+              }
+            />
           }
           onToggle={() =>
             onExpand({

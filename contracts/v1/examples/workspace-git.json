@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "workspace_id": "ws_example123",
+  "branch": "main",
+  "dirty_count": 1,
+  "files_truncated": false,
+  "commits_available": true,
+  "upstream": "origin/main",
+  "ahead": 1,
+  "behind": 0,
+  "files": [
+    {
+      "status": "??",
+      "path": "example.txt"
+    }
+  ],
+  "commits": [
+    {
+      "hash": "1111111111111111111111111111111111111111",
+      "subject": "Example commit",
+      "timestamp": 1792108800,
+      "pushed": false
+    }
+  ]
+}

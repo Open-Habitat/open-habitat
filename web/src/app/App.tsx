@@ -24,7 +24,7 @@ import { LinkRow } from "../components/ControlElements";
 import { HomeWorkspaces } from "../components/HomeWorkspaces";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import type { ReturnConversation } from "../components/ReturnView";
-import { ReturnView } from "../components/ReturnView";
+
 import { AccountProfileOnboarding } from "./AccountProfileOnboarding";
 import { BrowserConversation } from "./BrowserConversation";
 import { ConversationJournal } from "./conversationJournal";
@@ -49,7 +49,7 @@ import {
   piStatus,
   sessionCSRF,
 } from "./pi";
-import { readSnapshot, sourceState, type Workspace } from "./snapshot";
+import { readSnapshot, sourceState } from "./snapshot";
 import {
   authenticated,
   authenticationRequired,
@@ -61,8 +61,8 @@ import {
   stale,
   unavailable,
 } from "./store";
-import { WorkspaceManagement } from "./WorkspaceManagement";
-import { sourceLabel, WorkspaceRailView } from "./WorkspaceRailView";
+import { WorkspacePage } from "./WorkspacePage";
+import { WorkspaceRailView } from "./WorkspaceRailView";
 
 const CatalogPreview =
   import.meta.env.VITE_ENABLE_TEST_FIXTURES === "true"
@@ -78,67 +78,6 @@ function safeRoute(path: string) {
     /^\/agents\/pi:[0-9a-fA-F-]{36}$/.test(path)
     ? path
     : "/workspaces";
-}
-function WorkspaceDetails({ workspace }: { workspace: Workspace }) {
-  const fact = (source: string) =>
-    sourceLabel(
-      workspace.facts.find((f) => f.source === source)?.state ?? "unknown",
-    );
-  return (
-    <header className="ah-workspace-detail">
-      <LinkRow href="/workspaces" kind="inline" className="ah-back-link">
-        Työtilat
-      </LinkRow>
-      <h1 tabIndex={-1}>{workspace.display_name ?? workspace.name}</h1>
-      <p>
-        Hakemisto <code>{workspace.name}</code>
-      </p>
-      <details className="ah-workspace-facts">
-        <summary>Työtilan tiedot</summary>
-        <dl className="ah-facts">
-          <div>
-            <dt>Hakemisto</dt>
-            <dd>{fact("filesystem")}</dd>
-          </div>
-          <div>
-            <dt>Git</dt>
-            <dd>{fact("git")}</dd>
-          </div>
-          {workspace.git_remote && (
-            <div>
-              <dt>Etärepo</dt>
-              <dd>
-                {
-                  (
-                    {
-                      github: "GitHub-origin",
-                      other: "Muu etärepo",
-                      none: "Ei etärepoa",
-                      unknown: "Ei voitu tarkistaa",
-                    } as const
-                  )[workspace.git_remote]
-                }
-              </dd>
-            </div>
-          )}
-          <div>
-            <dt>Asetukset</dt>
-            <dd>{fact("annotation")}</dd>
-          </div>
-          <div>
-            <dt>Muutokset</dt>
-            <dd>
-              {workspace.mutation_state === "allowed"
-                ? "Käytettävissä"
-                : workspace.mutation_state === "blocked_unknown"
-                  ? "Ei voitu vahvistaa"
-                  : "Ei käytettävissä"}
-            </dd>
-          </div>
-        </dl>
-      </details>
-    </header>
-  );
 }
 export function App() {
   const dispatch = useDispatch();
@@ -176,6 +115,10 @@ export function App() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [logoutError, setLogoutError] = useState(false);
   const [archiveProblem, setArchiveProblem] = useState("");
+  const [workspaceMenuRequest, setWorkspaceMenuRequest] = useState<{
+    id: string;
+    action: "rename" | "hide";
+  }>();
   const [archiveNotice, setArchiveNotice] = useState<{
     id: string;
     title: string;
@@ -248,6 +191,7 @@ export function App() {
     confirmedClose.current.clear();
     setArchiveBusy(false);
     setArchiveNotice(undefined);
+    setWorkspaceMenuRequest(undefined);
     archiveInFlight.current = false;
     // After a reload at the login boundary we no longer know which person
     // owned this tab. Clear only identity-scoped keys, not global onboarding.
@@ -863,6 +807,10 @@ export function App() {
           );
       });
   };
+  const workspaceMenuAction = (id: string, action: "rename" | "hide") => {
+    setWorkspaceMenuRequest({ id, action });
+    navigate(`/workspaces/${id}`);
+  };
   const returnConversations: (ReturnConversation & { workspaceId: string })[] =
     (snapshot?.agents ?? [])
       .filter(
@@ -1094,7 +1042,41 @@ export function App() {
     ) : selected ? (
       <>
         {!new URLSearchParams(location.search).has("conversation") ? (
-          <WorkspaceDetails workspace={selected} />
+          conversationStore ? (
+            <WorkspacePage
+              key={selected.workspace_id}
+              actionRequest={
+                workspaceMenuRequest?.id === selected.workspace_id
+                  ? workspaceMenuRequest.action
+                  : undefined
+              }
+              onActionHandled={() => setWorkspaceMenuRequest(undefined)}
+              workspace={selected}
+              conversations={returnConversations.filter(
+                (c) => c.workspaceId === selected.workspace_id,
+              )}
+              store={conversationStore}
+              csrf={
+                phase === "authenticated" &&
+                snapshot?.write_state !== "read_only"
+                  ? csrf
+                  : undefined
+              }
+              onNew={
+                !syntheticDemo &&
+                phase === "authenticated" &&
+                csrf &&
+                snapshot?.write_state !== "read_only" &&
+                selected.mutation_state === "allowed" &&
+                selected.facts.some(
+                  (f) => f.source === "filesystem" && f.state === "confirmed",
+                )
+                  ? startFromHome
+                  : undefined
+              }
+              refresh={refresh}
+            />
+          ) : null
         ) : null}
         {archiveNotice ? (
           <ArchiveNotice
@@ -1132,7 +1114,8 @@ export function App() {
               tone="warning"
             />
           )}
-        {!syntheticDemo &&
+        {new URLSearchParams(location.search).has("conversation") &&
+        !syntheticDemo &&
         identity &&
         conversationStore &&
         selected.facts.some(
@@ -1210,85 +1193,70 @@ export function App() {
                   a.workspace_id === selected.workspace_id &&
                   a.archive === "archived",
               )) && (
-              <section aria-label="Työtilan arkisto">
-                <h2>Arkisto</h2>
-                {snapshot?.sources.find((f) => f.source === "annotation")
-                  ?.state !== "confirmed" ? (
-                  <p>Arkistoa ei voitu lukea. Päivitä tiedot.</p>
-                ) : (
-                  <>
-                    {snapshot.sources.find((f) => f.source === "pi_history")
-                      ?.state !== "confirmed" && (
-                      <p role="status">
-                        Arkisto voi olla puutteellinen: Pi:n historiaa ei voitu
-                        kokonaan tarkistaa. Päivitä tiedot.
-                      </p>
-                    )}
-                    {snapshot.agents
-                      .filter(
-                        (a) =>
-                          a.workspace_id === selected.workspace_id &&
-                          a.archive === "archived",
-                      )
-                      .map((a) => (
-                        <p key={a.agent_id}>
-                          <LinkRow
-                            href={
-                              daemonSessions.some(
-                                (s) => s.agent_id === a.agent_id,
-                              )
-                                ? `/workspaces/${selected.workspace_id}?conversation=${a.agent_id}`
-                                : `/agents/${a.agent_id}`
-                            }
-                            kind="inline"
-                          >
-                            {a.title.display}
-                          </LinkRow>{" "}
-                          {a.history !== "readable" && (
-                            <span>Historia ei ole luettavissa. </span>
-                          )}
-                          <Button
-                            label="Palauta näkyviin"
-                            variant="quiet"
-                            onPress={() => void changeArchive(a, false)}
-                            availability={
-                              archiveBusy ||
-                              !csrf ||
-                              phase !== "authenticated" ||
-                              a.history !== "readable"
-                                ? {
-                                    state: "unknown",
-                                    reason:
-                                      a.history !== "readable"
-                                        ? "Historiaa ei voitu vahvistaa"
-                                        : "Päivitä yhteys ennen palautusta",
-                                  }
-                                : { state: "enabled" }
-                            }
-                          />
+              <details className="ah-workspace-archive">
+                <summary>Arkisto</summary>
+                <section aria-label="Työtilan arkisto">
+                  <h2>Arkisto</h2>
+                  {snapshot?.sources.find((f) => f.source === "annotation")
+                    ?.state !== "confirmed" ? (
+                    <p>Arkistoa ei voitu lukea. Päivitä tiedot.</p>
+                  ) : (
+                    <>
+                      {snapshot.sources.find((f) => f.source === "pi_history")
+                        ?.state !== "confirmed" && (
+                        <p role="status">
+                          Arkisto voi olla puutteellinen: Pi:n historiaa ei
+                          voitu kokonaan tarkistaa. Päivitä tiedot.
                         </p>
-                      ))}
-                  </>
-                )}
-              </section>
-            )}
-            <ReturnView
-              store={conversationStore}
-              workspaceName="Keskustelut työtilassa"
-              conversations={returnConversations.filter(
-                (conversation) =>
-                  conversation.workspaceId === selected.workspace_id,
-              )}
-            />
-            {!syntheticDemo && phase === "authenticated" && (
-              <WorkspaceManagement
-                key={selected.workspace_id}
-                workspace={selected}
-                csrf={csrf}
-                refresh={refresh}
-                onCreated={(id) => navigate(`/workspaces/${id}`)}
-                onHidden={() => navigate("/workspaces")}
-              />
+                      )}
+                      {snapshot.agents
+                        .filter(
+                          (a) =>
+                            a.workspace_id === selected.workspace_id &&
+                            a.archive === "archived",
+                        )
+                        .map((a) => (
+                          <p key={a.agent_id}>
+                            <LinkRow
+                              href={
+                                daemonSessions.some(
+                                  (s) => s.agent_id === a.agent_id,
+                                )
+                                  ? `/workspaces/${selected.workspace_id}?conversation=${a.agent_id}`
+                                  : `/agents/${a.agent_id}`
+                              }
+                              kind="inline"
+                            >
+                              {a.title.display}
+                            </LinkRow>{" "}
+                            {a.history !== "readable" && (
+                              <span>Historia ei ole luettavissa. </span>
+                            )}
+                            <Button
+                              label="Palauta näkyviin"
+                              variant="quiet"
+                              onPress={() => void changeArchive(a, false)}
+                              availability={
+                                archiveBusy ||
+                                !csrf ||
+                                phase !== "authenticated" ||
+                                a.history !== "readable"
+                                  ? {
+                                      state: "unknown",
+                                      reason:
+                                        a.history !== "readable"
+                                          ? "Historiaa ei voitu vahvistaa"
+                                          : "Päivitä yhteys ennen palautusta",
+                                    }
+                                  : { state: "enabled" }
+                              }
+                            />
+                          </p>
+                        ))}
+                    </>
+                  )}
+                </section>
+              </details>
             )}
           </>
         ) : null}
@@ -1337,6 +1305,13 @@ export function App() {
           key={identity}
           workspaces={visible}
           conversations={returnConversations}
+          onWorkspaceAction={
+            phase === "authenticated" &&
+            csrf &&
+            snapshot?.write_state !== "read_only"
+              ? workspaceMenuAction
+              : undefined
+          }
           store={conversationStore}
           archiveReason={(conversation) => {
             const agent = snapshot?.agents.find(
@@ -1481,6 +1456,13 @@ export function App() {
           conversationStore ? (
             <WorkspaceRailView
               phase={phase}
+              onWorkspaceAction={
+                phase === "authenticated" &&
+                csrf &&
+                snapshot.write_state !== "read_only"
+                  ? workspaceMenuAction
+                  : undefined
+              }
               snapshot={snapshot}
               pendingArchive={new Set([...pendingArchive, ...pendingClose])}
               profile={profile}

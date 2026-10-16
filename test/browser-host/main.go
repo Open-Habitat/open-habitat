@@ -370,6 +370,7 @@ esac
 		})
 		fixtureWorkspaceCfg := cfg
 		fixtureWorkspaceCfg.Home = home // All workspace writes in the browser host stay in its disposable home.
+		mux.Handle(daemon.WorkspaceGitPath, daemon.WorkspaceGitHandler(fixtureWorkspaceCfg, trusted))
 		mux.Handle(daemon.WorkspacePath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			daemon.WorkspaceHandlerWithArchive(fixtureWorkspaceCfg, trusted, current.Load().(*daemon.ConversationController)).ServeHTTP(w, r)
 		}))

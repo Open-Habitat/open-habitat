@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "109eda3bb994f8300f0fc0040c0bda828fd6127b579e6dd37ed07e32c024a477"
+const V1SchemaFingerprint = "82de20ead4c669547daa67bbb45f17e9af023308502fd8b16af95f36e41d74a0"
 
 var V1SchemaFiles = []string{
 	"account-profile-update.schema.json",
@@ -41,6 +41,7 @@ var V1SchemaFiles = []string{
 	"server-storage.schema.json",
 	"server.schema.json",
 	"snapshot.schema.json",
+	"workspace-git.schema.json",
 }
 
 // Wire families remain opaque until validated against their canonical JSON Schema.
@@ -79,3 +80,4 @@ type ServerStorageChange = json.RawMessage
 type ServerStorage = json.RawMessage
 type Server = json.RawMessage
 type Snapshot = json.RawMessage
+type WorkspaceGit = json.RawMessage

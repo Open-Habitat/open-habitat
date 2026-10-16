@@ -102,7 +102,9 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
       .locator(".ah-shell-body")
       .evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ")[0]),
   ).toBe("296px");
-  await expect(page.locator("main")).toContainText("Hakemisto");
+  await expect(page.locator(".ah-workspace-page-title code")).toContainText(
+    "/src/git-project",
+  );
   await expect(page.getByRole("link", { name: "git-project" })).toHaveAttribute(
     "aria-current",
     "page",
@@ -122,7 +124,9 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   await page.getByRole("link", { name: "ordinary-dir" }).click();
   await expect(page.locator("main h1")).toHaveText("ordinary-dir");
   await page.getByRole("link", { name: "without-metadata" }).click();
-  await expect(page.locator("main")).toContainText("Hakemisto");
+  await expect(page.locator(".ah-workspace-page-title code")).toContainText(
+    "/src/without-metadata",
+  );
   await page
     .getByRole("textbox", { name: "Suodata työtiloja" })
     .fill("not-found");

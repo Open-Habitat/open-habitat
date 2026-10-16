@@ -43,6 +43,7 @@ for path in SCHEMA_FILES:
     registry = registry.with_resource(data["$id"], Resource.from_contents(data))
 
 checks = {
+    "workspace-git.json": "workspace-git.schema.json",
     "snapshot.json": "snapshot.schema.json",
     "account-storage.json": "account-storage.schema.json",
     "server-storage.json": "server-storage.schema.json",

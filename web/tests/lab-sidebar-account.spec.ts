@@ -91,11 +91,11 @@ test("@lab long rail, workspace actions, drawer and four visual states", async (
   const actions = page
     .locator(".ah-rail-content .ah-rail-workspace-actions")
     .first();
-  await actions.getByRole("button").click();
+  await actions.getByRole("button", { name: /Työtilan .* toiminnot/ }).click();
   const menu = page.getByRole("menu", { name: /Työtilan .* toiminnot/ });
   await expect(menu).toBeFocused();
-  const first = page.getByRole("menuitem", { name: "Uusi keskustelu" });
-  const second = page.getByRole("menuitem", { name: "Avaa työtilasivu" });
+  const first = page.getByRole("menuitem", { name: "Avaa työtilasivu" });
+  const second = page.getByRole("menuitem", { name: "Kopioi polku" });
   await page.keyboard.press("ArrowDown");
   await expect(first).toBeFocused();
   await page.keyboard.press("ArrowDown");
@@ -110,7 +110,9 @@ test("@lab long rail, workspace actions, drawer and four visual states", async (
     page.getByText(/Palautettava poisto suunnitellaan ensin/),
   ).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(actions.getByRole("button")).toBeFocused();
+  await expect(
+    actions.getByRole("button", { name: /Työtilan .* toiminnot/ }),
+  ).toBeFocused();
   await page.getByRole("button", { name: "Uusi työtila" }).first().click();
   await expect(
     page.getByRole("dialog", { name: "Uusi työtila" }),
@@ -147,7 +149,8 @@ test("@lab long rail, workspace actions, drawer and four visual states", async (
     await page.getByRole("button", { name: "Sulje navigaatio" }).click();
     await page.setViewportSize({ width: 1280, height: 720 });
   }
-  await actions.getByRole("button").click();
-  await page.getByRole("menuitem", { name: "Uusi keskustelu" }).click();
+  await actions
+    .getByRole("button", { name: /Uusi keskustelu työtilassa/ })
+    .click();
   await expect(page).toHaveURL(/\/workspaces\/ws_.*\?conversation=pi:/);
 });

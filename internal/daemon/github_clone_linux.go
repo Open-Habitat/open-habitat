@@ -310,6 +310,13 @@ func cloneSource(cfg transport.Config, home string, allowCreate bool) (int, erro
 func cloneCommand(parent context.Context, program, cwd, fd string, args ...string) ([]byte, error) {
 	return cloneCommandWithTimeout(parent, 70*time.Second, program, cwd, fd, args...)
 }
+
+// Preserve an executed command's exit status without retaining native diagnostics.
+// Callers must not mistake cancellation or an output-cap failure for absence.
+type nativeCommandExit struct{ Code int }
+
+func (e *nativeCommandExit) Error() string { return "native failure" }
+
 func cloneCommandWithTimeout(parent context.Context, limit time.Duration, program, cwd, fd string, args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(parent, limit)
 	defer cancel()
@@ -354,6 +361,10 @@ func cloneCommandWithTimeout(parent context.Context, limit time.Duration, progra
 	close(done)
 	_ = syscall.Kill(-pid, syscall.SIGKILL)
 	if e != nil || out.overflow || ctx.Err() != nil {
+		var exit *exec.ExitError
+		if !out.overflow && ctx.Err() == nil && errors.As(e, &exit) && exit.ExitCode() >= 0 {
+			return nil, &nativeCommandExit{Code: exit.ExitCode()}
+		}
 		return nil, errors.New("native failure")
 	}
 	return out.Bytes(), nil

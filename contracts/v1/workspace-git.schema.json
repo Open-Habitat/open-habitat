@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/workspace-git.schema.json",
+  "title": "Read-only native workspace Git observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "workspace_id",
+    "branch",
+    "dirty_count",
+    "files",
+    "files_truncated",
+    "commits",
+    "commits_available"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^ws_[A-Za-z0-9_-]{8,64}$"
+    },
+    "branch": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "dirty_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "files_truncated": {
+      "type": "boolean"
+    },
+    "commits_available": {
+      "type": "boolean"
+    },
+    "upstream": {
+      "type": "string",
+      "maxLength": 256
+    },
+    "ahead": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "behind": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "files": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "path"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 2
+          },
+          "path": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "previous_path": {
+            "type": "string",
+            "maxLength": 4096
+          }
+        }
+      }
+    },
+    "commits": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "hash",
+          "subject",
+          "timestamp"
+        ],
+        "properties": {
+          "hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40,64}$"
+          },
+          "subject": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "timestamp": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8640000000000
+          },
+          "pushed": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "fetched_at": {
+      "description": "mtime of a safely opened native FETCH_HEAD; last recorded fetch, not current remote freshness.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 8640000000000
+    }
+  }
+}

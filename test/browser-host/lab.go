@@ -37,7 +37,7 @@ func seedLab(home string) error {
 			return e
 		}
 		if name != "muistiinpanot" {
-			if e := exec.Command("/usr/bin/git", "-C", dir, "init", "-q").Run(); e != nil {
+			if e := exec.Command("/usr/bin/git", "-C", dir, "init", "-q", "-b", "main").Run(); e != nil {
 				return e
 			}
 			if name != "tilastoharjoitus" {
@@ -61,6 +61,46 @@ func seedLab(home string) error {
 			}
 			if e := os.WriteFile(p, []byte("synteettinen sisältö\n"), 0600); e != nil {
 				return e
+			}
+		}
+		if name != "muistiinpanot" {
+			run := func(args ...string) error {
+				cmd := exec.Command("/usr/bin/git", append([]string{"-C", dir, "-c", "user.name=Synthetic lab", "-c", "user.email=synthetic@example.invalid"}, args...)...)
+				cmd.Env = []string{"PATH=/usr/bin:/bin", "HOME=" + home, "GIT_CONFIG_NOSYSTEM=1"}
+				return cmd.Run()
+			}
+			if e := run("add", "."); e != nil {
+				return e
+			}
+			if e := run("commit", "-qm", "Luo synteettinen projekti"); e != nil {
+				return e
+			}
+			if name == "aurinkokello" {
+				if e := run("update-ref", "refs/remotes/origin/main", "HEAD"); e != nil {
+					return e
+				}
+				if e := run("config", "branch.main.remote", "origin"); e != nil {
+					return e
+				}
+				if e := run("config", "branch.main.merge", "refs/heads/main"); e != nil {
+					return e
+				}
+				fetchPath := filepath.Join(dir, ".git", "FETCH_HEAD")
+				if e := os.WriteFile(fetchPath, []byte("synthetic recorded fetch\n"), 0600); e != nil {
+					return e
+				}
+				fetched := time.Now().Add(-6 * time.Minute)
+				if e := os.Chtimes(fetchPath, fetched, fetched); e != nil {
+					return e
+				}
+				if e := run("commit", "--allow-empty", "-qm", "Erota statusrivien jäsennin"); e != nil {
+					return e
+				}
+				for _, file := range []string{"main.go", "go.mod"} {
+					if e := os.WriteFile(filepath.Join(dir, file), []byte("synteettinen muutos\n"), 0600); e != nil {
+						return e
+					}
+				}
 			}
 		}
 	}
@@ -131,6 +171,13 @@ func seedLab(home string) error {
 			parent = id
 			write("assistant", []map[string]any{{"type": "text", "text": "Odotan vastausta."}}, map[string]any{"stopReason": "toolUse"})
 		}
+		recap := s.turns[len(s.turns)-1][1]
+		next := "Tarkista muutos ja kerro seuraava tehtävä."
+		if s.workspace == "aurinkokello" && s.age == 0 {
+			next = "Päätä, näytetäänkö aikavyöhyke myös JSON-tulosteessa."
+		}
+		n++
+		_ = enc.Encode(map[string]any{"type": "custom", "id": fmt.Sprintf("e%07d", n), "parentId": parent, "customType": "conversation-recap", "data": map[string]any{"recap": recap, "next": next, "through": parent, "generatedAt": time.Now().Add(-s.age - 5*time.Minute).UnixMilli(), "trigger": "automatic"}})
 		if e := f.Close(); e != nil {
 			return e
 		}
