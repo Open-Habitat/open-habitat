@@ -3,12 +3,11 @@ created: 2026-10-16
 updated: 2026-10-16
 type: bug
 reporter: jari
-status: fixed
+status: open
 priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
-closed: 2026-10-16
 ---
 
 # Yhdistä does nothing after a restart; uncertain creation stays blocked; header shows + + -
@@ -29,3 +28,11 @@ Expected: after the server is back (it was healthy by 10:23), "Yhdistä" reconne
 ### 2026-10-16T10:33:24Z · @jari
 
 Jari 13.28–13.32 local: the issuectl workspace page shows two + buttons, both disabled (issuectl-kaksi-plussaa.png). After archiving a conversation he landed on the open-habitat workspace page with 'Keskustelun luonnin tulos epävarma', both + disabled and a '-' (arkistoinnin-jalkeen-jumissa.png). He cannot create any new conversation: the uncertain-creation guard is stuck across pages and reloads, long after the server recovered. Releasing it after a recheck is the priority.
+
+### 2026-10-16T10:50:22Z · @jari
+
+Jari 13.49 local, after the fix was live (f04d0bd0, verified 10:45 UTC): on the home page (/workspaces), the + buttons of issuectl and open-habitat are still disabled, while taskfleet's + works (etusivu-plussat-harmaana.png). The stuck guards are not released on the home page rows.
+
+## Reopen Notes — 2026-10-16
+
+_Add rationale for reopening here._
