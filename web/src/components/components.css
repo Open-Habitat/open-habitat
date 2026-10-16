@@ -3255,9 +3255,14 @@ h1[tabindex="-1"]:focus {
   max-height: min(38vh, 280px);
   overflow: auto;
   box-sizing: border-box;
-  margin: var(--ah-s2) auto 0;
+  margin: var(--ah-s2) auto var(--ah-composer-pad-block);
   padding: var(--ah-s2) var(--ah-s3) var(--ah-s3);
   background: var(--ah-surface);
+}
+/* The card owns the gap to every footer state; do not add the editor's
+   usual top inset a second time when a recap precedes it. */
+.ah-conversation-frame > .ah-recap + .ah-composer {
+  padding-top: 0;
 }
 .ah-recap-heading {
   justify-content: flex-start;

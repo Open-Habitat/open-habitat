@@ -129,6 +129,34 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
     ).json();
     expect(native.recap.through).toBe(native.latest_message);
     expect(native.recap.trigger).toBe("automatic");
+    // Measure the visible surfaces, not the composer's padded wrapper. The
+    // same card-to-control rhythm must survive both footer types and widths.
+    const history = await page.context().newPage();
+    await history.goto(`/agents/${id}`);
+    await expect(history.locator(".ah-read-only-footer")).toBeVisible();
+    await expect(history.locator(".ah-recap")).toBeVisible();
+    let desktopGap: number | undefined;
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      await history.setViewportSize({ width, height: 900 });
+      const gaps: number[] = [];
+      for (const [view, surface] of [
+        [page, ".ah-composer-entry"],
+        [history, ".ah-read-only-footer"],
+      ] as const) {
+        const cardBox = await view.locator(".ah-recap").boundingBox();
+        const controlBox = await view.locator(surface).boundingBox();
+        if (!cardBox || !controlBox) throw new Error("Missing footer geometry");
+        const gap = controlBox.y - (cardBox.y + cardBox.height);
+        expect(gap).toBeGreaterThan(0);
+        gaps.push(gap);
+      }
+      expect(Math.abs(gaps[0] - gaps[1])).toBeLessThan(1);
+      desktopGap ??= gaps[0];
+      expect(Math.abs(gaps[0] - desktopGap)).toBeLessThan(1);
+    }
+    await history.close();
+    await page.setViewportSize({ width: 1440, height: 900 });
     const other = await page.context().newPage();
     await other.goto(page.url());
     await expect(
