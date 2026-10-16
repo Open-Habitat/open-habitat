@@ -5,7 +5,7 @@ type: improvement
 reporter: jari
 status: open
 priority: high
-lane: pi-runtime
+lane: performance
 collision: [internal/daemon]
 preparation: ready
 ---

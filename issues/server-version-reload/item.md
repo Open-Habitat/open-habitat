@@ -8,7 +8,7 @@ priority: high
 lane: web
 collision: [web/src/app/, web/src/components/, internal/gateway]
 preparation: ready
-lane_seq: 4
+lane_seq: 2
 ---
 
 # Show the server version in Palvelin settings; notice a new version and ask to reload
