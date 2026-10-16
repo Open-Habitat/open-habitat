@@ -20,3 +20,9 @@ Jari on the live test server, 2026-10-16 ~17:55 local, after changing the defaul
 ## Acceptance Criteria
 - [x] After a default change in settings, every + (home, sidebar, workspace page) reflects it without a reload; browser test.
 - [x] No `…` menu in the sidebar workspace row, and the workspace page shows the Ikonirivi on every route that renders it. Paired lab screenshots against `rounds/2026-10-16-tyotilasivu-2` direction 2.
+
+## Result
+
+[Reproduction, fix, route findings, paired synthetic screenshots and validation](result.md).
+The live tab's old-menu cause remains unverified; KOKEILTAVAA carries the explicit
+reload/version check and subsequent no-reload model-change journey.

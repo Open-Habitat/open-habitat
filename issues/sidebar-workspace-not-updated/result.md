@@ -168,8 +168,30 @@ native/process failures are rerun unchanged in isolation below; this gate is
 not reported as passed.
 
 Unchanged isolation reruns with `umask 077` all passed: native retitle **1/1**,
-full process-tray spec **3/3**, `go test -race -count=1 ./internal/daemon -run
+full process-tray spec **4/4**, `go test -race -count=1 ./internal/daemon -run
 '^TestCloseEmptyBrowserChild$'`, and the gateway equivalent for
 `TestConversationGatewaySessionBoundary`. No assertion, native security guard,
 request budget or timeout was relaxed. Landing uses focused evidence and these
 isolated reruns; there is no successful clean-gate receipt.
+
+### Final integration
+
+Rebased cleanly onto `origin/main` at `4522acdd`; incoming runtime code is
+unchanged (history regression tests and issue/handoff documentation only).
+Final fast web checks passed **145 unit + 133 component** tests. Issue doctor,
+Project View and whitespace validation passed. The merge dry run passed with a
+clean main worktree; no main-worktree edits were made.
+
+Full standalone lab on the integrated implementation: **40/42 passed**, including
+all three new default-change cases, all eight workspace-page cases, and all three
+six-second native-start cases. Two unrelated assertions failed: the existing
+foundation geometry case did not yet have a scrolling stream, and live-turn
+sampling observed two transient recovery frames. Both are rerun unchanged,
+serially, below. No fully green lab suite or gate receipt is claimed.
+
+Final unchanged serial residual rerun: **2/2 passed** (`lab-foundation.spec.ts`
+and `lab-live-turn.spec.ts`, one worker, 23 seconds including build). All observed
+remaining gate/lab failures therefore pass in isolation. No further product
+changes or assertion relaxations were made for them. The manual lab is stopped.
+Live behavior remains for Jari's KOKEILTAVAA check after the release watcher
+publishes main.
