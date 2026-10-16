@@ -366,13 +366,13 @@ func (p *piRPC) close() error {
 	_ = p.out.Close()
 	// A negative PID could name a recycled, unrelated group once Pi has
 	// been reaped. Signal only the identity-safe direct child handle.
-	if p.cmd.Process != nil {
+	if p.cmd != nil && p.cmd.Process != nil {
 		_ = p.cmd.Process.Signal(syscall.SIGTERM)
 	}
 	select {
 	case <-p.exited:
 	case <-time.After(4 * time.Second):
-		if p.cmd.Process != nil {
+		if p.cmd != nil && p.cmd.Process != nil {
 			_ = p.cmd.Process.Kill()
 		}
 		select {

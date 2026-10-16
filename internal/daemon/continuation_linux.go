@@ -114,7 +114,8 @@ func (c *ConversationController) continuationProof(id string) (*piOwnership, bro
 	}
 }
 
-// continueEnded is explicit. The daemon requires its native ownership lock and
+// continueEnded starts Pi again for an ended browser conversation, for example
+// to retry a failed start. The daemon requires its native ownership lock and
 // browser-origin marker; a terminal history alone cannot grant control.
 func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Request, id string) {
 	if r.ContentLength != 0 || len(r.TransferEncoding) != 0 {
@@ -126,20 +127,42 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
-	defer releasePermit()
-	owner, origin, ws, cwd, path, old, eligibility := c.continuationProof(id)
-	if eligibility != "eligible" {
-		switch eligibility {
+	c.mu.Lock()
+	old := c.sessions[id]
+	c.mu.Unlock()
+	s, problem := c.resume(id, old)
+	releasePermit()
+	if problem != "" {
+		switch problem {
 		case "writer_present":
 			snapshotError(w, 409, "writer_conflict")
 		case "read_only_history":
 			snapshotError(w, 409, "read_only_history")
 		case "source_unavailable":
 			snapshotError(w, 503, "native_source_unavailable")
+		case "capacity_exceeded":
+			snapshotError(w, 429, "capacity_exceeded")
 		default:
 			snapshotError(w, 409, "control_uncertain")
 		}
 		return
+	}
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": "starting", "prior_outcome": "uncertain"})
+}
+
+// resume proves that the browser may own this native session again and starts
+// a Pi child on it. Caller holds the proof permit. The new handle replaces old
+// and inherits its spent IDs, receipts and held messages, so nothing sent
+// before the start is lost or can be sent twice. It is ready once Pi answers.
+func (c *ConversationController) resume(id string, old *conversation) (*conversation, string) {
+	owner, origin, ws, cwd, path, proved, eligibility := c.continuationProof(id)
+	if eligibility != "eligible" {
+		return nil, eligibility
+	}
+	if proved != old {
+		_ = ws.Close()
+		_ = owner.release()
+		return nil, "unproven"
 	}
 	defer func() {
 		if owner != nil {
@@ -152,8 +175,7 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 	// entries, not the entire continued session into the shared replay ring.
 	published, err := existingHistoryKeys(path, c.cfg.UID, id, cwd)
 	if err != nil {
-		snapshotError(w, 409, "control_uncertain")
-		return
+		return nil, "unproven"
 	}
 	c.mu.Lock()
 	// Another create or continuation may have run while history was read.
@@ -168,34 +190,31 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 	}
 	if c.closed || c.sessions[id] != old {
 		c.mu.Unlock()
-		snapshotError(w, 409, "control_uncertain")
-		return
+		return nil, "unproven"
 	}
 	if active >= 4 || (old == nil && len(c.sessions) >= 128) {
 		c.mu.Unlock()
-		snapshotError(w, 429, "capacity_exceeded")
-		return
+		return nil, "capacity_exceeded"
 	}
 	prefix, err := c.piArgs()
 	if err != nil {
 		c.mu.Unlock()
-		snapshotError(w, 503, "native_source_unavailable")
-		return
+		return nil, "source_unavailable"
 	}
 	p, err := launchPiRPCSession(c.runtime.Node, prefix, c.home, cwd, []string{agentPath(c.home), "USER=" + c.cfg.Username}, owner, ws, path)
 	if err != nil {
 		c.mu.Unlock()
-		snapshotError(w, 503, "native_source_unavailable")
-		return
+		return nil, "source_unavailable"
 	}
 	// Continuation is not a new conversation: seed a bounded native excerpt for
 	// explicit regeneration, but never restart the first/third auto schedule.
-	s := &conversation{id: id, workspace: origin.Workspace, cwd: cwd, rpc: p, owner: owner, state: "idle", ack: "uncertain", events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool), publishedHistory: published, historyPath: path, acceptedMessages: 4, firstText: firstPrompt(readNativeHeader(path, c.cfg.UID), c.cfg.UID)}
-
+	s := &conversation{id: id, workspace: origin.Workspace, cwd: cwd, rpc: p, owner: owner, state: "starting", ack: "uncertain", events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool), publishedHistory: published, historyPath: path, acceptedMessages: 4, firstText: firstPrompt(readNativeHeader(path, c.cfg.UID), c.cfg.UID)}
 	if old != nil {
 		s.commands = old.commands
 		s.receipts = old.receipts
 		s.command = old.command
+		s.held, s.heldChoice, s.lazy = old.held, old.heldChoice, old.lazy
+		old.held, old.heldChoice = nil, nil
 	}
 	c.sessions[id] = s
 	if c.journal != nil {
@@ -207,7 +226,8 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 	go c.watch(s)
 	go c.drain(s)
 	go c.watchProcesses(s)
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": origin.Workspace, "state": "idle", "prior_outcome": "uncertain"})
+	go c.awaitReady(s)
+	return s, ""
 }
 
 // A continuation has already fenced and reconciled this native file. Seed

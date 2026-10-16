@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|regenerate_title|history_title|recap|question|abort|status|eligibility|receipt|stop|continue|close))?$`)
+var conversationPath = regexp.MustCompile(`^/api/v1/conversations(?:/([0-9a-fA-F-]{36})/(send|steer|follow_up|clear_queue|regenerate_title|history_title|recap|question|abort|status|eligibility|receipt|stop|continue|cancel_held|close))?$`)
 var conversationStreamCursor = regexp.MustCompile(`^ev1:[0-9a-fA-F-]{36}:[0-9]{1,20}$`)
 var conversationUUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 

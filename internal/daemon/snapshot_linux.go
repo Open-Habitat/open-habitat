@@ -240,6 +240,13 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 						case "not_observed":
 							agent["process"] = "not_observed"
 						}
+						// A browser-started conversation resumes when the person
+						// sends to it. This is an offer, not a reservation: the
+						// start repeats the full ownership proof.
+						if origin, err := peekBrowserOrigin(nativeHome, session.id); err == nil && origin.Workspace == id && origin.Cwd == session.cwd && agent["process"] != "terminal_observed_live" {
+							agent["control"] = "transfer_possible"
+							agent["capabilities"] = map[string]any{"agent_resume": map[string]string{"state": "supported", "reason_code": "browser_origin"}}
+						}
 					}
 					agents = append(agents, agent)
 					break

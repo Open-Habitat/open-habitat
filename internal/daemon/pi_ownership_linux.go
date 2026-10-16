@@ -74,7 +74,12 @@ func acquirePiOwnership(runtime, id string) (*piOwnership, error) {
 	return &piOwnership{file: f, id: id}, nil
 }
 
-func (o *piOwnership) release() error { return o.file.Close() }
+func (o *piOwnership) release() error {
+	if o == nil {
+		return nil // a handle that never launched a child holds no lock
+	}
+	return o.file.Close()
+}
 
 // reconciledNativeHistory re-reads the native source, without caching it.
 // A stable read is necessary but NOT sufficient for restart resume: the

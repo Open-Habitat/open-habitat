@@ -208,8 +208,9 @@ func TestConversationSpontaneousExitWithInheritedStdout(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("reader blocked by inherited stdout")
 	}
-	if s.state != "uncertain" {
-		t.Fatal("spontaneous exit treated as settled")
+	// A reaped child leaves no control: stopped, never idle or settled.
+	if s.state != "stopped" || !s.dead {
+		t.Fatalf("spontaneous exit treated as %q", s.state)
 	}
 }
 

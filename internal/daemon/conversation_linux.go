@@ -101,6 +101,19 @@ type conversation struct {
 	queuedQuestions                                         []pendingQuestion // bounded native requests waiting behind the visible one
 	spentQuestions                                          map[string]bool   // native IDs already answered or cancelled
 	publishedHistory                                        map[string]bool   // bounded to this native session; JSONL is authoritative
+	// Messages sent before Pi is ready. The daemon holds them in order, keyed by
+	// the browser's command ID, and gives Pi their joined text as one prompt.
+	// They live only in this daemon incarnation, like receipts.
+	held         []heldMessage
+	heldChoice   *piStartupChoice // first-message intent travelling with the held prompt
+	startProblem string           // fixed code of the last failed start; held messages are kept
+	created      bool             // started fresh in this incarnation, so no native file is required yet
+	lazy         bool             // Pi was started by a held send; it is closed again if nothing is left to deliver
+	launchChoice *piStartupChoice // explicit model flags of a created conversation, reused if its first start fails
+}
+
+type heldMessage struct {
+	id, text string
 }
 
 type pendingQuestion struct {
@@ -324,6 +337,8 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		c.answerQuestion(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "abort":
 		c.abort(w, r, parts[0])
+	case r.Method == http.MethodPost && parts[1] == "cancel_held":
+		c.cancelHeld(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "continue":
 		c.continueEnded(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "stop":
@@ -386,10 +401,9 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// The socket server's default write deadline is five seconds. Native catalog
-	// validation can take twelve seconds and the child's initial get_state up to
-	// fifteen; retain the create reply instead of losing an already-created
-	// session to that shorter transport deadline. Stay below the gateway's
-	// sixty-second finite-request ceiling.
+	// validation can take twelve seconds; retain the create reply instead of
+	// losing an already-created session to that shorter transport deadline.
+	// Stay below the gateway's sixty-second finite-request ceiling.
 	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(45 * time.Second))
 	// Validate against this person's native catalog without changing their default.
 	if body.Model != "" && !c.fixture {
@@ -474,43 +488,27 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
-	s := &conversation{id: id, workspace: body.WorkspaceID, cwd: cwd, rpc: p, owner: owner, state: "pending", events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool)}
+	s := &conversation{id: id, workspace: body.WorkspaceID, cwd: cwd, rpc: p, owner: owner, state: "starting", created: true, events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool)}
 	if body.Model != "" {
 		s.startupChoice = &piStartupChoice{Provider: body.Provider, Model: body.Model, Thinking: body.Thinking}
+		s.launchChoice = s.startupChoice
 	}
 	c.sessions[id] = s
-	// Publish creation once the child's initial native settings are observed.
 	releaseOwner = false
-	c.mu.Unlock()
-	// The daemon retains the advisory lock until the direct child is reaped;
-	// stopped sessions stay as uncertain tombstones for lost-request lookup.
-	go c.watch(s)
-	go c.drain(s)
-	go c.watchProcesses(s)
-	// Pi may choose a model even when no explicit startup flag was supplied.
-	// Observe this child before admitting its first send; a later global default
-	// is not evidence of which model this already-running session uses.
-	initial, initialErr := p.requestQueue("get_state", "", 15*time.Second)
-	c.mu.Lock()
-	if initialErr == nil && initial.Accepted && !s.dead && s.state == "pending" {
-		if s.runActive {
-			s.state = "accepted"
-		} else {
-			s.state = "idle"
-		}
-		if initial.Choice != nil {
-			s.startupChoice = initial.Choice
-		}
-	} else if s.state == "pending" {
-		s.state = "uncertain"
-	}
-	state, choice := s.state, s.startupChoice
 	if c.journal != nil {
 		c.journal.appendInvalidation("pi:" + id)
 	}
+	choice := s.startupChoice
 	c.mu.Unlock()
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": body.WorkspaceID, "state": state, "startup_choice": choice})
-
+	// The daemon retains the advisory lock until the direct child is reaped;
+	// stopped sessions stay as tombstones for lost-request lookup.
+	go c.watch(s)
+	go c.drain(s)
+	go c.watchProcesses(s)
+	// Reply as soon as the child exists. Pi's own start can take many seconds;
+	// messages sent meanwhile are held and delivered once it is ready.
+	go c.awaitReady(s)
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": body.WorkspaceID, "state": "starting", "startup_choice": choice})
 }
 
 func (c *ConversationController) watch(s *conversation) {
@@ -522,7 +520,20 @@ func (c *ConversationController) watch(s *conversation) {
 	if s.recapTimer != nil {
 		s.recapTimer.Stop()
 	}
-	s.state = "uncertain"
+	// No child means no control, not uncertainty: the last command's own
+	// receipt keeps any uncertainty. A child that died before it was ready is a
+	// failed start, and the messages it was to take stay held for a retry.
+	switch s.state {
+	case "starting":
+		s.state = "start_failed"
+		if s.startProblem == "" {
+			s.startProblem = "pi_start_failed"
+		}
+		c.heldFailed(s)
+	case "start_failed":
+	default:
+		s.state = "stopped"
+	}
 	if s.ack == "pending" {
 		s.ack = "uncertain"
 	}
@@ -545,7 +556,14 @@ func (c *ConversationController) receipt(s *conversation, id, outcome string) {
 	}
 	s.receipts[id] = outcome
 	if c.journal != nil {
-		c.journal.appendEvent("command.changed", "pi:"+s.id, map[string]string{"client_command_id": id, "acceptance": outcome, "execution": "unknown"})
+		payload := map[string]string{"client_command_id": id, "acceptance": outcome, "execution": "unknown"}
+		switch outcome {
+		case "held": // the daemon holds it; Pi has not received it
+			payload["acceptance"], payload["execution"] = "pending", "not_started"
+		case "cancelled": // removed before Pi ran; its text went back to the person
+			payload["acceptance"], payload["execution"], payload["error_code"] = "rejected", "not_started", "cancelled_before_start"
+		}
+		c.journal.appendEvent("command.changed", "pi:"+s.id, payload)
 	}
 }
 
@@ -577,17 +595,50 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 			return
 		}
 	}
+	// A conversation without a handle in this incarnation can still be resumed
+	// on send if the browser started it. Read that proof before taking the lock.
+	var origin *browserOrigin
+	if kind == "send" {
+		c.mu.Lock()
+		missing := c.sessions[id] == nil
+		c.mu.Unlock()
+		if missing {
+			if o, err := c.resumableOrigin(id); err == nil {
+				origin = &o
+			}
+		}
+	}
 	c.mu.Lock()
 	s := c.sessions[id]
+	if s == nil && origin != nil && !c.closed && len(c.sessions) < 128 {
+		s = &conversation{id: id, workspace: origin.Workspace, cwd: origin.Cwd, rpc: stoppedRPC(), state: "stopped", dead: true, events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool)}
+		c.sessions[id] = s
+	}
 	if s == nil {
 		c.mu.Unlock()
-		snapshotError(w, 404, "resource_not_found")
+		if kind == "send" {
+			// Definitely not held: terminal history and unknown IDs are not controllable.
+			snapshotError(w, 409, "read_only_history")
+		} else {
+			snapshotError(w, 404, "resource_not_found")
+		}
 		return
 	}
 	archiveState := "active"
 	if c.home != "" {
 		annotations, annotationErr := loadVisibility(c.home)
 		archiveState = archiveFact(annotations, annotationErr, "pi:"+id)
+	}
+	// A plain send to a conversation whose Pi is not running (yet) is held by
+	// the daemon and starts Pi if nothing is starting it already.
+	if kind == "send" && notRunning(s) {
+		if archiveState != "active" {
+			c.mu.Unlock()
+			snapshotError(w, 409, "control_uncertain")
+			return
+		}
+		c.holdLocked(w, s, body.Message, body.CommandID, body.FirstChoice)
+		return
 	}
 	if archiveState != "active" || c.closed || s.aborting || (kind == "send" && s.state != "idle" && s.state != "rejected") || (kind != "send" && s.state != "accepted") || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= maxConversationCommands {
 		c.mu.Unlock()
@@ -601,9 +652,19 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 	}
 	oldState := s.state
 	wasSettled := s.settled
+	s.commands[body.CommandID] = true
+	c.beginPrompt(s, kind, []string{body.CommandID})
+	c.mu.Unlock()
+	// A disconnect must not cancel the native request. Never retry ambiguous writes.
+	go c.finishPrompt(s, kind, []string{body.CommandID}, body.Message, body.FirstChoice, oldState, wasSettled)
+	historyJSON(w, map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": "pending"})
+}
+
+// beginPrompt marks a native message write as pending. Caller holds c.mu and
+// has spent the command IDs. A send starts a new turn; steer/follow_up do not.
+func (c *ConversationController) beginPrompt(s *conversation, kind string, ids []string) {
 	s.state = "pending"
 	s.ack = "pending"
-	s.commands[body.CommandID] = true
 	if kind == "send" {
 		s.turnGeneration++
 		s.settled = false
@@ -612,78 +673,80 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 		s.question = nil
 		s.questionID = ""
 		s.queuedQuestions = nil
-		if s.receipts == nil {
-			s.receipts = make(map[string]string)
+		for _, id := range ids {
+			c.receipt(s, id, "pending")
 		}
-		c.receipt(s, body.CommandID, "pending")
 	}
-	s.command = body.CommandID
+	s.command = ids[len(ids)-1]
 	c.pauseRecap(s)
 	if c.journal != nil {
-		c.journal.appendInvalidation("pi:" + id)
+		c.journal.appendInvalidation("pi:" + s.id)
 	}
-	c.mu.Unlock()
-	// A disconnect must not cancel the native request. Never retry ambiguous writes.
-	go func() {
-		rpcKind := kind
-		if rpcKind == "send" {
-			rpcKind = "prompt"
+}
+
+// finishPrompt performs one correlated native write and records its receipt
+// for every command ID it carries. A held prompt carries several IDs: their
+// texts reached Pi together, so they share one outcome.
+func (c *ConversationController) finishPrompt(s *conversation, kind string, ids []string, message string, choice *piStartupChoice, oldState string, wasSettled bool) {
+	rpcKind := kind
+	if rpcKind == "send" {
+		rpcKind = "prompt"
+	}
+	var accepted bool
+	var err error
+	if choice != nil {
+		err = c.applyFirstChoice(s, choice)
+	}
+	if err == nil {
+		accepted, err = s.rpc.request(rpcKind, message, 15*time.Second)
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if s.state != "pending" {
+		return
+	}
+	switch {
+	case err != nil:
+		s.state = "uncertain"
+		s.ack = "uncertain"
+	case !accepted:
+		s.state = "rejected"
+		if kind == "send" && wasSettled {
+			s.settled = true // No new native message reached Pi.
+			c.scheduleAutomaticRecap(s)
 		}
-		var accepted bool
-		var err error
-		if body.FirstChoice != nil {
-			err = c.applyFirstChoice(s, body.FirstChoice)
-		}
-		if err == nil {
-			accepted, err = s.rpc.request(rpcKind, body.Message, 15*time.Second)
-		}
-		c.mu.Lock()
-		defer c.mu.Unlock()
-		if s.state != "pending" {
-			return
-		}
-		switch {
-		case err != nil:
-			s.state = "uncertain"
-			s.ack = "uncertain"
-		case !accepted:
-			s.state = "rejected"
-			if kind == "send" && wasSettled {
-				s.settled = true // No new native message reached Pi.
-				c.scheduleAutomaticRecap(s)
-			}
-			if kind != "send" {
-				s.state = oldState
-				if s.settled {
-					s.state = "idle"
-				}
-			}
-			s.ack = "rejected"
-		default:
-			s.state = "accepted"
-			s.ack = "accepted"
+		if kind != "send" {
+			s.state = oldState
 			if s.settled {
 				s.state = "idle"
 			}
 		}
-		if kind == "send" {
-			c.receipt(s, body.CommandID, s.ack)
-			if s.ack == "accepted" {
-				s.acceptedMessages++
-				if s.acceptedMessages == 1 {
-					s.firstText = prefixBytes(body.Message, 2048)
-				}
-				if s.acceptedMessages == 3 {
-					s.thirdText = prefixBytes(body.Message, 2048)
-				}
-				s.latestText = prefixBytes(body.Message, 2048)
-				c.startAutomaticTitle(s)
-			}
-		} else if c.journal != nil {
-			c.journal.appendInvalidation("pi:" + id)
+		s.ack = "rejected"
+	default:
+		s.state = "accepted"
+		s.ack = "accepted"
+		if s.settled {
+			s.state = "idle"
 		}
-	}()
-	historyJSON(w, map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": "pending"})
+	}
+	if kind == "send" {
+		for _, id := range ids {
+			c.receipt(s, id, s.ack)
+		}
+		if s.ack == "accepted" {
+			s.acceptedMessages++
+			if s.acceptedMessages == 1 {
+				s.firstText = prefixBytes(message, 2048)
+			}
+			if s.acceptedMessages == 3 {
+				s.thirdText = prefixBytes(message, 2048)
+			}
+			s.latestText = prefixBytes(message, 2048)
+			c.startAutomaticTitle(s)
+		}
+	} else if c.journal != nil {
+		c.journal.appendInvalidation("pi:" + s.id)
+	}
 }
 func (c *ConversationController) regenerateTitle(w http.ResponseWriter, r *http.Request, id string) {
 	if r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
@@ -748,12 +811,19 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
-	s := c.lookup(w, id)
+	c.mu.Lock()
+	s := c.sessions[id]
+	c.mu.Unlock()
 	if s == nil {
+		// No handle in this incarnation. A browser-started conversation is still
+		// readable and resumable on send; opening it never starts Pi.
+		c.stoppedStatus(w, id)
 		return
 	}
 	c.mu.Lock()
 	runActive := s.runActive
+	held := heldView(s.held)
+	startProblem := s.startProblem
 	state, command, ack, cursor, lost := s.state, s.command, s.ack, s.cursor, s.lost
 	settlement := s.settlement
 	question := s.question
@@ -850,7 +920,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 		continuation = "unproven"
 	}
 	c.mu.Unlock()
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "run_active": runActive, "startup_choice": s.startupChoice, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "auth_error": s.authError, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}})
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "run_active": runActive, "startup_choice": s.startupChoice, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "auth_error": s.authError, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}, "held": held, "start_problem": startProblem})
 }
 
 // answerQuestion spends the native request ID before touching Pi. This uncorrelated
@@ -1078,7 +1148,7 @@ func (c *ConversationController) stop(w http.ResponseWriter, r *http.Request, id
 		go func() {
 			_ = s.rpc.close()
 			c.mu.Lock()
-			s.state = "uncertain"
+			s.state = stoppedState(s)
 			if c.journal != nil {
 				c.journal.appendInvalidation("pi:" + id)
 			}
