@@ -17,3 +17,12 @@ Riff on round `design-system/prototypes/rounds/2026-10-16-taustatyo/` direction 
 
 ## Acceptance Criteria
 - [ ] Round verified with check.mjs; result.md per the prototype worker rules with questions for Jari.
+
+## Decisions
+
+Jari, 2026-10-16 ~20:30, round `2026-10-16-taustatyo-riff`:
+1. **Merkit**: two small pills (spinoffs, processes) with icon and count; a pill opens the floating panel with kind tabs.
+2. When the agent waits, the bell in the strip is enough; the top bar already says Odottaa spinoffia.
+3. The "needs me" mark on a failed spinoff stays until its branch is gone: the branch has to be removed one way or another (merged or discarded), so the mark is a standing reminder, not cleared by looking.
+4. Do not say "Prosessit jatkavat, vaikka suljet selaimen" anywhere; it need not be said aloud.
+5. A process row is not an expanding shelf (collapse/accordion). The row shows the name followed by a short piece of the command it runs; clicking the row opens the process in its own modal window where its output and controls are viewed. "Se on silleen selkeämpi."
