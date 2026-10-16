@@ -54,6 +54,9 @@ func nativeBlockChunk(raw json.RawMessage, index, offset, limit int) (map[string
 	var content json.RawMessage
 	switch entry.Type {
 	case "message":
+		if entry.Message.Role == "system" {
+			return nil, false
+		}
 		if entry.Message.Role == "bashExecution" {
 			if index == 0 {
 				return textChunk(entry.Message.Command, offset, limit)

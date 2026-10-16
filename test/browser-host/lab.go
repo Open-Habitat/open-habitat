@@ -217,6 +217,10 @@ func seedOpeningHistory(home string) error {
 		parent = row["id"]
 		return enc.Encode(row)
 	}
+	// Pi 1.3.0 saves its structured system prompt before the first user turn.
+	if err := write(message("system", "", map[string]any{"sections": map[string]any{"preamble": "Synthetic internal instruction"}, "toolsAdded": []any{map[string]any{"name": "synthetic"}}})); err != nil {
+		return err
+	}
 	for i := 0; i < 6; i++ {
 		if err := write(message("user", fmt.Sprintf("Avaamisen tarkistus %d", i), nil)); err != nil {
 			return err

@@ -44,6 +44,28 @@ func TestHiddenCustomMessageSkippedByNativeReader(t *testing.T) {
 	}
 }
 
+// Pi 1.3.0 agent-session.js creates this internal prompt message; the
+// interactive renderer explicitly skips role system. Sections/tools are not
+// extension content, even if a future producer also supplies nonempty content.
+func TestSystemPromptIsNotAnExtensionCard(t *testing.T) {
+	for _, content := range []string{`""`, `"Internal prompt"`} {
+		path := filepath.Join(t.TempDir(), "session.jsonl")
+		raw := `{"type":"message","id":"system","parentId":null,"message":{"role":"system","content":` + content + `,"sections":{"preamble":"private synthetic instruction"},"toolsAdded":[{"name":"synthetic","parameters":{"type":"object"}}],"timestamp":1792143755045}}`
+		data := `{"type":"session","version":3,"id":"11111111-1111-4111-8111-111111111111","cwd":"/synthetic"}` + "\n" + raw + "\n" + `{"type":"message","id":"user","parentId":"system","message":{"role":"user","content":"Hello"}}` + "\n"
+		if err := os.WriteFile(path, []byte(data), 0600); err != nil {
+			t.Fatal(err)
+		}
+		for _, s := range []nativeSession{readNative(path, -1), readNativeWindow(path, -1, "", 25)} {
+			if s.state != "readable" || len(s.entries) != 1 || s.entries[0].Key != "user" {
+				t.Fatalf("system prompt projected as conversation: %+v", s)
+			}
+		}
+		if _, ok := nativeBlockChunk(json.RawMessage(raw), 0, 0, 100); ok {
+			t.Fatal("system prompt selectable by block read")
+		}
+	}
+}
+
 func TestCustomMessageEmptyContentIsNotAVisibleCard(t *testing.T) {
 	for _, content := range []string{`""`, `"  \n "`, `[]`, `[{"type":"text","text":""}]`, `null`} {
 		raw := json.RawMessage(`{"type":"custom_message","customType":"ad-process:notification","display":true,"content":` + content + `,"details":{"summary":"private, not content"}}`)

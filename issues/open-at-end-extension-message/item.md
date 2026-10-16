@@ -3,11 +3,12 @@ created: 2026-10-16
 updated: 2026-10-16
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
+closed: 2026-10-16
 ---
 
 # Opening from home lands mid-conversation; empty 'Laajennuksen viesti' card

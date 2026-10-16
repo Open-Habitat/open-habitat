@@ -92,6 +92,9 @@ test("@lab native extension messages keep process summaries and omit empty cards
   await expect(page.locator(".ah-feed")).not.toContainText(
     "not for the browser",
   );
+  await expect(page.locator(".ah-feed")).not.toContainText(
+    "Synthetic internal instruction",
+  );
 });
 
 test("@lab a controlled conversation reopens at latest instead of its old reading anchor", async ({

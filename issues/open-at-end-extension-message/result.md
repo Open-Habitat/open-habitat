@@ -53,3 +53,34 @@ Rebased onto main's settings and thinking-title changes. The only conflict was s
 ## Live check
 
 Open a long conversation via the home card, sidebar, and workspace page, including after leaving it scrolled upward. It should open at its latest content each time. Check a fresh conversation for empty extension cards; if a process notification appears, its summary should be readable and its original content expandable. No real provider response or live-server behavior was exercised by this worker.
+
+
+## Reopened-card investigation (2026-10-16)
+
+**Cause: Pi core 1.3.0, not an extension.** The screenshot's extension label was our fallback for an unrecognised message role. Through Fleetrepo's pinned guest SSH path, running the bounded inspector as the mapped user, the newest native session contained **zero custom-message entries** (also checked native `custom` and `message.role:custom`). No conversation text or system prompt from that session was output or copied here. The extension hypothesis was therefore not supported.
+
+Reproduced locally with the cached pinned Pi 1.3.0 plus pi-claude-bridge 0.9.3 in a disposable home under `/var/tmp/oh-extension-repro`, without personal credentials. A synthetic first prompt produces this native shape before the user message:
+
+```json
+{"type":"message","message":{"role":"system","content":"","sections":{"preamble":"synthetic internal instruction"},"toolsAdded":[{"name":"synthetic","parameters":{"type":"object"}}],"timestamp":1792143755045}}
+```
+
+The source confirms attribution: Pi's `core/agent-session.js` `_preparePromptAndToolLoadout` creates `{role:"system",content:"",sections,timestamp}`, and its `message_end` handler persists it with `appendMessage`. Pi's interactive renderer explicitly does nothing for `case "system"`. Bridge 0.9.3 has no custom-message emitter; recap writes separate `custom` recap records; processes writes real notification messages only for process events. No extension emitted this empty startup card. The old projection treated role `system` as `unknown` with one empty text block; the browser labelled that **Laajennuksen viesti** and drew the empty grey plain-text box. The synthetic lab reproduces the screenshot's distinguishing empty box.
+
+**Rule:** omit all native system messages, regardless of whether `content` is empty or nonempty, matching Pi's own rendering. Their structured sections/tool declarations are internal prompt state, not reader-facing notifications. Explicit block reads also refuse them. Existing custom-message rules remain unchanged: `display:false` and empty content are hidden; process notifications retain their readable summary and folded public content; recap retains its dedicated presentation; extension details are never projected. No new storage, contract, dependency or authority is introduced.
+
+The regression test uses the actual core envelope with invented sections and tools, proving both full/windowed history readers skip it without losing the following user turn and explicit block reads refuse it. It failed on the old implementation with an `unknown` empty text block. The existing lab notification test now includes this startup entry and still requires zero extension cards while the meaningful process notification remains usable.
+
+`before-system-prompt.{png,html}` and `after-system-prompt.{png,html}` are paired synthetic loopback-lab screenshots, `OH_PORT_BASE=28300`. They contain invented conversation text only. The earlier investigation above is retained as historical evidence, not the attribution of the reopened screenshot.
+
+### Reopened-fix validation and self-review
+
+With `TMPDIR=/var/tmp/oh-extension-build`, `OH_PORT_BASE=28300`, `OH_BROWSER_WORKERS=2`, `PLAYWRIGHT_BROWSERS_PATH=/home/maintainer/.cache/ms-playwright`:
+
+- `go test ./internal/daemon`: passed, including the real-shaped system-entry regression, both history readers and block-read refusal.
+- `scripts/test-focused.sh --area web`: passed (format/lint/typecheck, unit and component suites).
+- `scripts/test-focused.sh --area browser --spec lab-open-at-end.spec.ts`: 3/3 passed, including startup-system omission alongside the readable process notification and all opening paths.
+- `scripts/test-focused.sh --area browser --spec native-history.spec.ts`: 10/10 passed, including accessibility, narrow view, older-page anchors and continuation.
+- `scripts/test-focused.sh --area contracts`: passed. `issuectl doctor --json`, project-view validator and `git diff --check`: passed.
+
+Focused self-review traced the projection through full/windowed readers, journal ingestion and explicit block reads. The fix is role-specific rather than suppressing all unknown entries or all extension messages: unfamiliar native content remains distinguishable, legitimate process notifications remain readable, and prompt sections/tool metadata cannot become browser content. Compared the paired lab screenshots: before has precisely the empty grey extension card; after starts with the first user turn. No real provider success or live signed-in browser check is claimed.
