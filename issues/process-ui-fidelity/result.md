@@ -180,3 +180,15 @@ The screenshot scripts wait for finite theme/selection transitions before
 capturing, and each PNG retains its inert HTML twin. Source implementation
 `57c4fb43` rebased to `37443557` without a source conflict; later changes in
 this branch are test determinism and this validation record only.
+
+### Landing validation after parallel integration
+
+Rebased cleanly onto local `main` at `222099c7`, retaining the sibling live-turn
+and settings changes without modifying their files. On rebased `87dcdfd0`,
+`scripts/test-web-fast.sh` passed and the focused production-bundle process spec
+passed **4/4 (15.0 s)**, including Axe and the desktop/phone light/dark layout
+assertions. `git diff --check` and the project-view validator passed; issue
+metadata is valid and the issue is closed as fixed. The final commit after this
+check changes this validation record only. Full gate status remains the
+explicitly documented non-green result above; live rendering remains pending
+on the next deployed main update, with checks in `KOKEILTAVAA.md`.
