@@ -43,3 +43,13 @@ func TestHiddenCustomMessageSkippedByNativeReader(t *testing.T) {
 		}
 	}
 }
+
+func TestCustomMessageEmptyContentIsNotAVisibleCard(t *testing.T) {
+	for _, content := range []string{`""`, `"  \n "`, `[]`, `[{"type":"text","text":""}]`, `null`} {
+		raw := json.RawMessage(`{"type":"custom_message","customType":"ad-process:notification","display":true,"content":` + content + `,"details":{"summary":"private, not content"}}`)
+		result := nativeBlocks(nativeEntry{ID: "empty", Type: "custom_message", Raw: raw})
+		if result.Kind != "" {
+			t.Fatalf("empty extension became visible: %+v", result)
+		}
+	}
+}

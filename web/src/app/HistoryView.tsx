@@ -90,7 +90,9 @@ function ReadableBlock({
   revision,
   onLogin,
   toolName,
+  plainText = false,
 }: {
+  plainText?: boolean;
   block: HistoryBlock;
   toolName?: string;
   index: number;
@@ -225,7 +227,7 @@ function ReadableBlock({
               ))}
             </fieldset>
           ) : null}
-          {toolName ? (
+          {toolName || plainText ? (
             <pre ref={preview}>{text}</pre>
           ) : (
             <Markdown text={text} />
@@ -554,7 +556,9 @@ function OrderedBlocks({
   liveTools,
   toolName,
   toolExpansion,
+  plainText = false,
 }: {
+  plainText?: boolean;
   blocks: HistoryBlock[];
   toolExpansion?: (callId: string) => {
     get: () => boolean | undefined;
@@ -653,6 +657,7 @@ function OrderedBlocks({
             ) : (
               <>
                 <ReadableBlock
+                  plainText={plainText}
                   block={block}
                   index={index}
                   entryKey={entryKey}
@@ -683,6 +688,7 @@ function OrderedBlocks({
           </PiToolUse>
         ) : (
           <ReadableBlock
+            plainText={plainText}
             // biome-ignore lint/suspicious/noArrayIndexKey: Native block index is stable identity within an entry.
             key={`${entryKey}:${revision}:${index}`}
             block={block}
@@ -696,6 +702,24 @@ function OrderedBlocks({
         ),
       )}
     </div>
+  );
+}
+
+// pi-processes sends XML-shaped plain text, not HTML/Markdown. Select only
+// its human summary for the heading; keep the full public content inspectable.
+function processSummary(entry: HistoryEntry): string | undefined {
+  if (entry.entry_type || entry.blocks?.length !== 1) return;
+  const text = entry.blocks[0].text;
+  if (
+    !text?.startsWith("<process_event ") ||
+    !text.trimEnd().endsWith("</process_event>")
+  )
+    return;
+  const summary = /<summary>([\s\S]*?)<\/summary>/.exec(text)?.[1];
+  return summary?.replace(
+    /&(lt|gt|quot|apos|amp);/g,
+    (_, entity: string) =>
+      ({ lt: "<", gt: ">", quot: '"', apos: "'", amp: "&" })[entity] ?? "",
   );
 }
 
@@ -725,6 +749,7 @@ export function Entry({
     entry.kind === "assistant" || entry.kind === "unknown"
       ? unfamiliar(content.text)
       : null;
+  const notificationSummary = processSummary(entry);
   return (
     <>
       {entry.kind === "user" ? (
@@ -851,16 +876,36 @@ export function Entry({
                   label: "Merkintä",
                 } as Record<string, string>
               )[entry.entry_type ?? ""] ??
-                (entry.entry_type ? "Pi-merkintä" : "Laajennuksen viesti")}
+                (entry.entry_type
+                  ? "Pi-merkintä"
+                  : notificationSummary
+                    ? "Prosessin ilmoitus"
+                    : "Laajennuksen viesti")}
             </span>
+            {notificationSummary ? <p>{notificationSummary}</p> : null}
             {entry.blocks?.length ? (
-              <OrderedBlocks
-                blocks={entry.blocks}
-                entryKey={entry.entry_key}
-                agentId={agentId}
-                revision={entry.native_revision ?? revision}
-                onLogin={onLogin}
-              />
+              notificationSummary ? (
+                <details>
+                  <summary>Ilmoituksen sisältö</summary>
+                  <OrderedBlocks
+                    plainText
+                    blocks={entry.blocks}
+                    entryKey={entry.entry_key}
+                    agentId={agentId}
+                    revision={entry.native_revision ?? revision}
+                    onLogin={onLogin}
+                  />
+                </details>
+              ) : (
+                <OrderedBlocks
+                  plainText={!entry.entry_type}
+                  blocks={entry.blocks}
+                  entryKey={entry.entry_key}
+                  agentId={agentId}
+                  revision={entry.native_revision ?? revision}
+                  onLogin={onLogin}
+                />
+              )
             ) : null}
           </aside>
         ) : (
@@ -1253,12 +1298,29 @@ export function HistoryView({
   const entries = window?.entries ?? [];
   const settings = latestSettings(entries);
   const stream = useRef<HTMLElement>(null);
-  const anchor = useRef<{ key: string; offset: number } | undefined>(
-    store.position(agent.agent_id),
-  );
-  const capture = () => {
+  const anchor = useRef<{ key: string; offset: number } | undefined>(undefined);
+  const following = useRef(true);
+  const selectedHistory = useRef(agent.agent_id);
+  useLayoutEffect(() => {
+    if (selectedHistory.current !== agent.agent_id) {
+      selectedHistory.current = agent.agent_id;
+      anchor.current = undefined;
+      following.current = true;
+    }
+  }, [agent.agent_id]);
+  const capture = (paging = false) => {
     const viewport = stream.current;
     if (!viewport) return;
+    if (
+      !paging &&
+      viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 2
+    ) {
+      following.current = true;
+      anchor.current = undefined;
+      return;
+    }
+    if (!paging && following.current) return;
+    following.current = false;
     const top = viewport.getBoundingClientRect().top;
     const rows = viewport.querySelectorAll<HTMLElement>(".ah-feed > li");
     const keys = visibleEntryKeys(entries);
@@ -1271,10 +1333,15 @@ export function HistoryView({
       }
     }
   };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: route changes also reset layout when a cached window is reused.
   useLayoutEffect(() => {
     const viewport = stream.current;
     const saved = anchor.current;
-    if (!viewport || !saved) return;
+    if (!viewport) return;
+    if (!saved) {
+      viewport.scrollTop = viewport.scrollHeight;
+      return;
+    }
     const index = rowIndexOf(entries, saved.key);
     const row = viewport.querySelectorAll<HTMLElement>(".ah-feed > li")[index];
     if (row)
@@ -1282,12 +1349,52 @@ export function HistoryView({
         row.getBoundingClientRect().top -
         viewport.getBoundingClientRect().top -
         saved.offset;
-  }, [entries]);
+  }, [entries, agent.agent_id]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: observe the timeline children mounted by this history window.
+  useEffect(() => {
+    const viewport = stream.current;
+    if (!viewport) return;
+    const readerInput = () => {
+      following.current = false;
+    };
+    const readerKey = (event: KeyboardEvent) => {
+      if (
+        [
+          "ArrowUp",
+          "ArrowDown",
+          "PageUp",
+          "PageDown",
+          "Home",
+          "End",
+          " ",
+        ].includes(event.key)
+      )
+        readerInput();
+    };
+    const update = () => {
+      if (following.current) viewport.scrollTop = viewport.scrollHeight;
+    };
+    const observer = new ResizeObserver(update);
+    observer.observe(viewport);
+    for (const child of viewport.children) observer.observe(child);
+    viewport.addEventListener("wheel", readerInput, { passive: true });
+    viewport.addEventListener("touchmove", readerInput, { passive: true });
+    viewport.addEventListener("pointerdown", readerInput);
+    viewport.addEventListener("keydown", readerKey);
+    update();
+    return () => {
+      observer.disconnect();
+      viewport.removeEventListener("wheel", readerInput);
+      viewport.removeEventListener("touchmove", readerInput);
+      viewport.removeEventListener("pointerdown", readerInput);
+      viewport.removeEventListener("keydown", readerKey);
+    };
+  }, [entries, agent.agent_id]);
   const state =
     agent.history !== "readable" ? "error" : (window?.state ?? "loading");
   const loadMore = async () => {
     if (!window?.next || busy) return;
-    capture();
+    capture(true);
     setBusy(true);
     try {
       await store.older(agent.agent_id);
@@ -1403,7 +1510,7 @@ export function HistoryView({
         detailsExpanded={details}
         onToggleDetails={() => setDetails(!details)}
       />
-      <ConversationStream streamRef={stream} onScroll={capture}>
+      <ConversationStream streamRef={stream} onScroll={() => capture()}>
         <ConversationTimeline
           state={state}
           items={timelineItems(

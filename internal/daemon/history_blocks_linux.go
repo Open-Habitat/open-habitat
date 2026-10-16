@@ -2,7 +2,10 @@
 
 package daemon
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strings"
+)
 
 // A bounded, explicitly selected projection of native message structure. Raw
 // provider metadata and extension details never enter the browser contract.
@@ -93,6 +96,18 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 		out.Kind = "unknown" // labelled native entry, not an assistant utterance
 		out.full = prefixBytes(top.Summary, 16384)
 		if e.Type == "custom_message" {
+			// display grants permission to show content, not a reason to draw
+			// an empty card. details belong to the extension, never this view.
+			visible := false
+			for _, block := range out.Blocks {
+				if block.Type != "text" || strings.TrimSpace(block.Text) != "" || block.Readable {
+					visible = true
+				}
+			}
+			if !visible {
+				out.Kind, out.full = "", ""
+				return
+			}
 			out.full = "Extension message"
 		}
 		if len(out.Blocks) == 0 {

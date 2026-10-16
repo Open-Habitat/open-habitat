@@ -36,8 +36,10 @@ windows live in a separate in-memory store. Components subscribe to individual
 conversations, so a streaming answer updates its own view without rerendering
 the sidebar.
 
-The store retains recently viewed conversation windows and their reading
-positions so switching back is immediate. A terminal conversation is
+The store retains recently viewed conversation windows so switching back is
+immediate. Every navigation into a conversation opens at its latest content.
+Reading anchors preserve the current visit while older pages load or layout
+changes; they are not restored on a later visit. A terminal conversation is
 refreshed on opening because it may have changed outside browser control;
 a conversation no longer retained is read again. The current store bounds
 the number of windows, not their total bytes. [Retention tuning](../../issues/tune-conversation-retention/item.md)

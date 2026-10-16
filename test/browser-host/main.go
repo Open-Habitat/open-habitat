@@ -530,6 +530,17 @@ esac
 				}
 				w.WriteHeader(204)
 				return
+			case "/fixture/open-at-end":
+				if !lab {
+					http.NotFound(w, r)
+					return
+				}
+				if err := seedOpeningHistory(filepath.Join(tmp, "alice")); err != nil {
+					http.Error(w, "fixture failed", 500)
+					return
+				}
+				w.WriteHeader(204)
+				return
 			case "/fixture/history":
 				mode := r.URL.Query().Get("mode")
 				path := histories["alice"]

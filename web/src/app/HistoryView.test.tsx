@@ -721,3 +721,21 @@ it("derives settled thread duration from native user and assistant timestamps on
   );
   expect(missingFinal.container.textContent).not.toContain("1:07");
 });
+
+it("shows the real pi-processes XML content as text, not discarded HTML", async () => {
+  const content =
+    '<process_event type="lifecycle" kind="success">\n  <summary>Build finished</summary>\n  <command>npm test</command>\n</process_event>';
+  const { container } = render(
+    <Entry
+      entry={{
+        ...entry,
+        kind: "unknown",
+        blocks: [{ type: "text", text: content }],
+      }}
+    />,
+  );
+  expect(container.textContent).toContain("Prosessin ilmoitus");
+  expect(container.textContent).toContain("Build finished");
+  expect(container.querySelector("pre")?.textContent).toBe(content);
+  expect(container.querySelector("process_event")).toBeNull();
+});

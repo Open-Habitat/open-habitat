@@ -138,3 +138,51 @@ func seedLab(home string) error {
 	}
 	return nil
 }
+
+// Pi 1.3 custom_message shape, with pi-processes 0.10.9's XML content.
+// All fields and content are invented; never copied from a user's session.
+func seedOpeningHistory(home string) error {
+	paths, err := filepath.Glob(filepath.Join(home, ".pi", "agent", "sessions", "*", "*_a1a1a1a1-0000-4000-8000-000000000001.jsonl"))
+	if err != nil || len(paths) != 1 {
+		return fmt.Errorf("opening fixture session not found")
+	}
+	f, err := os.Create(paths[0])
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	enc := json.NewEncoder(f)
+	if err := enc.Encode(map[string]any{"type": "session", "version": 3, "id": "a1a1a1a1-0000-4000-8000-000000000001", "cwd": filepath.Join(home, "src", "aurinkokello")}); err != nil {
+		return err
+	}
+	var parent any
+	n := 0
+	write := func(row map[string]any) error {
+		n++
+		row["id"] = fmt.Sprintf("opening%03d", n)
+		row["parentId"] = parent
+		row["timestamp"] = time.Now().Add(time.Duration(n) * time.Millisecond).UTC().Format(time.RFC3339Nano)
+		parent = row["id"]
+		return enc.Encode(row)
+	}
+	for i := 0; i < 6; i++ {
+		if err := write(message("user", fmt.Sprintf("Avaamisen tarkistus %d", i), nil)); err != nil {
+			return err
+		}
+		if err := write(message("assistant", strings.Repeat("Synteettinen pitkä vastaus.\n\n", 12), map[string]any{"stopReason": "stop"})); err != nil {
+			return err
+		}
+	}
+	for _, content := range []string{"", "<process_event type=\"lifecycle\" kind=\"success\" process_id=\"proc_example\" process_name=\"test\" status=\"exited\">\n  <summary>Synteettinen testi valmistui</summary>\n  <command>npm test</command>\n  <exit_code>0</exit_code>\n</process_event>"} {
+		if err := write(map[string]any{"type": "custom_message", "customType": "ad-process:notification", "display": true, "content": content, "details": map[string]any{"private": "not for the browser"}}); err != nil {
+			return err
+		}
+	}
+	if err := write(message("user", "Viimeinen kysymys", nil)); err != nil {
+		return err
+	}
+	if err := write(message("assistant", "Viimeisin vastaus on tässä.", map[string]any{"stopReason": "stop"})); err != nil {
+		return err
+	}
+	return f.Sync()
+}

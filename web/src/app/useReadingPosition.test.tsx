@@ -1,6 +1,6 @@
 import { fireEvent, render } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { showMissedEvents } from "./BrowserConversation";
 import { ConversationStore } from "./conversationStore";
 import { HistoryView } from "./HistoryView";
@@ -72,6 +72,13 @@ function Reader({
 
 // jsdom has no layout; each row occupies 100 px, relative to the scroll container.
 function geometry() {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
   const original = HTMLElement.prototype.getBoundingClientRect;
   HTMLElement.prototype.getBoundingClientRect = function () {
     const row = this.matches(".ah-feed > li");
@@ -111,6 +118,7 @@ function geometry() {
     get: () => 300,
   });
   return () => {
+    vi.unstubAllGlobals();
     HTMLElement.prototype.getBoundingClientRect = original;
     if (height)
       Object.defineProperty(HTMLElement.prototype, "scrollHeight", height);
@@ -125,7 +133,7 @@ for (const { row, offset } of [
   { row: 0, offset: 0 },
   { row: 12, offset: 47 },
 ]) {
-  it(`keeps older-page reply ${row + 1} at viewport offset ${offset} after paging and warm return`, () => {
+  it(`keeps older-page reply ${row + 1} at viewport offset ${offset} while paging, but opens latest on return`, () => {
     const restore = geometry();
     try {
       const store = new ConversationStore("reader");
@@ -157,7 +165,7 @@ for (const { row, offset } of [
       );
       const feed = returned.container.querySelector<HTMLElement>(".viewport");
       if (!feed) throw new Error("missing viewport");
-      expect(feed.scrollTop).toBe(row * 100 + offset);
+      expect(feed.scrollTop).toBe(feed.scrollHeight);
       expect(feed.querySelector(".ah-feed > li")?.textContent).toBe("reply-1");
       returned.unmount();
     } finally {
@@ -166,7 +174,7 @@ for (const { row, offset } of [
   });
 }
 
-it("keeps the same keyed reading anchor on a read-only history return", () => {
+it("opens latest rather than a stored anchor on a read-only history return", () => {
   const restore = geometry();
   try {
     const store = new ConversationStore("reader");
@@ -204,6 +212,7 @@ it("keeps the same keyed reading anchor on a read-only history return", () => {
       ".ah-conversation-stream",
     );
     if (!viewport) throw new Error("missing read-only stream");
+    fireEvent.wheel(viewport, { deltaY: -100 });
     viewport.scrollTop = 47;
     fireEvent.scroll(viewport);
     expect(store.position(agent.agent_id)).toEqual({
@@ -215,7 +224,7 @@ it("keeps the same keyed reading anchor on a read-only history return", () => {
     const feed = returned.container.querySelector<HTMLElement>(
       ".ah-conversation-stream",
     );
-    expect(feed?.scrollTop).toBe(47);
+    expect(feed?.scrollTop).toBe(feed?.scrollHeight);
     returned.unmount();
   } finally {
     restore();
@@ -239,6 +248,7 @@ it("counts new native replies, not tool results, and does not recount older page
   store.savePosition("one", { key: "a", offset: 0 });
   function Counter({ entries }: { entries: HistoryEntry[] }) {
     const reading = useReadingPosition(entries, undefined, "one", store);
+    reading.wasAtBottom.current = false; // reader has moved away during this visit
     return <span data-testid="unread">{reading.unseen}</span>;
   }
   const view = render(<Counter entries={[entry("a")]} />);

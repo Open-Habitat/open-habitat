@@ -110,10 +110,8 @@ export function useReadingPosition(
   store: ConversationStore,
 ) {
   const [unseen, setUnseen] = useState(0);
-  const [awayFromLatest, setAwayFromLatest] = useState(
-    !!id && !!store.position(id),
-  );
-  const wasAtBottom = useRef(!id || !store.position(id));
+  const [awayFromLatest, setAwayFromLatest] = useState(false);
+  const wasAtBottom = useRef(true);
   const previousTail = useRef<{ id?: string; key?: string }>({
     id,
     key: entries.at(-1)?.entry_key,
@@ -141,34 +139,19 @@ export function useReadingPosition(
   const feed = useRef<HTMLElement>(null);
   const latest = useRef({ entries, next, unseen });
   latest.current = { entries, next, unseen };
-  const readingAnchor = useRef<Anchor | undefined>(
-    id ? store.position(id) : undefined,
-  );
-  const positions = useRef(
-    new Map<string, { anchor?: Anchor; atBottom: boolean; top: number }>(),
-  );
+  // A route opening always starts at latest. Anchors belong to the current
+  // reading visit (paging/layout changes), not a later navigation back here.
+  const readingAnchor = useRef<Anchor | undefined>(undefined);
   const selected = useRef(id);
   useLayoutEffect(() => {
     if (selected.current === id) return;
-    const old = selected.current;
-    if (old) {
-      store.savePosition(old, readingAnchor.current);
-      positions.current.set(old, {
-        anchor: readingAnchor.current,
-        atBottom: wasAtBottom.current,
-        top: feed.current?.scrollTop ?? 0,
-      });
-    }
     selected.current = id;
-    const saved = id ? positions.current.get(id) : undefined;
-    const storedAnchor = id ? store.position(id) : undefined;
-    readingAnchor.current = storedAnchor ?? saved?.anchor;
-    wasAtBottom.current = !readingAnchor.current && (saved?.atBottom ?? true);
-    if (feed.current && saved && !saved.anchor)
-      feed.current.scrollTop = saved.top;
+    readingAnchor.current = undefined;
+    wasAtBottom.current = true;
+    if (feed.current) feed.current.scrollTop = feed.current.scrollHeight;
     setUnseen(0);
-    setAwayFromLatest(!wasAtBottom.current);
-  }, [id, store]);
+    setAwayFromLatest(false);
+  }, [id]);
   const captureAnchor = useCallback(() => {
     const viewport = feed.current;
     if (!viewport || wasAtBottom.current) return;
