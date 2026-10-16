@@ -3,12 +3,13 @@ created: 2026-10-16
 updated: 2026-10-16
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: proto-models
 lane_seq: 1
 collision: [design-system/prototypes/rounds/proto-model-discovery]
 preparation: ready
+closed: 2026-10-16
 ---
 
 # Prototype: model discovery and choice
@@ -20,5 +21,5 @@ Evidence from 2026-10-16: Pi's catalog lists models the account cannot use. `gpt
 Prototype: where the person sees and chooses models (settings default, the conversation's model popover, a new conversation, and recovery from the unsupported-model notice); how detected, unavailable and unknown models look; per-provider groups (OpenAI subscription vs API key, later Claude); the thinking level next to the model; what happens when detection fails or is stale; and how a new model family appears. Follow `design-system/prototypes/AGENTS.md` ("Prototyyppiworker"). Keep consistent with `proto-settings-admin` (round `2026-10-15-asetukset`) and `proto-agent-harnesses` (`2026-10-16-agentit`).
 
 ## Acceptance Criteria
-- [ ] Round verified with check.mjs (light, dark, phone, interactions).
-- [ ] `result.md` per the prototype worker rules, listing which host facts the view assumes, so it can be matched against `research-model-discovery`.
+- [x] Round verified with check.mjs (light, dark, phone, interactions).
+- [x] `result.md` per the prototype worker rules, listing which host facts the view assumes, so it can be matched against `research-model-discovery`.
