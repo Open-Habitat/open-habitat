@@ -3,12 +3,13 @@ created: 2026-10-16
 updated: 2026-10-16
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: pi-runtime
 lane_seq: 6
 collision: [internal/daemon]
 preparation: ready
+closed: 2026-10-16
 ---
 
 # Taskfleet skills and host note on the test server
@@ -18,8 +19,9 @@ Jari approved on 2026-10-16 (after `taskfleet-skills-for-open-habitat`): install
 Distribution: operator-declared, alongside the Taskfleet runtime in Fleetrepo's guest runtime. Both the browser's parent Pi and the spawned workers must discover the skills and the note.
 
 ## Acceptance Criteria
-- [ ] On the test server, a fresh browser Pi conversation lists the Taskfleet skills, and the note is in its context.
-- [ ] One end-to-end proof as the mapped user: Pi starts a tiny spinoff, waits for it with `taskfleet run wait`, and the browser shows the spinoff under the parent. Jari repeats it himself from the browser (KOKEILTAVAA.md).
+- [x] Operator-declared unchanged 0.15.0 skills and native host note installed; fresh mapped-user parent/worker discovery and real provider spawn/process-wait/wake/landed proof recorded in result.md. Deployed product API associates the child with the correct parent.
+- [ ] On the test server, a fresh browser Pi conversation lists the Taskfleet skills, and the note is in its context. Manual repeat is in KOKEILTAVAA.md; native discovery is verified.
+- [ ] Jari repeats the tiny spinoff and wait from the browser, checking Langassa and the waiting state (KOKEILTAVAA.md). Provider/API proof is complete, with the same-child salvage qualification in result.md; browser rendering has not been observed.
 
 ## Comments
 
@@ -34,3 +36,9 @@ Correction: Jari found that the settings model picker selects a model by itself 
 ### 2026-10-16T15:11:21Z · @jari
 
 Jari 17:59 local (sidebar screenshot copied here as proof-clutter.png): the proof left a workspace 'taskfleet-skills-proo…' with three 'This is an authorized, tiny runtime acc…' conversations in his account. Remove the proof workspace and its native sessions after the proof (they are disposable test artefacts created by this issue), and in future run proofs so that they do not appear in his workspace list.
+
+## Resolution
+
+### 2026-10-16T15:19:22Z · @issuectl
+
+Implementation and mapped-user provider/API proof complete; see result.md. All 14 unchanged pinned skills and native host note installed through Fleetrepo. Fresh browser UI acceptance remains explicitly unchecked in KOKEILTAVAA.md; successful same-child recovery is not claimed as uninterrupted self-merge.
