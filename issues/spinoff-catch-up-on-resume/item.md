@@ -3,12 +3,13 @@ created: 2026-10-16
 updated: 2026-10-16
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: pi-runtime
 blocked_by: ['@lazy-resume-on-send']
 collision: [internal/daemon]
 preparation: ready
+closed: 2026-10-16
 ---
 
 # Tell a resumed parent which spinoffs settled while Pi was down
@@ -20,6 +21,6 @@ This amends ADR 0017 (`docs/decisions/adr-0017-observe-taskfleet-spinoffs.md`), 
 Live case, Jari 2026-10-16 ~19:30: after the pilot.183 restart killed the parent's `taskfleet run wait`, a new Pi started when he returned (19:22) and the spinoff completed later; nothing woke the parent ("jää agentilta huomaamatta"), though asked, it saw the result. So the scope also covers spinoffs still running when Pi starts again: the companion extension re-arms the wait for every child the parent was waiting on before the restart (same pi-processes mechanism, so completion wakes the agent as the lost wait would have). Children that settled while Pi was down get the context-only message. Conductor's decision: re-arming only restores what the agent had already asked for.
 
 ## Acceptance Criteria
-- [ ] ADR 0017 amended with Jari's decision.
-- [ ] After a daemon restart during a running spinoff, the resumed parent's next turn sees which spinoffs settled; no message when nothing settled (test).
-- [ ] A spinoff still running across a daemon restart wakes the resumed parent when it completes (host-backed test).
+- [x] ADR 0017 amended with Jari's decision.
+- [x] After a daemon restart during a running spinoff, the resumed parent's next turn sees which spinoffs settled; no message when nothing settled (test).
+- [x] A spinoff still running across a daemon restart wakes the resumed parent when it completes (host-backed test).
