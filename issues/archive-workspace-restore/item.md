@@ -8,6 +8,7 @@ priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
+lane_seq: 4
 ---
 
 # Archiving a workspace is slow, and an archived workspace cannot be found or restored

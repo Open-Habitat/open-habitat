@@ -8,6 +8,7 @@ priority: normal
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
+lane_seq: 3
 ---
 
 # Workspace page + icon sits at the bottom of its button

@@ -8,6 +8,7 @@ priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
+lane_seq: 6
 ---
 
 # + still broken live on home and workspace pages; sidebar + lands on workspace page

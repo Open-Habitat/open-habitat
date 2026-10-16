@@ -8,6 +8,7 @@ priority: normal
 lane: web
 collision: [web/src/app/]
 preparation: ready
+lane_seq: 7
 ---
 
 # Implement loading landing (Merkki)

@@ -9,6 +9,7 @@ lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
 blocked_by: ['@proto-queued-send']
+lane_seq: 1
 ---
 
 # Composer colour and send arrow; slow 'Luodaan keskustelua' blocks typing; confusing notices in first conversation; new workspace gets an agent

@@ -9,6 +9,7 @@ lane: web
 collision: [web/src/app/, web/src/components/, internal/daemon]
 preparation: ready
 blocked_by: ['@proto-queued-send']
+lane_seq: 2
 ---
 
 # Resume a stopped conversation lazily on send; no read-only state
