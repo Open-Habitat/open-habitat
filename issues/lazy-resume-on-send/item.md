@@ -8,6 +8,7 @@ priority: high
 lane: web
 collision: [web/src/app/, web/src/components/, internal/daemon]
 preparation: ready
+blocked_by: ['@proto-queued-send']
 ---
 
 # Resume a stopped conversation lazily on send; no read-only state
